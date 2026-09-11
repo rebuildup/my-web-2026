@@ -19,12 +19,29 @@
 		"verbatimModuleSyntax": true,
 		"paths": {
 			"~/*": ["./src/*"],
-			"@features/*": ["./src/features/*"],
-			"@domains/*": ["./src/domains/*"],
-			"@boundary/*": ["./src/boundary/*"],
-			"@infra/*": ["./src/infra/*"]
+			"@modules/*": ["./src/modules/*"],
+			"@design-system/*": ["./src/design-system/*"],
+			"@platform/*": ["./src/platform/*"]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.tsx", "worker-configuration.d.ts", "styled-system/**/*.ts", "vite.config.ts", "panda.config.ts"],
-	"exclude": ["node_modules", "dist", ".output", ".vinxi", ".wrangler", ".tmp", ".reference"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.tsx",
+		"test/integration/**/*.ts",
+		"worker-configuration.d.ts",
+		"styled-system/**/*.ts",
+		"vite.config.ts",
+		"vitest.config.ts",
+		"panda.config.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"dist-cloudflare",
+		".output",
+		".vinxi",
+		".wrangler",
+		".tmp",
+		".reference"
+	]
 }

@@ -4,8 +4,9 @@
 # Three deterministic entry points drive both local and CI validation:
 #
 #   - validate:fast         local feedback (read-only)
-#   - validate:integration  ticket PR verification (build + dry-run + actionlint)
-#   - validate:release      pre-`main` verification (cf-typegen check)
+#   - validate:integration  ticket PR verification (build + dry-run +
+#                           actionlint via lint:ci + build-storybook)
+#   - validate:release      pre-`main` verification (cf-typegen check + Playwright)
 #
 # Coverage thresholds are intentionally disabled at 0.1.0; see ADR-0007.
 # Component-level cost comes from the framework-native tools listed
@@ -44,7 +45,8 @@ gates:
       - fast
       - 'pnpm run build' # vite build -> dist/
       - 'pnpm run wrangler:dry-run' # wrangler deploy --dry-run --outdir dist-cloudflare
-      - 'pnpm run lint:ci' # actionlint .github/workflows/*.yml
+      - 'pnpm run lint:ci' # actionlint via scripts/lint-ci.mjs (default target: .github/workflows/*.yml)
+      - 'pnpm run build-storybook' # static storybook build -> storybook-static/
     cost_class: medium
     trigger: pull_request, push_to_main_and_release
 
@@ -81,8 +83,10 @@ change_risk_mapping:
 ci:
   workflow: .github/workflows/ci.yml
   # Single job. `validate:integration` runs on every PR and every
-  # push to main / release-*. The cf-typegen:check step runs only on
-  # push to main / release-* (it is not meaningful on a draft PR).
+  # push to main / release-*. The cf-typegen:check step and the
+  # Playwright E2E step run only on push to main / release-* plus on
+  # pull requests that opt in via the `ui-change` label (Playwright
+  # E2E only — cf-typegen:check is not meaningful on a draft PR).
   jobs:
     - name: validate
       command: 'pnpm run validate:integration'
@@ -92,6 +96,7 @@ ci:
         - push_to_release_branch
       release_extra:
         - 'pnpm run cf-typegen:check'
+        - 'pnpm run e2e'
   required_checks:
     public_repo_main: ['validate']
     public_repo_release_pr: ['validate']

@@ -18,7 +18,7 @@
 		"wrangler:dry-run": "wrangler deploy --dry-run --outdir dist-cloudflare",
 		"cf-typegen": "wrangler types",
 		"cf-typegen:check": "pnpm run cf-typegen && git diff --exit-code -- worker-configuration.d.ts",
-		"lint:ci": "node scripts/lint-ci.mjs .github/workflows/*.yml",
+		"lint:ci": "node scripts/lint-ci.mjs",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build -o storybook-static",
 		"e2e": "playwright test",

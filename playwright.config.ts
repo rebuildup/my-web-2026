@@ -3,13 +3,14 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Playwright configuration for my-web-2026.
  *
- * Tests cover two surfaces:
- *   - local UI smoke (`e2e/local.spec.ts`) — runs against `pnpm dev`
- *     on 127.0.0.1:3000. The webServer block below starts `pnpm dev`
- *     automatically if it is not already running.
- *   - deployed Worker smoke (`e2e/smoke.spec.ts`) — runs against
- *     PLAYWRIGHT_BASE_URL when it points to a non-localhost URL. CI
- *     sets this after `pnpm deploy`.
+ * Tests cover a single surface today — the HTTP-only smoke in
+ * `e2e/smoke.spec.ts`. The same checks work for the local
+ * `pnpm dev` server and a deployed Worker; the only difference is
+ * `PLAYWRIGHT_BASE_URL`. The webServer block below starts
+ * `pnpm dev` automatically when `PLAYWRIGHT_BASE_URL` points at
+ * localhost; when it points at a deployed URL (`*.workers.dev` or
+ * similar) the block is omitted so the deployed Worker is assumed
+ * already live.
  *
  * Chromium only at 0.1.0. Firefox / WebKit land when a feature needs
  * them. Playwright's own browser binaries are installed via

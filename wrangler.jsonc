@@ -29,23 +29,23 @@
 		"enabled": true
 	},
 	"upload_source_maps": true,
-	// Placeholder D1 database. Run `wrangler d1 create my-web-2026-dev`
+	// Placeholder D1 database. Run `wrangler d1 create my-web-2026`
 	// once, copy the returned `database_id` here, and re-run
 	// `pnpm run cf-typegen`.
 	"d1_databases": [
 		{
 			"binding": "DB",
-			"database_name": "my-web-2026-dev",
+			"database_name": "my-web-2026",
 			"database_id": "00000000-0000-0000-0000-000000000000",
 			"migrations_dir": "migrations"
 		}
 	],
-	// Placeholder R2 bucket. Run `wrangler r2 bucket create my-web-2026-dev`
+	// Placeholder R2 bucket. Run `wrangler r2 bucket create my-web-2026`
 	// once on first deploy; the binding name `MEDIA` is stable.
 	"r2_buckets": [
 		{
 			"binding": "MEDIA",
-			"bucket_name": "my-web-2026-dev"
+			"bucket_name": "my-web-2026"
 		}
 	]
 	/**

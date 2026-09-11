@@ -94,9 +94,8 @@ produce.
 - **Workflow YAML**: actionlint. Biome does not cover
   `.github/workflows/*.yml`; without actionlint, the previous pass
   shipped a tab-indented CI YAML that GitHub Actions could not parse.
-  CI uses `rhysd/actionlint@v1`. Local: `pnpm run lint:ci` (requires
-  `actionlint` on PATH; install via
-  `go install github.com/rhysd/actionlint/cmd/actionlint@latest`).
+  Local and CI both go through `pnpm run lint:ci` (actionlint 1.7.12,
+  downloaded on demand by `scripts/lint-ci.mjs`).
 
 `biome.json` configures indent (tab, width 2), line width (100),
 quotes (single in JS, double in JSX), semicolons (always), trailing

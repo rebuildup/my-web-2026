@@ -1,13 +1,19 @@
-# Test layout
+# Tests
 
-Foundation release uses Vitest for unit/smoke/integration tests:
+Two Vitest projects (see `vitest.config.ts`):
 
-- Unit tests: co-located next to the implementation as
-  `<feature>.test.ts(x)` to keep the boundary obvious.
-- Smoke tests: a small `boundary.test.ts` that boots the Hono app with a
-  fake `Env` and asserts the health route returns 200.
-- Integration tests: any test that spins up `SELF` via
-  `@cloudflare/vitest-plugin` lives under `test/integration/**`.
+- `unit` — Node environment, fast feedback. Lives next to the code
+  it covers (`src/**\/*.{test,spec}.{ts,tsx}`).
+- `integration` — workerd environment via
+  `@cloudflare/vitest-plugin`, exercised through the `SELF` helper.
+  Lives in `test/integration/**`.
 
-Coverage thresholds are **not** enforced in 0.1.0 — see ADR-0007. Add
-coverage policy deliberately once a meaningful testable surface exists.
+Run them:
+
+```bash
+pnpm test                  # both projects
+pnpm test --project unit
+pnpm test --project integration
+```
+
+Both run inside `pnpm run validate:fast` and `pnpm run validate:integration`.

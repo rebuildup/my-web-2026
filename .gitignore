@@ -11,6 +11,7 @@ node_modules/
 
 # Build outputs
 dist/
+dist-cloudflare/
 .output/
 .vinxi/
 .tanstack/
@@ -20,6 +21,9 @@ dist/
 
 # Panda CSS generated package (rebuilt via `pnpm prepare`)
 styled-system/
+
+# Biome cache
+.biome/
 
 # Local env / secrets
 .env*

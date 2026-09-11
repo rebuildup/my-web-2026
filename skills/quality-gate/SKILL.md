@@ -148,9 +148,10 @@ Each push-to-main runs the same checks once.
 
 - `concurrency.cancel_in_progress: true`, grouped by PR / ref.
 - `timeout-minutes: 20` on the single job.
-- Bootstrap (`setup-node`, `corepack enable pnpm`,
-  `pnpm/action-setup`, `actions/cache@v4`,
-  `pnpm install --frozen-lockfile`) is declared once. There is no
+- Bootstrap (`setup-node`, `pnpm/action-setup@v4` with `version: 12.3.4`,
+  `actions/cache@v4`, `pnpm install --frozen-lockfile`) is declared
+  once. `pnpm/action-setup@v4` downloads the pnpm 12.3.4 standalone
+  binary directly; **corepack is forbidden** (ADR-0003). There is no
   second job to duplicate it into.
 
 ## Re-compile triggers

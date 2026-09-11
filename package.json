@@ -4,6 +4,7 @@
 	"private": true,
 	"type": "module",
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
+	"license": "MIT",
 	"engines": {
 		"node": ">=20.18.0"
 	},
@@ -14,14 +15,16 @@
 		"build": "vite build",
 		"preview": "vite preview",
 		"deploy": "pnpm run build && wrangler deploy",
+		"wrangler:dry-run": "wrangler deploy --dry-run --outdir dist-cloudflare",
 		"cf-typegen": "wrangler types",
-		"lint": "prettier --check .",
-		"format": "prettier --write .",
+		"format": "biome format --write .",
+		"format:check": "biome format .",
+		"lint:check": "biome lint .",
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"validate:fast": "pnpm run format && pnpm run typecheck && pnpm run test",
-		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run test -- --pool=threads",
+		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run typecheck && pnpm run test",
+		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run wrangler:dry-run",
 		"validate:release": "pnpm run validate:integration && pnpm run cf-typegen"
 	},
 	"dependencies": {
@@ -32,6 +35,7 @@
 		"react-dom": "^19.2.0"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "^1.9.4",
 		"@cloudflare/vite-plugin": "^1.0.0",
 		"@cloudflare/vitest-plugin": "^1.0.0",
 		"@pandacss/dev": "^1.12.1",
@@ -39,7 +43,6 @@
 		"@types/react": "^19.2.0",
 		"@types/react-dom": "^19.2.0",
 		"@vitejs/plugin-react": "^5.0.0",
-		"prettier": "^3.6.2",
 		"typescript": "^5.9.0",
 		"vite": "^7.1.0",
 		"vitest": "~4.1.0",

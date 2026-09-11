@@ -1,4 +1,9 @@
+allowBuilds:
+  '@biomejs/biome': true
+  esbuild: true
+  workerd: true
 onlyBuiltDependencies:
   - esbuild
   - workerd
   - '@cloudflare/vite-plugin'
+  - '@biomejs/biome'

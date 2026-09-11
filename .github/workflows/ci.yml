@@ -1,110 +1,63 @@
-name: ci
+name: CI
 
 on:
-  pull_request:
-    branches:
-      - main
-      - 'release-*'
-  push:
-    branches:
-      - main
-      - 'release-*'
+	pull_request:
+		branches: [main, 'release-*']
+	push:
+		branches: [main, 'release-*']
 
 concurrency:
-  group: ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+	group: ci-${{ github.workflow }}-${{ github.ref }}
+	cancel-in-progress: true
 
 permissions:
-  contents: read
+	contents: read
 
 jobs:
-  validate-fast:
-    name: validate:fast
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: corepack enable pnpm
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.3.4
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-${{ runner.os }}-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: validate:fast
-        run: pnpm run validate:fast
+	validate:
+		name: validate
+		runs-on: ubuntu-latest
+		timeout-minutes: 15
+		steps:
+			- uses: actions/checkout@v4
+				with: { submodules: recursive }
+			- uses: actions/setup-node@v4
+				with: { node-version: 22 }
+			- run: corepack enable pnpm
+			- uses: pnpm/action-setup@v4
+				with: { version: 12.3.4 }
+			- uses: actions/cache@v4
+				with:
+					path: ~/.local/share/pnpm/store
+					key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+					restore-keys: pnpm-${{ runner.os }}-
+			- run: pnpm install --frozen-lockfile
+			- run: pnpm run validate:integration
+			- name: Upload Cloudflare bundle
+				if: github.event_name == 'push'
+				uses: actions/upload-artifact@v4
+				with:
+					name: dist-cloudflare-${{ github.sha }}
+					path: dist-cloudflare/
+					retention-days: 7
 
-  validate-integration:
-    name: validate:integration
-    needs: validate-fast
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: corepack enable pnpm
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.3.4
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-${{ runner.os }}-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: validate:integration
-        run: pnpm run validate:integration
-      - name: Upload build artefact
-        if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
-        with:
-          name: dist-cloudflare-${{ github.sha }}
-          path: dist-cloudflare/
-          retention-days: 7
-
-  validate-release:
-    name: validate:release
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
-    needs: validate-integration
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          submodules: recursive
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-      - run: corepack enable pnpm
-      - uses: pnpm/action-setup@v4
-        with:
-          version: 12.3.4
-      - name: Cache pnpm store
-        uses: actions/cache@v4
-        with:
-          path: ~/.local/share/pnpm/store
-          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-          restore-keys: |
-            pnpm-${{ runner.os }}-
-      - name: Install
-        run: pnpm install --frozen-lockfile
-      - name: validate:release
-        run: pnpm run validate:release
+	validate-release:
+		name: validate-release
+		runs-on: ubuntu-latest
+		timeout-minutes: 20
+		if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
+		steps:
+			- uses: actions/checkout@v4
+				with: { submodules: recursive }
+			- uses: actions/setup-node@v4
+				with: { node-version: 22 }
+			- run: corepack enable pnpm
+			- uses: pnpm/action-setup@v4
+				with: { version: 12.3.4 }
+			- uses: actions/cache@v4
+				with:
+					path: ~/.local/share/pnpm/store
+					key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+					restore-keys: pnpm-${{ runner.os }}-
+			- run: pnpm install --frozen-lockfile
+			- run: pnpm run validate:release

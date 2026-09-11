@@ -17,8 +17,7 @@ selected by the operator at init time.
 | Tool     | Version                          |
 | -------- | -------------------------------- |
 | Node.js  | 20.18+                           |
-| Corepack | bundled with Node                |
-| pnpm     | 12.3.x via corepack              |
+| pnpm     | 12.3.x (install directly, not via corepack — see ADR-0003) |
 | Wrangler | `^4.131.0` (npm)                 |
 | Git      | 2.40+                            |
 
@@ -27,7 +26,8 @@ selected by the operator at init time.
 ```bash
 git clone https://github.com/rebuildup/my-web-2026.git
 cd my-web-2026
-corepack enable pnpm
+# corepack is forbidden in this repository; install pnpm directly:
+npm install -g pnpm@12.3.4
 pnpm install
 pnpm prepare        # panda codegen
 ```

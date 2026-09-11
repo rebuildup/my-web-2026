@@ -12,7 +12,8 @@
 ## Quick start
 
 ```bash
-corepack enable pnpm
+# corepack is forbidden (see ADR-0003); install pnpm directly.
+npm install -g pnpm@12.3.4
 pnpm install
 pnpm prepare
 pnpm run validate:fast

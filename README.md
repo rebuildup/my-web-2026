@@ -36,8 +36,8 @@ See [`docs/architecture.md`](docs/architecture.md) and
 ## Canonical commands
 
 ```bash
-# Bootstrap
-corepack enable pnpm
+# Bootstrap (corepack is forbidden; install pnpm directly)
+npm install -g pnpm@12.3.4
 pnpm install
 
 # Develop locally (Cloudflare runtime via @cloudflare/vite-plugin)

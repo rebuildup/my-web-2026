@@ -61,12 +61,10 @@ commas (all), arrow parentheses (always), and `organizeImports`.
 - `validate-release` — runs `pnpm run validate:release` on
   `push` to `main` / `release-*` only.
 
-Bootstrap (`setup-node`, `corepack enable pnpm`, `pnpm/action-setup`,
-`actions/cache`, `pnpm install --frozen-lockfile`) is **not**
-duplicated inside jobs that already depend on each other; each job
-declares its own bootstrap because `actions/cache@v4` makes the
-duplicate cheap, and the two jobs are independent enough that sharing
-would re-introduce coupling.
+Bootstrap (`setup-node`, `pnpm/action-setup@v4`, `actions/cache`,
+`pnpm install --frozen-lockfile`) is declared once per job.
+`pnpm/action-setup@v4` downloads the pnpm 12.3.4 standalone binary
+directly; **corepack is forbidden** (see ADR-0003).
 
 `validate:fast` is no longer a separate CI job; it is composed into
 `validate:integration` as the first step. The previous design ran

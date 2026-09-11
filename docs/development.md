@@ -38,20 +38,61 @@ pnpm prepare        # panda codegen
 # Local Cloudflare dev server (TanStack Start + Hono)
 pnpm dev
 # -> http://127.0.0.1:3000
+
+# Storybook (design-system preview, component recipes, tokens)
+pnpm storybook
+# -> http://127.0.0.1:6006
 ```
 
 ## Validate
 
 ```bash
 pnpm run validate:fast         # format:check + lint:check + typecheck + test
-pnpm run validate:integration  # + build + wrangler:dry-run
-pnpm run validate:release      # + cf-typegen
+pnpm run validate:integration  # + build + wrangler:dry-run + lint:ci + build-storybook
+pnpm run validate:release      # + cf-typegen:check
 ```
 
-CI (`.github/workflows/ci.yml`) invokes `validate:integration` from
-the `validate` job and `validate:release` from the `validate-release`
-job. Both jobs share the same pnpm / Node bootstrap via the
-`actions/cache@v4` key.
+CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
+`validate` job on every PR and every push to `main` / `release-*`.
+The same job also installs the Playwright Chromium binary and runs
+the E2E suite against `pnpm dev`.
+
+## Storybook
+
+Storybook 8.6.x is the canonical design-system surface for
+my-web-2026 at 0.1.0. It ships three Panda recipe seeds
+(`Button`, `Card`, `Badge`) and a tokens documentation story. New
+components land under `src/design-system/components/<Name>.tsx`
+plus a `<Name>.stories.tsx` next to it.
+
+```bash
+pnpm storybook           # dev server on :6006
+pnpm run build-storybook # static build to ./storybook-static
+```
+
+`build-storybook` is part of `validate:integration`. The static
+output is gitignored.
+
+## Playwright E2E
+
+Playwright 1.63.x covers the deployed Worker smoke. The same
+HTTP-only test suite runs against `pnpm dev` locally and against
+the production Worker URL after `pnpm deploy` (set
+`PLAYWRIGHT_BASE_URL` to the deployed URL to switch the target).
+
+```bash
+pnpm run e2e:install     # one-time: chromium browser + system deps
+pnpm run e2e             # run smoke.spec.ts; auto-starts pnpm dev locally
+PLAYWRIGHT_BASE_URL=https://my-web-2026.<account>.workers.dev pnpm run e2e
+```
+
+The E2E suite asserts the four public surfaces documented in
+`docs/architecture.md`:
+
+- `GET /` (200, SSR HTML)
+- `GET /api/v1/health` (200, `{status:'ok',...}`)
+- `GET /api/v1/db/ping` (200, `{one:1,...}` against the D1 binding)
+- `GET /api/v1/media/ping` (404, `key_not_found` against the R2 binding)
 
 ## Format and lint
 
@@ -99,6 +140,9 @@ pnpm test
 | `dist/`            | `pnpm build`                             | yes        |
 | `dist-cloudflare/` | `pnpm run wrangler:dry-run`              | yes        |
 | `styled-system/`   | `pnpm prepare` (panda codegen)           | yes        |
+| `storybook-static/`| `pnpm run build-storybook`               | yes        |
+| `playwright-report/` | `pnpm run e2e`                        | yes        |
+| `test-results/`    | `pnpm run e2e` (failure artefacts)      | yes        |
 | `node_modules/`    | `pnpm install`                           | yes        |
 | `.biome/`          | `pnpm run format` (cache)                | yes        |
 | `.wrangler/`       | `wrangler dev`                           | yes        |

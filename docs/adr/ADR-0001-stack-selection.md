@@ -106,7 +106,25 @@ A single binary handles format + lint, with two scripts:
 
 The `validate:*` gates only ever invoke the read-only variants.
 
-### 8. Tools: separate repositories, Git submodules
+### 8. Design-system preview: Storybook
+
+Storybook 8.6.x is the canonical surface for visualising the
+Panda recipe seeds at 0.1.0 (`src/design-system/components/<Name>.tsx`
++ adjacent `<Name>.stories.tsx`). It is dev-time only; the static
+build (`pnpm run build-storybook` → `storybook-static/`) is part of
+`validate:integration` so a broken story fails the PR gate, but the
+static output is gitignored.
+
+### 9. End-to-end smoke: Playwright (chromium)
+
+Playwright 1.63.x is the canonical E2E runner at 0.1.0. The 0.1.0
+suite is HTTP-only (`request` fixture, no browser launch), covering
+the four documented public surfaces (`/`, `/api/v1/health`,
+`/api/v1/db/ping`, `/api/v1/media/ping`). The same spec runs against
+`pnpm dev` locally and against the deployed Worker URL when
+`PLAYWRIGHT_BASE_URL` is set. Browser-based specs land in 0.2.0.
+
+### 10. Tools: separate repositories, Git submodules
 
 Existing Web Tools remain independent repositories. They are
 integrated into my-web-2026 as Git submodules under
@@ -117,7 +135,7 @@ unchanged; see [ADR-0006](ADR-0006-tools-submodule-policy.md).
 architecture leaves room for a future Tool Registry / manifest /
 build orchestration.
 
-### 9. Persistence: D1 for structured content, R2 for blobs
+### 11. Persistence: D1 for structured content, R2 for blobs
 
 CMS structured content lives in Cloudflare D1 as the source of truth.
 R2 is used for image / video / download blobs. D1 (`DB`) and R2
@@ -125,7 +143,7 @@ R2 is used for image / video / download blobs. D1 (`DB`) and R2
 placeholder ids; both have a Vitest SELF smoke in
 `test/integration/`.
 
-### 10. Cloudflare service selection
+### 12. Cloudflare service selection
 
 Cloudflare services are chosen by purpose, not by inventory:
 

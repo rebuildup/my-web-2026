@@ -30,11 +30,17 @@ records the corrected compilation.
 
 ### 1. Three gates
 
-| Gate                   | Command                                                                         | Purpose                                |
-| ---------------------- | ------------------------------------------------------------------------------- | -------------------------------------- |
-| `validate:fast`        | `format:check && lint:check && typecheck && test`                               | local feedback, read-only              |
-| `validate:integration` | `validate:fast && build && wrangler:dry-run`                                    | ticket-PR level verification           |
-| `validate:release`     | `validate:integration && cf-typegen`                                            | release branch pre-`main` verification |
+| Gate                   | Command                                                                                       | Purpose                                |
+| ---------------------- | --------------------------------------------------------------------------------------------- | -------------------------------------- |
+| `validate:fast`        | `format:check && lint:check && typecheck && test`                                             | local feedback, read-only              |
+| `validate:integration` | `validate:fast && build && wrangler:dry-run && lint:ci && build-storybook`                    | ticket-PR level verification           |
+| `validate:release`     | `validate:integration && cf-typegen:check`                                                     | release branch pre-`main` verification |
+
+The `validate:integration` gate additionally installs the Playwright
+Chromium binary and runs the E2E suite inside the CI `validate`
+job (`pnpm run e2e`), against a local `pnpm dev` webServer started
+by `playwright.config.ts`. The Playwright report is uploaded as a
+7-day retention artefact on every run.
 
 These are wired in `package.json#scripts` and referenced by the
 project-local `quality/profile.yaml`.
@@ -79,15 +85,21 @@ the same checks once.
 - **Smoke / connectivity** — `vite build` + `wrangler deploy --dry-run`
   proves the bundle is Cloudflare-compatible. `pnpm run wrangler:dry-run`
   is part of `validate:integration`, not a separate manual step.
+- **Design-system** — `pnpm run build-storybook` is part of
+  `validate:integration`; a broken Panda recipe / Storybook story
+  fails the PR gate without needing a browser.
 - **Integration** — `@cloudflare/vitest-plugin` SELF tests in
   `test/integration/**`. 0.1.0 ships D1 (`/api/v1/db/ping`) and R2
   (`/api/v1/media/ping`) SELF smokes; they run inside the workerd
-  pool with real bindings.
+  pool with Miniflare-simulated local bindings.
 - **Contract / schema** — Type tests for Hono handlers and the
-  generated Cloudflare types (`pnpm run cf-typegen` is part of
+  generated Cloudflare types (`pnpm run cf-typegen:check` is part of
   `validate:release`). Out of scope as separate gates at 0.1.0.
-- **E2E** — Real browser / runtime flow tests. Out of scope for
-  0.1.0.
+- **E2E** — Playwright 1.63.x suite in `e2e/`. The 0.1.0 suite is
+  HTTP-only (`request` fixture) and covers `/`, `/api/v1/health`,
+  `/api/v1/db/ping`, `/api/v1/media/ping`. Runs in CI via
+  `pnpm run e2e` after Playwright Chromium is installed
+  (`playwright install --with-deps chromium`).
 - **Manual / visual** — Reserved for UI work in later sprints.
 
 ### 5. Change-risk -> verification mapping (0.1.0)
@@ -98,6 +110,9 @@ the same checks once.
 | `wrangler.jsonc` binding change                 | `validate:integration`            |
 | Entry-point change (`src/server.ts`)            | `validate:integration`            |
 | Panda config / token change                     | `validate:integration`            |
+| New / changed Panda recipe or Storybook story   | `validate:integration` (build-storybook) |
+| New / changed Playwright spec                   | `validate:integration` (e2e runs in CI) |
+| `.github/workflows/*.yml` change                | `validate:integration` (actionlint enforced) |
 | Release branch bump                             | `validate:release`                |
 | Vite / Wrangler / plugin upgrade                | `validate:release`                |
 

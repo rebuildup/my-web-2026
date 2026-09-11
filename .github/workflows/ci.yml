@@ -17,7 +17,7 @@ jobs:
   validate:
     name: validate
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
         with: { submodules: recursive }
@@ -36,9 +36,10 @@ jobs:
       - run: pnpm install --frozen-lockfile
       # Workflow YAML must be valid. Biome does not lint .github/workflows/*.yml.
       - uses: rhysd/actionlint@v1
-      # Read-only validation: format / lint / typecheck / test / build / dry-run.
-      # `validate:integration` is the canonical entry point documented in
-      # docs/architecture.md and quality/profile.yaml.
+      # Read-only validation: format / lint / typecheck / test / build /
+      # dry-run / actionlint / build-storybook. `validate:integration` is
+      # the canonical entry point documented in docs/architecture.md and
+      # quality/profile.yaml.
       - run: pnpm run validate:integration
       # On push to main / release-* the worker-configuration.d.ts must match
       # what `wrangler types` produces. Local `pnpm run validate:release`
@@ -46,6 +47,20 @@ jobs:
       - name: cf-typegen check
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
         run: pnpm run cf-typegen:check
+      # Playwright E2E against pnpm dev. The webServer block in
+      # playwright.config.ts starts `pnpm dev` automatically. Browser
+      # binaries install with sudo on GitHub Actions runners.
+      - name: Install Playwright Chromium
+        run: pnpm exec playwright install --with-deps chromium
+      - name: Playwright E2E
+        run: pnpm run e2e
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report-${{ github.sha }}
+          path: playwright-report/
+          retention-days: 7
       - name: Upload Cloudflare bundle
         if: github.event_name == 'push'
         uses: actions/upload-artifact@v4

@@ -13,8 +13,14 @@ when any trigger in ADR-0007 fires.
 | Gate                   | Command                                                                                  | Purpose                                          |
 | ---------------------- | ---------------------------------------------------------------------------------------- | ------------------------------------------------ |
 | `validate:fast`        | `format:check && lint:check && typecheck && test`                                        | local feedback, read-only                        |
-| `validate:integration` | `validate:fast && build && wrangler:dry-run && lint:ci`                                  | ticket-PR level verification                     |
+| `validate:integration` | `validate:fast && build && wrangler:dry-run && lint:ci && build-storybook`              | ticket-PR level verification                     |
 | `validate:release`     | `validate:integration && cf-typegen:check`                                               | release-branch pre-`main` (regenerated types match committed types) |
+
+Playwright E2E is not part of any local `validate:*` script — it
+runs in the CI `validate` job after `validate:integration` passes,
+because the suite needs the Playwright Chromium binary and (on
+Linux) `sudo` for `--with-deps`. Local E2E is opt-in via
+`pnpm run e2e`.
 
 These scripts are the only entry points. The scripts live in
 `package.json#scripts`; the gate profiles live in
@@ -53,8 +59,16 @@ produce.
   D1 / R2) is part of the release cut (#009 in `docs/release.md`).
 - **Contract / schema** — `cf-typegen:check` plus `pnpm run typecheck`.
   Out of scope as separate gates at 0.1.0.
-- **E2E / system** — Real browser / runtime flow tests. Out of scope
-  at 0.1.0.
+- **E2E / system** — Playwright 1.63.x suite in `e2e/`. The 0.1.0
+  suite is HTTP-only (`request` fixture, no browser launch) and
+  covers `/`, `/api/v1/health`, `/api/v1/db/ping`,
+  `/api/v1/media/ping`. Runs in CI via `pnpm run e2e` after the
+  Playwright Chromium binary is installed
+  (`playwright install --with-deps chromium`). The report uploads
+  as a 7-day `actions/upload-artifact@v4` artefact.
+- **Design-system** — `pnpm run build-storybook` is part of
+  `validate:integration`. A broken Panda recipe or Storybook story
+  fails the PR gate without needing a browser.
 - **Manual / visual** — Reserved for UI work in later sprints.
 
 ## Change-risk -> required verification
@@ -66,6 +80,8 @@ produce.
 | `wrangler.jsonc` binding change                 | `validate:integration`            |
 | Entry-point change (`src/server.ts`)            | `validate:integration`            |
 | Panda config / token change                     | `validate:integration`            |
+| New / changed Panda recipe or Storybook story   | `validate:integration` (build-storybook) |
+| New / changed Playwright spec                   | `validate:integration` (e2e runs in CI) |
 | `.github/workflows/*.yml` change                | `validate:integration` (actionlint enforced) |
 | Stack / dependency upgrade                      | `validate:release`                |
 | Release branch bump                             | `validate:release`                |

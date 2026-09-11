@@ -95,6 +95,8 @@ drives #009 (CI green, real Cloudflare smoke, `v0.1.0` tag).
 | #007  | R2 binding smoke (local workerd SELF)                       | —          | P1       |
 | #008  | GitHub delivery setup (main protection + Project + Issues) | —          | P0       |
 | #009  | Cut the 0.1.0 release PR (CF real smoke + tag)             | #001–#008  | P0       |
+| #010  | Storybook 8.6 + 3 Panda recipe seeds (design-system surface) | #003      | P1       |
+| #011  | Playwright 1.63 (chromium HTTP-only E2E) + CI wiring       | #001       | P1       |
 
 (Issue numbers are placeholders. The real numbers are assigned by
 GitHub when the Issues are opened.)
@@ -103,13 +105,16 @@ Dependency graph:
 
 ```
 #001 ── #005
+#001 ── #011
+#003 ── #010
 #002 (independent)
-#003 (independent)
 #004 (independent)
 #006 ──┐
        ├─ #009 (release cut)
 #007 ──┤
 #008 ──┘
+#010 ┐
+#011 ┘
 ```
 
 > Note: #006 / #007 in this backlog are **local Miniflare-simulated**

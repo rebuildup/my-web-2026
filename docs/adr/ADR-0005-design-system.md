@@ -52,6 +52,16 @@ codegen time.
 Component recipes are **not** defined at 0.1.0. They are introduced
 when a feature ticket needs them, in the same PR as the feature.
 
+> **Revision (2026-09-11, Storybook + Playwright adoption):** the
+> 0.1.0 Foundation release ships three Panda recipe seeds under
+> `src/design-system/components/` — `Button`, `Card`, `Badge` — and
+> a tokens documentation story. The seeds exist purely to (a) verify
+> the recipe codegen pipeline, (b) provide a visible Storybook
+> surface, and (c) document the recipe pattern. They are **not**
+> used by any production route at 0.1.0; page-level adoption lands
+> in 0.2.0+ alongside the first capability module. Recipe addition
+> stays feature-driven, not a backlog dump.
+
 ### 3. Token layout rule
 
 `src/design-system/tokens.ts` is the canonical home for raw tokens

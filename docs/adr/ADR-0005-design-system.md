@@ -1,16 +1,19 @@
 # ADR-0005: Design system foundation (Panda CSS)
 
-- Status: Accepted
+- Status: Accepted (revised 2026-09-11)
 - Date: 2026-09-11
 - Superseded by: None
 
 ## Context
 
-Tailwind CSS is explicitly off the table for my-web-2026. Panda CSS is
-the chosen styling system. The brief asks for a design system foundation
-at 0.1.0 but warns against building components that no page implementation
-needs yet.
+Tailwind CSS is explicitly off the table for my-web-2026. Panda CSS
+is the chosen styling system. The first-pass initialization shipped
+only the raw token layer; `bg.canvas` / `text.default` / etc. lived
+in a TypeScript object (`src/infra/design-tokens.ts`) that was not
+registered with Panda, so it never reached `css({ bg: 'bg.canvas' })`.
 
+The brief asks for a design system foundation at 0.1.0 but warns
+against building components that no page implementation needs yet.
 Tool submodules are independent and must not be forced into the
 my-web-2026 design system.
 
@@ -21,9 +24,11 @@ my-web-2026 design system.
 `@pandacss/dev` 1.12.x is the styling dependency. The postcss plugin
 runs in Vite (`postcss.config.mjs`).
 
-### 2. Foundation only
+### 2. Token layers at 0.1.0
 
-0.1.0 ships **only** the raw token layer:
+Both raw and semantic layers are established at 0.1.0:
+
+**Raw tokens** (`src/design-system/tokens.ts`):
 
 - `colors.brand.*` and `colors.neutral.*`
 - `fonts.sans` and `fonts.mono`
@@ -33,20 +38,27 @@ runs in Vite (`postcss.config.mjs`).
 - `spacing.0|1|2|3|4|6|8|12`
 - `breakpoints.sm|md|lg|xl` at `640|768|1024|1280 px`
 
-Semantic tokens and component recipes are **not** defined at 0.1.0.
-They are introduced when a feature ticket needs them, in the same
-PR as the feature.
+**Semantic tokens** (`src/design-system/semantic-tokens.ts`):
+
+- `bg.canvas | surface | subtle | accent | inverse`
+- `text.default | muted | inverse | accent`
+- `border.subtle | strong | focus`
+
+Semantic tokens are registered with Panda via
+`theme.semanticTokens` in `panda.config.ts`, using
+`{ value: '{colors.<token>}' }` references so Panda resolves them at
+codegen time.
+
+Component recipes are **not** defined at 0.1.0. They are introduced
+when a feature ticket needs them, in the same PR as the feature.
 
 ### 3. Token layout rule
 
-Raw tokens live in `panda.config.ts` (`theme.extend.tokens`). Semantic
-tokens (e.g. `bg.surface`, `text.muted`) live next to the feature they
-first serve, in `src/features/<feature>/styling.ts`, **or** in
-`src/infra/design-tokens.ts` when they are reused across multiple
-features.
-
-Component recipes follow the same rule: introduce them next to the
-first feature that needs them.
+`src/design-system/tokens.ts` is the canonical home for raw tokens
+imported by `panda.config.ts`. `src/design-system/semantic-tokens.ts`
+is the canonical home for the semantic layer. Component recipes and
+feature-local tokens live next to the first feature that uses them
+(`src/modules/<capability>/styling.ts`).
 
 ### 4. Panda CSS and Tool submodules
 
@@ -58,8 +70,8 @@ The design system is **not** forced on Tools. Each Tool may:
 - Use no styling system at all
 
 Submodules do not import from `my-web-2026/src/**` for styling. The
-build / manifest contract on the parent side is what wires a Tool into
-a page slot.
+build / manifest contract on the parent side is what wires a Tool
+into a page slot.
 
 ### 5. Generated styled-system
 
@@ -72,21 +84,24 @@ runs `panda codegen`) and is gitignored. CI must run `pnpm install`
 ### Positive
 
 - The styling foundation is small and reviewable.
+- Semantic tokens are real Panda tokens, usable in `css({ ... })`
+  without indirection.
 - Token additions are visible in code review because they happen
   alongside the feature that needs them.
 - Tools stay decoupled from the design system.
 
 ### Negative / Trade-offs
 
-- The semantic layer is absent at 0.1.0; component code that needs
-  semantic aliases will introduce them ad-hoc.
+- The semantic layer is intentionally short; growing it requires a
+  design-system ADR.
 
 ## Re-evaluation triggers
 
 Re-evaluate when:
 
-- The semantic layer grows enough that scattering it across features
-  becomes hard to find — at that point, promote the canonical list to
-  `src/infra/design-tokens.ts`.
+- A new semantic token category (motion, density, elevation) becomes
+  needed across multiple capabilities.
 - A third-party Panda preset becomes clearly preferable to the
   in-repo raw tokens.
+- A Tool submodule integration needs shared styling primitives;
+  promote the canonical list to `src/design-system/components/`.

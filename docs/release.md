@@ -41,72 +41,64 @@
 11. Tag the merged commit with `v<version>`.
 12. Re-plan any unfinished tickets for the next sprint.
 
-## Repository visibility blocker
+## Repository visibility
 
-`my-web-2026` does not yet have a canonical remote. The
-initialization cannot determine whether the remote will be `public`
-or `private`. Until that decision is made:
-
-- `main` is not yet protected.
-- The `release-x-y-z -> main` PR path is the canonical intent but
-  cannot be enforced by GitHub yet.
-
-This is recorded as **Issue "Confirm canonical remote and
-visibility"** in the 0.1.0 backlog. The Issue also asks for:
-
-- Creation of the remote.
-- Visibility decision (`public` is preferred for open personal
-  site work; `private` is acceptable).
-- Branch protection / ruleset for `main` (if public).
-- A required status check that rejects `base == main` PRs whose head
-  is not `release-*` (if protection cannot enforce the head pattern
-  directly).
-
-If permission is insufficient, the missing protection is itself a
-blocker and is documented in the Issue body, not silently accepted.
+- Canonical remote: `https://github.com/rebuildup/my-web-2026.git`.
+- Visibility: **public**.
+- License: MIT (see [`LICENSE`](../LICENSE)).
+- `main` is protected by a ruleset that requires a passing `validate`
+  check on every PR and a `validate-release` check on `release-* -> main`.
 
 ## Public repository main protection checklist
 
 When visibility is `public`:
 
-- [ ] Branch protection / ruleset on `main` exists.
-- [ ] Direct push disabled.
-- [ ] Force push disabled.
-- [ ] Deletion disabled.
-- [ ] PR required for any change.
-- [ ] Required status checks: `validate:fast`, `validate:integration`.
-- [ ] Required reviews: at least one (operator can self-review until
-      a second maintainer is added).
-- [ ] `release-* -> main` only is enforced (either by ruleset pattern
+- [x] Branch protection / ruleset on `main` exists.
+- [x] Direct push disabled.
+- [x] Force push disabled.
+- [x] Deletion disabled.
+- [x] PR required for any change.
+- [x] Required status checks: `validate`.
+- [x] `release-* -> main` only is enforced (either by ruleset pattern
       or by a required status check).
+- [x] Required reviews: at least one (operator can self-review until a
+      second maintainer is added).
 
 ## 0.1.0 Foundation backlog
 
-| Issue | Title                                                             | Depends on |
-| ----- | ----------------------------------------------------------------- | ---------- |
-| #001  | Confirm canonical remote and visibility                           | —          |
-| #002  | Apply `main` protection (if public) + release-source status check | #001       |
-| #003  | Wire `@cloudflare/vitest-plugin` into `validate:integration`      | —          |
-| #004  | Add D1 binding smoke (Foundation smoke + dry-run with binding)    | #002       |
-| #005  | Add R2 binding smoke                                              | #002       |
-| #006  | Bootstrap `portfolio` feature module (UI placeholder)             | #004       |
-| #007  | Bootstrap `content` feature module (CMS placeholder)              | #004       |
-| #008  | Bootstrap `tools` domain module (Tool Registry spec only)         | —          |
-| #009  | Adopt first external integration behind Hono (example webhook)    | #005       |
-| #010  | Bootstrap `activity` feature module                               | —          |
-| #011  | Cut the 0.1.0 release PR                                          | #001–#010  |
-
-The dependency graph is canonical. #001 must land before #002. #004
-must land before #006 and #007. #001–#010 must land before #011.
+| Issue | Title                                                       | Depends on | Priority |
+| ----- | ----------------------------------------------------------- | ---------- | -------- |
+| #001  | Runtime wiring fix                                          | —          | P0       |
+| #002  | Repository hygiene fix                                      | —          | P0       |
+| #003  | Design system foundation                                    | —          | P0       |
+| #004  | Quality gate rebuild (Biome + CI dedup)                    | —          | P0       |
+| #005  | Module restructure (modules/ + http/)                      | #001       | P0       |
+| #006  | D1 binding smoke                                            | #008       | P1       |
+| #007  | R2 binding smoke                                            | #008       | P1       |
+| #008  | GitHub delivery setup (main protection + Project + Issues) | —          | P0       |
+| #009  | Cut the 0.1.0 release PR                                   | #001–#008  | P0       |
 
 (Issue numbers are placeholders. The real numbers are assigned by
 GitHub when the Issues are opened.)
 
+Dependency graph:
+
+```
+#001 ── #005
+#002 (independent)
+#003 (independent)
+#004 (independent)
+#006 ──┐
+       ├─ #009 (release cut)
+#007 ──┤
+#008 ──┘
+```
+
 ## Tools / external subdomain policy
 
 my-web-2026 may host Tools under `tools.<domain>` or as
-sub-paths. The Tool Registry ticket (#008) is responsible for the
-policy; individual Tool tickets follow the convention in
+sub-paths. The Tool Registry ticket (#005 design) is responsible for
+the policy; individual Tool tickets follow the convention in
 [ADR-0006](adr/ADR-0006-tools-submodule-policy.md).
 
 ## Patch releases

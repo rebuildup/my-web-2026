@@ -14,6 +14,8 @@ session. Domain-specific workflows are in `skills/<skill>/SKILL.md`.
   targeted for 2026-10.
 - Repository is a single Cloudflare Workers deployment, modular
   monolith architecture.
+- Visibility: **public**. License: MIT. Canonical remote:
+  `https://github.com/rebuildup/my-web-2026.git`.
 - Source code, commit messages: **English**.
 - Internal development docs, Issue / PR title and body, review
   discussion: **日本語**.
@@ -28,12 +30,20 @@ session. Domain-specific workflows are in `skills/<skill>/SKILL.md`.
   `/webhooks/*`, `/oauth/*`, `/integrations/*`.
 - Internal application operations: TanStack Start server functions
   (`createServerFn`).
-- Styling: Panda CSS (`@pandacss/dev` 1.12.x). **Tailwind CSS is
-  forbidden.**
+- Worker entry: `src/server.ts`. Default export `{ fetch(request, env,
+  ctx) }` dispatches between Hono and the TanStack Start default
+  handler based on path prefix. The default CSRF middleware is active
+  because `src/start.ts` is intentionally absent — do not re-add it
+  without an ADR.
+- Styling: Panda CSS (`@pandacss/dev` 1.12.x). Tokens in
+  `src/design-system/tokens.ts` (raw) + `src/design-system/
+  semantic-tokens.ts` (semantic). **Tailwind CSS is forbidden.**
+- Format / lint: Biome (`@biomejs/biome` 1.9.x). Replaces both
+  Prettier and ESLint.
 - Package manager: pnpm 12.3.x. **Bun is not the default.** Do not
   add Bun to scripts or CI.
-- UI: React 19.3.x, Vite 7.3.x, TypeScript 5.9.x.
-- Tests: Vitest 4.1.x.
+- UI: React 19.2.x, Vite 7.1.x, TypeScript 5.9.x.
+- Tests: Vitest 4.1.x + `@cloudflare/vitest-plugin` (workerd pool).
 
 Verify all version-sensitive facts against current official docs.
 This file is updated when the stack changes.
@@ -41,34 +51,46 @@ This file is updated when the stack changes.
 ## 3. Architecture boundary (always enforce)
 
 The split between TanStack Start and Hono is enforced in
-`src/start.ts`. Do not bypass it.
+`src/server.ts`. Do not bypass it.
 
-- Hono handlers must live under `src/boundary/**`.
-- Server functions must live next to the route file that uses them
-  (or under `src/domains/<name>/application/**`).
-- Domain / application code (`src/domains/**`) must not import from
-  `hono`, `@tanstack/react-start`, or any Cloudflare SDK.
+- Hono handlers live under `src/http/**` (mounted by `src/server.ts`).
+- Server functions live next to the route file that uses them, or under
+  `src/modules/<capability>/server.ts`.
+- Capability / domain / application code (`src/modules/**` and any
+  feature-local file) must not import from `hono`, `@tanstack/
+  react-start`, or any Cloudflare SDK.
+- TanStack Start's **default CSRF middleware is the canonical CSRF
+  protection**. Custom `startInstance` is forbidden — overriding it
+  would disable the default middleware.
 
-Frontend is **feature-oriented** (`src/features/<name>/**`).
-Backend is **domain-oriented** (`src/domains/<name>/**`). Do not
-create a flat `src/components/`, `src/hooks/`, `src/utils/`
+Frontend is **feature-oriented** (under `src/modules/<capability>/ui/`).
+Backend is **capability-oriented** (`src/modules/<capability>/**`).
+Do not create a flat `src/components/`, `src/hooks/`, `src/utils/`
 mega-folder.
 
 ## 4. Cloudflare services policy
 
 Only the resources declared in `wrangler.jsonc` exist. At 0.1.0 that
-is one Worker plus one Static Assets binding. Every additional
-service (D1, R2, KV, Queues, Durable Objects, Workflows, Vectorize,
-Workers AI) requires its own ticket and ADR entry, and `pnpm run
-cf-typegen` after the binding change.
+is:
+
+- Static Assets binding (`ASSETS`).
+- D1 binding (`DB`, placeholder database id — replace on first deploy).
+- R2 binding (`MEDIA`, placeholder bucket — create on first deploy).
+
+Every additional service (KV, Queues, Durable Objects, Workflows,
+Vectorize, Workers AI) requires its own ticket and ADR entry, and
+`pnpm run cf-typegen` after the binding change.
 
 ## 5. Quality gates
 
 Three deterministic entry points defined in `quality/profile.yaml`:
 
-- `pnpm run validate:fast` — local worker feedback.
+- `pnpm run validate:fast` — local feedback. Read-only.
+  (`format:check` + `lint:check` + `typecheck` + `test`)
 - `pnpm run validate:integration` — ticket PR verification.
+  (`validate:fast` + `build` + `wrangler:dry-run`)
 - `pnpm run validate:release` — pre-`main` verification.
+  (`validate:integration` + `cf-typegen`)
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are
@@ -155,12 +177,13 @@ canonical entry points for human contributors.
 
 ## 11. Out-of-scope at 0.1.0 (do not start)
 
-- Product feature work
-- CMS / D1 / R2 schema
+- Product feature work (portfolio, content, activity, etc.)
 - Tools submodule integration
-- Webhook platform
+- Webhook platform (beyond the `/webhooks/*` boundary contract)
 - Personal Dashboard
 - Multiple Workers / microservice split
+- Coverage thresholds
+- ESLint / Oxlint (Biome is sufficient at 0.1.0)
 
 These are 0.2.0 / 0.3.0 work. The 0.1.0 goal is the foundation
 release, not the feature release.

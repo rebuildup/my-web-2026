@@ -21,7 +21,10 @@
 			"~/*": ["./src/*"],
 			"@modules/*": ["./src/modules/*"],
 			"@design-system/*": ["./src/design-system/*"],
-			"@platform/*": ["./src/platform/*"]
+			"@platform/*": ["./src/platform/*"],
+			"@storybook/react": [
+				"./node_modules/.pnpm/@storybook+react@8.6.18_@storybook+test@8.6.15_storybook@8.6.18_prettier@3.9.6_supports_5df6006173512e15d1a877a774cf91bd/node_modules/@storybook/react"
+			]
 		}
 	},
 	"include": [

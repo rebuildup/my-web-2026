@@ -2,6 +2,7 @@ allowBuilds:
   '@biomejs/biome': true
   esbuild: true
   workerd: true
+minimumReleaseAge: 0
 onlyBuiltDependencies:
   - esbuild
   - workerd

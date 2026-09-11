@@ -2,7 +2,7 @@ import { StrictMode } from 'react';
 import { startTransition } from 'react';
 import { hydrateRoot } from 'react-dom/client';
 import { RouterProvider } from '@tanstack/react-router';
-import { createRouter } from './router';
+import { getRouter } from './router';
 import './styles.css';
 
 /**
@@ -10,7 +10,7 @@ import './styles.css';
  * payload arrives. Do not place HTTP-bound logic here — that belongs to
  * server functions or to the Hono boundary.
  */
-const router = createRouter();
+const router = getRouter();
 
 startTransition(() => {
 	hydrateRoot(

@@ -1,37 +1,31 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { getInternalHealth } from '~/domains/health/application';
 
 /**
- * Landing route. Foundation release renders the boot smoke view that proves
- * the TanStack Start -> Cloudflare Workers pipeline is alive.
+ * Landing route.
  *
- * The `getInternalHealth` server function is invoked through the loader so
- * the value is rendered during SSR (see ADR-0002 for the internal/external
- * split policy).
+ * 0.1.0 Foundation renders the boot smoke view that proves the
+ * TanStack Start -> Cloudflare Workers pipeline is alive. Capability
+ * views (portfolio, content, activity, ...) land under
+ * `src/modules/<capability>/ui/` in 0.2.0+.
  */
 export const Route = createFileRoute('/')({
-	loader: () => getInternalHealth(),
 	component: HomePage,
 });
 
 function HomePage() {
-	const health = Route.useLoaderData();
-
 	return (
 		<main>
 			<h1>my-web-2026</h1>
-			<p>Foundation release candidate.</p>
+			<p>0.1.0 Foundation release.</p>
 			<dl>
-				<dt>version</dt>
-				<dd>{health.version}</dd>
-				<dt>service</dt>
-				<dd>{health.service}</dd>
-				<dt>status</dt>
-				<dd>{health.status}</dd>
-				<dt>boot</dt>
+				<dt>stack</dt>
+				<dd>Cloudflare Workers + TanStack Start + Hono + Panda CSS</dd>
+				<dt>external boundary</dt>
 				<dd>
-					<time dateTime={health.timestamp}>{health.timestamp}</time>
+					<code>/api/v1/*</code> via Hono at <code>src/http/hono.ts</code>
 				</dd>
+				<dt>internal SSR</dt>
+				<dd>TanStack Start default CSRF middleware active</dd>
 			</dl>
 		</main>
 	);

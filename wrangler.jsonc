@@ -1,25 +1,53 @@
 /**
  * Wrangler configuration for my-web-2026.
  *
- * Main entry is produced by `@tanstack/react-start/server-entry` during `vite build`.
- * Static assets emitted by Vite are served from `./dist/client`.
+ * `main` points at the custom Worker entrypoint `src/server.ts`, which
+ * dispatches between the Hono external boundary and the TanStack Start
+ * default handler. See ADR-0002 for the boundary policy.
  *
- * For details: https://developers.cloudflare.com/workers/wrangler/configuration/
+ * Bindings:
+ *   - ASSETS (Static Assets)        static assets emitted by Vite to ./dist/client
+ *   - DB (D1)                        structured content (placeholder UUID — replace
+ *                                    on first deploy via `wrangler d1 create`)
+ *   - MEDIA (R2)                     blobs / media (placeholder name — bucket is
+ *                                    created on first deploy via `wrangler r2 bucket create`)
+ *
+ * Run `pnpm run cf-typegen` after editing bindings so
+ * `worker-configuration.d.ts` stays in sync.
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "my-web-2026",
-	"main": "@tanstack/react-start/server-entry",
+	"main": "./src/server.ts",
 	"compatibility_date": "2026-09-07",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
 		"directory": "./dist/client",
-		"binding": "ASSETS",
+		"binding": "ASSETS"
 	},
 	"observability": {
-		"enabled": true,
+		"enabled": true
 	},
 	"upload_source_maps": true,
+	// Placeholder D1 database. Run `wrangler d1 create my-web-2026-dev`
+	// once, copy the returned `database_id` here, and re-run
+	// `pnpm run cf-typegen`.
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "my-web-2026-dev",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"migrations_dir": "migrations"
+		}
+	],
+	// Placeholder R2 bucket. Run `wrangler r2 bucket create my-web-2026-dev`
+	// once on first deploy; the binding name `MEDIA` is stable.
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "my-web-2026-dev"
+		}
+	]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/
@@ -27,8 +55,9 @@
 	 * "placement": { "mode": "smart" }
 	 */
 	/**
-	 * Bindings (D1, R2, KV, Queues, Durable Objects, ...) are added per release
-	 * through a typed wrangler binding + `pnpm run cf-typegen` regeneration.
+	 * Additional Cloudflare services (KV, Queues, Durable Objects,
+	 * Workflows, Vectorize, Workers AI) are added per release through a
+	 * typed binding + `pnpm run cf-typegen` regeneration, gated by ADR-0004.
 	 */
 	/**
 	 * Environment variables / secrets

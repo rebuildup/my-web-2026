@@ -38,6 +38,12 @@ styled-system/
 coverage/
 .vitest-cache/
 
+# Playwright E2E
+playwright-report/
+test-results/
+playwright/.cache/
+storybook-static/
+
 # Project-local ephemeral state (project-init policy)
 .tmp/
 .reference/

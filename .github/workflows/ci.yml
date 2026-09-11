@@ -34,12 +34,12 @@ jobs:
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
-      # Workflow YAML must be valid. Biome does not lint .github/workflows/*.yml.
-      - uses: rhysd/actionlint@v1
       # Read-only validation: format / lint / typecheck / test / build /
-      # dry-run / actionlint / build-storybook. `validate:integration` is
-      # the canonical entry point documented in docs/architecture.md and
-      # quality/profile.yaml.
+      # dry-run / lint:ci (actionlint) / build-storybook.
+      # `validate:integration` is the canonical entry point documented in
+      # docs/architecture.md and quality/profile.yaml. Workflow YAML lint
+      # is part of `validate:integration` via `pnpm run lint:ci` — see
+      # scripts/lint-ci.mjs.
       - run: pnpm run validate:integration
       # On push to main / release-* the worker-configuration.d.ts must match
       # what `wrangler types` produces. Local `pnpm run validate:release`
@@ -47,12 +47,16 @@ jobs:
       - name: cf-typegen check
         if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
         run: pnpm run cf-typegen:check
-      # Playwright E2E against pnpm dev. The webServer block in
-      # playwright.config.ts starts `pnpm dev` automatically. Browser
-      # binaries install with sudo on GitHub Actions runners.
+      # Playwright E2E is gated: it runs on push to main / release-* and
+      # on pull requests that opt in via the `ui-change` label. The
+      # webServer block in playwright.config.ts starts `pnpm dev`
+      # automatically when PLAYWRIGHT_BASE_URL points at localhost.
+      # Browser binaries install with sudo on GitHub Actions runners.
       - name: Install Playwright Chromium
+        if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'ui-change')
         run: pnpm exec playwright install --with-deps chromium
       - name: Playwright E2E
+        if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'ui-change')
         run: pnpm run e2e
       - name: Upload Playwright report
         if: always()

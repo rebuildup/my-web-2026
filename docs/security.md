@@ -82,8 +82,9 @@ binding API is reachable in the local workerd pool"**, not
 - Dependency review: deferred to a post-0.1.0 ticket.
 - Code scanning (SAST): deferred.
 - Container scanning: not applicable (no `Containerfile` at 0.1.0).
-- Workflow YAML lint: `rhysd/actionlint@v1` runs in
-  `.github/workflows/ci.yml`. Biome does not lint `.yml`.
+- Workflow YAML lint runs through `pnpm run lint:ci` inside the
+  `validate` job (actionlint 1.7.12, downloaded by
+  `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
 
 ## Browser binaries (Playwright)
 

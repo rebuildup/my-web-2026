@@ -58,19 +58,26 @@ project-local `quality/profile.yaml`.
 quotes (single in JS, double in JSX), semicolons (always), trailing
 commas (all), arrow parentheses (always), and `organizeImports`.
 
-### 3. CI shape: two jobs, shared bootstrap, no chain duplication
+### 3. CI shape: one job, shared bootstrap, no chain duplication
 
-`.github/workflows/ci.yml` has exactly two jobs:
+`.github/workflows/ci.yml` has exactly one job:
 
-- `validate` — runs `pnpm run validate:integration` on
-  `pull_request` and on `push` to `main` / `release-*`.
-- `validate-release` — runs `pnpm run validate:release` on
-  `push` to `main` / `release-*` only.
+- `validate` — runs `pnpm run validate:integration` on every
+  `pull_request` and on every `push` to `main` / `release-*`. The
+  push-only extra steps (`cf-typegen:check`, Playwright E2E) are
+  gated by an `if:` expression so PR drafts and non-UI PRs skip
+  them.
 
 Bootstrap (`setup-node`, `pnpm/action-setup@v4`, `actions/cache`,
-`pnpm install --frozen-lockfile`) is declared once per job.
-`pnpm/action-setup@v4` downloads the pnpm 12.3.4 standalone binary
-directly; **corepack is forbidden** (see ADR-0003).
+`pnpm install --frozen-lockfile`) is declared once. The previous
+two-job design (`validate` + `validate-release`) was collapsed to a
+single job because both jobs shared the same bootstrap and
+`validate:release` is a strict superset of `validate:integration`
+plus `cf-typegen:check`; the conditional `if:` gate replaces the
+job-level split. See `skills/quality-gate/SKILL.md` for the
+resource-efficiency rationale. `pnpm/action-setup@v4` downloads
+the pnpm 12.3.4 standalone binary directly; **corepack is
+forbidden** (see ADR-0003).
 
 `validate:fast` is no longer a separate CI job; it is composed into
 `validate:integration` as the first step. The previous design ran

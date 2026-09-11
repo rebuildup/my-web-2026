@@ -4,8 +4,8 @@
 # Three deterministic entry points drive both local and CI validation:
 #
 #   - validate:fast         local feedback (read-only)
-#   - validate:integration  ticket PR verification (build + dry-run)
-#   - validate:release      pre-`main` verification (cf-typegen gate)
+#   - validate:integration  ticket PR verification (build + dry-run + actionlint)
+#   - validate:release      pre-`main` verification (cf-typegen check)
 #
 # Coverage thresholds are intentionally disabled at 0.1.0; see ADR-0007.
 # Component-level cost comes from the framework-native tools listed
@@ -21,6 +21,7 @@ stack:
   external_boundary: hono@4.13.x
   styling: panda-css@1.12.x
   format_lint: biome@1.9.x
+  workflow_lint: actionlint@latest
   test_runner: vitest@4.1.x
   worker_test: '@cloudflare/vitest-plugin@1.1.x'
   language: typescript@5.9.x
@@ -33,9 +34,9 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run typecheck' # tsc --noEmit
-      - 'pnpm run test' # vitest run (unit project)
+      - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
-    trigger: local + every CI job
+    trigger: local + every CI run
 
   integration:
     command: 'pnpm run validate:integration'
@@ -43,6 +44,7 @@ gates:
       - fast
       - 'pnpm run build' # vite build -> dist/
       - 'pnpm run wrangler:dry-run' # wrangler deploy --dry-run --outdir dist-cloudflare
+      - 'pnpm run lint:ci' # actionlint .github/workflows/*.yml
     cost_class: medium
     trigger: pull_request, push_to_main_and_release
 
@@ -50,7 +52,10 @@ gates:
     command: 'pnpm run validate:release'
     components:
       - integration
-      - 'pnpm run cf-typegen' # regenerates worker-configuration.d.ts
+      # cf-typegen:check regenerates worker-configuration.d.ts AND
+      # fails if the result is not byte-identical to what is committed
+      # in the repository. A bare `wrangler types` would always pass.
+      - 'pnpm run cf-typegen:check'
     cost_class: medium
     trigger: push_to_main_and_release
 
@@ -67,11 +72,17 @@ change_risk_mapping:
   entrypoint_change:
     gate: integration
     note: 'src/server.ts, vite.config.ts, wrangler.jsonc main'
+  ci_workflow_change:
+    gate: integration
+    note: '.github/workflows/*.yml requires actionlint pass + cf-typegen:check'
   release_branch:
     gate: release
 
 ci:
   workflow: .github/workflows/ci.yml
+  # Single job. `validate:integration` runs on every PR and every
+  # push to main / release-*. The cf-typegen:check step runs only on
+  # push to main / release-* (it is not meaningful on a draft PR).
   jobs:
     - name: validate
       command: 'pnpm run validate:integration'
@@ -79,14 +90,11 @@ ci:
         - pull_request
         - push_to_main
         - push_to_release_branch
-    - name: validate-release
-      command: 'pnpm run validate:release'
-      triggers:
-        - push_to_main
-        - push_to_release_branch
+      release_extra:
+        - 'pnpm run cf-typegen:check'
   required_checks:
     public_repo_main: ['validate']
-    public_repo_release_pr: ['validate', 'validate-release']
+    public_repo_release_pr: ['validate']
   concurrency:
     cancel_in_progress: true
     group: 'ci-${{ github.workflow }}-${{ github.ref }}'
@@ -106,6 +114,10 @@ security_gates:
     enabled: true
     mode: asynchronous
     note: 'Enabled via GitHub Push Protection + cloud bot.'
+  workflow_yaml_lint:
+    enabled: true
+    tool: actionlint
+    note: 'Biome does not cover .github/workflows/*.yml. Runs inside the `validate` job.'
   dependency_review:
     enabled: false
     rationale: 'Deferred to a post-0.1.0 ticket.'
@@ -118,5 +130,7 @@ security_gates:
 
 disallowed_patterns:
   - 'format script that mutates source files (--write) inside a validation gate'
-  - 'CI workflow that re-runs validate:fast inside validate:integration when validate:integration is already a step'
-  - 'duplicate `pnpm install` across CI jobs (use cache + single shared bootstrap)'
+  - 'CI workflow with multiple jobs that re-run the same validate:* script on the same trigger'
+  - 'duplicate pnpm install across CI jobs (use cache + single shared bootstrap)'
+  - 'tabs in YAML files (actionlint enforces spaces; .github/workflows/*.yml uses 2-space indent)'
+  - 'wrangler types run as a generation step in CI without a subsequent git diff --exit-code check'

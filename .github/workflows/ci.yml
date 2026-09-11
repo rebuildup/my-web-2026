@@ -1,63 +1,53 @@
 name: CI
 
 on:
-	pull_request:
-		branches: [main, 'release-*']
-	push:
-		branches: [main, 'release-*']
+  pull_request:
+    branches: [main, 'release-*']
+  push:
+    branches: [main, 'release-*']
 
 concurrency:
-	group: ci-${{ github.workflow }}-${{ github.ref }}
-	cancel-in-progress: true
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
-	contents: read
+  contents: read
 
 jobs:
-	validate:
-		name: validate
-		runs-on: ubuntu-latest
-		timeout-minutes: 15
-		steps:
-			- uses: actions/checkout@v4
-				with: { submodules: recursive }
-			- uses: actions/setup-node@v4
-				with: { node-version: 22 }
-			- run: corepack enable pnpm
-			- uses: pnpm/action-setup@v4
-				with: { version: 12.3.4 }
-			- uses: actions/cache@v4
-				with:
-					path: ~/.local/share/pnpm/store
-					key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-					restore-keys: pnpm-${{ runner.os }}-
-			- run: pnpm install --frozen-lockfile
-			- run: pnpm run validate:integration
-			- name: Upload Cloudflare bundle
-				if: github.event_name == 'push'
-				uses: actions/upload-artifact@v4
-				with:
-					name: dist-cloudflare-${{ github.sha }}
-					path: dist-cloudflare/
-					retention-days: 7
-
-	validate-release:
-		name: validate-release
-		runs-on: ubuntu-latest
-		timeout-minutes: 20
-		if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
-		steps:
-			- uses: actions/checkout@v4
-				with: { submodules: recursive }
-			- uses: actions/setup-node@v4
-				with: { node-version: 22 }
-			- run: corepack enable pnpm
-			- uses: pnpm/action-setup@v4
-				with: { version: 12.3.4 }
-			- uses: actions/cache@v4
-				with:
-					path: ~/.local/share/pnpm/store
-					key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
-					restore-keys: pnpm-${{ runner.os }}-
-			- run: pnpm install --frozen-lockfile
-			- run: pnpm run validate:release
+  validate:
+    name: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      - run: corepack enable pnpm
+      - uses: pnpm/action-setup@v4
+        with: { version: 12.3.4 }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      # Workflow YAML must be valid. Biome does not lint .github/workflows/*.yml.
+      - uses: rhysd/actionlint@v1
+      # Read-only validation: format / lint / typecheck / test / build / dry-run.
+      # `validate:integration` is the canonical entry point documented in
+      # docs/architecture.md and quality/profile.yaml.
+      - run: pnpm run validate:integration
+      # On push to main / release-* the worker-configuration.d.ts must match
+      # what `wrangler types` produces. Local `pnpm run validate:release`
+      # adds the same gate.
+      - name: cf-typegen check
+        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
+        run: pnpm run cf-typegen:check
+      - name: Upload Cloudflare bundle
+        if: github.event_name == 'push'
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-cloudflare-${{ github.sha }}
+          path: dist-cloudflare/
+          retention-days: 7

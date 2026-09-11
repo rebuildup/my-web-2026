@@ -17,6 +17,8 @@
 		"deploy": "pnpm run build && wrangler deploy",
 		"wrangler:dry-run": "wrangler deploy --dry-run --outdir dist-cloudflare",
 		"cf-typegen": "wrangler types",
+		"cf-typegen:check": "pnpm run cf-typegen && git diff --exit-code -- worker-configuration.d.ts",
+		"lint:ci": "node scripts/lint-ci.mjs .github/workflows/*.yml",
 		"format": "biome format --write .",
 		"format:check": "biome format .",
 		"lint:check": "biome lint .",
@@ -24,8 +26,8 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run typecheck && pnpm run test",
-		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run wrangler:dry-run",
-		"validate:release": "pnpm run validate:integration && pnpm run cf-typegen"
+		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run wrangler:dry-run && pnpm run lint:ci",
+		"validate:release": "pnpm run validate:integration && pnpm run cf-typegen:check"
 	},
 	"dependencies": {
 		"@tanstack/react-router": "^1.168.52",

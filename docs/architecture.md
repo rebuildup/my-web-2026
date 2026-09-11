@@ -89,6 +89,20 @@ Additional Cloudflare services (KV, Queues, Durable Objects,
 Workflows, Vectorize, Workers AI) require their own ADR per
 ADR-0004.
 
+## Test scope: local workerd vs real Cloudflare
+
+The SELF integration tests under `test/integration/**` run inside the
+`@cloudflare/vitest-plugin` workerd pool, which uses **Miniflare** to
+simulate D1 / R2 / ASSETS bindings locally. They confirm the binding
+API surface (`prepare` / `first` / `head` / etc.) and the Worker
+entry dispatch.
+
+Real-resource smoke (a deployed Worker against the real Cloudflare
+D1 / R2 instances) is part of the release cut (#009 in
+`docs/release.md`), not the per-binding SELF tests. See
+[`docs/security.md`](security.md#test-scope-local-workerd-vs-real-cloudflare)
+for the detailed contract.
+
 ## Platform
 
 ```

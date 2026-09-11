@@ -46,23 +46,41 @@
 - Canonical remote: `https://github.com/rebuildup/my-web-2026.git`.
 - Visibility: **public**.
 - License: MIT (see [`LICENSE`](../LICENSE)).
-- `main` is protected by a ruleset that requires a passing `validate`
-  check on every PR and a `validate-release` check on `release-* -> main`.
 
 ## Public repository main protection checklist
 
 When visibility is `public`:
 
-- [x] Branch protection / ruleset on `main` exists.
-- [x] Direct push disabled.
-- [x] Force push disabled.
-- [x] Deletion disabled.
-- [x] PR required for any change.
-- [x] Required status checks: `validate`.
-- [x] `release-* -> main` only is enforced (either by ruleset pattern
+- [ ] Branch protection / ruleset on `main` exists.
+- [ ] Direct push disabled.
+- [ ] Force push disabled.
+- [ ] Deletion disabled.
+- [ ] PR required for any change.
+- [ ] Required status checks: `validate` (PR); on `release-* -> main`
+      the additional `cf-typegen check` step inside the same `validate`
+      job must pass.
+- [ ] `release-* -> main` only is enforced (either by ruleset pattern
       or by a required status check).
-- [x] Required reviews: at least one (operator can self-review until a
+- [ ] Required reviews: at least one (operator can self-review until a
       second maintainer is added).
+
+These boxes intentionally start **unchecked** at 0.1.0 RC. They become
+checkable only after the operator runs the GitHub UI / `gh` commands
+documented in `docs/backlog-0.1.0.md#008-github-delivery-setup`. Until
+that happens, this checklist is the **target state**, not the current
+state — a doc that claims the ruleset exists while GitHub returns 0
+rulesets is dangerous.
+
+### Bootstrap exception (0.1.0 RC only)
+
+The eight Foundation cleanup commits on `release-0-1-0` were formed
+**directly on the release branch** without an Issue / Draft PR /
+ticket branch. This is a documented one-time exception during the
+bootstrap of a new public repository: there were no Issues, no PRs,
+and no rulesets yet, so the canonical Issue-driven flow could not be
+followed. From 0.2.0 onward **every commit lands through the canonical
+flow**, starting with the `0.1.0 release reconciliation` Issue that
+drives #009 (CI green, real Cloudflare smoke, `v0.1.0` tag).
 
 ## 0.1.0 Foundation backlog
 
@@ -71,12 +89,12 @@ When visibility is `public`:
 | #001  | Runtime wiring fix                                          | —          | P0       |
 | #002  | Repository hygiene fix                                      | —          | P0       |
 | #003  | Design system foundation                                    | —          | P0       |
-| #004  | Quality gate rebuild (Biome + CI dedup)                    | —          | P0       |
+| #004  | Quality gate rebuild (Biome + CI dedup + actionlint)       | —          | P0       |
 | #005  | Module restructure (modules/ + http/)                      | #001       | P0       |
-| #006  | D1 binding smoke                                            | #008       | P1       |
-| #007  | R2 binding smoke                                            | #008       | P1       |
+| #006  | D1 binding smoke (local workerd SELF)                       | —          | P1       |
+| #007  | R2 binding smoke (local workerd SELF)                       | —          | P1       |
 | #008  | GitHub delivery setup (main protection + Project + Issues) | —          | P0       |
-| #009  | Cut the 0.1.0 release PR                                   | #001–#008  | P0       |
+| #009  | Cut the 0.1.0 release PR (CF real smoke + tag)             | #001–#008  | P0       |
 
 (Issue numbers are placeholders. The real numbers are assigned by
 GitHub when the Issues are opened.)
@@ -93,6 +111,12 @@ Dependency graph:
 #007 ──┤
 #008 ──┘
 ```
+
+> Note: #006 / #007 in this backlog are **local Miniflare-simulated**
+> SELF smokes via `@cloudflare/vitest-plugin`'s workerd pool. They
+> confirm the Worker entry + Hono + binding-API wiring. They do **not**
+> confirm real Cloudflare D1 / R2 resources. Real-resource smoke is
+> part of #009 (the release cut), not #006 / #007.
 
 ## Tools / external subdomain policy
 

@@ -1,0 +1,7 @@
+/**
+ * Panda CSS layer order.
+ *
+ * Imported once at the root of the app. Keep this file minimal — token/recipe
+ * definitions live in panda.config.ts and per-feature styling modules.
+ */
+@layer reset, base, tokens, recipes, utilities;

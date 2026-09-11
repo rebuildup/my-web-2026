@@ -1,0 +1,97 @@
+# my-web-2026
+
+> Personal Web Platform on Cloudflare Workers. Replaces my-web-2025.
+> 0.1.0 Foundation release targeted for 2026-09; live-site cutover
+> targeted for 2026-10.
+
+`my-web-2026` is a modular monolith: one Cloudflare Worker, one
+repository, one static-assets binding. TanStack Start owns the UI
+and internal application operations. Hono owns the external HTTP
+boundary (webhooks, OAuth, integrations, REST APIs). Panda CSS owns
+styling.
+
+## Support / target platform
+
+- Runtime: Cloudflare Workers (production / staging / preview).
+- Local hosts: macOS / Apple Silicon, Windows 11 + WSL2, Linux,
+  NixOS. Remote Linux sandbox is also supported.
+- Language: TypeScript 5.9, React 19.3, Vite 7.3.
+
+## Stack
+
+| Concern       | Choice                                 |
+| ------------- | -------------------------------------- |
+| Runtime       | Cloudflare Workers                     |
+| Web framework | TanStack Start 1.168.x                 |
+| Build / dev   | Vite 7.3.x + `@cloudflare/vite-plugin` |
+| External HTTP | Hono 4.13.x                            |
+| Styling       | Panda CSS 1.12.x (no Tailwind)         |
+| Package mgr   | pnpm 12.3.x                            |
+| Tests         | Vitest 4.1.x                           |
+
+See [`docs/architecture.md`](docs/architecture.md) and
+[`docs/adr/`](docs/adr/) for the canonical decisions.
+
+## Canonical commands
+
+```bash
+# Bootstrap
+corepack enable pnpm
+pnpm install
+
+# Develop locally (Cloudflare runtime via @cloudflare/vite-plugin)
+pnpm dev
+
+# Validate (the three deterministic entry points)
+pnpm run validate:fast
+pnpm run validate:integration
+pnpm run validate:release
+
+# Deploy
+pnpm run deploy
+```
+
+`validate:fast` runs `pnpm format && pnpm typecheck && pnpm test`.
+`validate:integration` adds `pnpm build` and `pnpm test --pool=threads`.
+`validate:release` adds `pnpm cf-typegen`. See
+[`quality/profile.yaml`](quality/profile.yaml).
+
+## Internal docs index
+
+- [AGENTS.md](AGENTS.md) — root agent contract (always-on).
+- [docs/architecture.md](docs/architecture.md) — system boundaries.
+- [docs/development.md](docs/development.md) — bootstrap / run / test.
+- [docs/release.md](docs/release.md) — weekly release sprint workflow.
+- [docs/security.md](docs/security.md) — security maintenance.
+- [docs/recovery.md](docs/recovery.md) — durable agent recovery.
+- [docs/troubleshooting.md](docs/troubleshooting.md) — recurring failures.
+- [CONTRIBUTING.md](CONTRIBUTING.md) — contribution workflow.
+- [skills/](skills/) — project-local Agent Skills.
+- [docs/adr/](docs/adr/) — Architecture Decision Records.
+
+## Recovery entry
+
+A fresh agent recovering an active ticket reads:
+
+1. [AGENTS.md](AGENTS.md)
+2. [skills/agent-recovery/SKILL.md](skills/agent-recovery/SKILL.md)
+3. [skills/github-delivery/SKILL.md](skills/github-delivery/SKILL.md)
+4. The GitHub Issue + PR + branch state for the ticket.
+
+A human recovering the same ticket reads:
+
+1. [README.md](README.md) (this file)
+2. [docs/development.md](docs/development.md)
+3. [docs/release.md](docs/release.md)
+4. [docs/troubleshooting.md](docs/troubleshooting.md)
+
+## Status
+
+0.1.0 Foundation is the first release. See the
+[0.1.0 backlog](docs/release.md#010-foundation-backlog) for the
+ticket list.
+
+## License
+
+Private repository. License is recorded when the canonical remote
+is created.

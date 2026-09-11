@@ -1,0 +1,39 @@
+/**
+ * Wrangler configuration for my-web-2026.
+ *
+ * Main entry is produced by `@tanstack/react-start/server-entry` during `vite build`.
+ * Static assets emitted by Vite are served from `./dist/client`.
+ *
+ * For details: https://developers.cloudflare.com/workers/wrangler/configuration/
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "my-web-2026",
+	"main": "@tanstack/react-start/server-entry",
+	"compatibility_date": "2026-09-07",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": "./dist/client",
+		"binding": "ASSETS",
+	},
+	"observability": {
+		"enabled": true,
+	},
+	"upload_source_maps": true,
+	/**
+	 * Smart Placement
+	 * https://developers.cloudflare.com/workers/configuration/smart-placement/
+	 *
+	 * "placement": { "mode": "smart" }
+	 */
+	/**
+	 * Bindings (D1, R2, KV, Queues, Durable Objects, ...) are added per release
+	 * through a typed wrangler binding + `pnpm run cf-typegen` regeneration.
+	 */
+	/**
+	 * Environment variables / secrets
+	 * https://developers.cloudflare.com/workers/configuration/secrets/
+	 *
+	 * Sensitive values are stored as Wrangler secrets, not committed here.
+	 */
+}

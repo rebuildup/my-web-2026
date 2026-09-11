@@ -1,0 +1,100 @@
+---
+# my-web-2026 canonical quality profile.
+# Source of truth for the three deterministic validation entry points.
+# Re-compile via ADR-0007 triggers.
+
+schema_version: 1
+profile_version: '0.1.0'
+updated_at: '2026-09-11'
+
+stack:
+  runtime: cloudflare-workers
+  framework: tanstack-start@1.168.x
+  external_boundary: hono@4.13.x
+  styling: panda-css@1.12.x
+  ui: react@19.3.x
+  build: vite@7.3.x
+  test: vitest@4.1.x
+  typescript: 5.9.x
+  package_manager: pnpm@12.3.4
+
+verification_taxonomy:
+  unit:
+    framework: vitest
+    location: src/**/*.{test,spec}.{ts,tsx}
+    example: src/boundary/health.test.ts
+  smoke:
+    framework: vite+wrangler
+    entry: 'pnpm build && pnpm exec wrangler deploy --dry-run --outdir dist-cloudflare'
+    note: Verifies the Cloudflare Worker bundle is acceptable.
+  integration:
+    framework: '@cloudflare/vitest-plugin'
+    status: deferred_to_0_2_0
+    note: |
+      Activated once the first Cloudflare binding (D1, R2, ...) is
+      added. Until then `pnpm test --pool=threads` exercises Vitest
+      with the threads pool, which is the closest non-Worker boundary
+      test we have.
+  contract:
+    framework: type-tests
+    entry: pnpm exec tsc --noEmit
+    note: |
+      Type-level contract for the Hono app and the generated
+      `worker-configuration.d.ts`.
+  e2e:
+    status: deferred_post_foundation
+  manual_visual:
+    status: deferred_post_foundation
+
+change_risk_mapping:
+  pure_logic: [unit, smoke]
+  new_route: [unit, integration, smoke]
+  binding_change: [smoke, contract]
+  token_change: [smoke, manual_visual]
+  dependency_upgrade: [integration, smoke]
+
+gates:
+  fast:
+    command: 'pnpm run validate:fast'
+    components:
+      - 'pnpm run format'
+      - 'pnpm run typecheck'
+      - 'pnpm run test'
+  integration:
+    command: 'pnpm run validate:integration'
+    components:
+      - fast
+      - 'pnpm run build'
+      - 'pnpm run test -- --pool=threads'
+  release:
+    command: 'pnpm run validate:release'
+    components:
+      - integration
+      - 'pnpm run cf-typegen'
+
+ci:
+  provider: github-actions
+  workflow: .github/workflows/ci.yml
+  triggers:
+    pull_request: [validate:fast, validate:integration]
+    push_release_branch: [validate:integration, validate:release]
+  required_status_checks:
+    - validate:fast
+    - validate:integration
+
+coverage_policy:
+  enabled: false
+  rationale: 0.1.0 surface area is intentionally tiny; threshold enforcement is deferred to 0.2.0.
+
+concurrency:
+  cancel_in_progress: true
+  group_by: pr-or-ref
+
+artifact_retention:
+  ci_evidence: 7d
+  release: 30d
+
+security_gates:
+  secret_scanning: enabled_asynchronous
+  dependency_review: deferred_post_foundation
+  code_scanning: deferred_post_foundation

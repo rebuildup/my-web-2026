@@ -7,194 +7,203 @@
 
 ## Sprint goal
 
-Establish my-web-2026's canonical architecture and dev / build /
-deploy foundation. Empty-site Cloudflare production-equivalent
-release is acceptable.
+Establish my-web-2026's canonical runtime wiring, design system
+foundation, and quality gate on Cloudflare Workers + TanStack Start.
+A production-equivalent smoke release (Worker deployed, D1 / R2
+bindings reachable, Hono external boundary + TanStack SSR active) is
+the acceptance signal.
 
 ## Tickets
 
-### #001 Confirm canonical remote and visibility
+### #001 Runtime wiring fix
+
+- **Type**: architecture
+- **Size**: M
+- **Priority**: P0
+- **Depends on**: —
+- **Acceptance**:
+  1. `src/server.ts` is the Worker entry. Default export
+     `{ fetch(request, env, ctx) }` dispatches between Hono and the
+     TanStack Start default handler based on path prefix.
+  2. `EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth',
+     '/integrations']`. Other paths go to TanStack Start.
+  3. `src/start.ts` is deleted. TanStack Start's default CSRF
+     middleware is active (verified by inspecting the built worker
+     bundle).
+  4. Hono handlers receive **real** Cloudflare `env` and `ctx` —
+     no mocked `{} as Env` stub.
+  5. `src/http/hono.ts` replaces `src/boundary/index.ts`; no other
+     files reference the old path.
+- **Validation**: `pnpm run validate:integration` (build +
+  `wrangler deploy --dry-run` succeeds).
+
+### #002 Repository hygiene fix
 
 - **Type**: governance
 - **Size**: S
 - **Priority**: P0
-- **Owner**: repository owner
 - **Depends on**: —
 - **Acceptance**:
-  1. Canonical GitHub remote exists.
-  2. Visibility decided (`public` preferred; `private` acceptable).
-  3. README, `LICENSE`, and `docs/security.md` updated to match the
-     decision.
-- **Validation**: `pnpm run validate:fast`.
+  1. `package-lock.json` and `vitest.config.mts` are deleted; only
+     `pnpm-lock.yaml` remains.
+  2. `.gitignore` includes `dist-cloudflare/` and `.biome/`.
+  3. `vite.config.ts` no longer references `vitest` types.
+  4. README and CONTRIBUTING match the canonical remote and
+     visibility; the project is documented as public with an MIT
+     license.
+  5. Version drift between `README.md`, `quality/profile.yaml`, and
+     `package.json` is eliminated.
+  6. On-disk build artefacts (`dist/`, `dist-cloudflare/`,
+     `styled-system/`) are removed.
+- **Validation**: `pnpm install --frozen-lockfile` succeeds.
 
-### #002 Apply `main` protection + release-source status check
+### #003 Design system foundation
+
+- **Type**: design system
+- **Size**: S
+- **Priority**: P0
+- **Depends on**: —
+- **Acceptance**:
+  1. `src/design-system/tokens.ts` exports raw Panda tokens
+     (colors, fonts, fontSizes, radii, shadows, spacing, breakpoints).
+  2. `src/design-system/semantic-tokens.ts` registers the semantic
+     layer (bg, text, border) via `theme.semanticTokens` in
+     `panda.config.ts`.
+  3. `src/infra/design-tokens.ts` is deleted.
+  4. `tsconfig.json` paths include `@design-system/*`; `vite.config.ts`
+     resolves the alias.
+- **Validation**: `pnpm exec panda codegen` emits semantic tokens in
+  `styled-system/tokens/index.mjs`.
+
+### #004 Quality gate rebuild (Biome)
+
+- **Type**: tooling
+- **Size**: M
+- **Priority**: P0
+- **Depends on**: —
+- **Acceptance**:
+  1. `@biomejs/biome` is a devDependency; `prettier` is removed.
+  2. `pnpm run format` (write) and `pnpm run format:check` (read-only)
+     scripts exist.
+  3. `pnpm run lint:check` (read-only) script exists.
+  4. `validate:fast` runs only read-only steps (no `--write`).
+  5. `validate:integration` adds `build` and `wrangler:dry-run`
+     (the dry-run step is part of the gate, not just an artefact).
+  6. `quality/profile.yaml` matches the script commands.
+  7. `.github/workflows/ci.yml` has exactly two jobs
+     (`validate`, `validate-release`); bootstrap is not duplicated
+     inside jobs that already depend on it.
+- **Validation**: `pnpm run validate:fast`, `pnpm run validate:integration`,
+  `pnpm run validate:release` succeed locally.
+
+### #005 Module restructure
+
+- **Type**: architecture
+- **Size**: M
+- **Priority**: P0
+- **Depends on**: #001 (the new `src/http/hono.ts` is the source of truth)
+- **Acceptance**:
+  1. `src/features/`, `src/domains/`, `src/boundary/`, `src/infra/`
+     are deleted.
+  2. `src/modules/README.md` describes the vertical-slice rule.
+  3. `src/platform/cloudflare/README.md` reserves the platform-specific
+     namespace.
+  4. `src/http/hono.ts` and `src/http/hono.test.ts` exist.
+  5. `src/routes/index.tsx` no longer imports `getInternalHealth` or
+     anything from the deleted `src/domains/**`.
+  6. `tsconfig.json` paths and `vite.config.ts` alias no longer
+     reference `@features`, `@domains`, `@boundary`, `@infra`.
+- **Validation**: `pnpm run validate:fast` (typecheck), `pnpm run build`.
+
+### #006 D1 binding smoke
+
+- **Type**: infrastructure
+- **Size**: S
+- **Priority**: P1
+- **Depends on**: #008 (main protection)
+- **Acceptance**:
+  1. `wrangler.jsonc` declares a `d1_databases` binding named `DB`.
+  2. `src/http/hono.ts` exposes `GET /api/v1/db/ping` that runs
+     `SELECT 1 AS one` via `c.env.DB`.
+  3. `test/integration/d1.test.ts` calls `SELF.fetch('/api/v1/db/ping')`
+     and asserts 200 with `body.one === 1`.
+  4. `pnpm run cf-typegen` regenerates `worker-configuration.d.ts` so
+     `Env.DB: D1Database` is visible to TypeScript.
+- **Validation**: `pnpm test` (the integration project runs the SELF
+  smoke) and `pnpm run validate:integration` (dry-run + binding visible).
+
+### #007 R2 binding smoke
+
+- **Type**: infrastructure
+- **Size**: S
+- **Priority**: P1
+- **Depends on**: #008 (main protection)
+- **Acceptance**:
+  1. `wrangler.jsonc` declares an `r2_buckets` binding named `MEDIA`.
+  2. `src/http/hono.ts` exposes `GET /api/v1/media/ping` that calls
+     `c.env.MEDIA.head('probe')` and surfaces the canonical
+     "key_not_found" 404 response.
+  3. `test/integration/r2.test.ts` calls `SELF.fetch('/api/v1/media/ping')`
+     and asserts 404 with `body.status === 'key_not_found'`.
+- **Validation**: same as #006.
+
+### #008 GitHub delivery setup
 
 - **Type**: governance / CI
 - **Size**: S
 - **Priority**: P0
-- **Depends on**: #001
-- **Acceptance** (only when #001 is `public`):
-  1. Branch protection / ruleset on `main` with required reviews,
-     required checks (`validate:fast`, `validate:integration`), and
-     no direct push.
-  2. A required status check that rejects `base == main` PRs whose
-     head is not `release-*` matching the current target release.
-- **Acceptance** (when #001 is `private`): document the decision
-  and the relaxed protection in `docs/release.md`.
-- **Validation**: `pnpm run validate:fast` + manual ruleset
-  inspection.
-
-### #003 Wire `@cloudflare/vitest-plugin` into `validate:integration`
-
-- **Type**: test infrastructure
-- **Size**: M
-- **Priority**: P1
 - **Depends on**: —
 - **Acceptance**:
-  1. At least one Worker-boundary integration test runs through
-     `@cloudflare/vitest-plugin`'s `SELF` helper.
-  2. `pnpm run validate:integration` exits 0 with the new test
-     enabled.
-  3. `quality/profile.yaml` documents the new test level as
-     active (no longer `deferred_to_0_2_0`).
-- **Validation**: `pnpm run validate:integration`.
+  1. `main` ruleset: direct push disabled, force push disabled,
+     deletion disabled, PR required, required status check = `validate`.
+  2. `release-* -> main` PRs additionally require `validate-release`.
+  3. Labels created: `type/governance`, `type/feature`, `type/infra`,
+     `type/release`, `priority/p0`, `priority/p1`, `priority/p2`.
+  4. Project board created with columns Backlog / Ready / In Progress /
+     Review / Done.
+  5. 9 GitHub Issues opened with bodies drawn from
+     `docs/backlog-0.1.0.md` (or this file).
+- **Validation**: `gh api repos/rebuildup/my-web-2026/branches/main/protection`
+  returns the ruleset shape; Issue list contains 0.1.0 IDs.
 
-### #004 Add D1 binding smoke (Foundation smoke + dry-run with binding)
-
-- **Type**: infra
-- **Size**: M
-- **Priority**: P1
-- **Depends on**: #002
-- **Acceptance**:
-  1. `wrangler.jsonc` declares a `d1_databases` binding for a
-     placeholder database.
-  2. `pnpm run cf-typegen` regenerates `worker-configuration.d.ts`.
-  3. A smoke test executes a trivial D1 query at Worker boot.
-  4. `pnpm run validate:integration` exits 0.
-- **Validation**: `pnpm run validate:integration`.
-
-### #005 Add R2 binding smoke
-
-- **Type**: infra
-- **Size**: M
-- **Priority**: P1
-- **Depends on**: #002
-- **Acceptance**: same shape as #004 but for R2.
-- **Validation**: `pnpm run validate:integration`.
-
-### #006 Bootstrap `portfolio` feature module (UI placeholder)
-
-- **Type**: feature
-- **Size**: M
-- **Priority**: P2
-- **Depends on**: #004 (so the feature has persistence to talk to)
-- **Acceptance**:
-  1. `src/features/portfolio/**` exists with routes / components /
-     hooks / styling skeleton.
-  2. The route is wired into the router via TanStack Start file
-     routing.
-  3. A server function exercises a domain operation backed by the
-     D1 binding.
-  4. `pnpm run validate:integration` exits 0.
-- **Validation**: `pnpm run validate:integration`.
-
-### #007 Bootstrap `content` feature module (CMS placeholder)
-
-- **Type**: feature
-- **Size**: M
-- **Priority**: P2
-- **Depends on**: #004
-- **Acceptance**:
-  1. `src/features/content/**` exists with the same structure as
-     #006.
-  2. The CMS revision model (draft / published / history / preview /
-     publish / rollback) is specified in
-     `docs/architecture.md` and `docs/release.md`.
-  3. A single D1 table representing `content_revisions` is wired.
-- **Validation**: `pnpm run validate:integration`.
-
-### #008 Bootstrap `tools` domain module (Tool Registry spec only)
-
-- **Type**: domain / architecture
-- **Size**: M
-- **Priority**: P2
-- **Depends on**: —
-- **Acceptance**:
-  1. `src/domains/tools/` is created with `application/`,
-     `adapters/`, `contracts/` subfolders.
-  2. `docs/architecture.md` describes the Tool Registry / manifest /
-     build orchestration contract.
-  3. No concrete Tool submodule is added in 0.1.0.
-- **Validation**: `pnpm run validate:integration`.
-
-### #009 Adopt first external integration behind Hono (example webhook)
-
-- **Type**: feature
-- **Size**: M
-- **Priority**: P2
-- **Depends on**: #005
-- **Acceptance**:
-  1. A single Hono handler at `/webhooks/<example>/...` parses a
-     request, calls into `src/domains/<n>/application`, and returns
-     2xx.
-  2. Idempotency key handling per
-     `skills/agent-recovery/SKILL.md` is documented and exercised
-     by a test.
-- **Validation**: `pnpm run validate:integration`.
-
-### #010 Bootstrap `activity` feature module
-
-- **Type**: feature
-- **Size**: M
-- **Priority**: P2
-- **Depends on**: —
-- **Acceptance**: route + components skeleton, server function
-  shell, `pnpm run validate:integration` green.
-- **Validation**: `pnpm run validate:integration`.
-
-### #011 Cut the 0.1.0 release PR
+### #009 Cut the 0.1.0 release PR
 
 - **Type**: release
 - **Size**: S
 - **Priority**: P0
-- **Depends on**: #001–#010
+- **Depends on**: #001–#008
 - **Acceptance**:
-  1. `release-0-1-0` branch is created from `main`.
-  2. Every ticket PR has merged into `release-0-1-0`.
+  1. `release-0-1-0` branch created from `main`.
+  2. Tickets #001–#007 merged via Draft PRs into `release-0-1-0`.
   3. `pnpm run validate:release` exits 0 on `release-0-1-0`.
-  4. Draft release PR (`release-0-1-0 -> main`) is opened and
-     merged.
-  5. Tag `v0.1.0` is pushed.
-- **Validation**: `pnpm run validate:release`.
+  4. Draft release PR (`release-0-1-0 -> main`) opened; both
+     `validate` and `validate-release` required checks are green.
+  5. Release PR merged into `main`.
+  6. Tag `v0.1.0` pushed.
+  7. (Optional) `pnpm deploy` runs against a real Cloudflare account
+     and the deployed Worker URL answers `/`, `/api/v1/health`,
+     `/api/v1/db/ping`, and `/api/v1/media/ping` as documented.
+- **Validation**: `gh release view v0.1.0` returns the tag with notes.
 
 ## Dependency graph
 
 ```
-#001
- └─ #002
-     ├─ #004
-     │   ├─ #006
-     │   └─ #007
-     └─ #005
-         └─ #009
-
+#001 ── #005
+#002 (independent)
 #003 (independent)
-#008 (independent)
-#010 (independent)
-
-#001..#010
- └─ #011
+#004 (independent)
+#006 ──┐
+#007 ──┼─ #009 (release cut)
+#008 ──┘
 ```
 
 ## Next Issue to start
 
-If the operator is ready to start work today, the natural first
-ticket is **#001 Confirm canonical remote and visibility** — every
-other ticket either depends on the remote (because Issues are
-opened against it) or depends on the protection that #002 will set
-up. #003 / #008 / #010 can start in parallel with #001 because they
-do not depend on the remote.
+The natural first ticket is **#001 Runtime wiring fix** — every
+later ticket either depends on it (#005) or benefits from the
+runtime being correct first (#006 / #007 SELF smoke). #002, #003,
+#004, and #008 can start in parallel with #001.
 
 If the operator is still in the "decide whether to create a remote"
 phase, the next step is not a ticket — it is the human decision
-recorded as the body of #001.
+recorded as the body of #008.

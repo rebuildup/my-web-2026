@@ -5,8 +5,8 @@
 > targeted for 2026-10.
 
 `my-web-2026` is a modular monolith: one Cloudflare Worker, one
-repository, one static-assets binding. TanStack Start owns the UI
-and internal application operations. Hono owns the external HTTP
+repository, one set of bindings. TanStack Start owns the UI and
+internal application operations. Hono owns the external HTTP
 boundary (webhooks, OAuth, integrations, REST APIs). Panda CSS owns
 styling.
 
@@ -15,19 +15,20 @@ styling.
 - Runtime: Cloudflare Workers (production / staging / preview).
 - Local hosts: macOS / Apple Silicon, Windows 11 + WSL2, Linux,
   NixOS. Remote Linux sandbox is also supported.
-- Language: TypeScript 5.9, React 19.3, Vite 7.3.
+- Language: TypeScript 5.9, React 19.2, Vite 7.1.
 
 ## Stack
 
-| Concern       | Choice                                 |
-| ------------- | -------------------------------------- |
-| Runtime       | Cloudflare Workers                     |
-| Web framework | TanStack Start 1.168.x                 |
-| Build / dev   | Vite 7.3.x + `@cloudflare/vite-plugin` |
-| External HTTP | Hono 4.13.x                            |
-| Styling       | Panda CSS 1.12.x (no Tailwind)         |
-| Package mgr   | pnpm 12.3.x                            |
-| Tests         | Vitest 4.1.x                           |
+| Concern        | Choice                                       |
+| -------------- | -------------------------------------------- |
+| Runtime        | Cloudflare Workers                           |
+| Web framework  | TanStack Start 1.168.x                       |
+| Build / dev    | Vite 7.1.x + `@cloudflare/vite-plugin`       |
+| External HTTP  | Hono 4.13.x                                  |
+| Styling        | Panda CSS 1.12.x (no Tailwind)               |
+| Format / lint  | Biome 1.9.x (replaces Prettier + ESLint)     |
+| Package mgr    | pnpm 12.3.x                                  |
+| Tests          | Vitest 4.1.x + `@cloudflare/vitest-plugin`   |
 
 See [`docs/architecture.md`](docs/architecture.md) and
 [`docs/adr/`](docs/adr/) for the canonical decisions.
@@ -35,14 +36,14 @@ See [`docs/architecture.md`](docs/architecture.md) and
 ## Canonical commands
 
 ```bash
-# Bootstrap
-corepack enable pnpm
+# Bootstrap (corepack is forbidden; install pnpm directly)
+npm install -g pnpm@12.3.4
 pnpm install
 
 # Develop locally (Cloudflare runtime via @cloudflare/vite-plugin)
 pnpm dev
 
-# Validate (the three deterministic entry points)
+# Validate (three deterministic entry points)
 pnpm run validate:fast
 pnpm run validate:integration
 pnpm run validate:release
@@ -51,10 +52,9 @@ pnpm run validate:release
 pnpm run deploy
 ```
 
-`validate:fast` runs `pnpm format && pnpm typecheck && pnpm test`.
-`validate:integration` adds `pnpm build` and `pnpm test --pool=threads`.
-`validate:release` adds `pnpm cf-typegen`. See
-[`quality/profile.yaml`](quality/profile.yaml).
+`validate:fast` runs `format:check + lint:check + typecheck + test`.
+`validate:integration` adds `build + wrangler:dry-run`. `validate:release`
+adds `cf-typegen`. See [`quality/profile.yaml`](quality/profile.yaml).
 
 ## Internal docs index
 
@@ -93,5 +93,4 @@ ticket list.
 
 ## License
 
-Private repository. License is recorded when the canonical remote
-is created.
+MIT — see [`LICENSE`](./LICENSE).

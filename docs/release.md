@@ -41,29 +41,11 @@
 11. Tag the merged commit with `v<version>`.
 12. Re-plan any unfinished tickets for the next sprint.
 
-## Repository visibility blocker
+## Repository visibility
 
-`my-web-2026` does not yet have a canonical remote. The
-initialization cannot determine whether the remote will be `public`
-or `private`. Until that decision is made:
-
-- `main` is not yet protected.
-- The `release-x-y-z -> main` PR path is the canonical intent but
-  cannot be enforced by GitHub yet.
-
-This is recorded as **Issue "Confirm canonical remote and
-visibility"** in the 0.1.0 backlog. The Issue also asks for:
-
-- Creation of the remote.
-- Visibility decision (`public` is preferred for open personal
-  site work; `private` is acceptable).
-- Branch protection / ruleset for `main` (if public).
-- A required status check that rejects `base == main` PRs whose head
-  is not `release-*` (if protection cannot enforce the head pattern
-  directly).
-
-If permission is insufficient, the missing protection is itself a
-blocker and is documented in the Issue body, not silently accepted.
+- Canonical remote: `https://github.com/rebuildup/my-web-2026.git`.
+- Visibility: **public**.
+- License: MIT (see [`LICENSE`](../LICENSE)).
 
 ## Public repository main protection checklist
 
@@ -74,39 +56,78 @@ When visibility is `public`:
 - [ ] Force push disabled.
 - [ ] Deletion disabled.
 - [ ] PR required for any change.
-- [ ] Required status checks: `validate:fast`, `validate:integration`.
-- [ ] Required reviews: at least one (operator can self-review until
-      a second maintainer is added).
+- [ ] Required status checks: `validate` (PR); on `release-* -> main`
+      the additional `cf-typegen check` step inside the same `validate`
+      job must pass.
 - [ ] `release-* -> main` only is enforced (either by ruleset pattern
       or by a required status check).
+- [ ] Required reviews: at least one (operator can self-review until a
+      second maintainer is added).
+
+These boxes intentionally start **unchecked** at 0.1.0 RC. They become
+checkable only after the operator runs the GitHub UI / `gh` commands
+documented in `docs/backlog-0.1.0.md#008-github-delivery-setup`. Until
+that happens, this checklist is the **target state**, not the current
+state — a doc that claims the ruleset exists while GitHub returns 0
+rulesets is dangerous.
+
+### Bootstrap exception (0.1.0 RC only)
+
+The eight Foundation cleanup commits on `release-0-1-0` were formed
+**directly on the release branch** without an Issue / Draft PR /
+ticket branch. This is a documented one-time exception during the
+bootstrap of a new public repository: there were no Issues, no PRs,
+and no rulesets yet, so the canonical Issue-driven flow could not be
+followed. From 0.2.0 onward **every commit lands through the canonical
+flow**, starting with the `0.1.0 release reconciliation` Issue that
+drives #009 (CI green, real Cloudflare smoke, `v0.1.0` tag).
 
 ## 0.1.0 Foundation backlog
 
-| Issue | Title                                                             | Depends on |
-| ----- | ----------------------------------------------------------------- | ---------- |
-| #001  | Confirm canonical remote and visibility                           | —          |
-| #002  | Apply `main` protection (if public) + release-source status check | #001       |
-| #003  | Wire `@cloudflare/vitest-plugin` into `validate:integration`      | —          |
-| #004  | Add D1 binding smoke (Foundation smoke + dry-run with binding)    | #002       |
-| #005  | Add R2 binding smoke                                              | #002       |
-| #006  | Bootstrap `portfolio` feature module (UI placeholder)             | #004       |
-| #007  | Bootstrap `content` feature module (CMS placeholder)              | #004       |
-| #008  | Bootstrap `tools` domain module (Tool Registry spec only)         | —          |
-| #009  | Adopt first external integration behind Hono (example webhook)    | #005       |
-| #010  | Bootstrap `activity` feature module                               | —          |
-| #011  | Cut the 0.1.0 release PR                                          | #001–#010  |
-
-The dependency graph is canonical. #001 must land before #002. #004
-must land before #006 and #007. #001–#010 must land before #011.
+| Issue | Title                                                       | Depends on | Priority |
+| ----- | ----------------------------------------------------------- | ---------- | -------- |
+| #001  | Runtime wiring fix                                          | —          | P0       |
+| #002  | Repository hygiene fix                                      | —          | P0       |
+| #003  | Design system foundation                                    | —          | P0       |
+| #004  | Quality gate rebuild (Biome + CI dedup + actionlint)       | —          | P0       |
+| #005  | Module restructure (modules/ + http/)                      | #001       | P0       |
+| #006  | D1 binding smoke (local workerd SELF)                       | —          | P1       |
+| #007  | R2 binding smoke (local workerd SELF)                       | —          | P1       |
+| #008  | GitHub delivery setup (main protection + Project + Issues) | —          | P0       |
+| #009  | Cut the 0.1.0 release PR (CF real smoke + tag)             | #001–#008  | P0       |
+| #010  | Storybook 8.6 + 3 Panda recipe seeds (design-system surface) | #003      | P1       |
+| #011  | Playwright 1.63 (chromium HTTP-only E2E) + CI wiring       | #001       | P1       |
 
 (Issue numbers are placeholders. The real numbers are assigned by
 GitHub when the Issues are opened.)
 
+Dependency graph:
+
+```
+#001 ── #005
+#001 ── #011
+#003 ── #010
+#002 (independent)
+#004 (independent)
+#006 ──┐
+       ├─ #009 (release cut)
+#007 ──┤
+#008 ──┘
+#010 ┐
+#011 ┘
+```
+
+> Note: #006 / #007 in this backlog are **local Miniflare-simulated**
+> SELF smokes via `@cloudflare/vitest-plugin`'s workerd pool. They
+> confirm the Worker entry + Hono + binding-API wiring. They do **not**
+> confirm real Cloudflare D1 / R2 resources. Real-resource smoke is
+> part of #009 (the release cut), not #006 / #007.
+
 ## Tools / external subdomain policy
 
 my-web-2026 may host Tools under `tools.<domain>` or as
-sub-paths. The Tool Registry ticket (#008) is responsible for the
-policy; individual Tool tickets follow the convention in
+sub-paths. The Tool Registry ticket (#005 design) is responsible for
+the policy; individual Tool tickets follow the convention in
 [ADR-0006](adr/ADR-0006-tools-submodule-policy.md).
 
 ## Patch releases

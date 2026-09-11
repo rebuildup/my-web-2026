@@ -52,7 +52,7 @@ Adapts project-init `sandbox-runtime` for my-web-2026. Read
 
 ```
 clone
-  -> pnpm install (with corepack)
+  -> pnpm install (12.3.4, installed directly; no corepack — see ADR-0003)
   -> pnpm run prepare
   -> sandbox create (if used)
   -> pnpm run dev | pnpm run build | pnpm run test

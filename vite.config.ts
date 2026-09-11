@@ -1,4 +1,3 @@
-/// <reference types="vitest" />
 import { defineConfig } from 'vite';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { cloudflare } from '@cloudflare/vite-plugin';
@@ -16,18 +15,17 @@ import { resolve } from 'node:path';
  * Panda CSS styling is consumed via the `styled-system` package generated
  * by `pnpm prepare` (see panda.config.ts).
  *
- * Vitest-specific options live in `vitest.config.ts` to keep the production
- * Cloudflare bundle free of test-only code.
+ * Vitest lives in `vitest.config.ts`; production Vite is deliberately
+ * kept free of test-only types.
  */
 export default defineConfig({
 	plugins: [cloudflare({ viteEnvironment: { name: 'ssr' } }), tanstackStart(), react()],
 	resolve: {
 		alias: {
 			'~': resolve(__dirname, './src'),
-			'@features': resolve(__dirname, './src/features'),
-			'@domains': resolve(__dirname, './src/domains'),
-			'@boundary': resolve(__dirname, './src/boundary'),
-			'@infra': resolve(__dirname, './src/infra'),
+			'@modules': resolve(__dirname, './src/modules'),
+			'@design-system': resolve(__dirname, './src/design-system'),
+			'@platform': resolve(__dirname, './src/platform'),
 		},
 	},
 	server: {

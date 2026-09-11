@@ -19,12 +19,32 @@
 		"verbatimModuleSyntax": true,
 		"paths": {
 			"~/*": ["./src/*"],
-			"@features/*": ["./src/features/*"],
-			"@domains/*": ["./src/domains/*"],
-			"@boundary/*": ["./src/boundary/*"],
-			"@infra/*": ["./src/infra/*"]
+			"@modules/*": ["./src/modules/*"],
+			"@design-system/*": ["./src/design-system/*"],
+			"@platform/*": ["./src/platform/*"],
+			"@storybook/react": [
+				"./node_modules/.pnpm/@storybook+react@8.6.18_@storybook+test@8.6.15_storybook@8.6.18_prettier@3.9.6_supports_5df6006173512e15d1a877a774cf91bd/node_modules/@storybook/react"
+			]
 		}
 	},
-	"include": ["src/**/*.ts", "src/**/*.tsx", "worker-configuration.d.ts", "styled-system/**/*.ts", "vite.config.ts", "panda.config.ts"],
-	"exclude": ["node_modules", "dist", ".output", ".vinxi", ".wrangler", ".tmp", ".reference"]
+	"include": [
+		"src/**/*.ts",
+		"src/**/*.tsx",
+		"test/integration/**/*.ts",
+		"worker-configuration.d.ts",
+		"styled-system/**/*.ts",
+		"vite.config.ts",
+		"vitest.config.ts",
+		"panda.config.ts"
+	],
+	"exclude": [
+		"node_modules",
+		"dist",
+		"dist-cloudflare",
+		".output",
+		".vinxi",
+		".wrangler",
+		".tmp",
+		".reference"
+	]
 }

@@ -63,11 +63,45 @@ We adopt **pnpm 12.3.x** as the package manager for my-web-2026.
   `nodeLinker=hoisted`) in 0.1.0. They can be added in later sprints
   if a real need emerges.
 
-### `packageManager` and corepack
+### `packageManager` and corepack — **corepack is forbidden**
 
-`package.json` pins `"packageManager": "pnpm@12.3.4"`. `corepack enable
-pnpm` on a fresh checkout will install that exact version. CI uses the
-same `packageManager` so local and CI resolutions match.
+`package.json` pins `"packageManager": "pnpm@12.3.4"` so pnpm itself
+can warn when invoked at the wrong version. **corepack is forbidden in
+this repository.** We do not use `corepack enable pnpm`, and CI must
+not enable corepack either.
+
+The reasons are operational, not ideological:
+
+1. **Reproducibility.** pnpm's standalone binary (downloaded via
+   `pnpm/action-setup@v4` in CI and `npm install -g pnpm@12.3.4` or
+   the official `get.pnpm.io` installer locally) gives a single
+   determinate pnpm version. corepack adds a second indirection that
+   silently proxies to the same pnpm release but with its own caching,
+   signature verification, and proxy-resolution behavior that varies
+   across hosts.
+2. **Drift isolation.** corepack's pnpm shim is installed by Node.js
+   itself and inherits Node's update cadence. When the runtime Node
+   version changes, corepack may switch pnpm underneath us. We
+   control pnpm directly instead.
+3. **Sandbox clarity.** `skills/sandbox-runtime` pins pnpm as part of
+   the worker toolchain. corepack is not part of that toolchain
+   declaration and adds a host-level dependency that is hard to reason
+   about inside a sandbox.
+
+**How pnpm is installed**
+
+- Local: `npm install -g pnpm@12.3.4`, or the official
+  `curl -fsSL https://get.pnpm.io/install.sh | env PNPM_VERSION=12.3.4 sh -`.
+- CI: `pnpm/action-setup@v4` with `version: 12.3.4` downloads the
+  pnpm 12.3.4 standalone binary directly from pnpm's release CDN.
+  No `corepack enable` step.
+
+**Why `packageManager` stays**
+
+pnpm itself reads `package.json#packageManager` and warns when the
+running pnpm version does not match. Keeping the field gives us that
+sanity check at zero cost. corepack is not enabled and is not the
+intended reader of the field.
 
 ### `onlyBuiltDependencies`
 

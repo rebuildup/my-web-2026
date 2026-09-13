@@ -1,62 +1,76 @@
 ---
 name: sandbox-runtime
-description: my-web-2026 の implementation worker 用 isolated runtime を macOS / WSL / Linux / remote provider 差を吸収して提供する。
+description: implementation worker用の独立sandboxを作成・検証し、macOS / WSL/Linux / remote provider差を吸収する時に使用する。
 ---
 
-# Sandbox Runtime (my-web-2026)
-
-Adapts project-init `sandbox-runtime` for my-web-2026. Read
-`AGENTS.md` first.
+# Sandbox Runtime
 
 ## Invariants
 
-- 1 implementation worker = 1 isolated workspace / runtime.
-- Mutable state (DB, queue, port map, build output, `.wrangler/`,
-  `node_modules/.cache/`) is never shared.
-- Same internal port is allowed; host-published port is unique per
-  runtime.
-- Host Docker socket, root-equivalent host capability, master
-  credentials are never given to a worker.
-- Read-only toolchain state and immutable caches may be shared.
+- 1 implementation worker = 1 isolated workspace/runtime。
+- mutable runtime stateはworker間で共有しない。
+- 同一内部portは使用してよい。host公開port / preview routeはruntime側で一意化する。
+- host Docker socket、root-equivalent host capability、master credentialをworkerへ渡さない。
+- immutable/cacheable stateのみ共有する。
+- provider差はadapterへ閉じ込め、project semanticsを変えない。
+- Worktrunkはworkspace/worktree lifecycle adapterであり、sandbox/runtime isolation boundaryとして扱わない。
 
-## Local targets (first-class)
+## Isolate
 
-- macOS / Apple Silicon (`arm64`).
-- Windows 11 + WSL2 / WSL Containers.
-- Linux / NixOS.
-- Remote Linux sandbox (CI, paid providers).
+最低限:
 
-## Portability rules
+- repository checkout
+- process boundary
+- network / port mapping
+- writable filesystem
+- DB / Redis / queue
+- application local state
+- test artifacts
+- mutable build output
 
-- Portable Web / backend tasks run in a Linux sandbox on every
-  host, including macOS, to reduce CI / remote drift.
-- Apple-native tasks (Xcode / iOS / macOS tooling) may use a
-  macOS-native worker but keep per-worker workspace isolation.
-- WSL is not itself an isolation boundary; multiple workers inside
-  WSL still need container / VM / sandbox boundaries.
-- Docker Desktop is not a hard dependency. The local runtime is
-  selected by the operator at initialization time.
+## macOS
 
-## Cloudflare-specific sandbox concerns
+- Apple Silicon `arm64`を第一級targetとして扱う。
+- binary / dependency / container imageのarm64対応を確認する。
+- x86_64 emulationを暗黙前提にしない。
+- portable Web/backend taskは原則Linux sandboxで実行する。
+- Apple-native toolingが必要なtaskだけmacOS-native workerを許可する。
+- Docker Desktopを必須にしない。
 
-- `wrangler dev` opens port `8787` by default. The runtime must
-  remap if multiple workers run concurrently.
-- `node_modules` includes native binaries (`workerd`, `esbuild`,
-  `@cloudflare/vite-plugin`). pnpm's `onlyBuiltDependencies`
-  allowlist in `pnpm-workspace.yaml` keeps the install script
-  behaviour explicit. Adding a new native-binary dependency must
-  update that allowlist.
-- `.wrangler/` is per-worker; do not share between workers.
+## Windows + WSL2
+
+- Linux-oriented repoはWSL Linux filesystemを優先する。
+- `/mnt/c`等を高頻度build/watchの標準workspaceにしない。
+- WSL自体をworker isolationとみなさない。
+- permission / symlink / executable bit / line ending差を検証する。
+- port forwardingはSupervisor/runtime側で抽象化する。
+- WSL/Linuxでlocal worktreeを複数扱う場合は`worktree-workflow` Skillを適用し、worktree pathはLinux filesystemを優先する。
+
+## Worktrunk integration
+
+WSL/Linuxのlocal workspace materializationではWorktrunkをpreferred frontendとしてよい。
+
+- shared project hookはproject-local `.config/wt.toml`へ置く。
+- shared hostへ公開するdev serverは、実際のframework/runtimeが許すport overrideへ `{{ branch | hash_port }}` を接続してdeterministically割り当てる。`hash_port`自体をuniqueness proofとせず、startup時のbind conflictを検出する。
+- long-running local processは適切なら `wt step tether -- <command>` でworktree lifecycleへ結び付ける。
+- container/sandbox内部portは同一値のままでよく、`hash_port`は必要なhost-published portへ適用する。
+- DB / Redis / queue / socket / container name等のmutable stateは別途runtime adapterで一意化する。必要ならWorktrunkのdeterministic template valueをidentifierへ利用してよい。
+- `wt merge main` 等をGitHub delivery policyの代替integration pathとして使わない。
+
+詳細な操作は `worktree-workflow` Skillに置き、このSkillではisolation semanticsをcanonicalに保つ。
+
+## Portability
+
+Apple Silicon localとx86_64 CI/remoteが混在する場合、architecture-sensitive dependency install/build/testを検証する。
 
 ## Reproducibility target
 
-```
+```text
 clone
-  -> pnpm install (12.3.4, installed directly; no corepack — see ADR-0003)
-  -> pnpm run prepare
-  -> sandbox create (if used)
-  -> pnpm run dev | pnpm run build | pnpm run test
-  -> validation
+-> bootstrap
+-> sandbox create
+-> dependency install
+-> migrate / seed
+-> app/test start
+-> validation
 ```
-
-The same command chain runs locally and in CI.

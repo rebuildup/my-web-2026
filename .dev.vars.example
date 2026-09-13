@@ -1,0 +1,12 @@
+# Wrangler local secrets stub (loaded by `wrangler dev`).
+#
+# Real secrets for production are managed via `wrangler secret put`.
+# Do NOT commit a real .dev.vars file.
+#
+# Copy this file to .dev.vars and replace placeholders before running
+# `wrangler dev`. 0.1.0 Foundation has no bindings that require
+# secrets; this stub exists so the .gitignore whitelist (`!.dev.vars.example`)
+# is satisfied.
+
+# Example placeholder (none used by 0.1.0 Foundation release):
+# SOME_BINDING_TOKEN="replace-me"

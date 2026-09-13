@@ -162,14 +162,60 @@ external contracts.
 
 Read a Skill only when the task actually requires it.
 
+### Sprint / delivery
 - `skills/github-delivery/SKILL.md` — Issue / PR / release sprint
-- `skills/quality-gate/SKILL.md` — quality profile + change-risk
 - `skills/parallel-orchestration/SKILL.md` — multi-agent / stacked PR
-- `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
-- `skills/engineering-decisions/SKILL.md` — decision precedence
-- `skills/security-maintenance/SKILL.md` — framework advisory workflow
 - `skills/onboarding/SKILL.md` — fresh contributor / fresh agent
+
+### Quality / evaluation
+- `skills/quality-gate/SKILL.md` — quality profile + change-risk
+- `skills/policy-evaluation/SKILL.md` — policy / Skill change evaluation
+- `skills/security-maintenance/SKILL.md` — framework advisory workflow
+
+### Engineering / design
+- `skills/engineering-decisions/SKILL.md` — decision precedence
+- `skills/design-refinement/SKILL.md` — pre-implementation design refinement
+
+### Runtime / recovery
+- `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
+- `skills/worktree-workflow/SKILL.md` — Worktrunk / git worktree mechanics
 - `skills/agent-recovery/SKILL.md` — durable recovery
+
+### Communication
+- `skills/writing-discipline/SKILL.md` — reader-facing prose pipeline
+- `skills/interaction-discipline/SKILL.md` — active-work interaction discipline
+
+### Design (general-purpose)
+
+Web fundamentals / design-layout / animation-interaction の汎用 Skills。
+Vendor-specific design system / media production 系は含まない
+(`design-skills` upstream 47 件から 25 件選抜、 release-0-3-0)。
+
+- `skills/design-intent/SKILL.md` — DESIGN-BRIEF 起点の design direction
+- `skills/color-system/SKILL.md` — semantic color roles, light/dark
+- `skills/typesetting/SKILL.md` — text rhythm, mixed-script, hierarchy
+- `skills/layout-system/SKILL.md` — Marketing / Dashboard / Application / Swiss
+- `skills/responsive-design/SKILL.md` — fluid / container query / breakpoint
+- `skills/interaction-states/SKILL.md` — hover / focus / pressed / loading 等 state
+- `skills/navigation-design/SKILL.md` — navigation model 選定
+- `skills/iconography-system/SKILL.md` — icon family 設計
+- `skills/motion-system/SKILL.md` — Marketing / Product UI / Navigation motion
+- `skills/motion-audit/SKILL.md` — 既存 UI の motion 調査
+- `skills/motion-implement/SKILL.md` — motion 実装
+- `skills/motion-review/SKILL.md` — motion review
+- `skills/token-audit/SKILL.md` — Panda CSS semantic-tokens 監査
+- `skills/document-design/SKILL.md` — long-form paginated docs
+- `skills/diagram-design/SKILL.md` — architecture / process diagram
+- `skills/dark-mode-design/SKILL.md` — dark appearance 設計
+- `skills/content-design/SKILL.md` — product / service content
+- `skills/form-design/SKILL.md` — form flow 設計
+- `skills/table-design/SKILL.md` — table / data grid
+- `skills/accessibility-audit/SKILL.md` — accessibility 監査・修正
+- `skills/cognitive-accessibility/SKILL.md` — 認知・学習障害への design
+- `skills/inclusive-design/SKILL.md` — exclusion 検出 + 多様な参加経路
+- `skills/high-contrast-design/SKILL.md` — high-contrast / forced-colors
+- `skills/touch-interface/SKILL.md` — touch / coarse-pointer interaction
+- `skills/keyboard-interface/SKILL.md` — keyboard interaction model
 
 Architecture docs (`docs/architecture.md`), development docs
 (`docs/development.md`), and release docs (`docs/release.md`) are the

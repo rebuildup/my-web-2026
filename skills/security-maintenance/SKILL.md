@@ -1,71 +1,114 @@
 ---
 name: security-maintenance
-description: my-web-2026 で実際に使っている version に紐付く framework / runtime / dependency の advisory を triage し、target release へ割り当てる。
+description: framework/runtime/dependencyの脆弱性情報を収集し、projectへの実影響と優先度を判定してticket/releaseへ反映する時に使用する。
 ---
 
-# Security Maintenance (my-web-2026)
+# Security Maintenance
 
-## Source priority
+security updateは単純なCVSS順ではなく、projectへの実到達可能性とrelease riskまで含めて優先順位を付ける。
 
-1. Official framework / runtime / SDK advisory (Cloudflare, TanStack,
-   Hono, Panda, Vite, Wrangler).
-2. Official release / security announcement.
-3. Ecosystem advisory source (npm audit, GitHub Security Advisories).
-4. Maintainer patch information.
-5. Trusted secondary source.
+## 1. Source priority
 
-## Inventory
+初期化時および継続maintenance時に、実際に使用しているversionを基準に次を確認する。
 
-Tracked in `quality/profile.yaml#stack` plus `package.json`. When a
-package changes version, re-evaluate its advisory feed.
+1. framework/runtime/SDK official security advisories
+2. official release notes / security announcements
+3. language/package ecosystem official advisory source
+4. GitHub Security Advisories / dependency alerts
+5. maintainer issue / patch release information
+6. trusted secondary source
 
-Current pinned stack (2026-09-11):
+一般ニュースやSNSだけをsecurity SoTにしない。
 
-- `wrangler@^4.131.0`
-- `@tanstack/react-start@^1.168.52`
-- `@tanstack/react-router@^1.168.52`
-- `hono@^4.13.7`
-- `@pandacss/dev@^1.12.1`
-- `vite@^7.1.0`
-- `vitest@~4.1.0`
-- `react@^19.2.0`
+## 2. Inventory
 
-## Prioritisation
+最低限把握する:
 
-Severity is one input. Project reachability, external exposure,
-required privilege, impact scope, fix availability, workaround
-quality, regression risk, and target release timing all matter.
+- direct dependencies
+- security-sensitive transitive dependencies
+- framework/runtime/SDK versions
+- container/base image
+- OS/runtime packages when relevant
+- build/deploy toolchain
+- externally exposed services/endpoints
+- auth/session/crypto/storage/network boundaries
 
-P0: critical, reachable, exposed -> patch release can interrupt the
-current sprint.
-P1: high, reachable -> next planned release.
-P2: medium -> back of the target release.
-P3: low / informational -> next hygiene sweep.
+lockfileやgenerated SBOM等、再現可能なinventoryを優先する。
 
-## Response workflow
+## 3. Prioritization
 
-1. Detect (advisory feed, GitHub alert, manual review).
-2. Triage (reachability + exposure).
-3. Decide priority.
-4. Open a GitHub Issue tagged `security` with the affected package,
-   target release, reproduction if known.
-5. Implement the fix in a normal ticket branch (`<issue-number>`) or
-   a patch release branch (`release-x-y-z`).
-6. Run `pnpm run validate:release` before the release PR merges.
-7. Reconcile the Issue only after the fix lands on the release trunk.
+severityだけで決めない。最低限次を評価する。
 
-## Automated checks
+- advisory severity / CVSS等
+- exploitability / exploit maturity
+- projectでvulnerable pathがreachableか
+- internet/external exposure
+- auth前に到達可能か
+- confidentiality / integrity / availability impact
+- privilege required
+- affected data / tenant scope
+- fix/patch availability
+- workaround quality
+- regression/migration risk
+- current target releaseとの距離
 
-- `wrangler types` regenerates binding types; treat schema drift as a
-  possible advisory signal.
-- GitHub secret scanning is enabled as an asynchronous CI job (see
-  `quality/profile.yaml#security_gates.secret_scanning`).
-- Dependency review, code scanning, SBOM are deferred to a post-0.1.0
-  ticket.
+project固有priorityへ変換する。
 
-## Re-evaluation triggers
+推奨概念:
 
-- A pinned package moves to a new major version.
-- An advisory is published for any pinned package.
-- The CI / Actions billing model changes.
-- An escaped incident in the live environment.
+- **P0 / Critical**: active exploitationまたは高確率で直接exposed、即時対応。必要なら現在sprintを中断しpatch release。
+- **P1 / High**: reachableで重大impact、fix available。current releaseのblocking候補。
+- **P2 / Medium**: 条件付きreachableまたはimpact限定。計画ticketとして近いreleaseへ。
+- **P3 / Low**: non-reachable/defense-in-depth。dependency hygieneとして処理。
+
+CVSSが高いだけでP0にしない。逆にCVSSが中程度でもproject exposureが高ければ優先度を上げる。
+
+## 4. Response workflow
+
+meaningful advisoryを検出したら:
+
+1. affected versionを確認
+2. project reachabilityを確認
+3. exploit/fix情報を確認
+4. priority決定
+5. GitHub Issueを日本語で作成/更新
+6. target releaseを決定
+7. isolated ticket branchで修正
+8. focused + integration security verification
+9.必要ならrelease gateへ追加
+10. advisory sourceと判断根拠をIssue/ADRへ残す
+
+緊急patchでは `release-x-y-z` のpatch versionを切ることを許可する。
+
+## 5. Automated security checks
+
+projectに適切なら初期化時に導入・修復する。
+
+候補:
+
+- dependency vulnerability scan
+- dependency review on PR
+- code scanning / SAST
+- secret scanning
+- container/image scanning
+- SBOM generation
+- license/security policy checks
+
+ただし大量のfalse positiveをblockingにしてsignalを破壊しない。blocking/non-blockingはproject riskに合わせて明示する。
+
+## 6. Security gate
+
+security-related ticketは通常quality gateに加えて:
+
+- exploit/reproduction条件の確認
+- vulnerable pathが修正後に閉じていること
+- regression test
+- dependency/version resolution確認
+- production artifactにfixed versionが入ること
+- workaroundを入れた場合の撤去条件
+
+を検証する。
+
+## 7. Re-evaluation
+
+framework/runtime major/minor update、security policy変更、exposure変更、新しいexternal service追加時はsecurity profileを再評価する。

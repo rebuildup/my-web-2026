@@ -162,14 +162,28 @@ external contracts.
 
 Read a Skill only when the task actually requires it.
 
+### Sprint / delivery
 - `skills/github-delivery/SKILL.md` — Issue / PR / release sprint
-- `skills/quality-gate/SKILL.md` — quality profile + change-risk
 - `skills/parallel-orchestration/SKILL.md` — multi-agent / stacked PR
-- `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
-- `skills/engineering-decisions/SKILL.md` — decision precedence
-- `skills/security-maintenance/SKILL.md` — framework advisory workflow
 - `skills/onboarding/SKILL.md` — fresh contributor / fresh agent
+
+### Quality / evaluation
+- `skills/quality-gate/SKILL.md` — quality profile + change-risk
+- `skills/policy-evaluation/SKILL.md` — policy / Skill change evaluation
+- `skills/security-maintenance/SKILL.md` — framework advisory workflow
+
+### Engineering / design
+- `skills/engineering-decisions/SKILL.md` — decision precedence
+- `skills/design-refinement/SKILL.md` — pre-implementation design refinement
+
+### Runtime / recovery
+- `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
+- `skills/worktree-workflow/SKILL.md` — Worktrunk / git worktree mechanics
 - `skills/agent-recovery/SKILL.md` — durable recovery
+
+### Communication
+- `skills/writing-discipline/SKILL.md` — reader-facing prose pipeline
+- `skills/interaction-discipline/SKILL.md` — active-work interaction discipline
 
 Architecture docs (`docs/architecture.md`), development docs
 (`docs/development.md`), and release docs (`docs/release.md`) are the

@@ -15,6 +15,12 @@ import { SELF } from 'cloudflare:test';
  * the D1 binding declared in `wrangler.jsonc`.
  */
 describe('D1 binding smoke', () => {
+	it('renders the internal D1 result through the home loader', async () => {
+		const res = await SELF.fetch('https://example.com/');
+		expect(res.status).toBe(200);
+		expect(await res.text()).toContain('Internal data: available');
+	});
+
 	it('responds to /api/v1/db/ping with the binding result', async () => {
 		const res = await SELF.fetch('https://example.com/api/v1/db/ping');
 		expect(res.status).toBe(200);

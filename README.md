@@ -1,5 +1,9 @@
 # my-web-2026
 
+[![CI](https://github.com/rebuildup/my-web-2026/actions/workflows/ci.yml/badge.svg)](https://github.com/rebuildup/my-web-2026/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/rebuildup/my-web-2026/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/rebuildup/my-web-2026?include_prereleases&style=flat)](https://github.com/rebuildup/my-web-2026/releases)
+
 > Personal Web Platform on Cloudflare Workers. Replaces my-web-2025.
 > 0.1.0 Foundation release targeted for 2026-09; live-site cutover
 > targeted for 2026-10.

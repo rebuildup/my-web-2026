@@ -1,126 +1,241 @@
 ---
 name: github-delivery
-description: my-web-2026 での GitHub Issue / Project / weekly release sprint / stacked PR / Draft PR / release integration の運用。
+description: GitHub Issues / Projects / Pull Requestsを使い、1週間のrelease sprint、dependency-aware stacked PR、durable Draft PR lifecycleでticket-drivenなアジャイル開発を進める時に使用する。
 ---
 
-# GitHub Delivery (my-web-2026)
+# GitHub Delivery
 
-This Skill adapts the project-init `github-delivery` policy to
-my-web-2026. Read `AGENTS.md` first; read this Skill only when the task
-involves Issue, PR, branch, or release workflow.
+## Source of Truth
 
-## Source of truth
+- released source state: `main`
+- active sprint/release integration state: `release-x-y-z`
+- durable work state: GitHub Issues / Projects
+- dependency state: GitHub Issue / Project dependency metadata
+- ticket review/integration: Pull Requests
+- transient execution state: Supervisor
 
-- Released source state: `main`
-- Active sprint / release integration: `release-x-y-z`
-- Durable planning: GitHub Issues + Projects
-- Dependency: GitHub Issue / Project dependency metadata
-- Review / integration: Pull Requests
-- Transient execution: Supervisor / agent runtime
+`main` はリリース済み・統合済みの安定状態を表す。
+通常のticket PRを直接 `main` へ向けない。
 
-`main` is the released, integrated source. Normal ticket PRs do not
-target `main`.
+## Merge authorization boundary
 
-## Repository visibility blocker
+PRのquality/readinessとmerge side effectのauthorizationを分離する。
 
-If the canonical remote repository is created with `public`
-visibility, `main` must be protected with a branch ruleset before any
-release PR can land. The current initialization cannot determine
-visibility because the remote has not been created. That fact is
-recorded as a blocker in `docs/release.md` and in the 0.1.0
-backlog (Issue "Confirm canonical remote and visibility").
+Agent / subagent / Coordinator / Supervisorは、userが対象PRまたは明確に限定したPR集合について明示的にmerge/landを依頼した場合だけ、次を実行できる。
+
+- merge / squash merge / rebase merge
+- native stacked PR / contiguous stack landing
+- auto-merge有効化
+- integration targetへの直接反映等、PR mergeと実質同じlanding side effect
+
+次はauthorizationではない。
+
+- acceptance criteria satisfied
+- required checks green
+- approval / conversation resolution
+- mergeable / Ready for review
+- `対応して` / `レビューして` / `conflictを解消して` / `リリース準備して` / `最後まで進めて` 等の一般的な完遂依頼
+- repository policyやrelease schedule自体
+
+authorizationがなければ、implementation / push / Draft PR / metadata / review対応 / conflict解消 / validation / Ready化まで進め、**ready-to-merge** で停止する。対象PR、current head SHA、gate state、残るblockerを報告する。merge permissionを得るためだけに不要な質問を先回りして行わない。
+
+authorizationはidentified PR / bounded PR setとtask scopeへ限定し、別PRへ伝播させない。authorization後にexpected review fixでhead SHAが変わった場合はcurrent SHAでrequired validationを再実行する。base / target release / scope / included changes等がmaterialに変わった、unrelated changesが入った、またはauthorization scope内か曖昧になった場合は古いauthorizationを再利用せずuserへ再確認する。
+
+quality gateは「mergeしてよい品質か」を判定する。merge authorizationは「Agentがmerge操作を実行してよいか」を判定する。前者の成功から後者を導出しない。
+
+## Public repository main protection
+
+public repositoryでは`main`をprotected branch / branch rulesetで必ず保護する。
+
+最低限のinvariant:
+
+- `main`へのdirect push / direct web edit / force push / deletionを通常運用で許可しない
+- `main`変更にはPull Requestを必須とする
+- normal actor/adminが保護を日常的にbypassする運用を作らない
+- `main`へmerge可能な正規delivery pathは `release-x-y-z -> main` のrelease PRだけとする
+- ticket branchや任意branchから`main`へのPRを正規delivery pathとして認めない
+- required checks / review / conversation resolution等、projectで定義したrelease gateを満たしてからmergeする
+
+GitHubのbranch protection/rulesetだけではPRのhead branch名を完全には制約できない場合がある。その場合は、`base == main` のPRについて `head` がcanonical `release-*` patternかつ現在のtarget releaseであることを検証するrequired status check / GitHub Action等を追加し、release branch以外からの`main` mergeを機械的に拒否する。
+
+初期化時にrepository visibilityを確認し、publicなら`main` protection/rulesetの実在と有効性を検証する。設定変更権限がある場合は不足を作成・修復し、権限がない場合は未設定を明示的blockerとして報告する。
 
 ## Weekly release sprint
 
-A sprint is one week, mapped 1:1 to one target semantic version and
-one release branch:
+通常のsprint期間は **1週間** とする。
 
-```
-release-<major>-<minor>-<patch>
-```
+1 sprint = 1 target semantic version = 1 release integration branchを維持する。
 
-Examples: `release-0-1-0`, `release-0-2-0`, `release-1-0-0`.
+canonical format:
 
-Emergency patch releases use a patch release branch and a release PR,
-not direct edits to `main`.
+`release-<major>-<minor>-<patch>`
+
+例:
+
+- `release-0-1-0`
+- `release-0-2-0`
+- `release-1-0-0`
+
+release branchはsprint開始時に `main` のrelease基準commitから作成する。
+
+緊急patchや明示的なrelease判断では1週間から外れてよいが、通常planning cadenceは1週間を基準とする。patchでも`main`を直接変更せず、target patch release branch -> `main` のrelease PRを使用する。
 
 ## Issue
 
-- Title / body: 日本語
-- Must include (when relevant): objective / user-visible outcome,
-  acceptance criteria, scope / non-scope, dependency / blocked-by,
-  priority, size, area / component, target version, release date,
-  accountable assignee.
-- Short-lived research / subtasks do not need their own Issue.
+durable planning unitは原則GitHub Issueにする。
 
-## Project
+Issueのtitle/bodyは日本語を標準とする。
 
-Default status flow:
+最低限、該当するものを明示する:
 
-```
-Backlog -> Ready -> In Progress -> In Review -> Done
-```
+- 目的 / user-visible outcome
+- acceptance criteria
+- scope / non-scope
+- dependency / blocked-by
+- priority
+- size
+- area/component
+- target version
+- release date
+- accountable assignee
 
-Recommended fields: Priority, Size, Target Version, Area, Blocked.
+短命なresearch/worker subtaskまでIssue化する必要はない。
 
-Dependency execution has three orthogonal states — `blocked`,
-`stack-ready`, `integrated` — that do not replace the Project
-Status flow.
+Issue dependency graphはcanonical dependency SoTであり、Git branch topologyだけでdependencyを表現しない。
+
+## Project / Kanban
+
+最低限のStatus:
+
+`Backlog -> Ready -> In Progress -> In Review -> Done`
+
+推奨field:
+
+- Priority
+- Size
+- Target Version
+- Area / Component
+- Blocked / dependency
+
+WIPを無制限に増やさない。
+Readyかつdependency条件を満たすticketからcapacity内で起動する。
+
+Dependency execution上は必要に応じて次を区別する:
+
+- `blocked`: prerequisite snapshotがまだ利用できない
+- `stack-ready`: reviewable immutable predecessor snapshotがあり、dependent workを開始できる
+- `integrated`: ticket changesがtarget release trunkへland済み
+
+この3状態はdependency semanticsであり、Project Status自体を必ず増やす必要はない。
+
+## Sprint / release cycle
+
+1. 次version、1週間のsprint window、release dateを決める。
+2. `release-x-y-z` branchを `main` から作成する。
+3. sprint goalを定義する。
+4. Ready ticketを選択する。
+5. dependency / stack候補 / capacityを確認する。
+6. ticketごとにnumber-only branchを作る。
+7. 最初のmeaningful commitをremoteへpublishし、remote head SHA一致を確認した直後にDraft PRを必ず作成し、metadataを設定する。
+8. isolated workerをdependency/WIP制約内で並行起動する。
+9. independent ticketまたはstacked ticketをreviewし、current landing candidateを検証する。
+10. ticket/stackをready-to-mergeへ持っていく。
+11. explicit merge authorizationがなければここで停止し、current head SHA / gate state / blockersを報告する。authorizationがある場合だけtarget release trunkへlandし、landing成功を確認する。
+12. target release trunkへlandしたticketのlinked Issueを明示的にcloseし、Project statusをDoneへ更新する。
+13. release branch全体を検証し、release PRをready-to-mergeへ持っていく。
+14. explicit release-merge authorizationがなければrelease merge前で停止する。authorizationがある場合だけrelease PRを `main` へmergeする。
+15. version/release処理を完了する。
+16. 未完了ticketは次releaseへ明示的に再計画する。
 
 ## Ticket branch
 
-1 top-level Issue = 1 ticket branch = 1 ticket PR.
+原則、1 top-level Issueにつき1 durable ticket branchを作る。
 
-Canonical branch name: `<issue-number>`. No prefix, no slug.
+canonical format:
 
-## Branch creation is one start procedure
+`<issue-number>`
 
-1. Create durable branch.
-2. Make the first meaningful commit immediately.
-3. Push to the canonical remote.
-4. Verify `git rev-parse origin/<branch>` equals the local commit.
-5. Open Draft PR.
-6. Set linked Issue, assignee, reviewer / CODEOWNERS, labels,
-   target release, stack context, validation status.
+例:
 
-This rule applies to humans, Coordinators, implementation workers,
-and subagents. Subagents that create durable branches must perform
-all six steps; if they lack remote-publish or PR-mutation rights they
-return control to the Supervisor / Coordinator immediately.
+- `123`
+- `418`
+- `1024`
 
-## PR metadata
+branch名に `issue/` prefix、slug、title、type等を追加しない。
 
-At creation, the PR must have:
+nested workerが返すephemeral immutable ref/commitはこの命名規則の対象外でよい。
 
-- Linked Issue (`Issue: #<number>`)
-- Assignee
-- Reviewer request or CODEOWNERS-derived reviewer
-- Repository labels
-- Acceptance criteria
-- Implementation summary
-- Validation status / results
-- Known limitations / blockers
-- Target release branch
-- Stack predecessor / successor context when stacked
+## Branch creation and Draft PR are one start procedure
 
-If no meaningful reviewer exists, the PR body states that and the
-alternate review path (CI, explicit final review, automation).
+**active durable ticket branchにはpublished remote headとDraft PRを必ず持たせる。**
+
+GitHubはremoteで解決できないheadやbaseと差分のないbranchにはPRを作れないため、canonical sequenceは次の通り:
+
+1. durable branchを作成する
+2. 最初のmeaningful commitを直ちに作る
+3. そのcommitをcanonical remoteへpublishする
+4. remote branch head SHAがpublishしたcommit SHAと一致することを確認する
+5. Draft PRを直ちに作る
+6. published commit + Draft PRがない状態でactive implementationを継続しない
+
+「後でpushする」「後でPRを作る」は禁止する。
+
+このruleはhuman / Coordinator / implementation worker / subagentのすべてに適用する。
+subagentがdurable branchを作る権限を持つ場合、そのsubagent自身がpublish + remote head検証 + Draft PRまで完了する。remote publicationまたはPR mutation権限がないworkerはfirst meaningful commit後ただちにSupervisor/Coordinatorへcontrolを返し、Supervisor/Coordinatorがcommit publication・remote head SHA確認・Draft PR作成を完了するまで追加implementationを進めない。
+
+Ephemeral immutable worker ref/resultはdurable branchではないため対象外。
+
+## PR metadata is required state
+
+PRはdiffだけではなくdurable work stateである。ただし、durable stateとPR proseを同一視しない。
+
+作成時にrepository evidenceからnative GitHub metadataを評価し、最低限次を設定する。
+
+- linked Issue
+- accountable assignee
+- reviewer request / CODEOWNERS-derived reviewer
+- repositoryで定義済みの適切なlabels
+- target release branch
+- stacked PRならstack trunk / immediate predecessor / relevant successor context
+
+PR bodyはreviewerがchangeを理解・評価するためのartifactとして書く。必要に応じて次を含める。
+
+- purpose / intended outcome
+- implementation summary
+- acceptance criteriaまたはその参照
+- non-obvious design decision / constraint
+- review判断に必要なvalidation evidence
+- merge後も意味を持つlimitation / migration / compatibility note
+
+current head SHA、ahead/behind、bot status、branch同期履歴、tool invocation、trial-and-error等を、作業contextに存在するという理由だけでPR bodyへ転写しない。GitHub checks、branch state、review status等のmutable stateはnative surfaceをcanonicalにし、proseへ重複させるのはreader判断に必要な場合だけにする。
+
+ownership、scope、stack position、review requirementが変わった場合はmetadataも更新する。
+
+存在しないlabelを勝手に作る、関係のないreviewerを形式的に指定する、PR author自身を自己reviewerとして埋める、という運用はしない。meaningful reviewer不在をPR bodyへ自動記録せず、それがreview/merge semanticsの理解に必要な場合だけ説明する。
+
+PR title/body/review discussionには `writing-discipline` を適用し、Select -> Compose -> Rereadを経てreader-oriented proseへ整える。
+
+Issue/PR title/body/review discussionは日本語を標準とする。
 
 ## Independent ticket PR
 
-```
+hard predecessorを持たないticketはtarget release branchをdirect baseにする。
+
+```text
 main
 └─ release-x-y-z
    └─ 123
 ```
 
-PR: `123 -> release-x-y-z`.
+PR:
 
-## Stacked ticket PR
+`123 -> release-x-y-z`
 
-For a linear hard-dependency chain in the same release:
+## Dependency-aware stacked PR
 
-```
+同一repository・同一target release内でlinear hard dependencyを持つtop-level Issuesはstacked PRを使用してよい。
+
+```text
 main
 └─ release-x-y-z
    └─ 123
@@ -128,67 +243,82 @@ main
          └─ 125
 ```
 
-PR bases: `123 -> release-x-y-z`, `124 -> 123`, `125 -> 124`.
+PR:
 
-Stack eligibility: same repository, same target release, real hard
-dependency, ordered chain, reviewable immutable predecessor
-snapshot.
+- `123 -> release-x-y-z`
+- `124 -> 123`
+- `125 -> 124`
+
+全ticketはtarget release `release-x-y-z` を共通stack trunkとして持つ。
+
+Stack eligibility:
+
+- same repository
+- same target release
+- real hard dependency
+- stacked segmentがordered chainとして表現可能
+- predecessorにreviewable immutable commit/snapshotが存在
+
+Issue dependency graphがbranchする場合、無理に1本のlinear stackへ変換しない。
+PR stackはIssue dependency graphのlinear pathをexecution/integration topologyへprojectionしたものにすぎない。
+
+`1 top-level Issue = 1 durable ticket branch = 1 ticket PR` はstackでも維持する。
+1 Issueを細切れのdurable PRへ分割するためだけにstackを使わない。
 
 ## Stack-ready execution
 
-Dependent ticket may start before the predecessor merges as long as a
-reviewable immutable predecessor commit SHA is pinned.
+predecessorがrelease branchへ未mergeでも、reviewable immutable snapshotが存在すればdependent ticketを開始してよい。
 
-Predecessor change -> downstream rebase / update -> affected
-validation re-run on the new SHA. Old green result does not
-transfer.
+開始時に少なくとも以下をpinする:
+
+- predecessor Issue/PR identity
+- predecessor commit SHA / immutable snapshot
+- common target release
+- immediate PR base
+
+predecessor reviewで変更が入った場合、downstreamをdependency orderでrebase/updateし、影響したrequired validationを再実行する。
+
+古いgreen resultを異なるSHAへ流用しない。
 
 ## Ready for review
 
-Move Draft to Ready only when:
+DraftからReady for reviewへ移す条件:
 
-- Acceptance criteria implemented
-- `pnpm run validate:fast` (or stronger) green on the current SHA
-- Blocking known problems resolved or explicitly scoped out
-- PR body / metadata reflects current implementation
-- Reviewer requested or absence documented
-- Target release / immediate predecessor staleness handled
-- Stack downstream branches reconciled when required
+- Issue acceptance criteriaを実装済み
+- current SHAに対するticket-level integration quality gateを実行済み
+- blocking known issueが解消済み、または明示的にscope外
+- PR description / assignee / labels / reviewer metadataが現在の実装と一致
+- required reviewerをrequest済み、または意味のあるreviewer不在を明記済み
+- target release branchまたはimmediate stack predecessorとのstaleness/conflictを処理済み
+- predecessor変更によるdownstream revalidationを処理済み
 
-## Landing / Done
+## Ticket landing / Done
 
-Issue Done = landed on target release trunk. Not merely merged into
-an intermediate predecessor branch.
+IssueのDone条件:
 
-Stack landing: from bottom of stack upward. Review the contiguous
-group together; reconcile each Issue / Project item after landing.
+- acceptance criteria satisfied
+- required CI/checks green for current landing candidate
+- blocking review resolved
+- release/stack staleness handled
+- ticket changesがtarget release trunkへland済み
+- linked Issue explicitly closed after successful trunk landing
+- GitHub Project status moved to Done
 
-Native GitHub stack semantics are platform-specific; the invariant is
-that Done means "changes on `release-x-y-z`", not "PR merged".
+independent ticketでは通常のticket PR mergeがそのままtarget release trunkへのlandingになる。ただしAgentがそのmergeを実行できるのは、このPRまたは明確に限定されたPR集合へのexplicit merge authorizationがある場合だけである。authorizationがなければDoneへ進めずready-to-mergeで停止する。
 
-## Release branch / Draft release PR
+native stacked PRでもstack landing自体がmerge authorization boundaryである。stack内の1 PRへのauthorizationを未指定のsibling / predecessor / successor PRへ拡張しない。
 
-Release branch created at sprint start. Zero-diff release branches
-cannot have a PR on GitHub; that is the only Draft-PR exception.
+native stacked PRでは、stackはbottom（trunkに最も近いPR）からlandingする。選択したstacked PRをmergeすると、そのPRと未mergeのlower PRがcontiguous groupとしてtarget release trunkへlandする。したがってlanding前に、実際のcontiguous landing setに含まれる各PRへのexplicit authorizationが存在するか、またはその集合全体を明示的に限定したbounded stack authorizationが存在することを確認する。selected PRだけへのauthorizationしかない状態でlower PRを含むnative stack landingを実行してはならない。mid-stack PRだけをintermediate predecessor branchへ孤立してmergeしたものをDone boundaryとして扱わない。
 
-When the release branch first contains a meaningful integrated
-difference, immediately open a Draft release PR with:
+native stack landingを使えずordinary nested PRへfallbackする場合、例えば `124 -> 123` の通常mergeはintermediate integrationにすぎない。#124のchangesがtarget `release-x-y-z` へ到達するまでIssue #124をclose/Doneにしない。
 
-- Release goal
-- Included Issues / ticket PRs
-- Breaking changes
-- Migration notes
-- Validation status
-- Known limitations
-- Version / release metadata
+contiguous stack groupまたはstack全体を一括landingする場合、含まれるすべてのticketが個別にacceptance criteria / review / current-SHA validationを満たしていることを確認する。landing後に各Issue/Project stateを明示的にreconcileする。
 
-## Release PR
+`main`へのmergeをIssue単位のDone条件にはしない。Issue Done boundaryはtarget release trunkである。
 
-`release-x-y-z -> main` is the only path to update `main` once the
-repository is public and `main` is protected. Run the full
-`validate:release` entry point first.
+GitHubのclosing keywordはdefault branch向けPRでのみ自動closeに使えるため、release trunkへのlanding成功確認後にCoordinatorまたはdelivery automationがIssueを明示的にcloseする。
 
-### Release PR merge human gate (canonical rule)
+## Release PR merge human gate (canonical rule)
 
 The repository owner is the sole authority that can approve a
 release PR merge, the release tag push, and the GitHub Release
@@ -223,25 +353,84 @@ hardening after 0.1.0` governance ticket). The rule cannot be
 strengthened in a single autonomous pass without an interim human
 check.
 
-## Public repository main protection
+## Release integration
 
-When the remote is created as public, the initializer MUST:
+release branchは複数ticketの統合結果を保持するsprint integration lineである。
 
-1. Add a branch protection / ruleset on `main` that disallows direct
-   push, web edit, force push, deletion, and requires PR + required
-   checks.
-2. If branch protection cannot enforce a head-branch pattern, add a
-   required status check / GitHub Action that rejects `base == main`
-   unless `head` matches `release-*` and the intended target release.
+release branchはsprint開始時に作成する。GitHubは`main`と差分がない状態ではPRを作れないため、release branchに最初のmeaningful integrated differenceが入った直後にDraft release PRを作成する。zero-diff release branchだけはDraft PR invariantの例外である。
 
-If the initializer lacks permission, the missing protection is
-reported as a blocker in `docs/release.md` and as a GitHub Issue.
+Draft release PRにもassignee / reviewer / labels / release goal / included Issuesを設定し、release期間中維持する。validationのmutable stateはGitHub checks等のcanonical surfaceで追跡し、PR proseにはrelease判断に必要な意味だけを書く。
+
+release完了前にrelease branch上でfull applicable quality gateを実行する。
+
+release PR:
+
+`release-x-y-z -> main`
+
+最低限:
+
+- release goal
+- included Issues/PRs
+- breaking changes
+- migration notes
+- release判断に必要なverification scope / evidence
+- durable known limitations
+- version/release metadata
+
+public repositoryでは`main` protectionにより、このrelease PR以外の経路で`main`を更新できない状態を維持する。
+
+release gate成功はrelease PRをready-to-mergeにするquality evidenceであり、Agentへのmerge authorizationではない。explicit release-merge authorizationがなければ、release PRをReadyにできる状態まで整えて停止し、current head SHA / release gate / blockersを報告する。authorizationがある場合だけmergeを実行する。
+
+release PRがmergeされた時点で `main` がそのversionのreleased source stateになる。
+
+## Version / tag-triggered release consistency
+
+versionはSemantic Versioning `MAJOR.MINOR.PATCH` をcanonical formとする。external ecosystem上の明確な理由がない限り省略形式を使わない。
+
+tag pushをpublish/release triggerとして使用するprojectでは、tag versionとauthoritative package/project versionを必ず一致させる。
+
+例:
+
+- tag: `v1.4.2`
+- authoritative version: `1.4.2`
+
+release automationは不一致を自動修正して続行せずfailする。
+
+conditional minimum sequence:
+
+1. tag format validation
+2. semantic version extraction
+3. authoritative version comparison
+4. current release SHAに対するfull applicable release gate
+5. release build/package
+6. successful validation後のみpublish/release
+
+複数release unitを持つprojectではauthoritative version sourceまたはunitごとのversion policyを明示する。
+
+weekly release branch modelとtag releaseは競合しない。release branch/PRがsource delivery、tag/publishがartifact deliveryに使われる場合、両者が同じintended version/SHAを指すことを検証する。
+
+## Multi-agent integration
+
+- 1 top-level Issue = 1 ticket branch = 1 ticket PRを基本とする。
+- independent ticket PR base = target `release-x-y-z`。
+- stacked dependent ticket PR base = immediate predecessor ticket branch。
+- all stack members share one target release trunk。
+- implementation workerはticket branchを複数agentで直接共有しない。
+- nested workerはresolved immutable identityへpinされたcommit/ref resultを返す。
+- durable branchを作るworker/subagentにはremote publication + Draft PR creation / metadata contractも適用する。
+- Coordinator/Supervisorだけがshared durable integration stateへ順序立てて統合する。
+- merge/landing前にtarget release / predecessor / current validation SHAを確認する。
+- Doneへ移す前にactual target release trunk上のlandingを確認する。
+- public repositoryでは`main` protection/rulesetとrelease-only main merge checkを初期化・検証する。
 
 ## Language policy
 
-- Issue title / body: 日本語
-- PR title / body / review discussion: 日本語
-- Commit message: English
-- Source code: English
-- Internal planning docs: 日本語
-- Branch name: identifier / version only
+- Issue title/body: 日本語
+- PR title/body/review discussion: 日本語
+- internal planning docs: 日本語
+- commit message: 英語
+- source code: 英語
+
+commit format:
+
+`<work-prefix>: <extremely concise title>`

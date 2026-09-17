@@ -93,8 +93,11 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
   `build-storybook`)
 - `pnpm run validate:release` — pre-`main` verification.
-  (`validate:integration` + `cf-typegen:check` + Playwright E2E on
-  release-only triggers)
+  (`validate:integration` + `cf-typegen:check`)
+
+Playwright E2E is a separate CI step on pushes to `main` / `release-*`
+and on PRs with the `ui-change` label; it is not part of the local
+`validate:release` command.
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are

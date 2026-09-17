@@ -1,4 +1,7 @@
 {
+	"[javascript][javascriptreact][typescript][typescriptreact][json][jsonc]": {
+		"editor.defaultFormatter": "biomejs.biome"
+	},
 	"files.associations": {
 		"wrangler.json": "jsonc"
 	}

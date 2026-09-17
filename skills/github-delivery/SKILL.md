@@ -318,6 +318,41 @@ contiguous stack groupまたはstack全体を一括landingする場合、含ま�
 
 GitHubのclosing keywordはdefault branch向けPRでのみ自動closeに使えるため、release trunkへのlanding成功確認後にCoordinatorまたはdelivery automationがIssueを明示的にcloseする。
 
+## Release PR merge human gate (canonical rule)
+
+The repository owner is the sole authority that can approve a
+release PR merge, the release tag push, and the GitHub Release
+publication. This rule exists because an autonomous agent must not
+have unilateral control over the moment a release becomes canonical.
+
+**Agents MAY:**
+
+- Create and update the release PR.
+- Run `pnpm run validate:release` and any other local / CI
+  validation gate.
+- Surface "CI green, release-ready" status to the repository owner
+  and request explicit approval to proceed.
+
+**Agents MUST NOT, without explicit human approval in the current
+interaction:**
+
+- Merge the release PR (`release-x-y-z -> main`).
+- Push the release tag (`git push origin v<version>`).
+- Create the GitHub Release (`gh release create v<version>`).
+
+"CI is green", "release-ready", an existing release plan, or any
+prior approval in an earlier interaction does NOT constitute merge
+approval. The approval must be given in the same interaction in
+which the merge / tag / Release would otherwise happen. The agent
+MUST stop before each of those three operations and wait for the
+repository owner's explicit go-ahead.
+
+**Self-application:** This rule applies even to autonomous edits
+that tighten the rule itself (for example, the `Release workflow
+hardening after 0.1.0` governance ticket). The rule cannot be
+strengthened in a single autonomous pass without an interim human
+check.
+
 ## Release integration
 
 release branchは複数ticketの統合結果を保持するsprint integration lineである。

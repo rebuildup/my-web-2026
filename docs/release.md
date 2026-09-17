@@ -37,8 +37,11 @@
 9. Open / update the Draft release PR (`release-x-y-z -> main`) once
    the branch has any meaningful integrated difference.
 10. Merge the release PR (only after `main` protection / ruleset
-    allows it).
-11. Tag the merged commit with `v<version>`.
+    allows it AND the repository owner has given explicit human
+    approval in the current interaction — see the Release PR
+    merge human gate above).
+11. Tag the merged commit with `v<version>` (also gated by the
+    human approval rule above).
 12. Re-plan any unfinished tickets for the next sprint.
 
 ## Repository visibility
@@ -49,38 +52,49 @@
 
 ## Public repository main protection checklist
 
-When visibility is `public`:
+When visibility is `public`, `main` MUST be protected by a ruleset
+that enforces the following. As of v0.1.0 (2026-09-11) all items
+below are in place; ruleset id `#22942689` (`main-protection`).
 
-- [ ] Branch protection / ruleset on `main` exists.
-- [ ] Direct push disabled.
-- [ ] Force push disabled.
-- [ ] Deletion disabled.
-- [ ] PR required for any change.
-- [ ] Required status checks: `validate` (PR); on `release-* -> main`
-      the additional `cf-typegen check` step inside the same `validate`
-      job must pass.
-- [ ] `release-* -> main` only is enforced (either by ruleset pattern
-      or by a required status check).
-- [ ] Required reviews: at least one (operator can self-review until a
-      second maintainer is added).
+- [x] Branch protection / ruleset on `main` exists.
+- [x] Direct push disabled.
+- [x] Force push disabled (`non_fast_forward` rule).
+- [x] Deletion disabled (`deletion` rule).
+- [x] PR required for any change (`pull_request` rule).
+- [x] Required status check `validate` on every PR; on push to
+      `release-*` the additional `cf-typegen check` step and
+      Playwright E2E (with the `ui-change` label gate on PR) must
+      pass.
+- [x] `release-* -> main` only is enforced via the head-ref
+      policy check in `.github/workflows/ci.yml` (PRs into `main`
+      whose `head_ref` does not match `^release-` fail the check).
+- [x] Required review count: **zero** (`required_approving_review_count: 0`).
+      Solo-development repos cannot use the repository owner as a
+      required approver because GitHub does not count the PR
+      author's own review. The release-PR human gate (see below)
+      is the explicit approval mechanism instead.
 
-These boxes intentionally start **unchecked** at 0.1.0 RC. They become
-checkable only after the operator runs the GitHub UI / `gh` commands
-documented in `docs/backlog-0.1.0.md#008-github-delivery-setup`. Until
-that happens, this checklist is the **target state**, not the current
-state — a doc that claims the ruleset exists while GitHub returns 0
-rulesets is dangerous.
+### Release PR merge human gate
 
-### Bootstrap exception (0.1.0 RC only)
+The repository owner is the sole authority that can approve a
+release PR merge, the release tag push, and the GitHub Release
+publication. See
+[`skills/github-delivery/SKILL.md#release-pr-merge-human-gate-canonical-rule`](../skills/github-delivery/SKILL.md)
+for the canonical wording. Agents MUST stop before any of those
+three operations and surface the readiness status for explicit
+human approval. This rule is codified in AGENTS.md §6 and was
+introduced after the v0.1.0 retrospective.
 
-The eight Foundation cleanup commits on `release-0-1-0` were formed
+### Bootstrap exception (0.1.0 RC only, historical)
+
+The foundation cleanup commits on `release-0-1-0` were formed
 **directly on the release branch** without an Issue / Draft PR /
-ticket branch. This is a documented one-time exception during the
+ticket branch. This was a documented one-time exception during the
 bootstrap of a new public repository: there were no Issues, no PRs,
-and no rulesets yet, so the canonical Issue-driven flow could not be
-followed. From 0.2.0 onward **every commit lands through the canonical
-flow**, starting with the `0.1.0 release reconciliation` Issue that
-drives #009 (CI green, real Cloudflare smoke, `v0.1.0` tag).
+and no rulesets yet, so the canonical Issue-driven flow could not
+be followed. From 0.2.0 onward **every commit lands through the
+canonical flow**; the v0.1.0 reconciliation was driven by Issue #1
+(`0.1.0 release reconciliation`).
 
 ## 0.1.0 Foundation backlog
 

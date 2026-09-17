@@ -70,12 +70,13 @@ mega-folder.
 
 ## 4. Cloudflare services policy
 
-Only the resources declared in `wrangler.jsonc` exist. At 0.1.0 that
-is:
+Only the resources declared in `wrangler.jsonc` exist. As of v0.1.0
+that is:
 
 - Static Assets binding (`ASSETS`).
-- D1 binding (`DB`, placeholder database id — replace on first deploy).
-- R2 binding (`MEDIA`, placeholder bucket — create on first deploy).
+- D1 binding (`DB`, `database_name: my-web-2026`,
+  `database_id: d761ddb7-8179-48dd-855f-c8b7b2924bad`, APAC).
+- R2 binding (`MEDIA`, `bucket_name: my-web-2026`, Standard).
 
 Every additional service (KV, Queues, Durable Objects, Workflows,
 Vectorize, Workers AI) requires its own ticket and ADR entry, and
@@ -88,9 +89,15 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `typecheck` + `test`)
 - `pnpm run validate:integration` — ticket PR verification.
-  (`validate:fast` + `build` + `wrangler:dry-run`)
+  (`validate:fast` + `build` + `wrangler:dry-run` + `lint:ci`
+  (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
+  `build-storybook`)
 - `pnpm run validate:release` — pre-`main` verification.
-  (`validate:integration` + `cf-typegen`)
+  (`validate:integration` + `cf-typegen:check`)
+
+Playwright E2E is a separate CI step on pushes to `main` / `release-*`
+and on PRs with the `ui-change` label; it is not part of the local
+`validate:release` command.
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are
@@ -116,6 +123,17 @@ hide validation logic inside workflow YAML. Coverage thresholds are
   allows it).
 - Stack landing: ticket Done = landed on target release trunk, not
   merely merged into an intermediate predecessor branch.
+- **Release PR merge human gate**: agents MAY create and update the
+  release PR, run validation, and report release readiness. Agents
+  MUST NOT merge the release PR, push the release tag, or publish
+  the GitHub Release without explicit human approval from the
+  repository owner in the current interaction. "CI is green",
+  "release-ready", or any pre-approved plan does NOT constitute
+  merge approval. This applies even when the agent is implementing
+  the rule itself (the rule cannot be tightened in a single
+  autonomous pass without an interim human check). See
+  `skills/github-delivery/SKILL.md` for the canonical wording and
+  scope.
 - See `skills/github-delivery/SKILL.md` for the full procedure.
 
 ## 7. Recovery

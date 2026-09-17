@@ -11,3 +11,7 @@ export { Card } from './components/Card';
 export type { CardProps } from './components/Card';
 export { Badge } from './components/Badge';
 export type { BadgeProps } from './components/Badge';
+export { Container } from './components/Container';
+export type { ContainerProps } from './components/Container';
+export { SectionHeading } from './components/SectionHeading';
+export type { SectionHeadingProps } from './components/SectionHeading';

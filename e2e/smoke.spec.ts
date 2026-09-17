@@ -42,3 +42,59 @@ test.describe('deployed Worker smoke', () => {
 		expect(body.status).toBe('key_not_found');
 	});
 });
+
+/**
+ * Home page composition (Issue #21).
+ *
+ * Verifies the four canonical sections render with the required
+ * landmarks and the single `<h1>` invariant. Skips assertions on
+ * exact prose so Japanese / English copy can land in any ticket
+ * without breaking this smoke.
+ */
+test.describe('home page composition', () => {
+	test('renders the four sections and the canonical h1', async ({ page }) => {
+		await page.goto('/');
+
+		// Single h1 invariant.
+		const h1 = page.locator('h1');
+		await expect(h1).toHaveCount(1);
+		await expect(h1).toHaveText(/my-web-2026/);
+
+		// Four sections, in order, all anchored by aria-labelledby.
+		const sections = page.locator('section[aria-labelledby]');
+		await expect(sections).toHaveCount(2);
+		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
+		await expect(sections.nth(1)).toHaveAttribute(
+			'aria-labelledby',
+			/capabilities-heading|status-heading/,
+		);
+
+		// Landmarks: banner / main / contentinfo.
+		await expect(page.locator('main#main')).toBeVisible();
+		await expect(page.locator('footer')).toBeVisible();
+
+		// Skip-to-content link is rendered before <main>.
+		await expect(page.locator('a[href="#main"]')).toHaveCount(1);
+	});
+
+	test('renders the capabilities grid with three planned cards', async ({ page }) => {
+		await page.goto('/');
+		const capabilities = page.locator('section[aria-labelledby="capabilities-heading"] article');
+		await expect(capabilities).toHaveCount(3);
+		// Each card has a "planned" badge in 0.2.0.
+		const badges = page.locator(
+			'section[aria-labelledby="capabilities-heading"] article >> text=planned',
+		);
+		await expect(badges).toHaveCount(3);
+	});
+
+	test('renders the system status section with three services', async ({ page }) => {
+		await page.goto('/');
+		const rows = page.locator('section[aria-labelledby="status-heading"] dl > div');
+		await expect(rows).toHaveCount(3);
+		// The observed-at footer line is rendered.
+		await expect(
+			page.locator('section[aria-labelledby="status-heading"] >> text=observed at'),
+		).toBeVisible();
+	});
+});

@@ -3,10 +3,8 @@ import { SectionHeading } from './SectionHeading';
 
 /**
  * SectionHeading establishes the section rhythm used across the
- * Marketing layout family. The `default` variant exercises different
- * eyebrow / description combinations; the `spread` variant exercises
- * the editorial 2-column layout that the body sections below the
- * hero use, with a `children` slot for the section's own content.
+ * Marketing layout family. Each story exercises a different eyebrow /
+ * description / children combination.
  */
 const meta = {
 	title: 'editorial/SectionHeading',
@@ -41,14 +39,12 @@ export const WithIdForAria: Story = {
 	},
 };
 
-export const Spread: Story = {
+export const WithChildren: Story = {
 	args: {
-		id: 'spread-demo',
-		eyebrow: 'Spread variant',
-		title: 'Editorial spread / 大見出しパターン',
-		description:
-			'左 sticky に 4xl の大見出しを置き、右カラムに eyebrow / description / children を流すパターン。',
-		variant: 'spread',
+		id: 'children-demo',
+		eyebrow: 'With children',
+		title: 'children スロット',
+		description: 'Section の中身 (cards / list / table) は children 経由でここへ。',
 		children: (
 			<div
 				style={{

@@ -17,20 +17,32 @@ export interface CapabilitiesGridProps {
  * without any single CTA. When a capability flips to `live`, its
  * block becomes the only interactive surface in the section.
  *
- * From Issue #31 the section adopts the editorial-spread layout
- * with proximity-based grouping. The block has no border, no
- * background fill, and no padding box — semantic closeness alone
- * groups the capability label, status, ordinal decoration, and
- * summary paragraphs. A small `bg.surface`-stripped `<article>`
- * still anchors DOM semantics for assistive tech, but visually it
- * is invisible; the gap-* between siblings carries the rhythm.
+ * Issue #31 — proximity revision. The card has no `gap` on the
+ * parent; each child carries its own `marginBlockStart` to encode
+ * the semantic relationship:
+ *
+ * - h3 + badge (header row): flex baseline, no margin — one
+ *   title cluster.
+ * - h3 ↔ ordinal caption: 1 (4px) — the ordinal is a decoration
+ *   on the title, not a separate line.
+ * - ordinal ↔ JP summary: 4 (16px) — cluster separator. The
+ *   ordinal ends and the body block begins.
+ * - JP summary ↔ EN summary: 1 (4px) — translation pair, one
+ *   thought in two languages.
+ *
+ * Between cards the grid uses `rowGap: 8` (32px) so the eye reads
+ * them as discrete items rather than continuous prose.
+ *
+ * The block has no border, no background fill, and no padding box —
+ * semantic closeness alone groups the capability label, status,
+ * ordinal decoration, and summary paragraphs.
  */
 export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 	return (
 		<section
 			aria-labelledby="capabilities-heading"
 			className={css({
-				paddingBlock: { base: '16', lg: '20' },
+				paddingBlock: { base: '12', lg: '16' },
 			})}
 		>
 			<Container>
@@ -39,7 +51,6 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 					eyebrow="01 — Capabilities"
 					title="できごと / What's here"
 					description="個人 Platform の機能領域。0.2.0 時点ではまだどれも未公開で、順に組み立てていく。"
-					variant="spread"
 				>
 					<ul
 						className={css({
@@ -48,8 +59,8 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 								base: '1fr',
 								md: 'repeat(2, minmax(0, 1fr))',
 							},
-							rowGap: '12',
-							columnGap: { base: '0', md: '8' },
+							rowGap: '8',
+							columnGap: { base: '0', md: '6' },
 							margin: '0',
 							padding: '0',
 							listStyle: 'none',
@@ -63,7 +74,6 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 									className={css({
 										display: 'flex',
 										flexDirection: 'column',
-										gap: '4',
 									})}
 								>
 									<header
@@ -94,6 +104,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 									<span
 										aria-hidden="true"
 										className={css({
+											marginBlockStart: '1',
 											fontFamily: 'mono',
 											fontSize: 'sm',
 											color: 'text.muted',
@@ -105,6 +116,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 									<p
 										className={css({
 											margin: '0',
+											marginBlockStart: '4',
 											fontFamily: 'sans',
 											fontSize: 'md',
 											color: 'text.muted',
@@ -116,6 +128,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 									<p
 										className={css({
 											margin: '0',
+											marginBlockStart: '1',
 											fontFamily: 'sans',
 											fontSize: 'sm',
 											color: 'text.muted',

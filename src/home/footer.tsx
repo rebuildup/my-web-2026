@@ -21,8 +21,7 @@ export function Footer() {
 	return (
 		<footer
 			className={css({
-				paddingBlock: { base: '16', lg: '20' },
-				marginBlockStart: { base: '12', lg: '20' },
+				paddingBlock: { base: '10', lg: '14' },
 			})}
 		>
 			<Container>

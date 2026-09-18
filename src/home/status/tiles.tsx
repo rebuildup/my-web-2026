@@ -46,18 +46,21 @@ function statusFor(
  * server loader so visitors see the same freshness on every
  * request that hit the same SSR snapshot.
  *
- * From Issue #31 the section adopts the editorial-spread layout
- * with proximity-based grouping. Rows are separated by vertical
- * whitespace instead of horizontal hairline rules — closeness alone
- * groups the binding name, the description, and the badge within
- * each row.
+ * Issue #31 — proximity revision. Rows are separated by `gap: 8`
+ * alone (no hairline rules). Inside each row the layout is a 3-column
+ * grid at `md` (label / description / badge) and a vertical stack at
+ * `base` with `marginBlockStart: 2` (8px) between the `dt` and `dd`
+ * — the binding name and the detail read as adjacent pairs.
+ *
+ * The `dl` carries `gap: 8` between rows so each service reads as
+ * a discrete cluster rather than continuous prose.
  */
 export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps) {
 	return (
 		<section
 			aria-labelledby="status-heading"
 			className={css({
-				paddingBlock: { base: '16', lg: '20' },
+				paddingBlock: { base: '12', lg: '16' },
 			})}
 		>
 			<Container>
@@ -66,7 +69,6 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 					eyebrow="02 — System status"
 					title="プラットフォームの状態 / Platform health"
 					description="各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。"
-					variant="spread"
 				>
 					<dl
 						className={css({

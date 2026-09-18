@@ -244,71 +244,84 @@
   | `sm` | 14 | mono caption, body-supporting copy |
   | `md` | 16 | body |
   | `lg` | 18 | subhead, footer identity |
-  | `xl` | 24 | card h3 |
-  | `2xl` | 32 | h2 at base width |
-  | `3xl` | 40 | display (Hero h1 / spread h2 / footer `04`) |
+  | `xl` | 24 | card h3, body h2 |
+  | `2xl` | 32 | (reserved) |
+  | `3xl` | 40 | display (Hero h1, footer `04`) |
 
-  Three sites share `3xl`; the previous wider tiers had no second
-  consumer once the proximity revision landed.
+  One site carries `3xl` after the spread-removal revision;
+  promoting it to two non-trivial consumers is a future ticket.
 
-- **`SectionHeading` spread variant**: title climbs to `2xl` at
-  base, `3xl` at `lg` (one tier below the original `4xl`). The
-  sticky-left behavior is dropped — sticky was necessary when the
-  title was the visual anchor for a wider screen, but in the
-  proximity layout the title sits at the top of its column and the
-  reader meets it before any content scrolls past. Eyebrow moves
-  from accent `xs` to muted `sm` (14px) so proximity — not
-  emphasis — carries the hierarchy.
+- **`SectionHeading` drops the `spread` variant entirely**. The
+  spread layout — left column heading + right column content —
+  created wasted left-column space whenever the content column
+  was taller than the heading. The page now uses a single
+  column inside `Container`: header cluster (eyebrow / h2 /
+  description) followed by section content.
+
+- **Hero drops the asymmetric 2-column grid**. The Hero is a
+  single column inside `Container` with `maxWidth: 720px` so the
+  measure stays in the 60–70 character window. The metadata rail
+  (edition / my-web-2026 · 2026 Preview / v0.2.0 · MIT) sits
+  below the CTAs as a tight inline footer (3 mono lines,
+  `gap: 1`). It is no longer a parallel column.
+
+- **Per-element `marginBlockStart` encodes semantic proximity**.
+  No parent uses `gap` to space its children. Each child carries
+  its own top margin so the proximity rule lives next to the
+  element that uses it:
+
+  | Relationship | marginBlockStart | Role |
+  | --- | --- | --- |
+  | caption ↔ h1 (Hero) | `2` (8px) | identity cluster |
+  | h1 ↔ lead body (Hero) | `5` (20px) | cluster separator |
+  | lead body ↔ secondary (Hero) | `0` | continuous prose |
+  | secondary ↔ CTAs (Hero) | `4` (16px) | body block close |
+  | CTAs ↔ metadata rail (Hero) | `8` (32px) | footnote separator |
+  | eyebrow ↔ h2 (SectionHeading) | `2` (8px) | heading cluster |
+  | h2 ↔ description (SectionHeading) | `3` (12px) | kicker |
+  | description ↔ children (SectionHeading) | `6` (24px) | body block start |
+  | h3 ↔ ordinal (Capability) | `1` (4px) | decoration on title |
+  | ordinal ↔ JP summary (Capability) | `4` (16px) | cluster separator |
+  | JP summary ↔ EN summary (Capability) | `1` (4px) | translation pair |
 
 - **Capability cards**: drop `border`, `borderRadius`, `bg.surface`,
-  and `padding` from each card. The card is now a raw flex stack
-  with `gap: 4`: title + badge → mono caption (`01 · Portfolio`)
-  → JP summary → EN summary. The status badge is the only non-text
-  element; everything else is type. Section padding climbs from
-  `12` to `16-20` so the section sits in its own visual beat.
+  and `padding` from each card. The card is a raw flex column with
+  per-element `marginBlockStart`. The status badge is the only
+  non-text element.
 
 - **Status rows**: drop `border-block-start` hairlines between
-  rows. Rows are separated by the `gap: 8` on the wrapping `dl`.
-  `dt` moves from mono `sm` to sans `lg` / `font-weight: 700` so
-  service names read at the body-emphasis tier; the binding still
-  renders adjacent in mono `sm` and the badge still anchors the
-  right edge. The row itself becomes a 3-column grid that reads
-  top-to-bottom at `base` and side-by-side at `md`.
+  rows. Rows are separated by `gap: 8` on the wrapping `dl`.
+  `dt` is sans `lg` / `font-weight: 700`; the binding renders
+  adjacent in mono `sm` and the badge anchors the right edge.
 
-- **Hero aside**: drop the bordered metadata card. The rail is now
-  three raw `<span>`s — mono `sm` / muted — in a flex column with
-  `gap: 1`. Proximity alone groups the three lines.
-
-- **Hero secondary button**: drop the bordered-button look. The
-  GitHub link becomes a plain accent text link with an arrow
-  marker (`GitHub でソースを見る →`). The primary 2025 edition
-  button stays filled; the secondary follows the reference site's
-  "one solid CTA per section, the rest is text" rule.
+- **Hero aside** and **secondary button**: the bordered metadata
+  card and the bordered secondary button are gone. The metadata
+  rail is raw mono text; the secondary CTA is a plain accent link
+  with an arrow marker.
 
 - **Section dividers**: drop entirely. Every `border-block-start`
   rule on the body sections and the footer is gone. Whitespace
   alone separates Hero → Capabilities → Status → Footer.
 
-- **Footer**: drop the `2fr / 3fr / 3fr` boxed grid. The footer
-  keeps the 3-column composition but loses every border, including
-  the top divider. The `04` decoration sits at `3xl`, the same
-  tier as the spread section heading and the hero display, so the
-  page reads with a single display voice.
+- **Footer**: drop the top divider and any column borders. The
+  3-column composition (`2fr / 3fr / 3fr`) is kept; the `04`
+  decoration sits at `3xl`; columns stack to single column at
+  `base`.
 
 ### What was deliberately not changed
 
 - **No proximity-as-a-primitive**. The proximity rule is a
-  caller-side decision: each section picks its own `gap-*` values
-  to set the rhythm between sibling rows. A `<ProximityStack>`
-  primitive would hide the rhythm choice from the design system
-  and create a one-purpose abstraction (`token-audit` §4).
+  caller-side decision: each section picks its own
+  `marginBlockStart` values to set the rhythm between sibling
+  rows. A `<ProximityStack>` primitive would hide the rhythm
+  choice from the design system and create a one-purpose
+  abstraction (`token-audit` §4).
 - **No `motion-system` entry transition**. The proximity revision
   doesn't add motion to compensate for the visual simplicity; it
   relies on whitespace carrying the hierarchy.
-- **No removed `gap-*` tokens**. The proximity revision only *uses*
-  larger gaps (`8`, `12`, `16`, `20`) more deliberately; it does
-  not change the gap scale itself. If a future ticket needs a gap
-  larger than `20`, that's a separate token promotion.
+- **No `Container` size variants**. The shared coordinate system
+  stays at 1024px (`md`); the Hero constrains itself with
+  `maxWidth: 720px` instead of requesting a wider container.
 - **No relaxed `lineHeight`**. Display `lineHeight: 1.1` stays.
   Proximity is not a substitute for tight display rhythm — the two
   work together.
@@ -320,6 +333,14 @@
   perceives them as a group — without borders or backgrounds. The
   reference site leans on this exclusively; the bordered
   editorial-spread second pass was overdesigned.
+- **Per-element `marginBlockStart` (the implementation)**: a parent
+  `gap` gives every sibling the same relationship. Semantic
+  proximity needs *different* relationships — identity cluster
+  (tight), cluster separator (loose), continuous prose (zero),
+  footnote (separated). Encoding the relationship on each child
+  keeps the rule next to the element that uses it, so editing the
+  Hero's rhythm does not accidentally retune the Status section's
+  rhythm.
 - `typesetting` §6: at `3xl` (40px) the headline reads as a
   section identifier. The original `4xl` (48px) added visual
   weight without adding information; dropping it makes the section
@@ -327,12 +348,12 @@
 - `token-audit` §3-4: every primitive must have at least two
   non-trivial consumers. `4xl` had two consumers (spread heading +
   capability h3), but the proximity revision moved h3 back to `xl`
-  so `4xl` lost its second consumer and got dropped. The same
-  logic drops `5xl`.
+  and dropped the spread heading to `xl` too, so `4xl` lost its
+  second consumer and was dropped. The same logic drops `5xl`.
 - `responsive-design` §Editorial rhythm: editorial surfaces stay
   readable at 200% zoom and at 320 CSS px. Proximity scales
-  naturally — `gap-*` increases proportionally with the type
-  scale; borders would have to be re-drawn.
+  naturally — `marginBlockStart` values increase proportionally
+  with the type scale; borders would have to be re-drawn.
 - `accessibility-audit` §Reflow: proximity doesn't break reflow.
   Borders did — at 200% zoom the 1px borders became 2px and the
   card grid became busy with thick black underlines.
@@ -341,3 +362,41 @@
   box) at once. The proximity revision asks for one channel. The
   reader spends less cognitive effort identifying what belongs
   together.
+
+## Editorial proximity — second iteration (Issue #31, fourth pass)
+
+> The third pass landed semantic proximity *within* clusters but
+> the spread layout was still pulling the section headings into a
+> separate left column while content piled up in the right column.
+> The left column sat empty below each h2, producing the "vertically
+> over-stretched" feeling the section-review feedback called out.
+> Even though the per-element gaps were semantic, the spread's
+> wasted white space dominated the read.
+
+### What changed
+
+- **`SectionHeading` becomes single-column again**. The `spread`
+  variant is removed; the primitive renders as
+  eyebrow → h2 → description → children stacked vertically. The
+  previous `default` layout was already this — the third pass
+  added `spread` on top, the fourth pass removes it.
+- **Hero becomes single-column**. The asymmetric 7fr/3fr grid (and
+  later the flipped 2fr/5fr grid) is dropped; the Hero is a single
+  flex column with `maxWidth: 720px`. The metadata rail moves
+  below the CTAs as a tight inline footer instead of a parallel
+  column.
+- **Section padding lands at 12/16**. Hero at 10/14, body sections
+  at 12/16, footer at 10/14. The Hero gets slightly less padding
+  because it leads the page and the breathing room above it is the
+  viewport edge; body sections need a more deliberate top/bottom
+  margin so the reader registers each section as its own beat.
+
+### What was deliberately not changed
+
+- **Semantic per-element `marginBlockStart` stays**. The proximity
+  values (2/3/4/5/6/8) encode the same cluster relationships as
+  the third pass; only the parent layouts (spread grid → single
+  column) change.
+- **The 7-step type scale stays**. `3xl` is the only display tier;
+  three sites would share it before promotion but only one exists
+  today. The scale is honest about its evidence base.

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { HomePage } from './HomePage';
-import type { HomePageData } from '../model';
+import { HomePage } from './composer';
+import type { HomePageData } from './composer';
 
 /**
  * HomePage composition stories. The component is purely a function

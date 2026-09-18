@@ -1,30 +1,27 @@
 import { createFileRoute } from '@tanstack/react-router';
-import { CAPABILITIES, SYSTEM_SERVICES, getHomeSystemStatus } from '../modules/home';
-import { HomePage } from '../modules/home/ui';
+import {
+	CAPABILITIES,
+	SYSTEM_SERVICES,
+	getHomeSystemStatus,
+	HomePage,
+} from '../home/public';
 
 /**
- * Landing route.
+ * TanStack Start route binding for the canonical home surface.
  *
- * 0.1.0 Foundation rendered a boot-smoke view. From 0.2.0 the
- * page is owned by the `home` capability module under
- * `src/modules/home/`. This file stays thin: it owns the route
- * definition and the loader composition only. Composition lives in
- * `<HomePage>`.
+ * Routing is framework-owned here; page composition and its data
+ * obligations live under src/home/.
  */
 export const Route = createFileRoute('/')({
-	loader: async () => {
-		const statuses = await getHomeSystemStatus();
-		return {
-			capabilities: CAPABILITIES,
-			services: SYSTEM_SERVICES,
-			statuses,
-			observedAt: new Date().toISOString(),
-		};
-	},
+	loader: async () => ({
+		capabilities: CAPABILITIES,
+		services: SYSTEM_SERVICES,
+		statuses: await getHomeSystemStatus(),
+		observedAt: new Date().toISOString(),
+	}),
 	component: HomeRoute,
 });
 
 function HomeRoute() {
-	const data = Route.useLoaderData();
-	return <HomePage data={data} />;
+	return <HomePage data={Route.useLoaderData()} />;
 }

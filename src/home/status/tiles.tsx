@@ -1,11 +1,11 @@
-import { Badge } from '../../../design-system/components/Badge';
-import { Container } from '../../../design-system/components/Container';
-import { SectionHeading } from '../../../design-system/components/SectionHeading';
-import { css } from '../../../../styled-system/css';
-import type { SystemService, SystemServiceHealth, SystemServiceStatus } from '../model';
-import { HEALTH_LABEL } from '../server';
+import { Badge } from '../../editorial/primitives/Badge';
+import { Container } from '../../editorial/primitives/Container';
+import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { css } from '../../../styled-system/css';
+import type { SystemService, SystemServiceHealth, SystemServiceStatus } from './health';
+import { HEALTH_LABEL } from './health';
 
-export interface SystemStatusSectionProps {
+export interface StatusTilesProps {
 	services: readonly SystemService[];
 	statuses: readonly SystemServiceStatus[];
 	observedAt: string;
@@ -39,14 +39,14 @@ function statusFor(
 }
 
 /**
- * SystemStatusSection — third section of the home page.
+ * StatusTiles — third section of the home page.
  *
  * Renders one row per registered service with its binding name and
  * the latest health read. The observed-at timestamp comes from the
  * server loader so visitors see the same freshness on every
  * request that hit the same SSR snapshot.
  */
-export function SystemStatusSection({ services, statuses, observedAt }: SystemStatusSectionProps) {
+export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps) {
 	return (
 		<section
 			aria-labelledby="status-heading"

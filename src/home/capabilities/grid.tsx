@@ -1,15 +1,15 @@
-import { Badge } from '../../../design-system/components/Badge';
-import { Container } from '../../../design-system/components/Container';
-import { SectionHeading } from '../../../design-system/components/SectionHeading';
-import { css } from '../../../../styled-system/css';
-import type { Capability } from '../model';
+import { Badge } from '../../editorial/primitives/Badge';
+import { Container } from '../../editorial/primitives/Container';
+import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { css } from '../../../styled-system/css';
+import type { Capability } from './capability';
 
-export interface CapabilitiesSectionProps {
+export interface CapabilitiesGridProps {
 	capabilities: readonly Capability[];
 }
 
 /**
- * CapabilitiesSection — second section of the home page.
+ * CapabilitiesGrid — second section of the home page.
  *
  * Renders one Card per capability with a status badge. Live
  * capabilities show the badge in `accent` tone; planned capabilities
@@ -17,7 +17,7 @@ export interface CapabilitiesSectionProps {
  * without any single CTA. When a capability flips to `live`, its
  * card becomes the only interactive surface in the section.
  */
-export function CapabilitiesSection({ capabilities }: CapabilitiesSectionProps) {
+export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 	return (
 		<section
 			aria-labelledby="capabilities-heading"

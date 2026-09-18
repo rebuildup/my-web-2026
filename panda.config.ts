@@ -1,17 +1,12 @@
 import { defineConfig } from '@pandacss/dev';
-import { rawTokens } from './src/design-system/tokens';
-import { semanticTokens } from './src/design-system/semantic-tokens';
+import { rawTokens } from './src/editorial/tokens';
+import { semanticTokens } from './src/editorial/semantic-tokens';
 
 /**
- * Panda CSS configuration for my-web-2026.
+ * Panda CSS configuration for the currently shipped editorial visual language.
  *
- * Design tokens live under `src/design-system/`:
- *   - `tokens.ts`          raw palette / typography / spacing / radii / shadows
- *   - `semantic-tokens.ts` bg / text / border semantic layer
- *
- * Components reference the semantic layer only. Feature recipes and
- * component primitives are added per-module under
- * `src/modules/<capability>/styling.ts` when needed (see ADR-0005).
+ * Additional visual languages are introduced only when a surface has an
+ * independently observed design obligation; they are not pre-created here.
  */
 export default defineConfig({
 	preflight: true,

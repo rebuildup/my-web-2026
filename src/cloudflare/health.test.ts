@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { SystemServiceStatus } from './model';
-import { d1RowToStatus, safeProbe } from './probes';
+import type { CloudflareServiceStatus } from './health';
+import { d1RowToStatus, safeProbe } from './health';
 
 /**
  * Unit tests for the safe D1 probe transform (Issue #19).
@@ -73,7 +73,7 @@ describe('d1RowToStatus', () => {
 	});
 
 	it('never includes the row payload in the returned status', () => {
-		const status: SystemServiceStatus = d1RowToStatus({
+		const status: CloudflareServiceStatus = d1RowToStatus({
 			one: 1,
 			secret: 'leak-me',
 			other: { nested: 'value' },

@@ -88,7 +88,7 @@ export const AllReachable: Story = {
 export const Degraded: Story = {
 	args: {
 		data: {
-			...AllReachable.args!.data,
+			...AllReachable.args?.data,
 			statuses: degradedStatuses,
 		},
 	},

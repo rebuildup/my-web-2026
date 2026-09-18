@@ -1,9 +1,8 @@
 /**
  * Single source of truth for the home page's reported version.
  *
- * The version is read once at module load and is intentionally a
- * build-time constant so the visible version matches what the
- * Worker reports via `package.json`. Bumping the release requires
- * bumping `package.json`, not this file.
+ * This is an explicit build-time constant used by the public home
+ * surface. Release tickets keep it in lockstep with `package.json`;
+ * changing either value without the other is release drift.
  */
 export const PACKAGE_VERSION = '0.2.0' as const;

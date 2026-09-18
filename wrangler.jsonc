@@ -7,10 +7,10 @@
  *
  * Bindings:
  *   - ASSETS (Static Assets)        static assets emitted by Vite to ./dist/client
- *   - DB (D1)                        structured content (placeholder UUID — replace
- *                                    on first deploy via `wrangler d1 create`)
- *   - MEDIA (R2)                     blobs / media (placeholder name — bucket is
- *                                    created on first deploy via `wrangler r2 bucket create`)
+ *   - DB (D1)                        structured content in the provisioned
+ *                                    `my-web-2026` database
+ *   - MEDIA (R2)                     blobs / media in the provisioned
+ *                                    `my-web-2026` bucket
  *
  * Run `pnpm run cf-typegen` after editing bindings so
  * `worker-configuration.d.ts` stays in sync.
@@ -40,8 +40,8 @@
 			"migrations_dir": "migrations"
 		}
 	],
-	// Placeholder R2 bucket. Run `wrangler r2 bucket create my-web-2026`
-	// once on first deploy; the binding name `MEDIA` is stable.
+	// Production R2 bucket provisioned as `my-web-2026`.
+	// The binding name `MEDIA` is stable across releases.
 	"r2_buckets": [
 		{
 			"binding": "MEDIA",

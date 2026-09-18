@@ -46,10 +46,12 @@ function statusFor(
  * server loader so visitors see the same freshness on every
  * request that hit the same SSR snapshot.
  *
- * From Issue #31 the section heading carries an editorial numbering
- * prefix (`02 — System status`), the service label renders in mono
- * for a ledger feel, and rows are separated by hairlines rather than
- * each carrying its own card border.
+ * From Issue #31 the section adopts the editorial-spread layout:
+ * the section heading occupies a sticky left column at `lg` and
+ * wider, and the rows sit in the right column with a sans display
+ * service label at `xl` so the names read at the same weight as the
+ * capability cards. Rows are still separated by hairlines; the
+ * first row carries no top border so the section keeps its spacing.
  */
 export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps) {
 	return (
@@ -57,8 +59,8 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 			aria-labelledby="status-heading"
 			className={css({
 				paddingBlock: '12',
-				borderBlockStart: '1px solid',
-				borderColor: 'border.subtle',
+				borderBlockStart: '2px solid',
+				borderColor: 'border.default',
 			})}
 		>
 			<Container>
@@ -67,95 +69,98 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 					eyebrow="02 — System status"
 					title="プラットフォームの状態 / Platform health"
 					description="各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。"
-				/>
-				<dl
-					className={css({
-						display: 'grid',
-						gridTemplateColumns: {
-							base: '1fr',
-							md: '1fr',
-						},
-						rowGap: '0',
-						margin: '0',
-						padding: '0',
-					})}
+					variant="spread"
 				>
-					{services.map((service, index) => {
-						const status = statusFor(service.id, statuses);
-						const health: SystemServiceHealth = status?.health ?? 'unreachable';
-						return (
-							<div
-								key={service.id}
-								className={css({
-									display: 'grid',
-									gridTemplateColumns: {
-										base: '1fr',
-										md: 'minmax(0, 1fr) minmax(0, 2fr) auto',
-									},
-									alignItems: 'center',
-									gap: { base: '1', md: '4' },
-									padding: '4',
-									borderBlockStart: index === 0 ? 'none' : '1px solid',
-									borderColor: 'border.subtle',
-									backgroundColor: 'bg.canvas',
-								})}
-							>
-								<dt
+					<dl
+						className={css({
+							display: 'grid',
+							gridTemplateColumns: {
+								base: '1fr',
+								md: '1fr',
+							},
+							rowGap: '0',
+							margin: '0',
+							padding: '0',
+						})}
+					>
+						{services.map((service, index) => {
+							const status = statusFor(service.id, statuses);
+							const health: SystemServiceHealth = status?.health ?? 'unreachable';
+							return (
+								<div
+									key={service.id}
 									className={css({
-										margin: '0',
-										fontFamily: 'mono',
-										fontSize: 'sm',
-										fontWeight: '600',
-										color: 'text.default',
-										letterSpacing: '0.02em',
+										display: 'grid',
+										gridTemplateColumns: {
+											base: '1fr',
+											md: 'minmax(0, 1fr) minmax(0, 2fr) auto',
+										},
+										alignItems: 'center',
+										gap: { base: '2', md: '6' },
+										padding: '6',
+										borderBlockStart: index === 0 ? 'none' : '1px solid',
+										borderColor: 'border.subtle',
+										backgroundColor: 'bg.canvas',
 									})}
 								>
-									{service.label}
-									<span
+									<dt
 										className={css({
-											marginInlineStart: '2',
-											fontFamily: 'mono',
-											fontSize: 'xs',
-											fontWeight: '400',
+											margin: '0',
+											fontFamily: 'sans',
+											fontSize: 'xl',
+											fontWeight: '700',
+											color: 'text.default',
+											letterSpacing: '-0.01em',
+										})}
+									>
+										{service.label}
+										<span
+											className={css({
+												marginInlineStart: '3',
+												fontFamily: 'mono',
+												fontSize: 'xs',
+												fontWeight: '400',
+												color: 'text.muted',
+												letterSpacing: '0.02em',
+											})}
+										>
+											{service.binding}
+										</span>
+									</dt>
+									<dd
+										className={css({
+											margin: '0',
+											fontFamily: 'sans',
+											fontSize: 'sm',
 											color: 'text.muted',
 										})}
 									>
-										{service.binding}
-									</span>
-								</dt>
-								<dd
-									className={css({
-										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'sm',
-										color: 'text.muted',
-									})}
-								>
-									{status?.detail ?? service.description}
-								</dd>
-								<div
-									className={css({
-										display: 'flex',
-										justifyContent: { base: 'flex-start', md: 'flex-end' },
-									})}
-								>
-									<Badge tone={HEALTH_TONE[health]}>{HEALTH_LABEL[health]}</Badge>
+										{status?.detail ?? service.description}
+									</dd>
+									<div
+										className={css({
+											display: 'flex',
+											justifyContent: { base: 'flex-start', md: 'flex-end' },
+										})}
+									>
+										<Badge tone={HEALTH_TONE[health]}>{HEALTH_LABEL[health]}</Badge>
+									</div>
 								</div>
-							</div>
-						);
-					})}
-				</dl>
-				<p
-					className={css({
-						marginBlockStart: '6',
-						margin: '0',
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						color: 'text.muted',
-					})}
-				>
-					observed at {formatObservedAt(observedAt)}
-				</p>
+							);
+						})}
+					</dl>
+					<p
+						className={css({
+							marginBlockStart: '6',
+							margin: '0',
+							fontFamily: 'mono',
+							fontSize: 'xs',
+							color: 'text.muted',
+						})}
+					>
+						observed at {formatObservedAt(observedAt)}
+					</p>
+				</SectionHeading>
 			</Container>
 		</section>
 	);

@@ -1,6 +1,6 @@
 # ADR-0008: Obligation-oriented source architecture
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-09-19
 - Extends: ADR-0001, ADR-0002, ADR-0005
 - Superseded by: None
@@ -94,15 +94,21 @@ server -> http
 
 lower-level runtime / visual owner は Home を import しない。
 
-## Validation before acceptance
+## Validation
 
-この ADR は PR #30 の source rewrite と一緒に検証する。
+PR #30 の source rewrite と同じ head で検証した。
 
-- `pnpm run validate:integration` green
-- Playwright E2E green
-- Home section / capability status / Cloudflare probe / editorial spacing の
-  change scenario で不要な cross-owner edit が発生しない
-- architecture docs と実装 path が一致する
+- `pnpm run validate:integration` — green
+- `pnpm run architecture:check` — green
+- Playwright E2E — green
+- Home composition と Cloudflare probe を別 owner に分離した状態で、
+  D1 / R2 integration smoke が green
+- editorial tokens / primitives を `src/editorial/` へ移した状態で
+  Storybook static build が green
+- `docs/architecture.md` と branch 上の `src/` projection が一致
+
+`architecture:check` は将来の owner 名や directory shape を allowlist で固定しない。
+現在確定している逆依存と、旧分類 root の再導入だけを拒否する。
 
 ## Consequences
 

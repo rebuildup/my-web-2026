@@ -212,3 +212,88 @@
 - `accessibility-audit` §Reflow: 320 CSS px renders single-column;
   the metadata rail is `display: none` below `lg`. No horizontal
   scroll, no information loss at 200% zoom.
+
+## Editorial spread sections (Issue #31, second pass)
+
+> The first pass added section numbering and hairline rules; the
+> body sections still read as stacked short blocks rather than as a
+> magazine spread. This second pass adopts the editorial-spread
+> section pattern across the body sections and the footer.
+
+### What changed
+
+- **Raw type scale**: `4xl` (3rem / 48px) and `5xl` (4rem / 64px)
+  are added to `rawTokens.fontSizes`. The semantic layer is still
+  unchanged; both new sizes are display-only.
+- **`SectionHeading` spread variant**: a new `variant="spread"`
+  prop turns the heading into a 2-column editorial layout. The
+  `<h2>` climbs to `4xl` / `line-height: 1.1` / `letter-spacing:
+  -0.02em` and lives in a sticky left column (40% of the container
+  width) at `lg` and wider. The right column carries the eyebrow,
+  description, and a new optional `children` slot for the section's
+  own list / grid / table. Below `lg` the columns stack vertically
+  with the title on top. The `default` variant stays untouched so
+  the `Container`/section primitives keep working.
+- **Capabilities section** is now a spread: the `01 — Capabilities`
+  headline lives on the left, the card grid on the right. h3 climbs
+  from `xl` (24px) to `2xl` (32px) for headline parity; the grid
+  falls from 3 columns at `md` to 2 because the right column has
+  only 60% of the container width and 3 readable cards at the new
+  type size would crowd the column.
+- **Status section** is now a spread: the `02 — System status`
+  headline lives on the left, the service rows on the right. The
+  `dt` climbs from mono `sm` (14px) to sans `xl` (24px) so service
+  names read at the same weight as the capability card titles; the
+  binding still renders in mono `xs` adjacent to the name.
+- **Footer** is now a spread: a 3-column grid (`2fr / 3fr / 3fr`)
+  hosts a `5xl` numeric `04` decoration with a mono `04 — edition`
+  caption above it, an Identity column with the samuido / version /
+  MIT line, and an Index column with the Source / 2025 edition
+  links. Each column has its own mono caption label.
+- **Section dividers**: every section-level `border-block-start`
+  thickens from `1px solid border.subtle` to `2px solid
+  border.default` so the page reads as a sequence of deliberate
+  editorial beats rather than thin underlines.
+
+### What was deliberately not changed
+
+- **No new layout primitive**. The spread pattern lives inside
+  `SectionHeading` because every body section needs it and the
+  primitive's existing `variant` knob makes the promotion step
+  free. A standalone `<SpreadSection>` would duplicate the heading
+  + body-cell decisions in two places.
+- **No promoted `letterSpacing` or `lineHeight` tokens**. The
+  spread title uses inline literals just like the hero display did,
+  scoped to one component each.
+- **No semantic-layer type tokens** for `display` headings. The
+  raw `4xl` / `5xl` are not yet consumed at two non-trivial sites
+  *and* the semantic layer's evidence gate (`token-audit` §3-4)
+  requires at least that before promotion. The spread variant and
+  the footer are the first two; a future ticket can introduce
+  `text.display` if a third consumer appears.
+- **No new motion, no per-section accent, no image-based titles**.
+  All explicit `Avoid` items above remain in force.
+
+### Rationale chain
+
+- `responsive-design` §Editorial spread: a sticky left headline
+  with a wider right column is the canonical layout for an editorial
+  body section. The reference site
+  (`https://yell-movie2024.com`) uses this pattern for its
+  STAFF&CAST / INTRODUCTION / TICKET sections; the Swiss-Editorial
+  lens keeps the structure but drops the image-based titles and
+  decorative gradient blocks.
+- `typesetting` §6: at `4xl` the headline reads as a section
+  identifier rather than body copy. Pairing with `line-height: 1.1`
+  and a tighter `letter-spacing: -0.02em` keeps multi-line titles
+  from looking loose.
+- `token-audit` §3-4: `4xl` and `5xl` both have at least two
+  consumers in this round (spread variant headings + section h3 or
+  footer decoration); the evidence gate is met for the raw layer.
+- `accessibility-audit` §Sticky position: the left title uses
+  `position: sticky; top: 8` so the headline stays visible while
+  content scrolls. This does not trap keyboard focus, and the
+  heading itself remains part of the document outline.
+- `accessibility-audit` §Reflow: at 320 CSS px both columns stack
+  vertically; the sticky title reverts to static. No horizontal
+  scroll, no information loss.

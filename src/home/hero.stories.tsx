@@ -3,10 +3,11 @@ import { Hero } from './hero';
 
 /**
  * Hero stories. The component takes no props — these variants exist
- * so designers can confirm the asymmetric 2-column composition holds
+ * so designers can confirm the proximity-first composition holds
  * across the breakpoints defined in `responsive-design` (§Macro layout):
  * single column at `base`, stacked at `md`, asymmetric `7fr / 3fr` at
- * `lg` and wider.
+ * `lg` and wider. The right rail is plain mono text with proximity
+ * grouping — no border, no background fill.
  */
 const meta = {
 	title: 'home/Hero',

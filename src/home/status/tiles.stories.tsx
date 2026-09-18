@@ -6,8 +6,10 @@ import type { SystemService, SystemServiceStatus } from './health';
  * StatusTiles stories. The component renders one row per registered
  * service with its binding name and the latest health read. Each
  * variant exercises a different status mix so designers can confirm
- * the mono label, badge tone, and hairline rhythm survive content
- * variation.
+ * the proximity-first rhythm survives content variation. Rows are
+ * separated by `gap: 8` alone — no hairline rules between rows. The
+ * `dt` is sans-bold at `lg` with the binding rendering adjacent in
+ * mono `sm`.
  */
 const meta = {
 	title: 'home/StatusTiles',

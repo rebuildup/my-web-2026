@@ -5,8 +5,10 @@ import type { Capability } from './capability';
 /**
  * CapabilitiesGrid stories. The component is a function of
  * `readonly Capability[]`; each variant exercises a different mix of
- * `live` / `planned` statuses to confirm the editorial numbering and
- * decoration span survive content variation.
+ * `live` / `planned` statuses to confirm the proximity-first layout
+ * survives content variation. Cards are raw flex stacks — no border,
+ * no background fill, no padding box; the ordinal caption
+ * (`01 · Portfolio`) sits inline with the English label.
  */
 const meta = {
 	title: 'home/CapabilitiesGrid',

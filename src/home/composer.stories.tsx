@@ -6,7 +6,9 @@ import type { HomePageData } from './composer';
  * HomePage composition stories. The component is purely a function
  * of the loader-shaped `HomePageData` prop, so each variant just
  * supplies a different snapshot. Designers use these stories to
- * iterate on the four-section layout without re-running SSR.
+ * iterate on the four-section proximity-first layout without
+ * re-running SSR. Section differentiation comes from spacing and
+ * type, not from per-section borders or background fills.
  */
 const meta = {
 	title: 'home/HomePage',

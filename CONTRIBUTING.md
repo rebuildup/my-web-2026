@@ -43,12 +43,15 @@ procedure is documented in [`docs/release.md`](docs/release.md) and
 
 - Do not add Bun, Tailwind, KV, Queues, Durable Objects, Workflows,
   Vectorize, or Workers AI to 0.1.0. Each requires a separate ADR.
-- Do not import from `hono`, `@tanstack/react-start`, or any
-  Cloudflare SDK inside capability / domain / application code.
-- Server functions (`createServerFn`) live next to the route file
-  that uses them, or under `src/modules/<capability>/server.ts`.
-- External HTTP handlers live under `src/http/**`. The Worker entry
-  is `src/server.ts`.
+- Source boundaries follow ADR-0008 obligations; do not introduce a generic
+  `modules/`, `components/`, `ui/`, `shared/`, or `platform/` layer
+  merely to classify implementation types.
+- Cloudflare-specific runtime behavior is owned by `src/cloudflare/**`;
+  surfaces consume its stable contracts rather than raw bindings.
+- Internal server functions (`createServerFn`) live with the obligation that
+  composes the operation. Keep framework route files thin.
+- External HTTP handlers live under `src/http/**`. The Worker entry is
+  `src/server.ts`.
 
 See [`docs/architecture.md`](docs/architecture.md) and
 [`docs/adr/`](docs/adr/) for the canonical decisions.

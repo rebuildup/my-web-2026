@@ -23,9 +23,6 @@ export default defineConfig({
 	resolve: {
 		alias: {
 			'~': resolve(__dirname, './src'),
-			'@modules': resolve(__dirname, './src/modules'),
-			'@design-system': resolve(__dirname, './src/design-system'),
-			'@platform': resolve(__dirname, './src/platform'),
 		},
 	},
 	server: {

@@ -39,7 +39,7 @@ pnpm prepare        # panda codegen
 pnpm dev
 # -> http://127.0.0.1:3000
 
-# Storybook (design-system preview, component recipes, tokens)
+# Storybook (editorial visual-language preview, primitives, tokens)
 pnpm storybook
 # -> http://127.0.0.1:6006
 ```
@@ -59,11 +59,13 @@ the E2E suite against `pnpm dev`.
 
 ## Storybook
 
-Storybook 8.6.x is the canonical design-system surface for
-my-web-2026 at 0.1.0. It ships three Panda recipe seeds
-(`Button`, `Card`, `Badge`) and a tokens documentation story. New
-components land under `src/design-system/components/<Name>.tsx`
-plus a `<Name>.stories.tsx` next to it.
+Storybook 8.6.x previews the visual obligations that currently exist in source.
+The shipped public surface uses `src/editorial/`: raw / semantic tokens plus
+the current editorial primitives. New primitives are added only when that
+visual language owns the requirement.
+
+Stories stay next to their owner (for example
+`src/editorial/primitives/<Name>.stories.tsx`).
 
 ```bash
 pnpm storybook           # dev server on :6006

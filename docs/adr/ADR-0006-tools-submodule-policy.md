@@ -1,6 +1,6 @@
 # ADR-0006: Tool submodules as independent applications
 
-- Status: Accepted
+- Status: Accepted (revised 2026-09-19)
 - Date: 2026-09-11
 - Superseded by: None
 
@@ -55,8 +55,9 @@ A Tool is integrated into a my-web-2026 page through a manifest:
 - The my-web-2026 page embeds the artefact via `<iframe>`, server-side
   include, or any other embed pattern documented by the Tool.
 
-A future Tool Registry / manifest / build orchestration service lives
-under `src/domains/tools/` once it is introduced.
+A future Tool Registry / manifest / build orchestration service receives its
+source owner when it is introduced. ADR-0008 forbids reserving a
+`src/domains/tools/` path before that obligation exists.
 
 ### 4. Version pinning
 
@@ -98,6 +99,6 @@ Re-evaluate when:
 
 - Multiple Tools need to land in the same release. At that point, a
   Tool Registry ticket precedes the individual Tool tickets.
-- A Tool genuinely needs to share code with the host. That is a
-  signal that the Tool should be promoted into a host domain module
-  (`src/domains/<name>/`) instead of staying a submodule.
+- A Tool genuinely needs to share code with the host. That triggers a new
+  obligation-boundary decision; it does not automatically promote the Tool
+  into a pre-defined host domain path.

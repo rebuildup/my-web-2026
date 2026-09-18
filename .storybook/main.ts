@@ -8,10 +8,9 @@ import type { StorybookConfig } from '@storybook/react-vite';
  * here — Storybook is a frontend-only preview, it does not need the
  * Worker entrypoint.
  *
- * Stories live next to their components under
- * `src/design-system/components/*.stories.tsx` and a single design
- * tokens documentation story lives at
- * `src/design-system/tokens.stories.tsx`.
+ * Stories live next to the obligation they document. The currently
+ * shipped visual language is under `src/editorial/`; Home composition
+ * stories live under `src/home/`.
  */
 const config: StorybookConfig = {
 	stories: ['../src/**/*.stories.@(ts|tsx)'],

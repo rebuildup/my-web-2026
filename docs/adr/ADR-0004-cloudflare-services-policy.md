@@ -1,6 +1,6 @@
 # ADR-0004: Cloudflare services policy
 
-- Status: Accepted
+- Status: Accepted (revised 2026-09-19)
 - Date: 2026-09-11
 - Superseded by: None
 
@@ -41,9 +41,11 @@ ticket in a later release actually needs them:
 ### Provisioning rules
 
 - Each Cloudflare service adoption must come with a feature ticket,
-  its own binding declared in `wrangler.jsonc`, a domain adapter under
-  `src/domains/<name>/adapters/`, and a documentation update in
+  its own binding declared in `wrangler.jsonc`, and a documentation update in
   `docs/architecture.md`.
+- Cloudflare-specific behavior is owned under `src/cloudflare/**` only when
+  the runtime contract has an independent obligation. A feature-specific use
+  stays with that feature until such independence is observed (ADR-0008).
 - `pnpm run cf-typegen` must be re-run after every binding change so
   `worker-configuration.d.ts` stays in sync.
 - A service is **never** added to satisfy a "nice to have" or to keep

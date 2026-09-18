@@ -9,7 +9,7 @@
 
 目的はプロフィール文章を一つ固定することではない。Home / About / Portfolio / Activity / Content / Tools など別々の surface が実装されても、すべてが **同じ一人の人物から自然に生えているようにするための共通前提** を置くことである。
 
-architecture 上の owner authority は [owner.md](owner.md)、設計思想は [principles.md](principles.md) に分ける。この文書はその前段にある「誰なのか」「何をしてきたか」「何を好むか」「何を目指しているか」を扱う。
+architecture 上の owner authority は [owner.md](owner.md)、設計思想は [principles.md](principles.md)、時間と更新・権限の意味論は [knowledge-model.md](knowledge-model.md) に分ける。この文書は「誰なのか」「何をしてきたか」「何を好むか」「何を目指しているか」の **2026-09-18 時点の narrative projection** として扱う。
 
 ---
 
@@ -485,7 +485,20 @@ base は calm / technical / restrained に置きつつ、作品や experiment �
 
 ---
 
-## 13. Freshness model
+## 13. Temporal interpretation
+
+この文書に同じ文章として並んでいても、情報の時間的性質は同じではない。
+
+- 過去の受賞、入学、制作開始、internship などは **Historical Event**。
+- 在学、current project、利用 handle などは **Temporal State**。
+- 好み、興味、career direction、visual preference などは **Preference / Interest / Intention**。
+- この文書の人物説明や Home / About の文章は、それらから作る **Projection**。
+
+Event は未来に向かって変化しない一方、State / Preference / Intention は新しい状態へ移り得る。後者を更新するとき、過去の状態を current value で上書きしない。
+
+具体的な storage schema はまだ固定しない。将来 CMS / structured personal data を実装するときは [`knowledge-model.md`](knowledge-model.md) の temporal / authority semantics を満たす。
+
+## 14. Freshness guidance
 
 personal domain の全情報を同じ寿命として扱わない。
 
@@ -504,7 +517,7 @@ personal domain の全情報を同じ寿命として扱わない。
 
 ---
 
-## 14. What must not be inferred
+## 15. What must not be inferred
 
 この文書にないことを「それっぽい人物像」のために追加しない。
 

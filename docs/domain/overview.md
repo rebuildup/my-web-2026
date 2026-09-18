@@ -13,6 +13,8 @@ my-web-2026 は **Personal Web Platform** である。
 
 Web UI はその public surface の一つであり、domain model 全体と同一視しない。
 
+この Platform の主語は repository や framework ではなく **木村友亮 / samuido という一人の人物** である。人物像・handle の関係・経験・好み・current activity・future direction の canonical grounding は [`../personal/domain.md`](../personal/domain.md) に置く。各 capability はそこから必要な projection を作り、surface ごとに別の persona を発明しない。
+
 ## Relationship to my-web-2025
 
 my-web-2026 は my-web-2025 の successor である。ただし route-by-route の互換実装を目的にしない。

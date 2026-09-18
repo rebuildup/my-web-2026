@@ -72,8 +72,8 @@ export function Hero() {
 							color: 'text.muted',
 						})}
 					>
-						2025 edition は引き続き yusuke-kim.com で公開中です。この 2026 edition は
-						移行途中の public preview です。
+						2025 edition は引き続き yusuke-kim.com で公開中です。この 2026 edition は 移行途中の
+						public preview です。
 					</p>
 					<div
 						className={css({

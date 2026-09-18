@@ -4,8 +4,8 @@ import { cva, cx, type RecipeVariantProps } from '../../../styled-system/css';
 /**
  * Badge — short, inline status indicator.
  *
- * Three tones (neutral | info | accent). Use for tags, counts, status
- * pills — never as a primary interactive element.
+ * Two tones (neutral | accent). Use for tags and status pills —
+ * never as a primary interactive element.
  */
 const badgeRecipe = cva({
 	base: {
@@ -23,10 +23,6 @@ const badgeRecipe = cva({
 			neutral: {
 				bg: 'bg.subtle',
 				color: 'text.muted',
-			},
-			info: {
-				bg: 'colors.brand.50',
-				color: 'text.accent',
 			},
 			accent: {
 				bg: 'bg.accent',

@@ -76,8 +76,8 @@ export function SectionHeading({
 				className={css({
 					display: 'grid',
 					gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 2fr) minmax(0, 5fr)' },
-					gap: { base: '6', lg: '12' },
-					alignItems: 'start',
+					columnGap: { base: '0', lg: '12' },
+					rowGap: { base: '6', lg: '0' },
 					marginBlockEnd: { base: '8', lg: '12' },
 				})}
 			>
@@ -86,8 +86,6 @@ export function SectionHeading({
 						display: 'flex',
 						flexDirection: 'column',
 						gap: '4',
-						position: { base: 'static', lg: 'sticky' },
-						top: { base: 'auto', lg: '8' },
 					})}
 				>
 					<h2
@@ -95,9 +93,9 @@ export function SectionHeading({
 						className={css({
 							margin: '0',
 							fontFamily: 'sans',
-							fontSize: { base: '3xl', lg: '4xl' },
+							fontSize: { base: '2xl', lg: '3xl' },
 							fontWeight: '700',
-							lineHeight: { base: '1.2', lg: '1.1' },
+							lineHeight: { base: '1.2', lg: '1.05' },
 							letterSpacing: '-0.02em',
 							color: 'text.default',
 						})}
@@ -109,7 +107,7 @@ export function SectionHeading({
 					className={css({
 						display: 'flex',
 						flexDirection: 'column',
-						gap: '4',
+						gap: '6',
 						minWidth: '0',
 					})}
 				>
@@ -117,11 +115,11 @@ export function SectionHeading({
 						<span
 							className={css({
 								fontFamily: 'sans',
-								fontSize: 'xs',
+								fontSize: 'sm',
 								fontWeight: '600',
-								letterSpacing: '0.08em',
+								letterSpacing: '0.04em',
 								textTransform: 'uppercase',
-								color: 'text.accent',
+								color: 'text.muted',
 							})}
 						>
 							{eyebrow}

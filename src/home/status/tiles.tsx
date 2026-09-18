@@ -46,21 +46,18 @@ function statusFor(
  * server loader so visitors see the same freshness on every
  * request that hit the same SSR snapshot.
  *
- * From Issue #31 the section adopts the editorial-spread layout:
- * the section heading occupies a sticky left column at `lg` and
- * wider, and the rows sit in the right column with a sans display
- * service label at `xl` so the names read at the same weight as the
- * capability cards. Rows are still separated by hairlines; the
- * first row carries no top border so the section keeps its spacing.
+ * From Issue #31 the section adopts the editorial-spread layout
+ * with proximity-based grouping. Rows are separated by vertical
+ * whitespace instead of horizontal hairline rules — closeness alone
+ * groups the binding name, the description, and the badge within
+ * each row.
  */
 export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps) {
 	return (
 		<section
 			aria-labelledby="status-heading"
 			className={css({
-				paddingBlock: '12',
-				borderBlockStart: '2px solid',
-				borderColor: 'border.default',
+				paddingBlock: { base: '16', lg: '20' },
 			})}
 		>
 			<Container>
@@ -73,17 +70,14 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 				>
 					<dl
 						className={css({
-							display: 'grid',
-							gridTemplateColumns: {
-								base: '1fr',
-								md: '1fr',
-							},
-							rowGap: '0',
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '8',
 							margin: '0',
 							padding: '0',
 						})}
 					>
-						{services.map((service, index) => {
+						{services.map((service) => {
 							const status = statusFor(service.id, statuses);
 							const health: SystemServiceHealth = status?.health ?? 'unreachable';
 							return (
@@ -93,23 +87,20 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 										display: 'grid',
 										gridTemplateColumns: {
 											base: '1fr',
-											md: 'minmax(0, 1fr) minmax(0, 2fr) auto',
+											md: 'minmax(0, 3fr) minmax(0, 5fr) auto',
 										},
-										alignItems: 'center',
+										alignItems: 'baseline',
 										gap: { base: '2', md: '6' },
-										padding: '6',
-										borderBlockStart: index === 0 ? 'none' : '1px solid',
-										borderColor: 'border.subtle',
-										backgroundColor: 'bg.canvas',
 									})}
 								>
 									<dt
 										className={css({
 											margin: '0',
 											fontFamily: 'sans',
-											fontSize: 'xl',
+											fontSize: 'lg',
 											fontWeight: '700',
 											color: 'text.default',
+											lineHeight: '1.4',
 											letterSpacing: '-0.01em',
 										})}
 									>
@@ -118,7 +109,7 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 											className={css({
 												marginInlineStart: '3',
 												fontFamily: 'mono',
-												fontSize: 'xs',
+												fontSize: 'sm',
 												fontWeight: '400',
 												color: 'text.muted',
 												letterSpacing: '0.02em',
@@ -131,8 +122,9 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 										className={css({
 											margin: '0',
 											fontFamily: 'sans',
-											fontSize: 'sm',
+											fontSize: 'md',
 											color: 'text.muted',
+											lineHeight: '1.6',
 										})}
 									>
 										{status?.detail ?? service.description}
@@ -151,10 +143,10 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 					</dl>
 					<p
 						className={css({
-							marginBlockStart: '6',
+							marginBlockStart: '8',
 							margin: '0',
 							fontFamily: 'mono',
-							fontSize: 'xs',
+							fontSize: 'sm',
 							color: 'text.muted',
 						})}
 					>

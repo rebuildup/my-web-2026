@@ -41,14 +41,10 @@ export const rawTokens = {
 		lg: { value: '1.125rem' },
 		xl: { value: '1.5rem' },
 		'2xl': { value: '2rem' },
-		// Reserved for the hero display heading only. See
-		// src/home/brief.md "Typography & grid amendment (Issue #31)".
+		// Display tier. Reserved for the hero heading, the spread
+		// section heading, and the footer's numeric decoration. See
+		// src/home/brief.md for the rationale (Issue #31).
 		'3xl': { value: '2.5rem' },
-		// Reserved for the editorial-spread section heading and the
-		// footer's numeric decoration. See src/home/brief.md "Editorial
-		// spread sections (Issue #31)".
-		'4xl': { value: '3rem' },
-		'5xl': { value: '4rem' },
 	},
 	radii: {
 		sm: { value: '4px' },

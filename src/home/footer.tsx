@@ -10,21 +10,19 @@ import { PACKAGE_VERSION } from './version';
  *
  * From Issue #31 the footer adopts an editorial 3-column layout
  * that mirrors the body sections above: the section number `04`
- * sits as a large display in the left column, the meta paragraphs
- * (identity / version / license) stack in the middle, and the
- * outbound links stack in the right column. At `base` the three
- * columns stack vertically; at `lg` they sit on a single row with
- * the same proportions the body sections use.
+ * sits as a `3xl` display in the left column (the same size tier as
+ * the Hero display and the spread section heading), the meta
+ * paragraphs stack in the middle, and the outbound links stack in
+ * the right column. There is no border, no background fill, and no
+ * divider rule — proximity plus generous vertical padding separate
+ * the footer from the body sections above.
  */
 export function Footer() {
 	return (
 		<footer
 			className={css({
-				borderBlockStart: '2px solid',
-				borderColor: 'border.default',
-				paddingBlock: '12',
-				marginBlockStart: '12',
-				backgroundColor: 'bg.canvas',
+				paddingBlock: { base: '16', lg: '20' },
+				marginBlockStart: { base: '12', lg: '20' },
 			})}
 		>
 			<Container>
@@ -35,7 +33,8 @@ export function Footer() {
 							base: '1fr',
 							lg: 'minmax(0, 2fr) minmax(0, 3fr) minmax(0, 3fr)',
 						},
-						gap: { base: '8', lg: '12' },
+						columnGap: { base: '0', lg: '12' },
+						rowGap: { base: '12', lg: '0' },
 						alignItems: 'start',
 					})}
 				>
@@ -43,26 +42,26 @@ export function Footer() {
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '2',
+							gap: '6',
 						})}
 					>
 						<span
 							aria-hidden="true"
 							className={css({
 								fontFamily: 'mono',
-								fontSize: 'xs',
+								fontSize: 'sm',
 								color: 'text.muted',
-								letterSpacing: '0.08em',
+								letterSpacing: '0.04em',
 								textTransform: 'uppercase',
 							})}
 						>
-							04 — edition
+							04 — Edition
 						</span>
 						<span
 							aria-hidden="true"
 							className={css({
 								fontFamily: 'sans',
-								fontSize: '5xl',
+								fontSize: '3xl',
 								fontWeight: '700',
 								color: 'text.default',
 								lineHeight: '1',
@@ -76,15 +75,15 @@ export function Footer() {
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '2',
+							gap: '3',
 						})}
 					>
 						<span
 							className={css({
 								fontFamily: 'mono',
-								fontSize: 'xs',
+								fontSize: 'sm',
 								color: 'text.muted',
-								letterSpacing: '0.08em',
+								letterSpacing: '0.04em',
 								textTransform: 'uppercase',
 							})}
 						>
@@ -94,8 +93,9 @@ export function Footer() {
 							className={css({
 								margin: '0',
 								fontFamily: 'sans',
-								fontSize: 'md',
+								fontSize: 'lg',
 								color: 'text.default',
+								fontWeight: '600',
 							})}
 						>
 							samuido
@@ -115,15 +115,15 @@ export function Footer() {
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '2',
+							gap: '3',
 						})}
 					>
 						<span
 							className={css({
 								fontFamily: 'mono',
-								fontSize: 'xs',
+								fontSize: 'sm',
 								color: 'text.muted',
-								letterSpacing: '0.08em',
+								letterSpacing: '0.04em',
 								textTransform: 'uppercase',
 							})}
 						>

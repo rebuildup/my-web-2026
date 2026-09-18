@@ -15,14 +15,18 @@ import { PACKAGE_VERSION } from './version';
  * the heading / body / actions and a quiet metadata rail on the
  * right. Below `lg` the two columns stack into the original single
  * flow so the measure stays within the 60–70 character window.
+ *
+ * The metadata rail is rendered as raw text without a border, a
+ * background fill, or any padding — proximity alone groups the
+ * three lines, matching the editorial-spread pattern that the rest
+ * of the page (and the reference site) follows.
  */
 export function Hero() {
 	return (
 		<section
 			aria-labelledby="hero-title"
 			className={css({
-				paddingBlock: { base: '12', md: '12' },
-				paddingBlockEnd: { base: '12', md: '12' },
+				paddingBlock: { base: '16', lg: '24' },
 			})}
 		>
 			<Container>
@@ -30,7 +34,8 @@ export function Hero() {
 					className={css({
 						display: 'grid',
 						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 7fr) minmax(0, 3fr)' },
-						gap: { base: '6', lg: '12' },
+						columnGap: { base: '0', lg: '12' },
+						rowGap: { base: '12', lg: '0' },
 						alignItems: 'start',
 					})}
 				>
@@ -38,7 +43,7 @@ export function Hero() {
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '6',
+							gap: '8',
 							maxWidth: '640px',
 						})}
 					>
@@ -57,9 +62,9 @@ export function Hero() {
 							className={css({
 								margin: '0',
 								fontFamily: 'sans',
-								fontSize: { base: '2xl', md: '3xl' },
+								fontSize: { base: '2xl', lg: '3xl' },
 								fontWeight: '700',
-								lineHeight: { base: '1.2', md: '1.15' },
+								lineHeight: { base: '1.2', lg: '1.1' },
 								color: 'text.default',
 								letterSpacing: '-0.02em',
 							})}
@@ -89,7 +94,7 @@ export function Hero() {
 								color: 'text.muted',
 							})}
 						>
-							2025 edition は引き続き yusuke-kim.com で公開中です。この 2026 edition は 移行途中の
+							2025 edition は引き続き yusuke-kim.com で公開中です。この 2026 edition は移行途中の
 							public preview です。
 						</p>
 						<div
@@ -97,7 +102,6 @@ export function Hero() {
 								display: 'flex',
 								flexWrap: 'wrap',
 								gap: '3',
-								marginBlockStart: '2',
 							})}
 						>
 							<a
@@ -140,23 +144,20 @@ export function Hero() {
 									paddingInline: '4',
 									height: '10',
 									borderRadius: 'md',
-									backgroundColor: 'bg.surface',
-									color: 'text.default',
-									border: '1px solid',
-									borderColor: 'border.subtle',
+									color: 'text.accent',
 									fontFamily: 'sans',
 									fontSize: 'md',
 									fontWeight: '600',
 									textDecoration: 'none',
-									transition: 'background-color 120ms ease',
-									_hover: { backgroundColor: 'bg.subtle' },
+									transition: 'color 120ms ease',
+									_hover: { textDecoration: 'underline' },
 									_focusVisible: {
 										outline: '2px solid {colors.border.focus}',
 										outlineOffset: '2px',
 									},
 								})}
 							>
-								GitHub でソースを見る
+								GitHub でソースを見る →
 							</a>
 						</div>
 					</div>
@@ -166,11 +167,6 @@ export function Hero() {
 							display: { base: 'none', lg: 'flex' },
 							flexDirection: 'column',
 							gap: '1',
-							padding: '6',
-							borderRadius: 'md',
-							border: '1px solid',
-							borderColor: 'border.subtle',
-							backgroundColor: 'bg.surface',
 							fontFamily: 'mono',
 							fontSize: 'sm',
 							color: 'text.muted',

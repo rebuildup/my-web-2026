@@ -21,7 +21,7 @@ architecture 上の owner authority は [owner.md](owner.md)、設計思想は [
 - **英字表記:** Yusuke Kimura
 - **主な活動名:** samuido
 - **個人ドメイン:** yusuke-kim.com
-- **現在:** 宇部工業高等専門学校 制御情報工学科に在学
+- **現在:** 宇部工業高等専門学校 制御情報工学科 本科4年に在学
 - **卒業予定:** 2028年3月
 - **大きな進路方向:** frontend / software engineering を軸にした product development
 
@@ -158,7 +158,7 @@ Aulymo の販売、After Effects plugin の配布、学校イベントの Web si
 - Web platform / browser APIs
 - Git / GitHub based development
 - After Effects scripting / plugin development
-- C / C++ when lower-level implementation is必要
+- C / C++ for lower-level implementation
 - design-system / UI implementation
 - AI-assisted development and agent workflows
 
@@ -254,6 +254,8 @@ my-web-2026 の current visual direction である calm / technical / restrained
 
 競技だけを続ける方向にはならず、ここから Web、product development、creative tooling へ活動範囲が広がった。
 
+資格として Webデザイン技能検定3級を取得している。
+
 ### Video / motion experience
 
 2023 年末ごろから After Effects を使った映像制作を継続している。
@@ -290,7 +292,7 @@ my-web-2025 は portfolio、workshop、Tools、About 等を一つの site に統
 
 ### Professional exposure
 
-2026 年夏には software / product development に関する internship を複数経験した。
+2026 年夏には ScienceArts と OPTiM で software / product development に関する internship を経験した。
 
 学校外の開発環境に触れたことで、個人開発で得た速度や幅だけでなく、team で読める code、仕様、review、運用として成立させることへの関心がさらに強くなっている。
 

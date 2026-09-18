@@ -31,7 +31,13 @@ function AdminRoute() {
 			status: 'live',
 			href: '/admin/invitations',
 		},
-		{ id: 'keys', label: 'API keys', labelJa: 'API キー', status: 'planned' },
+		{
+			id: 'keys',
+			label: 'API keys',
+			labelJa: 'API キー',
+			status: 'live',
+			href: '/admin/keys',
+		},
 		{ id: 'images', label: 'Reaction images', labelJa: 'リアクション画像', status: 'planned' },
 	];
 	return (

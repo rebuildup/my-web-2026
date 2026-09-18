@@ -6,8 +6,9 @@ import { PACKAGE_VERSION } from './version';
  * Footer — fourth section of the home page.
  *
  * Stays in a single row at desktop and stacks at mobile. Contains
- * the canonical project metadata (source, license, version) and
- * nothing else — no navigation, no signup, no socials.
+ * public transition metadata for the 2025 / 2026 editions plus the
+ * canonical source link. Operational API endpoints remain available
+ * but are not promoted as visitor navigation.
  */
 export function Footer() {
 	return (
@@ -38,7 +39,7 @@ export function Footer() {
 							color: 'text.muted',
 						})}
 					>
-						my-web-2026 · v{PACKAGE_VERSION} · MIT
+						samuido · my-web-2026 · v{PACKAGE_VERSION} · MIT
 					</p>
 					<ul
 						className={css({
@@ -72,7 +73,9 @@ export function Footer() {
 						</li>
 						<li>
 							<a
-								href="/api/v1/health"
+								href="https://yusuke-kim.com"
+								rel="noopener noreferrer"
+								target="_blank"
 								className={css({
 									color: 'text.accent',
 									textDecoration: 'none',
@@ -83,23 +86,7 @@ export function Footer() {
 									},
 								})}
 							>
-								/api/v1/health
-							</a>
-						</li>
-						<li>
-							<a
-								href="/api/v1/db/ping"
-								className={css({
-									color: 'text.accent',
-									textDecoration: 'none',
-									_hover: { textDecoration: 'underline' },
-									_focusVisible: {
-										outline: '2px solid {colors.border.focus}',
-										outlineOffset: '2px',
-									},
-								})}
-							>
-								/api/v1/db/ping
+								2025 edition
 							</a>
 						</li>
 					</ul>

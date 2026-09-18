@@ -5,10 +5,10 @@ import { PACKAGE_VERSION } from './version';
 /**
  * Hero — top section of the home page.
  *
- * Carries the single `<h1>` on the page and the prose-only mission
- * statement. No motion, no decoration. The CTA below the prose is
- * the only interactive element; it points to the canonical source
- * repository.
+ * Carries the single `<h1>` on the page and identifies the person
+ * behind the platform before describing the migration state. The
+ * public transition link to the 2025 edition is primary; source is
+ * available as a secondary action.
  */
 export function Hero() {
 	return (
@@ -35,7 +35,7 @@ export function Hero() {
 							color: 'text.muted',
 						})}
 					>
-						v{PACKAGE_VERSION} — Personal Web Platform
+						木村友亮 / samuido · v{PACKAGE_VERSION} — 2026 Preview
 					</span>
 					<h1
 						id="hero-title"
@@ -60,8 +60,8 @@ export function Hero() {
 							color: 'text.default',
 						})}
 					>
-						Cloudflare Workers 上の個人 Web Platform。Portfolio / content / activity を 1
-						つずつ組み立てる。
+						開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio /
+						content / activity を段階的に移行中です。
 					</p>
 					<p
 						className={css({
@@ -72,8 +72,8 @@ export function Hero() {
 							color: 'text.muted',
 						})}
 					>
-						A personal platform on Cloudflare Workers. Portfolio, content, and activity — built
-						piece by piece.
+						2025 edition は引き続き yusuke-kim.com で公開中です。この 2026 edition は
+						移行途中の public preview です。
 					</p>
 					<div
 						className={css({
@@ -84,7 +84,7 @@ export function Hero() {
 						})}
 					>
 						<a
-							href="https://github.com/rebuildup/my-web-2026"
+							href="https://yusuke-kim.com"
 							rel="noopener noreferrer"
 							target="_blank"
 							className={css({
@@ -108,10 +108,12 @@ export function Hero() {
 								},
 							})}
 						>
-							GitHub でソースを見る
+							2025 edition を見る
 						</a>
 						<a
-							href="/api/v1/health"
+							href="https://github.com/rebuildup/my-web-2026"
+							rel="noopener noreferrer"
+							target="_blank"
 							className={css({
 								display: 'inline-flex',
 								alignItems: 'center',
@@ -135,7 +137,7 @@ export function Hero() {
 								},
 							})}
 						>
-							API ヘルスチェック
+							GitHub でソースを見る
 						</a>
 					</div>
 				</div>

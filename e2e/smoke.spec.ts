@@ -46,28 +46,29 @@ test.describe('deployed Worker smoke', () => {
 /**
  * Home page composition (Issue #21).
  *
- * Verifies the four canonical sections render with the required
- * landmarks and the single `<h1>` invariant. Skips assertions on
+ * Verifies the three content sections plus the footer landmark render
+ * with the required structure and the single `<h1>` invariant. Skips assertions on
  * exact prose so Japanese / English copy can land in any ticket
  * without breaking this smoke.
  */
 test.describe('home page composition', () => {
-	test('renders the four sections and the canonical h1', async ({ page }) => {
+	test('renders the public preview sections and the canonical h1', async ({ page }) => {
 		await page.goto('/');
 
 		// Single h1 invariant.
 		const h1 = page.locator('h1');
 		await expect(h1).toHaveCount(1);
-		await expect(h1).toHaveText(/my-web-2026/);
+		await expect(h1).toHaveText(/木村友亮 \/ samuido/);
 
-		// Four sections, in order, all anchored by aria-labelledby.
+		// Three content sections, in order, all anchored by aria-labelledby.
 		const sections = page.locator('section[aria-labelledby]');
-		await expect(sections).toHaveCount(2);
+		await expect(sections).toHaveCount(3);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
-		await expect(sections.nth(1)).toHaveAttribute(
-			'aria-labelledby',
-			/capabilities-heading|status-heading/,
-		);
+		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
+		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'status-heading');
+
+		// Public-preview transition back to the complete 2025 edition.
+		await expect(page.locator('a[href="https://yusuke-kim.com"]')).toHaveCount(2);
 
 		// Landmarks: banner / main / contentinfo.
 		await expect(page.locator('main#main')).toBeVisible();

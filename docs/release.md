@@ -9,8 +9,10 @@
 - One sprint = one week.
 - One sprint = one target semantic version = one release branch
   `release-x-y-z`.
-- 0.1.0 Foundation is the first release; planned for 2026-09.
-- Full migration from my-web-2025 is planned for 2026-10.
+- 0.1.0 Foundation was released on 2026-09-11.
+- 0.2.0 Public Preview targets 2026-09-19.
+- my-web-2025 remains the complete public edition until required capabilities
+  are migrated; cutover timing follows capability readiness rather than a fixed date.
 
 ## Sprint cycle
 
@@ -95,6 +97,44 @@ and no rulesets yet, so the canonical Issue-driven flow could not
 be followed. From 0.2.0 onward **every commit lands through the
 canonical flow**; the v0.1.0 reconciliation was driven by Issue #1
 (`0.1.0 release reconciliation`).
+
+## 0.2.0 Public Preview
+
+0.2.0 is the first release intended to be useful as a public preview rather
+than only as platform foundation.
+
+### Release outcome
+
+- Canonical `GET /` home surface with Hero / Capabilities / Platform health /
+  Footer composition.
+- The public identity is grounded as 木村友亮 / samuido while `my-web-2026`
+  remains the platform / repository name.
+- The complete 2025 edition remains linked during migration.
+- Portfolio / Content / Activity are explicit planned capabilities rather than
+  implied complete features.
+- Internal D1 status reads use a safe failure contract that does not expose raw
+  binding errors.
+- Personal / domain documentation distinguishes current product truth,
+  migration evidence, temporal personal state, and owner authority.
+- Release validation includes integration checks, Cloudflare type generation,
+  and Playwright E2E on release-branch pushes.
+
+### Included delivery
+
+- Skills / delivery foundation: #7, #9, #11, #13
+- Runtime / internal data path: #16, #25
+- Home public surface: #22, #27
+- Personal / domain grounding: #26
+
+### Release gate
+
+Before merging `release-0-2-0 -> main`:
+
+1. ticket PRs targeted for 0.2.0 are landed or explicitly deferred;
+2. release-branch push CI is green, including Playwright E2E;
+3. package / visible version / release documentation all report 0.2.0;
+4. production deployment is smoke-tested against the public Worker URL;
+5. repository owner gives the explicit release-merge approval required below.
 
 ## 0.1.0 Foundation backlog
 

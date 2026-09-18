@@ -21,7 +21,7 @@ import { d1RowToStatus, safeProbe } from './health';
  * intentionally-thrown probe failures.
  */
 
-const SILENCE_PATTERN = /\[home\] .* probe failed/;
+const SILENCE_PATTERN = /\[cloudflare\] .* probe failed/;
 
 let consoleErrorSpy: ReturnType<typeof vi.spyOn> | undefined;
 

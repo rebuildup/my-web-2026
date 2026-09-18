@@ -1,117 +1,83 @@
-# ADR-0005: Design system foundation (Panda CSS)
+# ADR-0005: Editorial visual language foundation (Panda CSS)
 
-- Status: Accepted (revised 2026-09-11)
+- Status: Accepted (revised 2026-09-19)
 - Date: 2026-09-11
+- Extends: ADR-0001
 - Superseded by: None
 
 ## Context
 
-Tailwind CSS is explicitly off the table for my-web-2026. Panda CSS
-is the chosen styling system. The first-pass initialization shipped
-only the raw token layer; `bg.canvas` / `text.default` / etc. lived
-in a TypeScript object (`src/infra/design-tokens.ts`) that was not
-registered with Panda, so it never reached `css({ bg: 'bg.canvas' })`.
+Panda CSS is the selected styling system. 0.1.0 originally placed raw tokens,
+semantic tokens, and recipe seeds under a generic `src/design-system/`
+category.
 
-The brief asks for a design system foundation at 0.1.0 but warns
-against building components that no page implementation needs yet.
-Tool submodules are independent and must not be forced into the
-my-web-2026 design system.
+Once the 0.2.0 Home surface existed, the actual ownership became clearer:
+those tokens and primitives express the current **editorial visual language**.
+Calling them a global design system implied a shared obligation before a
+second visual language or consumer existed.
+
+ADR-0008 establishes that shared boundaries are discovered from observed
+invariants and change pressure rather than created speculatively.
 
 ## Decision
 
-### 1. Adopt Panda CSS
+### 1. Panda CSS remains the styling infrastructure
 
-`@pandacss/dev` 1.12.x is the styling dependency. The postcss plugin
-runs in Vite (`postcss.config.mjs`).
+`@pandacss/dev` 1.12.x remains the styling dependency. Panda codegen and
+PostCSS wiring do not change.
 
-### 2. Token layers at 0.1.0
+### 2. The current visual language owns its tokens
 
-Both raw and semantic layers are established at 0.1.0:
+The shipped editorial language owns:
 
-**Raw tokens** (`src/design-system/tokens.ts`):
+- `src/editorial/tokens.ts`
+- `src/editorial/semantic-tokens.ts`
+- `src/editorial/primitives/`
 
-- `colors.brand.*` and `colors.neutral.*`
-- `fonts.sans` and `fonts.mono`
-- `fontSizes.xs|sm|md|lg|xl|2xl`
-- `radii.sm|md|lg|full`
-- `shadows.sm|md`
-- `spacing.0|1|2|3|4|6|8|12`
-- `breakpoints.sm|md|lg|xl` at `640|768|1024|1280 px`
+`panda.config.ts` consumes these files directly.
 
-**Semantic tokens** (`src/design-system/semantic-tokens.ts`):
+### 3. `editorial/` is not a generic component library
 
-- `bg.canvas | surface | subtle | accent | inverse`
-- `text.default | muted | inverse | accent`
-- `border.subtle | strong | focus`
+A primitive belongs in `editorial/` because its design rule is governed by
+the editorial language, not because it is React UI.
 
-Semantic tokens are registered with Panda via
-`theme.semanticTokens` in `panda.config.ts`, using
-`{ value: '{colors.<token>}' }` references so Panda resolves them at
-codegen time.
+A future product or dashboard visual language remains independent by default.
+Duplication is evidence of a possible shared obligation, not proof of one.
+Sharing requires the same governing invariant, authority, lifecycle, and
+expected evolution to be observed.
 
-Component recipes are **not** defined at 0.1.0. They are introduced
-when a feature ticket needs them, in the same PR as the feature.
+### 4. Storybook follows ownership
 
-> **Revision (2026-09-11, Storybook + Playwright adoption):** the
-> 0.1.0 Foundation release ships three Panda recipe seeds under
-> `src/design-system/components/` — `Button`, `Card`, `Badge` — and
-> a tokens documentation story. The seeds exist purely to (a) verify
-> the recipe codegen pipeline, (b) provide a visible Storybook
-> surface, and (c) document the recipe pattern. They are **not**
-> used by any production route at 0.1.0; page-level adoption lands
-> in 0.2.0+ alongside the first capability module. Recipe addition
-> stays feature-driven, not a backlog dump.
+Stories stay next to the source they describe. The current visual preview is
+under `src/editorial/**`; Home composition stories remain under
+`src/home/**`.
 
-### 3. Token layout rule
+Storybook remains dev-only, and `pnpm run build-storybook` remains part of
+`validate:integration`.
 
-`src/design-system/tokens.ts` is the canonical home for raw tokens
-imported by `panda.config.ts`. `src/design-system/semantic-tokens.ts`
-is the canonical home for the semantic layer. Component recipes and
-feature-local tokens live next to the first feature that uses them
-(`src/modules/<capability>/styling.ts`).
+### 5. Tool repositories remain independent
 
-### 4. Panda CSS and Tool submodules
-
-The design system is **not** forced on Tools. Each Tool may:
-
-- Use Panda CSS itself
-- Use Tailwind
-- Use any other styling solution
-- Use no styling system at all
-
-Submodules do not import from `my-web-2026/src/**` for styling. The
-build / manifest contract on the parent side is what wires a Tool
-into a page slot.
-
-### 5. Generated styled-system
-
-Panda's `styled-system` package is generated by `pnpm prepare` (which
-runs `panda codegen`) and is gitignored. CI must run `pnpm install`
-(which triggers `prepare`) before any `pnpm run build`.
+External Tool repositories do not import host visual-language source. Each
+Tool may choose its own styling stack; parent integration happens through its
+build/manifest contract.
 
 ## Consequences
 
 ### Positive
 
-- The styling foundation is small and reviewable.
-- Semantic tokens are real Panda tokens, usable in `css({ ... })`
-  without indirection.
-- Token additions are visible in code review because they happen
-  alongside the feature that needs them.
-- Tools stay decoupled from the design system.
+- Path states which visual language owns a rule rather than labelling it generically as UI.
+- A future visual language can evolve without premature shared primitives.
+- Panda token/codegen behavior remains unchanged.
 
 ### Negative / Trade-offs
 
-- The semantic layer is intentionally short; growing it requires a
-  design-system ADR.
+- Similar primitives may temporarily exist in multiple visual languages.
+- A later genuinely shared visual obligation may require promotion and moves.
+- Uniform directory shape is intentionally not guaranteed.
 
 ## Re-evaluation triggers
 
-Re-evaluate when:
-
-- A new semantic token category (motion, density, elevation) becomes
-  needed across multiple capabilities.
-- A third-party Panda preset becomes clearly preferable to the
-  in-repo raw tokens.
-- A Tool submodule integration needs shared styling primitives;
-  promote the canonical list to `src/design-system/components/`.
+- A second visual language is implemented.
+- Two visual owners repeatedly change for the same governing invariant.
+- A host primitive must be consumed by an external Tool.
+- Panda CSS no longer fits the required styling/runtime contract.

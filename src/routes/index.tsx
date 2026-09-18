@@ -1,10 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router';
-import {
-	CAPABILITIES,
-	SYSTEM_SERVICES,
-	getHomeSystemStatus,
-	HomePage,
-} from '../home/public';
+import { CAPABILITIES, SYSTEM_SERVICES, getHomeSystemStatus, HomePage } from '../home/public';
 
 /**
  * TanStack Start route binding for the canonical home surface.

@@ -1,6 +1,6 @@
 # ADR-0002: Internal vs external HTTP boundary
 
-- Status: Accepted (revised 2026-09-11)
+- Status: Accepted (revised 2026-09-19)
 - Date: 2026-09-11
 - Extends: ADR-0001
 - Superseded by: None
@@ -42,8 +42,9 @@ Worker entry, and `src/start.ts` is removed.
 | OAuth provider callback               | Hono (`/oauth/*`)              |
 | Third-party integration adapter       | Hono (`/integrations/*`)       |
 
-Both layers consume shared capability code from `src/modules/**` but
-**never** import each other.
+Both layers may consume lower-level obligation contracts, but Hono and
+TanStack Start do **not** import each other. Source ownership outside this
+HTTP split follows ADR-0008.
 
 ### 2. Implementation: Worker entry dispatcher
 
@@ -92,19 +93,24 @@ If a third party needs access, that traffic is implemented as a Hono
 route that internally calls the same capability operation, not as a
 server function.
 
-### 5. Capability code stays portable
+### 5. Runtime-specific behavior has its own owner
 
-Capability code under `src/modules/<capability>/**`:
+Cloudflare-specific binding behavior is owned under `src/cloudflare/**`.
+A surface must not absorb raw binding logic merely because it displays the result.
 
-- Must not import `cloudflare:*` packages.
-- Must not import from `hono` or `@tanstack/react-start`.
-- The only file in a capability allowed to bridge to those packages
-  is `<capability>/server.ts`, and only through TanStack Start's
-  `createServerFn` (UI-side) — never Hono.
+The current Home status operation demonstrates the direction:
 
-Adapters in `src/platform/cloudflare/` own the Cloudflare-specific
-concerns; capability code does not import them directly. Bindings
-flow through function arguments or Hono's `c.env`.
+```text
+home/status/load -> cloudflare/health
+home/status/load -> http/health
+```
+
+`src/home/status/load.ts` is the TanStack Start server-function composition
+point. It consumes public-safe health contracts. `src/cloudflare/**` and
+`src/http/**` do not import Home.
+
+Hono remains exclusive to the external HTTP owner. Other source boundaries do
+not import Hono merely to reuse an implementation detail.
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 # Design Brief — Personal Web Platform (home page)
 
-> Source of design direction for `src/modules/home/`. Owned by
+> Source of design direction for `src/home/`. Owned by
 > Issue #21. Update this file when a deliberate direction decision
 > changes; downstream Skills (color / typography / layout / motion /
 > a11y) read it as project evidence, not as binding prescription.
@@ -96,7 +96,7 @@
 - **Level**: minimal. The page is content-led; motion is reserved for
   capability card hover (border / background swap, 120ms).
 - **Where motion is useful**: capability card hover, button hover
-  (already in the design-system recipe).
+  (already in the editorial primitive).
 - **Where motion should be absent**: hero copy, section titles,
   footer, system status section. No entry transitions, no parallax,
   no scroll-linked effects.
@@ -112,7 +112,7 @@
   responsive page-margin token. Used twice or more in the page.
 - **SectionHeading primitive**: an `<h2>` + optional eyebrow + optional
   description. Used 3 times. Keeps section rhythm consistent.
-- **`src/modules/home/` is the canonical home**: the route file
+- **`src/home/` is the canonical home**: the route file
   (`src/routes/index.tsx`) stays thin (loader + route definition) and
   imports the page component from the module.
 

@@ -35,9 +35,7 @@ session. Domain-specific workflows are in `skills/<skill>/SKILL.md`.
   handler based on path prefix. The default CSRF middleware is active
   because `src/start.ts` is intentionally absent — do not re-add it
   without an ADR.
-- Styling: Panda CSS (`@pandacss/dev` 1.12.x). Tokens in
-  `src/design-system/tokens.ts` (raw) + `src/design-system/
-  semantic-tokens.ts` (semantic). **Tailwind CSS is forbidden.**
+- Styling: Panda CSS (`@pandacss/dev` 1.12.x). The shipped visual language is `src/editorial/`: `tokens.ts`, `semantic-tokens.ts`, and `primitives/`. **Tailwind CSS is forbidden.**
 - Format / lint: Biome (`@biomejs/biome` 1.9.x). Replaces both
   Prettier and ESLint.
 - Package manager: pnpm 12.3.x. **Bun is not the default.** Do not
@@ -50,23 +48,53 @@ This file is updated when the stack changes.
 
 ## 3. Architecture boundary (always enforce)
 
-The split between TanStack Start and Hono is enforced in
-`src/server.ts`. Do not bypass it.
+The TanStack Start / Hono split is enforced in `src/server.ts`. Do not bypass it.
 
-- Hono handlers live under `src/http/**` (mounted by `src/server.ts`).
-- Server functions live next to the route file that uses them, or under
-  `src/modules/<capability>/server.ts`.
-- Capability / domain / application code (`src/modules/**` and any
-  feature-local file) must not import from `hono`, `@tanstack/
-  react-start`, or any Cloudflare SDK.
-- TanStack Start's **default CSRF middleware is the canonical CSRF
-  protection**. Custom `startInstance` is forbidden — overriding it
-  would disable the default middleware.
+Source ownership is **obligation-oriented** (ADR-0008). Path is a projection of
+ownership, not the rule that creates ownership.
 
-Frontend is **feature-oriented** (under `src/modules/<capability>/ui/`).
-Backend is **capability-oriented** (`src/modules/<capability>/**`).
-Do not create a flat `src/components/`, `src/hooks/`, `src/utils/`
-mega-folder.
+For every durable boundary, be able to answer:
+
+1. Obligation — what work does it own?
+2. Change reason — what decision or contract makes it change?
+3. Authority — what has final decision authority over that change?
+4. Dependency direction — who may know this contract?
+5. Lifecycle — what is it born and removed with?
+
+Do not create `modules/`, `components/`, `ui/`, `models/`, `services/`,
+`utils/`, `shared/`, or similar folders merely to classify implementation
+types. Technical names are allowed when they own an independent contract:
+`http/`, `cloudflare/`, framework-imposed `routes/`, and runtime entrypoints
+are current examples.
+
+Current dependency direction:
+
+```text
+routes -> home
+home/status -> cloudflare
+home/status -> http
+home -> editorial
+server -> http
+```
+
+- `src/home/**` owns the canonical Home surface and its presentation decisions.
+- `src/editorial/**` owns the shipped editorial visual language.
+- `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
+- `src/http/**` owns the external HTTP boundary.
+- `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
+- Internal UI operations use TanStack Start server functions at the obligation
+  that composes them (currently `src/home/status/load.ts`).
+- Hono handlers remain under `src/http/**`.
+- TanStack Start's default CSRF middleware is canonical. A custom
+  `startInstance` is forbidden without an ADR.
+
+Do not pre-create shared abstractions, integrations, or future visual languages.
+Promote a local implementation only after an independent contract / authority /
+lifecycle is observed; demote it if that independence disappears.
+
+Physical separation also has a cost. Do not split a conceptual distinction into
+another directory unless the split improves ownership, dependency direction,
+blast radius, or navigation.
 
 ## 4. Cloudflare services policy
 

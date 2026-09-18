@@ -1,6 +1,6 @@
 # ADR-0001: Canonical stack selection
 
-- Status: Accepted (revised 2026-09-11)
+- Status: Accepted (revised 2026-09-19)
 - Date: 2026-09-11
 - Extends: project-init ADR-0001, ADR-0004, ADR-0005
 - Superseded by: None
@@ -53,47 +53,36 @@ Internal application operations invoked from the UI are implemented
 as TanStack Start server functions (`createServerFn`) and **must not**
 be exposed through Hono.
 
-### 4. Architecture style: Modular Monolith
+### 4. Architecture style: deployment monolith, obligation-oriented source
 
-The architecture is **deployment monolith / modular codebase /
-capability-oriented**:
+The architecture remains one repository, one primary Cloudflare Worker,
+and one wrangler config.
 
-- One repository.
-- One primary Cloudflare Worker deployment.
-- One wrangler config.
-- Logical boundaries (capability modules, external boundary,
-  Cloudflare infra adapters) are documented but kept in the same
-  repository.
+Source does not use a fixed layer or feature template. Durable boundaries
+follow ADR-0008: governing invariant, decision authority, dependency direction,
+and lifecycle determine ownership; path is the resulting projection.
 
-### 5. Layout: capability-oriented vertical slices
+### 5. Layout: observed obligations, not a template
 
-Frontend and backend share the same tree:
+0.2.0 currently exposes `home/`, `editorial/`, `cloudflare/`, and
+`http/` alongside framework-owned `routes/` and runtime entrypoints.
 
-```
-src/modules/<capability>/
-  model.ts          # pure types / value objects
-  service.ts        # business operations
-  repository.ts     # persistence boundary (D1 / R2)
-  server.ts         # createServerFn entrypoints
-  ui/               # feature-local React components (frontend)
-  styling.ts        # feature-local Panda recipes / tokens
-```
-
-The 0.1.0 Foundation release ships no `src/modules/<capability>/`
-folder. `portfolio`, `content`, `activity`, etc. land in 0.2.0+.
-
-`src/http/hono.ts` is the only shared boundary surface.
+This list is descriptive, not a schema for future features. A new capability
+does not copy the Home tree by default. It establishes only the boundaries
+justified by its own obligation and observed change pressure.
 
 ### 6. Styling: Panda CSS
 
 Tailwind CSS is explicitly **not** adopted. Panda CSS is the styling
 system.
 
-Both **raw** and **semantic** token layers are established at 0.1.0
-(in `src/design-system/tokens.ts` + `src/design-system/semantic-
-tokens.ts`). Component recipes are introduced only when a page
-implementation needs them. The system is owned by my-web-2026; it is
-**not** imposed on external Tool submodules.
+Both **raw** and **semantic** token layers are owned by the shipped editorial
+visual language (`src/editorial/tokens.ts` +
+`src/editorial/semantic-tokens.ts`). Primitives are introduced only when an
+actual surface needs them. A generic shared design-system layer is not
+pre-created; a future visual language remains independent until a shared
+obligation is observed. The host visual language is not imposed on external
+Tool submodules.
 
 ### 7. Format and lint: Biome
 
@@ -108,9 +97,9 @@ The `validate:*` gates only ever invoke the read-only variants.
 
 ### 8. Design-system preview: Storybook
 
-Storybook 8.6.x is the canonical surface for visualising the
-Panda recipe seeds at 0.1.0 (`src/design-system/components/<Name>.tsx`
-+ adjacent `<Name>.stories.tsx`). It is dev-time only; the static
+Storybook 8.6.x is the canonical preview surface for currently owned visual
+language primitives (`src/editorial/primitives/<Name>.tsx` + adjacent
+`<Name>.stories.tsx`). It is dev-time only; the static
 build (`pnpm run build-storybook` → `storybook-static/`) is part of
 `validate:integration` so a broken story fails the PR gate, but the
 static output is gitignored.
@@ -171,7 +160,7 @@ Cloudflare services are chosen by purpose, not by inventory:
   and Hono is enforced at the Worker entry, with real `env` and
   `ctx` reaching Hono.
 - Default CSRF middleware is active without explicit configuration.
-- The architecture stays a modular monolith until proven otherwise.
+- The deployment stays monolithic while source boundaries follow observed obligations.
 
 ### Negative / Trade-offs
 

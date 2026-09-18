@@ -5,10 +5,24 @@ import type { Capability } from './capability';
 /**
  * CapabilitiesGrid stories. The component is a function of
  * `readonly Capability[]`; each variant exercises a different mix of
- * `live` / `planned` statuses to confirm the proximity-first layout
- * survives content variation. Cards are raw flex stacks — no border,
- * no background fill, no padding box; the ordinal caption
- * (`01 · Portfolio`) sits inline with the English label.
+ * `live` / `planned` statuses to confirm the editorial spread layout
+ * survives content variation.
+ *
+ * The section uses the spread `SectionHeading` so the heading cluster
+ * (eyebrow / h2 / description) sits in the narrow 4/12 left column
+ * and the card grid lives in the wide 8/12 right column. Cards are
+ * raw flex stacks — no border, no background fill, no padding box;
+ * the ordinal caption (`01 · Portfolio`) sits inline with the English
+ * label. Card rowGap is `10` (40px), columnGap is `6` (24px) — both
+ * are golden-ratio jumps from the in-cluster gaps.
+ *
+ * Per-card semantics — per-element `marginBlockStart`:
+ * - h3 ↔ badge: flex row, gap 4 — one title cluster.
+ * - h3 ↔ ordinal: 1 (4px) — the ordinal is a decoration on the
+ *   title, not a separate line.
+ * - ordinal ↔ JP summary: 4 (16px) — cluster separator.
+ * - JP ↔ EN summary: 1 (4px) — translation pair, one thought in
+ *   two languages.
  */
 const meta = {
 	title: 'home/CapabilitiesGrid',

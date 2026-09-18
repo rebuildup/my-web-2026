@@ -17,32 +17,27 @@ export interface CapabilitiesGridProps {
  * without any single CTA. When a capability flips to `live`, its
  * block becomes the only interactive surface in the section.
  *
- * Issue #31 — proximity revision. The card has no `gap` on the
- * parent; each child carries its own `marginBlockStart` to encode
- * the semantic relationship:
+ * Issue #31 — editorial spread (fourth pass). The section uses the
+ * spread `SectionHeading` so the heading cluster (eyebrow / h2 /
+ * description) sits in the narrow 4/12 left column and the card
+ * grid lives in the wide 8/12 right column. The right column is
+ * single-card wide per row at `base` and 2-up at `md`+ so the
+ * cards stay readable in the narrower 8/12 column.
  *
- * - h3 + badge (header row): flex baseline, no margin — one
- *   title cluster.
- * - h3 ↔ ordinal caption: 1 (4px) — the ordinal is a decoration
- *   on the title, not a separate line.
- * - ordinal ↔ JP summary: 4 (16px) — cluster separator. The
- *   ordinal ends and the body block begins.
- * - JP summary ↔ EN summary: 1 (4px) — translation pair, one
- *   thought in two languages.
- *
- * Between cards the grid uses `rowGap: 8` (32px) so the eye reads
- * them as discrete items rather than continuous prose.
- *
- * The block has no border, no background fill, and no padding box —
- * semantic closeness alone groups the capability label, status,
- * ordinal decoration, and summary paragraphs.
+ * Per-card semantics — per-element `marginBlockStart`:
+ * - h3 ↔ badge: flex row, gap 4 — one title cluster.
+ * - h3 ↔ ordinal: 1 (4px) — the ordinal is a decoration on the
+ *   title, not a separate line.
+ * - ordinal ↔ JP summary: 4 (16px) — cluster separator.
+ * - JP ↔ EN summary: 1 (4px) — translation pair, one thought in
+ *   two languages.
  */
 export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 	return (
 		<section
 			aria-labelledby="capabilities-heading"
 			className={css({
-				paddingBlock: { base: '12', lg: '16' },
+				paddingBlock: { base: '16', lg: '24' },
 			})}
 		>
 			<Container>
@@ -51,6 +46,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 					eyebrow="01 — Capabilities"
 					title="できごと / What's here"
 					description="個人 Platform の機能領域。0.2.0 時点ではまだどれも未公開で、順に組み立てていく。"
+					variant="spread"
 				>
 					<ul
 						className={css({
@@ -59,7 +55,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 								base: '1fr',
 								md: 'repeat(2, minmax(0, 1fr))',
 							},
-							rowGap: '8',
+							rowGap: '10',
 							columnGap: { base: '0', md: '6' },
 							margin: '0',
 							padding: '0',
@@ -81,7 +77,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 											display: 'flex',
 											alignItems: 'baseline',
 											justifyContent: 'space-between',
-											gap: '3',
+											gap: '4',
 										})}
 									>
 										<h3

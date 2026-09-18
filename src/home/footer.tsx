@@ -8,20 +8,18 @@ import { PACKAGE_VERSION } from './version';
  * Hosts the public transition metadata for the 2025 / 2026 editions,
  * the canonical source link, and the operational entry points.
  *
- * From Issue #31 the footer adopts an editorial 3-column layout
- * that mirrors the body sections above: the section number `04`
- * sits as a `3xl` display in the left column (the same size tier as
- * the Hero display and the spread section heading), the meta
- * paragraphs stack in the middle, and the outbound links stack in
- * the right column. There is no border, no background fill, and no
- * divider rule — proximity plus generous vertical padding separate
- * the footer from the body sections above.
+ * Issue #31 — editorial spread (fourth pass). The footer sits on
+ * the same 12-column grid as the rest of the page, divided into
+ * three equal columns. The `04` decoration jumps to `4xl` (64px)
+ * so it shares the display voice with the Hero h1 — the page reads
+ * with one display voice across Hero and Footer. Per-element
+ * `marginBlockStart` carries the proximity rule within each column.
  */
 export function Footer() {
 	return (
 		<footer
 			className={css({
-				paddingBlock: { base: '10', lg: '14' },
+				paddingBlock: { base: '16', lg: '24' },
 			})}
 		>
 			<Container>
@@ -30,10 +28,10 @@ export function Footer() {
 						display: 'grid',
 						gridTemplateColumns: {
 							base: '1fr',
-							lg: 'minmax(0, 2fr) minmax(0, 3fr) minmax(0, 3fr)',
+							lg: 'minmax(0, 4fr) minmax(0, 4fr) minmax(0, 4fr)',
 						},
-						columnGap: { base: '0', lg: '12' },
-						rowGap: { base: '12', lg: '0' },
+						columnGap: { base: '0', lg: '10' },
+						rowGap: { base: '10', lg: '0' },
 						alignItems: 'start',
 					})}
 				>
@@ -41,7 +39,6 @@ export function Footer() {
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '6',
 						})}
 					>
 						<span
@@ -59,8 +56,9 @@ export function Footer() {
 						<span
 							aria-hidden="true"
 							className={css({
+								marginBlockStart: '2',
 								fontFamily: 'sans',
-								fontSize: '3xl',
+								fontSize: '4xl',
 								fontWeight: '700',
 								color: 'text.default',
 								lineHeight: '1',
@@ -74,7 +72,6 @@ export function Footer() {
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '3',
 						})}
 					>
 						<span
@@ -91,10 +88,12 @@ export function Footer() {
 						<p
 							className={css({
 								margin: '0',
+								marginBlockStart: '2',
 								fontFamily: 'sans',
-								fontSize: 'lg',
+								fontSize: '2xl',
 								color: 'text.default',
 								fontWeight: '600',
+								letterSpacing: '-0.02em',
 							})}
 						>
 							samuido
@@ -102,6 +101,7 @@ export function Footer() {
 						<p
 							className={css({
 								margin: '0',
+								marginBlockStart: '1',
 								fontFamily: 'mono',
 								fontSize: 'sm',
 								color: 'text.muted',
@@ -114,7 +114,6 @@ export function Footer() {
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '3',
 						})}
 					>
 						<span
@@ -134,6 +133,7 @@ export function Footer() {
 								flexDirection: 'column',
 								gap: '2',
 								margin: '0',
+								marginBlockStart: '2',
 								padding: '0',
 								listStyle: 'none',
 								fontFamily: 'sans',

@@ -6,10 +6,15 @@ import type { SystemService, SystemServiceStatus } from './health';
  * StatusTiles stories. The component renders one row per registered
  * service with its binding name and the latest health read. Each
  * variant exercises a different status mix so designers can confirm
- * the proximity-first rhythm survives content variation. Rows are
- * separated by `gap: 8` alone — no hairline rules between rows. The
- * `dt` is sans-bold at `lg` with the binding rendering adjacent in
- * mono `sm`.
+ * the editorial spread rhythm survives content variation.
+ *
+ * The section uses the spread `SectionHeading`. Rows are separated
+ * by `gap: 10` (40px) — a golden-ratio jump from the card-level
+ * `gap: 4` to mark the transition from heading cluster to service
+ * rows. The `dt` is sans-bold at `lg` with the binding rendering
+ * adjacent in mono `sm`; the badge anchors the right edge. The
+ * observed-at line sits at `marginBlockStart: 10`, separated from
+ * the last row by a deliberate beat.
  */
 const meta = {
 	title: 'home/StatusTiles',

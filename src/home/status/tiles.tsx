@@ -46,21 +46,19 @@ function statusFor(
  * server loader so visitors see the same freshness on every
  * request that hit the same SSR snapshot.
  *
- * Issue #31 — proximity revision. Rows are separated by `gap: 8`
- * alone (no hairline rules). Inside each row the layout is a 3-column
- * grid at `md` (label / description / badge) and a vertical stack at
- * `base` with `marginBlockStart: 2` (8px) between the `dt` and `dd`
- * — the binding name and the detail read as adjacent pairs.
- *
- * The `dl` carries `gap: 8` between rows so each service reads as
- * a discrete cluster rather than continuous prose.
+ * Issue #31 — editorial spread (fourth pass). The section uses the
+ * spread `SectionHeading`. Rows are separated by `gap: 10` (40px)
+ * — a golden-ratio jump from the card-level `gap: 4` to mark the
+ * transition from heading cluster to service rows. The `dt` is
+ * sans-bold at `lg` with the binding rendering adjacent in mono
+ * `sm`; the badge anchors the right edge.
  */
 export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps) {
 	return (
 		<section
 			aria-labelledby="status-heading"
 			className={css({
-				paddingBlock: { base: '12', lg: '16' },
+				paddingBlock: { base: '16', lg: '24' },
 			})}
 		>
 			<Container>
@@ -69,12 +67,13 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 					eyebrow="02 — System status"
 					title="プラットフォームの状態 / Platform health"
 					description="各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。"
+					variant="spread"
 				>
 					<dl
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '8',
+							gap: '10',
 							margin: '0',
 							padding: '0',
 						})}
@@ -145,7 +144,7 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 					</dl>
 					<p
 						className={css({
-							marginBlockStart: '8',
+							marginBlockStart: '10',
 							margin: '0',
 							fontFamily: 'mono',
 							fontSize: 'sm',

@@ -6,9 +6,18 @@ import type { HomePageData } from './composer';
  * HomePage composition stories. The component is purely a function
  * of the loader-shaped `HomePageData` prop, so each variant just
  * supplies a different snapshot. Designers use these stories to
- * iterate on the four-section proximity-first layout without
- * re-running SSR. Section differentiation comes from spacing and
- * type, not from per-section borders or background fills.
+ * iterate on the four-section editorial spread layout without
+ * re-running SSR.
+ *
+ * All four sections (Hero / Capabilities / Status / Footer) sit on
+ * the same 12-column grid inside a 1024px `Container`. Body sections
+ * render as a 4/12 (heading cluster) + 8/12 (content) spread via
+ * `SectionHeading` with `variant="spread"`. The Hero mirrors the same
+ * 4/8 split so the metadata rail aligns with the body section
+ * headings on the same x-axis. The Footer uses three equal columns.
+ *
+ * Section differentiation comes from spacing and type, not from
+ * per-section borders or background fills.
  */
 const meta = {
 	title: 'home/HomePage',

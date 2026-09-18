@@ -1,6 +1,7 @@
 import { createServerFn } from '@tanstack/react-start';
 import { env } from 'cloudflare:workers';
 import type { SystemServiceHealth, SystemServiceStatus } from './model';
+import { d1RowToStatus, safeProbe } from './probes';
 
 /**
  * Internal application operations for the home page.
@@ -10,21 +11,36 @@ import type { SystemServiceHealth, SystemServiceStatus } from './model';
  * the rest of the TanStack Start tree (see ADR-0002). Failure
  * paths convert to a safe `unreachable` health string; raw binding
  * errors never cross to the client.
+ *
+ * Issue #19 contract: every deviation from the canonical SELECT 1
+ * → 1 read (exception, empty result, unexpected value) collapses
+ * to `unreachable`. The pure helpers `d1RowToStatus` and
+ * `safeProbe` live in `./probes` so unit tests can verify the
+ * transform without bringing the `cloudflare:workers` virtual
+ * module into the client bundle.
  */
 
-async function probeD1(): Promise<SystemServiceStatus> {
-	try {
-		const row = await env.DB.prepare('SELECT 1 AS one').first<{ one: number }>();
-		if (row?.one === 1) {
-			return { id: 'd1', health: 'ok', detail: 'SELECT 1 returned 1' };
-		}
-		return { id: 'd1', health: 'degraded', detail: 'empty result set' };
-	} catch (err) {
-		console.error('[home] d1 probe failed', err);
-		return { id: 'd1', health: 'unreachable' };
-	}
+/**
+ * D1 probe. Module-scope `env` is captured so TanStack Start can
+ * extract the handler closure normally; do not thread `env`
+ * through the parameter list (that would force Rollup to keep the
+ * `cloudflare:workers` import alive in the client bundle).
+ */
+function probeD1(): Promise<SystemServiceStatus> {
+	return safeProbe(
+		'd1',
+		() => env.DB.prepare('SELECT 1 AS one').first<{ one: number }>(),
+		d1RowToStatus,
+		'd1',
+	);
 }
 
+/**
+ * R2 probe. Out of scope for Issue #19 but kept here so the home
+ * loader stays a single entrypoint. The 404-shaped error from
+ * `MEDIA.head('probe')` is the canonical "bucket reachable" signal
+ * in 0.2.0 because the probe key is intentionally absent.
+ */
 async function probeR2(): Promise<SystemServiceStatus> {
 	try {
 		const object = await env.MEDIA.head('probe');
@@ -44,12 +60,15 @@ async function probeR2(): Promise<SystemServiceStatus> {
 	}
 }
 
-async function probeExternalBoundary(): Promise<SystemServiceStatus> {
-	// The external boundary is exercised on every render of the home
-	// page — it is the same code path the Hono handlers use. We do
-	// not make an HTTP round-trip to ourselves here; if the module
-	// graph compiled and the route rendered, the boundary is wired.
-	// Surface it as "ok" with a stable detail string.
+/**
+ * External-boundary probe. The boundary is exercised on every
+ * render of the home page — it is the same code path the Hono
+ * handlers use. We do not make an HTTP round-trip to ourselves
+ * here; if the module graph compiled and the route rendered, the
+ * boundary is wired. Surface it as "ok" with a stable detail
+ * string.
+ */
+function probeExternalBoundary(): SystemServiceStatus {
 	return {
 		id: 'external-boundary',
 		health: 'ok',
@@ -59,7 +78,11 @@ async function probeExternalBoundary(): Promise<SystemServiceStatus> {
 
 export const getHomeSystemStatus = createServerFn({ method: 'GET' }).handler(
 	async (): Promise<readonly SystemServiceStatus[]> => {
-		const [external, d1, r2] = await Promise.all([probeExternalBoundary(), probeD1(), probeR2()]);
+		const [external, d1, r2] = await Promise.all([
+			Promise.resolve(probeExternalBoundary()),
+			probeD1(),
+			probeR2(),
+		]);
 		return [external, d1, r2];
 	},
 );

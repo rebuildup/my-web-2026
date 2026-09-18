@@ -1,55 +1,107 @@
 # Domain overview
 
-> Status: **Draft** — owner 自身が本文を埋めるまで Draft のまま
+> Status: **Canonical domain grounding**
 > Visibility: public (MIT)
 > Audience: contributor, agent, future-self
+> Grounded: 2026-09-18
 
 ## What this site is
 
-> TODO — my-web-2026 が何であるかを owner の言葉で書く。 「personal infrastructure として owner を clone する」のような核を 1〜3 段落で
+my-web-2026 は **Personal Web Platform** である。
 
-## What this site replaces
+目的は portfolio ページを一枚作ることではなく、owner の公開活動を長期的に扱うための personal infrastructure を作ることにある。作品、文章、活動履歴、Tools、公開プロフィール、将来の integration は、単なる navigation category ではなく、それぞれの responsibility が観測された時点で capability / obligation として成立させる。
 
-> TODO — my-web-2025 との関係を書く。 何を継いで何を変えたか、 互換性はあるか、 移行方針
+Web UI はその public surface の一つであり、domain model 全体と同一視しない。
+
+この Platform の主語は repository や framework ではなく **木村友亮 / samuido という一人の人物** である。人物像・handle の関係・経験・好み・current activity・future direction の narrative grounding は [`../personal/domain.md`](../personal/domain.md) に置く。時間的に変化する personal knowledge と historical event を将来 structured data に移す際の意味論は [`../personal/knowledge-model.md`](../personal/knowledge-model.md) に置く。
+
+各 capability はそこから必要な projection を作り、surface ごとに別の persona を発明しない。現在の profile document を将来の canonical database schema とみなさず、CMS / storage は実際の consumer が必要になった時点で設計する。
+
+## Relationship to my-web-2025
+
+my-web-2026 は my-web-2025 の successor である。ただし route-by-route の互換実装を目的にしない。
+
+my-web-2025 では About、Portfolio、Tools、依頼・料金、リンク、各種 utility など広い surface が一つの Web site に存在していた。この既存 surface は migration evidence として利用するが、「旧サイトにページがあった」ことだけでは my-web-2026 の独立 capability であることを意味しない。
+
+移行単位は URL ではなく obligation である。
+
+- 現在も必要な責任は、新しい domain で再定義して移行する。
+- 別 capability の facet で十分なものは独立 module にしない。
+- 現在の必要性を確認できないものは legacy evidence のまま保持する。
+- 古い personal fact は current truth として自動継承しない。
+
+## Current product state
+
+### 0.1.0 Foundation
+
+0.1.0 は 2026-09-11 に Foundation として成立した。
+
+この段階で主に確立したのは、Cloudflare Workers 上の deployable shape、TanStack Start / Hono boundary、Panda CSS design-system foundation、D1 / R2 bindings、quality gates、release workflow である。
+
+### 0.2.0
+
+0.2.0 は canonical top page を最初の vertical slice として構築している。
+
+現在コード上で観測できる user-facing state は次の通り。
+
+- `home`: live。Personal Web Platform の canonical entry surface。
+- platform health: `home` 内で live。Hono external boundary / D1 / R2 の到達性を表示する。
+- `portfolio`: planned。
+- `content`: planned。
+- `activity`: planned。
+
+`portfolio / content / activity` は home の static inventory で planned と宣言されているが、個別 route / module はまだ存在しない。
 
 ## Operating mode
 
-> TODO — single-person operation か、複数 contributor 想定か、 招待方針。 owner.md の operating mode と整合
+owner-operated / single-author を基本とする public repository である。
+
+contributor や agent が実装を担うことはできるが、personal narrative、public fact、architecture、integration、release の最終 authority は owner に残る。
 
 ## Stack
 
-事実 (確定済み、 owner 確認のみ):
+current repository contract:
 
 - Runtime / deployment: Cloudflare Workers
 - Web framework: TanStack Start
 - External HTTP boundary: Hono
-- Styling: Panda CSS (Tailwind CSS 不使用)
-- Format / lint: Biome (Prettier / ESLint 不使用)
-- Package manager: pnpm (Bun 不使用)
+- UI: React 19.2.x
+- Build: Vite 7.1.x
+- Language: TypeScript 5.9.x
+- Styling: Panda CSS
+- Format / lint: Biome
+- Package manager: pnpm
 - Tests: Vitest + `@cloudflare/vitest-plugin`
-- UI: React 19.2.x, Vite 7.1.x, TypeScript 5.9.x
+- Browser E2E: Playwright
+- Component development: Storybook
 
-## Bindings in scope (v0.1.0)
+Tailwind CSS は styling owner ではない。Bun は default package manager ではない。
 
-事実 (確定済み):
+## Runtime bindings
 
-- Static Assets (`ASSETS`)
-- D1 (`DB`, database_name: my-web-2026)
-- R2 (`MEDIA`, bucket_name: my-web-2026)
+current bindings:
 
-新しい service (KV, Queues, Durable Objects, Workflows, Vectorize, Workers AI) を追加する場合は ticket + ADR が必要。
+- Static Assets: `ASSETS`
+- D1: `DB` (`my-web-2026`)
+- R2: `MEDIA` (`my-web-2026`)
 
-## Release state
+KV、Queues、Durable Objects、Workflows、Vectorize、Workers AI などを追加する場合は、それ自体を新しい platform debt として ticket + ADR で評価する。
 
-事実 (確定済み):
+## HTTP boundary
 
-- 0.1.0 Foundation: released 2026-09-11
-- 0.2.0: in progress (canonical top page 確立中)
+external HTTP contract は Hono が所有する。
 
-## Target
+- `/api/v1/*`
+- `/webhooks/*`
+- `/oauth/*`
+- `/integrations/*`
 
-> TODO — owner が書く。 0.3.0 以降の goal、 0.2.0 で達成したいこと、 個人インフラ philosophy の 0.2.0 での位置づけ
+UI から使う internal application operation は TanStack Start server functions が所有する。両者を同じ「backend API」という理由だけで統合しない。
 
-## Notes
+## Domain evolution
 
-> TODO — owner 補足、 他 doc への参照
+my-web-2026 の domain inventory は固定リストではない。
+
+新しい capability は、ページを作りたいから追加するのではなく、独立した invariant / authority / lifecycle / boundary value が観測されたときに成立する。逆に、旧サイトで別ページだったものでも、同一 obligation の facet と判断できれば統合する。
+
+現時点の inventory と確度は [`capabilities.md`](capabilities.md) を canonical とする。

@@ -1,49 +1,84 @@
 # Owner
 
-> Status: **Draft** — owner 自身が本文を埋めるまで Draft のまま
+> Status: **Canonical owner / authority grounding**
 > Visibility: public (MIT)
 > Audience: contributor, agent, future-self
 
-## Handle
+my-web-2026 が表現する人物そのものの canonical grounding は **[domain.md](domain.md)** に置く。
 
-> TODO — public handle (例: rebuildup) を確定する
+この文書は、その人物が my-web-2026 の owner としてどの authority を持つか、repository が personal-domain knowledge をどう扱うかを定義する。
 
-## Role
+## Identity summary
 
-> TODO — 役割を書く。 full-stack developer / video creator / designer のような複数役割か、単一役割か、 owner 自身の言葉で
+- **Person:** 木村友亮 / Yusuke Kimura
+- **Primary public handle:** samuido
+- **Stylized / distribution identity:** 361do
+- **Development / GitHub identity:** rebuildup
+- **Personal domain:** yusuke-kim.com
+- **Current context:** 宇部工業高等専門学校 制御情報工学科 在学、2028年3月卒業予定
+- **Broad role:** developer / creator
+- **Career direction:** frontend / software engineering を軸にした product development
 
-## Vision
-
-> TODO — my-web-2026 が何であるかを owner の言葉で書く。 「個人インフラとして私を clone する」のような核心を 1〜3 段落で
+これらの関係、経験、好み、current activities、future direction の narrative は [domain.md](domain.md) を参照する。個々の情報を将来 structured data に移す際の temporal semantics / correction / publication authority は [knowledge-model.md](knowledge-model.md) を参照する。
 
 ## Decision authority
 
-> TODO — どの意思決定を owner が直接持っているかを書く。 例:
-> - architectural decisions (stack / dependency selection)
-> - visual decisions (visual language selection, palette)
-> - integration decisions (外部サービス採用)
-> - release decisions (version cut, merge gate)
+最終的な human authority は owner が保持する。agent や contributor は調査・実装・提案を行えるが、次の内容を owner の代わりに発明してはならない。
+
+- **self-narrative authority** — 自己紹介、肩書き、活動の意味付け
+- **career / activity fact authority** — 経歴、実績、時系列、公開可否
+- **architecture authority** — stack、dependency、obligation boundary
+- **visual authority** — visual language、表現方針、ブランド上の判断
+- **integration authority** — 外部サービスを personal domain に接続する判断
+- **release authority** — release PR merge、tag、GitHub Release 公開
+
+事実の追加と、事実の見せ方の変更は別の判断として扱う。
+
+また authority は単なる repository write permission と同一視しない。agent / contributor は evidence の observation、record / correction の proposal、canonical knowledge からの projection を行えるが、owner の subjective preference / intention を発明して確定してはならない。personal knowledge の record / correction / assertion / publication / authority delegation の意味は [knowledge-model.md](knowledge-model.md) を canonical とする。
 
 ## Working languages
 
-> TODO — 既に AGENTS.md §1 に書かれた事実をここに集約する:
-> - source code: English
-> - commit messages: English
-> - internal docs / Issues / PR titles and bodies / review discussion: 日本語
-> - branch names: identifier または version のみ、 prose 不可
+repository-wide contract:
 
-## Public visibility
+- source code: English
+- commit messages: English
+- internal development docs: 日本語
+- Issue / PR title and body: 日本語
+- review discussion: 日本語
+- branch names: identifier または release version。prose を使わない
 
-> TODO — visibility を確認する:
-> - repo: public (MIT)
-> - personal info を docs/ に書く場合: professional framing に限定
+visitor-facing content の言語は capability ごとに決める。
+
+## Publication model
+
+この repository は public / MIT であり、personal-domain knowledge 自体も public site を構築するための資料として扱う。
+
+ただし「公開可能」と「常に表示すべき」は同義ではない。
+
+- 実名・学校・経歴など public profile として意図された情報は personal domain に保持できる。
+- contact、metrics、current status など変化しやすい事実は current source を確認する。
+- private credentials、private relationships、site と無関係な sensitive information は含めない。
+- old site / social / conversation は evidence だが、古い mutable fact を自動的に current truth にしない。
 
 ## Operating mode
 
-> TODO — single-person operation か、複数 contributor 想定か、 contributor 招待の基準はあるか
+my-web-2026 は **owner-operated / single-author を基本** とする。
 
-## Notes
+協力者や agent が参加しても personal narrative の authority は分散しない。一方、implementation responsibility は capability / integration ごとに分離してよい。
 
-> TODO — owner がドキュメントを書く中で残したい補足、 他の doc への参照、 例:
-> - この doc は AGENTS.md §1 と整合させる
-> - decision authority の詳細は ADR に記録する (この doc には書かない)
+人が一人であることと、architecture 上の obligation を一つにまとめることは別である。
+
+## Grounding precedence
+
+owner / personal domain に関する情報は次の順で扱う。
+
+1. owner が current interaction で明示した内容
+2. `docs/personal/domain.md` の canonical statement
+3. current public site / current repository data
+4. dated public portfolio / repository history
+5. historical docs / old site
+6. inference
+
+6 の inference を public fact として出力してはならない。
+
+unknown は unknown のまま保持し、必要になった時点で authority に戻る。

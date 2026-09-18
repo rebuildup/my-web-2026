@@ -11,15 +11,17 @@ import { createMiddleware } from 'hono/factory';
  * Used by all `/api/v1/*` routes (mounted in `src/http/hono.ts`) so
  * error responses and worker logs share a common correlation token.
  */
-export const requestIdMiddleware = createMiddleware<{ Bindings: Env; Variables: { requestId: string } }>(
-	async (c, next) => {
-		const existing = c.req.header('X-Request-Id');
-		const requestId = existing && existing.length > 0 && existing.length <= 128 ? existing : generateRequestId();
-		c.set('requestId', requestId);
-		c.header('X-Request-Id', requestId);
-		await next();
-	},
-);
+export const requestIdMiddleware = createMiddleware<{
+	Bindings: Env;
+	Variables: { requestId: string };
+}>(async (c, next) => {
+	const existing = c.req.header('X-Request-Id');
+	const requestId =
+		existing && existing.length > 0 && existing.length <= 128 ? existing : generateRequestId();
+	c.set('requestId', requestId);
+	c.header('X-Request-Id', requestId);
+	await next();
+});
 
 function generateRequestId(): string {
 	const bytes = new Uint8Array(16);

@@ -41,6 +41,9 @@ export const rawTokens = {
 		lg: { value: '1.125rem' },
 		xl: { value: '1.5rem' },
 		'2xl': { value: '2rem' },
+		// Reserved for the hero display heading only. See
+		// src/home/brief.md "Typography & grid amendment (Issue #31)".
+		'3xl': { value: '2.5rem' },
 	},
 	radii: {
 		sm: { value: '4px' },

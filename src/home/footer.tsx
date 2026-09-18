@@ -9,6 +9,10 @@ import { PACKAGE_VERSION } from './version';
  * public transition metadata for the 2025 / 2026 editions plus the
  * canonical source link. Operational API endpoints remain available
  * but are not promoted as visitor navigation.
+ *
+ * From Issue #31 the leading edge carries the editorial numbering
+ * `04` (mono / xs / muted) and the meta paragraph drops to xs to
+ * keep the footer weight subordinate to the body sections.
  */
 export function Footer() {
 	return (
@@ -31,16 +35,36 @@ export function Footer() {
 						gap: '4',
 					})}
 				>
-					<p
+					<div
 						className={css({
-							margin: '0',
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
+							display: 'flex',
+							alignItems: { base: 'flex-start', md: 'baseline' },
+							flexWrap: 'wrap',
+							gap: { base: '2', md: '3' },
 						})}
 					>
-						samuido · my-web-2026 · v{PACKAGE_VERSION} · MIT
-					</p>
+						<span
+							aria-hidden="true"
+							className={css({
+								fontFamily: 'mono',
+								fontSize: 'xs',
+								color: 'text.muted',
+								letterSpacing: '0.04em',
+							})}
+						>
+							04
+						</span>
+						<p
+							className={css({
+								margin: '0',
+								fontFamily: 'mono',
+								fontSize: 'xs',
+								color: 'text.muted',
+							})}
+						>
+							samuido · my-web-2026 · v{PACKAGE_VERSION} · MIT
+						</p>
+					</div>
 					<ul
 						className={css({
 							display: 'flex',

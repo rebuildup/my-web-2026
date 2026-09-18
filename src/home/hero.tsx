@@ -9,6 +9,12 @@ import { PACKAGE_VERSION } from './version';
  * behind the platform before describing the migration state. The
  * public transition link to the 2025 edition is primary; source is
  * available as a secondary action.
+ *
+ * From Issue #31 the inner column is split into an asymmetric
+ * 2-column composition at `lg` and wider: a lead column carrying
+ * the heading / body / actions and a quiet metadata rail on the
+ * right. Below `lg` the two columns stack into the original single
+ * flow so the measure stays within the 60–70 character window.
  */
 export function Hero() {
 	return (
@@ -22,124 +28,159 @@ export function Hero() {
 			<Container>
 				<div
 					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '6',
-						maxWidth: '720px',
+						display: 'grid',
+						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 7fr) minmax(0, 3fr)' },
+						gap: { base: '6', lg: '12' },
+						alignItems: 'start',
 					})}
 				>
-					<span
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						my-web-2026 · v{PACKAGE_VERSION} — 2026 Preview
-					</span>
-					<h1
-						id="hero-title"
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: '2xl',
-							fontWeight: '700',
-							lineHeight: '1.1',
-							color: 'text.default',
-							letterSpacing: '-0.02em',
-						})}
-					>
-						木村友亮 / samuido
-					</h1>
-					<p
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'lg',
-							lineHeight: '1.6',
-							color: 'text.default',
-						})}
-					>
-						開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio /
-						content / activity を段階的に移行中です。
-					</p>
-					<p
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							lineHeight: '1.6',
-							color: 'text.muted',
-						})}
-					>
-						2025 edition は引き続き yusuke-kim.com で公開中です。この 2026 edition は 移行途中の
-						public preview です。
-					</p>
 					<div
 						className={css({
 							display: 'flex',
-							flexWrap: 'wrap',
-							gap: '3',
-							marginBlockStart: '2',
+							flexDirection: 'column',
+							gap: '6',
+							maxWidth: '640px',
 						})}
 					>
-						<a
-							href="https://yusuke-kim.com"
-							rel="noopener noreferrer"
-							target="_blank"
+						<span
 							className={css({
-								display: 'inline-flex',
-								alignItems: 'center',
-								gap: '2',
-								paddingInline: '4',
-								height: '10',
-								borderRadius: 'md',
-								backgroundColor: 'bg.accent',
-								color: 'text.inverse',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								fontWeight: '600',
-								textDecoration: 'none',
-								transition: 'background-color 120ms ease',
-								_hover: { backgroundColor: 'colors.brand.600' },
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
+								fontFamily: 'mono',
+								fontSize: 'sm',
+								color: 'text.muted',
 							})}
 						>
-							2025 edition を見る
-						</a>
-						<a
-							href="https://github.com/rebuildup/my-web-2026"
-							rel="noopener noreferrer"
-							target="_blank"
+							my-web-2026 · v{PACKAGE_VERSION} — 2026 Preview
+						</span>
+						<h1
+							id="hero-title"
+							lang="ja"
 							className={css({
-								display: 'inline-flex',
-								alignItems: 'center',
-								gap: '2',
-								paddingInline: '4',
-								height: '10',
-								borderRadius: 'md',
-								backgroundColor: 'bg.surface',
+								margin: '0',
+								fontFamily: 'sans',
+								fontSize: { base: '2xl', md: '3xl' },
+								fontWeight: '700',
+								lineHeight: { base: '1.2', md: '1.15' },
 								color: 'text.default',
-								border: '1px solid',
-								borderColor: 'border.subtle',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								fontWeight: '600',
-								textDecoration: 'none',
-								transition: 'background-color 120ms ease',
-								_hover: { backgroundColor: 'bg.subtle' },
-								_focusVisible: {
-									outline: '2px solid {colors.border.focus}',
-									outlineOffset: '2px',
-								},
+								letterSpacing: '-0.02em',
 							})}
 						>
-							GitHub でソースを見る
-						</a>
+							木村友亮 / samuido
+						</h1>
+						<p
+							lang="ja"
+							className={css({
+								margin: '0',
+								fontFamily: 'sans',
+								fontSize: 'lg',
+								lineHeight: '1.6',
+								color: 'text.default',
+							})}
+						>
+							開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio /
+							content / activity を段階的に移行中です。
+						</p>
+						<p
+							lang="ja"
+							className={css({
+								margin: '0',
+								fontFamily: 'sans',
+								fontSize: 'md',
+								lineHeight: '1.6',
+								color: 'text.muted',
+							})}
+						>
+							2025 edition は引き続き yusuke-kim.com で公開中です。この 2026 edition は
+							移行途中の public preview です。
+						</p>
+						<div
+							className={css({
+								display: 'flex',
+								flexWrap: 'wrap',
+								gap: '3',
+								marginBlockStart: '2',
+							})}
+						>
+							<a
+								href="https://yusuke-kim.com"
+								rel="noopener noreferrer"
+								target="_blank"
+								lang="en"
+								className={css({
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: '2',
+									paddingInline: '4',
+									height: '10',
+									borderRadius: 'md',
+									backgroundColor: 'bg.accent',
+									color: 'text.inverse',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									fontWeight: '600',
+									textDecoration: 'none',
+									transition: 'background-color 120ms ease',
+									_hover: { backgroundColor: 'colors.brand.600' },
+									_focusVisible: {
+										outline: '2px solid {colors.border.focus}',
+										outlineOffset: '2px',
+									},
+								})}
+							>
+								2025 edition を見る
+							</a>
+							<a
+								href="https://github.com/rebuildup/my-web-2026"
+								rel="noopener noreferrer"
+								target="_blank"
+								lang="en"
+								className={css({
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: '2',
+									paddingInline: '4',
+									height: '10',
+									borderRadius: 'md',
+									backgroundColor: 'bg.surface',
+									color: 'text.default',
+									border: '1px solid',
+									borderColor: 'border.subtle',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									fontWeight: '600',
+									textDecoration: 'none',
+									transition: 'background-color 120ms ease',
+									_hover: { backgroundColor: 'bg.subtle' },
+									_focusVisible: {
+										outline: '2px solid {colors.border.focus}',
+										outlineOffset: '2px',
+									},
+								})}
+							>
+								GitHub でソースを見る
+							</a>
+						</div>
 					</div>
+					<aside
+						aria-hidden="true"
+						className={css({
+							display: { base: 'none', lg: 'flex' },
+							flexDirection: 'column',
+							gap: '1',
+							padding: '6',
+							borderRadius: 'md',
+							border: '1px solid',
+							borderColor: 'border.subtle',
+							backgroundColor: 'bg.surface',
+							fontFamily: 'mono',
+							fontSize: 'sm',
+							color: 'text.muted',
+							lineHeight: '1.6',
+						})}
+					>
+						<span lang="en">edition</span>
+						<span lang="en">my-web-2026 · 2026 Preview</span>
+						<span lang="en">v{PACKAGE_VERSION} · MIT</span>
+					</aside>
 				</div>
 			</Container>
 		</section>

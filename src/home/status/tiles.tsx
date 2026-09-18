@@ -45,6 +45,11 @@ function statusFor(
  * the latest health read. The observed-at timestamp comes from the
  * server loader so visitors see the same freshness on every
  * request that hit the same SSR snapshot.
+ *
+ * From Issue #31 the section heading carries an editorial numbering
+ * prefix (`02 — System status`), the service label renders in mono
+ * for a ledger feel, and rows are separated by hairlines rather than
+ * each carrying its own card border.
  */
 export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps) {
 	return (
@@ -59,7 +64,7 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 			<Container>
 				<SectionHeading
 					id="status-heading"
-					eyebrow="System status"
+					eyebrow="02 — System status"
 					title="プラットフォームの状態 / Platform health"
 					description="各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。"
 				/>
@@ -70,12 +75,12 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 							base: '1fr',
 							md: '1fr',
 						},
-						gap: '3',
+						rowGap: '0',
 						margin: '0',
 						padding: '0',
 					})}
 				>
-					{services.map((service) => {
+					{services.map((service, index) => {
 						const status = statusFor(service.id, statuses);
 						const health: SystemServiceHealth = status?.health ?? 'unreachable';
 						return (
@@ -90,19 +95,19 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 									alignItems: 'center',
 									gap: { base: '1', md: '4' },
 									padding: '4',
-									borderRadius: 'md',
-									border: '1px solid',
+									borderBlockStart: index === 0 ? 'none' : '1px solid',
 									borderColor: 'border.subtle',
-									backgroundColor: 'bg.surface',
+									backgroundColor: 'bg.canvas',
 								})}
 							>
 								<dt
 									className={css({
 										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'md',
+										fontFamily: 'mono',
+										fontSize: 'sm',
 										fontWeight: '600',
 										color: 'text.default',
+										letterSpacing: '0.02em',
 									})}
 								>
 									{service.label}
@@ -110,7 +115,7 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 										className={css({
 											marginInlineStart: '2',
 											fontFamily: 'mono',
-											fontSize: 'sm',
+											fontSize: 'xs',
 											fontWeight: '400',
 											color: 'text.muted',
 										})}

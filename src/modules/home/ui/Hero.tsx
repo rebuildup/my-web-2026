@@ -35,7 +35,7 @@ export function Hero() {
 							color: 'text.muted',
 						})}
 					>
-						木村友亮 / samuido · v{PACKAGE_VERSION} — 2026 Preview
+						my-web-2026 · v{PACKAGE_VERSION} — 2026 Preview
 					</span>
 					<h1
 						id="hero-title"
@@ -49,7 +49,7 @@ export function Hero() {
 							letterSpacing: '-0.02em',
 						})}
 					>
-						my-web-2026
+						木村友亮 / samuido
 					</h1>
 					<p
 						className={css({

@@ -32,9 +32,8 @@ Breakpoints in `panda.config.ts` must be strings (`'640px'`), not
 
 ### `vite build` fails on a route under `src/routes/**`
 
-The file must export `Route`. Move non-route modules out of the
-route tree (for example under `src/domains/`) or prefix the
-filename with `-`.
+The file must export `Route`. Move non-route work to the obligation that owns it (for example
+`src/home/` for Home composition) or prefix the filename with `-`.
 
 ### `vite build` complains about `worker-configuration.d.ts`
 
@@ -48,7 +47,7 @@ during `vite build`. Run `pnpm run build` first, then retry.
 ### Hono path not intercepted
 
 The path prefix is not in `EXTERNAL_BOUNDARY_PREFIXES` in
-`src/start.ts`. Add the prefix and re-deploy.
+`src/server.ts`. Add the prefix and re-deploy.
 
 ## Type / lint
 

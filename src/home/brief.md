@@ -126,3 +126,89 @@
 - Header global navigation is deferred. The home page does not
   expose a top nav at 0.2.0; navigation is the responsibility of a
   separate ticket.
+
+## Typography & grid amendment (Issue #31)
+
+> Adds a small amount of editorial weight to the hero and a numbered
+> section rhythm without breaking the constraints above. Owned by
+> Issue #31. **This amendment extends the existing brief; the
+> `Avoid`, `Color direction`, `Motion`, and `Avoid` sections above
+> remain in force and any future change that contradicts them must
+> come back here.**
+
+### What changed
+
+- **Hero h1 step**: `2xl` → `3xl` at `md` and wider. One additional
+  step only — `4xl` / `5xl` are not introduced because there is no
+  second consumer yet. Raw layer receives a single `3xl` entry
+  (`2.5rem`); the semantic layer is unchanged.
+- **Hero composition**: the inner `Container` (1024px max) splits
+  into an asymmetric 2-column grid at `lg` — `minmax(0, 7fr) minmax(0, 3fr)`
+  — with a 12-unit gutter. The lead column caps at 640px to keep the
+  measure inside the 60–70 character window; the right rail carries
+  a quiet mono metadata card (`edition / my-web-2026 · 2026 Preview /
+  v0.2.0 · MIT`). Below `lg` the two columns stack into the original
+  single flow.
+- **Hero typography tightening**: h1 uses `line-height: 1.15` and
+  `letter-spacing: -0.02em` (inline literal, not a token); mixed-
+  script spans carry `lang="ja"` on Japanese and `lang="en"` on the
+  Latin edition tags so the browser can pick the right rendering
+  hints.
+- **Section rhythm**: each section heading now carries an editorial
+  numbering prefix via the existing `eyebrow` prop
+  (`01 — Capabilities`, `02 — System status`). Capability cards each
+  add a small mono numeric decoration in the top-left corner; the
+  Footer leads with a `04` mono numeric.
+- **Capabilities card grid**: gap widens from `6` to `{ base: '6',
+  md: '8' }`; card `h3` climbs from `lg` to `xl` to share size
+  parity with the section `h2`.
+- **Status rows**: `dt` flips to mono for a ledger feel; rows are
+  separated by hairlines (`borderBlockStart: 1px solid border.subtle`)
+  rather than each carrying its own card border. The first row
+  carries no top border so the section heading keeps its spacing.
+- **Footer weight**: meta paragraph drops from `sm` to `xs` so the
+  footer stays subordinate to the body sections.
+
+### What was deliberately not changed
+
+- **No `Container` wide variant**. The shared coordinate system
+  stays at 1024px; the asymmetric hero is built inside `Container`.
+  (`responsive-design` §Macro layout: editorial surfaces maintain
+  measure, they don't stretch.)
+- **No `SectionHeading number` prop**. Editorial numbering is a
+  caller-side pattern — the `eyebrow` string carries it. A primitive
+  prop would be one-purpose and fail the `token-audit` §3-4
+  evidence gate.
+- **No raw `letterSpacing` tokens**. The two inline literals
+  (`-0.02em` on the hero h1, `0.04em` on the numeric decorations)
+  are scoped to one component each. Promoting them to tokens would
+  invite the "Japanese letter-spacing used as decoration" failure
+  mode (`typesetting` §5).
+- **No raw `4xl` / `5xl` font sizes**. One `3xl` step is the only
+  display addition this round. Future tiers require a second
+  consumer before they enter the raw layer.
+- **No new motion, no per-section accent, no image-based titles**.
+  All explicit `Avoid` items above remain in force.
+- **No mixed-script font-feature-settings**. The
+  `typesetting/references/japanese.md` document is not on disk in
+  this release, so we cannot ground the full `palt` / `pkna` /
+  `kern` treatment yet. The minimum that does not need reference
+  data — `lang` attributes + tightened display `line-height` — is
+  in place. The remaining treatment is a follow-up ticket once the
+  reference document lands.
+
+### Rationale chain
+
+- `typesetting` §5: hero display line-height 1.15 for Japanese;
+  Latin eyebrow keeps the system default. Inline letter-spacing
+  literals scoped to one component, not promoted to tokens.
+- `token-audit` §3-4: primitive promotion requires multi-site
+  evidence. `3xl` is added because the hero h1 is one consumer and
+  the semantic layer is unchanged; any further primitive additions
+  wait for evidence.
+- `responsive-design` §Macro layout: editorial surfaces hold their
+  measure at wide viewports. `Container` stays 1024px; the
+  asymmetric grid is built inside it.
+- `accessibility-audit` §Reflow: 320 CSS px renders single-column;
+  the metadata rail is `display: none` below `lg`. No horizontal
+  scroll, no information loss at 200% zoom.

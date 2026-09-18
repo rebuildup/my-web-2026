@@ -310,11 +310,15 @@ my-web-2025 は portfolio、workshop、Tools、About 等を一つの site に統
 
 ### Web / software
 
-- my-web-2026: personal Web Platform の再構築
-- Web application / frontend architecture
-- Rust を含む新しい implementation stack の試行
-- test / CI / release / architecture の仕組み化
-- AI coding agent / agent workflow の実験と実運用
+代表的な current work は次の通り。
+
+- **my-web-2026** — personal Web Platform の再構築
+- **Tastile** — scheduling を扱う product。Web / Android / desktop / backend を含む multi-client development
+- **project-init / design-skills** — agent が実際の project で使える engineering / design workflow の形式知化
+- **ido-bata 関連** — community と software / creative tooling の開発・運用
+- **After Effects tools** — script / plugin / extension の継続開発
+
+これらと並行して、Web application / frontend architecture、Rust を含む新しい implementation stack、test / CI / release / architecture の仕組み化、AI coding agent / agent workflow の実験と実運用を続けている。
 
 ### Creative tooling
 
@@ -333,6 +337,16 @@ Web だけでなく、mobile / desktop / backend を含む product project に�
 software に軸足が移っても、映像・デザインをやめる予定はない。
 
 依頼制作、個人制作、motion study、graphic / UI work は、技術とは別枠の過去の趣味ではなく現在も続く activity である。
+
+### Personal interests outside the main work categories
+
+仕事や portfolio の category に直接入らない興味も、同じ「仕組みを理解して試す」傾向を持つ。
+
+- 韓国語を継続的に学んでいる。
+- タイピングや keyboard layout に関心があり、入力方法そのものを調整・試行するのが好きである。
+- software / AI tool / development environment は、新しいものが出ると実際に触って workflow に入るか確かめたくなる。
+
+これらを Home の主役にする必要はないが、About や Activity では「software だけの人」に閉じない personal context として使える。
 
 ---
 

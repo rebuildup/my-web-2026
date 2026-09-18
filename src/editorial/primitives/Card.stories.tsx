@@ -3,7 +3,7 @@ import { Card } from './Card';
 import { Badge } from './Badge';
 
 const meta: Meta<typeof Card> = {
-	title: 'Design System/Card',
+	title: 'Editorial/Card',
 	component: Card,
 	argTypes: {
 		elevation: { control: { type: 'select' }, options: ['flat', 'raised'] },

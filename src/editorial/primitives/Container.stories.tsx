@@ -9,7 +9,7 @@ import { Container } from './Container';
  * breakpoint by resizing the preview frame.
  */
 const meta = {
-	title: 'design-system/Container',
+	title: 'editorial/Container',
 	component: Container,
 	parameters: { layout: 'fullscreen' },
 	tags: ['autodocs'],

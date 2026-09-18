@@ -3,9 +3,9 @@
  *
  * `panda.config.ts` imports these via its `theme.extend.tokens` block.
  * Components should never reference raw tokens directly; consume the
- * semantic layer in `src/design-system/semantic-tokens.ts` instead.
+ * semantic layer in `src/editorial/semantic-tokens.ts` instead.
  *
- * New tokens are introduced through a design-system ADR.
+ * New tokens are introduced only when the editorial visual language owns the requirement.
  */
 export const rawTokens = {
 	breakpoints: {

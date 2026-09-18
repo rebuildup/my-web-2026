@@ -10,7 +10,7 @@
  * it against the raw token layer at codegen time.
  *
  * Keep this list short and stable. New semantic tokens are introduced
- * through a design-system ADR.
+ * through an editorial visual-language decision.
  */
 export const semanticTokens = {
 	colors: {

@@ -83,7 +83,7 @@ function SemanticGrid() {
 }
 
 const meta: Meta = {
-	title: 'Design System/Tokens',
+	title: 'Editorial/Tokens',
 	parameters: { layout: 'padded' },
 };
 export default meta;

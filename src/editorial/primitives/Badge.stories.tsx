@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { Badge } from './Badge';
 
 const meta: Meta<typeof Badge> = {
-	title: 'Design System/Badge',
+	title: 'Editorial/Badge',
 	component: Badge,
 	argTypes: {
 		tone: { control: { type: 'select' }, options: ['neutral', 'info', 'accent'] },

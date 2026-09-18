@@ -8,7 +8,7 @@ import { SectionHeading } from './SectionHeading';
  * survives copy changes.
  */
 const meta = {
-	title: 'design-system/SectionHeading',
+	title: 'editorial/SectionHeading',
 	component: SectionHeading,
 	parameters: { layout: 'padded' },
 	tags: ['autodocs'],

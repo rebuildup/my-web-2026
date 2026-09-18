@@ -18,6 +18,10 @@
 		"wrangler:dry-run": "wrangler deploy --dry-run --outdir dist-cloudflare",
 		"cf-typegen": "wrangler types",
 		"cf-typegen:check": "pnpm run cf-typegen && git diff --exit-code -- worker-configuration.d.ts",
+		"db:migrate:local": "wrangler d1 migrations apply DB --local",
+		"db:migrate:remote": "wrangler d1 migrations apply DB --remote",
+		"db:migrate:list:local": "wrangler d1 migrations list DB --local",
+		"db:migrate:list:remote": "wrangler d1 migrations list DB --remote",
 		"lint:ci": "node scripts/lint-ci.mjs",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build -o storybook-static",
@@ -35,8 +39,10 @@
 		"architecture:check": "node scripts/check-architecture.mjs"
 	},
 	"dependencies": {
+		"@better-auth/api-key": "^1.7.5",
 		"@tanstack/react-router": "^1.168.52",
 		"@tanstack/react-start": "^1.168.52",
+		"better-auth": "^1.7.5",
 		"hono": "^4.13.7",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0"

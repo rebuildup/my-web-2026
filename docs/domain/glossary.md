@@ -83,6 +83,36 @@ framework / runtime / toolchain が project に物理構造や contract を強�
 
 特定の presentation authority が所有する、typography / color / spacing / motion / interaction などの表現規則のまとまり。複数 visual language の共存を許容し、見た目が似ているだけでは統合しない。
 
+## Personal knowledge
+
+### Historical Event
+
+過去のある時点で発生した出来事。出来事そのものは未来から変更されないが、その出来事についての記録は evidence に基づいて訂正され得る。
+
+### Temporal State
+
+ある期間に成立する状態。current value だけを上書きせず、過去に成立していた期間を再構成できる意味論を持つ。
+
+### Preference / Interest / Intention
+
+owner の主観的な Temporal State。好み、関心、価値観、将来方向など。現在の assertion を未来まで固定された事実として扱わない。
+
+### Projection
+
+Event / State / Preference / Intention などの canonical knowledge から、特定時点・特定 audience 向けに生成する表示。Home hero、About、CV、current profile など。Projection 自体を canonical personal fact にしない。
+
+### Valid time
+
+現実世界で Event が発生した、または State / Assertion が成立した時間。
+
+### Recorded time
+
+my-web-2026 がその knowledge を記録した時間。valid time と一致する必要はない。
+
+### Publication authority
+
+正しい knowledge を public surface に利用可能とする decision power。knowledge の truth / correction authority とは別の obligation として扱う。
+
 ## Delivery
 
 ### Sprint

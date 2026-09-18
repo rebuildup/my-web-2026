@@ -19,7 +19,7 @@ my-web-2026 が表現する人物そのものの canonical grounding は **[doma
 - **Broad role:** developer / creator
 - **Career direction:** frontend / software engineering を軸にした product development
 
-これらの関係、経験、好み、current activities、future direction は [domain.md](domain.md) を参照する。
+これらの関係、経験、好み、current activities、future direction の narrative は [domain.md](domain.md) を参照する。個々の情報を将来 structured data に移す際の temporal semantics / correction / publication authority は [knowledge-model.md](knowledge-model.md) を参照する。
 
 ## Decision authority
 
@@ -33,6 +33,8 @@ my-web-2026 が表現する人物そのものの canonical grounding は **[doma
 - **release authority** — release PR merge、tag、GitHub Release 公開
 
 事実の追加と、事実の見せ方の変更は別の判断として扱う。
+
+また authority は単なる repository write permission と同一視しない。agent / contributor は evidence の observation、record / correction の proposal、canonical knowledge からの projection を行えるが、owner の subjective preference / intention を発明して確定してはならない。personal knowledge の record / correction / assertion / publication / authority delegation の意味は [knowledge-model.md](knowledge-model.md) を canonical とする。
 
 ## Working languages
 

@@ -1,8 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
-import { AcceptInvitationView } from '../admin/invitations/accept-view';
 import { acceptInvitation, probeInvitation } from '../admin/invitations/accept';
+import { AcceptInvitationView } from '../admin/invitations/accept-view';
 
 /**
  * `/admin/invitations/accept?token=...` — invitation landing page.

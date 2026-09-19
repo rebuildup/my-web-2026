@@ -20,3 +20,14 @@
 # Local development: http://127.0.0.1:3000
 # Production: https://<your-deployment>.workers.dev
 # BETTER_AUTH_URL="http://127.0.0.1:3000"
+
+# 0.3.0-extended (Tickets E + F): Home self-consumption API key
+# (ADR-0011). Provisioned by running `pnpm run bootstrap:home-api-key`
+# (see scripts/bootstrap-home-api-key.mjs). The script prints the
+# generated `mk_home_…` value; paste it here for local dev, or set it
+# via `wrangler secret put MY_WEB_2026_CONSUMER_API_KEY` for remote.
+# Required scopes:
+#   { reactions: ["read", "write"], access_counter: ["read", "write"] }
+# Without this key the home reactions widget + counter tile render a
+# disabled state.
+# MY_WEB_2026_CONSUMER_API_KEY="mk_home_replace-me"

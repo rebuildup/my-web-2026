@@ -1,5 +1,5 @@
-import { Container } from '../editorial/primitives/Container';
 import { css } from '../../styled-system/css';
+import { Container } from '../editorial/primitives/Container';
 import { PACKAGE_VERSION } from './version';
 
 /**

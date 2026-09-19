@@ -22,6 +22,7 @@
 		"db:migrate:remote": "wrangler d1 migrations apply DB --remote",
 		"db:migrate:list:local": "wrangler d1 migrations list DB --local",
 		"db:migrate:list:remote": "wrangler d1 migrations list DB --remote",
+		"bootstrap:home-api-key": "node scripts/bootstrap-home-api-key.mjs",
 		"lint:ci": "node scripts/lint-ci.mjs",
 		"storybook": "storybook dev -p 6006",
 		"build-storybook": "storybook build -o storybook-static",

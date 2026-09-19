@@ -1,8 +1,8 @@
 import { reactionImageReferenced } from './reactions';
 import {
 	ALLOWED_IMAGE_CONTENT_TYPES,
-	MAX_IMAGE_BYTES,
 	type AllowedImageContentType,
+	MAX_IMAGE_BYTES,
 	type ReactionImageRow,
 } from './schema';
 

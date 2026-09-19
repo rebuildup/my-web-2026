@@ -1,5 +1,5 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 /**
  * Issue #39 acceptance tests — per-consumer-principal rate limit

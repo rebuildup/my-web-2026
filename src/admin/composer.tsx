@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react';
+import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
-import { css } from '../../styled-system/css';
 
 /**
  * AdminDashboard — `/admin` composition.
@@ -23,7 +23,7 @@ import { css } from '../../styled-system/css';
  */
 
 export interface AdminCapability {
-	id: 'invitations' | 'keys' | 'images';
+	id: 'invitations' | 'keys' | 'images' | 'emoji-catalog';
 	label: string;
 	labelJa: string;
 	status: 'live' | 'planned';

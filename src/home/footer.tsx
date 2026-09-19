@@ -1,5 +1,5 @@
-import { Container } from '../editorial/primitives/Container';
 import { css } from '../../styled-system/css';
+import { Container } from '../editorial/primitives/Container';
 import { PACKAGE_VERSION } from './version';
 
 /**
@@ -179,6 +179,28 @@ export function Footer() {
 						</ul>
 					</div>
 				</div>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '10',
+						paddingBlockStart: '6',
+						borderBlockStartWidth: '1px',
+						borderBlockStartColor: 'border.subtle',
+						borderBlockStartStyle: 'solid',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						lineHeight: '1.6',
+						color: 'text.muted',
+					})}
+				>
+					このサイトは閲覧解析のため <code>mw_actor_id</code> という匿名の Cookie
+					を使用します（個人を特定しません）。
+					<span lang="en">
+						{' '}
+						This site uses an anonymous <code>mw_actor_id</code> cookie for visitor analytics.
+					</span>
+				</p>
 			</Container>
 		</footer>
 	);

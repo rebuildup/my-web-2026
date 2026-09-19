@@ -1,4 +1,4 @@
-import { getCurrentSession, type AdminSession } from './load';
+import { type AdminSession, getCurrentSession } from './load';
 
 /**
  * Admin gate — used by every admin-only server function in the

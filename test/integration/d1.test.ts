@@ -1,6 +1,6 @@
-/// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
-import { describe, it, expect } from 'vitest';
 import { SELF } from 'cloudflare:test';
+/// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
+import { describe, expect, it } from 'vitest';
 
 /**
  * D1 binding SELF smoke for my-web-2026.

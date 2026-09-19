@@ -1,6 +1,6 @@
 import { defineConfig } from '@pandacss/dev';
-import { rawTokens } from './src/editorial/tokens';
 import { semanticTokens } from './src/editorial/semantic-tokens';
+import { rawTokens } from './src/editorial/tokens';
 
 /**
  * Panda CSS configuration for the currently shipped editorial visual language.

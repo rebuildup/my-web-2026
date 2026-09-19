@@ -13,16 +13,26 @@
  *                                    `my-web-2026` bucket
  *
  * `BETTER_AUTH_URL` (Better Auth origin) is intentionally NOT pinned
- * here — production must not silently inherit a localhost default.
- * Provide it per environment:
- *   - local dev:    .dev.vars (loaded by `wrangler dev`)
- *   - remote apply: `wrangler deploy --var BETTER_AUTH_URL=https://...`
- *   - multi-env:    `env.production.vars` / `env.staging.vars` blocks
- * Better Auth 1.5+ infers `baseURL` from the incoming request when
- * unset; the project relies on inference for local development and
- * expects operators to set `BETTER_AUTH_URL` for production to
- * pin the cookie domain + trusted origins. Documented in
- * ADR-0009 §8 and Risks §5.
+ * at the top-level `vars` — production must not silently inherit a
+ * localhost default. The canonical production wiring lives in the
+ * companion file `wrangler.production.jsonc` (Issue #43 / ADR-0014):
+ *   - vars.BETTER_AUTH_URL = "https://rebuildup.dev" pins the cookie
+ *     domain + Better Auth `trustedOrigins`.
+ *   - custom_domains attaches the Worker to the Cloudflare zone
+ *     `rebuildup.dev` (zone already owned by the operator).
+ * Operator flow: `pnpm run deploy:production` (= `wrangler deploy
+ * -c wrangler.production.jsonc`). Better Auth 1.5+ infers `baseURL`
+ * from the incoming request when unset, so local `pnpm dev` works
+ * without setting the var. Documented in ADR-0009 §8 and Risks §5;
+ * the canonical-domain decision is ADR-0014 (Issue #43).
+ *
+ * Why a separate config file rather than `env.production`: wrangler
+ * 4.x typegen narrows `Env` to env-scoped bindings and makes
+ * top-level bindings optional when `env.<name>` is declared, which
+ * breaks every `env.DB` / `env.MEDIA` call site in the source tree.
+ * A separate `wrangler.production.jsonc` (extended from this file)
+ * keeps the typegen of the default env intact while still
+ * applying production-only overrides at deploy time.
  *
  * Run `pnpm run cf-typegen` after editing bindings so
  * `worker-configuration.d.ts` stays in sync.
@@ -107,6 +117,13 @@
 			"simple": { "limit": 600, "period": 60 }
 		}
 	]
+	// Production-only configuration lives in the companion file
+	// `wrangler.production.jsonc` (extends this file). `pnpm run
+	// deploy:production` uses `-c wrangler.production.jsonc` so the
+	// default-env typegen (this file) stays intact. See header
+	// comment for the rationale (wrangler 4.x `env.<name>` typegen
+	// makes top-level bindings optional, which would force non-null
+	// assertions on every `env.DB` / `env.MEDIA` call site).
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/

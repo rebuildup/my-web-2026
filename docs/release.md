@@ -136,6 +136,17 @@ Before merging `release-0-2-0 -> main`:
 4. production deployment is smoke-tested against the public Worker URL;
 5. repository owner gives the explicit release-merge approval required below.
 
+For 0.3.0 and later, the release gate also requires the canonical
+production domain to be wired (Issue #43 / ADR-0014):
+
+6. `https://rebuildup.dev` responds 200 on `/`, `/admin/login`, and
+   `/api/v1/health`. `BETTER_AUTH_URL` is pinned in the companion
+   file `wrangler.production.jsonc vars` and applied via
+   `pnpm run deploy:production`. Operator runs `pnpm run e2e:prod`
+   (or triggers the GH Actions `production smoke` workflow) before
+   the release PR is opened. The `*.workers.dev` URL is debug-only
+   and not documented as canonical.
+
 ## 0.1.0 Foundation backlog
 
 | Issue | Title                                                       | Depends on | Priority |

@@ -135,6 +135,21 @@ Every additional service (KV, Queues, Durable Objects, Workflows,
 Vectorize, Workers AI) requires its own ticket and ADR entry, and
 `pnpm run cf-typegen` after the binding change.
 
+### Canonical production domain
+
+The canonical production origin is `https://rebuildup.dev` (owned
+in Cloudflare). Home, Admin, and `/api/v1/*` all serve from that
+origin. Wiring is documented in `docs/adr/ADR-0014-rebuildup-dev-canonical-production-domain.md`
+(Issue #43); `BETTER_AUTH_URL=https://rebuildup.dev` and the
+`routes[]` binding for the bare hostname live in the companion
+file `wrangler.production.jsonc` and are applied via
+`pnpm run deploy:production`. The companion file exists because
+declaring `env.production` inside `wrangler.jsonc` causes wrangler
+4.x typegen to narrow `Env` to env-scoped bindings, breaking
+every `env.DB` / `env.MEDIA` call site. The `*.workers.dev` URL is
+debug / infrastructure only — never referenced as canonical in
+ADRs, READMEs, user-facing copy, or example URLs.
+
 ## 5. Quality gates
 
 Three deterministic entry points defined in `quality/profile.yaml`:

@@ -15,10 +15,12 @@
  *
  * Design choices captured in `docs/adr/ADR-0013-emoji-catalog-db-backed.md`:
  *
- *   - Slug contract (`^[a-z][a-z0-9_]*$`, 1..32 chars) is unchanged
- *     from Ticket E. The DB row is keyed by `slug`; renames are not
- *     supported and removing a slug does NOT retroactively rewrite
- *     existing reactions — slugs are stable opaque keys.
+ *   - Slug contract (`^[a-z][a-z0-9_]*$`, 1..16 chars — aligned to
+ *     the reactions API's `MAX_EMOJI_LEN`) is unchanged for any slug
+ *     a visitor could actually emit via the reactions endpoint. The
+ *     DB row is keyed by `slug`; renames are not supported and
+ *     removing a slug does NOT retroactively rewrite existing
+ *     reactions — slugs are stable opaque keys.
  *   - `enabled = 0` hides the chip from the home widget without
  *     touching existing reactions. The reactions API continues to
  *     accept any opaque `value` it has been given (we do not enforce
@@ -63,10 +65,15 @@ export interface CatalogEntry {
 	enabled: boolean;
 }
 
+/**
+ * Admin-facing row including audit fields. `enabled` stays as the
+ * raw `0 | 1` integer that D1 returns (D1 has no native boolean);
+ * the UI converts at the DTO boundary.
+ */
 export interface AdminCatalogRow {
 	slug: string;
 	codepoint: string;
-	enabled: boolean;
+	enabled: 0 | 1;
 	created_by: string | null;
 	created_at: number;
 	updated_at: number;

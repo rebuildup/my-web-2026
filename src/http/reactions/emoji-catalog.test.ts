@@ -157,7 +157,7 @@ describe('validateSlug', () => {
 
 	it('rejects length violations', () => {
 		expect(() => validateSlug('')).toThrow(/1\.\./);
-		expect(() => validateSlug('a'.repeat(33))).toThrow(/1\.\./);
+		expect(() => validateSlug('a'.repeat(17))).toThrow(/1\.\./);
 	});
 
 	it('rejects grammar violations', () => {

@@ -17,7 +17,9 @@ Ticket E (branch 37) shipped the home reactions widget with a
 `laughing`, `thinking`, `clap`, `wave`, `check`, `cross`, `warning`,
 `star`, `bulb`. The catalog was deliberately synchronous and
 in-process so the slug format (`^[a-z][a-z0-9_]*$`, 1..32 chars)
-could be locked down before exposing it as a contract.
+could be locked down before exposing it as a contract (originally
+scoped at 1..32 chars; finalised at 1..16 to match the reactions
+API — see the contract alignment note below).
 
 In practice, hard-coding the catalog means every vocabulary change
 — adding a new reaction glyph, swapping a codepoint for a
@@ -28,6 +30,16 @@ redeploying". The 0.3.0-extended sprint was scoped to make the home
 page actually consume the reactions + access counter APIs, so
 promoting the catalog to a D1-backed table is the obvious follow-up
 to "let admins manage it without a deploy".
+
+**Contract alignment note (post-review):** The slug contract was
+originally scoped at 1..32 chars, but `/api/v1/reactions` constrains
+the `value` field to ≤ 16 chars (`src/http/reactions/schema.ts`
+`MAX_EMOJI_LEN`). Because the home widget stores each slug AS the
+opaque `value` of a `kind: 'emoji'` reaction, catalog slugs longer
+than 16 would be registered successfully but silently 400 at
+PUT/DELETE. We align `MAX_EMOJI_SLUG_LEN` to 16 in
+`src/http/reactions/slug-regex.ts` so admin and the reactions API
+agree on the same maximum.
 
 ## 2. Decision
 
@@ -51,7 +63,8 @@ CREATE INDEX IF NOT EXISTS idx_reaction_emoji_catalog_enabled
 ```
 
 - `slug` is the public `:slug:` contract — `^[a-z][a-z0-9_]*$`,
-  1..32 chars. PK so duplicate inserts are caught by SQLite.
+  1..16 chars (aligned to `MAX_EMOJI_LEN`). PK so duplicate inserts
+  are caught by SQLite.
 - `codepoint` is the literal emoji string (1..16 UTF-16 code units —
   enough for ZWJ sequences like 👨‍👩‍👧‍👦).
 - `enabled` is 0/1; `disabled` rows stay in the table but the home
@@ -195,7 +208,8 @@ historical record is preserved.
   strings ≤16 chars; still dedupes at `(target_key, principal,
   actor_id, kind, value)`. The reactions API does not look at the
   catalog (the home loader pre-validates instead).
-- `:slug:` contract — `^[a-z][a-z0-9_]*$`, 1..32 chars.
+- `:slug:` contract — `^[a-z][a-z0-9_]*$`, 1..16 chars (aligned
+  to `MAX_EMOJI_LEN` after the PR review).
 - `mw_actor_id` cookie contract — Ticket E, unchanged.
 - `MY_WEB_2026_CONSUMER_API_KEY` bootstrap — Ticket E, unchanged.
 

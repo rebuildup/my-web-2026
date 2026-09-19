@@ -1,4 +1,5 @@
 import { useServerFn } from '@tanstack/react-start';
+import { useRouter } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import { css } from '../../../styled-system/css';
@@ -169,6 +170,7 @@ function CatalogRow({ entry }: { entry: AdminCatalogEntry }) {
 
 function ToggleButton({ slug, enabled }: { slug: string; enabled: boolean }) {
 	const toggle = useServerFn(setCatalogEntryEnabledFn);
+	const router = useRouter();
 	const [busy, setBusy] = useState(false);
 	return (
 		<button
@@ -178,6 +180,10 @@ function ToggleButton({ slug, enabled }: { slug: string; enabled: boolean }) {
 				setBusy(true);
 				try {
 					await toggle({ data: { slug, enabled: !enabled } });
+					// Refetch the route loader so the row reflects the new
+					// `enabled` value (the loader is the source of truth,
+					// not local state).
+					await router.invalidate();
 				} finally {
 					setBusy(false);
 				}
@@ -204,6 +210,7 @@ function ToggleButton({ slug, enabled }: { slug: string; enabled: boolean }) {
 
 function RebindButton({ slug, codepoint }: { slug: string; codepoint: string }) {
 	const rebind = useServerFn(rebindCatalogEntryFn);
+	const router = useRouter();
 	const [busy, setBusy] = useState(false);
 	return (
 		<button
@@ -215,6 +222,7 @@ function RebindButton({ slug, codepoint }: { slug: string; codepoint: string }) 
 				setBusy(true);
 				try {
 					await rebind({ data: { slug, codepoint: next } });
+					await router.invalidate();
 				} finally {
 					setBusy(false);
 				}
@@ -241,6 +249,7 @@ function RebindButton({ slug, codepoint }: { slug: string; codepoint: string }) 
 
 function RemoveButton({ slug }: { slug: string }) {
 	const remove = useServerFn(removeCatalogEntryFn);
+	const router = useRouter();
 	const [busy, setBusy] = useState(false);
 	return (
 		<button
@@ -254,6 +263,7 @@ function RemoveButton({ slug }: { slug: string }) {
 				setBusy(true);
 				try {
 					await remove({ data: { slug } });
+					await router.invalidate();
 				} finally {
 					setBusy(false);
 				}

@@ -14,9 +14,9 @@ export const MAX_CODEPOINT_LEN = 16;
 
 /**
  * Validate the slug format at the seam. The slug is the public
- * contract (`:slug:` regex, 1..32 chars), so this validator is shared
- * across the home loader, the admin loaders, and any future
- * automated import.
+ * contract (`:slug:` regex, 1..16 chars — aligned to the reactions
+ * API's `MAX_EMOJI_LEN`), so this validator is shared across the
+ * home loader, the admin loaders, and any future automated import.
  */
 export function validateSlug(value: unknown): string {
 	if (typeof value !== 'string') {

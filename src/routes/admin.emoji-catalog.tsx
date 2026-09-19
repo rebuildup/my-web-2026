@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
+import { createFileRoute, redirect, useRouter } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
 import { css } from '../../styled-system/css';
@@ -37,6 +37,7 @@ function EmojiCatalogRoute() {
 
 function CreateEntryForm() {
 	const create = useServerFn(insertCatalogEntryFn);
+	const router = useRouter();
 	const [slug, setSlug] = useState('');
 	const [codepoint, setCodepoint] = useState('');
 	const [busy, setBusy] = useState(false);
@@ -50,6 +51,8 @@ function CreateEntryForm() {
 			await create({ data: { slug, codepoint } });
 			setSlug('');
 			setCodepoint('');
+			// Refetch the route loader so the new row appears in the list.
+			await router.invalidate();
 		} catch (err) {
 			const reason = (err as { reason?: string; message?: string }).reason;
 			const message = (err as { message?: string }).message;
@@ -94,7 +97,7 @@ function CreateEntryForm() {
 							placeholder="thumbs_up"
 							pattern="[a-z][a-z0-9_]*"
 							minLength={1}
-							maxLength={32}
+							maxLength={16}
 							value={slug}
 							onChange={(e) => setSlug(e.target.value.toLowerCase())}
 							required

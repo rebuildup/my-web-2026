@@ -8,5 +8,14 @@
 
 export const EMOJI_SLUG_REGEX = /^[a-z][a-z0-9_]*$/;
 
-/** Maximum slug length in characters (Ticket E contract). */
-export const MAX_EMOJI_SLUG_LEN = 32;
+/**
+ * Maximum slug length in characters.
+ *
+ * The home widget stores each slug AS the opaque `value` of a
+ * `kind: 'emoji'` reaction. `src/http/reactions/schema.ts`
+ * `MAX_EMOJI_LEN` constrains that value to 16 chars; admin slugs
+ * longer than 16 would silently 400 at PUT/DELETE via the reactions
+ * API. We align the catalog contract to the reactions API so admin
+ * can register any slug the reaction flow can carry.
+ */
+export const MAX_EMOJI_SLUG_LEN = 16;

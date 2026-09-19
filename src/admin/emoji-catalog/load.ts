@@ -41,21 +41,21 @@ export interface AdminCatalogEntry {
 }
 
 const InsertInput = z.object({
-	slug: z.string().min(1).max(32),
+	slug: z.string().min(1).max(16),
 	codepoint: z.string().min(1).max(16),
 });
 
 const RebindInput = z.object({
-	slug: z.string().min(1).max(32),
+	slug: z.string().min(1).max(16),
 	codepoint: z.string().min(1).max(16),
 });
 
 const SetEnabledInput = z.object({
-	slug: z.string().min(1).max(32),
+	slug: z.string().min(1).max(16),
 	enabled: z.boolean(),
 });
 
-const RemoveInput = z.object({ slug: z.string().min(1).max(32) });
+const RemoveInput = z.object({ slug: z.string().min(1).max(16) });
 
 async function listImpl(): Promise<readonly AdminCatalogEntry[]> {
 	const rows = await listAllCatalogEntriesForAdmin(env.DB);
@@ -127,7 +127,7 @@ export const removeCatalogEntryFn = createServerFn({ method: 'POST' })
 function toAdminEntry(row: {
 	slug: string;
 	codepoint: string;
-	enabled: boolean;
+	enabled: 0 | 1;
 	created_by: string | null;
 	created_at: number;
 	updated_at: number;
@@ -135,7 +135,7 @@ function toAdminEntry(row: {
 	return {
 		slug: row.slug,
 		codepoint: row.codepoint,
-		enabled: row.enabled,
+		enabled: row.enabled === 1,
 		createdBy: row.created_by,
 		createdAt: new Date(row.created_at).toISOString(),
 		updatedAt: new Date(row.updated_at).toISOString(),

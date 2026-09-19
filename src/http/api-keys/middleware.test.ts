@@ -1,15 +1,22 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
-import { ApiKeyError, requireApiKey, requireResourceAction } from './middleware';
+import {
+	ApiKeyError,
+	resetVerifyApiKey,
+	requireApiKey,
+	requireResourceAction,
+	withVerifyApiKey,
+} from './middleware';
 
 /**
  * API key middleware tests — exercises the full `requireApiKey` →
  * `requireResourceAction` chain.
  *
- * `auth.api.verifyApiKey` is mocked because Better Auth's schema-check
- * cache is poisoned at module-load time when the binding is empty
- * (before any tests have created tables). The mock returns controlled
- * results so we can test our middleware's authorization contract:
+ * `verifyApiKey` is stubbed via the `withVerifyApiKey(...)` test seam
+ * in `middleware.ts` because Better Auth's schema-check cache is
+ * poisoned at module-load time when the binding is empty (before any
+ * tests have created tables). The stub returns controlled results so
+ * we can test our middleware's authorization contract:
  *
  *   - Bearer prefix parsing
  *   - 401 on missing / malformed / unknown keys
@@ -19,19 +26,16 @@ import { ApiKeyError, requireApiKey, requireResourceAction } from './middleware'
  * Hashing, persistence, and rate-limit configuration are Better Auth's
  * responsibility and are covered separately by the integration smoke
  * tests in `docs/release.md`. We do not duplicate them here.
+ *
+ * Why a test seam instead of `vi.mock`: the workerd vitest pool (via
+ * `@cloudflare/vitest-plugin`) does not honour `vi.mock` of regular
+ * TS modules — only of the `cloudflare:workers` virtual module. A
+ * `cloudflare:workers` mock would also disable Better Auth's plugin
+ * init, which is too heavy for a focused unit test. The seam keeps
+ * the dependency on Better Auth isolated to one line in production.
  */
 
 const verifyApiKey = vi.fn();
-const getApiKey = vi.fn();
-
-vi.mock('../../cloudflare/auth/better-auth', () => ({
-	auth: {
-		api: {
-			verifyApiKey: (...args: unknown[]) => verifyApiKey(...args),
-			getApiKey: (...args: unknown[]) => getApiKey(...args),
-		},
-	},
-}));
 
 interface ApiKeyView {
 	id: string;
@@ -84,8 +88,12 @@ describe('requireApiKey middleware', () => {
 
 	beforeEach(() => {
 		verifyApiKey.mockReset();
-		getApiKey.mockReset();
+		withVerifyApiKey(verifyApiKey);
 		app = buildApp();
+	});
+
+	afterEach(() => {
+		resetVerifyApiKey();
 	});
 
 	it('returns 401 when Authorization header is missing', async () => {

@@ -24,6 +24,14 @@ import { auth } from '../../cloudflare/auth/better-auth';
  *
  * Permissions shape: `{ resource: ["read","write"] }` (resource/action
  * tuples). See ADR-0009 §3 for the project's resource list.
+ *
+ * Test seam: `verifyApiKeyImpl` is the function the middleware calls
+ * to validate a key. The default points at `auth.api.verifyApiKey`.
+ * Tests inject a stub via `withVerifyApiKey(...)` because the workerd
+ * vitest pool does not honour `vi.mock` of regular TS modules (it
+ * does honour mocking of the `cloudflare:workers` virtual module, but
+ * substituting the entire `auth` instance that way would also disable
+ * Better Auth's plugin init — too heavy for a focused unit test).
  */
 export interface ApiKeyContext {
 	id: string;
@@ -51,6 +59,41 @@ export class ApiKeyError extends Error {
 
 const BEARER_PREFIX = /^Bearer\s+(.+)$/i;
 
+/**
+ * Shape of the `verifyApiKey` response we care about. We type only the
+ * fields we read; Better Auth may include others.
+ */
+export interface VerifyApiKeyResult {
+	valid: boolean;
+	error: unknown;
+	key: {
+		id: string;
+		referenceId: string;
+		permissions: Record<string, string[]> | null;
+		prefix: string | null;
+	} | null;
+}
+
+export type VerifyApiKey = (input: { body: { key: string } }) => Promise<VerifyApiKeyResult>;
+
+let verifyApiKeyImpl: VerifyApiKey = (input) =>
+	auth.api.verifyApiKey(input) as Promise<VerifyApiKeyResult>;
+
+/**
+ * Replace the verifier used by `requireApiKey`. Production code never
+ * calls this — it exists so tests can inject a stub without relying
+ * on `vi.mock` of regular TS modules (which the workerd vitest pool
+ * does not intercept).
+ */
+export function withVerifyApiKey(impl: VerifyApiKey): void {
+	verifyApiKeyImpl = impl;
+}
+
+/** Reset the verifier to the default (`auth.api.verifyApiKey`). */
+export function resetVerifyApiKey(): void {
+	verifyApiKeyImpl = (input) => auth.api.verifyApiKey(input) as Promise<VerifyApiKeyResult>;
+}
+
 export async function requireApiKey(
 	c: Context<{ Bindings: Env }>,
 	_next: Next,
@@ -65,7 +108,7 @@ export async function requireApiKey(
 		return c.json({ error: 'missing_authorization' }, 401);
 	}
 
-	const result = await auth.api.verifyApiKey({ body: { key } });
+	const result = await verifyApiKeyImpl({ body: { key } });
 	if (!result.valid || !result.key) {
 		return c.json({ error: 'invalid_api_key' }, 401);
 	}

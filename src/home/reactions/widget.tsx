@@ -99,7 +99,8 @@ export function deriveSlugFromPicker(clicked: EmojiClickData): string | null {
 /**
  * Skeleton placeholder rendered inside the picker slot during SSR
  * and during the lazy chunk load. Sized to match the mounted picker
- * so the dialog's content area does not jump after hydration.
+ * (`height={420}`) so the dialog's content area does not jump after
+ * hydration.
  */
 function PickerSkeleton() {
 	return (
@@ -108,7 +109,7 @@ function PickerSkeleton() {
 			data-testid="home-reactions-picker-skeleton"
 			className={css({
 				width: 'full',
-				height: '120',
+				height: '420px',
 				borderRadius: 'md',
 				borderWidth: '1px',
 				borderStyle: 'solid',
@@ -168,12 +169,28 @@ function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 			onClose={onClose}
 			onClick={handleBackdropMouseDown}
 			className={css({
+				// Native <dialog> UA stylesheet already centers the
+				// element via `position: fixed; inset: 0; margin: auto`,
+				// but we restate the explicit positioning so cross-
+				// browser quirks (and any future CSS reset that
+				// touches `dialog`) cannot desync our intent.
+				position: 'fixed',
+				inset: '0',
+				margin: 'auto',
 				border: 'none',
 				padding: '0',
 				backgroundColor: 'transparent',
 				color: 'text.default',
-				maxWidth: '120',
+				// `maxWidth` and `width` use literal `rem` values because
+				// Panda's spacing scale tops out at `96` (24rem); passing
+				// a non-token numeric like `'120'` would compile to
+				// `120px` and crush the picker into a 3-emoji-wide
+				// column (visitor feedback: "おかしなところに表示され
+				// るし極端に縦長").
+				maxWidth: '30rem',
 				width: 'calc(100vw - 32px)',
+				maxHeight: 'min(560px, 85vh)',
+				height: 'auto',
 				borderRadius: 'lg',
 				'&::backdrop': {
 					backgroundColor: 'rgba(0, 0, 0, 0.45)',
@@ -182,6 +199,8 @@ function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 		>
 			<div
 				className={css({
+					display: 'flex',
+					flexDirection: 'column',
 					overflow: 'hidden',
 					borderRadius: 'lg',
 					borderWidth: '1px',

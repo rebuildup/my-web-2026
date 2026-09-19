@@ -75,10 +75,7 @@ function importStatements(source) {
  */
 function runtimeImportSpecifiers(source) {
 	const specs = new Set();
-	for (const pattern of [
-		/\bimport\s+["']([^"']+)["']/g,
-		/\bimport\(\s*["']([^"']+)["']\s*\)/g,
-	]) {
+	for (const pattern of [/\bimport\s+["']([^"']+)["']/g, /\bimport\(\s*["']([^"']+)["']\s*\)/g]) {
 		for (const match of source.matchAll(pattern)) specs.add(match[1]);
 	}
 	return specs;

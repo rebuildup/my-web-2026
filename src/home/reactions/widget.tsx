@@ -100,7 +100,9 @@ export function deriveSlugFromPicker(clicked: EmojiClickData): string | null {
  * Skeleton placeholder rendered inside the picker slot during SSR
  * and during the lazy chunk load. Sized to match the mounted picker
  * (`height={420}`) so the dialog's content area does not jump after
- * hydration.
+ * hydration. The border colour matches the modal's
+ * `--epr-picker-border-color` override (see `PickerModal`) so the
+ * skeleton and the picker read as the same surface.
  */
 function PickerSkeleton() {
 	return (
@@ -113,7 +115,7 @@ function PickerSkeleton() {
 				borderRadius: 'md',
 				borderWidth: '1px',
 				borderStyle: 'solid',
-				borderColor: 'border.subtle',
+				borderColor: 'border.strong',
 				backgroundColor: 'bg.muted',
 			})}
 		/>
@@ -203,10 +205,43 @@ function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 					flexDirection: 'column',
 					overflow: 'hidden',
 					borderRadius: 'lg',
-					borderWidth: '1px',
-					borderStyle: 'solid',
-					borderColor: 'border.subtle',
+					// The picker library draws its own 1px border via
+					// `--epr-picker-border-color`; we let it serve as
+					// the modal border so the picker and the dialog
+					// read as one surface (no doubled hairline). The
+					// picker's default #e7e7e7 is too light against
+					// bg.canvas, so we override the CSS variable to
+					// `border.strong` instead of stacking another
+					// border on the wrapper.
+					'--epr-picker-border-color': 'colors.border.strong',
 					backgroundColor: 'bg.canvas',
+					// Picker's internal `.epr-body` is the only
+					// scrollable element. Style its scrollbar to
+					// match the editorial palette: thin, rounded,
+					// brand-aware thumb. Firefox uses the
+					// `scrollbar-*` longhands; WebKit/Blink fall
+					// through to the pseudo-element rules below.
+					'& .epr-body': {
+						scrollbarWidth: 'thin',
+						scrollbarColor: '{colors.border.strong} transparent',
+					},
+					'& .epr-body::-webkit-scrollbar': {
+						width: '8px',
+						height: '8px',
+					},
+					'& .epr-body::-webkit-scrollbar-track': {
+						backgroundColor: 'transparent',
+					},
+					'& .epr-body::-webkit-scrollbar-thumb': {
+						backgroundColor: '{colors.border.strong}',
+						borderRadius: '999px',
+						border: '2px solid transparent',
+						backgroundClip: 'padding-box',
+					},
+					'& .epr-body::-webkit-scrollbar-thumb:hover': {
+						backgroundColor: '{colors.text.muted}',
+						backgroundClip: 'padding-box',
+					},
 				})}
 			>
 				<Suspense fallback={<PickerSkeleton />}>
@@ -227,12 +262,38 @@ function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
 	);
 }
 
+/**
+ * Local aggregate shape — the server-facing `ReactionAggregate`
+ * (`kind`, `value`, `count`) plus an optional `codepoint` captured at
+ * click time so the chip can render the actual glyph even before the
+ * server-side auto-register lands the slug in `data.catalog`.
+ *
+ * `codepoint` is **client-side only**. It is never sent to the
+ * server — the picker-to-catalog contract flows through the dedicated
+ * `codepoint` field on `addHomeReaction`'s input schema.
+ */
+type LocalReactionAggregate = ReactionAggregate & { codepoint?: string };
+
 export function ReactionsWidget({ data }: ReactionsWidgetProps) {
-	const [aggregates, setAggregates] = useState<readonly ReactionAggregate[]>(data.aggregates);
+	const [aggregates, setAggregates] = useState<readonly LocalReactionAggregate[]>(data.aggregates);
 	const [error, setError] = useState<string | null>(null);
 	const [pickerOpen, setPickerOpen] = useState(false);
 
 	const visibleAggregates = aggregates.slice(0, MAX_RECORDED_CHIPS);
+
+	/**
+	 * Resolve a chip to its visible glyph. The DB-backed catalog
+	 * (`data.catalog`) is the canonical source; when the slug isn't
+	 * there yet (visitor-driven auto-register hasn't landed on a
+	 * subsequent page load), the picker-supplied codepoint carries the
+	 * chip until the catalog catches up.
+	 */
+	const resolveChipGlyph = (chip: LocalReactionAggregate): string => {
+		if (chip.kind === 'emoji') {
+			return resolveEmojiSlug(data.catalog, chip.value) ?? chip.codepoint ?? `:${chip.value}:`;
+		}
+		return '?';
+	};
 
 	const toggleReaction = (
 		kind: ReactionAggregate['kind'],
@@ -247,11 +308,11 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 		// API surfaces aggregates with `count > 0`, so showing a "0"
 		// chip in the UI would be inconsistent with what a fresh
 		// load would render.
-		const next: ReactionAggregate[] = exists
+		const next: LocalReactionAggregate[] = exists
 			? before
 					.map((a) => (a.kind === kind && a.value === value ? { ...a, count: a.count - 1 } : a))
 					.filter((a) => a.count > 0)
-			: [...before, { kind, value, count: 1 }];
+			: [...before, { kind, value, count: 1, codepoint }];
 		setAggregates(next);
 
 		// Fire-and-forget: the click handler must return immediately so
@@ -333,10 +394,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 					</span>
 				) : (
 					visibleAggregates.map((chip) => {
-						const glyph =
-							chip.kind === 'emoji'
-								? (resolveEmojiSlug(data.catalog, chip.value) ?? `:${chip.value}:`)
-								: '?';
+						const glyph = resolveChipGlyph(chip);
 						return (
 							<button
 								key={`${chip.kind}:${chip.value}`}

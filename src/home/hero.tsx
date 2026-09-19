@@ -85,7 +85,7 @@ export function Hero() {
 							className={css({
 								margin: '0',
 								marginBlockStart: '2',
-								fontFamily: 'sans',
+								fontFamily: 'heading',
 								fontSize: { base: '3xl', lg: '4xl' },
 								fontWeight: '700',
 								lineHeight: { base: '1.15', lg: '1.05' },

@@ -83,7 +83,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 										<h3
 											className={css({
 												margin: '0',
-												fontFamily: 'sans',
+												fontFamily: 'heading',
 												fontSize: 'xl',
 												fontWeight: '700',
 												color: 'text.default',

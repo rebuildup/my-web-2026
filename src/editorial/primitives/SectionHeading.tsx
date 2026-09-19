@@ -111,7 +111,7 @@ export function SectionHeading({
 						className={css({
 							margin: '0',
 							marginBlockStart: eyebrow ? '2' : '0',
-							fontFamily: 'sans',
+							fontFamily: 'heading',
 							fontSize: { base: '2xl', lg: '3xl' },
 							fontWeight: '700',
 							lineHeight: { base: '1.15', lg: '1.05' },
@@ -176,7 +176,7 @@ export function SectionHeading({
 				className={css({
 					margin: '0',
 					marginBlockStart: eyebrow ? '2' : '0',
-					fontFamily: 'sans',
+					fontFamily: 'heading',
 					fontSize: { base: 'xl', lg: '2xl' },
 					fontWeight: '700',
 					lineHeight: '1.15',

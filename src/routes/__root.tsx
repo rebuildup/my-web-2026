@@ -27,6 +27,25 @@ export const Route = createRootRoute({
 			{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
 			{ title: 'my-web-2026' },
 		],
+		// Google Fonts: Noto Sans JP (body) + Zen Kaku Gothic New
+		// (display / heading, applied via the `heading` font token to
+		// h1/h2/h3 and large-size elements). Loaded with `display=swap`
+		// so first paint shows the platform Japanese fallback
+		// (`Hiragino Kaku Gothic ProN` / `system-ui`) while the webfont
+		// streams in. The two `preconnect`s cut the TLS handshake off
+		// the critical font path.
+		links: [
+			{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
+			{
+				rel: 'preconnect',
+				href: 'https://fonts.gstatic.com',
+				crossorigin: 'anonymous',
+			},
+			{
+				rel: 'stylesheet',
+				href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap',
+			},
+		],
 	}),
 	component: RootComponent,
 });

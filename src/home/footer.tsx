@@ -57,7 +57,7 @@ export function Footer() {
 							aria-hidden="true"
 							className={css({
 								marginBlockStart: '2',
-								fontFamily: 'sans',
+								fontFamily: 'heading',
 								fontSize: '4xl',
 								fontWeight: '700',
 								color: 'text.default',
@@ -89,7 +89,7 @@ export function Footer() {
 							className={css({
 								margin: '0',
 								marginBlockStart: '2',
-								fontFamily: 'sans',
+								fontFamily: 'heading',
 								fontSize: '2xl',
 								color: 'text.default',
 								fontWeight: '600',

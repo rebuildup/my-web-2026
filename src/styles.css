@@ -1,7 +1,22 @@
 /**
- * Panda CSS layer order.
+ * Panda CSS layer order and editorial type defaults.
  *
  * Imported once at the root of the app. Keep this file minimal — token/recipe
  * definitions live in panda.config.ts and per-feature styling modules.
+ *
+ * Heading font scoping: any `<h1>`, `<h2>`, `<h3>` uses the
+ * `heading` font family regardless of the surrounding Panda
+ * `fontFamily` token. Components that render heading-tier
+ * typography in non-heading elements (the footer `04` decoration,
+ * the `samuido` identity name, etc.) opt in by setting
+ * `fontFamily: 'heading'` on their Panda CSS call. Body text
+ * (`p`, `span`, etc.) and any `fontSize` below the `xl` threshold
+ * stay on the `sans` family (Noto Sans JP).
  */
 @layer reset, base, tokens, recipes, utilities;
+
+@layer base {
+	:where(h1, h2, h3) {
+		font-family: var(--fonts-heading);
+	}
+}

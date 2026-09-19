@@ -81,43 +81,99 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 		expect(body.status).toBe('key_not_found');
 	});
 
-	test('production cookies carry Secure (HTTPS-only)', async ({ request }) => {
-		// P2 #11 (review 5256764289): the previous test pathed through
-		// `/admin/login` and asserted `setCookieHeaders.length > 0`.
-		// Better Auth only issues the session cookie at the actual
-		// sign-in step; `/admin/login` GET is a sign-in **form** render,
-		// not a session-producing call. On a healthy production
-		// deployment that GET may legitimately return zero cookies,
-		// making `length > 0` flaky. No GET path on the canonical
-		// origin (including `/`, `/admin/login`, or
-		// `/api/v1/auth/get-session`) deterministically issues a
-		// cookie for a fresh visitor — `Set-Cookie` is only emitted
-		// on mutation endpoints (reactions PUT/DELETE, invitation
-		// accept).
+	test('anonymous reaction mutation issues `mw_actor_id` cookie with `Secure`', async ({
+		page,
+	}) => {
+		// P2 #11 (review 5256764289 → 5257235568): the previous
+		// `/admin/login` GET path asserted `setCookieHeaders.length > 0`,
+		// which flaked on healthy production (Better Auth only issues
+		// the session cookie at the actual sign-in step, not on the
+		// sign-in form render). The "relaxed" follow-up
+		// (`5929843`) was vacuously green — `GET /` may legitimately
+		// return zero `Set-Cookie` headers, in which case the test
+		// asserted nothing. We now drive a real production path that
+		// deterministically issues `mw_actor_id` — an anonymous
+		// reaction mutation through the home widget — and read the
+		// `Set-Cookie` header off the mutation response itself.
 		//
-		// Reviewer's two acceptable fixes were: (a) switch path to a
-		// route that always issues a cookie (no such GET route
-		// exists today), or (b) relax the assertion. We take (b):
-		// exercise `/` (the canonical home GET) and assert that ANY
-		// `Set-Cookie` returned by production carries `Secure`. If
-		// production ever regresses to plain HTTP cookies (e.g. via
-		// a `Secure`-stripping edge transform), this still catches
-		// it.
-		const res = await request.get(`${CANONICAL_ORIGIN}/`);
-		const setCookieHeaders = res
+		// Why a `page` fixture, not `request`: TanStack Start server-fn
+		// URLs include a build-time hash and the request body uses
+		// the framework's RPC envelope, both of which are brittle to
+		// reproduce from a raw HTTP client. Driving the actual widget
+		// UI exercises the same code path a visitor would, including
+		// any cookie-issuance wiring that may be wrapped in a future
+		// layer (CSRF middleware, edge transforms, etc.).
+		//
+		// Failure modes:
+		// - `data-testid="home-reactions-open-picker"` missing →
+		//   home is not rendering the widget (regression on branch 43
+		//   picker shape, or SSR error).
+		// - "reactions disabled" placeholder visible → the home API key
+		//   is not configured in production (the smoke should fail
+		//   loudly — operator forgot `pnpm run bootstrap:home-api-key`
+		//   or `wrangler secret put MY_WEB_2026_CONSUMER_API_KEY`).
+		// - mutation response has no `mw_actor_id` cookie → server-fn
+		//   handler regressed to cookie-less mode (P1 #2 finding
+		//   repeated).
+		// - cookie issued without `Secure` → production HTTPS wiring
+		//   regression (e.g. `Secure`-stripping edge transform, or
+		//   `proto` header dropped from `Set-Cookie`).
+
+		await page.context().clearCookies();
+		await page.goto(`${CANONICAL_ORIGIN}/`, { waitUntil: 'domcontentloaded' });
+		const trigger = page.getByTestId('home-reactions-open-picker');
+		await trigger.waitFor({ state: 'visible', timeout: 15_000 });
+		// Pre-flight: the disabled placeholder is rendered when the
+		// home API key is missing. Fail loudly — silently no-op'ing
+		// here would mask an unconfigured production deployment.
+		const disabledMarker = await page
+			.getByText(/reactions disabled/i)
+			.first()
+			.isVisible()
+			.catch(() => false);
+		expect(
+			disabledMarker,
+			'home widget shows the disabled placeholder — API key not configured in production',
+		).toBe(false);
+
+		// Open the picker dialog. The picker is lazy-loaded inside the
+		// <dialog> on first open — wait for the dialog to actually
+		// contain the picker library's DOM (it uses `data-unified` on
+		// each emoji button).
+		await trigger.click();
+		await page.waitForSelector('dialog[aria-label="Add a reaction"] [data-unified]', {
+			timeout: 15_000,
+		});
+
+		// Race the mutation response against the first emoji click.
+		// The server fn URL is `/_serverFn/<hash>` and the response
+		// carries `Set-Cookie: mw_actor_id=<X>; Secure` on a first
+		// visit.
+		const mutationUrl = /\/_\w+/;
+		const mutationResponsePromise = page.waitForResponse(
+			(res) => res.request().method() === 'POST' && mutationUrl.test(new URL(res.url()).pathname),
+			{ timeout: 15_000 },
+		);
+		await page.locator('dialog[aria-label="Add a reaction"] [data-unified]').first().click();
+		const mutationResponse = await mutationResponsePromise;
+
+		expect(mutationResponse.status(), 'reaction mutation failed').toBeLessThan(400);
+
+		const setCookieHeaders = mutationResponse
 			.headersArray()
 			.filter((h) => h.name.toLowerCase() === 'set-cookie');
-		for (const header of setCookieHeaders) {
-			// `request.headersArray()` parses multiple Set-Cookie headers
-			// as separate entries; the raw value carries the flags.
-			expect(header.value.toLowerCase()).toContain('secure');
-		}
-		// P2 #6 (review 5256616559) regression guard: do NOT loop
-		// vacuously. If the array is empty, the loop body simply
-		// doesn't run — that is the desired behaviour for a GET that
-		// doesn't issue cookies. The HTTPS-only check on `res.url()`
-		// (covered by the first test in this describe) is the
-		// canonical guard that the production origin is HTTPS.
+		const actorCookie = setCookieHeaders.find((h) =>
+			h.value.toLowerCase().startsWith('mw_actor_id='),
+		);
+		expect(
+			actorCookie,
+			'expected `Set-Cookie: mw_actor_id=…` on the first anonymous reaction mutation',
+		).toBeDefined();
+		// P2 #6 regression guard: every issued cookie MUST carry
+		// `Secure`. Production origin is HTTPS; a missing `Secure`
+		// flag is an actual production wiring bug (cookie would
+		// leak over HTTP if the user ever follows an http:// link).
+		expect(actorCookie!.value.toLowerCase()).toContain('secure');
 	});
 
 	test('canonical origin matches the documented production URL', async ({ request }) => {

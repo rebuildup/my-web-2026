@@ -432,4 +432,87 @@ describe('home reactions — server-fn impls', () => {
 		expect(result).toEqual({ ok: false, reason: 'invalid_body' });
 		expect(fetcher).not.toHaveBeenCalled();
 	});
+
+	it('addHomeReactionImpl auto-registers an unknown slug when codepoint is supplied', async () => {
+		// Branch 43: visitor-driven catalog growth. The widget
+		// surfaces whatever the picker resolves to; the home loader
+		// inserts it into reaction_emoji_catalog before forwarding
+		// the reaction to /api/v1/reactions.
+		const fetcher = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ created: true }), {
+				status: 200,
+				headers: { 'content-type': 'application/json' },
+			}),
+		);
+		const result = await addHomeReactionImpl(
+			{
+				MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x',
+				DB: env.DB,
+			},
+			{ proto: 'https', cookie: undefined },
+			{
+				target: 'home-page',
+				kind: 'emoji',
+				value: 'unicorn',
+				codepoint: '🦄',
+			},
+			'https://example.com',
+			fetcher as unknown as typeof fetch,
+		);
+		expect(result.ok).toBe(true);
+		expect(result.created).toBe(true);
+		expect(fetcher).toHaveBeenCalledOnce();
+		const forwarded = JSON.parse((fetcher.mock.calls[0]?.[1]?.body as string) ?? '{}');
+		expect(forwarded.value).toBe('unicorn');
+		// And the catalog row now exists, enabled, with the visitor
+		// provenance tag.
+		const row = await env.DB.prepare(
+			'SELECT slug, codepoint, enabled, created_by FROM reaction_emoji_catalog WHERE slug = ?1',
+		)
+			.bind('unicorn')
+			.first<{ slug: string; codepoint: string; enabled: number; created_by: string | null }>();
+		expect(row).toEqual({ slug: 'unicorn', codepoint: '🦄', enabled: 1, created_by: 'visitor' });
+	});
+
+	it('addHomeReactionImpl rejects an unknown slug when codepoint is missing (no auto-register)', async () => {
+		const fetcher = vi.fn();
+		const result = await addHomeReactionImpl(
+			{
+				MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x',
+				DB: env.DB,
+			},
+			{ proto: 'https', cookie: undefined },
+			{ target: 'home-page', kind: 'emoji', value: 'unicorn' },
+			'https://example.com',
+			fetcher as unknown as typeof fetch,
+		);
+		expect(result).toEqual({ ok: false, reason: 'invalid_body' });
+		expect(fetcher).not.toHaveBeenCalled();
+		// Catalog untouched.
+		const row = await env.DB.prepare('SELECT slug FROM reaction_emoji_catalog WHERE slug = ?1')
+			.bind('unicorn')
+			.first();
+		expect(row).toBeNull();
+	});
+
+	it('addHomeReactionImpl rejects an unknown slug when codepoint is malformed', async () => {
+		const fetcher = vi.fn();
+		const result = await addHomeReactionImpl(
+			{
+				MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x',
+				DB: env.DB,
+			},
+			{ proto: 'https', cookie: undefined },
+			{
+				target: 'home-page',
+				kind: 'emoji',
+				value: 'bad_codepoint',
+				codepoint: ' ',
+			},
+			'https://example.com',
+			fetcher as unknown as typeof fetch,
+		);
+		expect(result).toEqual({ ok: false, reason: 'invalid_body' });
+		expect(fetcher).not.toHaveBeenCalled();
+	});
 });

@@ -3,7 +3,12 @@ import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeader, getRequestUrl, setResponseHeader } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import type { CatalogEntry } from '../../reactions/emoji-catalog';
-import { loadCatalog } from '../../reactions/emoji-catalog';
+import {
+	insertCatalogEntry,
+	loadCatalog,
+	validateCodepoint,
+	validateSlug,
+} from '../../reactions/emoji-catalog';
 import type { ReactionAggregate } from '../../http/reactions/schema';
 import {
 	buildActorCookieSetHeader,
@@ -84,12 +89,17 @@ const ReactionKindSchema = z.enum(['emoji', 'image']);
 // itself only enforces "non-empty ≤ MAX_EMOJI_SLUG_LEN" so the
 // failure carries a domain-specific error message.
 const ReactionValueSchema = z.string().min(1).max(MAX_EMOJI_SLUG_LEN);
+// Optional codepoint supplied by the picker — used to auto-register
+// unknown emoji slugs at click time. See `addHomeReactionImpl` for
+// the full contract.
+const ReactionCodepointSchema = z.string().min(1).max(16);
 
 const GetInput = z.object({ target: TargetKeySchema });
 const PutInput = z.object({
 	target: TargetKeySchema,
 	kind: ReactionKindSchema,
 	value: ReactionValueSchema,
+	codepoint: ReactionCodepointSchema.optional(),
 });
 const DeleteInput = z.object({
 	target: TargetKeySchema,
@@ -206,19 +216,54 @@ async function loadCatalogForWrite(envLike: HomeReactionsEnv): Promise<readonly 
 export async function addHomeReactionImpl(
 	envLike: HomeReactionsEnv,
 	ctx: HomeReactionsRequestContext,
-	input: { target: string; kind: 'emoji' | 'image'; value: string },
+	input: { target: string; kind: 'emoji' | 'image'; value: string; codepoint?: string },
 	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
 ): Promise<HomeReactionMutationResult> {
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) return { ok: false, reason: 'api_key_unconfigured' };
 	if (input.kind === 'emoji') {
+		let slug: string;
 		try {
-			const catalog = await loadCatalogForWrite(envLike);
-			validateEmojiSlug(catalog, input.value);
+			slug = validateSlug(input.value);
 		} catch {
 			return { ok: false, reason: 'invalid_body' };
 		}
+		const db = (envLike.DB ?? null) as D1Database | null;
+		const catalog = await loadCatalogForWrite(envLike);
+		const existing = catalog.find((entry) => entry.slug === slug);
+		if (existing && !existing.enabled) {
+			// Admin explicitly disabled this slug — even auto-register
+			// must not silently re-enable a curated entry.
+			return { ok: false, reason: 'invalid_body' };
+		}
+		if (!existing) {
+			// Unknown slug → try visitor-driven auto-register so any
+			// emoji the picker surfaces is recordable. The picker
+			// (ealush/emoji-picker-react) bundles Unicode metadata for
+			// its UX layer; this catalog write is the bridge that lets
+			// any visitor-clicked emoji land in our DB-backed storage
+			// without operator intervention.
+			if (!input.codepoint) return { ok: false, reason: 'invalid_body' };
+			let codepoint: string;
+			try {
+				codepoint = validateCodepoint(input.codepoint);
+			} catch {
+				return { ok: false, reason: 'invalid_body' };
+			}
+			if (!db) return { ok: false, reason: 'invalid_body' };
+			try {
+				await insertCatalogEntry(db, { slug, codepoint, created_by: 'visitor' }, Date.now());
+			} catch (err) {
+				console.error('[home.reactions.add] auto-register failed', err);
+				return { ok: false, reason: 'invalid_body' };
+			}
+		}
+		// `slug` is the validated form of `input.value`; both are
+		// equal because `validateSlug` returns its input unchanged
+		// when it matches the grammar. Forward `input.value` directly
+		// rather than reassigning the function parameter (biome
+		// `noParameterAssign`).
 	}
 	const { actorId } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
 	if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };

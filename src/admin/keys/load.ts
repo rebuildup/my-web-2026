@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { getRequestHeaders } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import { auth } from '../../cloudflare/auth/better-auth';
 import { requireAdmin } from '../auth/require-admin';
@@ -61,8 +62,17 @@ export const listApiKeys = createServerFn({ method: 'GET' })
 	.validator(z.object({}).strict())
 	.handler(async (): Promise<readonly AdminApiKey[]> => {
 		await requireAdmin();
+		const headers = getRequestHeaders();
+		// Better Auth's `/api-key/list` endpoint is gated by
+		// `sessionMiddleware`, which resolves the caller from the
+		// forwarded headers. The api-key plugin attaches
+		// `referenceId = session.user.id` server-side; an admin
+		// calling this sees the keys they own. The plugin's
+		// adminMiddleware is independent — we already gate on role
+		// via `requireAdmin()` above, so passing `{ headers }` is
+		// sufficient.
 		const result = await auth.api.listApiKeys({
-			query: { configId: undefined },
+			headers,
 		});
 		const rows = (result as unknown as { apiKeys?: Array<Record<string, unknown>> }).apiKeys ?? [];
 		return rows.map(toAdminApiKey);
@@ -71,12 +81,19 @@ export const listApiKeys = createServerFn({ method: 'GET' })
 export const createApiKey = createServerFn({ method: 'POST' })
 	.validator(CreateApiKeyInput)
 	.handler(async ({ data }): Promise<CreateApiKeyResult> => {
-		await requireAdmin();
-		// The api-key plugin's create endpoint returns `{ id, key, ... }`
-		// where `key` is the plaintext (only ever returned once).
+		const session = await requireAdmin();
+		const headers = getRequestHeaders();
+		// The api-key plugin's create endpoint requires the calling
+		// admin's session headers — direct `auth.api.createApiKey`
+		// without headers is rejected as unauthenticated. The plugin
+		// also requires a `userId` (or `prefix` for the prefixed key
+		// format); we pass the admin user id so the new key is
+		// owned by the calling admin.
 		const created = (await auth.api.createApiKey({
+			headers,
 			body: {
 				name: data.name,
+				userId: session.user.id,
 				permissions: data.permissions as Record<string, string[]>,
 			},
 		})) as Record<string, unknown> & { key: string };
@@ -102,7 +119,11 @@ export const deleteApiKey = createServerFn({ method: 'POST' })
 	.validator(DeleteApiKeyInput)
 	.handler(async ({ data }): Promise<{ deleted: boolean }> => {
 		await requireAdmin();
-		await auth.api.deleteApiKey({ body: { keyId: data.id } });
+		const headers = getRequestHeaders();
+		await auth.api.deleteApiKey({
+			headers,
+			body: { keyId: data.id },
+		});
 		return { deleted: true };
 	});
 

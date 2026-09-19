@@ -1,4 +1,6 @@
 import { Hono } from 'hono';
+import { authRouter } from './auth/router';
+import { requestIdMiddleware } from './middleware/request-id';
 
 /**
  * External HTTP boundary for my-web-2026.
@@ -20,6 +22,13 @@ import { Hono } from 'hono';
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
 export const externalBoundary = new Hono<{ Bindings: Env }>();
+
+// All `/api/v1/*` requests flow through the request-id middleware so
+// error responses and worker logs share a common correlation token.
+// New routers compose under the existing `/api/v1/*` prefixes; no
+// change to `src/server.ts` is required.
+externalBoundary.use('/api/v1/*', requestIdMiddleware);
+externalBoundary.route('/', authRouter);
 
 externalBoundary.get('/api/v1/health', (c) =>
 	c.json({

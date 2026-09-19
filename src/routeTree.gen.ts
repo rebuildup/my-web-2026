@@ -10,33 +10,86 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminInvitationsRouteImport } from './routes/admin.invitations'
+import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invitations.accept'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminInvitationsRoute = AdminInvitationsRouteImport.update({
+  id: '/invitations',
+  path: '/invitations',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminLoginRoute = AdminLoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => AdminRoute,
+} as any)
+const AdminInvitationsAcceptRoute = AdminInvitationsAcceptRouteImport.update({
+  id: '/accept',
+  path: '/accept',
+  getParentRoute: () => AdminInvitationsRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRouteWithChildren
+  '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/login': typeof AdminLoginRoute
+  '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/admin/invitations'
+    | '/admin/login'
+    | '/admin/invitations/accept'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/admin'
+    | '/admin/invitations'
+    | '/admin/login'
+    | '/admin/invitations/accept'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/admin/invitations'
+    | '/admin/login'
+    | '/admin/invitations/accept'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +101,63 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/invitations': {
+      id: '/admin/invitations'
+      path: '/invitations'
+      fullPath: '/admin/invitations'
+      preLoaderRoute: typeof AdminInvitationsRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/login': {
+      id: '/admin/login'
+      path: '/login'
+      fullPath: '/admin/login'
+      preLoaderRoute: typeof AdminLoginRouteImport
+      parentRoute: typeof AdminRoute
+    }
+    '/admin/invitations/accept': {
+      id: '/admin/invitations/accept'
+      path: '/accept'
+      fullPath: '/admin/invitations/accept'
+      preLoaderRoute: typeof AdminInvitationsAcceptRouteImport
+      parentRoute: typeof AdminInvitationsRoute
+    }
   }
 }
 
+interface AdminInvitationsRouteChildren {
+  AdminInvitationsAcceptRoute: typeof AdminInvitationsAcceptRoute
+}
+
+const AdminInvitationsRouteChildren: AdminInvitationsRouteChildren = {
+  AdminInvitationsAcceptRoute: AdminInvitationsAcceptRoute,
+}
+
+const AdminInvitationsRouteWithChildren =
+  AdminInvitationsRoute._addFileChildren(AdminInvitationsRouteChildren)
+
+interface AdminRouteChildren {
+  AdminInvitationsRoute: typeof AdminInvitationsRouteWithChildren
+  AdminLoginRoute: typeof AdminLoginRoute
+}
+
+const AdminRouteChildren: AdminRouteChildren = {
+  AdminInvitationsRoute: AdminInvitationsRouteWithChildren,
+  AdminLoginRoute: AdminLoginRoute,
+}
+
+const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -12,6 +12,18 @@
  *   - MEDIA (R2)                     blobs / media in the provisioned
  *                                    `my-web-2026` bucket
  *
+ * `BETTER_AUTH_URL` (Better Auth origin) is intentionally NOT pinned
+ * here — production must not silently inherit a localhost default.
+ * Provide it per environment:
+ *   - local dev:    .dev.vars (loaded by `wrangler dev`)
+ *   - remote apply: `wrangler deploy --var BETTER_AUTH_URL=https://...`
+ *   - multi-env:    `env.production.vars` / `env.staging.vars` blocks
+ * Better Auth 1.5+ infers `baseURL` from the incoming request when
+ * unset; the project relies on inference for local development and
+ * expects operators to set `BETTER_AUTH_URL` for production to
+ * pin the cookie domain + trusted origins. Documented in
+ * ADR-0009 §8 and Risks §5.
+ *
  * Run `pnpm run cf-typegen` after editing bindings so
  * `worker-configuration.d.ts` stays in sync.
  */

@@ -54,7 +54,7 @@ const DIGIT_URLS: Readonly<Record<string, string>> = {
 const DIGIT_SLOTS = 7;
 
 /**
- * Access counter tile — Dashboard KPI shape (branch 43).
+ * CounterTile — KPI row for the access counter section.
  *
  * Renders the page-view counter the home consumes from
  * `/api/v1/access/count/:key` (Ticket F, branch 38). Per the
@@ -62,21 +62,29 @@ const DIGIT_SLOTS = 7;
  * area mapping. The count is the primary importance, so it gets the
  * dominant visual weight (display-large mono type). Delta and period
  * are secondary metadata stacked below; the last-hit timestamp is
- * tertiary context. The tile is a single full-width surface (no 4/8
- * split — that was the previous Marketing-family spread).
+ * tertiary context.
+ *
+ * Section shape: this component renders the KPI rows directly —
+ * no card wrapper, no border, no internal padding. The home's
+ * shared `<SectionHeading variant="spread">` in `composer.tsx`
+ * places the content in the 8/12 right column on the same grid as
+ * the Capabilities and Status sections; a card wrapper would
+ * duplicate the visual frame those sections don't have. The row
+ * `gap` is `10` (40 px) — same inter-row beat as StatusTiles
+ * (also a Dashboard / Data family section).
  *
  * The count is rendered as a fixed-width sequence of pre-rasterised
  * mono digit WebPs — one `<img>` per slot — padded with leading
- * zeros. The "image swap" mechanic is what gives the tile its
+ * zeros. The "image swap" mechanic is what gives the section its
  * mechanical-counter feel: every digit is a frozen bitmap, so each
  * slot looks identical when stable and updates by image replacement
  * when the count changes. See `scripts/generate-counter-digits.mjs`
  * for the rasteriser and `src/home/digits/` for the committed
  * output. Each digit slides up into place on mount with a per-digit
- * stagger, so the count "rolls up" to its value when the tile first
- * appears.
+ * stagger, so the count "rolls up" to its value when the section
+ * first appears.
  *
- * Disabled state (no consumer API key) renders the same tile with a
+ * Disabled state (no consumer API key) renders the same rows with a
  * muted `—` placeholder (text, not images) so the section does not
  * disappear but the digit machinery stays out of the way.
  */
@@ -91,13 +99,8 @@ export function CounterTile({ data }: CounterTileProps) {
 			className={css({
 				display: 'flex',
 				flexDirection: 'column',
-				gap: '4',
-				padding: '6',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.subtle',
-				borderRadius: 'lg',
-				backgroundColor: 'bg.canvas',
+				gap: '10',
+				minWidth: '0',
 			})}
 		>
 			<div

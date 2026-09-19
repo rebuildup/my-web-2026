@@ -153,13 +153,13 @@ describe('aggregateByTarget', () => {
 	const D = { target_key: 'blog-intro', actor_id: 'd', principal: 'p', kind: 'emoji' as const };
 	const E = { target_key: 'blog-intro', actor_id: 'e', principal: 'p', kind: 'emoji' as const };
 
-	it('aggregates by (kind, value)', async () => {
+	it('aggregates by (kind, value) within a principal', async () => {
 		await putReaction(D1(), { ...A, value: '👍' });
 		await putReaction(D1(), { ...B, value: '👍' });
 		await putReaction(D1(), { ...C, value: '🎉' });
 		await putReaction(D1(), { ...D, value: '👍' });
 		await putReaction(D1(), { ...E, value: '🎉' });
-		const aggregates = await aggregateByTarget(D1(), 'blog-intro');
+		const aggregates = await aggregateByTarget(D1(), 'blog-intro', 'p');
 		const thumbs = aggregates.find((a) => a.value === '👍');
 		const party = aggregates.find((a) => a.value === '🎉');
 		expect(thumbs?.count).toBe(3);
@@ -167,8 +167,87 @@ describe('aggregateByTarget', () => {
 	});
 
 	it('returns empty for unknown target', async () => {
-		const aggregates = await aggregateByTarget(D1(), 'never-reacted');
+		const aggregates = await aggregateByTarget(D1(), 'never-reacted', 'p');
 		expect(aggregates.length).toBe(0);
+	});
+
+	it('isolates aggregates between principals (P1 review)', async () => {
+		// Same target, different principals — each principal sees
+		// only its own visitor space. cross-principal rolls up are
+		// explicitly out of scope for 0.3.0.
+		await putReaction(D1(), { ...A, value: '👍' });
+		await putReaction(D1(), { ...A, principal: 'consumer-X', value: '👍' });
+		await putReaction(D1(), { ...B, principal: 'consumer-X', value: '👍' });
+
+		const aggregateP = await aggregateByTarget(D1(), 'blog-intro', 'p');
+		const aggregateX = await aggregateByTarget(D1(), 'blog-intro', 'consumer-X');
+		expect(aggregateP.find((a) => a.value === '👍')?.count).toBe(1);
+		expect(aggregateX.find((a) => a.value === '👍')?.count).toBe(2);
+	});
+});
+
+describe('putReaction — concurrent image-reference races', () => {
+	const SEED_IMAGE_ID = '00000000-0000-0000-0000-000000000010';
+
+	beforeEach(async () => {
+		await D1()
+			.prepare(
+				`INSERT INTO reaction_images (id, content_hash, content_type, size, r2_key, uploaded_by, uploaded_at)
+         VALUES (?1, 'racebeef', 'image/png', 1, 'reactions/racebeef.png', 'test', 1)`,
+			)
+			.bind(SEED_IMAGE_ID)
+			.run();
+	});
+
+	it('truly concurrent identical (target, actor, image) PUTs idempotent', async () => {
+		// Race coverage: 8 concurrent `putReaction` calls with the
+		// same `(target_key, principal, actor_id, kind, value)` must
+		// resolve to exactly one created row. Pre-atomic-INSERT
+		// implementation could double-create (the SELECT-then-INSERT
+		// had a window where two callers could both pass the image
+		// existence check). The atomic INSERT ... SELECT FROM
+		// reaction_images collapses check + insert into a single
+		// statement on the same connection.
+		const results = await Promise.all(
+			Array.from({ length: 8 }, () =>
+				putReaction(D1(), {
+					target_key: 't',
+					actor_id: 'a',
+					principal: 'p',
+					kind: 'image',
+					value: SEED_IMAGE_ID,
+				}),
+			),
+		);
+		const createdCount = results.filter((r) => r.created).length;
+		expect(createdCount).toBe(1);
+		// All return the same row id.
+		const ids = new Set(results.map((r) => r.id));
+		expect(ids.size).toBe(1);
+		const rows = await listReactionsByTarget(D1(), 't');
+		expect(rows.length).toBe(1);
+	});
+
+	it('concurrent PUTs with distinct actors all create', async () => {
+		// Distinct actor_ids → all succeed concurrently. The atomic
+		// INSERT ... SELECT FROM reaction_images doesn't serialise
+		// on the image row (Existence check is shared, but each
+		// reaction row inserts a different (target, principal,
+		// actor, kind, value) tuple).
+		const results = await Promise.all(
+			Array.from({ length: 8 }, (_, i) =>
+				putReaction(D1(), {
+					target_key: 't',
+					actor_id: `actor-${i}`,
+					principal: 'p',
+					kind: 'image',
+					value: SEED_IMAGE_ID,
+				}),
+			),
+		);
+		expect(results.every((r) => r.created)).toBe(true);
+		const rows = await listReactionsByTarget(D1(), 't');
+		expect(rows.length).toBe(8);
 	});
 });
 

@@ -101,7 +101,7 @@ reactionsRouter.delete('/', requireApiKey, rateLimitWrite, async (c) => {
 });
 
 reactionsRouter.get('/', requireApiKey, rateLimitRead, async (c) => {
-	requireResourceAction(c, 'reactions', 'read');
+	const apiKey = requireResourceAction(c, 'reactions', 'read');
 	const targetKeyRaw = c.req.query('target');
 	if (!targetKeyRaw) {
 		return c.json({ error: 'missing_target' }, 400);
@@ -109,7 +109,10 @@ reactionsRouter.get('/', requireApiKey, rateLimitRead, async (c) => {
 	if (targetKeyRaw.length > MAX_TARGET_KEY_LEN) {
 		return c.json({ error: 'invalid_target' }, 400);
 	}
-	const aggregates = await aggregateByTarget(c.env.DB, targetKeyRaw);
+	// Aggregate scoped to the calling principal (API key id) —
+	// see reactions.aggregateByTarget. Cross-principal rolls up
+	// are explicitly out of scope for 0.3.0.
+	const aggregates = await aggregateByTarget(c.env.DB, targetKeyRaw, apiKey.id);
 	return c.json({ target_key: targetKeyRaw, aggregates });
 });
 

@@ -73,6 +73,7 @@ Current dependency direction:
 routes -> home
 home/status -> cloudflare
 home/status -> http
+home/reactions -> http/reactions (types only)
 home -> editorial
 server -> http
 ```

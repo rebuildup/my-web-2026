@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { requestIdMiddleware } from './middleware/request-id';
+import { reactionImagesRouter, reactionsRouter } from './reactions/router';
 
 /**
  * External HTTP boundary for my-web-2026.
@@ -30,6 +31,8 @@ export const externalBoundary = new Hono<{ Bindings: Env }>();
 // change to `src/server.ts` is required.
 externalBoundary.use('/api/v1/*', requestIdMiddleware);
 externalBoundary.route('/', authRouter);
+externalBoundary.route('/api/v1/reactions', reactionsRouter);
+externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);
 
 externalBoundary.get('/api/v1/health', (c) =>
 	c.json({

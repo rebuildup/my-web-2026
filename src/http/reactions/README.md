@@ -131,3 +131,23 @@ R2 layout: `reactions/{sha256-hex}.{ext}`.
 - Content hash (SHA-256) is the dedup key — uploading the same
   bytes twice returns the existing image id.
 - Image GET is public; upload / delete is admin-only.
+
+## Self-consumption from home
+
+The home surface (`src/home/reactions/`) is itself a consumer of this
+API: it holds an API key in `MY_WEB_2026_CONSUMER_API_KEY` and calls
+`/api/v1/reactions` server-side over `fetch` (see ADR-0011). This is
+the same boundary an external consumer uses — the home is not a
+backdoor. Provision the key once per environment by running
+`pnpm run bootstrap:home-api-key` (or invoking
+`scripts/bootstrap-home-api-key.mjs` directly); the script prints the
+generated `mk_home_…` value which the operator then stores as a
+Wrangler secret. The home reads a stable `target_key` from the
+`MY_WEB_2026_REACTIONS_TARGET` var (default `home-page`).
+
+Visitor identity is anonymous and lives entirely in the
+`mw_actor_id` cookie (see `src/home/reactions/cookie.ts`). The home
+forwards the cookie value as `actor_id` on PUT/DELETE so per-visitor
+dedup works at the API layer; the cookie itself carries no
+information and is not exposed to client-side scripts.
+

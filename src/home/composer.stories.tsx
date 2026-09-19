@@ -92,6 +92,15 @@ export const AllReachable: Story = {
 			],
 			statuses: baseStatuses,
 			observedAt: '2026-09-17T15:02:16.985Z',
+			reactions: {
+				target_key: 'home-page',
+				aggregates: [
+					{ kind: 'emoji', value: 'thumbs_up', count: 17 },
+					{ kind: 'emoji', value: 'tada', count: 9 },
+					{ kind: 'emoji', value: 'fire', count: 4 },
+				],
+				enabled: true,
+			},
 		},
 	},
 };

@@ -60,6 +60,13 @@
 			"bucket_name": "my-web-2026"
 		}
 	],
+	// Home self-consumption named vars (Ticket E / ADR-0011).
+	// `MY_WEB_2026_CONSUMER_API_KEY` is provisioned as a Wrangler
+	// secret via `wrangler secret put` (see scripts/bootstrap-home-api-key.mjs);
+	// the other two are non-secret named values used by `src/home/{reactions,access}/load.ts`.
+	"vars": {
+		"MY_WEB_2026_REACTIONS_TARGET": "home-page"
+	},
 	// Per-consumer-principal rate limit bindings (ADR-0010).
 	// `simple` is the only rate-limit configuration shape supported by
 	// the current wrangler schema (limit + period in seconds). The

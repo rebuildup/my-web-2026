@@ -123,7 +123,19 @@ reactionsRouter.get('/', requireApiKey, rateLimitRead, async (c) => {
 	// omit `actor_id` and the response shape is unchanged.
 	const actorIdRaw = c.req.query('actor_id');
 	if (actorIdRaw) {
-		const actorId = validateActorId(actorIdRaw);
+		// External input — a malformed `actor_id` query param must
+		// surface as 400, not 500. P2 review #10: the bare call to
+		// `validateActorId` would throw and bubble to the default
+		// error handler. Mirror the PUT/DELETE body-validation shape
+		// (`invalid_body` + reason) so callers can distinguish
+		// client errors from server errors.
+		let actorId: string;
+		try {
+			actorId = validateActorId(actorIdRaw);
+		} catch (err) {
+			const message = err instanceof Error ? err.message : String(err);
+			return c.json({ error: 'invalid_actor_id', reason: message }, 400);
+		}
 		const viewer_reactions = await listReactionsForActor(
 			c.env.DB,
 			targetKeyRaw,

@@ -1,6 +1,8 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { applyD1Migrations, env } from 'cloudflare:test';
-import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { Hono } from 'hono';
+import { resetVerifyApiKey, withVerifyApiKey } from '../../src/http/api-keys/middleware';
 import {
 	aggregateByTarget,
 	deleteReaction,
@@ -8,6 +10,7 @@ import {
 	putReaction,
 	reactionImageReferenced,
 } from '../../src/http/reactions/reactions';
+import { reactionsRouter } from '../../src/http/reactions/router';
 
 /**
  * Reactions CRUD + idempotency tests.
@@ -311,5 +314,75 @@ describe('putReaction — image reference validation', () => {
 describe('reactionImageReferenced', () => {
 	it('returns false when no reaction references the image', async () => {
 		expect(await reactionImageReferenced(D1(), 'img-unused')).toBe(false);
+	});
+});
+
+describe('reactionsRouter GET — actor_id query validation (P2 review #10)', () => {
+	// The router accepts an optional `?actor_id=` query param to
+	// return viewer-scoped reactions alongside the public aggregate.
+	// That input is **external**: any caller can supply it. A
+	// malformed value used to fall through to `validateActorId`,
+	// which throws, which the Hono default error handler mapped
+	// to 500. External validation failures must surface as 400 so
+	// callers can distinguish client errors from server errors.
+	//
+	// We stub `verifyApiKey` via the DI seam so the test does not
+	// depend on the Better Auth plugin / api-key row state.
+
+	const app = new Hono<{ Bindings: Env }>();
+	app.route('/', reactionsRouter);
+
+	afterEach(() => {
+		resetVerifyApiKey();
+	});
+
+	const STUB_KEY_ID = '00000000-0000-0000-0000-0000000000a1';
+
+	function stubAuthSuccess() {
+		withVerifyApiKey(async () => ({
+			valid: true,
+			error: null,
+			key: {
+				id: STUB_KEY_ID,
+				referenceId: 'ref-1',
+				permissions: { reactions: ['read', 'write'] },
+				prefix: 'mk_home_',
+			},
+		}));
+	}
+
+	it('returns 400 invalid_actor_id when actor_id exceeds MAX_ACTOR_ID_LEN', async () => {
+		stubAuthSuccess();
+		const tooLong = 'x'.repeat(257); // MAX_ACTOR_ID_LEN is 256.
+		const res = await app.request(
+			`/?target=blog-intro&actor_id=${tooLong}`,
+			{ headers: { authorization: 'Bearer mk_home_anything' } },
+			env,
+		);
+		expect(res.status).toBe(400);
+		const body = (await res.json()) as { error: string; reason?: string };
+		expect(body.error).toBe('invalid_actor_id');
+		expect(body.reason).toContain('actor_id');
+	});
+
+	it('accepts a well-formed actor_id and returns viewer_reactions (regression guard)', async () => {
+		// Confirm the validation path is not over-eager: a valid
+		// actor_id must still produce the 200 response with
+		// `viewer_reactions`.
+		stubAuthSuccess();
+		const res = await app.request(
+			'/?target=blog-intro&actor_id=visitor-1',
+			{ headers: { authorization: 'Bearer mk_home_anything' } },
+			env,
+		);
+		expect(res.status).toBe(200);
+		const body = (await res.json()) as {
+			target_key: string;
+			aggregates: unknown[];
+			viewer_reactions: unknown[];
+		};
+		expect(body.target_key).toBe('blog-intro');
+		expect(Array.isArray(body.aggregates)).toBe(true);
+		expect(Array.isArray(body.viewer_reactions)).toBe(true);
 	});
 });

@@ -89,6 +89,13 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 		const setCookieHeaders = res
 			.headersArray()
 			.filter((h) => h.name.toLowerCase() === 'set-cookie');
+		// P2 #6 regression: the previous loop was a vacuous pass when
+		// zero Set-Cookie headers were returned (the `for` body never
+		// ran). The /admin/login render always carries at least one
+		// Better Auth cookie; if the production deployment returns
+		// zero, that is itself a sign that cookies are being stripped
+		// at the edge and the test should fail loudly.
+		expect(setCookieHeaders.length).toBeGreaterThan(0);
 		for (const header of setCookieHeaders) {
 			// `request.headersArray()` parses multiple Set-Cookie headers
 			// as separate entries; the raw value carries the flags.

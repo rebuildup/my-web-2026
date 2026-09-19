@@ -17,22 +17,29 @@
  *     dependency — automating it would risk leaking the key into
  *     deployment artefacts.
  *
- * Usage:
- *   1. Start wrangler dev (or apply migrations on remote).
- *   2. `pnpm run bootstrap:home-api-key`
- *   3. Copy the printed key into `.dev.vars` (or wrangler secret).
+ * Targets:
+ *   --target=local   (default) writes to the local wrangler D1
+ *                    driver. Reads BETTER_AUTH_SECRET from
+ *                    .dev.vars (which `pnpm run dev` populates).
+ *   --target=remote  writes to the remote D1 bound by wrangler to
+ *                    the production project. Requires
+ *                    BETTER_AUTH_SECRET in process.env — the script
+ *                    intentionally refuses .dev.vars here because
+ *                    the local dev secret may not match the
+ *                    production one.
  *
- * Required env:
- *   - BETTER_AUTH_SECRET  — Better Auth session signing key.
- *     The api-key plugin uses BETTER_AUTH_SECRET for hashing via
- *     its `customAPIKeyGetter`/`customKeyGenerator` hooks only when
- *     configured; in our config hashing is the SHA-256 + base64url
- *     default, so the secret is not actually required for hashing.
- *     We surface the check anyway because a missing value usually
- *     means the local D1 driver cannot resolve the auth schema.
- *   - The D1 binding `DB` reachable via wrangler's local driver
- *     (the script uses `wrangler d1 execute` so it does NOT need
- *     a Node fetch to the worker runtime).
+ * Production runbook:
+ *   1. pnpm run db:migrate:remote    # apply migrations incl. 0005
+ *   2. export BETTER_AUTH_SECRET=…   # the production secret
+ *   3. node scripts/bootstrap-home-api-key.mjs --target=remote
+ *   4. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY
+ *      < paste the printed value
+ *   5. wrangler deploy
+ *
+ * Usage:
+ *   node scripts/bootstrap-home-api-key.mjs [--target=local|remote]
+ *   pnpm run bootstrap:home-api-key                 # defaults to local
+ *   pnpm run bootstrap:home-api-key -- --target=remote
  */
 import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
@@ -47,6 +54,26 @@ const REQUIRED_SCOPES = {
 	reactions: ['read', 'write'],
 	access_counter: ['read', 'write'],
 };
+
+function parseTarget(argv) {
+	// Accept both `--target remote` (two tokens) and `--target=remote`
+	// (one token) for shell-style ergonomics.
+	let v;
+	const eq = argv.find((a) => a.startsWith('--target='));
+	if (eq) {
+		v = eq.slice('--target='.length);
+	} else {
+		const i = argv.indexOf('--target');
+		if (i < 0) return 'local';
+		v = argv[i + 1];
+	}
+	if (v !== 'local' && v !== 'remote') {
+		throw new Error(
+			`--target must be 'local' or 'remote' (got '${v}'). Usage: node scripts/bootstrap-home-api-key.mjs [--target=local|remote]`,
+		);
+	}
+	return v;
+}
 
 function loadDotEnv(path) {
 	if (!existsSync(path)) return {};
@@ -68,7 +95,16 @@ function loadDotEnv(path) {
 	return out;
 }
 
-function resolveAdminUserId() {
+/**
+ * Pick the wrangler flag for the chosen target. The SQL payload is
+ * identical between local and remote; only the binding transport
+ * changes.
+ */
+function wranglerD1Args(target, command) {
+	return ['d1', 'execute', 'DB', `--${target}`, '--command', command, '--json'];
+}
+
+function resolveAdminUserId(target) {
 	// Better Auth stores admin users in the `user` table with
 	// `role = 'admin'`. The referenceId for the api-key must point
 	// at the admin who "owns" the key. We pick the first admin by
@@ -76,23 +112,17 @@ function resolveAdminUserId() {
 	// admin in 0.3.0.
 	const result = execFileSync(
 		'wrangler',
-		[
-			'd1',
-			'execute',
-			'DB',
-			'--local',
-			'--command',
-			"SELECT id FROM user WHERE role = 'admin' ORDER BY id ASC LIMIT 1",
-			'--json',
-		],
+		wranglerD1Args(target, "SELECT id FROM user WHERE role = 'admin' ORDER BY id ASC LIMIT 1"),
 		{ encoding: 'utf8' },
 	);
 	const parsed = JSON.parse(result);
 	const row = parsed?.[0]?.results?.[0];
 	if (!row?.id) {
-		throw new Error(
-			'No admin user found in the local D1 binding. Run `pnpm run dev` once and create an admin via the invitation flow first.',
-		);
+		const where =
+			target === 'remote'
+				? 'the remote D1 binding (production)'
+				: 'the local D1 binding. Run `pnpm run dev` once and create an admin via the invitation flow first.';
+		throw new Error(`No admin user found in ${where}`);
 	}
 	return row.id;
 }
@@ -124,7 +154,7 @@ function defaultKeyHash(plaintext) {
 	return base64UrlNoPad(createHash('sha256').update(plaintext).digest());
 }
 
-function insertKey({ userId, plaintext }) {
+function insertKey({ target, userId, plaintext }) {
 	const id = crypto.randomUUID();
 	const now = Date.now();
 	const hash = defaultKeyHash(plaintext);
@@ -142,7 +172,10 @@ function insertKey({ userId, plaintext }) {
 		NULL, NULL, NULL, NULL,
 		${now}, ${now}, '${permissionsJson.replace(/'/g, "''")}'
 	)`;
-	execFileSync('wrangler', ['d1', 'execute', 'DB', '--local', '--command', sql], {
+	execFileSync('wrangler', [...wranglerD1Args(target, sql).slice(0, -1)], {
+		// Last entry was --json; strip it for the INSERT (no JSON
+		// output expected) so wrangler uses its default table
+		// formatting which surfaces row changes.
 		encoding: 'utf8',
 		stdio: ['ignore', 'pipe', 'inherit'],
 	});
@@ -150,21 +183,44 @@ function insertKey({ userId, plaintext }) {
 }
 
 function main() {
-	const dotEnv = loadDotEnv('.dev.vars');
-	const secret = dotEnv.BETTER_AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET;
-	if (!secret) {
-		throw new Error(
-			'BETTER_AUTH_SECRET is not set in .dev.vars or process.env. The api-key row references the auth secret via Better Auth plugin config; this script does not need it for hashing but a missing value usually means the local D1 driver cannot resolve the auth schema.',
-		);
+	const target = parseTarget(process.argv.slice(2));
+	let secret;
+	if (target === 'remote') {
+		// Refuse .dev.vars on the remote path — the local dev secret
+		// may not match the production one, and silently using it
+		// would create a key against a binding the worker never
+		// reads from. Operator must export it in the shell.
+		secret = process.env.BETTER_AUTH_SECRET;
+		if (!secret) {
+			throw new Error(
+				'BETTER_AUTH_SECRET is not set in process.env. The remote path requires the production secret — export it before running:\n  export BETTER_AUTH_SECRET=…\n  node scripts/bootstrap-home-api-key.mjs --target=remote',
+			);
+		}
+	} else {
+		const dotEnv = loadDotEnv('.dev.vars');
+		secret = dotEnv.BETTER_AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET;
+		if (!secret) {
+			throw new Error(
+				'BETTER_AUTH_SECRET is not set in .dev.vars or process.env. The api-key row references the auth secret via Better Auth plugin config; this script does not need it for hashing but a missing value usually means the local D1 driver cannot resolve the auth schema.',
+			);
+		}
 	}
-	const userId = resolveAdminUserId();
+	const userId = resolveAdminUserId(target);
 	const plaintext = generatePlaintext();
-	insertKey({ userId, plaintext });
+	insertKey({ target, userId, plaintext });
 
-	console.log('# Home self-consumption API key created.');
-	console.log('# Store the value below as a Wrangler secret in your target environment.');
-	console.log('#   local dev →  .dev.vars  : MY_WEB_2026_CONSUMER_API_KEY="…"');
-	console.log('#   remote    →  wrangler secret put MY_WEB_2026_CONSUMER_API_KEY');
+	console.log(`# Home self-consumption API key created (target=${target}).`);
+	if (target === 'remote') {
+		console.log('# Production runbook — finish in this order:');
+		console.log('#   1. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY');
+		console.log('#        (paste the value below when prompted)');
+		console.log('#   2. wrangler deploy');
+		console.log('#   3. Verify with: curl -H "authorization: Bearer <key>" \\');
+		console.log('#        https://rebuildup.dev/api/v1/reactions?target=home-page');
+	} else {
+		console.log('# Store the value below in your local secrets:');
+		console.log('#   .dev.vars  : MY_WEB_2026_CONSUMER_API_KEY="…"');
+	}
 	console.log('');
 	console.log(plaintext);
 }

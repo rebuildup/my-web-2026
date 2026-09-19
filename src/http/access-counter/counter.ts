@@ -3,7 +3,8 @@ import { DEDUP_WINDOW_MS } from './schema';
 
 /**
  * Access counter — atomic slot claim over the `access_counters` +
- * `access_dedup` pair (Ticket F, branch 38).
+ * `access_dedup` pair (Ticket F, branch 38; per-principal storage
+ * added on branch 35's review pass via migration 0005).
  *
  * The increment path runs three D1 statements in sequence. The
  * atomicity guarantee is provided by the UNIQUE primary key on
@@ -19,16 +20,21 @@ import { DEDUP_WINDOW_MS } from './schema';
  *      what makes the dedup atomic without an explicit transaction
  *      or `SELECT ... FOR UPDATE`.
  *   3. When step 2 reported `meta.changes = 1`, UPSERT the counter
- *      row (`count = count + 1, last_hit = ?`). When step 2 reported
- *      0 (slot already held), return the existing count unchanged.
+ *      row keyed by `(key, principal)`. When step 2 reported 0
+ *      (slot already held), return the existing count unchanged.
  *
  * P1 review finding (branch 35): the increment MUST be gated on
  * having won the dedup slot — otherwise a race between two
  * concurrent hits can land two increments for the same window.
  * The `if (!incremented) return …` branch is that gate.
  *
- * The read path (`getCount`) is a plain SELECT — no concurrency
- * hazard.
+ * Per-principal storage (ADR-0012 §3): the counter PK is
+ * `(key, principal)` so two consumers (API key ids) writing to the
+ * same `key` each keep their own count. Migration 0005 made this
+ * schema promise actual (the 0002 PK was just `key`).
+ *
+ * The read path (`getCount`) is a plain SELECT filtered by both
+ * `key` and `principal` — no concurrency hazard.
  *
  * Input / output types live in `./schema` so that home-side
  * consumers can `import type` the result shape without depending on
@@ -65,8 +71,10 @@ export async function recordHit(db: D1Database, input: RecordHitInput): Promise<
 	if (!incremented) {
 		// Slot already held — read current count and return unchanged.
 		const row = await db
-			.prepare('SELECT count, first_hit, last_hit FROM access_counters WHERE key = ?1')
-			.bind(input.key)
+			.prepare(
+				'SELECT count, first_hit, last_hit FROM access_counters WHERE key = ?1 AND principal = ?2',
+			)
+			.bind(input.key, input.principal)
 			.first<{ count: number; first_hit: number; last_hit: number }>();
 		if (!row) {
 			// Counter row absent even though dedup exists — pathological
@@ -82,36 +90,46 @@ export async function recordHit(db: D1Database, input: RecordHitInput): Promise<
 		};
 	}
 
-	// Step 3: increment the counter row.
+	// Step 3: increment the counter row, keyed by (key, principal).
 	const bump = await db
 		.prepare(
-			`INSERT INTO access_counters (key, count, first_hit, last_hit)
-       VALUES (?1, 1, ?2, ?2)
-       ON CONFLICT (key) DO UPDATE
+			`INSERT INTO access_counters (key, principal, count, first_hit, last_hit)
+       VALUES (?1, ?2, 1, ?3, ?3)
+       ON CONFLICT (key, principal) DO UPDATE
          SET count    = count + 1,
              last_hit = excluded.last_hit`,
 		)
-		.bind(input.key, now)
+		.bind(input.key, input.principal, now)
 		.run();
 	void bump;
 
 	const row = await db
-		.prepare('SELECT count, first_hit, last_hit FROM access_counters WHERE key = ?1')
-		.bind(input.key)
+		.prepare(
+			'SELECT count, first_hit, last_hit FROM access_counters WHERE key = ?1 AND principal = ?2',
+		)
+		.bind(input.key, input.principal)
 		.first<{ count: number; first_hit: number; last_hit: number }>();
 	if (!row) {
 		// Self-heal: the increment statement should always produce a row,
 		// but if the binding fails for any reason we surface the failure
 		// as a 500 via the caller — `incremented: false` would mislead.
-		throw new Error(`access counter row missing after increment for key='${input.key}'`);
+		throw new Error(
+			`access counter row missing after increment for key='${input.key}' principal='${input.principal}'`,
+		);
 	}
 	return { incremented: true, count: row.count, first_hit: row.first_hit, last_hit: row.last_hit };
 }
 
-export async function getCount(db: D1Database, key: string): Promise<GetCountOutput> {
+export async function getCount(
+	db: D1Database,
+	key: string,
+	principal: string,
+): Promise<GetCountOutput> {
 	const row = await db
-		.prepare('SELECT count, first_hit, last_hit FROM access_counters WHERE key = ?1')
-		.bind(key)
+		.prepare(
+			'SELECT count, first_hit, last_hit FROM access_counters WHERE key = ?1 AND principal = ?2',
+		)
+		.bind(key, principal)
 		.first<{ count: number; first_hit: number; last_hit: number }>();
 	if (!row) return { count: 0, first_hit: null, last_hit: null };
 	return { count: row.count, first_hit: row.first_hit, last_hit: row.last_hit };

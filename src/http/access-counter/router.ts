@@ -50,12 +50,15 @@ accessCounterRouter.post('/hit', requireApiKey, rateLimitWrite, async (c) => {
 });
 
 accessCounterRouter.get('/count/:key', requireApiKey, rateLimitRead, async (c) => {
-	requireResourceAction(c, 'access_counter', 'read');
+	const apiKey = requireResourceAction(c, 'access_counter', 'read');
 	const rawKey = c.req.param('key');
 	if (!rawKey || rawKey.length === 0 || rawKey.length > MAX_COUNTER_KEY_LEN) {
 		return c.json({ error: 'invalid_key' }, 400);
 	}
 	const key = validateCounterKey(rawKey);
-	const result = await getCount(c.env.DB, key);
+	// Per-principal isolation (ADR-0012 §3): each consumer sees only
+	// its own counter row for the same `key`. The principal is the
+	// authenticated API key id — no client input accepted.
+	const result = await getCount(c.env.DB, key, apiKey.id);
 	return c.json(result);
 });

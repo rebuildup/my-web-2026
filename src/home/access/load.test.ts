@@ -19,10 +19,12 @@ import { getHomeCounterImpl, recordHomeHitImpl } from './load';
 
 const ACCESS_COUNTER_SQL = `
 CREATE TABLE IF NOT EXISTS access_counters (
-    key        TEXT PRIMARY KEY,
+    key        TEXT    NOT NULL,
+    principal  TEXT    NOT NULL,
     count      INTEGER NOT NULL DEFAULT 0,
     first_hit  INTEGER NOT NULL,
-    last_hit   INTEGER NOT NULL
+    last_hit   INTEGER NOT NULL,
+    PRIMARY KEY (key, principal)
 );
 CREATE TABLE IF NOT EXISTS access_dedup (
     counter_key TEXT    NOT NULL,

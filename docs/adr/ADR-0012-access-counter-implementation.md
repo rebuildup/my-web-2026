@@ -66,15 +66,22 @@ The increment path is three D1 statements:
 2. `INSERT INTO access_dedup (…) ON CONFLICT (counter_key,
    principal, session_id) DO NOTHING` — atomic slot claim.
    `meta.changes = 1` for the winner, `0` for losers.
-3. `INSERT INTO access_counters (…) ON CONFLICT (key) DO UPDATE SET
-   count = count + 1, last_hit = excluded.last_hit` — atomic
-   upsert, gated on having won the dedup slot.
+3. `INSERT INTO access_counters (…) ON CONFLICT (key, principal)
+   DO UPDATE SET count = count + 1, last_hit = excluded.last_hit`
+   — atomic upsert, gated on having won the dedup slot.
 
 P1 review finding from branch 35: the increment MUST be gated on
 having won the dedup slot, otherwise a race between two concurrent
 hits can land two increments for the same window. The split is
 expressed by the `if (!incremented) return …` branch between
 steps 2 and 3.
+
+The counter PK is `(key, principal)` — added in migration 0005
+after the 0.3.0 release-branch review (PR #48, finding P1 #4)
+surfaced that the 0002 PK of `key` alone contradicted this ADR's
+per-principal isolation promise. Two consumers (API key ids)
+writing to the same `key` now each keep their own count; the
+schema actually matches the design.
 
 ### 4. `MY_WEB_2026_COUNTER_KEY` env
 
@@ -100,7 +107,7 @@ sensitive payload).
 | Decision | Trade-off | Mitigation |
 |---|---|---|
 | Per-request UUID | Inflates counter for visitors who refresh | Window is 60 min; 0.4.0 will switch to `mw_actor_id` |
-| Counter per principal (API key id) | Two principals hitting the same key would each see their own count | 0.3.0 has one consumer (the home); 0.4.0 revisits when more consumers exist |
+| Counter per principal (API key id) | Two principals hitting the same key would each see their own count | 0.3.0 has one consumer (the home); PK `(key, principal)` (migration 0005) enforces isolation at the schema layer so adding more consumers is a no-shape-change |
 | 60-min dedup window | Visitor who revisits after 60 min is counted again | Matches GA expectations for "views today" semantics; configurable via env if needed |
 
 ## Out of scope (0.4.0+)

@@ -63,6 +63,8 @@ export const HitInput = z.object({
 
 export interface AccessCounterRow {
 	key: string;
+	/** API key id of the consumer that owns this counter row. */
+	principal: string;
 	count: number;
 	first_hit: number;
 	last_hit: number;

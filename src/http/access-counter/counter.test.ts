@@ -4,7 +4,8 @@ import { getCount, recordHit } from './counter';
 import { DEDUP_WINDOW_MS } from './schema';
 
 /**
- * Access counter — atomicity tests (Ticket F, branch 38).
+ * Access counter — atomicity tests (Ticket F, branch 38;
+ * per-principal storage added in migration 0005).
  *
  * Coverage:
  *   1. First hit creates the counter row and increments to 1.
@@ -15,14 +16,18 @@ import { DEDUP_WINDOW_MS } from './schema';
  *   5. Concurrent hits via `Promise.all` with different session_ids
  *      both land as increments — D1 serialises the `INSERT … ON
  *      CONFLICT DO NOTHING` race.
+ *   6. Per-principal isolation (P1 #4): keyA and keyB record hits
+ *      against the same `key` and each keep their own count.
  */
 
 const ACCESS_COUNTER_SQL = `
 CREATE TABLE IF NOT EXISTS access_counters (
-    key        TEXT PRIMARY KEY,
+    key        TEXT    NOT NULL,
+    principal  TEXT    NOT NULL,
     count      INTEGER NOT NULL DEFAULT 0,
     first_hit  INTEGER NOT NULL,
-    last_hit   INTEGER NOT NULL
+    last_hit   INTEGER NOT NULL,
+    PRIMARY KEY (key, principal)
 );
 CREATE TABLE IF NOT EXISTS access_dedup (
     counter_key TEXT    NOT NULL,
@@ -153,7 +158,7 @@ describe('access counter — getCount', () => {
 	});
 
 	it('returns zero + null timestamps for an unknown key', async () => {
-		const result = await getCount(env.DB, 'unknown');
+		const result = await getCount(env.DB, 'unknown', 'keyA');
 		expect(result).toEqual({ count: 0, first_hit: null, last_hit: null });
 	});
 
@@ -164,9 +169,47 @@ describe('access counter — getCount', () => {
 			session_id: 's1',
 			now: 1_000,
 		});
-		const result = await getCount(env.DB, 'home-page');
+		const result = await getCount(env.DB, 'home-page', 'keyA');
 		expect(result.count).toBe(1);
 		expect(result.first_hit).toBe(1_000);
 		expect(result.last_hit).toBe(1_000);
+	});
+
+	it('isolates counts per principal on the same key (P1 #4 regression)', async () => {
+		// ADR-0012 §3 promises per-principal isolation: two consumers
+		// hitting the same `key` each keep their own count. Migration
+		// 0005 made the schema actually deliver this.
+		await recordHit(env.DB, {
+			key: 'home-page',
+			principal: 'keyA',
+			session_id: 's1',
+			now: 1_000,
+		});
+		await recordHit(env.DB, {
+			key: 'home-page',
+			principal: 'keyA',
+			session_id: 's2',
+			now: 1_500,
+		});
+		await recordHit(env.DB, {
+			key: 'home-page',
+			principal: 'keyA',
+			session_id: 's3',
+			now: 2_000,
+		});
+		await recordHit(env.DB, {
+			key: 'home-page',
+			principal: 'keyB',
+			session_id: 's1',
+			now: 2_500,
+		});
+		const keyA = await getCount(env.DB, 'home-page', 'keyA');
+		const keyB = await getCount(env.DB, 'home-page', 'keyB');
+		expect(keyA.count).toBe(3);
+		expect(keyA.first_hit).toBe(1_000);
+		expect(keyA.last_hit).toBe(2_000);
+		expect(keyB.count).toBe(1);
+		expect(keyB.first_hit).toBe(2_500);
+		expect(keyB.last_hit).toBe(2_500);
 	});
 });

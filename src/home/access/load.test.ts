@@ -105,7 +105,7 @@ describe('home access counter — server-fn impls', () => {
 	});
 
 	it('getHomeCounterImpl returns enabled=false when the consumer API key is not configured', async () => {
-		const result = await getHomeCounterImpl({}, { host: 'example.com', proto: 'https' }, selfFetch);
+		const result = await getHomeCounterImpl({}, {}, 'https://example.com', selfFetch);
 		expect(result.enabled).toBe(false);
 		expect(result.count).toBe(0);
 		expect(result.key).toBe('home-page');
@@ -119,14 +119,26 @@ describe('home access counter — server-fn impls', () => {
 			MY_WEB_2026_CONSUMER_API_KEY: keyPlaintext,
 			MY_WEB_2026_COUNTER_KEY: 'home-page',
 		};
-		const ctx = { host: 'example.com', proto: 'https' };
+		const ctx = {};
 
-		const r1 = await recordHomeHitImpl(envLike, ctx, { session_id: 's1' }, selfFetch);
+		const r1 = await recordHomeHitImpl(
+			envLike,
+			ctx,
+			{ session_id: 's1' },
+			'https://example.com',
+			selfFetch,
+		);
 		expect(r1.ok).toBe(true);
-		const r2 = await recordHomeHitImpl(envLike, ctx, { session_id: 's2' }, selfFetch);
+		const r2 = await recordHomeHitImpl(
+			envLike,
+			ctx,
+			{ session_id: 's2' },
+			'https://example.com',
+			selfFetch,
+		);
 		expect(r2.ok).toBe(true);
 
-		const counter = await getHomeCounterImpl(envLike, ctx, selfFetch);
+		const counter = await getHomeCounterImpl(envLike, ctx, 'https://example.com', selfFetch);
 		expect(counter.enabled).toBe(true);
 		expect(counter.count).toBe(2);
 		expect(counter.key).toBe('home-page');
@@ -142,20 +154,21 @@ describe('home access counter — server-fn impls', () => {
 			MY_WEB_2026_CONSUMER_API_KEY: keyPlaintext,
 			MY_WEB_2026_COUNTER_KEY: 'home-page',
 		};
-		const ctx = { host: 'example.com', proto: 'https' };
+		const ctx = {};
 
-		await recordHomeHitImpl(envLike, ctx, { session_id: 's1' }, selfFetch);
-		await recordHomeHitImpl(envLike, ctx, { session_id: 's1' }, selfFetch);
+		await recordHomeHitImpl(envLike, ctx, { session_id: 's1' }, 'https://example.com', selfFetch);
+		await recordHomeHitImpl(envLike, ctx, { session_id: 's1' }, 'https://example.com', selfFetch);
 
-		const counter = await getHomeCounterImpl(envLike, ctx, selfFetch);
+		const counter = await getHomeCounterImpl(envLike, ctx, 'https://example.com', selfFetch);
 		expect(counter.count).toBe(1);
 	});
 
 	it('recordHomeHitImpl: missing API key short-circuits with reason=api_key_unconfigured', async () => {
 		const result = await recordHomeHitImpl(
 			{},
-			{ host: 'example.com', proto: 'https' },
+			{},
 			{ session_id: 's1' },
+			'https://example.com',
 			vi.fn() as unknown as typeof fetch,
 		);
 		expect(result).toEqual({ ok: false, reason: 'api_key_unconfigured' });
@@ -170,7 +183,8 @@ describe('home access counter — server-fn impls', () => {
 		);
 		const result = await getHomeCounterImpl(
 			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
-			{ host: 'example.com', proto: 'https' },
+			{},
+			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
 		expect(result.enabled).toBe(true);

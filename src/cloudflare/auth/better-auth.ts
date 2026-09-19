@@ -42,20 +42,27 @@ import { admin } from 'better-auth/plugins/admin';
  * - `sendEmail` is a console-log stub — no SMTP is configured in
  *   0.3.0. Real delivery is out of scope.
  *
- * Environment contract (ADR-0009 §8):
+ * Environment contract (ADR-0009 §8 + ADR-0014):
  *
- * `BETTER_AUTH_URL` is intentionally NOT pinned in `wrangler.jsonc`
- * `vars` — production must not silently inherit a localhost
- * default. Local development sets it in `.dev.vars`; production
- * supplies it via `wrangler deploy --var BETTER_AUTH_URL=...` or a
- * per-env `env.production.vars` block. Better Auth's own
- * validation raises at first sign-in request if `baseURL` is
- * missing, which is the operator-facing signal.
+ * `BETTER_AUTH_URL` is intentionally NOT pinned at the top-level
+ * `wrangler.jsonc vars` — production must not silently inherit a
+ * localhost default. Local development sets it in `.dev.vars`;
+ * production pins it in the companion file `wrangler.production.jsonc`
+ * (see ADR-0014 / Issue #43) as `https://rebuildup.dev`, applied via
+ * `pnpm run deploy:production` (= `wrangler deploy -c
+ * wrangler.production.jsonc`). The companion file exists because
+ * `env.production` inside `wrangler.jsonc` breaks the typegen for the
+ * default env.
+ *
+ * Better Auth's own validation raises at first sign-in request if
+ * `baseURL` is missing, which is the operator-facing signal.
  *
  * The runtime contract is `string | undefined`. The typegen'd `Env`
- * does not declare it because we removed the fallback from
- * `wrangler.jsonc vars`; the cast below is the documented escape
- * hatch.
+ * does not declare it because the top-level `vars` block omits it;
+ * the cast below is the documented escape hatch. wrangler injects
+ * the production-only var into the runtime `env` at deploy time even
+ * though the default-env typegen does not enumerate it, so the cast
+ * still works.
  */
 const betterAuthUrl = (env as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
 

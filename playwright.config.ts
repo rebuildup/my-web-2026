@@ -3,18 +3,28 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Playwright configuration for my-web-2026.
  *
- * Tests cover a single surface today — the HTTP-only smoke in
- * `e2e/smoke.spec.ts`. The same checks work for the local
- * `pnpm dev` server and a deployed Worker; the only difference is
- * `PLAYWRIGHT_BASE_URL`. The webServer block below starts
- * `pnpm dev` automatically when `PLAYWRIGHT_BASE_URL` points at
- * localhost; when it points at a deployed URL (`*.workers.dev` or
- * similar) the block is omitted so the deployed Worker is assumed
- * already live.
+ * Tests cover two surfaces today:
+ *   1. `e2e/smoke.spec.ts` — HTTP + home composition, runs against
+ *      local `pnpm dev` (the default) or any deployed URL via
+ *      `PLAYWRIGHT_BASE_URL`.
+ *   2. `e2e/prod-smoke.spec.ts` — production-only smoke, runs via
+ *      `pnpm run e2e:prod` (= `PLAYWRIGHT_BASE_URL=https://rebuildup.dev
+ *      playwright test e2e/prod-smoke.spec.ts`). Triggers the GH
+ *      Actions `production smoke` workflow on `workflow_dispatch`.
+ *
+ * The webServer block below starts `pnpm dev` automatically when
+ * `PLAYWRIGHT_BASE_URL` points at localhost; for any deployed URL
+ * (the canonical production URL `https://rebuildup.dev`, or the
+ * debug-only `*.workers.dev` URL) the block is omitted so the
+ * deployed Worker is assumed already live.
  *
  * Chromium only at 0.1.0. Firefox / WebKit land when a feature needs
  * them. Playwright's own browser binaries are installed via
  * `pnpm run e2e:install`; CI runs that step in the bootstrap.
+ *
+ * Canonical production URL policy: ADR-0014 / Issue #43. The
+ * `*.workers.dev` URL is debug / infra only and is NOT documented
+ * as canonical.
  */
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;

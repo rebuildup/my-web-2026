@@ -18,7 +18,13 @@
 
 # 0.3.0 Foundation: Better Auth base URL (origin of the deployment).
 # Local development: http://127.0.0.1:3000
-# Production: https://<your-deployment>.workers.dev
+# Production: wired through the companion file `wrangler.production.jsonc`
+#   — `pnpm run deploy:production` (= `wrangler deploy -c
+#   wrangler.production.jsonc`) pins BETTER_AUTH_URL=https://rebuildup.dev
+#   and attaches the custom domain. Do not put the production URL here.
+# Better Auth infers baseURL from the incoming request when unset,
+# which is fine for local dev but required to be pinned in production
+# (cookie domain + trusted origin). See ADR-0009 §8 and ADR-0014.
 # BETTER_AUTH_URL="http://127.0.0.1:3000"
 
 # 0.3.0-extended (Tickets E + F): Home self-consumption API key

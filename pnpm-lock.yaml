@@ -118,6 +118,9 @@ importers:
       better-auth:
         specifier: ^1.7.5
         version: 1.7.5(@tanstack/react-start@1.168.52(esbuild@0.25.12)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(rollup@4.63.1)(supports-color@10.2.2)(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.33.0)))(react-dom@19.3.0(react@19.3.0))(react@19.3.0)(vitest@4.1.11(@types/node@22.20.2)(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.33.0)))
+      emoji-picker-react:
+        specifier: ^4.22.2
+        version: 4.22.2(react@19.3.0)
       hono:
         specifier: ^4.13.7
         version: 4.13.7
@@ -2439,6 +2442,12 @@ packages:
   electron-to-chromium@1.5.426:
     resolution: {integrity: sha512-2Gcq6inCQs/AqfHP3f5ftCzk+pqeW2VlA1LgmPqEj2hfBO8HiZRspNYkD4HzFBe4u6lGqca4BspFr6Ix4Q400g==}
 
+  emoji-picker-react@4.22.2:
+    resolution: {integrity: sha512-xd0YRbuqkdfVYLAMEiDhM/xx98OQZ4FWu3KQJjVBkQO956EpMTJY0wW4jtF1VGqYBYK4E1KDXyDa2e8M4PQFkw==}
+    engines: {node: '>=10'}
+    peerDependencies:
+      react: '>=16.8'
+
   emoji-regex@8.0.0:
     resolution: {integrity: sha512-MSjYzcWNOA0ewAHpz0MxpYFvwg6yjy1NG3xteoqz644VCo/RPgnr1/GGt+ic3iJTzQ8Eu3TdM14SawnVUmGE6A==}
 
@@ -3300,6 +3309,9 @@ packages:
   shebang-regex@3.0.0:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
+
+  shipstyles@1.0.0:
+    resolution: {integrity: sha512-1AcihfXo/mSxqeOdoKqq/5TNv+vSH0dBYPFq88PUX5FBkK5pRmY5TP9SuMNio85PQ+euUI67+KpSVk1cUVDCgA==}
 
   siginfo@2.0.0:
     resolution: {integrity: sha512-ybx0WO1/8bSBLEWXZvEd7gMW3Sn3JFlW3TvX1nREbDLRNQNaeNN8WK0meBwPdAaOI7TtRRRJn/Es1zhrrCHu7g==}
@@ -5790,6 +5802,11 @@ snapshots:
 
   electron-to-chromium@1.5.426: {}
 
+  emoji-picker-react@4.22.2(react@19.3.0):
+    dependencies:
+      react: 19.3.0
+      shipstyles: 1.0.0
+
   emoji-regex@8.0.0: {}
 
   emoji-regex@9.2.2: {}
@@ -6664,6 +6681,8 @@ snapshots:
       shebang-regex: 3.0.0
 
   shebang-regex@3.0.0: {}
+
+  shipstyles@1.0.0: {}
 
   siginfo@2.0.0: {}
 

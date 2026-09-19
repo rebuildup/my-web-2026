@@ -46,6 +46,7 @@
 		"@tanstack/react-router": "^1.168.52",
 		"@tanstack/react-start": "^1.168.52",
 		"better-auth": "^1.7.5",
+		"emoji-picker-react": "^4.22.2",
 		"hono": "^4.13.7",
 		"react": "^19.2.0",
 		"react-dom": "^19.2.0",

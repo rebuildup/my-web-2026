@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminInvitationsRouteImport } from './routes/admin.invitations'
+import { Route as AdminKeysRouteImport } from './routes/admin.keys'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
 import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invitations.accept'
 
@@ -30,6 +31,11 @@ const AdminInvitationsRoute = AdminInvitationsRouteImport.update({
   path: '/invitations',
   getParentRoute: () => AdminRoute,
 } as any)
+const AdminKeysRoute = AdminKeysRouteImport.update({
+  id: '/keys',
+  path: '/keys',
+  getParentRoute: () => AdminRoute,
+} as any)
 const AdminLoginRoute = AdminLoginRouteImport.update({
   id: '/login',
   path: '/login',
@@ -45,6 +51,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
@@ -52,6 +59,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
@@ -60,6 +68,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
@@ -69,6 +78,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/admin/invitations'
+    | '/admin/keys'
     | '/admin/login'
     | '/admin/invitations/accept'
   fileRoutesByTo: FileRoutesByTo
@@ -76,6 +86,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/admin/invitations'
+    | '/admin/keys'
     | '/admin/login'
     | '/admin/invitations/accept'
   id:
@@ -83,6 +94,7 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/admin/invitations'
+    | '/admin/keys'
     | '/admin/login'
     | '/admin/invitations/accept'
   fileRoutesById: FileRoutesById
@@ -115,6 +127,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminInvitationsRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/admin/keys': {
+      id: '/admin/keys'
+      path: '/keys'
+      fullPath: '/admin/keys'
+      preLoaderRoute: typeof AdminKeysRouteImport
+      parentRoute: typeof AdminRoute
+    }
     '/admin/login': {
       id: '/admin/login'
       path: '/login'
@@ -145,11 +164,13 @@ const AdminInvitationsRouteWithChildren =
 
 interface AdminRouteChildren {
   AdminInvitationsRoute: typeof AdminInvitationsRouteWithChildren
+  AdminKeysRoute: typeof AdminKeysRoute
   AdminLoginRoute: typeof AdminLoginRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminInvitationsRoute: AdminInvitationsRouteWithChildren,
+  AdminKeysRoute: AdminKeysRoute,
   AdminLoginRoute: AdminLoginRoute,
 }
 

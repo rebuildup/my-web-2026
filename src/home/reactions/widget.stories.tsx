@@ -60,6 +60,7 @@ export const Disabled: Story = {
 		data: {
 			target_key: 'home-page',
 			aggregates: [],
+			viewer_reactions: [],
 			catalog: [],
 			enabled: false,
 		} satisfies HomeReactionsData,
@@ -71,6 +72,7 @@ export const Empty: Story = {
 		data: {
 			target_key: 'home-page',
 			aggregates: [],
+			viewer_reactions: [],
 			catalog: SEEDED_CATALOG,
 			enabled: true,
 		} satisfies HomeReactionsData,
@@ -86,6 +88,10 @@ export const Populated: Story = {
 				{ kind: 'emoji', value: 'tada', count: 9 },
 				{ kind: 'emoji', value: 'fire', count: 4 },
 				{ kind: 'emoji', value: 'eyes', count: 2 },
+			],
+			viewer_reactions: [
+				{ kind: 'emoji', value: 'thumbs_up' },
+				{ kind: 'emoji', value: 'fire' },
 			],
 			catalog: SEEDED_CATALOG,
 			enabled: true,

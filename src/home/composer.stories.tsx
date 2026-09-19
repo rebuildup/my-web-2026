@@ -99,6 +99,10 @@ export const AllReachable: Story = {
 					{ kind: 'emoji', value: 'tada', count: 9 },
 					{ kind: 'emoji', value: 'fire', count: 4 },
 				],
+				// Visitor state for the Storybook viewer (no cookie →
+				// empty). Real deployments populate this from
+				// `mw_actor_id` (P1 #1 fix).
+				viewer_reactions: [],
 				catalog: [
 					{ slug: 'thumbs_up', codepoint: '👍', enabled: true },
 					{ slug: 'tada', codepoint: '🎉', enabled: true },

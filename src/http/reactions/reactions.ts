@@ -177,3 +177,38 @@ export async function reactionImageReferenced(db: D1Database, imageId: string): 
 		.first<{ one: number }>();
 	return row !== null;
 }
+
+/**
+ * List the reactions this specific visitor has applied to the
+ * target — `(target_key, principal, actor_id)` filtered, returned
+ * as a flat `{kind, value}[]` so the home widget can render the
+ * visitor's current selection set without a separate round-trip.
+ *
+ * Used by the home loader to drive the **toggle** predicate in the
+ * widget (P1 review finding on branch 43): the widget cannot decide
+ * whether a click should PUT or DELETE based on the public
+ * aggregate count, because that count is "everyone's total" rather
+ * than "this visitor's selection". A second visitor clicking the
+ * same emoji would otherwise optimistically send DELETE on a row
+ * the visitor never owned.
+ *
+ * Cross-visitor privacy: the `(target_key, principal, actor_id)`
+ * composite is the same UNIQUE constraint that gates `putReaction`
+ * / `deleteReaction`; only the visitor's own actor id (opaque,
+ * stored in the `mw_actor_id` cookie) sees their own reactions.
+ */
+export async function listReactionsForActor(
+	db: D1Database,
+	target_key: string,
+	principal: string,
+	actor_id: string,
+): Promise<readonly { kind: ReactionKind; value: string }[]> {
+	const rows = await db
+		.prepare(
+			`SELECT kind, value FROM reactions
+       WHERE target_key = ?1 AND principal = ?2 AND actor_id = ?3`,
+		)
+		.bind(target_key, principal, actor_id)
+		.all<{ kind: ReactionKind; value: string }>();
+	return rows.results ?? [];
+}

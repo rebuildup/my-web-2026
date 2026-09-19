@@ -110,6 +110,17 @@ const DeleteInput = z.object({
 export interface HomeReactionsData {
 	target_key: string;
 	aggregates: readonly ReactionAggregate[];
+	/**
+	 * This visitor's current reactions on the target — flat
+	 * `{kind, value}[]` filtered by `(target_key, principal,
+	 * actor_id)`. Drives the widget's toggle predicate (P1 review
+	 * finding: the previous widget code conflated the public
+	 * aggregate count with "this visitor's selection", so a second
+	 * visitor to click an existing emoji optimistically sent
+	 * DELETE on a row they never owned). Empty for first-time
+	 * visitors (no `mw_actor_id` cookie yet).
+	 */
+	viewer_reactions: readonly { kind: 'emoji' | 'image'; value: string }[];
 	/** DB-backed active catalog (Ticket G, branch 39). Sorted by slug. */
 	catalog: readonly CatalogEntry[];
 	enabled: boolean;
@@ -160,9 +171,23 @@ export async function getHomeReactionsImpl(
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) {
 		console.warn('[home.reactions] consumer API key not configured — returning empty');
-		return { target_key: target, aggregates: [], catalog: [], enabled: false };
+		return {
+			target_key: target,
+			aggregates: [],
+			viewer_reactions: [],
+			catalog: [],
+			enabled: false,
+		};
 	}
-	const upstream = `${upstreamOrigin}/api/v1/reactions?target=${encodeURIComponent(target)}`;
+	// Forward the visitor's actor id (if any) so the upstream GET
+	// returns `viewer_reactions` alongside the public aggregates.
+	// First-time visitors have no cookie yet → no `actor_id` query
+	// param → upstream returns the legacy shape (no viewer state),
+	// which we mirror as `[]` here.
+	const existingActorId = readActorIdFromCookieHeader(ctx.cookie);
+	const query = new URLSearchParams({ target });
+	if (existingActorId) query.set('actor_id', existingActorId);
+	const upstream = `${upstreamOrigin}/api/v1/reactions?${query.toString()}`;
 	const [response, catalog] = await Promise.all([
 		fetcher(upstream, {
 			method: 'GET',
@@ -175,15 +200,17 @@ export async function getHomeReactionsImpl(
 	]);
 	if (!response.ok) {
 		console.error('[home.reactions] upstream failed', response.status, await response.text());
-		return { target_key: target, aggregates: [], catalog, enabled: true };
+		return { target_key: target, aggregates: [], viewer_reactions: [], catalog, enabled: true };
 	}
 	const payload = (await response.json()) as {
 		target_key?: string;
 		aggregates?: readonly ReactionAggregate[];
+		viewer_reactions?: readonly { kind: 'emoji' | 'image'; value: string }[];
 	};
 	return {
 		target_key: payload.target_key ?? target,
 		aggregates: payload.aggregates ?? [],
+		viewer_reactions: payload.viewer_reactions ?? [],
 		catalog,
 		enabled: true,
 	};
@@ -217,6 +244,7 @@ export async function addHomeReactionImpl(
 	envLike: HomeReactionsEnv,
 	ctx: HomeReactionsRequestContext,
 	input: { target: string; kind: 'emoji' | 'image'; value: string; codepoint?: string },
+	actorId: string,
 	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
 ): Promise<HomeReactionMutationResult> {
@@ -265,7 +293,12 @@ export async function addHomeReactionImpl(
 		// rather than reassigning the function parameter (biome
 		// `noParameterAssign`).
 	}
-	const { actorId } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
+	// `actorId` is resolved by the `createServerFn` handler — see
+	// `addHomeReaction` below. Doing it here would duplicate the
+	// resolution and race the handler's Set-Cookie: the first call
+	// would mint ID=A for the PUT body, the second would mint ID=B
+	// for the cookie, and the next request would read B and not find
+	// the row the visitor just created (P1 review finding).
 	if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
 	const upstream = `${upstreamOrigin}/api/v1/reactions`;
 	const response = await fetcher(upstream, {
@@ -295,6 +328,7 @@ export async function removeHomeReactionImpl(
 	envLike: HomeReactionsEnv,
 	ctx: HomeReactionsRequestContext,
 	input: { target: string; kind: 'emoji' | 'image'; value: string },
+	actorId: string,
 	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
 ): Promise<HomeReactionMutationResult> {
@@ -308,7 +342,8 @@ export async function removeHomeReactionImpl(
 			return { ok: false, reason: 'invalid_body' };
 		}
 	}
-	const { actorId } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
+	// Same `actorId` atomicity note as `addHomeReactionImpl` above —
+	// resolved in the handler so PUT body and Set-Cookie agree.
 	if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
 	const upstream = `${upstreamOrigin}/api/v1/reactions`;
 	const response = await fetcher(upstream, {
@@ -352,12 +387,12 @@ export const addHomeReaction = createServerFn({ method: 'POST' })
 	.handler(async ({ data }): Promise<HomeReactionMutationResult> => {
 		const envLike = env as unknown as HomeReactionsEnv;
 		const ctx = readRequestContext();
-		const result = await addHomeReactionImpl(envLike, ctx, data, getRequestUrl().origin);
-		// Surface the `Set-Cookie` for a freshly-issued actor id so
-		// the SSR response carries it. The impl already issued one
-		// internally; we re-resolve here so we can attach the header
-		// to the response object that createServerFn will return.
-		const { setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
+		// Resolve the visitor's actor id ONCE so the PUT body and
+		// the Set-Cookie carry the same value (P1 review finding —
+		// see `addHomeReactionImpl` for the rationale).
+		const { actorId, setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
+		if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
+		const result = await addHomeReactionImpl(envLike, ctx, data, actorId, getRequestUrl().origin);
 		if (setCookieHeader && result.ok) setResponseHeader('Set-Cookie', setCookieHeader);
 		return result;
 	});
@@ -367,8 +402,15 @@ export const removeHomeReaction = createServerFn({ method: 'POST' })
 	.handler(async ({ data }): Promise<HomeReactionMutationResult> => {
 		const envLike = env as unknown as HomeReactionsEnv;
 		const ctx = readRequestContext();
-		const result = await removeHomeReactionImpl(envLike, ctx, data, getRequestUrl().origin);
-		const { setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
+		const { actorId, setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
+		if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
+		const result = await removeHomeReactionImpl(
+			envLike,
+			ctx,
+			data,
+			actorId,
+			getRequestUrl().origin,
+		);
 		if (setCookieHeader && result.ok) setResponseHeader('Set-Cookie', setCookieHeader);
 		return result;
 	});

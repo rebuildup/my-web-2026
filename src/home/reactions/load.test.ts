@@ -69,6 +69,13 @@ CREATE TABLE IF NOT EXISTS reaction_emoji_catalog (
 );
 `;
 
+// A well-formed actor id (32 lowercase hex chars) — used by tests
+// that call the impls directly. Production flows always resolve an
+// actor id via `resolveOrIssueActorId` inside the createServerFn
+// handler (P1 review fix — see `addHomeReaction` / `removeHomeReaction`).
+const TEST_ACTOR_ID = 'a'.repeat(32);
+const TEST_ACTOR_ID_B = 'b'.repeat(32);
+
 async function ensureReactionsSchema(): Promise<void> {
 	for (const stmt of REACTIONS_SQL.split(';')
 		.map((s) => s.trim())
@@ -215,6 +222,7 @@ describe('home reactions — server-fn impls', () => {
 		expect(result).toEqual({
 			target_key: HOME_REACTIONS_TARGET,
 			aggregates: [],
+			viewer_reactions: [],
 			catalog: [],
 			enabled: false,
 		});
@@ -233,7 +241,11 @@ describe('home reactions — server-fn impls', () => {
 		const ctx = { proto: 'https', cookie: undefined };
 		const upstreamOrigin = 'https://example.com';
 
-		// 1. add 👍 (slug: thumbs_up) — first time, expect created: true
+		// 1. add 👍 (slug: thumbs_up) — first time, expect created: true.
+		//    Production flow: handler resolves actorId via cookie +
+		//    resolveOrIssueActorId and passes it to the impl. In the
+		//    test we pass an explicit actorId so the PUT body and the
+		//    DB row are tied to a deterministic value (P1 #2 regression).
 		const add = await addHomeReactionImpl(
 			envLike,
 			ctx,
@@ -242,16 +254,21 @@ describe('home reactions — server-fn impls', () => {
 				kind: 'emoji',
 				value: 'thumbs_up',
 			},
+			TEST_ACTOR_ID,
 			upstreamOrigin,
 			selfFetch,
 		);
 		expect(add.ok).toBe(true);
 		expect(add.created).toBe(true);
 
-		// 2. read aggregates via the upstream endpoint
+		// 2. read aggregates via the upstream endpoint. Now that the
+		//    cookie carries our actor id, the loader forwards it as
+		//    `?actor_id=...` and the upstream returns `viewer_reactions`
+		//    alongside `aggregates` (P1 #1 regression).
+		const ctxWithActor = { proto: 'https', cookie: `mw_actor_id=${TEST_ACTOR_ID}` };
 		const aggregates = await getHomeReactionsImpl(
 			envLike,
-			ctx,
+			ctxWithActor,
 			HOME_REACTIONS_TARGET,
 			upstreamOrigin,
 			selfFetch,
@@ -259,24 +276,16 @@ describe('home reactions — server-fn impls', () => {
 		expect(aggregates.enabled).toBe(true);
 		expect(aggregates.aggregates).toHaveLength(1);
 		expect(aggregates.aggregates[0]).toEqual({ kind: 'emoji', value: 'thumbs_up', count: 1 });
+		// Viewer state is now populated because the cookie carried the
+		// actor id from step 1.
+		expect(aggregates.viewer_reactions).toEqual([{ kind: 'emoji', value: 'thumbs_up' }]);
 		// The DB-backed catalog (Ticket G) is primed at read time and
 		// exposed via `catalog` so the widget renders the active set.
 		expect(aggregates.catalog.map((c) => c.slug).sort()).toEqual(['tada', 'thumbs_up']);
 
-		// 3. remove 👍 — expect deleted: true. Re-use the actor id
-		//    from the just-created row so the DELETE WHERE matches
-		//    (otherwise `ctx.cookie=undefined` causes resolveOrIssueActorId
-		//    to mint a fresh actor id and the row won't match).
-		const rowBefore = await env.DB.prepare(
-			'SELECT actor_id FROM reactions WHERE target_key = ?1 ORDER BY created_at ASC LIMIT 1',
-		)
-			.bind(HOME_REACTIONS_TARGET)
-			.first<{ actor_id: string }>();
-		if (!rowBefore) throw new Error('expected the first reaction row to exist');
-		const ctxWithActor = {
-			proto: 'https',
-			cookie: `mw_actor_id=${rowBefore.actor_id}`,
-		};
+		// 3. remove 👍 — expect deleted: true. Re-use the same actor id
+		//    the cookie already carries (production flow: the handler
+		//    resolves once and passes it to the impl).
 		const remove = await removeHomeReactionImpl(
 			envLike,
 			ctxWithActor,
@@ -285,21 +294,23 @@ describe('home reactions — server-fn impls', () => {
 				kind: 'emoji',
 				value: 'thumbs_up',
 			},
+			TEST_ACTOR_ID,
 			upstreamOrigin,
 			selfFetch,
 		);
 		expect(remove.ok).toBe(true);
 		expect(remove.deleted).toBe(true);
 
-		// 4. aggregates empty again
+		// 4. aggregates empty again; viewer_reactions empty too.
 		const after = await getHomeReactionsImpl(
 			envLike,
-			ctx,
+			ctxWithActor,
 			HOME_REACTIONS_TARGET,
 			upstreamOrigin,
 			selfFetch,
 		);
 		expect(after.aggregates).toHaveLength(0);
+		expect(after.viewer_reactions).toEqual([]);
 	});
 
 	it('dedup: same actor (re-using the cookie) double-PUTs do not double-count', async () => {
@@ -323,23 +334,17 @@ describe('home reactions — server-fn impls', () => {
 				kind: 'emoji',
 				value: 'tada',
 			},
+			TEST_ACTOR_ID,
 			upstreamOrigin,
 			selfFetch,
 		);
 		expect(first.ok).toBe(true);
 
-		// Read the actor id from the dedup table — the impls do not
-		// surface the Set-Cookie header to the test caller (it's
-		// consumed by the SSR response in production). The dedup
-		// row records the issued actor id; we reuse it on the second
-		// call to simulate a returning visitor.
-		const row = await env.DB.prepare(
-			'SELECT actor_id FROM reactions WHERE target_key = ?1 ORDER BY created_at ASC LIMIT 1',
-		)
-			.bind(HOME_REACTIONS_TARGET)
-			.first<{ actor_id: string }>();
-		if (!row) throw new Error('expected the first reaction row to exist');
-		const actorId = row.actor_id;
+		// Production flow: the handler resolves the actor id once and
+		// forwards the same value to both the PUT body and the
+		// Set-Cookie. Here we simulate the returning-visitor case by
+		// reusing `TEST_ACTOR_ID` directly.
+		const actorId = TEST_ACTOR_ID;
 
 		// Second call: same actor via cookie → PUT is idempotent
 		const ctx2 = { proto: 'https', cookie: `mw_actor_id=${actorId}` };
@@ -351,6 +356,7 @@ describe('home reactions — server-fn impls', () => {
 				kind: 'emoji',
 				value: 'tada',
 			},
+			actorId,
 			upstreamOrigin,
 			selfFetch,
 		);
@@ -393,6 +399,7 @@ describe('home reactions — server-fn impls', () => {
 			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
 			{ proto: 'https', cookie: undefined },
 			{ target: 'home-page', kind: 'emoji', value: 'unknown_slug' },
+			TEST_ACTOR_ID,
 			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
@@ -406,6 +413,7 @@ describe('home reactions — server-fn impls', () => {
 			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
 			{ proto: 'https', cookie: undefined },
 			{ target: 'home-page', kind: 'emoji', value: 'with-dash' },
+			TEST_ACTOR_ID,
 			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
@@ -426,6 +434,7 @@ describe('home reactions — server-fn impls', () => {
 			},
 			{ proto: 'https', cookie: undefined },
 			{ target: 'home-page', kind: 'emoji', value: 'thumbs_up' },
+			TEST_ACTOR_ID,
 			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
@@ -456,6 +465,7 @@ describe('home reactions — server-fn impls', () => {
 				value: 'unicorn',
 				codepoint: '🦄',
 			},
+			TEST_ACTOR_ID,
 			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
@@ -464,6 +474,11 @@ describe('home reactions — server-fn impls', () => {
 		expect(fetcher).toHaveBeenCalledOnce();
 		const forwarded = JSON.parse((fetcher.mock.calls[0]?.[1]?.body as string) ?? '{}');
 		expect(forwarded.value).toBe('unicorn');
+		// P1 #2 regression: the actor id the handler resolves is the
+		// same id that ends up in the upstream PUT body. Before the
+		// fix the impl minted its own id internally, diverging from
+		// the Set-Cookie the handler later attached.
+		expect(forwarded.actor_id).toBe(TEST_ACTOR_ID);
 		// And the catalog row now exists, enabled, with the visitor
 		// provenance tag.
 		const row = await env.DB.prepare(
@@ -483,6 +498,7 @@ describe('home reactions — server-fn impls', () => {
 			},
 			{ proto: 'https', cookie: undefined },
 			{ target: 'home-page', kind: 'emoji', value: 'unicorn' },
+			TEST_ACTOR_ID,
 			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
@@ -509,6 +525,25 @@ describe('home reactions — server-fn impls', () => {
 				value: 'bad_codepoint',
 				codepoint: ' ',
 			},
+			TEST_ACTOR_ID,
+			'https://example.com',
+			fetcher as unknown as typeof fetch,
+		);
+		expect(result).toEqual({ ok: false, reason: 'invalid_body' });
+		expect(fetcher).not.toHaveBeenCalled();
+	});
+
+	it('addHomeReactionImpl rejects a malformed actor id with reason="invalid_body"', async () => {
+		// P1 #2 regression — the impl must reject any actor id that is
+		// not the canonical 32-hex shape. Production resolves it via
+		// `resolveOrIssueActorId` in the handler; tests pass a literal
+		// here so we exercise the defensive guard.
+		const fetcher = vi.fn();
+		const result = await addHomeReactionImpl(
+			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
+			{ proto: 'https', cookie: undefined },
+			{ target: 'home-page', kind: 'emoji', value: 'thumbs_up' },
+			'not-hex',
 			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);

@@ -7,6 +7,7 @@ import {
 	ReactionReferenceError,
 	aggregateByTarget,
 	deleteReaction,
+	listReactionsForActor,
 	putReaction,
 } from './reactions';
 import {
@@ -113,6 +114,24 @@ reactionsRouter.get('/', requireApiKey, rateLimitRead, async (c) => {
 	// see reactions.aggregateByTarget. Cross-principal rolls up
 	// are explicitly out of scope for 0.3.0.
 	const aggregates = await aggregateByTarget(c.env.DB, targetKeyRaw, apiKey.id);
+	// Optional viewer-state channel. When the caller supplies an
+	// `actor_id` (the home loader reads it from the `mw_actor_id`
+	// cookie and forwards it here), we also return that visitor's
+	// own reactions — drives the widget's toggle predicate (P1
+	// review finding: widget previously conflated "everyone's
+	// count" with "this visitor's selection"). Backward-compatible:
+	// omit `actor_id` and the response shape is unchanged.
+	const actorIdRaw = c.req.query('actor_id');
+	if (actorIdRaw) {
+		const actorId = validateActorId(actorIdRaw);
+		const viewer_reactions = await listReactionsForActor(
+			c.env.DB,
+			targetKeyRaw,
+			apiKey.id,
+			actorId,
+		);
+		return c.json({ target_key: targetKeyRaw, aggregates, viewer_reactions });
+	}
 	return c.json({ target_key: targetKeyRaw, aggregates });
 });
 

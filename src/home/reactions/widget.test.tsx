@@ -49,6 +49,7 @@ describe('ReactionsWidget', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [],
+			viewer_reactions: [],
 			catalog: [],
 			enabled: false,
 		};
@@ -63,6 +64,13 @@ describe('ReactionsWidget', () => {
 			aggregates: [
 				{ kind: 'emoji', value: 'thumbs_up', count: 17 },
 				{ kind: 'emoji', value: 'tada', count: 9 },
+			],
+			// Visitor has reacted with both — chip click would map to
+			// DELETE (P1 review finding: widget toggle uses this set,
+			// not the aggregate count).
+			viewer_reactions: [
+				{ kind: 'emoji', value: 'thumbs_up' },
+				{ kind: 'emoji', value: 'tada' },
 			],
 			catalog: SEEDED_CATALOG,
 			enabled: true,
@@ -81,6 +89,9 @@ describe('ReactionsWidget', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [{ kind: 'emoji', value: 'custom_slug', count: 3 }],
+			// Visitor has NOT reacted with this slug — chip click would
+			// map to PUT, not DELETE.
+			viewer_reactions: [],
 			catalog: SEEDED_CATALOG,
 			enabled: true,
 		};
@@ -95,6 +106,7 @@ describe('ReactionsWidget', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [],
+			viewer_reactions: [],
 			catalog: SEEDED_CATALOG,
 			enabled: true,
 		};
@@ -113,6 +125,7 @@ describe('ReactionsWidget', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [],
+			viewer_reactions: [],
 			catalog: SEEDED_CATALOG,
 			enabled: true,
 		};
@@ -125,6 +138,7 @@ describe('ReactionsWidget', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [],
+			viewer_reactions: [],
 			catalog: SEEDED_CATALOG,
 			enabled: true,
 		};
@@ -141,6 +155,7 @@ describe('ReactionsWidget', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: manyAggregates,
+			viewer_reactions: [],
 			catalog: SEEDED_CATALOG,
 			enabled: true,
 		};

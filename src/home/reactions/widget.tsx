@@ -302,7 +302,17 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	): void => {
 		setError(null);
 		const before = aggregates;
-		const exists = before.some((a) => a.kind === kind && a.value === value);
+		// Toggle decision uses the visitor's own reaction set
+		// (`viewer_reactions`), NOT the public aggregate count.
+		// The aggregate count is "everyone's total" — when a second
+		// visitor clicks an emoji a prior visitor reacted with, the
+		// chip is visible because `count > 0` but the visitor has
+		// never reacted with it themselves. Sending DELETE then
+		// would optimistically decrement and bounce back on the next
+		// reload (P1 review finding). `viewer_reactions` is set-
+		// membership, so the click correctly maps to PUT (add) or
+		// DELETE (remove) for THIS visitor.
+		const exists = data.viewer_reactions.some((r) => r.kind === kind && r.value === value);
 		// Optimistic update: when an existing chip is decremented and
 		// hits 0, drop it from the local list. The upstream reactions
 		// API surfaces aggregates with `count > 0`, so showing a "0"

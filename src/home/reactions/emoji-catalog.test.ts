@@ -1,23 +1,30 @@
 import { describe, expect, it } from 'vitest';
+import type { CatalogEntry } from '../../http/reactions/emoji-catalog';
 import {
-	EMOJI_CATALOG,
 	EMOJI_SLUG_REGEX,
-	EMOJI_SLUGS,
-	isKnownEmojiSlug,
 	MAX_EMOJI_SLUG_LEN,
+	buildCatalogLookup,
+	listActiveSlugs,
 	resolveEmojiSlug,
 	validateEmojiSlug,
 } from './emoji-catalog';
 
 /**
- * Emoji slug catalog — unit tests.
+ * Home-side catalog facade — unit tests (Ticket G, branch 39).
  *
- * These tests pin the slug grammar and the hard-coded catalog. The
- * catalog is replaced by the DB-backed catalog in Ticket G (branch
- * 39); at that point these tests continue to assert the **shape** of
- * the contract (slug grammar, public surface area) but the source of
- * the slug→glyph map moves to D1.
+ * Branch 37's tests asserted the hard-coded `EMOJI_CATALOG` constant
+ * and the synchronous `validateEmojiSlug(value)` signature. With the
+ * DB-backed catalog, both move to "load catalog, then validate".
+ * These tests pin the **new** contract: callers must supply a loaded
+ * catalog to `validateEmojiSlug` and to `resolveEmojiSlug`. The slug
+ * grammar itself is unchanged.
  */
+
+const seededCatalog: readonly CatalogEntry[] = [
+	{ slug: 'thumbs_up', codepoint: '👍', enabled: true },
+	{ slug: 'rocket', codepoint: '🚀', enabled: true },
+	{ slug: 'bulb', codepoint: '💡', enabled: false },
+];
 
 describe('EMOJI_SLUG_REGEX', () => {
 	it('accepts the documented first-pass slugs', () => {
@@ -38,74 +45,87 @@ describe('EMOJI_SLUG_REGEX', () => {
 	});
 });
 
-describe('EMOJI_CATALOG', () => {
-	it('has at least the documented first-pass vocabulary', () => {
-		expect(EMOJI_CATALOG).toHaveProperty('thumbs_up', '👍');
-		expect(EMOJI_CATALOG).toHaveProperty('tada', '🎉');
-		expect(EMOJI_CATALOG).toHaveProperty('fire', '🔥');
-		expect(EMOJI_CATALOG).toHaveProperty('rocket', '🚀');
+describe('listActiveSlugs', () => {
+	it('returns the enabled slugs in input order', () => {
+		// The DB loader returns rows sorted by slug; this helper
+		// preserves input order and filters out disabled entries.
+		expect(listActiveSlugs(seededCatalog)).toEqual(['thumbs_up', 'rocket']);
 	});
 
-	it('every key passes EMOJI_SLUG_REGEX', () => {
-		for (const key of Object.keys(EMOJI_CATALOG)) {
-			expect(key).toMatch(EMOJI_SLUG_REGEX);
-			expect(key.length).toBeLessThanOrEqual(MAX_EMOJI_SLUG_LEN);
-		}
+	it('skips disabled entries', () => {
+		expect(listActiveSlugs(seededCatalog)).not.toContain('bulb');
 	});
 
-	it('EMOJI_SLUGS is sorted and matches catalog keys', () => {
-		const sortedKeys = [...Object.keys(EMOJI_CATALOG)].sort();
-		expect(EMOJI_SLUGS).toEqual(sortedKeys);
-	});
-});
-
-describe('isKnownEmojiSlug', () => {
-	it('returns true for catalog slugs', () => {
-		expect(isKnownEmojiSlug('thumbs_up')).toBe(true);
-		expect(isKnownEmojiSlug('rocket')).toBe(true);
-	});
-
-	it('returns false for unknown slugs (even if they match the grammar)', () => {
-		expect(isKnownEmojiSlug('unknown_future_slug')).toBe(false);
+	it('returns empty when every entry is disabled', () => {
+		const disabled = seededCatalog.map((e) => ({ ...e, enabled: false }));
+		expect(listActiveSlugs(disabled)).toEqual([]);
 	});
 });
 
 describe('resolveEmojiSlug', () => {
-	it('returns the catalog codepoint for known slugs', () => {
-		expect(resolveEmojiSlug('thumbs_up')).toBe('👍');
-		expect(resolveEmojiSlug('rocket')).toBe('🚀');
+	it('returns the codepoint for enabled slugs', () => {
+		expect(resolveEmojiSlug(seededCatalog, 'thumbs_up')).toBe('👍');
+		expect(resolveEmojiSlug(seededCatalog, 'rocket')).toBe('🚀');
 	});
 
-	it('returns null for unknown slugs so callers can render a placeholder', () => {
-		expect(resolveEmojiSlug('unknown_future_slug')).toBeNull();
+	it('returns null for disabled slugs', () => {
+		expect(resolveEmojiSlug(seededCatalog, 'bulb')).toBeNull();
+	});
+
+	it('returns null for unknown slugs', () => {
+		expect(resolveEmojiSlug(seededCatalog, 'unknown_future_slug')).toBeNull();
+	});
+
+	it('returns null for an empty catalog', () => {
+		expect(resolveEmojiSlug([], 'thumbs_up')).toBeNull();
 	});
 });
 
 describe('validateEmojiSlug', () => {
-	it('returns the slug when it is in the catalog', () => {
-		expect(validateEmojiSlug('thumbs_up')).toBe('thumbs_up');
-		expect(validateEmojiSlug('rocket')).toBe('rocket');
+	it('returns the slug when it is in the catalog and enabled', () => {
+		expect(validateEmojiSlug(seededCatalog, 'thumbs_up')).toBe('thumbs_up');
+		expect(validateEmojiSlug(seededCatalog, 'rocket')).toBe('rocket');
 	});
 
 	it('throws on non-string input', () => {
-		expect(() => validateEmojiSlug(0)).toThrow(/must be a string/);
-		expect(() => validateEmojiSlug(null)).toThrow(/must be a string/);
-		expect(() => validateEmojiSlug(undefined)).toThrow(/must be a string/);
-		expect(() => validateEmojiSlug({})).toThrow(/must be a string/);
+		expect(() => validateEmojiSlug(seededCatalog, 0)).toThrow(/must be a string/);
+		expect(() => validateEmojiSlug(seededCatalog, null)).toThrow(/must be a string/);
+		expect(() => validateEmojiSlug(seededCatalog, undefined)).toThrow(/must be a string/);
+		expect(() => validateEmojiSlug(seededCatalog, {})).toThrow(/must be a string/);
 	});
 
 	it('throws on length violations', () => {
-		expect(() => validateEmojiSlug('')).toThrow(/1\.\./);
-		expect(() => validateEmojiSlug('a'.repeat(MAX_EMOJI_SLUG_LEN + 1))).toThrow(/1\.\./);
+		expect(() => validateEmojiSlug(seededCatalog, '')).toThrow(/1\.\./);
+		expect(() => validateEmojiSlug(seededCatalog, 'a'.repeat(MAX_EMOJI_SLUG_LEN + 1))).toThrow(
+			/1\.\./,
+		);
 	});
 
 	it('throws on malformed slugs even when length is OK', () => {
-		expect(() => validateEmojiSlug('Thumbs_Up')).toThrow(/must match \^\[a-z\]/);
-		expect(() => validateEmojiSlug('with-dash')).toThrow(/must match \^\[a-z\]/);
-		expect(() => validateEmojiSlug('1leading')).toThrow(/must match \^\[a-z\]/);
+		expect(() => validateEmojiSlug(seededCatalog, 'Thumbs_Up')).toThrow(/must match \^\[a-z\]/);
+		expect(() => validateEmojiSlug(seededCatalog, 'with-dash')).toThrow(/must match \^\[a-z\]/);
+		expect(() => validateEmojiSlug(seededCatalog, '1leading')).toThrow(/must match \^\[a-z\]/);
 	});
 
 	it('throws on well-formed but unknown slugs', () => {
-		expect(() => validateEmojiSlug('not_in_catalog')).toThrow(/unknown emoji slug/);
+		expect(() => validateEmojiSlug(seededCatalog, 'not_in_catalog')).toThrow(/unknown emoji slug/);
+	});
+
+	it('throws on disabled slugs (admin disabled them)', () => {
+		expect(() => validateEmojiSlug(seededCatalog, 'bulb')).toThrow(/unknown emoji slug/);
+	});
+});
+
+describe('buildCatalogLookup', () => {
+	it('produces a map from every catalog slug to its codepoint or null', () => {
+		const map = buildCatalogLookup(seededCatalog);
+		expect(map.get('thumbs_up')).toBe('👍');
+		expect(map.get('rocket')).toBe('🚀');
+		expect(map.get('bulb')).toBeNull();
+	});
+
+	it('does not include unknown slugs', () => {
+		const map = buildCatalogLookup(seededCatalog);
+		expect(map.has('unknown_future_slug')).toBe(false);
 	});
 });

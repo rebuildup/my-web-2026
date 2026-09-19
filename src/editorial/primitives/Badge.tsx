@@ -1,5 +1,5 @@
 import type { PropsWithChildren } from 'react';
-import { cva, cx, type RecipeVariantProps } from '../../../styled-system/css';
+import { type RecipeVariantProps, cva, cx } from '../../../styled-system/css';
 
 /**
  * Badge — short, inline status indicator.

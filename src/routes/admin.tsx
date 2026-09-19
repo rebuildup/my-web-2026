@@ -1,5 +1,5 @@
 import { createFileRoute, redirect } from '@tanstack/react-router';
-import { AdminDashboard, type AdminCapability, getCurrentSession } from '../admin/public';
+import { type AdminCapability, AdminDashboard, getCurrentSession } from '../admin/public';
 
 /**
  * `/admin` — the admin dashboard.
@@ -39,6 +39,13 @@ function AdminRoute() {
 			href: '/admin/keys',
 		},
 		{ id: 'images', label: 'Reaction images', labelJa: 'リアクション画像', status: 'planned' },
+		{
+			id: 'emoji-catalog',
+			label: 'Emoji catalog',
+			labelJa: '絵文字カタログ',
+			status: 'live',
+			href: '/admin/emoji-catalog',
+		},
 	];
 	return (
 		<AdminDashboard

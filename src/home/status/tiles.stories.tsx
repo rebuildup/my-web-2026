@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { StatusTiles } from './tiles';
 import type { SystemService, SystemServiceStatus } from './health';
+import { StatusTiles } from './tiles';
 
 /**
  * StatusTiles stories. The component renders one row per registered

@@ -1,7 +1,7 @@
 import { useState } from 'react';
+import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
-import { css } from '../../../styled-system/css';
 import type { AcceptInvitationResult, InvitationProbe } from './accept';
 
 /**

@@ -1,7 +1,7 @@
 import { env } from 'cloudflare:workers';
 import { apiKey } from '@better-auth/api-key';
-import { admin } from 'better-auth/plugins/admin';
 import { betterAuth } from 'better-auth';
+import { admin } from 'better-auth/plugins/admin';
 
 /**
  * Better Auth instance — the project's auth foundation.

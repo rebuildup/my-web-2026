@@ -2,6 +2,8 @@ import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeader, setResponseHeader } from '@tanstack/react-start/server';
 import { z } from 'zod';
+import type { CatalogEntry } from '../../http/reactions/emoji-catalog';
+import { loadCatalog } from '../../http/reactions/emoji-catalog';
 import type { ReactionAggregate } from '../../http/reactions/schema';
 import {
 	buildActorCookieSetHeader,
@@ -12,7 +14,8 @@ import {
 import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
 
 /**
- * Home → reactions integration (ADR-0011).
+ * Home → reactions integration (ADR-0011, Ticket E / branch 37;
+ * Ticket G / branch 39 extends this with a DB-backed catalog).
  *
  * The home is its **own consumer** of the reactions API: it holds an
  * API key in `env.MY_WEB_2026_CONSUMER_API_KEY` (provisioned once per
@@ -31,6 +34,13 @@ import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
  * Aggregate scope: per ADR-0011 §3, the home sees aggregates scoped
  * to its own principal (API key id). Cross-principal rolls up are
  * out of scope for 0.3.0.
+ *
+ * Catalog source: Ticket G (branch 39) replaces the hard-coded
+ * catalog that lived in `emoji-catalog.ts` with the DB-backed
+ * `reaction_emoji_catalog` table. The loader primes the active
+ * catalog once per SSR pass and threads it through
+ * `HomeReactionsData.catalog` so the widget renders the up-to-date
+ * slug set; the write path validates against the same catalog.
  *
  * Graceful degradation: if the API key is missing (operator has not
  * run the bootstrap yet), `getHomeReactions` returns an empty list
@@ -61,6 +71,8 @@ const DeleteInput = z.object({
 export interface HomeReactionsData {
 	target_key: string;
 	aggregates: readonly ReactionAggregate[];
+	/** DB-backed active catalog (Ticket G, branch 39). Sorted by slug. */
+	catalog: readonly CatalogEntry[];
 	enabled: boolean;
 }
 
@@ -78,6 +90,7 @@ export interface HomeReactionsEnv {
 	MY_WEB_2026_CONSUMER_API_KEY?: string;
 	MY_WEB_2026_REACTIONS_TARGET?: string;
 	BETTER_AUTH_URL?: string;
+	DB?: D1Database;
 }
 
 export interface HomeReactionsRequestContext {
@@ -94,34 +107,39 @@ export interface HomeReactionsRequestContext {
  * payload; callers decide how to render. Returns `enabled: false`
  * when the upstream API key is not configured so the caller can
  * short-circuit to the disabled widget state.
+ *
+ * Also reads the DB-backed catalog (`reaction_emoji_catalog`) once
+ * per call. The loader runs inside the Worker, so `env.DB` is the
+ * canonical D1 binding.
  */
 export async function getHomeReactionsImpl(
 	envLike: HomeReactionsEnv,
 	ctx: HomeReactionsRequestContext,
 	target: string,
 	fetcher: typeof fetch = fetch,
+	db: D1Database | null = (envLike.DB ?? null) as D1Database | null,
 ): Promise<HomeReactionsData> {
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) {
 		console.warn('[home.reactions] consumer API key not configured — returning empty');
-		return { target_key: target, aggregates: [], enabled: false };
+		return { target_key: target, aggregates: [], catalog: [], enabled: false };
 	}
 	const baseUrl = ctx.host
 		? `${ctx.proto ?? 'https'}://${ctx.host}`
 		: (envLike.BETTER_AUTH_URL ?? '').replace(/\/$/, '');
-	const response = await fetcher(
-		`${baseUrl}/api/v1/reactions?target=${encodeURIComponent(target)}`,
-		{
+	const [response, catalog] = await Promise.all([
+		fetcher(`${baseUrl}/api/v1/reactions?target=${encodeURIComponent(target)}`, {
 			method: 'GET',
 			headers: {
 				authorization: `Bearer ${apiKey}`,
 				accept: 'application/json',
 			},
-		},
-	);
+		}),
+		db ? loadCatalog(db) : Promise.resolve([] as readonly CatalogEntry[]),
+	]);
 	if (!response.ok) {
 		console.error('[home.reactions] upstream failed', response.status, await response.text());
-		return { target_key: target, aggregates: [], enabled: true };
+		return { target_key: target, aggregates: [], catalog, enabled: true };
 	}
 	const payload = (await response.json()) as {
 		target_key?: string;
@@ -130,6 +148,7 @@ export async function getHomeReactionsImpl(
 	return {
 		target_key: payload.target_key ?? target,
 		aggregates: payload.aggregates ?? [],
+		catalog,
 		enabled: true,
 	};
 }
@@ -152,6 +171,12 @@ export function resolveOrIssueActorId(
 	return { actorId: fresh, setCookieHeader: buildActorCookieSetHeader(fresh, secure) };
 }
 
+async function loadCatalogForWrite(envLike: HomeReactionsEnv): Promise<readonly CatalogEntry[]> {
+	const db = (envLike.DB ?? null) as D1Database | null;
+	if (!db) return [];
+	return loadCatalog(db);
+}
+
 export async function addHomeReactionImpl(
 	envLike: HomeReactionsEnv,
 	ctx: HomeReactionsRequestContext,
@@ -162,7 +187,8 @@ export async function addHomeReactionImpl(
 	if (!apiKey || apiKey.length === 0) return { ok: false, reason: 'api_key_unconfigured' };
 	if (input.kind === 'emoji') {
 		try {
-			validateEmojiSlug(input.value);
+			const catalog = await loadCatalogForWrite(envLike);
+			validateEmojiSlug(catalog, input.value);
 		} catch {
 			return { ok: false, reason: 'invalid_body' };
 		}
@@ -205,7 +231,8 @@ export async function removeHomeReactionImpl(
 	if (!apiKey || apiKey.length === 0) return { ok: false, reason: 'api_key_unconfigured' };
 	if (input.kind === 'emoji') {
 		try {
-			validateEmojiSlug(input.value);
+			const catalog = await loadCatalogForWrite(envLike);
+			validateEmojiSlug(catalog, input.value);
 		} catch {
 			return { ok: false, reason: 'invalid_body' };
 		}

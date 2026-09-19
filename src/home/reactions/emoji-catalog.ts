@@ -1,86 +1,89 @@
 /**
- * Reaction emoji slug catalog — **0.3.0 home-only, hard-coded**.
+ * Reaction emoji slug catalog — home-side facade over the DB-backed
+ * catalog (`src/http/reactions/emoji-catalog.ts`).
  *
- * The home reactions widget stores reaction values as opaque
- * `:slug:` strings (e.g. `:thumbs_up:`) rather than literal emoji
- * codepoints. Storing slugs keeps the data opaque (the reactions API
- * already treats `value` as an opaque string ≤16 chars), lets admins
- * add or rebind a slug without touching every existing reaction, and
- * avoids depending on the visitor's device emoji font.
+ * Ticket E (branch 37) shipped a 16-slug hard-coded catalog here.
+ * Ticket G (branch 39) moves the source of truth into D1
+ * (`reaction_emoji_catalog`) so admins can add / rebind / disable
+ * slugs without a code change. This file now re-exports the
+ * **contract** (slug grammar, helpers, slug→glyph resolution) from
+ * the canonical `http/reactions/emoji-catalog.ts` module and keeps
+ * the same public surface that branch 37's `widget.tsx` /
+ * `load.ts` already consume.
  *
- * In 0.3.0 the catalog is **hard-coded** here as the simplest
- * correct shape — no DB, no admin UI. Ticket G (branch 39) moves it
- * to a `reaction_emoji_catalog` D1 table with admin CRUD; that
- * release replaces this catalog with `loadCatalog(db)` and keeps
- * the same slug format.
+ * Differences from branch 37:
  *
- * Slug rules (validated by `validateEmojiSlug`):
- *   - lowercase `[a-z]` start, then `[a-z0-9_]*`
- *   - length 1..32
+ *   - The `validateEmojiSlug` helper now requires a **loaded**
+ *     catalog argument because "is this slug in the catalog?" is
+ *     no longer a static lookup. Callers must load the catalog via
+ *     `getActiveCatalog(db)` first. The shape is still pure (no I/O
+ *     inside the validator), which keeps it testable.
+ *   - `EMOJI_CATALOG` (the synchronous `Record<slug, glyph>` map)
+ *     is replaced by `resolveEmojiSlug(catalog, slug)`. The widget
+ *     already calls `resolveEmojiSlug`, so the call signature
+ *     update is mechanical.
+ *   - The home widget receives the catalog via the loader (`data.catalog`)
+ *     so it does not need to re-fetch on render.
  *
- * The hard-coded set below covers the editorial spread's first-pass
- * vocabulary. New entries are added in source code; removing a slug
- * does NOT remove existing reactions (the slug is a stable opaque
- * key), only hides the chip on the home page.
+ * See ADR-0013 for the full decision record.
  */
 
-export const EMOJI_SLUG_REGEX = /^[a-z][a-z0-9_]*$/;
-export const MAX_EMOJI_SLUG_LEN = 32;
+import {
+	type CatalogEntry,
+	EMOJI_SLUG_REGEX,
+	MAX_EMOJI_SLUG_LEN,
+	resolveCodepoint as resolveCodepointImpl,
+	validateSlug,
+} from '../../http/reactions/emoji-catalog';
+
+// Re-export the slug grammar so existing imports from
+// `./emoji-catalog` continue to resolve (widget + load.ts both do).
+export { EMOJI_SLUG_REGEX, MAX_EMOJI_SLUG_LEN };
+export type { CatalogEntry };
 
 /**
- * Slug → emoji codepoint. The codepoints are deliberately chosen
- * from the most common device-font set so visitors on stock iOS /
- * macOS / Android / Windows see the intended glyph.
+ * Slug → emoji codepoint (or `null` when the slug is not enabled in
+ * the supplied catalog). Replaces the synchronous `EMOJI_CATALOG[slug]`
+ * lookup that branch 37 used; the catalog is now loaded at SSR time
+ * and threaded through `HomeReactionsData.catalog`.
  */
-export const EMOJI_CATALOG: Readonly<Record<string, string>> = {
-	thumbs_up: '👍',
-	tada: '🎉',
-	fire: '🔥',
-	eyes: '👀',
-	sparkles: '✨',
-	rocket: '🚀',
-	heart: '❤',
-	laughing: '😄',
-	thinking: '🤔',
-	clap: '👏',
-	wave: '👋',
-	check: '✅',
-	cross: '❌',
-	warning: '⚠️',
-	star: '⭐',
-	bulb: '💡',
-};
-
-/** Sorted slug list — useful for the picker UI. */
-export const EMOJI_SLUGS: readonly string[] = Object.keys(EMOJI_CATALOG).sort();
-
-export function isKnownEmojiSlug(slug: string): boolean {
-	return Object.hasOwn(EMOJI_CATALOG, slug);
+export function resolveEmojiSlug(catalog: readonly CatalogEntry[], slug: string): string | null {
+	return resolveCodepointImpl(catalog, slug);
 }
 
 /**
- * Resolve a slug to its emoji codepoint. Returns `null` when the slug
- * is not in the catalog so the caller can render an inert placeholder
- * rather than the raw `:slug:` text. New DB-backed entries that have
- * not yet been propagated to the catalog still render their literal
- * `:slug:` text on the home (the reactions API is unaffected).
+ * Validate the slug **format and presence** against a supplied
+ * catalog. Throws with a domain-specific message on any failure.
+ * The caller must have loaded the catalog first (typically via
+ * `loadCatalog(db)` in the SSR loader).
  */
-export function resolveEmojiSlug(slug: string): string | null {
-	return EMOJI_CATALOG[slug] ?? null;
+export function validateEmojiSlug(catalog: readonly CatalogEntry[], value: unknown): string {
+	const slug = validateSlug(value); // format + length
+	const known = catalog.some((entry) => entry.slug === slug && entry.enabled);
+	if (!known) throw new Error(`unknown emoji slug: ${slug}`);
+	return slug;
 }
 
-export function validateEmojiSlug(value: unknown): string {
-	if (typeof value !== 'string') {
-		throw new Error('emoji slug must be a string');
+/**
+ * Compute a stable, sorted list of active slugs from a catalog.
+ * Replaces the synchronous `EMOJI_SLUGS` constant from branch 37.
+ */
+export function listActiveSlugs(catalog: readonly CatalogEntry[]): readonly string[] {
+	return catalog.filter((entry) => entry.enabled).map((entry) => entry.slug);
+}
+
+/**
+ * Build a `slug → codepoint` lookup table from a loaded catalog.
+ * Useful when a component needs to render many glyphs at once
+ * (e.g. the widget's picker row). `null` entries indicate unknown
+ * / disabled slugs and should render the inert `:slug:` text.
+ */
+export function buildCatalogLookup(
+	catalog: readonly CatalogEntry[],
+): ReadonlyMap<string, string | null> {
+	const out = new Map<string, string | null>();
+	for (const entry of catalog) {
+		out.set(entry.slug, entry.enabled ? entry.codepoint : null);
 	}
-	if (value.length === 0 || value.length > MAX_EMOJI_SLUG_LEN) {
-		throw new Error(`emoji slug must be 1..${MAX_EMOJI_SLUG_LEN} chars`);
-	}
-	if (!EMOJI_SLUG_REGEX.test(value)) {
-		throw new Error('emoji slug must match ^[a-z][a-z0-9_]*$');
-	}
-	if (!isKnownEmojiSlug(value)) {
-		throw new Error(`unknown emoji slug: ${value}`);
-	}
-	return value;
+	return out;
 }

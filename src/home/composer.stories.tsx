@@ -99,6 +99,12 @@ export const AllReachable: Story = {
 					{ kind: 'emoji', value: 'tada', count: 9 },
 					{ kind: 'emoji', value: 'fire', count: 4 },
 				],
+				catalog: [
+					{ slug: 'thumbs_up', codepoint: '👍', enabled: true },
+					{ slug: 'tada', codepoint: '🎉', enabled: true },
+					{ slug: 'fire', codepoint: '🔥', enabled: true },
+					{ slug: 'rocket', codepoint: '🚀', enabled: true },
+				],
 				enabled: true,
 			},
 			counter: {

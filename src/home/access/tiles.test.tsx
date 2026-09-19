@@ -1,7 +1,7 @@
-import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { CounterTile } from './tiles';
+import { describe, expect, it } from 'vitest';
 import type { HomeCounterData } from './load';
+import { CounterTile } from './tiles';
 
 /**
  * CounterTile — SSR smoke tests. Pure-render, no DOM. Click handlers

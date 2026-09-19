@@ -1,20 +1,34 @@
-import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { ReactionsWidget } from './widget';
+import { describe, expect, it } from 'vitest';
+import type { CatalogEntry } from '../../http/reactions/emoji-catalog';
 import type { HomeReactionsData } from './load';
+import { ReactionsWidget } from './widget';
 
 /**
  * ReactionsWidget smoke tests — server-render the disabled state and
  * the populated state. Click-handler assertions need a DOM environment
  * and are out of scope for the SSR-only test set; the impl tests in
  * `load.test.ts` cover the mutation paths.
+ *
+ * The catalog is now DB-backed (Ticket G, branch 39), so each test
+ * constructs its own snapshot — there is no longer a single shared
+ * `EMOJI_CATALOG` constant to import.
  */
+
+const SEEDED_CATALOG: readonly CatalogEntry[] = [
+	{ slug: 'thumbs_up', codepoint: '👍', enabled: true },
+	{ slug: 'tada', codepoint: '🎉', enabled: true },
+	{ slug: 'fire', codepoint: '🔥', enabled: true },
+	{ slug: 'rocket', codepoint: '🚀', enabled: true },
+	{ slug: 'bulb', codepoint: '💡', enabled: true },
+];
 
 describe('ReactionsWidget', () => {
 	it('renders the disabled placeholder when data.enabled is false', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [],
+			catalog: [],
 			enabled: false,
 		};
 		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);
@@ -29,6 +43,7 @@ describe('ReactionsWidget', () => {
 				{ kind: 'emoji', value: 'thumbs_up', count: 17 },
 				{ kind: 'emoji', value: 'tada', count: 9 },
 			],
+			catalog: SEEDED_CATALOG,
 			enabled: true,
 		};
 		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);
@@ -45,6 +60,7 @@ describe('ReactionsWidget', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [{ kind: 'emoji', value: 'custom_slug', count: 3 }],
+			catalog: SEEDED_CATALOG,
 			enabled: true,
 		};
 		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);
@@ -54,8 +70,13 @@ describe('ReactionsWidget', () => {
 		expect(html).toContain('3');
 	});
 
-	it('renders the picker chip row with the catalog oglyphs', () => {
-		const data: HomeReactionsData = { target_key: 'home-page', aggregates: [], enabled: true };
+	it('renders the picker chip row with the catalog glyphs', () => {
+		const data: HomeReactionsData = {
+			target_key: 'home-page',
+			aggregates: [],
+			catalog: SEEDED_CATALOG,
+			enabled: true,
+		};
 		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);
 		expect(html).toContain('aria-label="Add a reaction"');
 		// Every catalog slug appears in the picker (the title attr is the slug in `:slug:` form).
@@ -68,6 +89,7 @@ describe('ReactionsWidget', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [],
+			catalog: SEEDED_CATALOG,
 			enabled: true,
 		};
 		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);

@@ -1,4 +1,3 @@
-import { externalBoundary } from './http/hono';
 // `handler` is the default TanStack Start Worker handler. The default
 // export shape is `{ fetch(request) }` because `@tanstack/react-start`
 // wraps `createStartHandler(defaultStreamHandler)` in a server-entry.
@@ -6,6 +5,7 @@ import { externalBoundary } from './http/hono';
 // CSRF middleware active; do NOT define a custom `startInstance` here.
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
+import { externalBoundary } from './http/hono';
 
 /**
  * Path prefixes that must be served by the Hono external boundary

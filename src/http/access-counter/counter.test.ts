@@ -1,5 +1,5 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { env } from 'cloudflare:test';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getCount, recordHit } from './counter';
 import { DEDUP_WINDOW_MS } from './schema';
 

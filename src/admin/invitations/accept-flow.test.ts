@@ -1,7 +1,7 @@
+import { SELF, env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { env, SELF } from 'cloudflare:test';
-import { acceptInvitationImpl, probeInvitationImpl } from './accept';
 import { auth } from '../../cloudflare/auth/better-auth';
+import { acceptInvitationImpl, probeInvitationImpl } from './accept';
 
 /**
  * Acceptance flow tests for the invitation accept server function.

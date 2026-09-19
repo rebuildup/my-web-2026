@@ -1,10 +1,10 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
 	ApiKeyError,
-	resetVerifyApiKey,
 	requireApiKey,
 	requireResourceAction,
+	resetVerifyApiKey,
 	withVerifyApiKey,
 } from './middleware';
 

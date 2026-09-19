@@ -2,7 +2,7 @@ import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeader } from '@tanstack/react-start/server';
 import { z } from 'zod';
-import type { RecordHitOutput, GetCountOutput } from '../../http/access-counter/counter';
+import type { GetCountOutput, RecordHitOutput } from '../../http/access-counter/counter';
 
 /**
  * Home → access counter integration (ADR-0011).

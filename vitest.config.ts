@@ -1,6 +1,6 @@
-import { defineConfig } from 'vitest/config';
-import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import { cloudflareTest } from '@cloudflare/vitest-plugin';
+import { tanstackStart } from '@tanstack/react-start/plugin/vite';
+import { defineConfig } from 'vitest/config';
 
 /**
  * Vitest configuration for my-web-2026.

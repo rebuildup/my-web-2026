@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest';
 import { Hono } from 'hono';
+import { describe, expect, it } from 'vitest';
 import { ApiKeyError } from './api-keys/middleware';
 import { externalBoundary } from './hono';
 

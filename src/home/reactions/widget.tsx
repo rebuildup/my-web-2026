@@ -1,10 +1,9 @@
-import { useState, useTransition } from 'react';
-import type { ReactionAggregate } from '../../http/reactions/schema';
+import { useMemo, useState, useTransition } from 'react';
 import { css } from '../../../styled-system/css';
+import type { ReactionAggregate } from '../../http/reactions/schema';
 import {
-	EMOJI_CATALOG,
-	EMOJI_SLUGS,
 	MAX_EMOJI_SLUG_LEN,
+	listActiveSlugs,
 	resolveEmojiSlug,
 	validateEmojiSlug,
 } from './emoji-catalog';
@@ -48,11 +47,11 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	const [error, setError] = useState<string | null>(null);
 
 	const visibleAggregates = aggregates.slice(0, MAX_CHIPS);
-	// Slugs the visitor has NOT reacted to yet — picker shows these
-	// so they can discover + add. Visitor-membership is not tracked
-	// client-side in 0.3.0 (see ADR-0011), so the picker always shows
-	// the full catalog; the server dedupes any duplicate PUT.
-	const pickerSlugs = EMOJI_SLUGS;
+	// Catalog is now DB-backed (Ticket G, branch 39). The SSR loader
+	// primes the active set; the picker always shows the full active
+	// vocabulary. Visitor-membership is not tracked client-side in
+	// 0.3.0 (see ADR-0011), so the server dedupes any duplicate PUT.
+	const pickerSlugs = useMemo(() => listActiveSlugs(data.catalog), [data.catalog]);
 
 	const toggleReaction = (kind: ReactionAggregate['kind'], value: string): void => {
 		setError(null);
@@ -85,7 +84,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			return;
 		}
 		try {
-			const slug = validateEmojiSlug(value.slice(1, -1));
+			const slug = validateEmojiSlug(data.catalog, value.slice(1, -1));
 			toggleReaction('emoji', slug);
 			setDraft('');
 		} catch (e) {
@@ -140,7 +139,9 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				) : (
 					visibleAggregates.map((chip) => {
 						const glyph =
-							chip.kind === 'emoji' ? (resolveEmojiSlug(chip.value) ?? `:${chip.value}:`) : '?';
+							chip.kind === 'emoji'
+								? (resolveEmojiSlug(data.catalog, chip.value) ?? `:${chip.value}:`)
+								: '?';
 						return (
 							<button
 								key={`${chip.kind}:${chip.value}`}
@@ -199,7 +200,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				})}
 			>
 				{pickerSlugs.map((slug) => {
-					const glyph = EMOJI_CATALOG[slug] ?? '?';
+					const glyph = resolveEmojiSlug(data.catalog, slug) ?? '?';
 					return (
 						<button
 							key={slug}

@@ -1,13 +1,13 @@
+import { SELF, env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { env, SELF } from 'cloudflare:test';
+import type { AdminSession } from '../../admin/auth/load';
 import { auth } from '../../cloudflare/auth/better-auth';
 import {
+	HOME_REACTIONS_TARGET,
 	addHomeReactionImpl,
 	getHomeReactionsImpl,
-	HOME_REACTIONS_TARGET,
 	removeHomeReactionImpl,
 } from './load';
-import type { AdminSession } from '../../admin/auth/load';
 
 /**
  * Home reactions integration tests (Ticket E).
@@ -55,11 +55,45 @@ CREATE TABLE IF NOT EXISTS reaction_images (
 );
 `;
 
+// Ticket G (branch 39): emoji catalog is DB-backed. Seed the
+// minimal vocabulary the end-to-end tests exercise so the slug
+// validator accepts `thumbs_up` and `tada` before the upstream PUT.
+const CATALOG_SQL = `
+CREATE TABLE IF NOT EXISTS reaction_emoji_catalog (
+    slug         TEXT    PRIMARY KEY,
+    codepoint    TEXT    NOT NULL,
+    enabled      INTEGER NOT NULL DEFAULT 1,
+    created_by   TEXT,
+    created_at   INTEGER NOT NULL,
+    updated_at   INTEGER NOT NULL
+);
+`;
+
 async function ensureReactionsSchema(): Promise<void> {
 	for (const stmt of REACTIONS_SQL.split(';')
 		.map((s) => s.trim())
 		.filter(Boolean)) {
 		await env.DB.prepare(stmt).run();
+	}
+	for (const stmt of CATALOG_SQL.split(';')
+		.map((s) => s.trim())
+		.filter(Boolean)) {
+		await env.DB.prepare(stmt).run();
+	}
+}
+
+async function seedCatalog(): Promise<void> {
+	const now = Date.now();
+	const seeds: Array<[string, string]> = [
+		['thumbs_up', '👍'],
+		['tada', '🎉'],
+	];
+	for (const [slug, codepoint] of seeds) {
+		await env.DB.prepare(
+			'INSERT OR REPLACE INTO reaction_emoji_catalog (slug, codepoint, enabled, created_by, created_at, updated_at) VALUES (?1, ?2, 1, NULL, ?3, ?3)',
+		)
+			.bind(slug, codepoint, now)
+			.run();
 	}
 }
 
@@ -67,6 +101,7 @@ async function clearRows(): Promise<void> {
 	for (const table of [
 		'reactions',
 		'reaction_images',
+		'reaction_emoji_catalog',
 		'session',
 		'account',
 		'verification',
@@ -163,6 +198,7 @@ describe('home reactions — server-fn impls', () => {
 	beforeEach(async () => {
 		await ensureReactionsSchema();
 		await clearRows();
+		await seedCatalog();
 	});
 	afterEach(async () => {
 		await clearRows();
@@ -177,6 +213,7 @@ describe('home reactions — server-fn impls', () => {
 		expect(result).toEqual({
 			target_key: HOME_REACTIONS_TARGET,
 			aggregates: [],
+			catalog: [],
 			enabled: false,
 		});
 	});
@@ -189,6 +226,7 @@ describe('home reactions — server-fn impls', () => {
 		const envLike = {
 			MY_WEB_2026_CONSUMER_API_KEY: keyPlaintext,
 			MY_WEB_2026_REACTIONS_TARGET: HOME_REACTIONS_TARGET,
+			DB: env.DB,
 		};
 		const ctx = { host: 'example.com', proto: 'https', cookie: undefined };
 
@@ -211,6 +249,9 @@ describe('home reactions — server-fn impls', () => {
 		expect(aggregates.enabled).toBe(true);
 		expect(aggregates.aggregates).toHaveLength(1);
 		expect(aggregates.aggregates[0]).toEqual({ kind: 'emoji', value: 'thumbs_up', count: 1 });
+		// The DB-backed catalog (Ticket G) is primed at read time and
+		// exposed via `catalog` so the widget renders the active set.
+		expect(aggregates.catalog.map((c) => c.slug).sort()).toEqual(['tada', 'thumbs_up']);
 
 		// 3. remove 👍 — expect deleted: true. Re-use the actor id
 		//    from the just-created row so the DELETE WHERE matches
@@ -253,6 +294,7 @@ describe('home reactions — server-fn impls', () => {
 		const envLike = {
 			MY_WEB_2026_CONSUMER_API_KEY: keyPlaintext,
 			MY_WEB_2026_REACTIONS_TARGET: HOME_REACTIONS_TARGET,
+			DB: env.DB,
 		};
 		// First call: no cookie → server issues one
 		const ctx1 = { host: 'example.com', proto: 'https', cookie: undefined };
@@ -337,6 +379,25 @@ describe('home reactions — server-fn impls', () => {
 			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
 			{ host: 'example.com', proto: 'https', cookie: undefined },
 			{ target: 'home-page', kind: 'emoji', value: 'with-dash' },
+			fetcher as unknown as typeof fetch,
+		);
+		expect(result).toEqual({ ok: false, reason: 'invalid_body' });
+		expect(fetcher).not.toHaveBeenCalled();
+	});
+
+	it('addHomeReactionImpl rejects a slug that is in the catalog but disabled', async () => {
+		// Disable `thumbs_up` for the duration of this test.
+		await env.DB.prepare('UPDATE reaction_emoji_catalog SET enabled = 0 WHERE slug = ?1')
+			.bind('thumbs_up')
+			.run();
+		const fetcher = vi.fn();
+		const result = await addHomeReactionImpl(
+			{
+				MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x',
+				DB: env.DB,
+			},
+			{ host: 'example.com', proto: 'https', cookie: undefined },
+			{ target: 'home-page', kind: 'emoji', value: 'thumbs_up' },
 			fetcher as unknown as typeof fetch,
 		);
 		expect(result).toEqual({ ok: false, reason: 'invalid_body' });

@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { CounterTile } from './tiles';
 import type { HomeCounterData } from './load';
+import { CounterTile } from './tiles';
 
 /**
  * CounterTile stories — used by the editorial design loop to iterate

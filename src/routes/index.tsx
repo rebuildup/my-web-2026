@@ -2,11 +2,11 @@ import { createFileRoute } from '@tanstack/react-router';
 import {
 	CAPABILITIES,
 	HOME_REACTIONS_TARGET,
+	HomePage,
 	SYSTEM_SERVICES,
 	getHomeCounter,
 	getHomeReactions,
 	getHomeSystemStatus,
-	HomePage,
 	recordHomeHit,
 } from '../home/public';
 

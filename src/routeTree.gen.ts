@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AdminRouteImport } from './routes/admin'
+import { Route as AdminEmojiCatalogRouteImport } from './routes/admin.emoji-catalog'
 import { Route as AdminImagesRouteImport } from './routes/admin.images'
 import { Route as AdminInvitationsRouteImport } from './routes/admin.invitations'
 import { Route as AdminKeysRouteImport } from './routes/admin.keys'
@@ -26,6 +27,11 @@ const AdminRoute = AdminRouteImport.update({
   id: '/admin',
   path: '/admin',
   getParentRoute: () => rootRouteImport,
+} as any)
+const AdminEmojiCatalogRoute = AdminEmojiCatalogRouteImport.update({
+  id: '/emoji-catalog',
+  path: '/emoji-catalog',
+  getParentRoute: () => AdminRoute,
 } as any)
 const AdminImagesRoute = AdminImagesRouteImport.update({
   id: '/images',
@@ -56,6 +62,7 @@ const AdminInvitationsAcceptRoute = AdminInvitationsAcceptRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRouteWithChildren
+  '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/admin'
+    | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
     | '/admin/keys'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/admin'
+    | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
     | '/admin/keys'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/admin'
+    | '/admin/emoji-catalog'
     | '/admin/images'
     | '/admin/invitations'
     | '/admin/keys'
@@ -131,6 +143,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin'
       preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
+    }
+    '/admin/emoji-catalog': {
+      id: '/admin/emoji-catalog'
+      path: '/emoji-catalog'
+      fullPath: '/admin/emoji-catalog'
+      preLoaderRoute: typeof AdminEmojiCatalogRouteImport
+      parentRoute: typeof AdminRoute
     }
     '/admin/images': {
       id: '/admin/images'
@@ -182,6 +201,7 @@ const AdminInvitationsRouteWithChildren =
   AdminInvitationsRoute._addFileChildren(AdminInvitationsRouteChildren)
 
 interface AdminRouteChildren {
+  AdminEmojiCatalogRoute: typeof AdminEmojiCatalogRoute
   AdminImagesRoute: typeof AdminImagesRoute
   AdminInvitationsRoute: typeof AdminInvitationsRouteWithChildren
   AdminKeysRoute: typeof AdminKeysRoute
@@ -189,6 +209,7 @@ interface AdminRouteChildren {
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
+  AdminEmojiCatalogRoute: AdminEmojiCatalogRoute,
   AdminImagesRoute: AdminImagesRoute,
   AdminInvitationsRoute: AdminInvitationsRouteWithChildren,
   AdminKeysRoute: AdminKeysRoute,

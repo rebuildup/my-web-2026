@@ -5,4 +5,4 @@
  * surface. Release tickets keep it in lockstep with `package.json`;
  * changing either value without the other is release drift.
  */
-export const PACKAGE_VERSION = '0.2.0' as const;
+export const PACKAGE_VERSION = '0.3.0' as const;

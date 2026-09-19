@@ -13,7 +13,7 @@ import { PACKAGE_VERSION } from './version';
  * Issue #31 — editorial spread (fourth pass). The Hero adopts the
  * 4/12 (rail) + 8/12 (lead) grid split that the body sections use in
  * their spread `SectionHeading`. The metadata rail (edition /
- * my-web-2026 · 2026 Preview / v0.2.0 · MIT) sits in the narrow
+ * my-web-2026 · 2026 Preview / v0.3.0 · MIT) sits in the narrow
  * left column on the same x-axis as the body section headings
  * below. The lead column carries caption → h1 → body → CTAs.
  *

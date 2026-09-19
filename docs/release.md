@@ -10,7 +10,8 @@
 - One sprint = one target semantic version = one release branch
   `release-x-y-z`.
 - 0.1.0 Foundation was released on 2026-09-11.
-- 0.2.0 Public Preview targets 2026-09-19.
+- 0.2.0 Public Preview was released on 2026-09-19.
+- 0.3.0 (this release) targets 2026-09-20.
 - my-web-2025 remains the complete public edition until required capabilities
   are migrated; cutover timing follows capability readiness rather than a fixed date.
 

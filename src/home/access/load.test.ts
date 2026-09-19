@@ -1,6 +1,6 @@
 import { SELF, env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { auth } from '../../cloudflare/auth/better-auth';
+import { auth } from '../../../test/helpers/better-auth';
 import { getHomeCounterImpl, recordHomeHitImpl } from './load';
 
 /**

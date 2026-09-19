@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { CatalogEntry } from '../../http/reactions/emoji-catalog';
+import type { CatalogEntry } from './emoji-catalog';
 import type { HomeReactionsData } from './load';
 import { ReactionsWidget } from './widget';
 

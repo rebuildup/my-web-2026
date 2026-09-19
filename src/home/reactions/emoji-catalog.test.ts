@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { CatalogEntry } from '../../http/reactions/emoji-catalog';
 import {
+	type CatalogEntry,
 	EMOJI_SLUG_REGEX,
 	MAX_EMOJI_SLUG_LEN,
 	buildCatalogLookup,

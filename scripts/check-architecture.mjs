@@ -120,7 +120,7 @@ for (const file of sourceFiles(srcRoot)) {
 
 		if (isTypeOnlyEdge(fromOwner, toOwner)) {
 			errors.push(
-				`${relative(root, file)}: ${fromOwner} may only \`import type\` from ${toOwner} (saw value import: \`${stmt.full.replace(/\`/g, '\\\`')}\`)`,
+				`${relative(root, file)}: ${fromOwner} may only import types from ${toOwner} (saw runtime import: ${stmt.specifier})`,
 			);
 			continue;
 		}

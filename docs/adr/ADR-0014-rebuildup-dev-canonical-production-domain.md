@@ -222,25 +222,87 @@ config: Vite owns the build, wrangler just deploys.
 After this PR lands on `release-0-3-0`:
 
 ```bash
-# 1. Operator runs from the release-0-3-0 branch locally
+# 1. Verify locally first (see §5.1). Skip directly to deploy only
+#    if the dev walkthrough has already been done on a prior commit.
+pnpm run dev
+#    then visit http://127.0.0.1:3000/ and walk:
+#      - home renders with editorial styling (Panda tokens applied),
+#      - reactions widget shows real emoji chips (not "disabled"),
+#      - access counter increments on refresh,
+#      - sign-in / admin surfaces render.
+
+# 2. Operator runs from the release-0-3-0 branch locally
 pnpm run cf-typegen
 pnpm run deploy:production
 
-# 2. Verify the canonical URL
+# 3. Verify the canonical URL
 curl -I https://rebuildup.dev/                  # HTTP/2 200
 curl -I https://rebuildup.dev/admin/login      # HTTP/2 200
 curl    https://rebuildup.dev/api/v1/health    # {"status":"ok"}
 
-# 3. Run the production smoke (manual or via GH Actions)
+# 4. Run the production smoke (manual or via GH Actions)
 pnpm run e2e:prod
 # or:
 gh workflow run prod-smoke.yml
 gh run watch
 
-# 4. After smoke is green, the 0.3.0 release PR can be opened
+# 5. After smoke is green, the 0.3.0 release PR can be opened
 # (release-0-3-0 → main). Human merge + tag + Release publish per
 # AGENTS.md §6 release PR merge human gate.
 ```
+
+### 5.1 Local dev verification (mandatory before deploy)
+
+The release PR merge human gate (AGENTS.md §6) requires the
+repository owner to have confirmed the implementation themselves
+before approving a release merge. That confirmation happens in
+two places: the local dev server (`pnpm run dev`) and the
+production origin (`https://rebuildup.dev` after
+`pnpm run deploy:production`).
+
+Local dev prerequisites (one-time setup):
+
+```bash
+# 1. Create the local secrets file from the example
+cp .dev.vars.example .dev.vars
+
+# 2. Generate a 32+ byte random secret for Better Auth session signing
+node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"
+# Paste the printed value into .dev.vars as BETTER_AUTH_SECRET="…"
+
+# 3. Apply local D1 migrations and start the dev server once so the
+#    schema and an admin user exist (the bootstrap script needs an
+#    admin row to attribute the API key to)
+pnpm run db:migrate:local
+pnpm run dev   # let it bind to 127.0.0.1:3000; create the admin via
+               # /admin/invitations once if not already seeded
+# Ctrl-C after the admin user exists.
+
+# 4. Run the API-key bootstrap. It creates a row in the local D1
+#    apikey table and prints the plaintext ONCE.
+pnpm run bootstrap:home-api-key
+# Paste the printed `mk_home_…` value into .dev.vars as
+# MY_WEB_2026_CONSUMER_API_KEY="…"
+
+# 5. Restart the dev server so the new env vars are loaded
+pnpm run dev
+```
+
+What to walk through in the browser at `http://127.0.0.1:3000/`:
+
+- Hero / Capabilities / Footer render with editorial styling (Panda
+  CSS tokens applied). No unstyled / system-default typography.
+- Reactions section ("03 — Reactions") shows emoji chips backed by
+  the catalog. Each chip is clickable; the count increments
+  optimistically and persists after a page reload.
+- Access counter ("04 — Access counter") shows a number that
+  increments on each refresh.
+- `/admin/login` renders the sign-in surface. Sign-in works with
+  the admin user from step 3 above.
+
+If any of those fail, do NOT proceed to `pnpm run deploy:production`
+— fix the dev environment first. The `*.workers.dev` URL is debug
+only and is not a substitute for local verification.
 
 The `e2e:prod` smoke is operator-initiated (locally or via GH
 Actions `workflow_dispatch`). It is NOT a CI gate.
@@ -273,6 +335,21 @@ Actions `workflow_dispatch`). It is NOT a CI gate.
   verification step.
 - `AGENTS.md §4` — cross-link to this ADR + note that
   `*.workers.dev` is debug-only.
+- `src/routes/__root.tsx` — adds `import '../styles.css'` as a
+  side-effect import so the Panda CSS pipeline shows up in the
+  TanStack Start dev-server-plugin's route-CSS collection. Without
+  this, the dev plugin's `/@tanstack-start/styles.css?routes=…`
+  URL returns 0 bytes (it only collects CSS referenced by a route
+  file; Panda is plain CSS, not a CSS Module). Production is
+  unchanged — `client.tsx` already imports `./styles.css` and Vite
+  dedupes the shared module.
+- ADR-0014 §5 — adds a §5.1 Local dev verification step that the
+  operator must walk through (`.dev.vars` bootstrap +
+  `bootstrap:home-api-key` + browser smoke) before
+  `pnpm run deploy:production`. This is the precondition for the
+  release PR merge human gate (AGENTS.md §6): the owner confirms
+  the implementation in their own eyes before approving the
+  release merge.
 
 ### 6.2 What does NOT change
 

@@ -10,3 +10,30 @@
 
 # Example placeholder (none used by 0.1.0 Foundation release):
 # SOME_BINDING_TOKEN="replace-me"
+
+# 0.3.0 Foundation: Better Auth secret. Generate a 32+ byte random string
+# locally; production is provisioned via `wrangler secret put BETTER_AUTH_SECRET`.
+# Required by Better Auth's session signing. See ADR-0009.
+# BETTER_AUTH_SECRET="replace-me-with-32-byte-random-string"
+
+# 0.3.0 Foundation: Better Auth base URL (origin of the deployment).
+# Local development: http://127.0.0.1:3000
+# Production: wired through the companion file `wrangler.production.jsonc`
+#   — `pnpm run deploy:production` (= `wrangler deploy -c
+#   wrangler.production.jsonc`) pins BETTER_AUTH_URL=https://rebuildup.dev
+#   and attaches the custom domain. Do not put the production URL here.
+# Better Auth infers baseURL from the incoming request when unset,
+# which is fine for local dev but required to be pinned in production
+# (cookie domain + trusted origin). See ADR-0009 §8 and ADR-0014.
+# BETTER_AUTH_URL="http://127.0.0.1:3000"
+
+# 0.3.0-extended (Tickets E + F): Home self-consumption API key
+# (ADR-0011). Provisioned by running `pnpm run bootstrap:home-api-key`
+# (see scripts/bootstrap-home-api-key.mjs). The script prints the
+# generated `mk_home_…` value; paste it here for local dev, or set it
+# via `wrangler secret put MY_WEB_2026_CONSUMER_API_KEY` for remote.
+# Required scopes:
+#   { reactions: ["read", "write"], access_counter: ["read", "write"] }
+# Without this key the home reactions widget + counter tile render a
+# disabled state.
+# MY_WEB_2026_CONSUMER_API_KEY="mk_home_replace-me"

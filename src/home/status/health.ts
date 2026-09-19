@@ -20,3 +20,24 @@ export const HEALTH_LABEL: Record<SystemServiceHealth, string> = {
 	degraded: 'degraded',
 	unreachable: 'unreachable',
 };
+
+export interface ExternalBoundaryHealth {
+	id: 'external-boundary';
+	health: 'ok';
+	detail: string;
+}
+
+/**
+ * Reports the configured external HTTP boundary. Lives in the home
+ * status owner because it is only consumed by the home status tiles
+ * — the HTTP boundary itself has no use for it. The shape is
+ * intentionally not a loopback network probe; reachability is
+ * covered by integration tests at `/api/v1/health`.
+ */
+export function getExternalBoundaryHealth(): ExternalBoundaryHealth {
+	return {
+		id: 'external-boundary',
+		health: 'ok',
+		detail: '/api/v1/* wired through src/http/hono.ts',
+	};
+}

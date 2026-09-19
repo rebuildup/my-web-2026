@@ -36,7 +36,19 @@ export const rawTokens = {
 		},
 	},
 	fonts: {
-		sans: { value: 'Inter, "Hiragino Kaku Gothic ProN", system-ui, sans-serif' },
+		// Body / UI default. Noto Sans JP is loaded via Google Fonts
+		// (see src/routes/__root.tsx); the platform Japanese fallback
+		// chain keeps first paint legible if the webfont request stalls.
+		sans: {
+			value: '"Noto Sans JP", "Hiragino Kaku Gothic ProN", system-ui, sans-serif',
+		},
+		// Heading / display tier. Reserved for h1/h2/h3 and any
+		// non-heading element that renders at font-size xl (24px) or
+		// above — applied via :where(h1,h2,h3) in src/styles.css and
+		// explicit `fontFamily: 'heading'` overrides where needed.
+		heading: {
+			value: '"Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", system-ui, sans-serif',
+		},
 		mono: { value: '"JetBrains Mono", ui-monospace, monospace' },
 	},
 	fontSizes: {

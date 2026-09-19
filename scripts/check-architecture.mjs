@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -15,6 +15,16 @@ const forbiddenOwnerDependencies = new Map([
 	['editorial', new Set(['home', 'cloudflare', 'http'])],
 	['home', new Set(['routes', 'cloudflare', 'http'])],
 ]);
+
+/**
+ * Owner pairs where the dependency is allowed only through
+ * `import type ...`. These exceptions preserve the runtime owner
+ * graph because TypeScript erases the edge under
+ * `verbatimModuleSyntax`.
+ *
+ * Every entry must also be documented in AGENTS.md §3.
+ */
+const typeOnlyEdges = [{ from: 'home', to: 'http' }];
 
 function sourceFiles(directory) {
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
@@ -41,17 +51,38 @@ function resolveInternalImport(fromFile, specifier) {
 	return null;
 }
 
-function importSpecifiers(source) {
+/**
+ * Static ES imports with their runtime/type-only character.
+ */
+function importStatements(source) {
+	const re = /(?:^|\n)\s*import\s+(?:type\s+)?[^"';]*?["']([^"']+)["']/g;
+	const stmts = [];
+	for (const match of source.matchAll(re)) {
+		const full = match[0].slice(match[0].indexOf('import')).replace(/\s+/g, ' ').trimStart();
+		const head = full.slice('import'.length).trimStart();
+		stmts.push({
+			full,
+			isTypeOnly: head.startsWith('type '),
+			specifier: match[1],
+		});
+	}
+	return stmts;
+}
+
+/**
+ * Runtime-only imports that are not covered by `importStatements`:
+ * side-effect imports and dynamic imports.
+ */
+function runtimeImportSpecifiers(source) {
 	const specs = new Set();
-	const patterns = [
-		/\bfrom\s+['"]([^'"]+)['"]/g,
-		/\bimport\s+['"]([^'"]+)['"]/g,
-		/\bimport\(\s*['"]([^'"]+)['"]\s*\)/g,
-	];
-	for (const pattern of patterns) {
+	for (const pattern of [/\bimport\s+["']([^"']+)["']/g, /\bimport\(\s*["']([^"']+)["']\s*\)/g]) {
 		for (const match of source.matchAll(pattern)) specs.add(match[1]);
 	}
 	return specs;
+}
+
+function isTypeOnlyEdge(from, to) {
+	return typeOnlyEdges.some((edge) => edge.from === from && edge.to === to);
 }
 
 const errors = [];
@@ -70,19 +101,50 @@ for (const file of sourceFiles(srcRoot)) {
 	if (!forbidden) continue;
 
 	const source = readFileSync(file, 'utf8');
-	for (const specifier of importSpecifiers(source)) {
-		const target = resolveInternalImport(file, specifier);
+	const staticImports = importStatements(source);
+	const runtimeImports = runtimeImportSpecifiers(source);
+
+	for (const stmt of staticImports) {
+		const target = resolveInternalImport(file, stmt.specifier);
 		if (!target) continue;
 		const toOwner = ownerOf(target);
+		if (!toOwner || !forbidden.has(toOwner)) continue;
+
 		const allowedHomeStatusRuntimeDependency =
 			fromOwner === 'home' &&
 			isHomeStatusFile(file) &&
 			(toOwner === 'cloudflare' || toOwner === 'http');
-		if (toOwner && forbidden.has(toOwner) && !allowedHomeStatusRuntimeDependency) {
+		if (allowedHomeStatusRuntimeDependency) continue;
+
+		if (isTypeOnlyEdge(fromOwner, toOwner) && stmt.isTypeOnly) continue;
+
+		if (isTypeOnlyEdge(fromOwner, toOwner)) {
 			errors.push(
-				`${relative(root, file)}: ${fromOwner} must not depend on ${toOwner} (${specifier})`,
+				`${relative(root, file)}: ${fromOwner} may only import types from ${toOwner} (saw runtime import: ${stmt.specifier})`,
 			);
+			continue;
 		}
+
+		errors.push(
+			`${relative(root, file)}: ${fromOwner} must not depend on ${toOwner} (${stmt.specifier})`,
+		);
+	}
+
+	for (const specifier of runtimeImports) {
+		const target = resolveInternalImport(file, specifier);
+		if (!target) continue;
+		const toOwner = ownerOf(target);
+		if (!toOwner || !forbidden.has(toOwner)) continue;
+
+		const allowedHomeStatusRuntimeDependency =
+			fromOwner === 'home' &&
+			isHomeStatusFile(file) &&
+			(toOwner === 'cloudflare' || toOwner === 'http');
+		if (allowedHomeStatusRuntimeDependency) continue;
+
+		errors.push(
+			`${relative(root, file)}: ${fromOwner} must not runtime-import ${toOwner} (${specifier})`,
+		);
 	}
 }
 

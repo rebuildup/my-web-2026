@@ -1,5 +1,5 @@
-import { Container } from '../editorial/primitives/Container';
 import { css } from '../../styled-system/css';
+import { Container } from '../editorial/primitives/Container';
 import { PACKAGE_VERSION } from './version';
 
 /**
@@ -57,7 +57,7 @@ export function Footer() {
 							aria-hidden="true"
 							className={css({
 								marginBlockStart: '2',
-								fontFamily: 'sans',
+								fontFamily: 'heading',
 								fontSize: '4xl',
 								fontWeight: '700',
 								color: 'text.default',
@@ -89,7 +89,7 @@ export function Footer() {
 							className={css({
 								margin: '0',
 								marginBlockStart: '2',
-								fontFamily: 'sans',
+								fontFamily: 'heading',
 								fontSize: '2xl',
 								color: 'text.default',
 								fontWeight: '600',
@@ -179,6 +179,28 @@ export function Footer() {
 						</ul>
 					</div>
 				</div>
+				<p
+					lang="ja"
+					className={css({
+						margin: '0',
+						marginBlockStart: '10',
+						paddingBlockStart: '6',
+						borderBlockStartWidth: '1px',
+						borderBlockStartColor: 'border.subtle',
+						borderBlockStartStyle: 'solid',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						lineHeight: '1.6',
+						color: 'text.muted',
+					})}
+				>
+					このサイトは閲覧解析のため <code>mw_actor_id</code> という匿名の Cookie
+					を使用します（個人を特定しません）。
+					<span lang="en">
+						{' '}
+						This site uses an anonymous <code>mw_actor_id</code> cookie for visitor analytics.
+					</span>
+				</p>
 			</Container>
 		</footer>
 	);

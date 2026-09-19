@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { CapabilitiesGrid } from './grid';
 import type { Capability } from './capability';
+import { CapabilitiesGrid } from './grid';
 
 /**
  * CapabilitiesGrid stories. The component is a function of

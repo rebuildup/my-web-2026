@@ -1,6 +1,6 @@
 import { defineConfig } from '@pandacss/dev';
-import { rawTokens } from './src/editorial/tokens';
 import { semanticTokens } from './src/editorial/semantic-tokens';
+import { rawTokens } from './src/editorial/tokens';
 
 /**
  * Panda CSS configuration for the currently shipped editorial visual language.
@@ -27,6 +27,19 @@ export default defineConfig({
 				spacing: rawTokens.spacing,
 			},
 			semanticTokens,
+			// Keyframes used by the access-counter digit swap
+			// (`src/home/access/tiles.tsx`). Each digit image slides up
+			// from below with a per-digit stagger, evoking a mechanical
+			// counter rolling to its value. The animation is opt-out via
+			// `prefers-reduced-motion: reduce` at the component level
+			// (the styles.css `@media` block).
+			keyframes: {
+				counterDigitRoll: {
+					'0%': { transform: 'translateY(60%)', opacity: '0' },
+					'60%': { opacity: '1' },
+					'100%': { transform: 'translateY(0)', opacity: '1' },
+				},
+			},
 		},
 	},
 });

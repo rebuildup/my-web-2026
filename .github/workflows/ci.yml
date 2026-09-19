@@ -1,10 +1,22 @@
 name: CI
 
+# Triggers — main / release-* AND numeric ticket branches.
+#
+# The canonical sprint workflow (AGENTS.md §6) is stacked ticket PRs:
+# each ticket branch (e.g. `33`) targets the predecessor (`32`, or the
+# release branch for the first ticket), and every dependent PR base is
+# the previous ticket's head. Without a `push`/PR trigger on the
+# numeric branches, force-pushes never get CI on their current SHA,
+# which breaks the "current-SHA CI green" contract for stacked PRs.
+#
+# Ticket branches are digit-only identifiers per AGENTS.md §6, so
+# `'[0-9]+'` matches the legitimate ticket PRs while excluding arbitrary
+# feature branches that happen to share the namespace.
 on:
   pull_request:
-    branches: [main, 'release-*']
+    branches: [main, 'release-*', '[0-9]+']
   push:
-    branches: [main, 'release-*']
+    branches: [main, 'release-*', '[0-9]+']
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
@@ -54,22 +66,28 @@ jobs:
       # is part of `validate:integration` via `pnpm run lint:ci` — see
       # scripts/lint-ci.mjs.
       - run: pnpm run validate:integration
-      # On push to main / release-* the worker-configuration.d.ts must match
-      # what `wrangler types` produces. Local `pnpm run validate:release`
-      # adds the same gate.
+      # On push, the worker-configuration.d.ts must match what
+      # `wrangler types` produces. Local `pnpm run validate:release`
+      # adds the same gate. GitHub Actions expression language does
+      # not support regex / length / match, so we keep this gate on
+      # every push and let the branch filter above restrict the
+      # trigger set to main / release-* / numeric ticket branches.
       - name: cf-typegen check
-        if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))
+        if: github.event_name == 'push'
         run: pnpm run cf-typegen:check
-      # Playwright E2E is gated: it runs on push to main / release-* and
-      # on pull requests that opt in via the `ui-change` label. The
+      # Playwright E2E is gated to push on main / release-* and to PRs
+      # with the `ui-change` label. The push gate does NOT include
+      # numeric ticket branches — ticket branches force-push frequently
+      # during a sprint, and Playwright install + run is ~3min of
+      # runner time that does not change the per-PR review. The
       # webServer block in playwright.config.ts starts `pnpm dev`
       # automatically when PLAYWRIGHT_BASE_URL points at localhost.
       # Browser binaries install with sudo on GitHub Actions runners.
       - name: Install Playwright Chromium
-        if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'ui-change')
+        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))) || contains(github.event.pull_request.labels.*.name, 'ui-change')
         run: pnpm exec playwright install --with-deps chromium
       - name: Playwright E2E
-        if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'ui-change')
+        if: (github.event_name == 'push' && (github.ref == 'refs/heads/main' || startsWith(github.ref, 'refs/heads/release-'))) || contains(github.event.pull_request.labels.*.name, 'ui-change')
         run: pnpm run e2e
       - name: Upload Playwright report
         if: always()

@@ -48,12 +48,9 @@ import { betterAuth } from 'better-auth';
  * `vars` — production must not silently inherit a localhost
  * default. Local development sets it in `.dev.vars`; production
  * supplies it via `wrangler deploy --var BETTER_AUTH_URL=...` or a
- * per-env `env.production.vars` block.
- *
- * Better Auth 1.5+ infers `baseURL` from the incoming request when
- * unset; the project relies on inference for local development and
- * expects operators to set `BETTER_AUTH_URL` for production to pin
- * the cookie domain + `trustedOrigins`. See ADR-0009 §8 / Risks §5.
+ * per-env `env.production.vars` block. Better Auth's own
+ * validation raises at first sign-in request if `baseURL` is
+ * missing, which is the operator-facing signal.
  *
  * The runtime contract is `string | undefined`. The typegen'd `Env`
  * does not declare it because we removed the fallback from
@@ -62,17 +59,6 @@ import { betterAuth } from 'better-auth';
  */
 const betterAuthUrl = (env as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
 
-/**
- * Disable Better Auth's eager `checkSchema()` so the auth instance
- * remains usable across workerd test isolates whose D1 binding
- * may be empty when the auth module is first imported. The check
- * is fired at module load and caches its verdict per adapter
- * identity — a stale verdict is rethrown on every subsequent
- * `auth.api.*` call. The canonical D1 schema is owned by
- * `migrations/0001_better_auth.sql` and applied explicitly via
- * `pnpm run db:migrate:*`; Better Auth's runtime check is a
- * development aid and is not the project's source of truth.
- */
 export const auth = betterAuth({
 	database: env.DB,
 	secret: env.BETTER_AUTH_SECRET,
@@ -93,10 +79,24 @@ export const auth = betterAuth({
 	},
 	plugins: [
 		admin(),
+		// The @better-auth/api-key plugin's per-key rate limit is
+		// **disabled** at the auth layer. ADR-0010 owns the only
+		// throttle in 0.3.0: the Workers Rate Limiting binding keyed
+		// by API key id, mounted per-endpoint-bucket from
+		// `src/http/middleware/rate-limit.ts`. Running BOTH layers
+		// in series gates the effective budget at the lower limit;
+		// for the access-counter hot path that meant `60/min` for
+		// both read and write (the auth-layer's 60/min hides the
+		// 600/min read binding). The auth-layer check additionally
+		// counts ALL requests through `auth.api.verifyApiKey`,
+		// regardless of endpoint, so it cannot implement different
+		// per-endpoint budgets anyway. Anti-brute-force on key
+		// guessing is already covered by the hashing scheme (a
+		// guessed `mk_*` string cannot be verified in bulk).
 		apiKey({
 			defaultPrefix: 'mk_',
 			rateLimit: {
-				enabled: true,
+				enabled: false,
 				timeWindow: 60_000,
 				maxRequests: 60,
 			},
@@ -109,6 +109,16 @@ export const auth = betterAuth({
 		console.log('[auth.email]', payload);
 	},
 	trustedOrigins: betterAuthUrl ? [betterAuthUrl] : [],
+	// `checkSchema()` runs eagerly at module load and caches a per-adapter
+	// verdict. In the workerd test pool, the worker module graph resolves
+	// before the vitest setupFiles have had a chance to apply the
+	// canonical Better Auth schema; the cached verdict then claims the
+	// tables are missing even when they are present at request time.
+	// We manage the schema via `migrations/0001_better_auth.sql` (and
+	// follow-ups) and `wrangler d1 migrations apply`, so per-request
+	// schema validation is redundant. See ADR-0009 §6 and the test
+	// setup notes in `test/integration/` for the migration-driven
+	// pattern.
 	advanced: { database: { validateSchema: false } },
 });
 

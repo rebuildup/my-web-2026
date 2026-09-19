@@ -59,6 +59,43 @@
 			"binding": "MEDIA",
 			"bucket_name": "my-web-2026"
 		}
+	],
+	// Per-consumer-principal rate limit bindings (ADR-0010).
+	// `simple` is the only rate-limit configuration shape supported by
+	// the current wrangler schema (limit + period in seconds). The
+	// binding API `env.RATE_LIMIT_X.limit({ key })` is keyed by whatever
+	// string the caller passes — we pass the API key id (set in
+	// `c.var.apiKey.id` by `requireApiKey`).
+	// `period: 60` is chosen over `period: 10` because the documented
+	// budget is wall-clock-minute.
+	//
+	// Layering note (ADR-0010): these bindings are the ONLY rate limit
+	// in 0.3.0. The Better Auth api-key plugin's per-key rate limit is
+	// configured `enabled: false` because running both layers gates
+	// the effective budget at the lower limit (plugin's 60/min would
+	// hide the 600/min read binding) and the plugin's check is per-key
+	// not per-endpoint, so it cannot implement our two-bucket model.
+	// Key brute-force is already covered by SHA-256 hashing.
+	//
+	// `namespace_id` MUST match a real Cloudflare-provisioned
+	// rate-limit namespace in production; the all-zeros IDs below are
+	// NOT valid namespaces — they exist only so the schema parses
+	// during local development and `pnpm run validate:integration`.
+	// Provision real namespaces before deploying:
+	//   wrangler ratelimit namespace create RATE_LIMIT_WRITE
+	//   wrangler ratelimit namespace create RATE_LIMIT_READ
+	// and replace the placeholder `namespace_id` with the printed ID.
+	"ratelimits": [
+		{
+			"name": "RATE_LIMIT_WRITE",
+			"namespace_id": "00000000000000000000000000000001",
+			"simple": { "limit": 60, "period": 60 }
+		},
+		{
+			"name": "RATE_LIMIT_READ",
+			"namespace_id": "00000000000000000000000000000002",
+			"simple": { "limit": 600, "period": 60 }
+		}
 	]
 	/**
 	 * Smart Placement

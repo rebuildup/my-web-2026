@@ -20,16 +20,12 @@ will be hit by automated server-to-server traffic by design, and a
 malicious consumer (or a misbehaving one) must not be able to
 inflate counters, exhaust D1 write capacity, or pin Workers CPU.
 
-The two layers that defend against this today:
+The layers that defend against this today:
 
 1. **API key authentication** (`requireApiKey`, ADR-0009 §6) — the
    consumer must hold a valid `mk_*` Bearer key.
-2. **Per-key rate limit** (Better Auth API key plugin `rateLimit`) —
-   anti-brute-force on key validation; not a per-endpoint throttle.
-
-Neither layer answers "this specific consumer is hammering the
-write endpoint". A separate per-consumer-principal throttle is
-needed.
+2. **Per-consumer-principal rate limit** (Workers Rate Limiting
+   binding) — see Decision below.
 
 `cf.botScore` (Cloudflare's heuristic bot score) was considered and
 **explicitly rejected**: server-to-server APIs receive automated
@@ -95,8 +91,50 @@ unkeyed paths.
 | --- | --- | --- | --- | --- | --- |
 | Workers Rate Limiting binding | yes (per-key) | yes for per-consumer abuse | very cheap | declarative | **chosen** |
 | Durable Object (SQLite-backed, typed RPC) | yes + global coordination | yes + global cap | DO invocation cost + storage | DO class to maintain | upgrade path |
-| Better Auth API key plugin rate limit | per-key validation throttling | anti-brute-force | included | none | **kept for auth layer** |
+| Better Auth API key plugin rate limit | per-key validation throttling | anti-brute-force | included | none | **disabled — redundant with chosen layer** |
 | `cf.botScore` rejection | anonymous only | rejects legitimate automation | included | one middleware | rejected |
+
+### Layering
+
+A **single** rate-limit layer runs in sequence on every
+authenticated endpoint, mounted by Hono middleware after
+`requireApiKey` succeeds and before the route handler:
+
+- **Workers Rate Limiting binding** — `RATE_LIMIT_WRITE`
+  (60 / minute / principal) on write endpoints,
+  `RATE_LIMIT_READ` (600 / minute / principal) on read endpoints.
+  This is the only throttle in 0.3.0; the auth layer below it
+  performs validation only.
+
+The Better Auth api-key plugin's per-key rate limit is
+**intentionally configured off** (`apiKey({ rateLimit: { enabled:
+false } })` in `src/cloudflare/auth/better-auth.ts`). Reasons,
+recorded for posterity:
+
+- The plugin's rate limit fires inside `auth.api.verifyApiKey`,
+  which runs on every authenticated endpoint. It does not know
+  which endpoint the caller is hitting, so it cannot implement
+  different per-endpoint budgets.
+- It is keyed by key id — same principal as the Workers binding
+  we already pay for. Running both layers would gate the
+  effective budget at the lower of the two limits; with the
+  plugin at 60/min and the Workers binding at 600/min for reads,
+  the `RATE_LIMIT_READ` budget was effectively 60/min, contradicting
+  the documented contract.
+- Anti-brute-force on the key itself is already addressed by the
+  key hashing scheme — a guessed `mk_*` plaintext cannot be
+  verified in bulk; each wrong guess is one full SHA-256 hash
+  round-trip in SQLite.
+
+If a future threat model makes per-key-validation throttling
+necessary (e.g. a large fleet of consumer workers that re-tries
+rapidly on transient errors), re-enable the plugin rate limit and
+re-open this ADR.
+
+The middleware ordering is enforced by composing
+`requireApiKey()` then `rateLimit(...)` then the route handler —
+see `src/http/api-keys/middleware.ts` and the route mounting in
+`src/http/hono.ts`.
 
 The DO upgrade path is the documented trigger for re-opening this
 ADR. If global coordination across Cloudflare's edge locations is
@@ -125,8 +163,9 @@ preserved and only the backing implementation changes.
   hot path.
 - Backed by Cloudflare's edge infrastructure, not project-owned
   state.
-- Two-layer rate limiting (auth-layer + feature-layer) is
-  independent and explicit (ADR-0009 §6).
+- One rate-limit layer, one set of documented budgets; the
+  contract "60/min writes and 600/min reads per consumer
+  principal" is enforced end-to-end.
 
 ### Negative / Trade-offs
 

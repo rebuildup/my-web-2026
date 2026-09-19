@@ -60,12 +60,14 @@
 			"bucket_name": "my-web-2026"
 		}
 	],
-	// Non-binding env vars for the home self-consumption consumer
-	// pattern (ADR-0011). The keys themselves are stored as Wrangler
-	// secrets (`MY_WEB_2026_CONSUMER_API_KEY`); the target/key values
-	// are non-sensitive and live here so they survive `wrangler d1`
-	// schema resets.
+	// Home self-consumption named vars (ADR-0011 / Ticket E + F).
+	// `MY_WEB_2026_CONSUMER_API_KEY` is provisioned as a Wrangler
+	// secret via `wrangler secret put` (see scripts/bootstrap-home-api-key.mjs).
+	// The two named vars below are non-secret values used by
+	// `src/home/{reactions,access}/load.ts`; they live here so they
+	// survive `wrangler d1` schema resets.
 	"vars": {
+		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
 		"MY_WEB_2026_COUNTER_KEY": "home-page"
 	},
 	// Per-consumer-principal rate limit bindings (ADR-0010).

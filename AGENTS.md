@@ -75,6 +75,7 @@ home/status -> cloudflare
 home/status -> http
 home/reactions -> http/reactions (schema types only)
 home/access -> http/access-counter (schema types only)
+home/admin/emoji-catalog -> http/reactions (schema types only)
 home -> editorial
 server -> http
 ```

@@ -80,11 +80,11 @@ test.describe('home page composition', () => {
 
 	test('renders the capabilities grid with three planned cards', async ({ page }) => {
 		await page.goto('/');
-		const capabilities = page.locator('section[aria-labelledby="capabilities-heading"] article');
+		const capabilities = page.locator('section[aria-labelledby="capabilities-heading"] li');
 		await expect(capabilities).toHaveCount(3);
-		// Each card has a "planned" badge in 0.2.0.
+		// Each capability item has a "planned" badge in 0.2.0.
 		const badges = page.locator(
-			'section[aria-labelledby="capabilities-heading"] article >> text=planned',
+			'section[aria-labelledby="capabilities-heading"] li >> text=planned',
 		);
 		await expect(badges).toHaveCount(3);
 	});

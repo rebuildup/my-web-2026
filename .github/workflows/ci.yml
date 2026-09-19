@@ -43,8 +43,8 @@ jobs:
         env:
           HEAD_REF: ${{ github.head_ref }}
         run: |
-          if ! [[ "$HEAD_REF" =~ ^release- ]]; then
-            echo "::error::PRs into main must have head_ref matching ^release- (got: $HEAD_REF)"
+          if ! [[ "$HEAD_REF" =~ ^release-[0-9]+-[0-9]+-[0-9]+$ ]]; then
+            echo "::error::PRs into main must have head_ref matching ^release-[0-9]+-[0-9]+-[0-9]+$ (got: $HEAD_REF)"
             exit 1
           fi
       # Read-only validation: format / lint / typecheck / test / build /

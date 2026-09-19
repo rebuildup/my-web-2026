@@ -12,6 +12,15 @@
  *   - MEDIA (R2)                     blobs / media in the provisioned
  *                                    `my-web-2026` bucket
  *
+ * `BETTER_AUTH_URL` (Better Auth origin) is intentionally NOT pinned
+ * here — production must not silently inherit a localhost default.
+ * Provide it per environment:
+ *   - local dev:    .dev.vars (loaded by `wrangler dev`)
+ *   - remote apply: `wrangler deploy --var BETTER_AUTH_URL=https://...`
+ *   - multi-env:    `env.production.vars` / `env.staging.vars` blocks
+ * Better Auth's own validation raises at first request if `baseURL`
+ * is missing. Documented in ADR-0009 §8.
+ *
  * Run `pnpm run cf-typegen` after editing bindings so
  * `worker-configuration.d.ts` stays in sync.
  */
@@ -47,13 +56,7 @@
 			"binding": "MEDIA",
 			"bucket_name": "my-web-2026"
 		}
-	],
-	// Public env (non-secret). Secrets live in `.dev.vars` / `wrangler secret put`.
-	// `BETTER_AUTH_URL` is the origin of the deployment (0.3.0, ADR-0009 §8).
-	// Override per environment if needed.
-	"vars": {
-		"BETTER_AUTH_URL": "http://127.0.0.1:3000"
-	}
+	]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/

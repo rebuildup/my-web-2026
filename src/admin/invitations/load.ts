@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start';
+import { getRequestUrl } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import { env } from 'cloudflare:workers';
 import { requireAdmin } from '../auth/require-admin';
@@ -92,7 +93,8 @@ export const createInvitation = createServerFn({ method: 'POST' })
 			.bind(id, email, tokenHash, session.user.id, expiresAt, now)
 			.run();
 
-		const baseUrl = env.BETTER_AUTH_URL.replace(/\/+$/, '');
+		const requestUrl = getRequestUrl();
+		const baseUrl = `${requestUrl.protocol}//${requestUrl.host}`;
 		return {
 			invitation: { id, email, expiresAt, consumedAt: null, createdAt: now, consumed: false },
 			plaintextToken,

@@ -19,6 +19,12 @@ import { betterAuth } from 'better-auth';
  *
  * Configuration summary (full rationale in ADR-0009 §8):
  *
+ * - `basePath: '/api/v1/auth'` — Better Auth strips this prefix
+ *   when matching routes, so the router mounts under
+ *   `/api/v1/auth/*` and Better Auth sees `/sign-in/email`,
+ *   `/sign-out`, etc. **Required**: the default basePath is
+ *   `/api/auth`; without this option no Better Auth route would
+ *   match the project's external-boundary prefix.
  * - `emailAndPassword.disableSignUp: true` blocks the public
  *   sign-up endpoint with `EMAIL_PASSWORD_SIGN_UP_DISABLED`. The
  *   invitation accept flow (§4) uses `auth.api.createUser` via the
@@ -35,11 +41,29 @@ import { betterAuth } from 'better-auth';
  *   `src/http/api-keys/middleware.ts` (Ticket B).
  * - `sendEmail` is a console-log stub — no SMTP is configured in
  *   0.3.0. Real delivery is out of scope.
+ *
+ * Environment contract (ADR-0009 §8):
+ *
+ * `BETTER_AUTH_URL` is intentionally NOT pinned in `wrangler.jsonc`
+ * `vars` — production must not silently inherit a localhost
+ * default. Local development sets it in `.dev.vars`; production
+ * supplies it via `wrangler deploy --var BETTER_AUTH_URL=...` or a
+ * per-env `env.production.vars` block. Better Auth's own
+ * validation raises at first sign-in request if `baseURL` is
+ * missing, which is the operator-facing signal.
+ *
+ * The runtime contract is `string | undefined`. The typegen'd `Env`
+ * does not declare it because we removed the fallback from
+ * `wrangler.jsonc vars`; the cast below is the documented escape
+ * hatch.
  */
+const betterAuthUrl = (env as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
+
 export const auth = betterAuth({
 	database: env.DB,
 	secret: env.BETTER_AUTH_SECRET,
-	baseURL: env.BETTER_AUTH_URL,
+	baseURL: betterAuthUrl,
+	basePath: '/api/v1/auth',
 	emailAndPassword: {
 		enabled: true,
 		disableSignUp: true,
@@ -70,7 +94,7 @@ export const auth = betterAuth({
 		// instead of password reset (ADR-0009 §1).
 		console.log('[auth.email]', payload);
 	},
-	trustedOrigins: [env.BETTER_AUTH_URL],
+	trustedOrigins: betterAuthUrl ? [betterAuthUrl] : [],
 });
 
 export type Auth = typeof auth;

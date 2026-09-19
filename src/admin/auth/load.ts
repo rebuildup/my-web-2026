@@ -27,9 +27,20 @@ export interface AdminSessionUser {
 
 export interface AdminSession {
 	user: AdminSessionUser;
-	session: { id: string; token: string; expiresAt: Date };
+	session: { id: string; expiresAt: Date };
 }
 
+/**
+ * Return the current admin session, or `null` if unauthenticated.
+ *
+ * Security note: the Better Auth `session.token` is **not** exposed.
+ * The token equals the value stored in the `better-auth.session_token`
+ * cookie; surfacing it in a server-fn response would let any UI code
+ * (including client-bundled reach) impersonate the admin against any
+ * endpoint that accepts the cookie. The session's `id` and `expiresAt`
+ * are safe metadata; `id` is useful for logging, `expiresAt` for the
+ * UI to render "session expires in N days".
+ */
 export const getCurrentSession = createServerFn({ method: 'GET' }).handler(
 	async (): Promise<AdminSession | null> => {
 		const headers = getRequestHeaders();
@@ -44,7 +55,6 @@ export const getCurrentSession = createServerFn({ method: 'GET' }).handler(
 			},
 			session: {
 				id: session.session.id,
-				token: session.session.token,
 				expiresAt: session.session.expiresAt,
 			},
 		};

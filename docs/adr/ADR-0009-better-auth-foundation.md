@@ -155,9 +155,27 @@ The first admin is created via the Better Auth CLI:
 pnpm better-auth create-admin --email=owner@example.com --password=...
 ```
 
-Subsequent admins are bootstrapped via the invitation flow
-(§4). The CLI requires `BETTER_AUTH_SECRET` to be set, which is
-provided through `.dev.vars` locally and `wrangler secret put` in
+Subsequent admins are bootstrapped in **two steps** by an existing
+admin (no "invite admin" shortcut in 0.3.0, deliberately):
+
+1. The existing admin creates an invitation for the future admin's
+   email via the admin UI. The invitation accept flow (§4) creates
+   a `role = 'user'` account — invitations are user-role-only; the
+   schema does not let an admin preset a non-default role.
+2. After the invitee signs in, the existing admin promotes them via
+   `auth.api.setRole({ userId, role: 'admin' })` (Better Auth admin
+   plugin's canonical promotion endpoint, exposed through the admin
+   plugin's HTTP handler at `/api/v1/auth/admin/set-role`).
+
+This is a two-person operation by design: there is no way for a
+single admin to mint a peer admin without first having a human
+accept and confirm. The "user-role invitation then promote" shape
+also keeps the invitation schema simple (no `role` column on
+`auth_invitation`) and avoids the trap of letting a leaked admin
+session spawn another admin via a UI checkbox.
+
+The CLI requires `BETTER_AUTH_SECRET` to be set, which is provided
+through `.dev.vars` locally and `wrangler secret put` in
 production.
 
 ### 8. Configuration shape

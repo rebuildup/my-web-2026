@@ -8,7 +8,11 @@ import {
 	listImages,
 	uploadImage,
 } from '../../src/http/reactions/images';
-import { putReaction, reactionImageReferenced } from '../../src/http/reactions/reactions';
+import {
+	putReaction,
+	ReactionReferenceError,
+	reactionImageReferenced,
+} from '../../src/http/reactions/reactions';
 
 /**
  * Image upload + delete policy tests.
@@ -335,5 +339,77 @@ describe('deleteImage — reference policy', () => {
 		await expect(
 			deleteImage(D1(), R2(), '00000000-0000-0000-0000-000000000000'),
 		).rejects.toMatchObject({ code: 'not_found' });
+	});
+
+	it('TOCTOU race: concurrent deleteImage + putReaction leave no dangling reaction (P1 #5 regression)', async () => {
+		// P1 review finding: the previous check-then-delete sequence
+		// had a window where a concurrent `putReaction` could land
+		// between the reference check and the DB DELETE, creating a
+		// dangling reaction pointing at an image whose R2 object was
+		// about to be deleted. The fix is a single conditional
+		// DELETE ... RETURNING that atomically claims the row only
+		// when no reaction references it. Either interleaving is
+		// safe; the invariant is "no dangling reaction survives".
+		const buf = PNG_BYTES.buffer.slice(
+			PNG_BYTES.byteOffset,
+			PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
+		) as ArrayBuffer;
+		const upload = await uploadImage(D1(), R2(), {
+			contentType: 'image/png',
+			bytes: buf,
+			uploadedBy: 'tester',
+		});
+		const imageId = upload.image.id;
+
+		// Two interleavings to exercise:
+		//   A. putReaction runs first, then deleteImage → delete must
+		//      refuse (ImageReferencedError).
+		//   B. deleteImage runs first, then putReaction → delete must
+		//      succeed (image gone) and putReaction must throw
+		//      ReactionReferenceError (image id unknown).
+		// D1 is single-threaded, so Promise.all here models the
+		// logical race, not the OS-level race; the invariant we test
+		// is "no dangling reaction" regardless of order.
+
+		// Interleaving A: reaction lands first.
+		await putReaction(D1(), {
+			target_key: 't',
+			actor_id: 'a',
+			principal: 'p',
+			kind: 'image',
+			value: imageId,
+		});
+		await expect(deleteImage(D1(), R2(), imageId)).rejects.toBeInstanceOf(ImageReferencedError);
+		// Reaction still present; image still present.
+		const referencedAfter = await D1()
+			.prepare('SELECT id FROM reactions WHERE value = ?1')
+			.bind(imageId)
+			.first<{ id: string }>();
+		expect(referencedAfter).not.toBeNull();
+		const imageAfter = await D1()
+			.prepare('SELECT id FROM reaction_images WHERE id = ?1')
+			.bind(imageId)
+			.first<{ id: string }>();
+		expect(imageAfter).not.toBeNull();
+
+		// Clean up before interleaving B.
+		await D1().prepare('DELETE FROM reactions WHERE value = ?1').bind(imageId).run();
+		await deleteImage(D1(), R2(), imageId); // now succeeds
+		await expect(
+			putReaction(D1(), {
+				target_key: 't',
+				actor_id: 'a',
+				principal: 'p',
+				kind: 'image',
+				value: imageId,
+			}),
+		).rejects.toBeInstanceOf(ReactionReferenceError);
+		// No dangling reaction: the row that putReaction tried to
+		// insert never landed.
+		const dangling = await D1()
+			.prepare('SELECT id FROM reactions WHERE value = ?1')
+			.bind(imageId)
+			.first<{ id: string }>();
+		expect(dangling).toBeNull();
 	});
 });

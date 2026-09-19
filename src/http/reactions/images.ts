@@ -1,4 +1,3 @@
-import { reactionImageReferenced } from './reactions';
 import {
 	ALLOWED_IMAGE_CONTENT_TYPES,
 	type AllowedImageContentType,
@@ -19,8 +18,16 @@ import {
  *      `reactions/{hash}.{ext}`.
  *
  * Delete:
- *   - Refuse (409) if any reaction references the image. Admin
- *     must first delete referencing reactions.
+ *   - The check-then-delete sequence (lookup → isReferenced? → R2
+ *     delete → DB delete) had a TOCTOU window: a concurrent
+ *     `putReaction` between the reference check and the DB delete
+ *     could insert a reaction row pointing at the now-orphaned
+ *     image (P1 review finding #5). The fix is a single
+ *     conditional DELETE that atomically claims the row only when
+ *     no reaction references it; the R2 cleanup is a best-effort
+ *     follow-up. If the conditional DELETE returns 0 rows we
+ *     disambiguate 404 (image absent) vs 409 (image now referenced)
+ *     with a follow-up read.
  *
  * Read:
  *   - `getImageStream(db, media, id)` — public read by image id,
@@ -122,23 +129,43 @@ export async function uploadImage(
 }
 
 export async function deleteImage(db: D1Database, media: R2Bucket, id: string): Promise<void> {
-	const row = await db
+	// DB-first claim: atomically delete the reaction_images row only
+	// if no reaction references it. This closes the TOCTOU window
+	// between "check referenced" and "delete row" (P1 review finding
+	// #5): a concurrent `putReaction` cannot interleave because the
+	// conditional DELETE either wins the slot and removes the row
+	// or sees the new reaction and returns 0 rows.
+	const claimed = await db
 		.prepare(
-			`SELECT id, content_hash, content_type, size, r2_key, uploaded_by, uploaded_at
-       FROM reaction_images WHERE id = ?1`,
+			`DELETE FROM reaction_images
+       WHERE id = ?1
+         AND NOT EXISTS (SELECT 1 FROM reactions WHERE kind = 'image' AND value = ?1)
+       RETURNING r2_key`,
 		)
 		.bind(id)
-		.first<ReactionImageRow>();
-	if (!row) {
-		throw new ImagePolicyError('not_found', `image ${id} not found`);
-	}
-	if (await reactionImageReferenced(db, id)) {
+		.first<{ r2_key: string }>();
+	if (!claimed) {
+		// Disambiguate 404 (image absent) vs 409 (image now
+		// referenced) so the HTTP layer can return the right status.
+		const exists = await db
+			.prepare('SELECT 1 AS one FROM reaction_images WHERE id = ?1')
+			.bind(id)
+			.first<{ one: number }>();
+		if (!exists) {
+			throw new ImagePolicyError('not_found', `image ${id} not found`);
+		}
 		throw new ImageReferencedError(
 			`image ${id} is referenced by one or more reactions; delete them first`,
 		);
 	}
-	await media.delete(row.r2_key);
-	await db.prepare('DELETE FROM reaction_images WHERE id = ?1').bind(id).run();
+	// Best-effort R2 cleanup. The DB row is already gone, so no
+	// future reaction can reference this image; an orphan R2 object
+	// is harmless and can be GC'd by a future sweep.
+	try {
+		await media.delete(claimed.r2_key);
+	} catch (err) {
+		console.error('[reactions.images] R2 delete failed (orphan):', claimed.r2_key, err);
+	}
 }
 
 export async function listImages(db: D1Database): Promise<readonly ReactionImageRow[]> {

@@ -46,80 +46,91 @@ export interface AcceptInvitationResult {
 	failure?: AcceptInvitationFailure;
 }
 
+/**
+ * Inner handler — extracted from the createServerFn wrapper so the
+ * acceptance lifecycle (good / bad / expired / consumed → user
+ * created / session set) can be exercised directly by tests without
+ * going through TanStack Start's AsyncLocalStorage context. The
+ * server-fn wrapper below is a thin pass-through.
+ */
+export async function acceptInvitationImpl(
+	data: z.infer<typeof AcceptInvitationInput>,
+): Promise<AcceptInvitationResult> {
+	const tokenHash = await sha256Hex(data.token);
+	const now = Date.now();
+
+	// Look up the invitation. We compare the hash in SQLite rather
+	// than fetching all rows and comparing in code so the operation
+	// stays cheap even with many invitations.
+	const row = await env.DB.prepare(
+		'SELECT id, email, expires_at, consumed_at FROM auth_invitation WHERE token_hash = ? LIMIT 1',
+	)
+		.bind(tokenHash)
+		.first<{ id: string; email: string; expires_at: number; consumed_at: number | null }>();
+
+	if (!row) {
+		return { ok: false, failure: 'token_invalid' };
+	}
+	if (row.consumed_at !== null) {
+		return { ok: false, failure: 'token_consumed' };
+	}
+	if (row.expires_at <= now) {
+		return { ok: false, failure: 'token_expired' };
+	}
+
+	// Pre-check: refuse if a user with this email already exists.
+	// `auth.api.createUser` would otherwise surface a generic error.
+	const existing = await env.DB.prepare('SELECT id FROM user WHERE email = ?')
+		.bind(row.email)
+		.first<{ id: string }>();
+	if (existing) {
+		return { ok: false, failure: 'email_taken' };
+	}
+
+	// Create the user via the admin plugin. No headers — direct API
+	// call bypasses `adminMiddleware` (see header comment).
+	let createdUser: { id: string; email: string; name: string };
+	try {
+		const result = await auth.api.createUser({
+			body: {
+				email: row.email,
+				password: data.password,
+				name: data.name,
+				role: 'user',
+			},
+		});
+		createdUser = {
+			id: String(result.user.id),
+			email: result.user.email,
+			name: result.user.name,
+		};
+	} catch (err) {
+		// Better Auth throws APIError for password-too-short or
+		// email-already-exists. Map common cases to our failure
+		// vocabulary; everything else is rethrown.
+		const code = (err as { body?: { code?: string }; code?: string }).code;
+		if (code === 'PASSWORD_TOO_SHORT' || code === 'PASSWORD_TOO_LONG') {
+			return { ok: false, failure: 'weak_password' };
+		}
+		throw err;
+	}
+
+	// Mark the invitation consumed in the same logical operation.
+	// A race between two accept attempts would double-create the
+	// user; we rely on Better Auth's email uniqueness to catch
+	// the second `createUser` call.
+	await env.DB.prepare(
+		'UPDATE auth_invitation SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL',
+	)
+		.bind(now, row.id)
+		.run();
+
+	return { ok: true, user: createdUser };
+}
+
 export const acceptInvitation = createServerFn({ method: 'POST' })
 	.validator(AcceptInvitationInput)
-	.handler(async ({ data }): Promise<AcceptInvitationResult> => {
-		const tokenHash = await sha256Hex(data.token);
-		const now = Date.now();
-
-		// Look up the invitation. We compare the hash in SQLite rather
-		// than fetching all rows and comparing in code so the operation
-		// stays cheap even with many invitations.
-		const row = await env.DB.prepare(
-			'SELECT id, email, expires_at, consumed_at FROM auth_invitation WHERE token_hash = ? LIMIT 1',
-		)
-			.bind(tokenHash)
-			.first<{ id: string; email: string; expires_at: number; consumed_at: number | null }>();
-
-		if (!row) {
-			return { ok: false, failure: 'token_invalid' };
-		}
-		if (row.consumed_at !== null) {
-			return { ok: false, failure: 'token_consumed' };
-		}
-		if (row.expires_at <= now) {
-			return { ok: false, failure: 'token_expired' };
-		}
-
-		// Pre-check: refuse if a user with this email already exists.
-		// `auth.api.createUser` would otherwise surface a generic error.
-		const existing = await env.DB.prepare('SELECT id FROM user WHERE email = ?')
-			.bind(row.email)
-			.first<{ id: string }>();
-		if (existing) {
-			return { ok: false, failure: 'email_taken' };
-		}
-
-		// Create the user via the admin plugin. No headers — direct API
-		// call bypasses `adminMiddleware` (see header comment).
-		let createdUser: { id: string; email: string; name: string };
-		try {
-			const result = await auth.api.createUser({
-				body: {
-					email: row.email,
-					password: data.password,
-					name: data.name,
-					role: 'user',
-				},
-			});
-			createdUser = {
-				id: String(result.user.id),
-				email: result.user.email,
-				name: result.user.name,
-			};
-		} catch (err) {
-			// Better Auth throws APIError for password-too-short or
-			// email-already-exists. Map common cases to our failure
-			// vocabulary; everything else is rethrown.
-			const code = (err as { body?: { code?: string }; code?: string }).code;
-			if (code === 'PASSWORD_TOO_SHORT' || code === 'PASSWORD_TOO_LONG') {
-				return { ok: false, failure: 'weak_password' };
-			}
-			throw err;
-		}
-
-		// Mark the invitation consumed in the same logical operation.
-		// A race between two accept attempts would double-create the
-		// user; we rely on Better Auth's email uniqueness to catch
-		// the second `createUser` call.
-		await env.DB.prepare(
-			'UPDATE auth_invitation SET consumed_at = ? WHERE id = ? AND consumed_at IS NULL',
-		)
-			.bind(now, row.id)
-			.run();
-
-		return { ok: true, user: createdUser };
-	});
+	.handler(async ({ data }) => acceptInvitationImpl(data));
 
 async function sha256Hex(input: string): Promise<string> {
 	const bytes = new TextEncoder().encode(input);
@@ -141,18 +152,22 @@ export interface InvitationProbe {
 	consumed?: boolean;
 }
 
+export async function probeInvitationImpl(
+	data: z.infer<typeof ProbeInvitationInput>,
+): Promise<InvitationProbe> {
+	const tokenHash = await sha256Hex(data.token);
+	const row = await env.DB.prepare(
+		'SELECT email, expires_at, consumed_at FROM auth_invitation WHERE token_hash = ? LIMIT 1',
+	)
+		.bind(tokenHash)
+		.first<{ email: string; expires_at: number; consumed_at: number | null }>();
+	if (!row) return { found: false };
+	const now = Date.now();
+	if (row.consumed_at !== null) return { found: true, email: row.email, consumed: true };
+	if (row.expires_at <= now) return { found: true, email: row.email, expired: true };
+	return { found: true, email: row.email };
+}
+
 export const probeInvitation = createServerFn({ method: 'GET' })
 	.validator(ProbeInvitationInput)
-	.handler(async ({ data }): Promise<InvitationProbe> => {
-		const tokenHash = await sha256Hex(data.token);
-		const row = await env.DB.prepare(
-			'SELECT email, expires_at, consumed_at FROM auth_invitation WHERE token_hash = ? LIMIT 1',
-		)
-			.bind(tokenHash)
-			.first<{ email: string; expires_at: number; consumed_at: number | null }>();
-		if (!row) return { found: false };
-		const now = Date.now();
-		if (row.consumed_at !== null) return { found: true, email: row.email, consumed: true };
-		if (row.expires_at <= now) return { found: true, email: row.email, expired: true };
-		return { found: true, email: row.email };
-	});
+	.handler(async ({ data }) => probeInvitationImpl(data));

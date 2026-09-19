@@ -27,5 +27,10 @@ export default defineConfig({
 	test: {
 		include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/integration/**/*.{test,spec}.{ts,tsx}'],
 		exclude: ['node_modules', 'dist', 'dist-cloudflare', '.vinxi', '.output', '.wrangler'],
+		// Apply the canonical Better Auth + auth_invitation schema to
+		// the local D1 binding BEFORE any test file is loaded. The
+		// Better Auth module eagerly validates its schema at import
+		// time and caches the verdict — see test/setup/better-auth-schema.ts.
+		setupFiles: ['./test/setup/better-auth-schema.ts'],
 	},
 });

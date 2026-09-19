@@ -48,7 +48,9 @@ API key permission shape, rate-limit layering).
 - **Open sign-up is disabled** via `emailAndPassword.disableSignUp: true`.
   Better Auth returns `EMAIL_PASSWORD_SIGN_UP_DISABLED` (400) on any
   public `POST /sign-up/email` request. User creation only happens
-  through the admin invitation accept flow (§4).
+  through the admin invitation accept flow (§4), which calls
+  `auth.api.createUser` directly — the public HTTP `/sign-up/email`
+  endpoint is never reachable.
 
 ### 2. Storage is project-owned D1
 
@@ -110,11 +112,23 @@ Acceptance flow:
    - constant-time compares the SHA-256 of the supplied token against
      `auth_invitation.token_hash`,
    - refuses expired or consumed rows,
-   - calls `auth.api.createUser({ body: { email, name, password } },
-     { headers: <admin session headers> })` to bypass the
-     `disableSignUp` block (admin endpoint is independent),
+   - calls `auth.api.createUser({ body: { email, name, password } })`
+     **without headers** to provision the user. Direct API calls
+     (`auth.api.*`) bypass the HTTP `adminMiddleware`, so no
+     short-lived admin session / service-role token is required —
+     the same pattern the Better Auth `create-admin` CLI uses
+     (`packages/cli/src/commands/create-admin.ts`). The
+     `disableSignUp` block only gates the public HTTP
+     `/sign-up/email` endpoint, not the admin-plugin direct API.
    - marks `auth_invitation.consumed_at`,
-   - returns the new session so the invitee is signed in.
+   - returns `{ ok: true, user }`.
+5. The client then POSTs the same email + password to
+   `/api/v1/auth/sign-in/email` (Better Auth's canonical sign-in
+   endpoint) to mint a session cookie. Setting the cookie through
+   the HTTP endpoint is cleaner than threading `Set-Cookie` back
+   through the createServerFn RPC boundary. The AcceptForm
+   (`src/admin/invitations/accept.tsx`) chains these two calls
+   and redirects to `/admin` on success.
 
 Expiry is 7 days (project policy, not Better Auth's 48h default).
 
@@ -185,11 +199,17 @@ production.
 const auth = betterAuth({
   database: env.DB,
   secret: env.BETTER_AUTH_SECRET,
+  // baseURL is optional: Better Auth 1.5+ infers it from the
+  // incoming request when unset. Operators who want strict
+  // cross-origin / cookie-domain behaviour set
+  // `BETTER_AUTH_URL` per environment (see Risks §5).
   baseURL: env.BETTER_AUTH_URL,
+  basePath: '/api/v1/auth',
   emailAndPassword: {
     enabled: true,
     disableSignUp: true,
-    autoSignIn: false, // invitation accept flow signs in explicitly
+    autoSignIn: false, // invitation accept signs in via a separate
+                       // /sign-in/email POST, not from createUser
   },
   session: {
     expiresIn: 60 * 60 * 24 * 30,
@@ -200,19 +220,20 @@ const auth = betterAuth({
     admin(),
     apiKey({
       defaultPrefix: 'mk_',
-      permissions: { /* resource list, validated at create */ },
-      rateLimit: { enabled: true, timeWindow: 60_000, max: 60 },
+      rateLimit: { enabled: true, timeWindow: 60_000, maxRequests: 60 },
     }),
   ],
   sendEmail: async ({ to, subject, body }) => {
     console.log('[email]', { to, subject, body });
   },
+  trustedOrigins: env.BETTER_AUTH_URL ? [env.BETTER_AUTH_URL] : [],
 });
 ```
 
 `autoSignIn: false` means invitation accept does not rely on the
-sign-up flow (which is disabled); the accept server function signs
-the user in explicitly after `auth.api.createUser` succeeds.
+sign-up flow (which is disabled); the accept server function
+returns the new user and the client performs a separate sign-in
+(§4 step 5).
 
 ## Validation
 
@@ -243,10 +264,12 @@ the user in explicitly after `auth.api.createUser` succeeds.
 
 - Two npm packages to track (`better-auth`, `@better-auth/api-key`)
   in lockstep.
-- Service-role pattern for invitation accept (passing admin session
-  headers to `auth.api.createUser`) couples the accept flow to the
-  admin plugin's auth contract — Better Auth is the source of truth
-  for who counts as admin.
+- The invitation accept flow chains a `createServerFn` (D1 writes
+  for `auth_invitation.consumed_at` + `auth.api.createUser`) with a
+  client-side `POST /api/v1/auth/sign-in/email`. The two-step
+  surface exists because threading the session `Set-Cookie` back
+  through `createServerFn`'s RPC boundary is fragile; the
+  alternative is documented in `src/admin/invitations/accept.ts`.
 - Custom `auth_invitation` table is project-owned and must be
   maintained alongside Better Auth's own migrations.
 - `disableSignUp` and `autoSignIn: false` are explicit configuration
@@ -254,13 +277,15 @@ the user in explicitly after `auth.api.createUser` succeeds.
 
 ## Risks
 
-1. **Service-role pattern headers shape**: `auth.api.createUser`
-   requires admin session headers even from a server function that
-   itself has no logged-in user. The accept flow must mint a
-   short-lived admin context (an internal service token) or invoke
-   `auth.api.createUser` with the calling admin's headers. The
-   implementation choice is recorded in Ticket A and re-verified at
-   integration time.
+1. **Direct API bypass of adminMiddleware**: `auth.api.createUser`
+   inside the accept flow does not pass headers and therefore runs
+   without an admin session in front of it. The flow is gated by
+   the invitation token check + D1 row lifecycle instead. This is
+   the same pattern the Better Auth `create-admin` CLI uses, so it
+   is the project-accepted contract, but it is worth re-verifying
+   on every Better Auth upgrade (the admin plugin's middleware
+   gates the HTTP route, not the direct API — confirm in release
+   notes when upgrading).
 2. **Better Auth D1 direct binding**: confirmed supported in 1.5+.
    Verified at install time during Ticket A.
 3. **`@better-auth/api-key` package name**: separate package, not
@@ -269,6 +294,15 @@ the user in explicitly after `auth.api.createUser` succeeds.
    Auth CLI must agree on the same D1 database. The `db:migrate:*`
    scripts and the CLI invocation use the same `wrangler.jsonc`
    binding, eliminating drift.
+5. **`baseURL` inference**: Better Auth 1.5+ infers `baseURL` from
+   the incoming request when not configured. The project pins
+   `baseURL` to `env.BETTER_AUTH_URL` when the operator sets it;
+   when unset, inference is relied on. Inference is "best-effort"
+   and does not validate against `trustedOrigins` for cross-origin
+   redirects. Operators who want strict cross-origin behaviour set
+   `BETTER_AUTH_URL` per environment — documented in `wrangler.jsonc`'s
+   top-level comment and in `src/cloudflare/auth/better-auth.ts`'s
+   header comment.
 
 ## Re-evaluation triggers
 

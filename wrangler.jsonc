@@ -18,8 +18,11 @@
  *   - local dev:    .dev.vars (loaded by `wrangler dev`)
  *   - remote apply: `wrangler deploy --var BETTER_AUTH_URL=https://...`
  *   - multi-env:    `env.production.vars` / `env.staging.vars` blocks
- * Better Auth's own validation raises at first request if `baseURL`
- * is missing. Documented in ADR-0009 §8.
+ * Better Auth 1.5+ infers `baseURL` from the incoming request when
+ * unset; the project relies on inference for local development and
+ * expects operators to set `BETTER_AUTH_URL` for production to
+ * pin the cookie domain + trusted origins. Documented in
+ * ADR-0009 §8 and Risks §5.
  *
  * Run `pnpm run cf-typegen` after editing bindings so
  * `worker-configuration.d.ts` stays in sync.

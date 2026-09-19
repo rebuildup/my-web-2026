@@ -5,51 +5,21 @@ import { env } from 'cloudflare:test';
  * Integration tests for the invitation row lifecycle.
  *
  * These tests focus on the D1 schema and the operations that read /
- * write `auth_invitation` rows. They do NOT exercise the
- * `createServerFn` wrappers (TanStack Start server functions need
- * the runtime AsyncLocalStorage context — that's covered by the
- * HTTP / SSR smoke tests in the manual validation steps in the
- * ticket description).
+ * write `auth_invitation` rows. The actual server-function flow
+ * (good / bad / expired / consumed → user created / session set)
+ * is covered by `accept-flow.test.ts` in this directory.
  *
- * The migrations in `migrations/0001_better_auth.sql` are the
- * canonical schema; we apply the same SQL inline so the suite is
- * self-contained for local runs that haven't yet applied the
- * canonical migrations.
+ * Schema setup: `test/setup/better-auth-schema.ts` (registered via
+ * `setupFiles` in `vitest.config.ts`) applies the canonical schema
+ * once per test file. Better Auth eagerly validates its schema at
+ * module load and caches the verdict; resetting the schema between
+ * tests would force a stale verdict. We instead truncate row data
+ * (DELETE FROM) between tests.
  */
 
-const MIGRATION_SQL = `
-CREATE TABLE IF NOT EXISTS user (
-  id TEXT PRIMARY KEY,
-  name TEXT NOT NULL,
-  email TEXT NOT NULL UNIQUE,
-  emailVerified INTEGER NOT NULL DEFAULT 0,
-  image TEXT,
-  createdAt INTEGER NOT NULL,
-  updatedAt INTEGER NOT NULL,
-  role TEXT,
-  banned INTEGER NOT NULL DEFAULT 0,
-  banReason TEXT,
-  banExpires INTEGER
-);
-CREATE TABLE IF NOT EXISTS auth_invitation (
-  id TEXT PRIMARY KEY,
-  email TEXT NOT NULL,
-  token_hash TEXT NOT NULL,
-  invited_by TEXT NOT NULL,
-  expires_at INTEGER NOT NULL,
-  consumed_at INTEGER,
-  created_at INTEGER NOT NULL
-);
-`;
-
-async function resetD1(): Promise<void> {
-	await env.DB.prepare('DROP TABLE IF EXISTS auth_invitation').run();
-	await env.DB.prepare('DROP TABLE IF EXISTS user').run();
-	for (const stmt of MIGRATION_SQL.split(';')
-		.map((s) => s.trim())
-		.filter(Boolean)) {
-		await env.DB.prepare(stmt).run();
-	}
+async function clearRows(): Promise<void> {
+	await env.DB.prepare('DELETE FROM auth_invitation').run();
+	await env.DB.prepare('DELETE FROM user').run();
 }
 
 async function sha256Hex(input: string): Promise<string> {
@@ -60,10 +30,10 @@ async function sha256Hex(input: string): Promise<string> {
 
 describe('auth_invitation schema + operations', () => {
 	beforeEach(async () => {
-		await resetD1();
+		await clearRows();
 	});
 	afterEach(async () => {
-		await resetD1();
+		await clearRows();
 	});
 
 	it('stores token hashes, never plaintext', async () => {

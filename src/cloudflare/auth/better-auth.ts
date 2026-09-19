@@ -48,9 +48,12 @@ import { betterAuth } from 'better-auth';
  * `vars` — production must not silently inherit a localhost
  * default. Local development sets it in `.dev.vars`; production
  * supplies it via `wrangler deploy --var BETTER_AUTH_URL=...` or a
- * per-env `env.production.vars` block. Better Auth's own
- * validation raises at first sign-in request if `baseURL` is
- * missing, which is the operator-facing signal.
+ * per-env `env.production.vars` block.
+ *
+ * Better Auth 1.5+ infers `baseURL` from the incoming request when
+ * unset; the project relies on inference for local development and
+ * expects operators to set `BETTER_AUTH_URL` for production to pin
+ * the cookie domain + `trustedOrigins`. See ADR-0009 §8 / Risks §5.
  *
  * The runtime contract is `string | undefined`. The typegen'd `Env`
  * does not declare it because we removed the fallback from
@@ -59,6 +62,17 @@ import { betterAuth } from 'better-auth';
  */
 const betterAuthUrl = (env as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
 
+/**
+ * Disable Better Auth's eager `checkSchema()` so the auth instance
+ * remains usable across workerd test isolates whose D1 binding
+ * may be empty when the auth module is first imported. The check
+ * is fired at module load and caches its verdict per adapter
+ * identity — a stale verdict is rethrown on every subsequent
+ * `auth.api.*` call. The canonical D1 schema is owned by
+ * `migrations/0001_better_auth.sql` and applied explicitly via
+ * `pnpm run db:migrate:*`; Better Auth's runtime check is a
+ * development aid and is not the project's source of truth.
+ */
 export const auth = betterAuth({
 	database: env.DB,
 	secret: env.BETTER_AUTH_SECRET,
@@ -95,6 +109,7 @@ export const auth = betterAuth({
 		console.log('[auth.email]', payload);
 	},
 	trustedOrigins: betterAuthUrl ? [betterAuthUrl] : [],
+	advanced: { database: { validateSchema: false } },
 });
 
 export type Auth = typeof auth;

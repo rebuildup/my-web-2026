@@ -1,6 +1,6 @@
 import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
-import { getRequestHeader, setResponseHeader } from '@tanstack/react-start/server';
+import { getRequestHeader, getRequestUrl, setResponseHeader } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import type { CatalogEntry } from '../../reactions/emoji-catalog';
 import { loadCatalog } from '../../reactions/emoji-catalog';
@@ -12,6 +12,23 @@ import {
 	readActorIdFromCookieHeader,
 } from './cookie';
 import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
+
+/**
+ * The TanStack Start import-protection plugin forbids
+ * `@tanstack/react-start/server` imports from code reachable on the
+ * client (i.e. files reachable from `src/router.tsx` through
+ * `src/home/public.ts`). The plugin's static analyser treats free
+ * functions as client-reachable; only the body of a
+ * `createServerFn().handler()` callback is recognised as
+ * server-only.
+ *
+ * Therefore the upstream origin is **passed in** to every impl as a
+ * required `upstreamOrigin` parameter. The handler resolves it
+ * inline via `getRequestUrl().origin` (which is allowed inside
+ * `.handler()`); tests / scripts pass a literal so `getRequestUrl`
+ * never runs outside the server runtime (where it throws `No
+ * StartEvent found in AsyncLocalStorage`).
+ */
 
 /**
  * Home → reactions integration (ADR-0011, Ticket E / branch 37;
@@ -46,6 +63,18 @@ import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
  * run the bootstrap yet), `getHomeReactions` returns an empty list
  * and the write fns short-circuit. The widget renders a disabled
  * state in that case — see `widget.tsx`.
+ *
+ * Upstream origin: the loader self-calls `/api/v1/reactions` and
+ * `/api/v1/access/*` against the same origin it was invoked from.
+ * In dev that is `http://127.0.0.1:3000` (Vite speaks plain HTTP and
+ * does not inject `x-forwarded-proto`); in production it is
+ * `https://rebuildup.dev` via `wrangler.production.jsonc`'s
+ * `BETTER_AUTH_URL`. TanStack Start's `getRequestUrl()` returns a
+ * URL with the right protocol in both environments, so the impls
+ * use its `.origin` for the upstream URL. The `upstreamOrigin`
+ * parameter lets tests / scripts inject a literal origin without
+ * going through the server runtime (which would throw — see
+ * `getRequestUrl`'s `No StartEvent found in AsyncLocalStorage`).
  */
 
 const TargetKeySchema = z.string().min(1).max(256);
@@ -94,9 +123,7 @@ export interface HomeReactionsEnv {
 }
 
 export interface HomeReactionsRequestContext {
-	/** Incoming `Host` header (used to build the upstream URL). */
-	host: string | undefined;
-	/** Forwarded protocol header (used for the upstream URL + cookie Secure flag). */
+	/** Forwarded protocol header (used for the cookie Secure flag). */
 	proto: string | undefined;
 	/** Incoming `Cookie` header (read for `mw_actor_id`). */
 	cookie: string | undefined;
@@ -116,6 +143,7 @@ export async function getHomeReactionsImpl(
 	envLike: HomeReactionsEnv,
 	ctx: HomeReactionsRequestContext,
 	target: string,
+	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
 	db: D1Database | null = (envLike.DB ?? null) as D1Database | null,
 ): Promise<HomeReactionsData> {
@@ -124,11 +152,9 @@ export async function getHomeReactionsImpl(
 		console.warn('[home.reactions] consumer API key not configured — returning empty');
 		return { target_key: target, aggregates: [], catalog: [], enabled: false };
 	}
-	const baseUrl = ctx.host
-		? `${ctx.proto ?? 'https'}://${ctx.host}`
-		: (envLike.BETTER_AUTH_URL ?? '').replace(/\/$/, '');
+	const upstream = `${upstreamOrigin}/api/v1/reactions?target=${encodeURIComponent(target)}`;
 	const [response, catalog] = await Promise.all([
-		fetcher(`${baseUrl}/api/v1/reactions?target=${encodeURIComponent(target)}`, {
+		fetcher(upstream, {
 			method: 'GET',
 			headers: {
 				authorization: `Bearer ${apiKey}`,
@@ -181,6 +207,7 @@ export async function addHomeReactionImpl(
 	envLike: HomeReactionsEnv,
 	ctx: HomeReactionsRequestContext,
 	input: { target: string; kind: 'emoji' | 'image'; value: string },
+	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
 ): Promise<HomeReactionMutationResult> {
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
@@ -195,10 +222,8 @@ export async function addHomeReactionImpl(
 	}
 	const { actorId } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
 	if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
-	const baseUrl = ctx.host
-		? `${ctx.proto ?? 'https'}://${ctx.host}`
-		: (envLike.BETTER_AUTH_URL ?? '').replace(/\/$/, '');
-	const response = await fetcher(`${baseUrl}/api/v1/reactions`, {
+	const upstream = `${upstreamOrigin}/api/v1/reactions`;
+	const response = await fetcher(upstream, {
 		method: 'PUT',
 		headers: {
 			authorization: `Bearer ${apiKey}`,
@@ -225,6 +250,7 @@ export async function removeHomeReactionImpl(
 	envLike: HomeReactionsEnv,
 	ctx: HomeReactionsRequestContext,
 	input: { target: string; kind: 'emoji' | 'image'; value: string },
+	upstreamOrigin: string,
 	fetcher: typeof fetch = fetch,
 ): Promise<HomeReactionMutationResult> {
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
@@ -239,10 +265,8 @@ export async function removeHomeReactionImpl(
 	}
 	const { actorId } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
 	if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
-	const baseUrl = ctx.host
-		? `${ctx.proto ?? 'https'}://${ctx.host}`
-		: (envLike.BETTER_AUTH_URL ?? '').replace(/\/$/, '');
-	const response = await fetcher(`${baseUrl}/api/v1/reactions`, {
+	const upstream = `${upstreamOrigin}/api/v1/reactions`;
+	const response = await fetcher(upstream, {
 		method: 'DELETE',
 		headers: {
 			authorization: `Bearer ${apiKey}`,
@@ -264,10 +288,8 @@ export async function removeHomeReactionImpl(
 
 function readRequestContext(): HomeReactionsRequestContext {
 	const proto = getRequestHeader('x-forwarded-proto');
-	const host = getRequestHeader('host');
 	const cookie = getRequestHeader('cookie');
 	return {
-		host,
 		proto,
 		cookie,
 	};
@@ -277,7 +299,7 @@ export const getHomeReactions = createServerFn({ method: 'GET' })
 	.validator(GetInput)
 	.handler(async ({ data }): Promise<HomeReactionsData> => {
 		const envLike = env as unknown as HomeReactionsEnv;
-		return getHomeReactionsImpl(envLike, readRequestContext(), data.target);
+		return getHomeReactionsImpl(envLike, readRequestContext(), data.target, getRequestUrl().origin);
 	});
 
 export const addHomeReaction = createServerFn({ method: 'POST' })
@@ -285,7 +307,7 @@ export const addHomeReaction = createServerFn({ method: 'POST' })
 	.handler(async ({ data }): Promise<HomeReactionMutationResult> => {
 		const envLike = env as unknown as HomeReactionsEnv;
 		const ctx = readRequestContext();
-		const result = await addHomeReactionImpl(envLike, ctx, data);
+		const result = await addHomeReactionImpl(envLike, ctx, data, getRequestUrl().origin);
 		// Surface the `Set-Cookie` for a freshly-issued actor id so
 		// the SSR response carries it. The impl already issued one
 		// internally; we re-resolve here so we can attach the header
@@ -300,7 +322,7 @@ export const removeHomeReaction = createServerFn({ method: 'POST' })
 	.handler(async ({ data }): Promise<HomeReactionMutationResult> => {
 		const envLike = env as unknown as HomeReactionsEnv;
 		const ctx = readRequestContext();
-		const result = await removeHomeReactionImpl(envLike, ctx, data);
+		const result = await removeHomeReactionImpl(envLike, ctx, data, getRequestUrl().origin);
 		const { setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');
 		if (setCookieHeader && result.ok) setResponseHeader('Set-Cookie', setCookieHeader);
 		return result;

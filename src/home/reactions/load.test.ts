@@ -207,8 +207,10 @@ describe('home reactions — server-fn impls', () => {
 	it('getHomeReactionsImpl returns enabled=false when the consumer API key is not configured', async () => {
 		const result = await getHomeReactionsImpl(
 			{},
-			{ host: 'example.com', proto: 'https', cookie: undefined },
+			{ proto: 'https', cookie: undefined },
 			HOME_REACTIONS_TARGET,
+			'https://example.com',
+			selfFetch,
 		);
 		expect(result).toEqual({
 			target_key: HOME_REACTIONS_TARGET,
@@ -228,7 +230,8 @@ describe('home reactions — server-fn impls', () => {
 			MY_WEB_2026_REACTIONS_TARGET: HOME_REACTIONS_TARGET,
 			DB: env.DB,
 		};
-		const ctx = { host: 'example.com', proto: 'https', cookie: undefined };
+		const ctx = { proto: 'https', cookie: undefined };
+		const upstreamOrigin = 'https://example.com';
 
 		// 1. add 👍 (slug: thumbs_up) — first time, expect created: true
 		const add = await addHomeReactionImpl(
@@ -239,13 +242,20 @@ describe('home reactions — server-fn impls', () => {
 				kind: 'emoji',
 				value: 'thumbs_up',
 			},
+			upstreamOrigin,
 			selfFetch,
 		);
 		expect(add.ok).toBe(true);
 		expect(add.created).toBe(true);
 
 		// 2. read aggregates via the upstream endpoint
-		const aggregates = await getHomeReactionsImpl(envLike, ctx, HOME_REACTIONS_TARGET, selfFetch);
+		const aggregates = await getHomeReactionsImpl(
+			envLike,
+			ctx,
+			HOME_REACTIONS_TARGET,
+			upstreamOrigin,
+			selfFetch,
+		);
 		expect(aggregates.enabled).toBe(true);
 		expect(aggregates.aggregates).toHaveLength(1);
 		expect(aggregates.aggregates[0]).toEqual({ kind: 'emoji', value: 'thumbs_up', count: 1 });
@@ -264,7 +274,6 @@ describe('home reactions — server-fn impls', () => {
 			.first<{ actor_id: string }>();
 		if (!rowBefore) throw new Error('expected the first reaction row to exist');
 		const ctxWithActor = {
-			host: 'example.com',
 			proto: 'https',
 			cookie: `mw_actor_id=${rowBefore.actor_id}`,
 		};
@@ -276,13 +285,20 @@ describe('home reactions — server-fn impls', () => {
 				kind: 'emoji',
 				value: 'thumbs_up',
 			},
+			upstreamOrigin,
 			selfFetch,
 		);
 		expect(remove.ok).toBe(true);
 		expect(remove.deleted).toBe(true);
 
 		// 4. aggregates empty again
-		const after = await getHomeReactionsImpl(envLike, ctx, HOME_REACTIONS_TARGET, selfFetch);
+		const after = await getHomeReactionsImpl(
+			envLike,
+			ctx,
+			HOME_REACTIONS_TARGET,
+			upstreamOrigin,
+			selfFetch,
+		);
 		expect(after.aggregates).toHaveLength(0);
 	});
 
@@ -296,8 +312,9 @@ describe('home reactions — server-fn impls', () => {
 			MY_WEB_2026_REACTIONS_TARGET: HOME_REACTIONS_TARGET,
 			DB: env.DB,
 		};
+		const upstreamOrigin = 'https://example.com';
 		// First call: no cookie → server issues one
-		const ctx1 = { host: 'example.com', proto: 'https', cookie: undefined };
+		const ctx1 = { proto: 'https', cookie: undefined };
 		const first = await addHomeReactionImpl(
 			envLike,
 			ctx1,
@@ -306,6 +323,7 @@ describe('home reactions — server-fn impls', () => {
 				kind: 'emoji',
 				value: 'tada',
 			},
+			upstreamOrigin,
 			selfFetch,
 		);
 		expect(first.ok).toBe(true);
@@ -324,7 +342,7 @@ describe('home reactions — server-fn impls', () => {
 		const actorId = row.actor_id;
 
 		// Second call: same actor via cookie → PUT is idempotent
-		const ctx2 = { host: 'example.com', proto: 'https', cookie: `mw_actor_id=${actorId}` };
+		const ctx2 = { proto: 'https', cookie: `mw_actor_id=${actorId}` };
 		const second = await addHomeReactionImpl(
 			envLike,
 			ctx2,
@@ -333,13 +351,20 @@ describe('home reactions — server-fn impls', () => {
 				kind: 'emoji',
 				value: 'tada',
 			},
+			upstreamOrigin,
 			selfFetch,
 		);
 		expect(second.ok).toBe(true);
 		expect(second.created).toBe(false);
 
 		// Aggregate still 1, not 2
-		const aggregates = await getHomeReactionsImpl(envLike, ctx1, HOME_REACTIONS_TARGET, selfFetch);
+		const aggregates = await getHomeReactionsImpl(
+			envLike,
+			ctx1,
+			HOME_REACTIONS_TARGET,
+			upstreamOrigin,
+			selfFetch,
+		);
 		expect(aggregates.aggregates).toEqual([{ kind: 'emoji', value: 'tada', count: 1 }]);
 	});
 
@@ -352,8 +377,9 @@ describe('home reactions — server-fn impls', () => {
 		);
 		const result = await getHomeReactionsImpl(
 			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
-			{ host: 'example.com', proto: 'https', cookie: undefined },
+			{ proto: 'https', cookie: undefined },
 			'home-page',
+			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
 		expect(result.enabled).toBe(true);
@@ -365,8 +391,9 @@ describe('home reactions — server-fn impls', () => {
 		const fetcher = vi.fn();
 		const result = await addHomeReactionImpl(
 			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
-			{ host: 'example.com', proto: 'https', cookie: undefined },
+			{ proto: 'https', cookie: undefined },
 			{ target: 'home-page', kind: 'emoji', value: 'unknown_slug' },
+			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
 		expect(result).toEqual({ ok: false, reason: 'invalid_body' });
@@ -377,8 +404,9 @@ describe('home reactions — server-fn impls', () => {
 		const fetcher = vi.fn();
 		const result = await removeHomeReactionImpl(
 			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
-			{ host: 'example.com', proto: 'https', cookie: undefined },
+			{ proto: 'https', cookie: undefined },
 			{ target: 'home-page', kind: 'emoji', value: 'with-dash' },
+			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
 		expect(result).toEqual({ ok: false, reason: 'invalid_body' });
@@ -396,8 +424,9 @@ describe('home reactions — server-fn impls', () => {
 				MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x',
 				DB: env.DB,
 			},
-			{ host: 'example.com', proto: 'https', cookie: undefined },
+			{ proto: 'https', cookie: undefined },
 			{ target: 'home-page', kind: 'emoji', value: 'thumbs_up' },
+			'https://example.com',
 			fetcher as unknown as typeof fetch,
 		);
 		expect(result).toEqual({ ok: false, reason: 'invalid_body' });

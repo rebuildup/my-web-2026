@@ -3,6 +3,8 @@ import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
+import { Container } from '../editorial/primitives/Container';
+import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { Footer } from './footer';
 import { Hero } from './hero';
 import type { HomeReactionsData } from './reactions/load';
@@ -30,12 +32,18 @@ export interface HomePageProps {
  * Individual sections keep their own change reasons below src/home/.
  *
  * Reading order (Issue #31 spread):
- *   - Hero             (page entry)
- *   - 01 — Capabilities (planned / live cards)
- *   - 02 — System status (binding probes)
+ *   - Hero             (page entry; own 4/8 grid)
+ *   - 01 — Capabilities (planned / live cards; spread SectionHeading)
+ *   - 02 — System status (binding probes; spread SectionHeading)
  *   - 03 — Reactions   (visitor emoji reactions against home-page)
- *   - 04 — Access counter (page-view counter; 0.4.0 follow-up)
+ *   - 04 — Access counter (page-view counter; spread SectionHeading
+ *                            + Dashboard KPI tile in 8/12 children slot)
  *   - Footer            (edition / identity / index / privacy notice)
+ *
+ * Branch 43 redesign: every body section now participates in the
+ * shared editorial coordinate system (`<Container>` →
+ * `<SectionHeading variant="spread">`). Reactions and counter no
+ * longer roll their own inline eyebrow / heading / padding.
  */
 export function HomePage({ data }: HomePageProps) {
 	return (
@@ -74,61 +82,36 @@ export function HomePage({ data }: HomePageProps) {
 						paddingBlock: { base: '16', lg: '24' },
 					})}
 				>
-					<div
-						className={css({
-							display: 'flex',
-							flexDirection: 'column',
-						})}
-					>
-						<span
-							className={css({
-								fontFamily: 'mono',
-								fontSize: 'sm',
-								color: 'text.muted',
-								letterSpacing: '0.04em',
-								textTransform: 'uppercase',
-							})}
-						>
-							03 — Reactions
-						</span>
-						<h2
+					<Container>
+						<SectionHeading
 							id="reactions-heading"
-							className={css({
-								margin: '0',
-								marginBlockStart: '2',
-								fontFamily: 'sans',
-								fontSize: { base: 'xl', lg: '2xl' },
-								fontWeight: '700',
-								lineHeight: '1.15',
-								letterSpacing: '-0.02em',
-								color: 'text.default',
-							})}
-						>
-							みんなの反応 / Reactions
-						</h2>
-						<p
-							className={css({
-								margin: '0',
-								marginBlockStart: '3',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								lineHeight: '1.6',
-								color: 'text.muted',
-								maxWidth: '640px',
-							})}
-						>
-							このページへのリアクションを送ることができます (匿名・1 ブラウザ 1 票)。
-						</p>
-						<div
-							className={css({
-								marginBlockStart: '6',
-							})}
+							eyebrow="03 — Reactions"
+							title="みんなの反応 / Reactions"
+							description="このページへのリアクションを送ることができます (匿名・1 ブラウザ 1 票)。"
+							variant="spread"
 						>
 							<ReactionsWidget data={data.reactions} />
-						</div>
-					</div>
+						</SectionHeading>
+					</Container>
 				</section>
-				<CounterTile data={data.counter} />
+				<section
+					aria-labelledby="access-counter-heading"
+					className={css({
+						paddingBlock: { base: '16', lg: '24' },
+					})}
+				>
+					<Container>
+						<SectionHeading
+							id="access-counter-heading"
+							eyebrow="04 — Access counter"
+							title="ページビュー / Page views"
+							description="各リクエストは短時間ウィンドウ内で重複加算されません。"
+							variant="spread"
+						>
+							<CounterTile data={data.counter} />
+						</SectionHeading>
+					</Container>
+				</section>
 			</main>
 			<Footer />
 		</>

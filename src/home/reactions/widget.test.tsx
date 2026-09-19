@@ -5,14 +5,14 @@ import type { HomeReactionsData } from './load';
 import { ReactionsWidget } from './widget';
 
 /**
- * ReactionsWidget smoke tests — server-render the disabled state and
- * the populated state. Click-handler assertions need a DOM environment
- * and are out of scope for the SSR-only test set; the impl tests in
- * `load.test.ts` cover the mutation paths.
+ * ReactionsWidget smoke tests — server-render the disabled state, the
+ * populated state, and the picker shape. Click-handler assertions need
+ * a DOM environment and are out of scope for the SSR-only test set;
+ * the impl tests in `load.test.ts` cover the mutation paths.
  *
- * The catalog is now DB-backed (Ticket G, branch 39), so each test
- * constructs its own snapshot — there is no longer a single shared
- * `EMOJI_CATALOG` constant to import.
+ * Branch 43 — picker rewrite. The picker is now a search input + a
+ * grid of catalog cells. Tests assert the new ARIA shape and the
+ * catalog rendering, not the pre-branch-43 free-text form.
  */
 
 const SEEDED_CATALOG: readonly CatalogEntry[] = [
@@ -51,7 +51,7 @@ describe('ReactionsWidget', () => {
 		expect(html).toContain('17');
 		expect(html).toContain('🎉');
 		expect(html).toContain('9');
-		// Slug is the opaque stored value — surfaced via title attribute
+		// Slug is the opaque stored value — surfaced via title attribute.
 		expect(html).toContain(':thumbs_up:');
 		expect(html).toContain(':tada:');
 	});
@@ -70,7 +70,7 @@ describe('ReactionsWidget', () => {
 		expect(html).toContain('3');
 	});
 
-	it('renders the picker chip row with the catalog glyphs', () => {
+	it('renders the picker grid with every catalog entry surfaced', () => {
 		const data: HomeReactionsData = {
 			target_key: 'home-page',
 			aggregates: [],
@@ -79,10 +79,39 @@ describe('ReactionsWidget', () => {
 		};
 		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);
 		expect(html).toContain('aria-label="Add a reaction"');
-		// Every catalog slug appears in the picker (the title attr is the slug in `:slug:` form).
-		expect(html).toContain('thumbs_up');
-		expect(html).toContain('rocket');
-		expect(html).toContain('bulb');
+		// Every catalog entry is rendered as a button with an aria-label
+		// of the form "Add :<slug>: reaction".
+		expect(html).toContain('aria-label="Add :thumbs_up: reaction"');
+		expect(html).toContain('aria-label="Add :rocket: reaction"');
+		expect(html).toContain('aria-label="Add :bulb: reaction"');
+		// Disabled catalog rows do not render in the picker.
+		const catalogWithDisabled: readonly CatalogEntry[] = [
+			{ slug: 'thumbs_up', codepoint: '👍', enabled: true },
+			{ slug: 'hidden', codepoint: '🙈', enabled: false },
+		];
+		const html2 = renderToStaticMarkup(
+			<ReactionsWidget
+				data={{
+					target_key: 'home-page',
+					aggregates: [],
+					catalog: catalogWithDisabled,
+					enabled: true,
+				}}
+			/>,
+		);
+		expect(html2).not.toContain('aria-label="Add :hidden: reaction"');
+	});
+
+	it('renders a search input that filters the picker', () => {
+		const data: HomeReactionsData = {
+			target_key: 'home-page',
+			aggregates: [],
+			catalog: SEEDED_CATALOG,
+			enabled: true,
+		};
+		const html = renderToStaticMarkup(<ReactionsWidget data={data} />);
+		expect(html).toContain('id="home-reactions-picker-search"');
+		expect(html).toContain('type="search"');
 	});
 
 	it('renders the empty-state copy when enabled but no aggregates', () => {

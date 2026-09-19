@@ -1,22 +1,24 @@
 /**
  * Reaction emoji slug catalog — home-side facade over the DB-backed
- * catalog (`src/http/reactions/emoji-catalog.ts`).
+ * catalog (`src/reactions/emoji-catalog.ts`).
  *
  * Ticket E (branch 37) shipped a 16-slug hard-coded catalog here.
  * Ticket G (branch 39) moves the source of truth into D1
  * (`reaction_emoji_catalog`) so admins can add / rebind / disable
- * slugs without a code change. This file now re-exports the
- * **contract** (slug grammar, helpers, slug→glyph resolution) from
- * the canonical `http/reactions/emoji-catalog.ts` module and keeps
- * the same public surface that branch 37's `widget.tsx` /
- * `load.ts` already consume.
+ * slugs without a code change. The catalog obligation sits at the
+ * top-level `src/reactions/` (not under `http/`) because the home
+ * widget and the admin surface co-own it; the HTTP boundary itself
+ * has no use for the catalog. This file remains a thin home-side
+ * facade, re-exporting the contract from the canonical
+ * `reactions/emoji-catalog.ts` module so existing imports from
+ * `./emoji-catalog` resolve unchanged.
  *
  * Differences from branch 37:
  *
  *   - The `validateEmojiSlug` helper now requires a **loaded**
  *     catalog argument because "is this slug in the catalog?" is
  *     no longer a static lookup. Callers must load the catalog via
- *     `getActiveCatalog(db)` first. The shape is still pure (no I/O
+ *     `loadCatalog(db)` first. The shape is still pure (no I/O
  *     inside the validator), which keeps it testable.
  *   - `EMOJI_CATALOG` (the synchronous `Record<slug, glyph>` map)
  *     is replaced by `resolveEmojiSlug(catalog, slug)`. The widget
@@ -34,7 +36,7 @@ import {
 	MAX_EMOJI_SLUG_LEN,
 	resolveCodepoint as resolveCodepointImpl,
 	validateSlug,
-} from '../../http/reactions/emoji-catalog';
+} from '../../reactions/emoji-catalog';
 
 // Re-export the slug grammar so existing imports from
 // `./emoji-catalog` continue to resolve (widget + load.ts both do).

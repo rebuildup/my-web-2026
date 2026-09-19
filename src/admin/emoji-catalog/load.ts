@@ -7,8 +7,8 @@ import {
 	rebindCatalogEntry,
 	removeCatalogEntry,
 	setCatalogEntryEnabled,
-} from '../../http/reactions/emoji-catalog';
-import { validateCodepoint, validateSlug } from '../../http/reactions/slug-validate';
+} from '../../reactions/emoji-catalog';
+import { validateCodepoint, validateSlug } from '../../reactions/slug-validate';
 import { requireAdmin } from '../auth/require-admin';
 
 /**

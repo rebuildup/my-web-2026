@@ -1,39 +1,38 @@
 /**
- * Reaction emoji catalog — **DB-backed source of truth**
- * (Ticket G, branch 39, Sprint 0.3.0-extended).
+ * Reaction emoji catalog — **DB-backed source of truth** (top-level
+ * `reactions/` obligation, Ticket G / branch 39).
  *
- * The reactions API treats `value` as an opaque string ≤16 chars; the
- * home widget stores those values as opaque `:slug:` identifiers
- * (e.g. `:thumbs_up:`) rather than literal emoji codepoints. Ticket E
- * shipped a 16-slug hard-coded catalog (`src/home/reactions/emoji-catalog.ts`)
- * to lock the slug format down before exposing it as a contract. Ticket G
- * promotes the catalog to a D1-backed table — see
- * `migrations/0004_emoji_catalog.sql` — so admins can add / rebind /
- * disable slugs without a code change. The home page reads the
- * catalog at SSR time and renders the active slugs; disabled slugs
- * stay in the table but do not render chips.
+ * Module ownership was promoted from `src/http/reactions/` to the
+ * top-level `src/reactions/` obligation in the architecture-boundary
+ * follow-up (PR #44 review). The catalog is a shared resource between
+ * the `home/` (which renders chips + the picker) and the `admin/`
+ * surface (which manages the rows). The HTTP boundary itself does
+ * not own the catalog — the reactions API treats the request body's
+ * `value` as an opaque ≤16-char string and never reads the catalog
+ * at write time. ADR-0008 §2 calls out that a resource co-owned by
+ * two obligations becomes its own owner; the canonical import path
+ * is `reactions/emoji-catalog` (no `http/` prefix).
+ *
+ * Migrated from Ticket E (branch 37, hard-coded catalog) → Ticket G
+ * (branch 39, D1-backed). Slug contract (`^[a-z][a-z0-9_]*$`,
+ * 1..16 chars — aligned to the reactions API's `MAX_EMOJI_LEN`) is
+ * unchanged for any slug a visitor could actually emit via the
+ * reactions endpoint. The DB row is keyed by `slug`; renames are
+ * not supported and removing a slug does NOT retroactively rewrite
+ * existing reactions — slugs are stable opaque keys.
  *
  * Design choices captured in `docs/adr/ADR-0013-emoji-catalog-db-backed.md`:
  *
- *   - Slug contract (`^[a-z][a-z0-9_]*$`, 1..16 chars — aligned to
- *     the reactions API's `MAX_EMOJI_LEN`) is unchanged for any slug
- *     a visitor could actually emit via the reactions endpoint. The
- *     DB row is keyed by `slug`; renames are not supported and
- *     removing a slug does NOT retroactively rewrite existing
- *     reactions — slugs are stable opaque keys.
  *   - `enabled = 0` hides the chip from the home widget without
  *     touching existing reactions. The reactions API continues to
  *     accept any opaque `value` it has been given (we do not enforce
- *     enabled state at write time — see ADR-0013 §3 for the rationale).
+ *     enabled state at write time — see ADR-0013 §3 for the
+ *     rationale).
  *   - Reads are by `(slug)` PK or full-list; no cache layer is added
  *     in 0.3.0. The home loader primes the in-request catalog once.
- *
- * This module lives under `src/http/` because the catalog is a
- * shared resource — both the home (`src/home/reactions/`) and the
- * admin surface (`src/admin/emoji-catalog/`) consume it. The
- * `home/` layer may read it via `cloudflare:workers` (server-fn SSR)
- * or via the admin server fn; both paths run inside the Worker so
- * the same D1 binding is available.
+ *   - Reads happen at SSR time via `cloudflare:workers` `env.DB`;
+ *     writes happen from admin server-fn wrappers that share the
+ *     same D1 binding (no HTTP boundary crossing).
  */
 
 import { EMOJI_SLUG_REGEX, MAX_EMOJI_SLUG_LEN } from './slug-regex';
@@ -44,7 +43,7 @@ import {
 } from './slug-validate';
 
 // Re-export the slug regex / length / codepoint validator so the
-// single canonical import path is `http/reactions/emoji-catalog`.
+// single canonical import path is `reactions/emoji-catalog`.
 export { EMOJI_SLUG_REGEX, MAX_EMOJI_SLUG_LEN, MAX_CODEPOINT_LEN };
 export { validateCodepointImpl as validateCodepoint, validateSlugImpl as validateSlug };
 

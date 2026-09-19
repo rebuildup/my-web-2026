@@ -68,11 +68,30 @@ export interface AccessCounterRow {
 	last_hit: number;
 }
 
-export interface RecordHitResult {
+/**
+ * Inputs and outputs of `recordHit` (counter.ts). Lives in schema.ts
+ * so the `home/access/load.ts` consumer can `import type` them
+ * without crossing into the implementation owner — see AGENTS.md §3
+ * (`home/access -> http/access-counter (schema types only)`).
+ */
+export interface RecordHitInput {
+	key: string;
+	principal: string;
+	session_id: string;
+	now?: number;
+}
+
+export interface RecordHitOutput {
 	/** Whether the dedup window accepted a fresh (key, principal, session_id) entry. */
 	incremented: boolean;
 	/** Counter value at the time of the call (after any increment). */
 	count: number;
 	first_hit: number;
 	last_hit: number;
+}
+
+export interface GetCountOutput {
+	count: number;
+	first_hit: number | null;
+	last_hit: number | null;
 }

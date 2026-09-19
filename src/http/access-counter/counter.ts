@@ -1,3 +1,4 @@
+import type { GetCountOutput, RecordHitInput, RecordHitOutput } from './schema';
 import { DEDUP_WINDOW_MS } from './schema';
 
 /**
@@ -28,21 +29,12 @@ import { DEDUP_WINDOW_MS } from './schema';
  *
  * The read path (`getCount`) is a plain SELECT — no concurrency
  * hazard.
+ *
+ * Input / output types live in `./schema` so that home-side
+ * consumers can `import type` the result shape without depending on
+ * this implementation file — AGENTS.md §3 keeps `home/access`
+ * type-only over `http/access-counter`.
  */
-
-export interface RecordHitInput {
-	key: string;
-	principal: string;
-	session_id: string;
-	now?: number;
-}
-
-export interface RecordHitOutput {
-	incremented: boolean;
-	count: number;
-	first_hit: number;
-	last_hit: number;
-}
 
 export async function recordHit(db: D1Database, input: RecordHitInput): Promise<RecordHitOutput> {
 	const now = input.now ?? Date.now();
@@ -114,12 +106,6 @@ export async function recordHit(db: D1Database, input: RecordHitInput): Promise<
 		throw new Error(`access counter row missing after increment for key='${input.key}'`);
 	}
 	return { incremented: true, count: row.count, first_hit: row.first_hit, last_hit: row.last_hit };
-}
-
-export interface GetCountOutput {
-	count: number;
-	first_hit: number | null;
-	last_hit: number | null;
 }
 
 export async function getCount(db: D1Database, key: string): Promise<GetCountOutput> {

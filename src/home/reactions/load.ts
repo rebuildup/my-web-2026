@@ -2,8 +2,8 @@ import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeader, setResponseHeader } from '@tanstack/react-start/server';
 import { z } from 'zod';
-import type { CatalogEntry } from '../../http/reactions/emoji-catalog';
-import { loadCatalog } from '../../http/reactions/emoji-catalog';
+import type { CatalogEntry } from '../../reactions/emoji-catalog';
+import { loadCatalog } from '../../reactions/emoji-catalog';
 import type { ReactionAggregate } from '../../http/reactions/schema';
 import {
 	buildActorCookieSetHeader,

@@ -13,7 +13,8 @@ import {
 } from './emoji-catalog';
 
 /**
- * DB-backed emoji catalog tests (Ticket G, branch 39).
+ * DB-backed emoji catalog tests (Ticket G, branch 39, top-level
+ * `reactions/` obligation).
  *
  * Covers:
  *   - DDL applied via `migrations/0004_emoji_catalog.sql`.

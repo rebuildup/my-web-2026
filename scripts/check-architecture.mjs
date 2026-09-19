@@ -15,6 +15,21 @@ const forbiddenOwnerDependencies = new Map([
 	['editorial', new Set(['home', 'cloudflare', 'http'])],
 ]);
 
+/**
+ * Owner pairs where the import edge is allowed only via
+ * `import type …`. TypeScript's `verbatimModuleSyntax` erases
+ * `import type` at build time, so this is the only edge that does
+ * not require the source owner to ship runtime code into the
+ * target owner.
+ *
+ * AGENTS.md §3 calls the schema-types-only obligation out for
+ * `home/reactions ↔ http/reactions` and `home/access ↔
+ * http/access-counter`. Other edges are not currently needed;
+ * adding an edge here requires an entry in the AGENTS.md §3
+ * dependency table.
+ */
+const typeOnlyEdges = [{ from: 'home', to: 'http' }];
+
 function sourceFiles(directory) {
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
 		const path = join(directory, entry.name);
@@ -33,6 +48,25 @@ function resolveInternalImport(fromFile, specifier) {
 	if (specifier.startsWith('.')) return resolve(dirname(fromFile), specifier);
 	if (specifier.startsWith('~/')) return resolve(srcRoot, specifier.slice(2));
 	return null;
+}
+
+/**
+ * Returns every `import …` (static) statement in `source`, with a
+ * flag for whether the statement is fully type-only (i.e. starts
+ * with `import type`). Side-effect imports (no specifier) and
+ * dynamic `import('…')` calls are not tracked here — they have
+ * either no specifier or a runtime cost regardless.
+ */
+function importStatements(source) {
+	const re = /(?:^|\n)\s*import\s+(?:type\s+)?[^"';]*?["']([^"']+)["']/g;
+	const stmts = [];
+	for (const match of source.matchAll(re)) {
+		const full = match[0].slice(match[0].indexOf('import')).replace(/\s+/g, ' ').trimStart();
+		const head = full.slice('import'.length).trimStart();
+		const isTypeOnly = head.startsWith('type ');
+		stmts.push({ full, isTypeOnly, specifier: match[1] });
+	}
+	return stmts;
 }
 
 function importSpecifiers(source) {
@@ -58,6 +92,8 @@ for (const name of legacyClassifierRoots) {
 	}
 }
 
+// Reverse-direction forbidden edges (cloudflare → home, http → home,
+// editorial → {home, cloudflare, http}).
 for (const file of sourceFiles(srcRoot)) {
 	const fromOwner = ownerOf(file);
 	const forbidden = forbiddenOwnerDependencies.get(fromOwner);
@@ -71,6 +107,25 @@ for (const file of sourceFiles(srcRoot)) {
 		if (toOwner && forbidden.has(toOwner)) {
 			errors.push(
 				`${relative(root, file)}: ${fromOwner} must not depend on ${toOwner} (${specifier})`,
+			);
+		}
+	}
+}
+
+// Type-only edges (home → http must be `import type`, never value).
+for (const edge of typeOnlyEdges) {
+	const homeRoot = join(srcRoot, edge.from);
+	if (!existsSync(homeRoot)) continue;
+	for (const file of sourceFiles(homeRoot)) {
+		const source = readFileSync(file, 'utf8');
+		for (const stmt of importStatements(source)) {
+			const target = resolveInternalImport(file, stmt.specifier);
+			if (!target) continue;
+			const toOwner = ownerOf(target);
+			if (toOwner !== edge.to) continue;
+			if (stmt.isTypeOnly) continue;
+			errors.push(
+				`${relative(root, file)}: ${edge.from} may only \`import type\` from ${edge.to} (saw value import: \`${stmt.full.replace(/`/g, '\\`')}\`). Move the runtime to ${edge.to}/, hoist it into a shared obligation, or refactor to a fetch boundary.`,
 			);
 		}
 	}

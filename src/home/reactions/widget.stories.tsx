@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import type { CatalogEntry } from '../../http/reactions/emoji-catalog';
+import type { CatalogEntry } from '../../reactions/emoji-catalog';
 import type { HomeReactionsData } from './load';
 import { ReactionsWidget } from './widget';
 

@@ -1,10 +1,10 @@
 /**
  * Canonical slug / codepoint validators — re-exported by the catalog
- * module (`src/http/reactions/emoji-catalog.ts`) for the home + admin
- * loader paths.
+ * module (`./emoji-catalog.ts`) for the home + admin loader paths.
  *
- * Kept in a tiny file so both the catalog module and the admin
- * load.ts can import without crossing the `home/` boundary.
+ * Lives at the top-level `reactions/` obligation; the home widget
+ * loader, the admin loader, and any future automated import path all
+ * depend on these pure helpers.
  */
 
 import { EMOJI_SLUG_REGEX, MAX_EMOJI_SLUG_LEN } from './slug-regex';

@@ -1,13 +1,19 @@
-# ADR-0013 — Emoji catalog: hard-coded → D1-backed
+# ADR-0013 — Emoji catalog: hard-coded → D1-backed, then top-level `reactions/` obligation
 
-- Status: Accepted
+- Status: Accepted (revised 2026-09-19)
 - Date: 2026-09-19
-- Branch: 39
-- Ticket: G
+- Branch: 39 (rev)
+- Ticket: G (initial) + boundary follow-up after PR #44 review
 - Sprint: 0.3.0-extended
 - Decision driver: 0.3.0-extended home integration (Tickets E + F + G)
+  + architecture-boundary review on PR #44 (P1)
 - Replaces: the 16-slug hard-coded catalog that lived in
   `src/home/reactions/emoji-catalog.ts` from Ticket E (branch 37)
+- Module location: in branch 39's first cut the catalog lived at
+  `src/http/reactions/emoji-catalog.ts` (under the HTTP owner). After
+  the PR #44 architecture review it was promoted to the top-level
+  `src/reactions/` obligation so neither `home/` nor `admin/` has to
+  cross the HTTP boundary for slug catalog reads or writes.
 
 ## 1. Context
 
@@ -76,15 +82,15 @@ CREATE INDEX IF NOT EXISTS idx_reaction_emoji_catalog_enabled
 
 ### 2.2 Module layout
 
-- `src/http/reactions/slug-regex.ts` — the slug regex / length
-  constants. Single canonical import path for both `http/` and
-  `home/` consumers.
-- `src/http/reactions/slug-validate.ts` — pure `validateSlug` and
+- `src/reactions/slug-regex.ts` — the slug regex / length constants
+  (`EMOJI_SLUG_REGEX`, `MAX_EMOJI_SLUG_LEN`). Single canonical import
+  path for both `home/` and `admin/` consumers.
+- `src/reactions/slug-validate.ts` — pure `validateSlug` and
   `validateCodepoint` helpers (the catalog seam). Used by the home
   loader (`addHomeReactionImpl` / `removeHomeReactionImpl`) and by
   the admin CRUD.
-- `src/http/reactions/emoji-catalog.ts` — DB-backed read + CRUD
-  functions over `D1Database`:
+- `src/reactions/emoji-catalog.ts` — DB-backed read + CRUD functions
+  over `D1Database`:
   - `loadCatalog(db, { includeDisabled? })` — home widget read.
   - `listAllCatalogEntriesForAdmin(db)` — admin list read (includes
     audit fields).
@@ -92,13 +98,25 @@ CREATE INDEX IF NOT EXISTS idx_reaction_emoji_catalog_enabled
     `setCatalogEntryEnabled`, `removeCatalogEntry` — admin writes.
   - Pure helpers `resolveCodepoint`, `isEnabled` for slug → glyph
     resolution.
+- `src/reactions/` is a **top-level obligation owner** (ADR-0008),
+  co-owned conceptually by `home/` and `admin/`. Promoting the
+  catalog out of `src/http/reactions/` was forced by the PR #44
+  architecture review: AGENTS.md §3 declares
+  `home/reactions → http/reactions (schema types only)`, which
+  forbids the home loader from value-importing a D1-backed catalog
+  through the HTTP boundary. The reactions API router
+  (`src/http/reactions/router.ts`) still does not own or touch the
+  catalog; it accepts opaque `value` strings ≤16 chars, the same as
+  in branch 36.
 - `src/home/reactions/emoji-catalog.ts` — thin home-side facade that
-  re-exports the contract and adapts it to the home widget's
-  prop-driven `HomeReactionsData.catalog` field. The home widget
-  never imports the HTTP module directly; the SSR loader primes the
-  catalog and threads it through props.
+  re-exports the contract from `src/reactions/emoji-catalog.ts` and
+  adapts it to the home widget's prop-driven
+  `HomeReactionsData.catalog` field. The home widget never imports
+  the DB catalog module directly; the SSR loader primes the catalog
+  and threads it through props.
 - `src/admin/emoji-catalog/load.ts` — admin CRUD `createServerFn`
-  wrappers around the HTTP functions, each gated by `requireAdmin()`.
+  wrappers around the catalog functions (now imported from
+  `src/reactions/`), each gated by `requireAdmin()`.
 - `src/admin/emoji-catalog/catalog.tsx` — admin UI view (list +
   per-row actions + create form).
 - `src/routes/admin.emoji-catalog.tsx` — `/admin/emoji-catalog`
@@ -182,12 +200,47 @@ is the same trade-off documented in Ticket E's
 `emoji-catalog.ts`: slugs are stable opaque keys, and the
 historical record is preserved.
 
+### 3.5 Obligation owner: catalog lives outside the HTTP boundary
+
+The first cut of branch 39 placed the catalog at
+`src/http/reactions/emoji-catalog.ts`, under the HTTP-boundary
+obligation. PR #44's architecture review surfaced that AGENTS.md §3
+declares `home/reactions → http/reactions (schema types only)`, so
+the home loader was forced to value-import a D1-backed CRUD module
+through an owner that does not need it (the reactions API router
+itself never reads or writes the catalog). Rather than loosen the
+architecture-checker, we promoted the slug grammar
+(`slug-regex.ts`), the catalog seam (`slug-validate.ts`), and the
+DB-backed catalog (`emoji-catalog.ts`) to a new top-level
+`src/reactions/` obligation. The boundary change preserves the
+external contract (the Hono router is unchanged) and removes the
+forbidden edge.
+
+The trade-off is one extra directory at the top of `src/`. That
+cost is paid back by the fact that `home/`, `admin/`, and any future
+consumer of the catalog can import the catalog directly without
+going through the HTTP boundary or paying a `fetch` round-trip.
+TypeScript's `verbatimModuleSyntax: true` plus the architecture
+checker (`typeOnlyEdges = [{ from: 'home', to: 'http' }]`) keeps
+the remaining `home → http` edge type-only, so the runtime graph is
+unchanged.
+
 ## 4. Consequences
 
 ### 4.1 What changes
 
-- `src/home/reactions/emoji-catalog.ts` — was a constant table; now
-  a thin facade over `http/reactions/emoji-catalog.ts`. Public
+- `src/reactions/emoji-catalog.ts`,
+  `src/reactions/slug-regex.ts`,
+  `src/reactions/slug-validate.ts` — new top-level obligation owner
+  carrying the slug grammar and the DB-backed catalog CRUD. These
+  modules previously lived under `src/http/reactions/`; they were
+  promoted to satisfy AGENTS.md §3
+  (`home/reactions → http/reactions (schema types only)`).
+- `src/http/reactions/{slug-regex,slug-validate,emoji-catalog}.ts`
+  deleted; only the Hono router, request schema, and reaction-image
+  module remain under `src/http/reactions/**`.
+- `src/home/reactions/emoji-catalog.ts` — was a constant table (Ticket
+  E); now a thin facade over `src/reactions/emoji-catalog.ts`. Public
   surface for `widget.tsx` / `load.ts` changed from sync constants
   to catalog-parameterised helpers.
 - `HomeReactionsData` gains a `catalog: readonly CatalogEntry[]`
@@ -195,10 +248,17 @@ historical record is preserved.
 - `getHomeReactionsImpl`, `addHomeReactionImpl`,
   `removeHomeReactionImpl` — read `env.DB` via the `HomeReactionsEnv`
   shape. Tests inject `DB: env.DB` (the workerd binding).
+- `src/admin/emoji-catalog/load.ts` — imports the catalog + slug
+  validators from `src/reactions/` (previously from
+  `src/http/reactions/`).
 - `src/admin/composer.tsx` — `AdminCapability.id` union extended to
   `'emoji-catalog'`.
 - `src/routes/admin.tsx` — capability list includes the catalog
   entry with `status: 'live'`.
+- `scripts/check-architecture.mjs` — `typeOnlyEdges` registry
+  extended to include `home → http`; the script now rejects value
+  imports across that edge (was already forbidden in spec, now
+  enforced automatically).
 
 ### 4.2 What does NOT change
 
@@ -250,8 +310,9 @@ historical record is preserved.
 
 End-to-end coverage:
 
-- 11 unit tests in `src/http/reactions/emoji-catalog.test.ts`
-  (D1 round-trip + pure helpers).
+- 11 unit tests in `src/reactions/emoji-catalog.test.ts`
+  (D1 round-trip + pure helpers — was previously under
+  `src/http/reactions/` before the obligation promotion).
 - 7 unit tests in `src/home/reactions/emoji-catalog.test.ts`
   (catalog facade after the sync-constant → catalog-parameterised
   migration).

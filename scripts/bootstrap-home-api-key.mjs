@@ -34,7 +34,10 @@
  *   3. node scripts/bootstrap-home-api-key.mjs --target=remote
  *   4. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY
  *      < paste the printed value
- *   5. wrangler deploy
+ *   5. pnpm run deploy:production    # uses wrangler.production.jsonc
+ *      (raw `wrangler deploy` would deploy against the workers.dev
+ *      dev binding — see ADR-0014 / Issue #43 for why production
+ *      uses the companion config)
  *
  * Usage:
  *   node scripts/bootstrap-home-api-key.mjs [--target=local|remote]
@@ -214,7 +217,10 @@ function main() {
 		console.log('# Production runbook — finish in this order:');
 		console.log('#   1. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY');
 		console.log('#        (paste the value below when prompted)');
-		console.log('#   2. wrangler deploy');
+		console.log('#   2. pnpm run deploy:production     # uses wrangler.production.jsonc');
+		console.log('#        (raw `wrangler deploy` would deploy against the workers.dev dev');
+		console.log('#         binding — see ADR-0014 / Issue #43 for why production uses');
+		console.log('#        the companion config)');
 		console.log('#   3. Verify with: curl -H "authorization: Bearer <key>" \\');
 		console.log('#        https://rebuildup.dev/api/v1/reactions?target=home-page');
 	} else {

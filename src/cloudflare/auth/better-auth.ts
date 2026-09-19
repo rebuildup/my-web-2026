@@ -79,10 +79,24 @@ export const auth = betterAuth({
 	},
 	plugins: [
 		admin(),
+		// The @better-auth/api-key plugin's per-key rate limit is
+		// **disabled** at the auth layer. ADR-0010 owns the only
+		// throttle in 0.3.0: the Workers Rate Limiting binding keyed
+		// by API key id, mounted per-endpoint-bucket from
+		// `src/http/middleware/rate-limit.ts`. Running BOTH layers
+		// in series gates the effective budget at the lower limit;
+		// for the access-counter hot path that meant `60/min` for
+		// both read and write (the auth-layer's 60/min hides the
+		// 600/min read binding). The auth-layer check additionally
+		// counts ALL requests through `auth.api.verifyApiKey`,
+		// regardless of endpoint, so it cannot implement different
+		// per-endpoint budgets anyway. Anti-brute-force on key
+		// guessing is already covered by the hashing scheme (a
+		// guessed `mk_*` string cannot be verified in bulk).
 		apiKey({
 			defaultPrefix: 'mk_',
 			rateLimit: {
-				enabled: true,
+				enabled: false,
 				timeWindow: 60_000,
 				maxRequests: 60,
 			},

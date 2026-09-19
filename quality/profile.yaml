@@ -71,7 +71,7 @@ change_risk_mapping:
     gate: fast
   architecture_boundary:
     gate: fast
-    note: 'scripts/check-architecture.mjs enforces current obligation direction without prescribing future owner shapes'
+    note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; only src/home/status/** may depend on cloudflare/http runtime health contracts'
   binding_change:
     gate: integration
     note: 'wrangler.jsonc + worker-configuration.d.ts must be in the same PR'

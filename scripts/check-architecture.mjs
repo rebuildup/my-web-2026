@@ -11,8 +11,9 @@ const legacyClassifierRoots = ['modules', 'design-system', 'platform'];
 
 const forbiddenOwnerDependencies = new Map([
 	['cloudflare', new Set(['home'])],
-	['http', new Set(['home'])],
+	['http', new Set(['home', 'server.ts'])],
 	['editorial', new Set(['home', 'cloudflare', 'http'])],
+	['home', new Set(['routes', 'cloudflare', 'http'])],
 ]);
 
 function sourceFiles(directory) {
@@ -27,6 +28,11 @@ function ownerOf(path) {
 	const rel = relative(srcRoot, path);
 	if (rel.startsWith('..')) return null;
 	return rel.split(sep)[0] ?? null;
+}
+
+function isHomeStatusFile(path) {
+	const rel = relative(srcRoot, path).split(sep).join('/');
+	return rel.startsWith('home/status/');
 }
 
 function resolveInternalImport(fromFile, specifier) {
@@ -68,7 +74,11 @@ for (const file of sourceFiles(srcRoot)) {
 		const target = resolveInternalImport(file, specifier);
 		if (!target) continue;
 		const toOwner = ownerOf(target);
-		if (toOwner && forbidden.has(toOwner)) {
+		const allowedHomeStatusRuntimeDependency =
+			fromOwner === 'home' &&
+			isHomeStatusFile(file) &&
+			(toOwner === 'cloudflare' || toOwner === 'http');
+		if (toOwner && forbidden.has(toOwner) && !allowedHomeStatusRuntimeDependency) {
 			errors.push(
 				`${relative(root, file)}: ${fromOwner} must not depend on ${toOwner} (${specifier})`,
 			);

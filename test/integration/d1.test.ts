@@ -27,7 +27,7 @@ describe('D1 binding smoke', () => {
 		// server during SSR.
 		expect(html).toContain('Internal data');
 		expect(html).toContain('D1');
-		expect(html).toContain('reachable');
+		expect(html).toMatch(/Internal data[\s\S]*?D1[\s\S]*?>\s*reachable\s*</);
 	});
 
 	it('responds to /api/v1/db/ping with the binding result', async () => {

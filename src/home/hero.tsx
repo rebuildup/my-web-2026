@@ -134,7 +134,6 @@ export function Hero() {
 								href="https://yusuke-kim.com"
 								rel="noopener noreferrer"
 								target="_blank"
-								lang="en"
 								className={css({
 									display: 'inline-flex',
 									alignItems: 'center',
@@ -156,13 +155,12 @@ export function Hero() {
 									},
 								})}
 							>
-								2025 edition を見る
+								<span lang="en">2025 edition</span> を見る
 							</a>
 							<a
 								href="https://github.com/rebuildup/my-web-2026"
 								rel="noopener noreferrer"
 								target="_blank"
-								lang="en"
 								className={css({
 									display: 'inline-flex',
 									alignItems: 'center',
@@ -180,7 +178,7 @@ export function Hero() {
 									},
 								})}
 							>
-								GitHub でソースを見る →
+								<span lang="en">GitHub</span> でソースを見る →
 							</a>
 						</div>
 					</div>

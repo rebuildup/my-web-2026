@@ -12,6 +12,6 @@ pnpm run generate:digits
 Visual: `<text>` rendered through sharp's SVG → WebP pipeline using
 `ui-monospace` (fontconfig resolves to the system mono on each
 machine; the exact glyph differs slightly between dev / CI, but the
-silhouette — and therefore the swap effect — is identical). Bake
-colour is `currentColor` resolved at rasterise time, which librsvg
-renders as `#000` (matches `text.default` = `#0b1020` visually).
+silhouette — and therefore the swap effect — stays a recognisable
+mono digit). Bake colour is `#0b1020` so the rasterised glyph
+matches `text.default` from `src/editorial/tokens.ts` exactly.

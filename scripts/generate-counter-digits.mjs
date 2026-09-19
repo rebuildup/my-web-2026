@@ -37,13 +37,29 @@
  *   - 64x96 canvas per digit — the mono glyph at 72 px font-size
  *     fits naturally inside this canvas with a small inset. The
  *     React component scales the image via CSS so we render at
- *     ~1.5× of the smallest display size (60 px at lg) for retina.
+ *     ~1.3× of the largest display size (56 px at lg) for crisp
+ *     anti-aliasing on hi-DPI screens.
  *   - `lossless: true` keeps glyph edges sharp at small display
  *     sizes; alpha channel kept transparent.
- *   - The SVG uses `currentColor`; librsvg resolves that to the CSS
- *     initial (`#000`) at rasterise time. `text.default` in the
- *     editorial palette is `#0b1020` — visually identical to black
- *     so the baked colour matches the rendered foreground.
+ *   - The SVG uses `fill="#0b1020"` to match `text.default` in
+ *     `src/editorial/tokens.ts` exactly. (Earlier versions used
+ *     `fill="currentColor"`, which librsvg resolves to `#000` at
+ *     rasterise time — the slight blue tint of `#0b1020` is
+ *     invisible at 72 px but starts to show at the consumer's
+ *     48–56 px display size against an off-white background.)
+ *
+ * Cross-machine determinism caveat:
+ *   - The SVG uses `font-family="ui-monospace, ..."` and fontconfig
+ *     resolves the first available face at rasterise time. The exact
+ *     glyph shape therefore differs slightly between machines
+ *     (different system mono fonts). The swap mechanic itself is
+ *     unaffected — every slot swaps to a mono digit regardless of
+ *     which mono the local fontconfig picked — but byte-for-byte
+ *     reproducibility of the committed WebPs is *not* a contract.
+ *     Re-running `pnpm run generate:digits` may yield a different
+ *     SHA per digit even with no design change. Pinning a specific
+ *     font (or embedding the glyphs as SVG `<path>` data) would
+ *     restore reproducibility; that is a future maintainer call.
  */
 import { mkdir, writeFile } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
@@ -52,6 +68,7 @@ import sharp from 'sharp';
 
 const WIDTH = 64;
 const HEIGHT = 96;
+const BAKE_COLOR = '#0b1020'; // mirrors `text.default` in src/editorial/tokens.ts
 
 /**
  * SVG template. The font stack asks fontconfig for a mono font;
@@ -70,7 +87,7 @@ function svgForDigit(digit) {
     font-size="72"
     font-weight="700"
     letter-spacing="-2"
-    fill="currentColor">${digit}</text>
+    fill="${BAKE_COLOR}">${digit}</text>
 </svg>`;
 }
 
@@ -79,12 +96,19 @@ async function main() {
 	const outDir = resolve(here, '..', 'src', 'home', 'digits');
 	await mkdir(outDir, { recursive: true });
 
-	for (let digit = 0; digit <= 9; digit++) {
+	// Digit writes are independent — no shared mutable state, distinct
+	// output paths, fresh sharp pipeline per iteration. Run them in
+	// parallel; the README write joins the same Promise.all.
+	const digitWrites = Array.from({ length: 10 }, async (_, digit) => {
 		const svg = svgForDigit(digit);
 		const outPath = resolve(outDir, `${digit}.webp`);
+		// sharp 0.35.x does NOT accept a raw SVG string as input —
+		// it interprets a string argument as a file path. The SVG
+		// must be wrapped in a Buffer. (sharp's own error message
+		// suggests exactly `Buffer.from('<svg ...')`.)
 		await sharp(Buffer.from(svg)).webp({ lossless: true }).toFile(outPath);
 		process.stdout.write(`wrote ${outPath}\n`);
-	}
+	});
 
 	// Drop a sibling README so the directory is self-explanatory.
 	const readme = `# access-counter digit images
@@ -101,12 +125,15 @@ pnpm run generate:digits
 Visual: \`<text>\` rendered through sharp's SVG → WebP pipeline using
 \`ui-monospace\` (fontconfig resolves to the system mono on each
 machine; the exact glyph differs slightly between dev / CI, but the
-silhouette — and therefore the swap effect — is identical). Bake
-colour is \`currentColor\` resolved at rasterise time, which librsvg
-renders as \`#000\` (matches \`text.default\` = \`#0b1020\` visually).
+silhouette — and therefore the swap effect — stays a recognisable
+mono digit). Bake colour is \`#0b1020\` so the rasterised glyph
+matches \`text.default\` from \`src/editorial/tokens.ts\` exactly.
 `;
-	await writeFile(resolve(outDir, 'README.md'), readme, 'utf8');
-	process.stdout.write(`wrote ${resolve(outDir, 'README.md')}\n`);
+	const readmeWrite = writeFile(resolve(outDir, 'README.md'), readme, 'utf8').then(() => {
+		process.stdout.write(`wrote ${resolve(outDir, 'README.md')}\n`);
+	});
+
+	await Promise.all([...digitWrites, readmeWrite]);
 }
 
 main().catch((err) => {

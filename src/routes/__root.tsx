@@ -43,7 +43,13 @@ export const Route = createRootRoute({
 			},
 			{
 				rel: 'stylesheet',
-				href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=Zen+Kaku+Gothic+New:wght@400;500;700&display=swap',
+				// `wght@400;600;700` — `600` is used widely for
+				// eyebrows / Badges / labels / admin table headers; if
+				// omitted the browser faux-bolds (or falls back to 700)
+				// and the typographic rhythm drifts. `500` is not used
+				// in 0.3.0 and is intentionally dropped from the axis
+				// to keep the stylesheet payload minimal.
+				href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap',
 			},
 		],
 	}),

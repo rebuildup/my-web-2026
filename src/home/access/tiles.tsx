@@ -2,11 +2,10 @@ import { css } from '../../../styled-system/css';
 import type { HomeCounterData } from './load';
 // Digit WebPs are pre-rasterised mono glyphs (see
 // `scripts/generate-counter-digits.mjs` and `src/home/digits/`).
-// The render path is `currentColor` in the SVG → sharp rasterises
-// that as `#000` since librsvg has no CSS context, and `text.default`
-// is `#0b1020` (effectively black with a blue tint). The visual
-// matches in the enabled path; the disabled path renders `—` as text
-// instead of digits so the colour mismatch never shows.
+// The bake colour is `#0b1020` so the rasterised glyph matches
+// `text.default` in `src/editorial/tokens.ts` exactly. The
+// disabled path renders `—` as text instead of digits, so colour
+// consistency between the two paths is not relied on.
 import digit0Url from '../digits/0.webp?url';
 import digit1Url from '../digits/1.webp?url';
 import digit2Url from '../digits/2.webp?url';

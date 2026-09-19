@@ -6,13 +6,20 @@ import { CounterTile } from './tiles';
  * CounterTile stories — used by the editorial design loop to iterate
  * on the `04 — Access counter` section without re-running SSR.
  *
- * Variants:
- *   - `Zero`: enabled, count 0 (just-deployed state).
- *   - `Small`: enabled, count 17.
- *   - `Large`: enabled, count 12_345.
- *   - `Fresh`: enabled, last_hit within the last minute.
- *   - `Stale`: enabled, last_hit > 24 h ago.
- *   - `Disconnected`: disabled (no API key).
+ * Odometer-style 7-slot digit strip (0.3.0 stabilisation pass):
+ * the count is rendered as a fixed-width sequence of digit images,
+ * leading zeros to fill the slots. Variants exercise every slot
+ * shape the production counter will see.
+ *
+ *   - `Zero`:        count 0 (just-deployed state) → "0000000".
+ *   - `Small`:       count 17 → "0000017".
+ *   - `Mid`:         count 12,345 → "0012345".
+ *   - `Full`:        count 9,999,999 → "9999999" (every slot lit).
+ *   - `Overflow`:    count 12,345,678 (8 digits) → layout grows
+ *                    to fit the natural decimal expansion.
+ *   - `Fresh`:       count 5, last_hit within the last minute.
+ *   - `Stale`:       count 99, last_hit > 24 h ago.
+ *   - `Disconnected`: disabled (no API key) — em-dash, no images.
  */
 const meta = {
 	title: 'home/CounterTile',
@@ -47,13 +54,37 @@ export const Small: Story = {
 	},
 };
 
-export const Large: Story = {
+export const Mid: Story = {
 	args: {
 		data: {
 			key: 'home-page',
 			count: 12_345,
 			first_hit: now - 30 * d,
 			last_hit: now - 5 * min,
+			enabled: true,
+		},
+	},
+};
+
+export const Full: Story = {
+	args: {
+		data: {
+			key: 'home-page',
+			count: 9_999_999,
+			first_hit: now - 365 * d,
+			last_hit: now - 30_000,
+			enabled: true,
+		},
+	},
+};
+
+export const Overflow: Story = {
+	args: {
+		data: {
+			key: 'home-page',
+			count: 12_345_678,
+			first_hit: now - 365 * d,
+			last_hit: now - 30_000,
 			enabled: true,
 		},
 	},

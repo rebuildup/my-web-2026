@@ -60,6 +60,14 @@
 			"bucket_name": "my-web-2026"
 		}
 	],
+	// Non-binding env vars for the home self-consumption consumer
+	// pattern (ADR-0011). The keys themselves are stored as Wrangler
+	// secrets (`MY_WEB_2026_CONSUMER_API_KEY`); the target/key values
+	// are non-sensitive and live here so they survive `wrangler d1`
+	// schema resets.
+	"vars": {
+		"MY_WEB_2026_COUNTER_KEY": "home-page"
+	},
 	// Per-consumer-principal rate limit bindings (ADR-0010).
 	// `simple` is the only rate-limit configuration shape supported by
 	// the current wrangler schema (limit + period in seconds). The

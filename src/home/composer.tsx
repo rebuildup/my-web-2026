@@ -1,4 +1,6 @@
 import { css } from '../../styled-system/css';
+import type { HomeCounterData } from './access/load';
+import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
 import { Footer } from './footer';
@@ -11,6 +13,7 @@ export interface HomePageData {
 	services: readonly SystemService[];
 	statuses: readonly SystemServiceStatus[];
 	observedAt: string;
+	counter: HomeCounterData;
 }
 
 export interface HomePageProps {
@@ -54,6 +57,7 @@ export function HomePage({ data }: HomePageProps) {
 					statuses={data.statuses}
 					observedAt={data.observedAt}
 				/>
+				<CounterTile data={data.counter} />
 			</main>
 			<Footer />
 		</>

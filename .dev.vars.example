@@ -20,3 +20,12 @@
 # Local development: http://127.0.0.1:3000
 # Production: https://<your-deployment>.workers.dev
 # BETTER_AUTH_URL="http://127.0.0.1:3000"
+
+# 0.3.0-extended: Home self-consumption API key (ADR-0011). Provision
+# once per environment via `pnpm run bootstrap:home-api-key`. The
+# plaintext is printed by that script and pasted here for local dev,
+# or set as a Wrangler secret (`wrangler secret put
+# MY_WEB_2026_CONSUMER_API_KEY`) for remote. The home's reactions and
+# access-counter server fns read this value to self-call
+# `/api/v1/{reactions,access}/*` with the consumer scopes.
+# MY_WEB_2026_CONSUMER_API_KEY="mk_home_..."

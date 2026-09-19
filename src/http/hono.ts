@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { requestIdMiddleware } from './middleware/request-id';
@@ -30,6 +31,7 @@ export const externalBoundary = new Hono<{ Bindings: Env }>();
 // change to `src/server.ts` is required.
 externalBoundary.use('/api/v1/*', requestIdMiddleware);
 externalBoundary.route('/', authRouter);
+externalBoundary.route('/api/v1/access', accessCounterRouter);
 
 externalBoundary.get('/api/v1/health', (c) =>
 	c.json({

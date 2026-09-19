@@ -92,6 +92,13 @@ export const AllReachable: Story = {
 			],
 			statuses: baseStatuses,
 			observedAt: '2026-09-17T15:02:16.985Z',
+			counter: {
+				key: 'home-page',
+				count: 1234,
+				first_hit: Date.parse('2026-09-01T00:00:00Z'),
+				last_hit: Date.parse('2026-09-17T15:02:16.985Z'),
+				enabled: true,
+			},
 		},
 	},
 };

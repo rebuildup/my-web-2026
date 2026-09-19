@@ -2,7 +2,8 @@ import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeaders } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import { auth } from '../../cloudflare/auth/better-auth';
-import { requireAdmin } from '../auth/require-admin';
+import { requireAdmin, AdminAuthError } from '../auth/require-admin';
+import type { AdminSession } from '../auth/load';
 
 /**
  * Admin API key management — server functions over the Better Auth
@@ -23,6 +24,13 @@ import { requireAdmin } from '../auth/require-admin';
  * admin **exactly once**: the plugin hashes before persisting, and
  * subsequent `listApiKeys` returns only the prefix + start, never
  * the key. The admin UI surfaces this in a single copy-block.
+ *
+ * Testability: each server-fn wrapper delegates to an `*Impl`
+ * function that takes the resolved `session` (already verified
+ * admin by `requireAdmin()`) plus the request `headers`. Tests
+ * exercise the impls directly without going through
+ * `createServerFn`'s AsyncLocalStorage context — see
+ * `src/admin/keys/load.test.ts`.
  */
 
 export type ApiKeyPermissionAction = 'read' | 'write';
@@ -58,73 +66,106 @@ export interface CreateApiKeyResult {
 	plaintext: string;
 }
 
+export async function listApiKeysImpl(
+	session: AdminSession,
+	headers: Headers,
+): Promise<readonly AdminApiKey[]> {
+	// `listApiKeys` only needs an authenticated admin to identify the
+	// caller's keys via `referenceId = session.user.id`. Forwarding
+	// the session headers lets the `sessionMiddleware` resolve the
+	// admin; no other fields (permissions, rateLimitMax, …) flow in
+	// the body, so the SERVER_ONLY_PROPERTY gate is not triggered
+	// here. See `createApiKey` for the parallel reasoning on why
+	// that one DOES drop the headers.
+	const result = await auth.api.listApiKeys({ headers });
+	const rows = (result as unknown as { apiKeys?: Array<Record<string, unknown>> }).apiKeys ?? [];
+	return rows.map(toAdminApiKey);
+}
+
 export const listApiKeys = createServerFn({ method: 'GET' })
 	.validator(z.object({}).strict())
 	.handler(async (): Promise<readonly AdminApiKey[]> => {
-		await requireAdmin();
-		const headers = getRequestHeaders();
-		// Better Auth's `/api-key/list` endpoint is gated by
-		// `sessionMiddleware`, which resolves the caller from the
-		// forwarded headers. The api-key plugin attaches
-		// `referenceId = session.user.id` server-side; an admin
-		// calling this sees the keys they own. The plugin's
-		// adminMiddleware is independent — we already gate on role
-		// via `requireAdmin()` above, so passing `{ headers }` is
-		// sufficient.
-		const result = await auth.api.listApiKeys({
-			headers,
-		});
-		const rows = (result as unknown as { apiKeys?: Array<Record<string, unknown>> }).apiKeys ?? [];
-		return rows.map(toAdminApiKey);
+		const session = await requireAdmin();
+		return listApiKeysImpl(session, getRequestHeaders());
 	});
+
+export async function createApiKeyImpl(
+	session: AdminSession,
+	_headers: Headers,
+	data: z.infer<typeof CreateApiKeyInput>,
+): Promise<CreateApiKeyResult> {
+	// Better Auth's api-key plugin guards `permissions` (and several
+	// other fields) with a SERVER_ONLY_PROPERTY check that fires when
+	// the call looks like a client request — i.e., when `headers` or
+	// `request` are forwarded. The check is asymmetric: `userId` is
+	// allowed alongside headers, but `permissions` is not, because the
+	// admin/SSO surface sets these server-side.
+	//
+	// Our create path runs from the admin UI which already gated on
+	// role via `requireAdmin()`. We therefore call the endpoint
+	// without forwarding the caller's headers — the admin plugin's
+	// `sessionMiddleware` is intentionally bypassed, mirroring
+	// Better Auth CLI's own create-admin pattern. The api-key plugin
+	// resolves `referenceId` from the body's `userId` in this branch
+	// (apikey plugin source, line 753 onward: `else { referenceId =
+	// sessionUserId || ctxUserId }`), which we set to the admin's
+	// session user id. See ADR-0009 §4 for the broader "service role"
+	// pattern that this implements for admin operations.
+	void _headers;
+	const created = (await auth.api.createApiKey({
+		body: {
+			name: data.name,
+			userId: session.user.id,
+			permissions: data.permissions as Record<string, string[]>,
+		},
+	})) as Record<string, unknown> & { key: string };
+
+	const key: AdminApiKey = toAdminApiKey({
+		id: String(created.id),
+		name: typeof created.name === 'string' ? created.name : null,
+		prefix: typeof created.prefix === 'string' ? created.prefix : null,
+		start: typeof created.start === 'string' ? created.start : null,
+		permissions: (created.permissions ?? {}) as ApiKeyPermissions,
+		createdAt: created.createdAt,
+		enabled: created.enabled !== false,
+		expiresAt: created.expiresAt,
+		lastRequest: created.lastRequest,
+	});
+
+	return { key, plaintext: created.key };
+}
 
 export const createApiKey = createServerFn({ method: 'POST' })
 	.validator(CreateApiKeyInput)
 	.handler(async ({ data }): Promise<CreateApiKeyResult> => {
 		const session = await requireAdmin();
-		const headers = getRequestHeaders();
-		// The api-key plugin's create endpoint requires the calling
-		// admin's session headers — direct `auth.api.createApiKey`
-		// without headers is rejected as unauthenticated. The plugin
-		// also requires a `userId` (or `prefix` for the prefixed key
-		// format); we pass the admin user id so the new key is
-		// owned by the calling admin.
-		const created = (await auth.api.createApiKey({
-			headers,
-			body: {
-				name: data.name,
-				userId: session.user.id,
-				permissions: data.permissions as Record<string, string[]>,
-			},
-		})) as Record<string, unknown> & { key: string };
-
-		const key: AdminApiKey = toAdminApiKey({
-			id: String(created.id),
-			name: typeof created.name === 'string' ? created.name : null,
-			prefix: typeof created.prefix === 'string' ? created.prefix : null,
-			start: typeof created.start === 'string' ? created.start : null,
-			permissions: (created.permissions ?? {}) as ApiKeyPermissions,
-			createdAt: created.createdAt,
-			enabled: created.enabled !== false,
-			expiresAt: created.expiresAt,
-			lastRequest: created.lastRequest,
-		});
-
-		return { key, plaintext: created.key };
+		return createApiKeyImpl(session, getRequestHeaders(), data);
 	});
 
 const DeleteApiKeyInput = z.object({ id: z.string().min(1).max(128) });
 
+export async function deleteApiKeyImpl(
+	_session: AdminSession,
+	headers: Headers,
+	data: z.infer<typeof DeleteApiKeyInput>,
+): Promise<{ deleted: boolean }> {
+	// `deleteApiKey` is gated by `sessionMiddleware`; forwarding the
+	// admin's session headers is required for the plugin to identify
+	// the caller as admin and check ownership of the row. The body
+	// only carries `keyId` — no SERVER_ONLY_PROPERTY fields — so
+	// `isClientRequest && permissions…` does not fire.
+	await auth.api.deleteApiKey({
+		headers,
+		body: { keyId: data.id },
+	});
+	return { deleted: true };
+}
+
 export const deleteApiKey = createServerFn({ method: 'POST' })
 	.validator(DeleteApiKeyInput)
 	.handler(async ({ data }): Promise<{ deleted: boolean }> => {
-		await requireAdmin();
-		const headers = getRequestHeaders();
-		await auth.api.deleteApiKey({
-			headers,
-			body: { keyId: data.id },
-		});
-		return { deleted: true };
+		const session = await requireAdmin();
+		return deleteApiKeyImpl(session, getRequestHeaders(), data);
 	});
 
 function toAdminApiKey(row: Record<string, unknown>): AdminApiKey {
@@ -149,3 +190,8 @@ function toAdminApiKey(row: Record<string, unknown>): AdminApiKey {
 					: null,
 	};
 }
+
+/**
+ * Re-exported so tests don't need a second import path.
+ */
+export { AdminAuthError };

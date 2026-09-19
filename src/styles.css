@@ -20,3 +20,21 @@
 		font-family: var(--fonts-heading);
 	}
 }
+
+/*
+ * Reduced-motion override for the access-counter digit roll-up
+ * animation (`animationName: counterDigitRoll` in
+ * `src/home/access/tiles.tsx`). Visitors who opt out of motion see
+ * the digits already in place — no transform, no fade.
+ *
+ * This sits outside the Panda `@layer base` block because the
+ * animation is emitted by Panda into the `utilities` layer; the
+ * later specificity wins regardless, but we keep it at root scope
+ * so the override applies to every Panda-emitted `animation-name`
+ * rule on the page.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-testid="home-access-counter-tile"] img) {
+		animation: none !important;
+	}
+}

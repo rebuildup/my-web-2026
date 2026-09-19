@@ -173,6 +173,12 @@ importers:
       '@vitejs/plugin-react':
         specifier: ^5.0.0
         version: 5.2.0(supports-color@10.2.2)(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.33.0))
+      gifenc:
+        specifier: ^1.0.3
+        version: 1.0.3
+      sharp:
+        specifier: ^0.35.4
+        version: 0.35.4(@types/node@22.20.2)
       storybook:
         specifier: ^8.6.18
         version: 8.6.18(prettier@3.9.6)(supports-color@10.2.2)
@@ -2602,6 +2608,9 @@ packages:
 
   get-tsconfig@4.14.3:
     resolution: {integrity: sha512-++QEw4DIY7WGoukz+/+A/8dGYPT9l9yIadnmSgZ8Rjr3YVSVDipQSO9CdnJo9ePqFqUUqh+wk9uIaoiAwsiPkA==}
+
+  gifenc@1.0.3:
+    resolution: {integrity: sha512-xdr6AdrfGBcfzncONUOlXMBuc5wJDtOueE3c5rdG0oNgtINLD+f2iFZltrBRZYzACRbKr+mSVU/x98zv2u3jmw==}
 
   glob-parent@5.1.2:
     resolution: {integrity: sha512-AOIgSQCepiJYwP3ARnGx+5VnTu2HBYdzbGP45eLw1vr3zB3vZLeyed1sC9hnbcOc9/SrMyM5RPQrkGz4aS9Zow==}
@@ -6021,6 +6030,8 @@ snapshots:
   get-tsconfig@4.14.3:
     dependencies:
       resolve-pkg-maps: 1.0.0
+
+  gifenc@1.0.3: {}
 
   glob-parent@5.1.2:
     dependencies:

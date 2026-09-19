@@ -1,8 +1,12 @@
 # my-web-2026
 
-> Personal Web Platform on Cloudflare Workers. Replaces my-web-2025.
-> 0.1.0 Foundation release targeted for 2026-09; live-site cutover
-> targeted for 2026-10.
+[![CI](https://github.com/rebuildup/my-web-2026/actions/workflows/ci.yml/badge.svg)](https://github.com/rebuildup/my-web-2026/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/rebuildup/my-web-2026/blob/main/LICENSE)
+[![Release](https://img.shields.io/github/v/release/rebuildup/my-web-2026?include_prereleases&style=flat)](https://github.com/rebuildup/my-web-2026/releases)
+
+> Public preview of the next Personal Web Platform for 木村友亮 / samuido.
+> v0.2.0 establishes the canonical 2026 home surface while the complete
+> 2025 edition remains available at https://yusuke-kim.com during migration.
 
 `my-web-2026` is a modular monolith: one Cloudflare Worker, one
 repository, one set of bindings. TanStack Start owns the UI and
@@ -87,9 +91,13 @@ A human recovering the same ticket reads:
 
 ## Status
 
-0.1.0 Foundation is the first release. See the
-[0.1.0 backlog](docs/release.md#010-foundation-backlog) for the
-ticket list.
+- **v0.2.0 Public Preview** — canonical home, platform health, design-system
+  foundation, release gates, and personal/domain grounding.
+- **Portfolio / Content / Activity** — planned capabilities; not yet migrated.
+- **2025 edition** — remains the complete public site at https://yusuke-kim.com
+  until the required surfaces have moved.
+
+See [docs/release.md](docs/release.md) for release scope and gates.
 
 ## License
 

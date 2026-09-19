@@ -34,6 +34,19 @@ jobs:
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-${{ runner.os }}-
       - run: pnpm install --frozen-lockfile
+      # Head-ref policy: PRs into `main` must originate from a release
+      # branch (`release-*`). Solo-developer repos can otherwise accept
+      # arbitrary PRs into main, which violates the release-sprint
+      # contract in AGENTS.md §6.
+      - name: head-ref policy check
+        if: github.event_name == 'pull_request' && github.base_ref == 'main'
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          if ! [[ "$HEAD_REF" =~ ^release-[0-9]+-[0-9]+-[0-9]+$ ]]; then
+            echo "::error::PRs into main must have head_ref matching ^release-[0-9]+-[0-9]+-[0-9]+$ (got: $HEAD_REF)"
+            exit 1
+          fi
       # Read-only validation: format / lint / typecheck / test / build /
       # dry-run / lint:ci (actionlint) / build-storybook.
       # `validate:integration` is the canonical entry point documented in

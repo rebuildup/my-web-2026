@@ -34,6 +34,7 @@ gates:
     components:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
+      - 'pnpm run architecture:check' # obligation dependency direction
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
@@ -68,6 +69,9 @@ change_risk_mapping:
     gate: fast
   src_unit:
     gate: fast
+  architecture_boundary:
+    gate: fast
+    note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; only src/home/status/** may depend on cloudflare/http runtime health contracts'
   binding_change:
     gate: integration
     note: 'wrangler.jsonc + worker-configuration.d.ts must be in the same PR'

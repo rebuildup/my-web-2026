@@ -1,136 +1,182 @@
 # Architecture
 
-> One-page view of the system. Detail and rationale live in
-> [`docs/adr/`](adr/). Implementation details live in source.
+> 現在の source ownership を 1 ページで示す。判断理由は
+> `docs/adr/`、実装詳細は source を参照する。
 
-## Layers
+## Source ownership
 
+my-web-2026 は 1 Worker / 1 repository の deployment monolith だが、
+source は固定 layer や file type ではなく **obligation** で境界を作る。
+
+obligation は、同じ規則・判断権限・ライフサイクルに支配される仕事の集合である。
+path はその境界を見える形にした結果であり、path 自体を先に設計しない。
+
+```text
+src/
+├─ home/
+│  ├─ composer.tsx
+│  ├─ hero.tsx
+│  ├─ footer.tsx
+│  ├─ capabilities/
+│  │  ├─ capability.ts
+│  │  ├─ registry.ts
+│  │  └─ grid.tsx
+│  └─ status/
+│     ├─ health.ts
+│     ├─ services.ts
+│     ├─ load.ts
+│     └─ tiles.tsx
+├─ editorial/
+│  ├─ tokens.ts
+│  ├─ semantic-tokens.ts
+│  └─ primitives/
+├─ cloudflare/
+│  └─ health.ts
+├─ http/
+│  ├─ hono.ts
+│  └─ health.ts
+├─ routes/
+├─ server.ts
+├─ client.tsx
+└─ router.tsx
 ```
-Cloudflare Worker (real env, real ctx)
+
+この tree は template ではない。新しい feature を追加するときに
+`home/` と同じ形を複製しない。新しい仕事について owner / change reason /
+dependency / lifecycle を確認し、その結果として必要な境界だけを作る。
+
+## Current obligations
+
+### `home/`
+
+canonical home surface の composition と Home 固有の表示判断を所有する。
+
+- `composer.tsx` — Home の reading order と page composition
+- `capabilities/` — Home が公開する capability inventory とその表示
+- `status/` — platform health を Home 上でどう説明するか
+- `hero.tsx` / `footer.tsx` — Home 固有の public communication
+
+Home は Cloudflare binding の probe 方法を所有しない。
+
+### `editorial/`
+
+現在の public surface が話す editorial visual language を所有する。
+
+raw / semantic tokens と、その visual language の primitive をまとめる。
+これは「全 UI component の共有置き場」ではない。別の visual language が必要に
+なった場合、観測された同一 obligation がない限り自動的には統合しない。
+
+### `cloudflare/`
+
+Cloudflare runtime によって変更理由が決まる仕事を所有する。
+
+現在は D1 / R2 health probe がここにある。Home は public-safe な health contract
+だけを消費し、binding API や probe implementation を知らない。
+
+### `http/`
+
+外部 HTTP contract を所有する。
+
+- `hono.ts` — external REST / webhook / OAuth / integration boundary
+- `health.ts` — この boundary の stable health description
+
+### `routes/` and runtime entries
+
+`routes/` は TanStack Start の file-based routing contract によって場所が決まる。
+`server.ts`, `client.tsx`, `router.tsx` も runtime/framework contract の
+entrypoint である。
+
+これらは technical name だが、単なる分類ではなく独立した外部契約を所有するため
+有効な obligation boundary である。
+
+## Dependency direction
+
+```text
+routes ───────────────▶ home
+home/status ─────────▶ cloudflare
+home/status ─────────▶ http
+home ────────────────▶ editorial
+server ──────────────▶ http
+```
+
+逆向きは禁止する。
+
+- `cloudflare/` は `home/` を知らない。
+- `http/` は `home/` を知らない。
+- `editorial/` は特定 surface を知らない。
+- framework route は Home を bind するが、Home は route file を知らない。
+
+## TanStack Start / Hono boundary
+
+```text
+Cloudflare Worker
         │
         ▼
-src/server.ts                    # default export: { fetch(request, env, ctx) }
+src/server.ts
         │
-        ├─ /api/v1/*  /webhooks/*  /oauth/*  /integrations/*
-        │       │
+        ├─ /api/v1/* /webhooks/* /oauth/* /integrations/*
         │       ▼
-        │   src/http/hono.ts     # Hono external boundary, real env via c.env
+        │   src/http/hono.ts
         │
         └─ everything else
-                │
                 ▼
        @tanstack/react-start/server-entry
-       (= default TanStack Start handler, default CSRF middleware active)
 ```
 
-The default CSRF middleware is what TanStack Start installs when no
-custom `src/start.ts` is present. Adding a `startInstance` override
-disables it — do **not** define one without an ADR.
+TanStack Start の default CSRF middleware を維持するため、custom
+`src/start.ts` / `startInstance` は ADR なしで追加しない。
 
-## Frontend (feature-oriented, capability-keyed)
+UI から使う internal operation は TanStack Start server function とする。
+第三者向け stable HTTP contract は Hono が所有する。
 
-```
-src/
-├─ routes/                       # TanStack Start file-based routes
-├─ modules/
-│   └─ <capability>/             # one folder per business capability
-│       ├─ model.ts              # pure types / value objects
-│       ├─ service.ts            # business operations
-│       ├─ repository.ts         # persistence boundary (D1 / R2)
-│       ├─ server.ts             # createServerFn entrypoints
-│       ├─ ui/                   # feature-local React components
-│       └─ styling.ts            # feature-local Panda recipes / tokens
-└─ http/                         # NOT a feature; a single shared boundary
-    └─ hono.ts                   # external HTTP boundary (Hono)
-```
+## How boundaries are evaluated
 
-The 0.1.0 Foundation release does not ship any `src/modules/<capability>/`
-folder. `portfolio`, `content`, `activity`, etc. land in 0.2.0+.
+新しい boundary を作る前に最低限次を確認する。
 
-## Backend (capability-oriented)
+1. **Obligation** — 何を守る仕事か。
+2. **Change reason** — どの判断・契約が変わると変更されるか。
+3. **Authority** — その判断を最終的に決める権限は何か。
+4. **Dependency direction** — どこまでがこの仕事を知ってよいか。
+5. **Lifecycle** — 何と一緒に生まれ、何と一緒に消えるか。
 
-The same `src/modules/<capability>/` tree is the backend for each
-capability. Server functions live in `server.ts` next to model /
-service / repository files. Application code (anything inside
-`src/modules/<capability>/**` other than `server.ts`) must not import
-`hono`, `@tanstack/react-start`, or any Cloudflare SDK — those are
-adapters' responsibility, and only `server.ts` is allowed to bridge.
+「同時に変更された」は boundary 仮説を検証する evidence であり、同一 obligation
+であることの定義ではない。
 
-## External HTTP boundary
+物理的な directory 分離にもコストがある。独立した概念を見つけても、分離によって
+blast radius / ownership / navigation が改善しないなら無理に directory を増やさない。
 
-Hono is mounted at `src/http/hono.ts` and wired into the Worker entry
-at `src/server.ts`. Path-prefix dispatch is enforced in one place;
-handlers themselves can use real Cloudflare bindings (`D1`, `R2`,
-`ASSETS`) through `c.env`.
+## Promotion and demotion
 
-The boundary contract:
+共有化は一方向ではない。
 
-- `/api/v1/*` — external REST API endpoints.
-- `/webhooks/*` — inbound webhooks from external services.
-- `/oauth/*` — OAuth callback handlers.
-- `/integrations/*` — third-party integration adapters.
+- local な実装が独立した contract / authority / lifecycle を持つようになれば昇格する。
+- shared/cross-surface な boundary が 1 owner だけの仕事に戻れば、その owner の下へ降格できる。
+- duplication は shared obligation の候補を示す evidence であって、統合の証明ではない。
 
-Internal application operations invoked from the UI are TanStack
-Start server functions and never appear under these prefixes.
+将来利用されるかもしれない、という理由だけで shared layer や adapter を先に作らない。
 
-## Persistence
+## Persistence and deployment
 
-| Binding | Name     | Purpose                                                 |
-| ------- | -------- | ------------------------------------------------------- |
-| D1      | `DB`     | Structured content (placeholder `database_id` in 0.1.0) |
-| R2      | `MEDIA`  | Blobs / media (placeholder bucket, create on first deploy) |
-| Assets  | `ASSETS` | Static assets emitted by Vite to `./dist/client`        |
+Bindings は `wrangler.jsonc` が canonical source である。binding を変更したら
+`pnpm run cf-typegen` を実行し、`worker-configuration.d.ts` を同じ PR に含める。
 
-Bindings are declared in `wrangler.jsonc`. After editing, run
-`pnpm run cf-typegen` and commit the regenerated
-`worker-configuration.d.ts` in the same PR.
+| Binding | Name | Purpose |
+| --- | --- | --- |
+| D1 | `DB` | Structured content |
+| R2 | `MEDIA` | Blobs / media |
+| Assets | `ASSETS` | Vite static assets |
 
-Additional Cloudflare services (KV, Queues, Durable Objects,
-Workflows, Vectorize, Workers AI) require their own ADR per
-ADR-0004.
+SELF integration tests は local workerd / Miniflare 上の contract を確認する。
+real Cloudflare resource smoke は release cut で確認する。
 
-## Test scope: local workerd vs real Cloudflare
+## Verification
 
-The SELF integration tests under `test/integration/**` run inside the
-`@cloudflare/vitest-plugin` workerd pool, which uses **Miniflare** to
-simulate D1 / R2 / ASSETS bindings locally. They confirm the binding
-API surface (`prepare` / `first` / `head` / etc.) and the Worker
-entry dispatch.
+Architecture boundary の変更は path の見た目だけで承認しない。
+代表的な change scenario を当て、変更が想定 owner に局所化されるか確認する。
 
-Real-resource smoke (a deployed Worker against the real Cloudflare
-D1 / R2 instances) is part of the release cut (#009 in
-`docs/release.md`), not the per-binding SELF tests. See
-[`docs/security.md`](security.md#test-scope-local-workerd-vs-real-cloudflare)
-for the detailed contract.
+- Home に section を追加する → `home/` と route binding 以外へ不要な変更を漏らさない。
+- D1 / R2 probe を変更する → `cloudflare/` が変更を所有し、Home composition は維持する。
+- editorial spacing を変更する → `editorial/` が変更を所有し、platform code は触らない。
+- routing convention を変更する → `routes/` / runtime entry が変更を所有し、Home の意味を変えない。
 
-## Platform
-
-```
-src/platform/cloudflare/         # Cloudflare-specific helpers (env, types)
-```
-
-Capability / domain code does not import from here directly. Bindings
-flow through function arguments or Hono's `c.env`.
-
-## Deployable shape
-
-After `pnpm run build` + `pnpm run wrangler:dry-run`:
-
-```
-dist/
-├─ client/                       # static assets (HTML / CSS / JS bundles)
-└─ server/                       # Cloudflare Worker bundle
-    ├─ index.js
-    ├─ wrangler.json
-    └─ assets/
-
-dist-cloudflare/                 # wrangler deploy --dry-run output
-```
-
-## Out-of-scope at 0.1.0
-
-- Product features (`portfolio`, `content`, `activity`).
-- Tools submodule integration.
-- Coverage thresholds.
-- ESLint / Oxlint (Biome is sufficient).
-- Microservice / multi-Worker split.
+詳細は ADR-0008 を参照する。

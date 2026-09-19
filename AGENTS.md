@@ -35,9 +35,7 @@ session. Domain-specific workflows are in `skills/<skill>/SKILL.md`.
   handler based on path prefix. The default CSRF middleware is active
   because `src/start.ts` is intentionally absent — do not re-add it
   without an ADR.
-- Styling: Panda CSS (`@pandacss/dev` 1.12.x). Tokens in
-  `src/design-system/tokens.ts` (raw) + `src/design-system/
-  semantic-tokens.ts` (semantic). **Tailwind CSS is forbidden.**
+- Styling: Panda CSS (`@pandacss/dev` 1.12.x). The shipped visual language is `src/editorial/`: `tokens.ts`, `semantic-tokens.ts`, and `primitives/`. **Tailwind CSS is forbidden.**
 - Format / lint: Biome (`@biomejs/biome` 1.9.x). Replaces both
   Prettier and ESLint.
 - Package manager: pnpm 12.3.x. **Bun is not the default.** Do not
@@ -50,32 +48,63 @@ This file is updated when the stack changes.
 
 ## 3. Architecture boundary (always enforce)
 
-The split between TanStack Start and Hono is enforced in
-`src/server.ts`. Do not bypass it.
+The TanStack Start / Hono split is enforced in `src/server.ts`. Do not bypass it.
 
-- Hono handlers live under `src/http/**` (mounted by `src/server.ts`).
-- Server functions live next to the route file that uses them, or under
-  `src/modules/<capability>/server.ts`.
-- Capability / domain / application code (`src/modules/**` and any
-  feature-local file) must not import from `hono`, `@tanstack/
-  react-start`, or any Cloudflare SDK.
-- TanStack Start's **default CSRF middleware is the canonical CSRF
-  protection**. Custom `startInstance` is forbidden — overriding it
-  would disable the default middleware.
+Source ownership is **obligation-oriented** (ADR-0008). Path is a projection of
+ownership, not the rule that creates ownership.
 
-Frontend is **feature-oriented** (under `src/modules/<capability>/ui/`).
-Backend is **capability-oriented** (`src/modules/<capability>/**`).
-Do not create a flat `src/components/`, `src/hooks/`, `src/utils/`
-mega-folder.
+For every durable boundary, be able to answer:
+
+1. Obligation — what work does it own?
+2. Change reason — what decision or contract makes it change?
+3. Authority — what has final decision authority over that change?
+4. Dependency direction — who may know this contract?
+5. Lifecycle — what is it born and removed with?
+
+Do not create `modules/`, `components/`, `ui/`, `models/`, `services/`,
+`utils/`, `shared/`, or similar folders merely to classify implementation
+types. Technical names are allowed when they own an independent contract:
+`http/`, `cloudflare/`, framework-imposed `routes/`, and runtime entrypoints
+are current examples.
+
+Current dependency direction:
+
+```text
+routes -> home
+home/status -> cloudflare
+home/status -> http
+home -> editorial
+server -> http
+```
+
+- `src/home/**` owns the canonical Home surface and its presentation decisions.
+- `src/editorial/**` owns the shipped editorial visual language.
+- `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
+- `src/http/**` owns the external HTTP boundary.
+- `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
+- Internal UI operations use TanStack Start server functions at the obligation
+  that composes them (currently `src/home/status/load.ts`).
+- Hono handlers remain under `src/http/**`.
+- TanStack Start's default CSRF middleware is canonical. A custom
+  `startInstance` is forbidden without an ADR.
+
+Do not pre-create shared abstractions, integrations, or future visual languages.
+Promote a local implementation only after an independent contract / authority /
+lifecycle is observed; demote it if that independence disappears.
+
+Physical separation also has a cost. Do not split a conceptual distinction into
+another directory unless the split improves ownership, dependency direction,
+blast radius, or navigation.
 
 ## 4. Cloudflare services policy
 
-Only the resources declared in `wrangler.jsonc` exist. At 0.1.0 that
-is:
+Only the resources declared in `wrangler.jsonc` exist. As of v0.1.0
+that is:
 
 - Static Assets binding (`ASSETS`).
-- D1 binding (`DB`, placeholder database id — replace on first deploy).
-- R2 binding (`MEDIA`, placeholder bucket — create on first deploy).
+- D1 binding (`DB`, `database_name: my-web-2026`,
+  `database_id: d761ddb7-8179-48dd-855f-c8b7b2924bad`, APAC).
+- R2 binding (`MEDIA`, `bucket_name: my-web-2026`, Standard).
 
 Every additional service (KV, Queues, Durable Objects, Workflows,
 Vectorize, Workers AI) requires its own ticket and ADR entry, and
@@ -88,9 +117,15 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `typecheck` + `test`)
 - `pnpm run validate:integration` — ticket PR verification.
-  (`validate:fast` + `build` + `wrangler:dry-run`)
+  (`validate:fast` + `build` + `wrangler:dry-run` + `lint:ci`
+  (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
+  `build-storybook`)
 - `pnpm run validate:release` — pre-`main` verification.
-  (`validate:integration` + `cf-typegen`)
+  (`validate:integration` + `cf-typegen:check`)
+
+Playwright E2E is a separate CI step on pushes to `main` / `release-*`
+and on PRs with the `ui-change` label; it is not part of the local
+`validate:release` command.
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are
@@ -116,6 +151,17 @@ hide validation logic inside workflow YAML. Coverage thresholds are
   allows it).
 - Stack landing: ticket Done = landed on target release trunk, not
   merely merged into an intermediate predecessor branch.
+- **Release PR merge human gate**: agents MAY create and update the
+  release PR, run validation, and report release readiness. Agents
+  MUST NOT merge the release PR, push the release tag, or publish
+  the GitHub Release without explicit human approval from the
+  repository owner in the current interaction. "CI is green",
+  "release-ready", or any pre-approved plan does NOT constitute
+  merge approval. This applies even when the agent is implementing
+  the rule itself (the rule cannot be tightened in a single
+  autonomous pass without an interim human check). See
+  `skills/github-delivery/SKILL.md` for the canonical wording and
+  scope.
 - See `skills/github-delivery/SKILL.md` for the full procedure.
 
 ## 7. Recovery
@@ -162,14 +208,60 @@ external contracts.
 
 Read a Skill only when the task actually requires it.
 
+### Sprint / delivery
 - `skills/github-delivery/SKILL.md` — Issue / PR / release sprint
-- `skills/quality-gate/SKILL.md` — quality profile + change-risk
 - `skills/parallel-orchestration/SKILL.md` — multi-agent / stacked PR
-- `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
-- `skills/engineering-decisions/SKILL.md` — decision precedence
-- `skills/security-maintenance/SKILL.md` — framework advisory workflow
 - `skills/onboarding/SKILL.md` — fresh contributor / fresh agent
+
+### Quality / evaluation
+- `skills/quality-gate/SKILL.md` — quality profile + change-risk
+- `skills/policy-evaluation/SKILL.md` — policy / Skill change evaluation
+- `skills/security-maintenance/SKILL.md` — framework advisory workflow
+
+### Engineering / design
+- `skills/engineering-decisions/SKILL.md` — decision precedence
+- `skills/design-refinement/SKILL.md` — pre-implementation design refinement
+
+### Runtime / recovery
+- `skills/sandbox-runtime/SKILL.md` — per-worker isolated runtime
+- `skills/worktree-workflow/SKILL.md` — Worktrunk / git worktree mechanics
 - `skills/agent-recovery/SKILL.md` — durable recovery
+
+### Communication
+- `skills/writing-discipline/SKILL.md` — reader-facing prose pipeline
+- `skills/interaction-discipline/SKILL.md` — active-work interaction discipline
+
+### Design (general-purpose)
+
+Web fundamentals / design-layout / animation-interaction の汎用 Skills。
+Vendor-specific design system / media production 系は含まない
+(`design-skills` upstream 47 件から 25 件選抜、 release-0-3-0)。
+
+- `skills/design-intent/SKILL.md` — DESIGN-BRIEF 起点の design direction
+- `skills/color-system/SKILL.md` — semantic color roles, light/dark
+- `skills/typesetting/SKILL.md` — text rhythm, mixed-script, hierarchy
+- `skills/layout-system/SKILL.md` — Marketing / Dashboard / Application / Swiss
+- `skills/responsive-design/SKILL.md` — fluid / container query / breakpoint
+- `skills/interaction-states/SKILL.md` — hover / focus / pressed / loading 等 state
+- `skills/navigation-design/SKILL.md` — navigation model 選定
+- `skills/iconography-system/SKILL.md` — icon family 設計
+- `skills/motion-system/SKILL.md` — Marketing / Product UI / Navigation motion
+- `skills/motion-audit/SKILL.md` — 既存 UI の motion 調査
+- `skills/motion-implement/SKILL.md` — motion 実装
+- `skills/motion-review/SKILL.md` — motion review
+- `skills/token-audit/SKILL.md` — Panda CSS semantic-tokens 監査
+- `skills/document-design/SKILL.md` — long-form paginated docs
+- `skills/diagram-design/SKILL.md` — architecture / process diagram
+- `skills/dark-mode-design/SKILL.md` — dark appearance 設計
+- `skills/content-design/SKILL.md` — product / service content
+- `skills/form-design/SKILL.md` — form flow 設計
+- `skills/table-design/SKILL.md` — table / data grid
+- `skills/accessibility-audit/SKILL.md` — accessibility 監査・修正
+- `skills/cognitive-accessibility/SKILL.md` — 認知・学習障害への design
+- `skills/inclusive-design/SKILL.md` — exclusion 検出 + 多様な参加経路
+- `skills/high-contrast-design/SKILL.md` — high-contrast / forced-colors
+- `skills/touch-interface/SKILL.md` — touch / coarse-pointer interaction
+- `skills/keyboard-interface/SKILL.md` — keyboard interaction model
 
 Architecture docs (`docs/architecture.md`), development docs
 (`docs/development.md`), and release docs (`docs/release.md`) are the

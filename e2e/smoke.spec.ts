@@ -46,7 +46,7 @@ test.describe('deployed Worker smoke', () => {
 /**
  * Home page composition (Issue #21).
  *
- * Verifies the three content sections plus the footer landmark render
+ * Verifies the five content sections plus the footer landmark render
  * with the required structure and the single `<h1>` invariant. Skips assertions on
  * exact prose so Japanese / English copy can land in any ticket
  * without breaking this smoke.
@@ -60,12 +60,14 @@ test.describe('home page composition', () => {
 		await expect(h1).toHaveCount(1);
 		await expect(h1).toHaveText(/木村友亮 \/ samuido/);
 
-		// Three content sections, in order, all anchored by aria-labelledby.
+		// Five content sections, in order, all anchored by aria-labelledby.
 		const sections = page.locator('section[aria-labelledby]');
-		await expect(sections).toHaveCount(3);
+		await expect(sections).toHaveCount(5);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
 		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
 		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'status-heading');
+		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'reactions-heading');
+		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'access-counter-heading');
 
 		// Public-preview transition back to the complete 2025 edition.
 		await expect(page.locator('a[href="https://yusuke-kim.com"]')).toHaveCount(2);
@@ -80,11 +82,11 @@ test.describe('home page composition', () => {
 
 	test('renders the capabilities grid with three planned cards', async ({ page }) => {
 		await page.goto('/');
-		const capabilities = page.locator('section[aria-labelledby="capabilities-heading"] article');
+		const capabilities = page.locator('section[aria-labelledby="capabilities-heading"] li');
 		await expect(capabilities).toHaveCount(3);
-		// Each card has a "planned" badge in 0.2.0.
+		// Each capability item has a "planned" badge.
 		const badges = page.locator(
-			'section[aria-labelledby="capabilities-heading"] article >> text=planned',
+			'section[aria-labelledby="capabilities-heading"] li >> text=planned',
 		);
 		await expect(badges).toHaveCount(3);
 	});

@@ -274,8 +274,93 @@ function PickerModal({ open, onClose, onSelect }: PickerModalProps) {
  */
 type LocalReactionAggregate = ReactionAggregate & { codepoint?: string };
 
+export interface ComputeToggleInput {
+	currentViewerReactions: readonly { kind: 'emoji' | 'image'; value: string }[];
+	currentAggregates: readonly LocalReactionAggregate[];
+	kind: ReactionAggregate['kind'];
+	value: string;
+	codepoint?: string;
+}
+
+export interface ComputeToggleOutput {
+	/** Which server call the click handler should fire. */
+	action: 'add' | 'remove';
+	/** Next `viewer_reactions` snapshot — mirrors the optimistic state after this click. */
+	nextViewerReactions: readonly { kind: 'emoji' | 'image'; value: string }[];
+	/** Next `aggregates` snapshot — mirrors the optimistic chip layout after this click. */
+	nextAggregates: readonly LocalReactionAggregate[];
+}
+
+/**
+ * Pure toggle state machine — extracted from the widget so the
+ * ADD → REMOVE → ADD interaction can be unit-tested without a DOM.
+ *
+ * Toggle decision uses the visitor's own reaction set, NOT the
+ * public aggregate count. The aggregate count is "everyone's total"
+ * — a second visitor to click an emoji a prior visitor reacted with
+ * sees `count > 0` but has never reacted with it themselves.
+ * Sending DELETE then would optimistically decrement and bounce
+ * back on the next reload (P1 review finding).
+ *
+ * Optimistic aggregate mutation:
+ *   - remove → decrement matching chip; drop the chip if its count
+ *     hits 0 (the upstream API never surfaces count=0 chips).
+ *   - add → INCREMENT matching chip if it already exists from
+ *     another visitor's reaction; otherwise APPEND with count=1 +
+ *     picker-supplied codepoint. The previous widget code APPENDED
+ *     unconditionally, which produced a duplicate chip when the
+ *     emoji was already in the aggregate (P1 review finding — the
+ *     chip count went `…5, 1` instead of `…6`).
+ */
+export function computeToggleState(input: ComputeToggleInput): ComputeToggleOutput {
+	const exists = input.currentViewerReactions.some(
+		(r) => r.kind === input.kind && r.value === input.value,
+	);
+	if (exists) {
+		return {
+			action: 'remove',
+			nextViewerReactions: input.currentViewerReactions.filter(
+				(r) => !(r.kind === input.kind && r.value === input.value),
+			),
+			nextAggregates: input.currentAggregates
+				.map((a) =>
+					a.kind === input.kind && a.value === input.value ? { ...a, count: a.count - 1 } : a,
+				)
+				.filter((a) => a.count > 0),
+		};
+	}
+	const alreadyInAggregate = input.currentAggregates.find(
+		(a) => a.kind === input.kind && a.value === input.value,
+	);
+	const nextAggregates = alreadyInAggregate
+		? input.currentAggregates.map((a) =>
+				a.kind === input.kind && a.value === input.value ? { ...a, count: a.count + 1 } : a,
+			)
+		: [
+				...input.currentAggregates,
+				{ kind: input.kind, value: input.value, count: 1, codepoint: input.codepoint },
+			];
+	return {
+		action: 'add',
+		nextViewerReactions: [
+			...input.currentViewerReactions,
+			{ kind: input.kind, value: input.value },
+		],
+		nextAggregates,
+	};
+}
+
 export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	const [aggregates, setAggregates] = useState<readonly LocalReactionAggregate[]>(data.aggregates);
+	// Local mirror of `data.viewer_reactions` so the toggle predicate
+	// reflects the visitor's most recent successful action, not just
+	// the SSR snapshot. Without this, a second click on a chip this
+	// visitor already added would still see `exists === false` and
+	// send a redundant PUT (P1 review finding — the local state did
+	// not update after the first click).
+	const [viewerReactions, setViewerReactions] = useState<
+		readonly { kind: 'emoji' | 'image'; value: string }[]
+	>(data.viewer_reactions);
 	const [error, setError] = useState<string | null>(null);
 	const [pickerOpen, setPickerOpen] = useState(false);
 
@@ -301,29 +386,15 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 		codepoint?: string,
 	): void => {
 		setError(null);
-		const before = aggregates;
-		// Toggle decision uses the visitor's own reaction set
-		// (`viewer_reactions`), NOT the public aggregate count.
-		// The aggregate count is "everyone's total" — when a second
-		// visitor clicks an emoji a prior visitor reacted with, the
-		// chip is visible because `count > 0` but the visitor has
-		// never reacted with it themselves. Sending DELETE then
-		// would optimistically decrement and bounce back on the next
-		// reload (P1 review finding). `viewer_reactions` is set-
-		// membership, so the click correctly maps to PUT (add) or
-		// DELETE (remove) for THIS visitor.
-		const exists = data.viewer_reactions.some((r) => r.kind === kind && r.value === value);
-		// Optimistic update: when an existing chip is decremented and
-		// hits 0, drop it from the local list. The upstream reactions
-		// API surfaces aggregates with `count > 0`, so showing a "0"
-		// chip in the UI would be inconsistent with what a fresh
-		// load would render.
-		const next: LocalReactionAggregate[] = exists
-			? before
-					.map((a) => (a.kind === kind && a.value === value ? { ...a, count: a.count - 1 } : a))
-					.filter((a) => a.count > 0)
-			: [...before, { kind, value, count: 1, codepoint }];
-		setAggregates(next);
+		const { action, nextAggregates, nextViewerReactions } = computeToggleState({
+			currentViewerReactions: viewerReactions,
+			currentAggregates: aggregates,
+			kind,
+			value,
+			codepoint,
+		});
+		setAggregates(nextAggregates);
+		setViewerReactions(nextViewerReactions);
 
 		// Fire-and-forget: the click handler must return immediately so
 		// the chip animation + modal close feel instant. The server
@@ -334,9 +405,10 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 		// そこは非同期でいい"). The next page load reconciles with the
 		// real aggregate state.
 		const target = data.target_key;
-		const promise = exists
-			? removeHomeReaction({ data: { target, kind, value } })
-			: addHomeReaction({ data: { target, kind, value, codepoint } });
+		const promise =
+			action === 'remove'
+				? removeHomeReaction({ data: { target, kind, value } })
+				: addHomeReaction({ data: { target, kind, value, codepoint } });
 		void promise
 			.then((result) => {
 				if (!result.ok) setError(result.reason ?? 'upstream_error');

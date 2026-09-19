@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import type { EmojiClickData } from 'emoji-picker-react';
 import type { CatalogEntry } from './emoji-catalog';
 import type { HomeReactionsData } from './load';
-import { ReactionsWidget, deriveSlugFromPicker } from './widget';
+import { ReactionsWidget, computeToggleState, deriveSlugFromPicker } from './widget';
 
 /**
  * ReactionsWidget smoke tests — server-render the disabled state, the
@@ -202,5 +202,152 @@ describe('deriveSlugFromPicker', () => {
 			}),
 		);
 		expect(result).toBeNull();
+	});
+});
+
+describe('computeToggleState', () => {
+	// P1 review finding — the widget's local state was never updated
+	// after a successful PUT/DELETE, so subsequent clicks on the same
+	// chip kept sending the same action (always PUT for never-added
+	// emojis; always DELETE for already-added emojis) and a chip
+	// added by another visitor produced a duplicate `{count: 1}`
+	// chip instead of incrementing the existing one. These tests
+	// drive the pure state machine through a single-page ADD →
+	// REMOVE → ADD interaction without needing a DOM.
+
+	it('first click on a fresh emoji produces action="add" and appends to both states', () => {
+		const result = computeToggleState({
+			currentViewerReactions: [],
+			currentAggregates: [],
+			kind: 'emoji',
+			value: 'thumbs_up',
+			codepoint: '👍',
+		});
+		expect(result.action).toBe('add');
+		expect(result.nextViewerReactions).toEqual([{ kind: 'emoji', value: 'thumbs_up' }]);
+		expect(result.nextAggregates).toEqual([
+			{ kind: 'emoji', value: 'thumbs_up', count: 1, codepoint: '👍' },
+		]);
+	});
+
+	it('click on an emoji already in aggregates from another visitor INCREMENTS the chip, not duplicates', () => {
+		// P1 review finding: the previous widget code appended
+		// unconditionally, producing `[{thumbs_up, 5}, {thumbs_up, 1}]`
+		// when this visitor reacted to an emoji already aggregated
+		// from someone else.
+		const result = computeToggleState({
+			currentViewerReactions: [],
+			currentAggregates: [{ kind: 'emoji', value: 'thumbs_up', count: 5 }],
+			kind: 'emoji',
+			value: 'thumbs_up',
+			codepoint: '👍',
+		});
+		expect(result.action).toBe('add');
+		expect(result.nextViewerReactions).toEqual([{ kind: 'emoji', value: 'thumbs_up' }]);
+		expect(result.nextAggregates).toEqual([{ kind: 'emoji', value: 'thumbs_up', count: 6 }]);
+	});
+
+	it('ADD → REMOVE → ADD within a single page render flips action correctly each time (P1 regression)', () => {
+		// The previous code read `data.viewer_reactions` (SSR snapshot)
+		// for the toggle predicate, so after the first ADD a second
+		// click would still see `exists === false` and fire PUT
+		// again. The pure helper is fed the *current* viewerReactions
+		// and currentAggregates on every call, so the interaction
+		// below must produce add → remove → add.
+		let viewerReactions: readonly { kind: 'emoji' | 'image'; value: string }[] = [];
+		let aggregates: readonly {
+			kind: 'emoji' | 'image';
+			value: string;
+			count: number;
+			codepoint?: string;
+		}[] = [];
+
+		// 1. ADD — fresh emoji, no prior state.
+		let step = computeToggleState({
+			currentViewerReactions: viewerReactions,
+			currentAggregates: aggregates,
+			kind: 'emoji',
+			value: 'thumbs_up',
+			codepoint: '👍',
+		});
+		viewerReactions = step.nextViewerReactions;
+		aggregates = step.nextAggregates;
+		expect(step.action).toBe('add');
+		expect(viewerReactions).toEqual([{ kind: 'emoji', value: 'thumbs_up' }]);
+		expect(aggregates).toEqual([{ kind: 'emoji', value: 'thumbs_up', count: 1, codepoint: '👍' }]);
+
+		// 2. REMOVE — same emoji, this visitor has it.
+		step = computeToggleState({
+			currentViewerReactions: viewerReactions,
+			currentAggregates: aggregates,
+			kind: 'emoji',
+			value: 'thumbs_up',
+		});
+		viewerReactions = step.nextViewerReactions;
+		aggregates = step.nextAggregates;
+		expect(step.action).toBe('remove');
+		expect(viewerReactions).toEqual([]);
+		expect(aggregates).toEqual([]);
+
+		// 3. ADD again — re-adds to the chip with codepoint + count=1.
+		step = computeToggleState({
+			currentViewerReactions: viewerReactions,
+			currentAggregates: aggregates,
+			kind: 'emoji',
+			value: 'thumbs_up',
+			codepoint: '👍',
+		});
+		viewerReactions = step.nextViewerReactions;
+		aggregates = step.nextAggregates;
+		expect(step.action).toBe('add');
+		expect(viewerReactions).toEqual([{ kind: 'emoji', value: 'thumbs_up' }]);
+		expect(aggregates).toEqual([{ kind: 'emoji', value: 'thumbs_up', count: 1, codepoint: '👍' }]);
+	});
+
+	it("remove on the visitor's last reaction drops the chip entirely", () => {
+		const result = computeToggleState({
+			currentViewerReactions: [{ kind: 'emoji', value: 'thumbs_up' }],
+			currentAggregates: [{ kind: 'emoji', value: 'thumbs_up', count: 1, codepoint: '👍' }],
+			kind: 'emoji',
+			value: 'thumbs_up',
+		});
+		expect(result.action).toBe('remove');
+		expect(result.nextViewerReactions).toEqual([]);
+		// Chip count went 1 → 0; the 0 chip is dropped because the
+		// upstream API never surfaces count=0 chips.
+		expect(result.nextAggregates).toEqual([]);
+	});
+
+	it('remove on a chip shared with other visitors decrements without dropping', () => {
+		const result = computeToggleState({
+			currentViewerReactions: [{ kind: 'emoji', value: 'thumbs_up' }],
+			currentAggregates: [{ kind: 'emoji', value: 'thumbs_up', count: 4, codepoint: '👍' }],
+			kind: 'emoji',
+			value: 'thumbs_up',
+		});
+		expect(result.action).toBe('remove');
+		expect(result.nextViewerReactions).toEqual([]);
+		// Codepoint survives the decrement — only the count changes.
+		expect(result.nextAggregates).toEqual([
+			{ kind: 'emoji', value: 'thumbs_up', count: 3, codepoint: '👍' },
+		]);
+	});
+
+	it('does not mutate the input arrays', () => {
+		// Defensive: the helper must be pure — callers rely on this to
+		// compare previous vs next snapshots without surprises.
+		const viewerReactions = [{ kind: 'emoji' as const, value: 'thumbs_up' }];
+		const aggregates = [{ kind: 'emoji' as const, value: 'thumbs_up', count: 2 }];
+		const snapshotV = [...viewerReactions];
+		const snapshotA = [...aggregates];
+		computeToggleState({
+			currentViewerReactions: viewerReactions,
+			currentAggregates: aggregates,
+			kind: 'emoji',
+			value: 'tada',
+			codepoint: '🎉',
+		});
+		expect(viewerReactions).toEqual(snapshotV);
+		expect(aggregates).toEqual(snapshotA);
 	});
 });

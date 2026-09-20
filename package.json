@@ -1,6 +1,6 @@
 {
 	"name": "my-web-2026",
-	"version": "0.3.0",
+	"version": "0.3.1",
 	"private": true,
 	"type": "module",
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
@@ -37,10 +37,12 @@
 		"typecheck": "tsc --noEmit",
 		"test": "vitest run",
 		"test:watch": "vitest",
-		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run typecheck && pnpm run test",
+		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run version:check && pnpm run typecheck && pnpm run test",
 		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run wrangler:dry-run && pnpm run lint:ci && pnpm run build-storybook",
 		"validate:release": "pnpm run validate:integration && pnpm run cf-typegen:check",
-		"architecture:check": "node scripts/check-architecture.mjs"
+		"architecture:check": "node scripts/check-architecture.mjs",
+		"version:check": "node scripts/check-release-version.mjs",
+		"ensure:home-api-key:remote": "node scripts/ensure-home-api-key.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

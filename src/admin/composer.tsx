@@ -8,7 +8,7 @@ import { SectionHeading } from '../editorial/primitives/SectionHeading';
  * AdminDashboard — `/admin` composition.
  *
  * Shares the editorial visual language with the home surface
- * (`src/editorial/`). 0.3.0 keeps the dashboard as a single screen
+ * (`src/editorial/`). The dashboard remains a single screen
  * with three sections:
  *
  *   1. Identity — the logged-in admin's email + role + sign-out form.
@@ -48,7 +48,7 @@ export function AdminDashboard({ email, role, signOutForm, capabilities }: Admin
 				<SectionHeading
 					eyebrow="00 — Admin"
 					title="管理画面 / Admin"
-					description="招待・API キー・リアクション画像を一元管理。Invitation-only。0.3.0 では Invitations のみ。"
+					description="招待・API キー・リアクション画像を一元管理。利用可能な機能は下の live / planned badge を正とします。"
 					variant="spread"
 				>
 					<div

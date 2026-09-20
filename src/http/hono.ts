@@ -1,3 +1,4 @@
+import packageJson from '../../package.json';
 import { Hono } from 'hono';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
@@ -41,7 +42,7 @@ externalBoundary.get('/api/v1/health', (c) =>
 		status: 'ok',
 		service: 'my-web-2026',
 		layer: 'external-boundary',
-		version: '0.1.0',
+		version: packageJson.version,
 	}),
 );
 

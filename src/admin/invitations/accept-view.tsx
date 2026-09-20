@@ -59,7 +59,7 @@ export function AcceptInvitationView({ probe, token, submit }: AcceptInvitationV
 				<SectionHeading
 					eyebrow="Invitation accept"
 					title="アカウントを作成 / Accept invitation"
-					description="招待メールに記載されたトークンでサインアップします。0.3.0 は invitation-only。"
+					description="招待メールに記載されたトークンでサインアップします。現在は invitation-only です。"
 					variant="spread"
 				>
 					{!probe.found ? (

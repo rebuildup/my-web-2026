@@ -89,6 +89,9 @@
 		"MY_WEB_2026_COUNTER_KEY": "home-page",
 		"BETTER_AUTH_URL": "https://rebuildup.dev"
 	},
+	"secrets": {
+		"required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
+	},
 	"ratelimits": [
 		{
 			"name": "RATE_LIMIT_WRITE",
@@ -101,10 +104,7 @@
 			"simple": { "limit": 600, "period": 60 }
 		}
 	],
-	// Operator-supplied: replace the placeholder zone_id with the
-	// Cloudflare zone ID for `rebuildup.dev` before running
-	// `pnpm run deploy:production`. Find it via the Cloudflare
-	// dashboard (Overview tab) or `GET /zones?name=rebuildup.dev`.
+	// The zone_id below is the verified Cloudflare zone for `rebuildup.dev`.
 	// `custom_domain: true` is the hint to Cloudflare to provision
 	// DNS + TLS automatically. Pattern is the bare hostname (no
 	// `/*`) — Cloudflare routes every path under the hostname to

@@ -146,7 +146,7 @@
   — with a 12-unit gutter. The lead column caps at 640px to keep the
   measure inside the 60–70 character window; the right rail carries
   raw mono metadata (`edition / my-web-2026 · 2026 Preview /
-  v0.3.0 · MIT`) — no border, no background, no padding box. Below
+  the package-derived release version · MIT`) — no border, no background, no padding box. Below
   `lg` the two columns stack into the original single flow.
 - **Hero typography tightening**: h1 uses `line-height: 1.1` at `lg`
   and `letter-spacing: -0.02em` (inline literal, not a token);

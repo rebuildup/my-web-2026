@@ -10,8 +10,10 @@ session. Domain-specific workflows are in `skills/<skill>/SKILL.md`.
 ## 1. Project identity
 
 - my-web-2026 replaces my-web-2025 as the personal Web Platform.
-- 0.1.0 Foundation release is targeted for 2026-09; full migration is
-  targeted for 2026-10.
+- 0.1.0 Foundation shipped in 2026-09; full migration is targeted for 2026-10.
+- `package.json#version` is the sole current release-version source. Do not duplicate
+  the current version in UI copy, README status prose, health responses, or runbooks;
+  import/derive it or use GitHub Release metadata.
 - Repository is a single Cloudflare Workers deployment, modular
   monolith architecture.
 - Visibility: **public**. License: MIT. Canonical remote:
@@ -123,8 +125,7 @@ The currently registered type-only edge is `home → http`.
 
 ## 4. Cloudflare services policy
 
-Only the resources declared in `wrangler.jsonc` exist. As of v0.1.0
-that is:
+Only resources declared in the Wrangler configuration exist. The durable baseline is:
 
 - Static Assets binding (`ASSETS`).
 - D1 binding (`DB`, `database_name: my-web-2026`,

@@ -1,0 +1,119 @@
+/**
+ * Production-only overrides for my-web-2026 (Issue #43 / ADR-0014).
+ *
+ * Mirrors `wrangler.jsonc` (the default / local-dev config) and
+ * adds the canonical production wiring:
+ *
+ *   - `vars.BETTER_AUTH_URL = "https://rebuildup.dev"` — pins the
+ *     Better Auth `baseURL` and `trustedOrigins` to the canonical
+ *     production origin.
+ *   - `routes[].pattern = "rebuildup.dev/*"` (with the operator's
+ *     zone_id) — attaches the Worker to the Cloudflare zone
+ *     `rebuildup.dev`. Cloudflare provisions DNS + TLS automatically
+ *     when the zone is owned by the operator's account.
+ *
+ * Operator flow:
+ *
+ *   1. Replace the placeholder `zone_id` below with the actual
+ *      Cloudflare zone ID for `rebuildup.dev`. Find it in the
+ *      Cloudflare dashboard (Overview tab) or via
+ *      `wrangler zones list`.
+ *   2. Run:
+ *
+ *      pnpm run deploy:production
+ *      # = vite build && wrangler deploy -c wrangler.production.jsonc
+ *
+ *      `wrangler deploy` provisions DNS + TLS automatically once the
+ *      zone_id is correct.
+ *
+ * Why a separate fully-duplicated config (rather than
+ * `env.production` inside `wrangler.jsonc`):
+ *
+ *   1. wrangler 4.131.x does NOT support top-level `extends` in
+ *      Wrangler JSON / JSONC files (the message says "current:
+ *      4.131.0, latest: 4.135.0 — might support this configuration
+ *      option"). Upgrading wrangler is out of scope for this ticket.
+ *   2. `env.production` inside `wrangler.jsonc` causes wrangler's
+ *      typegen to narrow `__BaseEnv_Env` to env-scoped bindings,
+ *      making all top-level bindings optional — which would force
+ *      `env.DB!` / `env.MEDIA!` (etc.) non-null assertions on every
+ *      binding call site (126 call sites in this codebase).
+ *   3. wrangler 4.131.x does not recognize `custom_domains` (added
+ *      in 4.135+); `routes` is the supported shape for this version.
+ *
+ * The duplicated config keeps `wrangler.jsonc` (and its typegen)
+ * clean for local dev. Maintenance is acceptable: any change to
+ * `wrangler.jsonc` must be mirrored in `wrangler.production.jsonc`
+ * (or vice versa). The header comment in `wrangler.jsonc` calls
+ * this out.
+ *
+ * Out of scope (Issue #43 body):
+ *   - `www.rebuildup.dev` adoption
+ *   - mail / MX / SPF / DKIM
+ *   - other subdomain design
+ *
+ * Secrets (BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY) are
+ * provisioned via `wrangler secret put` and live in the Cloudflare
+ * account, NOT in this file or the repo.
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "my-web-2026",
+	"main": "./src/server.ts",
+	"compatibility_date": "2026-09-07",
+	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
+	"assets": {
+		"directory": "./dist/client",
+		"binding": "ASSETS"
+	},
+	"observability": {
+		"enabled": true
+	},
+	"upload_source_maps": true,
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "my-web-2026",
+			"database_id": "d761ddb7-8179-48dd-855f-c8b7b2924bad",
+			"migrations_dir": "migrations"
+		}
+	],
+	"r2_buckets": [
+		{
+			"binding": "MEDIA",
+			"bucket_name": "my-web-2026"
+		}
+	],
+	"vars": {
+		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
+		"MY_WEB_2026_COUNTER_KEY": "home-page",
+		"BETTER_AUTH_URL": "https://rebuildup.dev"
+	},
+	"ratelimits": [
+		{
+			"name": "RATE_LIMIT_WRITE",
+			"namespace_id": "00000000000000000000000000000001",
+			"simple": { "limit": 60, "period": 60 }
+		},
+		{
+			"name": "RATE_LIMIT_READ",
+			"namespace_id": "00000000000000000000000000000002",
+			"simple": { "limit": 600, "period": 60 }
+		}
+	],
+	// Operator-supplied: replace the placeholder zone_id with the
+	// Cloudflare zone ID for `rebuildup.dev` before running
+	// `pnpm run deploy:production`. Find it via `wrangler zones list`
+	// or the Cloudflare dashboard. `custom_domain: true` is the
+	// hint to Cloudflare to provision the DNS + TLS automatically.
+	// Pattern is the bare hostname (no `/*`) — Cloudflare routes
+	// every path under the hostname to the Worker.
+	"routes": [
+		{
+			"pattern": "rebuildup.dev",
+			"custom_domain": true,
+			"zone_id": "REPLACE_WITH_REBUILDUP_DEV_ZONE_ID"
+		}
+	],
+	"no_bundle": true
+}

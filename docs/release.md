@@ -10,7 +10,8 @@
 - One sprint = one target semantic version = one release branch
   `release-x-y-z`.
 - 0.1.0 Foundation was released on 2026-09-11.
-- 0.2.0 Public Preview targets 2026-09-19.
+- 0.2.0 Public Preview was released on 2026-09-19.
+- 0.3.0 (this release) targets 2026-09-20.
 - my-web-2025 remains the complete public edition until required capabilities
   are migrated; cutover timing follows capability readiness rather than a fixed date.
 
@@ -135,6 +136,27 @@ Before merging `release-0-2-0 -> main`:
 3. package / visible version / release documentation all report 0.2.0;
 4. production deployment is smoke-tested against the public Worker URL;
 5. repository owner gives the explicit release-merge approval required below.
+
+For 0.3.0 and later, the release gate also requires the canonical
+production domain to be wired (Issue #43 / ADR-0014):
+
+6. Operator has walked through the home / admin / reactions /
+   counter surfaces **on the local dev server** (`pnpm run dev`)
+   with their own eyes, against the `__root.tsx` + `bootstrap:home-api-key`
+   wiring introduced by this ticket. The dev verify path is
+   documented in `ADR-0014 §5.1`; it is the precondition for
+   step 7 (the release PR merge human gate). The operator must NOT
+   ship to production without having seen the home surface working
+   locally first.
+7. `https://rebuildup.dev` responds 200 on `/`, `/admin/login`, and
+   `/api/v1/health`. `BETTER_AUTH_URL` is pinned in the companion
+   file `wrangler.production.jsonc vars` and applied via
+   `pnpm run deploy:production`. Operator runs `pnpm run e2e:prod`
+   (or triggers the GH Actions `production smoke` workflow) before
+   the release PR is opened, AND walks through the same home /
+   admin / reactions / counter check on the canonical URL. The
+   `*.workers.dev` URL is debug-only and not documented as
+   canonical.
 
 ## 0.1.0 Foundation backlog
 

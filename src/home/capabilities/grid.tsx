@@ -1,7 +1,7 @@
+import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
-import { css } from '../../../styled-system/css';
 import type { Capability } from './capability';
 
 export interface CapabilitiesGridProps {
@@ -45,7 +45,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 					id="capabilities-heading"
 					eyebrow="01 — Capabilities"
 					title="できごと / What's here"
-					description="個人 Platform の機能領域。0.2.0 時点ではまだどれも未公開で、順に組み立てていく。"
+					description="個人 Platform の機能領域。0.3.0 時点ではまだどれも未公開で、順に組み立てていく。"
 					variant="spread"
 				>
 					<ul
@@ -83,7 +83,7 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 										<h3
 											className={css({
 												margin: '0',
-												fontFamily: 'sans',
+												fontFamily: 'heading',
 												fontSize: 'xl',
 												fontWeight: '700',
 												color: 'text.default',

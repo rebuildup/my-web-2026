@@ -92,6 +92,32 @@ export const AllReachable: Story = {
 			],
 			statuses: baseStatuses,
 			observedAt: '2026-09-17T15:02:16.985Z',
+			reactions: {
+				target_key: 'home-page',
+				aggregates: [
+					{ kind: 'emoji', value: 'thumbs_up', count: 17 },
+					{ kind: 'emoji', value: 'tada', count: 9 },
+					{ kind: 'emoji', value: 'fire', count: 4 },
+				],
+				// Visitor state for the Storybook viewer (no cookie →
+				// empty). Real deployments populate this from
+				// `mw_actor_id` (P1 #1 fix).
+				viewer_reactions: [],
+				catalog: [
+					{ slug: 'thumbs_up', codepoint: '👍', enabled: true },
+					{ slug: 'tada', codepoint: '🎉', enabled: true },
+					{ slug: 'fire', codepoint: '🔥', enabled: true },
+					{ slug: 'rocket', codepoint: '🚀', enabled: true },
+				],
+				enabled: true,
+			},
+			counter: {
+				key: 'home-page',
+				count: 1234,
+				first_hit: Date.parse('2026-09-01T00:00:00Z'),
+				last_hit: Date.parse('2026-09-17T15:02:16.985Z'),
+				enabled: true,
+			},
 		},
 	},
 };

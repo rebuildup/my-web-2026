@@ -1,0 +1,59 @@
+name: production smoke
+
+# Issue #43 / ADR-0014 — operator-initiated smoke against the
+# canonical production URL `https://rebuildup.dev`.
+#
+# Triggers ONLY on `workflow_dispatch`. The production site is never
+# gated by regular CI (push / pull_request) so a transient
+# production outage cannot block the release pipeline. The operator
+# runs this workflow manually after `pnpm run deploy:production`
+# succeeds, before opening the release PR.
+#
+# Usage:
+#   gh workflow run prod-smoke.yml
+#   gh run watch
+#
+# Or run locally:
+#   pnpm run e2e:prod
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: prod-smoke-${{ github.workflow }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  prod-smoke:
+    name: production smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PLAYWRIGHT_BASE_URL: https://rebuildup.dev
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      # corepack is forbidden in this repository (see ADR-0003).
+      # pnpm/action-setup@v4 downloads the pnpm 12.3.4 standalone binary
+      # directly from pnpm's release CDN; it does not use corepack.
+      - uses: pnpm/action-setup@v4
+        with: { version: 12.3.4 }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run e2e:install --with-deps
+      - run: pnpm run e2e:prod
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-smoke-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 14

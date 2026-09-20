@@ -71,7 +71,7 @@ change_risk_mapping:
     gate: fast
   architecture_boundary:
     gate: fast
-    note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; only src/home/status/** may depend on cloudflare/http runtime health contracts'
+    note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; src/home/status/** may use the documented runtime health edges and registered home→http schema edges must be import type only'
   binding_change:
     gate: integration
     note: 'wrangler.jsonc + worker-configuration.d.ts must be in the same PR'

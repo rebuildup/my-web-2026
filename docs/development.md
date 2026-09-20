@@ -77,15 +77,20 @@ output is gitignored.
 
 ## Playwright E2E
 
-Playwright 1.63.x covers the deployed Worker smoke. The same
-HTTP-only test suite runs against `pnpm dev` locally and against
-the production Worker URL after `pnpm deploy` (set
-`PLAYWRIGHT_BASE_URL` to the deployed URL to switch the target).
+Playwright 1.63.x covers the deployed Worker smoke. Two surfaces
+exist:
+
+- `pnpm run e2e` runs `e2e/smoke.spec.ts` against `pnpm dev`
+  locally (default) or any deployed URL via `PLAYWRIGHT_BASE_URL`.
+- `pnpm run e2e:prod` runs `e2e/prod-smoke.spec.ts` against the
+  canonical production URL `https://rebuildup.dev` (Issue #43 /
+  ADR-0014). Operator-initiated only — never gated by regular CI.
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
 pnpm run e2e             # run smoke.spec.ts; auto-starts pnpm dev locally
-PLAYWRIGHT_BASE_URL=https://my-web-2026.<account>.workers.dev pnpm run e2e
+# Production smoke (Issue #43 / ADR-0014):
+pnpm run e2e:prod        # runs prod-smoke.spec.ts against https://rebuildup.dev
 ```
 
 The E2E suite asserts the four public surfaces documented in

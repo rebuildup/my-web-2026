@@ -1,4 +1,9 @@
 import { Hono } from 'hono';
+import { accessCounterRouter } from './access-counter/router';
+import { ApiKeyError } from './api-keys/middleware';
+import { authRouter } from './auth/router';
+import { requestIdMiddleware } from './middleware/request-id';
+import { reactionImagesRouter, reactionsRouter } from './reactions/router';
 
 /**
  * External HTTP boundary for my-web-2026.
@@ -20,6 +25,16 @@ import { Hono } from 'hono';
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
 export const externalBoundary = new Hono<{ Bindings: Env }>();
+
+// All `/api/v1/*` requests flow through the request-id middleware so
+// error responses and worker logs share a common correlation token.
+// New routers compose under the existing `/api/v1/*` prefixes; no
+// change to `src/server.ts` is required.
+externalBoundary.use('/api/v1/*', requestIdMiddleware);
+externalBoundary.route('/', authRouter);
+externalBoundary.route('/api/v1/access', accessCounterRouter);
+externalBoundary.route('/api/v1/reactions', reactionsRouter);
+externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);
 
 externalBoundary.get('/api/v1/health', (c) =>
 	c.json({
@@ -62,6 +77,18 @@ externalBoundary.get('/api/v1/media/ping', async (c) => {
 externalBoundary.notFound((c) => c.json({ error: 'not_found', path: c.req.path }, 404));
 
 externalBoundary.onError((err, c) => {
+	// `ApiKeyError` is thrown by `requireResourceAction` when an
+	// authenticated key lacks the requested resource/action scope.
+	// It carries the canonical status code + a stable error code;
+	// the global onError surfaces it as the documented 403/401
+	// instead of the generic 500 fallback. Without this mapping a
+	// production caller missing a scope would see a 500 with no
+	// information, while the test app (which has its own onError
+	// to coerce these errors) would correctly see 403 — masking
+	// the bug until it ships.
+	if (err instanceof ApiKeyError) {
+		return c.json({ error: err.code, status: err.status }, err.status);
+	}
 	console.error('[boundary] unhandled', err);
 	return c.json({ error: 'internal_error' }, 500);
 });

@@ -72,18 +72,33 @@ Current dependency direction:
 ```text
 routes -> home
 home/status -> cloudflare
-home/status -> http
-home -> editorial
+home/reactions -> reactions
+home/access -> http/access-counter (schema types only)
+admin/emoji-catalog -> reactions
+reactions -> cloudflare (env.DB at SSR time)
 server -> http
+home -> editorial
 ```
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
 - `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
 - `src/http/**` owns the external HTTP boundary.
+- `src/reactions/**` owns the slug-grammar / DB-backed emoji catalog
+  shared by `home/` and `admin/`. Promoted in branch 39 from
+  `src/http/reactions/` so neither the `home/` nor the `admin/`
+  obligation has to value-import through the HTTP boundary (the
+  reactions API does not own the catalog). The HTTP boundary's
+  `src/http/reactions/**` keeps only the Hono router, schema, and
+  reaction-image module; types and values about the catalog live
+  here. AGENTS.md §3 "type-only edges" makes the
+  `home → http` direction `import type`-only, so schemas under
+  `src/http/access-counter/schema.ts` are the allowed place for
+  home to read counter result shapes.
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - Internal UI operations use TanStack Start server functions at the obligation
-  that composes them (currently `src/home/status/load.ts`).
+  that composes them (currently `src/home/{status,reactions,access}/load.ts`
+  and `src/admin/**/load.ts`).
 - Hono handlers remain under `src/http/**`.
 - TanStack Start's default CSRF middleware is canonical. A custom
   `startInstance` is forbidden without an ADR.
@@ -95,6 +110,16 @@ lifecycle is observed; demote it if that independence disappears.
 Physical separation also has a cost. Do not split a conceptual distinction into
 another directory unless the split improves ownership, dependency direction,
 blast radius, or navigation.
+
+**Type-only edges.** Some edges in the dependency table above are
+annotated `(schema types only)`. They mean: the source owner may
+import from the target, but only via `import type { … } from
+"…/<schema>"` — never a value import. TypeScript's
+`verbatimModuleSyntax: true` erases those at build time, so the
+runtime obligation graph is unchanged. `scripts/check-architecture.mjs`
+enforces this for every edge registered in `typeOnlyEdges`; adding a
+new edge requires an entry there AND in the dependency table above.
+The currently registered type-only edge is `home → http`.
 
 ## 4. Cloudflare services policy
 
@@ -109,6 +134,21 @@ that is:
 Every additional service (KV, Queues, Durable Objects, Workflows,
 Vectorize, Workers AI) requires its own ticket and ADR entry, and
 `pnpm run cf-typegen` after the binding change.
+
+### Canonical production domain
+
+The canonical production origin is `https://rebuildup.dev` (owned
+in Cloudflare). Home, Admin, and `/api/v1/*` all serve from that
+origin. Wiring is documented in `docs/adr/ADR-0014-rebuildup-dev-canonical-production-domain.md`
+(Issue #43); `BETTER_AUTH_URL=https://rebuildup.dev` and the
+`routes[]` binding for the bare hostname live in the companion
+file `wrangler.production.jsonc` and are applied via
+`pnpm run deploy:production`. The companion file exists because
+declaring `env.production` inside `wrangler.jsonc` causes wrangler
+4.x typegen to narrow `Env` to env-scoped bindings, breaking
+every `env.DB` / `env.MEDIA` call site. The `*.workers.dev` URL is
+debug / infrastructure only — never referenced as canonical in
+ADRs, READMEs, user-facing copy, or example URLs.
 
 ## 5. Quality gates
 

@@ -20,8 +20,9 @@
  *     domain + Better Auth `trustedOrigins`.
  *   - custom_domains attaches the Worker to the Cloudflare zone
  *     `rebuildup.dev` (zone already owned by the operator).
- * Operator flow: `pnpm run deploy:production` (= `wrangler deploy
- * -c wrangler.production.jsonc`). Better Auth 1.5+ infers `baseURL`
+ * Production delivery is performed by `.github/workflows/deploy-production.yml`
+ * after the `main` CI run succeeds. `pnpm run deploy:production` is a local
+ * debugging fallback. Better Auth 1.5+ infers `baseURL`
  * from the incoming request when unset, so local `pnpm dev` works
  * without setting the var. Documented in ADR-0009 §8 and Risks §5;
  * the canonical-domain decision is ADR-0014 (Issue #43).
@@ -71,8 +72,9 @@
 		}
 	],
 	// Home self-consumption named vars (ADR-0011 / Ticket E + F).
-	// `MY_WEB_2026_CONSUMER_API_KEY` is provisioned as a Wrangler
-	// secret via `wrangler secret put` (see scripts/bootstrap-home-api-key.mjs).
+	// `MY_WEB_2026_CONSUMER_API_KEY` is a stable production secret supplied by
+	// GitHub Actions and uploaded with the Worker deployment. Local development
+	// may generate a separate key via scripts/bootstrap-home-api-key.mjs.
 	// The two named vars below are non-secret values used by
 	// `src/home/{reactions,access}/load.ts`; they live here so they
 	// survive `wrangler d1` schema resets.
@@ -89,22 +91,17 @@
 	// `period: 60` is chosen over `period: 10` because the documented
 	// budget is wall-clock-minute.
 	//
-	// Layering note (ADR-0010): these bindings are the ONLY rate limit
-	// in 0.3.0. The Better Auth api-key plugin's per-key rate limit is
+	// Layering note (ADR-0010): these bindings are the runtime's only
+	// rate-limit layer. The Better Auth api-key plugin's per-key rate limit is
 	// configured `enabled: false` because running both layers gates
 	// the effective budget at the lower limit (plugin's 60/min would
 	// hide the 600/min read binding) and the plugin's check is per-key
 	// not per-endpoint, so it cannot implement our two-bucket model.
 	// Key brute-force is already covered by SHA-256 hashing.
 	//
-	// `namespace_id` MUST match a real Cloudflare-provisioned
-	// rate-limit namespace in production; the all-zeros IDs below are
-	// NOT valid namespaces — they exist only so the schema parses
-	// during local development and `pnpm run validate:integration`.
-	// Provision real namespaces before deploying:
-	//   wrangler ratelimit namespace create RATE_LIMIT_WRITE
-	//   wrangler ratelimit namespace create RATE_LIMIT_READ
-	// and replace the placeholder `namespace_id` with the printed ID.
+	// `namespace_id` is a project-defined positive-integer string and must be
+	// unique within the Cloudflare account when counters must not be shared.
+	// These two stable IDs intentionally identify separate read/write buckets.
 	"ratelimits": [
 		{
 			"name": "RATE_LIMIT_WRITE",
@@ -118,9 +115,9 @@
 		}
 	]
 	// Production-only configuration lives in the companion file
-	// `wrangler.production.jsonc` (extends this file). `pnpm run
-	// deploy:production` uses `-c wrangler.production.jsonc` so the
-	// default-env typegen (this file) stays intact. See header
+	// `wrangler.production.jsonc` (a separately maintained companion file).
+	// Production CI and the local fallback both pass it explicitly with `-c`,
+	// so the default-env typegen (this file) stays intact. See header
 	// comment for the rationale (wrangler 4.x `env.<name>` typegen
 	// makes top-level bindings optional, which would force non-null
 	// assertions on every `env.DB` / `env.MEDIA` call site).

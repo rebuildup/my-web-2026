@@ -28,28 +28,14 @@
  *                    the local dev secret may not match the
  *                    production one.
  *
- * Production runbook:
- *   Recommended path: GH Actions `deploy production` workflow
- *   (`.github/workflows/deploy-production.yml`, `workflow_dispatch`).
- *   The workflow runs steps 1–5 atomically — migrate, set
- *   BETTER_AUTH_SECRET, bootstrap, set MY_WEB_2026_CONSUMER_API_KEY,
- *   deploy via cloudflare/wrangler-action. Operator only needs to
- *   provision the GitHub Actions secrets once
- *   (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
- *   `BETTER_AUTH_SECRET`) and trigger the workflow.
+ * Production use:
+ *   The canonical Actions deployment does NOT call this generator. Production
+ *   uses one stable `MY_WEB_2026_CONSUMER_API_KEY` stored in GitHub Actions
+ *   secrets and `scripts/ensure-home-api-key.mjs` only reconciles its hash row.
  *
- *   Manual fallback (offline / debugging only):
- *     1. pnpm run db:migrate:remote    # apply migrations incl. 0005
- *     2. export BETTER_AUTH_SECRET=…   # the production secret
- *     3. printf '%s' "$BETTER_AUTH_SECRET" \
- *          | wrangler secret put BETTER_AUTH_SECRET
- *     4. node scripts/bootstrap-home-api-key.mjs --target=remote
- *     5. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY
- *        < paste the printed value
- *     6. pnpm run deploy:production    # uses wrangler.production.jsonc
- *        (raw `wrangler deploy` would deploy against the workers.dev
- *        dev binding — see ADR-0014 / Issue #43 for why production
- *        uses the companion config)
+ *   `--target=remote` is retained as an explicit manual recovery/rotation
+ *   tool. Its printed plaintext is sensitive and must be captured by the human
+ *   operator; it must never be piped into CI logs.
  *
  * Usage:
  *   node scripts/bootstrap-home-api-key.mjs [--target=local|remote]
@@ -123,8 +109,8 @@ function resolveAdminUserId(target) {
 	// Better Auth stores admin users in the `user` table with
 	// `role = 'admin'`. The referenceId for the api-key must point
 	// at the admin who "owns" the key. We pick the first admin by
-	// alphabetical id (deterministic) — the project has exactly one
-	// admin in 0.3.0.
+	// alphabetical id (deterministic). Production currently has one canonical
+	// admin owner for this key.
 	const result = execFileSync(
 		'wrangler',
 		wranglerD1Args(target, "SELECT id FROM user WHERE role = 'admin' ORDER BY id ASC LIMIT 1"),
@@ -201,45 +187,10 @@ function main() {
 	const target = parseTarget(process.argv.slice(2));
 	let secret;
 	if (target === 'remote') {
-		// Refuse .dev.vars on the remote path — the local dev secret
-		// may not match the production one, and silently using it
-		// would create a key against a binding the worker never
-		// reads from. Operator must export it in the shell.
-		secret = process.env.BETTER_AUTH_SECRET;
-		if (!secret) {
-			throw new Error(
-				'BETTER_AUTH_SECRET is not set in process.env. The remote path requires the production secret — export it before running:\n  export BETTER_AUTH_SECRET=…\n  node scripts/bootstrap-home-api-key.mjs --target=remote',
-			);
-		}
-	} else {
-		const dotEnv = loadDotEnv('.dev.vars');
-		secret = dotEnv.BETTER_AUTH_SECRET ?? process.env.BETTER_AUTH_SECRET;
-		if (!secret) {
-			throw new Error(
-				'BETTER_AUTH_SECRET is not set in .dev.vars or process.env. The api-key row references the auth secret via Better Auth plugin config; this script does not need it for hashing but a missing value usually means the local D1 driver cannot resolve the auth schema.',
-			);
-		}
-	}
-	const userId = resolveAdminUserId(target);
-	const plaintext = generatePlaintext();
-	insertKey({ target, userId, plaintext });
-
-	console.log(`# Home self-consumption API key created (target=${target}).`);
-	if (target === 'remote') {
-		console.log('# Production runbook — finish in this order:');
-		console.log('#   Recommended: the GH Actions `deploy production` workflow');
-		console.log('#   (.github/workflows/deploy-production.yml) runs steps 1–3');
-		console.log('#   atomically. Operator triggers it via the Actions tab.');
-		console.log('#');
-		console.log('#   Manual fallback:');
-		console.log('#   1. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY');
-		console.log('#        (paste the value below when prompted)');
-		console.log('#   2. pnpm run deploy:production     # uses wrangler.production.jsonc');
-		console.log('#        (raw `wrangler deploy` would deploy against the workers.dev dev');
-		console.log('#         binding — see ADR-0014 / Issue #43 for why production uses');
-		console.log('#        the companion config)');
-		console.log('#   3. Verify with: curl -H "authorization: Bearer <key>" \\');
-		console.log('#        https://rebuildup.dev/api/v1/reactions?target=home-page');
+		console.log('# Manual remote key generated.');
+		console.log('# Store the value below securely and update the Worker secret only');
+		console.log('# when intentionally rotating the production consumer key.');
+		console.log('# Normal GitHub Actions deploys use the stable secret already configured.');
 	} else {
 		console.log('# Store the value below in your local secrets:');
 		console.log('#   .dev.vars  : MY_WEB_2026_CONSUMER_API_KEY="…"');

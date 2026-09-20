@@ -156,10 +156,10 @@ production domain to be wired (Issue #43 / ADR-0014):
 7. `https://rebuildup.dev` responds 200 on `/`, `/admin/login`, and
    `/api/v1/health`. `BETTER_AUTH_URL` is pinned in the companion
    file `wrangler.production.jsonc vars` and applied by `.github/workflows/deploy-production.yml`. A merge to `main`
-   (which can only happen through an explicitly approved release PR) automatically
-   runs the production deployment; `workflow_dispatch` remains the recovery/rerun
-   entry point. The job builds, applies remote D1 migrations, ensures the stable
-   home-consumer API key row, and performs one `wrangler deploy --secrets-file`
+   (which can only happen through an explicitly approved release PR) starts the normal
+   main CI. A successful main CI run triggers the production deployment for that exact
+   SHA; `workflow_dispatch` remains the recovery/rerun entry point. The job builds, applies remote D1 migrations, ensures the stable
+   home-consumer API key row, and performs one production `wrangler deploy --secrets-file`
    so Worker code and both runtime secrets become active together. The required
    production-environment secrets are `CLOUDFLARE_API_TOKEN`,
    `CLOUDFLARE_ACCOUNT_ID`, `BETTER_AUTH_SECRET`, and

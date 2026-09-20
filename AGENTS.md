@@ -143,8 +143,11 @@ in Cloudflare). Home, Admin, and `/api/v1/*` all serve from that
 origin. Wiring is documented in `docs/adr/ADR-0014-rebuildup-dev-canonical-production-domain.md`
 (Issue #43); `BETTER_AUTH_URL=https://rebuildup.dev` and the
 `routes[]` binding for the bare hostname live in the companion
-file `wrangler.production.jsonc` and are applied via
-`pnpm run deploy:production`. The companion file exists because
+file `wrangler.production.jsonc`. Production delivery is owned by
+`.github/workflows/deploy-production.yml`: a successful `CI` run for a
+`main` push deploys that exact SHA and then runs production smoke.
+`pnpm run deploy:production` is a local debugging fallback. The companion
+file exists because
 declaring `env.production` inside `wrangler.jsonc` causes wrangler
 4.x typegen to narrow `Env` to env-scoped bindings, breaking
 every `env.DB` / `env.MEDIA` call site. The `*.workers.dev` URL is
@@ -156,10 +159,11 @@ ADRs, READMEs, user-facing copy, or example URLs.
 Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
-  (`format:check` + `lint:check` + `typecheck` + `test`)
+  (`format:check` + `lint:check` + `architecture:check` +
+  `version:check` + `typecheck` + `test`)
 - `pnpm run validate:integration` — ticket PR verification.
-  (`validate:fast` + `build` + `wrangler:dry-run` + `lint:ci`
-  (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
+  (`validate:fast` + `build` + default/production Wrangler dry-runs +
+  `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
   `build-storybook`)
 - `pnpm run validate:release` — pre-`main` verification.
   (`validate:integration` + `cf-typegen:check`)

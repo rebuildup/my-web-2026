@@ -2,23 +2,23 @@ name: deploy production
 
 # Canonical production delivery.
 #
-# A push to main is already human-gated by the release-PR merge rule in AGENTS.md §6,
-# so the merge itself is the production-deploy approval. workflow_dispatch remains a
-# recovery/rerun entry point.
+# Release PR merge is the human authorization boundary. Deployment starts only after
+# the normal CI workflow succeeds for the resulting main SHA. workflow_dispatch is a
+# recovery/rerun path and is accepted only from main.
 #
-# Configure these secrets on the GitHub `production` environment:
+# Required GitHub Actions secrets:
 # - CLOUDFLARE_API_TOKEN
 # - CLOUDFLARE_ACCOUNT_ID
 # - BETTER_AUTH_SECRET
 # - MY_WEB_2026_CONSUMER_API_KEY
 #
-# The home consumer key is stable across deploys. CI only ensures that its hashed
-# Better Auth row exists; it never prints the plaintext and never creates a new key
-# for every deployment.
+# The home consumer key is stable across deploys. The workflow only ensures that its
+# hash row exists in D1; the plaintext is never printed.
 
 on:
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
   workflow_dispatch: {}
 
 concurrency:
@@ -31,6 +31,13 @@ permissions:
 jobs:
   deploy:
     name: deploy to rebuildup.dev
+    if: >-
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.event == 'push' &&
+       github.event.workflow_run.head_branch == 'main' &&
+       github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' &&
+       github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 25
     environment:
@@ -43,7 +50,9 @@ jobs:
       MY_WEB_2026_CONSUMER_API_KEY: ${{ secrets.MY_WEB_2026_CONSUMER_API_KEY }}
     steps:
       - uses: actions/checkout@v4
-        with: { submodules: recursive }
+        with:
+          submodules: recursive
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
       - uses: actions/setup-node@v4
         with: { node-version: 22 }
       - uses: pnpm/action-setup@v4

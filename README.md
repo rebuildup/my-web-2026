@@ -57,9 +57,10 @@ pnpm run validate:release
 pnpm run deploy:production
 ```
 
-`validate:fast` runs `format:check + lint:check + typecheck + test`.
-`validate:integration` adds `build + wrangler:dry-run`. `validate:release`
-adds `cf-typegen`. See [`quality/profile.yaml`](quality/profile.yaml).
+`validate:fast` runs format, lint, architecture, release-version consistency,
+typecheck, and unit/integration tests. `validate:integration` additionally builds
+both the application and Storybook and dry-runs the default and production
+Wrangler configurations. `validate:release` adds Cloudflare type generation. See [`quality/profile.yaml`](quality/profile.yaml).
 
 ## Internal docs index
 

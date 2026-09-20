@@ -7,24 +7,22 @@
  *   - `vars.BETTER_AUTH_URL = "https://rebuildup.dev"` — pins the
  *     Better Auth `baseURL` and `trustedOrigins` to the canonical
  *     production origin.
- *   - `routes[].pattern = "rebuildup.dev/*"` (with the operator's
- *     zone_id) — attaches the Worker to the Cloudflare zone
+ *   - `routes[].pattern = "rebuildup.dev"` with `custom_domain: true`
+ *     and the verified zone id — attaches the Worker to the Cloudflare zone
  *     `rebuildup.dev`. Cloudflare provisions DNS + TLS automatically
  *     when the zone is owned by the operator's account.
  *
- * Operator flow:
+ * Canonical production flow:
  *
- *   1. Replace the placeholder `zone_id` below with the actual
- *      Cloudflare zone ID for `rebuildup.dev`. Find it in the
- *      Cloudflare dashboard (Overview tab) or via
- *      `wrangler zones list`.
- *   2. Run:
+ *   1. An explicitly approved release PR updates `main`.
+ *   2. The normal `CI` workflow validates that main SHA.
+ *   3. `.github/workflows/deploy-production.yml` receives the successful
+ *      workflow_run, checks out the exact SHA, applies pending D1 migrations,
+ *      reconciles the stable home-consumer key row, deploys code + secrets,
+ *      and invokes the production smoke workflow.
  *
- *      pnpm run deploy:production
- *      # = vite build && wrangler deploy -c wrangler.production.jsonc
- *
- *      `wrangler deploy` provisions DNS + TLS automatically once the
- *      zone_id is correct.
+ * `pnpm run deploy:production` remains a local debugging fallback; normal
+ * releases do not require a local Wrangler deployment.
  *
  * Why a separate fully-duplicated config (rather than
  * `env.production` inside `wrangler.jsonc`):
@@ -52,9 +50,9 @@
  *   - mail / MX / SPF / DKIM
  *   - other subdomain design
  *
- * Secrets (BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY) are
- * provisioned via `wrangler secret put` and live in the Cloudflare
- * account, NOT in this file or the repo.
+ * Required secret names are declared in `secrets.required`. Their values
+ * come from GitHub Actions secrets and are uploaded alongside the Worker with
+ * `wrangler deploy --secrets-file`; secret values never live in this file.
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",

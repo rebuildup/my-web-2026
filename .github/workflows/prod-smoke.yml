@@ -1,6 +1,6 @@
 name: production smoke
 
-# Issue #43 / ADR-0014 — operator-initiated smoke against the
+# Issue #43 / ADR-0014 — production smoke against the
 # canonical production URL `https://rebuildup.dev`.
 #
 # Runs automatically as the post-deploy verification job from

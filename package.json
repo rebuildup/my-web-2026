@@ -38,11 +38,12 @@
 		"test": "vitest run",
 		"test:watch": "vitest",
 		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run version:check && pnpm run typecheck && pnpm run test",
-		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run wrangler:dry-run && pnpm run lint:ci && pnpm run build-storybook",
+		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run wrangler:dry-run && pnpm run wrangler:production:dry-run && pnpm run lint:ci && pnpm run build-storybook",
 		"validate:release": "pnpm run validate:integration && pnpm run cf-typegen:check",
 		"architecture:check": "node scripts/check-architecture.mjs",
 		"version:check": "node scripts/check-release-version.mjs",
-		"ensure:home-api-key:remote": "node scripts/ensure-home-api-key.mjs"
+		"ensure:home-api-key:remote": "node scripts/ensure-home-api-key.mjs",
+		"wrangler:production:dry-run": "node scripts/check-production-deploy.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

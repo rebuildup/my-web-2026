@@ -58,6 +58,15 @@
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "my-web-2026",
 	"main": "./dist/server/index.js",
+	// Vite emits a split ES module graph under `dist/server/assets`. Because this
+	// config deploys the prebuilt entrypoint with `no_bundle`, Wrangler needs the
+	// same module rule as Vite's generated `dist/server/wrangler.json`.
+	"rules": [
+		{
+			"type": "ESModule",
+			"globs": ["**/*.js", "**/*.mjs"]
+		}
+	],
 	"compatibility_date": "2026-09-07",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {

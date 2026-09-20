@@ -1,5 +1,6 @@
 #!/usr/bin/env node
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
 
 const pkg = JSON.parse(readFileSync('package.json', 'utf8'));
 const version = pkg.version;
@@ -34,21 +35,32 @@ if (/version:\s*['"]\d+\.\d+\.\d+['"]/.test(health)) {
 	throw new Error('/api/v1/health must derive its version instead of hard-coding a release.');
 }
 
-const currentFacing = [
+function collectFiles(path) {
+	const entries = readdirSync(path, { withFileTypes: true });
+	return entries.flatMap((entry) => {
+		const child = join(path, entry.name);
+		return entry.isDirectory() ? collectFiles(child) : [child];
+	});
+}
+
+const activePaths = [
 	'README.md',
-	'src/home/hero.tsx',
-	'src/home/brief.md',
-	'src/home/capabilities/grid.tsx',
-	'src/admin/composer.tsx',
-	'src/admin/invitations/accept-view.tsx',
+	'.dev.vars.example',
+	...collectFiles('src'),
+	...collectFiles('test'),
+	...collectFiles('e2e'),
+	...collectFiles('scripts'),
 ];
-for (const path of currentFacing) {
-	const text = readFileSync(path, 'utf8');
-	if (/\bv0\.\d+\.\d+\b/.test(text)) {
-		throw new Error(
-			`${path} contains a duplicated current-style v0.x.y literal; derive or remove it.`,
-		);
-	}
+const releaseLiteral = /\bv?0\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\b/;
+const offenders = activePaths.filter((path) => releaseLiteral.test(readFileSync(path, 'utf8')));
+if (offenders.length > 0) {
+	throw new Error(
+		[
+			'Project release literals are forbidden in active source/test/script surfaces.',
+			'Derive the current version from package.json; keep historical release numbers only in ADRs, migrations, release history, or other explicitly historical records.',
+			...offenders.map((path) => `- ${path}`),
+		].join('\n'),
+	);
 }
 
 console.log(`release version source OK: ${version}`);

@@ -40,7 +40,7 @@ import { admin } from 'better-auth/plugins/admin';
  *   checked via `key.permissions[resource]?.includes(action)` in
  *   `src/http/api-keys/middleware.ts` (Ticket B).
  * - `sendEmail` is a console-log stub — no SMTP is configured in
- *   0.3.0. Real delivery is out of scope.
+ *   the current auth surface. Real delivery is out of scope.
  *
  * Environment contract (ADR-0009 §8 + ADR-0014):
  *

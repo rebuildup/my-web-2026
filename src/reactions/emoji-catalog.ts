@@ -29,7 +29,7 @@
  *     enabled state at write time — see ADR-0013 §3 for the
  *     rationale).
  *   - Reads are by `(slug)` PK or full-list; no cache layer is added
- *     in 0.3.0. The home loader primes the in-request catalog once.
+ *     in the current implementation. The home loader primes the in-request catalog once.
  *   - Reads happen at SSR time via `cloudflare:workers` `env.DB`;
  *     writes happen from admin server-fn wrappers that share the
  *     same D1 binding (no HTTP boundary crossing).

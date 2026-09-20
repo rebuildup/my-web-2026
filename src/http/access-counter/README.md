@@ -1,7 +1,7 @@
 # Access Counter — `/api/v1/access/*`
 
 External HTTP endpoint for incrementing and reading the per-key
-access counter. Built in Ticket F (branch 38, Sprint 0.3.0-extended).
+access counter. Built in Ticket F (branch 38; see ADR-0012).
 
 ## Contract
 
@@ -69,4 +69,4 @@ use, using the `MY_WEB_2026_CONSUMER_API_KEY` provisioned by
 
 The home mints a fresh `session_id` per request, making the counter
 a **page-view** counter. Per-visitor dedup via the `mw_actor_id`
-cookie is a 0.4.0 ticket — see ADR-0012.
+cookie is deferred — see ADR-0012.

@@ -13,13 +13,20 @@ for (const ref of refs) {
 	if (!match) continue;
 	const branchVersion = `${match[1]}.${match[2]}.${match[3]}`;
 	if (branchVersion !== version) {
-		throw new Error(`release branch ${ref} requires package.json version ${branchVersion}, got ${version}`);
+		throw new Error(
+			`release branch ${ref} requires package.json version ${branchVersion}, got ${version}`,
+		);
 	}
 }
 
 const versionModule = readFileSync('src/home/version.ts', 'utf8');
-if (!versionModule.includes("from '../../package.json'") || /['"]\d+\.\d+\.\d+['"]/.test(versionModule)) {
-	throw new Error('src/home/version.ts must derive the current version from package.json without a literal.');
+if (
+	!versionModule.includes("from '../../package.json'") ||
+	/['"]\d+\.\d+\.\d+['"]/.test(versionModule)
+) {
+	throw new Error(
+		'src/home/version.ts must derive the current version from package.json without a literal.',
+	);
 }
 
 const health = readFileSync('src/http/hono.ts', 'utf8');
@@ -38,7 +45,9 @@ const currentFacing = [
 for (const path of currentFacing) {
 	const text = readFileSync(path, 'utf8');
 	if (/\bv0\.\d+\.\d+\b/.test(text)) {
-		throw new Error(`${path} contains a duplicated current-style v0.x.y literal; derive or remove it.`);
+		throw new Error(
+			`${path} contains a duplicated current-style v0.x.y literal; derive or remove it.`,
+		);
 	}
 }
 

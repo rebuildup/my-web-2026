@@ -44,7 +44,9 @@ function keyHash(plaintext) {
 
 const plaintext = process.env.MY_WEB_2026_CONSUMER_API_KEY;
 if (!plaintext) {
-	throw new Error('MY_WEB_2026_CONSUMER_API_KEY must be provided by the production Actions environment.');
+	throw new Error(
+		'MY_WEB_2026_CONSUMER_API_KEY must be provided by the production Actions environment.',
+	);
 }
 if (!/^mk_home_[A-Za-z]{32}$/.test(plaintext)) {
 	throw new Error('MY_WEB_2026_CONSUMER_API_KEY must match mk_home_ + 32 ASCII letters.');
@@ -53,7 +55,9 @@ if (!/^mk_home_[A-Za-z]{32}$/.test(plaintext)) {
 const admins = query("SELECT id FROM user WHERE role = 'admin' ORDER BY id ASC LIMIT 1");
 const userId = admins[0]?.id;
 if (!userId) {
-	throw new Error('No production admin user exists in D1; create the admin before deploying the home consumer.');
+	throw new Error(
+		'No production admin user exists in D1; create the admin before deploying the home consumer.',
+	);
 }
 
 const hash = keyHash(plaintext);

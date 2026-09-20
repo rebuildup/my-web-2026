@@ -20,7 +20,8 @@ export const Default: Story = {
 	args: {
 		eyebrow: 'Capabilities',
 		title: 'できごと / What’s here',
-		description: '個人 Platform の機能領域。公開状態は各 capability の badge を正として、順に組み立てていく。',
+		description:
+			'個人 Platform の機能領域。公開状態は各 capability の badge を正として、順に組み立てていく。',
 	},
 };
 

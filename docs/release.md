@@ -153,22 +153,30 @@ production domain to be wired (Issue #43 / ADR-0014):
    step 7 (the release PR merge human gate). The operator must NOT
    ship to production without having seen the home surface working
    locally first.
-7. `https://rebuildup.dev` responds 200 on `/`, `/admin/login`, and
-   `/api/v1/health`. `BETTER_AUTH_URL` is pinned in the companion
-   file `wrangler.production.jsonc vars` and applied by `.github/workflows/deploy-production.yml`. A merge to `main`
-   (which can only happen through an explicitly approved release PR) starts the normal
-   main CI. A successful main CI run triggers the production deployment for that exact
-   SHA; `workflow_dispatch` remains the recovery/rerun entry point. The job builds, applies remote D1 migrations, ensures the stable
-   home-consumer API key row, and performs one production `wrangler deploy --secrets-file`
-   so Worker code and both runtime secrets become active together. The required
-   production-environment secrets are `CLOUDFLARE_API_TOKEN`,
-   `CLOUDFLARE_ACCOUNT_ID`, `BETTER_AUTH_SECRET`, and
-   `MY_WEB_2026_CONSUMER_API_KEY`. A reusable `production smoke` job runs
-   automatically after deploy and can also be dispatched manually. The operator
-   still walks through the home / admin / reactions / counter surfaces on the
-   canonical URL before publishing the GitHub Release. The
-   `*.workers.dev` URL is debug-only and not documented as
-   canonical.
+7. `https://rebuildup.dev` is deployed by **Cloudflare Workers Builds**, which is
+   the only production-deploy execution authority. Configure the existing
+   `my-web-2026` Worker under **Settings > Builds** with:
+   - Git repository: `rebuildup/my-web-2026`
+   - Production branch: `main`
+   - Build command: `pnpm run build`
+   - Deploy command: `pnpm run deploy:production:prepared`
+   - Root directory: repository root
+   - Build variables: `NODE_VERSION=22`, `PNPM_VERSION=12.3.4`
+   - Non-production branch builds: disabled (GitHub Actions owns PR/release validation)
+   - API token: a Workers Builds user token with the normal Worker deploy/route
+     permissions plus **Account / D1 / Edit**, because the deploy command applies
+     pending production D1 migrations before Wrangler deploy.
+   Runtime secrets `BETTER_AUTH_SECRET` and
+   `MY_WEB_2026_CONSUMER_API_KEY` live only in **Settings > Variables & Secrets**
+   for the Worker. They are not duplicated as build secrets. Before the first
+   production deploy, provision the home-consumer key once with
+   `pnpm run bootstrap:home-api-key -- --target=remote`, then store the printed
+   plaintext as the Worker runtime secret. GitHub Actions does not deploy
+   production; `.github/workflows/prod-smoke.yml` remains a manual diagnostic.
+   After Cloudflare reports the production build/deployment successful, run the
+   production smoke and verify `/`, `/admin/login`, `/api/v1/health`,
+   reactions, and the access counter on the canonical origin. The
+   `*.workers.dev` URL remains debug-only and is not documented as canonical.
 
 ## 0.1.0 Foundation backlog
 

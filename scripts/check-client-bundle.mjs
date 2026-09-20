@@ -1,7 +1,7 @@
 import { readdir, readFile } from 'node:fs/promises';
 import { extname, join, relative, resolve } from 'node:path';
 
-const clientOutput = resolve('dist/client');
+const clientOutput = resolve(process.argv[2] ?? 'dist/client');
 const forbiddenSpecifier = 'cloudflare:workers';
 const inspectedExtensions = new Set(['.html', '.js', '.mjs']);
 
@@ -19,6 +19,10 @@ async function listFiles(directory) {
 const files = (await listFiles(clientOutput)).filter((file) =>
 	inspectedExtensions.has(extname(file)),
 );
+if (files.length === 0) {
+	throw new Error(`Client output contains no inspectable assets: ${clientOutput}`);
+}
+
 const offenders = [];
 
 for (const file of files) {

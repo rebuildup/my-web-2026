@@ -1,6 +1,6 @@
 {
 	"name": "my-web-2026",
-	"version": "0.3.3",
+	"version": "0.3.4",
 	"private": true,
 	"type": "module",
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
@@ -12,7 +12,7 @@
 	"scripts": {
 		"prepare": "panda codegen",
 		"dev": "vite dev",
-		"build": "vite build",
+		"build": "vite build && node scripts/check-client-bundle.mjs",
 		"preview": "vite preview",
 		"deploy": "pnpm run build && wrangler deploy",
 		"deploy:production": "pnpm run build && pnpm run deploy:production:prepared",
@@ -35,7 +35,7 @@
 		"format:check": "biome format .",
 		"lint:check": "biome lint .",
 		"typecheck": "tsc --noEmit",
-		"test": "vitest run",
+		"test": "vitest run && node --test scripts/check-client-bundle.test.mjs",
 		"test:watch": "vitest",
 		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run version:check && pnpm run typecheck && pnpm run test",
 		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run wrangler:dry-run && pnpm run wrangler:production:dry-run && pnpm run lint:ci && pnpm run build-storybook",

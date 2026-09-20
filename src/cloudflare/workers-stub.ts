@@ -21,10 +21,10 @@
  * Vite's import-analysis walks every import in pre-transform and route
  * registration, and the cloudflare() plugin's virtual module resolver
  * is registered only for the SSR environment (the one workerd runs in),
- * so the client pre-transform has no resolver for `cloudflare:workers`.
- * The production BUILD handles this via the documented
- * `build.rollupOptions.external: ['cloudflare:workers']`; dev mode
- * does not.
+ * so the client environment needs this explicit resolver in both dev
+ * and production builds. Leaving the specifier external would preserve
+ * a bare `cloudflare:workers` import in the browser bundle and prevent
+ * the application from hydrating.
  *
  * What this stub provides:
  *

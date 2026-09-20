@@ -51,7 +51,7 @@ const activePaths = [
 	...collectFiles('e2e'),
 	...collectFiles('scripts'),
 ];
-const releaseLiteral = /\bv?0\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?\b/;
+const releaseLiteral = /(?<![\d.])v?0\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?![\d.])/;
 const offenders = activePaths.filter((path) => releaseLiteral.test(readFileSync(path, 'utf8')));
 if (offenders.length > 0) {
 	throw new Error(

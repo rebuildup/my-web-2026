@@ -78,10 +78,7 @@ function keyHash(plaintext) {
 }
 
 function resolveAdminUserId(target) {
-	const row = query(
-		target,
-		"SELECT id FROM user WHERE role = 'admin' ORDER BY id ASC LIMIT 1",
-	)[0];
+	const row = query(target, "SELECT id FROM user WHERE role = 'admin' ORDER BY id ASC LIMIT 1")[0];
 	if (!row?.id) {
 		throw new Error(
 			target === 'remote'

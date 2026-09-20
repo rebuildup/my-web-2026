@@ -15,14 +15,13 @@
  * Canonical production flow:
  *
  *   1. An explicitly approved release PR updates `main`.
- *   2. The normal `CI` workflow validates that main SHA.
- *   3. `.github/workflows/deploy-production.yml` receives the successful
- *      workflow_run, checks out the exact SHA, applies pending D1 migrations,
- *      reconciles the stable home-consumer key row, deploys code + secrets,
- *      and invokes the production smoke workflow.
+ *   2. Cloudflare Workers Builds observes the `main` push.
+ *   3. The configured build command produces `dist/`.
+ *   4. The configured deploy command applies pending production D1 migrations
+ *      and deploys this configuration with Wrangler.
  *
- * `pnpm run deploy:production` remains a local debugging fallback; normal
- * releases do not require a local Wrangler deployment.
+ * GitHub Actions does not deploy production. `pnpm run deploy:production`
+ * remains a local recovery/debugging fallback.
  *
  * Why a separate fully-duplicated config (rather than
  * `env.production` inside `wrangler.jsonc`):
@@ -50,9 +49,10 @@
  *   - mail / MX / SPF / DKIM
  *   - other subdomain design
  *
- * Required secret names are declared in `secrets.required`. Their values
- * come from GitHub Actions secrets and are uploaded alongside the Worker with
- * `wrangler deploy --secrets-file`; secret values never live in this file.
+ * Required secret names are declared in `secrets.required`. Their values are
+ * Worker runtime secrets managed in Cloudflare Settings > Variables & Secrets.
+ * Wrangler deploys preserve existing Worker secrets; secret values never live
+ * in this file or in the Git repository.
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",

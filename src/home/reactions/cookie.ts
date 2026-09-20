@@ -18,7 +18,7 @@
  *     production; HTTP in local dev so `wrangler dev` still works).
  *   - `Path=/` so every page on the deployment can read it.
  *
- * Out of scope (0.3.0): consent-management, cross-domain sharing,
+ * Out of scope: consent-management, cross-domain sharing,
  * fingerprinting. Per the privacy notice in
  * `src/home/footer.tsx`, this cookie is anonymous and falls under
  * the JP Cookie Policy "minimal impact" / EU ePrivacy "anonymous"

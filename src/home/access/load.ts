@@ -13,9 +13,9 @@ import type { GetCountOutput, RecordHitOutput } from '../../http/access-counter/
  * (default `home-page`). The widget then reads
  * `GET /api/v1/access/count/:key` and renders the aggregate.
  *
- * Per ADR-0012 §2, `session_id` is **per-request** in 0.3.0 — the
+ * Per ADR-0012 §2, `session_id` is **per-request** — the
  * counter is therefore a page-view counter. Per-visitor dedup via
- * the `mw_actor_id` cookie is a 0.4.0 ticket; coupling it to Ticket
+ * the `mw_actor_id` cookie is deferred; coupling it to Ticket
  * E's cookie now would mix two backends.
  *
  * Upstream origin: the loader self-calls `/api/v1/access/*` against

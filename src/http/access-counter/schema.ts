@@ -8,9 +8,9 @@ import { z } from 'zod';
  * `DEDUP_WINDOW_MS` window. When the dedup row is missing or
  * expired, the counter row is incremented atomically.
  *
- * In 0.3.0 the home uses per-request `crypto.randomUUID()` as the
+ * The home currently uses per-request `crypto.randomUUID()` as the
  * `session_id`, which makes the counter a **page-view** counter.
- * Per-visitor dedup via the `mw_actor_id` cookie is a 0.4.0 ticket
+ * Per-visitor dedup via the `mw_actor_id` cookie is deferred
  * (see ADR-0012). Coupling the counter to the reactions cookie now
  * would mix two backends and force one to chase the other's
  * privacy posture.

@@ -1,8 +1,10 @@
+import packageJson from '../../package.json';
+
 /**
- * Single source of truth for the home page's reported version.
+ * Public application version.
  *
- * This is an explicit build-time constant used by the public home
- * surface. Release tickets keep it in lockstep with `package.json`;
- * changing either value without the other is release drift.
+ * `package.json#version` is the only current-version source of truth.
+ * Release branches update that value once; UI and runtime surfaces import it
+ * instead of copying semantic-version literals into source files.
  */
-export const PACKAGE_VERSION = '0.3.0' as const;
+export const PACKAGE_VERSION = packageJson.version;

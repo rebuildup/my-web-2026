@@ -55,7 +55,7 @@ import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
  *
  * Aggregate scope: per ADR-0011 §3, the home sees aggregates scoped
  * to its own principal (API key id). Cross-principal rolls up are
- * out of scope for 0.3.0.
+ * out of scope.
  *
  * Catalog source: Ticket G (branch 39) replaces the hard-coded
  * catalog that lived in `emoji-catalog.ts` with the DB-backed
@@ -133,7 +133,7 @@ export interface HomeReactionMutationResult {
 	deleted?: boolean;
 }
 
-/** Default target key — single canonical home page in 0.3.0. */
+/** Default target key — single canonical home page. */
 export const HOME_REACTIONS_TARGET = 'home-page';
 
 export interface HomeReactionsEnv {

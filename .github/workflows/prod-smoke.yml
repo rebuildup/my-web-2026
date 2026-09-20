@@ -1,13 +1,12 @@
 name: production smoke
 
-# Issue #43 / ADR-0014 — operator-initiated smoke against the
+# Issue #43 / ADR-0014 — production smoke against the
 # canonical production URL `https://rebuildup.dev`.
 #
-# Triggers ONLY on `workflow_dispatch`. The production site is never
-# gated by regular CI (push / pull_request) so a transient
-# production outage cannot block the release pipeline. The operator
-# runs this workflow manually after `pnpm run deploy:production`
-# succeeds, before opening the release PR.
+# Runs automatically as the post-deploy verification job from
+# `deploy-production.yml` and remains available via `workflow_dispatch`
+# for operator-initiated reruns. Regular push / pull_request CI does not
+# hit production.
 #
 # Usage:
 #   gh workflow run prod-smoke.yml
@@ -16,6 +15,7 @@ name: production smoke
 # Or run locally:
 #   pnpm run e2e:prod
 on:
+  workflow_call: {}
   workflow_dispatch: {}
 
 concurrency:

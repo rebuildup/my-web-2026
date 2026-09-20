@@ -10,7 +10,7 @@ import { type AdminSession, getCurrentSession } from './load';
  *
  * Better Auth's admin plugin assigns `role = 'admin'` via the
  * `auth.api.setRole` server call or by the create-admin CLI. There
- * are no custom roles at 0.3.0; the only admin-restricted surfaces
+ * are no custom roles; the only admin-restricted surfaces
  * are these project-owned CRUD server functions.
  */
 export async function requireAdmin(): Promise<AdminSession> {

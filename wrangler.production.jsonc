@@ -7,24 +7,22 @@
  *   - `vars.BETTER_AUTH_URL = "https://rebuildup.dev"` — pins the
  *     Better Auth `baseURL` and `trustedOrigins` to the canonical
  *     production origin.
- *   - `routes[].pattern = "rebuildup.dev/*"` (with the operator's
- *     zone_id) — attaches the Worker to the Cloudflare zone
+ *   - `routes[].pattern = "rebuildup.dev"` with `custom_domain: true`
+ *     and the verified zone id — attaches the Worker to the Cloudflare zone
  *     `rebuildup.dev`. Cloudflare provisions DNS + TLS automatically
  *     when the zone is owned by the operator's account.
  *
- * Operator flow:
+ * Canonical production flow:
  *
- *   1. Replace the placeholder `zone_id` below with the actual
- *      Cloudflare zone ID for `rebuildup.dev`. Find it in the
- *      Cloudflare dashboard (Overview tab) or via
- *      `wrangler zones list`.
- *   2. Run:
+ *   1. An explicitly approved release PR updates `main`.
+ *   2. The normal `CI` workflow validates that main SHA.
+ *   3. `.github/workflows/deploy-production.yml` receives the successful
+ *      workflow_run, checks out the exact SHA, applies pending D1 migrations,
+ *      reconciles the stable home-consumer key row, deploys code + secrets,
+ *      and invokes the production smoke workflow.
  *
- *      pnpm run deploy:production
- *      # = vite build && wrangler deploy -c wrangler.production.jsonc
- *
- *      `wrangler deploy` provisions DNS + TLS automatically once the
- *      zone_id is correct.
+ * `pnpm run deploy:production` remains a local debugging fallback; normal
+ * releases do not require a local Wrangler deployment.
  *
  * Why a separate fully-duplicated config (rather than
  * `env.production` inside `wrangler.jsonc`):
@@ -52,14 +50,14 @@
  *   - mail / MX / SPF / DKIM
  *   - other subdomain design
  *
- * Secrets (BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY) are
- * provisioned via `wrangler secret put` and live in the Cloudflare
- * account, NOT in this file or the repo.
+ * Required secret names are declared in `secrets.required`. Their values
+ * come from GitHub Actions secrets and are uploaded alongside the Worker with
+ * `wrangler deploy --secrets-file`; secret values never live in this file.
  */
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "my-web-2026",
-	"main": "./src/server.ts",
+	"main": "./dist/server/index.js",
 	"compatibility_date": "2026-09-07",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
@@ -89,6 +87,9 @@
 		"MY_WEB_2026_COUNTER_KEY": "home-page",
 		"BETTER_AUTH_URL": "https://rebuildup.dev"
 	},
+	"secrets": {
+		"required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
+	},
 	"ratelimits": [
 		{
 			"name": "RATE_LIMIT_WRITE",
@@ -101,18 +102,20 @@
 			"simple": { "limit": 600, "period": 60 }
 		}
 	],
-	// Operator-supplied: replace the placeholder zone_id with the
-	// Cloudflare zone ID for `rebuildup.dev` before running
-	// `pnpm run deploy:production`. Find it via `wrangler zones list`
-	// or the Cloudflare dashboard. `custom_domain: true` is the
-	// hint to Cloudflare to provision the DNS + TLS automatically.
-	// Pattern is the bare hostname (no `/*`) — Cloudflare routes
-	// every path under the hostname to the Worker.
+	// The zone_id below is the verified Cloudflare zone for `rebuildup.dev`.
+	// `custom_domain: true` is the hint to Cloudflare to provision
+	// DNS + TLS automatically. Pattern is the bare hostname (no
+	// `/*`) — Cloudflare routes every path under the hostname to
+	// the Worker.
+	//
+	// 0.3.0 release (PR #48, Issue #43): zone_id verified via the
+	// Cloudflare API on 2026-09-20 and committed after operator
+	// approval for the production deploy runbook.
 	"routes": [
 		{
 			"pattern": "rebuildup.dev",
 			"custom_domain": true,
-			"zone_id": "REPLACE_WITH_REBUILDUP_DEV_ZONE_ID"
+			"zone_id": "7dde90c8a7be8a304300daa719a7de0a"
 		}
 	],
 	"no_bundle": true

@@ -53,12 +53,12 @@
   hue.
 - Motion on hero copy. Marketing motion is reserved for capability
   card hover; the hero and footer stay static.
-- Dark-mode forcing at 0.2.0. Dark mode lands in a separate ticket;
+- Dark-mode forcing in this design. Dark mode lands in a separate ticket;
   this page only uses neutral tokens that compose in both modes.
 
 ## Color direction
 
-- **Default mode**: light only at 0.2.0. The semantic layer
+- **Default mode**: light only. The semantic layer
   (`bg.canvas`, `bg.surface`, `text.default`, `text.muted`) is mode-
   agnostic; dark mode binds the same keys later.
 - **Temperature / saturation**: neutral cool. The brand blue stays a
@@ -72,7 +72,7 @@
 
 ## Typography direction
 
-- **Role split**: sans for everything. No serif display face at 0.2.0.
+- **Role split**: sans for everything. No serif display face.
 - **Density / scale**: a single type scale (`xs` / `sm` / `md` / `lg`
   / `xl` / `2xl`). Hero title uses `2xl`; section titles use `xl`;
   body uses `md`; metadata uses `sm` / `xs`.
@@ -89,7 +89,7 @@
 - **Border strategy**: 1px `border.subtle` on cards; 1px `border.focus`
   on keyboard focus only.
 - **Control density**: buttons keep the existing `md` / `sm` recipe.
-  No new size is introduced at 0.2.0.
+  No new size is introduced.
 
 ## Motion
 
@@ -124,7 +124,7 @@
 - i18n is deferred. Hero copy is bilingual (Japanese / English) inline
   in this release; full i18n lands when a second capability does.
 - Header global navigation is deferred. The home page does not
-  expose a top nav at 0.2.0; navigation is the responsibility of a
+  expose a top nav; navigation is the responsibility of a
   separate ticket.
 
 ## Typography & grid amendment (Issue #31)
@@ -146,7 +146,7 @@
   — with a 12-unit gutter. The lead column caps at 640px to keep the
   measure inside the 60–70 character window; the right rail carries
   raw mono metadata (`edition / my-web-2026 · 2026 Preview /
-  v0.3.0 · MIT`) — no border, no background, no padding box. Below
+  the package-derived release version · MIT`) — no border, no background, no padding box. Below
   `lg` the two columns stack into the original single flow.
 - **Hero typography tightening**: h1 uses `line-height: 1.1` at `lg`
   and `letter-spacing: -0.02em` (inline literal, not a token);

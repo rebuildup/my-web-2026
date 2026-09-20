@@ -5,8 +5,8 @@
 [![Release](https://img.shields.io/github/v/release/rebuildup/my-web-2026?include_prereleases&style=flat)](https://github.com/rebuildup/my-web-2026/releases)
 
 > Public preview of the next Personal Web Platform for 木村友亮 / samuido.
-> v0.2.0 establishes the canonical 2026 home surface while the complete
-> 2025 edition remains available at https://yusuke-kim.com during migration.
+> The canonical 2026 home surface is under active migration while the complete
+> 2025 edition remains available at https://yusuke-kim.com.
 
 `my-web-2026` is a modular monolith: one Cloudflare Worker, one
 repository, one set of bindings. TanStack Start owns the UI and
@@ -52,13 +52,15 @@ pnpm run validate:fast
 pnpm run validate:integration
 pnpm run validate:release
 
-# Deploy
-pnpm run deploy
+# Production deploys run from GitHub Actions after a release PR merges to `main`.
+# Local command is a debugging fallback only.
+pnpm run deploy:production
 ```
 
-`validate:fast` runs `format:check + lint:check + typecheck + test`.
-`validate:integration` adds `build + wrangler:dry-run`. `validate:release`
-adds `cf-typegen`. See [`quality/profile.yaml`](quality/profile.yaml).
+`validate:fast` runs format, lint, architecture, release-version consistency,
+typecheck, and unit/integration tests. `validate:integration` additionally builds
+both the application and Storybook and dry-runs the default and production
+Wrangler configurations. `validate:release` adds Cloudflare type generation. See [`quality/profile.yaml`](quality/profile.yaml).
 
 ## Internal docs index
 
@@ -91,7 +93,7 @@ A human recovering the same ticket reads:
 
 ## Status
 
-- **v0.2.0 Public Preview** — canonical home, platform health, design-system
+- **Current public preview** — canonical home, platform health, reactions/access
   foundation, release gates, and personal/domain grounding.
 - **Portfolio / Content / Activity** — planned capabilities; not yet migrated.
 - **2025 edition** — remains the complete public site at https://yusuke-kim.com

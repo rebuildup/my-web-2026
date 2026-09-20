@@ -40,7 +40,7 @@ import { admin } from 'better-auth/plugins/admin';
  *   checked via `key.permissions[resource]?.includes(action)` in
  *   `src/http/api-keys/middleware.ts` (Ticket B).
  * - `sendEmail` is a console-log stub — no SMTP is configured in
- *   0.3.0. Real delivery is out of scope.
+ *   the current auth surface. Real delivery is out of scope.
  *
  * Environment contract (ADR-0009 §8 + ADR-0014):
  *
@@ -48,9 +48,9 @@ import { admin } from 'better-auth/plugins/admin';
  * `wrangler.jsonc vars` — production must not silently inherit a
  * localhost default. Local development sets it in `.dev.vars`;
  * production pins it in the companion file `wrangler.production.jsonc`
- * (see ADR-0014 / Issue #43) as `https://rebuildup.dev`, applied via
- * `pnpm run deploy:production` (= `wrangler deploy -c
- * wrangler.production.jsonc`). The companion file exists because
+ * (see ADR-0014 / Issue #43) as `https://rebuildup.dev`. Canonical production
+ * delivery runs from GitHub Actions after the main CI gate; the local
+ * `pnpm run deploy:production` command is a debugging fallback. The companion file exists because
  * `env.production` inside `wrangler.jsonc` breaks the typegen for the
  * default env.
  *
@@ -88,7 +88,7 @@ export const auth = betterAuth({
 		admin(),
 		// The @better-auth/api-key plugin's per-key rate limit is
 		// **disabled** at the auth layer. ADR-0010 owns the only
-		// throttle in 0.3.0: the Workers Rate Limiting binding keyed
+		// throttle: the Workers Rate Limiting binding keyed
 		// by API key id, mounted per-endpoint-bucket from
 		// `src/http/middleware/rate-limit.ts`. Running BOTH layers
 		// in series gates the effective budget at the lower limit;
@@ -110,7 +110,7 @@ export const auth = betterAuth({
 		}),
 	],
 	sendEmail: async (payload: { to: string; subject: string; body?: string }) => {
-		// 0.3.0: no SMTP. Password reset / verification emails land in
+		// No SMTP is configured. Password reset / verification emails land in
 		// the worker logs and the admin uses the invitation flow
 		// instead of password reset (ADR-0009 §1).
 		console.log('[auth.email]', payload);

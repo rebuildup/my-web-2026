@@ -45,7 +45,7 @@ const DIGIT_URLS: Readonly<Record<string, string>> = {
  * (no truncation, no scientific notation — the layout grows).
  *
  * Why 7: an odometer with 7 digits covers up to 9,999,999 page
- * views, which is plenty for a personal site in 0.3.0; mechanical
+ * views, which is plenty for the current personal-site scale; mechanical
  * counters traditionally come in 6- or 7-digit sizes and 7 looks
  * right next to the editorial typography. Override via a future
  * ADR if a different count is needed.
@@ -327,7 +327,7 @@ function formatPeriod(firstHit: number | null): string {
  *   - count == 0  → no hits yet; no delta to show
  *   - count == 1  → one hit recorded; show "+1 today"
  *   - count > 1   → show "+N total" (the counter has no per-period
- *                   rollup in 0.3.0; the period is conveyed by the
+ *                   rollup; the period is conveyed by the
  *                   "since {first_hit}" label above)
  *
  * Returns an empty string when no delta is meaningful so the parent

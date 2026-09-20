@@ -173,7 +173,11 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 		// `Secure`. Production origin is HTTPS; a missing `Secure`
 		// flag is an actual production wiring bug (cookie would
 		// leak over HTTP if the user ever follows an http:// link).
-		expect(actorCookie!.value.toLowerCase()).toContain('secure');
+		// `actorCookie` is narrowed by the preceding `toBeDefined()`
+		// assertion — optional-chain here is purely to satisfy the
+		// `noNonNullAssertion` lint rule; the chain would throw on
+		// `undefined` and the assertion would still fail loudly.
+		expect(actorCookie?.value.toLowerCase()).toContain('secure');
 	});
 
 	test('canonical origin matches the documented production URL', async ({ request }) => {

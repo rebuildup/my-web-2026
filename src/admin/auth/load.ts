@@ -15,7 +15,7 @@ import { auth } from '../../cloudflare/auth/better-auth';
  *   - `/admin` route loader → decide between dashboard and login redirect.
  *   - `requireAdmin()` below → gate admin-only server functions.
  *
- * The admin plugin's role field is exposed as `user.role`. 0.3.0 has
+ * The admin plugin's role field is exposed as `user.role`. The project has
  * no custom roles — only `admin` and `user`. See ADR-0009 §1.
  */
 export interface AdminSessionUser {

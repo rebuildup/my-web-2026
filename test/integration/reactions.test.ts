@@ -177,7 +177,7 @@ describe('aggregateByTarget', () => {
 	it('isolates aggregates between principals (P1 review)', async () => {
 		// Same target, different principals — each principal sees
 		// only its own visitor space. cross-principal rolls up are
-		// explicitly out of scope for 0.3.0.
+		// explicitly out of scope.
 		await putReaction(D1(), { ...A, value: '👍' });
 		await putReaction(D1(), { ...A, principal: 'consumer-X', value: '👍' });
 		await putReaction(D1(), { ...B, principal: 'consumer-X', value: '👍' });

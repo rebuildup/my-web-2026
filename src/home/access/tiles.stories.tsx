@@ -6,7 +6,7 @@ import { CounterTile } from './tiles';
  * CounterTile stories — used by the editorial design loop to iterate
  * on the `04 — Access counter` section without re-running SSR.
  *
- * Odometer-style 7-slot digit strip (0.3.0 stabilisation pass):
+ * Odometer-style 7-slot digit strip:
  * the count is rendered as a fixed-width sequence of digit images,
  * leading zeros to fill the slots. Variants exercise every slot
  * shape the production counter will see.

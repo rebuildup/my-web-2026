@@ -6,7 +6,7 @@ import { type AdminCapability, AdminDashboard, getCurrentSession } from '../admi
  *
  * Loader: redirects unauthenticated users to `/admin/login`; renders
  * the dashboard for any signed-in user. Role display is read-only
- * for 0.3.0 — non-admin users see the dashboard with the
+ * — non-admin users see the dashboard with the
  * role badge but cannot reach invitation / key / image surfaces
  * (the server functions reject them).
  */

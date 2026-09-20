@@ -22,7 +22,7 @@ import { CounterTile } from './tiles';
  * new shape — no more "04 — Access counter" or "hits / home-page"
  * inside the tile.
  *
- * 0.3.0 stabilisation pass — odometer-style digit strip. The count
+ * Odometer-style digit-strip stabilisation. The count
  * is rendered as a *fixed-width* sequence of digit images (7 slots,
  * leading zeros), not as text. The image-swap mechanic + the fixed
  * width is what gives the tile its mechanical-counter feel — see

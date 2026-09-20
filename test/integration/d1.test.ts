@@ -88,7 +88,7 @@ describe('D1 binding smoke', () => {
 		const res = await SELF.fetch('https://example.com/');
 		expect(res.status).toBe(200);
 		const html = (await res.text()).replaceAll('<!-- -->', '');
-		// The 0.2.0 home page renders the D1 status inside the system
+		// The home page renders the D1 status inside the system
 		// status section as the row labelled "Internal data" with the
 		// D1 binding tag and a "reachable" badge. Asserting on those
 		// three tokens keeps the test stable across copy edits while

@@ -16,7 +16,7 @@ import { requireAdmin } from '../auth/require-admin';
  * Expiry is 7 days (project policy, ADR-0009 §4). Beyond that the
  * row is treated as invalid and `acceptInvitation` rejects it. The
  * revocation endpoint deletes the row outright — there is no
- * soft-delete state at 0.3.0.
+ * soft-delete state.
  */
 
 const INVITATION_TTL_MS = 7 * 24 * 60 * 60 * 1000;

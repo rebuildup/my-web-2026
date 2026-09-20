@@ -12,7 +12,7 @@ import type { ReactionAggregate, ReactionKind, ReactionRow } from './schema';
  * `reactions` table; no materialised aggregate table for MVP.
  * Aggregates are scoped to a single principal (consumer API key
  * id) — see `aggregateByTarget`. Cross-principal rolls up are
- * out of scope for 0.3.0.
+ * out of scope.
  * The composite index on `(target_key, kind)` keeps the scan
  * narrow even for popular targets.
  *

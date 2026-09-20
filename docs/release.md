@@ -6,12 +6,17 @@
 
 ## Cadence
 
+Current release identity is **not duplicated in this document**. `package.json#version`
+is the sole current-version source; release branches are named `release-x-y-z` and
+`pnpm run version:check` rejects a branch/version mismatch. Historical release numbers
+below remain literal records.
+
 - One sprint = one week.
 - One sprint = one target semantic version = one release branch
   `release-x-y-z`.
 - 0.1.0 Foundation was released on 2026-09-11.
 - 0.2.0 Public Preview was released on 2026-09-19.
-- 0.3.0 (this release) targets 2026-09-20.
+- 0.3.0 Editorial Reactions was released on 2026-09-20.
 - my-web-2025 remains the complete public edition until required capabilities
   are migrated; cutover timing follows capability readiness rather than a fixed date.
 
@@ -150,11 +155,18 @@ production domain to be wired (Issue #43 / ADR-0014):
    locally first.
 7. `https://rebuildup.dev` responds 200 on `/`, `/admin/login`, and
    `/api/v1/health`. `BETTER_AUTH_URL` is pinned in the companion
-   file `wrangler.production.jsonc vars` and applied via
-   `pnpm run deploy:production`. Operator runs `pnpm run e2e:prod`
-   (or triggers the GH Actions `production smoke` workflow) before
-   the release PR is opened, AND walks through the same home /
-   admin / reactions / counter check on the canonical URL. The
+   file `wrangler.production.jsonc vars` and applied by `.github/workflows/deploy-production.yml`. A merge to `main`
+   (which can only happen through an explicitly approved release PR) starts the normal
+   main CI. A successful main CI run triggers the production deployment for that exact
+   SHA; `workflow_dispatch` remains the recovery/rerun entry point. The job builds, applies remote D1 migrations, ensures the stable
+   home-consumer API key row, and performs one production `wrangler deploy --secrets-file`
+   so Worker code and both runtime secrets become active together. The required
+   production-environment secrets are `CLOUDFLARE_API_TOKEN`,
+   `CLOUDFLARE_ACCOUNT_ID`, `BETTER_AUTH_SECRET`, and
+   `MY_WEB_2026_CONSUMER_API_KEY`. A reusable `production smoke` job runs
+   automatically after deploy and can also be dispatched manually. The operator
+   still walks through the home / admin / reactions / counter surfaces on the
+   canonical URL before publishing the GitHub Release. The
    `*.workers.dev` URL is debug-only and not documented as
    canonical.
 

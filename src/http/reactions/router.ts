@@ -112,7 +112,7 @@ reactionsRouter.get('/', requireApiKey, rateLimitRead, async (c) => {
 	}
 	// Aggregate scoped to the calling principal (API key id) —
 	// see reactions.aggregateByTarget. Cross-principal rolls up
-	// are explicitly out of scope for 0.3.0.
+	// are explicitly out of scope.
 	const aggregates = await aggregateByTarget(c.env.DB, targetKeyRaw, apiKey.id);
 	// Optional viewer-state channel. When the caller supplies an
 	// `actor_id` (the home loader reads it from the `mw_actor_id`

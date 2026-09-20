@@ -52,8 +52,8 @@ pnpm run validate:fast
 pnpm run validate:integration
 pnpm run validate:release
 
-# Production deploys run from GitHub Actions after a release PR merges to `main`.
-# Local command is a debugging fallback only.
+# Production deploys are owned by Cloudflare Workers Builds on `main` pushes.
+# Local command is a recovery/debugging fallback only.
 pnpm run deploy:production
 ```
 

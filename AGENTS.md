@@ -143,11 +143,12 @@ in Cloudflare). Home, Admin, and `/api/v1/*` all serve from that
 origin. Wiring is documented in `docs/adr/ADR-0014-rebuildup-dev-canonical-production-domain.md`
 (Issue #43); `BETTER_AUTH_URL=https://rebuildup.dev` and the
 `routes[]` binding for the bare hostname live in the companion
-file `wrangler.production.jsonc`. Production delivery is owned by
-`.github/workflows/deploy-production.yml`: a successful `CI` run for a
-`main` push deploys that exact SHA and then runs production smoke.
-`pnpm run deploy:production` is a local debugging fallback. The companion
-file exists because
+file `wrangler.production.jsonc`. Production delivery is owned by Cloudflare
+Workers Builds: pushes to `main` run the configured Cloudflare build command
+and production deploy command. GitHub Actions owns validation and the manual
+production-smoke workflow only; it must not deploy production. The local
+`pnpm run deploy:production` command is a recovery/debugging fallback. The
+companion file exists because
 declaring `env.production` inside `wrangler.jsonc` causes wrangler
 4.x typegen to narrow `Env` to env-scoped bindings, breaking
 every `env.DB` / `env.MEDIA` call site. The `*.workers.dev` URL is

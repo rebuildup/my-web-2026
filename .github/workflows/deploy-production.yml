@@ -1,0 +1,167 @@
+name: deploy production
+
+# Issue #43 / ADR-0014 — operator-initiated production deploy to
+# `https://rebuildup.dev`.
+#
+# Triggers ONLY on `workflow_dispatch`. Production deploys are never
+# automatic — they require the same explicit human approval as the
+# release PR merge / tag push / GitHub Release publication (see
+# `AGENTS.md §6` and `skills/github-delivery/SKILL.md`). The operator
+# runs this workflow after the release branch has been merged into
+# `main`, and before / alongside the `production smoke` workflow.
+#
+# Required GitHub Actions secrets (Settings → Secrets and variables
+# → Actions → New repository secret):
+#
+#   - `CLOUDFLARE_API_TOKEN`   Cloudflare API token with
+#                              Workers Scripts:Edit +
+#                              Workers Routes:Edit +
+#                              D1:Edit +
+#                              R2:Edit scope. Generate via
+#                              Cloudflare dashboard → My Profile →
+#                              API Tokens → Create Token → Edit
+#                              Cloudflare Workers template.
+#   - `CLOUDFLARE_ACCOUNT_ID`  Account ID (`c6ab6651a5d4d6d0d07686bbd3c3d56f`
+#                              for this project — confirmed via
+#                              `wrangler whoami`).
+#   - `BETTER_AUTH_SECRET`     Production Better Auth secret. The
+#                              same value used by the Worker at
+#                              runtime via `env.BETTER_AUTH_SECRET`;
+#                              Better Auth hashes sessions against
+#                              it. NEVER reuse the local-dev secret
+#                              from `.dev.vars` for production.
+#
+# Pipeline (idempotent where possible — repeated runs converge on
+# the same state):
+#
+#   1. checkout + pnpm install + cache
+#   2. `pnpm run build` — produces `dist/server/index.js` and
+#      `dist/client/*` (Vite + TanStack Start build).
+#   3. `pnpm run db:migrate:remote` — applies any pending D1
+#      migrations to production (0001_better_auth … 0005_access_counter_principal).
+#   4. `wrangler secret put BETTER_AUTH_SECRET` — sets the Better
+#      Auth signing secret on the production Worker (idempotent;
+#      same secret on every run is fine).
+#   5. `node scripts/bootstrap-home-api-key.mjs --target=remote`
+#      — INSERTs a row into the `apikey` table on remote D1 and
+#      prints the plaintext. The script refuses to read the secret
+#      from `.dev.vars` (it intentionally requires
+#      `BETTER_AUTH_SECRET` in `process.env`), so we pass the
+#      GitHub Actions secret through the env block. The script
+#      prints the plaintext on the last line; we capture it.
+#   6. `wrangler secret put MY_WEB_2026_CONSUMER_API_KEY` — sets
+#      the captured plaintext on the production Worker.
+#   7. `wrangler deploy -c wrangler.production.jsonc` — uploads
+#      the Vite-bundled Worker to the canonical zone via the
+#      `cloudflare/wrangler-action`.
+#
+# Why a dedicated deploy workflow (rather than piggybacking on
+# `ci.yml`): `ci.yml` runs on every push and PR — automatic
+# production deploys on a feature-branch merge would be a critical
+# privilege escalation. Production deploys are gated behind
+# `workflow_dispatch` so the operator clicks a button and sees the
+# full diff in the Actions UI before any change is pushed to
+# Cloudflare.
+#
+# Local fallback for offline / debugging only: `pnpm run deploy:production`
+# (= `pnpm run build && wrangler deploy -c wrangler.production.jsonc`).
+# Local deploys still require the secrets to be set in the
+# Cloudflare account (via `wrangler secret put`) and the production
+# D1 to be migrated — this workflow handles all three atomically.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  # Never cancel an in-progress production deploy — a half-deployed
+  # Worker is worse than a slow one.
+  group: deploy-production-${{ github.workflow }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: deploy to rebuildup.dev
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      BETTER_AUTH_SECRET: ${{ secrets.BETTER_AUTH_SECRET }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { submodules: recursive }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22 }
+      # corepack is forbidden in this repository (see ADR-0003).
+      # pnpm/action-setup@v4 downloads the pnpm 12.3.4 standalone
+      # binary directly from pnpm's release CDN; it does not use
+      # corepack.
+      - uses: pnpm/action-setup@v4
+        with: { version: 12.3.4 }
+      - uses: actions/cache@v4
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      # Vite produces `dist/server/index.js` (Worker bundle) and
+      # `dist/client/*` (static assets). `wrangler.production.jsonc`
+      # `main` points at `dist/server/index.js` because wrangler
+      # runs with `no_bundle: true` (the Vite plugin already
+      # bundled it).
+      - run: pnpm run build
+      # Apply any pending D1 migrations. Idempotent: pending migrations
+      # list is empty after the first run.
+      - name: Apply D1 migrations to remote
+        run: pnpm run db:migrate:remote
+      # Set the Better Auth signing secret on the production Worker.
+      # `wrangler secret put` is interactive by default; pipe the
+      # secret via stdin so the workflow stays non-interactive.
+      - name: Set BETTER_AUTH_SECRET
+        run: |
+          printf '%s' "$BETTER_AUTH_SECRET" | pnpm exec wrangler secret put BETTER_AUTH_SECRET
+      # Bootstrap the home self-consumption API key. The script
+      # INSERTs a row into `apikey` and prints the plaintext on
+      # stdout (last line). We capture the last line into a step
+      # output, then pipe it to the secret put step below.
+      #
+      # P2 review #9 follow-up: the runbook printed by the script
+      # now points at `pnpm run deploy:production` (which here means
+      # this workflow). The script itself doesn't change shape —
+      # the deploy command is a separate concern from key issuance.
+      - name: Bootstrap home API key on remote
+        id: bootstrap
+        run: |
+          set -euo pipefail
+          # Capture full stdout for the run log; the plaintext is on
+          # the last line.
+          node scripts/bootstrap-home-api-key.mjs --target=remote | tee /tmp/bootstrap.log
+          KEY=$(tail -n 1 /tmp/bootstrap.log)
+          echo "key-length=${#KEY}"
+          echo "key=$KEY" >> "$GITHUB_OUTPUT"
+      - name: Set MY_WEB_2026_CONSUMER_API_KEY
+        if: steps.bootstrap.outputs.key
+        run: |
+          printf '%s' "${{ steps.bootstrap.outputs.key }}" | pnpm exec wrangler secret put MY_WEB_2026_CONSUMER_API_KEY
+      # Deploy the Worker. cloudflare/wrangler-action@v3 runs
+      # `wrangler <command>` with `CLOUDFLARE_API_TOKEN` and
+      # `CLOUDFLARE_ACCOUNT_ID` wired into the wrangler invocation,
+      # so we don't need to export them again here.
+      - name: Deploy Worker to rebuildup.dev
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          command: deploy -c wrangler.production.jsonc
+          workingDirectory: .
+      # Suggest the next step in the runbook but don't trigger it
+      # automatically — the production smoke is also operator-initiated
+      # (see `.github/workflows/prod-smoke.yml`).
+      - name: Suggested next step
+        if: success()
+        run: |
+          echo "Worker deployed. Trigger the production smoke:"
+          echo "  gh workflow run prod-smoke.yml"

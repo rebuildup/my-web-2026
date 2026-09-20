@@ -59,7 +59,7 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "my-web-2026",
-	"main": "./src/server.ts",
+	"main": "./dist/server/index.js",
 	"compatibility_date": "2026-09-07",
 	"compatibility_flags": ["nodejs_compat", "global_fetch_strictly_public"],
 	"assets": {
@@ -103,16 +103,21 @@
 	],
 	// Operator-supplied: replace the placeholder zone_id with the
 	// Cloudflare zone ID for `rebuildup.dev` before running
-	// `pnpm run deploy:production`. Find it via `wrangler zones list`
-	// or the Cloudflare dashboard. `custom_domain: true` is the
-	// hint to Cloudflare to provision the DNS + TLS automatically.
-	// Pattern is the bare hostname (no `/*`) — Cloudflare routes
-	// every path under the hostname to the Worker.
+	// `pnpm run deploy:production`. Find it via the Cloudflare
+	// dashboard (Overview tab) or `GET /zones?name=rebuildup.dev`.
+	// `custom_domain: true` is the hint to Cloudflare to provision
+	// DNS + TLS automatically. Pattern is the bare hostname (no
+	// `/*`) — Cloudflare routes every path under the hostname to
+	// the Worker.
+	//
+	// 0.3.0 release (PR #48, Issue #43): zone_id verified via the
+	// Cloudflare API on 2026-09-20 and committed after operator
+	// approval for the production deploy runbook.
 	"routes": [
 		{
 			"pattern": "rebuildup.dev",
 			"custom_domain": true,
-			"zone_id": "REPLACE_WITH_REBUILDUP_DEV_ZONE_ID"
+			"zone_id": "7dde90c8a7be8a304300daa719a7de0a"
 		}
 	],
 	"no_bundle": true

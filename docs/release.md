@@ -150,9 +150,18 @@ production domain to be wired (Issue #43 / ADR-0014):
    locally first.
 7. `https://rebuildup.dev` responds 200 on `/`, `/admin/login`, and
    `/api/v1/health`. `BETTER_AUTH_URL` is pinned in the companion
-   file `wrangler.production.jsonc vars` and applied via
-   `pnpm run deploy:production`. Operator runs `pnpm run e2e:prod`
-   (or triggers the GH Actions `production smoke` workflow) before
+   file `wrangler.production.jsonc vars` and applied via the
+   GH Actions `deploy production` workflow (`.github/workflows/deploy-production.yml`,
+   `workflow_dispatch`-only). The workflow runs
+   `pnpm run build`, `pnpm run db:migrate:remote`,
+   `wrangler secret put BETTER_AUTH_SECRET`,
+   `node scripts/bootstrap-home-api-key.mjs --target=remote`,
+   `wrangler secret put MY_WEB_2026_CONSUMER_API_KEY`, and
+   `wrangler deploy -c wrangler.production.jsonc` (via
+   `cloudflare/wrangler-action@v3`) atomically. Required Actions
+   secrets: `CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
+   `BETTER_AUTH_SECRET`. Operator runs `pnpm run e2e:prod` (or
+   triggers the GH Actions `production smoke` workflow) before
    the release PR is opened, AND walks through the same home /
    admin / reactions / counter check on the canonical URL. The
    `*.workers.dev` URL is debug-only and not documented as

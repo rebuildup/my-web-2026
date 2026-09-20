@@ -29,15 +29,27 @@
  *                    production one.
  *
  * Production runbook:
- *   1. pnpm run db:migrate:remote    # apply migrations incl. 0005
- *   2. export BETTER_AUTH_SECRET=…   # the production secret
- *   3. node scripts/bootstrap-home-api-key.mjs --target=remote
- *   4. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY
- *      < paste the printed value
- *   5. pnpm run deploy:production    # uses wrangler.production.jsonc
- *      (raw `wrangler deploy` would deploy against the workers.dev
- *      dev binding — see ADR-0014 / Issue #43 for why production
- *      uses the companion config)
+ *   Recommended path: GH Actions `deploy production` workflow
+ *   (`.github/workflows/deploy-production.yml`, `workflow_dispatch`).
+ *   The workflow runs steps 1–5 atomically — migrate, set
+ *   BETTER_AUTH_SECRET, bootstrap, set MY_WEB_2026_CONSUMER_API_KEY,
+ *   deploy via cloudflare/wrangler-action. Operator only needs to
+ *   provision the GitHub Actions secrets once
+ *   (`CLOUDFLARE_API_TOKEN`, `CLOUDFLARE_ACCOUNT_ID`,
+ *   `BETTER_AUTH_SECRET`) and trigger the workflow.
+ *
+ *   Manual fallback (offline / debugging only):
+ *     1. pnpm run db:migrate:remote    # apply migrations incl. 0005
+ *     2. export BETTER_AUTH_SECRET=…   # the production secret
+ *     3. printf '%s' "$BETTER_AUTH_SECRET" \
+ *          | wrangler secret put BETTER_AUTH_SECRET
+ *     4. node scripts/bootstrap-home-api-key.mjs --target=remote
+ *     5. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY
+ *        < paste the printed value
+ *     6. pnpm run deploy:production    # uses wrangler.production.jsonc
+ *        (raw `wrangler deploy` would deploy against the workers.dev
+ *        dev binding — see ADR-0014 / Issue #43 for why production
+ *        uses the companion config)
  *
  * Usage:
  *   node scripts/bootstrap-home-api-key.mjs [--target=local|remote]
@@ -215,6 +227,11 @@ function main() {
 	console.log(`# Home self-consumption API key created (target=${target}).`);
 	if (target === 'remote') {
 		console.log('# Production runbook — finish in this order:');
+		console.log('#   Recommended: the GH Actions `deploy production` workflow');
+		console.log('#   (.github/workflows/deploy-production.yml) runs steps 1–3');
+		console.log('#   atomically. Operator triggers it via the Actions tab.');
+		console.log('#');
+		console.log('#   Manual fallback:');
 		console.log('#   1. wrangler secret put MY_WEB_2026_CONSUMER_API_KEY');
 		console.log('#        (paste the value below when prompted)');
 		console.log('#   2. pnpm run deploy:production     # uses wrangler.production.jsonc');

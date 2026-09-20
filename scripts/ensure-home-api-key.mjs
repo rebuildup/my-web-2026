@@ -61,28 +61,40 @@ if (!userId) {
 }
 
 const hash = keyHash(plaintext);
-const existing = query(`SELECT id FROM apikey WHERE \`key\` = '${sqlString(hash)}' LIMIT 1`)[0];
-if (!existing?.id) {
-	const id = randomUUID();
-	const now = Date.now();
-	const permissions = sqlString(JSON.stringify(REQUIRED_SCOPES));
-	d1(`INSERT INTO apikey (
-		id, configId, name, start, referenceId, prefix, \`key\`,
-		enabled, rateLimitEnabled, rateLimitTimeWindow, rateLimitMax,
-		requestCount, remaining, lastRequest, expiresAt,
-		lastRefillAt, refillInterval, refillAmount, metadata,
-		createdAt, updatedAt, permissions
-	) VALUES (
-		'${id}', 'default', '${KEY_NAME}', '${sqlString(plaintext.slice(0, 6))}',
-		'${sqlString(userId)}', '${KEY_PREFIX}', '${sqlString(hash)}',
-		1, 0, 60000, 60, 0, NULL, NULL, NULL,
-		NULL, NULL, NULL, NULL,
-		${now}, ${now}, '${permissions}'
-	)`);
-	console.log('home consumer API-key row created');
-} else {
-	console.log('home consumer API-key row already present');
+// INSERT OR IGNORE + re-read is the idempotent reconciliation path:
+// two concurrent runs that both find no existing row will both
+// attempt to INSERT, but the UNIQUE INDEX on `apikey.key` (migration
+// 0006) lets only one row land. Both runs then re-read by hash and
+// converge on the canonical row id, regardless of which run won the
+// race. This is cheaper and more race-safe than SELECT-then-INSERT
+// because it does not require a transaction.
+const id = randomUUID();
+const now = Date.now();
+const permissions = sqlString(JSON.stringify(REQUIRED_SCOPES));
+d1(`INSERT OR IGNORE INTO apikey (
+	id, configId, name, start, referenceId, prefix, \`key\`,
+	enabled, rateLimitEnabled, rateLimitTimeWindow, rateLimitMax,
+	requestCount, remaining, lastRequest, expiresAt,
+	lastRefillAt, refillInterval, refillAmount, metadata,
+	createdAt, updatedAt, permissions
+) VALUES (
+	'${id}', 'default', '${KEY_NAME}', '${sqlString(plaintext.slice(0, 6))}',
+	'${sqlString(userId)}', '${KEY_PREFIX}', '${sqlString(hash)}',
+	1, 0, 60000, 60, 0, NULL, NULL, NULL,
+	NULL, NULL, NULL, NULL,
+	${now}, ${now}, '${permissions}'
+)`);
+const final = query(`SELECT id FROM apikey WHERE \`key\` = '${sqlString(hash)}' LIMIT 1`)[0];
+if (!final?.id) {
+	throw new Error(
+		`Failed to ensure home consumer API-key row for hash ${hash}; no row present after INSERT OR IGNORE.`,
+	);
 }
+console.log(
+	final.id === id
+		? 'home consumer API-key row created'
+		: 'home consumer API-key row already present',
+);
 
 if (process.argv.includes('--disable-stale')) {
 	d1(`UPDATE apikey SET enabled = 0, updatedAt = ${Date.now()}

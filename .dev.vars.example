@@ -8,7 +8,9 @@
 # production values are supplied by the GitHub Actions production environment.
 
 # Better Auth secret. Generate a 32+ byte random string
-# locally; production is provisioned via `wrangler secret put BETTER_AUTH_SECRET`.
+# locally; production is supplied by the GitHub Actions production
+# environment. Use `wrangler secret put BETTER_AUTH_SECRET` only for
+# manual recovery or rotation.
 # Required by Better Auth's session signing. See ADR-0009.
 # BETTER_AUTH_SECRET="replace-me-with-32-byte-random-string"
 
@@ -24,10 +26,13 @@
 # BETTER_AUTH_URL="http://127.0.0.1:3000"
 
 # Home self-consumption API key
-# (ADR-0011). Provisioned by running `pnpm run bootstrap:home-api-key`
-# (see scripts/bootstrap-home-api-key.mjs). The script prints the
-# generated `mk_home_…` value; paste it here for local dev, or set it
-# via `wrangler secret put MY_WEB_2026_CONSUMER_API_KEY` for remote.
+# (ADR-0011). Local dev: run `pnpm run bootstrap:home-api-key` and
+# paste the printed `mk_home_…` value here. Production: the value is
+# supplied by the GitHub Actions production environment, and the
+# `deploy production` workflow runs
+# `scripts/ensure-home-api-key.mjs` to reconcile its hash row in D1
+# idempotently. Use `wrangler secret put MY_WEB_2026_CONSUMER_API_KEY`
+# only for manual recovery or rotation.
 # Required scopes:
 #   { reactions: ["read", "write"], access_counter: ["read", "write"] }
 # Without this key the home reactions widget + counter tile render a

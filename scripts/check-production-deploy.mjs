@@ -1,12 +1,6 @@
 #!/usr/bin/env node
 import { execFileSync } from 'node:child_process';
-import {
-	existsSync,
-	mkdtempSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -14,14 +8,11 @@ import { dirname, join, resolve } from 'node:path';
 const require = createRequire(import.meta.url);
 const dir = mkdtempSync(join(tmpdir(), 'my-web-2026-prod-dry-run-'));
 const secretsFile = join(dir, 'secrets.json');
-const outDir = '.tmp/wrangler-production';
-const wranglerCli = join(
-	dirname(require.resolve('wrangler/package.json')),
-	'bin',
-	'wrangler.js',
-);
+const outDir = resolve('.tmp/wrangler-production');
+const wranglerCli = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
 
 try {
+	rmSync(outDir, { recursive: true, force: true });
 	writeFileSync(
 		secretsFile,
 		JSON.stringify({
@@ -49,18 +40,14 @@ try {
 	const entryPath = resolve(outDir, 'index.js');
 	const entrySource = readFileSync(entryPath, 'utf8');
 	const relativeModuleSpecifiers = [
-		...entrySource.matchAll(
-			/(?:\bfrom\s*|\bimport\s*\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g,
-		),
+		...entrySource.matchAll(/(?:\bfrom\s*|\bimport\s*\(\s*)['"](\.{1,2}\/[^'"]+)['"]/g),
 	].map((match) => match[1]);
 	const missingModules = relativeModuleSpecifiers.filter(
 		(specifier) => !existsSync(resolve(dirname(entryPath), specifier)),
 	);
 
 	if (missingModules.length > 0) {
-		throw new Error(
-			`Production dry-run omitted imported modules: ${missingModules.join(', ')}`,
-		);
+		throw new Error(`Production dry-run omitted imported modules: ${missingModules.join(', ')}`);
 	}
 } finally {
 	rmSync(dir, { recursive: true, force: true });

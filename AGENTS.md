@@ -325,3 +325,10 @@ canonical entry points for human contributors.
 
 These are 0.2.0 / 0.3.0 work. The 0.1.0 goal is the foundation
 release, not the feature release.
+
+
+## Constitution / operating profile
+
+- 最上位 contract: [`constitution/CONSTITUTION.md`](constitution/CONSTITUTION.md)
+- current Operating Model: [`organization/profiles/release-driven-solo.md`](organization/profiles/release-driven-solo.md)
+- 本ファイルは project-specific dispatcher として維持する。upstream の具体的 Practice と既存の明示的 decision が異なる場合は、Constitution の guarantee を維持しつつ project-local decision を優先し、その差分を durable に記録する。

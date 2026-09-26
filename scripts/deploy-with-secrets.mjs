@@ -248,6 +248,49 @@ function findInfisicalCli() {
 	return cliPath;
 }
 
+/**
+ * Build the argv passed to the inner deploy script (`run-deploy-inner.mjs`).
+ *
+ * Cross-script contract: `run-deploy-inner.mjs` parses `--config` ONLY in
+ * the `--config=<path>` form (its `parseArgs` uses `arg.startsWith('--config=')`).
+ * A bare `--config` followed by a separate argv entry would fall through to
+ * its `else { throw }` branch with `unknown argument: --config` and abort
+ * the production `--execute` path before reaching wrangler deploy.
+ *
+ * This helper is exported (top-level function) so that
+ * `deploy-with-secrets.test.mjs` can pin the argv shape against the inner
+ * script's parser contract.
+ *
+ * @param {object} params
+ * @param {string} params.infisicalCli  path to `@infisical/cli/bin/infisical.js`
+ * @param {string} params.workspaceId   Infisical workspace/project id from `.infisical.json`
+ * @param {string} params.environment   Infisical environment name (always 'prod' for this driver)
+ * @param {string} params.configPath    wrangler config path (canonical `wrangler.production.jsonc`)
+ * @param {boolean} params.execute      whether `--execute` is appended (true for prod deploy gate)
+ * @returns {string[]}
+ */
+function buildInnerArgs({ infisicalCli, workspaceId, environment, configPath, execute }) {
+	const argv = [
+		infisicalCli,
+		'run',
+		'--projectId',
+		workspaceId,
+		'--env',
+		environment,
+		'--',
+		process.execPath,
+		INNER_SCRIPT,
+		// CRITICAL: `--config=<path>` form — single argv, NOT split.
+		// See `run-deploy-inner.mjs#parseArgs` which only accepts
+		// `arg.startsWith('--config=')`.
+		`--config=${configPath}`,
+	];
+	if (execute) {
+		argv.push('--execute');
+	}
+	return argv;
+}
+
 function run(args, options = {}) {
 	return execFileSync(process.execPath, args, {
 		stdio: 'inherit',
@@ -316,20 +359,13 @@ async function main() {
 	let childExitCode = 0;
 	try {
 		const infisicalCli = findInfisicalCli();
-		const innerArgs = [
+		const innerArgs = buildInnerArgs({
 			infisicalCli,
-			'run',
-			'--projectId',
-			config.workspaceId,
-			'--env',
-			args.environment,
-			'--',
-			process.execPath,
-			INNER_SCRIPT,
-			'--config',
-			args.config,
-			'--execute',
-		];
+			workspaceId: config.workspaceId,
+			environment: args.environment,
+			configPath: args.config,
+			execute: true,
+		});
 		console.log(
 			`[execute] spawning: infisical run --projectId=<workspaceId> --env=${args.environment} -- <inner> --config=${args.config} --execute`,
 		);

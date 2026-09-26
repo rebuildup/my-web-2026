@@ -40,6 +40,40 @@ const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 const TEMPDIR_PREFIX = 'my-web-2026-deploy-';
 
 /**
+ * Extract the pure `buildInnerArgs` helper from `deploy-with-secrets.mjs`.
+ *
+ * We do not import the whole module because it runs top-level imperative
+ * code at import time (parses argv, reads `.infisical.json`, etc.).
+ * Instead we read the source and pull out `buildInnerArgs` via a
+ * `Function` constructor inside an isolated scope (same pattern as
+ * `bootstrap-home-api-key.test.mjs#loadPureHelpers`).
+ *
+ * The helper closes over `process.execPath` and `INNER_SCRIPT` from its
+ * own module — those are imported here so the extracted function can see
+ * them at evaluation time.
+ */
+async function loadBuildInnerArgs() {
+	const { readFileSync } = await import('node:fs');
+	const source = readFileSync(SCRIPT, 'utf8');
+
+	const re = /function\s+buildInnerArgs\s*\([\s\S]*?\n\}/m;
+	const match = source.match(re);
+	if (!match) {
+		throw new Error('Could not extract buildInnerArgs from deploy-with-secrets.mjs');
+	}
+
+	const factory = new Function(
+		'execPath',
+		'INNER_SCRIPT',
+		`
+		${match[0]}
+		return buildInnerArgs;
+	`,
+	);
+	return factory(process.execPath, INNER_SCRIPT);
+}
+
+/**
  * Run the deploy script in an isolated `<repo>/scripts/...` layout and
  * return the tempdir path + exit code + captured output. Used when a
  * test needs to assert on log content or exit code.
@@ -325,6 +359,65 @@ describe('deploy-with-secrets.mjs', () => {
 			assert.match(result.stdout, /Usage: deploy-with-secrets/);
 			assert.match(result.stdout, /--execute/);
 			assert.match(result.stdout, /--dry-run/);
+		});
+	});
+
+	describe('inner argv construction (cross-script contract)', () => {
+		// These tests pin the argv shape that `deploy-with-secrets.mjs`
+		// hands to `infisical run -- node scripts/run-deploy-inner.mjs`.
+		// The inner script's `parseArgs` only accepts `--config` in the
+		// `--config=<path>` form (uses `arg.startsWith('--config=')`).
+		// A bare `--config` followed by a separate argv entry would
+		// fall through to its `else { throw }` branch and abort the
+		// production `--execute` path. These tests fail loudly if anyone
+		// regresses to the split form.
+
+		it('passes --config=<path> as a single argv (inner parser is --config= form)', async () => {
+			const buildInnerArgs = await loadBuildInnerArgs();
+			const argv = buildInnerArgs({
+				infisicalCli: '/usr/local/bin/infisical',
+				workspaceId: VALID_UUID,
+				environment: 'prod',
+				configPath: 'wrangler.production.jsonc',
+				execute: true,
+			});
+			const idx = argv.indexOf(INNER_SCRIPT) + 1;
+			assert.equal(argv[idx], '--config=wrangler.production.jsonc');
+			// Sanity: must be a single argv (no whitespace split).
+			assert.doesNotMatch(argv[idx], /\s/);
+			// And the next slot must be `--execute` (not a config path).
+			assert.equal(argv[idx + 1], '--execute');
+		});
+
+		it('omits --execute when execute=false (dry-run inner)', async () => {
+			const buildInnerArgs = await loadBuildInnerArgs();
+			const argv = buildInnerArgs({
+				infisicalCli: '/usr/local/bin/infisical',
+				workspaceId: VALID_UUID,
+				environment: 'dev',
+				configPath: 'wrangler.jsonc',
+				execute: false,
+			});
+			assert.equal(argv.includes('--execute'), false);
+		});
+
+		it('places --config=<path> and --execute immediately after INNER_SCRIPT', async () => {
+			const buildInnerArgs = await loadBuildInnerArgs();
+			const argv = buildInnerArgs({
+				infisicalCli: '/usr/local/bin/infisical',
+				workspaceId: VALID_UUID,
+				environment: 'prod',
+				configPath: 'wrangler.production.jsonc',
+				execute: true,
+			});
+			const innerIdx = argv.indexOf(INNER_SCRIPT);
+			assert.equal(argv[innerIdx + 1], '--config=wrangler.production.jsonc');
+			assert.equal(argv[innerIdx + 2], '--execute');
+			// And no bare `--config` anywhere in the argv (would be
+			// rejected by inner script's parser).
+			for (let i = 0; i < argv.length; i++) {
+				assert.notEqual(argv[i], '--config', `argv[${i}] must not be bare '--config'`);
+			}
 		});
 	});
 });

@@ -79,24 +79,28 @@ infisical run --token="$TOKEN" \
 
 ### 4. Deploy script (`scripts/deploy-with-secrets.mjs`)
 
-`deploy-with-secrets.mjs` は Node のみで完結する。bash / jq / shell pipe を使わず、secret 値を shell の argv にも環境変数にも出さない。
+`deploy-with-secrets.mjs` は Node のみで完結する。bash / jq / shell pipe は使わず、Node `child_process.spawn` (shell-less argv array) で wrangler と db-migrate を直接起動する。`scripts/check-production-deploy.mjs` を template に転用する (prod dry-run と同じ tempdir + `finally rmSync` パターン)。
 
 ```text
 deploy-with-secrets.mjs
 ├─ .infisical.json から workspaceId を読む
-├─ INFISICAL_API_URL=https://secrets.rebuildup.dev を export
-├─ infisical login → TOKEN を取得 (子プロセスの stdout のみ)
-├─ infisical run --token=$TOKEN --projectId=$WORKSPACE_ID --env=prod --
-│ └─ 子 process (injected env)
-│        ├─ process.env から BETTER_AUTH_SECRET / MY_WEB_2026_CONSUMER_API_KEY を取得
-│        ├─ fs.writeFileSync('secrets.json', JSON.stringify({...}), { mode: 0o600 })
-│        ├─ pnpm run db:migrate:production (子 process として spawn)
-│        ├─ pnpm exec wrangler deploy -c wrangler.production.jsonc --secrets-file secrets.json (子 process として spawn)
-│        └─ finally: fs.unlinkSync('secrets.json')
-└─ 親 process は TOKEN を即座に release
+├─ INFISICAL_API_URL=https://secrets.rebuildup.dev を親 process.env に export
+│   (operator の shell rc に恒久設定する想定)
+├─ infisical login → TOKEN を取得 (子プロセスの stdout のみ — 親 argv / log には出さない)
+├─ INFISICAL_TOKEN=$TOKEN を親 process.env に export (Infisical 公式 env var パターン)
+├─ infisical run --projectId=$WORKSPACE_ID --env=prod --
+│ └─ 子 process (injected env by `infisical run` の公式 contract)
+│        ├─ process.env.BETTER_AUTH_SECRET / process.env.MY_WEB_2026_CONSUMER_API_KEY を読み取り
+│        ├─ fs.mkdtempSync(path.join(os.tmpdir(), 'my-web-2026-deploy-'))
+│        ├─ fs.writeFileSync(secretsFile, JSON.stringify({...}), { mode: 0o600 })
+│        ├─ spawn(pnpm, ['run', 'db:migrate:production']) (子 process, shell-less)
+│        ├─ spawn(wranglerCli, ['deploy', '-c', 'wrangler.production.jsonc',
+│        │                      '--secrets-file', secretsFile]) (子 process, shell-less)
+│        └─ finally: fs.rmSync(dir, { recursive: true, force: true })
+└─ 親 process は TOKEN を即座に release (overwrite + unsetenv)
 ```
 
-**Invariant**: secret 値を shell の argv / shell 環境変数 / `ps` の出力に露出させない。これは ADR の invariant として固定する。
+**Invariant (fixed)**: **runtime secret を argv / log へ出さない。Infisical token / runtime secrets は必要な child process environment にのみ存在させ、永続化しない。** child-process env injection (`infisical run` の公式 contract: secret は child `process.env` に inject される) は **scoped to the immediate wrangler / db-migrate invocation** として許可する。invariant は argv / log discipline を guard するものであって、child process env 内の secret 存在を否定するものではない。Temp secrets file は repo root ではなく `os.tmpdir()` 配下の unique directory に置かれ、`finally` 句で cleanup される。
 
 ### 5. `deploy:production` レイヤリング維持
 
@@ -121,13 +125,27 @@ Infisical 変更だけで rotate しない。D1 provision が必ず先:
 
 ```
 1. pnpm run bootstrap:home-api-key --target=remote
-   → 新 plaintext を1回だけ出力。D1 の apikey に SHA-256 hash 行が追加される
+   → 新 plaintext を1回だけ出力。D1 の apikey に SHA-256 hash 行が追加される。
+     同時に machine-readable 出力 (後述 §E 拡張) として 1 行 JSON が出力される:
+     { "id": "<uuid>", "prefix": "mk_home_", "start": "<plaintext先頭6文字>",
+       "createdAt": <epochMs>, "enabled": 1, "name": "home-self-consumption",
+       "referenceId": "<admin-user-id>" }
+     この id を step 5 の旧 row revoke に渡す。
 2. Infisical prod の MY_WEB_2026_CONSUMER_API_KEY を新 plaintext で更新
 3. pnpm run deploy:production:prepared
    → scripts/deploy-with-secrets.mjs が新 key を Cloudflare Worker に反映
 4. production smoke で新 key での reactions / access_counter の write を確認
-5. old key の revoke: D1 apikey.enabled = 0 に update (or delete row)
+5. old key の revoke: D1 apikey.enabled = 0 に update。新 id を機械的に特定できる
+   ようにするため、Migration 0006 の UNIQUE INDEX uq_apikey_key を活用して
+   INSERT OR IGNORE / ON CONFLICT(key) DO NOTHING で re-run / concurrent も安全
 ```
+
+**E. `bootstrap-home-api-key.mjs` rotate output 拡張 (Phase 2)**: 現状 plaintext
+のみ (1 行 console.log) では同名 key 候補が複数ある場合に旧 row を機械的に特定
+できない。Phase 2 で plaintext banner 直下に **machine-readable JSON 1 行** を
+加える。必須 field は rotation runbook step 5 が要求する `id` を含む 7 個。
+Migration 0006 の `UNIQUE INDEX uq_apikey_key` により、SHA-256 hash 衝突時は
+`INSERT OR IGNORE` 相当で re-run しても安全。
 
 ### 7. drift 検出
 
@@ -174,13 +192,15 @@ credential 数を最小化するため、prod 用 Machine Identity のみ必須�
 4. **Phase 4**: Cloudflare Workers Builds の Build command を `pnpm run build`、Deploy command を `pnpm run deploy:production:prepared` に更新。`INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` を env vars として登録。custom Build token (D1 Edit 付き) を維持。
 5. **Phase 5**: ドキュメント整備。`docs/release.md`, `docs/development.md`, `README.md`, `AGENTS.md §4` を新方式に書き換え。`docs/runbook/cloudflare-workers-builds.md` と `docs/runbook/consumer-api-key-rotation.md` を新規作成。
 
-### 新しい env を追加する手順 (Infisical 変更のみで完結)
+### 新しい env を追加する手順 (SoT 境界を反映)
 
-| 種類 | 手順 |
-| --- | --- |
-| runtime secret | (1) Infisical に secret 追加 → (2) `wrangler.jsonc` の `secrets.required` に追記 → (3) `pnpm run check:infisical-coverage` で静的整合確認 → (4) `pnpm run deploy:production:prepared` で反映 |
-| static non-secret vars | (1) Infisical に value 追加 OR Wrangler config に追記 (任意) → (2) `wrangler types` で型更新 |
-| GAID (Google Analytics ID 等) | (1) Infisical に value 追加 → (2) `src/<obligation>/<feature>/load.ts` で `process.env.X` 参照 → (3) `pnpm run deploy:production:prepared` で反映 (Wrangler config 変更不要) |
+| 種類 | SoT | 手順 |
+| --- | --- | --- |
+| runtime secret | **Infisical** | (1) Infisical `prod` (と `dev`) に secret 追加 → (2) `wrangler.jsonc` の `secrets.required` に name 追記 → (3) `pnpm run check:infisical-coverage` で静的整合確認 → (4) `pnpm run deploy:production:prepared` で反映 |
+| static non-secret vars / 識別子 | **Wrangler config (`vars` / 識別子)** | (1) Wrangler config に追加 → (2) `pnpm run cf-typegen` で `worker-configuration.d.ts` の `Env` 型を更新 → (3) `pnpm run validate:integration`。Infisical は触らない |
+| Cloudflare 認証境界 (build_token_uuid 等) | **Cloudflare UI** | Cloudflare 側で更新。Infisical / Wrangler config は触らない |
+
+**注**: 「Infisical 変更のみで完結」という見出しは §1 Decision の SoT 限定 (runtime / build credentials and secrets のみ) と矛盾するため廃止する。runtime secret 追加は `wrangler.jsonc#secrets.required` の name 追記を伴う。static non-secret vars の追加は Wrangler config のみで完結し、Infisical は触らない。
 
 ### Trade-offs accepted
 
@@ -189,6 +209,83 @@ credential 数を最小化するため、prod 用 Machine Identity のみ必須�
 - **`.dev.vars` 生成は fallback**: まず `infisical run --env=dev -- pnpm dev` の fileless 経路を検証 → 通れば `.dev.vars` 不要。fallback は `pnpm run generate:dev-vars` で残す。
 - **`NODE_VERSION` / `PNPM_VERSION` を Infisical に置かない**: Cloudflare が build image 起動前に決めるため、Infisical 経由では間に合わない。Cloudflare build vars か `.nvmrc` / `package.json#engines` に残す。
 - **drift 検出の値比較はやらない**: Cloudflare secret 値は読み出せないため不可能。代わりに delivery evidence (`deploy-with-secrets.mjs` の log) と静的整合で担保する。
+
+## 11. Initial migration
+
+Cloudflare Worker の secret 値は Wrangler / Dashboard からも読み戻せない仕様
+(Cloudflare API には secret value の取得エンドポイントが存在しない)。Phase 1 で
+Infisical へ seed する前に、**既存 plaintext が取得可能か**で初期 migration 経路
+が変わる。
+
+### 11.1 Recoverable: 既存 plaintext が安全なソースから取得できる
+
+operator の password manager / 紙 backup / 別 system 等から既存 plaintext を
+取得できるケース:
+
+1. 取得値を Infisical `prod` env に手動で seed (`BETTER_AUTH_SECRET` /
+   `MY_WEB_2026_CONSUMER_API_KEY`)
+2. 同じ値を `dev` env にも seed (任意。local 用)
+3. `pnpm run deploy:production:prepared` で `wrangler secret put` の手動経路を置換
+4. operator smoke で `/`, `/admin/login`, `/api/v1/health`, reactions,
+   access counter を確認 (canonical production domain `https://rebuildup.dev`)
+
+### 11.2 Unrecoverable: Cloudflare UI に残っている値を取得できない
+
+#### `MY_WEB_2026_CONSUMER_API_KEY`
+
+既存 bootstrap 経路で再発行する:
+
+```
+1. pnpm run bootstrap:home-api-key --target=remote
+   → 新 plaintext を 1 回だけ出力。同時に machine-readable JSON 1 行も
+     出力される (§E 拡張)。D1 apikey に SHA-256 hash 行が追加される。
+     Migration 0006 の UNIQUE INDEX uq_apikey_key が re-run / concurrent を
+     安全にする。
+2. 新 plaintext を Infisical prod env の MY_WEB_2026_CONSUMER_API_KEY に登録
+3. pnpm run deploy:production:prepared
+   → scripts/deploy-with-secrets.mjs が新 key を Cloudflare Worker に反映
+4. production smoke で新 key での reactions / access_counter の write を確認
+5. 旧 row revoke: §E の machine-readable `id` を特定し、
+   D1 apikey.enabled = 0 に update
+```
+
+#### `BETTER_AUTH_SECRET`
+
+**単純な差替えにしない**。Better Auth 1.5+ の非破壊 rotation を使う。
+
+**現状の integration**: `src/cloudflare/auth/better-auth.ts:71` が
+`secret: env.BETTER_AUTH_SECRET` の単一 secret form。これが versioned form を
+解釈できないと、移行期間に in-flight session の検証失敗 / 新規 deploy の cookie
+署名が旧 secret と不整合になる window が生まれる。**Phase 1 sub-step** で
+versioned form に移行する:
+
+- **Runtime 契約**: `secrets: [{ version: 2, value: "<new>" }, { version: 1, value: "<old>" }]`
+  を渡せる形にする (または `BETTER_AUTH_SECRETS=2:<new>,1:<old>` env var form を parse する)
+- **Semantics** (Better Auth 1.5+): 先頭 entry が新規 signing key、残りは
+  decryption-only。Cookie は version 識別子付きで署名され、decryption は
+  version から直接 lookup するため trial decrypt 不要。Database migration /
+  downtime は不要。
+- **Session impact**: Better Auth の session token は **HMAC-signed** (暗号化
+  ではない)。旧 secret で署名された cookie は、versioned form 移行後、新
+  secret 単体では検証失敗する。`BETTER_AUTH_SECRETS` で旧 secret を
+  decryption-only として登録すれば、in-flight session を継続可能にしなくて
+  はいけない (これが Phase 1 sub-step の目的)。
+- **Encryption impact**: Better Auth は encrypted column を保持しない
+  (`account.password` 等はハッシュ)。`BETTER_AUTH_SECRET` rotation で persisted
+  row corruption は発生しない。
+- **Operator gate**: 旧 plaintext が本当に回収不能で、新 secret に swap する
+  場合は、in-flight session の再 sign-in を許容する旨を **operator が明示
+  承認**する。これは ADR の decision boundary を越えるため、operator gate 必須。
+
+### 11.3 移行の invariant
+
+- **production credential は GitHub Actions に追加しない** (AGENTS.md §6「
+  GitHub Actions は validation only、production delivery は Cloudflare Workers
+  Builds」)
+- **Production deploy authority は Cloudflare Workers Builds**。Operator による
+  `pnpm run deploy:production` の手動実行は recovery / debugging 用途のみ。
+- **Initial migration 中も Better Auth versioned form は省略しない**。
+  unrecoverable 分岐では「新 secret 単体では検証失敗 window」ゼロを保証する。
 
 ## Out of scope
 
@@ -205,5 +302,5 @@ credential 数を最小化するため、prod 用 Machine Identity のみ必須�
 - eccd31e — fix(deploy): move production delivery to Cloudflare Builds
 - `docs/runbook/cloudflare-workers-builds.md` (new in Phase 5)
 - `docs/runbook/consumer-api-key-rotation.md` (new in Phase 5)
-- `.infisical.json` (new in Phase 1, gitignored OR committed per Phase 1 decision)
+- `.infisical.json` (new in Phase 1, **committed** — holds only `workspaceId` project pointer; no secrets. `scripts/deploy-with-secrets.mjs` reads `workspaceId` from it as SoT. `.gitignore` does NOT add `.infisical.json`. Schema: `{ "workspaceId": "<uuid>", "defaultEnvironment"?: "dev" | "prod" }`. `INFISICAL_API_URL` は operator の shell rc に恒久設定する前提で、このファイルには含めない)
 - `scripts/deploy-with-secrets.mjs` (new in Phase 2)

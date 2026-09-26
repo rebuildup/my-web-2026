@@ -292,4 +292,22 @@ describe('infisical-verify.mjs', () => {
 			assert.match(SOURCE, /@infisical\/cli\/package\.json/);
 		});
 	});
+
+	describe('self-host INFISICAL_DOMAIN override (regression for CLI default domain bug)', () => {
+		it('the script sets INFISICAL_DOMAIN in spawn env (NOT .infisical.json domain field)', () => {
+			// Regression: the CLI's `infisical run` defaults to
+			// `https://app.infisical.com/api` (US cloud) and ignores
+			// `--domain` for some subcommands. The script must set
+			// INFISICAL_DOMAIN in the spawn env so `infisical run`
+			// targets the self-host. We can't add `domain` to
+			// `.infisical.json` because the schema validator
+			// (ALLOWED_INFISICAL_JSON_KEYS in bootstrap-api.mjs)
+			// doesn't include `domain`.
+			const spawnEnvs = SOURCE.match(/INFISICAL_DOMAIN:/g) ?? [];
+			assert.ok(
+				spawnEnvs.length >= 1,
+				'script must set INFISICAL_DOMAIN in spawnSync env (dev + prod checks)',
+			);
+		});
+	});
 });

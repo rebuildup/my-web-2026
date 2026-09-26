@@ -144,6 +144,16 @@ function spawnPresenceCheck({ workspaceId, infisicalCli }) {
 			timeout: SPAWN_TIMEOUT_MS,
 			maxBuffer: SPAWN_MAX_OUTPUT_BYTES,
 			stdio: ['ignore', 'pipe', 'pipe'],
+			// Self-host v0.165.x: the CLI defaults to
+			// `https://app.infisical.com/api`. The .infisical.json
+			// schema (see ALLOWED_INFISICAL_JSON_KEYS in
+			// bootstrap-api.mjs) doesn't include `domain`, so we set
+			// the domain via the INFISICAL_DOMAIN env var instead
+			// of committing it to the file.
+			env: {
+				...process.env,
+				INFISICAL_DOMAIN: process.env.INFISICAL_DOMAIN ?? INFISICAL_API_URL_DEFAULT,
+			},
 		},
 	);
 	return result;
@@ -237,6 +247,11 @@ async function main() {
 			timeout: SPAWN_TIMEOUT_MS,
 			maxBuffer: SPAWN_MAX_OUTPUT_BYTES,
 			stdio: ['ignore', 'pipe', 'pipe'],
+			// See spawnPresenceCheck for INFISICAL_DOMAIN rationale.
+			env: {
+				...process.env,
+				INFISICAL_DOMAIN: process.env.INFISICAL_DOMAIN ?? INFISICAL_API_URL_DEFAULT,
+			},
 		},
 	);
 	if (prodResult.status === 0) {

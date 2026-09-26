@@ -238,10 +238,10 @@ Cloudflare Workers Builds の **custom Build API token (Workers Scripts:Edit + R
 **Wrangler secret binding への追加順序** (Phase 1 → Phase 3 移行時):
 1. Phase 1 operator が Infisical `prod` env に `BETTER_AUTH_SECRETS` を seed
 2. `wrangler secret put BETTER_AUTH_SECRETS` で Cloudflare Worker に binding 追加 (Wrangler が `secrets.required` を見るので必須化前に実行)
-3. `wrangler.jsonc` の `secrets.required` を 3-name contract に拡張
+3. `wrangler.jsonc` の `secrets.required` を Phase 3+ の 2-name contract `["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]` に切り替える (§1 SoT 境界で BETTER_AUTH_SECRET は任意運用としたため、 secrets.required からは外す)
 4. 以降の deploy で `BETTER_AUTH_SECRETS` 必須
 
-`BETTER_AUTH_SECRET` legacy 単一 form のみを使う中間期間 (Infisical seed 完了前) でも deploy が通ることを保証する。
+`BETTER_AUTH_SECRET` legacy 単一 form のみを使う中間期間 (Infisical seed 完了前) でも deploy が通ることを保証する (Phase 1-2 の 2-name contract `["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]` で吸収)。
 
 ### 10. Machine Identity
 

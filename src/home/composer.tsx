@@ -1,10 +1,10 @@
 import { css } from '../../styled-system/css';
+import { Container } from '../editorial/primitives/Container';
+import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
-import { Container } from '../editorial/primitives/Container';
-import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { Footer } from './footer';
 import { Hero } from './hero';
 import type { HomeReactionsData } from './reactions/load';

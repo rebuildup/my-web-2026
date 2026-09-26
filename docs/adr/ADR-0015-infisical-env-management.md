@@ -177,10 +177,47 @@ Infisical 変更だけで rotate しない。**既存 enabled row の確認 → 
 field) と整合。Migration 0006 の `UNIQUE INDEX uq_apikey_key` により、SHA-256
 hash 衝突時は `INSERT OR IGNORE` 相当で re-run しても安全。
 
-**F. `scripts/rotate-home-api-key.mjs` (Phase 2 新規)**: step 0-5 を 1 つの
+**Idempotency + concurrent-loser semantics**: `INSERT ... WHERE NOT EXISTS`
+の atomicity だけでは不十分 — losing process は依然として自プロセスが生成し
+た plaintext を保持しているため、hash による re-read
+(`SELECT ... WHERE key = <hash> AND enabled = 1`) が必要。winning process は
+自 hash で row を見つける (→ plaintext 出力) / losing process は他 process の
+hash と異なるため見つからず、name-based reuse 経路に fallback して
+`<no new plaintext — ...>` sentinel のみ出力 (自 plaintext は破棄)。
+Migration 0006 の `UNIQUE INDEX uq_apikey_key` (hash-unique) が hash re-read
+の判定を unambiguous にしている。
+
+**F. `scripts/rotate-home-api-key.mjs` (Phase 3+ follow-up に defer)**: step 0-5 を 1 つの
 script にまとめ、`oldKeyId` query → bootstrap → operator smoke 確認 →
 disable を atomic に近い形で実行する。手動実行時のミスを減らす。`--dry-run`
 で新 key 作成 / smoke 確認 / 旧 disable の plan だけ出力できる。
+
+**Rotation interim (until #74 lands)**: Phase 2 では
+`scripts/rotate-home-api-key.mjs` を実装しないため、
+`MY_WEB_2026_CONSUMER_API_KEY` の rotation は §6 manual runbook を
+operator が手動で実行する。§6 step 0 (既存 enabled row query) と
+§6 step 1 (`bootstrap:home-api-key --target=remote`) は bootstrap 側の
+idempotency により "step 0 で検出した既存 row と step 1 の bootstrap 出力の
+row が同一 id になる" 動作となるが、これは **collapsing** であり新しい
+plaintext は生成されない。よって Phase 2 中の rotation は実質的に
+"§11.2 Unrecoverable 分岐の operator gate で承認された状態での手動 disable + 新
+row 作成" のみ可能で、operator が §6 step 5
+(`UPDATE apikey SET enabled = 0 WHERE id = <oldKeyId>`) を直接 D1 に
+打ち、`bootstrap:home-api-key --target=remote` を再実行する手順を採る。
+#74 (Phase 3+) 着手中はこの手順を `scripts/rotate-home-api-key.mjs` で
+automate する。
+
+**Defer rationale (Phase 2 review blocker 5)**: Phase 2 で実装範囲を
+`bootstrap-home-api-key.mjs` の idempotent rerun (operator review focus) と
+drift detection 強化に絞り、`rotate-home-api-key.mjs` は Phase 3+ 着手時に
+別 ticket で実装する。Phase 2 で `bootstrap-home-api-key.mjs` を
+`INSERT ... WHERE NOT EXISTS` で idempotent 化した (migration 0006 の
+`UNIQUE INDEX uq_apikey_key` との二重防壁) ため、rerun / concurrent は
+安全 — **ただし rotation (旧 key revoke + 新 key 作成) は引き続き手動
+runbook** で運用する。手動 runbook の step 5 (`UPDATE apikey SET
+enabled = 0 WHERE id = <oldKeyId>`) を script 化することが
+`rotate-home-api-key.mjs` の Phase 3+ での最小実装。Follow-up Issue
+参照。
 
 ### 7. drift 検出
 
@@ -189,6 +226,20 @@ disable を atomic に近い形で実行する。手動実行時のミスを減�
 | wrangler.jsonc `secrets.required` ↔ wrangler.production.jsonc `secrets.required` ↔ deploy script `REQUIRED_SECRETS` | **GitHub Actions 通常 CI** | 不要 (静的整合) |
 | Infisical ↔ Cloudflare Worker secret name / type | **operator diagnostic (`pnpm run check:cf-secrets`)** または **Workers Builds preflight** | Infisical / Cloudflare 認証必要 |
 | value drift (値の比較) | **やらない** | Cloudflare secret は Wrangler / Dashboard からも読み出せないため不可能 |
+
+**Tier 1 endpoint contract (Phase 2 review correction)**: Infisical secret
+LIST は V3 deprecated list endpoint `GET /api/v3/secrets/raw?workspaceId=
+<id>&environment=<env>&viewSecretValue=false` で照会する。`/api/v3/secrets`
+は 404 (V3 router は `/raw` suffix のみ登録)。V4 (`/api/v4/secrets` with
+`projectId`) への移行は scope を増やすため Phase 2 では V3 を維持。V3
+`/raw` は `workspaceId` を project pointer として受け付けるため §1
+`.infisical.json#workspaceId` SoT 契約と整合する。`viewSecretValue=false`
+で values は null 化され `secretValueHidden: true` が per-item に付与される
+が、本 script は `secretKey` のみを読むため値の masking は観測に影響しない。
+Sources: `Infisical/infisical#backend/src/server/routes/v3/deprecated-secret-router.ts`
+(`GET /raw` "List secrets") + OpenAPI
+`docs/api-reference/endpoints/deprecated/secrets/list.mdx`
+(`openapi: "GET /api/v3/secrets/raw"`).
 
 AGENTS.md §6「GitHub Actions は validation only、production deployment authority は Cloudflare Workers Builds」の境界を守る。production credential を GitHub Actions に追加しない。
 
@@ -326,9 +377,10 @@ operator の password manager / 紙 backup / 別 system 等から既存 plaintex
    UPDATE apikey SET enabled = 0 WHERE id = <oldKeyId>
 ```
 
-`§F scripts/rotate-home-api-key.mjs` (Phase 2 新規) で上記 step 0-5 を 1 つ
-の script にまとめると手動運用時のミスが減る。Migration 0006 の UNIQUE INDEX
-uq_apikey_key が SHA-256 hash 衝突時の re-run / concurrent を安全にする
+`§F scripts/rotate-home-api-key.mjs` (Phase 3+ follow-up に defer) で上記
+step 0-5 を 1 つの script にまとめると手動運用時のミスが減る。Migration
+0006 の UNIQUE INDEX uq_apikey_key が SHA-256 hash 衝突時の re-run /
+concurrent を安全にする
 (`INSERT OR IGNORE` 相当)。
 
 #### `BETTER_AUTH_SECRET`

@@ -1,5 +1,5 @@
-import packageJson from '../../package.json';
 import { Hono } from 'hono';
+import packageJson from '../../package.json';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';

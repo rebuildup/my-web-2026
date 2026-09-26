@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 /**
  * `migrate-portfolio-from-2025.mjs` pure helper tests.
@@ -19,6 +19,7 @@ import { describe, it } from 'node:test';
  *   - `linkKindFromUrl(href)` — host → portfolio_link.kind inference
  *   - `parseIsoMs(value)`     — ISO 8601 → Unix ms (null on failure)
  *   - `sqlEscape(value)`      — SQL literal escape (NULL or single-quoted)
+ *   - `partitionMarkdownBySection(body)` — heading-keyword section mapping
  *
  * The extraction approach (regex slicing + Function constructor) is
  * identical to `bootstrap-home-api-key.test.mjs` so the convention is
@@ -35,15 +36,33 @@ function extract(name) {
 	return match[0];
 }
 
+function extractConstant(name) {
+	const source = readFileSync(SCRIPT, 'utf8');
+	const re = new RegExp(`const\\s+${name}\\s*=\\s*\\[[\\s\\S]*?\\n\\];`, 'm');
+	const match = source.match(re);
+	if (!match) throw new Error(`could not extract constant ${name} from ${SCRIPT}`);
+	return match[0];
+}
+
 function loadHelpers() {
 	const slugFn = new Function(`${extract('deriveSlug')}; return deriveSlug;`)();
 	const linkFn = new Function(`${extract('linkKindFromUrl')}; return linkKindFromUrl;`)();
 	const dateFn = new Function(`${extract('parseIsoMs')}; return parseIsoMs;`)();
 	const escFn = new Function(`${extract('sqlEscape')}; return sqlEscape;`)();
-	return { deriveSlug: slugFn, linkKindFromUrl: linkFn, parseIsoMs: dateFn, sqlEscape: escFn };
+	const partFn = new Function(
+		`${extractConstant('HEADING_TO_SECTION')} ${extract('partitionMarkdownBySection')}; return partitionMarkdownBySection;`,
+	)();
+	return {
+		deriveSlug: slugFn,
+		linkKindFromUrl: linkFn,
+		parseIsoMs: dateFn,
+		sqlEscape: escFn,
+		partitionMarkdownBySection: partFn,
+	};
 }
 
-const { deriveSlug, linkKindFromUrl, parseIsoMs, sqlEscape } = loadHelpers();
+const { deriveSlug, linkKindFromUrl, parseIsoMs, sqlEscape, partitionMarkdownBySection } =
+	loadHelpers();
 
 describe('deriveSlug', () => {
 	it('lowercases and keeps alphanumerics + dashes', () => {
@@ -156,5 +175,76 @@ describe('sqlEscape', () => {
 		assert.equal(sqlEscape("don't"), "'don''t'");
 		assert.equal(sqlEscape("'leading quote"), "'''leading quote'");
 		assert.equal(sqlEscape("trailing quote'"), "'trailing quote'''");
+	});
+});
+
+describe('partitionMarkdownBySection', () => {
+	it('returns all-empty sections for empty / null body', () => {
+		const out = partitionMarkdownBySection('');
+		assert.equal(out.motivation_md, '');
+		assert.equal(out.architecture_md, '');
+		assert.equal(out.constraints_md, '');
+		assert.equal(out.implementation_md, '');
+		assert.equal(out.evidence_md, '');
+		assert.equal(out.retrospective_md, '');
+	});
+
+	it('maps motivation / architecture / etc. keywords to schema sections', () => {
+		const body = [
+			'# Title',
+			'',
+			'## 動機',
+			'Built because the prior tooling was too slow.',
+			'',
+			'## Architecture',
+			'Worker per tenant; D1 per env.',
+			'',
+			'## Constraints',
+			'Single 10ms budget per request.',
+			'',
+			'## Evidence',
+			'p95 went from 1.2s to 90ms.',
+		].join('\n');
+		const out = partitionMarkdownBySection(body);
+		assert.ok(out.motivation_md.includes('Built because'));
+		assert.ok(out.architecture_md.includes('Worker per tenant'));
+		assert.ok(out.constraints_md.includes('10ms budget'));
+		assert.equal(out.implementation_md, '');
+		assert.ok(out.evidence_md.includes('p95'));
+	});
+
+	it('does NOT map unmatched headings — they are dropped, not catch-alled', () => {
+		const body = [
+			'## Overview',
+			'Some paragraph',
+			'',
+			'## Links',
+			'- [demo](https://example.com)',
+		].join('\n');
+		const out = partitionMarkdownBySection(body);
+		assert.equal(out.motivation_md, '');
+		assert.equal(out.architecture_md, '');
+		assert.equal(out.constraints_md, '');
+		assert.equal(out.implementation_md, '');
+		assert.equal(out.evidence_md, '');
+		assert.equal(out.retrospective_md, '');
+	});
+
+	it('uses English keyword aliases when present', () => {
+		const body = ['## Motivation', 'why we built it', '## Retrospective', 'what we learned'].join(
+			'\n',
+		);
+		const out = partitionMarkdownBySection(body);
+		assert.ok(out.motivation_md.includes('why we built it'));
+		assert.ok(out.retrospective_md.includes('what we learned'));
+	});
+
+	it('matches only the FIRST section per schema — second occurrence does not overwrite', () => {
+		const body = ['## 動機', 'first motivation', '', '## Motivation', 'second motivation'].join(
+			'\n',
+		);
+		const out = partitionMarkdownBySection(body);
+		assert.ok(out.motivation_md.includes('first motivation'));
+		assert.ok(!out.motivation_md.includes('second motivation'));
 	});
 });

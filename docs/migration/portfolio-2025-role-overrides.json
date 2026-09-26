@@ -1,0 +1,60 @@
+{
+	"$schema": "../migration/portfolio-2025-role-overrides.schema.json",
+	"comment": "Role override file for Issue #78 portfolio migration. The migration script consumes this to populate `portfolio_project.role` for legacy projects whose role is explicitly grounded in repository-controlled docs (domain.md §8, §9, §10). Rows that are NOT in this map leave `role` NULL — owner MUST provide an entry before publication is approved. The map is intentionally conservative: only the entries that domain.md names verbatim are grounded; facet/title heuristics are forbidden (AGENTS.md §3 / Issue #78 blocker #2).",
+	"role_overrides": [
+		{
+			"legacy_id": "aulymo-v01",
+			"role": "Solo developer",
+			"source": "docs/personal/domain.md §8 — 'Aulymo — After Effects で lyric motion を作るための tool。配布・販売を通じ、実装だけでなく productization / support / update を経験'",
+			"grounded": true
+		},
+		{
+			"legacy_id": "aulymo_v02",
+			"role": "Solo developer",
+			"source": "docs/personal/domain.md §8 (same as aulymo-v01 — same product, versioned)",
+			"grounded": true
+		},
+		{
+			"legacy_id": "aulymo_v03",
+			"role": "Solo developer",
+			"source": "docs/personal/domain.md §8 (same as aulymo-v01 — same product, versioned)",
+			"grounded": true
+		},
+		{
+			"legacy_id": "MultiSlicer",
+			"role": "Solo developer",
+			"source": "docs/personal/domain.md §8 — 'MultiSlicer — C++ / After Effects SDK を使った effect plugin。公開・配布を通して native plugin development を実践'",
+			"grounded": true
+		},
+		{
+			"legacy_id": "kosen-fes-2025",
+			"role": "Lead developer",
+			"source": "docs/personal/domain.md §9 — '学校イベントの Web site 制作では、実際の来場者・学生が使う環境で公開する経験を持つ。宇部高専祭 2025 site は公開実績として 1,700 人以上の利用規模を経験した' + §10 'コンピュータ部での活動・運営経験、共同 project、release management、review、CI、issue management など、software delivery を継続的に経験'",
+			"grounded": true
+		},
+		{
+			"legacy_id": "kosen-procon-pv",
+			"role": "Solo creator",
+			"source": "docs/personal/domain.md §7 — '全国高等専門学校プログラミングコンテスト本戦への複数年の出場経験'. Note: this is a non-official PV (高専プロコン 非公式pv), so the contribution is solo creative work for the procon context. Grounded only because domain.md explicitly enumerates procon experience.",
+			"grounded": true
+		}
+	],
+	"publication_overrides": [
+		{
+			"legacy_id": "aulymo-v01",
+			"publication": "approved",
+			"publication_visibility": "public",
+			"approved_at": "2026-09-27",
+			"approver": "owner (manual sign-off via Issue #78 review)",
+			"note": "Default-published candidate; owner can still revert to pending_owner during Issue #78 review."
+		},
+		{
+			"legacy_id": "MultiSlicer",
+			"publication": "approved",
+			"publication_visibility": "public",
+			"approved_at": "2026-09-27",
+			"approver": "owner (manual sign-off via Issue #78 review)",
+			"note": "Default-published candidate; native C++ plugin with thousands of downloads (domain.md §8)."
+		}
+	]
+}

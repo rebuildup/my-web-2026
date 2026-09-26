@@ -13,53 +13,94 @@
  *
  * Classification:
  *   Reads `docs/migration/portfolio-2025-to-2026-classification.json` for the
- *   agent-generated bucket assignment per legacy row.
+ *   agent-generated two-axis bucket assignment per legacy row:
  *
- *   * `KEEP` (agent automatic) → INSERT verbatim.
- *   * `KEEP+REWRITE (owner)`  → BLOCKED with a `OWNER_REQUIRED` notice. The
- *     script refuses to INSERT until the owner supplies the rewrite narrative
- *     in the override file (see `--owner-overrides`). Until then the row is
- *     counted in the dry-run summary as "skipped: owner required".
- *   * `DROP` (agent automatic) → skipped silently (reported in summary).
- *   * `NEW` (proposals, 8 rows) → NOT in the legacy DBs; the agent adds
- *     these via a separate `--new-proposals=path/to/new.json` flag once the
- *     owner confirms id + scope.
+ *     migration_class — technical eligibility:
+ *       eligible           INSERT verbatim, write visibility per publication
+ *       rewrite_required   INSERT verbatim, write visibility per publication
+ *       mechanical_drop    NEVER insert
+ *       new_candidate      NEVER auto-insert; owner must add via a separate
+ *                          `--new-proposals=path/to/new.json` once the owner
+ *                          confirms id + scope + narrative + media + role
  *
- * Idempotency:
- *   Each INSERT uses `INSERT OR IGNORE` keyed on `portfolio_project.slug`.
- *   Re-runs are no-ops against a populated DB.
+ *     publication — owner selection authority:
+ *       approved        visibility = 'public' (the public loader will surface it)
+ *       pending_owner   visibility = 'draft' (default; loader never sees it)
+ *       rejected        NEVER insert (no surface at all)
+ *
+ *   Crucially, `migration_class = 'eligible'` does NOT imply
+ *   `publication = 'approved'`. The 43 mechanically-eligible rows are
+ *   `pending_owner` by default; the migration writes them with
+ *   `visibility = 'draft'` so the public loader never sees them.
+ *
+ * Owner overrides:
+ *   Reads `docs/migration/portfolio-2025-role-overrides.json`:
+ *
+ *     role_overrides          — per-legacy_id, sets `role` (grounded)
+ *     publication_overrides   — per-legacy_id, sets `publication`
+ *
+ *   Role is set ONLY from `role_overrides`; facet/title inference is
+ *   forbidden (AGENTS.md §3 + Issue #78 blocker #2).
+ *
+ * Preflight collision check (Issue #78 blocker #6):
+ *   Before writing any SQL, the script queries the target D1 for any
+ *   `portfolio_project.id` / `slug` collisions. Each colliding row is
+ *   reported, and the migration aborts with exit 3 unless the
+ *   collision is with a row the migration itself is about to write
+ *   (i.e., re-running the same migration is idempotent).
+ *
+ *   `INSERT OR IGNORE` is therefore ONLY used as a re-run safety net
+ *   for the migration's own previously-written rows. New collisions
+ *   are NEVER silently ignored — they fail loudly.
+ *
+ * Markdown mapping (Issue #78 blocker #3):
+ *   The legacy `markdown_pages.body` is NOT blindly mapped to
+ *   `motivation_md`. The script applies conservative heading-keyword
+ *   matching:
+ *
+ *     ## 動機 / Motivation    → motivation_md
+ *     ## アーキテクチャ / Architecture → architecture_md
+ *     ## 制約 / Constraints    → constraints_md
+ *     ## 実装 / Implementation → implementation_md
+ *     ## 証拠 / Evidence / 結果 → evidence_md
+ *     ## 振り返り / Retrospective → retrospective_md
+ *
+ *   Unmatched content is dropped. The schema sections are not a
+ *   catch-all. If `motivation_md` cannot be filled, the row is marked
+ *   `narrative_missing` in `publication_blockers` and stays
+ *   `visibility = 'draft'` until the owner rewrites the narrative.
  *
  * Output:
  *   `--dry-run`         — prints SQL to stdout, never touches D1.
  *   `--apply --target=` — writes a temp `.sql` file and feeds it to
  *                         `wrangler d1 execute ... --file <tmp.sql>`. The
- *                         wrangler invocation is the same path `scripts/seed-portfolio.mjs`
- *                         uses, so the local / remote D1 surface is identical
- *                         to the seed.
+ *                         wrangler invocation is the same path
+ *                         `scripts/seed-portfolio.mjs` uses, so the
+ *                         local / remote D1 surface is identical to
+ *                         the seed.
  *
  * Field mapping (legacy `contents` / `markdown_pages` / `content_links` /
- * `content_assets` / `content_tags` → current schema):
+ * `content_tags` → current schema):
  *
  *   portfolio_project:
- *     id            ← `legacy_<legacy_id>` (deterministic)
+ *     id            ← `legacy_<slug>` (deterministic)
  *     slug          ← derived from legacy `id` (lowercase, dash-joined)
  *     title         ← contents.title
  *     summary       ← contents.summary (1 line)
- *     role          ← "Solo developer" (constant — no per-row role data)
+ *     role          ← role_overrides[legacy_id].role (NULL otherwise)
  *     period_start  ← Date.parse(contents.published_at) → ms; or 0 (unknown)
- *     period_end    ← null (legacy has no end date — KEEP+REWRITE rows would
- *                       require owner input)
+ *     period_end    ← null (legacy has no end date)
  *     period_label  ← contents.published_at (ISO date) — owner can override
- *     motivation_md ← markdown_pages.body (only the first heading block —
- *                       until #79 ships a richer extraction)
+ *     motivation_md, architecture_md, constraints_md, implementation_md,
+ *       evidence_md, retrospective_md
+ *                   ← heading-keyword-matched sections from markdown_pages.body
  *     facets        ← content_tags aggregated as JSON array, intersected
  *                       with the closed PortfolioFacet enum
  *     technologies  ← content_tags aggregated as JSON array (non-facet tags)
- *     visibility    ← 'public' (only KEEP rows are public+published; the
- *                       visibility boundary is preserved by the loader)
+ *     visibility    ← 'public' iff publication == 'approved'; else 'draft'
  *     status        ← 'published'
  *     pinned        ← 0 (agent default; owner can set pinned via override)
- *     display_order ← 100 (KEEP+REWRITE and NEW get owner-assigned)
+ *     display_order ← 100 (NEW + KEEP+REWRITE get owner-assigned later)
  *     created_at    ← Date.parse(contents.created_at)
  *     updated_at    ← Date.parse(contents.updated_at)
  *
@@ -74,7 +115,9 @@
  *   portfolio_media:
  *     Skipped by this script. Media extraction + R2 upload is owned by
  *     `scripts/upload-portfolio-media.mjs` (parallel work, runs after
- *     portfolio_project rows are populated).
+ *     portfolio_project rows are populated). The publication gate
+ *     (`media_count >= 1` for `public+published`) is verified by
+ *     `scripts/verify-portfolio.mjs`.
  *
  * SQLite access:
  *   Uses `node:sqlite` (stable in Node ≥ 22.5). The runtime contract for the
@@ -83,9 +126,9 @@
  *   at startup and exits with a clear error otherwise.
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -172,11 +215,43 @@ if (apply && target !== 'local' && target !== 'remote') {
 	process.exit(2);
 }
 
-/**
- * Closed PortfolioFacet enum — the loader / schema rejects anything
- * outside this set, so we intersect legacy tags with it before INSERT.
- */
 const PORTFOLIO_FACETS = new Set(['develop', 'video', 'design', 'other']);
+
+/**
+ * Heading keyword → schema section mapping. Conservative: a legacy
+ * heading is mapped to a schema section ONLY when it explicitly uses
+ * the keyword below. Anything else stays blank — `motivation_md` is
+ * NOT a catch-all (Issue #78 blocker #3).
+ *
+ * Note: `\b` does NOT work as a word boundary for non-ASCII chars
+ * (e.g. Japanese `動機`), so we use a `\s|$` lookahead instead.
+ */
+const HEADING_TO_SECTION = [
+	{
+		section: 'motivation_md',
+		patterns: [/^#{1,3}\s*(動機|モチベーション|why|motivation)(?=\s|$)/i],
+	},
+	{
+		section: 'architecture_md',
+		patterns: [/^#{1,3}\s*(アーキテクチャ|architecture|設計)(?=\s|$)/i],
+	},
+	{
+		section: 'constraints_md',
+		patterns: [/^#{1,3}\s*(制約|constraints|constraint)(?=\s|$)/i],
+	},
+	{
+		section: 'implementation_md',
+		patterns: [/^#{1,3}\s*(実装|implementation|開発記録)(?=\s|$)/i],
+	},
+	{
+		section: 'evidence_md',
+		patterns: [/^#{1,3}\s*(証拠|エビデンス|evidence|result|結果)(?=\s|$)/i],
+	},
+	{
+		section: 'retrospective_md',
+		patterns: [/^#{1,3}\s*(振り返り|レトロスペクティブ|retrospective)(?=\s|$)/i],
+	},
+];
 
 /**
  * URL host → link kind inference.
@@ -211,17 +286,6 @@ function linkKindFromUrl(href) {
 	}
 }
 
-/**
- * Deterministic slug derivation. The legacy `id` (e.g. `Border`,
- * `aulymo_v02`, `kosen-procon-pv`) is the source of truth; we normalise to
- * the current slug grammar `/^[a-z0-9][a-z0-9-]{0,127}$/`:
- *   * lowercase
- *   * `_` → `-`
- *   * strip any character outside `[a-z0-9-]`
- *   * collapse repeated `-`
- * If the result is empty (e.g. legacy id was all-underscores), we throw —
- * the owner must rename that row in the override file.
- */
 function deriveSlug(legacyId) {
 	const slug = legacyId
 		.toLowerCase()
@@ -238,15 +302,6 @@ function deriveSlug(legacyId) {
 	return slug;
 }
 
-/**
- * Parse ISO 8601 date string to Unix ms; return null on failure.
- *
- * `Date.parse` accepts many non-ISO formats (e.g. `2025/07/30` parses
- * fine in V8 but produces local-time-dependent values), so we gate
- * the input on the canonical ISO 8601 prefix: a 4-digit year followed
- * by `-`. Anything that fails this check returns null rather than a
- * timezone-dependent guess.
- */
 function parseIsoMs(value) {
 	if (typeof value !== 'string') return null;
 	if (!/^\d{4}-\d{2}-\d{2}/.test(value)) return null;
@@ -254,16 +309,50 @@ function parseIsoMs(value) {
 	return Number.isFinite(ms) ? ms : null;
 }
 
-/** Escape a SQL string literal value (single quote → double single quote). */
 function sqlEscape(value) {
 	if (value === null || value === undefined) return 'NULL';
 	return `'${String(value).replace(/'/g, "''")}'`;
 }
 
 /**
- * Read a source DB and extract one portfolio_project row (plus its
- * links). Returns null when the DB is unreadable.
+ * Walk markdown body, partition lines by headings, and emit per-section
+ * bodies. A heading-keyword match captures everything from that
+ * heading line (inclusive) until the next `## ` / `# ` heading
+ * (exclusive). Sections without a matching keyword are NOT included
+ * in the result; their content stays in the body but is dropped from
+ * the schema.
  */
+function partitionMarkdownBySection(body) {
+	if (!body) {
+		return Object.fromEntries(HEADING_TO_SECTION.map((m) => [m.section, '']));
+	}
+	const out = Object.fromEntries(HEADING_TO_SECTION.map((m) => [m.section, null]));
+	const lines = body.split('\n');
+	const sections = [];
+	let cur = null;
+	for (const line of lines) {
+		const headingMatch = line.match(/^(#{1,3})\s+(.+?)\s*$/);
+		if (headingMatch) {
+			cur = { heading: line, lines: [] };
+			sections.push(cur);
+		} else if (cur) {
+			cur.lines.push(line);
+		}
+	}
+	for (const section of sections) {
+		const headingText = section.heading;
+		for (const m of HEADING_TO_SECTION) {
+			if (m.patterns.some((p) => p.test(headingText))) {
+				if (out[m.section] === null) {
+					out[m.section] = [section.heading, ...section.lines].join('\n').trim();
+				}
+			}
+		}
+	}
+	for (const k of Object.keys(out)) if (out[k] === null) out[k] = '';
+	return out;
+}
+
 function readSourceRow(dbPath) {
 	let db;
 	try {
@@ -296,7 +385,21 @@ function readSourceRow(dbPath) {
 				href: r.href,
 				label: r.label,
 				order: r.order ?? 0,
-			}));
+			}))
+			// Filter out rows with empty / protocol-less URLs — the
+			// verifier rejects them, and `linkKindFromUrl` would silently
+			// fall back to 'other'. Reporting the broken URL as a row
+			// in `portfolio_link` would fail the AC for every project that
+			// owns it.
+			.filter((r) => {
+				if (!r.href || typeof r.href !== 'string') return false;
+				try {
+					const u = new URL(r.href);
+					return u.protocol === 'http:' || u.protocol === 'https:';
+				} catch {
+					return false;
+				}
+			});
 
 		const markdown = db
 			.prepare(
@@ -314,7 +417,7 @@ function readSourceRow(dbPath) {
 			facets,
 			technologies,
 			links,
-			motivationMd: markdown?.body ?? '',
+			markdownBody: markdown?.body ?? '',
 		};
 	} finally {
 		db.close();
@@ -322,35 +425,53 @@ function readSourceRow(dbPath) {
 }
 
 /** Build the INSERT statement for one portfolio_project row. */
-function buildProjectSql(project) {
-	const slug = deriveSlug(project.legacyId);
+function buildProjectSql({ source, role, visibility, partition }) {
+	const slug = deriveSlug(source.legacyId);
 	const id = `legacy_${slug.replace(/[^a-z0-9-]/g, '_')}`;
-	const periodStart = parseIsoMs(project.publishedAt) ?? parseIsoMs(project.createdAt) ?? 0;
+	const periodStart = parseIsoMs(source.publishedAt) ?? parseIsoMs(source.createdAt) ?? 0;
 	const periodEnd = 'NULL';
-	const periodLabel = project.publishedAt ? `'${project.publishedAt.slice(0, 10)}'` : 'NULL';
-	const createdAt = parseIsoMs(project.createdAt) ?? 0;
-	const updatedAt = parseIsoMs(project.updatedAt) ?? createdAt;
-	const facetsJson = JSON.stringify(project.facets).replace(/'/g, "''");
-	const techJson = JSON.stringify(project.technologies).replace(/'/g, "''");
-	const title = project.title.replace(/'/g, "''");
-	const summary = project.summary.replace(/'/g, "''");
-	const motivationMd = project.motivationMd.replace(/'/g, "''");
+	const periodLabel = source.publishedAt ? `'${source.publishedAt.slice(0, 10)}'` : 'NULL';
+	const createdAt = parseIsoMs(source.createdAt) ?? 0;
+	const updatedAt = parseIsoMs(source.updatedAt) ?? createdAt;
+	const facetsJson = JSON.stringify(source.facets).replace(/'/g, "''");
+	const techJson = JSON.stringify(source.technologies).replace(/'/g, "''");
+	const title = source.title.replace(/'/g, "''");
+	const summary = source.summary.replace(/'/g, "''");
+	const motivationMd = partition.motivation_md.replace(/'/g, "''");
+	const architectureMd = partition.architecture_md.replace(/'/g, "''");
+	const constraintsMd = partition.constraints_md.replace(/'/g, "''");
+	const implementationMd = partition.implementation_md.replace(/'/g, "''");
+	const evidenceMd = partition.evidence_md.replace(/'/g, "''");
+	const retrospectiveMd = partition.retrospective_md.replace(/'/g, "''");
+	// `role` is NOT NULL in the schema (see migrations/0007_portfolio.sql).
+	// We never hard-code a literal role (Issue #78 blocker #2). When the
+	// owner has not provided a `role_overrides` entry, we insert a
+	// clearly-marked placeholder that the verifier recognises and that
+	// the public loader can never reach because visibility is 'draft'.
+	const roleSql =
+		role === null ? sqlEscape('(unverified — owner review required)') : sqlEscape(role);
+	const visibilitySql = sqlEscape(visibility);
 
 	const cols =
-		'id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at';
+		'id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md, retrospective_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at';
 	const values = [
 		sqlEscape(id),
 		sqlEscape(slug),
 		sqlEscape(title),
 		sqlEscape(summary),
-		sqlEscape('Solo developer'),
+		roleSql,
 		periodStart,
 		periodEnd,
 		periodLabel,
 		sqlEscape(motivationMd),
+		sqlEscape(architectureMd),
+		sqlEscape(constraintsMd),
+		sqlEscape(implementationMd),
+		sqlEscape(evidenceMd),
+		sqlEscape(retrospectiveMd),
 		sqlEscape(facetsJson),
 		sqlEscape(techJson),
-		sqlEscape('public'),
+		visibilitySql,
 		sqlEscape('published'),
 		0,
 		100,
@@ -361,7 +482,6 @@ function buildProjectSql(project) {
 	return { id, slug, sql: `INSERT OR IGNORE INTO portfolio_project (${cols}) VALUES (${values});` };
 }
 
-/** Build INSERT statements for one project's links. */
 function buildLinkSqls(projectId, links) {
 	return links.map((link) => {
 		const kind = linkKindFromUrl(link.href);
@@ -394,9 +514,39 @@ function parseArg(set, name) {
 	return null;
 }
 
-/**
- * Main: read classification, walk KEEP rows, emit SQL.
- */
+/** Query D1 via wrangler; return parsed JSON rows (or [] on parse-failure). */
+function d1Query(sql) {
+	const cmdArgs = [
+		'exec',
+		'wrangler',
+		'd1',
+		'execute',
+		'DB',
+		target === 'local' ? '--local' : '--remote',
+		'--json',
+		'--command',
+		sql,
+	];
+	if (target === 'remote') {
+		cmdArgs.splice(cmdArgs.indexOf('DB'), 2, 'my-web-2026', '-c', 'wrangler.production.jsonc');
+	}
+	const result = spawnSync('pnpm', cmdArgs, { cwd: root, encoding: 'utf8' });
+	if (result.status !== 0) {
+		console.error(`[migrate] wrangler exited with status ${result.status}`);
+		console.error(result.stderr);
+		process.exit(result.status ?? 1);
+	}
+	const text = result.stdout.trim();
+	const start = text.indexOf('[{');
+	const end = text.lastIndexOf('}]');
+	if (start === -1 || end === -1) return [];
+	try {
+		return JSON.parse(text.slice(start, end + 2));
+	} catch {
+		return [];
+	}
+}
+
 function main() {
 	const classificationPath = join(
 		root,
@@ -408,21 +558,59 @@ function main() {
 		process.exit(1);
 	}
 	const data = JSON.parse(readFileSync(classificationPath, 'utf8'));
-	const classified = data.classified;
+	const classified = data.classified ?? [];
 
-	const summary = { KEEP: 0, 'KEEP+REWRITE (owner)': 0, DROP: 0, errors: 0 };
+	const roleOverridePath = join(root, 'docs/migration/portfolio-2025-role-overrides.json');
+	if (!existsSync(roleOverridePath)) {
+		console.error(`[migrate] role overrides file missing: ${roleOverridePath}`);
+		process.exit(1);
+	}
+	const roleFile = JSON.parse(readFileSync(roleOverridePath, 'utf8'));
+	const roleByLegacyId = new Map((roleFile.role_overrides ?? []).map((r) => [r.legacy_id, r.role]));
+	const publicationByLegacyId = new Map(
+		(roleFile.publication_overrides ?? []).map((r) => [r.legacy_id, r.publication]),
+	);
+
+	const summary = {
+		mechanical_drop: 0,
+		new_candidate: 0,
+		eligible_approved: 0,
+		eligible_pending: 0,
+		rewrite_required_approved: 0,
+		rewrite_required_pending: 0,
+		rejected: 0,
+		errors: 0,
+	};
 	const sqlStatements = [];
-	const skippedOwner = [];
+	const skipped = [];
+	const collisions = [];
 	const errors = [];
 
-	for (const row of classified) {
-		const cls = row.classification;
-		summary[cls] = (summary[cls] ?? 0) + 1;
+	// First pass: build the SQL surface from the classification.
+	const intendedInsertIds = new Set();
+	const intendedInsertSlugs = new Set();
+	const plan = []; // { row, source, role, visibility, partition, project, linkSqls }
 
-		if (cls !== 'KEEP') {
-			if (cls === 'KEEP+REWRITE (owner)') skippedOwner.push(row.id ?? row.db);
+	for (const row of classified) {
+		const cls = row.migration_class ?? 'mechanical_drop';
+		const pub = publicationByLegacyId.get(row.id) ?? row.publication ?? 'pending_owner';
+
+		if (cls === 'mechanical_drop') {
+			summary.mechanical_drop++;
 			continue;
 		}
+		if (cls === 'new_candidate') {
+			summary.new_candidate++;
+			continue;
+		}
+		if (pub === 'rejected') {
+			summary.rejected++;
+			continue;
+		}
+
+		// cls is eligible or rewrite_required
+		const key = `${cls}_${pub === 'approved' ? 'approved' : 'pending'}`;
+		summary[key] = (summary[key] ?? 0) + 1;
 
 		const dbPath = join(refRoot, 'data/contents', row.db);
 		const source = readSourceRow(dbPath);
@@ -432,27 +620,82 @@ function main() {
 			continue;
 		}
 
-		try {
-			const project = buildProjectSql(source);
-			sqlStatements.push(`-- ${source.legacyId} (${row.db})`);
-			sqlStatements.push(project.sql);
+		const role = roleByLegacyId.get(row.id) ?? null;
+		const visibility = pub === 'approved' ? 'public' : 'draft';
+		const partition = partitionMarkdownBySection(source.markdownBody);
 
-			const linkSqls = buildLinkSqls(project.id, source.links);
-			for (const link of linkSqls) sqlStatements.push(link.sql);
+		let project;
+		let linkSqls;
+		try {
+			project = buildProjectSql({ source, role, visibility, partition });
+			linkSqls = buildLinkSqls(project.id, source.links);
 		} catch (err) {
 			errors.push({ id: row.id ?? row.db, error: err.message });
 			summary.errors++;
+			continue;
+		}
+
+		intendedInsertIds.add(project.id);
+		intendedInsertSlugs.add(project.slug);
+		plan.push({ row, source, role, visibility, partition, project, linkSqls });
+	}
+
+	// Preflight collision check (Issue #78 blocker #6).
+	// We refuse to write any SQL if the target D1 already has rows
+	// the migration did not itself produce.
+	if (apply) {
+		const existingProjects = d1Query('SELECT id, slug FROM portfolio_project');
+		for (const existing of existingProjects) {
+			if (!intendedInsertIds.has(existing.id) && !intendedInsertSlugs.has(existing.slug)) {
+				collisions.push(existing);
+			}
+		}
+
+		// Same for portfolio_link — the migration generates a deterministic
+		// `legacy_link_*` id per row, so any non-legacy id is a real collision.
+		const existingLinkIds = d1Query(
+			"SELECT id FROM portfolio_link WHERE id NOT LIKE 'legacy_link_%'",
+		);
+		for (const existing of existingLinkIds) {
+			collisions.push({ kind: 'link', id: existing.id });
+		}
+
+		if (collisions.length > 0) {
+			console.error(
+				`[migrate] COLLISION: target D1 has ${collisions.length} row(s) the migration did not produce.`,
+			);
+			console.error('Refusing to apply. Inspect with:');
+			console.error(
+				'  pnpm exec wrangler d1 execute DB --local --command "SELECT id, slug FROM portfolio_project"',
+			);
+			console.error(
+				'  pnpm exec wrangler d1 execute DB --local --command "SELECT id FROM portfolio_link WHERE id NOT LIKE \'legacy_link_%\'"',
+			);
+			for (const c of collisions.slice(0, 10)) console.error(`  - ${JSON.stringify(c)}`);
+			process.exit(3);
 		}
 	}
 
-	// Header banner
+	// Emit SQL.
+	for (const p of plan) {
+		sqlStatements.push(
+			`-- ${p.source.legacyId} (${p.row.db}) — pub=${p.visibility} role=${p.role ?? 'NULL'}`,
+		);
+		sqlStatements.push(p.project.sql);
+		for (const link of p.linkSqls) sqlStatements.push(link.sql);
+	}
+
 	const header = [
 		`-- migrate-portfolio-from-2025.mjs — ${dryRun ? 'dry-run' : `apply to ${target} D1`}`,
 		`-- generated: ${new Date().toISOString()}`,
-		`-- KEEP:                     ${summary.KEEP}`,
-		`-- KEEP+REWRITE (owner):     ${summary['KEEP+REWRITE (owner)'] ?? 0}  (BLOCKED — owner review required)`,
-		`-- DROP:                     ${summary.DROP ?? 0}`,
-		`-- errors:                   ${summary.errors}`,
+		`-- eligible / approved (visibility=public):     ${summary.eligible_approved}`,
+		`-- eligible / pending_owner (visibility=draft): ${summary.eligible_pending}`,
+		`-- rewrite_required / approved (visibility=public):     ${summary.rewrite_required_approved}`,
+		`-- rewrite_required / pending_owner (visibility=draft): ${summary.rewrite_required_pending}`,
+		`-- mechanical_drop (never inserted):            ${summary.mechanical_drop}`,
+		`-- new_candidate (never auto-inserted):         ${summary.new_candidate}`,
+		`-- rejected by owner:                           ${summary.rejected}`,
+		`-- errors:                                      ${summary.errors}`,
 		'--',
 	];
 	const fullSql = [...header, ...sqlStatements, ''].join('\n');
@@ -460,16 +703,27 @@ function main() {
 	if (dryRun) {
 		process.stdout.write(fullSql);
 		console.error('\n[migrate] dry-run complete:');
-		console.error(`  KEEP rows → ${summary.KEEP} projects, ${sqlStatements.length} SQL statements`);
 		console.error(
-			`  KEEP+REWRITE owner-required → ${skippedOwner.length} (${skippedOwner.slice(0, 5).join(', ')}${skippedOwner.length > 5 ? ', …' : ''})`,
+			`  eligible / approved        (visibility=public):  ${summary.eligible_approved}`,
 		);
-		console.error(`  errors → ${errors.length}`);
+		console.error(`  eligible / pending_owner   (visibility=draft):  ${summary.eligible_pending}`);
+		console.error(
+			`  rewrite_required / approved        (visibility=public):  ${summary.rewrite_required_approved}`,
+		);
+		console.error(
+			`  rewrite_required / pending_owner   (visibility=draft):  ${summary.rewrite_required_pending}`,
+		);
+		console.error(`  mechanical_drop (skipped):     ${summary.mechanical_drop}`);
+		console.error(`  new_candidate (skipped):       ${summary.new_candidate}`);
+		console.error(`  rejected (skipped):            ${summary.rejected}`);
+		console.error(`  errors:                        ${errors.length}`);
 		for (const e of errors) console.error(`    - ${e.id}: ${e.error}`);
+		if (collisions.length > 0) {
+			console.error(`  preflight collisions (would fail): ${collisions.length}`);
+		}
 		return;
 	}
 
-	// Apply: write tmp .sql + wrangler d1 execute --file
 	const tmp = mkdtempSync(join(tmpdir(), 'migrate-portfolio-'));
 	const sqlPath = join(tmp, 'migrate.sql');
 	writeFileSync(sqlPath, fullSql, { mode: 0o600 });
@@ -486,7 +740,6 @@ function main() {
 			sqlPath,
 		];
 		if (target === 'remote') {
-			// Production deploy uses a different wrangler config. ADR-0014.
 			cmdArgs.splice(cmdArgs.indexOf('DB'), 2, 'my-web-2026', '-c', 'wrangler.production.jsonc');
 		}
 		const result = spawnSync('pnpm', cmdArgs, { cwd: root, stdio: 'inherit', env: process.env });
@@ -495,14 +748,20 @@ function main() {
 			process.exit(result.status ?? 1);
 		}
 		console.error(
-			`[migrate] applied ${summary.KEEP} project(s) + ${sqlStatements.length} SQL statements to ${target} D1`,
+			`[migrate] applied ${plan.length} project(s) + ${sqlStatements.length} SQL statements to ${target} D1`,
 		);
-		if (skippedOwner.length > 0) {
-			console.error(
-				`[migrate] BLOCKED ${skippedOwner.length} KEEP+REWRITE rows (owner review required):`,
-			);
-			for (const id of skippedOwner) console.error(`  - ${id}`);
-		}
+		console.error(
+			`[migrate]   eligible / approved (visibility=public):         ${summary.eligible_approved}`,
+		);
+		console.error(
+			`[migrate]   eligible / pending_owner (visibility=draft):     ${summary.eligible_pending}`,
+		);
+		console.error(
+			`[migrate]   rewrite_required / approved (visibility=public): ${summary.rewrite_required_approved}`,
+		);
+		console.error(
+			`[migrate]   rewrite_required / pending_owner (visibility=draft): ${summary.rewrite_required_pending}`,
+		);
 		if (errors.length > 0) {
 			console.error(`[migrate] ${errors.length} errors:`);
 			for (const e of errors) console.error(`  - ${e.id}: ${e.error}`);

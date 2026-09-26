@@ -82,7 +82,7 @@ type SecretEntry = { version: number; value: string };
 const betterAuthSecretsEnv = (env as { BETTER_AUTH_SECRETS?: string }).BETTER_AUTH_SECRETS;
 const betterAuthLegacySecret = env.BETTER_AUTH_SECRET as string | undefined;
 
-function parseVersionedSecrets(raw: string): SecretEntry[] {
+export function parseVersionedSecrets(raw: string): SecretEntry[] {
 	const entries = raw
 		.split(',')
 		.map((s) => s.trim())
@@ -92,11 +92,14 @@ function parseVersionedSecrets(raw: string): SecretEntry[] {
 			'BETTER_AUTH_SECRETS is empty. Expected comma-separated "version:value" pairs (e.g. "2:<new-secret>,1:<old-secret>").',
 		);
 	}
-	return entries.map((entry, idx) => {
+	const parsed: SecretEntry[] = entries.map((entry, idx) => {
 		const colonIdx = entry.indexOf(':');
 		if (colonIdx === -1) {
+			// Error messages deliberately omit the raw entry: it may carry the
+			// secret itself, and the project invariant forbids leaking secrets
+			// to argv / logs / errors.
 			throw new Error(
-				`BETTER_AUTH_SECRETS entry #${idx} ("${entry}") is missing ':' separator. Expected "version:value".`,
+				`BETTER_AUTH_SECRETS entry #${idx} is missing ':' separator. Expected "version:value".`,
 			);
 		}
 		const versionStr = entry.slice(0, colonIdx);
@@ -104,7 +107,7 @@ function parseVersionedSecrets(raw: string): SecretEntry[] {
 		const version = Number(versionStr);
 		if (!Number.isInteger(version) || version <= 0) {
 			throw new Error(
-				`BETTER_AUTH_SECRETS entry #${idx} has invalid version "${versionStr}". Expected positive integer.`,
+				`BETTER_AUTH_SECRETS entry #${idx} has invalid version (expected positive integer).`,
 			);
 		}
 		if (value.length === 0) {
@@ -112,6 +115,37 @@ function parseVersionedSecrets(raw: string): SecretEntry[] {
 		}
 		return { version, value };
 	});
+
+	// Cross-entry invariants: the first entry is the current signing key in
+	// Better Auth 1.5+. If versions are not strictly descending (or duplicate),
+	// an older key could end up as the "current" one and silently sign new
+	// cookies / tokens.
+	const seenVersions = new Set<number>();
+	for (let idx = 0; idx < parsed.length; idx += 1) {
+		const version = parsed[idx]?.version;
+		if (version === undefined) {
+			continue;
+		}
+		if (seenVersions.has(version)) {
+			throw new Error(
+				'BETTER_AUTH_SECRETS has duplicate version (entries must have unique versions).',
+			);
+		}
+		seenVersions.add(version);
+	}
+	for (let idx = 1; idx < parsed.length; idx += 1) {
+		const prev = parsed[idx - 1];
+		const cur = parsed[idx];
+		if (!prev || !cur) {
+			continue;
+		}
+		if (cur.version >= prev.version) {
+			throw new Error(
+				'BETTER_AUTH_SECRETS entries must be in strictly descending order (first entry is the current signing key).',
+			);
+		}
+	}
+	return parsed;
 }
 
 let versionedSecrets: SecretEntry[] | undefined;
@@ -124,11 +158,13 @@ if (betterAuthLegacySecret) {
 	legacySecret = betterAuthLegacySecret;
 }
 
-// Better Auth's own validation raises at first sign-in / sign-up request
-// if no secret is configured; we leave that surface to it instead of
-// failing eagerly at module load (the existing test pool relies on this
-// lenience — workerd injects no secrets unless `wrangler.jsonc#secrets.required`
-// declares them, which Phase 3 will introduce).
+// When both env vars are unset, Better Auth's own validation surfaces the
+// missing-secret failure — Better Auth documents that production deployments
+// without a secret raise an error, but the exact module-load vs request-time
+// surface is version-dependent, so we deliberately do not make that claim
+// here. The existing workerd test pool has no secret injection yet (no
+// `wrangler.jsonc#secrets.required` until Phase 3), so an eager throw at
+// module load would break unrelated test files.
 
 export const auth = betterAuth({
 	database: env.DB,

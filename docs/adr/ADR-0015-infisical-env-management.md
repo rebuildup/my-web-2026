@@ -32,7 +32,8 @@ GitHub Repository Secrets は現在空 (`production` env を含む全スコー�
 
 | 項目 | SoT | 理由 |
 | --- | --- | --- |
-| `BETTER_AUTH_SECRET` | **Infisical (prod / dev)** | runtime secret |
+| `BETTER_AUTH_SECRETS` | **Infisical (prod / dev)** | Better Auth 1.5+ versioned rotation (comma-separated `version:value` pairs, highest version first — first entry is the current signing key). Phase 3 で `secrets.required` に登録して必須化 |
+| `BETTER_AUTH_SECRET` | **Infisical (prod / dev)** | Better Auth legacy single form (Phase 1-2 移行期間の backward compat。Phase 3 で `BETTER_AUTH_SECRETS` 必須化後、本行は任意運用。legacy singular の完全削除は Phase 5 runbook で明示) |
 | `MY_WEB_2026_CONSUMER_API_KEY` | **Infisical (prod / dev)** | runtime secret (D1 とペア、§6 rotation runbook) |
 | Workers Builds native Build API token (`build_token_uuid`) | **Cloudflare** | Cloudflare 認証境界。消せない |
 | `INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` | **Cloudflare Workers Builds env vars** | Universal Auth bootstrap |
@@ -56,7 +57,7 @@ GitHub Repository Secrets は現在空 (`production` env を含む全スコー�
 | project 名 | `my-web-2026` |
 | instance | self-host (`https://secrets.rebuildup.dev`) |
 | environments (slug) | `dev` / `prod` (表示名 `Development` / `Production`) |
-| secrets (envごと) | `BETTER_AUTH_SECRET`, `MY_WEB_2026_CONSUMER_API_KEY` |
+| secrets (envごと) | `BETTER_AUTH_SECRETS` (preferred, comma-separated `2:<new>,1:<old>` form), `BETTER_AUTH_SECRET` (legacy single form, 移行期間中の backward compat), `MY_WEB_2026_CONSUMER_API_KEY` |
 
 ### 3. Universal Auth (HTTPS POST + `INFISICAL_TOKEN` env var + self-host domain)
 
@@ -97,11 +98,11 @@ deploy-with-secrets.mjs
 │   (post-auth 不要、residency を最小化)
 ├─ infisical run --projectId=$WORKSPACE_ID --env=prod -- node scripts/run-deploy-inner.mjs
 │ └─ 子 process (injected env by `infisical run` の公式 contract)
-│        ├─ process.env.BETTER_AUTH_SECRET / process.env.MY_WEB_2026_CONSUMER_API_KEY を読み取り
+│        ├─ process.env.BETTER_AUTH_SECRETS / process.env.MY_WEB_2026_CONSUMER_API_KEY を読み取り
 │        ├─ fs.mkdtempSync(path.join(os.tmpdir(), 'my-web-2026-deploy-'))
 │        ├─ fs.writeFileSync(secretsFile, JSON.stringify({...}), { mode: 0o600 })
-│        ├─ sanitizedEnv = { ...process.env } から BETTER_AUTH_SECRET /
-│        │   MY_WEB_2026_CONSUMER_API_KEY / INFISICAL_TOKEN を削除
+│        ├─ sanitizedEnv = { ...process.env } から BETTER_AUTH_SECRETS /
+│        │   BETTER_AUTH_SECRET / MY_WEB_2026_CONSUMER_API_KEY / INFISICAL_TOKEN を削除
 │        ├─ spawn(pnpm, ['run', 'db:migrate:production'], { env: sanitizedEnv })
 │        │   (db:migrate は D1 スキーマ更新のみで runtime secret を必要としない)
 │        ├─ spawn(wranglerCli, ['deploy', '-c', 'wrangler.production.jsonc',
@@ -202,7 +203,7 @@ Cloudflare Workers Builds の **custom Build API token (Workers Scripts:Edit + R
 ```jsonc
 // wrangler.jsonc (default / local-dev)
 "secrets": {
-  "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
+  "required": ["BETTER_AUTH_SECRETS", "BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
 }
 ```
 
@@ -310,6 +311,16 @@ versioned form に移行する:
   decryption-only。Cookie は version 識別子付きで署名され、decryption は
   version から直接 lookup するため trial decrypt 不要。Database migration /
   downtime は不要。
+- **Validation** (`src/cloudflare/auth/better-auth.ts` parser):
+  `BETTER_AUTH_SECRETS` env var の parser は comma-separated `version:value`
+  pairs について以下を厳格に検証する (誤投入で old key が current として
+  使われるのを防ぐ):
+  - **version は unique** — 重複した version を許可しない
+  - **strictly descending order** — 先頭 entry が current key。`1:old,2:new`
+    のような逆順を許可しない (誤ると old が current として扱われる)
+  - version は positive integer、value は non-empty string
+  - error message には raw value / entry 文字列を含めない (invariant: argv /
+    log への secret 露出禁止)
 - **Session impact**: Better Auth の session token は **HMAC-signed** (暗号化
   ではない)。旧 secret で署名された cookie は、versioned form 移行後、新
   secret 単体では検証失敗する。`BETTER_AUTH_SECRETS` で旧 secret を

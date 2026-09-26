@@ -69,3 +69,23 @@ describe('better-auth config', () => {
 		expect(options.options.emailAndPassword?.disableSignUp).toBe(true);
 	});
 });
+
+// ADR-0015 §11.2: when `BETTER_AUTH_SECRETS` is unset, `BETTER_AUTH_SECRET`
+// (legacy single form) provides the only secret input. This mock set omits
+// `BETTER_AUTH_SECRETS` to exercise the fallback path.
+describe('better-auth secret fallback (legacy single form)', () => {
+	it('falls back to BETTER_AUTH_SECRET when BETTER_AUTH_SECRETS is unset (no eager throw)', () => {
+		// Better Auth 1.5+ does not expose the resolved secret back on
+		// `auth.options` after normalization (it lives in the internal
+		// `$context`, which is undocumented and version-volatile). The
+		// module-load mock in this file omits `BETTER_AUTH_SECRETS` so the
+		// legacy fallback path is the only way module load could succeed.
+		// If an eager throw were reintroduced for the unset case, the
+		// top-of-file `await import('./better-auth')` would already have
+		// failed before reaching this describe block. This test exists to
+		// make the contract explicit and surface a clear failure if someone
+		// later decouples the parse failure from module load.
+		const auth = betterAuthModule.auth as unknown as { options: { basePath?: string } };
+		expect(auth.options.basePath).toBe('/api/v1/auth');
+	});
+});

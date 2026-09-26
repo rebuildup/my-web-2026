@@ -33,7 +33,7 @@ GitHub Repository Secrets は現在空 (`production` env を含む全スコー�
 | 項目 | SoT | 理由 |
 | --- | --- | --- |
 | `BETTER_AUTH_SECRETS` | **Infisical (prod / dev)** | Better Auth 1.5+ versioned rotation (comma-separated `version:value` pairs, highest version first — first entry is the current signing key). Phase 3 で `secrets.required` に登録して必須化 |
-| `BETTER_AUTH_SECRET` | **Infisical (prod / dev)** | Better Auth legacy single form (Phase 1-2 移行期間の backward compat。Phase 3 で `BETTER_AUTH_SECRETS` 必須化後、本行は任意運用。legacy singular の完全削除は Phase 5 runbook で明示) |
+| `BETTER_AUTH_SECRET` | **Infisical (prod / dev)** | Better Auth legacy single form (Phase 1-2 移行期間の backward compat。Phase 3 で `BETTER_AUTH_SECRETS` を `secrets.required` に登録した後、本行は **任意運用** — `secrets.required` には含めず (§9 同期)、legacy 完全削除は Phase 5 runbook で明示) |
 | `MY_WEB_2026_CONSUMER_API_KEY` | **Infisical (prod / dev)** | runtime secret (D1 とペア、§6 rotation runbook) |
 | Workers Builds native Build API token (`build_token_uuid`) | **Cloudflare** | Cloudflare 認証境界。消せない |
 | `INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` | **Cloudflare Workers Builds env vars** | Universal Auth bootstrap |
@@ -216,7 +216,7 @@ Cloudflare Workers Builds の **custom Build API token (Workers Scripts:Edit + R
 - `BETTER_AUTH_SECRETS` は optional — Infisical seed 完了後、Wrangler secret binding に追加された時点で deploy が自動的に拾う
 - local dev (`pnpm dev`) は `infisical run --env=dev --` 経由で `BETTER_AUTH_SECRETS` を渡せる。`secrets.required` に含まれていなくても runtime env にあれば better-auth.ts は versioned form を読む
 
-**Phase 3+ (Initial migration 完了後)** — 3-name 必須:
+**Phase 3+ (Initial migration 完了後)** — versioned form 必須 + legacy 任意:
 
 ```jsonc
 // wrangler.jsonc (default / local-dev)
@@ -224,14 +224,15 @@ Cloudflare Workers Builds の **custom Build API token (Workers Scripts:Edit + R
 "secrets": {
   "required": [
     "BETTER_AUTH_SECRETS",
-    "BETTER_AUTH_SECRET",
     "MY_WEB_2026_CONSUMER_API_KEY"
   ]
 }
 ```
 
 - `BETTER_AUTH_SECRETS` を必須化 (Initial migration 完了確認後)
-- `BETTER_AUTH_SECRET` legacy は並行 deploy 可能 (backward compat)
+- `BETTER_AUTH_SECRET` legacy は **任意運用** (§1 SoT 境界と同期)。Better
+  Auth に `secret` option として渡しても compact cookie cache の署名検証
+  には使われない (§11.2 Semantics 参照) ため、 deploy の必須化には含めない
 - legacy 完全削除は Phase 5 runbook で明示 (別 ticket で運用)
 
 **Wrangler secret binding への追加順序** (Phase 1 → Phase 3 移行時):

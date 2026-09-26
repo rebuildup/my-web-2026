@@ -69,8 +69,14 @@ const betterAuthUrl = (env as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
 // ADR-0015 §11.2 Better Auth versioned rotation contract:
 // `BETTER_AUTH_SECRETS` (preferred) takes comma-separated `version:value`
 // pairs in highest-version-first order (the first entry is the active
-// signing key; later entries are decryption-only for in-flight cookies).
+// signing key; later entries are decryption-only previous keys).
 // Format example: `BETTER_AUTH_SECRETS=2:<new-secret>,1:<old-secret>`.
+// **IMPORTANT**: Better Auth 1.7.5's compact cookie cache uses
+// `context.secret` (single key) for signature verification. The
+// remaining entries are held as fallback reference for data predating
+// the envelope format — they do NOT guarantee in-flight cookie
+// verification for sessions signed with the legacy key. See ADR-0015
+// §11.2 Semantics / Session impact for the full contract.
 // Falls back to `BETTER_AUTH_SECRET` (legacy single form) when
 // `BETTER_AUTH_SECRETS` is unset, so the Phase 1 → Phase 2 transition can
 // keep existing Cloudflare secret bindings working until the new env var

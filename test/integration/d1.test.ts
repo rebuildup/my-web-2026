@@ -1,4 +1,4 @@
-import { applyD1Migrations, env, SELF } from 'cloudflare:test';
+import { SELF, applyD1Migrations, env } from 'cloudflare:test';
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { beforeAll, describe, expect, it } from 'vitest';
 

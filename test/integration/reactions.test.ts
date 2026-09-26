@@ -1,7 +1,7 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { applyD1Migrations, env } from 'cloudflare:test';
-import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
+import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { resetVerifyApiKey, withVerifyApiKey } from '../../src/http/api-keys/middleware';
 import {
 	aggregateByTarget,

@@ -9,8 +9,8 @@ import {
 	uploadImage,
 } from '../../src/http/reactions/images';
 import {
-	putReaction,
 	ReactionReferenceError,
+	putReaction,
 	reactionImageReferenced,
 } from '../../src/http/reactions/reactions';
 

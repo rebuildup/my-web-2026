@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { type Plugin, defineConfig } from 'vite';
 
 /**
  * Vite configuration for my-web-2026.

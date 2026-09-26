@@ -1,6 +1,6 @@
+import { type EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { css } from '../../../styled-system/css';
-import { EmojiStyle, Theme, type EmojiClickData } from 'emoji-picker-react';
 import type { ReactionAggregate } from '../../http/reactions/schema';
 import { resolveEmojiSlug } from './emoji-catalog';
 import type { HomeReactionsData } from './load';

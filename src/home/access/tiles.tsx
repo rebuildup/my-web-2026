@@ -1,5 +1,4 @@
 import { css } from '../../../styled-system/css';
-import type { HomeCounterData } from './load';
 // Digit WebPs are pre-rasterised mono glyphs (see
 // `scripts/generate-counter-digits.mjs` and `src/home/digits/`).
 // The bake colour is `#0b1020` so the rasterised glyph matches
@@ -16,6 +15,7 @@ import digit6Url from '../digits/6.webp?url';
 import digit7Url from '../digits/7.webp?url';
 import digit8Url from '../digits/8.webp?url';
 import digit9Url from '../digits/9.webp?url';
+import type { HomeCounterData } from './load';
 
 export interface CounterTileProps {
 	data: HomeCounterData;

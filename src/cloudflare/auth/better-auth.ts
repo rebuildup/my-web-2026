@@ -66,9 +66,78 @@ import { admin } from 'better-auth/plugins/admin';
  */
 const betterAuthUrl = (env as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
 
+// ADR-0015 §11.2 Better Auth versioned rotation contract:
+// `BETTER_AUTH_SECRETS` (preferred) takes comma-separated `version:value`
+// pairs in highest-version-first order (the first entry is the active
+// signing key; later entries are decryption-only for in-flight cookies).
+// Format example: `BETTER_AUTH_SECRETS=2:<new-secret>,1:<old-secret>`.
+// Falls back to `BETTER_AUTH_SECRET` (legacy single form) when
+// `BETTER_AUTH_SECRETS` is unset, so the Phase 1 → Phase 2 transition can
+// keep existing Cloudflare secret bindings working until the new env var
+// is seeded. Phase 3 will register `BETTER_AUTH_SECRETS` in
+// `wrangler.jsonc#secrets.required` and regenerate the `Env` type via
+// `pnpm run cf-typegen`; until then the cast below keeps
+// `verbatimModuleSyntax: true` happy without a value import.
+type SecretEntry = { version: number; value: string };
+const betterAuthSecretsEnv = (env as { BETTER_AUTH_SECRETS?: string }).BETTER_AUTH_SECRETS;
+const betterAuthLegacySecret = env.BETTER_AUTH_SECRET as string | undefined;
+
+function parseVersionedSecrets(raw: string): SecretEntry[] {
+	const entries = raw
+		.split(',')
+		.map((s) => s.trim())
+		.filter(Boolean);
+	if (entries.length === 0) {
+		throw new Error(
+			'BETTER_AUTH_SECRETS is empty. Expected comma-separated "version:value" pairs (e.g. "2:<new-secret>,1:<old-secret>").',
+		);
+	}
+	return entries.map((entry, idx) => {
+		const colonIdx = entry.indexOf(':');
+		if (colonIdx === -1) {
+			throw new Error(
+				`BETTER_AUTH_SECRETS entry #${idx} ("${entry}") is missing ':' separator. Expected "version:value".`,
+			);
+		}
+		const versionStr = entry.slice(0, colonIdx);
+		const value = entry.slice(colonIdx + 1);
+		const version = Number(versionStr);
+		if (!Number.isInteger(version) || version <= 0) {
+			throw new Error(
+				`BETTER_AUTH_SECRETS entry #${idx} has invalid version "${versionStr}". Expected positive integer.`,
+			);
+		}
+		if (value.length === 0) {
+			throw new Error(`BETTER_AUTH_SECRETS entry #${idx} has empty value.`);
+		}
+		return { version, value };
+	});
+}
+
+let versionedSecrets: SecretEntry[] | undefined;
+let legacySecret: string | undefined;
+
+if (betterAuthSecretsEnv) {
+	versionedSecrets = parseVersionedSecrets(betterAuthSecretsEnv);
+}
+if (betterAuthLegacySecret) {
+	legacySecret = betterAuthLegacySecret;
+}
+
+// Better Auth's own validation raises at first sign-in / sign-up request
+// if no secret is configured; we leave that surface to it instead of
+// failing eagerly at module load (the existing test pool relies on this
+// lenience — workerd injects no secrets unless `wrangler.jsonc#secrets.required`
+// declares them, which Phase 3 will introduce).
+
 export const auth = betterAuth({
 	database: env.DB,
-	secret: env.BETTER_AUTH_SECRET,
+	// Better Auth 1.5+ accepts `secrets` (versioned array) and `secret`
+	// (legacy single string) as independent options. When both are set,
+	// `secrets` is authoritative for new encryption/signing; `secret` is
+	// a fallback for data that predates the envelope format.
+	...(versionedSecrets ? { secrets: versionedSecrets } : {}),
+	...(legacySecret ? { secret: legacySecret } : {}),
 	baseURL: betterAuthUrl,
 	basePath: '/api/v1/auth',
 	emailAndPassword: {

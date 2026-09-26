@@ -1,6 +1,6 @@
 {
 	"name": "my-web-2026",
-	"version": "0.3.4",
+	"version": "0.4.0",
 	"private": true,
 	"type": "module",
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",

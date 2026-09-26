@@ -20,7 +20,7 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | home | Canonical top page | **live (0.2.0)** | site の現在地・live/planned state・次の導線を誤認させない | home-surface authority | per release + continuous | `src/modules/home/**` が vertical slice として存在 |
 | platform-status | D1 / R2 / external boundary health | **live inside home (0.2.0)** | 到達性を現在の観測として表示し、raw error / binding internals を漏らさない | platform-health authority | continuous | current consumer は home のみ。top-level promotion は未観測 |
-| portfolio | Selected work / project portfolio | **planned** | 掲載作品の provenance と owner による selection を保つ | portfolio-curation authority | per project | `CAPABILITIES` で planned。旧サイトにも portfolio surface あり |
+| portfolio | Selected work / project portfolio | **live (0.5.0 foundation, Issue #76)** | 掲載作品の provenance と owner による selection を保つ | portfolio-curation authority | per project | `migrations/0007_portfolio.sql` + `src/portfolio/` obligation (Issue #76)。UI は #77、my-web-2025 移行は #78 |
 | content | Long-form content / posts | **planned** | authored content の本文・公開状態・chronology を正しく保つ | editorial authority | per content item | `CAPABILITIES` で planned。current module なし |
 | activity | Commits / releases / shipped work timeline | **planned** | event の source と時系列を捏造せず、derived activity として再構成する | activity-observation authority | continuous / per event | `CAPABILITIES` で planned。GitHub 等は integration 候補に留まる |
 | identity | Public professional identity | **grounded knowledge / runtime not implemented** | real name・handle・role・self narrative を同一人物として一貫させる | self-narrative / identity-data authority | continuous | `docs/personal/domain.md` が canonical grounding。runtime shared entity 化は未観測 |

@@ -13,4 +13,11 @@ export interface Capability {
 	summaryJa: string;
 	/** Lifecycle status visible on the home page. */
 	status: CapabilityStatus;
+	/**
+	 * Internal route for the live surface. Only set when status is
+	 * `live`; the home capabilities grid uses this as the CTA
+	 * target. `planned` capabilities do not expose this field —
+	 * they have no surface yet.
+	 */
+	href?: string;
 }

@@ -43,3 +43,12 @@ export { intersectsAny } from './load';
 export { loadPortfolioProject, listPortfolioProjects } from './public';
 
 export { PORTFOLIO_SEED, type PortfolioSeedEntry } from './seed';
+
+export {
+	PortfolioMediaFigure,
+	PortfolioMarkdown,
+	FacetFilter,
+	ProjectCard,
+	PortfolioList,
+	PortfolioDetail,
+} from './components';

@@ -4,10 +4,9 @@ import { describe, it } from 'node:test';
 /**
  * `infisical-bootstrap-api.mjs` unit tests.
  *
- * The script makes HTTPS calls to Infisical (POST /api/v3/projects
- * + POST .../environments) and writes `.infisical.json`. Testing
- * the network path requires a live Infisical self-host (operator
- * runs the script with `INFISICAL_TOKEN` set after PR merge).
+ * The script makes HTTPS calls to Infisical (POST /api/v1/projects +
+ * POST /api/v1/projects/{id}/environments) and writes `.infisical.json`.
+ * Testing the network path requires a live Infisical self-host.
  *
  * The interesting invariants testable without credentials are:
  *
@@ -16,11 +15,19 @@ import { describe, it } from 'node:test';
  *      optional defaultEnvironment, trailing newline, 2-space indent).
  *   2. workspaceId validation: must be UUID v4; non-v4 strings fail
  *      before any file write.
- *   3. Argument parsing: only `--help` / `-h` accepted; unknown
+ *   3. JWT organizationId extraction: handles the multi-line output
+ *      of `infisical user get token` (which contains `Token:<jwt>` +
+ *      other metadata lines).
+ *   4. Argument parsing: only `--help` / `-h` accepted; unknown
  *      args abort with a clear error.
- *   4. argv / log / error secret-handling: `buildInfisicalJsonContent`
- *      never embeds a secret value (it only handles non-secret
- *      identifiers).
+ *   5. argv / log / error secret-handling: never embeds a secret
+ *      value (this script handles non-secret identifiers only).
+ *   6. Self-host API contract: the source calls `/api/v1/...` paths
+ *      (NOT the `/api/v3/...` paths assumed by the original plan)
+ *      and uses `projectName` + `organizationId` for project
+ *      creation. (The self-host v0.165.x does not expose
+ *      `/api/v3/projects`; see ADR-0015 §11.6.1 / Execution log
+ *      2026-09-27.)
  *
  * Helpers are loaded via regex extraction (same pattern as
  * `bootstrap-home-api-key.test.mjs#loadPureHelpers`) so the tests
@@ -50,11 +57,13 @@ function loadPureHelpers() {
 	return {
 		buildInfisicalJsonContent: grab('buildInfisicalJsonContent'),
 		validateWorkspaceId: grab('validateWorkspaceId'),
+		jwtOrganizationId: grab('jwtOrganizationId'),
 		parseArgs: grab('parseArgs'),
 	};
 }
 
 const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
+const VALID_ORG_ID = 'd808df2c-ec67-4046-b733-8c0db0bfa47d';
 
 describe('infisical-bootstrap-api.mjs', () => {
 	describe('buildInfisicalJsonContent', () => {
@@ -120,6 +129,63 @@ describe('infisical-bootstrap-api.mjs', () => {
 		});
 	});
 
+	describe('jwtOrganizationId', () => {
+		const { jwtOrganizationId } = loadPureHelpers();
+
+		// Sample JWT with payload `{organizationId: "<ORG>", ...}`.
+		// Constructed for tests: header = `{"alg":"HS256","typ":"JWT"}`
+		// → base64url `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9`. Payload is
+		// the variable part. The third segment can be any base64url.
+		const JWT_HEADER_B64 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+		function makeJwt(payload) {
+			const payloadB64 = Buffer.from(JSON.stringify(payload), 'utf8')
+				.toString('base64')
+				.replace(/\+/g, '-')
+				.replace(/\//g, '_')
+				.replace(/=+$/, '');
+			return `${JWT_HEADER_B64}.${payloadB64}.sigdummy`;
+		}
+
+		it('extracts organizationId from a JWT payload', () => {
+			const jwt = makeJwt({
+				authMethod: 'google',
+				authTokenType: 'accessToken',
+				userId: 'x',
+				tokenVersionId: 'y',
+				accessVersion: 1,
+				organizationId: VALID_ORG_ID,
+				iat: 1,
+				exp: 2,
+			});
+			assert.equal(jwtOrganizationId(jwt), VALID_ORG_ID);
+		});
+
+		it('extracts organizationId from a JWT embedded in `infisical user get token` multi-line output', () => {
+			// The CLI emits this shape; the function must locate the JWT
+			// segment and extract the org id without depending on line
+			// position.
+			const jwt = makeJwt({ organizationId: VALID_ORG_ID });
+			const multiLine = `SessionID:xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx\nToken:${jwt}\nExpiresAt:Thu, 01 Jan 1970 00:00:00 GMT\nTTL:1h0m0s`;
+			assert.equal(jwtOrganizationId(multiLine), VALID_ORG_ID);
+		});
+
+		it('returns null for missing organizationId claim', () => {
+			const jwt = makeJwt({ authMethod: 'google' });
+			assert.equal(jwtOrganizationId(jwt), null);
+		});
+
+		it('returns null for empty input', () => {
+			assert.equal(jwtOrganizationId(''), null);
+			assert.equal(jwtOrganizationId(null), null);
+			assert.equal(jwtOrganizationId(undefined), null);
+		});
+
+		it('returns null for malformed JWT (not three base64url segments)', () => {
+			assert.equal(jwtOrganizationId('not.a.jwt.at.all'), null);
+			assert.equal(jwtOrganizationId('onlytwosegments.x'), null);
+		});
+	});
+
 	describe('parseArgs', () => {
 		const { parseArgs } = loadPureHelpers();
 
@@ -181,8 +247,7 @@ describe('infisical-bootstrap-api.mjs', () => {
 			// The script must not read process.env.BETTER_AUTH_SECRET,
 			// process.env.MY_WEB_2026_CONSUMER_API_KEY, or any other
 			// runtime secret variable. It only reads INFISICAL_TOKEN +
-			// INFISICAL_API_URL (the access / endpoint metadata, not
-			// runtime secrets).
+			// INFISICAL_ORG_ID + INFISICAL_API_URL.
 			const secretReads = SOURCE.match(/process\.env\.(BETTER_AUTH_[A-Z_]+|MY_WEB_2026_[A-Z_]+)/g);
 			assert.equal(
 				secretReads,
@@ -199,6 +264,33 @@ describe('infisical-bootstrap-api.mjs', () => {
 				leaks,
 				null,
 				`script may leak secret values to stdout/log: ${leaks?.join(', ')}`,
+			);
+		});
+	});
+
+	describe('self-host API contract', () => {
+		it('uses /api/v1/... paths (NOT /api/v3/...)', () => {
+			// Self-host v0.165.x does not expose /api/v3/projects. The
+			// /api/v3/... paths assumed by the original plan are 404.
+			// Regression: the script must keep using /api/v1/...
+			const v1Calls = SOURCE.match(/\/api\/v1\//g) ?? [];
+			const v3Calls = SOURCE.match(/\/api\/v3\//g) ?? [];
+			assert.ok(v1Calls.length > 0, 'script must use /api/v1/... paths');
+			assert.equal(v3Calls.length, 0, 'script must not use /api/v3/... paths');
+		});
+
+		it('uses projectName + organizationId (NOT name + slug) for project creation', () => {
+			// v0.165.x POST /api/v1/projects body shape is
+			// `{projectName, organizationId}`, not `{name, slug}`.
+			// The old shape returns 422 from this self-host.
+			assert.match(SOURCE, /projectName:\s*PROJECT_NAME/);
+			assert.match(SOURCE, /organizationId/);
+			// The literal `slug: PROJECT_SLUG` shape would 422; we
+			// pin the absence here.
+			assert.equal(
+				SOURCE.includes('slug: PROJECT_SLUG'),
+				false,
+				'script must not POST project with `{name, slug}` shape (422 on this self-host)',
 			);
 		});
 	});

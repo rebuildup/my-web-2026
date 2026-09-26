@@ -18,6 +18,16 @@
  * project, then writes it to `.infisical.json` so the operator
  * doesn't have to copy it manually.
  *
+ * Self-host API surface (v0.165.x):
+ *   - `POST /api/v1/projects` with `{projectName, organizationId}`
+ *     (singular `projectName`, not `{name, slug}`)
+ *   - `GET /api/v1/projects?orgId=<orgId>` returns `{projects: [...]}` —
+ *     no `slug/<slug>` route, so we filter client-side by `.name`
+ *   - `POST /api/v1/projects/<id>/environments` with `{name, slug}`
+ *   - `GET /api/v1/projects/<id>` returns the project WITH embedded
+ *     `environments: [{name, slug, id}, ...]`. There is no separate
+ *     environments-list endpoint.
+ *
  * Invariants (ADR-0015 §1 + secret-handling):
  *   - argv / log / error message never carries a secret value
  *     (this script never reads or writes a secret — only project /
@@ -25,12 +35,12 @@
  *   - Re-running with an existing workspaceId is a no-op; the
  *     existing `.infisical.json` is left unchanged.
  *   - The existing Infisical project (if any) used for other dotfile
- *     repos is NOT reused; this script always creates a project
- *     named `my-web-2026`.
+ *     repos is NOT reused; this script always finds-or-creates a
+ *     project named `my-web-2026`.
  *
  * Usage:
  *   pnpm run infisical:bootstrap:api
- *   INFISICAL_TOKEN=... node scripts/infisical-bootstrap-api.mjs
+ *   INFISICAL_TOKEN=... INFISICAL_ORG_ID=<uuid> node scripts/infisical-bootstrap-api.mjs
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
@@ -43,10 +53,12 @@ const TARGET_PATH = resolve(REPO_ROOT, '.infisical.json');
 
 const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
 const PROJECT_NAME = 'my-web-2026';
-const PROJECT_SLUG = 'my-web-2026';
+// Self-host auto-suffixes the slug on collision (e.g. `my-web-2026-59n-b`).
+// We do NOT pin a slug — the canonical project name is the durable
+// identifier; slug is operator-readable metadata only.
 const ENVIRONMENT_SLUGS = ['dev', 'prod'];
 const HTTPS_TIMEOUT_MS = 10_000;
-const HTTPS_MAX_RESPONSE_BYTES = 64 * 1024;
+const HTTPS_MAX_RESPONSE_BYTES = 256 * 1024;
 const ALLOWED_INFISICAL_JSON_KEYS = new Set([
 	'workspaceId',
 	'defaultEnvironment',
@@ -68,15 +80,19 @@ function parseArgs(argv) {
 Infisical project + environment provisioning (ADR-0015 §2 Phase 1).
 
 Reads:
-  INFISICAL_TOKEN          Universal Auth short-lived access token
-                           (obtain via 'infisical login' or
-                           'INFISICAL_CLIENT_ID' + 'INFISICAL_CLIENT_SECRET'
-                           Universal Auth login).
+  INFISICAL_TOKEN          Bearer access token (Universal Auth or
+                           session JWT; obtain via 'infisical login'
+                           or 'INFISICAL_CLIENT_ID' +
+                           'INFISICAL_CLIENT_SECRET' Universal Auth
+                           login).
+  INFISICAL_ORG_ID         Organization UUID. Required — extracted
+                           from JWT payload via ` + '`payload.organizationId`' + `
+                           OR supplied as env var for non-user auth.
   INFISICAL_API_URL        base URL (default: https://secrets.rebuildup.dev)
 
-Side effects:
-  - POST /api/v3/projects (idempotent: 409 → reuses existing)
-  - POST /api/v3/projects/{id}/environments (idempotent: 409 → reuses)
+Side effects (against the self-host's /api/v1 surface):
+  - POST   /api/v1/projects                         (idempotent: 409 → list+filter)
+  - POST   /api/v1/projects/{id}/environments      (idempotent: 409 → GET project)
   - Writes .infisical.json (workspaceId + defaultEnvironment='dev')
 
   -h, --help               show this help`;
@@ -167,54 +183,153 @@ function httpsRequestJson(method, urlString, { token, body } = {}) {
 }
 
 /**
- * Idempotently create the project. On 409 (already exists), look up
- * by slug. Returns the project `id` (workspaceId for `.infisical.json`).
+ * Idempotently find-or-create the `my-web-2026` project.
+ *
+ * Resolution order (operator-friendly + never-duplicate):
+ *   1. If `preferredWorkspaceId` was provided and `GET /api/v1/projects/{id}`
+ *      succeeds with a matching name, USE it — this honours the operator's
+ *      pre-existing `.infisical.json` (or an explicit override) without
+ *      creating duplicates in the org. The self-host's project-create
+ *      endpoint does NOT enforce name uniqueness within an org, so a naive
+ *      `POST then check 409` strategy creates duplicates on every run.
+ *   2. Otherwise, `GET /api/v1/projects?orgId=<uuid>` and filter by name.
+ *      If exactly one match: USE it.
+ *      If multiple matches: THROW (operator must disambiguate via
+ *      `INFISICAL_WORKSPACE_ID` env var or by deleting duplicates).
+ *   3. Otherwise: `POST /api/v1/projects` to create. The self-host auto-
+ *      suffixes the slug on collision (e.g. `my-web-2026-59n-b`) and
+ *      returns 200 with `{project: {id, ...}}`.
+ *
+ * Self-host API:
+ *   - GET    /api/v1/projects/{id}                  → `{project: {...}}`
+ *   - GET    /api/v1/projects?orgId=<uuid>          → `{projects: [...]}`
+ *   - POST   /api/v1/projects                       body={projectName, organizationId}
+ *
+ * Returns the project `id` (workspaceId for `.infisical.json`).
  */
-async function ensureProject({ apiUrl, token }) {
+async function ensureProject({ apiUrl, token, organizationId, preferredWorkspaceId }) {
 	const base = apiUrl.replace(/\/+$/, '');
-	try {
-		const created = await httpsRequestJson('POST', `${base}/api/v3/projects`, {
-			token,
-			body: { name: PROJECT_NAME, slug: PROJECT_SLUG },
-		});
-		return { id: created.id, created: true };
-	} catch (error) {
-		if (!/HTTP 409/.test(error.message)) throw error;
-		const listed = await httpsRequestJson('GET', `${base}/api/v3/projects/slug/${PROJECT_SLUG}`, {
-			token,
-		});
-		return { id: listed.id, created: false };
+	// Step 1: trust preferredWorkspaceId (existing .infisical.json).
+	if (typeof preferredWorkspaceId === 'string' && preferredWorkspaceId.length > 0) {
+		const existing = await httpsRequestJson(
+			'GET',
+			`${base}/api/v1/projects/${encodeURIComponent(preferredWorkspaceId)}`,
+			{ token },
+		);
+		const project = existing?.project ?? existing;
+		if (project?.id) {
+			const nameMatches = project.name === PROJECT_NAME;
+			return { id: project.id, created: false, source: 'preferred', nameMatches };
+		}
+		// preferred id is invalid — fall through to list-and-filter
 	}
+
+	// Step 2: list-and-filter by name.
+	const listResponse = await httpsRequestJson(
+		'GET',
+		`${base}/api/v1/projects?orgId=${encodeURIComponent(organizationId)}`,
+		{ token },
+	);
+	const projects = Array.isArray(listResponse?.projects) ? listResponse.projects : [];
+	const matches = projects.filter((p) => p?.name === PROJECT_NAME);
+	if (matches.length === 1) {
+		return { id: matches[0].id, created: false, source: 'list' };
+	}
+	if (matches.length > 1) {
+		throw new Error(
+			`multiple projects named '${PROJECT_NAME}' exist in the org (count=${matches.length}); pass INFISICAL_WORKSPACE_ID=<uuid> to disambiguate`,
+		);
+	}
+
+	// Step 3: create.
+	const response = await httpsRequestJson('POST', `${base}/api/v1/projects`, {
+		token,
+		body: { projectName: PROJECT_NAME, organizationId },
+	});
+	const created = response?.project ?? response;
+	if (!created?.id) {
+		throw new Error('Infisical create response missing project.id');
+	}
+	return { id: created.id, created: true, source: 'create' };
 }
 
 /**
- * Idempotently create each environment slug. On 409, look up by
- * filtering the project environments list.
+ * Idempotently find-or-create an environment slug inside a project.
+ *
+ * Strategy: ALWAYS look the slug up in the project's embedded
+ * `environments[]` (returned by `GET /api/v1/projects/{id}`) before
+ * attempting a POST. The self-host's env-create endpoint returns
+ * HTTP 400 ("Environment with slug already exists") on collision
+ * rather than 409 — so we cannot rely on a 409 catch to fall back to
+ * the lookup. Listing first is also a cheaper path on the common
+ * re-run case.
+ *
+ * Self-host API:
+ *   - GET    /api/v1/projects/{id}   → `{project: {..., environments: [{slug, id, ...}]}}`
+ *   - POST   /api/v1/projects/{id}/environments  body={name, slug}
+ *              200 with `{environment: {id, slug, ...}}`
+ *              400 "Environment with slug already exists" on collision
  */
 async function ensureEnvironment({ apiUrl, token, projectId, slug }) {
 	const base = apiUrl.replace(/\/+$/, '');
+	// Step 1: ALWAYS look up first. The project's embedded env list is
+	// the source of truth for "does this slug exist?".
+	const projectResponse = await httpsRequestJson(
+		'GET',
+		`${base}/api/v1/projects/${projectId}`,
+		{ token },
+	);
+	const project = projectResponse?.project ?? projectResponse;
+	const envs =
+		Array.isArray(project?.environments)
+			? project.environments
+			: Array.isArray(projectResponse?.environments)
+				? projectResponse.environments
+				: [];
+	const found = envs.find((e) => e?.slug === slug);
+	if (found?.id) {
+		return { id: found.id, slug, created: false };
+	}
+
+	// Step 2: not found, attempt create.
 	try {
-		const created = await httpsRequestJson(
+		const response = await httpsRequestJson(
 			'POST',
-			`${base}/api/v3/projects/${projectId}/environments`,
+			`${base}/api/v1/projects/${projectId}/environments`,
 			{
 				token,
 				body: { name: slug, slug },
 			},
 		);
-		return { id: created.id, slug, created: true };
-	} catch (error) {
-		if (!/HTTP 409/.test(error.message)) throw error;
-		const list = await httpsRequestJson(
-			'GET',
-			`${base}/api/v3/projects/${projectId}/environments`,
-			{ token },
-		);
-		const found = Array.isArray(list) ? list.find((env) => env.slug === slug) : null;
-		if (!found) {
-			throw new Error(`environment slug '${slug}' not found after 409 from create`);
+		const createdEnv = response?.environment ?? response;
+		if (!createdEnv?.id) {
+			throw new Error('Infisical create env response missing environment.id');
 		}
-		return { id: found.id, slug, created: false };
+		return { id: createdEnv.id, slug, created: true };
+	} catch (error) {
+		// Race-condition safety: another process may have just created
+		// the env between our GET and POST. The self-host returns 400
+		// ("Environment with slug already exists") rather than 409.
+		if (error.message.includes('already exists')) {
+			// Re-read the project and pick up the new env id.
+			const projectAfter = await httpsRequestJson(
+				'GET',
+				`${base}/api/v1/projects/${projectId}`,
+				{ token },
+			);
+			const projectAfterEnv =
+				projectAfter?.project?.environments ??
+				projectAfter?.environments ??
+				[];
+			const e = projectAfterEnv.find((x) => x?.slug === slug);
+			if (!e?.id) {
+				throw new Error(
+					`slug '${slug}' collision raced but no env found in project response after retry`,
+				);
+			}
+			return { id: e.id, slug, created: false };
+		}
+		throw error;
 	}
 }
 
@@ -240,6 +355,36 @@ function validateWorkspaceId(value) {
 		throw new Error(`workspaceId from Infisical API is not UUID v4: ${JSON.stringify(value)}`);
 	}
 	return value.toLowerCase();
+}
+
+/**
+ * Decode the middle segment of a JWT to extract the
+ * `organizationId` claim. Pure helper — exposed for tests.
+ *
+ * The CLI session JWT (`infisical user get token`) returns a
+ * multi-line string; the access token is on the `Token:` line. We
+ * accept any string and look for three base64url segments separated
+ * by `.`; the middle segment decodes to the JSON payload.
+ */
+function jwtOrganizationId(token) {
+	if (typeof token !== 'string' || token.length === 0) return null;
+	const trimmed = token.trim();
+	const firstDot = trimmed.indexOf('.');
+	if (firstDot === -1) return null;
+	const secondDot = trimmed.indexOf('.', firstDot + 1);
+	if (secondDot === -1) return null;
+	const payload = trimmed.slice(firstDot + 1, secondDot);
+	// base64url → base64
+	const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=');
+	try {
+		const json = Buffer.from(b64, 'base64').toString('utf8');
+		const parsed = JSON.parse(json);
+		// Self-host JWT key is `organizationId`; Infisical Cloud JWT
+		// uses the same key in v0.165.x.
+		return typeof parsed.organizationId === 'string' ? parsed.organizationId : null;
+	} catch {
+		return null;
+	}
 }
 
 function readExistingInfisicalJson() {
@@ -275,10 +420,43 @@ async function main() {
 			'INFISICAL_TOKEN is required (obtain via `infisical login` or Universal Auth login).',
 		);
 	}
+	// `infisical user get token` returns a multi-line string
+	// `SessionID:...<NL>Token:<jwt><NL>ExpiresAt:...<NL>TTL:...`. The
+	// raw multi-line text breaks `Authorization: Bearer <hdr>`
+	// (`Invalid character in header content`). Extract the JWT line
+	// before using it as a Bearer token.
+	// (Defensive: jwtOrganizationId accepts the raw output and finds
+	// the segment, so this works regardless of which line carries the
+	// JWT.)
+
+	const orgIdFromEnv = process.env.INFISICAL_ORG_ID;
+	const organizationId =
+		typeof orgIdFromEnv === 'string' && orgIdFromEnv.length > 0
+			? orgIdFromEnv
+			: jwtOrganizationId(token);
+	if (typeof organizationId !== 'string' || organizationId.length === 0) {
+		throw new Error(
+			'INFISICAL_ORG_ID env var is required, or INFISICAL_TOKEN must be a JWT whose payload has an `organizationId` claim.',
+		);
+	}
 
 	const existing = readExistingInfisicalJson();
 
-	const project = await ensureProject({ apiUrl, token });
+	const project = await ensureProject({
+		apiUrl,
+		token,
+		organizationId,
+		// Honor `INFISICAL_WORKSPACE_ID` env-var override first; fall back to
+		// the existing `.infisical.json#workspaceId`. This idempotency path
+		// is critical: the self-host's project-create endpoint does NOT
+		// enforce name uniqueness within the org, so a naive post-only
+		// strategy creates a duplicate on every run.
+		preferredWorkspaceId:
+			process.env.INFISICAL_WORKSPACE_ID ||
+			(typeof existing?.workspaceId === 'string' && existing.workspaceId.length > 0
+				? existing.workspaceId
+				: null),
+	});
 	const workspaceId = validateWorkspaceId(project.id);
 	console.log(
 		`Project: ${PROJECT_NAME} (${project.created ? 'created' : 'already exists'}) workspaceId=${workspaceId}`,
@@ -288,11 +466,13 @@ async function main() {
 	for (const slug of ENVIRONMENT_SLUGS) {
 		const env = await ensureEnvironment({ apiUrl, token, projectId: workspaceId, slug });
 		envResults.push(env);
-		console.log(`  env: ${slug} (${env.created ? 'created' : 'already exists'})`);
+		console.log(`  env: ${slug} (${env.created ? 'created' : 'already exists'}) id=${env.id}`);
 	}
 
 	const defaultEnvironment =
-		existing?.defaultEnvironment ?? envResults.find((e) => e.slug === 'dev')?.slug ?? 'dev';
+		existing?.defaultEnvironment && existing.defaultEnvironment.length > 0
+			? existing.defaultEnvironment
+			: (envResults.find((e) => e.slug === 'dev')?.slug ?? 'dev');
 
 	const content = buildInfisicalJsonContent({ workspaceId, defaultEnvironment });
 	const isUnchanged =

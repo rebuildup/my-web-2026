@@ -408,7 +408,11 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			const brokenUsage = SOURCE.match(
 				/httpsRequestJson\(\s*'POST',\s*`\$\{base\}\/api\/v1\/identities\/\$\{identityId\}\/universal-auth`/,
 			);
-			assert.equal(brokenUsage, null, 'script must not POST to the 404 /identities/{id}/universal-auth');
+			assert.equal(
+				brokenUsage,
+				null,
+				'script must not POST to the 404 /identities/{id}/universal-auth',
+			);
 		});
 
 		it('reads clientId from the universal-auth response (no separate GET)', () => {
@@ -459,7 +463,11 @@ describe('infisical-bootstrap-cf.mjs', () => {
 		it('identity creation POSTs {name, organizationId} (NOT {name} alone)', () => {
 			// The self-host requires `organizationId` in the POST
 			// body (422 without it).
-			assert.match(SOURCE, /name,\s*organizationId\b/, 'createIdentity must include organizationId');
+			assert.match(
+				SOURCE,
+				/name,\s*organizationId\b/,
+				'createIdentity must include organizationId',
+			);
 		});
 	});
 

@@ -152,13 +152,7 @@ describe('infisical-seed.mjs', () => {
 
 		it('skips entries without a string secretKey', () => {
 			const list = {
-				secrets: [
-					{ secretKey: 'PRESENT' },
-					{ secretKey: 123 },
-					{ secretKey: null },
-					{},
-					null,
-				],
+				secrets: [{ secretKey: 'PRESENT' }, { secretKey: 123 }, { secretKey: null }, {}, null],
 			};
 			const out = extractExistingKeys(list);
 			assert.deepEqual([...out], ['PRESENT']);
@@ -294,9 +288,7 @@ describe('infisical-seed.mjs', () => {
 			//   `${secretKey}=${secretValue}`
 			// Anywhere else is a leak.
 			const allTemplateLeaks = SOURCE.match(/`[^`]*\$\{[^}]*secretValue[^}]*\}[^`]*`/g) ?? [];
-			const argvLeaks = allTemplateLeaks.filter(
-				(m) => m !== '`${secretKey}=${secretValue}`',
-			);
+			const argvLeaks = allTemplateLeaks.filter((m) => m !== '`${secretKey}=${secretValue}`');
 			assert.equal(logLeaks, null);
 			assert.equal(writeLeaks, null);
 			assert.equal(

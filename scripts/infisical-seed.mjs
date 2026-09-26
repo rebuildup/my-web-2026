@@ -283,9 +283,7 @@ function extractExistingKeys(listResponse) {
 		if (Array.isArray(listResponse)) {
 			return new Set(
 				listResponse
-					.map((entry) =>
-						entry && typeof entry.secretKey === 'string' ? entry.secretKey : null,
-					)
+					.map((entry) => (entry && typeof entry.secretKey === 'string' ? entry.secretKey : null))
 					.filter((key) => key !== null),
 			);
 		}

@@ -434,7 +434,8 @@ async function ensureUniversalAuth({ apiUrl, token, identityId }) {
 	} catch (error) {
 		// Already-configured detection: 400 with body matching
 		// /already configured/. Any other 4xx is a real error.
-		const alreadyConfigured = /HTTP 400/.test(error.message) || /already configured/i.test(error.message);
+		const alreadyConfigured =
+			/HTTP 400/.test(error.message) || /already configured/i.test(error.message);
 		if (!alreadyConfigured) throw error;
 		// Fetch existing config so the caller has the clientId.
 		const existing = await httpsRequestJson(
@@ -609,9 +610,8 @@ async function main() {
 		token: infisicalToken,
 		identityId,
 	});
-	const universalAuth =
-		universalAuthResult.universalAuth ?? universalAuthResult;
-	const clientId = universalAuth?.clientId;
+	const universalAuth = universalAuthResult.universalAuth ?? universalAuthResult;
+	let clientId = universalAuth?.clientId;
 	if (typeof clientId !== 'string' || clientId.length === 0) {
 		throw new Error(
 			'universal-auth response missing clientId (cannot bind to Cloudflare Builds without it)',

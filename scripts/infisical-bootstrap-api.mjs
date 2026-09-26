@@ -75,7 +75,8 @@ function parseArgs(argv) {
 	// stays self-contained for regex-extraction by the test harness
 	// (mirrors the pattern in
 	// `bootstrap-home-api-key.test.mjs#loadPureHelpers`).
-	const helpText = `Usage: infisical-bootstrap-api.mjs
+	const helpText =
+		`Usage: infisical-bootstrap-api.mjs
 
 Infisical project + environment provisioning (ADR-0015 §2 Phase 1).
 
@@ -86,7 +87,9 @@ Reads:
                            'INFISICAL_CLIENT_SECRET' Universal Auth
                            login).
   INFISICAL_ORG_ID         Organization UUID. Required — extracted
-                           from JWT payload via ` + '`payload.organizationId`' + `
+                           from JWT payload via ` +
+		'`payload.organizationId`' +
+		`
                            OR supplied as env var for non-user auth.
   INFISICAL_API_URL        base URL (default: https://secrets.rebuildup.dev)
 
@@ -274,18 +277,15 @@ async function ensureEnvironment({ apiUrl, token, projectId, slug }) {
 	const base = apiUrl.replace(/\/+$/, '');
 	// Step 1: ALWAYS look up first. The project's embedded env list is
 	// the source of truth for "does this slug exist?".
-	const projectResponse = await httpsRequestJson(
-		'GET',
-		`${base}/api/v1/projects/${projectId}`,
-		{ token },
-	);
+	const projectResponse = await httpsRequestJson('GET', `${base}/api/v1/projects/${projectId}`, {
+		token,
+	});
 	const project = projectResponse?.project ?? projectResponse;
-	const envs =
-		Array.isArray(project?.environments)
-			? project.environments
-			: Array.isArray(projectResponse?.environments)
-				? projectResponse.environments
-				: [];
+	const envs = Array.isArray(project?.environments)
+		? project.environments
+		: Array.isArray(projectResponse?.environments)
+			? projectResponse.environments
+			: [];
 	const found = envs.find((e) => e?.slug === slug);
 	if (found?.id) {
 		return { id: found.id, slug, created: false };
@@ -312,15 +312,11 @@ async function ensureEnvironment({ apiUrl, token, projectId, slug }) {
 		// ("Environment with slug already exists") rather than 409.
 		if (error.message.includes('already exists')) {
 			// Re-read the project and pick up the new env id.
-			const projectAfter = await httpsRequestJson(
-				'GET',
-				`${base}/api/v1/projects/${projectId}`,
-				{ token },
-			);
+			const projectAfter = await httpsRequestJson('GET', `${base}/api/v1/projects/${projectId}`, {
+				token,
+			});
 			const projectAfterEnv =
-				projectAfter?.project?.environments ??
-				projectAfter?.environments ??
-				[];
+				projectAfter?.project?.environments ?? projectAfter?.environments ?? [];
 			const e = projectAfterEnv.find((x) => x?.slug === slug);
 			if (!e?.id) {
 				throw new Error(
@@ -375,7 +371,10 @@ function jwtOrganizationId(token) {
 	if (secondDot === -1) return null;
 	const payload = trimmed.slice(firstDot + 1, secondDot);
 	// base64url → base64
-	const b64 = payload.replace(/-/g, '+').replace(/_/g, '/').padEnd(Math.ceil(payload.length / 4) * 4, '=');
+	const b64 = payload
+		.replace(/-/g, '+')
+		.replace(/_/g, '/')
+		.padEnd(Math.ceil(payload.length / 4) * 4, '=');
 	try {
 		const json = Buffer.from(b64, 'base64').toString('utf8');
 		const parsed = JSON.parse(json);

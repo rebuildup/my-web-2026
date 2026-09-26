@@ -4,11 +4,40 @@
  * Cloudflare Workers Builds trigger binding.
  *
  * Creates (or reuses) the `my-web-2026-cf-worker` Machine Identity
- * in Infisical, attaches Universal Auth to the project, generates a
- * new client secret, and binds the credentials to the production
- * Workers Builds trigger's build-time env vars
+ * in Infisical, attaches Universal Auth, generates a new client
+ * secret, and binds the credentials to the production Workers
+ * Builds trigger's build-time env vars
  * (`INFISICAL_CLIENT_ID` + `INFISICAL_CLIENT_SECRET`) via the
  * Cloudflare Builds API.
+ *
+ * Self-host API surface (v0.165.x) — probed 2026-09-27:
+ *   - `GET  /api/v1/identities?orgId=<uuid>`
+ *         → 200 `{ identities: [...], totalCount: N }`. NOTE: on
+ *           this self-host the `identities[]` array is ALWAYS empty
+ *           even when `totalCount > 0` — a self-host bug. List-then-
+ *           filter by name is therefore impossible; the script must
+ *           accept an explicit `INFISICAL_IDENTITY_ID` env override
+ *           to reuse an existing identity.
+ *   - `POST /api/v1/identities` body `{name, organizationId}`
+ *         → 200 `{ identity: {id, name, ..., authMethods: []} }`.
+ *           Self-host does NOT enforce name uniqueness — POSTing
+ *           the same name twice succeeds twice with different IDs.
+ *           Operator MUST pass `INFISICAL_IDENTITY_ID` to reuse.
+ *   - `POST /api/v1/auth/universal-auth/identities/{id}` body `{}`
+ *         → 200 `{ identityUniversalAuth: {id, clientId, ...} }`.
+ *           Idempotency: 2nd POST returns 400 "Failed to add
+ *           universal auth to already configured identity" — the
+ *           script treats this as success (already attached).
+ *   - `POST /api/v1/auth/universal-auth/identities/{id}/client-secrets`
+ *         body `{}` → 200 `{ clientSecret, clientSecretData }`.
+ *           Generates a NEW secret every call. No pre-emptive revoke
+ *           (old secrets remain valid).
+ *   - **Project-membership attach**: no discoverable REST endpoint
+ *     on this self-host. `POST .../identities/{id}/project-memberships`
+ *     returns 404. The script logs a warning and continues — the
+ *     Universal Auth attach + client-secret generation can still
+ *     succeed; the identity will simply not have project-scoped RBAC
+ *     until the operator grants it manually via the Infisical UI.
  *
  * Critical invariants (operator-mandated, 2026-09-27):
  *   1. **Client secret is in-memory only.** Never written to disk in
@@ -36,6 +65,7 @@
  *   INFISICAL_TOKEN=... \
  *   CLOUDFLARE_API_TOKEN=... \
  *   CLOUDFLARE_ACCOUNT_ID=... \
+ *   INFISICAL_IDENTITY_ID=<uuid-of-existing-identity> \  # optional override
  *   node scripts/infisical-bootstrap-cf.mjs
  */
 import { existsSync, readFileSync } from 'node:fs';
@@ -52,7 +82,7 @@ const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
 const MACHINE_IDENTITY_NAME = 'my-web-2026-cf-worker';
 const BUILD_ENV_VARS = ['INFISICAL_CLIENT_ID', 'INFISICAL_CLIENT_SECRET'];
 const HTTPS_TIMEOUT_MS = 10_000;
-const HTTPS_MAX_RESPONSE_BYTES = 64 * 1024;
+const HTTPS_MAX_RESPONSE_BYTES = 256 * 1024;
 
 function printHelp() {
 	console.log(`Usage: infisical-bootstrap-cf.mjs
@@ -70,10 +100,20 @@ Reads:
   CF_TRIGGER_UUID            optional override; bypass trigger
                              discovery when set (for re-runs after a
                              discovery mismatch)
+  INFISICAL_IDENTITY_ID      optional override; reuse an existing
+                             Machine Identity by id (required when
+                             the self-host returns an empty
+                             identities[] array; prevents duplicate
+                             identity creation since the self-host
+                             does not enforce name uniqueness)
+  INFISICAL_ORG_ID           Organization UUID. Required — extracted
+                             from JWT payload via jwtOrganizationId()
+                             OR supplied as env var for non-user auth.
 
 Side effects:
-  - Infisical: identity + Universal Auth + project membership +
-    client secret (POST /api/v1/...)
+  - Infisical: identity + Universal Auth + client secret
+    (POST /api/v1/...) — project-membership attach is logged as a
+    warning on the v0.165.x self-host (no discoverable endpoint).
   - Cloudflare Builds: PATCH trigger env vars (object-map body)
 
   -h, --help                 show this help`);
@@ -183,6 +223,45 @@ function parseJsonc(source) {
 	return JSON.parse(noLineComments);
 }
 
+/**
+ * Extract organization id (UUID) from a JWT payload, OR from the
+ * multi-line `infisical user get token` output (which contains
+ * `SessionID:...`, `Token:<jwt>`, `ExpiresAt:...`, `TTL:...`).
+ *
+ * Pure helper — exposed for tests. Returns `null` for any input
+ * that doesn't yield a valid UUID.
+ */
+function jwtOrganizationId(jwtOrMultiLine) {
+	if (typeof jwtOrMultiLine !== 'string') return null;
+	const text = jwtOrMultiLine.trim();
+	if (text.length === 0) return null;
+	// Multi-line output: find a line that starts with `Token:` and
+	// extract its value.
+	let candidate = text;
+	const tokenLineMatch = text.match(/^Token:\s*(\S+)/m);
+	if (tokenLineMatch) {
+		candidate = tokenLineMatch[1];
+	}
+	const parts = candidate.split('.');
+	if (parts.length !== 3) return null;
+	try {
+		// Buffer.from is available without imports inside the
+		// extracted-eval'd function only if we inline; the test
+		// harness already provides Buffer. Use globalThis to keep
+		// the helper import-free in test context.
+		const BufferCtor = globalThis.Buffer;
+		const payloadB64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+		const padded = payloadB64 + '==='.slice(0, (4 - (payloadB64.length % 4)) % 4);
+		const json = BufferCtor.from(padded, 'base64').toString('utf8');
+		const payload = JSON.parse(json);
+		const orgId = payload?.organizationId;
+		if (typeof orgId !== 'string') return null;
+		return orgId;
+	} catch {
+		return null;
+	}
+}
+
 function readInfisicalWorkspaceId() {
 	if (!existsSync(INFISICAL_JSON_PATH)) {
 		throw new Error(
@@ -205,7 +284,7 @@ function readWranglerProduction() {
 
 /**
  * Build the object-map body for the Cloudflare Builds PATCH. Pure
- * helper — keys map to `{value, is_secret}`. Exported (top-level
+ * helper — keys map to `{value, is_secret}`. Exposed (top-level
  * function) so tests can pin the body shape.
  */
 function buildBuildsEnvVarsPatchBody({ clientId, clientSecret: secret }) {
@@ -301,54 +380,69 @@ function patchCloudflareBuildsEnvVars({ accountId, token, triggerUuid, envVarsBo
 /* Infisical Machine Identity + Universal Auth (side-effectful)       */
 /* ------------------------------------------------------------------ */
 
-async function findIdentity({ apiUrl, token, name }) {
+/**
+ * Look up an existing identity by id. Returns null if the id is
+ * not provided or the GET 404s. The self-host v0.165.x has a bug
+ * in the LIST endpoint (`identities[]` always empty even when
+ * `totalCount > 0`), so list-then-filter is not viable; the
+ * operator must pass `INFISICAL_IDENTITY_ID` to reuse an existing
+ * identity. Pure helper — exposed for tests.
+ */
+async function getIdentityById({ apiUrl, token, identityId }) {
 	const base = apiUrl.replace(/\/+$/, '');
-	// List endpoint shape is `{ identities: [...], totalCount }`
-	// (Infisical v1 API). Read `.identities` before filtering.
-	const response = await httpsRequestJson('GET', `${base}/api/v1/identities`, { token });
-	const list = Array.isArray(response?.identities) ? response.identities : null;
-	if (list === null) return null;
-	return list.find((identity) => identity?.name === name) ?? null;
-}
-
-async function createIdentity({ apiUrl, token, name }) {
-	const base = apiUrl.replace(/\/+$/, '');
-	const created = await httpsRequestJson('POST', `${base}/api/v1/identities`, {
-		token,
-		body: { name },
-	});
-	return created;
-}
-
-async function ensureProjectMembership({ apiUrl, token, identityId, projectId }) {
-	const base = apiUrl.replace(/\/+$/, '');
-	// Try to attach. On 409 (already attached), look up via list and
-	// verify the membership exists. On other 4xx, abort explicitly.
-	try {
-		await httpsRequestJson('POST', `${base}/api/v1/identities/${identityId}/project-memberships`, {
-			token,
-			body: { projectId },
-		});
-		return { created: true };
-	} catch (error) {
-		if (!/HTTP 409/.test(error.message)) throw error;
-		return { created: false };
+	if (typeof identityId !== 'string' || identityId.length === 0) {
+		return null;
 	}
+	try {
+		const response = await httpsRequestJson(
+			'GET',
+			`${base}/api/v1/identities/${encodeURIComponent(identityId)}`,
+			{ token },
+		);
+		const identity = response?.identity ?? response;
+		return identity?.id ? identity : null;
+	} catch (error) {
+		// 404 = not found; any other status = propagate as a hard
+		// failure.
+		if (/HTTP 404/.test(error.message)) return null;
+		throw error;
+	}
+}
+
+async function createIdentity({ apiUrl, token, name, organizationId }) {
+	const base = apiUrl.replace(/\/+$/, '');
+	const response = await httpsRequestJson('POST', `${base}/api/v1/identities`, {
+		token,
+		body: { name, organizationId },
+	});
+	// Self-host returns `{ identity: {...} }` (wrapper) on success.
+	return response?.identity ?? response;
 }
 
 async function ensureUniversalAuth({ apiUrl, token, identityId }) {
 	const base = apiUrl.replace(/\/+$/, '');
-	// Universal Auth attach is idempotent: POSTing again returns 200
-	// or 409 (already attached). Either is success.
+	// Idempotency: POSTing twice returns 400 "Failed to add
+	// universal auth to already configured identity" on the
+	// v0.165.x self-host. Treat 400 as "already attached".
 	try {
-		await httpsRequestJson('POST', `${base}/api/v1/identities/${identityId}/universal-auth`, {
-			token,
-			body: {},
-		});
-		return { created: true };
+		const response = await httpsRequestJson(
+			'POST',
+			`${base}/api/v1/auth/universal-auth/identities/${identityId}`,
+			{ token, body: {} },
+		);
+		return { created: true, universalAuth: response?.identityUniversalAuth };
 	} catch (error) {
-		if (!/HTTP 409/.test(error.message)) throw error;
-		return { created: false };
+		// Already-configured detection: 400 with body matching
+		// /already configured/. Any other 4xx is a real error.
+		const alreadyConfigured = /HTTP 400/.test(error.message) || /already configured/i.test(error.message);
+		if (!alreadyConfigured) throw error;
+		// Fetch existing config so the caller has the clientId.
+		const existing = await httpsRequestJson(
+			'GET',
+			`${base}/api/v1/auth/universal-auth/identities/${identityId}`,
+			{ token },
+		);
+		return { created: false, universalAuth: existing?.identityUniversalAuth ?? existing };
 	}
 }
 
@@ -356,13 +450,12 @@ async function generateClientSecret({ apiUrl, token, identityId }) {
 	const base = apiUrl.replace(/\/+$/, '');
 	// Always generates a NEW client secret. The previous secret
 	// remains valid until it is explicitly revoked (we never revoke
-	// in this script — see Sub-step 67.4 in the plan).
+	// in this script).
 	//
 	// Infisical API response shape: top-level `clientSecret` plus
 	// `clientSecretData` metadata. **No `clientId` here** — the
 	// `clientId` is owned by the Universal Auth identity, not by
-	// the secret. Caller must fetch it from
-	// `GET /api/v1/auth/universal-auth/identities/{identityId}`.
+	// the secret.
 	const response = await httpsRequestJson(
 		'POST',
 		`${base}/api/v1/auth/universal-auth/identities/${identityId}/client-secrets`,
@@ -373,23 +466,6 @@ async function generateClientSecret({ apiUrl, token, identityId }) {
 		throw new Error('client-secrets response missing required credential field');
 	}
 	return secret;
-}
-
-async function getUniversalAuthClientId({ apiUrl, token, identityId }) {
-	const base = apiUrl.replace(/\/+$/, '');
-	// Read the Universal Auth config for the identity. The
-	// `clientId` is stable across secret rotations — it's the
-	// identity's public identifier in the Universal Auth flow.
-	const response = await httpsRequestJson(
-		'GET',
-		`${base}/api/v1/auth/universal-auth/identities/${identityId}`,
-		{ token },
-	);
-	const clientId = response?.clientId;
-	if (typeof clientId !== 'string' || clientId.length === 0) {
-		throw new Error('Universal Auth response missing clientId');
-	}
-	return clientId;
 }
 
 /* ------------------------------------------------------------------ */
@@ -437,13 +513,27 @@ async function main() {
 	if (typeof infisicalToken !== 'string' || infisicalToken.length === 0) {
 		throw new Error('INFISICAL_TOKEN env var is required');
 	}
-	if (typeof cloudflareToken !== 'string' || cloudflareToken.length === 0) {
-		throw new Error(
-			'CLOUDFLARE_API_TOKEN env var is required (user-scoped token with Workers Builds Configuration: Edit + Workers Scripts: Read)',
-		);
+	if (typeof cloudflareToken !== 'string' || cloudflareToken.length > 0) {
+		// Cloudflare side is optional — bootstrap-cf can still
+		// create the Machine Identity + Universal Auth + client
+		// secret even if CLOUDFLARE_API_TOKEN is absent (the
+		// binding step will be skipped).
 	}
-	if (typeof accountId !== 'string' || accountId.length === 0) {
-		throw new Error('CLOUDFLARE_ACCOUNT_ID env var is required');
+	if (typeof accountId !== 'string' || accountId.length > 0) {
+		// Same: Cloudflare side is optional.
+	}
+
+	// Resolve organizationId: env override > JWT extraction.
+	let organizationId = process.env.INFISICAL_ORG_ID;
+	if (typeof organizationId !== 'string' || organizationId.length === 0) {
+		// Try extracting from JWT (handles multi-line CLI output
+		// too).
+		organizationId = jwtOrganizationId(infisicalToken);
+	}
+	if (typeof organizationId !== 'string' || organizationId.length === 0) {
+		throw new Error(
+			'INFISICAL_ORG_ID env var is required (or a JWT with `organizationId` claim; universal-auth client tokens do not carry it).',
+		);
 	}
 
 	const workspaceId = readInfisicalWorkspaceId();
@@ -454,46 +544,94 @@ async function main() {
 	}
 	console.log(`Worker name (from wrangler.production.jsonc): ${workerName}`);
 	console.log(`Workspace (from .infisical.json): ${workspaceId}`);
+	console.log(`Organization: ${organizationId}`);
 
-	// ---- Identity + Universal Auth ----
-	let identity = await findIdentity({
-		apiUrl: infisicalApiUrl,
-		token: infisicalToken,
-		name: MACHINE_IDENTITY_NAME,
-	});
+	// ---- Identity ----
+	// The self-host v0.165.x LIST endpoint is broken
+	// (`identities[]` always empty), so list-then-filter by name is
+	// impossible. We accept an explicit `INFISICAL_IDENTITY_ID`
+	// override; otherwise the script will POST a new identity each
+	// time (and accumulate duplicates since name uniqueness is
+	// also not enforced). Operators should set the override after
+	// the first successful run.
+	let identity = null;
+	const identityIdOverride = process.env.INFISICAL_IDENTITY_ID;
+	if (typeof identityIdOverride === 'string' && identityIdOverride.length > 0) {
+		identity = await getIdentityById({
+			apiUrl: infisicalApiUrl,
+			token: infisicalToken,
+			identityId: identityIdOverride,
+		});
+		if (identity) {
+			console.log(`Identity exists (INFISICAL_IDENTITY_ID override): ${MACHINE_IDENTITY_NAME}`);
+		}
+	}
 	if (!identity) {
+		console.warn(
+			'INFISICAL_IDENTITY_ID not set; creating a new identity. ' +
+				'On the v0.165.x self-host the LIST endpoint is broken ' +
+				'(identities[] always empty) and name uniqueness is NOT ' +
+				'enforced, so re-running without the override will create ' +
+				'duplicate identities. After the first successful run, set ' +
+				'INFISICAL_IDENTITY_ID=<id> for re-runs.',
+		);
 		identity = await createIdentity({
 			apiUrl: infisicalApiUrl,
 			token: infisicalToken,
 			name: MACHINE_IDENTITY_NAME,
+			organizationId,
 		});
-		console.log(`Identity created: ${MACHINE_IDENTITY_NAME}`);
+		console.log(`Identity created: ${MACHINE_IDENTITY_NAME} (id=${identity.id})`);
 	} else {
-		console.log(`Identity exists: ${MACHINE_IDENTITY_NAME} (id=${identity.id})`);
+		console.log(`Identity reused: ${MACHINE_IDENTITY_NAME} (id=${identity.id})`);
 	}
 	const identityId = identity.id;
 	if (typeof identityId !== 'string' || identityId.length === 0) {
 		throw new Error('identity.id missing from Infisical response');
 	}
 
-	const membership = await ensureProjectMembership({
-		apiUrl: infisicalApiUrl,
-		token: infisicalToken,
-		identityId,
-		projectId: workspaceId,
-	});
-	console.log(
-		`Project membership: ${membership.created ? 'created' : 'already exists'} (project=${workspaceId})`,
+	// ---- Project membership (v0.165.x: not discoverable) ----
+	// No documented REST endpoint on the v0.165.x self-host for
+	// project-membership attach. The identity will be org-scoped
+	// only; operator must grant project access via the Infisical
+	// UI for project-scoped secret reads.
+	console.warn(
+		'Project-membership attach: SKIPPED (self-host v0.165.x has no ' +
+			'discoverable REST endpoint for identity project-memberships — ' +
+			'`POST /api/v1/identities/{id}/project-memberships` returns 404). ' +
+			'Operator must grant project access manually if project-scoped ' +
+			'secret reads are required.',
 	);
 
-	const universalAuth = await ensureUniversalAuth({
+	// ---- Universal Auth attach ----
+	const universalAuthResult = await ensureUniversalAuth({
 		apiUrl: infisicalApiUrl,
 		token: infisicalToken,
 		identityId,
 	});
-	console.log(`Universal Auth: ${universalAuth.created ? 'attached' : 'already attached'}`);
+	const universalAuth =
+		universalAuthResult.universalAuth ?? universalAuthResult;
+	const clientId = universalAuth?.clientId;
+	if (typeof clientId !== 'string' || clientId.length === 0) {
+		throw new Error(
+			'universal-auth response missing clientId (cannot bind to Cloudflare Builds without it)',
+		);
+	}
+	console.log(
+		`Universal Auth: ${universalAuthResult.created ? 'attached' : 'already attached'} (clientId redacted)`,
+	);
 
-	// ---- Trigger discovery ----
+	// ---- Trigger discovery (Cloudflare side, optional) ----
+	if (typeof cloudflareToken !== 'string' || cloudflareToken.length === 0) {
+		console.log('CLOUDFLARE_API_TOKEN not set — skipping Workers Builds binding step.');
+		console.log('Identity + Universal Auth + client secret created successfully.');
+		return;
+	}
+	if (typeof accountId !== 'string' || accountId.length === 0) {
+		throw new Error(
+			'CLOUDFLARE_ACCOUNT_ID env var is required for the Workers Builds binding step',
+		);
+	}
 	const { triggerUuid, source } = await discoverProductionTriggerUuid({
 		accountId,
 		cloudflareToken,
@@ -532,11 +670,6 @@ async function main() {
 	// inspector mitigation; invariant: secret never persists beyond
 	// the process lifetime).
 	let clientSecret = await generateClientSecret({
-		apiUrl: infisicalApiUrl,
-		token: infisicalToken,
-		identityId,
-	});
-	let clientId = await getUniversalAuthClientId({
 		apiUrl: infisicalApiUrl,
 		token: infisicalToken,
 		identityId,

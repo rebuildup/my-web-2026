@@ -4,22 +4,32 @@ import { describe, it } from 'node:test';
 /**
  * `infisical-seed.mjs` unit tests.
  *
- * The script reads `.infisical.json#workspaceId`, calls the Infisical
- * V3 list / insert endpoints for the dev environment, and seeds the
- * 3-name contract. End-to-end testing requires live credentials.
+ * The script reads `.infisical.json#workspaceId`, calls the
+ * Infisical V3 list endpoint via HTTPS for a presence check
+ * (`viewSecretValue=false` → values are server-hidden, no
+ * client-side decryption needed), and uses the CLI subprocess for
+ * inserts (the CLI handles E2EE ciphertext computation internally).
+ * End-to-end testing requires live credentials.
  *
  * The testable surface is the **pure helpers** + **invariant guard**:
  *
  *   1. `buildDevSecretValues` returns the 3-name contract with the
  *      expected shape (random 32-byte hex for each, plus
  *      `BETTER_AUTH_SECRETS` in `1:<hex>` versioned form).
- *   2. `extractExistingKeys` parses the V3 list response into a
- *      `Set<string>` of secret keys.
+ *   2. `extractExistingKeys` parses the V3 list response (wrapped
+ *      `{secrets: [...]}` shape, with backwards compat for raw
+ *      array) into a `Set<string>` of secret keys.
  *   3. `--env=prod` is **rejected** (operator post-#67 work only).
- *   4. The script does NOT call PATCH / update endpoints (idempotent
- *      insert-only contract).
+ *   4. The script does NOT POST plaintext to /api/v3/secrets/raw
+ *      (E2EE POST requires ciphertext blobs the script cannot
+ *      compute). Inserts go through the CLI subprocess.
  *   5. argv / log / error message invariant: no secret value reaches
  *      stdout (verified by source grep).
+ *   6. The script uses `spawnSync` with `shell: false` for Windows
+ *      portability.
+ *   7. `@infisical/cli` binary resolution regression: the script
+ *      must NOT resolve `bin/infisical.js` (no `.js` extension —
+ *      the devDep ships a native binary).
  */
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
@@ -105,12 +115,14 @@ describe('infisical-seed.mjs', () => {
 	describe('extractExistingKeys', () => {
 		const { extractExistingKeys } = loadPureHelpers();
 
-		it('extracts secretKey fields from a list response', () => {
-			const list = [
-				{ secretKey: 'BETTER_AUTH_SECRET', secretValue: 'redacted' },
-				{ secretKey: 'BETTER_AUTH_SECRETS', secretValue: 'redacted' },
-				{ secretKey: 'MY_WEB_2026_CONSUMER_API_KEY', secretValue: 'redacted' },
-			];
+		it('extracts secretKey fields from a {secrets: [...]} list response (v0.165.x shape)', () => {
+			const list = {
+				secrets: [
+					{ secretKey: 'BETTER_AUTH_SECRET', secretValueHidden: true },
+					{ secretKey: 'BETTER_AUTH_SECRETS', secretValueHidden: true },
+					{ secretKey: 'MY_WEB_2026_CONSUMER_API_KEY', secretValueHidden: true },
+				],
+			};
 			const out = extractExistingKeys(list);
 			assert.deepEqual(
 				[...out].sort(),
@@ -118,15 +130,36 @@ describe('infisical-seed.mjs', () => {
 			);
 		});
 
-		it('returns an empty Set for non-array input', () => {
+		it('falls back to a raw array shape for backwards compatibility', () => {
+			const list = [
+				{ secretKey: 'BETTER_AUTH_SECRET', secretValue: 'redacted' },
+				{ secretKey: 'BETTER_AUTH_SECRETS', secretValue: 'redacted' },
+			];
+			const out = extractExistingKeys(list);
+			assert.deepEqual([...out].sort(), ['BETTER_AUTH_SECRET', 'BETTER_AUTH_SECRETS']);
+		});
+
+		it('returns an empty Set for null / undefined / non-object input', () => {
 			assert.equal(extractExistingKeys(null).size, 0);
 			assert.equal(extractExistingKeys(undefined).size, 0);
 			assert.equal(extractExistingKeys({}).size, 0);
 			assert.equal(extractExistingKeys('not an array').size, 0);
 		});
 
+		it('returns an empty Set for a {secrets: []} response', () => {
+			assert.equal(extractExistingKeys({ secrets: [] }).size, 0);
+		});
+
 		it('skips entries without a string secretKey', () => {
-			const list = [{ secretKey: 'PRESENT' }, { secretKey: 123 }, { secretKey: null }, {}, null];
+			const list = {
+				secrets: [
+					{ secretKey: 'PRESENT' },
+					{ secretKey: 123 },
+					{ secretKey: null },
+					{},
+					null,
+				],
+			};
 			const out = extractExistingKeys(list);
 			assert.deepEqual([...out], ['PRESENT']);
 		});
@@ -184,9 +217,36 @@ describe('infisical-seed.mjs', () => {
 		});
 	});
 
+	describe('E2EE POST invariant (no plaintext insert via REST)', () => {
+		it('the script does not POST to /api/v3/secrets/raw with plaintext in the body', () => {
+			// The self-host v0.165.x E2EE contract requires
+			// `secretKeyCiphertext` + `secretKeyIV` + `secretKeyTag` +
+			// `secretValueCiphertext` + `secretValueIV` + `secretValueTag`
+			// fields. Computing these correctly requires duplicating
+			// the CLI's crypto. The script must NOT attempt a REST
+			// POST with plaintext `secretValue` (would 422 on this
+			// self-host).
+			const plaintextPost = SOURCE.match(/['"]POST['"][\s\S]{0,400}?secretValue:/);
+			assert.equal(
+				plaintextPost,
+				null,
+				'script must not POST plaintext secretValue to /api/v3/secrets/raw (E2EE)',
+			);
+		});
+
+		it('the script uses the CLI subprocess (infisical secrets set) for inserts', () => {
+			// The CLI handles E2EE ciphertext computation internally.
+			assert.match(
+				SOURCE,
+				/spawnSync\(\s*infisicalCli,\s*\[[\s\S]*?'secrets',\s*'set'/,
+				'script must spawn `infisical secrets set` for inserts',
+			);
+		});
+	});
+
 	describe('idempotency invariant (insert-only, no update)', () => {
 		it('the script source does not call PATCH on the secrets endpoint', () => {
-			// Defensive: the script should only POST new secrets,
+			// Defensive: the script should only insert new secrets,
 			// never PATCH / PUT / UPDATE existing ones. Operator
 			// tuning is preserved by skipping existing keys.
 			const patches = SOURCE.match(/method:\s*['"]PATCH['"]/g);
@@ -196,16 +256,54 @@ describe('infisical-seed.mjs', () => {
 		});
 	});
 
+	describe('Windows-safety invariant', () => {
+		it('the script source uses shell: false for spawn', () => {
+			const shellFalse = SOURCE.match(/shell:\s*false/g);
+			assert.ok(
+				(shellFalse?.length ?? 0) >= 1,
+				'script must use spawnSync with shell:false for Windows portability',
+			);
+		});
+
+		it('the script source never uses POSIX-only shell substitution', () => {
+			const posixSubstitution = SOURCE.match(/\$\([^)]*\)/g);
+			assert.equal(
+				posixSubstitution,
+				null,
+				`script contains POSIX shell substitution: ${posixSubstitution?.join(', ')}`,
+			);
+		});
+
+		it('the script source does not pipe through grep / wc / jq', () => {
+			const pipeToShellTool = SOURCE.match(/\|\s*(grep|wc|jq|awk|sed)\b/g);
+			assert.equal(pipeToShellTool, null);
+		});
+	});
+
 	describe('argv / log / error secret-handling invariant', () => {
 		it('the script source never logs a secret value', () => {
-			// No console.log of the random hex values, no error message
-			// echoing them, no writeFileSync persisting them.
+			// No console.log of the random hex values, no error
+			// message echoing them, no writeFileSync persisting
+			// them.
 			const logLeaks = SOURCE.match(/console\.(log|error|warn)[^)]*secretValue/g);
 			const writeLeaks = SOURCE.match(/writeFileSync[^)]*secretValue/g);
-			const templateLeaks = SOURCE.match(/`[^`]*\$\{[^}]*secretValue[^}]*\}[^`]*`/g);
+			// Template literals are allowed ONLY in the CLI argv
+			// construction (where the secret must be passed to the
+			// subprocess). The argv shape is exactly the backtick-
+			// delimited template literal:
+			//   `${secretKey}=${secretValue}`
+			// Anywhere else is a leak.
+			const allTemplateLeaks = SOURCE.match(/`[^`]*\$\{[^}]*secretValue[^}]*\}[^`]*`/g) ?? [];
+			const argvLeaks = allTemplateLeaks.filter(
+				(m) => m !== '`${secretKey}=${secretValue}`',
+			);
 			assert.equal(logLeaks, null);
 			assert.equal(writeLeaks, null);
-			assert.equal(templateLeaks, null);
+			assert.equal(
+				argvLeaks.length,
+				0,
+				`non-argv template literal leaks secretValue: ${argvLeaks.join(', ')}`,
+			);
 		});
 
 		it('the script does not echo random values in error messages', () => {
@@ -218,6 +316,28 @@ describe('infisical-seed.mjs', () => {
 			// `randomBytes`, this test still guards against leaking
 			// it into error messages.
 			assert.equal(errorLeaks, null);
+		});
+
+		it('the script source never logs INFISICAL_TOKEN (no Bearer echo)', () => {
+			const tokenLogs = SOURCE.match(/console\.(log|error|warn)[^)]*INFISICAL_TOKEN/g);
+			assert.equal(tokenLogs, null);
+		});
+	});
+
+	describe('@infisical/cli binary resolution (regression for native binary path)', () => {
+		it('does not call require.resolve on a non-existent .js path', () => {
+			// Regression: `@infisical/cli` ships a NATIVE executable
+			// at `bin/infisical` (no `.js` extension; declared in
+			// `package.json#bin`).
+			assert.equal(
+				SOURCE.includes("require.resolve('@infisical/cli/bin/infisical.js')"),
+				false,
+				'script must not resolve the @infisical/cli bin as a .js file',
+			);
+		});
+
+		it('reads the bin path from @infisical/cli/package.json', () => {
+			assert.match(SOURCE, /@infisical\/cli\/package\.json/);
 		});
 	});
 });

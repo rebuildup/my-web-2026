@@ -17,10 +17,19 @@ import { describe, it } from 'node:test';
  *   3. `findWorkerTag` locates a worker by name in the workers
  *      list response.
  *   4. `parseJsonc` strips JSONC comments before parsing.
- *   5. **No source line that takes a client secret value to
+ *   5. `jwtOrganizationId` extracts the org id from a JWT
+ *      payload (including multi-line `infisical user get token`
+ *      output).
+ *   6. **No source line that takes a client secret value to
  *      stdout / log / error.** The script must not echo
  *      `clientSecret` anywhere except as a request body field,
  *      which is verified by grepping the source.
+ *   7. Self-host API contract: the script uses the **documented
+ *      v0.165.x** endpoints (`POST /api/v1/auth/universal-auth/...`
+ *      — NOT the older `/identities/{id}/universal-auth` 404
+ *      route), accepts `INFISICAL_IDENTITY_ID` env override (the
+ *      self-host's LIST endpoint is broken), and documents the
+ *      missing project-membership endpoint.
  *
  * Helpers are loaded via regex extraction (same pattern as
  * `bootstrap-home-api-key.test.mjs`).
@@ -46,6 +55,7 @@ function loadPureHelpers() {
 		buildBuildsEnvVarsPatchBody: grab('buildBuildsEnvVarsPatchBody'),
 		selectProductionTrigger: grab('selectProductionTrigger'),
 		findWorkerTag: grab('findWorkerTag'),
+		jwtOrganizationId: grab('jwtOrganizationId'),
 	};
 }
 
@@ -221,6 +231,48 @@ describe('infisical-bootstrap-cf.mjs', () => {
 		});
 	});
 
+	describe('jwtOrganizationId', () => {
+		const { jwtOrganizationId } = loadPureHelpers();
+
+		const JWT_HEADER_B64 = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+		const ORG_ID = 'd808df2c-ec67-4046-b733-8c0db0bfa47d';
+		function makeJwt(payload) {
+			const payloadB64 = Buffer.from(JSON.stringify(payload), 'utf8')
+				.toString('base64')
+				.replace(/\+/g, '-')
+				.replace(/\//g, '_')
+				.replace(/=+$/, '');
+			return `${JWT_HEADER_B64}.${payloadB64}.sigdummy`;
+		}
+
+		it('extracts organizationId from a JWT payload', () => {
+			const jwt = makeJwt({ organizationId: ORG_ID });
+			assert.equal(jwtOrganizationId(jwt), ORG_ID);
+		});
+
+		it('extracts organizationId from `infisical user get token` multi-line output', () => {
+			const jwt = makeJwt({ organizationId: ORG_ID });
+			const multiLine = `SessionID:xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx\nToken:${jwt}\nExpiresAt:Thu, 01 Jan 1970 00:00:00 GMT\nTTL:1h0m0s`;
+			assert.equal(jwtOrganizationId(multiLine), ORG_ID);
+		});
+
+		it('returns null for missing organizationId claim', () => {
+			const jwt = makeJwt({ authMethod: 'google' });
+			assert.equal(jwtOrganizationId(jwt), null);
+		});
+
+		it('returns null for empty input', () => {
+			assert.equal(jwtOrganizationId(''), null);
+			assert.equal(jwtOrganizationId(null), null);
+			assert.equal(jwtOrganizationId(undefined), null);
+		});
+
+		it('returns null for malformed JWT (not three base64url segments)', () => {
+			assert.equal(jwtOrganizationId('not.a.jwt.at.all'), null);
+			assert.equal(jwtOrganizationId('onlytwosegments.x'), null);
+		});
+	});
+
 	describe('secret-handling invariant (no client secret leak)', () => {
 		it('the script source never logs clientSecret via console.log', () => {
 			// Defensive: assert no `console.log(...clientSecret...)` style
@@ -267,24 +319,32 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			// either in the generator or in the explicit null-out
 			// cleanup at end of main().
 			const allOccurrences = SOURCE.split('\n').reduce((acc, line, idx) => {
-				if (line.includes('clientSecret') && !line.trim().startsWith('//')) {
-					acc.push({ line: idx + 1, text: line.trim() });
+				const trimmed = line.trim();
+				// Skip // line comments and JSDoc /* … */ block
+				// comment lines. (The script's header docblock uses
+				// `clientSecret` as a field name reference, which is
+				// documentation, not a value leak.)
+				if (
+					line.includes('clientSecret') &&
+					!trimmed.startsWith('//') &&
+					!trimmed.startsWith('*') &&
+					!trimmed.startsWith('/*')
+				) {
+					acc.push({ line: idx + 1, text: trimmed });
 				}
 				return acc;
 			}, []);
 
-			// Acceptable contexts: the body builder, the response
-			// parsing (top-level `clientSecret` field), the variable
+			// Acceptable contexts: the body builder, the variable
 			// assignment in main(), and the explicit null-out cleanup.
 			// Anything else (log, error, write) is a leak.
 			const acceptablePatterns = [
-				/response\?\.clientSecret/, // parse response (top-level)
-				/clientSecret must be a non-empty string/, // legacy error message
-				/return \{ clientId, clientSecret \};/, // generator return (legacy form, may be absent)
+				/clientSecret must be a non-empty string/,
 				/clientSecret: secret/, // function param rename to `secret`
 				/const envVarsBody = buildBuildsEnvVarsPatchBody/, // body builder call
 				/clientSecret = null/, // explicit cleanup
 				/let clientSecret = await generateClientSecret/, // generator assignment in main()
+				/response\?\.clientSecret/, // parse API response top-level
 			];
 
 			for (const { line, text } of allOccurrences) {
@@ -299,10 +359,6 @@ describe('infisical-bootstrap-cf.mjs', () => {
 
 	describe('Cloudflare v4 envelope unwrap (result wrapper)', () => {
 		it('the script unwraps .result for the workers list', () => {
-			// The workers list response is `{ success, errors,
-			// messages, result: [...] }`. Without unwrapping,
-			// findWorkerTag would receive the envelope object and
-			// always return null.
 			assert.match(
 				SOURCE,
 				/findWorkerTag\(workersResponse\?\.result,/,
@@ -319,8 +375,6 @@ describe('infisical-bootstrap-cf.mjs', () => {
 		});
 
 		it('the script unwraps .result for the existing env vars', () => {
-			// existingEnvResponse?.result must be the env-var object
-			// map (keyed by variable name), not the v4 envelope.
 			assert.match(
 				SOURCE,
 				/existingEnvResult\s*=\s*existingEnvResponse\?\.result/,
@@ -337,48 +391,104 @@ describe('infisical-bootstrap-cf.mjs', () => {
 		});
 	});
 
-	describe('Infisical API response shape', () => {
-		it('findIdentity reads from .identities (not the top-level array)', () => {
-			// `GET /api/v1/identities` returns
-			// `{ identities: [...], totalCount }`. Reading the array
-			// directly would yield undefined.
+	describe('self-host v0.165.x API contract', () => {
+		it('universal-auth attach uses /api/v1/auth/universal-auth/identities/{id}', () => {
+			// The self-host does NOT expose
+			// `POST /api/v1/identities/{id}/universal-auth` (404).
+			// The correct endpoint is
+			// `POST /api/v1/auth/universal-auth/identities/{id}`
+			// which returns `{ identityUniversalAuth: { clientId,
+			// ... } }`.
 			assert.match(
 				SOURCE,
-				/Array\.isArray\(response\?\.identities\)/,
-				'script must read list from .identities key (Infisical v1 API contract)',
+				/httpsRequestJson\(\s*'POST',\s*`\$\{base\}\/api\/v1\/auth\/universal-auth\/identities\/\$\{identityId\}`/,
+				'script must POST to /api/v1/auth/universal-auth/identities/{id}',
+			);
+			// Negative: must not POST to the broken endpoint.
+			const brokenUsage = SOURCE.match(
+				/httpsRequestJson\(\s*'POST',\s*`\$\{base\}\/api\/v1\/identities\/\$\{identityId\}\/universal-auth`/,
+			);
+			assert.equal(brokenUsage, null, 'script must not POST to the 404 /identities/{id}/universal-auth');
+		});
+
+		it('reads clientId from the universal-auth response (no separate GET)', () => {
+			// The attach response includes `clientId` in the
+			// `identityUniversalAuth` envelope, so no separate
+			// `getUniversalAuthClientId` call is needed.
+			assert.match(SOURCE, /universalAuth\?\.clientId/, 'must read clientId from attach response');
+			assert.equal(
+				SOURCE.includes('function getUniversalAuthClientId'),
+				false,
+				'script must not define getUniversalAuthClientId (clientId comes from attach response)',
 			);
 		});
 
-		it('generateClientSecret expects top-level clientSecret (no clientId)', () => {
-			// The client-secrets POST returns
-			// `{ clientSecret, clientSecretData }` only — no
-			// `clientId`. clientId is fetched separately from the
-			// Universal Auth endpoint.
-			assert.match(
-				SOURCE,
-				/response\?\.clientSecret/,
-				'generateClientSecret must read top-level clientSecret field',
-			);
-			// And explicitly should not destructure `{ clientId, clientSecret }`
-			// from the response.
+		it('client-secret generation expects top-level clientSecret (no clientId)', () => {
+			assert.match(SOURCE, /response\?\.clientSecret/);
 			const destructuresFromResponse = SOURCE.match(
 				/(?:const|let)\s*\{\s*clientId\s*,\s*clientSecret\s*\}\s*=\s*response/g,
 			);
 			assert.equal(destructuresFromResponse, null);
 		});
 
-		it('the script fetches clientId from the Universal Auth endpoint', () => {
-			// `clientId` lives at
-			// `GET /api/v1/auth/universal-auth/identities/{identityId}`
+		it('documents the missing project-membership endpoint as a warning', () => {
+			// Self-host v0.165.x has no discoverable
+			// project-membership endpoint. The script must log a
+			// warning instead of failing.
+			assert.match(SOURCE, /project-membership/);
 			assert.match(
 				SOURCE,
-				/\/api\/v1\/auth\/universal-auth\/identities\/\$\{identityId\}/,
-				'script must read clientId from the Universal Auth endpoint',
+				/console\.warn\([^)]*project-membership/i,
+				'script must log a warning that project-membership attach is unavailable',
 			);
+		});
+
+		it('does not POST to /api/v1/identities/{id}/project-memberships (404 route)', () => {
+			// The documented endpoint returns 404 on this self-host.
+			// The script must not attempt it.
+			const brokenUsage = SOURCE.match(
+				/httpsRequestJson\(\s*'POST',\s*`\$\{base\}\/api\/v1\/identities\/\$\{identityId\}\/project-memberships`/,
+			);
+			assert.equal(
+				brokenUsage,
+				null,
+				'script must not POST to /api/v1/identities/{id}/project-memberships (returns 404 on self-host)',
+			);
+		});
+
+		it('identity creation POSTs {name, organizationId} (NOT {name} alone)', () => {
+			// The self-host requires `organizationId` in the POST
+			// body (422 without it).
+			assert.match(SOURCE, /name,\s*organizationId\b/, 'createIdentity must include organizationId');
+		});
+	});
+
+	describe('INFISICAL_IDENTITY_ID override (self-host LIST bug workaround)', () => {
+		it('accepts INFISICAL_IDENTITY_ID env var', () => {
 			assert.match(
 				SOURCE,
-				/function getUniversalAuthClientId/,
-				'script must define getUniversalAuthClientId helper',
+				/process\.env\.INFISICAL_IDENTITY_ID/,
+				'script must accept INFISICAL_IDENTITY_ID env override',
+			);
+		});
+
+		it('defines getIdentityById helper for the override path', () => {
+			assert.match(SOURCE, /function getIdentityById/, 'must define getIdentityById helper');
+		});
+
+		it('warns the operator when the override is not provided', () => {
+			assert.match(
+				SOURCE,
+				/console\.warn\([^)]*INFISICAL_IDENTITY_ID not set/,
+				'script must warn operator when INFISICAL_IDENTITY_ID is missing',
+			);
+		});
+
+		it('does not define findIdentity (replaced by getIdentityById)', () => {
+			assert.equal(
+				SOURCE.includes('function findIdentity'),
+				false,
+				'findIdentity has been replaced by getIdentityById (LIST endpoint broken on self-host)',
 			);
 		});
 	});
@@ -391,12 +501,10 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			const revokePatterns = [/method:\s*['"]DELETE['"]/, /revoke/i, /delete.*secret/i];
 			for (const pattern of revokePatterns) {
 				const matches = SOURCE.match(new RegExp(pattern.source, 'gi'));
-				// `// delete or `// delete-secret` style comments are OK;
-				// we only care about actual API method usage or
-				// non-comment revoke references.
+				// `// delete` style comments are OK; we only care
+				// about actual API method usage or non-comment revoke
+				// references.
 				const codeMatches = matches?.filter((m) => {
-					// Find the line containing the match and check
-					// it's not a comment.
 					const lines = SOURCE.split('\n');
 					for (const line of lines) {
 						if (line.includes(m)) {

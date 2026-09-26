@@ -18,6 +18,18 @@
  * Operator post-#67 work imports current Worker plaintext via
  * `infisical secrets set` manually, outside the agent flow.
  *
+ * Self-host v0.165.x E2EE contract:
+ *   - `GET /api/v3/secrets/raw?viewSecretValue=false` works via
+ *     HTTPS — values are masked on the server side, so no client-
+ *     side decryption is needed for a presence check.
+ *   - `POST /api/v3/secrets/raw` requires E2EE ciphertext blobs
+ *     (`secretKeyCiphertext`, `secretKeyIV`, `secretKeyTag`,
+ *     `secretValueCiphertext`, `secretValueIV`, `secretValueTag`)
+ *     computed from the project key. Computing these correctly
+ *     requires duplicating the CLI's crypto. To avoid that
+ *     surface, the script uses the CLI subprocess for inserts:
+ *     `infisical secrets set KEY=value --path=/`.
+ *
  * Idempotency: re-running for an env that already has all 3 secrets
  * is a no-op (does NOT overwrite — preserves any operator-applied
  * tuning). Re-running for a partially-seeded env fills in the
@@ -25,16 +37,17 @@
  *
  * Invariants:
  *   - argv / log / error message never carries a secret value.
- *   - The 3 dev values are random; they are passed to the API as
- *     request body fields and never echoed to stdout.
+ *   - The 3 dev values are random; they are passed to the CLI as
+ *     argv and never echoed to stdout.
  *   - `MY_WEB_2026_CONSUMER_API_KEY` in dev is intentionally
  *     random — no production D1 `apikey` row depends on this value.
  *
  * Usage:
  *   INFISICAL_TOKEN=... node scripts/infisical-seed.mjs [--env=dev]
  */
+import { spawnSync } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
-import { request as httpsRequest } from 'node:https';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -49,7 +62,9 @@ const DEV_SECRET_NAMES = [
 	'MY_WEB_2026_CONSUMER_API_KEY',
 ];
 const HTTPS_TIMEOUT_MS = 10_000;
-const HTTPS_MAX_RESPONSE_BYTES = 64 * 1024;
+const HTTPS_MAX_RESPONSE_BYTES = 256 * 1024;
+const SPAWN_TIMEOUT_MS = 30_000;
+const SPAWN_MAX_OUTPUT_BYTES = 64 * 1024;
 
 function parseArgs(argv) {
 	// Help text is inlined (rather than calling a separate printHelp())
@@ -70,8 +85,8 @@ Reads:
   INFISICAL_API_URL           base URL (default: https://secrets.rebuildup.dev)
 
 Side effects:
-  - GET /api/v3/secrets/raw (existence check, viewSecretValue=false)
-  - POST /api/v3/secrets/raw (insert missing secrets only)
+  - GET /api/v3/secrets/raw?viewSecretValue=false (existence check)
+  - infisical secrets set KEY=value --path=/  (insert missing secrets)
   - NO OVERWRITE of existing secrets (idempotent)
 
   -h, --help                 show this help`;
@@ -118,9 +133,7 @@ Side effects:
  *
  * The random-generation helper is inlined (rather than calling
  * a separate `randomHex32` top-level function) so this function
- * stays self-contained for regex-extraction by the test harness
- * (mirrors the pattern in
- * `bootstrap-home-api-key.test.mjs#loadPureHelpers`).
+ * stays self-contained for regex-extraction by the test harness.
  */
 function buildDevSecretValues() {
 	const bytes1 = new Uint8Array(32);
@@ -236,7 +249,8 @@ function httpsRequestJson(method, urlString, { token, body } = {}) {
 
 /**
  * List existing secrets in an environment with viewSecretValue=false
- * (key names only). Returns the raw response array.
+ * (key names only — values are hidden server-side, no client
+ * decryption needed). Returns the raw response object.
  */
 async function listSecrets({ apiUrl, token, workspaceId, environment }) {
 	const base = apiUrl.replace(/\/+$/, '');
@@ -250,34 +264,90 @@ async function listSecrets({ apiUrl, token, workspaceId, environment }) {
 
 /**
  * Extract the set of existing secret keys from a list response.
+ *
+ * The self-host v0.165.x wraps the array in `{secrets: [...]}` —
+ * the wrapper is preserved as-is for forward compatibility, so
+ * callers can read additional metadata if needed (e.g.
+ * `secretValueHidden`).
+ *
  * Pure helper — exposed for tests.
  */
 function extractExistingKeys(listResponse) {
-	if (!Array.isArray(listResponse)) return new Set();
+	if (!listResponse || typeof listResponse !== 'object') return new Set();
+	const arr = Array.isArray(listResponse.secrets) ? listResponse.secrets : null;
+	if (arr === null) {
+		// Backwards compat: the original plan assumed the endpoint
+		// returned a raw array. Tolerate that shape (with a warning
+		// emitted by the caller if needed).
+		if (Array.isArray(listResponse)) {
+			return new Set(
+				listResponse
+					.map((entry) =>
+						entry && typeof entry.secretKey === 'string' ? entry.secretKey : null,
+					)
+					.filter((key) => key !== null),
+			);
+		}
+		return new Set();
+	}
 	return new Set(
-		listResponse
+		arr
 			.map((entry) => (entry && typeof entry.secretKey === 'string' ? entry.secretKey : null))
 			.filter((key) => key !== null),
 	);
 }
 
 /**
- * Insert a single secret via V3 raw endpoint. Returns true on
- * success.
+ * Insert a single secret via the Infisical CLI subprocess. The CLI
+ * handles E2EE ciphertext computation internally, so this avoids
+ * re-implementing the encryption protocol on the agent side.
+ *
+ * Spawns with `shell: false` for Windows portability.
+ *
+ * Returns true on success.
  */
-async function insertSecret({ apiUrl, token, workspaceId, environment, secretKey, secretValue }) {
-	const base = apiUrl.replace(/\/+$/, '');
-	await httpsRequestJson('POST', `${base}/api/v3/secrets/raw`, {
-		token,
-		body: {
+function insertSecretViaCli({ infisicalCli, secretKey, secretValue, workspaceId, environment }) {
+	const result = spawnSync(
+		infisicalCli,
+		[
+			'secrets',
+			'set',
+			'--silent',
+			'--domain',
+			process.env.INFISICAL_API_URL ?? INFISICAL_API_URL_DEFAULT,
+			'--projectId',
 			workspaceId,
+			'--env',
 			environment,
-			secretKey,
-			secretValue,
-			secretPath: '/',
-			type: 'shared',
+			'--path',
+			'/',
+			`${secretKey}=${secretValue}`,
+		],
+		{
+			shell: false,
+			encoding: 'utf8',
+			timeout: SPAWN_TIMEOUT_MS,
+			maxBuffer: SPAWN_MAX_OUTPUT_BYTES,
+			stdio: ['ignore', 'pipe', 'pipe'],
+			env: { ...process.env, INFISICAL_TOKEN: process.env.INFISICAL_TOKEN ?? '' },
 		},
-	});
+	);
+	if (result.error) {
+		throw new Error(`infisical secrets set failed to spawn: ${result.error.message}`);
+	}
+	if (result.signal) {
+		throw new Error(`infisical secrets set terminated by signal ${result.signal}`);
+	}
+	// The CLI prints a table with the secret value masked
+	// (`******`) on success but does include the secret name in
+	// stdout. The stdout is captured in `result.stdout` for the
+	// caller's logging, but the value column is masked.
+	if (result.status !== 0) {
+		// Don't include stdout / stderr contents — they may carry
+		// diagnostic text. Operator can re-run with --log-level=trace
+		// if needed.
+		throw new Error(`infisical secrets set exited with status ${result.status}`);
+	}
 	return true;
 }
 
@@ -299,6 +369,23 @@ async function main() {
 	const values = buildDevSecretValues();
 	const summary = { inserted: [], skipped: [] };
 
+	// Resolve the devDep-pinned CLI via Node module resolution
+	// (mirrors the pattern in `infisical-verify.mjs`).
+	const require = createRequire(import.meta.url);
+	const infisicalPkgPath = require.resolve('@infisical/cli/package.json');
+	const infisicalPkgDir = dirname(infisicalPkgPath);
+	const pkgBinField = JSON.parse(readFileSync(infisicalPkgPath, 'utf8')).bin;
+	const binRel =
+		typeof pkgBinField === 'string'
+			? pkgBinField
+			: pkgBinField && typeof pkgBinField.infisical === 'string'
+				? pkgBinField.infisical
+				: null;
+	if (binRel === null) {
+		throw new Error('@infisical/cli/package.json#bin must declare an `infisical` entry');
+	}
+	const infisicalCli = resolve(infisicalPkgDir, binRel);
+
 	for (const secretKey of DEV_SECRET_NAMES) {
 		if (existingKeys.has(secretKey)) {
 			summary.skipped.push(secretKey);
@@ -308,13 +395,12 @@ async function main() {
 		if (typeof secretValue !== 'string' || secretValue.length === 0) {
 			throw new Error(`internal: missing value for ${secretKey}`);
 		}
-		await insertSecret({
-			apiUrl,
-			token,
-			workspaceId,
-			environment,
+		insertSecretViaCli({
+			infisicalCli,
 			secretKey,
 			secretValue,
+			workspaceId,
+			environment,
 		});
 		summary.inserted.push(secretKey);
 	}

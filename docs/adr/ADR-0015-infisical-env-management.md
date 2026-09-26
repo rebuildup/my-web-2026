@@ -177,10 +177,22 @@ Infisical 変更だけで rotate しない。**既存 enabled row の確認 → 
 field) と整合。Migration 0006 の `UNIQUE INDEX uq_apikey_key` により、SHA-256
 hash 衝突時は `INSERT OR IGNORE` 相当で re-run しても安全。
 
-**F. `scripts/rotate-home-api-key.mjs` (Phase 2 新規)**: step 0-5 を 1 つの
+**F. `scripts/rotate-home-api-key.mjs` (Phase 3+ follow-up に defer)**: step 0-5 を 1 つの
 script にまとめ、`oldKeyId` query → bootstrap → operator smoke 確認 →
 disable を atomic に近い形で実行する。手動実行時のミスを減らす。`--dry-run`
 で新 key 作成 / smoke 確認 / 旧 disable の plan だけ出力できる。
+
+**Defer rationale (Phase 2 review blocker 5)**: Phase 2 で実装範囲を
+`bootstrap-home-api-key.mjs` の idempotent rerun (operator review focus) と
+drift detection 強化に絞り、`rotate-home-api-key.mjs` は Phase 3+ 着手時に
+別 ticket で実装する。Phase 2 で `bootstrap-home-api-key.mjs` を
+`INSERT ... WHERE NOT EXISTS` で idempotent 化した (migration 0006 の
+`UNIQUE INDEX uq_apikey_key` との二重防壁) ため、rerun / concurrent は
+安全 — **ただし rotation (旧 key revoke + 新 key 作成) は引き続き手動
+runbook** で運用する。手動 runbook の step 5 (`UPDATE apikey SET
+enabled = 0 WHERE id = <oldKeyId>`) を script 化することが
+`rotate-home-api-key.mjs` の Phase 3+ での最小実装。Follow-up Issue
+参照。
 
 ### 7. drift 検出
 
@@ -326,9 +338,10 @@ operator の password manager / 紙 backup / 別 system 等から既存 plaintex
    UPDATE apikey SET enabled = 0 WHERE id = <oldKeyId>
 ```
 
-`§F scripts/rotate-home-api-key.mjs` (Phase 2 新規) で上記 step 0-5 を 1 つ
-の script にまとめると手動運用時のミスが減る。Migration 0006 の UNIQUE INDEX
-uq_apikey_key が SHA-256 hash 衝突時の re-run / concurrent を安全にする
+`§F scripts/rotate-home-api-key.mjs` (Phase 3+ follow-up に defer) で上記
+step 0-5 を 1 つの script にまとめると手動運用時のミスが減る。Migration
+0006 の UNIQUE INDEX uq_apikey_key が SHA-256 hash 衝突時の re-run /
+concurrent を安全にする
 (`INSERT OR IGNORE` 相当)。
 
 #### `BETTER_AUTH_SECRET`

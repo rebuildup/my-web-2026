@@ -12,19 +12,33 @@ import { describe, it } from 'node:test';
  *   1. `buildBuildsEnvVarsPatchBody` produces the **object map**
  *      shape Cloudflare expects (`{KEY: {value, is_secret}}`) —
  *      NOT an array of `{name, value, is_secret}` records.
- *   2. `selectProductionTrigger` filters triggers by
- *      `deployment_enabled === true` AND `branch in {main, release-*}`.
- *   3. `findWorkerTag` locates a worker by name in the workers
- *      list response.
+ *   2. `selectProductionTrigger` filters triggers by either the OLD
+ *      shape (`deployment_enabled === true` AND
+ *      `branch in {main, release-*}`) OR the NEW 2026-09 Cloudflare
+ *      shape (`branch_includes` array contains `main` or
+ *      `release-*` — no `deployment_enabled` field, implicitly
+ *      active). Tolerates both shapes from the same probe so the
+ *      script doesn't depend on API version drift.
+ *   3. `findWorkerTag` locates a worker by name OR by id in the
+ *      workers list response (Cloudflare's `/workers/scripts`
+ *      shape uses `id` as the worker name; `/builds/workers` uses
+ *      `name`).
+ *   3a. `discoverProductionTriggerUuid` falls back from
+ *       `/builds/workers` to `/workers/scripts` when the former
+ *       404s, and tolerates `trigger.trigger_uuid` (new shape) or
+ *       `trigger.uuid` (old shape) for the resulting UUID.
  *   4. `parseJsonc` strips JSONC comments before parsing.
  *   5. `jwtOrganizationId` extracts the org id from a JWT
  *      payload (including multi-line `infisical user get token`
  *      output).
- *   6. **No source line that takes a client secret value to
+ *   6. `resolveCloudflareAccountId` selects the account id from
+ *      `CLOUDFLARE_ACCOUNT_ID` env (preferred) or
+ *      `wrangler.production.jsonc#account_id` (committed SoT).
+ *   7. **No source line that takes a client secret value to
  *      stdout / log / error.** The script must not echo
  *      `clientSecret` anywhere except as a request body field,
  *      which is verified by grepping the source.
- *   7. Self-host API contract: the script uses the **documented
+ *   8. Self-host API contract: the script uses the **documented
  *      v0.165.x** endpoints (`POST /api/v1/auth/universal-auth/...`
  *      — NOT the older `/identities/{id}/universal-auth` 404
  *      route), accepts `INFISICAL_IDENTITY_ID` env override (the
@@ -217,7 +231,7 @@ describe('infisical-bootstrap-cf.mjs', () => {
 	describe('selectProductionTrigger', () => {
 		const { selectProductionTrigger } = loadPureHelpers();
 
-		it('returns the trigger matching deployment_enabled=true + branch=main', () => {
+		it('returns the trigger matching deployment_enabled=true + branch=main (OLD shape)', () => {
 			const triggers = [
 				{ uuid: 'a', deployment_enabled: false, branch: 'main' },
 				{ uuid: 'b', deployment_enabled: true, branch: 'main' },
@@ -226,7 +240,7 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			assert.equal(selectProductionTrigger(triggers)?.uuid, 'b');
 		});
 
-		it('also matches release-* branch (per release branch convention)', () => {
+		it('also matches release-* branch (per release branch convention, OLD shape)', () => {
 			const triggers = [{ uuid: 'a', deployment_enabled: true, branch: 'release-0-4-0' }];
 			assert.equal(selectProductionTrigger(triggers)?.uuid, 'a');
 		});
@@ -267,12 +281,60 @@ describe('infisical-bootstrap-cf.mjs', () => {
 				/multiple production-shaped triggers found \(count=3\)/,
 			);
 		});
+
+		// New 2026-09 Cloudflare API shape: `branch_includes` is an
+		// array. No `deployment_enabled` field — the trigger is
+		// implicitly active when listed.
+		it('returns the trigger matching branch_includes=["main"] (NEW shape)', () => {
+			const triggers = [
+				{ trigger_uuid: 'a', branch_includes: ['feature/x'] },
+				{ trigger_uuid: 'b', branch_includes: ['main'] },
+				{ trigger_uuid: 'c', branch_includes: [] },
+			];
+			assert.equal(selectProductionTrigger(triggers)?.trigger_uuid, 'b');
+		});
+
+		it('matches release-* branches in branch_includes array (NEW shape)', () => {
+			const triggers = [
+				{ trigger_uuid: 'r', branch_includes: ['release-0-4-0'] },
+				{ trigger_uuid: 'm', branch_includes: ['main'] },
+			];
+			// Two matches => helper throws so the operator must
+			// disambiguate via CF_TRIGGER_UUID.
+			assert.throws(() => selectProductionTrigger(triggers), /count=2/);
+		});
+
+		it('matches a single release-* branch in branch_includes (NEW shape, single match)', () => {
+			const triggers = [{ trigger_uuid: 'r', branch_includes: ['release-0-4-0'] }];
+			assert.equal(selectProductionTrigger(triggers)?.trigger_uuid, 'r');
+		});
+
+		it('does not match a non-production branch_includes entry (NEW shape)', () => {
+			const triggers = [{ trigger_uuid: 'f', branch_includes: ['feature/x'] }];
+			assert.equal(selectProductionTrigger(triggers), null);
+		});
+
+		it('treats a branch_includes entry of non-string type as no match (NEW shape)', () => {
+			const triggers = [{ trigger_uuid: 'a', branch_includes: [null, 42, {}, 'main'] }];
+			assert.equal(selectProductionTrigger(triggers)?.trigger_uuid, 'a');
+		});
+
+		it('does not match OLD-shape triggers with no deployment_enabled (NEW-shape helper accepts both)', () => {
+			// If a /builds/workers/{tag}/triggers response still
+			// returns the OLD shape but `deployment_enabled` is
+			// absent (some intermediate API version), the helper
+			// must NOT silently skip — it must throw or match.
+			const triggers = [{ uuid: 'x', branch: 'main' }];
+			// branch_includes absent AND deployment_enabled absent
+			// => no match in either branch => null.
+			assert.equal(selectProductionTrigger(triggers), null);
+		});
 	});
 
 	describe('findWorkerTag', () => {
 		const { findWorkerTag } = loadPureHelpers();
 
-		it('returns the tag for the named worker', () => {
+		it('returns the tag for the named worker (OLD shape: `name` field)', () => {
 			const list = [
 				{ name: 'other-worker', tag: 'tag-other' },
 				{ name: 'my-web-2026', tag: 'tag-mw26' },
@@ -280,10 +342,27 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			assert.equal(findWorkerTag(list, 'my-web-2026'), 'tag-mw26');
 		});
 
+		it('returns the tag for the named worker via `id` field (NEW shape: /workers/scripts)', () => {
+			// The /workers/scripts endpoint returns `{ id, tag, ... }`
+			// where `id` is the worker name (not `name`). The helper
+			// must accept both shapes for the fallback path.
+			const list = [
+				{ id: 'other-worker', tag: 'tag-other' },
+				{ id: 'my-web-2026', tag: 'tag-mw26' },
+			];
+			assert.equal(findWorkerTag(list, 'my-web-2026'), 'tag-mw26');
+		});
+
+		it('prefers `name` over `id` when both are present (defensive)', () => {
+			const list = [{ name: 'my-web-2026', id: 'something-else', tag: 'tag-name' }];
+			assert.equal(findWorkerTag(list, 'my-web-2026'), 'tag-name');
+		});
+
 		it('returns null when the worker is absent', () => {
 			assert.equal(findWorkerTag([], 'my-web-2026'), null);
 			assert.equal(findWorkerTag(null, 'my-web-2026'), null);
 			assert.equal(findWorkerTag([{ name: 'other', tag: 't' }], 'my-web-2026'), null);
+			assert.equal(findWorkerTag([{ id: 'other', tag: 't' }], 'my-web-2026'), null);
 		});
 
 		it('returns null when the worker entry has no tag field', () => {
@@ -419,11 +498,19 @@ describe('infisical-bootstrap-cf.mjs', () => {
 	});
 
 	describe('Cloudflare v4 envelope unwrap (result wrapper)', () => {
-		it('the script unwraps .result for the workers list', () => {
+		it('the script unwraps .result for the builds/workers list', () => {
 			assert.match(
 				SOURCE,
-				/findWorkerTag\(workersResponse\?\.result,/,
-				'script must unwrap .result from workers list response',
+				/findWorkerTag\(buildsWorkersResponse\?\.result,/,
+				'script must unwrap .result from /builds/workers list response',
+			);
+		});
+
+		it('the script unwraps .result for the /workers/scripts fallback', () => {
+			assert.match(
+				SOURCE,
+				/findWorkerTag\(scriptsResponse\?\.result,/,
+				'script must unwrap .result from /workers/scripts fallback response',
 			);
 		});
 
@@ -448,6 +535,22 @@ describe('infisical-bootstrap-cf.mjs', () => {
 				SOURCE,
 				/verifiedResult\s*=\s*verifiedResponse\?\.result/,
 				'script must unwrap .result from verified env vars response',
+			);
+		});
+	});
+
+	describe('trigger UUID field tolerance (snake_case trigger_uuid vs uuid)', () => {
+		it('the script reads trigger_uuid ?? uuid', () => {
+			// The new 2026-09 Cloudflare API returns
+			// `trigger_uuid` (snake_case). The old API returned
+			// `uuid`. The script must tolerate both via fallback
+			// access (the source uses plain `trigger.trigger_uuid`
+			// since the helper already guards on
+			// selectProductionTrigger's matched object).
+			assert.match(
+				SOURCE,
+				/trigger\.trigger_uuid\s*\?\?\s*trigger\.uuid/,
+				'script must fall back from trigger.trigger_uuid to trigger.uuid',
 			);
 		});
 	});

@@ -327,9 +327,19 @@ function buildBuildsEnvVarsPatchBody({ clientId, clientSecret: secret }) {
 /**
  * Filter a triggers list response to the production-shaped trigger.
  *
+ * Tolerates BOTH shapes:
+ *   - Old: `{ deployment_enabled, branch }` where `branch` is a
+ *     string. The old `/builds/workers/{tag}/triggers` shape.
+ *   - New (2026-09 Cloudflare API): `{ branch_includes, ... }` where
+ *     `branch_includes` is an array of strings. The current shape
+ *     has no `deployment_enabled` field — the trigger is implicitly
+ *     active when listed.
+ *
+ * A trigger is "production-shaped" iff it targets `main` OR a
+ * branch starting with `release-`.
+ *
  * Returns:
- *   - `null` when no production-shaped trigger exists (no
- *     `deployment_enabled=true` with `branch in {main, release-*}`).
+ *   - `null` when no production-shaped trigger exists.
  *   - the single matching trigger when exactly one candidate exists.
  *   - **throws** when multiple production-shaped triggers exist.
  *     Selection by array order is unsafe (Cloudflare returns the
@@ -339,12 +349,25 @@ function buildBuildsEnvVarsPatchBody({ clientId, clientSecret: secret }) {
  */
 function selectProductionTrigger(triggers) {
 	if (!Array.isArray(triggers)) return null;
-	const matches = triggers.filter(
-		(trigger) =>
+	const matches = triggers.filter((trigger) => {
+		// Old shape: deployment_enabled === true AND branch is main/release-*
+		if (
 			trigger?.deployment_enabled === true &&
 			(trigger?.branch === 'main' ||
-				(typeof trigger?.branch === 'string' && trigger.branch.startsWith('release-'))),
-	);
+				(typeof trigger?.branch === 'string' && trigger.branch.startsWith('release-')))
+		) {
+			return true;
+		}
+		// New shape: branch_includes (array) contains 'main' or any
+		// branch starting with 'release-'. Implicitly active (no
+		// deployment_enabled field).
+		if (Array.isArray(trigger?.branch_includes)) {
+			return trigger.branch_includes.some(
+				(b) => b === 'main' || (typeof b === 'string' && b.startsWith('release-')),
+			);
+		}
+		return false;
+	});
 	if (matches.length === 0) return null;
 	if (matches.length > 1) {
 		throw new Error(
@@ -356,11 +379,17 @@ function selectProductionTrigger(triggers) {
 
 /**
  * Discover the Worker tag for `name` from a worker list response.
+ *
+ * Tolerates BOTH shapes:
+ *   - Cloudflare Builds API `/builds/workers`: `{ name, tag, ... }`
+ *   - Workers Scripts API `/workers/scripts`: `{ id, tag, ... }`
+ *     (the Worker name lives in `id`, not `name`)
+ *
  * Returns the tag string or null. Pure helper — exposed for tests.
  */
 function findWorkerTag(workersList, workerName) {
 	if (!Array.isArray(workersList)) return null;
-	const found = workersList.find((w) => w?.name === workerName);
+	const found = workersList.find((w) => w?.name === workerName || w?.id === workerName);
 	return found?.tag ?? null;
 }
 
@@ -372,6 +401,21 @@ function listCloudflareWorkersBuildsWorkers({ accountId, token }) {
 	return httpsRequestJson(
 		'GET',
 		`https://api.cloudflare.com/client/v4/accounts/${accountId}/builds/workers`,
+		{ token },
+	);
+}
+
+/**
+ * List Workers Scripts. Cloudflare's `/workers/scripts` endpoint is
+ * the canonical way to discover Worker tags — it works regardless
+ * of whether the Worker has a Builds trigger attached. Used as a
+ * fallback when `/builds/workers` returns 404 (which happens when
+ * the account has no Builds workers in the list response).
+ */
+function listCloudflareWorkersScripts({ accountId, token }) {
+	return httpsRequestJson(
+		'GET',
+		`https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts`,
 		{ token },
 	);
 }
@@ -501,18 +545,34 @@ async function discoverProductionTriggerUuid({ accountId, cloudflareToken, worke
 	if (typeof process.env.CF_TRIGGER_UUID === 'string' && process.env.CF_TRIGGER_UUID.length > 0) {
 		return { triggerUuid: process.env.CF_TRIGGER_UUID, source: 'env override' };
 	}
-	const workersResponse = await listCloudflareWorkersBuildsWorkers({
+
+	// Step 1: discover the Worker tag. Try `/builds/workers` first
+	// (the canonical Builds-API surface), fall back to `/workers/scripts`
+	// (the universal Workers surface) — `/builds/workers` may 404
+	// when the account's Builds list endpoint is empty / not exposed.
+	let tag = null;
+	let tagSource = null;
+	const buildsWorkersResponse = await listCloudflareWorkersBuildsWorkers({
 		accountId,
 		token: cloudflareToken,
 	});
-	// Cloudflare API v4 envelope: `{ success, errors, messages, result }`.
-	// Unwrap `.result` before passing to the pure helpers.
-	const tag = findWorkerTag(workersResponse?.result, workerName);
+	tag = findWorkerTag(buildsWorkersResponse?.result, workerName);
+	tagSource = 'GET /builds/workers';
+	if (tag === null) {
+		const scriptsResponse = await listCloudflareWorkersScripts({
+			accountId,
+			token: cloudflareToken,
+		});
+		tag = findWorkerTag(scriptsResponse?.result, workerName);
+		tagSource = 'GET /workers/scripts (fallback)';
+	}
 	if (tag === null) {
 		throw new Error(
-			`Worker '${workerName}' not found in Cloudflare Builds workers list. Set CF_TRIGGER_UUID explicitly to bypass discovery.`,
+			`Worker '${workerName}' not found in either /builds/workers or /workers/scripts. Set CF_TRIGGER_UUID explicitly to bypass discovery.`,
 		);
 	}
+
+	// Step 2: list triggers for that Worker tag.
 	const triggersResponse = await listCloudflareBuildsTriggers({
 		accountId,
 		token: cloudflareToken,
@@ -521,10 +581,16 @@ async function discoverProductionTriggerUuid({ accountId, cloudflareToken, worke
 	const trigger = selectProductionTrigger(triggersResponse?.result);
 	if (!trigger) {
 		throw new Error(
-			`No production-shaped trigger (deployment_enabled=true, branch in {main, release-*}) found for Worker '${workerName}'. Set CF_TRIGGER_UUID explicitly.`,
+			`No production-shaped trigger (branch_includes contains 'main' or 'release-*') found for Worker '${workerName}'. Set CF_TRIGGER_UUID explicitly.`,
 		);
 	}
-	return { triggerUuid: trigger.uuid, source: `tag=${tag}` };
+	// Tolerate both shapes: new API returns `trigger_uuid` (snake_case);
+	// old API returned `uuid`.
+	const triggerUuid = trigger.trigger_uuid ?? trigger.uuid;
+	if (typeof triggerUuid !== 'string' || triggerUuid.length === 0) {
+		throw new Error('production trigger has no uuid / trigger_uuid field');
+	}
+	return { triggerUuid, source: `tag=${tag} via ${tagSource}` };
 }
 
 async function main() {

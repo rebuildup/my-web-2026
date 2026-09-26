@@ -32,8 +32,6 @@ import { execFileSync } from 'node:child_process';
  * that no public slug matches an invisible slug on a clean DB.
  */
 
-const CANONICAL_ORIGIN = 'http://127.0.0.1:3000';
-
 /** Run a SQL statement against the local D1 binding via wrangler. */
 function d1Local(sql: string): void {
 	execFileSync('pnpm', ['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--command', sql], {
@@ -45,7 +43,10 @@ function d1Local(sql: string): void {
  * Build a visibility-row INSERT against the local D1. The SQL
  * is kept as a plain string + interpolation to avoid Biome's
  * template-literal parser choking on the SQL identifier /
- * literal mix.
+ * literal mix. `INSERT OR IGNORE` makes the visibility seed
+ * idempotent across CI runs that may have left rows behind
+ * (a previous run that crashed before `afterAll` ran, for
+ * example).
  */
 function visibilityInsert(
 	id: string,
@@ -59,7 +60,7 @@ function visibilityInsert(
 	const cols =
 		'id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at';
 	const values = `'${id}', '${slug}', '${title}', 'Seeded by e2e/portfolio.spec.ts', 'Solo developer', ${now}, NULL, '2026', '', '["develop"]', '["TypeScript"]', '${visibility}', '${status}', 0, ${displayOrder}, ${now}, ${now}`;
-	return `INSERT INTO portfolio_project (${cols}) VALUES (${values})`;
+	return `INSERT OR IGNORE INTO portfolio_project (${cols}) VALUES (${values})`;
 }
 
 test.describe('portfolio — list (/portfolio)', () => {
@@ -164,8 +165,11 @@ test.describe('portfolio — detail (/portfolio/$slug)', () => {
 
 	test('emits canonical / OGP / Twitter metadata derived from the loader', async ({ page }) => {
 		await page.goto('/portfolio/my-web-2026');
+		// `canonical` always points at the production origin
+		// (`https://rebuildup.dev/...`) — the localhost dev URL is
+		// not the canonical surface. Issue #43 / ADR-0014.
 		const canonical = page.locator('link[rel="canonical"]');
-		await expect(canonical).toHaveAttribute('href', `${CANONICAL_ORIGIN}/portfolio/my-web-2026`);
+		await expect(canonical).toHaveAttribute('href', 'https://rebuildup.dev/portfolio/my-web-2026');
 		await expect(page.locator('meta[property="og:type"]')).toHaveAttribute('content', 'article');
 		await expect(page.locator('meta[property="og:title"]')).toHaveAttribute(
 			'content',

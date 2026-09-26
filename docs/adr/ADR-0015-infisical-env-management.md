@@ -64,7 +64,7 @@ Workers Builds の CI 経路で Universal Auth を使う。短命 access token �
 
 ```text
 1. .infisical.json から workspaceId を読む
-2. POST ${INFISICAL_API_URL}/api/v1/auth/universal-auth
+2. POST ${INFISICAL_API_URL}/api/v1/auth/universal-auth/login
    body: { clientId: process.env.INFISICAL_CLIENT_ID,
            clientSecret: process.env.INFISICAL_CLIENT_SECRET }
    headers: Content-Type: application/json
@@ -89,7 +89,7 @@ deploy-with-secrets.mjs
 ├─ .infisical.json から workspaceId を読む
 ├─ INFISICAL_API_URL は committed constant (default https://secrets.rebuildup.dev)
 │   env var override 可 (staging / dev 用)
-├─ HTTPS POST ${INFISICAL_API_URL}/api/v1/auth/universal-auth
+├─ HTTPS POST ${INFISICAL_API_URL}/api/v1/auth/universal-auth/login
 │   body: { clientId: INFISICAL_CLIENT_ID, clientSecret: INFISICAL_CLIENT_SECRET }
 │   → response.accessToken を取得 (argv / log に出さない)
 ├─ INFISICAL_TOKEN=<accessToken> を親 process.env に export (Infisical 公式 env var)
@@ -267,21 +267,32 @@ operator の password manager / 紙 backup / 別 system 等から既存 plaintex
 
 #### `MY_WEB_2026_CONSUMER_API_KEY`
 
-既存 bootstrap 経路で再発行する:
+**§6 rotation runbook をそのまま適用する**。bootstrap が新 id しか返さない
+ため、bootstrap 前に既存 enabled row を query して `oldKeyId` を確定する手順
+が必須:
 
 ```
+0. 既存 enabled row の確認 (§6 step 0 と同じ):
+   `home-self-consumption` name で `enabled=1` の apikey 行を query。
+   - 0 件: 初回作成。step 1 へ (oldKeyId 不要、step 5 も不要)
+   - 1 件: oldKeyId を取得。step 1 へ
+   - 2 件以上: 自動 rotation を停止。operator gate で原因確認後に再開
 1. pnpm run bootstrap:home-api-key --target=remote
    → 新 plaintext を 1 回だけ出力。同時に machine-readable JSON 1 行も
-     出力される (§E 拡張)。D1 apikey に SHA-256 hash 行が追加される。
-     Migration 0006 の UNIQUE INDEX uq_apikey_key が re-run / concurrent を
-     安全にする。
+     出力される (§E 拡張)。新 plaintext の id は newKeyId として step 5
+     には使わない (step 0 で取得した oldKeyId を使う)
 2. 新 plaintext を Infisical prod env の MY_WEB_2026_CONSUMER_API_KEY に登録
 3. pnpm run deploy:production:prepared
    → scripts/deploy-with-secrets.mjs が新 key を Cloudflare Worker に反映
 4. production smoke で新 key での reactions / access_counter の write を確認
-5. 旧 row revoke: §E の machine-readable `id` を特定し、
-   D1 apikey.enabled = 0 に update
+5. 旧 row revoke: step 0 で取得した oldKeyId を D1 で
+   UPDATE apikey SET enabled = 0 WHERE id = <oldKeyId>
 ```
+
+`§F scripts/rotate-home-api-key.mjs` (Phase 2 新規) で上記 step 0-5 を 1 つ
+の script にまとめると手動運用時のミスが減る。Migration 0006 の UNIQUE INDEX
+uq_apikey_key が SHA-256 hash 衝突時の re-run / concurrent を安全にする
+(`INSERT OR IGNORE` 相当)。
 
 #### `BETTER_AUTH_SECRET`
 
@@ -345,5 +356,5 @@ versioned form に移行する:
 - eccd31e — fix(deploy): move production delivery to Cloudflare Builds
 - `docs/runbook/cloudflare-workers-builds.md` (new in Phase 5)
 - `docs/runbook/consumer-api-key-rotation.md` (new in Phase 5)
-- `.infisical.json` (new in Phase 1, **committed** — holds only `workspaceId` project pointer; no secrets. `scripts/deploy-with-secrets.mjs` reads `workspaceId` from it as SoT. `.gitignore` does NOT add `.infisical.json`. Schema: `{ "workspaceId": "<uuid>", "defaultEnvironment"?: "dev" | "prod" }`. `INFISICAL_API_URL` は operator の shell rc に恒久設定する前提で、このファイルには含めない)
+- `.infisical.json` (new in Phase 1, **committed** — holds only `workspaceId` project pointer; no secrets. `scripts/deploy-with-secrets.mjs` reads `workspaceId` from it as SoT. `.gitignore` does NOT add `.infisical.json`. Schema: `{ "workspaceId": "<uuid>", "defaultEnvironment"?: "dev" | "prod" }`. `INFISICAL_API_URL` は `scripts/deploy-with-secrets.mjs` 内の committed constant (`https://secrets.rebuildup.dev` を default とする) + env var override の二段構えで提供される。operator shell rc に依存しない — Workers Builds ephemeral container には shell rc が存在しないため)
 - `scripts/deploy-with-secrets.mjs` (new in Phase 2)

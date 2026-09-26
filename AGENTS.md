@@ -73,11 +73,14 @@ Current dependency direction:
 
 ```text
 routes -> home
+routes -> portfolio
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
 admin/emoji-catalog -> reactions
 reactions -> cloudflare (env.DB at SSR time)
+portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
+portfolio -> editorial
 server -> http
 home -> editorial
 ```
@@ -97,10 +100,19 @@ home -> editorial
   `home → http` direction `import type`-only, so schemas under
   `src/http/access-counter/schema.ts` are the allowed place for
   home to read counter result shapes.
+- `src/portfolio/**` (Issue #76, target 0.5.0) owns the
+  employment-facing Portfolio data model, publication contract,
+  and R2 media composition. The D1 / R2 access uses a DI seam
+  (`createD1PortfolioLoader(env)`) and a `PortfolioLoader`
+  interface so routes / UI can be unit-tested with a fake
+  implementation and so the on-disk shape can evolve without
+  leaking through every consumer — see the home reactions
+  loader for the same pattern. The portfolio obligation is a
+  peer to `home/`; neither imports from the other.
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - Internal UI operations use TanStack Start server functions at the obligation
-  that composes them (currently `src/home/{status,reactions,access}/load.ts`
-  and `src/admin/**/load.ts`).
+  that composes them (currently `src/home/{status,reactions,access}/load.ts`,
+  `src/portfolio/public.ts`, and `src/admin/**/load.ts`).
 - Hono handlers remain under `src/http/**`.
 - TanStack Start's default CSRF middleware is canonical. A custom
   `startInstance` is forbidden without an ADR.

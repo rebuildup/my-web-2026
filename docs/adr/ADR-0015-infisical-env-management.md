@@ -32,7 +32,8 @@ GitHub Repository Secrets は現在空 (`production` env を含む全スコー�
 
 | 項目 | SoT | 理由 |
 | --- | --- | --- |
-| `BETTER_AUTH_SECRET` | **Infisical (prod / dev)** | runtime secret |
+| `BETTER_AUTH_SECRETS` | **Infisical (prod / dev)** | Better Auth 1.5+ versioned rotation (comma-separated `version:value` pairs, highest version first — first entry is the current signing key). Phase 3 で `secrets.required` に登録して必須化 |
+| `BETTER_AUTH_SECRET` | **Infisical (prod / dev)** | Better Auth legacy single form (Phase 1-2 移行期間の backward compat。Phase 3 で `BETTER_AUTH_SECRETS` を `secrets.required` に登録した後、本行は **任意運用** — `secrets.required` には含めず (§9 同期)、legacy 完全削除は Phase 5 runbook で明示) |
 | `MY_WEB_2026_CONSUMER_API_KEY` | **Infisical (prod / dev)** | runtime secret (D1 とペア、§6 rotation runbook) |
 | Workers Builds native Build API token (`build_token_uuid`) | **Cloudflare** | Cloudflare 認証境界。消せない |
 | `INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` | **Cloudflare Workers Builds env vars** | Universal Auth bootstrap |
@@ -56,7 +57,7 @@ GitHub Repository Secrets は現在空 (`production` env を含む全スコー�
 | project 名 | `my-web-2026` |
 | instance | self-host (`https://secrets.rebuildup.dev`) |
 | environments (slug) | `dev` / `prod` (表示名 `Development` / `Production`) |
-| secrets (envごと) | `BETTER_AUTH_SECRET`, `MY_WEB_2026_CONSUMER_API_KEY` |
+| secrets (envごと) | `BETTER_AUTH_SECRETS` (preferred, comma-separated `2:<new>,1:<old>` form), `BETTER_AUTH_SECRET` (legacy single form, 移行期間中の backward compat), `MY_WEB_2026_CONSUMER_API_KEY` |
 
 ### 3. Universal Auth (HTTPS POST + `INFISICAL_TOKEN` env var + self-host domain)
 
@@ -97,11 +98,11 @@ deploy-with-secrets.mjs
 │   (post-auth 不要、residency を最小化)
 ├─ infisical run --projectId=$WORKSPACE_ID --env=prod -- node scripts/run-deploy-inner.mjs
 │ └─ 子 process (injected env by `infisical run` の公式 contract)
-│        ├─ process.env.BETTER_AUTH_SECRET / process.env.MY_WEB_2026_CONSUMER_API_KEY を読み取り
+│        ├─ process.env.BETTER_AUTH_SECRETS / process.env.MY_WEB_2026_CONSUMER_API_KEY を読み取り
 │        ├─ fs.mkdtempSync(path.join(os.tmpdir(), 'my-web-2026-deploy-'))
 │        ├─ fs.writeFileSync(secretsFile, JSON.stringify({...}), { mode: 0o600 })
-│        ├─ sanitizedEnv = { ...process.env } から BETTER_AUTH_SECRET /
-│        │   MY_WEB_2026_CONSUMER_API_KEY / INFISICAL_TOKEN を削除
+│        ├─ sanitizedEnv = { ...process.env } から BETTER_AUTH_SECRETS /
+│        │   BETTER_AUTH_SECRET / MY_WEB_2026_CONSUMER_API_KEY / INFISICAL_TOKEN を削除
 │        ├─ spawn(pnpm, ['run', 'db:migrate:production'], { env: sanitizedEnv })
 │        │   (db:migrate は D1 スキーマ更新のみで runtime secret を必要としない)
 │        ├─ spawn(wranglerCli, ['deploy', '-c', 'wrangler.production.jsonc',
@@ -195,16 +196,52 @@ AGENTS.md §6「GitHub Actions は validation only、production deployment autho
 
 Cloudflare Workers Builds の **custom Build API token (Workers Scripts:Edit + Routes:Edit + D1:Edit + R2:Edit)** を維持する。Cloudflare が自動生成する token には D1:Edit が含まれないため、deploy 前の `wrangler d1 migrations apply` が失敗する。これは現状 (eccd31e) の運用からの継続。
 
-### 9. `wrangler.jsonc` への `secrets.required` 追加
+### 9. `wrangler.jsonc` への `secrets.required` 追加 (Phase 別 staged 設計)
 
 `wrangler.production.jsonc` には `secrets.required` が既にあるが、`wrangler.jsonc` (default / local-dev) にはない。Phase 3 で default にも追加して `process.env` からの required secrets の自動ロード経路を成立させる。
 
+**Wrangler は `secrets.required` の全項目を deploy 時に検証する** (`developers.cloudflare.com/workers/wrangler/configuration/`)。Phase 1 で `BETTER_AUTH_SECRETS` を必須化すると、Infisical seed (Phase 1 operator 手動 work) 完了前の deploy が全て失敗する。Phase 別の staged 設計で対処する (CodeRabbit PR #72 review thread `PRRT_kwDOUW6FgM6mQRul` で発見):
+
+**Phase 1-2 (Infisical seed 完了前)** — legacy 2-name 必須:
+
 ```jsonc
 // wrangler.jsonc (default / local-dev)
+// wrangler.production.jsonc
 "secrets": {
   "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
 }
 ```
+
+- `BETTER_AUTH_SECRET` legacy 単一 form を必須 (既存の Cloudflare secret binding がそのまま deploy できる)
+- `BETTER_AUTH_SECRETS` は optional — Infisical seed 完了後、Wrangler secret binding に追加された時点で deploy が自動的に拾う
+- local dev (`pnpm dev`) は `infisical run --env=dev --` 経由で `BETTER_AUTH_SECRETS` を渡せる。`secrets.required` に含まれていなくても runtime env にあれば better-auth.ts は versioned form を読む
+
+**Phase 3+ (Initial migration 完了後)** — versioned form 必須 + legacy 任意:
+
+```jsonc
+// wrangler.jsonc (default / local-dev)
+// wrangler.production.jsonc
+"secrets": {
+  "required": [
+    "BETTER_AUTH_SECRETS",
+    "MY_WEB_2026_CONSUMER_API_KEY"
+  ]
+}
+```
+
+- `BETTER_AUTH_SECRETS` を必須化 (Initial migration 完了確認後)
+- `BETTER_AUTH_SECRET` legacy は **任意運用** (§1 SoT 境界と同期)。Better
+  Auth に `secret` option として渡しても compact cookie cache の署名検証
+  には使われない (§11.2 Semantics 参照) ため、 deploy の必須化には含めない
+- legacy 完全削除は Phase 5 runbook で明示 (別 ticket で運用)
+
+**Wrangler secret binding への追加順序** (Phase 1 → Phase 3 移行時):
+1. Phase 1 operator が Infisical `prod` env に `BETTER_AUTH_SECRETS` を seed
+2. `wrangler secret put BETTER_AUTH_SECRETS` で Cloudflare Worker に binding 追加 (Wrangler が `secrets.required` を見るので必須化前に実行)
+3. `wrangler.jsonc` の `secrets.required` を Phase 3+ の 2-name contract `["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]` に切り替える (§1 SoT 境界で BETTER_AUTH_SECRET は任意運用としたため、 secrets.required からは外す)
+4. 以降の deploy で `BETTER_AUTH_SECRETS` 必須
+
+`BETTER_AUTH_SECRET` legacy 単一 form のみを使う中間期間 (Infisical seed 完了前) でも deploy が通ることを保証する (Phase 1-2 の 2-name contract `["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]` で吸収)。
 
 ### 10. Machine Identity
 
@@ -306,21 +343,46 @@ versioned form に移行する:
 
 - **Runtime 契約**: `secrets: [{ version: 2, value: "<new>" }, { version: 1, value: "<old>" }]`
   を渡せる形にする (または `BETTER_AUTH_SECRETS=2:<new>,1:<old>` env var form を parse する)
-- **Semantics** (Better Auth 1.5+): 先頭 entry が新規 signing key、残りは
-  decryption-only。Cookie は version 識別子付きで署名され、decryption は
-  version から直接 lookup するため trial decrypt 不要。Database migration /
-  downtime は不要。
-- **Session impact**: Better Auth の session token は **HMAC-signed** (暗号化
-  ではない)。旧 secret で署名された cookie は、versioned form 移行後、新
-  secret 単体では検証失敗する。`BETTER_AUTH_SECRETS` で旧 secret を
-  decryption-only として登録すれば、in-flight session を継続可能にしなくて
-  はいけない (これが Phase 1 sub-step の目的)。
+- **Semantics** (Better Auth 1.7.5 — implementation-dependent): `secrets`
+  配列の先頭 entry が `context.secret` (current signing key) に設定される。
+  後続 entry は decryption-only reference として保持される。**Compact
+  cookie cache (既定) は `context.secret` 単体で署名検証するため、旧
+  secret で署名された in-flight cookie は検証失敗する**。これは
+  `packages/better-auth/src/context/create-context.ts` (v1.7.5) の実装に
+  基づく。versioned form の意義は「新 secret を current signing key に
+  切替 + 旧 secret を後方互換 reference として保持」の意味であり、
+  in-flight session 継続を保証するものではない。
+- **Validation** (`src/cloudflare/auth/better-auth.ts` parser):
+  `BETTER_AUTH_SECRETS` env var の parser は comma-separated `version:value`
+  pairs について以下を厳格に検証する (誤投入で old key が current として
+  使われるのを防ぐ):
+  - **version は unique** — 重複した version を許可しない
+  - **strictly descending order** — 先頭 entry が current key。`1:old,2:new`
+    のような逆順を許可しない (誤ると old が current として扱われる)
+  - version は **decimal digits only** (十進数字のみ — `1e3` / `0x10` の
+    ような表記は許可しない)、positive safe integer
+  - value は non-empty string、empty segment (`2:new,,1:old` / trailing
+    comma) は reject
+  - error message には raw value / entry 文字列 / version string を含めない
+    (invariant: argv / log への secret 露出禁止)
+- **Session impact**: Better Auth の session token は **HMAC-signed**
+  (暗号化ではない)。旧 secret で署名された cookie は versioned form 移行後、
+  Better Auth 1.7.5 の compact cookie cache 実装では検証失敗する。
+  **`BETTER_AUTH_SECRETS` で旧 secret を decryption-only として登録しても
+  in-flight session の継続は保証されない**。これは当初 §11.2 で recoverable
+  分岐が in-flight session 継続可能としていた前提を破る contract violation
+  (CodeRabbit PR #72 review thread `PRRT_kwDOUW6FgM6mQRuu` で発見、v1.7.5
+  ソース確認済み)。**Recoverable 分岐でも in-flight session の再サインイン
+  は通常コスト**として許容する (operator gate の対象外)。
 - **Encryption impact**: Better Auth は encrypted column を保持しない
-  (`account.password` 等はハッシュ)。`BETTER_AUTH_SECRET` rotation で persisted
-  row corruption は発生しない。
-- **Operator gate**: 旧 plaintext が本当に回収不能で、新 secret に swap する
-  場合は、in-flight session の再 sign-in を許容する旨を **operator が明示
-  承認**する。これは ADR の decision boundary を越えるため、operator gate 必須。
+  (`account.password` 等はハッシュ)。`BETTER_AUTH_SECRET` rotation で
+  persisted row corruption は発生しない。
+- **Operator gate**: 旧 plaintext が本当に回収不能 (Unrecoverable 分岐)
+  で、新 secret に swap する場合は、in-flight session の再サインイン
+  + 進行中 OAuth flow / cookie-bound state のリセットを許容する旨を
+  **operator が明示承認**する。Recoverable 分岐では versioned rotation を
+  必須とするが、in-flight session 継続は保証されない (§11.2 Semantics
+  参照)。これは ADR の decision boundary を越えるため、operator gate 必須。
 
 ### 11.3 移行の invariant
 
@@ -331,15 +393,18 @@ versioned form に移行する:
   `pnpm run deploy:production` の手動実行は recovery / debugging 用途のみ。
 - **Recoverable 分岐**: Better Auth versioned rotation を **必須** とする。
   `secrets: [{version:2, value:"<new>"}, {version:1, value:"<old>"}]` または
-  `BETTER_AUTH_SECRETS=2:<new>,1:<old>` env var で旧 secret を decryption-only
-  として保持し、in-flight session の検証失敗 window を排除する。
-- **Unrecoverable 分岐**: 旧 plaintext が回収不能なため、Better Auth versioned
-  secrets 配列に旧 key を含められない。**新 secret 単体 deploy** となり、旧
-  secret で署名された in-flight cookie は検証失敗する。これは ADR の decision
-  boundary を越えるため、operator gate (§11.2) を満たす (in-flight session の
-  再 sign-in を許容する旨を operator が明示承認) ことが前提。**「検証失敗
-  window ゼロ」を保証する記述は誤り**で、本 invariant は「operator gate を
-  通じた unrecoverable 分岐のみ deploy を許可する」と言い換える。
+  `BETTER_AUTH_SECRETS=2:<new>,1:<old>` env var で旧 secret を後方互換
+  reference として保持。**ただし Better Auth 1.7.5 の compact cookie cache
+  実装では in-flight session 継続は保証されない** (§11.2 Semantics)。
+  Recoverable 分岐でも再サインインは通常コストとして許容する
+  (operator gate の対象外)
+- **Unrecoverable 分岐**: 旧 plaintext が回収不能なため、Better Auth
+  versioned secrets 配列に旧 key を含められない。**新 secret 単体 deploy**
+  となり、旧 secret で署名された in-flight cookie は検証失敗する (compact
+  cookie cache 実装上の挙動、§11.2 Semantics 参照)。これは ADR の decision
+  boundary を越えるため、operator gate (§11.2) を満たす (in-flight session
+  の再 sign-in + 進行中 OAuth flow / cookie-bound state のリセットを許容
+  する旨を operator が明示承認) ことが前提
 
 ## Out of scope
 

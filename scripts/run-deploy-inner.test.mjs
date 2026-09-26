@@ -224,6 +224,70 @@ describe('run-deploy-inner.mjs', () => {
 		});
 	});
 
+	describe('--execute config lockdown (production D1 path)', () => {
+		it('rejects --execute with non-production config (wrangler.jsonc)', () => {
+			const result = runInIsolatedRepo(['--config=wrangler.jsonc', '--execute'], {
+				env: REQUIRED_FOR_PHASE_1_2,
+			});
+			assert.equal(result.exitCode, 1);
+			assert.match(result.stderr, /--execute is only valid with wrangler\.production\.jsonc/);
+			assert.match(result.stderr, /Dev verification path/);
+		});
+
+		it('rejects --execute with absolute non-production path basename', () => {
+			const result = runInIsolatedRepo(
+				['--config=/some/other/path/wrangler.staging.jsonc', '--execute'],
+				{ env: REQUIRED_FOR_PHASE_1_2 },
+			);
+			assert.equal(result.exitCode, 1);
+			assert.match(result.stderr, /--execute is only valid with wrangler\.production\.jsonc/);
+		});
+
+		it('rejects --execute with --config=wrangler.dev.jsonc (basename check)', () => {
+			const result = runInIsolatedRepo(['--config=wrangler.dev.jsonc', '--execute'], {
+				env: REQUIRED_FOR_PHASE_1_2,
+			});
+			assert.equal(result.exitCode, 1);
+			assert.match(result.stderr, /wrangler\.production\.jsonc/);
+		});
+
+		it('accepts --execute with wrangler.production.jsonc (basename matches)', () => {
+			const result = runInIsolatedRepo(['--config=wrangler.production.jsonc', '--execute'], {
+				env: REQUIRED_FOR_PHASE_1_2,
+			});
+			// The lockdown pass-through: no "is only valid" error.
+			// We do NOT assert exit 0 because the production D1 path
+			// (db:migrate:production + wrangler deploy) cannot run in
+			// the isolated test repo — that is intentional and tests
+			// the lockdown behavior, not the production execution.
+			assert.doesNotMatch(result.stderr, /--execute is only valid with/);
+			// Sanity: the test exercised --execute (not dry-run) by
+			// checking for the production config flow log message.
+			assert.match(result.stdout, /Deploying to production/);
+		});
+
+		it('accepts --execute with absolute production path basename', () => {
+			const result = runInIsolatedRepo(
+				['--config=/abs/path/to/wrangler.production.jsonc', '--execute'],
+				{ env: REQUIRED_FOR_PHASE_1_2 },
+			);
+			assert.doesNotMatch(result.stderr, /--execute is only valid with/);
+			assert.match(result.stdout, /Deploying to production/);
+		});
+
+		it('allows dry-run (no --execute) with any config basename', () => {
+			// Dev verification path is operator-driven:
+			//   infisical run --env=dev -- node scripts/run-deploy-inner.mjs
+			//     --config=wrangler.jsonc
+			// (dry-run is default; no production side effects.)
+			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
+				env: REQUIRED_FOR_PHASE_1_2,
+			});
+			assert.equal(result.exitCode, 0);
+			assert.match(result.stdout, /\[dry-run\]/);
+		});
+	});
+
 	describe('--help', () => {
 		it('prints usage and exits 0', () => {
 			const result = runInIsolatedRepo(['--help']);

@@ -97,21 +97,30 @@ describe('deploy-with-secrets.mjs', () => {
 			assert.match(result.stderr, /unknown argument/);
 		});
 
-		it('rejects --environment with non-{prod,preview} value', () => {
+		it('rejects --environment with non-prod value (script is production-only)', () => {
 			const result = runInIsolatedRepo(['--environment=staging'], {
 				existingContent: JSON.stringify({ workspaceId: VALID_UUID }),
 			});
 			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /must be 'prod' or 'preview'/);
+			assert.match(result.stderr, /--environment must be 'prod'/);
+			assert.match(result.stderr, /production-only/);
 		});
 
-		it('honors --environment=preview', () => {
+		it('rejects --environment=preview (dev verification uses inner script directly)', () => {
 			const result = runInIsolatedRepo(['--environment=preview'], {
 				existingContent: JSON.stringify({ workspaceId: VALID_UUID }),
 			});
+			assert.equal(result.exitCode, 1);
+			assert.match(result.stderr, /--environment must be 'prod'/);
+		});
+
+		it('honors --environment=prod (default)', () => {
+			const result = runInIsolatedRepo([], {
+				existingContent: JSON.stringify({ workspaceId: VALID_UUID }),
+			});
 			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /environment=preview/);
-			assert.match(result.stdout, /config=wrangler\.jsonc/);
+			assert.match(result.stdout, /environment=prod/);
+			assert.match(result.stdout, /config=wrangler\.production\.jsonc/);
 		});
 	});
 

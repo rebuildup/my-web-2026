@@ -33,7 +33,10 @@ import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = resolve(fileURLToPath(import.meta.url));
-const repoRoot = resolve(here, '..');
+// `import.meta.url` for `e2e/global-setup.ts` is `<repoRoot>/e2e/global-setup.ts`.
+// Walk up one level to reach the repository root that owns
+// `wrangler.jsonc` and `scripts/seed-portfolio.mjs`.
+const repoRoot = resolve(here, '..', '..');
 
 function run(command: string, args: readonly string[]): void {
 	execFileSync(command, args, {

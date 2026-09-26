@@ -230,49 +230,56 @@ describe('run-deploy-inner.mjs', () => {
 				env: REQUIRED_FOR_PHASE_1_2,
 			});
 			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /--execute is only valid with wrangler\.production\.jsonc/);
+			assert.match(result.stderr, /--execute is only valid with the canonical/);
 			assert.match(result.stderr, /Dev verification path/);
 		});
 
-		it('rejects --execute with absolute non-production path basename', () => {
+		it('rejects --execute with absolute non-production path', () => {
+			// Even though the basename is `wrangler.staging.jsonc`, the
+			// absolute path does not equal REPO_ROOT/wrangler.production.jsonc.
 			const result = runInIsolatedRepo(
 				['--config=/some/other/path/wrangler.staging.jsonc', '--execute'],
 				{ env: REQUIRED_FOR_PHASE_1_2 },
 			);
 			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /--execute is only valid with wrangler\.production\.jsonc/);
+			assert.match(result.stderr, /--execute is only valid with the canonical/);
 		});
 
-		it('rejects --execute with --config=wrangler.dev.jsonc (basename check)', () => {
+		it('rejects --execute with --config=wrangler.dev.jsonc', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.dev.jsonc', '--execute'], {
 				env: REQUIRED_FOR_PHASE_1_2,
 			});
 			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /wrangler\.production\.jsonc/);
+			assert.match(result.stderr, /--execute is only valid with the canonical/);
 		});
 
-		it('accepts --execute with wrangler.production.jsonc (basename matches)', () => {
-			const result = runInIsolatedRepo(['--config=wrangler.production.jsonc', '--execute'], {
-				env: REQUIRED_FOR_PHASE_1_2,
-			});
-			// The lockdown pass-through: no "is only valid" error.
-			// We do NOT assert exit 0 because the production D1 path
-			// (db:migrate:production + wrangler deploy) cannot run in
-			// the isolated test repo — that is intentional and tests
-			// the lockdown behavior, not the production execution.
-			assert.doesNotMatch(result.stderr, /--execute is only valid with/);
-			// Sanity: the test exercised --execute (not dry-run) by
-			// checking for the production config flow log message.
-			assert.match(result.stdout, /Deploying to production/);
-		});
-
-		it('accepts --execute with absolute production path basename', () => {
-			const result = runInIsolatedRepo(
-				['--config=/abs/path/to/wrangler.production.jsonc', '--execute'],
-				{ env: REQUIRED_FOR_PHASE_1_2 },
-			);
-			assert.doesNotMatch(result.stderr, /--execute is only valid with/);
-			assert.match(result.stdout, /Deploying to production/);
+		it('rejects --execute with same-named config in a different directory', () => {
+			// A same-named `wrangler.production.jsonc` placed in a
+			// tempdir would have passed the old basename check but must
+			// be rejected by the new path-equality gate. The script
+			// itself runs from REPO_ROOT (resolved via import.meta.url);
+			// the request instead points at a tempdir config, so the
+			// absolute paths differ.
+			const repo = mkdtempSync(join(tmpdir(), 'run-deploy-inner-samename-'));
+			const foreignConfig = join(repo, 'wrangler.production.jsonc');
+			writeFileSync(foreignConfig, '{}');
+			let exitCode = 0;
+			let stderr = '';
+			try {
+				execFileSync(process.execPath, [SCRIPT, `--config=${foreignConfig}`, '--execute'], {
+					cwd: repo,
+					encoding: 'utf8',
+					stdio: ['ignore', 'pipe', 'pipe'],
+					env: { ...process.env, ...REQUIRED_FOR_PHASE_1_2 },
+				});
+			} catch (error) {
+				exitCode = error.status ?? 1;
+				stderr = error.stderr ?? '';
+			} finally {
+				rmSync(repo, { recursive: true, force: true });
+			}
+			assert.equal(exitCode, 1);
+			assert.match(stderr, /--execute is only valid with the canonical/);
 		});
 
 		it('allows dry-run (no --execute) with any config basename', () => {

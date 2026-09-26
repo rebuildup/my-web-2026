@@ -4,10 +4,12 @@
  *
  * This is an explicit provisioning tool, not part of deployment.
  * It creates the Better Auth api-key row and prints the plaintext
- * exactly once. The script is **idempotent on rerun**: if an enabled
- * row already exists for the consumer key name, the existing row is
- * reused and no new plaintext is minted. This is the rerun /
- * concurrent-safe invariant.
+ * exactly once. The script is **idempotent on rerun** AND
+ * **concurrent-safe**: if an enabled row already exists for the
+ * consumer key name when this process runs alone, it reuses the row;
+ * if two concurrent processes race and one wins the INSERT, the
+ * losing process detects this via a hash re-read and prints no
+ * plaintext (its locally-generated plaintext has no D1 row).
  *
  * Local:
  *   pnpm run bootstrap:home-api-key
@@ -20,17 +22,27 @@
  *
  * Cloudflare Workers Builds never needs this plaintext as a build secret.
  *
- * Rerun / concurrent safety:
+ * Rerun / concurrent safety (Phase 2 review correction):
  *   - `INSERT ... WHERE NOT EXISTS (SELECT 1 FROM apikey
  *     WHERE name = ? AND enabled = 1)` is atomic, so two concurrent
- *     runs cannot both mint a plaintext.
- *   - Migration 0006's `UNIQUE INDEX uq_apikey_key` provides a
- *     secondary backstop for same-hash collisions (rare in practice
- *     since the SHA-256 is per-plaintext).
- *   - On rerun, the existing row is reported via the machine-readable
- *     JSON output; no plaintext is printed because it is unrecoverable.
+ *     runs cannot BOTH physically insert a row.
+ *   - HOWEVER, atomicity alone is not enough: a losing process still
+ *     has a locally-generated plaintext in scope. The fix is the
+ *     **hash re-read** (`queryEnabledRowByHash`): the winning process
+ *     re-reads by its own hash and finds a row (it inserts its own
+ *     hash); the LOSING process re-reads by its own hash and finds
+ *     nothing (the winner's hash differs), then falls back to the
+ *     name-based reuse path, **never printing its own plaintext**.
+ *   - Migration 0006's `UNIQUE INDEX uq_apikey_key` (hash-unique) is
+ *     what makes the hash re-read unambiguous: two distinct plaintexts
+ *     produce two distinct hashes, so a row re-found by hash can only
+ *     be the row this process itself inserted.
+ *   - On rerun (no race), the existing row is reported via the
+ *     machine-readable JSON output; no plaintext is printed because
+ *     it is unrecoverable from D1.
  *   - For rotation (replacing an existing key), use the dedicated
- *     rotation runbook (ADR-0015 §6 / §F; Phase 3 follow-up ticket).
+ *     rotation runbook (ADR-0015 §6 / §F; Phase 3+ follow-up
+ *     `scripts/rotate-home-api-key.mjs` per Issue #74).
  *
  * Output contract (ADR-0015 §E, extended in this release / Phase 2):
  *
@@ -41,7 +53,7 @@
  *
  *   {"id":"<uuid>","prefix":"mk_home_","start":"mk_hom","createdAt":1737830400000,"enabled":1,"name":"home-self-consumption","referenceId":"<admin-uuid>"}
  *
- * On rerun (existing enabled row):
+ * On rerun OR concurrent loss (existing enabled row, no plaintext minted):
  *
  *   # Local home consumer API key already exists.
  *   # The existing enabled row is reported below (no new plaintext minted).
@@ -153,6 +165,35 @@ function queryEnabledRowByName(target) {
 }
 
 /**
+ * Look up an enabled row whose `apikey.key` (SHA-256 base64url hash of
+ * the plaintext) matches `hash`. Used as the LOSER-vs-WINNER check
+ * after `insertKeyIfAbsent` — a process whose locally-generated
+ * plaintext won the INSERT will re-find its own row here; a process
+ * that lost a race against another concurrent run will find nothing
+ * (the other run's hash differs), and must fall back to the name-based
+ * reuse path (no plaintext printed).
+ *
+ * Migration 0006's UNIQUE INDEX on `apikey.key` is hash-unique, so two
+ * different plaintexts produce two different hashes that never collide
+ * — only the WINNING process will ever find its own row here.
+ *
+ * Returns the row (normalized) if found, or `null`.
+ */
+function queryEnabledRowByHash(target, hash) {
+	const escapedHash = sqlString(hash);
+	const rows = query(
+		target,
+		`SELECT id, prefix, start, createdAt, enabled, name, referenceId
+		 FROM apikey
+		 WHERE \`key\` = '${escapedHash}' AND enabled = 1
+		 ORDER BY createdAt DESC, id DESC
+		 LIMIT 1`,
+	);
+	const row = rows[0];
+	return row ? normalizeRow(row) : null;
+}
+
+/**
  * Insert the api-key row only when no enabled row exists for
  * `KEY_NAME`. The atomic `INSERT INTO ... WHERE NOT EXISTS (...)`
  * form prevents the TOCTOU race between a pre-check SELECT and the
@@ -253,31 +294,61 @@ function formatKeyRowJson(row) {
 const target = parseTarget(process.argv.slice(2));
 const userId = resolveAdminUserId(target);
 
-// Idempotency: if an enabled row already exists for `KEY_NAME`,
-// reuse it. The rerun / concurrent-safe invariant is that we never
-// create a second enabled row for the same logical consumer key.
-// `insertKeyIfAbsent` uses `WHERE NOT EXISTS` for atomicity, so
-// two concurrent runs both observe "no row" but only one INSERT
-// actually fires (the other becomes a no-op).
+// Idempotency + concurrent-loser safety.
+//
+// Two facts about how this script handles state:
+//
+//   1. Rerun (no race): if an enabled row already exists for
+//      `KEY_NAME`, the script REUSES the row. No plaintext is minted,
+//      because the existing row's plaintext is unrecoverable from D1
+//      (only the SHA-256 hash is stored).
+//
+//   2. Concurrent race: two processes both observe "no existing row"
+//      and both call `insertKeyIfAbsent`. Each `INSERT ... WHERE
+//      NOT EXISTS` is atomic, so only ONE process actually inserts;
+//      the other's INSERT becomes a no-op. The previous version of
+//      this script decided `reused` BEFORE the INSERT, so the LOSING
+//      process would still print its own locally-generated plaintext
+//      (which has no D1 row) — that plaintext, if registered to
+//      Infisical, would not authenticate against any deployed row.
+//
+//      The fix: AFTER `insertKeyIfAbsent`, re-read by hash. The
+//      WINNING process finds its own row (its hash matches) and prints
+//      its plaintext; the LOSING process finds nothing (the winner's
+//      hash differs), falls back to the name-based reuse path, and
+//      prints the `<no new plaintext — ...>` sentinel instead of its
+//      own unreachable plaintext.
+//
+//      Migration 0006's UNIQUE INDEX on `apikey.key` (hash-unique) is
+//      what guarantees hash-based re-read is unambiguous: two distinct
+//      plaintexts produce two distinct hashes, so a row re-found by
+//      hash can only be the row this process itself inserted (or a
+//      same-plaintext collision, which the UNIQUE INDEX rejects).
 const existingRow = queryEnabledRowByName(target);
-let row;
-let reused = false;
+let row = existingRow ?? null;
 let plaintext = null;
-if (existingRow) {
-	row = existingRow;
-	reused = true;
-} else {
+if (row === null) {
 	plaintext = generatePlaintext();
 	const hash = keyHash(plaintext);
 	insertKeyIfAbsent(target, userId, plaintext, hash);
-	// Re-read after insert; if a concurrent run won the race, we
-	// fall back to the existing enabled row (no plaintext printed).
-	const winner = queryEnabledRowByName(target);
-	if (!winner) {
-		throw new Error('apikey row disappeared after INSERT WHERE NOT EXISTS');
+	// Atomic re-read by hash: did OUR insert win?
+	const winnerByHash = queryEnabledRowByHash(target, hash);
+	if (winnerByHash) {
+		row = winnerByHash;
+	} else {
+		// We lost the race OR no row inserted somehow — fall back to
+		// the name-based read to either reuse a concurrent process's
+		// row, or surface the inconsistency as a thrown error.
+		const existingAfterInsert = queryEnabledRowByName(target);
+		if (!existingAfterInsert) {
+			throw new Error('apikey row disappeared after INSERT WHERE NOT EXISTS');
+		}
+		row = existingAfterInsert;
+		plaintext = null; // ← LOSER fix: discard the unreachable plaintext
 	}
-	row = winner;
 }
+// `reused` is now derived from "do we have a plaintext of our own?".
+const reused = plaintext === null;
 
 if (target === 'remote') {
 	if (reused) {

@@ -308,11 +308,25 @@ async function listInfisicalSecrets(apiUrl, accessToken, workspaceId, environmen
 		environment,
 		viewSecretValue: 'false',
 	});
+	// V3 deprecated LIST endpoint is `GET /api/v3/secrets/raw` (NOT
+	// `/api/v3/secrets`, which 404s). `viewSecretValue=false` is supported
+	// on the V3 `/raw` endpoint — values are nulled in the response and
+	// `secretValueHidden: true` is set per item. We only read `secretKey`
+	// (the V3 deprecated field name), so the value-masking contract does
+	// not affect our names-only drift check.
+	// Sources:
+	//   - Infisical `backend/src/server/routes/v3/deprecated-secret-router.ts`
+	//     registers `GET /raw` for "List secrets" (~line 165).
+	//   - OpenAPI `docs/api-reference/endpoints/deprecated/secrets/list.mdx`
+	//     pins `openapi: "GET /api/v3/secrets/raw"`.
+	// Switching to V4 (`/api/v4/secrets` with `projectId`) would also work
+	// but expands scope; V3 keeps the existing `.infisical.json#workspaceId`
+	// SoT contract.
 	const response = await httpsJson({
 		method: 'GET',
 		hostname: url.hostname,
 		port: url.port,
-		path: `/api/v3/secrets?${params.toString()}`,
+		path: `/api/v3/secrets/raw?${params.toString()}`,
 		headers: { Authorization: `Bearer ${accessToken}` },
 	});
 	const secrets = response?.secrets;
@@ -408,8 +422,10 @@ async function main() {
 	// `delete` (not `= undefined`) is the canonical Node API for
 	// removing env entries — assignment to `undefined` coerces to the
 	// string `"undefined"`.
-	process.env.INFISICAL_CLIENT_ID = undefined;
-	process.env.INFISICAL_CLIENT_SECRET = undefined;
+	// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
+	delete process.env.INFISICAL_CLIENT_ID;
+	// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
+	delete process.env.INFISICAL_CLIENT_SECRET;
 
 	let exitCode = 0;
 	try {
@@ -476,7 +492,8 @@ async function main() {
 		// `delete` (not `= undefined`) is the canonical Node API for
 		// removing env entries — assignment to `undefined` would coerce
 		// to the string `"undefined"`.
-		process.env.INFISICAL_TOKEN = undefined;
+		// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
+		delete process.env.INFISICAL_TOKEN;
 	}
 
 	if (exitCode !== 0) {

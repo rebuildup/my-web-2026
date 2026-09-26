@@ -306,8 +306,10 @@ async function main() {
 	// env entries — assignment to `undefined` coerces to the string
 	// `"undefined"`.
 	process.env.INFISICAL_TOKEN = accessToken;
-	process.env.INFISICAL_CLIENT_ID = undefined;
-	process.env.INFISICAL_CLIENT_SECRET = undefined;
+	// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
+	delete process.env.INFISICAL_CLIENT_ID;
+	// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
+	delete process.env.INFISICAL_CLIENT_SECRET;
 
 	// Force overwrite of the local variable so that even if the V8 heap
 	// is later inspected, the raw token is not retained in our frame.
@@ -343,7 +345,8 @@ async function main() {
 		// Cleanup INFISICAL_TOKEN in the parent env. `delete` is the
 		// canonical Node API for removing env entries — assignment to
 		// `undefined` would coerce to the string `"undefined"`.
-		process.env.INFISICAL_TOKEN = undefined;
+		// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
+		delete process.env.INFISICAL_TOKEN;
 	}
 
 	if (childExitCode !== 0) {

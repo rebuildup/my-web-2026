@@ -33,8 +33,21 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
+
+// Canonical production wrangler config — the only path on which
+// `--execute` (db:migrate:production + wrangler deploy) may run. The
+// compare in `assertProductionConfigForExecute` resolves both the
+// requested `--config` and this canonical constant to absolute paths
+// so that same-named configs in other directories cannot bypass the
+// production lockdown. ADR-0015 §4.
+const CANONICAL_PRODUCTION_CONFIG = resolve(
+	dirname(fileURLToPath(import.meta.url)),
+	'..',
+	'wrangler.production.jsonc',
+);
 
 /**
  * Phase-specific 2-name contract (ADR-0015 §9). The deploy script's
@@ -90,16 +103,20 @@ function parseArgs(argv) {
 /**
  * Validate that an --execute invocation targets the canonical
  * production config. Side effects (`db:migrate:production` + `wrangler
- * deploy`) are gated on the config basename matching
- * `wrangler.production.jsonc`. Dev / preview configs (e.g.
- * `wrangler.jsonc`) may only be used in dry-run mode. ADR-0015 §4.
+ * deploy`) are gated on the requested `--config` resolving to the
+ * absolute path of the canonical `wrangler.production.jsonc` next to
+ * this script. A basename-only check is insufficient because a
+ * same-named config in another directory would otherwise bypass the
+ * lockdown and run a production D1 migration under a non-canonical
+ * config. Dev / preview configs (e.g. `wrangler.jsonc`) may only be
+ * used in dry-run mode. ADR-0015 §4.
  */
 function assertProductionConfigForExecute(configPath, execute) {
 	if (!execute) return;
-	const basename = configPath.split(/[/\\]/).pop();
-	if (basename !== 'wrangler.production.jsonc') {
+	const resolvedConfig = resolve(configPath);
+	if (resolvedConfig !== CANONICAL_PRODUCTION_CONFIG) {
 		throw new Error(
-			`--execute is only valid with wrangler.production.jsonc (got: ${basename}). Dev verification path: invoke the inner script directly via 'infisical run --env=dev -- node scripts/run-deploy-inner.mjs --config=wrangler.jsonc' (dry-run default; no production side effects).`,
+			`--execute is only valid with the canonical ${CANONICAL_PRODUCTION_CONFIG} (got: ${resolvedConfig}). Dev verification path: invoke the inner script directly via 'infisical run --env=dev -- node scripts/run-deploy-inner.mjs --config=wrangler.jsonc' (dry-run default; no production side effects).`,
 		);
 	}
 }

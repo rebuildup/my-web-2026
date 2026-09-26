@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Media upload helper — my-web-2025 → my-web-2026 (0.5.0) R2 MEDIA.
+ * Media upload helper — my-web-2025 → my-web-2026 (current) R2 MEDIA.
  *
  * Usage:
  *   node scripts/upload-portfolio-media.mjs --dry-run

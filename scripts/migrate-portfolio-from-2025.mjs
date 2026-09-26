@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Migration script — my-web-2025 (151 portfolio DBs) → my-web-2026 (0.5.0 D1).
+ * Migration script — my-web-2025 (151 portfolio DBs) → my-web-2026 (current D1).
  *
  * Usage:
  *   node scripts/migrate-portfolio-from-2025.mjs --dry-run
@@ -38,7 +38,7 @@
  *                         to the seed.
  *
  * Field mapping (legacy `contents` / `markdown_pages` / `content_links` /
- * `content_assets` / `content_tags` → 0.5.0 schema):
+ * `content_assets` / `content_tags` → current schema):
  *
  *   portfolio_project:
  *     id            ← `legacy_<legacy_id>` (deterministic)
@@ -214,7 +214,7 @@ function linkKindFromUrl(href) {
 /**
  * Deterministic slug derivation. The legacy `id` (e.g. `Border`,
  * `aulymo_v02`, `kosen-procon-pv`) is the source of truth; we normalise to
- * the 0.5.0 grammar `/^[a-z0-9][a-z0-9-]{0,127}$/`:
+ * the current slug grammar `/^[a-z0-9][a-z0-9-]{0,127}$/`:
  *   * lowercase
  *   * `_` → `-`
  *   * strip any character outside `[a-z0-9-]`

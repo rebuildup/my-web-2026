@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Completeness verifier — my-web-2026 (0.5.0) portfolio D1.
+ * Completeness verifier — my-web-2026 (current) portfolio D1.
  *
  * Usage:
  *   node scripts/verify-portfolio.mjs [--target=local|remote]

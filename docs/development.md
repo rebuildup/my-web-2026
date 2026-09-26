@@ -32,9 +32,9 @@ pnpm install
 pnpm prepare        # panda codegen
 ```
 
-### Phase 1 / Issue #67 — Infisial + Cloudflare Workers Builds bootstrap
+### Phase 1 / Issue #67 — Infisical + Cloudflare Workers Builds bootstrap
 
-ADR-0015 §11 Phase 1 provisions the Infisial project, Machine
+ADR-0015 §11 Phase 1 provisions the Infisical project, Machine
 Identity, and Cloudflare Workers Builds credential binding. The
 agent drives the flow via `pnpm` scripts; the operator only needs
 to provide short-lived auth tokens in the shell environment.
@@ -42,9 +42,9 @@ to provide short-lived auth tokens in the shell environment.
 **Prerequisites (operator one-time, per developer / CI runner):**
 
 ```bash
-# Infisial self-host Universal Auth token (operator-scoped).
+# Infisical self-host Universal Auth token (operator-scoped).
 #   Run `infisical login` once; the CLI writes the short-lived
-#   token to `INFISIAL_TOKEN` in the current shell.
+#   token to `INFISICAL_TOKEN` in the current shell.
 infisical login
 
 # Cloudflare user-scoped API token with the following two
@@ -60,7 +60,7 @@ export CLOUDFLARE_ACCOUNT_ID=...   # from wrangler.production.jsonc#account_id
 **Bootstrap flow (run in order; each is idempotent):**
 
 ```bash
-# 1. Create the `my-web-2026` Infisial project + dev/prod envs,
+# 1. Create the `my-web-2026` Infisical project + dev/prod envs,
 #    write .infisical.json (workspaceId + defaultEnvironment).
 pnpm run infisical:bootstrap:api
 
@@ -81,7 +81,7 @@ pnpm run infisical:seed
 pnpm run infisical:verify
 ```
 
-**Operator post-#67 work (NOT agent-automated; manual via Infisial
+**Operator post-#67 work (NOT agent-automated; manual via Infisical
 web UI or `infisical secrets set`):**
 
 ```bash

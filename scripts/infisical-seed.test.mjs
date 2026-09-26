@@ -76,6 +76,30 @@ describe('infisical-seed.mjs', () => {
 			assert.notEqual(a.BETTER_AUTH_SECRET, b.BETTER_AUTH_SECRET);
 			assert.notEqual(a.MY_WEB_2026_CONSUMER_API_KEY, b.MY_WEB_2026_CONSUMER_API_KEY);
 		});
+
+		it('BETTER_AUTH_SECRET and MY_WEB_2026_CONSUMER_API_KEY use SEPARATE random sources (security invariant)', () => {
+			// Defensive: sharing one hex would make the consumer API
+			// key trivially predictable from the auth signing key.
+			// The versioned BETTER_AUTH_SECRETS prefix `1:` is
+			// expected to share its key with BETTER_AUTH_SECRET
+			// (Better Auth 1.5+ contract); but the consumer API key
+			// has no such relationship.
+			const out = buildDevSecretValues();
+			assert.notEqual(
+				out.BETTER_AUTH_SECRET,
+				out.MY_WEB_2026_CONSUMER_API_KEY,
+				'BETTER_AUTH_SECRET and MY_WEB_2026_CONSUMER_API_KEY must use separate random sources',
+			);
+		});
+
+		it('BETTER_AUTH_SECRETS versioned key equals BETTER_AUTH_SECRET (Better Auth 1.5+ contract)', () => {
+			// The versioned form `1:<hex>` denotes "first version,
+			// current key". The signing key inside the versioned
+			// string MUST equal BETTER_AUTH_SECRET.
+			const out = buildDevSecretValues();
+			const versionedKey = out.BETTER_AUTH_SECRETS.slice('1:'.length);
+			assert.equal(versionedKey, out.BETTER_AUTH_SECRET);
+		});
 	});
 
 	describe('extractExistingKeys', () => {
@@ -188,8 +212,11 @@ describe('infisical-seed.mjs', () => {
 			// Defensive: error messages must not include the random
 			// hex (it could be a credential).
 			const errorLeaks = SOURCE.match(/throw new Error\([^)]*randomBytes[^)]*\)/g);
-			// We use randomBytes() in buildDevSecretValues; ensure
-			// no error message interpolates it.
+			// We use `globalThis.crypto.getRandomValues` (Web Crypto
+			// API), not `randomBytes` — but the pattern is checked
+			// defensively. If a future refactor re-introduces
+			// `randomBytes`, this test still guards against leaking
+			// it into error messages.
 			assert.equal(errorLeaks, null);
 		});
 	});

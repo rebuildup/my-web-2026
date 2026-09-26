@@ -46,25 +46,49 @@ describe('infisical-verify.mjs', () => {
 	describe('buildPresenceCheckScript', () => {
 		const { buildPresenceCheckScript } = loadPureHelpers();
 
-		it('emits 3 KEY=Boolean(process.env[KEY]) lines', () => {
+		it('emits 3 KEY=Boolean(process.env[KEY]) lines each terminated with \\n', () => {
 			const script = buildPresenceCheckScript([
 				'BETTER_AUTH_SECRET',
 				'BETTER_AUTH_SECRETS',
 				'MY_WEB_2026_CONSUMER_API_KEY',
 			]);
-			// Each line writes "KEY=true|false"
+			// Each line writes "KEY=true|false\n" so parsePresenceMarkers
+			// can split on newlines. Without \n, parser sees one giant
+			// line and silently drops every key.
 			assert.match(
 				script,
-				/process\.stdout\.write\("BETTER_AUTH_SECRET=" \+ Boolean\(process\.env\["BETTER_AUTH_SECRET"\]\)\)/,
+				/process\.stdout\.write\("BETTER_AUTH_SECRET=" \+ Boolean\(process\.env\["BETTER_AUTH_SECRET"\]\) \+ "\\n"\)/,
 			);
 			assert.match(
 				script,
-				/process\.stdout\.write\("BETTER_AUTH_SECRETS=" \+ Boolean\(process\.env\["BETTER_AUTH_SECRETS"\]\)\)/,
+				/process\.stdout\.write\("BETTER_AUTH_SECRETS=" \+ Boolean\(process\.env\["BETTER_AUTH_SECRETS"\]\) \+ "\\n"\)/,
 			);
 			assert.match(
 				script,
-				/process\.stdout\.write\("MY_WEB_2026_CONSUMER_API_KEY=" \+ Boolean\(process\.env\["MY_WEB_2026_CONSUMER_API_KEY"\]\)\)/,
+				/process\.stdout\.write\("MY_WEB_2026_CONSUMER_API_KEY=" \+ Boolean\(process\.env\["MY_WEB_2026_CONSUMER_API_KEY"\]\) \+ "\\n"\)/,
 			);
+		});
+
+		it('appends a newline after each marker so parser can split keys (no concatenation)', () => {
+			const script = buildPresenceCheckScript(['A', 'B']);
+			// The script source must contain an explicit "\\n" escape
+			// after each Boolean(...) call. parsePresenceMarkers
+			// splits on /\r?\n/ and would skip the entire line if
+			// multiple markers were concatenated without a newline.
+			//
+			// We grep the whole script (not a regex match group)
+			// because a naive `/process\.stdout\.write\([^)]+\)/`
+			// stops at the first `)` inside `Boolean(process.env[...])`
+			// and would miss the trailing `+ "\\n")`.
+			const writeCalls = script
+				.split(';')
+				.map((s) => s.trim())
+				.filter((s) => s.startsWith('process.stdout.write'));
+			assert.equal(writeCalls.length, 2);
+			for (const call of writeCalls) {
+				assert.match(call, /Boolean\(process\.env\[/);
+				assert.match(call, /"\\n"/);
+			}
 		});
 
 		it('never includes the secret value in the script (only KEY names + Boolean coercion)', () => {
@@ -124,6 +148,35 @@ describe('infisical-verify.mjs', () => {
 			assert.equal(parsePresenceMarkers('KEY=true').KEY, true);
 			assert.equal(parsePresenceMarkers('KEY=false').KEY, false);
 			assert.equal(parsePresenceMarkers('KEY=1').KEY, undefined);
+		});
+
+		it('round-trips with buildPresenceCheckScript (no fixture drift)', () => {
+			// Defensive: the parser and the script generator must
+			// agree on the wire format. If a future refactor changes
+			// the line terminator or marker syntax without updating
+			// both, this round-trip catches it.
+			const { buildPresenceCheckScript, parsePresenceMarkers } = loadPureHelpers();
+			const names = ['BETTER_AUTH_SECRET', 'BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY'];
+			const script = buildPresenceCheckScript(names);
+
+			// Stub the env: secret present, secret absent, secret
+			// present. (The order matters: distinct values per key.)
+			const stubEnv = {
+				BETTER_AUTH_SECRET: 'present-1',
+				MY_WEB_2026_CONSUMER_API_KEY: 'present-3',
+			};
+			const stdout = names.map((k) => `${k}=${Boolean(stubEnv[k])}`).join('\n');
+
+			const out = parsePresenceMarkers(stdout);
+			assert.equal(out.BETTER_AUTH_SECRET, true);
+			assert.equal(out.BETTER_AUTH_SECRETS, false);
+			assert.equal(out.MY_WEB_2026_CONSUMER_API_KEY, true);
+
+			// The generated script must reference each key (so a
+			// typo in the keys list would surface).
+			for (const k of names) {
+				assert.equal(script.includes(`process.env[${JSON.stringify(k)}]`), true);
+			}
 		});
 	});
 

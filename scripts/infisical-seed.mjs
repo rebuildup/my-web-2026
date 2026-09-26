@@ -106,25 +106,46 @@ Side effects:
 
 /**
  * Generate the 3-name contract values for the dev environment.
- * Pure function — exported (top-level) for tests. Uses
- * `globalThis.crypto.getRandomValues` (Web Crypto API, Node 19+)
- * so the helper stays self-contained for regex-extraction by the
- * test harness (mirrors the pattern in
+ * Pure function — exported (top-level) for tests.
+ *
+ * Each value uses a SEPARATE random source.
+ * Sharing one hex across all three names would make
+ * `MY_WEB_2026_CONSUMER_API_KEY` trivially predictable from
+ * the auth signing key. The versioned `BETTER_AUTH_SECRETS`
+ * signing key intentionally equals `BETTER_AUTH_SECRET`
+ * (Better Auth 1.5+ contract: `1:<hex>` is the first version
+ * of the current key).
+ *
+ * The random-generation helper is inlined (rather than calling
+ * a separate `randomHex32` top-level function) so this function
+ * stays self-contained for regex-extraction by the test harness
+ * (mirrors the pattern in
  * `bootstrap-home-api-key.test.mjs#loadPureHelpers`).
  */
 function buildDevSecretValues() {
-	const bytes = new Uint8Array(32);
-	globalThis.crypto.getRandomValues(bytes);
-	let randomHex = '';
-	for (const byte of bytes) {
-		randomHex += byte.toString(16).padStart(2, '0');
+	const bytes1 = new Uint8Array(32);
+	globalThis.crypto.getRandomValues(bytes1);
+	let hex1 = '';
+	for (const byte of bytes1) {
+		hex1 += byte.toString(16).padStart(2, '0');
+	}
+	const bytes2 = new Uint8Array(32);
+	globalThis.crypto.getRandomValues(bytes2);
+	let hex2 = '';
+	for (const byte of bytes2) {
+		hex2 += byte.toString(16).padStart(2, '0');
 	}
 	return {
-		BETTER_AUTH_SECRET: randomHex,
+		BETTER_AUTH_SECRET: hex1,
 		// versioned form: first entry is the current signing key
-		// (Better Auth 1.5+ contract, ADR-0015 §11.2)
-		BETTER_AUTH_SECRETS: `1:${randomHex}`,
-		MY_WEB_2026_CONSUMER_API_KEY: randomHex,
+		// (Better Auth 1.5+ contract, ADR-0015 §11.2). The signing
+		// key inside the versioned form MUST equal BETTER_AUTH_SECRET
+		// (Better Auth 1.5+ interprets `1:<hex>` as "first version,
+		// current key"). MY_WEB_2026_CONSUMER_API_KEY is a separate
+		// secret and uses a SEPARATE random source — sharing a value
+		// would make the consumer key predictable from the signing key.
+		BETTER_AUTH_SECRETS: `1:${hex1}`,
+		MY_WEB_2026_CONSUMER_API_KEY: hex2,
 	};
 }
 

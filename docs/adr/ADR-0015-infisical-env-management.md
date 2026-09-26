@@ -508,7 +508,7 @@ Phase 1 (Issue #67) の残作業だけを記述する。
 
 ### 11.5 Workers Builds env target — rationale
 
-`INFISIAL_CLIENT_ID` / `INFISIAL_CLIENT_SECRET` を **Cloudflare
+`INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` を **Cloudflare
 Workers Builds の environment variables (build-time env vars)** に
 置く理由:
 
@@ -516,7 +516,7 @@ Workers Builds の environment variables (build-time env vars)** に
   入れた場合、Worker 起動時に `process.env` に値が乗ってしまう
   (Wrangler は deploy 時に値を復号して env var として inject する)。
   Universal Auth の短期 access token は親 process (deploy script)
-  が取得するため、Worker runtime に `INFISIAL_CLIENT_SECRET` が
+  が取得するため、Worker runtime に `INFISICAL_CLIENT_SECRET` が
   常駐する必要は本来ない。
 - 逆に `wrangler secret put` を deploy 前に手動で実行する運用は
   `release-merge-human-gate` の枠を踏み越える — production deploy
@@ -524,8 +524,8 @@ Workers Builds の environment variables (build-time env vars)** に
 - Cloudflare Builds API の `PATCH /accounts/{accountId}/builds/
   triggers/{triggerUuid}/environment_variables` は Build container
   起動時に環境変数として inject される build-time env であり、
-  Worker runtime には露出しない。`INFISIAL_CLIENT_ID` /
-  `INFISIAL_CLIENT_SECRET` は `deploy-with-secrets.mjs` (Phase 2
+  Worker runtime には露出しない。`INFISICAL_CLIENT_ID` /
+  `INFISICAL_CLIENT_SECRET` は `deploy-with-secrets.mjs` (Phase 2
   で merge 済み) が Universal Auth login を HTTPS POST する際の
   引数として Build container 内でしか読まれない — Worker runtime
   の `Env` 型契約にも影響しない。
@@ -557,11 +557,43 @@ filter: deployment_enabled === true AND branch in {main, release-*}
 
 Disambiguation: 複数の production-shaped trigger が返る場合
 (例: `main` と `release-0-4-0` の両方が deployment_enabled)、
-script は ambiguous として abort し、operator が
-`CF_TRIGGER_UUID=<explicit>` env var で override して再実行する
-(`scripts/infisical-bootstrap-cf.mjs` の `selectProductionTrigger`
-は `branch` の `main > release-*` 優先順で決定的に 1 件選ぶが、
-該当 0 件 / 異常系の最終判断は operator gate)。
+`scripts/infisical-bootstrap-cf.mjs` の `selectProductionTrigger`
+は **abort (throw)** し、operator が
+`CF_TRIGGER_UUID=<explicit>` env var で override して再実行する。
+Cloudflare の response 順序は operator 意図を反映しないため、
+配列順での first-match 選択は禁止 — 選択ミスは production
+credential を意図しない trigger に binding する事故につながる。
+1 件マッチ / 0 件マッチ (後者は error で終了) はそのまま返す。
+
+#### 11.6.1 Cloudflare v4 / Infisical v1 API response contracts
+
+`scripts/infisical-bootstrap-cf.mjs` で参照する API の
+response shape を pin する (review round 3, CodeRabbit
+2026-09-27 で誤りを検出):
+
+- **Cloudflare API v4 envelope**: 全 response は
+  `{ success, errors, messages, result }` で wrap される。
+  `result` を unwrap せずに helper (`findWorkerTag`,
+  `selectProductionTrigger`) や `Object.keys(existingEnv)`
+  に渡すと envelope 自体が処理対象になり、trigger
+  discovery が常に失敗 / 既存 env 検出が空 /
+  verify 失敗する。
+- **`GET /api/v1/identities`**: response は
+  `{ identities: [...], totalCount }` で、配列は
+  `response.identities` 配下 (`response` 自体は object)。
+- **`POST /api/v1/auth/universal-auth/identities/{id}/client-secrets`**:
+  response は `{ clientSecret, clientSecretData: {...} }`
+  のみ。**`clientId` はここに含まれない** — `clientId` は
+  identity に紐付く Universal Auth config のフィールドで、
+  `GET /api/v1/auth/universal-auth/identities/{id}` から
+  取得する。よって `generateClientSecret` は `clientSecret`
+  のみ返し、`clientId` は別 helper
+  (`getUniversalAuthClientId`) で取得する。
+- **Build-time env var 名前**: Phase 2 で merge 済みの
+  `deploy-with-secrets.mjs` と一致させるため
+  `INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET`。
+  `INFISIAL_*` (C 欠落) は typo で production deploy で
+  credential が読めない事故になる。
 
 ### 11.7 Zero prod seeds rationale
 

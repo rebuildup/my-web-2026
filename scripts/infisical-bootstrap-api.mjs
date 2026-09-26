@@ -287,7 +287,8 @@ async function main() {
 		existing?.defaultEnvironment ?? envResults.find((e) => e.slug === 'dev')?.slug ?? 'dev';
 
 	const content = buildInfisicalJsonContent({ workspaceId, defaultEnvironment });
-	const isUnchanged = existing?.workspaceId === workspaceId;
+	const isUnchanged =
+		existing?.workspaceId === workspaceId && existing?.defaultEnvironment === defaultEnvironment;
 	if (!isUnchanged) {
 		writeFileSync(TARGET_PATH, content);
 	}

@@ -101,10 +101,10 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			// CRITICAL: shape must be a flat object map, NOT an array
 			// of {name, value, is_secret} records.
 			assert.equal(Array.isArray(out), false);
-			assert.deepEqual(Object.keys(out).sort(), ['INFISIAL_CLIENT_ID', 'INFISIAL_CLIENT_SECRET']);
+			assert.deepEqual(Object.keys(out).sort(), ['INFISICAL_CLIENT_ID', 'INFISICAL_CLIENT_SECRET']);
 			assert.deepEqual(out, {
-				INFISIAL_CLIENT_ID: { value: 'cid-abc', is_secret: true },
-				INFISIAL_CLIENT_SECRET: { value: 'csec-xyz', is_secret: true },
+				INFISICAL_CLIENT_ID: { value: 'cid-abc', is_secret: true },
+				INFISICAL_CLIENT_SECRET: { value: 'csec-xyz', is_secret: true },
 			});
 		});
 
@@ -113,8 +113,8 @@ describe('infisical-bootstrap-cf.mjs', () => {
 				clientId: 'cid',
 				clientSecret: 'csec',
 			});
-			assert.equal(out.INFISIAL_CLIENT_ID.is_secret, true);
-			assert.equal(out.INFISIAL_CLIENT_SECRET.is_secret, true);
+			assert.equal(out.INFISICAL_CLIENT_ID.is_secret, true);
+			assert.equal(out.INFISICAL_CLIENT_SECRET.is_secret, true);
 		});
 
 		it('rejects empty clientId', () => {
@@ -174,15 +174,27 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			assert.equal(selectProductionTrigger('triggers'), null);
 		});
 
-		it('prefers main over release-* when both match (deterministic)', () => {
+		it('throws when multiple production-shaped triggers exist (operator must set CF_TRIGGER_UUID)', () => {
 			const triggers = [
 				{ uuid: 'r', deployment_enabled: true, branch: 'release-0-4-0' },
 				{ uuid: 'm', deployment_enabled: true, branch: 'main' },
 			];
-			// main branch appears first in the iteration order via .find();
-			// either way the returned UUID is valid production-shaped.
-			const result = selectProductionTrigger(triggers);
-			assert.ok(['m', 'r'].includes(result?.uuid));
+			assert.throws(
+				() => selectProductionTrigger(triggers),
+				/multiple production-shaped triggers found \(count=2\)/,
+			);
+		});
+
+		it('throws when 3+ production-shaped triggers exist (count is in message)', () => {
+			const triggers = [
+				{ uuid: 'r1', deployment_enabled: true, branch: 'release-0-4-0' },
+				{ uuid: 'r2', deployment_enabled: true, branch: 'release-0-5-0' },
+				{ uuid: 'm', deployment_enabled: true, branch: 'main' },
+			];
+			assert.throws(
+				() => selectProductionTrigger(triggers),
+				/multiple production-shaped triggers found \(count=3\)/,
+			);
 		});
 	});
 
@@ -261,18 +273,18 @@ describe('infisical-bootstrap-cf.mjs', () => {
 				return acc;
 			}, []);
 
-			// Acceptable contexts: the body builder, the generator
-			// return, the variable assignment in main(), and the
-			// explicit null-out cleanup. Anything else (log, error,
-			// write) is a leak.
+			// Acceptable contexts: the body builder, the response
+			// parsing (top-level `clientSecret` field), the variable
+			// assignment in main(), and the explicit null-out cleanup.
+			// Anything else (log, error, write) is a leak.
 			const acceptablePatterns = [
-				/response\?\.clientSecret/, // parse response
-				/clientSecret must be a non-empty string/, // validation (recover for backward compat)
-				/return \{ clientId, clientSecret \};/, // generator return
-				/(const|let) \{ clientId, clientSecret \} =/, // destructuring
+				/response\?\.clientSecret/, // parse response (top-level)
+				/clientSecret must be a non-empty string/, // legacy error message
+				/return \{ clientId, clientSecret \};/, // generator return (legacy form, may be absent)
 				/clientSecret: secret/, // function param rename to `secret`
 				/const envVarsBody = buildBuildsEnvVarsPatchBody/, // body builder call
 				/clientSecret = null/, // explicit cleanup
+				/let clientSecret = await generateClientSecret/, // generator assignment in main()
 			];
 
 			for (const { line, text } of allOccurrences) {
@@ -282,6 +294,92 @@ describe('infisical-bootstrap-cf.mjs', () => {
 					`line ${line} references clientSecret in non-allow-listed context: ${text}`,
 				);
 			}
+		});
+	});
+
+	describe('Cloudflare v4 envelope unwrap (result wrapper)', () => {
+		it('the script unwraps .result for the workers list', () => {
+			// The workers list response is `{ success, errors,
+			// messages, result: [...] }`. Without unwrapping,
+			// findWorkerTag would receive the envelope object and
+			// always return null.
+			assert.match(
+				SOURCE,
+				/findWorkerTag\(workersResponse\?\.result,/,
+				'script must unwrap .result from workers list response',
+			);
+		});
+
+		it('the script unwraps .result for the triggers list', () => {
+			assert.match(
+				SOURCE,
+				/selectProductionTrigger\(triggersResponse\?\.result\)/,
+				'script must unwrap .result from triggers list response',
+			);
+		});
+
+		it('the script unwraps .result for the existing env vars', () => {
+			// existingEnvResponse?.result must be the env-var object
+			// map (keyed by variable name), not the v4 envelope.
+			assert.match(
+				SOURCE,
+				/existingEnvResult\s*=\s*existingEnvResponse\?\.result/,
+				'script must unwrap .result from existing env vars response',
+			);
+		});
+
+		it('the script unwraps .result for the post-PATCH verify', () => {
+			assert.match(
+				SOURCE,
+				/verifiedResult\s*=\s*verifiedResponse\?\.result/,
+				'script must unwrap .result from verified env vars response',
+			);
+		});
+	});
+
+	describe('Infisical API response shape', () => {
+		it('findIdentity reads from .identities (not the top-level array)', () => {
+			// `GET /api/v1/identities` returns
+			// `{ identities: [...], totalCount }`. Reading the array
+			// directly would yield undefined.
+			assert.match(
+				SOURCE,
+				/Array\.isArray\(response\?\.identities\)/,
+				'script must read list from .identities key (Infisical v1 API contract)',
+			);
+		});
+
+		it('generateClientSecret expects top-level clientSecret (no clientId)', () => {
+			// The client-secrets POST returns
+			// `{ clientSecret, clientSecretData }` only — no
+			// `clientId`. clientId is fetched separately from the
+			// Universal Auth endpoint.
+			assert.match(
+				SOURCE,
+				/response\?\.clientSecret/,
+				'generateClientSecret must read top-level clientSecret field',
+			);
+			// And explicitly should not destructure `{ clientId, clientSecret }`
+			// from the response.
+			const destructuresFromResponse = SOURCE.match(
+				/(?:const|let)\s*\{\s*clientId\s*,\s*clientSecret\s*\}\s*=\s*response/g,
+			);
+			assert.equal(destructuresFromResponse, null);
+		});
+
+		it('the script fetches clientId from the Universal Auth endpoint', () => {
+			// `clientId` lives at
+			// `GET /api/v1/auth/universal-auth/identities/{identityId}`
+			assert.match(
+				SOURCE,
+				/\/api\/v1\/auth\/universal-auth\/identities\/\$\{identityId\}/,
+				'script must read clientId from the Universal Auth endpoint',
+			);
+			assert.match(
+				SOURCE,
+				/function getUniversalAuthClientId/,
+				'script must define getUniversalAuthClientId helper',
+			);
 		});
 	});
 

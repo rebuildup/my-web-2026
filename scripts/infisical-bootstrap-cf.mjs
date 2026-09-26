@@ -7,7 +7,7 @@
  * in Infisical, attaches Universal Auth to the project, generates a
  * new client secret, and binds the credentials to the production
  * Workers Builds trigger's build-time env vars
- * (`INFISIAL_CLIENT_ID` + `INFISIAL_CLIENT_SECRET`) via the
+ * (`INFISICAL_CLIENT_ID` + `INFISICAL_CLIENT_SECRET`) via the
  * Cloudflare Builds API.
  *
  * Critical invariants (operator-mandated, 2026-09-27):
@@ -50,7 +50,7 @@ const WRANGLER_PRODUCTION_CONFIG = resolve(REPO_ROOT, 'wrangler.production.jsonc
 
 const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
 const MACHINE_IDENTITY_NAME = 'my-web-2026-cf-worker';
-const BUILD_ENV_VARS = ['INFISIAL_CLIENT_ID', 'INFISIAL_CLIENT_SECRET'];
+const BUILD_ENV_VARS = ['INFISICAL_CLIENT_ID', 'INFISICAL_CLIENT_SECRET'];
 const HTTPS_TIMEOUT_MS = 10_000;
 const HTTPS_MAX_RESPONSE_BYTES = 64 * 1024;
 
@@ -61,7 +61,7 @@ ADR-0015 §11 Phase 1 #67 — Machine Identity + Universal Auth +
 Cloudflare Workers Builds trigger binding.
 
 Reads:
-  INFISIAL_TOKEN             Infisical Universal Auth access token
+  INFISICAL_TOKEN             Infisical Universal Auth access token
   CLOUDFLARE_API_TOKEN       user-scoped Cloudflare API token with
                              Workers Builds Configuration: Edit +
                              Workers Scripts: Read
@@ -216,26 +216,39 @@ function buildBuildsEnvVarsPatchBody({ clientId, clientSecret: secret }) {
 		throw new Error('credential field must be a non-empty string');
 	}
 	return {
-		INFISIAL_CLIENT_ID: { value: clientId, is_secret: true },
-		INFISIAL_CLIENT_SECRET: { value: secret, is_secret: true },
+		INFISICAL_CLIENT_ID: { value: clientId, is_secret: true },
+		INFISICAL_CLIENT_SECRET: { value: secret, is_secret: true },
 	};
 }
 
 /**
  * Filter a triggers list response to the production-shaped trigger.
- * Returns the chosen trigger or null. Pure helper — exposed for
- * tests.
+ *
+ * Returns:
+ *   - `null` when no production-shaped trigger exists (no
+ *     `deployment_enabled=true` with `branch in {main, release-*}`).
+ *   - the single matching trigger when exactly one candidate exists.
+ *   - **throws** when multiple production-shaped triggers exist.
+ *     Selection by array order is unsafe (Cloudflare returns the
+ *     order it wants, not the operator's preferred order) — the
+ *     caller must disambiguate by setting `CF_TRIGGER_UUID`
+ *     explicitly. Pure helper — exposed for tests.
  */
 function selectProductionTrigger(triggers) {
 	if (!Array.isArray(triggers)) return null;
-	return (
-		triggers.find(
-			(trigger) =>
-				trigger?.deployment_enabled === true &&
-				(trigger?.branch === 'main' ||
-					(typeof trigger?.branch === 'string' && trigger.branch.startsWith('release-'))),
-		) ?? null
+	const matches = triggers.filter(
+		(trigger) =>
+			trigger?.deployment_enabled === true &&
+			(trigger?.branch === 'main' ||
+				(typeof trigger?.branch === 'string' && trigger.branch.startsWith('release-'))),
 	);
+	if (matches.length === 0) return null;
+	if (matches.length > 1) {
+		throw new Error(
+			`multiple production-shaped triggers found (count=${matches.length}); set CF_TRIGGER_UUID explicitly to disambiguate`,
+		);
+	}
+	return matches[0];
 }
 
 /**
@@ -290,9 +303,11 @@ function patchCloudflareBuildsEnvVars({ accountId, token, triggerUuid, envVarsBo
 
 async function findIdentity({ apiUrl, token, name }) {
 	const base = apiUrl.replace(/\/+$/, '');
-	// List endpoint shape is org-wide; filter by name in-process.
-	const list = await httpsRequestJson('GET', `${base}/api/v1/identities`, { token });
-	if (!Array.isArray(list)) return null;
+	// List endpoint shape is `{ identities: [...], totalCount }`
+	// (Infisical v1 API). Read `.identities` before filtering.
+	const response = await httpsRequestJson('GET', `${base}/api/v1/identities`, { token });
+	const list = Array.isArray(response?.identities) ? response.identities : null;
+	if (list === null) return null;
 	return list.find((identity) => identity?.name === name) ?? null;
 }
 
@@ -342,20 +357,39 @@ async function generateClientSecret({ apiUrl, token, identityId }) {
 	// Always generates a NEW client secret. The previous secret
 	// remains valid until it is explicitly revoked (we never revoke
 	// in this script — see Sub-step 67.4 in the plan).
+	//
+	// Infisical API response shape: top-level `clientSecret` plus
+	// `clientSecretData` metadata. **No `clientId` here** — the
+	// `clientId` is owned by the Universal Auth identity, not by
+	// the secret. Caller must fetch it from
+	// `GET /api/v1/auth/universal-auth/identities/{identityId}`.
 	const response = await httpsRequestJson(
 		'POST',
 		`${base}/api/v1/auth/universal-auth/identities/${identityId}/client-secrets`,
 		{ token, body: {} },
 	);
-	const clientId = response?.clientId;
 	const secret = response?.clientSecret;
-	if (typeof clientId !== 'string' || clientId.length === 0) {
-		throw new Error('client-secrets response missing clientId');
-	}
 	if (typeof secret !== 'string' || secret.length === 0) {
 		throw new Error('client-secrets response missing required credential field');
 	}
-	return { clientId, clientSecret: secret };
+	return secret;
+}
+
+async function getUniversalAuthClientId({ apiUrl, token, identityId }) {
+	const base = apiUrl.replace(/\/+$/, '');
+	// Read the Universal Auth config for the identity. The
+	// `clientId` is stable across secret rotations — it's the
+	// identity's public identifier in the Universal Auth flow.
+	const response = await httpsRequestJson(
+		'GET',
+		`${base}/api/v1/auth/universal-auth/identities/${identityId}`,
+		{ token },
+	);
+	const clientId = response?.clientId;
+	if (typeof clientId !== 'string' || clientId.length === 0) {
+		throw new Error('Universal Auth response missing clientId');
+	}
+	return clientId;
 }
 
 /* ------------------------------------------------------------------ */
@@ -366,22 +400,24 @@ async function discoverProductionTriggerUuid({ accountId, cloudflareToken, worke
 	if (typeof process.env.CF_TRIGGER_UUID === 'string' && process.env.CF_TRIGGER_UUID.length > 0) {
 		return { triggerUuid: process.env.CF_TRIGGER_UUID, source: 'env override' };
 	}
-	const workersList = await listCloudflareWorkersBuildsWorkers({
+	const workersResponse = await listCloudflareWorkersBuildsWorkers({
 		accountId,
 		token: cloudflareToken,
 	});
-	const tag = findWorkerTag(workersList, workerName);
+	// Cloudflare API v4 envelope: `{ success, errors, messages, result }`.
+	// Unwrap `.result` before passing to the pure helpers.
+	const tag = findWorkerTag(workersResponse?.result, workerName);
 	if (tag === null) {
 		throw new Error(
 			`Worker '${workerName}' not found in Cloudflare Builds workers list. Set CF_TRIGGER_UUID explicitly to bypass discovery.`,
 		);
 	}
-	const triggers = await listCloudflareBuildsTriggers({
+	const triggersResponse = await listCloudflareBuildsTriggers({
 		accountId,
 		token: cloudflareToken,
 		workerTag: tag,
 	});
-	const trigger = selectProductionTrigger(triggers);
+	const trigger = selectProductionTrigger(triggersResponse?.result);
 	if (!trigger) {
 		throw new Error(
 			`No production-shaped trigger (deployment_enabled=true, branch in {main, release-*}) found for Worker '${workerName}'. Set CF_TRIGGER_UUID explicitly.`,
@@ -399,7 +435,7 @@ async function main() {
 	const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 
 	if (typeof infisicalToken !== 'string' || infisicalToken.length === 0) {
-		throw new Error('INFISIAL_TOKEN env var is required');
+		throw new Error('INFISICAL_TOKEN env var is required');
 	}
 	if (typeof cloudflareToken !== 'string' || cloudflareToken.length === 0) {
 		throw new Error(
@@ -466,14 +502,17 @@ async function main() {
 	console.log(`Production trigger: ${triggerUuid} (${source})`);
 
 	// ---- Builds env vars ----
-	const existingEnv = await getCloudflareBuildsEnvVars({
+	const existingEnvResponse = await getCloudflareBuildsEnvVars({
 		accountId,
 		token: cloudflareToken,
 		triggerUuid,
 	});
+	// Cloudflare API v4 envelope: `{ success, errors, messages, result }`.
+	// Unwrap `.result` — it's the env-var object map keyed by name.
+	const existingEnvResult = existingEnvResponse?.result;
 	const existingKeys =
-		existingEnv && typeof existingEnv === 'object' && !Array.isArray(existingEnv)
-			? Object.keys(existingEnv)
+		existingEnvResult && typeof existingEnvResult === 'object' && !Array.isArray(existingEnvResult)
+			? Object.keys(existingEnvResult)
 			: [];
 	const allKeysPresent = BUILD_ENV_VARS.every((key) => existingKeys.includes(key));
 
@@ -492,7 +531,12 @@ async function main() {
 	// Use `let` so we can null-out the credentials before exit (heap
 	// inspector mitigation; invariant: secret never persists beyond
 	// the process lifetime).
-	let { clientId, clientSecret } = await generateClientSecret({
+	let clientSecret = await generateClientSecret({
+		apiUrl: infisicalApiUrl,
+		token: infisicalToken,
+		identityId,
+	});
+	let clientId = await getUniversalAuthClientId({
 		apiUrl: infisicalApiUrl,
 		token: infisicalToken,
 		identityId,
@@ -511,14 +555,15 @@ async function main() {
 
 	// Verify via GET (values are null in the list response — we never
 	// see the secret).
-	const verified = await getCloudflareBuildsEnvVars({
+	const verifiedResponse = await getCloudflareBuildsEnvVars({
 		accountId,
 		token: cloudflareToken,
 		triggerUuid,
 	});
+	const verifiedResult = verifiedResponse?.result;
 	const verifiedKeys =
-		verified && typeof verified === 'object' && !Array.isArray(verified)
-			? Object.keys(verified)
+		verifiedResult && typeof verifiedResult === 'object' && !Array.isArray(verifiedResult)
+			? Object.keys(verifiedResult)
 			: [];
 	for (const key of BUILD_ENV_VARS) {
 		const present = verifiedKeys.includes(key);

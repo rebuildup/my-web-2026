@@ -90,7 +90,7 @@ function buildPresenceCheckScript(secretNames) {
 	}
 	const lines = secretNames.map(
 		(key) =>
-			`process.stdout.write(${JSON.stringify(`${key}=`)} + Boolean(process.env[${JSON.stringify(key)}]))`,
+			`process.stdout.write(${JSON.stringify(`${key}=`)} + Boolean(process.env[${JSON.stringify(key)}]) + "\\n")`,
 	);
 	return `${lines.join(';\n')};\n`;
 }

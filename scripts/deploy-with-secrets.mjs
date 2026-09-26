@@ -59,20 +59,30 @@ const HTTPS_TIMEOUT_MS = 10_000;
 const HTTPS_MAX_RESPONSE_BYTES = 64 * 1024;
 
 function printHelp() {
-	console.log(`Usage: deploy-with-secrets.mjs [--execute] [--dry-run] [--environment=<prod|preview>] [--config=<path>]
+	console.log(`Usage: deploy-with-secrets.mjs [--execute] [--dry-run] [--environment=prod] [--config=<path>]
 
 Production deploy driver (ADR-0015 §4).
+
+This script is production-only. Side effects (db:migrate:production
++ wrangler deploy) are gated by --execute and only valid for the
+canonical production config (wrangler.production.jsonc).
+
+For dev / preview verification, run the inner script directly via:
+  infisical run --env=dev -- node scripts/run-deploy-inner.mjs --config=wrangler.jsonc
+(inner defaults to dry-run, no production side effects.)
 
 Default mode is --dry-run (no production side effects).
 
 Options:
   --execute                 actually run db:migrate + wrangler deploy
-                            (operator gate required)
+                            (operator gate required; production config only)
   --dry-run                 verify args + tempdir lifecycle only (default)
-  --environment=<name>      Infisical environment (default: 'prod')
-  --config=<path>           wrangler config path (default depends on environment)
-                            production -> wrangler.production.jsonc
-                            preview    -> wrangler.jsonc
+  --environment=<prod>      Infisical environment (default: 'prod'; only
+                            'prod' is accepted — this script is production-only)
+  --config=<path>           wrangler config path (default: wrangler.production.jsonc)
+                            Override only allowed to point at the canonical
+                            production config. Other configs are rejected
+                            under --execute (inner script enforces this).
   -h, --help                show this help`);
 }
 
@@ -81,7 +91,7 @@ function parseArgs(argv) {
 		execute: false,
 		dryRun: true,
 		environment: 'prod',
-		config: null,
+		config: 'wrangler.production.jsonc',
 	};
 	let explicitMode = null;
 	for (const arg of argv) {
@@ -106,13 +116,10 @@ function parseArgs(argv) {
 			throw new Error(`unknown argument: ${arg}`);
 		}
 	}
-	if (args.environment !== 'prod' && args.environment !== 'preview') {
+	if (args.environment !== 'prod') {
 		throw new Error(
-			`--environment must be 'prod' or 'preview' (got: ${JSON.stringify(args.environment)})`,
+			`--environment must be 'prod' (this script is production-only; got: ${JSON.stringify(args.environment)})`,
 		);
-	}
-	if (args.config === null) {
-		args.config = args.environment === 'prod' ? 'wrangler.production.jsonc' : 'wrangler.jsonc';
 	}
 	return args;
 }
@@ -295,6 +302,9 @@ async function main() {
 
 	// Env discipline: INFISICAL_TOKEN is the official contract. CLIENT_ID /
 	// CLIENT_SECRET must be removed post-auth (residency minimization).
+	// `delete` (not `= undefined`) is the canonical Node API for removing
+	// env entries — assignment to `undefined` coerces to the string
+	// `"undefined"`.
 	process.env.INFISICAL_TOKEN = accessToken;
 	process.env.INFISICAL_CLIENT_ID = undefined;
 	process.env.INFISICAL_CLIENT_SECRET = undefined;
@@ -330,10 +340,9 @@ async function main() {
 			console.error(`Inner deploy failed (exit=${childExitCode}).`);
 		}
 	} finally {
-		// Cleanup INFISICAL_TOKEN in the parent env. Overwrite with a
-		// safe placeholder first to defeat string interning surprises,
-		// then delete.
-		process.env.INFISICAL_TOKEN = '';
+		// Cleanup INFISICAL_TOKEN in the parent env. `delete` is the
+		// canonical Node API for removing env entries — assignment to
+		// `undefined` would coerce to the string `"undefined"`.
 		process.env.INFISICAL_TOKEN = undefined;
 	}
 

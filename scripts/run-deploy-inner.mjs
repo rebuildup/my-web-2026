@@ -87,6 +87,23 @@ function parseArgs(argv) {
 	return args;
 }
 
+/**
+ * Validate that an --execute invocation targets the canonical
+ * production config. Side effects (`db:migrate:production` + `wrangler
+ * deploy`) are gated on the config basename matching
+ * `wrangler.production.jsonc`. Dev / preview configs (e.g.
+ * `wrangler.jsonc`) may only be used in dry-run mode. ADR-0015 §4.
+ */
+function assertProductionConfigForExecute(configPath, execute) {
+	if (!execute) return;
+	const basename = configPath.split(/[/\\]/).pop();
+	if (basename !== 'wrangler.production.jsonc') {
+		throw new Error(
+			`--execute is only valid with wrangler.production.jsonc (got: ${basename}). Dev verification path: invoke the inner script directly via 'infisical run --env=dev -- node scripts/run-deploy-inner.mjs --config=wrangler.jsonc' (dry-run default; no production side effects).`,
+		);
+	}
+}
+
 function printHelp() {
 	console.log(`Usage: run-deploy-inner.mjs --config=<path> [--execute]
 
@@ -136,6 +153,7 @@ function buildSanitizedEnv() {
 
 const args = parseArgs(process.argv.slice(2));
 const configPath = resolve(args.config);
+assertProductionConfigForExecute(configPath, args.execute);
 const secrets = collectSecrets();
 const sanitizedEnv = buildSanitizedEnv();
 const tempDir = mkdtempSync(join(tmpdir(), 'my-web-2026-deploy-'));

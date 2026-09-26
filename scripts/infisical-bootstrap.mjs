@@ -34,8 +34,10 @@
  */
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const REPO_ROOT = resolve(new URL('.', import.meta.url).pathname, '..');
+const HERE = fileURLToPath(new URL('.', import.meta.url));
+const REPO_ROOT = resolve(HERE, '..');
 const TARGET_PATH = resolve(REPO_ROOT, '.infisical.json');
 
 const UUID_V4_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;

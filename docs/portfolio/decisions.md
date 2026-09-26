@@ -180,9 +180,13 @@ when a client ships a stale cursor.
 
 ## Decision 5 — R2 media delivery: public R2 custom domain
 
-**Status:** Accepted for the foundation (Issue #77). Implementation
-follows once the operator configures the custom domain in the R2
-bucket settings (not a code change — the Worker needs no route).
+**Status:** Accepted for the foundation (Issue #77). Configuration
+follows once the operator attaches the `media.rebuildup.dev`
+custom domain at the R2 bucket level (not a code change — the
+Worker needs no route). The `MEDIA_PUBLIC_BASE_URL` value is
+pinned in `wrangler.production.jsonc#vars` so the Worker
+production deployment sees the canonical base URL without
+operator runtime action.
 
 **Context.** #76 ships with `composeMediaUrl()` returning `null`.
 Issue #77 picks the actual public delivery mechanism. Three
@@ -225,6 +229,16 @@ content that is identical for every visitor.
 
 **Implementation.**
 
+- `wrangler.production.jsonc#vars` — `MEDIA_PUBLIC_BASE_URL:
+  "https://media.rebuildup.dev"`. Non-secret config is committed
+  to the repo so the operator does not need to set anything via
+  the dashboard on every deploy. Production dry-run must include
+  this entry.
+- `wrangler.jsonc` (local) — intentionally **omits**
+  `MEDIA_PUBLIC_BASE_URL`. Local dev sees every URL as `null` and
+  exercises the placeholder branch by default; the variable can
+  be set explicitly when the operator wants to test the
+  custom-domain path locally.
 - `src/portfolio/media.ts` — `composeMediaUrl` returns the
   custom-domain URL when `env.MEDIA` is configured AND a
   `MEDIA_PUBLIC_BASE_URL` is available (read from `env`). When
@@ -232,9 +246,20 @@ content that is identical for every visitor.
   placeholder branch is exercised.
 - The custom domain itself is **not** a code change — it's an R2
   bucket setting in the Cloudflare dashboard. Until the operator
-  wires it, every public URL is `null` and the UI renders the
-  placeholder. The placeholder must be safe against null URLs and
-  against missing R2 objects.
+  wires it at the bucket level, every public URL is `null` even
+  though the Worker sees the base URL. The placeholder must be
+  safe against null URLs and against missing R2 objects.
+
+**Release prerequisite — durable state.**
+
+The bucket-level attachment (R2 bucket `my-web-2026` ↔ custom
+domain `media.rebuildup.dev`) is the only piece of Decision 5
+that cannot be expressed as code. It lives in the Cloudflare
+account's R2 settings, not in this repository. The release gate
+that ships 0.5.0 must verify the attachment is live
+(read-back: `wrangler r2 bucket domain list` or dashboard) before
+the production dry-run can prove a single image actually serves.
+The local dev path remains null, by design.
 
 **Placeholder contract.** A `PortfolioMedia` row with `url === null`
 or an `url` that fails to load must never crash the page. The UI

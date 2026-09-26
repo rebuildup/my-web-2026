@@ -1,3 +1,4 @@
+import { useState, type ReactEventHandler } from 'react';
 import type { PortfolioMedia as PortfolioMediaData } from '../schema';
 import { css, cx } from '../../../styled-system/css';
 
@@ -10,9 +11,13 @@ import { css, cx } from '../../../styled-system/css';
  * surface, not an error state.
  *
  * Image load failures are also rendered through the placeholder
- * branch — the `<img>` keeps its `alt` attribute for assistive
- * tech, but the broken-image glyph is hidden in favour of the
- * styled frame so the layout never collapses.
+ * branch — when an `<img>` fires its `error` event (network
+ * failure, 404 on the custom domain, an unsupported content
+ * type, …) we flip React state to `errored` and the next render
+ * emits the styled frame instead of the broken-image glyph. The
+ * `<figure role="img" aria-label>` keeps the alt text reachable
+ * for assistive tech, and the same aspect-ratio frame keeps the
+ * page layout from collapsing.
  */
 export interface PortfolioMediaProps {
 	media: PortfolioMediaData;
@@ -21,13 +26,19 @@ export interface PortfolioMediaProps {
 }
 
 export function PortfolioMediaFigure({ media, loading = 'lazy', className }: PortfolioMediaProps) {
-	if (media.url === null) {
+	const [errored, setErrored] = useState(false);
+	const handleError: ReactEventHandler<HTMLImageElement> = () => {
+		setErrored(true);
+	};
+
+	if (media.url === null || errored) {
 		return (
 			<figure role="img" aria-label={media.alt} className={cx(mediaFrameStyle, className)}>
 				<span className={mediaFrameLabel}>placeholder</span>
 			</figure>
 		);
 	}
+
 	return (
 		<figure className={cx(figureStyle, className)}>
 			<img
@@ -35,6 +46,7 @@ export function PortfolioMediaFigure({ media, loading = 'lazy', className }: Por
 				alt={media.alt}
 				loading={loading}
 				decoding="async"
+				onError={handleError}
 				className={imageStyle}
 			/>
 			{media.caption ? <figcaption className={captionStyle}>{media.caption}</figcaption> : null}

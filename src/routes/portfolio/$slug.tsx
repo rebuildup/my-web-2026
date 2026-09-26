@@ -1,5 +1,5 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
-import { loadPortfolioProject } from '../../portfolio/public';
+import { loadPortfolioAdjacent, loadPortfolioProject } from '../../portfolio/public';
 import { SlugSchema } from '../../portfolio/schema';
 import { PortfolioDetail } from '../../portfolio/components';
 
@@ -13,6 +13,13 @@ import { PortfolioDetail } from '../../portfolio/components';
  * preserved here — the page just renders nothing for an
  * invisible slug.
  *
+ * Prev / next: the detail surface renders the project that sits
+ * immediately above / below the target in canonical sort order.
+ * `loadPortfolioAdjacent` runs in parallel with the project fetch
+ * so the loader work is bounded to one extra round-trip per
+ * side (and both queries can hit the D1 prepared-statement
+ * cache, since they share the public-visibility filter).
+ *
  * OGP / metadata contract:
  *   `title`, `description`, `canonical`, `og:title`,
  *   `og:description`, `og:url`, `og:type=article`,
@@ -23,9 +30,12 @@ import { PortfolioDetail } from '../../portfolio/components';
 export const Route = createFileRoute('/portfolio/$slug')({
 	loader: async ({ params }) => {
 		const slug = SlugSchema.parse(params.slug);
-		const project = await loadPortfolioProject({ data: { slug } });
+		const [project, adjacent] = await Promise.all([
+			loadPortfolioProject({ data: { slug } }),
+			loadPortfolioAdjacent({ data: { slug } }),
+		]);
 		if (!project) throw notFound();
-		return { project };
+		return { project, adjacent };
 	},
 	head: ({ loaderData }) => {
 		if (!loaderData) {
@@ -64,6 +74,6 @@ export const Route = createFileRoute('/portfolio/$slug')({
 });
 
 function DetailRoute() {
-	const { project } = Route.useLoaderData();
-	return <PortfolioDetail project={project} />;
+	const { project, adjacent } = Route.useLoaderData();
+	return <PortfolioDetail project={project} adjacent={adjacent} />;
 }

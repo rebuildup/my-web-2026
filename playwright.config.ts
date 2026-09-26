@@ -55,7 +55,15 @@ export default defineConfig({
 	// the local `pnpm dev` webServer is up, ignore it so the regular
 	// `pnpm run e2e` (CI on push, local dev) does not DNS-fail against
 	// a domain that may not be deployed yet.
-	testIgnore: BASE_URL.startsWith('http://127.0.0.1') ? '**/prod-smoke.spec.ts' : undefined,
+	//
+	// `portfolio.spec.ts` likewise targets a local D1 binding: it
+	// seeds draft / unlisted / archived rows into the local D1 and
+	// asserts the public-visibility boundary. The local D1 file is
+	// not addressable from a remote Worker deployment, so the spec
+	// is filtered out of the production-only path.
+	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
+		? '**/prod-smoke.spec.ts'
+		: '**/portfolio.spec.ts',
 	// The local project spins up `pnpm dev` automatically. The smoke
 	// project (run via PLAYWRIGHT_BASE_URL) must NOT start a server —
 	// the deployed Worker is assumed to already be live.

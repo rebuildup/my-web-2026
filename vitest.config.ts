@@ -26,7 +26,20 @@ export default defineConfig({
 	plugins: [tanstackStart(), cloudflareTest({ wrangler: { configPath: './wrangler.jsonc' } })],
 	test: {
 		include: ['src/**/*.{test,spec}.{ts,tsx}', 'test/integration/**/*.{test,spec}.{ts,tsx}'],
-		exclude: ['node_modules', 'dist', 'dist-cloudflare', '.vinxi', '.output', '.wrangler'],
+		exclude: [
+			'node_modules',
+			'dist',
+			'dist-cloudflare',
+			'.vinxi',
+			'.output',
+			'.wrangler',
+			// Files matching `*.client.test.{ts,tsx}` are dispatched to
+			// `vitest.client.config.ts` (happy-dom + React Testing
+			// Library). The workerd pool here does not support a DOM
+			// environment — `vm.Script` in Node collides with the
+			// happy-dom shim — so we exclude them from this config.
+			'**/*.client.test.{ts,tsx}',
+		],
 		// Apply the canonical Better Auth + auth_invitation schema to
 		// the local D1 binding BEFORE any test file is loaded. The
 		// Better Auth module eagerly validates its schema at import

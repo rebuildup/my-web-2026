@@ -94,7 +94,17 @@
 	"vars": {
 		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
 		"MY_WEB_2026_COUNTER_KEY": "home-page",
-		"BETTER_AUTH_URL": "https://rebuildup.dev"
+		"BETTER_AUTH_URL": "https://rebuildup.dev",
+		// Issue #77 Decision 5 — public R2 custom domain.
+		// Public portfolio media is served directly from R2 via the
+		// custom domain `media.rebuildup.dev`, NOT via the Worker
+		// (zero Worker request cost per image, full CDN cacheability,
+		// direct OGP crawlers, natural srcset). The DNS record is
+		// attached at the R2 bucket level — see
+		// `docs/portfolio/decisions.md` §5. Until the bucket-level
+		// attachment is live, `composeMediaUrl` keeps returning `null`
+		// and the UI's placeholder branch is exercised.
+		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev"
 	},
 	"secrets": {
 		"required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]

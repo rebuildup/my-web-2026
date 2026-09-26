@@ -1,4 +1,4 @@
-import type { PortfolioProject, PortfolioLink } from '../schema';
+import type { PortfolioProject, PortfolioLink, PortfolioAdjacent } from '../schema';
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { Badge } from '../../editorial/primitives/Badge';
@@ -28,6 +28,7 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  */
 export interface PortfolioDetailProps {
 	project: PortfolioProject;
+	adjacent: PortfolioAdjacent;
 }
 
 const SECTION_DEFINITIONS: ReadonlyArray<{
@@ -99,9 +100,10 @@ const LINK_LABEL: Readonly<Record<PortfolioLink['kind'], string>> = {
 	other: 'Link',
 };
 
-export function PortfolioDetail({ project }: PortfolioDetailProps) {
+export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
 	const primaryLink = project.links[0] ?? null;
+	const showAdjacent = adjacent.prev !== null || adjacent.next !== null;
 	return (
 		<>
 			<a href="#portfolio-detail" className={skipLinkStyle}>
@@ -359,6 +361,171 @@ export function PortfolioDetail({ project }: PortfolioDetailProps) {
 								</ul>
 							</Container>
 						</section>
+					) : null}
+					{showAdjacent ? (
+						<nav
+							aria-labelledby="portfolio-section-adjacent"
+							className={css({
+								paddingBlock: { base: '12', lg: '16' },
+								borderTop: '1px solid {colors.border.subtle}',
+							})}
+						>
+							<Container>
+								<SectionHeading
+									id="portfolio-section-adjacent"
+									eyebrow="08"
+									title="隣接 project / Adjacent"
+									description="Canonical sort 順 (pinned → display_order → updated_at → id) で隣接する project。"
+								/>
+								<ul
+									className={css({
+										listStyle: 'none',
+										margin: '0',
+										padding: '0',
+										display: 'grid',
+										gridTemplateColumns: { base: '1fr', sm: '1fr 1fr' },
+										columnGap: '6',
+										rowGap: '4',
+									})}
+								>
+									<li>
+										{adjacent.prev ? (
+											<a
+												href={`/portfolio/${adjacent.prev.slug}`}
+												className={css({
+													display: 'flex',
+													flexDirection: 'column',
+													gap: '2',
+													paddingBlock: '4',
+													paddingInline: '4',
+													borderRadius: '6px',
+													borderWidth: '1px',
+													borderStyle: 'solid',
+													borderColor: 'border.subtle',
+													color: 'text.default',
+													textDecoration: 'none',
+													_focusVisible: {
+														outline: '2px solid {colors.border.focus}',
+														outlineOffset: '2px',
+													},
+													_hover: {
+														borderColor: 'border.strong',
+													},
+												})}
+											>
+												<span
+													aria-hidden="true"
+													className={css({
+														fontFamily: 'mono',
+														fontSize: 'xs',
+														letterSpacing: '0.06em',
+														textTransform: 'uppercase',
+														color: 'text.muted',
+													})}
+												>
+													← Previous
+												</span>
+												<span
+													className={css({
+														fontFamily: 'sans',
+														fontSize: 'md',
+														fontWeight: '600',
+														color: 'text.default',
+														lineHeight: '1.4',
+													})}
+												>
+													{adjacent.prev.title}
+												</span>
+											</a>
+										) : (
+											<span
+												aria-hidden="true"
+												className={css({
+													display: 'block',
+													paddingBlock: '4',
+													paddingInline: '4',
+													fontFamily: 'mono',
+													fontSize: 'xs',
+													letterSpacing: '0.06em',
+													textTransform: 'uppercase',
+													color: 'text.muted',
+												})}
+											>
+												← First project
+											</span>
+										)}
+									</li>
+									<li>
+										{adjacent.next ? (
+											<a
+												href={`/portfolio/${adjacent.next.slug}`}
+												className={css({
+													display: 'flex',
+													flexDirection: 'column',
+													gap: '2',
+													paddingBlock: '4',
+													paddingInline: '4',
+													borderRadius: '6px',
+													borderWidth: '1px',
+													borderStyle: 'solid',
+													borderColor: 'border.subtle',
+													color: 'text.default',
+													textDecoration: 'none',
+													_focusVisible: {
+														outline: '2px solid {colors.border.focus}',
+														outlineOffset: '2px',
+													},
+													_hover: {
+														borderColor: 'border.strong',
+													},
+												})}
+											>
+												<span
+													aria-hidden="true"
+													className={css({
+														fontFamily: 'mono',
+														fontSize: 'xs',
+														letterSpacing: '0.06em',
+														textTransform: 'uppercase',
+														color: 'text.muted',
+													})}
+												>
+													Next →
+												</span>
+												<span
+													className={css({
+														fontFamily: 'sans',
+														fontSize: 'md',
+														fontWeight: '600',
+														color: 'text.default',
+														lineHeight: '1.4',
+													})}
+												>
+													{adjacent.next.title}
+												</span>
+											</a>
+										) : (
+											<span
+												aria-hidden="true"
+												className={css({
+													display: 'block',
+													paddingBlock: '4',
+													paddingInline: '4',
+													fontFamily: 'mono',
+													fontSize: 'xs',
+													letterSpacing: '0.06em',
+													textTransform: 'uppercase',
+													color: 'text.muted',
+													textAlign: 'right',
+												})}
+											>
+												Last project →
+											</span>
+										)}
+									</li>
+								</ul>
+							</Container>
+						</nav>
 					) : null}
 				</article>
 			</main>

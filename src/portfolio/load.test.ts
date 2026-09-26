@@ -189,6 +189,7 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	it('returns null when the binding is missing', async () => {
 		const loader = createD1PortfolioLoader({});
 		expect(await loader.loadPortfolioProject('aulymo')).toBeNull();
+		expect(await loader.loadPortfolioAdjacent('aulymo')).toEqual({ prev: null, next: null });
 		const page = await loader.listPortfolioProjects();
 		expect(page).toEqual({ projects: [], nextCursor: null });
 	});
@@ -240,6 +241,96 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 			pinned: 1,
 		});
 		expect(await loader.loadPortfolioProject('unlisted2')).toBeNull();
+	});
+
+	// Adjacent lookup — prev / next in canonical sort order (Issue #77).
+	it('loadPortfolioAdjacent — returns prev/next in canonical sort order', async () => {
+		const loader = createD1PortfolioLoader(env);
+		// canonical order: pinned DESC, display_order ASC, updated_at DESC, id ASC
+		await seedOne('p1', { pinned: 0, display_order: 0 });
+		await seedOne('p2', { pinned: 0, display_order: 1 });
+		await seedOne('p3', { pinned: 0, display_order: 2 });
+
+		// p2 sits between p1 (earlier in list) and p3 (later in list).
+		// "prev" = row that ranks ABOVE the target (earlier in list).
+		// "next" = row that ranks BELOW the target (later in list).
+		const adjacent = await loader.loadPortfolioAdjacent('p2');
+		expect(adjacent.prev?.slug).toBe('p1');
+		expect(adjacent.next?.slug).toBe('p3');
+	});
+
+	it('loadPortfolioAdjacent — first row has prev=null', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('p1', { display_order: 0 });
+		await seedOne('p2', { display_order: 1 });
+		const adjacent = await loader.loadPortfolioAdjacent('p1');
+		expect(adjacent.prev).toBeNull();
+		expect(adjacent.next?.slug).toBe('p2');
+	});
+
+	it('loadPortfolioAdjacent — last row has next=null', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('p1', { display_order: 0 });
+		await seedOne('p2', { display_order: 1 });
+		const adjacent = await loader.loadPortfolioAdjacent('p2');
+		expect(adjacent.prev?.slug).toBe('p1');
+		expect(adjacent.next).toBeNull();
+	});
+
+	it('loadPortfolioAdjacent — pinned-first ordering is honoured', async () => {
+		const loader = createD1PortfolioLoader(env);
+		// p_top is pinned (display_order high) — comes FIRST in sort
+		await seedOne('p_top', { pinned: 1, display_order: 999 });
+		await seedOne('p_a', { pinned: 0, display_order: 0 });
+		await seedOne('p_b', { pinned: 0, display_order: 1 });
+		await seedOne('p_c', { pinned: 0, display_order: 2 });
+
+		// From p_top: prev=null, next=p_a (first non-pinned)
+		const topAdj = await loader.loadPortfolioAdjacent('p_top');
+		expect(topAdj.prev).toBeNull();
+		expect(topAdj.next?.slug).toBe('p_a');
+
+		// From p_b: prev=p_a, next=p_c
+		const midAdj = await loader.loadPortfolioAdjacent('p_b');
+		expect(midAdj.prev?.slug).toBe('p_a');
+		expect(midAdj.next?.slug).toBe('p_c');
+	});
+
+	it('loadPortfolioAdjacent — display_order tiebreaker with same pinned', async () => {
+		const loader = createD1PortfolioLoader(env);
+		// all pinned=1, display_order increasing
+		await seedOne('p_a', { pinned: 1, display_order: 0 });
+		await seedOne('p_b', { pinned: 1, display_order: 1 });
+		await seedOne('p_c', { pinned: 1, display_order: 2 });
+
+		const adj = await loader.loadPortfolioAdjacent('p_b');
+		expect(adj.prev?.slug).toBe('p_a');
+		expect(adj.next?.slug).toBe('p_c');
+	});
+
+	it('loadPortfolioAdjacent — unknown slug returns {prev:null, next:null}', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('p1', { display_order: 0 });
+		expect(await loader.loadPortfolioAdjacent('nope')).toEqual({ prev: null, next: null });
+	});
+
+	// PUBLIC BOUNDARY for adjacent — unlisted / draft rows can never
+	// become prev/next of a public target, even when they outrank it
+	// in the sort key.
+	it('PUBLIC BOUNDARY — loadPortfolioAdjacent ignores unlisted neighbours', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('public_a', { display_order: 0 });
+		await seedOne('unlisted_x', {
+			visibility: 'unlisted',
+			display_order: 5, // would outrank public_b by sort
+		});
+		await seedOne('public_b', { display_order: 1 });
+		await seedOne('public_c', { display_order: 2 });
+
+		const adj = await loader.loadPortfolioAdjacent('public_b');
+		// prev = public_a (the unlisted row is invisible to the public surface).
+		expect(adj.prev?.slug).toBe('public_a');
+		expect(adj.next?.slug).toBe('public_c');
 	});
 
 	it('returns the project for a public slug with parsed facets and techs', async () => {

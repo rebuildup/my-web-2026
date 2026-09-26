@@ -1,4 +1,6 @@
 export type {
+	PortfolioAdjacent,
+	PortfolioAdjacentRef,
 	PortfolioFacet,
 	PortfolioLink,
 	PortfolioLinkKind,
@@ -40,7 +42,7 @@ export { intersectsAny } from './load';
  * handler). The `.handler()` body is the recognised server
  * boundary per TanStack Start's import-protection plugin.
  */
-export { loadPortfolioProject, listPortfolioProjects } from './public';
+export { loadPortfolioProject, loadPortfolioAdjacent, listPortfolioProjects } from './public';
 
 export { PORTFOLIO_SEED, type PortfolioSeedEntry } from './seed';
 

@@ -58,22 +58,23 @@ GitHub Repository Secrets は現在空 (`production` env を含む全スコー�
 | environments (slug) | `dev` / `prod` (表示名 `Development` / `Production`) |
 | secrets (envごと) | `BETTER_AUTH_SECRET`, `MY_WEB_2026_CONSUMER_API_KEY` |
 
-### 3. Universal Auth (二段階 + self-host domain)
+### 3. Universal Auth (HTTPS POST + `INFISICAL_TOKEN` env var + self-host domain)
 
-Workers Builds の CI 経路で Universal Auth を使う。短命 access token を `infisical login` で取得し、`infisical run --token` に渡す二段階方式:
+Workers Builds の CI 経路で Universal Auth を使う。短命 access token を取得するために、`infisical login` CLI を shell-less に呼ばず、**HTTPS POST body** で直接 Universal Auth login API を叩く。**client secret も argv には出さない** (Infisical token / runtime secrets と同じ invariant の対象)。`scripts/deploy-with-secrets.mjs` 内部 (Phase 2 実装):
 
-```bash
-export INFISICAL_API_URL=https://secrets.rebuildup.dev
-TOKEN=$(infisical login --method=universal-auth \
-  --client-id="$INFISICAL_CLIENT_ID" \
-  --client-secret="$INFISICAL_CLIENT_SECRET" \
-  --silent --plain)
-
-infisical run --token="$TOKEN" \
-  --projectId="<workspaceId-from-.infisical.json>" \
-  --env=prod \
-  -- <command>
+```text
+1. .infisical.json から workspaceId を読む
+2. POST ${INFISICAL_API_URL}/api/v1/auth/universal-auth
+   body: { clientId: process.env.INFISICAL_CLIENT_ID,
+           clientSecret: process.env.INFISICAL_CLIENT_SECRET }
+   headers: Content-Type: application/json
+   → response.accessToken (短命) を取得。argv / log には出さない
+3. parent process.env に INFISICAL_TOKEN=<accessToken> を export (Infisical 公式 env var)
+4. infisical run --projectId=$WORKSPACE_ID --env=prod -- <command>
+   (--token flag は使わない。INFISICAL_TOKEN を env var 経由で渡す)
 ```
+
+`INFISICAL_API_URL=https://secrets.rebuildup.dev` は `deploy-with-secrets.mjs` 内の **committed constant** で default 設定する (これは secret ではなく、Wrangler `vars` か deploy script 内の `const` で source-controlled として持つ)。env var `INFISICAL_API_URL` で override 可能 (staging / dev override 用)。**operator shell rc に依存しない** — Workers Builds ephemeral container には operator の shell rc が存在しないため、deploy script 内 constant + env var override の二段構えで解決する。
 
 `projectId` の SoT は `.infisical.json#workspaceId`。`INFISICAL_PROJECT_ID` を Cloudflare UI に重複して持たない。
 
@@ -83,24 +84,47 @@ infisical run --token="$TOKEN" \
 
 ```text
 deploy-with-secrets.mjs
+├─ stale tempdir cleanup (冒頭): os.tmpdir() 配下の my-web-2026-deploy-* を scan、
+│   24h 以上前のものは削除 (SIGKILL / runner teardown 残留対策、local recovery 用)
 ├─ .infisical.json から workspaceId を読む
-├─ INFISICAL_API_URL=https://secrets.rebuildup.dev を親 process.env に export
-│   (operator の shell rc に恒久設定する想定)
-├─ infisical login → TOKEN を取得 (子プロセスの stdout のみ — 親 argv / log には出さない)
-├─ INFISICAL_TOKEN=$TOKEN を親 process.env に export (Infisical 公式 env var パターン)
-├─ infisical run --projectId=$WORKSPACE_ID --env=prod --
+├─ INFISICAL_API_URL は committed constant (default https://secrets.rebuildup.dev)
+│   env var override 可 (staging / dev 用)
+├─ HTTPS POST ${INFISICAL_API_URL}/api/v1/auth/universal-auth
+│   body: { clientId: INFISICAL_CLIENT_ID, clientSecret: INFISICAL_CLIENT_SECRET }
+│   → response.accessToken を取得 (argv / log に出さない)
+├─ INFISICAL_TOKEN=<accessToken> を親 process.env に export (Infisical 公式 env var)
+├─ process.env から INFISICAL_CLIENT_ID / INFISICAL_CLIENT_SECRET を削除
+│   (post-auth 不要、residency を最小化)
+├─ infisical run --projectId=$WORKSPACE_ID --env=prod -- node scripts/run-deploy-inner.mjs
 │ └─ 子 process (injected env by `infisical run` の公式 contract)
 │        ├─ process.env.BETTER_AUTH_SECRET / process.env.MY_WEB_2026_CONSUMER_API_KEY を読み取り
 │        ├─ fs.mkdtempSync(path.join(os.tmpdir(), 'my-web-2026-deploy-'))
 │        ├─ fs.writeFileSync(secretsFile, JSON.stringify({...}), { mode: 0o600 })
-│        ├─ spawn(pnpm, ['run', 'db:migrate:production']) (子 process, shell-less)
+│        ├─ sanitizedEnv = { ...process.env } から BETTER_AUTH_SECRET /
+│        │   MY_WEB_2026_CONSUMER_API_KEY / INFISICAL_TOKEN を削除
+│        ├─ spawn(pnpm, ['run', 'db:migrate:production'], { env: sanitizedEnv })
+│        │   (db:migrate は D1 スキーマ更新のみで runtime secret を必要としない)
 │        ├─ spawn(wranglerCli, ['deploy', '-c', 'wrangler.production.jsonc',
-│        │                      '--secrets-file', secretsFile]) (子 process, shell-less)
+│        │                      '--secrets-file', secretsFile], { env: sanitizedEnv })
+│        │   (Wrangler は secrets を process.env ではなく --secrets-file から読む)
 │        └─ finally: fs.rmSync(dir, { recursive: true, force: true })
 └─ 親 process は TOKEN を即座に release (overwrite + unsetenv)
 ```
 
-**Invariant (fixed)**: **runtime secret を argv / log へ出さない。Infisical token / runtime secrets は必要な child process environment にのみ存在させ、永続化しない。** child-process env injection (`infisical run` の公式 contract: secret は child `process.env` に inject される) は **scoped to the immediate wrangler / db-migrate invocation** として許可する。invariant は argv / log discipline を guard するものであって、child process env 内の secret 存在を否定するものではない。Temp secrets file は repo root ではなく `os.tmpdir()` 配下の unique directory に置かれ、`finally` 句で cleanup される。
+**Invariant (fixed)**:
+
+- **runtime secret を argv / log へ出さない。Infisical token / runtime secrets は必要な child process environment にのみ存在させ、永続化しない。**
+- **Machine Identity の client secret も argv に出さない** (HTTPS POST body で Universal Auth login API を直接呼ぶ。`infisical login --client-secret` 形式は禁止)。
+- **db:migrate / Wrangler deploy child には runtime secret を継承させない** (sanitized env を渡す。Wrangler deploy は `--secrets-file` 経由のみで secrets を受け取る。`infisical run` 配下の wrapper process のみが secrets を `process.env` に持つ)。
+- **temp secrets file は repo root ではなく `os.tmpdir()` 配下**、unique directory + `mode: 0o600` + `finally rmSync({recursive:true, force:true})`。
+
+**Abrupt termination handling**:
+
+- **normal exit**: `finally` 句で `os.tmpdir()/my-web-2026-deploy-*` を削除
+- **SIGKILL / runner teardown**: Cloudflare Workers Builds ephemeral container は teardown で container ごと消えるため、残留 secret file は container 外に出ない
+- **local recovery (operator 手動 deploy)**: deploy script 冒頭で `os.tmpdir()` 配下の `my-web-2026-deploy-*` を scan、24h 以上前の stale tempdir を cleanup (Phase 2 実装詳細)
+
+**Scope note**: child-process env injection (`infisical run` の公式 contract: secret は child `process.env` に inject される) は **scoped to the immediate `node scripts/run-deploy-inner.mjs` invocation** として許可する。invariant は argv / log discipline + db:migrate/Wrangler への secret 継承禁止 を guard するものであって、inner wrapper process の `process.env` 内の secret 存在を否定するものではない。
 
 ### 5. `deploy:production` レイヤリング維持
 
@@ -121,31 +145,41 @@ Workers Builds の対応:
 
 ### 6. `MY_WEB_2026_CONSUMER_API_KEY` rotation runbook
 
-Infisical 変更だけで rotate しない。D1 provision が必ず先:
+Infisical 変更だけで rotate しない。**既存 enabled row の確認 → 新規作成 → deploy → 旧 disable** の順で進める。bootstrap が返すのは **新 key の id** のみで、旧 row id は bootstrap 前の query で確定する。
 
 ```
+0. 既存 enabled row の確認:
+   `home-self-consumption` name で `enabled=1` の apikey 行を query。
+   - 0 件: 初回作成。step 1 へ (oldKeyId 不要、step 5 も不要)
+   - 1 件: oldKeyId を取得。step 1 へ
+   - 2 件以上: 自動 rotation を停止。operator gate (`pnpm run rotate:home-api-key --abort`)
+     で原因確認後に再開。中途半端な disable を防ぐ
 1. pnpm run bootstrap:home-api-key --target=remote
-   → 新 plaintext を1回だけ出力。D1 の apikey に SHA-256 hash 行が追加される。
-     同時に machine-readable 出力 (後述 §E 拡張) として 1 行 JSON が出力される:
-     { "id": "<uuid>", "prefix": "mk_home_", "start": "<plaintext先頭6文字>",
+   → 新 plaintext を 1 回だけ出力。同時に machine-readable 出力 (§E 拡張) として
+     1 行 JSON: { "id": "<uuid>", "prefix": "mk_home_", "start": "<plaintext先頭6文字>",
        "createdAt": <epochMs>, "enabled": 1, "name": "home-self-consumption",
        "referenceId": "<admin-user-id>" }
-     この id を step 5 の旧 row revoke に渡す。
+     この `id` は **newKeyId** として step 5 には使わない (step 0 で取得した oldKeyId を使う)
 2. Infisical prod の MY_WEB_2026_CONSUMER_API_KEY を新 plaintext で更新
 3. pnpm run deploy:production:prepared
    → scripts/deploy-with-secrets.mjs が新 key を Cloudflare Worker に反映
 4. production smoke で新 key での reactions / access_counter の write を確認
-5. old key の revoke: D1 apikey.enabled = 0 に update。新 id を機械的に特定できる
-   ようにするため、Migration 0006 の UNIQUE INDEX uq_apikey_key を活用して
-   INSERT OR IGNORE / ON CONFLICT(key) DO NOTHING で re-run / concurrent も安全
+5. old key の revoke: D1 で `UPDATE apikey SET enabled = 0 WHERE id = <oldKeyId>`
+   (step 0 で query した既存 enabled row の id を使う)
 ```
 
 **E. `bootstrap-home-api-key.mjs` rotate output 拡張 (Phase 2)**: 現状 plaintext
 のみ (1 行 console.log) では同名 key 候補が複数ある場合に旧 row を機械的に特定
 できない。Phase 2 で plaintext banner 直下に **machine-readable JSON 1 行** を
-加える。必須 field は rotation runbook step 5 が要求する `id` を含む 7 個。
-Migration 0006 の `UNIQUE INDEX uq_apikey_key` により、SHA-256 hash 衝突時は
-`INSERT OR IGNORE` 相当で re-run しても安全。
+加える。必須 field は rotation runbook step 0 が要求する query 結果 (`id` /
+`prefix` / `start` / `createdAt` / `enabled` / `name` / `referenceId` の 7
+field) と整合。Migration 0006 の `UNIQUE INDEX uq_apikey_key` により、SHA-256
+hash 衝突時は `INSERT OR IGNORE` 相当で re-run しても安全。
+
+**F. `scripts/rotate-home-api-key.mjs` (Phase 2 新規)**: step 0-5 を 1 つの
+script にまとめ、`oldKeyId` query → bootstrap → operator smoke 確認 →
+disable を atomic に近い形で実行する。手動実行時のミスを減らす。`--dry-run`
+で新 key 作成 / smoke 確認 / 旧 disable の plan だけ出力できる。
 
 ### 7. drift 検出
 
@@ -284,8 +318,17 @@ versioned form に移行する:
   Builds」)
 - **Production deploy authority は Cloudflare Workers Builds**。Operator による
   `pnpm run deploy:production` の手動実行は recovery / debugging 用途のみ。
-- **Initial migration 中も Better Auth versioned form は省略しない**。
-  unrecoverable 分岐では「新 secret 単体では検証失敗 window」ゼロを保証する。
+- **Recoverable 分岐**: Better Auth versioned rotation を **必須** とする。
+  `secrets: [{version:2, value:"<new>"}, {version:1, value:"<old>"}]` または
+  `BETTER_AUTH_SECRETS=2:<new>,1:<old>` env var で旧 secret を decryption-only
+  として保持し、in-flight session の検証失敗 window を排除する。
+- **Unrecoverable 分岐**: 旧 plaintext が回収不能なため、Better Auth versioned
+  secrets 配列に旧 key を含められない。**新 secret 単体 deploy** となり、旧
+  secret で署名された in-flight cookie は検証失敗する。これは ADR の decision
+  boundary を越えるため、operator gate (§11.2) を満たす (in-flight session の
+  再 sign-in を許容する旨を operator が明示承認) ことが前提。**「検証失敗
+  window ゼロ」を保証する記述は誤り**で、本 invariant は「operator gate を
+  通じた unrecoverable 分岐のみ deploy を許可する」と言い換える。
 
 ## Out of scope
 

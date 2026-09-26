@@ -7,44 +7,44 @@ db,id,title,migration_class,publication,role,publication_blockers,facets,link_co
 ,ido-bata,Ido-bata (NEW),new_candidate,pending_owner,,role_missing|media_missing|narrative_missing|no_mappable_section,,0,,0,,
 ,internship-sciencearts,ScienceArts internship (NEW),new_candidate,pending_owner,,role_missing|media_missing|narrative_missing|no_mappable_section,,0,,0,,
 ,internship-optim,OPTiM internship (NEW),new_candidate,pending_owner,,role_missing|media_missing|narrative_missing|no_mappable_section,,0,,0,,
-content-Border.db,Border,Ae縁取りエフェクト Border,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,0,1,,
-content-FlashBeat-BGM.db,FlashBeat-BGM,FlashBeatテーマ曲(BGM),eligible,pending_owner,,role_missing|no_mappable_section,,1,1,1,,
-content-FlashBeat-OP.db,FlashBeat-OP,FlashBeatオープニング,eligible,pending_owner,,role_missing|no_mappable_section,video,1,1,1,,
-content-FlashBeat.db,FlashBeat,FlashBeat,eligible,pending_owner,,role_missing|no_mappable_section,develop,2,1,1,,
-content-FoldLayers.db,FoldLayers,Aeプラグイン FoldLayers,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design|develop|video,3,0,1,,
-content-LiteGlow.db,LiteGlow,【Aeエフェクトプラグイン】LiteGlow,eligible,pending_owner,,role_missing|no_mappable_section,develop,3,1,1,,
-content-MultiSlicer.db,MultiSlicer,MultiSlicer,eligible,approved,Solo developer,no_mappable_section,design|develop|video,3,1,1,,
-content-NullOto.db,NullOto,NullOto ソフトウェア型ノイズキャンセリングアプリ,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,develop,0,0,1,,
-content-ProtoType-brochure.db,ProtoType-brochure,ProtoType パンフレット,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,
-content-ProtoType.db,ProtoType,タイピングゲーム ProtoType,eligible,pending_owner,,role_missing|no_mappable_section,develop,3,1,1,,
-content-RGBDelay.db,RGBDelay,Aeエフェクトプラグイン RGBDelay,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,0,1,,
-content-alice.db,alice,Alice in 冷凍庫 文字pv,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-aulymo-v01.db,aulymo-v01,Aulymo,eligible,approved,Solo developer,no_mappable_section,develop,2,1,1,,
-content-aulymo_v02.db,aulymo_v02,Aeスクリプト Aulymo,eligible,pending_owner,Solo developer,no_mappable_section,develop,2,1,1,,
-content-aulymo_v03.db,aulymo_v03,Aeスクリプト Aulymo_v03,eligible,pending_owner,Solo developer,media_missing|no_mappable_section,design|develop,1,0,1,,
-content-bansankai.db,bansankai,煤夜 様 - わたし晩餐会,eligible,pending_owner,,role_missing|no_mappable_section,video,1,1,1,,
-content-baramoji.db,baramoji,Ae書式維持文字分解スクリプトBaraMoji,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design|develop,1,0,1,,
-content-blue-white-design.db,blue-white-design,青と白のデザイン,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,
-content-cclub-brochure-2024.db,cclub-brochure-2024,コンピュータ部パンフレットデザイン,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,
-content-cclub-brochure-2025.db,cclub-brochure-2025,コンピュータ部 勧誘チラシ,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,
-content-ch4nge.db,ch4nge,三途くお 様「CH4NGE/Giga」,rewrite_required,pending_owner,,role_missing|no_mappable_section,video,0,1,1,,
-content-code-type.db,code-type,コードタイプ風映像素材,eligible,pending_owner,,role_missing|no_mappable_section,design|develop,3,1,1,,
-content-design-001.db,design-001,デザイン練習 #001,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,
-content-dounika.db,dounika,どうにかなっちゃいそう 文字pv,eligible,pending_owner,,role_missing|no_mappable_section,video,2,1,1,,
-content-homura.db,homura,ひよりひよこ 様 - アエギス 第零楽章「焔」,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-hurahu.db,hurahu,フラフープハレーション 文字pv,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-icon-tegaki-anime.db,icon-tegaki-anime,アイコン 手書きアニメーション,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,
-content-isogasii-demo.db,isogasii-demo,忙しい人のための作文エディター 試作,eligible,pending_owner,,role_missing|no_mappable_section,develop,1,1,1,,
-content-isogasii-editor.db,isogasii-editor,忙しい人のための作文エディター 完成版,eligible,pending_owner,,role_missing|no_mappable_section,develop,3,1,1,,
-content-kaben.db,kaben,【二次創作】花弁、それにまつわる音声 文字pv,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-kakumei.db,kakumei,蝶羽ヘレナ 様 - 革命道中,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-kosen-fes-2025.db,kosen-fes-2025,宇部高専祭ウェブサイト2025,eligible,pending_owner,Lead developer,media_missing|no_mappable_section,design|develop,2,0,1,,
-content-kosen-fes2025-ending.db,kosen-fes2025-ending,宇部高専祭2025 エンディング,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,
-content-kosen-procon-pv.db,kosen-procon-pv,高専プロコン 非公式pv,eligible,pending_owner,Solo creator,no_mappable_section,video,4,1,1,,
-content-lhaplus.db,lhaplus,ラプラスショコラ 二次創作,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-m5_clock.db,m5_clock,M5_Clock,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,1,0,1,,
+content-Border.db,Border,Ae縁取りエフェクト Border,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,0,1,,2025-07-30T03:00:00.000Z
+content-FlashBeat-BGM.db,FlashBeat-BGM,FlashBeatテーマ曲(BGM),eligible,pending_owner,,role_missing|media_missing|no_mappable_section,,1,1,1,,2025-07-28T03:00:00.000Z
+content-FlashBeat-OP.db,FlashBeat-OP,FlashBeatオープニング,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,1,1,1,,2024-02-21T03:00:00.000Z
+content-FlashBeat.db,FlashBeat,FlashBeat,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,1,1,,2023-11-03T03:00:00.000Z
+content-FoldLayers.db,FoldLayers,Aeプラグイン FoldLayers,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design|develop|video,3,0,1,,2026-02-01T00:00:00.000Z
+content-LiteGlow.db,LiteGlow,【Aeエフェクトプラグイン】LiteGlow,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,3,1,1,,2025-07-30T03:00:00.000Z
+content-MultiSlicer.db,MultiSlicer,MultiSlicer,eligible,pending_owner,Plugin developer,media_missing|no_mappable_section,design|develop|video,3,1,1,,2025-05-02T03:00:00.000Z
+content-NullOto.db,NullOto,NullOto ソフトウェア型ノイズキャンセリングアプリ,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,develop,0,0,1,,2025-10-11T03:00:00.000Z
+content-ProtoType-brochure.db,ProtoType-brochure,ProtoType パンフレット,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,2025-03-11T03:00:00.000Z
+content-ProtoType.db,ProtoType,タイピングゲーム ProtoType,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,3,1,1,,2025-03-13T03:00:00.000Z
+content-RGBDelay.db,RGBDelay,Aeエフェクトプラグイン RGBDelay,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,0,1,,2025-12-12T00:00:00.000Z
+content-alice.db,alice,Alice in 冷凍庫 文字pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2024-09-17T03:00:00.000Z
+content-aulymo-v01.db,aulymo-v01,Aulymo,eligible,pending_owner,Tool developer,media_missing|no_mappable_section,develop,2,1,1,,2024-12-13T03:00:00.000Z
+content-aulymo_v02.db,aulymo_v02,Aeスクリプト Aulymo,eligible,pending_owner,Tool developer,media_missing|no_mappable_section,develop,2,1,1,,2024-12-20T03:00:00.000Z
+content-aulymo_v03.db,aulymo_v03,Aeスクリプト Aulymo_v03,eligible,pending_owner,Tool developer,media_missing|no_mappable_section,design|develop,1,0,1,,2025-08-12T03:00:00.000Z
+content-bansankai.db,bansankai,煤夜 様 - わたし晩餐会,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,1,1,1,,2025-05-16T03:00:00.000Z
+content-baramoji.db,baramoji,Ae書式維持文字分解スクリプトBaraMoji,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design|develop,1,0,1,,2025-04-02T00:00:00.000Z
+content-blue-white-design.db,blue-white-design,青と白のデザイン,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,2024-09-08T03:00:00.000Z
+content-cclub-brochure-2024.db,cclub-brochure-2024,コンピュータ部パンフレットデザイン,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,2024-08-05T03:00:00.000Z
+content-cclub-brochure-2025.db,cclub-brochure-2025,コンピュータ部 勧誘チラシ,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,2025-04-07T03:00:00.000Z
+content-ch4nge.db,ch4nge,三途くお 様「CH4NGE/Giga」,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,video,0,1,1,,2025-09-06T03:00:00.000Z
+content-code-type.db,code-type,コードタイプ風映像素材,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design|develop,3,1,1,,2025-03-24T03:00:00.000Z
+content-design-001.db,design-001,デザイン練習 #001,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,2025-07-30T03:00:00.000Z
+content-dounika.db,dounika,どうにかなっちゃいそう 文字pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,2,1,1,,2024-07-13T03:00:00.000Z
+content-homura.db,homura,ひよりひよこ 様 - アエギス 第零楽章「焔」,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2025-10-03T03:00:00.000Z
+content-hurahu.db,hurahu,フラフープハレーション 文字pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2024-09-24T03:00:00.000Z
+content-icon-tegaki-anime.db,icon-tegaki-anime,アイコン 手書きアニメーション,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,2026-04-08T00:00:00.000Z
+content-isogasii-demo.db,isogasii-demo,忙しい人のための作文エディター 試作,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,1,1,1,,2024-08-12T03:00:00.000Z
+content-isogasii-editor.db,isogasii-editor,忙しい人のための作文エディター 完成版,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,3,1,1,,2024-08-27T03:00:00.000Z
+content-kaben.db,kaben,【二次創作】花弁、それにまつわる音声 文字pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2025-02-23T03:00:00.000Z
+content-kakumei.db,kakumei,蝶羽ヘレナ 様 - 革命道中,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2025-10-31T03:00:00.000Z
+content-kosen-fes-2025.db,kosen-fes-2025,宇部高専祭ウェブサイト2025,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design|develop,2,0,1,,2025-11-08T03:00:00.000Z
+content-kosen-fes2025-ending.db,kosen-fes2025-ending,宇部高専祭2025 エンディング,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,2025-11-09T03:00:00.000Z
+content-kosen-procon-pv.db,kosen-procon-pv,高専プロコン 非公式pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,4,1,1,,2024-10-14T03:00:00.000Z
+content-lhaplus.db,lhaplus,ラプラスショコラ 二次創作,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2024-12-31T03:00:00.000Z
+content-m5_clock.db,m5_clock,M5_Clock,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,1,0,1,,2025-12-05T03:00:00.000Z
 content-mawaru-pv.db,mawaru-pv,,mechanical_drop,,,,,0,0,0,,
-content-mawaru.db,mawaru,まわる世界 文字pv,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
+content-mawaru.db,mawaru,まわる世界 文字pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2024-11-02T03:00:00.000Z
 content-media-list-0201b370-ead5-413e-b434-09142bffe084.db,media-list-0201b370-ead5-413e-b434-09142bffe084,media-list-0201b370-ead5-413e-b434-09142bffe084,mechanical_drop,,,,,0,0,0,,
 content-media-list-0393c0a4-5332-4ea4-ab4e-9e3e6deaa4f1.db,media-list-0393c0a4-5332-4ea4-ab4e-9e3e6deaa4f1,media-list-0393c0a4-5332-4ea4-ab4e-9e3e6deaa4f1,mechanical_drop,,,,,0,0,0,,
 content-media-list-06c465be-9182-4a17-adc8-2adc48163b44.db,media-list-06c465be-9182-4a17-adc8-2adc48163b44,media-list-06c465be-9182-4a17-adc8-2adc48163b44,mechanical_drop,,,,,0,0,0,,
@@ -125,36 +125,36 @@ content-media-rt-e2b4375c-5ef9-488d-b0f6-269fd788c640.db,media-rt-e2b4375c-5ef9-
 content-media-rt-f2d95b84-bc87-4ae6-b2e2-23ac4c0801f2.db,media-rt-f2d95b84-bc87-4ae6-b2e2-23ac4c0801f2,media-rt-f2d95b84-bc87-4ae6-b2e2-23ac4c0801f2,mechanical_drop,,,,,0,0,0,,
 content-media-rt-f6358c97-59cb-4a83-9767-2fc7b025f1c9.db,media-rt-f6358c97-59cb-4a83-9767-2fc7b025f1c9,media-rt-f6358c97-59cb-4a83-9767-2fc7b025f1c9,mechanical_drop,,,,,0,0,0,,
 content-media-rt-fdde7937-f917-41d8-8760-b40ffcc81e6f.db,media-rt-fdde7937-f917-41d8-8760-b40ffcc81e6f,media-rt-fdde7937-f917-41d8-8760-b40ffcc81e6f,mechanical_drop,,,,,0,0,0,,
-content-meikai.db,meikai,冥界 二次創作pv,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-moumoku.db,moumoku,盲目の怪物 文字pv,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-my-first-blender.db,my-first-blender,初めてのBlender,eligible,pending_owner,,role_missing|no_mappable_section,video,2,1,1,,
-content-my-sns-icon.db,my-sns-icon,SNSアイコン,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,
-content-my-web-2025.db,my-web-2025,my-web-2025,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,1,0,1,,
-content-netu.db,netu,熱異常 テキストモーション,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
-content-oneself.db,oneself,ONESELF 二次創作,eligible,pending_owner,,role_missing|no_mappable_section,video,2,1,1,,
-content-ooame.db,ooame,大雨警報発令中,eligible,pending_owner,,role_missing|no_mappable_section,video,1,1,1,,
-content-pomodoroom.db,pomodoroom,pomodoroom,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,develop,0,0,1,,
+content-meikai.db,meikai,冥界 二次創作pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2024-10-27T03:00:00.000Z
+content-moumoku.db,moumoku,盲目の怪物 文字pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2024-09-18T03:00:00.000Z
+content-my-first-blender.db,my-first-blender,初めてのBlender,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,2,1,1,,2024-09-01T03:00:00.000Z
+content-my-sns-icon.db,my-sns-icon,SNSアイコン,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,2026-03-18T00:00:00.000Z
+content-my-web-2025.db,my-web-2025,my-web-2025,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,1,0,1,,2025-11-08T03:00:00.000Z
+content-netu.db,netu,熱異常 テキストモーション,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2024-09-28T03:00:00.000Z
+content-oneself.db,oneself,ONESELF 二次創作,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,2,1,1,,2025-01-12T03:00:00.000Z
+content-ooame.db,ooame,大雨警報発令中,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,1,1,1,,2024-06-30T03:00:00.000Z
+content-pomodoroom.db,pomodoroom,pomodoroom,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,develop,0,0,1,,2025-11-26T03:00:00.000Z
 content-procon-pv.db,procon-pv,,mechanical_drop,,,,,0,0,0,,
-content-propose.db,propose,三途くお 様「プロポーズ/可不」,rewrite_required,pending_owner,,role_missing|no_mappable_section,video,0,1,1,,
-content-red-black-design.db,red-black-design,赤と黒のデザイン,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,
-content-reel-2024.db,reel-2024,reel 2024,eligible,pending_owner,,role_missing|no_mappable_section,video,2,1,1,,
-content-reel-2025.db,reel-2025,REEL 2025,rewrite_required,pending_owner,,role_missing|no_mappable_section,design|video,0,1,1,,
-content-seishun.db,seishun,青春コンプレックス / darupoi様,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,video,0,0,1,,
-content-sep_color.db,sep_color,Aeエフェクトプラグイン sep_color,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,0,1,,
-content-shinkansen.db,shinkansen,シンカンセンスゴイカタイアイス p5js練習,eligible,pending_owner,,role_missing|no_mappable_section,develop|video,3,1,1,,
-content-stretch-v01.db,stretch-v01,Aeエフェクトプラグイン Stretch,eligible,pending_owner,,role_missing|no_mappable_section,develop,3,1,1,,
-content-stretch_v02.db,stretch_v02,Aeエフェクトプラグイン Stretch v2,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,0,1,,
-content-tegaki-anime.db,tegaki-anime,手書きアニメーション,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,
-content-test-otu-1-3q.db,test-otu-1-3q,テストお疲れ様でした アニメーション,mechanical_drop,,,,video,1,1,1,,
-content-test-otu-2-2q.db,test-otu-2-2q,テストお疲れ様でした アニメーション,mechanical_drop,,,,video,1,1,1,,
-content-test-otu-2-3q.db,test-otu-2-3q,テストお疲れ様でした アニメーション,mechanical_drop,,,,video,2,1,1,,
-content-test-otu-2-4q.db,test-otu-2-4q,テストお疲れ様でした 4Q,mechanical_drop,,,,video,2,1,1,,
-content-test-otu-3-1q.db,test-otu-3-1q,期末テストお疲れ様でした 1Q,mechanical_drop,,,,video,3,1,1,,
-content-test-otu-3-2q.db,test-otu-3-2q,期末テストお疲れ様でした 2Q,mechanical_drop,,,,video,3,1,1,,
-content-test-otu-3-3q.db,test-otu-3-3q,期末テストお疲れ様でした 3Q,mechanical_drop,,,,video,0,1,1,,
-content-test-otu-4-1q.db,test-otu-4-1q,期末テストお疲れ様でした 1Q,mechanical_drop,,,,video,1,0,1,,
-content-test-otu-4-2q.db,test-otu-4-2q,期末テストお疲れ様でした 2Q,mechanical_drop,,,,video,1,0,1,,
-content-tokimeki.db,tokimeki,darupoi 様 - Tokimeki,rewrite_required,pending_owner,,role_missing|no_mappable_section,video,0,1,1,,
-content-ugoita.db,ugoita,動いたっ！ イラストアニメーション,eligible,pending_owner,,role_missing|no_mappable_section,video,1,1,1,,
-content-usoto.db,usoto,嘘と未来 文字pv,eligible,pending_owner,,role_missing|no_mappable_section,video,4,1,1,,
-content-yukikate.db,yukikate,【二次創作】雪糅 文字pv,eligible,pending_owner,,role_missing|no_mappable_section,video,3,1,1,,
+content-propose.db,propose,三途くお 様「プロポーズ/可不」,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,video,0,1,1,,2025-09-02T03:00:00.000Z
+content-red-black-design.db,red-black-design,赤と黒のデザイン,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design,0,0,1,,2024-09-08T03:00:00.000Z
+content-reel-2024.db,reel-2024,reel 2024,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,2,1,1,,2024-12-27T03:00:00.000Z
+content-reel-2025.db,reel-2025,REEL 2025,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,design|video,0,1,1,,2025-12-31T03:00:00.000Z
+content-seishun.db,seishun,青春コンプレックス / darupoi様,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,video,0,0,1,,2026-07-18T00:00:00.000Z
+content-sep_color.db,sep_color,Aeエフェクトプラグイン sep_color,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,0,1,,2025-01-23T03:00:00.000Z
+content-shinkansen.db,shinkansen,シンカンセンスゴイカタイアイス p5js練習,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop|video,3,1,1,,2024-10-08T03:00:00.000Z
+content-stretch-v01.db,stretch-v01,Aeエフェクトプラグイン Stretch,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,3,1,1,,2025-01-09T03:00:00.000Z
+content-stretch_v02.db,stretch_v02,Aeエフェクトプラグイン Stretch v2,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,develop,2,0,1,,2025-03-16T03:00:00.000Z
+content-tegaki-anime.db,tegaki-anime,手書きアニメーション,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,design,1,0,1,,2025-03-28T03:00:00.000Z
+content-test-otu-1-3q.db,test-otu-1-3q,テストお疲れ様でした アニメーション,mechanical_drop,,,,video,1,1,1,,2023-12-08T03:00:00.000Z
+content-test-otu-2-2q.db,test-otu-2-2q,テストお疲れ様でした アニメーション,mechanical_drop,,,,video,1,1,1,,2024-08-04T03:00:00.000Z
+content-test-otu-2-3q.db,test-otu-2-3q,テストお疲れ様でした アニメーション,mechanical_drop,,,,video,2,1,1,,2024-12-04T03:00:00.000Z
+content-test-otu-2-4q.db,test-otu-2-4q,テストお疲れ様でした 4Q,mechanical_drop,,,,video,2,1,1,,2025-02-21T03:00:00.000Z
+content-test-otu-3-1q.db,test-otu-3-1q,期末テストお疲れ様でした 1Q,mechanical_drop,,,,video,3,1,1,,2025-07-30T03:00:00.000Z
+content-test-otu-3-2q.db,test-otu-3-2q,期末テストお疲れ様でした 2Q,mechanical_drop,,,,video,3,1,1,,2025-08-04T03:00:00.000Z
+content-test-otu-3-3q.db,test-otu-3-3q,期末テストお疲れ様でした 3Q,mechanical_drop,,,,video,0,1,1,,2025-12-08T03:00:00.000Z
+content-test-otu-4-1q.db,test-otu-4-1q,期末テストお疲れ様でした 1Q,mechanical_drop,,,,video,1,0,1,,2026-06-04T00:00:00.000Z
+content-test-otu-4-2q.db,test-otu-4-2q,期末テストお疲れ様でした 2Q,mechanical_drop,,,,video,1,0,1,,2026-08-05T00:00:00.000Z
+content-tokimeki.db,tokimeki,darupoi 様 - Tokimeki,rewrite_required,pending_owner,,role_missing|media_missing|no_mappable_section,video,0,1,1,,2025-11-14T03:00:00.000Z
+content-ugoita.db,ugoita,動いたっ！ イラストアニメーション,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,1,1,1,,2024-06-10T03:00:00.000Z
+content-usoto.db,usoto,嘘と未来 文字pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,4,1,1,,2024-05-15T03:00:00.000Z
+content-yukikate.db,yukikate,【二次創作】雪糅 文字pv,eligible,pending_owner,,role_missing|media_missing|no_mappable_section,video,3,1,1,,2025-02-28T03:00:00.000Z

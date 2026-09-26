@@ -6,8 +6,8 @@ authority (only owner-approves rows become `public` on the loader).
 
 | bucket | count |
 | --- | --- |
-| eligible / pending_owner  | 46 |
-| eligible / approved (owner-signed-off) | 2 |
+| eligible / pending_owner  | 48 |
+| eligible / approved (owner-signed-off) | 0 |
 | rewrite_required / pending_owner | 12 |
 | mechanical_drop (never inserted) | 91 |
 | new_candidate (never auto-inserted) | 8 |
@@ -18,8 +18,8 @@ authority (only owner-approves rows become `public` on the loader).
 
 | blocker | meaning | count |
 | --- | --- | --- |
-| role_missing | `role` not in `role_overrides`; owner must add | 54 |
-| media_missing | no `content_assets` rows; needs R2 upload before publication | 23 |
+| role_missing | `role` not in `role_overrides`; owner must add | 56 |
+| media_missing | no `content_assets` rows; needs R2 upload before publication | 60 |
 | narrative_missing | legacy markdown is empty | 0 |
 | no_mappable_section | legacy markdown has no heading matching motivation/architecture/etc. | 60 |
 
@@ -37,11 +37,11 @@ authority (only owner-approves rows become `public` on the loader).
   are `portfolio_link` with `kind = 'video'`. `media_count >= 1`
   for `public+published` rows is a hard verifier check
   (Issue #78 blocker #5).
-- `58` insertable rows are
+- `60` insertable rows are
   `pending_owner` by default; the migration writes them with
   `visibility = 'draft'` so the public loader never sees them
   until the owner signs off (Issue #78 blocker #1 + #4). The
-  `2` owner-signed-off rows become
+  `0` owner-signed-off rows become
   `visibility = 'public'`, but still must satisfy `media_count >= 1`
   per the verifier.
 

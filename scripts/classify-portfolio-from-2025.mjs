@@ -261,7 +261,14 @@ function deriveMigrationClass(row) {
 function derivePublicationBlockers(row, role) {
 	const blockers = [];
 	if (!role) blockers.push('role_missing');
-	if (row.externalVideoCount === 0 && row.localFileCount === 0) blockers.push('media_missing');
+	// The verifier (`verify-portfolio.mjs`) requires ≥1 `portfolio_media` row
+	// for every public+published project (Issue #78 blocker #5). External
+	// video links satisfy the separate `≥1 portfolio_link` gate, but they
+	// do NOT count as media — `portfolio_media` only carries R2-uploaded
+	// local files. Therefore `media_missing` fires whenever the legacy row
+	// has no local file to upload; the owner must add a local file (or
+	// have the upload script re-try) before publication can be approved.
+	if (row.localFileCount === 0) blockers.push('media_missing');
 	if (row.markdownCount === 0) blockers.push('narrative_missing');
 	// No available schema sections means no meaningful narrative for
 	// representative-project publication gate.
@@ -364,8 +371,8 @@ function main() {
 			summary: source.summary,
 			visibility: source.visibility,
 			status: source.status,
-			published_at: source.published_at,
-			updated_at: source.updated_at,
+			published_at: source.publishedAt,
+			updated_at: source.updatedAt,
 			tags: [...(source.facets ?? []), ...(source.technologies ?? [])],
 			facets: source.facets ?? [],
 			technologies: source.technologies ?? [],

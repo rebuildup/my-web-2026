@@ -479,7 +479,33 @@ function buildProjectSql({ source, role, visibility, partition }) {
 		updatedAt,
 	].join(', ');
 
-	return { id, slug, sql: `INSERT OR IGNORE INTO portfolio_project (${cols}) VALUES (${values});` };
+	return { id, slug, sql: buildProjectUpsertSql({ cols, values }) };
+}
+
+/**
+ * Build an INSERT ... ON CONFLICT(id) DO UPDATE statement for
+ * portfolio_project. CodeRabbit cycle 4 (Issue #78 blocker #4): the
+ * previous `INSERT OR IGNORE` silently dropped owner changes when the
+ * migration was re-run after editing `publication_overrides`. The
+ * UPSERT form makes the migration idempotent AND respects owner
+ * changes: every column except the deterministic id and the
+ * `created_at` audit field is overwritten on conflict.
+ *
+ * `pinned` and `display_order` are also preserved from the existing
+ * row (the migration does not own editorial ordering) — re-running
+ * the migration after the owner has manually reordered rows must not
+ * silently undo that.
+ */
+function buildProjectUpsertSql({ cols, values }) {
+	const colList = cols.split(', ').map((c) => c.trim());
+	const insertCols = colList.join(', ');
+	// Columns to refresh from the migration's new value on conflict.
+	const refreshCols = colList.filter(
+		(c) => !['id', 'created_at', 'pinned', 'display_order'].includes(c),
+	);
+	const updateClause = refreshCols.map((c) => `${c} = excluded.${c}`).join(', ');
+	return `INSERT INTO portfolio_project (${insertCols}) VALUES (${values})
+		ON CONFLICT(id) DO UPDATE SET ${updateClause};`;
 }
 
 function buildLinkSqls(projectId, links) {
@@ -502,9 +528,23 @@ function buildLinkSqls(projectId, links) {
 		return {
 			id,
 			kind,
-			sql: `INSERT OR IGNORE INTO portfolio_link (${cols}) VALUES (${values});`,
+			sql: buildLinkUpsertSql({ id, values }),
 		};
 	});
+}
+
+/**
+ * Same idempotent-UPSERT reasoning as `buildProjectUpsertSql`. Link
+ * `id` is deterministic, so re-running the migration re-asserts the
+ * same label / url / kind for an existing row without dropping the
+ * `display_order` and `created_at` audit fields that an owner may
+ * have curated.
+ */
+function buildLinkUpsertSql({ id: _id, values }) {
+	const refreshCols = ['project_id', 'kind', 'label', 'url'];
+	const updateClause = refreshCols.map((c) => `${c} = excluded.${c}`).join(', ');
+	return `INSERT INTO portfolio_link (id, project_id, kind, label, url, display_order, created_at) VALUES (${values})
+		ON CONFLICT(id) DO UPDATE SET ${updateClause};`;
 }
 
 function parseArg(set, name) {
@@ -514,7 +554,15 @@ function parseArg(set, name) {
 	return null;
 }
 
-/** Query D1 via wrangler; return parsed JSON rows (or [] on parse-failure). */
+/** Query D1 via wrangler; return parsed JSON rows.
+ *
+ * wrangler --json emits a single JSON document of the shape
+ *   [ { "results": [ {row}, ... ], "success": true, "meta": {...} } ]
+ * Older wrangler versions emitted the rows as a bare array; we accept
+ * both shapes so the migration works across versions. CodeRabbit
+ * cycle 4: the previous substring extraction (`text.indexOf('[{')`)
+ * was brittle and missed the envelope's `meta` / `success` fields.
+ */
 function d1Query(sql) {
 	const cmdArgs = [
 		'exec',
@@ -537,14 +585,22 @@ function d1Query(sql) {
 		process.exit(result.status ?? 1);
 	}
 	const text = result.stdout.trim();
-	const start = text.indexOf('[{');
-	const end = text.lastIndexOf('}]');
-	if (start === -1 || end === -1) return [];
+	let doc;
 	try {
-		return JSON.parse(text.slice(start, end + 2));
-	} catch {
-		return [];
+		doc = JSON.parse(text);
+	} catch (err) {
+		console.error('[migrate] could not parse wrangler JSON output:');
+		console.error(text.slice(0, 500));
+		throw err;
 	}
+	if (Array.isArray(doc)) {
+		if (doc.length === 0) return [];
+		const first = doc[0];
+		if (first && Array.isArray(first.results)) return first.results;
+		// older format: array of rows directly
+		return doc;
+	}
+	return [];
 }
 
 function main() {
@@ -621,7 +677,12 @@ function main() {
 		}
 
 		const role = roleByLegacyId.get(row.id) ?? null;
-		const visibility = pub === 'approved' ? 'public' : 'draft';
+		// Visibility is `public` only when the owner has signed off AND every
+		// publication_blocker is clear. Otherwise we write `draft` — the public
+		// loader must never surface an ungrounded project. CodeRabbit
+		// cycle 4 (Issue #78 blocker #6 / visibility gate).
+		const blockers = row.publication_blockers ?? [];
+		const visibility = pub === 'approved' && blockers.length === 0 ? 'public' : 'draft';
 		const partition = partitionMarkdownBySection(source.markdownBody);
 
 		let project;
@@ -642,12 +703,26 @@ function main() {
 
 	// Preflight collision check (Issue #78 blocker #6).
 	// We refuse to write any SQL if the target D1 already has rows
-	// the migration did not itself produce.
+	// the migration did not itself produce. CodeRabbit cycle 4:
+	// the previous AND-only check missed the case where a row's `id`
+	// differs from the migration's intended id but its `slug` matches
+	// (e.g. previous run with different role-overrides produced a
+	// different id but the same slug). Either dimension being absent
+	// from the intended set is a real collision.
 	if (apply) {
 		const existingProjects = d1Query('SELECT id, slug FROM portfolio_project');
 		for (const existing of existingProjects) {
-			if (!intendedInsertIds.has(existing.id) && !intendedInsertSlugs.has(existing.slug)) {
+			const idKnown = intendedInsertIds.has(existing.id);
+			const slugKnown = intendedInsertSlugs.has(existing.slug);
+			if (!idKnown && !slugKnown) {
 				collisions.push(existing);
+			} else if (!idKnown || !slugKnown) {
+				// The migration's planned row matches one of the two
+				// keys but not the other — that means the migration is
+				// trying to write a different identity to the same row.
+				// This is also a hard collision; we don't silently let
+				// it through.
+				collisions.push({ ...existing, kind: 'id_slug_mismatch' });
 			}
 		}
 

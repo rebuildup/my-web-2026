@@ -32,157 +32,196 @@ or `test-otu-*` periodic status posts.
 
 60 rows fall in this surface. Grouped by blocker:
 
-### `role_missing` (54)
+### `role_missing` (56)
 
 | legacy id | title | migration_class | publication | role | publication_blockers | link_count | external_video | markdown | available_sections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `Border` | Ae縁取りエフェクト Border | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
-| `FlashBeat-BGM` | FlashBeatテーマ曲(BGM) | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
-| `FlashBeat-OP` | FlashBeatオープニング | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
-| `FlashBeat` | FlashBeat | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `FlashBeat-BGM` | FlashBeatテーマ曲(BGM) | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `FlashBeat-OP` | FlashBeatオープニング | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `FlashBeat` | FlashBeat | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
 | `FoldLayers` | Aeプラグイン FoldLayers | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 0 | 1 |  |
-| `LiteGlow` | 【Aeエフェクトプラグイン】LiteGlow | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `LiteGlow` | 【Aeエフェクトプラグイン】LiteGlow | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `NullOto` | NullOto ソフトウェア型ノイズキャンセリングアプリ | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `ProtoType-brochure` | ProtoType パンフレット | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `ProtoType` | タイピングゲーム ProtoType | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `ProtoType` | タイピングゲーム ProtoType | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `RGBDelay` | Aeエフェクトプラグイン RGBDelay | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
-| `alice` | Alice in 冷凍庫 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `bansankai` | 煤夜 様 - わたし晩餐会 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `alice` | Alice in 冷凍庫 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `bansankai` | 煤夜 様 - わたし晩餐会 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
 | `baramoji` | Ae書式維持文字分解スクリプトBaraMoji | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
 | `blue-white-design` | 青と白のデザイン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `cclub-brochure-2024` | コンピュータ部パンフレットデザイン | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
 | `cclub-brochure-2025` | コンピュータ部 勧誘チラシ | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `ch4nge` | 三途くお 様「CH4NGE/Giga」 | rewrite_required | pending_owner | ∅ | role_missing, no_mappable_section | 0 | 1 | 1 |  |
-| `code-type` | コードタイプ風映像素材 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `ch4nge` | 三途くお 様「CH4NGE/Giga」 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `code-type` | コードタイプ風映像素材 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `design-001` | デザイン練習 #001 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `dounika` | どうにかなっちゃいそう 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
-| `homura` | ひよりひよこ 様 - アエギス 第零楽章「焔」 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `hurahu` | フラフープハレーション 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `dounika` | どうにかなっちゃいそう 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `homura` | ひよりひよこ 様 - アエギス 第零楽章「焔」 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `hurahu` | フラフープハレーション 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `icon-tegaki-anime` | アイコン 手書きアニメーション | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `isogasii-demo` | 忙しい人のための作文エディター 試作 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
-| `isogasii-editor` | 忙しい人のための作文エディター 完成版 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `kaben` | 【二次創作】花弁、それにまつわる音声 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `kakumei` | 蝶羽ヘレナ 様 - 革命道中 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `isogasii-demo` | 忙しい人のための作文エディター 試作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `isogasii-editor` | 忙しい人のための作文エディター 完成版 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kaben` | 【二次創作】花弁、それにまつわる音声 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kakumei` | 蝶羽ヘレナ 様 - 革命道中 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kosen-fes-2025` | 宇部高専祭ウェブサイト2025 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
 | `kosen-fes2025-ending` | 宇部高専祭2025 エンディング | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `lhaplus` | ラプラスショコラ 二次創作 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kosen-procon-pv` | 高専プロコン 非公式pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 4 | 1 | 1 |  |
+| `lhaplus` | ラプラスショコラ 二次創作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `m5_clock` | M5_Clock | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `mawaru` | まわる世界 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `meikai` | 冥界 二次創作pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `moumoku` | 盲目の怪物 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `my-first-blender` | 初めてのBlender | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `mawaru` | まわる世界 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `meikai` | 冥界 二次創作pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `moumoku` | 盲目の怪物 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `my-first-blender` | 初めてのBlender | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
 | `my-sns-icon` | SNSアイコン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `my-web-2025` | my-web-2025 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `netu` | 熱異常 テキストモーション | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `oneself` | ONESELF 二次創作 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
-| `ooame` | 大雨警報発令中 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `netu` | 熱異常 テキストモーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `oneself` | ONESELF 二次創作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `ooame` | 大雨警報発令中 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
 | `pomodoroom` | pomodoroom | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `propose` | 三途くお 様「プロポーズ/可不」 | rewrite_required | pending_owner | ∅ | role_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `propose` | 三途くお 様「プロポーズ/可不」 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
 | `red-black-design` | 赤と黒のデザイン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `reel-2024` | reel 2024 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
-| `reel-2025` | REEL 2025 | rewrite_required | pending_owner | ∅ | role_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `reel-2024` | reel 2024 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `reel-2025` | REEL 2025 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
 | `seishun` | 青春コンプレックス / darupoi様 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `sep_color` | Aeエフェクトプラグイン sep_color | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
-| `shinkansen` | シンカンセンスゴイカタイアイス p5js練習 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `stretch-v01` | Aeエフェクトプラグイン Stretch | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `shinkansen` | シンカンセンスゴイカタイアイス p5js練習 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `stretch-v01` | Aeエフェクトプラグイン Stretch | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `stretch_v02` | Aeエフェクトプラグイン Stretch v2 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
 | `tegaki-anime` | 手書きアニメーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `tokimeki` | darupoi 様 - Tokimeki | rewrite_required | pending_owner | ∅ | role_missing, no_mappable_section | 0 | 1 | 1 |  |
-| `ugoita` | 動いたっ！ イラストアニメーション | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
-| `usoto` | 嘘と未来 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 4 | 1 | 1 |  |
-| `yukikate` | 【二次創作】雪糅 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `tokimeki` | darupoi 様 - Tokimeki | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `ugoita` | 動いたっ！ イラストアニメーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `usoto` | 嘘と未来 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 4 | 1 | 1 |  |
+| `yukikate` | 【二次創作】雪糅 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 
-### `media_missing` (23)
+### `media_missing` (60)
 
 | legacy id | title | migration_class | publication | role | publication_blockers | link_count | external_video | markdown | available_sections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `Border` | Ae縁取りエフェクト Border | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
+| `FlashBeat-BGM` | FlashBeatテーマ曲(BGM) | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `FlashBeat-OP` | FlashBeatオープニング | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `FlashBeat` | FlashBeat | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
 | `FoldLayers` | Aeプラグイン FoldLayers | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 0 | 1 |  |
+| `LiteGlow` | 【Aeエフェクトプラグイン】LiteGlow | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `MultiSlicer` | MultiSlicer | eligible | pending_owner | Plugin developer | media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `NullOto` | NullOto ソフトウェア型ノイズキャンセリングアプリ | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `ProtoType-brochure` | ProtoType パンフレット | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `ProtoType` | タイピングゲーム ProtoType | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `RGBDelay` | Aeエフェクトプラグイン RGBDelay | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
-| `aulymo_v03` | Aeスクリプト Aulymo_v03 | eligible | pending_owner | Solo developer | media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `alice` | Alice in 冷凍庫 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `aulymo-v01` | Aulymo | eligible | pending_owner | Tool developer | media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `aulymo_v02` | Aeスクリプト Aulymo | eligible | pending_owner | Tool developer | media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `aulymo_v03` | Aeスクリプト Aulymo_v03 | eligible | pending_owner | Tool developer | media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `bansankai` | 煤夜 様 - わたし晩餐会 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
 | `baramoji` | Ae書式維持文字分解スクリプトBaraMoji | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
 | `blue-white-design` | 青と白のデザイン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `cclub-brochure-2024` | コンピュータ部パンフレットデザイン | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
 | `cclub-brochure-2025` | コンピュータ部 勧誘チラシ | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `ch4nge` | 三途くお 様「CH4NGE/Giga」 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `code-type` | コードタイプ風映像素材 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `design-001` | デザイン練習 #001 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `dounika` | どうにかなっちゃいそう 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `homura` | ひよりひよこ 様 - アエギス 第零楽章「焔」 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `hurahu` | フラフープハレーション 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `icon-tegaki-anime` | アイコン 手書きアニメーション | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `kosen-fes-2025` | 宇部高専祭ウェブサイト2025 | eligible | pending_owner | Lead developer | media_missing, no_mappable_section | 2 | 0 | 1 |  |
+| `isogasii-demo` | 忙しい人のための作文エディター 試作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `isogasii-editor` | 忙しい人のための作文エディター 完成版 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kaben` | 【二次創作】花弁、それにまつわる音声 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kakumei` | 蝶羽ヘレナ 様 - 革命道中 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kosen-fes-2025` | 宇部高専祭ウェブサイト2025 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
 | `kosen-fes2025-ending` | 宇部高専祭2025 エンディング | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
+| `kosen-procon-pv` | 高専プロコン 非公式pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 4 | 1 | 1 |  |
+| `lhaplus` | ラプラスショコラ 二次創作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `m5_clock` | M5_Clock | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `mawaru` | まわる世界 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `meikai` | 冥界 二次創作pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `moumoku` | 盲目の怪物 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `my-first-blender` | 初めてのBlender | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
 | `my-sns-icon` | SNSアイコン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `my-web-2025` | my-web-2025 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `netu` | 熱異常 テキストモーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `oneself` | ONESELF 二次創作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `ooame` | 大雨警報発令中 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
 | `pomodoroom` | pomodoroom | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
+| `propose` | 三途くお 様「プロポーズ/可不」 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
 | `red-black-design` | 赤と黒のデザイン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
+| `reel-2024` | reel 2024 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `reel-2025` | REEL 2025 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
 | `seishun` | 青春コンプレックス / darupoi様 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `sep_color` | Aeエフェクトプラグイン sep_color | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
+| `shinkansen` | シンカンセンスゴイカタイアイス p5js練習 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `stretch-v01` | Aeエフェクトプラグイン Stretch | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `stretch_v02` | Aeエフェクトプラグイン Stretch v2 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
 | `tegaki-anime` | 手書きアニメーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `tokimeki` | darupoi 様 - Tokimeki | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `ugoita` | 動いたっ！ イラストアニメーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `usoto` | 嘘と未来 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 4 | 1 | 1 |  |
+| `yukikate` | 【二次創作】雪糅 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 
 ### `no_mappable_section` (60)
 
 | legacy id | title | migration_class | publication | role | publication_blockers | link_count | external_video | markdown | available_sections |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `Border` | Ae縁取りエフェクト Border | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
-| `FlashBeat-BGM` | FlashBeatテーマ曲(BGM) | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
-| `FlashBeat-OP` | FlashBeatオープニング | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
-| `FlashBeat` | FlashBeat | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `FlashBeat-BGM` | FlashBeatテーマ曲(BGM) | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `FlashBeat-OP` | FlashBeatオープニング | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `FlashBeat` | FlashBeat | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
 | `FoldLayers` | Aeプラグイン FoldLayers | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 0 | 1 |  |
-| `LiteGlow` | 【Aeエフェクトプラグイン】LiteGlow | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `MultiSlicer` | MultiSlicer | eligible | approved | Solo developer | no_mappable_section | 3 | 1 | 1 |  |
+| `LiteGlow` | 【Aeエフェクトプラグイン】LiteGlow | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `MultiSlicer` | MultiSlicer | eligible | pending_owner | Plugin developer | media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `NullOto` | NullOto ソフトウェア型ノイズキャンセリングアプリ | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `ProtoType-brochure` | ProtoType パンフレット | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `ProtoType` | タイピングゲーム ProtoType | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `ProtoType` | タイピングゲーム ProtoType | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `RGBDelay` | Aeエフェクトプラグイン RGBDelay | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
-| `alice` | Alice in 冷凍庫 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `aulymo-v01` | Aulymo | eligible | approved | Solo developer | no_mappable_section | 2 | 1 | 1 |  |
-| `aulymo_v02` | Aeスクリプト Aulymo | eligible | pending_owner | Solo developer | no_mappable_section | 2 | 1 | 1 |  |
-| `aulymo_v03` | Aeスクリプト Aulymo_v03 | eligible | pending_owner | Solo developer | media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `bansankai` | 煤夜 様 - わたし晩餐会 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `alice` | Alice in 冷凍庫 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `aulymo-v01` | Aulymo | eligible | pending_owner | Tool developer | media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `aulymo_v02` | Aeスクリプト Aulymo | eligible | pending_owner | Tool developer | media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `aulymo_v03` | Aeスクリプト Aulymo_v03 | eligible | pending_owner | Tool developer | media_missing, no_mappable_section | 1 | 0 | 1 |  |
+| `bansankai` | 煤夜 様 - わたし晩餐会 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
 | `baramoji` | Ae書式維持文字分解スクリプトBaraMoji | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
 | `blue-white-design` | 青と白のデザイン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `cclub-brochure-2024` | コンピュータ部パンフレットデザイン | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
 | `cclub-brochure-2025` | コンピュータ部 勧誘チラシ | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `ch4nge` | 三途くお 様「CH4NGE/Giga」 | rewrite_required | pending_owner | ∅ | role_missing, no_mappable_section | 0 | 1 | 1 |  |
-| `code-type` | コードタイプ風映像素材 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `ch4nge` | 三途くお 様「CH4NGE/Giga」 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `code-type` | コードタイプ風映像素材 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `design-001` | デザイン練習 #001 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `dounika` | どうにかなっちゃいそう 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
-| `homura` | ひよりひよこ 様 - アエギス 第零楽章「焔」 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `hurahu` | フラフープハレーション 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `dounika` | どうにかなっちゃいそう 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `homura` | ひよりひよこ 様 - アエギス 第零楽章「焔」 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `hurahu` | フラフープハレーション 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `icon-tegaki-anime` | アイコン 手書きアニメーション | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `isogasii-demo` | 忙しい人のための作文エディター 試作 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
-| `isogasii-editor` | 忙しい人のための作文エディター 完成版 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `kaben` | 【二次創作】花弁、それにまつわる音声 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `kakumei` | 蝶羽ヘレナ 様 - 革命道中 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `kosen-fes-2025` | 宇部高専祭ウェブサイト2025 | eligible | pending_owner | Lead developer | media_missing, no_mappable_section | 2 | 0 | 1 |  |
+| `isogasii-demo` | 忙しい人のための作文エディター 試作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `isogasii-editor` | 忙しい人のための作文エディター 完成版 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kaben` | 【二次創作】花弁、それにまつわる音声 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kakumei` | 蝶羽ヘレナ 様 - 革命道中 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kosen-fes-2025` | 宇部高専祭ウェブサイト2025 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
 | `kosen-fes2025-ending` | 宇部高専祭2025 エンディング | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `kosen-procon-pv` | 高専プロコン 非公式pv | eligible | pending_owner | Solo creator | no_mappable_section | 4 | 1 | 1 |  |
-| `lhaplus` | ラプラスショコラ 二次創作 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `kosen-procon-pv` | 高専プロコン 非公式pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 4 | 1 | 1 |  |
+| `lhaplus` | ラプラスショコラ 二次創作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `m5_clock` | M5_Clock | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `mawaru` | まわる世界 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `meikai` | 冥界 二次創作pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `moumoku` | 盲目の怪物 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `my-first-blender` | 初めてのBlender | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `mawaru` | まわる世界 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `meikai` | 冥界 二次創作pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `moumoku` | 盲目の怪物 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `my-first-blender` | 初めてのBlender | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
 | `my-sns-icon` | SNSアイコン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `my-web-2025` | my-web-2025 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `netu` | 熱異常 テキストモーション | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `oneself` | ONESELF 二次創作 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
-| `ooame` | 大雨警報発令中 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `netu` | 熱異常 テキストモーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `oneself` | ONESELF 二次創作 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `ooame` | 大雨警報発令中 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
 | `pomodoroom` | pomodoroom | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `propose` | 三途くお 様「プロポーズ/可不」 | rewrite_required | pending_owner | ∅ | role_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `propose` | 三途くお 様「プロポーズ/可不」 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
 | `red-black-design` | 赤と黒のデザイン | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
-| `reel-2024` | reel 2024 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 2 | 1 | 1 |  |
-| `reel-2025` | REEL 2025 | rewrite_required | pending_owner | ∅ | role_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `reel-2024` | reel 2024 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 1 | 1 |  |
+| `reel-2025` | REEL 2025 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
 | `seishun` | 青春コンプレックス / darupoi様 | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 0 | 1 |  |
 | `sep_color` | Aeエフェクトプラグイン sep_color | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
-| `shinkansen` | シンカンセンスゴイカタイアイス p5js練習 | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
-| `stretch-v01` | Aeエフェクトプラグイン Stretch | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `shinkansen` | シンカンセンスゴイカタイアイス p5js練習 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `stretch-v01` | Aeエフェクトプラグイン Stretch | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 | `stretch_v02` | Aeエフェクトプラグイン Stretch v2 | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 2 | 0 | 1 |  |
 | `tegaki-anime` | 手書きアニメーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 0 | 1 |  |
-| `tokimeki` | darupoi 様 - Tokimeki | rewrite_required | pending_owner | ∅ | role_missing, no_mappable_section | 0 | 1 | 1 |  |
-| `ugoita` | 動いたっ！ イラストアニメーション | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 1 | 1 | 1 |  |
-| `usoto` | 嘘と未来 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 4 | 1 | 1 |  |
-| `yukikate` | 【二次創作】雪糅 文字pv | eligible | pending_owner | ∅ | role_missing, no_mappable_section | 3 | 1 | 1 |  |
+| `tokimeki` | darupoi 様 - Tokimeki | rewrite_required | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 0 | 1 | 1 |  |
+| `ugoita` | 動いたっ！ イラストアニメーション | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 1 | 1 | 1 |  |
+| `usoto` | 嘘と未来 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 4 | 1 | 1 |  |
+| `yukikate` | 【二次創作】雪糅 文字pv | eligible | pending_owner | ∅ | role_missing, media_missing, no_mappable_section | 3 | 1 | 1 |  |
 
 
 ## New candidates (no legacy DB row)

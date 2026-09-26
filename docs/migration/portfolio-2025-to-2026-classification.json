@@ -1,7 +1,6 @@
 {
 	"bucket_counts": {
-		"eligible / approved": 2,
-		"eligible / pending_owner": 46,
+		"eligible / pending_owner": 48,
 		"mechanical_drop / null": 91,
 		"new_candidate / pending_owner": 8,
 		"rewrite_required / pending_owner": 12
@@ -204,6 +203,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-07-30T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -211,6 +211,7 @@
 			"tags": ["develop", "AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"technologies": ["AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"title": "Ae縁取りエフェクト Border",
+			"updated_at": "2025-11-06T10:36:12.814Z",
 			"visibility": "public"
 		},
 		{
@@ -225,7 +226,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-07-28T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -233,6 +235,7 @@
 			"tags": ["Cubase", "DTM"],
 			"technologies": ["Cubase", "DTM"],
 			"title": "FlashBeatテーマ曲(BGM)",
+			"updated_at": "2025-11-06T10:06:14.791Z",
 			"visibility": "public"
 		},
 		{
@@ -247,7 +250,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-02-21T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -255,6 +259,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "FlashBeatオープニング",
+			"updated_at": "2025-11-06T10:06:33.108Z",
 			"visibility": "public"
 		},
 		{
@@ -269,7 +274,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2023-11-03T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -277,6 +283,7 @@
 			"tags": ["develop", "Unity"],
 			"technologies": ["Unity"],
 			"title": "FlashBeat",
+			"updated_at": "2025-11-06T10:06:02.877Z",
 			"visibility": "public"
 		},
 		{
@@ -292,6 +299,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2026-02-01T00:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -299,6 +307,7 @@
 			"tags": ["design", "develop", "video", "C++", "VisualStudio", "aftereffects", "プラグイン"],
 			"technologies": ["C++", "VisualStudio", "aftereffects", "プラグイン"],
 			"title": "Aeプラグイン FoldLayers",
+			"updated_at": "2026-08-12T09:08:38.378Z",
 			"visibility": "public"
 		},
 		{
@@ -313,7 +322,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-07-30T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -321,6 +331,7 @@
 			"tags": ["develop", "AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"technologies": ["AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"title": "【Aeエフェクトプラグイン】LiteGlow",
+			"updated_at": "2025-11-06T14:31:05.774Z",
 			"visibility": "public"
 		},
 		{
@@ -334,15 +345,17 @@
 			"markdown_count": 1,
 			"migration_class": "eligible",
 			"other_asset_count": 0,
-			"publication": "approved",
-			"publication_blockers": ["no_mappable_section"],
-			"role": "Solo developer",
+			"publication": "pending_owner",
+			"publication_blockers": ["media_missing", "no_mappable_section"],
+			"published_at": "2025-05-02T03:00:00.000Z",
+			"role": "Plugin developer",
 			"role_source": "role_overrides",
 			"status": "published",
 			"summary": "Aeで画像をスライスするエフェクトプラグインです",
 			"tags": ["design", "develop", "video", "AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"technologies": ["AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"title": "MultiSlicer",
+			"updated_at": "2025-11-06T14:00:23.127Z",
 			"visibility": "public"
 		},
 		{
@@ -358,6 +371,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-10-11T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -365,6 +379,7 @@
 			"tags": ["develop"],
 			"technologies": [],
 			"title": "NullOto ソフトウェア型ノイズキャンセリングアプリ",
+			"updated_at": "2025-11-24T13:47:17.949Z",
 			"visibility": "public"
 		},
 		{
@@ -380,6 +395,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-03-11T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -387,6 +403,7 @@
 			"tags": ["design", "Illustrator", "コンフェス", "デザイン"],
 			"technologies": ["Illustrator", "コンフェス", "デザイン"],
 			"title": "ProtoType パンフレット",
+			"updated_at": "2025-11-08T12:55:35.350Z",
 			"visibility": "public"
 		},
 		{
@@ -401,7 +418,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-03-13T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -409,6 +427,7 @@
 			"tags": ["develop", "PIXI.JS", "VSCode", "コンフェス"],
 			"technologies": ["PIXI.JS", "VSCode", "コンフェス"],
 			"title": "タイピングゲーム ProtoType",
+			"updated_at": "2025-11-08T13:12:02.387Z",
 			"visibility": "public"
 		},
 		{
@@ -424,6 +443,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-12-12T00:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -431,6 +451,7 @@
 			"tags": ["develop", "C++", "VisualStudio", "aftereffects", "プラグイン"],
 			"technologies": ["C++", "VisualStudio", "aftereffects", "プラグイン"],
 			"title": "Aeエフェクトプラグイン RGBDelay",
+			"updated_at": "2026-08-12T08:23:53.702Z",
 			"visibility": "public"
 		},
 		{
@@ -445,7 +466,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-09-17T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -453,6 +475,7 @@
 			"tags": ["video", "Aviutl"],
 			"technologies": ["Aviutl"],
 			"title": "Alice in 冷凍庫 文字pv",
+			"updated_at": "2025-11-06T10:19:17.631Z",
 			"visibility": "public"
 		},
 		{
@@ -466,15 +489,17 @@
 			"markdown_count": 1,
 			"migration_class": "eligible",
 			"other_asset_count": 0,
-			"publication": "approved",
-			"publication_blockers": ["no_mappable_section"],
-			"role": "Solo developer",
+			"publication": "pending_owner",
+			"publication_blockers": ["media_missing", "no_mappable_section"],
+			"published_at": "2024-12-13T03:00:00.000Z",
+			"role": "Tool developer",
 			"role_source": "role_overrides",
 			"status": "published",
 			"summary": "Aeのスクリプトです　簡単にリリックモーションを作れます",
 			"tags": ["develop", "AfterEffects", "ExtendScript", "VSCode", "スクリプト", "プラグイン"],
 			"technologies": ["AfterEffects", "ExtendScript", "VSCode", "スクリプト", "プラグイン"],
 			"title": "Aulymo",
+			"updated_at": "2025-11-08T13:02:06.688Z",
 			"visibility": "public"
 		},
 		{
@@ -489,14 +514,16 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["no_mappable_section"],
-			"role": "Solo developer",
+			"publication_blockers": ["media_missing", "no_mappable_section"],
+			"published_at": "2024-12-20T03:00:00.000Z",
+			"role": "Tool developer",
 			"role_source": "role_overrides",
 			"status": "published",
 			"summary": "Ae全自動リリックモーション「Aulymo」v2の動作説明動画です。PremiereProを初めてまともに使いました。あと、コンピュータ部のMacBookを借りました。",
 			"tags": ["develop", "AfterEffects", "VSCode", "スクリプト", "プラグイン"],
 			"technologies": ["AfterEffects", "VSCode", "スクリプト", "プラグイン"],
 			"title": "Aeスクリプト Aulymo",
+			"updated_at": "2025-11-06T10:24:50.900Z",
 			"visibility": "public"
 		},
 		{
@@ -512,13 +539,15 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["media_missing", "no_mappable_section"],
-			"role": "Solo developer",
+			"published_at": "2025-08-12T03:00:00.000Z",
+			"role": "Tool developer",
 			"role_source": "role_overrides",
 			"status": "published",
 			"summary": "Ae版全自動リリックモーション「Aulymo」をアプデしました",
 			"tags": ["design", "develop", "C++", "ExtendScript", "aftereffects", "プラグイン"],
 			"technologies": ["C++", "ExtendScript", "aftereffects", "プラグイン"],
 			"title": "Aeスクリプト Aulymo_v03",
+			"updated_at": "2025-11-06T10:49:55.608Z",
 			"visibility": "public"
 		},
 		{
@@ -533,7 +562,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-05-16T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -541,6 +571,7 @@
 			"tags": ["video", "AfterEffects", "依頼"],
 			"technologies": ["AfterEffects", "依頼"],
 			"title": "煤夜 様 - わたし晩餐会",
+			"updated_at": "2025-11-24T09:06:20.011Z",
 			"visibility": "public"
 		},
 		{
@@ -556,6 +587,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-04-02T00:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -571,6 +603,7 @@
 			],
 			"technologies": ["ExtendScript", "VSCode", "aftereffects", "スクリプト", "プラグイン"],
 			"title": "Ae書式維持文字分解スクリプトBaraMoji",
+			"updated_at": "2026-08-12T08:13:54.131Z",
 			"visibility": "public"
 		},
 		{
@@ -586,6 +619,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-09-08T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -593,6 +627,7 @@
 			"tags": ["design", "Adobe XD", "デザイン"],
 			"technologies": ["Adobe XD", "デザイン"],
 			"title": "青と白のデザイン",
+			"updated_at": "2025-11-06T10:17:16.323Z",
 			"visibility": "public"
 		},
 		{
@@ -608,6 +643,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-08-05T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -615,6 +651,7 @@
 			"tags": ["design", "Illustrator", "コンピュータ部", "デザイン"],
 			"technologies": ["Illustrator", "コンピュータ部", "デザイン"],
 			"title": "コンピュータ部パンフレットデザイン",
+			"updated_at": "2025-11-06T10:12:11.887Z",
 			"visibility": "public"
 		},
 		{
@@ -630,6 +667,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-04-07T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -637,6 +675,7 @@
 			"tags": ["design", "Illustrator", "コンピュータ部"],
 			"technologies": ["Illustrator", "コンピュータ部"],
 			"title": "コンピュータ部 勧誘チラシ",
+			"updated_at": "2025-11-08T13:14:48.544Z",
 			"visibility": "public"
 		},
 		{
@@ -651,7 +690,8 @@
 			"migration_class": "rewrite_required",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-09-06T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -659,6 +699,7 @@
 			"tags": ["video", "AfterEffects", "依頼"],
 			"technologies": ["AfterEffects", "依頼"],
 			"title": "三途くお 様「CH4NGE/Giga」",
+			"updated_at": "2025-11-06T11:48:57.256Z",
 			"visibility": "public"
 		},
 		{
@@ -673,7 +714,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-03-24T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -681,6 +723,7 @@
 			"tags": ["design", "develop", "aftereffects", "p5js"],
 			"technologies": ["aftereffects", "p5js"],
 			"title": "コードタイプ風映像素材",
+			"updated_at": "2025-11-06T10:29:23.046Z",
 			"visibility": "public"
 		},
 		{
@@ -696,6 +739,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-07-30T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -703,6 +747,7 @@
 			"tags": ["design", "AfterEffects", "デザイン"],
 			"technologies": ["AfterEffects", "デザイン"],
 			"title": "デザイン練習 #001",
+			"updated_at": "2025-11-06T10:34:39.302Z",
 			"visibility": "public"
 		},
 		{
@@ -717,7 +762,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-07-13T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -725,6 +771,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "どうにかなっちゃいそう 文字pv",
+			"updated_at": "2025-11-06T10:12:30.175Z",
 			"visibility": "public"
 		},
 		{
@@ -739,7 +786,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-10-03T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -747,6 +795,7 @@
 			"tags": ["video", "AfterEffects", "依頼"],
 			"technologies": ["AfterEffects", "依頼"],
 			"title": "ひよりひよこ 様 - アエギス 第零楽章「焔」",
+			"updated_at": "2025-11-06T11:00:06.391Z",
 			"visibility": "public"
 		},
 		{
@@ -761,7 +810,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-09-24T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -769,6 +819,7 @@
 			"tags": ["video", "Aviutl"],
 			"technologies": ["Aviutl"],
 			"title": "フラフープハレーション 文字pv",
+			"updated_at": "2025-11-08T12:59:01.836Z",
 			"visibility": "public"
 		},
 		{
@@ -784,6 +835,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2026-04-08T00:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -791,6 +843,7 @@
 			"tags": ["design", "Photoshop"],
 			"technologies": ["Photoshop"],
 			"title": "アイコン 手書きアニメーション",
+			"updated_at": "2026-08-15T08:46:01.110Z",
 			"visibility": "public"
 		},
 		{
@@ -805,7 +858,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-08-12T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -813,6 +867,7 @@
 			"tags": ["develop"],
 			"technologies": [],
 			"title": "忙しい人のための作文エディター 試作",
+			"updated_at": "2025-11-06T10:18:02.104Z",
 			"visibility": "public"
 		},
 		{
@@ -827,7 +882,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-08-27T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -835,6 +891,7 @@
 			"tags": ["develop", "HTML", "JavaScript", "VSCode", "Web", "chatGPT API", "css"],
 			"technologies": ["HTML", "JavaScript", "VSCode", "Web", "chatGPT API", "css"],
 			"title": "忙しい人のための作文エディター 完成版",
+			"updated_at": "2025-11-06T10:18:25.985Z",
 			"visibility": "public"
 		},
 		{
@@ -849,7 +906,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-02-23T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -857,6 +915,7 @@
 			"tags": ["video", "AfterEffects", "文字pv"],
 			"technologies": ["AfterEffects", "文字pv"],
 			"title": "【二次創作】花弁、それにまつわる音声 文字pv",
+			"updated_at": "2025-11-08T13:08:59.107Z",
 			"visibility": "public"
 		},
 		{
@@ -871,7 +930,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-10-31T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -879,6 +939,7 @@
 			"tags": ["video", "aftereffects", "依頼"],
 			"technologies": ["aftereffects", "依頼"],
 			"title": "蝶羽ヘレナ 様 - 革命道中",
+			"updated_at": "2025-11-06T11:03:26.612Z",
 			"visibility": "public"
 		},
 		{
@@ -893,14 +954,16 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["media_missing", "no_mappable_section"],
-			"role": "Lead developer",
-			"role_source": "role_overrides",
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-11-08T03:00:00.000Z",
+			"role": null,
+			"role_source": null,
 			"status": "published",
 			"summary": "2025年 宇部高専祭ウェブサイトを制作しました",
 			"tags": ["design", "develop", "React", "Vite", "Web"],
 			"technologies": ["React", "Vite", "Web"],
 			"title": "宇部高専祭ウェブサイト2025",
+			"updated_at": "2025-11-08T15:23:12.498Z",
 			"visibility": "public"
 		},
 		{
@@ -916,6 +979,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-11-09T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -923,6 +987,7 @@
 			"tags": ["design"],
 			"technologies": [],
 			"title": "宇部高専祭2025 エンディング",
+			"updated_at": "2025-11-24T13:47:49.668Z",
 			"visibility": "public"
 		},
 		{
@@ -937,14 +1002,16 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["no_mappable_section"],
-			"role": "Solo creator",
-			"role_source": "role_overrides",
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-10-14T03:00:00.000Z",
+			"role": null,
+			"role_source": null,
 			"status": "published",
 			"summary": "全国高等専門学校プログラミングコンテスト 第35回 奈良大会の非公式pvです",
 			"tags": ["video", "AfterEffects", "高専プロコン"],
 			"technologies": ["AfterEffects", "高専プロコン"],
 			"title": "高専プロコン 非公式pv",
+			"updated_at": "2025-11-08T13:16:09.175Z",
 			"visibility": "public"
 		},
 		{
@@ -959,7 +1026,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-12-31T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -967,6 +1035,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "ラプラスショコラ 二次創作",
+			"updated_at": "2025-11-08T13:03:51.215Z",
 			"visibility": "public"
 		},
 		{
@@ -982,6 +1051,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-12-05T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -989,6 +1059,7 @@
 			"tags": ["develop", "M5Stack"],
 			"technologies": ["M5Stack"],
 			"title": "M5_Clock",
+			"updated_at": "2025-12-15T23:38:36.933Z",
 			"visibility": "public"
 		},
 		{
@@ -1021,7 +1092,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-11-02T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -1029,6 +1101,7 @@
 			"tags": ["video", "AfterEffects", "文字pv"],
 			"technologies": ["AfterEffects", "文字pv"],
 			"title": "まわる世界 文字pv",
+			"updated_at": "2025-11-08T13:01:12.990Z",
 			"visibility": "public"
 		},
 		{
@@ -1044,6 +1117,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1051,6 +1125,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-0201b370-ead5-413e-b434-09142bffe084",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1066,6 +1141,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1073,6 +1149,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-0393c0a4-5332-4ea4-ab4e-9e3e6deaa4f1",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1088,6 +1165,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1095,6 +1173,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-06c465be-9182-4a17-adc8-2adc48163b44",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1110,6 +1189,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1117,6 +1197,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-1d269a6e-46e7-45e7-bd7a-623640bbf97e",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1132,6 +1213,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1139,6 +1221,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-1d6e0b34-ee53-45cd-8890-744133faa7de",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1154,6 +1237,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1161,6 +1245,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-2189f73c-0cd5-4e35-9640-722e3ab98471",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1176,6 +1261,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1183,6 +1269,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-283a5c33-ec6d-4473-88e6-07d5550250de",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1198,6 +1285,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1205,6 +1293,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-2ab2c1db-9f5b-4833-ad4f-4a1489e16e31",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1220,6 +1309,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1227,6 +1317,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-2f6c2e9e-79fc-48c2-9556-50d7badc54d9",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1242,6 +1333,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1249,6 +1341,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-342e86cd-b630-4c73-8524-8cc142978aa6",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1264,6 +1357,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1271,6 +1365,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-40f173b6-10e9-443f-94b4-9930d1cbd81b",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1286,6 +1381,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1293,6 +1389,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-52ea8ab1-9855-467e-85be-f5cbea14d2da",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1308,6 +1405,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1315,6 +1413,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-57d13b01-8521-4ffc-a425-1a42ed5e1ec2",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1330,6 +1429,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1337,6 +1437,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-58175b2d-c7d1-4cef-b966-b5414e48052b",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1352,6 +1453,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1359,6 +1461,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-62114845-240d-444f-a4c7-1130bbe312fb",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1374,6 +1477,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1381,6 +1485,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-62bddd67-7ace-4ab8-b932-109403cc5e77",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1396,6 +1501,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1403,6 +1509,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-658351a3-1afe-4014-81c8-67c39aaf57d6",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1418,6 +1525,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1425,6 +1533,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-6765f460-0f36-4748-8c51-4068522e4b97",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1440,6 +1549,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1447,6 +1557,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-6dceb926-cc8e-4cd1-aea7-401ea1700923",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1462,6 +1573,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1469,6 +1581,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-6f7c93d9-9e77-4431-a430-d1ef154f7547",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1484,6 +1597,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1491,6 +1605,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-7689b0e6-76b2-4abd-9724-7478e3ea04fc",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1506,6 +1621,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1513,6 +1629,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-7a2425ae-80fd-40ab-9b04-588d74881e3d",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1528,6 +1645,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1535,6 +1653,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-87bddced-333f-4e61-bcc1-7d5a5d18e314",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1550,6 +1669,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1557,6 +1677,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-88ecefb4-384a-4d95-9047-9102e0f76e53",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1572,6 +1693,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1579,6 +1701,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-9812ef87-0433-4a9f-9bb7-8598e18e64a6",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1594,6 +1717,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1601,6 +1725,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-9f6bb152-8644-449a-909c-b33191045bf5",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1616,6 +1741,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1623,6 +1749,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-a0ad1bba-9e42-4630-b534-30f5daa25b77",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1638,6 +1765,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1645,6 +1773,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-a1a54f29-0a36-4fd7-a38e-923b4cc6d06c",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1660,6 +1789,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1667,6 +1797,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-ab0ae413-f9e8-4f3c-97aa-ced0417fed98",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1682,6 +1813,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1689,6 +1821,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-b1659c89-43aa-4503-9022-0b0bd7b0cc54",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1704,6 +1837,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1711,6 +1845,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-b62180e8-f5df-444d-938d-14c96f0605cf",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1726,6 +1861,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1733,6 +1869,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-bbfef334-e446-42c2-9266-b08ecb5ceb82",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1748,6 +1885,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1755,6 +1893,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-cc6b892e-9fdf-49bc-9f23-55357d7f7836",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1770,6 +1909,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1777,6 +1917,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-d5271141-6fef-4636-a54a-15fd46be9316",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1792,6 +1933,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1799,6 +1941,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-ec85bcb8-9b1c-4591-ad69-1a73d25fd5bd",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1814,6 +1957,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1821,6 +1965,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-f090971f-53d7-4508-9c1b-3d26cc18efa1",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1836,6 +1981,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1843,6 +1989,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-f1b5a3ef-d047-457c-ab55-11c54a214cdd",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1858,6 +2005,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1865,6 +2013,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-f61b6d4d-4593-4870-9faa-9d7326dad4e7",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1880,6 +2029,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1887,6 +2037,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-f8ca4499-9e18-4517-8cd2-c6e0dedd5042",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1902,6 +2053,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1909,6 +2061,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-list-fe284e12-35af-4fd6-965f-3c3fe373fd0a",
+			"updated_at": "2026-01-01T00:00:00Z",
 			"visibility": "draft"
 		},
 		{
@@ -1924,6 +2077,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1931,6 +2085,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-00ebe286-6683-4362-9253-d6a5b9f6612b",
+			"updated_at": "2026-08-28T15:31:44.919Z",
 			"visibility": "draft"
 		},
 		{
@@ -1946,6 +2101,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1953,6 +2109,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-01e49c5e-80b9-4581-a184-84d9d37de7e8",
+			"updated_at": "2026-08-29T15:08:49.865Z",
 			"visibility": "draft"
 		},
 		{
@@ -1968,6 +2125,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1975,6 +2133,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-0ca15fe4-97c4-4b4d-8cfb-0b799588bfd9",
+			"updated_at": "2026-08-28T16:16:31.773Z",
 			"visibility": "draft"
 		},
 		{
@@ -1990,6 +2149,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -1997,6 +2157,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-134675d9-fde1-4180-abd0-602bc6e2afd1",
+			"updated_at": "2026-08-30T14:53:50.178Z",
 			"visibility": "draft"
 		},
 		{
@@ -2012,6 +2173,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2019,6 +2181,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-14db1778-02e4-4ffd-bce1-f05cfcfa434f",
+			"updated_at": "2026-08-28T15:46:46.884Z",
 			"visibility": "draft"
 		},
 		{
@@ -2034,6 +2197,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2041,6 +2205,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-14ddb6f0-34e4-46e5-becc-54ba545df779",
+			"updated_at": "2026-08-30T14:54:14.184Z",
 			"visibility": "draft"
 		},
 		{
@@ -2056,6 +2221,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2063,6 +2229,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-1fa3414a-545a-4d67-b9a6-a896f03b6933",
+			"updated_at": "2026-08-28T15:15:21.295Z",
 			"visibility": "draft"
 		},
 		{
@@ -2078,6 +2245,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2085,6 +2253,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-239d63f7-0e3a-45ad-8cbd-cd2f405c10c9",
+			"updated_at": "2026-08-29T14:57:55.408Z",
 			"visibility": "draft"
 		},
 		{
@@ -2100,6 +2269,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2107,6 +2277,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-36bc2760-2e56-49ab-839c-b7f9427e9a28",
+			"updated_at": "2026-08-29T13:48:12.159Z",
 			"visibility": "draft"
 		},
 		{
@@ -2122,6 +2293,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2129,6 +2301,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-3998b7aa-2d89-44ac-9c06-0e2dbf16f053",
+			"updated_at": "2026-08-28T15:44:03.953Z",
 			"visibility": "draft"
 		},
 		{
@@ -2144,6 +2317,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2151,6 +2325,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-46aadd94-7c37-4d3c-8483-3da8294c0400",
+			"updated_at": "2026-08-28T23:11:17.657Z",
 			"visibility": "draft"
 		},
 		{
@@ -2166,6 +2341,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2173,6 +2349,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-49846add-6a13-489c-8dbe-a3618cb8daa5",
+			"updated_at": "2026-08-30T22:39:40.289Z",
 			"visibility": "draft"
 		},
 		{
@@ -2188,6 +2365,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2195,6 +2373,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-4fc1ae23-c270-4cc3-8e25-5475e103d215",
+			"updated_at": "2026-08-28T16:15:59.772Z",
 			"visibility": "draft"
 		},
 		{
@@ -2210,6 +2389,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2217,6 +2397,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-537d8c08-ab2b-4041-9e9d-6548f7bc76bb",
+			"updated_at": "2026-08-29T13:27:27.083Z",
 			"visibility": "draft"
 		},
 		{
@@ -2232,6 +2413,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2239,6 +2421,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-57c774fa-e4b0-4cf4-96d6-d79bc3ff89fd",
+			"updated_at": "2026-08-28T15:24:28.521Z",
 			"visibility": "draft"
 		},
 		{
@@ -2254,6 +2437,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2261,6 +2445,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-5bbc1d7d-a3e4-49a3-b7d6-c955d9154366",
+			"updated_at": "2026-08-29T13:28:17.776Z",
 			"visibility": "draft"
 		},
 		{
@@ -2276,6 +2461,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2283,6 +2469,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-6de4b4f2-0507-4ab0-8fd2-02e198dfa28d",
+			"updated_at": "2026-08-28T16:00:31.458Z",
 			"visibility": "draft"
 		},
 		{
@@ -2298,6 +2485,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2305,6 +2493,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-75cab516-c3ab-4ff6-a0f3-39225cd7e2fc",
+			"updated_at": "2026-08-29T13:27:05.646Z",
 			"visibility": "draft"
 		},
 		{
@@ -2320,6 +2509,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2327,6 +2517,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-7a79b5a3-3395-4bbe-af2f-78a1724215a4",
+			"updated_at": "2026-08-30T14:53:45.949Z",
 			"visibility": "draft"
 		},
 		{
@@ -2342,6 +2533,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2349,6 +2541,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-7c6b6fb0-6ca4-4a60-a6b1-ab5adc79f7a0",
+			"updated_at": "2026-08-29T13:21:16.027Z",
 			"visibility": "draft"
 		},
 		{
@@ -2364,6 +2557,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2371,6 +2565,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-8646eceb-9ddb-40c9-9586-5dd266ff3581",
+			"updated_at": "2026-08-30T13:37:58.930Z",
 			"visibility": "draft"
 		},
 		{
@@ -2386,6 +2581,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2393,6 +2589,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-88c846a1-83f9-4077-85d9-2d4c2bb4e1dd",
+			"updated_at": "2026-08-29T12:16:03.817Z",
 			"visibility": "draft"
 		},
 		{
@@ -2408,6 +2605,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2415,6 +2613,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-92ac1ab2-3638-4dd9-bb7a-193c4b99cf16",
+			"updated_at": "2026-08-29T15:48:09.433Z",
 			"visibility": "draft"
 		},
 		{
@@ -2430,6 +2629,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2437,6 +2637,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-96a28171-9647-4c77-9227-72b668fb631b",
+			"updated_at": "2026-08-28T16:21:51.211Z",
 			"visibility": "draft"
 		},
 		{
@@ -2452,6 +2653,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2459,6 +2661,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-9b2d92f0-83cf-47bb-957e-2ff67fb86117",
+			"updated_at": "2026-08-28T15:53:49.202Z",
 			"visibility": "draft"
 		},
 		{
@@ -2474,6 +2677,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2481,6 +2685,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-a688e554-aca0-404a-90c9-95b870ffbf17",
+			"updated_at": "2026-08-29T15:13:59.360Z",
 			"visibility": "draft"
 		},
 		{
@@ -2496,6 +2701,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2503,6 +2709,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-ac27fc63-e98e-4fb2-8892-99abf948282c",
+			"updated_at": "2026-08-28T14:07:47.412Z",
 			"visibility": "draft"
 		},
 		{
@@ -2518,6 +2725,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2525,6 +2733,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-af8afcfe-88ce-4b04-aacf-4e7ea21f09a2",
+			"updated_at": "2026-08-28T15:07:46.261Z",
 			"visibility": "draft"
 		},
 		{
@@ -2540,6 +2749,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2547,6 +2757,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-c0c263c7-adc6-4566-b74b-909cc08d62cb",
+			"updated_at": "2026-08-28T15:10:14.250Z",
 			"visibility": "draft"
 		},
 		{
@@ -2562,6 +2773,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2569,6 +2781,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-c910c631-8b68-4487-be88-a21fe2bfb2eb",
+			"updated_at": "2026-08-28T14:00:28.533Z",
 			"visibility": "draft"
 		},
 		{
@@ -2584,6 +2797,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2591,6 +2805,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-c9386c01-0b09-4cec-bc41-1c4956405603",
+			"updated_at": "2026-09-05T14:32:28.790Z",
 			"visibility": "draft"
 		},
 		{
@@ -2606,6 +2821,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2613,6 +2829,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-d3c6d417-9423-4f6e-9391-06477dc6bdf7",
+			"updated_at": "2026-08-28T14:44:49.279Z",
 			"visibility": "draft"
 		},
 		{
@@ -2628,6 +2845,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2635,6 +2853,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-d59be433-328b-4d4e-9d89-3dc11a666981",
+			"updated_at": "2026-08-28T23:40:53.766Z",
 			"visibility": "draft"
 		},
 		{
@@ -2650,6 +2869,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2657,6 +2877,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-d8040775-b87d-4046-8fa6-f27848b00c1b",
+			"updated_at": "2026-08-30T14:54:19.825Z",
 			"visibility": "draft"
 		},
 		{
@@ -2672,6 +2893,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2679,6 +2901,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-dca82296-3614-4cdb-85e1-298d0e97b9bc",
+			"updated_at": "2026-08-29T12:13:16.883Z",
 			"visibility": "draft"
 		},
 		{
@@ -2694,6 +2917,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2701,6 +2925,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-dd46f70f-235a-4f1d-aca7-599e20e7ddcb",
+			"updated_at": "2026-08-30T15:36:35.758Z",
 			"visibility": "draft"
 		},
 		{
@@ -2716,6 +2941,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2723,6 +2949,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-e2b4375c-5ef9-488d-b0f6-269fd788c640",
+			"updated_at": "2026-08-28T23:43:45.858Z",
 			"visibility": "draft"
 		},
 		{
@@ -2738,6 +2965,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2745,6 +2973,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-f2d95b84-bc87-4ae6-b2e2-23ac4c0801f2",
+			"updated_at": "2026-08-28T15:35:15.476Z",
 			"visibility": "draft"
 		},
 		{
@@ -2760,6 +2989,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2767,6 +2997,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-f6358c97-59cb-4a83-9767-2fc7b025f1c9",
+			"updated_at": "2026-08-29T14:28:39.073Z",
 			"visibility": "draft"
 		},
 		{
@@ -2782,6 +3013,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": null,
 			"role": null,
 			"role_source": null,
 			"status": "draft",
@@ -2789,6 +3021,7 @@
 			"tags": [],
 			"technologies": [],
 			"title": "media-rt-fdde7937-f917-41d8-8760-b40ffcc81e6f",
+			"updated_at": "2026-08-29T12:08:38.792Z",
 			"visibility": "draft"
 		},
 		{
@@ -2803,7 +3036,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-10-27T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2811,6 +3045,7 @@
 			"tags": ["video", "AfterEffects", "文字pv"],
 			"technologies": ["AfterEffects", "文字pv"],
 			"title": "冥界 二次創作pv",
+			"updated_at": "2025-11-08T13:00:20.232Z",
 			"visibility": "public"
 		},
 		{
@@ -2825,7 +3060,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-09-18T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2833,6 +3069,7 @@
 			"tags": ["video", "Aviutl"],
 			"technologies": ["Aviutl"],
 			"title": "盲目の怪物 文字pv",
+			"updated_at": "2025-11-06T10:19:30.224Z",
 			"visibility": "public"
 		},
 		{
@@ -2847,7 +3084,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-09-01T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2855,6 +3093,7 @@
 			"tags": ["video", "Blender"],
 			"technologies": ["Blender"],
 			"title": "初めてのBlender",
+			"updated_at": "2025-11-06T10:18:53.309Z",
 			"visibility": "public"
 		},
 		{
@@ -2870,6 +3109,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2026-03-18T00:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2877,6 +3117,7 @@
 			"tags": ["design", "Illustrator"],
 			"technologies": ["Illustrator"],
 			"title": "SNSアイコン",
+			"updated_at": "2026-08-15T08:43:36.608Z",
 			"visibility": "public"
 		},
 		{
@@ -2892,6 +3133,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-11-08T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2899,6 +3141,7 @@
 			"tags": ["develop", "React", "Web"],
 			"technologies": ["React", "Web"],
 			"title": "my-web-2025",
+			"updated_at": "2025-12-15T23:19:50.537Z",
 			"visibility": "public"
 		},
 		{
@@ -2913,7 +3156,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-09-28T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2921,6 +3165,7 @@
 			"tags": ["video", "AfterEffects", "リリックモーション"],
 			"technologies": ["AfterEffects", "リリックモーション"],
 			"title": "熱異常 テキストモーション",
+			"updated_at": "2025-11-06T10:19:57.580Z",
 			"visibility": "public"
 		},
 		{
@@ -2935,7 +3180,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-01-12T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2943,6 +3189,7 @@
 			"tags": ["video", "AfterEffects", "文字pv"],
 			"technologies": ["AfterEffects", "文字pv"],
 			"title": "ONESELF 二次創作",
+			"updated_at": "2025-11-08T13:05:09.522Z",
 			"visibility": "public"
 		},
 		{
@@ -2957,7 +3204,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-06-30T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2965,6 +3213,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "大雨警報発令中",
+			"updated_at": "2025-11-06T10:07:42.726Z",
 			"visibility": "public"
 		},
 		{
@@ -2980,6 +3229,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-11-26T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -2987,6 +3237,7 @@
 			"tags": ["develop", "React", "Web"],
 			"technologies": ["React", "Web"],
 			"title": "pomodoroom",
+			"updated_at": "2025-12-15T23:38:24.189Z",
 			"visibility": "public"
 		},
 		{
@@ -3019,7 +3270,8 @@
 			"migration_class": "rewrite_required",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-09-02T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3027,6 +3279,7 @@
 			"tags": ["video", "AfterEffects", "依頼"],
 			"technologies": ["AfterEffects", "依頼"],
 			"title": "三途くお 様「プロポーズ/可不」",
+			"updated_at": "2025-11-06T11:45:46.696Z",
 			"visibility": "public"
 		},
 		{
@@ -3042,6 +3295,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-09-08T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3049,6 +3303,7 @@
 			"tags": ["design", "Adobe XD", "デザイン"],
 			"technologies": ["Adobe XD", "デザイン"],
 			"title": "赤と黒のデザイン",
+			"updated_at": "2025-11-06T10:17:39.551Z",
 			"visibility": "public"
 		},
 		{
@@ -3063,7 +3318,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-12-27T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3071,6 +3327,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "reel 2024",
+			"updated_at": "2025-11-08T13:03:08.019Z",
 			"visibility": "public"
 		},
 		{
@@ -3085,7 +3342,8 @@
 			"migration_class": "rewrite_required",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-12-31T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3093,6 +3351,7 @@
 			"tags": ["design", "video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "REEL 2025",
+			"updated_at": "2026-01-16T12:44:37.344Z",
 			"visibility": "public"
 		},
 		{
@@ -3108,6 +3367,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2026-07-18T00:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3115,6 +3375,7 @@
 			"tags": ["video", "aftereffects", "依頼"],
 			"technologies": ["aftereffects", "依頼"],
 			"title": "青春コンプレックス / darupoi様",
+			"updated_at": "2026-08-12T05:51:16.033Z",
 			"visibility": "public"
 		},
 		{
@@ -3130,6 +3391,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-01-23T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3137,6 +3399,7 @@
 			"tags": ["develop", "AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"technologies": ["AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"title": "Aeエフェクトプラグイン sep_color",
+			"updated_at": "2025-11-08T13:06:18.649Z",
 			"visibility": "public"
 		},
 		{
@@ -3151,7 +3414,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-10-08T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3159,6 +3423,7 @@
 			"tags": ["develop", "video", "VSCode", "p5js"],
 			"technologies": ["VSCode", "p5js"],
 			"title": "シンカンセンスゴイカタイアイス p5js練習",
+			"updated_at": "2025-11-06T10:20:17.699Z",
 			"visibility": "public"
 		},
 		{
@@ -3173,7 +3438,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-01-09T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3181,6 +3447,7 @@
 			"tags": ["develop", "AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"technologies": ["AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"title": "Aeエフェクトプラグイン Stretch",
+			"updated_at": "2025-11-06T10:22:52.337Z",
 			"visibility": "public"
 		},
 		{
@@ -3196,6 +3463,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-03-16T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3203,6 +3471,7 @@
 			"tags": ["develop", "AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"technologies": ["AfterEffects", "C++", "VisualStudio", "プラグイン"],
 			"title": "Aeエフェクトプラグイン Stretch v2",
+			"updated_at": "2025-11-06T10:28:57.952Z",
 			"visibility": "public"
 		},
 		{
@@ -3218,6 +3487,7 @@
 			"other_asset_count": 0,
 			"publication": "pending_owner",
 			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-03-28T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3225,6 +3495,7 @@
 			"tags": ["design", "Photoshop", "手書きアニメーション"],
 			"technologies": ["Photoshop", "手書きアニメーション"],
 			"title": "手書きアニメーション",
+			"updated_at": "2025-11-08T13:13:11.316Z",
 			"visibility": "public"
 		},
 		{
@@ -3240,6 +3511,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2023-12-08T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3247,6 +3519,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "テストお疲れ様でした アニメーション",
+			"updated_at": "2025-11-06T10:04:55.487Z",
 			"visibility": "public"
 		},
 		{
@@ -3262,6 +3535,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2024-08-04T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3269,6 +3543,7 @@
 			"tags": ["video", "AfterEffects", "コンピュータ部"],
 			"technologies": ["AfterEffects", "コンピュータ部"],
 			"title": "テストお疲れ様でした アニメーション",
+			"updated_at": "2025-11-06T10:08:05.186Z",
 			"visibility": "public"
 		},
 		{
@@ -3284,6 +3559,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2024-12-04T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3291,6 +3567,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "テストお疲れ様でした アニメーション",
+			"updated_at": "2025-11-06T13:57:25.984Z",
 			"visibility": "public"
 		},
 		{
@@ -3306,6 +3583,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2025-02-21T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3313,6 +3591,7 @@
 			"tags": ["video", "AfterEffects", "コンピュータ部"],
 			"technologies": ["AfterEffects", "コンピュータ部"],
 			"title": "テストお疲れ様でした 4Q",
+			"updated_at": "2025-11-08T13:07:30.214Z",
 			"visibility": "public"
 		},
 		{
@@ -3328,6 +3607,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2025-07-30T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3335,6 +3615,7 @@
 			"tags": ["video", "AfterEffects", "コンピュータ部"],
 			"technologies": ["AfterEffects", "コンピュータ部"],
 			"title": "期末テストお疲れ様でした 1Q",
+			"updated_at": "2025-11-06T14:17:04.780Z",
 			"visibility": "public"
 		},
 		{
@@ -3350,6 +3631,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2025-08-04T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3357,6 +3639,7 @@
 			"tags": ["video", "aftereffects", "コンピュータ部"],
 			"technologies": ["aftereffects", "コンピュータ部"],
 			"title": "期末テストお疲れ様でした 2Q",
+			"updated_at": "2025-11-06T14:14:58.882Z",
 			"visibility": "public"
 		},
 		{
@@ -3372,6 +3655,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2025-12-08T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3379,6 +3663,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "期末テストお疲れ様でした 3Q",
+			"updated_at": "2025-12-15T23:20:44.170Z",
 			"visibility": "public"
 		},
 		{
@@ -3394,6 +3679,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2026-06-04T00:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3401,6 +3687,7 @@
 			"tags": ["video", "aftereffects"],
 			"technologies": ["aftereffects"],
 			"title": "期末テストお疲れ様でした 1Q",
+			"updated_at": "2026-08-12T05:50:57.625Z",
 			"visibility": "public"
 		},
 		{
@@ -3416,6 +3703,7 @@
 			"other_asset_count": 0,
 			"publication": null,
 			"publication_blockers": [],
+			"published_at": "2026-08-05T00:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3423,6 +3711,7 @@
 			"tags": ["video", "aftereffects"],
 			"technologies": ["aftereffects"],
 			"title": "期末テストお疲れ様でした 2Q",
+			"updated_at": "2026-08-12T05:51:07.204Z",
 			"visibility": "public"
 		},
 		{
@@ -3437,7 +3726,8 @@
 			"migration_class": "rewrite_required",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-11-14T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3445,6 +3735,7 @@
 			"tags": ["video", "aftereffects", "依頼"],
 			"technologies": ["aftereffects", "依頼"],
 			"title": "darupoi 様 - Tokimeki",
+			"updated_at": "2025-11-15T03:31:28.755Z",
 			"visibility": "public"
 		},
 		{
@@ -3459,7 +3750,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-06-10T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3467,6 +3759,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "動いたっ！ イラストアニメーション",
+			"updated_at": "2025-11-06T10:07:08.538Z",
 			"visibility": "public"
 		},
 		{
@@ -3481,7 +3774,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2024-05-15T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3489,6 +3783,7 @@
 			"tags": ["video", "AfterEffects"],
 			"technologies": ["AfterEffects"],
 			"title": "嘘と未来 文字pv",
+			"updated_at": "2025-11-08T12:58:24.730Z",
 			"visibility": "public"
 		},
 		{
@@ -3503,7 +3798,8 @@
 			"migration_class": "eligible",
 			"other_asset_count": 0,
 			"publication": "pending_owner",
-			"publication_blockers": ["role_missing", "no_mappable_section"],
+			"publication_blockers": ["role_missing", "media_missing", "no_mappable_section"],
+			"published_at": "2025-02-28T03:00:00.000Z",
 			"role": null,
 			"role_source": null,
 			"status": "published",
@@ -3511,10 +3807,11 @@
 			"tags": ["video", "AfterEffects", "文字pv"],
 			"technologies": ["AfterEffects", "文字pv"],
 			"title": "【二次創作】雪糅 文字pv",
+			"updated_at": "2025-11-08T13:09:32.674Z",
 			"visibility": "public"
 		}
 	],
-	"generated_at": "2026-09-26T23:04:48.517Z",
+	"generated_at": "2026-09-26T23:18:22.785Z",
 	"schema": {
 		"migration_class": ["eligible", "rewrite_required", "mechanical_drop", "new_candidate"],
 		"publication": ["approved", "pending_owner", "rejected"]

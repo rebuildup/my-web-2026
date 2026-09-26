@@ -210,7 +210,11 @@ function main() {
 	const sqlStatements = [];
 
 	for (const row of classified) {
-		if (row.classification !== 'KEEP') continue;
+		// The classifier emits `migration_class` (Issue #78 cycle 3 schema:
+		// `eligible` / `rewrite_required` / `mechanical_drop` /
+		// `new_candidate`). Only the first two are insertable rows that
+		// can carry local-file media uploaded to R2.
+		if (row.migration_class !== 'eligible' && row.migration_class !== 'rewrite_required') continue;
 
 		const dbPath = join(refRoot, 'data/contents', row.db);
 		let db;

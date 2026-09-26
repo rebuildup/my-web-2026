@@ -283,6 +283,30 @@ function readWranglerProduction() {
 }
 
 /**
+ * Resolve the Cloudflare account id from the two supported sources:
+ *
+ *   1. `CLOUDFLARE_ACCOUNT_ID` env var (override / non-default config)
+ *   2. `wrangler.production.jsonc#account_id` (committed SoT for the
+ *      operator's account — non-secret identifier)
+ *
+ * Returns `{ accountId, source }` where `source` is one of `'env'`,
+ * `'wrangler.production.jsonc#account_id'`, or `null` when neither
+ * yields a non-empty string.
+ *
+ * Pure function — exposed for tests.
+ */
+function resolveCloudflareAccountId({ envValue, wranglerProduction }) {
+	if (typeof envValue === 'string' && envValue.length > 0) {
+		return { accountId: envValue, source: 'env' };
+	}
+	const fromFile = wranglerProduction?.account_id;
+	if (typeof fromFile === 'string' && fromFile.length > 0) {
+		return { accountId: fromFile, source: 'wrangler.production.jsonc#account_id' };
+	}
+	return { accountId: null, source: null };
+}
+
+/**
  * Build the object-map body for the Cloudflare Builds PATCH. Pure
  * helper — keys map to `{value, is_secret}`. Exposed (top-level
  * function) so tests can pin the body shape.
@@ -509,20 +533,17 @@ async function main() {
 	const infisicalApiUrl = process.env.INFISICAL_API_URL ?? INFISICAL_API_URL_DEFAULT;
 	const infisicalToken = process.env.INFISICAL_TOKEN;
 	const cloudflareToken = process.env.CLOUDFLARE_API_TOKEN;
-	const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+	let accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 
 	if (typeof infisicalToken !== 'string' || infisicalToken.length === 0) {
 		throw new Error('INFISICAL_TOKEN env var is required');
 	}
-	if (typeof cloudflareToken !== 'string' || cloudflareToken.length > 0) {
-		// Cloudflare side is optional — bootstrap-cf can still
-		// create the Machine Identity + Universal Auth + client
-		// secret even if CLOUDFLARE_API_TOKEN is absent (the
-		// binding step will be skipped).
-	}
-	if (typeof accountId !== 'string' || accountId.length > 0) {
-		// Same: Cloudflare side is optional.
-	}
+	// Cloudflare side is optional — bootstrap-cf can still create
+	// the Machine Identity + Universal Auth + client secret even if
+	// CLOUDFLARE_API_TOKEN is absent (the binding step will be
+	// skipped). The accountId fallback to
+	// `wrangler.production.jsonc#account_id` is consulted only when
+	// the Cloudflare side runs.
 
 	// Resolve organizationId: env override > JWT extraction.
 	let organizationId = process.env.INFISICAL_ORG_ID;
@@ -627,10 +648,22 @@ async function main() {
 		console.log('Identity + Universal Auth + client secret created successfully.');
 		return;
 	}
+	// Resolve accountId: `CLOUDFLARE_ACCOUNT_ID` env var wins over
+	// `wrangler.production.jsonc#account_id` (committed SoT).
+	// `wranglerProd` was already read earlier for the worker name;
+	// reuse it.
 	if (typeof accountId !== 'string' || accountId.length === 0) {
-		throw new Error(
-			'CLOUDFLARE_ACCOUNT_ID env var is required for the Workers Builds binding step',
-		);
+		const resolved = resolveCloudflareAccountId({
+			envValue: process.env.CLOUDFLARE_ACCOUNT_ID,
+			wranglerProduction: wranglerProd,
+		});
+		if (resolved.accountId === null) {
+			throw new Error(
+				'CLOUDFLARE_ACCOUNT_ID env var is required for the Workers Builds binding step (and wrangler.production.jsonc#account_id is missing)',
+			);
+		}
+		accountId = resolved.accountId;
+		console.log(`CLOUDFLARE_ACCOUNT_ID: using ${resolved.source}`);
 	}
 	const { triggerUuid, source } = await discoverProductionTriggerUuid({
 		accountId,

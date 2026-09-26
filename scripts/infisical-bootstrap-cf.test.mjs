@@ -56,6 +56,7 @@ function loadPureHelpers() {
 		selectProductionTrigger: grab('selectProductionTrigger'),
 		findWorkerTag: grab('findWorkerTag'),
 		jwtOrganizationId: grab('jwtOrganizationId'),
+		resolveCloudflareAccountId: grab('resolveCloudflareAccountId'),
 	};
 }
 
@@ -97,6 +98,66 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			assert.equal(out.name, 'my-web-2026');
 			assert.equal(out.account_id, 'abc123');
 			assert.equal(out.vars.BETTER_AUTH_URL, 'https://rebuildup.dev');
+		});
+	});
+
+	describe('resolveCloudflareAccountId', () => {
+		const { resolveCloudflareAccountId } = loadPureHelpers();
+
+		it('returns the env value when it is a non-empty string', () => {
+			const out = resolveCloudflareAccountId({
+				envValue: 'env-account-id',
+				wranglerProduction: { account_id: 'file-account-id' },
+			});
+			assert.deepEqual(out, { accountId: 'env-account-id', source: 'env' });
+		});
+
+		it('falls back to wrangler.production.jsonc#account_id when env is unset', () => {
+			const out = resolveCloudflareAccountId({
+				envValue: undefined,
+				wranglerProduction: { account_id: 'file-account-id' },
+			});
+			assert.deepEqual(out, {
+				accountId: 'file-account-id',
+				source: 'wrangler.production.jsonc#account_id',
+			});
+		});
+
+		it('falls back to wrangler.production.jsonc#account_id when env is an empty string', () => {
+			const out = resolveCloudflareAccountId({
+				envValue: '',
+				wranglerProduction: { account_id: 'file-account-id' },
+			});
+			assert.deepEqual(out, {
+				accountId: 'file-account-id',
+				source: 'wrangler.production.jsonc#account_id',
+			});
+		});
+
+		it('returns null when both env and wrangler are unset', () => {
+			const out = resolveCloudflareAccountId({
+				envValue: undefined,
+				wranglerProduction: {},
+			});
+			assert.deepEqual(out, { accountId: null, source: null });
+		});
+
+		it('returns null when wranglerProduction is undefined and env is unset', () => {
+			const out = resolveCloudflareAccountId({
+				envValue: undefined,
+				wranglerProduction: undefined,
+			});
+			assert.deepEqual(out, { accountId: null, source: null });
+		});
+
+		it('returns null when wrangler.account_id is a non-string value', () => {
+			// Defensive: a malformed config (e.g. `account_id: 123`)
+			// must NOT be coerced into a string — error out cleanly.
+			const out = resolveCloudflareAccountId({
+				envValue: undefined,
+				wranglerProduction: { account_id: 123 },
+			});
+			assert.deepEqual(out, { accountId: null, source: null });
 		});
 	});
 

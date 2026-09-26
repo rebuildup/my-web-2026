@@ -1,7 +1,7 @@
 # ADR-0015 — Infisical による runtime / build credentials の SoT 統合
 
-- Status: Proposed
-- Date: 2026-09-26
+- Status: Accepted (Phase 2 complete at e32285d / eccd31e; Phase 1 agent scope amended 2026-09-27 — Issue #67)
+- Date: 2026-09-26 (last revised: 2026-09-27)
 - Deciders: repository owner
 - Consulted: ADR-0009 (Better Auth), ADR-0010 (rate-limit), ADR-0011 (consumer pattern), ADR-0013 (emoji catalog), ADR-0014 (canonical domain)
 - Supersedes: なし
@@ -458,6 +458,139 @@ versioned form に移行する:
   の再 sign-in + 進行中 OAuth flow / cookie-bound state のリセットを許容
   する旨を operator が明示承認) ことが前提
 
+### 11.4 Phase 1 — agent scope (Issue #67, amended 2026-09-27)
+
+Phase 1 のうち agent が自動実行する範囲を明示する。残り (operator
+手動 work) は §11.5 で扱う。Phase 2 (`scripts/deploy-with-secrets.mjs`
+等) は `release-0-4-0 @ e32285d` で merge 済みであり、本 §11.4 は
+Phase 1 (Issue #67) の残作業だけを記述する。
+
+**Phase 1 agent work (Issue #67)**:
+
+1. **Infisical project + environment provisioning** (`scripts/infisical-bootstrap-api.mjs`):
+   project `my-web-2026` (既存 dotfiles 用 project とは別物) と `dev`
+   / `prod` の 2 environment を idempotent に作成。`.infisical.json`
+   (`{ workspaceId, defaultEnvironment }`) を repo root に commit
+   (secret を含まない project pointer のみ、`.gitignore` には追加
+   しない — §References 参照)。
+2. **Machine Identity + Universal Auth** (`scripts/infisical-bootstrap-cf.mjs`):
+   Machine Identity `my-web-2026-cf-worker` を project スコープで
+   作成、Universal Auth を attach、project membership を確立。
+   Client secret は **in-memory only** — 生成 → Worker Builds env
+   vars への PATCH 後に即座に `null` 化。ファイル / stdout / log /
+   error message には絶対に出さない。
+3. **Cloudflare Workers Builds env vars への binding**
+   (`scripts/infisical-bootstrap-cf.mjs` 内の `selectProductionTrigger` +
+   `buildBuildsEnvVarsPatchBody` 経路): production deployment
+   trigger を Worker tag 経由で発見 (wrangler config には trigger
+   UUID は存在しない — §11.6 参照)、`PATCH
+   /accounts/{accountId}/builds/triggers/{triggerUuid}/environment_variables`
+   に **object map keyed by variable name** の body shape で
+   `INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` (`is_secret=true`)
+   を設定。
+4. **Dev env 3-name seeding** (`scripts/infisical-seed.mjs --env=dev`):
+   `BETTER_AUTH_SECRET` (legacy 単一)、`BETTER_AUTH_SECRETS` (versioned
+   `1:<hex>` form)、`MY_WEB_2026_CONSUMER_API_KEY` の 3 secret を
+   random 32-byte hex で seed (randomBytes(32).toString('hex'))。
+   既存 secret は **update しない** (idempotent re-run は no-op) —
+   operator tuning を保護。
+5. **Fileless dev smoke** (`scripts/infisical-verify.mjs`): Node
+   `spawnSync` (`shell: false`、Windows native PowerShell / cmd
+   safe) で `infisical run --projectId=<workspaceId> --env=dev --
+   node -e "<presence check>"` を実行。Inner script は `KEY=true|false`
+   (Boolean coercion of `process.env[KEY]`) のみ stdout に出し、
+   値そのものは絶対に出さない。Prod env は expected: 0 secrets を
+   確認 (best-effort — exit non-zero の場合は "skipped" だけ出力)。
+6. **`.gitignore` 拡張**: `.infisical/` (machine identity client
+   secret などの one-time bootstrap artefacts)、`.tmp/` (CLI
+   `--help` introspection 出力)、`.dev.vars` (Phase 3+ fallback
+   で生成される runtime secrets file) を追加。
+
+### 11.5 Workers Builds env target — rationale
+
+`INFISIAL_CLIENT_ID` / `INFISIAL_CLIENT_SECRET` を **Cloudflare
+Workers Builds の environment variables (build-time env vars)** に
+置く理由:
+
+- `wrangler secret put` で Cloudflare Worker の runtime secret に
+  入れた場合、Worker 起動時に `process.env` に値が乗ってしまう
+  (Wrangler は deploy 時に値を復号して env var として inject する)。
+  Universal Auth の短期 access token は親 process (deploy script)
+  が取得するため、Worker runtime に `INFISIAL_CLIENT_SECRET` が
+  常駐する必要は本来ない。
+- 逆に `wrangler secret put` を deploy 前に手動で実行する運用は
+  `release-merge-human-gate` の枠を踏み越える — production deploy
+  authority は Cloudflare Workers Builds が担う (AGENTS.md §6)。
+- Cloudflare Builds API の `PATCH /accounts/{accountId}/builds/
+  triggers/{triggerUuid}/environment_variables` は Build container
+  起動時に環境変数として inject される build-time env であり、
+  Worker runtime には露出しない。`INFISIAL_CLIENT_ID` /
+  `INFISIAL_CLIENT_SECRET` は `deploy-with-secrets.mjs` (Phase 2
+  で merge 済み) が Universal Auth login を HTTPS POST する際の
+  引数として Build container 内でしか読まれない — Worker runtime
+  の `Env` 型契約にも影響しない。
+- PATCH body shape は **flat object map keyed by variable name**
+  (`{ "KEY": { value: "...", is_secret: true } }`) — 配列形式
+  (`[{ name, value, is_secret }, ...]`) ではない。Cloudflare API
+  契約 (公式 API docs: *Workers Builds > Manage triggers >
+  environment variables*) に従う。
+- 既存の Cloudflare Workers Builds UI 設定 (Build command /
+  Deploy command / custom Build token) との drift は §7 の
+  `pnpm run check:cf-secrets` で静的整合を確認する (Infisical
+  side の coverage check とは別)。
+
+### 11.6 Trigger UUID discovery — rationale
+
+Cloudflare Workers Builds の production trigger UUID は **wrangler
+config には存在しない** (`wrangler.production.jsonc` には Worker
+名と `account_id` のみ)。trigger UUID を取得するには Cloudflare
+API を辿る必要がある:
+
+```
+GET /accounts/{accountId}/workers/scripts/{name}
+  → response.tag (Worker tag)
+GET /accounts/{accountId}/builds/workers/{tag}/triggers
+  → [{ uuid, branch, deployment_enabled, ... }]
+filter: deployment_enabled === true AND branch in {main, release-*}
+  → triggerUuid
+```
+
+Disambiguation: 複数の production-shaped trigger が返る場合
+(例: `main` と `release-0-4-0` の両方が deployment_enabled)、
+script は ambiguous として abort し、operator が
+`CF_TRIGGER_UUID=<explicit>` env var で override して再実行する
+(`scripts/infisical-bootstrap-cf.mjs` の `selectProductionTrigger`
+は `branch` の `main > release-*` 優先順で決定的に 1 件選ぶが、
+該当 0 件 / 異常系の最終判断は operator gate)。
+
+### 11.7 Zero prod seeds rationale
+
+Phase 1 (Issue #67) で prod env は **作成するが secret を 1 つも
+seed しない**。これは Phase 2 review blocker の議論で operator
+が確定した (2026-09-27 設計 review round 2):
+
+- Phase 2 で merge 済み (`e32285d`) の `deploy-with-secrets.mjs` は
+  prod env に `BETTER_AUTH_SECRETS` が存在すれば optional として
+  拾う設計。Better Auth 1.5+ の優先順位は `BETTER_AUTH_SECRETS`
+  (versioned) > `BETTER_AUTH_SECRET` (legacy)。Phase 1 で prod に
+  random `BETTER_AUTH_SECRETS=1:<random-hex>` を入れてしまうと、
+  operator の legacy 2 secrets 手動 import が完了する前に Phase 4
+  deploy (`pnpm run deploy:production:prepared`) が走った場合、
+  random versioned form が active signing key として使われ、
+  既存 production session の署名検証が silent に失敗する
+  (Better Auth 1.7.5 の compact cookie cache 実装、§11.2
+  Semantics)。
+- したがって Phase 1 prod env は **「箱だけ用意して中身は空」**
+  の状態にする。Operator post-#67 work が legacy 2 secrets
+  (`BETTER_AUTH_SECRET` + `MY_WEB_2026_CONSUMER_API_KEY`) を
+  `infisical secrets set` で手動 import し、`BETTER_AUTH_SECRETS`
+  は Phase 3+ flip 時に operator が明示承認の上で seed する
+  (release-merge-human-gate の枠組み)。Phase 1 agent は
+  `BETTER_AUTH_SECRETS` を含む prod env への write を一切行わない
+  — `--env=prod` を渡したら `infisical-seed.mjs` が hard error
+  で reject する (operator-only post-#67 work であることを script
+  自身が enforce)。
+
 ## Out of scope
 
 - 0.2.0 以降の Cloudflare 認証情報 (e.g. KV namespace, Durable Object の auth token) の移行 — 別 ticket
@@ -471,7 +604,12 @@ versioned form に移行する:
 - ADR-0011 — Home self-consumption (consumer pattern)
 - ADR-0014 — rebuildup.dev canonical production domain
 - eccd31e — fix(deploy): move production delivery to Cloudflare Builds
+- e32285d — Merge pull request #73 from rebuildup/68 (Phase 2 deploy scripts, `release-0-4-0`)
 - `docs/runbook/cloudflare-workers-builds.md` (new in Phase 5)
 - `docs/runbook/consumer-api-key-rotation.md` (new in Phase 5)
 - `.infisical.json` (new in Phase 1, **committed** — holds only `workspaceId` project pointer; no secrets. `scripts/deploy-with-secrets.mjs` reads `workspaceId` from it as SoT. `.gitignore` does NOT add `.infisical.json`. Schema: `{ "workspaceId": "<uuid>", "defaultEnvironment"?: "dev" | "prod" }`. `INFISICAL_API_URL` は `scripts/deploy-with-secrets.mjs` 内の committed constant (`https://secrets.rebuildup.dev` を default とする) + env var override の二段構えで提供される。operator shell rc に依存しない — Workers Builds ephemeral container には shell rc が存在しないため)
+- `scripts/infisical-bootstrap-api.mjs` (new in Phase 1, Issue #67 — project + dev/prod env provisioning via V3 API)
+- `scripts/infisical-bootstrap-cf.mjs` (new in Phase 1, Issue #67 — Machine Identity + Universal Auth + Cloudflare Workers Builds env binding, in-memory client secret, decision-tree idempotency without pre-emptive revoke)
+- `scripts/infisical-seed.mjs` (new in Phase 1, Issue #67 — dev env 3-name secret seeding; `--env=prod` is hard-rejected, prod zero-seed per §11.7)
+- `scripts/infisical-verify.mjs` (new in Phase 1, Issue #67 — fileless dev smoke via Node `spawnSync` with `shell: false`, Windows-native-safe; inner script writes `KEY=true|false` markers only, never values)
 - `scripts/deploy-with-secrets.mjs` (new in Phase 2)

@@ -35,8 +35,16 @@ export interface PortfolioLoader {
  * can hand-construct a fake env object without dragging in
  * `cloudflare:test` or `cloudflare:workers`. Production uses
  * `env as unknown as PortfolioEnv`.
+ *
+ * `MEDIA_PUBLIC_BASE_URL` is the optional `vars` entry that
+ * activates the R2 custom-domain delivery (Decision 5). When
+ * absent, `composeMediaUrl` returns `null` and the UI renders
+ * a placeholder. The variable is **not** declared in
+ * `wrangler.jsonc` yet — the operator adds it when the R2
+ * custom domain is configured in the Cloudflare dashboard.
  */
 export interface PortfolioEnv {
 	DB?: D1Database;
 	MEDIA?: R2Bucket;
+	MEDIA_PUBLIC_BASE_URL?: string;
 }

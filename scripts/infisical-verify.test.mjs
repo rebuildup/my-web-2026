@@ -272,4 +272,24 @@ describe('infisical-verify.mjs', () => {
 			}
 		});
 	});
+
+	describe('@infisical/cli binary resolution (regression for native binary path)', () => {
+		it('does not call require.resolve on a non-existent .js path', () => {
+			// Regression: `@infisical/cli` ships a NATIVE executable at
+			// `bin/infisical` (no `.js` extension; declared in
+			// `package.json#bin`). The old code did
+			// `require.resolve('@infisical/cli/bin/infisical.js')` which
+			// always failed at execution time. The fix reads
+			// `package.json#bin` instead.
+			assert.equal(
+				SOURCE.includes("require.resolve('@infisical/cli/bin/infisical.js')"),
+				false,
+				'script must not resolve the @infisical/cli bin as a .js file',
+			);
+		});
+
+		it('reads the bin path from @infisical/cli/package.json', () => {
+			assert.match(SOURCE, /@infisical\/cli\/package\.json/);
+		});
+	});
 });

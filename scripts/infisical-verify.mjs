@@ -160,13 +160,30 @@ async function main() {
 
 	const workspaceId = readInfisicalWorkspaceId();
 
-	// Resolve the devDep-pinned CLI via Node module resolution
-	// (mirrors `deploy-with-secrets.mjs`). We do NOT call the global
-	// `infisical` binary because Windows / native shells differ in
-	// how they resolve PATH.
+	// Resolve the devDep-pinned CLI via Node module resolution.
+	// `@infisical/cli` exposes a NATIVE executable at
+	// `bin/infisical` (no `.js` extension; declared in
+	// `package.json#bin`), so a plain `require.resolve` for a
+	// `.js` extension would fail. Read the bin field instead and
+	// construct the absolute path.
+	//
+	// We do NOT call the global `infisical` binary because
+	// Windows / native shells differ in how they resolve PATH.
 	const { createRequire } = await import('node:module');
 	const require = createRequire(import.meta.url);
-	const infisicalCli = require.resolve('@infisical/cli/bin/infisical.js');
+	const infisicalPkgPath = require.resolve('@infisical/cli/package.json');
+	const infisicalPkgDir = dirname(infisicalPkgPath);
+	const pkgBinField = JSON.parse(readFileSync(infisicalPkgPath, 'utf8')).bin;
+	const binRel =
+		typeof pkgBinField === 'string'
+			? pkgBinField
+			: pkgBinField && typeof pkgBinField.infisical === 'string'
+				? pkgBinField.infisical
+				: null;
+	if (binRel === null) {
+		throw new Error('@infisical/cli/package.json#bin must declare an `infisical` entry');
+	}
+	const infisicalCli = resolve(infisicalPkgDir, binRel);
 
 	const result = spawnPresenceCheck({ workspaceId, infisicalCli });
 

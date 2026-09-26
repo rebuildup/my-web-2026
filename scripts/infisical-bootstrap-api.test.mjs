@@ -202,4 +202,14 @@ describe('infisical-bootstrap-api.mjs', () => {
 			);
 		});
 	});
+
+	describe('.infisical.json schema (regression for operator `infisical init` interop)', () => {
+		it('ALLOWED_INFISICAL_JSON_KEYS includes gitBranchToEnvironmentMapping', () => {
+			// Regression: `infisical init` writes
+			// `gitBranchToEnvironmentMapping` into `.infisical.json`.
+			// Without this allowance, a re-init between agent runs would
+			// cause bootstrap-api to throw on existing files.
+			assert.match(SOURCE, /'gitBranchToEnvironmentMapping'/);
+		});
+	});
 });

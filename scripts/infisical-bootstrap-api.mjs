@@ -47,7 +47,15 @@ const PROJECT_SLUG = 'my-web-2026';
 const ENVIRONMENT_SLUGS = ['dev', 'prod'];
 const HTTPS_TIMEOUT_MS = 10_000;
 const HTTPS_MAX_RESPONSE_BYTES = 64 * 1024;
-const ALLOWED_INFISICAL_JSON_KEYS = new Set(['workspaceId', 'defaultEnvironment']);
+const ALLOWED_INFISICAL_JSON_KEYS = new Set([
+	'workspaceId',
+	'defaultEnvironment',
+	// `infisical init` writes this key unconditionally; accepting it
+	// preserves operator tooling that re-runs `infisical init` between
+	// agent runs. The field is metadata (branch-to-env mapping); it is
+	// not a secret.
+	'gitBranchToEnvironmentMapping',
+]);
 
 function parseArgs(argv) {
 	// Help text is inlined (rather than calling a separate printHelp()

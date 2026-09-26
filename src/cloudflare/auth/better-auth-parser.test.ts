@@ -54,20 +54,41 @@ describe('parseVersionedSecrets', () => {
 			expect(() => parseVersionedSecrets('')).toThrow(/empty/i);
 		});
 
+		it('rejects whitespace-only input', () => {
+			expect(() => parseVersionedSecrets('   ')).toThrow(/empty/i);
+		});
+
 		it('rejects entries missing the version:value separator', () => {
 			expect(() => parseVersionedSecrets('bad-format-no-colon,1:old')).toThrow(
 				/missing ':' separator/,
 			);
 		});
 
+		it('rejects entries with non-decimal-digit version (e.g. exponent / hex)', () => {
+			expect(() => parseVersionedSecrets('1e3:notnum,1:old')).toThrow(/decimal digits only/);
+			expect(() => parseVersionedSecrets('0x10:notnum,1:old')).toThrow(/decimal digits only/);
+		});
+
 		it('rejects entries with non-positive-integer versions', () => {
-			expect(() => parseVersionedSecrets('0:zero,1:old')).toThrow(/invalid version/);
-			expect(() => parseVersionedSecrets('-1:negative,1:old')).toThrow(/invalid version/);
-			expect(() => parseVersionedSecrets('abc:notnum,1:old')).toThrow(/invalid version/);
+			expect(() => parseVersionedSecrets('0:zero,1:old')).toThrow(/positive safe integer/);
+			expect(() => parseVersionedSecrets('-1:negative,1:old')).toThrow(/decimal digits only/);
+			expect(() => parseVersionedSecrets('abc:notnum,1:old')).toThrow(/decimal digits only/);
 		});
 
 		it('rejects entries with empty value', () => {
 			expect(() => parseVersionedSecrets('2:,1:old')).toThrow(/empty value/);
+		});
+
+		it('rejects empty segments from extra commas ("2:new,,1:old")', () => {
+			expect(() => parseVersionedSecrets('2:new,,1:old')).toThrow(
+				/empty \(extra or trailing comma/,
+			);
+		});
+
+		it('rejects trailing commas ("2:new,1:old,")', () => {
+			expect(() => parseVersionedSecrets('2:new,1:old,')).toThrow(
+				/empty \(extra or trailing comma/,
+			);
 		});
 	});
 
@@ -88,26 +109,34 @@ describe('parseVersionedSecrets', () => {
 	});
 
 	describe('secret-handling invariant (no leak in error messages)', () => {
-		it('does not include the raw entry string when separator is missing', () => {
-			const secretFragment = 'super-secret-leak-test-value-12345';
+		// Helper: assert parser throws and the error message does NOT contain
+		// any of the given forbidden substrings. Keeps the assertion separate
+		// from the throw site so a parser that does not throw does not
+		// silently produce a passing test (which is the bug CodeRabbit
+		// flagged as `PRRT_kwDOUW6FgM6mQRun`).
+		function expectNoLeak(raw: string, forbidden: string[]) {
+			expect(() => parseVersionedSecrets(raw)).toThrow();
 			try {
-				parseVersionedSecrets(`2:${secretFragment},bad-format-no-colon`);
-				expect.fail('expected throw');
+				parseVersionedSecrets(raw);
 			} catch (e) {
 				const message = (e as Error).message;
-				expect(message).not.toContain(secretFragment);
-				expect(message).not.toContain('super-secret');
+				for (const fragment of forbidden) {
+					expect(message).not.toContain(fragment);
+				}
 			}
+		}
+
+		it('does not include the raw entry string when separator is missing', () => {
+			const secretFragment = 'super-secret-leak-test-value-12345';
+			expectNoLeak(`2:${secretFragment},bad-format-no-colon`, [secretFragment, 'super-secret']);
 		});
 
 		it('does not include the secret value when the value is empty', () => {
+			expect(() => parseVersionedSecrets('2:,1:old')).toThrow(/empty value/);
 			try {
 				parseVersionedSecrets('2:,1:old');
-				expect.fail('expected throw');
 			} catch (e) {
 				const message = (e as Error).message;
-				// The error must mention "empty value" but must not carry any
-				// neighbouring-entry fragment either.
 				expect(message).toMatch(/empty value/);
 				expect(message).not.toContain('1:old');
 			}
@@ -116,27 +145,18 @@ describe('parseVersionedSecrets', () => {
 		it('does not echo duplicate-version raw values', () => {
 			const secretA = 'rotate-confidential-A-99887';
 			const secretB = 'rotate-confidential-B-77665';
-			try {
-				parseVersionedSecrets(`2:${secretA},2:${secretB},1:old`);
-				expect.fail('expected throw');
-			} catch (e) {
-				const message = (e as Error).message;
-				expect(message).not.toContain(secretA);
-				expect(message).not.toContain(secretB);
-			}
+			expectNoLeak(`2:${secretA},2:${secretB},1:old`, [secretA, secretB]);
 		});
 
 		it('does not echo ascending-order raw values', () => {
 			const oldSecret = 'old-key-confidential-001';
 			const newSecret = 'new-key-confidential-002';
-			try {
-				parseVersionedSecrets(`1:${oldSecret},2:${newSecret}`);
-				expect.fail('expected throw');
-			} catch (e) {
-				const message = (e as Error).message;
-				expect(message).not.toContain(oldSecret);
-				expect(message).not.toContain(newSecret);
-			}
+			expectNoLeak(`1:${oldSecret},2:${newSecret}`, [oldSecret, newSecret]);
+		});
+
+		it('does not echo raw values when version is malformed', () => {
+			const secret = 'malformed-version-leak-test-33445';
+			expectNoLeak(`2${secret},1:old`, [secret]);
 		});
 	});
 });

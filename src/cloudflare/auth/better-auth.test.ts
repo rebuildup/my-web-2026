@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
+import { resolveAuthSecrets } from './better-auth';
 
 /**
  * Better Auth configuration invariants — read-only smoke tests.
@@ -13,10 +14,23 @@ import { describe, expect, it, vi } from 'vitest';
  *     matching. Without this, every `/api/v1/auth/*` request 404s
  *     inside Better Auth.
  *
- * The module under test pulls `env` from `cloudflare:workers`; we
- * stub it with `vi.mock` to avoid the runtime requirement. The
- * Better Auth instance is constructed once at module load — the
- * stub only needs the few env keys the constructor reads.
+ * The secret-routing contract (ADR-0015 §11.2) is tested against the
+ * DI seam `resolveAuthSecrets(env)` rather than spying on `betterAuth(...)`
+ * itself. The workerd test pool does not intercept `vi.mock` for regular
+ * TS modules (see memory `workerd-vitest-mock-gap`), so a `vi.mock` of
+ * `better-auth` cannot observe the call. Asserting on `resolveAuthSecrets`
+ * is equivalent for the contract: it is the only code path that picks
+ * `BETTER_AUTH_SECRETS` vs `BETTER_AUTH_SECRET`, and Better Auth
+ * receives its result through a 1-line spread (visually verifiable).
+ *
+ * The remaining `auth.options.*` assertions use a stubbed
+ * `cloudflare:workers` env so the Better Auth constructor can run; the
+ * stub is the minimum needed (D1 + `BETTER_AUTH_URL`) and the secret
+ * vars are left unset because `resolveAuthSecrets` returns
+ * `{ versionedSecrets: undefined, legacySecret: undefined }` for both
+ * unset, and Better Auth's own validation will not raise until first
+ * request. The legacy-fallback contract is tested at the DI seam so
+ * the cloudflare:workers env doesn't need a secret binding here.
  */
 
 // Minimal D1 stub. Better Auth's plugin init may call `.prepare(...)`
@@ -41,7 +55,6 @@ const d1Stub = {
 vi.mock('cloudflare:workers', () => ({
 	env: {
 		DB: d1Stub as unknown as D1Database,
-		BETTER_AUTH_SECRET: 'test-secret-do-not-use-in-prod-32bytes',
 		BETTER_AUTH_URL: 'http://localhost:3000',
 	},
 }));
@@ -71,21 +84,52 @@ describe('better-auth config', () => {
 });
 
 // ADR-0015 §11.2: when `BETTER_AUTH_SECRETS` is unset, `BETTER_AUTH_SECRET`
-// (legacy single form) provides the only secret input. This mock set omits
-// `BETTER_AUTH_SECRETS` to exercise the fallback path.
-describe('better-auth secret fallback (legacy single form)', () => {
-	it('falls back to BETTER_AUTH_SECRET when BETTER_AUTH_SECRETS is unset (no eager throw)', () => {
-		// Better Auth 1.5+ does not expose the resolved secret back on
-		// `auth.options` after normalization (it lives in the internal
-		// `$context`, which is undocumented and version-volatile). The
-		// module-load mock in this file omits `BETTER_AUTH_SECRETS` so the
-		// legacy fallback path is the only way module load could succeed.
-		// If an eager throw were reintroduced for the unset case, the
-		// top-of-file `await import('./better-auth')` would already have
-		// failed before reaching this describe block. This test exists to
-		// make the contract explicit and surface a clear failure if someone
-		// later decouples the parse failure from module load.
-		const auth = betterAuthModule.auth as unknown as { options: { basePath?: string } };
-		expect(auth.options.basePath).toBe('/api/v1/auth');
+// (legacy single form) provides the only secret input. We assert the
+// contract via `resolveAuthSecrets`, the DI seam used at the production
+// `betterAuth({...})` call site (CodeRabbit flagged the previous
+// "module-load success" assertion as insufficient — Better Auth permits
+// a default secret in test environments, which would make module load
+// succeed even when `BETTER_AUTH_SECRET` was dropped on the floor: see
+// `PRRT_kwDOUW6FgM6mQRuq`).
+describe('better-auth secret routing (DI seam: resolveAuthSecrets)', () => {
+	it('routes BETTER_AUTH_SECRET to legacySecret when BETTER_AUTH_SECRETS is unset', () => {
+		const result = resolveAuthSecrets({
+			BETTER_AUTH_SECRET: 'test-secret-do-not-use-in-prod-32bytes',
+		});
+		expect(result.legacySecret).toBe('test-secret-do-not-use-in-prod-32bytes');
+		expect(result.versionedSecrets).toBeUndefined();
+	});
+
+	it('routes BETTER_AUTH_SECRETS to versionedSecrets; both env vars are propagated when both are set', () => {
+		// Better Auth 1.5+ accepts `secrets` (versioned array) AND
+		// `secret` (legacy single string) as independent options. When
+		// both are set, `secrets` is authoritative for new
+		// encryption/signing and `secret` is a fallback for data
+		// predating the envelope format. `resolveAuthSecrets`
+		// therefore propagates both rather than dropping the legacy
+		// one — see `better-auth.ts` (the `secrets` / `secret` spread
+		// comments) for the full rationale.
+		const result = resolveAuthSecrets({
+			BETTER_AUTH_SECRETS: '2:new-secret,1:old-secret',
+			BETTER_AUTH_SECRET: 'legacy-fallback-for-pre-envelope-data',
+		});
+		expect(result.versionedSecrets).toEqual([
+			{ version: 2, value: 'new-secret' },
+			{ version: 1, value: 'old-secret' },
+		]);
+		expect(result.legacySecret).toBe('legacy-fallback-for-pre-envelope-data');
+	});
+
+	it('returns undefined for both fields when neither env var is set', () => {
+		const result = resolveAuthSecrets({});
+		expect(result.versionedSecrets).toBeUndefined();
+		expect(result.legacySecret).toBeUndefined();
+	});
+
+	it('surfaces parse errors from BETTER_AUTH_SECRETS rather than silently falling back', () => {
+		// A malformed BETTER_AUTH_SECRETS value (e.g. operator typo)
+		// must throw rather than drop to the legacy form — silently
+		// falling back would let a broken rotation binding pass.
+		expect(() => resolveAuthSecrets({ BETTER_AUTH_SECRETS: 'bad-no-colon' })).toThrow();
 	});
 });

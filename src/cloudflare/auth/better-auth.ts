@@ -79,20 +79,22 @@ const betterAuthUrl = (env as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
 // `pnpm run cf-typegen`; until then the cast below keeps
 // `verbatimModuleSyntax: true` happy without a value import.
 type SecretEntry = { version: number; value: string };
-const betterAuthSecretsEnv = (env as { BETTER_AUTH_SECRETS?: string }).BETTER_AUTH_SECRETS;
-const betterAuthLegacySecret = env.BETTER_AUTH_SECRET as string | undefined;
 
 export function parseVersionedSecrets(raw: string): SecretEntry[] {
-	const entries = raw
-		.split(',')
-		.map((s) => s.trim())
-		.filter(Boolean);
-	if (entries.length === 0) {
+	// Split without `.filter(Boolean)` so empty segments (e.g. "2:new,,1:old"
+	// or a trailing comma) are surfaced as errors instead of silently
+	// dropped — silently dropping would let a broken rotation binding pass
+	// while still leaving the operator thinking the new key was applied.
+	const entries = raw.split(',').map((s) => s.trim());
+	if (entries.length === 0 || raw.trim().length === 0) {
 		throw new Error(
 			'BETTER_AUTH_SECRETS is empty. Expected comma-separated "version:value" pairs (e.g. "2:<new-secret>,1:<old-secret>").',
 		);
 	}
 	const parsed: SecretEntry[] = entries.map((entry, idx) => {
+		if (entry.length === 0) {
+			throw new Error(`BETTER_AUTH_SECRETS entry #${idx} is empty (extra or trailing comma?).`);
+		}
 		const colonIdx = entry.indexOf(':');
 		if (colonIdx === -1) {
 			// Error messages deliberately omit the raw entry: it may carry the
@@ -104,10 +106,15 @@ export function parseVersionedSecrets(raw: string): SecretEntry[] {
 		}
 		const versionStr = entry.slice(0, colonIdx);
 		const value = entry.slice(colonIdx + 1);
-		const version = Number(versionStr);
-		if (!Number.isInteger(version) || version <= 0) {
+		if (!/^\d+$/.test(versionStr)) {
 			throw new Error(
-				`BETTER_AUTH_SECRETS entry #${idx} has invalid version (expected positive integer).`,
+				`BETTER_AUTH_SECRETS entry #${idx} has invalid version (decimal digits only).`,
+			);
+		}
+		const version = Number(versionStr);
+		if (!Number.isSafeInteger(version) || version <= 0) {
+			throw new Error(
+				`BETTER_AUTH_SECRETS entry #${idx} has invalid version (positive safe integer).`,
 			);
 		}
 		if (value.length === 0) {
@@ -148,23 +155,58 @@ export function parseVersionedSecrets(raw: string): SecretEntry[] {
 	return parsed;
 }
 
-let versionedSecrets: SecretEntry[] | undefined;
-let legacySecret: string | undefined;
+/**
+ * Resolve the secret inputs from the worker `env` (or any compatible
+ * `Record<string, unknown>`) into the shape Better Auth 1.5+ accepts.
+ *
+ * Routing rules (ADR-0015 §11.2):
+ *   - `BETTER_AUTH_SECRETS` present (any value, including empty string)
+ *     → parse via `parseVersionedSecrets`; surface the resulting array.
+ *     An empty / malformed value throws — silently falling back to the
+ *     legacy secret would let a broken rotation binding pass.
+ *   - `BETTER_AUTH_SECRETS` absent → fall back to `BETTER_AUTH_SECRET`
+ *     (legacy single form) for backward compatibility with Phase 1 →
+ *     Phase 2 deploys.
+ *
+ * Both unset → both return fields are undefined, and Better Auth's own
+ * validation surfaces the missing-secret failure (the exact module-load
+ * vs request-time surface is version-dependent; documented at the
+ * `auth` call site below).
+ *
+ * This function is a pure DI seam so tests can inject arbitrary env
+ * values without depending on the workerd test pool's vi.mock gap
+ * (memory `workerd-vitest-mock-gap`). The production `auth` call site
+ * passes the real worker env; tests pass mock objects.
+ */
+export function resolveAuthSecrets(envRecord: Record<string, unknown>): {
+	versionedSecrets?: SecretEntry[];
+	legacySecret?: string;
+} {
+	const betterAuthSecretsConfigured = 'BETTER_AUTH_SECRETS' in envRecord;
+	const betterAuthSecretsEnv = betterAuthSecretsConfigured
+		? (envRecord.BETTER_AUTH_SECRETS as string | undefined)
+		: undefined;
+	const betterAuthLegacySecret = (envRecord.BETTER_AUTH_SECRET as string | undefined) ?? undefined;
 
-if (betterAuthSecretsEnv) {
-	versionedSecrets = parseVersionedSecrets(betterAuthSecretsEnv);
-}
-if (betterAuthLegacySecret) {
-	legacySecret = betterAuthLegacySecret;
+	let versionedSecrets: SecretEntry[] | undefined;
+	let legacySecret: string | undefined;
+
+	if (betterAuthSecretsConfigured) {
+		versionedSecrets = parseVersionedSecrets(betterAuthSecretsEnv ?? '');
+	}
+	if (betterAuthLegacySecret) {
+		legacySecret = betterAuthLegacySecret;
+	}
+	return { versionedSecrets, legacySecret };
 }
 
-// When both env vars are unset, Better Auth's own validation surfaces the
-// missing-secret failure — Better Auth documents that production deployments
-// without a secret raise an error, but the exact module-load vs request-time
-// surface is version-dependent, so we deliberately do not make that claim
-// here. The existing workerd test pool has no secret injection yet (no
-// `wrangler.jsonc#secrets.required` until Phase 3), so an eager throw at
-// module load would break unrelated test files.
+// Cast through `unknown` because the typegen'd `Env` does not have an
+// index signature (only declared bindings are enumerated). Going directly
+// to `Record<string, unknown>` triggers TS2352 (neither type sufficiently
+// overlaps with the other).
+const { versionedSecrets, legacySecret } = resolveAuthSecrets(
+	env as unknown as Record<string, unknown>,
+);
 
 export const auth = betterAuth({
 	database: env.DB,

@@ -31,6 +31,13 @@ styled-system/
 .dev.vars*
 !.dev.vars.example
 
+# Infisical one-time bootstrap artefacts (machine identity client
+# secret during bootstrap-cf flow). gitignored because the canonical
+# binding target is Cloudflare Workers Builds env vars (set via the
+# Builds API), not a repo-local file. The client secret must NEVER
+# land in a tracked file.
+.infisical/
+
 # Type-check cache
 *.tsbuildinfo
 

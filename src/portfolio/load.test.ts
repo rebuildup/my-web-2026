@@ -2,6 +2,7 @@ import { env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createD1PortfolioLoader, intersectsAny } from './load';
 import { PORTFOLIO_SEED } from './seed';
+import { encodeCursor } from './schema';
 
 /**
  * Portfolio loader integration tests (Issue #76).
@@ -21,10 +22,14 @@ import { PORTFOLIO_SEED } from './seed';
  * Coverage:
  *   1. schema apply + clear
  *   2. seed integrity (every seed entry has required fields)
- *   3. `loadPortfolioProject` returns null on missing / draft / archived
- *   4. `loadPortfolioProject` returns the project for a valid slug
- *   5. `listPortfolioProjects` honours `facets`, `visibility`, `limit`
- *   6. cover media is exposed at `media[0]` with `isCover=true`
+ *   3. `loadPortfolioProject` returns null on missing / draft /
+ *      archived / unlisted (PUBLIC VISIBILITY BOUNDARY)
+ *   4. `loadPortfolioProject` returns the project for a public slug
+ *   5. `listPortfolioProjects` honours `facets` and returns
+ *      `public + published` rows only
+ *   6. cursor pagination: stable ordering, no skip/duplicate,
+ *      `nextCursor=null` on the final page
+ *   7. cover media is exposed at `media[0]` with `isCover=true`
  */
 
 const SCHEMA_SQL = `
@@ -184,7 +189,8 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 	it('returns null when the binding is missing', async () => {
 		const loader = createD1PortfolioLoader({});
 		expect(await loader.loadPortfolioProject('aulymo')).toBeNull();
-		expect(await loader.listPortfolioProjects()).toEqual([]);
+		const page = await loader.listPortfolioProjects();
+		expect(page).toEqual({ projects: [], nextCursor: null });
 	});
 
 	it('returns null for an unknown slug', async () => {
@@ -193,12 +199,47 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 		expect(await loader.loadPortfolioProject('nope')).toBeNull();
 	});
 
-	it('hides draft and archived rows', async () => {
+	// PUBLIC VISIBILITY BOUNDARY — see Issue #76 / PR #83 review.
+	// `loadPortfolioProject` MUST return null for any row that is
+	// not `visibility='public' AND status='published'`. The
+	// public surface cannot reach unlisted, draft, or archived
+	// rows even by slug.
+	it('PUBLIC BOUNDARY — hides draft rows', async () => {
 		const loader = createD1PortfolioLoader(env);
-		await seedOne('draft', { visibility: 'draft' });
-		await seedOne('archived', { status: 'archived' });
-		expect(await loader.loadPortfolioProject('draft')).toBeNull();
-		expect(await loader.loadPortfolioProject('archived')).toBeNull();
+		await seedOne('draft1', { visibility: 'draft' });
+		expect(await loader.loadPortfolioProject('draft1')).toBeNull();
+	});
+
+	it('PUBLIC BOUNDARY — hides archived rows', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('archived1', { status: 'archived' });
+		expect(await loader.loadPortfolioProject('archived1')).toBeNull();
+	});
+
+	it('PUBLIC BOUNDARY — hides unlisted rows (public surface cannot reach by slug)', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('unlisted1', { visibility: 'unlisted' });
+		expect(await loader.loadPortfolioProject('unlisted1')).toBeNull();
+	});
+
+	it('PUBLIC BOUNDARY — hides draft rows even when other fields look fine', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('draft2', {
+			visibility: 'draft',
+			status: 'published',
+			facets: '["develop"]',
+		});
+		expect(await loader.loadPortfolioProject('draft2')).toBeNull();
+	});
+
+	it('PUBLIC BOUNDARY — hides unlisted rows even when other fields look fine', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('unlisted2', {
+			visibility: 'unlisted',
+			status: 'published',
+			pinned: 1,
+		});
+		expect(await loader.loadPortfolioProject('unlisted2')).toBeNull();
 	});
 
 	it('returns the project for a public slug with parsed facets and techs', async () => {
@@ -215,33 +256,161 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 		expect(project?.media).toEqual([]); // no media inserted
 	});
 
+	// List must also be public-only; the loader accepts no
+	// visibility selector at all.
 	it('list honours facet filter', async () => {
 		const loader = createD1PortfolioLoader(env);
 		await seedOne('dev1', { facets: '["develop"]' });
 		await seedOne('video1', { facets: '["video"]' });
 		await seedOne('design1', { facets: '["design"]' });
 
-		const developOnly = await loader.listPortfolioProjects({ facets: ['develop'] });
-		expect(developOnly.map((p) => p.slug)).toEqual(['dev1']);
-
-		const multiple = await loader.listPortfolioProjects({ facets: ['develop', 'video'] });
-		expect(multiple.map((p) => p.slug).sort()).toEqual(['dev1', 'video1']);
+		const page = await loader.listPortfolioProjects({ facets: ['develop'] });
+		expect(page.projects.map((p) => p.slug)).toEqual(['dev1']);
+		expect(page.nextCursor).toBeNull();
 	});
 
-	it('list respects limit and visibility', async () => {
+	it('list with multiple facet options (any-of)', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('dev1', { facets: '["develop"]' });
+		await seedOne('video1', { facets: '["video"]' });
+		await seedOne('design1', { facets: '["design"]' });
+
+		const page = await loader.listPortfolioProjects({ facets: ['develop', 'video'] });
+		expect(page.projects.map((p) => p.slug).sort()).toEqual(['dev1', 'video1']);
+	});
+
+	it('PUBLIC BOUNDARY — list never returns draft / archived / unlisted', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('public1', { visibility: 'public', status: 'published' });
+		await seedOne('draft1', { visibility: 'draft', status: 'published' });
+		await seedOne('archived1', { visibility: 'public', status: 'archived' });
+		await seedOne('unlisted1', { visibility: 'unlisted', status: 'published' });
+
+		const page = await loader.listPortfolioProjects();
+		expect(page.projects.map((p) => p.slug)).toEqual(['public1']);
+	});
+
+	it('list respects limit', async () => {
 		const loader = createD1PortfolioLoader(env);
 		await seedOne('a', { display_order: 0 });
 		await seedOne('b', { display_order: 1 });
 		await seedOne('c', { display_order: 2 });
 
-		const all = await loader.listPortfolioProjects();
-		expect(all.map((p) => p.slug)).toEqual(['a', 'b', 'c']);
+		const fullPage = await loader.listPortfolioProjects();
+		expect(fullPage.projects.map((p) => p.slug)).toEqual(['a', 'b', 'c']);
+		expect(fullPage.nextCursor).toBeNull();
 
 		const limited = await loader.listPortfolioProjects({ limit: 2 });
-		expect(limited.map((p) => p.slug)).toEqual(['a', 'b']);
+		expect(limited.projects.map((p) => p.slug)).toEqual(['a', 'b']);
+		expect(limited.nextCursor).not.toBeNull();
+	});
 
-		const draftOnly = await loader.listPortfolioProjects({ visibility: ['draft'] });
-		expect(draftOnly).toEqual([]);
+	// Cursor pagination — the contract Issue #77 UI will rely on.
+	it('cursor pagination: stable order with no skip / no duplicate', async () => {
+		const loader = createD1PortfolioLoader(env);
+		const total = 7;
+		for (let i = 0; i < total; i++) {
+			// varying updated_at + id to exercise the tiebreaker
+			await seedOne(`p${i}`, {
+				display_order: i,
+				updated_at: 1_700_000_000_000 + i,
+			});
+		}
+
+		const seen: string[] = [];
+		let cursor: string | null = null;
+		let safety = 0;
+		while (safety++ < 10) {
+			const page = await loader.listPortfolioProjects({ limit: 3, cursor });
+			seen.push(...page.projects.map((p) => p.slug));
+			if (page.nextCursor === null) break;
+			cursor = page.nextCursor;
+		}
+		expect(safety).toBeLessThan(10); // terminated
+		expect(seen).toEqual(['p0', 'p1', 'p2', 'p3', 'p4', 'p5', 'p6']);
+		expect(new Set(seen).size).toBe(seen.length); // no dup
+	});
+
+	it('cursor pagination: respects pinned-first ordering across pages', async () => {
+		const loader = createD1PortfolioLoader(env);
+		// p1 is pinned (display_order high) — should still come first
+		await seedOne('p1', { pinned: 1, display_order: 999 });
+		await seedOne('p2', { pinned: 0, display_order: 0 });
+		await seedOne('p3', { pinned: 0, display_order: 1 });
+		await seedOne('p4', { pinned: 0, display_order: 2 });
+
+		const seen: string[] = [];
+		let cursor: string | null = null;
+		for (let i = 0; i < 5; i++) {
+			const page = await loader.listPortfolioProjects({ limit: 2, cursor });
+			seen.push(...page.projects.map((p) => p.slug));
+			if (page.nextCursor === null) break;
+			cursor = page.nextCursor;
+		}
+		expect(seen).toEqual(['p1', 'p2', 'p3', 'p4']);
+	});
+
+	it('cursor pagination: display_order ASC tiebreaker on updated_at', async () => {
+		const loader = createD1PortfolioLoader(env);
+		// 4 rows sharing pinned=0 + updated_at — display_order is
+		// the only differentiator. Without `id` we'd risk drift.
+		const now = 1_700_000_000_000;
+		await seedOne('p1', { display_order: 0, updated_at: now });
+		await seedOne('p2', { display_order: 1, updated_at: now });
+		await seedOne('p3', { display_order: 2, updated_at: now });
+		await seedOne('p4', { display_order: 3, updated_at: now });
+
+		const seen: string[] = [];
+		let cursor: string | null = null;
+		for (let i = 0; i < 5; i++) {
+			const page = await loader.listPortfolioProjects({ limit: 2, cursor });
+			seen.push(...page.projects.map((p) => p.slug));
+			if (page.nextCursor === null) break;
+			cursor = page.nextCursor;
+		}
+		expect(seen).toEqual(['p1', 'p2', 'p3', 'p4']);
+	});
+
+	it('cursor pagination: empty page returns nextCursor=null', async () => {
+		const loader = createD1PortfolioLoader(env);
+		const page = await loader.listPortfolioProjects({ limit: 10 });
+		expect(page.projects).toEqual([]);
+		expect(page.nextCursor).toBeNull();
+	});
+
+	it('cursor pagination: malformed cursor falls back to first page', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('a', { display_order: 0 });
+		await seedOne('b', { display_order: 1 });
+
+		const page = await loader.listPortfolioProjects({ cursor: 'totally-bogus' });
+		// Falls back to first page — both rows returned.
+		expect(page.projects.map((p) => p.slug)).toEqual(['a', 'b']);
+	});
+
+	it('cursor pagination: cursor encoding is opaque but valid', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('a', { display_order: 0 });
+		await seedOne('b', { display_order: 1 });
+		await seedOne('c', { display_order: 2 });
+
+		const first = await loader.listPortfolioProjects({ limit: 1 });
+		expect(first.projects.map((p) => p.slug)).toEqual(['a']);
+		const cursor = first.nextCursor;
+		expect(cursor).toBeTruthy();
+		if (!cursor) throw new Error('cursor missing');
+
+		// The cursor encodes {p, d, u, i} of the last seen row.
+		const decoded: unknown = JSON.parse(Buffer.from(cursor, 'base64url').toString('utf8'));
+		expect(decoded).toMatchObject({ p: 0, d: 0 });
+		expect(typeof (decoded as { i: unknown }).i).toBe('string');
+	});
+
+	it('encodeCursor round-trip works (re-exported from schema)', () => {
+		const c = { p: 1, d: 5, u: 1234, i: 'p_xyz' };
+		const enc = encodeCursor(c);
+		expect(typeof enc).toBe('string');
+		expect(enc.length).toBeGreaterThan(0);
 	});
 
 	it('exposes cover media first with isCover=true', async () => {

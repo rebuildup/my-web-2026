@@ -170,10 +170,40 @@ export interface PortfolioProject {
 export interface ListPortfolioProjectsOptions {
 	/** Filter by facets (any-of). Omit / empty array = all. */
 	facets?: readonly PortfolioFacet[];
-	/** Filter by visibility. Defaults to ['public'] when omitted. */
-	visibility?: readonly PortfolioVisibility[];
+	/** Cursor returned from a previous page; null / undefined = first page. */
+	cursor?: string | null;
 	/** Hard cap on returned rows. Defaults to 100. */
 	limit?: number;
+}
+
+/**
+ * Opaque position cursor for cursor-based pagination.
+ *
+ * Encodes the last row of the previous page in the canonical sort
+ * order (`pinned DESC, display_order ASC, updated_at DESC, id ASC`)
+ * so the next-page query can resume deterministically.
+ *
+ * `id` is the final tiebreaker — required for stable ordering
+ * because two rows may share every other key.
+ */
+export interface PortfolioCursor {
+	/** pinned (0 or 1). */
+	p: number;
+	/** display_order. */
+	d: number;
+	/** updated_at (epoch ms). */
+	u: number;
+	/** project id. */
+	i: string;
+}
+
+/**
+ * Page returned by `listPortfolioProjects`. `nextCursor` is `null`
+ * when the caller has reached the end of the result set.
+ */
+export interface PortfolioListPage {
+	readonly projects: readonly PortfolioProject[];
+	readonly nextCursor: string | null;
 }
 
 /**
@@ -191,6 +221,66 @@ export function parseFacetArray(raw: string): readonly PortfolioFacet[] {
 		if (r.success) out.push(r.data);
 	}
 	return out;
+}
+
+/**
+ * Encode a cursor position as a base64url string. Round-trips
+ * with `decodeCursor`. Pure function — safe to call from any
+ * environment (no Node-specific Buffer polyfill required;
+ * `btoa` / `atob` are available in the V8 isolate that runs
+ * Cloudflare Workers).
+ */
+export function encodeCursor(c: PortfolioCursor): string {
+	const json = JSON.stringify({ p: c.p, d: c.d, u: c.u, i: c.i });
+	// btoa is available in the Cloudflare Workers V8 isolate;
+	// fall back to Buffer in Node (tests, scripts) when needed.
+	if (typeof btoa === 'function') return base64UrlEncode(json);
+	return Buffer.from(json, 'utf8').toString('base64url');
+}
+
+/**
+ * Decode a cursor string back to a `PortfolioCursor`, or `null`
+ * if the input is malformed / signed by a different schema.
+ * Pure function. Defensive against tampered input — `list`
+ * treats `null` as "start from the first page".
+ */
+export function decodeCursor(s: string): PortfolioCursor | null {
+	let json: string;
+	try {
+		json =
+			typeof atob === 'function'
+				? base64UrlDecode(s)
+				: Buffer.from(s, 'base64url').toString('utf8');
+	} catch {
+		return null;
+	}
+	let parsed: unknown;
+	try {
+		parsed = JSON.parse(json);
+	} catch {
+		return null;
+	}
+	if (!parsed || typeof parsed !== 'object') return null;
+	const obj = parsed as Record<string, unknown>;
+	if (
+		typeof obj.p !== 'number' ||
+		typeof obj.d !== 'number' ||
+		typeof obj.u !== 'number' ||
+		typeof obj.i !== 'string'
+	) {
+		return null;
+	}
+	return { p: obj.p, d: obj.d, u: obj.u, i: obj.i };
+}
+
+function base64UrlEncode(s: string): string {
+	return btoa(s).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlDecode(s: string): string {
+	const padded = s.replace(/-/g, '+').replace(/_/g, '/');
+	const pad = padded.length % 4 === 0 ? '' : '='.repeat(4 - (padded.length % 4));
+	return atob(padded + pad);
 }
 
 export function parseTechnologyArray(raw: string): readonly string[] {

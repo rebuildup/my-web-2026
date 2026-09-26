@@ -1,12 +1,16 @@
 import type { PortfolioLoader, PortfolioEnv } from './contract';
 import {
 	type ListPortfolioProjectsOptions,
+	type PortfolioCursor,
 	type PortfolioLink,
 	type PortfolioLinkRow,
+	type PortfolioListPage,
 	type PortfolioMedia,
 	type PortfolioMediaRow,
 	type PortfolioProject,
 	type PortfolioProjectRow,
+	decodeCursor,
+	encodeCursor,
 	rowToLink,
 	rowToMedia,
 	rowToProject,
@@ -30,6 +34,14 @@ import { composeMediaUrl } from './media';
  * `createServerFn().handler()` wrappers in `public.ts` resolve
  * `env` from `cloudflare:workers` inside the handler body,
  * matching the home reactions pattern.
+ *
+ * Public-visibility contract:
+ *   This loader is **public-only**. It filters rows to
+ *   `status='published' AND visibility='public'` and refuses to
+ *   surface unlisted / draft / archived rows even when the
+ *   caller passes a slug directly. Admin / preview surfaces that
+ *   need broader visibility must build their own loader (NOT
+ *   here — this module owns the public contract only).
  */
 
 export function createD1PortfolioLoader(env: PortfolioEnv): PortfolioLoader {
@@ -46,10 +58,14 @@ async function loadPortfolioProjectImpl(
 	const db = env.DB;
 	if (!db) return null;
 	const row = await db
-		.prepare('SELECT * FROM portfolio_project WHERE slug = ?1')
+		.prepare(
+			"SELECT * FROM portfolio_project WHERE slug = ?1 AND status = 'published' AND visibility = 'public'",
+		)
 		.bind(slug)
 		.first<PortfolioProjectRow>();
 	if (!row) return null;
+	// Defence in depth: even if a future query path drops the
+	// SQL filter, `isVisible` still refuses non-public rows.
 	if (!isVisible(row)) return null;
 	const [links, media] = await Promise.all([fetchLinks(db, row.id), fetchMedia(db, row.id)]);
 	const mediaWithUrls = media.map((m) => ({
@@ -62,37 +78,58 @@ async function loadPortfolioProjectImpl(
 async function listPortfolioProjectsImpl(
 	env: PortfolioEnv,
 	opts: ListPortfolioProjectsOptions = {},
-): Promise<readonly PortfolioProject[]> {
+): Promise<PortfolioListPage> {
 	const db = env.DB;
-	if (!db) return [];
+	if (!db) return emptyPage();
 	const limit = clampLimit(opts.limit);
-	const visibility =
-		opts.visibility && opts.visibility.length > 0 ? opts.visibility : (['public'] as const);
 
-	// Build a parameterised SQL with IN-clauses. SQLite caps the
-	// host-parameter count at 999 — well below any realistic
-	// facet / visibility cardinality, so we inline the placeholders
-	// directly. Facet filtering runs post-fetch because `facets`
-	// is JSON-encoded TEXT — the page is small (< 100 rows for the
-	// foundation seed), so an in-memory filter is cheaper than
-	// maintaining a generated column.
-	const visibilityPlaceholders = visibility.map(() => '?').join(',');
-	const sql = `SELECT * FROM portfolio_project WHERE status = 'published' AND visibility IN (${visibilityPlaceholders}) ORDER BY pinned DESC, display_order ASC, updated_at DESC LIMIT ?`;
+	const cursor = decodeCursorOrNull(opts.cursor);
+	// Build a parameterised SQL with the public-only filter
+	// always on. SQLite caps the host-parameter count at 999 —
+	// well below any realistic facet / cursor cardinality, so we
+	// inline the placeholders directly.
+	//
+	// Stable ordering: `pinned DESC, display_order ASC, updated_at
+	// DESC, id ASC`. `id` is the final tiebreaker; without it,
+	// two rows that share every other key would be returned in
+	// arbitrary order across pages (and could be skipped or
+	// duplicated). This is the contract that `Issue #77 UI` will
+	// rely on for cursor-paged navigation.
+	const cursorPredicate = cursor
+		? ` AND (
+			pinned < ? OR
+			(pinned = ? AND display_order > ?) OR
+			(pinned = ? AND display_order = ? AND updated_at < ?) OR
+			(pinned = ? AND display_order = ? AND updated_at = ? AND id > ?)
+		)`
+		: '';
+	const sql = `
+		SELECT * FROM portfolio_project
+		WHERE status = 'published' AND visibility = 'public'${cursorPredicate}
+		ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC
+		LIMIT ?
+	`;
 
+	// Fetch limit+1 so we can detect "has next page" without a
+	// separate COUNT query.
+	const fetchLimit = limit + 1;
 	const stmt = db.prepare(sql);
-	const visibilityBinds: Array<string | number> = [...visibility, limit];
-	const result = await stmt.bind(...visibilityBinds).all<PortfolioProjectRow>();
-	const rows = result.results ?? [];
+	const binds: Array<string | number> = [];
+	if (cursor) binds.push(...cursorBinds(cursor));
+	binds.push(fetchLimit);
+	const result = await stmt.bind(...binds).all<PortfolioProjectRow>();
+	const rawRows = result.results ?? [];
 
-	// Capture into a local so TypeScript can narrow the type past
-	// the existence check without `!` (lint/style/noNonNullAssertion).
+	const pageRows = rawRows.length > limit ? rawRows.slice(0, limit) : rawRows;
+	const hasMore = rawRows.length > limit;
+
 	const facetFilter = opts.facets && opts.facets.length > 0 ? opts.facets : null;
-	const filtered = facetFilter
-		? rows.filter((row) => intersectsAny(row.facets, facetFilter))
-		: rows;
+	const filteredRows = facetFilter
+		? pageRows.filter((row) => intersectsAny(row.facets, facetFilter))
+		: pageRows;
 
 	const projects: PortfolioProject[] = [];
-	for (const row of filtered) {
+	for (const row of filteredRows) {
 		const [links, media] = await Promise.all([fetchLinks(db, row.id), fetchMedia(db, row.id)]);
 		const mediaWithUrls = media.map((m) => ({
 			...m,
@@ -100,7 +137,26 @@ async function listPortfolioProjectsImpl(
 		}));
 		projects.push(rowToProject(row, links, mediaWithUrls));
 	}
-	return projects;
+
+	// Build nextCursor from the LAST returned row (post-filter)
+	// because facet filtering can change which row is "last" —
+	// we always advance from the last row the caller actually saw.
+	const lastRow = filteredRows[filteredRows.length - 1];
+	const nextCursor =
+		hasMore && lastRow
+			? encodeCursor({
+					p: lastRow.pinned,
+					d: lastRow.display_order,
+					u: lastRow.updated_at,
+					i: lastRow.id,
+				})
+			: null;
+
+	return { projects, nextCursor };
+}
+
+function emptyPage(): PortfolioListPage {
+	return { projects: [], nextCursor: null };
 }
 
 function clampLimit(input: number | undefined): number {
@@ -109,18 +165,65 @@ function clampLimit(input: number | undefined): number {
 }
 
 /**
+ * Decode the cursor if present. Returns `null` for absent /
+ * malformed cursors so the caller falls back to the first page.
+ * Malformed cursors are intentionally treated as "start over"
+ * (not as an error) — the public surface prefers a fresh page
+ * to a 5xx when a client ships a stale cursor.
+ */
+function decodeCursorOrNull(raw: string | null | undefined): PortfolioCursor | null {
+	if (!raw) return null;
+	return decodeCursor(raw);
+}
+
+/**
+ * Expand a `PortfolioCursor` to the bind parameters for the
+ * mixed-direction row-value predicate. Each key appears
+ * multiple times because the predicate is a chain of ORs and
+ * equality checks against the previous key.
+ *
+ * 10 binds total: pinned / display_order / updated_at appear in
+ * both their inequality and equality slots, and `id` is the
+ * final lexicographic tiebreaker (TEXT column).
+ */
+function cursorBinds(c: PortfolioCursor): ReadonlyArray<string | number> {
+	const p = c.p;
+	const d = c.d;
+	const u = c.u;
+	const i = c.i;
+	return [
+		// branch 1: pinned < ?
+		p,
+		// branch 2: pinned = ? AND display_order > ?
+		p,
+		d,
+		// branch 3: pinned = ? AND display_order = ? AND updated_at < ?
+		p,
+		d,
+		u,
+		// branch 4: pinned = ? AND display_order = ? AND updated_at = ? AND id > ?
+		p,
+		d,
+		u,
+		i,
+	];
+}
+
+/**
  * Decide whether a row should be served to a public caller.
- * Drafts and archived rows are never served through this loader.
- * `unlisted` rows are served only when explicitly requested via
- * the loader's `visibility` filter (e.g. admin / preview contexts).
+ * This is the *single source of truth* for the public visibility
+ * boundary: a row is visible only when `status='published'`
+ * AND `visibility='public'`. Unlisted, draft, and archived
+ * rows always resolve to invisible.
+ *
+ * Defence in depth: even if a future query path drops the SQL
+ * filter, `isVisible` still refuses non-public rows.
  */
 function isVisible(row: PortfolioProjectRow): boolean {
 	const visibility = VisibilitySchema.safeParse(row.visibility);
 	if (!visibility.success) return false;
 	if (row.status !== 'published') return false;
-	if (visibility.data === 'public') return true;
-	if (visibility.data === 'unlisted') return true; // explicit loader calls only
-	return false;
+	return visibility.data === 'public';
 }
 
 async function fetchLinks(db: D1Database, projectId: string): Promise<readonly PortfolioLink[]> {

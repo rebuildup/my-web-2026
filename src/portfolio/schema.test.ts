@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+	decodeCursor,
+	encodeCursor,
 	FacetSchema,
 	LinkKindSchema,
 	parseFacetArray,
@@ -242,5 +244,54 @@ describe('schema — SLUG_REGEX sanity', () => {
 		expect(SLUG_REGEX.test('multi-slicer')).toBe(true);
 		expect(SLUG_REGEX.test('a')).toBe(true);
 		expect(SLUG_REGEX.test('-leading')).toBe(false);
+	});
+});
+
+describe('schema — cursor encode / decode', () => {
+	it('round-trips a valid cursor', () => {
+		const c = { p: 1, d: 0, u: 1_700_000_000_000, i: 'p_abc' };
+		expect(decodeCursor(encodeCursor(c))).toEqual(c);
+	});
+
+	it('round-trips with zero / negative values', () => {
+		const c = { p: 0, d: 0, u: 0, i: '' };
+		expect(decodeCursor(encodeCursor(c))).toEqual(c);
+	});
+
+	it('returns null on malformed base64', () => {
+		expect(decodeCursor('not-base64!!!')).toBeNull();
+	});
+
+	it('returns null on valid base64 but bad JSON', () => {
+		// base64url("not json") = "bm90IGpzb24"
+		expect(decodeCursor('bm90IGpzb24')).toBeNull();
+	});
+
+	it('returns null on JSON with missing fields', () => {
+		// base64url('{"p":1}') = "eyJwIjoxfQ"
+		expect(decodeCursor('eyJwIjoxfQ')).toBeNull();
+	});
+
+	it('returns null on JSON with wrong field types', () => {
+		// base64url('{"p":"1","d":0,"u":0,"i":"x"}')
+		expect(
+			decodeCursor(Buffer.from('{"p":"1","d":0,"u":0,"i":"x"}', 'utf8').toString('base64url')),
+		).toBeNull();
+	});
+
+	it('returns null on JSON object that is null', () => {
+		expect(decodeCursor(Buffer.from('null', 'utf8').toString('base64url'))).toBeNull();
+	});
+
+	it('returns null on JSON array', () => {
+		expect(decodeCursor(Buffer.from('[1,2,3]', 'utf8').toString('base64url'))).toBeNull();
+	});
+
+	it('encoded cursor does not contain base64 padding', () => {
+		const c = { p: 1, d: 2, u: 3, i: 'a' };
+		const enc = encodeCursor(c);
+		expect(enc).not.toMatch(/=/);
+		expect(enc).not.toMatch(/\+/);
+		expect(enc).not.toMatch(/\//);
 	});
 });

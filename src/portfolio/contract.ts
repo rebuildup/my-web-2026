@@ -1,4 +1,4 @@
-import type { PortfolioProject, ListPortfolioProjectsOptions } from './schema';
+import type { PortfolioProject, ListPortfolioProjectsOptions, PortfolioListPage } from './schema';
 
 /**
  * Portfolio loader contract.
@@ -12,13 +12,22 @@ import type { PortfolioProject, ListPortfolioProjectsOptions } from './schema';
  * DI seam: every impl takes the env-like object as its first
  * argument. This is the only way the loader can be exercised
  * outside the workerd pool (see [[workerd-vitest-mock-gap]]).
+ *
+ * Public-visibility contract:
+ *   `loadPortfolioProject` returns a project only if it is
+ *   `visibility='public' AND status='published'`. Unlisted /
+ *   draft / archived rows always resolve to `null`.
+ *   `listPortfolioProjects` returns only public+published
+ *   rows. Admin / preview surfaces that need unlisted rows
+ *   must build a separate loader / server-fn (not exposed by
+ *   `src/portfolio/public.ts`).
  */
 export interface PortfolioLoader {
 	/** Return one project by slug, or null if not found / not visible. */
 	loadPortfolioProject(slug: string): Promise<PortfolioProject | null>;
 
-	/** Return the list of projects visible to the public surface. */
-	listPortfolioProjects(opts?: ListPortfolioProjectsOptions): Promise<readonly PortfolioProject[]>;
+	/** Return a cursor-paged list of public+published projects. */
+	listPortfolioProjects(opts?: ListPortfolioProjectsOptions): Promise<PortfolioListPage>;
 }
 
 /**

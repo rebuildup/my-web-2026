@@ -1,29 +1,44 @@
 #!/usr/bin/env node
 /**
  * Seed script — Issue #120 / #78 Path A: 3 candidates (MultiSlicer /
- * aulymo-v01 / aulymo_v02) を owner approval 以外の blocker ゼロに
+ * aulymo-v01 / aulymo-v02) を owner approval 以外の blocker ゼロに
  * 仕上げるための supplementary seed。
  *
  * Usage:
  *   node scripts/seed-portfolio-path-a.mjs --dry-run
  *   node scripts/seed-portfolio-path-a.mjs --apply --target=local
+ *   node scripts/seed-portfolio-path-a.mjs --apply --target=local --publish
  *
  * このスクリプトがやること:
  *
- *   1. `scripts/migrate-portfolio-from-2025.mjs` が portfolio_project +
- *      portfolio_link を UPSERT した後 (heading-keyword matching では
- *      _md が空になる legacy body の場合)、grounded Markdown を
- *      直接 UPDATE で流し込む。
- *   2. portfolio_media row を 3 候補分 UPSERT し、r2_key を
- *      `portfolio/<slug>/<filename>` 形式で発行。実際の R2 PUT は
- *      `--apply --target=local` で `wrangler r2 object put
- *      MEDIA/<key> --local --file <path>` を spawn する。
- *   3. publication = pending_owner のまま (visibility = 'draft') を維持。
- *      operator が別途 `publication_overrides` で publish を承認する
- *      まで public loader は touch しない。
+ *   1. `portfolio_project` を id ベースで `INSERT ... ON CONFLICT(id)
+ *      DO UPDATE` し、grounded Markdown を流し込む (heading-keyword
+ *      matching では空になる legacy body の場合)。
+ *      `visibility` / `status` / `created_at` / `pinned` /
+ *      `display_order` は owner-managed なので UPDATE SET から除外
+ *      し、再実行で publication approval を上書きしない。
+ *   2. `portfolio_link` / `portfolio_media` を id ベースで
+ *      `INSERT OR IGNORE` する。再実行で owner が追加した row を
+ *      消さない (REPLACE は ON DELETE CASCADE で子 row を消すため
+ *      危険)。
+ *   3. R2 local bucket へ `wrangler r2 object put my-web-2026/<key>
+ *      --local --file <path>` で upload する (binding 名 `MEDIA`
+ *      ではなく bucket_name を使う)。
+ *   4. `--publish` を付けた場合のみ、最後に 3 候補分の
+ *      `visibility='public'` + `status='published'` を UPDATE する。
+ *      再実行しても visibility は public のまま (owner-managed)。
  *
- * Idempotency: すべての INSERT は `INSERT OR REPLACE` で
- * `id` / `r2_key` 衝突を吸収。再実行しても state が収束する。
+ * Target handling:
+ *   `--target=remote` は意図的に reject する (EXIT 2)。
+ *   この script は local D1 / local R2 専用。production D1 / R2
+ *   への publication flip は operator-gated release pipeline 経由で
+ *   行い、決してこの script を通さない。
+ *
+ * Idempotency:
+ *   * `portfolio_project` — UPSERT (id 衝突で UPDATE; visibility /
+ *     status / created_at / pinned / display_order は保持)
+ *   * `portfolio_link`   — INSERT OR IGNORE (owner 追加 row 保持)
+ *   * `portfolio_media`  — INSERT OR IGNORE (owner 追加 row 保持)
  *
  * 出典 grounding (各候補の Markdown 記述はすべて以下に限定):
  *   * `docs/personal/domain.md` §8 'Tool / plugin development'
@@ -36,7 +51,6 @@
  *   * legacy media BLOB の JPEG (`20250503_multi.jpg`)
  *
  * 書かないこと (operator 承認待ち):
- *   * publication = 'approved' / visibility = 'public' への flip
  *   * 新しい事実 / 役割 / narrative の創作
  *   * R2 custom domain (`media.rebuildup.dev`) の attachment
  */
@@ -53,13 +67,33 @@ const args = new Set(process.argv.slice(2));
 const dryRun = args.has('--dry-run');
 const apply = args.has('--apply');
 const target = parseArg(args, '--target') ?? 'local';
-if (target !== 'local' && target !== 'remote') {
-	console.error(`--target must be 'local' or 'remote', got: ${target}`);
+const publish = args.has('--publish');
+
+/**
+ * Target handling: this script is **local-only** by design.
+ *
+ * `--target=remote` is intentionally NOT accepted because:
+ *   * the R2 PUT path uses `--local` (the local R2 simulator);
+ *     uploading to production R2 from this script would silently
+ *     shadow any production-side media with local fixtures.
+ *   * the publication flip (--publish) writes to D1 directly; the
+ *     production D1 publication gate is owned by an operator, not
+ *     an agent (see [[release-merge-human-gate]]).
+ *
+ * For the production publication gate, use `wrangler d1 execute`
+ * directly with the operator-supplied `INFISICAL_TOKEN` or via the
+ * release pipeline — never this script.
+ */
+if (target !== 'local') {
+	console.error(`[seed-path-a] --target=${target} is not supported; this script is local-only.`);
+	console.error('[seed-path-a] production D1 / R2 writes must go through the release pipeline,');
+	console.error('[seed-path-a] not through this script. See scripts/run-deploy-inner.mjs.');
 	process.exit(2);
 }
 if (!dryRun && !apply) {
 	console.error('Usage: node scripts/seed-portfolio-path-a.mjs --dry-run');
 	console.error('       node scripts/seed-portfolio-path-a.mjs --apply --target=local');
+	console.error('       node scripts/seed-portfolio-path-a.mjs --apply --target=local --publish');
 	process.exit(2);
 }
 
@@ -284,7 +318,22 @@ function normalizeSlug(legacyId) {
 		.replace(/^-|-$/g, '');
 }
 
-/** Build a single project's UPSERT (id-based INSERT OR REPLACE). */
+/** Build a single project's UPSERT (id-based INSERT ... ON CONFLICT(id) DO UPDATE).
+ *
+ * Uses ON CONFLICT DO UPDATE (NOT `INSERT OR REPLACE`) so that the
+ * existing row is mutated, not deleted-and-reinserted. SQLite's
+ * `INSERT OR REPLACE` semantics trigger ON DELETE CASCADE on child
+ * tables (portfolio_link / portfolio_media) and would silently
+ * destroy owner-added rows. The migration script
+ * (`scripts/migrate-portfolio-from-2025.mjs`) follows the same
+ * convention.
+ *
+ * `id` is preserved (it's the conflict target). `created_at` is
+ * preserved (the row's actual creation timestamp). `pinned` and
+ * `display_order` are also preserved — owner editorial ordering
+ * must survive re-runs. Every other column is overwritten with the
+ * seed value.
+ */
 function buildProjectUpsert(entry) {
 	const slug = normalizeSlug(entry.legacyId);
 	const id = `legacy_${slug.replace(/[^a-z0-9-]/g, '_')}`;
@@ -317,10 +366,50 @@ function buildProjectUpsert(entry) {
 		nowMs(),
 		nowMs(),
 	].join(', ');
-	return `INSERT OR REPLACE INTO portfolio_project (${cols}) VALUES (${values});`;
+	// Columns to overwrite on conflict. `id` is the conflict target,
+	// not in this list. The following are owner-managed and preserved
+	// from the existing row:
+	//   * `created_at`  — row's actual creation timestamp
+	//   * `pinned`      — owner editorial pinning
+	//   * `display_order` — owner editorial ordering
+	//   * `visibility`  — owner publication gate (pending_owner → public);
+	//                     seed re-runs MUST NOT silently revert an
+	//                     already-published row back to draft.
+	//   * `status`      — owner lifecycle (published / archived);
+	//                     same rationale as visibility.
+	// `updated_at` IS overwritten so audit timestamps reflect the
+	// most recent seed run.
+	const updateCols = [
+		'slug',
+		'title',
+		'summary',
+		'role',
+		'period_start',
+		'period_end',
+		'period_label',
+		'motivation_md',
+		'architecture_md',
+		'constraints_md',
+		'implementation_md',
+		'evidence_md',
+		'retrospective_md',
+		'facets',
+		'technologies',
+		'updated_at',
+	]
+		.map((c) => `${c} = excluded.${c}`)
+		.join(', ');
+	return `INSERT INTO portfolio_project (${cols}) VALUES (${values}) ON CONFLICT(id) DO UPDATE SET ${updateCols};`;
 }
 
-/** Build portfolio_link INSERTs from legacy content_links via direct read. */
+/** Build portfolio_link INSERTs (id-based INSERT OR IGNORE).
+ *
+ * Uses INSERT OR IGNORE so that re-running the seed never overwrites
+ * an existing link (whether seeded by this script or owner-added).
+ * The legacy link rows have deterministic ids (`legacy_link_<id>_<n>`);
+ * owner-added rows use a different id prefix (`owner_link_*`) and
+ * never collide.
+ */
 function buildLinkInserts(entry, links) {
 	const id = `legacy_${entry.slug.replace(/[^a-z0-9-]/g, '_')}`;
 	const stmts = [];
@@ -328,7 +417,7 @@ function buildLinkInserts(entry, links) {
 		const linkId = `legacy_link_${id}_${link.legacyId}`;
 		const kind = linkKindFromUrl(link.href);
 		stmts.push(
-			`INSERT OR REPLACE INTO portfolio_link (id, project_id, kind, label, url, display_order, created_at) VALUES (${sqlEscape(linkId)}, ${sqlEscape(id)}, ${sqlEscape(kind)}, ${sqlEscape(link.label ?? null)}, ${sqlEscape(link.href)}, ${link.order ?? 0}, ${nowMs()});`,
+			`INSERT OR IGNORE INTO portfolio_link (id, project_id, kind, label, url, display_order, created_at) VALUES (${sqlEscape(linkId)}, ${sqlEscape(id)}, ${sqlEscape(kind)}, ${sqlEscape(link.label ?? null)}, ${sqlEscape(link.href)}, ${link.order ?? 0}, ${nowMs()});`,
 		);
 	}
 	return stmts;
@@ -349,6 +438,13 @@ function linkKindFromUrl(href) {
 	}
 }
 
+/** Build portfolio_media INSERT (id-based INSERT OR IGNORE).
+ *
+ * Uses INSERT OR IGNORE so that re-running the seed never overwrites
+ * an existing media row (whether seeded by this script or owner-added).
+ * The legacy media row has a deterministic id; owner-added rows use a
+ * different id prefix and never collide.
+ */
 function buildMediaUpsert(entry) {
 	const id = `legacy_${entry.slug.replace(/[^a-z0-9-]/g, '_')}`;
 	const mediaId = `legacy_media_${id}_0`;
@@ -367,7 +463,7 @@ function buildMediaUpsert(entry) {
 		0,
 		nowMs(),
 	].join(', ');
-	return `INSERT OR REPLACE INTO portfolio_media (${cols}) VALUES (${values});`;
+	return `INSERT OR IGNORE INTO portfolio_media (${cols}) VALUES (${values});`;
 }
 
 /** Read legacy content_links for a candidate via SQLite. */
@@ -488,6 +584,38 @@ function main() {
 	}
 
 	console.error('[seed-path-a] DONE.');
+
+	// --publish: flip visibility='public' + status='published' for the
+	// 3 candidates. This is the **local D1** publication gate; it is
+	// exercised here so the verifier can confirm that the public
+	// state passes its acceptance checks. Production publication
+	// goes through the operator-gated release pipeline, never this
+	// script (see --target handling above).
+	if (publish) {
+		console.error('[seed-path-a] --publish: flipping visibility to public for 3 candidates.');
+		const ids = ENTRIES.map((e) => {
+			const slug = normalizeSlug(e.legacyId);
+			return `legacy_${slug.replace(/[^a-z0-9-]/g, '_')}`;
+		});
+		const publishSql = `UPDATE portfolio_project SET visibility='public', status='published', updated_at=${nowMs()} WHERE id IN (${ids.map(sqlEscape).join(', ')});`;
+		const tmp2 = mkdtempSync(join(tmpdir(), 'seed-path-a-publish-'));
+		const publishSqlPath = join(tmp2, 'publish.sql');
+		writeFileSync(publishSqlPath, publishSql, { mode: 0o600 });
+		try {
+			const pub = spawnSync(
+				'pnpm',
+				['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', publishSqlPath],
+				{ cwd: root, stdio: 'inherit', env: process.env },
+			);
+			if (pub.status !== 0) {
+				console.error(`[seed-path-a] publish UPDATE exited with status ${pub.status}`);
+				process.exit(pub.status ?? 1);
+			}
+		} finally {
+			rmSync(tmp2, { recursive: true, force: true });
+		}
+		console.error('[seed-path-a] --publish DONE.');
+	}
 }
 
 main();

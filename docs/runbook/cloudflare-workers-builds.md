@@ -127,9 +127,10 @@ Release PR #91 (`release-x-y-z → main`) merged
        │
        ▼
 Cloudflare Workers Builds observes `main` push, builds, runs
-       `pnpm run deploy:production:prepared` (applies pending D1
-       migrations + Wrangler deploy with the versioned-2-name
-       secrets.required)
+       `pnpm run deploy:production:prepared` (first runs the read-only
+       Infisical / Wrangler / live-Worker secret-name preflight in
+       `transition` mode, then applies pending D1 migrations + Wrangler
+       deploy with the versioned-2-name secrets.required)
        │
        ▼
 Smoke #2 — automated (canonical surfaces, no auth needed)
@@ -146,9 +147,29 @@ Smoke #3 — **operator manual sign-in** at https://rebuildup.dev/admin/login,
        │
        ▼
 final drift check — `pnpm run infisical:check:cf -- --execute
-       --environment=prod` reports Tier 1 = versioned+audit set,
-       Tier 2 = versioned 2-name, Tier 3 = versioned 2-name
+       --environment=prod --worker-contract=final` reports Tier 1 =
+       versioned+audit set, Tier 2 = versioned 2-name, Tier 3 =
+       versioned 2-name
 ```
+
+## Deploy preflight contract
+
+`deploy-with-secrets.mjs --execute` authenticates to Infisical once and
+then runs `check-cf-secrets.mjs --execute --worker-contract=transition`
+**before** spawning the actual deploy. A non-zero preflight exit aborts
+production deployment.
+
+`transition` expects the live Worker to carry all three names during
+the migration window:
+
+- `BETTER_AUTH_SECRETS`
+- `BETTER_AUTH_SECRET`
+- `MY_WEB_2026_CONSUMER_API_KEY`
+
+After post-deploy smoke passes and `--delete-legacy-only` succeeds,
+the final drift check MUST use `--worker-contract=final`, which expects
+only the versioned two-name Worker contract while Infisical still keeps
+the legacy audit/recovery copy.
 
 ## Recovery operations (Phase B driver)
 

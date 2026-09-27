@@ -198,6 +198,19 @@ function readInfisicalWorkspaceId() {
  * list is reported (not silently swallowed) because drift between
  * Infisical and the live Worker is a high-severity finding.
  */
+function buildWranglerDiagnosticEnv(sourceEnv = process.env) {
+	const env = { ...sourceEnv };
+	// Wrangler needs only Cloudflare authentication. Do not propagate
+	// Infisical credentials into an unrelated child process.
+	// biome-ignore lint/performance/noDelete: credential minimization.
+	delete env.INFISICAL_TOKEN;
+	// biome-ignore lint/performance/noDelete: credential minimization.
+	delete env.INFISICAL_CLIENT_ID;
+	// biome-ignore lint/performance/noDelete: credential minimization.
+	delete env.INFISICAL_CLIENT_SECRET;
+	return env;
+}
+
 function listCloudflareWorkerSecretNames(configPath, { required = false } = {}) {
 	const hasExplicitApiToken =
 		typeof process.env.CLOUDFLARE_API_TOKEN === 'string' &&
@@ -210,7 +223,11 @@ function listCloudflareWorkerSecretNames(configPath, { required = false } = {}) 
 		stdout = execFileSync(
 			'pnpm',
 			['exec', 'wrangler', 'secret', 'list', '--format', 'json', '-c', configPath],
-			{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'inherit'] },
+			{
+				encoding: 'utf8',
+				stdio: ['ignore', 'pipe', 'inherit'],
+				env: buildWranglerDiagnosticEnv(),
+			},
 		);
 	} catch (error) {
 		throw new Error(

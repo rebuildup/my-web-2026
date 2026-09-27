@@ -92,7 +92,7 @@ declares no license), default branch `main` (except `tool-pi-game` =
    under their own brand) is between the two repos and is a Tool-
    repo `LICENSE` concern, NOT a third-party reuse license. The
    Tool-side `LICENSE` file is the canonical fix and is tracked as a
-   ProtoType follow-up (see #81 follow-up at the ProtoType repo).
+   ProtoType follow-up (see [rebuildup/ProtoType#4](https://github.com/rebuildup/ProtoType/issues/4)).
    Do **not** auto-apply any licence interpretation to third-party
    Tools: each Tool's own repo + licence governs.
 
@@ -103,7 +103,7 @@ declares no license), default branch `main` (except `tool-pi-game` =
    The contract treats **any untrusted Tool lifecycle script** as
    out-of-scope: we run the build, but never `postinstall` / `preinstall`
    from third-party repos. The Tool repo is responsible for removing
-   the obfuscated preinstall (Issue #81 follow-up at the Tool repo,
+   the obfuscated preinstall ([rebuildup/ProtoType#4](https://github.com/rebuildup/ProtoType/issues/4),
    not my-web-2026).
 
 ## What this means for Issue #81 pilot selection

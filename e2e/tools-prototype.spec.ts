@@ -99,15 +99,33 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 
 		// Walk the asset graph up to one level deep — enough to catch
 		// the immediate 404s without chasing the entire bundled tree.
+		// Same-origin only: skip cross-origin external URLs (CDN fonts
+		// etc.) and non-http schemes (data:, blob:, about:) — those
+		// are not the host's responsibility and would also fail to
+		// resolve against `request.baseURL`.
 		const visited = new Set<string>();
 		const failures: string[] = [];
+		const baseURL = request.baseURL ?? 'http://127.0.0.1:3000';
 		for (const ref of refs) {
-			// Tool artifacts use absolute paths (Vite default base "/").
+			if (visited.has(ref)) continue;
+			visited.add(ref);
+			// Cross-origin or non-http — skip.
+			if (
+				ref.startsWith('http://') ||
+				ref.startsWith('https://') ||
+				ref.startsWith('data:') ||
+				ref.startsWith('blob:') ||
+				ref.startsWith('about:')
+			) {
+				continue;
+			}
+			// Resolve against the host base. Absolute paths (Vite's
+			// default `/assets/...` etc.) are used as-is; relative
+			// paths (`./src/icon/icon.ico`) are resolved against the
+			// entry HTML's directory.
 			const url = ref.startsWith('/')
-				? ref
-				: `${new URL(PROTOTYPE_ENTRY, request.baseURL ?? '').origin}${ref}`;
-			if (visited.has(url)) continue;
-			visited.add(url);
+				? new URL(ref, baseURL).toString()
+				: new URL(ref, new URL(PROTOTYPE_ENTRY, baseURL)).toString();
 			const res = await request.get(url);
 			if (res.status() !== 200) failures.push(`${res.status()} ${url}`);
 		}
@@ -116,11 +134,20 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 
 	test('iframe mounts the ProtoType SPA (React root has children)', async ({ page }) => {
 		await page.goto(ROUTE);
-		// Wait for the iframe to be present and the cross-origin document
-		// to load. The iframe is sandboxed without allow-same-origin, so
-		// we use frameLocator to reach into it.
+		// Wait for the iframe element to be present in the host DOM
+		// (the route mounts it after React hydration).
+		await page.waitForSelector('iframe[title="ProtoType Tool"]', {
+			state: 'attached',
+			timeout: 10_000,
+		});
+		// The iframe is sandboxed without allow-same-origin, so we use
+		// frameLocator to reach into it via CDP. The empty `<div
+		// id="root">` has 0x0 box (Playwright's `.toBeVisible()` would
+		// reject it), so the right contract is "root has at least one
+		// child node" — that proves React mounted into it.
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
-		await expect(frame.locator('#root')).toBeVisible({ timeout: 15_000 });
+		await expect(frame.locator('#root')).toHaveCount(1, { timeout: 15_000 });
+		await expect(frame.locator('#root > *')).not.toHaveCount(0, { timeout: 15_000 });
 	});
 
 	test('representative interaction: clicking a Tab button swaps the rendered view (round-trip Game → Setting → Game)', async ({
@@ -134,8 +161,12 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		// `currentTab` state in `App.tsx`, and assert that the rendered
 		// component changes.
 		await page.goto(ROUTE);
+		await page.waitForSelector('iframe[title="ProtoType Tool"]', {
+			state: 'attached',
+			timeout: 10_000,
+		});
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
-		await expect(frame.locator('#root')).toBeVisible({ timeout: 15_000 });
+		await expect(frame.locator('#root > *')).not.toHaveCount(0, { timeout: 15_000 });
 
 		// Initial state: the Game view is rendered (it is the default tab
 		// in App.tsx's `useState<string>("Game")`).
@@ -171,9 +202,9 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 	test('refresh re-loads the iframe content', async ({ page }) => {
 		await page.goto(ROUTE);
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
-		await expect(frame.locator('#root')).toBeVisible({ timeout: 15_000 });
+		await expect(frame.locator('#root > *')).not.toHaveCount(0, { timeout: 15_000 });
 		await page.reload();
-		await expect(frame.locator('#root')).toBeVisible({ timeout: 15_000 });
+		await expect(frame.locator('#root > *')).not.toHaveCount(0, { timeout: 15_000 });
 	});
 
 	test('no CSP violations logged by the host page during iframe load', async ({ page }) => {

@@ -1,0 +1,3 @@
+[submodule "external/prototype"]
+	path = external/prototype
+	url = https://github.com/rebuildup/ProtoType.git

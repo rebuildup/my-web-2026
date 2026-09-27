@@ -57,6 +57,13 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "my-web-2026",
+	// Cloudflare account id (non-secret identifier; obtained via
+	// `pnpm exec wrangler whoami` on 2026-09-27, value
+	// `c6ab6651a5d4d6d0d07686bbd3c3d56f`). Used by
+	// `scripts/infisical-bootstrap-cf.mjs` as the SoT for the
+	// Cloudflare Builds API URL. Env var `CLOUDFLARE_ACCOUNT_ID`
+	// remains the override path.
+	"account_id": "c6ab6651a5d4d6d0d07686bbd3c3d56f",
 	"main": "./dist/server/index.js",
 	// Vite emits a split ES module graph under `dist/server/assets`. Because this
 	// config deploys the prebuilt entrypoint with `no_bundle`, Wrangler needs the
@@ -107,7 +114,17 @@
 		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev"
 	},
 	"secrets": {
-		"required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
+		// Staged design (ADR-0015 §9, Phase 3+ — Issue #89):
+		// Production is on the **versioned 2-name form**. The legacy
+		// `BETTER_AUTH_SECRET` Cloudflare Worker binding is deleted in
+		// Phase B step #2 (operator-gated via
+		// `scripts/phase-3-plus-prod-flip.mjs --execute --delete-legacy-only`).
+		// The Infisical `prod` value for `BETTER_AUTH_SECRET` is
+		// RETAINED as an audit trail (ADR-0015 §9 audit-only semantics);
+		// it is never uploaded to the Worker on subsequent deploys — see
+		// `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS`. Mirror edit
+		// applied to `wrangler.jsonc`.
+		"required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
 	},
 	"ratelimits": [
 		{

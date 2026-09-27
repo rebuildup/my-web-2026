@@ -14,6 +14,12 @@ const forbiddenOwnerDependencies = new Map([
 	['http', new Set(['home', 'server.ts'])],
 	['editorial', new Set(['home', 'cloudflare', 'http'])],
 	['home', new Set(['routes', 'cloudflare', 'http'])],
+	// `portfolio` (Issue #76) is a peer obligation to `home`.
+	// It reads D1 / R2 via the cloudflare runtime (no direct
+	// dependency edge) and consumes `editorial` primitives. It must
+	// not import from `home`, `routes`, or `http` (peer / route /
+	// external HTTP boundary responsibilities).
+	['portfolio', new Set(['home', 'routes', 'http'])],
 ]);
 
 /**

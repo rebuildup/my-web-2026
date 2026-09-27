@@ -82,6 +82,104 @@ const REQUIRED_INFISICAL_JSON_KEYS = ['workspaceId'];
 
 const OPERATIONS = ['flip', 'delete-legacy-only', 'restore-legacy-only', 'rollback-versioned-only'];
 
+/**
+ * Per-operation auth strategy (Issue #99 — operator-authorization model).
+ *
+ * The viewer Machine Identity `my-web-2026-cf-worker` (role=`viewer`,
+ * pinned by Issue #67 bootstrap) is read-only and CANNOT mutate prod
+ * secrets via the v3 write endpoints or the CLI subprocess. The Phase B
+ * `flip` operation must therefore use an operator-supplied writer
+ * `INFISICAL_TOKEN`; the viewer identity is never elevated. The
+ * Cloudflare-Worker-only operations (delete/restore/rollback-versioned)
+ * do not need an Infisical token at all — they route through `wrangler
+ * secret bulk`.
+ *
+ *   flip                  → operator INFISICAL_TOKEN required (writer); no UA fallback
+ *   restore-legacy-only   → operator token preferred; UA fallback acceptable (read-only)
+ *   delete-legacy-only    → no Infisical interaction (wrangler bulk only)
+ *   rollback-versioned-only → no Infisical interaction (wrangler bulk only)
+ *
+ * Returns an immutable plan object. Pure function — no env / process / IO.
+ */
+function planOperationAuth({ operation }) {
+	switch (operation) {
+		case 'flip':
+			return {
+				needsInfisicalWrite: true,
+				needsInfisicalRead: true,
+				requiresOperatorToken: true,
+				allowsUaFallback: false,
+			};
+		case 'restore-legacy-only':
+			return {
+				needsInfisicalWrite: false,
+				needsInfisicalRead: true,
+				requiresOperatorToken: false,
+				allowsUaFallback: true,
+			};
+		case 'delete-legacy-only':
+		case 'rollback-versioned-only':
+			return {
+				needsInfisicalWrite: false,
+				needsInfisicalRead: false,
+				requiresOperatorToken: false,
+				allowsUaFallback: false,
+			};
+		default:
+			throw new Error(`Unknown operation: ${operation}`);
+	}
+}
+
+/**
+ * Resolve the @infisical/cli native binary path via Node module
+ * resolution (mirrors `scripts/infisical-seed.mjs:374-386` and
+ * `scripts/infisical-verify.mjs`). The CLI is a NATIVE EXECUTABLE
+ * (~153 MB ELF), NOT a JS shim; it must be spawned directly, never
+ * via `process.execPath`. Issue #99 Blocker 1.
+ *
+ * All file-system / Node-API side effects go through injected deps so
+ * the function is unit-testable without touching the real install.
+ * Default impls use `import.meta.url` + Node's built-ins.
+ */
+function resolveInfisicalCliPath({
+	require_resolve = null,
+	readFileSync = null,
+	dirname: dirnameFn = null,
+	resolve: resolveFn = null,
+	moduleUrl = null,
+} = {}) {
+	const req = require('node:module').createRequire(moduleUrl ?? import.meta.url);
+	const resolveImpl = require_resolve ?? req.resolve.bind(req);
+	const pkgPath = resolveImpl('@infisical/cli/package.json');
+	const dirImpl = dirnameFn ?? require('node:path').dirname;
+	const resImpl = resolveFn ?? require('node:path').resolve;
+	const readImpl = readFileSync ?? require('node:fs').readFileSync;
+	const pkgDir = dirImpl(pkgPath);
+	let binField;
+	try {
+		binField = JSON.parse(readImpl(pkgPath, 'utf8')).bin;
+	} catch (cause) {
+		throw new Error(`@infisical/cli/package.json is not valid JSON: ${cause.message}`);
+	}
+	let binRel;
+	if (typeof binField === 'string') {
+		binRel = binField;
+	} else if (binField && typeof binField.infisical === 'string') {
+		binRel = binField.infisical;
+	} else {
+		throw new Error(
+			'@infisical/cli/package.json#bin must declare an `infisical` entry (string or { infisical: string })',
+		);
+	}
+	const cliPath = resImpl(pkgDir, binRel);
+	if (cliPath.endsWith('.js')) {
+		throw new Error(
+			`@infisical/cli binary path ends in .js (${cliPath}); the CLI must be a native executable.`,
+		);
+	}
+	return cliPath;
+}
+
 function printHelp() {
 	console.log(`Usage: phase-3-plus-prod-flip.mjs
   [--execute | --dry-run]
@@ -521,52 +619,27 @@ async function readLegacyPlaintext(apiUrl, accessToken, workspaceId, environment
  * interaction (documented in Phase B step B.2).
  */
 async function verifyTokenWriteScope(apiUrl, accessToken, workspaceId, environment) {
-	// Probe: GET on a non-existent secret. Write-scoped tokens return
-	// 200 with a null value; viewer-scoped tokens return 403.
-	const params = new URLSearchParams({
-		workspaceId,
-		environment,
-		secretPath: '/',
-		type: 'personal',
-		viewSecretValue: 'false',
-	});
-	const probePath = '__phase-3-plus-write-scope-probe__';
-	const url = `${apiUrl.replace(/\/+$/, '')}/api/v3/secrets/raw/${probePath}?${params.toString()}`;
-	return new Promise((resolvePromise, rejectPromise) => {
-		const u = new URL(url);
-		const req = httpsRequest(
-			{
-				method: 'GET',
-				hostname: u.hostname,
-				port: u.port || 443,
-				path: u.pathname + u.search,
-				headers: { Authorization: `Bearer ${accessToken}` },
-				timeout: HTTPS_TIMEOUT_MS,
-			},
-			(res) => {
-				res.resume();
-				res.on('end', () => {
-					if (res.statusCode === 200) {
-						resolvePromise(true);
-					} else if (res.statusCode === 403 || res.statusCode === 401) {
-						rejectPromise(
-							new Error(
-								`flip operation requires write-scoped INFISICAL_TOKEN; probe returned ${res.statusCode} (Workers Builds viewer Machine Identity is read-only and fails-closed for flip).`,
-							),
-						);
-					} else {
-						// Other status codes (e.g. 5xx) are surfaced as
-						// preflight failure but with a different message
-						// so the operator can diagnose network issues.
-						rejectPromise(new Error(`flip preflight scope probe returned HTTP ${res.statusCode}`));
-					}
-				});
-			},
-		);
-		req.on('timeout', () => req.destroy(new Error('Scope probe timed out')));
-		req.on('error', rejectPromise);
-		req.end();
-	});
+	// Issue #99 Blocker 2 — REMOVED in driver remediation. The previous
+	// GET-probe preflight was logically invalid: viewer-scoped tokens
+	// can read individual secrets (200 on `/api/v3/secrets/raw/<key>`),
+	// so the probe passed for the wrong reason. Writer scope cannot be
+	// inferred from a read-only endpoint.
+	//
+	// The new operator-authorization model is enforced in `main()`:
+	//   1. `flip` hard-requires an operator-supplied `INFISICAL_TOKEN`
+	//      in the env (writer-scoped by operator trust, not probed).
+	//   2. UA-from-`INFISICAL_CLIENT_ID`/`SECRET` is NOT used for `flip`
+	//      (the viewer Machine Identity cannot write prod secrets).
+	//   3. `restore-legacy-only` may use UA as a read-only fallback.
+	//   4. `delete-legacy-only` / `rollback-versioned-only` skip
+	//      Infisical entirely (wrangler bulk only).
+	//
+	// The function is retained as a no-op stub so historical callers
+	// (if any external one ever exists) get a clear "removed" error
+	// rather than a confusing undefined-reference.
+	throw new Error(
+		'verifyTokenWriteScope was removed in Issue #99 driver remediation. The operator-authorization model now requires an operator-supplied INFISICAL_TOKEN for the flip operation (UA preflight cannot prove write scope). See planOperationAuth() in scripts/phase-3-plus-prod-flip.mjs.',
+	);
 }
 
 /**
@@ -594,15 +667,25 @@ function spawnWranglerBulk({ payload, env, deps }) {
  * CLI handles self-host v0.165.x E2EE; plain HTTPS UPSERT is NOT
  * supported because the v3 secret-write endpoint requires
  * `secretKeyCiphertext/IV/Tag` + `secretValueCiphertext/IV/Tag`.
+ *
+ * Issue #99 Blocker 1: the CLI is a NATIVE EXECUTABLE (ELF 64-bit,
+ * ~153 MB), NOT a JS shim. We spawn it directly via the path
+ * resolved by `resolveInfisicalCliPath()`; never wrap in
+ * `process.execPath` (Node cannot execute a native binary blob).
+ *
+ * Stdio is `['pipe', 'inherit', 'inherit']` for parity with
+ * `spawnWranglerBulk()` — even though the CLI itself does not read
+ * stdin for `secrets set --file`, the explicit pipe prevents
+ * interactive prompts from blocking and matches the canonical
+ * wrangler bulk discipline.
  */
 function spawnInfisicalSet({ yamlPath, environment, env, deps }) {
 	const spawnFn = deps?.spawn ?? spawn;
-	const infisicalCli = require.resolve('@infisical/cli/bin/infisical.js');
-	return spawnFn(
-		process.execPath,
-		[infisicalCli, ...buildInfisicalSetArgs({ yamlPath, environment })],
-		{ stdio: 'inherit', env },
-	);
+	const cliPath = deps?.cliPath ?? resolveInfisicalCliPath();
+	return spawnFn(cliPath, buildInfisicalSetArgs({ yamlPath, environment }), {
+		stdio: ['pipe', 'inherit', 'inherit'],
+		env,
+	});
 }
 
 /**
@@ -657,7 +740,7 @@ function describePlan({ operation, environment, wranglerConfig }) {
 	switch (operation) {
 		case 'flip':
 			lines.push(
-				'[dry-run] would: Universal Auth login (writer-scoped) → read legacy plaintext from Infisical prod → write temp YAML → spawn infisical secrets set --file → spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRETS: "1:<plaintext>" }',
+				'[dry-run] would: use operator-supplied INFISICAL_TOKEN (writer-scoped) → read legacy plaintext from Infisical prod → write temp YAML → spawn infisical secrets set --file → spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRETS: "1:<plaintext>" }',
 			);
 			break;
 		case 'delete-legacy-only':
@@ -690,6 +773,9 @@ export {
 	buildBulkPayload,
 	buildWranglerBulkArgs,
 	buildInfisicalSetArgs,
+	planOperationAuth,
+	resolveInfisicalCliPath,
+	spawnInfisicalSet,
 	OPERATIONS,
 };
 
@@ -717,16 +803,9 @@ async function main() {
 		return;
 	}
 
-	// --execute path
+	// --execute path — per-operation auth strategy (Issue #99)
 	const apiUrl = process.env.INFISICAL_API_URL ?? args.apiUrl;
-	const clientId = process.env.INFISICAL_CLIENT_ID;
-	const clientSecret = process.env.INFISICAL_CLIENT_SECRET;
-	if (typeof clientId !== 'string' || clientId.length === 0) {
-		throw new Error('INFISICAL_CLIENT_ID env var is required for --execute');
-	}
-	if (typeof clientSecret !== 'string' || clientSecret.length === 0) {
-		throw new Error('INFISICAL_CLIENT_SECRET env var is required for --execute');
-	}
+	const plan = planOperationAuth({ operation: args.operation });
 
 	let accessToken = null;
 	let legacyPlaintext = null;
@@ -734,25 +813,57 @@ async function main() {
 	let tempDir = null;
 
 	try {
-		console.log('[execute] Universal Auth login...');
-		accessToken = await loginUniversalAuth(apiUrl, clientId, clientSecret);
-		// Env discipline: remove CLIENT_ID / SECRET post-auth.
-		// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
-		delete process.env.INFISICAL_CLIENT_ID;
-		// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
-		delete process.env.INFISICAL_CLIENT_SECRET;
+		// Per-operation auth acquisition:
+		//   flip                  → operator INFISICAL_TOKEN required (writer). UA-from-MA not acceptable.
+		//   restore-legacy-only   → operator token preferred; UA fallback acceptable (read-only).
+		//   delete-legacy-only    → no Infisical auth needed (wrangler bulk only).
+		//   rollback-versioned-only → no Infisical auth needed (wrangler bulk only).
+		const operatorToken = process.env.INFISICAL_TOKEN;
+		const hasOperatorToken = typeof operatorToken === 'string' && operatorToken.length > 0;
 
-		if (args.operation === 'flip') {
-			console.log(
-				'[execute] Preflight: verifying write scope on prod env (viewer Machine Identity fails-closed)...',
-			);
-			await verifyTokenWriteScope(
-				apiUrl,
-				accessToken,
-				infisicalConfig.workspaceId,
-				args.environment,
-			);
-			console.log('[execute] Preflight OK: writer-scoped INFISICAL_TOKEN confirmed');
+		if (plan.needsInfisicalWrite || plan.needsInfisicalRead) {
+			if (hasOperatorToken) {
+				accessToken = operatorToken;
+				console.log(
+					`[execute] Using operator-supplied INFISICAL_TOKEN for operation=${args.operation}`,
+				);
+			} else if (plan.allowsUaFallback) {
+				// restore-legacy-only path — UA fallback allowed (read-only).
+				const clientId = process.env.INFISICAL_CLIENT_ID;
+				const clientSecret = process.env.INFISICAL_CLIENT_SECRET;
+				if (typeof clientId !== 'string' || clientId.length === 0) {
+					throw new Error(
+						'INFISICAL_TOKEN or INFISICAL_CLIENT_ID env var is required for restore-legacy-only (UA fallback)',
+					);
+				}
+				if (typeof clientSecret !== 'string' || clientSecret.length === 0) {
+					throw new Error(
+						'INFISICAL_CLIENT_SECRET env var is required when no operator-supplied INFISICAL_TOKEN is present (UA fallback)',
+					);
+				}
+				console.log('[execute] No operator INFISICAL_TOKEN; falling back to Universal Auth login');
+				accessToken = await loginUniversalAuth(apiUrl, clientId, clientSecret);
+				// Env discipline: remove CLIENT_ID / SECRET post-auth.
+				// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
+				delete process.env.INFISICAL_CLIENT_ID;
+				// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
+				delete process.env.INFISICAL_CLIENT_SECRET;
+			} else if (plan.requiresOperatorToken) {
+				throw new Error(
+					`--execute --operation=${args.operation} requires an operator-supplied INFISICAL_TOKEN with write permission on ${args.environment}. The viewer Machine Identity (my-web-2026-cf-worker, role=viewer) is read-only and fails-closed for ${args.operation}.`,
+				);
+			} else {
+				throw new Error(
+					`--execute --operation=${args.operation} requires either INFISICAL_TOKEN or UA credentials (INFISICAL_CLIENT_ID / INFISICAL_CLIENT_SECRET) for the Infisical read.`,
+				);
+			}
+
+			// Token propagation: assign the resolved token to process.env
+			// BEFORE building the sanitized env for any subsequent
+			// subprocess (the Infisical CLI for `flip` reads
+			// INFISICAL_TOKEN from the inherited env). NEVER appears in
+			// argv.
+			process.env.INFISICAL_TOKEN = accessToken;
 		}
 
 		if (args.operation === 'flip' || args.operation === 'restore-legacy-only') {

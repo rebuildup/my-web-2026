@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { existsSync } from 'node:fs';
 import {
 	parseArgs,
 	parseVersionedSecrets,
@@ -9,6 +10,9 @@ import {
 	buildBulkPayload,
 	buildWranglerBulkArgs,
 	buildInfisicalSetArgs,
+	planOperationAuth,
+	resolveInfisicalCliPath,
+	spawnInfisicalSet,
 	OPERATIONS,
 } from './phase-3-plus-prod-flip.mjs';
 import { describe, it } from 'node:test';
@@ -283,6 +287,219 @@ describe('phase-3-plus-prod-flip.mjs', () => {
 				'--path',
 				'/',
 			]);
+		});
+	});
+
+	describe('planOperationAuth (Issue #99 — per-operation auth strategy)', () => {
+		it('flip requires operator token, no UA fallback, needs both write and read', () => {
+			const plan = planOperationAuth({ operation: 'flip' });
+			assert.equal(plan.needsInfisicalWrite, true);
+			assert.equal(plan.needsInfisicalRead, true);
+			assert.equal(plan.requiresOperatorToken, true);
+			assert.equal(plan.allowsUaFallback, false);
+		});
+
+		it('restore-legacy-only prefers operator token, allows UA fallback (read-only)', () => {
+			const plan = planOperationAuth({ operation: 'restore-legacy-only' });
+			assert.equal(plan.needsInfisicalWrite, false);
+			assert.equal(plan.needsInfisicalRead, true);
+			assert.equal(plan.requiresOperatorToken, false);
+			assert.equal(plan.allowsUaFallback, true);
+		});
+
+		it('delete-legacy-only needs no Infisical interaction at all', () => {
+			const plan = planOperationAuth({ operation: 'delete-legacy-only' });
+			assert.equal(plan.needsInfisicalWrite, false);
+			assert.equal(plan.needsInfisicalRead, false);
+			assert.equal(plan.requiresOperatorToken, false);
+			assert.equal(plan.allowsUaFallback, false);
+		});
+
+		it('rollback-versioned-only needs no Infisical interaction at all', () => {
+			const plan = planOperationAuth({ operation: 'rollback-versioned-only' });
+			assert.equal(plan.needsInfisicalWrite, false);
+			assert.equal(plan.needsInfisicalRead, false);
+			assert.equal(plan.requiresOperatorToken, false);
+			assert.equal(plan.allowsUaFallback, false);
+		});
+
+		it('throws on unknown operation', () => {
+			assert.throws(() => planOperationAuth({ operation: 'bogus' }), /Unknown operation/);
+		});
+	});
+
+	describe('resolveInfisicalCliPath (Issue #99 — native binary resolution)', () => {
+		it('resolves to a real file path under node_modules/@infisical/cli/bin/', () => {
+			const cliPath = resolveInfisicalCliPath();
+			// The real install has `bin/infisical` (no extension, native ELF).
+			assert.match(
+				cliPath,
+				/@infisical[\\/](?:cli|cli[\\/]node_modules[\\/](?:[^\\/.]+[\\/])?@infisical[\\/]cli)[\\/]bin[\\/]infisical$/,
+			);
+			assert.ok(existsSync(cliPath), `expected ${cliPath} to exist`);
+			assert.ok(!cliPath.endsWith('.js'), `expected native binary, got ${cliPath}`);
+		});
+
+		it('uses bin.infisical string-form when package.json declares a string bin', () => {
+			const fakePkgPath = '/tmp/fake-infisical-cli-pkg/package.json';
+			const cliPath = resolveInfisicalCliPath({
+				require_resolve: () => fakePkgPath,
+				dirname: () => '/tmp/fake-infisical-cli-pkg',
+				resolve: (dir, rel) => `${dir}/${rel}`,
+				readFileSync: () =>
+					JSON.stringify({ name: 'fake', version: '1.2.3', bin: './bin/infisical' }),
+			});
+			assert.equal(cliPath, '/tmp/fake-infisical-cli-pkg/./bin/infisical');
+		});
+
+		it('rejects a missing `infisical` entry in package.json#bin', () => {
+			const fakePkgPath = '/tmp/fake-infisical-cli-pkg/package.json';
+			assert.throws(
+				() =>
+					resolveInfisicalCliPath({
+						require_resolve: () => fakePkgPath,
+						dirname: () => '/tmp/fake-infisical-cli-pkg',
+						resolve: (dir, rel) => `${dir}/${rel}`,
+						readFileSync: () =>
+							JSON.stringify({ name: 'fake', version: '1.2.3', bin: { other: './x' } }),
+					}),
+				/must declare an `infisical` entry/,
+			);
+		});
+
+		it('rejects invalid JSON in package.json', () => {
+			const fakePkgPath = '/tmp/fake-infisical-cli-pkg/package.json';
+			assert.throws(
+				() =>
+					resolveInfisicalCliPath({
+						require_resolve: () => fakePkgPath,
+						dirname: () => '/tmp/fake-infisical-cli-pkg',
+						resolve: (dir, rel) => `${dir}/${rel}`,
+						readFileSync: () => '{not valid json',
+					}),
+				/is not valid JSON/,
+			);
+		});
+
+		it('rejects a non-existent package path (require.resolve throws)', () => {
+			assert.throws(
+				() =>
+					resolveInfisicalCliPath({
+						require_resolve: () => {
+							throw new Error("Cannot find module '@infisical/cli/package.json'");
+						},
+						dirname: () => '/tmp/x',
+						resolve: (dir, rel) => `${dir}/${rel}`,
+						readFileSync: () => '{}',
+					}),
+				/Cannot find module/,
+			);
+		});
+
+		it('accepts an object-form bin field with an `infisical` key', () => {
+			const fakePkgPath = '/tmp/fake-infisical-cli-pkg/package.json';
+			const cliPath = resolveInfisicalCliPath({
+				require_resolve: () => fakePkgPath,
+				dirname: () => '/tmp/fake-infisical-cli-pkg',
+				resolve: (dir, rel) => `${dir}/${rel}`,
+				readFileSync: () =>
+					JSON.stringify({
+						name: 'fake',
+						version: '1.2.3',
+						bin: { infisical: './bin/infisical-native' },
+					}),
+			});
+			assert.equal(cliPath, '/tmp/fake-infisical-cli-pkg/./bin/infisical-native');
+		});
+
+		it('throws when the resolved binary path ends in .js (would be a JS shim, not native)', () => {
+			const fakePkgPath = '/tmp/fake-infisical-cli-pkg/package.json';
+			assert.throws(
+				() =>
+					resolveInfisicalCliPath({
+						require_resolve: () => fakePkgPath,
+						dirname: () => '/tmp/fake-infisical-cli-pkg',
+						resolve: (dir, rel) => `${dir}/${rel}`,
+						readFileSync: () =>
+							JSON.stringify({ name: 'fake', version: '1.2.3', bin: './bin/infisical.js' }),
+					}),
+				/binary path ends in \.js/,
+			);
+		});
+
+		it('respects an injected moduleUrl (no implicit import.meta.url coupling in tests)', () => {
+			// Inject a custom moduleUrl. The default impl would use
+			// import.meta.url of the actual driver file; the test just
+			// verifies the parameter is honored by the require path
+			// resolution (we don't care about the resolved binary, only
+			// that no exception is thrown for the parameter plumbing).
+			const fakePkgPath = '/tmp/fake-infisical-cli-pkg/package.json';
+			const cliPath = resolveInfisicalCliPath({
+				moduleUrl: 'file:///tmp/driver.mjs',
+				require_resolve: () => fakePkgPath,
+				dirname: () => '/tmp/fake-infisical-cli-pkg',
+				resolve: (dir, rel) => `${dir}/${rel}`,
+				readFileSync: () =>
+					JSON.stringify({ name: 'fake', version: '1.2.3', bin: './bin/infisical' }),
+			});
+			assert.equal(cliPath, '/tmp/fake-infisical-cli-pkg/./bin/infisical');
+		});
+	});
+
+	describe('spawnInfisicalSet argv discipline (Issue #99 — no process.execPath wrap)', () => {
+		it('uses deps.cliPath directly when supplied', () => {
+			const calls = [];
+			const fakeChild = { stdin: { write() {}, end() {} } };
+			const fakeCliPath = '/tmp/fake-native-infisical';
+			spawnInfisicalSet({
+				yamlPath: '/tmp/foo.yaml',
+				environment: 'prod',
+				env: { FOO: 'bar' },
+				deps: {
+					spawn: (cmd, args, opts) => {
+						calls.push({ cmd, args, opts });
+						return fakeChild;
+					},
+					cliPath: fakeCliPath,
+				},
+			});
+			assert.equal(calls.length, 1);
+			assert.equal(calls[0].cmd, fakeCliPath);
+			// Args should be the CLI argv only — NOT prefixed with process.execPath
+			assert.deepEqual(calls[0].args, [
+				'secrets',
+				'set',
+				'--file',
+				'/tmp/foo.yaml',
+				'--env',
+				'prod',
+				'--path',
+				'/',
+			]);
+			assert.equal(calls[0].opts.env.FOO, 'bar');
+			assert.deepEqual(calls[0].opts.stdio, ['pipe', 'inherit', 'inherit']);
+		});
+
+		it('does NOT wrap the resolved CLI with process.execPath (the CLI is a native ELF, not a JS shim)', () => {
+			const calls = [];
+			const fakeChild = { stdin: { write() {}, end() {} } };
+			spawnInfisicalSet({
+				yamlPath: '/tmp/foo.yaml',
+				environment: 'prod',
+				env: {},
+				deps: {
+					spawn: (cmd, args, opts) => {
+						calls.push({ cmd, args, opts });
+						return fakeChild;
+					},
+					cliPath: '/tmp/resolved-native-infisical',
+				},
+			});
+			// process.execPath is the Node binary. If the driver wrapped
+			// the CLI with it, cmd would be Node — which would fail to
+			// execute a native ELF. The driver MUST spawn the CLI
+			// directly.
+			assert.notEqual(calls[0].cmd, process.execPath);
 		});
 	});
 });

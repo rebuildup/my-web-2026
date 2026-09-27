@@ -56,7 +56,7 @@ const ALLOWED_INFISICAL_JSON_KEYS = new Set(['workspaceId', 'defaultEnvironment'
 const REQUIRED_INFISICAL_JSON_KEYS = ['workspaceId'];
 
 function printHelp() {
-	console.log(`Usage: check-cf-secrets.mjs [--execute] [--dry-run] [--environment=<prod|dev>] [--config=<path>] [--worker-contract=<transition|final>]
+	console.log(`Usage: check-cf-secrets.mjs [--execute] [--dry-run] [--environment=<prod|dev>] [--config=<path>] [--worker-contract=<transition|final>] [--require-live-worker]
 
 Verify the Infisical / Cloudflare secret name contract (ADR-0015 §7).
 
@@ -77,6 +77,7 @@ Options:
   --config=<path>           wrangler config path (default: wrangler.production.jsonc)
   --worker-contract=<mode>   live Worker expectation: transition=3-name (default,
                              before legacy deletion), final=versioned 2-name
+  --require-live-worker      fail if Tier 3 cannot run (CLOUDFLARE_API_TOKEN missing)
   -h, --help                show this help`);
 }
 
@@ -87,6 +88,7 @@ function parseArgs(argv) {
 		environment: 'prod',
 		config: 'wrangler.production.jsonc',
 		workerContract: 'transition',
+		requireLiveWorker: false,
 	};
 	let explicitMode = null;
 	for (const arg of argv) {
@@ -106,6 +108,8 @@ function parseArgs(argv) {
 			args.config = arg.slice('--config='.length);
 		} else if (arg.startsWith('--worker-contract=')) {
 			args.workerContract = arg.slice('--worker-contract='.length);
+		} else if (arg === '--require-live-worker') {
+			args.requireLiveWorker = true;
 		} else if (arg === '--help' || arg === '-h') {
 			printHelp();
 			process.exit(0);
@@ -376,6 +380,7 @@ async function main() {
 	console.log(`[check-cf-secrets] wrangler secrets.required=${JSON.stringify(wranglerRequired)}`);
 	console.log(`[check-cf-secrets] mode=${args.execute ? 'execute' : 'dry-run'}`);
 	console.log(`[check-cf-secrets] worker contract=${args.workerContract}`);
+	console.log(`[check-cf-secrets] require live worker=${args.requireLiveWorker}`);
 
 	if (args.dryRun) {
 		console.log(
@@ -404,6 +409,11 @@ async function main() {
 			console.log(
 				`[dry-run] would verify: actual Cloudflare Worker secret names via \`wrangler secret list\` against ${args.workerContract} contract (${expectedWorker.join(', ')}) (CLOUDFLARE_API_TOKEN is set)`,
 			);
+		} else if (args.requireLiveWorker) {
+			console.log(
+				'[dry-run] [FAIL] Tier 3 live Worker is required but CLOUDFLARE_API_TOKEN is not set.',
+			);
+			process.exit(1);
 		} else {
 			console.log(
 				'[dry-run] would skip Tier 3 (live worker): CLOUDFLARE_API_TOKEN not set. ' +
@@ -497,6 +507,11 @@ async function main() {
 			const workerOk = workerCheck.missing.length === 0 && workerCheck.extra.length === 0;
 			printCheckResult(workerCheck, workerOk);
 			if (!workerOk) exitCode = 1;
+		} else if (args.requireLiveWorker) {
+			console.error(
+				'[execute] [FAIL] Tier 3 live Worker check is required but CLOUDFLARE_API_TOKEN is not set.',
+			);
+			exitCode = 1;
 		} else {
 			console.log(
 				'[execute] [NOTE] Tier 3 (live Worker) skipped: CLOUDFLARE_API_TOKEN not set. ' +

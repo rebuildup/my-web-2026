@@ -16,7 +16,7 @@ try {
 	writeFileSync(
 		secretsFile,
 		JSON.stringify({
-			BETTER_AUTH_SECRET: 'dry-run-better-auth-secret',
+			BETTER_AUTH_SECRETS: '1:dry-run-better-auth-secret',
 			MY_WEB_2026_CONSUMER_API_KEY: `mk_home_${'A'.repeat(32)}`,
 		}),
 		{ mode: 0o600 },

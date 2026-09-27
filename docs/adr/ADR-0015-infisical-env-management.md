@@ -281,10 +281,29 @@ Cloudflare Workers Builds の **custom Build API token (Workers Scripts:Edit + R
 ```
 
 - `BETTER_AUTH_SECRETS` を必須化 (Initial migration 完了確認後)
-- `BETTER_AUTH_SECRET` legacy は **任意運用** (§1 SoT 境界と同期)。Better
-  Auth に `secret` option として渡しても compact cookie cache の署名検証
-  には使われない (§11.2 Semantics 参照) ため、 deploy の必須化には含めない
-- legacy 完全削除は Phase 5 runbook で明示 (別 ticket で運用)
+- `BETTER_AUTH_SECRET` legacy は **Infisical audit-trail 集合** に分類される
+  (§1 SoT 境界と同期 — Better Auth に `secret` option として渡しても compact
+  cookie cache の署名検証には使われない §11.2 Semantics 参照)。deploy の必須化
+  には含めない
+- Cloudflare Worker の `BETTER_AUTH_SECRET` binding は Phase 3+ で明示削除
+  (Issue #89 / `scripts/phase-3-plus-prod-flip.mjs --execute --delete-legacy-only`)。
+  legacy 完全削除 (Infisical audit-trail value 削除) は Phase 5 runbook で明示
+  (別 ticket #71 で運用)
+
+**Phase 3+ audit-only semantics (Issue #89)** — `BETTER_AUTH_SECRET` は
+Infisical `prod` env に audit-trail として存在し続けるが、Cloudflare Worker
+には deploy 時に渡さない。deploy script (`scripts/run-deploy-inner.mjs`)
+は以下の 2 カテゴリを区別する:
+
+- `REQUIRED_RUNTIME_SECRETS` — `secrets.json` に書かれ Wrangler の
+  `--secrets-file` でアップロードされ、`secrets.required` にも入る名前
+- `AUDIT_ONLY_SECRETS` — child process に渡す sanitized env から
+  取り除かれるが、`secrets.json` には書かない (sanitization-only contract)
+
+この分離は "legacy binding が次の deploy で蘇る" 失敗モードを防ぐ:
+`infisical run` が audit-trail の legacy 値を `process.env` に注入しても、
+script はそれを Worker に書き戻さない。audit-trail 値は Infisical から
+recovery 用途で取得可能 (Phase 5 #71 が最終 cleanup の window)。
 
 **Wrangler secret binding への追加順序** (Phase 1 → Phase 3 移行時):
 1. Phase 1 operator が Infisical `prod` env に `BETTER_AUTH_SECRETS` を seed

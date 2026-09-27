@@ -113,7 +113,26 @@
 			"namespace_id": "00000000000000000000000000000002",
 			"simple": { "limit": 600, "period": 60 }
 		}
-	]
+	],
+	// Required secrets (ADR-0015 §9 staged design, Phase 3+ — Issue #89).
+	//
+	// `secrets.required` is enforced by Wrangler at deploy time. Phase 3+
+	// uses the **versioned 2-name form** (`BETTER_AUTH_SECRETS` +
+	// `MY_WEB_2026_CONSUMER_API_KEY`). `BETTER_AUTH_SECRET` (legacy single)
+	// is NOT in `required`; it is retained in Infisical `prod` as an audit
+	// trail (ADR-0015 §9 audit-only semantics) but is never uploaded to the
+	// Worker — see `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS` for
+	// the deploy-time contract that prevents the legacy binding from
+	// resurrecting on subsequent deploys.
+	//
+	// The Cloudflare Worker `BETTER_AUTH_SECRET` binding is deleted by the
+	// Phase B operator-gated step in `scripts/phase-3-plus-prod-flip.mjs
+	// --execute --delete-legacy-only`. The companion file
+	// `wrangler.production.jsonc` mirrors this array and carries the same
+	// comment.
+	"secrets": {
+		"required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
+	}
 	// Production-only configuration lives in the companion file
 	// `wrangler.production.jsonc` (a separately maintained companion file).
 	// Cloudflare Workers Builds and the local fallback both pass it explicitly with `-c`,

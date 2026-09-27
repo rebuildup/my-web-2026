@@ -40,9 +40,7 @@ function loadBuildWranglerDiagnosticEnv() {
 	if (!match) {
 		throw new Error('Could not extract buildWranglerDiagnosticEnv');
 	}
-	const factory = new Function(
-		`${match[0]}\nreturn buildWranglerDiagnosticEnv;`,
-	);
+	const factory = new Function(`${match[0]}\nreturn buildWranglerDiagnosticEnv;`);
 	return factory();
 }
 

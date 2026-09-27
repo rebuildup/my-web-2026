@@ -142,7 +142,7 @@ binding, deploy, or otherwise advance Phase B.
 | 4 | Smoke #2 | Anonymous `/admin/login` returns 200; operator manual sign-in succeeds; reload preserves session; `/api/v1/auth/*` works | Login + reload persistence + admin routes OK | sign-in/session/admin failure | `rollback-versioned-only` (legacy binding is still present) | legacy-only Worker auth contract |
 | 5 | Smoke #3 | `/portfolio` + `/about` + `/contact` load 200; no runtime errors | All public surfaces 200 | Any 5xx/runtime regression | `rollback-versioned-only` (legacy binding is still present) | legacy-only Worker auth contract |
 | 6 | `delete-legacy-only` | `node scripts/phase-3-plus-prod-flip.mjs --execute --delete-legacy-only --environment=prod` | Wrangler exit 0; `wrangler secret list` shows only `BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY` | Wrangler exit ≠0 | `restore-legacy-only` | legacy + versioned (revert delete) |
-| 7 | Final drift check | `node scripts/check-cf-secrets.mjs` + `node scripts/infisical:verify` | Both pass; aligned with `wrangler.production.jsonc#secrets.required` | Drift detected | `restore-legacy-only` (then investigate) | legacy + versioned |
+| 7 | Final drift check | `pnpm run infisical:check:cf -- --execute --environment=prod --worker-contract=final --require-live-worker` | Tier 1 Infisical = versioned + audit legacy + consumer; Tier 2 Wrangler = versioned 2-name; Tier 3 live Worker = exact versioned 2-name | Any Tier 1/2/3 drift or live-list failure | `restore-legacy-only` (then investigate) | legacy + versioned |
 
 ### Smoke #1 limitation
 

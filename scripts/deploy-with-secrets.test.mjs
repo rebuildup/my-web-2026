@@ -390,6 +390,7 @@ describe('deploy-with-secrets.mjs', () => {
 				'--environment=prod',
 				'--config=wrangler.production.jsonc',
 				'--worker-contract=transition',
+				'--require-live-worker',
 			]);
 		});
 

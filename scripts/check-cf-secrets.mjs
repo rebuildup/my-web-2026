@@ -439,7 +439,9 @@ async function main() {
 			throw new Error('INFISICAL_TOKEN or INFISICAL_CLIENT_ID env var is required for --execute');
 		}
 		if (typeof clientSecret !== 'string' || clientSecret.length === 0) {
-			throw new Error('INFISICAL_CLIENT_SECRET env var is required when INFISICAL_TOKEN is not supplied');
+			throw new Error(
+				'INFISICAL_CLIENT_SECRET env var is required when INFISICAL_TOKEN is not supplied',
+			);
 		}
 		console.log('[execute] Universal Auth login...');
 		accessToken = await loginUniversalAuth(apiUrl, clientId, clientSecret);

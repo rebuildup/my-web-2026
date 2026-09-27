@@ -84,12 +84,17 @@ declares no license), default branch `main` (except `tool-pi-game` =
    decide to float pins; we currently pin SHAs so the branch name
    only matters for `git submodule update`.
 
-5. **`ProtoType` declares no license** — embedding continues despite
-   this. The brief explicitly accepts embed-only without redistribution:
-   my-web-2026 hosts the artifact at `/tools/prototype/` for its own
-   users without redistributing the source. A `LICENSE` field in the
-   Tool repo is still preferred for clarity and is tracked as a
-   follow-up at the Tool repo's discretion (not blocking #81).
+5. **`ProtoType` declares no license** — same-origin hosting of an
+   artifact at `/tools/<slug>/app/` IS distribution (the host serves
+   the bundle to any visitor of the route), so embed-only-without-
+   redistribution is not a sustainable interpretation. The operator-
+   ownership question (who is allowed to ship / re-host the source
+   under their own brand) is between the two repos and is a Tool-
+   repo `LICENSE` concern, NOT a third-party reuse license. The
+   Tool-side `LICENSE` file is the canonical fix and is tracked as a
+   ProtoType follow-up (see #81 follow-up at the ProtoType repo).
+   Do **not** auto-apply any licence interpretation to third-party
+   Tools: each Tool's own repo + licence governs.
 
 6. **`ProtoType`'s `package.json` declares a `preinstall` script that
    executes obfuscated `eval()`** at install time. my-web-2026's

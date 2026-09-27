@@ -21,10 +21,15 @@
 				}
 			},
 			"delivery": {
-				"kind": "host_disabled",
-				"disabled_reason": "Pilot Tool reserved for Issue #81. The submodule is added and pinned in #81's commit; #80 only ships the registry contract (this entry stays host_disabled until #81 flips it)."
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/prototype/app",
+				"entry_html": "/tools/prototype/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				}
 			},
-			"classification": "needs_tool_side_fix",
+			"classification": "same_origin_static",
 			"license": null,
 			"notes": "Pilot for Issue #81. Heavy Vite SPA — ~1.5MB JS bundle (gsap + three.js + pixi.js). License absent in the upstream repo (no LICENSE file, no package.json `license` field); my-web-2026 records this as a separate Tool-repo concern and tracks a dedicated follow-up. Same-origin hosting under rebuildup.dev is redistribution within the meaning of the Berne Convention / most OSS licenses — the upstream license posture is unresolved, so embedding here relies on the fact that ProtoType and my-web-2026 are owned by the same operator. The Tool-side license clarification is the canonical fix; until it lands, do NOT clone this integration pattern to third-party Tools without explicit license review."
 		},

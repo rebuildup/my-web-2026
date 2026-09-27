@@ -16,6 +16,7 @@ import { Route as AdminImagesRouteImport } from './routes/admin.images'
 import { Route as AdminInvitationsRouteImport } from './routes/admin.invitations'
 import { Route as AdminKeysRouteImport } from './routes/admin.keys'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as ToolsPrototypeRouteImport } from './routes/tools.prototype'
 import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invitations.accept'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +54,11 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AdminRoute,
 } as any)
+const ToolsPrototypeRoute = ToolsPrototypeRouteImport.update({
+  id: '/tools/prototype',
+  path: '/tools/prototype',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminInvitationsAcceptRoute = AdminInvitationsAcceptRouteImport.update({
   id: '/accept',
   path: '/accept',
@@ -67,6 +73,7 @@ export interface FileRoutesByFullPath {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/tools/prototype': typeof ToolsPrototypeRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +84,7 @@ export interface FileRoutesByTo {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/tools/prototype': typeof ToolsPrototypeRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRoutesById {
@@ -88,6 +96,7 @@ export interface FileRoutesById {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/tools/prototype': typeof ToolsPrototypeRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +109,7 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/tools/prototype'
     | '/admin/invitations/accept'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +120,7 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/tools/prototype'
     | '/admin/invitations/accept'
   id:
     | '__root__'
@@ -120,12 +131,14 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/tools/prototype'
     | '/admin/invitations/accept'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ToolsPrototypeRoute: typeof ToolsPrototypeRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -179,6 +192,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/tools/prototype': {
+      id: '/tools/prototype'
+      path: '/tools/prototype'
+      fullPath: '/tools/prototype'
+      preLoaderRoute: typeof ToolsPrototypeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/invitations/accept': {
       id: '/admin/invitations/accept'
       path: '/accept'
@@ -221,6 +241,7 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  ToolsPrototypeRoute: ToolsPrototypeRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

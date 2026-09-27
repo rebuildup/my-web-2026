@@ -4,7 +4,7 @@ import { expect, test } from '@playwright/test';
  * Tool Registry pilot — ProtoType end-to-end contract (Issue #81).
  *
  * Asserts the contract between the host's `/tools/prototype` route
- * and the collected ProtoType artifact at `/tools/prototype/index.html`.
+ * and the collected ProtoType artifact at `/tools/prototype/app/index.html`.
  *
  * The contract is the same whether the route is exercised against:
  *
@@ -24,23 +24,28 @@ import { expect, test } from '@playwright/test';
  * The spec verifies:
  *
  *   1. `/tools/prototype` returns 200 HTML and contains an iframe.
- *   2. The iframe's `src` is the same-origin Tool artifact.
+ *   2. The iframe's `src` is the same-origin Tool artifact
+ *      (`/tools/prototype/app/index.html` — see ADR-0006 §1 for the
+ *      `/tools/<slug>/app/` namespace rationale).
  *   3. The iframe loads (no 4xx/5xx, content length > 0).
  *   4. The Tool's bundled JS, CSS, and assets all return 200 from
  *      same-origin URLs (no 404 for referenced assets).
  *   5. The Tool's React tree mounts inside the iframe (a known
  *      selector from the ProtoType SPA renders).
- *   6. Keyboard reachability: Tab from the host route reaches the
+ *   6. **Representative interaction**: a real user gesture inside
+ *      the iframe changes the SPA state (not just a render check —
+ *      we assert that a Tab click swaps the rendered view).
+ *   7. Keyboard reachability: Tab from the host route reaches the
  *      iframe (the iframe has `tabindex=0` semantics via being
  *      focusable).
- *   7. Responsive: the iframe fills its container at a typical
+ *   8. Responsive: the iframe fills its container at a typical
  *      desktop viewport.
- *   8. Refresh: reloading the host route still loads the iframe.
- *   9. CSP console: no CSP violations logged by the host page
+ *   9. Refresh: reloading the host route still loads the iframe.
+ *  10. CSP console: no CSP violations logged by the host page
  *      during the iframe load.
  */
 
-const PROTOTYPE_ENTRY = '/tools/prototype/index.html';
+const PROTOTYPE_ENTRY = '/tools/prototype/app/index.html';
 const ROUTE = '/tools/prototype';
 
 test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
@@ -116,6 +121,39 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		// we use frameLocator to reach into it.
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
 		await expect(frame.locator('#root')).toBeVisible({ timeout: 15_000 });
+	});
+
+	test('representative interaction: clicking a Tab button swaps the rendered view (round-trip Game → Setting → Game)', async ({
+		page,
+	}) => {
+		// This is the "representative interaction" assertion called out in
+		// the brief: a real user gesture inside the sandboxed iframe
+		// (without `allow-same-origin`) must still change the SPA state
+		// and the change must be observable from the host. We use the
+		// `.tab-Btn` selector inside the iframe's React tree to drive the
+		// `currentTab` state in `App.tsx`, and assert that the rendered
+		// component changes.
+		await page.goto(ROUTE);
+		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
+		await expect(frame.locator('#root')).toBeVisible({ timeout: 15_000 });
+
+		// Initial state: the Game view is rendered (it is the default tab
+		// in App.tsx's `useState<string>("Game")`).
+		await expect(frame.locator('.tab-Btn').first()).toBeVisible();
+
+		// Click the third Tab button (Setting). The iframe sandbox
+		// allows scripts, so React event handlers fire normally.
+		await frame.locator('.tab-Btn').nth(2).click();
+
+		// Setting renders a `setting-container` element (Setting.tsx).
+		// Its presence proves that `currentTab` state changed and React
+		// re-rendered with the new component.
+		await expect(frame.locator('.setting-container')).toBeVisible({ timeout: 5_000 });
+
+		// Round-trip: click the first Tab button (Game) and confirm
+		// the Setting view is no longer rendered.
+		await frame.locator('.tab-Btn').first().click();
+		await expect(frame.locator('.setting-container')).toHaveCount(0, { timeout: 5_000 });
 	});
 
 	test('responsive: iframe fills container at desktop viewport', async ({ page }) => {

@@ -10,12 +10,14 @@
  *
  * Tier 2 (deploy-time contract) check (static, no Cloudflare API):
  *   - `wrangler.production.jsonc#secrets.required` matches the
- *     phase-specific 2-name contract. Drift is reported but
- *     treated as advisory (operator decision).
+ *     phase-specific 2-name contract exactly.
  *
- * Values are NEVER read — Cloudflare Wrangler / Dashboard cannot
- * read them back anyway, and Infisical values would be exposed to
- * `ps` / logs if accidentally surfaced.
+ * Tier 3 (live Worker contract):
+ *   - `wrangler secret list` reads names only from the actual Worker.
+ *   - optional by default for diagnostics; `--require-live-worker`
+ *     makes inability to list a hard failure for production preflight.
+ *
+ * Secret VALUES are NEVER read from Cloudflare and are never logged.
  *
  * Usage:
  *   pnpm run infisical:check:cf                              # dry-run
@@ -25,7 +27,7 @@
  * Invariants:
  *   - argv / log / error message NEVER carries a secret value
  *   - default mode is dry-run (no Infisical API call)
- *   - Cloudflare drift check is STATIC against wrangler config (no API call)
+ *   - Tier 2 is static; Tier 3 is read-only against the live Worker
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
@@ -70,8 +72,8 @@ Default mode is --dry-run (no Infisical API call, no Cloudflare API call).
 
 Options:
   --execute                 actually call the Infisical API
-                            (operator gate required; Tier 3 also runs when
-                            CLOUDFLARE_API_TOKEN is set)
+                            (operator gate required; Tier 3 is optional unless
+                            --require-live-worker is set)
   --dry-run                 parse args + show expected check only (default)
   --environment=<name>      Infisical environment (default: 'prod')
   --config=<path>           wrangler config path (default: wrangler.production.jsonc)

@@ -2,7 +2,7 @@
 
 > Status: **Observed inventory**
 > Visibility: public (MIT)
-> Grounded: 2026-09-18
+> Grounded: 2026-09-27
 
 この文書は「将来ありそうな page 一覧」ではなく、my-web-2026 で観測できる capability と、my-web-2025 から得られる migration evidence を区別して記録する。
 
@@ -20,14 +20,14 @@
 | --- | --- | --- | --- | --- | --- | --- |
 | home | Canonical top page | **live (0.2.0)** | site の現在地・live/planned state・次の導線を誤認させない | home-surface authority | per release + continuous | `src/modules/home/**` が vertical slice として存在 |
 | platform-status | D1 / R2 / external boundary health | **live inside home (0.2.0)** | 到達性を現在の観測として表示し、raw error / binding internals を漏らさない | platform-health authority | continuous | current consumer は home のみ。top-level promotion は未観測 |
-| portfolio | Selected work / project portfolio | **live (0.5.0 foundation, Issue #76)** | 掲載作品の provenance と owner による selection を保つ | portfolio-curation authority | per project | `migrations/0007_portfolio.sql` + `src/portfolio/` obligation (Issue #76)。UI は #77、my-web-2025 移行は #78 |
+| portfolio | Selected work / project portfolio | **live (0.5.0 surface; publication curation pending)** | 掲載作品の provenance と owner による selection を保つ。runtime surface と content publication curation を分離する | portfolio-curation authority | per project | `migrations/0007_portfolio.sql` + `src/portfolio/` obligation。Issue #76 D1 schema + loader、Issue #77 UI、Issue #78 migration infrastructure (UPSERT / role grounding) landed。owner publication approval は未着手、publication count = 0 |
 | content | Long-form content / posts | **planned** | authored content の本文・公開状態・chronology を正しく保つ | editorial authority | per content item | `CAPABILITIES` で planned。current module なし |
 | activity | Commits / releases / shipped work timeline | **planned** | event の source と時系列を捏造せず、derived activity として再構成する | activity-observation authority | continuous / per event | `CAPABILITIES` で planned。GitHub 等は integration 候補に留まる |
-| identity | Public professional identity | **grounded knowledge / runtime not implemented** | real name・handle・role・self narrative を同一人物として一貫させる | self-narrative / identity-data authority | continuous | `docs/personal/domain.md` が canonical grounding。runtime shared entity 化は未観測 |
-| about | Narrative profile surface | **planned (0.5.0)** | owner が意図した自己紹介を現在の事実として表現する | self-narrative authority | per publication revision | `docs/decisions/0.5.0-about-cv-contact.md` 採用決定。Issue #79 子 ticket として 0.5.0 着手 |
+| identity | Public professional identity | **grounded knowledge / runtime not implemented** | real name・handle・role・self narrative を同一人物として一貫させる | self-narrative / identity-data authority | continuous | `docs/personal/domain.md` が canonical grounding。`/about` (Issue #102) / `/contact` (Issue #103) が runtime surface として grounded identity を投影するが、shared `identity` runtime module は作らない |
+| about | Narrative profile surface | **live (0.5.0)** | owner が意図した自己紹介を現在の事実として表現する | self-narrative authority | per publication revision | Issue #102 + PR #111 + follow-up PR #112。`src/about/**` obligation + `/about` route、repo-controlled `ABOUT_DATA`、5-section narrative (identity / interests / experience / current / future) + finds-me-elsewhere footer |
 | cv | Education / achievements / career chronology | **deferred (0.6.0+)** | factual timeline と provenance を保つ | career-fact authority | per fact | canonical CV dataset が未作成。decision doc §"What we defer" 参照 |
-| contact | Contact channels | **planned (0.5.0)** | 現在利用可能な channel だけを公開し、用途を誤らせない | contact-policy authority | per channel | `docs/decisions/0.5.0-about-cv-contact.md` 採用決定。`/about` から独立した surface として 0.5.0 着手 |
-| tools | Owner-made tools directory | **observed legacy / policy exists** | tool の ownership / version / distribution boundary を誤らせない | tools-publication authority | per tool | old site に Tools surface。ADR-0006 に policy。current route は 0.5.0 で `live` 化予定 (`/tools` index + Tool Registry)。本 row は Issue #79 範囲外、別 ticket で status を更新 |
+| contact | Contact channels | **live (0.5.0)** | 現在利用可能な channel だけを公開し、用途を誤らせない | contact-policy authority | per channel | Issue #103 + PR #110。`/contact` route、repo-controlled channels.json、30-day `verified_at` freshness gate (fail-closed) |
+| tools | Owner-made tools directory | **live (0.5.0)** | tool の ownership / version / distribution boundary を誤らせない | tools-publication authority | per tool | Tool Registry (Issue #80, ADR-0006) + `/tools` index + `/tools/<slug>` route + ProtoType same-origin artifact pilot (Issue #81)。`scripts/check-architecture.mjs` で tool boundary を強制 |
 | work-dev | Development works grouping | **facet candidate** | portfolio 内で development work を正しく分類する | portfolio-curation authority | per project | 独立 lifecycle / authority は未観測 |
 | work-video | Video works grouping | **facet candidate** | portfolio 内で video work を正しく分類する | portfolio-curation authority | per project | 活動カテゴリ evidence はあるが独立 capability 未確定 |
 | work-design | Design works grouping | **facet candidate** | portfolio 内で design work を正しく分類する | portfolio-curation authority | per project | 同上 |

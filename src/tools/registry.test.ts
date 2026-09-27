@@ -1,0 +1,90 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import { getPublicTool, getTool, listPublicTools, listTools } from './registry';
+
+/**
+ * Tool Registry — contract tests (Issue #80).
+ *
+ * The registry is the canonical host-side data source for the
+ * `/tools` index page and the `/tools/<slug>` iframe route. The
+ * contract is:
+ *
+ *   1. `listTools()` returns every entry in the manifest.
+ *   2. `getTool(slug)` returns the matching entry, or undefined.
+ *   3. `listPublicTools()` returns ONLY entries whose
+ *      `delivery.kind` is `same_origin_static` or `external_exception`.
+ *   4. `host_disabled` and `not_integrable_yet` Tools are NEVER
+ *      in the public list — the brief forbids showing Tools that
+ *      are not actually integrated.
+ *   5. `getPublicTool(slug)` matches `getTool(slug)` for any public
+ *      Tool, and returns undefined for a non-public Tool.
+ *
+ * The tests run against the live manifest (`src/tools/manifest.json`).
+ * They are the contract — if any of them fails, the registry is wrong.
+ */
+
+describe('Tool Registry — listTools / getTool', () => {
+	it('returns all 14 Tools known to the manifest', () => {
+		assert.equal(listTools().length, 14);
+	});
+
+	it('returns the same Tool instance for a known slug', () => {
+		const tool = getTool('prototype');
+		assert.ok(tool);
+		assert.equal(tool?.slug, 'prototype');
+		assert.equal(tool?.display_name, 'ProtoType');
+		assert.equal(tool?.source.pinned_sha, '18e925272ca274e428e143c45194950d562bc096');
+	});
+
+	it('returns undefined for an unknown slug', () => {
+		assert.equal(getTool('does-not-exist'), undefined);
+	});
+});
+
+describe('Tool Registry — public surface', () => {
+	it('every entry in listPublicTools has a same_origin_static / external_exception delivery.kind', () => {
+		const allowedKinds = new Set(['same_origin_static', 'external_exception']);
+		for (const tool of listPublicTools()) {
+			assert.ok(
+				allowedKinds.has(getTool(tool.slug)?.delivery.kind ?? ''),
+				`public Tool ${tool.slug} has a delivery.kind that must NOT be in listPublicTools`,
+			);
+		}
+	});
+
+	it('host_disabled Tools never appear in listPublicTools', () => {
+		// text-counter is currently host_disabled. If this fails, either
+		// text-counter flipped to same_origin_static / external_exception
+		// (and the test should be updated) or listPublicTools regressed.
+		const publicSlugs = new Set(listPublicTools().map((t) => t.slug));
+		assert.ok(!publicSlugs.has('text-counter'), 'text-counter is host_disabled');
+	});
+
+	it('returns undefined for a host_disabled slug', () => {
+		assert.equal(getPublicTool('text-counter'), undefined);
+	});
+
+	it('returns undefined for an unknown slug', () => {
+		assert.equal(getPublicTool('does-not-exist'), undefined);
+	});
+});
+
+describe('Tool Registry — public surface invariants', () => {
+	it('every public Tool has a non-empty absolute entry_html', () => {
+		const publicTools = listPublicTools();
+		// The registry contract holds whether the manifest currently
+		// exposes any Tools or not (the #80 baseline exposes zero).
+		// The invariant is what the contract guarantees, not the
+		// current count.
+		for (const tool of publicTools) {
+			assert.ok(
+				tool.entry_html.length > 0,
+				`public Tool ${tool.slug} has empty entry_html — would 404 the iframe`,
+			);
+			assert.ok(
+				tool.entry_html.startsWith('/'),
+				`public Tool ${tool.slug} entry_html must be absolute (same-origin)`,
+			);
+		}
+	});
+});

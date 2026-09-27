@@ -1,78 +1,36 @@
-import { createFileRoute, redirect } from '@tanstack/react-router';
-import { type AdminCapability, AdminDashboard, getCurrentSession } from '../admin/public';
+import { Outlet, createFileRoute } from '@tanstack/react-router';
 
 /**
- * `/admin` — the admin dashboard.
+ * `/admin` — admin area path-bearing layout.
  *
- * Loader: redirects unauthenticated users to `/admin/login`; renders
- * the dashboard for any signed-in user. Role display is read-only
- * — non-admin users see the dashboard with the
- * role badge but cannot reach invitation / key / image surfaces
- * (the server functions reject them).
+ * Pure layout: no auth loader here (Issue #106 self-redirect fix).
+ *
+ * Auth gating lives in each child route's loader instead:
+ *   /admin/login          → public; loader redirects signed-in users
+ *   /admin                → admin.index.tsx loader (signed-in only)
+ *   /admin/invitations    → admin.invitations.tsx loader (admin role)
+ *   /admin/keys           → admin.keys.tsx loader (admin role)
+ *   /admin/emoji-catalog  → admin.emoji-catalog.tsx loader (admin role)
+ *   /admin/images         → admin.images.tsx loader (admin role)
+ *   /admin/invitations/accept → inherits admin.invitations auth
+ *
+ * Why no parent loader: TanStack Router runs the parent loader before
+ * the child loader, so a parent redirect would self-redirect the
+ * public `/admin/login` child back to itself (307, see Issue #106).
+ *
+ * The initial admin-surface commit `7801d0e` (2026-09-18) shipped
+ * this self-redirecting shape; it surfaced in production after the
+ * Issue #99 incident recovery smoke exposed the broken
+ * `/admin/login` 200 contract from `e2e/prod-smoke.spec.ts`.
+ *
+ * Server-fn authorization via `requireAdmin()` in the
+ * `src/admin/<obligation>/load.ts` obligations is independent of
+ * this route layout — that gate remains unchanged.
  */
 export const Route = createFileRoute('/admin')({
-	loader: async () => {
-		const session = await getCurrentSession();
-		if (!session) {
-			throw redirect({ to: '/admin/login' });
-		}
-		return { email: session.user.email, role: session.user.role ?? 'user' };
-	},
-	component: AdminRoute,
+	component: AdminLayout,
 });
 
-function AdminRoute() {
-	const { email, role } = Route.useLoaderData();
-	const capabilities: readonly AdminCapability[] = [
-		{
-			id: 'invitations',
-			label: 'Invitations',
-			labelJa: '招待',
-			status: 'live',
-			href: '/admin/invitations',
-		},
-		{
-			id: 'keys',
-			label: 'API keys',
-			labelJa: 'API キー',
-			status: 'live',
-			href: '/admin/keys',
-		},
-		{ id: 'images', label: 'Reaction images', labelJa: 'リアクション画像', status: 'planned' },
-		{
-			id: 'emoji-catalog',
-			label: 'Emoji catalog',
-			labelJa: '絵文字カタログ',
-			status: 'live',
-			href: '/admin/emoji-catalog',
-		},
-	];
-	return (
-		<AdminDashboard
-			email={email}
-			role={role}
-			signOutForm={
-				<form action="/api/v1/auth/sign-out" method="post" style={{ display: 'inline' }}>
-					<button
-						type="submit"
-						style={{
-							fontFamily: 'sans',
-							fontSize: 'xs',
-							fontWeight: 600,
-							color: 'var(--colors-text-muted)',
-							background: 'transparent',
-							border: '1px solid var(--colors-border-subtle)',
-							borderRadius: 9999,
-							paddingInline: 12,
-							paddingBlock: 4,
-							cursor: 'pointer',
-						}}
-					>
-						sign out
-					</button>
-				</form>
-			}
-			capabilities={capabilities}
-		/>
-	);
+function AdminLayout() {
+	return <Outlet />;
 }

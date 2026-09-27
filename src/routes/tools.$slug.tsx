@@ -78,7 +78,6 @@ function ToolRoute() {
 				src={tool.entry_html}
 				sandbox={tool.iframe.sandbox}
 				referrerPolicy={tool.iframe.referrer_policy as HTMLAttributeReferrerPolicy}
-				loading="lazy"
 				style={{
 					width: '100%',
 					height: '100%',

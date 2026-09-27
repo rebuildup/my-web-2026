@@ -295,6 +295,14 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stdout, /CLOUDFLARE_API_TOKEN is set/);
 		});
 
+		it('fails dry-run preflight when live Worker is required but Cloudflare token is absent', () => {
+			const result = runInIsolatedRepo(['--require-live-worker'], {
+				wranglerContent: PHASE_3_WRANGLER,
+			});
+			assert.equal(result.exitCode, 1);
+			assert.match(result.stdout, /Tier 3 live Worker is required/);
+		});
+
 		it('notes Tier 3 skip when CLOUDFLARE_API_TOKEN is unset', () => {
 			const result = runInIsolatedRepo([], {
 				wranglerContent: PHASE_1_2_WRANGLER,
@@ -465,6 +473,7 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stdout, /Usage: check-cf-secrets/);
 			assert.match(result.stdout, /--execute/);
 			assert.match(result.stdout, /--dry-run/);
+			assert.match(result.stdout, /--require-live-worker/);
 		});
 	});
 });

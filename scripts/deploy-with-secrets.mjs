@@ -299,6 +299,7 @@ function buildPreflightArgs({ environment, configPath, workerContract = 'transit
 		`--environment=${environment}`,
 		`--config=${configPath}`,
 		`--worker-contract=${workerContract}`,
+		'--require-live-worker',
 	];
 }
 

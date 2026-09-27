@@ -33,15 +33,20 @@ the versioned binding as part of deployment. Either outcome contradicts
 
 Exactly one of these must be true before Release PR #91 merge:
 
-- **Phase-B-first:** execute and verify Issue #89 through the versioned binding
-  transition, then merge #91 and let Cloudflare Builds deploy the already-aligned
-  contract; or
+- **Phase-B-first handshake:** complete #122 reconciliation, then execute
+  Issue #89 `flip` + Smoke #1 while the legacy binding remains present. Only
+  after that pre-release checkpoint may the operator explicitly merge #91;
+  Cloudflare Workers Builds then performs the canonical production delivery.
+  Post-deploy Smoke #2/#3, `delete-legacy-only`, and final drift complete #89; or
 - **Legacy-release-first:** land a deliberate ticket reverting the production
   deploy contract on `release-0-5-0` back to the legacy 2-name form, release
   0.5.0 safely, and perform Phase B in a later separately gated change.
 
 The current repository state satisfies neither choice. Release PR #91 must
-remain Draft until the operator selects and completes one path.
+remain Draft until either (a) #122 + Phase B `flip` + Smoke #1 complete, or
+(b) the legacy-release-first contract revert lands. Under path (a), merging #91
+is itself the next gated Phase B step; #89 completes only after the resulting
+Cloudflare deployment, post-deploy smoke, legacy deletion, and final drift.
 
 ## Non-effects
 

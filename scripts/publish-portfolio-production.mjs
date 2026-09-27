@@ -27,11 +27,16 @@
  *
  *   prepare   — UPSERT project / link / media for the 3 candidates;
  *               R2 PUT the 3 manifest assets; visibility stays 'draft'.
- *   verify    — read-only check: 3 rows exist, content matches,
- *               R2 objects exist with correct SHA-256 + content type.
- *   publish   — exact 3 IDs: visibility='public' + status='published'.
- *               Requires a recent successful verify (state file).
- *   unpublish — rollback: exact 3 IDs: visibility='draft'.
+ *   verify    — read-only check: D1 rows + content contract match ENTRIES
+ *               AND R2 objects exist with the manifest-declared byte size
+ *               + content type. State file is bound to manifest sha256.
+ *   publish   — exact 3 IDs: visibility='public'. Requires a recent
+ *               successful verify (state file + manifest-digest match).
+ *   unpublish — rollback: exact 3 IDs: visibility='draft' ONLY
+ *               (status left at its current value; the D1 schema
+ *               constrains status to 'published' | 'archived', so the
+ *               rollback cannot set status='draft' without violating
+ *               the CHECK constraint).
  *
  * Invariants (same as #121):
  *
@@ -66,7 +71,7 @@
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { createReadStream, existsSync, readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -461,6 +466,164 @@ export function buildMediaInsert(entry, manifestAsset) {
 	return `INSERT OR IGNORE INTO portfolio_media (id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order, created_at) VALUES (${sqlEscape(mediaId)}, ${sqlEscape(projectId)}, ${sqlEscape(manifestAsset.r2_key)}, ${sqlEscape(manifestAsset.content_type)}, ${manifestAsset.width}, ${manifestAsset.height}, ${sqlEscape(entry.mediaAlt)}, ${sqlEscape(entry.mediaCaption)}, 1, 1, ${nowMs()});`;
 }
 
+/** Schema-valid rollback SQL: flips visibility to 'draft' ONLY.
+ *
+ * Why NOT touch status: portfolio_project.status is constrained to
+ * ('published' | 'archived') by migrations/0007_portfolio.sql. Writing
+ * `status='draft'` would violate the CHECK constraint and the rollback
+ * would silently fail at the D1 layer. Visibility is the column the
+ * portfolio loader filters on, so flipping it alone is sufficient for
+ * "remove from public surface".
+ *
+ * Pure function — exported for testing. */
+export function buildUnpublishUpdateSQL(candidateIds, updatedAtMs) {
+	const ids = candidateIds ?? [...ALLOWED_CANDIDATE_IDS];
+	const idsList = ids.map((i) => `'${i}'`).join(',');
+	const ts = updatedAtMs ?? nowMs();
+	return `UPDATE portfolio_project SET visibility='draft', updated_at=${ts} WHERE id IN (${idsList});`;
+}
+
+/** Publish SQL: flips visibility to 'public'. status is left at its
+ * current value (typically 'published'); the publish step is not
+ * responsible for setting it. Pure function — exported for testing. */
+export function buildPublishUpdateSQL(candidateIds, updatedAtMs) {
+	const ids = candidateIds ?? [...ALLOWED_CANDIDATE_IDS];
+	const idsList = ids.map((i) => `'${i}'`).join(',');
+	const ts = updatedAtMs ?? nowMs();
+	return `UPDATE portfolio_project SET visibility='public', updated_at=${ts} WHERE id IN (${idsList});`;
+}
+
+/** Pure: compare ENTRIES + manifest against the D1 rows the verify step
+ * SELECT-ed, returning human-readable findings. Empty array = OK.
+ *
+ * Required because review `5330908176` flagged that the previous
+ * verify only checked row count, not content contract. */
+export function diffD1Content(entries, manifest, projectRows, linkRows, mediaRows) {
+	const findings = [];
+	for (const entry of entries) {
+		const projectId = projectIdFor(entry);
+		const manifestAsset = manifestAssetFor(manifest, entry.manifestSlug);
+		const row = projectRows.find((r) => r.id === projectId);
+		if (!row) {
+			findings.push(`project ${projectId}: missing in D1`);
+			continue;
+		}
+		if (row.slug !== entry.slug) {
+			findings.push(`project ${projectId}.slug: expected ${entry.slug}, got ${row.slug}`);
+		}
+		if (row.title !== entry.title) {
+			findings.push(
+				`project ${projectId}.title: expected ${JSON.stringify(entry.title)}, got ${JSON.stringify(row.title)}`,
+			);
+		}
+		if (row.role !== entry.role) {
+			findings.push(
+				`project ${projectId}.role: expected ${JSON.stringify(entry.role)}, got ${JSON.stringify(row.role)}`,
+			);
+		}
+		if (row.period_start !== Date.parse(entry.periodStart)) {
+			findings.push(
+				`project ${projectId}.period_start: expected ${Date.parse(entry.periodStart)}, got ${row.period_start}`,
+			);
+		}
+		if (row.period_label !== entry.periodLabel) {
+			findings.push(
+				`project ${projectId}.period_label: expected ${JSON.stringify(entry.periodLabel)}, got ${JSON.stringify(row.period_label)}`,
+			);
+		}
+		if (row.facets !== JSON.stringify(entry.facets)) {
+			findings.push(
+				`project ${projectId}.facets: expected ${JSON.stringify(entry.facets)}, got ${row.facets}`,
+			);
+		}
+		if (row.technologies !== JSON.stringify(entry.technologies)) {
+			findings.push(
+				`project ${projectId}.technologies: expected ${JSON.stringify(entry.technologies)}, got ${row.technologies}`,
+			);
+		}
+		for (const section of REQUIRED_MD_SECTIONS) {
+			if (!row[section] || String(row[section]).trim() === '') {
+				findings.push(`project ${projectId}.${section}: empty in D1`);
+			}
+		}
+		for (const link of entry.links) {
+			const linkId = linkIdFor(projectId, link);
+			const lrow = linkRows.find((r) => r.id === linkId);
+			if (!lrow) {
+				findings.push(`link ${linkId}: missing in D1`);
+				continue;
+			}
+			const expectedKind = linkKindFromUrl(link.href);
+			if (lrow.kind !== expectedKind) {
+				findings.push(`link ${linkId}.kind: expected ${expectedKind}, got ${lrow.kind}`);
+			}
+			if (lrow.url !== link.href) {
+				findings.push(`link ${linkId}.url: expected ${link.href}, got ${lrow.url}`);
+			}
+			if ((lrow.display_order ?? 0) !== (link.order ?? 0)) {
+				findings.push(
+					`link ${linkId}.display_order: expected ${link.order ?? 0}, got ${lrow.display_order}`,
+				);
+			}
+		}
+		const mediaId = mediaIdFor(projectId, entry.manifestSlug, entry.mediaFilename);
+		const mrow = mediaRows.find((r) => r.id === mediaId);
+		if (!mrow) {
+			findings.push(`media ${mediaId}: missing in D1`);
+			continue;
+		}
+		if (mrow.r2_key !== manifestAsset.r2_key) {
+			findings.push(
+				`media ${mediaId}.r2_key: expected ${manifestAsset.r2_key}, got ${mrow.r2_key}`,
+			);
+		}
+		if (mrow.content_type !== manifestAsset.content_type) {
+			findings.push(
+				`media ${mediaId}.content_type: expected ${manifestAsset.content_type}, got ${mrow.content_type}`,
+			);
+		}
+		if (mrow.alt !== entry.mediaAlt) {
+			findings.push(
+				`media ${mediaId}.alt: expected ${JSON.stringify(entry.mediaAlt)}, got ${JSON.stringify(mrow.alt)}`,
+			);
+		}
+		if ((mrow.is_cover ?? 0) !== 1) {
+			findings.push(`media ${mediaId}.is_cover: expected 1, got ${mrow.is_cover}`);
+		}
+		if (mrow.width !== manifestAsset.width) {
+			findings.push(`media ${mediaId}.width: expected ${manifestAsset.width}, got ${mrow.width}`);
+		}
+		if (mrow.height !== manifestAsset.height) {
+			findings.push(
+				`media ${mediaId}.height: expected ${manifestAsset.height}, got ${mrow.height}`,
+			);
+		}
+	}
+	return findings;
+}
+
+/** Pure: compare a manifest asset's declared byte_size + content_type
+ * to the metadata observed from an R2 HEAD. Returns findings array.
+ *
+ * Required because review `5330908176` flagged that the previous verify
+ * only checked exit code, not the actual metadata. */
+export function diffR2Head(manifestAsset, observedMeta) {
+	const findings = [];
+	if (!observedMeta) {
+		findings.push('could not parse R2 head output (no byte_size / content_type observed)');
+		return findings;
+	}
+	if (observedMeta.byte_size !== manifestAsset.byte_size) {
+		findings.push(`byte_size: expected ${manifestAsset.byte_size}, got ${observedMeta.byte_size}`);
+	}
+	if (observedMeta.content_type !== manifestAsset.content_type) {
+		findings.push(
+			`content_type: expected ${manifestAsset.content_type}, got ${observedMeta.content_type}`,
+		);
+	}
+	return findings;
+}
+
 function linkKindFromUrl(href) {
 	const u = new URL(href);
 	const host = u.hostname.toLowerCase();
@@ -613,6 +776,21 @@ export async function verifyAssetHash(assetRelativePath, expectedSha256) {
 // Wrangler spawn wrappers (IO). Injected for tests.
 // ---------------------------------------------------------------------------
 
+/** Wrangler configuration file used when environment === 'prod'.
+ * Must be passed to every wrangler invocation targeting production
+ * so the spawn is bound to the canonical production config (not the
+ * default local config). Per review `5330908176` (Issue #123):
+ * inspection of wrangler.production.jsonc is necessary but NOT
+ * sufficient — the config must also be passed to the actual wrangler
+ * invocation. */
+const PRODUCTION_WRANGLER_CONFIG = 'wrangler.production.jsonc';
+
+/** Args that select the production config: `-c <config-name>`. Omitted
+ * when env === 'local'. Exported for testing. */
+export function productionConfigArgs(env) {
+	return env === 'prod' ? ['-c', PRODUCTION_WRANGLER_CONFIG] : [];
+}
+
 /** Default wrangler spawner. Uses `wrangler d1 execute` / `wrangler r2
  * object put` via spawnSync so the driver can be invoked from a one-shot
  * terminal command. Returns { stdout, stderr, status }. */
@@ -633,6 +811,17 @@ function defaultWranglerSpawn(args, opts) {
 		stderr: result.stderr ?? '',
 		status: result.status ?? -1,
 	};
+}
+
+/** Active wrangler spawner. Tests replace this via setWranglerSpawn /
+ * resetWranglerSpawn to assert the args the script would pass without
+ * requiring real wrangler installation. */
+let _wranglerSpawn = defaultWranglerSpawn;
+export function setWranglerSpawn(fn) {
+	_wranglerSpawn = fn;
+}
+export function resetWranglerSpawn() {
+	_wranglerSpawn = defaultWranglerSpawn;
 }
 
 /** Validate the wrangler config identity (account_id, db name, r2 bucket)
@@ -663,12 +852,24 @@ function assertProductionIdentity(wranglerConfigName) {
 /** Run a D1 SQL script via wrangler. Returns spawn result. */
 function runD1(env, sqlPathOrStdin, opts = {}) {
 	const targetFlag = env === 'prod' ? '--remote' : '--local';
-	const args = ['d1', 'execute', DB_NAME, targetFlag, '--file', sqlPathOrStdin];
-	return defaultWranglerSpawn(args, opts);
+	const args = [
+		'd1',
+		'execute',
+		DB_NAME,
+		targetFlag,
+		...productionConfigArgs(env),
+		'--file',
+		sqlPathOrStdin,
+	];
+	return _wranglerSpawn(args, opts);
 }
 
-/** Upload an R2 object via wrangler. Returns spawn result. */
-function runR2Put(env, key, filePath) {
+/** Upload an R2 object via wrangler. contentType MUST be the manifest's
+ * declared `content_type` (per review `5330908176` blocker #3) — passing
+ * `inherit` lets the server guess, which masks wrong-file bugs.
+ *
+ * Returns spawn result. */
+function runR2Put(env, key, filePath, contentType) {
 	const targetFlag = env === 'prod' ? '--remote' : '--local';
 	const bucketKey = `${R2_BUCKET}/${key}`;
 	const args = [
@@ -677,29 +878,100 @@ function runR2Put(env, key, filePath) {
 		'put',
 		bucketKey,
 		targetFlag,
+		...productionConfigArgs(env),
 		'--file',
 		filePath,
 		'--content-type',
-		'inherit',
+		contentType,
 	];
-	return defaultWranglerSpawn(args);
+	return _wranglerSpawn(args);
 }
 
-/** Read an R2 object's metadata via wrangler. Returns spawn result. */
+/** Read an R2 object's metadata via wrangler. Returns spawn result.
+ * stdout contains JSON-like header info on modern wrangler versions,
+ * but the only universally portable parse is to also do a
+ * `wrangler r2 object get` + size check. For verify we keep head-only
+ * and parse the size / content-type from the output text defensively. */
 function runR2Head(env, key) {
 	const targetFlag = env === 'prod' ? '--remote' : '--local';
 	const bucketKey = `${R2_BUCKET}/${key}`;
-	const args = ['r2', 'object', 'head', bucketKey, targetFlag];
-	return defaultWranglerSpawn(args);
+	const args = ['r2', 'object', 'head', bucketKey, targetFlag, ...productionConfigArgs(env)];
+	return _wranglerSpawn(args);
 }
 
-/** Read D1 row(s) by id via wrangler. Returns spawn result. */
+/** Read D1 row(s) via wrangler. Returns spawn result. */
 function runD1Select(env, sqlText) {
-	const args =
-		env === 'prod'
-			? ['d1', 'execute', DB_NAME, '--remote', '--command', sqlText, '--json']
-			: ['d1', 'execute', DB_NAME, '--local', '--command', sqlText, '--json'];
-	return defaultWranglerSpawn(args);
+	const args = [
+		'd1',
+		'execute',
+		DB_NAME,
+		env === 'prod' ? '--remote' : '--local',
+		...productionConfigArgs(env),
+		'--command',
+		sqlText,
+		'--json',
+	];
+	return _wranglerSpawn(args);
+}
+
+/** Parse a wrangler D1 --json envelope.
+ *
+ * Wrangler 4.x emits a JSON document of the shape
+ *   [ { "results": [ {row}, ... ], "success": true, "meta": {...} } ]
+ * Older versions emitted a bare array of rows. We accept both shapes
+ * (same approach as `scripts/migrate-portfolio-from-2025.mjs#d1Query`,
+ * which CodeRabbit cycle 4 hardened).
+ *
+ * Returns an array of row objects (possibly empty). */
+export function parseD1JsonEnvelope(stdout) {
+	const text = (stdout ?? '').trim();
+	if (text === '') return [];
+	let doc;
+	try {
+		doc = JSON.parse(text);
+	} catch (err) {
+		throw new Error(
+			`could not parse wrangler D1 output as JSON: ${err?.message || err}; head=${text.slice(0, 200)}`,
+		);
+	}
+	if (!Array.isArray(doc)) return [];
+	if (doc.length === 0) return [];
+	const first = doc[0];
+	if (first && typeof first === 'object' && Array.isArray(first.results)) {
+		return first.results;
+	}
+	// Older shape: array of rows directly.
+	if (doc.every((row) => row && typeof row === 'object' && !('results' in row))) {
+		return doc;
+	}
+	return [];
+}
+
+/** Parse an R2 object head output. Wrangler emits a small set of lines
+ * describing the object; we look for:
+ *   - Content-Length: <bytes>
+ *   - Content-Type: <mime>
+ * and return { byte_size, content_type } if both are present.
+ * Returns null when the shape is unrecognised (caller decides whether
+ * that's a hard fail). */
+export function parseR2HeadOutput(stdout) {
+	const out = stdout ?? '';
+	let byteSize = null;
+	let contentType = null;
+	for (const line of out.split(/\r?\n/)) {
+		const trimmed = line.trim();
+		if (trimmed === '') continue;
+		// "Key" / "Value" rows from `wrangler r2 object head` look like
+		//   Key       Value
+		//   ...       ...
+		// but newer wrangler emits header lines. We try both shapes.
+		const lenMatch = trimmed.match(/^(?:content-length|Content-Length|Size)\s*[:=]\s*(\d+)/i);
+		if (lenMatch && byteSize === null) byteSize = Number.parseInt(lenMatch[1], 10);
+		const ctMatch = trimmed.match(/^(?:content-type|Content-Type)\s*[:=]\s*(\S+)/i);
+		if (ctMatch && contentType === null) contentType = ctMatch[1].replace(/[;,].*$/, '').trim();
+	}
+	if (byteSize === null && contentType === null) return null;
+	return { byte_size: byteSize, content_type: contentType };
 }
 
 // ---------------------------------------------------------------------------
@@ -827,8 +1099,19 @@ async function operationPrepare(parsed, manifest) {
 	for (const [slug, verified] of verifiedAssets.entries()) {
 		const r2Result = dryRun
 			? { stdout: '[dry-run] no spawn', stderr: '', status: 0 }
-			: runR2Put(env, verified.manifestAsset.r2_key, verified.path);
-		r2Results.push({ slug, status: r2Result.status, stderr: r2Result.stderr });
+			: runR2Put(
+					env,
+					verified.manifestAsset.r2_key,
+					verified.path,
+					verified.manifestAsset.content_type,
+				);
+		r2Results.push({
+			slug,
+			r2_key: verified.manifestAsset.r2_key,
+			content_type: verified.manifestAsset.content_type,
+			status: r2Result.status,
+			stderr: r2Result.stderr,
+		});
 	}
 
 	// 7. Cleanup.
@@ -864,76 +1147,156 @@ function operationVerify(parsed, manifest) {
 		assertProductionIdentity('wrangler.production.jsonc');
 	}
 
+	// --------------------------------------------------------------
+	// 1. D1 content verification — actually compare each row's
+	// content to the ENTRIES + manifest, not just row existence.
+	// --------------------------------------------------------------
 	const ids = [...ALLOWED_CANDIDATE_IDS];
-	const sqlSelect = `SELECT id, slug, title, role, visibility, status, motivation_md IS NOT NULL AS has_motivation, architecture_md IS NOT NULL AS has_architecture, constraints_md IS NOT NULL AS has_constraints, implementation_md IS NOT NULL AS has_implementation, evidence_md IS NOT NULL AS has_evidence FROM portfolio_project WHERE id IN (${ids.map((i) => `'${i}'`).join(',')});`;
+	const idsList = ids.map((i) => `'${i}'`).join(',');
 
-	const d1Result = runD1Select(env, sqlSelect);
-	if (d1Result.status !== 0) {
-		console.error('[publish-portfolio] verify: D1 SELECT failed');
-		console.error(d1Result.stderr);
-		process.exit(d1Result.status);
+	const projectSql = `SELECT id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md, retrospective_md, facets, technologies, visibility, status, pinned, display_order FROM portfolio_project WHERE id IN (${idsList})`;
+	const linkSql = `SELECT id, project_id, kind, label, url, display_order FROM portfolio_link WHERE project_id IN (${idsList})`;
+	const mediaSql = `SELECT id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order FROM portfolio_media WHERE project_id IN (${idsList})`;
+
+	const d1Checks = [];
+	for (const [name, sql] of [
+		['project', projectSql],
+		['link', linkSql],
+		['media', mediaSql],
+	]) {
+		const result = runD1Select(env, sql);
+		if (result.status !== 0) {
+			console.error(`[publish-portfolio] verify: D1 SELECT (${name}) failed`);
+			console.error(result.stderr);
+			process.exit(result.status || 1);
+		}
+		let rows;
+		try {
+			rows = parseD1JsonEnvelope(result.stdout);
+		} catch (err) {
+			console.error(`[publish-portfolio] verify: cannot parse D1 SELECT (${name}) output`);
+			console.error(err.message);
+			console.error(result.stdout.slice(0, 500));
+			process.exit(1);
+		}
+		d1Checks.push({ name, sql, rows });
 	}
 
-	let parsedRows = [];
-	try {
-		const out = JSON.parse(d1Result.stdout || '[]');
-		parsedRows = Array.isArray(out) ? out : (out?.[0] ?? []);
-	} catch (err) {
-		console.error('[publish-portfolio] verify: cannot parse D1 SELECT output as JSON');
-		console.error(d1Result.stdout);
-		process.exit(1);
-	}
+	const projectRows = d1Checks[0].rows;
+	const linkRows = d1Checks[1].rows;
+	const mediaRows = d1Checks[2].rows;
 
-	const stateRows = [];
-	for (const row of parsedRows) {
-		stateRows.push(row);
-	}
+	const d1ContentFindings = diffD1Content(ENTRIES, manifest, projectRows, linkRows, mediaRows);
 
-	// R2 object head for each manifest asset.
-	const r2States = [];
+	// --------------------------------------------------------------
+	// 2. R2 metadata verification — actually parse byte_size +
+	// content_type from each object's head and compare to manifest.
+	// --------------------------------------------------------------
+	const r2Checks = [];
 	for (const asset of manifest.assets) {
 		const result = runR2Head(env, asset.r2_key);
-		r2States.push({
+		const headMeta = result.status === 0 ? parseR2HeadOutput(result.stdout) : null;
+		const findings = [];
+		if (result.status !== 0) {
+			findings.push(`wrangler exit ${result.status}`);
+		} else if (!headMeta) {
+			findings.push('could not parse head output (no byte_size / content_type)');
+		} else {
+			if (headMeta.byte_size !== asset.byte_size) {
+				findings.push(`byte_size: expected ${asset.byte_size}, got ${headMeta.byte_size}`);
+			}
+			if (headMeta.content_type !== asset.content_type) {
+				findings.push(`content_type: expected ${asset.content_type}, got ${headMeta.content_type}`);
+			}
+		}
+		r2Checks.push({
 			slug: asset.slug,
 			r2_key: asset.r2_key,
-			expected_sha256: asset.sha256,
 			expected_byte_size: asset.byte_size,
 			expected_content_type: asset.content_type,
-			status: result.status,
+			expected_sha256: asset.sha256,
+			observed_byte_size: headMeta?.byte_size ?? null,
+			observed_content_type: headMeta?.content_type ?? null,
+			findings,
+			ok: findings.length === 0,
 		});
 	}
 
-	const allRowsPresent = stateRows.length === ids.length;
-	const allR2Present = r2States.every((r) => r.status === 0);
+	// --------------------------------------------------------------
+	// 3. Manifest digest — bind verify state to the manifest's content,
+	// not just the wall-clock age, so a re-verify is forced when the
+	// operator changes the manifest between prepare and publish.
+	// --------------------------------------------------------------
+	const manifestPath = resolve(repoRoot, parsed.manifestPath ?? DEFAULT_MANIFEST_PATH);
+	const manifestSha = createHash('sha256').update(readFileSync(manifestPath)).digest('hex');
+
+	// --------------------------------------------------------------
+	// 4. Aggregate + report + (optional) write state.
+	// --------------------------------------------------------------
+	const allRowsPresent = projectRows.length === ids.length;
+	const allLinkMediaPresent =
+		linkRows.length >= ENTRIES.reduce((sum, e) => sum + e.links.length, 0) &&
+		mediaRows.length >= ENTRIES.length;
+	const allD1ContentOk = d1ContentFindings.length === 0;
+	const allR2Ok = r2Checks.every((c) => c.ok);
+
 	const state = {
 		environment: env,
 		verified_at: new Date().toISOString(),
-		d1_rows: stateRows,
-		r2_objects: r2States,
-		all_rows_present: allRowsPresent,
-		all_r2_present: allR2Present,
+		manifest_digest: manifestSha,
+		manifest_path: relative(repoRoot, manifestPath),
+		release_version: RELEASE_VERSION,
+		d1: {
+			projects: projectRows.length,
+			links: linkRows.length,
+			media: mediaRows.length,
+			content_findings: d1ContentFindings,
+			all_content_ok: allD1ContentOk,
+		},
+		r2: {
+			checks: r2Checks,
+			all_ok: allR2Ok,
+		},
+		all_ok: allRowsPresent && allLinkMediaPresent && allD1ContentOk && allR2Ok,
 	};
 
-	if (parsed.execute) {
+	if (parsed.execute && state.all_ok) {
 		writeVerifyState(env, state);
 	}
 
 	console.log(JSON.stringify(state, null, 2));
 
-	if (!allRowsPresent) {
-		console.error(
-			`[publish-portfolio] verify FAIL: expected ${ids.length} rows, got ${stateRows.length}`,
-		);
-		process.exit(2);
-	}
-	if (!allR2Present) {
-		console.error('[publish-portfolio] verify FAIL: not all R2 objects present');
+	if (!state.all_ok) {
+		if (!allRowsPresent) {
+			console.error(
+				`[publish-portfolio] verify FAIL: expected ${ids.length} project rows, got ${projectRows.length}`,
+			);
+		}
+		if (!allLinkMediaPresent) {
+			console.error(
+				`[publish-portfolio] verify FAIL: link/media count mismatch (links=${linkRows.length}, media=${mediaRows.length})`,
+			);
+		}
+		if (!allD1ContentOk) {
+			console.error(
+				`[publish-portfolio] verify FAIL: D1 content contract mismatches (${d1ContentFindings.length} findings)`,
+			);
+			for (const f of d1ContentFindings) console.error(`  - ${f}`);
+		}
+		if (!allR2Ok) {
+			console.error(
+				`[publish-portfolio] verify FAIL: R2 metadata mismatches (${r2Checks.filter((c) => !c.ok).length} assets)`,
+			);
+			for (const c of r2Checks.filter((c) => !c.ok)) {
+				console.error(`  - ${c.r2_key}: ${c.findings.join('; ')}`);
+			}
+		}
 		process.exit(2);
 	}
 	console.error('[publish-portfolio] verify PASS');
 }
 
-function operationPublish(parsed /* , manifest */) {
+function operationPublish(parsed, manifest) {
 	const env = parsed.environment;
 	if (!parsed.execute) {
 		console.error('[publish-portfolio] publish requires --execute');
@@ -956,13 +1319,32 @@ function operationPublish(parsed /* , manifest */) {
 		);
 		process.exit(2);
 	}
-	if (!state.all_rows_present || !state.all_r2_present) {
-		console.error('[publish-portfolio] verify state is incomplete; re-run verify');
+	if (!state.all_ok) {
+		console.error('[publish-portfolio] verify state is not all_ok; re-run verify');
+		process.exit(2);
+	}
+	// Manifest digest check: a 30-min wall-clock alone allows reusing a
+	// verify state produced against a different manifest. Bind the
+	// state to the current on-disk manifest's sha256 — if it changed,
+	// the operator must re-run verify.
+	const manifestPath = resolve(repoRoot, parsed.manifestPath ?? DEFAULT_MANIFEST_PATH);
+	const currentDigest = createHash('sha256').update(readFileSync(manifestPath)).digest('hex');
+	if (state.manifest_digest !== currentDigest) {
+		console.error(
+			`[publish-portfolio] verify-state manifest_digest mismatch: state=${state.manifest_digest}, current=${currentDigest}`,
+		);
+		console.error('Re-run verify --execute after the manifest change.');
+		process.exit(2);
+	}
+	if (state.release_version !== RELEASE_VERSION) {
+		console.error(
+			`[publish-portfolio] verify-state release_version mismatch: state=${state.release_version}, current=${RELEASE_VERSION}`,
+		);
 		process.exit(2);
 	}
 
 	const ids = [...ALLOWED_CANDIDATE_IDS];
-	const sql = `UPDATE portfolio_project SET visibility='public', status='published', updated_at=${nowMs()} WHERE id IN (${ids.map((i) => `'${i}'`).join(',')});`;
+	const sql = buildPublishUpdateSQL(ids, nowMs());
 	console.error(`[publish-portfolio] publish: ${ids.length} candidates → public`);
 
 	const tmpDir = process.env.TMPDIR || '/tmp';
@@ -998,8 +1380,36 @@ function operationUnpublish(parsed /* , manifest */) {
 	if (env === 'prod') {
 		assertProductionIdentity('wrangler.production.jsonc');
 	}
+	// Manifest digest check (same rationale as publish): rolling back
+	// against a different manifest than the one used at prepare time
+	// would be unsafe.
+	const manifestPath = resolve(repoRoot, parsed.manifestPath ?? DEFAULT_MANIFEST_PATH);
+	const currentDigest = createHash('sha256').update(readFileSync(manifestPath)).digest('hex');
+	const state = readVerifyState(env);
+	if (state) {
+		if (state.manifest_digest && state.manifest_digest !== currentDigest) {
+			console.error(
+				`[publish-portfolio] unpublish: verify-state manifest_digest mismatch (state=${state.manifest_digest}, current=${currentDigest})`,
+			);
+			console.error(
+				'Re-run verify --execute or clear .tmp state if the manifest changed intentionally.',
+			);
+			process.exit(2);
+		}
+	} else {
+		console.error(
+			`[publish-portfolio] unpublish: no verify state for environment=${env}; run verify --execute first to bind a manifest digest`,
+		);
+		process.exit(2);
+	}
 	const ids = [...ALLOWED_CANDIDATE_IDS];
-	const sql = `UPDATE portfolio_project SET visibility='draft', status='draft', updated_at=${nowMs()} WHERE id IN (${ids.map((i) => `'${i}'`).join(',')});`;
+	// Schema invariant: portfolio_project.status is constrained to
+	// ('published' | 'archived') by migrations/0007_portfolio.sql.
+	// Rollback therefore only flips visibility — leaving status at its
+	// current value. This is sufficient for "remove from public surface"
+	// because the portfolio loader filters on visibility, not status.
+	// See buildUnpublishUpdateSQL() for the pure-function form.
+	const sql = buildUnpublishUpdateSQL(ids, nowMs());
 	console.error(`[publish-portfolio] unpublish: ${ids.length} candidates → draft (rollback)`);
 
 	const tmpDir = process.env.TMPDIR || '/tmp';

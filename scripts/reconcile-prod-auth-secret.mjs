@@ -18,13 +18,7 @@
 import { spawnSync } from 'node:child_process';
 import { timingSafeEqual } from 'node:crypto';
 import { createRequire } from 'node:module';
-import {
-	existsSync,
-	mkdtempSync,
-	readFileSync,
-	rmSync,
-	writeFileSync,
-} from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
@@ -251,7 +245,9 @@ async function main() {
 	const alreadyEqual = secretValuesEqual(sourceValue, currentTargetValue);
 
 	if (args.mode === 'verify') {
-		console.log(`[verify] ${SOURCE_ENV} and ${TARGET_ENV} ${SECRET_NAME}: ${alreadyEqual ? 'MATCH' : 'DIFFER'}`);
+		console.log(
+			`[verify] ${SOURCE_ENV} and ${TARGET_ENV} ${SECRET_NAME}: ${alreadyEqual ? 'MATCH' : 'DIFFER'}`,
+		);
 		process.exitCode = alreadyEqual ? 0 : 2;
 		return;
 	}

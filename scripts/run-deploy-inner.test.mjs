@@ -40,9 +40,11 @@ const SECRET_BETTER_AUTH_SECRETS = '2:newsecretvalue,1:oldsecretvalue';
 const SECRET_BETTER_AUTH_SECRET_LEGACY = 'legacy-single-secret-value';
 const SECRET_CONSUMER_API_KEY = 'mk_home_TESTCONSUMERKEYXXXXXXXXXXXXXX';
 
-// Phase 1-2: legacy 2-name is required. Phase 3+ will swap these.
-const REQUIRED_FOR_PHASE_1_2 = {
-	BETTER_AUTH_SECRET: SECRET_BETTER_AUTH_SECRET_LEGACY,
+// Phase 3+ (Issue #89): versioned 2-name is required. The legacy
+// `BETTER_AUTH_SECRET` is AUDIT_ONLY_SECRETS — sanitized only, NEVER
+// written to `secrets.json` even if present in process.env.
+const REQUIRED_FOR_PHASE_3_PLUS = {
+	BETTER_AUTH_SECRETS: SECRET_BETTER_AUTH_SECRETS,
 	MY_WEB_2026_CONSUMER_API_KEY: SECRET_CONSUMER_API_KEY,
 };
 
@@ -97,22 +99,22 @@ function runInIsolatedRepo(args, { env = {} } = {}) {
 describe('run-deploy-inner.mjs', () => {
 	describe('arg parsing', () => {
 		it('requires --config', () => {
-			const result = runInIsolatedRepo([], { env: REQUIRED_FOR_PHASE_1_2 });
+			const result = runInIsolatedRepo([], { env: REQUIRED_FOR_PHASE_3_PLUS });
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /--config=<path> is required/);
 		});
 
 		it('rejects unknown argument', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc', '--bogus'], {
-				env: REQUIRED_FOR_PHASE_1_2,
+				env: REQUIRED_FOR_PHASE_3_PLUS,
 			});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /unknown argument: --bogus/);
 		});
 	});
 
-	describe('required secret validation (Phase 1-2: legacy 2-name)', () => {
-		it('rejects missing BETTER_AUTH_SECRET', () => {
+	describe('required secret validation (Phase 3+: versioned 2-name)', () => {
+		it('rejects missing BETTER_AUTH_SECRETS', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: {
 					MY_WEB_2026_CONSUMER_API_KEY: SECRET_CONSUMER_API_KEY,
@@ -120,16 +122,16 @@ describe('run-deploy-inner.mjs', () => {
 			});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /Missing required runtime secrets/);
-			assert.match(result.stderr, /BETTER_AUTH_SECRET/);
+			assert.match(result.stderr, /BETTER_AUTH_SECRETS/);
 			// The error message must NOT contain the secret value
 			// (we did not set it, but assert the boundary anyway).
-			assert.doesNotMatch(result.stderr, new RegExp(SECRET_BETTER_AUTH_SECRET_LEGACY));
+			assert.doesNotMatch(result.stderr, new RegExp(SECRET_BETTER_AUTH_SECRETS));
 		});
 
 		it('rejects missing MY_WEB_2026_CONSUMER_API_KEY', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: {
-					BETTER_AUTH_SECRET: SECRET_BETTER_AUTH_SECRET_LEGACY,
+					BETTER_AUTH_SECRETS: SECRET_BETTER_AUTH_SECRETS,
 				},
 			});
 			assert.equal(result.exitCode, 1);
@@ -140,7 +142,7 @@ describe('run-deploy-inner.mjs', () => {
 		it('rejects empty required secret value', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: {
-					BETTER_AUTH_SECRET: '',
+					BETTER_AUTH_SECRETS: '',
 					MY_WEB_2026_CONSUMER_API_KEY: SECRET_CONSUMER_API_KEY,
 				},
 			});
@@ -149,40 +151,21 @@ describe('run-deploy-inner.mjs', () => {
 		});
 	});
 
-	describe('dry-run mode (Phase 1-2)', () => {
-		it('succeeds with legacy 2-name (BETTER_AUTH_SECRET + CONSUMER_API_KEY)', () => {
+	describe('dry-run mode (Phase 3+)', () => {
+		it('succeeds with versioned 2-name (BETTER_AUTH_SECRETS + CONSUMER_API_KEY)', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
-				env: REQUIRED_FOR_PHASE_1_2,
+				env: REQUIRED_FOR_PHASE_3_PLUS,
 			});
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /\[dry-run\]/);
 			assert.match(result.stdout, /secrets\.json would have been written/);
 			assert.ok(result.stdout.includes('wrangler.jsonc'));
-		});
-
-		it('includes BETTER_AUTH_SECRETS when also seeded (Phase 1-2 forward compat)', () => {
-			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
-				env: {
-					BETTER_AUTH_SECRET: SECRET_BETTER_AUTH_SECRET_LEGACY,
-					BETTER_AUTH_SECRETS: SECRET_BETTER_AUTH_SECRETS,
-					MY_WEB_2026_CONSUMER_API_KEY: SECRET_CONSUMER_API_KEY,
-				},
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /contains 3 keys/);
-		});
-
-		it('omits BETTER_AUTH_SECRETS when not seeded (Phase 1-2 optional)', () => {
-			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
-				env: REQUIRED_FOR_PHASE_1_2,
-			});
-			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /contains 2 keys/);
 		});
 
 		it('cleans up the tempdir even on dry-run', () => {
 			const before = readdirSync(tmpdir()).filter((name) => name.startsWith(TEMPDIR_PREFIX));
-			runInIsolatedRepo(['--config=wrangler.jsonc'], { env: REQUIRED_FOR_PHASE_1_2 });
+			runInIsolatedRepo(['--config=wrangler.jsonc'], { env: REQUIRED_FOR_PHASE_3_PLUS });
 			const after = readdirSync(tmpdir()).filter((name) => name.startsWith(TEMPDIR_PREFIX));
 			// Some other tests may be running; the only invariant we can
 			// assert is that no NEW tempdirs leaked (count did not grow).
@@ -190,24 +173,66 @@ describe('run-deploy-inner.mjs', () => {
 		});
 	});
 
+	describe('AUDIT_ONLY_SECRETS invariant (Issue #89)', () => {
+		it('does NOT include BETTER_AUTH_SECRET in secrets.json even when set in process.env', () => {
+			// Phase 3+ audit-only semantics: `BETTER_AUTH_SECRET` is
+			// sanitized (removed from sanitizedEnv) and MUST NOT be
+			// written to secrets.json even if `infisical run` injects
+			// the audit-trail value. This prevents the legacy binding
+			// from resurrecting on the next deploy.
+			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
+				env: {
+					...REQUIRED_FOR_PHASE_3_PLUS,
+					BETTER_AUTH_SECRET: SECRET_BETTER_AUTH_SECRET_LEGACY,
+				},
+			});
+			assert.equal(result.exitCode, 0);
+			// secrets.json would have been written with exactly 2 keys
+			// (BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY).
+			// BETTER_AUTH_SECRET MUST NOT be among them.
+			assert.match(result.stdout, /contains 2 keys/);
+			// The legacy value MUST NOT appear in dry-run output.
+			assert.doesNotMatch(result.stdout, new RegExp(SECRET_BETTER_AUTH_SECRET_LEGACY));
+		});
+
+		it('dry-run output reports sanitized env excludes BETTER_AUTH_SECRET', () => {
+			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
+				env: REQUIRED_FOR_PHASE_3_PLUS,
+			});
+			assert.equal(result.exitCode, 0);
+			assert.match(result.stdout, /sanitized env excludes:.*BETTER_AUTH_SECRET/s);
+		});
+
+		it('does NOT include BETTER_AUTH_SECRET in SENSITIVE_KEYS log even when absent from env', () => {
+			// Belt-and-suspenders: the SENSITIVE_KEYS log line should
+			// always include BETTER_AUTH_SECRET (because it's in the
+			// set), regardless of whether it's in process.env.
+			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
+				env: REQUIRED_FOR_PHASE_3_PLUS,
+			});
+			assert.equal(result.exitCode, 0);
+			assert.match(result.stdout, /sanitized env excludes:.*BETTER_AUTH_SECRET/s);
+		});
+	});
+
 	describe('argv / log / error-message secret-handling invariant', () => {
 		it('does NOT log the secret values in dry-run', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
-				env: REQUIRED_FOR_PHASE_1_2,
+				env: REQUIRED_FOR_PHASE_3_PLUS,
 			});
 			assert.equal(result.exitCode, 0);
-			assert.doesNotMatch(result.stdout, new RegExp(SECRET_BETTER_AUTH_SECRET_LEGACY));
+			assert.doesNotMatch(result.stdout, new RegExp(SECRET_BETTER_AUTH_SECRETS));
 			assert.doesNotMatch(result.stdout, new RegExp(SECRET_CONSUMER_API_KEY));
 		});
 
 		it('does NOT log the secret value in error messages (missing secret)', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: {
-					BETTER_AUTH_SECRET: SECRET_BETTER_AUTH_SECRET_LEGACY,
+					BETTER_AUTH_SECRETS: SECRET_BETTER_AUTH_SECRETS,
 				},
 			});
 			assert.equal(result.exitCode, 1);
-			assert.doesNotMatch(result.stderr, new RegExp(SECRET_BETTER_AUTH_SECRET_LEGACY));
+			assert.doesNotMatch(result.stderr, new RegExp(SECRET_BETTER_AUTH_SECRETS));
 		});
 
 		it('does NOT include INFISICAL_TOKEN when leaked via process.env', () => {
@@ -215,7 +240,7 @@ describe('run-deploy-inner.mjs', () => {
 			// INFISICAL_TOKEN, the dry-run path must not print it.
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: {
-					...REQUIRED_FOR_PHASE_1_2,
+					...REQUIRED_FOR_PHASE_3_PLUS,
 					INFISICAL_TOKEN: 'should-never-appear-XYZ-MARKER-9999',
 				},
 			});
@@ -227,7 +252,7 @@ describe('run-deploy-inner.mjs', () => {
 	describe('--execute config lockdown (production D1 path)', () => {
 		it('rejects --execute with non-production config (wrangler.jsonc)', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc', '--execute'], {
-				env: REQUIRED_FOR_PHASE_1_2,
+				env: REQUIRED_FOR_PHASE_3_PLUS,
 			});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /--execute is only valid with the canonical/);
@@ -239,7 +264,7 @@ describe('run-deploy-inner.mjs', () => {
 			// absolute path does not equal REPO_ROOT/wrangler.production.jsonc.
 			const result = runInIsolatedRepo(
 				['--config=/some/other/path/wrangler.staging.jsonc', '--execute'],
-				{ env: REQUIRED_FOR_PHASE_1_2 },
+				{ env: REQUIRED_FOR_PHASE_3_PLUS },
 			);
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /--execute is only valid with the canonical/);
@@ -247,7 +272,7 @@ describe('run-deploy-inner.mjs', () => {
 
 		it('rejects --execute with --config=wrangler.dev.jsonc', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.dev.jsonc', '--execute'], {
-				env: REQUIRED_FOR_PHASE_1_2,
+				env: REQUIRED_FOR_PHASE_3_PLUS,
 			});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /--execute is only valid with the canonical/);
@@ -270,7 +295,7 @@ describe('run-deploy-inner.mjs', () => {
 					cwd: repo,
 					encoding: 'utf8',
 					stdio: ['ignore', 'pipe', 'pipe'],
-					env: { ...process.env, ...REQUIRED_FOR_PHASE_1_2 },
+					env: { ...process.env, ...REQUIRED_FOR_PHASE_3_PLUS },
 				});
 			} catch (error) {
 				exitCode = error.status ?? 1;
@@ -288,7 +313,7 @@ describe('run-deploy-inner.mjs', () => {
 			//     --config=wrangler.jsonc
 			// (dry-run is default; no production side effects.)
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
-				env: REQUIRED_FOR_PHASE_1_2,
+				env: REQUIRED_FOR_PHASE_3_PLUS,
 			});
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /\[dry-run\]/);

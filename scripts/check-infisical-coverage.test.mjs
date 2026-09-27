@@ -44,6 +44,15 @@ const EMPTY_WRANGLER = `{
 }
 `;
 
+// Phase 1-2 inner script: legacy 2-name required + optional
+// versioned. The coverage check reads only `REQUIRED_RUNTIME_SECRETS`
+// via regex; this constant declaration is sufficient to drive the
+// phase vote in the isolated scenario.
+const PHASE_1_2_INNER_SCRIPT = `#!/usr/bin/env node
+const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'];
+const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS'];
+`;
+
 /**
  * Run the coverage check in an isolated tempdir. We override the
  * 3 sources by writing fake files with the same names.
@@ -101,12 +110,13 @@ function runInIsolatedRepo({
 describe('check-infisical-coverage.mjs', () => {
 	describe('happy path (Phase 1-2)', () => {
 		it('passes when wrangler.production.jsonc + inner script agree on legacy 2-name', () => {
-			// wrangler.jsonc is empty (Phase 1-2 default); the real
-			// inner script has Phase 1-2 form. Coverage check should
-			// note the empty source and pass.
+			// wrangler.jsonc is empty (Phase 1-2 default); the inner
+			// script (Phase 1-2 mock) has legacy 2-name. Coverage check
+			// should note the empty source and pass.
 			const result = runInIsolatedRepo({
 				wranglerDefault: EMPTY_WRANGLER,
 				wranglerProduction: PHASE_1_2_WRANGLER,
+				innerScript: PHASE_1_2_INNER_SCRIPT,
 			});
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /detected phase: phase-1-2/);
@@ -120,6 +130,7 @@ describe('check-infisical-coverage.mjs', () => {
 			const result = runInIsolatedRepo({
 				wranglerDefault: PHASE_1_2_WRANGLER,
 				wranglerProduction: PHASE_1_2_WRANGLER,
+				innerScript: PHASE_1_2_INNER_SCRIPT,
 			});
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /all checks OK/);
@@ -176,6 +187,7 @@ const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET'];
 			const result = runInIsolatedRepo({
 				wranglerDefault: EMPTY_WRANGLER,
 				wranglerProduction: PHASE_1_2_WRANGLER,
+				innerScript: PHASE_1_2_INNER_SCRIPT,
 			});
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /\[NOTE\] wrangler\.jsonc/);

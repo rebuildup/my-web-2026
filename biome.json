@@ -15,7 +15,8 @@
 			"pnpm-lock.yaml",
 			"*.tsbuildinfo",
 			"worker-configuration.d.ts",
-			"src/routeTree.gen.ts"
+			"src/routeTree.gen.ts",
+			"external"
 		]
 	},
 	"formatter": {

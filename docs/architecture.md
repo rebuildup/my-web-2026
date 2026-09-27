@@ -26,6 +26,14 @@ src/
 │     ├─ services.ts
 │     ├─ load.ts
 │     └─ tiles.tsx
+├─ portfolio/
+│  ├─ schema.ts
+│  ├─ contract.ts
+│  ├─ load.ts
+│  ├─ media.ts
+│  ├─ seed.ts
+│  ├─ public.ts
+│  └─ index.ts
 ├─ editorial/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
@@ -57,6 +65,19 @@ canonical home surface の composition と Home 固有の表示判断を所有�
 - `hero.tsx` / `footer.tsx` — Home 固有の public communication
 
 Home は Cloudflare binding の probe 方法を所有しない。
+
+### `portfolio/` (Issue #76, target 0.5.0)
+
+employment-facing Portfolio surface の data model と publication contract を所有する。
+
+- `schema.ts` — Project / Link / Media の TS 型 + Zod schema + 行 → 公開型 変換
+- `contract.ts` — `PortfolioLoader` interface + DI seam 用 `PortfolioEnv`
+- `load.ts` — D1 実装 + facet/visibility/limit filter。TanStack Start server-fn (`public.ts`) はここを呼ぶ
+- `media.ts` — R2 media URL 合成 (foundation は `null` 返却、UI で placeholder 表示)
+- `seed.ts` — `docs/personal/domain.md` で grounded されている project のみを seed
+- `public.ts` — `createServerFn` ラッパー (handler 内で env 解決)
+
+`portfolio/` は `home/` の peer obligation で、どちらもお互いを import しない。Cloudflare runtime とは DI seam (`createD1PortfolioLoader(env)`) 経由で結合し、テストでは偽 env を渡して workerd 依存を排除する。
 
 ### `editorial/`
 
@@ -93,18 +114,22 @@ entrypoint である。
 
 ```text
 routes ───────────────▶ home
+routes ───────────────▶ portfolio
 home/status ─────────▶ cloudflare
 home/status ─────────▶ http
+portfolio ───────────▶ cloudflare (DI seam)
+portfolio ───────────▶ editorial
 home ────────────────▶ editorial
 server ──────────────▶ http
 ```
 
 逆向きは禁止する。
 
-- `cloudflare/` は `home/` を知らない。
-- `http/` は `home/` を知らない。
+- `cloudflare/` は `home/` も `portfolio/` も知らない。
+- `http/` は `home/` も `portfolio/` を知らない。
 - `editorial/` は特定 surface を知らない。
-- framework route は Home を bind するが、Home は route file を知らない。
+- `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
+- framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。
 
 ## TanStack Start / Hono boundary
 

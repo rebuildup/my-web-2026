@@ -1,0 +1,307 @@
+{
+	"$schema": "./manifest.schema.json",
+	"version": 1,
+	"tools": [
+		{
+			"slug": "prototype",
+			"display_name": "ProtoType",
+			"description": "ProtoType: a heavy Vite SPA showcase (gsap + three.js + pixi.js + recharts) used as the Tool Registry pilot for Issue #81.",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/ProtoType.git",
+				"submodule_path": "external/prototype",
+				"pinned_sha": "335e0e861009049336e581dc266dc4e2f019e5c7",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/prototype/app",
+				"entry_html": "/tools/prototype/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				}
+			},
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "Pilot for Issue #81. Heavy Vite SPA — ~1.5MB JS bundle (gsap + three.js + pixi.js). Upstream now carries an operator-owned MIT LICENSE (added by ProtoType#4 / PR rebuildup/ProtoType#5, merge commit 335e0e8), so the previously provisional 'same operator / Berne Convention' framing is now backed by an explicit permissive license. The intermediate `--ignore-scripts` / `build.security.ignore_scripts` workaround was removed at the same time because the obfuscated `preinstall.js` lifecycle script has been deleted upstream."
+		},
+		{
+			"slug": "text-counter",
+			"display_name": "Text Counter",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-text-counter.git",
+				"submodule_path": "external/text-counter",
+				"pinned_sha": "5371479f6b49e2139424ebb9388287cc5e1a6e03",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library (no vite.config, no index.html). Embedding blocked until the Tool repo adds a standalone Vite build path (Issue #81 follow-up after pilot)."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "color-palette",
+			"display_name": "Color Palette",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-color-palette.git",
+				"submodule_path": "external/color-palette",
+				"pinned_sha": "0eb51503ba39712827497281ca489a379c8c912b",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "sequential-png-preview",
+			"display_name": "Sequential PNG Preview",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-sequential-png-preview.git",
+				"submodule_path": "external/sequential-png-preview",
+				"pinned_sha": "2bcad8a121f0b058d3f17ac900c76bcc4d47a34e",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "svg2tsx",
+			"display_name": "SVG to TSX",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-svg2tsx.git",
+				"submodule_path": "external/svg2tsx",
+				"pinned_sha": "4e85e922d87bfd75c62d4e0b6cfe595b8289368a",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "business-mail-block",
+			"display_name": "Business Mail Block",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-business-mail-block.git",
+				"submodule_path": "external/business-mail-block",
+				"pinned_sha": "d1ea054adc87315ed6555751b21109366b16710f",
+				"branch": "main"
+			},
+			"build": {
+				"command": "bun install --frozen-lockfile && bun run build",
+				"output_dir": "dist",
+				"package_manager": "bun"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library and uses bun as package manager. Embedding blocked until the Tool repo adds a standalone Vite build path (consistent with the other tool-* repos)."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "code-type-p5",
+			"display_name": "Code Type p5",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-code-type-p5.git",
+				"submodule_path": "external/code-type-p5",
+				"pinned_sha": "509c2873a434673befeee08c3bf6d4b2c8473b94",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "fillgen",
+			"display_name": "Fillgen",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-fillgen.git",
+				"submodule_path": "external/fillgen",
+				"pinned_sha": "01d53b84e9884352aa2bc44a6b917708de5f5199",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "qr-generator",
+			"display_name": "QR Generator",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-qr-generator.git",
+				"submodule_path": "external/qr-generator",
+				"pinned_sha": "19fd50bb32d4cc1fd1e6129de32a6771c2e6667f",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "pomodoro",
+			"display_name": "Pomodoro",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-pomodoro.git",
+				"submodule_path": "external/pomodoro",
+				"pinned_sha": "954cfd898dba6f46c8ef250d69b1b64245c0eecf",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "history-quiz",
+			"display_name": "History Quiz",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-history-quiz.git",
+				"submodule_path": "external/history-quiz",
+				"pinned_sha": "72328139de1ac5ceee84babbf76cd82899fde8c3",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "pi-game",
+			"display_name": "Pi Game",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-pi-game.git",
+				"submodule_path": "external/pi-game",
+				"pinned_sha": "9e19ec5d63c84fad9be625b33b0455e922ba3570",
+				"branch": "develop"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library (and uses 'develop' as default branch). Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "ae-expression",
+			"display_name": "AE Expression",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-ae-expression.git",
+				"submodule_path": "external/ae-expression",
+				"pinned_sha": "cd136e251ae7372143a0ee4af4c727324df47655",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Embedding blocked until the Tool repo adds a standalone Vite build path."
+			},
+			"classification": "needs_tool_side_fix",
+			"license": "MIT"
+		},
+		{
+			"slug": "mic-level",
+			"display_name": "Mic Level",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/tool-mic-level.git",
+				"submodule_path": "external/mic-level",
+				"pinned_sha": "5df7ac64539ec82fe4a7f4d7de1f2bb9d0b808c3",
+				"branch": "main"
+			},
+			"build": {
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
+				"output_dir": "dist",
+				"package_manager": "pnpm"
+			},
+			"delivery": {
+				"kind": "host_disabled",
+				"disabled_reason": "Tool is currently a Next.js component library. Mic capture via getUserMedia requires https + Permissions-Policy: microphone=(self). Once the Tool repo ships a standalone Vite build, mic-level can graduate to same_origin_static (the host already serves https via the canonical production origin rebuildup.dev)."
+			},
+			"classification": "external_exception",
+			"license": "MIT"
+		}
+	]
+}

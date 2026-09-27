@@ -1,0 +1,31 @@
+{
+	"$schema": "../migration/portfolio-2025-role-overrides.schema.json",
+	"comment": "Role override file for Issue #78 portfolio migration. The migration script consumes this to populate `portfolio_project.role` for legacy projects whose role is explicitly grounded in repository-controlled docs (docs/personal/domain.md). Each entry below is conservatively scoped: the role string is constrained to what the cited source literally states. We do NOT inflate 'Tool developer' / 'Plugin developer' to 'Solo developer' when the source only proves the tool exists and is maintained by the project owner — the source proves work and ownership, but team size is a separate claim. Rows not in this map leave `role` NULL; owner must add an entry before publication is approved. This file does NOT carry publication authority — see `publication_state.json` for that surface, which is also owner-only and starts at `pending_owner` for every row.",
+	"role_overrides": [
+		{
+			"legacy_id": "aulymo-v01",
+			"role": "Tool developer",
+			"source": "docs/personal/domain.md §8 'Tool / plugin development' — 'Aulymo — After Effects で lyric motion を作るための tool。配布・販売を通じ、実装だけでなく productization / support / update を経験'. The cited sentence proves the work exists and is owned + shipped by the subject; it does not literally assert team size, so we scope the role to 'Tool developer' (work type) and not 'Solo developer' (team size).",
+			"grounded": true
+		},
+		{
+			"legacy_id": "aulymo_v02",
+			"role": "Tool developer",
+			"source": "docs/personal/domain.md §8 'Tool / plugin development' (same citation as aulymo-v01 — same product, versioned).",
+			"grounded": true
+		},
+		{
+			"legacy_id": "aulymo_v03",
+			"role": "Tool developer",
+			"source": "docs/personal/domain.md §8 'Tool / plugin development' (same citation as aulymo-v01 — same product, versioned).",
+			"grounded": true
+		},
+		{
+			"legacy_id": "MultiSlicer",
+			"role": "Plugin developer",
+			"source": "docs/personal/domain.md §8 'Tool / plugin development' — 'MultiSlicer — C++ / After Effects SDK を使った effect plugin。公開・配布を通して native plugin development を実践'. The cited sentence proves native C++ plugin development experience; it does not literally assert solo authorship, so we scope the role to 'Plugin developer'.",
+			"grounded": true
+		}
+	],
+	"publication_overrides": []
+}

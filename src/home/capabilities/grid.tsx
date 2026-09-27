@@ -133,6 +133,34 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 									>
 										{capability.summary}
 									</p>
+									{capability.status === 'live' && capability.href ? (
+										<a
+											href={capability.href}
+											aria-label={`${capability.labelJa} を開く`}
+											className={css({
+												marginBlockStart: '4',
+												display: 'inline-flex',
+												alignItems: 'center',
+												gap: '2',
+												fontFamily: 'sans',
+												fontSize: 'sm',
+												fontWeight: '600',
+												color: 'text.accent',
+												textDecoration: 'none',
+												_focusVisible: {
+													outline: '2px solid {colors.border.focus}',
+													outlineOffset: '4px',
+													borderRadius: '2px',
+												},
+												_hover: {
+													textDecoration: 'underline',
+												},
+											})}
+										>
+											<span aria-hidden="true">→</span>
+											<span>{capability.label}を開く</span>
+										</a>
+									) : null}
 								</li>
 							);
 						})}

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -14,7 +14,28 @@ const forbiddenOwnerDependencies = new Map([
 	['http', new Set(['home', 'server.ts'])],
 	['editorial', new Set(['home', 'cloudflare', 'http'])],
 	['home', new Set(['routes', 'cloudflare', 'http'])],
+	// `portfolio` (Issue #76) is a peer obligation to `home`.
+	// It reads D1 / R2 via the cloudflare runtime (no direct
+	// dependency edge) and consumes `editorial` primitives. It must
+	// not import from `home`, `routes`, or `http` (peer / route /
+	// external HTTP boundary responsibilities).
+	['portfolio', new Set(['home', 'routes', 'http'])],
+	// `about` (Issue #102) is a peer obligation to `home` and
+	// `portfolio`. It composes repo-controlled narrative copy with
+	// a narrative subset of public portfolio projects; it must
+	// not import from `home` (peer obligation), `routes` (the
+	// route layer is the consumer), `cloudflare` (server-fn pattern
+	// keeps `cloudflare:workers` virtual-module access out of the
+	// obligation), or `http` (external HTTP boundary).
+	['about', new Set(['home', 'routes', 'cloudflare', 'http'])],
 ]);
+
+/**
+ * Directories whose contents are considered "parent" for the
+ * Tool-boundary rule. The parent MUST NOT import from any path
+ * matching `external/<slug>/src/**`.
+ */
+const parentSourceRoots = ['src', 'scripts', 'e2e', 'migrations'];
 
 /**
  * Owner pairs where the dependency is allowed only through
@@ -145,6 +166,126 @@ for (const file of sourceFiles(srcRoot)) {
 		errors.push(
 			`${relative(root, file)}: ${fromOwner} must not runtime-import ${toOwner} (${specifier})`,
 		);
+	}
+}
+
+/**
+ * Tool-boundary rules (ADR-0006 §2):
+ *   - parent MUST NOT import from `external/<slug>/src/**`
+ *   - Tool source MUST NOT import from `../../src/**` of the parent
+ *   - parent MUST NOT import from a Tool's `package.json` / build output
+ *
+ * Enforced in two passes: one over each parent source root, one over
+ * each checked-out Tool submodule. Both passes share
+ * `boundaryImportViolations`.
+ */
+const TOOL_SRC_PATTERN = /^external\/[a-z0-9][a-z0-9-]{0,127}\/src(\/|$)/;
+const PARENT_SRC_PATTERN = /^(\.\.\/)+src(\/|$)/;
+const TOOL_PACKAGE_PATTERN = /^external\/[a-z0-9][a-z0-9-]{0,127}\/package\.json$/;
+const TOOL_DIST_PATTERN = /^external\/[a-z0-9][a-z0-9-]{0,127}\/dist(\/|$)/;
+
+function collectJsLikeFiles(directory) {
+	const out = [];
+	const stack = [directory];
+	while (stack.length > 0) {
+		const dir = stack.pop();
+		let entries;
+		try {
+			entries = readdirSync(dir, { withFileTypes: true });
+		} catch {
+			continue;
+		}
+		for (const entry of entries) {
+			const p = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				stack.push(p);
+			} else if (['.ts', '.tsx', '.js', '.jsx', '.mjs'].includes(extname(p))) {
+				out.push(p);
+			}
+		}
+	}
+	return out;
+}
+
+/**
+ * Returns the list of `import` specifiers in `source` that violate
+ * the Tool-boundary rules. The caller passes the file path so we can
+ * disambiguate `parent → Tool` from `Tool → parent`.
+ */
+function boundaryImportViolations(source, fromFileRel) {
+	const violations = [];
+	const isParentFile = parentSourceRoots.some(
+		(rootName) => fromFileRel === rootName || fromFileRel.startsWith(`${rootName}/`),
+	);
+	const isToolFile = fromFileRel.startsWith('external/');
+	if (!isParentFile && !isToolFile) return violations;
+
+	const specifiers = new Set();
+	for (const re of [
+		/(?:^|\n)\s*import\s+(?:type\s+)?[^"';]*?["']([^"']+)["']/g,
+		/\bimport\s+["']([^"']+)["']/g,
+		/\bimport\(\s*["']([^"']+)["']\s*\)/g,
+	]) {
+		for (const match of source.matchAll(re)) specifiers.add(match[1]);
+	}
+
+	for (const spec of specifiers) {
+		// Parent → Tool src/package/dist is forbidden.
+		if (isParentFile) {
+			if (TOOL_SRC_PATTERN.test(spec)) {
+				violations.push(
+					`${fromFileRel}: parent must not import from Tool source (${spec}) — ADR-0006 §2`,
+				);
+			}
+			if (TOOL_PACKAGE_PATTERN.test(spec)) {
+				violations.push(
+					`${fromFileRel}: parent must not import a Tool's package.json (${spec}) — ADR-0006 §3`,
+				);
+			}
+			if (TOOL_DIST_PATTERN.test(spec)) {
+				violations.push(
+					`${fromFileRel}: parent must not import a Tool's build output (${spec}) — ADR-0006 §3`,
+				);
+			}
+		}
+		// Tool → parent src is forbidden.
+		if (isToolFile) {
+			if (PARENT_SRC_PATTERN.test(spec)) {
+				violations.push(`${fromFileRel}: Tool must not import parent src (${spec}) — ADR-0006 §2`);
+			}
+		}
+	}
+	return violations;
+}
+
+// Pass 1: parent source roots
+for (const rootName of parentSourceRoots) {
+	const dir = join(root, rootName);
+	if (!existsSync(dir)) continue;
+	for (const file of collectJsLikeFiles(dir)) {
+		const rel = relative(root, file);
+		const source = readFileSync(file, 'utf8');
+		errors.push(...boundaryImportViolations(source, rel));
+	}
+}
+
+// Pass 2: each checked-out Tool submodule (best effort; submodules may
+// not be initialised in CI without `git submodule update --init`).
+const externalRoot = join(root, 'external');
+if (existsSync(externalRoot)) {
+	for (const entry of readdirSync(externalRoot, { withFileTypes: true })) {
+		if (!entry.isDirectory()) continue;
+		const toolRoot = join(externalRoot, entry.name);
+		const stat = statSync(toolRoot);
+		// Skip if it's a placeholder directory (not a real submodule).
+		if (!existsSync(join(toolRoot, '.git'))) continue;
+		const srcDir = join(toolRoot, 'src');
+		if (!existsSync(srcDir)) continue;
+		for (const file of collectJsLikeFiles(srcDir)) {
+			const rel = relative(root, file);
+			const source = readFileSync(file, 'utf8');
+			errors.push(...boundaryImportViolations(source, rel));
+		}
 	}
 }
 

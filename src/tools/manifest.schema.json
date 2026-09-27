@@ -1,0 +1,141 @@
+{
+	"$schema": "http://json-schema.org/draft-07/schema#",
+	"$id": "https://rebuildup.dev/schema/tools-manifest.v1.json",
+	"title": "my-web-2026 Tool Registry Manifest",
+	"description": "Source / build / delivery identity for each standalone Tool integrated into my-web-2026. See ADR-0006 and docs/tools/inventory.md.",
+	"type": "object",
+	"required": ["version", "tools"],
+	"properties": {
+		"version": {
+			"description": "Manifest schema version. Bumped on any breaking change.",
+			"const": 1
+		},
+		"tools": {
+			"type": "array",
+			"items": {
+				"type": "object",
+				"required": ["slug", "source", "build", "delivery", "classification", "license"],
+				"properties": {
+					"slug": {
+						"description": "URL-safe slug. Lowercase letters, digits, dashes. Unique across all tools. Path segment under /tools/<slug>/ and the same-origin artifact location.",
+						"type": "string",
+						"pattern": "^[a-z0-9][a-z0-9-]{0,127}$"
+					},
+					"display_name": {
+						"description": "Human-readable name for the Tool Registry UI. Optional.",
+						"type": "string"
+					},
+					"source": {
+						"type": "object",
+						"required": ["canonical_repo", "submodule_path", "pinned_sha", "branch"],
+						"properties": {
+							"canonical_repo": {
+								"description": "Exact git URL — DO NOT derive from slug. Must match the .gitmodules entry.",
+								"type": "string",
+								"format": "uri"
+							},
+							"submodule_path": {
+								"description": "Path within the parent repo where the submodule is checked out. ADR-0006 §1.",
+								"type": "string",
+								"pattern": "^external/[a-z0-9][a-z0-9-]{0,127}$"
+							},
+							"pinned_sha": {
+								"description": "Full 40-char commit SHA. Must equal the gitlink SHA in the parent repo's git index.",
+								"type": "string",
+								"pattern": "^[0-9a-f]{40}$"
+							},
+							"branch": {
+								"description": "Upstream branch the SHA was drawn from. tool-pi-game uses 'develop'; others use 'main'.",
+								"type": "string",
+								"minLength": 1
+							}
+						},
+						"additionalProperties": false
+					},
+					"build": {
+						"type": "object",
+						"required": ["command", "output_dir", "package_manager"],
+						"properties": {
+							"command": {
+								"description": "Shell command executed inside the submodule. Must be deterministic and fail-fast.",
+								"type": "string",
+								"minLength": 1
+							},
+							"output_dir": {
+								"description": "Path (relative to submodule root) where the build emits the deployable artifact.",
+								"type": "string",
+								"minLength": 1
+							},
+							"package_manager": {
+								"type": "string",
+								"enum": ["pnpm", "bun", "npm", "yarn"]
+							}
+						},
+						"additionalProperties": false
+					},
+					"delivery": {
+						"description": "How the host surfaces the Tool. Same-origin static is the default.",
+						"type": "object",
+						"required": ["kind"],
+						"properties": {
+							"kind": {
+								"type": "string",
+								"enum": ["same_origin_static", "external_exception", "host_disabled"]
+							},
+							"artifact_path": {
+								"description": "Same-origin URL path under which the host serves the artifact. Required for same_origin_static. Must start with /tools/<slug>.",
+								"type": "string",
+								"pattern": "^/tools/[a-z0-9][a-z0-9-]{0,127}(/.*)?$"
+							},
+							"external_url": {
+								"description": "Required for external_exception. The host must NOT serve an iframe at artifact_path when external_url is set.",
+								"type": "string",
+								"format": "uri"
+							},
+							"iframe": {
+								"type": "object",
+								"description": "iframe sandbox + Permissions-Policy for this Tool. Host route renders <iframe src=artifact_path> for same_origin_static.",
+								"properties": {
+									"sandbox": {
+										"description": "sandbox attribute value. Default: 'allow-scripts'. DO NOT add 'allow-same-origin' without a written reason.",
+										"type": "string"
+									},
+									"allow": {
+										"description": "Permissions-Policy allowlist for sensitive features. Empty unless the Tool genuinely requires it.",
+										"type": "string"
+									}
+								},
+								"additionalProperties": false
+							},
+							"disabled_reason": {
+								"description": "Required when kind = host_disabled. Explains why the Tool is not surfaced.",
+								"type": "string"
+							}
+						},
+						"additionalProperties": false
+					},
+					"classification": {
+						"description": "Mirrors the inventory classification. The manifest is the durable source of truth; docs/tools/inventory.md is the human-readable summary.",
+						"type": "string",
+						"enum": [
+							"same_origin_static",
+							"needs_tool_side_fix",
+							"external_exception",
+							"not_integrable_yet"
+						]
+					},
+					"license": {
+						"description": "SPDX identifier or null when the upstream repo has not declared a license. MIT-required for my-web-2026 embed; null means the Tool cannot be embedded until relicensed.",
+						"type": ["string", "null"]
+					},
+					"notes": {
+						"description": "Free-form human note. Kept short; detailed rationale lives in docs/tools/inventory.md.",
+						"type": "string"
+					}
+				},
+				"additionalProperties": false
+			}
+		}
+	},
+	"additionalProperties": false
+}

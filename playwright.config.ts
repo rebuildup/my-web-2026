@@ -3,20 +3,30 @@ import { defineConfig, devices } from '@playwright/test';
 /**
  * Playwright configuration for my-web-2026.
  *
- * Tests cover two surfaces today:
- *   1. `e2e/smoke.spec.ts` — HTTP + home composition, runs against
- *      local `pnpm dev` (the default) or any deployed URL via
- *      `PLAYWRIGHT_BASE_URL`.
+ * Tests cover these surfaces today:
+ *   1. `e2e/smoke.spec.ts` — HTTP + home composition.
  *   2. `e2e/prod-smoke.spec.ts` — production-only smoke, runs via
  *      `pnpm run e2e:prod` (= `PLAYWRIGHT_BASE_URL=https://rebuildup.dev
  *      playwright test e2e/prod-smoke.spec.ts`). Triggers the GH
  *      Actions `production smoke` workflow on `workflow_dispatch`.
+ *   3. `e2e/tools-index.spec.ts` — `/tools` index page contract.
+ *   4. `e2e/tools-prototype.spec.ts` — `/tools/prototype` iframe
+ *      contract against the **built** Tool artifact.
  *
- * The webServer block below starts `pnpm dev` automatically when
- * `PLAYWRIGHT_BASE_URL` points at localhost; for any deployed URL
- * (the canonical production URL `https://rebuildup.dev`, or the
- * debug-only `*.workers.dev` URL) the block is omitted so the
- * deployed Worker is assumed already live.
+ * The webServer block below spins up `pnpm preview` (= `vite preview`
+ * against `dist/client/`) automatically when `PLAYWRIGHT_BASE_URL`
+ * points at localhost. `pnpm preview` is required because the
+ * Tool iframe spec asserts that the same-origin Tool artifact at
+ * `/tools/<slug>/app/index.html` is reachable from the host — the
+ * artifact only exists in `dist/client/` (produced by
+ * `scripts/build-tools.mjs` after `vite build`), NOT under the dev
+ * server. The CI workflow runs `pnpm run validate:integration` (which
+ * includes `pnpm run build`) before invoking `pnpm run e2e`, so the
+ * `dist/` tree is guaranteed to be present when Playwright starts.
+ *
+ * For any deployed URL (the canonical production URL
+ * `https://rebuildup.dev`, or the debug-only `*.workers.dev` URL)
+ * the block is omitted so the deployed Worker is assumed already live.
  *
  * Chromium only at 0.1.0. Firefox / WebKit land when a feature needs
  * them. Playwright's own browser binaries are installed via
@@ -58,7 +68,7 @@ export default defineConfig({
 	// (`https://rebuildup.dev`) and only runs via `pnpm run e2e:prod`
 	// or the GH Actions `production smoke` workflow — the operator
 	// triggers it manually after `pnpm run deploy:production`. When
-	// the local `pnpm dev` webServer is up, ignore it so the regular
+	// the local preview webServer is up, ignore it so the regular
 	// `pnpm run e2e` (CI on push, local dev) does not DNS-fail against
 	// a domain that may not be deployed yet.
 	//
@@ -70,12 +80,21 @@ export default defineConfig({
 	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
 		? '**/prod-smoke.spec.ts'
 		: '**/portfolio.spec.ts',
-	// The local project spins up `pnpm dev` automatically. The smoke
-	// project (run via PLAYWRIGHT_BASE_URL) must NOT start a server —
-	// the deployed Worker is assumed to already be live.
+	// The local project spins up `pnpm preview` against the build
+	// output automatically. `pnpm preview` is required because the
+	// Tool iframe spec reaches into `dist/client/tools/<slug>/app/`
+	// (the collected Tool artifact) and the dev server does NOT serve
+	// those static files. The CI workflow already ran `pnpm run
+	// build` (= `vite build` + `scripts/build-tools.mjs` +
+	// `scripts/check-client-bundle.mjs`) before this step, so the
+	// `dist/` tree is guaranteed to be present. For local dev, run
+	// `pnpm run build` before `pnpm run e2e` (or rely on
+	// `reuseExistingServer: !CI` if a preview is already up). Local
+	// previews use `pnpm preview` (= `vite preview` against
+	// `dist/client/`), NOT `pnpm dev`.
 	webServer: BASE_URL.startsWith('http://127.0.0.1')
 		? {
-				command: 'pnpm dev',
+				command: `pnpm preview --port=${PORT}`,
 				url: BASE_URL,
 				timeout: 60_000,
 				reuseExistingServer: !process.env.CI,

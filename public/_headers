@@ -1,0 +1,39 @@
+# Cloudflare Workers Static Assets — `_headers` file (Netlify-compatible).
+#
+# This file is copied verbatim from `public/` to `dist/client/_headers`
+# by Vite during `pnpm run build`. Cloudflare Workers Static Assets
+# parses it at deploy time and applies the listed response headers
+# to every request matching the URL pattern.
+#
+# Pattern syntax: Cloudflare's Static Assets uses Express-style named
+# placeholders for path parameters, e.g. `/tools/:slug/app/*`. The
+# Netlify-style `*` wildcard is restricted to one per rule, so we use
+# `:slug` for the Tool slug and `*` only for the trailing path.
+# Reference:
+#   https://developers.cloudflare.com/workers/static-assets/headers/
+#
+# Why these rules exist:
+#
+# Tool iframes are sandboxed `allow-scripts` only (no
+# `allow-same-origin`). The iframe document therefore has an opaque
+# origin, and any `<script type="module">` and `<link rel="stylesheet">`
+# inside it becomes a CORS request — module scripts are always fetched
+# with CORS, even without the `crossorigin` attribute. The default
+# Static Assets response does not include `Access-Control-Allow-Origin`,
+# so the browser blocks the bundle and React never mounts.
+#
+# We scope the wildcard CORS to `/tools/:slug/app/*` only — the
+# namespacing guarantees these are same-origin Tool artefacts emitted
+# by the Tool build orchestrator (scripts/build-tools.mjs). The host's
+# own `/assets/*` keeps its default behaviour (same-origin module
+# scripts from the host page, no CORS).
+
+/tools/:slug/app/*
+  Access-Control-Allow-Origin: *
+
+/tools/:slug/app
+  # The iframe document itself is fetched as a navigation (not a
+  # module fetch), so it does not need CORS — but a permissive
+  # `Access-Control-Allow-Origin: *` is harmless and keeps the rule
+  # comprehensive for the whole Tool namespace.
+  Access-Control-Allow-Origin: *

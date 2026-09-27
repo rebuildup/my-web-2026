@@ -485,7 +485,7 @@ export function linkKindFromUrl(href) {
 	if (host === 'github.com' || host === 'gitlab.com') {
 		return 'repo';
 	}
-	if (host.endsWith('booth.pm')) {
+	if (host.endsWith('booth.pm') || host.endsWith('booth.pm')) {
 		return 'shop';
 	}
 	return 'other';

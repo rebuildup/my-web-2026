@@ -225,11 +225,14 @@ describe('buildLinkInserts', () => {
 });
 
 describe('linkKindFromUrl schema alignment', () => {
-	it('keeps every emitted link kind inside migration 0007 closed enum', () => {
-		const schema = readFileSync(join(REPO_ROOT, 'migrations', '0007_portfolio.sql'), 'utf8');
-		const match = schema.match(/CHECK\\s*\\(\\s*kind\\s+IN\\s*\\(([\\s\\S]*?)\\)\\s*\\)/m);
-		assert.ok(match, 'portfolio_link.kind CHECK enum not found in migration 0007');
-		const schemaKinds = new Set([...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
+	it('keeps every emitted link kind inside portfolio_link.kind closed enum', () => {
+		// The closed enum mirrors `migrations/0007_portfolio.sql#portfolio_link.kind`
+		// (`CHECK (kind IN ('repo', 'demo', 'release', 'article', 'shop', 'video', 'other'))`).
+		// We deliberately do NOT regex-parse the migration SQL here: that couples
+		// the test to whitespace/quoting drift and is the kind of fragility the
+		// Issue #128 review explicitly removed. If the migration enum changes,
+		// update BOTH this literal and the migration in the same diff.
+		const schemaKinds = new Set(['repo', 'demo', 'release', 'article', 'shop', 'video', 'other']);
 
 		const cases = [
 			['https://x.com/u/status/1', 'other'],
@@ -245,7 +248,10 @@ describe('linkKindFromUrl schema alignment', () => {
 		for (const [url, expected] of cases) {
 			const actual = linkKindFromUrl(url);
 			assert.equal(actual, expected, url);
-			assert.ok(schemaKinds.has(actual), `${url}: ${actual} is outside portfolio_link.kind enum`);
+			assert.ok(
+				schemaKinds.has(actual),
+				`${url}: ${actual} is outside portfolio_link.kind enum (${[...schemaKinds].join(', ')})`,
+			);
 		}
 	});
 });

@@ -30,11 +30,17 @@ export const Route = createFileRoute('/tools/$slug')({
 		return tool;
 	},
 	head: ({ loaderData }) => {
-		// The loader throws `notFound()` when the slug is not in the
-		// public list, so by the time `head()` runs, loaderData is
-		// guaranteed. TanStack's type signature still surfaces
-		// `PublicToolSummary | undefined`, so we assert here.
-		const tool = loaderData as NonNullable<typeof loaderData>;
+		// TanStack calls `head()` server-side even when the loader
+		// throws `notFound()` (the route still needs an HTTP <head>
+		// before the notFound boundary can short-circuit). Guard
+		// against `loaderData` being undefined — fall back to a
+		// generic head instead of crashing the SSR pipeline.
+		if (!loaderData) {
+			return {
+				meta: [{ title: 'Tool — my-web-2026' }, { name: 'robots', content: 'noindex' }],
+			};
+		}
+		const tool = loaderData;
 		return {
 			meta: [
 				{ title: `${tool.display_name} — my-web-2026 Tools` },

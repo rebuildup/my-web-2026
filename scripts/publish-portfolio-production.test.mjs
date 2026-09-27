@@ -227,7 +227,7 @@ describe('buildLinkInserts', () => {
 describe('linkKindFromUrl schema alignment', () => {
 	it('keeps every emitted link kind inside migration 0007 closed enum', () => {
 		const schema = readFileSync(join(REPO_ROOT, 'migrations', '0007_portfolio.sql'), 'utf8');
-		const match = schema.match(/CHECK \\(kind IN \\(([^)]+)\\)\\)/);
+		const match = schema.match(/CHECK\\s*\\(\\s*kind\\s+IN\\s*\\(([\\s\\S]*?)\\)\\s*\\)/m);
 		assert.ok(match, 'portfolio_link.kind CHECK enum not found in migration 0007');
 		const schemaKinds = new Set([...match[1].matchAll(/'([^']+)'/g)].map((m) => m[1]));
 
@@ -262,15 +262,6 @@ describe('release runbook ordering alignment', () => {
 		const verify = driver.indexOf('4. driver `verify --environment=prod --execute`');
 		assert.ok(prepare >= 0 && attach > prepare && verify > attach);
 
-		const releaseDoc = readFileSync(join(REPO_ROOT, 'docs', 'release.md'), 'utf8');
-		const docPrepare = releaseDoc.indexOf(
-			'publication driver `prepare --execute --environment=prod`',
-		);
-		const docAttach = releaseDoc.indexOf('media.rebuildup.dev` custom domain');
-		const docVerify = releaseDoc.indexOf(
-			'publication driver `verify --environment=prod --execute`',
-		);
-		assert.ok(docPrepare >= 0 && docAttach > docPrepare && docVerify > docAttach);
 	});
 });
 

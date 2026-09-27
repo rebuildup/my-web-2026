@@ -73,6 +73,20 @@ async function loadBuildInnerArgs() {
 	return factory(process.execPath, INNER_SCRIPT);
 }
 
+async function loadBuildPreflightArgs() {
+	const source = readFileSync(SCRIPT, 'utf8');
+	const re = /function\s+buildPreflightArgs\s*\([\s\S]*?\n\}/m;
+	const match = source.match(re);
+	if (!match) {
+		throw new Error('Could not extract buildPreflightArgs from deploy-with-secrets.mjs');
+	}
+	const factory = new Function(
+		'PREFLIGHT_SCRIPT',
+		`${match[0]}\nreturn buildPreflightArgs;`,
+	);
+	return factory(resolve(HERE, 'check-cf-secrets.mjs'));
+}
+
 /**
  * Run the deploy script in an isolated `<repo>/scripts/...` layout and
  * return the tempdir path + exit code + captured output. Used when a
@@ -359,6 +373,32 @@ describe('deploy-with-secrets.mjs', () => {
 			assert.match(result.stdout, /Usage: deploy-with-secrets/);
 			assert.match(result.stdout, /--execute/);
 			assert.match(result.stdout, /--dry-run/);
+		});
+	});
+
+
+	describe('production secret preflight argv', () => {
+		it('pins transition contract before deploy', async () => {
+			const buildPreflightArgs = await loadBuildPreflightArgs();
+			const argv = buildPreflightArgs({
+				environment: 'prod',
+				configPath: 'wrangler.production.jsonc',
+				workerContract: 'transition',
+			});
+			assert.deepEqual(argv.slice(1), [
+				'--execute',
+				'--environment=prod',
+				'--config=wrangler.production.jsonc',
+				'--worker-contract=transition',
+			]);
+		});
+
+		it('deploy source invokes the preflight before the inner deploy', () => {
+			const source = readFileSync(SCRIPT, 'utf8');
+			const preflightIndex = source.indexOf('preflight: checking Infisical / Worker secret-name contract');
+			const innerIndex = source.indexOf('spawning: infisical run');
+			assert.ok(preflightIndex >= 0);
+			assert.ok(innerIndex > preflightIndex);
 		});
 	});
 

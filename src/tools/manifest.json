@@ -17,7 +17,7 @@
 				"output_dir": "dist",
 				"package_manager": "pnpm",
 				"security": {
-					"ignore_scripts": "INTERIM (Issue #91 follow-up): ProtoType's package.json declares a preinstall script (node preinstall.js) that executes obfuscated JavaScript at install time. The script is not auditable in a reasonable timeframe; my-web-2026 temporarily runs the build with --ignore-scripts so the dependency lifecycle is bypassed. The canonical resolution is a Tool-side fix (audit, replace or remove preinstall.js, Tool PR merge, new SHA pin) tracked at https://github.com/rebuildup/ProtoType/issues/<tbd> — once landed, this `build.security.ignore_scripts` block + the --ignore-scripts flag drop automatically because pnpm install --frozen-lockfile does not need to disable scripts unless the Tool repo reintroduces untrusted lifecycle code."
+					"ignore_scripts": "INTERIM (ProtoType issue #4): ProtoType's package.json declares a preinstall script (node preinstall.js) that executes obfuscated JavaScript at install time. The script is not auditable in a reasonable timeframe; my-web-2026 temporarily runs the build with --ignore-scripts so the dependency lifecycle is bypassed. The canonical resolution is a Tool-side fix (audit, replace or remove preinstall.js, Tool PR merge, new SHA pin) tracked at https://github.com/rebuildup/ProtoType/issues/4 — once landed, this `build.security.ignore_scripts` block + the --ignore-scripts flag drop automatically because pnpm install --frozen-lockfile does not need to disable scripts unless the Tool repo reintroduces untrusted lifecycle code."
 				}
 			},
 			"delivery": {

@@ -111,19 +111,26 @@ Incident #99 recovery restored the live Worker `BETTER_AUTH_SECRET` from the
 Infisical **dev** value because the Infisical prod copy was not yet a trusted
 source. Therefore Phase B MUST NOT start until Issue #122 completes.
 
-Before step 1 below:
+Before step 1 below, run the repository-owned #122 driver with an
+operator writer token:
 
-- copy/reconcile the exact current recovery value into Infisical prod
-  `BETTER_AUTH_SECRET` without exposing plaintext in argv, logs, GitHub, or
-  chat;
-- compare the intended recovery source and Infisical prod value in-process only
-  (bytes/hash comparison; never print either plaintext);
-- require equality before `flip` or `restore-legacy-only` can run.
+```bash
+INFISICAL_TOKEN=... pnpm run infisical:reconcile:prod-auth -- --execute
+```
 
-Cloudflare cannot reveal Worker secret plaintext, so this verification must use
-the known recovery source held by the operator / Infisical dev. Completing #122
-does **not** add `BETTER_AUTH_SECRETS`, delete the legacy binding, deploy, or
-otherwise advance Phase B.
+The driver has fixed scope (`dev/BETTER_AUTH_SECRET` →
+`prod/BETTER_AUTH_SECRET`), writes only when the target is missing/different,
+and requires a post-write byte-for-byte read-back match. Plaintext is never
+printed or placed in argv; the write uses a mode-0600 temporary YAML file.
+
+For a read-only check, use `--verify`; exit 0 means MATCH, exit 2 means the
+target is missing/different. The default `--dry-run` performs no network
+access.
+
+Cloudflare cannot reveal Worker secret plaintext, so verification uses the known
+recovery source from which Incident #99 restored the live Worker: Infisical dev.
+Completing #122 does **not** add `BETTER_AUTH_SECRETS`, delete the legacy
+binding, deploy, or otherwise advance Phase B.
 
 ## Rollback matrix (Phase B execute runbook)
 

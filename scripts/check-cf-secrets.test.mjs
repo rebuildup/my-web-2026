@@ -295,12 +295,12 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stdout, /CLOUDFLARE_API_TOKEN is set/);
 		});
 
-		it('fails dry-run preflight when live Worker is required but Cloudflare token is absent', () => {
+		it('keeps required Tier 3 in the plan without requiring an explicit token env var', () => {
 			const result = runInIsolatedRepo(['--require-live-worker'], {
 				wranglerContent: PHASE_3_WRANGLER,
 			});
-			assert.equal(result.exitCode, 1);
-			assert.match(result.stdout, /Tier 3 live Worker is required/);
+			assert.equal(result.exitCode, 0);
+			assert.match(result.stdout, /required; Wrangler resolves Workers Builds authentication/);
 		});
 
 		it('notes Tier 3 skip when CLOUDFLARE_API_TOKEN is unset', () => {

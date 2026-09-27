@@ -41,23 +41,26 @@ import { expect, test } from '@playwright/test';
  *   8. Refresh: reloading the host route still loads the iframe.
  *   9. CSP console: no CSP violations logged by the host page
  *      during the iframe load.
+ *  10. (Representative interaction, Issue #81 closure) The Tool's
+ *      React tree actually mounts inside the iframe, the Tab buttons
+ *      swap the rendered view, and no React/JS console errors fire
+ *      during the mount + interaction cycle.
  *
- * What this spec does NOT cover:
+ * History note (representative interaction, formerly deferred):
  *
- *   - "React tree mounts children inside `#root`" and "Tab buttons
- *     swap the rendered view" are **Tool-side** behaviours, not
- *     host contract. The current pilot Tool (ProtoType) crashes at
- *     module load with `Failed to read the 'localStorage' property
- *     from 'Window'` because its `src/SiteInterface.ts` runs
- *     `loadFromCache(...)` at the top level of `settings = { ... }`
- *     — a side effect that the `allow-scripts` sandbox cannot
- *     service because the iframe's origin is opaque. The Tool-side
- *     fix (graceful try/catch around `localStorage.getItem`) is
- *     tracked separately in the ProtoType repo. Once that lands and
- *     the parent bumps the submodule SHA, an opt-in
- *     `tools-prototype.tool-mount.spec.ts` can verify the React
- *     tree inside the iframe (kept out of this spec so the host
- *     contract is not blocked on a Tool-side fix).
+ *   The React-tree mount assertion was intentionally excluded from
+ *   the initial pilot spec because ProtoType crashed at module load
+ *   under the opaque-origin sandbox (`localStorage` access threw,
+ *   because `allow-scripts` only → opaque origin). ProtoType#4
+ *   (https://github.com/rebuildup/ProtoType/issues/4) replaced
+ *   `src/SiteInterface.ts` + `src/gamesets/020_cacheControl.ts` to
+ *   import from a new `src/lib/safeStorage.ts` that probes
+ *   `localStorage` availability once at module load and gracefully
+ *   no-ops on `SecurityError`. That fix landed as rebuildup/ProtoType
+ *   PR #5, merge commit `335e0e8` on `rebuildup/ProtoType@main`, and
+ *   this branch bumps the submodule to that commit. The "no console
+ *   errors during the interaction cycle" assertion is now safe to
+ *   add and is exercised by the test at the bottom of this file.
  */
 
 const PROTOTYPE_ENTRY = '/tools/prototype/app/index.html';
@@ -240,5 +243,44 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		await page.goto(ROUTE);
 		await page.waitForLoadState('networkidle');
 		expect(cspViolations).toEqual([]);
+	});
+
+	test('representative interaction: Tool mounts and tab buttons swap the rendered view', async ({
+		page,
+	}) => {
+		// Issue #81 closure — the Tool-side storage fix (ProtoType#4,
+		// PR #5) means the React tree mounts inside the sandboxed
+		// iframe without throwing on `localStorage`. Assert the mount
+		// contract and a representative interaction (click the Ranking
+		// tab, observe the heading appear).
+		await page.goto(ROUTE);
+		await page.waitForSelector('iframe[title="ProtoType Tool"]', {
+			state: 'attached',
+			timeout: 10_000,
+		});
+		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
+
+		// React tree mounts at least one child inside #root.
+		await expect(frame.locator('#root > *').first()).toBeAttached({
+			timeout: 15_000,
+		});
+
+		// The default tab is `ゲーム` (Game) — its visible content is
+		// the `.openbtn` "Game Start" button. Asserting on the visible
+		// button (not the empty flex wrapper) keeps the test stable
+		// even though `.home-container` resolves to a 0×0 box (its
+		// only child is `position: fixed`).
+		await expect(frame.locator('.openbtn')).toBeVisible({ timeout: 10_000 });
+
+		// Click the Ranking tab. The exact-match heading text appears
+		// (the loading state shares a prefix, so we disambiguate).
+		await frame.getByRole('button', { name: 'ランキング' }).click();
+		await expect(frame.getByText('オンラインランキング', { exact: true })).toBeVisible({
+			timeout: 10_000,
+		});
+
+		// Click back to Game to round-trip the interaction.
+		await frame.getByRole('button', { name: 'ゲーム' }).click();
+		await expect(frame.locator('.openbtn')).toBeVisible({ timeout: 10_000 });
 	});
 });

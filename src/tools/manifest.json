@@ -9,16 +9,13 @@
 			"source": {
 				"canonical_repo": "https://github.com/rebuildup/ProtoType.git",
 				"submodule_path": "external/prototype",
-				"pinned_sha": "18e925272ca274e428e143c45194950d562bc096",
+				"pinned_sha": "335e0e861009049336e581dc266dc4e2f019e5c7",
 				"branch": "main"
 			},
 			"build": {
-				"command": "pnpm install --frozen-lockfile --ignore-scripts && pnpm run build",
+				"command": "pnpm install --frozen-lockfile && pnpm run build",
 				"output_dir": "dist",
-				"package_manager": "pnpm",
-				"security": {
-					"ignore_scripts": "INTERIM (ProtoType issue #4): ProtoType's package.json declares a preinstall script (node preinstall.js) that executes obfuscated JavaScript at install time. The script is not auditable in a reasonable timeframe; my-web-2026 temporarily runs the build with --ignore-scripts so the dependency lifecycle is bypassed. The canonical resolution is a Tool-side fix (audit, replace or remove preinstall.js, Tool PR merge, new SHA pin) tracked at https://github.com/rebuildup/ProtoType/issues/4 — once landed, this `build.security.ignore_scripts` block + the --ignore-scripts flag drop automatically because pnpm install --frozen-lockfile does not need to disable scripts unless the Tool repo reintroduces untrusted lifecycle code."
-				}
+				"package_manager": "pnpm"
 			},
 			"delivery": {
 				"kind": "same_origin_static",
@@ -30,8 +27,8 @@
 				}
 			},
 			"classification": "same_origin_static",
-			"license": null,
-			"notes": "Pilot for Issue #81. Heavy Vite SPA — ~1.5MB JS bundle (gsap + three.js + pixi.js). License absent in the upstream repo (no LICENSE file, no package.json `license` field); my-web-2026 records this as a separate Tool-repo concern and tracks a dedicated follow-up. Same-origin hosting under rebuildup.dev is redistribution within the meaning of the Berne Convention / most OSS licenses — the upstream license posture is unresolved, so embedding here relies on the fact that ProtoType and my-web-2026 are owned by the same operator. The Tool-side license clarification is the canonical fix; until it lands, do NOT clone this integration pattern to third-party Tools without explicit license review."
+			"license": "MIT",
+			"notes": "Pilot for Issue #81. Heavy Vite SPA — ~1.5MB JS bundle (gsap + three.js + pixi.js). Upstream now carries an operator-owned MIT LICENSE (added by ProtoType#4 / PR rebuildup/ProtoType#5, merge commit 335e0e8), so the previously provisional 'same operator / Berne Convention' framing is now backed by an explicit permissive license. The intermediate `--ignore-scripts` / `build.security.ignore_scripts` workaround was removed at the same time because the obfuscated `preinstall.js` lifecycle script has been deleted upstream."
 		},
 		{
 			"slug": "text-counter",

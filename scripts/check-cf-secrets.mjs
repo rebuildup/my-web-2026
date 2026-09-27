@@ -56,7 +56,7 @@ const ALLOWED_INFISICAL_JSON_KEYS = new Set(['workspaceId', 'defaultEnvironment'
 const REQUIRED_INFISICAL_JSON_KEYS = ['workspaceId'];
 
 function printHelp() {
-	console.log(`Usage: check-cf-secrets.mjs [--execute] [--dry-run] [--environment=<prod|dev>] [--config=<path>]
+	console.log(`Usage: check-cf-secrets.mjs [--execute] [--dry-run] [--environment=<prod|dev>] [--config=<path>] [--worker-contract=<transition|final>]
 
 Verify the Infisical / Cloudflare secret name contract (ADR-0015 §7).
 
@@ -75,6 +75,8 @@ Options:
   --dry-run                 parse args + show expected check only (default)
   --environment=<name>      Infisical environment (default: 'prod')
   --config=<path>           wrangler config path (default: wrangler.production.jsonc)
+  --worker-contract=<mode>   live Worker expectation: transition=3-name (default,
+                             before legacy deletion), final=versioned 2-name
   -h, --help                show this help`);
 }
 
@@ -84,6 +86,7 @@ function parseArgs(argv) {
 		dryRun: true,
 		environment: 'prod',
 		config: 'wrangler.production.jsonc',
+		workerContract: 'transition',
 	};
 	let explicitMode = null;
 	for (const arg of argv) {
@@ -101,6 +104,8 @@ function parseArgs(argv) {
 			args.environment = arg.slice('--environment='.length);
 		} else if (arg.startsWith('--config=')) {
 			args.config = arg.slice('--config='.length);
+		} else if (arg.startsWith('--worker-contract=')) {
+			args.workerContract = arg.slice('--worker-contract='.length);
 		} else if (arg === '--help' || arg === '-h') {
 			printHelp();
 			process.exit(0);
@@ -111,6 +116,11 @@ function parseArgs(argv) {
 	if (args.environment !== 'prod' && args.environment !== 'dev') {
 		throw new Error(
 			`--environment must be 'prod' or 'dev' (got: ${JSON.stringify(args.environment)})`,
+		);
+	}
+	if (args.workerContract !== 'transition' && args.workerContract !== 'final') {
+		throw new Error(
+			`--worker-contract must be 'transition' or 'final' (got: ${JSON.stringify(args.workerContract)})`,
 		);
 	}
 	return args;
@@ -365,6 +375,7 @@ async function main() {
 	console.log(`[check-cf-secrets] detected phase=${phase}`);
 	console.log(`[check-cf-secrets] wrangler secrets.required=${JSON.stringify(wranglerRequired)}`);
 	console.log(`[check-cf-secrets] mode=${args.execute ? 'execute' : 'dry-run'}`);
+	console.log(`[check-cf-secrets] worker contract=${args.workerContract}`);
 
 	if (args.dryRun) {
 		console.log(
@@ -388,8 +399,10 @@ async function main() {
 			typeof process.env.CLOUDFLARE_API_TOKEN === 'string' &&
 			process.env.CLOUDFLARE_API_TOKEN.length > 0;
 		if (tier3Eligible) {
+			const expectedWorker =
+				args.workerContract === 'final' ? PHASE_3_REQUIRED : RUNTIME_REQUIRED_SECRETS;
 			console.log(
-				'[dry-run] would verify: actual Cloudflare Worker secret names via `wrangler secret list` (CLOUDFLARE_API_TOKEN is set)',
+				`[dry-run] would verify: actual Cloudflare Worker secret names via \`wrangler secret list\` against ${args.workerContract} contract (${expectedWorker.join(', ')}) (CLOUDFLARE_API_TOKEN is set)`,
 			);
 		} else {
 			console.log(
@@ -402,30 +415,30 @@ async function main() {
 	}
 
 	const apiUrl = process.env.INFISICAL_API_URL ?? INFISICAL_API_URL_DEFAULT;
-	const clientId = process.env.INFISICAL_CLIENT_ID;
-	const clientSecret = process.env.INFISICAL_CLIENT_SECRET;
-	if (typeof clientId !== 'string' || clientId.length === 0) {
-		throw new Error('INFISICAL_CLIENT_ID env var is required for --execute');
-	}
-	if (typeof clientSecret !== 'string' || clientSecret.length === 0) {
-		throw new Error('INFISICAL_CLIENT_SECRET env var is required for --execute');
-	}
 
-	// workspaceId SoT: read from `.infisical.json` (ADR-0015 §1
-	// Decision). No `INFISICAL_WORKSPACE_ID` env override is
-	// supported — the committed file is the single source of truth.
+	// workspaceId SoT: read from `.infisical.json` (ADR-0015 §1 Decision).
 	const workspaceId = readInfisicalWorkspaceId();
 
-	console.log('[execute] Universal Auth login...');
-	const accessToken = await loginUniversalAuth(apiUrl, clientId, clientSecret);
-	process.env.INFISICAL_TOKEN = accessToken;
-	// `delete` (not `= undefined`) is the canonical Node API for
-	// removing env entries — assignment to `undefined` coerces to the
-	// string `"undefined"`.
-	// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
-	delete process.env.INFISICAL_CLIENT_ID;
-	// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
-	delete process.env.INFISICAL_CLIENT_SECRET;
+	let accessToken = process.env.INFISICAL_TOKEN;
+	if (typeof accessToken === 'string' && accessToken.length > 0) {
+		console.log('[execute] Using pre-authenticated INFISICAL_TOKEN from parent process');
+	} else {
+		const clientId = process.env.INFISICAL_CLIENT_ID;
+		const clientSecret = process.env.INFISICAL_CLIENT_SECRET;
+		if (typeof clientId !== 'string' || clientId.length === 0) {
+			throw new Error('INFISICAL_TOKEN or INFISICAL_CLIENT_ID env var is required for --execute');
+		}
+		if (typeof clientSecret !== 'string' || clientSecret.length === 0) {
+			throw new Error('INFISICAL_CLIENT_SECRET env var is required when INFISICAL_TOKEN is not supplied');
+		}
+		console.log('[execute] Universal Auth login...');
+		accessToken = await loginUniversalAuth(apiUrl, clientId, clientSecret);
+		process.env.INFISICAL_TOKEN = accessToken;
+		// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate delete.
+		delete process.env.INFISICAL_CLIENT_ID;
+		// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate delete.
+		delete process.env.INFISICAL_CLIENT_SECRET;
+	}
 
 	let exitCode = 0;
 	try {
@@ -474,12 +487,14 @@ async function main() {
 		// would either fail to start or silently omit the secret.
 		const workerNames = listCloudflareWorkerSecretNames(args.config);
 		if (workerNames !== null) {
+			const expectedWorkerNames =
+				args.workerContract === 'final' ? PHASE_3_REQUIRED : RUNTIME_REQUIRED_SECRETS;
 			const workerCheck = compareNameLists(
 				workerNames,
-				RUNTIME_REQUIRED_SECRETS,
-				'Cloudflare Worker (live) runtime contract (3-name)',
+				expectedWorkerNames,
+				`Cloudflare Worker (live) ${args.workerContract} contract`,
 			);
-			const workerOk = workerCheck.missing.length === 0;
+			const workerOk = workerCheck.missing.length === 0 && workerCheck.extra.length === 0;
 			printCheckResult(workerCheck, workerOk);
 			if (!workerOk) exitCode = 1;
 		} else {

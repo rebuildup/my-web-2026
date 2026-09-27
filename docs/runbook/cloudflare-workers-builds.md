@@ -95,6 +95,13 @@ addition to `BETTER_AUTH_SECRETS`. The config comment in
 `wrangler.production.jsonc#secrets.required` is the **next deploy's
 contract**, not a claim about the current Worker state.
 
+Wrangler's `deploy --secrets-file` merge semantics are part of this recovery
+invariant: existing Worker secrets omitted from the secrets file are preserved
+from the previous version, and ordinary deploy does not delete secrets. The
+release deploy therefore uploads the versioned two-name file **without**
+implicitly deleting the legacy binding. Legacy removal remains an explicit
+`delete-legacy-only` operation after Smoke #2/#3.
+
 To inspect live state without leaking values:
 
 ```bash

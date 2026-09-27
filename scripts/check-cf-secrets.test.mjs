@@ -160,6 +160,14 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stderr, /unknown argument/);
 		});
 
+		it('rejects invalid --worker-contract value', () => {
+			const result = runInIsolatedRepo(['--worker-contract=bogus'], {
+				wranglerContent: PHASE_3_WRANGLER,
+			});
+			assert.equal(result.exitCode, 1);
+			assert.match(result.stderr, /--worker-contract must be 'transition' or 'final'/);
+		});
+
 		it('rejects --environment with non-{prod,dev} value', () => {
 			const result = runInIsolatedRepo(['--environment=staging'], {
 				wranglerContent: PHASE_1_2_WRANGLER,
@@ -266,6 +274,17 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stdout, /exact/);
 		});
 
+		it('prints final 2-name live Worker expectation after legacy deletion', () => {
+			const result = runInIsolatedRepo(['--worker-contract=final'], {
+				wranglerContent: PHASE_3_WRANGLER,
+				env: { CLOUDFLARE_API_TOKEN: 'fake-token-for-dry-run-mention' },
+			});
+			assert.equal(result.exitCode, 0);
+			assert.match(result.stdout, /worker contract=final/);
+			assert.match(result.stdout, /against final contract/);
+			assert.match(result.stdout, /BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY/);
+		});
+
 		it('mentions Tier 3 (live Worker) eligibility in dry-run', () => {
 			const result = runInIsolatedRepo([], {
 				wranglerContent: PHASE_1_2_WRANGLER,
@@ -364,6 +383,19 @@ describe('check-cf-secrets.mjs', () => {
 	});
 
 	describe('--execute gate', () => {
+		it('accepts a pre-authenticated INFISICAL_TOKEN without client credentials', () => {
+			const result = runInIsolatedRepo(['--execute'], {
+				wranglerContent: PHASE_3_WRANGLER,
+				env: {
+					INFISICAL_TOKEN: 'parent-token',
+					INFISICAL_API_URL: 'https://this-host-does-not-exist.invalid',
+				},
+			});
+			assert.notEqual(result.exitCode, 0);
+			assert.match(result.stdout, /Using pre-authenticated INFISICAL_TOKEN/);
+			assert.doesNotMatch(result.stderr, /INFISICAL_CLIENT_ID.*required/);
+		});
+
 		it('requires INFISICAL_CLIENT_ID env var', () => {
 			const result = runInIsolatedRepo(['--execute'], {
 				wranglerContent: PHASE_1_2_WRANGLER,

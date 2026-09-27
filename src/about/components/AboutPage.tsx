@@ -225,6 +225,7 @@ function IdentitySection({ identity }: { identity: AboutPageData['identity'] }) 
 					eyebrow="01 — Identity"
 					title="人物像 / Identity"
 					description="学校・制作・開発の surface が分かれても、一人の人物から自然に生えているように。"
+					variant="spread"
 				>
 					<dl
 						className={css({
@@ -276,6 +277,7 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 					eyebrow="02 — Interests"
 					title="興味 / Throughlines"
 					description="バラバラに見える活動が同じ人物から出てくる理由。プロジェクトを貫く throughline。"
+					variant="spread"
 				>
 					<ol
 						className={css({
@@ -368,6 +370,7 @@ function ExperienceSection({ projects }: { projects: readonly PortfolioProject[]
 					eyebrow="03 — Experience"
 					title="経験 / Selected work"
 					description="公開作品の中から語り順で選んだ subset。canonical list は /portfolio 側。"
+					variant="spread"
 				>
 					{projects.length === 0 ? (
 						<output
@@ -557,6 +560,7 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 					eyebrow="04 — Current"
 					title="現在 / Today"
 					description="今、時間を割いていること。半年程度の freshness を想定。"
+					variant="spread"
 				>
 					<ul
 						className={css({
@@ -613,6 +617,7 @@ function FutureSection({
 					eyebrow="05 — Future"
 					title="今後 / Active & parked"
 					description="active = 今、方向として進めていること。parked = 意図的に保留しているもの。"
+					variant="spread"
 				>
 					<div
 						className={css({

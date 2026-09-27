@@ -22,10 +22,7 @@ test('default mode is dry-run', () => {
 });
 
 test('modes are mutually exclusive', () => {
-	assert.throws(
-		() => parseArgs(['--verify', '--execute']),
-		/Choose exactly one/,
-	);
+	assert.throws(() => parseArgs(['--verify', '--execute']), /Choose exactly one/);
 });
 
 test('unknown arguments are rejected', () => {

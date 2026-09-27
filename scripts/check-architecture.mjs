@@ -20,6 +20,14 @@ const forbiddenOwnerDependencies = new Map([
 	// not import from `home`, `routes`, or `http` (peer / route /
 	// external HTTP boundary responsibilities).
 	['portfolio', new Set(['home', 'routes', 'http'])],
+	// `about` (Issue #102) is a peer obligation to `home` and
+	// `portfolio`. It composes repo-controlled narrative copy with
+	// a narrative subset of public portfolio projects; it must
+	// not import from `home` (peer obligation), `routes` (the
+	// route layer is the consumer), `cloudflare` (server-fn pattern
+	// keeps `cloudflare:workers` virtual-module access out of the
+	// obligation), or `http` (external HTTP boundary).
+	['about', new Set(['home', 'routes', 'cloudflare', 'http'])],
 ]);
 
 /**

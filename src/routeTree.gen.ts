@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AboutRouteImport } from './routes/about'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as AdminEmojiCatalogRouteImport } from './routes/admin.emoji-catalog'
 import { Route as AdminImagesRouteImport } from './routes/admin.images'
@@ -25,6 +26,11 @@ import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invit
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AboutRoute = AboutRouteImport.update({
+  id: '/about',
+  path: '/about',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminRoute = AdminRouteImport.update({
@@ -85,6 +91,7 @@ const AdminInvitationsAcceptRoute = AdminInvitationsAcceptRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
@@ -92,13 +99,14 @@ export interface FileRoutesByFullPath {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
-  '/portfolio/': typeof PortfolioIndexRoute
   '/tools/$slug': typeof ToolsSlugRoute
+  '/portfolio/': typeof PortfolioIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
@@ -106,14 +114,15 @@ export interface FileRoutesByTo {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
-  '/portfolio': typeof PortfolioIndexRoute
   '/tools/$slug': typeof ToolsSlugRoute
+  '/portfolio': typeof PortfolioIndexRoute
   '/tools': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/about': typeof AboutRoute
   '/admin': typeof AdminRouteWithChildren
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
@@ -121,8 +130,8 @@ export interface FileRoutesById {
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
-  '/portfolio/': typeof PortfolioIndexRoute
   '/tools/$slug': typeof ToolsSlugRoute
+  '/portfolio/': typeof PortfolioIndexRoute
   '/tools/': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
@@ -130,6 +139,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/about'
     | '/admin'
     | '/admin/emoji-catalog'
     | '/admin/images'
@@ -137,13 +147,14 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/login'
     | '/portfolio/$slug'
-    | '/portfolio/'
     | '/tools/$slug'
+    | '/portfolio/'
     | '/tools/'
     | '/admin/invitations/accept'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/about'
     | '/admin'
     | '/admin/emoji-catalog'
     | '/admin/images'
@@ -151,13 +162,14 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/login'
     | '/portfolio/$slug'
-    | '/portfolio'
     | '/tools/$slug'
+    | '/portfolio'
     | '/tools'
     | '/admin/invitations/accept'
   id:
     | '__root__'
     | '/'
+    | '/about'
     | '/admin'
     | '/admin/emoji-catalog'
     | '/admin/images'
@@ -165,18 +177,19 @@ export interface FileRouteTypes {
     | '/admin/keys'
     | '/admin/login'
     | '/portfolio/$slug'
-    | '/portfolio/'
     | '/tools/$slug'
+    | '/portfolio/'
     | '/tools/'
     | '/admin/invitations/accept'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AboutRoute: typeof AboutRoute
   AdminRoute: typeof AdminRouteWithChildren
   PortfolioSlugRoute: typeof PortfolioSlugRoute
-  PortfolioIndexRoute: typeof PortfolioIndexRoute
   ToolsSlugRoute: typeof ToolsSlugRoute
+  PortfolioIndexRoute: typeof PortfolioIndexRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
 }
 
@@ -187,6 +200,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/about': {
+      id: '/about'
+      path: '/about'
+      fullPath: '/about'
+      preLoaderRoute: typeof AboutRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/admin': {
@@ -300,10 +320,11 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AboutRoute: AboutRoute,
   AdminRoute: AdminRouteWithChildren,
   PortfolioSlugRoute: PortfolioSlugRoute,
-  PortfolioIndexRoute: PortfolioIndexRoute,
   ToolsSlugRoute: ToolsSlugRoute,
+  PortfolioIndexRoute: PortfolioIndexRoute,
   ToolsIndexRoute: ToolsIndexRoute,
 }
 export const routeTree = rootRouteImport

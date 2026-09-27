@@ -16,6 +16,8 @@ import { Route as AdminImagesRouteImport } from './routes/admin.images'
 import { Route as AdminInvitationsRouteImport } from './routes/admin.invitations'
 import { Route as AdminKeysRouteImport } from './routes/admin.keys'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as PortfolioIndexRouteImport } from './routes/portfolio/index'
+import { Route as PortfolioSlugRouteImport } from './routes/portfolio/$slug'
 import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsSlugRouteImport } from './routes/tools.$slug'
 import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invitations.accept'
@@ -55,6 +57,16 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AdminRoute,
 } as any)
+const PortfolioIndexRoute = PortfolioIndexRouteImport.update({
+  id: '/portfolio/',
+  path: '/portfolio/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortfolioSlugRoute = PortfolioSlugRouteImport.update({
+  id: '/portfolio/$slug',
+  path: '/portfolio/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ToolsIndexRoute = ToolsIndexRouteImport.update({
   id: '/tools/',
   path: '/tools/',
@@ -79,6 +91,8 @@ export interface FileRoutesByFullPath {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/portfolio/$slug': typeof PortfolioSlugRoute
+  '/portfolio/': typeof PortfolioIndexRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/tools/': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
@@ -91,6 +105,8 @@ export interface FileRoutesByTo {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/portfolio/$slug': typeof PortfolioSlugRoute
+  '/portfolio': typeof PortfolioIndexRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/tools': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
@@ -104,6 +120,8 @@ export interface FileRoutesById {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/portfolio/$slug': typeof PortfolioSlugRoute
+  '/portfolio/': typeof PortfolioIndexRoute
   '/tools/$slug': typeof ToolsSlugRoute
   '/tools/': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
@@ -118,6 +136,8 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/portfolio/$slug'
+    | '/portfolio/'
     | '/tools/$slug'
     | '/tools/'
     | '/admin/invitations/accept'
@@ -130,6 +150,8 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/portfolio/$slug'
+    | '/portfolio'
     | '/tools/$slug'
     | '/tools'
     | '/admin/invitations/accept'
@@ -142,6 +164,8 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/portfolio/$slug'
+    | '/portfolio/'
     | '/tools/$slug'
     | '/tools/'
     | '/admin/invitations/accept'
@@ -150,6 +174,8 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  PortfolioSlugRoute: typeof PortfolioSlugRoute
+  PortfolioIndexRoute: typeof PortfolioIndexRoute
   ToolsSlugRoute: typeof ToolsSlugRoute
   ToolsIndexRoute: typeof ToolsIndexRoute
 }
@@ -204,6 +230,20 @@ declare module '@tanstack/react-router' {
       fullPath: '/admin/login'
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRoute
+    }
+    '/portfolio/': {
+      id: '/portfolio/'
+      path: '/portfolio'
+      fullPath: '/portfolio/'
+      preLoaderRoute: typeof PortfolioIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolio/$slug': {
+      id: '/portfolio/$slug'
+      path: '/portfolio/$slug'
+      fullPath: '/portfolio/$slug'
+      preLoaderRoute: typeof PortfolioSlugRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/tools/': {
       id: '/tools/'
@@ -261,6 +301,8 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  PortfolioSlugRoute: PortfolioSlugRoute,
+  PortfolioIndexRoute: PortfolioIndexRoute,
   ToolsSlugRoute: ToolsSlugRoute,
   ToolsIndexRoute: ToolsIndexRoute,
 }

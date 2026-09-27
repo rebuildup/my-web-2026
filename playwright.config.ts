@@ -39,8 +39,14 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
+// `e2e/global-setup.ts` runs once before the webServer starts and
+// applies the D1 migrations + skeleton seed to the local D1 binding.
+// Without it the portfolio routes 500 on a fresh `.wrangler/state`
+// because the `portfolio_project` table does not exist yet. Re-runs
+// are idempotent (D1 migration tracking + INSERT OR IGNORE seed).
 export default defineConfig({
 	testDir: './e2e',
+	globalSetup: './e2e/global-setup.ts',
 	timeout: 30_000,
 	expect: { timeout: 5_000 },
 	fullyParallel: true,
@@ -65,7 +71,15 @@ export default defineConfig({
 	// the local preview webServer is up, ignore it so the regular
 	// `pnpm run e2e` (CI on push, local dev) does not DNS-fail against
 	// a domain that may not be deployed yet.
-	testIgnore: BASE_URL.startsWith('http://127.0.0.1') ? '**/prod-smoke.spec.ts' : undefined,
+	//
+	// `portfolio.spec.ts` likewise targets a local D1 binding: it
+	// seeds draft / unlisted / archived rows into the local D1 and
+	// asserts the public-visibility boundary. The local D1 file is
+	// not addressable from a remote Worker deployment, so the spec
+	// is filtered out of the production-only path.
+	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
+		? '**/prod-smoke.spec.ts'
+		: '**/portfolio.spec.ts',
 	// The local project spins up `pnpm preview` against the build
 	// output automatically. `pnpm preview` is required because the
 	// Tool iframe spec reaches into `dist/client/tools/<slug>/app/`
@@ -75,7 +89,9 @@ export default defineConfig({
 	// `scripts/check-client-bundle.mjs`) before this step, so the
 	// `dist/` tree is guaranteed to be present. For local dev, run
 	// `pnpm run build` before `pnpm run e2e` (or rely on
-	// `reuseExistingServer: !CI` if a preview is already up).
+	// `reuseExistingServer: !CI` if a preview is already up). Local
+	// previews use `pnpm preview` (= `vite preview` against
+	// `dist/client/`), NOT `pnpm dev`.
 	webServer: BASE_URL.startsWith('http://127.0.0.1')
 		? {
 				command: `pnpm preview --port=${PORT}`,

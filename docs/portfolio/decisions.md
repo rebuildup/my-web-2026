@@ -177,3 +177,101 @@ when a client ships a stale cursor.
   construction.
 - `src/portfolio/load.test.ts` — `cursor pagination` describe
   block.
+
+## Decision 5 — R2 media delivery: public R2 custom domain
+
+**Status:** Accepted for the foundation (Issue #77). Configuration
+follows once the operator attaches the `media.rebuildup.dev`
+custom domain at the R2 bucket level (not a code change — the
+Worker needs no route). The `MEDIA_PUBLIC_BASE_URL` value is
+pinned in `wrangler.production.jsonc#vars` so the Worker
+production deployment sees the canonical base URL without
+operator runtime action.
+
+**Context.** #76 ships with `composeMediaUrl()` returning `null`.
+Issue #77 picks the actual public delivery mechanism. Three
+candidates were compared:
+
+| axis | signed URL per request | Worker proxy | **R2 custom domain** |
+| --- | --- | --- | --- |
+| cacheability | low (TTL short) | low (per request) | **high (CDN + browser)** |
+| complexity | medium (sign logic) | high (stream code) | **low (one DNS record)** |
+| Worker request cost | **2× per image** (sign + fetch) | 1× per image | **0×** |
+| security requirement | OK for both | OK for both | OK for public content |
+| canonical URL stability | low (rotates) | medium (proxy URL) | **high (stable)** |
+| OGP image use | needs stable URL | needs stable URL | **direct** |
+| responsive / `srcset` | awkward (re-sign per src) | awkward | **natural** |
+
+**Decision.** **R2 custom domain** for public portfolio media.
+Portfolio images are public by design; there is no auth or private
+context that justifies Worker-side signing or proxying. The R2
+custom domain is configured at the bucket level and bypasses the
+Worker entirely, so:
+
+- Portfolio covers serve at e.g.
+  `https://media.rebuildup.dev/portfolio/<slug>/cover.webp`.
+- The Cloudflare edge caches the object; the browser caches per
+  `Cache-Control`.
+- Facebook / Twitter OGP crawlers fetch the URL directly without
+  any Worker hop.
+- `srcset` is a list of custom-domain URLs at different sizes.
+
+**Why not Worker proxy.** A proxy is the right answer when the
+content is private / per-user / needs server-side transformation.
+For static public portfolio media it would just be a cost centre
+with no upside.
+
+**Why not signed URL.** Signed URLs rotate, so OGP crawlers (which
+fetch once and cache) and `srcset` clients (which fetch the same
+object at multiple sizes) would each have to re-sign. The signing
+API also needs a Worker hop. That overhead is meaningful for
+content that is identical for every visitor.
+
+**Implementation.**
+
+- `wrangler.production.jsonc#vars` — `MEDIA_PUBLIC_BASE_URL:
+  "https://media.rebuildup.dev"`. Non-secret config is committed
+  to the repo so the operator does not need to set anything via
+  the dashboard on every deploy. Production dry-run must include
+  this entry.
+- `wrangler.jsonc` (local) — intentionally **omits**
+  `MEDIA_PUBLIC_BASE_URL`. Local dev sees every URL as `null` and
+  exercises the placeholder branch by default; the variable can
+  be set explicitly when the operator wants to test the
+  custom-domain path locally.
+- `src/portfolio/media.ts` — `composeMediaUrl` returns the
+  custom-domain URL when `env.MEDIA` is configured AND a
+  `MEDIA_PUBLIC_BASE_URL` is available (read from `env`). When
+  neither is set, it still returns `null` so the UI's
+  placeholder branch is exercised.
+- The custom domain itself is **not** a code change — it's an R2
+  bucket setting in the Cloudflare dashboard. Until the operator
+  wires it at the bucket level, every public URL is `null` even
+  though the Worker sees the base URL. The placeholder must be
+  safe against null URLs and against missing R2 objects.
+
+**Release prerequisite — durable state.**
+
+The bucket-level attachment (R2 bucket `my-web-2026` ↔ custom
+domain `media.rebuildup.dev`) is the only piece of Decision 5
+that cannot be expressed as code. It lives in the Cloudflare
+account's R2 settings, not in this repository. The release gate
+that ships 0.5.0 must verify the attachment is live
+(read-back: `wrangler r2 bucket domain list` or dashboard) before
+the production dry-run can prove a single image actually serves.
+The local dev path remains null, by design.
+
+**Placeholder contract.** A `PortfolioMedia` row with `url === null`
+or an `url` that fails to load must never crash the page. The UI
+component renders a styled `media-empty` box (cover-sized frame
+with a muted caption) and the loader still returns the row so
+metadata (alt / caption / displayOrder) is reachable.
+
+**Cross-references.**
+
+- `src/portfolio/media.ts` — `composeMediaUrl` updated to compose
+  the custom-domain URL when the env is configured.
+- `src/portfolio/components/PortfolioMedia.tsx` — placeholder
+  rendering branch.
+- `migrations/0007_portfolio.sql` — `portfolio_media` shape
+  unchanged.

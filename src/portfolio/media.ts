@@ -1,41 +1,75 @@
 /**
  * R2 media URL composition for portfolio assets.
  *
- * The foundation does not yet wire a public media route
- * (`/api/v1/portfolio/media/<r2_key>` or similar) — that
- * belongs to Issue #77 (UI) once we decide between
- *   * signed URL per request (current Worker egress),
- *   * public R2 custom domain (long-lived cacheable URLs).
+ * Decision 5 (#77): portfolio media is delivered via a **public R2
+ * custom domain** (e.g. `https://media.rebuildup.dev/<r2_key>`) so
+ * the Cloudflare edge — not the Worker — serves every image.
  *
- * For now the loader exposes `Media.url: null` when the
- * binding is not configured, so the UI can render a placeholder
- * without crashing. This module is the single place that
- * composes URLs once the public route ships; everything else
- * goes through `composeMediaUrl`.
+ * Implications:
+ *
+ * - No Worker request is paid per image render. The image is fetched
+ *   directly from the custom-domain origin.
+ * - OGP crawlers (Facebook / Twitter) see the canonical URL once and
+ *   cache it; no signing round-trip.
+ * - `srcset` can list multiple sizes of the same custom-domain URL.
+ * - The custom domain itself is **not** a code change — it is an R2
+ *   bucket setting in the Cloudflare dashboard. Until the operator
+ *   wires it, `composeMediaUrl` returns `null` and the UI renders a
+ *   placeholder.
+ *
+ * This module is the single entry point that materialises the URL.
+ * Routes and UI must never recompose the URL themselves.
  */
 
 /** Object key in the `MEDIA` binding. */
 export type R2Key = string;
 
 /**
- * Compose the public URL for an R2 object. Returns `null` when
- * the binding is not configured so the caller can render a
- * placeholder. The default implementation returns `null` until
- * Issue #77 introduces a public media route.
- *
- * `r2Key` is validated against a conservative character set to
- * keep accidental path traversal out of the eventual URL
- * builder.
+ * Minimal env shape the portfolio obligation needs from the R2
+ * delivery surface. `MEDIA_PUBLIC_BASE_URL` is intentionally
+ * optional — the foundation ships without a public media route
+ * configured, so the loaders and UI must keep working with a
+ * `null` URL until the operator binds the custom domain.
  */
-export function composeMediaUrl(env: { MEDIA?: R2Bucket }, r2Key: R2Key): string | null {
-	if (!env.MEDIA) return null;
-	if (!isValidR2Key(r2Key)) return null;
-	// Foundation: no public route yet. UI renders a placeholder.
-	// Once Issue #77 ships, swap this for:
-	//   return `/api/v1/portfolio/media/${encodeURIComponent(r2Key)}`;
-	return null;
+export interface PortfolioMediaEnv {
+	MEDIA?: R2Bucket;
+	/**
+	 * Public base URL for the R2 custom domain (no trailing slash).
+	 * E.g. `https://media.rebuildup.dev`. When absent, every
+	 * `composeMediaUrl` call returns `null` and the UI renders the
+	 * placeholder branch.
+	 */
+	MEDIA_PUBLIC_BASE_URL?: string;
 }
 
+/**
+ * Compose the public URL for an R2 object. Returns `null` when:
+ *
+ *   - the `MEDIA` binding is not configured,
+ *   - `MEDIA_PUBLIC_BASE_URL` is not configured (operator hasn't
+ *     wired the R2 custom domain yet),
+ *   - the supplied key fails conservative validation
+ *     (defence-in-depth against accidental `..` traversal).
+ *
+ * When configured, the returned URL is
+ * `${MEDIA_PUBLIC_BASE_URL}/${r2Key}` — the R2 custom domain serves
+ * the object directly with whatever cache headers R2 emits. The UI
+ * therefore needs no Worker proxy hop.
+ */
+export function composeMediaUrl(env: PortfolioMediaEnv, r2Key: R2Key): string | null {
+	if (!env.MEDIA) return null;
+	const base = env.MEDIA_PUBLIC_BASE_URL;
+	if (!base) return null;
+	if (!isValidR2Key(r2Key)) return null;
+	const trimmed = base.replace(/\/+$/, '');
+	return `${trimmed}/${r2Key}`;
+}
+
+/**
+ * Conservative R2 key validation. Same character set as the
+ * foundation loader — keeps accidental path traversal (`..`, leading
+ * `/`) out of any URL the loader eventually composes.
+ */
 const R2_KEY_REGEX = /^[a-zA-Z0-9][a-zA-Z0-9._/-]{0,511}$/;
 
 export function isValidR2Key(key: string): boolean {

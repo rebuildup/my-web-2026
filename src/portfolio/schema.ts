@@ -207,6 +207,36 @@ export interface PortfolioListPage {
 }
 
 /**
+ * Lightweight project reference returned by `loadPortfolioAdjacent`.
+ *
+ * Only `slug` and `title` are needed to render prev/next on the
+ * detail surface — full media / links / markdown bodies stay on
+ * `loadPortfolioProject`.
+ */
+export interface PortfolioAdjacentRef {
+	readonly slug: string;
+	readonly title: string;
+}
+
+/**
+ * Adjacent project lookup for the detail surface (Issue #77).
+ *
+ * `prev` is the project that ranks IMMEDIATELY ABOVE the target
+ * project in canonical sort order; `next` is the one immediately
+ * BELOW. Both are `null` when the target sits at the boundary of
+ * the public+published set (no row before / after it).
+ *
+ * Visibility boundary: same as `loadPortfolioProject` — only
+ * `status='published' AND visibility='public'` rows are visible,
+ * so unlisted / draft / archived rows can never be exposed via
+ * the adjacent lookup either.
+ */
+export interface PortfolioAdjacent {
+	readonly prev: PortfolioAdjacentRef | null;
+	readonly next: PortfolioAdjacentRef | null;
+}
+
+/**
  * Parse the JSON-encoded `facets` / `technologies` columns into
  * typed arrays. Pure function — exercised directly by the test
  * suite. Defensive against malformed JSON: returns empty arrays

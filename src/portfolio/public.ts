@@ -46,6 +46,15 @@ export const loadPortfolioProject = createServerFn({ method: 'GET' })
 		return loader.loadPortfolioProject(data.slug);
 	});
 
+export const loadPortfolioAdjacent = createServerFn({ method: 'GET' })
+	.validator(z.object({ slug: SlugSchema }))
+	.handler(async ({ data }) => {
+		const loader = createD1PortfolioLoader(
+			env as unknown as Parameters<typeof createD1PortfolioLoader>[0],
+		);
+		return loader.loadPortfolioAdjacent(data.slug);
+	});
+
 export const listPortfolioProjects = createServerFn({ method: 'GET' })
 	.validator(ListOptsSchema)
 	.handler(async ({ data }) => {

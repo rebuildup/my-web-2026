@@ -1,6 +1,8 @@
 import type { PortfolioLoader, PortfolioEnv } from './contract';
 import {
 	type ListPortfolioProjectsOptions,
+	type PortfolioAdjacent,
+	type PortfolioAdjacentRef,
 	type PortfolioCursor,
 	type PortfolioLink,
 	type PortfolioLinkRow,
@@ -47,6 +49,7 @@ import { composeMediaUrl } from './media';
 export function createD1PortfolioLoader(env: PortfolioEnv): PortfolioLoader {
 	return {
 		loadPortfolioProject: (slug) => loadPortfolioProjectImpl(env, slug),
+		loadPortfolioAdjacent: (slug) => loadPortfolioAdjacentImpl(env, slug),
 		listPortfolioProjects: (opts) => listPortfolioProjectsImpl(env, opts),
 	};
 }
@@ -73,6 +76,90 @@ async function loadPortfolioProjectImpl(
 		url: composeMediaUrl(env, m.r2Key),
 	}));
 	return rowToProject(row, links, mediaWithUrls);
+}
+
+/**
+ * Resolve the project that sits immediately above / below the
+ * target in canonical sort order (`pinned DESC, display_order
+ * ASC, updated_at DESC, id ASC`).
+ *
+ * Both predicates share the cursor-pagination row-value chain
+ * shape (10 binds), but the comparison is reversed: "next" uses
+ * the same forward predicate as the cursor (rows AFTER target),
+ * and "prev" uses the mirrored predicate (rows BEFORE target).
+ * We `LIMIT 1` each query and `ORDER BY` canonical direction so
+ * we always get the IMMEDIATE neighbour, not the farthest one.
+ *
+ * Public-visibility boundary: both queries hardcode
+ * `status='published' AND visibility='public'` so an unlisted /
+ * draft / archived row can never become the prev/next of a
+ * public target — even when the target itself is the boundary.
+ */
+async function loadPortfolioAdjacentImpl(
+	env: PortfolioEnv,
+	slug: string,
+): Promise<PortfolioAdjacent> {
+	const db = env.DB;
+	if (!db) return { prev: null, next: null };
+	const target = await db
+		.prepare(
+			"SELECT pinned, display_order, updated_at, id FROM portfolio_project WHERE slug = ?1 AND status = 'published' AND visibility = 'public'",
+		)
+		.bind(slug)
+		.first<Pick<PortfolioProjectRow, 'pinned' | 'display_order' | 'updated_at' | 'id'>>();
+	if (!target) return { prev: null, next: null };
+
+	// "Next" — first row AFTER the target in canonical sort order.
+	// ORDER BY canonical direction: the closest row in "after me" sits
+	// at the top of the filtered set.
+	const nextSql = `
+		SELECT slug, title FROM portfolio_project
+		WHERE status = 'published' AND visibility = 'public' AND (
+			pinned < ?1 OR
+			(pinned = ?1 AND display_order > ?2) OR
+			(pinned = ?1 AND display_order = ?2 AND updated_at < ?3) OR
+			(pinned = ?1 AND display_order = ?2 AND updated_at = ?3 AND id > ?4)
+		)
+		ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC
+		LIMIT 1
+	`;
+	// "Prev" — last row BEFORE the target in canonical sort order.
+	// The "before me" predicate captures every row that ranks above
+	// the target; to pick the IMMEDIATE neighbour we ORDER BY the
+	// reverse of canonical direction so the closest row sits at the
+	// top. (Ordering by canonical direction here would pick the
+	// farthest row, e.g. the topmost pinned entry.)
+	const prevSql = `
+		SELECT slug, title FROM portfolio_project
+		WHERE status = 'published' AND visibility = 'public' AND (
+			pinned > ?1 OR
+			(pinned = ?1 AND display_order < ?2) OR
+			(pinned = ?1 AND display_order = ?2 AND updated_at > ?3) OR
+			(pinned = ?1 AND display_order = ?2 AND updated_at = ?3 AND id < ?4)
+		)
+		ORDER BY pinned ASC, display_order DESC, updated_at ASC, id DESC
+		LIMIT 1
+	`;
+
+	const [prevRow, nextRow] = await Promise.all([
+		db
+			.prepare(prevSql)
+			.bind(target.pinned, target.display_order, target.updated_at, target.id)
+			.first<Pick<PortfolioProjectRow, 'slug' | 'title'>>(),
+		db
+			.prepare(nextSql)
+			.bind(target.pinned, target.display_order, target.updated_at, target.id)
+			.first<Pick<PortfolioProjectRow, 'slug' | 'title'>>(),
+	]);
+
+	return {
+		prev: prevRow ? toAdjacentRef(prevRow) : null,
+		next: nextRow ? toAdjacentRef(nextRow) : null,
+	};
+}
+
+function toAdjacentRef(row: Pick<PortfolioProjectRow, 'slug' | 'title'>): PortfolioAdjacentRef {
+	return { slug: row.slug, title: row.title };
 }
 
 async function listPortfolioProjectsImpl(

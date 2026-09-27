@@ -60,14 +60,15 @@ test.describe('home page composition', () => {
 		await expect(h1).toHaveCount(1);
 		await expect(h1).toHaveText(/木村友亮 \/ samuido/);
 
-		// Five content sections, in order, all anchored by aria-labelledby.
+		// Six content sections, in order, all anchored by aria-labelledby.
 		const sections = page.locator('section[aria-labelledby]');
-		await expect(sections).toHaveCount(5);
+		await expect(sections).toHaveCount(6);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
 		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
 		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'status-heading');
 		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'reactions-heading');
 		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'access-counter-heading');
+		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
 		// Public-preview transition back to the complete 2025 edition.
 		await expect(page.locator('a[href="https://yusuke-kim.com"]')).toHaveCount(2);

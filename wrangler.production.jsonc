@@ -104,16 +104,17 @@
 		"BETTER_AUTH_URL": "https://rebuildup.dev"
 	},
 	"secrets": {
-		// Staged design (ADR-0015 §9, Phase 3 — Issue #69):
-		// Production keeps the **legacy 2-name form** in this ticket.
-		// The versioned `BETTER_AUTH_SECRETS` flip is a separate
-		// human-gated production deploy ticket (see
-		// `[[release-merge-human-gate]]`). When that flip lands, this
-		// array becomes:
-		//   ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
-		// and `BETTER_AUTH_SECRET` (legacy single) is dropped from
-		// `required`. Mirror edit applied to `wrangler.jsonc`.
-		"required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
+		// Staged design (ADR-0015 §9, Phase 3+ — Issue #89):
+		// Production is on the **versioned 2-name form**. The legacy
+		// `BETTER_AUTH_SECRET` Cloudflare Worker binding is deleted in
+		// Phase B step #2 (operator-gated via
+		// `scripts/phase-3-plus-prod-flip.mjs --execute --delete-legacy-only`).
+		// The Infisical `prod` value for `BETTER_AUTH_SECRET` is
+		// RETAINED as an audit trail (ADR-0015 §9 audit-only semantics);
+		// it is never uploaded to the Worker on subsequent deploys — see
+		// `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS`. Mirror edit
+		// applied to `wrangler.jsonc`.
+		"required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
 	},
 	"ratelimits": [
 		{

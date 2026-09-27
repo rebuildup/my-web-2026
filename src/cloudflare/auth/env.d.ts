@@ -19,7 +19,16 @@
 declare global {
 	namespace Cloudflare {
 		interface Env {
-			BETTER_AUTH_SECRET: string;
+			// Phase 3+ (Issue #89) — versioned 2-name contract. The
+			// generated `worker-configuration.d.ts` declares
+			// `BETTER_AUTH_SECRETS` (preferred) and
+			// `MY_WEB_2026_CONSUMER_API_KEY`. The legacy `BETTER_AUTH_SECRET`
+			// Worker binding is deleted in Phase B; it remains a
+			// fallback-only reading path in
+			// `src/cloudflare/auth/better-auth.ts` for backward
+			// compatibility with partially-deployed states, but is NOT
+			// declared in the runtime env contract.
+			BETTER_AUTH_SECRETS: string;
 		}
 	}
 }

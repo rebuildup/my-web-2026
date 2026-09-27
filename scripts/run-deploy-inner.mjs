@@ -52,20 +52,27 @@ const CANONICAL_PRODUCTION_CONFIG = resolve(
 /**
  * Phase-specific 2-name contract (ADR-0015 §9). The deploy script's
  * required secrets list MUST match `wrangler.production.jsonc#secrets.required`
- * for the current phase. When the phase transitions (Phase 3+, ticket
- * #69), update this constant in lock-step with the wrangler config
- * update — `check-infisical-coverage.mjs` enforces the agreement.
+ * for the current phase. `check-infisical-coverage.mjs` enforces the
+ * agreement.
  *
- * Phase 1-2 (Infisical seed 完了前): legacy 2-name.
- *   - `BETTER_AUTH_SECRET` is the active signing key (wrangler requires it)
- *   - `BETTER_AUTH_SECRETS` is optional (operator may have seeded it
- *     for forward compatibility; better-auth.ts prefers it when present)
+ * Phase 3+ (Initial migration 完了後 — Issue #89): versioned 2-name with
+ * audit-only legacy separator.
+ *   - `REQUIRED_RUNTIME_SECRETS` are uploaded to the Worker
+ *     (`BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`).
+ *   - `AUDIT_ONLY_SECRETS` are sanitization-only; they MUST NOT reach
+ *     the Worker. If `infisical run` injects them into `process.env`
+ *     (e.g. the legacy value living in Infisical prod as an audit
+ *     trail), the deploy script removes them from the sanitized env
+ *     AND MUST NOT include them in `secrets.json` — preventing the
+ *     "legacy binding resurrects on next deploy" failure mode. The
+ *     audit-trail value remains sourceable from Infisical for recovery
+ *     purposes. Phase 5 (#71) is the eventual cleanup window.
  */
-const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'];
-const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS'];
+const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY'];
+const AUDIT_ONLY_SECRETS = ['BETTER_AUTH_SECRET'];
 const SENSITIVE_KEYS = new Set([
 	...REQUIRED_RUNTIME_SECRETS,
-	...OPTIONAL_RUNTIME_SECRETS,
+	...AUDIT_ONLY_SECRETS,
 	'INFISICAL_TOKEN',
 ]);
 
@@ -144,12 +151,14 @@ function collectSecrets() {
 		}
 		secrets[name] = value;
 	}
-	for (const name of OPTIONAL_RUNTIME_SECRETS) {
-		const value = process.env[name];
-		if (typeof value === 'string' && value.length > 0) {
-			secrets[name] = value;
-		}
-	}
+	// AUDIT_ONLY_SECRETS are NEVER written to secrets.json by contract
+	// (ADR-0015 §9 audit-only semantics, Phase 3+). They are removed from
+	// the sanitized env passed to child processes (SENSITIVE_KEYS covers
+	// them), but the contract says they must NOT reach the Worker even
+	// if `infisical run` injects them into process.env. This prevents
+	// the legacy binding from resurrecting on the next deploy after
+	// Phase B deletes the Worker binding. The audit-trail value remains
+	// sourceable from Infisical for recovery.
 	if (missing.length > 0) {
 		throw new Error(
 			`Missing required runtime secrets in process.env: ${missing.join(', ')}. Infisical seed may be incomplete (ADR-0015 §11 Initial migration).`,

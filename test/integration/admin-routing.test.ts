@@ -1,5 +1,5 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
-import { SELF } from 'cloudflare:test';
+import { SELF, env } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 
 /**
@@ -29,6 +29,12 @@ import { describe, expect, it } from 'vitest';
  * (`e2e/prod-smoke.spec.ts`): operator manual sign-in, not
  * automated (no seeded credentials in workerd).
  */
+async function sha256Hex(input: string): Promise<string> {
+	const bytes = new TextEncoder().encode(input);
+	const digest = await crypto.subtle.digest('SHA-256', bytes);
+	return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('');
+}
+
 describe('admin routing (Issue #106)', () => {
 	it('GET /admin/login returns 200 HTML with the sign-in form (anonymous)', async () => {
 		// Regression: this previously returned 307 to /admin/login
@@ -114,4 +120,39 @@ describe('admin routing (Issue #106)', () => {
 		expect(res.status).toBeLessThan(400);
 		expect(res.headers.get('location')).toContain('/admin/login');
 	});
+	it('GET /admin/invitations/accept reaches the valid-token form anonymously', async () => {
+		const token = 'route-valid-token-aaaaaaaaaaaaaaaa';
+		const id = 'inv-route-valid';
+		const email = 'route-valid@test.local';
+		const tokenHash = await sha256Hex(token);
+		await env.DB.prepare(
+			`INSERT INTO auth_invitation
+				(id, email, token_hash, invited_by, expires_at, consumed_at, created_at)
+			 VALUES (?, ?, ?, ?, ?, NULL, ?)`,
+		)
+			.bind(id, email, tokenHash, 'admin-id', Date.now() + 60_000, Date.now())
+			.run();
+
+		try {
+			const res = await SELF.fetch(
+				`https://example.com/admin/invitations/accept?token=${encodeURIComponent(token)}`,
+				{ redirect: 'manual' },
+			);
+			expect(res.status).toBe(200);
+			const html = await res.text();
+			expect(html).toContain(email);
+			expect(html).toContain('Create account');
+			expect(html).toMatch(/<input[^>]+name="password"/);
+		} finally {
+			await env.DB.prepare('DELETE FROM auth_invitation WHERE id = ?').bind(id).run();
+		}
+	});
+
+	it('GET /admin/invitations remains admin-only after accept-route unnesting', async () => {
+		const res = await SELF.fetch('https://example.com/admin/invitations', { redirect: 'manual' });
+		expect(res.status).toBeGreaterThanOrEqual(300);
+		expect(res.status).toBeLessThan(400);
+		expect(res.headers.get('location')).toContain('/admin/login');
+	});
+
 });

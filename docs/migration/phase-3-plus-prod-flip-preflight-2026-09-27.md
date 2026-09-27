@@ -105,21 +105,41 @@ The wrangler OAuth at `~/.config/.wrangler/config/default.toml`
 production without explicit operator authorization in the current
 interaction.**
 
+## Mandatory reconciliation precondition — Issue #122
+
+Incident #99 recovery restored the live Worker `BETTER_AUTH_SECRET` from the
+Infisical **dev** value because the Infisical prod copy was not yet a trusted
+source. Therefore Phase B MUST NOT start until Issue #122 completes.
+
+Before step 1 below:
+
+- copy/reconcile the exact current recovery value into Infisical prod
+  `BETTER_AUTH_SECRET` without exposing plaintext in argv, logs, GitHub, or
+  chat;
+- compare the intended recovery source and Infisical prod value in-process only
+  (bytes/hash comparison; never print either plaintext);
+- require equality before `flip` or `restore-legacy-only` can run.
+
+Cloudflare cannot reveal Worker secret plaintext, so this verification must use
+the known recovery source held by the operator / Infisical dev. Completing #122
+does **not** add `BETTER_AUTH_SECRETS`, delete the legacy binding, deploy, or
+otherwise advance Phase B.
+
 ## Rollback matrix (Phase B execute runbook)
 
 | # | Step | Command | Success condition | Failure condition | Rollback command | Resulting contract |
 |---|---|---|---|---|---|---|
-| 1 | `flip` | `node scripts/phase-3-plus-prod-flip.mjs --execute --environment=prod` (with `INFISICAL_TOKEN` in env) | Wrangler exit 0; `wrangler secret list` shows both `BETTER_AUTH_SECRETS` + `BETTER_AUTH_SECRET` | Wrangler exit ≠0 OR Infisical write fails | `rollback-versioned-only` (step 0 below) | legacy-only (Worker) + versioned-written (Infisical) |
-| 2 | Smoke #1 | `curl https://rebuildup.dev/api/v1/health` returns 200; check Worker logs for versioned-secret-read path | 200 OK + versioned path observed in logs | 5xx OR no versioned reads | `rollback-versioned-only` | legacy-only |
-| 3 | `production deploy` | `pnpm run deploy:production:prepared` (Wrangler 4.x deploys `dist/` with versioned-aware Worker code) | Wrangler exit 0; new version visible in deployments list | Wrangler exit ≠0 | `restore-legacy-only` (re-add legacy binding) | legacy-only on Worker (with audit-only value retained in Infisical) |
-| 4 | Smoke #2 | Manual sign-in via `/admin/login` succeeds; `/api/v1/auth/*` endpoints work | Sign-in OK; admin routes 200 | Sign-in fails OR admin routes 5xx | `restore-legacy-only` | legacy-only |
-| 5 | Smoke #3 | `/portfolio` + `/about` + `/contact` load 200; no runtime errors | All public surfaces 200 | Any 5xx | `restore-legacy-only` | legacy-only |
+| 1 | `flip` | `node scripts/phase-3-plus-prod-flip.mjs --execute --environment=prod` (with writer-scoped `INFISICAL_TOKEN` in env) | Wrangler exit 0; `wrangler secret list` shows both `BETTER_AUTH_SECRETS` + `BETTER_AUTH_SECRET` | Wrangler exit ≠0 OR Infisical write fails | `rollback-versioned-only` | legacy-only (Worker) + versioned-written (Infisical) |
+| 2 | Smoke #1 | `curl https://rebuildup.dev/api/v1/health` returns 200; check Worker logs/runtime for versioned-secret-read path | 200 OK + versioned path observed | 5xx OR versioned path is unusable | `rollback-versioned-only` | legacy-only |
+| 3 | Release delivery | **Operator explicitly approves and merges PR #91**; Cloudflare Workers Builds performs the canonical `main`-push production delivery | #91 merge succeeds; Cloudflare Build/deploy succeeds; new production version is visible | merge/build/deploy fails | `rollback-versioned-only` while legacy binding is still present; investigate/revert release separately if needed | legacy-only Worker recovery path remains available |
+| 4 | Smoke #2 | Anonymous `/admin/login` returns 200; operator manual sign-in succeeds; reload preserves session; `/api/v1/auth/*` works | Login + reload persistence + admin routes OK | sign-in/session/admin failure | `rollback-versioned-only` (legacy binding is still present) | legacy-only Worker auth contract |
+| 5 | Smoke #3 | `/portfolio` + `/about` + `/contact` load 200; no runtime errors | All public surfaces 200 | Any 5xx/runtime regression | `rollback-versioned-only` (legacy binding is still present) | legacy-only Worker auth contract |
 | 6 | `delete-legacy-only` | `node scripts/phase-3-plus-prod-flip.mjs --execute --delete-legacy-only --environment=prod` | Wrangler exit 0; `wrangler secret list` shows only `BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY` | Wrangler exit ≠0 | `restore-legacy-only` | legacy + versioned (revert delete) |
 | 7 | Final drift check | `node scripts/check-cf-secrets.mjs` + `node scripts/infisical:verify` | Both pass; aligned with `wrangler.production.jsonc#secrets.required` | Drift detected | `restore-legacy-only` (then investigate) | legacy + versioned |
 
 ### Recovery commands (standalone, not part of the canonical flow)
 
-- `rollback-versioned-only` — `node scripts/phase-3-plus-prod-flip.mjs --execute --rollback-versioned-only --environment=prod` — deletes `BETTER_AUTH_SECRETS` from Worker. Used if step 1 (flip) succeeds but the runtime breaks before step 3 (deploy).
+- `rollback-versioned-only` — `node scripts/phase-3-plus-prod-flip.mjs --execute --rollback-versioned-only --environment=prod` — deletes `BETTER_AUTH_SECRETS` from Worker while the legacy binding is still present. Use for failures in steps 1-5 before the canonical legacy deletion.
 - `restore-legacy-only` — `node scripts/phase-3-plus-prod-flip.mjs --execute --restore-legacy-only --environment=prod` — re-adds `BETTER_AUTH_SECRET` from Infisical `prod` audit trail. Used if step 6 (delete-legacy-only) succeeds but a downstream dependency breaks.
 
 ### Resulting secret contract (post Phase B completion)
@@ -144,16 +164,28 @@ Per `[[release-merge-human-gate]]` + `[[issue-99-driver-incident]]`:
 - **No Infisical mutation** — `INFISICAL_TOKEN` is not in env; UA
   fallback requires `INFISICAL_CLIENT_ID` + `INFISICAL_CLIENT_SECRET`
   which are also not in env.
-- **No closing of Issue #89** — the issue is closed by the operator
-  after Phase B execute + sign-in verification.
+- **No direct/local production deploy to bypass #91** — canonical delivery is
+  the operator-approved Release PR #91 merge followed by Cloudflare Workers
+  Builds from `main`.
+- **No Release PR #91 merge without explicit operator approval** — the merge is
+  step 3 of the canonical Phase B/release handshake, not an autonomous action.
+- **No closing of Issue #89** — the issue is closed only after #122,
+  Phase B execute, #91 production delivery, post-deploy smoke, legacy deletion,
+  and final drift verification all complete.
 
 ## Next step (operator decision required)
 
-Operator reviews the preflight + rollback matrix. If accepted, operator
-supplies `INFISICAL_TOKEN` in the next interaction AND gives explicit
-authorization for `#89 Phase B execute`. Agent will then execute the
-canonical sequence (flip → smoke #1 → production deploy → smoke #2/3
-→ delete-legacy-only → final drift) under direct operator supervision.
+The next production mutation is **Issue #122 reconciliation**, not the Phase B
+flip. After #122 is completed and equality is verified without printing
+plaintext, the operator may explicitly authorize #89 Phase B step 1.
+
+The canonical sequence is:
+
+`#122 reconcile → flip → Smoke #1 → operator-approved #91 merge → Cloudflare Workers Builds deploy → Smoke #2/#3 → delete-legacy-only → final drift`.
+
+The writer-scoped `INFISICAL_TOKEN` is required for `flip`. The #91 merge
+requires a separate explicit operator approval at step 3; no direct/local
+production deploy is a substitute.
 
 ## Files referenced
 

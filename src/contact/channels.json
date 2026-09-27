@@ -1,0 +1,45 @@
+{
+	"$comment": "Issue #103 — repo-controlled contact channel list. Edit this file when a channel is published, retired, or re-verified. Each channel is gated by `active` and `verified_at`; channels without a verified_at inside the freshness window (30 days, see schema.ts) are NOT rendered. Do NOT fabricate channels here — only list channels the operator actually publishes and stands behind at deploy time. The 'no fabricated affordance' rule (docs/personal/domain.md §11) is enforced by the schema's fail-closed gate.",
+	"channels": [
+		{
+			"id": "github-rebuildup",
+			"label": "GitHub (rebuildup)",
+			"labelEn": "GitHub rebuildup org",
+			"purpose": "technical",
+			"url": "https://github.com/rebuildup",
+			"verified_at": "2026-09-27",
+			"active": true,
+			"$note": "development-facing identity / repository namespace per docs/personal/domain.md §1 (rebuildup). Observable via the git remote URL in `.git/config`."
+		},
+		{
+			"id": "github-rebuildup-my-web-2026",
+			"label": "GitHub (my-web-2026)",
+			"labelEn": "GitHub my-web-2026 repository",
+			"purpose": "technical",
+			"url": "https://github.com/rebuildup/my-web-2026",
+			"verified_at": "2026-09-27",
+			"active": true,
+			"$note": "canonical source repository. Observable via the git remote URL in `.git/config`."
+		},
+		{
+			"id": "yusuke-kim-com",
+			"label": "yusuke-kim.com",
+			"labelEn": "Personal site (2025 edition)",
+			"purpose": "distribution",
+			"url": "https://yusuke-kim.com",
+			"verified_at": "2026-09-27",
+			"active": true,
+			"$note": "canonical personal domain per docs/personal/domain.md §1 and docs/personal/owner.md Identity summary. The 2025 edition remains published there."
+		},
+		{
+			"id": "rebuildup-dev",
+			"label": "rebuildup.dev",
+			"labelEn": "Production origin",
+			"purpose": "distribution",
+			"url": "https://rebuildup.dev",
+			"verified_at": "2026-09-27",
+			"active": true,
+			"$note": "canonical production origin per AGENTS.md §4 (Canonical production domain)."
+		}
+	]
+}

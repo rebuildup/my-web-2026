@@ -147,7 +147,8 @@ Smoke #3 — **operator manual sign-in** at https://rebuildup.dev/admin/login,
        │
        ▼
 final drift check — `pnpm run infisical:check:cf -- --execute
-       --environment=prod --worker-contract=final` reports Tier 1 =
+       --environment=prod --worker-contract=final --require-live-worker`
+       reports Tier 1 =
        versioned+audit set, Tier 2 = versioned 2-name, Tier 3 =
        versioned 2-name
 ```

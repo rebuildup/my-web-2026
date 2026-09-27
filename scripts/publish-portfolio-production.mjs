@@ -117,7 +117,7 @@ const REQUIRED_MD_SECTIONS = [
 // YouTube descriptions + BOOTH listings + legacy SQLite
 // (contents / content_links / content_tags / media BLOB).
 // ---------------------------------------------------------------------------
-const ENTRIES = [
+export const ENTRIES = [
 	{
 		legacyId: 'MultiSlicer',
 		slug: 'multislicer',
@@ -371,11 +371,11 @@ export function projectIdFor(entry) {
 	return `legacy_${slug.replace(/[^a-z0-9-]/g, '_')}`;
 }
 
-function linkIdFor(projectId, link) {
+export function linkIdFor(projectId, link) {
 	return `legacy_link_${projectId}_${link.legacyId}`;
 }
 
-function mediaIdFor(projectId, manifestSlug, filename) {
+export function mediaIdFor(projectId, manifestSlug, filename) {
 	return `legacy_media_${projectId.replace(/[^a-z0-9-]/g, '_')}_${manifestSlug.replace(/[^a-z0-9-]/g, '_')}_${filename.replace(/[^a-z0-9._-]/g, '_')}`;
 }
 
@@ -467,7 +467,7 @@ export function buildMediaInsert(entry, manifestAsset) {
 	return `INSERT OR IGNORE INTO portfolio_media (id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order, created_at) VALUES (${sqlEscape(mediaId)}, ${sqlEscape(projectId)}, ${sqlEscape(manifestAsset.r2_key)}, ${sqlEscape(manifestAsset.content_type)}, ${manifestAsset.width}, ${manifestAsset.height}, ${sqlEscape(entry.mediaAlt)}, ${sqlEscape(entry.mediaCaption)}, 1, 1, ${nowMs()});`;
 }
 
-function linkKindFromUrl(href) {
+export function linkKindFromUrl(href) {
 	const u = new URL(href);
 	const host = u.hostname.toLowerCase();
 	if (
@@ -1284,6 +1284,11 @@ function operationPublish(parsed, manifest) {
 	console.error(`[publish-portfolio] publish OK; ${ids.length} candidates visibility=public`);
 }
 
+export function buildUnpublishSql(timestamp = nowMs()) {
+	const ids = [...ALLOWED_CANDIDATE_IDS];
+	return `UPDATE portfolio_project SET visibility='draft', updated_at=${timestamp} WHERE id IN (${ids.map((i) => `'${i}'`).join(',')});`;
+}
+
 function operationUnpublish(parsed /* , manifest */) {
 	const env = parsed.environment;
 	if (!parsed.execute) {
@@ -1294,7 +1299,7 @@ function operationUnpublish(parsed /* , manifest */) {
 		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
 	}
 	const ids = [...ALLOWED_CANDIDATE_IDS];
-	const sql = `UPDATE portfolio_project SET visibility='draft', updated_at=${nowMs()} WHERE id IN (${ids.map((i) => `'${i}'`).join(',')});`;
+	const sql = buildUnpublishSql();
 	console.error(`[publish-portfolio] unpublish: ${ids.length} candidates → draft (rollback)`);
 
 	const tmpDir = process.env.TMPDIR || '/tmp';

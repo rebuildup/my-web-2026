@@ -155,8 +155,8 @@ final drift check — `pnpm run infisical:check:cf -- --execute
 ## Deploy preflight contract
 
 `deploy-with-secrets.mjs --execute` authenticates to Infisical once and
-then runs `check-cf-secrets.mjs --execute --worker-contract=transition`
-**before** spawning the actual deploy. A non-zero preflight exit aborts
+then runs `check-cf-secrets.mjs --execute --worker-contract=transition
+--require-live-worker` **before** spawning the actual deploy. A non-zero preflight exit aborts
 production deployment.
 
 `transition` expects the live Worker to carry all three names during
@@ -167,7 +167,7 @@ the migration window:
 - `MY_WEB_2026_CONSUMER_API_KEY`
 
 After post-deploy smoke passes and `--delete-legacy-only` succeeds,
-the final drift check MUST use `--worker-contract=final`, which expects
+the final drift check MUST use `--worker-contract=final --require-live-worker`, which expects
 only the versioned two-name Worker contract while Infisical still keeps
 the legacy audit/recovery copy.
 

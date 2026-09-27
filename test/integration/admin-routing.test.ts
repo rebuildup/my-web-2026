@@ -69,12 +69,15 @@ describe('admin routing (Issue #106)', () => {
 		const res = await SELF.fetch('https://example.com/admin/login/', { redirect: 'manual' });
 		if (res.status === 307) {
 			const loc = res.headers.get('location') ?? '';
-			expect(loc).not.toBe('/admin/login/');
-			// Canonicalize target is the slash-less form. (TanStack
-			// could also leave the trailing slash if a future config
-			// flips the policy; both shapes would pass `not.toBe`
-			// and we'd still catch the original self-redirect bug.)
-			expect(loc).toMatch(/\/admin\/login\/?(\?|$)/);
+			// Resolve against the request URL so an absolute-URL
+			// Location (e.g. `https://example.com/admin/login/`) is
+			// still detected as a self-redirect — string equality on
+			// the raw header would let that slip through. (CodeRabbit
+			// nitpick, 2026-09-27.)
+			const target = new URL(loc, 'https://example.com/admin/login/');
+			expect(target.pathname).not.toBe('/admin/login/');
+			// Canonicalize target is the slash-less form.
+			expect(target.pathname).toBe('/admin/login');
 		} else {
 			expect(res.status).toBe(200);
 		}

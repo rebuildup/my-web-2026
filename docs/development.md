@@ -105,8 +105,17 @@ the agent. The versioned form activates only at the Phase 3+ flip
 
 ## Run
 
+> **Secrets flow from Infisical, not from `.dev.vars`.** See
+> [ADR-0015 §9](adr/ADR-0015-infisical-env-management.md) for the
+> staged design. Local dev uses the dev environment of the
+> Infisical project pinned by the committed `.infisical.json` in
+> the repo root.
+
 ```bash
-# Local Cloudflare dev server (TanStack Start + Hono)
+# Primary path — Windows-safe, fileless (no .dev.vars written).
+# scripts/_run-dev.mjs spawns `pnpm exec infisical run --env=dev --
+# pnpm exec vite dev` with shell:false. The CLI auto-resolves the
+# project from .infisical.json; no --projectId needed.
 pnpm dev
 # -> http://127.0.0.1:3000
 
@@ -114,6 +123,31 @@ pnpm dev
 pnpm storybook
 # -> http://127.0.0.1:6006
 ```
+
+### Fallback: `pnpm run generate:dev-vars`
+
+If the Infisical CLI path is unavailable (offline, token expired, no
+Infisical binary on a fresh workstation), the fallback script
+`scripts/generate-dev-vars.mjs` pulls the same set of secrets via
+the documented REST API and writes them to `.dev.vars`:
+
+```bash
+# Operator supplies a short-lived Universal Auth token
+export INFISICAL_TOKEN="<token>"
+# Optional override (default: https://secrets.rebuildup.dev)
+# export INFISICAL_API_URL="https://..."
+
+pnpm run generate:dev-vars         # writes .dev.vars (mode 0600)
+pnpm run generate:dev-vars -- --dry-run   # plan only, no file
+```
+
+`.dev.vars` is gitignored, written atomically (temp + rename, with
+rollback on failure), and constrained to
+`wrangler.jsonc#secrets.required` — anything else in Infisical is
+silently ignored. The script never logs the secrets themselves; it
+prints only key names + counts. After running the fallback,
+`pnpm dev` continues to work (Infisical remains the primary path;
+`.dev.vars` is only consulted by direct `wrangler dev` invocations).
 
 ## Validate
 

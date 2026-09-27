@@ -23,7 +23,7 @@ import { Route as PortfolioIndexRouteImport } from './routes/portfolio/index'
 import { Route as PortfolioSlugRouteImport } from './routes/portfolio/$slug'
 import { Route as ToolsIndexRouteImport } from './routes/tools.index'
 import { Route as ToolsSlugRouteImport } from './routes/tools.$slug'
-import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invitations.accept'
+import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invitations_.accept'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -96,9 +96,9 @@ const ToolsSlugRoute = ToolsSlugRouteImport.update({
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdminInvitationsAcceptRoute = AdminInvitationsAcceptRouteImport.update({
-  id: '/accept',
-  path: '/accept',
-  getParentRoute: () => AdminInvitationsRoute,
+  id: '/invitations_/accept',
+  path: '/invitations/accept',
+  getParentRoute: () => AdminRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
@@ -108,7 +108,7 @@ export interface FileRoutesByFullPath {
   '/contact': typeof ContactRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
-  '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/invitations': typeof AdminInvitationsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
@@ -124,7 +124,7 @@ export interface FileRoutesByTo {
   '/contact': typeof ContactRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
-  '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/invitations': typeof AdminInvitationsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
@@ -142,7 +142,7 @@ export interface FileRoutesById {
   '/contact': typeof ContactRoute
   '/admin/emoji-catalog': typeof AdminEmojiCatalogRoute
   '/admin/images': typeof AdminImagesRoute
-  '/admin/invitations': typeof AdminInvitationsRouteWithChildren
+  '/admin/invitations': typeof AdminInvitationsRoute
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
   '/portfolio/$slug': typeof PortfolioSlugRoute
@@ -150,7 +150,7 @@ export interface FileRoutesById {
   '/admin/': typeof AdminIndexRoute
   '/portfolio/': typeof PortfolioIndexRoute
   '/tools/': typeof ToolsIndexRoute
-  '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
+  '/admin/invitations_/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,7 +202,7 @@ export interface FileRouteTypes {
     | '/admin/'
     | '/portfolio/'
     | '/tools/'
-    | '/admin/invitations/accept'
+    | '/admin/invitations_/accept'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -316,31 +316,21 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ToolsSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/admin/invitations/accept': {
-      id: '/admin/invitations/accept'
-      path: '/accept'
+    '/admin/invitations_/accept': {
+      id: '/admin/invitations_/accept'
+      path: '/invitations/accept'
       fullPath: '/admin/invitations/accept'
       preLoaderRoute: typeof AdminInvitationsAcceptRouteImport
-      parentRoute: typeof AdminInvitationsRoute
+      parentRoute: typeof AdminRoute
     }
   }
 }
 
-interface AdminInvitationsRouteChildren {
-  AdminInvitationsAcceptRoute: typeof AdminInvitationsAcceptRoute
-}
-
-const AdminInvitationsRouteChildren: AdminInvitationsRouteChildren = {
-  AdminInvitationsAcceptRoute: AdminInvitationsAcceptRoute,
-}
-
-const AdminInvitationsRouteWithChildren =
-  AdminInvitationsRoute._addFileChildren(AdminInvitationsRouteChildren)
-
 interface AdminRouteChildren {
   AdminEmojiCatalogRoute: typeof AdminEmojiCatalogRoute
   AdminImagesRoute: typeof AdminImagesRoute
-  AdminInvitationsRoute: typeof AdminInvitationsRouteWithChildren
+  AdminInvitationsRoute: typeof AdminInvitationsRoute
+  AdminInvitationsAcceptRoute: typeof AdminInvitationsAcceptRoute
   AdminKeysRoute: typeof AdminKeysRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminIndexRoute: typeof AdminIndexRoute
@@ -349,7 +339,8 @@ interface AdminRouteChildren {
 const AdminRouteChildren: AdminRouteChildren = {
   AdminEmojiCatalogRoute: AdminEmojiCatalogRoute,
   AdminImagesRoute: AdminImagesRoute,
-  AdminInvitationsRoute: AdminInvitationsRouteWithChildren,
+  AdminInvitationsRoute: AdminInvitationsRoute,
+  AdminInvitationsAcceptRoute: AdminInvitationsAcceptRoute,
   AdminKeysRoute: AdminKeysRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminIndexRoute: AdminIndexRoute,

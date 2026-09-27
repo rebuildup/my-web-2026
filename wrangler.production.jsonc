@@ -104,6 +104,15 @@
 		"BETTER_AUTH_URL": "https://rebuildup.dev"
 	},
 	"secrets": {
+		// Staged design (ADR-0015 §9, Phase 3 — Issue #69):
+		// Production keeps the **legacy 2-name form** in this ticket.
+		// The versioned `BETTER_AUTH_SECRETS` flip is a separate
+		// human-gated production deploy ticket (see
+		// `[[release-merge-human-gate]]`). When that flip lands, this
+		// array becomes:
+		//   ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
+		// and `BETTER_AUTH_SECRET` (legacy single) is dropped from
+		// `required`. Mirror edit applied to `wrangler.jsonc`.
 		"required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
 	},
 	"ratelimits": [

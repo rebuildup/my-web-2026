@@ -105,8 +105,17 @@ the agent. The versioned form activates only at the Phase 3+ flip
 
 ## Run
 
+> **Secrets flow from Infisical, not from `.dev.vars`.** See
+> [ADR-0015 §9](adr/ADR-0015-infisical-env-management.md) for the
+> staged design. Local dev uses the dev environment of the
+> Infisical project pinned by the committed `.infisical.json` in
+> the repo root.
+
 ```bash
-# Local Cloudflare dev server (TanStack Start + Hono)
+# Primary path — Windows-safe, fileless (no .dev.vars written).
+# scripts/_run-dev.mjs spawns `pnpm exec infisical run --env=dev --
+# pnpm exec vite dev` with shell:false. The CLI auto-resolves the
+# project from .infisical.json; no --projectId needed.
 pnpm dev
 # -> http://127.0.0.1:3000
 
@@ -114,6 +123,48 @@ pnpm dev
 pnpm storybook
 # -> http://127.0.0.1:6006
 ```
+
+### Fallback: `pnpm run generate:dev-vars`
+
+Use the fallback when the Infisical CLI (`infisical` binary) is
+unavailable on the workstation but **the self-hosted Infisical API at
+`https://secrets.rebuildup.dev` is reachable AND a currently valid
+`INFISICAL_TOKEN` is exported**. The fallback is **not** an offline
+path — it still requires network access to the Infisical API and a
+non-expired operator token — and it is **not** a CLI replacement for
+operators who cannot meet those preconditions (use the primary
+`pnpm dev` path instead, once `infisical login` succeeds).
+
+The fallback script `scripts/generate-dev-vars.mjs` fetches the
+keys listed in `wrangler.jsonc#secrets.required` via the documented
+REST API and writes them to the gitignored `.dev.vars` (NOT the
+committed `.dev.vars.example` documentation template):
+
+```bash
+# Operator supplies a short-lived Universal Auth token
+export INFISICAL_TOKEN="<token>"
+# Optional override (default: https://secrets.rebuildup.dev)
+# export INFISICAL_API_URL="https://..."
+
+pnpm run generate:dev-vars         # writes .dev.vars (mode 0600)
+pnpm run generate:dev-vars -- --dry-run   # plan only, no file
+```
+
+The fallback ALWAYS mirrors exactly `wrangler.jsonc#secrets.required`
+(it does not widen the set to match the full dev env seen by the
+primary path). Today (pre-#89 legacy 2-name staged design) it
+writes `BETTER_AUTH_SECRET` + `MY_WEB_2026_CONSUMER_API_KEY`. After
+Issue #89 (versioned 2-name flip, separate human-gated production
+ticket) it writes `BETTER_AUTH_SECRETS` +
+`MY_WEB_2026_CONSUMER_API_KEY` — still 2 names, just renamed.
+
+`.dev.vars` is gitignored, written atomically (temp + rename, with
+rollback on failure), and constrained to
+`wrangler.jsonc#secrets.required` — anything else in Infisical is
+silently ignored. The script never logs the secrets themselves; it
+prints only key names + counts. After running the fallback,
+`pnpm dev` continues to work (Infisical remains the primary path;
+`.dev.vars` is only consulted by direct `wrangler dev` invocations).
 
 ## Validate
 

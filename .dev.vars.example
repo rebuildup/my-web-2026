@@ -1,40 +1,153 @@
-# Wrangler local secrets stub (loaded by `wrangler dev`).
+# .dev.vars — local Wrangler dev secrets template (Issue #69 / ADR-0015 §9).
 #
-# Real secrets for production are managed via `wrangler secret put`.
-# Do NOT commit a real .dev.vars file.
+# This file is a **committed documentation template** for the local
+# dev secret contract. It is NOT generated, NOT overwritten by any
+# script, and NOT read at runtime. `pnpm dev` / `wrangler dev` read
+# `.dev.vars` (the gitignored sibling), NOT this file. `generate-
+# dev-vars` writes the gitignored `.dev.vars` only — this committed
+# template stays in source control unchanged.
 #
-# Copy this file to .dev.vars and replace placeholders before running
-# `wrangler dev`. This file documents local-only secret names;
-# production values are supplied by the GitHub Actions production environment.
+# ──────────────────────────────────────────────────────────────────────
+# Primary path: `pnpm dev`  (fileless, secrets injected from Infisical)
+# ──────────────────────────────────────────────────────────────────────
+#
+# `pnpm dev` invokes `scripts/_run-dev.mjs`, a Windows-safe Node
+# wrapper that spawns:
+#
+#   pnpm exec infisical run --env=dev -- pnpm exec vite dev
+#
+# with `shell: false` (no POSIX shell substitution) and a literal
+# argv list, so secrets flow straight from Infisical into the Vite
+# process. **No `.dev.vars` file is read or written** in this path.
+# The CLI auto-resolves the project from the committed
+# `.infisical.json` in the repo root.
+#
+# The injected secret set is the entire dev env of the Infisical
+# project, not `wrangler.jsonc#secrets.required`. Whether the dev env
+# contains 2 or 3 names depends on what the operator has seeded:
+#
+#   - Pre-#89 (legacy 2-name staged design): the dev env is seeded
+#     with `BETTER_AUTH_SECRET` + `MY_WEB_2026_CONSUMER_API_KEY`
+#     (required) plus `BETTER_AUTH_SECRETS` (extra key kept around
+#     so the primary path's injected set resembles the eventual
+#     versioned prod form). The primary path therefore sees 3 names.
+#   - Post-#89 (versioned 2-name flip): `secrets.required` is
+#     renamed to `BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY`;
+#     `BETTER_AUTH_SECRET` becomes a legacy optional outside the
+#     required set. The dev env may or may not still contain it.
+#
+# Operator prerequisite: be logged in via `pnpm exec infisical login`
+# once; the CLI caches the access token under `~/.infisical/`.
+#
+# ──────────────────────────────────────────────────────────────────────
+# Fallback path: `pnpm run generate:dev-vars`  (REST → `.dev.vars`)
+# ──────────────────────────────────────────────────────────────────────
+#
+# When the Infisical CLI (`infisical` binary) is unavailable on the
+# workstation — but the self-hosted Infisical API at
+# `https://secrets.rebuildup.dev` is reachable AND a currently valid
+# `INFISICAL_TOKEN` is exported — the fallback script
+# `scripts/generate-dev-vars.mjs` fetches secrets via the documented
+# Infisical API:
+#
+#   GET /api/v3/secrets/raw?workspaceId={...}&environment=dev&viewSecretValue=true
+#
+# and writes them to the gitignored `.dev.vars` (NOT this file) with
+# mode `0o600` (atomic via temp + rename, with rollback on failure).
+# The set it pulls is **constrained to
+# `wrangler.jsonc#secrets.required`** — anything else in the Infisical
+# dev env is silently ignored.
+#
+# IMPORTANT: the fallback ALWAYS mirrors exactly
+# `wrangler.jsonc#secrets.required`. It does NOT widen the set to
+# match the primary path's full dev env. Consequently:
+#
+#   - Pre-#89 (legacy 2-name staged design): fallback writes
+#     `BETTER_AUTH_SECRET` + `MY_WEB_2026_CONSUMER_API_KEY` only.
+#   - Post-#89 (versioned 2-name flip, Issue #89): the required
+#     array is renamed to `BETTER_AUTH_SECRETS` +
+#     `MY_WEB_2026_CONSUMER_API_KEY`; the fallback continues to
+#     mirror `secrets.required` automatically (no script change
+#     needed — `secrets.required` is the source of truth) and
+#     therefore writes the versioned 2-name set. It does NOT
+#     become a 3-name set, and `BETTER_AUTH_SECRET` (legacy
+#     optional) is not materialised by the fallback.
+#
+# The fallback boundary is intentionally narrow: it requires
+# network access to the Infisical API and a non-expired
+# `INFISICAL_TOKEN`. It is NOT an offline path and it CANNOT work
+# with an expired token. Operators who find themselves offline
+# or token-less must use the primary `pnpm dev` path once those
+# preconditions are restored.
+#
+# Required env for the fallback:
+#   INFISICAL_TOKEN  short-lived operator token
+# Optional:
+#   INFISICAL_API_URL  default https://secrets.rebuildup.dev
+# Usage:
+#   pnpm run generate:dev-vars           # default env (dev)
+#   pnpm run generate:dev-vars -- --env=dev
+#   pnpm run generate:dev-vars -- --dry-run    # print plan only
+#
+# After running, `pnpm dev` (still wrapped through `_run-dev.mjs`)
+# will simply pass the secrets in directly — but `wrangler dev` also
+# reads the gitignored `.dev.vars` natively if present, so the
+# fallback exists for non-Vite surfaces (e.g. ad-hoc
+# `pnpm exec wrangler dev` during a debugging session).
+#
+# ──────────────────────────────────────────────────────────────────────
+# Secret names (ADR-0015 §9 staged design)
+# ──────────────────────────────────────────────────────────────────────
+#
+# The local dev contract is governed by
+# `wrangler.jsonc#secrets.required`. The names currently in that
+# array are listed below; this table documents their roles, not
+# a fixed contract — the array is the source of truth.
+#
+#       ┌─────────────────────────────┬─────────────────────────────────┐
+#       │ Name                        │ Why                             │
+#       ├─────────────────────────────┼─────────────────────────────────┤
+#       │ BETTER_AUTH_SECRET          │ legacy single signing key       │
+#       │                             │ (Better Auth 1.5+ accepts this; │
+#       │                             │ pre-#89 listed in               │
+#       │                             │ `secrets.required`. Post-#89    │
+#       │                             │ it remains a legacy optional    │
+#       │                             │ OUTSIDE `secrets.required` and  │
+#       │                             │ is no longer materialised by    │
+#       │                             │ the fallback)                   │
+#       ├─────────────────────────────┼─────────────────────────────────┤
+#       │ BETTER_AUTH_SECRETS         │ versioned form (Better Auth     │
+#       │                             │ 1.5+, format `1:<hex>`). Post-  │
+#       │                             │ #89 this REPLACES               │
+#       │                             │ `BETTER_AUTH_SECRET` in         │
+#       │                             │ `secrets.required`. The dev env │
+#       │                             │ may also carry this key today   │
+#       │                             │ (pre-#89) so the primary path's │
+#       │                             │ injected set resembles the      │
+#       │                             │ eventual prod form. The         │
+#       │                             │ fallback writes it only after    │
+#       │                             │ #89                             │
+#       ├─────────────────────────────┼─────────────────────────────────┤
+#       │ MY_WEB_2026_CONSUMER_API_KEY│ home-self-consumption API key   │
+#       │                             │ (ADR-0011). Listed in           │
+#       │                             │ `secrets.required` pre- and     │
+#       │                             │ post-#89. Local dev: random;    │
+#       │                             │ production: hashed in D1 via    │
+#       │                             │ `ensure-home-api-key.mjs`       │
+#       └─────────────────────────────┴─────────────────────────────────┘
+#
+# Do NOT edit this file by hand. It is documentation of the
+# secret-name contract — the canonical SoT is
+# `wrangler.jsonc#secrets.required`. `pnpm run generate:dev-vars`
+# does not overwrite this file; it writes the gitignored
+# `.dev.vars` next to it. The real `.dev.vars` is gitignored and
+# must never be committed.
 
-# Better Auth secret. Generate a 32+ byte random string
-# locally; production is supplied by the GitHub Actions production
-# environment. Use `wrangler secret put BETTER_AUTH_SECRET` only for
-# manual recovery or rotation.
-# Required by Better Auth's session signing. See ADR-0009.
-# BETTER_AUTH_SECRET="replace-me-with-32-byte-random-string"
-
-# Better Auth base URL (origin of the deployment).
-# Local development: http://127.0.0.1:3000
-# Production: wired through the companion file `wrangler.production.jsonc`
-#   — `pnpm run deploy:production` (= `wrangler deploy -c
-#   wrangler.production.jsonc`) pins BETTER_AUTH_URL=https://rebuildup.dev
-#   and attaches the custom domain. Do not put the production URL here.
-# Better Auth infers baseURL from the incoming request when unset,
-# which is fine for local dev but required to be pinned in production
-# (cookie domain + trusted origin). See ADR-0009 §8 and ADR-0014.
-# BETTER_AUTH_URL="http://127.0.0.1:3000"
-
-# Home self-consumption API key
-# (ADR-0011). Local dev: run `pnpm run bootstrap:home-api-key` and
-# paste the printed `mk_home_…` value here. Production: the value is
-# supplied by the GitHub Actions production environment, and the
-# `deploy production` workflow runs
-# `scripts/ensure-home-api-key.mjs` to reconcile its hash row in D1
-# idempotently. Use `wrangler secret put MY_WEB_2026_CONSUMER_API_KEY`
-# only for manual recovery or rotation.
-# Required scopes:
-#   { reactions: ["read", "write"], access_counter: ["read", "write"] }
-# Without this key the home reactions widget + counter tile render a
-# disabled state.
-# MY_WEB_2026_CONSUMER_API_KEY="mk_home_replace-me"
+# BETTER_AUTH_SECRET="redacted-by-infisical-fallback"
+# MY_WEB_2026_CONSUMER_API_KEY="mk_home_redacted-by-infisical-fallback"
+# NOTE: this is a documentation template only — these lines are
+# NEVER written to disk by `generate:dev-vars`. They illustrate
+# the legacy 2-name set as it appears in `wrangler.jsonc#secrets.required`
+# today; after #89 (Issue #89 versioned 2-name flip) the first
+# line above becomes `BETTER_AUTH_SECRETS="..."` and the legacy
+# `BETTER_AUTH_SECRET` line falls out of `secrets.required`.

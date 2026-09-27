@@ -112,6 +112,59 @@ export function HomePage({ data }: HomePageProps) {
 						</SectionHeading>
 					</Container>
 				</section>
+				<section
+					aria-labelledby="contact-cta-heading"
+					className={css({
+						paddingBlock: { base: '16', lg: '24' },
+					})}
+				>
+					<Container>
+						<SectionHeading
+							id="contact-cta-heading"
+							eyebrow="05 — Contact"
+							title="Contact / お問い合わせ"
+							description="現在 re-verified されている contact channel だけを掲載しています。Channel には用途 (採用 / 技術的な議論 / 配布) 別の説明が添えてあります。"
+							variant="spread"
+						>
+							<div
+								data-testid="home-contact-cta"
+								className={css({
+									display: 'flex',
+									flexWrap: 'wrap',
+									gap: '4',
+								})}
+							>
+								<a
+									href="/contact"
+									data-testid="home-contact-link"
+									className={css({
+										display: 'inline-flex',
+										alignItems: 'center',
+										gap: '2',
+										paddingInline: '4',
+										height: '10',
+										borderRadius: 'md',
+										backgroundColor: 'bg.accent',
+										color: 'text.inverse',
+										fontFamily: 'sans',
+										fontSize: 'md',
+										fontWeight: '600',
+										textDecoration: 'none',
+										transition: 'background-color 120ms ease',
+										_hover: { backgroundColor: 'colors.brand.600' },
+										_focusVisible: {
+											outline: '2px solid {colors.border.focus}',
+											outlineOffset: '2px',
+										},
+									})}
+								>
+									<span lang="ja">Contact を見る</span>
+									<span aria-hidden="true">→</span>
+								</a>
+							</div>
+						</SectionHeading>
+					</Container>
+				</section>
 			</main>
 			<Footer />
 		</>

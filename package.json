@@ -39,7 +39,7 @@
 		"format:check": "biome format .",
 		"lint:check": "biome lint .",
 		"typecheck": "tsc --noEmit",
-		"test": "vitest run && node --test scripts/check-client-bundle.test.mjs && node --test scripts/infisical-bootstrap.test.mjs && node --test scripts/deploy-with-secrets.test.mjs && node --test scripts/run-deploy-inner.test.mjs && node --test scripts/check-cf-secrets.test.mjs && node --test scripts/check-infisical-coverage.test.mjs && node --test scripts/bootstrap-home-api-key.test.mjs && node --test scripts/check-tools-manifest.test.mjs && node --test scripts/build-tools.test.mjs",
+		"test": "vitest run && node --test scripts/check-client-bundle.test.mjs && node --test scripts/infisical-bootstrap.test.mjs && node --test scripts/deploy-with-secrets.test.mjs && node --test scripts/run-deploy-inner.test.mjs && node --test scripts/check-cf-secrets.test.mjs && node --test scripts/check-infisical-coverage.test.mjs && node --test scripts/bootstrap-home-api-key.test.mjs && node --test scripts/check-tools-manifest.test.mjs && node --test scripts/build-tools.test.mjs && node --test scripts/rewrite-asset-paths.test.mjs",
 		"test:watch": "vitest",
 		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run tools:check && pnpm run version:check && pnpm run typecheck && pnpm run infisical:check:coverage && pnpm run test",
 		"validate:integration": "pnpm run validate:fast && pnpm run build && pnpm run wrangler:dry-run && pnpm run wrangler:production:dry-run && pnpm run lint:ci && pnpm run build-storybook",

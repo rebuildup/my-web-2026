@@ -52,12 +52,48 @@ describe('Tool Registry — public surface', () => {
 		}
 	});
 
+	it('ProtoType (Issue #81 pilot) is in the public list', () => {
+		// At end of #81, ProtoType is the only public Tool.
+		// As Tool-side fixes land, more entries will graduate here.
+		const publicSlugs = listPublicTools().map((t) => t.slug);
+		assert.ok(publicSlugs.includes('prototype'));
+	});
+
 	it('host_disabled Tools never appear in listPublicTools', () => {
 		// text-counter is currently host_disabled. If this fails, either
 		// text-counter flipped to same_origin_static / external_exception
 		// (and the test should be updated) or listPublicTools regressed.
 		const publicSlugs = new Set(listPublicTools().map((t) => t.slug));
 		assert.ok(!publicSlugs.has('text-counter'), 'text-counter is host_disabled');
+	});
+
+	it('ProtoType summary strips private fields', () => {
+		const summary = getPublicTool('prototype');
+		assert.ok(summary);
+		const keys = Object.keys(summary).sort();
+		assert.deepEqual(keys, [
+			'classification',
+			'description',
+			'display_name',
+			'entry_html',
+			'iframe',
+			'license',
+			'slug',
+		]);
+	});
+
+	it('ProtoType summary flattens delivery.iframe', () => {
+		const summary = getPublicTool('prototype');
+		assert.ok(summary);
+		assert.equal(summary?.iframe.sandbox, 'allow-scripts');
+		assert.equal(summary?.iframe.referrer_policy, 'no-referrer');
+	});
+
+	it('ProtoType summary carries the canonical /app/ entry_html', () => {
+		const summary = getPublicTool('prototype');
+		assert.ok(summary);
+		// Per ADR-0006 §1: artefact namespace is /tools/<slug>/app/
+		assert.equal(summary?.entry_html, '/tools/prototype/app/index.html');
 	});
 
 	it('returns undefined for a host_disabled slug', () => {

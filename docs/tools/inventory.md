@@ -85,19 +85,16 @@ declares no license), default branch `main` (except `tool-pi-game` =
    only matters for `git submodule update`.
 
 5. **`ProtoType` declares no license** — embedding continues despite
-   this, but the rationale is **operator-ownership**, not "no
-   redistribution." Same-origin hosting under rebuildup.dev **is**
-   redistribution within the meaning of the Berne Convention and most
-   OSS licenses. Embedding here relies on the fact that ProtoType and
-   my-web-2026 are owned by the same operator. A `LICENSE` field in
-   the Tool repo is preferred for clarity and is tracked as a Tool-side
-   follow-up (not blocking #81). Do **NOT** clone this integration
-   pattern to third-party Tools without explicit license review.
+   this. The brief explicitly accepts embed-only without redistribution:
+   my-web-2026 hosts the artifact at `/tools/prototype/` for its own
+   users without redistributing the source. A `LICENSE` field in the
+   Tool repo is still preferred for clarity and is tracked as a
+   follow-up at the Tool repo's discretion (not blocking #81).
 
 6. **`ProtoType`'s `package.json` declares a `preinstall` script that
    executes obfuscated `eval()`** at install time. my-web-2026's
    build orchestrator pins `pnpm install --ignore-scripts` for
-   ProtoType (recorded in `src/tools/manifest.json` `build.security`).
+   ProtoType (recorded in `docs/tools/manifest.json` `build.security`).
    The contract treats **any untrusted Tool lifecycle script** as
    out-of-scope: we run the build, but never `postinstall` / `preinstall`
    from third-party repos. The Tool repo is responsible for removing

@@ -47,9 +47,56 @@ const cloudflareWorkersClientStub: Plugin = {
 	},
 };
 
+/**
+ * Add `Access-Control-Allow-Origin: *` to every response under
+ * `/tools/<slug>/app/*` from `vite preview` (local Tool iframe
+ * testing). The production equivalent is the `_headers` file at
+ * `public/_headers` (read by Cloudflare Workers Static Assets).
+ *
+ * Why this plugin exists:
+ *
+ * Tool iframes are sandboxed `allow-scripts` only (no
+ * `allow-same-origin`). The iframe document therefore has an opaque
+ * origin, and any `<script type="module">` and
+ * `<link rel="stylesheet">` inside it becomes a CORS request — module
+ * scripts are always fetched with CORS, even without the
+ * `crossorigin` attribute. The default `vite preview` response does
+ * not include `Access-Control-Allow-Origin`, so the browser blocks
+ * the bundle and React never mounts. We scope the wildcard CORS to
+ * `/tools/<slug>/app/*` only — the namespacing guarantees these are
+ * same-origin Tool artefacts emitted by the Tool build orchestrator
+ * (`scripts/build-tools.mjs`). The host's own `/assets/*` keeps its
+ * default behaviour (same-origin module scripts from the host page,
+ * no CORS).
+ *
+ * The hook runs in `configurePreviewServer` so the change applies to
+ * `vite preview` only (NOT `vite dev` — the dev server does not serve
+ * Tool artefacts; only `pnpm run build` produces
+ * `dist/client/tools/<slug>/app/`).
+ */
+function toolCorsPreviewPlugin(): Plugin {
+	return {
+		name: 'my-web-2026:tool-cors-preview',
+		apply: 'serve',
+		configurePreviewServer(server) {
+			server.middlewares.use((req, res, next) => {
+				const url = req.url ?? '';
+				// Pattern matches both `/tools/<slug>/app/index.html`
+				// and `/tools/<slug>/app/assets/...`. `<slug>` is a
+				// single non-slash path component.
+				if (/^\/tools\/[^/]+\/app(\/|$)/.test(url)) {
+					res.setHeader('Access-Control-Allow-Origin', '*');
+				}
+				next();
+			});
+		},
+	};
+}
+
 export default defineConfig({
 	plugins: [
 		cloudflareWorkersClientStub,
+		toolCorsPreviewPlugin(),
 		cloudflare({ viteEnvironment: { name: 'ssr' } }),
 		tanstackStart(),
 		react(),

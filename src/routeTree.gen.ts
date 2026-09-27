@@ -16,6 +16,8 @@ import { Route as AdminImagesRouteImport } from './routes/admin.images'
 import { Route as AdminInvitationsRouteImport } from './routes/admin.invitations'
 import { Route as AdminKeysRouteImport } from './routes/admin.keys'
 import { Route as AdminLoginRouteImport } from './routes/admin.login'
+import { Route as ToolsIndexRouteImport } from './routes/tools.index'
+import { Route as ToolsSlugRouteImport } from './routes/tools.$slug'
 import { Route as AdminInvitationsAcceptRouteImport } from './routes/admin.invitations.accept'
 
 const IndexRoute = IndexRouteImport.update({
@@ -53,6 +55,16 @@ const AdminLoginRoute = AdminLoginRouteImport.update({
   path: '/login',
   getParentRoute: () => AdminRoute,
 } as any)
+const ToolsIndexRoute = ToolsIndexRouteImport.update({
+  id: '/tools/',
+  path: '/tools/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ToolsSlugRoute = ToolsSlugRouteImport.update({
+  id: '/tools/$slug',
+  path: '/tools/$slug',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AdminInvitationsAcceptRoute = AdminInvitationsAcceptRouteImport.update({
   id: '/accept',
   path: '/accept',
@@ -67,6 +79,8 @@ export interface FileRoutesByFullPath {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/tools/$slug': typeof ToolsSlugRoute
+  '/tools/': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRoutesByTo {
@@ -77,6 +91,8 @@ export interface FileRoutesByTo {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/tools/$slug': typeof ToolsSlugRoute
+  '/tools': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRoutesById {
@@ -88,6 +104,8 @@ export interface FileRoutesById {
   '/admin/invitations': typeof AdminInvitationsRouteWithChildren
   '/admin/keys': typeof AdminKeysRoute
   '/admin/login': typeof AdminLoginRoute
+  '/tools/$slug': typeof ToolsSlugRoute
+  '/tools/': typeof ToolsIndexRoute
   '/admin/invitations/accept': typeof AdminInvitationsAcceptRoute
 }
 export interface FileRouteTypes {
@@ -100,6 +118,8 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/tools/$slug'
+    | '/tools/'
     | '/admin/invitations/accept'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -110,6 +130,8 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/tools/$slug'
+    | '/tools'
     | '/admin/invitations/accept'
   id:
     | '__root__'
@@ -120,12 +142,16 @@ export interface FileRouteTypes {
     | '/admin/invitations'
     | '/admin/keys'
     | '/admin/login'
+    | '/tools/$slug'
+    | '/tools/'
     | '/admin/invitations/accept'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRouteWithChildren
+  ToolsSlugRoute: typeof ToolsSlugRoute
+  ToolsIndexRoute: typeof ToolsIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -179,6 +205,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminLoginRouteImport
       parentRoute: typeof AdminRoute
     }
+    '/tools/': {
+      id: '/tools/'
+      path: '/tools'
+      fullPath: '/tools/'
+      preLoaderRoute: typeof ToolsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tools/$slug': {
+      id: '/tools/$slug'
+      path: '/tools/$slug'
+      fullPath: '/tools/$slug'
+      preLoaderRoute: typeof ToolsSlugRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/admin/invitations/accept': {
       id: '/admin/invitations/accept'
       path: '/accept'
@@ -221,6 +261,8 @@ const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRouteWithChildren,
+  ToolsSlugRoute: ToolsSlugRoute,
+  ToolsIndexRoute: ToolsIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -33,9 +33,11 @@ import {
 	readdirSync,
 	rmSync,
 	statSync,
+	writeFileSync,
 } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { rewriteAssetPaths } from './rewrite-asset-paths.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -168,6 +170,35 @@ for (const tool of targetTools) {
 			continue;
 		}
 		console.error('[build-tools]   ✓ index.html present');
+	}
+
+	// 5. Rewrite absolute asset paths in `index.html` so they resolve
+	// against the artifact's URL namespace (`/tools/<slug>/app/`),
+	// not the host origin. The Tool's Vite build emits root-absolute
+	// paths like `/assets/index-XXX.js` (Vite default `base: '/'`).
+	// When the artifact is served at `/tools/<slug>/app/index.html`,
+	// the browser resolves `/assets/...` against the host origin and
+	// 404s — the actual assets live at
+	// `/tools/<slug>/app/assets/...`.
+	//
+	// The fix lives here (in the collection orchestrator) because the
+	// Tool-side-fix policy reserves Tool repo edits to the Tool repo
+	// (e.g. changing its own `vite.config.ts#base`). my-web-2026 owns
+	// the path that delivers a Tool into `/tools/<slug>/app/`, so the
+	// rewrite happens at collection time. External absolute URLs
+	// (`https://...`, `http://...`, `data:`, etc.) are NOT touched.
+	if (!dryRun) {
+		const indexHtml = join(destDir, 'index.html');
+		if (existsSync(indexHtml)) {
+			const original = readFileSync(indexHtml, 'utf8');
+			const rewritten = rewriteAssetPaths(original, destArtifactPath);
+			if (rewritten !== original) {
+				writeFileSync(indexHtml, rewritten);
+				console.error(
+					`[build-tools]   ✓ rewrote root-absolute asset paths to prefix /${destArtifactPath.replace(/^\/+/, '').replace(/\/+$/, '')}`,
+				);
+			}
+		}
 	}
 }
 

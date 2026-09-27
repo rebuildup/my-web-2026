@@ -261,7 +261,6 @@ describe('release runbook ordering alignment', () => {
 		const attach = driver.indexOf('3. R2 custom-domain attachment');
 		const verify = driver.indexOf('4. driver `verify --environment=prod --execute`');
 		assert.ok(prepare >= 0 && attach > prepare && verify > attach);
-
 	});
 });
 

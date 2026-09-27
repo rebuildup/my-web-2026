@@ -53,14 +53,15 @@
  *
  *   1. production D1 portfolio migration (existing)
  *   2. driver `prepare --execute --environment=prod`
- *   3. driver `verify --environment=prod` (read-only)
- *   4. R2 custom-domain attachment (separate operator task)
- *   5. known media URL 200 / content-type check
- *   6. 0.5 Worker deploy
- *   7. production smoke
- *   8. driver `publish --execute --environment=prod`
- *   9. final portfolio E2E
- *  10. #78 / #82 close readiness
+ *   3. R2 custom-domain attachment (separate operator task)
+ *   4. driver `verify --environment=prod --execute` (read-only remote state;
+ *      local verify-state write only). This verifies public R2 bytes,
+ *      SHA-256 and Content-Type through the custom domain.
+ *   5. 0.5 Worker deploy
+ *   6. production smoke
+ *   7. driver `publish --execute --environment=prod`
+ *   8. final portfolio E2E / optional `verify --expect-visibility=public`
+ *   9. #78 / #82 close readiness
  */
 
 import { spawn, spawnSync } from 'node:child_process';
@@ -86,6 +87,8 @@ export { ALLOWED_CANDIDATE_IDS, RELEASE_VERSION };
 
 const DB_NAME = 'my-web-2026';
 const R2_BUCKET = 'my-web-2026';
+const WRANGLER_PRODUCTION_CONFIG = 'wrangler.production.jsonc';
+const MEDIA_PUBLIC_BASE_URL = 'https://media.rebuildup.dev';
 
 const VERIFY_STATE_FILENAME = '.verify-state.json';
 const VERIFY_STATE_MAX_AGE_MS = 30 * 60 * 1000; // 30 min
@@ -316,6 +319,7 @@ function parseArgs(argv) {
 		operation: null,
 		environment: null,
 		manifestPath: null,
+		expectVisibility: 'draft',
 	};
 	for (const a of argv) {
 		if (a.startsWith('--operation=')) {
@@ -324,6 +328,8 @@ function parseArgs(argv) {
 			out.environment = a.slice('--environment='.length);
 		} else if (a.startsWith('--manifest=')) {
 			out.manifestPath = a.slice('--manifest='.length);
+		} else if (a.startsWith('--expect-visibility=')) {
+			out.expectVisibility = a.slice('--expect-visibility='.length);
 		}
 	}
 	return out;
@@ -635,6 +641,10 @@ function defaultWranglerSpawn(args, opts) {
 	};
 }
 
+function productionConfigArgs(env) {
+	return env === 'prod' ? ['-c', WRANGLER_PRODUCTION_CONFIG] : [];
+}
+
 /** Validate the wrangler config identity (account_id, db name, r2 bucket)
  * matches the operator-known production identity. */
 function assertProductionIdentity(wranglerConfigName) {
@@ -658,20 +668,56 @@ function assertProductionIdentity(wranglerConfigName) {
 			`${wranglerConfigName}#account_id is not the canonical production account; refusing to mutate production`,
 		);
 	}
+	if (!cfg.includes(`"MEDIA_PUBLIC_BASE_URL": "${MEDIA_PUBLIC_BASE_URL}"`)) {
+		throw new Error(
+			`${wranglerConfigName}#vars.MEDIA_PUBLIC_BASE_URL is not ${MEDIA_PUBLIC_BASE_URL}; refusing production verification`,
+		);
+	}
+}
+
+/** Parse Wrangler D1 --json output. Wrangler returns an array of result
+ * envelopes; fail closed on any other shape. */
+export function parseD1Rows(stdout) {
+	let parsed;
+	try {
+		parsed = JSON.parse(stdout || '[]');
+	} catch {
+		throw new Error('D1 output is not valid JSON');
+	}
+	if (!Array.isArray(parsed) || parsed.length !== 1) {
+		throw new Error('D1 output must be a single-result envelope array');
+	}
+	const first = parsed[0];
+	if (!first || typeof first !== 'object' || !Array.isArray(first.results)) {
+		throw new Error('D1 output first envelope must contain results[]');
+	}
+	return first.results;
 }
 
 /** Run a D1 SQL script via wrangler. Returns spawn result. */
-function runD1(env, sqlPathOrStdin, opts = {}) {
+export function buildD1FileArgs(env, sqlPath) {
 	const targetFlag = env === 'prod' ? '--remote' : '--local';
-	const args = ['d1', 'execute', DB_NAME, targetFlag, '--file', sqlPathOrStdin];
-	return defaultWranglerSpawn(args, opts);
+	return [
+		'd1',
+		'execute',
+		DB_NAME,
+		targetFlag,
+		'--file',
+		sqlPath,
+		...productionConfigArgs(env),
+	];
 }
 
-/** Upload an R2 object via wrangler. Returns spawn result. */
-function runR2Put(env, key, filePath) {
+function runD1(env, sqlPathOrStdin, opts = {}) {
+	return defaultWranglerSpawn(buildD1FileArgs(env, sqlPathOrStdin), opts);
+}
+
+/** Upload an R2 object via wrangler. Content-Type is explicit; never use
+ * Wrangler inference for release assets. */
+export function buildR2PutArgs(env, key, filePath, contentType) {
 	const targetFlag = env === 'prod' ? '--remote' : '--local';
 	const bucketKey = `${R2_BUCKET}/${key}`;
-	const args = [
+	return [
 		'r2',
 		'object',
 		'put',
@@ -680,26 +726,111 @@ function runR2Put(env, key, filePath) {
 		'--file',
 		filePath,
 		'--content-type',
-		'inherit',
+		contentType,
+		...productionConfigArgs(env),
 	];
-	return defaultWranglerSpawn(args);
 }
 
-/** Read an R2 object's metadata via wrangler. Returns spawn result. */
-function runR2Head(env, key) {
+function runR2Put(env, key, filePath, contentType) {
+	return defaultWranglerSpawn(buildR2PutArgs(env, key, filePath, contentType));
+}
+
+/** Download an R2 object via Wrangler for local verification. Production
+ * integrity verification uses the custom-domain HTTPS path so HTTP metadata
+ * (especially Content-Type) is verified together with bytes. */
+export function buildR2GetArgs(env, key, filePath) {
 	const targetFlag = env === 'prod' ? '--remote' : '--local';
 	const bucketKey = `${R2_BUCKET}/${key}`;
-	const args = ['r2', 'object', 'head', bucketKey, targetFlag];
-	return defaultWranglerSpawn(args);
+	return [
+		'r2',
+		'object',
+		'get',
+		bucketKey,
+		targetFlag,
+		'--file',
+		filePath,
+		...productionConfigArgs(env),
+	];
 }
 
-/** Read D1 row(s) by id via wrangler. Returns spawn result. */
+function runR2Get(env, key, filePath) {
+	return defaultWranglerSpawn(buildR2GetArgs(env, key, filePath));
+}
+
+/** Read D1 row(s) by SQL via wrangler. */
+export function buildD1SelectArgs(env, sqlText) {
+	const targetFlag = env === 'prod' ? '--remote' : '--local';
+	return [
+		'd1',
+		'execute',
+		DB_NAME,
+		targetFlag,
+		'--command',
+		sqlText,
+		'--json',
+		...productionConfigArgs(env),
+	];
+}
+
 function runD1Select(env, sqlText) {
-	const args =
-		env === 'prod'
-			? ['d1', 'execute', DB_NAME, '--remote', '--command', sqlText, '--json']
-			: ['d1', 'execute', DB_NAME, '--local', '--command', sqlText, '--json'];
-	return defaultWranglerSpawn(args);
+	return defaultWranglerSpawn(buildD1SelectArgs(env, sqlText));
+}
+
+function publicMediaUrl(key) {
+	const encodedPath = key
+		.split('/')
+		.map((segment) => encodeURIComponent(segment))
+		.join('/');
+	return `${MEDIA_PUBLIC_BASE_URL}/${encodedPath}`;
+}
+
+/** Fetch the production R2 object through its canonical custom domain.
+ * This is intentionally a full GET: the assets are small and hashing the
+ * returned bytes provides stronger integrity evidence than object presence. */
+export async function fetchPublicR2Object(asset, fetchImpl = globalThis.fetch) {
+	if (typeof fetchImpl !== 'function') {
+		throw new Error('global fetch is unavailable');
+	}
+	const response = await fetchImpl(publicMediaUrl(asset.r2_key), {
+		method: 'GET',
+		redirect: 'error',
+	});
+	const body = Buffer.from(await response.arrayBuffer());
+	return {
+		status: response.status,
+		contentType: (response.headers.get('content-type') ?? '')
+			.split(';', 1)[0]
+			.trim()
+			.toLowerCase(),
+		byteSize: body.byteLength,
+		sha256: createHash('sha256').update(body).digest('hex'),
+	};
+}
+
+/** Compare remote/local object evidence with the immutable manifest. */
+export function validateR2Evidence(asset, evidence) {
+	const errors = [];
+	if (evidence.status !== 200 && evidence.status !== 0) {
+		errors.push(`${asset.slug}: object fetch failed (status=${evidence.status})`);
+	}
+	if (evidence.sha256 !== asset.sha256) {
+		errors.push(`${asset.slug}: SHA-256 mismatch`);
+	}
+	if (evidence.byteSize !== asset.byte_size) {
+		errors.push(
+			`${asset.slug}: byte size mismatch (expected=${asset.byte_size}, actual=${evidence.byteSize})`,
+		);
+	}
+	if (
+		typeof evidence.contentType === 'string' &&
+		evidence.contentType.length > 0 &&
+		evidence.contentType !== asset.content_type.toLowerCase()
+	) {
+		errors.push(
+			`${asset.slug}: Content-Type mismatch (expected=${asset.content_type}, actual=${evidence.contentType})`,
+		);
+	}
+	return errors;
 }
 
 // ---------------------------------------------------------------------------
@@ -730,6 +861,99 @@ export function validateEntry(entry) {
 	return errors;
 }
 
+export function publicationContextDigest(manifest) {
+	const payload = {
+		release: RELEASE_VERSION,
+		candidate_ids: [...ALLOWED_CANDIDATE_IDS].sort(),
+		manifest,
+		entries: ENTRIES.map((entry) => ({
+			id: projectIdFor({ legacyId: entry.legacyId }),
+			slug: normalizeSlug(entry.legacyId),
+			title: entry.title,
+			role: entry.role,
+			markdown: entry.markdown,
+			links: entry.links,
+			manifestSlug: entry.manifestSlug,
+			mediaFilename: entry.mediaFilename,
+			mediaAlt: entry.mediaAlt,
+		})),
+	};
+	return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
+}
+
+export function verifyD1Content({ projectRows, linkRows, mediaRows, manifest, expectedVisibility }) {
+	const errors = [];
+	if (projectRows.length !== ALLOWED_CANDIDATE_IDS.size) {
+		errors.push(
+			`project row count mismatch: expected=${ALLOWED_CANDIDATE_IDS.size}, actual=${projectRows.length}`,
+		);
+	}
+	for (const entry of ENTRIES) {
+		const id = projectIdFor({ legacyId: entry.legacyId });
+		const project = projectRows.find((row) => row.id === id);
+		if (!project) {
+			errors.push(`${id}: project row missing`);
+			continue;
+		}
+		const expectedProject = {
+			slug: normalizeSlug(entry.legacyId),
+			title: entry.title,
+			role: entry.role,
+			visibility: expectedVisibility,
+			status: 'published',
+		};
+		for (const [key, expected] of Object.entries(expectedProject)) {
+			if (project[key] !== expected) {
+				errors.push(`${id}: ${key} mismatch`);
+			}
+		}
+		for (const section of REQUIRED_MD_SECTIONS) {
+			if (project[section] !== entry.markdown[section]) {
+				errors.push(`${id}: ${section} content mismatch`);
+			}
+		}
+
+		for (const link of entry.links) {
+			const expectedLinkId = linkIdFor(id, link);
+			const actual = linkRows.find((row) => row.id === expectedLinkId);
+			if (!actual) {
+				errors.push(`${id}: expected link missing (${expectedLinkId})`);
+				continue;
+			}
+			if (
+				actual.project_id !== id ||
+				actual.kind !== linkKindFromUrl(link.href) ||
+				actual.url !== link.href ||
+				actual.label !== (link.label ?? null) ||
+				Number(actual.display_order) !== Number(link.order ?? 0)
+			) {
+				errors.push(`${id}: expected link content mismatch (${expectedLinkId})`);
+			}
+		}
+
+		const asset = manifestAssetFor(manifest, entry.manifestSlug);
+		const expectedMediaId = mediaIdFor(id, entry.manifestSlug, entry.mediaFilename);
+		const media = mediaRows.find((row) => row.id === expectedMediaId);
+		if (!media) {
+			errors.push(`${id}: expected media missing (${expectedMediaId})`);
+			continue;
+		}
+		if (
+			media.project_id !== id ||
+			media.r2_key !== asset.r2_key ||
+			media.content_type !== asset.content_type ||
+			Number(media.width) !== Number(asset.width) ||
+			Number(media.height) !== Number(asset.height) ||
+			media.alt !== entry.mediaAlt ||
+			Number(media.is_cover) !== 1 ||
+			Number(media.display_order) !== 1
+		) {
+			errors.push(`${id}: expected media content mismatch (${expectedMediaId})`);
+		}
+	}
+	return errors;
+}
+
 // ---------------------------------------------------------------------------
 // Verify state file (for publish gating).
 // ---------------------------------------------------------------------------
@@ -752,7 +976,7 @@ function writeVerifyState(env, state) {
 	const path = verifyStatePath(env);
 	const fs = require('node:fs');
 	fs.mkdirSync(dirname(path), { recursive: true });
-	fs.writeFileSync(path, JSON.stringify(state, null, 2));
+	fs.writeFileSync(path, JSON.stringify(state, null, 2), { mode: 0o600 });
 }
 
 function clearVerifyState(env) {
@@ -774,7 +998,7 @@ async function operationPrepare(parsed, manifest) {
 	);
 
 	if (env === 'prod') {
-		assertProductionIdentity('wrangler.production.jsonc');
+		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
 	}
 
 	// 1. Validate all entries up front.
@@ -827,7 +1051,12 @@ async function operationPrepare(parsed, manifest) {
 	for (const [slug, verified] of verifiedAssets.entries()) {
 		const r2Result = dryRun
 			? { stdout: '[dry-run] no spawn', stderr: '', status: 0 }
-			: runR2Put(env, verified.manifestAsset.r2_key, verified.path);
+			: runR2Put(
+				env,
+				verified.manifestAsset.r2_key,
+				verified.path,
+				verified.manifestAsset.content_type,
+			);
 		r2Results.push({ slug, status: r2Result.status, stderr: r2Result.stderr });
 	}
 
@@ -856,91 +1085,153 @@ async function operationPrepare(parsed, manifest) {
 	}
 }
 
-function operationVerify(parsed, manifest) {
+async function operationVerify(parsed, manifest) {
 	const env = parsed.environment;
-	console.error(`[publish-portfolio] --operation=verify --environment=${env} READ-ONLY`);
+	console.error(
+		`[publish-portfolio] --operation=verify --environment=${env} READ-ONLY expected_visibility=${parsed.expectVisibility}`,
+	);
 
 	if (env === 'prod') {
-		assertProductionIdentity('wrangler.production.jsonc');
+		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
 	}
 
 	const ids = [...ALLOWED_CANDIDATE_IDS];
-	const sqlSelect = `SELECT id, slug, title, role, visibility, status, motivation_md IS NOT NULL AS has_motivation, architecture_md IS NOT NULL AS has_architecture, constraints_md IS NOT NULL AS has_constraints, implementation_md IS NOT NULL AS has_implementation, evidence_md IS NOT NULL AS has_evidence FROM portfolio_project WHERE id IN (${ids.map((i) => `'${i}'`).join(',')});`;
+	const idList = ids.map((id) => sqlEscape(id)).join(',');
+	const projectSql =
+		`SELECT id, slug, title, role, visibility, status, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md FROM portfolio_project WHERE id IN (${idList}) ORDER BY id;`;
+	const linkSql =
+		`SELECT id, project_id, kind, label, url, display_order FROM portfolio_link WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
+	const mediaSql =
+		`SELECT id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order FROM portfolio_media WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
 
-	const d1Result = runD1Select(env, sqlSelect);
-	if (d1Result.status !== 0) {
-		console.error('[publish-portfolio] verify: D1 SELECT failed');
-		console.error(d1Result.stderr);
-		process.exit(d1Result.status);
+	const projectResult = runD1Select(env, projectSql);
+	const linkResult = runD1Select(env, linkSql);
+	const mediaResult = runD1Select(env, mediaSql);
+	for (const [label, result] of [
+		['project', projectResult],
+		['link', linkResult],
+		['media', mediaResult],
+	]) {
+		if (result.status !== 0) {
+			console.error(`[publish-portfolio] verify: D1 ${label} SELECT failed`);
+			console.error(result.stderr);
+			process.exit(result.status || 1);
+		}
 	}
 
-	let parsedRows = [];
+	let projectRows;
+	let linkRows;
+	let mediaRows;
 	try {
-		const out = JSON.parse(d1Result.stdout || '[]');
-		parsedRows = Array.isArray(out) ? out : (out?.[0] ?? []);
-	} catch (err) {
-		console.error('[publish-portfolio] verify: cannot parse D1 SELECT output as JSON');
-		console.error(d1Result.stdout);
+		projectRows = parseD1Rows(projectResult.stdout);
+		linkRows = parseD1Rows(linkResult.stdout);
+		mediaRows = parseD1Rows(mediaResult.stdout);
+	} catch (error) {
+		console.error(`[publish-portfolio] verify: ${error.message}`);
 		process.exit(1);
 	}
 
-	const stateRows = [];
-	for (const row of parsedRows) {
-		stateRows.push(row);
-	}
+	const d1Errors = verifyD1Content({
+		projectRows,
+		linkRows,
+		mediaRows,
+		manifest,
+		expectedVisibility: parsed.expectVisibility,
+	});
 
-	// R2 object head for each manifest asset.
 	const r2States = [];
+	const r2Errors = [];
 	for (const asset of manifest.assets) {
-		const result = runR2Head(env, asset.r2_key);
+		let evidence;
+		if (env === 'prod') {
+			try {
+				evidence = await fetchPublicR2Object(asset);
+			} catch (error) {
+				evidence = {
+					status: -1,
+					contentType: '',
+					byteSize: -1,
+					sha256: '',
+				};
+				r2Errors.push(`${asset.slug}: public R2 fetch failed (${error.message})`);
+			}
+		} else {
+			const fs = require('node:fs');
+			const os = require('node:os');
+			const localDir = fs.mkdtempSync(resolve(os.tmpdir(), 'publish-portfolio-r2-verify-'));
+			const localPath = resolve(localDir, 'object.bin');
+			try {
+				const result = runR2Get(env, asset.r2_key, localPath);
+				if (result.status !== 0) {
+					evidence = {
+						status: result.status,
+						contentType: asset.content_type,
+						byteSize: -1,
+						sha256: '',
+					};
+				} else {
+					const body = fs.readFileSync(localPath);
+					evidence = {
+						status: 0,
+						contentType: asset.content_type,
+						byteSize: body.byteLength,
+						sha256: createHash('sha256').update(body).digest('hex'),
+					};
+				}
+			} finally {
+				fs.rmSync(localDir, { recursive: true, force: true });
+			}
+		}
+		const errors = validateR2Evidence(asset, evidence);
+		r2Errors.push(...errors);
 		r2States.push({
 			slug: asset.slug,
 			r2_key: asset.r2_key,
-			expected_sha256: asset.sha256,
-			expected_byte_size: asset.byte_size,
-			expected_content_type: asset.content_type,
-			status: result.status,
+			status: evidence.status,
+			content_type: evidence.contentType,
+			byte_size: evidence.byteSize,
+			sha256_match: evidence.sha256 === asset.sha256,
+			content_type_match: evidence.contentType === asset.content_type.toLowerCase(),
+			byte_size_match: evidence.byteSize === asset.byte_size,
 		});
 	}
 
-	const allRowsPresent = stateRows.length === ids.length;
-	const allR2Present = r2States.every((r) => r.status === 0);
+	const contextDigest = publicationContextDigest(manifest);
+	const allContentValid = d1Errors.length === 0;
+	const allR2Valid = r2Errors.length === 0;
 	const state = {
 		environment: env,
 		verified_at: new Date().toISOString(),
-		d1_rows: stateRows,
+		expected_visibility: parsed.expectVisibility,
+		context_digest: contextDigest,
+		d1_rows: projectRows,
 		r2_objects: r2States,
-		all_rows_present: allRowsPresent,
-		all_r2_present: allR2Present,
+		all_content_valid: allContentValid,
+		all_r2_valid: allR2Valid,
 	};
 
-	if (parsed.execute) {
+	if (parsed.execute && allContentValid && allR2Valid && parsed.expectVisibility === 'draft') {
 		writeVerifyState(env, state);
 	}
 
 	console.log(JSON.stringify(state, null, 2));
-
-	if (!allRowsPresent) {
-		console.error(
-			`[publish-portfolio] verify FAIL: expected ${ids.length} rows, got ${stateRows.length}`,
-		);
-		process.exit(2);
+	for (const error of [...d1Errors, ...r2Errors]) {
+		console.error(`[publish-portfolio] verify FAIL: ${error}`);
 	}
-	if (!allR2Present) {
-		console.error('[publish-portfolio] verify FAIL: not all R2 objects present');
+	if (!allContentValid || !allR2Valid) {
 		process.exit(2);
 	}
 	console.error('[publish-portfolio] verify PASS');
 }
 
-function operationPublish(parsed /* , manifest */) {
+function operationPublish(parsed, manifest) {
 	const env = parsed.environment;
 	if (!parsed.execute) {
 		console.error('[publish-portfolio] publish requires --execute');
 		process.exit(2);
 	}
 	if (env === 'prod') {
-		assertProductionIdentity('wrangler.production.jsonc');
+		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
 	}
 	const state = readVerifyState(env);
 	if (!state) {
@@ -950,14 +1241,18 @@ function operationPublish(parsed /* , manifest */) {
 		process.exit(2);
 	}
 	const ageMs = Date.now() - new Date(state.verified_at).getTime();
-	if (ageMs > VERIFY_STATE_MAX_AGE_MS) {
-		console.error(
-			`[publish-portfolio] verify state is ${Math.round(ageMs / 1000)}s old (max ${VERIFY_STATE_MAX_AGE_MS / 1000}s); re-run verify`,
-		);
+	if (!Number.isFinite(ageMs) || ageMs < 0 || ageMs > VERIFY_STATE_MAX_AGE_MS) {
+		console.error('[publish-portfolio] verify state is stale or invalid; re-run verify');
 		process.exit(2);
 	}
-	if (!state.all_rows_present || !state.all_r2_present) {
-		console.error('[publish-portfolio] verify state is incomplete; re-run verify');
+	const currentDigest = publicationContextDigest(manifest);
+	if (
+		state.context_digest !== currentDigest ||
+		state.expected_visibility !== 'draft' ||
+		!state.all_content_valid ||
+		!state.all_r2_valid
+	) {
+		console.error('[publish-portfolio] verify state does not match current publication context');
 		process.exit(2);
 	}
 
@@ -996,10 +1291,10 @@ function operationUnpublish(parsed /* , manifest */) {
 		process.exit(2);
 	}
 	if (env === 'prod') {
-		assertProductionIdentity('wrangler.production.jsonc');
+		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
 	}
 	const ids = [...ALLOWED_CANDIDATE_IDS];
-	const sql = `UPDATE portfolio_project SET visibility='draft', status='draft', updated_at=${nowMs()} WHERE id IN (${ids.map((i) => `'${i}'`).join(',')});`;
+	const sql = `UPDATE portfolio_project SET visibility='draft', updated_at=${nowMs()} WHERE id IN (${ids.map((i) => `'${i}'`).join(',')});`;
 	console.error(`[publish-portfolio] unpublish: ${ids.length} candidates → draft (rollback)`);
 
 	const tmpDir = process.env.TMPDIR || '/tmp';
@@ -1034,7 +1329,7 @@ async function main() {
 
 	if (!parsed.operation) {
 		console.error(
-			'Usage: node scripts/publish-portfolio-production.mjs --operation=prepare|verify|publish|unpublish --environment=local|prod [--execute]',
+			'Usage: node scripts/publish-portfolio-production.mjs --operation=prepare|verify|publish|unpublish --environment=local|prod [--execute] [--expect-visibility=draft|public]',
 		);
 		process.exit(2);
 	}
@@ -1048,6 +1343,12 @@ async function main() {
 	}
 	if (!['prepare', 'verify', 'publish', 'unpublish'].includes(parsed.operation)) {
 		console.error(`--operation must be prepare|verify|publish|unpublish, got ${parsed.operation}`);
+		process.exit(2);
+	}
+	if (!['draft', 'public'].includes(parsed.expectVisibility)) {
+		console.error(
+			`--expect-visibility must be draft|public, got ${parsed.expectVisibility}`,
+		);
 		process.exit(2);
 	}
 	if (parsed.environment === 'prod' && parsed.execute) {
@@ -1074,7 +1375,7 @@ async function main() {
 			await operationPrepare(parsed, manifest);
 			break;
 		case 'verify':
-			operationVerify(parsed, manifest);
+			await operationVerify(parsed, manifest);
 			break;
 		case 'publish':
 			operationPublish(parsed, manifest);

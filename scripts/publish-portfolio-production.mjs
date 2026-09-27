@@ -697,15 +697,7 @@ export function parseD1Rows(stdout) {
 /** Run a D1 SQL script via wrangler. Returns spawn result. */
 export function buildD1FileArgs(env, sqlPath) {
 	const targetFlag = env === 'prod' ? '--remote' : '--local';
-	return [
-		'd1',
-		'execute',
-		DB_NAME,
-		targetFlag,
-		'--file',
-		sqlPath,
-		...productionConfigArgs(env),
-	];
+	return ['d1', 'execute', DB_NAME, targetFlag, '--file', sqlPath, ...productionConfigArgs(env)];
 }
 
 function runD1(env, sqlPathOrStdin, opts = {}) {
@@ -798,10 +790,7 @@ export async function fetchPublicR2Object(asset, fetchImpl = globalThis.fetch) {
 	const body = Buffer.from(await response.arrayBuffer());
 	return {
 		status: response.status,
-		contentType: (response.headers.get('content-type') ?? '')
-			.split(';', 1)[0]
-			.trim()
-			.toLowerCase(),
+		contentType: (response.headers.get('content-type') ?? '').split(';', 1)[0].trim().toLowerCase(),
 		byteSize: body.byteLength,
 		sha256: createHash('sha256').update(body).digest('hex'),
 	};
@@ -881,7 +870,13 @@ export function publicationContextDigest(manifest) {
 	return createHash('sha256').update(JSON.stringify(payload)).digest('hex');
 }
 
-export function verifyD1Content({ projectRows, linkRows, mediaRows, manifest, expectedVisibility }) {
+export function verifyD1Content({
+	projectRows,
+	linkRows,
+	mediaRows,
+	manifest,
+	expectedVisibility,
+}) {
 	const errors = [];
 	if (projectRows.length !== ALLOWED_CANDIDATE_IDS.size) {
 		errors.push(
@@ -1052,11 +1047,11 @@ async function operationPrepare(parsed, manifest) {
 		const r2Result = dryRun
 			? { stdout: '[dry-run] no spawn', stderr: '', status: 0 }
 			: runR2Put(
-				env,
-				verified.manifestAsset.r2_key,
-				verified.path,
-				verified.manifestAsset.content_type,
-			);
+					env,
+					verified.manifestAsset.r2_key,
+					verified.path,
+					verified.manifestAsset.content_type,
+				);
 		r2Results.push({ slug, status: r2Result.status, stderr: r2Result.stderr });
 	}
 
@@ -1097,12 +1092,9 @@ async function operationVerify(parsed, manifest) {
 
 	const ids = [...ALLOWED_CANDIDATE_IDS];
 	const idList = ids.map((id) => sqlEscape(id)).join(',');
-	const projectSql =
-		`SELECT id, slug, title, role, visibility, status, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md FROM portfolio_project WHERE id IN (${idList}) ORDER BY id;`;
-	const linkSql =
-		`SELECT id, project_id, kind, label, url, display_order FROM portfolio_link WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
-	const mediaSql =
-		`SELECT id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order FROM portfolio_media WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
+	const projectSql = `SELECT id, slug, title, role, visibility, status, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md FROM portfolio_project WHERE id IN (${idList}) ORDER BY id;`;
+	const linkSql = `SELECT id, project_id, kind, label, url, display_order FROM portfolio_link WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
+	const mediaSql = `SELECT id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order FROM portfolio_media WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
 
 	const projectResult = runD1Select(env, projectSql);
 	const linkResult = runD1Select(env, linkSql);
@@ -1351,9 +1343,7 @@ async function main() {
 		process.exit(2);
 	}
 	if (!['draft', 'public'].includes(parsed.expectVisibility)) {
-		console.error(
-			`--expect-visibility must be draft|public, got ${parsed.expectVisibility}`,
-		);
+		console.error(`--expect-visibility must be draft|public, got ${parsed.expectVisibility}`);
 		process.exit(2);
 	}
 	if (parsed.environment === 'prod' && parsed.execute) {

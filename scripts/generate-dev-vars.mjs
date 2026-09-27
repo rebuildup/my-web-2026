@@ -40,7 +40,7 @@
  *   INFISICAL_API_URL — defaults to `https://secrets.rebuildup.dev`.
  */
 
-import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
+import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -158,8 +158,67 @@ export function formatDevVarsContent(secretMap) {
 	return `${lines.join('\n')}\n`;
 }
 
-function readInfisicalWorkspaceId() {
-	const path = resolve(REPO_ROOT, '.infisical.json');
+/**
+ * Atomically write `content` to `targetPath` (a `.dev.vars` file) via a
+ * sibling temp file + rename.
+ *
+ * Operator-mandated invariants (Phase 3 review — CodeRabbit run
+ * `dd52defe-bbaf-4be6-9455-ca29c99eccb7`, reviews 3 + 4):
+ *
+ *   1. **Exclusive create (`flag: 'wx'`)**. The temp file is created
+ *      with `O_EXCL`. A pre-existing `.dev.vars.tmp` (left behind by
+ *      a previous run, or pre-placed by another process) makes the
+ *      write fail with EEXIST — the script does NOT truncate or
+ *      follow a symlink at that path. The pre-existing file is left
+ *      untouched.
+ *   2. **Mode `0o600`** on the temp file. Operator-visible secret
+ *      values never land on disk with world/group-readable mode.
+ *   3. **Ownership-flagged cleanup**. The cleanup branch unlinks the
+ *      temp file only when **this process** successfully created it
+ *      (`tmpCreated === true`). On EEXIST the temp path belongs to
+ *      another process — we MUST NOT race-delete it. On rename
+ *      failure AFTER successful exclusive create, we clean up only
+ *      our own temp file.
+ *   4. **Best-effort cleanup preserves the original failure**. If
+ *      `unlinkSync` itself throws (e.g., the temp path was already
+ *      removed by some other actor), we swallow that error and
+ *      re-throw the original `cause`. The caller sees the real
+ *      failure, not a cleanup-induced one.
+ *
+ * Pure: takes `writeFile`, `rename`, `unlink` as injected parameters
+ * so the function is unit-testable in isolation. Exported for the
+ * security-invariant test suite.
+ *
+ * Rethrows the original `cause` (not a wrapped Error) so callers
+ * can `err.code === 'EEXIST'` etc.
+ */
+export function writeDevVarsAtomic({
+	targetPath,
+	content,
+	writeFile = writeFileSync,
+	rename = renameSync,
+	unlink = unlinkSync,
+}) {
+	const tmpPath = `${targetPath}${DEV_VARS_TMP_SUFFIX}`;
+	let tmpCreated = false;
+	try {
+		writeFile(tmpPath, content, { flag: 'wx', mode: 0o600 });
+		tmpCreated = true;
+		rename(tmpPath, targetPath);
+	} catch (cause) {
+		if (tmpCreated) {
+			try {
+				unlink(tmpPath);
+			} catch {
+				// best-effort cleanup; preserve original failure
+			}
+		}
+		throw cause;
+	}
+}
+
+function readInfisicalWorkspaceId(repoRoot = REPO_ROOT) {
+	const path = resolve(repoRoot, '.infisical.json');
 	if (!existsSync(path)) {
 		throw new Error(
 			`.infisical.json not found at ${path}. Run \`pnpm run infisical:bootstrap\` first.`,
@@ -172,8 +231,8 @@ function readInfisicalWorkspaceId() {
 	return parsed.workspaceId;
 }
 
-function readWranglerSecretsRequired(configPath) {
-	const fullPath = resolve(REPO_ROOT, configPath);
+function readWranglerSecretsRequired(configPath, repoRoot = REPO_ROOT) {
+	const fullPath = resolve(repoRoot, configPath);
 	if (!existsSync(fullPath)) {
 		throw new Error(`Wrangler config not found: ${fullPath}`);
 	}
@@ -291,30 +350,56 @@ Required env: INFISICAL_TOKEN (operator-supplied).
 `);
 }
 
-async function main() {
-	const args = parseArgs(process.argv.slice(2));
+/**
+ * `runMain` — the operational entry point. Extracted from `main()`
+ * so the prod-reject path can be unit-tested in isolation without
+ * spawning a subprocess or touching the real repo `.infisical.json`
+ * / `.dev.vars`.
+ *
+ * Parameters are injected so the test suite can run the prod-reject
+ * regression against a scratch `repoRoot` (via `mkdtemp`):
+ *
+ *   - `repoRoot`: replaces `REPO_ROOT` for `.infisical.json`
+ *     resolution, `wrangler.jsonc` resolution, and `.dev.vars`
+ *     write. The natural entry point still uses the real
+ *     `REPO_ROOT`.
+ *   - `argv`: replaces `process.argv.slice(2)`. Tests pass
+ *     `['--env=prod', '--dry-run']` directly without going
+ *     through `process.argv`.
+ *   - `env`: replaces `process.env` for the Infisical token
+ *     + API URL lookup. Defaults to `process.env` for the
+ *     natural entry point.
+ *
+ * Exported for the test factory closure.
+ */
+export async function runMain({
+	repoRoot = REPO_ROOT,
+	argv = process.argv.slice(2),
+	env = process.env,
+} = {}) {
+	const args = parseArgs(argv);
 	if (args.help) {
 		printHelp();
 		return;
 	}
 
-	const apiUrl = process.env.INFISICAL_API_URL || INFISICAL_API_URL_DEFAULT;
-	const accessToken = process.env.INFISICAL_TOKEN;
+	const apiUrl = env.INFISICAL_API_URL || INFISICAL_API_URL_DEFAULT;
+	const accessToken = env.INFISICAL_TOKEN;
 	if (typeof accessToken !== 'string' || accessToken.length === 0) {
 		throw new Error('INFISICAL_TOKEN env var is required');
 	}
 
-	const workspaceId = readInfisicalWorkspaceId();
-	const required = readWranglerSecretsRequired(args.config);
+	const workspaceId = readInfisicalWorkspaceId(repoRoot);
+	const required = readWranglerSecretsRequired(args.config, repoRoot);
 	if (required.length === 0) {
 		throw new Error(`${args.config}: secrets.required is empty; nothing to fetch`);
 	}
 
-	let env = args.env;
-	if (env === null) {
-		const cfgPath = resolve(REPO_ROOT, '.infisical.json');
+	let resolvedEnv = args.env;
+	if (resolvedEnv === null) {
+		const cfgPath = resolve(repoRoot, '.infisical.json');
 		const cfg = JSON.parse(readFileSync(cfgPath, 'utf8'));
-		env = cfg?.defaultEnvironment ?? 'dev';
+		resolvedEnv = cfg?.defaultEnvironment ?? 'dev';
 	}
 
 	// Operator-mandated prod hard-reject. ANY value the operator might
@@ -322,15 +407,15 @@ async function main() {
 	// file write. Production secret management is owned by the
 	// Cloudflare Workers Builds deploy path (Phase 4 #70) and
 	// `wrangler secret put`, never by this script.
-	if (isProdEnvironment(env)) {
+	if (isProdEnvironment(resolvedEnv)) {
 		throw new Error(
-			`generate-dev-vars refuses environment=${JSON.stringify(env)}: prod secrets are never written to a local .dev.vars file. Use "pnpm run infisical:deploy" (Phase 4 #70) or "wrangler secret put" for production.`,
+			`generate-dev-vars refuses environment=${JSON.stringify(resolvedEnv)}: prod secrets are never written to a local .dev.vars file. Use "pnpm run infisical:deploy" (Phase 4 #70) or "wrangler secret put" for production.`,
 		);
 	}
 
 	console.log(`Infisical project:  ${workspaceId}`);
 	console.log(`Wrangler config:    ${args.config}`);
-	console.log(`Environment:        ${env}`);
+	console.log(`Environment:        ${resolvedEnv}`);
 	console.log(`Required secrets:   ${JSON.stringify(required)}`);
 	console.log(`Output file:        ${DEV_VARS_FILENAME}`);
 	console.log(`Mode:               ${args.dryRun ? 'dry-run' : 'write'}`);
@@ -341,7 +426,7 @@ async function main() {
 		apiUrl,
 		accessToken,
 		workspaceId,
-		environment: env,
+		environment: resolvedEnv,
 	});
 	const all = parseSecretsResponse(JSON.stringify(response));
 	const requiredSet = new Set(required);
@@ -350,25 +435,24 @@ async function main() {
 	const missing = required.filter((k) => !filtered.some((s) => s.secretKey === k));
 	if (missing.length > 0) {
 		throw new Error(
-			`Infisical env=${env} is missing required keys: ${JSON.stringify(missing)}. ` +
-				`Run \`pnpm run infisical:seed -- --env=${env}\` first or fix the config drift.`,
+			`Infisical env=${resolvedEnv} is missing required keys: ${JSON.stringify(missing)}. ` +
+				`Run \`pnpm run infisical:seed -- --env=${resolvedEnv}\` first or fix the config drift.`,
 		);
 	}
 
 	const map = Object.fromEntries(filtered.map((s) => [s.secretKey, s.secretValue]));
 	const content = formatDevVarsContent(map);
 
-	const targetPath = resolve(REPO_ROOT, DEV_VARS_FILENAME);
-	const tmpPath = `${targetPath}${DEV_VARS_TMP_SUFFIX}`;
+	const targetPath = resolve(repoRoot, DEV_VARS_FILENAME);
+	// Atomic write (exclusive create + ownership-flagged cleanup).
+	// `writeDevVarsAtomic` rethrows the original fs error on failure;
+	// we wrap it here so the operator-facing message identifies which
+	// file failed. The helper itself enforces all the security
+	// invariants (no truncate, no symlink follow, ownership-flagged
+	// cleanup, original-error preservation).
 	try {
-		writeFileSync(tmpPath, content, { mode: 0o600 });
-		renameSync(tmpPath, targetPath);
+		writeDevVarsAtomic({ targetPath, content });
 	} catch (cause) {
-		try {
-			if (existsSync(tmpPath)) writeFileSync(tmpPath, '');
-		} catch {
-			// best-effort cleanup; ignore
-		}
 		throw new Error(`Failed to write ${DEV_VARS_FILENAME}: ${cause.message}`);
 	}
 
@@ -376,7 +460,11 @@ async function main() {
 	console.log(`Wrote ${filtered.length} secrets to ${DEV_VARS_FILENAME}`);
 }
 
-if (import.meta.url === pathToFileURL(process.argv[1]).href) {
+function main() {
+	return runMain();
+}
+
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main().catch((err) => {
 		console.error(`generate-dev-vars failed: ${err.message}`);
 		process.exit(1);

@@ -25,6 +25,7 @@
 		"db:migrate:list:remote": "wrangler d1 migrations list DB --remote",
 		"bootstrap:home-api-key": "node scripts/bootstrap-home-api-key.mjs",
 		"generate:digits": "node scripts/generate-counter-digits.mjs",
+		"generate:dev-vars": "node scripts/generate-dev-vars.mjs",
 		"infisical:bootstrap": "node scripts/infisical-bootstrap.mjs",
 		"infisical:bootstrap:api": "node scripts/infisical-bootstrap-api.mjs",
 		"infisical:bootstrap:cf": "node scripts/infisical-bootstrap-cf.mjs",

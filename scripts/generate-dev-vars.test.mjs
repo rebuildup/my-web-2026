@@ -1,4 +1,16 @@
 import assert from 'node:assert/strict';
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	realpathSync,
+	renameSync,
+	rmSync,
+	statSync,
+	unlinkSync,
+	writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 /**
  * `generate-dev-vars.mjs` pure-helper tests (Issue #69, Phase 3 #69 sub-step 69.5).
@@ -13,6 +25,9 @@ import { dirname, resolve } from 'node:path';
  *   - parseSecretsRequired(wranglerJsoncSource)
  *   - parseSecretsResponse(jsonString)
  *   - formatDevVarsContent(secretMap)
+ *   - isProdEnvironment(env)
+ *   - writeDevVarsAtomic({ targetPath, content, writeFile, rename, unlink })
+ *   - runMain({ repoRoot, argv, env })
  *
  * Operator-mandated invariants verified here:
  *   - Parser error messages never echo a secret value.
@@ -22,8 +37,18 @@ import { dirname, resolve } from 'node:path';
  *     key for stable diffs.
  *   - parseSecretsResponse silently drops items with missing key
  *     or null value (matches V3 placeholder rows).
+ *   - isProdEnvironment refuses prod / production (case-insensitive).
+ *   - writeDevVarsAtomic:
+ *     - Pre-existing `.dev.vars.tmp` is NOT truncated or unlinked
+ *       on EEXIST.
+ *     - Successful exclusive create + rename failure → temp is
+ *       cleaned up only when owned by this process.
+ *     - Cleanup failure does NOT mask the original error.
+ *   - runMain prod-reject fires BEFORE any HTTP or file write,
+ *     leaving the scratch repo's `.dev.vars` unchanged and creating
+ *     no `.dev.vars.tmp`.
  */
-import { describe, it } from 'node:test';
+import { after, before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -35,32 +60,191 @@ const SCRIPT = resolve(HERE, 'generate-dev-vars.mjs');
 // reads `.infisical.json`). Instead we slice out each pure helper
 // via a regex and stitch them together inside an isolated
 // factory closure.
+/**
+ * Extract a top-level function `name` from `source` by locating the
+ * opening `function name(` and then using a paren counter to find
+ * the matching `)`, then a brace counter to find the matching `}`.
+ * Handles defaults that contain `(` (e.g. `process.argv.slice(2)`).
+ * Strips an optional leading `export ` so the result is parseable
+ * by `new Function(...)` in a non-module context.
+ */
+function extractFunction(source, name) {
+	const headerRe = new RegExp(`(?:export\\s+)?(?:async\\s+)?function\\s+${name}\\s*\\(`);
+	const m = source.match(headerRe);
+	if (!m) throw new Error(`Could not locate header for ${name}`);
+	const startIdx = m.index;
+	// Find matching close paren after the function name, scanning
+	// from `(` (the one after the name).
+	let depth = 0;
+	let parenStart = -1;
+	for (let i = m.index + m[0].length - 1; i < source.length; i++) {
+		const ch = source[i];
+		if (ch === '(') {
+			if (parenStart === -1) parenStart = i;
+			depth++;
+		} else if (ch === ')') {
+			depth--;
+			if (depth === 0) {
+				// `i` is at the closing paren. The opening `{` of
+				// the function body follows; skip whitespace.
+				let braceIdx = i + 1;
+				while (braceIdx < source.length && /\s/.test(source[braceIdx])) braceIdx++;
+				if (source[braceIdx] !== '{') {
+					throw new Error(`Expected '{' after parameter list for ${name}`);
+				}
+				// Brace-counter from `braceIdx`.
+				let bDepth = 0;
+				for (let j = braceIdx; j < source.length; j++) {
+					if (source[j] === '{') bDepth++;
+					else if (source[j] === '}') {
+						bDepth--;
+						if (bDepth === 0) {
+							return source.slice(startIdx, j + 1).replace(/^export\s+/, '');
+						}
+					}
+				}
+				throw new Error(`Could not find matching closing brace for ${name}`);
+			}
+		}
+	}
+	throw new Error(`Could not find matching closing paren for ${name}`);
+}
+
 async function loadPureHelpers() {
-	const { readFileSync } = await import('node:fs');
+	const { readFileSync, writeFileSync, renameSync, unlinkSync } = await import('node:fs');
 	const source = readFileSync(SCRIPT, 'utf8');
 
-	function extract(name) {
-		const re = new RegExp(`function\\s+${name}\\s*\\([\\s\\S]*?\\n\\}`, 'm');
-		const match = source.match(re);
-		if (!match) throw new Error(`Could not extract ${name}`);
-		return match[0];
-	}
+	const parseJsonc = extractFunction(source, 'parseJsonc');
+	const parseSecretsRequired = extractFunction(source, 'parseSecretsRequired');
+	const parseSecretsResponse = extractFunction(source, 'parseSecretsResponse');
+	const formatDevVarsContent = extractFunction(source, 'formatDevVarsContent');
+	const isProdEnvironment = extractFunction(source, 'isProdEnvironment');
+	const writeDevVarsAtomic = extractFunction(source, 'writeDevVarsAtomic');
 
-	const parseJsonc = extract('parseJsonc');
-	const parseSecretsRequired = extract('parseSecretsRequired');
-	const parseSecretsResponse = extract('parseSecretsResponse');
-	const formatDevVarsContent = extract('formatDevVarsContent');
-	const isProdEnvironment = extract('isProdEnvironment');
-
-	const factory = new Function(`
+	const factory = new Function(
+		'writeFileSync',
+		'renameSync',
+		'unlinkSync',
+		'DEV_VARS_TMP_SUFFIX',
+		`
 		${parseJsonc}
 		${parseSecretsRequired}
 		${parseSecretsResponse}
 		${formatDevVarsContent}
 		${isProdEnvironment}
-		return { parseJsonc, parseSecretsRequired, parseSecretsResponse, formatDevVarsContent, isProdEnvironment };
-	`);
-	return factory();
+		${writeDevVarsAtomic}
+		return {
+			parseJsonc,
+			parseSecretsRequired,
+			parseSecretsResponse,
+			formatDevVarsContent,
+			isProdEnvironment,
+			writeDevVarsAtomic,
+		};
+	`,
+	);
+	return factory(writeFileSync, renameSync, unlinkSync, '.tmp');
+}
+
+/**
+ * Load `runMain` for execution-path tests. `runMain` references
+ * module-scope constants (`REPO_ROOT`, `INFISICAL_API_URL_DEFAULT`)
+ * and module-scope helpers (`readInfisicalWorkspaceId`,
+ * `readWranglerSecretsRequired`, `parseSecretsRequired`,
+ * `formatDevVarsContent`, `listInfisicalSecrets`, `isProdEnvironment`).
+ * To run `runMain` in isolation we need to load a curated set of
+ * helpers into the factory closure and inject the deps.
+ *
+ * This is more complex than `loadPureHelpers` because `runMain` is
+ * async and has multiple dependency edges. We extract the helpers
+ * the same way (brace-counter slice) and pre-build the dependency
+ * graph.
+ */
+async function loadRunMain() {
+	const { readFileSync } = await import('node:fs');
+	const source = readFileSync(SCRIPT, 'utf8');
+
+	// Pull every helper `runMain` transitively touches. Keep this
+	// list explicit — if a new helper is added inside `runMain`,
+	// extend this list.
+	const helperNames = [
+		'parseArgs',
+		'parseJsonc',
+		'parseSecretsRequired',
+		'parseSecretsResponse',
+		'formatDevVarsContent',
+		'isProdEnvironment',
+		'writeDevVarsAtomic',
+	];
+	const extracted = Object.fromEntries(helperNames.map((n) => [n, extractFunction(source, n)]));
+
+	// `readInfisicalWorkspaceId` and `readWranglerSecretsRequired`
+	// take `repoRoot` as their only parameter (defaulted). They
+	// reference `REPO_ROOT` as the default value via the module's
+	// const; we just rewrite the default to `null` so the injected
+	// `repoRoot` is always used. Strip the defaulting expressions:
+	function stripDefaults(body, paramNames) {
+		let out = body;
+		for (const p of paramNames) {
+			out = out.replace(new RegExp(`(${p}\\s*=\\s*)[A-Za-z_$][A-Za-z0-9_$.]*`, 'g'), '$1null');
+		}
+		return out;
+	}
+	const readInfisicalWorkspaceId = stripDefaults(
+		extractFunction(source, 'readInfisicalWorkspaceId'),
+		['repoRoot'],
+	);
+	const readWranglerSecretsRequired = stripDefaults(
+		extractFunction(source, 'readWranglerSecretsRequired'),
+		['configPath', 'repoRoot'],
+	);
+
+	// `runMain` itself. We rewrite the parameter defaults so the
+	// factory closure's own constants take over.
+	const runMainBody = extractFunction(source, 'runMain').replace(
+		/(repoRoot|argv|env)\s*=\s*[A-Za-z_$][A-Za-z0-9_$.]*(?:\(\))?/g,
+		'$1=__placeholder',
+	);
+
+	// `listInfisicalSecrets` + `httpsJson` are unused in prod-reject
+	// path, but the function definitions need to be in scope. We
+	// provide stubs.
+	const listInfisicalSecretsStub = `async function listInfisicalSecrets() { throw new Error('listInfisicalSecrets stub called'); }`;
+	const httpsJsonStub = `async function httpsJson() { throw new Error('httpsJson stub called'); }`;
+
+	// Provide a stub for `console.log` so test output stays clean
+	// (still assertions on stderr / no-tmp).
+	const consoleStub = 'const console = { log: () => {}, error: () => {}, warn: () => {} };';
+
+	const factory = new Function(
+		'resolve',
+		'existsSync',
+		'readFileSync',
+		'writeFileSync',
+		'renameSync',
+		'unlinkSync',
+		`
+		const REPO_ROOT = ${JSON.stringify('placeholder')};
+		const INFISICAL_API_URL_DEFAULT = ${JSON.stringify('https://secrets.rebuildup.dev')};
+		const DEV_VARS_FILENAME = '.dev.vars';
+		const DEV_VARS_TMP_SUFFIX = '.tmp';
+		${consoleStub}
+		${httpsJsonStub}
+		${listInfisicalSecretsStub}
+		${extracted.parseArgs}
+		${extracted.parseJsonc}
+		${extracted.isProdEnvironment}
+		${extracted.parseSecretsRequired}
+		${extracted.parseSecretsResponse}
+		${extracted.formatDevVarsContent}
+		${extracted.writeDevVarsAtomic}
+		${readInfisicalWorkspaceId}
+		${readWranglerSecretsRequired}
+		${runMainBody}
+		return { runMain };
+	`,
+	);
+	return factory(resolve, existsSync, readFileSync, writeFileSync, renameSync, unlinkSync);
 }
 
 describe('generate-dev-vars.mjs', () => {
@@ -420,6 +604,257 @@ describe('generate-dev-vars.mjs', () => {
 			// stores many keys, the script only materialises the ones the
 			// Worker actually requires).
 			assert.equal(out, 'BETTER_AUTH_SECRET="val-A"\nMY_WEB_2026_CONSUMER_API_KEY="val-C"\n');
+		});
+	});
+
+	describe('writeDevVarsAtomic (CodeRabbit reviews 3 + 4 — security invariants)', () => {
+		// Use a fresh scratch dir per test so leftover .tmp from a
+		// previous test cannot pollute the next.
+		let scratch;
+		before(() => {
+			scratch = mkdtempSync(resolve(tmpdir(), 'gen-dev-vars-atomic-'));
+		});
+		after(() => {
+			try {
+				rmSync(scratch, { recursive: true, force: true });
+			} catch {
+				// best-effort cleanup
+			}
+		});
+
+		it('writes content atomically with mode 0o600 on success', async () => {
+			const { writeDevVarsAtomic } = await loadPureHelpers();
+			const target = resolve(scratch, 'a-success.dev.vars');
+			const tmp = `${target}.tmp`;
+			writeDevVarsAtomic({ targetPath: target, content: 'K="v"\n' });
+			assert.equal(existsSync(target), true);
+			assert.equal(existsSync(tmp), false); // renamed away
+			assert.equal(readFileSync(target, 'utf8'), 'K="v"\n');
+			// Mode 0o600 (mask out file-type bits): the on-disk file
+			// is created with restrictive mode; we only assert the
+			// permission bits (0o777) to be 0o600.
+			const st = statSync(target);
+			assert.equal(st.mode & 0o777, 0o600);
+		});
+
+		it('EEXIST on pre-existing tmp does NOT truncate or unlink it', async () => {
+			const { writeDevVarsAtomic } = await loadPureHelpers();
+			const target = resolve(scratch, 'b-eexist.dev.vars');
+			const tmp = `${target}.tmp`;
+			// Pre-place a sentinel tmp file at mode 0o644. The
+			// operator-mandated invariant is that the exclusive create
+			// must NOT touch this file in any way.
+			const sentinel = 'SENTINEL-OLD-CONTENT';
+			writeFileSync(tmp, sentinel, { mode: 0o644 });
+			const beforeStat = statSync(tmp);
+			const beforeContent = readFileSync(tmp, 'utf8');
+			const beforeMtime = beforeStat.mtimeMs;
+
+			await assert.rejects(
+				async () => writeDevVarsAtomic({ targetPath: target, content: 'NEW="x"\n' }),
+				(err) => err.code === 'EEXIST',
+				'should throw EEXIST (pre-existing tmp)',
+			);
+
+			// Sentinel must still exist with original content + mode.
+			assert.equal(existsSync(tmp), true, 'pre-existing tmp must NOT be unlinked');
+			assert.equal(readFileSync(tmp, 'utf8'), beforeContent, 'tmp content must be unchanged');
+			const afterStat = statSync(tmp);
+			assert.equal(afterStat.mode & 0o777, beforeStat.mode & 0o777, 'tmp mode must be unchanged');
+			assert.equal(afterStat.mtimeMs, beforeMtime, 'tmp mtime must be unchanged');
+			// The target file must not exist (write never succeeded).
+			assert.equal(existsSync(target), false, 'target file must NOT be created');
+		});
+
+		it('cleanup unlinks tmp ONLY when this process created it (rename-fail)', async () => {
+			const { writeDevVarsAtomic } = await loadPureHelpers();
+			const target = resolve(scratch, 'c-rename-fail.dev.vars');
+			const tmp = `${target}.tmp`;
+
+			// Inject a rename stub that always throws. The real
+			// writeFile creates the tmp; the rename stub fails; the
+			// helper must then unlink only the tmp it created.
+			const renameStub = () => {
+				throw Object.assign(new Error('rename-fail injected'), { code: 'EACCES' });
+			};
+
+			await assert.rejects(
+				async () =>
+					writeDevVarsAtomic({
+						targetPath: target,
+						content: 'K="v"\n',
+						rename: renameStub,
+					}),
+				(err) => err.message === 'rename-fail injected',
+				'should rethrow the rename error verbatim',
+			);
+
+			// The tmp created by this process should have been
+			// unlinked in the cleanup branch (tmpCreated === true).
+			assert.equal(existsSync(tmp), false, 'own tmp must be unlinked after rename failure');
+			assert.equal(existsSync(target), false, 'target must NOT exist after rename failure');
+		});
+
+		it('cleanup failure (unlink throws) does NOT mask the original rename error', async () => {
+			const { writeDevVarsAtomic } = await loadPureHelpers();
+			const target = resolve(scratch, 'd-cleanup-throw.dev.vars');
+			const tmp = `${target}.tmp`;
+
+			const renameStub = () => {
+				throw Object.assign(new Error('rename-fail-injected'), { code: 'EACCES' });
+			};
+			const unlinkStub = () => {
+				throw new Error('unlink-fail-injected');
+			};
+
+			let caught;
+			try {
+				writeDevVarsAtomic({
+					targetPath: target,
+					content: 'K="v"\n',
+					rename: renameStub,
+					unlink: unlinkStub,
+				});
+			} catch (e) {
+				caught = e;
+			}
+			assert.ok(caught, 'should have thrown');
+			// The original rename error must be preserved; the
+			// unlink stub's error is swallowed by design.
+			assert.equal(caught.message, 'rename-fail-injected');
+			assert.equal(caught.code, 'EACCES');
+		});
+
+		it('EEXIST with a foreign tmp does NOT invoke unlink (ownership flag)', async () => {
+			// The strict reading of the invariant: on EEXIST,
+			// `tmpCreated` stays false, so even if `unlink` is the
+			// real fs.unlinkSync, it MUST NOT be called.
+			const { writeDevVarsAtomic } = await loadPureHelpers();
+			const target = resolve(scratch, 'e-foreign-tmp.dev.vars');
+			const tmp = `${target}.tmp`;
+			writeFileSync(tmp, 'foreign-tmp', { mode: 0o600 });
+			let unlinkCalled = false;
+			const unlinkSpy = (p) => {
+				unlinkCalled = true;
+				return realUnlink(p);
+			};
+			const realUnlink = unlinkSync;
+
+			await assert.rejects(async () =>
+				writeDevVarsAtomic({
+					targetPath: target,
+					content: 'K="v"\n',
+					unlink: unlinkSpy,
+				}),
+			);
+
+			assert.equal(unlinkCalled, false, 'unlink must NOT be called on EEXIST');
+			assert.equal(existsSync(tmp), true, 'foreign tmp must remain');
+		});
+	});
+
+	describe('runMain prod hard-reject (execution-path regression, CodeRabbit nitpick)', () => {
+		// Two scratch roots: one for explicit `--env=prod`, one for
+		// `.infisical.json#defaultEnvironment = "prod"`. Both must
+		// short-circuit BEFORE any HTTP or file write, leaving the
+		// existing `.dev.vars` (sentinel) unchanged and producing no
+		// `.dev.vars.tmp`.
+		let scratchCaseA;
+		let scratchCaseB;
+
+		before(() => {
+			scratchCaseA = mkdtempSync(resolve(tmpdir(), 'gen-dev-vars-prodA-'));
+			scratchCaseB = mkdtempSync(resolve(tmpdir(), 'gen-dev-vars-prodB-'));
+
+			// Common scaffold: .infisical.json + wrangler.jsonc with
+			// the legacy 2-name `secrets.required`. Default env is
+			// `dev` unless overridden below.
+			const writeScaffold = (root, defaultEnv) => {
+				writeFileSync(
+					resolve(root, '.infisical.json'),
+					JSON.stringify({ workspaceId: 'test-ws-id', defaultEnvironment: defaultEnv }),
+					{ mode: 0o600 },
+				);
+				writeFileSync(
+					resolve(root, 'wrangler.jsonc'),
+					`{
+  // comments are fine
+  "name": "test-worker",
+  "secrets": { "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"] }
+}
+`,
+				);
+			};
+			writeScaffold(scratchCaseA, 'dev');
+			writeScaffold(scratchCaseB, 'prod'); // Case B: prod is the default
+
+			// Pre-existing `.dev.vars` sentinel at each scratch root;
+			// the prod-reject must NOT touch it.
+			const sentinelContent = 'SENTINEL_EXISTING_DEV_VARS=1\n';
+			writeFileSync(resolve(scratchCaseA, '.dev.vars'), sentinelContent, { mode: 0o600 });
+			writeFileSync(resolve(scratchCaseB, '.dev.vars'), sentinelContent, { mode: 0o600 });
+		});
+
+		after(() => {
+			try {
+				rmSync(scratchCaseA, { recursive: true, force: true });
+			} catch {
+				// best-effort cleanup
+			}
+			try {
+				rmSync(scratchCaseB, { recursive: true, force: true });
+			} catch {
+				// best-effort cleanup
+			}
+		});
+
+		it('Case A: explicit --env=prod short-circuits before any HTTP or file write', async () => {
+			const { runMain } = await loadRunMain();
+			const sentinelPath = resolve(scratchCaseA, '.dev.vars');
+			const sentinelStat = statSync(sentinelPath);
+
+			await assert.rejects(
+				async () =>
+					runMain({
+						repoRoot: scratchCaseA,
+						argv: ['--env=prod', '--dry-run'],
+						env: { INFISICAL_TOKEN: 'fake-token-for-test' },
+					}),
+				/refuses environment="prod"/,
+				'should throw the prod-rejection error',
+			);
+
+			// Sentinel .dev.vars must be unchanged.
+			assert.equal(existsSync(sentinelPath), true);
+			const afterStat = statSync(sentinelPath);
+			assert.equal(afterStat.mtimeMs, sentinelStat.mtimeMs, '.dev.vars mtime must not change');
+			assert.equal(readFileSync(sentinelPath, 'utf8'), 'SENTINEL_EXISTING_DEV_VARS=1\n');
+
+			// No `.dev.vars.tmp` was created (write path never reached).
+			assert.equal(existsSync(resolve(scratchCaseA, '.dev.vars.tmp')), false);
+		});
+
+		it('Case B: .infisical.json#defaultEnvironment = "prod" triggers the same rejection', async () => {
+			const { runMain } = await loadRunMain();
+			const sentinelPath = resolve(scratchCaseB, '.dev.vars');
+			const sentinelStat = statSync(sentinelPath);
+
+			await assert.rejects(
+				async () =>
+					runMain({
+						repoRoot: scratchCaseB,
+						argv: ['--dry-run'], // no explicit --env; falls back to defaultEnvironment
+						env: { INFISICAL_TOKEN: 'fake-token-for-test' },
+					}),
+				/refuses environment="prod"/,
+				'should throw the prod-rejection error from defaultEnvironment',
+			);
+
+			assert.equal(existsSync(sentinelPath), true);
+			const afterStat = statSync(sentinelPath);
+			assert.equal(afterStat.mtimeMs, sentinelStat.mtimeMs, '.dev.vars mtime must not change');
+			assert.equal(readFileSync(sentinelPath, 'utf8'), 'SENTINEL_EXISTING_DEV_VARS=1\n');
+			assert.equal(existsSync(resolve(scratchCaseB, '.dev.vars.tmp')), false);
 		});
 	});
 });

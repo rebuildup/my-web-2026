@@ -32,6 +32,77 @@ pnpm install
 pnpm prepare        # panda codegen
 ```
 
+### Phase 1 / Issue #67 — Infisical + Cloudflare Workers Builds bootstrap
+
+ADR-0015 §11 Phase 1 provisions the Infisical project, Machine
+Identity, and Cloudflare Workers Builds credential binding. The
+agent drives the flow via `pnpm` scripts; the operator only needs
+to provide short-lived auth tokens in the shell environment.
+
+**Prerequisites (operator one-time, per developer / CI runner):**
+
+```bash
+# Infisical self-host Universal Auth token (operator-scoped).
+#   Run `infisical login` once; the CLI writes the short-lived
+#   token to `INFISICAL_TOKEN` in the current shell.
+infisical login
+
+# Cloudflare user-scoped API token with the following two
+# permissions (NOT the existing build pipeline token — this is a
+# distinct user-scoped token used by the agent to discover + bind
+# the production Workers Builds trigger):
+#   - Workers Builds Configuration: Edit
+#   - Workers Scripts: Read
+export CLOUDFLARE_API_TOKEN=...
+export CLOUDFLARE_ACCOUNT_ID=...   # from wrangler.production.jsonc#account_id
+```
+
+**Bootstrap flow (run in order; each is idempotent):**
+
+```bash
+# 1. Create the `my-web-2026` Infisical project + dev/prod envs,
+#    write .infisical.json (workspaceId + defaultEnvironment).
+pnpm run infisical:bootstrap:api
+
+# 2. Create Machine Identity + Universal Auth + bind credentials to
+#    the production Workers Builds trigger (in-memory secret
+#    handling — client secret never touches disk / stdout / log).
+pnpm run infisical:bootstrap:cf
+
+# 3. Seed the dev env with the 3-name contract (random values).
+#    PROD env is intentionally NOT seeded — operator imports the
+#    current Worker `BETTER_AUTH_SECRET` + `MY_WEB_2026_CONSUMER_API_KEY`
+#    plaintext via `infisical secrets set` manually, outside the
+#    agent flow.
+pnpm run infisical:seed
+
+# 4. Fileless dev smoke (Windows-safe via Node spawn + shell:false).
+#    Asserts all 3 contract keys are present in the dev env.
+pnpm run infisical:verify
+```
+
+**Operator post-#67 work (NOT agent-automated; manual via Infisical
+web UI or `infisical secrets set`):**
+
+```bash
+# Import current Cloudflare Worker `BETTER_AUTH_SECRET` plaintext.
+infisical secrets set \
+    --projectId="$(jq -r .workspaceId .infisical.json)" \
+    --env=prod \
+    BETTER_AUTH_SECRET=<current-worker-plaintext>
+
+# Import current `MY_WEB_2026_CONSUMER_API_KEY` plaintext.
+infisical secrets set \
+    --projectId="$(jq -r .workspaceId .infisical.json)" \
+    --env=prod \
+    MY_WEB_2026_CONSUMER_API_KEY=<current-worker-plaintext>
+```
+
+**`BETTER_AUTH_SECRETS` for prod** is intentionally NOT seeded by
+the agent. The versioned form activates only at the Phase 3+ flip
+(separate production-side deploy ticket, human-gated per
+`skills/github-delivery/SKILL.md` §Release PR merge human gate).
+
 ## Run
 
 ```bash

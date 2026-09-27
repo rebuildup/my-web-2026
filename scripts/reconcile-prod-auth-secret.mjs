@@ -79,7 +79,7 @@ function readWorkspaceId() {
 	return parsed.workspaceId;
 }
 
-function httpsGetJson(urlString, token) {
+function httpsGetJson(urlString, token, { allowNotFound = false } = {}) {
 	const url = new URL(urlString);
 	return new Promise((resolvePromise, rejectPromise) => {
 		const req = httpsRequest(
@@ -108,6 +108,10 @@ function httpsGetJson(urlString, token) {
 					chunks.push(chunk);
 				});
 				res.on('end', () => {
+					if (allowNotFound && res.statusCode === 404) {
+						resolvePromise(null);
+						return;
+					}
 					if (res.statusCode !== 200) {
 						rejectPromise(new Error(`Infisical read failed with HTTP ${res.statusCode}`));
 						return;
@@ -126,7 +130,7 @@ function httpsGetJson(urlString, token) {
 	});
 }
 
-async function readSecret({ apiUrl, token, workspaceId, environment }) {
+async function readSecret({ apiUrl, token, workspaceId, environment, allowMissing = false }) {
 	const params = new URLSearchParams({
 		workspaceId,
 		environment,
@@ -135,7 +139,8 @@ async function readSecret({ apiUrl, token, workspaceId, environment }) {
 		viewSecretValue: 'true',
 	});
 	const url = `${apiUrl.replace(/\/+$/, '')}/api/v3/secrets/raw/${SECRET_NAME}?${params.toString()}`;
-	const response = await httpsGetJson(url, token);
+	const response = await httpsGetJson(url, token, { allowNotFound: allowMissing });
+	if (response === null && allowMissing) return null;
 	if (typeof response?.secretValue !== 'string' || response.secretValue.length === 0) {
 		throw new Error(`${SECRET_NAME} is missing or empty in environment=${environment}`);
 	}
@@ -241,12 +246,14 @@ async function main() {
 		token,
 		workspaceId,
 		environment: TARGET_ENV,
+		allowMissing: true,
 	});
-	const alreadyEqual = secretValuesEqual(sourceValue, currentTargetValue);
+	const alreadyEqual =
+		currentTargetValue !== null && secretValuesEqual(sourceValue, currentTargetValue);
 
 	if (args.mode === 'verify') {
 		console.log(
-			`[verify] ${SOURCE_ENV} and ${TARGET_ENV} ${SECRET_NAME}: ${alreadyEqual ? 'MATCH' : 'DIFFER'}`,
+			`[verify] ${SOURCE_ENV} and ${TARGET_ENV} ${SECRET_NAME}: ${alreadyEqual ? 'MATCH' : currentTargetValue === null ? 'TARGET_MISSING' : 'DIFFER'}`,
 		);
 		process.exitCode = alreadyEqual ? 0 : 2;
 		return;

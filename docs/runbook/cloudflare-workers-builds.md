@@ -115,11 +115,13 @@ keeps recovery paths well-defined. **Do not reorder.**
        `BETTER_AUTH_SECRETS` to Worker via scripts/phase-3-plus-prod-flip.mjs)
        │
        ▼
-Smoke #1 — automated + **operator manual sign-in** at
-       https://rebuildup.dev/admin/login with real production
-       credentials (cookies must persist across reload)
+Smoke #1 — **pre-release transition smoke only**:
+       current production remains healthy on the legacy runtime path;
+       live Worker secret list shows the transition 3-name state.
+       NOTE: current `main` does not read `BETTER_AUTH_SECRETS`, so
+       versioned runtime behavior cannot be proven before #91 deploy.
        │
-       ├── failure → rollback-versioned-only → invesetigate → #89 NOT closed
+       ├── failure → rollback-versioned-only → investigate → #89 NOT closed
        ▼
 Release PR #91 (`release-x-y-z → main`) merged
        (operator explicit approval required per
@@ -133,7 +135,7 @@ Cloudflare Workers Builds observes `main` push, builds, runs
        deploy with the versioned-2-name secrets.required)
        │
        ▼
-Smoke #2 — automated (canonical surfaces, no auth needed)
+Smoke #2 — automated on the newly deployed release; this is the first runtime smoke that actually exercises code capable of reading `BETTER_AUTH_SECRETS`
        ▼
 Smoke #3 — **operator manual sign-in** at https://rebuildup.dev/admin/login,
        session persistence across reload, sign-out flow

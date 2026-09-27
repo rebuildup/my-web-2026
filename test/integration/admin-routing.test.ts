@@ -154,5 +154,4 @@ describe('admin routing (Issue #106)', () => {
 		expect(res.status).toBeLessThan(400);
 		expect(res.headers.get('location')).toContain('/admin/login');
 	});
-
 });

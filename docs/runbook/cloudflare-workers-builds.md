@@ -157,7 +157,11 @@ final drift check — `pnpm run infisical:check:cf -- --execute
 `deploy-with-secrets.mjs --execute` authenticates to Infisical once and
 then runs `check-cf-secrets.mjs --execute --worker-contract=transition
 --require-live-worker` **before** spawning the actual deploy. A non-zero preflight exit aborts
-production deployment.
+production deployment. `--require-live-worker` invokes `wrangler secret list`
+through Wrangler's available Workers Builds authentication context; it does not
+require duplicating the build token as a separate `CLOUDFLARE_API_TOKEN` build
+secret. An explicit `CLOUDFLARE_API_TOKEN` remains supported for operator/local
+diagnostics.
 
 `transition` expects the live Worker to carry all three names during
 the migration window:

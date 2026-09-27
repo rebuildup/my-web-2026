@@ -34,10 +34,13 @@ the versioned binding as part of deployment. Either outcome contradicts
 Exactly one of these must be true before Release PR #91 merge:
 
 - **Phase-B-first handshake:** complete #122 reconciliation, then execute
-  Issue #89 `flip` + Smoke #1 while the legacy binding remains present. Only
-  after that pre-release checkpoint may the operator explicitly merge #91;
-  Cloudflare Workers Builds then performs the canonical production delivery.
-  Post-deploy Smoke #2/#3, `delete-legacy-only`, and final drift complete #89; or
+  Issue #89 `flip` + Smoke #1 while the legacy binding remains present.
+  Smoke #1 is a transition/health check only: current `main` still uses the
+  legacy secret and cannot exercise the versioned runtime resolver. Only after
+  that pre-release checkpoint may the operator explicitly merge #91; Cloudflare
+  Workers Builds then performs the canonical production delivery. Post-deploy
+  Smoke #2/#3 are the first runtime checks of `BETTER_AUTH_SECRETS`; only then
+  may `delete-legacy-only` and final drift complete #89; or
 - **Legacy-release-first:** land a deliberate ticket reverting the production
   deploy contract on `release-0-5-0` back to the legacy 2-name form, release
   0.5.0 safely, and perform Phase B in a later separately gated change.

@@ -49,6 +49,7 @@ const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
 const INNER_SCRIPT = join(HERE, 'run-deploy-inner.mjs');
+const PREFLIGHT_SCRIPT = join(HERE, 'check-cf-secrets.mjs');
 
 const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
 const TEMPDIR_PREFIX = 'my-web-2026-deploy-';
@@ -291,6 +292,17 @@ function buildInnerArgs({ infisicalCli, workspaceId, environment, configPath, ex
 	return argv;
 }
 
+function buildPreflightArgs({ environment, configPath, workerContract = 'transition' }) {
+	return [
+		PREFLIGHT_SCRIPT,
+		'--execute',
+		`--environment=${environment}`,
+		`--config=${configPath}`,
+		`--worker-contract=${workerContract}`,
+		'--require-live-worker',
+	];
+}
+
 function run(args, options = {}) {
 	return execFileSync(process.execPath, args, {
 		stdio: 'inherit',
@@ -324,7 +336,11 @@ async function main() {
 		if (!existsSync(INNER_SCRIPT)) {
 			throw new Error(`Inner script not found: ${INNER_SCRIPT}`);
 		}
+		if (!existsSync(PREFLIGHT_SCRIPT)) {
+			throw new Error(`Preflight script not found: ${PREFLIGHT_SCRIPT}`);
+		}
 		console.log(`[dry-run] inner script verified: ${INNER_SCRIPT}`);
+		console.log(`[dry-run] preflight script verified: ${PREFLIGHT_SCRIPT}`);
 		console.log('[dry-run] OK');
 		return;
 	}
@@ -353,6 +369,28 @@ async function main() {
 	delete process.env.INFISICAL_CLIENT_ID;
 	// biome-ignore lint/performance/noDelete: env cleanup; Node docs mandate `delete` (not `= undefined`).
 	delete process.env.INFISICAL_CLIENT_SECRET;
+
+	// Run the Phase 4 secret-name preflight with the already-authenticated
+	// Infisical token. This is read-only and fail-closed: production deploy
+	// does not start when the Infisical / Wrangler / live Worker contract
+	// is inconsistent. The live Worker is expected to be in the transition
+	// 3-name state here because legacy deletion happens only after post-deploy
+	// Smoke #2/#3.
+	console.log('[execute] preflight: checking Infisical / Worker secret-name contract...');
+	try {
+		execFileSync(
+			process.execPath,
+			buildPreflightArgs({
+				environment: args.environment,
+				configPath: args.config,
+				workerContract: 'transition',
+			}),
+			{ stdio: 'inherit', env: process.env },
+		);
+	} catch (error) {
+		const preflightExit = error?.status ?? 1;
+		throw new Error(`Production secret preflight failed (exit=${preflightExit}); deploy aborted`);
+	}
 
 	// Force overwrite of the local variable so that even if the V8 heap
 	// is later inspected, the raw token is not retained in our frame.

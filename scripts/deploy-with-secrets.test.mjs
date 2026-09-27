@@ -35,6 +35,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(HERE, 'deploy-with-secrets.mjs');
 const INNER_SCRIPT = resolve(HERE, 'run-deploy-inner.mjs');
+const PREFLIGHT_SCRIPT = resolve(HERE, 'check-cf-secrets.mjs');
 
 const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 const TEMPDIR_PREFIX = 'my-web-2026-deploy-';
@@ -73,6 +74,17 @@ async function loadBuildInnerArgs() {
 	return factory(process.execPath, INNER_SCRIPT);
 }
 
+async function loadBuildPreflightArgs() {
+	const source = readFileSync(SCRIPT, 'utf8');
+	const re = /function\s+buildPreflightArgs\s*\([\s\S]*?\n\}/m;
+	const match = source.match(re);
+	if (!match) {
+		throw new Error('Could not extract buildPreflightArgs from deploy-with-secrets.mjs');
+	}
+	const factory = new Function('PREFLIGHT_SCRIPT', `${match[0]}\nreturn buildPreflightArgs;`);
+	return factory(resolve(HERE, 'check-cf-secrets.mjs'));
+}
+
 /**
  * Run the deploy script in an isolated `<repo>/scripts/...` layout and
  * return the tempdir path + exit code + captured output. Used when a
@@ -84,6 +96,7 @@ function runInIsolatedRepo(args, { existingContent = null, env = {} } = {}) {
 	mkdirSync(scriptsDir, { recursive: true });
 	writeFileSync(join(scriptsDir, 'deploy-with-secrets.mjs'), readFileSync(SCRIPT, 'utf8'));
 	writeFileSync(join(scriptsDir, 'run-deploy-inner.mjs'), readFileSync(INNER_SCRIPT, 'utf8'));
+	writeFileSync(join(scriptsDir, 'check-cf-secrets.mjs'), readFileSync(PREFLIGHT_SCRIPT, 'utf8'));
 	if (existingContent !== null) {
 		writeFileSync(join(repo, '.infisical.json'), existingContent);
 	}
@@ -359,6 +372,34 @@ describe('deploy-with-secrets.mjs', () => {
 			assert.match(result.stdout, /Usage: deploy-with-secrets/);
 			assert.match(result.stdout, /--execute/);
 			assert.match(result.stdout, /--dry-run/);
+		});
+	});
+
+	describe('production secret preflight argv', () => {
+		it('pins transition contract before deploy', async () => {
+			const buildPreflightArgs = await loadBuildPreflightArgs();
+			const argv = buildPreflightArgs({
+				environment: 'prod',
+				configPath: 'wrangler.production.jsonc',
+				workerContract: 'transition',
+			});
+			assert.deepEqual(argv.slice(1), [
+				'--execute',
+				'--environment=prod',
+				'--config=wrangler.production.jsonc',
+				'--worker-contract=transition',
+				'--require-live-worker',
+			]);
+		});
+
+		it('deploy source invokes the preflight before the inner deploy', () => {
+			const source = readFileSync(SCRIPT, 'utf8');
+			const preflightIndex = source.indexOf(
+				'preflight: checking Infisical / Worker secret-name contract',
+			);
+			const innerIndex = source.indexOf('spawning: infisical run');
+			assert.ok(preflightIndex >= 0);
+			assert.ok(innerIndex > preflightIndex);
 		});
 	});
 

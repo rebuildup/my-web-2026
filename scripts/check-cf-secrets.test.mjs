@@ -34,6 +34,16 @@ const SCRIPT = resolve(HERE, 'check-cf-secrets.mjs');
 const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 const WRANGLER_PRODUCTION_PATH = resolve(HERE, '..', 'wrangler.production.jsonc');
 
+function loadBuildWranglerDiagnosticEnv() {
+	const source = readFileSync(SCRIPT, 'utf8');
+	const match = source.match(/function\s+buildWranglerDiagnosticEnv\s*\([\s\S]*?\n\}/m);
+	if (!match) {
+		throw new Error('Could not extract buildWranglerDiagnosticEnv');
+	}
+	const factory = new Function(`${match[0]}\nreturn buildWranglerDiagnosticEnv;`);
+	return factory();
+}
+
 /**
  * Run the check-cf-secrets script in an isolated `<repo>/scripts/...`
  * layout. The script reads from REPO_ROOT (parent of scripts/) so we
@@ -160,6 +170,14 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stderr, /unknown argument/);
 		});
 
+		it('rejects invalid --worker-contract value', () => {
+			const result = runInIsolatedRepo(['--worker-contract=bogus'], {
+				wranglerContent: PHASE_3_WRANGLER,
+			});
+			assert.equal(result.exitCode, 1);
+			assert.match(result.stderr, /--worker-contract must be 'transition' or 'final'/);
+		});
+
 		it('rejects --environment with non-{prod,dev} value', () => {
 			const result = runInIsolatedRepo(['--environment=staging'], {
 				wranglerContent: PHASE_1_2_WRANGLER,
@@ -266,6 +284,17 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stdout, /exact/);
 		});
 
+		it('prints final 2-name live Worker expectation after legacy deletion', () => {
+			const result = runInIsolatedRepo(['--worker-contract=final'], {
+				wranglerContent: PHASE_3_WRANGLER,
+				env: { CLOUDFLARE_API_TOKEN: 'fake-token-for-dry-run-mention' },
+			});
+			assert.equal(result.exitCode, 0);
+			assert.match(result.stdout, /worker contract=final/);
+			assert.match(result.stdout, /against final contract/);
+			assert.match(result.stdout, /BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY/);
+		});
+
 		it('mentions Tier 3 (live Worker) eligibility in dry-run', () => {
 			const result = runInIsolatedRepo([], {
 				wranglerContent: PHASE_1_2_WRANGLER,
@@ -274,6 +303,14 @@ describe('check-cf-secrets.mjs', () => {
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /wrangler secret list/);
 			assert.match(result.stdout, /CLOUDFLARE_API_TOKEN is set/);
+		});
+
+		it('keeps required Tier 3 in the plan without requiring an explicit token env var', () => {
+			const result = runInIsolatedRepo(['--require-live-worker'], {
+				wranglerContent: PHASE_3_WRANGLER,
+			});
+			assert.equal(result.exitCode, 0);
+			assert.match(result.stdout, /required; Wrangler resolves Workers Builds authentication/);
 		});
 
 		it('notes Tier 3 skip when CLOUDFLARE_API_TOKEN is unset', () => {
@@ -364,6 +401,19 @@ describe('check-cf-secrets.mjs', () => {
 	});
 
 	describe('--execute gate', () => {
+		it('accepts a pre-authenticated INFISICAL_TOKEN without client credentials', () => {
+			const result = runInIsolatedRepo(['--execute'], {
+				wranglerContent: PHASE_3_WRANGLER,
+				env: {
+					INFISICAL_TOKEN: 'parent-token',
+					INFISICAL_API_URL: 'https://this-host-does-not-exist.invalid',
+				},
+			});
+			assert.notEqual(result.exitCode, 0);
+			assert.match(result.stdout, /Using pre-authenticated INFISICAL_TOKEN/);
+			assert.doesNotMatch(result.stderr, /INFISICAL_CLIENT_ID.*required/);
+		});
+
 		it('requires INFISICAL_CLIENT_ID env var', () => {
 			const result = runInIsolatedRepo(['--execute'], {
 				wranglerContent: PHASE_1_2_WRANGLER,
@@ -395,6 +445,24 @@ describe('check-cf-secrets.mjs', () => {
 			});
 			assert.notEqual(result.exitCode, 0);
 			assert.doesNotMatch(result.stderr, /INFISICAL_CLIENT_.*required/);
+		});
+	});
+
+	describe('Wrangler diagnostic credential boundary', () => {
+		it('does not propagate Infisical credentials to Wrangler', () => {
+			const buildEnv = loadBuildWranglerDiagnosticEnv();
+			const env = buildEnv({
+				PATH: '/usr/bin',
+				CLOUDFLARE_API_TOKEN: 'cloudflare-token',
+				INFISICAL_TOKEN: 'infisical-token',
+				INFISICAL_CLIENT_ID: 'client-id',
+				INFISICAL_CLIENT_SECRET: 'client-secret',
+			});
+			assert.equal(env.PATH, '/usr/bin');
+			assert.equal(env.CLOUDFLARE_API_TOKEN, 'cloudflare-token');
+			assert.equal('INFISICAL_TOKEN' in env, false);
+			assert.equal('INFISICAL_CLIENT_ID' in env, false);
+			assert.equal('INFISICAL_CLIENT_SECRET' in env, false);
 		});
 	});
 
@@ -433,6 +501,7 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stdout, /Usage: check-cf-secrets/);
 			assert.match(result.stdout, /--execute/);
 			assert.match(result.stdout, /--dry-run/);
+			assert.match(result.stdout, /--require-live-worker/);
 		});
 	});
 });

@@ -95,6 +95,13 @@ addition to `BETTER_AUTH_SECRETS`. The config comment in
 `wrangler.production.jsonc#secrets.required` is the **next deploy's
 contract**, not a claim about the current Worker state.
 
+Wrangler's `deploy --secrets-file` merge semantics are part of this recovery
+invariant: existing Worker secrets omitted from the secrets file are preserved
+from the previous version, and ordinary deploy does not delete secrets. The
+release deploy therefore uploads the versioned two-name file **without**
+implicitly deleting the legacy binding. Legacy removal remains an explicit
+`delete-legacy-only` operation after Smoke #2/#3.
+
 To inspect live state without leaking values:
 
 ```bash
@@ -115,11 +122,13 @@ keeps recovery paths well-defined. **Do not reorder.**
        `BETTER_AUTH_SECRETS` to Worker via scripts/phase-3-plus-prod-flip.mjs)
        │
        ▼
-Smoke #1 — automated + **operator manual sign-in** at
-       https://rebuildup.dev/admin/login with real production
-       credentials (cookies must persist across reload)
+Smoke #1 — **pre-release transition smoke only**:
+       current production remains healthy on the legacy runtime path;
+       live Worker secret list shows the transition 3-name state.
+       NOTE: current `main` does not read `BETTER_AUTH_SECRETS`, so
+       versioned runtime behavior cannot be proven before #91 deploy.
        │
-       ├── failure → rollback-versioned-only → invesetigate → #89 NOT closed
+       ├── failure → rollback-versioned-only → investigate → #89 NOT closed
        ▼
 Release PR #91 (`release-x-y-z → main`) merged
        (operator explicit approval required per
@@ -127,12 +136,13 @@ Release PR #91 (`release-x-y-z → main`) merged
        │
        ▼
 Cloudflare Workers Builds observes `main` push, builds, runs
-       `pnpm run deploy:production:prepared` (applies pending D1
-       migrations + Wrangler deploy with the versioned-2-name
-       secrets.required)
+       `pnpm run deploy:production:prepared` (first runs the read-only
+       Infisical / Wrangler / live-Worker secret-name preflight in
+       `transition` mode, then applies pending D1 migrations + Wrangler
+       deploy with the versioned-2-name secrets.required)
        │
        ▼
-Smoke #2 — automated (canonical surfaces, no auth needed)
+Smoke #2 — automated on the newly deployed release; this is the first runtime smoke that actually exercises code capable of reading `BETTER_AUTH_SECRETS`
        ▼
 Smoke #3 — **operator manual sign-in** at https://rebuildup.dev/admin/login,
        session persistence across reload, sign-out flow
@@ -146,9 +156,34 @@ Smoke #3 — **operator manual sign-in** at https://rebuildup.dev/admin/login,
        │
        ▼
 final drift check — `pnpm run infisical:check:cf -- --execute
-       --environment=prod` reports Tier 1 = versioned+audit set,
-       Tier 2 = versioned 2-name, Tier 3 = versioned 2-name
+       --environment=prod --worker-contract=final --require-live-worker`
+       reports Tier 1 =
+       versioned+audit set, Tier 2 = versioned 2-name, Tier 3 =
+       versioned 2-name
 ```
+
+## Deploy preflight contract
+
+`deploy-with-secrets.mjs --execute` authenticates to Infisical once and
+then runs `check-cf-secrets.mjs --execute --worker-contract=transition
+--require-live-worker` **before** spawning the actual deploy. A non-zero preflight exit aborts
+production deployment. `--require-live-worker` invokes `wrangler secret list`
+through Wrangler's available Workers Builds authentication context; it does not
+require duplicating the build token as a separate `CLOUDFLARE_API_TOKEN` build
+secret. An explicit `CLOUDFLARE_API_TOKEN` remains supported for operator/local
+diagnostics.
+
+`transition` expects the live Worker to carry all three names during
+the migration window:
+
+- `BETTER_AUTH_SECRETS`
+- `BETTER_AUTH_SECRET`
+- `MY_WEB_2026_CONSUMER_API_KEY`
+
+After post-deploy smoke passes and `--delete-legacy-only` succeeds,
+the final drift check MUST use `--worker-contract=final --require-live-worker`, which expects
+only the versioned two-name Worker contract while Infisical still keeps
+the legacy audit/recovery copy.
 
 ## Recovery operations (Phase B driver)
 

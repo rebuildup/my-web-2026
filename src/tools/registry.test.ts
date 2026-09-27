@@ -33,7 +33,13 @@ describe('Tool Registry — listTools / getTool', () => {
 		assert.ok(tool);
 		assert.equal(tool?.slug, 'prototype');
 		assert.equal(tool?.display_name, 'ProtoType');
-		assert.equal(tool?.source.pinned_sha, '18e925272ca274e428e143c45194950d562bc096');
+		// Issue #81 closure: ProtoType#4 (rebuildup/ProtoType PR #5)
+		// landed the sandbox-safe storage layer + standalone CI + MIT
+		// LICENSE, so the submodule pointer moved from 18e9252… (pre-#4)
+		// to 335e0e8… (the merge commit of PR #5 on
+		// `rebuildup/ProtoType@main`). Bump here in lock-step with
+		// `src/tools/manifest.json`.
+		assert.equal(tool?.source.pinned_sha, '335e0e861009049336e581dc266dc4e2f019e5c7');
 	});
 
 	it('returns undefined for an unknown slug', () => {

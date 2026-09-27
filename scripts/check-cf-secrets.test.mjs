@@ -34,6 +34,18 @@ const SCRIPT = resolve(HERE, 'check-cf-secrets.mjs');
 const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 const WRANGLER_PRODUCTION_PATH = resolve(HERE, '..', 'wrangler.production.jsonc');
 
+function loadBuildWranglerDiagnosticEnv() {
+	const source = readFileSync(SCRIPT, 'utf8');
+	const match = source.match(/function\s+buildWranglerDiagnosticEnv\s*\([\s\S]*?\n\}/m);
+	if (!match) {
+		throw new Error('Could not extract buildWranglerDiagnosticEnv');
+	}
+	const factory = new Function(
+		`${match[0]}\nreturn buildWranglerDiagnosticEnv;`,
+	);
+	return factory();
+}
+
 /**
  * Run the check-cf-secrets script in an isolated `<repo>/scripts/...`
  * layout. The script reads from REPO_ROOT (parent of scripts/) so we
@@ -435,6 +447,24 @@ describe('check-cf-secrets.mjs', () => {
 			});
 			assert.notEqual(result.exitCode, 0);
 			assert.doesNotMatch(result.stderr, /INFISICAL_CLIENT_.*required/);
+		});
+	});
+
+	describe('Wrangler diagnostic credential boundary', () => {
+		it('does not propagate Infisical credentials to Wrangler', () => {
+			const buildEnv = loadBuildWranglerDiagnosticEnv();
+			const env = buildEnv({
+				PATH: '/usr/bin',
+				CLOUDFLARE_API_TOKEN: 'cloudflare-token',
+				INFISICAL_TOKEN: 'infisical-token',
+				INFISICAL_CLIENT_ID: 'client-id',
+				INFISICAL_CLIENT_SECRET: 'client-secret',
+			});
+			assert.equal(env.PATH, '/usr/bin');
+			assert.equal(env.CLOUDFLARE_API_TOKEN, 'cloudflare-token');
+			assert.equal('INFISICAL_TOKEN' in env, false);
+			assert.equal('INFISICAL_CLIENT_ID' in env, false);
+			assert.equal('INFISICAL_CLIENT_SECRET' in env, false);
 		});
 	});
 

@@ -77,7 +77,8 @@ Options:
   --config=<path>           wrangler config path (default: wrangler.production.jsonc)
   --worker-contract=<mode>   live Worker expectation: transition=3-name (default,
                              before legacy deletion), final=versioned 2-name
-  --require-live-worker      fail if Tier 3 cannot run (CLOUDFLARE_API_TOKEN missing)
+  --require-live-worker      require Tier 3; Wrangler resolves its available auth
+                             context and failure to list live secrets aborts
   -h, --help                show this help`);
 }
 
@@ -197,11 +198,11 @@ function readInfisicalWorkspaceId() {
  * list is reported (not silently swallowed) because drift between
  * Infisical and the live Worker is a high-severity finding.
  */
-function listCloudflareWorkerSecretNames(configPath) {
-	if (
-		typeof process.env.CLOUDFLARE_API_TOKEN !== 'string' ||
-		process.env.CLOUDFLARE_API_TOKEN.length === 0
-	) {
+function listCloudflareWorkerSecretNames(configPath, { required = false } = {}) {
+	const hasExplicitApiToken =
+		typeof process.env.CLOUDFLARE_API_TOKEN === 'string' &&
+		process.env.CLOUDFLARE_API_TOKEN.length > 0;
+	if (!hasExplicitApiToken && !required) {
 		return null;
 	}
 	let stdout;
@@ -403,17 +404,12 @@ async function main() {
 		const tier3Eligible =
 			typeof process.env.CLOUDFLARE_API_TOKEN === 'string' &&
 			process.env.CLOUDFLARE_API_TOKEN.length > 0;
-		if (tier3Eligible) {
+		if (tier3Eligible || args.requireLiveWorker) {
 			const expectedWorker =
 				args.workerContract === 'final' ? PHASE_3_REQUIRED : RUNTIME_REQUIRED_SECRETS;
 			console.log(
-				`[dry-run] would verify: actual Cloudflare Worker secret names via \`wrangler secret list\` against ${args.workerContract} contract (${expectedWorker.join(', ')}) (CLOUDFLARE_API_TOKEN is set)`,
+				`[dry-run] would verify: actual Cloudflare Worker secret names via \`wrangler secret list\` against ${args.workerContract} contract (${expectedWorker.join(', ')})${tier3Eligible ? ' (explicit CLOUDFLARE_API_TOKEN is set)' : ' (required; Wrangler resolves Workers Builds authentication at execution)'}`,
 			);
-		} else if (args.requireLiveWorker) {
-			console.log(
-				'[dry-run] [FAIL] Tier 3 live Worker is required but CLOUDFLARE_API_TOKEN is not set.',
-			);
-			process.exit(1);
 		} else {
 			console.log(
 				'[dry-run] would skip Tier 3 (live worker): CLOUDFLARE_API_TOKEN not set. ' +
@@ -497,7 +493,9 @@ async function main() {
 		// finding — a deploy-time secret may exist in Infisical but
 		// not be bound on the Worker (or vice versa), and the worker
 		// would either fail to start or silently omit the secret.
-		const workerNames = listCloudflareWorkerSecretNames(args.config);
+		const workerNames = listCloudflareWorkerSecretNames(args.config, {
+			required: args.requireLiveWorker,
+		});
 		if (workerNames !== null) {
 			const expectedWorkerNames =
 				args.workerContract === 'final' ? PHASE_3_REQUIRED : RUNTIME_REQUIRED_SECRETS;
@@ -509,11 +507,6 @@ async function main() {
 			const workerOk = workerCheck.missing.length === 0 && workerCheck.extra.length === 0;
 			printCheckResult(workerCheck, workerOk);
 			if (!workerOk) exitCode = 1;
-		} else if (args.requireLiveWorker) {
-			console.error(
-				'[execute] [FAIL] Tier 3 live Worker check is required but CLOUDFLARE_API_TOKEN is not set.',
-			);
-			exitCode = 1;
 		} else {
 			console.log(
 				'[execute] [NOTE] Tier 3 (live Worker) skipped: CLOUDFLARE_API_TOKEN not set. ' +

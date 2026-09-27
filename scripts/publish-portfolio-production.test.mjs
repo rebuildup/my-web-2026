@@ -25,16 +25,30 @@ import { fileURLToPath } from 'node:url';
 
 import {
 	ALLOWED_CANDIDATE_IDS,
+	ENTRIES,
 	RELEASE_VERSION,
+	buildD1FileArgs,
+	buildD1SelectArgs,
 	buildLinkInserts,
 	buildMediaInsert,
 	buildProjectUpsert,
+	buildR2GetArgs,
+	buildR2PutArgs,
+	buildUnpublishSql,
+	fetchPublicR2Object,
+	linkIdFor,
+	linkKindFromUrl,
 	loadManifest,
+	mediaIdFor,
 	normalizeSlug,
+	parseD1Rows,
 	projectIdFor,
+	publicationContextDigest,
 	sha256OfFile,
 	validateEntry,
 	validateManifest,
+	validateR2Evidence,
+	verifyD1Content,
 } from './publish-portfolio-production.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -478,5 +492,225 @@ describe('no sensitive data in argv / stdout', () => {
 		for (const pattern of secretLikePatterns) {
 			assert.ok(!pattern.test(source), `source contains secret-like pattern ${pattern}`);
 		}
+	});
+});
+
+// -----------------------------------------------------------------------
+// 8. Production driver hardening / review blockers.
+// -----------------------------------------------------------------------
+
+function buildExpectedVerificationRows(manifest, visibility = 'draft') {
+	const projectRows = ENTRIES.map((entry) => ({
+		id: projectIdFor({ legacyId: entry.legacyId }),
+		slug: normalizeSlug(entry.legacyId),
+		title: entry.title,
+		role: entry.role,
+		visibility,
+		status: 'published',
+		motivation_md: entry.markdown.motivation_md,
+		architecture_md: entry.markdown.architecture_md,
+		constraints_md: entry.markdown.constraints_md,
+		implementation_md: entry.markdown.implementation_md,
+		evidence_md: entry.markdown.evidence_md,
+	}));
+	const linkRows = ENTRIES.flatMap((entry) => {
+		const projectId = projectIdFor({ legacyId: entry.legacyId });
+		return entry.links.map((link) => ({
+			id: linkIdFor(projectId, link),
+			project_id: projectId,
+			kind: linkKindFromUrl(link.href),
+			label: link.label ?? null,
+			url: link.href,
+			display_order: link.order ?? 0,
+		}));
+	});
+	const mediaRows = ENTRIES.map((entry) => {
+		const projectId = projectIdFor({ legacyId: entry.legacyId });
+		const asset = manifest.assets.find((candidate) => candidate.slug === entry.manifestSlug);
+		assert.ok(asset, `manifest asset missing for ${entry.manifestSlug}`);
+		return {
+			id: mediaIdFor(projectId, entry.manifestSlug, entry.mediaFilename),
+			project_id: projectId,
+			r2_key: asset.r2_key,
+			content_type: asset.content_type,
+			width: asset.width,
+			height: asset.height,
+			alt: entry.mediaAlt,
+			caption: entry.mediaCaption,
+			is_cover: 1,
+			display_order: 1,
+		};
+	});
+	return { projectRows, linkRows, mediaRows };
+}
+
+describe('production config coupling', () => {
+	it('passes the canonical production config to every prod Wrangler surface', () => {
+		for (const args of [
+			buildD1FileArgs('prod', '/tmp/input.sql'),
+			buildD1SelectArgs('prod', 'SELECT 1;'),
+			buildR2PutArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg', 'image/jpeg'),
+			buildR2GetArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg'),
+		]) {
+			const configIndex = args.indexOf('-c');
+			assert.notEqual(configIndex, -1);
+			assert.equal(args[configIndex + 1], 'wrangler.production.jsonc');
+		}
+	});
+
+	it('uses manifest Content-Type on R2 PUT instead of inference', () => {
+		const args = buildR2PutArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg', 'image/jpeg');
+		const index = args.indexOf('--content-type');
+		assert.notEqual(index, -1);
+		assert.equal(args[index + 1], 'image/jpeg');
+		assert.equal(args.includes('inherit'), false);
+	});
+});
+
+describe('parseD1Rows', () => {
+	it('parses the canonical Wrangler result envelope', () => {
+		assert.deepEqual(parseD1Rows(JSON.stringify([{ results: [{ id: 'a' }] }])), [{ id: 'a' }]);
+	});
+
+	it('fails closed on a raw row array', () => {
+		assert.throws(() => parseD1Rows(JSON.stringify([{ id: 'a' }])), /results\[\]/);
+	});
+
+	it('fails closed on multiple result envelopes', () => {
+		assert.throws(
+			() => parseD1Rows(JSON.stringify([{ results: [] }, { results: [] }])),
+			/single-result/,
+		);
+	});
+});
+
+describe('D1 exact-content verification', () => {
+	it('accepts the exact release rows, links and media', () => {
+		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
+		const rows = buildExpectedVerificationRows(manifest);
+		assert.deepEqual(
+			verifyD1Content({ ...rows, manifest, expectedVisibility: 'draft' }),
+			[],
+		);
+	});
+
+	it('rejects a slug/content mismatch instead of relying on row count', () => {
+		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
+		const rows = buildExpectedVerificationRows(manifest);
+		rows.projectRows[0] = { ...rows.projectRows[0], slug: 'wrong-slug' };
+		const errors = verifyD1Content({ ...rows, manifest, expectedVisibility: 'draft' });
+		assert.ok(errors.some((error) => error.includes('slug mismatch')));
+	});
+
+	it('rejects missing expected link/media rows while allowing owner extras', () => {
+		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
+		const rows = buildExpectedVerificationRows(manifest);
+		const extraLink = {
+			id: 'owner-extra',
+			project_id: rows.projectRows[0].id,
+			kind: 'other',
+			label: 'owner',
+			url: 'https://example.com',
+			display_order: 99,
+		};
+		assert.deepEqual(
+			verifyD1Content({
+				...rows,
+				linkRows: [...rows.linkRows, extraLink],
+				manifest,
+				expectedVisibility: 'draft',
+			}),
+			[],
+		);
+		const errors = verifyD1Content({
+			...rows,
+			linkRows: rows.linkRows.slice(1),
+			mediaRows: rows.mediaRows.slice(1),
+			manifest,
+			expectedVisibility: 'draft',
+		});
+		assert.ok(errors.some((error) => error.includes('expected link missing')));
+		assert.ok(errors.some((error) => error.includes('expected media missing')));
+	});
+});
+
+describe('R2 integrity verification', () => {
+	it('accepts exact SHA-256, byte size and Content-Type', () => {
+		const body = Buffer.from('release-object');
+		const asset = {
+			slug: 'sample',
+			r2_key: 'portfolio/sample.jpg',
+			content_type: 'image/jpeg',
+			byte_size: body.byteLength,
+			sha256: createHash('sha256').update(body).digest('hex'),
+		};
+		assert.deepEqual(
+			validateR2Evidence(asset, {
+				status: 200,
+				contentType: 'image/jpeg',
+				byteSize: body.byteLength,
+				sha256: asset.sha256,
+			}),
+			[],
+		);
+	});
+
+	it('fails on remote hash, byte-size or Content-Type mismatch', () => {
+		const asset = {
+			slug: 'sample',
+			r2_key: 'portfolio/sample.jpg',
+			content_type: 'image/jpeg',
+			byte_size: 10,
+			sha256: 'a'.repeat(64),
+		};
+		const errors = validateR2Evidence(asset, {
+			status: 200,
+			contentType: 'text/plain',
+			byteSize: 9,
+			sha256: 'b'.repeat(64),
+		});
+		assert.ok(errors.some((error) => error.includes('SHA-256')));
+		assert.ok(errors.some((error) => error.includes('byte size')));
+		assert.ok(errors.some((error) => error.includes('Content-Type')));
+	});
+
+	it('hashes the bytes served by the canonical media path', async () => {
+		const body = Buffer.from('remote-media');
+		const asset = {
+			slug: 'sample',
+			r2_key: 'portfolio/sample.jpg',
+			content_type: 'image/jpeg',
+			byte_size: body.byteLength,
+			sha256: createHash('sha256').update(body).digest('hex'),
+		};
+		let requestedUrl = null;
+		const evidence = await fetchPublicR2Object(asset, async (url, options) => {
+			requestedUrl = url;
+			assert.equal(options.method, 'GET');
+			return {
+				status: 200,
+				headers: { get: (name) => (name === 'content-type' ? 'image/jpeg; charset=binary' : null) },
+				arrayBuffer: async () => body,
+			};
+		});
+		assert.equal(requestedUrl, 'https://media.rebuildup.dev/portfolio/sample.jpg');
+		assert.deepEqual(validateR2Evidence(asset, evidence), []);
+	});
+});
+
+describe('rollback and verify-state binding', () => {
+	it('unpublish only changes visibility; status remains schema-valid', () => {
+		const sql = buildUnpublishSql(123);
+		assert.match(sql, /visibility='draft'/);
+		assert.doesNotMatch(sql, /status='draft'/);
+		assert.doesNotMatch(sql, /status=/);
+	});
+
+	it('publication context digest changes with manifest content', () => {
+		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
+		const baseline = publicationContextDigest(manifest);
+		const changed = structuredClone(manifest);
+		changed.assets[0].byte_size += 1;
+		assert.notEqual(publicationContextDigest(changed), baseline);
 	});
 });

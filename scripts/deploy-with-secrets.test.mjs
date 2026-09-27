@@ -80,10 +80,7 @@ async function loadBuildPreflightArgs() {
 	if (!match) {
 		throw new Error('Could not extract buildPreflightArgs from deploy-with-secrets.mjs');
 	}
-	const factory = new Function(
-		'PREFLIGHT_SCRIPT',
-		`${match[0]}\nreturn buildPreflightArgs;`,
-	);
+	const factory = new Function('PREFLIGHT_SCRIPT', `${match[0]}\nreturn buildPreflightArgs;`);
 	return factory(resolve(HERE, 'check-cf-secrets.mjs'));
 }
 
@@ -376,7 +373,6 @@ describe('deploy-with-secrets.mjs', () => {
 		});
 	});
 
-
 	describe('production secret preflight argv', () => {
 		it('pins transition contract before deploy', async () => {
 			const buildPreflightArgs = await loadBuildPreflightArgs();
@@ -396,7 +392,9 @@ describe('deploy-with-secrets.mjs', () => {
 
 		it('deploy source invokes the preflight before the inner deploy', () => {
 			const source = readFileSync(SCRIPT, 'utf8');
-			const preflightIndex = source.indexOf('preflight: checking Infisical / Worker secret-name contract');
+			const preflightIndex = source.indexOf(
+				'preflight: checking Infisical / Worker secret-name contract',
+			);
 			const innerIndex = source.indexOf('spawning: infisical run');
 			assert.ok(preflightIndex >= 0);
 			assert.ok(innerIndex > preflightIndex);

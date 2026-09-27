@@ -35,6 +35,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(HERE, 'deploy-with-secrets.mjs');
 const INNER_SCRIPT = resolve(HERE, 'run-deploy-inner.mjs');
+const PREFLIGHT_SCRIPT = resolve(HERE, 'check-cf-secrets.mjs');
 
 const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
 const TEMPDIR_PREFIX = 'my-web-2026-deploy-';
@@ -95,6 +96,7 @@ function runInIsolatedRepo(args, { existingContent = null, env = {} } = {}) {
 	mkdirSync(scriptsDir, { recursive: true });
 	writeFileSync(join(scriptsDir, 'deploy-with-secrets.mjs'), readFileSync(SCRIPT, 'utf8'));
 	writeFileSync(join(scriptsDir, 'run-deploy-inner.mjs'), readFileSync(INNER_SCRIPT, 'utf8'));
+	writeFileSync(join(scriptsDir, 'check-cf-secrets.mjs'), readFileSync(PREFLIGHT_SCRIPT, 'utf8'));
 	if (existingContent !== null) {
 		writeFileSync(join(repo, '.infisical.json'), existingContent);
 	}

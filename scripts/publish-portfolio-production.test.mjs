@@ -588,10 +588,7 @@ describe('D1 exact-content verification', () => {
 	it('accepts the exact release rows, links and media', () => {
 		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
 		const rows = buildExpectedVerificationRows(manifest);
-		assert.deepEqual(
-			verifyD1Content({ ...rows, manifest, expectedVisibility: 'draft' }),
-			[],
-		);
+		assert.deepEqual(verifyD1Content({ ...rows, manifest, expectedVisibility: 'draft' }), []);
 	});
 
 	it('rejects a slug/content mismatch instead of relying on row count', () => {

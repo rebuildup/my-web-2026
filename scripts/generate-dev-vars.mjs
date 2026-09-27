@@ -16,8 +16,6 @@
  * Usage:
  *   pnpm run generate:dev-vars             # default env (.infisical.json#defaultEnvironment)
  *   pnpm run generate:dev-vars -- --env=dev
- *   pnpm run generate:dev-vars -- --config=wrangler.production.jsonc  # production-set
- *                                            # (rare; for debugging production-shaped local dev)
  *   pnpm run generate:dev-vars -- --dry-run    # print plan without writing
  *   pnpm run generate:dev-vars -- --help
  *
@@ -25,8 +23,13 @@
  *   - argv / log / error message NEVER carries a secret value.
  *   - On any failure, the partial `.dev.vars` file is removed before exit
  *     (atomic write: write to a temp file then rename).
- *   - The script NEVER reads or writes prod secrets unless `--config=wrangler.production.jsonc`
- *     is explicitly passed (rare; mostly for debugging).
+ *   - The prod environment is UNCONDITIONALLY REJECTED. `--env=prod`,
+ *     `--env=production`, `--env=PROD` (case-insensitive), or any value
+ *     matching `isProdEnvironment` exits with code 1 before any HTTP
+ *     request or file write. Prod secrets never land in a local
+ *     `.dev.vars`; production secret management is owned by the
+ *     Cloudflare Workers Builds deploy path (Phase 4 #70) and
+ *     `wrangler secret put`, never by this script.
  *   - Only the `secrets.required` set from the chosen Wrangler config is
  *     fetched; anything else in Infisical is ignored.
  *
@@ -40,7 +43,7 @@
 import { readFileSync, writeFileSync, renameSync, existsSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { dirname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 export const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
 export const HTTPS_TIMEOUT_MS = 15_000;
@@ -107,6 +110,35 @@ export function parseSecretsResponse(jsonString) {
 		out.push({ secretKey: key, secretValue: value });
 	}
 	return out;
+}
+
+/**
+ * Whether a given environment name refers to the prod environment.
+ *
+ * This is the canonical operator-mandated "prod hard-reject" gate.
+ * Production secret management is owned by the Cloudflare Workers
+ * Builds deploy path (Phase 4 #70) and `wrangler secret put` — never
+ * by this script. Any value the operator might accidentally pass
+ * meaning "prod" must short-circuit the script before any HTTP
+ * request or `.dev.vars` write.
+ *
+ * Matches:
+ *   - `prod` (Infisical native slug)
+ *   - `production` (common typo / alternative name)
+ *   - case-insensitive variants (`PROD`, `Production`, etc.)
+ *   - whitespace-padded values
+ *
+ * Does NOT match:
+ *   - `dev`, `development`, `staging`, etc.
+ *   - empty string
+ *   - non-string values
+ *
+ * Pure: deterministic, no I/O. Exported for unit-testing the gate.
+ */
+export function isProdEnvironment(env) {
+	if (typeof env !== 'string') return false;
+	const normalized = env.trim().toLowerCase();
+	return normalized === 'prod' || normalized === 'production';
 }
 
 /**
@@ -285,6 +317,17 @@ async function main() {
 		env = cfg?.defaultEnvironment ?? 'dev';
 	}
 
+	// Operator-mandated prod hard-reject. ANY value the operator might
+	// pass meaning "prod" short-circuits before any HTTP request or
+	// file write. Production secret management is owned by the
+	// Cloudflare Workers Builds deploy path (Phase 4 #70) and
+	// `wrangler secret put`, never by this script.
+	if (isProdEnvironment(env)) {
+		throw new Error(
+			`generate-dev-vars refuses environment=${JSON.stringify(env)}: prod secrets are never written to a local .dev.vars file. Use "pnpm run infisical:deploy" (Phase 4 #70) or "wrangler secret put" for production.`,
+		);
+	}
+
 	console.log(`Infisical project:  ${workspaceId}`);
 	console.log(`Wrangler config:    ${args.config}`);
 	console.log(`Environment:        ${env}`);
@@ -333,7 +376,7 @@ async function main() {
 	console.log(`Wrote ${filtered.length} secrets to ${DEV_VARS_FILENAME}`);
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
 	main().catch((err) => {
 		console.error(`generate-dev-vars failed: ${err.message}`);
 		process.exit(1);

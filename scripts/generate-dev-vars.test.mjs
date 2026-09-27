@@ -50,13 +50,15 @@ async function loadPureHelpers() {
 	const parseSecretsRequired = extract('parseSecretsRequired');
 	const parseSecretsResponse = extract('parseSecretsResponse');
 	const formatDevVarsContent = extract('formatDevVarsContent');
+	const isProdEnvironment = extract('isProdEnvironment');
 
 	const factory = new Function(`
 		${parseJsonc}
 		${parseSecretsRequired}
 		${parseSecretsResponse}
 		${formatDevVarsContent}
-		return { parseJsonc, parseSecretsRequired, parseSecretsResponse, formatDevVarsContent };
+		${isProdEnvironment}
+		return { parseJsonc, parseSecretsRequired, parseSecretsResponse, formatDevVarsContent, isProdEnvironment };
 	`);
 	return factory();
 }
@@ -275,6 +277,59 @@ describe('generate-dev-vars.mjs', () => {
 			const { formatDevVarsContent } = await loadPureHelpers();
 			const out = formatDevVarsContent({});
 			assert.equal(out, '\n');
+		});
+	});
+
+	describe('isProdEnvironment (operator-mandated prod hard-reject)', () => {
+		it('matches the Infisical native slug `prod`', async () => {
+			const { isProdEnvironment } = await loadPureHelpers();
+			assert.equal(isProdEnvironment('prod'), true);
+		});
+
+		it('matches the alternative slug `production`', async () => {
+			const { isProdEnvironment } = await loadPureHelpers();
+			assert.equal(isProdEnvironment('production'), true);
+		});
+
+		it('is case-insensitive (PROD, Production, ProD all match)', async () => {
+			const { isProdEnvironment } = await loadPureHelpers();
+			assert.equal(isProdEnvironment('PROD'), true);
+			assert.equal(isProdEnvironment('Production'), true);
+			assert.equal(isProdEnvironment('ProD'), true);
+		});
+
+		it('trims surrounding whitespace', async () => {
+			const { isProdEnvironment } = await loadPureHelpers();
+			assert.equal(isProdEnvironment('  prod  '), true);
+			assert.equal(isProdEnvironment('\tproduction\n'), true);
+		});
+
+		it('does NOT match `dev` or `development`', async () => {
+			const { isProdEnvironment } = await loadPureHelpers();
+			assert.equal(isProdEnvironment('dev'), false);
+			assert.equal(isProdEnvironment('DEV'), false);
+			assert.equal(isProdEnvironment('development'), false);
+			assert.equal(isProdEnvironment('staging'), false);
+		});
+
+		it('does NOT match empty string or non-string inputs', async () => {
+			const { isProdEnvironment } = await loadPureHelpers();
+			assert.equal(isProdEnvironment(''), false);
+			assert.equal(isProdEnvironment(' '), false);
+			assert.equal(isProdEnvironment(undefined), false);
+			assert.equal(isProdEnvironment(null), false);
+			assert.equal(isProdEnvironment(42), false);
+			assert.equal(isProdEnvironment({}), false);
+		});
+
+		it('does NOT match strings that merely contain `prod` as a substring', async () => {
+			const { isProdEnvironment } = await loadPureHelpers();
+			// We match the slug, not the substring. A user typed
+			// `prod-old` is NOT a Phase 3 prod slug. They must pass
+			// `prod` exactly (modulo case + whitespace).
+			assert.equal(isProdEnvironment('prod-old'), false);
+			assert.equal(isProdEnvironment('my-prod-account'), false);
+			assert.equal(isProdEnvironment('prodigy'), false);
 		});
 	});
 

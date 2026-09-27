@@ -11,10 +11,24 @@
  *   2. `.infisical.json` project resolution is automatic via the CLI, so no
  *      `--projectId` flag is needed (and the CLI forbids `--projectId` when
  *      `.infisical.json` is present in the working directory).
- *   3. `shell: false` prevents shell injection from any env var content;
- *      the inner command is constructed as a literal argv list.
+ *   3. The inner command is constructed as a literal argv list. There is
+ *      no string interpolation from shell / user / env-var content, so
+ *      `shell: true` on Windows (necessary because `pnpm` resolves to a
+ *      `.cmd` shim that Node cannot exec directly without a shell)
+ *      cannot introduce shell-injection.
  *   4. Exit code is propagated so `pnpm dev` failures surface as a non-zero
  *      exit code (matters for CI and E2E auto-start).
+ *
+ * Spawn-shape by platform:
+ *
+ *   - POSIX: `shell: false`. The literal argv is taken as-is.
+ *   - Windows: `shell: true`. Node's child_process docs note that
+ *     `.cmd` / `.bat` shims cannot be exec'd directly without a shell
+ *     (`spawn('pnpm', ...)` resolves to `pnpm.cmd`, which fails with
+ *     `ENOENT`). Going through `cmd.exe` lets the shell locate the
+ *     shim. Because the argv array is also constructed from literals
+ *     (no user input, no env interpolation, no glob-style expansion),
+ *     `shell: true` does not introduce injection risk here.
  *
  * Reads `.infisical.json` from the repo root and passes `defaultEnvironment`
  * to `--env`. If the file is missing, falls back to `--env=dev` (the
@@ -47,7 +61,8 @@ if (existsSync(infisicalConfigPath)) {
 }
 
 const argv = ['exec', 'infisical', 'run', '--env', env, '--', 'pnpm', 'exec', 'vite', 'dev'];
-const child = spawn('pnpm', argv, { stdio: 'inherit', shell: false });
+const isWindows = process.platform === 'win32';
+const child = spawn('pnpm', argv, { stdio: 'inherit', shell: isWindows });
 
 child.on('exit', (code, signal) => {
 	if (signal) {

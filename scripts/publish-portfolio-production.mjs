@@ -50,6 +50,7 @@
  *   from external sources; assets are committed to the repo.
  *
  * Production mutation order (operator-gated window):
+ * Canonical co-owned runbook: Issue #82 §C + PR #91 body §B.
  *
  *   1. production D1 portfolio migration (existing)
  *   2. driver `prepare --execute --environment=prod`
@@ -483,9 +484,6 @@ export function linkKindFromUrl(href) {
 	}
 	if (host === 'github.com' || host === 'gitlab.com') {
 		return 'repo';
-	}
-	if (host === 'twitter.com' || host === 'x.com' || host === 't.co') {
-		return 'social';
 	}
 	if (host.endsWith('booth.pm') || host.endsWith('booth.pm')) {
 		return 'shop';

@@ -197,7 +197,7 @@ describe('buildLinkInserts', () => {
 		assert.ok(stmts[1].includes("'legacy_link_legacy_multislicer_booth_item'"));
 	});
 
-	it('classifies YouTube as video, GitHub as repo, BOOTH as shop, X as social, others as other', () => {
+	it('classifies YouTube as video, GitHub as repo, BOOTH as shop, X as other, others as other', () => {
 		const entry = makeEntry({
 			links: [
 				{ legacyId: 'yt', href: 'https://www.youtube.com/watch?v=abc', label: 'yt', order: 1 },
@@ -211,7 +211,7 @@ describe('buildLinkInserts', () => {
 		assert.ok(stmts[0].includes("'video'"));
 		assert.ok(stmts[1].includes("'repo'"));
 		assert.ok(stmts[2].includes("'shop'"));
-		assert.ok(stmts[3].includes("'social'"));
+		assert.ok(stmts[3].includes("'other'"));
 		assert.ok(stmts[4].includes("'other'"));
 	});
 
@@ -221,6 +221,52 @@ describe('buildLinkInserts', () => {
 		const a = buildLinkInserts(makeEntry());
 		const b = buildLinkInserts(makeEntry());
 		assert.deepEqual(a, b);
+	});
+});
+
+describe('linkKindFromUrl schema alignment', () => {
+	it('keeps every emitted link kind inside portfolio_link.kind closed enum', () => {
+		// The closed enum mirrors `migrations/0007_portfolio.sql#portfolio_link.kind`
+		// (`CHECK (kind IN ('repo', 'demo', 'release', 'article', 'shop', 'video', 'other'))`).
+		// We deliberately do NOT regex-parse the migration SQL here: that couples
+		// the test to whitespace/quoting drift and is the kind of fragility the
+		// Issue #128 review explicitly removed. If the migration enum changes,
+		// update BOTH this literal and the migration in the same diff.
+		const schemaKinds = new Set(['repo', 'demo', 'release', 'article', 'shop', 'video', 'other']);
+
+		const cases = [
+			['https://x.com/u/status/1', 'other'],
+			['https://twitter.com/u/status/1', 'other'],
+			['https://t.co/abc', 'other'],
+			['https://www.youtube.com/watch?v=abc', 'video'],
+			['https://github.com/rebuildup/example', 'repo'],
+			['https://361do.booth.pm/items/1', 'shop'],
+			['https://booth.pm/items/1', 'shop'],
+			['https://qiita.com/example/items/1', 'other'],
+		];
+
+		for (const [url, expected] of cases) {
+			const actual = linkKindFromUrl(url);
+			assert.equal(actual, expected, url);
+			assert.ok(
+				schemaKinds.has(actual),
+				`${url}: ${actual} is outside portfolio_link.kind enum (${[...schemaKinds].join(', ')})`,
+			);
+		}
+	});
+});
+
+describe('release runbook ordering alignment', () => {
+	it('cross-references canonical release surfaces and keeps attach before verify', () => {
+		const driver = readFileSync(
+			join(REPO_ROOT, 'scripts', 'publish-portfolio-production.mjs'),
+			'utf8',
+		);
+		assert.ok(driver.includes('Canonical co-owned runbook: Issue #82 §C + PR #91 body §B.'));
+		const prepare = driver.indexOf('2. driver `prepare --execute --environment=prod`');
+		const attach = driver.indexOf('3. R2 custom-domain attachment');
+		const verify = driver.indexOf('4. driver `verify --environment=prod --execute`');
+		assert.ok(prepare >= 0 && attach > prepare && verify > attach);
 	});
 });
 

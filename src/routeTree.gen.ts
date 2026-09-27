@@ -330,20 +330,20 @@ interface AdminRouteChildren {
   AdminEmojiCatalogRoute: typeof AdminEmojiCatalogRoute
   AdminImagesRoute: typeof AdminImagesRoute
   AdminInvitationsRoute: typeof AdminInvitationsRoute
-  AdminInvitationsAcceptRoute: typeof AdminInvitationsAcceptRoute
   AdminKeysRoute: typeof AdminKeysRoute
   AdminLoginRoute: typeof AdminLoginRoute
   AdminIndexRoute: typeof AdminIndexRoute
+  AdminInvitationsAcceptRoute: typeof AdminInvitationsAcceptRoute
 }
 
 const AdminRouteChildren: AdminRouteChildren = {
   AdminEmojiCatalogRoute: AdminEmojiCatalogRoute,
   AdminImagesRoute: AdminImagesRoute,
   AdminInvitationsRoute: AdminInvitationsRoute,
-  AdminInvitationsAcceptRoute: AdminInvitationsAcceptRoute,
   AdminKeysRoute: AdminKeysRoute,
   AdminLoginRoute: AdminLoginRoute,
   AdminIndexRoute: AdminIndexRoute,
+  AdminInvitationsAcceptRoute: AdminInvitationsAcceptRoute,
 }
 
 const AdminRouteWithChildren = AdminRoute._addFileChildren(AdminRouteChildren)

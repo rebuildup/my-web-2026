@@ -152,11 +152,25 @@ pnpm run generate:dev-vars -- --dry-run   # plan only, no file
 
 The fallback ALWAYS mirrors exactly `wrangler.jsonc#secrets.required`
 (it does not widen the set to match the full dev env seen by the
-primary path). Today (pre-#89 legacy 2-name staged design) it
-writes `BETTER_AUTH_SECRET` + `MY_WEB_2026_CONSUMER_API_KEY`. After
-Issue #89 (versioned 2-name flip, separate human-gated production
-ticket) it writes `BETTER_AUTH_SECRETS` +
-`MY_WEB_2026_CONSUMER_API_KEY` — still 2 names, just renamed.
+primary path). The current source-controlled contract is the
+**versioned 2-name form**:
+
+```jsonc
+// from wrangler.jsonc#secrets.required
+"BETTER_AUTH_SECRETS",
+"MY_WEB_2026_CONSUMER_API_KEY"
+```
+
+`BETTER_AUTH_SECRET` (legacy single-secret form) is NOT in
+`secrets.required`; it is retained in Infisical `prod` as an audit
+trail (ADR-0015 §9 audit-only semantics) but is never uploaded to
+the Worker — see `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS`
+for the deploy-time contract that prevents the legacy binding from
+resurrecting on subsequent deploys. The legacy → versioned migration
+is the production-side Phase B work (Issue #89), gated per
+[`docs/runbook/cloudflare-workers-builds.md`](runbook/cloudflare-workers-builds.md).
+Local `generate:dev-vars` does NOT need Phase B to run to function;
+it always reads the current `secrets.required`.
 
 `.dev.vars` is gitignored, written atomically (temp + rename, with
 rollback on failure), and constrained to

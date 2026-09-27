@@ -72,9 +72,14 @@
 		}
 	],
 	// Home self-consumption named vars (ADR-0011 / Ticket E + F).
-	// `MY_WEB_2026_CONSUMER_API_KEY` is a stable Worker runtime secret managed in
-	// Cloudflare Settings > Variables & Secrets. Local development may generate a
-	// separate key via scripts/bootstrap-home-api-key.mjs.
+	// `MY_WEB_2026_CONSUMER_API_KEY` source of truth is Infisical `prod`
+	// (ADR-0015 §6 / §9); Cloudflare Worker Builds reads the value at deploy
+	// time and writes it to the Worker binding. "Cloudflare Settings >
+	// Variables & Secrets" is the **landing site** of the value after
+	// deploy, NOT the source of truth. Local development may mint a
+	// separate key via scripts/bootstrap-home-api-key.mjs. Manual
+	// rotation path until #74 lands is documented in
+	// `docs/runbook/consumer-api-key-rotation.md`.
 	// The two named vars below are non-secret values used by
 	// `src/home/{reactions,access}/load.ts`; they live here so they
 	// survive `wrangler d1` schema resets.
@@ -116,20 +121,23 @@
 	],
 	// Required secrets (ADR-0015 §9 staged design, Phase 3+ — Issue #89).
 	//
-	// `secrets.required` is enforced by Wrangler at deploy time. Phase 3+
-	// uses the **versioned 2-name form** (`BETTER_AUTH_SECRETS` +
-	// `MY_WEB_2026_CONSUMER_API_KEY`). `BETTER_AUTH_SECRET` (legacy single)
-	// is NOT in `required`; it is retained in Infisical `prod` as an audit
-	// trail (ADR-0015 §9 audit-only semantics) but is never uploaded to the
-	// Worker — see `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS` for
-	// the deploy-time contract that prevents the legacy binding from
-	// resurrecting on subsequent deploys.
+	// `secrets.required` is enforced by Wrangler at deploy time. This is
+	// the **next deploy's required-secret set**, NOT a claim about the
+	// current live Worker binding state (see the secrets block in
+	// `wrangler.production.jsonc` for the production-mirror rationale).
 	//
-	// The Cloudflare Worker `BETTER_AUTH_SECRET` binding is deleted by the
-	// Phase B operator-gated step in `scripts/phase-3-plus-prod-flip.mjs
-	// --execute --delete-legacy-only`. The companion file
+	// The current source-controlled contract is the versioned 2-name
+	// form (`BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY`).
+	// `BETTER_AUTH_SECRET` (legacy single) is NOT in `required`; it is
+	// retained in Infisical `prod` as an audit trail (ADR-0015 §9
+	// audit-only semantics) but is never uploaded to the Worker — see
+	// `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS` for the
+	// deploy-time contract that prevents the legacy binding from
+	// resurrecting on subsequent deploys. Migration to the versioned
+	// form happens in the production release sequence (Phase B) — see
+	// `docs/runbook/cloudflare-workers-builds.md`. The companion file
 	// `wrangler.production.jsonc` mirrors this array and carries the same
-	// comment.
+	// contract.
 	"secrets": {
 		"required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
 	}

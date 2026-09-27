@@ -114,16 +114,32 @@
 		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev"
 	},
 	"secrets": {
-		// Staged design (ADR-0015 §9, Phase 3+ — Issue #89):
-		// Production is on the **versioned 2-name form**. The legacy
-		// `BETTER_AUTH_SECRET` Cloudflare Worker binding is deleted in
-		// Phase B step #2 (operator-gated via
-		// `scripts/phase-3-plus-prod-flip.mjs --execute --delete-legacy-only`).
-		// The Infisical `prod` value for `BETTER_AUTH_SECRET` is
-		// RETAINED as an audit trail (ADR-0015 §9 audit-only semantics);
-		// it is never uploaded to the Worker on subsequent deploys — see
-		// `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS`. Mirror edit
-		// applied to `wrangler.jsonc`.
+		// Source-controlled contract (ADR-0015 §9, Phase 3+ — Issue #89).
+		// This array is the **next deploy's required-secret set**, NOT a
+		// claim about the current live Worker binding state. The two are
+		// independent facts:
+		//
+		//   - Source-controlled desired contract (this file):
+		//       versioned 2-name form
+		//       `BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY`.
+		//   - Live Worker binding state:
+		//       changes via the operator-gated Phase B driver
+		//       `scripts/phase-3-plus-prod-flip.mjs --execute ...`,
+		//       sequenced per
+		//       [`docs/runbook/cloudflare-workers-builds.md`](docs/runbook/cloudflare-workers-builds.md):
+		//       #122 reconciliation → #89 flip → Smoke #1 → release PR
+		//       merge → Cloudflare Workers Builds deploy → Smoke #2/#3 →
+		//       `--delete-legacy-only` → final drift.
+		//
+		// During the Phase B window the live Worker carries the legacy
+		// `BETTER_AUTH_SECRET` binding in addition to `BETTER_AUTH_SECRETS`
+		// until `--delete-legacy-only` runs successfully post-deploy. The
+		// Infisical `prod` value for `BETTER_AUTH_SECRET` is RETAINED as
+		// an audit trail (ADR-0015 §9 audit-only semantics); it is never
+		// uploaded to the Worker on subsequent deploys — see
+		// `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS` for the
+		// deploy-time contract that prevents the legacy binding from
+		// resurrecting. Mirror edit lives in `wrangler.jsonc`.
 		"required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
 	},
 	"ratelimits": [

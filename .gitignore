@@ -54,6 +54,11 @@ storybook-static/
 # Project-local ephemeral state (project-init policy)
 .tmp/
 .reference/
+# External repo worktrees (e.g. rebuildup/ProtoType pilot integration
+# in `external/prototype/` for Issue #81). These are full clones
+# checked out at a pinned commit but NOT registered as submodules
+# (no `.gitmodules`); biome / lint / format must not touch them.
+external/
 
 # Editor / OS
 .DS_Store

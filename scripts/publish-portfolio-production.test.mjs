@@ -263,9 +263,13 @@ describe('release runbook ordering alignment', () => {
 		assert.ok(prepare >= 0 && attach > prepare && verify > attach);
 
 		const releaseDoc = readFileSync(join(REPO_ROOT, 'docs', 'release.md'), 'utf8');
-		const docPrepare = releaseDoc.indexOf('publication driver `prepare --execute --environment=prod`');
+		const docPrepare = releaseDoc.indexOf(
+			'publication driver `prepare --execute --environment=prod`',
+		);
 		const docAttach = releaseDoc.indexOf('media.rebuildup.dev` custom domain');
-		const docVerify = releaseDoc.indexOf('publication driver `verify --environment=prod --execute`');
+		const docVerify = releaseDoc.indexOf(
+			'publication driver `verify --environment=prod --execute`',
+		);
 		assert.ok(docPrepare >= 0 && docAttach > docPrepare && docVerify > docAttach);
 	});
 });

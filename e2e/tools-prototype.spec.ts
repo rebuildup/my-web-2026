@@ -91,9 +91,36 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		expect(entryRes.status()).toBe(200);
 		const entryBody = await entryRes.text();
 
-		// Extract every <script src="..."> and <link href="...">.
+		// Extract every <script src="..."> and every <link href="...">
+		// whose `rel` is NOT a favicon / apple-touch-icon / manifest.
+		// Favicons may legitimately 404 (Vite references placeholder
+		// icon paths that the Tool's source tree never bundled — the
+		// Tool uses an external `icon.svg`). The host only cares about
+		// assets the iframe needs to actually mount and render.
 		const refs = new Set<string>();
-		for (const match of entryBody.matchAll(/<(?:script|link)[^>]+(?:src|href)="([^"]+)"/g)) {
+		// Match each <link ...> tag individually so we can inspect its
+		// `rel` attribute before deciding whether to record its `href`.
+		for (const match of entryBody.matchAll(/<link\s[^>]*>/gi)) {
+			const tag = match[0];
+			const hrefMatch = tag.match(/\shref="([^"]+)"/);
+			if (!hrefMatch) continue;
+			const relMatch = tag.match(/\srel="([^"]+)"/);
+			const rel = relMatch?.[1].toLowerCase() ?? '';
+			// Skip favicon family + manifest + preconnect.
+			if (
+				rel === 'icon' ||
+				rel === 'shortcut icon' ||
+				rel === 'apple-touch-icon' ||
+				rel === 'apple-touch-icon-precomposed' ||
+				rel === 'manifest' ||
+				rel === 'preconnect' ||
+				rel === 'dns-prefetch'
+			) {
+				continue;
+			}
+			refs.add(hrefMatch[1]);
+		}
+		for (const match of entryBody.matchAll(/<script\s[^>]*\ssrc="([^"]+)"/gi)) {
 			refs.add(match[1]);
 		}
 
@@ -121,8 +148,7 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 			}
 			// Resolve against the host base. Absolute paths (Vite's
 			// default `/assets/...` etc.) are used as-is; relative
-			// paths (`./src/icon/icon.ico`) are resolved against the
-			// entry HTML's directory.
+			// paths are resolved against the entry HTML's directory.
 			const url = ref.startsWith('/')
 				? new URL(ref, baseURL).toString()
 				: new URL(ref, new URL(PROTOTYPE_ENTRY, baseURL)).toString();

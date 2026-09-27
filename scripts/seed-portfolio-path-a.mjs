@@ -41,9 +41,9 @@
  *   * R2 custom domain (`media.rebuildup.dev`) の attachment
  */
 import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { dirname, resolve, join, basename } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -112,11 +112,11 @@ const ENTRIES = [
 				'(Windows) または Xcode (macOS) が必要。配布は BOOTH 経由 ' +
 				'(個人開発者向け同人流通)。',
 			implementation_md:
-				`docs/personal/domain.md §8 の記述:\n\n` +
-				`> MultiSlicer — C++ / After Effects SDK を使った effect plugin。` +
-				`公開・配布を通して native plugin development を実践\n\n` +
-				`legacy my-web-2025 の content_tags にも C++ / AfterEffects / ` +
-				`VisualStudio / プラグイン が登録されており、上記 grounding と一致。`,
+				'docs/personal/domain.md §8 の記述:\n\n' +
+				'> MultiSlicer — C++ / After Effects SDK を使った effect plugin。' +
+				'公開・配布を通して native plugin development を実践\n\n' +
+				'legacy my-web-2025 の content_tags にも C++ / AfterEffects / ' +
+				'VisualStudio / プラグイン が登録されており、上記 grounding と一致。',
 			evidence_md:
 				'**配布・公開の証拠**:\n\n' +
 				'- YouTube auto-generated thumbnail + "Ae版MultiSlicer PV" 動画\n' +
@@ -162,9 +162,9 @@ const ENTRIES = [
 				'After Effects の ExtendScript 実行環境 + ExtendScript 編集環境 ' +
 				'(legacy data の `content_tags` には `VSCode` も登録されている)。',
 			implementation_md:
-				`docs/personal/domain.md §8 Tool / plugin development に ` +
-				`登録された tool の一つ。productization / support / update を ` +
-				`通じて tool owner の責務を経験した成果物。`,
+				'docs/personal/domain.md §8 Tool / plugin development に ' +
+				'登録された tool の一つ。productization / support / update を ' +
+				'通じて tool owner の責務を経験した成果物。',
 			evidence_md:
 				'**配布・公開の証拠**:\n\n' +
 				'- YouTube `SewXH0Bbm-c` (auto-generated thumbnail を R2 ' +
@@ -207,9 +207,9 @@ const ENTRIES = [
 				'After Effects + Premiere Pro + 借用 MacBook (コンピュータ部所有)。' +
 				'legacy my-web-2025 の `content_tags` には `AfterEffects` / `VSCode`。',
 			implementation_md:
-				`docs/personal/domain.md §8 Tool / plugin development の ` +
-				`Aulymo 系統の v2 リリース。実装そのものは v1 を継続し、` +
-				`動画制作工程のみが v2 で拡張された。`,
+				'docs/personal/domain.md §8 Tool / plugin development の ' +
+				'Aulymo 系統の v2 リリース。実装そのものは v1 を継続し、' +
+				'動画制作工程のみが v2 で拡張された。',
 			evidence_md:
 				'**配布・公開の証拠**:\n\n' +
 				'- YouTube `EbtybmiN5pM` (v2 動作説明動画、' +
@@ -262,7 +262,9 @@ const refRoot = process.env.MY_WEB_2025_REF
 /** Node ≥ 22.5 has `node:sqlite` as a stable module. */
 const NODE_VERSION = Number.parseInt(process.versions.node.split('.')[0], 10);
 if (NODE_VERSION < 22) {
-	console.error(`[seed-path-a] node:sqlite requires Node ≥ 22; this environment is ${process.versions.node}.`);
+	console.error(
+		`[seed-path-a] node:sqlite requires Node ≥ 22; this environment is ${process.versions.node}.`,
+	);
 	process.exit(2);
 }
 const { DatabaseSync } = await import('node:sqlite');
@@ -338,14 +340,9 @@ function linkKindFromUrl(href) {
 		const host = u.hostname.toLowerCase();
 		if (host === 'booth.pm' || host.endsWith('.booth.pm')) return 'shop';
 		if (host === 'github.com' || host.endsWith('.github.com')) return 'repo';
-		if (
-			host === 'youtu.be' ||
-			host.endsWith('youtube.com') ||
-			host === 'youtube-nocookie.com'
-		)
+		if (host === 'youtu.be' || host.endsWith('youtube.com') || host === 'youtube-nocookie.com')
 			return 'video';
-		if (host === 'x.com' || host.endsWith('.x.com') || host === 'twitter.com')
-			return 'other';
+		if (host === 'x.com' || host.endsWith('.x.com') || host === 'twitter.com') return 'other';
 		return 'other';
 	} catch {
 		return 'other';
@@ -432,7 +429,7 @@ function main() {
 	for (const m of mediaUploads) {
 		const stat = existsSync(m.localPath) ? statSync(m.localPath) : null;
 		console.error(
-			`  - ${m.slug}: ${m.localPath} (${stat ? stat.size + ' bytes' : 'MISSING'}) → ${m.r2Key}`,
+			`  - ${m.slug}: ${m.localPath} (${stat ? `${stat.size} bytes` : 'MISSING'}) → ${m.r2Key}`,
 		);
 		if (!existsSync(m.localPath)) {
 			console.error(`[seed-path-a] FATAL: local media missing for ${m.slug}`);

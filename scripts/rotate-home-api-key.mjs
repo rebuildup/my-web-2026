@@ -318,12 +318,7 @@ function buildD1SelectRotatedRowsCommand() {
  * identify the recovery target.
  */
 function buildD1SelectActiveRotatedRowCommand() {
-	return (
-		`SELECT id, name, start, prefix, enabled, createdAt ` +
-		`FROM apikey ` +
-		`WHERE name LIKE '${sqlString(`${KEY_NAME_PREFIX}%`)}' AND enabled = 1 ` +
-		`ORDER BY createdAt DESC, id DESC LIMIT 1;`
-	);
+	return `SELECT id, name, start, prefix, enabled, createdAt FROM apikey WHERE name LIKE '${sqlString(`${KEY_NAME_PREFIX}%`)}' AND enabled = 1 ORDER BY createdAt DESC, id DESC LIMIT 1;`;
 }
 
 /**
@@ -333,10 +328,10 @@ function buildD1SelectActiveRotatedRowCommand() {
  */
 function buildD1SelectOldHomeRowCommand() {
 	return (
-		`SELECT id, name, prefix, start, enabled, createdAt ` +
-		`FROM apikey ` +
+		'SELECT id, name, prefix, start, enabled, createdAt ' +
+		'FROM apikey ' +
 		`WHERE name = 'home-self-consumption' AND enabled = 1 ` +
-		`ORDER BY createdAt DESC, id DESC LIMIT 1;`
+		'ORDER BY createdAt DESC, id DESC LIMIT 1;'
 	);
 }
 
@@ -835,15 +830,12 @@ async function runSmoke({
 	fetchImpl = globalThis.fetch,
 }) {
 	if (typeof fetchImpl !== 'function') {
-		throw new Error(
-			'globalThis.fetch is unavailable; Node 20+ is required for in-process smoke',
-		);
+		throw new Error('globalThis.fetch is unavailable; Node 20+ is required for in-process smoke');
 	}
 	const headers = { [authHeader]: `${authScheme} ${plaintext}` };
 	const response = await fetchImpl(url, { method: 'GET', headers });
 	const status = response.status;
-	const ok =
-		typeof status === 'number' && status >= SMOKE_MIN_STATUS && status <= SMOKE_MAX_STATUS;
+	const ok = typeof status === 'number' && status >= SMOKE_MIN_STATUS && status <= SMOKE_MAX_STATUS;
 	// Drain the body so the connection can be released, but DO NOT
 	// capture it (no plaintext leakage via response body).
 	await response.text().catch(() => undefined);
@@ -956,14 +948,7 @@ async function runVerify({ apiUrl, token, workspaceId, environment, target }) {
 	};
 }
 
-async function runWorkerRecovery({
-	rowId,
-	apiUrl,
-	token,
-	workspaceId,
-	environment,
-	target,
-}) {
+async function runWorkerRecovery({ rowId, apiUrl, token, workspaceId, environment, target }) {
 	console.log(`[worker-recovery] rowId=${rowId} target=${target}`);
 
 	const sanitizedEnv = buildSanitizedEnv(process.env);
@@ -977,8 +962,7 @@ async function runWorkerRecovery({
 	});
 	if (typeof infisicalValue !== 'string' || infisicalValue.length === 0) {
 		throw new Error(
-			`Worker recovery requires Infisical ${environment} to already hold the fresh ${SECRET_NAME} value. ` +
-				`Re-run --execute OR --worker-recovery only after the Infisical stage has completed.`,
+			`Worker recovery requires Infisical ${environment} to already hold the fresh ${SECRET_NAME} value. Re-run --execute OR --worker-recovery only after the Infisical stage has completed.`,
 		);
 	}
 
@@ -1042,9 +1026,7 @@ async function main() {
 		console.log(
 			'  9. verify: HTTPS GET read-back + timingSafeEqual (Infisical) + wrangler secret list (Worker names)',
 		);
-		console.log(
-			'[dry-run] no side effects; pass --execute to apply (operator gate required).',
-		);
+		console.log('[dry-run] no side effects; pass --execute to apply (operator gate required).');
 		return;
 	}
 
@@ -1128,10 +1110,7 @@ async function main() {
 	const inflightRows = inflightResult?.[0]?.results ?? [];
 	if (inflightRows.length > 0) {
 		throw new Error(
-			`An enabled rotated row already exists (id=${inflightRows[0].id}, name=${inflightRows[0].name}). ` +
-				`--execute refuses to start a new rotation while one is in flight. ` +
-				`Resolve the partial state via --worker-recovery=<rowId> (if Infisical+Worker pending) ` +
-				`or --disable-row=<rowId> (to discard a half-completed rotation).`,
+			`An enabled rotated row already exists (id=${inflightRows[0].id}, name=${inflightRows[0].name}). --execute refuses to start a new rotation while one is in flight. Resolve the partial state via --worker-recovery=<rowId> (if Infisical+Worker pending) or --disable-row=<rowId> (to discard a half-completed rotation).`,
 		);
 	}
 
@@ -1223,9 +1202,7 @@ async function main() {
 		throw new Error('D1 INSERT verification failed: no row found for the new hash');
 	}
 	const rotatedRowId = insertedRows[0].id;
-	console.log(
-		`[execute] D1 row verified: id=${rotatedRowId} enabled=${insertedRows[0].enabled}`,
-	);
+	console.log(`[execute] D1 row verified: id=${rotatedRowId} enabled=${insertedRows[0].enabled}`);
 
 	// Stage 7 — IN-PROCESS smoke against production. The plaintext goes
 	// into the request header inside `runSmoke` and is released on
@@ -1248,8 +1225,7 @@ async function main() {
 		// and re-run --execute (which will detect the existing rotated
 		// row and refuse, forcing --worker-recovery).
 		throw new Error(
-			`In-process smoke failed (status=${smokeResult.status}); aborting before Infisical/Worker writes. ` +
-				'Containment is in place. Investigate the smoke URL / auth header before re-running.',
+			`In-process smoke failed (status=${smokeResult.status}); aborting before Infisical/Worker writes. Containment is in place. Investigate the smoke URL / auth header before re-running.`,
 		);
 	}
 
@@ -1313,9 +1289,7 @@ async function main() {
 		console.error(
 			`[execute] PARTIAL FAILURE: Infisical ${args.environment} holds the new ${SECRET_NAME}, but Worker write was terminated by signal ${wranglerResult.signal}.`,
 		);
-		console.error(
-			`[execute] D1 row: id=${rotatedRowId} (enabled); old row disabled (containment)`,
-		);
+		console.error(`[execute] D1 row: id=${rotatedRowId} (enabled); old row disabled (containment)`);
 		console.error(
 			`[execute] Recovery: re-run \`pnpm run rotate:home-api-key -- --worker-recovery=${rotatedRowId}\``,
 		);
@@ -1325,9 +1299,7 @@ async function main() {
 		console.error(
 			`[execute] PARTIAL FAILURE: Infisical ${args.environment} holds the new ${SECRET_NAME}, but Worker write failed with exit=${wranglerResult.code}.`,
 		);
-		console.error(
-			`[execute] D1 row: id=${rotatedRowId} (enabled); old row disabled (containment)`,
-		);
+		console.error(`[execute] D1 row: id=${rotatedRowId} (enabled); old row disabled (containment)`);
 		console.error(
 			`[execute] Recovery: re-run \`pnpm run rotate:home-api-key -- --worker-recovery=${rotatedRowId}\``,
 		);

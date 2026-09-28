@@ -600,10 +600,23 @@ function secretValuesEqual(a, b) {
  * operator-supplied INFISICAL_TOKEN must be present so the CLI can
  * authenticate; CLIENT_ID / CLIENT_SECRET are NOT accepted by this
  * script (operator-trust model for write paths).
+ *
+ * **PR #141 review fix (2026-09-28)**: also strip `INFISICAL_TOKEN`
+ * itself, plus the full Infisical credential set, from any
+ * non-Infisical subprocess env (Wrangler / D1). The writer-scoped
+ * Infisical token is scoped to write Infisical, not Cloudflare or
+ * D1. Mirrored from `scripts/rotate-home-api-key.mjs#buildSanitizedEnv`.
  */
 function buildSanitizedEnv(baseEnv) {
 	const env = { ...baseEnv };
-	const sensitive = ['INFISICAL_CLIENT_ID', 'INFISICAL_CLIENT_SECRET'];
+	const sensitive = [
+		'INFISICAL_TOKEN',
+		'INFISICAL_CLIENT_ID',
+		'INFISICAL_CLIENT_SECRET',
+		'INFISICAL_PROJECT_ID',
+		'INFISICAL_SITE_URL',
+		'INFISICAL_API_URL',
+	];
 	for (const key of sensitive) {
 		if (key in env) {
 			delete env[key];

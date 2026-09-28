@@ -23,6 +23,7 @@ import {
 	SECRET_NAME_VERSIONED,
 	buildInfisicalSetArgs,
 	buildInfisicalYamlContent,
+	buildSanitizedEnv,
 	buildVersionedForm,
 	buildWorkerBulkPayload,
 	buildWranglerBulkArgs,
@@ -777,6 +778,45 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 			const envelope = buildVersionedForm(s);
 			const parsed = parseVersionedSecrets(envelope);
 			assert.equal(parsed[0].value, s);
+		});
+	});
+
+	describe('buildSanitizedEnv (PR #141 review fix: full Infisical credential set stripped)', () => {
+		it('strips INFISICAL_TOKEN (writer token must not leak to Wrangler/D1 subprocesses)', () => {
+			const env = buildSanitizedEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
+			assert.equal(env.INFISICAL_TOKEN, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('strips INFISICAL_CLIENT_ID and INFISICAL_CLIENT_SECRET', () => {
+			const env = buildSanitizedEnv({
+				INFISICAL_CLIENT_ID: 'cid',
+				INFISICAL_CLIENT_SECRET: 'cs',
+				NODE_ENV: 'test',
+			});
+			assert.equal(env.INFISICAL_CLIENT_ID, undefined);
+			assert.equal(env.INFISICAL_CLIENT_SECRET, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('strips the full Infisical credential set (PROJECT_ID, SITE_URL, API_URL)', () => {
+			const env = buildSanitizedEnv({
+				INFISICAL_PROJECT_ID: 'p',
+				INFISICAL_SITE_URL: 's',
+				INFISICAL_API_URL: 'a',
+				NODE_ENV: 'test',
+			});
+			assert.equal(env.INFISICAL_PROJECT_ID, undefined);
+			assert.equal(env.INFISICAL_SITE_URL, undefined);
+			assert.equal(env.INFISICAL_API_URL, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('does not mutate the input env', () => {
+			const input = { INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' };
+			const snapshot = { ...input };
+			buildSanitizedEnv(input);
+			assert.deepEqual(input, snapshot);
 		});
 	});
 });

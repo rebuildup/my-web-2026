@@ -172,18 +172,24 @@ ADRs, READMEs, user-facing copy, or example URLs.
 Runtime secret **values** live in Infisical. The Wrangler configuration
 declares only the **names** (see `wrangler.jsonc#secrets.required` and
 its `wrangler.production.jsonc` mirror). The canonical production
-release sequence — #122 reconciliation → #89 Phase B `flip` → Smoke
-#1 → release PR merge → Cloudflare Workers Builds deploy →
-Smoke #2/#3 → `--delete-legacy-only` → final drift — and the
-failure / rollback paths are documented in
+release sequence and all failure / rollback paths are defined only in
 [`docs/runbook/cloudflare-workers-builds.md`](docs/runbook/cloudflare-workers-builds.md).
+Do not duplicate or reorder that sequence from memory. Its current
+post-incident order is `#139 containment → #89 Phase B flip → Smoke #1
+→ release PR merge / Cloudflare Workers Builds deploy → Smoke #2/#3
+→ --delete-legacy-only → final drift`.
+
+Issue #122 is closed / superseded historical context. Its dev→prod
+reconciliation path MUST NOT be executed.
+
 Authority:
 
 - ADR-0015 [`docs/adr/ADR-0015-infisical-env-management.md`](docs/adr/ADR-0015-infisical-env-management.md)
   §1 (Infisical SoT) / §6 (consumer API key) / §9 (staged design +
   audit-only semantics).
-- Issues #71 (runbook) / #89 (Phase B) / #122 (reconciliation) /
-  #124 (canonical sequence).
+- Issues #71 (runbook) / #89 (Phase B) / #124 (canonical sequence) /
+  #139 (credential-containment incident). Issue #122 is historical
+  only and is not an active release gate.
 - The companion `wrangler.production.jsonc` `secrets.required` block
   header distinguishes the source-controlled desired contract from
   the live Worker binding state during the Phase B window.

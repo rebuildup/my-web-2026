@@ -50,14 +50,17 @@ import {
 	buildInfisicalYamlContent,
 	buildRotatedRowName,
 	buildSanitizedEnv,
+	buildSecretReadUrl,
 	buildWorkerBulkPayload,
 	buildWranglerBulkArgs,
 	buildWranglerEnv,
 	deriveRotationId,
 	generatePlaintext,
 	generateRowId,
+	interpretReadResponse,
 	keyHash,
 	parseArgs,
+	readInfisicalSecret,
 	runSmoke,
 	secretValuesEqual,
 	spawnInfisicalSet,
@@ -468,8 +471,12 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 	});
 
 	describe('buildInfisicalSetArgs', () => {
-		it('uses secrets set --file', () => {
-			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod');
+		it('uses secrets set --file with --projectId <workspaceId> (Issue #147 contract)', () => {
+			// The Infisical CLI v0.43.x requires --projectId when
+			// INFISICAL_TOKEN is set via env. Without it, the CLI
+			// refuses to write. The fix was applied uniformly to all
+			// three drivers (reconcile / rotate-better-auth / rotate-home).
+			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod', 'ws-abc-123');
 			assert.deepEqual(args, [
 				'secrets',
 				'set',
@@ -479,15 +486,323 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				'prod',
 				'--path',
 				'/',
+				'--projectId',
+				'ws-abc-123',
 			]);
 		});
 
 		it('does NOT include the plaintext value (file-only contract)', () => {
 			// The plaintext is in the file content, never in argv.
-			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod', 'ws-abc-123');
 			for (const arg of args) {
 				assert.ok(!arg.includes('mk_home_'), `argv unexpectedly contains plaintext: ${arg}`);
 			}
+		});
+
+		it('--projectId is non-empty (would otherwise fail CLI validation)', () => {
+			// Pin: buildInfisicalSetArgs does not check this itself;
+			// callers must pass a non-empty workspaceId. Documenting
+			// the contract for the next reader.
+			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod', 'ws-abc-123');
+			const i = args.indexOf('--projectId');
+			assert.ok(i >= 0);
+			assert.ok(args[i + 1].length > 0, '--projectId must be followed by a non-empty value');
+		});
+	});
+
+	describe('buildSecretReadUrl (Issue #142 + #144 contract)', () => {
+		it('builds the canonical /api/v3/secrets/raw/{name} URL', () => {
+			const url = buildSecretReadUrl({
+				apiUrl: 'https://secrets.rebuildup.dev',
+				workspaceId: 'ws-abc-123',
+				environment: 'prod',
+				name: SECRET_NAME,
+			});
+			const parsed = new URL(url);
+			assert.equal(parsed.pathname, `/api/v3/secrets/raw/${SECRET_NAME}`);
+			assert.equal(parsed.hostname, 'secrets.rebuildup.dev');
+			assert.equal(parsed.protocol, 'https:');
+		});
+
+		it('includes required query params (workspaceId, environment, secretPath, viewSecretValue)', () => {
+			const url = buildSecretReadUrl({
+				apiUrl: 'https://secrets.rebuildup.dev',
+				workspaceId: 'ws-abc-123',
+				environment: 'prod',
+				name: SECRET_NAME,
+			});
+			const params = new URL(url).searchParams;
+			assert.equal(params.get('workspaceId'), 'ws-abc-123');
+			assert.equal(params.get('environment'), 'prod');
+			assert.equal(params.get('secretPath'), '/');
+			assert.equal(params.get('viewSecretValue'), 'true');
+		});
+
+		it('does NOT include `type` query param (regression guard for Issue #142 + #144)', () => {
+			// type=personal excludes shared secrets (HTTP 404); type=shared is
+			// rejected by the API (HTTP 422). Omitting `type` resolves to the
+			// project's actual storage type (shared), which is what the driver
+			// needs. PR #143 (Issue #142) made this an enforced invariant.
+			const url = buildSecretReadUrl({
+				apiUrl: 'https://secrets.rebuildup.dev',
+				workspaceId: 'ws-abc-123',
+				environment: 'prod',
+				name: SECRET_NAME,
+			});
+			const params = new URL(url).searchParams;
+			assert.equal(params.has('type'), false);
+		});
+
+		it('trims trailing slashes from apiUrl', () => {
+			const url = buildSecretReadUrl({
+				apiUrl: 'https://secrets.rebuildup.dev////',
+				workspaceId: 'ws-abc-123',
+				environment: 'prod',
+				name: SECRET_NAME,
+			});
+			const parsed = new URL(url);
+			// No double slash before /api/v3/...
+			assert.ok(!parsed.pathname.startsWith('//'), `pathname has double slash: ${parsed.pathname}`);
+			assert.equal(parsed.pathname, `/api/v3/secrets/raw/${SECRET_NAME}`);
+		});
+
+		it('dev and prod param sets are identical except environment', () => {
+			// Same call shape for both source/dev and target/prod reads.
+			const devUrl = buildSecretReadUrl({
+				apiUrl: 'https://secrets.rebuildup.dev',
+				workspaceId: 'ws-abc-123',
+				environment: 'dev',
+				name: SECRET_NAME,
+			});
+			const prodUrl = buildSecretReadUrl({
+				apiUrl: 'https://secrets.rebuildup.dev',
+				workspaceId: 'ws-abc-123',
+				environment: 'prod',
+				name: SECRET_NAME,
+			});
+			const devParams = new URL(devUrl).searchParams;
+			const prodParams = new URL(prodUrl).searchParams;
+			const devKeys = [...devParams.keys()].sort();
+			const prodKeys = [...prodParams.keys()].sort();
+			assert.deepEqual(devKeys, prodKeys);
+			assert.equal(devParams.get('environment'), 'dev');
+			assert.equal(prodParams.get('environment'), 'prod');
+		});
+	});
+
+	describe('interpretReadResponse (Issue #144 wrapped shape)', () => {
+		it('returns the secretValue from wrapped { secret: { secretValue } }', () => {
+			const response = { secret: { secretValue: 'mk_home_FreshValue' } };
+			assert.equal(
+				interpretReadResponse({
+					response,
+					allowMissing: false,
+					environment: 'prod',
+					name: SECRET_NAME,
+				}),
+				'mk_home_FreshValue',
+			);
+		});
+
+		it('returns the secretValue when wrapped response carries extra keys (type/version/_id)', () => {
+			// Real Infisical API response includes _id, type, secretPath,
+			// version, etc. alongside secretValue inside `secret`.
+			const response = {
+				secret: {
+					_id: 'abc',
+					secretValue: 'mk_home_FreshValue',
+					type: 'shared',
+					secretPath: '/',
+					version: 1,
+				},
+			};
+			assert.equal(
+				interpretReadResponse({
+					response,
+					allowMissing: false,
+					environment: 'prod',
+					name: SECRET_NAME,
+				}),
+				'mk_home_FreshValue',
+			);
+		});
+
+		it('throws on wrapped { secret: { secretValue: "" } }', () => {
+			const response = { secret: { secretValue: '' } };
+			assert.throws(
+				() =>
+					interpretReadResponse({
+						response,
+						allowMissing: false,
+						environment: 'prod',
+						name: SECRET_NAME,
+					}),
+				new RegExp(`${SECRET_NAME} is missing or empty in environment=prod`),
+			);
+		});
+
+		it('throws on wrapped { secret: { secretValue: 12345 } } (non-string)', () => {
+			const response = { secret: { secretValue: 12345 } };
+			assert.throws(
+				() =>
+					interpretReadResponse({
+						response,
+						allowMissing: false,
+						environment: 'prod',
+						name: SECRET_NAME,
+					}),
+				new RegExp(`${SECRET_NAME} is missing or empty in environment=prod`),
+			);
+		});
+
+		it('throws on wrapped { secret: {} } (defensive — empty inner secret)', () => {
+			const response = { secret: {} };
+			assert.throws(
+				() =>
+					interpretReadResponse({
+						response,
+						allowMissing: false,
+						environment: 'prod',
+						name: SECRET_NAME,
+					}),
+				new RegExp(`${SECRET_NAME} is missing or empty in environment=prod`),
+			);
+		});
+
+		it('throws on OLD flat { secretValue: ... } (regression guard for Issue #144)', () => {
+			// The Infisical API returns the wrapped shape; a flat shape
+			// would mean someone re-introduced the wrong parser.
+			const response = { secretValue: 'mk_home_FreshValue' };
+			assert.throws(
+				() =>
+					interpretReadResponse({
+						response,
+						allowMissing: false,
+						environment: 'prod',
+						name: SECRET_NAME,
+					}),
+				new RegExp(`${SECRET_NAME} is missing or empty in environment=prod`),
+			);
+		});
+
+		it('returns null when response is null AND allowMissing=true (idempotent first write)', () => {
+			assert.equal(
+				interpretReadResponse({
+					response: null,
+					allowMissing: true,
+					environment: 'prod',
+					name: SECRET_NAME,
+				}),
+				null,
+			);
+		});
+
+		it('throws when response is null AND allowMissing=false (source must exist)', () => {
+			assert.throws(
+				() =>
+					interpretReadResponse({
+						response: null,
+						allowMissing: false,
+						environment: 'dev',
+						name: SECRET_NAME,
+					}),
+				new RegExp(`${SECRET_NAME} is missing or empty in environment=dev`),
+			);
+		});
+
+		it('throws when response has no `secret` key at all (defensive)', () => {
+			const response = { data: { secretValue: 'x' } };
+			assert.throws(
+				() =>
+					interpretReadResponse({
+						response,
+						allowMissing: false,
+						environment: 'prod',
+						name: SECRET_NAME,
+					}),
+				new RegExp(`${SECRET_NAME} is missing or empty in environment=prod`),
+			);
+		});
+	});
+
+	describe('readInfisicalSecret (end-to-end wiring: URL → httpsGetJson → interpretReadResponse)', () => {
+		function captureHttps(returns) {
+			const calls = [];
+			const queue = Array.isArray(returns) ? returns : [returns];
+			const stub = async (url, token, opts) => {
+				calls.push({ url, token, opts });
+				return queue.shift();
+			};
+			return { stub, calls };
+		}
+
+		it('builds the canonical URL and returns the wrapped secretValue', async () => {
+			const { stub, calls } = captureHttps({
+				secret: { secretValue: 'mk_home_ProdValue' },
+			});
+			const value = await readInfisicalSecret({
+				apiUrl: 'https://secrets.rebuildup.dev',
+				token: 'writer-token',
+				workspaceId: 'ws-abc-123',
+				environment: 'prod',
+				name: SECRET_NAME,
+				httpsGetJsonFn: stub,
+			});
+			assert.equal(value, 'mk_home_ProdValue');
+			assert.equal(calls.length, 1);
+			const parsed = new URL(calls[0].url);
+			assert.equal(parsed.pathname, `/api/v3/secrets/raw/${SECRET_NAME}`);
+			assert.equal(parsed.searchParams.get('environment'), 'prod');
+			assert.equal(parsed.searchParams.get('workspaceId'), 'ws-abc-123');
+			assert.equal(parsed.searchParams.has('type'), false);
+			assert.equal(calls[0].token, 'writer-token');
+			assert.deepEqual(calls[0].opts, { allowNotFound: false });
+		});
+
+		it('passes allowNotFound=true when allowMissing=true (idempotent first write)', async () => {
+			const { stub, calls } = captureHttps(null);
+			const value = await readInfisicalSecret({
+				apiUrl: 'https://secrets.rebuildup.dev',
+				token: 'writer-token',
+				workspaceId: 'ws-abc-123',
+				environment: 'prod',
+				name: SECRET_NAME,
+				allowMissing: true,
+				httpsGetJsonFn: stub,
+			});
+			assert.equal(value, null);
+			assert.equal(calls.length, 1);
+			assert.deepEqual(calls[0].opts, { allowNotFound: true });
+		});
+
+		it('throws when httpsGetJson returns null and allowMissing=false (source must exist)', async () => {
+			const { stub } = captureHttps(null);
+			await assert.rejects(
+				readInfisicalSecret({
+					apiUrl: 'https://secrets.rebuildup.dev',
+					token: 'writer-token',
+					workspaceId: 'ws-abc-123',
+					environment: 'dev',
+					name: SECRET_NAME,
+					httpsGetJsonFn: stub,
+				}),
+				new RegExp(`${SECRET_NAME} is missing or empty in environment=dev`),
+			);
+		});
+
+		it('throws when httpsGetJson returns an empty wrapped secret', async () => {
+			const { stub } = captureHttps({ secret: { secretValue: '' } });
+			await assert.rejects(
+				readInfisicalSecret({
+					apiUrl: 'https://secrets.rebuildup.dev',
+					token: 'writer-token',
+					workspaceId: 'ws-abc-123',
+					environment: 'prod',
+					name: SECRET_NAME,
+					httpsGetJsonFn: stub,
+				}),
+				new RegExp(`${SECRET_NAME} is missing or empty in environment=prod`),
+			);
 		});
 	});
 
@@ -911,12 +1226,13 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 	});
 
 	describe('spawnInfisicalSet (stdio discipline, file contract)', () => {
-		it('forwards argv exactly, sets stdio=[pipe, pipe, pipe]', () => {
+		it('forwards argv exactly (including --projectId), sets stdio=[pipe, pipe, pipe]', () => {
 			let captured;
 			const child = spawnInfisicalSet({
 				cliPath: '/fake/infisical',
 				yamlPath: '/tmp/rotate.yaml',
 				environment: 'prod',
+				workspaceId: 'ws-abc-123',
 				env: process.env,
 				spawnFn: captureSpawn(0, (c) => {
 					captured = c;
@@ -932,6 +1248,8 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				'prod',
 				'--path',
 				'/',
+				'--projectId',
+				'ws-abc-123',
 			]);
 			assert.deepEqual(captured.opts.stdio, ['pipe', 'pipe', 'pipe']);
 		});
@@ -942,6 +1260,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				cliPath: '/fake/infisical',
 				yamlPath: '/tmp/rotate.yaml',
 				environment: 'prod',
+				workspaceId: 'ws-abc-123',
 				env: process.env,
 				spawnFn: captureSpawn(0, (c) => {
 					captured = c;
@@ -1058,7 +1377,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			// in a 0600 temp file, NOT argv/stdout.
 			const yaml = buildInfisicalYamlContent(plaintext);
 			assert.ok(yaml.includes(plaintext)); // contained in the FILE
-			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod', 'ws-abc-123');
 			for (const arg of args) {
 				assert.ok(!arg.includes(plaintext), `arg leaks plaintext: ${arg}`);
 			}

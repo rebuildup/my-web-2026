@@ -1179,7 +1179,6 @@ describe('execute recovery ordering contract', () => {
 	});
 });
 
-
 describe('Infisical raw-secret read contract (consumer API key)', () => {
 	it('omits the type query parameter and preserves required raw-secret parameters', () => {
 		const url = buildSecretReadUrl({

@@ -142,7 +142,7 @@ What `execute` does (10 stages):
 2. **Locate OLD row**: SELECT the enabled `home-self-consumption` row
    in D1. If missing, abort with a clear bootstrap-required error.
    Note: the OLD row is **NOT** disabled at this point; that is
-   Stage 7.
+   Stage 8.
 3. **Generate fresh plaintext + hash**: CSPRNG (`crypto.randomBytes`)
    → 52-char a-zA-Z alphabet → `mk_home_<52-char>` plaintext →
    SHA-256 base64url hash. The plaintext NEVER leaves the Node process.
@@ -162,7 +162,7 @@ What `execute` does (10 stages):
    override** — sending `Authorization: Bearer <fresh>` to an
    arbitrary URL would exfiltrate the new credential (PR #141
    re-review, 2026-09-28). If the smoke FAILS, the script aborts
-   BEFORE Stage 7 (disable-old), so the OLD row stays valid. The
+   BEFORE Stage 8 (disable-old), so the OLD row stays valid. The
    operator runs `--disable-row=<rotatedRowId>` to discard the fresh
    row, then investigates the surface and re-runs `--execute`.
 7. **Write Infisical `prod` + verify recoverable SoT**: 0600 YAML
@@ -245,14 +245,15 @@ the new value. The operator's role is:
   smoke (PR #138) stays green.
 
 If the in-process smoke in Step 1 reported `FAIL`, `--execute` aborted
-before Infisical/Worker writes — containment is in place but the
-production surface did not accept the new plaintext. Investigate the
+before Infisical/disable-old/Worker writes — containment is NOT yet in
+place and the OLD row remains valid. The fresh rotated row must be
+discarded before retrying. Investigate the
 smoke URL / auth header shape before re-running.
 
 ## Step 3 — partial-failure recovery (only if needed)
 
 The script's contract is **partial-failure tolerant**. If `--execute`
-exits with code 3 (Infisical + smoke + D1 succeeded, Worker failed),
+exits with code 3 (protected smoke + Infisical persistence + D1 containment succeeded, Worker failed),
 the operator runs `--worker-recovery=<rowId>` to complete the Worker
 stage WITHOUT regenerating a new plaintext:
 

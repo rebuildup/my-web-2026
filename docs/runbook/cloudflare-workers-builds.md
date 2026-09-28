@@ -95,13 +95,6 @@ addition to `BETTER_AUTH_SECRETS`. The config comment in
 `wrangler.production.jsonc#secrets.required` is the **next deploy's
 contract**, not a claim about the current Worker state.
 
-Wrangler's `deploy --secrets-file` merge semantics are part of this recovery
-invariant: existing Worker secrets omitted from the secrets file are preserved
-from the previous version, and ordinary deploy does not delete secrets. The
-release deploy therefore uploads the versioned two-name file **without**
-implicitly deleting the legacy binding. Legacy removal remains an explicit
-`delete-legacy-only` operation after Smoke #2/#3.
-
 To inspect live state without leaking values:
 
 ```bash
@@ -120,15 +113,22 @@ keeps recovery paths well-defined. **Do not reorder.**
        ▼
 #89 Phase B `flip` (Infisical write of versioned envelope + bulk put
        `BETTER_AUTH_SECRETS` to Worker via scripts/phase-3-plus-prod-flip.mjs)
-       │
+       │  → Worker now carries BOTH legacy `BETTER_AUTH_SECRET` and
+       │    versioned `BETTER_AUTH_SECRETS`. `main` runtime code still
+       │    reads legacy (`BETTER_AUTH_SECRET`). The versioned binding
+       │    is **inert** until #91 merge/deploy.
        ▼
-Smoke #1 — **pre-release transition smoke only**:
-       current production remains healthy on the legacy runtime path;
-       live Worker secret list shows the transition 3-name state.
-       NOTE: current `main` does not read `BETTER_AUTH_SECRETS`, so
-       versioned runtime behavior cannot be proven before #91 deploy.
+Smoke #1 — transition smoke (PRE #91-merge; legacy runtime still active)
+       │  Automated `pnpm run e2e:prod` (canonical surfaces green,
+       │  `wrangler secret list` confirms versioned binding present).
+       │  **Operator manual sign-in** at
+       │  https://rebuildup.dev/admin/login with real production
+       │  credentials; this verifies the **legacy runtime path** has
+       │  not regressed during the binding flip (cookies must persist
+       │  across reload). It does NOT validate the versioned runtime
+       │  path — see "Smoke boundary semantics" below.
        │
-       ├── failure → rollback-versioned-only → investigate → #89 NOT closed
+       ├── failure → rollback-versioned-only → invesetigate → #89 NOT closed
        ▼
 Release PR #91 (`release-x-y-z → main`) merged
        (operator explicit approval required per
@@ -136,16 +136,24 @@ Release PR #91 (`release-x-y-z → main`) merged
        │
        ▼
 Cloudflare Workers Builds observes `main` push, builds, runs
-       `pnpm run deploy:production:prepared` (first runs the read-only
-       Infisical / Wrangler / live-Worker secret-name preflight in
-       `transition` mode, then applies pending D1 migrations + Wrangler
-       deploy with the versioned-2-name secrets.required)
+       `pnpm run deploy:production:prepared` (applies pending D1
+       migrations + Wrangler deploy with the versioned-2-name
+       secrets.required). `main` runtime code now reads
+       `BETTER_AUTH_SECRETS`; legacy binding still present as fallback.
        │
        ▼
-Smoke #2 — automated on the newly deployed release; this is the first runtime smoke that actually exercises code capable of reading `BETTER_AUTH_SECRETS`
+Smoke #2 — versioned-runtime smoke (POST #91-merge/deploy; automated)
+       │  `pnpm run e2e:prod` (canonical surfaces) +
+       │  anonymous `GET /admin/login` returns 200 (the #106 fix
+       │  in production: login form reachable without auth gate).
+       │  `wrangler secret list` confirms both bindings still present.
+       │
        ▼
-Smoke #3 — **operator manual sign-in** at https://rebuildup.dev/admin/login,
-       session persistence across reload, sign-out flow
+Smoke #3 — versioned-runtime operator manual sign-in (POST #91-merge/deploy)
+       │  Operator signs in to https://rebuildup.dev/admin/login
+       │  with real production credentials; confirms session
+       │  established and persists across reload. This is the FIRST
+       │  smoke that exercises the versioned-runtime path.
        │
        ├── failure here → restore-legacy-only (re-adds BETTER_AUTH_SECRET
        │   to Worker via bulk put) → investigate → #89 NOT closed
@@ -157,10 +165,26 @@ Smoke #3 — **operator manual sign-in** at https://rebuildup.dev/admin/login,
        ▼
 final drift check — `pnpm run infisical:check:cf -- --execute
        --environment=prod --worker-contract=final --require-live-worker`
-       reports Tier 1 =
-       versioned+audit set, Tier 2 = versioned 2-name, Tier 3 =
-       versioned 2-name
+       reports Tier 1 = versioned+audit set,
+       Tier 2 = versioned 2-name, Tier 3 = versioned 2-name
 ```
+
+## Smoke boundary semantics
+
+The smokes look superficially similar but verify **different things**:
+
+| Smoke | Code state | Binding state | Validates |
+| --- | --- | --- | --- |
+| **#1 (transition)** | `main` reads legacy `BETTER_AUTH_SECRET` | BOTH bindings bound (legacy + versioned) | Transition did not regress the legacy runtime; the versioned binding is observable via `wrangler secret list` but **inert** because `main` still reads legacy |
+| **#2 (versioned, automated)** | `main` reads `BETTER_AUTH_SECRETS` | BOTH bindings bound | Canonical surfaces green on versioned runtime; anonymous `/admin/login` reachable (#106 production verification) |
+| **#3 (versioned, manual)** | `main` reads `BETTER_AUTH_SECRETS` | BOTH bindings bound | Operator's real admin credential signs in successfully via versioned runtime; cookies persist |
+
+**Critical invariant:** Smoke #1 **cannot** validate the
+`BETTER_AUTH_SECRETS` runtime path because `main` does not read it
+until #91 merges. Treating Smoke #1 as a versioned-runtime check
+would yield a false-positive (legacy path signs in successfully and
+the operator believes the versioned path is healthy). The
+versioned-runtime check is therefore deferred to Smoke #2/#3.
 
 ## Deploy preflight contract
 
@@ -194,9 +218,9 @@ Its mode grammar (v4):
 | --- | --- | --- | --- |
 | `--dry-run --operation=flip` (default) | No | No | Verify the planned operation |
 | `--execute --operation=flip` | Yes (prod `BETTER_AUTH_SECRETS` UPSERT) | Yes (`BETTER_AUTH_SECRETS` bulk put) | Initial Phase B — add versioned binding |
-| `--execute --delete-legacy-only` | No | Yes (`BETTER_AUTH_SECRET` bulk null) | post-#91-merge / post-deploy, after smokes pass |
+| `--execute --delete-legacy-only` | No | Yes (`BETTER_AUTH_SECRET` bulk null) | post-#91-merge / post-deploy, after Smoke #3 passes |
 | `--execute --restore-legacy-only` | No (read-only) | Yes (`BETTER_AUTH_SECRET` bulk put) | Smoke #3 failure AFTER `delete-legacy-only` already ran |
-| `--execute --rollback-versioned-only` | No | Yes (`BETTER_AUTH_SECRETS` bulk null) | Smoke #1 failure BEFORE `delete-legacy-only` |
+| `--execute --rollback-versioned-only` | No | Yes (`BETTER_AUTH_SECRETS` bulk null) | Smoke #1 failure BEFORE `delete-legacy-only` (legacy runtime must remain readable) |
 
 `flip` requires a **writer-scoped INFISICAL_TOKEN** with edit
 permission on the prod env; the viewer Machine Identity is

@@ -130,16 +130,38 @@ function httpsGetJson(urlString, token, { allowNotFound = false } = {}) {
 	});
 }
 
-async function readSecret({ apiUrl, token, workspaceId, environment, allowMissing = false }) {
+// Pure seam: builds the GET URL for `httpsGetJson` to read a single secret
+// from the Infisical `/api/v3/secrets/raw/{name}` endpoint.
+//
+// Do NOT include `type=personal` or `type=shared` in the query. The Infisical
+// API rejects direct `type` specification on this endpoint (HTTP 422), and
+// filtering by `type=personal` excludes shared secrets (HTTP 404). The
+// default (no `type` key) resolves to the project's actual storage type
+// (shared, in this project's case), which is what G1 source/target reads
+// require.
+function buildSecretReadUrl({ apiUrl, workspaceId, environment }) {
 	const params = new URLSearchParams({
 		workspaceId,
 		environment,
 		secretPath: '/',
-		type: 'personal',
 		viewSecretValue: 'true',
 	});
-	const url = `${apiUrl.replace(/\/+$/, '')}/api/v3/secrets/raw/${SECRET_NAME}?${params.toString()}`;
+	return `${apiUrl.replace(/\/+$/, '')}/api/v3/secrets/raw/${SECRET_NAME}?${params.toString()}`;
+}
+
+async function readSecret({ apiUrl, token, workspaceId, environment, allowMissing = false }) {
+	const url = buildSecretReadUrl({ apiUrl, workspaceId, environment });
 	const response = await httpsGetJson(url, token, { allowNotFound: allowMissing });
+	return interpretReadResponse({ response, allowMissing, environment });
+}
+
+// Pure seam: interprets the parsed JSON body returned by `httpsGetJson`
+// for the `/api/v3/secrets/raw/{name}` endpoint. Pins the existing G1 contract:
+//   - source/dev 404 → throw (the script must surface a hard failure)
+//   - target/prod 404 + allowMissing=true → return null (idempotent first write)
+//   - target/prod 404 + allowMissing=false → throw
+//   - any environment with empty/missing secretValue → throw
+function interpretReadResponse({ response, allowMissing, environment }) {
 	if (response === null && allowMissing) return null;
 	if (typeof response?.secretValue !== 'string' || response.secretValue.length === 0) {
 		throw new Error(`${SECRET_NAME} is missing or empty in environment=${environment}`);
@@ -289,6 +311,8 @@ export {
 	secretValuesEqual,
 	buildYamlContent,
 	buildInfisicalSetArgs,
+	buildSecretReadUrl,
+	interpretReadResponse,
 };
 
 const invokedPath = process.argv[1] ? resolve(process.argv[1]) : null;

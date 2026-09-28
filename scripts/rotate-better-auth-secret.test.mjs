@@ -916,7 +916,6 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 	});
 });
 
-
 describe('Infisical raw-secret read contract (Better Auth)', () => {
 	it('omits the type query parameter and preserves required raw-secret parameters', () => {
 		const url = buildSecretReadUrl({

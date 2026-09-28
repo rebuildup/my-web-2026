@@ -46,7 +46,13 @@ const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 // are idempotent (D1 migration tracking + INSERT OR IGNORE seed).
 export default defineConfig({
 	testDir: './e2e',
-	globalSetup: './e2e/global-setup.ts',
+	// `globalSetup` applies the local D1 migrations + skeleton seed that
+	// `pnpm preview` needs to serve the portfolio routes. Production runs
+	// against `https://rebuildup.dev`, which already owns its D1 — the
+	// local migration step is unnecessary and (worse) shells out to the
+	// Cloudflare Workers Builds secret preflight when running under CI.
+	// Skip it when the canonical production origin is the BASE_URL.
+	globalSetup: BASE_URL.startsWith('http://127.0.0.1') ? './e2e/global-setup.ts' : undefined,
 	timeout: 30_000,
 	expect: { timeout: 5_000 },
 	fullyParallel: true,
@@ -64,13 +70,14 @@ export default defineConfig({
 			use: { ...devices['Desktop Chrome'] },
 		},
 	],
-	// `prod-smoke.spec.ts` targets the canonical production origin
-	// (`https://rebuildup.dev`) and only runs via `pnpm run e2e:prod`
-	// or the GH Actions `production smoke` workflow — the operator
-	// triggers it manually after `pnpm run deploy:production`. When
-	// the local preview webServer is up, ignore it so the regular
-	// `pnpm run e2e` (CI on push, local dev) does not DNS-fail against
-	// a domain that may not be deployed yet.
+	// `prod-*.spec.ts` (production-only specs targeting the canonical
+	// production origin `https://rebuildup.dev`) only run via
+	// `pnpm run e2e:prod` or the GH Actions `production smoke`
+	// workflow — the operator triggers it manually after
+	// `pnpm run deploy:production`. When the local preview webServer
+	// is up, ignore the `prod-*.spec.ts` glob so the regular
+	// `pnpm run e2e` (CI on push, local dev) does not DNS-fail
+	// against a domain that may not be deployed yet.
 	//
 	// `portfolio.spec.ts` likewise targets a local D1 binding: it
 	// seeds draft / unlisted / archived rows into the local D1 and
@@ -78,7 +85,7 @@ export default defineConfig({
 	// not addressable from a remote Worker deployment, so the spec
 	// is filtered out of the production-only path.
 	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
-		? '**/prod-smoke.spec.ts'
+		? '**/prod-*.spec.ts'
 		: '**/portfolio.spec.ts',
 	// The local project spins up `pnpm preview` against the build
 	// output automatically. `pnpm preview` is required because the

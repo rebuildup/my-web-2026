@@ -159,11 +159,9 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 
 		expect(mutationResponse.status(), 'reaction mutation failed').toBeLessThan(400);
 
-		const setCookieHeaders = mutationResponse
-			.headersArray()
-			.filter((h) => h.name.toLowerCase() === 'set-cookie');
-		const actorCookie = setCookieHeaders.find((h) =>
-			h.value.toLowerCase().startsWith('mw_actor_id='),
+		const setCookieHeaders = await mutationResponse.headerValues('set-cookie');
+		const actorCookie = setCookieHeaders.find((value) =>
+			value.toLowerCase().startsWith('mw_actor_id='),
 		);
 		expect(
 			actorCookie,
@@ -173,11 +171,10 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 		// `Secure`. Production origin is HTTPS; a missing `Secure`
 		// flag is an actual production wiring bug (cookie would
 		// leak over HTTP if the user ever follows an http:// link).
-		// `actorCookie` is narrowed by the preceding `toBeDefined()`
-		// assertion — optional-chain here is purely to satisfy the
-		// `noNonNullAssertion` lint rule; the chain would throw on
-		// `undefined` and the assertion would still fail loudly.
-		expect(actorCookie?.value.toLowerCase()).toContain('secure');
+		// `headerValues('set-cookie')` preserves multiple Set-Cookie
+		// values, so this remains exact even when another cookie is
+		// emitted by the same mutation response.
+		expect(actorCookie?.toLowerCase()).toContain('secure');
 	});
 
 	test('canonical origin matches the documented production URL', async ({ request }) => {

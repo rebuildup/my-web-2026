@@ -27,11 +27,14 @@ import {
 	buildInfisicalSetArgs,
 	buildInfisicalYamlContent,
 	buildSanitizedEnv,
+	buildSecretReadUrl,
 	buildVersionedForm,
 	buildWorkerBulkPayload,
 	buildWranglerBulkArgs,
 	buildWranglerEnv,
+	classifyInfisicalHttpStatus,
 	generateFreshSecret,
+	interpretInfisicalReadResponse,
 	parseArgs,
 	parseVersionedSecrets,
 	resolveInfisicalCliPath,
@@ -364,29 +367,42 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 
 	describe('buildInfisicalSetArgs', () => {
 		it('contains --file <path>', () => {
-			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod', 'workspace-id');
 			assert.equal(args[args.indexOf('--file') + 1], '/tmp/foo.yaml');
 		});
 
 		it('contains --env prod', () => {
-			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod', 'workspace-id');
 			assert.equal(args[args.indexOf('--env') + 1], 'prod');
 		});
 
 		it('contains --path /', () => {
-			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod', 'workspace-id');
 			assert.equal(args[args.indexOf('--path') + 1], '/');
 		});
 
+		it('contains --projectId <workspaceId>', () => {
+			// Issue #147 / PR #140 D-fix: INFISICAL_TOKEN alone is rejected by the
+			// Infisical CLI ("project id missing"); the CLI argv MUST carry the
+			// workspaceId read from .infisical.json so the subprocess can resolve
+			// the project without an INFISICAL_PROJECT_ID env var.
+			const args = buildInfisicalSetArgs(
+				'/tmp/foo.yaml',
+				'prod',
+				'89cda9cb-31ab-4ace-afe9-f155024850d1',
+			);
+			assert.equal(args[args.indexOf('--projectId') + 1], '89cda9cb-31ab-4ace-afe9-f155024850d1');
+		});
+
 		it('does NOT include any secret value in argv', () => {
-			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod', 'workspace-id');
 			const joined = args.join(' ');
 			assert.ok(!joined.includes('BETTER_AUTH_SECRET='));
 			assert.ok(!joined.includes('='));
 		});
 
 		it('argv never carries shell-interpretable secret value', () => {
-			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod', 'workspace-id');
 			// The args are entirely CLI flags + paths, never key=value with secret
 			for (const a of args) {
 				assert.ok(!/BETTER_AUTH_(SECRET|SECRETS)=/.test(a));
@@ -508,7 +524,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 	});
 
 	describe('spawnInfisicalSet argv + stdio discipline', () => {
-		it('argv contains --file <yamlPath>', () => {
+		it('argv contains --file <yamlPath> + --projectId <workspaceId>', () => {
 			let capturedArgs = null;
 			const captureSpawn = (_cmd, args) => {
 				capturedArgs = args;
@@ -518,6 +534,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 				cliPath: '/usr/local/bin/infisical',
 				yamlPath: '/tmp/secret.yaml',
 				environment: 'prod',
+				workspaceId: 'workspace-id',
 				env: {},
 				deps: { spawn: captureSpawn },
 			});
@@ -527,6 +544,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 			void capturedArgs;
 			assert.equal(capturedArgs[capturedArgs.indexOf('--file') + 1], '/tmp/secret.yaml');
 			assert.equal(capturedArgs[capturedArgs.indexOf('--env') + 1], 'prod');
+			assert.equal(capturedArgs[capturedArgs.indexOf('--projectId') + 1], 'workspace-id');
 		});
 
 		it('uses explicit stdio pipes (stdin pipe, stdout pipe, stderr pipe)', () => {
@@ -539,6 +557,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 				cliPath: '/usr/local/bin/infisical',
 				yamlPath: '/tmp/secret.yaml',
 				environment: 'prod',
+				workspaceId: 'workspace-id',
 				env: {},
 				deps: { spawn: captureSpawn },
 			});
@@ -559,6 +578,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 				cliPath: '/usr/local/bin/infisical',
 				yamlPath: '/tmp/secret.yaml',
 				environment: 'prod',
+				workspaceId: 'workspace-id',
 				env: {},
 				deps: { spawn: captureSpawn },
 			});
@@ -763,7 +783,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 
 		it('buildInfisicalSetArgs does not include the secret value', () => {
-			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/foo.yaml', 'prod', 'workspace-id');
 			const joined = args.join('\n');
 			assert.ok(!joined.includes('BETTER_AUTH_SECRET'));
 			assert.ok(!joined.includes('BETTER_AUTH_SECRETS'));
@@ -910,5 +930,80 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 			buildInfisicalEnv(input, 'new-token');
 			assert.deepEqual(input, snapshot);
 		});
+	});
+});
+
+describe('Infisical raw-secret read contract (Better Auth)', () => {
+	it('omits the type query parameter and preserves required raw-secret parameters', () => {
+		const url = buildSecretReadUrl({
+			apiUrl: 'https://secrets.rebuildup.dev/',
+			workspaceId: 'workspace-id',
+			environment: 'prod',
+			name: SECRET_NAME_LEGACY,
+		});
+		const parsed = new URL(url);
+		assert.equal(parsed.pathname, `/api/v3/secrets/raw/${SECRET_NAME_LEGACY}`);
+		assert.equal(parsed.searchParams.get('workspaceId'), 'workspace-id');
+		assert.equal(parsed.searchParams.get('environment'), 'prod');
+		assert.equal(parsed.searchParams.get('secretPath'), '/');
+		assert.equal(parsed.searchParams.get('viewSecretValue'), 'true');
+		assert.equal(parsed.searchParams.has('type'), false);
+	});
+
+	it('classifies 404 as missing only when allowNotFound=true', () => {
+		assert.equal(classifyInfisicalHttpStatus(200, { allowNotFound: true }), 'ok');
+		assert.equal(classifyInfisicalHttpStatus(404, { allowNotFound: true }), 'missing');
+		assert.equal(classifyInfisicalHttpStatus(404, { allowNotFound: false }), 'error');
+		assert.equal(classifyInfisicalHttpStatus(401, { allowNotFound: true }), 'error');
+		assert.equal(classifyInfisicalHttpStatus(403, { allowNotFound: true }), 'error');
+		assert.equal(classifyInfisicalHttpStatus(500, { allowNotFound: true }), 'error');
+	});
+
+	it('reads the wrapped Infisical response shape', () => {
+		const value = 'placeholder-not-a-real-secret';
+		assert.equal(
+			interpretInfisicalReadResponse({
+				response: { secret: { secretValue: value, type: 'shared' } },
+				allowMissing: false,
+				environment: 'prod',
+				name: SECRET_NAME_LEGACY,
+			}),
+			value,
+		);
+	});
+
+	it('rejects the obsolete flat response shape', () => {
+		assert.throws(
+			() =>
+				interpretInfisicalReadResponse({
+					response: { secretValue: 'placeholder-not-a-real-secret' },
+					allowMissing: false,
+					environment: 'prod',
+					name: SECRET_NAME_LEGACY,
+				}),
+			/missing or empty/,
+		);
+	});
+
+	it('returns null only for an explicitly allowed missing response', () => {
+		assert.equal(
+			interpretInfisicalReadResponse({
+				response: null,
+				allowMissing: true,
+				environment: 'prod',
+				name: SECRET_NAME_LEGACY,
+			}),
+			null,
+		);
+		assert.throws(
+			() =>
+				interpretInfisicalReadResponse({
+					response: null,
+					allowMissing: false,
+					environment: 'prod',
+					name: SECRET_NAME_LEGACY,
+				}),
+			/missing or empty/,
+		);
 	});
 });

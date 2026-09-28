@@ -286,8 +286,19 @@ function buildWranglerBulkArgs() {
 	return ['secret', 'bulk', '-c', WRANGLER_PRODUCTION_CONFIG];
 }
 
-function buildInfisicalSetArgs(yamlPath, environment) {
-	return ['secrets', 'set', '--file', yamlPath, '--env', environment, '--path', '/'];
+function buildInfisicalSetArgs(yamlPath, environment, workspaceId) {
+	return [
+		'secrets',
+		'set',
+		'--file',
+		yamlPath,
+		'--env',
+		environment,
+		'--path',
+		'/',
+		'--projectId',
+		workspaceId,
+	];
 }
 
 /**
@@ -477,9 +488,9 @@ function cleanupStaleTempDirs(
  * capture failure status without leaking the YAML contents to
  * process.stdout.
  */
-function spawnInfisicalSet({ cliPath, yamlPath, environment, env, deps = {} }) {
+function spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env, deps = {} }) {
 	const spawnFn = deps.spawn ?? spawn;
-	const child = spawnFn(cliPath, buildInfisicalSetArgs(yamlPath, environment), {
+	const child = spawnFn(cliPath, buildInfisicalSetArgs(yamlPath, environment, workspaceId), {
 		stdio: ['pipe', 'pipe', 'pipe'],
 		env,
 	});
@@ -522,7 +533,13 @@ function spawnWranglerList({ env, deps = {} }) {
 
 /* ─── HTTPS (Infisical read-back) ──────────────────────────────────────── */
 
-function httpsGetJson(urlString, token) {
+function classifyInfisicalHttpStatus(statusCode, { allowNotFound = false } = {}) {
+	if (statusCode === 200) return 'ok';
+	if (statusCode === 404 && allowNotFound) return 'missing';
+	return 'error';
+}
+
+function httpsGetJson(urlString, token, { allowNotFound = false } = {}) {
 	const url = new URL(urlString);
 	return new Promise((resolvePromise, rejectPromise) => {
 		const req = httpsRequest(
@@ -551,8 +568,13 @@ function httpsGetJson(urlString, token) {
 					chunks.push(chunk);
 				});
 				res.on('end', () => {
-					if (res.statusCode !== 200) {
-						rejectPromise(new Error(`HTTP ${res.statusCode} from ${urlString}`));
+					const status = classifyInfisicalHttpStatus(res.statusCode, { allowNotFound });
+					if (status === 'missing') {
+						resolvePromise(null);
+						return;
+					}
+					if (status === 'error') {
+						rejectPromise(new Error(`Infisical read failed with HTTP ${res.statusCode}`));
 						return;
 					}
 					try {
@@ -571,10 +593,25 @@ function httpsGetJson(urlString, token) {
 	});
 }
 
-/**
- * Read a secret VALUE from Infisical via the v3 raw-secret API.
- * Returns null ONLY when allowMissing=true and the secret is absent.
- */
+function buildSecretReadUrl({ apiUrl, workspaceId, environment, name }) {
+	const params = new URLSearchParams({
+		workspaceId,
+		environment,
+		secretPath: '/',
+		viewSecretValue: 'true',
+	});
+	return `${apiUrl.replace(/\/+$/, '')}/api/v3/secrets/raw/${name}?${params.toString()}`;
+}
+
+function interpretInfisicalReadResponse({ response, allowMissing, environment, name }) {
+	if (response === null && allowMissing) return null;
+	const value = response?.secret?.secretValue;
+	if (typeof value !== 'string' || value.length === 0) {
+		throw new Error(`${name} is missing or empty in environment=${environment}`);
+	}
+	return value;
+}
+
 async function readInfisicalSecret({
 	apiUrl,
 	token,
@@ -583,20 +620,9 @@ async function readInfisicalSecret({
 	name,
 	allowMissing = false,
 }) {
-	const params = new URLSearchParams({
-		workspaceId,
-		environment,
-		secretPath: '/',
-		type: 'personal',
-		viewSecretValue: 'true',
-	});
-	const url = `${apiUrl.replace(/\/+$/, '')}/api/v3/secrets/raw/${name}?${params.toString()}`;
-	const response = await httpsGetJson(url, token);
-	if (response === null && allowMissing) return null;
-	if (typeof response?.secretValue !== 'string' || response.secretValue.length === 0) {
-		throw new Error(`${name} is missing or empty in environment=${environment}`);
-	}
-	return response.secretValue;
+	const url = buildSecretReadUrl({ apiUrl, workspaceId, environment, name });
+	const response = await httpsGetJson(url, token, { allowNotFound: allowMissing });
+	return interpretInfisicalReadResponse({ response, allowMissing, environment, name });
 }
 
 function secretValuesEqual(a, b) {
@@ -762,6 +788,9 @@ export {
 	spawnInfisicalSet,
 	spawnWranglerBulk,
 	spawnWranglerList,
+	classifyInfisicalHttpStatus,
+	buildSecretReadUrl,
+	interpretInfisicalReadResponse,
 	httpsGetJson,
 	readInfisicalSecret,
 	secretValuesEqual,
@@ -810,8 +839,8 @@ async function readWranglerBindingNames(env) {
 	});
 }
 
-async function runInfisicalWrite({ cliPath, yamlPath, environment, env }) {
-	const child = spawnInfisicalSet({ cliPath, yamlPath, environment, env });
+async function runInfisicalWrite({ cliPath, yamlPath, environment, workspaceId, env }) {
+	const child = spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env });
 	const stdoutChunks = [];
 	const stderrChunks = [];
 	child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
@@ -957,6 +986,7 @@ async function main() {
 				cliPath,
 				yamlPath,
 				environment: args.environment,
+				workspaceId: infisicalConfig.workspaceId,
 				env: infisicalEnv,
 			});
 			if (infisicalResult.signal) {

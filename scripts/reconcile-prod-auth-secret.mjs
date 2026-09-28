@@ -211,27 +211,42 @@ function resolveInfisicalCliPath() {
 	return cliPath;
 }
 
-function buildInfisicalSetArgs(yamlPath) {
-	return ['secrets', 'set', '--file', yamlPath, '--env', TARGET_ENV, '--path', '/'];
+function buildInfisicalSetArgs(yamlPath, workspaceId) {
+	return [
+		'secrets',
+		'set',
+		'--file',
+		yamlPath,
+		'--env',
+		TARGET_ENV,
+		'--path',
+		'/',
+		'--projectId',
+		workspaceId,
+	];
 }
 
-function writeTargetSecretViaCli({ value, token }) {
+function writeTargetSecretViaCli({ value, token, workspaceId }) {
 	const tempDir = mkdtempSync(resolve(tmpdir(), 'my-web-2026-issue-122-'));
 	const yamlPath = resolve(tempDir, 'secret.yaml');
 	try {
 		writeFileSync(yamlPath, buildYamlContent(value), { encoding: 'utf8', mode: 0o600 });
-		const result = spawnSync(resolveInfisicalCliPath(), buildInfisicalSetArgs(yamlPath), {
-			cwd: REPO_ROOT,
-			shell: false,
-			encoding: 'utf8',
-			timeout: CLI_TIMEOUT_MS,
-			stdio: ['ignore', 'pipe', 'pipe'],
-			env: {
-				...process.env,
-				INFISICAL_TOKEN: token,
-				INFISICAL_API_URL: process.env.INFISICAL_API_URL ?? API_URL_DEFAULT,
+		const result = spawnSync(
+			resolveInfisicalCliPath(),
+			buildInfisicalSetArgs(yamlPath, workspaceId),
+			{
+				cwd: REPO_ROOT,
+				shell: false,
+				encoding: 'utf8',
+				timeout: CLI_TIMEOUT_MS,
+				stdio: ['ignore', 'pipe', 'pipe'],
+				env: {
+					...process.env,
+					INFISICAL_TOKEN: token,
+					INFISICAL_API_URL: process.env.INFISICAL_API_URL ?? API_URL_DEFAULT,
+				},
 			},
-		});
+		);
 		if (result.error) throw new Error(`Infisical CLI failed to spawn: ${result.error.message}`);
 		if (result.signal) throw new Error(`Infisical CLI terminated by signal ${result.signal}`);
 		if (result.status !== 0) {
@@ -297,7 +312,7 @@ async function main() {
 	}
 
 	console.log('[execute] target differs; reconciling prod audit copy from known recovery source');
-	writeTargetSecretViaCli({ value: sourceValue, token });
+	writeTargetSecretViaCli({ value: sourceValue, token, workspaceId });
 
 	const readBackValue = await readSecret({
 		apiUrl,

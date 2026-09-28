@@ -676,6 +676,12 @@ function execD1Sql({ target, command, json = true, env }) {
 
 /* ─── HTTPS (Infisical read-back) ──────────────────────────────────────── */
 
+function classifyInfisicalHttpStatus(statusCode, { allowNotFound = false } = {}) {
+	if (statusCode === 200) return 'ok';
+	if (statusCode === 404 && allowNotFound) return 'missing';
+	return 'error';
+}
+
 function httpsGetJson(urlString, token, { allowNotFound = false } = {}) {
 	const url = new URL(urlString);
 	return new Promise((resolvePromise, rejectPromise) => {
@@ -705,12 +711,13 @@ function httpsGetJson(urlString, token, { allowNotFound = false } = {}) {
 					chunks.push(chunk);
 				});
 				res.on('end', () => {
-					if (allowNotFound && res.statusCode === 404) {
+					const status = classifyInfisicalHttpStatus(res.statusCode, { allowNotFound });
+					if (status === 'missing') {
 						resolvePromise(null);
 						return;
 					}
-					if (res.statusCode !== 200) {
-						rejectPromise(new Error(`HTTP ${res.statusCode} from ${urlString}`));
+					if (status === 'error') {
+						rejectPromise(new Error(`Infisical read failed with HTTP ${res.statusCode}`));
 						return;
 					}
 					try {
@@ -729,15 +736,6 @@ function httpsGetJson(urlString, token, { allowNotFound = false } = {}) {
 	});
 }
 
-// Pure seam: builds the GET URL for `httpsGetJson` to read a single secret
-// from the Infisical `/api/v3/secrets/raw/{name}` endpoint.
-//
-// Do NOT include `type=personal` or `type=shared` in the query. The Infisical
-// API rejects direct `type` specification on this endpoint (HTTP 422), and
-// filtering by `type=personal` excludes shared secrets (HTTP 404). The
-// default (no `type` key) resolves to the project's actual storage type
-// (shared, in this project's case), which is what production read-back /
-// verify-only require. (PR #143 + #145 contract, Issue #142 + #144.)
 function buildSecretReadUrl({ apiUrl, workspaceId, environment, name }) {
 	const params = new URLSearchParams({
 		workspaceId,
@@ -748,6 +746,15 @@ function buildSecretReadUrl({ apiUrl, workspaceId, environment, name }) {
 	return `${apiUrl.replace(/\/+$/, '')}/api/v3/secrets/raw/${name}?${params.toString()}`;
 }
 
+function interpretInfisicalReadResponse({ response, allowMissing, environment, name }) {
+	if (response === null && allowMissing) return null;
+	const value = response?.secret?.secretValue;
+	if (typeof value !== 'string' || value.length === 0) {
+		throw new Error(`${name} is missing or empty in environment=${environment}`);
+	}
+	return value;
+}
+
 async function readInfisicalSecret({
 	apiUrl,
 	token,
@@ -755,35 +762,10 @@ async function readInfisicalSecret({
 	environment,
 	name,
 	allowMissing = false,
-	httpsGetJsonFn = httpsGetJson,
 }) {
 	const url = buildSecretReadUrl({ apiUrl, workspaceId, environment, name });
-	const response = await httpsGetJsonFn(url, token, { allowNotFound: allowMissing });
-	return interpretReadResponse({ response, allowMissing, environment, name });
-}
-
-// Pure seam: interprets the parsed JSON body returned by `httpsGetJson`
-// for the `/api/v3/secrets/raw/{name}` endpoint. Pins the contract:
-//
-//   - source/dev 404 → throw (the script must surface a hard failure)
-//   - target/prod 404 + allowMissing=true → return null (idempotent first write / verify-only)
-//   - target/prod 404 + allowMissing=false → throw
-//   - any environment with empty/missing secretValue → throw
-//
-// The Infisical `/api/v3/secrets/raw/{name}` 200 response shape is:
-//   { "secret": { "_id": ..., "secretValue": "...", "type": "shared", ... } }
-//
-// `secretValue` lives at `response.secret.secretValue`, NOT at top-level.
-// This was discovered in Issue #144 after PR #143 removed the `type=personal`
-// query filter — previously 404 short-circuited before shape parsing could
-// observe the wrap.
-function interpretReadResponse({ response, allowMissing, environment, name }) {
-	if (response === null && allowMissing) return null;
-	const value = response?.secret?.secretValue;
-	if (typeof value !== 'string' || value.length === 0) {
-		throw new Error(`${name} is missing or empty in environment=${environment}`);
-	}
-	return value;
+	const response = await httpsGetJson(url, token, { allowNotFound: allowMissing });
+	return interpretInfisicalReadResponse({ response, allowMissing, environment, name });
 }
 
 function secretValuesEqual(a, b) {
@@ -1022,10 +1004,11 @@ export {
 	spawnInfisicalSet,
 	spawnWranglerBulk,
 	spawnWranglerList,
+	classifyInfisicalHttpStatus,
+	buildSecretReadUrl,
+	interpretInfisicalReadResponse,
 	httpsGetJson,
 	readInfisicalSecret,
-	buildSecretReadUrl,
-	interpretReadResponse,
 	runSmoke,
 	awaitExit,
 	buildSanitizedEnv,

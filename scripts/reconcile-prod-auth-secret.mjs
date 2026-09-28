@@ -161,12 +161,21 @@ async function readSecret({ apiUrl, token, workspaceId, environment, allowMissin
 //   - target/prod 404 + allowMissing=true → return null (idempotent first write)
 //   - target/prod 404 + allowMissing=false → throw
 //   - any environment with empty/missing secretValue → throw
+//
+// The Infisical `/api/v3/secrets/raw/{name}` 200 response shape is:
+//   { "secret": { "_id": ..., "secretValue": "...", "type": "shared", ... } }
+//
+// `secretValue` lives at `response.secret.secretValue`, NOT at top-level.
+// This was discovered in Issue #144 after PR #143 removed the `type=personal`
+// query filter — previously 404 short-circuited before shape parsing could
+// observe the wrap.
 function interpretReadResponse({ response, allowMissing, environment }) {
 	if (response === null && allowMissing) return null;
-	if (typeof response?.secretValue !== 'string' || response.secretValue.length === 0) {
+	const value = response?.secret?.secretValue;
+	if (typeof value !== 'string' || value.length === 0) {
 		throw new Error(`${SECRET_NAME} is missing or empty in environment=${environment}`);
 	}
-	return response.secretValue;
+	return value;
 }
 
 function secretValuesEqual(left, right) {

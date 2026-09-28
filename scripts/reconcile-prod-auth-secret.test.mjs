@@ -165,6 +165,14 @@ test('buildSecretReadUrl does not add or remove params across dev and prod', () 
 // interpretReadResponse — pure seam for the readSecret response handler.
 // Pins the existing G1 contract for how the script interprets the
 // `httpsGetJson` result for source (dev) and target (prod) reads.
+//
+// The Infisical `/api/v3/secrets/raw/{name}` 200 response is wrapped:
+//   { "secret": { "secretValue": "...", "type": "shared", ... } }
+// so `secretValue` lives at `response.secret.secretValue`, NOT at top-level.
+// Regression coverage for Issue #144: previously the interpreter read
+// `response.secretValue` (top-level) and silently failed — PR #143
+// removed the `type=personal` query filter, but response shape parsing
+// had never been exercised (the prior 404 short-circuited).
 
 test('interpretReadResponse: source/dev 404 + allowMissing=false throws', () => {
 	// The real `httpsGetJson` returns `null` when allowMissing is true; with
@@ -192,11 +200,12 @@ test('interpretReadResponse: target/prod 404 + allowMissing=false throws', () =>
 	);
 });
 
-test('interpretReadResponse: 200 with empty secretValue throws', () => {
+test('interpretReadResponse: 200 with wrapped { secret: { secretValue: "" } } throws', () => {
+	// Issue #144 wrapped-shape contract. Empty value at the nested location.
 	assert.throws(
 		() =>
 			interpretReadResponse({
-				response: { secretValue: '' },
+				response: { secret: { secretValue: '' } },
 				allowMissing: false,
 				environment: 'dev',
 			}),
@@ -204,11 +213,11 @@ test('interpretReadResponse: 200 with empty secretValue throws', () => {
 	);
 });
 
-test('interpretReadResponse: 200 with non-string secretValue throws', () => {
+test('interpretReadResponse: 200 with wrapped { secret: { secretValue: 12345 } } throws', () => {
 	assert.throws(
 		() =>
 			interpretReadResponse({
-				response: { secretValue: 12345 },
+				response: { secret: { secretValue: 12345 } },
 				allowMissing: false,
 				environment: 'dev',
 			}),
@@ -216,12 +225,64 @@ test('interpretReadResponse: 200 with non-string secretValue throws', () => {
 	);
 });
 
-test('interpretReadResponse: 200 with valid secretValue returns the value', () => {
+test('interpretReadResponse: 200 with wrapped { secret: {} } throws', () => {
+	// Defensive: API may return a `secret` object without secretValue
+	// (e.g. permissions filtered out the value). Must not silently fall
+	// back to undefined.
+	assert.throws(
+		() =>
+			interpretReadResponse({
+				response: { secret: {} },
+				allowMissing: false,
+				environment: 'dev',
+			}),
+		new RegExp(`${SECRET_NAME} is missing or empty in environment=dev`),
+	);
+});
+
+test('interpretReadResponse: 200 with wrapped { secret: { secretValue: <v> } } returns the value', () => {
 	const value = 'placeholder-not-a-real-secret';
 	const result = interpretReadResponse({
-		response: { secretValue: value },
+		response: { secret: { secretValue: value } },
 		allowMissing: false,
 		environment: 'dev',
 	});
 	assert.equal(result, value);
+});
+
+test('interpretReadResponse: 200 with wrapped { secret: { secretValue: <v>, type: "shared" } } returns the value', () => {
+	// Real API response includes a `type` field on the inner secret.
+	// The interpreter must not be confused by sibling fields.
+	const value = 'placeholder-not-a-real-secret';
+	const result = interpretReadResponse({
+		response: {
+			secret: {
+				_id: 'fake-id',
+				secretValue: value,
+				type: 'shared',
+				environment: 'dev',
+				secretPath: '/',
+				version: 1,
+			},
+		},
+		allowMissing: false,
+		environment: 'dev',
+	});
+	assert.equal(result, value);
+});
+
+test('interpretReadResponse: 200 with OLD flat { secretValue: <v> } throws (regression guard)', () => {
+	// Issue #144 regression guard: the prior flat-shape read would silently
+	// fail because response.secretValue at top-level does not exist in the
+	// wrapped API response. If anyone re-introduces `response?.secretValue`
+	// in the interpreter, this test pins the wrapped-only contract.
+	assert.throws(
+		() =>
+			interpretReadResponse({
+				response: { secretValue: 'placeholder-not-a-real-secret' },
+				allowMissing: false,
+				environment: 'dev',
+			}),
+		new RegExp(`${SECRET_NAME} is missing or empty in environment=dev`),
+	);
 });

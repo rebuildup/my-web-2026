@@ -47,9 +47,9 @@ test('YAML content safely quotes values without changing key scope', () => {
 	assert.match(yaml, /\\nnext/);
 });
 
-test('Infisical CLI argv contains only file path and fixed prod metadata', () => {
+test('Infisical CLI argv contains file path, fixed prod metadata, and --projectId (Issue #147)', () => {
 	const secret = 'must-not-appear-in-argv';
-	const args = buildInfisicalSetArgs('/tmp/secret.yaml');
+	const args = buildInfisicalSetArgs('/tmp/secret.yaml', 'ws-abc-123');
 	assert.deepEqual(args, [
 		'secrets',
 		'set',
@@ -59,8 +59,17 @@ test('Infisical CLI argv contains only file path and fixed prod metadata', () =>
 		'prod',
 		'--path',
 		'/',
+		'--projectId',
+		'ws-abc-123',
 	]);
 	assert.equal(args.join(' ').includes(secret), false);
+});
+
+test('--projectId is followed by a non-empty workspaceId (would otherwise fail CLI validation)', () => {
+	const args = buildInfisicalSetArgs('/tmp/secret.yaml', 'ws-abc-123');
+	const i = args.indexOf('--projectId');
+	assert.ok(i >= 0, '--projectId must be present in argv');
+	assert.ok(args[i + 1].length > 0, '--projectId must be followed by a non-empty value');
 });
 
 // buildSecretReadUrl — pure seam for the readSecret GET request.

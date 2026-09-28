@@ -26,6 +26,9 @@ import {
 	buildInfisicalEnv,
 	buildInfisicalSetArgs,
 	buildInfisicalYamlContent,
+	buildSecretReadUrl,
+	classifyInfisicalHttpStatus,
+	interpretInfisicalReadResponse,
 	buildSanitizedEnv,
 	buildVersionedForm,
 	buildWorkerBulkPayload,
@@ -910,5 +913,81 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 			buildInfisicalEnv(input, 'new-token');
 			assert.deepEqual(input, snapshot);
 		});
+	});
+});
+
+
+describe('Infisical raw-secret read contract (Better Auth)', () => {
+	it('omits the type query parameter and preserves required raw-secret parameters', () => {
+		const url = buildSecretReadUrl({
+			apiUrl: 'https://secrets.rebuildup.dev/',
+			workspaceId: 'workspace-id',
+			environment: 'prod',
+			name: SECRET_NAME_LEGACY,
+		});
+		const parsed = new URL(url);
+		assert.equal(parsed.pathname, `/api/v3/secrets/raw/${SECRET_NAME_LEGACY}`);
+		assert.equal(parsed.searchParams.get('workspaceId'), 'workspace-id');
+		assert.equal(parsed.searchParams.get('environment'), 'prod');
+		assert.equal(parsed.searchParams.get('secretPath'), '/');
+		assert.equal(parsed.searchParams.get('viewSecretValue'), 'true');
+		assert.equal(parsed.searchParams.has('type'), false);
+	});
+
+	it('classifies 404 as missing only when allowNotFound=true', () => {
+		assert.equal(classifyInfisicalHttpStatus(200, { allowNotFound: true }), 'ok');
+		assert.equal(classifyInfisicalHttpStatus(404, { allowNotFound: true }), 'missing');
+		assert.equal(classifyInfisicalHttpStatus(404, { allowNotFound: false }), 'error');
+		assert.equal(classifyInfisicalHttpStatus(401, { allowNotFound: true }), 'error');
+		assert.equal(classifyInfisicalHttpStatus(403, { allowNotFound: true }), 'error');
+		assert.equal(classifyInfisicalHttpStatus(500, { allowNotFound: true }), 'error');
+	});
+
+	it('reads the wrapped Infisical response shape', () => {
+		const value = 'placeholder-not-a-real-secret';
+		assert.equal(
+			interpretInfisicalReadResponse({
+				response: { secret: { secretValue: value, type: 'shared' } },
+				allowMissing: false,
+				environment: 'prod',
+				name: SECRET_NAME_LEGACY,
+			}),
+			value,
+		);
+	});
+
+	it('rejects the obsolete flat response shape', () => {
+		assert.throws(
+			() =>
+				interpretInfisicalReadResponse({
+					response: { secretValue: 'placeholder-not-a-real-secret' },
+					allowMissing: false,
+					environment: 'prod',
+					name: SECRET_NAME_LEGACY,
+				}),
+			/missing or empty/,
+		);
+	});
+
+	it('returns null only for an explicitly allowed missing response', () => {
+		assert.equal(
+			interpretInfisicalReadResponse({
+				response: null,
+				allowMissing: true,
+				environment: 'prod',
+				name: SECRET_NAME_LEGACY,
+			}),
+			null,
+		);
+		assert.throws(
+			() =>
+				interpretInfisicalReadResponse({
+					response: null,
+					allowMissing: false,
+					environment: 'prod',
+					name: SECRET_NAME_LEGACY,
+				}),
+			/missing or empty/,
+		);
 	});
 });

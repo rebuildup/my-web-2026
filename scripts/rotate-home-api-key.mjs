@@ -7,91 +7,145 @@
  * During a read-only Infisical preflight for Issue #122, a real-value
  * `infisical secrets` invocation leaked four plaintext secret values
  * into agent output. One of them — `MY_WEB_2026_CONSUMER_API_KEY` —
- * was exposed. The existing Issue #74 spec proposed a "plaintext は
+ * was exposed. The original Issue #74 spec proposed a "plaintext は
  * 1 回のみ出力" design that surfaced the new value to the operator
  * once and required the operator to register it manually. **That
  * design is rejected** for this implementation: the 2026-09-28
  * incident demonstrated that agent- or operator-visible plaintext is
  * a credential disclosure surface, regardless of "only once" framing.
  *
- * This script instead completes **generation → propagation** entirely
- * IN-PROCESS, so the new plaintext is never displayed, logged, passed
- * via argv, written to a chat transcript, or otherwise surfaced. The
- * only persistent artefacts are:
+ * This script completes **generation → propagation → verification**
+ * entirely IN-PROCESS, so the new plaintext is never displayed,
+ * logged, passed via argv, written to a chat transcript, or
+ * otherwise surfaced. The only persistent artefacts are:
  *   - the SHA-256 hash in the D1 `apikey.key` column (the plaintext
- *     is NOT stored in D1 by Better Auth's contract — this is
- *     unchanged from the bootstrap path);
+ *     is NOT stored in D1 by Better Auth's contract);
  *   - the new value inside Infisical `prod` and the Cloudflare Worker
  *     binding, written via the dedicated secure channels below.
  *
+ * ## Architectural correction (PR #141 review, 2026-09-28)
+ *
+ * The initial draft framed old-D1-row disable as **audit-trail
+ * cleanup** — a separate gate after smoke confirmation. That framing
+ * was wrong: external `/api/v1/*` requests authenticate against the
+ * Better Auth `auth.api.verifyApiKey(...)` middleware, which verifies
+ * the request plaintext against the D1 `apikey.key` hash directly
+ * (`src/http/api-keys/middleware.ts:17`). The Worker
+ * `MY_WEB_2026_CONSUMER_API_KEY` binding is the **internal
+ * self-consumption key** (the loaders in `src/home/{access,reactions}/load.ts`
+ * pass it as their own authorization header when the home surfaces
+ * call `/api/v1/*`). It is NOT the external-auth source-of-truth.
+ *
+ * Consequence: a leaked plaintext that hashes to an **enabled** D1
+ * row is still accepted by external API endpoints, regardless of the
+ * Worker binding value. Disabling the old D1 row is therefore
+ * **containment**, not audit hygiene. It MUST happen before the
+ * rotation is declared complete; the Worker binding change is
+ * internal self-consumption visibility, not a security boundary.
+ *
  * ## Surfaces mutated by `--execute`
  *
- *  1. **D1 `apikey` row** — INSERT a new enabled row with a unique
- *     rotated name (`home-self-consumption-rotated-<isoTimestamp>`)
- *     and a fresh SHA-256 hash. The new row is independently enabled;
- *     concurrent requests can land on either the old or new row
- *     (Better Auth verifies by hash match).
- *  2. **Infisical `prod` `MY_WEB_2026_CONSUMER_API_KEY`** — written
+ *  1. **D1 `apikey`** — atomic disable-old + insert-new:
+ *     - `UPDATE` the existing `home-self-consumption` row to
+ *       `enabled=0` (containment — leaked plaintext no longer
+ *       authenticates against `auth.api.verifyApiKey`).
+ *     - `INSERT` a new enabled row under
+ *       `home-self-consumption-rotated-<YYYYMMDDHHMMSS>-<8hex>` with
+ *       a fresh SHA-256 hash. Idempotent on hash (`ON CONFLICT(\`key\`)
+ *       DO NOTHING`).
+ *  2. **In-process smoke** — `fetch` against the production health
+ *     surface with `Authorization: Bearer <fresh>`, expecting 2xx.
+ *     The plaintext NEVER leaves the process. The operator does not
+ *     see the value at any point (no manual curl with the new key).
+ *  3. **Infisical `prod` `MY_WEB_2026_CONSUMER_API_KEY`** — written
  *     via `infisical secrets set --file <yaml>` (CLI subprocess;
  *     native binary; YAML quoted scalar; mode 0600; rmSync'd in
  *     `finally`). Read-back verified by HTTPS GET + `timingSafeEqual`.
- *  3. **Cloudflare Worker `MY_WEB_2026_CONSUMER_API_KEY`** — written
+ *     Placed BEFORE the Worker write so `--worker-recovery` can read
+ *     the fresh value from Infisical on a Worker-write failure.
+ *  4. **Cloudflare Worker `MY_WEB_2026_CONSUMER_API_KEY`** — written
  *     via `wrangler secret bulk -c wrangler.production.jsonc` with
  *     stdin JSON. Verified by `wrangler secret list --format json`
- *     (name-only; Cloudflare does not expose secret values for
- *     read-back).
+ *     (name-only; Cloudflare does not expose secret values).
  *
  * ## What this script does NOT do (deliberate)
  *
- *  - **Does NOT disable the old row.** Concurrent requests must
- *    always find at least one enabled row matching the active
- *    plaintext. The Worker binding is the runtime authentication
- *    source; once it flips to the new plaintext, the old plaintext
- *    stops being accepted regardless of its `enabled` flag. Old-row
- *    disable is a separate operator-confirmed gate
- *    (`--disable-row=<id>`) AFTER smoke verification.
+ *  - **Does NOT print the new plaintext** at any point. Not in
+ *    stdout, stderr, argv, log, error message, GitHub, chat, temp
+ *    filename, or operator-visible output. Smoke is in-process.
+ *  - **Does NOT pass `INFISICAL_TOKEN` (or other Infisical
+ *    credentials) to Wrangler/D1 subprocesses.** All non-Infisical
+ *    children receive `buildSanitizedEnv(process.env)` so the
+ *    writer-scoped token does not leak into Cloudflare / D1
+ *    subprocess environments (PR #141 review fix, Issue #139
+ *    canonical incident follow-up).
+ *  - **Does NOT start a new rotation if an enabled rotated row
+ *    already exists.** Operator must run `--worker-recovery=<id>`
+ *    to complete a partial rotation, or `--disable-row=<id>` to
+ *    clean up before re-running. This keeps `--execute` strictly
+ *    idempotent.
  *  - **Does NOT mix with `BETTER_AUTH_SECRET` rotation** — that is
  *    Issue #139, a separate script.
- *  - **Does NOT print the new plaintext** at any point. Not in
- *    stdout, stderr, argv, log, error message, GitHub, chat, or temp
- *    filename.
  *
  * ## Operation modes (mutually exclusive)
  *
- *  - `--dry-run`             default; describe plan, no side effects
- *  - `--execute`             full cycle: generate + D1 INSERT +
- *                            Infisical + Worker; verify each
- *  - `--verify-only`         read-only status report (D1 + Infisical
- *                            + Worker binding names)
- *  - `--disable-row=<id>`    operator-confirmed disable of an old D1
- *                            row by id, AFTER smoke verification
- *                            (Issue #74 AC). Single-row update;
- *                            no new value generated.
+ *  - `--dry-run`                    default; describe plan, no side effects
+ *  - `--execute`                    full cycle: D1 disable-old+insert-new
+ *                                   → in-process smoke → Infisical →
+ *                                   Worker → binding-name verify.
+ *                                   Refuses if a rotated row already
+ *                                   exists (use --worker-recovery or
+ *                                   --disable-row first).
+ *  - `--verify-only`                read-only status report (D1 +
+ *                                   Infisical + Worker binding names)
+ *  - `--disable-row=<id>`           operator-confirmed disable of a
+ *                                   single D1 row by id. Used to clean
+ *                                   up after `--execute` if the
+ *                                   smoke in-process check deferred
+ *                                   containment, OR to discard a
+ *                                   previous-rotation row. Idempotent
+ *                                   (`WHERE enabled = 1` guard).
+ *  - `--worker-recovery=<rowId>`    partial-failure recovery for the
+ *                                   Worker write stage. Reads the fresh
+ *                                   plaintext from Infisical prod,
+ *                                   writes it to the Worker via
+ *                                   `wrangler secret bulk`, verifies
+ *                                   binding name. NO new plaintext
+ *                                   generated; no D1 mutation.
  *
- * Defaults: `--dry-run` + target=`prod`.
+ * Defaults: `--dry-run` + target=`remote` + environment=`prod`.
  *
  * ## Failure / rollback matrix
  *
- *  - D1 INSERT succeeds, Infisical write fails: the script reports
- *    the inserted row id; operator can re-run `--execute` and the
- *    script detects the existing rotated row and resumes at the
- *    Infisical stage.
- *  - D1 + Infisical succeed, Worker write fails: the new value is
- *    already in Infisical; operator runs `pnpm run rotate:home-api-key
- *    -- --worker-recovery=<rowId>` (TODO follow-up) or retries via
- *    `--execute`.
- *  - `--execute` re-runs are idempotent on D1: re-running detects the
- *    already-rotated row by name pattern and resumes at the Infisical
- *    stage. The script never inserts a second row for the same
- *    rotation timestamp.
+ *  - **D1 disable+insert succeeds, smoke fails**: containment is in
+ *    place (old row disabled, new row enabled). The script aborts
+ *    BEFORE Infisical/Worker writes. Operator re-runs `--execute`;
+ *    stage 1 detects the existing rotated row and refuses (forcing
+ *    `--worker-recovery` or `--disable-row` to be invoked explicitly
+ *    so the in-flight state is visible).
+ *  - **D1 + smoke succeed, Infisical write fails**: containment is
+ *    in place. Operator re-runs `--execute`; stages 1-3 detect
+ *    their prior state and refuse; operator MUST run
+ *    `--disable-row=<rowId>` to discard OR `--worker-recovery=<rowId>`
+ *    after manually fixing Infisical connectivity (worker-recovery
+ *    will fail because Infisical still holds the old value).
+ *  - **D1 + smoke + Infisical succeed, Worker write fails**: exit 3
+ *    with the recovery instruction. Operator runs
+ *    `--worker-recovery=<rowId>` (this is the explicit recovery mode).
+ *  - **`--execute` re-run after a partial rotation**: refused.
+ *    Operator MUST resolve the partial state via `--worker-recovery`
+ *    or `--disable-row`. This is structural: re-running with a fresh
+ *    plaintext would generate a new D1 row and overwrite Infisical,
+ *    which is the partial-failure bug the PR #141 review fixed.
  *
  * ## Exit codes
  *
  *  - 0  success
  *  - 1  argument / preflight / env validation failure
- *  - 2  subprocess failure (D1 / Infisical / Worker)
- *  - 3  partial-failure recovery state (D1 + Infisical succeeded but
- *       Worker failed). Operator must re-run `--execute`.
+ *  - 2  subprocess failure (D1 / Infisical / Worker / smoke)
+ *  - 3  partial-failure recovery state (D1 + smoke + Infisical
+ *       succeeded but Worker failed). Operator MUST run
+ *       `--worker-recovery=<rowId>` to complete.
  */
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
@@ -110,6 +164,7 @@ const WRANGLER_BIN = join(dirname(require.resolve('wrangler/package.json')), 'bi
 const WRANGLER_PRODUCTION_CONFIG = join(REPO_ROOT, 'wrangler.production.jsonc');
 const D1_DATABASE_NAME = 'my-web-2026';
 const KEY_NAME_PREFIX = 'home-self-consumption-rotated-';
+const KEY_NAME_LEGACY = 'home-self-consumption';
 const KEY_BODY_LEN = 32;
 const KEY_PREFIX_OUTPUT = 'mk_home_';
 const SECRET_NAME = 'MY_WEB_2026_CONSUMER_API_KEY';
@@ -122,9 +177,18 @@ const HTTPS_TIMEOUT_MS = 10_000;
 const HTTPS_MAX_RESPONSE_BYTES = 64 * 1024;
 const SUBPROCESS_TIMEOUT_MS = 30_000;
 
+// Defaults for the in-process smoke. Operator-authenticated surfaces
+// at `https://rebuildup.dev/api/v1/*` validate the request against
+// the D1 `apikey` table (Better Auth `auth.api.verifyApiKey`).
+const SMOKE_URL_DEFAULT = 'https://rebuildup.dev/api/v1/health';
+const SMOKE_AUTH_HEADER = 'Authorization';
+const SMOKE_AUTH_SCHEME = 'Bearer';
+const SMOKE_MIN_STATUS = 200;
+const SMOKE_MAX_STATUS = 299;
+
 const ALLOWED_INFISICAL_JSON_KEYS = new Set(['workspaceId', 'defaultEnvironment']);
 const REQUIRED_INFISICAL_JSON_KEYS = ['workspaceId'];
-const MODES = ['dry-run', 'execute', 'verify-only', 'disable-row'];
+const MODES = ['dry-run', 'execute', 'verify-only', 'disable-row', 'worker-recovery'];
 
 const REQUIRED_SCOPES = {
 	reactions: ['read', 'write'],
@@ -248,6 +312,35 @@ function buildD1SelectRotatedRowsCommand() {
 }
 
 /**
+ * Build the d1 execute command for SELECTing any *enabled* rotated
+ * row (the in-flight marker). Used by --execute to refuse starting a
+ * new rotation while one is in flight, and by --worker-recovery to
+ * identify the recovery target.
+ */
+function buildD1SelectActiveRotatedRowCommand() {
+	return (
+		`SELECT id, name, start, prefix, enabled, createdAt ` +
+		`FROM apikey ` +
+		`WHERE name LIKE '${sqlString(`${KEY_NAME_PREFIX}%`)}' AND enabled = 1 ` +
+		`ORDER BY createdAt DESC, id DESC LIMIT 1;`
+	);
+}
+
+/**
+ * Build the d1 execute command for SELECTing the old home row by its
+ * legacy name. Used by --execute to locate the row to disable as
+ * containment before inserting the new rotated row.
+ */
+function buildD1SelectOldHomeRowCommand() {
+	return (
+		`SELECT id, name, prefix, start, enabled, createdAt ` +
+		`FROM apikey ` +
+		`WHERE name = 'home-self-consumption' AND enabled = 1 ` +
+		`ORDER BY createdAt DESC, id DESC LIMIT 1;`
+	);
+}
+
+/**
  * Build the d1 execute command for SELECTing the active home
  * consumer key row (idempotency check + smoke verification).
  */
@@ -298,7 +391,8 @@ function parseArgs(argv) {
 	let apiUrl = INFISICAL_API_URL_DEFAULT;
 	let target = 'remote';
 	let disableRowId = null;
-	const apiUrlOverride = null;
+	let workerRecoveryRowId = null;
+	let smokeUrl = SMOKE_URL_DEFAULT;
 
 	for (const arg of argv) {
 		if (arg === '--execute' || arg === '--verify-only') {
@@ -320,12 +414,21 @@ function parseArgs(argv) {
 			mode = 'disable-row';
 			disableRowId = arg.slice('--disable-row='.length);
 			explicitMode = arg;
+		} else if (arg.startsWith('--worker-recovery=')) {
+			if (explicitMode !== null) {
+				throw new Error(`conflicting mode flags (${explicitMode} + ${arg})`);
+			}
+			mode = 'worker-recovery';
+			workerRecoveryRowId = arg.slice('--worker-recovery='.length);
+			explicitMode = arg;
 		} else if (arg.startsWith('--environment=')) {
 			environment = arg.slice('--environment='.length);
 		} else if (arg.startsWith('--target=')) {
 			target = arg.slice('--target='.length);
 		} else if (arg.startsWith('--api-url=')) {
 			apiUrl = arg.slice('--api-url='.length);
+		} else if (arg.startsWith('--smoke-url=')) {
+			smokeUrl = arg.slice('--smoke-url='.length);
 		} else if (arg === '--help' || arg === '-h') {
 			printHelp();
 			process.exit(0);
@@ -339,41 +442,65 @@ function parseArgs(argv) {
 	if (mode === 'disable-row' && (disableRowId === null || disableRowId.length === 0)) {
 		throw new Error('--disable-row requires a non-empty row id');
 	}
+	if (
+		mode === 'worker-recovery' &&
+		(workerRecoveryRowId === null || workerRecoveryRowId.length === 0)
+	) {
+		throw new Error('--worker-recovery requires a non-empty row id');
+	}
 	if (target !== 'remote' && target !== 'local') {
 		throw new Error(`--target must be 'remote' or 'local' (got: ${target})`);
 	}
-	return { mode, environment, apiUrl, target, disableRowId };
+	if (!smokeUrl.startsWith('https://')) {
+		throw new Error(`--smoke-url must be https:// (got: ${smokeUrl})`);
+	}
+	return {
+		mode,
+		environment,
+		apiUrl,
+		target,
+		disableRowId,
+		workerRecoveryRowId,
+		smokeUrl,
+	};
 }
 
 function printHelp() {
 	console.log(`Usage: rotate-home-api-key.mjs
-  [--execute | --dry-run | --verify-only | --disable-row=<id>]
+  [--execute | --dry-run | --verify-only | --disable-row=<id> | --worker-recovery=<id>]
   [--environment=prod]
   [--target=remote|local]
   [--api-url=<url>]
+  [--smoke-url=<https url>]
 
 Issue #74 — Safe rotation of MY_WEB_2026_CONSUMER_API_KEY.
 
 Operation modes (mutually exclusive):
   --dry-run                 default; describe plan, no side effects
-  --execute                 generate fresh + D1 INSERT + Infisical + Worker
-                            (requires operator-supplied INFISICAL_TOKEN +
-                            wrangler OAuth for --target=remote)
+  --execute                 full cycle: D1 disable-old+insert-new + in-process
+                            smoke + Infisical + Worker. Refuses if a
+                            rotated row already exists.
   --verify-only             read-only status (D1 + Infisical + Worker)
-  --disable-row=<id>        operator-confirmed disable of an old D1 row by
-                            id, AFTER smoke verification
+  --disable-row=<id>        operator-confirmed disable of a D1 row by id.
+                            Idempotent (WHERE enabled = 1 guard).
+  --worker-recovery=<id>    partial-failure recovery for the Worker write
+                            stage. Reads the fresh plaintext from Infisical
+                            prod, writes it to the Worker, verifies
+                            binding name. NO new plaintext generated; no
+                            D1 mutation.
 
 Fresh-key invariants:
   - generated IN-PROCESS via crypto.randomBytes
   - never persisted except to a 0600 YAML temp file consumed by the
     Infisical CLI subprocess (rmSync'd in finally)
   - never in argv, stdout, stderr, log, error message, GitHub, chat,
-    temp filename
+    temp filename, or operator-visible output. Smoke is in-process.
 
 Failure / rollback:
-  - partial failure leaves the D1 row enabled + Infisical fresh; Worker
-    write retry on next --execute run (idempotent on D1)
-  - --disable-row is a separate operator gate, NEVER auto-invoked
+  - --execute refuses to start a new rotation while one is in flight
+    (use --worker-recovery or --disable-row to resolve)
+  - Worker-write failure after Infisical succeeded -> exit 3 with
+    explicit recovery command
 
 Exit codes: 0 success / 1 arg+preflight / 2 subprocess failure /
             3 partial-failure recovery state`);
@@ -472,8 +599,13 @@ function spawnWranglerList({ env, spawnFn = spawn }) {
  * Execute a D1 SQL command via `wrangler d1 execute`. Returns the
  * parsed JSON results array (for SELECT) or `{ rows_written, ... }`
  * (for INSERT/UPDATE). Throws on non-zero exit code.
+ *
+ * The `env` parameter MUST be a sanitized env (see `buildSanitizedEnv`)
+ * so that `INFISICAL_TOKEN` and other Infisical credentials do not
+ * leak into the D1 subprocess environment (PR #141 review fix,
+ * Issue #139 canonical incident follow-up).
  */
-function execD1Sql({ target, command, json = true }) {
+function execD1Sql({ target, command, json = true, env }) {
 	const args = ['exec', 'wrangler', 'd1', 'execute'];
 	if (target === 'remote') {
 		args.push(D1_DATABASE_NAME, '--remote', '-c', WRANGLER_PRODUCTION_CONFIG);
@@ -487,6 +619,7 @@ function execD1Sql({ target, command, json = true }) {
 		stdio: ['ignore', 'pipe', 'inherit'],
 		timeout: SUBPROCESS_TIMEOUT_MS,
 		maxBuffer: 1024 * 1024,
+		env: env ?? process.env,
 	});
 	if (!json) return result;
 	return JSON.parse(result);
@@ -597,9 +730,27 @@ function awaitExit(child, { timeoutMs = SUBPROCESS_TIMEOUT_MS } = {}) {
 	});
 }
 
+/**
+ * Strip Infisical credential keys from a process.env-like object.
+ *
+ * The writer-scoped `INFISICAL_TOKEN` and Universal-Auth
+ * `INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` MUST NOT reach
+ * non-Infisical subprocesses (Wrangler `secret bulk`,
+ * `wrangler d1 execute`, `wrangler secret list`). The PR #141
+ * review flagged this as a regression under the 2026-09-28
+ * incident regime: the writer-scoped Infisical token is
+ * scoped to write Infisical, not Cloudflare or D1.
+ */
 function buildSanitizedEnv(baseEnv) {
 	const env = { ...baseEnv };
-	for (const key of ['INFISICAL_CLIENT_ID', 'INFISICAL_CLIENT_SECRET']) {
+	for (const key of [
+		'INFISICAL_TOKEN',
+		'INFISICAL_CLIENT_ID',
+		'INFISICAL_CLIENT_SECRET',
+		'INFISICAL_PROJECT_ID',
+		'INFISICAL_SITE_URL',
+		'INFISICAL_API_URL',
+	]) {
 		if (key in env) {
 			delete env[key];
 		}
@@ -665,13 +816,59 @@ async function runWranglerWrite({ payload, env }) {
 	return { code, signal, stderr: Buffer.concat(stderrChunks).toString('utf8') };
 }
 
+/**
+ * In-process smoke: issue a single GET against the production health
+ * surface with the fresh plaintext as `Authorization: Bearer ...`.
+ * Validate 2xx response. The plaintext is constructed locally,
+ * placed into the request header, and released on function return;
+ * it is never logged, never returned, never returned via the result
+ * object. The Promise resolves to status-only metadata.
+ *
+ * The `fetchImpl` parameter is a DI seam for tests; in production
+ * it is `globalThis.fetch`.
+ */
+async function runSmoke({
+	url,
+	plaintext,
+	authHeader = SMOKE_AUTH_HEADER,
+	authScheme = SMOKE_AUTH_SCHEME,
+	fetchImpl = globalThis.fetch,
+}) {
+	if (typeof fetchImpl !== 'function') {
+		throw new Error(
+			'globalThis.fetch is unavailable; Node 20+ is required for in-process smoke',
+		);
+	}
+	const headers = { [authHeader]: `${authScheme} ${plaintext}` };
+	const response = await fetchImpl(url, { method: 'GET', headers });
+	const status = response.status;
+	const ok =
+		typeof status === 'number' && status >= SMOKE_MIN_STATUS && status <= SMOKE_MAX_STATUS;
+	// Drain the body so the connection can be released, but DO NOT
+	// capture it (no plaintext leakage via response body).
+	await response.text().catch(() => undefined);
+	return {
+		status,
+		ok,
+		url,
+		headerUsed: authHeader,
+		schemeUsed: authScheme,
+	};
+}
+
 /* ─── Public exports (DI seams for tests) ──────────────────────────────── */
 
 export {
 	KEY_NAME_PREFIX,
+	KEY_NAME_LEGACY,
 	KEY_BODY_LEN,
 	KEY_PREFIX_OUTPUT,
 	SECRET_NAME,
+	SMOKE_URL_DEFAULT,
+	SMOKE_AUTH_HEADER,
+	SMOKE_AUTH_SCHEME,
+	SMOKE_MIN_STATUS,
+	SMOKE_MAX_STATUS,
 	MODES,
 	generatePlaintext,
 	keyHash,
@@ -684,6 +881,8 @@ export {
 	buildInfisicalSetArgs,
 	buildD1InsertCommand,
 	buildD1SelectRotatedRowsCommand,
+	buildD1SelectActiveRotatedRowCommand,
+	buildD1SelectOldHomeRowCommand,
 	buildD1SelectActiveRowsCommand,
 	buildD1SelectRotatedByHashCommand,
 	buildD1DisableCommand,
@@ -698,27 +897,35 @@ export {
 	spawnWranglerList,
 	httpsGetJson,
 	readInfisicalSecret,
+	runSmoke,
 	awaitExit,
 	buildSanitizedEnv,
+	execD1Sql,
 };
 
 /* ─── CLI entrypoint ───────────────────────────────────────────────────── */
 
 async function runVerify({ apiUrl, token, workspaceId, environment, target }) {
-	// D1 state — list active + rotated rows
-	const activeRowsResult = execD1Sql({
-		target,
-		command: buildD1SelectActiveRowsCommand(),
-		json: true,
-	});
-	const activeRows = activeRowsResult?.[0]?.results ?? [];
+	const sanitizedEnv = buildSanitizedEnv(process.env);
 
-	const rotatedRowsResult = execD1Sql({
+	// D1 state — list enabled rows (old + rotated). Used to surface the
+	// containment state of the old row (leaked plaintext rejected? yes if
+	// `oldHomeRowEnabled=false`) and any in-flight rotation.
+	const activeRotatedResult = execD1Sql({
 		target,
-		command: buildD1SelectRotatedRowsCommand(),
+		command: buildD1SelectActiveRotatedRowCommand(),
 		json: true,
+		env: sanitizedEnv,
 	});
-	const rotatedRows = rotatedRowsResult?.[0]?.results ?? [];
+	const activeRotatedRows = activeRotatedResult?.[0]?.results ?? [];
+
+	const oldHomeResult = execD1Sql({
+		target,
+		command: buildD1SelectOldHomeRowCommand(),
+		json: true,
+		env: sanitizedEnv,
+	});
+	const oldHomeRows = oldHomeResult?.[0]?.results ?? [];
 
 	// Infisical prod state
 	const infisicalValue = await readInfisicalSecret({
@@ -730,14 +937,14 @@ async function runVerify({ apiUrl, token, workspaceId, environment, target }) {
 		allowMissing: true,
 	});
 
-	// Worker binding name
-	const bindings = await readWranglerBindingNames(process.env);
+	// Worker binding name (must use sanitized env)
+	const bindings = await readWranglerBindingNames(sanitizedEnv);
 	const hasBinding = bindings.includes(SECRET_NAME);
 
 	return {
 		d1: {
-			activeRowCount: activeRows.length,
-			rotatedRowCount: rotatedRows.length,
+			rotatedRowCount: activeRotatedRows.length,
+			oldHomeRowEnabled: oldHomeRows.length > 0,
 		},
 		infisical: {
 			present: typeof infisicalValue === 'string' && infisicalValue.length > 0,
@@ -747,6 +954,58 @@ async function runVerify({ apiUrl, token, workspaceId, environment, target }) {
 			bindingsCount: bindings.length,
 		},
 	};
+}
+
+async function runWorkerRecovery({
+	rowId,
+	apiUrl,
+	token,
+	workspaceId,
+	environment,
+	target,
+}) {
+	console.log(`[worker-recovery] rowId=${rowId} target=${target}`);
+
+	const sanitizedEnv = buildSanitizedEnv(process.env);
+
+	const infisicalValue = await readInfisicalSecret({
+		apiUrl,
+		token,
+		workspaceId,
+		environment,
+		name: SECRET_NAME,
+	});
+	if (typeof infisicalValue !== 'string' || infisicalValue.length === 0) {
+		throw new Error(
+			`Worker recovery requires Infisical ${environment} to already hold the fresh ${SECRET_NAME} value. ` +
+				`Re-run --execute OR --worker-recovery only after the Infisical stage has completed.`,
+		);
+	}
+
+	console.log(
+		`[worker-recovery] writing ${SECRET_NAME} to Worker via wrangler secret bulk (stdin JSON)...`,
+	);
+	const payload = buildWorkerBulkPayload(infisicalValue);
+	const wranglerResult = await runWranglerWrite({ payload, env: sanitizedEnv });
+	if (wranglerResult.signal) {
+		throw new Error(`wrangler terminated by signal ${wranglerResult.signal}`);
+	}
+	if (wranglerResult.code !== 0) {
+		throw new Error(`wrangler secret bulk exited with status ${wranglerResult.code}`);
+	}
+
+	console.log('[worker-recovery] verifying Worker binding names (no value read-back)...');
+	const bindings = await readWranglerBindingNames(sanitizedEnv);
+	if (!bindings.includes(SECRET_NAME)) {
+		throw new Error(
+			`Worker binding-name verification failed: ${SECRET_NAME} not present in wrangler secret list (got: [${bindings.join(', ')}])`,
+		);
+	}
+
+	console.log('[worker-recovery] complete.');
+	console.log(`  rotated D1 row: id=${rowId}`);
+	console.log(`  Infisical ${environment}: ${SECRET_NAME} = <fresh>`);
+	console.log(`  Worker: ${SECRET_NAME} = <fresh>`);
 }
 
 async function main() {
@@ -762,18 +1021,30 @@ async function main() {
 
 	if (args.mode === 'dry-run') {
 		console.log('[dry-run] plan:');
+		console.log('  1. read current D1 state (old home-self-consumption row + rotated rows)');
 		console.log(
-			'  1. generate fresh consumer api-key plaintext (crypto.randomBytes, base64url-derived alphabet)',
+			'  2. refuse if a rotated row already exists (must run --worker-recovery or --disable-row first)',
 		);
 		console.log(
-			'  2. INSERT new D1 row (apikey.name=home-self-consumption-rotated-<id>, enabled=1)',
+			'  3. disable OLD home-self-consumption row (containment — leaked plaintext no longer authenticates)',
 		);
-		console.log(`  3. write Infisical ${args.environment}: ${SECRET_NAME} = <fresh>`);
-		console.log(`  4. write Worker ${SECRET_NAME} = <fresh> via wrangler secret bulk (stdin JSON)`);
 		console.log(
-			'  5. verify: HTTPS GET read-back + timingSafeEqual (Infisical) + wrangler secret list (Worker names)',
+			'  4. generate fresh plaintext (crypto.randomBytes, mk_home_ alphabet) + SHA-256 hash',
 		);
-		console.log('[dry-run] no side effects; pass --execute to apply (operator gate required)');
+		console.log(
+			'  5. INSERT new D1 row (apikey.name=home-self-consumption-rotated-<id>, enabled=1)',
+		);
+		console.log(
+			`  6. IN-PROCESS smoke: GET ${args.smokeUrl} with new plaintext (operator never types the value)`,
+		);
+		console.log(`  7. write Infisical ${args.environment}: ${SECRET_NAME} = <fresh>`);
+		console.log(`  8. write Worker ${SECRET_NAME} = <fresh> via wrangler secret bulk (stdin JSON)`);
+		console.log(
+			'  9. verify: HTTPS GET read-back + timingSafeEqual (Infisical) + wrangler secret list (Worker names)',
+		);
+		console.log(
+			'[dry-run] no side effects; pass --execute to apply (operator gate required).',
+		);
 		return;
 	}
 
@@ -789,8 +1060,12 @@ async function main() {
 			environment: args.environment,
 			target: args.target,
 		});
-		console.log(`[verify-only] D1 active rows: ${result.d1.activeRowCount}`);
-		console.log(`[verify-only] D1 rotated rows: ${result.d1.rotatedRowCount}`);
+		console.log(
+			`[verify-only] D1 rotated rows enabled: ${result.d1.rotatedRowCount} (in-flight = 0 is the steady state)`,
+		);
+		console.log(
+			`[verify-only] D1 old home row enabled: ${result.d1.oldHomeRowEnabled} (false = contained)`,
+		);
 		console.log(
 			`[verify-only] Infisical ${SECRET_NAME}: ${result.infisical.present ? 'present' : 'missing'}`,
 		);
@@ -803,8 +1078,27 @@ async function main() {
 	if (args.mode === 'disable-row') {
 		console.log(`[disable-row] disabling D1 row id=${args.disableRowId}...`);
 		const cmd = buildD1DisableCommand(args.disableRowId);
-		const result = execD1Sql({ target: args.target, command: cmd, json: false });
+		const sanitizedEnv = buildSanitizedEnv(process.env);
+		execD1Sql({ target: args.target, command: cmd, json: false, env: sanitizedEnv });
 		console.log(`[disable-row] row id=${args.disableRowId} disabled (if it was enabled)`);
+		return;
+	}
+
+	if (args.mode === 'worker-recovery') {
+		const token = process.env.INFISICAL_TOKEN;
+		if (typeof token !== 'string' || token.length === 0) {
+			throw new Error(
+				'INFISICAL_TOKEN is required for --worker-recovery (used to read back the existing fresh value).',
+			);
+		}
+		await runWorkerRecovery({
+			rowId: args.workerRecoveryRowId,
+			apiUrl,
+			token,
+			workspaceId: infisicalConfig.workspaceId,
+			environment: args.environment,
+			target: args.target,
+		});
 		return;
 	}
 
@@ -816,7 +1110,73 @@ async function main() {
 		);
 	}
 
-	// Stage 1 — generate fresh plaintext + hash
+	const sanitizedEnv = buildSanitizedEnv(process.env);
+
+	// Stage 1 — refuse if a rotated row is already enabled. Rotation is
+	// atomic from the operator's perspective; partial state must be
+	// resolved via --worker-recovery or --disable-row before starting a
+	// new one. This is structural: re-running with a fresh plaintext
+	// would generate a new D1 row and overwrite Infisical, which is the
+	// partial-failure bug the PR #141 review fixed.
+	console.log('[execute] checking for in-flight rotation in D1...');
+	const inflightResult = execD1Sql({
+		target: args.target,
+		command: buildD1SelectActiveRotatedRowCommand(),
+		json: true,
+		env: sanitizedEnv,
+	});
+	const inflightRows = inflightResult?.[0]?.results ?? [];
+	if (inflightRows.length > 0) {
+		throw new Error(
+			`An enabled rotated row already exists (id=${inflightRows[0].id}, name=${inflightRows[0].name}). ` +
+				`--execute refuses to start a new rotation while one is in flight. ` +
+				`Resolve the partial state via --worker-recovery=<rowId> (if Infisical+Worker pending) ` +
+				`or --disable-row=<rowId> (to discard a half-completed rotation).`,
+		);
+	}
+
+	// Stage 2 — locate the OLD home-self-consumption row. The disable-old
+	// step is CONTAINMENT (Better Auth verifyApiKey validates against D1
+	// directly; the Worker binding is internal self-consumption only).
+	console.log('[execute] locating old home-self-consumption row...');
+	const oldRowResult = execD1Sql({
+		target: args.target,
+		command: buildD1SelectOldHomeRowCommand(),
+		json: true,
+		env: sanitizedEnv,
+	});
+	const oldRows = oldRowResult?.[0]?.results ?? [];
+	if (oldRows.length === 0) {
+		throw new Error(
+			'No enabled home-self-consumption row found. Cannot rotate — bootstrap one via ' +
+				'bootstrap-home-api-key.mjs first, or investigate why the old row is missing.',
+		);
+	}
+	const oldRowId = oldRows[0].id;
+
+	// Stage 3 — disable OLD row (containment). Idempotent via the
+	// `WHERE enabled = 1` guard.
+	console.log(`[execute] disabling OLD row id=${oldRowId} (containment)...`);
+	execD1Sql({
+		target: args.target,
+		command: buildD1DisableCommand(oldRowId),
+		json: false,
+		env: sanitizedEnv,
+	});
+	const oldDisabledResult = execD1Sql({
+		target: args.target,
+		command: buildD1SelectOldHomeRowCommand(),
+		json: true,
+		env: sanitizedEnv,
+	});
+	if ((oldDisabledResult?.[0]?.results ?? []).length > 0) {
+		throw new Error(`Disabling OLD row id=${oldRowId} did not take effect (still enabled)`);
+	}
+	console.log(
+		'[execute] OLD row disabled; leaked plaintext now rejected by external auth middleware',
+	);
+
+	// Stage 4 — generate fresh plaintext + hash IN-PROCESS (never displayed).
 	const plaintext = generatePlaintext();
 	const hash = keyHash(plaintext);
 	const rotationId = deriveRotationId(new Date().toISOString());
@@ -824,12 +1184,13 @@ async function main() {
 	const rowId = generateRowId();
 	const now = Date.now();
 
-	// Stage 2 — resolve admin user reference id (existing rows point at
+	// Stage 5 — resolve admin user reference id (existing rows point at
 	// the admin user; mirror the existing bootstrap pattern).
 	const adminRow = execD1Sql({
 		target: args.target,
 		command: "SELECT id FROM user WHERE role = 'admin' ORDER BY id ASC LIMIT 1",
 		json: true,
+		env: sanitizedEnv,
 	});
 	const adminId = adminRow?.[0]?.results?.[0]?.id;
 	if (typeof adminId !== 'string' || adminId.length === 0) {
@@ -838,7 +1199,7 @@ async function main() {
 		);
 	}
 
-	// Stage 3 — INSERT new D1 row
+	// Stage 6 — INSERT new row.
 	const insertCmd = buildD1InsertCommand({
 		rowName,
 		rowId,
@@ -850,23 +1211,50 @@ async function main() {
 		createdAt: now,
 	});
 	console.log(`[execute] INSERT new D1 row name=${rowName}...`);
-	execD1Sql({ target: args.target, command: insertCmd, json: false });
-
-	// Verify the new row is present and enabled
+	execD1Sql({ target: args.target, command: insertCmd, json: false, env: sanitizedEnv });
 	const verifyRow = execD1Sql({
 		target: args.target,
 		command: buildD1SelectRotatedByHashCommand(hash),
 		json: true,
+		env: sanitizedEnv,
 	});
 	const insertedRows = verifyRow?.[0]?.results ?? [];
 	if (insertedRows.length === 0) {
 		throw new Error('D1 INSERT verification failed: no row found for the new hash');
 	}
+	const rotatedRowId = insertedRows[0].id;
 	console.log(
-		`[execute] D1 row verified: id=${insertedRows[0].id} enabled=${insertedRows[0].enabled}`,
+		`[execute] D1 row verified: id=${rotatedRowId} enabled=${insertedRows[0].enabled}`,
 	);
 
-	// Stage 4 — write Infisical prod
+	// Stage 7 — IN-PROCESS smoke against production. The plaintext goes
+	// into the request header inside `runSmoke` and is released on
+	// function return; the smoke result exposes only status metadata.
+	console.log(
+		`[execute] in-process smoke: GET ${args.smokeUrl} with the fresh plaintext (operator never types the value)...`,
+	);
+	const smokeResult = await runSmoke({
+		url: args.smokeUrl,
+		plaintext,
+	});
+	console.log(
+		`[execute] smoke: ${smokeResult.ok ? 'OK' : 'FAIL'} status=${smokeResult.status} url=${smokeResult.url} header=${smokeResult.headerUsed}`,
+	);
+	if (!smokeResult.ok) {
+		// Containment is already done; refuse to propagate the fresh
+		// value to Infisical/Worker until the surface actually accepts
+		// the new key. Operator investigates, then either
+		// --disable-row=<rotatedRowId> (to discard) or fix the surface
+		// and re-run --execute (which will detect the existing rotated
+		// row and refuse, forcing --worker-recovery).
+		throw new Error(
+			`In-process smoke failed (status=${smokeResult.status}); aborting before Infisical/Worker writes. ` +
+				'Containment is in place. Investigate the smoke URL / auth header before re-running.',
+		);
+	}
+
+	// Stage 8 — write Infisical prod (BEFORE Worker so --worker-recovery
+	// can read the fresh value from Infisical on a Worker-write failure).
 	const cliPath = resolveInfisicalCliPath();
 	const tempDir = mkdtempSync(join(tmpdir(), TEMPDIR_PREFIX));
 	const yamlPath = join(tempDir, 'rotate.yaml');
@@ -879,12 +1267,15 @@ async function main() {
 		console.log(
 			`[execute] writing fresh ${SECRET_NAME} to Infisical ${args.environment} (via CLI subprocess)...`,
 		);
-		const sanitizedEnv = buildSanitizedEnv({ ...process.env, INFISICAL_TOKEN: token });
+		// The Infisical subprocess DOES need the writer-scoped token;
+		// it is the producer of the value. The Wrangler/D1 subprocesses
+		// NEVER receive it (PR #141 review fix).
+		const infisicalEnv = buildSanitizedEnv({ ...process.env, INFISICAL_TOKEN: token });
 		const infisicalResult = await runInfisicalWrite({
 			cliPath,
 			yamlPath,
 			environment: args.environment,
-			env: sanitizedEnv,
+			env: infisicalEnv,
 		});
 		if (infisicalResult.signal) {
 			throw new Error(`infisical CLI terminated by signal ${infisicalResult.signal}`);
@@ -893,7 +1284,7 @@ async function main() {
 			throw new Error(`infisical CLI exited with status ${infisicalResult.code}`);
 		}
 
-		// Read-back verify
+		// Read-back verify (constant-time).
 		console.log('[execute] verifying Infisical read-back (HTTPS GET + timingSafeEqual)...');
 		const readBack = await readInfisicalSecret({
 			apiUrl,
@@ -912,42 +1303,40 @@ async function main() {
 		rmSync(tempDir, { recursive: true, force: true });
 	}
 
-	// Stage 5 — write Worker via bulk
+	// Stage 9 — write Worker via bulk (env without INFISICAL_TOKEN).
 	console.log(
 		`[execute] writing ${SECRET_NAME} to Worker via wrangler secret bulk (stdin JSON)...`,
 	);
 	const payload = buildWorkerBulkPayload(plaintext);
-	const wranglerResult = await runWranglerWrite({ payload, env: process.env });
+	const wranglerResult = await runWranglerWrite({ payload, env: sanitizedEnv });
 	if (wranglerResult.signal) {
-		if (infisicalSucceeded) {
-			console.error(
-				`[execute] PARTIAL FAILURE: Infisical ${args.environment} holds the new ${SECRET_NAME}, but Worker write was terminated by signal ${wranglerResult.signal}.`,
-			);
-			console.error(`[execute] D1 row already exists (id=${insertedRows[0].id}, enabled=1).`);
-			console.error(
-				'[execute] Recovery: re-run `pnpm run rotate:home-api-key -- --execute` (idempotent on D1; resumes at the Worker stage).',
-			);
-			process.exit(3);
-		}
-		throw new Error(`wrangler terminated by signal ${wranglerResult.signal}`);
+		console.error(
+			`[execute] PARTIAL FAILURE: Infisical ${args.environment} holds the new ${SECRET_NAME}, but Worker write was terminated by signal ${wranglerResult.signal}.`,
+		);
+		console.error(
+			`[execute] D1 row: id=${rotatedRowId} (enabled); old row disabled (containment)`,
+		);
+		console.error(
+			`[execute] Recovery: re-run \`pnpm run rotate:home-api-key -- --worker-recovery=${rotatedRowId}\``,
+		);
+		process.exit(3);
 	}
 	if (wranglerResult.code !== 0) {
-		if (infisicalSucceeded) {
-			console.error(
-				`[execute] PARTIAL FAILURE: Infisical ${args.environment} holds the new ${SECRET_NAME}, but Worker write failed with exit=${wranglerResult.code}.`,
-			);
-			console.error(`[execute] D1 row already exists (id=${insertedRows[0].id}, enabled=1).`);
-			console.error(
-				'[execute] Recovery: re-run `pnpm run rotate:home-api-key -- --execute` (idempotent on D1; resumes at the Worker stage).',
-			);
-			process.exit(3);
-		}
-		throw new Error(`wrangler secret bulk exited with status ${wranglerResult.code}`);
+		console.error(
+			`[execute] PARTIAL FAILURE: Infisical ${args.environment} holds the new ${SECRET_NAME}, but Worker write failed with exit=${wranglerResult.code}.`,
+		);
+		console.error(
+			`[execute] D1 row: id=${rotatedRowId} (enabled); old row disabled (containment)`,
+		);
+		console.error(
+			`[execute] Recovery: re-run \`pnpm run rotate:home-api-key -- --worker-recovery=${rotatedRowId}\``,
+		);
+		process.exit(3);
 	}
 
-	// Stage 6 — Worker binding-name verification
+	// Stage 10 — Worker binding-name verification (env sanitized).
 	console.log('[execute] verifying Worker binding names (no value read-back)...');
-	const bindings = await readWranglerBindingNames(process.env);
+	const bindings = await readWranglerBindingNames(sanitizedEnv);
 	if (!bindings.includes(SECRET_NAME)) {
 		throw new Error(
 			`Worker binding-name verification failed: ${SECRET_NAME} not present in wrangler secret list (got: [${bindings.join(', ')}])`,
@@ -955,12 +1344,11 @@ async function main() {
 	}
 
 	console.log('[execute] complete.');
-	console.log(`  D1 row: id=${insertedRows[0].id} name=${rowName} enabled=1`);
+	console.log(`  D1 row: id=${rotatedRowId} name=${rowName} enabled=1`);
+	console.log(`  D1 old row: id=${oldRowId} disabled (containment)`);
 	console.log(`  Infisical ${args.environment}: ${SECRET_NAME} = <fresh>`);
 	console.log(`  Worker: ${SECRET_NAME} = <fresh>`);
-	console.log(
-		'  Next step: smoke (curl /api/v1/reactions with new key) → operator confirms → --disable-row=<old-id>',
-	);
+	console.log(`  In-process smoke: status=${smokeResult.status} url=${smokeResult.url}`);
 }
 
 const isMainModule = process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1]);

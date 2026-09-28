@@ -2,7 +2,7 @@
  * Test harness for `scripts/rotate-home-api-key.mjs` (Issue #74).
  *
  * Coverage:
- *   - argv parsing + mutually-exclusive mode grammar
+ *   - argv parsing + mutually-exclusive mode grammar (incl. --worker-recovery + --smoke-url)
  *   - fresh-plaintext generation (CSPRNG, charset, prefix, length invariants)
  *   - SHA-256 base64url hash
  *   - deriveRotationId / buildRotatedRowName (naming pattern)
@@ -10,11 +10,12 @@
  *   - YAML content shape (no leakage, single key, escapes)
  *   - wrangler bulk payload + bulk argv (single `bulk` subcommand)
  *   - Infisical CLI argv (secrets set --file)
- *   - D1 INSERT / SELECT / DISABLE command shapes
+ *   - D1 INSERT / SELECT / DISABLE command shapes (incl. active-rotated + old-home)
  *   - row id generation (UUIDv4 lower-case hex)
  *   - secretValuesEqual (constant-time comparison)
  *   - awaitExit (exit code / signal / timeout)
- *   - buildSanitizedEnv (INFISICAL_CLIENT_* stripped)
+ *   - buildSanitizedEnv (full Infisical credential set stripped, PR #141 fix)
+ *   - runSmoke (in-process smoke, plaintext never in result, Authorization: Bearer)
  *   - subprocess discipline: stdio, stdin payload, no argv for values
  *   - security invariants: plaintext never in argv, log, error message
  *   - failure-injection / partial-failure contract
@@ -30,10 +31,14 @@ import {
 	KEY_PREFIX_OUTPUT,
 	MODES,
 	SECRET_NAME,
+	SMOKE_AUTH_HEADER,
+	SMOKE_AUTH_SCHEME,
 	awaitExit,
 	buildD1DisableCommand,
 	buildD1InsertCommand,
+	buildD1SelectActiveRotatedRowCommand,
 	buildD1SelectActiveRowsCommand,
+	buildD1SelectOldHomeRowCommand,
 	buildD1SelectRotatedByHashCommand,
 	buildD1SelectRotatedRowsCommand,
 	buildInfisicalSetArgs,
@@ -47,6 +52,7 @@ import {
 	generateRowId,
 	keyHash,
 	parseArgs,
+	runSmoke,
 	secretValuesEqual,
 	spawnInfisicalSet,
 	spawnWranglerBulk,
@@ -124,7 +130,13 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			assert.equal(KEY_NAME_PREFIX, 'home-self-consumption-rotated-');
 			assert.equal(KEY_PREFIX_OUTPUT, 'mk_home_');
 			assert.equal(KEY_BODY_LEN, 32);
-			assert.deepEqual(MODES, ['dry-run', 'execute', 'verify-only', 'disable-row']);
+			assert.deepEqual(MODES, [
+				'dry-run',
+				'execute',
+				'verify-only',
+				'disable-row',
+				'worker-recovery',
+			]);
 		});
 	});
 
@@ -177,6 +189,36 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 
 		it('--disable-row without id rejected', () => {
 			assert.throws(() => parseArgs(['--disable-row=']), /non-empty row id/);
+		});
+
+		it('--worker-recovery=<id> sets mode=worker-recovery + workerRecoveryRowId', () => {
+			const result = parseArgs(['--worker-recovery=row-uuid-here']);
+			assert.equal(result.mode, 'worker-recovery');
+			assert.equal(result.workerRecoveryRowId, 'row-uuid-here');
+		});
+
+		it('--worker-recovery without id rejected', () => {
+			assert.throws(() => parseArgs(['--worker-recovery=']), /non-empty row id/);
+		});
+
+		it('--worker-recovery + --execute rejected (conflicting modes)', () => {
+			assert.throws(
+				() => parseArgs(['--worker-recovery=abc', '--execute']),
+				/conflicting mode flags/,
+			);
+		});
+
+		it('--smoke-url accepts https URLs', () => {
+			const result = parseArgs(['--smoke-url=https://example.test/api']);
+			assert.equal(result.smokeUrl, 'https://example.test/api');
+		});
+
+		it('--smoke-url rejects http:// (security: must be https)', () => {
+			assert.throws(() => parseArgs(['--smoke-url=http://example.test/api']), /must be https/);
+		});
+
+		it('--smoke-url rejects non-URL strings', () => {
+			assert.throws(() => parseArgs(['--smoke-url=not-a-url']), /must be https/);
 		});
 
 		it('--execute + --verify-only rejected (conflicting modes)', () => {
@@ -537,6 +579,102 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 	});
 
+	describe('buildD1SelectActiveRotatedRowCommand (in-flight marker)', () => {
+		it('selects enabled rows whose name LIKE home-self-consumption-rotated-%', () => {
+			const cmd = buildD1SelectActiveRotatedRowCommand();
+			assert.match(cmd, /FROM apikey/);
+			assert.match(cmd, /WHERE name LIKE 'home-self-consumption-rotated-%' AND enabled = 1/);
+			assert.match(cmd, /ORDER BY createdAt DESC, id DESC LIMIT 1/);
+		});
+	});
+
+	describe('buildD1SelectOldHomeRowCommand (containment target)', () => {
+		it('selects the enabled home-self-consumption row', () => {
+			const cmd = buildD1SelectOldHomeRowCommand();
+			assert.match(cmd, /FROM apikey/);
+			assert.match(cmd, /WHERE name = 'home-self-consumption' AND enabled = 1/);
+			assert.match(cmd, /ORDER BY createdAt DESC, id DESC LIMIT 1/);
+		});
+	});
+
+	describe('runSmoke (in-process smoke, plaintext never leaves the process)', () => {
+		function fakeResponse(status) {
+			return {
+				status,
+				text: async () => '',
+			};
+		}
+
+		it('returns ok=true for 2xx response', async () => {
+			const captured = { url: null, headers: null };
+			const fetchImpl = async (url, init) => {
+				captured.url = url;
+				captured.headers = init.headers;
+				return fakeResponse(200);
+			};
+			const result = await runSmoke({
+				url: 'https://rebuildup.dev/api/v1/health',
+				plaintext: 'mk_home_secretValue_AAAA',
+				fetchImpl,
+			});
+			assert.equal(result.ok, true);
+			assert.equal(result.status, 200);
+			assert.equal(result.url, 'https://rebuildup.dev/api/v1/health');
+		});
+
+		it('returns ok=false for 5xx response (smoke failure aborts before Infisical/Worker writes)', async () => {
+			const fetchImpl = async () => fakeResponse(503);
+			const result = await runSmoke({
+				url: 'https://rebuildup.dev/api/v1/health',
+				plaintext: 'mk_home_secretValue_BBBB',
+				fetchImpl,
+			});
+			assert.equal(result.ok, false);
+			assert.equal(result.status, 503);
+		});
+
+		it('returns ok=false for 401 (Better Auth rejects the new plaintext)', async () => {
+			const fetchImpl = async () => fakeResponse(401);
+			const result = await runSmoke({
+				url: 'https://rebuildup.dev/api/v1/health',
+				plaintext: 'mk_home_secretValue_CCCC',
+				fetchImpl,
+			});
+			assert.equal(result.ok, false);
+			assert.equal(result.status, 401);
+		});
+
+		it('uses Authorization: Bearer <plaintext> header (NOT X-API-Key)', async () => {
+			const captured = { headers: null };
+			const fetchImpl = async (_url, init) => {
+				captured.headers = init.headers;
+				return fakeResponse(200);
+			};
+			await runSmoke({
+				url: 'https://rebuildup.dev/api/v1/health',
+				plaintext: 'mk_home_secretValue_DDDD',
+				fetchImpl,
+			});
+			assert.match(captured.headers.Authorization, /^Bearer mk_home_secretValue_DDDD$/);
+		});
+
+		it('the result object does NOT contain the plaintext', async () => {
+			const fetchImpl = async () => fakeResponse(200);
+			const result = await runSmoke({
+				url: 'https://rebuildup.dev/api/v1/health',
+				plaintext: 'mk_home_secretValue_EEEE',
+				fetchImpl,
+			});
+			const serialized = JSON.stringify(result);
+			assert.ok(!serialized.includes('mk_home_secretValue_EEEE'), `serialized: ${serialized}`);
+		});
+
+		it('uses default Authorization + Bearer constants when no header is passed', async () => {
+			assert.equal(SMOKE_AUTH_HEADER, 'Authorization');
+			assert.equal(SMOKE_AUTH_SCHEME, 'Bearer');
+		});
+	});
+
 	describe('secretValuesEqual (constant-time)', () => {
 		it('returns true for equal values', () => {
 			assert.equal(secretValuesEqual('abc', 'abc'), true);
@@ -583,7 +721,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 	});
 
-	describe('buildSanitizedEnv (INFISICAL_CLIENT_* removed)', () => {
+	describe('buildSanitizedEnv (Infisical credentials removed)', () => {
 		it('strips INFISICAL_CLIENT_ID', () => {
 			const env = buildSanitizedEnv({ INFISICAL_CLIENT_ID: 'cid', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_CLIENT_ID, undefined);
@@ -596,9 +734,23 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			assert.equal(env.NODE_ENV, 'test');
 		});
 
-		it('preserves INFISICAL_TOKEN (writer token is required for the write)', () => {
+		it('strips INFISICAL_TOKEN (PR #141 review fix: writer token must not leak to Wrangler/D1 subprocesses)', () => {
 			const env = buildSanitizedEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
-			assert.equal(env.INFISICAL_TOKEN, 'tok');
+			assert.equal(env.INFISICAL_TOKEN, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('strips INFISICAL_PROJECT_ID, _SITE_URL, _API_URL (full Infisical credential set)', () => {
+			const env = buildSanitizedEnv({
+				INFISICAL_PROJECT_ID: 'p',
+				INFISICAL_SITE_URL: 's',
+				INFISICAL_API_URL: 'a',
+				NODE_ENV: 'test',
+			});
+			assert.equal(env.INFISICAL_PROJECT_ID, undefined);
+			assert.equal(env.INFISICAL_SITE_URL, undefined);
+			assert.equal(env.INFISICAL_API_URL, undefined);
+			assert.equal(env.NODE_ENV, 'test');
 		});
 
 		it('does not mutate the input env', () => {

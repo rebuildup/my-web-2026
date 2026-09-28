@@ -89,7 +89,7 @@ These are **independent facts** at every point in time:
 - The **live Worker binding state** depends on the most recent
   deploy + the most recent Phase B driver operation.
 
-During the Phase B window (#122 → #89 flip → … → delete-legacy-only),
+During the post-incident Phase B window (#139 containment → #89 flip → … → delete-legacy-only),
 the live Worker carries the legacy `BETTER_AUTH_SECRET` binding in
 addition to `BETTER_AUTH_SECRETS`. The config comment in
 `wrangler.production.jsonc#secrets.required` is the **next deploy's
@@ -108,7 +108,9 @@ Sequencing is enforced by runbook; this is the **only** order that
 keeps recovery paths well-defined. **Do not reorder.**
 
 ```text
-#122 reconciliation (Issue #122)
+#139 credential containment complete
+       │  Better Auth production rotation + consumer API-key rotation
+       │  + exposed Cloudflare token revoke/replace + dev Better Auth cleanup
        │
        ▼
 #89 Phase B `flip` (Infisical write of versioned envelope + bulk put

@@ -732,7 +732,7 @@ function buildSecretReadUrl({ apiUrl, workspaceId, environment, name }) {
 		secretPath: '/',
 		viewSecretValue: 'true',
 	});
-	return `${apiUrl.replace(/\\/+$/, '')}/api/v3/secrets/raw/${name}?${params.toString()}`;
+	return `${apiUrl.replace(/\/+$/, '')}/api/v3/secrets/raw/${name}?${params.toString()}`;
 }
 
 function interpretInfisicalReadResponse({ response, allowMissing, environment, name }) {

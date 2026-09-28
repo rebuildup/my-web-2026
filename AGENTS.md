@@ -188,6 +188,57 @@ Authority:
   header distinguishes the source-controlled desired contract from
   the live Worker binding state during the Phase B window.
 
+### Agent invariant: no value-listing of real secrets
+
+Agents MUST NOT execute value-listing commands against real
+environments. The originating incident (Issue #139, 2026-09-28) was
+an `infisical secrets --env=dev --path=/` invocation whose plaintext
+output was rendered into agent transcript, exposing four production
+credentials. The same anti-pattern includes (non-exhaustive):
+
+- `infisical secrets list ...` / `infisical secrets --env=... --path=...`
+  / `infisical secrets get <name> --plain` (real value surfaces to
+  stdout).
+- `wrangler secret:list --format pretty` or any wrangler secret
+  subcommand that exposes values (Wrangler exposes names only via
+  `wrangler secret list --format json`; the agent must rely on the
+  name-only contract).
+- `curl https://app.infisical.com/api/v3/secrets/raw/<name>` or any
+  HTTPS call that requests `viewSecretValue=true` against a real
+  environment unless explicitly authorized in the current
+  interaction AND the response is consumed inside a dedicated script
+  that prints status-only output (MATCH / DIFFER / MISSING) and
+  NEVER the value itself.
+- Direct `echo $VAR` / `printenv` / `cat .dev.vars` of any
+  environment that holds a real production credential.
+
+The canonical replacement path is a dedicated comparison script
+(`scripts/rotate-better-auth-secret.mjs --verify-only`,
+`scripts/rotate-home-api-key.mjs --verify-only`,
+`scripts/reconcile-prod-auth-secret.mjs --verify`,
+`scripts/check-cf-secrets.mjs`) that captures → compares → emits
+status-only output. Agents MUST prefer these scripts over ad-hoc
+debugging shortcuts that print values.
+
+Secret value comparison via dedicated script (status-only output) is
+NOT a debugging shortcut. It is the canonical verification surface.
+The forbidden patterns above are the shortcuts.
+
+This rule is enforced at three layers:
+
+- **Repository policy** (this section): agents operating on this
+  repository MUST follow the rule.
+- **Operator authorization model**: ad-hoc value-listing requires
+  explicit operator approval in the current interaction, scoped to a
+  specific value (e.g. "for the next 60 seconds, you may read the
+  Infisical `prod` `MY_WEB_2026_CONSUMER_API_KEY` value via the
+  dedicated verification script"). Generic authorization does NOT
+  cover value-listing.
+- **Runtime CLI guard** (planned, Issue #140 follow-up): the
+  repository-owned wrapper scripts listed above enforce the rule
+  structurally — there is no `print-secret-value` subcommand and
+  error paths never echo the underlying value.
+
 ## 5. Quality gates
 
 Three deterministic entry points defined in `quality/profile.yaml`:

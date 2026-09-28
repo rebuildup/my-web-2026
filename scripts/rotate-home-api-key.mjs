@@ -325,8 +325,19 @@ function buildWranglerBulkArgs() {
 	return ['secret', 'bulk', '-c', WRANGLER_PRODUCTION_CONFIG];
 }
 
-function buildInfisicalSetArgs(yamlPath, environment) {
-	return ['secrets', 'set', '--file', yamlPath, '--env', environment, '--path', '/'];
+function buildInfisicalSetArgs(yamlPath, environment, workspaceId) {
+	return [
+		'secrets',
+		'set',
+		'--file',
+		yamlPath,
+		'--env',
+		environment,
+		'--path',
+		'/',
+		'--projectId',
+		workspaceId,
+	];
 }
 
 /**
@@ -608,8 +619,8 @@ function cleanupStaleTempDirs() {
 	return removed;
 }
 
-function spawnInfisicalSet({ cliPath, yamlPath, environment, env, spawnFn = spawn }) {
-	return spawnFn(cliPath, buildInfisicalSetArgs(yamlPath, environment), {
+function spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env, spawnFn = spawn }) {
+	return spawnFn(cliPath, buildInfisicalSetArgs(yamlPath, environment, workspaceId), {
 		stdio: ['pipe', 'pipe', 'pipe'],
 		env,
 	});
@@ -894,8 +905,8 @@ async function readWranglerBindingNames(env) {
 	});
 }
 
-async function runInfisicalWrite({ cliPath, yamlPath, environment, env }) {
-	const child = spawnInfisicalSet({ cliPath, yamlPath, environment, env });
+async function runInfisicalWrite({ cliPath, yamlPath, environment, workspaceId, env }) {
+	const child = spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env });
 	const stdoutChunks = [];
 	const stderrChunks = [];
 	child.stdout.on('data', (chunk) => stdoutChunks.push(chunk));
@@ -1363,6 +1374,7 @@ async function main() {
 			cliPath,
 			yamlPath,
 			environment: args.environment,
+			workspaceId: infisicalConfig.workspaceId,
 			env: infisicalEnv,
 		});
 		if (infisicalResult.signal) {

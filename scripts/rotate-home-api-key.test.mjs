@@ -471,8 +471,8 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 	});
 
 	describe('buildInfisicalSetArgs', () => {
-		it('uses secrets set --file', () => {
-			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod');
+		it('uses secrets set --file with --projectId <workspaceId>', () => {
+			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod', 'ws-abc-123');
 			assert.deepEqual(args, [
 				'secrets',
 				'set',
@@ -482,12 +482,14 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				'prod',
 				'--path',
 				'/',
+				'--projectId',
+				'ws-abc-123',
 			]);
 		});
 
 		it('does NOT include the plaintext value (file-only contract)', () => {
 			// The plaintext is in the file content, never in argv.
-			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod', 'ws-abc-123');
 			for (const arg of args) {
 				assert.ok(!arg.includes('mk_home_'), `argv unexpectedly contains plaintext: ${arg}`);
 			}
@@ -920,6 +922,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				cliPath: '/fake/infisical',
 				yamlPath: '/tmp/rotate.yaml',
 				environment: 'prod',
+				workspaceId: 'ws-abc-123',
 				env: process.env,
 				spawnFn: captureSpawn(0, (c) => {
 					captured = c;
@@ -935,6 +938,8 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				'prod',
 				'--path',
 				'/',
+				'--projectId',
+				'ws-abc-123',
 			]);
 			assert.deepEqual(captured.opts.stdio, ['pipe', 'pipe', 'pipe']);
 		});
@@ -945,6 +950,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				cliPath: '/fake/infisical',
 				yamlPath: '/tmp/rotate.yaml',
 				environment: 'prod',
+				workspaceId: 'ws-abc-123',
 				env: process.env,
 				spawnFn: captureSpawn(0, (c) => {
 					captured = c;
@@ -1061,7 +1067,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			// in a 0600 temp file, NOT argv/stdout.
 			const yaml = buildInfisicalYamlContent(plaintext);
 			assert.ok(yaml.includes(plaintext)); // contained in the FILE
-			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod');
+			const args = buildInfisicalSetArgs('/tmp/rotate.yaml', 'prod', 'ws-abc-123');
 			for (const arg of args) {
 				assert.ok(!arg.includes(plaintext), `arg leaks plaintext: ${arg}`);
 			}

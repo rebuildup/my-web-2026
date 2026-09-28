@@ -125,7 +125,7 @@
  */
 import { spawn } from 'node:child_process';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';

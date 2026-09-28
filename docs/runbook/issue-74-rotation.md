@@ -15,11 +15,25 @@ This runbook is the **ONLY** path for rotating `MY_WEB_2026_CONSUMER_API_KEY` af
   and the admin surface for the `mk_home_*` scheme.
 - ROTATION replaces the exposed plaintext with a fresh CSPRNG-generated
   value across:
-  - **D1 `apikey`**: disable-old + insert-new (atomic, containment-first)
+  - **D1 `apikey`**: two-phase mutation — Phase 1 INSERT-new+verify,
+    Phase 2 (after smoke) DISABLE-old+verify. The dual-valid window
+    between the two phases is bounded by the in-process smoke (~1s).
+    The old row is disabled only AFTER the fresh row is proven usable,
+    so a fresh-row INSERT failure cannot produce a zero-valid-key
+    state.
   - **Infisical `prod` `MY_WEB_2026_CONSUMER_API_KEY`** (via
     `infisical secrets set --file` with mode 0600 YAML, rmSync'd)
   - **Cloudflare Worker `MY_WEB_2026_CONSUMER_API_KEY`** binding (via
     `wrangler secret bulk -c wrangler.production.jsonc` with stdin JSON)
+
+Subprocess env isolation (PR #141 re-review, 2026-09-28):
+- `buildInfisicalEnv(baseEnv, token)` — keeps writer `INFISICAL_TOKEN`,
+  strips machine-identity / project / site / api-url. Used for the
+  Infisical CLI subprocess only.
+- `buildWranglerEnv(baseEnv)` — strips the full Infisical credential
+  set. Used for `wrangler secret bulk`, `wrangler secret list`, and
+  `wrangler d1 execute` subprocesses. Wrangler/D1 MUST NEVER receive
+  the writer-scoped Infisical token.
 
 ## Architectural correction (PR #141 review, 2026-09-28)
 
@@ -38,14 +52,20 @@ Consequence: a leaked plaintext that hashes to an **enabled** D1 row is still ac
 | Sourceable by old plaintext via `/api/v1/*`? | YES | **NO** (containment) |
 | Sourceable by new plaintext via `/api/v1/*`? | NO | YES (in-process smoke confirms) |
 
-The script's `--execute` performs **disable-old + insert-new atomically** (idempotent on hash). The Worker binding is written AFTER the in-process smoke confirms the new plaintext actually authenticates against production. No operator-visible plaintext is ever required.
+The script's `--execute` performs a **two-phase D1 mutation**:
+Phase 1 INSERT-new + verify, then in-process smoke against the
+canonical protected surface, then Phase 2 DISABLE-old + verify. The
+old row is disabled ONLY AFTER the fresh row is proven usable, so a
+fresh-row INSERT failure cannot produce a zero-valid-key state. The
+Worker binding is written AFTER disable-old commits. No
+operator-visible plaintext is ever required.
 
 ## Operation modes (mutually exclusive)
 
 | Mode | Side effects | Use when |
 | --- | --- | --- |
 | `--dry-run` (default) | None | Pre-flight verification of the planned rotation. |
-| `--execute` | D1 disable-old+insert-new + in-process smoke + Infisical + Worker + verify | Operator-authorized rotation. **Requires writer-scope `INFISICAL_TOKEN` on prod + wrangler OAuth for `--target=remote`.** Refuses to start if a rotated row is already enabled (forces explicit recovery). |
+| `--execute` | D1 two-phase (insert-new+verify → smoke → disable-old+verify) + Infisical + Worker + verify | Operator-authorized rotation. **Requires writer-scope `INFISICAL_TOKEN` on prod + wrangler OAuth for `--target=remote`.** Refuses to start if a rotated row is already enabled (forces explicit recovery). |
 | `--verify-only` | Read-only (HTTPS GET + D1 SELECT + wrangler secret list) | Confirm post-rotation state. **Requires `INFISICAL_TOKEN`.** |
 | `--disable-row=<id>` | Single-row UPDATE on D1 (no new value generated) | Operator-authorized cleanup of a half-completed rotation, OR audit-trail disable of a stale row. Idempotent (`WHERE enabled = 1` guard). |
 | `--worker-recovery=<id>` | Reads fresh from Infisical, writes to Worker via bulk, verifies binding names | Partial-failure recovery when Worker write failed AFTER Infisical + smoke + D1 succeeded. NO new plaintext generated; no D1 mutation. |
@@ -92,7 +112,7 @@ INFISICAL_TOKEN=<writer-scope-token> \
 
 The agent MUST NOT proceed past Step 1 without explicit operator authorization in the current interaction. Sample canonical phrasing:
 
-> "Authorize Step 1 — execute `pnpm run rotate:home-api-key -- --execute` with writer-scope `INFISICAL_TOKEN`. Do NOT pass `--disable-row=<id>`; the script will disable-old atomically. Smoke is in-process — you do NOT need to paste any plaintext. Authorized."
+> "Authorize Step 1 — execute `pnpm run rotate:home-api-key -- --execute` with writer-scope `INFISICAL_TOKEN`. Do NOT pass `--disable-row=<id>`; the script manages disable-old after the smoke. Smoke is in-process — you do NOT need to paste any plaintext. Authorized."
 
 This satisfies `[[release-merge-human-gate]]`-class operator gate (the
 script is not the release PR, but the same human-gate principle applies
@@ -113,39 +133,52 @@ real execute):
 pnpm run rotate:home-api-key -- --dry-run
 ```
 
-What `execute` does:
+What `execute` does (10 stages):
 
 1. **Preflight**: refuses to start if an enabled rotated row already
    exists (forces explicit `--worker-recovery` or `--disable-row`
    instead of silently generating a second plaintext).
 2. **Locate OLD row**: SELECT the enabled `home-self-consumption` row
    in D1. If missing, abort with a clear bootstrap-required error.
-3. **Disable OLD row** (containment): `UPDATE apikey SET enabled = 0
-   WHERE id = '<old>' AND enabled = 1`. Idempotent. Verify the row is
-   now disabled.
-4. **Generate fresh plaintext + hash**: CSPRNG (`crypto.randomBytes`)
+   Note: the OLD row is **NOT** disabled at this point; that is
+   Stage 7.
+3. **Generate fresh plaintext + hash**: CSPRNG (`crypto.randomBytes`)
    → 52-char a-zA-Z alphabet → `mk_home_<52-char>` plaintext →
    SHA-256 base64url hash. The plaintext NEVER leaves the Node process.
-5. **Resolve admin user**: SELECT the first `user.role='admin'` row for
+4. **Resolve admin user**: SELECT the first `user.role='admin'` row for
    the apikey's `referenceId`.
-6. **INSERT new D1 row** under `home-self-consumption-rotated-<id>`
-   with the fresh hash and `enabled=1`. `ON CONFLICT(\`key\`) DO
-   NOTHING` (idempotent on hash).
-7. **Verify the new row** is present and enabled.
-8. **In-process smoke**: `fetch` against
-   `https://rebuildup.dev/api/v1/health` (or `--smoke-url=<url>`)
-   with `Authorization: Bearer <fresh>`, expecting 2xx. The plaintext
-   stays inside `runSmoke`'s scope and is released on function return.
-   The operator NEVER sees the plaintext.
-9. **Write Infisical `prod`**: 0600 YAML temp file (rmSync'd in
+5. **INSERT new D1 row** (Phase 1 of D1 mutation) under
+   `home-self-consumption-rotated-<id>` with the fresh hash and
+   `enabled=1`. `ON CONFLICT(\`key\`) DO NOTHING` (idempotent on
+   hash). Verify the row is present and enabled. Old row remains
+   enabled during this window (dual-valid, bounded).
+6. **In-process smoke**: `fetch` against the canonical protected
+   surface `https://rebuildup.dev/api/v1/access/count/home-page`
+   (`requireApiKey` + `access_counter:read`-gated) with
+   `Authorization: Bearer <fresh>`, expecting 2xx. The plaintext stays
+   inside `runSmoke`'s scope and is released on function return. The
+   operator NEVER sees the plaintext. **There is no `--smoke-url`
+   override** — sending `Authorization: Bearer <fresh>` to an
+   arbitrary URL would exfiltrate the new credential (PR #141
+   re-review, 2026-09-28). If the smoke FAILS, the script aborts
+   BEFORE Stage 7 (disable-old), so the OLD row stays valid. The
+   operator runs `--disable-row=<rotatedRowId>` to discard the fresh
+   row, then investigates the surface and re-runs `--execute`.
+7. **Disable OLD row** (Phase 2 of D1 mutation = containment):
+   `UPDATE apikey SET enabled = 0 WHERE id = '<old>' AND enabled = 1`.
+   Idempotent. Verify the row is now disabled.
+8. **Write Infisical `prod`**: 0600 YAML temp file (rmSync'd in
    `finally`), `infisical secrets set --file <yaml> --env=prod
-   --path=/`. Constant-time read-back verify
-   (`timingSafeEqual`).
-10. **Write Worker binding**: `wrangler secret bulk -c
-    wrangler.production.jsonc` with stdin JSON. The Wrangler subprocess
-    env is `buildSanitizedEnv(process.env)` — `INFISICAL_TOKEN` is
-    stripped (PR #141 review fix).
-11. **Verify Worker binding names** via
+   --path=/`. The Infisical subprocess env is `buildInfisicalEnv(...)`
+   — keeps writer `INFISICAL_TOKEN`, strips other Infisical
+   credentials (PR #141 re-review, 2026-09-28). Constant-time
+   read-back verify (`timingSafeEqual`).
+9. **Write Worker binding**: `wrangler secret bulk -c
+   wrangler.production.jsonc` with stdin JSON. The Wrangler subprocess
+   env is `buildWranglerEnv(process.env)` — strips the full Infisical
+   credential set (token + machine identity + project/site/api).
+   Wrangler MUST NEVER receive the writer-scoped Infisical token.
+10. **Verify Worker binding names** via
     `wrangler secret list --format json -c wrangler.production.jsonc`
     (name-only; Cloudflare does not expose values).
 
@@ -158,22 +191,22 @@ Expected output:
 ```
 [execute] checking for in-flight rotation in D1...
 [execute] locating old home-self-consumption row...
-[execute] disabling OLD row id=<old-uuid> (containment)...
+[execute] INSERT new D1 row name=home-self-consumption-rotated-... (Phase 1 of D1 mutation)...
+[execute] D1 row verified: id=<new-uuid> enabled=1 (both old + new rows enabled during smoke window)
+[execute] in-process smoke: GET https://rebuildup.dev/api/v1/access/count/home-page with the fresh plaintext...
+[execute] smoke: OK status=200 url=https://rebuildup.dev/api/v1/access/count/home-page header=Authorization
+[execute] disabling OLD row id=<old-uuid> (Phase 2 of D1 mutation, containment)...
 [execute] OLD row disabled; leaked plaintext now rejected by external auth middleware
-[execute] INSERT new D1 row name=home-self-consumption-rotated-...
-[execute] D1 row verified: id=<new-uuid> enabled=1
-[execute] in-process smoke: GET https://rebuildup.dev/api/v1/health with the fresh plaintext...
-[execute] smoke: OK status=200 url=https://rebuildup.dev/api/v1/health header=Authorization
 [execute] writing fresh MY_WEB_2026_CONSUMER_API_KEY to Infisical prod (via CLI subprocess)...
 [execute] verifying Infisical read-back (HTTPS GET + timingSafeEqual)...
 [execute] writing MY_WEB_2026_CONSUMER_API_KEY to Worker via wrangler secret bulk (stdin JSON)...
 [execute] verifying Worker binding names (no value read-back)...
 [execute] complete.
-  D1 row: id=<new-uuid> name=home-self-consumption-rotated-... enabled=1
+  D1 new row: id=<new-uuid> name=home-self-consumption-rotated-... enabled=1
   D1 old row: id=<old-uuid> disabled (containment)
   Infisical prod: MY_WEB_2026_CONSUMER_API_KEY = <fresh>
   Worker: MY_WEB_2026_CONSUMER_API_KEY = <fresh>
-  In-process smoke: status=200 url=https://rebuildup.dev/api/v1/health
+  In-process smoke: status=200 url=https://rebuildup.dev/api/v1/access/count/home-page
 ```
 
 ## Step 2 — post-rotation confirm
@@ -264,17 +297,20 @@ the value-listing anti-pattern.
 ## Expected production impact
 
 - **In-flight sessions on the home-side reaction / access counter
-  surfaces**: requests using the EXPOSED old plaintext will receive
-  401 from Better Auth's `auth.api.verifyApiKey` the moment Stage 3
-  (disable-old) commits in D1. The rotation's containment boundary is
-  D1, NOT the Worker binding. Operators must either roll client retry
-  behaviour or accept the 401 spike. This is expected (the credential
-  was exposed; the rotation is the remediation).
+  surfaces**: requests using the EXPOSED old plaintext receive 401
+  from Better Auth's `auth.api.verifyApiKey` the moment Stage 7
+  (Phase 2 disable-old) commits in D1. From Stage 5 (Phase 1 insert-
+  new+verify) up to Stage 7, both old and new rows are enabled
+  (documented dual-valid window). The rotation's containment boundary
+  is D1, NOT the Worker binding. Operators must either roll client
+  retry behaviour or accept the 401 spike at the Phase 2 commit
+  moment. This is expected (the credential was exposed; the rotation
+  is the remediation).
 - **Worker self-consumption (`MY_WEB_2026_CONSUMER_API_KEY` is the
   internal self-consumption key for `src/home/{access,reactions}/load.ts`)**:
-  flips to fresh in Stage 10. In-flight home loader calls using the
-  old plaintext receive 401 from `/api/v1/*` momentarily until they
-  retry with the Worker-binding-fresh value.
+  flips to fresh in Stage 9 (Worker write). In-flight home loader
+  calls using the old plaintext receive 401 from `/api/v1/*`
+  momentarily until they retry with the Worker-binding-fresh value.
 - **Auth sessions via Better Auth** (`BETTER_AUTH_SECRET` rotation is
   Issue #139, separate script — do NOT conflate): unaffected by this
   script. Issue #139 has its own runbook.
@@ -291,13 +327,19 @@ the value-listing anti-pattern.
 | Failure point | State after failure | Recovery |
 | --- | --- | --- |
 | Stage 1 in-flight check | None mutated | Investigate; existing rotated row indicates a partial rotation. Run `--worker-recovery` or `--disable-row` to resolve. |
-| Stage 2 / Stage 3 disable-old fails | None mutated | Re-run `--execute`; the OLD row is unchanged so the next attempt proceeds normally. |
-| Stage 6 INSERT fails | OLD row disabled (containment), no new row | Re-run `--execute`; Stage 1 refuses (existing rotated row by name NOT yet present, so the check passes); Stage 3 re-disables (idempotent); Stage 6 retries the INSERT. |
-| Stage 7 row-verify fails | OLD row disabled, new row may exist with different hash | Operator runs `--disable-row` on the unexpected new row, then re-investigates. Re-run `--execute` once the unexpected row is gone. |
-| Stage 8 in-process smoke fails | OLD row disabled, new row enabled, but production surface rejected the new plaintext | **Containment is already in place.** Investigate the smoke URL / auth header shape. Then either `--disable-row=<new-row-id>` (to discard) OR fix the surface and re-run `--execute` (which will detect the rotated row, refuse, forcing explicit `--worker-recovery`). |
-| Stage 9 Infisical write fails | OLD row disabled, new row enabled, smoke OK, Infisical unchanged | Re-run `--execute`; Stage 1 will refuse. Operator runs `--disable-row=<new-row-id>` to discard OR manually fixes Infisical connectivity, then re-runs `--execute` (still refuses) and runs `--worker-recovery=<new-row-id>` to push the new value to Worker. |
-| Stage 10 Worker write fails | OLD row disabled, new row enabled, smoke OK, Infisical holds fresh | **Exit 3 with explicit `--worker-recovery=<new-row-id>` command printed.** Operator runs that command to complete. |
-| Stage 11 binding-name verify fails | OLD row disabled, new row enabled, smoke OK, Infisical + Worker written | Re-run `--worker-recovery=<new-row-id>`; the binding-name verify is idempotent. |
+| Stage 2 / Stage 4 (locate OLD or admin lookup) fails | None mutated | Re-run `--execute` once the precondition is fixed. |
+| Stage 5 INSERT fails (Phase 1) | OLD row still enabled, no new row written | Fix the precondition (admin, INSERT) and re-run `--execute`. No partial state to discard. |
+| Stage 5 row-verify fails | OLD row still enabled, new row may exist with unexpected hash | Operator runs `--verify-only` to inspect; if a row exists, run `--disable-row=<rowId>` to discard, then re-investigate. |
+| Stage 6 in-process smoke fails | OLD row STILL enabled, new row enabled (dual-valid window); containment NOT yet in place | **Containment is NOT yet in place** — the script aborted BEFORE disable-old. Operator MUST run `--disable-row=<rotatedRowId>` to discard the fresh row, then fix the smoke surface (URL / auth header) and re-run `--execute`. |
+| Stage 7 disable-old fails (Phase 2) | NEW row enabled, OLD row still enabled (leaked plaintext still authenticates) | **Leaked plaintext still authenticates — containment pending.** Investigate the disable failure. Operator MUST run `--disable-row=<oldRowId>` to restore containment. The fresh row stays valid. |
+| Stage 8 Infisical write fails | OLD row disabled, new row enabled, smoke OK, Infisical unchanged | **Containment is in place.** Re-run `--execute`; Stage 1 refuses (existing rotated row). Operator runs `--disable-row=<new-row-id>` to discard OR manually fixes Infisical connectivity, then re-runs `--execute` (still refuses) and runs `--worker-recovery=<new-row-id>` to push the new value to Worker. |
+| Stage 9 Worker write fails | OLD row disabled, new row enabled, smoke OK, Infisical holds fresh | **Exit 3 with explicit `--worker-recovery=<new-row-id>` command printed.** Operator runs that command to complete. |
+| Stage 10 binding-name verify fails | OLD row disabled, new row enabled, smoke OK, Infisical holds fresh, Worker write exit 0 but binding missing | Re-run `--worker-recovery=<new-row-id>` to retry the Worker write + binding-name verify. |
+
+The key invariant: **if Stage 6 (smoke) or earlier fails, the OLD row
+stays valid** — the script never disables the only working key before
+the replacement has been proven usable. This is the "no zero-valid-key
+state" contract (PR #141 re-review, 2026-09-28).
 | Operator `--disable-row=<id>` fails mid-execute | Disabled status unknown | Re-run `--disable-row=<id>`; UPDATE is guarded `WHERE enabled = 1` so it is safe to retry. |
 
 Under the 2026-09-28 incident regime, "fresh stays in process until

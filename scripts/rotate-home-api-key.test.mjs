@@ -2,7 +2,8 @@
  * Test harness for `scripts/rotate-home-api-key.mjs` (Issue #74).
  *
  * Coverage:
- *   - argv parsing + mutually-exclusive mode grammar (incl. --worker-recovery + --smoke-url)
+ *   - argv parsing + mutually-exclusive mode grammar (incl. --worker-recovery; no --smoke-url)
+ *   - smoke URL is FIXED at the canonical protected surface (no override)
  *   - fresh-plaintext generation (CSPRNG, charset, prefix, length invariants)
  *   - SHA-256 base64url hash
  *   - deriveRotationId / buildRotatedRowName (naming pattern)
@@ -14,8 +15,9 @@
  *   - row id generation (UUIDv4 lower-case hex)
  *   - secretValuesEqual (constant-time comparison)
  *   - awaitExit (exit code / signal / timeout)
- *   - buildSanitizedEnv (full Infisical credential set stripped, PR #141 fix)
- *   - runSmoke (in-process smoke, plaintext never in result, Authorization: Bearer)
+ *   - buildInfisicalEnv (Infisical CLI env: keeps INFISICAL_TOKEN, strips other Infisical credentials)
+ *   - buildWranglerEnv (Wrangler/D1 env: strips full Infisical credential set, no token added)
+ *   - runSmoke (in-process smoke, plaintext never in result, Authorization: Bearer, fixed URL)
  *   - subprocess discipline: stdio, stdin payload, no argv for values
  *   - security invariants: plaintext never in argv, log, error message
  *   - failure-injection / partial-failure contract
@@ -33,6 +35,7 @@ import {
 	SECRET_NAME,
 	SMOKE_AUTH_HEADER,
 	SMOKE_AUTH_SCHEME,
+	SMOKE_URL_DEFAULT,
 	awaitExit,
 	buildD1DisableCommand,
 	buildD1InsertCommand,
@@ -41,12 +44,14 @@ import {
 	buildD1SelectOldHomeRowCommand,
 	buildD1SelectRotatedByHashCommand,
 	buildD1SelectRotatedRowsCommand,
+	buildInfisicalEnv,
 	buildInfisicalSetArgs,
 	buildInfisicalYamlContent,
 	buildRotatedRowName,
 	buildSanitizedEnv,
 	buildWorkerBulkPayload,
 	buildWranglerBulkArgs,
+	buildWranglerEnv,
 	deriveRotationId,
 	generatePlaintext,
 	generateRowId,
@@ -208,17 +213,26 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			);
 		});
 
-		it('--smoke-url accepts https URLs', () => {
-			const result = parseArgs(['--smoke-url=https://example.test/api']);
-			assert.equal(result.smokeUrl, 'https://example.test/api');
+		it('--smoke-url is rejected as an unknown argument (no override allowed; smoke URL is FIXED to the canonical protected surface)', () => {
+			// PR #141 re-review (2026-09-28): an arbitrary --smoke-url
+			// would exfiltrate the fresh Bearer credential to whatever
+			// host the operator typed. The smoke URL is therefore fixed
+			// (see SMOKE_URL_DEFAULT) and the flag is removed entirely.
+			assert.throws(
+				() => parseArgs(['--smoke-url=https://example.test/api']),
+				/unknown argument: --smoke-url/,
+			);
 		});
 
-		it('--smoke-url rejects http:// (security: must be https)', () => {
-			assert.throws(() => parseArgs(['--smoke-url=http://example.test/api']), /must be https/);
+		it('--smoke-url=http:// is rejected as unknown (not as an https validation error)', () => {
+			assert.throws(
+				() => parseArgs(['--smoke-url=http://example.test/api']),
+				/unknown argument: --smoke-url/,
+			);
 		});
 
-		it('--smoke-url rejects non-URL strings', () => {
-			assert.throws(() => parseArgs(['--smoke-url=not-a-url']), /must be https/);
+		it('--smoke-url=garbage is rejected as unknown', () => {
+			assert.throws(() => parseArgs(['--smoke-url=not-a-url']), /unknown argument: --smoke-url/);
 		});
 
 		it('--execute + --verify-only rejected (conflicting modes)', () => {
@@ -605,7 +619,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			};
 		}
 
-		it('returns ok=true for 2xx response', async () => {
+		it('returns ok=true for 2xx response against the canonical protected surface', async () => {
 			const captured = { url: null, headers: null };
 			const fetchImpl = async (url, init) => {
 				captured.url = url;
@@ -613,19 +627,19 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				return fakeResponse(200);
 			};
 			const result = await runSmoke({
-				url: 'https://rebuildup.dev/api/v1/health',
+				url: SMOKE_URL_DEFAULT,
 				plaintext: 'mk_home_secretValue_AAAA',
 				fetchImpl,
 			});
 			assert.equal(result.ok, true);
 			assert.equal(result.status, 200);
-			assert.equal(result.url, 'https://rebuildup.dev/api/v1/health');
+			assert.equal(result.url, SMOKE_URL_DEFAULT);
 		});
 
-		it('returns ok=false for 5xx response (smoke failure aborts before Infisical/Worker writes)', async () => {
+		it('returns ok=false for 5xx response (smoke failure aborts BEFORE disable-old; old row stays valid)', async () => {
 			const fetchImpl = async () => fakeResponse(503);
 			const result = await runSmoke({
-				url: 'https://rebuildup.dev/api/v1/health',
+				url: SMOKE_URL_DEFAULT,
 				plaintext: 'mk_home_secretValue_BBBB',
 				fetchImpl,
 			});
@@ -636,7 +650,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		it('returns ok=false for 401 (Better Auth rejects the new plaintext)', async () => {
 			const fetchImpl = async () => fakeResponse(401);
 			const result = await runSmoke({
-				url: 'https://rebuildup.dev/api/v1/health',
+				url: SMOKE_URL_DEFAULT,
 				plaintext: 'mk_home_secretValue_CCCC',
 				fetchImpl,
 			});
@@ -651,7 +665,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 				return fakeResponse(200);
 			};
 			await runSmoke({
-				url: 'https://rebuildup.dev/api/v1/health',
+				url: SMOKE_URL_DEFAULT,
 				plaintext: 'mk_home_secretValue_DDDD',
 				fetchImpl,
 			});
@@ -661,7 +675,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		it('the result object does NOT contain the plaintext', async () => {
 			const fetchImpl = async () => fakeResponse(200);
 			const result = await runSmoke({
-				url: 'https://rebuildup.dev/api/v1/health',
+				url: SMOKE_URL_DEFAULT,
 				plaintext: 'mk_home_secretValue_EEEE',
 				fetchImpl,
 			});
@@ -672,6 +686,16 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		it('uses default Authorization + Bearer constants when no header is passed', async () => {
 			assert.equal(SMOKE_AUTH_HEADER, 'Authorization');
 			assert.equal(SMOKE_AUTH_SCHEME, 'Bearer');
+		});
+
+		it('targets the canonical requireApiKey-gated access-counter read endpoint', () => {
+			// Pin: the smoke URL is part of the security contract — it
+			// MUST be a real API-key-protected read-only surface so a 2xx
+			// proves auth + scope. PR #141 re-review, 2026-09-28.
+			assert.ok(
+				SMOKE_URL_DEFAULT.startsWith('https://rebuildup.dev/api/v1/access/count/'),
+				`SMOKE_URL_DEFAULT must be under https://rebuildup.dev/api/v1/access/count/ (got: ${SMOKE_URL_DEFAULT})`,
+			);
 		});
 	});
 
@@ -721,7 +745,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 	});
 
-	describe('buildSanitizedEnv (Infisical credentials removed)', () => {
+	describe('buildSanitizedEnv (deprecated alias for buildWranglerEnv; PR #141 review fix)', () => {
 		it('strips INFISICAL_CLIENT_ID', () => {
 			const env = buildSanitizedEnv({ INFISICAL_CLIENT_ID: 'cid', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_CLIENT_ID, undefined);
@@ -758,6 +782,130 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			const snapshot = { ...input };
 			buildSanitizedEnv(input);
 			assert.deepEqual(input, snapshot);
+		});
+	});
+
+	describe('buildWranglerEnv (Wrangler/D1 env; PR #141 re-review fix)', () => {
+		it('strips INFISICAL_TOKEN (writer token MUST NOT reach Wrangler or D1 subprocesses)', () => {
+			const env = buildWranglerEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
+			assert.equal(env.INFISICAL_TOKEN, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('strips the full Infisical credential set', () => {
+			const env = buildWranglerEnv({
+				INFISICAL_TOKEN: 'tok',
+				INFISICAL_CLIENT_ID: 'cid',
+				INFISICAL_CLIENT_SECRET: 'cs',
+				INFISICAL_PROJECT_ID: 'p',
+				INFISICAL_SITE_URL: 's',
+				INFISICAL_API_URL: 'a',
+				NODE_ENV: 'test',
+			});
+			for (const key of [
+				'INFISICAL_TOKEN',
+				'INFISICAL_CLIENT_ID',
+				'INFISICAL_CLIENT_SECRET',
+				'INFISICAL_PROJECT_ID',
+				'INFISICAL_SITE_URL',
+				'INFISICAL_API_URL',
+			]) {
+				assert.equal(env[key], undefined, `${key} must be stripped`);
+			}
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('does NOT add INFISICAL_TOKEN even if a token argument is not supplied', () => {
+			// Pin: buildWranglerEnv has no token parameter; the function
+			// MUST NEVER carry INFISICAL_TOKEN, regardless of input shape.
+			const env = buildWranglerEnv({
+				INFISICAL_TOKEN: 'present-in-input',
+				PATH: '/usr/bin',
+			});
+			assert.equal(env.INFISICAL_TOKEN, undefined);
+			assert.equal(env.PATH, '/usr/bin');
+		});
+
+		it('does not mutate the input env', () => {
+			const input = { INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' };
+			const snapshot = { ...input };
+			buildWranglerEnv(input);
+			assert.deepEqual(input, snapshot);
+		});
+	});
+
+	describe('buildInfisicalEnv (Infisical CLI env; PR #141 re-review fix)', () => {
+		it('keeps INFISICAL_TOKEN (the CLI is the producer of the value)', () => {
+			const env = buildInfisicalEnv({ NODE_ENV: 'test' }, 'writer-scope-token');
+			assert.equal(env.INFISICAL_TOKEN, 'writer-scope-token');
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('strips fallback Infisical credentials (client id/secret, project/site/api)', () => {
+			const env = buildInfisicalEnv(
+				{
+					INFISICAL_TOKEN: 'pre-existing',
+					INFISICAL_CLIENT_ID: 'cid',
+					INFISICAL_CLIENT_SECRET: 'cs',
+					INFISICAL_PROJECT_ID: 'p',
+					INFISICAL_SITE_URL: 's',
+					INFISICAL_API_URL: 'a',
+					NODE_ENV: 'test',
+				},
+				'writer-scope-token',
+			);
+			assert.equal(env.INFISICAL_TOKEN, 'writer-scope-token');
+			assert.equal(env.INFISICAL_CLIENT_ID, undefined);
+			assert.equal(env.INFISICAL_CLIENT_SECRET, undefined);
+			assert.equal(env.INFISICAL_PROJECT_ID, undefined);
+			assert.equal(env.INFISICAL_SITE_URL, undefined);
+			assert.equal(env.INFISICAL_API_URL, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('drops INFISICAL_TOKEN when no token is supplied (so a leftover token in process.env does not leak through)', () => {
+			const env = buildInfisicalEnv({ INFISICAL_TOKEN: 'leftover', NODE_ENV: 'test' }, '');
+			assert.equal(env.INFISICAL_TOKEN, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('does not mutate the input env', () => {
+			const input = { INFISICAL_TOKEN: 'tok', INFISICAL_CLIENT_ID: 'cid', NODE_ENV: 'test' };
+			const snapshot = { ...input };
+			buildInfisicalEnv(input, 'new-token');
+			assert.deepEqual(input, snapshot);
+		});
+	});
+
+	describe('SMOKE_URL_DEFAULT (canonical protected surface; PR #141 re-review)', () => {
+		it('points at the requireApiKey-gated, access_counter:read-protected endpoint', () => {
+			// The smoke URL MUST be a real API-key-protected read-only
+			// surface so a 2xx response proves the fresh plaintext
+			// authenticates AND carries the required scope. /api/v1/health
+			// does not satisfy this contract.
+			const url = new URL(SMOKE_URL_DEFAULT);
+			assert.equal(url.hostname, 'rebuildup.dev');
+			assert.equal(url.protocol, 'https:');
+			assert.ok(
+				url.pathname.startsWith('/api/v1/access/count/'),
+				`smoke URL must be under /api/v1/access/count/ (got: ${url.pathname})`,
+			);
+		});
+
+		it('uses a canonical counter key that the access-counter schema accepts', () => {
+			// home-page is a real counter key in production use
+			// (src/home/access/load.ts); `validateCounterKey` allows
+			// any printable non-whitespace 1..256-char string.
+			const path = new URL(SMOKE_URL_DEFAULT).pathname;
+			const key = path.slice('/api/v1/access/count/'.length);
+			assert.ok(key.length > 0 && key.length <= 256);
+			for (let i = 0; i < key.length; i++) {
+				const code = key.charCodeAt(i);
+				assert.ok(
+					code > 0x20 && code !== 0x7f,
+					`counter key must not contain whitespace/control chars (got code=${code} at index=${i})`,
+				);
+			}
 		});
 	});
 

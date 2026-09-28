@@ -1212,7 +1212,7 @@ async function main() {
 	// step is CONTAINMENT (Better Auth verifyApiKey validates against D1
 	// directly; the Worker binding is internal self-consumption only).
 	// Located here so we can fail fast if the row is missing, but the
-	// disable itself happens AFTER the fresh-row INSERT + smoke (Stage 7)
+	// disable itself happens AFTER Stage 7 persists + verifies the fresh value in Infisical (Stage 8)
 	// so the old row stays valid until the new row is proven usable.
 	console.log('[execute] locating old home-self-consumption row...');
 	const oldRowResult = execD1Sql({
@@ -1255,9 +1255,9 @@ async function main() {
 
 	// Stage 5 — INSERT new row + verify. The old row remains enabled at
 	// this point (Phase 1 of the D1 mutation). A short dual-valid window
-	// exists from here until Stage 7 completes (the in-process smoke is
+	// exists from here until Stage 8 completes (the protected smoke + Infisical persistence are
 	// bounded; typically < 1s). Both rows enabled during the window is
-	// intentional: if the smoke fails we abort BEFORE disable-old and
+	// intentional: if the smoke or Infisical persistence fails we abort BEFORE disable-old and
 	// discard via --disable-row, so we never reach a zero-valid-key state.
 	const insertCmd = buildD1InsertCommand({
 		rowName,

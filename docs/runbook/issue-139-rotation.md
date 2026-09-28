@@ -56,6 +56,31 @@ production. Both require operator-supplied `INFISICAL_TOKEN` with
 Identity (`my-web-2026-cf-worker`, role=`viewer`) fails-closed for
 write paths.
 
+## Subprocess env isolation (PR #140 re-review, 2026-09-28)
+
+The script spawns two distinct subprocess kinds, each with a different
+env contract. The writer-scoped `INFISICAL_TOKEN` MUST reach the
+Infisical CLI (the CLI authenticates with the token), and MUST NOT
+reach any Wrangler / D1 subprocess (the token is scoped to write
+Infisical, not Cloudflare or D1; leaking it violates least-privilege
+and exposes the token to anything Wrangler spawns).
+
+- `buildInfisicalEnv(baseEnv, token)` — keeps writer
+  `INFISICAL_TOKEN`, strips the other Infisical credentials
+  (`INFISICAL_CLIENT_ID`, `INFISICAL_CLIENT_SECRET`,
+  `INFISICAL_PROJECT_ID`, `INFISICAL_SITE_URL`, `INFISICAL_API_URL`).
+  Used for the `infisical secrets set --file` CLI subprocess ONLY.
+- `buildWranglerEnv(baseEnv)` — strips the full 6-key Infisical
+  credential set, no token added. Used for every Wrangler subprocess
+  (`secret bulk` write, `secret list --format json`). Wrangler/D1
+  MUST NEVER receive the writer-scoped Infisical token.
+
+`buildSanitizedEnv` is retained as a deprecated alias for
+`buildWranglerEnv` (back-compat with prior commit SHAs); new code
+MUST use the explicit builders. Mirrored from
+`scripts/rotate-home-api-key.mjs#buildInfisicalEnv` /
+`#buildWranglerEnv`.
+
 ## Step 0 — Operator pre-flight
 
 Before running `--execute`:

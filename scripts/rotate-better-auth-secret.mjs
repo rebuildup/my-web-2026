@@ -63,6 +63,17 @@
  *  - All wrangler mutations use `wrangler secret bulk` with stdin
  *    JSON. `wrangler secret put` / `wrangler secret delete` are NOT
  *    used (interactive `confirm()` would block).
+ *  - **Subprocess env isolation** (PR #140 re-review, 2026-09-28):
+ *    two distinct subprocess env contracts:
+ *      - `buildInfisicalEnv(baseEnv, token)` keeps the writer
+ *        `INFISICAL_TOKEN` and strips the other Infisical credentials
+ *        (CLIENT_ID / CLIENT_SECRET / PROJECT_ID / SITE_URL /
+ *        API_URL). Used for the Infisical CLI subprocess ONLY.
+ *      - `buildWranglerEnv(baseEnv)` strips the FULL 6-key Infisical
+ *        credential set (including INFISICAL_TOKEN). Used for every
+ *        Wrangler / D1 subprocess (secret bulk, secret list, d1
+ *        execute). Wrangler/D1 MUST NEVER receive the writer-scoped
+ *        Infisical token.
  *
  * ## Failure semantics
  *
@@ -596,33 +607,72 @@ function secretValuesEqual(a, b) {
 }
 
 /**
- * Compose the sanitized env for the Infisical CLI subprocess. The
- * operator-supplied INFISICAL_TOKEN must be present so the CLI can
- * authenticate; CLIENT_ID / CLIENT_SECRET are NOT accepted by this
- * script (operator-trust model for write paths).
+ * Build the env for the **Infisical CLI** subprocess. The
+ * operator-supplied INFISICAL_TOKEN is REQUIRED so the CLI can
+ * authenticate; the other Infisical credentials are stripped because
+ * the CLI uses the token, not UA. CLIENT_ID / CLIENT_SECRET are NOT
+ * accepted by this script (operator-trust model for write paths).
  *
- * **PR #141 review fix (2026-09-28)**: also strip `INFISICAL_TOKEN`
- * itself, plus the full Infisical credential set, from any
- * non-Infisical subprocess env (Wrangler / D1). The writer-scoped
- * Infisical token is scoped to write Infisical, not Cloudflare or
- * D1. Mirrored from `scripts/rotate-home-api-key.mjs#buildSanitizedEnv`.
+ * **PR #140 re-review fix (2026-09-28)**: the prior `buildSanitizedEnv`
+ * stripped INFISICAL_TOKEN itself, so the Infisical CLI subprocess
+ * was being launched with an empty auth header. Split the contract:
+ * `buildInfisicalEnv` keeps the token (Infisical side); the Wrangler
+ * side uses `buildWranglerEnv` which strips it. Mirrored from
+ * `scripts/rotate-home-api-key.mjs#buildInfisicalEnv`.
  */
-function buildSanitizedEnv(baseEnv) {
+function buildInfisicalEnv(baseEnv, token) {
+	const env = { ...baseEnv, INFISICAL_TOKEN: token };
+	// Strip the other Infisical credentials (token is added above; UA
+	// fields would be ignored by the CLI but should not leak through).
+	for (const key of [
+		'INFISICAL_CLIENT_ID',
+		'INFISICAL_CLIENT_SECRET',
+		'INFISICAL_PROJECT_ID',
+		'INFISICAL_SITE_URL',
+		'INFISICAL_API_URL',
+	]) {
+		// Biome `lint/performance/noDelete` — assign undefined instead.
+		env[key] = undefined;
+	}
+	return env;
+}
+
+/**
+ * Build the env for **Wrangler / D1** subprocesses. Strips the FULL
+ * 6-key Infisical credential set (including INFISICAL_TOKEN). The
+ * writer-scoped Infisical token is scoped to write Infisical, not
+ * Cloudflare or D1; leaking it to Wrangler violates least-privilege
+ * and exposes the token to any subprocess Wrangler spawns.
+ *
+ * **PR #140 re-review fix (2026-09-28)**: the prior code passed
+ * `process.env` straight to the Wrangler subprocess, so the writer
+ * token was leaking via `env: process.env` in `runWranglerWrite` and
+ * `readWranglerBindingNames`. Mirrored from
+ * `scripts/rotate-home-api-key.mjs#buildWranglerEnv`.
+ */
+function buildWranglerEnv(baseEnv) {
 	const env = { ...baseEnv };
-	const sensitive = [
+	for (const key of [
 		'INFISICAL_TOKEN',
 		'INFISICAL_CLIENT_ID',
 		'INFISICAL_CLIENT_SECRET',
 		'INFISICAL_PROJECT_ID',
 		'INFISICAL_SITE_URL',
 		'INFISICAL_API_URL',
-	];
-	for (const key of sensitive) {
-		if (key in env) {
-			delete env[key];
-		}
+	]) {
+		env[key] = undefined;
 	}
 	return env;
+}
+
+/**
+ * Deprecated alias for `buildWranglerEnv`. Retained for back-compat
+ * with prior commit SHAs / external callers; new code MUST use
+ * `buildInfisicalEnv` (for the Infisical CLI) or `buildWranglerEnv`
+ * (for Wrangler / D1) directly. PR #140 re-review, 2026-09-28.
+ */
+function buildSanitizedEnv(baseEnv) {
+	return buildWranglerEnv(baseEnv);
 }
 
 function awaitExit(child, { timeoutMs = SUBPROCESS_TIMEOUT_MS } = {}) {
@@ -715,6 +765,8 @@ export {
 	httpsGetJson,
 	readInfisicalSecret,
 	secretValuesEqual,
+	buildInfisicalEnv,
+	buildWranglerEnv,
 	buildSanitizedEnv,
 	awaitExit,
 	summarizeInfisicalState,
@@ -796,7 +848,7 @@ async function runVerify({ apiUrl, token, workspaceId, environment }) {
 		name: SECRET_NAME_VERSIONED,
 		allowMissing: true,
 	});
-	const bindings = await readWranglerBindingNames(process.env);
+	const bindings = await readWranglerBindingNames(buildWranglerEnv(process.env));
 	return {
 		infisical: summarizeInfisicalState({ legacyValue, versionedValue }),
 		worker: summarizeWorkerState({ bindings }),
@@ -900,15 +952,12 @@ async function main() {
 			console.log(
 				`[execute] writing fresh ${SECRET_NAME_LEGACY} + ${SECRET_NAME_VERSIONED} to Infisical ${args.environment} (via CLI subprocess for E2EE)...`,
 			);
-			const sanitizedEnv = buildSanitizedEnv({
-				...process.env,
-				INFISICAL_TOKEN: token,
-			});
+			const infisicalEnv = buildInfisicalEnv(process.env, token);
 			const infisicalResult = await runInfisicalWrite({
 				cliPath,
 				yamlPath,
 				environment: args.environment,
-				env: sanitizedEnv,
+				env: infisicalEnv,
 			});
 			if (infisicalResult.signal) {
 				throw new Error(`infisical CLI terminated by signal ${infisicalResult.signal}`);
@@ -956,7 +1005,7 @@ async function main() {
 		`[${args.mode}] writing ${SECRET_NAME_LEGACY} to Worker via wrangler secret bulk (stdin JSON)...`,
 	);
 	const payload = buildWorkerBulkPayload(freshSecret);
-	const wranglerResult = await runWranglerWrite({ payload, env: process.env });
+	const wranglerResult = await runWranglerWrite({ payload, env: buildWranglerEnv(process.env) });
 	if (wranglerResult.signal) {
 		// Partial failure — Infisical fresh succeeded but Worker fresh did not.
 		if (infisicalWriteSucceeded && args.mode === 'execute') {
@@ -991,7 +1040,7 @@ async function main() {
 
 	// Stage 3 — Worker binding-name verification (no value read-back).
 	console.log(`[${args.mode}] verifying Worker binding names (no value read-back)...`);
-	const bindings = await readWranglerBindingNames(process.env);
+	const bindings = await readWranglerBindingNames(buildWranglerEnv(process.env));
 	const hasLegacy = bindings.includes(SECRET_NAME_LEGACY);
 	if (!hasLegacy) {
 		throw new Error(

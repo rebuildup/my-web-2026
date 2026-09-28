@@ -12,6 +12,8 @@
  *   - state summarization (Infisical + Worker)
  *   - failure-injection / partial-failure contract
  *   - security invariants (plaintext never in argv, log, error message)
+ *   - buildInfisicalEnv (Infisical CLI env: keeps INFISICAL_TOKEN, strips other Infisical credentials)
+ *   - buildWranglerEnv (Wrangler/D1 env: strips full Infisical credential set, no token added)
  */
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
@@ -21,12 +23,14 @@ import {
 	MODES,
 	SECRET_NAME_LEGACY,
 	SECRET_NAME_VERSIONED,
+	buildInfisicalEnv,
 	buildInfisicalSetArgs,
 	buildInfisicalYamlContent,
 	buildSanitizedEnv,
 	buildVersionedForm,
 	buildWorkerBulkPayload,
 	buildWranglerBulkArgs,
+	buildWranglerEnv,
 	generateFreshSecret,
 	parseArgs,
 	parseVersionedSecrets,
@@ -781,7 +785,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 	});
 
-	describe('buildSanitizedEnv (PR #141 review fix: full Infisical credential set stripped)', () => {
+	describe('buildSanitizedEnv (deprecated alias for buildWranglerEnv; PR #140 re-review fix)', () => {
 		it('strips INFISICAL_TOKEN (writer token must not leak to Wrangler/D1 subprocesses)', () => {
 			const env = buildSanitizedEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_TOKEN, undefined);
@@ -816,6 +820,94 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 			const input = { INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' };
 			const snapshot = { ...input };
 			buildSanitizedEnv(input);
+			assert.deepEqual(input, snapshot);
+		});
+	});
+
+	describe('buildWranglerEnv (PR #140 re-review fix: full Infisical credential set stripped, NO token added)', () => {
+		it('strips INFISICAL_TOKEN (Wrangler MUST NOT receive the writer-scoped Infisical token)', () => {
+			const env = buildWranglerEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
+			assert.equal(env.INFISICAL_TOKEN, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('strips INFISICAL_CLIENT_ID and INFISICAL_CLIENT_SECRET', () => {
+			const env = buildWranglerEnv({
+				INFISICAL_CLIENT_ID: 'cid',
+				INFISICAL_CLIENT_SECRET: 'cs',
+				NODE_ENV: 'test',
+			});
+			assert.equal(env.INFISICAL_CLIENT_ID, undefined);
+			assert.equal(env.INFISICAL_CLIENT_SECRET, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('strips the full Infisical credential set (PROJECT_ID, SITE_URL, API_URL)', () => {
+			const env = buildWranglerEnv({
+				INFISICAL_PROJECT_ID: 'p',
+				INFISICAL_SITE_URL: 's',
+				INFISICAL_API_URL: 'a',
+				NODE_ENV: 'test',
+			});
+			assert.equal(env.INFISICAL_PROJECT_ID, undefined);
+			assert.equal(env.INFISICAL_SITE_URL, undefined);
+			assert.equal(env.INFISICAL_API_URL, undefined);
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('does not mutate the input env', () => {
+			const input = { INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' };
+			const snapshot = { ...input };
+			buildWranglerEnv(input);
+			assert.deepEqual(input, snapshot);
+		});
+	});
+
+	describe('buildInfisicalEnv (PR #140 re-review fix: Infisical CLI MUST receive the writer token)', () => {
+		it('sets INFISICAL_TOKEN from the explicit token argument (CLI needs it to authenticate)', () => {
+			const env = buildInfisicalEnv({ NODE_ENV: 'test' }, 'writer-token-abc');
+			assert.equal(env.INFISICAL_TOKEN, 'writer-token-abc');
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('overrides an INFISICAL_TOKEN already in baseEnv with the explicit token argument', () => {
+			// If baseEnv already had a viewer token, the writer token wins.
+			const env = buildInfisicalEnv(
+				{ INFISICAL_TOKEN: 'viewer-token', NODE_ENV: 'test' },
+				'writer-token-xyz',
+			);
+			assert.equal(env.INFISICAL_TOKEN, 'writer-token-xyz');
+		});
+
+		it('strips the OTHER Infisical credentials (CLIENT_ID/SECRET/PROJECT_ID/SITE_URL/API_URL)', () => {
+			const env = buildInfisicalEnv(
+				{
+					INFISICAL_CLIENT_ID: 'cid',
+					INFISICAL_CLIENT_SECRET: 'cs',
+					INFISICAL_PROJECT_ID: 'p',
+					INFISICAL_SITE_URL: 's',
+					INFISICAL_API_URL: 'a',
+					NODE_ENV: 'test',
+				},
+				'writer-token',
+			);
+			assert.equal(env.INFISICAL_CLIENT_ID, undefined);
+			assert.equal(env.INFISICAL_CLIENT_SECRET, undefined);
+			assert.equal(env.INFISICAL_PROJECT_ID, undefined);
+			assert.equal(env.INFISICAL_SITE_URL, undefined);
+			assert.equal(env.INFISICAL_API_URL, undefined);
+			assert.equal(env.INFISICAL_TOKEN, 'writer-token');
+			assert.equal(env.NODE_ENV, 'test');
+		});
+
+		it('does not mutate the input baseEnv', () => {
+			const input = {
+				INFISICAL_TOKEN: 'old',
+				INFISICAL_CLIENT_ID: 'cid',
+				NODE_ENV: 'test',
+			};
+			const snapshot = { ...input };
+			buildInfisicalEnv(input, 'new-token');
 			assert.deepEqual(input, snapshot);
 		});
 	});

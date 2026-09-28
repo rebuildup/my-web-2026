@@ -1161,7 +1161,6 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 	});
 });
 
-
 describe('execute recovery ordering contract', () => {
 	it('persists fresh plaintext in Infisical before disabling the exposed old D1 row', () => {
 		const source = readFileSync(new URL('./rotate-home-api-key.mjs', import.meta.url), 'utf8');
@@ -1169,7 +1168,10 @@ describe('execute recovery ordering contract', () => {
 		const contain = source.indexOf('// Stage 8 — disable OLD row');
 		const worker = source.indexOf('// Stage 9 — write Worker');
 		assert.ok(persist >= 0, 'Stage 7 Infisical persist marker missing');
-		assert.ok(contain > persist, 'old-row containment must happen after fresh Infisical persistence');
+		assert.ok(
+			contain > persist,
+			'old-row containment must happen after fresh Infisical persistence',
+		);
 		assert.ok(worker > contain, 'Worker propagation must happen after containment');
 	});
 });

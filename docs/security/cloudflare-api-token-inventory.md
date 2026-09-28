@@ -136,15 +136,21 @@ what breaks?
 
 **Recommended remediation:**
 
-1. Operator creates a replacement token at minimum scope (Read
-   Workers Scripts + Read D1 + Read R2 + List Workers for the
-   `my-web-2026` account; NOT Write, NOT broader).
-2. Operator wires the replacement into operator-local `.env`,
-   `.dev.vars`, or shell rc (NOT into the repository).
-3. Operator revokes the exposed token.
-4. Operator confirms (status-only) that the revoked token returns
-   401 on `wrangler secret list` against the production Worker.
-5. Operator records evidence in Issue #148 / #139.
+1. Determine whether the operator actually needs a replacement
+   `CLOUDFLARE_API_TOKEN`. The canonical production deploy path does
+   not need one, and repository diagnostics can run without Tier 3.
+2. For local operator mutation gates (for example Gate B/C or #89
+   Phase B), prefer Wrangler OAuth (`wrangler login`) so no new
+   long-lived API token has to be created solely for these operations.
+3. If token auth is intentionally chosen instead of OAuth, derive its
+   permissions from the exact gated operations. A read-only diagnostic
+   token is **not sufficient** for repository drivers that execute
+   `wrangler secret bulk` or remote D1 writes. Do not add R2
+   permission unless the approved operation actually touches R2.
+4. After a non-exposed auth path is confirmed, revoke the exposed
+   token.
+5. Confirm status-only that the revoked token is rejected, and record
+   the result in Issue #139.
 
 ## Cross-references
 

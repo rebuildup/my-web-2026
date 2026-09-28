@@ -1369,7 +1369,6 @@ async function main() {
 		rmSync(tempDir, { recursive: true, force: true });
 	}
 
-
 	// Stage 8 — disable OLD row (Phase 2 of D1 mutation = containment).
 	// Idempotent via the `WHERE enabled = 1` guard. Now that the smoke
 	// has proven the fresh plaintext authenticates AND Stage 7 has persisted

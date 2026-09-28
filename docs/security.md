@@ -44,8 +44,14 @@ exist or are reachable. Real-resource smoke requires:
 
 1. Real D1 `database_id` and real R2 `bucket_name` declared in
    `wrangler.jsonc`.
-2. `pnpm deploy` against a Cloudflare account (or a CI deploy
-   step with `CLOUDFLARE_API_TOKEN`).
+2. Production deploy via Cloudflare Workers Builds (canonical
+   path — uses the `build_token_uuid` binding registered in
+   Cloudflare project settings, NOT `CLOUDFLARE_API_TOKEN`). For
+   local-diagnostic deploys the operator may instead use
+   `pnpm deploy` with `wrangler login` (OAuth) or an explicit
+   `CLOUDFLARE_API_TOKEN` env var; see
+   [`docs/security/cloudflare-api-token-inventory.md`](security/cloudflare-api-token-inventory.md)
+   for the consumer / non-consumer map.
 3. A `curl` smoke against the deployed Worker URL: `/`,
    `/api/v1/health`, `/api/v1/db/ping`, `/api/v1/media/ping`.
 

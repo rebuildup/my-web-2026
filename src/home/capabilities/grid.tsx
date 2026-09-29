@@ -64,14 +64,30 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 					>
 						{capabilities.map((capability, index) => {
 							const ordinal = String(index + 1).padStart(2, '0');
+							const isLive = capability.status === 'live';
 							return (
 								<li
 									key={capability.id}
 									className={css({
 										display: 'flex',
 										flexDirection: 'column',
+										position: 'relative',
+										paddingInlineStart: { base: '0', md: isLive ? '6' : '0' },
 									})}
 								>
+									{isLive ? (
+										<span
+											aria-hidden="true"
+											className={css({
+												position: 'absolute',
+												left: '0',
+												top: '0',
+												bottom: '0',
+												width: '2px',
+												backgroundColor: 'accent.positive',
+											})}
+										/>
+									) : null}
 									<header
 										className={css({
 											display: 'flex',

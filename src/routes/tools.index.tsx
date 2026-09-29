@@ -53,8 +53,7 @@ export const Route = createFileRoute('/tools/')({
 			{ title: 'Tools — my-web-2026' },
 			{
 				name: 'description',
-				content:
-					'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.',
+				content: 'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.',
 			},
 		],
 	}),

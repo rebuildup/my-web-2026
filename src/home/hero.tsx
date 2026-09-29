@@ -146,7 +146,7 @@ export function Hero() {
 									fontWeight: '600',
 									textDecoration: 'none',
 									transition: 'background-color 120ms ease',
-									_hover: { backgroundColor: 'colors.brand.600' },
+									_hover: { backgroundColor: 'accent.interactive' },
 									_focusVisible: {
 										outline: '2px solid {colors.border.focus}',
 										outlineOffset: '2px',

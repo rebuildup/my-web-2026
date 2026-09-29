@@ -22,6 +22,13 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * `<a>` wraps the title and the whole card (CSS `::after`
  * pseudo-element extends the hit area to the entire card
  * surface).
+ *
+ * Issue #172 — semantic category accent. The card carries a 4px
+ * left-border using `accent.category.<facet>` so the four
+ * content categories (design / code / writing / tool) read as a
+ * visual hint on each list item without changing the existing
+ * reading order. Facet → category mapping:
+ *   develop → code, video → tool, design → design, other → writing.
  */
 export interface ProjectCardProps {
 	project: PortfolioProject;
@@ -34,11 +41,19 @@ const FACET_LABEL: Readonly<Record<string, string>> = {
 	other: 'Other',
 };
 
+const FACET_CATEGORY: Readonly<Record<string, 'design' | 'code' | 'writing' | 'tool'>> = {
+	develop: 'code',
+	video: 'tool',
+	design: 'design',
+	other: 'writing',
+};
+
 export function ProjectCard({ project }: ProjectCardProps) {
 	const cover = project.media.find((m) => m.isCover) ?? project.media[0] ?? null;
 	const type = project.facets[0]
 		? (FACET_LABEL[project.facets[0]] ?? project.facets[0])
 		: 'Project';
+	const category = project.facets[0] ? (FACET_CATEGORY[project.facets[0]] ?? null) : null;
 	return (
 		<article
 			className={css({
@@ -51,6 +66,17 @@ export function ProjectCard({ project }: ProjectCardProps) {
 				borderTop: '1px solid {colors.border.subtle}',
 			})}
 		>
+			<div
+				aria-hidden="true"
+				className={css({
+					position: 'absolute',
+					left: '0',
+					top: '0',
+					bottom: '0',
+					width: { base: '0', md: '4px' },
+					backgroundColor: category ? `accent.category.${category}` : 'transparent',
+				})}
+			/>
 			{cover ? (
 				<div className={css({ minWidth: '0' })}>
 					<PortfolioMediaFigure media={cover} loading="lazy" />

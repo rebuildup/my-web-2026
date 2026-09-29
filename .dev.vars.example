@@ -151,3 +151,22 @@
 # today; after #89 (Issue #89 versioned 2-name flip) the first
 # line above becomes `BETTER_AUTH_SECRETS="..."` and the legacy
 # `BETTER_AUTH_SECRET` line falls out of `secrets.required`.
+#
+# ──────────────────────────────────────────────────────────────────────
+# Local API mock layer (Issue #166)
+# ──────────────────────────────────────────────────────────────────────
+# When designing UI against canned data — for example, when the local
+# D1 is empty or the home widget needs to be screenshotted without a
+# real session — set `LOCAL_API_MODE=mock` in the gitignored `.dev.vars`
+# to enable the design-verification layer at `src/http/mock/`. The mock
+# handles 8 endpoints (auth.session / sign-in / sign-out, access.count /
+# hit / principal, reactions/:slug / toggle). Endpoints outside that
+# set (portfolio, keys, emoji-catalog, auth-invitations) fall through
+# to the real handlers in mock mode.
+#
+# Unset / any value other than `mock` → production boundary unchanged.
+# The env is intentionally NOT in `wrangler.jsonc#vars`; production
+# deployments MUST NOT carry this var. The type augmentation is in
+# `src/cloudflare/auth/env.d.ts`.
+#
+# # LOCAL_API_MODE="mock"

@@ -35,6 +35,22 @@ When the dedup window (default 60 minutes) still holds for the same
 `(key, principal, session_id)` triple, `incremented` is `false` and
 the counter is unchanged.
 
+Pre-D1 ingress filters (Issue #170) run **before** the D1 dedup.
+When a hit is rejected by one of them, the response is
+`{ "incremented": false, "reason": "bot" | "prefetch" | "dedupe" }`
+and **no D1 statement runs**. The GET endpoint is unaffected.
+
+| Gate        | Reject when …                                                                                                  |
+|-------------|----------------------------------------------------------------------------------------------------------------|
+| Bot UA      | `User-Agent` matches `/bot\|crawler\|spider\|slurp\|bingpreview\|facebookexternalhit\|preview\|monitor\|headlesschrome/i`. Missing / empty UA is also rejected. |
+| Prefetch    | Any of `Sec-Purpose`, `Purpose`, `X-Purpose` headers contains the case-insensitive substring `prefetch`.       |
+| Dedupe LRU  | The triple `${ip}\|${ua}\|${path}` was seen inside the last **5 minutes** (`LRU_TTL_MS`). Same Worker isolate only. |
+
+The LRU cache is module-scoped and Worker-isolate-local — best-effort
+only. Cross-replica dedupe would need KV / Durable Object and is
+out of scope. The D1 `(counter_key, principal, session_id)` UNIQUE
+primary key remains the durable source of truth.
+
 ### GET /count/:key
 
 Response (200):

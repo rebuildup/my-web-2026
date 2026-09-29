@@ -39,7 +39,26 @@ declare global {
 			// `vars` block; we keep the same `string | undefined` shape
 			// here so SSR reads stay total.
 			GOOGLE_ANALYTICS_MEASUREMENT_ID?: string;
+			// Issue #166 — local API mock layer gate. When this env
+			// value is `'mock'` (set in `.dev.vars`, NOT in
+			// `wrangler.jsonc#vars` — production must never see this),
+			// the Hono external boundary forwards `/api/v1/*` to
+			// `src/http/mock/` instead of the real handlers. Optional:
+			// unset in production; default behavior (env.LOCAL_API_MODE
+			// !== 'mock') runs the production boundary unchanged.
+			LOCAL_API_MODE?: string;
 		}
+	}
+
+	// `worker-configuration.d.ts` declares both `Cloudflare.Env` (in
+	// a `declare namespace Cloudflare { ... }`) and a top-level
+	// `interface Env extends __BaseEnv_Env {}`. Augmenting only the
+	// namespaced form does NOT propagate to the top-level `Env` that
+	// every call site uses (`env: Env`); we declare the new field on
+	// both surfaces so `c.env.LOCAL_API_MODE` typechecks.
+	interface Env {
+		LOCAL_API_MODE?: string;
+		GOOGLE_ANALYTICS_MEASUREMENT_ID?: string;
 	}
 }
 

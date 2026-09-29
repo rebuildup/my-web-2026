@@ -93,19 +93,33 @@ for (let i = 0; i < manifest.tools.length; i++) {
 		errors.push(`${prefix}  source.canonical_repo: must be an https://github.com/... URL`);
 	}
 	// Brief rule: do NOT derive the URL from the slug. The actual
-	// canonical URL for many tool-* repos happens to be
-	// `https://github.com/rebuildup/tool-<slug>.git`, so we only
-	// flag the case where the URL clearly DOES NOT match the slug —
-	// a stronger signal that the manifest entry is wrong than the
-	// inverse.
+	// canonical URL for most tool-* repos happens to be
+	// `https://github.com/rebuildup/tool-<slug>.git`, so we flag the
+	// case where the URL ends with `/${slug}.git` AND clearly looks
+	// like a typo of the `tool-<slug>.git` pattern (i.e. the host
+	// portion matches the convention but the slug segment is wrong).
+	// Tools like `readmark` (intentionally `rebuildup/readmark`, not
+	// `rebuildup/tool-readmark`) and `prototype` (intentionally
+	// `rebuildup/ProtoType`) opt out of the convention; those are
+	// captured by reading the host portion, not the slug portion.
 	if (typeof s.canonical_repo === 'string') {
 		const expectedByPattern = `https://github.com/rebuildup/tool-${tool.slug}.git`;
-		if (s.canonical_repo !== expectedByPattern && s.canonical_repo.endsWith(`/${tool.slug}.git`)) {
-			// The URL ends with the slug but the prefix differs from the
-			// `tool-` convention — almost certainly a typo / wrong slug.
-			errors.push(
-				`${prefix}  source.canonical_repo: URL ends with "${tool.slug}.git" but the rest does not match "https://github.com/rebuildup/tool-${tool.slug}.git" — verify the canonical_repo URL is correct`,
-			);
+		if (s.canonical_repo !== expectedByPattern) {
+			// Look for a host/path portion that is plausibly a typo of
+			// the convention: starts with `tool-` but ends with the
+			// slug literally. This catches e.g.
+			// `https://github.com/rebuildup/tool-text-counter/tree/main`
+			// recorded with slug `text-counter`, but does NOT flag
+			// `https://github.com/rebuildup/readmark.git` (no `tool-`
+			// prefix at all) or `https://github.com/rebuildup/ProtoType.git`
+			// (capitalised, non-conventional repo name).
+			const looksLikeToolPattern = /\/tool-[^/]+\.git$/.test(s.canonical_repo);
+			const endsWithSlug = s.canonical_repo.endsWith(`/${tool.slug}.git`);
+			if (looksLikeToolPattern && endsWithSlug) {
+				errors.push(
+					`${prefix}  source.canonical_repo: URL ends with "${tool.slug}.git" but the host portion matches the "tool-<slug>.git" convention; verify the canonical_repo URL is correct`,
+				);
+			}
 		}
 	}
 	if (typeof s.submodule_path !== 'string' || !SUBMODULE_PATH_REGEX.test(s.submodule_path)) {

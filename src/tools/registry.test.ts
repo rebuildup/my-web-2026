@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
-import { getPublicTool, getTool, listPublicTools, listTools } from './registry';
+import { getPublicTool, getTool, listAllTools, listPublicTools, listTools } from './registry';
 
 /**
  * Tool Registry — contract tests (Issue #80).
@@ -9,13 +9,14 @@ import { getPublicTool, getTool, listPublicTools, listTools } from './registry';
  * `/tools` index page and the `/tools/<slug>` iframe route. The
  * contract is:
  *
- *   1. `listTools()` returns every entry in the manifest.
+ *   1. `listAllTools()` / `listTools()` returns every entry in the manifest.
  *   2. `getTool(slug)` returns the matching entry, or undefined.
  *   3. `listPublicTools()` returns ONLY entries whose
  *      `delivery.kind` is `same_origin_static` or `external_exception`.
  *   4. `host_disabled` and `not_integrable_yet` Tools are NEVER
- *      in the public list — the brief forbids showing Tools that
- *      are not actually integrated.
+ *      in the public list — the iframe shell can only mount an
+ *      embeddable Tool. They ARE in `listAllTools()` per #195
+ *      (show-all policy for the `/tools` index page).
  *   5. `getPublicTool(slug)` matches `getTool(slug)` for any public
  *      Tool, and returns undefined for a non-public Tool.
  *
@@ -24,8 +25,15 @@ import { getPublicTool, getTool, listPublicTools, listTools } from './registry';
  */
 
 describe('Tool Registry — listTools / getTool', () => {
-	it('returns all 14 Tools known to the manifest', () => {
-		assert.equal(listTools().length, 14);
+	it('returns all 15 Tools known to the manifest', () => {
+		assert.equal(listTools().length, 15);
+	});
+
+	it('returns all 15 Tools known to the manifest (listAllTools alias)', () => {
+		// Issue #195: listAllTools() is the canonical show-all surface.
+		// listTools() is retained as an alias so existing callers keep
+		// compiling; both MUST return the same count.
+		assert.equal(listAllTools().length, 15);
 	});
 
 	it('returns the same Tool instance for a known slug', () => {
@@ -128,5 +136,66 @@ describe('Tool Registry — public surface invariants', () => {
 				`public Tool ${tool.slug} entry_html must be absolute (same-origin)`,
 			);
 		}
+	});
+});
+
+describe('Tool Registry — listAllTools / show-all policy', () => {
+	// Issue #195 (2026-09-29) flipped the `/tools` index page to list
+	// every manifest entry, not just the embeddable subset. `host_disabled`
+	// Tools now render with a "Coming soon" placeholder rather than
+	// being silently omitted from the index.
+	it('listAllTools() returns all 15 entries', () => {
+		assert.equal(listAllTools().length, 15);
+	});
+
+	it('listAllTools() includes both embeddable and host_disabled Tools', () => {
+		const kinds = new Set(listAllTools().map((t) => t.delivery.kind));
+		// show-all means at least one entry of each surface kind.
+		assert.ok(kinds.has('same_origin_static'), 'show-all must include same_origin_static Tools');
+		assert.ok(kinds.has('host_disabled'), 'show-all must include host_disabled Tools');
+	});
+
+	it('host_disabled Tools carry a non-empty disabled_reason via listAllTools()', () => {
+		// The index page and `/tools/<slug>` placeholder need
+		// `disabled_reason` to render the "Coming soon" copy. The
+		// field is on the manifest entry itself, so `getTool()` (and
+		// by extension `listAllTools()`) carries it through unchanged.
+		const hostDisabled = listAllTools().filter((t) => t.delivery.kind === 'host_disabled');
+		assert.ok(hostDisabled.length > 0, 'expected at least one host_disabled Tool');
+		for (const tool of hostDisabled) {
+			if (tool.delivery.kind === 'host_disabled') {
+				assert.ok(
+					typeof tool.delivery.disabled_reason === 'string' &&
+						tool.delivery.disabled_reason.length > 0,
+					`host_disabled Tool ${tool.slug} must carry a non-empty disabled_reason`,
+				);
+			}
+		}
+	});
+
+	it('listPublicTools() is unchanged (still embeddable-only)', () => {
+		// The iframe shell route still consumes listPublicTools().
+		// #195 only flipped the /tools INDEX page; the embeddable
+		// surface must remain filtered.
+		const publicKinds = new Set(listPublicTools().map((t) => t.classification));
+		for (const kind of publicKinds) {
+			assert.ok(
+				kind === 'same_origin_static' || kind === 'external_exception',
+				`public Tool classification ${kind} must not be in listPublicTools()`,
+			);
+		}
+		// Sanity: there must be FEWER public Tools than total — otherwise
+		// the show-all flip is a no-op.
+		assert.ok(
+			listPublicTools().length < listAllTools().length,
+			'listPublicTools() must be a strict subset of listAllTools() for #195 to be meaningful',
+		);
+	});
+
+	it('readmark is a same_origin_static entry in listAllTools()', () => {
+		// Issue #195 also adds readmark as a same_origin_static Tool.
+		const readmark = getTool('readmark');
+		assert.ok(readmark, 'readmark must be present');
+		assert.equal(readmark?.delivery.kind, 'same_origin_static');
 	});
 });

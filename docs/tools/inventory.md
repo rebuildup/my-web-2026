@@ -1,10 +1,15 @@
-# Tool inventory (Issue #80 — fresh state, 2026-09-27)
+# Tool inventory (Issue #80 — fresh state, 2026-09-27; #195 — readmark added 2026-09-29)
 
-> Canonical inventory of the 14 standalone Tool repositories listed in
-> [my-web-2025 `.gitmodules`](../../.reference/my-web-2025/.gitmodules).
-> Read this before opening any Tool integration ticket (Issue #81+).
-> Each row is read from the canonical repo at the recorded HEAD SHA;
-> we do NOT carry assumptions forward from the my-web-2025 era.
+> Canonical inventory of the 15 standalone Tool repositories tracked in
+> `src/tools/manifest.json`. 14 of these are inherited from
+> [my-web-2025 `.gitmodules`](../../.reference/my-web-2025/.gitmodules);
+> `readmark` was added in Issue #195 as a new Tool repo
+> ([rebuildup/readmark](https://github.com/rebuildup/readmark))
+> created 2026-09-26 and intentionally designed to embed as a Tool
+> in my-web-2026. Read this before opening any Tool integration
+> ticket (Issue #81+). Each row is read from the canonical repo at
+> the recorded HEAD SHA; we do NOT carry assumptions forward from
+> the my-web-2025 era.
 
 ## Classification legend
 
@@ -32,6 +37,7 @@ declares no license), default branch `main` (except `tool-pi-game` =
 | slug | repo | HEAD SHA | default | license | package manager | build path | browser APIs | classification |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `prototype` | [rebuildup/ProtoType](https://github.com/rebuildup/ProtoType) | `18e925272ca274e428e143c45194950d562bc096` | `main` | (none) | pnpm | `pnpm run build` (`tsc -b && vite build`) — full Vite app with `index.html` | fetch, canvas / WebGL, three.js, gsap | `same_origin_static` (heavy: ~14 prod deps; large bundle) |
+| `readmark` | [rebuildup/readmark](https://github.com/rebuildup/readmark) | `906c90e57e51f1d7b3fe739f085cf9978445c0fb` | `main` | MIT | `bun@1.4.2` (`engines.bun >= 1.4.0`) | `tsc -b --noCheck && vite build` (Vite app with `index.html`, `vite.config.ts`, `bun.lock`) | `pdfjs-dist` 5.x (PDF decode via `SharedArrayBuffer`, needs COOP/COEP headers), Dexie (IndexedDB local-first), React Router | `same_origin_static` (PDF reading MVP; MIT; added by #195) |
 | `text-counter` | [rebuildup/tool-text-counter](https://github.com/rebuildup/tool-text-counter) | `5371479f6b49e2139424ebb9388287cc5e1a6e03` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library, exports `./src/index.ts` | none (pure text processing) | `needs_tool_side_fix` |
 | `color-palette` | [rebuildup/tool-color-palette](https://github.com/rebuildup/tool-color-palette) | `0eb51503ba39712827497281ca489a379c8c912b` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | none (pure color math) | `needs_tool_side_fix` |
 | `sequential-png-preview` | [rebuildup/tool-sequential-png-preview](https://github.com/rebuildup/tool-sequential-png-preview) | `2bcad8a121f0b058d3f17ac900c76bcc4d47a34e` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `<input type="file">` for drag-drop, `<img>`, `URL.createObjectURL` | `needs_tool_side_fix` |
@@ -50,11 +56,11 @@ declares no license), default branch `main` (except `tool-pi-game` =
 
 | classification | count |
 | --- | --- |
-| `same_origin_static` | 1 (ProtoType) |
+| `same_origin_static` | 2 (ProtoType, readmark) |
 | `needs_tool_side_fix` | 12 |
 | `external_exception` | 1 (mic-level) |
 | `not_integrable_yet` | 0 |
-| **total** | **14** |
+| **total** | **15** |
 
 ## Critical findings
 
@@ -151,3 +157,39 @@ invokes the Tool's own `pnpm run build` and copies `dist/` into
 For `mic-level`, the same standalone build is also possible; the
 only difference is that the iframe hosting it must carry
 `Permissions-Policy: microphone=(self)` on the host origin.
+
+## Policy change (2026-09-29, Issue #195)
+
+The pre-#195 brief forbade showing Tools that are not actually
+integrated — `/tools` listed only `same_origin_static` /
+`external_exception` entries (i.e. just ProtoType), and
+`/tools/<slug>` threw `notFound()` for every `host_disabled`
+slug. Issue #195 flipped this so users can see the full my-web
+tool roadmap:
+
+- **`/tools` index** now calls `listAllTools()` (every manifest
+  entry) instead of `listPublicTools()` (embeddable-only). Tools
+  are grouped into **Integrated** (clickable cards) and
+  **Coming soon** (non-link cards with a badge + the
+  `disabled_reason` text). Sort is alphabetical within each group,
+  embeddable first.
+- **`/tools/<slug>`** still throws `notFound()` for genuinely
+  missing slugs, but renders a "Coming soon" placeholder for
+  `host_disabled` Tools that resolves through `getTool()` (so the
+  `disabled_reason` is available). The iframe shell still calls
+  `getPublicTool()` and is unchanged for embeddable Tools.
+- **`src/tools/registry.ts`** exposes `listAllTools()` as the
+  canonical show-all surface. `listPublicTools()` and
+  `getPublicTool()` remain for the embeddable surface. `listTools()`
+  is retained as an alias for `listAllTools()`.
+- **`scripts/seed-tools.mjs`** iterates the full manifest
+  dynamically (`manifest.tools.length` rows), so adding readmark
+  to the manifest automatically produces 15 `INSERT OR REPLACE`
+  rows on the next dry-run. No script edit was required.
+- **`scripts/check-tools-manifest.mjs`** is unchanged in spirit;
+  the URL typo-guard was tightened so it only flags URLs that
+  look like a `tool-<slug>.git` pattern with a wrong slug segment
+  (e.g. `tool-text-counter.git` recorded with slug `text-counter`).
+  URLs that intentionally use a non-`tool-` repo name (readmark
+  → `rebuildup/readmark`, ProtoType → `rebuildup/ProtoType`) are
+  no longer flagged.

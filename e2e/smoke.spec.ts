@@ -84,17 +84,18 @@ test.describe('home page composition', () => {
 	test('capabilities grid reflects the current domain contract (live+CTA / planned)', async ({
 		page,
 	}) => {
-		// Domain contract as of Issue #77 (PR #84):
+		// Domain contract as of Issue #168 (PR adds `tools` next to `portfolio`):
 		//   - portfolio  → live, with an internal CTA to /portfolio
+		//   - tools      → live, with an internal CTA to /tools (Issue #168)
 		//   - content    → planned, no internal CTA
 		//   - activity   → planned, no internal CTA
 		// The test names each capability by its Japanese h3 label so
-		// it survives any English-copy revision. The 3-card count is a
+		// it survives any English-copy revision. The 4-card count is a
 		// sanity check on the registry, not an assertion of how many
 		// are planned.
 		await page.goto('/');
 		const section = page.locator('section[aria-labelledby="capabilities-heading"]');
-		await expect(section.locator('li')).toHaveCount(3);
+		await expect(section.locator('li')).toHaveCount(4);
 
 		// portfolio — LIVE with an internal CTA to /portfolio.
 		const portfolioCard = section.locator('li').filter({ hasText: 'ポートフォリオ' });
@@ -102,6 +103,13 @@ test.describe('home page composition', () => {
 		const portfolioCta = portfolioCard.locator('a[href="/portfolio"]');
 		await expect(portfolioCta).toBeVisible();
 		await expect(portfolioCta).toHaveAttribute('href', '/portfolio');
+
+		// tools — LIVE with an internal CTA to /tools (Issue #168).
+		const toolsCard = section.locator('li').filter({ hasText: 'ツール' });
+		await expect(toolsCard.locator('text=live')).toBeVisible();
+		const toolsCta = toolsCard.locator('a[href="/tools"]');
+		await expect(toolsCta).toBeVisible();
+		await expect(toolsCta).toHaveAttribute('href', '/tools');
 
 		// content — PLANNED, no internal CTA.
 		const contentCard = section.locator('li').filter({ hasText: 'コンテンツ' });

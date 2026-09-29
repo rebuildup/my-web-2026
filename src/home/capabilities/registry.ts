@@ -24,6 +24,20 @@ export const CAPABILITIES: readonly Capability[] = [
 		href: '/portfolio',
 	},
 	{
+		// `tools` (Issue #80): integrated standalone Web Tools,
+		// reachable at /tools via the Tool Registry. Surfaced on
+		// the home capabilities grid (Issue #168) so a visitor
+		// can reach /tools from `/` in one click — the
+		// information-architecture gap that motivated #168.
+		id: 'tools',
+		label: 'Tools',
+		labelJa: 'ツール',
+		summary: 'Standalone Web Tools, integrated via the Tool Registry.',
+		summaryJa: '単体で動作する Web ツール群。Tool Registry 経由で統合。',
+		status: 'live',
+		href: '/tools',
+	},
+	{
 		id: 'content',
 		label: 'Content',
 		labelJa: 'コンテンツ',

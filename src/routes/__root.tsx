@@ -1,5 +1,6 @@
-import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
+import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { PublicNav } from '../editorial/nav';
 import '../styles.css';
 
 /**
@@ -71,8 +72,16 @@ function RootComponent() {
 }
 
 function RootLayout({ children }: { children: ReactNode }) {
+	const { pathname } = useLocation();
+	// The admin area owns its own chrome (the `/admin` layout is a
+	// pure `<Outlet />` and each admin route is a self-contained
+	// surface — adding a public nav next to it would defeat the
+	// signed-in / signed-out split). Mount `PublicNav` for every
+	// other route.
+	const isAdmin = pathname.startsWith('/admin');
 	return (
 		<div id="app-root" data-app="my-web-2026">
+			{isAdmin ? null : <PublicNav />}
 			{children}
 		</div>
 	);

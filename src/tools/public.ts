@@ -1,6 +1,7 @@
 export {
 	getPublicTool,
 	getTool,
+	listAllTools,
 	listPublicTools,
 	listTools,
 	MANIFEST_VERSION,

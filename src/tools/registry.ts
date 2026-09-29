@@ -31,6 +31,29 @@ import manifestJson from './manifest.json' with { type: 'json' };
  *     - Tool-specific framework adapter
  *     - Tool business logic
  *
+ * Public surface — show-all policy (Issue #195, 2026-09-29):
+ *
+ *   The brief used to forbid showing Tools that are not actually
+ *   integrated (host_disabled entries were kept out of the public
+ *   list). Issue #195 flipped this so users can see the full my-web
+ *   tool roadmap, with `host_disabled` Tools rendered with a
+ *   "Coming soon" placeholder instead of being silently omitted.
+ *
+ *   Two parallel APIs reflect the flip:
+ *
+ *     - `listAllTools()` — every manifest entry, including
+ *       `host_disabled` Tools, with `classification` and `delivery`
+ *       exposed. The `/tools` index page uses this. Replaces the
+ *       prior `listTools()` "all" + `listPublicTools()` "embeddable"
+ *       split for index consumption.
+ *     - `listPublicTools()` — ONLY Tools whose `delivery.kind` is
+ *       `same_origin_static` or `external_exception`. The iframe
+ *       shell route (`/tools/<slug>`) still uses this because the
+ *       iframe can only mount an embeddable Tool.
+ *
+ *   `listTools()` is retained as an alias for `listAllTools()` so
+ *   existing callers keep working.
+ *
  * `verbatimModuleSyntax: true` lets `import type { Tool }` from this
  * file erase to zero runtime cost at build time, so consumers that
  * only need the type do not bundle the manifest.
@@ -103,9 +126,26 @@ export interface PublicToolSummary {
 
 const manifest = manifestJson as Manifest;
 
-/** All Tools known to the registry, including `host_disabled` ones. */
-export function listTools(): readonly ManifestTool[] {
+/**
+ * All Tools known to the registry, including `host_disabled` ones.
+ *
+ * Issue #195 (2026-09-29) flipped the `/tools` index to show every
+ * manifest entry, so this is now the canonical "show-all" surface
+ * for index consumers. Routes that need the embeddable-only subset
+ * must call `listPublicTools()` instead.
+ */
+export function listAllTools(): readonly ManifestTool[] {
 	return manifest.tools;
+}
+
+/**
+ * @deprecated Prefer `listAllTools()` for show-all consumers
+ * (e.g. the `/tools` index after #195) and `listPublicTools()` for
+ * embeddable-only consumers (e.g. the iframe shell route). This
+ * alias is retained so existing callers keep compiling.
+ */
+export function listTools(): readonly ManifestTool[] {
+	return listAllTools();
 }
 
 /** Look up a single Tool by slug. Returns `undefined` if absent. */
@@ -115,15 +155,23 @@ export function getTool(slug: string): ManifestTool | undefined {
 
 /**
  * Kinds that are reachable from a public URL on the host. `host_disabled`
- * and `not_integrable_yet` are intentionally excluded — the brief
- * forbids showing Tools that are not actually integrated.
+ * and `not_integrable_yet` are intentionally excluded from the
+ * embeddable surface — the iframe shell can only mount a Tool that
+ * has an actual `entry_html` / `external_url` to render.
+ *
+ * Note: this filter is only used by the iframe shell route now.
+ * The `/tools` index page switched to `listAllTools()` per #195.
  */
 const PUBLIC_DELIVERY_KINDS = new Set<ManifestTool['delivery']['kind']>([
 	'same_origin_static',
 	'external_exception',
 ]);
 
-/** Public Tools (the `/tools` index page lists exactly these). */
+/**
+ * Embeddable Tools (the iframe shell route renders exactly these).
+ * The `/tools` index page lists more than this — see
+ * `listAllTools()` and Issue #195.
+ */
 export function listPublicTools(): readonly PublicToolSummary[] {
 	return manifest.tools.filter((t) => PUBLIC_DELIVERY_KINDS.has(t.delivery.kind)).map(toSummary);
 }

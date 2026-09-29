@@ -3,6 +3,7 @@ import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
+import { buildLocalApiModeConfigOverride, readDevVars } from './scripts/_dev-vars-reader.mjs';
 
 /**
  * Vite configuration for my-web-2026.
@@ -97,7 +98,32 @@ export default defineConfig({
 	plugins: [
 		cloudflareWorkersClientStub,
 		toolCorsPreviewPlugin(),
-		cloudflare({ viteEnvironment: { name: 'ssr' } }),
+		// LOCAL_API_MODE=mock dev-server passthrough (Issue #186).
+		//
+		// `wrangler.jsonc#vars` is intentionally not extended with
+		// `LOCAL_API_MODE` (production must never see it), and
+		// `wrangler.jsonc#secrets.required` is the deploy-time contract
+		// (ADR-0015 §9) — adding a non-secret var there would widen
+		// the deploy-time required-secret set. Wrangler's
+		// `getVarsForDev` therefore filters `.dev.vars` entries down
+		// to `vars ∪ secrets.required` (see `node_modules/wrangler/.../
+		// cli.js#getVarsForDev`), so a plain `LOCAL_API_MODE=mock` in
+		// `.dev.vars` never reaches `c.env` and the gate at
+		// `src/http/hono.ts` falls through to the real routers.
+		//
+		// The `config()` callback injects the value (only) into
+		// `workerConfig.vars` at config-load time. Once the key lives
+		// in `vars`, the wrangler filter `key in result` lets the same
+		// value through as a plain-text binding to workerd, and the
+		// gate's `c.env.LOCAL_API_MODE === 'mock'` check fires. When
+		// `.dev.vars` is absent or carries no `LOCAL_API_MODE`, the
+		// callback returns `undefined` and the production boundary
+		// runs unchanged.
+		cloudflare({
+			viteEnvironment: { name: 'ssr' },
+			config: (workerConfig) =>
+				buildLocalApiModeConfigOverride(workerConfig, readDevVars(resolve(__dirname, '.dev.vars'))),
+		}),
 		tanstackStart(),
 		react(),
 	],

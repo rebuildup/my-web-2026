@@ -111,7 +111,12 @@
 		// `docs/portfolio/decisions.md` §5. Until the bucket-level
 		// attachment is live, `composeMediaUrl` keeps returning `null`
 		// and the UI's placeholder branch is exercised.
-		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev"
+		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev",
+		// Issue #171 — GA4 measurement ID. Public identifier; empty
+		// default (the operator commits the live `G-XXXXXXX` value
+		// when ready). When empty, `src/editorial/analytics/GoogleAnalytics.tsx`
+		// renders nothing. See `docs/runbook/analytics.md`.
+		"GOOGLE_ANALYTICS_MEASUREMENT_ID": ""
 	},
 	"secrets": {
 		// Source-controlled contract (ADR-0015 §9, Phase 3+ — Issue #89).

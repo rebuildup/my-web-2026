@@ -85,7 +85,7 @@ export interface RouteLabel {
 export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 	'/about': { label: 'About' },
 	'/contact': { label: 'Contact' },
-	'/portfolio': { label: 'Portfolio' },
+	'/portfolio/': { label: 'Portfolio' },
 	'/portfolio/$slug': {
 		// Static fallback (used only when loaderData has no project
 		// — e.g. the loader threw `notFound()` and the match was
@@ -97,7 +97,7 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 			return data?.project?.title ?? data?.project?.slug;
 		},
 	},
-	'/tools': { label: 'Tools' },
+	'/tools/': { label: 'Tools' },
 	'/tools/$slug': {
 		label: 'Tool',
 		// Issue #183: when the loader throws `notFound()` (the slug

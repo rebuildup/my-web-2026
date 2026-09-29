@@ -75,7 +75,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 	it('resolves the /portfolio/$slug label from loaderData.project.title', () => {
 		const chain = resolveBreadcrumbChain([
 			root,
-			match('/portfolio', '/portfolio/aulymo', undefined, {}),
+			match('/portfolio/', '/portfolio/aulymo', undefined, {}),
 			match(
 				'/portfolio/$slug',
 				'/portfolio/aulymo',
@@ -84,7 +84,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			),
 		]);
 		expect(chain).toEqual([
-			{ routeId: '/portfolio', label: 'Portfolio', href: '/portfolio/aulymo' },
+			{ routeId: '/portfolio/', label: 'Portfolio', href: '/portfolio/aulymo' },
 			{
 				routeId: '/portfolio/$slug',
 				label: 'Aulymo',
@@ -96,7 +96,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 	it('falls back to slug when /portfolio/$slug has no project title', () => {
 		const chain = resolveBreadcrumbChain([
 			root,
-			match('/portfolio', '/portfolio/foo'),
+			match('/portfolio/', '/portfolio/foo'),
 			match(
 				'/portfolio/$slug',
 				'/portfolio/foo',
@@ -110,7 +110,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 	it('resolves /tools/$slug from loaderData.display_name', () => {
 		const chain = resolveBreadcrumbChain([
 			root,
-			match('/tools', '/tools/multi-slicer'),
+			match('/tools/', '/tools/multi-slicer'),
 			match(
 				'/tools/$slug',
 				'/tools/multi-slicer',
@@ -119,13 +119,29 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 			),
 		]);
 		expect(chain).toEqual([
-			{ routeId: '/tools', label: 'Tools', href: '/tools/multi-slicer' },
+			{ routeId: '/tools/', label: 'Tools', href: '/tools/multi-slicer' },
 			{
 				routeId: '/tools/$slug',
 				label: 'MultiSlicer',
 				href: '/tools/multi-slicer',
 			},
 		]);
+	});
+
+	// Issue #196 — TanStack Router emits index route IDs with a
+	// trailing slash (`/tools/`, `/portfolio/`). The keys in
+	// `ROUTE_LABELS` must match those IDs exactly, or the lookup
+	// misses and the breadcrumb chain is empty for `/tools` /
+	// `/portfolio`. This is a regression guard for both index
+	// routes.
+	it('matches /tools/ index routeId (Issue #196 — trailing slash)', () => {
+		const chain = resolveBreadcrumbChain([root, match('/tools/', '/tools')]);
+		expect(chain).toEqual([{ routeId: '/tools/', label: 'Tools', href: '/tools' }]);
+	});
+
+	it('matches /portfolio/ index routeId (Issue #196 — trailing slash)', () => {
+		const chain = resolveBreadcrumbChain([root, match('/portfolio/', '/portfolio')]);
+		expect(chain).toEqual([{ routeId: '/portfolio/', label: 'Portfolio', href: '/portfolio' }]);
 	});
 
 	it('returns null when the only match is root', () => {
@@ -148,7 +164,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 	it('handles missing loaderData on dynamic routes without throwing', () => {
 		const chain = resolveBreadcrumbChain([
 			root,
-			match('/portfolio', '/portfolio/x'),
+			match('/portfolio/', '/portfolio/x'),
 			match('/portfolio/$slug', '/portfolio/x', undefined, { slug: 'x' }),
 		]);
 		// No resolver output → falls back to the static `Project` label.
@@ -164,10 +180,10 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 		// visitor about where they are.
 		const chain = resolveBreadcrumbChain([
 			root,
-			match('/tools', '/tools/unknown'),
+			match('/tools/', '/tools/unknown'),
 			match('/tools/$slug', '/tools/unknown', undefined, { slug: 'unknown' }),
 		]);
-		expect(chain).toEqual([{ routeId: '/tools', label: 'Tools', href: '/tools/unknown' }]);
+		expect(chain).toEqual([{ routeId: '/tools/', label: 'Tools', href: '/tools/unknown' }]);
 	});
 
 	it('still includes /tools/$slug in the chain when loaderData is present', () => {
@@ -175,7 +191,7 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 		// still appear as the breadcrumb leaf.
 		const chain = resolveBreadcrumbChain([
 			root,
-			match('/tools', '/tools/prototype'),
+			match('/tools/', '/tools/prototype'),
 			match(
 				'/tools/$slug',
 				'/tools/prototype',

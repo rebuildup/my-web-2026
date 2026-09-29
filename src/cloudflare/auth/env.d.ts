@@ -29,16 +29,22 @@ declare global {
 			// compatibility with partially-deployed states, but is NOT
 			// declared in the runtime env contract.
 			BETTER_AUTH_SECRETS: string;
-			// Issue #171 — GA4 measurement ID. Public non-secret
-			// identifier declared in `wrangler.jsonc#vars` (and the
-			// production mirror). The root route loader reads this
-			// during SSR and passes it to
-			// `src/editorial/analytics/GoogleAnalytics.tsx`. Empty
-			// string means "no GA4 wired". The Cloudflare typegen
-			// generates this with `string | undefined` from the
-			// `vars` block; we keep the same `string | undefined` shape
-			// here so SSR reads stay total.
-			GOOGLE_ANALYTICS_MEASUREMENT_ID?: string;
+			// Issue #187 — GA4 measurement ID moved from `vars` to
+			// `secrets.required` (Issue #171 originally declared it
+			// as a `vars` entry with `string | undefined` shape).
+			// Now declared required `string` because
+			// `wrangler*.jsonc#secrets.required` lists the name; the
+			// placeholder (`G-PLACEHOLDER000`) is seeded into Infisical
+			// at merge time and the operator replaces it with the real
+			// `G-XXXXXXX` value before traffic is cut to production —
+			// see `docs/runbook/analytics.md`. The placeholder string is
+			// non-empty so SSR sees a populated `id` and renders the
+			// `<script async>` tag; the placeholder IS the GA4 snippet
+			// value sent to `gtag`, which makes the placeholder harmless
+			// (GA4 just records into a non-existent property) but lets
+			// the operator prove the wire-up end-to-end without a real
+			// GA ID.
+			GOOGLE_ANALYTICS_MEASUREMENT_ID: string;
 			// Issue #166 — local API mock layer gate. When this env
 			// value is `'mock'` (set in `.dev.vars`, NOT in
 			// `wrangler.jsonc#vars` — production must never see this),
@@ -58,7 +64,7 @@ declare global {
 	// both surfaces so `c.env.LOCAL_API_MODE` typechecks.
 	interface Env {
 		LOCAL_API_MODE?: string;
-		GOOGLE_ANALYTICS_MEASUREMENT_ID?: string;
+		GOOGLE_ANALYTICS_MEASUREMENT_ID: string;
 	}
 }
 

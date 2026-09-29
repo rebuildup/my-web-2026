@@ -67,8 +67,22 @@ const CANONICAL_PRODUCTION_CONFIG = resolve(
  *     "legacy binding resurrects on next deploy" failure mode. The
  *     audit-trail value remains sourceable from Infisical for recovery
  *     purposes. Phase 5 (#71) is the eventual cleanup window.
+ *
+ * Issue #187 — `GOOGLE_ANALYTICS_MEASUREMENT_ID` joined the required
+ * set when the var was migrated from `wrangler.jsonc#vars` to
+ * `secrets.required` (operator flow documented in `docs/runbook/analytics.md`).
+ * The value is a public identifier (the `G-XXXXXXX` string), but the
+ * operator wants to set / inspect it from the Infisical dashboard,
+ * which is only possible for runtime secrets. The placeholder
+ * `G-PLACEHOLDER000` is seeded by `scripts/infisical-seed.mjs` at
+ * merge time and the operator replaces it with the real value BEFORE
+ * cutting traffic to production.
  */
-const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY'];
+const REQUIRED_RUNTIME_SECRETS = [
+	'BETTER_AUTH_SECRETS',
+	'MY_WEB_2026_CONSUMER_API_KEY',
+	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+];
 const AUDIT_ONLY_SECRETS = ['BETTER_AUTH_SECRET'];
 const SENSITIVE_KEYS = new Set([
 	...REQUIRED_RUNTIME_SECRETS,

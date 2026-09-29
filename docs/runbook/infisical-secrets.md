@@ -87,6 +87,7 @@ and pinned by `wrangler*.jsonc#secrets.required` and
 | `BETTER_AUTH_SECRETS` | Infisical `prod` | Infisical `dev` | Better Auth 1.5+ versioned rotation. Comma-separated `version:value` pairs, highest version first. `src/cloudflare/auth/better-auth.ts` parser is strict: unique versions, strictly descending order, decimal digits only, no empty segments. | Repository owner (operator gate) | On suspected compromise or quarterly review | **Tier 1 (runtime)** — required Phase 3+ |
 | `BETTER_AUTH_SECRET` | Infisical `prod` (audit-trail / recovery only) | Infisical `dev` (random seed) | Better Auth legacy single-form signing material. **Phase 3+ audit-only semantics**: NOT in `wrangler*.jsonc#secrets.required`, NOT in `REQUIRED_RUNTIME_SECRETS`, never written to `secrets.json` by `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS`. Stripped from sanitized child env. | Repository owner (operator gate) | Only as part of `BETTER_AUTH_SECRETS` envelope rotation | **Tier 1 (runtime)** — audit-only Phase 3+ |
 | `MY_WEB_2026_CONSUMER_API_KEY` | Infisical `prod` | Infisical `dev` (random seed, no D1 row depends on it) | Home self-consumption consumer API key (ADR-0011). Bound to Worker `env.MY_WEB_2026_CONSUMER_API_KEY`. Pairs with D1 `apikey` row `name='home-self-consumption'` (`UNIQUE(apikey.key)` enforces SHA-256 hash uniqueness). | Repository owner (operator gate) | On suspected compromise or as needed | **Tier 1 (runtime)** — required Phase 1+ |
+| `GOOGLE_ANALYTICS_MEASUREMENT_ID` | Infisical `prod` (placeholder `G-PLACEHOLDER000` seeded at #187 merge; operator replaces with real `G-XXXXXXX` BEFORE cutting traffic) | Infisical `dev` (placeholder seeded; operator may replace if dev GA property exists) | GA4 measurement ID (Issue #171, Issue #187). Bound to Worker `env.GOOGLE_ANALYTICS_MEASUREMENT_ID`. Public identifier; the var→secret move in Issue #187 is operator-ergonomic (Infisical dashboard editability), NOT a security containment change. Operator gate: replace prod placeholder with real `G-XXXXXXX` before production traffic — see `docs/runbook/analytics.md` and the canonical sequence step in `docs/runbook/cloudflare-workers-builds.md`. | Repository owner (operator gate) | Rare (property migration / leak-driven) | **Tier 1 (runtime)** — required Issue #187+ |
 
 ### 2.2 Deploy-time credentials (NOT in Infisical)
 
@@ -109,9 +110,9 @@ HTTPS POST body and never echoes them to stdout/log.
 
 | Contract source | Names |
 | --- | --- |
-| `wrangler.jsonc#secrets.required` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY` |
-| `wrangler.production.jsonc#secrets.required` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY` |
-| `scripts/run-deploy-inner.mjs#REQUIRED_RUNTIME_SECRETS` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY` |
+| `wrangler.jsonc#secrets.required` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID` |
+| `wrangler.production.jsonc#secrets.required` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID` |
+| `scripts/run-deploy-inner.mjs#REQUIRED_RUNTIME_SECRETS` | `BETTER_AUTH_SECRETS`, `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID` |
 | `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS` | `BETTER_AUTH_SECRET` |
 
 These three static sources MUST agree. The agreement is enforced

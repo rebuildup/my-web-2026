@@ -4,13 +4,13 @@
  * Worker secret name parity (ADR-0015 §7).
  *
  * Tier 1 (runtime contract) check:
- *   - Infisical `prod` env contains all 3 runtime secrets:
+ *   - Infisical `prod` env contains all 4 runtime secrets:
  *     `BETTER_AUTH_SECRETS`, `BETTER_AUTH_SECRET` (legacy),
- *     `MY_WEB_2026_CONSUMER_API_KEY`
+ *     `MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID` (Issue #187)
  *
  * Tier 2 (deploy-time contract) check (static, no Cloudflare API):
  *   - `wrangler.production.jsonc#secrets.required` matches the
- *     phase-specific 2-name contract exactly.
+ *     phase-specific 3-name contract exactly.
  *
  * Tier 3 (live Worker contract):
  *   - `wrangler secret list` reads names only from the actual Worker.
@@ -46,10 +46,19 @@ const RUNTIME_REQUIRED_SECRETS = [
 	'BETTER_AUTH_SECRETS',
 	'BETTER_AUTH_SECRET',
 	'MY_WEB_2026_CONSUMER_API_KEY',
+	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
 ];
 
-const PHASE_1_2_REQUIRED = ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'];
-const PHASE_3_REQUIRED = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY'];
+const PHASE_1_2_REQUIRED = [
+	'BETTER_AUTH_SECRET',
+	'MY_WEB_2026_CONSUMER_API_KEY',
+	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+];
+const PHASE_3_REQUIRED = [
+	'BETTER_AUTH_SECRETS',
+	'MY_WEB_2026_CONSUMER_API_KEY',
+	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+];
 
 // `.infisical.json` schema (ADR-0015 §1 Decision). workspaceId is the
 // canonical SoT — committed, no secrets, validated as UUID v4 by
@@ -63,7 +72,7 @@ function printHelp() {
 Verify the Infisical / Cloudflare secret name contract (ADR-0015 §7).
 
 Tier 1 (runtime) — Infisical API list of secret names.
-Tier 2 (deploy-time) — wrangler config #secrets.required phase-specific 2-name.
+Tier 2 (deploy-time) — wrangler config #secrets.required phase-specific 3-name.
 Tier 3 (live worker) — \`wrangler secret list\` against the actual bound
                       Worker secrets (when CLOUDFLARE_API_TOKEN is set).
                       Drift between Tier 1 / Tier 3 = high severity.
@@ -77,8 +86,8 @@ Options:
   --dry-run                 parse args + show expected check only (default)
   --environment=<name>      Infisical environment (default: 'prod')
   --config=<path>           wrangler config path (default: wrangler.production.jsonc)
-  --worker-contract=<mode>   live Worker expectation: transition=3-name (default,
-                             before legacy deletion), final=versioned 2-name
+  --worker-contract=<mode>   live Worker expectation: transition=4-name (default,
+                             before legacy deletion), final=versioned 3-name
   --require-live-worker      require Tier 3; Wrangler resolves its available auth
                              context and failure to list live secrets aborts
   -h, --help                show this help`);
@@ -405,17 +414,17 @@ async function main() {
 	if (args.dryRun) {
 		console.log(
 			`[dry-run] would verify: Infisical ${args.environment} contains ` +
-				`runtime 3-name contract (${RUNTIME_REQUIRED_SECRETS.join(', ')})`,
+				`runtime 4-name contract (${RUNTIME_REQUIRED_SECRETS.join(', ')})`,
 		);
 		if (expectedPhaseList) {
 			console.log(
-				`[dry-run] would verify: wrangler secrets.required matches phase-specific 2-name exactly (${expectedPhaseList.join(', ')})`,
+				`[dry-run] would verify: wrangler secrets.required matches phase-specific 3-name exactly (${expectedPhaseList.join(', ')})`,
 			);
 		} else {
 			console.log(
 				'[dry-run] [FAIL] cannot determine phase from wrangler config: ' +
 					'neither BETTER_AUTH_SECRET nor BETTER_AUTH_SECRETS found in secrets.required. ' +
-					'A recognized phase + exact 2-name match is required (ADR-0015 §9).',
+					'A recognized phase + exact 3-name match is required (ADR-0015 §9).',
 			);
 			console.log('[dry-run] FAIL (dry-run pre-flight, no API call made)');
 			process.exit(1);
@@ -479,27 +488,27 @@ async function main() {
 		const runtimeCheck = compareNameLists(
 			infisicalNames,
 			RUNTIME_REQUIRED_SECRETS,
-			'Infisical runtime contract (3-name)',
+			'Infisical runtime contract (4-name)',
 		);
 		const runtimeOk = runtimeCheck.missing.length === 0;
 		printCheckResult(runtimeCheck, runtimeOk);
 		if (!runtimeOk) exitCode = 1;
 
 		// Tier 2 (deploy-time) check: wrangler `secrets.required` must
-		// EXACTLY match the recognized phase's 2-name contract — both
+		// EXACTLY match the recognized phase's 3-name contract — both
 		// missing AND extra entries are FAIL conditions. An unknown
 		// phase (no recognized pattern) is also a hard FAIL; partial
 		// / unknown phase values cannot silently pass.
 		if (expectedPhaseList === null) {
 			console.error(
-				`[execute] [FAIL] cannot determine phase from wrangler config: secrets.required=${JSON.stringify(wranglerRequired)} does not contain a recognized pattern (BETTER_AUTH_SECRET or BETTER_AUTH_SECRETS). Recognized phase + exact 2-name match is required (ADR-0015 §9).`,
+				`[execute] [FAIL] cannot determine phase from wrangler config: secrets.required=${JSON.stringify(wranglerRequired)} does not contain a recognized pattern (BETTER_AUTH_SECRET or BETTER_AUTH_SECRETS). Recognized phase + exact 3-name match is required (ADR-0015 §9).`,
 			);
 			exitCode = 1;
 		} else {
 			const phaseCheck = compareNameLists(
 				wranglerRequired,
 				expectedPhaseList,
-				`wrangler secrets.required (${phase}, exact 2-name)`,
+				`wrangler secrets.required (${phase}, exact 3-name)`,
 			);
 			const phaseOk = phaseCheck.missing.length === 0 && phaseCheck.extra.length === 0;
 			printCheckResult(phaseCheck, phaseOk);

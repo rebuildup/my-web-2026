@@ -115,7 +115,7 @@ const PHASE_1_2_WRANGLER = `{
   "main": "./src/server.ts",
   "vars": {},
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
+    "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY", "GOOGLE_ANALYTICS_MEASUREMENT_ID"]
   }
 }
 `;
@@ -125,7 +125,7 @@ const PHASE_3_WRANGLER = `{
   "main": "./src/server.ts",
   "vars": {},
   "secrets": {
-    "required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
+    "required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY", "GOOGLE_ANALYTICS_MEASUREMENT_ID"]
   }
 }
 `;
@@ -264,14 +264,14 @@ describe('check-cf-secrets.mjs', () => {
 			assert.match(result.stdout, /\[dry-run\] OK/);
 		});
 
-		it('prints expected Infisical runtime 3-name contract', () => {
+		it('prints expected Infisical runtime contract', () => {
 			const result = runInIsolatedRepo([], {
 				wranglerContent: PHASE_1_2_WRANGLER,
 			});
 			assert.equal(result.exitCode, 0);
 			assert.match(
 				result.stdout,
-				/BETTER_AUTH_SECRETS, BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY/,
+				/BETTER_AUTH_SECRETS, BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY, GOOGLE_ANALYTICS_MEASUREMENT_ID/,
 			);
 		});
 

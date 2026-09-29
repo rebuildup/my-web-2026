@@ -59,12 +59,13 @@ redacts `*_SECRET`, `*_TOKEN`, `*_KEY` variables from log output).
 
 ### Worker runtime secrets (source-controlled required names)
 
-The current source-controlled contract is the **versioned 2-name form**:
+The current source-controlled contract is the **versioned 3-name form** (Issue #187 added `GOOGLE_ANALYTICS_MEASUREMENT_ID`):
 
 | Name | SoT location | Phase |
 | --- | --- | --- |
 | `BETTER_AUTH_SECRETS` | Infisical `prod` | Phase 3+ (post-#89) |
 | `MY_WEB_2026_CONSUMER_API_KEY` | Infisical `prod` | Phase 1+ (carried forward) |
+| `GOOGLE_ANALYTICS_MEASUREMENT_ID` | Infisical `prod` | Issue #187+ (placeholder `G-PLACEHOLDER000` seeded at merge time; operator replaces with real `G-XXXXXXX` BEFORE traffic — see operator gate below) |
 
 Decoded in `wrangler.production.jsonc#secrets.required` and mirrored
 in `wrangler.jsonc#secrets.required`. The deploy inner script
@@ -119,6 +120,20 @@ keeps recovery paths well-defined. **Do not reorder.**
        │    versioned `BETTER_AUTH_SECRETS`. `main` runtime code still
        │    reads legacy (`BETTER_AUTH_SECRET`). The versioned binding
        │    is **inert** until #91 merge/deploy.
+       │
+       ▼
+GA4 operator gate (Issue #187) — if production GA4 tracking is
+       desired BEFORE the release PR merge, replace the placeholder
+       `G-PLACEHOLDER000` in Infisical `prod` for the secret
+       `GOOGLE_ANALYTICS_MEASUREMENT_ID` with the real `G-XXXXXXX`
+       value (Infisical dashboard). Status-only verification:
+       `pnpm run infisical:check:cf -- --execute --environment=prod`.
+       The release PR may merge with the placeholder still in `prod`;
+       the placeholder is harmless (GA4 just records into a
+       non-existent property) but the operator MUST replace it BEFORE
+       real visitor traffic is cut to production. See
+       `docs/runbook/analytics.md`. This gate is OUT of the Phase B
+       driver ordering — it is a separate operator concern.
        ▼
 Smoke #1 — transition smoke (PRE #91-merge; legacy runtime still active)
        │  Automated `pnpm run e2e:prod` (canonical surfaces green,

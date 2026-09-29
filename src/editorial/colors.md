@@ -3,7 +3,9 @@
 > Visual language for `src/editorial/`. Components consume the
 > **semantic** layer (`bg.canvas`, `accent.positive`, …). Raw
 > palette lives in `tokens.ts` and is reachable only through the
-> semantic layer.
+> semantic layer. A browsable mirror of every token described here
+> lives at [`/design-system`](../../routes/design-system.tsx)
+> (Issue #181).
 
 ## Layer model
 
@@ -146,3 +148,7 @@ introducer is responsible for the verification.
   semantic layer (surface / interactive / positive / negative /
   warning / category.{design,code,writing,tool}) with light +
   dark variants. WCAG AA verified.
+- **2026-09-29** (Issue #181) — Added the `/design-system`
+  showcase page that mirrors every token described here as a
+  visible, browsable surface. Read the guide for the contract;
+  visit the page to see the rendered pair.

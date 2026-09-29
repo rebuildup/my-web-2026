@@ -60,6 +60,6 @@ describe('isActiveRoute — public nav active-route predicate', () => {
 
 	it('PUBLIC_NAV_ITEMS covers the documented canonical roster', () => {
 		const targets = PUBLIC_NAV_ITEMS.map((i) => i.to);
-		expect(targets).toEqual(['/', '/portfolio', '/tools', '/about', '/contact']);
+		expect(targets).toEqual(['/', '/portfolio', '/tools', '/about', '/contact', '/design-system']);
 	});
 });

@@ -286,7 +286,7 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 							listStyle: 'none',
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '6',
+							gap: '10',
 						})}
 					>
 						{interests.map((interest, index) => (
@@ -296,12 +296,10 @@ function InterestsSection({ interests }: { interests: AboutPageData['interests']
 									display: 'flex',
 									flexDirection: 'column',
 									gap: '2',
-									paddingBlock: '4',
-									paddingInline: '4',
-									borderRadius: '6px',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.subtle',
+									borderBlockStartWidth: '1px',
+									borderBlockStartStyle: 'solid',
+									borderBlockStartColor: 'border.subtle',
+									paddingBlockStart: '4',
 								})}
 							>
 								<header
@@ -569,7 +567,7 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 							listStyle: 'none',
 							display: 'flex',
 							flexDirection: 'column',
-							gap: '3',
+							gap: '4',
 							fontFamily: 'sans',
 							fontSize: 'md',
 							color: 'text.default',
@@ -580,15 +578,28 @@ function CurrentSection({ items }: { items: readonly string[] }) {
 							<li
 								key={item}
 								className={css({
-									paddingBlock: '3',
-									paddingInline: '4',
-									borderRadius: '6px',
-									borderWidth: '1px',
-									borderStyle: 'solid',
-									borderColor: 'border.subtle',
+									display: 'flex',
+									gap: '3',
+									alignItems: 'baseline',
+									borderBlockStartWidth: '1px',
+									borderBlockStartStyle: 'solid',
+									borderBlockStartColor: 'border.subtle',
+									paddingBlockStart: '3',
 								})}
 							>
-								{item}
+								<span
+									aria-hidden="true"
+									className={css({
+										fontFamily: 'mono',
+										fontSize: 'xs',
+										letterSpacing: '0.06em',
+										textTransform: 'uppercase',
+										color: 'text.muted',
+									})}
+								>
+									→
+								</span>
+								<span>{item}</span>
 							</li>
 						))}
 					</ul>
@@ -650,13 +661,7 @@ function FutureColumn({
 			className={css({
 				display: 'flex',
 				flexDirection: 'column',
-				gap: '3',
-				paddingBlock: '4',
-				paddingInline: '4',
-				borderRadius: '6px',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.subtle',
+				gap: '4',
 			})}
 		>
 			<header
@@ -675,7 +680,7 @@ function FutureColumn({
 					listStyle: 'none',
 					display: 'flex',
 					flexDirection: 'column',
-					gap: '3',
+					gap: '4',
 					fontFamily: 'sans',
 					fontSize: 'md',
 					color: 'text.default',
@@ -683,7 +688,32 @@ function FutureColumn({
 				})}
 			>
 				{items.map((item) => (
-					<li key={item}>{item}</li>
+					<li
+						key={item}
+						className={css({
+							display: 'flex',
+							gap: '3',
+							alignItems: 'baseline',
+							borderBlockStartWidth: '1px',
+							borderBlockStartStyle: 'solid',
+							borderBlockStartColor: 'border.subtle',
+							paddingBlockStart: '3',
+						})}
+					>
+						<span
+							aria-hidden="true"
+							className={css({
+								fontFamily: 'mono',
+								fontSize: 'xs',
+								letterSpacing: '0.06em',
+								textTransform: 'uppercase',
+								color: 'text.muted',
+							})}
+						>
+							{tone === 'active' ? '◆' : '·'}
+						</span>
+						<span>{item}</span>
+					</li>
 				))}
 			</ul>
 		</div>

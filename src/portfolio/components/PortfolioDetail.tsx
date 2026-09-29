@@ -397,19 +397,15 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													flexDirection: 'column',
 													gap: '2',
 													paddingBlock: '4',
-													paddingInline: '4',
-													borderRadius: '6px',
-													borderWidth: '1px',
-													borderStyle: 'solid',
-													borderColor: 'border.subtle',
 													color: 'text.default',
 													textDecoration: 'none',
 													_focusVisible: {
 														outline: '2px solid {colors.border.focus}',
-														outlineOffset: '2px',
+														outlineOffset: '4px',
+														borderRadius: '2px',
 													},
 													_hover: {
-														borderColor: 'border.strong',
+														textDecoration: 'underline',
 													},
 												})}
 											>
@@ -443,7 +439,6 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 												className={css({
 													display: 'block',
 													paddingBlock: '4',
-													paddingInline: '4',
 													fontFamily: 'mono',
 													fontSize: 'xs',
 													letterSpacing: '0.06em',
@@ -464,19 +459,16 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 													flexDirection: 'column',
 													gap: '2',
 													paddingBlock: '4',
-													paddingInline: '4',
-													borderRadius: '6px',
-													borderWidth: '1px',
-													borderStyle: 'solid',
-													borderColor: 'border.subtle',
 													color: 'text.default',
 													textDecoration: 'none',
+													textAlign: 'right',
 													_focusVisible: {
 														outline: '2px solid {colors.border.focus}',
-														outlineOffset: '2px',
+														outlineOffset: '4px',
+														borderRadius: '2px',
 													},
 													_hover: {
-														borderColor: 'border.strong',
+														textDecoration: 'underline',
 													},
 												})}
 											>
@@ -510,7 +502,6 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 												className={css({
 													display: 'block',
 													paddingBlock: '4',
-													paddingInline: '4',
 													fontFamily: 'mono',
 													fontSize: 'xs',
 													letterSpacing: '0.06em',

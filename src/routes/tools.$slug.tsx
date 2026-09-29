@@ -3,6 +3,9 @@ import type { HTMLAttributeReferrerPolicy } from 'react';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { PublicNav } from '../editorial/nav';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { getPublicTool, getTool } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 
@@ -37,6 +40,15 @@ import type { ManifestTool } from '../tools/registry';
  * `src/editorial/nav/route-labels.ts`), so the visible chrome
  * stops at "Home > Tools" rather than misleadingly showing a
  * stub "Tool" leaf for a slug that does not exist.
+ *
+ * Chrome convention (Issue #199). `<PublicNav />`,
+ * `<Breadcrumbs />`, and `<BreadcrumbJsonLd />` are imported and
+ * rendered here explicitly (in `ToolRoute`, `ToolNotFound`, and
+ * `DisabledPlaceholder`) rather than mounted at the `__root` level
+ * — see `src/routes/about.tsx` for the rationale. The Tool iframe
+ * shell is full-bleed by design, so the nav and breadcrumbs appear
+ * ABOVE the iframe; the iframe itself fills the remaining viewport
+ * height below them.
  *
  * Case-insensitive lookup (Issue #183): the manifest schema
  * constrains slugs to `[a-z0-9][a-z0-9-]{0,127}` but a visitor
@@ -122,50 +134,54 @@ export const Route = createFileRoute('/tools/$slug')({
  */
 function ToolNotFound() {
 	return (
-		<Container as="section">
-			<div
-				data-testid="tools-not-found"
-				className={css({
-					paddingBlock: { base: '16', md: '24' },
-				})}
-			>
-				<SectionHeading
-					eyebrow="404"
-					title="ツールが見つかりません / Tool not found"
-					description={
-						<>
-							指定されたツールは Tool Registry に見つかりませんでした。
-							<br />
-							The requested Tool is not in the Tool Registry. It may be a typo, or the Tool may be{' '}
-							<code>host_disabled</code> until its upstream repo adds a standalone build path.
-						</>
-					}
-				/>
-				<p
+		<>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<Container as="section">
+				<div
+					data-testid="tools-not-found"
 					className={css({
-						marginBlockStart: '8',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.default',
+						paddingBlock: { base: '16', md: '24' },
 					})}
 				>
-					<a
-						href="/tools"
+					<SectionHeading
+						eyebrow="404"
+						title="ツールが見つかりません / Tool not found"
+						description={
+							<>
+								指定されたツールは Tool Registry に見つかりませんでした。
+								<br />
+								The requested Tool is not in the Tool Registry. It may be a typo, or the Tool may be{' '}
+								<code>host_disabled</code> until its upstream repo adds a standalone build path.
+							</>
+						}
+					/>
+					<p
 						className={css({
-							color: 'text.accent',
-							textDecoration: 'underline',
-							_hover: { color: 'text.default' },
-							_focusVisible: {
-								outline: '2px solid {colors.border.focus}',
-								outlineOffset: '2px',
-							},
+							marginBlockStart: '8',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							color: 'text.default',
 						})}
 					>
-						ツール一覧に戻る / Back to the Tool list
-					</a>
-				</p>
-			</div>
-		</Container>
+						<a
+							href="/tools"
+							className={css({
+								color: 'text.accent',
+								textDecoration: 'underline',
+								_hover: { color: 'text.default' },
+								_focusVisible: {
+									outline: '2px solid {colors.border.focus}',
+									outlineOffset: '2px',
+								},
+							})}
+						>
+							ツール一覧に戻る / Back to the Tool list
+						</a>
+					</p>
+				</div>
+			</Container>
+		</>
 	);
 }
 
@@ -176,29 +192,34 @@ function ToolRoute() {
 	}
 	const tool = loaderData.public;
 	return (
-		<div
-			data-route="tools/$slug"
-			data-tool-slug={tool.slug}
-			style={{
-				width: '100%',
-				height: 'calc(100vh - 64px)',
-				border: '0',
-				display: 'block',
-			}}
-		>
-			<iframe
-				title={`${tool.display_name} Tool`}
-				src={tool.entry_html}
-				sandbox={tool.iframe.sandbox}
-				referrerPolicy={tool.iframe.referrer_policy as HTMLAttributeReferrerPolicy}
+		<>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			<div
+				data-route="tools/$slug"
+				data-tool-slug={tool.slug}
 				style={{
 					width: '100%',
-					height: '100%',
+					height: 'calc(100vh - 64px)',
 					border: '0',
 					display: 'block',
 				}}
-			/>
-		</div>
+			>
+				<iframe
+					title={`${tool.display_name} Tool`}
+					src={tool.entry_html}
+					sandbox={tool.iframe.sandbox}
+					referrerPolicy={tool.iframe.referrer_policy as HTMLAttributeReferrerPolicy}
+					style={{
+						width: '100%',
+						height: '100%',
+						border: '0',
+						display: 'block',
+					}}
+				/>
+			</div>
+		</>
 	);
 }
 
@@ -215,64 +236,69 @@ function ToolRoute() {
 function DisabledPlaceholder({ tool }: { tool: ManifestTool }) {
 	const reason = tool.delivery.kind === 'host_disabled' ? tool.delivery.disabled_reason : '';
 	return (
-		<Container as="section">
-			<div
-				data-route="tools/$slug"
-				data-tool-slug={tool.slug}
-				data-tool-state="host_disabled"
-				className={css({
-					paddingBlock: { base: '16', md: '24' },
-					maxWidth: '720px',
-				})}
-			>
-				<SectionHeading
-					eyebrow="Coming soon"
-					title={tool.display_name}
-					description={
-						<>
-							{tool.description}
-							{reason ? (
-								<>
-									<br />
-									<br />
-									<span
-										data-tool-disabled-reason
-										className={css({
-											fontStyle: 'italic',
-											color: 'text.muted',
-										})}
-									>
-										{reason}
-									</span>
-								</>
-							) : null}
-						</>
-					}
-				/>
-				<p
+		<>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			<Container as="section">
+				<div
+					data-route="tools/$slug"
+					data-tool-slug={tool.slug}
+					data-tool-state="host_disabled"
 					className={css({
-						marginBlockStart: '8',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						color: 'text.default',
+						paddingBlock: { base: '16', md: '24' },
+						maxWidth: '720px',
 					})}
 				>
-					<Link
-						to="/tools"
+					<SectionHeading
+						eyebrow="Coming soon"
+						title={tool.display_name}
+						description={
+							<>
+								{tool.description}
+								{reason ? (
+									<>
+										<br />
+										<br />
+										<span
+											data-tool-disabled-reason
+											className={css({
+												fontStyle: 'italic',
+												color: 'text.muted',
+											})}
+										>
+											{reason}
+										</span>
+									</>
+								) : null}
+							</>
+						}
+					/>
+					<p
 						className={css({
-							color: 'text.accent',
-							textDecoration: 'underline',
-							_hover: { color: 'text.default' },
-							_focusVisible: {
-								outline: '2px solid {colors.border.focus}',
-								outlineOffset: '2px',
-							},
+							marginBlockStart: '8',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							color: 'text.default',
 						})}
 					>
-						ツール一覧に戻る / Back to the Tool list
-					</Link>
-				</p>
-			</div>
-		</Container>
+						<Link
+							to="/tools"
+							className={css({
+								color: 'text.accent',
+								textDecoration: 'underline',
+								_hover: { color: 'text.default' },
+								_focusVisible: {
+									outline: '2px solid {colors.border.focus}',
+									outlineOffset: '2px',
+								},
+							})}
+						>
+							ツール一覧に戻る / Back to the Tool list
+						</Link>
+					</p>
+				</div>
+			</Container>
+		</>
 	);
 }

@@ -1,9 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { getVisibleChannels } from '../contact/public';
 import { ContactPage } from '../contact/page';
+import { PublicNav } from '../editorial/nav';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 
 /**
- * `/contact` route (Issue #103).
+ * `/contact` route (Issue #103, Issue #199).
  *
  * Per the contact-surface decision doc in `docs/decisions/` (see
  * the issue-ticket for the file name; the release-trunk slug in
@@ -20,6 +23,11 @@ import { ContactPage } from '../contact/page';
  * reads `channels.json` and runs the gate. The route only calls
  * `getVisibleChannels(now)` once and passes the result through the
  * loader.
+ *
+ * Chrome convention (Issue #199). The `<PublicNav />`,
+ * `<Breadcrumbs />`, and `<BreadcrumbJsonLd />` components are
+ * imported and rendered here explicitly rather than mounted at the
+ * `__root` level — see `src/routes/about.tsx` for the rationale.
  */
 export const Route = createFileRoute('/contact')({
 	loader: async () => {
@@ -50,5 +58,12 @@ export const Route = createFileRoute('/contact')({
 
 function ContactRoute() {
 	const { channels, now, empty } = Route.useLoaderData();
-	return <ContactPage channels={channels} now={now} empty={empty} />;
+	return (
+		<>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			<ContactPage channels={channels} now={now} empty={empty} />
+		</>
+	);
 }

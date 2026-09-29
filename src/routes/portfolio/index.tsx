@@ -2,6 +2,9 @@ import { createFileRoute } from '@tanstack/react-router';
 import { useServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
 import { z } from 'zod';
+import { PublicNav } from '../../editorial/nav';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
 import { listPortfolioProjects } from '../../portfolio/public';
 import {
 	FacetSchema,
@@ -12,7 +15,7 @@ import {
 import { PortfolioList } from '../../portfolio/components';
 
 /**
- * `/portfolio` — list route (Issue #77).
+ * `/portfolio` — list route (Issue #77, Issue #199).
  *
  * The route owns the server-fn call so client bundles do not
  * transitively pull `cloudflare:workers`. The `loader` runs on
@@ -27,6 +30,11 @@ import { PortfolioList } from '../../portfolio/components';
  *
  * Both are validated server-side. Malformed cursors fall back to
  * the first page per Decision 4; malformed facets are dropped.
+ *
+ * Chrome convention (Issue #199). The `<PublicNav />`,
+ * `<Breadcrumbs />`, and `<BreadcrumbJsonLd />` components are
+ * imported and rendered here explicitly rather than mounted at the
+ * `__root` level — see `src/routes/about.tsx` for the rationale.
  */
 
 const SearchSchema = z.object({
@@ -100,15 +108,20 @@ function PortfolioRoute() {
 	};
 
 	return (
-		<PortfolioList
-			initialPage={initialPage}
-			activeFacets={activeFacets}
-			hasMore={cursor !== null}
-			busy={busy}
-			error={error}
-			extra={extra}
-			onLoadMore={onLoadMore}
-		/>
+		<>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			<PortfolioList
+				initialPage={initialPage}
+				activeFacets={activeFacets}
+				hasMore={cursor !== null}
+				busy={busy}
+				error={error}
+				extra={extra}
+				onLoadMore={onLoadMore}
+			/>
+		</>
 	);
 }
 

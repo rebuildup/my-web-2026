@@ -1,9 +1,12 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AboutPage } from '../about/components';
 import { loadAboutPage } from '../about/public';
+import { PublicNav } from '../editorial/nav';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 
 /**
- * `/about` — single page route (Issue #102).
+ * `/about` — single page route (Issue #102, Issue #199).
  *
  * Sits at `src/routes/about.tsx` per the decision: a single
  * canonical surface, no sub-routes, no `/about/_AI` or `/about/links`
@@ -14,6 +17,13 @@ import { loadAboutPage } from '../about/public';
  * the repo-controlled source, experience subset from
  * `src/portfolio/load.ts`). The page component is a pure presentational
  * shell — no other server-fn calls land here.
+ *
+ * Chrome convention (Issue #199). The `<PublicNav />`,
+ * `<Breadcrumbs />`, and `<BreadcrumbJsonLd />` components are
+ * imported and rendered here explicitly rather than mounted at the
+ * `__root` level. This is the user-mandated convention: each page
+ * owns its own chrome decisions and references the primitives
+ * directly, preserving per-page design freedom.
  *
  * OGP / metadata contract mirrors `/portfolio`: title, description,
  * `og:type=profile` (the page IS a person), canonical URL, og:image
@@ -72,7 +82,14 @@ export const Route = createFileRoute('/about')({
 
 function AboutRoute() {
 	const data = Route.useLoaderData();
-	return <AboutPage data={data} />;
+	return (
+		<>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			<AboutPage data={data} />
+		</>
+	);
 }
 
 /**

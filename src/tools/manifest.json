@@ -31,6 +31,34 @@
 			"notes": "Pilot for Issue #81. Heavy Vite SPA — ~1.5MB JS bundle (gsap + three.js + pixi.js). Upstream now carries an operator-owned MIT LICENSE (added by ProtoType#4 / PR rebuildup/ProtoType#5, merge commit 335e0e8), so the previously provisional 'same operator / Berne Convention' framing is now backed by an explicit permissive license. The intermediate `--ignore-scripts` / `build.security.ignore_scripts` workaround was removed at the same time because the obfuscated `preinstall.js` lifecycle script has been deleted upstream."
 		},
 		{
+			"slug": "readmark",
+			"display_name": "readmark",
+			"description": "A local-first reading app for the browser. PDFs in MVP; EPUB/Markdown/text next. Designed to embed as a Tool in my-web-2026.",
+			"source": {
+				"canonical_repo": "https://github.com/rebuildup/readmark.git",
+				"submodule_path": "external/readmark",
+				"pinned_sha": "906c90e57e51f1d7b3fe739f085cf9978445c0fb",
+				"branch": "main"
+			},
+			"build": {
+				"command": "tsc -b --noCheck && vite build",
+				"output_dir": "dist",
+				"package_manager": "bun"
+			},
+			"delivery": {
+				"kind": "same_origin_static",
+				"artifact_path": "/tools/readmark/app",
+				"entry_html": "/tools/readmark/app/index.html",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer"
+				}
+			},
+			"classification": "same_origin_static",
+			"license": "MIT",
+			"notes": "PDF reading MVP (Dexie local-first + pdfjs-dist 5.x + React Router). Uses bun as package manager. COOP/COEP headers required for SharedArrayBuffer pdfjs decode — host already serves https via rebuildup.dev canonical origin, so headers are deployable."
+		},
+		{
 			"slug": "text-counter",
 			"display_name": "Text Counter",
 			"source": {

@@ -153,7 +153,7 @@
 # `BETTER_AUTH_SECRET` line falls out of `secrets.required`.
 #
 # ──────────────────────────────────────────────────────────────────────
-# Local API mock layer (Issue #166)
+# Local API mock layer (Issue #166 / #186)
 # ──────────────────────────────────────────────────────────────────────
 # When designing UI against canned data — for example, when the local
 # D1 is empty or the home widget needs to be screenshotted without a
@@ -165,8 +165,16 @@
 # to the real handlers in mock mode.
 #
 # Unset / any value other than `mock` → production boundary unchanged.
-# The env is intentionally NOT in `wrangler.jsonc#vars`; production
-# deployments MUST NOT carry this var. The type augmentation is in
-# `src/cloudflare/auth/env.d.ts`.
+# The env is intentionally NOT in `wrangler.jsonc#vars` AND NOT in
+# `wrangler.jsonc#secrets.required`. Wrangler's `getVarsForDev` would
+# therefore silently filter the entry out of the Worker bindings, so
+# `vite.config.ts` reads `.dev.vars` once at config-load time and
+# merges `LOCAL_API_MODE` (only) into `workerConfig.vars` via the
+# `cloudflare()` plugin's `config()` callback. Once the key lives in
+# `vars`, wrangler carries it through to workerd as a plain-text
+# binding, and the gate at `src/http/hono.ts` fires.
+#
+# Production deployments MUST NOT carry this var. The type
+# augmentation is in `src/cloudflare/auth/env.d.ts`.
 #
 # # LOCAL_API_MODE="mock"

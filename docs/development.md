@@ -180,6 +180,72 @@ prints only key names + counts. After running the fallback,
 `pnpm dev` continues to work (Infisical remains the primary path;
 `.dev.vars` is only consulted by direct `wrangler dev` invocations).
 
+### Local API mock layer (`LOCAL_API_MODE=mock`, Issue #166 / #186)
+
+For visual verification against canned data — empty D1, no live
+session, designer-driven UI screenshots — set `LOCAL_API_MODE=mock`
+in the gitignored `.dev.vars` next to this README:
+
+```bash
+echo 'LOCAL_API_MODE=mock' >> .dev.vars
+pnpm dev
+```
+
+The activation gate at `src/http/hono.ts` checks
+`c.env.LOCAL_API_MODE === 'mock'` and forwards `/api/v1/*` to the
+canned-data sub-app at `src/http/mock/`. The eight served endpoints
+are `auth.session` / `auth.sign-in/email` / `auth.sign-out`,
+`access.count` / `access.hit` / `access.principal`,
+`reactions/:slug` / `reactions/:slug/toggle`. Anything outside that
+set (portfolio, keys, emoji-catalog, auth-invitations) falls through
+to the real routers even in mock mode.
+
+**Why a vite-plugin override is needed.** `LOCAL_API_MODE` is
+intentionally NOT in `wrangler.jsonc#vars` (production must never see
+it) and NOT in `wrangler.jsonc#secrets.required` (it is not a secret
+and adding it would widen the deploy-time required-secret contract).
+Wrangler's `getVarsForDev` therefore filters `.dev.vars` entries down
+to `vars ∪ secrets.required`, which means a plain
+`LOCAL_API_MODE=mock` in `.dev.vars` would never reach `c.env` and
+the gate would silently fall through. The fix is a `config()` callback
+on the `cloudflare()` plugin in `vite.config.ts` that reads `.dev.vars`
+once at config-load time and merges `LOCAL_API_MODE` (only) into
+`workerConfig.vars`. Once the key lives in `vars`, the same wrangler
+filter lets it through as a plain-text binding, and the gate fires.
+The passthrough is opt-in: when `.dev.vars` is absent or carries no
+`LOCAL_API_MODE` entry, the callback returns `undefined` and the
+production boundary runs unchanged.
+
+**Smoke verification (manual):**
+
+```bash
+pnpm dev &                              # start the dev server
+curl -s http://127.0.0.1:3000/api/v1/access/count
+# → {"count":1234}
+curl -s http://127.0.0.1:3000/api/v1/reactions/home-page
+# → {"reactions":[{"emoji":"👍","count":12}, …]}
+curl -s -X POST http://127.0.0.1:3000/api/v1/access/hit \
+  -H 'Content-Type: application/json' -d '{}'
+# → {"incremented":true,"count":1235,"first_hit":1700000000000,"last_hit":1700000000000}
+```
+
+The gate's `LOCAL_API_MODE` check is strict-equality against the
+literal string `"mock"`. Any other value (unset, empty, `on`, `1`,
+`off`) routes through to the real production handlers — the mock
+layer is the surgical opt-in, never the default.
+
+**Regression tests:**
+
+- `src/http/hono.test.ts` — the gate against the real
+  `externalBoundary` (env=mock returns canned body; env unset or any
+  other value falls through).
+- `scripts/_dev-vars-reader.test.mjs` — the `.dev.vars` parser +
+  override-builder (12 unit tests).
+
+`LOCAL_API_MODE` MUST NOT be added to `wrangler.jsonc#vars` or
+`secrets.required` — both widen the production deploy contract. The
+canonical location for the flag is `.dev.vars` only.
+
 ## Validate
 
 ```bash

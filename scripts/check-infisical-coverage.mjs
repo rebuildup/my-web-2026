@@ -4,11 +4,14 @@
  *
  * ADR-0015 §7 declares a 2-tier secret contract:
  *
- *   Tier 1 (runtime)   — 3-name contract (Infisical):
- *     BETTER_AUTH_SECRETS, BETTER_AUTH_SECRET (legacy), MY_WEB_2026_CONSUMER_API_KEY
- *   Tier 2 (deploy)    — phase-specific 2-name contract (wrangler):
- *     Phase 1-2: legacy 2-name (BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY)
- *     Phase 3+:  versioned 2-name (BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY)
+ *   Tier 1 (runtime)   — 4-name contract (Infisical):
+ *     BETTER_AUTH_SECRETS, BETTER_AUTH_SECRET (legacy),
+ *     MY_WEB_2026_CONSUMER_API_KEY, GOOGLE_ANALYTICS_MEASUREMENT_ID (Issue #187)
+ *   Tier 2 (deploy)    — phase-specific 3-name contract (wrangler):
+ *     Phase 1-2: legacy 3-name (BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY,
+ *                              GOOGLE_ANALYTICS_MEASUREMENT_ID)
+ *     Phase 3+:  versioned 3-name (BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY,
+ *                                 GOOGLE_ANALYTICS_MEASUREMENT_ID)
  *
  * This script is a CI-runnable, **static** lint: it reads the
  * wrangler config files and the deploy script's `REQUIRED_RUNTIME_SECRETS`
@@ -40,10 +43,19 @@ const RUNTIME_REQUIRED = [
 	'BETTER_AUTH_SECRETS',
 	'BETTER_AUTH_SECRET',
 	'MY_WEB_2026_CONSUMER_API_KEY',
+	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
 ];
 
-const PHASE_1_2_REQUIRED = ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'];
-const PHASE_3_REQUIRED = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY'];
+const PHASE_1_2_REQUIRED = [
+	'BETTER_AUTH_SECRET',
+	'MY_WEB_2026_CONSUMER_API_KEY',
+	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+];
+const PHASE_3_REQUIRED = [
+	'BETTER_AUTH_SECRETS',
+	'MY_WEB_2026_CONSUMER_API_KEY',
+	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+];
 
 const SOURCES = [
 	{ label: 'wrangler.jsonc#secrets.required', path: 'wrangler.jsonc' },
@@ -150,7 +162,7 @@ function arraysEqual(a, b) {
 function main() {
 	console.log('[check-infisical-coverage] 2-tier static integrity check');
 	console.log(
-		`[check-infisical-coverage] runtime tier (3-name contract): ${RUNTIME_REQUIRED.join(', ')}`,
+		`[check-infisical-coverage] runtime tier (4-name contract): ${RUNTIME_REQUIRED.join(', ')}`,
 	);
 
 	const sourceLists = [];
@@ -179,12 +191,12 @@ function main() {
 	console.log(
 		`[check-infisical-coverage] runtime tier declared invariant: ${JSON.stringify(runtimeSorted)}`,
 	);
-	console.log('[check-infisical-coverage] [OK] runtime tier contract documented (3-name)');
+	console.log('[check-infisical-coverage] [OK] runtime tier contract documented (4-name)');
 
-	// Tier 2 (deploy-time) check: configured sources agree on phase-specific 2-name.
+	// Tier 2 (deploy-time) check: configured sources agree on phase-specific 3-name.
 	// Sources with empty lists (e.g. `wrangler.jsonc` in Phase 1-2) are
 	// reported as a non-blocking note — the operator knows the default
-	// config has not been upgraded to phase-specific 2-name yet. Phase 3
+	// config has not been upgraded to phase-specific 3-name yet. Phase 3
 	// (ticket #69) tightens this to a hard requirement.
 	const expected = expectedPhaseRequired(phaseInfo.phase);
 	if (expected === null) {
@@ -215,11 +227,11 @@ function main() {
 			exitCode = 1;
 		} else if (emptySourcesCount === 0) {
 			console.log(
-				`[check-infisical-coverage] [OK] all deploy-time sources match phase-specific 2-name (${phaseInfo.phase})`,
+				`[check-infisical-coverage] [OK] all deploy-time sources match phase-specific 3-name (${phaseInfo.phase})`,
 			);
 		} else {
 			console.log(
-				`[check-infisical-coverage] [OK] configured sources match phase-specific 2-name (${phaseInfo.phase}); ${emptySourcesCount} source(s) not yet configured (Phase 3 ticket #69 pending)`,
+				`[check-infisical-coverage] [OK] configured sources match phase-specific 3-name (${phaseInfo.phase}); ${emptySourcesCount} source(s) not yet configured (Phase 3 ticket #69 pending)`,
 			);
 		}
 	}

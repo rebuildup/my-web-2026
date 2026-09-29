@@ -10,3 +10,4 @@ export { FacetFilter } from './FacetFilter';
 export { ProjectCard } from './ProjectCard';
 export { PortfolioList } from './PortfolioList';
 export { PortfolioDetail } from './PortfolioDetail';
+export { PortfolioEmptyState } from './EmptyState';

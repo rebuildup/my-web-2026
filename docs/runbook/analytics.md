@@ -2,7 +2,7 @@
 
 > Source of truth for the GA4 production wiring on
 > `https://rebuildup.dev`. Cross-linked from
-> [`AGENTS.md §4`](../../AGENTS.md) and Issue #171.
+> [`AGENTS.md §4`](../../AGENTS.md) and Issue #171 / Issue #187.
 
 ## Identity model
 
@@ -10,24 +10,27 @@ The GA4 property ships under a single public measurement ID of the
 shape `G-XXXXXXX` issued by GA4 when the operator registers the
 property. The ID is a **non-secret public identifier** — it appears
 in client-side `gtag` snippets on every visitor's browser and is
-already visible in the network panel of every visitor's DevTools,
-so it does not need the secret containment treatment that
-`BETTER_AUTH_SECRETS` or `MY_WEB_2026_CONSUMER_API_KEY` get.
+already visible in the network panel of every visitor's DevTools.
+However, because the operator wants to set / inspect the value from
+the Infisical dashboard (which only surfaces runtime secrets, not
+Wrangler `vars`), the value lives in Infisical `dev` / `prod` rather
+than in `wrangler.jsonc#vars`. Issue #187 performed this migration.
 
 | Side | Location | Lifecycle |
 | --- | --- | --- |
-| Measurement ID value (`G-XXXXXXX`) | `wrangler.jsonc#vars.GOOGLE_ANALYTICS_MEASUREMENT_ID` and the production mirror `wrangler.production.jsonc#vars.GOOGLE_ANALYTICS_MEASUREMENT_ID` | committed to source control |
-| Empty default `""` | same vars block | committed to source control (shipped 0.5.0 baseline) |
-| Type augmentation | `src/cloudflare/auth/env.d.ts` (`GOOGLE_ANALYTICS_MEASUREMENT_ID?: string`) | committed; tracks `wrangler.jsonc` |
+| Measurement ID value (`G-XXXXXXX`) | Infisical `dev` + `prod` under the name `GOOGLE_ANALYTICS_MEASUREMENT_ID` | Operator-managed via Infisical dashboard; never committed to source control |
+| `secrets.required` declaration | `wrangler.jsonc#secrets.required` and `wrangler.production.jsonc#secrets.required` | committed; tracks the runtime secret name |
+| Seed placeholder `G-PLACEHOLDER000` | `scripts/infisical-seed.mjs` (dev only; prod placeholder is operator-seeded) | seeded once at merge time; replaced with the real `G-XXXXXXX` BEFORE traffic is cut |
+| Type augmentation | `src/cloudflare/auth/env.d.ts` (`GOOGLE_ANALYTICS_MEASUREMENT_ID: string`) | committed; tracks `wrangler.jsonc` |
 | Render gate | `src/routes/__root.tsx#loader` (server-side read) + `src/editorial/analytics/GoogleAnalytics.tsx` (component, public paths only) | committed |
 | Exclusion gate | `useRouterState` selector on `state.location.pathname.startsWith('/admin')` in `__root.tsx` | committed |
 
-The Wire is off by default: both wrangler files ship with
-`GOOGLE_ANALYTICS_MEASUREMENT_ID: ""`, the env augmentation declares
-the field as `string | undefined`, and `GoogleAnalytics` renders
-`null` for any falsy value. Operators therefore do not need to
-remove a script tag — leaving the var unset (or empty) is the
-canonical off switch.
+The placeholder is the **default state**. The Worker reads the
+runtime secret at SSR time; if the operator has not yet replaced
+the placeholder with a real `G-XXXXXXX`, GA4 simply receives a
+script load against a non-existent property and the pageview is
+silently discarded. The placeholder therefore makes the wire-up
+exercised end-to-end without an operator-configured GA ID.
 
 ## Initial setup
 
@@ -37,42 +40,46 @@ To wire GA4 into production for the first time:
    the canonical origin `https://rebuildup.dev`. Note the
    measurement ID (`G-XXXXXXX`) the property page issues.
 
-2. **Edit both wrangler configs** to set the value. In
-   `wrangler.jsonc`:
+2. **Set the value in Infisical** (Operator session, no agent
+   transcript). Issue #187 seeded the **placeholder**
+   `G-PLACEHOLDER000` into both `dev` and `prod`. Operator replaces
+   the prod value via the Infisical dashboard:
 
-   ```jsonc
-   "vars": {
-       "MY_WEB_2026_REACTIONS_TARGET": "home-page",
-       "MY_WEB_2026_COUNTER_KEY": "home-page",
-       "GOOGLE_ANALYTICS_MEASUREMENT_ID": "G-XXXXXXX"
-   }
-   ```
+   - Project: `my-web-2026`
+   - Environment: `prod`
+   - Secret name: `GOOGLE_ANALYTICS_MEASUREMENT_ID`
+   - Secret value: the `G-XXXXXXX` from step 1.
 
-   Mirror the same edit in `wrangler.production.jsonc#vars`. The
-   value is the same in dev and production — GA4 does not require
-   per-environment properties.
-
-3. **Commit the change on a ticket branch.** Per
-   `AGENTS.md §6` the canonical flow is:
+   Status-only confirmation that the secret is present (after the
+   operator run) is run by:
 
    ```bash
-   git checkout -b 171 release-0-5-0   # use the relevant ticket number
-   # edit wrangler.jsonc and wrangler.production.jsonc
-   git commit -m "feat(analytics): enable GA4 wire-up (#171)"
-   git push -u origin 171
-   gh pr create --draft --base release-0-5-0 ...
+   pnpm run infisical:check:cf -- --execute --environment=prod
+   # → status-only output: presence / absence of each name; no value
    ```
 
-   The agent must not log, print, or paste the `G-XXXXXXX` value
-   into commit messages, PR bodies, chat transcripts, or runbook
-   prose. The runbook describes the *contract*; the value lives
-   only in the committed config files.
+   The dev placeholder may be left in place (dev traffic is
+   recorded into a non-existent GA property; no leakage). Operators
+   who want a real GA property to record dev traffic can replace the
+   dev value the same way; the dev environment is not in scope for
+   the production release readiness gate.
+
+3. **Operator gate before traffic.** This is a **deployment
+   readiness gate**. The release PR may merge with the placeholder
+   still in `prod`, but **the placeholder MUST be replaced with the
+   real `G-XXXXXXX`** before `https://rebuildup.dev` carries
+   real visitor traffic. The runbook
+   [`docs/runbook/cloudflare-workers-builds.md`](cloudflare-workers-builds.md)
+   calls this out as an explicit step in the canonical production
+   release sequence.
 
 4. **Land on the release trunk** via the standard PR review +
    merge. Cloudflare Workers Builds deploys the new config to
    production; the next request to `/`, `/about`, `/contact`,
    `/portfolio`, or `/tools` returns HTML that contains the GA
-   `<script async>` tag in `<head>`.
+   `<script async>` tag in `<head>`. The script always references
+   the current `GOOGLE_ANALYTICS_MEASUREMENT_ID` value — placeholder
+   or real.
 
 5. **Verify in production** (operator session, no agent transcript):
 
@@ -80,8 +87,10 @@ To wire GA4 into production for the first time:
    curl -sS https://rebuildup.dev/ | grep googletagmanager
    ```
 
-   Expect one `<script async src="https://www.googletagmanager.com/gtag/js?id=G-XXXXXXX">`
-   line, plus the inline `gtag('config', 'G-XXXXXXX')` script.
+   Expect one `<script async src="https://www.googletagmanager.com/gtag/js?id=…">`
+   line, plus the inline `gtag('config', '…')` script. The id
+   segment reflects the current Infisical `prod` value. **Do not
+   paste the id into chat or logs.**
 
    ```bash
    curl -sS https://rebuildup.dev/admin/login | grep googletagmanager
@@ -101,18 +110,17 @@ To wire GA4 into production for the first time:
 `wrangler.jsonc` (the default env) feeds `pnpm dev` and local
 workerd runs. `wrangler.production.jsonc` feeds the production
 deploy via Cloudflare Workers Builds and the local fallback
-`pnpm run deploy:production`. Both vars carry the same value when
-GA is enabled; either file with the var set to a non-empty value
-wires the script on the corresponding environment.
+`pnpm run deploy:production`. Both `secrets.required` arrays list
+`GOOGLE_ANALYTICS_MEASUREMENT_ID`; both runtime contracts are the
+same name.
 
 Setting one without the other is a misconfiguration, not a feature:
 the resulting environment renders nothing. The mirroring rule is
 documented in `wrangler.production.jsonc`'s header comment and is
-the same rule that applies to every other shared var
-(`MY_WEB_2026_REACTIONS_TARGET`, `MY_WEB_2026_COUNTER_KEY`,
-`MEDIA_PUBLIC_BASE_URL`, `BETTER_AUTH_URL`).
+the same rule that applies to every other shared secret
+(`MY_WEB_2026_CONSUMER_API_KEY`, `BETTER_AUTH_SECRETS`).
 
-## Why a `var`, not a secret
+## Why a secret, not a var (Issue #187 reasoning)
 
 | Property | Decision |
 | --- | --- |
@@ -120,12 +128,15 @@ the same rule that applies to every other shared var
 | Rotates with deployment? | Rare (only on property migration) |
 | Operators must read the value before writing? | No — write GA4 directly |
 | Must NOT enter agent transcript / logs | True (compliance hygiene, not security) |
-| Worker secret vs var | **Var** — no need for the Infisical-managed runtime-secret handshake documented in [`docs/runbook/cloudflare-workers-builds.md`](cloudflare-workers-builds.md) |
+| Worker secret vs var | **Secret** — operator wants to inspect / edit from the Infisical dashboard; `vars` does not surface there |
 
-Putting it in `wrangler.jsonc#vars` (committed to source control)
-removes it from the AGENTS.md §4 value-listing concern entirely:
-the value travels with the commit, no `infisical secrets …` call
-ever needs to be issued to verify presence.
+The var/secret distinction is about operator ergonomics, not security:
+`vars` are committed to source control and not editable from
+Infisical; `secrets` are managed in Infisical and read at runtime.
+The value is still a public identifier, so it is treated under the
+public-identifier compliance hygiene (never log / echo the value)
+rather than the secret containment treatment that
+`BETTER_AUTH_SECRETS` / `MY_WEB_2026_CONSUMER_API_KEY` get.
 
 ## Rotation
 
@@ -138,9 +149,12 @@ operational reasons to change the value are:
   should be revoked.
 
 In both cases the procedure is the same as the initial setup:
-edit both wrangler files, commit on a ticket branch, land via the
-PR review process. There is no separate "rotation" pathway
-because the value is not a credential.
+edit the Infisical `prod` (and `dev`, if applicable) value from the
+dashboard, then wait for the next Worker deploy OR force the next
+deploy if traffic must pick up the change before the next release.
+There is no separate "rotation" pathway because the value is not a
+credential and a rotation driver would only obscure the operator
+flow.
 
 ## Acceptance
 
@@ -149,7 +163,7 @@ It runs:
 
 - `format:check` and `lint:check` (Biome) — covers the
   `__root.tsx`, `GoogleAnalytics.tsx`, and wrangler JSON edits.
-- `architecture:check` — the new `routes -> editorial` edge is
+- `architecture:check` — the `routes -> editorial` edge is
   registered in `AGENTS.md §3`.
 - `typecheck` — `src/cloudflare/auth/env.d.ts` augmentation keeps
   `worker-configuration.d.ts` in sync (`pnpm run cf-typegen:check`
@@ -158,6 +172,11 @@ It runs:
   exercises the capture helper and the rendered markup, including
   the empty / undefined / whitespace-only / capture-once branches
   and the URL-encoding + inline-script escaping rules.
+- `infisical:check:coverage` — verifies the three
+  deploy-time sources (`wrangler.jsonc#secrets.required`,
+  `wrangler.production.jsonc#secrets.required`,
+  `scripts/run-deploy-inner.mjs#REQUIRED_RUNTIME_SECRETS`) all
+  list `GOOGLE_ANALYTICS_MEASUREMENT_ID`.
 
 A failing test means the wire-up has drifted and the PR is not
 merge-ready. The canonical gate is the per-ticket PR review
@@ -183,3 +202,6 @@ also not part of this runbook:
 - **Custom events / conversions.** Out of scope. Future tickets
   can extend `src/editorial/analytics/` with sibling components
   that emit typed events.
+- **A separate rotation driver.** Out of scope; the value is a
+  public identifier and the operator flow is the same as the
+  initial setup.

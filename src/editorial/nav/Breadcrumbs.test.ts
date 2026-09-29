@@ -35,7 +35,7 @@ function match(
 const root = match('__root__', '/');
 
 describe('resolveBreadcrumbChain — leaf suppression', () => {
-	it.each(['/', '/admin/login', '/admin/invitations_/accept'])(
+	it.each(['/', '/admin/login', '/admin/invitations_/accept', '/design-system'])(
 		'suppresses when leaf is %s',
 		(leafRouteId) => {
 			const chain = resolveBreadcrumbChain([root, match(leafRouteId, leafRouteId)]);
@@ -47,7 +47,10 @@ describe('resolveBreadcrumbChain — leaf suppression', () => {
 		expect(SUPPRESS_BREADCRUMB_LEAF_IDS.has('/')).toBe(true);
 		expect(SUPPRESS_BREADCRUMB_LEAF_IDS.has('/admin/login')).toBe(true);
 		expect(SUPPRESS_BREADCRUMB_LEAF_IDS.has('/admin/invitations_/accept')).toBe(true);
+		expect(SUPPRESS_BREADCRUMB_LEAF_IDS.has('/design-system')).toBe(true);
 		expect(SUPPRESS_BREADCRUMB_LEAF_IDS.has('/admin')).toBe(false);
+		expect(SUPPRESS_BREADCRUMB_LEAF_IDS.has('/about')).toBe(false);
+		expect(SUPPRESS_BREADCRUMB_LEAF_IDS.has('/portfolio')).toBe(false);
 	});
 });
 

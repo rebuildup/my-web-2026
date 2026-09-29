@@ -111,12 +111,7 @@
 		// `docs/portfolio/decisions.md` §5. Until the bucket-level
 		// attachment is live, `composeMediaUrl` keeps returning `null`
 		// and the UI's placeholder branch is exercised.
-		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev",
-		// Issue #171 — GA4 measurement ID. Public identifier; empty
-		// default (the operator commits the live `G-XXXXXXX` value
-		// when ready). When empty, `src/editorial/analytics/GoogleAnalytics.tsx`
-		// renders nothing. See `docs/runbook/analytics.md`.
-		"GOOGLE_ANALYTICS_MEASUREMENT_ID": ""
+		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev"
 	},
 	"secrets": {
 		// Source-controlled contract (ADR-0015 §9, Phase 3+ — Issue #89).
@@ -126,7 +121,13 @@
 		//
 		//   - Source-controlled desired contract (this file):
 		//       versioned 2-name form
-		//       `BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY`.
+		//       `BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY`,
+		//       plus `GOOGLE_ANALYTICS_MEASUREMENT_ID` (Issue #187,
+		//       public GA4 measurement ID managed from the Infisical
+		//       dashboard; placeholder `G-PLACEHOLDER000` is seeded at
+		//       merge time and the operator replaces it with the real
+		//       `G-XXXXXXX` BEFORE cutting traffic — see
+		//       `docs/runbook/analytics.md`).
 		//   - Live Worker binding state:
 		//       changes via the operator-gated Phase B driver
 		//       `scripts/phase-3-plus-prod-flip.mjs --execute ...`,
@@ -145,7 +146,11 @@
 		// `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS` for the
 		// deploy-time contract that prevents the legacy binding from
 		// resurrecting. Mirror edit lives in `wrangler.jsonc`.
-		"required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
+		"required": [
+			"BETTER_AUTH_SECRETS",
+			"MY_WEB_2026_CONSUMER_API_KEY",
+			"GOOGLE_ANALYTICS_MEASUREMENT_ID"
+		]
 	},
 	"ratelimits": [
 		{

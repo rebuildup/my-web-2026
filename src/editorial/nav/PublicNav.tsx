@@ -61,6 +61,7 @@ export const PUBLIC_NAV_ITEMS: ReadonlyArray<PublicNavItem> = [
 	{ to: '/tools', labelJa: 'ツール', labelEn: 'Tools' },
 	{ to: '/about', labelJa: '自己紹介', labelEn: 'About' },
 	{ to: '/contact', labelJa: 'お問い合わせ', labelEn: 'Contact' },
+	{ to: '/design-system', labelJa: 'デザインシステム', labelEn: 'Design system' },
 ];
 
 /**

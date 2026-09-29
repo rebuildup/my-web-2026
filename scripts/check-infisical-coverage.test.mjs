@@ -9,7 +9,7 @@ import { dirname, join, resolve } from 'node:path';
  * The script is a static integrity check: it reads `wrangler.jsonc`,
  * `wrangler.production.jsonc`, and the inner script's
  * `REQUIRED_RUNTIME_SECRETS` constant, then verifies they agree on
- * the phase-specific 2-name contract. Tests use isolated tempdirs
+ * the phase-specific 3-name contract. Tests use isolated tempdirs
  * with controlled mock files (no real repo files are read).
  */
 import { describe, it } from 'node:test';
@@ -24,7 +24,7 @@ const PHASE_1_2_WRANGLER = `{
   "name": "my-web-2026",
   "vars": {},
   "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
+    "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY", "GOOGLE_ANALYTICS_MEASUREMENT_ID"]
   }
 }
 `;
@@ -33,7 +33,7 @@ const PHASE_3_WRANGLER = `{
   "name": "my-web-2026",
   "vars": {},
   "secrets": {
-    "required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"]
+    "required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY", "GOOGLE_ANALYTICS_MEASUREMENT_ID"]
   }
 }
 `;
@@ -44,12 +44,12 @@ const EMPTY_WRANGLER = `{
 }
 `;
 
-// Phase 1-2 inner script: legacy 2-name required + optional
+// Phase 1-2 inner script: legacy 3-name required + optional
 // versioned. The coverage check reads only `REQUIRED_RUNTIME_SECRETS`
 // via regex; this constant declaration is sufficient to drive the
 // phase vote in the isolated scenario.
 const PHASE_1_2_INNER_SCRIPT = `#!/usr/bin/env node
-const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'];
+const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'];
 const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS'];
 `;
 
@@ -109,9 +109,9 @@ function runInIsolatedRepo({
 
 describe('check-infisical-coverage.mjs', () => {
 	describe('happy path (Phase 1-2)', () => {
-		it('passes when wrangler.production.jsonc + inner script agree on legacy 2-name', () => {
+		it('passes when wrangler.production.jsonc + inner script agree on legacy 3-name', () => {
 			// wrangler.jsonc is empty (Phase 1-2 default); the inner
-			// script (Phase 1-2 mock) has legacy 2-name. Coverage check
+			// script (Phase 1-2 mock) has legacy 3-name. Coverage check
 			// should note the empty source and pass.
 			const result = runInIsolatedRepo({
 				wranglerDefault: EMPTY_WRANGLER,
@@ -126,7 +126,7 @@ describe('check-infisical-coverage.mjs', () => {
 			assert.match(result.stdout, /all checks OK/);
 		});
 
-		it('passes when all 3 sources agree on legacy 2-name', () => {
+		it('passes when all 3 sources agree on legacy 3-name', () => {
 			const result = runInIsolatedRepo({
 				wranglerDefault: PHASE_1_2_WRANGLER,
 				wranglerProduction: PHASE_1_2_WRANGLER,
@@ -136,10 +136,10 @@ describe('check-infisical-coverage.mjs', () => {
 			assert.match(result.stdout, /all checks OK/);
 		});
 
-		it('passes when all 3 sources agree on versioned 2-name (Phase 3+)', () => {
+		it('passes when all 3 sources agree on versioned 3-name (Phase 3+)', () => {
 			// Use a custom inner script with Phase 3+ form.
 			const innerScript = `#!/usr/bin/env node
-const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY'];
+const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'];
 const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET'];
 `;
 			const result = runInIsolatedRepo({
@@ -159,7 +159,7 @@ const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET'];
 				wranglerDefault: PHASE_1_2_WRANGLER,
 				wranglerProduction: PHASE_1_2_WRANGLER,
 				innerScript: `#!/usr/bin/env node
-const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY'];
+const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'];
 const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET'];
 `,
 			});
@@ -171,7 +171,7 @@ const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET'];
 			assert.match(combined, /detected phase: conflict|cannot determine phase|\[FAIL\]/);
 		});
 
-		it('fails when wrangler.jsonc has wrong phase-specific 2-name', () => {
+		it('fails when wrangler.jsonc has wrong phase-specific 3-name', () => {
 			const result = runInIsolatedRepo({
 				wranglerDefault: PHASE_3_WRANGLER, // mismatch with production
 				wranglerProduction: PHASE_1_2_WRANGLER,

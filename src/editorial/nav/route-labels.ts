@@ -1,21 +1,30 @@
 /**
- * Route label map for the Breadcrumbs nav primitive (Issue #173).
+ * Route label map for the Breadcrumbs nav primitive (Issue #173,
+ * Issue #185).
  *
  * Breadcrumbs build a path from the matched route chain to the leaf
  * match. Each match that owns a label in `ROUTE_LABELS` contributes
  * a segment; matches without an entry are skipped silently.
  *
- * Leaf suppression — the leaf match's `routeId` is the gate. The
- * home surface `/` and auth pages (`/admin/login`,
- * `/admin/invitations/accept`) are explicitly suppressed because
- * they exist outside the navigation contract:
+ * Leaf suppression rule (Issue #185) — the leaf match's `routeId`
+ * is the gate. The breadcrumb is suppressed when the current page
+ * is one of the following surfaces, all of which sit OUTSIDE the
+ * public / admin-internal navigation contract:
  *
- *   - `/` is the canonical landing surface; its only ancestor is
- *     `__root__` and the breadcrumb trail would be a single
- *     no-context link back to itself.
- *   - Auth pages are pre-authentication waypoints where showing a
- *     navigation chrome would mislead the visitor about where they
- *     are in the IA.
+ *   - `/` (homepage) — the canonical landing surface; its only
+ *     ancestor is `__root__` and a single-segment breadcrumb would
+ *     read as a no-context link back to itself.
+ *   - `/admin/login` and `/admin/invitations_/accept` — auth
+ *     waypoints rendered before authentication; showing a
+ *     navigation chrome there would mislead the visitor about
+ *     where they are in the IA.
+ *   - `/design-system` — the showcase surface is a top-level
+ *     storybook-style entry; it is intentionally NOT a part of the
+ *     editorial IA and should not surface a breadcrumb trail.
+ *
+ * Everything else (`/about`, `/contact`, `/portfolio[/<slug>]`,
+ * `/tools[/<slug>]`, every `/admin/*` internal surface) renders
+ * the chain.
  *
  * Canonical origin — `https://rebuildup.dev` (ADR-0014). The
  * breadcrumbs' JSON-LD `item` URL is computed against this origin
@@ -34,6 +43,7 @@ export const SUPPRESS_BREADCRUMB_LEAF_IDS: ReadonlySet<string> = new Set([
 	'/',
 	'/admin/login',
 	'/admin/invitations_/accept',
+	'/design-system',
 ]);
 
 /**

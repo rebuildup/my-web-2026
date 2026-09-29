@@ -1,6 +1,9 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { PublicNav } from '../editorial/nav';
 import { listAllTools, listPublicTools } from '../tools/registry';
 import type { ManifestTool, PublicToolSummary } from '../tools/registry';
 
@@ -63,93 +66,98 @@ export const Route = createFileRoute('/tools/')({
 function ToolsIndexRoute() {
 	const { embeddable, disabled } = Route.useLoaderData();
 	return (
-		<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
-			<Container>
-				<header
-					className={css({
-						display: 'flex',
-						flexDirection: 'column',
-						gap: '4',
-						marginBlockEnd: '10',
-					})}
-				>
-					<span
+		<>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
+				<Container>
+					<header
 						className={css({
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-							letterSpacing: '0.04em',
-							textTransform: 'uppercase',
+							display: 'flex',
+							flexDirection: 'column',
+							gap: '4',
+							marginBlockEnd: '10',
 						})}
 					>
-						Tools
-					</span>
-					<h1
-						className={css({
-							margin: '0',
-							fontFamily: 'heading',
-							fontSize: { base: '3xl', lg: '4xl' },
-							fontWeight: '700',
-							color: 'text.default',
-							lineHeight: '1.05',
-							letterSpacing: '-0.03em',
-							maxWidth: '720px',
-						})}
-					>
-						ツール / Tools
-					</h1>
-					<p
-						className={css({
-							margin: '0',
-							fontFamily: 'sans',
-							fontSize: 'md',
-							color: 'text.muted',
-							lineHeight: '1.6',
-							maxWidth: '640px',
-						})}
-					>
-						my-web-2026 に統合している standalone web tool。固定まわりは独立した repository から{' '}
-						<code>/tools/&lt;slug&gt;/app/</code> に collection され、同一 origin
-						から配信されます。統合 contract は ADR-0006 を参照。
-					</p>
-				</header>
-				{embeddable.length === 0 && disabled.length === 0 ? (
-					<p
-						className={css({
-							margin: '0',
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-						})}
-					>
-						No Tools are currently registered.
-					</p>
-				) : (
-					<>
-						{embeddable.length > 0 && (
-							<ToolGroup
-								title="Integrated"
-								description="Same-origin or external Tools currently embedded at /tools/<slug>."
-							>
-								{embeddable.map((tool) => (
-									<ToolRow key={tool.slug} tool={tool} />
-								))}
-							</ToolGroup>
-						)}
-						{disabled.length > 0 && (
-							<ToolGroup
-								title="Coming soon"
-								description="Tools registered in the manifest but not yet embedded. The reason is recorded in each Tool's disabled_reason."
-							>
-								{disabled.map((tool) => (
-									<DisabledToolRow key={tool.slug} tool={tool} />
-								))}
-							</ToolGroup>
-						)}
-					</>
-				)}
-			</Container>
-		</section>
+						<span
+							className={css({
+								fontFamily: 'mono',
+								fontSize: 'sm',
+								color: 'text.muted',
+								letterSpacing: '0.04em',
+								textTransform: 'uppercase',
+							})}
+						>
+							Tools
+						</span>
+						<h1
+							className={css({
+								margin: '0',
+								fontFamily: 'heading',
+								fontSize: { base: '3xl', lg: '4xl' },
+								fontWeight: '700',
+								color: 'text.default',
+								lineHeight: '1.05',
+								letterSpacing: '-0.03em',
+								maxWidth: '720px',
+							})}
+						>
+							ツール / Tools
+						</h1>
+						<p
+							className={css({
+								margin: '0',
+								fontFamily: 'sans',
+								fontSize: 'md',
+								color: 'text.muted',
+								lineHeight: '1.6',
+								maxWidth: '640px',
+							})}
+						>
+							my-web-2026 に統合している standalone web tool。固定まわりは独立した repository から{' '}
+							<code>/tools/&lt;slug&gt;/app/</code> に collection され、同一 origin
+							から配信されます。統合 contract は ADR-0006 を参照。
+						</p>
+					</header>
+					{embeddable.length === 0 && disabled.length === 0 ? (
+						<p
+							className={css({
+								margin: '0',
+								fontFamily: 'mono',
+								fontSize: 'sm',
+								color: 'text.muted',
+							})}
+						>
+							No Tools are currently registered.
+						</p>
+					) : (
+						<>
+							{embeddable.length > 0 && (
+								<ToolGroup
+									title="Integrated"
+									description="Same-origin or external Tools currently embedded at /tools/<slug>."
+								>
+									{embeddable.map((tool) => (
+										<ToolRow key={tool.slug} tool={tool} />
+									))}
+								</ToolGroup>
+							)}
+							{disabled.length > 0 && (
+								<ToolGroup
+									title="Coming soon"
+									description="Tools registered in the manifest but not yet embedded. The reason is recorded in each Tool's disabled_reason."
+								>
+									{disabled.map((tool) => (
+										<DisabledToolRow key={tool.slug} tool={tool} />
+									))}
+								</ToolGroup>
+							)}
+						</>
+					)}
+				</Container>
+			</section>
+		</>
 	);
 }
 

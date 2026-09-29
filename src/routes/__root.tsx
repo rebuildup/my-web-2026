@@ -2,8 +2,6 @@ import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tan
 import { env } from 'cloudflare:workers';
 import type { ReactNode } from 'react';
 import { GoogleAnalytics } from '../editorial/analytics/GoogleAnalytics';
-import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
-import { PublicNav } from '../editorial/nav';
 import '../styles.css';
 
 /**
@@ -37,6 +35,13 @@ import '../styles.css';
  * `admin.invitations`, `admin.emoji-catalog`). See
  * `src/editorial/analytics/GoogleAnalytics.tsx` for the component
  * contract and the SSR-capture singleton semantics.
+ *
+ * Chrome convention (Issue #199). PublicNav and Breadcrumbs are
+ * intentionally NOT mounted here. They are regular components in
+ * `src/editorial/nav/` — each page that wants them imports them
+ * explicitly and renders them at the position its own design calls
+ * for. This is the user-mandated convention: per-page design
+ * freedom over a forced uniform nav surface.
  */
 export const Route = createRootRoute({
 	head: () => ({
@@ -88,23 +93,9 @@ function RootComponent() {
 			<head>
 				<HeadContent />
 				{!isAdminPath ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
-				{/*
-				 * BreadcrumbList JSON-LD lives in `<head>` so search
-				 * engines see it alongside the rest of the page
-				 * metadata. `BreadcrumbJsonLd` resolves the same
-				 * chain the visible nav shows — Issue #173.
-				 */}
-				<BreadcrumbJsonLd />
 			</head>
 			<body>
 				<RootLayout>
-					{/*
-					 * The visible breadcrumb nav sits above the page
-					 * content. The component returns `null` on
-					 * suppressed leaves (home + auth pages) so the
-					 * layout is unaffected there.
-					 */}
-					<Breadcrumbs />
 					<Outlet />
 				</RootLayout>
 				<Scripts />
@@ -114,16 +105,8 @@ function RootComponent() {
 }
 
 function RootLayout({ children }: { children: ReactNode }) {
-	const { pathname } = useLocation();
-	// The admin area owns its own chrome (the `/admin` layout is a
-	// pure `<Outlet />` and each admin route is a self-contained
-	// surface — adding a public nav next to it would defeat the
-	// signed-in / signed-out split). Mount `PublicNav` for every
-	// other route.
-	const isAdmin = pathname.startsWith('/admin');
 	return (
 		<div id="app-root" data-app="my-web-2026">
-			{isAdmin ? null : <PublicNav />}
 			{children}
 		</div>
 	);

@@ -1,8 +1,9 @@
 import { createFileRoute } from '@tanstack/react-router';
+import { PublicNav } from '../editorial/nav';
 import { DesignSystemPage } from './design-system/DesignSystemPage';
 
 /**
- * `/design-system` — editorial design-system showcase page (Issue #181).
+ * `/design-system` — editorial design-system showcase page (Issue #181, Issue #199).
  *
  * Sits at `src/routes/design-system.tsx` per the TanStack Start file-route
  * convention (the colocated `src/routes/design-system/` directory holds
@@ -18,6 +19,15 @@ import { DesignSystemPage } from './design-system/DesignSystemPage';
  * Section order is documented in `DesignSystemPage.tsx` and matches
  * `src/editorial/colors.md` §"accent.* token roles" so the page reads
  * as a verifiable companion to that guide.
+ *
+ * Chrome convention (Issue #199). The `<PublicNav />` is rendered
+ * here explicitly (rather than mounted at the `__root` level) so the
+ * showcase page stays a self-contained surface — see
+ * `src/routes/about.tsx` for the rationale. `<Breadcrumbs />` is
+ * intentionally NOT rendered here: `/design-system` is in
+ * `SUPPRESS_BREADCRUMB_LEAF_IDS` (it is a top-level storybook-style
+ * entry, not part of the editorial IA), and `<Breadcrumbs />` would
+ * return `null` for that leaf anyway.
  */
 export const Route = createFileRoute('/design-system')({
 	head: () => ({
@@ -45,5 +55,10 @@ export const Route = createFileRoute('/design-system')({
 });
 
 function DesignSystemRoute() {
-	return <DesignSystemPage />;
+	return (
+		<>
+			<PublicNav />
+			<DesignSystemPage />
+		</>
+	);
 }

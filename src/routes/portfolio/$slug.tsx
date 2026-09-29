@@ -1,4 +1,7 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
+import { PublicNav } from '../../editorial/nav';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
+import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
 import { loadPortfolioAdjacent, loadPortfolioProject } from '../../portfolio/public';
 import { SlugSchema } from '../../portfolio/schema';
 import { PortfolioDetail } from '../../portfolio/components';
@@ -75,5 +78,12 @@ export const Route = createFileRoute('/portfolio/$slug')({
 
 function DetailRoute() {
 	const { project, adjacent } = Route.useLoaderData();
-	return <PortfolioDetail project={project} adjacent={adjacent} />;
+	return (
+		<>
+			<PublicNav />
+			<Breadcrumbs className={breadcrumbsChrome} />
+			<BreadcrumbJsonLd />
+			<PortfolioDetail project={project} adjacent={adjacent} />
+		</>
+	);
 }

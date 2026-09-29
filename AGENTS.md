@@ -174,7 +174,11 @@ declares only the **names** (see `wrangler.jsonc#secrets.required` and
 its `wrangler.production.jsonc` mirror). The canonical production
 release sequence and all failure / rollback paths are defined only in
 [`docs/runbook/cloudflare-workers-builds.md`](docs/runbook/cloudflare-workers-builds.md).
-Do not duplicate or reorder that sequence from memory. Its current
+Do not duplicate or reorder that sequence from memory. The canonical
+secret inventory / environment separation / naming convention / rotation
+ownership table lives in
+[`docs/runbook/infisical-secrets.md`](docs/runbook/infisical-secrets.md)
+(Issue #167). Its current
 post-incident order is `#139 containment → #89 Phase B flip → Smoke #1
 → release PR merge / Cloudflare Workers Builds deploy → Smoke #2/#3
 → --delete-legacy-only → final drift`.

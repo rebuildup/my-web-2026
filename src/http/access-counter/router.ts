@@ -3,6 +3,7 @@ import type { ApiKeyContext } from '../api-keys/middleware';
 import { requireApiKey, requireResourceAction } from '../api-keys/middleware';
 import { rateLimitRead, rateLimitWrite } from '../middleware/rate-limit';
 import { getCount, recordHit } from './counter';
+import { dedupeCache, isBot, isPrefetch } from './filter';
 import { HitInput, MAX_COUNTER_KEY_LEN, validateCounterKey, validateSessionId } from './schema';
 
 /**
@@ -36,6 +37,16 @@ accessCounterRouter.post('/hit', requireApiKey, rateLimitWrite, async (c) => {
 	}
 	const key = validateCounterKey(parsed.data.key);
 	const sessionId = validateSessionId(parsed.data.session_id);
+
+	// Pre-D1 ingress filters (Issue #170) — reject non-human /
+	// repeat hits before the atomic slot claim below.
+	const ua = c.req.header('user-agent');
+	const ip = c.req.header('cf-connecting-ip') ?? 'unknown';
+	const filterReason = preD1FilterReject(c.req.raw.headers, ua, ip, key);
+	if (filterReason) {
+		return c.json({ incremented: false, reason: filterReason });
+	}
+
 	const result = await recordHit(c.env.DB, {
 		key,
 		principal: apiKey.id,
@@ -62,3 +73,23 @@ accessCounterRouter.get('/count/:key', requireApiKey, rateLimitRead, async (c) =
 	const result = await getCount(c.env.DB, key, apiKey.id);
 	return c.json(result);
 });
+
+/**
+ * Pre-D1 ingress filter chain (Issue #170). Returns a non-null
+ * reason when the hit should be rejected without touching SQLite,
+ * `null` when the request should proceed to `recordHit`.
+ *
+ * Order matters: bot / prefetch rejections are cheaper than the
+ * LRU write so they run first.
+ */
+function preD1FilterReject(
+	headers: Headers,
+	ua: string | undefined,
+	ip: string,
+	path: string,
+): 'bot' | 'prefetch' | 'dedupe' | null {
+	if (isBot(ua)) return 'bot';
+	if (isPrefetch(headers)) return 'prefetch';
+	if (!dedupeCache.shouldRecord(Date.now(), { ip, ua, path })) return 'dedupe';
+	return null;
+}

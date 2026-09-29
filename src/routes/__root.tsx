@@ -1,5 +1,6 @@
 import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
+import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { PublicNav } from '../editorial/nav';
 import '../styles.css';
 
@@ -62,9 +63,25 @@ function RootComponent() {
 		<html lang="ja">
 			<head>
 				<HeadContent />
+				{/*
+				 * BreadcrumbList JSON-LD lives in `<head>` so search
+				 * engines see it alongside the rest of the page
+				 * metadata. `BreadcrumbJsonLd` resolves the same
+				 * chain the visible nav shows — Issue #173.
+				 */}
+				<BreadcrumbJsonLd />
 			</head>
 			<body>
-				<RootLayout>{<Outlet />}</RootLayout>
+				<RootLayout>
+					{/*
+					 * The visible breadcrumb nav sits above the page
+					 * content. The component returns `null` on
+					 * suppressed leaves (home + auth pages) so the
+					 * layout is unaffected there.
+					 */}
+					<Breadcrumbs />
+					<Outlet />
+				</RootLayout>
 				<Scripts />
 			</body>
 		</html>

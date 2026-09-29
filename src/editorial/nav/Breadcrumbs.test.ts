@@ -154,6 +154,39 @@ describe('resolveBreadcrumbChain — chain construction', () => {
 		// No resolver output → falls back to the static `Project` label.
 		expect(chain?.[1]?.label).toBe('Project');
 	});
+
+	it('drops /tools/$slug from the chain when loaderData is undefined (Issue #183)', () => {
+		// The route opted into `dropOnMissingLoaderData: true` (see
+		// route-labels.ts), so the leaf match is skipped when its
+		// loader threw notFound(). The visible chain stops at the
+		// intermediate "/tools" segment — surfacing a stub "Tool"
+		// segment for a slug that does not exist would mislead the
+		// visitor about where they are.
+		const chain = resolveBreadcrumbChain([
+			root,
+			match('/tools', '/tools/unknown'),
+			match('/tools/$slug', '/tools/unknown', undefined, { slug: 'unknown' }),
+		]);
+		expect(chain).toEqual([{ routeId: '/tools', label: 'Tools', href: '/tools/unknown' }]);
+	});
+
+	it('still includes /tools/$slug in the chain when loaderData is present', () => {
+		// Regression guard for the opt-in drop: a real Tool must
+		// still appear as the breadcrumb leaf.
+		const chain = resolveBreadcrumbChain([
+			root,
+			match('/tools', '/tools/prototype'),
+			match(
+				'/tools/$slug',
+				'/tools/prototype',
+				{ display_name: 'ProtoType', slug: 'prototype' },
+				{
+					slug: 'prototype',
+				},
+			),
+		]);
+		expect(chain?.[1]?.label).toBe('ProtoType');
+	});
 });
 
 describe('Breadcrumbs component — module surface', () => {

@@ -90,6 +90,15 @@ export function resolveBreadcrumbChain(
 		const entry = ROUTE_LABELS[match.routeId];
 		if (!entry) continue;
 
+		// Issue #183: when the loader threw `notFound()` (loaderData
+		// is undefined) AND the route opted into the drop-on-missing
+		// contract, skip this match. This keeps the visible chain
+		// honest — a slug that does not exist in the registry must
+		// not show a placeholder leaf segment in the breadcrumb.
+		if (entry.dropOnMissingLoaderData && match.loaderData === undefined) {
+			continue;
+		}
+
 		const params = match.params as Record<string, string | undefined>;
 		const resolved = entry.resolve
 			? entry.resolve({ params, loaderData: match.loaderData })

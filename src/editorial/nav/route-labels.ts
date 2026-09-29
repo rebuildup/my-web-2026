@@ -54,6 +54,17 @@ export const SUPPRESS_BREADCRUMB_LEAF_IDS: ReadonlySet<string> = new Set([
  * render time against the match's `params` and `loaderData` so
  * dynamic routes like `/portfolio/$slug` can surface the project
  * title instead of the raw slug.
+ *
+ * `dropOnMissingLoaderData` opts the entry into Issue #183
+ * semantics: when the loader throws `notFound()` and `loaderData`
+ * is undefined, the entry is dropped from the visible chain
+ * instead of falling back to `label`. Use this for routes whose
+ * loader-thrown 404 must NOT surface a stub leaf segment in the
+ * breadcrumb (e.g. `/tools/$slug` — the slug is unknown, so
+ * showing a placeholder "Tool" segment is misleading). Default
+ * is `false` to preserve the existing fallback contract used by
+ * `/portfolio/$slug` ("Project" static label when loader data is
+ * missing).
  */
 export interface RouteLabel {
 	label: string;
@@ -61,6 +72,7 @@ export interface RouteLabel {
 		params: Record<string, string | undefined>;
 		loaderData: unknown;
 	}) => string | undefined;
+	dropOnMissingLoaderData?: boolean;
 }
 
 /**
@@ -88,6 +100,13 @@ export const ROUTE_LABELS: Readonly<Record<string, RouteLabel>> = {
 	'/tools': { label: 'Tools' },
 	'/tools/$slug': {
 		label: 'Tool',
+		// Issue #183: when the loader throws `notFound()` (the slug
+		// is unknown), drop this match from the visible chain —
+		// otherwise the breadcrumb surfaces a misleading "Tools >
+		// Tool" stub for a slug that does not exist. The empty-state
+		// component (`src/routes/tools.$slug.tsx#ToolNotFound`) is the
+		// canonical surface for the 404 path.
+		dropOnMissingLoaderData: true,
 		resolve: ({ loaderData }) => {
 			// `getPublicTool(slug)` returns the tool record directly
 			// (no wrapper), so the loaderData IS the tool — read its

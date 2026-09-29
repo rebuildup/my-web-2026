@@ -74,6 +74,7 @@ Current dependency direction:
 ```text
 routes -> home
 routes -> portfolio
+routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)

@@ -29,6 +29,16 @@ declare global {
 			// compatibility with partially-deployed states, but is NOT
 			// declared in the runtime env contract.
 			BETTER_AUTH_SECRETS: string;
+			// Issue #171 — GA4 measurement ID. Public non-secret
+			// identifier declared in `wrangler.jsonc#vars` (and the
+			// production mirror). The root route loader reads this
+			// during SSR and passes it to
+			// `src/editorial/analytics/GoogleAnalytics.tsx`. Empty
+			// string means "no GA4 wired". The Cloudflare typegen
+			// generates this with `string | undefined` from the
+			// `vars` block; we keep the same `string | undefined` shape
+			// here so SSR reads stay total.
+			GOOGLE_ANALYTICS_MEASUREMENT_ID?: string;
 		}
 	}
 }

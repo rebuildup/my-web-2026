@@ -80,12 +80,22 @@
 	// separate key via scripts/bootstrap-home-api-key.mjs. Manual
 	// rotation path until #74 lands is documented in
 	// `docs/runbook/consumer-api-key-rotation.md`.
-	// The two named vars below are non-secret values used by
-	// `src/home/{reactions,access}/load.ts`; they live here so they
-	// survive `wrangler d1` schema resets.
+	// The named vars below are non-secret values used by application
+	// surfaces; they live here so they survive `wrangler d1` schema
+	// resets.
+	//
+	// `GOOGLE_ANALYTICS_MEASUREMENT_ID` (Issue #171) — public GA4
+	// measurement ID rendered by `src/editorial/analytics/GoogleAnalytics.tsx`.
+	// Empty by default; the operator sets it to the `G-XXXXXXX` value
+	// GA4 issues when registering the property. The value is treated
+	// as a non-secret public identifier (it appears in client-side
+	// GA snippets on every visitor's browser) and committed to source
+	// control. When empty, no `<script>` tag is rendered. See
+	// `docs/runbook/analytics.md`.
 	"vars": {
 		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
-		"MY_WEB_2026_COUNTER_KEY": "home-page"
+		"MY_WEB_2026_COUNTER_KEY": "home-page",
+		"GOOGLE_ANALYTICS_MEASUREMENT_ID": ""
 	},
 	// Per-consumer-principal rate limit bindings (ADR-0010).
 	// `simple` is the only rate-limit configuration shape supported by

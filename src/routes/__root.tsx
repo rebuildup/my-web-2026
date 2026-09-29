@@ -1,5 +1,7 @@
-import { HeadContent, Outlet, Scripts, createRootRoute } from '@tanstack/react-router';
+import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
+import { env } from 'cloudflare:workers';
 import type { ReactNode } from 'react';
+import { GoogleAnalytics } from '../editorial/analytics/GoogleAnalytics';
 import '../styles.css';
 
 /**
@@ -19,6 +21,20 @@ import '../styles.css';
  * so production HTML still links the bundled asset via Vite's
  * CSS-extraction transform; the Vite module graph deduplicates
  * the shared `src/styles.css` module so no double bundle.
+ *
+ * Google Analytics 4 (Issue #171). The root loader reads the GA4
+ * measurement ID from `env.GOOGLE_ANALYTICS_MEASUREMENT_ID` during
+ * SSR (the `cloudflare:workers` virtual module resolves to the
+ * workerd env on the SSR path; on the client it resolves to the
+ * frozen empty stub documented in
+ * `src/cloudflare/workers-stub.ts`, so subsequent client-side
+ * navigations contribute `undefined`). The value flows into
+ * `GoogleAnalytics` only when the current pathname is NOT under
+ * `/admin/*` — the admin gates are flat siblings under that prefix
+ * (`admin.login`, `admin.keys`, `admin.images`,
+ * `admin.invitations`, `admin.emoji-catalog`). See
+ * `src/editorial/analytics/GoogleAnalytics.tsx` for the component
+ * contract and the SSR-capture singleton semantics.
  */
 export const Route = createRootRoute({
 	head: () => ({
@@ -53,14 +69,23 @@ export const Route = createRootRoute({
 			},
 		],
 	}),
+	loader: () => {
+		const measurementId = (env as { GOOGLE_ANALYTICS_MEASUREMENT_ID?: string })
+			.GOOGLE_ANALYTICS_MEASUREMENT_ID;
+		return { gaMeasurementId: measurementId };
+	},
 	component: RootComponent,
 });
 
 function RootComponent() {
+	const { gaMeasurementId } = Route.useLoaderData();
+	const { pathname } = useLocation();
+	const isAdminPath = pathname.startsWith('/admin');
 	return (
 		<html lang="ja">
 			<head>
 				<HeadContent />
+				{!isAdminPath ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
 			</head>
 			<body>
 				<RootLayout>{<Outlet />}</RootLayout>

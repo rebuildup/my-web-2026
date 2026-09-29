@@ -3,6 +3,7 @@ import type { PortfolioFacet } from '../schema';
 import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { FacetFilter } from './FacetFilter';
+import { PortfolioEmptyState } from './EmptyState';
 import { ProjectCard } from './ProjectCard';
 
 /**
@@ -17,7 +18,13 @@ import { ProjectCard } from './ProjectCard';
  * Reading order:
  *   - Page header (eyebrow / h1 / blurb),
  *   - Facet filter (URL-synced),
- *   - Project list (cards),
+ *   - Project list (cards) — or empty state when no entries are
+ *     visible. The empty state is selected by `activeFacets`:
+ *     a filter applied to a non-empty catalogue renders the
+ *     `<output>` "該当する project はありません" branch (Issue
+ *     #77); a genuinely empty catalogue (pre-migration from
+ *     my-web-2025) renders `<PortfolioEmptyState />` (Issue
+ *     #182).
  *   - "Load more" (rendered only while a `nextCursor` is present).
  */
 export interface PortfolioListProps {
@@ -112,36 +119,40 @@ export function PortfolioList({
 				>
 					<Container>
 						{allProjects.length === 0 ? (
-							<output
-								className={css({
-									display: 'flex',
-									flexDirection: 'column',
-									gap: '3',
-									paddingBlock: '16',
-									color: 'text.muted',
-								})}
-							>
-								<h2
+							activeFacets.length > 0 ? (
+								<output
 									className={css({
-										margin: '0',
-										fontFamily: 'heading',
-										fontSize: 'xl',
-										color: 'text.default',
+										display: 'flex',
+										flexDirection: 'column',
+										gap: '3',
+										paddingBlock: '16',
+										color: 'text.muted',
 									})}
 								>
-									該当する project はありません
-								</h2>
-								<p
-									className={css({
-										margin: '0',
-										fontFamily: 'sans',
-										fontSize: 'md',
-										lineHeight: '1.6',
-									})}
-								>
-									別の facet を試すか、filter を外してください。
-								</p>
-							</output>
+									<h2
+										className={css({
+											margin: '0',
+											fontFamily: 'heading',
+											fontSize: 'xl',
+											color: 'text.default',
+										})}
+									>
+										該当する project はありません
+									</h2>
+									<p
+										className={css({
+											margin: '0',
+											fontFamily: 'sans',
+											fontSize: 'md',
+											lineHeight: '1.6',
+										})}
+									>
+										別の facet を試すか、filter を外してください。
+									</p>
+								</output>
+							) : (
+								<PortfolioEmptyState />
+							)
 						) : (
 							<ol
 								className={css({

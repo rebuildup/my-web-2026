@@ -78,7 +78,7 @@ value through Panda's `token()` helper unless dark mode is enabled.
 
 ## WCAG AA contrast — verified values
 
-The 0.5.0 palette uses a saturated sky/cyan brand ramp while keeping
+The current palette uses a saturated sky/cyan brand ramp while keeping
 text and interactive roles on darker semantic steps. The bright
 `brand.500` (`#0ea5e9`) is a visual signature, not a white-text CTA
 fill. `bg.accent` / `text.accent` resolve to `brand.700`, hover /

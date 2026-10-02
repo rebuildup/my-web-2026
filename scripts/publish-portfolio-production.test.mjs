@@ -216,11 +216,13 @@ describe('buildLinkInserts', () => {
 	});
 
 	it('preserves owner-added link on re-run (id collision → no-op)', () => {
-		// Same entry, two runs → same SQL output → INSERT OR IGNORE on
-		// collision means the existing row is preserved.
-		const a = buildLinkInserts(makeEntry());
-		const b = buildLinkInserts(makeEntry());
+		// The operation boundary owns wall-clock time; pure SQL builders
+		// receive it explicitly so equality never depends on a 1 ms race.
+		const timestamp = 1_759_000_000_000;
+		const a = buildLinkInserts(makeEntry(), timestamp);
+		const b = buildLinkInserts(makeEntry(), timestamp);
 		assert.deepEqual(a, b);
+		assert.ok(a.every((sql) => sql.includes(`, ${timestamp});`)));
 	});
 });
 
@@ -288,9 +290,11 @@ describe('buildMediaInsert', () => {
 	});
 
 	it('preserves owner-added media on re-run (id collision → no-op)', () => {
-		const a = buildMediaInsert(makeEntry(), makeManifest().assets[0]);
-		const b = buildMediaInsert(makeEntry(), makeManifest().assets[0]);
+		const timestamp = 1_759_000_000_000;
+		const a = buildMediaInsert(makeEntry(), makeManifest().assets[0], timestamp);
+		const b = buildMediaInsert(makeEntry(), makeManifest().assets[0], timestamp);
 		assert.equal(a, b);
+		assert.ok(a.includes(`, ${timestamp});`));
 	});
 });
 

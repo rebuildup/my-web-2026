@@ -69,11 +69,7 @@ commas (all), arrow parentheses (always), and `organizeImports`.
   them.
 
 Bootstrap (`setup-node`, `pnpm/action-setup@v4`, `actions/cache`,
-`node scripts/ci-pnpm-install.mjs`) is declared once. The wrapper still runs
-`pnpm install --frozen-lockfile`; it only retries the observed
-`ERR_PNPM_PACKAGE_MANAGER_CREATE_SLOT_DIR` virtual-store race, removes the
-partial `node_modules` tree before retrying, and fails immediately for every
-other pnpm error. Retries are bounded to three attempts (Issue #210). The previous
+`pnpm install --frozen-lockfile`) is declared once. The previous
 two-job design (`validate` + `validate-release`) was collapsed to a
 single job because both jobs shared the same bootstrap and
 `validate:release` is a strict superset of `validate:integration`

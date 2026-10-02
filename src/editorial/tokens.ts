@@ -20,22 +20,26 @@ export const rawTokens = {
 		xl: '1280px',
 	},
 	colors: {
+		// High-chroma sky/cyan brand ramp (Issue #201).
+		// 500 is the visual signature; accessible text / CTA roles use
+		// the darker 700–800 steps through the semantic layer.
 		brand: {
-			50: { value: '#f5f7ff' },
-			100: { value: '#e6ecff' },
-			300: { value: '#93a8ff' },
-			500: { value: '#3a6cff' },
-			600: { value: '#2b54cc' },
-			700: { value: '#1e3a8a' },
-			800: { value: '#14204d' },
-			900: { value: '#0d1d4d' },
+			50: { value: '#f0f9ff' },
+			100: { value: '#e0f2fe' },
+			300: { value: '#7dd3fc' },
+			500: { value: '#0ea5e9' },
+			600: { value: '#0284c7' },
+			700: { value: '#0369a1' },
+			800: { value: '#075985' },
+			900: { value: '#0c4a6e' },
 		},
+		// Cooler slate neutrals keep the canvas crisp instead of grey-purple.
 		neutral: {
 			0: { value: '#ffffff' },
-			50: { value: '#f7f8fa' },
-			100: { value: '#eef0f4' },
-			500: { value: '#7a8194' },
-			900: { value: '#0b1020' },
+			50: { value: '#f8fafc' },
+			100: { value: '#f1f5f9' },
+			500: { value: '#64748b' },
+			900: { value: '#0f172a' },
 		},
 		// Status colors (Issue #172).
 		// 50 = light-tinted surface fill, 300 = dark-mode foreground,
@@ -43,17 +47,17 @@ export const rawTokens = {
 		// neutral.0 / neutral.900 — see src/editorial/colors.md.
 		positive: {
 			50: { value: '#ecfdf5' },
-			300: { value: '#86efac' },
-			500: { value: '#22c55e' },
-			600: { value: '#16a34a' },
-			700: { value: '#15803d' },
+			300: { value: '#6ee7b7' },
+			500: { value: '#10b981' },
+			600: { value: '#059669' },
+			700: { value: '#047857' },
 		},
 		negative: {
-			50: { value: '#fef2f2' },
-			300: { value: '#fca5a5' },
-			500: { value: '#ef4444' },
-			600: { value: '#dc2626' },
-			700: { value: '#b91c1c' },
+			50: { value: '#fff1f2' },
+			300: { value: '#fda4af' },
+			500: { value: '#f43f5e' },
+			600: { value: '#e11d48' },
+			700: { value: '#be123c' },
 		},
 		warning: {
 			50: { value: '#fffbeb' },

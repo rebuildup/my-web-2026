@@ -169,6 +169,66 @@ Bindings は `wrangler.jsonc` が canonical source である。binding を変更
 SELF integration tests は local workerd / Miniflare 上の contract を確認する。
 real Cloudflare resource smoke は release cut で確認する。
 
+## Static assets
+
+`public/` は `ASSETS` binding の on-disk projection である。Vite は `public/` を
+`dist/client/` へ verbatim copy し、Cloudflare Workers Static Assets が配信する。
+
+`run_worker_first` は未設定なので、asset server が先に path を照合し、一致すれば
+**Worker コードを実行せずに** 応答する。`not_found_handling` も未設定なので、
+一致しない path だけが Worker（`src/server.ts`）へ落ちる。
+
+したがって静的資産を配信する legislation は route を書かずに済む:
+
+- `src/routes/` に route 定義を追加しない
+- `env.ASSETS` を触るコードを追加しない
+- binding 変更・ADR・`pnpm run cf-typegen` は不要
+
+現行の資産は `share/` namespace のみ:
+
+| Path | URL |
+| --- | --- |
+| `public/share/procon2026/index.html` | `https://rebuildup.dev/share/procon2026/` |
+
+### 規約: `public/share/<slug>/index.html`
+
+共有したい静的 HTML 文書の置き場所は **directory + `index.html`** とする。
+`html_handling` は未設定 = Cloudflare default の `auto-trailing-slash` で、
+実仕様は次の通り:
+
+| Request | 結果 |
+| --- | --- |
+| `/share/<slug>/` | 200 — `share/<slug>/index.html` を配信 |
+| `/share/<slug>` | 307 → `/share/<slug>/` |
+| `/foo.html`（単体 file） | 307 → `/foo`（拡張子が strip される） |
+
+`.html` で終わる名前を使うと clean URL を作れない（拡張子だけが残るため）。
+directory + `index.html` が clean URL を作る唯一の形態である。
+
+- `<slug>` = 共有対象の識別子。小文字・ハイフン区切り。
+- 1 共有 = 1 directory。`index.html` がその文書そのもの（別 layer の
+  landing page は作らない）。
+- 同一 directory に付随ファイルを置いてもよい（同一 origin なので相対 path は
+  動く）。ただし root 絶対 path `/foo` は壊れる — Static Assets は path を
+  rewrite しない。
+
+### 制約
+
+- **per-file 上限 25 MiB。** 超過すると deploy が hard fail する。資産を
+  差し替える前に size を確認する。
+- 1  版ごとに git blob が同 size 増える。共有物が 3 件（約 47 MiB）に達したら
+  git-lfs または R2（`MEDIA`）への移管を再評価する。
+- `vite build` と `wrangler deploy` のたびに同 size が再 upload される。
+
+### 意図的に作らないもの
+
+`/tools/` には `scripts/build-tools.mjs` + `check-tools-manifest.mjs` という
+manifest 駆動の生成 precedent がある。ただし shared namespace については
+**それらを導入しない**。共有物が 2 件目になった時点で contract が観測され、
+その時点で実 instance 2 つに対して設計して昇格する。現時点の実装は 1 件であり、
+将来利用されるかもしれないという理由だけで abstraction を先に作らない
+（AGENTS.md §3 / ADR-0008）。
+
 ## Verification
 
 Architecture boundary の変更は path の見た目だけで承認しない。

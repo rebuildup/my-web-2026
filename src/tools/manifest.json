@@ -41,7 +41,7 @@
 				"branch": "main"
 			},
 			"build": {
-				"command": "tsc -b --noCheck && vite build",
+				"command": "bun install --frozen-lockfile && bun run build",
 				"output_dir": "dist",
 				"package_manager": "bun"
 			},

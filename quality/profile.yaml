@@ -112,9 +112,7 @@ ci:
     node_version: 22
     cache_path: '~/.local/share/pnpm/store'
     cache_key: 'pnpm-${{ runner.os }}-${{ hashFiles(''pnpm-lock.yaml'') }}'
-    install_command: 'node scripts/ci-pnpm-install.mjs'
     install_args: '--frozen-lockfile'
-    retry_policy: 'max 3 attempts; retry only ERR_PNPM_PACKAGE_MANAGER_CREATE_SLOT_DIR after removing partial node_modules'
 
 coverage_policy:
   enabled: false

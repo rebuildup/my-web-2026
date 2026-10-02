@@ -40,6 +40,8 @@ jobs:
       # directly from pnpm's release CDN; it does not use corepack.
       - uses: pnpm/action-setup@v4
         with: { version: 12.3.4 }
+      - uses: oven-sh/setup-bun@v2
+        with: { bun-version: 1.4.2 }
       - uses: actions/cache@v4
         with:
           path: ~/.local/share/pnpm/store

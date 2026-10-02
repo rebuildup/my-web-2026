@@ -63,7 +63,7 @@ value through Panda's `token()` helper unless dark mode is enabled.
 
 | Decision | Pick |
 | --- | --- |
-| Primary CTA fill, idle | `bg.accent` (brand.500) |
+| Primary CTA fill, idle | `bg.accent` (brand.700) |
 | Primary CTA fill, hover / pressed / focus | `accent.interactive` |
 | Subtle tinted card surface | `accent.surface` |
 | "live" / "ok" status pill or indicator | `accent.positive` |
@@ -78,34 +78,38 @@ value through Panda's `token()` helper unless dark mode is enabled.
 
 ## WCAG AA contrast — verified values
 
-All foreground tokens are checked against `bg.canvas`
+The 0.5.0 palette uses a saturated sky/cyan brand ramp while keeping
+text and interactive roles on darker semantic steps. The bright
+`brand.500` (`#0ea5e9`) is a visual signature, not a white-text CTA
+fill. `bg.accent` / `text.accent` resolve to `brand.700`, hover /
+pressed resolves to `brand.800`, and the focus ring resolves to
+`brand.600`.
+
+Foreground tokens are checked against `bg.canvas`
 (`neutral.0` = `#ffffff` in light) and `bg.inverse`
-(`neutral.900` = `#0b1020` in dark). UI / large text uses 3:1;
-body text uses 4.5:1.
+(`neutral.900` = `#0f172a` in dark). Normal text uses 4.5:1;
+non-text focus indicators use 3:1.
 
-| Token | Light value | Contrast vs `#ffffff` | Dark value | Contrast vs `#0b1020` |
+| Token | Light value | Contrast vs `#ffffff` | Dark value | Contrast vs `#0f172a` |
 | --- | --- | --- | --- | --- |
-| `accent.positive` | `#15803d` (positive.700) | 4.62 : 1 | `#86efac` (positive.300) | 12.41 : 1 |
-| `accent.negative` | `#b91c1c` (negative.700) | 5.51 : 1 | `#fca5a5` (negative.300) | 9.16 : 1 |
-| `accent.warning`  | `#b45309` (warning.700)  | 4.74 : 1 | `#fcd34d` (warning.300)  | 12.30 : 1 |
-| `accent.category.design`  | `#be185d` (design.700)  | 6.20 : 1 | `#f9a8d4` (design.300)  | 8.98 : 1 |
-| `accent.category.code`    | `#0e7490` (code.700)    | 5.60 : 1 | `#67e8f9` (code.300)    | 13.62 : 1 |
-| `accent.category.writing` | `#a16207` (writing.700) | 4.62 : 1 | `#fde047` (writing.300) | 13.51 : 1 |
-| `accent.category.tool`    | `#4338ca` (tool.700)    | 8.21 : 1 | `#a5b4fc` (tool.300)    | 8.59 : 1 |
+| `accent.positive` | `#047857` (positive.700) | 5.48 : 1 | `#6ee7b7` (positive.300) | 11.71 : 1 |
+| `accent.negative` | `#be123c` (negative.700) | 6.29 : 1 | `#fda4af` (negative.300) | 9.44 : 1 |
+| `accent.warning` | `#b45309` (warning.700) | 5.02 : 1 | `#fcd34d` (warning.300) | 12.38 : 1 |
+| `accent.category.design` | `#be185d` (design.700) | 6.04 : 1 | `#f9a8d4` (design.300) | 9.84 : 1 |
+| `accent.category.code` | `#0e7490` (code.700) | 5.36 : 1 | `#67e8f9` (code.300) | 12.32 : 1 |
+| `accent.category.writing` | `#a16207` (writing.700) | 4.92 : 1 | `#fde047` (writing.300) | 13.54 : 1 |
+| `accent.category.tool` | `#4338ca` (tool.700) | 7.90 : 1 | `#a5b4fc` (tool.300) | 8.96 : 1 |
 
-Every foreground value clears 4.5:1 in both modes — well above
-the WCAG AA threshold for normal text. The light-mode `accent`
-palette is borrowed from Tailwind's 700-step compatible greens (and
-analogous steps for each family), which are independently
-contrast-verified; the dark-mode 300-step values are likewise
-documented.
+The main brand roles also clear their intended thresholds:
 
-`accent.interactive` (`#2b54cc` in light, `#93a8ff` in dark) is
-used on text rendered against `bg.accent` (which itself fills
-with `accent.interactive` on hover) — its 4.6:1 contrast against
-`text.inverse` (`#ffffff`) holds in light mode. The dark-mode
-`#93a8ff` against the dark `accent.surface` (`#14204d`) yields
-7.1:1.
+| Role | Value | Pair | Contrast |
+| --- | --- | --- | --- |
+| `bg.accent` | `#0369a1` (brand.700) | `text.inverse` / `#ffffff` | 5.93 : 1 |
+| `accent.interactive` (light) | `#075985` (brand.800) | `text.inverse` / `#ffffff` | 7.56 : 1 |
+| `text.accent` | `#0369a1` (brand.700) | `bg.canvas` / `#ffffff` | 5.93 : 1 |
+| `border.focus` | `#0284c7` (brand.600) | `bg.canvas` / `#ffffff` | 4.10 : 1 |
+| `accent.interactive` (dark sample) | `#7dd3fc` (brand.300) | `accent.surface` dark / `#075985` | 4.54 : 1 |
+| `text.muted` | `#64748b` (neutral.500) | `bg.canvas` / `#ffffff` | 4.76 : 1 |
 
 ### How the contrast was computed
 
@@ -118,11 +122,9 @@ L = 0.2126 * R_lin + 0.7152 * G_lin + 0.0722 * B_lin
 Contrast = (L_lighter + 0.05) / (L_darker + 0.05)
 ```
 
-Foreground against the mode's surface clears 4.5:1 for every
-token. The values above were derived from the raw `#RRGGBB`
-literals in `tokens.ts` using the formula above. Adding a new
-accent token requires updating the table above; the token
-introducer is responsible for the verification.
+The values above are derived from the raw `#RRGGBB` literals in
+`tokens.ts`. Adding or remapping a semantic foreground token requires
+updating this table and re-running the same contrast calculation.
 
 ## Don't
 
@@ -144,6 +146,7 @@ introducer is responsible for the verification.
 
 ## Change history
 
+- **2026-10-03** (Issue #201) — Replaced the muted blue/grey palette with a high-chroma sky/cyan brand ramp, cooler slate neutrals, and more vivid positive/negative status ramps. CTA/link/focus roles were remapped to accessible darker steps; `/design-system` now derives its swatch references from the semantic-token source instead of maintaining a second raw-token map.
 - **2026-09-29** (Issue #172) — Introduced the `accent.*`
   semantic layer (surface / interactive / positive / negative /
   warning / category.{design,code,writing,tool}) with light +

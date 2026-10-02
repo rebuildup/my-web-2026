@@ -39,13 +39,16 @@ const SCRIPT = resolve(HERE, 'run-deploy-inner.mjs');
 const SECRET_BETTER_AUTH_SECRETS = '2:newsecretvalue,1:oldsecretvalue';
 const SECRET_BETTER_AUTH_SECRET_LEGACY = 'legacy-single-secret-value';
 const SECRET_CONSUMER_API_KEY = 'mk_home_TESTCONSUMERKEYXXXXXXXXXXXXXX';
+const SECRET_GOOGLE_ANALYTICS_MEASUREMENT_ID = 'G-TEST0000000';
 
-// Phase 3+ (Issue #89): versioned 2-name is required. The legacy
-// `BETTER_AUTH_SECRET` is AUDIT_ONLY_SECRETS — sanitized only, NEVER
-// written to `secrets.json` even if present in process.env.
+// Phase 3+ (Issue #89) plus Issue #187: the current runtime contract
+// requires the versioned auth secret, consumer API key, and GA measurement
+// ID. The legacy `BETTER_AUTH_SECRET` is AUDIT_ONLY_SECRETS — sanitized
+// only, NEVER written to `secrets.json` even if present in process.env.
 const REQUIRED_FOR_PHASE_3_PLUS = {
 	BETTER_AUTH_SECRETS: SECRET_BETTER_AUTH_SECRETS,
 	MY_WEB_2026_CONSUMER_API_KEY: SECRET_CONSUMER_API_KEY,
+	GOOGLE_ANALYTICS_MEASUREMENT_ID: SECRET_GOOGLE_ANALYTICS_MEASUREMENT_ID,
 };
 
 const TEMPDIR_PREFIX = 'my-web-2026-deploy-';
@@ -113,7 +116,7 @@ describe('run-deploy-inner.mjs', () => {
 		});
 	});
 
-	describe('required secret validation (Phase 3+: versioned 2-name)', () => {
+	describe('required secret validation (Phase 3+: current 3-name)', () => {
 		it('rejects missing BETTER_AUTH_SECRETS', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: {
@@ -152,7 +155,7 @@ describe('run-deploy-inner.mjs', () => {
 	});
 
 	describe('dry-run mode (Phase 3+)', () => {
-		it('succeeds with versioned 2-name (BETTER_AUTH_SECRETS + CONSUMER_API_KEY)', () => {
+		it('succeeds with current 3-name runtime contract', () => {
 			const result = runInIsolatedRepo(['--config=wrangler.jsonc'], {
 				env: REQUIRED_FOR_PHASE_3_PLUS,
 			});
@@ -160,7 +163,7 @@ describe('run-deploy-inner.mjs', () => {
 			assert.match(result.stdout, /\[dry-run\]/);
 			assert.match(result.stdout, /secrets\.json would have been written/);
 			assert.ok(result.stdout.includes('wrangler.jsonc'));
-			assert.match(result.stdout, /contains 2 keys/);
+			assert.match(result.stdout, /contains 3 keys/);
 		});
 
 		it('cleans up the tempdir even on dry-run', () => {
@@ -187,10 +190,10 @@ describe('run-deploy-inner.mjs', () => {
 				},
 			});
 			assert.equal(result.exitCode, 0);
-			// secrets.json would have been written with exactly 2 keys
-			// (BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY).
-			// BETTER_AUTH_SECRET MUST NOT be among them.
-			assert.match(result.stdout, /contains 2 keys/);
+			// secrets.json would have been written with exactly 3 keys
+			// (BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY,
+			// GOOGLE_ANALYTICS_MEASUREMENT_ID). BETTER_AUTH_SECRET MUST NOT be among them.
+			assert.match(result.stdout, /contains 3 keys/);
 			// The legacy value MUST NOT appear in dry-run output.
 			assert.doesNotMatch(result.stdout, new RegExp(SECRET_BETTER_AUTH_SECRET_LEGACY));
 		});

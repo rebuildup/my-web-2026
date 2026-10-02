@@ -1,4 +1,5 @@
 import { css } from '../../../../styled-system/css';
+import { semanticTokens } from '../../../editorial/semantic-tokens';
 import { rawTokens } from '../../../editorial/tokens';
 
 /**
@@ -18,10 +19,10 @@ import { rawTokens } from '../../../editorial/tokens';
  *     compose correctly in either mode. They are shown here so a
  *     designer can audit the full semantic surface in one glance.
  *
- * The hex values shown alongside each token name are derived from
- * the raw layer (`src/editorial/tokens.ts`) at render time — the
- * data flows through the SAME source the Panda config consumes, so
- * the displayed hex cannot drift from the rendered token.
+ * The token path is resolved through `semantic-tokens.ts` first and
+ * only then dereferenced into `tokens.ts`. The viewer therefore has
+ * no second hand-written raw-token mapping that can drift from the
+ * actual semantic contract.
  */
 
 interface TokenEntry {
@@ -29,10 +30,6 @@ interface TokenEntry {
 	path: string;
 	/** Human-readable label, e.g. `Positive` / `Border subtle`. */
 	label: string;
-	/** Raw palette family + step that powers `base`, e.g. `positive.700`. */
-	rawLightRef: string;
-	/** Raw palette family + step that powers `_dark`, when one is declared. */
-	rawDarkRef: string | null;
 	/** Plain-English role description from `colors.md`. */
 	role: string;
 }
@@ -48,148 +45,143 @@ const TOKENS: ReadonlyArray<TokenEntry> = [
 	{
 		path: 'bg.canvas',
 		label: 'Canvas',
-		rawLightRef: 'neutral.0',
-		rawDarkRef: null,
 		role: 'Page background',
 	},
 	{
 		path: 'bg.surface',
 		label: 'Surface',
-		rawLightRef: 'neutral.50',
-		rawDarkRef: null,
 		role: 'Card surface (default)',
 	},
 	{
 		path: 'bg.subtle',
 		label: 'Subtle',
-		rawLightRef: 'neutral.100',
-		rawDarkRef: null,
 		role: 'Tinted separator',
 	},
 	{
 		path: 'bg.accent',
 		label: 'Accent fill',
-		rawLightRef: 'brand.500',
-		rawDarkRef: null,
 		role: 'Primary CTA idle',
 	},
 	// Text (text.*)
 	{
 		path: 'text.default',
 		label: 'Default',
-		rawLightRef: 'neutral.900',
-		rawDarkRef: null,
 		role: 'Body text',
 	},
 	{
 		path: 'text.muted',
 		label: 'Muted',
-		rawLightRef: 'neutral.500',
-		rawDarkRef: null,
 		role: 'Secondary text',
 	},
 	{
 		path: 'text.accent',
 		label: 'Accent text',
-		rawLightRef: 'brand.600',
-		rawDarkRef: null,
 		role: 'Inline link',
 	},
 	{
 		path: 'text.inverse',
 		label: 'Inverse',
-		rawLightRef: 'neutral.0',
-		rawDarkRef: null,
 		role: 'Text on accent fill',
 	},
 	// Borders (border.*)
 	{
 		path: 'border.subtle',
 		label: 'Subtle',
-		rawLightRef: 'neutral.100',
-		rawDarkRef: null,
 		role: 'Default divider',
 	},
 	{
 		path: 'border.strong',
 		label: 'Strong',
-		rawLightRef: 'neutral.500',
-		rawDarkRef: null,
 		role: 'Emphasis divider',
 	},
 	{
 		path: 'border.focus',
 		label: 'Focus ring',
-		rawLightRef: 'brand.500',
-		rawDarkRef: null,
 		role: 'Focus outline',
 	},
 	// Accent features (accent.*)
 	{
 		path: 'accent.surface',
 		label: 'Surface',
-		rawLightRef: 'brand.50',
-		rawDarkRef: 'brand.800',
 		role: 'Tinted feature surface',
 	},
 	{
 		path: 'accent.interactive',
 		label: 'Interactive',
-		rawLightRef: 'brand.600',
-		rawDarkRef: 'brand.300',
 		role: 'CTA hover / pressed',
 	},
 	{
 		path: 'accent.positive',
 		label: 'Positive',
-		rawLightRef: 'positive.700',
-		rawDarkRef: 'positive.300',
 		role: 'OK / live status',
 	},
 	{
 		path: 'accent.negative',
 		label: 'Negative',
-		rawLightRef: 'negative.700',
-		rawDarkRef: 'negative.300',
 		role: 'Error / unreachable',
 	},
 	{
 		path: 'accent.warning',
 		label: 'Warning',
-		rawLightRef: 'warning.700',
-		rawDarkRef: 'warning.300',
 		role: 'Degraded status',
 	},
 	// Category accents (accent.category.*)
 	{
 		path: 'accent.category.design',
 		label: 'Design',
-		rawLightRef: 'design.700',
-		rawDarkRef: 'design.300',
 		role: 'Content category — design',
 	},
 	{
 		path: 'accent.category.code',
 		label: 'Code',
-		rawLightRef: 'code.700',
-		rawDarkRef: 'code.300',
 		role: 'Content category — code',
 	},
 	{
 		path: 'accent.category.writing',
 		label: 'Writing',
-		rawLightRef: 'writing.700',
-		rawDarkRef: 'writing.300',
 		role: 'Content category — writing',
 	},
 	{
 		path: 'accent.category.tool',
 		label: 'Tool',
-		rawLightRef: 'tool.700',
-		rawDarkRef: 'tool.300',
 		role: 'Content category — tool',
 	},
 ];
+
+type SemanticLeaf = {
+	value?: string;
+	base?: { value: string };
+	_dark?: { value: string };
+};
+
+function rawRefFromSemanticValue(value: string): string {
+	const match = /^\{colors\.([^}]+)\}$/.exec(value);
+	if (!match) {
+		throw new Error(`Unsupported semantic color reference: ${value}`);
+	}
+	return match[1];
+}
+
+function resolveSemanticRefs(path: string): { lightRef: string; darkRef: string | null } {
+	let node: unknown = semanticTokens.colors;
+	for (const segment of path.split('.')) {
+		if (!node || typeof node !== 'object' || !(segment in node)) {
+			throw new Error(`Unknown semantic color token: ${path}`);
+		}
+		node = (node as Record<string, unknown>)[segment];
+	}
+
+	const leaf = node as SemanticLeaf;
+	const lightValue = leaf.value ?? leaf.base?.value;
+	if (!lightValue) {
+		throw new Error(`Semantic color token has no base value: ${path}`);
+	}
+
+	return {
+		lightRef: rawRefFromSemanticValue(lightValue),
+		darkRef: leaf._dark ? rawRefFromSemanticValue(leaf._dark.value) : null,
+	};
+}
 
 function resolveHex(ref: string): string {
 	const [family, step] = ref.split('.');
@@ -215,17 +207,20 @@ export function ColorSwatches() {
 				gap: '4',
 			})}
 		>
-			{TOKENS.map((entry) => (
-				<SwatchTile
-					key={entry.path}
-					path={entry.path}
-					label={entry.label}
-					role={entry.role}
-					lightHex={resolveHex(entry.rawLightRef)}
-					darkHex={entry.rawDarkRef ? resolveHex(entry.rawDarkRef) : null}
-					hasDark={entry.rawDarkRef !== null}
-				/>
-			))}
+			{TOKENS.map((entry) => {
+				const { lightRef, darkRef } = resolveSemanticRefs(entry.path);
+				return (
+					<SwatchTile
+						key={entry.path}
+						path={entry.path}
+						label={entry.label}
+						role={entry.role}
+						lightHex={resolveHex(lightRef)}
+						darkHex={darkRef ? resolveHex(darkRef) : null}
+						hasDark={darkRef !== null}
+					/>
+				);
+			})}
 		</ul>
 	);
 }

@@ -388,7 +388,7 @@ export function mediaIdFor(projectId, manifestSlug, filename) {
  * `updated_at` IS overwritten so audit timestamps reflect the latest
  * write.
  */
-export function buildProjectUpsert(entry) {
+export function buildProjectUpsert(entry, timestamp = nowMs()) {
 	const id = projectIdFor(entry);
 	const cols =
 		'id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md, retrospective_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at';
@@ -418,8 +418,8 @@ export function buildProjectUpsert(entry) {
 		sqlEscape('published'),
 		0,
 		100,
-		nowMs(),
-		nowMs(),
+		timestamp,
+		timestamp,
 	].join(', ');
 	const updateCols = [
 		'slug',
@@ -446,14 +446,14 @@ export function buildProjectUpsert(entry) {
 
 /** INSERT OR IGNORE for portfolio_link. Preserves owner-added rows on
  * re-run (id collision is a no-op). */
-export function buildLinkInserts(entry) {
+export function buildLinkInserts(entry, timestamp = nowMs()) {
 	const projectId = projectIdFor(entry);
 	const stmts = [];
 	for (const link of entry.links) {
 		const linkId = linkIdFor(projectId, link);
 		const kind = linkKindFromUrl(link.href);
 		stmts.push(
-			`INSERT OR IGNORE INTO portfolio_link (id, project_id, kind, label, url, display_order, created_at) VALUES (${sqlEscape(linkId)}, ${sqlEscape(projectId)}, ${sqlEscape(kind)}, ${sqlEscape(link.label ?? null)}, ${sqlEscape(link.href)}, ${link.order ?? 0}, ${nowMs()});`,
+			`INSERT OR IGNORE INTO portfolio_link (id, project_id, kind, label, url, display_order, created_at) VALUES (${sqlEscape(linkId)}, ${sqlEscape(projectId)}, ${sqlEscape(kind)}, ${sqlEscape(link.label ?? null)}, ${sqlEscape(link.href)}, ${link.order ?? 0}, ${timestamp});`,
 		);
 	}
 	return stmts;
@@ -462,10 +462,10 @@ export function buildLinkInserts(entry) {
 /** INSERT OR IGNORE for portfolio_media. Id is deterministic from
  * (project_id, manifest_slug, filename) so re-running never overwrites
  * owner-added rows. */
-export function buildMediaInsert(entry, manifestAsset) {
+export function buildMediaInsert(entry, manifestAsset, timestamp = nowMs()) {
 	const projectId = projectIdFor(entry);
 	const mediaId = mediaIdFor(projectId, entry.manifestSlug, entry.mediaFilename);
-	return `INSERT OR IGNORE INTO portfolio_media (id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order, created_at) VALUES (${sqlEscape(mediaId)}, ${sqlEscape(projectId)}, ${sqlEscape(manifestAsset.r2_key)}, ${sqlEscape(manifestAsset.content_type)}, ${manifestAsset.width}, ${manifestAsset.height}, ${sqlEscape(entry.mediaAlt)}, ${sqlEscape(entry.mediaCaption)}, 1, 1, ${nowMs()});`;
+	return `INSERT OR IGNORE INTO portfolio_media (id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order, created_at) VALUES (${sqlEscape(mediaId)}, ${sqlEscape(projectId)}, ${sqlEscape(manifestAsset.r2_key)}, ${sqlEscape(manifestAsset.content_type)}, ${manifestAsset.width}, ${manifestAsset.height}, ${sqlEscape(entry.mediaAlt)}, ${sqlEscape(entry.mediaCaption)}, 1, 1, ${timestamp});`;
 }
 
 export function linkKindFromUrl(href) {
@@ -1013,13 +1013,16 @@ async function operationPrepare(parsed, manifest) {
 		);
 	}
 
-	// 3. Build SQL bundle.
+	// 3. Build SQL bundle. Capture one wall-clock value at the operation
+	// boundary and inject it into every SQL builder. This keeps the bundle
+	// coherent and makes the pure builders deterministic under test.
+	const timestamp = nowMs();
 	const sqlBundle = [];
 	for (const entry of ENTRIES) {
-		sqlBundle.push(buildProjectUpsert(entry));
-		sqlBundle.push(...buildLinkInserts(entry));
+		sqlBundle.push(buildProjectUpsert(entry, timestamp));
+		sqlBundle.push(...buildLinkInserts(entry, timestamp));
 		const manifestAsset = verifiedAssets.get(entry.manifestSlug).manifestAsset;
-		sqlBundle.push(buildMediaInsert(entry, manifestAsset));
+		sqlBundle.push(buildMediaInsert(entry, manifestAsset, timestamp));
 	}
 	const fullSql = sqlBundle.join('\n');
 

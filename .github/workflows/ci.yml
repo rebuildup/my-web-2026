@@ -45,7 +45,9 @@ jobs:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: pnpm-${{ runner.os }}-
-      - run: pnpm install --frozen-lockfile
+      # Repository-owned wrapper keeps the frozen-lockfile contract while
+      # retrying only pnpm's observed virtual-store slot creation race (#210).
+      - run: node scripts/ci-pnpm-install.mjs
       # Head-ref policy: PRs into `main` must originate from a release
       # branch (`release-*`). Solo-developer repos can otherwise accept
       # arbitrary PRs into main, which violates the release-sprint

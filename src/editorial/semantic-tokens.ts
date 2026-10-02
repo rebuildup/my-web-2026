@@ -24,19 +24,19 @@ export const semanticTokens = {
 			canvas: { value: '{colors.neutral.0}' },
 			surface: { value: '{colors.neutral.50}' },
 			subtle: { value: '{colors.neutral.100}' },
-			accent: { value: '{colors.brand.500}' },
+			accent: { value: '{colors.brand.700}' },
 			inverse: { value: '{colors.neutral.900}' },
 		},
 		text: {
 			default: { value: '{colors.neutral.900}' },
 			muted: { value: '{colors.neutral.500}' },
 			inverse: { value: '{colors.neutral.0}' },
-			accent: { value: '{colors.brand.600}' },
+			accent: { value: '{colors.brand.700}' },
 		},
 		border: {
 			subtle: { value: '{colors.neutral.100}' },
 			strong: { value: '{colors.neutral.500}' },
-			focus: { value: '{colors.brand.500}' },
+			focus: { value: '{colors.brand.600}' },
 		},
 		// Accent tokens (Issue #172). `surface` and `interactive` are
 		// the two page-level accents; `positive` / `negative` /
@@ -51,7 +51,7 @@ export const semanticTokens = {
 				_dark: { value: '{colors.brand.800}' },
 			},
 			interactive: {
-				base: { value: '{colors.brand.600}' },
+				base: { value: '{colors.brand.800}' },
 				_dark: { value: '{colors.brand.300}' },
 			},
 			positive: {

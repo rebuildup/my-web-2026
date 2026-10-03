@@ -5,9 +5,16 @@ import { fileURLToPath } from 'node:url';
 
 // Production portfolio smoke (release-window post-publish contract).
 //
-// Companion to e2e/prod-smoke.spec.ts. Run via pnpm run e2e:prod
-// (= cross-env PLAYWRIGHT_BASE_URL=https://rebuildup.dev playwright
-// test e2e/prod-smoke.spec.ts e2e/prod-portfolio.spec.ts).
+// Companion to e2e/prod-smoke.spec.ts. Run via pnpm run
+// e2e:prod:portfolio (= cross-env
+// PLAYWRIGHT_BASE_URL=https://rebuildup.dev playwright test
+// e2e/prod-portfolio.spec.ts).
+//
+// This spec is deliberately NOT part of `pnpm run e2e:prod` (Smoke #2)
+// nor `pnpm run e2e:prod:transition` (Smoke #1). Those two gates run
+// against a production Worker where the Portfolio candidates are
+// still unpublished, so the per-detail assertions below cannot pass.
+// See the G15 acceptance contract at the bottom of this header.
 //
 // playwright.config.ts testIgnore rules:
 //   - localhost PLAYWRIGHT_BASE_URL: any spec matching the

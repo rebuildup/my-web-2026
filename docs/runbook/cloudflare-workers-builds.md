@@ -179,10 +179,17 @@ Cloudflare Workers Builds observes `main` push, builds, runs
        │
        ▼
 Smoke #2 — versioned-runtime smoke (POST #91-merge/deploy; automated)
-       │  `pnpm run e2e:prod` (canonical surfaces) +
+       │  `pnpm run e2e:prod` — the **core** production smoke only
+       │  (canonical surfaces + the versioned contract) +
        │  anonymous `GET /admin/login` returns 200 (the #106 fix
        │  in production: login form reachable without auth gate).
        │  `wrangler secret list` confirms both bindings still present.
+       │  `pnpm run e2e:prod` deliberately EXCLUDES
+       │  `e2e/prod-portfolio.spec.ts`: that spec is the G15
+       │  post-publication contract (see its header) and cannot pass
+       │  while the Portfolio candidates are still `visibility=draft`.
+       │  Portfolio verification is a separate, later gate — see
+       │  "Portfolio publication smoke" below.
        │
        ▼
 Smoke #3 — versioned-runtime operator manual sign-in (POST #91-merge/deploy)
@@ -203,7 +210,45 @@ final drift check — `pnpm run infisical:check:cf -- --execute
        --environment=prod --worker-contract=final --require-live-worker`
        reports Tier 1 = versioned+audit set,
        Tier 2 = versioned 2-name, Tier 3 = versioned 2-name
+       │
+       ▼
+#78 / #82 Portfolio publication (operator-gated, release-window)
+       │  `prepare/verify` (draft) → `--operation=publish` → the
+       │  candidates become `visibility=public` in production D1 and
+       │  their media becomes readable on the R2 custom domain.
+       ▼
+Portfolio publication smoke — `pnpm run e2e:prod:portfolio`
+       │  `e2e/prod-portfolio.spec.ts` only. Verifies the G15
+       │  post-publish contract: `/portfolio` lists every published
+       │  manifest entry, each `/portfolio/<slug>` returns 200 with
+       │  canonical + OGP metadata, and every `media.rebuildup.dev`
+       │  asset returns 200 with its declared content type.
+       │
+       ├── failure here → the publication window is NOT complete;
+       │   #78 / #82 stay open. This is independent of the #89
+       │   secret lifecycle, which has already converged above.
 ```
+
+### Portfolio publication smoke is a separate gate
+
+`e2e/prod-portfolio.spec.ts` is **not** part of `pnpm run e2e:prod` or
+`pnpm run e2e:prod:transition`, by design. The spec's own header states
+the contract: it is the G15 end-to-end public-surface verification that
+is only valid **after** G14 (`--operation=publish`). Before publication
+the candidates are `visibility=draft` and the per-detail canonical /
+OGP assertions fail by design.
+
+This matters for sequencing: Smoke #2 runs immediately after the #91
+deploy, which is *before* the publication window. Running the portfolio
+spec there would produce a guaranteed-false red that says nothing about
+the versioned-secret runtime.
+
+Two distinct preconditions, do not conflate them:
+
+| Precondition | When it must hold |
+| --- | --- |
+| `media.rebuildup.dev` resolves (R2 custom domain attached) | **Pre-release preparation** (#82). Can and should be attached + verified before #91 so it is not a surprise during the publication window. |
+| Portfolio candidates published (`visibility=public`) | **After** `--operation=publish`. Until then `e2e/prod-portfolio.spec.ts` cannot pass. |
 
 ## Smoke boundary semantics
 

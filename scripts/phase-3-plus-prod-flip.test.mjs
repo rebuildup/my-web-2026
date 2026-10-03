@@ -291,12 +291,26 @@ describe('phase-3-plus-prod-flip.mjs', () => {
 	});
 
 	describe('planOperationAuth (Issue #99 — per-operation auth strategy)', () => {
-		it('flip requires operator token, no UA fallback, needs both write and read', () => {
+		it('flip requires an operator identity, no UA fallback, needs both write and read', () => {
 			const plan = planOperationAuth({ operation: 'flip' });
 			assert.equal(plan.needsInfisicalWrite, true);
 			assert.equal(plan.needsInfisicalRead, true);
 			assert.equal(plan.requiresOperatorToken, true);
 			assert.equal(plan.allowsUaFallback, false);
+		});
+
+		it('flip accepts a logged-in CLI session as an operator identity (Issue #223)', () => {
+			// The session is read-preflighted before any mutation; write
+			// scope stays operator-authorized rather than probed, which is
+			// the same position #99 took for tokens.
+			const plan = planOperationAuth({ operation: 'flip' });
+			assert.equal(plan.allowsCliSession, true);
+		});
+
+		it('no other operation silently gains the CLI-session path', () => {
+			for (const op of ['restore-legacy-only', 'delete-legacy-only', 'rollback-versioned-only']) {
+				assert.equal(planOperationAuth({ operation: op }).allowsCliSession, undefined);
+			}
 		});
 
 		it('restore-legacy-only prefers operator token, allows UA fallback (read-only)', () => {

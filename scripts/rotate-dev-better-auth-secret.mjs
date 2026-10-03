@@ -116,6 +116,12 @@ import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
+	compareSecretViaAuth,
+	materialiseSecret,
+	resolveInfisicalAuth,
+	summarizeSecretPairViaAuth,
+} from './_infisical-auth.mjs';
+import {
 	FRESH_SECRET_BYTES_DEFAULT,
 	SECRET_NAME_LEGACY,
 	SECRET_NAME_VERSIONED,
@@ -252,8 +258,10 @@ Exit codes: 0 success / 1 arg+preflight / 2 subprocess failure /
  * `buildInfisicalEnv` (imported from the prod driver; PR #140 contract:
  * keeps the writer INFISICAL_TOKEN, strips other Infisical credentials).
  */
-function buildInfisicalSubprocessEnv(token) {
-	return buildInfisicalEnv(process.env, token);
+function buildInfisicalSubprocessEnv(auth) {
+	// Issue #223: token mode injects the token; CLI mode strips every
+	// credential so the Infisical CLI uses its own stored session.
+	return buildInfisicalEnv(process.env, auth);
 }
 
 function awaitExit(child, { timeoutMs = SUBPROCESS_TIMEOUT_MS } = {}) {
@@ -344,24 +352,30 @@ export {
 
 /* ─── CLI entrypoint ───────────────────────────────────────────────────── */
 
-async function runDevVerify({ apiUrl, token, workspaceId, environment }) {
-	const legacyValue = await readInfisicalSecret({
+async function runDevVerify({ apiUrl, auth, cliPath, workspaceId, environment }) {
+	// Issue #223: the dev envelope invariant needs both values, so in
+	// CLI mode it is evaluated inside a CLI-auth child; the driver
+	// receives booleans only. Token mode keeps the pre-#223 path.
+	return summarizeSecretPairViaAuth({
+		auth,
 		apiUrl,
-		token,
-		workspaceId,
+		cliPath,
 		environment,
-		name: SECRET_NAME_LEGACY,
-		allowMissing: true,
+		projectId: workspaceId,
+		legacyName: SECRET_NAME_LEGACY,
+		versionedName: SECRET_NAME_VERSIONED,
+		versionPrefix: '1:',
+		token: auth.token,
+		readViaToken: async ({ apiUrl: u, token: t, environment: e, name }) =>
+			readInfisicalSecret({
+				apiUrl: u,
+				token: t,
+				workspaceId,
+				environment: e,
+				name,
+				allowMissing: true,
+			}),
 	});
-	const versionedValue = await readInfisicalSecret({
-		apiUrl,
-		token,
-		workspaceId,
-		environment,
-		name: SECRET_NAME_VERSIONED,
-		allowMissing: true,
-	});
-	return summarizeDevState({ legacyValue, versionedValue });
 }
 
 async function main() {
@@ -396,22 +410,24 @@ async function main() {
 		return;
 	}
 
-	// --execute path
-	const token = process.env.INFISICAL_TOKEN;
-	if (typeof token !== 'string' || token.length === 0) {
-		throw new Error(
-			`INFISICAL_TOKEN is required for --execute (writer scope on env=${args.environment}; viewer Machine Identity fails-closed).`,
-		);
-	}
+	// --execute path. Issue #223: resolve auth once, before any side
+	// effect. An explicit INFISICAL_TOKEN keeps the pre-#223 path;
+	// otherwise the logged-in Infisical CLI session is preflighted and
+	// fails closed here if unusable.
+	const cliPath = resolveInfisicalCliPath();
+	const auth = await resolveInfisicalAuth({
+		env: process.env,
+		cliPath,
+		environment: args.environment,
+		projectId: infisicalConfig.workspaceId,
+	});
+	console.log(`[rotate-dev] auth mode=${auth.mode}`);
 
 	const freshSecret = generateFreshSecret(args.bytesOverride ?? FRESH_SECRET_BYTES_DEFAULT);
 	validateFreshSecret(freshSecret);
 
-	const cliPath = resolveInfisicalCliPath();
 	const tempDir = mkdtempSync(join(tmpdir(), TEMPDIR_PREFIX));
 	const yamlPath = join(tempDir, 'rotate-dev.yaml');
-	let readBackLegacy;
-	let readBackVersioned;
 	try {
 		writeFileSync(yamlPath, buildInfisicalYamlContent(freshSecret), {
 			encoding: 'utf8',
@@ -420,7 +436,7 @@ async function main() {
 		console.log(
 			`[execute] writing fresh ${SECRET_NAME_LEGACY} + ${SECRET_NAME_VERSIONED} to Infisical ${args.environment} (via CLI subprocess for E2EE)...`,
 		);
-		const infisicalEnv = buildInfisicalSubprocessEnv(token);
+		const infisicalEnv = buildInfisicalSubprocessEnv(auth);
 		const infisicalResult = await runInfisicalSet({
 			cliPath,
 			yamlPath,
@@ -435,29 +451,47 @@ async function main() {
 		}
 
 		// Read-back verification: Infisical byte equality.
-		console.log('[execute] verifying Infisical read-back (HTTPS GET + timingSafeEqual)...');
-		readBackLegacy = await readInfisicalSecret({
+		// Issue #223: compare without pulling the value back into the
+		// driver when running on the CLI session.
+		console.log(`[execute] verifying Infisical read-back (auth=${auth.mode}, timingSafeEqual)...`);
+		const readViaToken = async ({ apiUrl: u, token: t, environment: e, name }) =>
+			readInfisicalSecret({
+				apiUrl: u,
+				token: t,
+				workspaceId: infisicalConfig.workspaceId,
+				environment: e,
+				name,
+			});
+		const legacyCheck = await compareSecretViaAuth({
+			auth,
 			apiUrl,
-			token,
-			workspaceId: infisicalConfig.workspaceId,
+			cliPath,
 			environment: args.environment,
+			projectId: infisicalConfig.workspaceId,
 			name: SECRET_NAME_LEGACY,
+			expected: freshSecret,
+			token: auth.token,
+			readViaToken,
 		});
-		readBackVersioned = await readInfisicalSecret({
-			apiUrl,
-			token,
-			workspaceId: infisicalConfig.workspaceId,
-			environment: args.environment,
-			name: SECRET_NAME_VERSIONED,
-		});
-		if (!secretValuesEqual(readBackLegacy, freshSecret)) {
+		if (legacyCheck.status !== 'match') {
 			throw new Error(
-				`Infisical read-back mismatch: ${SECRET_NAME_LEGACY} did not byte-match the fresh value`,
+				`Infisical read-back mismatch: ${SECRET_NAME_LEGACY} ${legacyCheck.status === 'missing' ? 'is missing' : 'did not byte-match the fresh value'}`,
 			);
 		}
-		if (!secretValuesEqual(readBackVersioned, buildVersionedForm(freshSecret))) {
+		const versionedCheck = await compareSecretViaAuth({
+			auth,
+			apiUrl,
+			cliPath,
+			environment: args.environment,
+			projectId: infisicalConfig.workspaceId,
+			name: SECRET_NAME_VERSIONED,
+			expected: buildVersionedForm(freshSecret),
+			token: auth.token,
+			readViaToken,
+		});
+		if (versionedCheck.status !== 'match') {
 			throw new Error(
-				`Infisical read-back mismatch: ${SECRET_NAME_VERSIONED} did not match the versioned envelope`,
+				`Infisical read-back mismatch: ${SECRET_NAME_VERSIONED} ${versionedCheck.status === 'missing' ? 'is missing' : 'did not match the versioned envelope'}`,
 			);
 		}
 	} finally {

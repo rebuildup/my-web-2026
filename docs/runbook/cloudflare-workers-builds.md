@@ -173,8 +173,8 @@ Release PR #91 (`release-x-y-z → main`) merged
        ▼
 Cloudflare Workers Builds observes `main` push, builds, runs
        `pnpm run deploy:production:prepared` (applies pending D1
-       migrations + Wrangler deploy with the versioned-2-name
-       secrets.required). `main` runtime code now reads
+       migrations + Wrangler deploy with the versioned 3-name
+       secrets.required, including GA). `main` runtime code now reads
        `BETTER_AUTH_SECRETS`; legacy binding still present as fallback.
        │
        ▼
@@ -209,7 +209,7 @@ Smoke #3 — versioned-runtime operator manual sign-in (POST #91-merge/deploy)
 final drift check — `pnpm run infisical:check:cf -- --execute
        --environment=prod --worker-contract=final --require-live-worker`
        reports Tier 1 = versioned+audit set,
-       Tier 2 = versioned 2-name, Tier 3 = versioned 2-name
+       Tier 2 = versioned 3-name, Tier 3 = versioned 3-name
        │
        ▼
 #78 / #82 Portfolio publication (operator-gated, release-window)
@@ -288,17 +288,26 @@ require duplicating the build token as a separate `CLOUDFLARE_API_TOKEN` build
 secret. An explicit `CLOUDFLARE_API_TOKEN` remains supported for operator/local
 diagnostics.
 
-`transition` expects the live Worker to carry all three names during
-the migration window:
+`transition` is the **pre-deploy** live Worker contract. It expects the
+current Worker to carry exactly the three bindings that already exist
+before #91 deploys:
 
 - `BETTER_AUTH_SECRETS`
 - `BETTER_AUTH_SECRET`
 - `MY_WEB_2026_CONSUMER_API_KEY`
 
-After post-deploy smoke passes and `--delete-legacy-only` succeeds,
+`GOOGLE_ANALYTICS_MEASUREMENT_ID` is deliberately **not** required by
+this pre-deploy Tier 3 check. It is required in Infisical Tier 1 and
+Wrangler Tier 2, and the #91 deployment is the operation that first
+binds it to the live Worker. Requiring it in the pre-deploy live Worker
+contract would create a circular gate (#227).
+
+After #91 deploys and before legacy deletion, the live Worker carries
+four bindings (the three above + GA). After post-deploy smoke passes and `--delete-legacy-only` succeeds,
 the final drift check MUST use `--worker-contract=final --require-live-worker`, which expects
-only the versioned two-name Worker contract while Infisical still keeps
-the legacy audit/recovery copy.
+the versioned three-name Worker contract (`BETTER_AUTH_SECRETS`,
+`MY_WEB_2026_CONSUMER_API_KEY`, `GOOGLE_ANALYTICS_MEASUREMENT_ID`) while
+Infisical still keeps the legacy audit/recovery copy.
 
 ## Recovery operations (Phase B driver)
 

@@ -136,9 +136,11 @@ GA4 operator gate (Issue #187) — if production GA4 tracking is
        driver ordering — it is a separate operator concern.
        ▼
 Smoke #1 — transition smoke (PRE #91-merge; legacy runtime still active)
-       │  Automated production checks confirm canonical surfaces that
-       │  are expected to work on the current `main`, and
-       │  `wrangler secret list` confirms the versioned binding is
+       │  Automated `pnpm run e2e:prod:transition` checks the
+       │  canonical surfaces that are expected to work on the current
+       │  `main` while intentionally deferring the #106 login-page
+       │  assertion to Smoke #2. `wrangler secret list` confirms the
+       │  versioned binding is
        │  present alongside the legacy binding. A known pre-#91
        │  Issue #106 baseline (`/admin/login -> 307 /admin/login`)
        │  is NOT treated as a Smoke #1 failure: that route fix exists

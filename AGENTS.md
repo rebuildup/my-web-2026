@@ -73,11 +73,15 @@ Current dependency direction:
 
 ```text
 routes -> home
+routes -> portfolio
+routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
 admin/emoji-catalog -> reactions
 reactions -> cloudflare (env.DB at SSR time)
+portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
+portfolio -> editorial
 server -> http
 home -> editorial
 ```
@@ -97,10 +101,19 @@ home -> editorial
   `home → http` direction `import type`-only, so schemas under
   `src/http/access-counter/schema.ts` are the allowed place for
   home to read counter result shapes.
+- `src/portfolio/**` (Issue #76, target 0.5.0) owns the
+  employment-facing Portfolio data model, publication contract,
+  and R2 media composition. The D1 / R2 access uses a DI seam
+  (`createD1PortfolioLoader(env)`) and a `PortfolioLoader`
+  interface so routes / UI can be unit-tested with a fake
+  implementation and so the on-disk shape can evolve without
+  leaking through every consumer — see the home reactions
+  loader for the same pattern. The portfolio obligation is a
+  peer to `home/`; neither imports from the other.
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - Internal UI operations use TanStack Start server functions at the obligation
-  that composes them (currently `src/home/{status,reactions,access}/load.ts`
-  and `src/admin/**/load.ts`).
+  that composes them (currently `src/home/{status,reactions,access}/load.ts`,
+  `src/portfolio/public.ts`, and `src/admin/**/load.ts`).
 - Hono handlers remain under `src/http/**`.
 - TanStack Start's default CSRF middleware is canonical. A custom
   `startInstance` is forbidden without an ADR.
@@ -154,6 +167,87 @@ declaring `env.production` inside `wrangler.jsonc` causes wrangler
 every `env.DB` / `env.MEDIA` call site. The `*.workers.dev` URL is
 debug / infrastructure only — never referenced as canonical in
 ADRs, READMEs, user-facing copy, or example URLs.
+
+### Runtime secret SoT + production release handshake
+
+Runtime secret **values** live in Infisical. The Wrangler configuration
+declares only the **names** (see `wrangler.jsonc#secrets.required` and
+its `wrangler.production.jsonc` mirror). The canonical production
+release sequence and all failure / rollback paths are defined only in
+[`docs/runbook/cloudflare-workers-builds.md`](docs/runbook/cloudflare-workers-builds.md).
+Do not duplicate or reorder that sequence from memory. The canonical
+secret inventory / environment separation / naming convention / rotation
+ownership table lives in
+[`docs/runbook/infisical-secrets.md`](docs/runbook/infisical-secrets.md)
+(Issue #167). Its current
+post-incident order is `#139 containment → #89 Phase B flip → Smoke #1
+→ release PR merge / Cloudflare Workers Builds deploy → Smoke #2/#3
+→ --delete-legacy-only → final drift`.
+
+Issue #122 is closed / superseded historical context. Its dev→prod
+reconciliation path MUST NOT be executed.
+
+Authority:
+
+- ADR-0015 [`docs/adr/ADR-0015-infisical-env-management.md`](docs/adr/ADR-0015-infisical-env-management.md)
+  §1 (Infisical SoT) / §6 (consumer API key) / §9 (staged design +
+  audit-only semantics).
+- Issues #71 (runbook) / #89 (Phase B) / #124 (canonical sequence) /
+  #139 (credential-containment incident). Issue #122 is historical
+  only and is not an active release gate.
+- The companion `wrangler.production.jsonc` `secrets.required` block
+  header distinguishes the source-controlled desired contract from
+  the live Worker binding state during the Phase B window.
+
+### Agent invariant: no value-listing of real secrets
+
+Agents MUST NOT execute value-listing commands against real
+environments. The originating incident (Issue #139, 2026-09-28) was
+an `infisical secrets --env=dev --path=/` invocation whose plaintext
+output was rendered into agent transcript, exposing four production
+credentials. The same anti-pattern includes (non-exhaustive):
+
+- `infisical secrets list ...` / `infisical secrets --env=... --path=...`
+  / `infisical secrets get <name> --plain` (real value surfaces to
+  stdout).
+- `wrangler secret:list --format pretty` or any wrangler secret
+  subcommand that exposes values (Wrangler exposes names only via
+  `wrangler secret list --format json`; the agent must rely on the
+  name-only contract).
+- `curl https://app.infisical.com/api/v3/secrets/raw/<name>` or any
+  HTTPS call that requests `viewSecretValue=true` against a real
+  environment unless explicitly authorized in the current
+  interaction AND the response is consumed inside a dedicated script
+  that prints status-only output (MATCH / DIFFER / MISSING) and
+  NEVER the value itself.
+- Direct `echo $VAR` / `printenv` / `cat .dev.vars` of any
+  environment that holds a real production credential.
+
+The canonical replacement path is a dedicated comparison script
+(`scripts/rotate-better-auth-secret.mjs --verify-only`,
+`scripts/reconcile-prod-auth-secret.mjs --verify`,
+`scripts/check-cf-secrets.mjs`) that captures → compares → emits
+status-only output. Agents MUST prefer these scripts over ad-hoc
+debugging shortcuts that print values.
+
+Secret value comparison via dedicated script (status-only output) is
+NOT a debugging shortcut. It is the canonical verification surface.
+The forbidden patterns above are the shortcuts.
+
+This rule is enforced at three layers:
+
+- **Repository policy** (this section): agents operating on this
+  repository MUST follow the rule.
+- **Operator authorization model**: ad-hoc value-listing requires
+  explicit operator approval in the current interaction, scoped to a
+  specific value (e.g. "for the next 60 seconds, you may read the
+  Infisical `prod` `MY_WEB_2026_CONSUMER_API_KEY` value via the
+  dedicated verification script"). Generic authorization does NOT
+  cover value-listing.
+- **Runtime CLI guard** (planned, Issue #140 follow-up): the
+  repository-owned wrapper scripts listed above enforce the rule
+  structurally — there is no `print-secret-value` subcommand and
+  error paths never echo the underlying value.
 
 ## 5. Quality gates
 

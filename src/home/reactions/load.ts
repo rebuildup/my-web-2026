@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeader, getRequestUrl, setResponseHeader } from '@tanstack/react-start/server';
 import { z } from 'zod';
+import type { ReactionAggregate } from '../../http/reactions/schema';
 import type { CatalogEntry } from '../../reactions/emoji-catalog';
 import {
 	insertCatalogEntry,
@@ -9,7 +10,6 @@ import {
 	validateCodepoint,
 	validateSlug,
 } from '../../reactions/emoji-catalog';
-import type { ReactionAggregate } from '../../http/reactions/schema';
 import {
 	buildActorCookieSetHeader,
 	generateActorId,

@@ -1,9 +1,9 @@
+import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { resolve } from 'node:path';
-import { spawnSync } from 'node:child_process';
 import test from 'node:test';
-import assert from 'node:assert/strict';
 
 const checker = resolve('scripts/check-client-bundle.mjs');
 

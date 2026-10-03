@@ -21,7 +21,7 @@ const SearchSchema = z.object({
 	token: z.string().min(20).max(256),
 });
 
-export const Route = createFileRoute('/admin/invitations/accept')({
+export const Route = createFileRoute('/admin/invitations_/accept')({
 	validateSearch: SearchSchema,
 	loaderDeps: ({ search }) => ({ token: search.token }),
 	loader: async ({ deps }) => {

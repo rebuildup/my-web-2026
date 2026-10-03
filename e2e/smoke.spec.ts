@@ -60,14 +60,15 @@ test.describe('home page composition', () => {
 		await expect(h1).toHaveCount(1);
 		await expect(h1).toHaveText(/木村友亮 \/ samuido/);
 
-		// Five content sections, in order, all anchored by aria-labelledby.
+		// Six content sections, in order, all anchored by aria-labelledby.
 		const sections = page.locator('section[aria-labelledby]');
-		await expect(sections).toHaveCount(5);
+		await expect(sections).toHaveCount(6);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'hero-title');
 		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'capabilities-heading');
 		await expect(sections.nth(2)).toHaveAttribute('aria-labelledby', 'status-heading');
 		await expect(sections.nth(3)).toHaveAttribute('aria-labelledby', 'reactions-heading');
 		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'access-counter-heading');
+		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
 		// Public-preview transition back to the complete 2025 edition.
 		await expect(page.locator('a[href="https://yusuke-kim.com"]')).toHaveCount(2);
@@ -80,15 +81,45 @@ test.describe('home page composition', () => {
 		await expect(page.locator('a[href="#main"]')).toHaveCount(1);
 	});
 
-	test('renders the capabilities grid with three planned cards', async ({ page }) => {
+	test('capabilities grid reflects the current domain contract (live+CTA / planned)', async ({
+		page,
+	}) => {
+		// Domain contract as of Issue #168 (PR adds `tools` next to `portfolio`):
+		//   - portfolio  → live, with an internal CTA to /portfolio
+		//   - tools      → live, with an internal CTA to /tools (Issue #168)
+		//   - content    → planned, no internal CTA
+		//   - activity   → planned, no internal CTA
+		// The test names each capability by its Japanese h3 label so
+		// it survives any English-copy revision. The 4-card count is a
+		// sanity check on the registry, not an assertion of how many
+		// are planned.
 		await page.goto('/');
-		const capabilities = page.locator('section[aria-labelledby="capabilities-heading"] li');
-		await expect(capabilities).toHaveCount(3);
-		// Each capability item has a "planned" badge.
-		const badges = page.locator(
-			'section[aria-labelledby="capabilities-heading"] li >> text=planned',
-		);
-		await expect(badges).toHaveCount(3);
+		const section = page.locator('section[aria-labelledby="capabilities-heading"]');
+		await expect(section.locator('li')).toHaveCount(4);
+
+		// portfolio — LIVE with an internal CTA to /portfolio.
+		const portfolioCard = section.locator('li').filter({ hasText: 'ポートフォリオ' });
+		await expect(portfolioCard.locator('text=live')).toBeVisible();
+		const portfolioCta = portfolioCard.locator('a[href="/portfolio"]');
+		await expect(portfolioCta).toBeVisible();
+		await expect(portfolioCta).toHaveAttribute('href', '/portfolio');
+
+		// tools — LIVE with an internal CTA to /tools (Issue #168).
+		const toolsCard = section.locator('li').filter({ hasText: 'ツール' });
+		await expect(toolsCard.locator('text=live')).toBeVisible();
+		const toolsCta = toolsCard.locator('a[href="/tools"]');
+		await expect(toolsCta).toBeVisible();
+		await expect(toolsCta).toHaveAttribute('href', '/tools');
+
+		// content — PLANNED, no internal CTA.
+		const contentCard = section.locator('li').filter({ hasText: 'コンテンツ' });
+		await expect(contentCard.locator('text=planned')).toBeVisible();
+		await expect(contentCard.locator('a[href^="/"]')).toHaveCount(0);
+
+		// activity — PLANNED, no internal CTA.
+		const activityCard = section.locator('li').filter({ hasText: 'アクティビティ' });
+		await expect(activityCard.locator('text=planned')).toBeVisible();
+		await expect(activityCard.locator('a[href^="/"]')).toHaveCount(0);
 	});
 
 	test('renders the system status section with three services', async ({ page }) => {

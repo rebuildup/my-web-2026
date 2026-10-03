@@ -24,6 +24,13 @@ import { expect, test } from '@playwright/test';
  */
 const CANONICAL_ORIGIN = 'https://rebuildup.dev';
 
+const PROD_SMOKE_PHASE = process.env.PROD_SMOKE_PHASE ?? 'versioned';
+if (PROD_SMOKE_PHASE !== 'transition' && PROD_SMOKE_PHASE !== 'versioned') {
+	throw new Error(
+		`Unsupported PROD_SMOKE_PHASE=${JSON.stringify(PROD_SMOKE_PHASE)}; expected "transition" or "versioned".`,
+	);
+}
+
 test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 	test('canonical origin is HTTPS and reaches the Worker', async ({ request }) => {
 		// Force the request fixture to use the canonical origin even
@@ -47,6 +54,10 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 	test('GET /admin/login returns 200 HTML with the Better Auth sign-in form', async ({
 		request,
 	}) => {
+		test.skip(
+			PROD_SMOKE_PHASE === 'transition',
+			'pre-deploy transition smoke verifies legacy auth separately; /admin/login 200 is a post-deploy #106 gate',
+		);
 		const res = await request.get(`${CANONICAL_ORIGIN}/admin/login`);
 		expect(res.status()).toBe(200);
 		const body = await res.text();
@@ -159,11 +170,9 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 
 		expect(mutationResponse.status(), 'reaction mutation failed').toBeLessThan(400);
 
-		const setCookieHeaders = mutationResponse
-			.headersArray()
-			.filter((h) => h.name.toLowerCase() === 'set-cookie');
-		const actorCookie = setCookieHeaders.find((h) =>
-			h.value.toLowerCase().startsWith('mw_actor_id='),
+		const setCookieHeaders = await mutationResponse.headerValues('set-cookie');
+		const actorCookie = setCookieHeaders.find((value) =>
+			value.toLowerCase().startsWith('mw_actor_id='),
 		);
 		expect(
 			actorCookie,
@@ -173,11 +182,10 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 		// `Secure`. Production origin is HTTPS; a missing `Secure`
 		// flag is an actual production wiring bug (cookie would
 		// leak over HTTP if the user ever follows an http:// link).
-		// `actorCookie` is narrowed by the preceding `toBeDefined()`
-		// assertion — optional-chain here is purely to satisfy the
-		// `noNonNullAssertion` lint rule; the chain would throw on
-		// `undefined` and the assertion would still fail loudly.
-		expect(actorCookie?.value.toLowerCase()).toContain('secure');
+		// `headerValues('set-cookie')` preserves multiple Set-Cookie
+		// values, so this remains exact even when another cookie is
+		// emitted by the same mutation response.
+		expect(actorCookie?.toLowerCase()).toContain('secure');
 	});
 
 	test('canonical origin matches the documented production URL', async ({ request }) => {

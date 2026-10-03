@@ -64,14 +64,30 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 					>
 						{capabilities.map((capability, index) => {
 							const ordinal = String(index + 1).padStart(2, '0');
+							const isLive = capability.status === 'live';
 							return (
 								<li
 									key={capability.id}
 									className={css({
 										display: 'flex',
 										flexDirection: 'column',
+										position: 'relative',
+										paddingInlineStart: { base: '0', md: isLive ? '6' : '0' },
 									})}
 								>
+									{isLive ? (
+										<span
+											aria-hidden="true"
+											className={css({
+												position: 'absolute',
+												left: '0',
+												top: '0',
+												bottom: '0',
+												width: '2px',
+												backgroundColor: 'accent.positive',
+											})}
+										/>
+									) : null}
 									<header
 										className={css({
 											display: 'flex',
@@ -133,6 +149,34 @@ export function CapabilitiesGrid({ capabilities }: CapabilitiesGridProps) {
 									>
 										{capability.summary}
 									</p>
+									{capability.status === 'live' && capability.href ? (
+										<a
+											href={capability.href}
+											aria-label={`${capability.labelJa} を開く`}
+											className={css({
+												marginBlockStart: '4',
+												display: 'inline-flex',
+												alignItems: 'center',
+												gap: '2',
+												fontFamily: 'sans',
+												fontSize: 'sm',
+												fontWeight: '600',
+												color: 'text.accent',
+												textDecoration: 'none',
+												_focusVisible: {
+													outline: '2px solid {colors.border.focus}',
+													outlineOffset: '4px',
+													borderRadius: '2px',
+												},
+												_hover: {
+													textDecoration: 'underline',
+												},
+											})}
+										>
+											<span aria-hidden="true">→</span>
+											<span>{capability.label}を開く</span>
+										</a>
+									) : null}
 								</li>
 							);
 						})}

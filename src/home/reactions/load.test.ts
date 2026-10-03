@@ -1,7 +1,7 @@
 import { SELF, env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import type { AdminSession } from '../../admin/auth/load';
 import { auth } from '../../../test/helpers/better-auth';
+import type { AdminSession } from '../../admin/auth/load';
 import {
 	HOME_REACTIONS_TARGET,
 	addHomeReactionImpl,

@@ -66,9 +66,162 @@ import { admin } from 'better-auth/plugins/admin';
  */
 const betterAuthUrl = (env as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
 
+// ADR-0015 §11.2 Better Auth versioned rotation contract:
+// `BETTER_AUTH_SECRETS` (preferred) takes comma-separated `version:value`
+// pairs in highest-version-first order (the first entry is the active
+// signing key; later entries are decryption-only previous keys).
+// Format example: `BETTER_AUTH_SECRETS=2:<new-secret>,1:<old-secret>`.
+// **IMPORTANT**: Better Auth 1.7.5's compact cookie cache uses
+// `context.secret` (single key) for signature verification. The
+// remaining entries are held as fallback reference for data predating
+// the envelope format — they do NOT guarantee in-flight cookie
+// verification for sessions signed with the legacy key. See ADR-0015
+// §11.2 Semantics / Session impact for the full contract.
+// Falls back to `BETTER_AUTH_SECRET` (legacy single form) when
+// `BETTER_AUTH_SECRETS` is unset, so the Phase 1 → Phase 2 transition can
+// keep existing Cloudflare secret bindings working until the new env var
+// is seeded. Phase 3 will register `BETTER_AUTH_SECRETS` in
+// `wrangler.jsonc#secrets.required` and regenerate the `Env` type via
+// `pnpm run cf-typegen`; until then the cast below keeps
+// `verbatimModuleSyntax: true` happy without a value import.
+type SecretEntry = { version: number; value: string };
+
+export function parseVersionedSecrets(raw: string): SecretEntry[] {
+	// Split without `.filter(Boolean)` so empty segments (e.g. "2:new,,1:old"
+	// or a trailing comma) are surfaced as errors instead of silently
+	// dropped — silently dropping would let a broken rotation binding pass
+	// while still leaving the operator thinking the new key was applied.
+	const entries = raw.split(',').map((s) => s.trim());
+	if (entries.length === 0 || raw.trim().length === 0) {
+		throw new Error(
+			'BETTER_AUTH_SECRETS is empty. Expected comma-separated "version:value" pairs (e.g. "2:<new-secret>,1:<old-secret>").',
+		);
+	}
+	const parsed: SecretEntry[] = entries.map((entry, idx) => {
+		if (entry.length === 0) {
+			throw new Error(`BETTER_AUTH_SECRETS entry #${idx} is empty (extra or trailing comma?).`);
+		}
+		const colonIdx = entry.indexOf(':');
+		if (colonIdx === -1) {
+			// Error messages deliberately omit the raw entry: it may carry the
+			// secret itself, and the project invariant forbids leaking secrets
+			// to argv / logs / errors.
+			throw new Error(
+				`BETTER_AUTH_SECRETS entry #${idx} is missing ':' separator. Expected "version:value".`,
+			);
+		}
+		const versionStr = entry.slice(0, colonIdx);
+		const value = entry.slice(colonIdx + 1);
+		if (!/^\d+$/.test(versionStr)) {
+			throw new Error(
+				`BETTER_AUTH_SECRETS entry #${idx} has invalid version (decimal digits only).`,
+			);
+		}
+		const version = Number(versionStr);
+		if (!Number.isSafeInteger(version) || version <= 0) {
+			throw new Error(
+				`BETTER_AUTH_SECRETS entry #${idx} has invalid version (positive safe integer).`,
+			);
+		}
+		if (value.length === 0) {
+			throw new Error(`BETTER_AUTH_SECRETS entry #${idx} has empty value.`);
+		}
+		return { version, value };
+	});
+
+	// Cross-entry invariants: the first entry is the current signing key in
+	// Better Auth 1.5+. If versions are not strictly descending (or duplicate),
+	// an older key could end up as the "current" one and silently sign new
+	// cookies / tokens.
+	const seenVersions = new Set<number>();
+	for (let idx = 0; idx < parsed.length; idx += 1) {
+		const version = parsed[idx]?.version;
+		if (version === undefined) {
+			continue;
+		}
+		if (seenVersions.has(version)) {
+			throw new Error(
+				'BETTER_AUTH_SECRETS has duplicate version (entries must have unique versions).',
+			);
+		}
+		seenVersions.add(version);
+	}
+	for (let idx = 1; idx < parsed.length; idx += 1) {
+		const prev = parsed[idx - 1];
+		const cur = parsed[idx];
+		if (!prev || !cur) {
+			continue;
+		}
+		if (cur.version >= prev.version) {
+			throw new Error(
+				'BETTER_AUTH_SECRETS entries must be in strictly descending order (first entry is the current signing key).',
+			);
+		}
+	}
+	return parsed;
+}
+
+/**
+ * Resolve the secret inputs from the worker `env` (or any compatible
+ * `Record<string, unknown>`) into the shape Better Auth 1.5+ accepts.
+ *
+ * Routing rules (ADR-0015 §11.2):
+ *   - `BETTER_AUTH_SECRETS` present (any value, including empty string)
+ *     → parse via `parseVersionedSecrets`; surface the resulting array.
+ *     An empty / malformed value throws — silently falling back to the
+ *     legacy secret would let a broken rotation binding pass.
+ *   - `BETTER_AUTH_SECRETS` absent → fall back to `BETTER_AUTH_SECRET`
+ *     (legacy single form) for backward compatibility with Phase 1 →
+ *     Phase 2 deploys.
+ *
+ * Both unset → both return fields are undefined, and Better Auth's own
+ * validation surfaces the missing-secret failure (the exact module-load
+ * vs request-time surface is version-dependent; documented at the
+ * `auth` call site below).
+ *
+ * This function is a pure DI seam so tests can inject arbitrary env
+ * values without depending on the workerd test pool's vi.mock gap
+ * (memory `workerd-vitest-mock-gap`). The production `auth` call site
+ * passes the real worker env; tests pass mock objects.
+ */
+export function resolveAuthSecrets(envRecord: Record<string, unknown>): {
+	versionedSecrets?: SecretEntry[];
+	legacySecret?: string;
+} {
+	const betterAuthSecretsConfigured = 'BETTER_AUTH_SECRETS' in envRecord;
+	const betterAuthSecretsEnv = betterAuthSecretsConfigured
+		? (envRecord.BETTER_AUTH_SECRETS as string | undefined)
+		: undefined;
+	const betterAuthLegacySecret = (envRecord.BETTER_AUTH_SECRET as string | undefined) ?? undefined;
+
+	let versionedSecrets: SecretEntry[] | undefined;
+	let legacySecret: string | undefined;
+
+	if (betterAuthSecretsConfigured) {
+		versionedSecrets = parseVersionedSecrets(betterAuthSecretsEnv ?? '');
+	}
+	if (betterAuthLegacySecret) {
+		legacySecret = betterAuthLegacySecret;
+	}
+	return { versionedSecrets, legacySecret };
+}
+
+// Cast through `unknown` because the typegen'd `Env` does not have an
+// index signature (only declared bindings are enumerated). Going directly
+// to `Record<string, unknown>` triggers TS2352 (neither type sufficiently
+// overlaps with the other).
+const { versionedSecrets, legacySecret } = resolveAuthSecrets(
+	env as unknown as Record<string, unknown>,
+);
+
 export const auth = betterAuth({
 	database: env.DB,
-	secret: env.BETTER_AUTH_SECRET,
+	// Better Auth 1.5+ accepts `secrets` (versioned array) and `secret`
+	// (legacy single string) as independent options. When both are set,
+	// `secrets` is authoritative for new encryption/signing; `secret` is
+	// a fallback for data that predates the envelope format.
+	...(versionedSecrets ? { secrets: versionedSecrets } : {}),
+	...(legacySecret ? { secret: legacySecret } : {}),
 	baseURL: betterAuthUrl,
 	basePath: '/api/v1/auth',
 	emailAndPassword: {

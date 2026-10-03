@@ -1,6 +1,6 @@
+import type { EmojiClickData } from 'emoji-picker-react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { EmojiClickData } from 'emoji-picker-react';
 import type { CatalogEntry } from './emoji-catalog';
 import type { HomeReactionsData } from './load';
 import { ReactionsWidget, computeToggleState, deriveSlugFromPicker } from './widget';

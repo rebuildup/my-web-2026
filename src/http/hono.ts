@@ -1,9 +1,10 @@
-import packageJson from '../../package.json';
 import { Hono } from 'hono';
+import packageJson from '../../package.json';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { requestIdMiddleware } from './middleware/request-id';
+import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
 
 /**
@@ -26,6 +27,25 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
 export const externalBoundary = new Hono<{ Bindings: Env }>();
+
+// Local API mock gate (Issue #166): when `env.LOCAL_API_MODE === 'mock'`
+// (set in `.dev.vars`, NOT in `wrangler.jsonc#vars` — see
+// `src/cloudflare/auth/env.d.ts` for the type augmentation), forward
+// `/api/v1/*` requests to the canned-data mock sub-app. If the mock
+// has no handler for the path (404), fall through to the real handlers
+// below — designers can still hit portfolio / keys endpoints against
+// the real boundary in mock mode.
+//
+// Production code path (env unset) is unchanged: the gate's `next()`
+// runs, request-id middleware applies, and the real routers execute.
+const mockApp = createMockApp();
+externalBoundary.use('/api/v1/*', async (c, next) => {
+	if (c.env.LOCAL_API_MODE === 'mock') {
+		const mockResponse = await mockApp.fetch(c.req.raw, c.env);
+		if (mockResponse.status !== 404) return mockResponse;
+	}
+	await next();
+});
 
 // All `/api/v1/*` requests flow through the request-id middleware so
 // error responses and worker logs share a common correlation token.

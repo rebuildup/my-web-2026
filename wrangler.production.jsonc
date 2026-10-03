@@ -57,6 +57,13 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	"name": "my-web-2026",
+	// Cloudflare account id (non-secret identifier; obtained via
+	// `pnpm exec wrangler whoami` on 2026-09-27, value
+	// `c6ab6651a5d4d6d0d07686bbd3c3d56f`). Used by
+	// `scripts/infisical-bootstrap-cf.mjs` as the SoT for the
+	// Cloudflare Builds API URL. Env var `CLOUDFLARE_ACCOUNT_ID`
+	// remains the override path.
+	"account_id": "c6ab6651a5d4d6d0d07686bbd3c3d56f",
 	"main": "./dist/server/index.js",
 	// Vite emits a split ES module graph under `dist/server/assets`. Because this
 	// config deploys the prebuilt entrypoint with `no_bundle`, Wrangler needs the
@@ -94,10 +101,56 @@
 	"vars": {
 		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
 		"MY_WEB_2026_COUNTER_KEY": "home-page",
-		"BETTER_AUTH_URL": "https://rebuildup.dev"
+		"BETTER_AUTH_URL": "https://rebuildup.dev",
+		// Issue #77 Decision 5 — public R2 custom domain.
+		// Public portfolio media is served directly from R2 via the
+		// custom domain `media.rebuildup.dev`, NOT via the Worker
+		// (zero Worker request cost per image, full CDN cacheability,
+		// direct OGP crawlers, natural srcset). The DNS record is
+		// attached at the R2 bucket level — see
+		// `docs/portfolio/decisions.md` §5. Until the bucket-level
+		// attachment is live, `composeMediaUrl` keeps returning `null`
+		// and the UI's placeholder branch is exercised.
+		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev"
 	},
 	"secrets": {
-		"required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
+		// Source-controlled contract (ADR-0015 §9, Phase 3+ — Issue #89).
+		// This array is the **next deploy's required-secret set**, NOT a
+		// claim about the current live Worker binding state. The two are
+		// independent facts:
+		//
+		//   - Source-controlled desired contract (this file):
+		//       versioned 2-name form
+		//       `BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY`,
+		//       plus `GOOGLE_ANALYTICS_MEASUREMENT_ID` (Issue #187,
+		//       public GA4 measurement ID managed from the Infisical
+		//       dashboard; placeholder `G-PLACEHOLDER000` is seeded at
+		//       merge time and the operator replaces it with the real
+		//       `G-XXXXXXX` BEFORE cutting traffic — see
+		//       `docs/runbook/analytics.md`).
+		//   - Live Worker binding state:
+		//       changes via the operator-gated Phase B driver
+		//       `scripts/phase-3-plus-prod-flip.mjs --execute ...`,
+		//       sequenced per
+		//       [`docs/runbook/cloudflare-workers-builds.md`](docs/runbook/cloudflare-workers-builds.md):
+		//       #122 reconciliation → #89 flip → Smoke #1 → release PR
+		//       merge → Cloudflare Workers Builds deploy → Smoke #2/#3 →
+		//       `--delete-legacy-only` → final drift.
+		//
+		// During the Phase B window the live Worker carries the legacy
+		// `BETTER_AUTH_SECRET` binding in addition to `BETTER_AUTH_SECRETS`
+		// until `--delete-legacy-only` runs successfully post-deploy. The
+		// Infisical `prod` value for `BETTER_AUTH_SECRET` is RETAINED as
+		// an audit trail (ADR-0015 §9 audit-only semantics); it is never
+		// uploaded to the Worker on subsequent deploys — see
+		// `scripts/run-deploy-inner.mjs#AUDIT_ONLY_SECRETS` for the
+		// deploy-time contract that prevents the legacy binding from
+		// resurrecting. Mirror edit lives in `wrangler.jsonc`.
+		"required": [
+			"BETTER_AUTH_SECRETS",
+			"MY_WEB_2026_CONSUMER_API_KEY",
+			"GOOGLE_ANALYTICS_MEASUREMENT_ID"
+		]
 	},
 	"ratelimits": [
 		{

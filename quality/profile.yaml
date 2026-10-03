@@ -109,6 +109,7 @@ ci:
     group: 'ci-${{ github.workflow }}-${{ github.ref }}'
   bootstrap:
     pnpm_version: 12.3.4
+    bun_version: 1.4.2 # same_origin_static readmark Tool build (#215)
     node_version: 22
     cache_path: '~/.local/share/pnpm/store'
     cache_key: 'pnpm-${{ runner.os }}-${{ hashFiles(''pnpm-lock.yaml'') }}'

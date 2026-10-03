@@ -93,11 +93,23 @@ A human recovering the same ticket reads:
 
 ## Status
 
-- **Current public preview** — canonical home, platform health, reactions/access
-  foundation, release gates, and personal/domain grounding.
-- **Portfolio / Content / Activity** — planned capabilities; not yet migrated.
+- **Current public production** — canonical home, platform health,
+  reactions / access-counter foundation, release gates, and
+  personal / domain grounding (`https://rebuildup.dev` is the canonical
+  origin; the `*.workers.dev` URL is debug-only).
+- **Release candidate surfaces** — the next release integration
+  branch ships additional capabilities (Portfolio publication
+  pipeline, public Tools index, About / Contact routes, Invitation
+  accept flow, etc.). These are wired in source but gated behind
+  the release PR merge + production deploy handshake documented in
+  [`docs/runbook/cloudflare-workers-builds.md`](docs/runbook/cloudflare-workers-builds.md);
+  they become publicly visible after the next production deploy.
 - **2025 edition** — remains the complete public site at https://yusuke-kim.com
   until the required surfaces have moved.
+
+The current version literal is intentionally not duplicated here.
+`package.json#version` is the sole current-version source; release
+state is read from GitHub Releases and `release-*` branch names.
 
 See [docs/release.md](docs/release.md) for release scope and gates.
 

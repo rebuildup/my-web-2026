@@ -2,7 +2,8 @@ import { resolve } from 'node:path';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
-import { defineConfig, type Plugin } from 'vite';
+import { type Plugin, defineConfig } from 'vite';
+import { buildLocalApiModeConfigOverride, readDevVars } from './scripts/_dev-vars-reader.mjs';
 
 /**
  * Vite configuration for my-web-2026.
@@ -47,10 +48,82 @@ const cloudflareWorkersClientStub: Plugin = {
 	},
 };
 
+/**
+ * Add `Access-Control-Allow-Origin: *` to every response under
+ * `/tools/<slug>/app/*` from `vite preview` (local Tool iframe
+ * testing). The production equivalent is the `_headers` file at
+ * `public/_headers` (read by Cloudflare Workers Static Assets).
+ *
+ * Why this plugin exists:
+ *
+ * Tool iframes are sandboxed `allow-scripts` only (no
+ * `allow-same-origin`). The iframe document therefore has an opaque
+ * origin, and any `<script type="module">` and
+ * `<link rel="stylesheet">` inside it becomes a CORS request — module
+ * scripts are always fetched with CORS, even without the
+ * `crossorigin` attribute. The default `vite preview` response does
+ * not include `Access-Control-Allow-Origin`, so the browser blocks
+ * the bundle and React never mounts. We scope the wildcard CORS to
+ * `/tools/<slug>/app/*` only — the namespacing guarantees these are
+ * same-origin Tool artefacts emitted by the Tool build orchestrator
+ * (`scripts/build-tools.mjs`). The host's own `/assets/*` keeps its
+ * default behaviour (same-origin module scripts from the host page,
+ * no CORS).
+ *
+ * The hook runs in `configurePreviewServer` so the change applies to
+ * `vite preview` only (NOT `vite dev` — the dev server does not serve
+ * Tool artefacts; only `pnpm run build` produces
+ * `dist/client/tools/<slug>/app/`).
+ */
+function toolCorsPreviewPlugin(): Plugin {
+	return {
+		name: 'my-web-2026:tool-cors-preview',
+		apply: 'serve',
+		configurePreviewServer(server) {
+			server.middlewares.use((req, res, next) => {
+				const url = req.url ?? '';
+				// Pattern matches both `/tools/<slug>/app/index.html`
+				// and `/tools/<slug>/app/assets/...`. `<slug>` is a
+				// single non-slash path component.
+				if (/^\/tools\/[^/]+\/app(\/|$)/.test(url)) {
+					res.setHeader('Access-Control-Allow-Origin', '*');
+				}
+				next();
+			});
+		},
+	};
+}
+
 export default defineConfig({
 	plugins: [
 		cloudflareWorkersClientStub,
-		cloudflare({ viteEnvironment: { name: 'ssr' } }),
+		toolCorsPreviewPlugin(),
+		// LOCAL_API_MODE=mock dev-server passthrough (Issue #186).
+		//
+		// `wrangler.jsonc#vars` is intentionally not extended with
+		// `LOCAL_API_MODE` (production must never see it), and
+		// `wrangler.jsonc#secrets.required` is the deploy-time contract
+		// (ADR-0015 §9) — adding a non-secret var there would widen
+		// the deploy-time required-secret set. Wrangler's
+		// `getVarsForDev` therefore filters `.dev.vars` entries down
+		// to `vars ∪ secrets.required` (see `node_modules/wrangler/.../
+		// cli.js#getVarsForDev`), so a plain `LOCAL_API_MODE=mock` in
+		// `.dev.vars` never reaches `c.env` and the gate at
+		// `src/http/hono.ts` falls through to the real routers.
+		//
+		// The `config()` callback injects the value (only) into
+		// `workerConfig.vars` at config-load time. Once the key lives
+		// in `vars`, the wrangler filter `key in result` lets the same
+		// value through as a plain-text binding to workerd, and the
+		// gate's `c.env.LOCAL_API_MODE === 'mock'` check fires. When
+		// `.dev.vars` is absent or carries no `LOCAL_API_MODE`, the
+		// callback returns `undefined` and the production boundary
+		// runs unchanged.
+		cloudflare({
+			viteEnvironment: { name: 'ssr' },
+			config: (workerConfig) =>
+				buildLocalApiModeConfigOverride(workerConfig, readDevVars(resolve(__dirname, '.dev.vars'))),
+		}),
 		tanstackStart(),
 		react(),
 	],

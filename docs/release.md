@@ -154,29 +154,38 @@ production domain to be wired (Issue #43 / ADR-0014):
    ship to production without having seen the home surface working
    locally first.
 7. `https://rebuildup.dev` is deployed by **Cloudflare Workers Builds**, which is
-   the only production-deploy execution authority. Configure the existing
-   `my-web-2026` Worker under **Settings > Builds** with:
-   - Git repository: `rebuildup/my-web-2026`
-   - Production branch: `main`
-   - Build command: `pnpm run build`
-   - Deploy command: `pnpm run deploy:production:prepared`
-   - Root directory: repository root
-   - Build variables: `NODE_VERSION=22`, `PNPM_VERSION=12.3.4`
-   - Non-production branch builds: disabled (GitHub Actions owns PR/release validation)
-   - API token: a Workers Builds user token with the normal Worker deploy/route
-     permissions plus **Account / D1 / Edit**, because the deploy command applies
-     pending production D1 migrations before Wrangler deploy.
-   Runtime secrets `BETTER_AUTH_SECRET` and
-   `MY_WEB_2026_CONSUMER_API_KEY` live only in **Settings > Variables & Secrets**
-   for the Worker. They are not duplicated as build secrets. Before the first
-   production deploy, provision the home-consumer key once with
-   `pnpm run bootstrap:home-api-key -- --target=remote`, then store the printed
-   plaintext as the Worker runtime secret. GitHub Actions does not deploy
-   production; `.github/workflows/prod-smoke.yml` remains a manual diagnostic.
+   the only production-deploy execution authority.
+
+   **This step is historical context preserved from the 0.2.0 / 0.3.0
+   setup.** The current production delivery contract is documented in
+   [`docs/runbook/cloudflare-workers-builds.md`](runbook/cloudflare-workers-builds.md)
+   (ADR-0015 Phase 5 — Issue #71), including:
+
+   - Workers Builds configuration fields and required API token permissions
+     (Worker deploy + route edit + **Account / D1 / Edit**).
+   - The runtime secret SoT boundary (Infisical `prod`, NOT Cloudflare
+     `Settings > Variables & Secrets`). The current required-secret set is
+     the **versioned 2-name form**:
+     `BETTER_AUTH_SECRETS` + `MY_WEB_2026_CONSUMER_API_KEY`.
+   - The canonical production release sequence
+     (#122 → #89 flip → Smoke #1 → release PR merge → Cloudflare Workers
+     Builds deploy → Smoke #2/#3 → `--delete-legacy-only` → final drift),
+     including the failure / rollback paths
+     (`rollback-versioned-only` when legacy binding still present;
+     `restore-legacy-only` once legacy deletion has happened).
+
+   GitHub Actions does not deploy production;
+   `.github/workflows/prod-smoke.yml` remains a manual diagnostic.
+   `.github/workflows/deploy-production.yml` is intentionally absent —
+   there is no agent-side production deploy path. The local
+   `pnpm run deploy:production` command and
+   `pnpm run deploy:production:prepared` are recovery / debugging
+   fallbacks only. The `*.workers.dev` URL remains debug-only and is
+   not documented as canonical.
+
    After Cloudflare reports the production build/deployment successful, run the
    production smoke and verify `/`, `/admin/login`, `/api/v1/health`,
-   reactions, and the access counter on the canonical origin. The
-   `*.workers.dev` URL remains debug-only and is not documented as canonical.
+   reactions, and the access counter on the canonical origin.
 
 ## 0.1.0 Foundation backlog
 

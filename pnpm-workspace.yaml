@@ -1,5 +1,6 @@
 allowBuilds:
   '@biomejs/biome': true
+  '@infisical/cli': true
   esbuild: true
   workerd: true
 minimumReleaseAge: 0
@@ -8,3 +9,4 @@ onlyBuiltDependencies:
   - workerd
   - '@cloudflare/vite-plugin'
   - '@biomejs/biome'
+  - '@infisical/cli'

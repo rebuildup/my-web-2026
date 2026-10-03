@@ -131,9 +131,7 @@ export function Hero() {
 							})}
 						>
 							<a
-								href="https://yusuke-kim.com"
-								rel="noopener noreferrer"
-								target="_blank"
+								href="/about"
 								className={css({
 									display: 'inline-flex',
 									alignItems: 'center',
@@ -148,7 +146,37 @@ export function Hero() {
 									fontWeight: '600',
 									textDecoration: 'none',
 									transition: 'background-color 120ms ease',
-									_hover: { backgroundColor: 'colors.brand.600' },
+									_hover: { backgroundColor: 'accent.interactive' },
+									_focusVisible: {
+										outline: '2px solid {colors.border.focus}',
+										outlineOffset: '2px',
+									},
+								})}
+							>
+								About me / 自己紹介 →
+							</a>
+							<a
+								href="https://yusuke-kim.com"
+								rel="noopener noreferrer"
+								target="_blank"
+								className={css({
+									display: 'inline-flex',
+									alignItems: 'center',
+									gap: '2',
+									paddingInline: '4',
+									height: '10',
+									borderRadius: 'md',
+									backgroundColor: 'bg.surface',
+									color: 'text.default',
+									borderWidth: '1px',
+									borderStyle: 'solid',
+									borderColor: 'border.subtle',
+									fontFamily: 'sans',
+									fontSize: 'md',
+									fontWeight: '600',
+									textDecoration: 'none',
+									transition: 'background-color 120ms ease',
+									_hover: { borderColor: 'border.strong' },
 									_focusVisible: {
 										outline: '2px solid {colors.border.focus}',
 										outlineOffset: '2px',

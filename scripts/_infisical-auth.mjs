@@ -12,7 +12,7 @@
  * `process.env.INFISICAL_TOKEN` and threw before any side effect when
  * it was absent. That made an operator who already holds an
  * interactively-authenticated `infisical` CLI session unable to run
- * the 0.5.0 cutover without minting a second credential.
+ * the production cutover without minting a second credential.
  *
  * The token was never a secrecy control. The #139 incident control is
  * the **value-handling** contract: values travel through 0600 temp

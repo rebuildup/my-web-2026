@@ -445,9 +445,7 @@ async function main() {
 			process.env.CLOUDFLARE_API_TOKEN.length > 0;
 		if (tier3Eligible || args.requireLiveWorker) {
 			const expectedWorker =
-				args.workerContract === 'final'
-					? PHASE_3_REQUIRED
-					: PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
+				args.workerContract === 'final' ? PHASE_3_REQUIRED : PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
 			console.log(
 				`[dry-run] would verify: actual Cloudflare Worker secret names via \`wrangler secret list\` against ${args.workerContract} contract (${expectedWorker.join(', ')})${tier3Eligible ? ' (explicit CLOUDFLARE_API_TOKEN is set)' : ' (required; Wrangler resolves Workers Builds authentication at execution)'}`,
 			);
@@ -539,9 +537,7 @@ async function main() {
 		});
 		if (workerNames !== null) {
 			const expectedWorkerNames =
-				args.workerContract === 'final'
-					? PHASE_3_REQUIRED
-					: PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
+				args.workerContract === 'final' ? PHASE_3_REQUIRED : PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
 			const workerCheck = compareNameLists(
 				workerNames,
 				expectedWorkerNames,

@@ -610,7 +610,11 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 			assert.equal(written.join(''), payload);
 		});
 
-		it('uses explicit stdio pipes (stdin pipe, stdout/stderr inherit)', () => {
+		it('pipes stdout/stderr so runWranglerWrite can read them (Issue #225)', () => {
+			// Previously stdout/stderr were 'inherit', which makes Node set
+			// child.stdout / child.stderr to null. runWranglerWrite then
+			// threw AFTER the bulk write had already succeeded, masking
+			// the driver's partial-failure + recovery-rowId guidance.
 			let capturedOpts = null;
 			const fakeChild = new EventEmitter();
 			fakeChild.stdin = { write() {}, end() {} };
@@ -626,8 +630,8 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 				deps: { spawn: captureSpawn },
 			});
 			assert.equal(capturedOpts.stdio[0], 'pipe');
-			assert.equal(capturedOpts.stdio[1], 'inherit');
-			assert.equal(capturedOpts.stdio[2], 'inherit');
+			assert.equal(capturedOpts.stdio[1], 'pipe');
+			assert.equal(capturedOpts.stdio[2], 'pipe');
 		});
 
 		it('argv includes -c <absolute path to wrangler.production.jsonc>', () => {
@@ -1069,5 +1073,45 @@ describe('summarizeInfisicalState stays length-safe', () => {
 		const state = summarizeInfisicalState({ legacyValue: 'abc', versionedValue: null });
 		assert.equal(state.status, 'LEGACY_ONLY');
 		assert.equal(state.envelopeOk, undefined);
+	});
+});
+
+/* -- Issue #225: wrangler bulk spawn must be able to capture output ----- */
+
+describe('spawnWranglerBulk pipes stdout/stderr so the write result is readable', () => {
+	function captureSpawnOptions() {
+		let captured = null;
+		const fakeChild = {
+			stdin: { write() {}, end() {} },
+			stdout: { on() {} },
+			stderr: { on() {} },
+			on() {},
+		};
+		spawnWranglerBulk({
+			payload: '{}',
+			env: { PATH: '/bin' },
+			deps: {
+				spawn: (bin, args, options) => {
+					captured = { bin, args, options };
+					return fakeChild;
+				},
+			},
+		});
+		return captured;
+	}
+
+	it('pipes all three streams instead of inheriting stdout/stderr', () => {
+		const captured = captureSpawnOptions();
+		// With 'inherit', Node sets child.stdout / child.stderr to null
+		// and `runWranglerWrite`'s capture throws AFTER a successful
+		// write, hiding the driver's partial-failure guidance.
+		assert.deepEqual(captured.options.stdio, ['pipe', 'pipe', 'pipe']);
+	});
+
+	it('keeps the payload out of argv (stdin only)', () => {
+		const captured = captureSpawnOptions();
+		assert.ok(!JSON.stringify(captured.args).includes('BETTER_AUTH_SECRET'));
+		assert.ok(captured.args.includes('bulk'));
+		assert.ok(captured.args.some((a) => String(a).endsWith('wrangler.production.jsonc')));
 	});
 });

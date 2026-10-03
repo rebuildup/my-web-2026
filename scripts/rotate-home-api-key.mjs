@@ -638,7 +638,12 @@ function spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env, s
 
 function spawnWranglerBulk({ payload, env, spawnFn = spawn }) {
 	const child = spawnFn(process.execPath, [WRANGLER_BIN, ...buildWranglerBulkArgs()], {
-		stdio: ['pipe', 'inherit', 'inherit'],
+		// Issue #225: `runWranglerWrite` captures stdout/stderr, which
+		// Node sets to null for an inherited stream. Piping all three
+		// makes the capture actually work; previously `--execute` threw
+		// AFTER a successful write, masking the driver's own
+		// partial-failure + recovery-rowId guidance.
+		stdio: ['pipe', 'pipe', 'pipe'],
 		env,
 	});
 	child.stdin.write(payload);

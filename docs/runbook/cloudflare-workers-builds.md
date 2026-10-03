@@ -136,16 +136,33 @@ GA4 operator gate (Issue #187) — if production GA4 tracking is
        driver ordering — it is a separate operator concern.
        ▼
 Smoke #1 — transition smoke (PRE #91-merge; legacy runtime still active)
-       │  Automated `pnpm run e2e:prod` (canonical surfaces green,
-       │  `wrangler secret list` confirms versioned binding present).
-       │  **Operator manual sign-in** at
-       │  https://rebuildup.dev/admin/login with real production
-       │  credentials; this verifies the **legacy runtime path** has
-       │  not regressed during the binding flip (cookies must persist
-       │  across reload). It does NOT validate the versioned runtime
-       │  path — see "Smoke boundary semantics" below.
+       │  Automated production checks confirm canonical surfaces that
+       │  are expected to work on the current `main`, and
+       │  `wrangler secret list` confirms the versioned binding is
+       │  present alongside the legacy binding. A known pre-#91
+       │  Issue #106 baseline (`/admin/login -> 307 /admin/login`)
+       │  is NOT treated as a Smoke #1 failure: that route fix exists
+       │  only on `release-0-5-0` until #91 deploys.
        │
-       ├── failure → rollback-versioned-only → invesetigate → #89 NOT closed
+       │  **Operator legacy-auth check (still mandatory):** use a
+       │  same-origin browser context on https://rebuildup.dev to
+       │  submit real production credentials directly to Better Auth's
+       │  `POST /api/v1/auth/sign-in/email` endpoint, preserve the
+       │  returned session cookie, then load `/admin` and reload it.
+       │  Both authenticated loads must succeed. Never put credentials
+       │  in argv, logs, GitHub, or chat; use interactive browser input
+       │  (or an equivalent stdin-only mechanism).
+       │
+       │  This verifies the **legacy runtime path** after #139 rotation.
+       │  It does NOT validate the versioned runtime path — see
+       │  "Smoke boundary semantics" below.
+       │
+       ├── transition/binding failure → rollback-versioned-only
+       │   → investigate → #89 NOT closed
+       ├── legacy-auth/session failure → DO NOT merge #91; investigate
+       │   #139 Better Auth rotation/recovery. rollback-versioned-only
+       │   may remove the inert transition binding but does not repair
+       │   a broken legacy signing secret.
        ▼
 Release PR #91 (`release-x-y-z → main`) merged
        (operator explicit approval required per
@@ -192,7 +209,7 @@ The smokes look superficially similar but verify **different things**:
 
 | Smoke | Code state | Binding state | Validates |
 | --- | --- | --- | --- |
-| **#1 (transition)** | `main` reads legacy `BETTER_AUTH_SECRET` | BOTH bindings bound (legacy + versioned) | Transition did not regress the legacy runtime; the versioned binding is observable via `wrangler secret list` but **inert** because `main` still reads legacy |
+| **#1 (transition)** | `main` reads legacy `BETTER_AUTH_SECRET` | BOTH bindings bound (legacy + versioned) | Transition did not regress the legacy runtime. Real auth is verified through the same-origin Better Auth sign-in endpoint + authenticated `/admin` reload when the known pre-#91 #106 login-page redirect is active; the versioned binding is observable via `wrangler secret list` but **inert** because `main` still reads legacy |
 | **#2 (versioned, automated)** | `main` reads `BETTER_AUTH_SECRETS` | BOTH bindings bound | Canonical surfaces green on versioned runtime; anonymous `/admin/login` reachable (#106 production verification) |
 | **#3 (versioned, manual)** | `main` reads `BETTER_AUTH_SECRETS` | BOTH bindings bound | Operator's real admin credential signs in successfully via versioned runtime; cookies persist |
 
@@ -202,6 +219,16 @@ until #91 merges. Treating Smoke #1 as a versioned-runtime check
 would yield a false-positive (legacy path signs in successfully and
 the operator believes the versioned path is healthy). The
 versioned-runtime check is therefore deferred to Smoke #2/#3.
+
+Issue #106 creates one deliberate pre/post-release asymmetry. Before #91,
+the current production login page may self-redirect before the form can
+render; this is a known code baseline, not evidence about the rotated
+legacy secret. Smoke #1 therefore bypasses only that broken **page**
+and exercises the same Better Auth sign-in endpoint directly, then proves
+the resulting session on the protected `/admin` route. After #91,
+Smoke #2 MUST verify anonymous `GET /admin/login` returns 200, and
+Smoke #3 MUST use the normal login UI. This exception ends once #106 is
+verified in production.
 
 ## Deploy preflight contract
 

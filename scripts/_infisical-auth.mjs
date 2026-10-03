@@ -517,6 +517,12 @@ export async function resolveInfisicalAuth({
 	if (token) {
 		return { mode: AUTH_MODE.TOKEN, token };
 	}
-	await preflightCliSession({ cliPath, environment, projectId, env, spawn });
+	// CLI mode must prove the *stored CLI session* specifically. Strip
+	// Universal Auth and other Infisical credentials before the probe;
+	// otherwise an ambient viewer Machine Identity could make the read
+	// preflight pass and then disappear for the later write, violating
+	// the fail-closed-before-mutation contract.
+	const cliEnv = buildInfisicalEnv(env, { mode: AUTH_MODE.CLI });
+	await preflightCliSession({ cliPath, environment, projectId, env: cliEnv, spawn });
 	return { mode: AUTH_MODE.CLI, token: null };
 }

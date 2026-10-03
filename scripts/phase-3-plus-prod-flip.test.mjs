@@ -474,6 +474,7 @@ describe('phase-3-plus-prod-flip.mjs', () => {
 			spawnInfisicalSet({
 				yamlPath: '/tmp/foo.yaml',
 				environment: 'prod',
+				projectId: 'project-123',
 				env: { FOO: 'bar' },
 				deps: {
 					spawn: (cmd, args, opts) => {
@@ -495,6 +496,8 @@ describe('phase-3-plus-prod-flip.mjs', () => {
 				'prod',
 				'--path',
 				'/',
+				'--projectId',
+				'project-123',
 			]);
 			assert.equal(calls[0].opts.env.FOO, 'bar');
 			assert.deepEqual(calls[0].opts.stdio, ['pipe', 'inherit', 'inherit']);
@@ -506,6 +509,7 @@ describe('phase-3-plus-prod-flip.mjs', () => {
 			spawnInfisicalSet({
 				yamlPath: '/tmp/foo.yaml',
 				environment: 'prod',
+				projectId: 'project-123',
 				env: {},
 				deps: {
 					spawn: (cmd, args, opts) => {

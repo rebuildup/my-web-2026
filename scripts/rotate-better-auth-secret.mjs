@@ -508,14 +508,20 @@ function spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env, d
 
 /**
  * Spawn `wrangler secret bulk -c wrangler.production.jsonc` with
- * stdin JSON payload. The bulk subcommand consumes JSON via stdin;
- * `stdio: ['pipe', 'inherit', 'inherit']` is required to keep the
- * write end open.
+ * stdin JSON payload. The bulk subcommand consumes JSON via stdin, so
+ * only the write end needs to stay open -- which is what the leading
+ * `'pipe'` provides. stdout/stderr are piped as well so
+ * `runWranglerWrite` can capture them (see the Issue #225 note below).
  */
 function spawnWranglerBulk({ payload, env, deps = {} }) {
 	const spawnFn = deps.spawn ?? spawn;
 	const child = spawnFn(process.execPath, [WRANGLER_BIN, ...buildWranglerBulkArgs()], {
-		stdio: ['pipe', 'inherit', 'inherit'],
+		// Issue #225: `runWranglerWrite` captures stdout/stderr, which
+		// Node sets to null for an inherited stream. Piping all three
+		// makes the capture actually work; previously `--execute` threw
+		// AFTER a successful write, masking the driver's own
+		// partial-failure + recovery-rowId guidance.
+		stdio: ['pipe', 'pipe', 'pipe'],
 		env,
 	});
 	child.stdin.write(payload);

@@ -275,8 +275,12 @@ describe('phase-3-plus-prod-flip.mjs', () => {
 	});
 
 	describe('buildInfisicalSetArgs (argv discipline)', () => {
-		it('uses "secrets set --file <yaml> --env=prod --path=/"', () => {
-			const argv = buildInfisicalSetArgs({ yamlPath: '/tmp/foo.yaml', environment: 'prod' });
+		it('pins secrets set to the preflighted project id', () => {
+			const argv = buildInfisicalSetArgs({
+				yamlPath: '/tmp/foo.yaml',
+				environment: 'prod',
+				projectId: 'project-123',
+			});
 			assert.deepEqual(argv, [
 				'secrets',
 				'set',
@@ -286,6 +290,8 @@ describe('phase-3-plus-prod-flip.mjs', () => {
 				'prod',
 				'--path',
 				'/',
+				'--projectId',
+				'project-123',
 			]);
 		});
 	});

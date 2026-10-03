@@ -275,16 +275,19 @@ describe('check-cf-secrets.mjs', () => {
 			);
 		});
 
-		it('prints expected phase-specific 2-name contract (exact match required)', () => {
+		it('prints expected phase-specific 3-name contract (exact match required)', () => {
 			const result = runInIsolatedRepo([], {
 				wranglerContent: PHASE_3_WRANGLER,
 			});
 			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY/);
+			assert.match(
+				result.stdout,
+				/BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY, GOOGLE_ANALYTICS_MEASUREMENT_ID/,
+			);
 			assert.match(result.stdout, /exact/);
 		});
 
-		it('prints final 2-name live Worker expectation after legacy deletion', () => {
+		it('prints final 3-name live Worker expectation after legacy deletion', () => {
 			const result = runInIsolatedRepo(['--worker-contract=final'], {
 				wranglerContent: PHASE_3_WRANGLER,
 				env: { CLOUDFLARE_API_TOKEN: 'fake-token-for-dry-run-mention' },
@@ -292,7 +295,26 @@ describe('check-cf-secrets.mjs', () => {
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /worker contract=final/);
 			assert.match(result.stdout, /against final contract/);
-			assert.match(result.stdout, /BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY/);
+			assert.match(
+				result.stdout,
+				/BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY, GOOGLE_ANALYTICS_MEASUREMENT_ID/,
+			);
+		});
+
+		it('transition live Worker contract excludes GA before the deploy that binds it', () => {
+			const result = runInIsolatedRepo(['--require-live-worker'], {
+				wranglerContent: PHASE_3_WRANGLER,
+			});
+			assert.equal(result.exitCode, 0);
+			const transitionLine = result.stdout
+				.split('\n')
+				.find((line) => line.includes('against transition contract'));
+			assert.ok(transitionLine, 'expected transition live Worker contract line');
+			assert.match(
+				transitionLine,
+				/BETTER_AUTH_SECRETS, BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY/,
+			);
+			assert.doesNotMatch(transitionLine, /GOOGLE_ANALYTICS_MEASUREMENT_ID/);
 		});
 
 		it('mentions Tier 3 (live Worker) eligibility in dry-run', () => {

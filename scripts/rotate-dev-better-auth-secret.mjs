@@ -287,9 +287,16 @@ function awaitExit(child, { timeoutMs = SUBPROCESS_TIMEOUT_MS } = {}) {
 	});
 }
 
-async function runInfisicalSet({ cliPath, yamlPath, environment, env, deps = {} }) {
+async function runInfisicalSet({
+	cliPath,
+	yamlPath,
+	environment,
+	workspaceId,
+	env,
+	deps = {},
+}) {
 	const spawnFn = deps.spawn ?? spawn;
-	const child = spawnFn(cliPath, buildInfisicalSetArgs(yamlPath, environment), {
+	const child = spawnFn(cliPath, buildInfisicalSetArgs(yamlPath, environment, workspaceId), {
 		stdio: ['pipe', 'pipe', 'pipe'],
 		env,
 	});
@@ -441,6 +448,7 @@ async function main() {
 			cliPath,
 			yamlPath,
 			environment: args.environment,
+			workspaceId: infisicalConfig.workspaceId,
 			env: infisicalEnv,
 		});
 		if (infisicalResult.signal) {

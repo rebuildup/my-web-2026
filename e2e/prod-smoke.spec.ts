@@ -24,6 +24,13 @@ import { expect, test } from '@playwright/test';
  */
 const CANONICAL_ORIGIN = 'https://rebuildup.dev';
 
+const PROD_SMOKE_PHASE = process.env.PROD_SMOKE_PHASE ?? 'versioned';
+if (PROD_SMOKE_PHASE !== 'transition' && PROD_SMOKE_PHASE !== 'versioned') {
+	throw new Error(
+		`Unsupported PROD_SMOKE_PHASE=${JSON.stringify(PROD_SMOKE_PHASE)}; expected "transition" or "versioned".`,
+	);
+}
+
 test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 	test('canonical origin is HTTPS and reaches the Worker', async ({ request }) => {
 		// Force the request fixture to use the canonical origin even
@@ -47,6 +54,10 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 	test('GET /admin/login returns 200 HTML with the Better Auth sign-in form', async ({
 		request,
 	}) => {
+		test.skip(
+			PROD_SMOKE_PHASE === 'transition',
+			'pre-deploy transition smoke verifies legacy auth separately; /admin/login 200 is a post-deploy #106 gate',
+		);
 		const res = await request.get(`${CANONICAL_ORIGIN}/admin/login`);
 		expect(res.status()).toBe(200);
 		const body = await res.text();

@@ -45,6 +45,7 @@ import {
 	summarizeWorkerState,
 	validateFreshSecret,
 } from './rotate-better-auth-secret.mjs';
+import { AUTH_MODE } from './_infisical-auth.mjs';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -1005,5 +1006,68 @@ describe('Infisical raw-secret read contract (Better Auth)', () => {
 				}),
 			/missing or empty/,
 		);
+	});
+});
+
+/* -- Issue #223: auth-mode-aware env construction -------------------------- */
+
+describe('buildInfisicalEnv in the two auth modes', () => {
+	it('injects the writer token when handed a resolved token-mode auth', () => {
+		const env = buildInfisicalEnv({ PATH: '/bin' }, { mode: AUTH_MODE.TOKEN, token: 'tok' });
+		assert.equal(env.INFISICAL_TOKEN, 'tok');
+		assert.equal(env.PATH, '/bin');
+	});
+
+	it('strips every credential when handed a cli-mode auth', () => {
+		const env = buildInfisicalEnv(
+			{ PATH: '/bin', INFISICAL_TOKEN: 'ambient', INFISICAL_CLIENT_SECRET: 's' },
+			{ mode: AUTH_MODE.CLI, token: null },
+		);
+		assert.equal(env.INFISICAL_TOKEN, undefined);
+		assert.equal(env.INFISICAL_CLIENT_SECRET, undefined);
+		assert.equal(env.PATH, '/bin');
+	});
+
+	it('still accepts a bare string for the pre-#223 call shape', () => {
+		const env = buildInfisicalEnv({ PATH: '/bin' }, 'legacy-token');
+		assert.equal(env.INFISICAL_TOKEN, 'legacy-token');
+	});
+
+	it('never leaks an Infisical credential to a Wrangler child', () => {
+		const env = buildWranglerEnv({
+			PATH: '/bin',
+			INFISICAL_TOKEN: 'tok',
+			INFISICAL_CLIENT_ID: 'id',
+			INFISICAL_CLIENT_SECRET: 'secret',
+		});
+		assert.equal(env.INFISICAL_TOKEN, undefined);
+		assert.equal(env.INFISICAL_CLIENT_ID, undefined);
+		assert.equal(env.INFISICAL_CLIENT_SECRET, undefined);
+		assert.equal(env.PATH, '/bin');
+	});
+});
+
+describe('summarizeInfisicalState stays length-safe', () => {
+	it('reports DIVERGENT rather than throwing when lengths differ', () => {
+		// timingSafeEqual throws on unequal lengths, so the comparison
+		// helper must short-circuit to false instead.
+		const state = summarizeInfisicalState({
+			legacyValue: 'short',
+			versionedValue: '1:a-much-longer-value',
+		});
+		assert.equal(state.status, 'DIVERGENT');
+		assert.equal(state.envelopeOk, false);
+	});
+
+	it('reports CONSISTENT for a well-formed envelope', () => {
+		const state = summarizeInfisicalState({ legacyValue: 'abc', versionedValue: '1:abc' });
+		assert.equal(state.status, 'CONSISTENT');
+		assert.equal(state.envelopeOk, true);
+	});
+
+	it('leaves envelopeOk undefined (N/A) when only one side is present', () => {
+		const state = summarizeInfisicalState({ legacyValue: 'abc', versionedValue: null });
+		assert.equal(state.status, 'LEGACY_ONLY');
+		assert.equal(state.envelopeOk, undefined);
 	});
 });

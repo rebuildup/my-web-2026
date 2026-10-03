@@ -66,6 +66,14 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
+import {
+	AUTH_MODE,
+	buildInfisicalEnv as buildInfisicalEnvShared,
+	buildWranglerEnv as buildWranglerEnvShared,
+	materialiseSecret,
+	resolveInfisicalAuth,
+} from './_infisical-auth.mjs';
+
 const REPO_ROOT = resolve(HERE, '..');
 const WRANGLER_BIN = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
 const WRANGLER_PRODUCTION_CONFIG = join(REPO_ROOT, 'wrangler.production.jsonc');
@@ -107,8 +115,15 @@ function planOperationAuth({ operation }) {
 			return {
 				needsInfisicalWrite: true,
 				needsInfisicalRead: true,
+				// Issue #223: an interactively-authenticated Infisical CLI
+				// session is an operator write identity, so it is accepted
+				// alongside an explicit token. Both are preflighted for
+				// READ before the first mutation; write scope is trusted by
+				// operator authorization, not probed (see the
+				// `verifyTokenWriteScope` note below).
 				requiresOperatorToken: true,
 				allowsUaFallback: false,
+				allowsCliSession: true,
 			};
 		case 'restore-legacy-only':
 			return {
@@ -432,8 +447,19 @@ function buildWranglerBulkArgs() {
  * Build the argv for `infisical secrets set`. Operates on YAML file
  * format (Infisical CLI accepts `.env` and YAML via `--file`).
  */
-function buildInfisicalSetArgs({ yamlPath, environment }) {
-	return ['secrets', 'set', '--file', yamlPath, '--env', environment, '--path', '/'];
+function buildInfisicalSetArgs({ yamlPath, environment, projectId }) {
+	return [
+		'secrets',
+		'set',
+		'--file',
+		yamlPath,
+		'--env',
+		environment,
+		'--path',
+		'/',
+		'--projectId',
+		projectId,
+	];
 }
 
 /**
@@ -606,6 +632,35 @@ async function readLegacyPlaintext(apiUrl, accessToken, workspaceId, environment
 }
 
 /**
+ * Issue #223 — read the legacy Better Auth plaintext in whichever auth
+ * mode was resolved. Token mode keeps the direct HTTPS read; CLI mode
+ * materialises the value into a 0600 temp file via a CLI-auth child so
+ * the driver never holds a bearer token. The file is always removed.
+ */
+async function readLegacyPlaintextViaAuth({ auth, apiUrl, cliPath, workspaceId, environment }) {
+	if (auth.mode === AUTH_MODE.TOKEN) {
+		return readLegacyPlaintext(apiUrl, auth.token, workspaceId, environment);
+	}
+	const { readFileSync } = await import('node:fs');
+	const handle = await materialiseSecret({
+		auth,
+		apiUrl,
+		cliPath,
+		environment,
+		projectId: workspaceId,
+		name: 'BETTER_AUTH_SECRET',
+		readViaToken: async () => {
+			throw new Error('unreachable: CLI mode never calls readViaToken');
+		},
+	});
+	try {
+		return readFileSync(handle.path, 'utf8');
+	} finally {
+		handle.cleanup();
+	}
+}
+
+/**
  * Verify the access token has WRITE scope on the prod env. The Phase B
  * `flip` operation requires a writer-scoped token; the Workers Builds
  * viewer Machine Identity is insufficient. The preflight issues a
@@ -679,10 +734,10 @@ function spawnWranglerBulk({ payload, env, deps }) {
  * interactive prompts from blocking and matches the canonical
  * wrangler bulk discipline.
  */
-function spawnInfisicalSet({ yamlPath, environment, env, deps }) {
+function spawnInfisicalSet({ yamlPath, environment, projectId, env, deps }) {
 	const spawnFn = deps?.spawn ?? spawn;
 	const cliPath = deps?.cliPath ?? resolveInfisicalCliPath();
-	return spawnFn(cliPath, buildInfisicalSetArgs({ yamlPath, environment }), {
+	return spawnFn(cliPath, buildInfisicalSetArgs({ yamlPath, environment, projectId }), {
 		stdio: ['pipe', 'inherit', 'inherit'],
 		env,
 	});
@@ -740,7 +795,7 @@ function describePlan({ operation, environment, wranglerConfig }) {
 	switch (operation) {
 		case 'flip':
 			lines.push(
-				'[dry-run] would: use operator-supplied INFISICAL_TOKEN (writer-scoped) → read legacy plaintext from Infisical prod → write temp YAML → spawn infisical secrets set --file → spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRETS: "1:<plaintext>" }',
+				'[dry-run] would: resolve auth (operator-supplied INFISICAL_TOKEN, else the operator\'s logged-in Infisical CLI session) → read legacy plaintext from Infisical prod → write temp YAML → spawn infisical secrets set --file → spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRETS: "1:<plaintext>" }',
 			);
 			break;
 		case 'delete-legacy-only':
@@ -783,6 +838,7 @@ export {
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
 	const infisicalConfig = readInfisicalJson();
+	const cliPath = resolveInfisicalCliPath();
 	const fs = require('node:fs');
 	cleanupStaleTempDirs(fs);
 
@@ -808,6 +864,7 @@ async function main() {
 	const plan = planOperationAuth({ operation: args.operation });
 
 	let accessToken = null;
+	let auth = null;
 	let legacyPlaintext = null;
 	let versionedForm = null;
 	let tempDir = null;
@@ -824,8 +881,24 @@ async function main() {
 		if (plan.needsInfisicalWrite || plan.needsInfisicalRead) {
 			if (hasOperatorToken) {
 				accessToken = operatorToken;
+				auth = { mode: AUTH_MODE.TOKEN, token: operatorToken };
 				console.log(
 					`[execute] Using operator-supplied INFISICAL_TOKEN for operation=${args.operation}`,
+				);
+			} else if (plan.allowsCliSession) {
+				// Issue #223: no token, but the operator is logged into the
+				// Infisical CLI. `resolveInfisicalAuth` preflights that
+				// session for READ against this project + environment and
+				// throws here — before any mutation — if it cannot.
+				auth = await resolveInfisicalAuth({
+					env: process.env,
+					cliPath,
+					environment: args.environment,
+					projectId: infisicalConfig.workspaceId,
+				});
+				accessToken = auth.token;
+				console.log(
+					`[execute] Using operator's logged-in Infisical CLI session for operation=${args.operation} (read preflight passed)`,
 				);
 			} else if (plan.allowsUaFallback) {
 				// restore-legacy-only path — UA fallback allowed (read-only).
@@ -868,12 +941,16 @@ async function main() {
 
 		if (args.operation === 'flip' || args.operation === 'restore-legacy-only') {
 			console.log(`[execute] Reading legacy plaintext from Infisical ${args.environment}...`);
-			legacyPlaintext = await readLegacyPlaintext(
+			// Issue #223: with the CLI session there is no bearer token, so
+			// a CLI-auth child materialises the value into a 0600 temp file
+			// that is removed immediately after reading.
+			legacyPlaintext = await readLegacyPlaintextViaAuth({
+				auth,
 				apiUrl,
-				accessToken,
-				infisicalConfig.workspaceId,
-				args.environment,
-			);
+				cliPath,
+				workspaceId: infisicalConfig.workspaceId,
+				environment: args.environment,
+			});
 			validateLegacyPlaintext(legacyPlaintext);
 			versionedForm = buildVersionedForm(legacyPlaintext);
 		}
@@ -888,10 +965,11 @@ async function main() {
 			console.log(
 				`[execute] Writing versioned secret to Infisical ${args.environment} (via CLI subprocess for E2EE)...`,
 			);
-			const sanitizedEnv = buildSanitizedEnv(process.env, { keepInfisicalToken: true });
+			const sanitizedEnv = buildInfisicalEnvShared(process.env, auth);
 			const infisicalChild = spawnInfisicalSet({
 				yamlPath,
 				environment: args.environment,
+				projectId: infisicalConfig.workspaceId,
 				env: sanitizedEnv,
 			});
 			const infisicalExit = await new Promise((resolve) => {

@@ -131,6 +131,15 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+	AUTH_MODE,
+	buildInfisicalEnv as buildInfisicalEnvShared,
+	buildWranglerEnv as buildWranglerEnvShared,
+	compareSecretViaAuth,
+	materialiseSecret,
+	resolveInfisicalAuth,
+	summarizeSecretPairViaAuth,
+} from './_infisical-auth.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -646,20 +655,12 @@ function secretValuesEqual(a, b) {
  * side uses `buildWranglerEnv` which strips it. Mirrored from
  * `scripts/rotate-home-api-key.mjs#buildInfisicalEnv`.
  */
-function buildInfisicalEnv(baseEnv, token) {
-	const env = { ...baseEnv, INFISICAL_TOKEN: token };
-	// Strip the other Infisical credentials (token is added above; UA
-	// fields would be ignored by the CLI but should not leak through).
-	for (const key of [
-		'INFISICAL_CLIENT_ID',
-		'INFISICAL_CLIENT_SECRET',
-		'INFISICAL_PROJECT_ID',
-		'INFISICAL_SITE_URL',
-		'INFISICAL_API_URL',
-	]) {
-		// Biome `lint/performance/noDelete` — assign undefined instead.
-		env[key] = undefined;
-	}
+function buildInfisicalEnv(baseEnv, auth) {
+	// Issue #223: token mode injects the token; CLI mode strips every
+	// credential so the Infisical CLI uses its own stored session.
+	const token = typeof auth === 'string' ? auth : auth?.token;
+	const mode = typeof auth === 'string' ? AUTH_MODE.TOKEN : auth?.mode;
+	const env = buildInfisicalEnvShared(baseEnv, { mode, token });
 	return env;
 }
 
@@ -677,18 +678,9 @@ function buildInfisicalEnv(baseEnv, token) {
  * `scripts/rotate-home-api-key.mjs#buildWranglerEnv`.
  */
 function buildWranglerEnv(baseEnv) {
-	const env = { ...baseEnv };
-	for (const key of [
-		'INFISICAL_TOKEN',
-		'INFISICAL_CLIENT_ID',
-		'INFISICAL_CLIENT_SECRET',
-		'INFISICAL_PROJECT_ID',
-		'INFISICAL_SITE_URL',
-		'INFISICAL_API_URL',
-	]) {
-		env[key] = undefined;
-	}
-	return env;
+	// Issue #223: single shared implementation of the least-privilege
+	// strip, so the four drivers cannot drift apart.
+	return buildWranglerEnvShared(baseEnv);
 }
 
 /**
@@ -860,26 +852,34 @@ async function runWranglerWrite({ payload, env }) {
 	return { code, signal, stderr };
 }
 
-async function runVerify({ apiUrl, token, workspaceId, environment }) {
-	const legacyValue = await readInfisicalSecret({
+async function runVerify({ apiUrl, auth, cliPath, workspaceId, environment }) {
+	// Issue #223: the envelope invariant needs BOTH values, so in CLI
+	// mode it is evaluated inside a CLI-auth child that already holds
+	// them; the driver receives booleans only. Token mode keeps the
+	// pre-#223 read-then-compare path.
+	const infisical = await summarizeSecretPairViaAuth({
+		auth,
 		apiUrl,
-		token,
-		workspaceId,
+		cliPath,
 		environment,
-		name: SECRET_NAME_LEGACY,
-		allowMissing: true,
-	});
-	const versionedValue = await readInfisicalSecret({
-		apiUrl,
-		token,
-		workspaceId,
-		environment,
-		name: SECRET_NAME_VERSIONED,
-		allowMissing: true,
+		projectId: workspaceId,
+		legacyName: SECRET_NAME_LEGACY,
+		versionedName: SECRET_NAME_VERSIONED,
+		versionPrefix: '1:',
+		token: auth.token,
+		readViaToken: async ({ apiUrl: u, token: t, environment: e, name }) =>
+			readInfisicalSecret({
+				apiUrl: u,
+				token: t,
+				workspaceId,
+				environment: e,
+				name,
+				allowMissing: true,
+			}),
 	});
 	const bindings = await readWranglerBindingNames(buildWranglerEnv(process.env));
 	return {
-		infisical: summarizeInfisicalState({ legacyValue, versionedValue }),
+		infisical,
 		worker: summarizeWorkerState({ bindings }),
 	};
 }
@@ -913,14 +913,24 @@ async function main() {
 		return;
 	}
 
+	// Issue #223: resolve auth once, before any side effect. An
+	// explicit INFISICAL_TOKEN keeps the pre-#223 path; otherwise the
+	// logged-in Infisical CLI session is preflighted. If neither is
+	// usable this throws BEFORE the first mutation.
+	const cliPath = resolveInfisicalCliPath();
+	const auth = await resolveInfisicalAuth({
+		env: process.env,
+		cliPath,
+		environment: args.environment,
+		projectId: infisicalConfig.workspaceId,
+	});
+	console.log(`[rotate-better-auth] auth mode=${auth.mode}`);
+
 	if (args.mode === 'verify-only') {
-		const token = process.env.INFISICAL_TOKEN;
-		if (typeof token !== 'string' || token.length === 0) {
-			throw new Error('INFISICAL_TOKEN is required for --verify-only');
-		}
 		const result = await runVerify({
 			apiUrl,
-			token,
+			auth,
+			cliPath,
 			workspaceId: infisicalConfig.workspaceId,
 			environment: args.environment,
 		});
@@ -931,7 +941,7 @@ async function main() {
 			`[verify-only] Infisical ${SECRET_NAME_VERSIONED}: ${result.infisical.versionedPresent ? 'present' : 'missing'}`,
 		);
 		console.log(
-			`[verify-only] Infisical envelope invariant: ${result.infisical.envelopeOk === undefined ? 'N/A' : result.infisical.envelopeOk ? 'OK' : 'BROKEN'}`,
+			`[verify-only] Infisical envelope invariant: ${result.infisical.envelopeOk == null ? 'N/A' : result.infisical.envelopeOk ? 'OK' : 'BROKEN'}`,
 		);
 		console.log(
 			`[verify-only] Worker bindings: ${result.worker.bindingsCount} (${result.worker.hasLegacy ? `${SECRET_NAME_LEGACY} ` : ''}${result.worker.hasVersioned ? SECRET_NAME_VERSIONED : ''})`,
@@ -940,13 +950,8 @@ async function main() {
 		return;
 	}
 
-	// --execute and --worker-recovery paths
-	const token = process.env.INFISICAL_TOKEN;
-	if (typeof token !== 'string' || token.length === 0) {
-		throw new Error(
-			`INFISICAL_TOKEN is required for --${args.mode}. The viewer Machine Identity (my-web-2026-cf-worker, role=viewer) fails-closed for write.`,
-		);
-	}
+	// --execute and --worker-recovery paths. `auth` was resolved above
+	// (token, or preflighted CLI session) and failed closed there.
 
 	let freshSecret;
 	if (args.mode === 'execute') {
@@ -954,23 +959,40 @@ async function main() {
 		validateFreshSecret(freshSecret);
 	} else {
 		// --worker-recovery: read the existing fresh value from Infisical prod.
+		// Issue #223: in CLI mode the value is materialised by a CLI-auth
+		// child into a 0600 temp file so the driver never holds a bearer
+		// token; the file is removed immediately after reading.
 		console.log(
 			`[worker-recovery] reading current ${SECRET_NAME_LEGACY} from Infisical ${args.environment}...`,
 		);
-		freshSecret = await readInfisicalSecret({
+		const handle = await materialiseSecret({
+			auth,
 			apiUrl,
-			token,
-			workspaceId: infisicalConfig.workspaceId,
+			cliPath,
 			environment: args.environment,
+			projectId: infisicalConfig.workspaceId,
 			name: SECRET_NAME_LEGACY,
+			token: auth.token,
+			readViaToken: async ({ apiUrl: u, token: t, environment: e, name }) =>
+				readInfisicalSecret({
+					apiUrl: u,
+					token: t,
+					workspaceId: infisicalConfig.workspaceId,
+					environment: e,
+					name,
+				}),
 		});
+		try {
+			freshSecret = readFileSync(handle.path, 'utf8');
+		} finally {
+			handle.cleanup();
+		}
 		validateFreshSecret(freshSecret);
 	}
 
 	// Stage 1 — Infisical write (only on --execute; --worker-recovery skips)
 	let infisicalWriteSucceeded = false;
 	if (args.mode === 'execute') {
-		const cliPath = resolveInfisicalCliPath();
 		const tempDir = mkdtempSync(join(tmpdir(), TEMPDIR_PREFIX));
 		const yamlPath = join(tempDir, 'rotate.yaml');
 		try {
@@ -981,7 +1003,7 @@ async function main() {
 			console.log(
 				`[execute] writing fresh ${SECRET_NAME_LEGACY} + ${SECRET_NAME_VERSIONED} to Infisical ${args.environment} (via CLI subprocess for E2EE)...`,
 			);
-			const infisicalEnv = buildInfisicalEnv(process.env, token);
+			const infisicalEnv = buildInfisicalEnv(process.env, auth);
 			const infisicalResult = await runInfisicalWrite({
 				cliPath,
 				yamlPath,
@@ -997,29 +1019,49 @@ async function main() {
 			}
 
 			// Read-back verification: Infisical byte equality.
-			console.log('[execute] verifying Infisical read-back (HTTPS GET + timingSafeEqual)...');
-			const readBackLegacy = await readInfisicalSecret({
+			console.log(
+				`[execute] verifying Infisical read-back (auth=${auth.mode}, timingSafeEqual)...`,
+			);
+			// Issue #223: compare without pulling the value back into the
+			// driver when running on the CLI session.
+			const readViaToken = async ({ apiUrl: u, token: t, environment: e, name }) =>
+				readInfisicalSecret({
+					apiUrl: u,
+					token: t,
+					workspaceId: infisicalConfig.workspaceId,
+					environment: e,
+					name,
+				});
+			const legacyCheck = await compareSecretViaAuth({
+				auth,
 				apiUrl,
-				token,
-				workspaceId: infisicalConfig.workspaceId,
+				cliPath,
 				environment: args.environment,
+				projectId: infisicalConfig.workspaceId,
 				name: SECRET_NAME_LEGACY,
+				expected: freshSecret,
+				token: auth.token,
+				readViaToken,
 			});
-			const readBackVersioned = await readInfisicalSecret({
-				apiUrl,
-				token,
-				workspaceId: infisicalConfig.workspaceId,
-				environment: args.environment,
-				name: SECRET_NAME_VERSIONED,
-			});
-			if (!secretValuesEqual(readBackLegacy, freshSecret)) {
+			if (legacyCheck.status !== 'match') {
 				throw new Error(
-					`Infisical read-back mismatch: ${SECRET_NAME_LEGACY} did not byte-match the fresh value`,
+					`Infisical read-back mismatch: ${SECRET_NAME_LEGACY} ${legacyCheck.status === 'missing' ? 'is missing' : 'did not byte-match the fresh value'}`,
 				);
 			}
-			if (!secretValuesEqual(readBackVersioned, buildVersionedForm(freshSecret))) {
+			const versionedCheck = await compareSecretViaAuth({
+				auth,
+				apiUrl,
+				cliPath,
+				environment: args.environment,
+				projectId: infisicalConfig.workspaceId,
+				name: SECRET_NAME_VERSIONED,
+				expected: buildVersionedForm(freshSecret),
+				token: auth.token,
+				readViaToken,
+			});
+			if (versionedCheck.status !== 'match') {
 				throw new Error(
-					`Infisical read-back mismatch: ${SECRET_NAME_VERSIONED} did not match the versioned envelope`,
+					`Infisical read-back mismatch: ${SECRET_NAME_VERSIONED} ${versionedCheck.status === 'missing' ? 'is missing' : 'did not match the versioned envelope'}`,
 				);
 			}
 			infisicalWriteSucceeded = true;

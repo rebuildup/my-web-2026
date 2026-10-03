@@ -201,6 +201,16 @@ import { fileURLToPath } from 'node:url';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
+import {
+	AUTH_MODE,
+	buildInfisicalEnv as buildInfisicalEnvShared,
+	buildWranglerEnv as buildWranglerEnvShared,
+	compareSecretViaAuth,
+	materialiseSecret,
+	resolveInfisicalAuth,
+	secretPresenceViaAuth,
+} from './_infisical-auth.mjs';
+
 const REPO_ROOT = resolve(HERE, '..');
 const WRANGLER_BIN = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
 const WRANGLER_PRODUCTION_CONFIG = join(REPO_ROOT, 'wrangler.production.jsonc');
@@ -826,25 +836,10 @@ function buildSanitizedEnv(baseEnv) {
  *
  * Pair with `buildWranglerEnv` for non-Infisical subprocesses.
  */
-function buildInfisicalEnv(baseEnv, token) {
-	const env = { ...baseEnv };
-	for (const key of [
-		'INFISICAL_CLIENT_ID',
-		'INFISICAL_CLIENT_SECRET',
-		'INFISICAL_PROJECT_ID',
-		'INFISICAL_SITE_URL',
-		'INFISICAL_API_URL',
-	]) {
-		if (key in env) {
-			delete env[key];
-		}
-	}
-	if (typeof token === 'string' && token.length > 0) {
-		env.INFISICAL_TOKEN = token;
-	} else if ('INFISICAL_TOKEN' in env) {
-		env.INFISICAL_TOKEN = undefined;
-	}
-	return env;
+function buildInfisicalEnv(baseEnv, auth) {
+	// Issue #223: token mode injects the token; CLI mode strips the
+	// whole credential set so the CLI uses its own stored session.
+	return buildInfisicalEnvShared(baseEnv, auth);
 }
 
 /**
@@ -854,20 +849,9 @@ function buildInfisicalEnv(baseEnv, token) {
  * reach Cloudflare or D1 subprocess environments.
  */
 function buildWranglerEnv(baseEnv) {
-	const env = { ...baseEnv };
-	for (const key of [
-		'INFISICAL_TOKEN',
-		'INFISICAL_CLIENT_ID',
-		'INFISICAL_CLIENT_SECRET',
-		'INFISICAL_PROJECT_ID',
-		'INFISICAL_SITE_URL',
-		'INFISICAL_API_URL',
-	]) {
-		if (key in env) {
-			delete env[key];
-		}
-	}
-	return env;
+	// Issue #223: single shared least-privilege strip so the four
+	// drivers cannot drift apart.
+	return buildWranglerEnvShared(baseEnv);
 }
 
 async function readWranglerBindingNames(env) {
@@ -1019,7 +1003,49 @@ export {
 
 /* ─── CLI entrypoint ───────────────────────────────────────────────────── */
 
-async function runVerify({ apiUrl, token, workspaceId, environment, target }) {
+/**
+ * Issue #223 — presence/absence of a single secret, without pulling
+ * the value into this process when running on the CLI session.
+ */
+async function isInfisicalSecretPresent({ auth, apiUrl, cliPath, workspaceId, environment, name }) {
+	const present = await secretPresenceViaAuth({
+		auth,
+		apiUrl,
+		cliPath,
+		environment,
+		projectId: workspaceId,
+		name,
+		token: auth.token,
+		readViaToken: async ({ apiUrl: u, token: t, environment: e, name: n }) =>
+			readInfisicalSecret({ apiUrl: u, token: t, workspaceId, environment: e, name: n }),
+	});
+	return present;
+}
+
+/**
+ * Issue #223 — materialise the stored value into a 0600 temp file so
+ * `--worker-recovery` can replay it to the Worker in either auth mode.
+ */
+async function materialiseSecretValue({ auth, apiUrl, cliPath, workspaceId, environment, name }) {
+	const handle = await materialiseSecret({
+		auth,
+		apiUrl,
+		cliPath,
+		environment,
+		projectId: workspaceId,
+		name,
+		token: auth.token,
+		readViaToken: async ({ apiUrl: u, token: t, environment: e, name: n }) =>
+			readInfisicalSecret({ apiUrl: u, token: t, workspaceId, environment: e, name: n }),
+	});
+	try {
+		return readFileSync(handle.path, 'utf8');
+	} finally {
+		handle.cleanup();
+	}
+}
+
+async function runVerify({ apiUrl, auth, cliPath, workspaceId, environment, target }) {
 	const wranglerEnv = buildWranglerEnv(process.env);
 
 	// D1 state — list enabled rows (old + rotated). Used to surface the
@@ -1041,14 +1067,16 @@ async function runVerify({ apiUrl, token, workspaceId, environment, target }) {
 	});
 	const oldHomeRows = oldHomeResult?.[0]?.results ?? [];
 
-	// Infisical prod state (HTTPS read; does not need a CLI subprocess)
-	const infisicalValue = await readInfisicalSecret({
+	// Infisical prod state. Issue #223: token mode keeps the HTTPS
+	// read; CLI mode resolves presence through a CLI-auth child so the
+	// driver never holds a bearer token.
+	const infisicalPresent = await isInfisicalSecretPresent({
+		auth,
 		apiUrl,
-		token,
+		cliPath,
 		workspaceId,
 		environment,
 		name: SECRET_NAME,
-		allowMissing: true,
 	});
 
 	// Worker binding name (must use Wrangler env, no Infisical creds)
@@ -1061,7 +1089,7 @@ async function runVerify({ apiUrl, token, workspaceId, environment, target }) {
 			oldHomeRowEnabled: oldHomeRows.length > 0,
 		},
 		infisical: {
-			present: typeof infisicalValue === 'string' && infisicalValue.length > 0,
+			present: infisicalPresent,
 		},
 		worker: {
 			hasBinding,
@@ -1070,14 +1098,23 @@ async function runVerify({ apiUrl, token, workspaceId, environment, target }) {
 	};
 }
 
-async function runWorkerRecovery({ rowId, apiUrl, token, workspaceId, environment, target }) {
+async function runWorkerRecovery({
+	rowId,
+	apiUrl,
+	auth,
+	cliPath,
+	workspaceId,
+	environment,
+	target,
+}) {
 	console.log(`[worker-recovery] rowId=${rowId} target=${target}`);
 
 	const wranglerEnv = buildWranglerEnv(process.env);
 
-	const infisicalValue = await readInfisicalSecret({
+	const infisicalValue = await materialiseSecretValue({
+		auth,
 		apiUrl,
-		token,
+		cliPath,
 		workspaceId,
 		environment,
 		name: SECRET_NAME,
@@ -1157,14 +1194,24 @@ async function main() {
 		return;
 	}
 
+	// Issue #223: resolve auth once, before any side effect. An
+	// explicit INFISICAL_TOKEN keeps the pre-#223 path; otherwise the
+	// logged-in Infisical CLI session is preflighted. Failure here
+	// happens before the first mutation.
+	const cliPath = resolveInfisicalCliPath();
+	const auth = await resolveInfisicalAuth({
+		env: process.env,
+		cliPath,
+		environment: args.environment,
+		projectId: infisicalConfig.workspaceId,
+	});
+	console.log(`[rotate-home-api-key] auth mode=${auth.mode}`);
+
 	if (args.mode === 'verify-only') {
-		const token = process.env.INFISICAL_TOKEN;
-		if (typeof token !== 'string' || token.length === 0) {
-			throw new Error('INFISICAL_TOKEN is required for --verify-only');
-		}
 		const result = await runVerify({
 			apiUrl,
-			token,
+			auth,
+			cliPath,
 			workspaceId: infisicalConfig.workspaceId,
 			environment: args.environment,
 			target: args.target,
@@ -1194,16 +1241,11 @@ async function main() {
 	}
 
 	if (args.mode === 'worker-recovery') {
-		const token = process.env.INFISICAL_TOKEN;
-		if (typeof token !== 'string' || token.length === 0) {
-			throw new Error(
-				'INFISICAL_TOKEN is required for --worker-recovery (used to read back the existing fresh value).',
-			);
-		}
 		await runWorkerRecovery({
 			rowId: args.workerRecoveryRowId,
 			apiUrl,
-			token,
+			auth,
+			cliPath,
 			workspaceId: infisicalConfig.workspaceId,
 			environment: args.environment,
 			target: args.target,
@@ -1211,13 +1253,7 @@ async function main() {
 		return;
 	}
 
-	// --execute path
-	const token = process.env.INFISICAL_TOKEN;
-	if (typeof token !== 'string' || token.length === 0) {
-		throw new Error(
-			'INFISICAL_TOKEN is required for --execute. The viewer Machine Identity fails-closed for write.',
-		);
-	}
+	// --execute path. `auth` was resolved above and failed closed there.
 
 	const wranglerEnv = buildWranglerEnv(process.env);
 
@@ -1354,7 +1390,6 @@ async function main() {
 	// The old D1 row is intentionally still enabled here: if this write fails,
 	// the leaked credential remains available for service continuity while the
 	// unpersisted fresh row can be explicitly discarded.
-	const cliPath = resolveInfisicalCliPath();
 	const tempDir = mkdtempSync(join(tmpdir(), TEMPDIR_PREFIX));
 	const yamlPath = join(tempDir, 'rotate.yaml');
 	let infisicalSucceeded = false;
@@ -1369,7 +1404,7 @@ async function main() {
 		// The Infisical subprocess DOES need the writer-scoped token
 		// (it is the producer of the value). Wrangler/D1 subprocesses
 		// NEVER receive it (buildWranglerEnv). PR #141 re-review, 2026-09-28.
-		const infisicalEnv = buildInfisicalEnv(process.env, token);
+		const infisicalEnv = buildInfisicalEnv(process.env, auth);
 		const infisicalResult = await runInfisicalWrite({
 			cliPath,
 			yamlPath,
@@ -1384,16 +1419,28 @@ async function main() {
 			throw new Error(`infisical CLI exited with status ${infisicalResult.code}`);
 		}
 
-		// Read-back verify (constant-time).
-		console.log('[execute] verifying Infisical read-back (HTTPS GET + timingSafeEqual)...');
-		const readBack = await readInfisicalSecret({
+		// Read-back verify (constant-time). Issue #223: compare without
+		// pulling the value back into the driver on the CLI session.
+		console.log(`[execute] verifying Infisical read-back (auth=${auth.mode}, timingSafeEqual)...`);
+		const readBack = await compareSecretViaAuth({
+			auth,
 			apiUrl,
-			token,
-			workspaceId: infisicalConfig.workspaceId,
+			cliPath,
 			environment: args.environment,
+			projectId: infisicalConfig.workspaceId,
 			name: SECRET_NAME,
+			expected: plaintext,
+			token: auth.token,
+			readViaToken: async ({ apiUrl: u, token: t, environment: e, name: n }) =>
+				readInfisicalSecret({
+					apiUrl: u,
+					token: t,
+					workspaceId: infisicalConfig.workspaceId,
+					environment: e,
+					name: n,
+				}),
 		});
-		if (!secretValuesEqual(readBack, plaintext)) {
+		if (readBack.status !== 'match') {
 			throw new Error(
 				`Infisical read-back mismatch: ${SECRET_NAME} did not byte-match the new plaintext`,
 			);

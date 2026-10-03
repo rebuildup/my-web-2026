@@ -400,6 +400,7 @@ describe('runInfisicalSet subprocess contract', () => {
 			cliPath: '/path/to/infisical',
 			yamlPath: '/tmp/my-web-2026-issue-139-abc/rotate-dev.yaml',
 			environment: 'dev',
+			workspaceId: 'project-123',
 			env: { INFISICAL_TOKEN: 'tok' },
 			deps: { spawn: spawnFn },
 		});
@@ -409,6 +410,7 @@ describe('runInfisicalSet subprocess contract', () => {
 		const expectedArgs = buildInfisicalSetArgs(
 			'/tmp/my-web-2026-issue-139-abc/rotate-dev.yaml',
 			'dev',
+			'project-123',
 		);
 		assert.deepEqual(spawned[0].args, expectedArgs);
 		assert.equal(spawned[0].options.stdio[0], 'pipe');
@@ -422,6 +424,7 @@ describe('runInfisicalSet subprocess contract', () => {
 			cliPath: '/path/to/infisical',
 			yamlPath: '/tmp/x.yaml',
 			environment: 'dev',
+			workspaceId: 'project-123',
 			env: { INFISICAL_TOKEN: 'tok' },
 			deps: { spawn: spawnFn },
 		});
@@ -434,6 +437,7 @@ describe('runInfisicalSet subprocess contract', () => {
 			cliPath: '/path/to/infisical',
 			yamlPath: '/tmp/x.yaml',
 			environment: 'dev',
+			workspaceId: 'project-123',
 			env: {
 				INFISICAL_TOKEN: 'writer-tok',
 				INFISICAL_CLIENT_ID: 'should-be-stripped-by-builder',
@@ -452,7 +456,7 @@ describe('runInfisicalSet subprocess contract', () => {
 
 describe('security invariants (no plaintext in argv / log / error)', () => {
 	it('buildInfisicalSetArgs does not include any value material', () => {
-		const args = buildInfisicalSetArgs('/tmp/rotate-dev.yaml', 'dev');
+		const args = buildInfisicalSetArgs('/tmp/rotate-dev.yaml', 'dev', 'project-123');
 		const joined = args.join(' ');
 		assert.ok(!joined.includes('value'), `args leak 'value': ${joined}`);
 		assert.ok(!joined.includes('placeholder'), `args leak 'placeholder': ${joined}`);

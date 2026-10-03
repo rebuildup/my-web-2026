@@ -447,8 +447,19 @@ function buildWranglerBulkArgs() {
  * Build the argv for `infisical secrets set`. Operates on YAML file
  * format (Infisical CLI accepts `.env` and YAML via `--file`).
  */
-function buildInfisicalSetArgs({ yamlPath, environment }) {
-	return ['secrets', 'set', '--file', yamlPath, '--env', environment, '--path', '/'];
+function buildInfisicalSetArgs({ yamlPath, environment, projectId }) {
+	return [
+		'secrets',
+		'set',
+		'--file',
+		yamlPath,
+		'--env',
+		environment,
+		'--path',
+		'/',
+		'--projectId',
+		projectId,
+	];
 }
 
 /**
@@ -723,10 +734,10 @@ function spawnWranglerBulk({ payload, env, deps }) {
  * interactive prompts from blocking and matches the canonical
  * wrangler bulk discipline.
  */
-function spawnInfisicalSet({ yamlPath, environment, env, deps }) {
+function spawnInfisicalSet({ yamlPath, environment, projectId, env, deps }) {
 	const spawnFn = deps?.spawn ?? spawn;
 	const cliPath = deps?.cliPath ?? resolveInfisicalCliPath();
-	return spawnFn(cliPath, buildInfisicalSetArgs({ yamlPath, environment }), {
+	return spawnFn(cliPath, buildInfisicalSetArgs({ yamlPath, environment, projectId }), {
 		stdio: ['pipe', 'inherit', 'inherit'],
 		env,
 	});
@@ -958,6 +969,7 @@ async function main() {
 			const infisicalChild = spawnInfisicalSet({
 				yamlPath,
 				environment: args.environment,
+				projectId: infisicalConfig.workspaceId,
 				env: sanitizedEnv,
 			});
 			const infisicalExit = await new Promise((resolve) => {

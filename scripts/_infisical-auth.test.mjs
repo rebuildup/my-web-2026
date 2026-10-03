@@ -90,6 +90,30 @@ test('resolveInfisicalAuth falls back to the CLI session when no token is set', 
 	assert.equal(auth.token, null);
 });
 
+test('resolveInfisicalAuth strips UA credentials before CLI-session preflight', async () => {
+	let seenEnv;
+	const auth = await resolveInfisicalAuth({
+		env: {
+			PATH: '/bin',
+			INFISICAL_CLIENT_ID: 'viewer-client',
+			INFISICAL_CLIENT_SECRET: 'viewer-secret',
+			INFISICAL_PROJECT_ID: 'wrong-project',
+		},
+		cliPath: '/bin/true',
+		environment: 'prod',
+		projectId: PROJECT,
+		spawn: (_bin, _args, opts) => {
+			seenEnv = opts.env;
+			return okSpawn();
+		},
+	});
+	assert.equal(auth.mode, AUTH_MODE.CLI);
+	assert.equal(seenEnv.PATH, '/bin');
+	assert.equal(seenEnv.INFISICAL_CLIENT_ID, undefined);
+	assert.equal(seenEnv.INFISICAL_CLIENT_SECRET, undefined);
+	assert.equal(seenEnv.INFISICAL_PROJECT_ID, undefined);
+});
+
 test('resolveInfisicalAuth fails closed when the session cannot read the environment', async () => {
 	await assert.rejects(
 		() =>

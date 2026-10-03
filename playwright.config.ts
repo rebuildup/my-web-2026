@@ -71,13 +71,15 @@ export default defineConfig({
 		},
 	],
 	// `prod-*.spec.ts` (production-only specs targeting the canonical
-	// production origin `https://rebuildup.dev`) only run via
-	// `pnpm run e2e:prod` or the GH Actions `production smoke`
-	// workflow — the operator triggers it manually after
-	// `pnpm run deploy:production`. When the local preview webServer
-	// is up, ignore the `prod-*.spec.ts` glob so the regular
-	// `pnpm run e2e` (CI on push, local dev) does not DNS-fail
-	// against a domain that may not be deployed yet.
+	// production origin `https://rebuildup.dev`) only run via the
+	// dedicated production scripts — `pnpm run e2e:prod` (Smoke #2),
+	// `pnpm run e2e:prod:transition` (Smoke #1), or
+	// `pnpm run e2e:prod:portfolio` (post-publication G15) — or the
+	// GH Actions `production smoke` workflow, which the operator
+	// triggers manually after `pnpm run deploy:production`. When the
+	// local preview webServer is up, ignore the `prod-*.spec.ts` glob
+	// so the regular `pnpm run e2e` (CI on push, local dev) does not
+	// DNS-fail against a domain that may not be deployed yet.
 	//
 	// `portfolio.spec.ts` likewise targets a local D1 binding: it
 	// seeds draft / unlisted / archived rows into the local D1 and

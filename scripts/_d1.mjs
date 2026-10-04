@@ -30,6 +30,8 @@
  */
 
 import { execFileSync } from 'node:child_process';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import {
 	ACCOUNT_ID,
@@ -43,23 +45,57 @@ const REPO_ROOT = resolve(dirname(new URL(import.meta.url).pathname), '..');
 /** The only targets. There is no `remote`. */
 export const D1_TARGETS = /** @type {const} */ (['local', 'production']);
 
-/** Cloudflare credential needed for a remote operation. Deploy-time only. */
-function cloudflareEnv(env) {
-	// Deliberately narrow: the D1 child gets the Cloudflare credential
-	// and nothing else. Infisical material and Worker runtime secret
-	// values must not reach a D1 subprocess.
+/**
+ * Credential separation (Issue #247, D1 slice).
+ *
+ * Two distinct capabilities, deliberately NOT merged into one
+ * all-powerful token:
+ *
+ *   CLOUDFLARE_API_TOKEN      Worker deploy / Worker API
+ *   CLOUDFLARE_D1_API_TOKEN   D1 only
+ *
+ * The cf CLI requires the env var named `CLOUDFLARE_API_TOKEN`, so the
+ * child's env NAME stays that — but the VALUE handed to a D1 child is
+ * the D1 token. A D1 child never falls back to the Worker deploy
+ * token, and a Worker deploy child never receives the D1 token.
+ *
+ * Permission contract: D1 Read for diagnostics/reads, D1 Write for
+ * production migrations and mutations. The production deploy pipeline
+ * includes migrations, so its final Workers Builds contract needs a
+ * D1 Write credential.
+ *
+ * Values are read from the parent env and never logged.
+ */
+function d1ChildEnv(env) {
+	const token = env.CLOUDFLARE_D1_API_TOKEN;
+	if (typeof token !== 'string' || token.length === 0) {
+		throw new Error(
+			'CLOUDFLARE_D1_API_TOKEN is required for a remote D1 operation. It is a D1-scoped ' +
+				'credential (D1 Read for reads, D1 Write for production migrations) and is ' +
+				'deliberately distinct from the Worker deploy token. Local D1 operations need no ' +
+				'Cloudflare credential at all.',
+		);
+	}
 	return {
 		PATH: env.PATH,
 		HOME: env.HOME,
-		CLOUDFLARE_API_TOKEN: env.CLOUDFLARE_API_TOKEN,
+		// cf requires this name; the value is the D1-scoped token.
+		CLOUDFLARE_API_TOKEN: token,
 	};
 }
 
-function cf(args, { env = process.env, cwd = REPO_ROOT, timeout = 600_000 } = {}) {
+/** Local operations need no Cloudflare credential at all. */
+function localChildEnv(env) {
+	return { PATH: env.PATH, HOME: env.HOME };
+}
+
+function cf(args, { env = process.env, cwd = REPO_ROOT, timeout = 600_000, local = false } = {}) {
 	return execFileSync('pnpm', ['exec', 'cf', ...args], {
 		cwd,
 		encoding: 'utf8',
-		env: cloudflareEnv(env),
+		// A local operation gets NO Cloudflare credential; a remote one
+		// gets the D1-scoped token only.
+		env: local ? localChildEnv(env) : d1ChildEnv(env),
 		timeout,
 		maxBuffer: 64 * 1024 * 1024,
 	});
@@ -165,6 +201,9 @@ export function assertProductionWriteAllowed({
 	}
 }
 
+// Local cf invocations still go through `cf`, which may probe auth;
+// they are given a credential-free env so a local operation cannot
+// silently depend on a production token.
 function localArgs(databaseId) {
 	return ['d1', 'raw', databaseId, '--local', '--persist-to', join(REPO_ROOT, LOCAL_D1_STATE_DIR)];
 }
@@ -193,7 +232,7 @@ export function queryRows(
 		}
 	}
 	const args = resolved === 'local' ? localArgs(databaseId) : remoteArgs(databaseId);
-	const stdout = cf([...args, '--sql', sql], { env });
+	const stdout = cf([...args, '--sql', sql], { env, local: resolved === 'local' });
 	return normaliseRows(parseCfJson(stdout));
 }
 
@@ -239,7 +278,7 @@ export function applyMigrations({
 
 	const args = ['d1', 'migrations', 'apply', databaseId, '--dir', MIGRATIONS_DIR];
 	if (local) args.push('--local', '--persist-to', join(REPO_ROOT, LOCAL_D1_STATE_DIR));
-	return { applied: true, output: parseCfJson(cf(args, { env })) };
+	return { applied: true, output: parseCfJson(cf(args, { env, local })) };
 }
 
 /** List migrations without applying. */
@@ -252,7 +291,7 @@ export function listMigrations({
 	const args = ['d1', 'migrations', 'list', databaseId];
 	if (resolved === 'local')
 		args.push('--local', '--persist-to', join(REPO_ROOT, LOCAL_D1_STATE_DIR));
-	return parseCfJson(cf(args, { env }));
+	return parseCfJson(cf(args, { env, local: resolved === 'local' }));
 }
 
 /**
@@ -284,6 +323,69 @@ export function executeBatch(
 					`@${batchFile}`,
 				]
 			: ['d1', 'query', databaseId, '--batch', `@${batchFile}`];
-	const stdout = cf(args, { env });
+	const stdout = cf(args, { env, local: resolved === 'local' });
 	return normaliseRows(parseCfJson(stdout));
+}
+
+/**
+ * Convert a `.sql` file into the batch payload `cf` accepts.
+ *
+ * `wrangler d1 execute --file x.sql` has no `cf` equivalent; `cf` takes
+ * `--batch @file.json` where the file is a JSON array of
+ * `{ sql, params }` objects. Converting here keeps every caller on
+ * file/batch input, so a large statement bundle never lands in argv.
+ *
+ * Statement splitting is deliberately simple and explicit rather than a
+ * clever parser: strip comments, split on `;` at statement level, and
+ * drop empties. The bundles this repository generates are machine
+ * written, not hand-maintained prose SQL.
+ */
+export function sqlToBatchStatements(sql) {
+	const withoutComments = String(sql)
+		.replace(/^\s*--.*$/gm, '')
+		.replace(/\/\*[\s\S]*?\*\//g, '');
+	return withoutComments
+		.split(';')
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0)
+		.map((s) => ({ sql: s, params: [] }));
+}
+
+/**
+ * Run a `.sql` file through the driver, converting it to a cf batch
+ * payload. The temporary batch file is always removed.
+ *
+ * This is the replacement for `wrangler d1 execute --file x.sql`.
+ * Production writes still pass through `assertProductionWriteAllowed`.
+ */
+export function executeSqlFile(sqlPath, options = {}) {
+	const statements = sqlToBatchStatements(readFileSync(sqlPath, 'utf8'));
+	const batchPath = `${sqlPath}.cf-batch.json`;
+	writeFileSync(batchPath, `${JSON.stringify(statements, null, 2)}\n`, { mode: 0o600 });
+	try {
+		return executeBatch(batchPath, options);
+	} finally {
+		rmSync(batchPath, { force: true });
+	}
+}
+
+/**
+ * Run a single statement through the driver.
+ *
+ * Wraps the statement as a one-element batch so statement execution
+ * shares ONE path with batch execution — and therefore shares the same
+ * production write gate. A caller cannot reach a production write
+ * through a single statement that a batch would refuse.
+ */
+export function runStatement(sql, options = {}) {
+	const tempDir = mkdtempSync(join(tmpdir(), 'my-web-2026-d1-'));
+	const batchPath = join(tempDir, 'statement.json');
+	try {
+		writeFileSync(batchPath, `${JSON.stringify([{ sql, params: [] }], null, 2)}\n`, {
+			mode: 0o600,
+		});
+		return executeBatch(batchPath, options);
+	} finally {
+		rmSync(tempDir, { recursive: true, force: true });
+	}
 }

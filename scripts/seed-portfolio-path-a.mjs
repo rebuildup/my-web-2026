@@ -538,16 +538,17 @@ function main() {
 		return;
 	}
 
-	// --apply: write SQL to a tmp file and execute via wrangler d1.
+	// --apply: write SQL to a tmp file and execute via the shared cf
+	// D1 driver (Issue #247).
 	const tmp = mkdtempSync(join(tmpdir(), 'seed-path-a-'));
 	const sqlPath = join(tmp, 'seed.sql');
 	writeFileSync(sqlPath, allSql.join('\n'), { mode: 0o600 });
 	try {
-		const d1Args = ['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', sqlPath];
-		const d1 = spawnSync('pnpm', d1Args, { cwd: root, stdio: 'inherit', env: process.env });
-		if (d1.status !== 0) {
-			console.error(`[seed-path-a] wrangler d1 exited with status ${d1.status}`);
-			process.exit(d1.status ?? 1);
+		try {
+			executeSqlFile(sqlPath, { target: 'local' });
+		} catch (error) {
+			console.error(`[seed-path-a] D1 write failed: ${error.message}`);
+			process.exit(1);
 		}
 	} finally {
 		rmSync(tmp, { recursive: true, force: true });
@@ -602,14 +603,11 @@ function main() {
 		const publishSqlPath = join(tmp2, 'publish.sql');
 		writeFileSync(publishSqlPath, publishSql, { mode: 0o600 });
 		try {
-			const pub = spawnSync(
-				'pnpm',
-				['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', publishSqlPath],
-				{ cwd: root, stdio: 'inherit', env: process.env },
-			);
-			if (pub.status !== 0) {
-				console.error(`[seed-path-a] publish UPDATE exited with status ${pub.status}`);
-				process.exit(pub.status ?? 1);
+			try {
+				executeSqlFile(publishSqlPath, { target: 'local' });
+			} catch (error) {
+				console.error(`[seed-path-a] publish UPDATE failed: ${error.message}`);
+				process.exit(1);
 			}
 		} finally {
 			rmSync(tmp2, { recursive: true, force: true });

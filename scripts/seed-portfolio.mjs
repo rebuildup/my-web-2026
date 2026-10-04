@@ -101,19 +101,9 @@ const sqlPath = join(tmp, 'seed.sql');
 writeFileSync(sqlPath, fullSql, { mode: 0o600 });
 
 try {
-	const result = spawnSync(
-		'pnpm',
-		['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', sqlPath],
-		{
-			cwd: root,
-			stdio: 'inherit',
-			env: process.env,
-		},
-	);
-	if (result.status !== 0) {
-		console.error('[seed-portfolio] wrangler d1 execute failed');
-		process.exit(result.status ?? 1);
-	}
+	// Issue #247: local D1 via the shared cf driver. No Cloudflare
+	// credential is involved for a local write.
+	executeSqlFile(sqlPath, { target: 'local' });
 	console.log(`[seed-portfolio] inserted ${slugs.length} project(s) (idempotent)`);
 } finally {
 	rmSync(tmp, { recursive: true, force: true });

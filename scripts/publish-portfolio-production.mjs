@@ -66,6 +66,7 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
+import { executeSqlFile, queryRows } from './_d1.mjs';
 import { createHash } from 'node:crypto';
 import {
 	createReadStream,
@@ -627,7 +628,9 @@ export async function verifyAssetHash(assetRelativePath, expectedSha256) {
 // Wrangler spawn wrappers (IO). Injected for tests.
 // ---------------------------------------------------------------------------
 
-/** Default wrangler spawner. Uses `wrangler d1 execute` / `wrangler r2
+/** Default Wrangler spawner. D1 no longer uses this — it goes through the
+ * shared cf driver. R2 still does (`wrangler r2 object put/get`) and moves in
+ * the secrets/cleanup slices.
  * object put` via spawnSync so the driver can be invoked from a one-shot
  * terminal command. Returns { stdout, stderr, status }. */
 function defaultWranglerSpawn(args, opts) {
@@ -702,14 +705,21 @@ export function parseD1Rows(stdout) {
 	return first.results;
 }
 
-/** Run a D1 SQL script via wrangler. Returns spawn result. */
-export function buildD1FileArgs(env, sqlPath) {
-	const targetFlag = env === 'prod' ? '--remote' : '--local';
-	return ['d1', 'execute', DB_NAME, targetFlag, '--file', sqlPath, ...productionConfigArgs(env)];
+/**
+ * Issue #247: D1 goes through the shared cf driver.
+ *
+ * `DB_NAME` + a target FLAG is the old addressing; the driver
+ * addresses the database by canonical ID with an explicit
+ * local/production target, and routes production writes through the
+ * lowest-layer execute gate. R2 still goes through Wrangler here and
+ * moves in the secrets/cleanup slices.
+ */
+function d1Target(env) {
+	return env === 'prod' ? 'production' : 'local';
 }
 
-function runD1(env, sqlPathOrStdin, opts = {}) {
-	return defaultWranglerSpawn(buildD1FileArgs(env, sqlPathOrStdin), opts);
+function runD1(env, sqlPath) {
+	executeSqlFile(sqlPath, { target: d1Target(env), execute: true });
 }
 
 /** Upload an R2 object via wrangler. Content-Type is explicit; never use
@@ -757,23 +767,9 @@ function runR2Get(env, key, filePath) {
 	return defaultWranglerSpawn(buildR2GetArgs(env, key, filePath));
 }
 
-/** Read D1 row(s) by SQL via wrangler. */
-export function buildD1SelectArgs(env, sqlText) {
-	const targetFlag = env === 'prod' ? '--remote' : '--local';
-	return [
-		'd1',
-		'execute',
-		DB_NAME,
-		targetFlag,
-		'--command',
-		sqlText,
-		'--json',
-		...productionConfigArgs(env),
-	];
-}
-
 function runD1Select(env, sqlText) {
-	return defaultWranglerSpawn(buildD1SelectArgs(env, sqlText));
+	// A read: no execute gate, result shape already normalised.
+	return { parsed: queryRows(sqlText, { target: d1Target(env) }) };
 }
 
 function publicMediaUrl(key) {

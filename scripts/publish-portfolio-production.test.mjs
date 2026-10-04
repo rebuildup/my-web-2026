@@ -27,8 +27,6 @@ import {
 	ALLOWED_CANDIDATE_IDS,
 	ENTRIES,
 	RELEASE_VERSION,
-	buildD1FileArgs,
-	buildD1SelectArgs,
 	buildLinkInserts,
 	buildMediaInsert,
 	buildProjectUpsert,
@@ -596,9 +594,11 @@ function buildExpectedVerificationRows(manifest, visibility = 'draft') {
 
 describe('production config coupling', () => {
 	it('passes the canonical production config to every prod Wrangler surface', () => {
+		// Issue #247: D1 no longer builds a Wrangler argv — it goes
+		// through the cf driver, which addresses the database by ID and
+		// carries its own production gate. R2 still uses Wrangler and is
+		// covered until the secrets/cleanup slices move it.
 		for (const args of [
-			buildD1FileArgs('prod', '/tmp/input.sql'),
-			buildD1SelectArgs('prod', 'SELECT 1;'),
 			buildR2PutArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg', 'image/jpeg'),
 			buildR2GetArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg'),
 		]) {

@@ -191,6 +191,7 @@
  */
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
+import { queryRows } from './_d1.mjs';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
@@ -669,24 +670,27 @@ function spawnWranglerList({ env, spawnFn = spawn }) {
  * leak into the D1 subprocess environment (PR #141 review fix,
  * Issue #139 canonical incident follow-up).
  */
+/**
+ * Issue #247: the D1 side of this driver is cf-native.
+ *
+ * This file is in a deliberate, temporary mixed state. Three
+ * credential boundaries, kept explicit and never collapsed:
+ *
+ *   1. Infisical child    — the writer token for Infisical itself
+ *   2. Cloudflare D1 child — `CLOUDFLARE_D1_API_TOKEN` only, scoped to
+ *                            D1; NOT the Worker deploy token
+ *   3. Worker-secret child — still Wrangler, replaced in the next
+ *                            secrets slice
+ *
+ * The D1 child gets the D1-scoped credential, so Infisical material
+ * and the Worker deploy token stay out of it.
+ */
 function execD1Sql({ target, command, json = true, env }) {
-	const args = ['exec', 'wrangler', 'd1', 'execute'];
-	if (target === 'remote') {
-		args.push(D1_DATABASE_NAME, '--remote', '-c', WRANGLER_PRODUCTION_CONFIG);
-	} else {
-		args.push('DB', '--local');
-	}
-	args.push('--command', command);
-	if (json) args.push('--json');
-	const result = execFileSync('pnpm', args, {
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'inherit'],
-		timeout: SUBPROCESS_TIMEOUT_MS,
-		maxBuffer: 1024 * 1024,
-		env: env ?? process.env,
-	});
-	if (!json) return result;
-	return JSON.parse(result);
+	// The caller-facing vocabulary is preserved; only this adapter maps
+	// it onto the driver's local/production enum.
+	const cfTarget = target === 'remote' ? 'production' : 'local';
+	// Reads do not need the write gate; a statement here is a SELECT.
+	return queryRows(command, { target: cfTarget, env: env ?? process.env });
 }
 
 /* ─── HTTPS (Infisical read-back) ──────────────────────────────────────── */

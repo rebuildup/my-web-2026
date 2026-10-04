@@ -126,6 +126,7 @@
  *   at startup and exits with a clear error otherwise.
  */
 import { spawnSync } from 'node:child_process';
+import { executeSqlFile, queryRows } from './_d1.mjs';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
@@ -554,53 +555,16 @@ function parseArg(set, name) {
 	return null;
 }
 
-/** Query D1 via wrangler; return parsed JSON rows.
+/**
+ * Query D1 (Issue #247).
  *
- * wrangler --json emits a single JSON document of the shape
- *   [ { "results": [ {row}, ... ], "success": true, "meta": {...} } ]
- * Older wrangler versions emitted the rows as a bare array; we accept
- * both shapes so the migration works across versions. CodeRabbit
- * cycle 4: the previous substring extraction (`text.indexOf('[{')`)
- * was brittle and missed the envelope's `meta` / `success` fields.
+ * Wrangler is gone: the database is addressed by ID through the shared
+ * cf driver, which normalises both the local `raw` and remote `query`
+ * result shapes into object rows. The multi-version envelope parsing
+ * this used to do by hand is no longer needed at the call site.
  */
 function d1Query(sql) {
-	const cmdArgs = [
-		'exec',
-		'wrangler',
-		'd1',
-		'execute',
-		'DB',
-		target === 'local' ? '--local' : '--remote',
-		'--json',
-		'--command',
-		sql,
-	];
-	if (target === 'remote') {
-		cmdArgs.splice(cmdArgs.indexOf('DB'), 2, 'my-web-2026', '-c', 'wrangler.production.jsonc');
-	}
-	const result = spawnSync('pnpm', cmdArgs, { cwd: root, encoding: 'utf8' });
-	if (result.status !== 0) {
-		console.error(`[migrate] wrangler exited with status ${result.status}`);
-		console.error(result.stderr);
-		process.exit(result.status ?? 1);
-	}
-	const text = result.stdout.trim();
-	let doc;
-	try {
-		doc = JSON.parse(text);
-	} catch (err) {
-		console.error('[migrate] could not parse wrangler JSON output:');
-		console.error(text.slice(0, 500));
-		throw err;
-	}
-	if (Array.isArray(doc)) {
-		if (doc.length === 0) return [];
-		const first = doc[0];
-		if (first && Array.isArray(first.results)) return first.results;
-		// older format: array of rows directly
-		return doc;
-	}
-	return [];
+	return queryRows(sql, { target: target === 'remote' ? 'production' : 'local' });
 }
 
 function main() {
@@ -741,10 +705,10 @@ function main() {
 			);
 			console.error('Refusing to apply. Inspect with:');
 			console.error(
-				'  pnpm exec wrangler d1 execute DB --local --command "SELECT id, slug FROM portfolio_project"',
+				'  pnpm exec node scripts/d1.mjs query --target=local --sql "SELECT id, slug FROM portfolio_project"',
 			);
 			console.error(
-				'  pnpm exec wrangler d1 execute DB --local --command "SELECT id FROM portfolio_link WHERE id NOT LIKE \'legacy_link_%\'"',
+				'  pnpm exec node scripts/d1.mjs query --target=local --sql "SELECT id FROM portfolio_link WHERE id NOT LIKE \'legacy_link_%\'"',
 			);
 			for (const c of collisions.slice(0, 10)) console.error(`  - ${JSON.stringify(c)}`);
 			process.exit(3);
@@ -804,23 +768,18 @@ function main() {
 	writeFileSync(sqlPath, fullSql, { mode: 0o600 });
 
 	try {
-		const cmdArgs = [
-			'exec',
-			'wrangler',
-			'd1',
-			'execute',
-			'DB',
-			target === 'local' ? '--local' : '--remote',
-			'--file',
-			sqlPath,
-		];
-		if (target === 'remote') {
-			cmdArgs.splice(cmdArgs.indexOf('DB'), 2, 'my-web-2026', '-c', 'wrangler.production.jsonc');
-		}
-		const result = spawnSync('pnpm', cmdArgs, { cwd: root, stdio: 'inherit', env: process.env });
-		if (result.status !== 0) {
-			console.error(`[migrate] wrangler exited with status ${result.status}`);
-			process.exit(result.status ?? 1);
+		// Issue #247: D1 via the shared cf driver — addressed by canonical
+		// database ID, explicit local/production target, and a production
+		// write only when `execute` is set. The large SQL bundle stays a
+		// file, converted to a cf batch payload rather than argv.
+		try {
+			executeSqlFile(sqlPath, {
+				target: target === 'remote' ? 'production' : 'local',
+				execute: target === 'remote',
+			});
+		} catch (error) {
+			console.error(`[migrate] D1 apply failed: ${error.message}`);
+			process.exit(1);
 		}
 		console.error(
 			`[migrate] applied ${plan.length} project(s) + ${sqlStatements.length} SQL statements to ${target} D1`,

@@ -569,10 +569,27 @@ export function validateManifest(manifest) {
 }
 
 /** Load + validate the manifest from disk. Throws on validation failure. */
+/**
+ * Why the default manifest path is missing, and what to do about it.
+ *
+ * The default tracks `package.json#version`, which is bumped when a
+ * release line starts — before that version publishes a portfolio. A
+ * missing default is therefore a normal state, not a mistake.
+ */
+function defaultPathHint() {
+	return `\nRelease ${RELEASE_VERSION} has no portfolio assets yet: the version is set at the start of a release line, and assets are added when that version publishes. Pass --manifest=<path> to publish an earlier release's assets, or create release-assets/portfolio/${RELEASE_VERSION}/.`;
+}
+
 export function loadManifest(manifestPath) {
 	const fullPath = resolve(repoRoot, manifestPath);
 	if (!existsSync(fullPath)) {
-		throw new Error(`manifest not found at ${fullPath}`);
+		// The default path tracks `package.json#version`, which is bumped
+		// when a release line starts — before that version publishes a
+		// portfolio. So a missing default is a normal state, not a
+		// mistake, and the message says how to proceed rather than just
+		// reporting a missing file.
+		const hint = manifestPath === DEFAULT_MANIFEST_PATH ? defaultPathHint() : '';
+		throw new Error(`manifest not found at ${fullPath}${hint}`);
 	}
 	const raw = JSON.parse(readFileSync(fullPath, 'utf8'));
 	const errors = validateManifest(raw);

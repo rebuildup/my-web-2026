@@ -29,6 +29,7 @@
 		"src/**/*.tsx",
 		"test/integration/**/*.ts",
 		"worker-configuration.d.ts",
+		".cloudflare/types/index.d.ts",
 		"styled-system/**/*.ts",
 		"vite.config.ts",
 		"vitest.config.ts",

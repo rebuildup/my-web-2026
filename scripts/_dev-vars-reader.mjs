@@ -40,6 +40,7 @@
  *   - inline `# comment` is NOT supported (`.dev.vars` does not
  *     currently use it; add when needed)
  */
+import { bindings } from 'cf/config';
 
 import { existsSync, readFileSync } from 'node:fs';
 
@@ -108,7 +109,12 @@ export function buildLocalApiModeConfigOverride(workerConfig, devVars) {
 	if (!devVars || typeof devVars.LOCAL_API_MODE !== 'string') return undefined;
 	const value = devVars.LOCAL_API_MODE;
 	if (value.length === 0) return undefined;
+	// Issue #247: the Cloudflare Vite Plugin 2 config exposes plain
+	// bindings under `env` (there is no `vars` field any more), and
+	// `config` is a customizer that RETURNS a partial config rather
+	// than mutating the one it is handed. Both are real API changes
+	// from plugin 1.x, not renames.
 	return {
-		vars: { ...(workerConfig?.vars ?? {}), LOCAL_API_MODE: value },
+		env: { ...(workerConfig?.env ?? {}), LOCAL_API_MODE: bindings.text(value) },
 	};
 }

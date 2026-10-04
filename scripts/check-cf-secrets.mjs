@@ -78,7 +78,7 @@ const ALLOWED_INFISICAL_JSON_KEYS = new Set(['workspaceId', 'defaultEnvironment'
 const REQUIRED_INFISICAL_JSON_KEYS = ['workspaceId'];
 
 function printHelp() {
-	console.log(`Usage: check-cf-secrets.mjs [--execute] [--dry-run] [--environment=<prod|dev>] [--config=<path>] [--worker-contract=<transition|final>] [--require-live-worker]
+	console.log(`Usage: check-cf-secrets.mjs [--execute] [--dry-run] [--environment=<prod|dev>] [--config=<path>] [--worker-contract=<auto|transition|final>] [--require-live-worker]
 
 Verify the Infisical / Cloudflare secret name contract (ADR-0015 §7).
 
@@ -145,9 +145,9 @@ function parseArgs(argv) {
 			`--environment must be 'prod' or 'dev' (got: ${JSON.stringify(args.environment)})`,
 		);
 	}
-	if (args.workerContract !== 'transition' && args.workerContract !== 'final') {
+	if (!['auto', 'transition', 'final'].includes(args.workerContract)) {
 		throw new Error(
-			`--worker-contract must be 'transition' or 'final' (got: ${JSON.stringify(args.workerContract)})`,
+			`--worker-contract must be 'auto', 'transition' or 'final' (got: ${JSON.stringify(args.workerContract)})`,
 		);
 	}
 	return args;
@@ -398,6 +398,33 @@ function compareNameLists(actual, expected, label) {
 	return { label, missing, extra, actual: [...actualSet].sort(), expected };
 }
 
+/**
+ * Issue #243 — pick the live-Worker contract from what is actually bound.
+ *
+ * The migration window had two valid live-Worker states: `transition`
+ * (legacy `BETTER_AUTH_SECRET` still bound, GA not yet) before the release deploy
+ * deploy, and `final` (versioned + GA, legacy removed) after
+ * `--delete-legacy-only`. Callers used to hardcode `transition`, which
+ * became permanently wrong the moment the transition window closed: every
+ * later deploy failed with "missing: BETTER_AUTH_SECRET / extra:
+ * GOOGLE_ANALYTICS_MEASUREMENT_ID".
+ *
+ * `auto` compares the live set against both known contracts and selects
+ * the one it matches. A set matching neither is reported as a mismatch
+ * against BOTH, so a genuinely drifted Worker is not silently excused.
+ *
+ * @returns {'final'|'transition'} the resolved contract
+ */
+export function resolveWorkerContract(workerNames) {
+	const matches = (list) => {
+		const actual = new Set(workerNames);
+		return list.length === actual.size && list.every((n) => actual.has(n));
+	};
+	if (matches(PHASE_3_REQUIRED)) return 'final';
+	if (matches(PRE_DEPLOY_TRANSITION_WORKER_SECRETS)) return 'transition';
+	return 'final';
+}
+
 function printCheckResult(result, ok) {
 	console.log(`[${ok ? 'OK' : 'FAIL'}] ${result.label}`);
 	if (result.missing.length > 0) {
@@ -446,6 +473,8 @@ async function main() {
 		if (tier3Eligible || args.requireLiveWorker) {
 			const expectedWorker =
 				args.workerContract === 'final' ? PHASE_3_REQUIRED : PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
+			// `auto` resolves from the live Worker, which the dry-run does
+			// not read; the execute path is where it is decided.
 			console.log(
 				`[dry-run] would verify: actual Cloudflare Worker secret names via \`wrangler secret list\` against ${args.workerContract} contract (${expectedWorker.join(', ')})${tier3Eligible ? ' (explicit CLOUDFLARE_API_TOKEN is set)' : ' (required; Wrangler resolves Workers Builds authentication at execution)'}`,
 			);
@@ -536,12 +565,19 @@ async function main() {
 			required: args.requireLiveWorker,
 		});
 		if (workerNames !== null) {
+			const requested = args.workerContract;
+			const effective = requested === 'auto' ? resolveWorkerContract(workerNames) : requested;
+			if (requested === 'auto') {
+				console.log(
+					`[check-cf-secrets] live Worker matches the "${effective}" contract (auto-detected)`,
+				);
+			}
 			const expectedWorkerNames =
-				args.workerContract === 'final' ? PHASE_3_REQUIRED : PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
+				effective === 'final' ? PHASE_3_REQUIRED : PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
 			const workerCheck = compareNameLists(
 				workerNames,
 				expectedWorkerNames,
-				`Cloudflare Worker (live) ${args.workerContract} contract`,
+				`Cloudflare Worker (live) ${effective} contract`,
 			);
 			const workerOk = workerCheck.missing.length === 0 && workerCheck.extra.length === 0;
 			printCheckResult(workerCheck, workerOk);

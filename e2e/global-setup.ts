@@ -31,11 +31,12 @@
 import { execFileSync } from 'node:child_process';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { applyMigrations } from '../scripts/_d1.mjs';
 
 const here = resolve(fileURLToPath(import.meta.url));
 // `import.meta.url` for `e2e/global-setup.ts` is `<repoRoot>/e2e/global-setup.ts`.
-// Walk up one level to reach the repository root that owns
-// `wrangler.jsonc` and `scripts/seed-portfolio.mjs`.
+// Walk up to reach the repository root that owns
+// `scripts/seed-portfolio.mjs` and the local D1 state directory.
 const repoRoot = resolve(here, '..', '..');
 
 function run(command: string, args: readonly string[]): void {
@@ -48,9 +49,13 @@ function run(command: string, args: readonly string[]): void {
 
 export default async function globalSetup(): Promise<void> {
 	// 1. Apply migrations — creates portfolio_project / portfolio_link /
-	//    portfolio_media on a fresh `.wrangler/state` and is a no-op
+	//    portfolio_media on a fresh local D1 state and is a no-op
 	//    thereafter (D1 tracks applied migrations).
-	run('pnpm', ['exec', 'wrangler', 'd1', 'migrations', 'apply', 'DB', '--local']);
+	//
+	//    Through `_d1.mjs`, so this uses the same canonical local
+	//    persistence path as the Vite dev server and every other cf local
+	//    D1 command. No script may invent its own --persist-to.
+	applyMigrations({ target: 'local', execute: true });
 
 	// 2. Skeleton seed — inserts `my-web-2026` + other canonical
 	//    public+published rows so the list / detail routes render

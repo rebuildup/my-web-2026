@@ -3,7 +3,7 @@
  * Completeness verifier — my-web-2026 (current) portfolio D1.
  *
  * Usage:
- *   node scripts/verify-portfolio.mjs [--target=local|remote]
+ *   node scripts/verify-portfolio.mjs [--target=local|production]
  *
  * What it asserts (Issue #78 acceptance contract — public
  * portfolio surface MUST be presentable to a third party after the
@@ -37,21 +37,25 @@
  *   * exit 1 — at least one assertion failed, prints every
  *     offending row with the rule that broke.
  *
- * Reads D1 via the same `wrangler d1 execute ... --json --command`
- * surface that the seed scripts use, so the local / remote D1
- * surface is identical to the migration apply path.
+ * Reads D1 through the repository's shared `_d1.mjs` driver, the same
+ * surface the seed scripts and the migration path use, so the local and
+ * production read surfaces are identical and neither can bypass the
+ * canonical identity check.
  */
-import { spawnSync } from 'node:child_process';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { queryRows } from './_d1.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 
 const args = new Set(process.argv.slice(2));
 const target = parseArg(args, '--target') ?? 'local';
-if (target !== 'local' && target !== 'remote') {
-	console.error(`--target must be 'local' or 'remote', got: ${target}`);
+// 'production', never 'remote': the only remote database is production,
+// so naming it states the scope instead of hiding it behind a transport
+// detail. This matches `_d1.mjs#resolveTarget`.
+if (target !== 'local' && target !== 'production') {
+	console.error(`--target must be 'local' or 'production', got: ${target}`);
 	process.exit(2);
 }
 
@@ -74,48 +78,18 @@ function parseArg(set, name) {
 	return null;
 }
 
-/** Query D1 via wrangler; return parsed JSON rows. */
+/**
+ * Query D1 and return normalised object rows.
+ *
+ * Issue #247: through `_d1.mjs`, so this shares the canonical database
+ * ID, the canonical local persistence path, and — for a production
+ * read — the D1-scoped credential. The previous hand-rolled parser
+ * shelled out to `wrangler d1 execute --remote`, which bypassed the
+ * repository's read identity check entirely and used whichever token
+ * the ambient environment happened to carry.
+ */
 function d1Query(sql) {
-	const cmdArgs = [
-		'exec',
-		'wrangler',
-		'd1',
-		'execute',
-		'DB',
-		target === 'local' ? '--local' : '--remote',
-		'--json',
-		'--command',
-		sql,
-	];
-	if (target === 'remote') {
-		cmdArgs.splice(cmdArgs.indexOf('DB'), 2, 'my-web-2026', '-c', 'wrangler.production.jsonc');
-	}
-	const result = spawnSync('pnpm', cmdArgs, { cwd: root, encoding: 'utf8' });
-	if (result.status !== 0) {
-		console.error(`[verify] wrangler exited with status ${result.status}`);
-		console.error(result.stderr);
-		process.exit(result.status ?? 1);
-	}
-	// wrangler --json output is a single JSON document:
-	//   [ { "results": [ {row}, ... ], "success": true, "meta": {...} } ]
-	// Parse it and return the `results` array. If the document is
-	// an array of rows directly (older wrangler versions), return it.
-	let doc;
-	try {
-		doc = JSON.parse(result.stdout.trim());
-	} catch (err) {
-		console.error('[verify] could not parse wrangler JSON output');
-		console.error(result.stdout.slice(0, 500));
-		throw err;
-	}
-	if (Array.isArray(doc)) {
-		if (doc.length === 0) return [];
-		const first = doc[0];
-		if (first && Array.isArray(first.results)) return first.results;
-		// older format: array of rows directly
-		return doc;
-	}
-	return [];
+	return queryRows(sql, { target });
 }
 
 const checks = [];

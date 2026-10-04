@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { execFileSync } from 'node:child_process';
+import { runStatement } from '../scripts/_d1.mjs';
 
 /**
  * Portfolio E2E surface (Issue #77).
@@ -32,11 +32,17 @@ import { execFileSync } from 'node:child_process';
  * that no public slug matches an invisible slug on a clean DB.
  */
 
-/** Run a SQL statement against the local D1 binding via wrangler. */
+/**
+ * Run a SQL statement against the local D1 binding.
+ *
+ * Through `_d1.mjs#runStatement`, so the statement shares ONE code path
+ * and ONE production write gate with batch execution — a test cannot
+ * reach a write that a batch would refuse. This also exercises
+ * `runStatement` for real: it had a latent missing `mkdtempSync` import
+ * that no test could catch, because no test called it.
+ */
 function d1Local(sql: string): void {
-	execFileSync('pnpm', ['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--command', sql], {
-		stdio: 'inherit',
-	});
+	runStatement(sql, { target: 'local' });
 }
 
 /**

@@ -327,7 +327,7 @@ function buildInnerArgs({ infisicalCli, workspaceId, environment, domain, config
 	return argv;
 }
 
-function buildPreflightArgs({ environment, configPath, workerContract = 'transition' }) {
+function buildPreflightArgs({ environment, configPath, workerContract = 'auto' }) {
 	return [
 		PREFLIGHT_SCRIPT,
 		'--execute',
@@ -418,7 +418,7 @@ async function main() {
 			buildPreflightArgs({
 				environment: args.environment,
 				configPath: args.config,
-				workerContract: 'transition',
+				workerContract: 'auto',
 			}),
 			{ stdio: 'inherit', env: process.env },
 		);

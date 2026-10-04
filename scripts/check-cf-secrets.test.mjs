@@ -45,6 +45,26 @@ function loadBuildWranglerDiagnosticEnv() {
 }
 
 /**
+ * Issue #243 — load `resolveWorkerContract` from source, matching this
+ * file's existing extraction convention.
+ */
+function loadResolveWorkerContract() {
+	const source = readFileSync(SCRIPT, 'utf8');
+	const match = source.match(/export function\s+resolveWorkerContract[\s\S]*?\n\}/m);
+	if (!match) throw new Error('Could not extract resolveWorkerContract');
+	const body = match[0].replace('export ', '');
+	const factory = new Function(
+		'PHASE_3_REQUIRED',
+		'PRE_DEPLOY_TRANSITION_WORKER_SECRETS',
+		`${body}\nreturn resolveWorkerContract;`,
+	);
+	return factory(
+		['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'],
+		['BETTER_AUTH_SECRETS', 'BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'],
+	);
+}
+
+/**
  * Run the check-cf-secrets script in an isolated `<repo>/scripts/...`
  * layout. The script reads from REPO_ROOT (parent of scripts/) so we
  * mirror that layout. Tests can supply a custom wrangler config via
@@ -175,7 +195,7 @@ describe('check-cf-secrets.mjs', () => {
 				wranglerContent: PHASE_3_WRANGLER,
 			});
 			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /--worker-contract must be 'transition' or 'final'/);
+			assert.match(result.stderr, /--worker-contract must be 'auto', 'transition' or 'final'/);
 		});
 
 		it('rejects --environment with non-{prod,dev} value', () => {
@@ -530,3 +550,48 @@ describe('check-cf-secrets.mjs', () => {
 
 // Suppress unused imports (pathToFileURL kept for future ESM-direct import tests).
 void pathToFileURL;
+
+/* -- Issue #243: live-Worker contract auto-detection --------------------- */
+
+describe('resolveWorkerContract (Issue #243)', () => {
+	const resolveWorkerContract = loadResolveWorkerContract();
+	const FINAL = [
+		'BETTER_AUTH_SECRETS',
+		'MY_WEB_2026_CONSUMER_API_KEY',
+		'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+	];
+	const TRANSITION = ['BETTER_AUTH_SECRETS', 'BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'];
+
+	it('picks `final` for the post-transition Worker (the real production set)', () => {
+		// The live set after the release deploy + --delete-legacy-only.
+		assert.equal(
+			resolveWorkerContract([
+				'BETTER_AUTH_SECRETS',
+				'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+				'MY_WEB_2026_CONSUMER_API_KEY',
+			]),
+			'final',
+		);
+	});
+
+	it('picks `transition` for the migration-window Worker', () => {
+		assert.equal(resolveWorkerContract(TRANSITION), 'transition');
+	});
+
+	it('is order-insensitive', () => {
+		assert.equal(resolveWorkerContract([...FINAL].reverse()), 'final');
+		assert.equal(resolveWorkerContract([...TRANSITION].reverse()), 'transition');
+	});
+
+	it('does not excuse a drifted Worker (it still mismatches its chosen contract)', () => {
+		// Neither contract matches, so `final` is chosen and the existing
+		// missing/extra check reports the drift. The point is that a
+		// drifted set is never silently treated as healthy.
+		const drifted = ['BETTER_AUTH_SECRETS', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'];
+		const chosen = resolveWorkerContract(drifted);
+		const expected = chosen === 'final' ? FINAL : TRANSITION;
+		const actual = new Set(drifted);
+		assert.notEqual(expected.length, actual.size);
+		assert.ok(expected.some((n) => !actual.has(n)));
+	});
+});

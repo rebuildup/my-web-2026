@@ -81,7 +81,17 @@ names are translated, not copied.
 
 ## 4. Incident-derived acceptance
 
-Each acceptance traces to a 0.5.0 release-window failure.
+Each acceptance traces to an implicit assumption that the release
+exposed. These are **not** all Wrangler faults: #233 (a Bun version the
+build image shipped that could not read the Tool lockfile), #238 (a
+hydration race in the E2E) and #240 (a bare `require()` in an ESM driver
+that unit tests could not reach) are toolchain and test-harness
+defects that Wrangler neither caused nor could have prevented. What they
+share is being assumptions the pipeline never asserted — which is why
+they stayed invisible until a production build ran them.
+
+The migration must therefore be judged on removing that class of
+assumption, not on deleting a binary.
 
 | Issue | Incident | Acceptance |
 | --- | --- | --- |

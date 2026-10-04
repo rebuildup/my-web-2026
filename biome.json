@@ -6,6 +6,7 @@
 		"ignore": [
 			"dist",
 			"dist-cloudflare",
+			".cloudflare",
 			"styled-system",
 			"node_modules",
 			".wrangler",

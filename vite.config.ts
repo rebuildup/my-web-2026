@@ -3,7 +3,6 @@ import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
-import { buildLocalApiModeConfigOverride, readDevVars } from './scripts/_dev-vars-reader.mjs';
 
 /**
  * Vite configuration for my-web-2026.
@@ -119,10 +118,18 @@ export default defineConfig({
 		// `.dev.vars` is absent or carries no `LOCAL_API_MODE`, the
 		// callback returns `undefined` and the production boundary
 		// runs unchanged.
+		// Issue #247: `LOCAL_API_MODE` moved into the mode-aware
+		// `cloudflare.config.ts`. The plugin-2 `config` customizer is
+		// mode-blind, so keeping the injection here leaked the mock gate
+		// into a production build.
 		cloudflare({
 			viteEnvironment: { name: 'ssr' },
-			config: (workerConfig) =>
-				buildLocalApiModeConfigOverride(workerConfig, readDevVars(resolve(__dirname, '.dev.vars'))),
+			// Issue #247: point the dev server's local D1 persistence at
+			// the same directory `cf d1 --local --persist-to` writes, so
+			// rows are visible in BOTH directions between the CLI and the
+			// running Worker. Without this, `cf d1 ... --local` and the
+			// Vite dev server each keep a private store and disagree.
+			persistState: { path: resolve(__dirname, '.tmp/d1state') },
 		}),
 		tanstackStart(),
 		react(),

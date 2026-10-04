@@ -18,6 +18,7 @@ dist-cloudflare/
 
 # Wrangler local state
 .wrangler/
+.cloudflare/
 
 # Panda CSS generated package (rebuilt via `pnpm prepare`)
 styled-system/

@@ -6,7 +6,7 @@
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
 	"license": "MIT",
 	"engines": {
-		"node": ">=20.18.0"
+		"node": ">=22.18.0"
 	},
 	"packageManager": "pnpm@12.3.4",
 	"scripts": {
@@ -79,7 +79,7 @@
 	},
 	"devDependencies": {
 		"@biomejs/biome": "^1.9.4",
-		"@cloudflare/vite-plugin": "^1.0.0",
+		"@cloudflare/vite-plugin": "2.0.0-beta.sha-c82c3efb3",
 		"@cloudflare/vitest-plugin": "^1.0.0",
 		"@infisical/cli": "0.43.137",
 		"@pandacss/dev": "^1.12.1",
@@ -93,6 +93,7 @@
 		"@types/react": "^19.2.0",
 		"@types/react-dom": "^19.2.0",
 		"@vitejs/plugin-react": "^5.0.0",
+		"cf": "1.0.0-beta.12",
 		"cross-env": "^7.0.3",
 		"gifenc": "^1.0.3",
 		"happy-dom": "^15.11.7",

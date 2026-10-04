@@ -270,7 +270,7 @@ function findInfisicalCli() {
  * @param {boolean} params.execute      whether `--execute` is appended (true for prod deploy gate)
  * @returns {string[]}
  */
-function buildInnerArgs({ infisicalCli, workspaceId, environment, configPath, execute }) {
+function buildInnerArgs({ infisicalCli, workspaceId, environment, domain, configPath, execute }) {
 	const argv = [
 		infisicalCli,
 		'run',
@@ -278,6 +278,15 @@ function buildInnerArgs({ infisicalCli, workspaceId, environment, configPath, ex
 		workspaceId,
 		'--env',
 		environment,
+		// Issue #230: the domain MUST be explicit. Without it the CLI
+		// falls back to a stored session's domain, and when there is no
+		// stored session (every Workers Builds run is a fresh
+		// environment) it defaults to `https://app.infisical.com` — which
+		// does not host this project. That made `infisical run` fail
+		// before the inner deploy script ever started, so neither
+		// `db:migrate:production` nor `wrangler deploy` was attempted.
+		'--domain',
+		domain,
 		'--',
 		process.execPath,
 		INNER_SCRIPT,
@@ -401,6 +410,9 @@ async function main() {
 			infisicalCli,
 			workspaceId: config.workspaceId,
 			environment: args.environment,
+			// Same resolution Universal Auth used above — one domain
+			// source of truth for the whole driver.
+			domain: apiUrl,
 			configPath: args.config,
 			execute: true,
 		});

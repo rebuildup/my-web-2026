@@ -67,8 +67,8 @@
  * the existing enabled row before creating a new one.
  */
 import { execFileSync } from 'node:child_process';
-import { queryRows, runStatement } from './_d1.mjs';
 import { createHash, randomBytes } from 'node:crypto';
+import { queryRows, runStatement } from './_d1.mjs';
 
 const KEY_NAME = 'home-self-consumption';
 const KEY_PREFIX = 'mk_home_';

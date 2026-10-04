@@ -1,20 +1,20 @@
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
+import { describe, it } from 'node:test';
 import {
+	OPERATIONS,
+	assertYamlContentInvariant,
+	buildInfisicalSetArgs,
+	buildVersionedForm,
+	buildWorkerSecretChanges,
+	buildYamlContent,
 	parseArgs,
 	parseVersionedSecrets,
-	validateLegacyPlaintext,
-	buildVersionedForm,
-	buildYamlContent,
-	assertYamlContentInvariant,
-	buildWorkerSecretChanges,
-	buildInfisicalSetArgs,
 	planOperationAuth,
 	resolveInfisicalCliPath,
 	spawnInfisicalSet,
-	OPERATIONS,
+	validateLegacyPlaintext,
 } from './phase-3-plus-prod-flip.mjs';
-import { describe, it } from 'node:test';
 
 describe('phase-3-plus-prod-flip.mjs', () => {
 	describe('parseArgs mode grammar (v4)', () => {

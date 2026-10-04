@@ -16,7 +16,7 @@
  *   - secretValuesEqual (constant-time comparison)
  *   - awaitExit (exit code / signal / timeout)
  *   - buildInfisicalEnv (Infisical CLI env: keeps INFISICAL_TOKEN, strips other Infisical credentials)
- *   - buildWranglerEnv (cf/D1 env: strips full Infisical credential set, no token added)
+ *   - buildCfEnv (cf/D1 env: strips full Infisical credential set, no token added)
  *   - runSmoke (in-process smoke, plaintext never in result, Authorization: Bearer, fixed URL)
  *   - subprocess discipline: stdio, stdin payload, no argv for values
  *   - security invariants: plaintext never in argv, log, error message
@@ -40,6 +40,7 @@ import {
 	SMOKE_AUTH_SCHEME,
 	SMOKE_URL_DEFAULT,
 	awaitExit,
+	buildCfEnv,
 	buildD1DisableCommand,
 	buildD1InsertCommand,
 	buildD1SelectActiveRotatedRowCommand,
@@ -50,16 +51,15 @@ import {
 	buildInfisicalEnv,
 	buildInfisicalSetArgs,
 	buildInfisicalYamlContent,
-	buildSecretReadUrl,
-	classifyInfisicalHttpStatus,
-	interpretInfisicalReadResponse,
 	buildRotatedRowName,
 	buildSanitizedEnv,
+	buildSecretReadUrl,
 	buildWorkerBulkPayload,
-	buildWranglerEnv,
+	classifyInfisicalHttpStatus,
 	deriveRotationId,
 	generatePlaintext,
 	generateRowId,
+	interpretInfisicalReadResponse,
 	keyHash,
 	parseArgs,
 	runSmoke,
@@ -771,7 +771,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 	});
 
-	describe('buildSanitizedEnv (deprecated alias for buildWranglerEnv; PR #141 review fix)', () => {
+	describe('buildSanitizedEnv (deprecated alias for buildCfEnv; PR #141 review fix)', () => {
 		it('strips INFISICAL_CLIENT_ID', () => {
 			const env = buildSanitizedEnv({ INFISICAL_CLIENT_ID: 'cid', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_CLIENT_ID, undefined);
@@ -811,15 +811,15 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 	});
 
-	describe('buildWranglerEnv (Wrangler/D1 env; PR #141 re-review fix)', () => {
+	describe('buildCfEnv (Wrangler/D1 env; PR #141 re-review fix)', () => {
 		it('strips INFISICAL_TOKEN (writer token MUST NOT reach Wrangler or D1 subprocesses)', () => {
-			const env = buildWranglerEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
+			const env = buildCfEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_TOKEN, undefined);
 			assert.equal(env.NODE_ENV, 'test');
 		});
 
 		it('strips the full Infisical credential set', () => {
-			const env = buildWranglerEnv({
+			const env = buildCfEnv({
 				INFISICAL_TOKEN: 'tok',
 				INFISICAL_CLIENT_ID: 'cid',
 				INFISICAL_CLIENT_SECRET: 'cs',
@@ -842,9 +842,9 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 
 		it('does NOT add INFISICAL_TOKEN even if a token argument is not supplied', () => {
-			// Pin: buildWranglerEnv has no token parameter; the function
+			// Pin: buildCfEnv has no token parameter; the function
 			// MUST NEVER carry INFISICAL_TOKEN, regardless of input shape.
-			const env = buildWranglerEnv({
+			const env = buildCfEnv({
 				INFISICAL_TOKEN: 'present-in-input',
 				PATH: '/usr/bin',
 			});
@@ -855,7 +855,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		it('does not mutate the input env', () => {
 			const input = { INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' };
 			const snapshot = { ...input };
-			buildWranglerEnv(input);
+			buildCfEnv(input);
 			assert.deepEqual(input, snapshot);
 		});
 	});

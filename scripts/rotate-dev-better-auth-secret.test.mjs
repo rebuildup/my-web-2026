@@ -18,17 +18,6 @@ import { EventEmitter } from 'node:events';
 import { Readable } from 'node:stream';
 import { describe, it } from 'node:test';
 import {
-	ALLOWED_ENVIRONMENTS,
-	MODES,
-	SECRET_NAME_LEGACY,
-	SECRET_NAME_VERSIONED,
-	buildInfisicalSubprocessEnv,
-	parseArgs,
-	printHelp,
-	runInfisicalSet,
-	summarizeDevState,
-} from './rotate-dev-better-auth-secret.mjs';
-import {
 	FRESH_SECRET_BYTES_DEFAULT,
 	buildInfisicalEnv,
 	buildInfisicalSetArgs,
@@ -40,6 +29,17 @@ import {
 	parseVersionedSecrets,
 	validateFreshSecret,
 } from './rotate-better-auth-secret.mjs';
+import {
+	ALLOWED_ENVIRONMENTS,
+	MODES,
+	SECRET_NAME_LEGACY,
+	SECRET_NAME_VERSIONED,
+	buildInfisicalSubprocessEnv,
+	parseArgs,
+	printHelp,
+	runInfisicalSet,
+	summarizeDevState,
+} from './rotate-dev-better-auth-secret.mjs';
 
 /* ─── Test helpers ────────────────────────────────────────────────────── */
 

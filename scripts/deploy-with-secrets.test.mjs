@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import {
 	existsSync,
@@ -11,6 +10,7 @@ import {
 	utimesSync,
 	writeFileSync,
 } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 /**

@@ -33,8 +33,8 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { dirname, resolve } from 'node:path';
-import { inspectBuildOutput } from './_cf-build-output.mjs';
 import { fileURLToPath } from 'node:url';
+import { inspectBuildOutput } from './_cf-build-output.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');

@@ -66,7 +66,6 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { executeSqlFile, queryRows } from './_d1.mjs';
 import { createHash } from 'node:crypto';
 import {
 	createReadStream,
@@ -81,6 +80,7 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executeSqlFile, queryRows } from './_d1.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
@@ -686,25 +686,6 @@ function assertProductionIdentity(wranglerConfigName) {
 	}
 }
 
-/** Parse Wrangler D1 --json output. Wrangler returns an array of result
- * envelopes; fail closed on any other shape. */
-export function parseD1Rows(stdout) {
-	let parsed;
-	try {
-		parsed = JSON.parse(stdout || '[]');
-	} catch {
-		throw new Error('D1 output is not valid JSON');
-	}
-	if (!Array.isArray(parsed) || parsed.length !== 1) {
-		throw new Error('D1 output must be a single-result envelope array');
-	}
-	const first = parsed[0];
-	if (!first || typeof first !== 'object' || !Array.isArray(first.results)) {
-		throw new Error('D1 output first envelope must contain results[]');
-	}
-	return first.results;
-}
-
 /**
  * Issue #247: D1 goes through the shared cf driver.
  *
@@ -767,9 +748,52 @@ function runR2Get(env, key, filePath) {
 	return defaultWranglerSpawn(buildR2GetArgs(env, key, filePath));
 }
 
+/**
+ * Run a read-only SELECT and return normalised object rows.
+ *
+ * Issue #247 (D1 slice) follow-up: this used to return a subprocess
+ * result envelope `{ parsed }` while `verify` still read
+ * `result.status` / `result.stderr` / `result.stdout`. `result.status`
+ * was therefore `undefined`, so the caller's failure check
+ * (`undefined !== 0`) was ALWAYS true and `verify` exited 1 on its
+ * first D1 read — the path could not succeed at all. There is no
+ * subprocess here any more, so there is no status, stderr, or stdout:
+ * the rows ARE the result, and a failure is a throw from `queryRows`.
+ */
 function runD1Select(env, sqlText) {
-	// A read: no execute gate, result shape already normalised.
-	return { parsed: queryRows(sqlText, { target: d1Target(env) }) };
+	return queryRows(sqlText, { target: d1Target(env) });
+}
+
+/**
+ * The three SELECTs `verify` performs, as normalised object rows.
+ *
+ * This exists as an exported, injectable seam so the verify flow can be
+ * tested at the level it actually runs, rather than through helpers that
+ * hide the wiring. The previous shape bug — `runD1Select` returning
+ * `{ parsed }` while `verify` read `result.stdout` — was invisible to
+ * every test in this file precisely because the orchestration between
+ * the two was never executed.
+ *
+ * `select` defaults to the shared D1 driver. It is a seam, not a public
+ * API: production always calls it with no override.
+ */
+export function readVerifyRows(env, idList, { select = runD1Select } = {}) {
+	const ids = [...idList];
+	const list = ids.map((id) => sqlEscape(id)).join(',');
+	return {
+		projectRows: select(
+			env,
+			`SELECT id, slug, title, role, visibility, status, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md FROM portfolio_project WHERE id IN (${list}) ORDER BY id;`,
+		),
+		linkRows: select(
+			env,
+			`SELECT id, project_id, kind, label, url, display_order FROM portfolio_link WHERE project_id IN (${list}) ORDER BY project_id, display_order, id;`,
+		),
+		mediaRows: select(
+			env,
+			`SELECT id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order FROM portfolio_media WHERE project_id IN (${list}) ORDER BY project_id, display_order, id;`,
+		),
+	};
 }
 
 function publicMediaUrl(key) {
@@ -1095,36 +1119,17 @@ async function operationVerify(parsed, manifest) {
 		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
 	}
 
-	const ids = [...ALLOWED_CANDIDATE_IDS];
-	const idList = ids.map((id) => sqlEscape(id)).join(',');
-	const projectSql = `SELECT id, slug, title, role, visibility, status, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md FROM portfolio_project WHERE id IN (${idList}) ORDER BY id;`;
-	const linkSql = `SELECT id, project_id, kind, label, url, display_order FROM portfolio_link WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
-	const mediaSql = `SELECT id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order FROM portfolio_media WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
-
-	const projectResult = runD1Select(env, projectSql);
-	const linkResult = runD1Select(env, linkSql);
-	const mediaResult = runD1Select(env, mediaSql);
-	for (const [label, result] of [
-		['project', projectResult],
-		['link', linkResult],
-		['media', mediaResult],
-	]) {
-		if (result.status !== 0) {
-			console.error(`[publish-portfolio] verify: D1 ${label} SELECT failed`);
-			console.error(result.stderr);
-			process.exit(result.status || 1);
-		}
-	}
-
+	// Reads, not writes: no execute gate applies. Each SELECT returns
+	// normalised object rows directly; a failure throws out of
+	// `queryRows` and is reported below rather than silently treated as
+	// "no rows", which is what a missing `stdout` used to imply.
 	let projectRows;
 	let linkRows;
 	let mediaRows;
 	try {
-		projectRows = parseD1Rows(projectResult.stdout);
-		linkRows = parseD1Rows(linkResult.stdout);
-		mediaRows = parseD1Rows(mediaResult.stdout);
+		({ projectRows, linkRows, mediaRows } = readVerifyRows(env, ALLOWED_CANDIDATE_IDS));
 	} catch (error) {
-		console.error(`[publish-portfolio] verify: ${error.message}`);
+		console.error(`[publish-portfolio] verify: D1 read failed: ${error.message}`);
 		process.exit(1);
 	}
 

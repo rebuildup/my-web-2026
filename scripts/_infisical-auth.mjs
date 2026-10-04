@@ -52,8 +52,8 @@
  * nothing that leaves the process is stable or reusable.
  */
 
-import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -142,7 +142,7 @@ export function buildInfisicalEnv(baseEnv, { mode, token = null }) {
  * Infisical credential set so a writer-scoped credential can never
  * leak into a Cloudflare child process.
  */
-export function buildWranglerEnv(baseEnv) {
+export function buildCfEnv(baseEnv) {
 	const env = { ...baseEnv };
 	for (const key of INFISICAL_CREDENTIAL_KEYS) {
 		env[key] = undefined;

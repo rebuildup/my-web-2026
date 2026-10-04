@@ -126,11 +126,11 @@
  *   at startup and exits with a clear error otherwise.
  */
 import { spawnSync } from 'node:child_process';
-import { executeSqlFile, queryRows } from './_d1.mjs';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executeSqlFile, queryRows } from './_d1.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');

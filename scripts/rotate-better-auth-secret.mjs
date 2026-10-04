@@ -69,7 +69,7 @@
  *        `INFISICAL_TOKEN` and strips the other Infisical credentials
  *        (CLIENT_ID / CLIENT_SECRET / PROJECT_ID / SITE_URL /
  *        API_URL). Used for the Infisical CLI subprocess ONLY.
- *      - `buildWranglerEnv(baseEnv)` strips the FULL 6-key Infisical
+ *      - `buildCfEnv(baseEnv)` strips the FULL 6-key Infisical
  *        credential set (including INFISICAL_TOKEN). Used for every
  *        Wrangler / D1 subprocess (secret bulk, secret list, d1
  *        execute). Wrangler/D1 MUST NEVER receive the writer-scoped
@@ -124,7 +124,6 @@
  *       Worker fresh failed). Operator must run `--worker-recovery`.
  */
 import { spawn } from 'node:child_process';
-import { bulkUpdateWorkerSecrets, listWorkerSecretNameList } from './_worker-secrets.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
@@ -134,19 +133,18 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
 	AUTH_MODE,
+	buildCfEnv as buildCfEnvShared,
 	buildInfisicalEnv as buildInfisicalEnvShared,
-	buildWranglerEnv as buildWranglerEnvShared,
 	compareSecretViaAuth,
 	materialiseSecret,
 	resolveInfisicalAuth,
 	summarizeSecretPairViaAuth,
 } from './_infisical-auth.mjs';
+import { bulkUpdateWorkerSecrets, listWorkerSecretNameList } from './_worker-secrets.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
-const WRANGLER_BIN = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
-const WRANGLER_PRODUCTION_CONFIG = join(REPO_ROOT, 'wrangler.production.jsonc');
 const INFISICAL_JSON_PATH = join(REPO_ROOT, '.infisical.json');
 
 const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
@@ -615,7 +613,7 @@ function secretValuesEqual(a, b) {
  * stripped INFISICAL_TOKEN itself, so the Infisical CLI subprocess
  * was being launched with an empty auth header. Split the contract:
  * `buildInfisicalEnv` keeps the token (Infisical side); the Wrangler
- * side uses `buildWranglerEnv` which strips it. Mirrored from
+ * side uses `buildCfEnv` which strips it. Mirrored from
  * `scripts/rotate-home-api-key.mjs#buildInfisicalEnv`.
  */
 function buildInfisicalEnv(baseEnv, auth) {
@@ -636,24 +634,24 @@ function buildInfisicalEnv(baseEnv, auth) {
  *
  * **PR #140 re-review fix (2026-09-28)**: the prior code passed
  * `process.env` straight to the Wrangler subprocess, so the writer
- * token was leaking via `env: process.env` in `runWranglerWrite` and
- * `readWranglerBindingNames`. Mirrored from
- * `scripts/rotate-home-api-key.mjs#buildWranglerEnv`.
+ * token was leaking via `env: process.env` in `writeWorkerSecretPatch` and
+ * `listWorkerBindingNames`. Mirrored from
+ * `scripts/rotate-home-api-key.mjs#buildCfEnv`.
  */
-function buildWranglerEnv(baseEnv) {
+function buildCfEnv(baseEnv) {
 	// Issue #223: single shared implementation of the least-privilege
 	// strip, so the four drivers cannot drift apart.
-	return buildWranglerEnvShared(baseEnv);
+	return buildCfEnvShared(baseEnv);
 }
 
 /**
- * Deprecated alias for `buildWranglerEnv`. Retained for back-compat
+ * Deprecated alias for `buildCfEnv`. Retained for back-compat
  * with prior commit SHAs / external callers; new code MUST use
- * `buildInfisicalEnv` (for the Infisical CLI) or `buildWranglerEnv`
+ * `buildInfisicalEnv` (for the Infisical CLI) or `buildCfEnv`
  * (for Wrangler / D1) directly. PR #140 re-review, 2026-09-28.
  */
 function buildSanitizedEnv(baseEnv) {
-	return buildWranglerEnv(baseEnv);
+	return buildCfEnv(baseEnv);
 }
 
 function awaitExit(child, { timeoutMs = SUBPROCESS_TIMEOUT_MS } = {}) {
@@ -747,7 +745,7 @@ export {
 	readInfisicalSecret,
 	secretValuesEqual,
 	buildInfisicalEnv,
-	buildWranglerEnv,
+	buildCfEnv,
 	buildSanitizedEnv,
 	awaitExit,
 	summarizeInfisicalState,
@@ -762,7 +760,7 @@ export {
  * none of them spawn Wrangler to do it. Cloudflare exposes names and
  * types only; no value is requested or returned.
  */
-async function readWranglerBindingNames(env) {
+async function listWorkerBindingNames(env) {
 	return listWorkerSecretNameList({ env: env ?? process.env });
 }
 
@@ -823,7 +821,7 @@ async function runVerify({ apiUrl, auth, cliPath, workspaceId, environment }) {
 				allowMissing: true,
 			}),
 	});
-	const bindings = await readWranglerBindingNames(buildWranglerEnv(process.env));
+	const bindings = await listWorkerBindingNames(buildCfEnv(process.env));
 	return {
 		infisical,
 		worker: summarizeWorkerState({ bindings }),
@@ -1064,7 +1062,7 @@ async function main() {
 
 	// Stage 3 — Worker binding-name verification (no value read-back).
 	console.log(`[${args.mode}] verifying Worker binding names (no value read-back)...`);
-	const bindings = await readWranglerBindingNames(buildWranglerEnv(process.env));
+	const bindings = await listWorkerBindingNames(buildCfEnv(process.env));
 	const hasLegacy = bindings.includes(SECRET_NAME_LEGACY);
 	if (!hasLegacy) {
 		throw new Error(

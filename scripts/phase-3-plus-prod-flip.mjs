@@ -68,14 +68,13 @@ const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 import {
 	AUTH_MODE,
+	buildCfEnv as buildCfEnvShared,
 	buildInfisicalEnv as buildInfisicalEnvShared,
-	buildWranglerEnv as buildWranglerEnvShared,
 	materialiseSecret,
 	resolveInfisicalAuth,
 } from './_infisical-auth.mjs';
 
 const REPO_ROOT = resolve(HERE, '..');
-const WRANGLER_BIN = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
 const WRANGLER_PRODUCTION_CONFIG = join(REPO_ROOT, 'wrangler.production.jsonc');
 const INFISICAL_JSON_PATH = join(REPO_ROOT, '.infisical.json');
 const TEMPDIR_PREFIX = 'my-web-2026-flip-';

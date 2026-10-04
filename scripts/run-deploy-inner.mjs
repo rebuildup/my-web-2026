@@ -29,19 +29,19 @@
  *   5  cleanup failure (the deploy itself succeeded; logged loudly)
  */
 import { execFileSync } from 'node:child_process';
-import {
-	assertDeployableBuildOutput,
-	assertDeployCredentialAvailable,
-	assertNoAuditOnlySecrets,
-	buildDeployArgv,
-	BUILD_OUTPUT_DIR,
-} from './_cf-build-output.mjs';
-import { applyMigrations } from './_d1.mjs';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+	BUILD_OUTPUT_DIR,
+	assertDeployCredentialAvailable,
+	assertDeployableBuildOutput,
+	assertNoAuditOnlySecrets,
+	buildDeployArgv,
+} from './_cf-build-output.mjs';
+import { applyMigrations } from './_d1.mjs';
 
 const require = createRequire(import.meta.url);
 

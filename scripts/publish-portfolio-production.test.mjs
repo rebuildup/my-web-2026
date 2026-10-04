@@ -39,9 +39,9 @@ import {
 	loadManifest,
 	mediaIdFor,
 	normalizeSlug,
-	parseD1Rows,
 	projectIdFor,
 	publicationContextDigest,
+	readVerifyRows,
 	sha256OfFile,
 	validateEntry,
 	validateManifest,
@@ -617,19 +617,95 @@ describe('production config coupling', () => {
 	});
 });
 
-describe('parseD1Rows', () => {
-	it('parses the canonical Wrangler result envelope', () => {
-		assert.deepEqual(parseD1Rows(JSON.stringify([{ results: [{ id: 'a' }] }])), [{ id: 'a' }]);
+describe('verify flow consumes normalised D1 rows (Issue #247)', () => {
+	/*
+	 * REGRESSION GUARD.
+	 *
+	 * `runD1Select` returned `{ parsed: queryRows(...) }` while `verify`
+	 * read `result.status` / `result.stdout`. `status` was `undefined`, so
+	 * the failure check `undefined !== 0` was always true and `verify`
+	 * exited 1 on its first D1 read — production portfolio verification
+	 * could not succeed at all. Every test in this file exercised a
+	 * helper, never the wiring between the read and the check, so the
+	 * mismatch stayed invisible.
+	 *
+	 * These tests run the actual read→verify path with a fake selector.
+	 */
+
+	it('returns the three row sets directly, with no subprocess envelope', () => {
+		const seen = [];
+		const rows = readVerifyRows('dev', ['a', 'b'], {
+			select: (_env, sql) => {
+				seen.push(sql);
+				return [{ id: 'row' }];
+			},
+		});
+		// The rows ARE the result: no `stdout`, `status`, or `stderr`.
+		assert.deepEqual(rows, {
+			projectRows: [{ id: 'row' }],
+			linkRows: [{ id: 'row' }],
+			mediaRows: [{ id: 'row' }],
+		});
+		for (const key of Object.keys(rows)) {
+			assert.ok(Array.isArray(rows[key]), `${key} must be an array of object rows`);
+		}
+		assert.equal(seen.length, 3, 'verify performs exactly three SELECTs');
 	});
 
-	it('fails closed on a raw row array', () => {
-		assert.throws(() => parseD1Rows(JSON.stringify([{ id: 'a' }])), /results\[\]/);
+	it('feeds readVerifyRows output straight into verifyD1Content with no errors', () => {
+		// The end-to-end shape: read → verify. With the old envelope this
+		// would have handed `verifyD1Content` three `undefined`s.
+		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
+		const expected = buildExpectedVerificationRows(manifest);
+		const byTable = {
+			portfolio_project: expected.projectRows,
+			portfolio_link: expected.linkRows,
+			portfolio_media: expected.mediaRows,
+		};
+		const read = readVerifyRows(
+			'dev',
+			ENTRIES.map((e) => e.legacyId),
+			{
+				select: (_env, sql) => {
+					for (const [table, rows] of Object.entries(byTable)) {
+						if (sql.includes(`FROM ${table}`)) return rows;
+					}
+					throw new Error(`unexpected SELECT: ${sql}`);
+				},
+			},
+		);
+		assert.deepEqual(verifyD1Content({ ...read, manifest, expectedVisibility: 'draft' }), []);
 	});
 
-	it('fails closed on multiple result envelopes', () => {
+	it('surfaces a content mismatch, rather than exiting on an undefined status', () => {
+		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
+		const expected = buildExpectedVerificationRows(manifest);
+		const rows = readVerifyRows(
+			'dev',
+			ENTRIES.map((e) => e.legacyId),
+			{
+				select: (_env, sql) => {
+					if (sql.includes('FROM portfolio_project')) {
+						return [{ ...expected.projectRows[0], slug: 'wrong-slug' }];
+					}
+					if (sql.includes('FROM portfolio_link')) return expected.linkRows;
+					return expected.mediaRows;
+				},
+			},
+		);
+		const errors = verifyD1Content({ ...rows, manifest, expectedVisibility: 'draft' });
+		assert.ok(errors.some((e) => e.includes('slug mismatch')));
+	});
+
+	it('propagates a read failure instead of degrading to zero rows', () => {
 		assert.throws(
-			() => parseD1Rows(JSON.stringify([{ results: [] }, { results: [] }])),
-			/single-result/,
+			() =>
+				readVerifyRows('dev', ['a'], {
+					select: () => {
+						throw new Error('D1 read failed: auth');
+					},
+				}),
+			/D1 read failed: auth/,
 		);
 	});
 });

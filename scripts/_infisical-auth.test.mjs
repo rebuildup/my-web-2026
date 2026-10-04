@@ -5,8 +5,8 @@ import { join } from 'node:path';
 import { test } from 'node:test';
 import {
 	AUTH_MODE,
+	buildCfEnv,
 	buildInfisicalEnv,
-	buildWranglerEnv,
 	compareSecretViaAuth,
 	hmacDigest,
 	materialiseSecret,
@@ -165,8 +165,8 @@ test('buildInfisicalEnv strips every credential in CLI mode', () => {
 	assert.equal(env.PATH, '/bin');
 });
 
-test('buildWranglerEnv strips the full credential set', () => {
-	const env = buildWranglerEnv({ PATH: '/bin', INFISICAL_TOKEN: 't' });
+test('buildCfEnv strips the full credential set', () => {
+	const env = buildCfEnv({ PATH: '/bin', INFISICAL_TOKEN: 't' });
 	assert.equal(env.INFISICAL_TOKEN, undefined);
 	assert.equal(env.PATH, '/bin');
 });

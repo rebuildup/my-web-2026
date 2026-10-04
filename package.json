@@ -70,7 +70,8 @@
 		"version:check": "node scripts/check-release-version.mjs",
 		"wrangler:dry-run": "wrangler deploy --dry-run --outdir dist-cloudflare",
 		"wrangler:production:dry-run": "node scripts/check-production-deploy.mjs",
-		"test:wiring:check": "node scripts/check-test-wiring.mjs"
+		"test:wiring:check": "node scripts/check-test-wiring.mjs",
+		"wrangler:independence:check": "node scripts/check-wrangler-independence.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

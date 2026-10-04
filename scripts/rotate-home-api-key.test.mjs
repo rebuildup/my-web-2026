@@ -9,14 +9,14 @@
  *   - deriveRotationId / buildRotatedRowName (naming pattern)
  *   - SQL escape for D1 inline commands
  *   - YAML content shape (no leakage, single key, escapes)
- *   - wrangler bulk payload + bulk argv (single `bulk` subcommand)
+ *   - Worker secret Merge Patch payload + the shared adapter write path
  *   - Infisical CLI argv (secrets set --file)
  *   - D1 INSERT / SELECT / DISABLE command shapes (incl. active-rotated + old-home)
  *   - row id generation (UUIDv4 lower-case hex)
  *   - secretValuesEqual (constant-time comparison)
  *   - awaitExit (exit code / signal / timeout)
  *   - buildInfisicalEnv (Infisical CLI env: keeps INFISICAL_TOKEN, strips other Infisical credentials)
- *   - buildWranglerEnv (Wrangler/D1 env: strips full Infisical credential set, no token added)
+ *   - buildWranglerEnv (cf/D1 env: strips full Infisical credential set, no token added)
  *   - runSmoke (in-process smoke, plaintext never in result, Authorization: Bearer, fixed URL)
  *   - subprocess discipline: stdio, stdin payload, no argv for values
  *   - security invariants: plaintext never in argv, log, error message
@@ -27,6 +27,8 @@ import { EventEmitter } from 'node:events';
 import { readFileSync } from 'node:fs';
 import { Readable, Writable } from 'node:stream';
 import { describe, it } from 'node:test';
+
+import { bulkUpdateWorkerSecrets } from './_worker-secrets.mjs';
 
 import {
 	KEY_BODY_LEN,
@@ -54,7 +56,6 @@ import {
 	buildRotatedRowName,
 	buildSanitizedEnv,
 	buildWorkerBulkPayload,
-	buildWranglerBulkArgs,
 	buildWranglerEnv,
 	deriveRotationId,
 	generatePlaintext,
@@ -64,8 +65,6 @@ import {
 	runSmoke,
 	secretValuesEqual,
 	spawnInfisicalSet,
-	spawnWranglerBulk,
-	spawnWranglerList,
 	sqlString,
 } from './rotate-home-api-key.mjs';
 
@@ -434,39 +433,60 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 	});
 
-	describe('buildWorkerBulkPayload (JSON, stdin only)', () => {
+	describe('buildWorkerBulkPayload (adapter input contract)', () => {
 		it('contains exactly one Worker secret name', () => {
 			const payload = buildWorkerBulkPayload('mk_home_X');
-			const parsed = JSON.parse(payload);
-			assert.deepEqual(parsed, { MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_X' });
+			assert.deepEqual(payload, { MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_X' });
 		});
 
 		it('does not include versioned bindings', () => {
-			const parsed = JSON.parse(buildWorkerBulkPayload('mk_home_X'));
+			const parsed = buildWorkerBulkPayload('mk_home_X');
 			assert.deepEqual(Object.keys(parsed), [SECRET_NAME]);
 		});
 	});
 
-	describe('buildWranglerBulkArgs', () => {
-		it('uses `secret bulk` subcommand', () => {
-			const args = buildWranglerBulkArgs();
-			assert.ok(args.includes('bulk'), `args: ${args.join(' ')}`);
-			assert.ok(args.includes('secret'), `args: ${args.join(' ')}`);
+	describe('Worker secret mutation goes through the shared Merge Patch adapter', () => {
+		// The Wrangler `secret bulk` argv builder is gone (Issue #247,
+		// secrets slice): the Worker secret write is now a single HTTPS
+		// Merge Patch via `bulkUpdateWorkerSecrets`. What these tests
+		// used to assert about ARGV is now asserted about the request
+		// body — and the security property is stronger, because there
+		// is no argv to leak into at all.
+		it('carries exactly the one named secret in the payload', () => {
+			const payload = buildWorkerBulkPayload('mk_home_FreshV');
+			assert.deepEqual(Object.keys(payload), [SECRET_NAME]);
 		});
 
-		it('includes -c wrangler.production.jsonc', () => {
-			const args = buildWranglerBulkArgs();
-			const cIndex = args.indexOf('-c');
-			assert.ok(cIndex >= 0);
-			assert.ok(args[cIndex + 1].endsWith('wrangler.production.jsonc'));
+		it('is directly acceptable to the adapter, with no JSON round-trip', async () => {
+			// REGRESSION GUARD. `buildWorkerBulkPayload` used to return a
+			// JSON *string* while `bulkUpdateWorkerSecrets` requires an
+			// object. Every call site passed it straight through, so the
+			// adapter rejected it and the Worker write failed at Stage 9
+			// on every run — reported as a generic "exited with status 1",
+			// with no failing test, because this file was not wired into
+			// `pnpm test`. This asserts the shape contract at the seam.
+			await assert.doesNotReject(() =>
+				bulkUpdateWorkerSecrets(buildWorkerBulkPayload('mk_home_FreshV'), {
+					execute: false,
+					env: { CLOUDFLARE_API_TOKEN: 't' },
+				}),
+			);
 		});
 
-		it('NEVER uses secret put or secret delete subcommand', () => {
-			const args = buildWranglerBulkArgs();
-			const hasPut = args.includes('put');
-			const hasDelete = args.includes('delete');
-			assert.ok(!hasPut, `args must not contain 'put': ${args.join(' ')}`);
-			assert.ok(!hasDelete, `args must not contain 'delete': ${args.join(' ')}`);
+		it('never builds a `put` / `delete` argv pair, because no argv exists', () => {
+			// Structural: `rotate-home-api-key.mjs` must not shell out to
+			// a secret-writing CLI at all. This is the regression guard for
+			// the migration, and it is why the old argv assertions were
+			// removed rather than rewritten.
+			const source = readFileSync(new URL('./rotate-home-api-key.mjs', import.meta.url), 'utf8');
+			assert.ok(
+				!/spawnWranglerBulk|wrangler\s+secret|secret\s+bulk/.test(source),
+				'the Wrangler secret path must stay removed',
+			);
+			assert.ok(
+				source.includes('bulkUpdateWorkerSecrets'),
+				'the shared adapter must be the write path',
+			);
 		});
 	});
 
@@ -962,97 +982,21 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 	});
 
-	describe('spawnWranglerBulk (stdio discipline, stdin payload)', () => {
-		it('forwards argv exactly, sets stdio=[pipe, inherit, inherit]', () => {
-			let captured;
-			const payload = JSON.stringify({ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_FreshV' });
-			const child = spawnWranglerBulk({
-				payload,
-				env: process.env,
-				spawnFn: captureSpawn(0, (c) => {
-					captured = c;
-				}),
-			});
-			assert.deepEqual(captured.opts.stdio, ['pipe', 'inherit', 'inherit']);
-			assert.ok(captured.args.includes('bulk'), `args: ${captured.args.join(' ')}`);
-			assert.ok(captured.args.includes('secret'), `args: ${captured.args.join(' ')}`);
-			const cIndex = captured.args.indexOf('-c');
-			assert.ok(cIndex >= 0);
-			assert.ok(captured.args[cIndex + 1].endsWith('wrangler.production.jsonc'));
-		});
-
-		it('writes the bulk payload to stdin (NOT argv)', async () => {
-			const payload = JSON.stringify({ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_FreshV' });
-			let captured;
-			const capturingSpawn = captureSpawnCapturesStdin(0, (c) => {
-				captured = c;
-			});
-			const child = spawnWranglerBulk({
-				payload,
-				env: process.env,
-				spawnFn: capturingSpawn,
-			});
-			// Wait for the captured stdin payload to populate
-			await new Promise((resolve) => {
-				setImmediate(resolve);
-			});
-			assert.equal(child.__stdinPayload, payload);
-			// Argv MUST NOT contain the plaintext
-			for (const arg of captured.args) {
-				assert.ok(!arg.includes('mk_home_FreshV'), `argv contains plaintext: ${arg}`);
-			}
-		});
-
-		it('NEVER uses secret put or secret delete (single bulk discipline)', () => {
-			let captured;
-			spawnWranglerBulk({
-				payload: JSON.stringify({ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_X' }),
-				env: process.env,
-				spawnFn: captureSpawn(0, (c) => {
-					captured = c;
-				}),
-			});
-			assert.ok(!captured.args.includes('put'), `args: ${captured.args.join(' ')}`);
-			assert.ok(!captured.args.includes('delete'), `args: ${captured.args.join(' ')}`);
-		});
-	});
-
-	describe('spawnWranglerList (name-only verification)', () => {
-		it('forwards --format=json for name-only output', () => {
-			let captured;
-			spawnWranglerList({
-				env: process.env,
-				spawnFn: captureSpawn(0, (c) => {
-					captured = c;
-				}),
-			});
-			assert.ok(captured.args.includes('--format'));
-			const formatIndex = captured.args.indexOf('--format');
-			assert.equal(captured.args[formatIndex + 1], 'json');
-		});
-
-		it('uses -c wrangler.production.jsonc', () => {
-			let captured;
-			spawnWranglerList({
-				env: process.env,
-				spawnFn: captureSpawn(0, (c) => {
-					captured = c;
-				}),
-			});
-			const cIndex = captured.args.indexOf('-c');
-			assert.ok(cIndex >= 0);
-			assert.ok(captured.args[cIndex + 1].endsWith('wrangler.production.jsonc'));
-		});
-
-		it('uses stdio=[pipe, pipe, pipe] for stdout capture', () => {
-			let captured;
-			spawnWranglerList({
-				env: process.env,
-				spawnFn: captureSpawn(0, (c) => {
-					captured = c;
-				}),
-			});
-			assert.deepEqual(captured.opts.stdio, ['pipe', 'pipe', 'pipe']);
+	describe('Worker secret listing is name-only', () => {
+		// Was `spawnWranglerList` + `--format=json`. The listing is now
+		// `listWorkerSecretNameList` over the same API the write uses, so
+		// reads and writes share one credential boundary. The invariant is
+		// unchanged: a verification listing returns NAMES, never values.
+		it('the listing helper is the shared adapter, not a Wrangler subcommand', () => {
+			const source = readFileSync(new URL('./rotate-home-api-key.mjs', import.meta.url), 'utf8');
+			assert.ok(
+				source.includes('listWorkerSecretNameList'),
+				'the shared adapter must be the listing path',
+			);
+			assert.ok(
+				!/spawnWranglerList|wrangler\s+secret\s+list/.test(source),
+				'the Wrangler listing path must stay removed',
+			);
 		});
 	});
 
@@ -1071,15 +1015,16 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			for (const arg of args) {
 				assert.ok(!arg.includes(plaintext), `arg leaks plaintext: ${arg}`);
 			}
-			const bulk = buildWranglerBulkArgs();
-			for (const arg of bulk) {
-				assert.ok(!arg.includes(plaintext), `arg leaks plaintext: ${arg}`);
-			}
+			const bulk = buildWorkerBulkPayload(plaintext);
+			// The payload is the request BODY. It is never serialised into
+			// argv, because no argv exists on this path any more.
+			assert.equal(bulk[SECRET_NAME], plaintext);
+			assert.deepEqual(Object.keys(bulk), [SECRET_NAME]);
 		});
 
 		it('bulk payload contains exactly the new value (no other Worker secrets)', () => {
 			const plaintext = 'mk_home_Sensitive';
-			const payload = JSON.parse(buildWorkerBulkPayload(plaintext));
+			const payload = buildWorkerBulkPayload(plaintext);
 			assert.deepEqual(Object.keys(payload), ['MY_WEB_2026_CONSUMER_API_KEY']);
 			assert.equal(payload.MY_WEB_2026_CONSUMER_API_KEY, plaintext);
 		});
@@ -1094,7 +1039,7 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 		});
 
 		it('worker bulk does NOT include legacy BETTER_AUTH_SECRET', () => {
-			const payload = JSON.parse(buildWorkerBulkPayload('mk_home_X'));
+			const payload = buildWorkerBulkPayload('mk_home_X');
 			assert.equal(payload.BETTER_AUTH_SECRET, undefined);
 			assert.equal(payload.BETTER_AUTH_SECRETS, undefined);
 		});
@@ -1139,33 +1084,13 @@ describe('rotate-home-api-key.mjs (Issue #74)', () => {
 			assert.notEqual(result.code, 0);
 		});
 
-		it('bulk payload via stdin is recoverable (the bytes round-trip)', async () => {
-			const payload = JSON.stringify({ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_RoundTrip' });
-			let capturedStdin = null;
-			const capturingSpawn = (_cmd, _args, _opts) => {
-				const child = fakeChild();
-				const chunks = [];
-				const origWrite = child.stdin.write.bind(child.stdin);
-				child.stdin.write = (chunk, _enc, cb) => {
-					chunks.push(typeof chunk === 'string' ? chunk : chunk.toString('utf8'));
-					return origWrite(chunk, _enc, cb);
-				};
-				const origEnd = child.stdin.end.bind(child.stdin);
-				child.stdin.end = (cb) => {
-					capturedStdin = chunks.join('');
-					return origEnd(cb);
-				};
-				Promise.resolve().then(() => child.emit('exit', 0, null));
-				return child;
-			};
-			const child = spawnWranglerBulk({
-				payload,
-				env: process.env,
-				spawnFn: capturingSpawn,
-			});
-			await new Promise((r) => setImmediate(r));
-			assert.equal(capturedStdin, payload);
-			assert.ok(child, 'spawnWranglerBulk returns the live child (assigned via writable stdin)');
+		it('bulk payload round-trips through the Merge Patch body', () => {
+			// Was "the bytes round-trip through stdin". There is no stdin
+			// any more; the equivalent round-trip is payload -> JSON body.
+			const plaintext = 'mk_home_RoundTrip';
+			const payload = buildWorkerBulkPayload(plaintext);
+			assert.deepEqual(Object.keys(payload), [SECRET_NAME]);
+			assert.equal(payload[SECRET_NAME], plaintext);
 		});
 	});
 });

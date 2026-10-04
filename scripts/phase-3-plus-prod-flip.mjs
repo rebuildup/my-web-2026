@@ -420,27 +420,28 @@ function assertYamlContentInvariant(yamlContent) {
  *   restore-legacy-only   → { BETTER_AUTH_SECRET: "<plaintext>" }
  *   rollback-versioned-only → { BETTER_AUTH_SECRETS: null }
  */
-function buildBulkPayload({ operation, versionedForm, legacyPlaintext }) {
+/**
+ * Issue #247: the Worker-side change set for each operation.
+ *
+ * Returned as a changes object, not a pre-serialised string, so the
+ * shared adapter owns the Merge Patch wire shape. The existing
+ * single-key semantics carry over exactly: a deletion is one `null`,
+ * never a re-send of the current secret set — that is what keeps
+ * `delete-legacy-only` from touching any other binding (#243).
+ */
+function buildWorkerSecretChanges({ operation, versionedForm, legacyPlaintext }) {
 	switch (operation) {
 		case 'flip':
-			return JSON.stringify({ BETTER_AUTH_SECRETS: versionedForm });
+			return { BETTER_AUTH_SECRETS: versionedForm };
 		case 'delete-legacy-only':
-			return JSON.stringify({ BETTER_AUTH_SECRET: null });
+			return { BETTER_AUTH_SECRET: null };
 		case 'restore-legacy-only':
-			return JSON.stringify({ BETTER_AUTH_SECRET: legacyPlaintext });
+			return { BETTER_AUTH_SECRET: legacyPlaintext };
 		case 'rollback-versioned-only':
-			return JSON.stringify({ BETTER_AUTH_SECRETS: null });
+			return { BETTER_AUTH_SECRETS: null };
 		default:
 			throw new Error(`Unknown operation: ${operation}`);
 	}
-}
-
-/**
- * Build the argv for `wrangler secret bulk`. Always includes
- * `-c wrangler.production.jsonc` (canonical production config).
- */
-function buildWranglerBulkArgs() {
-	return ['secret', 'bulk', '-c', WRANGLER_PRODUCTION_CONFIG];
 }
 
 /**
@@ -698,26 +699,6 @@ async function verifyTokenWriteScope(apiUrl, accessToken, workspaceId, environme
 }
 
 /**
- * Spawn the wrangler secret bulk subprocess with explicit stdio:
- *   - stdin = 'pipe' (writable; payload sent via child.stdin.write)
- *   - stdout = 'inherit'
- *   - stderr = 'inherit'
- *
- * 'inherit' on stdin would close the write end; the explicit pipe is
- * required for the bulk payload to be writable.
- */
-function spawnWranglerBulk({ payload, env, deps }) {
-	const spawnFn = deps?.spawn ?? spawn;
-	const child = spawnFn(process.execPath, [WRANGLER_BIN, ...buildWranglerBulkArgs()], {
-		stdio: ['pipe', 'inherit', 'inherit'],
-		env,
-	});
-	child.stdin.write(payload);
-	child.stdin.end();
-	return child;
-}
-
-/**
  * Spawn the infisical CLI subprocess for `secrets set --file`. The
  * CLI handles self-host v0.165.x E2EE; plain HTTPS UPSERT is NOT
  * supported because the v3 secret-write endpoint requires
@@ -825,8 +806,7 @@ export {
 	buildVersionedForm,
 	buildYamlContent,
 	assertYamlContentInvariant,
-	buildBulkPayload,
-	buildWranglerBulkArgs,
+	buildWorkerSecretChanges,
 	buildInfisicalSetArgs,
 	planOperationAuth,
 	resolveInfisicalCliPath,
@@ -981,20 +961,16 @@ async function main() {
 			}
 		}
 
-		const payload = buildBulkPayload({ operation: args.operation, versionedForm, legacyPlaintext });
-		console.log(`[execute] Spawning wrangler secret bulk (operation=${args.operation})...`);
-		const wranglerChild = spawnWranglerBulk({
-			payload,
-			env: process.env,
-			deps: { spawn },
+		// Issue #247: Worker secret mutation via the shared API adapter
+		// (Cloudflare Merge Patch). The value travels in an HTTPS body,
+		// never argv, and the adapter enforces the production gate.
+		const changes = buildWorkerSecretChanges({
+			operation: args.operation,
+			versionedForm,
+			legacyPlaintext,
 		});
-		const wranglerExit = await new Promise((resolve) => {
-			wranglerChild.on('exit', resolve);
-			wranglerChild.on('error', () => resolve(1));
-		});
-		if (wranglerExit !== 0) {
-			throw new Error(`wrangler secret bulk failed (exit=${wranglerExit})`);
-		}
+		console.log(`[execute] Applying Worker secret change (operation=${args.operation})...`);
+		await bulkUpdateWorkerSecrets(changes, { execute: true, env: process.env });
 
 		console.log(`[execute] operation=${args.operation} completed`);
 	} finally {

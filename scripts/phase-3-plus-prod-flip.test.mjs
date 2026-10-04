@@ -7,8 +7,7 @@ import {
 	buildVersionedForm,
 	buildYamlContent,
 	assertYamlContentInvariant,
-	buildBulkPayload,
-	buildWranglerBulkArgs,
+	buildWorkerSecretChanges,
 	buildInfisicalSetArgs,
 	planOperationAuth,
 	resolveInfisicalCliPath,
@@ -204,73 +203,56 @@ describe('phase-3-plus-prod-flip.mjs', () => {
 		});
 	});
 
-	describe('bulk payload (stdin JSON for wrangler secret bulk)', () => {
-		it('flip payload: { BETTER_AUTH_SECRETS: "1:<plaintext>" }', () => {
-			const payload = buildBulkPayload({
-				operation: 'flip',
-				versionedForm: '1:my-plaintext',
-			});
-			assert.equal(payload, JSON.stringify({ BETTER_AUTH_SECRETS: '1:my-plaintext' }));
+	describe('buildWorkerSecretChanges (Merge Patch semantics)', () => {
+		it('flip creates or updates only the versioned binding', () => {
+			assert.deepEqual(
+				buildWorkerSecretChanges({ operation: 'flip', versionedForm: '1:x', legacyPlaintext: 'y' }),
+				{ BETTER_AUTH_SECRETS: '1:x' },
+			);
 		});
 
-		it('delete-legacy-only payload: { BETTER_AUTH_SECRET: null }', () => {
-			const payload = buildBulkPayload({
+		it('delete-legacy-only patches ONLY the legacy binding to null', () => {
+			const changes = buildWorkerSecretChanges({
 				operation: 'delete-legacy-only',
+				versionedForm: '1:x',
+				legacyPlaintext: 'y',
 			});
-			assert.equal(payload, JSON.stringify({ BETTER_AUTH_SECRET: null }));
+			assert.deepEqual(changes, { BETTER_AUTH_SECRET: null });
+			// #243: a deletion must not re-send the current secret set.
+			assert.deepEqual(Object.keys(changes), ['BETTER_AUTH_SECRET']);
 		});
 
-		it('restore-legacy-only payload: { BETTER_AUTH_SECRET: "<plaintext>" }', () => {
-			const payload = buildBulkPayload({
-				operation: 'restore-legacy-only',
-				legacyPlaintext: 'my-plaintext',
-			});
-			assert.equal(payload, JSON.stringify({ BETTER_AUTH_SECRET: 'my-plaintext' }));
+		it('restore-legacy-only re-creates the legacy binding', () => {
+			assert.deepEqual(
+				buildWorkerSecretChanges({
+					operation: 'restore-legacy-only',
+					versionedForm: '1:x',
+					legacyPlaintext: 'y',
+				}),
+				{ BETTER_AUTH_SECRET: 'y' },
+			);
 		});
 
-		it('rollback-versioned-only payload: { BETTER_AUTH_SECRETS: null }', () => {
-			const payload = buildBulkPayload({
+		it('rollback-versioned-only patches ONLY the versioned binding to null', () => {
+			const changes = buildWorkerSecretChanges({
 				operation: 'rollback-versioned-only',
+				versionedForm: '1:x',
+				legacyPlaintext: 'y',
 			});
-			assert.equal(payload, JSON.stringify({ BETTER_AUTH_SECRETS: null }));
+			assert.deepEqual(changes, { BETTER_AUTH_SECRETS: null });
+			assert.deepEqual(Object.keys(changes), ['BETTER_AUTH_SECRETS']);
 		});
 
-		it('rejects unknown operation', () => {
-			assert.throws(() => buildBulkPayload({ operation: 'unknown-op' }), /Unknown operation/);
-		});
-
-		it('flip payload parses back to expected shape', () => {
-			const payload = buildBulkPayload({
-				operation: 'flip',
-				versionedForm: '1:hello',
-			});
-			const parsed = JSON.parse(payload);
-			assert.deepEqual(Object.keys(parsed), ['BETTER_AUTH_SECRETS']);
-			assert.equal(parsed.BETTER_AUTH_SECRETS, '1:hello');
-		});
-
-		it('delete-legacy-only payload parses back with explicit null', () => {
-			const payload = buildBulkPayload({ operation: 'delete-legacy-only' });
-			const parsed = JSON.parse(payload);
-			assert.equal(parsed.BETTER_AUTH_SECRET, null);
-		});
-	});
-
-	describe('buildWranglerBulkArgs (argv discipline)', () => {
-		it('uses "secret bulk" subcommand (NOT put/delete)', () => {
-			const argv = buildWranglerBulkArgs();
-			const idx = argv.indexOf('secret');
-			assert.ok(idx >= 0, 'argv must contain "secret"');
-			assert.equal(argv[idx + 1], 'bulk', 'argv must be "secret bulk ..."');
-			assert.ok(!argv.includes('put'), 'argv must NOT contain "put"');
-			assert.ok(!argv.includes('delete'), 'argv must NOT contain "delete"');
-		});
-
-		it('always includes -c wrangler.production.jsonc', () => {
-			const argv = buildWranglerBulkArgs();
-			const cIdx = argv.indexOf('-c');
-			assert.ok(cIdx >= 0, 'argv must contain -c');
-			assert.match(argv[cIdx + 1], /wrangler\.production\.jsonc$/);
+		it('rejects an unknown operation', () => {
+			assert.throws(
+				() =>
+					buildWorkerSecretChanges({
+						operation: 'nope',
+						versionedForm: '1:x',
+						legacyPlaintext: 'y',
+					}),
+				/Unknown operation/,
+			);
 		});
 	});
 

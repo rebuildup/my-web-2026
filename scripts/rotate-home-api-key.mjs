@@ -191,6 +191,7 @@
  */
 import { spawn } from 'node:child_process';
 import { execFileSync } from 'node:child_process';
+import { bulkUpdateWorkerSecrets, listWorkerSecretNameList } from './_worker-secrets.mjs';
 import { queryRows } from './_d1.mjs';
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
@@ -330,10 +331,6 @@ function buildInfisicalYamlContent(plaintext) {
  */
 function buildWorkerBulkPayload(plaintext) {
 	return JSON.stringify({ [SECRET_NAME]: plaintext });
-}
-
-function buildWranglerBulkArgs() {
-	return ['secret', 'bulk', '-c', WRANGLER_PRODUCTION_CONFIG];
 }
 
 function buildInfisicalSetArgs(yamlPath, environment, workspaceId) {
@@ -637,29 +634,6 @@ function spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env, s
 	});
 }
 
-function spawnWranglerBulk({ payload, env, spawnFn = spawn }) {
-	const child = spawnFn(process.execPath, [WRANGLER_BIN, ...buildWranglerBulkArgs()], {
-		// Issue #225: `runWranglerWrite` captures stdout/stderr, which
-		// Node sets to null for an inherited stream. Piping all three
-		// makes the capture actually work; previously `--execute` threw
-		// AFTER a successful write, masking the driver's own
-		// partial-failure + recovery-rowId guidance.
-		stdio: ['pipe', 'pipe', 'pipe'],
-		env,
-	});
-	child.stdin.write(payload);
-	child.stdin.end();
-	return child;
-}
-
-function spawnWranglerList({ env, spawnFn = spawn }) {
-	return spawnFn(
-		process.execPath,
-		[WRANGLER_BIN, 'secret', 'list', '--format', 'json', '-c', WRANGLER_PRODUCTION_CONFIG],
-		{ stdio: ['pipe', 'pipe', 'pipe'], env },
-	);
-}
-
 /**
  * Execute a D1 SQL command via `wrangler d1 execute`. Returns the
  * parsed JSON results array (for SELECT) or `{ rows_written, ... }`
@@ -863,39 +837,16 @@ function buildWranglerEnv(baseEnv) {
 	return buildWranglerEnvShared(baseEnv);
 }
 
+/**
+ * Issue #247: the live Worker binding listing is the shared API helper.
+ * The D1 side of this file was converted in the D1 slice; this closes
+ * the Worker-secret side, so the temporary mixed state is over:
+ * every credential boundary in this file is now an explicit, named one
+ * (Infisical child / Cloudflare D1 child / Worker-secret API call).
+ * Cloudflare exposes names and types only — no value is requested.
+ */
 async function readWranglerBindingNames(env) {
-	return new Promise((resolve, reject) => {
-		const child = spawnWranglerList({ env });
-		const chunks = [];
-		let total = 0;
-		child.stdout.on('data', (chunk) => {
-			total += chunk.length;
-			if (total > HTTPS_MAX_RESPONSE_BYTES) {
-				child.kill('SIGTERM');
-				reject(new Error(`wrangler secret list exceeded ${HTTPS_MAX_RESPONSE_BYTES} bytes`));
-				return;
-			}
-			chunks.push(chunk);
-		});
-		child.on('exit', (code) => {
-			if (code !== 0) {
-				reject(new Error(`wrangler secret list exited with status ${code}`));
-				return;
-			}
-			try {
-				const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-				const names = Array.isArray(parsed)
-					? parsed
-							.map((entry) => (entry && typeof entry.name === 'string' ? entry.name : null))
-							.filter((n) => n !== null)
-					: [];
-				resolve(names);
-			} catch (cause) {
-				reject(new Error(`wrangler secret list output not valid JSON: ${cause.message}`));
-			}
-		});
-		child.on('error', reject);
-	});
+	return listWorkerSecretNameList({ env: env ?? process.env });
 }
 
 async function runInfisicalWrite({ cliPath, yamlPath, environment, workspaceId, env }) {
@@ -913,12 +864,18 @@ async function runInfisicalWrite({ cliPath, yamlPath, environment, workspaceId, 
 	};
 }
 
-async function runWranglerWrite({ payload, env }) {
-	const child = spawnWranglerBulk({ payload, env });
-	const stderrChunks = [];
-	child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
-	const { code, signal } = await awaitExit(child);
-	return { code, signal, stderr: Buffer.concat(stderrChunks).toString('utf8') };
+/**
+ * Issue #247: the Worker write goes through the shared Merge Patch
+ * adapter — value in an HTTPS body, never argv. Error text carries
+ * names and status only, so it is safe to surface.
+ */
+async function runWranglerWrite({ payload, env, execute }) {
+	try {
+		await bulkUpdateWorkerSecrets(payload, { execute, env });
+		return { code: 0, signal: null, stderr: '' };
+	} catch (error) {
+		return { code: 1, signal: null, stderr: String(error?.message ?? error) };
+	}
 }
 
 /**
@@ -979,7 +936,6 @@ export {
 	buildRotatedRowName,
 	buildInfisicalYamlContent,
 	buildWorkerBulkPayload,
-	buildWranglerBulkArgs,
 	buildInfisicalSetArgs,
 	buildD1InsertCommand,
 	buildD1SelectRotatedRowsCommand,
@@ -995,8 +951,6 @@ export {
 	secretValuesEqual,
 	sqlString,
 	spawnInfisicalSet,
-	spawnWranglerBulk,
-	spawnWranglerList,
 	classifyInfisicalHttpStatus,
 	buildSecretReadUrl,
 	interpretInfisicalReadResponse,
@@ -1138,7 +1092,11 @@ async function runWorkerRecovery({
 		`[worker-recovery] writing ${SECRET_NAME} to Worker via wrangler secret bulk (stdin JSON)...`,
 	);
 	const payload = buildWorkerBulkPayload(infisicalValue);
-	const wranglerResult = await runWranglerWrite({ payload, env: wranglerEnv });
+	const wranglerResult = await runWranglerWrite({
+		payload,
+		env: wranglerEnv,
+		execute: args.mode === 'execute',
+	});
 	if (wranglerResult.signal) {
 		throw new Error(`wrangler terminated by signal ${wranglerResult.signal}`);
 	}

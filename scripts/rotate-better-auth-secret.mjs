@@ -124,6 +124,7 @@
  *       Worker fresh failed). Operator must run `--worker-recovery`.
  */
 import { spawn } from 'node:child_process';
+import { bulkUpdateWorkerSecrets, listWorkerSecretNameList } from './_worker-secrets.mjs';
 import { randomBytes, timingSafeEqual } from 'node:crypto';
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
@@ -289,10 +290,6 @@ function buildInfisicalYamlContent(freshSecret) {
  */
 function buildWorkerBulkPayload(freshSecret) {
 	return JSON.stringify({ [SECRET_NAME_LEGACY]: freshSecret });
-}
-
-function buildWranglerBulkArgs() {
-	return ['secret', 'bulk', '-c', WRANGLER_PRODUCTION_CONFIG];
 }
 
 function buildInfisicalSetArgs(yamlPath, environment, workspaceId) {
@@ -504,46 +501,6 @@ function spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env, d
 		env,
 	});
 	return child;
-}
-
-/**
- * Spawn `wrangler secret bulk -c wrangler.production.jsonc` with
- * stdin JSON payload. The bulk subcommand consumes JSON via stdin, so
- * only the write end needs to stay open -- which is what the leading
- * `'pipe'` provides. stdout/stderr are piped as well so
- * `runWranglerWrite` can capture them (see the Issue #225 note below).
- */
-function spawnWranglerBulk({ payload, env, deps = {} }) {
-	const spawnFn = deps.spawn ?? spawn;
-	const child = spawnFn(process.execPath, [WRANGLER_BIN, ...buildWranglerBulkArgs()], {
-		// Issue #225: `runWranglerWrite` captures stdout/stderr, which
-		// Node sets to null for an inherited stream. Piping all three
-		// makes the capture actually work; previously `--execute` threw
-		// AFTER a successful write, masking the driver's own
-		// partial-failure + recovery-rowId guidance.
-		stdio: ['pipe', 'pipe', 'pipe'],
-		env,
-	});
-	child.stdin.write(payload);
-	child.stdin.end();
-	return child;
-}
-
-/**
- * Spawn `wrangler secret list --format json -c wrangler.production.jsonc`
- * to enumerate binding NAMES (no values). The output is a JSON
- * array; we parse it and return the names.
- *
- * Status-only contract: this is the strongest Worker-side verification
- * available — Cloudflare does NOT expose secret values for read-back.
- */
-function spawnWranglerList({ env, deps = {} }) {
-	const spawnFn = deps.spawn ?? spawn;
-	return spawnFn(
-		process.execPath,
-		[WRANGLER_BIN, 'secret', 'list', '--format', 'json', '-c', WRANGLER_PRODUCTION_CONFIG],
-		{ stdio: ['pipe', 'pipe', 'pipe'], env },
-	);
 }
 
 /* ─── HTTPS (Infisical read-back) ──────────────────────────────────────── */
@@ -777,15 +734,12 @@ export {
 	buildVersionedForm,
 	buildInfisicalYamlContent,
 	buildWorkerBulkPayload,
-	buildWranglerBulkArgs,
 	buildInfisicalSetArgs,
 	parseArgs,
 	readInfisicalJson,
 	resolveInfisicalCliPath,
 	cleanupStaleTempDirs,
 	spawnInfisicalSet,
-	spawnWranglerBulk,
-	spawnWranglerList,
 	classifyInfisicalHttpStatus,
 	buildSecretReadUrl,
 	interpretInfisicalReadResponse,
@@ -802,39 +756,14 @@ export {
 
 /* ─── CLI entrypoint ───────────────────────────────────────────────────── */
 
+/**
+ * Issue #247: the live Worker binding listing is the single shared
+ * API helper, so every driver reads secret NAMES the same way and
+ * none of them spawn Wrangler to do it. Cloudflare exposes names and
+ * types only; no value is requested or returned.
+ */
 async function readWranglerBindingNames(env) {
-	return new Promise((resolve, reject) => {
-		const child = spawnWranglerList({ env });
-		const chunks = [];
-		let total = 0;
-		child.stdout.on('data', (chunk) => {
-			total += chunk.length;
-			if (total > HTTPS_MAX_RESPONSE_BYTES) {
-				child.kill('SIGTERM');
-				reject(new Error(`wrangler secret list exceeded ${HTTPS_MAX_RESPONSE_BYTES} bytes`));
-				return;
-			}
-			chunks.push(chunk);
-		});
-		child.on('exit', (code) => {
-			if (code !== 0) {
-				reject(new Error(`wrangler secret list exited with status ${code}`));
-				return;
-			}
-			try {
-				const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-				const names = Array.isArray(parsed)
-					? parsed
-							.map((entry) => (entry && typeof entry.name === 'string' ? entry.name : null))
-							.filter((name) => name !== null)
-					: [];
-				resolve(names);
-			} catch (cause) {
-				reject(new Error(`wrangler secret list output not valid JSON: ${cause.message}`));
-			}
-		});
-		child.on('error', reject);
-	});
+	return listWorkerSecretNameList({ env: env ?? process.env });
 }
 
 async function runInfisicalWrite({ cliPath, yamlPath, environment, workspaceId, env }) {
@@ -849,13 +778,24 @@ async function runInfisicalWrite({ cliPath, yamlPath, environment, workspaceId, 
 	return { code, signal, stdout, stderr };
 }
 
-async function runWranglerWrite({ payload, env }) {
-	const child = spawnWranglerBulk({ payload, env });
-	const stderrChunks = [];
-	child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
-	const { code, signal } = await awaitExit(child);
-	const stderr = Buffer.concat(stderrChunks).toString('utf8');
-	return { code, signal, stderr };
+/**
+ * Issue #247: the Worker write goes through the shared API adapter.
+ *
+ * The Infisical side is unchanged. The value travels in an HTTPS
+ * Merge Patch body, never argv, and the adapter enforces the
+ * production gate. Partial-failure semantics are preserved by the
+ * caller: an Infisical success with a Worker failure must still be
+ * reported as a partial failure, never as success.
+ */
+async function runWorkerSecretWrite({ changes, env, execute }) {
+	try {
+		await bulkUpdateWorkerSecrets(changes, { execute, env });
+		return { code: 0, signal: null, stderr: '' };
+	} catch (error) {
+		// `error.message` never contains a secret value: the adapter only
+		// puts names, HTTP status and the API's own error text in it.
+		return { code: 1, signal: null, stderr: String(error?.message ?? error) };
+	}
 }
 
 async function runVerify({ apiUrl, auth, cliPath, workspaceId, environment }) {
@@ -1080,10 +1020,16 @@ async function main() {
 
 	// Stage 2 — Worker write (BETTER_AUTH_SECRET only).
 	console.log(
-		`[${args.mode}] writing ${SECRET_NAME_LEGACY} to Worker via wrangler secret bulk (stdin JSON)...`,
+		`[${args.mode}] writing ${SECRET_NAME_LEGACY} to the Worker (Cloudflare Merge Patch)...`,
 	);
-	const payload = buildWorkerBulkPayload(freshSecret);
-	const wranglerResult = await runWranglerWrite({ payload, env: buildWranglerEnv(process.env) });
+	// Issue #247: a single-binding create/update. The versioned binding
+	// is NOT re-sent, so the legacy-audit and versioned states stay
+	// independent (#243).
+	const wranglerResult = await runWorkerSecretWrite({
+		changes: { [SECRET_NAME_LEGACY]: freshSecret },
+		env: process.env,
+		execute: args.mode === 'execute',
+	});
 	if (wranglerResult.signal) {
 		// Partial failure — Infisical fresh succeeded but Worker fresh did not.
 		if (infisicalWriteSucceeded && args.mode === 'execute') {

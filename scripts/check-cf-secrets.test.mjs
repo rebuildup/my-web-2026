@@ -84,6 +84,12 @@ function runInIsolatedRepo(
 	const scriptsDir = join(repo, 'scripts');
 	mkdirSync(scriptsDir, { recursive: true });
 	writeFileSync(join(scriptsDir, 'check-cf-secrets.mjs'), readFileSync(SCRIPT, 'utf8'));
+	// Issue #247: check-cf-secrets reads the Build Output binding
+	// contract, so the isolated repo needs the shared module too.
+	writeFileSync(
+		join(scriptsDir, '_cf-build-output.mjs'),
+		readFileSync(resolve(HERE, '_cf-build-output.mjs'), 'utf8'),
+	);
 
 	// Provide a wrangler config in the repo root.
 	const configPath = join(repo, configFileName);
@@ -322,7 +328,10 @@ describe('check-cf-secrets.mjs', () => {
 		});
 
 		it('transition live Worker contract excludes GA before the deploy that binds it', () => {
-			const result = runInIsolatedRepo(['--require-live-worker'], {
+			// `transition` is no longer the default: production has
+			// converged to `final`, so the CLI default is `auto` and
+			// transition is an explicit historical/recovery mode.
+			const result = runInIsolatedRepo(['--require-live-worker', '--worker-contract=transition'], {
 				wranglerContent: PHASE_3_WRANGLER,
 			});
 			assert.equal(result.exitCode, 0);

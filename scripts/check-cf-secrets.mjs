@@ -33,6 +33,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { dirname, resolve } from 'node:path';
+import { inspectBuildOutput } from './_cf-build-output.mjs';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -110,7 +111,7 @@ function parseArgs(argv) {
 		dryRun: true,
 		environment: 'prod',
 		config: 'wrangler.production.jsonc',
-		workerContract: 'transition',
+		workerContract: 'auto',
 		requireLiveWorker: false,
 	};
 	let explicitMode = null;
@@ -233,41 +234,82 @@ function buildWranglerDiagnosticEnv(sourceEnv = process.env) {
 	return env;
 }
 
-function listCloudflareWorkerSecretNames(configPath, { required = false } = {}) {
-	const hasExplicitApiToken =
-		typeof process.env.CLOUDFLARE_API_TOKEN === 'string' &&
-		process.env.CLOUDFLARE_API_TOKEN.length > 0;
-	if (!hasExplicitApiToken && !required) {
-		return null;
+/** Cloudflare account that owns production; read from the Worker config. */
+function readAccountId() {
+	if (process.env.CLOUDFLARE_ACCOUNT_ID) return process.env.CLOUDFLARE_ACCOUNT_ID;
+	for (const rel of ['cloudflare.config.ts', 'wrangler.production.jsonc']) {
+		const p = resolve(REPO_ROOT, rel);
+		if (!existsSync(p)) continue;
+		const m = readFileSync(p, 'utf8').match(/account_?[iI]d"?\s*[:=]\s*"([0-9a-f]{32})"/);
+		if (m) return m[1];
 	}
-	let stdout;
-	try {
-		stdout = execFileSync(
-			'pnpm',
-			['exec', 'wrangler', 'secret', 'list', '--format', 'json', '-c', configPath],
+	throw new Error('Cloudflare account id not resolvable; set CLOUDFLARE_ACCOUNT_ID');
+}
+
+/** Deployed Worker name. */
+function readWorkerName() {
+	if (process.env.CLOUDFLARE_WORKER_NAME) return process.env.CLOUDFLARE_WORKER_NAME;
+	for (const rel of ['cloudflare.config.ts', 'wrangler.production.jsonc']) {
+		const p = resolve(REPO_ROOT, rel);
+		if (!existsSync(p)) continue;
+		const m = readFileSync(p, 'utf8').match(/name\s*[:=]\s*"(my-web-2026)"/);
+		if (m) return m[1];
+	}
+	return 'my-web-2026';
+}
+
+/** Minimal Cloudflare API GET returning parsed JSON. */
+async function cfJson(method, path) {
+	return new Promise((resolvePromise, rejectPromise) => {
+		const req = httpsRequest(
 			{
-				encoding: 'utf8',
-				stdio: ['ignore', 'pipe', 'inherit'],
-				env: buildWranglerDiagnosticEnv(),
+				method,
+				hostname: 'api.cloudflare.com',
+				path,
+				headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
+			},
+			(res) => {
+				let raw = '';
+				res.on('data', (c) => {
+					raw += c;
+					if (raw.length > HTTPS_MAX_RESPONSE_BYTES) req.destroy();
+				});
+				res.on('end', () => {
+					try {
+						resolvePromise(JSON.parse(raw));
+					} catch (cause) {
+						rejectPromise(new Error(`Cloudflare API ${path} returned non-JSON: ${cause.message}`));
+					}
+				});
 			},
 		);
-	} catch (error) {
-		throw new Error(
-			`wrangler secret list failed (exit=${error?.status ?? '?'}): ${error?.message ?? error}`,
-		);
-	}
-	let parsed;
-	try {
-		parsed = JSON.parse(stdout);
-	} catch (cause) {
-		throw new Error(`wrangler secret list returned non-JSON output: ${cause.message}`);
-	}
-	if (!Array.isArray(parsed)) {
-		throw new Error('wrangler secret list output is not a JSON array');
-	}
-	return parsed
-		.map((entry) => entry?.name)
-		.filter((name) => typeof name === 'string' && name.length > 0);
+		req.on('error', rejectPromise);
+		req.end();
+	});
+}
+
+async function listCloudflareWorkerSecretNames() {
+	// Issue #247: the live Worker contract is read over the Cloudflare
+	// public API rather than by executing `wrangler secret list`. Running
+	// Wrangler here would mean the cf deploy path is not actually
+	// Wrangler-free. Names and types only; values are never requested.
+	const token = process.env.CLOUDFLARE_API_TOKEN;
+	if (typeof token !== 'string' || token.length === 0) return null;
+	const accountId = readAccountId();
+	const workerName = readWorkerName();
+	const path = `/accounts/${accountId}/workers/scripts/${workerName}/secrets`;
+	const response = await cfJson('GET', path);
+	const list = Array.isArray(response?.result)
+		? response.result
+		: Array.isArray(response)
+			? response
+			: [];
+	// Normalise: the API may return objects with `name`/`text` or bare
+	// strings depending on the endpoint version.
+	return list
+		.map((entry) => (typeof entry === 'string' ? entry : entry?.name))
+		.filter((name) => typeof name === 'string' && name.length > 0)
+		.sort();
 }
 
 function determinePhase(wranglerRequired) {
@@ -437,14 +479,32 @@ function printCheckResult(result, ok) {
 
 async function main() {
 	const args = parseArgs(process.argv.slice(2));
-	const wranglerRequired = readWranglerRequiredSecrets(args.config);
-	const phase = determinePhase(wranglerRequired);
+	// Issue #247: Tier 2 no longer parses `secrets.required` out of a
+	// source file. It reads the binding contract of the artifact that
+	// would actually be deployed, measured from
+	// `.cloudflare/output/v0/workers/default/worker.config.json`. The
+	// source of truth for a deploy is the thing being deployed.
+	let buildOutputSecrets = null;
+	let buildOutputInfo = null;
+	try {
+		buildOutputInfo = inspectBuildOutput();
+		buildOutputSecrets = buildOutputInfo.secretBindings;
+	} catch {
+		// No Build Output present (e.g. a Tier 1-only diagnostic run).
+		// Tier 2 then reports the mismatch rather than silently passing.
+	}
+	const phase = buildOutputSecrets
+		? 'phase-3+'
+		: determinePhase(readWranglerRequiredSecrets(args.config));
 	const expectedPhaseList = expectedPhaseRequired(phase);
 
 	console.log(`[check-cf-secrets] environment=${args.environment}`);
 	console.log(`[check-cf-secrets] config=${args.config}`);
 	console.log(`[check-cf-secrets] detected phase=${phase}`);
-	console.log(`[check-cf-secrets] wrangler secrets.required=${JSON.stringify(wranglerRequired)}`);
+	console.log(
+		`[check-cf-secrets] deploy-time secret bindings=${JSON.stringify(buildOutputSecrets ?? readWranglerRequiredSecrets(args.config))}` +
+			`${buildOutputInfo ? ` (from Build Output, mode=${buildOutputInfo.mode})` : ' (no Build Output; fell back to source config)'}`,
+	);
 	console.log(`[check-cf-secrets] mode=${args.execute ? 'execute' : 'dry-run'}`);
 	console.log(`[check-cf-secrets] worker contract=${args.workerContract}`);
 	console.log(`[check-cf-secrets] require live worker=${args.requireLiveWorker}`);
@@ -541,14 +601,14 @@ async function main() {
 		// / unknown phase values cannot silently pass.
 		if (expectedPhaseList === null) {
 			console.error(
-				`[execute] [FAIL] cannot determine phase from wrangler config: secrets.required=${JSON.stringify(wranglerRequired)} does not contain a recognized pattern (BETTER_AUTH_SECRET or BETTER_AUTH_SECRETS). Recognized phase + exact 3-name match is required (ADR-0015 §9).`,
+				'[execute] [FAIL] cannot determine the deploy-time secret contract. A recognized phase (containing BETTER_AUTH_SECRETS) and an exact 3-name match are required (ADR-0015 §9).',
 			);
 			exitCode = 1;
 		} else {
 			const phaseCheck = compareNameLists(
-				wranglerRequired,
+				buildOutputSecrets ?? readWranglerRequiredSecrets(args.config),
 				expectedPhaseList,
-				`wrangler secrets.required (${phase}, exact 3-name)`,
+				`Build Output binding contract (${phase}, exact 3-name)`,
 			);
 			const phaseOk = phaseCheck.missing.length === 0 && phaseCheck.extra.length === 0;
 			printCheckResult(phaseCheck, phaseOk);
@@ -561,9 +621,7 @@ async function main() {
 		// finding — a deploy-time secret may exist in Infisical but
 		// not be bound on the Worker (or vice versa), and the worker
 		// would either fail to start or silently omit the secret.
-		const workerNames = listCloudflareWorkerSecretNames(args.config, {
-			required: args.requireLiveWorker,
-		});
+		const workerNames = await listCloudflareWorkerSecretNames();
 		if (workerNames !== null) {
 			const requested = args.workerContract;
 			const effective = requested === 'auto' ? resolveWorkerContract(workerNames) : requested;

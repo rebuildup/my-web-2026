@@ -63,6 +63,12 @@ function runInIsolatedRepo(args, { env = {} } = {}) {
 	const scriptsDir = join(repo, 'scripts');
 	mkdirSync(scriptsDir, { recursive: true });
 	writeFileSync(join(scriptsDir, 'run-deploy-inner.mjs'), readFileSync(SCRIPT, 'utf8'));
+	// Issue #247: the inner deploy imports the shared Build Output
+	// verifier, so the isolated repo needs it too.
+	writeFileSync(
+		join(scriptsDir, '_cf-build-output.mjs'),
+		readFileSync(resolve(HERE, '_cf-build-output.mjs'), 'utf8'),
+	);
 	// Provide a fake wrangler script (used by --execute but not by --dry-run).
 	const fakeWrangler = join(scriptsDir, 'fake-wrangler.mjs');
 	writeFileSync(
@@ -101,16 +107,21 @@ function runInIsolatedRepo(args, { env = {} } = {}) {
 
 describe('run-deploy-inner.mjs', () => {
 	describe('arg parsing', () => {
-		it('requires --config', () => {
-			const result = runInIsolatedRepo([], { env: REQUIRED_FOR_PHASE_3_PLUS });
+		// Issue #247: `--config` is no longer the production gate. The
+		// Build Output is. `--config` is accepted and ignored so existing
+		// invocations keep working while callers migrate.
+		it('accepts --config but requires the Build Output to execute', () => {
+			const result = runInIsolatedRepo(['--config=wrangler.jsonc', '--execute'], {
+				env: { ...REQUIRED_FOR_PHASE_3_PLUS, CLOUDFLARE_API_TOKEN: 'dummy' },
+			});
+			// This isolated repo has no Build Output, so the new gate
+			// rejects it — which is exactly the point.
 			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /--config=<path> is required/);
+			assert.match(result.stderr, /Build Output/);
 		});
 
 		it('rejects unknown argument', () => {
-			const result = runInIsolatedRepo(['--config=wrangler.jsonc', '--bogus'], {
-				env: REQUIRED_FOR_PHASE_3_PLUS,
-			});
+			const result = runInIsolatedRepo(['--bogus'], { env: REQUIRED_FOR_PHASE_3_PLUS });
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /unknown argument: --bogus/);
 		});
@@ -162,7 +173,10 @@ describe('run-deploy-inner.mjs', () => {
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /\[dry-run\]/);
 			assert.match(result.stdout, /secrets\.json would have been written/);
-			assert.ok(result.stdout.includes('wrangler.jsonc'));
+			// Issue #247: the dry-run now names the cf deploy argv and
+			// the Build Output, not a wrangler config path.
+			assert.match(result.stdout, /cf deploy --prebuilt --mode production --secrets-file/);
+			assert.match(result.stdout, /Build Output/);
 			assert.match(result.stdout, /contains 3 keys/);
 		});
 
@@ -253,63 +267,6 @@ describe('run-deploy-inner.mjs', () => {
 	});
 
 	describe('--execute config lockdown (production D1 path)', () => {
-		it('rejects --execute with non-production config (wrangler.jsonc)', () => {
-			const result = runInIsolatedRepo(['--config=wrangler.jsonc', '--execute'], {
-				env: REQUIRED_FOR_PHASE_3_PLUS,
-			});
-			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /--execute is only valid with the canonical/);
-			assert.match(result.stderr, /Dev verification path/);
-		});
-
-		it('rejects --execute with absolute non-production path', () => {
-			// Even though the basename is `wrangler.staging.jsonc`, the
-			// absolute path does not equal REPO_ROOT/wrangler.production.jsonc.
-			const result = runInIsolatedRepo(
-				['--config=/some/other/path/wrangler.staging.jsonc', '--execute'],
-				{ env: REQUIRED_FOR_PHASE_3_PLUS },
-			);
-			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /--execute is only valid with the canonical/);
-		});
-
-		it('rejects --execute with --config=wrangler.dev.jsonc', () => {
-			const result = runInIsolatedRepo(['--config=wrangler.dev.jsonc', '--execute'], {
-				env: REQUIRED_FOR_PHASE_3_PLUS,
-			});
-			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /--execute is only valid with the canonical/);
-		});
-
-		it('rejects --execute with same-named config in a different directory', () => {
-			// A same-named `wrangler.production.jsonc` placed in a
-			// tempdir would have passed the old basename check but must
-			// be rejected by the new path-equality gate. The script
-			// itself runs from REPO_ROOT (resolved via import.meta.url);
-			// the request instead points at a tempdir config, so the
-			// absolute paths differ.
-			const repo = mkdtempSync(join(tmpdir(), 'run-deploy-inner-samename-'));
-			const foreignConfig = join(repo, 'wrangler.production.jsonc');
-			writeFileSync(foreignConfig, '{}');
-			let exitCode = 0;
-			let stderr = '';
-			try {
-				execFileSync(process.execPath, [SCRIPT, `--config=${foreignConfig}`, '--execute'], {
-					cwd: repo,
-					encoding: 'utf8',
-					stdio: ['ignore', 'pipe', 'pipe'],
-					env: { ...process.env, ...REQUIRED_FOR_PHASE_3_PLUS },
-				});
-			} catch (error) {
-				exitCode = error.status ?? 1;
-				stderr = error.stderr ?? '';
-			} finally {
-				rmSync(repo, { recursive: true, force: true });
-			}
-			assert.equal(exitCode, 1);
-			assert.match(stderr, /--execute is only valid with the canonical/);
-		});
-
 		it('allows dry-run (no --execute) with any config basename', () => {
 			// Dev verification path is operator-driven:
 			//   infisical run --env=dev -- node scripts/run-deploy-inner.mjs

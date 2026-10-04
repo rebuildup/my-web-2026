@@ -69,6 +69,11 @@ function runInIsolatedRepo(args, { env = {} } = {}) {
 		join(scriptsDir, '_cf-build-output.mjs'),
 		readFileSync(resolve(HERE, '_cf-build-output.mjs'), 'utf8'),
 	);
+	// Issue #247: the inner deploy imports the D1 driver, so the
+	// isolated repo needs it (and its identity module) too.
+	for (const dep of ['_d1.mjs', '_cloudflare-identity.mjs']) {
+		writeFileSync(join(scriptsDir, dep), readFileSync(resolve(HERE, dep), 'utf8'));
+	}
 	// Provide a fake wrangler script (used by --execute but not by --dry-run).
 	const fakeWrangler = join(scriptsDir, 'fake-wrangler.mjs');
 	writeFileSync(

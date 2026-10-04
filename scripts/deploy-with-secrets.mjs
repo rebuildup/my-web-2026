@@ -245,7 +245,32 @@ async function loginUniversalAuth(apiUrl, clientId, clientSecret) {
 }
 
 function findInfisicalCli() {
-	const cliPath = require.resolve('@infisical/cli/bin/infisical.js');
+	// Issue #235 — `@infisical/cli` ships a NATIVE binary
+	// (`package.json#bin` = `{ "infisical": "./bin/infisical" }`); there is no
+	// `bin/infisical.js`, so the previous hardcoded resolve always threw
+	// `Cannot find module` in the Workers Builds environment. Resolve from the
+	// manifest exactly like the rotation drivers
+	// (`rotate-better-auth-secret.mjs#resolveInfisicalCliPath`,
+	// `rotate-home-api-key.mjs`, `infisical-seed.mjs`) so all five drivers agree,
+	// and reject a `.js` path because that would be handed to `node` below.
+	const req = require;
+	const fsImpl = require('node:fs');
+	const pathImpl = require('node:path');
+	const pkgPath = req.resolve('@infisical/cli/package.json');
+	const binField = JSON.parse(fsImpl.readFileSync(pkgPath, 'utf8')).bin;
+	const binRel =
+		typeof binField === 'string'
+			? binField
+			: binField && typeof binField.infisical === 'string'
+				? binField.infisical
+				: null;
+	if (binRel === null) {
+		throw new Error('@infisical/cli/package.json#bin must declare an `infisical` entry');
+	}
+	const cliPath = pathImpl.resolve(pathImpl.dirname(pkgPath), binRel);
+	if (cliPath.endsWith('.js')) {
+		throw new Error(`@infisical/cli binary path ends in .js (${cliPath}); native binary required`);
+	}
 	return cliPath;
 }
 
@@ -263,7 +288,8 @@ function findInfisicalCli() {
  * script's parser contract.
  *
  * @param {object} params
- * @param {string} params.infisicalCli  path to `@infisical/cli/bin/infisical.js`
+ * @param {string} params.infisicalCli  absolute path to the native
+ *   `@infisical/cli` binary (resolved from its `package.json#bin`)
  * @param {string} params.workspaceId   Infisical workspace/project id from `.infisical.json`
  * @param {string} params.environment   Infisical environment name (always 'prod' for this driver)
  * @param {string} params.configPath    wrangler config path (canonical `wrangler.production.jsonc`)
@@ -420,7 +446,11 @@ async function main() {
 			`[execute] spawning: infisical run --projectId=<workspaceId> --env=${args.environment} -- <inner> --config=${args.config} --execute`,
 		);
 		try {
-			execFileSync(process.execPath, innerArgs, {
+			// Issue #235 — exec the native Infisical binary directly. The
+			// previous `execFileSync(process.execPath, innerArgs)` handed an
+			// ELF executable to `node`, which can only fail. The rotation
+			// drivers already spawn the binary as the executable.
+			execFileSync(innerArgs[0], innerArgs.slice(1), {
 				stdio: 'inherit',
 			});
 		} catch (error) {

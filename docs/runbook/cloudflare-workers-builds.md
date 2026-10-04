@@ -285,6 +285,41 @@ Two distinct preconditions, do not conflate them:
 | `media.rebuildup.dev` resolves (R2 custom domain attached) | **Pre-release preparation** (#82). Can and should be attached + verified before #91 so it is not a surprise during the publication window. |
 | Portfolio candidates published (`visibility=public`) | **After** `--operation=publish`. Until then `e2e/prod-portfolio.spec.ts` cannot pass. |
 
+## Diagnosing a failed build (Issue #247)
+
+Use the repository helper and the Builds API. **Do not** use the
+Cloudflare Dashboard or browser automation for production diagnosis —
+it needs an interactive login, sits behind a bot challenge, and cannot
+be asserted on.
+
+```bash
+# by commit SHA (or a branch / PR ref): resolves the Build UUID first
+infisical run --env dev --path / -- \
+  node scripts/cf-build-status.mjs a581a39
+
+# by explicit Build UUID
+infisical run --env dev --path / -- \
+  node scripts/cf-build-status.mjs 7681b516-d11e-4a39-a351-fce74ac4d5cb
+
+# machine-readable
+... --json
+
+# build-minute limits (useful before assuming a rate limit)
+... --limits
+```
+
+It reports the build status and window, the full log (with cursor
+pagination and truncation detected), the **stage that failed**, the
+first error line, an exit code when present, and surrounding context.
+
+The `CLOUDFLARE_API_TOKEN` it reads is the Infisical-managed credential
+used throughout the release procedure. The token is only ever read from
+the process environment and used as a request header — never echoed,
+never placed in argv, never written to disk. Every log line is passed
+through a redaction pass (`KEY=value` credentials, `Authorization:
+Bearer …`, and `Set-Cookie` are all replaced) before it is printed, so
+the output is safe to paste into an Issue.
+
 ## Smoke boundary semantics
 
 The smokes look superficially similar but verify **different things**:

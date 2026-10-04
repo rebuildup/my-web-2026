@@ -127,25 +127,41 @@ export function resolveTarget(target) {
 }
 
 /**
- * Production authorization. Identity is checked against the canonical
- * constants — NEVER against a database NAME, and never against a
- * config file path.
+ * The lowest-level production WRITE gate (Issue #247).
+ *
+ * EVERY production write primitive calls this, so the gate does not
+ * depend on a caller remembering one `if`. A production mutation
+ * requires ALL of:
+ *
+ *   - target === 'production'
+ *   - execute === true
+ *   - the canonical account id
+ *   - the canonical database id
+ *
+ * Identity is checked against the canonical constants — NEVER against a
+ * database NAME and never against a config file path. Read paths
+ * (`queryRows`, `listMigrations`) deliberately do not call this.
  */
-export function assertProductionAuthorization({
+export function assertProductionWriteAllowed({
 	target,
 	execute,
+	kind = 'mutation',
 	databaseId = D1_DATABASE_ID,
 	accountId = ACCOUNT_ID,
 }) {
-	if (target !== 'production') return;
-	if (!execute) return; // list / read paths are allowed; writes need execute
+	if (target !== 'production') return; // local is the safe default
+	if (!execute) {
+		throw new Error(
+			`refusing a production D1 ${kind}: requires an explicit execute. cf applies by default and treats remote as the default, so an omitted flag IS a production write.`,
+		);
+	}
 	if (databaseId !== D1_DATABASE_ID) {
 		throw new Error(
-			`refusing a production D1 mutation against database ${databaseId}: expected ${D1_DATABASE_ID}.`,
+			`refusing a production D1 ${kind} against database ${databaseId}: expected ${D1_DATABASE_ID}.`,
 		);
 	}
 	if (accountId !== ACCOUNT_ID) {
-		throw new Error(`refusing a production D1 mutation on account ${accountId}.`);
+		throw new Error(`refusing a production D1 ${kind} on account ${accountId}.`);
 	}
 }
 
@@ -171,7 +187,10 @@ export function queryRows(
 ) {
 	const resolved = resolveTarget(target);
 	if (resolved === 'production') {
-		assertProductionAuthorization({ target: resolved, execute: false, databaseId, accountId });
+		// Read-only: identity is still checked, but no execute gate applies.
+		if (databaseId !== D1_DATABASE_ID || accountId !== ACCOUNT_ID) {
+			throw new Error('refusing a production D1 read against a non-canonical identity.');
+		}
 	}
 	const args = resolved === 'local' ? localArgs(databaseId) : remoteArgs(databaseId);
 	const stdout = cf([...args, '--sql', sql], { env });
@@ -210,7 +229,13 @@ export function applyMigrations({
 		};
 	}
 
-	assertProductionAuthorization({ target: resolved, execute: true, databaseId, accountId });
+	assertProductionWriteAllowed({
+		target: resolved,
+		execute: true,
+		kind: 'migration apply',
+		databaseId,
+		accountId,
+	});
 
 	const args = ['d1', 'migrations', 'apply', databaseId, '--dir', MIGRATIONS_DIR];
 	if (local) args.push('--local', '--persist-to', join(REPO_ROOT, LOCAL_D1_STATE_DIR));
@@ -239,7 +264,13 @@ export function executeBatch(
 	{ target = 'local', databaseId = D1_DATABASE_ID, accountId = ACCOUNT_ID, env = process.env } = {},
 ) {
 	const resolved = resolveTarget(target);
-	assertProductionAuthorization({ target: resolved, execute: true, databaseId, accountId });
+	assertProductionWriteAllowed({
+		target: resolved,
+		execute: true,
+		kind: 'batch',
+		databaseId,
+		accountId,
+	});
 	const args =
 		resolved === 'local'
 			? [

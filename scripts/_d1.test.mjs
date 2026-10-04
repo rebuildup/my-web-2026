@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { D1_TARGETS, assertProductionAuthorization, normaliseRows, resolveTarget } from './_d1.mjs';
+import { parseD1Args } from './d1.mjs';
+import { D1_TARGETS, assertProductionWriteAllowed, normaliseRows, resolveTarget } from './_d1.mjs';
 import { D1_DATABASE_ID, ACCOUNT_ID } from './_cloudflare-identity.mjs';
 
 /**
@@ -100,10 +101,10 @@ describe('resolveTarget (Issue #247)', () => {
 	});
 });
 
-describe('assertProductionAuthorization (Issue #247)', () => {
+describe('assertProductionWriteAllowed (Issue #247)', () => {
 	it('authorizes the canonical production identity', () => {
 		assert.doesNotThrow(() =>
-			assertProductionAuthorization({ target: 'production', execute: true }),
+			assertProductionWriteAllowed({ target: 'production', execute: true }),
 		);
 	});
 
@@ -111,7 +112,7 @@ describe('assertProductionAuthorization (Issue #247)', () => {
 		// A NAME is never sufficient. Identity is the ID.
 		assert.throws(
 			() =>
-				assertProductionAuthorization({
+				assertProductionWriteAllowed({
 					target: 'production',
 					execute: true,
 					databaseId: 'my-web-2026',
@@ -123,7 +124,7 @@ describe('assertProductionAuthorization (Issue #247)', () => {
 	it('refuses a production write on a different account', () => {
 		assert.throws(
 			() =>
-				assertProductionAuthorization({
+				assertProductionWriteAllowed({
 					target: 'production',
 					execute: true,
 					accountId: '0'.repeat(32),
@@ -133,7 +134,7 @@ describe('assertProductionAuthorization (Issue #247)', () => {
 	});
 
 	it('is a no-op outside production', () => {
-		assert.doesNotThrow(() => assertProductionAuthorization({ target: 'local', execute: true }));
+		assert.doesNotThrow(() => assertProductionWriteAllowed({ target: 'local', execute: true }));
 	});
 });
 
@@ -141,5 +142,105 @@ describe('identity constants (Issue #247)', () => {
 	it('pins the canonical production database by ID', () => {
 		assert.equal(D1_DATABASE_ID, 'd761ddb7-8179-48dd-855f-c8b7b2924bad');
 		assert.equal(ACCOUNT_ID, 'c6ab6651a5d4d6d0d07686bbd3c3d56f');
+	});
+});
+
+/* -- Issue #247: the production write gate is not caller-dependent -- */
+
+describe('assertProductionWriteAllowed (Issue #247)', () => {
+	it('refuses a production write without an explicit execute', () => {
+		assert.throws(
+			() => assertProductionWriteAllowed({ target: 'production', execute: false, kind: 'batch' }),
+			/requires an explicit execute/,
+		);
+	});
+
+	it('refuses a production write on a non-canonical database', () => {
+		assert.throws(
+			() =>
+				assertProductionWriteAllowed({
+					target: 'production',
+					execute: true,
+					kind: 'batch',
+					databaseId: 'my-web-2026',
+				}),
+			/refusing a production D1 batch against database/,
+		);
+	});
+
+	it('refuses a production write on a non-canonical account', () => {
+		assert.throws(
+			() =>
+				assertProductionWriteAllowed({
+					target: 'production',
+					execute: true,
+					kind: 'batch',
+					accountId: '0'.repeat(32),
+				}),
+			/on account/,
+		);
+	});
+
+	it('allows a production write only with all four conditions', () => {
+		assert.doesNotThrow(() =>
+			assertProductionWriteAllowed({ target: 'production', execute: true, kind: 'batch' }),
+		);
+	});
+
+	it('does not gate local writes', () => {
+		assert.doesNotThrow(() =>
+			assertProductionWriteAllowed({ target: 'local', execute: false, kind: 'batch' }),
+		);
+	});
+});
+
+/* -- Issue #247: the CLI parser boundary --------------------------------- */
+
+describe('parseD1Args (Issue #247)', () => {
+	it('reads --execute as execute=true', () => {
+		// Regression: the parser called `has('--execute')` while `has()`
+		// already prefixes `--`, so it searched for `----execute`, never
+		// matched, and silently downgraded a production apply to a
+		// listing. The migration would never run in production.
+		assert.equal(parseD1Args(['apply', '--target=production', '--execute']).execute, true);
+	});
+
+	it('leaves execute=false when the flag is absent', () => {
+		assert.equal(parseD1Args(['apply', '--target=production']).execute, false);
+		assert.equal(parseD1Args(['apply']).execute, false);
+	});
+
+	it('selects the production apply path only with --execute', () => {
+		// The two conditions, checked at the parser boundary and then at
+		// the gate. No remote call is made: the gate throws first.
+		const withFlag = parseD1Args(['apply', '--target=production', '--execute']);
+		const without = parseD1Args(['apply', '--target=production']);
+		assert.doesNotThrow(() =>
+			assertProductionWriteAllowed({
+				target: withFlag.target,
+				execute: withFlag.execute,
+				kind: 'apply',
+			}),
+		);
+		assert.throws(
+			() =>
+				assertProductionWriteAllowed({
+					target: without.target,
+					execute: without.execute,
+					kind: 'apply',
+				}),
+			/requires an explicit execute/,
+		);
+	});
+
+	it('accepts both --name=value and --name value', () => {
+		// Shell quoting turns `--sql "SELECT 1"` into two argv entries.
+		assert.equal(parseD1Args(['query', '--sql=SELECT 1']).sql, 'SELECT 1');
+		assert.equal(parseD1Args(['query', '--sql', 'SELECT 1']).sql, 'SELECT 1');
+	});
+
+	it('defaults the target to local and never to production', () => {
+		assert.equal(parseD1Args(['apply']).target, 'local');
+		assert.equal(parseD1Args(['apply', '--execute']).target, 'local');
 	});
 });

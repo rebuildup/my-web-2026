@@ -32,10 +32,45 @@ Settings → Builds**:
 | Build command | `pnpm run build` |
 | Deploy command | `pnpm run deploy:production:prepared` |
 | Root directory | repository root |
-| Build variables | `NODE_VERSION=22`, `PNPM_VERSION=12.3.4` |
+| Build variables | `NODE_VERSION=22`, `PNPM_VERSION=12.3.4`, `BUN_VERSION=1.4.2` |
 | Build caching | enabled |
 | Non-production branch builds | **disabled** — GitHub Actions owns PR/release validation |
 | API token permissions | Worker deploy + route edit + **Account / D1 / Edit** (the deploy command applies pending D1 migrations before Wrangler deploy) |
+
+### Toolchain parity: CI and Workers Builds must pin the same Bun
+
+`external/readmark` is built by `scripts/build-tools.mjs` with
+`bun install --frozen-lockfile`, and it ships a Bun **text lockfile**
+(`bun.lock`, `lockfileVersion: 2`). Bun older than 1.3 cannot parse
+it: it logs `UnknownLockfileVersion`, silently **ignores** the
+lockfile, and then `--frozen-lockfile` fails with the misleading
+`lockfile had changes, but lockfile is frozen` — which reads like a
+dependency problem and is not one.
+
+GitHub Actions provisions Bun explicitly (`oven-sh/setup-bun` with
+`bun-version: 1.4.2`). Cloudflare Workers Builds does **not**: the
+build image ships its own Bun (1.2.15 as of 2026-10-04) unless the
+`BUN_VERSION` build variable overrides it. That divergence is what
+failed the 0.5.0 release builds — CI was green while the production
+build path was not.
+
+**Contract: both environments pin `1.4.2`.** When the readmark
+lockfile format changes, bump all three together:
+
+| Where | What |
+| --- | --- |
+| `.github/workflows/ci.yml` | `oven-sh/setup-bun` → `bun-version` |
+| Workers Builds trigger | build variable `BUN_VERSION` |
+| `scripts/build-tools.mjs` | `MINIMUM_PACKAGE_MANAGER_VERSION.bun` (fail-fast guard) |
+| this runbook | Build Variables row above |
+
+`scripts/build-tools.mjs` probes `<package-manager> --version` before
+each Tool build and refuses to continue when the detected version is
+below the minimum, naming both versions. The failure is then an
+explicit error at the Tool boundary instead of an opaque lockfile
+parse error several steps later. **Do not fix a toolchain-version
+failure by downgrading the Tool's lockfile** — the lockfile is the
+Tool's contract; the build runtime is what must be brought up to it.
 
 ## Runtime secrets — source of truth
 

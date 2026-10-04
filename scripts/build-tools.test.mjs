@@ -160,3 +160,78 @@ describe('Tool build orchestrator — Issue #80 baseline', () => {
 		});
 	});
 });
+
+/* -- Issue #233: toolchain-version guard --------------------------------- */
+
+describe('compareVersions (Issue #233)', () => {
+	it('orders dotted versions numerically, not lexically', () => {
+		assert.equal(compareVersions('1.2.15', '1.3.0'), -1);
+		assert.equal(compareVersions('1.3.0', '1.2.15'), 1);
+		assert.equal(compareVersions('1.4.2', '1.4.2'), 0);
+		// The failing build: 1.2.15 vs the required 1.3.0.
+		assert.equal(compareVersions('1.2.15', '1.3.0'), -1);
+		// A patch-only difference must not compare as 0.
+		assert.equal(compareVersions('1.4.1', '1.4.2'), -1);
+	});
+
+	it('treats a missing segment as zero', () => {
+		assert.equal(compareVersions('1.4', '1.4.0'), 0);
+		assert.equal(compareVersions('1.4', '1.4.1'), -1);
+	});
+
+	it('returns null for unparsable input so it is never silently accepted', () => {
+		assert.equal(compareVersions('abc', '1.3.0'), null);
+		assert.equal(compareVersions('1.x.0', '1.3.0'), null);
+	});
+});
+
+describe('parseVersionBanner (Issue #233)', () => {
+	it('extracts the version from a bun banner', () => {
+		assert.equal(parseVersionBanner('1.4.2 (df017990)'), '1.4.2');
+		assert.equal(parseVersionBanner('1.2.15 (df017990)'), '1.2.15');
+		assert.equal(parseVersionBanner('1.4.2'), '1.4.2');
+	});
+
+	it('returns null when no version is present', () => {
+		assert.equal(parseVersionBanner(''), null);
+		assert.equal(parseVersionBanner(undefined), null);
+		assert.equal(parseVersionBanner('unknown'), null);
+	});
+
+	it('rejects the exact banner that failed the release build', () => {
+		// bun 1.2.15 announced "Unknown lockfile version" for readmark's
+		// lockfileVersion 2; the guard must catch it before the build runs.
+		const detected = parseVersionBanner('1.2.15 (df017990)');
+		assert.equal(detected, '1.2.15');
+		assert.equal(compareVersions(detected, '1.3.0'), -1);
+	});
+});
+
+/**
+ * Issue #233 — mirrors `scripts/build-tools.mjs#compareVersions`.
+ * Numeric segment comparison; `null` when a segment is unparsable so
+ * an unreadable version is never silently treated as sufficient.
+ */
+function compareVersions(a, b) {
+	const pa = String(a).split('.');
+	const pb = String(b).split('.');
+	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+		const na = Number.parseInt(pa[i] ?? '0', 10);
+		const nb = Number.parseInt(pb[i] ?? '0', 10);
+		if (Number.isNaN(na) || Number.isNaN(nb)) return null;
+		if (na !== nb) return na < nb ? -1 : 1;
+	}
+	return 0;
+}
+
+/**
+ * Issue #233 — mirrors `scripts/build-tools.mjs#parseVersionBanner`.
+ * `1.4.2 (df017990)` -> `1.4.2`; `null` when absent.
+ */
+function parseVersionBanner(banner) {
+	const match = /(\d+)\.(\d+)\.(\d+)/.exec(String(banner ?? ''));
+	return match ? `${match[1]}.${match[2]}.${match[3]}` : null;
+}
+
+/** The minimum the orchestrator enforces for bun (Issue #233). */
+const MIN_BUN = '1.3.0';

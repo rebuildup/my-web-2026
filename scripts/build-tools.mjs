@@ -53,6 +53,54 @@ if (!existsSync(manifestPath)) {
 }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 
+/**
+ * Issue #233 — minimum toolchain versions.
+ *
+ * `external/readmark` ships a Bun text lockfile (`bun.lock`) at
+ * `lockfileVersion: 2`. Older Bun cannot parse it: it logs
+ * `UnknownLockfileVersion`, silently IGNORES the lockfile, and then
+ * `--frozen-lockfile` fails with the misleading "lockfile had
+ * changes, but lockfile is frozen" — which reads like a dependency
+ * problem and is not one.
+ *
+ * That is exactly how the production Workers Builds run died: the build
+ * image ships Bun 1.2.15 while GitHub Actions provisions 1.4.2 via
+ * `oven-sh/setup-bun`. Probing here turns a confusing mid-build
+ * failure into an explicit error naming both the detected and the
+ * required version.
+ *
+ * Keep in sync with `.github/workflows/ci.yml` (`oven-sh/setup-bun`
+ * bun-version), the Workers Builds `BUN_VERSION` build variable, and
+ * `docs/runbook/cloudflare-workers-builds.md` Build Variables.
+ */
+const MINIMUM_PACKAGE_MANAGER_VERSION = { bun: '1.3.0' };
+
+/**
+ * Compare dotted version strings. Returns -1/0/1, or `null` when a
+ * segment is unparsable — the caller treats `null` as a mismatch so
+ * a version we cannot read is never silently accepted.
+ */
+export function compareVersions(a, b) {
+	const pa = String(a).split('.');
+	const pb = String(b).split('.');
+	for (let i = 0; i < Math.max(pa.length, pb.length); i++) {
+		const na = Number.parseInt(pa[i] ?? '0', 10);
+		const nb = Number.parseInt(pb[i] ?? '0', 10);
+		if (Number.isNaN(na) || Number.isNaN(nb)) return null;
+		if (na !== nb) return na < nb ? -1 : 1;
+	}
+	return 0;
+}
+
+/**
+ * Extract `MAJOR.MINOR.PATCH` from a `bun --version` banner, e.g.
+ * `1.4.2 (df017990)` -> `1.4.2`. Returns `null` when absent.
+ */
+export function parseVersionBanner(banner) {
+	const match = /(\d+)\.(\d+)\.(\d+)/.exec(String(banner ?? ''));
+	return match ? `${match[1]}.${match[2]}.${match[3]}` : null;
+}
+
 const targetTools = manifest.tools.filter((t) => {
 	if (toolFilter && t.slug !== toolFilter) return false;
 	return t.delivery?.kind === 'same_origin_static';
@@ -123,6 +171,22 @@ for (const tool of targetTools) {
 			errors.push(`${tool.slug}: package manager ${tool.build.package_manager} not available`);
 			console.error('[build-tools]   ✗ package manager unavailable');
 			continue;
+		}
+		// Issue #233 — fail fast, naming both versions, when the
+		// available toolchain predates a Tool's lockfile format.
+		const minimum = MINIMUM_PACKAGE_MANAGER_VERSION[tool.build.package_manager];
+		if (minimum) {
+			const detected = parseVersionBanner(result.stdout);
+			const cmp = detected === null ? null : compareVersions(detected, minimum);
+			if (cmp === null || cmp < 0) {
+				errors.push(
+					`${tool.slug}: ${tool.build.package_manager} ${detected ?? 'unparsable'} is older than the required ${minimum} for its lockfile format`,
+				);
+				console.error(
+					`[build-tools]   ✗ ${tool.build.package_manager} ${detected ?? 'unparsable'} < required ${minimum} — set BUN_VERSION=${minimum} in Workers Builds and oven-sh/setup-bun in CI`,
+				);
+				continue;
+			}
 		}
 		const buildResult = spawnSync('sh', ['-c', tool.build.command], {
 			cwd: submodulePath,

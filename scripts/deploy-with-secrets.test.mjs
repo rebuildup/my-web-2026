@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import {
 	existsSync,
@@ -493,3 +494,52 @@ describe('deploy-with-secrets.mjs', () => {
 
 // Suppress unused imports (pathToFileURL kept for future ESM-direct import tests).
 void pathToFileURL;
+
+/* -- Issue #235: native Infisical binary resolution + exec shape ------ */
+
+describe('findInfisicalCli (Issue #235)', () => {
+	async function loadFindInfisicalCli() {
+		const { readFileSync } = await import('node:fs');
+		const source = readFileSync(SCRIPT, 'utf8');
+		const re = /function\s+findInfisicalCli\s*\(\)\s*\{[\s\S]*?\n\}/;
+		const m = source.match(re);
+		if (!m) throw new Error('Could not extract findInfisicalCli from deploy-with-secrets.mjs');
+		const req = createRequire(import.meta.url);
+		return new Function('require', `${m[0]}\nreturn findInfisicalCli;`)(req);
+	}
+
+	it('resolves the real native binary, not a .js shim', async () => {
+		const find = await loadFindInfisicalCli();
+		const resolved = find();
+		// `@infisical/cli` declares `bin: { infisical: './bin/infisical' }` and
+		// ships a ~150MB ELF. The removed `bin/infisical.js` never existed,
+		// which is what failed the Workers Builds run.
+		assert.notEqual(resolved.endsWith('.js'), true, 'must not resolve a .js path');
+		assert.ok(resolved.includes('@infisical/cli'), `unexpected path: ${resolved}`);
+		const { existsSync } = await import('node:fs');
+		assert.ok(existsSync(resolved), 'resolved CLI path must exist on disk');
+	});
+});
+
+describe('inner spawn shape (Issue #235)', () => {
+	it('runs the native binary as the executable, not under node', () => {
+		// The Infisical CLI is an ELF executable. `execFileSync(process.execPath,
+		// [cli, ...])` hands it to node and can only fail. Assert the source
+		// keeps the binary as the executable and strips it from the args.
+		// Strip comments first: the fix's own explanatory comment names the
+		// old expression, and the contract under test is about executable code.
+		const source = readFileSync(SCRIPT, 'utf8')
+			.replace(/\/\*[\s\S]*?\*\//g, '')
+			.replace(/^[ \t]*\/\/.*$/gm, '');
+		assert.doesNotMatch(
+			source,
+			/execFileSync\(\s*process\.execPath\s*,\s*innerArgs/,
+			'must not hand the native Infisical binary to node',
+		);
+		assert.match(
+			source,
+			/execFileSync\(\s*innerArgs\[0\]\s*,\s*innerArgs\.slice\(1\)/,
+			'must exec the native binary directly',
+		);
+	});
+});

@@ -72,6 +72,42 @@ parse error several steps later. **Do not fix a toolchain-version
 failure by downgrading the Tool's lockfile** — the lockfile is the
 Tool's contract; the build runtime is what must be brought up to it.
 
+### Build / Deploy phase contract (Issue #247)
+
+The two phases are deliberately asymmetric:
+
+| Phase | Command | Produces |
+| --- | --- | --- |
+| Build | `pnpm run build:production` | a complete `.cloudflare/output/v0/` |
+| Deploy | `pnpm run deploy:production:prepared` | consumes that Build Output |
+
+`build:production` is **one self-contained command**: application
+build → Tool build → client-bundle check → `cf build` → Tool sync into
+the Build Output → Build Output verification. It never assumes a
+previous step ran; the CI rule is that it must not succeed because
+some other script happened to execute first.
+
+The deploy phase **does not rebuild**. It verifies the Build Output it
+is about to ship and then runs `cf deploy --prebuilt --mode production
+--secrets-file <temp>`. Rebuilding in the deploy phase would let the
+artifact that was verified differ from the artifact that ships.
+
+The production gate is the artifact, not a config path. An invocation
+is authorized because the Build Output is production-mode, built for
+this account and this Worker, with a bundle and complete Tool
+assets — not because `--config` named a file. Verification runs
+**before** any D1 migration or Cloudflare API call, so a bad artifact
+cannot half-deploy.
+
+`CLOUDFLARE_API_TOKEN` is a **deploy-time** credential: the `cf` child
+needs it, the Worker's secrets file never receives it, and it is not
+part of the runtime required-secret contract.
+
+**Do not switch the Workers Builds commands above until the deploy
+path, D1, and the secrets/preflight are all cf-native.** Until then
+the build command stays `pnpm run build` and the deploy command keeps
+its current form.
+
 ## Runtime secrets — source of truth
 
 Infisical `prod` environment is the **single source of truth** for

@@ -1,4 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
 	AUDIT_ONLY_SECRET_NAME,
@@ -18,6 +21,11 @@ import {
  * `--config=wrangler.production.jsonc`. It now comes from the Build
  * Output actually being shipped.
  */
+
+function write(path, value) {
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, JSON.stringify(value));
+}
 
 describe('buildDeployArgv (Issue #247)', () => {
 	it('is the exact production cf prebuilt deploy', () => {
@@ -80,12 +88,57 @@ describe('assertDeployableBuildOutput (Issue #247)', () => {
 	it('resolves account/worker defaults without a precedence bug', () => {
 		// A previous version wrote `info.accountId !== options.accountId ?? DEFAULT`,
 		// which parses as `(a !== b) ?? c` and never compares against the
-		// default. With no options, the canonical defaults must still apply.
-		// A wrong worker name must therefore be rejected.
-		assert.throws(
-			() => assertDeployableBuildOutput({ workerName: 'some-other-worker' }),
-			/is not some-other-worker/,
-		);
+		// default. With a fixture artifact that omits the account, a wrong
+		// worker name must still be rejected against the DEFAULT.
+		//
+		// Uses a fixture, never the real `.cloudflare/output` — that path is
+		// gitignored and absent in a clean checkout, so a test against it
+		// would depend on build state.
+		const dir = mkdtempSync(join(tmpdir(), 'cf-output-fixture-'));
+		try {
+			write(join(dir, 'config.json'), {
+				accountId: 'c6ab6651a5d4d6d0d07686bbd3c3d56f',
+				buildContext: { isPreview: false, mode: 'production' },
+			});
+			write(join(dir, 'workers/default/worker.config.json'), {
+				name: 'my-web-2026',
+				env: {
+					BETTER_AUTH_SECRETS: { type: 'secret' },
+					MY_WEB_2026_CONSUMER_API_KEY: { type: 'secret' },
+					GOOGLE_ANALYTICS_MEASUREMENT_ID: { type: 'secret' },
+				},
+			});
+			// The bundle check counts FILES, so an empty directory is
+			// correctly treated as "no bundle".
+			write(join(dir, 'workers/default/bundle/index.js'), '// bundle');
+
+			// `clientDir` must point at the fixture too: the Tool check
+			// compares the artifact's assets against the client build tree,
+			// and both sides belong to the thing under test.
+			const opts = { dir, clientDir: join(dir, 'client') };
+			write(join(dir, 'client/tools/prototype/app/index.html'), '<html></html>');
+			write(join(dir, 'workers/default/assets/tools/prototype/app/index.html'), '<html></html>');
+
+			// Accepts the canonical identity.
+			assert.doesNotThrow(() => assertDeployableBuildOutput(opts));
+			// Rejects a different Worker: the default must actually apply.
+			assert.throws(
+				() => assertDeployableBuildOutput({ ...opts, workerName: 'some-other-worker' }),
+				/is not some-other-worker/,
+			);
+			// Rejects incomplete Tool artifacts in the deploy artifact.
+			rmSync(join(dir, 'workers/default/assets/tools/prototype/app/index.html'));
+			assert.throws(() => assertDeployableBuildOutput(opts), /Tool artifacts incomplete/);
+			write(join(dir, 'workers/default/assets/tools/prototype/app/index.html'), '<html></html>');
+			// Rejects a development artifact.
+			write(join(dir, 'config.json'), {
+				accountId: 'c6ab6651a5d4d6d0d07686bbd3c3d56f',
+				buildContext: { isPreview: false, mode: 'development' },
+			});
+			assert.throws(() => assertDeployableBuildOutput(opts), /expected "production"/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 

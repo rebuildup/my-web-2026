@@ -1,6 +1,12 @@
 import { resolve } from 'node:path';
 import { bindings, defineConfig, type ConfigContext } from 'cf/config';
 import { readDevVars } from './scripts/_dev-vars-reader.mjs';
+import {
+	ACCOUNT_ID,
+	D1_DATABASE_ID,
+	D1_DATABASE_NAME,
+	R2_BUCKET_NAME,
+} from './scripts/_cloudflare-identity.mjs';
 
 /**
  * Cloudflare Worker configuration for my-web-2026 — the single SoT
@@ -48,11 +54,7 @@ import { readDevVars } from './scripts/_dev-vars-reader.mjs';
  * name-addressed `wrangler d1 execute`, not a rename.
  */
 
-const ACCOUNT_ID = 'c6ab6651a5d4d6d0d07686bbd3c3d56f';
 const WORKER_NAME = 'my-web-2026';
-const D1_DATABASE_ID = 'd761ddb7-8179-48dd-855f-c8b7b2924bad';
-const D1_DATABASE_NAME = 'my-web-2026';
-const R2_BUCKET = 'my-web-2026';
 
 /** Custom domain; production only. */
 const CUSTOM_DOMAIN = 'rebuildup.dev';
@@ -122,7 +124,7 @@ export default defineConfig({
 				GOOGLE_ANALYTICS_MEASUREMENT_ID: bindings.secret(),
 				// D1 needs the ID under the cf CLI.
 				DB: bindings.d1({ name: D1_DATABASE_NAME, id: D1_DATABASE_ID }),
-				MEDIA: bindings.r2({ name: R2_BUCKET }),
+				MEDIA: bindings.r2({ name: R2_BUCKET_NAME }),
 				// Per-consumer-principal rate limits (ADR-0010). These are
 				// the runtime's only rate-limit layer; the Better Auth
 				// api-key plugin's per-key limit is disabled because two

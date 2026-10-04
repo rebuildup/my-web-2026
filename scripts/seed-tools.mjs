@@ -178,18 +178,15 @@ const sqlPath = join(tmp, 'seed.sql');
 writeFileSync(sqlPath, fullSql, { mode: 0o600 });
 
 try {
-	const result = spawnSync(
-		'pnpm',
-		['exec', 'wrangler', 'd1', 'execute', 'DB', `--${target}`, '--file', sqlPath],
-		{
-			cwd: root,
-			stdio: 'inherit',
-			env: process.env,
-		},
-	);
-	if (result.status !== 0) {
-		console.error(`[seed-tools] wrangler d1 execute --${target} failed`);
-		process.exit(result.status ?? 1);
+	// Issue #247: D1 goes through the repository-owned cf driver.
+	// `target` is already an explicit local/remote enum here; a remote
+	// write additionally requires an explicit execute.
+	const cfTarget = target === 'remote' ? 'production' : 'local';
+	try {
+		executeSqlFile(sqlPath, { target: cfTarget, execute: process.argv.includes('--execute') });
+	} catch (error) {
+		console.error(`[seed-tools] D1 write failed (${cfTarget}): ${error.message}`);
+		process.exit(1);
 	}
 	console.error(
 		`[seed-tools] inserted/updated ${manifest.tools.length} tool(s) (idempotent, target=${target})`,

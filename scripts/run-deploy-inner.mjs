@@ -36,6 +36,7 @@ import {
 	buildDeployArgv,
 	BUILD_OUTPUT_DIR,
 } from './_cf-build-output.mjs';
+import { applyMigrations } from './_d1.mjs';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -211,8 +212,12 @@ try {
 		console.log(`[dry-run] sanitized env excludes: ${[...SENSITIVE_KEYS].join(', ')}`);
 	} else {
 		console.log('Deploying to production (cf prebuilt).');
-		console.log('Applying pending production D1 migrations (db:migrate:production)...');
-		execFileSync('pnpm', ['run', 'db:migrate:production'], { env: sanitizedEnv, stdio: 'inherit' });
+		// Issue #247: the production migration goes through the guarded
+		// D1 driver, so this is the last Wrangler execution in the
+		// canonical deploy path. The driver refuses unless the target is
+		// production AND the database id matches the canonical identity.
+		console.log('Applying pending production D1 migrations (cf, guarded)...');
+		applyMigrations({ target: 'production', execute: true, env: sanitizedEnv });
 		console.log('Deploying via cf deploy --prebuilt (--secrets-file)...');
 		execFileSync('pnpm', ['exec', ...buildDeployArgv({ secretsFile })], {
 			env: sanitizedEnv,

@@ -337,15 +337,9 @@ function main() {
 	writeFileSync(sqlPath, sqlStatements.join('\n'), { mode: 0o600 });
 
 	try {
-		const result = spawnSync(
-			'pnpm',
-			['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', sqlPath],
-			{ cwd: root, stdio: 'inherit', env: process.env },
-		);
-		if (result.status !== 0) {
-			console.error(`[media] wrangler exited with status ${result.status}`);
-			process.exit(result.status ?? 1);
-		}
+		// Issue #247: local D1 via the shared cf driver. No Cloudflare
+		// credential is involved for a local write.
+		executeSqlFile(sqlPath, { target: 'local' });
 	} finally {
 		rmSync(tmp, { recursive: true, force: true });
 	}

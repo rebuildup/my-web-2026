@@ -65,7 +65,13 @@ function workerCredential(env) {
 async function workerJson(
 	method,
 	path,
-	{ body, env = process.env, timeout = HTTPS_TIMEOUT_MS } = {},
+	{
+		body,
+		env = process.env,
+		timeout = HTTPS_TIMEOUT_MS,
+		accountId = ACCOUNT_ID,
+		workerName = WORKER_NAME,
+	} = {},
 ) {
 	const headers = { Authorization: `Bearer ${workerCredential(env)}` };
 	if (body !== undefined) headers['content-type'] = 'application/json';
@@ -86,11 +92,25 @@ async function workerJson(
 			parsed = null;
 		}
 		if (!res.ok || parsed?.success === false) {
-			// Report status and the API's own message. A secret value is
-			// never echoed, because none is ever placed in an error path.
-			const detail = JSON.stringify(parsed?.errors ?? res.status).slice(0, 300);
+			// FAIL-SAFE on the remote body. Cloudflare's `message` is not
+			// guaranteed to avoid echoing the value it was sent, and this
+			// module's contract is that a secret value never reaches a
+			// thrown error, stderr, or a log. The remote `message` is
+			// therefore NOT surfaced on a mutation path. Diagnostic value
+			// is preserved without it: HTTP status, the scalar Cloudflare
+			// error code, the operation, and the canonical identity.
+			const codes = (Array.isArray(parsed?.errors) ? parsed.errors : [])
+				.map((e) => (e && typeof e === 'object' ? e.code : undefined))
+				.filter((c) => typeof c === 'number' || typeof c === 'string')
+				.slice(0, 5)
+				.map((c) => String(c))
+				.join(', ');
+			const codePart = codes ? ` codes=[${codes}]` : '';
+			const identity = `account ${accountId} Worker ${workerName}`;
+			const reason =
+				'Remote error text is intentionally not surfaced: it may echo the submitted value.';
 			throw new Error(
-				`Cloudflare Worker API ${method} ${path} failed (HTTP ${res.status}): ${detail}`,
+				`Cloudflare Worker API ${method} failed (HTTP ${res.status}${codePart}) on ${identity}. ${reason}`,
 			);
 		}
 		return parsed;
@@ -108,7 +128,7 @@ export async function listWorkerSecretNames({
 	const parsed = await workerJson(
 		'GET',
 		`/accounts/${accountId}/workers/scripts/${workerName}/secrets`,
-		{ env },
+		{ env, accountId, workerName },
 	);
 	const result = parsed?.result;
 	const list = Array.isArray(result) ? result : (result?.secrets ?? []);
@@ -231,6 +251,8 @@ export async function bulkUpdateWorkerSecrets(
 	await workerJson('PATCH', `/accounts/${accountId}/workers/scripts/${workerName}/secrets-bulk`, {
 		body: payload,
 		env,
+		accountId,
+		workerName,
 	});
 	return { applied: true, plan };
 }

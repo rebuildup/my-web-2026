@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { ACCOUNT_ID, WORKER_NAME } from './_cloudflare-identity.mjs';
 import {
+	MAX_OPERATIONS,
 	assertWorkerSecretWriteAllowed,
 	buildBulkSecretPayload,
 	bulkUpdateWorkerSecrets,
-	MAX_OPERATIONS,
 } from './_worker-secrets.mjs';
-import { ACCOUNT_ID, WORKER_NAME } from './_cloudflare-identity.mjs';
 
 /**
  * Worker-secret adapter tests (Issue #247).
@@ -157,5 +157,106 @@ describe('identity (Issue #247)', () => {
 	it('pins the canonical account and Worker', () => {
 		assert.equal(ACCOUNT_ID, 'c6ab6651a5d4d6d0d07686bbd3c3d56f');
 		assert.equal(WORKER_NAME, 'my-web-2026');
+	});
+});
+
+/* -- Issue #252: the remote error body is not trusted ------------------- */
+
+describe('mutation error path is fail-safe (Issue #252)', () => {
+	/**
+	 * A fake API that echoes the submitted plaintext in
+	 * `errors[].message`, the way a careless upstream could. The helper
+	 * must reject without that text reaching the thrown error or any log.
+	 */
+	function fakeFetchEchoingSecret(secret) {
+		return async () => ({
+			ok: false,
+			status: 500,
+			text: async () =>
+				JSON.stringify({
+					success: false,
+					errors: [
+						{
+							code: 10021,
+							message: `invalid value for binding: ${secret}`,
+						},
+					],
+				}),
+		});
+	}
+
+	const SECRET = 'super-secret-plaintext-must-not-escape';
+
+	it('does not put a secret echoed by the API into the thrown error', async () => {
+		const original = globalThis.fetch;
+		globalThis.fetch = fakeFetchEchoingSecret(SECRET);
+		try {
+			await assert.rejects(
+				() =>
+					bulkUpdateWorkerSecrets(
+						{ BETTER_AUTH_SECRETS: SECRET },
+						{ execute: true, env: { CLOUDFLARE_API_TOKEN: 't' } },
+					),
+				(error) => {
+					const text = String(error.message);
+					assert.ok(!text.includes(SECRET), 'plaintext must not reach the error');
+					// Diagnostic value is preserved.
+					assert.match(text, /HTTP 500/);
+					assert.match(text, /codes=\[10021\]/);
+					assert.match(text, /account/);
+					return true;
+				},
+			);
+		} finally {
+			globalThis.fetch = original;
+		}
+	});
+
+	it('keeps status and scalar code but drops the remote message', async () => {
+		const original = globalThis.fetch;
+		globalThis.fetch = fakeFetchEchoingSecret(SECRET);
+		try {
+			await assert.rejects(
+				() =>
+					bulkUpdateWorkerSecrets(
+						{ X: SECRET },
+						{ execute: true, env: { CLOUDFLARE_API_TOKEN: 't' } },
+					),
+				(error) => {
+					const text = String(error.message);
+					assert.ok(!text.includes('invalid value for binding'));
+					assert.ok(text.includes('HTTP 500'));
+					assert.ok(text.includes('Remote error text is intentionally not surfaced'));
+					return true;
+				},
+			);
+		} finally {
+			globalThis.fetch = original;
+		}
+	});
+
+	it('survives a non-JSON error body without leaking it', async () => {
+		const original = globalThis.fetch;
+		globalThis.fetch = async () => ({
+			ok: false,
+			status: 502,
+			text: async () => `upstream said: ${SECRET}`,
+		});
+		try {
+			await assert.rejects(
+				() =>
+					bulkUpdateWorkerSecrets(
+						{ X: SECRET },
+						{ execute: true, env: { CLOUDFLARE_API_TOKEN: 't' } },
+					),
+				(error) => {
+					assert.ok(!String(error.message).includes(SECRET));
+					assert.match(String(error.message), /HTTP 502/);
+					return true;
+				},
+			);
+		} finally {
+			globalThis.fetch = original;
+		}
 	});
 });

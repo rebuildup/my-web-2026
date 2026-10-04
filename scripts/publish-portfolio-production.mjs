@@ -67,7 +67,17 @@
 
 import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { createReadStream, existsSync, readFileSync } from 'node:fs';
+import {
+	createReadStream,
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	unlinkSync,
+	writeFileSync,
+} from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -967,15 +977,13 @@ function readVerifyState(env) {
 
 function writeVerifyState(env, state) {
 	const path = verifyStatePath(env);
-	const fs = require('node:fs');
-	fs.mkdirSync(dirname(path), { recursive: true });
-	fs.writeFileSync(path, JSON.stringify(state, null, 2), { mode: 0o600 });
+	mkdirSync(dirname(path), { recursive: true });
+	writeFileSync(path, JSON.stringify(state, null, 2), { mode: 0o600 });
 }
 
 function clearVerifyState(env) {
 	const path = verifyStatePath(env);
-	const fs = require('node:fs');
-	if (existsSync(path)) fs.unlinkSync(path);
+	if (existsSync(path)) unlinkSync(path);
 }
 
 // ---------------------------------------------------------------------------
@@ -1033,7 +1041,7 @@ async function operationPrepare(parsed, manifest) {
 		tmpDir,
 		`publish-portfolio-${env}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.sql`,
 	);
-	fs.writeFileSync(tmpFile, fullSql, { mode: 0o600 });
+	writeFileSync(tmpFile, fullSql, { mode: 0o600 });
 	console.error(`[publish-portfolio] SQL bundle written to ${tmpFile} (${sqlBundle.length} stmts)`);
 
 	// 5. Spawn wrangler.
@@ -1058,7 +1066,7 @@ async function operationPrepare(parsed, manifest) {
 
 	// 7. Cleanup.
 	try {
-		fs.unlinkSync(tmpFile);
+		unlinkSync(tmpFile);
 	} catch {
 		/* ignore */
 	}
@@ -1149,9 +1157,7 @@ async function operationVerify(parsed, manifest) {
 				r2Errors.push(`${asset.slug}: public R2 fetch failed (${error.message})`);
 			}
 		} else {
-			const fs = require('node:fs');
-			const os = require('node:os');
-			const localDir = fs.mkdtempSync(resolve(os.tmpdir(), 'publish-portfolio-r2-verify-'));
+			const localDir = mkdtempSync(resolve(tmpdir(), 'publish-portfolio-r2-verify-'));
 			const localPath = resolve(localDir, 'object.bin');
 			try {
 				const result = runR2Get(env, asset.r2_key, localPath);
@@ -1163,7 +1169,7 @@ async function operationVerify(parsed, manifest) {
 						sha256: '',
 					};
 				} else {
-					const body = fs.readFileSync(localPath);
+					const body = readFileSync(localPath);
 					evidence = {
 						status: 0,
 						contentType: asset.content_type,
@@ -1172,7 +1178,7 @@ async function operationVerify(parsed, manifest) {
 					};
 				}
 			} finally {
-				fs.rmSync(localDir, { recursive: true, force: true });
+				rmSync(localDir, { recursive: true, force: true });
 			}
 		}
 		const errors = validateR2Evidence(asset, evidence);
@@ -1254,16 +1260,15 @@ function operationPublish(parsed, manifest) {
 	console.error(`[publish-portfolio] publish: ${ids.length} candidates → public`);
 
 	const tmpDir = process.env.TMPDIR || '/tmp';
-	const fs = require('node:fs');
 	const tmpFile = resolve(
 		tmpDir,
 		`publish-portfolio-publish-${env}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.sql`,
 	);
-	fs.writeFileSync(tmpFile, sql, { mode: 0o600 });
+	writeFileSync(tmpFile, sql, { mode: 0o600 });
 
 	const result = runD1(env, tmpFile);
 	try {
-		fs.unlinkSync(tmpFile);
+		unlinkSync(tmpFile);
 	} catch {
 		/* ignore */
 	}
@@ -1296,16 +1301,15 @@ function operationUnpublish(parsed /* , manifest */) {
 	console.error(`[publish-portfolio] unpublish: ${ids.length} candidates → draft (rollback)`);
 
 	const tmpDir = process.env.TMPDIR || '/tmp';
-	const fs = require('node:fs');
 	const tmpFile = resolve(
 		tmpDir,
 		`publish-portfolio-unpublish-${env}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.sql`,
 	);
-	fs.writeFileSync(tmpFile, sql, { mode: 0o600 });
+	writeFileSync(tmpFile, sql, { mode: 0o600 });
 
 	const result = runD1(env, tmpFile);
 	try {
-		fs.unlinkSync(tmpFile);
+		unlinkSync(tmpFile);
 	} catch {
 		/* ignore */
 	}

@@ -419,6 +419,7 @@ describe('deploy-with-secrets.mjs', () => {
 				infisicalCli: '/usr/local/bin/infisical',
 				workspaceId: VALID_UUID,
 				environment: 'prod',
+				domain: 'https://secrets.rebuildup.dev',
 				configPath: 'wrangler.production.jsonc',
 				execute: true,
 			});
@@ -430,12 +431,38 @@ describe('deploy-with-secrets.mjs', () => {
 			assert.equal(argv[idx + 1], '--execute');
 		});
 
+		it('passes an explicit --domain so a session-less CLI targets the right host (Issue #230)', async () => {
+			// Without --domain the Infisical CLI falls back to a stored
+			// session's domain and, when none exists (every Workers Builds
+			// run is a fresh environment), to https://app.infisical.com —
+			// which does not host this project. The inner deploy then
+			// never starts, so neither db:migrate nor wrangler deploy is
+			// attempted.
+			const buildInnerArgs = await loadBuildInnerArgs();
+			const argv = buildInnerArgs({
+				infisicalCli: '/usr/local/bin/infisical',
+				workspaceId: VALID_UUID,
+				environment: 'prod',
+				domain: 'https://secrets.rebuildup.dev',
+				configPath: 'wrangler.production.jsonc',
+				execute: true,
+			});
+			const idx = argv.indexOf('--domain');
+			assert.notEqual(idx, -1, 'argv must contain --domain');
+			assert.equal(argv[idx + 1], 'https://secrets.rebuildup.dev');
+			// It must appear before the `--` separator that ends CLI args.
+			assert.ok(idx < argv.indexOf('--'), '--domain must precede the -- separator');
+			// And it must not be the public Infisical cloud default.
+			assert.notEqual(argv[idx + 1], 'https://app.infisical.com');
+		});
+
 		it('omits --execute when execute=false (dry-run inner)', async () => {
 			const buildInnerArgs = await loadBuildInnerArgs();
 			const argv = buildInnerArgs({
 				infisicalCli: '/usr/local/bin/infisical',
 				workspaceId: VALID_UUID,
 				environment: 'dev',
+				domain: 'https://secrets.rebuildup.dev',
 				configPath: 'wrangler.jsonc',
 				execute: false,
 			});
@@ -448,6 +475,7 @@ describe('deploy-with-secrets.mjs', () => {
 				infisicalCli: '/usr/local/bin/infisical',
 				workspaceId: VALID_UUID,
 				environment: 'prod',
+				domain: 'https://secrets.rebuildup.dev',
 				configPath: 'wrangler.production.jsonc',
 				execute: true,
 			});

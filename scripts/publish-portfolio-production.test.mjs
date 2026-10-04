@@ -17,15 +17,7 @@
  */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
-import {
-	existsSync,
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	readdirSync,
-	rmSync,
-	writeFileSync,
-} from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
@@ -60,54 +52,10 @@ import {
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
 
-/**
- * The shipped release assets, resolved to the newest version that
- * actually published a portfolio.
- *
- * NOT `package.json#version`. The version is bumped at the start of a
- * release line, long before that version publishes a portfolio, so the
- * current version's asset directory legitimately does not exist yet.
- * (The most recent publication is usually the previous release.)
- *
- * These directories are immutable historical records of a real
- * publication — `manifest.release` and every asset hash correspond to
- * what was actually written to R2 — so they are never copied forward to
- * a version that has not published. Copying the previous version's
- * assets forward would assert a publication that did not happen and
- * break the R2 evidence chain.
- */
-function resolveShippedAssets() {
-	const root = join(REPO_ROOT, 'release-assets', 'portfolio');
-	const versions = readdirSync(root, { withFileTypes: true })
-		.filter((entry) => entry.isDirectory())
-		.map((entry) => entry.name)
-		.filter((name) => /^\d+\.\d+\.\d+$/.test(name))
-		.sort(compareSemver);
-	if (versions.length === 0) {
-		throw new Error(`no published portfolio assets under ${root}`);
-	}
-	const newest = versions.at(-1);
-	return {
-		version: newest,
-		root: join(root, newest),
-		manifestPath: `release-assets/portfolio/${newest}/manifest.json`,
-		/** True when the current release line has published nothing yet. */
-		isOlderThanCurrentRelease: newest !== RELEASE_VERSION,
-	};
-}
-
-function compareSemver(a, b) {
-	const pa = a.split('.').map(Number);
-	const pb = b.split('.').map(Number);
-	for (let i = 0; i < 3; i += 1) {
-		if (pa[i] !== pb[i]) return pa[i] - pb[i];
-	}
-	return 0;
-}
-
-const SHIPPED = resolveShippedAssets();
-const SHIPPED_MANIFEST_PATH = SHIPPED.manifestPath;
-const SHIPPED_ASSETS_ROOT = SHIPPED.root;
+// Path to the shipped release manifest, derived from the current
+// package.json#version. Used by the integration tests below.
+const SHIPPED_MANIFEST_PATH = `release-assets/portfolio/${RELEASE_VERSION}/manifest.json`;
+const SHIPPED_ASSETS_ROOT = join(REPO_ROOT, 'release-assets', 'portfolio', RELEASE_VERSION);
 
 // -----------------------------------------------------------------------
 // Test fixtures.
@@ -530,24 +478,6 @@ describe('sha256OfFile', () => {
 // -----------------------------------------------------------------------
 
 describe('release-assets manifest integration', () => {
-	it('resolves the newest PUBLISHED version, not package.json#version', () => {
-		// The version is bumped when a release line starts; the portfolio
-		// publishes later. Asserting the current version's assets exist
-		// made the suite fail on every version bump until a publication
-		// caught up, and "fixing" it by copying the previous version's
-		// assets forward would fabricate a publication.
-		assert.ok(/^\d+\.\d+\.\d+$/.test(SHIPPED.version), 'resolves a real version');
-		assert.ok(existsSync(SHIPPED_MANIFEST_PATH), 'the resolved manifest exists');
-		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
-		assert.equal(manifest.release, SHIPPED.version, 'manifest names its own version');
-		if (SHIPPED.isOlderThanCurrentRelease) {
-			assert.ok(
-				compareSemver(SHIPPED.version, RELEASE_VERSION) < 0,
-				'a published version older than the current release is expected',
-			);
-		}
-	});
-
 	it('loads and validates the shipped manifest', () => {
 		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
 		assert.equal(manifest.release, RELEASE_VERSION);

@@ -151,10 +151,28 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 		// <dialog> on first open — wait for the dialog to actually
 		// contain the picker library's DOM (it uses `data-unified` on
 		// each emoji button).
-		await trigger.click();
-		await page.waitForSelector('dialog[aria-label="Add a reaction"] [data-unified]', {
-			timeout: 15_000,
-		});
+		//
+		// Issue #238: this navigates with `domcontentloaded`, so a single
+		// click can land BEFORE React hydration attaches the handler and
+		// is silently swallowed — the dialog then never opens. The whole
+		// production flow is correct (verified: the picker renders 198
+		// emoji and no 4xx occurs); the race only widens under the
+		// parallel full-suite run, which is why this failed in `e2e:prod`
+		// while passing 3/3 in isolation. Re-click until the picker
+		// appears, bounded so a genuine regression still fails.
+		const pickerEmoji = 'dialog[aria-label="Add a reaction"] [data-unified]';
+		let pickerOpen = false;
+		for (let attempt = 0; attempt < 5 && !pickerOpen; attempt++) {
+			await trigger.click();
+			pickerOpen = await page
+				.waitForSelector(pickerEmoji, { timeout: 5_000 })
+				.then(() => true)
+				.catch(() => false);
+		}
+		expect(
+			pickerOpen,
+			'reaction picker never rendered after repeated clicks — hydration or the lazy chunk is broken',
+		).toBe(true);
 
 		// Race the mutation response against the first emoji click.
 		// The server fn URL is `/_serverFn/<hash>` and the response

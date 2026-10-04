@@ -51,6 +51,7 @@ import { readDevVars } from './scripts/_dev-vars-reader.mjs';
 const ACCOUNT_ID = 'c6ab6651a5d4d6d0d07686bbd3c3d56f';
 const WORKER_NAME = 'my-web-2026';
 const D1_DATABASE_ID = 'd761ddb7-8179-48dd-855f-c8b7b2924bad';
+const D1_DATABASE_NAME = 'my-web-2026';
 const R2_BUCKET = 'my-web-2026';
 
 /** Custom domain; production only. */
@@ -120,7 +121,7 @@ export default defineConfig({
 				MY_WEB_2026_CONSUMER_API_KEY: bindings.secret(),
 				GOOGLE_ANALYTICS_MEASUREMENT_ID: bindings.secret(),
 				// D1 needs the ID under the cf CLI.
-				DB: bindings.d1({ name: R2_BUCKET, id: D1_DATABASE_ID }),
+				DB: bindings.d1({ name: D1_DATABASE_NAME, id: D1_DATABASE_ID }),
 				MEDIA: bindings.r2({ name: R2_BUCKET }),
 				// Per-consumer-principal rate limits (ADR-0010). These are
 				// the runtime's only rate-limit layer; the Better Auth

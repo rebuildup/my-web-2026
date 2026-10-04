@@ -130,6 +130,11 @@ export default defineConfig({
 			// running Worker. Without this, `cf d1 ... --local` and the
 			// Vite dev server each keep a private store and disagree.
 			persistState: { path: resolve(__dirname, '.tmp/d1state') },
+			// Issue #247: `cf workers types` is the canonical typegen and
+			// writes `.cloudflare/types/index.d.ts`, which is tracked and
+			// freshness-checked. Generating a second, differently-shaped
+			// file at the project root would leave two Env definitions.
+			types: { generate: false },
 		}),
 		tanstackStart(),
 		react(),

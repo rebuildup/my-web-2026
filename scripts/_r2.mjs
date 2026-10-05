@@ -145,6 +145,13 @@ function localChildEnv(env) {
 function cf(args, { env = process.env, cwd = REPO_ROOT, local = false, encoding = 'utf8' } = {}) {
 	return execFileSync('pnpm', ['exec', 'cf', ...args], {
 		cwd,
+		// Never let the child inherit stdin. `cf` can prompt (notably
+		// for authentication when no credential is present), and an
+		// automated path that waits on a prompt it cannot answer hangs
+		// until the timeout. CI has no TTY, so the prompt blocks until
+		// the runner kills the step — which is exactly what the Playwright
+		// E2E step did on release-0-6-0.
+		stdio: ['ignore', 'pipe', 'pipe'],
 		encoding,
 		env: local ? localChildEnv(env) : remoteChildEnv(env),
 		timeout: 600_000,

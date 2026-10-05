@@ -64,13 +64,18 @@ export default defineConfig({
 				// Rate limits are real bindings here, not stubs: the
 				// rate-limit middleware test asserts against the actual
 				// namespace and budget, so a fake would test nothing.
-				rateLimits: {
+				// Key and field names are Miniflare's own (`ratelimits`,
+				// `namespace_id`), not the camelCase Worker-binding names.
+				// The pool passes this object straight through, so a
+				// camelCase key is silently ignored and every rate-limited
+				// request then fails on `simple.limit` of undefined.
+				ratelimits: {
 					[RATE_LIMIT_BINDING.WRITE]: {
-						namespaceId: RATE_LIMIT_NAMESPACES[RATE_LIMIT_BINDING.WRITE],
+						namespace_id: RATE_LIMIT_NAMESPACES[RATE_LIMIT_BINDING.WRITE],
 						simple: { ...RATE_LIMITS[RATE_LIMIT_BINDING.WRITE] },
 					},
 					[RATE_LIMIT_BINDING.READ]: {
-						namespaceId: RATE_LIMIT_NAMESPACES[RATE_LIMIT_BINDING.READ],
+						namespace_id: RATE_LIMIT_NAMESPACES[RATE_LIMIT_BINDING.READ],
 						simple: { ...RATE_LIMITS[RATE_LIMIT_BINDING.READ] },
 					},
 				},
@@ -78,14 +83,20 @@ export default defineConfig({
 				// NAME is required and the value is never read back, so a
 				// placeholder is correct and a real credential would be
 				// wrong. These are NOT production values.
+				// Mirrors `cloudflare.config.ts` in DEVELOPMENT mode, which
+				// is what the test pool is. The production-only text vars
+				// (`BETTER_AUTH_URL`, `MEDIA_PUBLIC_BASE_URL`) are
+				// deliberately ABSENT: binding them made
+				// `composeMediaUrl` return a real URL where the loader
+				// tests assert the unbound placeholder branch, which is
+				// the branch a deployment without the R2 custom domain
+				// actually takes.
 				bindings: {
 					[WORKER_RUNTIME_SECRET.BETTER_AUTH_SECRETS]: '1:dummy-test-secret-not-real',
 					[WORKER_RUNTIME_SECRET.CONSUMER_API_KEY]: 'mk_home_dummy-test-key-not-real',
 					[WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID]: 'G-DUMMYTEST00',
 					MY_WEB_2026_REACTIONS_TARGET: 'home-page',
 					MY_WEB_2026_COUNTER_KEY: 'home-page',
-					BETTER_AUTH_URL: PRODUCTION_BETTER_AUTH_URL,
-					MEDIA_PUBLIC_BASE_URL: PRODUCTION_MEDIA_PUBLIC_BASE_URL,
 				},
 			},
 		}),

@@ -33,9 +33,19 @@ export const R2_BUCKET_NAME = 'my-web-2026';
 export const MIGRATIONS_DIR = 'migrations';
 
 /**
- * The single local D1 persistence location (Issue #247, foundation
- * slice). The Vite dev server's `persistState` and every cf local D1
- * command point here, so local rows are visible in BOTH directions.
+ * The single local persistence location (Issue #247, foundation slice).
+ *
+ * This is the whole Worker's local state — D1 AND R2 — not a D1-only
+ * directory. The Vite dev server's `persistState` and every `cf ... --local`
+ * command point here, so a local row or object written by a script is
+ * visible in BOTH directions: script -> Worker and Worker -> script.
  * No script may invent its own `--persist-to`.
+ *
+ * Renamed from `LOCAL_D1_STATE_DIR` when the R2 adapter adopted the
+ * same path; the old name understated what it holds.
  */
-export const LOCAL_D1_STATE_DIR = '.tmp/d1state';
+// The DIRECTORY name is historical — it predates the R2 adapter, which
+// adopted the same path. Renaming it would silently discard every
+// developer's local D1 rows, and nothing about a `.tmp/` path warrants
+// that churn; the constant name is what carries the meaning.
+export const LOCAL_STATE_DIR = '.tmp/d1state';

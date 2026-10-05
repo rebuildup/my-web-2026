@@ -36,7 +36,7 @@ import { dirname, join, resolve } from 'node:path';
 import {
 	ACCOUNT_ID,
 	D1_DATABASE_ID,
-	LOCAL_D1_STATE_DIR,
+	LOCAL_STATE_DIR,
 	MIGRATIONS_DIR,
 } from './_cloudflare-identity.mjs';
 
@@ -205,7 +205,7 @@ export function assertProductionWriteAllowed({
 // they are given a credential-free env so a local operation cannot
 // silently depend on a production token.
 function localArgs(databaseId) {
-	return ['d1', 'raw', databaseId, '--local', '--persist-to', join(REPO_ROOT, LOCAL_D1_STATE_DIR)];
+	return ['d1', 'raw', databaseId, '--local', '--persist-to', join(REPO_ROOT, LOCAL_STATE_DIR)];
 }
 
 function remoteArgs(databaseId) {
@@ -277,7 +277,7 @@ export function applyMigrations({
 	});
 
 	const args = ['d1', 'migrations', 'apply', databaseId, '--dir', MIGRATIONS_DIR];
-	if (local) args.push('--local', '--persist-to', join(REPO_ROOT, LOCAL_D1_STATE_DIR));
+	if (local) args.push('--local', '--persist-to', join(REPO_ROOT, LOCAL_STATE_DIR));
 	return { applied: true, output: parseCfJson(cf(args, { env, local })) };
 }
 
@@ -289,8 +289,7 @@ export function listMigrations({
 } = {}) {
 	const resolved = resolveTarget(target);
 	const args = ['d1', 'migrations', 'list', databaseId];
-	if (resolved === 'local')
-		args.push('--local', '--persist-to', join(REPO_ROOT, LOCAL_D1_STATE_DIR));
+	if (resolved === 'local') args.push('--local', '--persist-to', join(REPO_ROOT, LOCAL_STATE_DIR));
 	return parseCfJson(cf(args, { env, local: resolved === 'local' }));
 }
 
@@ -318,7 +317,7 @@ export function executeBatch(
 					databaseId,
 					'--local',
 					'--persist-to',
-					join(REPO_ROOT, LOCAL_D1_STATE_DIR),
+					join(REPO_ROOT, LOCAL_STATE_DIR),
 					'--batch',
 					`@${batchFile}`,
 				]

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { ACCOUNT_ID } from './_cloudflare-identity.mjs';
 
 /**
  * `infisical-bootstrap-cf.mjs` unit tests.
@@ -64,13 +65,24 @@ function loadPureHelpers() {
 		// biome-ignore lint/security/noGlobalEval: test-only function extraction.
 		return eval(`(${match[0].replace(/^function\s+/, 'function ')})`);
 	};
+	// `resolveCloudflareAccountId` references the imported ACCOUNT_ID, so
+	// it is built with that value injected rather than evaluated bare.
+	// Injecting the REAL constant keeps the extracted function honest: a
+	// hand-written duplicate here could drift from the source under test.
+	const withAccountId = (signature, value) => {
+		const re = new RegExp(`function ${signature}\\b[\\s\\S]*?\\n\\}`, 'm');
+		const match = SOURCE.match(re);
+		if (!match) throw new Error(`could not extract ${signature} from script`);
+		const factory = new Function('ACCOUNT_ID', `${match[0]}\nreturn ${signature};`);
+		return factory(value);
+	};
 	return {
 		parseJsonc: grab('parseJsonc'),
 		buildBuildsEnvVarsPatchBody: grab('buildBuildsEnvVarsPatchBody'),
 		selectProductionTrigger: grab('selectProductionTrigger'),
 		findWorkerTag: grab('findWorkerTag'),
 		jwtOrganizationId: grab('jwtOrganizationId'),
-		resolveCloudflareAccountId: grab('resolveCloudflareAccountId'),
+		resolveCloudflareAccountId: withAccountId('resolveCloudflareAccountId', ACCOUNT_ID),
 	};
 }
 
@@ -115,63 +127,49 @@ describe('infisical-bootstrap-cf.mjs', () => {
 		});
 	});
 
-	describe('resolveCloudflareAccountId', () => {
+	describe('resolveCloudflareAccountId (Issue #247)', () => {
 		const { resolveCloudflareAccountId } = loadPureHelpers();
 
-		it('returns the env value when it is a non-empty string', () => {
-			const out = resolveCloudflareAccountId({
-				envValue: 'env-account-id',
-				wranglerProduction: { account_id: 'file-account-id' },
-			});
-			assert.deepEqual(out, { accountId: 'env-account-id', source: 'env' });
+		/*
+		 * The canonical account is now IMPORTED from
+		 * `_cloudflare-identity.mjs`, not scraped out of a Wrangler config
+		 * that this slice deletes. These tests pin the override rule that
+		 * replaced the file fallback: an env override is accepted ONLY
+		 * when it repeats the canonical id, because the old resolver
+		 * returned whatever the env var held and could therefore point
+		 * the Machine Identity bootstrap at a different account.
+		 */
+
+		it('returns the canonical id when no override is set', () => {
+			for (const envValue of [undefined, null, '']) {
+				const out = resolveCloudflareAccountId({ envValue });
+				assert.equal(out.accountId, ACCOUNT_ID);
+				assert.equal(out.source, '_cloudflare-identity.mjs#ACCOUNT_ID');
+			}
 		});
 
-		it('falls back to wrangler.production.jsonc#account_id when env is unset', () => {
+		it('accepts an override that merely repeats the canonical id', () => {
+			const out = resolveCloudflareAccountId({ envValue: ACCOUNT_ID });
+			assert.equal(out.accountId, ACCOUNT_ID);
+			assert.equal(out.source, 'env (matches canonical)');
+		});
+
+		it('REJECTS an override that names a different account', () => {
+			assert.throws(
+				() => resolveCloudflareAccountId({ envValue: '0'.repeat(32) }),
+				/does not match the canonical account/,
+			);
+		});
+
+		it('ignores a second source: there is no config file to fall back to', () => {
+			// Passing the old `wranglerProduction` argument must not be
+			// able to influence the result, or a caller could still
+			// smuggle an identity in through a dead parameter.
 			const out = resolveCloudflareAccountId({
 				envValue: undefined,
 				wranglerProduction: { account_id: 'file-account-id' },
 			});
-			assert.deepEqual(out, {
-				accountId: 'file-account-id',
-				source: 'wrangler.production.jsonc#account_id',
-			});
-		});
-
-		it('falls back to wrangler.production.jsonc#account_id when env is an empty string', () => {
-			const out = resolveCloudflareAccountId({
-				envValue: '',
-				wranglerProduction: { account_id: 'file-account-id' },
-			});
-			assert.deepEqual(out, {
-				accountId: 'file-account-id',
-				source: 'wrangler.production.jsonc#account_id',
-			});
-		});
-
-		it('returns null when both env and wrangler are unset', () => {
-			const out = resolveCloudflareAccountId({
-				envValue: undefined,
-				wranglerProduction: {},
-			});
-			assert.deepEqual(out, { accountId: null, source: null });
-		});
-
-		it('returns null when wranglerProduction is undefined and env is unset', () => {
-			const out = resolveCloudflareAccountId({
-				envValue: undefined,
-				wranglerProduction: undefined,
-			});
-			assert.deepEqual(out, { accountId: null, source: null });
-		});
-
-		it('returns null when wrangler.account_id is a non-string value', () => {
-			// Defensive: a malformed config (e.g. `account_id: 123`)
-			// must NOT be coerced into a string — error out cleanly.
-			const out = resolveCloudflareAccountId({
-				envValue: undefined,
-				wranglerProduction: { account_id: 123 },
-			});
-			assert.deepEqual(out, { accountId: null, source: null });
+			assert.equal(out.accountId, ACCOUNT_ID);
 		});
 	});
 

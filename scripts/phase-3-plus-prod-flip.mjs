@@ -63,6 +63,7 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACCOUNT_ID, WORKER_NAME } from './_cloudflare-identity.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -75,7 +76,6 @@ import {
 } from './_infisical-auth.mjs';
 
 const REPO_ROOT = resolve(HERE, '..');
-const WRANGLER_PRODUCTION_CONFIG = join(REPO_ROOT, 'wrangler.production.jsonc');
 const INFISICAL_JSON_PATH = join(REPO_ROOT, '.infisical.json');
 const TEMPDIR_PREFIX = 'my-web-2026-flip-';
 const STALE_TEMPDIR_AGE_MS = 24 * 60 * 60 * 1000;
@@ -767,25 +767,31 @@ function buildSanitizedEnv(baseEnv, { keepInfisicalToken = false } = {}) {
 /**
  * Plan summary for dry-run output. Does NOT include secret values.
  */
-function describePlan({ operation, environment, wranglerConfig }) {
+function describePlan({ operation, environment, accountId, workerName }) {
 	const lines = [];
 	lines.push(`[dry-run] operation=${operation}`);
 	lines.push(`[dry-run] environment=${environment}`);
-	lines.push(`[dry-run] wrangler config: ${wranglerConfig}`);
+	// Issue #247: name the canonical Worker and the API operation, not a
+	// config file path. A path said which file to read; it did not say
+	// which Worker would be mutated, and the file is deleted.
+	lines.push(`[dry-run] target: Worker ${workerName} on account ${accountId}`);
+	lines.push(
+		'[dry-run] mutation: Cloudflare Workers API (JSON Merge Patch, one binding per operation)',
+	);
 	switch (operation) {
 		case 'flip':
 			lines.push(
-				'[dry-run] would: resolve auth (operator-supplied INFISICAL_TOKEN, else the operator\'s logged-in Infisical CLI session) → read legacy plaintext from Infisical prod → write temp YAML → spawn infisical secrets set --file → spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRETS: "1:<plaintext>" }',
+				'[dry-run] would: resolve auth (operator-supplied INFISICAL_TOKEN, else the operator\'s logged-in Infisical CLI session) → read legacy plaintext from Infisical prod → write temp YAML → spawn infisical secrets set --file → PATCH the Worker secret Merge Patch with { BETTER_AUTH_SECRETS: "1:<plaintext>" }',
 			);
 			break;
 		case 'delete-legacy-only':
 			lines.push(
-				'[dry-run] would: NO Infisical mutation; spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRET: null }',
+				'[dry-run] would: NO Infisical mutation; PATCH the Worker secret Merge Patch with { BETTER_AUTH_SECRET: null } (a one-key delete)',
 			);
 			break;
 		case 'restore-legacy-only':
 			lines.push(
-				'[dry-run] would: HTTPS GET legacy plaintext from Infisical prod → spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRET: "<plaintext>" }',
+				'[dry-run] would: HTTPS GET legacy plaintext from Infisical prod → PATCH the Worker secret Merge Patch with { BETTER_AUTH_SECRET: "<plaintext>" }',
 			);
 			break;
 		case 'rollback-versioned-only':
@@ -831,7 +837,8 @@ async function main() {
 			describePlan({
 				operation: args.operation,
 				environment: args.environment,
-				wranglerConfig: WRANGLER_PRODUCTION_CONFIG,
+				accountId: ACCOUNT_ID,
+				workerName: WORKER_NAME,
 			}),
 		);
 		console.log('[dry-run] no side effects; pass --execute to apply');

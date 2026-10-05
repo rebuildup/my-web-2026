@@ -23,7 +23,15 @@ below remain literal records.
 ## Sprint cycle
 
 1. Decide target version, sprint window, release date.
-2. Branch `release-x-y-z` from `main`.
+2. Branch `release-x-y-z` from `main` **and set `package.json#version`
+   to `x.y.z` in the same step.** `pnpm run version:check` derives the
+   expected version from the branch name and fails the whole `validate`
+   job on a mismatch, so a release branch still carrying the previous
+   sprint's number is red from its very first commit and stays red until
+   the bump lands. AGENTS.md §6 states this as an invariant; this is the
+   operational step that satisfies it (Issue #253). The established
+   convention is visible on the branch history — the previous release
+   branches open with a `chore(release): bump version …` commit.
 3. Define the sprint goal.
 4. Select Ready tickets (respecting dependency and capacity).
 5. Each ticket:

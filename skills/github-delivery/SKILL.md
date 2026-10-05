@@ -137,8 +137,11 @@ Dependency execution上は必要に応じて次を区別する:
    の番号のままbranchを切ると最初のcommitから `validate` が赤になり、
    bumpがlandするまで赤のまま続く。AGENTS.md §6 が invariant として
    宣言しているとおり、cutting 手順側で充足させる（Issue #253）。
-   既存release branchの履歴が示すestablishな流儀は、最初のcommitを
-   `chore(release): bump version …` にすることである。
+   これは新しいルールではなく古い流儀でもある。`release-0-3-5` と
+   `release-0-3-6` はいずれもbranchの最初のcommitでversionを設定しており
+   （`chore(release): bump version … on release-x-y-z`。その親commitは
+   まだ前releaseの番号）、`release-0-5-0` は逆に ticket #92 で後から
+   bumpしている — それが本手順が塞ぐgapである。
 3. sprint goalを定義する。
 4. Ready ticketを選択する。
 5. dependency / stack候補 / capacityを確認する。

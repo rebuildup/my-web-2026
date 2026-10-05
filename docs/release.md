@@ -29,9 +29,12 @@ below remain literal records.
    job on a mismatch, so a release branch still carrying the previous
    sprint's number is red from its very first commit and stays red until
    the bump lands. AGENTS.md §6 states this as an invariant; this is the
-   operational step that satisfies it (Issue #253). The established
-   convention is visible on the branch history — the previous release
-   branches open with a `chore(release): bump version …` commit.
+   operational step that satisfies it (Issue #253). It is also the older
+   convention rather than a new one: `release-0-3-5` and `release-0-3-6`
+   each set their version as the branch's first commit
+   (`chore(release): bump version … on release-x-y-z`), whose parent
+   commit still carried the previous release's number. `release-0-5-0`
+   instead bumped later, from ticket #92 — the same gap this step closes.
 3. Define the sprint goal.
 4. Select Ready tickets (respecting dependency and capacity).
 5. Each ticket:

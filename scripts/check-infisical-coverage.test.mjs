@@ -1,230 +1,174 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 /**
  * `check-infisical-coverage.mjs` unit tests.
  *
- * The script is a static integrity check: it reads `wrangler.jsonc`,
- * `wrangler.production.jsonc`, and the inner script's
- * `REQUIRED_RUNTIME_SECRETS` constant, then verifies they agree on
- * the phase-specific 3-name contract. Tests use isolated tempdirs
- * with controlled mock files (no real repo files are read).
+ * Issue #247: the script no longer scrapes `wrangler.jsonc`,
+ * `wrangler.production.jsonc`, and `run-deploy-inner.mjs`. It reads the
+ * single shared contract module. These tests therefore cover two
+ * things: the real script against the real contract, and the script's
+ * FAILURE behaviour driven by an isolated copy with a deliberately
+ * broken stub contract.
+ *
+ * The old file's fixtures were wrangler JSONC documents; a test that
+ * could only pass by parsing those documents no longer describes
+ * anything the repository does.
  */
 import { describe, it } from 'node:test';
-import { fileURLToPath, pathToFileURL } from 'node:url';
+import { fileURLToPath } from 'node:url';
+
+import {
+	AUDIT_ONLY_SECRETS,
+	REQUIRED_RUNTIME_SECRETS,
+	WORKER_RUNTIME_SECRET,
+} from './_cloudflare-contract.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(HERE, 'check-infisical-coverage.mjs');
 
-const INNER_SCRIPT_PATH = resolve(HERE, 'run-deploy-inner.mjs');
-
-const PHASE_1_2_WRANGLER = `{
-  "name": "my-web-2026",
-  "vars": {},
-  "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY", "GOOGLE_ANALYTICS_MEASUREMENT_ID"]
-  }
+/** Run the real script and capture stdout + exit status. */
+function runScript() {
+	try {
+		const stdout = execFileSync(process.execPath, [SCRIPT], { encoding: 'utf8' });
+		return { status: 0, stdout, stderr: '' };
+	} catch (error) {
+		return {
+			status: error.status ?? 1,
+			stdout: String(error.stdout ?? ''),
+			stderr: String(error.stderr ?? ''),
+		};
+	}
 }
-`;
-
-const PHASE_3_WRANGLER = `{
-  "name": "my-web-2026",
-  "vars": {},
-  "secrets": {
-    "required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY", "GOOGLE_ANALYTICS_MEASUREMENT_ID"]
-  }
-}
-`;
-
-const EMPTY_WRANGLER = `{
-  "name": "my-web-2026",
-  "vars": {}
-}
-`;
-
-// Phase 1-2 inner script: legacy 3-name required + optional
-// versioned. The coverage check reads only `REQUIRED_RUNTIME_SECRETS`
-// via regex; this constant declaration is sufficient to drive the
-// phase vote in the isolated scenario.
-const PHASE_1_2_INNER_SCRIPT = `#!/usr/bin/env node
-const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'];
-const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS'];
-`;
 
 /**
- * Run the coverage check in an isolated tempdir. We override the
- * 3 sources by writing fake files with the same names.
+ * Run the script against a STUB contract module in an isolated dir.
+ *
+ * The script imports `./_cloudflare-contract.mjs` relative to itself, so
+ * placing a copy of the script beside a broken contract is enough to
+ * drive its failure paths without touching the repository.
  */
-function runInIsolatedRepo({
-	wranglerDefault = EMPTY_WRANGLER,
-	wranglerProduction = PHASE_1_2_WRANGLER,
-	innerScript = null,
-} = {}) {
-	const repo = mkdtempSync(join(tmpdir(), 'check-infisical-coverage-test-'));
-	const scriptsDir = join(repo, 'scripts');
-	mkdirSync(scriptsDir, { recursive: true });
-
-	// Copy the actual coverage check script.
-	writeFileSync(join(scriptsDir, 'check-infisical-coverage.mjs'), readFileSync(SCRIPT, 'utf8'));
-
-	// Write the 3 source files.
-	writeFileSync(join(repo, 'wrangler.jsonc'), wranglerDefault);
-	writeFileSync(join(repo, 'wrangler.production.jsonc'), wranglerProduction);
-	if (innerScript !== null) {
-		writeFileSync(join(scriptsDir, 'run-deploy-inner.mjs'), innerScript);
-	} else {
-		// Copy the real inner script so the check can extract its
-		// REQUIRED_RUNTIME_SECRETS constant.
-		writeFileSync(
-			join(scriptsDir, 'run-deploy-inner.mjs'),
-			readFileSync(INNER_SCRIPT_PATH, 'utf8'),
-		);
-	}
-
-	let stdout = '';
-	let stderr = '';
-	let exitCode = 0;
+function runWithStubContract(contractSource) {
+	const repo = mkdtempSync(join(tmpdir(), 'infisical-coverage-'));
 	try {
-		const result = execFileSync(
-			process.execPath,
-			[join(scriptsDir, 'check-infisical-coverage.mjs')],
-			{
-				cwd: repo,
-				encoding: 'utf8',
-				stdio: ['ignore', 'pipe', 'pipe'],
-			},
+		mkdirSync(join(repo, 'scripts'), { recursive: true });
+		writeFileSync(
+			join(repo, 'scripts', 'check-infisical-coverage.mjs'),
+			readFileSync(SCRIPT, 'utf8'),
 		);
-		stdout = result;
-	} catch (error) {
-		stdout = error.stdout ?? '';
-		stderr = error.stderr ?? '';
-		exitCode = error.status ?? 1;
+		writeFileSync(join(repo, 'scripts', '_cloudflare-contract.mjs'), contractSource);
+		try {
+			const stdout = execFileSync(
+				process.execPath,
+				[join(repo, 'scripts', 'check-infisical-coverage.mjs')],
+				{
+					encoding: 'utf8',
+				},
+			);
+			return { status: 0, stdout, stderr: '' };
+		} catch (error) {
+			return {
+				status: error.status ?? 1,
+				stdout: String(error.stdout ?? ''),
+				stderr: String(error.stderr ?? ''),
+			};
+		}
 	} finally {
 		rmSync(repo, { recursive: true, force: true });
 	}
-	return { stdout, stderr, exitCode };
 }
 
-describe('check-infisical-coverage.mjs', () => {
-	describe('happy path (Phase 1-2)', () => {
-		it('passes when wrangler.production.jsonc + inner script agree on legacy 3-name', () => {
-			// wrangler.jsonc is empty (Phase 1-2 default); the inner
-			// script (Phase 1-2 mock) has legacy 3-name. Coverage check
-			// should note the empty source and pass.
-			const result = runInIsolatedRepo({
-				wranglerDefault: EMPTY_WRANGLER,
-				wranglerProduction: PHASE_1_2_WRANGLER,
-				innerScript: PHASE_1_2_INNER_SCRIPT,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /detected phase: phase-1-2/);
-			assert.match(result.stdout, /\[NOTE\] wrangler\.jsonc/);
-			assert.match(result.stdout, /\[OK\] wrangler\.production\.jsonc#secrets\.required/);
-			assert.match(result.stdout, /\[OK\] scripts\/run-deploy-inner\.mjs#REQUIRED_RUNTIME_SECRETS/);
-			assert.match(result.stdout, /all checks OK/);
-		});
-
-		it('passes when all 3 sources agree on legacy 3-name', () => {
-			const result = runInIsolatedRepo({
-				wranglerDefault: PHASE_1_2_WRANGLER,
-				wranglerProduction: PHASE_1_2_WRANGLER,
-				innerScript: PHASE_1_2_INNER_SCRIPT,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /all checks OK/);
-		});
-
-		it('passes when all 3 sources agree on versioned 3-name (Phase 3+)', () => {
-			// Use a custom inner script with Phase 3+ form.
-			const innerScript = `#!/usr/bin/env node
-const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'];
-const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET'];
-`;
-			const result = runInIsolatedRepo({
-				wranglerDefault: PHASE_3_WRANGLER,
-				wranglerProduction: PHASE_3_WRANGLER,
-				innerScript,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /detected phase: phase-3\+/);
-			assert.match(result.stdout, /all checks OK/);
-		});
+describe('check-infisical-coverage against the real contract', () => {
+	it('exits 0 and reports both tiers', () => {
+		const { status, stdout } = runScript();
+		assert.equal(status, 0, stdout);
+		for (const name of REQUIRED_RUNTIME_SECRETS) {
+			assert.ok(stdout.includes(name), `stdout should report ${name}`);
+		}
+		for (const name of AUDIT_ONLY_SECRETS) {
+			assert.ok(stdout.includes(name), `stdout should report audit-only ${name}`);
+		}
+		assert.ok(stdout.includes('all checks OK'));
 	});
 
-	describe('drift detection', () => {
-		it('fails when wrangler.production.jsonc disagrees with inner script', () => {
-			const result = runInIsolatedRepo({
-				wranglerDefault: PHASE_1_2_WRANGLER,
-				wranglerProduction: PHASE_1_2_WRANGLER,
-				innerScript: `#!/usr/bin/env node
-const REQUIRED_RUNTIME_SECRETS = ['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'];
-const OPTIONAL_RUNTIME_SECRETS = ['BETTER_AUTH_SECRET'];
-`,
-			});
-			assert.equal(result.exitCode, 1);
-			// Phase conflict → "cannot determine phase" path. The error
-			// may appear on stdout (from main()) or stderr (from a
-			// thrown error). We accept either.
-			const combined = `${result.stdout}\n${result.stderr}`;
-			assert.match(combined, /detected phase: conflict|cannot determine phase|\[FAIL\]/);
-		});
-
-		it('fails when wrangler.jsonc has wrong phase-specific 3-name', () => {
-			const result = runInIsolatedRepo({
-				wranglerDefault: PHASE_3_WRANGLER, // mismatch with production
-				wranglerProduction: PHASE_1_2_WRANGLER,
-			});
-			assert.equal(result.exitCode, 1);
-			const combined = `${result.stdout}\n${result.stderr}`;
-			assert.match(combined, /detected phase: conflict/);
-		});
+	it('labels the audit-only tier as never uploaded', () => {
+		// The distinction is the whole point of the split: a name that is
+		// retained in Infisical must never reach the Worker.
+		const { stdout } = runScript();
+		assert.ok(stdout.includes('never uploaded'));
 	});
 
-	describe('empty source handling (Phase 1-2 transition)', () => {
-		it('treats empty wrangler.jsonc as NOTE not FAIL', () => {
-			const result = runInIsolatedRepo({
-				wranglerDefault: EMPTY_WRANGLER,
-				wranglerProduction: PHASE_1_2_WRANGLER,
-				innerScript: PHASE_1_2_INNER_SCRIPT,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /\[NOTE\] wrangler\.jsonc/);
-		});
-
-		it('fails when all sources are empty', () => {
-			// The script throws a hard error when the inner script
-			// REQUIRED_RUNTIME_SECRETS is empty (parse-time invariant).
-			// This is a programming error, not a transient state.
-			const emptyInnerScript = `#!/usr/bin/env node
-const REQUIRED_RUNTIME_SECRETS = [];
-const OPTIONAL_RUNTIME_SECRETS = [];
-`;
-			const result = runInIsolatedRepo({
-				wranglerDefault: EMPTY_WRANGLER,
-				wranglerProduction: EMPTY_WRANGLER,
-				innerScript: emptyInnerScript,
-			});
-			assert.equal(result.exitCode, 1);
-			const combined = `${result.stdout}\n${result.stderr}`;
-			assert.match(combined, /cannot determine phase|no string literals|cannot locate/);
-		});
+	it('points at the Build Output as the artifact check', () => {
+		const { stdout } = runScript();
+		assert.ok(stdout.includes('check-cloudflare-contract.mjs --build'));
 	});
 
-	describe('argv / log / error-message secret-handling invariant', () => {
-		it('does NOT include any secret-like value in output', () => {
-			// Coverage check is a static integrity check. It should
-			// never see or log secret values.
-			const result = runInIsolatedRepo({
-				wranglerDefault: PHASE_1_2_WRANGLER,
-				wranglerProduction: PHASE_1_2_WRANGLER,
-			});
-			assert.doesNotMatch(result.stdout, /process\.env/);
-			assert.doesNotMatch(result.stdout, /password|secret_value|token/i);
-		});
+	it('carries no secret value in its output', () => {
+		// Names only. There is nothing else it could print, but the
+		// assertion pins that for a future change that adds a lookup.
+		const { stdout, stderr } = runScript();
+		const combined = stdout + stderr;
+		assert.ok(!/sk-|mk_home_|[0-9a-f]{40,}/.test(combined), 'no value-shaped content');
 	});
 });
 
-// Suppress unused imports (pathToFileURL kept for future ESM-direct import tests).
-void pathToFileURL;
+describe('the shared contract itself', () => {
+	it('exposes the three required runtime secret names', () => {
+		assert.deepEqual(REQUIRED_RUNTIME_SECRETS, [
+			'BETTER_AUTH_SECRETS',
+			'MY_WEB_2026_CONSUMER_API_KEY',
+			'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+		]);
+	});
+
+	it('names each required secret through WORKER_RUNTIME_SECRET', () => {
+		// The named constants exist so a call site reads as prose; if a
+		// literal ever appears here, the naming has rotted.
+		assert.equal(WORKER_RUNTIME_SECRET.BETTER_AUTH_SECRETS, 'BETTER_AUTH_SECRETS');
+		assert.equal(WORKER_RUNTIME_SECRET.CONSUMER_API_KEY, 'MY_WEB_2026_CONSUMER_API_KEY');
+		assert.equal(WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID, 'GOOGLE_ANALYTICS_MEASUREMENT_ID');
+	});
+
+	it('keeps audit-only names disjoint from required', () => {
+		assert.deepEqual(AUDIT_ONLY_SECRETS, ['BETTER_AUTH_SECRET']);
+		for (const name of AUDIT_ONLY_SECRETS) {
+			assert.ok(!REQUIRED_RUNTIME_SECRETS.includes(name));
+		}
+	});
+
+	it('freezes both arrays so a caller cannot mutate the contract', () => {
+		assert.equal(Object.isFrozen(REQUIRED_RUNTIME_SECRETS), true);
+		assert.equal(Object.isFrozen(AUDIT_ONLY_SECRETS), true);
+	});
+});
+
+describe('check-infisical-coverage failure paths', () => {
+	it('fails when an audit-only name leaks into the required set', () => {
+		const { status, stdout, stderr } = runWithStubContract(
+			"export const REQUIRED_RUNTIME_SECRETS = Object.freeze(['BETTER_AUTH_SECRETS', 'BETTER_AUTH_SECRET']);\n" +
+				"export const AUDIT_ONLY_SECRETS = Object.freeze(['BETTER_AUTH_SECRET']);\n",
+		);
+		assert.equal(status, 1);
+		const output = stdout + stderr;
+		assert.ok(output.includes('disjoint') || output.includes('must not be in the required set'));
+	});
+
+	it('fails on a duplicate name in the inventory', () => {
+		const { status } = runWithStubContract(
+			"export const REQUIRED_RUNTIME_SECRETS = Object.freeze(['A', 'A']);\n" +
+				'export const AUDIT_ONLY_SECRETS = Object.freeze([]);\n',
+		);
+		assert.equal(status, 1);
+	});
+
+	it('fails on a malformed binding name', () => {
+		const { status, stdout, stderr } = runWithStubContract(
+			"export const REQUIRED_RUNTIME_SECRETS = Object.freeze(['bad name']);\n" +
+				'export const AUDIT_ONLY_SECRETS = Object.freeze([]);\n',
+		);
+		assert.equal(status, 1);
+		assert.ok((stdout + stderr).includes('invalid Worker binding name'));
+	});
+});

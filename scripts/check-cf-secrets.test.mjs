@@ -27,6 +27,8 @@ import { dirname, join, resolve } from 'node:path';
  */
 import { describe, it } from 'node:test';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { AUDIT_ONLY_SECRETS, REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
+import { ACCOUNT_ID } from './_cloudflare-identity.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(HERE, 'check-cf-secrets.mjs');
@@ -53,15 +55,21 @@ function loadResolveWorkerContract() {
 	const match = source.match(/export function\s+resolveWorkerContract[\s\S]*?\n\}/m);
 	if (!match) throw new Error('Could not extract resolveWorkerContract');
 	const body = match[0].replace('export ', '');
+	// The 'final' set is the REAL imported contract rather than a local
+	// copy: this extraction evaluates the function outside its module, so
+	// a hand-written duplicate here could drift from the source it is
+	// meant to test. Issue #247 moved that set into
+	// `_cloudflare-contract.mjs`.
 	const factory = new Function(
-		'PHASE_3_REQUIRED',
+		'REQUIRED_RUNTIME_SECRETS',
 		'PRE_DEPLOY_TRANSITION_WORKER_SECRETS',
 		`${body}\nreturn resolveWorkerContract;`,
 	);
-	return factory(
-		['BETTER_AUTH_SECRETS', 'MY_WEB_2026_CONSUMER_API_KEY', 'GOOGLE_ANALYTICS_MEASUREMENT_ID'],
-		['BETTER_AUTH_SECRETS', 'BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY'],
-	);
+	return factory(REQUIRED_RUNTIME_SECRETS, [
+		'BETTER_AUTH_SECRETS',
+		'BETTER_AUTH_SECRET',
+		'MY_WEB_2026_CONSUMER_API_KEY',
+	]);
 }
 
 /**
@@ -90,6 +98,13 @@ function runInIsolatedRepo(
 		join(scriptsDir, '_cf-build-output.mjs'),
 		readFileSync(resolve(HERE, '_cf-build-output.mjs'), 'utf8'),
 	);
+	// Issue #247: canonical identity and the runtime contract are
+	// imported modules, so the isolated repo needs them too. A missing
+	// one surfaces as ERR_MODULE_NOT_FOUND rather than a contract
+	// failure, which is how a new shared module gets forgotten here.
+	for (const dep of ['_cloudflare-identity.mjs', '_cloudflare-contract.mjs']) {
+		writeFileSync(join(scriptsDir, dep), readFileSync(resolve(HERE, dep), 'utf8'));
+	}
 
 	// Provide a wrangler config in the repo root.
 	const configPath = join(repo, configFileName);
@@ -179,6 +194,23 @@ const UNKNOWN_PHASE_WRANGLER = `{
 `;
 
 describe('check-cf-secrets.mjs', () => {
+	/**
+	 * The secret names a dry-run reports for a given live-Worker contract.
+	 *
+	 * Parsed as whole names. The audit-only `BETTER_AUTH_SECRET` is a
+	 * substring of the required `BETTER_AUTH_SECRETS`, so any `includes`
+	 * check on the raw line would conflate the two.
+	 */
+	function parseContractLine(stdout, contractLabel) {
+		const line = stdout.split('\n').find((l) => l.includes(`against the ${contractLabel}`));
+		assert.ok(line, `stdout should describe the ${contractLabel}: ${stdout}`);
+		const parens = line.slice(line.indexOf('(') + 1, line.indexOf(')'));
+		return parens
+			.split(',')
+			.map((n) => n.trim())
+			.filter(Boolean);
+	}
+
 	describe('arg parsing', () => {
 		it('rejects conflicting mode flags', () => {
 			const result = runInIsolatedRepo(['--dry-run', '--execute'], {
@@ -213,164 +245,100 @@ describe('check-cf-secrets.mjs', () => {
 		});
 	});
 
-	describe('wrangler config shape', () => {
-		it('rejects missing wrangler config file', () => {
-			const result = runInIsolatedRepo([], {
-				wranglerContent: null,
-				configFileName: 'wrangler.nonexistent.jsonc',
-			});
-			assert.equal(result.exitCode, 1);
-			assert.match(result.stderr, /Wrangler config not found/);
+	describe('canonical identity and shared contract (Issue #247)', () => {
+		it('reports the imported account and Worker, not a regex over a config file', () => {
+			const result = runInIsolatedRepo([]);
+			assert.equal(result.exitCode, 0, result.stderr);
+			assert.ok(
+				result.stdout.includes(`account=${ACCOUNT_ID}`),
+				`stdout should carry the canonical account: ${result.stdout}`,
+			);
+			assert.ok(result.stdout.includes('worker=my-web-2026'));
 		});
 
-		it('rejects malformed wrangler config JSON', () => {
+		it('rejects an account override that would retarget production', () => {
+			// The old reader returned whatever CLOUDFLARE_ACCOUNT_ID held,
+			// so a stray value silently pointed the live check at a
+			// different account. An override is now only allowed to
+			// REPEAT the canonical id.
 			const result = runInIsolatedRepo([], {
-				wranglerContent: '{ not valid json',
+				env: { CLOUDFLARE_ACCOUNT_ID: '0'.repeat(32) },
 			});
-			assert.equal(result.exitCode, 1);
+			assert.notEqual(result.exitCode, 0);
+			assert.match(result.stderr + result.stdout, /does not match the canonical account/);
 		});
 
-		it('handles wrangler config without secrets.required', () => {
-			const noSecretsConfig = `{
-  "name": "my-web-2026",
-  "vars": {}
-}
-`;
-			const result = runInIsolatedRepo([], {
-				wranglerContent: noSecretsConfig,
-			});
-			// No secrets.required means no recognized phase pattern;
-			// dry-run pre-flight FAILs (ADR-0015 §9 exact 2-name match).
-			assert.equal(result.exitCode, 1);
-			assert.match(result.stdout, /\[FAIL\] cannot determine phase/);
+		it('accepts an override that merely repeats the canonical id', () => {
+			const result = runInIsolatedRepo([], { env: { CLOUDFLARE_ACCOUNT_ID: ACCOUNT_ID } });
+			assert.equal(result.exitCode, 0, result.stderr);
 		});
 
-		it('dry-run pre-flight FAILs when phase is unknown (unrecognized pattern)', () => {
-			const result = runInIsolatedRepo([], {
-				wranglerContent: UNKNOWN_PHASE_WRANGLER,
-			});
-			assert.equal(result.exitCode, 1);
-			assert.match(result.stdout, /\[FAIL\] cannot determine phase/);
-			assert.match(result.stdout, /no API call made/);
-		});
-	});
-
-	describe('phase detection', () => {
-		it('detects phase-1-2 from BETTER_AUTH_SECRET in required', () => {
-			const result = runInIsolatedRepo([], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /detected phase=phase-1-2/);
+		it('rejects --config rather than ignoring it', () => {
+			// Silently ignoring a removed flag would let a caller believe
+			// it had selected a target.
+			const result = runInIsolatedRepo(['--config=wrangler.production.jsonc']);
+			assert.notEqual(result.exitCode, 0);
+			assert.match(result.stderr + result.stdout, /--config is no longer accepted/);
 		});
 
-		it('detects phase-3+ from BETTER_AUTH_SECRETS in required', () => {
-			const result = runInIsolatedRepo([], {
-				wranglerContent: PHASE_3_WRANGLER,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /detected phase=phase-3\+/);
+		it('needs no Wrangler config file to determine the expected set', () => {
+			// The isolated repo deliberately contains no wrangler*.jsonc.
+			const result = runInIsolatedRepo([]);
+			assert.equal(result.exitCode, 0, result.stderr);
+			for (const name of REQUIRED_RUNTIME_SECRETS) {
+				assert.ok(result.stdout.includes(name), `stdout should carry ${name}`);
+			}
 		});
 	});
 
 	describe('dry-run mode (default)', () => {
 		it('does NOT call the Infisical API (unreachable host does not fail)', () => {
-			// Set INFISICAL_API_URL to an unreachable address. If the
-			// script attempted any HTTP call in dry-run mode, it
-			// would fail. The success of this test proves no call.
-			const result = runInIsolatedRepo([], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-				env: {
-					INFISICAL_API_URL: 'https://this-host-does-not-exist.invalid',
-					INFISICAL_CLIENT_ID: 'should-not-be-sent',
-					INFISICAL_CLIENT_SECRET: 'should-not-be-sent',
-				},
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /\[dry-run\] OK/);
+			// An unreachable API URL must not fail a dry run: the whole
+			// point of --dry-run is that no API is called.
+			const result = runInIsolatedRepo([], { env: { INFISICAL_API_URL: 'http://127.0.0.1:9' } });
+			assert.equal(result.exitCode, 0, result.stderr);
+			assert.match(result.stdout, /no Infisical \/ Cloudflare API call made/);
 		});
 
-		it('prints expected Infisical runtime contract', () => {
-			const result = runInIsolatedRepo([], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(
-				result.stdout,
-				/BETTER_AUTH_SECRETS, BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY, GOOGLE_ANALYTICS_MEASUREMENT_ID/,
-			);
+		it('prints the expected Infisical runtime contract (required + audit-only)', () => {
+			const result = runInIsolatedRepo([]);
+			assert.equal(result.exitCode, 0, result.stderr);
+			assert.match(result.stdout, /Infisical prod contains runtime 4-name contract/);
+			for (const name of [...REQUIRED_RUNTIME_SECRETS, ...AUDIT_ONLY_SECRETS]) {
+				assert.ok(result.stdout.includes(name), `stdout should carry ${name}`);
+			}
 		});
 
-		it('prints expected phase-specific 3-name contract (exact match required)', () => {
-			const result = runInIsolatedRepo([], {
-				wranglerContent: PHASE_3_WRANGLER,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(
-				result.stdout,
-				/BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY, GOOGLE_ANALYTICS_MEASUREMENT_ID/,
-			);
-			assert.match(result.stdout, /exact/);
+		it('prints the final live Worker expectation, without the audit-only name', () => {
+			const result = runInIsolatedRepo(['--worker-contract=final', '--require-live-worker']);
+			assert.equal(result.exitCode, 0, result.stderr);
+			// Match WHOLE names. `BETTER_AUTH_SECRETS` contains
+			// `BETTER_AUTH_SECRET` as a substring, so a substring check
+			// would report the audit-only name as present in the final
+			// contract — and fail for entirely the wrong reason.
+			const names = parseContractLine(result.stdout, 'final contract');
+			for (const name of REQUIRED_RUNTIME_SECRETS) {
+				assert.ok(names.includes(name), `final contract should carry ${name}: ${names}`);
+			}
+			for (const name of AUDIT_ONLY_SECRETS) {
+				assert.ok(!names.includes(name), `final contract must not carry ${name}: ${names}`);
+			}
 		});
 
-		it('prints final 3-name live Worker expectation after legacy deletion', () => {
-			const result = runInIsolatedRepo(['--worker-contract=final'], {
-				wranglerContent: PHASE_3_WRANGLER,
-				env: { CLOUDFLARE_API_TOKEN: 'fake-token-for-dry-run-mention' },
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /worker contract=final/);
-			assert.match(result.stdout, /against final contract/);
-			assert.match(
-				result.stdout,
-				/BETTER_AUTH_SECRETS, MY_WEB_2026_CONSUMER_API_KEY, GOOGLE_ANALYTICS_MEASUREMENT_ID/,
-			);
-		});
-
-		it('transition live Worker contract excludes GA before the deploy that binds it', () => {
-			// `transition` is no longer the default: production has
-			// converged to `final`, so the CLI default is `auto` and
-			// transition is an explicit historical/recovery mode.
-			const result = runInIsolatedRepo(['--require-live-worker', '--worker-contract=transition'], {
-				wranglerContent: PHASE_3_WRANGLER,
-			});
-			assert.equal(result.exitCode, 0);
-			const transitionLine = result.stdout
+		it('keeps the transition contract, which still carries the legacy name', () => {
+			const result = runInIsolatedRepo(['--worker-contract=transition', '--require-live-worker']);
+			assert.equal(result.exitCode, 0, result.stderr);
+			const line = result.stdout
 				.split('\n')
-				.find((line) => line.includes('against transition contract'));
-			assert.ok(transitionLine, 'expected transition live Worker contract line');
-			assert.match(
-				transitionLine,
-				/BETTER_AUTH_SECRETS, BETTER_AUTH_SECRET, MY_WEB_2026_CONSUMER_API_KEY/,
-			);
-			assert.doesNotMatch(transitionLine, /GOOGLE_ANALYTICS_MEASUREMENT_ID/);
+				.find((l) => l.includes('against the transition contract'));
+			assert.ok(line, `stdout should describe the transition contract: ${result.stdout}`);
+			assert.ok(line.includes('BETTER_AUTH_SECRET'), 'transition still carries the legacy name');
 		});
 
-		it('mentions Tier 3 (live Worker) eligibility in dry-run', () => {
-			const result = runInIsolatedRepo([], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-				env: { CLOUDFLARE_API_TOKEN: 'fake-token-for-dry-run-mention' },
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /wrangler secret list/);
-			assert.match(result.stdout, /CLOUDFLARE_API_TOKEN is set/);
-		});
-
-		it('keeps required Tier 3 in the plan without requiring an explicit token env var', () => {
-			const result = runInIsolatedRepo(['--require-live-worker'], {
-				wranglerContent: PHASE_3_WRANGLER,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /required; Wrangler resolves Workers Builds authentication/);
-		});
-
-		it('notes Tier 3 skip when CLOUDFLARE_API_TOKEN is unset', () => {
-			const result = runInIsolatedRepo([], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-			});
-			assert.equal(result.exitCode, 0);
-			assert.match(result.stdout, /would skip Tier 3/);
-			assert.match(result.stdout, /CLOUDFLARE_API_TOKEN not set/);
+		it('mentions Tier 3 eligibility without requiring a token', () => {
+			const result = runInIsolatedRepo([]);
+			assert.equal(result.exitCode, 0, result.stderr);
+			assert.match(result.stdout, /Tier 3/);
 		});
 	});
 

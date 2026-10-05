@@ -29,7 +29,7 @@
 		"deploy:cf:prebuilt:dry-run": "cf deploy --prebuilt --mode production --dry-run",
 		"deploy:cf:prebuilt:selftest": "node scripts/verify-cf-build-output.mjs && node scripts/cf-prebuilt-dry-run.mjs",
 		"deploy:production": "pnpm run build && pnpm run deploy:production:prepared",
-		"deploy:production:prepared": "node scripts/deploy-with-secrets.mjs --execute --environment=prod --config=wrangler.production.jsonc",
+		"deploy:production:prepared": "node scripts/deploy-with-secrets.mjs --execute --environment=prod",
 		"dev": "node scripts/_run-dev.mjs",
 		"e2e": "playwright test",
 		"e2e:install": "playwright install --with-deps chromium",
@@ -64,14 +64,16 @@
 		"test:watch": "vitest",
 		"tools:check": "node scripts/check-tools-manifest.mjs",
 		"typecheck": "tsc --noEmit",
-		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run tools:check && pnpm run test:wiring:check && pnpm run version:check && pnpm run typecheck && pnpm run infisical:check:coverage && pnpm run test",
-		"validate:integration": "pnpm run validate:fast && pnpm run build-storybook && pnpm run build:production && pnpm run deploy:cf:prebuilt:selftest && pnpm run cf:mode-mismatch:check && pnpm run lint:ci",
+		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run tools:check && pnpm run cloudflare:contract:check && pnpm run test:wiring:check && pnpm run version:check && pnpm run typecheck && pnpm run infisical:check:coverage && pnpm run test",
+		"validate:integration": "pnpm run validate:fast && pnpm run build-storybook && pnpm run build:production && pnpm run cloudflare:contract:check:build && pnpm run deploy:cf:prebuilt:selftest && pnpm run cf:mode-mismatch:check && pnpm run lint:ci",
 		"validate:release": "pnpm run validate:integration && pnpm run cf-typegen:check",
 		"version:check": "node scripts/check-release-version.mjs",
 		"wrangler:dry-run": "wrangler deploy --dry-run --outdir dist-cloudflare",
 		"wrangler:production:dry-run": "node scripts/check-production-deploy.mjs",
 		"test:wiring:check": "node scripts/check-test-wiring.mjs",
-		"wrangler:independence:check": "node scripts/check-wrangler-independence.mjs"
+		"wrangler:independence:check": "node scripts/check-wrangler-independence.mjs",
+		"cloudflare:contract:check": "node scripts/check-cloudflare-contract.mjs",
+		"cloudflare:contract:check:build": "node scripts/check-cloudflare-contract.mjs --build"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

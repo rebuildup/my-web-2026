@@ -71,7 +71,11 @@ function runInIsolatedRepo(args, { env = {} } = {}) {
 	);
 	// Issue #247: the inner deploy imports the D1 driver, so the
 	// isolated repo needs it (and its identity module) too.
-	for (const dep of ['_d1.mjs', '_cloudflare-identity.mjs']) {
+	// Issue #247: the inner deploy imports the shared runtime contract,
+	// so the isolated repo needs it too. A missing dependency here
+	// surfaces as ERR_MODULE_NOT_FOUND rather than a contract failure,
+	// which is how a new shared module can be forgotten in this harness.
+	for (const dep of ['_d1.mjs', '_cloudflare-identity.mjs', '_cloudflare-contract.mjs']) {
 		writeFileSync(join(scriptsDir, dep), readFileSync(resolve(HERE, dep), 'utf8'));
 	}
 	// Provide a fake wrangler script (used by --execute but not by --dry-run).

@@ -34,7 +34,6 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(HERE, 'check-cf-secrets.mjs');
 
 const VALID_UUID = 'a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d';
-const WRANGLER_PRODUCTION_PATH = resolve(HERE, '..', 'wrangler.production.jsonc');
 
 function loadBuildWranglerDiagnosticEnv() {
 	const source = readFileSync(SCRIPT, 'utf8');
@@ -79,15 +78,7 @@ function loadResolveWorkerContract() {
  * `existingFiles.configPath` and a custom `.infisical.json` via
  * `infisicalJsonContent` (default: a valid workspaceId entry).
  */
-function runInIsolatedRepo(
-	args,
-	{
-		env = {},
-		wranglerContent = null,
-		configFileName = 'wrangler.production.jsonc',
-		infisicalJsonContent = null,
-	} = {},
-) {
+function runInIsolatedRepo(args, { env = {}, infisicalJsonContent = null } = {}) {
 	const repo = mkdtempSync(join(tmpdir(), 'check-cf-secrets-test-'));
 	const scriptsDir = join(repo, 'scripts');
 	mkdirSync(scriptsDir, { recursive: true });
@@ -106,17 +97,11 @@ function runInIsolatedRepo(
 		writeFileSync(join(scriptsDir, dep), readFileSync(resolve(HERE, dep), 'utf8'));
 	}
 
-	// Provide a wrangler config in the repo root.
-	const configPath = join(repo, configFileName);
-	if (wranglerContent !== null) {
-		writeFileSync(configPath, wranglerContent);
-	} else {
-		// Sensible default: copy real wrangler.production.jsonc so the
-		// default-mode tests use the actual production contract.
-		if (existsSync(WRANGLER_PRODUCTION_PATH)) {
-			writeFileSync(configPath, readFileSync(WRANGLER_PRODUCTION_PATH, 'utf8'));
-		}
-	}
+	// Issue #247: no wrangler config is planted in the isolated repo.
+	// The script under test reads no config file at all — identity and
+	// the secret contract are imported modules — so a planted config
+	// would prove nothing and would keep a deleted filename alive in
+	// this file.
 
 	// .infisical.json (SoT for workspaceId). Default to a valid entry;
 	// tests can override to test missing / malformed cases.
@@ -151,48 +136,6 @@ function runInIsolatedRepo(
 	return { stdout, stderr, exitCode };
 }
 
-const PHASE_1_2_WRANGLER = `{
-  "name": "my-web-2026",
-  "main": "./src/server.ts",
-  "vars": {},
-  "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY", "GOOGLE_ANALYTICS_MEASUREMENT_ID"]
-  }
-}
-`;
-
-const PHASE_3_WRANGLER = `{
-  "name": "my-web-2026",
-  "main": "./src/server.ts",
-  "vars": {},
-  "secrets": {
-    "required": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY", "GOOGLE_ANALYTICS_MEASUREMENT_ID"]
-  }
-}
-`;
-
-// Phase-1-2 form with an EXTRA entry — must FAIL exact-match (not silently pass).
-const PHASE_1_2_WITH_EXTRA_WRANGLER = `{
-  "name": "my-web-2026",
-  "main": "./src/server.ts",
-  "vars": {},
-  "secrets": {
-    "required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY", "UNEXPECTED_SECRET"]
-  }
-}
-`;
-
-// Unknown phase: unrecognized secret pattern in required — must FAIL.
-const UNKNOWN_PHASE_WRANGLER = `{
-  "name": "my-web-2026",
-  "main": "./src/server.ts",
-  "vars": {},
-  "secrets": {
-    "required": ["SOMETHING_UNRECOGNIZED", "ANOTHER_ONE"]
-  }
-}
-`;
-
 describe('check-cf-secrets.mjs', () => {
 	/**
 	 * The secret names a dry-run reports for a given live-Worker contract.
@@ -213,33 +156,25 @@ describe('check-cf-secrets.mjs', () => {
 
 	describe('arg parsing', () => {
 		it('rejects conflicting mode flags', () => {
-			const result = runInIsolatedRepo(['--dry-run', '--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-			});
+			const result = runInIsolatedRepo(['--dry-run', '--execute'], {});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /conflicting mode flags/);
 		});
 
 		it('rejects unknown argument', () => {
-			const result = runInIsolatedRepo(['--bogus'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-			});
+			const result = runInIsolatedRepo(['--bogus'], {});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /unknown argument/);
 		});
 
 		it('rejects invalid --worker-contract value', () => {
-			const result = runInIsolatedRepo(['--worker-contract=bogus'], {
-				wranglerContent: PHASE_3_WRANGLER,
-			});
+			const result = runInIsolatedRepo(['--worker-contract=bogus'], {});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /--worker-contract must be 'auto', 'transition' or 'final'/);
 		});
 
 		it('rejects --environment with non-{prod,dev} value', () => {
-			const result = runInIsolatedRepo(['--environment=staging'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-			});
+			const result = runInIsolatedRepo(['--environment=staging'], {});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /must be 'prod' or 'dev'/);
 		});
@@ -345,7 +280,6 @@ describe('check-cf-secrets.mjs', () => {
 	describe('.infisical.json SoT (workspaceId read)', () => {
 		it('rejects missing .infisical.json (workspaceId SoT)', () => {
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: {
 					INFISICAL_CLIENT_ID: 'test-id',
 					INFISICAL_CLIENT_SECRET: 'test-secret',
@@ -358,7 +292,6 @@ describe('check-cf-secrets.mjs', () => {
 
 		it('rejects malformed .infisical.json', () => {
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: {
 					INFISICAL_CLIENT_ID: 'test-id',
 					INFISICAL_CLIENT_SECRET: 'test-secret',
@@ -371,7 +304,6 @@ describe('check-cf-secrets.mjs', () => {
 
 		it('rejects empty workspaceId in .infisical.json', () => {
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: {
 					INFISICAL_CLIENT_ID: 'test-id',
 					INFISICAL_CLIENT_SECRET: 'test-secret',
@@ -384,7 +316,6 @@ describe('check-cf-secrets.mjs', () => {
 
 		it('rejects unknown top-level keys in .infisical.json', () => {
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: {
 					INFISICAL_CLIENT_ID: 'test-id',
 					INFISICAL_CLIENT_SECRET: 'test-secret',
@@ -403,7 +334,6 @@ describe('check-cf-secrets.mjs', () => {
 			// SoT wins. The script does not read INFISICAL_WORKSPACE_ID
 			// anymore — this test pins that contract.
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: {
 					INFISICAL_CLIENT_ID: 'test-id',
 					INFISICAL_CLIENT_SECRET: 'test-secret',
@@ -422,7 +352,6 @@ describe('check-cf-secrets.mjs', () => {
 	describe('--execute gate', () => {
 		it('accepts a pre-authenticated INFISICAL_TOKEN without client credentials', () => {
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_3_WRANGLER,
 				env: {
 					INFISICAL_TOKEN: 'parent-token',
 					INFISICAL_API_URL: 'https://this-host-does-not-exist.invalid',
@@ -434,16 +363,13 @@ describe('check-cf-secrets.mjs', () => {
 		});
 
 		it('requires INFISICAL_CLIENT_ID env var', () => {
-			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
-			});
+			const result = runInIsolatedRepo(['--execute'], {});
 			assert.equal(result.exitCode, 1);
 			assert.match(result.stderr, /INFISICAL_CLIENT_ID.*required/);
 		});
 
 		it('requires INFISICAL_CLIENT_SECRET env var', () => {
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: { INFISICAL_CLIENT_ID: 'test-id' },
 			});
 			assert.equal(result.exitCode, 1);
@@ -455,7 +381,6 @@ describe('check-cf-secrets.mjs', () => {
 			// reachable in test). The point is that we get past the
 			// env gate and INTO the auth code path.
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: {
 					INFISICAL_API_URL: 'https://this-host-does-not-exist.invalid',
 					INFISICAL_CLIENT_ID: 'test-id',
@@ -489,7 +414,6 @@ describe('check-cf-secrets.mjs', () => {
 		it('does NOT log INFISICAL_CLIENT_SECRET in any output', () => {
 			const SECRET = 'this-is-a-deliberately-unique-marker-XYZ-9876';
 			const result = runInIsolatedRepo(['--execute'], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: {
 					INFISICAL_API_URL: 'https://this-host-does-not-exist.invalid',
 					INFISICAL_CLIENT_ID: 'test-id',
@@ -503,7 +427,6 @@ describe('check-cf-secrets.mjs', () => {
 		it('does NOT log CLOUDFLARE_API_TOKEN in any output (Tier 3 secret-handling)', () => {
 			const TOKEN = 'this-is-a-deliberately-unique-cf-marker-XYZ-7777';
 			const result = runInIsolatedRepo([], {
-				wranglerContent: PHASE_1_2_WRANGLER,
 				env: { CLOUDFLARE_API_TOKEN: TOKEN },
 			});
 			// Tier 3 is gated on CLOUDFLARE_API_TOKEN presence, but the

@@ -54,11 +54,11 @@
  *   * 新しい事実 / 役割 / narrative の創作
  *   * R2 custom domain (`media.rebuildup.dev`) の attachment
  */
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { putObject } from './_r2.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -554,34 +554,18 @@ function main() {
 		rmSync(tmp, { recursive: true, force: true });
 	}
 
-	// R2 PUT (local bucket). `wrangler r2 object put <bucket-name>/<key>`
-	// requires the actual bucket_name, not the binding name. The
-	// binding `MEDIA` (see wrangler.jsonc#r2_buckets) maps to bucket
-	// `my-web-2026`.
-	const R2_BUCKET_NAME = 'my-web-2026';
+	// R2 PUT (local bucket) through the repository driver.
+	//
+	// Issue #247: the bucket name and the local persistence path both
+	// come from shared constants now. The old code restated the bucket
+	// name here AND relied on a CLI that wanted `bucket/key`; the cf CLI
+	// takes `--bucket-name`, so the translation belongs in the driver.
+	//
+	// This is a LOCAL seeding path: it writes to the ephemeral `.tmp/`
+	// store and needs no Cloudflare credential. A production upload is
+	// the publication driver's job, behind an explicit execute.
 	for (const m of mediaUploads) {
-		const cmdArgs = [
-			'exec',
-			'wrangler',
-			'r2',
-			'object',
-			'put',
-			`${R2_BUCKET_NAME}/${m.r2Key}`,
-			'--file',
-			m.localPath,
-			'--content-type',
-			m.contentType,
-			'--local',
-		];
-		const cmd = spawnSync('pnpm', cmdArgs, {
-			cwd: root,
-			stdio: 'inherit',
-			env: process.env,
-		});
-		if (cmd.status !== 0) {
-			console.error(`[seed-path-a] R2 PUT failed for ${m.r2Key}`);
-			process.exit(cmd.status ?? 1);
-		}
+		putObject(m.r2Key, m.localPath, { target: 'local', contentType: m.contentType });
 	}
 
 	console.error('[seed-path-a] DONE.');

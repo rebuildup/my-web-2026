@@ -30,8 +30,6 @@ import {
 	buildLinkInserts,
 	buildMediaInsert,
 	buildProjectUpsert,
-	buildR2GetArgs,
-	buildR2PutArgs,
 	buildUnpublishSql,
 	fetchPublicR2Object,
 	linkIdFor,
@@ -592,28 +590,56 @@ function buildExpectedVerificationRows(manifest, visibility = 'draft') {
 	return { projectRows, linkRows, mediaRows };
 }
 
-describe('production config coupling', () => {
-	it('passes the canonical production config to every prod Wrangler surface', () => {
-		// Issue #247: D1 no longer builds a Wrangler argv — it goes
-		// through the cf driver, which addresses the database by ID and
-		// carries its own production gate. R2 still uses Wrangler and is
-		// covered until the secrets/cleanup slices move it.
-		for (const args of [
-			buildR2PutArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg', 'image/jpeg'),
-			buildR2GetArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg'),
-		]) {
-			const configIndex = args.indexOf('-c');
-			assert.notEqual(configIndex, -1);
-			assert.equal(args[configIndex + 1], 'wrangler.production.jsonc');
-		}
+describe('R2 goes through the repository driver (Issue #247)', () => {
+	/*
+	 * These two tests used to pin a Wrangler argv: that every production
+	 * surface received `-c wrangler.production.jsonc`, and that the PUT
+	 * carried an explicit `--content-type`.
+	 *
+	 * Both properties survive the migration, but they are now enforced
+	 * inside `scripts/_r2.mjs` — the driver builds the argv, and it
+	 * REFUSES an upload with no content type rather than defaulting one.
+	 * The behaviour is pinned in `_r2.test.mjs`; what is asserted here
+	 * is that this driver no longer builds any argv of its own, so the
+	 * properties cannot be satisfied by a second code path.
+	 */
+
+	it('exports no Wrangler argv builder for R2', () => {
+		// If a future change reintroduces argv construction here, the
+		// driver and this script could disagree about addressing.
+		const source = readFileSync(
+			new URL('./publish-portfolio-production.mjs', import.meta.url),
+			'utf8',
+		);
+		assert.ok(!/buildR2(Put|Get)Args/.test(source), 'R2 argv builders must stay removed');
+		assert.ok(!/defaultWranglerSpawn/.test(source), 'the Wrangler spawner must stay removed');
+		assert.ok(
+			!/['"`]wrangler['"`]\s*,/.test(source),
+			'no Wrangler executable may be spawned from this script',
+		);
 	});
 
-	it('uses manifest Content-Type on R2 PUT instead of inference', () => {
-		const args = buildR2PutArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg', 'image/jpeg');
-		const index = args.indexOf('--content-type');
-		assert.notEqual(index, -1);
-		assert.equal(args[index + 1], 'image/jpeg');
-		assert.equal(args.includes('inherit'), false);
+	it('routes R2 through putObject/getObject from the shared driver', () => {
+		const source = readFileSync(
+			new URL('./publish-portfolio-production.mjs', import.meta.url),
+			'utf8',
+		);
+		assert.ok(source.includes('putObject('), 'uploads go through the driver');
+		assert.ok(source.includes('getObject('), 'downloads go through the driver');
+		// The production mutation gate is the driver's, reached by
+		// passing execute for a prod environment.
+		assert.match(source, /execute:\s*env === 'prod'/);
+	});
+
+	it('no longer reads a config file to authorise production', () => {
+		const source = readFileSync(
+			new URL('./publish-portfolio-production.mjs', import.meta.url),
+			'utf8',
+		);
+		assert.ok(
+			!source.includes('wrangler.production.jsonc'),
+			'production authorisation must not come from a config path',
+		);
 	});
 });
 

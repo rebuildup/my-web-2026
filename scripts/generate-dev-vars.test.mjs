@@ -22,7 +22,6 @@ import { dirname, resolve } from 'node:path';
  *
  * Helpers under test:
  *   - parseJsonc(source)
- *   - parseSecretsRequired(wranglerJsoncSource)
  *   - parseSecretsResponse(jsonString)
  *   - formatDevVarsContent(secretMap)
  *   - isProdEnvironment(env)
@@ -50,6 +49,7 @@ import { dirname, resolve } from 'node:path';
  */
 import { after, before, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(HERE, 'generate-dev-vars.mjs');
@@ -115,7 +115,6 @@ async function loadPureHelpers() {
 	const source = readFileSync(SCRIPT, 'utf8');
 
 	const parseJsonc = extractFunction(source, 'parseJsonc');
-	const parseSecretsRequired = extractFunction(source, 'parseSecretsRequired');
 	const parseSecretsResponse = extractFunction(source, 'parseSecretsResponse');
 	const formatDevVarsContent = extractFunction(source, 'formatDevVarsContent');
 	const isProdEnvironment = extractFunction(source, 'isProdEnvironment');
@@ -128,14 +127,12 @@ async function loadPureHelpers() {
 		'DEV_VARS_TMP_SUFFIX',
 		`
 		${parseJsonc}
-		${parseSecretsRequired}
 		${parseSecretsResponse}
 		${formatDevVarsContent}
 		${isProdEnvironment}
 		${writeDevVarsAtomic}
 		return {
 			parseJsonc,
-			parseSecretsRequired,
 			parseSecretsResponse,
 			formatDevVarsContent,
 			isProdEnvironment,
@@ -170,7 +167,6 @@ async function loadRunMain() {
 	const helperNames = [
 		'parseArgs',
 		'parseJsonc',
-		'parseSecretsRequired',
 		'parseSecretsResponse',
 		'formatDevVarsContent',
 		'isProdEnvironment',
@@ -178,11 +174,10 @@ async function loadRunMain() {
 	];
 	const extracted = Object.fromEntries(helperNames.map((n) => [n, extractFunction(source, n)]));
 
-	// `readInfisicalWorkspaceId` and `readWranglerSecretsRequired`
-	// take `repoRoot` as their only parameter (defaulted). They
-	// reference `REPO_ROOT` as the default value via the module's
-	// const; we just rewrite the default to `null` so the injected
-	// `repoRoot` is always used. Strip the defaulting expressions:
+	// `readInfisicalWorkspaceId` takes `repoRoot` as a defaulted
+	// parameter, referencing the module's REPO_ROOT const as the
+	// default. Rewrite the default to `null` so the injected `repoRoot`
+	// is always used. Strip the defaulting expressions:
 	function stripDefaults(body, paramNames) {
 		let out = body;
 		for (const p of paramNames) {
@@ -194,11 +189,6 @@ async function loadRunMain() {
 		extractFunction(source, 'readInfisicalWorkspaceId'),
 		['repoRoot'],
 	);
-	const readWranglerSecretsRequired = stripDefaults(
-		extractFunction(source, 'readWranglerSecretsRequired'),
-		['configPath', 'repoRoot'],
-	);
-
 	// `runMain` itself. We rewrite the parameter defaults so the
 	// factory closure's own constants take over.
 	const runMainBody = extractFunction(source, 'runMain').replace(
@@ -223,6 +213,11 @@ async function loadRunMain() {
 		'writeFileSync',
 		'renameSync',
 		'unlinkSync',
+		// `runMain` reads the shared runtime contract, which it imports in
+		// the real module. This factory evaluates the extracted function
+		// outside that module, so the REAL contract array is injected
+		// rather than a local copy that could drift from it.
+		'REQUIRED_RUNTIME_SECRETS',
 		`
 		const REPO_ROOT = ${JSON.stringify('placeholder')};
 		const INFISICAL_API_URL_DEFAULT = ${JSON.stringify('https://secrets.rebuildup.dev')};
@@ -234,17 +229,23 @@ async function loadRunMain() {
 		${extracted.parseArgs}
 		${extracted.parseJsonc}
 		${extracted.isProdEnvironment}
-		${extracted.parseSecretsRequired}
 		${extracted.parseSecretsResponse}
 		${extracted.formatDevVarsContent}
 		${extracted.writeDevVarsAtomic}
 		${readInfisicalWorkspaceId}
-		${readWranglerSecretsRequired}
 		${runMainBody}
 		return { runMain };
 	`,
 	);
-	return factory(resolve, existsSync, readFileSync, writeFileSync, renameSync, unlinkSync);
+	return factory(
+		resolve,
+		existsSync,
+		readFileSync,
+		writeFileSync,
+		renameSync,
+		unlinkSync,
+		REQUIRED_RUNTIME_SECRETS,
+	);
 }
 
 describe('generate-dev-vars.mjs', () => {
@@ -277,65 +278,6 @@ describe('generate-dev-vars.mjs', () => {
 			const source = `{"url": "https://example.com", "a": 1}`;
 			const parsed = parseJsonc(source);
 			assert.deepEqual(parsed, { url: 'https://example.com', a: 1 });
-		});
-	});
-
-	describe('parseSecretsRequired', () => {
-		it('returns the secrets.required array', async () => {
-			const { parseSecretsRequired } = await loadPureHelpers();
-			const source = `{
-				"secrets": {
-					"required": ["BETTER_AUTH_SECRET", "MY_WEB_2026_CONSUMER_API_KEY"]
-				}
-			}`;
-			const out = parseSecretsRequired(source);
-			assert.deepEqual(out, ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY']);
-		});
-
-		it('returns an empty array when secrets.required is absent', async () => {
-			const { parseSecretsRequired } = await loadPureHelpers();
-			const source = `{
-				"name": "my-web-2026",
-				"compatibility_date": "2026-09-07"
-			}`;
-			assert.deepEqual(parseSecretsRequired(source), []);
-		});
-
-		it('throws when secrets.required is not an array', async () => {
-			const { parseSecretsRequired } = await loadPureHelpers();
-			const source = `{
-				"secrets": {
-					"required": "BETTER_AUTH_SECRET"
-				}
-			}`;
-			assert.throws(() => parseSecretsRequired(source), /must be an array/);
-		});
-
-		it('throws when an entry is empty string', async () => {
-			const { parseSecretsRequired } = await loadPureHelpers();
-			const source = `{
-				"secrets": {
-					"required": ["BETTER_AUTH_SECRET", ""]
-				}
-			}`;
-			assert.throws(() => parseSecretsRequired(source), /invalid secrets\.required entry/);
-		});
-
-		it('parses JSONC (strips comments before locating secrets.required)', async () => {
-			const { parseSecretsRequired } = await loadPureHelpers();
-			const source = `{
-				// Required secrets — see ADR-0015 §9.
-				"secrets": {
-					"required": [
-						// legacy
-						"BETTER_AUTH_SECRET",
-						// consumer key
-						"MY_WEB_2026_CONSUMER_API_KEY"
-					]
-				}
-			}`;
-			const out = parseSecretsRequired(source);
-			assert.deepEqual(out, ['BETTER_AUTH_SECRET', 'MY_WEB_2026_CONSUMER_API_KEY']);
 		});
 	});
 

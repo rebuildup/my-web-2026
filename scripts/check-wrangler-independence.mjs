@@ -57,11 +57,28 @@ const SELF = new Set([
 /**
  * Runtime paths scanned statically. Self-executing scripts live here
  * because importing them would run them.
+ *
+ * Test files are EXCLUDED, and that is a deliberate trade rather than an
+ * oversight. A test that asserts wrangler is gone necessarily contains
+ * the string: `assert.ok(!source.includes('wrangler.production.jsonc'))`,
+ * or a case that passes `--config=wrangler.production.jsonc` expecting a
+ * rejection. Flagging those would mean a check that fails on its own
+ * regression guards, and a check like that gets deleted rather than
+ * fixed.
+ *
+ * The coverage those tests would have provided is not lost: the load
+ * half above imports the real production scripts with wrangler made
+ * unresolvable, which is a stronger statement than scanning text. What
+ * this half adds is the self-executing scripts that cannot be imported.
  */
 const STATIC_TARGETS = [
 	...readdirSync(SCRIPTS_DIR)
 		.filter((name) => name.endsWith('.mjs') || name.endsWith('.ts'))
+		.filter((name) => !name.endsWith('.test.mjs'))
 		.map((name) => join('scripts', name)),
+	// Playwright specs are NOT excluded: unlike the `*.test.mjs` files
+	// above, a spec is real code that runs against a real environment,
+	// so a Wrangler call in one is genuine operational access.
 	...readdirSync(E2E_DIR)
 		.filter((name) => name.endsWith('.ts') || name.endsWith('.mjs'))
 		.map((name) => join('e2e', name)),
@@ -96,8 +113,14 @@ const EXECUTABLE_REFERENCE = [
 	// spawn: spawn('wrangler'), ['wrangler', …], 'exec', 'wrangler'
 	/\bspawn(?:Sync)?\s*\(\s*['"`]wrangler/,
 	/['"`]wrangler['"`]\s*,/,
-	// config files read at runtime
-	/['"`][^'"`]*wrangler\.production?\.jsonc['"`]/,
+	// config files read at runtime.
+	//
+	// `(\.[a-z-]+)?` rather than `production?`: the latter means
+	// "productio" plus an optional "n", so it matched ONLY
+	// `wrangler.production.jsonc` and silently missed plain
+	// `wrangler.jsonc` — which is exactly the file this gate is meant to
+	// catch, and exactly the one `generate-dev-vars.mjs` still reads.
+	/['"`][^'"`]*wrangler(\.[a-z-]+)?\.jsonc['"`]/,
 ];
 
 function isLiveReference(code) {

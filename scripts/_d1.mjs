@@ -90,22 +90,72 @@ function localChildEnv(env) {
 }
 
 function cf(args, { env = process.env, cwd = REPO_ROOT, timeout = 600_000, local = false } = {}) {
-	return execFileSync('pnpm', ['exec', 'cf', ...args], {
-		cwd,
-		// Never let the child inherit stdin. `cf` can prompt (notably
-		// for authentication when no credential is present), and an
-		// automated path that waits on a prompt it cannot answer hangs
-		// until the timeout. CI has no TTY, so the prompt blocks until
-		// the runner kills the step — which is exactly what the Playwright
-		// E2E step did on release-0-6-0.
-		stdio: ['ignore', 'pipe', 'pipe'],
-		encoding: 'utf8',
-		// A local operation gets NO Cloudflare credential; a remote one
-		// gets the D1-scoped token only.
-		env: local ? localChildEnv(env) : d1ChildEnv(env),
-		timeout,
-		maxBuffer: 64 * 1024 * 1024,
-	});
+	const command = ['exec', 'cf', ...args];
+	try {
+		return execFileSync('pnpm', command, {
+			cwd,
+			// Never let the child inherit stdin. `cf` prompts for
+			// confirmation before applying migrations, and its
+			// interactivity gate is `!isTTY || isCI`. Giving it a TTY
+			// with no `CI` in the environment makes it block on a
+			// prompt nobody can answer. `ignore` resolves stdin to
+			// /dev/null, so the gate is always non-interactive and the
+			// documented fallback is used instead.
+			//
+			// This is hardening, not the fix for Issue #262: the
+			// release-0-6-0 E2E timeout survived the commit that added
+			// it, byte for byte. The real cause was the ordering in
+			// `playwright.config.ts`; see `e2e-local-bootstrap.mjs`.
+			stdio: ['ignore', 'pipe', 'pipe'],
+			encoding: 'utf8',
+			// A local operation gets NO Cloudflare credential; a remote one
+			// gets the D1-scoped token only.
+			env: local ? localChildEnv(env) : d1ChildEnv(env),
+			timeout,
+			maxBuffer: 64 * 1024 * 1024,
+		});
+	} catch (error) {
+		throw cfFailure(command, error, { local });
+	}
+}
+
+/**
+ * Re-throw a `cf` failure with the child's own output attached.
+ *
+ * Why this exists (Issue #262)
+ * ---------------------------
+ * `execFileSync` captures stdout/stderr and puts them on the thrown
+ * error's `.stdout` / `.stderr` — but only on the error OBJECT. Nothing
+ * printed them, so a 600-second failure reached the CI log as a bare
+ * `spawnSync pnpm ETIMEDOUT` with no output at all. That is what made
+ * the E2E blocker take eight commits to characterise: the one thing a
+ * maintainer needs after a 10-minute wall is the 20 lines the child
+ * wrote before it died.
+ *
+ * The command is named but its credential-bearing environment is not:
+ * `localChildEnv` / `d1ChildEnv` are never interpolated, so a token
+ * cannot leak through this message.
+ */
+function cfFailure(command, error, { local }) {
+	const stdout = typeof error?.stdout === 'string' ? error.stdout.trim() : '';
+	const stderr = typeof error?.stderr === 'string' ? error.stderr.trim() : '';
+	const detail = [stdout, stderr].filter((part) => part.length > 0).join('\n');
+	const cause =
+		error?.code === 'ETIMEDOUT' || error?.signal
+			? 'timed out or was killed'
+			: error?.status !== undefined
+				? `exited with status ${error.status}`
+				: 'failed';
+
+	const wrapped = new Error(
+		`pnpm ${command.join(' ')} ${cause} (${local ? 'local' : 'remote'})\n${
+			detail.length > 0
+				? `--- cf output ---\n${detail}\n------------------\n`
+				: '--- cf output ---\n(empty: the child produced no output before it died)\n------------------\n'
+		}`,
+		{ cause: error },
+	);
+	return wrapped;
 }
 
 function parseCfJson(stdout) {

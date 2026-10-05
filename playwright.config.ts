@@ -39,19 +39,27 @@ import { defineConfig, devices } from '@playwright/test';
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
 const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
 
-// `e2e/global-setup.ts` runs once before the webServer starts and
-// applies the D1 migrations + skeleton seed to the local D1 binding.
-// Without it the portfolio routes 500 on a fresh `.wrangler/state`
-// because the `portfolio_project` table does not exist yet. Re-runs
-// are idempotent (D1 migration tracking + INSERT OR IGNORE seed).
+// The local D1 state (`.tmp/d1state`) must be migrated and seeded
+// BEFORE the preview server starts serving from it. That work runs in
+// `scripts/e2e-local-bootstrap.mjs`, wired in as the `webServer.command`
+// below — NOT in `globalSetup`.
+//
+// The reason is ordering, and the ordering is not what the two hooks'
+// names suggest. Playwright runs the webServer plugin's `setup()` —
+// which boots the server and waits for its URL — and only then loads
+// any `globalSetup` file. See `createGlobalSetupTasks` in
+// `playwright@1.63.0` `lib/runner/index.js`. Migrating from
+// `globalSetup` therefore runs a schema migration against a state
+// directory workerd is already serving, which is how
+// `release-0-6-0` spent eight commits on a 600s `spawnSync pnpm
+// ETIMEDOUT` (Issue #262).
 export default defineConfig({
 	testDir: './e2e',
-	// `globalSetup` applies the local D1 migrations + skeleton seed that
-	// `pnpm preview` needs to serve the portfolio routes. Production runs
-	// against `https://rebuildup.dev`, which already owns its D1 — the
-	// local migration step is unnecessary and (worse) shells out to the
-	// Cloudflare Workers Builds secret preflight when running under CI.
-	// Skip it when the canonical production origin is the BASE_URL.
+	// `globalSetup` no longer prepares anything — it VERIFIES that the
+	// pre-server bootstrap produced the schema the specs need, and
+	// throws if it did not. Production runs against
+	// `https://rebuildup.dev`, which already owns its D1 and has no
+	// local state directory to check, so it is skipped there.
 	globalSetup: BASE_URL.startsWith('http://127.0.0.1') ? './e2e/global-setup.ts' : undefined,
 	timeout: 30_000,
 	expect: { timeout: 5_000 },
@@ -89,21 +97,28 @@ export default defineConfig({
 	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
 		? '**/prod-*.spec.ts'
 		: '**/portfolio.spec.ts',
-	// The local project spins up `pnpm preview` against the build
-	// output automatically. `pnpm preview` is required because the
-	// Tool iframe spec reaches into `dist/client/tools/<slug>/app/`
-	// (the collected Tool artifact) and the dev server does NOT serve
-	// those static files. The CI workflow already ran `pnpm run
-	// build` (= `vite build` + `scripts/build-tools.mjs` +
-	// `scripts/check-client-bundle.mjs`) before this step, so the
-	// `dist/` tree is guaranteed to be present. For local dev, run
-	// `pnpm run build` before `pnpm run e2e` (or rely on
-	// `reuseExistingServer: !CI` if a preview is already up). Local
+	// The local project spins up the preview server automatically.
+	// `pnpm preview` is required because the Tool iframe spec reaches
+	// into `dist/client/tools/<slug>/app/` (the collected Tool artifact)
+	// and the dev server does NOT serve those static files. The CI
+	// workflow already ran `pnpm run build` (= `vite build` +
+	// `scripts/build-tools.mjs` + `scripts/check-client-bundle.mjs`)
+	// before this step, so the `dist/` tree is guaranteed to be present.
+	// For local dev, run `pnpm run build` before `pnpm run e2e` (or rely
+	// on `reuseExistingServer: !CI` if a preview is already up). Local
 	// previews use `pnpm preview` (= `vite preview` against
 	// `dist/client/`), NOT `pnpm dev`.
+	//
+	// `e2e-local-bootstrap.mjs` migrates + seeds `.tmp/d1state` and then
+	// execs `pnpm preview --port=${PORT}`. It is here rather than in
+	// `globalSetup` because this is the only hook guaranteed to run
+	// before the server binds. If the migration fails, the bootstrap
+	// exits non-zero without starting the server, the URL never becomes
+	// ready, and Playwright fails the run — the gate stays red rather
+	// than quietly running against an unprepared database (Issue #262).
 	webServer: BASE_URL.startsWith('http://127.0.0.1')
 		? {
-				command: `pnpm preview --port=${PORT}`,
+				command: `node scripts/e2e-local-bootstrap.mjs --port=${PORT}`,
 				url: BASE_URL,
 				timeout: 60_000,
 				reuseExistingServer: !process.env.CI,

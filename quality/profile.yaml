@@ -51,6 +51,25 @@ gates:
       - 'pnpm run cf:mode-mismatch:check' # a production Build Output must be rejected under --mode development
       - 'pnpm run lint:ci' # actionlint via scripts/lint-ci.mjs (default target: .github/workflows/*.yml)
       - 'pnpm run build-storybook' # static storybook build -> storybook-static/
+      # Issue #247: Storybook's Vite builder merges the project's
+      # `vite.config.ts`, so it runs the Cloudflare plugin and DESTROYS
+      # `.cloudflare/output/` (config.json and the Worker bundles; only
+      # `workers/default/assets` survives). The Playwright step that runs
+      # after this command starts `vite preview`, which serves the Build
+      # Output, and failed with "no root config found at
+      # .cloudflare/output/v0/config.json".
+      #
+      # The Build Output is therefore rebuilt after Storybook, and the
+      # contract re-checked against it. Reordering instead (Storybook
+      # first) was tried and reverted: in a fresh CI process Panda's
+      # PostCSS plugin fails on its FIRST load with
+      # "Loading PostCSS Plugin failed: Cannot read properties of
+      # undefined (reading 'exports')", which the original order masked
+      # by having `build:production` pay that cost first. That is a
+      # pre-existing latent toolchain issue, tracked separately; the
+      # build order here should not depend on it.
+      - 'pnpm run build:cf:production' # rebuild Build Output after Storybook
+      - 'pnpm run cloudflare:contract:check:build' # re-prove the contract against the fresh artifact
     cost_class: medium
     trigger: pull_request, push_to_main_and_release
 

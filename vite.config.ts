@@ -3,6 +3,7 @@ import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
+import { LOCAL_STATE_DIR } from './scripts/_cloudflare-identity.mjs';
 
 /**
  * Vite configuration for my-web-2026.
@@ -129,7 +130,7 @@ export default defineConfig({
 			// rows are visible in BOTH directions between the CLI and the
 			// running Worker. Without this, `cf d1 ... --local` and the
 			// Vite dev server each keep a private store and disagree.
-			persistState: { path: resolve(__dirname, '.tmp/d1state') },
+			persistState: { path: resolve(__dirname, LOCAL_STATE_DIR) },
 			// Issue #247: `cf workers types` is the canonical typegen and
 			// writes `.cloudflare/types/index.d.ts`, which is tracked and
 			// freshness-checked. Generating a second, differently-shaped

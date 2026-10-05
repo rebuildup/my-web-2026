@@ -1,12 +1,22 @@
 import { resolve } from 'node:path';
-import { bindings, defineConfig, type ConfigContext } from 'cf/config';
-import { readDevVars } from './scripts/_dev-vars-reader.mjs';
+import { type ConfigContext, bindings, defineConfig } from 'cf/config';
+import {
+	PRODUCTION_BETTER_AUTH_URL,
+	PRODUCTION_CUSTOM_DOMAIN,
+	PRODUCTION_MEDIA_PUBLIC_BASE_URL,
+	RATE_LIMITS,
+	RATE_LIMIT_BINDING,
+	RATE_LIMIT_NAMESPACES,
+	WORKER_RUNTIME_SECRET,
+} from './scripts/_cloudflare-contract.mjs';
 import {
 	ACCOUNT_ID,
 	D1_DATABASE_ID,
 	D1_DATABASE_NAME,
 	R2_BUCKET_NAME,
+	WORKER_NAME,
 } from './scripts/_cloudflare-identity.mjs';
+import { readDevVars } from './scripts/_dev-vars-reader.mjs';
 
 /**
  * Cloudflare Worker configuration for my-web-2026 — the single SoT
@@ -54,11 +64,6 @@ import {
  * name-addressed `wrangler d1 execute`, not a rename.
  */
 
-const WORKER_NAME = 'my-web-2026';
-
-/** Custom domain; production only. */
-const CUSTOM_DOMAIN = 'rebuildup.dev';
-
 /**
  * Local `LOCAL_API_MODE=mock` opt-in (Issue #186).
  *
@@ -93,7 +98,7 @@ export default defineConfig({
 			observability: { enabled: true },
 			// Development must not inherit the production origin: the
 			// canonical-domain decision is ADR-0014 (Issue #43).
-			domains: isProduction ? [CUSTOM_DOMAIN] : [],
+			domains: isProduction ? [PRODUCTION_CUSTOM_DOMAIN] : [],
 			env: {
 				// Shared non-secret vars.
 				MY_WEB_2026_REACTIONS_TARGET: bindings.text('home-page'),
@@ -109,8 +114,8 @@ export default defineConfig({
 				// behaviour and the generated types both have to survive.
 				...(isProduction
 					? {
-							BETTER_AUTH_URL: bindings.text(`https://${CUSTOM_DOMAIN}`),
-							MEDIA_PUBLIC_BASE_URL: bindings.text('https://media.rebuildup.dev'),
+							BETTER_AUTH_URL: bindings.text(PRODUCTION_BETTER_AUTH_URL),
+							MEDIA_PUBLIC_BASE_URL: bindings.text(PRODUCTION_MEDIA_PUBLIC_BASE_URL),
 						}
 					: ({} as {
 							BETTER_AUTH_URL?: ReturnType<typeof bindings.text>;
@@ -119,9 +124,12 @@ export default defineConfig({
 				// Runtime secrets. Infisical is the value SoT
 				// (ADR-0015 §6 / §9); Workers Builds injects values at
 				// deploy time via `cf deploy --secrets-file`.
-				BETTER_AUTH_SECRETS: bindings.secret(),
-				MY_WEB_2026_CONSUMER_API_KEY: bindings.secret(),
-				GOOGLE_ANALYTICS_MEASUREMENT_ID: bindings.secret(),
+				// Keyed by the shared contract names, so a name cannot
+				// drift between this config and the deploy-time gate in
+				// `run-deploy-inner.mjs` / `check-cloudflare-contract.mjs`.
+				[WORKER_RUNTIME_SECRET.BETTER_AUTH_SECRETS]: bindings.secret(),
+				[WORKER_RUNTIME_SECRET.CONSUMER_API_KEY]: bindings.secret(),
+				[WORKER_RUNTIME_SECRET.GA_MEASUREMENT_ID]: bindings.secret(),
 				// D1 needs the ID under the cf CLI.
 				DB: bindings.d1({ name: D1_DATABASE_NAME, id: D1_DATABASE_ID }),
 				MEDIA: bindings.r2({ name: R2_BUCKET_NAME }),
@@ -129,13 +137,13 @@ export default defineConfig({
 				// the runtime's only rate-limit layer; the Better Auth
 				// api-key plugin's per-key limit is disabled because two
 				// layers would gate on the lower budget.
-				RATE_LIMIT_WRITE: bindings.rateLimit({
-					namespace: '00000000000000000000000000000001',
-					simple: { limit: 60, period: 60 },
+				[RATE_LIMIT_BINDING.WRITE]: bindings.rateLimit({
+					namespace: RATE_LIMIT_NAMESPACES[RATE_LIMIT_BINDING.WRITE],
+					simple: { ...RATE_LIMITS[RATE_LIMIT_BINDING.WRITE] },
 				}),
-				RATE_LIMIT_READ: bindings.rateLimit({
-					namespace: '00000000000000000000000000000002',
-					simple: { limit: 600, period: 60 },
+				[RATE_LIMIT_BINDING.READ]: bindings.rateLimit({
+					namespace: RATE_LIMIT_NAMESPACES[RATE_LIMIT_BINDING.READ],
+					simple: { ...RATE_LIMITS[RATE_LIMIT_BINDING.READ] },
 				}),
 				ASSETS: bindings.assets(),
 				...localApiModeBinding(isProduction),

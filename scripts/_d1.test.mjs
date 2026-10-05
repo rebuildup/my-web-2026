@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { parseD1Args } from './d1.mjs';
+import { ACCOUNT_ID, D1_DATABASE_ID } from './_cloudflare-identity.mjs';
 import { D1_TARGETS, assertProductionWriteAllowed, normaliseRows, resolveTarget } from './_d1.mjs';
-import { D1_DATABASE_ID, ACCOUNT_ID } from './_cloudflare-identity.mjs';
+import { parseD1Args } from './d1.mjs';
 
 /**
  * D1 driver tests (Issue #247).

@@ -29,19 +29,20 @@
  *   5  cleanup failure (the deploy itself succeeded; logged loudly)
  */
 import { execFileSync } from 'node:child_process';
-import {
-	assertDeployableBuildOutput,
-	assertDeployCredentialAvailable,
-	assertNoAuditOnlySecrets,
-	buildDeployArgv,
-	BUILD_OUTPUT_DIR,
-} from './_cf-build-output.mjs';
-import { applyMigrations } from './_d1.mjs';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+	BUILD_OUTPUT_DIR,
+	assertDeployCredentialAvailable,
+	assertDeployableBuildOutput,
+	assertNoAuditOnlySecrets,
+	buildDeployArgv,
+} from './_cf-build-output.mjs';
+import { AUDIT_ONLY_SECRETS, REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
+import { applyMigrations } from './_d1.mjs';
 
 const require = createRequire(import.meta.url);
 
@@ -74,12 +75,13 @@ const require = createRequire(import.meta.url);
  * merge time and the operator replaces it with the real value BEFORE
  * cutting traffic to production.
  */
-const REQUIRED_RUNTIME_SECRETS = [
-	'BETTER_AUTH_SECRETS',
-	'MY_WEB_2026_CONSUMER_API_KEY',
-	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
-];
-const AUDIT_ONLY_SECRETS = ['BETTER_AUTH_SECRET'];
+// The runtime contract is owned by `_cloudflare-contract.mjs`, shared
+// with `cloudflare.config.ts` (which declares the bindings by these
+// names) and with `check-cloudflare-contract.mjs` (which compares the
+// generated Build Output against them). This file no longer restates
+// the names: a literal here was a third copy that could drift, and
+// `check-infisical-coverage.mjs` used to exist mainly to notice that.
+
 const SENSITIVE_KEYS = new Set([
 	...REQUIRED_RUNTIME_SECRETS,
 	...AUDIT_ONLY_SECRETS,

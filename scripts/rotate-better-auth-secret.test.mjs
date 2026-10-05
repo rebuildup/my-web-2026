@@ -13,16 +13,18 @@
  *   - failure-injection / partial-failure contract
  *   - security invariants (plaintext never in argv, log, error message)
  *   - buildInfisicalEnv (Infisical CLI env: keeps INFISICAL_TOKEN, strips other Infisical credentials)
- *   - buildWranglerEnv (Wrangler/D1 env: strips full Infisical credential set, no token added)
+ *   - buildCfEnv (Wrangler/D1 env: strips full Infisical credential set, no token added)
  */
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { Readable, Writable } from 'node:stream';
 import { describe, it } from 'node:test';
+import { AUTH_MODE } from './_infisical-auth.mjs';
 import {
 	MODES,
 	SECRET_NAME_LEGACY,
 	SECRET_NAME_VERSIONED,
+	buildCfEnv,
 	buildInfisicalEnv,
 	buildInfisicalSetArgs,
 	buildInfisicalYamlContent,
@@ -30,7 +32,6 @@ import {
 	buildSecretReadUrl,
 	buildVersionedForm,
 	buildWorkerBulkPayload,
-	buildWranglerEnv,
 	classifyInfisicalHttpStatus,
 	generateFreshSecret,
 	interpretInfisicalReadResponse,
@@ -43,7 +44,6 @@ import {
 	summarizeWorkerState,
 	validateFreshSecret,
 } from './rotate-better-auth-secret.mjs';
-import { AUTH_MODE } from './_infisical-auth.mjs';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -685,7 +685,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 	});
 
-	describe('buildSanitizedEnv (deprecated alias for buildWranglerEnv; PR #140 re-review fix)', () => {
+	describe('buildSanitizedEnv (deprecated alias for buildCfEnv; PR #140 re-review fix)', () => {
 		it('strips INFISICAL_TOKEN (writer token must not leak to Wrangler/D1 subprocesses)', () => {
 			const env = buildSanitizedEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_TOKEN, undefined);
@@ -724,15 +724,15 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 	});
 
-	describe('buildWranglerEnv (PR #140 re-review fix: full Infisical credential set stripped, NO token added)', () => {
+	describe('buildCfEnv (PR #140 re-review fix: full Infisical credential set stripped, NO token added)', () => {
 		it('strips INFISICAL_TOKEN (Wrangler MUST NOT receive the writer-scoped Infisical token)', () => {
-			const env = buildWranglerEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
+			const env = buildCfEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_TOKEN, undefined);
 			assert.equal(env.NODE_ENV, 'test');
 		});
 
 		it('strips INFISICAL_CLIENT_ID and INFISICAL_CLIENT_SECRET', () => {
-			const env = buildWranglerEnv({
+			const env = buildCfEnv({
 				INFISICAL_CLIENT_ID: 'cid',
 				INFISICAL_CLIENT_SECRET: 'cs',
 				NODE_ENV: 'test',
@@ -743,7 +743,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 
 		it('strips the full Infisical credential set (PROJECT_ID, SITE_URL, API_URL)', () => {
-			const env = buildWranglerEnv({
+			const env = buildCfEnv({
 				INFISICAL_PROJECT_ID: 'p',
 				INFISICAL_SITE_URL: 's',
 				INFISICAL_API_URL: 'a',
@@ -758,7 +758,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		it('does not mutate the input env', () => {
 			const input = { INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' };
 			const snapshot = { ...input };
-			buildWranglerEnv(input);
+			buildCfEnv(input);
 			assert.deepEqual(input, snapshot);
 		});
 	});
@@ -913,7 +913,7 @@ describe('buildInfisicalEnv in the two auth modes', () => {
 	});
 
 	it('never leaks an Infisical credential to a Wrangler child', () => {
-		const env = buildWranglerEnv({
+		const env = buildCfEnv({
 			PATH: '/bin',
 			INFISICAL_TOKEN: 'tok',
 			INFISICAL_CLIENT_ID: 'id',

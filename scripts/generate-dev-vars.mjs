@@ -40,10 +40,11 @@
  *   INFISICAL_API_URL — defaults to `https://secrets.rebuildup.dev`.
  */
 
-import { readFileSync, writeFileSync, renameSync, unlinkSync, existsSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, unlinkSync, writeFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
 
 export const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
 export const HTTPS_TIMEOUT_MS = 15_000;
@@ -61,27 +62,6 @@ export const REPO_ROOT = resolve(HERE, '..');
 export function parseJsonc(source) {
 	const stripped = source.replace(/\/\*[\s\S]*?\*\//g, '').replace(/(^|[^:])\/\/.*$/gm, '$1');
 	return JSON.parse(stripped);
-}
-
-/**
- * Parse `secrets.required` from a Wrangler JSONC config.
- *
- * Returns `[]` if the config does not declare `secrets.required`. Throws
- * if `secrets.required` exists but is malformed.
- */
-export function parseSecretsRequired(wranglerJsoncSource) {
-	const parsed = parseJsonc(wranglerJsoncSource);
-	const required = parsed?.secrets?.required;
-	if (required === undefined) return [];
-	if (!Array.isArray(required)) {
-		throw new Error('wrangler config: secrets.required must be an array');
-	}
-	for (const entry of required) {
-		if (typeof entry !== 'string' || entry.length === 0) {
-			throw new Error(`wrangler config: invalid secrets.required entry: ${JSON.stringify(entry)}`);
-		}
-	}
-	return required.slice();
 }
 
 /**
@@ -231,14 +211,6 @@ function readInfisicalWorkspaceId(repoRoot = REPO_ROOT) {
 	return parsed.workspaceId;
 }
 
-function readWranglerSecretsRequired(configPath, repoRoot = REPO_ROOT) {
-	const fullPath = resolve(repoRoot, configPath);
-	if (!existsSync(fullPath)) {
-		throw new Error(`Wrangler config not found: ${fullPath}`);
-	}
-	return parseSecretsRequired(readFileSync(fullPath, 'utf8'));
-}
-
 function httpsJson({ method, url, headers, body }) {
 	return new Promise((resolvePromise, rejectPromise) => {
 		const bodyStr = body ? JSON.stringify(body) : null;
@@ -315,7 +287,7 @@ async function listInfisicalSecrets({ apiUrl, accessToken, workspaceId, environm
 }
 
 function parseArgs(argv) {
-	const out = { env: null, config: 'wrangler.jsonc', dryRun: false, help: false };
+	const out = { env: null, dryRun: false, help: false };
 	for (const arg of argv) {
 		if (arg === '--help' || arg === '-h') {
 			out.help = true;
@@ -323,8 +295,6 @@ function parseArgs(argv) {
 			out.dryRun = true;
 		} else if (arg.startsWith('--env=')) {
 			out.env = arg.slice('--env='.length);
-		} else if (arg.startsWith('--config=')) {
-			out.config = arg.slice('--config='.length);
 		} else {
 			throw new Error(`unknown argument: ${arg}`);
 		}
@@ -333,16 +303,15 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-	console.log(`Usage: generate-dev-vars.mjs [--env=<dev|prod>] [--config=<path>] [--dry-run] [--help]
+	console.log(`Usage: generate-dev-vars.mjs [--env=<dev|prod>] [--dry-run] [--help]
 
 Options:
   --env=<name>      Infisical environment to read from. Default: .infisical.json#defaultEnvironment
-  --config=<path>   Wrangler config to read secrets.required from. Default: wrangler.jsonc
   --dry-run         Print plan without writing .dev.vars
   --help, -h        Show this help
 
 The script reads .infisical.json#workspaceId (committed SoT) and the
-secrets.required array from the chosen Wrangler config, fetches the
+shared runtime contract (scripts/_cloudflare-contract.mjs), fetches the
 matching secret values from Infisical dev env via V3 /api/v3/secrets/raw,
 and writes them to .dev.vars.
 
@@ -390,9 +359,12 @@ export async function runMain({
 	}
 
 	const workspaceId = readInfisicalWorkspaceId(repoRoot);
-	const required = readWranglerSecretsRequired(args.config, repoRoot);
+	// Issue #247: the required-secret set is the shared contract, not a
+	// scrape of whichever config file was named. `--config` authorised
+	// nothing and named a file this migration deletes.
+	const required = [...REQUIRED_RUNTIME_SECRETS];
 	if (required.length === 0) {
-		throw new Error(`${args.config}: secrets.required is empty; nothing to fetch`);
+		throw new Error('the shared runtime contract is empty; nothing to fetch');
 	}
 
 	let resolvedEnv = args.env;
@@ -409,7 +381,7 @@ export async function runMain({
 	// `wrangler secret put`, never by this script.
 	if (isProdEnvironment(resolvedEnv)) {
 		throw new Error(
-			`generate-dev-vars refuses environment=${JSON.stringify(resolvedEnv)}: prod secrets are never written to a local .dev.vars file. Use "pnpm run infisical:deploy" (Phase 4 #70) or "wrangler secret put" for production.`,
+			`generate-dev-vars refuses environment=${JSON.stringify(resolvedEnv)}: prod secrets are never written to a local .dev.vars file. Use "pnpm run infisical:deploy" (Phase 4 #70) for production; production Worker secrets are written by the Infisical-backed deploy path, never into a local .dev.vars.`,
 		);
 	}
 

@@ -45,6 +45,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACCOUNT_ID } from './_cloudflare-identity.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
@@ -56,24 +57,25 @@ const INFISICAL_PROJECT_FALLBACK = '89cda9cb-31ab-4ace-afe9-f155024850d1';
 const MAX_LOG_PAGES = 200;
 
 /**
- * Account id from `.infisical.json` is NOT the Cloudflare account; the
- * account is a Cloudflare-side fact. Read it from the repository's
- * Workers Builds configuration when possible, else require it.
+ * The Cloudflare account that owns this Worker.
+ *
+ * Issue #247: imported from `_cloudflare-identity.mjs` rather than
+ * regexed out of a config file. The previous reader tried three files
+ * in order and silently skipped whichever did not match, so a renamed
+ * config or a reworded key produced "account not found" instead of a
+ * wrong account — and an env override won outright, so a stray
+ * CLOUDFLARE_ACCOUNT_ID pointed every Builds query at another account.
+ *
+ * An override is now accepted only when it REPEATS the canonical id.
  */
 function readAccountId() {
-	// The account id is committed in the (soon-to-be-removed) wrangler
-	// config and, after the cf migration, in cloudflare.config.ts.
-	for (const rel of ['cloudflare.config.ts', 'wrangler.production.jsonc', 'wrangler.jsonc']) {
-		const p = join(REPO_ROOT, rel);
-		if (!existsSync(p)) continue;
-		const m = readFileSync(p, 'utf8').match(/"?account_?[iI]d"?\s*[:=]\s*"([0-9a-f]{32})"/);
-		if (m) return m[1];
+	const override = process.env.CLOUDFLARE_ACCOUNT_ID;
+	if (override && override !== ACCOUNT_ID) {
+		throw new Error(
+			`CLOUDFLARE_ACCOUNT_ID=${override} does not match the canonical account ${ACCOUNT_ID}. This repository owns one account; an override may not retarget Builds diagnosis.`,
+		);
 	}
-	const env = process.env.CLOUDFLARE_ACCOUNT_ID;
-	if (env) return env;
-	throw new Error(
-		'Cloudflare account id not found. Set CLOUDFLARE_ACCOUNT_ID or keep it in the Worker config.',
-	);
+	return ACCOUNT_ID;
 }
 
 /** Infisical project id for the `--projectId` flag. */

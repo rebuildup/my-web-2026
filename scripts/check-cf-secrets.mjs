@@ -33,8 +33,10 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { dirname, resolve } from 'node:path';
-import { inspectBuildOutput } from './_cf-build-output.mjs';
 import { fileURLToPath } from 'node:url';
+import { inspectBuildOutput } from './_cf-build-output.mjs';
+import { AUDIT_ONLY_SECRETS, REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
+import { ACCOUNT_ID, WORKER_NAME } from './_cloudflare-identity.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
@@ -43,12 +45,9 @@ const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
 const HTTPS_TIMEOUT_MS = 10_000;
 const HTTPS_MAX_RESPONSE_BYTES = 256 * 1024;
 
-const RUNTIME_REQUIRED_SECRETS = [
-	'BETTER_AUTH_SECRETS',
-	'BETTER_AUTH_SECRET',
-	'MY_WEB_2026_CONSUMER_API_KEY',
-	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
-];
+// The Infisical-side inventory: everything the operator must be able to
+// source, i.e. the uploaded set plus the audit-only legacy name.
+const RUNTIME_REQUIRED_SECRETS = [...REQUIRED_RUNTIME_SECRETS, ...AUDIT_ONLY_SECRETS];
 
 // Pre-deploy transition live Worker contract. This intentionally excludes
 // GOOGLE_ANALYTICS_MEASUREMENT_ID: the current Worker cannot have that
@@ -61,17 +60,6 @@ const PRE_DEPLOY_TRANSITION_WORKER_SECRETS = [
 	'MY_WEB_2026_CONSUMER_API_KEY',
 ];
 
-const PHASE_1_2_REQUIRED = [
-	'BETTER_AUTH_SECRET',
-	'MY_WEB_2026_CONSUMER_API_KEY',
-	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
-];
-const PHASE_3_REQUIRED = [
-	'BETTER_AUTH_SECRETS',
-	'MY_WEB_2026_CONSUMER_API_KEY',
-	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
-];
-
 // `.infisical.json` schema (ADR-0015 §1 Decision). workspaceId is the
 // canonical SoT — committed, no secrets, validated as UUID v4 by
 // `scripts/infisical-bootstrap.mjs` on write.
@@ -79,15 +67,21 @@ const ALLOWED_INFISICAL_JSON_KEYS = new Set(['workspaceId', 'defaultEnvironment'
 const REQUIRED_INFISICAL_JSON_KEYS = ['workspaceId'];
 
 function printHelp() {
-	console.log(`Usage: check-cf-secrets.mjs [--execute] [--dry-run] [--environment=<prod|dev>] [--config=<path>] [--worker-contract=<auto|transition|final>] [--require-live-worker]
+	console.log(`Usage: check-cf-secrets.mjs [--execute] [--dry-run] [--environment=<prod|dev>] [--worker-contract=<auto|transition|final>] [--require-live-worker]
 
 Verify the Infisical / Cloudflare secret name contract (ADR-0015 §7).
 
-Tier 1 (runtime) — Infisical API list of secret names.
-Tier 2 (deploy-time) — wrangler config #secrets.required phase-specific 3-name.
-Tier 3 (live worker) — \`wrangler secret list\` against the actual bound
-                      Worker secrets (when CLOUDFLARE_API_TOKEN is set).
-                      Drift between Tier 1 / Tier 3 = high severity.
+Tier 1 (runtime)      — Infisical API list of secret names.
+Tier 2 (deploy-time)  — the Build Output's actual secret bindings, compared
+                        against the shared runtime contract
+                        (_cloudflare-contract.mjs).
+Tier 3 (live worker)  — the shared Worker secret API against the actually
+                        bound Worker secrets (when CLOUDFLARE_API_TOKEN is
+                        set). Drift between Tier 1 / Tier 3 = high severity.
+
+Issue #247: none of these tiers reads a Wrangler config file. Tier 2 is
+the artifact that would actually be deployed, which is a stronger
+statement than re-reading the source that produced it.
 
 Default mode is --dry-run (no Infisical API call, no Cloudflare API call).
 
@@ -97,11 +91,10 @@ Options:
                             --require-live-worker is set)
   --dry-run                 parse args + show expected check only (default)
   --environment=<name>      Infisical environment (default: 'prod')
-  --config=<path>           wrangler config path (default: wrangler.production.jsonc)
   --worker-contract=<mode>   live Worker expectation: transition=4-name (default,
                              before legacy deletion), final=versioned 3-name
-  --require-live-worker      require Tier 3; Wrangler resolves its available auth
-                             context and failure to list live secrets aborts
+  --require-live-worker      require Tier 3; a Worker-scoped credential must be
+                             present and failure to list live secrets aborts
   -h, --help                show this help`);
 }
 
@@ -110,7 +103,6 @@ function parseArgs(argv) {
 		execute: false,
 		dryRun: true,
 		environment: 'prod',
-		config: 'wrangler.production.jsonc',
 		workerContract: 'auto',
 		requireLiveWorker: false,
 	};
@@ -129,7 +121,14 @@ function parseArgs(argv) {
 		} else if (arg.startsWith('--environment=')) {
 			args.environment = arg.slice('--environment='.length);
 		} else if (arg.startsWith('--config=')) {
-			args.config = arg.slice('--config='.length);
+			// Removed in the #247 cleanup: `--config` authorized nothing
+			// and named a file this repository deletes. Rejected, not
+			// ignored, so a stale caller cannot believe it selected a
+			// target.
+			throw new Error(
+				'--config is no longer accepted; production identity comes from ' +
+					'_cloudflare-identity.mjs and the secret contract from _cloudflare-contract.mjs (Issue #247).',
+			);
 		} else if (arg.startsWith('--worker-contract=')) {
 			args.workerContract = arg.slice('--worker-contract='.length);
 		} else if (arg === '--require-live-worker') {
@@ -152,27 +151,6 @@ function parseArgs(argv) {
 		);
 	}
 	return args;
-}
-
-function readWranglerRequiredSecrets(configPath) {
-	const fullPath = resolve(REPO_ROOT, configPath);
-	if (!existsSync(fullPath)) {
-		throw new Error(`Wrangler config not found: ${fullPath}`);
-	}
-	const raw = readFileSync(fullPath, 'utf8');
-	// Strip // and /* */ comments, then parse as JSON.
-	const stripped = raw.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
-	const parsed = JSON.parse(stripped);
-	const required = parsed?.secrets?.required;
-	if (!Array.isArray(required)) {
-		return [];
-	}
-	return required.map((name) => {
-		if (typeof name !== 'string' || name.length === 0) {
-			throw new Error(`Invalid secrets.required entry: ${JSON.stringify(name)}`);
-		}
-		return name;
-	});
 }
 
 /**
@@ -234,30 +212,6 @@ function buildWranglerDiagnosticEnv(sourceEnv = process.env) {
 	return env;
 }
 
-/** Cloudflare account that owns production; read from the Worker config. */
-function readAccountId() {
-	if (process.env.CLOUDFLARE_ACCOUNT_ID) return process.env.CLOUDFLARE_ACCOUNT_ID;
-	for (const rel of ['cloudflare.config.ts', 'wrangler.production.jsonc']) {
-		const p = resolve(REPO_ROOT, rel);
-		if (!existsSync(p)) continue;
-		const m = readFileSync(p, 'utf8').match(/account_?[iI]d"?\s*[:=]\s*"([0-9a-f]{32})"/);
-		if (m) return m[1];
-	}
-	throw new Error('Cloudflare account id not resolvable; set CLOUDFLARE_ACCOUNT_ID');
-}
-
-/** Deployed Worker name. */
-function readWorkerName() {
-	if (process.env.CLOUDFLARE_WORKER_NAME) return process.env.CLOUDFLARE_WORKER_NAME;
-	for (const rel of ['cloudflare.config.ts', 'wrangler.production.jsonc']) {
-		const p = resolve(REPO_ROOT, rel);
-		if (!existsSync(p)) continue;
-		const m = readFileSync(p, 'utf8').match(/name\s*[:=]\s*"(my-web-2026)"/);
-		if (m) return m[1];
-	}
-	return 'my-web-2026';
-}
-
 /** Minimal Cloudflare API GET returning parsed JSON. */
 async function cfJson(method, path) {
 	return new Promise((resolvePromise, rejectPromise) => {
@@ -290,13 +244,15 @@ async function cfJson(method, path) {
 
 async function listCloudflareWorkerSecretNames() {
 	// Issue #247: the live Worker contract is read over the Cloudflare
-	// public API rather than by executing `wrangler secret list`. Running
+	// public API rather than by spawning a secret-listing CLI. Running
 	// Wrangler here would mean the cf deploy path is not actually
 	// Wrangler-free. Names and types only; values are never requested.
 	const token = process.env.CLOUDFLARE_API_TOKEN;
 	if (typeof token !== 'string' || token.length === 0) return null;
-	const accountId = readAccountId();
-	const workerName = readWorkerName();
+	// Identity is validated once in `main`, before the dry-run branch,
+	// so a mis-set account override cannot reach a live call.
+	const accountId = ACCOUNT_ID;
+	const workerName = WORKER_NAME;
 	const path = `/accounts/${accountId}/workers/scripts/${workerName}/secrets`;
 	const response = await cfJson('GET', path);
 	const list = Array.isArray(response?.result)
@@ -310,19 +266,6 @@ async function listCloudflareWorkerSecretNames() {
 		.map((entry) => (typeof entry === 'string' ? entry : entry?.name))
 		.filter((name) => typeof name === 'string' && name.length > 0)
 		.sort();
-}
-
-function determinePhase(wranglerRequired) {
-	const has = new Set(wranglerRequired);
-	if (has.has('BETTER_AUTH_SECRETS')) return 'phase-3+';
-	if (has.has('BETTER_AUTH_SECRET')) return 'phase-1-2';
-	return 'unknown';
-}
-
-function expectedPhaseRequired(phase) {
-	if (phase === 'phase-3+') return PHASE_3_REQUIRED;
-	if (phase === 'phase-1-2') return PHASE_1_2_REQUIRED;
-	return null;
 }
 
 function httpsJson({ method, hostname, port, path, headers, body }) {
@@ -462,7 +405,7 @@ export function resolveWorkerContract(workerNames) {
 		const actual = new Set(workerNames);
 		return list.length === actual.size && list.every((n) => actual.has(n));
 	};
-	if (matches(PHASE_3_REQUIRED)) return 'final';
+	if (matches(REQUIRED_RUNTIME_SECRETS)) return 'final';
 	if (matches(PRE_DEPLOY_TRANSITION_WORKER_SECRETS)) return 'transition';
 	return 'final';
 }
@@ -493,17 +436,31 @@ async function main() {
 		// No Build Output present (e.g. a Tier 1-only diagnostic run).
 		// Tier 2 then reports the mismatch rather than silently passing.
 	}
-	const phase = buildOutputSecrets
-		? 'phase-3+'
-		: determinePhase(readWranglerRequiredSecrets(args.config));
-	const expectedPhaseList = expectedPhaseRequired(phase);
+	// The expected set is the shared contract. Issue #247 removed the
+	// "detect which phase are we in" step: the contract is settled, and
+	// re-deriving it from whichever config file happened to be present is
+	// how the copies drifted in the first place.
+	const expectedPhaseList = REQUIRED_RUNTIME_SECRETS;
+
+	// Issue #247: canonical identity is imported, not discovered by
+	// regexing a config file. An account override is accepted only when
+	// it REPEATS the canonical id — the old reader returned whatever
+	// CLOUDFLARE_ACCOUNT_ID held, so a stray value silently pointed the
+	// live check at a different account. Checked before the dry-run
+	// branch so a mis-set override fails fast rather than only when a
+	// credential happens to be present.
+	const override = process.env.CLOUDFLARE_ACCOUNT_ID;
+	if (override && override !== ACCOUNT_ID) {
+		throw new Error(
+			`CLOUDFLARE_ACCOUNT_ID=${override} does not match the canonical account ${ACCOUNT_ID}. This repository owns one account; an override may not retarget production.`,
+		);
+	}
 
 	console.log(`[check-cf-secrets] environment=${args.environment}`);
-	console.log(`[check-cf-secrets] config=${args.config}`);
-	console.log(`[check-cf-secrets] detected phase=${phase}`);
+	console.log(`[check-cf-secrets] account=${ACCOUNT_ID} worker=${WORKER_NAME}`);
 	console.log(
-		`[check-cf-secrets] deploy-time secret bindings=${JSON.stringify(buildOutputSecrets ?? readWranglerRequiredSecrets(args.config))}` +
-			`${buildOutputInfo ? ` (from Build Output, mode=${buildOutputInfo.mode})` : ' (no Build Output; fell back to source config)'}`,
+		`[check-cf-secrets] deploy-time secret bindings=${JSON.stringify(buildOutputSecrets ?? REQUIRED_RUNTIME_SECRETS)}` +
+			`${buildOutputInfo ? ` (from Build Output, mode=${buildOutputInfo.mode})` : ' (no Build Output; using the shared contract)'}`,
 	);
 	console.log(`[check-cf-secrets] mode=${args.execute ? 'execute' : 'dry-run'}`);
 	console.log(`[check-cf-secrets] worker contract=${args.workerContract}`);
@@ -514,29 +471,21 @@ async function main() {
 			`[dry-run] would verify: Infisical ${args.environment} contains ` +
 				`runtime 4-name contract (${RUNTIME_REQUIRED_SECRETS.join(', ')})`,
 		);
-		if (expectedPhaseList) {
-			console.log(
-				`[dry-run] would verify: wrangler secrets.required matches phase-specific 3-name exactly (${expectedPhaseList.join(', ')})`,
-			);
-		} else {
-			console.log(
-				'[dry-run] [FAIL] cannot determine phase from wrangler config: ' +
-					'neither BETTER_AUTH_SECRET nor BETTER_AUTH_SECRETS found in secrets.required. ' +
-					'A recognized phase + exact 3-name match is required (ADR-0015 §9).',
-			);
-			console.log('[dry-run] FAIL (dry-run pre-flight, no API call made)');
-			process.exit(1);
-		}
+		console.log(
+			`[dry-run] would verify: the Worker artifact's secret bindings match the shared runtime contract exactly (${expectedPhaseList.join(', ')})`,
+		);
 		const tier3Eligible =
 			typeof process.env.CLOUDFLARE_API_TOKEN === 'string' &&
 			process.env.CLOUDFLARE_API_TOKEN.length > 0;
 		if (tier3Eligible || args.requireLiveWorker) {
 			const expectedWorker =
-				args.workerContract === 'final' ? PHASE_3_REQUIRED : PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
+				args.workerContract === 'final'
+					? REQUIRED_RUNTIME_SECRETS
+					: PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
 			// `auto` resolves from the live Worker, which the dry-run does
 			// not read; the execute path is where it is decided.
 			console.log(
-				`[dry-run] would verify: actual Cloudflare Worker secret names via \`wrangler secret list\` against ${args.workerContract} contract (${expectedWorker.join(', ')})${tier3Eligible ? ' (explicit CLOUDFLARE_API_TOKEN is set)' : ' (required; Wrangler resolves Workers Builds authentication at execution)'}`,
+				`[dry-run] would verify: actual Cloudflare Worker secret names via the shared secret API against the ${args.workerContract} contract (${expectedWorker.join(', ')})${tier3Eligible ? ' (explicit CLOUDFLARE_API_TOKEN is set)' : ' (required; a Worker-scoped credential must be present)'}`,
 			);
 		} else {
 			console.log(
@@ -594,7 +543,7 @@ async function main() {
 		printCheckResult(runtimeCheck, runtimeOk);
 		if (!runtimeOk) exitCode = 1;
 
-		// Tier 2 (deploy-time) check: wrangler `secrets.required` must
+		// Tier 2 (deploy-time) check: the artifact's secret bindings must
 		// EXACTLY match the recognized phase's 3-name contract — both
 		// missing AND extra entries are FAIL conditions. An unknown
 		// phase (no recognized pattern) is also a hard FAIL; partial
@@ -606,7 +555,7 @@ async function main() {
 			exitCode = 1;
 		} else {
 			const phaseCheck = compareNameLists(
-				buildOutputSecrets ?? readWranglerRequiredSecrets(args.config),
+				buildOutputSecrets ?? REQUIRED_RUNTIME_SECRETS,
 				expectedPhaseList,
 				`Build Output binding contract (${phase}, exact 3-name)`,
 			);
@@ -631,7 +580,7 @@ async function main() {
 				);
 			}
 			const expectedWorkerNames =
-				effective === 'final' ? PHASE_3_REQUIRED : PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
+				effective === 'final' ? REQUIRED_RUNTIME_SECRETS : PRE_DEPLOY_TRANSITION_WORKER_SECRETS;
 			const workerCheck = compareNameLists(
 				workerNames,
 				expectedWorkerNames,

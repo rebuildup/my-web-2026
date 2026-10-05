@@ -30,8 +30,6 @@ import {
 	buildLinkInserts,
 	buildMediaInsert,
 	buildProjectUpsert,
-	buildR2GetArgs,
-	buildR2PutArgs,
 	buildUnpublishSql,
 	fetchPublicR2Object,
 	linkIdFor,
@@ -39,9 +37,9 @@ import {
 	loadManifest,
 	mediaIdFor,
 	normalizeSlug,
-	parseD1Rows,
 	projectIdFor,
 	publicationContextDigest,
+	readVerifyRows,
 	sha256OfFile,
 	validateEntry,
 	validateManifest,
@@ -592,44 +590,148 @@ function buildExpectedVerificationRows(manifest, visibility = 'draft') {
 	return { projectRows, linkRows, mediaRows };
 }
 
-describe('production config coupling', () => {
-	it('passes the canonical production config to every prod Wrangler surface', () => {
-		// Issue #247: D1 no longer builds a Wrangler argv — it goes
-		// through the cf driver, which addresses the database by ID and
-		// carries its own production gate. R2 still uses Wrangler and is
-		// covered until the secrets/cleanup slices move it.
-		for (const args of [
-			buildR2PutArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg', 'image/jpeg'),
-			buildR2GetArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg'),
-		]) {
-			const configIndex = args.indexOf('-c');
-			assert.notEqual(configIndex, -1);
-			assert.equal(args[configIndex + 1], 'wrangler.production.jsonc');
-		}
+describe('R2 goes through the repository driver (Issue #247)', () => {
+	/*
+	 * These two tests used to pin a Wrangler argv: that every production
+	 * surface received `-c wrangler.production.jsonc`, and that the PUT
+	 * carried an explicit `--content-type`.
+	 *
+	 * Both properties survive the migration, but they are now enforced
+	 * inside `scripts/_r2.mjs` — the driver builds the argv, and it
+	 * REFUSES an upload with no content type rather than defaulting one.
+	 * The behaviour is pinned in `_r2.test.mjs`; what is asserted here
+	 * is that this driver no longer builds any argv of its own, so the
+	 * properties cannot be satisfied by a second code path.
+	 */
+
+	it('exports no Wrangler argv builder for R2', () => {
+		// If a future change reintroduces argv construction here, the
+		// driver and this script could disagree about addressing.
+		const source = readFileSync(
+			new URL('./publish-portfolio-production.mjs', import.meta.url),
+			'utf8',
+		);
+		assert.ok(!/buildR2(Put|Get)Args/.test(source), 'R2 argv builders must stay removed');
+		assert.ok(!/defaultWranglerSpawn/.test(source), 'the Wrangler spawner must stay removed');
+		assert.ok(
+			!/['"`]wrangler['"`]\s*,/.test(source),
+			'no Wrangler executable may be spawned from this script',
+		);
 	});
 
-	it('uses manifest Content-Type on R2 PUT instead of inference', () => {
-		const args = buildR2PutArgs('prod', 'portfolio/a.jpg', '/tmp/a.jpg', 'image/jpeg');
-		const index = args.indexOf('--content-type');
-		assert.notEqual(index, -1);
-		assert.equal(args[index + 1], 'image/jpeg');
-		assert.equal(args.includes('inherit'), false);
+	it('routes R2 through putObject/getObject from the shared driver', () => {
+		const source = readFileSync(
+			new URL('./publish-portfolio-production.mjs', import.meta.url),
+			'utf8',
+		);
+		assert.ok(source.includes('putObject('), 'uploads go through the driver');
+		assert.ok(source.includes('getObject('), 'downloads go through the driver');
+		// The production mutation gate is the driver's, reached by
+		// passing execute for a prod environment.
+		assert.match(source, /execute:\s*env === 'prod'/);
+	});
+
+	it('no longer reads a config file to authorise production', () => {
+		const source = readFileSync(
+			new URL('./publish-portfolio-production.mjs', import.meta.url),
+			'utf8',
+		);
+		assert.ok(
+			!source.includes('wrangler.production.jsonc'),
+			'production authorisation must not come from a config path',
+		);
 	});
 });
 
-describe('parseD1Rows', () => {
-	it('parses the canonical Wrangler result envelope', () => {
-		assert.deepEqual(parseD1Rows(JSON.stringify([{ results: [{ id: 'a' }] }])), [{ id: 'a' }]);
+describe('verify flow consumes normalised D1 rows (Issue #247)', () => {
+	/*
+	 * REGRESSION GUARD.
+	 *
+	 * `runD1Select` returned `{ parsed: queryRows(...) }` while `verify`
+	 * read `result.status` / `result.stdout`. `status` was `undefined`, so
+	 * the failure check `undefined !== 0` was always true and `verify`
+	 * exited 1 on its first D1 read — production portfolio verification
+	 * could not succeed at all. Every test in this file exercised a
+	 * helper, never the wiring between the read and the check, so the
+	 * mismatch stayed invisible.
+	 *
+	 * These tests run the actual read→verify path with a fake selector.
+	 */
+
+	it('returns the three row sets directly, with no subprocess envelope', () => {
+		const seen = [];
+		const rows = readVerifyRows('dev', ['a', 'b'], {
+			select: (_env, sql) => {
+				seen.push(sql);
+				return [{ id: 'row' }];
+			},
+		});
+		// The rows ARE the result: no `stdout`, `status`, or `stderr`.
+		assert.deepEqual(rows, {
+			projectRows: [{ id: 'row' }],
+			linkRows: [{ id: 'row' }],
+			mediaRows: [{ id: 'row' }],
+		});
+		for (const key of Object.keys(rows)) {
+			assert.ok(Array.isArray(rows[key]), `${key} must be an array of object rows`);
+		}
+		assert.equal(seen.length, 3, 'verify performs exactly three SELECTs');
 	});
 
-	it('fails closed on a raw row array', () => {
-		assert.throws(() => parseD1Rows(JSON.stringify([{ id: 'a' }])), /results\[\]/);
+	it('feeds readVerifyRows output straight into verifyD1Content with no errors', () => {
+		// The end-to-end shape: read → verify. With the old envelope this
+		// would have handed `verifyD1Content` three `undefined`s.
+		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
+		const expected = buildExpectedVerificationRows(manifest);
+		const byTable = {
+			portfolio_project: expected.projectRows,
+			portfolio_link: expected.linkRows,
+			portfolio_media: expected.mediaRows,
+		};
+		const read = readVerifyRows(
+			'dev',
+			ENTRIES.map((e) => e.legacyId),
+			{
+				select: (_env, sql) => {
+					for (const [table, rows] of Object.entries(byTable)) {
+						if (sql.includes(`FROM ${table}`)) return rows;
+					}
+					throw new Error(`unexpected SELECT: ${sql}`);
+				},
+			},
+		);
+		assert.deepEqual(verifyD1Content({ ...read, manifest, expectedVisibility: 'draft' }), []);
 	});
 
-	it('fails closed on multiple result envelopes', () => {
+	it('surfaces a content mismatch, rather than exiting on an undefined status', () => {
+		const manifest = loadManifest(SHIPPED_MANIFEST_PATH);
+		const expected = buildExpectedVerificationRows(manifest);
+		const rows = readVerifyRows(
+			'dev',
+			ENTRIES.map((e) => e.legacyId),
+			{
+				select: (_env, sql) => {
+					if (sql.includes('FROM portfolio_project')) {
+						return [{ ...expected.projectRows[0], slug: 'wrong-slug' }];
+					}
+					if (sql.includes('FROM portfolio_link')) return expected.linkRows;
+					return expected.mediaRows;
+				},
+			},
+		);
+		const errors = verifyD1Content({ ...rows, manifest, expectedVisibility: 'draft' });
+		assert.ok(errors.some((e) => e.includes('slug mismatch')));
+	});
+
+	it('propagates a read failure instead of degrading to zero rows', () => {
 		assert.throws(
-			() => parseD1Rows(JSON.stringify([{ results: [] }, { results: [] }])),
-			/single-result/,
+			() =>
+				readVerifyRows('dev', ['a'], {
+					select: () => {
+						throw new Error('D1 read failed: auth');
+					},
+				}),
+			/D1 read failed: auth/,
 		);
 	});
 });

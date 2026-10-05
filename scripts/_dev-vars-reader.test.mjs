@@ -1,4 +1,6 @@
 #!/usr/bin/node --test
+import assert from 'node:assert/strict';
+import { dirname, resolve } from 'node:path';
 /**
  * Unit tests for `scripts/_dev-vars-reader.mjs` (Issue #186 — the
  * LOCAL_API_MODE=mock dev-server passthrough). The helper is loaded
@@ -7,9 +9,7 @@
  * files wired into `pnpm test`.
  */
 import { test } from 'node:test';
-import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));

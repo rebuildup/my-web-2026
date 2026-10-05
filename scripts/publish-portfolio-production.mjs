@@ -66,7 +66,6 @@
  */
 
 import { spawn, spawnSync } from 'node:child_process';
-import { executeSqlFile, queryRows } from './_d1.mjs';
 import { createHash } from 'node:crypto';
 import {
 	createReadStream,
@@ -81,6 +80,9 @@ import {
 import { tmpdir } from 'node:os';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACCOUNT_ID, R2_BUCKET_NAME } from './_cloudflare-identity.mjs';
+import { executeSqlFile, queryRows } from './_d1.mjs';
+import { getObject, putObject } from './_r2.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
@@ -98,8 +100,7 @@ const ALLOWED_CANDIDATE_IDS = new Set([
 export { ALLOWED_CANDIDATE_IDS, RELEASE_VERSION };
 
 const DB_NAME = 'my-web-2026';
-const R2_BUCKET = 'my-web-2026';
-const WRANGLER_PRODUCTION_CONFIG = 'wrangler.production.jsonc';
+const R2_BUCKET = R2_BUCKET_NAME;
 const MEDIA_PUBLIC_BASE_URL = 'https://media.rebuildup.dev';
 
 const VERIFY_STATE_FILENAME = '.verify-state.json';
@@ -628,92 +629,50 @@ export async function verifyAssetHash(assetRelativePath, expectedSha256) {
 // Wrangler spawn wrappers (IO). Injected for tests.
 // ---------------------------------------------------------------------------
 
-/** Default Wrangler spawner. D1 no longer uses this — it goes through the
- * shared cf driver. R2 still does (`wrangler r2 object put/get`) and moves in
- * the secrets/cleanup slices.
- * object put` via spawnSync so the driver can be invoked from a one-shot
- * terminal command. Returns { stdout, stderr, status }. */
-function defaultWranglerSpawn(args, opts) {
-	const fullArgs = ['wrangler', ...args];
-	if (process.env.PUBLISH_PORTFOLIO_VERBOSE) {
-		console.error(`[spawn] ${fullArgs.join(' ')}`);
-	}
-	const result = spawnSync(fullArgs[0], fullArgs.slice(1), {
-		cwd: repoRoot,
-		env: process.env,
-		stdio: ['ignore', 'pipe', 'pipe'],
-		encoding: 'utf8',
-		...opts,
-	});
-	return {
-		stdout: result.stdout ?? '',
-		stderr: result.stderr ?? '',
-		status: result.status ?? -1,
-	};
-}
+/**
+ * Issue #247: R2 goes through the repository driver.
+ *
+ * The wrangler spawn wrapper, the `bucket/key` argument builders, and
+ * the config-file identity check are all gone. R2 addressing is now
+ * `--bucket-name` plus an explicit local/production target, and the
+ * canonical identity comes from `_cloudflare-identity.mjs` — a config
+ * file is a document that can be edited to name another account, so
+ * checking that a document agrees with itself was never a real gate.
+ */
 
-function productionConfigArgs(env) {
-	return env === 'prod' ? ['-c', WRANGLER_PRODUCTION_CONFIG] : [];
-}
-
-/** Validate the wrangler config identity (account_id, db name, r2 bucket)
- * matches the operator-known production identity. */
-function assertProductionIdentity(wranglerConfigName) {
-	const cfgPath = resolve(repoRoot, wranglerConfigName);
-	if (!existsSync(cfgPath)) {
-		throw new Error(`wrangler config not found: ${cfgPath}`);
-	}
-	const cfg = readFileSync(cfgPath, 'utf8');
-	if (!cfg.includes(`"database_name": "${DB_NAME}"`)) {
-		throw new Error(
-			`${wranglerConfigName}#database_name is not ${DB_NAME}; refusing to mutate production`,
-		);
-	}
-	if (!cfg.includes(`"bucket_name": "${R2_BUCKET}"`)) {
-		throw new Error(
-			`${wranglerConfigName}#r2_buckets.bucket_name is not ${R2_BUCKET}; refusing to mutate production`,
-		);
-	}
-	if (!cfg.includes('"account_id": "c6ab6651a5d4d6d0d07686bbd3c3d56f"')) {
-		throw new Error(
-			`${wranglerConfigName}#account_id is not the canonical production account; refusing to mutate production`,
-		);
-	}
-	if (!cfg.includes(`"MEDIA_PUBLIC_BASE_URL": "${MEDIA_PUBLIC_BASE_URL}"`)) {
-		throw new Error(
-			`${wranglerConfigName}#vars.MEDIA_PUBLIC_BASE_URL is not ${MEDIA_PUBLIC_BASE_URL}; refusing production verification`,
-		);
-	}
-}
-
-/** Parse Wrangler D1 --json output. Wrangler returns an array of result
- * envelopes; fail closed on any other shape. */
-export function parseD1Rows(stdout) {
-	let parsed;
-	try {
-		parsed = JSON.parse(stdout || '[]');
-	} catch {
-		throw new Error('D1 output is not valid JSON');
-	}
-	if (!Array.isArray(parsed) || parsed.length !== 1) {
-		throw new Error('D1 output must be a single-result envelope array');
-	}
-	const first = parsed[0];
-	if (!first || typeof first !== 'object' || !Array.isArray(first.results)) {
-		throw new Error('D1 output first envelope must contain results[]');
-	}
-	return first.results;
+/** Local or production, named. Never "remote". */
+function r2Target(env) {
+	return env === 'prod' ? 'production' : 'local';
 }
 
 /**
- * Issue #247: D1 goes through the shared cf driver.
+ * Pre-check before a production mutation.
  *
- * `DB_NAME` + a target FLAG is the old addressing; the driver
- * addresses the database by canonical ID with an explicit
- * local/production target, and routes production writes through the
- * lowest-layer execute gate. R2 still goes through Wrangler here and
- * moves in the secrets/cleanup slices.
+ * This replaces `assertProductionIdentity(wranglerConfig)`, which
+ * re-read a config file and checked that the document agreed with the
+ * literals in this script — a self-consistency test wearing the costume
+ * of a safety gate, because editing the config would have made it pass.
+ *
+ * There is nothing left to check here. The real gate is the driver's
+ * `assertProductionWriteAllowed`, which every production R2 write passes
+ * through and which checks the canonical account, the canonical bucket,
+ * an explicit execute, and an R2-scoped credential. Identity is imported
+ * from one module, so it cannot disagree with itself.
+ *
+ * What remains worth asserting is that the canonical identity is
+ * well formed at all, which is what a drifted import would break.
  */
+function assertProductionIdentity() {
+	if (!/^[0-9a-f]{32}$/.test(ACCOUNT_ID)) {
+		throw new Error(
+			`canonical account id is malformed (${ACCOUNT_ID}); refusing to mutate production`,
+		);
+	}
+	if (typeof R2_BUCKET !== 'string' || R2_BUCKET.length === 0) {
+		throw new Error('canonical R2 bucket name is empty; refusing to mutate production');
+	}
+}
+
 function d1Target(env) {
 	return env === 'prod' ? 'production' : 'local';
 }
@@ -722,54 +681,85 @@ function runD1(env, sqlPath) {
 	executeSqlFile(sqlPath, { target: d1Target(env), execute: true });
 }
 
-/** Upload an R2 object via wrangler. Content-Type is explicit; never use
- * Wrangler inference for release assets. */
-export function buildR2PutArgs(env, key, filePath, contentType) {
-	const targetFlag = env === 'prod' ? '--remote' : '--local';
-	const bucketKey = `${R2_BUCKET}/${key}`;
-	return [
-		'r2',
-		'object',
-		'put',
-		bucketKey,
-		targetFlag,
-		'--file',
-		filePath,
-		'--content-type',
-		contentType,
-		...productionConfigArgs(env),
-	];
-}
-
+/**
+ * Upload one R2 object.
+ *
+ * Content-Type stays explicit and is never inferred: release assets are
+ * served with their stored type by the R2 custom domain, so a guessed
+ * type is a correctness bug rather than a default.
+ *
+ * A production PUT is a real release mutation, so it goes through the
+ * driver's gate with `execute: true`. A local PUT needs no gate — it
+ * writes an ephemeral store.
+ */
 function runR2Put(env, key, filePath, contentType) {
-	return defaultWranglerSpawn(buildR2PutArgs(env, key, filePath, contentType));
+	return putObject(key, filePath, {
+		target: r2Target(env),
+		contentType,
+		execute: env === 'prod',
+	});
 }
 
-/** Download an R2 object via Wrangler for local verification. Production
- * integrity verification uses the custom-domain HTTPS path so HTTP metadata
- * (especially Content-Type) is verified together with bytes. */
-export function buildR2GetArgs(env, key, filePath) {
-	const targetFlag = env === 'prod' ? '--remote' : '--local';
-	const bucketKey = `${R2_BUCKET}/${key}`;
-	return [
-		'r2',
-		'object',
-		'get',
-		bucketKey,
-		targetFlag,
-		'--file',
-		filePath,
-		...productionConfigArgs(env),
-	];
-}
-
+/**
+ * Download one R2 object for LOCAL verification.
+ *
+ * Production integrity verification uses the custom-domain HTTPS path
+ * instead, so HTTP metadata (especially Content-Type) is verified
+ * together with the bytes. `cf r2 objects get` has no `--file`, so the
+ * bytes are written here from the driver's Buffer return value.
+ */
 function runR2Get(env, key, filePath) {
-	return defaultWranglerSpawn(buildR2GetArgs(env, key, filePath));
+	const bytes = getObject(key, { target: r2Target(env) });
+	writeFileSync(localPath, bytes);
+	return { status: 0, stdout: '', stderr: '' };
 }
 
+/**
+ * Run a read-only SELECT and return normalised object rows.
+ *
+ * Issue #247 (D1 slice) follow-up: this used to return a subprocess
+ * result envelope `{ parsed }` while `verify` still read
+ * `result.status` / `result.stderr` / `result.stdout`. `result.status`
+ * was therefore `undefined`, so the caller's failure check
+ * (`undefined !== 0`) was ALWAYS true and `verify` exited 1 on its
+ * first D1 read — the path could not succeed at all. There is no
+ * subprocess here any more, so there is no status, stderr, or stdout:
+ * the rows ARE the result, and a failure is a throw from `queryRows`.
+ */
 function runD1Select(env, sqlText) {
-	// A read: no execute gate, result shape already normalised.
-	return { parsed: queryRows(sqlText, { target: d1Target(env) }) };
+	return queryRows(sqlText, { target: d1Target(env) });
+}
+
+/**
+ * The three SELECTs `verify` performs, as normalised object rows.
+ *
+ * This exists as an exported, injectable seam so the verify flow can be
+ * tested at the level it actually runs, rather than through helpers that
+ * hide the wiring. The previous shape bug — `runD1Select` returning
+ * `{ parsed }` while `verify` read `result.stdout` — was invisible to
+ * every test in this file precisely because the orchestration between
+ * the two was never executed.
+ *
+ * `select` defaults to the shared D1 driver. It is a seam, not a public
+ * API: production always calls it with no override.
+ */
+export function readVerifyRows(env, idList, { select = runD1Select } = {}) {
+	const ids = [...idList];
+	const list = ids.map((id) => sqlEscape(id)).join(',');
+	return {
+		projectRows: select(
+			env,
+			`SELECT id, slug, title, role, visibility, status, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md FROM portfolio_project WHERE id IN (${list}) ORDER BY id;`,
+		),
+		linkRows: select(
+			env,
+			`SELECT id, project_id, kind, label, url, display_order FROM portfolio_link WHERE project_id IN (${list}) ORDER BY project_id, display_order, id;`,
+		),
+		mediaRows: select(
+			env,
+			`SELECT id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order FROM portfolio_media WHERE project_id IN (${list}) ORDER BY project_id, display_order, id;`,
+		),
+	};
 }
 
 function publicMediaUrl(key) {
@@ -995,7 +985,7 @@ async function operationPrepare(parsed, manifest) {
 	);
 
 	if (env === 'prod') {
-		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
+		assertProductionIdentity();
 	}
 
 	// 1. Validate all entries up front.
@@ -1040,7 +1030,7 @@ async function operationPrepare(parsed, manifest) {
 	writeFileSync(tmpFile, fullSql, { mode: 0o600 });
 	console.error(`[publish-portfolio] SQL bundle written to ${tmpFile} (${sqlBundle.length} stmts)`);
 
-	// 5. Spawn wrangler.
+	// 5. Apply the D1 batch through the shared driver.
 	let d1Result = { stdout: '', stderr: '[dry-run] no spawn', status: 0 };
 	if (!dryRun) {
 		d1Result = runD1(env, tmpFile);
@@ -1092,39 +1082,20 @@ async function operationVerify(parsed, manifest) {
 	);
 
 	if (env === 'prod') {
-		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
+		assertProductionIdentity();
 	}
 
-	const ids = [...ALLOWED_CANDIDATE_IDS];
-	const idList = ids.map((id) => sqlEscape(id)).join(',');
-	const projectSql = `SELECT id, slug, title, role, visibility, status, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md FROM portfolio_project WHERE id IN (${idList}) ORDER BY id;`;
-	const linkSql = `SELECT id, project_id, kind, label, url, display_order FROM portfolio_link WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
-	const mediaSql = `SELECT id, project_id, r2_key, content_type, width, height, alt, caption, is_cover, display_order FROM portfolio_media WHERE project_id IN (${idList}) ORDER BY project_id, display_order, id;`;
-
-	const projectResult = runD1Select(env, projectSql);
-	const linkResult = runD1Select(env, linkSql);
-	const mediaResult = runD1Select(env, mediaSql);
-	for (const [label, result] of [
-		['project', projectResult],
-		['link', linkResult],
-		['media', mediaResult],
-	]) {
-		if (result.status !== 0) {
-			console.error(`[publish-portfolio] verify: D1 ${label} SELECT failed`);
-			console.error(result.stderr);
-			process.exit(result.status || 1);
-		}
-	}
-
+	// Reads, not writes: no execute gate applies. Each SELECT returns
+	// normalised object rows directly; a failure throws out of
+	// `queryRows` and is reported below rather than silently treated as
+	// "no rows", which is what a missing `stdout` used to imply.
 	let projectRows;
 	let linkRows;
 	let mediaRows;
 	try {
-		projectRows = parseD1Rows(projectResult.stdout);
-		linkRows = parseD1Rows(linkResult.stdout);
-		mediaRows = parseD1Rows(mediaResult.stdout);
+		({ projectRows, linkRows, mediaRows } = readVerifyRows(env, ALLOWED_CANDIDATE_IDS));
 	} catch (error) {
-		console.error(`[publish-portfolio] verify: ${error.message}`);
+		console.error(`[publish-portfolio] verify: D1 read failed: ${error.message}`);
 		process.exit(1);
 	}
 
@@ -1226,7 +1197,7 @@ function operationPublish(parsed, manifest) {
 		process.exit(2);
 	}
 	if (env === 'prod') {
-		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
+		assertProductionIdentity();
 	}
 	const state = readVerifyState(env);
 	if (!state) {
@@ -1290,7 +1261,7 @@ function operationUnpublish(parsed /* , manifest */) {
 		process.exit(2);
 	}
 	if (env === 'prod') {
-		assertProductionIdentity(WRANGLER_PRODUCTION_CONFIG);
+		assertProductionIdentity();
 	}
 	const ids = [...ALLOWED_CANDIDATE_IDS];
 	const sql = buildUnpublishSql();

@@ -110,9 +110,13 @@ describe('assertProductionWriteAllowed (lowest-layer gate)', () => {
 });
 
 describe('putObject validation happens before any network call', () => {
-	it('plans without sending when execute is false', () => {
+	it('plans without sending for a PRODUCTION dry run', () => {
+		// `execute` is a production gate. A production upload without it
+		// reports the plan and sends nothing — and needs no credential,
+		// because the gate only guards a real write.
 		const result = putObject('portfolio/x.jpg', '/tmp/x.jpg', {
-			target: 'local',
+			target: 'production',
+			execute: false,
 			contentType: 'image/jpeg',
 			env: {},
 		});
@@ -120,6 +124,26 @@ describe('putObject validation happens before any network call', () => {
 		assert.equal(result.key, 'portfolio/x.jpg');
 		assert.equal(result.bucket, R2_BUCKET_NAME);
 		assert.equal(result.contentType, 'image/jpeg');
+		assert.equal(result.target, 'production');
+	});
+
+	it('does NOT gate a local write behind `execute`', () => {
+		// A local write targets an ephemeral `.tmp/` store and is not a
+		// production mutation. Gating it would make every local R2 script
+		// a silent no-op that still reported success. Proven by the fact
+		// that the local path is NOT plan-only: reaching the plan branch
+		// requires target === 'production'.
+		assert.throws(
+			() =>
+				putObject('a.jpg', '/tmp/a.jpg', {
+					target: 'local',
+					contentType: 'image/jpeg',
+					env: {},
+					// A file that does not exist: the failure proves the
+					// call reached the CLI rather than returning a plan.
+				}),
+			/ENOENT|no such file|not found/i,
+		);
 	});
 
 	it('rejects a non-canonical bucket in dry run, before anything else', () => {
@@ -163,26 +187,47 @@ describe('putObject validation happens before any network call', () => {
 	});
 
 	it('accepts a nested key with slashes', () => {
-		const result = putObject('portfolio/multislicer/20250503_multi.jpg', '/tmp/a.jpg', {
-			target: 'local',
+		// Reaches the CLI rather than being rejected by the key grammar:
+		// a missing file is the failure, not an "invalid key" one.
+		assert.throws(
+			() =>
+				putObject('portfolio/multislicer/20250503_multi.jpg', '/tmp/does-not-exist.jpg', {
+					target: 'local',
+					contentType: 'image/jpeg',
+					env: {},
+				}),
+			/ENOENT|no such file|not found/i,
+		);
+	});
+
+	it('treats a production upload with no execute as a DRY RUN, not a refusal', () => {
+		// The plan is the operator gate working: the upload is reported
+		// and not sent. Reporting it beats throwing, because "here is
+		// exactly what --execute would do" is the useful output.
+		//
+		// It needs no credential, since the credential is only required
+		// for a real write.
+		const result = putObject('a.jpg', '/tmp/a.jpg', {
+			target: 'production',
+			execute: false,
 			contentType: 'image/jpeg',
 			env: {},
 		});
 		assert.equal(result.applied, false);
 	});
 
-	it('refuses an un-authorised production write before any network call', () => {
-		// `execute: false` is the gate rejecting the mutation, so it must
-		// not be reported as a no-op the way a dry run is.
+	it('refuses a production write that has execute but no R2 credential', () => {
+		// The real refusal: an authorised production write that cannot be
+		// authorised, caught before any network call.
 		assert.throws(
 			() =>
 				putObject('a.jpg', '/tmp/a.jpg', {
 					target: 'production',
-					execute: false,
+					execute: true,
 					contentType: 'image/jpeg',
-					env: R2_ENV,
+					env: {},
 				}),
-			/requires an explicit execute/,
+			/CLOUDFLARE_R2_API_TOKEN is required/,
 		);
 	});
 

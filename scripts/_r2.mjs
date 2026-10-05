@@ -85,8 +85,24 @@ export const R2_TARGETS = /** @type {const} */ (['local', 'production']);
 /** Hard ceiling on one bulk call, so a bug cannot fan out into a mass write. */
 export const MAX_OPERATIONS = 64;
 
-/** R2 object keys: printable, no leading/trailing slash, no control chars. */
-const OBJECT_KEY_RE = /^[^\u0000-\u001f\u007f]{1,1024}$/;
+/** R2 object keys: 1-1024 printable characters. */
+const OBJECT_KEY_RE = /^.{1,1024}$/;
+
+/**
+ * Control characters are rejected by an explicit code-point scan rather
+ * than by the shape regex. A negated class containing control-character
+ * escapes reads as "any character except these", which is easy to get
+ * subtly wrong (and is flagged as suspicious); scanning for them states
+ * the rule directly.
+ */
+function hasControlCharacter(key) {
+	for (const character of key) {
+		const code = character.codePointAt(0);
+		// C0 controls, DEL, and C1 controls.
+		if (code <= 0x1f || (code >= 0x7f && code <= 0x9f)) return true;
+	}
+	return false;
+}
 
 /** Content types the publication path actually writes. */
 const CONTENT_TYPE_RE = /^[a-z0-9][a-z0-9!#$&^_.+-]{0,126}\/[a-z0-9][a-z0-9!#$&^_.+-]{0,126}$/i;
@@ -205,6 +221,9 @@ function assertKey(key) {
 	if (typeof key !== 'string' || !OBJECT_KEY_RE.test(key)) {
 		throw new Error(`invalid R2 object key: ${JSON.stringify(key)}`);
 	}
+	if (hasControlCharacter(key)) {
+		throw new Error(`R2 object key must not contain control characters: ${JSON.stringify(key)}`);
+	}
 	if (key.startsWith('/') || key.endsWith('/')) {
 		throw new Error(`R2 object key must not start or end with '/': ${JSON.stringify(key)}`);
 	}
@@ -214,8 +233,7 @@ function assertKey(key) {
 function assertContentType(contentType) {
 	if (typeof contentType !== 'string' || !CONTENT_TYPE_RE.test(contentType)) {
 		throw new Error(
-			`R2 uploads require an explicit valid content type; got ${JSON.stringify(contentType)}. ` +
-				'Portfolio media is served with its real type by the Worker and the R2 custom domain, so an implicit or guessed type is a correctness bug, not a default.',
+			`R2 uploads require an explicit valid content type; got ${JSON.stringify(contentType)}. Portfolio media is served with its real type by the Worker and the R2 custom domain, so an implicit or guessed type is a correctness bug, not a default.`,
 		);
 	}
 	return contentType;
@@ -244,6 +262,22 @@ export function putObject(
 	assertCanonicalIdentity({ bucketName, accountId, target: resolved, kind: 'put' });
 	assertKey(key);
 	assertContentType(contentType);
+	// `execute` is a PRODUCTION gate, exactly as in `_d1.mjs`.
+	//
+	// A local write goes to an ephemeral `.tmp/` store and is not a
+	// production mutation, so the operator gate does not apply to it.
+	// Gating local writes too would make every local R2 script silently
+	// a no-op that still reported success — which is precisely the bug
+	// this ordering was written to remove.
+	//
+	// A production upload with no `execute` is a DRY RUN: it reports the
+	// plan and sends nothing. That is checked BEFORE the gate, because
+	// the gate requires a credential precisely for a real write, and a
+	// dry run should not need one.
+	if (resolved === 'production' && !execute) {
+		return { applied: false, key, bucket: bucketName, target: resolved, contentType };
+	}
+
 	assertProductionWriteAllowed({
 		target: resolved,
 		execute,
@@ -252,18 +286,6 @@ export function putObject(
 		accountId,
 		env,
 	});
-
-	// `execute` is a PRODUCTION gate, exactly as in `_d1.mjs`: a local
-	// write goes to an ephemeral `.tmp/` store and is not a production
-	// mutation, so it is never blocked by the operator gate. Gating
-	// local writes too would make every local R2 script silently a
-	// no-op that still reported success.
-	//
-	// A production upload with no `execute` already threw above, so this
-	// is the plan-only path for production dry runs.
-	if (resolved === 'production' && !execute) {
-		return { applied: false, key, bucket: bucketName, target: resolved, contentType };
-	}
 
 	const args = [
 		'r2',

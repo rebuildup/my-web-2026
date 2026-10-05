@@ -130,17 +130,13 @@ async function main() {
 			const res = await fetch(`${BASE_URL}${RUNTIME_READ_PATH}`);
 			if (!res.ok) {
 				return fail(
-					`the runtime returned HTTP ${res.status} for ${RUNTIME_READ_PATH}. If the local ` +
-						'R2 public endpoint is unavailable in this cf version, treat this as an ' +
-						'UNPROVEN sharing claim rather than a pass.',
+					`the runtime returned HTTP ${res.status} for ${RUNTIME_READ_PATH}. If the local R2 public endpoint is unavailable in this cf version, treat this as an UNPROVEN sharing claim rather than a pass.`,
 				);
 			}
 			const runtimeBytes = Buffer.from(await res.arrayBuffer());
 			if (!runtimeBytes.equals(PROBE_BYTES)) {
 				return fail(
-					`the runtime did NOT see the adapter's bytes: adapter sha256=${sha256(PROBE_BYTES)} ` +
-						`runtime sha256=${sha256(runtimeBytes)} (${PROBE_BYTES.length} vs ${runtimeBytes.length} bytes). ` +
-						'The adapter and the runtime are using DIFFERENT local stores.',
+					`the runtime did NOT see the adapter's bytes: adapter sha256=${sha256(PROBE_BYTES)} runtime sha256=${sha256(runtimeBytes)} (${PROBE_BYTES.length} vs ${runtimeBytes.length} bytes). The adapter and the runtime are using DIFFERENT local stores.`,
 				);
 			}
 			out(`      identical, sha256=${sha256(runtimeBytes)}`);

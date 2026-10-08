@@ -8,15 +8,19 @@ import { Hero } from './hero';
  * single column at `base`, stacked at `md`, asymmetric `4fr / 8fr` at
  * `lg` and wider.
  *
- * The Hero adopts the same 12-column grid that the body sections use
- * in their spread `SectionHeading`: a narrow metadata rail (4/12) on
- * the left and the lead column (8/12) on the right. Below `lg` the
- * rail is hidden because the lead column already carries the version
- * line in its caption.
+ * Issue #287 — the Hero uses the same 12-column grid rule the body
+ * sections use in their spread `SectionHeading`: the left 4/12
+ * **title span** carries the eyebrow line (mono caption at base,
+ * metadata rail at `lg` — one breakpoint shows one of them) above
+ * the `SiteMark` h1, on the same x-axis as the section titles; the
+ * right 8/12 span starts with the lead description. Below `lg` the
+ * columns stack into the original single flow.
  *
  * Type and spacing jump at golden ratio:
- * - h1 climbs to `4xl` (64px) at `lg` and wider, a 4× jump over
- *   body `md` (16px). That contrast is the editorial voice.
+ * - The h1 renders the `SiteMark` identity mark (Issue #287) at
+ *   64px (`16`) base / 96px (`24`) at `lg` — the display tier the
+ *   previous `4xl` name occupied, a 4× jump over body `md` (16px).
+ *   That contrast is the editorial voice.
  * - caption ↔ h1 (8px), h1 ↔ lead body (40px), lead ↔ secondary
  *   (0, continuous prose), secondary ↔ CTAs (16px).
  * - Hero padding is `16/32` (64/128px) — the page-entry beat.

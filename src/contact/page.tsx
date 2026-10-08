@@ -1,3 +1,4 @@
+import { Fragment } from 'react';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
@@ -60,7 +61,9 @@ export function ContactPage({ channels, now, empty }: ContactPageProps) {
 			<section
 				aria-labelledby="contact-hero-title"
 				className={css({
-					paddingBlock: { base: '16', lg: '24' },
+					// Issue #300: hero beat is 16/32 (layout-system.md §3.3) —
+					// was 16/24, i.e. a body-section rhythm on a hero.
+					paddingBlock: { base: '16', lg: '32' },
 				})}
 			>
 				<Container>
@@ -173,6 +176,15 @@ function ChannelList({
 
 function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 	const days = daysSinceVerified(channel, now);
+	// Issue #300: `word-break: break-all` tore long links mid-segment
+	// (「my-web-2/**026**」 on a 375px line — a three-character orphan).
+	// A `<wbr>` after each "/" gives the line breaker a path-segment
+	// boundary to prefer; `overflow-wrap: break-word` stays as the
+	// fallback for a single segment wider than the column. `<wbr>`
+	// (rather than an embedded U+200B) keeps the copyable text EXACTLY
+	// the URL — selecting the rendered link yields no invisible
+	// characters.
+	const urlSegments = channel.url.split('/');
 	const verifiedLabel =
 		Number.isFinite(days) && days >= 0
 			? `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`
@@ -253,7 +265,7 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 						fontWeight: '600',
 						color: 'text.accent',
 						textDecoration: 'none',
-						wordBreak: 'break-all',
+						overflowWrap: 'break-word',
 						_hover: { textDecoration: 'underline' },
 						_focusVisible: {
 							outline: '2px solid {colors.border.focus}',
@@ -261,7 +273,25 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 						},
 					})}
 				>
-					<span>{channel.url}</span>
+					<span
+						// Flex item inside the inline-flex anchor: a single
+						// over-long URL segment must be allowed to shrink
+						// below its min-content width, or the row overflows
+						// at 375px instead of wrapping at a `<wbr>`.
+						className={css({ minWidth: '0' })}
+					>
+						{urlSegments.map((segment, index) => (
+							<Fragment key={`${index}:${segment}`}>
+								{index > 0 ? (
+									<>
+										/
+										<wbr />
+									</>
+								) : null}
+								{segment}
+							</Fragment>
+						))}
+					</span>
 					<span aria-hidden="true">→</span>
 				</a>
 				<span

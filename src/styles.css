@@ -8,7 +8,7 @@
  * `heading` font family regardless of the surrounding Panda
  * `fontFamily` token. Components that render heading-tier
  * typography in non-heading elements (the footer `04` decoration,
- * the `samuido` identity name, etc.) opt in by setting
+ * the footer identity paragraph, etc.) opt in by setting
  * `fontFamily: 'heading'` on their Panda CSS call. Body text
  * (`p`, `span`, etc.) and any `fontSize` below the `xl` threshold
  * stay on the `sans` family (Noto Sans JP).
@@ -18,6 +18,92 @@
 @layer base {
 	:where(h1, h2, h3) {
 		font-family: var(--fonts-heading);
+	}
+
+	/*
+	 * Japanese line breaking (Issue #300).
+	 *
+	 * `word-break: normal` first, then `auto-phrase`: browsers that
+	 * implement the CSS Text 4 value perform language-specific
+	 * phrase analysis so Japanese text breaks at phrase boundaries
+	 * instead of mid-katakana (「プラットフォ|ーム」→
+	 * 「プラットフォーム」|「の状態」). Browsers that do not know the
+	 * keyword drop the second declaration at parse time and keep
+	 * `normal` — rendering is unchanged from before the audit.
+	 *
+	 * `text-wrap: pretty` avoids one- or two-character orphan last
+	 * lines in prose. Titles override it with `text-wrap: balance`
+	 * where they render locally (SectionHeading).
+	 *
+	 * Components that legitimately need freer breaking (mono token
+	 * names, long identifiers, URLs) keep their local
+	 * `word-break: break-all` — utilities layer wins over this base
+	 * layer.
+	 */
+	:where(body) {
+		word-break: normal;
+		word-break: auto-phrase;
+		text-wrap: pretty;
+	}
+
+	/*
+	 * Dark theme (Issue #290).
+	 *
+	 * `color-scheme` tells the user agent which appearances this
+	 * document actually supports, so everything the UA paints itself
+	 * — scrollbars, form controls, text selection, the default canvas
+	 * and caret — switches together with the Panda `_dark` bindings
+	 * instead of staying light underneath a dark page. The value is
+	 * driven by the same media query as the `dark` condition in
+	 * `panda.config.ts`; there is no toggle (a theme switcher is a
+	 * separate ticket).
+	 *
+	 * `body` also paints `bg.canvas` explicitly. Page components set
+	 * their own `bg.canvas` container, but anything outside those
+	 * containers (the margin around a max-width column, the strip
+	 * below the last section) would otherwise fall back to the UA
+	 * canvas, which is a neutral dark rather than the editorial
+	 * `#0a0b0e` (`charcoal.950`, the post-#290 dark canvas) and reads
+	 * as a seam in dark mode. In light mode the token resolves to
+	 * `#ffffff`, i.e. exactly the UA default, so this rule is
+	 * visually a no-op for light visitors.
+	 */
+	:root {
+		color-scheme: light;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root {
+			color-scheme: dark;
+		}
+	}
+
+	body {
+		background-color: var(--colors-bg-canvas);
+	}
+
+	/*
+	 * Access-counter digit bitmaps (Issue #290).
+	 *
+	 * `scripts/generate-counter-digits.mjs` bakes the glyphs in
+	 * `#0b1020` so a rasterised digit matches the light `text.default`.
+	 * The WebPs have a transparent background and sit directly on the
+	 * page, so in dark mode that colour lands on the near-black canvas
+	 * `#0a0b0e` at 1.04 : 1 and the odometer disappears.
+	 *
+	 * The glyph is a single-colour alpha mask, so inverting it is an
+	 * exact appearance swap rather than a recolour-by-eye: `invert`
+	 * maps `#0b1020` to `#f4efdf` and `saturate(0)` drops the warm
+	 * cast, landing on a neutral near-white that sits correctly on the
+	 * dark canvas. A second baked variant (`<picture>` + media query)
+	 * is the follow-up if the glyph ever carries more than one colour
+	 * — see `skills/dark-mode-design`, "Treat assets as part of the
+	 * theme".
+	 */
+	@media (prefers-color-scheme: dark) {
+		:where([data-testid="home-access-counter-tile"]) img {
+			filter: invert(1) saturate(0);
+		}
 	}
 }
 

@@ -112,8 +112,9 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 			<main id="main">
 				<article id="portfolio-detail" aria-labelledby="portfolio-detail-heading">
 					<header
+						// Issue #300: hero beat is 16/32 (layout-system.md §3.3).
 						className={css({
-							paddingBlock: { base: '16', lg: '24' },
+							paddingBlock: { base: '16', lg: '32' },
 						})}
 					>
 						<Container>
@@ -288,7 +289,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 								key={section.id}
 								aria-labelledby={`portfolio-section-${section.id}`}
 								className={css({
-									paddingBlock: { base: '12', lg: '16' },
+									paddingBlock: { base: '16', lg: '24' },
 									borderTop: '1px solid {colors.border.subtle}',
 								})}
 							>
@@ -307,7 +308,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 						<section
 							aria-labelledby="portfolio-section-links"
 							className={css({
-								paddingBlock: { base: '12', lg: '16' },
+								paddingBlock: { base: '16', lg: '24' },
 								borderTop: '1px solid {colors.border.subtle}',
 							})}
 						>
@@ -366,7 +367,7 @@ export function PortfolioDetail({ project, adjacent }: PortfolioDetailProps) {
 						<nav
 							aria-labelledby="portfolio-section-adjacent"
 							className={css({
-								paddingBlock: { base: '12', lg: '16' },
+								paddingBlock: { base: '16', lg: '24' },
 								borderTop: '1px solid {colors.border.subtle}',
 							})}
 						>

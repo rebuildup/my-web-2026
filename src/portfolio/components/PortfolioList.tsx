@@ -56,7 +56,8 @@ export function PortfolioList({
 			<main id="main">
 				<section
 					aria-labelledby="portfolio-heading"
-					className={css({ paddingBlock: { base: '16', lg: '24' } })}
+					// Issue #300: hero beat is 16/32 (layout-system.md §3.3).
+					className={css({ paddingBlock: { base: '16', lg: '32' } })}
 				>
 					<Container>
 						<header
@@ -115,7 +116,10 @@ export function PortfolioList({
 				<section
 					id="portfolio-list"
 					aria-label="projects"
-					className={css({ paddingBlock: { base: '8', lg: '16' } })}
+					// Issue #300: canonical body-section beat 16/24 — the
+					// previous {8, 16} made the facet→status step 160px
+					// where every other page steps 224px.
+					className={css({ paddingBlock: { base: '16', lg: '24' } })}
 				>
 					<Container>
 						{allProjects.length === 0 ? (

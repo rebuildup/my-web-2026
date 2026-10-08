@@ -86,12 +86,22 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 									key={service.id}
 									className={css({
 										display: 'grid',
+										// Issue #300: measured at the Container
+										// width — label + binding needs 202px,
+										// the longest detail 300px, the badge
+										// 82px. `3fr/5fr` gave the label only
+										// 181px (「External boundary」 wrapped)
+										// and `4fr/5fr` starved the detail to
+										// 269px (longest line wrapped). Content-
+										// sized label + 1fr detail + auto badge
+										// with a 12px gutter fits all three on
+										// one line (608px of 613px).
 										gridTemplateColumns: {
 											base: '1fr',
-											md: 'minmax(0, 3fr) minmax(0, 5fr) auto',
+											md: 'minmax(0, auto) minmax(0, 1fr) auto',
 										},
 										alignItems: 'baseline',
-										gap: { base: '2', md: '6' },
+										gap: { base: '2', md: '3' },
 									})}
 								>
 									<dt

@@ -1,5 +1,45 @@
 import type { ReactNode } from 'react';
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
+
+/**
+ * Shared section-title style — one `h2` for every section on every
+ * public page (Issue #300).
+ *
+ * `2xl` (32px) at every viewport replaces the previous
+ * `2xl/3xl` (32/40) spread size: the title span measures 306.67px
+ * at the Container width, and a 10-character Japanese phrase at
+ * 40px measures 312px — it cannot resolve at any phrase boundary,
+ * so the only way to a mid-word wrap was to shrink the type or the
+ * span. 2xl fits every current JP title (longest: プラットフォーム
+ * = 250px) with margin, and unifies the `default` variant's
+ * `xl/2xl` (24/32) which rendered a different size for the same
+ * heading level. Measured rationale: `src/editorial/layout-system.md`
+ * §3.4.
+ *
+ * `text-wrap: balance` lets multi-line titles (JP title + ` / EN`)
+ * settle at phrase boundaries instead of stranding a two-character
+ * tail. `word-break` itself is inherited from the site-wide base
+ * rule in `src/styles.css`.
+ */
+const sectionTitleClassName = css({
+	fontFamily: 'heading',
+	fontSize: '2xl',
+	fontWeight: '700',
+	lineHeight: '1.15',
+	letterSpacing: '-0.025em',
+	textWrap: 'balance',
+	color: 'text.default',
+	margin: '0',
+});
+
+const sectionDescriptionClassName = css({
+	margin: '0',
+	fontFamily: 'sans',
+	fontSize: 'md',
+	lineHeight: '1.6',
+	color: 'text.muted',
+	textWrap: 'pretty',
+});
 
 export interface SectionHeadingProps {
 	/**
@@ -108,30 +148,12 @@ export function SectionHeading({
 					) : null}
 					<h2
 						id={id}
-						className={css({
-							margin: '0',
-							marginBlockStart: eyebrow ? '2' : '0',
-							fontFamily: 'heading',
-							fontSize: { base: '2xl', lg: '3xl' },
-							fontWeight: '700',
-							lineHeight: { base: '1.15', lg: '1.05' },
-							letterSpacing: '-0.025em',
-							color: 'text.default',
-						})}
+						className={cx(sectionTitleClassName, css({ marginBlockStart: eyebrow ? '2' : '0' }))}
 					>
 						{title}
 					</h2>
 					{description ? (
-						<p
-							className={css({
-								margin: '0',
-								marginBlockStart: '4',
-								fontFamily: 'sans',
-								fontSize: 'md',
-								lineHeight: '1.6',
-								color: 'text.muted',
-							})}
-						>
+						<p className={cx(sectionDescriptionClassName, css({ marginBlockStart: '4' }))}>
 							{description}
 						</p>
 					) : null}
@@ -173,30 +195,16 @@ export function SectionHeading({
 			) : null}
 			<h2
 				id={id}
-				className={css({
-					margin: '0',
-					marginBlockStart: eyebrow ? '2' : '0',
-					fontFamily: 'heading',
-					fontSize: { base: 'xl', lg: '2xl' },
-					fontWeight: '700',
-					lineHeight: '1.15',
-					letterSpacing: '-0.02em',
-					color: 'text.default',
-				})}
+				className={cx(sectionTitleClassName, css({ marginBlockStart: eyebrow ? '2' : '0' }))}
 			>
 				{title}
 			</h2>
 			{description ? (
 				<p
-					className={css({
-						margin: '0',
-						marginBlockStart: '3',
-						fontFamily: 'sans',
-						fontSize: 'md',
-						lineHeight: '1.6',
-						color: 'text.muted',
-						maxWidth: '640px',
-					})}
+					className={cx(
+						sectionDescriptionClassName,
+						css({ marginBlockStart: '3', maxWidth: '640px' }),
+					)}
 				>
 					{description}
 				</p>

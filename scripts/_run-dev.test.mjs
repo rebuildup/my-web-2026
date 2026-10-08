@@ -12,7 +12,9 @@ import { dirname, resolve } from 'node:path';
  * Helpers under test:
  *   - isSafeEnvSlug(s)
  *   - readDefaultEnvironmentCandidate({ configPath, fsExistsSync, fsReadFileSync })
- *   - buildSpawnPlan({ isWindows, env })
+ *   - normalizeForwardedArgs(rawArgs)
+ *   - quoteCmdArg(token)
+ *   - buildSpawnPlan({ isWindows, env, extraArgs })
  *
  * Operator-mandated invariants verified here:
  *   - The Windows spawn shape is exactly `cmd.exe /d /s /c pnpm <args>`
@@ -25,6 +27,17 @@ import { dirname, resolve } from 'node:path';
  *     own command line.
  *   - The slug-validation gate fires for unsafe slugs; the throwing
  *     error path carries no shell-controlled content.
+ *   - Extra CLI argv (`pnpm dev -- --port 4999 --strictPort`, Issue
+ *     #284) is appended AFTER `vite dev` in both the POSIX and Windows
+ *     plans, without changing the no-args spawn shape and without
+ *     weakening the env-slug gate.
+ *   - Forwarded tokens containing cmd.exe-unsafe characters (space,
+ *     `&`, quotes, parens, …) are wrapped for the Windows branch by
+ *     `quoteCmdArg` (`windowsVerbatimArguments` does no quoting), while
+ *     the POSIX plan keeps the raw token — asserted as exact argv
+ *     shapes on both branches. This quoting is unit-verified only: it
+ *     has NOT been exercised on a real Windows host (honest limitation;
+ *     see the `_run-dev.mjs` docblock).
  */
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -55,14 +68,19 @@ async function loadPureHelpers() {
 
 	const isSafeEnvSlug = extract('isSafeEnvSlug');
 	const readDefaultEnvironmentCandidate = extract('readDefaultEnvironmentCandidate');
+	const normalizeForwardedArgs = extract('normalizeForwardedArgs');
+	const quoteCmdArg = extract('quoteCmdArg');
 	const buildSpawnPlan = extract('buildSpawnPlan');
 
 	const factory = new Function(`
 		const SAFE_ENV_SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/;
+		const CMD_UNSAFE_ARG_RE = /[ "&|<>^()]/;
 		${isSafeEnvSlug}
 		${readDefaultEnvironmentCandidate}
+		${normalizeForwardedArgs}
+		${quoteCmdArg}
 		${buildSpawnPlan}
-		return { isSafeEnvSlug, readDefaultEnvironmentCandidate, buildSpawnPlan, SAFE_ENV_SLUG_RE };
+		return { isSafeEnvSlug, readDefaultEnvironmentCandidate, normalizeForwardedArgs, quoteCmdArg, buildSpawnPlan, SAFE_ENV_SLUG_RE, CMD_UNSAFE_ARG_RE };
 	`);
 	return factory();
 }
@@ -353,6 +371,272 @@ describe('_run-dev.mjs', () => {
 			// value IS present (operator-visible error diagnostic) but is
 			// wrapped in JSON quotes that the shell cannot re-interpret.
 			assert.match(caught.message, /"dev; rm -rf \/"/);
+		});
+	});
+
+	describe('normalizeForwardedArgs (Issue #284)', () => {
+		it("strips pnpm's leading `--` separator", async () => {
+			// `pnpm dev -- --port 4999 --strictPort` reaches the script as
+			// ['--', '--port', '4999', '--strictPort'] (pnpm 12.x forwards
+			// the separator itself). vite would treat `--` as an operand
+			// separator and ignore every flag after it.
+			const { normalizeForwardedArgs } = await loadPureHelpers();
+			assert.deepEqual(normalizeForwardedArgs(['--', '--port', '4999', '--strictPort']), [
+				'--port',
+				'4999',
+				'--strictPort',
+			]);
+		});
+
+		it('leaves a tail without a leading `--` untouched', async () => {
+			const { normalizeForwardedArgs } = await loadPureHelpers();
+			assert.deepEqual(normalizeForwardedArgs(['--port', '4999']), ['--port', '4999']);
+			assert.deepEqual(normalizeForwardedArgs([]), []);
+		});
+
+		it('strips only ONE leading `--`; later ones are genuine content', async () => {
+			const { normalizeForwardedArgs } = await loadPureHelpers();
+			assert.deepEqual(normalizeForwardedArgs(['--', '--', '--port']), ['--', '--port']);
+			assert.deepEqual(normalizeForwardedArgs(['--port', '--', 'x']), ['--port', '--', 'x']);
+		});
+
+		it('throws for non-array input instead of coercing it', async () => {
+			const { normalizeForwardedArgs } = await loadPureHelpers();
+			for (const bad of ['--port', null, undefined, 42, {}]) {
+				assert.throws(
+					() => normalizeForwardedArgs(bad),
+					/must be an array/,
+					`should reject rawArgs=${JSON.stringify(bad)}`,
+				);
+			}
+		});
+	});
+
+	describe('buildSpawnPlan (extra CLI argv forwarding, Issue #284)', () => {
+		const EXTRA = ['--port', '4999', '--strictPort'];
+
+		it('appends extra args after `vite dev` in the POSIX plan', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			const plan = buildSpawnPlan({ isWindows: false, env: 'dev', extraArgs: EXTRA });
+			assert.equal(plan.command, 'pnpm');
+			assert.deepEqual(plan.args, [
+				'exec',
+				'infisical',
+				'run',
+				'--env',
+				'dev',
+				'--',
+				'pnpm',
+				'exec',
+				'vite',
+				'dev',
+				'--port',
+				'4999',
+				'--strictPort',
+			]);
+			assert.equal(plan.options.shell, false);
+			assert.equal('windowsVerbatimArguments' in plan.options, false);
+		});
+
+		it('appends extra args after `vite dev` in the Windows plan (shape otherwise unchanged)', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			const plan = buildSpawnPlan({ isWindows: true, env: 'dev', extraArgs: EXTRA });
+			assert.equal(plan.command, 'cmd.exe');
+			assert.deepEqual(plan.args, [
+				'/d',
+				'/s',
+				'/c',
+				'pnpm',
+				'exec',
+				'infisical',
+				'run',
+				'--env',
+				'dev',
+				'--',
+				'pnpm',
+				'exec',
+				'vite',
+				'dev',
+				'--port',
+				'4999',
+				'--strictPort',
+			]);
+			assert.equal(plan.options.shell, false);
+			assert.equal(plan.options.windowsVerbatimArguments, true);
+		});
+
+		it('leaves the no-args spawn shape unchanged (default extraArgs = [])', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			// Omitting extraArgs entirely must produce the exact historical
+			// argv — no trailing empty string, no placeholder.
+			for (const isWindows of [false, true]) {
+				const withDefault = buildSpawnPlan({ isWindows, env: 'dev' });
+				const withEmpty = buildSpawnPlan({ isWindows, env: 'dev', extraArgs: [] });
+				assert.deepEqual(withDefault, withEmpty);
+				assert.deepEqual(withDefault.args.slice(-2), ['vite', 'dev']);
+			}
+		});
+
+		it('still validates the env slug when extra args are present', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			for (const isWindows of [false, true]) {
+				assert.throws(
+					() => buildSpawnPlan({ isWindows, env: 'dev && echo pwned', extraArgs: EXTRA }),
+					/not a safe slug/,
+					`should reject unsafe env with extraArgs (isWindows=${isWindows})`,
+				);
+			}
+		});
+
+		it('rejects non-string or non-array extra args instead of coercing them into argv', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			// `undefined` is intentionally absent: the default parameter
+			// (`extraArgs = []`) makes the omitted value valid — that is the
+			// backward-compatible no-args path covered by the test above.
+			for (const bad of ['--port 4999', 42, null, ['--port', 4999], [null]]) {
+				assert.throws(
+					() => buildSpawnPlan({ isWindows: false, env: 'dev', extraArgs: bad }),
+					/extraArgs must be an array of strings/,
+					`should reject extraArgs=${JSON.stringify(bad)}`,
+				);
+			}
+		});
+
+		it('full pipeline: raw pnpm argv tail → vite argv ends with the forwarded flags (both platforms)', async () => {
+			const { normalizeForwardedArgs, buildSpawnPlan } = await loadPureHelpers();
+			// Exactly what `main()` sees with `pnpm dev -- --port 4999 --strictPort`.
+			const rawTail = ['--', '--port', '4999', '--strictPort'];
+			const extraArgs = normalizeForwardedArgs(rawTail);
+			for (const isWindows of [false, true]) {
+				const plan = buildSpawnPlan({ isWindows, env: 'dev', extraArgs });
+				const argv = isWindows ? plan.args.slice(4) : plan.args; // drop cmd.exe /d /s /c pnpm prefix
+				// `vite dev` must be the last fixed tokens before the flags —
+				// no stray `--` separator left in front of them.
+				const viteDevIdx = argv.lastIndexOf('dev');
+				assert.deepEqual(argv.slice(viteDevIdx + 1), ['--port', '4999', '--strictPort']);
+				assert.equal(argv[viteDevIdx - 1], 'vite');
+				// The `--` after `--env dev` is required (infisical's command
+				// separator). What must NOT exist is a second `--` between
+				// `vite dev` and the forwarded flags — that is the pnpm
+				// separator vite would silently swallow.
+				assert.equal(
+					argv.slice(viteDevIdx + 1).includes('--'),
+					false,
+					'no pnpm `--` separator may reach vite',
+				);
+			}
+		});
+	});
+
+	// Windows cmd.exe quoting of forwarded tokens.
+	//
+	// `windowsVerbatimArguments: true` passes the argv to `cmd.exe`
+	// literally — no Node-side quoting — so a forwarded token with a
+	// space or `&` / `"` / `(` / `)` would split or be re-interpreted.
+	// The Windows branch wraps such tokens via `quoteCmdArg`; the POSIX
+	// branch (argv array, `shell: false`) keeps them verbatim.
+	//
+	// Unit-verified only — NOT exercised on a real Windows host (see
+	// the `_run-dev.mjs` docblock).
+	describe('quoteCmdArg / Windows quoting of forwarded tokens', () => {
+		const FIXED = [
+			'/d',
+			'/s',
+			'/c',
+			'pnpm',
+			'exec',
+			'infisical',
+			'run',
+			'--env',
+			'dev',
+			'--',
+			'pnpm',
+			'exec',
+			'vite',
+			'dev',
+		];
+
+		it('leaves tokens without cmd-unsafe characters untouched', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			for (const safe of [
+				'--port',
+				'4999',
+				'--strictPort',
+				'plain_token-1',
+				'--outDir=./dist',
+				'C:\\no-space\\path',
+			]) {
+				assert.equal(quoteCmdArg(safe), safe, `should pass ${JSON.stringify(safe)} through`);
+			}
+		});
+
+		it('wraps tokens containing spaces in double quotes', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			assert.equal(quoteCmdArg('C:\\My Folder\\out'), '"C:\\My Folder\\out"');
+			assert.equal(quoteCmdArg('two words'), '"two words"');
+		});
+
+		it('wraps tokens containing & (cmd.exe command separator)', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			assert.equal(quoteCmdArg('a&b'), '"a&b"');
+			assert.equal(quoteCmdArg('--flag=a b&c'), '"--flag=a b&c"');
+		});
+
+		it('wraps quote-containing tokens and escapes the embedded quote as \\"', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			// Input: say "hi"  →  wrapped: "say \"hi\""
+			assert.equal(quoteCmdArg('say "hi"'), '"say \\"hi\\""');
+			// Input: "  →  wrapped: "\""
+			assert.equal(quoteCmdArg('"'), '"\\""');
+		});
+
+		it('wraps tokens containing parens and other cmd metacharacters', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			assert.equal(quoteCmdArg('foo(bar)'), '"foo(bar)"');
+			assert.equal(quoteCmdArg('a|b'), '"a|b"');
+			assert.equal(quoteCmdArg('a>b'), '"a>b"');
+			assert.equal(quoteCmdArg('a<b'), '"a<b"');
+			assert.equal(quoteCmdArg('a^b'), '"a^b"');
+		});
+
+		it('throws for non-string input instead of coercing it', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			for (const bad of [42, null, undefined, ['x'], {}]) {
+				assert.throws(
+					() => quoteCmdArg(bad),
+					/expects a string/,
+					`should reject token=${JSON.stringify(bad)}`,
+				);
+			}
+		});
+
+		it('Windows plan: exact argv with quoted forwarded tokens', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			const extraArgs = ['--title', 'my app', 'a&b', 'say "hi"', 'plain'];
+			const plan = buildSpawnPlan({ isWindows: true, env: 'dev', extraArgs });
+			assert.equal(plan.command, 'cmd.exe');
+			assert.deepEqual(plan.args, [
+				...FIXED,
+				'--title',
+				'"my app"',
+				'"a&b"',
+				'"say \\"hi\\""',
+				'plain',
+			]);
+			assert.equal(plan.options.shell, false);
+			assert.equal(plan.options.windowsVerbatimArguments, true);
+		});
+
+		it('POSIX plan: exact argv UNCHANGED (raw forwarded tokens, no quoting)', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			const extraArgs = ['--title', 'my app', 'a&b', 'say "hi"', 'plain'];
+			const plan = buildSpawnPlan({ isWindows: false, env: 'dev', extraArgs });
+			assert.equal(plan.command, 'pnpm');
+			// Same fixed prefix as the Windows plan minus the cmd.exe wrapper,
+			// with the forwarded tokens byte-for-byte verbatim.
+			assert.deepEqual(plan.args, [...FIXED.slice(4), ...extraArgs]);
+			assert.equal(plan.options.shell, false);
+			assert.equal('windowsVerbatimArguments' in plan.options, false);
 		});
 	});
 });

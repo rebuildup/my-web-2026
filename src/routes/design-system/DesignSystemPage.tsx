@@ -19,9 +19,9 @@ import { Typography } from './sections/Typography';
  * Reading order:
  *   - Hero          (page title + intro)
  *   - 01 Color swatches    every `accent.*` + `bg.*` + `text.*` + `border.*`
- *                          token, rendered against both a light surface
- *                          (`bg.canvas`) and a dark surface (`bg.inverse`)
- *                          so the light/dark pair is visible at a glance.
+ *                          token, rendered as its `base` / `_dark` pair on
+ *                          the matching `bg.canvas` appearance, so both
+ *                          appearances are visible at a glance.
  *   - 02 Typography        size scale + heading / body / mono families.
  *   - 03 Spacing ruler      page-level beat scale.
  *   - 04 Surface treatments three card-style tiles using primitives.
@@ -55,7 +55,9 @@ export function DesignSystemPage() {
 }
 
 const sectionStyle = css({
-	paddingBlock: { base: '12', lg: '16' },
+	// Issue #300: canonical body-section beat (layout-system.md §3.3).
+	// Was {12, 16} — a rhythm only /design-system used.
+	paddingBlock: { base: '16', lg: '24' },
 	borderTop: '1px solid {colors.border.subtle}',
 });
 
@@ -181,7 +183,7 @@ function ColorSection() {
 					id="design-system-color"
 					eyebrow="01 — Color"
 					title="色 / Semantic tokens"
-					description="bg.* / text.* / border.* と accent.* (surface / interactive / positive / negative / warning / category.*) の token を light + dark の surface に並べます。"
+					description="bg.* / text.* / border.* と accent.* (surface / interactive / positive / negative / warning / category.*) の token を、それぞれの base / _dark 値を light / dark の canvas に並べます。ページ自体は prefers-color-scheme に従って切り替わります。"
 					variant="spread"
 				>
 					<ColorSwatches />

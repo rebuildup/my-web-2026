@@ -23,7 +23,8 @@ than in `wrangler.jsonc#vars`. Issue #187 performed this migration.
 | Seed placeholder `G-PLACEHOLDER000` | `scripts/infisical-seed.mjs` (dev only; prod placeholder is operator-seeded) | seeded once at merge time; replaced with the real `G-XXXXXXX` BEFORE traffic is cut |
 | Type augmentation | `src/cloudflare/auth/env.d.ts` (`GOOGLE_ANALYTICS_MEASUREMENT_ID: string`) | committed; tracks `wrangler.jsonc` |
 | Render gate | `src/routes/__root.tsx#loader` (server-side read) + `src/editorial/analytics/GoogleAnalytics.tsx` (component, public paths only) | committed |
-| Exclusion gate | `useRouterState` selector on `state.location.pathname.startsWith('/admin')` in `__root.tsx` | committed |
+| Exclusion gate | `useLocation()` selector `pathname.startsWith('/admin')` in `__root.tsx#RootComponent` (script mount) + the same rule inside `trackRoutePageView` (page_view emission, Issue #286) | committed |
+| SPA route-change tracking | `GoogleAnalyticsRouteTracker` in `GoogleAnalytics.tsx`, mounted unconditionally in `__root.tsx#RootComponent` (Issue #286) | committed |
 
 The placeholder is the **default state**. The Worker reads the
 runtime secret at SSR time; if the operator has not yet replaced
@@ -91,6 +92,39 @@ To wire GA4 into production for the first time:
    line, plus the inline `gtag('config', '…')` script. The id
    segment reflects the current Infisical `prod` value. **Do not
    paste the id into chat or logs.**
+
+   Status-only placeholder check (Issue #286, hardened) — decides
+   whether the real GA4 id is deployed WITHOUT ever printing the id
+   itself (AGENTS.md §4: status-only output). As long as the
+   placeholder is deployed, GA4 silently discards every hit.
+
+   Do NOT use a bare `grep -c PLACEHOLDER000` as the verdict: an HTTP
+   error page also yields 0 matches, which would read as "real id
+   deployed". The check below is the only valid decision procedure —
+   it fails on any non-200 status, and declares "real ID deployed"
+   ONLY when the status is 200 AND the placeholder is absent AND the
+   gtag loader is present:
+
+   ```bash
+   code=$(curl -sS -o /tmp/prod.html -w '%{http_code}' https://rebuildup.dev/)
+   placeholder=$(grep -c PLACEHOLDER000 /tmp/prod.html || true)
+   gtag=$(grep -c 'gtag/js?id=G-' /tmp/prod.html || true)
+
+   if [ "$code" != "200" ]; then
+     echo "FAIL: status $code (not 200) — inconclusive, re-run; decide nothing"
+     exit 1
+   elif [ "$placeholder" -gt 0 ]; then
+     echo "status 200, placeholder still deployed → step 2 above still pending (pageviews discarded)"
+   elif [ "$gtag" -gt 0 ]; then
+     echo "status 200, placeholder absent, gtag loader present → real ID deployed (value not printed)"
+   else
+     echo "FAIL: status 200 but neither placeholder nor gtag loader found — investigate, decide nothing"
+     exit 1
+   fi
+   ```
+
+   The echo lines print counts and status only — never the
+   measurement id.
 
    ```bash
    curl -sS https://rebuildup.dev/admin/login | grep googletagmanager
@@ -171,7 +205,16 @@ It runs:
 - `test` — `src/editorial/analytics/GoogleAnalytics.test.tsx`
   exercises the capture helper and the rendered markup, including
   the empty / undefined / whitespace-only / capture-once branches
-  and the URL-encoding + inline-script escaping rules.
+  and the URL-encoding + inline-script escaping rules, plus the
+  Issue #286 SPA contract: one inline `gtag('config', …)` per
+  document, one `page_view` per route change (deduped against the
+  initial location), `/admin/*` never tracked, no captured ID →
+  no tracking, and the queue-`config` fallback for documents whose
+  init snippet never ran.
+- `pnpm run test:client` — `GoogleAnalytics.client.test.tsx`
+  mounts `GoogleAnalyticsRouteTracker` under happy-dom and asserts
+  the effect wiring end to end (Issue #286). Not part of
+  `validate:fast`; run it alongside the gate for analytics changes.
 - `infisical:check:coverage` — verifies the three
   deploy-time sources (`wrangler.jsonc#secrets.required`,
   `wrangler.production.jsonc#secrets.required`,
@@ -180,9 +223,63 @@ It runs:
 
 A failing test means the wire-up has drifted and the PR is not
 merge-ready. The canonical gate is the per-ticket PR review
-against `release-0-5-0` — ticket PRs do not require per-merge
-operator auth (the release-merge human gate covers release PR /
-tag / GitHub Release only, per the canonical scope rule).
+against the target release branch — ticket PRs do not require
+per-merge operator auth (the release-merge human gate covers
+release PR / tag / GitHub Release only, per the canonical scope
+rule).
+
+## SPA route-change tracking (Issue #286)
+
+Earlier versions of this runbook declared SPA pageview tracking
+out of scope; Issue #286 implemented it and superseded that
+section. The contract today:
+
+- `gtag('config', …)` in the inline init script records the
+  **initial document load** — exactly once per document.
+- `GoogleAnalyticsRouteTracker` (mounted unconditionally in
+  `__root.tsx#RootComponent`) pushes
+  `gtag('event', 'page_view', …)` **once per client-side location
+  change** (`pathname + searchStr`), deduped against the initial
+  location so the initial load is never counted twice.
+- `/admin/*` locations are never emitted; the tracker instance
+  survives admin navigations so the first public page after
+  leaving `/admin/*` is tracked.
+- No captured measurement ID → the tracker is inert (same off
+  switch as the script mount).
+- If the document's init snippet never ran (visit landed on
+  `/admin/*`, where the GA scripts are excluded) the tracker
+  bootstraps the official `dataLayer`/`gtag` queue and queues
+  `js` + `config`; `config` records that page's page_view.
+
+### ID supply on the client (Issue #286 diagnosis)
+
+The root loader yields the ID during SSR; on the client
+`cloudflare:workers` resolves to the empty stub
+(`src/cloudflare/workers-stub.ts`), so the prop reaches the client
+through the dehydrated loader state that `hydrateStart()` now
+consumes (Issue #291 wired this in `src/client.tsx` — before that
+fix the client re-ran loaders against the empty stub and the prop
+stayed `undefined`). The write-once capture is **additionally seeded
+from the SSR-rendered bootstrap script** in the current document
+(`<script src="…gtag/js?id=G-…">` — see
+`readMeasurementIdFromDocument` in `GoogleAnalytics.tsx`) as a
+belt-and-braces path for documents without dehydrated state. The
+DOM node exists exactly where SSR mounted GA (never on `/admin/*`
+full loads), so the off switch and the admin exclusion are
+unchanged.
+
+Verified in the merged state (Issues #286 + #291 together): a
+session that starts on `/admin/*` and reaches a public page via
+client-side navigation receives the ID through the dehydrated prop
+path, arms the tracker, and executes the queued config — the
+admin-first gap that existed when only the DOM seed was available
+is closed.
+
+The React hydration mismatch that earlier versions of this runbook
+recorded as pre-existing (`<Suspense>` vs `#app-root` on every
+load) was fixed by Issue #291 (PR #298): `hydrateStart()` now
+consumes the SSR handoff, so there are zero hydration page errors
+and no `/_serverFn/*` loader re-runs on initial load.
 
 ## Out of scope
 
@@ -192,13 +289,6 @@ also not part of this runbook:
 - **Cookie consent banner.** Out of scope per Issue #171 body. If a
   visitor jurisdiction requires consent in the future, the
   acceptance gate moves to a separate ticket.
-- **Single Page Application pageview tracking.** The wire-up is
-  load-time only — `gtag('config', ...)` records the initial
-  pageview on first load. Subsequent client-side navigations do
-  NOT push `gtag('event', 'page_view', ...)` calls. Adding
-  SPA-style tracking requires a separate ticket so the
-  load-event hook (the `useRouterState` subscription pattern)
-  can be designed in isolation.
 - **Custom events / conversions.** Out of scope. Future tickets
   can extend `src/editorial/analytics/` with sibling components
   that emit typed events.

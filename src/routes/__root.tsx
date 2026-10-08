@@ -1,7 +1,10 @@
 import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import { env } from 'cloudflare:workers';
 import type { ReactNode } from 'react';
-import { GoogleAnalytics } from '../editorial/analytics/GoogleAnalytics';
+import {
+	GoogleAnalytics,
+	GoogleAnalyticsRouteTracker,
+} from '../editorial/analytics/GoogleAnalytics';
 import '../styles.css';
 
 /**
@@ -34,7 +37,12 @@ import '../styles.css';
  * (`admin.login`, `admin.keys`, `admin.images`,
  * `admin.invitations`, `admin.emoji-catalog`). See
  * `src/editorial/analytics/GoogleAnalytics.tsx` for the component
- * contract and the SSR-capture singleton semantics.
+ * contract and the SSR-capture singleton semantics. SPA route
+ * changes are measured by `GoogleAnalyticsRouteTracker` (Issue
+ * #286), mounted unconditionally next to the script gate below: the
+ * inline `gtag('config', …)` records the initial document load, the
+ * tracker pushes one `page_view` per subsequent location change
+ * (deduped against the initial location, silent on `/admin/*`).
  *
  * Chrome convention (Issue #199). PublicNav and Breadcrumbs are
  * intentionally NOT mounted here. They are regular components in
@@ -57,12 +65,66 @@ export const Route = createRootRoute({
 		// (`Hiragino Kaku Gothic ProN` / `system-ui`) while the webfont
 		// streams in. The two `preconnect`s cut the TLS handshake off
 		// the critical font path.
+		//
+		// Issue #291 — the font stylesheet used to be render-blocking and
+		// it was the first-paint gate for the whole page. Measured on the
+		// production build served by `vite preview`:
+		//   first-contentful-paint 356 ms with the request live,
+		//   first-contentful-paint  36 ms with `fonts.googleapis.com`
+		//   blocked outright.
+		// i.e. ~320 ms of the opening white interval was bought by a
+		// third-party CSS request (Google returns ~570 kB of expanded
+		// unicode-range rules for the Japanese faces).
+		//
+		// The fix is the standard async-CSS pattern: `media="print"` so the
+		// browser fetches the sheet without letting it block render, and a
+		// tiny parser-blocking `<script>` (below) that flips it back to
+		// `media="all"` the moment it lands so the font stack applies.
+		// `display=swap` is untouched — the swap window simply opens
+		// earlier instead of holding the whole page hostage.
+		//
+		// React cannot own the flip: an `onload` string attribute is
+		// dropped by `HeadContent`, and a React `onLoad` handler only
+		// attaches after hydration, by which time the `load` event has
+		// already fired. The inline script has neither problem and is the
+		// reason this is a script rather than a prop.
+		//
+		// Trade-off: with scripting disabled the sheet stays at
+		// `media="print"`, so a no-JS visitor reads the page in the
+		// platform fallback stack — the same face `display=swap` already
+		// shows for the first few hundred ms for everyone else.
 		links: [
+			// Default favicon (Issue #285): a pure-blue circle served
+			// from `public/favicon.svg` (relative to the origin root).
+			//
+			// Declared in this `head()`, not in the `<head>` JSX of
+			// `RootComponent`, so it flows through TanStack Router's
+			// head merge and every page inherits it — including the
+			// routes that declare their own `head()`. That is what
+			// makes a per-page icon expressible later: a route adds
+			// its own `rel: 'icon'` entry in its `head()` links.
+			//
+			// Measured merge semantics (see Issue #285 PR for the
+			// curl evidence): `buildTagsFromMatches` in
+			// `@tanstack/router-core` flat-maps `match.links` across
+			// the matched routes root-first, then dedupes with
+			// `appendUniqueUserTags`, whose key is `JSON.stringify`
+			// of the tag — so only byte-identical link tags collapse,
+			// while `meta` dedupes by `name`/`property` with the
+			// deepest route winning. Because no route declares an
+			// icon today, this entry renders exactly once on every
+			// route (root, public pages, admin, and the 404 pages).
+			{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
 			{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
 			{
 				rel: 'preconnect',
 				href: 'https://fonts.gstatic.com',
-				crossorigin: 'anonymous',
+				// `crossOrigin` (camelCase) is the React prop name. The
+				// previous lowercase `crossorigin` was passed through as an
+				// unknown attribute and produced "Invalid DOM property
+				// `crossorigin`" plus a hydration attribute mismatch on
+				// every load (Issue #291).
+				crossOrigin: 'anonymous',
 			},
 			{
 				rel: 'stylesheet',
@@ -73,6 +135,19 @@ export const Route = createRootRoute({
 				// in the current type scale and is intentionally dropped from the axis
 				// to keep the stylesheet payload minimal.
 				href: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap',
+				media: 'print',
+			},
+		],
+		scripts: [
+			{
+				// Applies the non-blocking font stylesheet above. Written to
+				// be order-independent with respect to the <link>: if the
+				// sheet is already parsed (`sheet` set) it flips immediately,
+				// otherwise it waits for `load`, and if this script runs
+				// before the <link> exists at all it retries once at
+				// `DOMContentLoaded`.
+				children:
+					'(function(){var f=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}l.addEventListener("load",function(){l.media="all"});return true};if(!f())document.addEventListener("DOMContentLoaded",f)})();',
 			},
 		],
 	}),
@@ -86,13 +161,19 @@ export const Route = createRootRoute({
 
 function RootComponent() {
 	const { gaMeasurementId } = Route.useLoaderData();
-	const { pathname } = useLocation();
+	const { pathname, searchStr } = useLocation();
 	const isAdminPath = pathname.startsWith('/admin');
 	return (
 		<html lang="ja">
 			<head>
 				<HeadContent />
 				{!isAdminPath ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
+				{/* SPA route-change page_view (Issue #286): always mounted;
+				    the tracker itself stays silent on /admin/*. */}
+				<GoogleAnalyticsRouteTracker
+					measurementId={gaMeasurementId}
+					locationKey={`${pathname}${searchStr}`}
+				/>
 			</head>
 			<body>
 				<RootLayout>

@@ -367,6 +367,13 @@ function DisabledToolRow({ tool }: { tool: ManifestTool }) {
 						color: 'text.muted',
 						lineHeight: '1.5',
 						fontStyle: 'italic',
+						// Issue #300: for host_disabled Tools the
+						// disabled_reason is the row's only prose — it
+						// takes the same 640px measure cap as every
+						// other description (host_disabled entries
+						// ship an empty `description`, so the uncapped
+						// line the audit saw ran the full 960px here).
+						maxWidth: '640px',
 					})}
 				>
 					{reason}

@@ -233,31 +233,33 @@ section. The contract today:
 
 ### ID supply on the client (Issue #286 diagnosis)
 
-The root loader only yields the ID **during SSR**. On the client
+The root loader yields the ID during SSR; on the client
 `cloudflare:workers` resolves to the empty stub
-(`src/cloudflare/workers-stub.ts`), and `src/client.tsx` re-runs
-loaders instead of hydrating dehydrated loader state — so the
-`measurementId` prop is `undefined` on every client render, and a
-capture fed only by the prop would stay empty (the tracker would be
-permanently inert). The write-once capture is therefore **also
-seeded from the SSR-rendered bootstrap script** in the current
-document (`<script src="…gtag/js?id=G-…">` — see
-`readMeasurementIdFromDocument` in `GoogleAnalytics.tsx`). The DOM
-node exists exactly where SSR mounted GA (never on `/admin/*` full
-loads), so the off switch and the admin exclusion are unchanged.
+(`src/cloudflare/workers-stub.ts`), so the prop reaches the client
+through the dehydrated loader state that `hydrateStart()` now
+consumes (Issue #291 wired this in `src/client.tsx` — before that
+fix the client re-ran loaders against the empty stub and the prop
+stayed `undefined`). The write-once capture is **additionally seeded
+from the SSR-rendered bootstrap script** in the current document
+(`<script src="…gtag/js?id=G-…">` — see
+`readMeasurementIdFromDocument` in `GoogleAnalytics.tsx`) as a
+belt-and-braces path for documents without dehydrated state. The
+DOM node exists exactly where SSR mounted GA (never on `/admin/*`
+full loads), so the off switch and the admin exclusion are
+unchanged.
 
-Known limitation: a session that **starts** on `/admin/*` (no
-bootstrap script in the document) and then reaches a public page
-**via client-side navigation** still cannot load GA — the ID is not
-available to the client in that document. Any full load of a public
-page (including plain-`<a>` navigations, which are full loads in
-this app) recovers immediately.
+Verified in the merged state (Issues #286 + #291 together): a
+session that starts on `/admin/*` and reaches a public page via
+client-side navigation receives the ID through the dehydrated prop
+path, arms the tracker, and executes the queued config — the
+admin-first gap that existed when only the DOM seed was available
+is closed.
 
-Pre-existing, out of Issue #286 scope: the client hydration logs a
-React mismatch (`<Suspense>` vs `#app-root`) on every load in dev —
-reproduced on the `release-0-6-1` baseline without this ticket's
-changes, unrelated to the GA markup. Reported in the Issue #286 PR
-for follow-up triage; not fixed here.
+The React hydration mismatch that earlier versions of this runbook
+recorded as pre-existing (`<Suspense>` vs `#app-root` on every
+load) was fixed by Issue #291 (PR #298): `hydrateStart()` now
+consumes the SSR handoff, so there are zero hydration page errors
+and no `/_serverFn/*` loader re-runs on initial load.
 
 ## Out of scope
 

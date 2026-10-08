@@ -54,6 +54,30 @@
 	body {
 		background-color: var(--colors-bg-canvas);
 	}
+
+	/*
+	 * Access-counter digit bitmaps (Issue #290).
+	 *
+	 * `scripts/generate-counter-digits.mjs` bakes the glyphs in
+	 * `#0b1020` so a rasterised digit matches the light `text.default`.
+	 * The WebPs have a transparent background and sit directly on the
+	 * page, so in dark mode that colour lands on `#020617` at 1.07 : 1
+	 * and the odometer disappears.
+	 *
+	 * The glyph is a single-colour alpha mask, so inverting it is an
+	 * exact appearance swap rather than a recolour-by-eye: `invert`
+	 * maps `#0b1020` to `#f4efdf` and `saturate(0)` drops the warm
+	 * cast, landing on a neutral near-white that sits correctly on the
+	 * dark canvas. A second baked variant (`<picture>` + media query)
+	 * is the follow-up if the glyph ever carries more than one colour
+	 * — see `skills/dark-mode-design`, "Treat assets as part of the
+	 * theme".
+	 */
+	@media (prefers-color-scheme: dark) {
+		:where([data-testid="home-access-counter-tile"]) img {
+			filter: invert(1) saturate(0);
+		}
+	}
 }
 
 /*

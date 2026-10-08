@@ -46,10 +46,11 @@ function matchesExternalBoundary(pathname: string): boolean {
  * emit, so browsers treated the page as stale-on-arrival anyway. The
  * policy is now explicit instead of implied:
  *
- *   `/admin*` -> `no-store`. Admin HTML can carry invitation lists and
- *                key material; it must never land on disk in a browser
- *                HTTP cache. `no-store` also keeps Chrome from
- *                restoring it from the back/forward cache.
+ *   `/admin*` -> `no-store`. Admin responses can carry invitation
+ *                lists and key material; they must never land on disk
+ *                in a browser HTTP cache. `no-store` also keeps Chrome
+ *                from restoring them from the back/forward cache.
+ *                Decided by path alone — see below.
  *   everything else -> `no-cache`. The page is dynamic (the hit counter
  *                and the reaction totals are rendered into the HTML on
  *                every request), so it must be revalidated before reuse.
@@ -57,20 +58,40 @@ function matchesExternalBoundary(pathname: string): boolean {
  *                still permits bfcache, which a `no-store` would cost
  *                us on every back navigation.
  *
+ * The admin decision is taken from the PATH ALONE, before any
+ * content-type check. Gating `no-store` on `text/html` looked correct
+ * but left a hole: anonymous `GET /admin` answers 307 → `/admin/login`
+ * with no `content-type` at all, so the admin rule silently did not
+ * apply to the one response most likely to be recorded in a cache
+ * history. A redirect carries no body, so the harm was theoretical —
+ * but the policy claimed "admin is no-store" and did not deliver it.
+ * Now the path match alone decides `no-store` for every `/admin*`
+ * response (HTML, redirect or otherwise).
+ *
+ * The `no-cache` branch for the rest of the site still requires
+ * `text/html`: `/_serverFn/*` payloads and streamed data are not
+ * documents and must not inherit a document cache policy.
+ *
  * An existing `cache-control` is never overwritten, so anything the
- * framework already decided wins. Non-HTML responses (`/_serverFn/*`
- * payloads, streamed data) pass through untouched, and Hono never
- * reaches this function — the external boundary returns before it.
+ * framework already decided wins, and Hono never reaches this function
+ * — the external boundary returns before it.
  */
 function applyHtmlCachePolicy(request: Request, response: Response): Response {
-	if (!response.headers.get('content-type')?.includes('text/html')) return response;
 	if (response.headers.has('cache-control')) return response;
+
 	const { pathname } = new URL(request.url);
 	// Exact-prefix-or-/ so `/administrator` cannot inherit the admin rule,
 	// mirroring how `matchesExternalBoundary` guards `/api/v10`.
 	const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
+	const value = isAdmin
+		? 'no-store'
+		: response.headers.get('content-type')?.includes('text/html')
+			? 'no-cache'
+			: null;
+	if (value === null) return response;
+
 	try {
-		response.headers.set('cache-control', isAdmin ? 'no-store' : 'no-cache');
+		response.headers.set('cache-control', value);
 	} catch {
 		// Sealed headers (immutable guard) — leave the response as-is
 		// rather than fail a page render over a cache hint.

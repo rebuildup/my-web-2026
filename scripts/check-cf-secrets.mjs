@@ -557,7 +557,7 @@ async function main() {
 			const phaseCheck = compareNameLists(
 				buildOutputSecrets ?? REQUIRED_RUNTIME_SECRETS,
 				expectedPhaseList,
-				`Build Output binding contract (${phase}, exact 3-name)`,
+				'Build Output binding contract (shared runtime, exact 3-name)',
 			);
 			const phaseOk = phaseCheck.missing.length === 0 && phaseCheck.extra.length === 0;
 			printCheckResult(phaseCheck, phaseOk);

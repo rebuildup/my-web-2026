@@ -131,7 +131,10 @@ export async function listWorkerSecretNames({
 		{ env, accountId, workerName },
 	);
 	const result = parsed?.result;
-	const list = Array.isArray(result) ? result : (result?.secrets ?? []);
+	const list = Array.isArray(result) ? result : result?.secrets;
+	if (parsed?.success !== true || !Array.isArray(list)) {
+		throw new Error('Cloudflare Worker API returned an invalid secret-list response (HTTP 200).');
+	}
 	// Names and types only. Values are never present and never requested.
 	return list
 		.map((entry) => (typeof entry === 'string' ? { name: entry, type: 'secret_text' } : entry))

@@ -12,12 +12,15 @@ import { PACKAGE_VERSION } from './version';
  * (About, Portfolio) are the primary actions; source is available as
  * a secondary action.
  *
- * Issue #31 — editorial spread (fourth pass). The Hero adopts the
- * 4/12 (rail) + 8/12 (lead) grid split that the body sections use in
- * their spread `SectionHeading`. The metadata rail (edition /
- * my-web-2026 · 2026 Preview / v{PACKAGE_VERSION} · MIT) sits in the narrow
- * left column on the same x-axis as the body section headings
- * below. The lead column carries caption → h1 → body → CTAs.
+ * Issue #287 — composition mirrors the body sections' spread
+ * `SectionHeading`: the same `minmax(0, 4fr) / minmax(0, 8fr)` grid,
+ * with the h1 in the left 4/12 **title span** — the exact grid
+ * position where the section titles below sit, sharing their x-axis
+ * and column width. The right 8/12 column starts with the
+ * description. The eyebrow line above the mark is the mono caption
+ * at base and the metadata rail at `lg` (they carry the same
+ * version metadata, so one breakpoint shows one of them — the rail
+ * was already hidden below `lg` for the same duplication reason).
  *
  * Type and spacing jump at golden ratio:
  * - The h1 renders the `SiteMark` identity motif (Issue #287) at
@@ -25,14 +28,12 @@ import { PACKAGE_VERSION } from './version';
  *   `3xl/4xl` name at the same hierarchy step, sized on the
  *   canonical spacing tokens. The accessible name ("my-web-2026")
  *   sits inside the h1 as visually-hidden text.
- * - caption ↔ h1 (8px), h1 ↔ lead body (40px), lead ↔ secondary
- *   (0, continuous prose), secondary ↔ CTAs (16px).
+ * - eyebrow ↔ h1 (8px, token `2` — same tight cluster the section
+ *   titles use), h1 ↔ lead body (40px, carried by the grid
+ *   `rowGap` below `lg`; cross-column above it, tops aligned like
+ *   the spread sections), lead ↔ secondary (0, continuous prose),
+ *   secondary ↔ CTAs (token `6`).
  * - Hero padding is `24/32` (96/128px) — the page-entry beat.
- *
- * Below `lg` the columns stack: lead first, rail second. The rail
- * is hidden via `display: none` below `lg` because the lead column
- * already carries the version line in its caption, so the rail
- * duplicates the same metadata at narrow widths.
  */
 export function Hero() {
 	return (
@@ -49,26 +50,9 @@ export function Hero() {
 						gridTemplateColumns: { base: '1fr', lg: 'minmax(0, 4fr) minmax(0, 8fr)' },
 						columnGap: { base: '0', lg: '10' },
 						rowGap: { base: '10', lg: '0' },
-						alignItems: 'start',
 					})}
 				>
-					<aside
-						aria-hidden="true"
-						className={css({
-							display: { base: 'none', lg: 'flex' },
-							flexDirection: 'column',
-							gap: '1',
-							fontFamily: 'mono',
-							fontSize: 'sm',
-							color: 'text.muted',
-							lineHeight: '1.6',
-						})}
-					>
-						<span lang="en">edition</span>
-						<span lang="en">my-web-2026 · 2026 Preview</span>
-						<span lang="en">v{PACKAGE_VERSION} · MIT</span>
-					</aside>
-					<div
+					<header
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
@@ -77,6 +61,7 @@ export function Hero() {
 					>
 						<span
 							className={css({
+								display: { base: 'block', lg: 'none' },
 								fontFamily: 'mono',
 								fontSize: 'sm',
 								color: 'text.muted',
@@ -84,6 +69,22 @@ export function Hero() {
 						>
 							my-web-2026 · v{PACKAGE_VERSION} — 2026 Preview
 						</span>
+						<aside
+							aria-hidden="true"
+							className={css({
+								display: { base: 'none', lg: 'flex' },
+								flexDirection: 'column',
+								gap: '1',
+								fontFamily: 'mono',
+								fontSize: 'sm',
+								color: 'text.muted',
+								lineHeight: '1.6',
+							})}
+						>
+							<span lang="en">edition</span>
+							<span lang="en">my-web-2026 · 2026 Preview</span>
+							<span lang="en">v{PACKAGE_VERSION} · MIT</span>
+						</aside>
 						<h1
 							id="hero-title"
 							lang="en"
@@ -96,11 +97,18 @@ export function Hero() {
 							<SiteMark className={css({ height: { base: '16', lg: '24' }, width: 'auto' })} />
 							<span className={css({ srOnly: true })}>my-web-2026</span>
 						</h1>
+					</header>
+					<div
+						className={css({
+							display: 'flex',
+							flexDirection: 'column',
+							minWidth: '0',
+						})}
+					>
 						<p
 							lang="ja"
 							className={css({
 								margin: '0',
-								marginBlockStart: '10',
 								fontFamily: 'sans',
 								fontSize: 'lg',
 								lineHeight: '1.6',

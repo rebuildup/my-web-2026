@@ -293,7 +293,10 @@ The page sits on a 12-column grid inside a 1024px `Container`:
   ratios. The grid is implicit — sections render via `gridTemplateColumns`
   with `fr` units, not via a 12-col CSS grid utility.
 - **Section ratios**:
-  - Hero: `4fr / 8fr` (rail / lead) — same axis as body sections.
+  - Hero: `4fr / 8fr` — same axis as body sections. (Issue #287:
+    the left span is the title span: eyebrow line + mark, exactly
+    where the section titles sit; the right span starts with the
+    description.)
   - Body sections: `4fr / 8fr` (heading cluster / content).
   - Footer: `4fr / 4fr / 4fr` (three columns).
 - **Gutter**: 40px (`spacing: 10`) between the spread columns.
@@ -464,13 +467,30 @@ next to the element that uses it:
   (`my-web-2026`). `section[aria-labelledby="hero-title"]` therefore
   names the hero section `my-web-2026`. No personal name / handle /
   real-name domain remains on the top page.
+- **The mark sits in the title span, grid-true.** The hero uses the
+  spread grid verbatim (`minmax(0, 4fr) / minmax(0, 8fr)`,
+  `columnGap 10`, `rowGap { base: 10, lg: 0 }` — the same rule the
+  body sections' `SectionHeading variant="spread"` uses). The h1 is
+  a child of the left-column `<header>`, so its x/width equal the
+  section titles' x/width by construction, and it is separated from
+  the eyebrow line by the same 8px (token `2`) tight cluster the
+  eyebrow ↔ h2 pairs use. The right column starts with the lead
+  description (top-aligned to the row like the spread sections'
+  content column); CTAs follow the description.
+- **Eyebrow line = caption at base, rail at `lg`.** The mono
+  caption ("my-web-2026 · v… — 2026 Preview") and the metadata rail
+  (edition / my-web-2026 · 2026 Preview / v… · MIT) carry the same
+  version metadata, so exactly one of them renders above the mark at
+  any breakpoint (they duplicate each other — the rail was already
+  hidden below `lg` for that reason). Every breakpoint keeps a
+  visible mono wordmark line above the mark.
 - **The mark occupies the former display tier.** Sizing steps on the
   canonical spacing tokens: 64px (`16`) height base, 96px (`24`) at
   `lg` (width follows the artwork aspect) — where the `3xl/4xl`
-  type used to sit. The mono caption above it
-  ("my-web-2026 · v… — 2026 Preview") is the visible wordmark line
-  and keeps the 8px (token `2`) caption ↔ h1 tight cluster; the
-  h1 ↔ lead-body 40px (token `10`) separator is unchanged.
+  type used to sit. The h1 ↔ lead-body 40px (token `10`)
+  separator is carried by the grid `rowGap` below `lg` (stacked
+  columns); above `lg` the two spans start at the same row top, as
+  in the spread sections.
 - **Footer Identity column → Platform column.** Label `Platform`,
   value `my-web-2026` at `2xl` (unchanged size/voice), version · MIT
   line below (now `v… · MIT` without a duplicated platform name).

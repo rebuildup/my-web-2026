@@ -80,7 +80,7 @@ function loadResolveWorkerContract() {
  */
 function runInIsolatedRepo(
 	args,
-	{ env = {}, infisicalJsonContent = null, mockSecretApis = false } = {},
+	{ env = {}, infisicalJsonContent = null, mockSecretApis = false, cloudflareStatus = 200 } = {},
 ) {
 	const repo = mkdtempSync(join(tmpdir(), 'check-cf-secrets-test-'));
 	const scriptsDir = join(repo, 'scripts');
@@ -96,7 +96,11 @@ function runInIsolatedRepo(
 	// imported modules, so the isolated repo needs them too. A missing
 	// one surfaces as ERR_MODULE_NOT_FOUND rather than a contract
 	// failure, which is how a new shared module gets forgotten here.
-	for (const dep of ['_cloudflare-identity.mjs', '_cloudflare-contract.mjs']) {
+	for (const dep of [
+		'_cloudflare-identity.mjs',
+		'_cloudflare-contract.mjs',
+		'_worker-secrets.mjs',
+	]) {
 		writeFileSync(join(scriptsDir, dep), readFileSync(resolve(HERE, dep), 'utf8'));
 	}
 
@@ -125,16 +129,21 @@ import https from 'node:https';
 import { EventEmitter } from 'node:events';
 import { syncBuiltinESMExports } from 'node:module';
 const names = ${JSON.stringify(REQUIRED_RUNTIME_SECRETS)};
+const cfStatus = ${cloudflareStatus};
+const cfData = cfStatus === 200
+  ? { success: true, result: names.map(name => ({ name })) }
+  : { success: false, errors: [{ code: 10000, message: 'test-secret-must-not-be-logged' }] };
+globalThis.fetch = async () => new Response(JSON.stringify(cfData), { status: cfStatus });
 https.request = (options, callback) => {
   const request = new EventEmitter();
   request.write = () => {};
   request.end = () => queueMicrotask(() => {
     const response = new EventEmitter();
-    response.statusCode = 200;
+    response.statusCode = options.hostname === 'api.cloudflare.com' ? cfStatus : 200;
     response.setEncoding = () => {};
     callback(response);
     const data = options.hostname === 'api.cloudflare.com'
-      ? { result: names.map(name => ({ name })) }
+      ? cfData
       : { secrets: [...names, 'BETTER_AUTH_SECRET'].map(secretKey => ({ secretKey })) };
     response.emit('data', JSON.stringify(data));
     response.emit('end');
@@ -398,6 +407,20 @@ describe('check-cf-secrets.mjs', () => {
 	});
 
 	describe('--execute gate', () => {
+		it('reports a Cloudflare API failure without pretending its secrets are missing', () => {
+			const result = runInIsolatedRepo(
+				['--execute', '--worker-contract=auto', '--require-live-worker'],
+				{
+					mockSecretApis: true,
+					cloudflareStatus: 403,
+					env: { INFISICAL_TOKEN: 'test-token', CLOUDFLARE_API_TOKEN: 'test-cf-token' },
+				},
+			);
+			assert.equal(result.exitCode, 1);
+			assert.match(result.stderr, /HTTP 403/);
+			assert.doesNotMatch(result.stdout, /missing: BETTER_AUTH/);
+			assert.doesNotMatch(result.stderr, /test-secret-must-not-be-logged/);
+		});
 		it('checks the built artifact and live Worker after successful Infisical authentication', () => {
 			const result = runInIsolatedRepo(
 				['--execute', '--worker-contract=auto', '--require-live-worker'],

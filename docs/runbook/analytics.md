@@ -23,7 +23,8 @@ than in `wrangler.jsonc#vars`. Issue #187 performed this migration.
 | Seed placeholder `G-PLACEHOLDER000` | `scripts/infisical-seed.mjs` (dev only; prod placeholder is operator-seeded) | seeded once at merge time; replaced with the real `G-XXXXXXX` BEFORE traffic is cut |
 | Type augmentation | `src/cloudflare/auth/env.d.ts` (`GOOGLE_ANALYTICS_MEASUREMENT_ID: string`) | committed; tracks `wrangler.jsonc` |
 | Render gate | `src/routes/__root.tsx#loader` (server-side read) + `src/editorial/analytics/GoogleAnalytics.tsx` (component, public paths only) | committed |
-| Exclusion gate | `useRouterState` selector on `state.location.pathname.startsWith('/admin')` in `__root.tsx` | committed |
+| Exclusion gate | `useLocation()` selector `pathname.startsWith('/admin')` in `__root.tsx#RootComponent` (script mount) + the same rule inside `trackRoutePageView` (page_view emission, Issue #286) | committed |
+| SPA route-change tracking | `GoogleAnalyticsRouteTracker` in `GoogleAnalytics.tsx`, mounted unconditionally in `__root.tsx#RootComponent` (Issue #286) | committed |
 
 The placeholder is the **default state**. The Worker reads the
 runtime secret at SSR time; if the operator has not yet replaced
@@ -91,6 +92,19 @@ To wire GA4 into production for the first time:
    line, plus the inline `gtag('config', '…')` script. The id
    segment reflects the current Infisical `prod` value. **Do not
    paste the id into chat or logs.**
+
+   Status-only placeholder check (Issue #286) — tests for the known
+   `G-PLACEHOLDER000` seed WITHOUT ever printing the id itself. As
+   long as the placeholder is deployed, GA4 silently discards every
+   hit:
+
+   ```bash
+   curl -sS https://rebuildup.dev/ -o /tmp/prod.html
+   grep -c PLACEHOLDER000 /tmp/prod.html
+   # 1 (or more) → placeholder still deployed → step 2 above is
+   #               still pending → pageviews are discarded.
+   # 0           → a real G-XXXXXXX is deployed (do not print it).
+   ```
 
    ```bash
    curl -sS https://rebuildup.dev/admin/login | grep googletagmanager
@@ -171,7 +185,16 @@ It runs:
 - `test` — `src/editorial/analytics/GoogleAnalytics.test.tsx`
   exercises the capture helper and the rendered markup, including
   the empty / undefined / whitespace-only / capture-once branches
-  and the URL-encoding + inline-script escaping rules.
+  and the URL-encoding + inline-script escaping rules, plus the
+  Issue #286 SPA contract: one inline `gtag('config', …)` per
+  document, one `page_view` per route change (deduped against the
+  initial location), `/admin/*` never tracked, no captured ID →
+  no tracking, and the queue-`config` fallback for documents whose
+  init snippet never ran.
+- `pnpm run test:client` — `GoogleAnalytics.client.test.tsx`
+  mounts `GoogleAnalyticsRouteTracker` under happy-dom and asserts
+  the effect wiring end to end (Issue #286). Not part of
+  `validate:fast`; run it alongside the gate for analytics changes.
 - `infisical:check:coverage` — verifies the three
   deploy-time sources (`wrangler.jsonc#secrets.required`,
   `wrangler.production.jsonc#secrets.required`,
@@ -180,9 +203,61 @@ It runs:
 
 A failing test means the wire-up has drifted and the PR is not
 merge-ready. The canonical gate is the per-ticket PR review
-against `release-0-5-0` — ticket PRs do not require per-merge
-operator auth (the release-merge human gate covers release PR /
-tag / GitHub Release only, per the canonical scope rule).
+against the target release branch — ticket PRs do not require
+per-merge operator auth (the release-merge human gate covers
+release PR / tag / GitHub Release only, per the canonical scope
+rule).
+
+## SPA route-change tracking (Issue #286)
+
+Earlier versions of this runbook declared SPA pageview tracking
+out of scope; Issue #286 implemented it and superseded that
+section. The contract today:
+
+- `gtag('config', …)` in the inline init script records the
+  **initial document load** — exactly once per document.
+- `GoogleAnalyticsRouteTracker` (mounted unconditionally in
+  `__root.tsx#RootComponent`) pushes
+  `gtag('event', 'page_view', …)` **once per client-side location
+  change** (`pathname + searchStr`), deduped against the initial
+  location so the initial load is never counted twice.
+- `/admin/*` locations are never emitted; the tracker instance
+  survives admin navigations so the first public page after
+  leaving `/admin/*` is tracked.
+- No captured measurement ID → the tracker is inert (same off
+  switch as the script mount).
+- If the document's init snippet never ran (visit landed on
+  `/admin/*`, where the GA scripts are excluded) the tracker
+  bootstraps the official `dataLayer`/`gtag` queue and queues
+  `js` + `config`; `config` records that page's page_view.
+
+### ID supply on the client (Issue #286 diagnosis)
+
+The root loader only yields the ID **during SSR**. On the client
+`cloudflare:workers` resolves to the empty stub
+(`src/cloudflare/workers-stub.ts`), and `src/client.tsx` re-runs
+loaders instead of hydrating dehydrated loader state — so the
+`measurementId` prop is `undefined` on every client render, and a
+capture fed only by the prop would stay empty (the tracker would be
+permanently inert). The write-once capture is therefore **also
+seeded from the SSR-rendered bootstrap script** in the current
+document (`<script src="…gtag/js?id=G-…">` — see
+`readMeasurementIdFromDocument` in `GoogleAnalytics.tsx`). The DOM
+node exists exactly where SSR mounted GA (never on `/admin/*` full
+loads), so the off switch and the admin exclusion are unchanged.
+
+Known limitation: a session that **starts** on `/admin/*` (no
+bootstrap script in the document) and then reaches a public page
+**via client-side navigation** still cannot load GA — the ID is not
+available to the client in that document. Any full load of a public
+page (including plain-`<a>` navigations, which are full loads in
+this app) recovers immediately.
+
+Pre-existing, out of Issue #286 scope: the client hydration logs a
+React mismatch (`<Suspense>` vs `#app-root`) on every load in dev —
+reproduced on the `release-0-6-1` baseline without this ticket's
+changes, unrelated to the GA markup. Reported in the Issue #286 PR
+for follow-up triage; not fixed here.
 
 ## Out of scope
 
@@ -192,13 +267,6 @@ also not part of this runbook:
 - **Cookie consent banner.** Out of scope per Issue #171 body. If a
   visitor jurisdiction requires consent in the future, the
   acceptance gate moves to a separate ticket.
-- **Single Page Application pageview tracking.** The wire-up is
-  load-time only — `gtag('config', ...)` records the initial
-  pageview on first load. Subsequent client-side navigations do
-  NOT push `gtag('event', 'page_view', ...)` calls. Adding
-  SPA-style tracking requires a separate ticket so the
-  load-event hook (the `useRouterState` subscription pattern)
-  can be designed in isolation.
 - **Custom events / conversions.** Out of scope. Future tickets
   can extend `src/editorial/analytics/` with sibling components
   that emit typed events.

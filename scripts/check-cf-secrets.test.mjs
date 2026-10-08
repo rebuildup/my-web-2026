@@ -78,7 +78,10 @@ function loadResolveWorkerContract() {
  * `existingFiles.configPath` and a custom `.infisical.json` via
  * `infisicalJsonContent` (default: a valid workspaceId entry).
  */
-function runInIsolatedRepo(args, { env = {}, infisicalJsonContent = null } = {}) {
+function runInIsolatedRepo(
+	args,
+	{ env = {}, infisicalJsonContent = null, mockSecretApis = false } = {},
+) {
 	const repo = mkdtempSync(join(tmpdir(), 'check-cf-secrets-test-'));
 	const scriptsDir = join(repo, 'scripts');
 	mkdirSync(scriptsDir, { recursive: true });
@@ -112,12 +115,56 @@ function runInIsolatedRepo(args, { env = {}, infisicalJsonContent = null } = {})
 	}
 
 	let stdout = '';
+	const nodeArgs = [];
+	if (mockSecretApis) {
+		const preload = join(repo, 'mock-secret-apis.mjs');
+		writeFileSync(
+			preload,
+			`
+import https from 'node:https';
+import { EventEmitter } from 'node:events';
+import { syncBuiltinESMExports } from 'node:module';
+const names = ${JSON.stringify(REQUIRED_RUNTIME_SECRETS)};
+https.request = (options, callback) => {
+  const request = new EventEmitter();
+  request.write = () => {};
+  request.end = () => queueMicrotask(() => {
+    const response = new EventEmitter();
+    response.statusCode = 200;
+    callback(response);
+    const data = options.hostname === 'api.cloudflare.com'
+      ? { result: names.map(name => ({ name })) }
+      : { secrets: [...names, 'BETTER_AUTH_SECRET'].map(secretKey => ({ secretKey })) };
+    response.emit('data', JSON.stringify(data));
+    response.emit('end');
+  });
+  request.destroy = () => {};
+  return request;
+};
+syncBuiltinESMExports();
+`,
+		);
+		nodeArgs.push('--import', preload);
+		const output = join(repo, '.cloudflare/output/v0');
+		const worker = join(output, 'workers/default');
+		mkdirSync(worker, { recursive: true });
+		writeFileSync(
+			join(output, 'config.json'),
+			JSON.stringify({ buildContext: { mode: 'production' } }),
+		);
+		writeFileSync(
+			join(worker, 'worker.config.json'),
+			JSON.stringify({
+				env: Object.fromEntries(REQUIRED_RUNTIME_SECRETS.map((name) => [name, { type: 'secret' }])),
+			}),
+		);
+	}
 	let stderr = '';
 	let exitCode = 0;
 	try {
 		const result = execFileSync(
 			process.execPath,
-			[join(scriptsDir, 'check-cf-secrets.mjs'), ...args],
+			[...nodeArgs, join(scriptsDir, 'check-cf-secrets.mjs'), ...args],
 			{
 				cwd: repo,
 				encoding: 'utf8',
@@ -350,6 +397,19 @@ describe('check-cf-secrets.mjs', () => {
 	});
 
 	describe('--execute gate', () => {
+		it('checks the built artifact and live Worker after successful Infisical authentication', () => {
+			const result = runInIsolatedRepo(
+				['--execute', '--worker-contract=auto', '--require-live-worker'],
+				{
+					mockSecretApis: true,
+					env: { INFISICAL_TOKEN: 'test-token', CLOUDFLARE_API_TOKEN: 'test-cf-token' },
+				},
+			);
+			assert.equal(result.exitCode, 0, result.stderr);
+			assert.match(result.stdout, /\[OK\] Build Output binding contract/);
+			assert.match(result.stdout, /\[OK\] Cloudflare Worker \(live\) final contract/);
+			assert.match(result.stdout, /all checks OK/);
+		});
 		it('accepts a pre-authenticated INFISICAL_TOKEN without client credentials', () => {
 			const result = runInIsolatedRepo(['--execute'], {
 				env: {

@@ -68,7 +68,7 @@ to be readable.
 | `Container` | `src/editorial/primitives/Container.tsx` | Page-width wrapper (`max-width: 1024px` + responsive `paddingInline`). |
 | `SectionHeading` | `src/editorial/primitives/SectionHeading.tsx` | Section header (eyebrow / h2 / description) — `default` (single-column) or `spread` (4/12 + 8/12 grid). |
 | `Badge` | `src/editorial/primitives/Badge.tsx` | Inline status pill (`bg.subtle` / `bg.accent`). Status only — never a primary interactive element. |
-| `PublicNav` | `src/editorial/nav/PublicNav.tsx` | Site-wide chrome. Mounted in `__root.tsx`, gated to non-`/admin/*` paths. |
+| `PublicNav` | `src/editorial/nav/PublicNav.tsx` | Chrome for the opt-in public pages (Issue #199): each page renders it explicitly — `/` and `/admin/*` carry no nav, so "site-wide" is the opt-in roster (`PUBLIC_NAV_ITEMS`), not a root mount. |
 
 ## 3. Canonical grid — the one grid every public page sits on
 

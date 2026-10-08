@@ -18,7 +18,10 @@
  *      katakana run (including the prolonged sound mark ー and the
  *      small-kana block) while the next line continues katakana, and
  *      no line may START with small kana (行頭禁則) — checked by
- *      walking text-node line boxes of h1/h2 and long paragraphs
+ *      walking text-node line boxes of h1/h2 and long paragraphs.
+ *      The continuation test runs on RAW line edges: a space at the
+ *      boundary (a legitimate break like 「テスト アプリ」) suppresses
+ *      the verdict, so space breaks never read as mid-word breaks.
  *   4. no 1–3 character orphan last line in body paragraphs / h1
  *   5. nav labels (desktop strip) render on one line each
  *
@@ -49,7 +52,16 @@ let failures = 0;
 for (const vp of VIEWPORTS) {
 	const page = await browser.newPage({ viewport: { width: vp.width, height: vp.height } });
 	for (const path of PAGES) {
-		await page.goto(base + path, { waitUntil: 'networkidle' });
+		const url = base + path;
+		// `page.goto` resolves even for 404/500 responses — a missing
+		// page must never pass the audit or be counted as a capture.
+		const response = await page.goto(url, { waitUntil: 'networkidle' });
+		if (!response || !response.ok()) {
+			const status = response ? response.status() : 'no response';
+			throw new Error(
+				`layout-audit-check: GET ${url} returned status ${status} (expected 200) — refusing to audit a non-OK page`,
+			);
+		}
 		await page.evaluate(() => document.fonts.ready);
 		await page.waitForTimeout(300);
 		const r = await page.evaluate((vw) => {
@@ -86,13 +98,23 @@ for (const vp of VIEWPORTS) {
 			// 行頭禁則: a line must never START with small kana,
 			// either script — independent of what line 1 ends with.
 			const smallKanaLineStart = /^[ぁぃぅぇぉっゃゅょゎゕゖァィゥェォッャュョヮ]/;
-			const badBoundary = (a, c) =>
-				(kata.test(a.slice(-1)) && kata.test(c.slice(0, 1))) || smallKanaLineStart.test(c);
 			const noteBadBreaks = (el, lines, out) => {
 				for (let i = 0; i < lines.length - 1; i++) {
-					const a = lines[i].trimEnd();
-					const c = lines[i + 1].trimStart();
-					if (badBoundary(a, c)) {
+					// RAW (untrimmed) line edges drive the katakana
+					// continuation test: a legitimate break at a space
+					// (「テスト アプリ」) leaves a space at the boundary, and
+					// that space must suppress the mid-word verdict —
+					// trimming first made the space vanish, so a
+					// space-break read as a katakana run continuing across
+					// the line break. The small-kana line-start check keeps
+					// the trimmed start, so leading whitespace never masks
+					// 行頭禁則.
+					const rawEnd = lines[i];
+					const rawStart = lines[i + 1];
+					const a = rawEnd.trimEnd();
+					const c = rawStart.trimStart();
+					const continuesKatakana = kata.test(rawEnd.slice(-1)) && kata.test(rawStart.slice(0, 1));
+					if (continuesKatakana || smallKanaLineStart.test(c)) {
 						out.badBreaks.push({
 							where: el.textContent.slice(0, 24),
 							at: i,
@@ -137,12 +159,17 @@ for (const vp of VIEWPORTS) {
 			for (const el of document.querySelectorAll('h1, p')) {
 				const text = (el.textContent || '').trim();
 				if (el.tagName !== 'H1' && text.length < 60) continue;
-				const lines = lineTexts(el).map((s) => s.trim());
+				// Orphan detection works on trimmed lines (a 1–3 char
+				// trimmed last line is the violation); the break check
+				// needs the RAW lines so a space at a line boundary is
+				// still visible to the continuation test.
+				const rawLines = lineTexts(el);
+				const lines = rawLines.map((s) => s.trim());
 				const last = lines[lines.length - 1];
 				if (lines.length > 1 && last.length > 0 && last.length <= 3) {
 					out.orphans.push({ t: text.slice(0, 24), last });
 				}
-				noteBadBreaks(el, lines, out);
+				noteBadBreaks(el, rawLines, out);
 			}
 			for (const a of document.querySelectorAll('[data-testid="public-nav-desktop"] a')) {
 				const span = a.querySelector('span');

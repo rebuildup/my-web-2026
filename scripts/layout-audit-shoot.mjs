@@ -47,7 +47,16 @@ for (const [vpName, viewport] of VIEWPORTS) {
 	const ctx = await browser.newContext({ viewport, deviceScaleFactor: 1 });
 	const page = await ctx.newPage();
 	for (const [name, path] of PUBLIC_PAGES) {
-		await page.goto(base + path, { waitUntil: 'networkidle' });
+		const url = base + path;
+		// `page.goto` resolves even for 404/500 responses — a missing
+		// page must never be counted as a successful capture.
+		const response = await page.goto(url, { waitUntil: 'networkidle' });
+		if (!response || !response.ok()) {
+			const status = response ? response.status() : 'no response';
+			throw new Error(
+				`layout-audit-shoot: GET ${url} returned status ${status} (expected 200) — refusing to capture a non-OK page`,
+			);
+		}
 		await page.evaluate(() => document.fonts.ready);
 		await page.waitForTimeout(300);
 		const file = `${out}/${name}-${vpName}.png`;

@@ -60,6 +60,22 @@
  * otherwise passed through verbatim — they are flags for vite, not config
  * input.
  *
+ * Windows quoting of forwarded tokens (`quoteCmdArg`): on the Windows
+ * branch the spawn uses `windowsVerbatimArguments: true`, which does NO
+ * Node-side quoting — every argv element is concatenated into the
+ * `cmd.exe /d /s /c` command line literally. A forwarded token that
+ * contains a space, `&`, `|`, `<`, `>`, `^`, `(`, `)` or `"` would
+ * therefore split or be re-interpreted by `cmd.exe`. The Windows branch
+ * wraps such tokens in double quotes (escaping an embedded `"` as `\"`,
+ * the standard cmd/argv quoting) so the token reaches vite as ONE
+ * argument. Safe tokens pass through unchanged, and the POSIX branch is
+ * untouched (argv array, `shell: false`, no shell involved).
+ *
+ * Honest limitation: this quoting is unit-verified in
+ * `scripts/_run-dev.test.mjs` (exact argv shapes asserted on both
+ * branches) but has NOT been exercised on a real Windows host —
+ * operator-side smoke on Windows remains the runtime confirmation.
+ *
  * Usage:
  *   pnpm dev       (script invoked via package.json#scripts.dev)
  *   pnpm dev -- --port 4999 --strictPort   (extra args forwarded to vite)
@@ -98,6 +114,44 @@ export const SAFE_ENV_SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/;
  */
 export function isSafeEnvSlug(s) {
 	return typeof s === 'string' && SAFE_ENV_SLUG_RE.test(s);
+}
+
+/**
+ * Characters that make a forwarded token unsafe to place unquoted into
+ * the Windows `cmd.exe /d /s /c` command line: whitespace (argv
+ * splitting), `cmd.exe` metacharacters (`& | < > ^`), and the
+ * quote/paren pair that participates in cmd's own quoting and
+ * grouping rules.
+ *
+ * Deliberately scoped to the Windows branch — the POSIX plan passes an
+ * argv array with `shell: false`, so no shell ever re-parses those
+ * tokens.
+ */
+export const CMD_UNSAFE_ARG_RE = /[ "&|<>^()]/;
+
+/**
+ * Wrap a single forwarded argv token for the Windows branch of
+ * `buildSpawnPlan`.
+ *
+ * `windowsVerbatimArguments: true` hands the argv to `cmd.exe`
+ * literally (no Node-side quoting), so any token containing a cmd-unsafe
+ * character would split into multiple tokens or be interpreted as a
+ * shell metacharacter. Such tokens are wrapped in double quotes with an
+ * embedded `"` escaped as `\"` (standard cmd/argv quoting); tokens
+ * without unsafe characters are returned unchanged.
+ *
+ * Pure. Exported for unit-testing. Does NOT validate the env slug —
+ * `isSafeEnvSlug` remains the sole gate for config-derived input; this
+ * helper only quotes operator-supplied forwarded flags.
+ *
+ * Throws for non-string input (caller bug, not shell input).
+ */
+export function quoteCmdArg(token) {
+	if (typeof token !== 'string') {
+		throw new Error(`_run-dev: quoteCmdArg expects a string (got ${typeof token})`);
+	}
+	if (!CMD_UNSAFE_ARG_RE.test(token)) return token;
+	return `"${token.replaceAll('"', '\\"')}"`;
 }
 
 /**
@@ -172,10 +226,15 @@ export function normalizeForwardedArgs(rawArgs) {
  *   - options.shell: false (no Node shell)
  *   - options.windowsVerbatimArguments: true (Node passes argv literally
  *     to `cmd.exe` without its own quoting/escaping).
+ *   - forwarded `extraArgs` are passed through `quoteCmdArg` on this
+ *     branch only: `windowsVerbatimArguments` performs NO quoting, so a
+ *     token containing a space / `&` / `|` / `<` / `>` / `^` / `(` /
+ *     `)` / `"` would split or be re-interpreted by `cmd.exe`. Quoted
+ *     in place; the fixed pnpm argv pieces are charset-safe already.
  *
  * POSIX contract:
  *   - command: 'pnpm'
- *   - args: <pnpm-argv...>
+ *   - args: <pnpm-argv...>  (extraArgs verbatim — no shell, no quoting)
  *   - options.shell: false.
  */
 export function buildSpawnPlan({ isWindows, env, extraArgs = [] }) {
@@ -190,14 +249,16 @@ export function buildSpawnPlan({ isWindows, env, extraArgs = [] }) {
 		);
 	}
 	const pnpmArgv = ['exec', 'infisical', 'run', '--env', env, '--', 'pnpm', 'exec', 'vite', 'dev'];
-	// Appended after the validated pieces; forwarded verbatim to vite.
-	pnpmArgv.push(...extraArgs);
 	if (!isWindows) {
+		// POSIX: argv array + shell:false — appended verbatim to vite.
+		pnpmArgv.push(...extraArgs);
 		return { command: 'pnpm', args: pnpmArgv, options: { shell: false } };
 	}
+	// Windows: cmd.exe parses its own command line, so each forwarded
+	// token is quoted in place (see quoteCmdArg) before it lands in argv.
 	return {
 		command: 'cmd.exe',
-		args: ['/d', '/s', '/c', 'pnpm', ...pnpmArgv],
+		args: ['/d', '/s', '/c', 'pnpm', ...pnpmArgv, ...extraArgs.map(quoteCmdArg)],
 		options: { shell: false, windowsVerbatimArguments: true },
 	};
 }

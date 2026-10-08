@@ -13,6 +13,7 @@ import { dirname, resolve } from 'node:path';
  *   - isSafeEnvSlug(s)
  *   - readDefaultEnvironmentCandidate({ configPath, fsExistsSync, fsReadFileSync })
  *   - normalizeForwardedArgs(rawArgs)
+ *   - quoteCmdArg(token)
  *   - buildSpawnPlan({ isWindows, env, extraArgs })
  *
  * Operator-mandated invariants verified here:
@@ -30,6 +31,13 @@ import { dirname, resolve } from 'node:path';
  *     #284) is appended AFTER `vite dev` in both the POSIX and Windows
  *     plans, without changing the no-args spawn shape and without
  *     weakening the env-slug gate.
+ *   - Forwarded tokens containing cmd.exe-unsafe characters (space,
+ *     `&`, quotes, parens, …) are wrapped for the Windows branch by
+ *     `quoteCmdArg` (`windowsVerbatimArguments` does no quoting), while
+ *     the POSIX plan keeps the raw token — asserted as exact argv
+ *     shapes on both branches. This quoting is unit-verified only: it
+ *     has NOT been exercised on a real Windows host (honest limitation;
+ *     see the `_run-dev.mjs` docblock).
  */
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -61,15 +69,18 @@ async function loadPureHelpers() {
 	const isSafeEnvSlug = extract('isSafeEnvSlug');
 	const readDefaultEnvironmentCandidate = extract('readDefaultEnvironmentCandidate');
 	const normalizeForwardedArgs = extract('normalizeForwardedArgs');
+	const quoteCmdArg = extract('quoteCmdArg');
 	const buildSpawnPlan = extract('buildSpawnPlan');
 
 	const factory = new Function(`
 		const SAFE_ENV_SLUG_RE = /^[A-Za-z0-9_-]{1,64}$/;
+		const CMD_UNSAFE_ARG_RE = /[ "&|<>^()]/;
 		${isSafeEnvSlug}
 		${readDefaultEnvironmentCandidate}
 		${normalizeForwardedArgs}
+		${quoteCmdArg}
 		${buildSpawnPlan}
-		return { isSafeEnvSlug, readDefaultEnvironmentCandidate, normalizeForwardedArgs, buildSpawnPlan, SAFE_ENV_SLUG_RE };
+		return { isSafeEnvSlug, readDefaultEnvironmentCandidate, normalizeForwardedArgs, quoteCmdArg, buildSpawnPlan, SAFE_ENV_SLUG_RE, CMD_UNSAFE_ARG_RE };
 	`);
 	return factory();
 }
@@ -514,6 +525,118 @@ describe('_run-dev.mjs', () => {
 					'no pnpm `--` separator may reach vite',
 				);
 			}
+		});
+	});
+
+	// Windows cmd.exe quoting of forwarded tokens.
+	//
+	// `windowsVerbatimArguments: true` passes the argv to `cmd.exe`
+	// literally — no Node-side quoting — so a forwarded token with a
+	// space or `&` / `"` / `(` / `)` would split or be re-interpreted.
+	// The Windows branch wraps such tokens via `quoteCmdArg`; the POSIX
+	// branch (argv array, `shell: false`) keeps them verbatim.
+	//
+	// Unit-verified only — NOT exercised on a real Windows host (see
+	// the `_run-dev.mjs` docblock).
+	describe('quoteCmdArg / Windows quoting of forwarded tokens', () => {
+		const FIXED = [
+			'/d',
+			'/s',
+			'/c',
+			'pnpm',
+			'exec',
+			'infisical',
+			'run',
+			'--env',
+			'dev',
+			'--',
+			'pnpm',
+			'exec',
+			'vite',
+			'dev',
+		];
+
+		it('leaves tokens without cmd-unsafe characters untouched', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			for (const safe of [
+				'--port',
+				'4999',
+				'--strictPort',
+				'plain_token-1',
+				'--outDir=./dist',
+				'C:\\no-space\\path',
+			]) {
+				assert.equal(quoteCmdArg(safe), safe, `should pass ${JSON.stringify(safe)} through`);
+			}
+		});
+
+		it('wraps tokens containing spaces in double quotes', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			assert.equal(quoteCmdArg('C:\\My Folder\\out'), '"C:\\My Folder\\out"');
+			assert.equal(quoteCmdArg('two words'), '"two words"');
+		});
+
+		it('wraps tokens containing & (cmd.exe command separator)', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			assert.equal(quoteCmdArg('a&b'), '"a&b"');
+			assert.equal(quoteCmdArg('--flag=a b&c'), '"--flag=a b&c"');
+		});
+
+		it('wraps quote-containing tokens and escapes the embedded quote as \\"', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			// Input: say "hi"  →  wrapped: "say \"hi\""
+			assert.equal(quoteCmdArg('say "hi"'), '"say \\"hi\\""');
+			// Input: "  →  wrapped: "\""
+			assert.equal(quoteCmdArg('"'), '"\\""');
+		});
+
+		it('wraps tokens containing parens and other cmd metacharacters', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			assert.equal(quoteCmdArg('foo(bar)'), '"foo(bar)"');
+			assert.equal(quoteCmdArg('a|b'), '"a|b"');
+			assert.equal(quoteCmdArg('a>b'), '"a>b"');
+			assert.equal(quoteCmdArg('a<b'), '"a<b"');
+			assert.equal(quoteCmdArg('a^b'), '"a^b"');
+		});
+
+		it('throws for non-string input instead of coercing it', async () => {
+			const { quoteCmdArg } = await loadPureHelpers();
+			for (const bad of [42, null, undefined, ['x'], {}]) {
+				assert.throws(
+					() => quoteCmdArg(bad),
+					/expects a string/,
+					`should reject token=${JSON.stringify(bad)}`,
+				);
+			}
+		});
+
+		it('Windows plan: exact argv with quoted forwarded tokens', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			const extraArgs = ['--title', 'my app', 'a&b', 'say "hi"', 'plain'];
+			const plan = buildSpawnPlan({ isWindows: true, env: 'dev', extraArgs });
+			assert.equal(plan.command, 'cmd.exe');
+			assert.deepEqual(plan.args, [
+				...FIXED,
+				'--title',
+				'"my app"',
+				'"a&b"',
+				'"say \\"hi\\""',
+				'plain',
+			]);
+			assert.equal(plan.options.shell, false);
+			assert.equal(plan.options.windowsVerbatimArguments, true);
+		});
+
+		it('POSIX plan: exact argv UNCHANGED (raw forwarded tokens, no quoting)', async () => {
+			const { buildSpawnPlan } = await loadPureHelpers();
+			const extraArgs = ['--title', 'my app', 'a&b', 'say "hi"', 'plain'];
+			const plan = buildSpawnPlan({ isWindows: false, env: 'dev', extraArgs });
+			assert.equal(plan.command, 'pnpm');
+			// Same fixed prefix as the Windows plan minus the cmd.exe wrapper,
+			// with the forwarded tokens byte-for-byte verbatim.
+			assert.deepEqual(plan.args, [...FIXED.slice(4), ...extraArgs]);
+			assert.equal(plan.options.shell, false);
+			assert.equal('windowsVerbatimArguments' in plan.options, false);
 		});
 	});
 });

@@ -407,6 +407,7 @@ describe('check-cf-secrets.mjs', () => {
 				},
 			);
 			assert.equal(result.exitCode, 0, result.stderr);
+			assert.match(result.stdout, /\(from Build Output, mode=production\)/);
 			assert.match(result.stdout, /\[OK\] Build Output binding contract/);
 			assert.match(result.stdout, /\[OK\] Cloudflare Worker \(live\) final contract/);
 			assert.match(result.stdout, /all checks OK/);

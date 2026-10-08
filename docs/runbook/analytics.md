@@ -231,6 +231,34 @@ section. The contract today:
   bootstraps the official `dataLayer`/`gtag` queue and queues
   `js` + `config`; `config` records that page's page_view.
 
+### ID supply on the client (Issue #286 diagnosis)
+
+The root loader only yields the ID **during SSR**. On the client
+`cloudflare:workers` resolves to the empty stub
+(`src/cloudflare/workers-stub.ts`), and `src/client.tsx` re-runs
+loaders instead of hydrating dehydrated loader state — so the
+`measurementId` prop is `undefined` on every client render, and a
+capture fed only by the prop would stay empty (the tracker would be
+permanently inert). The write-once capture is therefore **also
+seeded from the SSR-rendered bootstrap script** in the current
+document (`<script src="…gtag/js?id=G-…">` — see
+`readMeasurementIdFromDocument` in `GoogleAnalytics.tsx`). The DOM
+node exists exactly where SSR mounted GA (never on `/admin/*` full
+loads), so the off switch and the admin exclusion are unchanged.
+
+Known limitation: a session that **starts** on `/admin/*` (no
+bootstrap script in the document) and then reaches a public page
+**via client-side navigation** still cannot load GA — the ID is not
+available to the client in that document. Any full load of a public
+page (including plain-`<a>` navigations, which are full loads in
+this app) recovers immediately.
+
+Pre-existing, out of Issue #286 scope: the client hydration logs a
+React mismatch (`<Suspense>` vs `#app-root`) on every load in dev —
+reproduced on the `release-0-6-1` baseline without this ticket's
+changes, unrelated to the GA markup. Reported in the Issue #286 PR
+for follow-up triage; not fixed here.
+
 ## Out of scope
 
 The Issue #171 body lists these as not part of the wire-up and they are

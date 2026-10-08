@@ -1,8 +1,11 @@
 import { cleanup, render } from '@testing-library/react';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import {
+	GoogleAnalytics,
 	GoogleAnalyticsRouteTracker,
 	__resetCapturedMeasurementIdForTests,
+	captureMeasurementId,
 } from './GoogleAnalytics';
 
 /**
@@ -106,5 +109,73 @@ describe('GoogleAnalyticsRouteTracker — effect wiring (Issue #286)', () => {
 		rerender(<GoogleAnalyticsRouteTracker locationKey="/about" />);
 
 		expect(gtag).not.toHaveBeenCalled();
+	});
+});
+
+describe('GoogleAnalytics — SSR-script ID seeding (Issue #286)', () => {
+	let bootstrapScript: HTMLScriptElement | undefined;
+
+	beforeEach(() => {
+		__resetCapturedMeasurementIdForTests();
+		resetAnalyticsGlobals();
+		bootstrapScript = undefined;
+	});
+
+	afterEach(() => {
+		cleanup();
+		bootstrapScript?.remove();
+		__resetCapturedMeasurementIdForTests();
+		resetAnalyticsGlobals();
+	});
+
+	/** Simulates the SSR-rendered bootstrap script in the document. */
+	function appendSsrBootstrap(id: string): HTMLScriptElement {
+		const el = document.createElement('script');
+		el.setAttribute('src', `https://www.googletagmanager.com/gtag/js?id=${id}`);
+		document.head.appendChild(el);
+		bootstrapScript = el;
+		return el;
+	}
+
+	it('seeds the write-once capture from the SSR-rendered script when the loader prop is undefined', () => {
+		// The real client condition (Issue #286 diagnosis): the loader
+		// prop is always `undefined` client-side — only the SSR script
+		// in the document carries the ID.
+		appendSsrBootstrap('G-DOCTEST');
+
+		expect(captureMeasurementId(undefined)).toBe('G-DOCTEST');
+		// Write-once: subsequent falsy values never clear it.
+		expect(captureMeasurementId(undefined)).toBe('G-DOCTEST');
+		expect(captureMeasurementId('')).toBe('G-DOCTEST');
+	});
+
+	it('renders the bootstrap markup again from the DOM-seeded capture (loader prop undefined)', () => {
+		appendSsrBootstrap('G-DOCTEST');
+		// A re-render with no loader value must still emit the scripts —
+		// this is what lets the tags survive navigation. Rendered via
+		// renderToStaticMarkup because React intentionally skips
+		// <script src> insertion during client rendering.
+		const html = renderToStaticMarkup(<GoogleAnalytics />);
+		expect(html).toContain('gtag/js?id=G-DOCTEST');
+		expect(html).toContain("gtag('config', 'G-DOCTEST');");
+	});
+
+	it('fires page_view on route change when the ID comes only from the SSR script', () => {
+		appendSsrBootstrap('G-DOCTEST');
+		const gtag = vi.fn();
+		analyticsGlobals().gtag = gtag;
+
+		// No measurementId prop at all — mirrors `__root.tsx` after the
+		// client loader re-runs against the empty workers stub.
+		const { rerender } = render(<GoogleAnalyticsRouteTracker locationKey="/" />);
+		expect(gtag).not.toHaveBeenCalled();
+
+		rerender(<GoogleAnalyticsRouteTracker locationKey="/about" />);
+		expect(gtag).toHaveBeenCalledTimes(1);
+		expect(gtag).toHaveBeenCalledWith(
+			'event',
+			'page_view',
+			expect.objectContaining({ page_path: '/about' }),
+		);
 	});
 });

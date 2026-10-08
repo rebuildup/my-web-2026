@@ -39,8 +39,30 @@
  * unsafe-but-present slug is an ERROR (fail-loud, exit 2) — silent
  * fallback would mask config drift.
  *
+ * Argument forwarding (Issue #284): every argv token after the script name
+ * (`process.argv.slice(2)`, i.e. whatever follows `pnpm dev --`) is appended
+ * to the end of the spawned `vite dev` argv, on both POSIX and Windows
+ * plans. pnpm 12.x forwards the `--` separator itself, so a single leading
+ * `--` is dropped first (`normalizeForwardedArgs`) — vite's CLI would
+ * otherwise treat it as an operand separator and silently ignore every
+ * flag after it (server stays on the config port):
+ *
+ *   pnpm dev -- --port 4999 --strictPort
+ *   argv tail:  ['--', '--port', '4999', '--strictPort']
+ *   normalised: ['--port', '4999', '--strictPort']
+ *   → pnpm exec infisical run --env <slug> -- pnpm exec vite dev --port 4999 --strictPort
+ *
+ * The extra args are appended AFTER the validated pieces: env-slug
+ * validation (`isSafeEnvSlug`) still gates everything that is interpolated
+ * from `.infisical.json` before argv construction, so forwarding cannot
+ * weaken that gate. The extra args themselves come from the invoking
+ * operator's own shell (same trust boundary as running the command) and are
+ * otherwise passed through verbatim — they are flags for vite, not config
+ * input.
+ *
  * Usage:
  *   pnpm dev       (script invoked via package.json#scripts.dev)
+ *   pnpm dev -- --port 4999 --strictPort   (extra args forwarded to vite)
  */
 
 import { spawn } from 'node:child_process';
@@ -101,12 +123,46 @@ export function readDefaultEnvironmentCandidate({ configPath, fsExistsSync, fsRe
 }
 
 /**
+ * Normalise the raw argv tail that pnpm hands to a run-script
+ * (Issue #284). pnpm 12.x forwards the `--` separator itself:
+ *
+ *   pnpm dev -- --port 4999 --strictPort
+ *   → process.argv.slice(2) === ['--', '--port', '4999', '--strictPort']
+ *
+ * vite's CLI (cac) treats a bare `--` as an operand separator and
+ * silently ignores every flag after it, which would leave the server
+ * on the config port. Exactly one leading `--` is dropped; any further
+ * `--` tokens are genuine forwarded content and are preserved.
+ * Pure. Exported for unit-testing.
+ *
+ * Throws if `rawArgs` is not an array (caller bug, not shell input).
+ */
+export function normalizeForwardedArgs(rawArgs) {
+	if (!Array.isArray(rawArgs)) {
+		throw new Error(`_run-dev: rawArgs must be an array (got ${typeof rawArgs})`);
+	}
+	if (rawArgs.length > 0 && rawArgs[0] === '--') {
+		return rawArgs.slice(1);
+	}
+	return rawArgs;
+}
+
+/**
  * Build the spawn plan for the current platform. Pure: deterministic
- * given `isWindows` and `env`.
+ * given `isWindows`, `env`, and `extraArgs`.
  *
  * Throws if `env` is not a safe slug. The strict validation here means
  * a bug in the caller cannot smuggle a `cmd.exe` metacharacter into
  * argv — the function enforces the full filename-grade invariant.
+ *
+ * `extraArgs` (optional, default `[]`) is the normalised argv tail
+ * (from `normalizeForwardedArgs(process.argv.slice(2))`, Issue #284):
+ * CLI flags for vite such as `['--port', '4999', '--strictPort']`.
+ * They are appended AFTER `vite dev` in the pnpm argv — i.e. after
+ * every validated piece — so forwarding never bypasses or weakens the
+ * env-slug gate above. The args must be an array of strings (whatever
+ * the invoking shell handed to the wrapper); anything else throws
+ * rather than being coerced into argv.
  *
  * Windows contract (DEP0190-safe):
  *   - command: 'cmd.exe' (resolved via PATH)
@@ -122,13 +178,20 @@ export function readDefaultEnvironmentCandidate({ configPath, fsExistsSync, fsRe
  *   - args: <pnpm-argv...>
  *   - options.shell: false.
  */
-export function buildSpawnPlan({ isWindows, env }) {
+export function buildSpawnPlan({ isWindows, env, extraArgs = [] }) {
 	if (!isSafeEnvSlug(env)) {
 		throw new Error(
 			`_run-dev: env=${JSON.stringify(env)} is not a safe slug (expected ${SAFE_ENV_SLUG_RE})`,
 		);
 	}
+	if (!Array.isArray(extraArgs) || extraArgs.some((a) => typeof a !== 'string')) {
+		throw new Error(
+			`_run-dev: extraArgs must be an array of strings (got ${JSON.stringify(extraArgs)})`,
+		);
+	}
 	const pnpmArgv = ['exec', 'infisical', 'run', '--env', env, '--', 'pnpm', 'exec', 'vite', 'dev'];
+	// Appended after the validated pieces; forwarded verbatim to vite.
+	pnpmArgv.push(...extraArgs);
 	if (!isWindows) {
 		return { command: 'pnpm', args: pnpmArgv, options: { shell: false } };
 	}
@@ -154,7 +217,10 @@ function main() {
 	}
 	const env = candidate;
 	const isWindows = process.platform === 'win32';
-	const plan = buildSpawnPlan({ isWindows, env });
+	// Issue #284: forward the CLI tail (`pnpm dev -- <flags>`) to vite.
+	// pnpm includes its own `--` separator; strip it so vite sees the flags.
+	const extraArgs = normalizeForwardedArgs(process.argv.slice(2));
+	const plan = buildSpawnPlan({ isWindows, env, extraArgs });
 	const child = spawn(plan.command, plan.args, { stdio: 'inherit', ...plan.options });
 
 	child.on('exit', (code, signal) => {

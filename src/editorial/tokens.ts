@@ -124,10 +124,11 @@ export const rawTokens = {
 		lg: { value: '1.125rem' }, // 18 — lead body
 		xl: { value: '1.5rem' }, // 24 — subhead, card h3
 		'2xl': { value: '2rem' }, // 32 — footer identity, large subhead
-		'3xl': { value: '2.5rem' }, // 40 — section h2, footer `04` (mid display)
-		// Display tier. Reserved for the Hero h1 only. See src/home/brief.md
-		// (Issue #31) for the rationale.
-		'4xl': { value: '4rem' }, // 64 — Hero h1, super display
+		'3xl': { value: '2.5rem' }, // 40 — section h2 (mid display)
+		// Display tier. On the home surface the consumer is the Footer `04`
+		// decoration only — the Hero h1 renders the identity mark since
+		// Issue #287. See src/home/brief.md (Issue #31) for the rationale.
+		'4xl': { value: '4rem' }, // 64 — super display (home: Footer `04`)
 	},
 	radii: {
 		sm: { value: '4px' },

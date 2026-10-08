@@ -69,8 +69,9 @@ test.describe('public nav — home exclusion (Issue #199)', () => {
 		// is the one public page that does not opt in.
 		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
 
-		// The hero still owns the page's canonical h1.
-		await expect(page.locator('h1').first()).toHaveText(/木村友亮 \/ samuido/);
+		// The hero still owns the page's canonical h1 (Issue #287 —
+		// accessible name is the platform name, not a person).
+		await expect(page.locator('h1').first()).toHaveAccessibleName('my-web-2026');
 	});
 });
 

@@ -5,14 +5,15 @@ import { PACKAGE_VERSION } from './version';
 /**
  * Footer — fourth section of the home page.
  *
- * Hosts the public transition metadata for the 2025 / 2026 editions,
- * the canonical source link, and the operational entry points.
+ * Hosts the platform metadata (Issue #287 — the Identity column
+ * identifies the platform, not a person), the canonical source
+ * link, and the in-site index entry points.
  *
  * Issue #31 — editorial spread (fourth pass). The footer sits on
  * the same 12-column grid as the rest of the page, divided into
- * three equal columns. The `04` decoration jumps to `4xl` (64px)
- * so it shares the display voice with the Hero h1 — the page reads
- * with one display voice across Hero and Footer. Per-element
+ * three equal columns. The `04` decoration jumps to `4xl` (64px) —
+ * since Issue #287 it is the home surface's only `4xl` site, the
+ * bottom bookend to the Hero mark at the top. Per-element
  * `marginBlockStart` carries the proximity rule within each column.
  */
 export function Footer() {
@@ -83,7 +84,7 @@ export function Footer() {
 								textTransform: 'uppercase',
 							})}
 						>
-							Identity
+							Platform
 						</span>
 						<p
 							className={css({
@@ -96,7 +97,7 @@ export function Footer() {
 								letterSpacing: '-0.02em',
 							})}
 						>
-							samuido
+							my-web-2026
 						</p>
 						<p
 							className={css({
@@ -107,7 +108,7 @@ export function Footer() {
 								color: 'text.muted',
 							})}
 						>
-							my-web-2026 · v{PACKAGE_VERSION} · MIT
+							v{PACKAGE_VERSION} · MIT
 						</p>
 					</div>
 					<div
@@ -160,9 +161,7 @@ export function Footer() {
 							</li>
 							<li>
 								<a
-									href="https://yusuke-kim.com"
-									rel="noopener noreferrer"
-									target="_blank"
+									href="/portfolio"
 									className={css({
 										color: 'text.accent',
 										textDecoration: 'none',
@@ -173,7 +172,7 @@ export function Footer() {
 										},
 									})}
 								>
-									2025 edition
+									Portfolio
 								</a>
 							</li>
 						</ul>

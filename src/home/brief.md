@@ -140,7 +140,9 @@
 - **Hero h1 step**: `2xl` → `3xl` at `lg` and wider. One additional
   step only — `4xl` / `5xl` were tried then dropped (see the third
   pass below). Raw layer keeps a single `3xl` entry (`2.5rem`); the
-  semantic layer is unchanged.
+  semantic layer is unchanged. (Issue #287: the h1 now renders the
+  identity mark instead of display text — this type-step record is
+  historical; the mark's sizing lives in the Issue #287 amendment.)
 - **Hero composition**: the inner `Container` (1024px max) splits
   into an asymmetric 2-column grid at `lg` — `minmax(0, 7fr) minmax(0, 3fr)`
   — with a 12-unit gutter. The lead column caps at 640px to keep the
@@ -148,11 +150,13 @@
   raw mono metadata (`edition / my-web-2026 · 2026 Preview /
   the package-derived release version · MIT`) — no border, no background, no padding box. Below
   `lg` the two columns stack into the original single flow.
-- **Hero typography tightening**: h1 uses `line-height: 1.1` at `lg`
-  and `letter-spacing: -0.02em` (inline literal, not a token);
-  mixed-script spans carry `lang="ja"` on Japanese and `lang="en"`
-  on the Latin edition tags so the browser can pick the right
-  rendering hints.
+- **Hero typography tightening**: h1 used `line-height: 1.1` at `lg`
+  and `letter-spacing: -0.02em` (inline literal, not a token).
+  (Issue #287: the h1 no longer renders text, so those text metrics
+  no longer apply to it; the literal survives on the footer identity
+  paragraph and the SectionHeading titles.) Mixed-script spans carry
+  `lang="ja"` on Japanese and `lang="en"` on the Latin edition tags
+  so the browser can pick the right rendering hints.
 - **Section rhythm**: each section heading carries an editorial
   numbering prefix via the existing `eyebrow` prop
   (`01 — Capabilities`, `02 — System status`). Capability cards
@@ -184,8 +188,9 @@
   caller-side pattern — the `eyebrow` string carries it. A primitive
   prop would be one-purpose and fail the `token-audit` §3-4
   evidence gate.
-- **No raw `letterSpacing` tokens**. The two inline literals
-  (`-0.02em` on the hero h1, `0.04em` on the mono captions) are
+- **No raw `letterSpacing` tokens**. The inline literals
+  (`-0.02em` on the footer identity paragraph — the hero h1 literal
+  left with Issue #287 — and `0.04em` on the mono captions) are
   scoped to one component each. Promoting them to tokens would
   invite the "Japanese letter-spacing used as decoration" failure
   mode (`typesetting` §5).
@@ -208,10 +213,12 @@
   Latin eyebrow keeps the system default. Inline letter-spacing
   literals scoped to one component, not promoted to tokens.
 - `token-audit` §3-4: primitive promotion requires multi-site
-  evidence. `3xl` is added because three sites now share it (Hero
-  h1, SectionHeading spread title, Footer `04`); `4xl` / `5xl`
-  were tried then dropped when the proximity-first revision made
-  them visually unnecessary (see below).
+  evidence. `3xl` was added when three sites shared it (Hero h1,
+  SectionHeading spread title, Footer `04`); since Issue #287 the
+  hero h1 renders the mark, so the live `3xl` consumer is the
+  SectionHeading h2 tier. `4xl` / `5xl` were tried then dropped
+  when the proximity-first revision made them visually
+  unnecessary (see below).
 - `responsive-design` §Macro layout: editorial surfaces hold their
   measure at wide viewports. `Container` stays 1024px; the
   asymmetric grid is built inside it.
@@ -286,7 +293,10 @@ The page sits on a 12-column grid inside a 1024px `Container`:
   ratios. The grid is implicit — sections render via `gridTemplateColumns`
   with `fr` units, not via a 12-col CSS grid utility.
 - **Section ratios**:
-  - Hero: `4fr / 8fr` (rail / lead) — same axis as body sections.
+  - Hero: `4fr / 8fr` — same axis as body sections. (Issue #287:
+    the left span is the title span: eyebrow line + mark, exactly
+    where the section titles sit; the right span starts with the
+    description.)
   - Body sections: `4fr / 8fr` (heading cluster / content).
   - Footer: `4fr / 4fr / 4fr` (three columns).
 - **Gutter**: 40px (`spacing: 10`) between the spread columns.
@@ -348,18 +358,21 @@ and intentional.
 | `xl` | 24 | ×1.5 | subhead, card h3 |
 | `2xl` | 32 | ×2 | footer identity, large subhead |
 | `3xl` | 40 | ×2.5 | section h2, footer `04` |
-| `4xl` | 64 | ×4 | Hero h1, super display |
+| `4xl` | 64 | ×4 | Footer `04`, super display (Issue #287 — was Hero h1) |
 
 Application:
 
-- Hero h1: `3xl/4xl` (40/64 px). One display site — the page reads
-  with one display voice at the top.
+- Hero h1: the identity mark at 64px (`16`) base / 96px (`24`) at
+  `lg` (Issue #287) — it replaced the `3xl/4xl` text as the single
+  top-of-hierarchy site, so the page still opens with one display
+  voice.
 - Body section h2: `2xl/3xl` (32/40 px). Strong but not as huge as
   h1.
 - Card h3: `xl` (24 px). One tier above body.
-- Footer `04`: `4xl` (64 px). Same display voice as h1; the page
-  bookends Hero and Footer in `4xl`.
-- Footer identity (samuido): `2xl` (32 px). One tier below display.
+- Footer `04`: `4xl` (64 px) — the page's only `4xl` consumer since
+  Issue #287; the hero bookend is now the mark, not display text.
+- Footer identity (`my-web-2026`): `2xl` (32 px). One tier below
+  display. (Issue #287 — was the personal handle.)
 
 ### Proximity — per-element `marginBlockStart`
 
@@ -423,12 +436,78 @@ next to the element that uses it:
   and `letter-spacing: -0.03em` keeps multi-line titles from
   looking loose.
 - `token-audit` §3-4: every primitive must have at least two
-  non-trivial consumers. `4xl` now has two (Hero h1 + Footer
-  `04`); both sites use the same display voice. `5xl` is not
-  introduced because no second consumer exists.
+  non-trivial consumers. `4xl` had two when promoted (Hero h1 +
+  Footer `04`); since Issue #287 the home consumer is Footer `04`
+  alone (the hero h1 renders the mark). `5xl` is not introduced
+  because no second consumer exists.
 - `responsive-design` §Editorial rhythm: editorial surfaces stay
   readable at 200% zoom and at 320 CSS px. The grid collapses to
   a single column at `lg` and below; the type scale drops one tier
   at narrower widths.
 - `accessibility-audit` §Reflow: at 320 CSS px everything stacks
   vertically — no horizontal scroll, no information loss.
+
+## Identity motif amendment (Issue #287)
+
+> Supersedes the hero / footer identity statements above: the
+> "Hero h1: `3xl/4xl`" application line (Typography — golden-ratio
+> scale) and the "no image-based titles" bullet under *What was
+> deliberately not changed*. The footer identity line is updated in
+> place to the platform name. Those bullets remain as historical
+> record of their pass; this amendment is the current direction for
+> the identity surface only. Everything else in the brief stays in
+> force.
+
+### What changed
+
+- **Hero h1 is the identity motif, not a name.** The single `<h1>`
+  renders `SiteMark` (`src/home/mark.tsx`) — the platform identity
+  mark ported from my-web-2025 (`src/components/icons/SamuidoIcon.tsx`
+  @ `27a2d02`) — and carries a visually-hidden accessible name
+  (`my-web-2026`). `section[aria-labelledby="hero-title"]` therefore
+  names the hero section `my-web-2026`. No personal name / handle /
+  real-name domain remains on the top page.
+- **The mark sits in the title span, grid-true.** The hero uses the
+  spread grid verbatim (`minmax(0, 4fr) / minmax(0, 8fr)`,
+  `columnGap 10`, `rowGap { base: 10, lg: 0 }` — the same rule the
+  body sections' `SectionHeading variant="spread"` uses). The h1 is
+  a child of the left-column `<header>`, so its x/width equal the
+  section titles' x/width by construction, and it is separated from
+  the eyebrow line by the same 8px (token `2`) tight cluster the
+  eyebrow ↔ h2 pairs use. The right column starts with the lead
+  description (top-aligned to the row like the spread sections'
+  content column); CTAs follow the description.
+- **Eyebrow line = caption at base, rail at `lg`.** The mono
+  caption ("my-web-2026 · v… — 2026 Preview") and the metadata rail
+  (edition / my-web-2026 · 2026 Preview / v… · MIT) carry the same
+  version metadata, so exactly one of them renders above the mark at
+  any breakpoint (they duplicate each other — the rail was already
+  hidden below `lg` for that reason). Every breakpoint keeps a
+  visible mono wordmark line above the mark.
+- **The mark occupies the former display tier.** Sizing steps on the
+  canonical spacing tokens: 64px (`16`) height base, 96px (`24`) at
+  `lg` (width follows the artwork aspect) — where the `3xl/4xl`
+  type used to sit. The h1 ↔ lead-body 40px (token `10`)
+  separator is carried by the grid `rowGap` below `lg` (stacked
+  columns); above `lg` the two spans start at the same row top, as
+  in the spread sections.
+- **Footer Identity column → Platform column.** Label `Platform`,
+  value `my-web-2026` at `2xl` (unchanged size/voice), version · MIT
+  line below (now `v… · MIT` without a duplicated platform name).
+- **In-site destinations only.** The hero secondary CTA and the
+  footer Index link point at `/portfolio`; the real-name-domain
+  links are gone from the top page.
+
+### Why the earlier rejections still hold
+
+- *References — no avatar placement*: still refers to GitHub's
+  avatar UI. `SiteMark` is the site's own logo — a flat geometric
+  mark, no photo, no person rendering, no background box.
+- *Avoid — no hero illustration / marketing deck*: the mark is a
+  static identity asset in the h1's place, not a marketing
+  illustration: no motion (hero stays static), no shadow, no
+  per-section accent, no new radius or elevation.
+- **Palette**: the mark keeps its original identity colors
+  (`#ffd627` body / `#fff` highlight / `#000` eyes) verbatim for
+  provenance. The single-accent rule governs UI accents (CTA, pill,
+  card hover) — it does not recolor the logo.

@@ -37,11 +37,16 @@
  * the server during SSR (where `cloudflare:workers` resolves to the
  * real workerd env) and on the client during subsequent
  * navigations (where the same import resolves to the frozen empty
- * stub documented in `src/cloudflare/workers-stub.ts`). Capturing
- * the SSR value into a module-level `let` preserves the ID across
- * the client-side lifecycle so the script tag survives a navigation
- * out of `/admin/*`. The capture is write-once: a falsy client-side
- * value never overwrites the captured SSR value.
+ * stub documented in `src/cloudflare/workers-stub.ts`). The capture
+ * is write-once: a falsy client-side value never overwrites the
+ * captured value. Because the client bootstrap (`src/client.tsx`)
+ * re-runs loaders instead of hydrating dehydrated loader state, the
+ * loader prop is `undefined` on every client render (the Issue #286
+ * diagnosis), so the capture is additionally seeded from the
+ * SSR-rendered bootstrap script in the current document — see
+ * `readMeasurementIdFromDocument`. Together the two sources
+ * preserve the ID across the client-side lifecycle so the script
+ * tag and the tracker survive a navigation out of `/admin/*`.
  */
 
 import { useEffect, useRef } from 'react';
@@ -57,12 +62,53 @@ export function __resetCapturedMeasurementIdForTests(): void {
 }
 
 /**
+ * Reads the measurement ID from the SSR-rendered bootstrap script.
+ *
+ * Why this exists (Issue #286 diagnosis). The root loader value only
+ * reaches components during SSR: on the client the `cloudflare:workers`
+ * stub returns `undefined`, and the client bootstrap in
+ * `src/client.tsx` re-runs loaders (the app does not hydrate
+ * dehydrated loader state), so the `measurementId` prop is `undefined`
+ * on every client-side render — the module-level write-once capture
+ * never received a value, and the tracker was inert. The SSR HTML
+ * itself does carry the ID (the `<script async src="…gtag/js?id=G-…">`
+ * tag rendered above), so the capture is seeded from that DOM node:
+ * it is SSR output, it only exists where GA is allowed to mount
+ * (never on `/admin/*` full loads), and reading it preserves the
+ * write-once contract — the ID that SSR rendered is exactly the ID
+ * that survives the client-side lifecycle.
+ */
+function readMeasurementIdFromDocument(): string | undefined {
+	if (typeof document === 'undefined') return undefined;
+	try {
+		const script = document.querySelector('script[src*="googletagmanager.com/gtag/js"]');
+		if (!script) return undefined;
+		const src = script.getAttribute('src') ?? '';
+		const id = new URL(src, document.baseURI).searchParams.get('id');
+		return id && id.trim().length > 0 ? id.trim() : undefined;
+	} catch {
+		return undefined;
+	}
+}
+
+/**
  * Returns the first non-empty measurement ID ever captured, or
  * `undefined` when no ID has been captured yet. Subsequent calls
  * never overwrite a previously captured value, so a falsy
  * client-side stub never wipes the SSR value.
+ *
+ * Two sources feed the write-once capture, first non-empty wins:
+ * the `value` argument (the SSR loader prop during SSR) and the
+ * SSR-rendered bootstrap script in the current document (the
+ * client-side path — see `readMeasurementIdFromDocument`).
  */
 export function captureMeasurementId(value: string | undefined): string | undefined {
+	if (!capturedMeasurementId) {
+		const fromDocument = readMeasurementIdFromDocument();
+		if (fromDocument) {
+			capturedMeasurementId = fromDocument;
+		}
+	}
 	if (value && value.trim().length > 0 && !capturedMeasurementId) {
 		capturedMeasurementId = value;
 	}

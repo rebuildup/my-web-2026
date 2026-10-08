@@ -274,6 +274,10 @@ function ToolRow({ tool }: { tool: PublicToolSummary }) {
 					fontSize: 'md',
 					color: 'text.muted',
 					lineHeight: '1.6',
+					// Issue #300: row descriptions ran the full 960px
+					// Container measure (~95 characters per line) while
+					// every other description on the site caps at 640px.
+					maxWidth: '640px',
 				})}
 			>
 				{tool.description}
@@ -346,6 +350,10 @@ function DisabledToolRow({ tool }: { tool: ManifestTool }) {
 					fontSize: 'md',
 					color: 'text.muted',
 					lineHeight: '1.6',
+					// Issue #300: row descriptions ran the full 960px
+					// Container measure (~95 characters per line) while
+					// every other description on the site caps at 640px.
+					maxWidth: '640px',
 				})}
 			>
 				{tool.description}

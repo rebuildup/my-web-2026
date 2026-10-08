@@ -175,6 +175,13 @@ function ChannelList({
 
 function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 	const days = daysSinceVerified(channel, now);
+	// Issue #300: `word-break: break-all` tore long links mid-segment
+	// (「my-web-2/**026**」 on a 375px line — a three-character orphan).
+	// A zero-width space after each "/" gives the line breaker a path-
+	// segment boundary to prefer; `overflow-wrap: break-word` stays as
+	// the fallback for a single segment wider than the column. The
+	// rendered wording is unchanged — ZWSP is invisible.
+	const breakableUrl = channel.url.replaceAll('/', '/\u200B');
 	const verifiedLabel =
 		Number.isFinite(days) && days >= 0
 			? `${days} 日前に検証 / verified ${days} day${days === 1 ? '' : 's'} ago`
@@ -255,7 +262,7 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 						fontWeight: '600',
 						color: 'text.accent',
 						textDecoration: 'none',
-						wordBreak: 'break-all',
+						overflowWrap: 'break-word',
 						_hover: { textDecoration: 'underline' },
 						_focusVisible: {
 							outline: '2px solid {colors.border.focus}',
@@ -263,7 +270,7 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 						},
 					})}
 				>
-					<span>{channel.url}</span>
+					<span>{breakableUrl}</span>
 					<span aria-hidden="true">→</span>
 				</a>
 				<span

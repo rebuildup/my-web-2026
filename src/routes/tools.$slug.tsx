@@ -201,7 +201,12 @@ function ToolRoute() {
 				data-tool-slug={tool.slug}
 				style={{
 					width: '100%',
-					height: 'calc(100vh - 64px)',
+					// Issue #300: the chrome above the embed measures
+					// 62px (PublicNav) + 27px (Breadcrumbs) = 89px at
+					// every desktop width after the nav fix — the old
+					// 64px reserve left a 25–46px scroll strip below
+					// the tool.
+					height: 'calc(100vh - 89px)',
 					border: '0',
 					display: 'block',
 				}}

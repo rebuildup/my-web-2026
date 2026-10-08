@@ -191,7 +191,19 @@ export function PublicNav({ currentPath }: PublicNavProps = {}) {
 						margin: '0',
 						padding: '0',
 						listStyle: 'none',
-						gap: '6',
+						// Issue #300: at `gap: 6` the six items need
+						// 931.5px but only 880.4px sit between the brand
+						// and the Container edge, so every item flex-
+						// shrank and the JP labels broke mid-word
+						// (「ホー/ム」). Below `lg` the decorative EN labels
+						// step out (they stay on the link's aria-label and
+						// in the mobile panel) so a row fits with room;
+						// at `lg`+ gap 3 brings the full roster onto one
+						// measured line (871.5px <= 880.4px). flex-wrap
+						// stays as the degradation path — whole items to a
+						// second row, never torn words.
+						gap: { md: '6', lg: '3' },
+						flexWrap: 'wrap',
 						alignItems: 'center',
 						md: { display: 'flex' },
 					})}
@@ -325,6 +337,10 @@ function NavLink({ item, isActive, onNavigate, variant = 'desktop' }: NavLinkPro
 				fontWeight: '600',
 				color: isActive ? 'text.default' : 'text.muted',
 				textDecoration: 'none',
+				// Issue #300: a nav label is a unit — it may move to
+				// the next row as a whole, but never break inside a
+				// Japanese word.
+				whiteSpace: 'nowrap',
 				paddingBlock: isMobile ? '3' : '1',
 				paddingInline: isMobile ? '2' : '0',
 				borderRadius: isMobile ? 'md' : '0',
@@ -354,6 +370,10 @@ function NavLink({ item, isActive, onNavigate, variant = 'desktop' }: NavLinkPro
 					letterSpacing: '0.04em',
 					textTransform: 'uppercase',
 					color: 'text.muted',
+					// Issue #300: decorative EN eyebrow in the desktop strip
+					// shows from `lg` (where the full roster fits one line);
+					// the mobile panel keeps it at every width.
+					display: isMobile ? 'inline' : { base: 'none', lg: 'inline' },
 				})}
 			>
 				{item.labelEn}

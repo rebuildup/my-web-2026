@@ -39,22 +39,32 @@ export const breadcrumbsChrome = css({
 	// grows with the screen reads as a header, not a navigation aid.
 	fontSize: 'xs',
 	lineHeight: '1.5',
-	// Tight padding so the chain does not claim a full band of
-	// vertical space.
-	paddingInline: '2',
 	paddingBlock: '1',
 	// Hairline bottom border separates the chain from the page
-	// content without giving it header chrome.
+	// content without giving it header chrome. The band stays
+	// full-bleed (this is the border owner) — only the chain text
+	// is put on the grid.
 	borderBlockEndWidth: '1px',
 	borderBlockEndStyle: 'solid',
 	borderBlockEndColor: 'border.subtle',
 	'& ol': {
+		// Issue #300: the chain hung at x=8 (`paddingInline: 2` on
+		// the full-width band) while every other public element
+		// starts at the Container content edge (x=160 at 1280px).
+		// The `<ol>` now reproduces the Container geometry exactly —
+		// max-width 1024, centred, responsive paddingInline 4/6/8 —
+		// so the first breadcrumb sits on the same left key line as
+		// the page titles. At ≤1024px the band equals the viewport
+		// and the padding alone matches the Container.
+		maxWidth: '1024px',
+		marginInline: 'auto',
+		paddingInline: { base: '4', md: '6', lg: '8' },
 		display: 'flex',
 		flexWrap: 'wrap',
 		alignItems: 'center',
 		gap: '1',
-		margin: '0',
-		padding: '0',
+		marginBlock: '0',
+		paddingBlock: '0',
 		listStyle: 'none',
 	},
 	'& li': {

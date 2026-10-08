@@ -359,7 +359,8 @@ Application:
 - Card h3: `xl` (24 px). One tier above body.
 - Footer `04`: `4xl` (64 px). Same display voice as h1; the page
   bookends Hero and Footer in `4xl`.
-- Footer identity (samuido): `2xl` (32 px). One tier below display.
+- Footer identity (`my-web-2026`): `2xl` (32 px). One tier below
+  display. (Issue #287 — was the personal handle.)
 
 ### Proximity — per-element `marginBlockStart`
 
@@ -432,3 +433,51 @@ next to the element that uses it:
   at narrower widths.
 - `accessibility-audit` §Reflow: at 320 CSS px everything stacks
   vertically — no horizontal scroll, no information loss.
+
+## Identity motif amendment (Issue #287)
+
+> Supersedes the hero / footer identity statements above: the
+> "Hero h1: `3xl/4xl`" application line (Typography — golden-ratio
+> scale) and the "no image-based titles" bullet under *What was
+> deliberately not changed*. The footer identity line is updated in
+> place to the platform name. Those bullets remain as historical
+> record of their pass; this amendment is the current direction for
+> the identity surface only. Everything else in the brief stays in
+> force.
+
+### What changed
+
+- **Hero h1 is the identity motif, not a name.** The single `<h1>`
+  renders `SiteMark` (`src/home/mark.tsx`) — the platform identity
+  mark ported from my-web-2025 (`src/components/icons/SamuidoIcon.tsx`
+  @ `27a2d02`) — and carries a visually-hidden accessible name
+  (`my-web-2026`). `section[aria-labelledby="hero-title"]` therefore
+  names the hero section `my-web-2026`. No personal name / handle /
+  real-name domain remains on the top page.
+- **The mark occupies the former display tier.** Sizing steps on the
+  canonical spacing tokens: 64px (`16`) height base, 96px (`24`) at
+  `lg` (width follows the artwork aspect) — where the `3xl/4xl`
+  type used to sit. The mono caption above it
+  ("my-web-2026 · v… — 2026 Preview") is the visible wordmark line
+  and keeps the 8px (token `2`) caption ↔ h1 tight cluster; the
+  h1 ↔ lead-body 40px (token `10`) separator is unchanged.
+- **Footer Identity column → Platform column.** Label `Platform`,
+  value `my-web-2026` at `2xl` (unchanged size/voice), version · MIT
+  line below (now `v… · MIT` without a duplicated platform name).
+- **In-site destinations only.** The hero secondary CTA and the
+  footer Index link point at `/portfolio`; the real-name-domain
+  links are gone from the top page.
+
+### Why the earlier rejections still hold
+
+- *References — no avatar placement*: still refers to GitHub's
+  avatar UI. `SiteMark` is the site's own logo — a flat geometric
+  mark, no photo, no person rendering, no background box.
+- *Avoid — no hero illustration / marketing deck*: the mark is a
+  static identity asset in the h1's place, not a marketing
+  illustration: no motion (hero stays static), no shadow, no
+  per-section accent, no new radius or elevation.
+- **Palette**: the mark keeps its original identity colors
+  (`#ffd627` body / `#fff` highlight / `#000` eyes) verbatim for
+  provenance. The single-accent rule governs UI accents (CTA, pill,
+  card hover) — it does not recolor the logo.

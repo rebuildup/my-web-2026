@@ -5,8 +5,9 @@ import { PACKAGE_VERSION } from './version';
 /**
  * Footer — fourth section of the home page.
  *
- * Hosts the public transition metadata for the 2025 / 2026 editions,
- * the canonical source link, and the operational entry points.
+ * Hosts the platform metadata (Issue #287 — the Identity column
+ * identifies the platform, not a person), the canonical source
+ * link, and the in-site index entry points.
  *
  * Issue #31 — editorial spread (fourth pass). The footer sits on
  * the same 12-column grid as the rest of the page, divided into

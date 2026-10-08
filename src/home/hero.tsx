@@ -1,5 +1,6 @@
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
+import { SiteMark } from './mark';
 import { PACKAGE_VERSION } from './version';
 
 /**
@@ -19,8 +20,11 @@ import { PACKAGE_VERSION } from './version';
  * below. The lead column carries caption → h1 → body → CTAs.
  *
  * Type and spacing jump at golden ratio:
- * - h1 climbs to `4xl` (64px) at `lg` and wider, a 4× jump over
- *   body `md` (16px). That contrast is the editorial voice.
+ * - The h1 renders the `SiteMark` identity motif (Issue #287) at
+ *   64px (`16`) base / 96px (`24`) height at `lg` — it replaces the
+ *   `3xl/4xl` name at the same hierarchy step, sized on the
+ *   canonical spacing tokens. The accessible name ("my-web-2026")
+ *   sits inside the h1 as visually-hidden text.
  * - caption ↔ h1 (8px), h1 ↔ lead body (40px), lead ↔ secondary
  *   (0, continuous prose), secondary ↔ CTAs (16px).
  * - Hero padding is `24/32` (96/128px) — the page-entry beat.
@@ -82,19 +86,15 @@ export function Hero() {
 						</span>
 						<h1
 							id="hero-title"
-							lang="ja"
+							lang="en"
 							className={css({
 								margin: '0',
 								marginBlockStart: '2',
-								fontFamily: 'heading',
-								fontSize: { base: '3xl', lg: '4xl' },
-								fontWeight: '700',
-								lineHeight: { base: '1.15', lg: '1.05' },
-								color: 'text.default',
-								letterSpacing: '-0.03em',
+								display: 'flex',
 							})}
 						>
-							木村友亮 / samuido
+							<SiteMark className={css({ height: { base: '16', lg: '24' }, width: 'auto' })} />
+							<span className={css({ srOnly: true })}>my-web-2026</span>
 						</h1>
 						<p
 							lang="ja"

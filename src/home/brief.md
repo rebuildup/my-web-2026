@@ -53,14 +53,16 @@
   hue.
 - Motion on hero copy. Marketing motion is reserved for capability
   card hover; the hero and footer stay static.
-- Dark-mode forcing in this design. Dark mode lands in a separate ticket;
-  this page only uses neutral tokens that compose in both modes.
+- Dark-mode forcing in this design. Dark mode follows
+  `prefers-color-scheme` (Issue #290); there is no manual override and
+  no theme toggle on this page.
 
 ## Color direction
 
-- **Default mode**: light only. The semantic layer
-  (`bg.canvas`, `bg.surface`, `text.default`, `text.muted`) is mode-
-  agnostic; dark mode binds the same keys later.
+- **Default mode**: follows the OS preference (Issue #290). The
+  semantic layer (`bg.canvas`, `bg.surface`, `text.default`,
+  `text.muted`) is appearance-aware — `base` binds light, `_dark`
+  binds dark, and consumers keep asking for the unconditional key.
 - **Temperature / saturation**: neutral cool. The brand blue stays a
   single accent for links and one CTA per section; never a section
   background.
@@ -118,9 +120,6 @@
 
 ## Explicitly unresolved
 
-- Dark mode is deferred to a follow-up ticket. The page only uses
-  semantic tokens so a later dark binding does not require changes
-  here.
 - i18n is deferred. Hero copy is bilingual (Japanese / English) inline
   in this release; full i18n lands when a second capability does.
 - Header global navigation is deferred. The home page does not

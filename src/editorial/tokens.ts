@@ -23,6 +23,14 @@ export const rawTokens = {
 		// High-chroma sky/cyan brand ramp (Issue #201).
 		// 500 is the visual signature; accessible text / CTA roles use
 		// the darker 700–800 steps through the semantic layer.
+		//
+		// 950 (Issue #290) is the dark counterpart of the 50 tint: a
+		// near-black step carrying only a sky whisper, so
+		// `accent.surface` reads as "a barely blue featured region" in
+		// both appearances. It is deliberately NOT Tailwind's
+		// sky-950 (`#082f49`) — that value is a saturated navy block,
+		// which on a neutral dark page reads as exactly the heavy
+		// colored surface the dark rework removed.
 		brand: {
 			50: { value: '#f0f9ff' },
 			100: { value: '#e0f2fe' },
@@ -32,14 +40,41 @@ export const rawTokens = {
 			700: { value: '#0369a1' },
 			800: { value: '#075985' },
 			900: { value: '#0c4a6e' },
+			950: { value: '#151b26' },
 		},
 		// Cooler slate neutrals keep the canvas crisp instead of grey-purple.
+		// This is the light appearance only: the slate ramp is
+		// blue-dominant at its dark end (`neutral.900` has B−R = 39),
+		// so painting dark surfaces with it produced a monotone navy
+		// page. The dark appearance uses `charcoal` instead.
 		neutral: {
 			0: { value: '#ffffff' },
 			50: { value: '#f8fafc' },
 			100: { value: '#f1f5f9' },
 			500: { value: '#64748b' },
 			900: { value: '#0f172a' },
+		},
+		// Near-neutral dark ladder (Issue #290 rework, Linear-referenced).
+		//
+		// Sampled from linear.app under `colorScheme: dark`: canvas
+		// `#08090a`, surfaces `#0f1011` / `#161718` / `#191a1b`,
+		// hairlines `#18191a` → `#202122` → `#37393a`, secondary text
+		// `#8a8f98`. Every one of those is close to achromatic — their
+		// hierarchy comes from near-black layers plus hairlines, with
+		// brand color reserved for accents.
+		//
+		// These steps keep a cool whisper (B−R ≈ 3–4, versus slate
+		// 900's 39) so the dark appearance still belongs to the same
+		// cool-slate product, but rests on neutral near-black layers.
+		// Step spacing mirrors the light ladder: 950 → 900 → 800 is the
+		// same "one notch per tier" relationship as 0 → 50 → 100, read
+		// upward (depth = a brighter layer) instead of downward.
+		charcoal: {
+			950: { value: '#0a0b0e' }, // canvas — page background
+			900: { value: '#111317' }, // raised surface
+			800: { value: '#191b21' }, // tinted separator + hairline divider
+			600: { value: '#6f747d' }, // emphasis rule (4.19 : 1 on canvas)
+			400: { value: '#8b9099' }, // secondary text (6.14 : 1 on canvas)
 		},
 		// Status colors (Issue #172).
 		// 50 = light-tinted surface fill, 300 = dark-mode foreground,

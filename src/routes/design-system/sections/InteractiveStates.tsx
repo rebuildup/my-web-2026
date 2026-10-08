@@ -120,8 +120,8 @@ type OverrideMap = Record<State, CSSProperties>;
  */
 const primaryOverrides: OverrideMap = {
 	default: {},
-	hover: { backgroundColor: 'var(--colors-accent-interactive-base)' },
-	pressed: { backgroundColor: 'var(--colors-accent-interactive-base)' },
+	hover: { backgroundColor: 'var(--colors-accent-interactive)' },
+	pressed: { backgroundColor: 'var(--colors-accent-interactive)' },
 	focus: {
 		outline: '2px solid var(--colors-border-focus)',
 		outlineOffset: '2px',

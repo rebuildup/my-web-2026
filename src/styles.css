@@ -19,6 +19,65 @@
 	:where(h1, h2, h3) {
 		font-family: var(--fonts-heading);
 	}
+
+	/*
+	 * Dark theme (Issue #290).
+	 *
+	 * `color-scheme` tells the user agent which appearances this
+	 * document actually supports, so everything the UA paints itself
+	 * — scrollbars, form controls, text selection, the default canvas
+	 * and caret — switches together with the Panda `_dark` bindings
+	 * instead of staying light underneath a dark page. The value is
+	 * driven by the same media query as the `dark` condition in
+	 * `panda.config.ts`; there is no toggle (a theme switcher is a
+	 * separate ticket).
+	 *
+	 * `body` also paints `bg.canvas` explicitly. Page components set
+	 * their own `bg.canvas` container, but anything outside those
+	 * containers (the margin around a max-width column, the strip
+	 * below the last section) would otherwise fall back to the UA
+	 * canvas, which is a neutral dark rather than the editorial
+	 * `#020617` and reads as a seam in dark mode. In light mode the
+	 * token resolves to `#ffffff`, i.e. exactly the UA default, so
+	 * this rule is visually a no-op for light visitors.
+	 */
+	:root {
+		color-scheme: light;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root {
+			color-scheme: dark;
+		}
+	}
+
+	body {
+		background-color: var(--colors-bg-canvas);
+	}
+
+	/*
+	 * Access-counter digit bitmaps (Issue #290).
+	 *
+	 * `scripts/generate-counter-digits.mjs` bakes the glyphs in
+	 * `#0b1020` so a rasterised digit matches the light `text.default`.
+	 * The WebPs have a transparent background and sit directly on the
+	 * page, so in dark mode that colour lands on the near-black canvas
+	 * `#0a0b0e` at 1.04 : 1 and the odometer disappears.
+	 *
+	 * The glyph is a single-colour alpha mask, so inverting it is an
+	 * exact appearance swap rather than a recolour-by-eye: `invert`
+	 * maps `#0b1020` to `#f4efdf` and `saturate(0)` drops the warm
+	 * cast, landing on a neutral near-white that sits correctly on the
+	 * dark canvas. A second baked variant (`<picture>` + media query)
+	 * is the follow-up if the glyph ever carries more than one colour
+	 * — see `skills/dark-mode-design`, "Treat assets as part of the
+	 * theme".
+	 */
+	@media (prefers-color-scheme: dark) {
+		:where([data-testid="home-access-counter-tile"]) img {
+			filter: invert(1) saturate(0);
+		}
+	}
 }
 
 /*

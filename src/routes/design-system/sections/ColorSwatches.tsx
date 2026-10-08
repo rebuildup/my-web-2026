@@ -4,20 +4,30 @@ import { rawTokens } from '../../../editorial/tokens';
 
 /**
  * ColorSwatches — every editorial semantic token rendered in a 4-column
- * grid, with each tile displayed against BOTH a light surface (`bg.canvas`)
- * and a dark surface (`bg.inverse`).
+ * grid as a side-by-side light / dark pair.
  *
- * The light / dark pair is the educational point of the section:
+ * The pair is the educational point of the section:
  *
- *   - `accent.*` semantic tokens carry `{ base, _dark }` values per
- *     `src/editorial/semantic-tokens.ts`. The dark variant only
- *     activates when a dark mode is bound (currently deferred per
- *     `colors.md`); on this page we render the dark variant explicitly
- *     in the right pane so the visitor can see the contrast pair
- *     regardless of the current OS theme.
- *   - `bg.*` / `text.*` / `border.*` are mode-agnostic today; they
- *     compose correctly in either mode. They are shown here so a
- *     designer can audit the full semantic surface in one glance.
+ *   - Every semantic token carries `{ value: { base, _dark } }` per
+ *     `src/editorial/semantic-tokens.ts`, and `panda.config.ts` binds
+ *     `_dark` to `@media (prefers-color-scheme: dark)`. The left pane
+ *     paints the `base` value on the light canvas; the right pane
+ *     paints the `_dark` value on the dark canvas. That is exactly
+ *     what a visitor sees in each appearance, side by side, whatever
+ *     OS setting the page itself is currently being browsed with.
+ *   - A token that declares no `_dark` binding throws here, so this
+ *     section doubles as the regression guard for the Issue #290
+ *     token audit.
+ *
+ * The panes are painted from the resolved hex values instead of from
+ * `bg.inverse` / `text.inverse`. Those two tokens are a
+ * self-contained inverse pair that does NOT follow the appearance, so
+ * building the "dark" pane out of them only ever *simulated* a dark
+ * surface (the fake removed by Issue #290). Reading the hexes also
+ * keeps the comparison stable when the page itself flips: under
+ * `prefers-color-scheme: dark` the surrounding chrome switches
+ * through the real tokens while both panes keep showing both
+ * appearances.
  *
  * The token path is resolved through `semantic-tokens.ts` first and
  * only then dereferenced into `tokens.ts`. The viewer therefore has
@@ -61,6 +71,11 @@ const TOKENS: ReadonlyArray<TokenEntry> = [
 		path: 'bg.accent',
 		label: 'Accent fill',
 		role: 'Primary CTA idle',
+	},
+	{
+		path: 'bg.inverse',
+		label: 'Inverse',
+		role: 'Inverse panel (static pair)',
 	},
 	// Text (text.*)
 	{
@@ -149,9 +164,7 @@ const TOKENS: ReadonlyArray<TokenEntry> = [
 ];
 
 type SemanticLeaf = {
-	value?: string;
-	base?: { value: string };
-	_dark?: { value: string };
+	value?: string | { base?: string; _dark?: string };
 };
 
 function rawRefFromSemanticValue(value: string): string {
@@ -162,7 +175,13 @@ function rawRefFromSemanticValue(value: string): string {
 	return match[1];
 }
 
-function resolveSemanticRefs(path: string): { lightRef: string; darkRef: string | null } {
+/**
+ * Resolve a semantic path to its raw palette reference in each
+ * appearance. Both bindings are mandatory: Issue #290's audit rule is
+ * that every semantic token carries a meaningful `_dark` value, and
+ * this function is where that rule is enforced for the showcase.
+ */
+function resolveSemanticRefs(path: string): { lightRef: string; darkRef: string } {
 	let node: unknown = semanticTokens.colors;
 	for (const segment of path.split('.')) {
 		if (!node || typeof node !== 'object' || !(segment in node)) {
@@ -171,15 +190,17 @@ function resolveSemanticRefs(path: string): { lightRef: string; darkRef: string 
 		node = (node as Record<string, unknown>)[segment];
 	}
 
-	const leaf = node as SemanticLeaf;
-	const lightValue = leaf.value ?? leaf.base?.value;
-	if (!lightValue) {
-		throw new Error(`Semantic color token has no base value: ${path}`);
+	const value = (node as SemanticLeaf).value;
+	if (!value || typeof value === 'string') {
+		throw new Error(`Semantic color token must declare { base, _dark }: ${path}`);
+	}
+	if (!value.base || !value._dark) {
+		throw new Error(`Semantic color token has no _dark binding: ${path}`);
 	}
 
 	return {
-		lightRef: rawRefFromSemanticValue(lightValue),
-		darkRef: leaf._dark ? rawRefFromSemanticValue(leaf._dark.value) : null,
+		lightRef: rawRefFromSemanticValue(value.base),
+		darkRef: rawRefFromSemanticValue(value._dark),
 	};
 }
 
@@ -190,6 +211,27 @@ function resolveHex(ref: string): string {
 		| undefined;
 	return palette?.[step as string]?.value ?? '';
 }
+
+/**
+ * Pane chrome for each appearance, sourced through the same
+ * semantic → raw resolution every swatch uses: the surface the pane
+ * sits on (`bg.canvas`), the text painted on it (`text.default`) and
+ * the swatch hairline (`border.subtle`). Resolved once so the light
+ * pane and the dark pane are guaranteed to be a faithful rendering of
+ * the two appearances rather than a hand-picked "dark-ish" colour.
+ */
+const PANE = {
+	light: {
+		surface: resolveHex(resolveSemanticRefs('bg.canvas').lightRef),
+		label: resolveHex(resolveSemanticRefs('text.default').lightRef),
+		border: resolveHex(resolveSemanticRefs('border.subtle').lightRef),
+	},
+	dark: {
+		surface: resolveHex(resolveSemanticRefs('bg.canvas').darkRef),
+		label: resolveHex(resolveSemanticRefs('text.default').darkRef),
+		border: resolveHex(resolveSemanticRefs('border.subtle').darkRef),
+	},
+} as const;
 
 export function ColorSwatches() {
 	return (
@@ -216,8 +258,7 @@ export function ColorSwatches() {
 						label={entry.label}
 						role={entry.role}
 						lightHex={resolveHex(lightRef)}
-						darkHex={darkRef ? resolveHex(darkRef) : null}
-						hasDark={darkRef !== null}
+						darkHex={resolveHex(darkRef)}
 					/>
 				);
 			})}
@@ -230,11 +271,10 @@ interface TileProps {
 	label: string;
 	role: string;
 	lightHex: string;
-	darkHex: string | null;
-	hasDark: boolean;
+	darkHex: string;
 }
 
-function SwatchTile({ path, label, role, lightHex, darkHex, hasDark }: TileProps) {
+function SwatchTile({ path, label, role, lightHex, darkHex }: TileProps) {
 	return (
 		<li
 			className={css({
@@ -247,7 +287,9 @@ function SwatchTile({ path, label, role, lightHex, darkHex, hasDark }: TileProps
 				overflow: 'hidden',
 			})}
 		>
-			{/* Header — always on the page surface, not on the swatch surface. */}
+			{/* Header — sits on the page surface and follows the current
+			    appearance through the real tokens: this is the part of the
+			    tile that flips when the visitor's OS goes dark. */}
 			<div
 				className={css({
 					padding: '3',
@@ -289,19 +331,20 @@ function SwatchTile({ path, label, role, lightHex, darkHex, hasDark }: TileProps
 					{role}
 				</span>
 			</div>
-			{/* Swatch pane pair — the left half paints the `base` value onto `bg.canvas`,
-			    the right half paints the `_dark` value onto `bg.inverse`. When the token
-			    is mode-agnostic the right pane shows the same `base` value with the
-			    same hex annotation so the visitor sees "no dark variant declared". */}
+			{/* Swatch pane pair — the left half paints the token's `base`
+			    value onto the light canvas, the right half paints its
+			    `_dark` value onto the dark canvas. Both pane surfaces come
+			    from `bg.canvas`, so this is the real appearance pair and not
+			    an `bg.inverse` simulation of one. */}
 			<div
 				className={css({
 					display: 'grid',
 					gridTemplateColumns: '1fr 1fr',
-					minHeight: '20',
+					minHeight: '24',
 				})}
 			>
-				<SwatchPane label="light" hex={lightHex} variant="light" hasDark={hasDark} />
-				<SwatchPane label="dark" hex={darkHex ?? lightHex} variant="dark" hasDark={hasDark} />
+				<SwatchPane variant="light" hex={lightHex} />
+				<SwatchPane variant="dark" hex={darkHex} />
 			</div>
 			{/* Token hex readout — sits below the swatch panes on the page surface. */}
 			<div
@@ -325,34 +368,30 @@ function SwatchTile({ path, label, role, lightHex, darkHex, hasDark }: TileProps
 				>
 					{lightHex}
 				</code>
-				{hasDark && darkHex ? (
-					<code
-						className={css({
-							fontFamily: 'mono',
-							fontSize: 'xs',
-							color: 'text.muted',
-						})}
-					>
-						→ {darkHex}
-					</code>
-				) : null}
+				<code
+					className={css({
+						fontFamily: 'mono',
+						fontSize: 'xs',
+						color: 'text.muted',
+					})}
+				>
+					→ {darkHex}
+				</code>
 			</div>
 		</li>
 	);
 }
 
-function SwatchPane({
-	label,
-	hex,
-	variant,
-	hasDark,
-}: {
-	label: 'light' | 'dark';
-	hex: string;
-	variant: 'light' | 'dark';
-	hasDark: boolean;
-}) {
-	const isDark = variant === 'dark';
+/**
+ * One half of the comparison. `variant` selects the appearance being
+ * staged; `PANE` supplies that appearance's canvas, label colour and
+ * hairline. Those colours are inlined as hex on purpose: they must
+ * describe one *fixed* appearance, and a semantic token would follow
+ * the page's own theme instead — which is exactly the fake this
+ * section used to depend on.
+ */
+function SwatchPane({ variant, hex }: { variant: 'light' | 'dark'; hex: string }) {
+	const pane = PANE[variant];
 	return (
 		<div
 			className={css({
@@ -362,8 +401,8 @@ function SwatchPane({
 				flexDirection: 'column',
 				justifyContent: 'flex-end',
 				gap: '1',
-				backgroundColor: isDark ? 'bg.inverse' : 'bg.canvas',
 			})}
+			style={{ backgroundColor: pane.surface }}
 		>
 			<div
 				aria-hidden="true"
@@ -375,15 +414,15 @@ function SwatchPane({
 					fontSize: 'xs',
 					letterSpacing: '0.06em',
 					textTransform: 'uppercase',
-					color: isDark ? 'text.inverse' : 'text.muted',
 				})}
+				style={{ color: pane.label }}
 			>
-				{label}
+				{variant}
 			</div>
-			{/* Token swatch — the actual semantic token value rendered as the
-			    swatch fill. We inline the hex (NOT a raw color literal as a
-			    feature decision) so the demo shows the same color the token
-			    resolves to. */}
+			{/* Token swatch — the semantic token's own resolved value for this
+			    appearance. The hex is inlined (a deliberate showcase decision,
+			    not a component-level raw colour) so the pane reports exactly
+			    what the token resolves to in that mode. */}
 			<div
 				aria-hidden="true"
 				className={css({
@@ -391,21 +430,13 @@ function SwatchPane({
 					borderRadius: 'sm',
 					borderWidth: '1px',
 					borderStyle: 'solid',
-					borderColor: isDark ? 'border.strong' : 'border.subtle',
 				})}
 				data-token-swatch
 				data-variant={variant}
-				data-has-dark={hasDark}
 				data-hex={hex}
-				style={{ backgroundColor: hex }}
+				style={{ backgroundColor: hex, borderColor: pane.border }}
 			/>
-			<code
-				className={css({
-					fontFamily: 'mono',
-					fontSize: 'xs',
-					color: isDark ? 'text.inverse' : 'text.muted',
-				})}
-			>
+			<code className={css({ fontFamily: 'mono', fontSize: 'xs' })} style={{ color: pane.label }}>
 				{hex}
 			</code>
 		</div>

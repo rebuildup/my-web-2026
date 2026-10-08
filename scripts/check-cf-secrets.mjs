@@ -37,6 +37,7 @@ import { fileURLToPath } from 'node:url';
 import { inspectBuildOutput } from './_cf-build-output.mjs';
 import { AUDIT_ONLY_SECRETS, REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
 import { ACCOUNT_ID, WORKER_NAME } from './_cloudflare-identity.mjs';
+import { listWorkerSecretNameList } from './_worker-secrets.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
@@ -212,36 +213,6 @@ function buildWranglerDiagnosticEnv(sourceEnv = process.env) {
 	return env;
 }
 
-/** Minimal Cloudflare API GET returning parsed JSON. */
-async function cfJson(method, path) {
-	return new Promise((resolvePromise, rejectPromise) => {
-		const req = httpsRequest(
-			{
-				method,
-				hostname: 'api.cloudflare.com',
-				path,
-				headers: { Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}` },
-			},
-			(res) => {
-				let raw = '';
-				res.on('data', (c) => {
-					raw += c;
-					if (raw.length > HTTPS_MAX_RESPONSE_BYTES) req.destroy();
-				});
-				res.on('end', () => {
-					try {
-						resolvePromise(JSON.parse(raw));
-					} catch (cause) {
-						rejectPromise(new Error(`Cloudflare API ${path} returned non-JSON: ${cause.message}`));
-					}
-				});
-			},
-		);
-		req.on('error', rejectPromise);
-		req.end();
-	});
-}
-
 async function listCloudflareWorkerSecretNames() {
 	// Issue #247: the live Worker contract is read over the Cloudflare
 	// public API rather than by spawning a secret-listing CLI. Running
@@ -251,21 +222,10 @@ async function listCloudflareWorkerSecretNames() {
 	if (typeof token !== 'string' || token.length === 0) return null;
 	// Identity is validated once in `main`, before the dry-run branch,
 	// so a mis-set account override cannot reach a live call.
-	const accountId = ACCOUNT_ID;
-	const workerName = WORKER_NAME;
-	const path = `/accounts/${accountId}/workers/scripts/${workerName}/secrets`;
-	const response = await cfJson('GET', path);
-	const list = Array.isArray(response?.result)
-		? response.result
-		: Array.isArray(response)
-			? response
-			: [];
-	// Normalise: the API may return objects with `name`/`text` or bare
-	// strings depending on the endpoint version.
-	return list
-		.map((entry) => (typeof entry === 'string' ? entry : entry?.name))
-		.filter((name) => typeof name === 'string' && name.length > 0)
-		.sort();
+	// The shared adapter checks HTTP status and provider success before
+	// reading the inventory. An API failure must never become an empty
+	// list that misreports all of the live Worker's secrets as missing.
+	return listWorkerSecretNameList();
 }
 
 function httpsJson({ method, hostname, port, path, headers, body }) {

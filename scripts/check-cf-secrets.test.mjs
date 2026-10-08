@@ -96,7 +96,11 @@ function runInIsolatedRepo(
 	// imported modules, so the isolated repo needs them too. A missing
 	// one surfaces as ERR_MODULE_NOT_FOUND rather than a contract
 	// failure, which is how a new shared module gets forgotten here.
-	for (const dep of ['_cloudflare-identity.mjs', '_cloudflare-contract.mjs']) {
+	for (const dep of [
+		'_cloudflare-identity.mjs',
+		'_cloudflare-contract.mjs',
+		'_worker-secrets.mjs',
+	]) {
 		writeFileSync(join(scriptsDir, dep), readFileSync(resolve(HERE, dep), 'utf8'));
 	}
 

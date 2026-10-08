@@ -35,7 +35,7 @@ layer is the contract; the raw layer is implementation.
 | --- | --- | --- |
 | `accent.surface` | Hero / feature card background | Subtle tinted container that says "this is the featured region" without competing with the primary CTA. |
 | `accent.interactive` | CTA hover / pressed / focus fill | The "this button is being acted on" color. Distinct from `bg.accent` (idle CTA) so the interaction reads. |
-| `accent.positive` | Success / live status | Green status indicator. Foreground contrast ≥ 4.5:1 against `bg.canvas` in **both** appearances (`#ffffff` light / `#020617` dark). |
+| `accent.positive` | Success / live status | Green status indicator. Foreground contrast ≥ 4.5:1 against `bg.canvas` in **both** appearances (`#ffffff` light / `#0a0b0e` dark, `charcoal.950`). |
 | `accent.negative` | Error / unreachable status | Red status indicator. Same contrast guarantee as `accent.positive`. |
 | `accent.warning` | Degraded status | Amber status indicator. Same contrast guarantee. |
 | `accent.category.design` | Design content identifier | Pink. Used as left-border on portfolio cards whose first facet is `design`. |

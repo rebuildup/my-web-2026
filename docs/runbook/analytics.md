@@ -93,18 +93,38 @@ To wire GA4 into production for the first time:
    segment reflects the current Infisical `prod` value. **Do not
    paste the id into chat or logs.**
 
-   Status-only placeholder check (Issue #286) — tests for the known
-   `G-PLACEHOLDER000` seed WITHOUT ever printing the id itself. As
-   long as the placeholder is deployed, GA4 silently discards every
-   hit:
+   Status-only placeholder check (Issue #286, hardened) — decides
+   whether the real GA4 id is deployed WITHOUT ever printing the id
+   itself (AGENTS.md §4: status-only output). As long as the
+   placeholder is deployed, GA4 silently discards every hit.
+
+   Do NOT use a bare `grep -c PLACEHOLDER000` as the verdict: an HTTP
+   error page also yields 0 matches, which would read as "real id
+   deployed". The check below is the only valid decision procedure —
+   it fails on any non-200 status, and declares "real ID deployed"
+   ONLY when the status is 200 AND the placeholder is absent AND the
+   gtag loader is present:
 
    ```bash
-   curl -sS https://rebuildup.dev/ -o /tmp/prod.html
-   grep -c PLACEHOLDER000 /tmp/prod.html
-   # 1 (or more) → placeholder still deployed → step 2 above is
-   #               still pending → pageviews are discarded.
-   # 0           → a real G-XXXXXXX is deployed (do not print it).
+   code=$(curl -sS -o /tmp/prod.html -w '%{http_code}' https://rebuildup.dev/)
+   placeholder=$(grep -c PLACEHOLDER000 /tmp/prod.html || true)
+   gtag=$(grep -c 'gtag/js?id=G-' /tmp/prod.html || true)
+
+   if [ "$code" != "200" ]; then
+     echo "FAIL: status $code (not 200) — inconclusive, re-run; decide nothing"
+     exit 1
+   elif [ "$placeholder" -gt 0 ]; then
+     echo "status 200, placeholder still deployed → step 2 above still pending (pageviews discarded)"
+   elif [ "$gtag" -gt 0 ]; then
+     echo "status 200, placeholder absent, gtag loader present → real ID deployed (value not printed)"
+   else
+     echo "FAIL: status 200 but neither placeholder nor gtag loader found — investigate, decide nothing"
+     exit 1
+   fi
    ```
+
+   The echo lines print counts and status only — never the
+   measurement id.
 
    ```bash
    curl -sS https://rebuildup.dev/admin/login | grep googletagmanager

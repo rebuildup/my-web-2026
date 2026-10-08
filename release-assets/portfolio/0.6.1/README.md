@@ -48,14 +48,22 @@ release-assets/portfolio/0.6.1/
 
 Adding a new candidate requires:
 
-1. Drop the asset file under `<candidate>/<​filename>`.
-2. Append an entry to `manifest.json#assets`.
-3. Re-run the driver's `--operation=verify --execute --environment=local`
+1. **Add the candidate ID to the code allowlist first**: append it to
+   `ALLOWED_CANDIDATE_IDS` in `scripts/publish-portfolio-production.mjs`
+   (module-level `Set`, near the top of the file). `validateManifest`
+   rejects any `manifest.assets[i].candidate_id` outside this set, so
+   **no validation step below can pass until the ID is in
+   `ALLOWED_CANDIDATE_IDS`**.
+2. Drop the asset file under `<candidate>/<​filename>`.
+3. Append an entry to `manifest.json#assets`.
+4. Re-run the driver's `--operation=verify --execute --environment=local`
    against the candidate's local D1 + local R2.
-4. Re-run `--operation=prepare --dry-run --environment=local` to confirm
+5. Re-run `--operation=prepare --dry-run --environment=local` to confirm
    dry-run path.
 
-The driver rejects any candidate id NOT in the manifest allowlist.
+The driver enforces two allowlists: `ALLOWED_CANDIDATE_IDS` (code,
+checked by `validateManifest`) and the ids present in
+`manifest.json#assets`. A candidate id missing from either is rejected.
 
 ## Source provenance (per asset)
 

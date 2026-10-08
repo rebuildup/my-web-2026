@@ -63,9 +63,10 @@
 	 * containers (the margin around a max-width column, the strip
 	 * below the last section) would otherwise fall back to the UA
 	 * canvas, which is a neutral dark rather than the editorial
-	 * `#020617` and reads as a seam in dark mode. In light mode the
-	 * token resolves to `#ffffff`, i.e. exactly the UA default, so
-	 * this rule is visually a no-op for light visitors.
+	 * `#0a0b0e` (`charcoal.950`, the post-#290 dark canvas) and reads
+	 * as a seam in dark mode. In light mode the token resolves to
+	 * `#ffffff`, i.e. exactly the UA default, so this rule is
+	 * visually a no-op for light visitors.
 	 */
 	:root {
 		color-scheme: light;

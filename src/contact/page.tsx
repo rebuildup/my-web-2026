@@ -273,7 +273,13 @@ function ChannelRow({ channel, now }: { channel: Channel; now: number }) {
 						},
 					})}
 				>
-					<span>
+					<span
+						// Flex item inside the inline-flex anchor: a single
+						// over-long URL segment must be allowed to shrink
+						// below its min-content width, or the row overflows
+						// at 375px instead of wrapping at a `<wbr>`.
+						className={css({ minWidth: '0' })}
+					>
 						{urlSegments.map((segment, index) => (
 							<Fragment key={`${index}:${segment}`}>
 								{index > 0 ? (

@@ -1,0 +1,39 @@
+# .config/wt.toml — my-web-2026 project Worktrunk configuration
+#
+# Committed so a fresh environment can reconstruct per-worktree dev-server
+# behaviour from repository state alone (worktree-workflow skill: never rely
+# on user-level Worktrunk config alone). Owned by Issue #284.
+#
+# Port allocation: `{{ branch | hash_port }}` derives a deterministic host
+# port per branch, so parallel worktrees never share a port. hash-based
+# allocation is not a uniqueness guarantee — the dev server therefore starts
+# with `--strictPort`: a collision fails loudly (server exits, `wt list` URL
+# stays dim) instead of silently serving a different worktree.
+
+# A fresh worktree has no node_modules, no generated Panda CSS runtime, no
+# checked-out submodules, and an empty local D1 (`.tmp/d1state` is
+# per-worktree). Steps run in order; keys within a block run concurrently,
+# so install must finish before the migration driver (which needs
+# node_modules) runs. `git submodule update --init` is mandatory: with empty
+# submodule dirs, `pnpm run build` triggers the runaway process spawn of
+# Issue #269.
+[[pre-start]]
+install = "pnpm install"
+submodules = "git submodule update --init --recursive"
+
+[[pre-start]]
+migrate = "pnpm run db:migrate:apply:local"
+
+# Long-running dev server tied to the worktree lifecycle: `wt step tether`
+# kills the whole process tree when the worktree is removed, so no orphan
+# process keeps owning a stale port. The hook runs with the new worktree as
+# cwd, so it serves THAT checkout.
+#
+# infisical injects the dev-environment secrets that `pnpm dev`
+# (scripts/_run-dev.mjs) would otherwise wrap in; the port flags are passed
+# straight to vite so the hash_port allocation actually takes effect.
+[post-start]
+server = "wt step tether -- pnpm exec infisical run --env dev -- pnpm exec vite dev --port {{ branch | hash_port }} --strictPort"
+
+[list]
+url = "http://localhost:{{ branch | hash_port }}"

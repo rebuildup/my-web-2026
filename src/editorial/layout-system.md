@@ -95,9 +95,12 @@ The three renderings of this one rule:
 - The home hero (Issue #295) — the same grid, verbatim: the eyebrow
   line and the h1 sit in the **title span**, the right span starts
   with the lead description.
-- Label/value rows inside a content span (contact channel rows,
-  capability cards, status rows) — same 4/8 split *inside* their
-  column so the inner label axis lines up with the page grid.
+- Label/value rows inside a content span — contact channel rows use
+  the same 4/8 split *inside* their column so the inner label axis
+  lines up with the page grid; wider tables (home status rows) size
+  the label column to its content and give the rest to the detail
+  column (`minmax(0, auto) minmax(0, 1fr) auto`), keeping all three
+  cells on one line at the Container width.
 
 **Key lines to verify with `boundingBox()`** (they are the grid, made
 visible):

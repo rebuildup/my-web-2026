@@ -5,10 +5,11 @@ import { PACKAGE_VERSION } from './version';
 /**
  * Hero — top section of the home page.
  *
- * Carries the single `<h1>` on the page and identifies the person
- * behind the platform before describing the migration state. The
- * public transition link to the 2025 edition is primary; source is
- * available as a secondary action.
+ * Carries the single `<h1>` on the page and identifies the platform
+ * before describing the migration state (Issue #287 — the h1 is the
+ * site identity motif, not a personal name). In-site destinations
+ * (About, Portfolio) are the primary actions; source is available as
+ * a secondary action.
  *
  * Issue #31 — editorial spread (fourth pass). The Hero adopts the
  * 4/12 (rail) + 8/12 (lead) grid split that the body sections use in
@@ -119,8 +120,8 @@ export function Hero() {
 								color: 'text.muted',
 							})}
 						>
-							2025 edition は引き続き yusuke-kim.com で公開中です。この 2026 edition は移行途中の
-							public preview です。
+							この 2026 edition は移行途中の public preview
+							です。コンテンツは段階的に公開していきます。
 						</p>
 						<div
 							className={css({
@@ -156,9 +157,7 @@ export function Hero() {
 								About me / 自己紹介 →
 							</a>
 							<a
-								href="https://yusuke-kim.com"
-								rel="noopener noreferrer"
-								target="_blank"
+								href="/portfolio"
 								className={css({
 									display: 'inline-flex',
 									alignItems: 'center',
@@ -183,7 +182,7 @@ export function Hero() {
 									},
 								})}
 							>
-								<span lang="en">2025 edition</span> を見る
+								<span lang="en">Portfolio</span> を見る
 							</a>
 							<a
 								href="https://github.com/rebuildup/my-web-2026"

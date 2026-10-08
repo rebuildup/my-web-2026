@@ -83,7 +83,7 @@ export function Footer() {
 								textTransform: 'uppercase',
 							})}
 						>
-							Identity
+							Platform
 						</span>
 						<p
 							className={css({
@@ -96,7 +96,7 @@ export function Footer() {
 								letterSpacing: '-0.02em',
 							})}
 						>
-							samuido
+							my-web-2026
 						</p>
 						<p
 							className={css({
@@ -107,7 +107,7 @@ export function Footer() {
 								color: 'text.muted',
 							})}
 						>
-							my-web-2026 · v{PACKAGE_VERSION} · MIT
+							v{PACKAGE_VERSION} · MIT
 						</p>
 					</div>
 					<div
@@ -160,9 +160,7 @@ export function Footer() {
 							</li>
 							<li>
 								<a
-									href="https://yusuke-kim.com"
-									rel="noopener noreferrer"
-									target="_blank"
+									href="/portfolio"
 									className={css({
 										color: 'text.accent',
 										textDecoration: 'none',
@@ -173,7 +171,7 @@ export function Footer() {
 										},
 									})}
 								>
-									2025 edition
+									Portfolio
 								</a>
 							</li>
 						</ul>

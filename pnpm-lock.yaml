@@ -102,6 +102,9 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
+patchedDependencies:
+  cf@1.0.0-beta.12: 9763863f8a33bf958808b831987997077da60a957922451e5b00584caf605bca
+
 importers:
 
   .:
@@ -178,7 +181,7 @@ importers:
         version: 5.2.0(supports-color@10.2.2)(vite@7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.33.0))
       cf:
         specifier: 1.0.0-beta.12
-        version: 1.0.0-beta.12(@types/node@22.20.2)
+        version: 1.0.0-beta.12(patch_hash=9763863f8a33bf958808b831987997077da60a957922451e5b00584caf605bca)(@types/node@22.20.2)
       cross-env:
         specifier: ^7.0.3
         version: 7.0.3
@@ -6046,7 +6049,7 @@ snapshots:
 
   caniuse-lite@1.0.30001810: {}
 
-  cf@1.0.0-beta.12(@types/node@22.20.2):
+  cf@1.0.0-beta.12(patch_hash=9763863f8a33bf958808b831987997077da60a957922451e5b00584caf605bca)(@types/node@22.20.2):
     dependencies:
       '@cloudflare/build-output-utils': 0.8.5
       '@cloudflare/codemods': 0.4.0

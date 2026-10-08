@@ -111,5 +111,8 @@
 		"vite": "^7.1.0",
 		"vitest": "~4.1.0",
 		"wrangler": "^4.131.0"
+	},
+	"patchedDependencies": {
+		"cf@1.0.0-beta.12": "patches/cf@1.0.0-beta.12.patch"
 	}
 }

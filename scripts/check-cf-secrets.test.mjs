@@ -131,6 +131,7 @@ https.request = (options, callback) => {
   request.end = () => queueMicrotask(() => {
     const response = new EventEmitter();
     response.statusCode = 200;
+    response.setEncoding = () => {};
     callback(response);
     const data = options.hostname === 'api.cloudflare.com'
       ? { result: names.map(name => ({ name })) }

@@ -19,6 +19,32 @@
 	:where(h1, h2, h3) {
 		font-family: var(--fonts-heading);
 	}
+
+	/*
+	 * Japanese line breaking (Issue #300).
+	 *
+	 * `word-break: normal` first, then `auto-phrase`: browsers that
+	 * implement the CSS Text 4 value perform language-specific
+	 * phrase analysis so Japanese text breaks at phrase boundaries
+	 * instead of mid-katakana (「プラットフォ|ーム」→
+	 * 「プラットフォーム」|「の状態」). Browsers that do not know the
+	 * keyword drop the second declaration at parse time and keep
+	 * `normal` — rendering is unchanged from before the audit.
+	 *
+	 * `text-wrap: pretty` avoids one- or two-character orphan last
+	 * lines in prose. Titles override it with `text-wrap: balance`
+	 * where they render locally (SectionHeading).
+	 *
+	 * Components that legitimately need freer breaking (mono token
+	 * names, long identifiers, URLs) keep their local
+	 * `word-break: break-all` — utilities layer wins over this base
+	 * layer.
+	 */
+	:where(body) {
+		word-break: normal;
+		word-break: auto-phrase;
+		text-wrap: pretty;
+	}
 }
 
 /*

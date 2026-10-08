@@ -58,6 +58,27 @@ export const Route = createRootRoute({
 		// streams in. The two `preconnect`s cut the TLS handshake off
 		// the critical font path.
 		links: [
+			// Default favicon (Issue #285): a pure-blue circle served
+			// from `public/favicon.svg` (relative to the origin root).
+			//
+			// Declared in this `head()`, not in the `<head>` JSX of
+			// `RootComponent`, so it flows through TanStack Router's
+			// head merge and every page inherits it — including the
+			// routes that declare their own `head()`. That is what
+			// makes a per-page icon expressible later: a route adds
+			// its own `rel: 'icon'` entry in its `head()` links.
+			//
+			// Measured merge semantics (see Issue #285 PR for the
+			// curl evidence): `buildTagsFromMatches` in
+			// `@tanstack/router-core` flat-maps `match.links` across
+			// the matched routes root-first, then dedupes with
+			// `appendUniqueUserTags`, whose key is `JSON.stringify`
+			// of the tag — so only byte-identical link tags collapse,
+			// while `meta` dedupes by `name`/`property` with the
+			// deepest route winning. Because no route declares an
+			// icon today, this entry renders exactly once on every
+			// route (root, public pages, admin, and the 404 pages).
+			{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
 			{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
 			{
 				rel: 'preconnect',

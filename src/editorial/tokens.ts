@@ -23,6 +23,9 @@ export const rawTokens = {
 		// High-chroma sky/cyan brand ramp (Issue #201).
 		// 500 is the visual signature; accessible text / CTA roles use
 		// the darker 700–800 steps through the semantic layer.
+		// 950 (Issue #290) exists only as the dark-mode counterpart of
+		// the 50 tint: it paints `accent.surface` as the same barely
+		// blue "featured region" the 50 step paints in light.
 		brand: {
 			50: { value: '#f0f9ff' },
 			100: { value: '#e0f2fe' },
@@ -32,14 +35,22 @@ export const rawTokens = {
 			700: { value: '#0369a1' },
 			800: { value: '#075985' },
 			900: { value: '#0c4a6e' },
+			950: { value: '#082f49' },
 		},
 		// Cooler slate neutrals keep the canvas crisp instead of grey-purple.
+		// 400 / 800 / 950 (Issue #290) supply the dark surface ladder and
+		// the dark secondary-text step: 950 → 900 → 800 mirrors the light
+		// 0 → 50 → 100 ladder one notch per tier, so surface depth reads
+		// as *brighter* layers on dark instead of darker ones.
 		neutral: {
 			0: { value: '#ffffff' },
 			50: { value: '#f8fafc' },
 			100: { value: '#f1f5f9' },
+			400: { value: '#94a3b8' },
 			500: { value: '#64748b' },
+			800: { value: '#1e293b' },
 			900: { value: '#0f172a' },
+			950: { value: '#020617' },
 		},
 		// Status colors (Issue #172).
 		// 50 = light-tinted surface fill, 300 = dark-mode foreground,

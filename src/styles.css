@@ -19,6 +19,41 @@
 	:where(h1, h2, h3) {
 		font-family: var(--fonts-heading);
 	}
+
+	/*
+	 * Dark theme (Issue #290).
+	 *
+	 * `color-scheme` tells the user agent which appearances this
+	 * document actually supports, so everything the UA paints itself
+	 * — scrollbars, form controls, text selection, the default canvas
+	 * and caret — switches together with the Panda `_dark` bindings
+	 * instead of staying light underneath a dark page. The value is
+	 * driven by the same media query as the `dark` condition in
+	 * `panda.config.ts`; there is no toggle (a theme switcher is a
+	 * separate ticket).
+	 *
+	 * `body` also paints `bg.canvas` explicitly. Page components set
+	 * their own `bg.canvas` container, but anything outside those
+	 * containers (the margin around a max-width column, the strip
+	 * below the last section) would otherwise fall back to the UA
+	 * canvas, which is a neutral dark rather than the editorial
+	 * `#020617` and reads as a seam in dark mode. In light mode the
+	 * token resolves to `#ffffff`, i.e. exactly the UA default, so
+	 * this rule is visually a no-op for light visitors.
+	 */
+	:root {
+		color-scheme: light;
+	}
+
+	@media (prefers-color-scheme: dark) {
+		:root {
+			color-scheme: dark;
+		}
+	}
+
+	body {
+		background-color: var(--colors-bg-canvas);
+	}
 }
 
 /*

@@ -214,6 +214,7 @@ real Cloudflare resource smoke は release cut で確認する。
 | Path | URL |
 | --- | --- |
 | `public/share/procon2026/index.html` | `https://rebuildup.dev/share/procon2026/` |
+| `public/share/procon2026/assets/**` | `https://rebuildup.dev/share/procon2026/assets/*`（HTML からの相対参照） |
 
 ### 規約: `public/share/<slug>/index.html`
 

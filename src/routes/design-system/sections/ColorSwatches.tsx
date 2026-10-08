@@ -72,6 +72,11 @@ const TOKENS: ReadonlyArray<TokenEntry> = [
 		label: 'Accent fill',
 		role: 'Primary CTA idle',
 	},
+	{
+		path: 'bg.inverse',
+		label: 'Inverse',
+		role: 'Inverse panel (static pair)',
+	},
 	// Text (text.*)
 	{
 		path: 'text.default',

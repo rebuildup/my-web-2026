@@ -19,13 +19,23 @@
  * utilities resolve to a literal string (invalid CSS) instead of a
  * var reference. Keep the wrapper.
  *
- * A handful of tokens bind `_dark` to the same value as `base` on
- * purpose. `bg.inverse` / `text.inverse` are a self-contained
+ * Dark values rest on the near-neutral `charcoal` ladder
+ * (`tokens.ts`) rather than on slate's blue-dominant dark tail —
+ * sampled dark UIs build hierarchy from near-black layers plus
+ * hairlines and reserve brand color for accents, which is what Issue
+ * #290's rework moved us toward.
+ *
+ * Four tokens bind `_dark` to the same value as `base` on purpose:
+ * `bg.inverse` / `text.inverse` are a self-contained
  * surface+foreground pair (an inverse panel and the white label that
  * sits on it, including every `bg.accent` CTA label), and
- * `bg.accent` / `accent.interactive` / `border.strong` are fills and
- * rules that must keep the same legible pairing in both appearances.
- * Those are decisions, not omissions — see `src/editorial/colors.md`.
+ * `bg.accent` / `accent.interactive` are the primary-action fill and
+ * its pressed state — the pair carries both the CTA and the
+ * `Badge tone="accent"` live/active signal, and both appearances
+ * have to keep white text at ≥ 4.5 : 1 *and* the fill at ≥ 3 : 1 from
+ * the page, which leaves essentially one usable step of the brand
+ * ramp. Those are decisions, not omissions — see
+ * `src/editorial/colors.md`.
  *
  * Keep this list short and stable. New semantic tokens are introduced
  * through an editorial visual-language decision.
@@ -34,13 +44,13 @@ export const semanticTokens = {
 	colors: {
 		bg: {
 			canvas: {
-				value: { base: '{colors.neutral.0}', _dark: '{colors.neutral.950}' },
+				value: { base: '{colors.neutral.0}', _dark: '{colors.charcoal.950}' },
 			},
 			surface: {
-				value: { base: '{colors.neutral.50}', _dark: '{colors.neutral.900}' },
+				value: { base: '{colors.neutral.50}', _dark: '{colors.charcoal.900}' },
 			},
 			subtle: {
-				value: { base: '{colors.neutral.100}', _dark: '{colors.neutral.800}' },
+				value: { base: '{colors.neutral.100}', _dark: '{colors.charcoal.800}' },
 			},
 			// Static: the CTA fill stays on the dark brand steps so the
 			// white `text.inverse` label keeps ≥ 4.5:1 in both modes.
@@ -57,24 +67,27 @@ export const semanticTokens = {
 				value: { base: '{colors.neutral.900}', _dark: '{colors.neutral.50}' },
 			},
 			muted: {
-				value: { base: '{colors.neutral.500}', _dark: '{colors.neutral.400}' },
+				value: { base: '{colors.neutral.500}', _dark: '{colors.charcoal.400}' },
 			},
 			// Static: labels sit on `bg.accent`, which never lightens.
 			inverse: {
 				value: { base: '{colors.neutral.0}', _dark: '{colors.neutral.0}' },
 			},
 			accent: {
-				value: { base: '{colors.brand.700}', _dark: '{colors.brand.300}' },
+				value: { base: '{colors.brand.700}', _dark: '{colors.brand.500}' },
 			},
 		},
 		border: {
 			subtle: {
-				value: { base: '{colors.neutral.100}', _dark: '{colors.neutral.800}' },
+				value: { base: '{colors.neutral.100}', _dark: '{colors.charcoal.800}' },
 			},
-			// Static: an emphasis rule must read at the same weight in
-			// both appearances; neutral.500 clears 3:1 on either canvas.
+			// Dark drops the slate cast (neutral.500 is B−R = 39) for a
+			// near-neutral step so emphasis rules read as hairlines in
+			// the same low-chroma family as the rest of the dark
+			// chrome. Still 4.19 : 1 on the dark canvas, above the 3:1
+			// non-text minimum.
 			strong: {
-				value: { base: '{colors.neutral.500}', _dark: '{colors.neutral.500}' },
+				value: { base: '{colors.neutral.500}', _dark: '{colors.charcoal.600}' },
 			},
 			focus: {
 				value: { base: '{colors.brand.600}', _dark: '{colors.brand.300}' },

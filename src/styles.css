@@ -61,8 +61,8 @@
 	 * `scripts/generate-counter-digits.mjs` bakes the glyphs in
 	 * `#0b1020` so a rasterised digit matches the light `text.default`.
 	 * The WebPs have a transparent background and sit directly on the
-	 * page, so in dark mode that colour lands on `#020617` at 1.07 : 1
-	 * and the odometer disappears.
+	 * page, so in dark mode that colour lands on the near-black canvas
+	 * `#0a0b0e` at 1.04 : 1 and the odometer disappears.
 	 *
 	 * The glyph is a single-colour alpha mask, so inverting it is an
 	 * exact appearance swap rather than a recolour-by-eye: `invert`

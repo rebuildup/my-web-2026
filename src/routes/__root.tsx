@@ -1,7 +1,10 @@
 import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import { env } from 'cloudflare:workers';
 import type { ReactNode } from 'react';
-import { GoogleAnalytics } from '../editorial/analytics/GoogleAnalytics';
+import {
+	GoogleAnalytics,
+	GoogleAnalyticsRouteTracker,
+} from '../editorial/analytics/GoogleAnalytics';
 import '../styles.css';
 
 /**
@@ -34,7 +37,12 @@ import '../styles.css';
  * (`admin.login`, `admin.keys`, `admin.images`,
  * `admin.invitations`, `admin.emoji-catalog`). See
  * `src/editorial/analytics/GoogleAnalytics.tsx` for the component
- * contract and the SSR-capture singleton semantics.
+ * contract and the SSR-capture singleton semantics. SPA route
+ * changes are measured by `GoogleAnalyticsRouteTracker` (Issue
+ * #286), mounted unconditionally next to the script gate below: the
+ * inline `gtag('config', …)` records the initial document load, the
+ * tracker pushes one `page_view` per subsequent location change
+ * (deduped against the initial location, silent on `/admin/*`).
  *
  * Chrome convention (Issue #199). PublicNav and Breadcrumbs are
  * intentionally NOT mounted here. They are regular components in
@@ -86,13 +94,19 @@ export const Route = createRootRoute({
 
 function RootComponent() {
 	const { gaMeasurementId } = Route.useLoaderData();
-	const { pathname } = useLocation();
+	const { pathname, searchStr } = useLocation();
 	const isAdminPath = pathname.startsWith('/admin');
 	return (
 		<html lang="ja">
 			<head>
 				<HeadContent />
 				{!isAdminPath ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
+				{/* SPA route-change page_view (Issue #286): always mounted;
+				    the tracker itself stays silent on /admin/*. */}
+				<GoogleAnalyticsRouteTracker
+					measurementId={gaMeasurementId}
+					locationKey={`${pathname}${searchStr}`}
+				/>
 			</head>
 			<body>
 				<RootLayout>

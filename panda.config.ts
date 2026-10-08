@@ -15,6 +15,26 @@ export default defineConfig({
 	jsxFramework: 'react',
 	outdir: 'styled-system',
 
+	/**
+	 * Dark condition (Issue #290).
+	 *
+	 * Panda's built-in `dark` condition is `.dark &` — a class-scoped
+	 * switch that requires an app-managed toggle. my-web-2026 follows
+	 * the OS preference instead (a theme toggle is explicitly out of
+	 * scope for Issue #290), so `dark` is redefined here as the
+	 * `prefers-color-scheme` media query. Every `_dark` variant in
+	 * `theme.semanticTokens` then activates when the visitor's system
+	 * is in dark mode, with no runtime class management.
+	 *
+	 * The overriding is deliberate and local: `conditions` merges the
+	 * user entry over the preset entry of the same name, so all other
+	 * built-in conditions (hover, focus, motion, …) keep their preset
+	 * definitions.
+	 */
+	conditions: {
+		dark: '@media (prefers-color-scheme: dark)',
+	},
+
 	theme: {
 		extend: {
 			breakpoints: rawTokens.breakpoints,

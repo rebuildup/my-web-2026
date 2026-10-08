@@ -44,10 +44,32 @@ gates:
     command: 'pnpm run validate:integration'
     components:
       - fast
-      - 'pnpm run build' # vite build -> dist/
-      - 'pnpm run wrangler:dry-run' # wrangler deploy --dry-run --outdir dist-cloudflare
+      - 'pnpm run build' # vite build -> dist/, Tool artifacts, Build Output sync
+      - 'pnpm run build:cf:production' # cf build -> .cloudflare/output/v0/
+      - 'pnpm run build:cf:verify' # Build Output completeness (Worker bundle + Tool artifacts + mode)
+      - 'pnpm run deploy:cf:prebuilt:dry-run' # cf deploy --prebuilt --mode production --dry-run
+      - 'pnpm run cf:mode-mismatch:check' # a production Build Output must be rejected under --mode development
       - 'pnpm run lint:ci' # actionlint via scripts/lint-ci.mjs (default target: .github/workflows/*.yml)
       - 'pnpm run build-storybook' # static storybook build -> storybook-static/
+      # Issue #247: Storybook's Vite builder merges the project's
+      # `vite.config.ts`, so it runs the Cloudflare plugin and DESTROYS
+      # `.cloudflare/output/` (config.json and the Worker bundles; only
+      # `workers/default/assets` survives). The Playwright step that runs
+      # after this command starts `vite preview`, which serves the Build
+      # Output, and failed with "no root config found at
+      # .cloudflare/output/v0/config.json".
+      #
+      # The Build Output is therefore rebuilt after Storybook, and the
+      # contract re-checked against it. Reordering instead (Storybook
+      # first) was tried and reverted: in a fresh CI process Panda's
+      # PostCSS plugin fails on its FIRST load with
+      # "Loading PostCSS Plugin failed: Cannot read properties of
+      # undefined (reading 'exports')", which the original order masked
+      # by having `build:production` pay that cost first. That is a
+      # pre-existing latent toolchain issue, tracked separately; the
+      # build order here should not depend on it.
+      - 'pnpm run build:cf:production' # rebuild Build Output after Storybook
+      - 'pnpm run cloudflare:contract:check:build' # re-prove the contract against the fresh artifact
     cost_class: medium
     trigger: pull_request, push_to_main_and_release
 
@@ -55,9 +77,9 @@ gates:
     command: 'pnpm run validate:release'
     components:
       - integration
-      # cf-typegen:check regenerates worker-configuration.d.ts AND
-      # fails if the result is not byte-identical to what is committed
-      # in the repository. A bare `wrangler types` would always pass.
+      # cf-typegen:check regenerates .cloudflare/types/index.d.ts (cf
+      # workers types) AND fails if the result is not byte-identical to
+      # what is committed. A bare `cf workers types` would always pass.
       - 'pnpm run cf-typegen:check'
     cost_class: medium
     trigger: push_to_main_and_release
@@ -74,10 +96,10 @@ change_risk_mapping:
     note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; src/home/status/** may use the documented runtime health edges and registered home→http schema edges must be import type only'
   binding_change:
     gate: integration
-    note: 'wrangler.jsonc + worker-configuration.d.ts must be in the same PR'
+    note: 'cloudflare.config.ts + .cloudflare/types/index.d.ts must be in the same PR'
   entrypoint_change:
     gate: integration
-    note: 'src/server.ts, vite.config.ts, wrangler.jsonc main'
+    note: 'src/server.ts, vite.config.ts, cloudflare.config.ts worker.entrypoint'
   ci_workflow_change:
     gate: integration
     note: '.github/workflows/*.yml requires actionlint pass + cf-typegen:check'
@@ -110,7 +132,7 @@ ci:
   bootstrap:
     pnpm_version: 12.3.4
     bun_version: 1.4.2 # same_origin_static readmark Tool build (#215)
-    node_version: 22
+    node_version: 22.18 # >=22.18: cloudflare.config.ts is loaded by Node and cannot load under Bun
     cache_path: '~/.local/share/pnpm/store'
     cache_key: 'pnpm-${{ runner.os }}-${{ hashFiles(''pnpm-lock.yaml'') }}'
     install_args: '--frozen-lockfile'
@@ -143,4 +165,4 @@ disallowed_patterns:
   - 'CI workflow with multiple jobs that re-run the same validate:* script on the same trigger'
   - 'duplicate pnpm install across CI jobs (use cache + single shared bootstrap)'
   - 'tabs in YAML files (actionlint enforces spaces; .github/workflows/*.yml uses 2-space indent)'
-  - 'wrangler types run as a generation step in CI without a subsequent git diff --exit-code check'
+  - 'cf workers types run as a generation step in CI without a subsequent git diff --exit-code check'

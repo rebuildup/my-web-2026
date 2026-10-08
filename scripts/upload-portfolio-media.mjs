@@ -43,11 +43,12 @@
  *   (caption rewrites, alt text fixes, cover image selection)
  *   before it lands in the public surface.
  */
-import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync, statSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname, resolve, basename, extname } from 'node:path';
+import { basename, dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { R2_BUCKET_NAME } from './_cloudflare-identity.mjs';
+import { putObject } from './_r2.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -79,7 +80,7 @@ if (apply && target !== 'local') {
 	// operator to run this locally with the production wrangler
 	// config when remote is needed.
 	console.error(
-		`[media] --target=remote is not supported by this script; run from a workstation with 'wrangler r2 object put' credentials.`,
+		'[media] --target=remote is not supported by this script; it is a LOCAL-ONLY seeding path. For a production R2 upload use the publication driver, which requires an explicit execute plus CLOUDFLARE_R2_API_TOKEN.',
 	);
 	process.exit(2);
 }
@@ -266,31 +267,15 @@ function main() {
 				const contentType = contentTypeFromExt(filename);
 				const stat = statSync(localPath);
 
+				// Issue #247: through the repository R2 driver. A local
+				// write is not a production mutation, so the operator
+				// gate does not apply; this script is local-only by
+				// construction and rejects --target=remote outright.
 				if (apply) {
-					const cmd = spawnSync(
-						'pnpm',
-						[
-							'exec',
-							'wrangler',
-							'r2',
-							'object',
-							'put',
-							`MEDIA/${r2Key}`,
-							'--file',
-							localPath,
-							'--content-type',
-							contentType,
-							'--local',
-						],
-						{ cwd: root, stdio: 'inherit', env: process.env },
-					);
-					if (cmd.status !== 0) {
-						console.error(`[media] r2 put failed for ${r2Key}`);
-						process.exit(cmd.status ?? 1);
-					}
+					putObject(r2Key, localPath, { target: 'local', contentType });
 				} else {
 					r2Commands.push(
-						`wrangler r2 object put MEDIA/${r2Key} --file ${localPath} --content-type ${contentType} --local`,
+						`putObject ${r2Key}  (bucket=${R2_BUCKET_NAME}, content-type=${contentType}, local)`,
 					);
 				}
 
@@ -337,15 +322,9 @@ function main() {
 	writeFileSync(sqlPath, sqlStatements.join('\n'), { mode: 0o600 });
 
 	try {
-		const result = spawnSync(
-			'pnpm',
-			['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', sqlPath],
-			{ cwd: root, stdio: 'inherit', env: process.env },
-		);
-		if (result.status !== 0) {
-			console.error(`[media] wrangler exited with status ${result.status}`);
-			process.exit(result.status ?? 1);
-		}
+		// Issue #247: local D1 via the shared cf driver. No Cloudflare
+		// credential is involved for a local write.
+		executeSqlFile(sqlPath, { target: 'local' });
 	} finally {
 		rmSync(tmp, { recursive: true, force: true });
 	}

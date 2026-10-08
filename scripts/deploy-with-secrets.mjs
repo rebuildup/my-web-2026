@@ -60,30 +60,28 @@ const HTTPS_TIMEOUT_MS = 10_000;
 const HTTPS_MAX_RESPONSE_BYTES = 64 * 1024;
 
 function printHelp() {
-	console.log(`Usage: deploy-with-secrets.mjs [--execute] [--dry-run] [--environment=prod] [--config=<path>]
+	console.log(`Usage: deploy-with-secrets.mjs [--execute] [--dry-run] [--environment=prod]
 
 Production deploy driver (ADR-0015 §4).
 
 This script is production-only. Side effects (db:migrate:production
 + wrangler deploy) are gated by --execute and only valid for the
-canonical production config (wrangler.production.jsonc).
+canonical production contract. Production authorization comes from the
+Build Output and the shared runtime contract, not from a config path
+(Issue #247): --config authorized nothing and was compatibility debris.
 
 For dev / preview verification, run the inner script directly via:
-  infisical run --env=dev -- node scripts/run-deploy-inner.mjs --config=wrangler.jsonc
+  infisical run --env=dev -- node scripts/run-deploy-inner.mjs
 (inner defaults to dry-run, no production side effects.)
 
 Default mode is --dry-run (no production side effects).
 
 Options:
   --execute                 actually run db:migrate + wrangler deploy
-                            (operator gate required; production config only)
+                            (operator gate required; production only)
   --dry-run                 verify args + tempdir lifecycle only (default)
   --environment=<prod>      Infisical environment (default: 'prod'; only
                             'prod' is accepted — this script is production-only)
-  --config=<path>           wrangler config path (default: wrangler.production.jsonc)
-                            Override only allowed to point at the canonical
-                            production config. Other configs are rejected
-                            under --execute (inner script enforces this).
   -h, --help                show this help`);
 }
 
@@ -92,7 +90,6 @@ function parseArgs(argv) {
 		execute: false,
 		dryRun: true,
 		environment: 'prod',
-		config: 'wrangler.production.jsonc',
 	};
 	let explicitMode = null;
 	for (const arg of argv) {
@@ -109,7 +106,16 @@ function parseArgs(argv) {
 		} else if (arg.startsWith('--environment=')) {
 			args.environment = arg.slice('--environment='.length);
 		} else if (arg.startsWith('--config=')) {
-			args.config = arg.slice('--config='.length);
+			// Removed in the #247 cleanup. `--config` used to name the
+			// production Wrangler config as the authorization token; it
+			// authorized nothing once the Build Output became the gate,
+			// and the file it named is deleted. Rejected loudly rather
+			// than silently ignored, so a caller that still passes it
+			// cannot believe it selected a target.
+			throw new Error(
+				'--config is no longer accepted. Production authorization comes from the Build ' +
+					'Output and the shared runtime contract (Issue #247); there is no config path to select.',
+			);
 		} else if (arg === '--help' || arg === '-h') {
 			printHelp();
 			process.exit(0);
@@ -292,11 +298,10 @@ function findInfisicalCli() {
  *   `@infisical/cli` binary (resolved from its `package.json#bin`)
  * @param {string} params.workspaceId   Infisical workspace/project id from `.infisical.json`
  * @param {string} params.environment   Infisical environment name (always 'prod' for this driver)
- * @param {string} params.configPath    wrangler config path (canonical `wrangler.production.jsonc`)
  * @param {boolean} params.execute      whether `--execute` is appended (true for prod deploy gate)
  * @returns {string[]}
  */
-function buildInnerArgs({ infisicalCli, workspaceId, environment, domain, configPath, execute }) {
+function buildInnerArgs({ infisicalCli, workspaceId, environment, domain, execute }) {
 	const argv = [
 		infisicalCli,
 		'run',
@@ -316,10 +321,6 @@ function buildInnerArgs({ infisicalCli, workspaceId, environment, domain, config
 		'--',
 		process.execPath,
 		INNER_SCRIPT,
-		// CRITICAL: `--config=<path>` form — single argv, NOT split.
-		// See `run-deploy-inner.mjs#parseArgs` which only accepts
-		// `arg.startsWith('--config=')`.
-		`--config=${configPath}`,
 	];
 	if (execute) {
 		argv.push('--execute');
@@ -327,12 +328,11 @@ function buildInnerArgs({ infisicalCli, workspaceId, environment, domain, config
 	return argv;
 }
 
-function buildPreflightArgs({ environment, configPath, workerContract = 'auto' }) {
+function buildPreflightArgs({ environment, workerContract = 'auto' }) {
 	return [
 		PREFLIGHT_SCRIPT,
 		'--execute',
 		`--environment=${environment}`,
-		`--config=${configPath}`,
 		`--worker-contract=${workerContract}`,
 		'--require-live-worker',
 	];
@@ -352,7 +352,6 @@ async function main() {
 
 	console.log(`[deploy-with-secrets] workspaceId=${config.workspaceId}`);
 	console.log(`[deploy-with-secrets] environment=${args.environment}`);
-	console.log(`[deploy-with-secrets] config=${args.config}`);
 	console.log(`[deploy-with-secrets] mode=${args.execute ? 'execute' : 'dry-run'}`);
 	if (removedTempDirs > 0) {
 		console.log(
@@ -417,7 +416,6 @@ async function main() {
 			process.execPath,
 			buildPreflightArgs({
 				environment: args.environment,
-				configPath: args.config,
 				workerContract: 'auto',
 			}),
 			{ stdio: 'inherit', env: process.env },
@@ -439,11 +437,10 @@ async function main() {
 			// Same resolution Universal Auth used above — one domain
 			// source of truth for the whole driver.
 			domain: apiUrl,
-			configPath: args.config,
 			execute: true,
 		});
 		console.log(
-			`[execute] spawning: infisical run --projectId=<workspaceId> --env=${args.environment} -- <inner> --config=${args.config} --execute`,
+			`[execute] spawning: infisical run --projectId=<workspaceId> --env=${args.environment} -- <inner> --execute`,
 		);
 		try {
 			// Issue #235 — exec the native Infisical binary directly. The

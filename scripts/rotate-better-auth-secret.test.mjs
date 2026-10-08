@@ -13,16 +13,18 @@
  *   - failure-injection / partial-failure contract
  *   - security invariants (plaintext never in argv, log, error message)
  *   - buildInfisicalEnv (Infisical CLI env: keeps INFISICAL_TOKEN, strips other Infisical credentials)
- *   - buildWranglerEnv (Wrangler/D1 env: strips full Infisical credential set, no token added)
+ *   - buildCfEnv (Wrangler/D1 env: strips full Infisical credential set, no token added)
  */
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
 import { Readable, Writable } from 'node:stream';
 import { describe, it } from 'node:test';
+import { AUTH_MODE } from './_infisical-auth.mjs';
 import {
 	MODES,
 	SECRET_NAME_LEGACY,
 	SECRET_NAME_VERSIONED,
+	buildCfEnv,
 	buildInfisicalEnv,
 	buildInfisicalSetArgs,
 	buildInfisicalYamlContent,
@@ -30,8 +32,6 @@ import {
 	buildSecretReadUrl,
 	buildVersionedForm,
 	buildWorkerBulkPayload,
-	buildWranglerBulkArgs,
-	buildWranglerEnv,
 	classifyInfisicalHttpStatus,
 	generateFreshSecret,
 	interpretInfisicalReadResponse,
@@ -40,12 +40,10 @@ import {
 	resolveInfisicalCliPath,
 	secretValuesEqual,
 	spawnInfisicalSet,
-	spawnWranglerBulk,
 	summarizeInfisicalState,
 	summarizeWorkerState,
 	validateFreshSecret,
 } from './rotate-better-auth-secret.mjs';
-import { AUTH_MODE } from './_infisical-auth.mjs';
 
 /* ─── Helpers ──────────────────────────────────────────────────────────── */
 
@@ -345,26 +343,9 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 	});
 
-	describe('buildWranglerBulkArgs', () => {
-		it('includes -c <absolute path to wrangler.production.jsonc>', () => {
-			const args = buildWranglerBulkArgs();
-			assert.ok(args.includes('-c'));
-			const configArg = args[args.indexOf('-c') + 1];
-			assert.ok(configArg.endsWith('wrangler.production.jsonc'));
-		});
-
-		it('uses secret bulk subcommand', () => {
-			const args = buildWranglerBulkArgs();
-			assert.ok(args.includes('secret'));
-			assert.ok(args.includes('bulk'));
-		});
-
-		it('never includes put/delete (bulk is the only path)', () => {
-			const args = buildWranglerBulkArgs();
-			assert.ok(!args.includes('put'));
-			assert.ok(!args.includes('delete'));
-		});
-	});
+	// Issue #247: there is no `wrangler secret bulk` argv any more. The Worker
+	// secret change set is applied through the shared Merge Patch adapter, whose
+	// wire shape and write gate are pinned in `_worker-secrets.test.mjs`.
 
 	describe('buildInfisicalSetArgs', () => {
 		it('contains --file <path>', () => {
@@ -589,112 +570,6 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 	});
 
-	describe('spawnWranglerBulk argv + stdio discipline', () => {
-		it('writes payload to stdin via child.stdin.write + .end', async () => {
-			const written = [];
-			const fakeChild = new EventEmitter();
-			fakeChild.stdin = {
-				write(chunk) {
-					written.push(chunk.toString());
-				},
-				end() {},
-			};
-			fakeChild.stdout = new Readable({ read() {} });
-			fakeChild.stderr = new Readable({ read() {} });
-			const captureSpawn = () => fakeChild;
-
-			const payload = JSON.stringify({ BETTER_AUTH_SECRET: 'freshsecret' });
-			spawnWranglerBulk({ payload, env: {}, deps: { spawn: captureSpawn } });
-
-			await new Promise((resolve) => setImmediate(resolve));
-			assert.equal(written.join(''), payload);
-		});
-
-		it('pipes stdout/stderr so runWranglerWrite can read them (Issue #225)', () => {
-			// Previously stdout/stderr were 'inherit', which makes Node set
-			// child.stdout / child.stderr to null. runWranglerWrite then
-			// threw AFTER the bulk write had already succeeded, masking
-			// the driver's partial-failure + recovery-rowId guidance.
-			let capturedOpts = null;
-			const fakeChild = new EventEmitter();
-			fakeChild.stdin = { write() {}, end() {} };
-			fakeChild.stdout = new Readable({ read() {} });
-			fakeChild.stderr = new Readable({ read() {} });
-			const captureSpawn = (_cmd, _args, opts) => {
-				capturedOpts = opts;
-				return fakeChild;
-			};
-			spawnWranglerBulk({
-				payload: '{}',
-				env: {},
-				deps: { spawn: captureSpawn },
-			});
-			assert.equal(capturedOpts.stdio[0], 'pipe');
-			assert.equal(capturedOpts.stdio[1], 'pipe');
-			assert.equal(capturedOpts.stdio[2], 'pipe');
-		});
-
-		it('argv includes -c <absolute path to wrangler.production.jsonc>', () => {
-			let capturedArgs = null;
-			const fakeChild = new EventEmitter();
-			fakeChild.stdin = { write() {}, end() {} };
-			fakeChild.stdout = new Readable({ read() {} });
-			fakeChild.stderr = new Readable({ read() {} });
-			const captureSpawn = (_cmd, args) => {
-				capturedArgs = args;
-				return fakeChild;
-			};
-			spawnWranglerBulk({
-				payload: '{}',
-				env: {},
-				deps: { spawn: captureSpawn },
-			});
-			assert.ok(capturedArgs.includes('-c'));
-			const configArg = capturedArgs[capturedArgs.indexOf('-c') + 1];
-			assert.ok(configArg.endsWith('wrangler.production.jsonc'));
-			assert.ok(capturedArgs.includes('secret'));
-			assert.ok(capturedArgs.includes('bulk'));
-		});
-
-		it('argv does NOT include put or delete subcommand (bulk is the only path)', () => {
-			let capturedArgs = null;
-			const fakeChild = new EventEmitter();
-			fakeChild.stdin = { write() {}, end() {} };
-			fakeChild.stdout = new Readable({ read() {} });
-			fakeChild.stderr = new Readable({ read() {} });
-			const captureSpawn = (_cmd, args) => {
-				capturedArgs = args;
-				return fakeChild;
-			};
-			spawnWranglerBulk({
-				payload: '{}',
-				env: {},
-				deps: { spawn: captureSpawn },
-			});
-			assert.ok(!capturedArgs.includes('put'));
-			assert.ok(!capturedArgs.includes('delete'));
-		});
-
-		it('argv does NOT include secret value (only stdin)', () => {
-			let capturedArgs = null;
-			const fakeChild = new EventEmitter();
-			fakeChild.stdin = { write() {}, end() {} };
-			fakeChild.stdout = new Readable({ read() {} });
-			fakeChild.stderr = new Readable({ read() {} });
-			const captureSpawn = (_cmd, args) => {
-				capturedArgs = args;
-				return fakeChild;
-			};
-			spawnWranglerBulk({
-				payload: JSON.stringify({ BETTER_AUTH_SECRET: 'should-not-appear-in-argv' }),
-				env: {},
-				deps: { spawn: captureSpawn },
-			});
-			const joined = capturedArgs.join(' ');
-			assert.ok(!joined.includes('should-not-appear-in-argv'));
-		});
-	});
-
 	describe('resolveInfisicalCliPath', () => {
 		it('resolves the @infisical/cli native binary', () => {
 			const path = resolveInfisicalCliPath();
@@ -810,7 +685,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 	});
 
-	describe('buildSanitizedEnv (deprecated alias for buildWranglerEnv; PR #140 re-review fix)', () => {
+	describe('buildSanitizedEnv (deprecated alias for buildCfEnv; PR #140 re-review fix)', () => {
 		it('strips INFISICAL_TOKEN (writer token must not leak to Wrangler/D1 subprocesses)', () => {
 			const env = buildSanitizedEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_TOKEN, undefined);
@@ -849,15 +724,15 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 	});
 
-	describe('buildWranglerEnv (PR #140 re-review fix: full Infisical credential set stripped, NO token added)', () => {
+	describe('buildCfEnv (PR #140 re-review fix: full Infisical credential set stripped, NO token added)', () => {
 		it('strips INFISICAL_TOKEN (Wrangler MUST NOT receive the writer-scoped Infisical token)', () => {
-			const env = buildWranglerEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
+			const env = buildCfEnv({ INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' });
 			assert.equal(env.INFISICAL_TOKEN, undefined);
 			assert.equal(env.NODE_ENV, 'test');
 		});
 
 		it('strips INFISICAL_CLIENT_ID and INFISICAL_CLIENT_SECRET', () => {
-			const env = buildWranglerEnv({
+			const env = buildCfEnv({
 				INFISICAL_CLIENT_ID: 'cid',
 				INFISICAL_CLIENT_SECRET: 'cs',
 				NODE_ENV: 'test',
@@ -868,7 +743,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		});
 
 		it('strips the full Infisical credential set (PROJECT_ID, SITE_URL, API_URL)', () => {
-			const env = buildWranglerEnv({
+			const env = buildCfEnv({
 				INFISICAL_PROJECT_ID: 'p',
 				INFISICAL_SITE_URL: 's',
 				INFISICAL_API_URL: 'a',
@@ -883,7 +758,7 @@ describe('rotate-better-auth-secret.mjs (Issue #139)', () => {
 		it('does not mutate the input env', () => {
 			const input = { INFISICAL_TOKEN: 'tok', NODE_ENV: 'test' };
 			const snapshot = { ...input };
-			buildWranglerEnv(input);
+			buildCfEnv(input);
 			assert.deepEqual(input, snapshot);
 		});
 	});
@@ -1038,7 +913,7 @@ describe('buildInfisicalEnv in the two auth modes', () => {
 	});
 
 	it('never leaks an Infisical credential to a Wrangler child', () => {
-		const env = buildWranglerEnv({
+		const env = buildCfEnv({
 			PATH: '/bin',
 			INFISICAL_TOKEN: 'tok',
 			INFISICAL_CLIENT_ID: 'id',
@@ -1077,41 +952,3 @@ describe('summarizeInfisicalState stays length-safe', () => {
 });
 
 /* -- Issue #225: wrangler bulk spawn must be able to capture output ----- */
-
-describe('spawnWranglerBulk pipes stdout/stderr so the write result is readable', () => {
-	function captureSpawnOptions() {
-		let captured = null;
-		const fakeChild = {
-			stdin: { write() {}, end() {} },
-			stdout: { on() {} },
-			stderr: { on() {} },
-			on() {},
-		};
-		spawnWranglerBulk({
-			payload: '{}',
-			env: { PATH: '/bin' },
-			deps: {
-				spawn: (bin, args, options) => {
-					captured = { bin, args, options };
-					return fakeChild;
-				},
-			},
-		});
-		return captured;
-	}
-
-	it('pipes all three streams instead of inheriting stdout/stderr', () => {
-		const captured = captureSpawnOptions();
-		// With 'inherit', Node sets child.stdout / child.stderr to null
-		// and `runWranglerWrite`'s capture throws AFTER a successful
-		// write, hiding the driver's partial-failure guidance.
-		assert.deepEqual(captured.options.stdio, ['pipe', 'pipe', 'pipe']);
-	});
-
-	it('keeps the payload out of argv (stdin only)', () => {
-		const captured = captureSpawnOptions();
-		assert.ok(!JSON.stringify(captured.args).includes('BETTER_AUTH_SECRET'));
-		assert.ok(captured.args.includes('bulk'));
-		assert.ok(captured.args.some((a) => String(a).endsWith('wrangler.production.jsonc')));
-	});
-});

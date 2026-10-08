@@ -63,20 +63,19 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACCOUNT_ID, WORKER_NAME } from './_cloudflare-identity.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 import {
 	AUTH_MODE,
+	buildCfEnv as buildCfEnvShared,
 	buildInfisicalEnv as buildInfisicalEnvShared,
-	buildWranglerEnv as buildWranglerEnvShared,
 	materialiseSecret,
 	resolveInfisicalAuth,
 } from './_infisical-auth.mjs';
 
 const REPO_ROOT = resolve(HERE, '..');
-const WRANGLER_BIN = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
-const WRANGLER_PRODUCTION_CONFIG = join(REPO_ROOT, 'wrangler.production.jsonc');
 const INFISICAL_JSON_PATH = join(REPO_ROOT, '.infisical.json');
 const TEMPDIR_PREFIX = 'my-web-2026-flip-';
 const STALE_TEMPDIR_AGE_MS = 24 * 60 * 60 * 1000;
@@ -420,27 +419,28 @@ function assertYamlContentInvariant(yamlContent) {
  *   restore-legacy-only   → { BETTER_AUTH_SECRET: "<plaintext>" }
  *   rollback-versioned-only → { BETTER_AUTH_SECRETS: null }
  */
-function buildBulkPayload({ operation, versionedForm, legacyPlaintext }) {
+/**
+ * Issue #247: the Worker-side change set for each operation.
+ *
+ * Returned as a changes object, not a pre-serialised string, so the
+ * shared adapter owns the Merge Patch wire shape. The existing
+ * single-key semantics carry over exactly: a deletion is one `null`,
+ * never a re-send of the current secret set — that is what keeps
+ * `delete-legacy-only` from touching any other binding (#243).
+ */
+function buildWorkerSecretChanges({ operation, versionedForm, legacyPlaintext }) {
 	switch (operation) {
 		case 'flip':
-			return JSON.stringify({ BETTER_AUTH_SECRETS: versionedForm });
+			return { BETTER_AUTH_SECRETS: versionedForm };
 		case 'delete-legacy-only':
-			return JSON.stringify({ BETTER_AUTH_SECRET: null });
+			return { BETTER_AUTH_SECRET: null };
 		case 'restore-legacy-only':
-			return JSON.stringify({ BETTER_AUTH_SECRET: legacyPlaintext });
+			return { BETTER_AUTH_SECRET: legacyPlaintext };
 		case 'rollback-versioned-only':
-			return JSON.stringify({ BETTER_AUTH_SECRETS: null });
+			return { BETTER_AUTH_SECRETS: null };
 		default:
 			throw new Error(`Unknown operation: ${operation}`);
 	}
-}
-
-/**
- * Build the argv for `wrangler secret bulk`. Always includes
- * `-c wrangler.production.jsonc` (canonical production config).
- */
-function buildWranglerBulkArgs() {
-	return ['secret', 'bulk', '-c', WRANGLER_PRODUCTION_CONFIG];
 }
 
 /**
@@ -698,26 +698,6 @@ async function verifyTokenWriteScope(apiUrl, accessToken, workspaceId, environme
 }
 
 /**
- * Spawn the wrangler secret bulk subprocess with explicit stdio:
- *   - stdin = 'pipe' (writable; payload sent via child.stdin.write)
- *   - stdout = 'inherit'
- *   - stderr = 'inherit'
- *
- * 'inherit' on stdin would close the write end; the explicit pipe is
- * required for the bulk payload to be writable.
- */
-function spawnWranglerBulk({ payload, env, deps }) {
-	const spawnFn = deps?.spawn ?? spawn;
-	const child = spawnFn(process.execPath, [WRANGLER_BIN, ...buildWranglerBulkArgs()], {
-		stdio: ['pipe', 'inherit', 'inherit'],
-		env,
-	});
-	child.stdin.write(payload);
-	child.stdin.end();
-	return child;
-}
-
-/**
  * Spawn the infisical CLI subprocess for `secrets set --file`. The
  * CLI handles self-host v0.165.x E2EE; plain HTTPS UPSERT is NOT
  * supported because the v3 secret-write endpoint requires
@@ -787,25 +767,31 @@ function buildSanitizedEnv(baseEnv, { keepInfisicalToken = false } = {}) {
 /**
  * Plan summary for dry-run output. Does NOT include secret values.
  */
-function describePlan({ operation, environment, wranglerConfig }) {
+function describePlan({ operation, environment, accountId, workerName }) {
 	const lines = [];
 	lines.push(`[dry-run] operation=${operation}`);
 	lines.push(`[dry-run] environment=${environment}`);
-	lines.push(`[dry-run] wrangler config: ${wranglerConfig}`);
+	// Issue #247: name the canonical Worker and the API operation, not a
+	// config file path. A path said which file to read; it did not say
+	// which Worker would be mutated, and the file is deleted.
+	lines.push(`[dry-run] target: Worker ${workerName} on account ${accountId}`);
+	lines.push(
+		'[dry-run] mutation: Cloudflare Workers API (JSON Merge Patch, one binding per operation)',
+	);
 	switch (operation) {
 		case 'flip':
 			lines.push(
-				'[dry-run] would: resolve auth (operator-supplied INFISICAL_TOKEN, else the operator\'s logged-in Infisical CLI session) → read legacy plaintext from Infisical prod → write temp YAML → spawn infisical secrets set --file → spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRETS: "1:<plaintext>" }',
+				'[dry-run] would: resolve auth (operator-supplied INFISICAL_TOKEN, else the operator\'s logged-in Infisical CLI session) → read legacy plaintext from Infisical prod → write temp YAML → spawn infisical secrets set --file → PATCH the Worker secret Merge Patch with { BETTER_AUTH_SECRETS: "1:<plaintext>" }',
 			);
 			break;
 		case 'delete-legacy-only':
 			lines.push(
-				'[dry-run] would: NO Infisical mutation; spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRET: null }',
+				'[dry-run] would: NO Infisical mutation; PATCH the Worker secret Merge Patch with { BETTER_AUTH_SECRET: null } (a one-key delete)',
 			);
 			break;
 		case 'restore-legacy-only':
 			lines.push(
-				'[dry-run] would: HTTPS GET legacy plaintext from Infisical prod → spawn wrangler secret bulk with stdin JSON { BETTER_AUTH_SECRET: "<plaintext>" }',
+				'[dry-run] would: HTTPS GET legacy plaintext from Infisical prod → PATCH the Worker secret Merge Patch with { BETTER_AUTH_SECRET: "<plaintext>" }',
 			);
 			break;
 		case 'rollback-versioned-only':
@@ -825,8 +811,7 @@ export {
 	buildVersionedForm,
 	buildYamlContent,
 	assertYamlContentInvariant,
-	buildBulkPayload,
-	buildWranglerBulkArgs,
+	buildWorkerSecretChanges,
 	buildInfisicalSetArgs,
 	planOperationAuth,
 	resolveInfisicalCliPath,
@@ -852,7 +837,8 @@ async function main() {
 			describePlan({
 				operation: args.operation,
 				environment: args.environment,
-				wranglerConfig: WRANGLER_PRODUCTION_CONFIG,
+				accountId: ACCOUNT_ID,
+				workerName: WORKER_NAME,
 			}),
 		);
 		console.log('[dry-run] no side effects; pass --execute to apply');
@@ -981,20 +967,16 @@ async function main() {
 			}
 		}
 
-		const payload = buildBulkPayload({ operation: args.operation, versionedForm, legacyPlaintext });
-		console.log(`[execute] Spawning wrangler secret bulk (operation=${args.operation})...`);
-		const wranglerChild = spawnWranglerBulk({
-			payload,
-			env: process.env,
-			deps: { spawn },
+		// Issue #247: Worker secret mutation via the shared API adapter
+		// (Cloudflare Merge Patch). The value travels in an HTTPS body,
+		// never argv, and the adapter enforces the production gate.
+		const changes = buildWorkerSecretChanges({
+			operation: args.operation,
+			versionedForm,
+			legacyPlaintext,
 		});
-		const wranglerExit = await new Promise((resolve) => {
-			wranglerChild.on('exit', resolve);
-			wranglerChild.on('error', () => resolve(1));
-		});
-		if (wranglerExit !== 0) {
-			throw new Error(`wrangler secret bulk failed (exit=${wranglerExit})`);
-		}
+		console.log(`[execute] Applying Worker secret change (operation=${args.operation})...`);
+		await bulkUpdateWorkerSecrets(changes, { execute: true, env: process.env });
 
 		console.log(`[execute] operation=${args.operation} completed`);
 	} finally {

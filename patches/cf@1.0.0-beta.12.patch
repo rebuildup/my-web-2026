@@ -1,0 +1,37 @@
+diff --git a/bin/cf b/bin/cf
+index 14c6a5110f0d95a5740b0b95a5ee35b1a9cbd66e..5214a4e9fb7d95b579a53bad4d0ef570440de6c9 100755
+--- a/bin/cf
++++ b/bin/cf
+@@ -48,6 +48,32 @@ const { CliExit, main } = await import("../dist/index.mjs");
+ 
+ try {
+ 	await main();
++
++	// --- patch: rebuildup/my-web-2026 Issue #262 -------------------------
++	// `--local` is a one-shot command: `main()` has already produced the
++	// command's result (the D1 migration report, the raw-query rows, …).
++	// But the local runtime leaves miniflare's chokidar watcher on the
++	// registry directory alive — `$CLOUDFLARE_REGISTRY_PATH`, default
++	// `<preferences>/cloudflare/registry`, watched via `fs.watch` from
++	// `createFsWatchInstance` — so the event loop never drains and the
++	// process never exits. Measured on cf@1.0.0-beta.12: intermittent on
++	// an idle machine (roughly half of all `d1 migrations apply/list
++	// --local` runs hang, the rest exit in ~1s) and effectively always
++	// under CI load, which surfaced as a 600s `spawnSync pnpm ETIMEDOUT`
++	// in every E2E run of `release-0-6-0`.
++	//
++	// The command's work IS complete when `main()` resolves — the state
++	// directory contains the applied migrations — so exiting here changes
++	// only the hang, never the result. The exit is scoped to `--local` so
++	// long-running commands (`cf dev`, watch modes) keep their handles.
++	//
++	// Flush stdout first: writes to a pipe are asynchronous and
++	// `process.exit` would truncate them before they reach the parent.
++	// The callback fires once the buffer has drained.
++	if (process.argv.includes("--local")) {
++		process.stdout.write("", () => process.exit(process.exitCode ?? 0));
++	}
++	// --- end patch --------------------------------------------------------
+ } catch (err) {
+ 	// `main()` is the sole error-rendering site — it calls `handleError`
+ 	// before rethrowing the original error so tests can catch it on the

@@ -72,11 +72,11 @@ import { existsSync, readFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { ACCOUNT_ID, WORKER_NAME } from './_cloudflare-identity.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = resolve(HERE, '..');
 const INFISICAL_JSON_PATH = resolve(REPO_ROOT, '.infisical.json');
-const WRANGLER_PRODUCTION_CONFIG = resolve(REPO_ROOT, 'wrangler.production.jsonc');
 
 const INFISICAL_API_URL_DEFAULT = 'https://secrets.rebuildup.dev';
 const MACHINE_IDENTITY_NAME = 'my-web-2026-cf-worker';
@@ -95,8 +95,10 @@ Reads:
   CLOUDFLARE_API_TOKEN       user-scoped Cloudflare API token with
                              Workers Builds Configuration: Edit +
                              Workers Scripts: Read
-  CLOUDFLARE_ACCOUNT_ID      Cloudflare account id (from
-                             wrangler.production.jsonc#account_id)
+  CLOUDFLARE_ACCOUNT_ID      Cloudflare account id. Optional, and only
+                             accepted when it repeats the canonical id in
+                             scripts/_cloudflare-identity.mjs; it may not
+                             retarget the bootstrap at another account.
   CF_TRIGGER_UUID            optional override; bypass trigger
                              discovery when set (for re-runs after a
                              discovery mismatch)
@@ -209,9 +211,11 @@ function httpsRequestJson(method, urlString, { token, body } = {}) {
 /* ------------------------------------------------------------------ */
 
 /**
- * Strip `// line` and `/* block *\/` comments from JSONC, then
- * parse. Returns the resulting object. Used to read
- * `wrangler.production.jsonc#account_id` + `name`.
+ * Strip `// line` and `/* block *\/` comments from JSONC, then parse.
+ *
+ * Issue #247: no longer used to read the Worker config — identity is
+ * imported. It remains for the `.infisical.json`-adjacent JSONC parsing
+ * this module still performs.
  */
 function parseJsonc(source) {
 	// Remove block comments (non-greedy, multi-line).
@@ -275,35 +279,31 @@ function readInfisicalWorkspaceId() {
 	return parsed.workspaceId;
 }
 
-function readWranglerProduction() {
-	if (!existsSync(WRANGLER_PRODUCTION_CONFIG)) {
-		throw new Error(`wrangler.production.jsonc not found at ${WRANGLER_PRODUCTION_CONFIG}`);
-	}
-	return parseJsonc(readFileSync(WRANGLER_PRODUCTION_CONFIG, 'utf8'));
-}
-
 /**
- * Resolve the Cloudflare account id from the two supported sources:
+ * Resolve the Cloudflare account id.
  *
- *   1. `CLOUDFLARE_ACCOUNT_ID` env var (override / non-default config)
- *   2. `wrangler.production.jsonc#account_id` (committed SoT for the
- *      operator's account — non-secret identifier)
+ * Issue #247: the canonical id is IMPORTED from
+ * `_cloudflare-identity.mjs`, not scraped out of a Wrangler config.
+ * That file is deleted by this slice, and a value recovered by regex
+ * from a config is one edit away from pointing at another account.
  *
- * Returns `{ accountId, source }` where `source` is one of `'env'`,
- * `'wrangler.production.jsonc#account_id'`, or `null` when neither
- * yields a non-empty string.
+ * An env override is still accepted, but ONLY when it repeats the
+ * canonical id. The old resolver returned whatever
+ * `CLOUDFLARE_ACCOUNT_ID` held, so a stray value silently retargeted
+ * the Machine Identity bootstrap at a different account.
  *
  * Pure function — exposed for tests.
  */
-function resolveCloudflareAccountId({ envValue, wranglerProduction }) {
+function resolveCloudflareAccountId({ envValue }) {
 	if (typeof envValue === 'string' && envValue.length > 0) {
-		return { accountId: envValue, source: 'env' };
+		if (envValue !== ACCOUNT_ID) {
+			throw new Error(
+				`CLOUDFLARE_ACCOUNT_ID=${envValue} does not match the canonical account ${ACCOUNT_ID}. This repository owns one account; an override may not retarget the Cloudflare bootstrap.`,
+			);
+		}
+		return { accountId: ACCOUNT_ID, source: 'env (matches canonical)' };
 	}
-	const fromFile = wranglerProduction?.account_id;
-	if (typeof fromFile === 'string' && fromFile.length > 0) {
-		return { accountId: fromFile, source: 'wrangler.production.jsonc#account_id' };
-	}
-	return { accountId: null, source: null };
+	return { accountId: ACCOUNT_ID, source: '_cloudflare-identity.mjs#ACCOUNT_ID' };
 }
 
 /**
@@ -599,7 +599,6 @@ async function main() {
 	const infisicalApiUrl = process.env.INFISICAL_API_URL ?? INFISICAL_API_URL_DEFAULT;
 	const infisicalToken = process.env.INFISICAL_TOKEN;
 	const cloudflareToken = process.env.CLOUDFLARE_API_TOKEN;
-	let accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
 
 	if (typeof infisicalToken !== 'string' || infisicalToken.length === 0) {
 		throw new Error('INFISICAL_TOKEN env var is required');
@@ -607,9 +606,7 @@ async function main() {
 	// Cloudflare side is optional — bootstrap-cf can still create
 	// the Machine Identity + Universal Auth + client secret even if
 	// CLOUDFLARE_API_TOKEN is absent (the binding step will be
-	// skipped). The accountId fallback to
-	// `wrangler.production.jsonc#account_id` is consulted only when
-	// the Cloudflare side runs.
+	// skipped).
 
 	// Resolve organizationId: env override > JWT extraction.
 	let organizationId = process.env.INFISICAL_ORG_ID;
@@ -625,12 +622,8 @@ async function main() {
 	}
 
 	const workspaceId = readInfisicalWorkspaceId();
-	const wranglerProd = readWranglerProduction();
-	const workerName = wranglerProd.name;
-	if (typeof workerName !== 'string' || workerName.length === 0) {
-		throw new Error('wrangler.production.jsonc#name must be a non-empty string');
-	}
-	console.log(`Worker name (from wrangler.production.jsonc): ${workerName}`);
+	const workerName = WORKER_NAME;
+	console.log(`Worker name (canonical): ${workerName}`);
 	console.log(`Workspace (from .infisical.json): ${workspaceId}`);
 	console.log(`Organization: ${organizationId}`);
 
@@ -714,23 +707,13 @@ async function main() {
 		console.log('Identity + Universal Auth + client secret created successfully.');
 		return;
 	}
-	// Resolve accountId: `CLOUDFLARE_ACCOUNT_ID` env var wins over
-	// `wrangler.production.jsonc#account_id` (committed SoT).
-	// `wranglerProd` was already read earlier for the worker name;
-	// reuse it.
-	if (typeof accountId !== 'string' || accountId.length === 0) {
-		const resolved = resolveCloudflareAccountId({
-			envValue: process.env.CLOUDFLARE_ACCOUNT_ID,
-			wranglerProduction: wranglerProd,
-		});
-		if (resolved.accountId === null) {
-			throw new Error(
-				'CLOUDFLARE_ACCOUNT_ID env var is required for the Workers Builds binding step (and wrangler.production.jsonc#account_id is missing)',
-			);
-		}
-		accountId = resolved.accountId;
-		console.log(`CLOUDFLARE_ACCOUNT_ID: using ${resolved.source}`);
-	}
+	// Resolve the account through the single resolver, so the override
+	// rule is enforced in one place whether or not the env var is set.
+	const resolved = resolveCloudflareAccountId({
+		envValue: process.env.CLOUDFLARE_ACCOUNT_ID,
+	});
+	accountId = resolved.accountId;
+	console.log(`Cloudflare account: ${accountId} (source: ${resolved.source})`);
 	const { triggerUuid, source } = await discoverProductionTriggerUuid({
 		accountId,
 		cloudflareToken,

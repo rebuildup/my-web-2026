@@ -10,3 +10,5 @@ onlyBuiltDependencies:
   - '@cloudflare/vite-plugin'
   - '@biomejs/biome'
   - '@infisical/cli'
+patchedDependencies:
+  cf@1.0.0-beta.12: patches/cf@1.0.0-beta.12.patch

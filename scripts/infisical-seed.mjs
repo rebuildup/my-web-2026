@@ -46,9 +46,9 @@
  *   INFISICAL_TOKEN=... node scripts/infisical-seed.mjs [--env=dev]
  */
 import { spawnSync } from 'node:child_process';
-import { createRequire } from 'node:module';
 import { existsSync, readFileSync } from 'node:fs';
 import { request as httpsRequest } from 'node:https';
+import { createRequire } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 

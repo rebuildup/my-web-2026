@@ -54,11 +54,11 @@
  *   * 新しい事実 / 役割 / narrative の創作
  *   * R2 custom domain (`media.rebuildup.dev`) の attachment
  */
-import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { putObject } from './_r2.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -538,49 +538,34 @@ function main() {
 		return;
 	}
 
-	// --apply: write SQL to a tmp file and execute via wrangler d1.
+	// --apply: write SQL to a tmp file and execute via the shared cf
+	// D1 driver (Issue #247).
 	const tmp = mkdtempSync(join(tmpdir(), 'seed-path-a-'));
 	const sqlPath = join(tmp, 'seed.sql');
 	writeFileSync(sqlPath, allSql.join('\n'), { mode: 0o600 });
 	try {
-		const d1Args = ['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', sqlPath];
-		const d1 = spawnSync('pnpm', d1Args, { cwd: root, stdio: 'inherit', env: process.env });
-		if (d1.status !== 0) {
-			console.error(`[seed-path-a] wrangler d1 exited with status ${d1.status}`);
-			process.exit(d1.status ?? 1);
+		try {
+			executeSqlFile(sqlPath, { target: 'local' });
+		} catch (error) {
+			console.error(`[seed-path-a] D1 write failed: ${error.message}`);
+			process.exit(1);
 		}
 	} finally {
 		rmSync(tmp, { recursive: true, force: true });
 	}
 
-	// R2 PUT (local bucket). `wrangler r2 object put <bucket-name>/<key>`
-	// requires the actual bucket_name, not the binding name. The
-	// binding `MEDIA` (see wrangler.jsonc#r2_buckets) maps to bucket
-	// `my-web-2026`.
-	const R2_BUCKET_NAME = 'my-web-2026';
+	// R2 PUT (local bucket) through the repository driver.
+	//
+	// Issue #247: the bucket name and the local persistence path both
+	// come from shared constants now. The old code restated the bucket
+	// name here AND relied on a CLI that wanted `bucket/key`; the cf CLI
+	// takes `--bucket-name`, so the translation belongs in the driver.
+	//
+	// This is a LOCAL seeding path: it writes to the ephemeral `.tmp/`
+	// store and needs no Cloudflare credential. A production upload is
+	// the publication driver's job, behind an explicit execute.
 	for (const m of mediaUploads) {
-		const cmdArgs = [
-			'exec',
-			'wrangler',
-			'r2',
-			'object',
-			'put',
-			`${R2_BUCKET_NAME}/${m.r2Key}`,
-			'--file',
-			m.localPath,
-			'--content-type',
-			m.contentType,
-			'--local',
-		];
-		const cmd = spawnSync('pnpm', cmdArgs, {
-			cwd: root,
-			stdio: 'inherit',
-			env: process.env,
-		});
-		if (cmd.status !== 0) {
-			console.error(`[seed-path-a] R2 PUT failed for ${m.r2Key}`);
-			process.exit(cmd.status ?? 1);
-		}
+		putObject(m.r2Key, m.localPath, { target: 'local', contentType: m.contentType });
 	}
 
 	console.error('[seed-path-a] DONE.');
@@ -602,14 +587,11 @@ function main() {
 		const publishSqlPath = join(tmp2, 'publish.sql');
 		writeFileSync(publishSqlPath, publishSql, { mode: 0o600 });
 		try {
-			const pub = spawnSync(
-				'pnpm',
-				['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', publishSqlPath],
-				{ cwd: root, stdio: 'inherit', env: process.env },
-			);
-			if (pub.status !== 0) {
-				console.error(`[seed-path-a] publish UPDATE exited with status ${pub.status}`);
-				process.exit(pub.status ?? 1);
+			try {
+				executeSqlFile(publishSqlPath, { target: 'local' });
+			} catch (error) {
+				console.error(`[seed-path-a] publish UPDATE failed: ${error.message}`);
+				process.exit(1);
 			}
 		} finally {
 			rmSync(tmp2, { recursive: true, force: true });

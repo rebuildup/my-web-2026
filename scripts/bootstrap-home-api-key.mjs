@@ -68,6 +68,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
+import { queryRows, runStatement } from './_d1.mjs';
 
 const KEY_NAME = 'home-self-consumption';
 const KEY_PREFIX = 'mk_home_';
@@ -87,28 +88,26 @@ function parseTarget(argv) {
 	return value;
 }
 
-function d1Args(target, command, json = true) {
-	const args = ['exec', 'wrangler', 'd1', 'execute'];
-	if (target === 'remote') {
-		args.push('my-web-2026', '--remote', '-c', 'wrangler.production.jsonc');
-	} else {
-		args.push('DB', '--local');
-	}
-	args.push('--command', command);
-	if (json) args.push('--json');
-	return args;
+/**
+ * Issue #247: D1 access goes through the shared cf driver.
+ *
+ * The driver addresses the database by ID, uses an explicit
+ * local/production target, and routes every production write through
+ * the lowest-layer gate. This script's own `--target local|remote`
+ * spelling is preserved at its CLI boundary and mapped to the driver's
+ * vocabulary here, so the change is confined to this adapter.
+ */
+function cfTarget(target) {
+	return target === 'remote' ? 'production' : 'local';
 }
 
-function execute(target, command, json = true) {
-	return execFileSync('pnpm', d1Args(target, command, json), {
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'inherit'],
-	});
+/** Writes route through the gated driver primitive. */
+function execute(target, command) {
+	runStatement(command, { target: cfTarget(target), execute: true });
 }
 
 function query(target, command) {
-	const parsed = JSON.parse(execute(target, command));
-	return parsed?.[0]?.results ?? [];
+	return queryRows(command, { target: cfTarget(target) });
 }
 
 function sqlString(value) {

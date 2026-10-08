@@ -1,4 +1,6 @@
 #!/usr/bin/node --test
+import assert from 'node:assert/strict';
+import { dirname, resolve } from 'node:path';
 /**
  * Unit tests for `scripts/_dev-vars-reader.mjs` (Issue #186 — the
  * LOCAL_API_MODE=mock dev-server passthrough). The helper is loaded
@@ -7,9 +9,7 @@
  * files wired into `pnpm test`.
  */
 import { test } from 'node:test';
-import assert from 'node:assert/strict';
 import { pathToFileURL } from 'node:url';
-import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -75,34 +75,34 @@ test('readDevVars: parses file when it exists', () => {
 });
 
 test('buildLocalApiModeConfigOverride: returns undefined when .dev.vars has no LOCAL_API_MODE', () => {
-	assert.equal(buildLocalApiModeConfigOverride({ vars: { X: 'y' } }, {}), undefined);
-	assert.equal(buildLocalApiModeConfigOverride({ vars: { X: 'y' } }, null), undefined);
+	assert.equal(buildLocalApiModeConfigOverride({ env: { X: 'y' } }, {}), undefined);
+	assert.equal(buildLocalApiModeConfigOverride({ env: { X: 'y' } }, null), undefined);
 });
 
 test('buildLocalApiModeConfigOverride: returns undefined when LOCAL_API_MODE is empty string', () => {
-	assert.equal(buildLocalApiModeConfigOverride({ vars: {} }, { LOCAL_API_MODE: '' }), undefined);
+	assert.equal(buildLocalApiModeConfigOverride({ env: {} }, { LOCAL_API_MODE: '' }), undefined);
 });
 
-test('buildLocalApiModeConfigOverride: injects LOCAL_API_MODE alongside existing vars', () => {
+test('buildLocalApiModeConfigOverride: injects LOCAL_API_MODE alongside existing env bindings', () => {
 	const workerConfig = {
-		vars: {
+		env: {
 			MY_WEB_2026_REACTIONS_TARGET: 'home-page',
 			MY_WEB_2026_COUNTER_KEY: 'home-page',
 		},
 	};
 	const override = buildLocalApiModeConfigOverride(workerConfig, { LOCAL_API_MODE: 'mock' });
 	assert.deepEqual(override, {
-		vars: {
+		env: {
 			MY_WEB_2026_REACTIONS_TARGET: 'home-page',
 			MY_WEB_2026_COUNTER_KEY: 'home-page',
-			LOCAL_API_MODE: 'mock',
+			LOCAL_API_MODE: { type: 'text', value: 'mock' },
 		},
 	});
 });
 
-test('buildLocalApiModeConfigOverride: tolerates missing workerConfig.vars', () => {
+test('buildLocalApiModeConfigOverride: tolerates a missing env', () => {
 	const override = buildLocalApiModeConfigOverride({}, { LOCAL_API_MODE: 'mock' });
-	assert.deepEqual(override, { vars: { LOCAL_API_MODE: 'mock' } });
+	assert.deepEqual(override, { env: { LOCAL_API_MODE: { type: 'text', value: 'mock' } } });
 });
 
 test('buildLocalApiModeConfigOverride: any non-mock value passes through verbatim (gate checks === "mock")', () => {
@@ -112,6 +112,6 @@ test('buildLocalApiModeConfigOverride: any non-mock value passes through verbati
 	// whatever .dev.vars carries so an operator who types
 	// `LOCAL_API_MODE=on` (or similar) sees the same gate behavior
 	// as production — not the canned mock body.
-	const override = buildLocalApiModeConfigOverride({ vars: {} }, { LOCAL_API_MODE: 'on' });
-	assert.deepEqual(override, { vars: { LOCAL_API_MODE: 'on' } });
+	const override = buildLocalApiModeConfigOverride({ env: {} }, { LOCAL_API_MODE: 'on' });
+	assert.deepEqual(override, { env: { LOCAL_API_MODE: { type: 'text', value: 'on' } } });
 });

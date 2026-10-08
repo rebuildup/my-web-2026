@@ -275,6 +275,18 @@ hide validation logic inside workflow YAML. Coverage thresholds are
 
 - One sprint = one week = one target semantic version = one
   release branch `release-x-y-z`.
+- **Cutting `release-x-y-z` includes setting `package.json#version`
+  to `x.y.z` in the same step.** `version:check` derives the
+  expected version from the branch name and fails the whole
+  `validate` job on a mismatch, so a release branch whose
+  `package.json#version` still carries the previous sprint's
+  number is red from its very first commit until it is bumped.
+  This is option 1 + option 2 of Issue #253: the bump lands on
+  the branch that needs it (rather than being deferred to a
+  later ticket), **and** the cutting step itself now states the
+  requirement so the next branch does not repeat it. The gate
+  stays strict — a release-branch mismatch is an error, never
+  a warning.
 - Ticket branch is the Issue number only (`123`). No `issue/` prefix,
   no slug.
 - 1 top-level Issue = 1 ticket branch = 1 ticket PR.

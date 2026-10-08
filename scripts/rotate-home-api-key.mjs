@@ -79,9 +79,9 @@
  *     Placed BEFORE the Worker write so `--worker-recovery` can read
  *     the fresh value from Infisical on a Worker-write failure.
  *  4. **Cloudflare Worker `MY_WEB_2026_CONSUMER_API_KEY`** — written
- *     via `wrangler secret bulk -c wrangler.production.jsonc` with
- *     stdin JSON. Verified by `wrangler secret list --format json`
- *     (name-only; Cloudflare does not expose secret values).
+ *     via the shared Merge Patch adapter (`bulkUpdateWorkerSecrets`).
+ *     Verified by `listWorkerSecretNameList` (name-only; Cloudflare
+ *     does not expose secret values).
  *
  * ## Subprocess env isolation
  *
@@ -92,8 +92,8 @@
  *    subprocess. Keeps the writer-scoped `INFISICAL_TOKEN`
  *    (the producer of the value), strips machine-identity /
  *    project / site / api-url credentials.
- *  - `buildWranglerEnv(baseEnv)` — for Wrangler (`secret bulk`,
- *    `secret list`) and D1 (`wrangler d1 execute`) subprocesses.
+ *  - `buildCfEnv(baseEnv)` — for the `cf` D1 subprocess. The
+ *    Worker secret write is in-process HTTPS and needs no child env.
  *    Strips the full Infisical credential set (token +
  *    machine identity + project/site/api). Wrangler/D1 MUST NOT
  *    receive the writer-scoped Infisical token.
@@ -105,7 +105,7 @@
  *    filename, or operator-visible output. Smoke is in-process.
  *  - **Does NOT pass `INFISICAL_TOKEN` (or other Infisical
  *    credentials) to Wrangler/D1 subprocesses.** All non-Infisical
- *    children receive `buildWranglerEnv(process.env)` so the
+ *    children receive `buildCfEnv(process.env)` so the
  *    writer-scoped token does not leak into Cloudflare / D1
  *    subprocess environments (PR #141 re-review fix, 2026-09-28).
  *  - **Does NOT allow an arbitrary `--smoke-url`.** The smoke
@@ -141,7 +141,7 @@
  *                                   Worker write stage. Reads the fresh
  *                                   plaintext from Infisical prod,
  *                                   writes it to the Worker via
- *                                   `wrangler secret bulk`, verifies
+ *                                   the Merge Patch adapter, verifies
  *                                   binding name. NO new plaintext
  *                                   generated; no D1 mutation. Valid
  *                                   only AFTER the Infisical write has
@@ -198,13 +198,15 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { queryRows } from './_d1.mjs';
+import { bulkUpdateWorkerSecrets, listWorkerSecretNameList } from './_worker-secrets.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 import {
 	AUTH_MODE,
+	buildCfEnv as buildCfEnvShared,
 	buildInfisicalEnv as buildInfisicalEnvShared,
-	buildWranglerEnv as buildWranglerEnvShared,
 	compareSecretViaAuth,
 	materialiseSecret,
 	resolveInfisicalAuth,
@@ -212,8 +214,6 @@ import {
 } from './_infisical-auth.mjs';
 
 const REPO_ROOT = resolve(HERE, '..');
-const WRANGLER_BIN = join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
-const WRANGLER_PRODUCTION_CONFIG = join(REPO_ROOT, 'wrangler.production.jsonc');
 const D1_DATABASE_NAME = 'my-web-2026';
 const KEY_NAME_PREFIX = 'home-self-consumption-rotated-';
 const KEY_NAME_LEGACY = 'home-self-consumption';
@@ -325,14 +325,18 @@ function buildInfisicalYamlContent(plaintext) {
 }
 
 /**
- * Build the JSON payload for `wrangler secret bulk` stdin.
+ * Build the Worker secret change set: a single named binding.
+ *
+ * Issue #247 (secrets slice): this is the adapter's INPUT contract —
+ * `{ "<name>": "<plaintext>" }` — and `bulkUpdateWorkerSecrets` turns it
+ * into the `{ secrets: … }` Merge Patch envelope. It deliberately does
+ * NOT serialise to JSON here: returning a string made every call site
+ * hand `bulkUpdateWorkerSecrets` a string where it requires an object,
+ * so the Worker write failed at Stage 9 on every run. A JSON round-trip
+ * at the boundary is where that regression lived.
  */
 function buildWorkerBulkPayload(plaintext) {
-	return JSON.stringify({ [SECRET_NAME]: plaintext });
-}
-
-function buildWranglerBulkArgs() {
-	return ['secret', 'bulk', '-c', WRANGLER_PRODUCTION_CONFIG];
+	return { [SECRET_NAME]: plaintext };
 }
 
 function buildInfisicalSetArgs(yamlPath, environment, workspaceId) {
@@ -636,29 +640,6 @@ function spawnInfisicalSet({ cliPath, yamlPath, environment, workspaceId, env, s
 	});
 }
 
-function spawnWranglerBulk({ payload, env, spawnFn = spawn }) {
-	const child = spawnFn(process.execPath, [WRANGLER_BIN, ...buildWranglerBulkArgs()], {
-		// Issue #225: `runWranglerWrite` captures stdout/stderr, which
-		// Node sets to null for an inherited stream. Piping all three
-		// makes the capture actually work; previously `--execute` threw
-		// AFTER a successful write, masking the driver's own
-		// partial-failure + recovery-rowId guidance.
-		stdio: ['pipe', 'pipe', 'pipe'],
-		env,
-	});
-	child.stdin.write(payload);
-	child.stdin.end();
-	return child;
-}
-
-function spawnWranglerList({ env, spawnFn = spawn }) {
-	return spawnFn(
-		process.execPath,
-		[WRANGLER_BIN, 'secret', 'list', '--format', 'json', '-c', WRANGLER_PRODUCTION_CONFIG],
-		{ stdio: ['pipe', 'pipe', 'pipe'], env },
-	);
-}
-
 /**
  * Execute a D1 SQL command via `wrangler d1 execute`. Returns the
  * parsed JSON results array (for SELECT) or `{ rows_written, ... }`
@@ -669,24 +650,27 @@ function spawnWranglerList({ env, spawnFn = spawn }) {
  * leak into the D1 subprocess environment (PR #141 review fix,
  * Issue #139 canonical incident follow-up).
  */
+/**
+ * Issue #247: the D1 side of this driver is cf-native.
+ *
+ * This file is in a deliberate, temporary mixed state. Three
+ * credential boundaries, kept explicit and never collapsed:
+ *
+ *   1. Infisical child    — the writer token for Infisical itself
+ *   2. Cloudflare D1 child — `CLOUDFLARE_D1_API_TOKEN` only, scoped to
+ *                            D1; NOT the Worker deploy token
+ *   3. Worker-secret child — still Wrangler, replaced in the next
+ *                            secrets slice
+ *
+ * The D1 child gets the D1-scoped credential, so Infisical material
+ * and the Worker deploy token stay out of it.
+ */
 function execD1Sql({ target, command, json = true, env }) {
-	const args = ['exec', 'wrangler', 'd1', 'execute'];
-	if (target === 'remote') {
-		args.push(D1_DATABASE_NAME, '--remote', '-c', WRANGLER_PRODUCTION_CONFIG);
-	} else {
-		args.push('DB', '--local');
-	}
-	args.push('--command', command);
-	if (json) args.push('--json');
-	const result = execFileSync('pnpm', args, {
-		encoding: 'utf8',
-		stdio: ['ignore', 'pipe', 'inherit'],
-		timeout: SUBPROCESS_TIMEOUT_MS,
-		maxBuffer: 1024 * 1024,
-		env: env ?? process.env,
-	});
-	if (!json) return result;
-	return JSON.parse(result);
+	// The caller-facing vocabulary is preserved; only this adapter maps
+	// it onto the driver's local/production enum.
+	const cfTarget = target === 'remote' ? 'production' : 'local';
+	// Reads do not need the write gate; a statement here is a SELECT.
+	return queryRows(command, { target: cfTarget, env: env ?? process.env });
 }
 
 /* ─── HTTPS (Infisical read-back) ──────────────────────────────────────── */
@@ -816,8 +800,7 @@ function awaitExit(child, { timeoutMs = SUBPROCESS_TIMEOUT_MS } = {}) {
 /**
  * Strip ALL Infisical credential keys from a process.env-like object.
  *
- * This is the env for Wrangler and D1 subprocesses (`wrangler secret
- * bulk`, `wrangler d1 execute`, `wrangler secret list`). The
+ * This is the env for the `cf` D1 subprocess. The
  * writer-scoped `INFISICAL_TOKEN` and Universal-Auth
  * `INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET` MUST NOT reach
  * these subprocesses: the writer token is scoped to write Infisical,
@@ -825,10 +808,10 @@ function awaitExit(child, { timeoutMs = SUBPROCESS_TIMEOUT_MS } = {}) {
  *
  * Kept name `buildSanitizedEnv` for backwards compatibility with the
  * earlier PR #141 review fix; new call sites should use
- * `buildWranglerEnv` for explicit intent.
+ * `buildCfEnv` for explicit intent.
  */
 function buildSanitizedEnv(baseEnv) {
-	return buildWranglerEnv(baseEnv);
+	return buildCfEnv(baseEnv);
 }
 
 /**
@@ -839,12 +822,26 @@ function buildSanitizedEnv(baseEnv) {
  * needed by the CLI when authenticating via `INFISICAL_TOKEN` and
  * removing them prevents accidental inheritance into the CLI.
  *
- * Pair with `buildWranglerEnv` for non-Infisical subprocesses.
+ * Pair with `buildCfEnv` for non-Infisical subprocesses.
  */
 function buildInfisicalEnv(baseEnv, auth) {
 	// Issue #223: token mode injects the token; CLI mode strips the
 	// whole credential set so the CLI uses its own stored session.
-	return buildInfisicalEnvShared(baseEnv, auth);
+	//
+	// The shared helper takes `{ mode, token }`, but a bare token
+	// string is also accepted here. Without this normalisation a string
+	// reached the shared helper as an object with no `mode`, so the
+	// token branch was skipped and `INFISICAL_TOKEN` came back
+	// `undefined` — a credential silently dropped rather than
+	// rejected. Mirrors `rotate-better-auth-secret.mjs`.
+	//
+	// An EMPTY string is not a token: it selects CLI mode, so a leftover
+	// `INFISICAL_TOKEN` in the parent env is stripped rather than
+	// replaced with `''`.
+	const token = typeof auth === 'string' ? auth : auth?.token;
+	const hasToken = typeof token === 'string' && token.length > 0;
+	const mode = hasToken ? AUTH_MODE.TOKEN : AUTH_MODE.CLI;
+	return buildInfisicalEnvShared(baseEnv, { mode, token: hasToken ? token : null });
 }
 
 /**
@@ -853,45 +850,22 @@ function buildInfisicalEnv(baseEnv, auth) {
  * project/site/api). The writer-scoped Infisical token MUST NOT
  * reach Cloudflare or D1 subprocess environments.
  */
-function buildWranglerEnv(baseEnv) {
+function buildCfEnv(baseEnv) {
 	// Issue #223: single shared least-privilege strip so the four
 	// drivers cannot drift apart.
-	return buildWranglerEnvShared(baseEnv);
+	return buildCfEnvShared(baseEnv);
 }
 
-async function readWranglerBindingNames(env) {
-	return new Promise((resolve, reject) => {
-		const child = spawnWranglerList({ env });
-		const chunks = [];
-		let total = 0;
-		child.stdout.on('data', (chunk) => {
-			total += chunk.length;
-			if (total > HTTPS_MAX_RESPONSE_BYTES) {
-				child.kill('SIGTERM');
-				reject(new Error(`wrangler secret list exceeded ${HTTPS_MAX_RESPONSE_BYTES} bytes`));
-				return;
-			}
-			chunks.push(chunk);
-		});
-		child.on('exit', (code) => {
-			if (code !== 0) {
-				reject(new Error(`wrangler secret list exited with status ${code}`));
-				return;
-			}
-			try {
-				const parsed = JSON.parse(Buffer.concat(chunks).toString('utf8'));
-				const names = Array.isArray(parsed)
-					? parsed
-							.map((entry) => (entry && typeof entry.name === 'string' ? entry.name : null))
-							.filter((n) => n !== null)
-					: [];
-				resolve(names);
-			} catch (cause) {
-				reject(new Error(`wrangler secret list output not valid JSON: ${cause.message}`));
-			}
-		});
-		child.on('error', reject);
-	});
+/**
+ * Issue #247: the live Worker binding listing is the shared API helper.
+ * The D1 side of this file was converted in the D1 slice; this closes
+ * the Worker-secret side, so the temporary mixed state is over:
+ * every credential boundary in this file is now an explicit, named one
+ * (Infisical child / Cloudflare D1 child / Worker-secret API call).
+ * Cloudflare exposes names and types only — no value is requested.
+ */
+async function listWorkerBindingNames(env) {
+	return listWorkerSecretNameList({ env: env ?? process.env });
 }
 
 async function runInfisicalWrite({ cliPath, yamlPath, environment, workspaceId, env }) {
@@ -909,12 +883,18 @@ async function runInfisicalWrite({ cliPath, yamlPath, environment, workspaceId, 
 	};
 }
 
-async function runWranglerWrite({ payload, env }) {
-	const child = spawnWranglerBulk({ payload, env });
-	const stderrChunks = [];
-	child.stderr.on('data', (chunk) => stderrChunks.push(chunk));
-	const { code, signal } = await awaitExit(child);
-	return { code, signal, stderr: Buffer.concat(stderrChunks).toString('utf8') };
+/**
+ * Issue #247: the Worker write goes through the shared Merge Patch
+ * adapter — value in an HTTPS body, never argv. Error text carries
+ * names and status only, so it is safe to surface.
+ */
+async function writeWorkerSecretPatch({ payload, env, execute }) {
+	try {
+		await bulkUpdateWorkerSecrets(payload, { execute, env });
+		return { code: 0, signal: null, stderr: '' };
+	} catch (error) {
+		return { code: 1, signal: null, stderr: String(error?.message ?? error) };
+	}
 }
 
 /**
@@ -975,7 +955,6 @@ export {
 	buildRotatedRowName,
 	buildInfisicalYamlContent,
 	buildWorkerBulkPayload,
-	buildWranglerBulkArgs,
 	buildInfisicalSetArgs,
 	buildD1InsertCommand,
 	buildD1SelectRotatedRowsCommand,
@@ -991,8 +970,6 @@ export {
 	secretValuesEqual,
 	sqlString,
 	spawnInfisicalSet,
-	spawnWranglerBulk,
-	spawnWranglerList,
 	classifyInfisicalHttpStatus,
 	buildSecretReadUrl,
 	interpretInfisicalReadResponse,
@@ -1002,7 +979,7 @@ export {
 	awaitExit,
 	buildSanitizedEnv,
 	buildInfisicalEnv,
-	buildWranglerEnv,
+	buildCfEnv,
 	execD1Sql,
 };
 
@@ -1051,7 +1028,7 @@ async function materialiseSecretValue({ auth, apiUrl, cliPath, workspaceId, envi
 }
 
 async function runVerify({ apiUrl, auth, cliPath, workspaceId, environment, target }) {
-	const wranglerEnv = buildWranglerEnv(process.env);
+	const wranglerEnv = buildCfEnv(process.env);
 
 	// D1 state — list enabled rows (old + rotated). Used to surface the
 	// containment state of the old row (leaked plaintext rejected? yes if
@@ -1085,7 +1062,7 @@ async function runVerify({ apiUrl, auth, cliPath, workspaceId, environment, targ
 	});
 
 	// Worker binding name (must use Wrangler env, no Infisical creds)
-	const bindings = await readWranglerBindingNames(wranglerEnv);
+	const bindings = await listWorkerBindingNames(wranglerEnv);
 	const hasBinding = bindings.includes(SECRET_NAME);
 
 	return {
@@ -1114,7 +1091,7 @@ async function runWorkerRecovery({
 }) {
 	console.log(`[worker-recovery] rowId=${rowId} target=${target}`);
 
-	const wranglerEnv = buildWranglerEnv(process.env);
+	const wranglerEnv = buildCfEnv(process.env);
 
 	const infisicalValue = await materialiseSecretValue({
 		auth,
@@ -1130,23 +1107,25 @@ async function runWorkerRecovery({
 		);
 	}
 
-	console.log(
-		`[worker-recovery] writing ${SECRET_NAME} to Worker via wrangler secret bulk (stdin JSON)...`,
-	);
+	console.log(`[worker-recovery] writing ${SECRET_NAME} to Worker via the Merge Patch adapter...`);
 	const payload = buildWorkerBulkPayload(infisicalValue);
-	const wranglerResult = await runWranglerWrite({ payload, env: wranglerEnv });
+	const wranglerResult = await writeWorkerSecretPatch({
+		payload,
+		env: wranglerEnv,
+		execute: args.mode === 'execute',
+	});
 	if (wranglerResult.signal) {
-		throw new Error(`wrangler terminated by signal ${wranglerResult.signal}`);
+		throw new Error(`Worker secret write terminated by signal ${wranglerResult.signal}`);
 	}
 	if (wranglerResult.code !== 0) {
-		throw new Error(`wrangler secret bulk exited with status ${wranglerResult.code}`);
+		throw new Error(`Worker secret write failed: ${wranglerResult.stderr}`);
 	}
 
 	console.log('[worker-recovery] verifying Worker binding names (no value read-back)...');
-	const bindings = await readWranglerBindingNames(wranglerEnv);
+	const bindings = await listWorkerBindingNames(wranglerEnv);
 	if (!bindings.includes(SECRET_NAME)) {
 		throw new Error(
-			`Worker binding-name verification failed: ${SECRET_NAME} not present in wrangler secret list (got: [${bindings.join(', ')}])`,
+			`Worker binding-name verification failed: ${SECRET_NAME} not present in the Worker secret listing (got: [${bindings.join(', ')}])`,
 		);
 	}
 
@@ -1191,9 +1170,9 @@ async function main() {
 			'  8. disable OLD home-self-consumption row (containment — only after fresh plaintext has a recoverable SoT)',
 		);
 		console.log('     -> SELECT verifies the old row is gone');
-		console.log(`  9. write Worker ${SECRET_NAME} = <fresh> via wrangler secret bulk (stdin JSON)`);
+		console.log(`  9. write Worker ${SECRET_NAME} = <fresh> via the Merge Patch adapter`);
 		console.log(
-			'  10. verify: HTTPS GET read-back + timingSafeEqual (Infisical) + wrangler secret list (Worker names)',
+			'  10. verify: HTTPS GET read-back + timingSafeEqual (Infisical) + Worker secret listing (names only)',
 		);
 		console.log('[dry-run] no side effects; pass --execute to apply (operator gate required).');
 		return;
@@ -1239,7 +1218,7 @@ async function main() {
 	if (args.mode === 'disable-row') {
 		console.log(`[disable-row] disabling D1 row id=${args.disableRowId}...`);
 		const cmd = buildD1DisableCommand(args.disableRowId);
-		const wranglerEnv = buildWranglerEnv(process.env);
+		const wranglerEnv = buildCfEnv(process.env);
 		execD1Sql({ target: args.target, command: cmd, json: false, env: wranglerEnv });
 		console.log(`[disable-row] row id=${args.disableRowId} disabled (if it was enabled)`);
 		return;
@@ -1260,7 +1239,7 @@ async function main() {
 
 	// --execute path. `auth` was resolved above and failed closed there.
 
-	const wranglerEnv = buildWranglerEnv(process.env);
+	const wranglerEnv = buildCfEnv(process.env);
 
 	// Stage 1 — refuse if a rotated row is already enabled. Rotation is
 	// atomic from the operator's perspective; partial state must be
@@ -1408,7 +1387,7 @@ async function main() {
 		);
 		// The Infisical subprocess DOES need the writer-scoped token
 		// (it is the producer of the value). Wrangler/D1 subprocesses
-		// NEVER receive it (buildWranglerEnv). PR #141 re-review, 2026-09-28.
+		// NEVER receive it (buildCfEnv). PR #141 re-review, 2026-09-28.
 		const infisicalEnv = buildInfisicalEnv(process.env, auth);
 		const infisicalResult = await runInfisicalWrite({
 			cliPath,
@@ -1486,11 +1465,9 @@ async function main() {
 	);
 
 	// Stage 9 — write Worker via bulk (env without INFISICAL_TOKEN).
-	console.log(
-		`[execute] writing ${SECRET_NAME} to Worker via wrangler secret bulk (stdin JSON)...`,
-	);
+	console.log(`[execute] writing ${SECRET_NAME} to Worker via the Merge Patch adapter...`);
 	const payload = buildWorkerBulkPayload(plaintext);
-	const wranglerResult = await runWranglerWrite({ payload, env: wranglerEnv });
+	const wranglerResult = await writeWorkerSecretPatch({ payload, env: wranglerEnv });
 	if (wranglerResult.signal) {
 		console.error(
 			`[execute] PARTIAL FAILURE: Infisical ${args.environment} holds the new ${SECRET_NAME}, but Worker write was terminated by signal ${wranglerResult.signal}.`,
@@ -1518,10 +1495,10 @@ async function main() {
 
 	// Stage 10 — Worker binding-name verification (env without Infisical creds).
 	console.log('[execute] verifying Worker binding names (no value read-back)...');
-	const bindings = await readWranglerBindingNames(wranglerEnv);
+	const bindings = await listWorkerBindingNames(wranglerEnv);
 	if (!bindings.includes(SECRET_NAME)) {
 		throw new Error(
-			`Worker binding-name verification failed: ${SECRET_NAME} not present in wrangler secret list (got: [${bindings.join(', ')}])`,
+			`Worker binding-name verification failed: ${SECRET_NAME} not present in the Worker secret listing (got: [${bindings.join(', ')}])`,
 		);
 	}
 

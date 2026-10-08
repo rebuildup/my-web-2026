@@ -18,6 +18,11 @@ dist-cloudflare/
 
 # Wrangler local state
 .wrangler/
+# The cf Build Output is disposable; the generated types are the
+# canonical, freshness-checked artifact (cf-typegen:check diffs it).
+.cloudflare/*
+!.cloudflare/types/
+!.cloudflare/types/index.d.ts
 
 # Panda CSS generated package (rebuilt via `pnpm prepare`)
 styled-system/

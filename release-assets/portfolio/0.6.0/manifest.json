@@ -1,0 +1,72 @@
+{
+	"release": "0.6.0",
+	"description": "Repo-controlled immutable release assets for #78 publication flip window. Production publication driver (scripts/publish-portfolio-production.mjs) reads this manifest and fails closed on hash mismatch. Source provenance is durable evidence — not a YouTube live download or .reference clone dependency at production run time.",
+	"r2_bucket": "my-web-2026",
+	"r2_bucket_binding": "MEDIA",
+	"assets": [
+		{
+			"candidate_id": "legacy_multislicer",
+			"slug": "multislicer",
+			"title": "MultiSlicer",
+			"asset_filename": "20250503_multi.jpg",
+			"asset_relative_path": "multislicer/20250503_multi.jpg",
+			"r2_key": "portfolio/multislicer/20250503_multi.jpg",
+			"content_type": "image/jpeg",
+			"byte_size": 417357,
+			"width": 1920,
+			"height": 1920,
+			"sha256": "e2ca41283cde9e87222f103f6588471ce1f2e1a17a87f28ba4a5b338c7f9cb7e",
+			"alt": "MultiSlicer afterimage panel preview",
+			"is_cover": true,
+			"source_provenance": {
+				"kind": "legacy_blob",
+				"table": "media",
+				"filename_hint": "20250503_multi.jpg",
+				"capture_date_hint": "2025-05-03",
+				"rationale": "Extracted from my-web-2025 SQLite media BLOB during Issue #78 inventory phase; original filename implies 2025-05-03 capture date (project release day)."
+			}
+		},
+		{
+			"candidate_id": "legacy_aulymo-v01",
+			"slug": "aulymo-v01",
+			"title": "Aulymo",
+			"asset_filename": "aulymo-v01-maxres.jpg",
+			"asset_relative_path": "aulymo-v01/aulymo-v01-maxres.jpg",
+			"r2_key": "portfolio/aulymo-v01/aulymo-v01-maxres.jpg",
+			"content_type": "image/jpeg",
+			"byte_size": 42128,
+			"width": 1280,
+			"height": 720,
+			"sha256": "b0ce1b596326279fbd87397c20df0a9738ddeb51375512e08613d5e0ba491bd3",
+			"alt": "Aulymo v01 — Adobe After Effects rotate-via-rotation script preview",
+			"is_cover": true,
+			"source_provenance": {
+				"kind": "youtube_maxresdefault",
+				"video_id": "SewXH0Bbm-c",
+				"url": "https://i.ytimg.com/vi/SewXH0Bbm-c/maxresdefault.jpg",
+				"rationale": "YouTube auto-generated maxresdefault thumbnail for project-owned video (2024-12-13 release). Project owns the YouTube upload, so the thumbnail is a project-owned derivative. Captured once at PR authoring time and committed as an immutable release asset — production execution does NOT re-download."
+			}
+		},
+		{
+			"candidate_id": "legacy_aulymo-v02",
+			"slug": "aulymo-v02",
+			"title": "Aeスクリプト Aulymo",
+			"asset_filename": "aulymo-v02-maxres.jpg",
+			"asset_relative_path": "aulymo-v02/aulymo-v02-maxres.jpg",
+			"r2_key": "portfolio/aulymo-v02/aulymo-v02-maxres.jpg",
+			"content_type": "image/jpeg",
+			"byte_size": 78087,
+			"width": 1280,
+			"height": 720,
+			"sha256": "549a176dda6951320f58b481c9ebc6c7c7a3715216144a351f55a3a6de6f2052",
+			"alt": "Ae script Aulymo v02 — version-up preview",
+			"is_cover": true,
+			"source_provenance": {
+				"kind": "youtube_maxresdefault",
+				"video_id": "EbtybmiN5pM",
+				"url": "https://i.ytimg.com/vi/EbtybmiN5pM/maxresdefault.jpg",
+				"rationale": "YouTube auto-generated maxresdefault thumbnail for project-owned video (2024-12-20 release). Same rationale as aulymo-v01."
+			}
+		}
+	]
+}

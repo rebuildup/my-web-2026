@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict';
-import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import {
 	existsSync,
@@ -11,6 +10,7 @@ import {
 	utimesSync,
 	writeFileSync,
 } from 'node:fs';
+import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 /**
@@ -19,7 +19,7 @@ import { dirname, join, resolve } from 'node:path';
  * The interesting invariants are:
  *   1. Argument parsing: --dry-run default, --execute explicit, conflicting
  *      mode flags rejected, --environment restricted to {prod, preview},
- *      --config defaults per environment.
+ *      no config path is passed to the inner script.
  *   2. .infisical.json shape: missing / malformed / non-object / unknown
  *      keys / missing workspaceId all rejected.
  *   3. Stale tempdir cleanup (24h+).
@@ -168,7 +168,8 @@ describe('deploy-with-secrets.mjs', () => {
 			});
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, /environment=prod/);
-			assert.match(result.stdout, /config=wrangler\.production\.jsonc/);
+			// No config path is reported: `--config` is gone (Issue #247).
+			assert.doesNotMatch(result.stdout, /config=/);
 		});
 	});
 
@@ -225,14 +226,14 @@ describe('deploy-with-secrets.mjs', () => {
 			assert.match(result.stdout, /skipping Universal Auth login and wrangler deploy/);
 		});
 
-		it('reports workspaceId / environment / config', () => {
+		it('reports workspaceId / environment, and no config path', () => {
 			const result = runInIsolatedRepo([], {
 				existingContent: JSON.stringify({ workspaceId: VALID_UUID }),
 			});
 			assert.equal(result.exitCode, 0);
 			assert.match(result.stdout, new RegExp(`workspaceId=${VALID_UUID}`));
 			assert.match(result.stdout, /environment=prod/);
-			assert.match(result.stdout, /config=wrangler\.production\.jsonc/);
+			assert.doesNotMatch(result.stdout, /config=/);
 		});
 
 		it('verifies the inner script exists', () => {
@@ -381,16 +382,19 @@ describe('deploy-with-secrets.mjs', () => {
 			const buildPreflightArgs = await loadBuildPreflightArgs();
 			const argv = buildPreflightArgs({
 				environment: 'prod',
-				configPath: 'wrangler.production.jsonc',
 				workerContract: 'transition',
 			});
 			assert.deepEqual(argv.slice(1), [
 				'--execute',
 				'--environment=prod',
-				'--config=wrangler.production.jsonc',
 				'--worker-contract=transition',
 				'--require-live-worker',
 			]);
+			// `--config` no longer reaches the preflight either.
+			assert.equal(
+				argv.some((a) => a.startsWith('--config')),
+				false,
+			);
 		});
 
 		it('deploy source invokes the preflight before the inner deploy', () => {
@@ -407,29 +411,28 @@ describe('deploy-with-secrets.mjs', () => {
 	describe('inner argv construction (cross-script contract)', () => {
 		// These tests pin the argv shape that `deploy-with-secrets.mjs`
 		// hands to `infisical run -- node scripts/run-deploy-inner.mjs`.
-		// The inner script's `parseArgs` only accepts `--config` in the
-		// `--config=<path>` form (uses `arg.startsWith('--config=')`).
-		// A bare `--config` followed by a separate argv entry would
-		// fall through to its `else { throw }` branch and abort the
-		// production `--execute` path. These tests fail loudly if anyone
-		// regresses to the split form.
+		// Issue #247: no config path is passed at all. These tests fail
+		// loudly if one is reintroduced, which would re-name a deleted
+		// file as if it still selected a target.
 
-		it('passes --config=<path> as a single argv (inner parser is --config= form)', async () => {
+		it('passes NO config path to the inner script (Issue #247)', async () => {
+			// The inner script authorized nothing from a config path once
+			// the Build Output became the gate. Passing one would also
+			// name a file this repository deletes.
 			const buildInnerArgs = await loadBuildInnerArgs();
 			const argv = buildInnerArgs({
 				infisicalCli: '/usr/local/bin/infisical',
 				workspaceId: VALID_UUID,
 				environment: 'prod',
 				domain: 'https://secrets.rebuildup.dev',
-				configPath: 'wrangler.production.jsonc',
 				execute: true,
 			});
+			assert.equal(
+				argv.some((a) => a.startsWith('--config')),
+				false,
+			);
 			const idx = argv.indexOf(INNER_SCRIPT) + 1;
-			assert.equal(argv[idx], '--config=wrangler.production.jsonc');
-			// Sanity: must be a single argv (no whitespace split).
-			assert.doesNotMatch(argv[idx], /\s/);
-			// And the next slot must be `--execute` (not a config path).
-			assert.equal(argv[idx + 1], '--execute');
+			assert.equal(argv[idx], '--execute');
 		});
 
 		it('passes an explicit --domain so a session-less CLI targets the right host (Issue #230)', async () => {
@@ -445,7 +448,6 @@ describe('deploy-with-secrets.mjs', () => {
 				workspaceId: VALID_UUID,
 				environment: 'prod',
 				domain: 'https://secrets.rebuildup.dev',
-				configPath: 'wrangler.production.jsonc',
 				execute: true,
 			});
 			const idx = argv.indexOf('--domain');
@@ -464,29 +466,25 @@ describe('deploy-with-secrets.mjs', () => {
 				workspaceId: VALID_UUID,
 				environment: 'dev',
 				domain: 'https://secrets.rebuildup.dev',
-				configPath: 'wrangler.jsonc',
 				execute: false,
 			});
 			assert.equal(argv.includes('--execute'), false);
 		});
 
-		it('places --config=<path> and --execute immediately after INNER_SCRIPT', async () => {
+		it('places --execute immediately after INNER_SCRIPT, with no config arg', async () => {
 			const buildInnerArgs = await loadBuildInnerArgs();
 			const argv = buildInnerArgs({
 				infisicalCli: '/usr/local/bin/infisical',
 				workspaceId: VALID_UUID,
 				environment: 'prod',
 				domain: 'https://secrets.rebuildup.dev',
-				configPath: 'wrangler.production.jsonc',
 				execute: true,
 			});
 			const innerIdx = argv.indexOf(INNER_SCRIPT);
-			assert.equal(argv[innerIdx + 1], '--config=wrangler.production.jsonc');
-			assert.equal(argv[innerIdx + 2], '--execute');
-			// And no bare `--config` anywhere in the argv (would be
-			// rejected by inner script's parser).
+			assert.equal(argv[innerIdx + 1], '--execute');
 			for (let i = 0; i < argv.length; i++) {
 				assert.notEqual(argv[i], '--config', `argv[${i}] must not be bare '--config'`);
+				assert.ok(!argv[i].startsWith('--config='), `argv[${i}] must not be --config=`);
 			}
 		});
 	});

@@ -15,7 +15,7 @@
  *     db:migrate / wrangler child processes (process tree depth = 2).
  *
  * Args (forwarded by `deploy-with-secrets.mjs`):
- *   --config=<path>    wrangler config path (required)
+ * (no --config: the Build Output itself is the production gate — Issue #247)
  *   --execute          actually run db:migrate + wrangler deploy
  *                      (default: dry-run — write tempdir file then
  *                      rmSync it, no deploy side effect)
@@ -34,20 +34,17 @@ import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+	BUILD_OUTPUT_DIR,
+	assertDeployCredentialAvailable,
+	assertDeployableBuildOutput,
+	assertNoAuditOnlySecrets,
+	buildDeployArgv,
+} from './_cf-build-output.mjs';
+import { AUDIT_ONLY_SECRETS, REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
+import { applyMigrations } from './_d1.mjs';
 
 const require = createRequire(import.meta.url);
-
-// Canonical production wrangler config — the only path on which
-// `--execute` (db:migrate:production + wrangler deploy) may run. The
-// compare in `assertProductionConfigForExecute` resolves both the
-// requested `--config` and this canonical constant to absolute paths
-// so that same-named configs in other directories cannot bypass the
-// production lockdown. ADR-0015 §4.
-const CANONICAL_PRODUCTION_CONFIG = resolve(
-	dirname(fileURLToPath(import.meta.url)),
-	'..',
-	'wrangler.production.jsonc',
-);
 
 /**
  * Phase-specific 2-name contract (ADR-0015 §9). The deploy script's
@@ -78,32 +75,26 @@ const CANONICAL_PRODUCTION_CONFIG = resolve(
  * merge time and the operator replaces it with the real value BEFORE
  * cutting traffic to production.
  */
-const REQUIRED_RUNTIME_SECRETS = [
-	'BETTER_AUTH_SECRETS',
-	'MY_WEB_2026_CONSUMER_API_KEY',
-	'GOOGLE_ANALYTICS_MEASUREMENT_ID',
-];
-const AUDIT_ONLY_SECRETS = ['BETTER_AUTH_SECRET'];
+// The runtime contract is owned by `_cloudflare-contract.mjs`, shared
+// with `cloudflare.config.ts` (which declares the bindings by these
+// names) and with `check-cloudflare-contract.mjs` (which compares the
+// generated Build Output against them). This file no longer restates
+// the names: a literal here was a third copy that could drift, and
+// `check-infisical-coverage.mjs` used to exist mainly to notice that.
+
 const SENSITIVE_KEYS = new Set([
 	...REQUIRED_RUNTIME_SECRETS,
 	...AUDIT_ONLY_SECRETS,
 	'INFISICAL_TOKEN',
 ]);
 
-/**
- * Resolve the wrangler CLI lazily so that dry-run / arg-validation paths
- * don't require wrangler to be installed in the search path. Returns
- * the absolute path to `wrangler.js` inside the wrangler package.
- */
-function resolveWranglerBin() {
-	return join(dirname(require.resolve('wrangler/package.json')), 'bin', 'wrangler.js');
-}
-
 function parseArgs(argv) {
-	const args = { config: null, execute: false };
+	const args = { execute: false };
 	for (const arg of argv) {
 		if (arg.startsWith('--config=')) {
-			args.config = arg.slice('--config='.length);
+			// Accepted and ignored. Production authorization now comes
+			// from the Build Output, not from a config path (Issue #247).
+			arg.slice('--config='.length);
 		} else if (arg === '--execute') {
 			args.execute = true;
 		} else if (arg === '--help' || arg === '-h') {
@@ -113,10 +104,6 @@ function parseArgs(argv) {
 			console.error(`unknown argument: ${arg}`);
 			process.exit(1);
 		}
-	}
-	if (args.config === null) {
-		console.error('--config=<path> is required');
-		process.exit(1);
 	}
 	return args;
 }
@@ -132,15 +119,6 @@ function parseArgs(argv) {
  * config. Dev / preview configs (e.g. `wrangler.jsonc`) may only be
  * used in dry-run mode. ADR-0015 §4.
  */
-function assertProductionConfigForExecute(configPath, execute) {
-	if (!execute) return;
-	const resolvedConfig = resolve(configPath);
-	if (resolvedConfig !== CANONICAL_PRODUCTION_CONFIG) {
-		throw new Error(
-			`--execute is only valid with the canonical ${CANONICAL_PRODUCTION_CONFIG} (got: ${resolvedConfig}). Dev verification path: invoke the inner script directly via 'infisical run --env=dev -- node scripts/run-deploy-inner.mjs --config=wrangler.jsonc' (dry-run default; no production side effects).`,
-		);
-	}
-}
 
 function printHelp() {
 	console.log(`Usage: run-deploy-inner.mjs --config=<path> [--execute]
@@ -192,9 +170,30 @@ function buildSanitizedEnv() {
 }
 
 const args = parseArgs(process.argv.slice(2));
-const configPath = resolve(args.config);
-assertProductionConfigForExecute(configPath, args.execute);
+// Issue #247: the production gate is the Build Output that is about to
+// be shipped, not `--config=wrangler.production.jsonc`. Permission used
+// to come from a path convention; it now comes from the artifact
+// actually being deployed. This runs BEFORE collectSecrets and before
+// any D1 migration or Cloudflare call, so a bad artifact can never
+// half-deploy.
+let buildOutput = null;
+if (args.execute) {
+	buildOutput = assertDeployableBuildOutput();
+	console.log(
+		`[run-deploy-inner] Build Output verified: mode=${buildOutput.mode} ` +
+			`worker=${buildOutput.workerName} secrets=${buildOutput.secretBindings.length}`,
+	);
+}
+
+// The deploy-time Cloudflare credential is required only for a real
+// execute. A dry-run must not demand it: it makes no API request.
+if (args.execute) {
+	assertDeployCredentialAvailable();
+}
+
 const secrets = collectSecrets();
+// Never re-introduce the audit-only legacy binding (#243).
+assertNoAuditOnlySecrets(secrets);
 const sanitizedEnv = buildSanitizedEnv();
 const tempDir = mkdtempSync(join(tmpdir(), 'my-web-2026-deploy-'));
 const secretsFile = join(tempDir, 'secrets.json');
@@ -208,19 +207,24 @@ try {
 			`[dry-run] secrets.json would have been written to ${secretsFile} ` +
 				`(contains ${Object.keys(secrets).length} keys; argv / log: secret content NOT included)`,
 		);
-		console.log('[dry-run] would spawn: db:migrate:production + wrangler deploy --secrets-file');
-		console.log(`[dry-run] config=${configPath}`);
+		console.log(
+			`[dry-run] would run: ${buildDeployArgv({ secretsFile: '<temp-secrets-file>' }).join(' ')}`,
+		);
+		console.log(`[dry-run] Build Output: ${BUILD_OUTPUT_DIR}`);
 		console.log(`[dry-run] sanitized env excludes: ${[...SENSITIVE_KEYS].join(', ')}`);
 	} else {
-		console.log(`Deploying to production (config=${configPath}).`);
-		console.log('Applying pending production D1 migrations (db:migrate:production)...');
-		execFileSync('pnpm', ['run', 'db:migrate:production'], { env: sanitizedEnv, stdio: 'inherit' });
-		console.log(`Deploying Wrangler worker (--secrets-file=${secretsFile})...`);
-		execFileSync(
-			process.execPath,
-			[resolveWranglerBin(), 'deploy', '-c', configPath, '--secrets-file', secretsFile],
-			{ env: sanitizedEnv, stdio: 'inherit' },
-		);
+		console.log('Deploying to production (cf prebuilt).');
+		// Issue #247: the production migration goes through the guarded
+		// D1 driver, so this is the last Wrangler execution in the
+		// canonical deploy path. The driver refuses unless the target is
+		// production AND the database id matches the canonical identity.
+		console.log('Applying pending production D1 migrations (cf, guarded)...');
+		applyMigrations({ target: 'production', execute: true, env: sanitizedEnv });
+		console.log('Deploying via cf deploy --prebuilt (--secrets-file)...');
+		execFileSync('pnpm', ['exec', ...buildDeployArgv({ secretsFile })], {
+			env: sanitizedEnv,
+			stdio: 'inherit',
+		});
 		console.log('Deploy succeeded.');
 	}
 } catch (error) {

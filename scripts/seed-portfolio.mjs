@@ -7,19 +7,19 @@
  *   node scripts/seed-portfolio.mjs
  *   node scripts/seed-portfolio.mjs --dry-run   # print SQL only
  *
- * Target: local D1 (uses `wrangler d1 execute --local`).
- * For production use `wrangler d1 execute --remote` against the
- * `my-web-2026` database.
+ * Target: local D1, through the shared `cf` driver in `_d1.mjs`
+ * (Issue #247). Production writes go through the same driver and are
+ * gated by its account/database identity check.
  *
  * Idempotency: INSERT OR IGNORE keyed on `portfolio_project.slug`
  * and `portfolio_link.id` / `portfolio_media.id`. Re-running on a
  * populated DB is a no-op.
  */
-import { spawnSync } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync, mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, dirname, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { executeSqlFile } from './_d1.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -101,19 +101,9 @@ const sqlPath = join(tmp, 'seed.sql');
 writeFileSync(sqlPath, fullSql, { mode: 0o600 });
 
 try {
-	const result = spawnSync(
-		'pnpm',
-		['exec', 'wrangler', 'd1', 'execute', 'DB', '--local', '--file', sqlPath],
-		{
-			cwd: root,
-			stdio: 'inherit',
-			env: process.env,
-		},
-	);
-	if (result.status !== 0) {
-		console.error('[seed-portfolio] wrangler d1 execute failed');
-		process.exit(result.status ?? 1);
-	}
+	// Issue #247: local D1 via the shared cf driver. No Cloudflare
+	// credential is involved for a local write.
+	executeSqlFile(sqlPath, { target: 'local' });
 	console.log(`[seed-portfolio] inserted ${slugs.length} project(s) (idempotent)`);
 } finally {
 	rmSync(tmp, { recursive: true, force: true });
@@ -126,5 +116,3 @@ function escapeSingleQuote(s) {
 function escapeDoubleQuote(s) {
 	return s.replace(/"/g, '\\"');
 }
-
-void existsSync; // silence unused-import warning under node 22 strict

@@ -22,9 +22,10 @@ section          →  paddingBlock (responsive vertical rhythm)
 A bordered "box" (1px `border.subtle` + padding + `borderRadius`)
 drawn around ordinary prose / list items is **forbidden** on public
 surfaces. It narrows the readable body, it duplicates the visual frame
-the surrounding section already provides via its `borderTop`
-separator, and it shifts the page's voice from "editorial whitespace"
-to "card grid" — which is not the design language.
+the surrounding section already provides (the §3.3 padding rhythm,
+optionally topped by a `borderTop` hairline), and it shifts the page's
+voice from "editorial whitespace" to "card grid" — which is not the
+design language.
 
 ### Reserve bordered / contained surfaces for state-specific UI
 
@@ -47,8 +48,9 @@ The exceptions that are allowed (state-specific UI):
   while the real image is missing.
 
 Anything that is **not** one of the above should rely on grid
-placement + spacing tokens + the shared `borderTop` section
-separator to be readable.
+placement + spacing tokens + the shared section separator (§3.3
+padding rhythm, with a `borderTop` hairline where the page uses one)
+to be readable.
 
 ### Viewport observations (where the box anti-pattern was loudest)
 

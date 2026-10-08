@@ -11,9 +11,9 @@ import { PACKAGE_VERSION } from './version';
  *
  * Issue #31 — editorial spread (fourth pass). The footer sits on
  * the same 12-column grid as the rest of the page, divided into
- * three equal columns. The `04` decoration jumps to `4xl` (64px)
- * so it shares the display voice with the Hero h1 — the page reads
- * with one display voice across Hero and Footer. Per-element
+ * three equal columns. The `04` decoration jumps to `4xl` (64px) —
+ * since Issue #287 it is the home surface's only `4xl` site, the
+ * bottom bookend to the Hero mark at the top. Per-element
  * `marginBlockStart` carries the proximity rule within each column.
  */
 export function Footer() {

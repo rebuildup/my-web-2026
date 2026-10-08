@@ -15,8 +15,10 @@ import { Hero } from './hero';
  * line in its caption.
  *
  * Type and spacing jump at golden ratio:
- * - h1 climbs to `4xl` (64px) at `lg` and wider, a 4× jump over
- *   body `md` (16px). That contrast is the editorial voice.
+ * - The h1 renders the `SiteMark` identity mark (Issue #287) at
+ *   64px (`16`) base / 96px (`24`) at `lg` — the display tier the
+ *   previous `4xl` name occupied, a 4× jump over body `md` (16px).
+ *   That contrast is the editorial voice.
  * - caption ↔ h1 (8px), h1 ↔ lead body (40px), lead ↔ secondary
  *   (0, continuous prose), secondary ↔ CTAs (16px).
  * - Hero padding is `16/32` (64/128px) — the page-entry beat.

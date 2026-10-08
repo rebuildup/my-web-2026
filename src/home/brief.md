@@ -140,7 +140,9 @@
 - **Hero h1 step**: `2xl` → `3xl` at `lg` and wider. One additional
   step only — `4xl` / `5xl` were tried then dropped (see the third
   pass below). Raw layer keeps a single `3xl` entry (`2.5rem`); the
-  semantic layer is unchanged.
+  semantic layer is unchanged. (Issue #287: the h1 now renders the
+  identity mark instead of display text — this type-step record is
+  historical; the mark's sizing lives in the Issue #287 amendment.)
 - **Hero composition**: the inner `Container` (1024px max) splits
   into an asymmetric 2-column grid at `lg` — `minmax(0, 7fr) minmax(0, 3fr)`
   — with a 12-unit gutter. The lead column caps at 640px to keep the
@@ -148,11 +150,13 @@
   raw mono metadata (`edition / my-web-2026 · 2026 Preview /
   the package-derived release version · MIT`) — no border, no background, no padding box. Below
   `lg` the two columns stack into the original single flow.
-- **Hero typography tightening**: h1 uses `line-height: 1.1` at `lg`
-  and `letter-spacing: -0.02em` (inline literal, not a token);
-  mixed-script spans carry `lang="ja"` on Japanese and `lang="en"`
-  on the Latin edition tags so the browser can pick the right
-  rendering hints.
+- **Hero typography tightening**: h1 used `line-height: 1.1` at `lg`
+  and `letter-spacing: -0.02em` (inline literal, not a token).
+  (Issue #287: the h1 no longer renders text, so those text metrics
+  no longer apply to it; the literal survives on the footer identity
+  paragraph and the SectionHeading titles.) Mixed-script spans carry
+  `lang="ja"` on Japanese and `lang="en"` on the Latin edition tags
+  so the browser can pick the right rendering hints.
 - **Section rhythm**: each section heading carries an editorial
   numbering prefix via the existing `eyebrow` prop
   (`01 — Capabilities`, `02 — System status`). Capability cards
@@ -184,8 +188,9 @@
   caller-side pattern — the `eyebrow` string carries it. A primitive
   prop would be one-purpose and fail the `token-audit` §3-4
   evidence gate.
-- **No raw `letterSpacing` tokens**. The two inline literals
-  (`-0.02em` on the hero h1, `0.04em` on the mono captions) are
+- **No raw `letterSpacing` tokens**. The inline literals
+  (`-0.02em` on the footer identity paragraph — the hero h1 literal
+  left with Issue #287 — and `0.04em` on the mono captions) are
   scoped to one component each. Promoting them to tokens would
   invite the "Japanese letter-spacing used as decoration" failure
   mode (`typesetting` §5).
@@ -208,10 +213,12 @@
   Latin eyebrow keeps the system default. Inline letter-spacing
   literals scoped to one component, not promoted to tokens.
 - `token-audit` §3-4: primitive promotion requires multi-site
-  evidence. `3xl` is added because three sites now share it (Hero
-  h1, SectionHeading spread title, Footer `04`); `4xl` / `5xl`
-  were tried then dropped when the proximity-first revision made
-  them visually unnecessary (see below).
+  evidence. `3xl` was added when three sites shared it (Hero h1,
+  SectionHeading spread title, Footer `04`); since Issue #287 the
+  hero h1 renders the mark, so the live `3xl` consumer is the
+  SectionHeading h2 tier. `4xl` / `5xl` were tried then dropped
+  when the proximity-first revision made them visually
+  unnecessary (see below).
 - `responsive-design` §Macro layout: editorial surfaces hold their
   measure at wide viewports. `Container` stays 1024px; the
   asymmetric grid is built inside it.
@@ -348,17 +355,19 @@ and intentional.
 | `xl` | 24 | ×1.5 | subhead, card h3 |
 | `2xl` | 32 | ×2 | footer identity, large subhead |
 | `3xl` | 40 | ×2.5 | section h2, footer `04` |
-| `4xl` | 64 | ×4 | Hero h1, super display |
+| `4xl` | 64 | ×4 | Footer `04`, super display (Issue #287 — was Hero h1) |
 
 Application:
 
-- Hero h1: `3xl/4xl` (40/64 px). One display site — the page reads
-  with one display voice at the top.
+- Hero h1: the identity mark at 64px (`16`) base / 96px (`24`) at
+  `lg` (Issue #287) — it replaced the `3xl/4xl` text as the single
+  top-of-hierarchy site, so the page still opens with one display
+  voice.
 - Body section h2: `2xl/3xl` (32/40 px). Strong but not as huge as
   h1.
 - Card h3: `xl` (24 px). One tier above body.
-- Footer `04`: `4xl` (64 px). Same display voice as h1; the page
-  bookends Hero and Footer in `4xl`.
+- Footer `04`: `4xl` (64 px) — the page's only `4xl` consumer since
+  Issue #287; the hero bookend is now the mark, not display text.
 - Footer identity (`my-web-2026`): `2xl` (32 px). One tier below
   display. (Issue #287 — was the personal handle.)
 
@@ -424,9 +433,10 @@ next to the element that uses it:
   and `letter-spacing: -0.03em` keeps multi-line titles from
   looking loose.
 - `token-audit` §3-4: every primitive must have at least two
-  non-trivial consumers. `4xl` now has two (Hero h1 + Footer
-  `04`); both sites use the same display voice. `5xl` is not
-  introduced because no second consumer exists.
+  non-trivial consumers. `4xl` had two when promoted (Hero h1 +
+  Footer `04`); since Issue #287 the home consumer is Footer `04`
+  alone (the hero h1 renders the mark). `5xl` is not introduced
+  because no second consumer exists.
 - `responsive-design` §Editorial rhythm: editorial surfaces stay
   readable at 200% zoom and at 320 CSS px. The grid collapses to
   a single column at `lg` and below; the type scale drops one tier

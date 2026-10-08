@@ -70,14 +70,19 @@ function ToolsIndexRoute() {
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
-			<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
+			{/* Issue #300: the hero block and the tool lists were one
+			    section, so the page-entry beat was 96px where every
+			    other page enters at 128px. Split into the canonical
+			    hero beat (16/32) + body beat (16/24) — same Container,
+			    same left axis. */}
+			<section data-route="tools-hero" className={css({ paddingBlock: { base: '16', lg: '32' } })}>
 				<Container>
 					<header
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
 							gap: '4',
-							marginBlockEnd: '10',
+							marginBlockEnd: '0',
 						})}
 					>
 						<span
@@ -120,6 +125,10 @@ function ToolsIndexRoute() {
 							から配信されます。統合 contract は ADR-0006 を参照。
 						</p>
 					</header>
+				</Container>
+			</section>
+			<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
+				<Container>
 					{embeddable.length === 0 && disabled.length === 0 ? (
 						<p
 							className={css({

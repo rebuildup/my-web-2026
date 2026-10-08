@@ -60,7 +60,9 @@ export function ContactPage({ channels, now, empty }: ContactPageProps) {
 			<section
 				aria-labelledby="contact-hero-title"
 				className={css({
-					paddingBlock: { base: '16', lg: '24' },
+					// Issue #300: hero beat is 16/32 (layout-system.md §3.3) —
+					// was 16/24, i.e. a body-section rhythm on a hero.
+					paddingBlock: { base: '16', lg: '32' },
 				})}
 			>
 				<Container>

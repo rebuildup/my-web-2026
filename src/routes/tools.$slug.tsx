@@ -141,7 +141,7 @@ function ToolNotFound() {
 				<div
 					data-testid="tools-not-found"
 					className={css({
-						paddingBlock: { base: '16', md: '24' },
+						paddingBlock: { base: '16', lg: '32' },
 					})}
 				>
 					<SectionHeading
@@ -246,7 +246,7 @@ function DisabledPlaceholder({ tool }: { tool: ManifestTool }) {
 					data-tool-slug={tool.slug}
 					data-tool-state="host_disabled"
 					className={css({
-						paddingBlock: { base: '16', md: '24' },
+						paddingBlock: { base: '16', lg: '32' },
 						maxWidth: '720px',
 					})}
 				>

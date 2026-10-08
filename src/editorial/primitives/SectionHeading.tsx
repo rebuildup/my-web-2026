@@ -200,7 +200,12 @@ export function SectionHeading({
 				{title}
 			</h2>
 			{description ? (
-				<p className={cx(sectionDescriptionClassName, css({ marginBlockStart: '3', maxWidth: '640px' }))}>
+				<p
+					className={cx(
+						sectionDescriptionClassName,
+						css({ marginBlockStart: '3', maxWidth: '640px' }),
+					)}
+				>
 					{description}
 				</p>
 			) : null}

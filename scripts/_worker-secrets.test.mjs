@@ -6,6 +6,7 @@ import {
 	assertWorkerSecretWriteAllowed,
 	buildBulkSecretPayload,
 	bulkUpdateWorkerSecrets,
+	listWorkerSecretNames,
 } from './_worker-secrets.mjs';
 
 /**
@@ -17,6 +18,40 @@ import {
  */
 
 const DUMMY = 'dummy-not-a-real-secret';
+
+describe('listWorkerSecretNames response contract', () => {
+	it('rejects malformed success payloads without exposing remote text', async () => {
+		const originalFetch = globalThis.fetch;
+		try {
+			for (const body of [DUMMY, '{}', '{"success":true,"result":{}}']) {
+				globalThis.fetch = async () => new Response(body, { status: 200 });
+				await assert.rejects(
+					() => listWorkerSecretNames({ env: { CLOUDFLARE_API_TOKEN: 'test-token' } }),
+					(error) =>
+						/invalid secret-list response/.test(error.message) && !error.message.includes(DUMMY),
+				);
+			}
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+	});
+
+	it('accepts a valid empty inventory and the supported nested inventory', async () => {
+		const originalFetch = globalThis.fetch;
+		try {
+			for (const result of [[], { secrets: [] }]) {
+				globalThis.fetch = async () =>
+					new Response(JSON.stringify({ success: true, result }), { status: 200 });
+				assert.deepEqual(
+					await listWorkerSecretNames({ env: { CLOUDFLARE_API_TOKEN: 'test-token' } }),
+					[],
+				);
+			}
+		} finally {
+			globalThis.fetch = originalFetch;
+		}
+	});
+});
 
 describe('buildBulkSecretPayload — Merge Patch shape', () => {
 	it('emits the exact value-object shape for create/update', () => {

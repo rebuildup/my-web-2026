@@ -94,8 +94,9 @@ test.describe('Tool Registry — /tools/<slug> detail contract (Issue #195)', ()
 		await expect(page.locator('[data-testid="tools-not-found"]')).toHaveText(
 			/ツールが見つかりません/,
 		);
-		// The nav still renders exactly once on the 404 surface
-		// (the #183 chrome-duplication fix).
-		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(1);
+		// Issue #288: the 404 surface renders no header chrome —
+		// no PublicNav and no breadcrumb header.
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
+		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
 	});
 });

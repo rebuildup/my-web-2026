@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img" aria-label="my-web-2026">
+	<!--
+		Default site favicon (Issue #285): a pure-blue circle.
+		This is the fallback shown by every page that does not declare
+		its own `rel="icon"` link in a route-level `head()`.
+		`#0000FF` is the primary hue ("原色の青") — deliberately the
+		unmixed browser-standard blue so the placeholder reads as an
+		unset state rather than a designed brand mark.
+	-->
+	<circle cx="16" cy="16" r="16" fill="#0000FF" />
+</svg>

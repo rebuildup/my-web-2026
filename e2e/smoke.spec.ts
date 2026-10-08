@@ -58,7 +58,10 @@ test.describe('home page composition', () => {
 		// Single h1 invariant.
 		const h1 = page.locator('h1');
 		await expect(h1).toHaveCount(1);
-		await expect(h1).toHaveText(/木村友亮 \/ samuido/);
+		// Issue #287 — the h1 subject is the identity mark; its
+		// accessible name (visually-hidden text) is the platform name.
+		await expect(h1).toHaveText('my-web-2026');
+		await expect(h1).toHaveAccessibleName('my-web-2026');
 
 		// Six content sections, in order, all anchored by aria-labelledby.
 		const sections = page.locator('section[aria-labelledby]');
@@ -70,8 +73,14 @@ test.describe('home page composition', () => {
 		await expect(sections.nth(4)).toHaveAttribute('aria-labelledby', 'access-counter-heading');
 		await expect(sections.nth(5)).toHaveAttribute('aria-labelledby', 'contact-cta-heading');
 
-		// Public-preview transition back to the complete 2025 edition.
-		await expect(page.locator('a[href="https://yusuke-kim.com"]')).toHaveCount(2);
+		// Issue #287 — in-site destinations only: the hero CTA and the
+		// footer index entry both point at /portfolio, and no link to
+		// the removed real-name domain remains on the top page.
+		await expect(
+			page.locator('section[aria-labelledby="hero-title"] a[href="/portfolio"]'),
+		).toHaveCount(1);
+		await expect(page.locator('footer a[href="/portfolio"]')).toHaveCount(1);
+		await expect(page.locator('a[href*="yusuke-kim.com"]')).toHaveCount(0);
 
 		// Landmarks: banner / main / contentinfo.
 		await expect(page.locator('main#main')).toBeVisible();

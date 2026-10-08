@@ -1,9 +1,6 @@
 import { Link, createFileRoute } from '@tanstack/react-router';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
-import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
-import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
-import { PublicNav } from '../editorial/nav';
 import { listAllTools, listPublicTools } from '../tools/registry';
 import type { ManifestTool, PublicToolSummary } from '../tools/registry';
 
@@ -67,9 +64,6 @@ function ToolsIndexRoute() {
 	const { embeddable, disabled } = Route.useLoaderData();
 	return (
 		<>
-			<PublicNav />
-			<Breadcrumbs className={breadcrumbsChrome} />
-			<BreadcrumbJsonLd />
 			{/* Issue #300: the hero block and the tool lists were one
 			    section, so the page-entry beat was 96px where every
 			    other page enters at 128px. Split into the canonical

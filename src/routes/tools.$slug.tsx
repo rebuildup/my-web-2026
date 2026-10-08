@@ -3,9 +3,6 @@ import type { HTMLAttributeReferrerPolicy } from 'react';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
-import { PublicNav } from '../editorial/nav';
-import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
-import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
 import { getPublicTool, getTool } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 
@@ -41,14 +38,15 @@ import type { ManifestTool } from '../tools/registry';
  * stops at "Home > Tools" rather than misleadingly showing a
  * stub "Tool" leaf for a slug that does not exist.
  *
- * Chrome convention (Issue #199). `<PublicNav />`,
- * `<Breadcrumbs />`, and `<BreadcrumbJsonLd />` are imported and
- * rendered here explicitly (in `ToolRoute`, `ToolNotFound`, and
- * `DisabledPlaceholder`) rather than mounted at the `__root` level
- * — see `src/routes/about.tsx` for the rationale. The Tool iframe
- * shell is full-bleed by design, so the nav and breadcrumbs appear
- * ABOVE the iframe; the iframe itself fills the remaining viewport
- * height below them.
+ * Chrome convention (Issue #199 → removed by Issue #288). Until
+ * #288 this route rendered `<PublicNav />` / `<Breadcrumbs />` /
+ * `<BreadcrumbJsonLd />` explicitly in each surface. The Tools
+ * surfaces now render NO header chrome at all: the Tool iframe
+ * shell is full-bleed by design and the header only consumed
+ * viewport height above it, so Issue #288 removed the nav and
+ * breadcrumbs from every state (ToolRoute, ToolNotFound,
+ * DisabledPlaceholder) and the iframe now fills the full viewport
+ * (`100vh`, no header allowance).
  *
  * Case-insensitive lookup (Issue #183): the manifest schema
  * constrains slugs to `[a-z0-9][a-z0-9-]{0,127}` but a visitor
@@ -124,19 +122,14 @@ export const Route = createFileRoute('/tools/$slug')({
 /**
  * Empty state for `/tools/<unknown>` (Issue #183).
  *
- * Renders inside the same `<Outlet />` slot the iframe would occupy,
- * so the site chrome (`<PublicNav />`, `<Breadcrumbs />`) appears
- * exactly once — the chrome duplication bug fixed in #183 is
- * the breadcrumb resolver's tendency to surface a stub "Tool"
- * leaf for a slug that does not exist; the visible chrome now
- * stops at "Home > Tools" (see
- * `src/editorial/nav/route-labels.ts`).
+ * Renders inside the same `<Outlet />` slot the iframe would occupy.
+ * No site chrome: Issue #288 removed `<PublicNav />` /
+ * `<Breadcrumbs />` from every Tools surface, so this 404 state
+ * renders only the designed empty-state content.
  */
 function ToolNotFound() {
 	return (
 		<>
-			<PublicNav />
-			<Breadcrumbs className={breadcrumbsChrome} />
 			<Container as="section">
 				<div
 					data-testid="tools-not-found"
@@ -193,20 +186,15 @@ function ToolRoute() {
 	const tool = loaderData.public;
 	return (
 		<>
-			<PublicNav />
-			<Breadcrumbs className={breadcrumbsChrome} />
-			<BreadcrumbJsonLd />
 			<div
 				data-route="tools/$slug"
 				data-tool-slug={tool.slug}
 				style={{
 					width: '100%',
-					// Issue #300: the chrome above the embed measures
-					// 62px (PublicNav) + 27px (Breadcrumbs) = 89px at
-					// every desktop width after the nav fix — the old
-					// 64px reserve left a 25–46px scroll strip below
-					// the tool.
-					height: 'calc(100vh - 89px)',
+					// Issue #288: no header chrome above the shell, so the
+					// iframe fills the full viewport height (the previous
+					// `calc(100vh - 64px)` reserved space for the header).
+					height: '100vh',
 					border: '0',
 					display: 'block',
 				}}
@@ -242,9 +230,6 @@ function DisabledPlaceholder({ tool }: { tool: ManifestTool }) {
 	const reason = tool.delivery.kind === 'host_disabled' ? tool.delivery.disabled_reason : '';
 	return (
 		<>
-			<PublicNav />
-			<Breadcrumbs className={breadcrumbsChrome} />
-			<BreadcrumbJsonLd />
 			<Container as="section">
 				<div
 					data-route="tools/$slug"

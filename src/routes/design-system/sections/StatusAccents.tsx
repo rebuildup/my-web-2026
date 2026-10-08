@@ -1,4 +1,4 @@
-import { css } from '../../../../styled-system/css';
+import { css, cx } from '../../../../styled-system/css';
 import { Badge } from '../../../editorial/primitives/Badge';
 
 /**
@@ -99,7 +99,7 @@ function StatusRow() {
 					})}
 				>
 					Three status accents — positive / negative / warning. Foreground contrast 4.5 : 1 以上
-					(WCAG AA) を `bg.canvas` / `bg.inverse` 両方で満たします。
+					(WCAG AA) を `bg.canvas` の light / dark 両 appearance で満たします。
 				</p>
 			</header>
 			<ul
@@ -319,22 +319,34 @@ function CategoryRow() {
 function CategoryCard({ entry }: { entry: CategoryEntry }) {
 	return (
 		<article
-			className={css({
-				display: 'flex',
-				flexDirection: 'column',
-				gap: '2',
-				paddingBlock: '4',
-				paddingInline: '6',
-				borderRadius: 'md',
-				borderWidth: '1px',
-				borderStyle: 'solid',
-				borderColor: 'border.subtle',
-				backgroundColor: 'bg.canvas',
-				borderInlineStartWidth: '4px',
-			})}
+			/*
+			 * The 4px inline-start rule lives on THIS element, so the
+			 * category colour has to be set here too. It used to be set
+			 * on the inner div, which carries no border width, so the
+			 * rule painted `border.subtle` and the category identifier
+			 * never showed (Issue #290). Panda emits the `border-inline
+			 * -start-color` longhand after the `border-color` shorthand
+			 * in the utilities layer, so the category class wins.
+			 */
+			className={cx(
+				css({
+					display: 'flex',
+					flexDirection: 'column',
+					gap: '2',
+					paddingBlock: '4',
+					paddingInline: '6',
+					borderRadius: 'md',
+					borderWidth: '1px',
+					borderStyle: 'solid',
+					borderColor: 'border.subtle',
+					backgroundColor: 'bg.canvas',
+					borderInlineStartWidth: '4px',
+				}),
+				CATEGORY_BORDER[entry.family],
+			)}
 			data-category-token={entry.token}
 		>
-			<div className={CATEGORY_BORDER[entry.family]}>
+			<div>
 				<header
 					className={css({
 						display: 'flex',

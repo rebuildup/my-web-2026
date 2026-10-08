@@ -49,7 +49,9 @@ const FACET_LABEL: Readonly<Record<string, string>> = {
 };
 
 const sectionStyle = css({
-	paddingBlock: { base: '12', lg: '16' },
+	// Issue #300: canonical body-section beat (layout-system.md §3.3).
+	// Was {12, 16} — a rhythm only /about used.
+	paddingBlock: { base: '16', lg: '24' },
 	borderTop: '1px solid {colors.border.subtle}',
 });
 

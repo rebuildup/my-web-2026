@@ -201,7 +201,15 @@ function Row({ label, caption, render }: RowProps) {
 			<div
 				className={css({
 					display: 'grid',
-					gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+					// Issue #300: a fixed 4-column row put the state
+					// buttons at ~77px each at 375px while the button
+					// itself needs ~106px — the page grew to 388px and
+					// scrolled sideways. Two columns until `md`, four
+					// once the span has room.
+					gridTemplateColumns: {
+						base: 'repeat(2, minmax(0, 1fr))',
+						md: 'repeat(4, minmax(0, 1fr))',
+					},
 					gap: '3',
 					alignItems: 'center',
 				})}

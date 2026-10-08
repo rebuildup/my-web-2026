@@ -64,14 +64,19 @@ function ToolsIndexRoute() {
 	const { embeddable, disabled } = Route.useLoaderData();
 	return (
 		<>
-			<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
+			{/* Issue #300: the hero block and the tool lists were one
+			    section, so the page-entry beat was 96px where every
+			    other page enters at 128px. Split into the canonical
+			    hero beat (16/32) + body beat (16/24) — same Container,
+			    same left axis. */}
+			<section data-route="tools-hero" className={css({ paddingBlock: { base: '16', lg: '32' } })}>
 				<Container>
 					<header
 						className={css({
 							display: 'flex',
 							flexDirection: 'column',
 							gap: '4',
-							marginBlockEnd: '10',
+							marginBlockEnd: '0',
 						})}
 					>
 						<span
@@ -114,6 +119,10 @@ function ToolsIndexRoute() {
 							から配信されます。統合 contract は ADR-0006 を参照。
 						</p>
 					</header>
+				</Container>
+			</section>
+			<section data-route="tools" className={css({ paddingBlock: { base: '16', lg: '24' } })}>
+				<Container>
 					{embeddable.length === 0 && disabled.length === 0 ? (
 						<p
 							className={css({
@@ -259,6 +268,10 @@ function ToolRow({ tool }: { tool: PublicToolSummary }) {
 					fontSize: 'md',
 					color: 'text.muted',
 					lineHeight: '1.6',
+					// Issue #300: row descriptions ran the full 960px
+					// Container measure (~95 characters per line) while
+					// every other description on the site caps at 640px.
+					maxWidth: '640px',
 				})}
 			>
 				{tool.description}
@@ -331,6 +344,10 @@ function DisabledToolRow({ tool }: { tool: ManifestTool }) {
 					fontSize: 'md',
 					color: 'text.muted',
 					lineHeight: '1.6',
+					// Issue #300: row descriptions ran the full 960px
+					// Container measure (~95 characters per line) while
+					// every other description on the site caps at 640px.
+					maxWidth: '640px',
 				})}
 			>
 				{tool.description}
@@ -344,6 +361,13 @@ function DisabledToolRow({ tool }: { tool: ManifestTool }) {
 						color: 'text.muted',
 						lineHeight: '1.5',
 						fontStyle: 'italic',
+						// Issue #300: for host_disabled Tools the
+						// disabled_reason is the row's only prose — it
+						// takes the same 640px measure cap as every
+						// other description (host_disabled entries
+						// ship an empty `description`, so the uncapped
+						// line the audit saw ran the full 960px here).
+						maxWidth: '640px',
 					})}
 				>
 					{reason}

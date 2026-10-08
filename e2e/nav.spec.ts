@@ -14,33 +14,35 @@ import { expect, test } from '@playwright/test';
  *   - Only the opt-in pages carry the nav. The roster itself is
  *     `PUBLIC_NAV_ITEMS` in `src/editorial/nav/PublicNav.tsx` — six
  *     entries, `/design-system` added by Issue #181.
+ *   - Issue #288 removed the nav (and breadcrumbs) from every Tools
+ *     surface (`/tools`, `/tools/<slug>`, and the 404 / disabled
+ *     states) — the Tools pages are now an exclusion, like `/`.
  *
  * Scopes:
  *   1. `/` does NOT mount the nav (the #199 contract).
- *   2. The nav renders on every opt-in page (`/about`, `/contact`,
- *      `/portfolio`, `/tools`, `/design-system`).
+ *   2. The nav renders on every remaining opt-in page (`/about`,
+ *      `/contact`, `/portfolio`, `/design-system`).
  *   3. The six canonical nav items are present, in order.
  *   4. The active route is announced via `aria-current="page"` on
- *      exactly one link; nested routes keep the parent segment
- *      active (`/tools/prototype` → `/tools`).
+ *      exactly one link.
  *   5. Home → Tools one click is still possible, via the
  *      capabilities card rather than the nav.
  *   6. The nav does NOT appear on `/admin/*` (admin owns its own
- *      chrome).
+ *      chrome) nor on the Tools surfaces (Issue #288).
  *   7. The mobile affordance collapses the nav below the `md`
  *      breakpoint.
  */
 
 /**
- * Pages that opt into `PublicNav`. `/portfolio/<slug>` and
- * `/tools/<slug>` are covered separately below — their fixtures
+ * Pages that opt into `PublicNav`. `/portfolio/<slug>` fixtures
  * depend on published D1 rows, so they are not part of this loop.
+ * The Tools surfaces deliberately do NOT opt in any more — see the
+ * Issue #288 exclusion describe below.
  */
 const NAV_OPT_IN_PAGES: ReadonlyArray<{ path: string; h1: RegExp }> = [
 	{ path: '/about', h1: /木村友亮/ },
 	{ path: '/contact', h1: /Contact/ },
 	{ path: '/portfolio', h1: /主要な制作物/ },
-	{ path: '/tools', h1: /Tools/ },
 	{ path: '/design-system', h1: /Design System/ },
 ];
 
@@ -113,15 +115,6 @@ test.describe('public nav — active-route highlighting', () => {
 		}
 	});
 
-	test('the parent segment stays active on a nested route', async ({ page }) => {
-		// `/tools/<slug>` must highlight `/tools`, not the leaf.
-		await page.goto('/tools/prototype');
-		const nav = page.locator('nav[aria-label="Public"]');
-		const activeLinks = nav.locator('[data-testid="public-nav-desktop"] a[aria-current="page"]');
-		await expect(activeLinks).toHaveCount(1);
-		await expect(activeLinks.first()).toHaveAttribute('href', '/tools');
-	});
-
 	test('/design-system highlights itself, not a parent', async ({ page }) => {
 		await page.goto('/design-system');
 		const nav = page.locator('nav[aria-label="Public"]');
@@ -155,6 +148,35 @@ test.describe('public nav — Home → Tools one-click (Issue #168)', () => {
 		await toolsCta.click();
 		await expect(page).toHaveURL(/\/tools$/);
 		await expect(page.locator('h1')).toHaveText(/Tools/);
+	});
+});
+
+test.describe('public nav — Tools exclusion (Issue #288)', () => {
+	// The Tools surfaces render no header chrome: neither PublicNav
+	// nor the breadcrumb header. The iframe shell wants the full
+	// viewport, and the index treats its own <header> as content.
+	test('is NOT mounted on /tools', async ({ page }) => {
+		const res = await page.goto('/tools');
+		expect(res?.status()).toBe(200);
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
+		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
+		// The index still owns its content-level <h1>.
+		await expect(page.locator('h1').first()).toContainText(/Tools/);
+	});
+
+	test('is NOT mounted on /tools/<slug> (iframe shell)', async ({ page }) => {
+		const res = await page.goto('/tools/prototype');
+		expect(res?.status()).toBe(200);
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
+		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
+		await expect(page.locator('iframe[title="ProtoType Tool"]')).toBeVisible();
+	});
+
+	test('is NOT mounted on the Tools 404 surface', async ({ page }) => {
+		const res = await page.goto('/tools/definitely-not-a-registered-tool');
+		expect(res?.status()).toBe(404);
+		await expect(page.locator('[data-testid="tools-not-found"]')).toBeVisible();
+		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
 	});
 });
 

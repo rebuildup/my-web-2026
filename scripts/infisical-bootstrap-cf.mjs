@@ -60,7 +60,10 @@
  *      revoke the old one — revoking mid-flight would break
  *      production builds that are still using the old credential).
  *      Cleanup of redundant old credentials happens only after the
- *      new binding is verified.
+ *      new binding is verified. If SOME but not all Builds env
+ *      keys are present (partial bind), refuse to mint anything and
+ *      exit non-zero instead (Issue #265 fail-closed) — minting there
+ *      would orphan the previously issued credential on every re-run.
  *   3. **PATCH body shape is an object map** keyed by variable
  *      name — NOT an array of `{name, value, is_secret}`. Cloudflare
  *      API contract.
@@ -455,6 +458,38 @@ function findWorkerTag(workersList, workerName) {
 	if (!Array.isArray(workersList)) return null;
 	const found = workersList.find((w) => w?.name === workerName || w?.id === workerName);
 	return found?.tag ?? null;
+}
+
+/**
+ * Classify the Workers Builds env binding state from the key names
+ * present on the trigger (Issue #265).
+ *
+ * Three states, kept distinct on purpose:
+ *   - `satisfied` — every required key is present. The run is a
+ *     no-op and must mint nothing.
+ *   - `absent`    — none of the required keys is present. A fresh
+ *     bind may mint exactly one credential.
+ *   - `partial`   — SOME but not all required keys are present
+ *     (e.g. the client id without the client secret). The caller
+ *     MUST refuse to mint: a new credential here would orphan the
+ *     previously issued one, which Cloudflare reports write-only
+ *     and this script never removes, so every re-run would
+ *     accumulate another live credential.
+ *
+ * Pure helper — exposed for tests. Key NAMES only; values never
+ * reach this process (Cloudflare redacts them from reads).
+ */
+function classifyBuildsEnvBinding(existingKeys, requiredKeys) {
+	const present = Array.isArray(existingKeys) ? existingKeys : [];
+	const required = Array.isArray(requiredKeys) ? requiredKeys : [];
+	const missing = required.filter((key) => !present.includes(key));
+	if (missing.length === 0) return { state: 'satisfied', missing };
+	if (missing.length === required.length) return { state: 'absent', missing };
+	return {
+		state: 'partial',
+		missing,
+		present: present.filter((key) => required.includes(key)),
+	};
 }
 
 /* ------------------------------------------------------------------ */
@@ -1328,9 +1363,9 @@ async function main() {
 		existingEnvResult && typeof existingEnvResult === 'object' && !Array.isArray(existingEnvResult)
 			? Object.keys(existingEnvResult)
 			: [];
-	const allKeysPresent = BUILD_ENV_VARS.every((key) => existingKeys.includes(key));
+	const binding = classifyBuildsEnvBinding(existingKeys, BUILD_ENV_VARS);
 
-	if (allKeysPresent) {
+	if (binding.state === 'satisfied') {
 		console.log(
 			`Workers Builds env: ${BUILD_ENV_VARS.length} keys already bound (values redacted by Cloudflare)`,
 		);
@@ -1346,6 +1381,21 @@ async function main() {
 			'No-op: nothing to bind. No client secret was generated, so project access was not re-verified on this run.',
 		);
 		return;
+	}
+
+	if (binding.state === 'partial') {
+		// Issue #265, part A (fail-closed): the trigger carries SOME
+		// but not all required keys — e.g. the client id bound while
+		// the client secret is still missing. Minting a new credential
+		// here would orphan the previously issued one (Cloudflare
+		// reports bound values write-only, and this script never
+		// removes old credentials), so every re-run would accumulate
+		// another live credential. Refuse loudly BEFORE the mint call
+		// below, so a partial-bind run provably generates nothing.
+		// Key NAMES only — values never reach this process.
+		throw new Error(
+			`Workers Builds env is PARTIALLY bound (present: ${binding.present.join(', ')}; missing: ${binding.missing.join(', ')}). Refusing to generate a new client secret: minting here would orphan the previously issued credential, so every re-run would accumulate another live credential. Finish or clear the binding manually (Cloudflare dashboard, Workers Builds trigger environment variables), then re-run. No new credential was generated on this run.`,
+		);
 	}
 
 	// Generate a new client secret (do NOT revoke any existing ones).

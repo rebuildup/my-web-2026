@@ -82,6 +82,7 @@ function loadPureHelpers() {
 		buildBuildsEnvVarsPatchBody: grab('buildBuildsEnvVarsPatchBody'),
 		selectProductionTrigger: grab('selectProductionTrigger'),
 		findWorkerTag: grab('findWorkerTag'),
+		classifyBuildsEnvBinding: grab('classifyBuildsEnvBinding'),
 		jwtOrganizationId: grab('jwtOrganizationId'),
 		resolveCloudflareAccountId: withAccountId('resolveCloudflareAccountId', ACCOUNT_ID),
 	};
@@ -1366,7 +1367,7 @@ describe('infisical-bootstrap-cf.mjs', () => {
 			// Minting a secret purely to check would leave a new live
 			// credential on the server on every re-run.
 			const noopBranch = SOURCE.slice(
-				SOURCE.indexOf('if (allKeysPresent) {'),
+				SOURCE.indexOf("if (binding.state === 'satisfied') {"),
 				SOURCE.indexOf('let clientSecret = await generateClientSecret'),
 			);
 			assert.equal(
@@ -1596,6 +1597,103 @@ describe('infisical-bootstrap-cf.mjs', () => {
 					`script contains pre-emptive revoke pattern ${pattern}: ${codeMatches?.join(', ')}`,
 				);
 			}
+		});
+	});
+
+	describe('partial-bind fail-closed (Issue #265, part A)', () => {
+		const { classifyBuildsEnvBinding } = loadPureHelpers();
+		const REQUIRED = ['INFISICAL_CLIENT_ID', 'INFISICAL_CLIENT_SECRET'];
+
+		it('reports satisfied only when every required key is present', () => {
+			assert.equal(
+				classifyBuildsEnvBinding(['INFISICAL_CLIENT_ID', 'INFISICAL_CLIENT_SECRET'], REQUIRED)
+					.state,
+				'satisfied',
+			);
+			// Order-independent, and unrelated extra keys are ignored.
+			assert.equal(
+				classifyBuildsEnvBinding(
+					['UNRELATED_KEY', 'INFISICAL_CLIENT_SECRET', 'INFISICAL_CLIENT_ID'],
+					REQUIRED,
+				).state,
+				'satisfied',
+			);
+		});
+
+		it('reports absent when none of the required keys is present', () => {
+			for (const existing of [[], ['UNRELATED_KEY'], null, undefined, 'not-an-array']) {
+				const out = classifyBuildsEnvBinding(existing, REQUIRED);
+				assert.equal(out.state, 'absent', `existing=${JSON.stringify(existing)}`);
+				assert.deepEqual(out.missing, REQUIRED);
+			}
+		});
+
+		it('reports partial when SOME but not all required keys are present', () => {
+			// The Issue #265 shape: id bound, secret missing.
+			const idOnly = classifyBuildsEnvBinding(['INFISICAL_CLIENT_ID'], REQUIRED);
+			assert.equal(idOnly.state, 'partial');
+			assert.deepEqual(idOnly.present, ['INFISICAL_CLIENT_ID']);
+			assert.deepEqual(idOnly.missing, ['INFISICAL_CLIENT_SECRET']);
+			// The mirror shape is partial too.
+			const secretOnly = classifyBuildsEnvBinding(['INFISICAL_CLIENT_SECRET'], REQUIRED);
+			assert.equal(secretOnly.state, 'partial');
+			assert.deepEqual(secretOnly.present, ['INFISICAL_CLIENT_SECRET']);
+			assert.deepEqual(secretOnly.missing, ['INFISICAL_CLIENT_ID']);
+		});
+
+		it('the partial report carries key NAMES only, never values', () => {
+			// Cloudflare redacts bound values from reads, so the
+			// classifier only ever sees names. Pin that the report
+			// fields are name lists (status-only surface).
+			const out = classifyBuildsEnvBinding(['INFISICAL_CLIENT_ID'], REQUIRED);
+			assert.deepEqual(Object.keys(out).sort(), ['missing', 'present', 'state']);
+			for (const name of [...out.present, ...out.missing]) {
+				assert.equal(typeof name, 'string');
+				assert.ok(REQUIRED.includes(name), `unexpected key name: ${name}`);
+			}
+		});
+
+		it('BEHAVIOUR: a partial bind throws BEFORE the mint call, so nothing is generated', () => {
+			// The fail-closed branch must precede `generateClientSecret`
+			// in main(): a partial-bind run provably reaches no mint.
+			assert.match(SOURCE, /binding\.state === 'partial'/);
+			assert.match(SOURCE, /PARTIALLY bound/);
+			const guardIndex = SOURCE.indexOf("binding.state === 'partial'");
+			const mintIndex = SOURCE.indexOf('let clientSecret = await generateClientSecret(');
+			assert.ok(guardIndex >= 0 && mintIndex >= 0 && guardIndex < mintIndex);
+			// And the guard throws (non-zero exit via the top-level
+			// handler), it does not warn-and-continue.
+			const guardSlice = SOURCE.slice(guardIndex, mintIndex);
+			assert.match(guardSlice, /throw new Error\(/);
+			assert.match(guardSlice, /No new credential was generated on this run/);
+		});
+
+		it('BEHAVIOUR: the partial-bind error names keys, never secret values', () => {
+			const guardSlice = SOURCE.slice(
+				SOURCE.indexOf("binding.state === 'partial'"),
+				SOURCE.indexOf('let clientSecret = await generateClientSecret('),
+			);
+			// Only key-name joins are interpolated — no credential
+			// variable, no value-bearing field.
+			assert.equal(guardSlice.includes('${clientSecret}'), false);
+			assert.equal(guardSlice.includes('${secret}'), false);
+			assert.match(guardSlice, /binding\.present\.join/);
+			assert.match(guardSlice, /binding\.missing\.join/);
+		});
+
+		it('BEHAVIOUR: the idempotent no-op path still mints nothing and exits 0', () => {
+			// The satisfied branch returns before the mint call, so a
+			// re-run of a converged binding performs zero writes.
+			const satisfiedIndex = SOURCE.indexOf("binding.state === 'satisfied'");
+			const mintIndex = SOURCE.indexOf('let clientSecret = await generateClientSecret(');
+			assert.ok(satisfiedIndex >= 0 && mintIndex >= 0 && satisfiedIndex < mintIndex);
+			const noOpSlice = SOURCE.slice(satisfiedIndex, SOURCE.indexOf("binding.state === 'partial'"));
+			assert.match(noOpSlice, /return;/);
+			assert.match(
+				noOpSlice,
+				/No client secret was generated, so project access was not re-verified/,
+			);
+			assert.equal(noOpSlice.includes('throw'), false);
 		});
 	});
 });

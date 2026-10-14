@@ -202,8 +202,14 @@ real Cloudflare resource smoke は release cut で確認する。
 | `/share/<slug>` | 307 → `/share/<slug>/` |
 | `/foo.html`（単体 file） | 307 → `/foo`（拡張子が strip される） |
 
-`.html` で終わる名前を使うと clean URL を作れない（拡張子だけが残るため）。
-directory + `index.html` が clean URL を作る唯一の形態である。
+`.html` で終わる名前でも、拡張子なしの URL（`/share/<slug>/hexaudon`）には到達
+できる。ただしその場合 canonical URL は「末尾スラッシュなし・拡張子なし」の単数形に
+固定され、**directory 形の URL**（`/share/<slug>/`）は作れない。`auto-trailing-slash`
+が trailing-slash を付けるのは index 解決だけ（`/foo` → `/foo/`）であり、単体
+`.html` file に対しては逆に拡張子を落とす（`/foo.html` → `/foo`）。
+
+共有物を directory 形の URL で公開したい場合は directory + `index.html` が必要。
+本規約は後者を採用している。
 
 - `<slug>` = 共有対象の識別子。小文字・ハイフン区切り。
 - 1 共有 = 1 directory。`index.html` がその文書そのもの（別 layer の
@@ -216,9 +222,12 @@ directory + `index.html` が clean URL を作る唯一の形態である。
 
 - **per-file 上限 25 MiB。** 超過すると deploy が hard fail する。資産を
   差し替える前に size を確認する。
-- 1  版ごとに git blob が同 size 増える。共有物が 3 件（約 47 MiB）に達したら
+- 1 version ごとに git blob が同 size 増える。共有物が 3 件（約 47 MiB）に達したら
   git-lfs または R2（`MEDIA`）への移管を再評価する。
-- `vite build` と `wrangler deploy` のたびに同 size が再 upload される。
+- `vite build` は `public/` を `dist/client/` に copy するだけ（ネットワークを
+  使わない）。Cloudflare へ upload するのは `wrangler deploy` の責務で、差分だけ
+  が対象になる — manifest の hash が一致した asset は再 upload されない。よって
+  deploy のコストは「変更した資産の差分」であり、既存資産の全 size ではない。
 
 ### 意図的に作らないもの
 

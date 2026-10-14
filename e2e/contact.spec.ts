@@ -65,6 +65,10 @@ test.describe('/contact page composition', () => {
 		// Either a populated list or the explicit empty-state.
 		const list = page.locator('[data-testid="contact-channels"]');
 		const empty = page.locator('[data-testid="contact-empty"]');
+		// Wait for hydration so the populated/empty branches are read
+		// from one stabilised DOM state instead of two independent
+		// count() calls (Issue #220).
+		await expect(list.or(empty)).toBeVisible();
 		const populated = (await list.count()) > 0;
 		const emptyRendered = (await empty.count()) > 0;
 		expect(populated || emptyRendered).toBe(true);

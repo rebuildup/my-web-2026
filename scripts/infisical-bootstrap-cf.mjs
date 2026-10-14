@@ -1394,12 +1394,7 @@ async function main() {
 		// below, so a partial-bind run provably generates nothing.
 		// Key NAMES only — values never reach this process.
 		throw new Error(
-			`Workers Builds env is PARTIALLY bound (present: ${binding.present.join(', ')}; ` +
-				`missing: ${binding.missing.join(', ')}). Refusing to generate a new client secret: ` +
-				'minting here would orphan the previously issued credential, so every re-run would ' +
-				'accumulate another live credential. Finish or clear the binding manually ' +
-				'(Cloudflare dashboard, Workers Builds trigger environment variables), then re-run. ' +
-				'No new credential was generated on this run.',
+			`Workers Builds env is PARTIALLY bound (present: ${binding.present.join(', ')}; missing: ${binding.missing.join(', ')}). Refusing to generate a new client secret: minting here would orphan the previously issued credential, so every re-run would accumulate another live credential. Finish or clear the binding manually (Cloudflare dashboard, Workers Builds trigger environment variables), then re-run. No new credential was generated on this run.`,
 		);
 	}
 

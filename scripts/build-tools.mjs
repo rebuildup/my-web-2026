@@ -155,6 +155,20 @@ for (const tool of targetTools) {
 		console.error('[build-tools]   ✗ submodule path missing on disk');
 		continue;
 	}
+	// Issue #269 — an empty submodule directory (uninitialised checkout /
+	// fresh worktree) still satisfies existsSync(), so verify the submodule
+	// is actually initialised before running its build. Otherwise the package
+	// manager searches up to the repository root and re-runs this build.
+	if (
+		!existsSync(join(submodulePath, '.git')) ||
+		!existsSync(join(submodulePath, 'package.json'))
+	) {
+		errors.push(
+			`${tool.slug}: submodule at ${tool.source.submodule_path} is not initialised (missing .git or package.json) — run git submodule update --init`,
+		);
+		console.error('[build-tools]   ✗ submodule not initialised');
+		continue;
+	}
 
 	// 2. Build.
 	if (dryRun) {
@@ -289,6 +303,10 @@ function mirrorDir(src, dest) {
 			copyFileSync(s, d);
 		}
 	}
+}
+
+export function isSubmoduleInitialised(submodulePath) {
+	return existsSync(join(submodulePath, '.git')) && existsSync(join(submodulePath, 'package.json'));
 }
 
 function readGitlinkSha(submodulePath) {

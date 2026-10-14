@@ -57,14 +57,7 @@ export function versionDirFor(version) {
 
 /** Canonical remedy text shared by every failure shape of this gate. */
 export function remedyText(version) {
-	return (
-		`Remedy: stage the release assets at cut time — the cut commit that ` +
-		`bumps package.json#version must also stage ${versionDirFor(version)}/ ` +
-		`(same pattern as commits ${STAGING_PRECEDENTS.join(' / ')}). ` +
-		`When the portfolio itself is unchanged, copy the previous version ` +
-		`directory and swap the version references. See docs/release.md ` +
-		`Sprint cycle.`
-	);
+	return `Remedy: stage the release assets at cut time — the cut commit that bumps package.json#version must also stage ${versionDirFor(version)}/ (same pattern as commits ${STAGING_PRECEDENTS.join(' / ')}). When the portfolio itself is unchanged, copy the previous version directory and swap the version references. See docs/release.md Sprint cycle.`;
 }
 
 /**
@@ -80,12 +73,7 @@ export function checkReleaseAssets({ root, version }) {
 			ok: false,
 			relativePath,
 			missingAssets: [],
-			error:
-				`[check-release-assets] FAIL: release asset manifest missing: ` +
-				`${relativePath} (package.json#version=${version}). ` +
-				`The release cut bumped the version without staging the assets, ` +
-				`so the publish-portfolio-production manifest check cannot pass. ` +
-				remedyText(version),
+			error: `[check-release-assets] FAIL: release asset manifest missing: ${relativePath} (package.json#version=${version}). The release cut bumped the version without staging the assets, so the publish-portfolio-production manifest check cannot pass. ${remedyText(version)}`,
 		};
 	}
 	let manifest;
@@ -96,10 +84,7 @@ export function checkReleaseAssets({ root, version }) {
 			ok: false,
 			relativePath,
 			missingAssets: [],
-			error:
-				`[check-release-assets] FAIL: release asset manifest unreadable: ` +
-				`${relativePath} (${error.message}). ` +
-				remedyText(version),
+			error: `[check-release-assets] FAIL: release asset manifest unreadable: ${relativePath} (${error.message}). ${remedyText(version)}`,
 		};
 	}
 	const listed = Array.isArray(manifest.assets) ? manifest.assets : [];
@@ -112,12 +97,7 @@ export function checkReleaseAssets({ root, version }) {
 			ok: false,
 			relativePath,
 			missingAssets,
-			error:
-				`[check-release-assets] FAIL: ${missingAssets.length} manifest-listed ` +
-				`asset(s) missing under ${versionDirFor(version)}/:\n` +
-				missingAssets.map((p) => `  - ${p}`).join('\n') +
-				`\n` +
-				remedyText(version),
+			error: `[check-release-assets] FAIL: ${missingAssets.length} manifest-listed asset(s) missing under ${versionDirFor(version)}/:\n${missingAssets.map((p) => `  - ${p}`).join('\n')}\n${remedyText(version)}`,
 		};
 	}
 	return { ok: true, relativePath, missingAssets: [], error: null };

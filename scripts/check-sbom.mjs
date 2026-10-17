@@ -386,8 +386,16 @@ export function checkSbom({
 	return { ok: errors.length === 0, errors };
 }
 
-/** Load + check a document that lives on disk. */
-export function checkSbomFile({ root = repoRoot, bomPath }) {
+/**
+ * Check a document that lives on disk.
+ *
+ * `root` locates the document under test and may be any directory;
+ * `inputRoot` locates the repository the document is checked against
+ * and defaults to this repository. The two are separate so a staged
+ * artifact can be read from a scratch directory without pretending it
+ * is the repository root.
+ */
+export function checkSbomFile({ bomPath, root = repoRoot, inputRoot = repoRoot }) {
 	const full = resolve(root, bomPath);
 	if (!existsSync(full)) return { ok: false, errors: [`SBOM file not found: ${bomPath}`] };
 	let bom;
@@ -396,7 +404,7 @@ export function checkSbomFile({ root = repoRoot, bomPath }) {
 	} catch (error) {
 		return { ok: false, errors: [`SBOM file is not valid JSON: ${bomPath} (${error.message})`] };
 	}
-	return checkSbom({ bom, ...readInputs(root) });
+	return checkSbom({ bom, ...readInputs(inputRoot) });
 }
 
 /** Read the tracked inputs the gate compares against. */

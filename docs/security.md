@@ -85,6 +85,16 @@ binding API is reachable in the local workerd pool"**, not
 
 - Secret scanning: enabled as an asynchronous CI job (see
   `quality/profile.yaml#security_gates.secret_scanning`).
+- Supply-chain SBOM: CycloneDX 1.6, generated from `pnpm-lock.yaml`,
+  `package.json`, `pnpm-workspace.yaml` and `src/tools/manifest.json`
+  by `pnpm run sbom:build`, verified against the live lockfile by
+  `pnpm run sbom:check` inside `validate:fast`. The generator reads no
+  environment credential, no `.dev.vars` file, no Infisical export and
+  no Worker secret value; the gate rejects a document that contains a
+  declared runtime-secret *name* or a credential-shaped value. CI
+  retains the document as the `sbom-<sha>` workflow artifact, and the
+  release attachment step is human-gated. See
+  [`docs/runbook/sbom.md`](runbook/sbom.md).
 - Dependency review: deferred to a post-0.1.0 ticket.
 - Code scanning (SAST): deferred.
 - Container scanning: not applicable (no `Containerfile` at 0.1.0).

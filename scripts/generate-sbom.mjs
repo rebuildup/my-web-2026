@@ -323,14 +323,15 @@ export function parseYamlDocuments(text) {
  */
 export function packageIdentityFromLockKey(key) {
 	const body = unquote(key);
-	const at = body.lastIndexOf('@');
+	// The peer-resolution suffix is `(name@version(other@version))`.
+	// Split it off FIRST: the suffix itself contains `@`, so a
+	// lastIndexOf('@') on the whole key would find the wrong separator.
+	const peerAt = body.indexOf('(');
+	const peerSuffix = peerAt === -1 ? '' : body.slice(peerAt);
+	const head = peerAt === -1 ? body : body.slice(0, peerAt);
+	const at = head.lastIndexOf('@');
 	if (at <= 0) throw new UnsupportedYamlError(`lockfile key has no version: ${key}`);
-	const name = body.slice(0, at);
-	const versionWithPeers = body.slice(at + 1);
-	const peerAt = versionWithPeers.indexOf('(');
-	const peerSuffix = peerAt === -1 ? '' : versionWithPeers.slice(peerAt);
-	const version = peerAt === -1 ? versionWithPeers : versionWithPeers.slice(0, peerAt);
-	return { name, version, peerSuffix };
+	return { name: head.slice(0, at), version: head.slice(at + 1), peerSuffix };
 }
 
 /** Canonical, peer-suffix-free `name@version` identity. */
@@ -622,6 +623,25 @@ function propertyList(entries) {
 	return Object.entries(entries).map(([name, value]) => ({ name, value: String(value) }));
 }
 
+/**
+ * Canonical, timestamp-free identity of a document body. Two builds of
+ * the same inventory share a serial number; any inventory change does
+ * not. Kept as a plain function rather than a template literal so the
+ * seed is an ordinary object literal — a template substitution whose
+ * argument spans multiple lines is easy to misread and, on the Node
+ * versions this repository runs, mis-scoped.
+ */
+function serialNumberSeed(packageJson, components, dependencies) {
+	return JSON.stringify({
+		bomFormat: BOM_FORMAT,
+		specVersion: SPEC_VERSION,
+		name: packageJson.name,
+		version: packageJson.version,
+		components,
+		dependencies,
+	});
+}
+
 function stableUuid(namespaceSeed) {
 	// RFC 4122 name-based UUID (v5) shape with a SHA-256 digest: the
 	// value only has to be unique and deterministic, not a
@@ -769,12 +789,7 @@ export function buildSbom({
 	};
 
 	if (timestamp !== undefined) {
-		bom.serialNumber = stableUuid(
-			`${SBOM_FORMAT}/${SPEC_VERSION}/${packageJson.name}@${packageJson.version}/${JSON.stringify({
-				components,
-				dependencies,
-			})}`,
-		);
+		bom.serialNumber = stableUuid(serialNumberSeed(packageJson, components, dependencies));
 	} else {
 		bom.serialNumber = `urn:uuid:${randomUUID()}`;
 	}

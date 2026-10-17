@@ -12,8 +12,10 @@
  *     the standard 5 s session window), so the swap-induced shift is
  *     visible as a number instead of a vibe
  *   - the webfont timeline itself: how many `fonts.gstatic.com` /
- *     `fonts.googleapis.com` requests landed, their transfer size and
- *     duration, and when `document.fonts.ready` resolved (the swap)
+ *     `fonts.googleapis.com` requests were attempted and how many
+ *     actually completed (an aborted request still shows up in
+ *     resource timing), their transfer size and duration, and the
+ *     instant the first webfont face reported `loaded`
  *   - **fallback readability** under a blocked font origin: is there
  *     still real, visible text, and is it actually rendered by the
  *     platform fallback rather than by a webfont that slipped past the
@@ -93,6 +95,20 @@ export const DEFAULT_FONT_DELAY_MS = 1500;
 export const CPU_THROTTLE_RATE = 4;
 export const VIEWPORT = { width: 1280, height: 800 };
 
+/** How long the page is held still after the fonts settled, so a late
+ *  layout-shift / LCP entry still lands inside the measured window. */
+export const SETTLE_MS = 2000;
+
+/** The blocked scenario never swaps, so it only needs enough settle to
+ *  catch the abort fallout. */
+export const BLOCKED_SETTLE_MS = 750;
+
+/** Upper bound on waiting for the swap instant. The slow-font swap
+ *  lands seconds after load; a fixed settle window that closed before
+ *  it would silently under-report the very layout shift this ticket
+ *  claims is deterministic. */
+export const SWAP_WAIT_TIMEOUT_MS = 15000;
+
 /* ------------------------------------------------------------------ *
  * Pure helpers (unit-tested by scripts/font-first-paint-measure.test.mjs)
  * ------------------------------------------------------------------ */
@@ -136,21 +152,45 @@ export function cumulativeLayoutShift(entries) {
 /** Font-origin resource timing summary. `transferSize` is 0 for
  *  cross-origin responses without Timing-Allow-Origin, which is exactly
  *  what `fonts.gstatic.com` returns today — so the count and the
- *  durations are the honest signal and the byte total may be 0. */
+ *  durations are the honest signal and the byte total may be 0.
+ *
+ *  A request the route handler aborted still appears in resource timing
+ *  with `responseEnd === 0`. Counting it as a delivered font would put
+ *  "font reqs = 1" on a row that deliberately blocked the origin, so
+ *  attempted requests are counted apart from completed ones and only
+ *  completed ones carry bytes and timings. */
 export function summarizeFontResources(resources) {
-	const fontResources = resources.filter((r) =>
-		FONT_ORIGINS.some((host) => r.name?.includes(host)),
-	);
+	const attempted = resources.filter((r) => FONT_ORIGINS.some((host) => r.name?.includes(host)));
+	const completed = attempted.filter((r) => (r.responseEnd ?? 0) > 0);
 	return {
-		requests: fontResources.length,
-		transferBytes: fontResources.reduce((sum, r) => sum + (r.transferSize || 0), 0),
-		slowestMs: round3(fontResources.reduce((max, r) => Math.max(max, r.duration || 0), 0)),
-		lastStartMs: round3(fontResources.reduce((max, r) => Math.max(max, r.startTime || 0), 0)),
+		requests: completed.length,
+		abortedRequests: attempted.length - completed.length,
+		transferBytes: completed.reduce((sum, r) => sum + (r.transferSize || 0), 0),
+		slowestMs: round3(
+			completed.length ? completed.reduce((max, r) => Math.max(max, r.duration || 0), 0) : null,
+		),
+		lastStartMs: round3(
+			completed.length ? completed.reduce((max, r) => Math.max(max, r.startTime || 0), 0) : null,
+		),
 	};
 }
 
-function round3(value) {
+/** Round to three decimals while preserving ABSENCE. `Math.round(null *
+ *  1000) / 1000` is `0`, so a metric that was never observed (no
+ *  webfont face ever loaded, an observer that never fired) would be
+ *  serialised as a real `0` — and a blocked-font row would then report
+ *  a font swap at 0 ms, which is the one thing it cannot have
+ *  measured. `0` and "never observed" are different findings, so
+ *  `round3` keeps them apart. */
+export function round3(value) {
+	if (value === null || value === undefined || !Number.isFinite(value)) return null;
 	return Math.round(value * 1000) / 1000;
+}
+
+/** How a metric reaches prose and the terminal: a number prints as a
+ *  number, absence prints as `n/a`. Never as `0`. */
+export function formatMetric(value) {
+	return typeof value === 'number' ? String(value) : 'n/a';
 }
 
 /**
@@ -200,10 +240,9 @@ export function evaluateFallbackReadability({ probes, webFontAvailable, blocked 
 export const DETERMINISTIC_METRICS = ['cls', 'clsEntries', 'worstShift'];
 
 function range(values) {
-	const numbers = values.filter((v) => typeof v === 'number');
-	if (numbers.length === 0) return values.join(', ');
-	const min = Math.min(...numbers);
-	const max = Math.max(...numbers);
+	if (values.length === 0) return 'n/a';
+	const min = Math.min(...values);
+	const max = Math.max(...values);
 	return min === max ? String(min) : `${min}–${max}`;
 }
 
@@ -212,6 +251,14 @@ function range(values) {
  * as a min–max range across routes and scenarios. Reporting 45 single
  * -run rows in a PR screenshot is how a noise delta gets mistaken for a
  * result, so the HTML keeps the range and `report.json` keeps every row.
+ *
+ * Only rows that exist on BOTH sides are aggregated. `--compare` is
+ * routinely handed two captures that did not measure the same routes,
+ * and collapsing the present half of such a comparison would print a
+ * before/after pairing the data never observed — an improvement or a
+ * regression that did not happen. Unpaired rows stay in
+ * `report.json`, and the aggregate states how many runs were paired so
+ * that gap is visible instead of implied.
  */
 export function aggregateComparison(comparison) {
 	const byMetric = new Map();
@@ -220,12 +267,17 @@ export function aggregateComparison(comparison) {
 		if (!byMetric.has(metric)) byMetric.set(metric, []);
 		byMetric.get(metric).push(row);
 	}
-	return [...byMetric.entries()].map(([metric, rows]) => ({
-		metric,
-		before: range(rows.map((r) => r.before)),
-		after: range(rows.map((r) => r.after)),
-		deterministic: DETERMINISTIC_METRICS.includes(metric),
-	}));
+	return [...byMetric.entries()].map(([metric, rows]) => {
+		const paired = rows.filter((r) => typeof r.before === 'number' && typeof r.after === 'number');
+		return {
+			metric,
+			before: range(paired.map((r) => r.before)),
+			after: range(paired.map((r) => r.after)),
+			deterministic: DETERMINISTIC_METRICS.includes(metric),
+			pairedRuns: paired.length,
+			totalRuns: rows.length,
+		};
+	});
 }
 
 /**
@@ -282,9 +334,11 @@ export function renderReportHtml(report) {
 		`<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`;
 	const runs = report.runs
 		.map((run) => {
-			const metrics = Object.entries(run.metrics)
-				.map(([k, v]) => `<td>${escapeHtml(v)}</td>`)
-				.join('');
+			// A metric that was never observed renders as `n/a`. Printing
+			// the raw value would print `null`, and printing a coerced
+			// zero would claim a measurement that does not exist.
+			const cell = (value) =>
+				typeof value === 'number' ? escapeHtml(value) : '<span class="na">n/a</span>';
 			const verdict = run.fallback
 				? `<span class="${run.fallback.ok ? 'ok' : 'bad'}">${escapeHtml(
 						run.fallback.ok ? 'readable' : 'NOT readable',
@@ -295,11 +349,20 @@ export function renderReportHtml(report) {
 						run.scenario,
 					)} screenshot" loading="lazy" />`
 				: '';
-			return `<tr><td>${escapeHtml(run.route)}</td><td>${escapeHtml(run.scenario)}</td><td>${escapeHtml(
-				run.metrics.fcpMs,
-			)}</td><td>${escapeHtml(run.metrics.lcpMs)}</td><td>${escapeHtml(run.metrics.cls)}</td><td>${
-				run.metrics.fontSwapMs
-			}</td><td>${escapeHtml(run.metrics.fontRequests)}</td><td>${verdict}</td><td>${shot}</td></tr>`;
+			return [
+				'<tr>',
+				`<td>${escapeHtml(run.route)}</td>`,
+				`<td>${escapeHtml(run.scenario)}</td>`,
+				`<td>${cell(run.metrics.fcpMs)}</td>`,
+				`<td>${cell(run.metrics.lcpMs)}</td>`,
+				`<td>${cell(run.metrics.cls)}</td>`,
+				`<td>${cell(run.metrics.fontSwapMs)}</td>`,
+				`<td>${cell(run.metrics.fontRequests)}</td>`,
+				`<td>${cell(run.metrics.fontRequestsAborted)}</td>`,
+				verdict,
+				shot,
+				'</tr>',
+			].join('');
 		})
 		.join('\n');
 
@@ -307,17 +370,17 @@ export function renderReportHtml(report) {
 		if (!report.comparison?.length) return '';
 		const aggregated = aggregateComparison(report.comparison);
 		const row = (a) =>
-			`<tr><td>${escapeHtml(a.metric)}</td><td>${escapeHtml(a.before)}</td><td>${escapeHtml(a.after)}</td></tr>`;
+			`<tr><td>${escapeHtml(a.metric)}</td><td>${escapeHtml(a.before)}</td><td>${escapeHtml(a.after)}</td><td>${a.pairedRuns} / ${a.totalRuns}</td></tr>`;
 		const table = (title, rows) =>
 			[
 				`<h3>${escapeHtml(title)}</h3>`,
-				'<table><thead><tr><th>metric</th><th>before</th><th>after</th></tr></thead><tbody>',
+				'<table><thead><tr><th>metric</th><th>before</th><th>after</th><th>paired runs</th></tr></thead><tbody>',
 				rows.map(row).join(''),
 				'</tbody></table>',
 			].join('');
 		return [
 			'<h2>before / after</h2>',
-			'<p class="note">Read the deterministic table: a wrap either happened or it does not, so the same build measures the same value. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. Every individual row stays in <code>report.json</code>.</p>',
+			'<p class="note">Read the deterministic table: a wrap either happened or it does not, so the same build measures the same value. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. A range only covers the runs measured on both sides; <code>paired runs</code> states how many of them there were, and a metric with no paired run reads <code>n/a</code> rather than a half-pairing. Every individual row stays in <code>report.json</code>.</p>',
 			table(
 				'deterministic (layout shift)',
 				aggregated.filter((a) => a.deterministic),
@@ -365,6 +428,7 @@ export function renderReportHtml(report) {
   td img { max-width: 200px; border: 1px solid #e5e7eb; display: block; }
   .ok { color: #047857; font-weight: 700; }
   .bad { color: #b91c1c; font-weight: 700; }
+  .na { color: #6b7280; font-style: italic; }
   .better { color: #047857; } .worse { color: #b91c1c; } .flat { color: #6b7280; }
   .warn { background: #fef3c7; border: 1px solid #f59e0b; padding: 8px; margin: 8px 0; }
 </style></head>
@@ -387,7 +451,8 @@ ${row('captured at', env.capturedAt)}
 ${row('command', escapeHtml(report.command))}
 </tbody></table>
 <h2>metrics</h2>
-<table><thead><tr><th>route</th><th>scenario</th><th>FCP ms</th><th>LCP ms</th><th>CLS</th><th>font swap ms</th><th>font reqs</th><th>fallback</th><th>screenshot</th></tr></thead>
+<p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a blocked row has no webfont face to swap to, so its swap instant does not exist. <code>font reqs</code> counts only font-origin requests that completed; the aborted ones are listed separately so an aborted request can never read as a font that was fetched.</p>
+<table><thead><tr><th>route</th><th>scenario</th><th>FCP ms</th><th>LCP ms</th><th>CLS</th><th>font swap ms</th><th>font reqs</th><th>font reqs aborted</th><th>fallback</th><th>screenshot</th></tr></thead>
 <tbody>
 ${runs}
 </tbody></table>
@@ -462,6 +527,10 @@ function collectorScript(families) {
 					name: entry.name,
 					startTime: entry.startTime,
 					duration: entry.duration,
+					// `responseEnd === 0` is how resource timing records a
+					// request that never completed — the blocked-font
+					// scenario aborts every font request on purpose.
+					responseEnd: entry.responseEnd,
 					transferSize: entry.transferSize,
 				});
 			}
@@ -484,6 +553,13 @@ function collectorScript(families) {
 				window.__fontFirstPaint.webFontSwapAt === null
 			) {
 				window.__fontFirstPaint.webFontSwapAt = now;
+				// The first loaded webfont face IS the swap. The
+				// remaining faces (614 of them once the Google sheet
+				// parses) carry no further information, and walking them
+				// every 50 ms is main-thread work inside the very window
+				// being measured.
+				clearInterval(window.__fontFirstPaint.fontPoll);
+				return;
 			}
 		}
 	}, 50);
@@ -527,8 +603,19 @@ export function parseArgs(argv) {
 				.map((r) => r.trim())
 				.filter(Boolean);
 		else if (arg === '--compare') options.compare = next();
-		else if (arg === '--font-delay-ms') options.fontDelayMs = Number(next());
-		else if (arg === '--headed') options.headless = false;
+		else if (arg === '--font-delay-ms') {
+			const raw = next();
+			const delay = Number(raw);
+			// `Number('abc')` is NaN, and a NaN delay makes
+			// `delayMs > 0` false, so the slow-font scenario would
+			// install no route interception at all and still be labelled
+			// `slow-font` — a mistyped flag silently producing a second
+			// baseline row. Reject it instead.
+			if (raw.trim() === '' || !Number.isFinite(delay) || delay < 0) {
+				throw new Error(`--font-delay-ms requires a non-negative finite number, received "${raw}"`);
+			}
+			options.fontDelayMs = delay;
+		} else if (arg === '--headed') options.headless = false;
 		else if (arg === '--no-screenshots') options.screenshots = false;
 		else if (arg === '--help' || arg === '-h') options.help = true;
 		else throw new Error(`unknown argument: ${arg}`);
@@ -620,7 +707,18 @@ async function main(argv) {
 		for (const route of options.routes) {
 			for (const scenario of SCENARIOS) {
 				runs.push(
-					await measureRun({ browser, baseUrl: options.baseUrl, route, scenario, options, outDir }),
+					await measureRun({
+						browser,
+						baseUrl: options.baseUrl,
+						route,
+						scenario,
+						options,
+						outDir,
+						// When the origin is unreachable no swap can ever
+						// happen, so waiting for one would only add the
+						// timeout to every run.
+						expectSwap: origin.reachable && !scenario.blocked,
+					}),
 				);
 			}
 		}
@@ -669,9 +767,10 @@ async function main(argv) {
 	for (const run of runs) {
 		const verdict = run.fallback ? (run.fallback.ok ? 'readable' : 'NOT readable') : '—';
 		process.stdout.write(
-			`${run.route.padEnd(10)} ${run.scenario.padEnd(10)} FCP=${String(run.metrics.fcpMs).padStart(7)}ms ` +
-				`LCP=${String(run.metrics.lcpMs).padStart(7)}ms CLS=${run.metrics.cls} ` +
-				`swap=${String(run.metrics.fontSwapMs).padStart(7)}ms reqs=${run.metrics.fontRequests} fallback=${verdict}\n`,
+			`${run.route.padEnd(10)} ${run.scenario.padEnd(10)} FCP=${formatMetric(run.metrics.fcpMs).padStart(7)}ms ` +
+				`LCP=${formatMetric(run.metrics.lcpMs).padStart(7)}ms CLS=${formatMetric(run.metrics.cls)} ` +
+				`swap=${formatMetric(run.metrics.fontSwapMs).padStart(7)}ms reqs=${run.metrics.fontRequests} ` +
+				`aborted=${run.metrics.fontRequestsAborted} fallback=${verdict}\n`,
 		);
 		if (run.fallback && !run.fallback.ok) {
 			for (const problem of run.fallback.problems) {
@@ -683,7 +782,7 @@ async function main(argv) {
 	return 0;
 }
 
-async function measureRun({ browser, baseUrl, route, scenario, options, outDir }) {
+async function measureRun({ browser, baseUrl, route, scenario, options, outDir, expectSwap }) {
 	const context = await browser.newContext({
 		viewport: VIEWPORT,
 		deviceScaleFactor: 1,
@@ -721,9 +820,25 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir }
 
 	// Let fonts settle (resolves immediately when the origin was blocked
 	// or unreachable), then hold the page still long enough for a late
-	// layout-shift / LCP entry to land.
+	// layout-shift / LCP entry to land. The settle window opens only
+	// once the swap instant is known: in `slow-font` the swap lands
+	// ~3.8 s in, and a fixed window that closed before it would drop
+	// the shift the swap caused.
 	await page.evaluate(() => document.fonts.ready);
-	await page.waitForTimeout(scenario.blocked ? 750 : 2000);
+	if (expectSwap) {
+		await page
+			.waitForFunction(() => (window.__fontFirstPaint?.webFontSwapAt ?? null) !== null, null, {
+				timeout: SWAP_WAIT_TIMEOUT_MS,
+				polling: 50,
+			})
+			.catch(() => {
+				// The swap never landed inside the budget. `fontSwapMs`
+				// stays absent (`null`, rendered as `n/a`) rather than
+				// being invented, and the run still reports what it did
+				// observe.
+			});
+	}
+	await page.waitForTimeout(scenario.blocked ? BLOCKED_SETTLE_MS : SETTLE_MS);
 
 	const observed = await page.evaluate(
 		([selector, families]) => {
@@ -832,6 +947,7 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir }
 			worstShift: shift.worst,
 			fontSwapMs: round3(observed.webFontSwapAt ?? null),
 			fontRequests: fonts.requests,
+			fontRequestsAborted: fonts.abortedRequests,
 			fontTransferBytes: fonts.transferBytes,
 			slowestFontResponseMs: fonts.slowestMs,
 		},

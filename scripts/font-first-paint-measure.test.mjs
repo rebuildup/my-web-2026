@@ -1,17 +1,22 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+	BLOCKED_SETTLE_MS,
 	CPU_THROTTLE_RATE,
 	DEFAULT_ROUTES,
 	DETERMINISTIC_METRICS,
 	FONT_ORIGIN_PATTERNS,
+	SETTLE_MS,
+	SWAP_WAIT_TIMEOUT_MS,
 	WEBFONT_FAMILIES,
 	aggregateComparison,
 	compareRuns,
 	cumulativeLayoutShift,
 	evaluateFallbackReadability,
+	formatMetric,
 	parseArgs,
 	renderReportHtml,
+	round3,
 	summarizeFontResources,
 } from './font-first-paint-measure.mjs';
 
@@ -66,6 +71,44 @@ describe('font-first-paint-measure — measurement contract constants', () => {
 	it('throttles CPU in the slow-font scenario rather than the whole matrix', () => {
 		assert.equal(CPU_THROTTLE_RATE, 4);
 	});
+
+	it('opens the settle window only after the swap, never before it', () => {
+		// The slow-font swap lands ~3.8 s in. A fixed window shorter
+		// than the wait would close before it and drop the shift it
+		// caused, which is the one thing this ticket measures.
+		assert.ok(SWAP_WAIT_TIMEOUT_MS > SETTLE_MS);
+		assert.ok(SETTLE_MS > BLOCKED_SETTLE_MS);
+	});
+});
+
+describe('font-first-paint-measure — absence is not zero', () => {
+	it('keeps a missing measurement missing instead of rounding it to 0', () => {
+		// `Math.round(null * 1000) / 1000` is 0. A blocked row has no
+		// webfont face, so it has no swap instant: reporting 0 ms would
+		// claim the page swapped at 0 ms.
+		assert.equal(round3(null), null);
+		assert.equal(round3(undefined), null);
+		assert.equal(round3(Number.NaN), null);
+		assert.equal(round3(Number.POSITIVE_INFINITY), null);
+	});
+
+	it('still rounds a real zero to zero', () => {
+		assert.equal(round3(0), 0);
+		assert.equal(round3(0.4874321), 0.487);
+		assert.equal(formatMetric(0), '0');
+	});
+
+	it('prints an unobserved metric as n/a in prose and on the terminal', () => {
+		assert.equal(formatMetric(null), 'n/a');
+		assert.equal(formatMetric(undefined), 'n/a');
+		assert.equal(formatMetric(12.5), '12.5');
+	});
+
+	it('does not report a shift timing for a page that never shifted', () => {
+		// CLS of zero is a measurement (no shift entries at all); the
+		// absence assertions above are about metrics with no event.
+		assert.deepEqual(cumulativeLayoutShift([]), { cls: 0, count: 0, worst: 0 });
+	});
 });
 
 describe('font-first-paint-measure — parseArgs', () => {
@@ -106,6 +149,14 @@ describe('font-first-paint-measure — parseArgs', () => {
 
 	it('rejects a flag whose value is missing', () => {
 		assert.throws(() => parseArgs(['--base-url']), /requires a value/);
+	});
+
+	it('rejects a non-numeric or negative font delay instead of running a mislabelled baseline', () => {
+		// NaN made `delayMs > 0` false, so no route interception was
+		// installed while the run was still labelled `slow-font`.
+		assert.throws(() => parseArgs(['--font-delay-ms', 'abc']), /--font-delay-ms requires/);
+		assert.throws(() => parseArgs(['--font-delay-ms', '-1']), /--font-delay-ms requires/);
+		assert.throws(() => parseArgs(['--font-delay-ms', '']), /--font-delay-ms requires/);
 	});
 });
 
@@ -154,35 +205,66 @@ describe('font-first-paint-measure — cumulativeLayoutShift', () => {
 });
 
 describe('font-first-paint-measure — summarizeFontResources', () => {
-	it('counts only font-origin requests', () => {
+	it('counts only completed font-origin requests', () => {
 		const result = summarizeFontResources([
 			{
 				name: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP',
 				startTime: 100,
 				duration: 120,
+				responseEnd: 220,
 				transferSize: 0,
 			},
 			{
 				name: 'https://fonts.gstatic.com/s/notosansjp/v36/x.woff2',
 				startTime: 400,
 				duration: 480,
+				responseEnd: 880,
 				transferSize: 0,
 			},
 			{
 				name: 'https://127.0.0.1:3000/_build/assets/app.js',
 				startTime: 50,
 				duration: 30,
+				responseEnd: 80,
 				transferSize: 900,
 			},
 		]);
 		assert.equal(result.requests, 2);
+		assert.equal(result.abortedRequests, 0);
 		assert.equal(result.slowestMs, 480);
 		assert.equal(result.lastStartMs, 400);
 	});
 
+	it('keeps an aborted request out of the delivered count', () => {
+		// The blocked scenario aborts every font request on purpose.
+		// Resource timing still records the entry, with responseEnd 0;
+		// counting it would put "font reqs = 1" beside a row that
+		// proves no font arrived.
+		const result = summarizeFontResources([
+			{
+				name: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP',
+				startTime: 100,
+				duration: 20,
+				responseEnd: 0,
+				transferSize: 0,
+			},
+		]);
+		assert.equal(result.requests, 0);
+		assert.equal(result.abortedRequests, 1);
+		assert.equal(result.transferBytes, 0);
+		// No completed response means no response time — not a 0 ms one.
+		assert.equal(result.slowestMs, null);
+		assert.equal(result.lastStartMs, null);
+	});
+
 	it('keeps a zero byte total honest when the origin sends no Timing-Allow-Origin', () => {
 		const result = summarizeFontResources([
-			{ name: 'https://fonts.gstatic.com/s/x.woff2', duration: 10, transferSize: 0 },
+			{
+				name: 'https://fonts.gstatic.com/s/x.woff2',
+				duration: 10,
+				responseEnd: 30,
+				transferSize: 0,
+			},
 		]);
 		assert.equal(result.transferBytes, 0);
 		assert.equal(result.requests, 1);
@@ -308,7 +390,14 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 			{
 				route: '/',
 				scenario: 'blocked',
-				metrics: { fcpMs: 120, lcpMs: 200, cls: 0, fontSwapMs: 5, fontRequests: 0 },
+				metrics: {
+					fcpMs: 120,
+					lcpMs: 200,
+					cls: 0,
+					fontSwapMs: null,
+					fontRequests: 0,
+					fontRequestsAborted: 1,
+				},
 				fallback: { ok: true, problems: [], probes: 8 },
 				screenshot: '_-blocked.png',
 			},
@@ -343,12 +432,21 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		assert.match(renderReportHtml(report), /Budget \+ release gate: Issue #386/);
 	});
 
-	it('renders the before/after table when a comparison is present', () => {
+	it('renders a before/after table when a comparison is present', () => {
 		const html = renderReportHtml(report);
 		assert.match(html, /before \/ after/);
 		// The table aggregates per metric across routes, so the two `cls`
 		// rows (0.12 and 0.975 before) collapse into one min-max range.
 		assert.match(html, /<td>cls<\/td><td>0\.12–0\.975<\/td><td>0\.001–0\.03<\/td>/);
+	});
+
+	it('renders an unobserved metric as n/a, never as 0 ms', () => {
+		const html = renderReportHtml(report);
+		// The fixture run is the blocked scenario: no webfont face ever
+		// loaded, so there is no swap instant to report.
+		assert.match(html, /<td>0<\/td><td><span class="na">n\/a<\/span><\/td><td>0<\/td>/);
+		assert.doesNotMatch(html, />null</);
+		assert.match(html, /never observed, not that it measured zero/);
 	});
 
 	it('splits the before/after table into deterministic rows and noisy context', () => {
@@ -376,10 +474,49 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 				{ key: '/:baseline:cls', before: 0.5, after: 0.1 },
 			]),
 			[
-				{ metric: 'fcpMs', before: '200–300', after: '180–320', deterministic: false },
-				{ metric: 'cls', before: '0.5', after: '0.1', deterministic: true },
+				{
+					metric: 'fcpMs',
+					before: '200–300',
+					after: '180–320',
+					deterministic: false,
+					pairedRuns: 2,
+					totalRuns: 2,
+				},
+				{
+					metric: 'cls',
+					before: '0.5',
+					after: '0.1',
+					deterministic: true,
+					pairedRuns: 1,
+					totalRuns: 1,
+				},
 			],
 		);
+	});
+
+	it('never aggregates a run that only exists on one side', () => {
+		// `--compare` gets handed captures with different route sets.
+		// Folding the present half into a range would print a pairing
+		// the data never observed.
+		const rows = aggregateComparison([
+			{ key: '/:baseline:cls', before: 0.5, after: null },
+			{ key: '/about:baseline:cls', before: null, after: 0.02 },
+			{ key: '/about:slow-font:cls', before: 0.4, after: 0.01 },
+		]);
+		assert.equal(rows[0].pairedRuns, 1);
+		assert.equal(rows[0].totalRuns, 3);
+		assert.equal(rows[0].before, '0.4');
+		assert.equal(rows[0].after, '0.01');
+	});
+
+	it('reads n/a when a metric has no paired run at all', () => {
+		const rows = aggregateComparison([
+			{ key: '/:blocked:fontSwapMs', before: null, after: null },
+			{ key: '/about:blocked:fontSwapMs', before: null, after: null },
+		]);
+		assert.equal(rows[0].before, 'n/a');
+		assert.equal(rows[0].after, 'n/a');
+		assert.equal(rows[0].pairedRuns, 0);
 	});
 
 	it('classifies only layout-shift metrics as deterministic', () => {
@@ -398,5 +535,22 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		});
 		assert.doesNotMatch(html, /<img src=x/);
 		assert.match(html, /&lt;img src=x/);
+	});
+
+	it('never interpolates a metric value raw', () => {
+		// Every metric cell goes through the same formatter: a number is
+		// escaped, anything else becomes `n/a`. A value can therefore no
+		// longer reach the markup as markup.
+		const html = renderReportHtml({
+			...report,
+			runs: [
+				{
+					...report.runs[0],
+					metrics: { ...report.runs[0].metrics, fontSwapMs: '<b>1</b>' },
+				},
+			],
+		});
+		assert.doesNotMatch(html, /<b>1<\/b>/);
+		assert.match(html, /<td><span class="na">n\/a<\/span><\/td>/);
 	});
 });

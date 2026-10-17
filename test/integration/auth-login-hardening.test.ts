@@ -42,6 +42,19 @@ import { auth } from '../../src/cloudflare/auth/better-auth';
  * canonical schema is applied once by `test/setup/better-auth-schema.ts`
  * and Better Auth caches its schema verdict at module load, so rows are
  * truncated between tests instead of re-running migrations.
+ *
+ * Account under test
+ * ------------------
+ * `EXISTING_EMAIL` is a **local fixture only**: it is created in
+ * `beforeEach` against the Miniflare D1, its address is a reserved
+ * `.test.local` domain (RFC 6762), and it exists for the length of one
+ * test. It carries `role: 'admin'` on purpose — the "correct credentials
+ * while throttled" case signs in as that same account, so the throttle is
+ * shown to refuse the strongest account in the schema before any
+ * credential or role check runs. No admin capability is otherwise
+ * exercised and none is claimed: the only things proved about a
+ * successful sign-in are the `200`, the issued session cookie, and
+ * exactly one session row.
  */
 
 const SIGN_IN_PATH = '/api/v1/auth/sign-in/email';
@@ -172,6 +185,12 @@ describe('login enumeration + brute-force throttle (Issue #443)', () => {
 		// status, body, or any header.
 		expect(unknownAccount.observed).toEqual(wrongPassword.observed);
 		expect(wrongPassword.observed.body).toContain('INVALID_EMAIL_OR_PASSWORD');
+		// Pinned header **set**, not just parity: the 401 carries
+		// `content-type` and nothing else — no `set-cookie`, no
+		// `www-authenticate`, no hint about which account was addressed.
+		// An upstream library change that adds a header therefore surfaces
+		// here instead of quietly widening the response contract.
+		expect(wrongPassword.observed.headers.map(([name]) => name)).toEqual(['content-type']);
 	}, 120_000);
 
 	it('keeps the failure response free of the submitted identity and the password', async () => {
@@ -221,7 +240,10 @@ describe('login enumeration + brute-force throttle (Issue #443)', () => {
 
 		// The budget is the pinned `customRules['/sign-in/email']` value,
 		// so a library default change shows up here instead of silently
-		// loosening the control.
+		// loosening the control. The window is a rolling 10 s, so the four
+		// requests must stay inside it — they are consecutive local
+		// requests, and the 120 s case timeout is the only thing that could
+		// stretch them.
 		expect(statuses).toEqual([401, 401, 401, 429]);
 
 		// Retry control: the throttle tells the client how long to wait.

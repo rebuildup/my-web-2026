@@ -78,6 +78,12 @@ function parseCookie(setCookieHeader: string | null, name: string): string | nul
  * suite would trip its own throttle. Distinct IPs model distinct clients,
  * which is what the throttle is about; the throttle itself is asserted on
  * purpose in `test/integration/auth-login-hardening.test.ts`.
+ *
+ * The throttle's counter is module-level memory, so a fresh IP per call
+ * is sufficient only while Vitest gives every test file its own module
+ * registry (it does today — the pool isolates files). If that pool
+ * configuration ever changes, a fifth sign-in in this file would
+ * legitimately see `429` here and the failure would point here.
  */
 let signInIpCounter = 0;
 

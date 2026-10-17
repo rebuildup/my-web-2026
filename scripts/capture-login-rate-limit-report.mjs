@@ -26,7 +26,11 @@
  *
  * Output: `docs/verification/security/login-rate-limit.webp`
  * Scratch: `.tmp/login-rate-limit-report.html`,
- *         `.tmp/login-rate-limit-report.png` (both gitignored, ephemeral)
+ *         `.tmp/login-rate-limit-report.png`,
+ *         `.tmp/login-rate-limit-report.webp` (all gitignored, ephemeral).
+ *         The encoded WebP is written to the scratch path first and moved
+ *         into place only after the size ceiling passes, so an over-limit
+ *         run can never leave an over-budget file in `docs/`.
  *
  * Usage:
  *   pnpm run verification:login-rate-limit
@@ -37,7 +41,7 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, renameSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -48,9 +52,21 @@ const END = '<!-- login-rate-limit-matrix:end -->';
 export const OUTPUT = 'docs/verification/security/login-rate-limit.webp';
 const SCRATCH_HTML = '.tmp/login-rate-limit-report.html';
 const SCRATCH_PNG = '.tmp/login-rate-limit-report.png';
+const SCRATCH_WEBP = '.tmp/login-rate-limit-report.webp';
+
+/**
+ * Chromium viewport for the capture. The committed artefact is exactly
+ * this wide (the page is rendered at it and `withoutEnlargement` never
+ * upscales), so the encode width below is derived from it rather than
+ * being an independent constant that could disagree.
+ */
+export const CAPTURE_VIEWPORT = Object.freeze({ width: 1280, height: 900 });
 
 /** Encoding contract for the committed artefact (see the header). */
-export const ARTEFACT_ENCODE_OPTIONS = Object.freeze({ width: 1600, quality: 80 });
+export const ARTEFACT_ENCODE_OPTIONS = Object.freeze({
+	width: CAPTURE_VIEWPORT.width,
+	quality: 80,
+});
 /** Hard ceiling so a bigger matrix cannot quietly bloat the repository. */
 export const MAX_ARTEFACT_BYTES = 300 * 1024;
 
@@ -231,7 +247,7 @@ ${body}
       <li><strong>401 → 429（バースト行）</strong> — 同一クライアント IP から 4 回目で上限に達し、
           <code>X-Retry-After</code>（秒）が付く。上限は資格情報の検証<strong>前</strong>に評価されるため、
           429 は存在の有無を漏らさない。</li>
-      <li><strong>429（正しいパスワードでも）</strong> — 制限中は正しい資格情報でも 429。throttle が存在判定のagemんTrump にならないことの担保。</li>
+      <li><strong>429（正しいパスワードでも）</strong> — 制限中は正しい資格情報でも 429。throttle が存在判定の lever にならないことの担保。</li>
       <li>client IP はリクエストごとに合成値を使い分ける。バーストだけが意図的に同一 IP を共有する
           （=「クライアント IP 単位」の意味そのもの）。上限は per-client なので、攻撃者が他クライアントや
           運用者をロックアウトする lever にはならない。</li>
@@ -284,7 +300,7 @@ async function main() {
 	mkdirSync(dirname(shot), { recursive: true });
 	const browser = await chromium.launch();
 	try {
-		const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
+		const page = await browser.newPage({ viewport: { ...CAPTURE_VIEWPORT } });
 		await page.goto(`file://${resolve(repoRoot, SCRATCH_HTML)}`);
 		await page.waitForLoadState('load');
 		await page.screenshot({ path: shot, fullPage: true });
@@ -292,24 +308,33 @@ async function main() {
 		await browser.close();
 	}
 
-	// PNG (raster) -> WebP (committed). `withoutEnlargement` keeps the
-	// capture at its own 1280 CSS px when the viewport is narrower.
+	// PNG (raster) -> WebP (committed).
 	const { default: sharp } = await import('sharp');
-	const target = resolve(repoRoot, OUTPUT);
-	mkdirSync(dirname(target), { recursive: true });
+	const encoded = resolve(repoRoot, SCRATCH_WEBP);
+	mkdirSync(dirname(encoded), { recursive: true });
+	// `withoutEnlargement` keeps the capture at its own capture-width CSS
+	// px (see CAPTURE_VIEWPORT), so the artefact is never upscaled.
 	const info = await sharp(shot)
 		.resize({ width: ARTEFACT_ENCODE_OPTIONS.width, withoutEnlargement: true })
 		.webp({ quality: ARTEFACT_ENCODE_OPTIONS.quality })
-		.toFile(target);
+		.toFile(encoded);
 	rmSync(shot, { force: true });
 
 	if (info.size > MAX_ARTEFACT_BYTES) {
+		// Fail safe: the over-limit encode stays in `.tmp/` and the
+		// previously committed artefact is left untouched.
+		rmSync(encoded, { force: true });
 		const limit = `[login-rate-limit] ${OUTPUT} is ${info.size} bytes (> ${MAX_ARTEFACT_BYTES});`;
 		const advice =
 			'lower ARTEFACT_ENCODE_OPTIONS.quality or narrow the report instead of committing it\n';
 		process.stderr.write(`${limit} ${advice}`);
 		return 1;
 	}
+
+	// Only an artefact inside the ceiling reaches the committed path.
+	const target = resolve(repoRoot, OUTPUT);
+	mkdirSync(dirname(target), { recursive: true });
+	renameSync(encoded, target);
 
 	process.stdout.write(
 		`[login-rate-limit] wrote ${OUTPUT} (${rows.length} cases, ` +

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import {
 	ARTEFACT_ENCODE_OPTIONS,
+	CAPTURE_VIEWPORT,
 	MAX_ARTEFACT_BYTES,
 	OUTPUT,
 	extractTable,
@@ -35,9 +36,27 @@ test('artefact contract: committed as WebP under a hard size ceiling', () => {
 	// PNG bloats the repository; the capture converts before committing.
 	assert.equal(OUTPUT, 'docs/verification/security/login-rate-limit.webp');
 	assert.equal(OUTPUT.endsWith('.png'), false);
-	assert.equal(ARTEFACT_ENCODE_OPTIONS.width, 1600);
+	// The encode width is derived from the capture viewport, so the
+	// assertion is a real coupling check rather than a number that cannot
+	// affect the output (`withoutEnlargement` never upscales, so an encode
+	// width above the viewport would be inert).
+	assert.equal(ARTEFACT_ENCODE_OPTIONS.width, CAPTURE_VIEWPORT.width);
+	assert.ok(ARTEFACT_ENCODE_OPTIONS.width <= CAPTURE_VIEWPORT.width);
 	assert.equal(ARTEFACT_ENCODE_OPTIONS.quality, 80);
 	assert.ok(MAX_ARTEFACT_BYTES <= 300 * 1024, 'the ceiling must stay at or below 300 KB');
+});
+
+test('rendered legend keeps the throttle prose intact', () => {
+	// A garbled legend shipped once (a corrupted token rendered into the
+	// committed artefact) and nothing caught it, because CI neither
+	// regenerates nor diffs the image. Pin the one line that explains the
+	// 429 row, since it is the only prose the matrix's meaning rests on.
+	const html = renderHtml(parseRows(MEASURED_TABLE));
+	assert.ok(
+		html.includes('throttle が存在判定の lever にならないことの担保。'),
+		'the legend must read 「throttle が存在判定の lever にならないことの担保。」',
+	);
+	assert.equal(html.includes('agemんTrump'), false);
 });
 
 test('extractTable reads the block between the suite markers', () => {

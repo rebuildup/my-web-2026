@@ -39,7 +39,7 @@ in `src/cloudflare/auth/better-auth.test.ts` (config level) plus
 | Situation | Status | Body | Headers |
 | --- | --- | --- | --- |
 | Correct credentials | `200` | session payload | `set-cookie` carries `better-auth.session_token` |
-| Wrong password **or** non-existent account | `401` | `{"message":"Invalid email or password","code":"INVALID_EMAIL_OR_PASSWORD"}` | `content-type` only |
+| Wrong password **or** non-existent account | `401` | `{"message":"Invalid email or password","code":"INVALID_EMAIL_OR_PASSWORD"}` | `content-type` only — the header **set** itself is pinned by the suite, so an upstream addition surfaces as a test failure |
 | Over budget (4th attempt in 10 s from one client IP) | `429` | `{"message":"Too many requests. Please try again later."}` — generic, no `code`, and identical whether or not the account exists | `content-type` + `X-Retry-After` |
 
 Three properties the tests hold in place:
@@ -69,6 +69,30 @@ They prove, against the real Worker entrypoint:
 They do **not** prove anything about the deployed limiter's strength:
 the counter lives in the isolate's heap, so it resets on isolate recycle
 and is not shared across locations. See "Known limits" below.
+
+### What kind of test these are
+
+The suite is an **integration contract** test: it drives real HTTP
+requests through the real Worker entrypoint (`SELF.fetch`) inside the
+local workerd pool. The Issue's wording also mentions E2E; no Playwright
+E2E case was added, because the properties under audit (429 on a
+throttled POST, byte-identical 401 bodies, `X-Retry-After`) are response
+properties that a browser-driven test can only observe indirectly, and
+the existing E2E suites never POST a sign-in. The contract assertions
+live at the boundary where they are strongest.
+
+### The account under test
+
+The verified account is a **local fixture**, created in `beforeEach`
+against the Miniflare D1 with a reserved `.test.local` address. It is
+created with `role: 'admin'`, and that role is deliberate rather than
+incidental: the "correct credentials while throttled" case signs in as
+**that same account**, so the throttle is shown to refuse the strongest
+account in the schema before any credential or role check runs. No admin
+capability is otherwise exercised and none is claimed — the only things
+proved about a successful sign-in are the `200`, the issued session
+cookie, and exactly one session row. No real account, role grant, or
+personal field is involved at any point.
 
 ## Operator-facing behaviour
 
@@ -122,11 +146,36 @@ pnpm run verification:login-rate-limit
 - **No production measurement.** Per this repository's own rule, no
   load was generated against `rebuildup.dev`. The evidence here is local
   by design.
-- **Other auth paths are covered only by the base rule.** `sign-up`,
-  `change-password`, and `change-email` keep Better Auth's own special
-  rule (3 per 10 s) because only `/sign-in/email` is exposed to
-  unauthenticated callers in this deployment. Sign-up is additionally
-  disabled (`emailAndPassword.disableSignUp`).
+- **The base rule now applies to every `/api/v1/auth/*` path**, not
+  just `/sign-in/email`: `rateLimit.enabled: true` activates the
+  library's default rule (`window: 10`, `max: 100`, keyed
+  `clientIP|path`) for all of them. That is the intended reading of
+  "enabled", but it is a behaviour change beyond the credential endpoint,
+  so it is called out rather than left implicit.
+- **Locally there is usually no client IP at all.** `pnpm dev` and
+  `vite preview` do not set `CF-Connecting-IP`, so the resolved IP is
+  `null` and *every* caller shares one `no-trusted-ip` bucket. For
+  `/sign-in/email` that means 3 sign-ins per 10 seconds **for the whole
+  dev server**, where there was no limiter at all before. On the deployed
+  Worker Cloudflare always sets the header, so the deployed behaviour is
+  per client. This is documented behaviour of the local dev server, not a
+  regression, and no test covers it.
+- **Unauthenticated auth paths keep the library's own special rules.**
+  Only `/sign-in/email` is pinned by this repository; the rest are
+  covered by Better Auth's built-in special rules, which this
+  deployment inherits unchanged:
+
+  | Path (relative to `basePath`) | Built-in rule |
+  | --- | --- |
+  | `/sign-in*` | 3 per 10 s (restated here as `customRules`) |
+  | `/sign-up*`, `/change-password*`, `/change-email*` | 3 per 10 s |
+  | `/request-password-reset`, `/send-verification-email`, `/forget-password*`, `/email-otp/*` | 3 per 60 s |
+
+  Sign-up is additionally disabled (`emailAndPassword.disableSignUp`), so
+  the unauthenticated set in this deployment is `sign-in/email`,
+  `request-password-reset`, and `send-verification-email`. Whether the
+  other special rules should also be restated here (drift protection, as
+  done for `/sign-in/email`) is not decided in this ticket.
 
 ## Files that must change together if this contract moves
 

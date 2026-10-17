@@ -157,6 +157,12 @@ async function bootstrapUser(input: {
  * the throttle it is not testing. The throttle behaviour itself is
  * asserted deliberately in
  * `test/integration/auth-login-hardening.test.ts`.
+ *
+ * The throttle's counter is module-level memory, so a fresh IP per call
+ * is sufficient only while Vitest gives every test file its own module
+ * registry (it does today — the pool isolates files). If that pool
+ * configuration ever changes, a fourth sign-in in this file would
+ * legitimately see `429` here and the failure would point here.
  */
 let signInIpCounter = 0;
 

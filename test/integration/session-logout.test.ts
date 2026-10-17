@@ -85,16 +85,28 @@ async function clearRows(): Promise<void> {
 }
 
 /**
+ * Split a (possibly joined) `Set-Cookie` header into individual
+ * cookies.
+ *
+ * The boundary is `,` followed by a cookie NAME and `=`. Note that a
+ * plain `,(?=[^;]+=[^;]+)` lookahead is wrong here: a cookie whose
+ * value is empty (which is exactly what a sign-out sends:
+ * `name=; Max-Age=0`) fails that lookahead, so the whole clearing
+ * header collapses into one segment and the cookie being cleared can
+ * no longer be located.
+ */
+function setCookieSegments(setCookieHeader: string | null): string[] {
+	if (!setCookieHeader) return [];
+	return setCookieHeader.split(/,(?=\s*[A-Za-z0-9_.-]+=)/);
+}
+
+/**
  * Read one cookie value out of a (possibly joined) `Set-Cookie`
  * header. Returns the raw value only for in-test comparisons; callers
  * never print it.
  */
 function cookieValue(setCookieHeader: string | null, name: string): string | null {
-	if (!setCookieHeader) return null;
-	// `headers.get('set-cookie')` returns every cookie in one string in
-	// some runtimes; split on the cookie boundary and pick the name.
-	const segments = setCookieHeader.split(/,(?=[^;]+=[^;]+)/);
-	for (const segment of segments) {
+	for (const segment of setCookieSegments(setCookieHeader)) {
 		const [pair] = segment.split(';');
 		const eq = pair.indexOf('=');
 		if (eq <= 0) continue;
@@ -105,9 +117,7 @@ function cookieValue(setCookieHeader: string | null, name: string): string | nul
 
 /** True when the response clears `name` (empty value + past Max-Age). */
 function clearsCookie(setCookieHeader: string | null, name: string): boolean {
-	if (!setCookieHeader) return false;
-	const segments = setCookieHeader.split(/,(?=[^;]+=[^;]+)/);
-	for (const segment of segments) {
+	for (const segment of setCookieSegments(setCookieHeader)) {
 		const parts = segment.split(';');
 		const [pair] = parts;
 		const eq = pair.indexOf('=');
@@ -306,16 +316,18 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 			const signOutRes = await signOut(cookie, {}, cached);
 			expect(signOutRes.status).toBe(200);
 			const setCookie = signOutRes.headers.get('set-cookie');
+			// The response clears BOTH cookies the browser holds, so the
+			// jar a real browser keeps after sign-out is empty.
 			expect(clearsCookie(setCookie, SESSION_COOKIE)).toBe(true);
+			expect(clearsCookie(setCookie, CACHE_COOKIE)).toBe(true);
 
 			// Server-side invalidation: the row is gone, so the cookie
 			// value no longer resolves to anything.
 			expect(await sessionRowCount()).toBe(0);
 
-			// The sign-out response re-clears the session token only; the
-			// cookie-cache cookie is left in the jar until its own
-			// Max-Age elapses. That is harmless while it stands alone —
-			// assert the consequence rather than the Set-Cookie detail.
+			// Belt and braces: even a cache cookie that survived the
+			// clearing (an old expiry, a browser quirk, a replayed
+			// jar) resolves to nothing on its own.
 			const orphaned = await getSessionWithJar(`${CACHE_COOKIE}=${cached}`);
 			expect(orphaned.body).toBeNull();
 

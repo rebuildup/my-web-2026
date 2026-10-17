@@ -28,6 +28,15 @@ reviewable-by-eye:
 | Can CI reach a secret value? | no — Infisical is the SoT, Workers Builds is the deploy path | `SECRET_*` |
 | Can CI deploy production or publish a Release? | no — both stay human / Cloudflare-owned | `AUTHZ_*` |
 
+**The gate fails closed.** YAML has compact forms (`on: [push,
+pull_request_target]`, `permissions: {contents: write}`,
+`${{ secrets['NAME'] }}`) and forms a line scanner cannot resolve
+(a YAML alias). A shape this gate cannot read is a finding
+(`PERMISSIONS_UNPARSED`, `AUTHZ_TRIGGER_UNPARSED`), never an
+inherited default: `status: PASS` means the gate *read* the workflow
+and found nothing, not that it failed to look. What remains outside
+the gate is listed in §9.
+
 `pnpm run ci:pins:check` is part of `validate:fast`
 (`quality/profile.yaml#gates.fast.components`), so every local
 `validate:fast` and every CI `validate` run sees it. It is offline,
@@ -93,11 +102,13 @@ The procedure in §5 therefore always takes the peeled `^{}` ref.
 | `PIN_SHA_MISMATCH` | workflow SHA ≠ manifest SHA | re-run §5 for that action |
 | `PIN_UNUSED_MANIFEST_ENTRY` | manifest pins an action no workflow uses | delete the entry, or add the workflow |
 | `PERMISSIONS_MISSING` | workflow or job resolves no explicit `permissions:` | add the read-only block |
+| `PERMISSIONS_UNPARSED` | a `permissions:` value is a shape the gate cannot resolve (a YAML alias, a folded scalar) | write the scopes out, or use `read-all` / `write-all` / `{}` |
 | `PERMISSIONS_WRITE` | a `write` scope without a manifest allow-list entry | drop the scope, or justify it in the manifest |
 | `PERMISSIONS_WRITE_ALL` | `write-all` anywhere | enumerate the scopes instead |
-| `SECRET_REFERENCE` | `secrets.X` where the manifest approves no `X` | drop it, or justify it in the manifest |
+| `SECRET_REFERENCE` | `secrets.X` or `secrets['X']` where the manifest approves no `X` | drop it, or justify it in the manifest |
 | `SECRET_VALUE_ACCESS` | a value-listing command reaches a real environment (the AGENTS.md §4 anti-pattern list) | use the dedicated status-only script, or move the work out of CI |
-| `AUTHZ_UNTRUSTED_TRIGGER` | `pull_request_target` / `workflow_run` / `issue_comment` | use `pull_request`, or add an exception with a reason |
+| `AUTHZ_UNTRUSTED_TRIGGER` | `pull_request_target` / `workflow_run` / `issue_comment`, in the block, scalar or flow-sequence form | use `pull_request`, or add an exception with a reason |
+| `AUTHZ_TRIGGER_UNPARSED` | the `on:` value is a shape the gate cannot resolve (an alias), so which events run the workflow is unproved | write the event names out, or add an exception with a reason |
 | `AUTHZ_PRODUCTION_DEPLOY` | `wrangler deploy` / `cf deploy` / `deploy:production` without `--dry-run` | keep the dry-run; production deploy is Cloudflare Workers Builds |
 | `AUTHZ_RELEASE_PUBLISH` | `gh release create/upload/edit/delete` in a workflow | the release merge stays a human gate (AGENTS.md §6) |
 
@@ -135,9 +146,14 @@ Reproducible, five steps, no secret involved.
 git ls-remote https://github.com/<owner>/<repo> \
   refs/tags/<tag> 'refs/tags/<tag>^{}'
 
-# 2. Cross-check the commit sha against the GitHub API
-#    (an independent source; the API returns the commit directly).
-gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq '.object.sha, .object.type'
+# 2. Cross-check the commit sha against the GitHub API (an independent
+#    source). NOTE: /git/ref returns the TAG OBJECT for an annotated tag
+#    (`type: "tag"` — see §2.1), not the commit, so peel it:
+gh api repos/<owner>/<repo>/git/ref/tags/<tag> --jq '.object.type, .object.sha'
+#    if type == "tag":
+gh api repos/<owner>/<repo>/git/tags/<object-sha> --jq '.object.type, .object.sha'
+#    the peeled sha must be type "commit" and must equal step 1:
+gh api repos/<owner>/<repo>/commits/<sha> --jq '.sha'
 
 # 3. Update BOTH sides in the same commit: the manifest entry
 #    (sha / ref / reviewed_on / review_issue) and every `uses:` line
@@ -215,10 +231,12 @@ The rendered failure is
 | `PIN_MISSING_REF_COMMENT` | a SHA was pasted from an audit log | add `# <upstream tag>`; recover the tag with §5 step 1 |
 | `PIN_UNUSED_MANIFEST_ENTRY` | an action was removed from a workflow | delete the manifest entry |
 | `PERMISSIONS_*` | a step needs a token scope | prefer not granting it; if unavoidable, add a justified `permissions.allow_writes` entry naming the scope and why |
+| `PERMISSIONS_UNPARSED` | the block was written in a shape the gate cannot read (e.g. `permissions: *token`) | write the scopes out in the block form the gate models, or add a justified exception |
 | `SECRET_VALUE_ACCESS` | someone moved a secret script into CI | run it locally through the dedicated status-only script (AGENTS.md §4); a CI step that can read a value is a new credential path |
 | `SECRET_REFERENCE` | a workflow started using a repository secret | remove it; runtime values belong to Infisical + Workers Builds |
 | `AUTHZ_PRODUCTION_DEPLOY` | deploy added to CI | revert to `--dry-run`; production is delivered by Cloudflare Workers Builds |
 | `AUTHZ_RELEASE_PUBLISH` | release automation added | remove; AGENTS.md §6 makes merge, tag and Release publish a human gate |
+| `AUTHZ_TRIGGER_UNPARSED` | `on:` was written through an alias (`on: *events`) | name the events out, or add a justified exception |
 
 Every repair is a normal ticket PR against the release branch. None of
 them touches a secret value, so none of them needs the value-listing
@@ -228,9 +246,23 @@ authorisation.
 
 - **The gate is a structural scan, not a YAML parse.** It reads
   `uses:`, `permissions:`, `on:` and `run:` shapes; actionlint owns
-  syntax. A workflow written in a flow style the scanner does not
-  model (anchors, multi-line scalars around `uses:`) would be missed
-  by the pin rules while still being linted. Both gates are required.
+  syntax. Where a shape exists but the scanner cannot read it, the gate
+  fails closed (`PERMISSIONS_UNPARSED`, `AUTHZ_TRIGGER_UNPARSED`) or
+  reports the value as unproved (`PIN_NOT_SHA` for an unresolvable
+  `uses:`). What no line-level scan can prove is narrower and is named
+  here rather than assumed:
+  - a secret reached through a *computed* expression, e.g.
+    `secrets[format('{0}', name)]` — the literal name is not in the
+    text, so the `secrets.allow_references` allow-list cannot be
+    checked; catch it in review, and keep the allow-list empty by
+    default so an unapproved name has nothing to hide behind;
+  - the upstream *content* of a pinned SHA (see the next bullet).
+  Both gates are required, and neither replaces reading the diff.
+- **`AUTHZ_UNTRUSTED_TRIGGER` reads the event name, not its reach.**
+  It reports `pull_request_target` / `workflow_run` / `issue_comment`
+  wherever they appear under `on:`. Whether a given event reaches
+  untrusted code depends on what the job then runs, which the
+  `PIN_*` and `PERM_*` rules are there to constrain.
 - **Upstream authenticity is not verified at runtime.** The pin proves
   *which* commit was reviewed, not that the commit is free of
   malicious post-install code. Verifying release signatures is a

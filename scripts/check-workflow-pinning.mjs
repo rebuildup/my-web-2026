@@ -45,6 +45,11 @@
  * YAML parse. It reads `uses:`, `permissions:`, `on:` and `run:` shapes —
  * the four places a supply-chain or token-privilege mistake can hide — and
  * actionlint remains the syntax gate (`pnpm run lint:ci`).
+ *
+ * Fail closed: a `permissions:` or `on:` value this scanner cannot
+ * resolve is a finding (`PERMISSIONS_UNPARSED`,
+ * `AUTHZ_TRIGGER_UNPARSED`), never an inherited silence. An audit that
+ * cannot read a shape must not report it as clean.
  */
 
 import { readFileSync, readdirSync } from 'node:fs';
@@ -70,11 +75,15 @@ export const RULES = {
 	PIN_SHA_MISMATCH: 'the workflow SHA does not match the pin manifest SHA',
 	PIN_UNUSED_MANIFEST_ENTRY: 'the manifest pins an action no workflow uses',
 	PERMISSIONS_MISSING: 'workflow or job has no explicit `permissions:` block',
+	PERMISSIONS_UNPARSED:
+		'a `permissions:` block is in a shape the gate cannot resolve, so its scopes are unproved',
 	PERMISSIONS_WRITE: 'a write scope needs a manifest `permissions.allow_writes` entry',
 	PERMISSIONS_WRITE_ALL: '`write-all` is never least privilege',
 	SECRET_REFERENCE: 'the workflow references a repository secret the manifest does not approve',
 	SECRET_VALUE_ACCESS: 'the workflow can reach a runtime secret value',
 	AUTHZ_UNTRUSTED_TRIGGER: 'untrusted-code triggers execute workflow code with repository secrets',
+	AUTHZ_TRIGGER_UNPARSED:
+		'the `on:` value is a shape the gate cannot resolve, so which events run this workflow is unproved',
 	AUTHZ_PRODUCTION_DEPLOY: 'production deploy is owned by Cloudflare Workers Builds (AGENTS.md §4)',
 	AUTHZ_RELEASE_PUBLISH: 'release PR merge / tag / Release publish is a human gate (AGENTS.md §6)',
 };
@@ -163,6 +172,10 @@ export function parseManifest(raw, source = 'manifest') {
 	if (!Array.isArray(exceptions)) {
 		throw new Error(`${source}: exceptions must be an array`);
 	}
+	// Normalised once here, so every consumer — including a caller that
+	// imports `auditWorkflows` directly — can read the key without
+	// re-deriving whether the manifest declared it.
+	parsed.exceptions = exceptions;
 	for (const entry of exceptions) {
 		if (!RULES[entry?.rule]) {
 			throw new Error(`${source}: exception rule "${entry?.rule}" is not a known rule`);
@@ -190,11 +203,29 @@ function isSkippable(line) {
 	return trimmed === '' || trimmed.startsWith('#');
 }
 
+/** Strip one layer of YAML quoting. `'push'` and `"push"` are the same key. */
+function unquote(value) {
+	return value.replace(/^['"]|['"]$/g, '');
+}
+
+/** `{ scope: level }` entries, or null when a line is not a mapping. */
+function parseScopeEntries(entries) {
+	const scopes = [];
+	for (const raw of entries) {
+		const m = /^([A-Za-z0-9-]+):\s*(.+)$/.exec(raw.trim());
+		if (!m) return null;
+		scopes.push({ scope: m[1], level: m[2].trim() });
+	}
+	return scopes;
+}
+
 /**
  * A `permissions:` value, resolved into an explicit scope list.
  *
  * Returns `{ mode, scopes }` where mode is `map`, `read-all`, `write-all`
- * or `none` (`{}`). `scopes` is `[{ scope, level }]`.
+ * or `none` (`{}`). `scopes` is `[{ scope, level }]`. `invalid` means the
+ * shape is one this gate does not model (a YAML alias, a folded scalar,
+ * ...); the caller must fail closed on it rather than assume a default.
  */
 export function parsePermissions(lines) {
 	const entries = lines.map((line) => stripComment(line).trim()).filter((line) => line !== '');
@@ -203,12 +234,17 @@ export function parsePermissions(lines) {
 	if (first === 'read-all') return { mode: 'read-all', scopes: [] };
 	if (first === 'write-all') return { mode: 'write-all', scopes: [] };
 	if (first === '{}') return { mode: 'none', scopes: [] };
-	const scopes = [];
-	for (const entry of entries) {
-		const m = /^([A-Za-z0-9-]+):\s*(.+)$/.exec(entry);
-		if (!m) return { mode: 'invalid', scopes: [], raw: entries };
-		scopes.push({ scope: m[1], level: m[2].trim() });
+	// Flow mapping on one line: `permissions: {contents: read, issues: write}`.
+	// Modelling it stops a compact-but-valid workflow from inheriting a
+	// default nobody wrote.
+	if (entries.length === 1 && first.startsWith('{') && first.endsWith('}')) {
+		const inner = first.slice(1, -1).trim();
+		const flow = parseScopeEntries(inner === '' ? [] : inner.split(','));
+		if (flow === null) return { mode: 'invalid', scopes: [], raw: entries };
+		return { mode: 'map', scopes: flow };
 	}
+	const scopes = parseScopeEntries(entries);
+	if (scopes === null) return { mode: 'invalid', scopes: [], raw: entries };
 	return { mode: 'map', scopes };
 }
 
@@ -252,10 +288,34 @@ function findKey(lines, indent, name, from = 0, to = lines.length) {
 	for (let i = from; i < to; i += 1) {
 		if (isSkippable(lines[i])) continue;
 		if (indentOf(lines[i]) !== indent) continue;
-		const m = new RegExp(`^${' '.repeat(indent)}${name}:\\s*(.*)$`).exec(lines[i]);
-		if (m) return { index: i, inline: stripComment(m[1]).trim() };
+		const m = new RegExp(`^${' '.repeat(indent)}["']?${name}["']?:\\s*(.*)$`).exec(lines[i]);
+		if (m) return { index: i, inline: stripComment(m[1]).trim(), lines };
 	}
 	return null;
+}
+
+/**
+ * The `on:` triggers, in every shape the gate models: the block form
+ * (`on:` + an indented `pull_request:`), the scalar form
+ * (`on: pull_request_target`) and the flow sequence
+ * (`on: [push, pull_request_target]`).
+ *
+ * A compact form is still a trigger declaration. Reading only the block
+ * form made `on: pull_request_target` audit as "no triggers at all",
+ * which is the one outcome the AUTHZ rules exist to prevent.
+ */
+export function parseTriggers(onKey) {
+	if (onKey === null) return [];
+	if (onKey.inline !== '') {
+		const flow = onKey.inline.replace(/^\[/, '').replace(/\]$/, '');
+		return flow
+			.split(',')
+			.map((name) => unquote(name.trim()))
+			.filter((name) => name !== '');
+	}
+	return blockLines(onKey.lines, onKey.index, 0)
+		.map((line) => unquote(stripComment(line).trim()))
+		.filter((name) => name !== '');
 }
 
 /**
@@ -295,7 +355,8 @@ export function parseWorkflow(text, file) {
 				)
 			: null,
 		workflowPermissionsLine: workflowPermissions ? workflowPermissions.index + 1 : null,
-		triggers: onKey ? blockLines(lines, onKey.index, 0).map(stripComment).filter(Boolean) : [],
+		triggersLine: onKey ? onKey.index + 1 : null,
+		triggers: parseTriggers(onKey),
 		lines,
 	};
 
@@ -331,8 +392,11 @@ export function parseWorkflow(text, file) {
 			});
 		}
 
+		// Any `permissions:` deeper than the job header is that job's own
+		// block. Keying it on an exact `jobIndent + 2` missed the same block
+		// written at a wider indentation, which is still valid YAML.
 		const permissions = /^(\s+)permissions:\s*(.*)$/.exec(line);
-		if (permissions && indent === jobIndent + 2) {
+		if (permissions && indent > jobIndent) {
 			const inline = stripComment(permissions[2]);
 			current.permissions = parsePermissions(inline ? [inline] : blockLines(lines, i, indent));
 			current.permissionsLine = i + 1;
@@ -400,7 +464,7 @@ function scanAuthority(workflow, audit) {
 	} else if (workflow.permissions.mode === 'invalid') {
 		finding(
 			audit,
-			'PERMISSIONS_MISSING',
+			'PERMISSIONS_UNPARSED',
 			workflow.file,
 			workflow.workflowPermissionsLine,
 			`unreadable permissions block: ${JSON.stringify(workflow.permissions.raw)}`,
@@ -417,6 +481,24 @@ function scanAuthority(workflow, audit) {
 				job.startLine,
 				`job "${job.name}" resolves no explicit permissions`,
 			);
+			continue;
+		}
+		// Fail closed. An unreadable block must not fall through to the
+		// empty `scopes` list and inherit the workflow default in silence:
+		// that is how `permissions: {contents: write}` audited as clean.
+		if (effective.mode === 'invalid') {
+			// Only the block that declares the bad shape is reported; a job
+			// that merely inherits an unreadable workflow block is already
+			// covered by the workflow-level finding above.
+			if (job.permissions !== null) {
+				finding(
+					audit,
+					'PERMISSIONS_UNPARSED',
+					workflow.file,
+					job.permissionsLine,
+					`job "${job.name}" declares an unreadable permissions block: ${JSON.stringify(effective.raw)}`,
+				);
+			}
 			continue;
 		}
 		if (job.permissions && effective.mode === 'write-all') {
@@ -468,14 +550,21 @@ function scanAuthority(workflow, audit) {
 				'GitHub Release publish from Actions',
 			);
 		}
-		for (const secret of line.matchAll(/\bsecrets\.([A-Za-z0-9_]+)\b/g)) {
-			if (!allowedSecrets.has(secret[1])) {
+		// Both GitHub expression forms reach a repository secret:
+		// `${{ secrets.NAME }}` and `${{ secrets['NAME'] }}`. Reading only
+		// the dot form let the index form through an allow-list that is
+		// empty on purpose.
+		for (const secret of line.matchAll(
+			/\bsecrets\.([A-Za-z0-9_]+)\b|\bsecrets\s*\[\s*['"]([A-Za-z0-9_]+)['"]\s*\]/g,
+		)) {
+			const name = secret[1] ?? secret[2];
+			if (!allowedSecrets.has(name)) {
 				finding(
 					audit,
 					'SECRET_REFERENCE',
 					workflow.file,
 					lineNo,
-					`secrets.${secret[1]} is not approved in the manifest`,
+					`${secret[1] !== undefined ? `secrets.${name}` : `secrets['${name}']`} is not approved in the manifest`,
 				);
 			}
 		}
@@ -483,12 +572,26 @@ function scanAuthority(workflow, audit) {
 
 	for (const trigger of workflow.triggers) {
 		const name = trigger.split(':')[0].trim();
+		// A name the gate cannot read (an alias such as `on: *events`, a
+		// flow mapping) means the trigger set is unproved. Failing closed
+		// here is the difference between "no untrusted trigger found" and
+		// "the gate could not look".
+		if (!/^[A-Za-z][A-Za-z0-9_-]*$/.test(name)) {
+			finding(
+				audit,
+				'AUTHZ_TRIGGER_UNPARSED',
+				workflow.file,
+				workflow.triggersLine ?? 1,
+				`unreadable \`on:\` entry: ${JSON.stringify(trigger)}`,
+			);
+			continue;
+		}
 		if (UNTRUSTED_TRIGGERS.has(name)) {
 			finding(
 				audit,
 				'AUTHZ_UNTRUSTED_TRIGGER',
 				workflow.file,
-				1,
+				workflow.triggersLine ?? 1,
 				`\`${name}\` executes fork-authored code with repository secrets`,
 			);
 		}
@@ -600,7 +703,7 @@ function applyExceptions(audit) {
 		// `target` is written the way a human reads it (a repository path),
 		// while `item.file` may be absolute (a fixture audit). Matching the
 		// suffix keeps the manifest readable without weakening the rule.
-		const waiver = audit.manifest.exceptions.find(
+		const waiver = (audit.manifest.exceptions ?? []).find(
 			(exception) =>
 				exception.rule === item.rule &&
 				(exception.target === '*' ||
@@ -663,6 +766,19 @@ export function auditWorkflows({ workflowsDir, manifest, manifestSource = 'manif
 		waivers: audit.waivers.length,
 	};
 	return audit;
+}
+
+/**
+ * A machine-readable view of the audit: the same status data, without
+ * the raw workflow text and without a `Set` that `JSON.stringify` would
+ * flatten to `{}`.
+ */
+export function jsonReport(audit) {
+	return {
+		...audit,
+		referenced: [...audit.referenced].sort(),
+		workflows: audit.workflows.map(({ lines, ...rest }) => rest),
+	};
 }
 
 /** Human-readable, status-only report. Never prints a secret value. */
@@ -766,7 +882,9 @@ function main(argv) {
 		);
 		return 2;
 	}
-	const report = options.json ? JSON.stringify(audit, null, 2) : renderTextReport(audit);
+	const report = options.json
+		? JSON.stringify(jsonReport(audit), null, 2)
+		: renderTextReport(audit);
 	const stream = audit.summary.status === 'PASS' ? process.stdout : process.stderr;
 	stream.write(`${report}\n`);
 	return audit.summary.status === 'PASS' ? 0 : 1;

@@ -51,7 +51,7 @@ Actions never reads it. `audit.json` next to the images is the
 status-only summary of the same run.
 
 An image is not the proof: the gate's behaviour is asserted in
-`scripts/check-workflow-pinning.test.mjs` (37 tests, including the
+`scripts/check-workflow-pinning.test.mjs` (45 tests, including the
 exact rule set the fixture produces), and the interpretation of each
 rule is in
 [`docs/security/supply-chain-actions-pinning.md`](../../security/supply-chain-actions-pinning.md).

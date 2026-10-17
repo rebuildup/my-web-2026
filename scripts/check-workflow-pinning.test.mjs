@@ -34,6 +34,9 @@ import {
  *   5. The committed abnormal fixture lives OUTSIDE `.github/workflows/`
  *      and still fails, with the rule set the docs claim.
  *   6. The CLI exit code is 0 / 1 / 2 for pass / findings / bad input.
+ *   7. A YAML shape this scan cannot resolve fails CLOSED. `permissions`
+ *      and `on:` have compact and aliased forms; reading only the block
+ *      form reported a write-token, fork-triggered workflow as PASS.
  */
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -323,7 +326,76 @@ describe('token permission rules', () => {
 		assert.deepEqual(parsePermissions(['read-all']), { mode: 'read-all', scopes: [] });
 		assert.deepEqual(parsePermissions(['write-all']), { mode: 'write-all', scopes: [] });
 		assert.deepEqual(parsePermissions(['{}']), { mode: 'none', scopes: [] });
+		assert.deepEqual(parsePermissions(['{contents: read, issues: write}']), {
+			mode: 'map',
+			scopes: [
+				{ scope: 'contents', level: 'read' },
+				{ scope: 'issues', level: 'write' },
+			],
+		});
 		assert.equal(parsePermissions(['not a mapping']).mode, 'invalid');
+		// A YAML alias is valid YAML this scanner cannot resolve. It must
+		// stay `invalid` so the caller fails closed instead of treating an
+		// empty scope list as least privilege.
+		assert.equal(parsePermissions(['*token']).mode, 'invalid');
+	});
+
+	it('reads a flow-mapping permissions block a job declares', () => {
+		const audit = auditTemp(
+			makeRepo({
+				workflows: {
+					'ci.yml': CLEAN_WORKFLOW.replace(
+						'    runs-on: ubuntu-latest',
+						'    runs-on: ubuntu-latest\n    permissions: {contents: write}',
+					),
+				},
+			}),
+		);
+		assert.deepEqual(rulesOf(audit), ['PERMISSIONS_WRITE']);
+		assert.match(audit.findings[0].message, /job "validate" requests contents: write/);
+	});
+
+	it('fails closed on a permissions shape it cannot resolve', () => {
+		const jobAlias = auditTemp(
+			makeRepo({
+				workflows: {
+					'ci.yml': CLEAN_WORKFLOW.replace(
+						'    runs-on: ubuntu-latest',
+						'    runs-on: ubuntu-latest\n    permissions: *token',
+					),
+				},
+			}),
+		);
+		assert.deepEqual(rulesOf(jobAlias), ['PERMISSIONS_UNPARSED']);
+		assert.match(jobAlias.findings[0].message, /job "validate" declares an unreadable/);
+
+		const workflowAlias = auditTemp(
+			makeRepo({ workflows: { 'ci.yml': withPermissions('permissions: *token\n') } }),
+		);
+		// Once for the workflow block that declares it; the job that merely
+		// inherits the unreadable value is not reported a second time.
+		assert.deepEqual(rulesOf(workflowAlias), ['PERMISSIONS_UNPARSED']);
+	});
+
+	it('reads a job permissions block at any indentation', () => {
+		const wide = [
+			'name: ci',
+			'on:',
+			'  pull_request:',
+			'permissions:',
+			'  contents: read',
+			'jobs:',
+			'    validate:',
+			'        runs-on: ubuntu-latest',
+			'        permissions:',
+			'            issues: write',
+			'        steps:',
+			`            - uses: actions/checkout@${CHECKOUT_SHA} # v4.4.0`,
+			'',
+		].join('\n');
+		const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': wide } }));
+		assert.deepEqual(rulesOf(audit), ['PERMISSIONS_WRITE']);
+		assert.match(audit.findings[0].message, /job "validate" requests issues: write/);
 	});
 });
 
@@ -337,6 +409,26 @@ describe('authority and secret-exposure rules', () => {
 			);
 			assert.ok(rulesOf(audit).includes('AUTHZ_UNTRUSTED_TRIGGER'), trigger);
 		}
+	});
+
+	it('rejects an untrusted-code trigger written in a compact form', () => {
+		// Block form only would read these as "no triggers at all", which
+		// is the one outcome the AUTHZ rules exist to prevent.
+		for (const on of [
+			'on: pull_request_target',
+			"on: 'pull_request_target'",
+			'on: [push, pull_request_target]',
+			'on: [push, "workflow_run"]',
+		]) {
+			const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': withOn(`${on}\n`) } }));
+			assert.ok(rulesOf(audit).includes('AUTHZ_UNTRUSTED_TRIGGER'), on);
+		}
+	});
+
+	it('fails closed when the `on:` value is a shape it cannot resolve', () => {
+		const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': withOn('on: *events\n') } }));
+		assert.deepEqual(rulesOf(audit), ['AUTHZ_TRIGGER_UNPARSED']);
+		assert.match(audit.findings[0].message, /unreadable `on:` entry/);
 	});
 
 	it('rejects a production deploy but allows the dry-run gate', () => {
@@ -420,26 +512,53 @@ describe('authority and secret-exposure rules', () => {
 		);
 	});
 
-	it('accepts an approved secret reference', () => {
+	it('rejects the index form of an unapproved secret reference', () => {
+		// `${{ secrets['NAME'] }}` is accepted by actionlint and reaches the
+		// same repository secret as the dot form.
+		const withSecret = (expression) =>
+			auditTemp(
+				makeRepo({
+					workflows: {
+						'ci.yml': CLEAN_WORKFLOW.replace(
+							'- uses:',
+							// `\${{` is the GitHub expression opener, escaped
+							// so JS does not read it as an interpolation.
+							`- run: echo "\${{ ${expression} }}"\n      - uses:`,
+						),
+					},
+				}),
+			);
+		const audit = withSecret("secrets['CLOUDFLARE_API_TOKEN']");
+		assert.ok(rulesOf(audit).includes('SECRET_REFERENCE'));
+		assert.match(
+			audit.findings.find((f) => f.rule === 'SECRET_REFERENCE').message,
+			/secrets\['CLOUDFLARE_API_TOKEN'\] is not approved/,
+		);
+		assert.ok(rulesOf(withSecret('secrets.CLOUDFLARE_API_TOKEN')).includes('SECRET_REFERENCE'));
+	});
+
+	it('accepts an approved secret reference in either expression form', () => {
 		const manifest = {
 			...BASE_MANIFEST,
 			secrets: {
 				allow_references: [{ name: 'CLOUDFLARE_API_TOKEN', workflow: 'ci.yml', reason: 'fixture' }],
 			},
 		};
-		const audit = auditTemp(
-			makeRepo({
-				workflows: {
-					'ci.yml': CLEAN_WORKFLOW.replace(
-						'- uses:',
-						'- run: echo "${{ secrets.CLOUDFLARE_API_TOKEN }}"\n      - uses:',
-					),
-				},
+		for (const expression of ['secrets.CLOUDFLARE_API_TOKEN', "secrets['CLOUDFLARE_API_TOKEN']"]) {
+			const audit = auditTemp(
+				makeRepo({
+					workflows: {
+						'ci.yml': CLEAN_WORKFLOW.replace(
+							'- uses:',
+							`- run: echo "\${{ ${expression} }}"\n      - uses:`,
+						),
+					},
+					manifest,
+				}),
 				manifest,
-			}),
-			manifest,
-		);
-		assert.deepEqual(rulesOf(audit), []);
+			);
+			assert.deepEqual(rulesOf(audit), [], expression);
+		}
 	});
 
 	it('ignores a denied pattern that only appears in a comment', () => {
@@ -547,6 +666,29 @@ describe('manifest parsing', () => {
 		);
 	});
 
+	it('audits a manifest object that never declared `exceptions`', () => {
+		// `parseManifest` treats the key as optional, so an importer of
+		// `auditWorkflows` (the report generator) must not crash on it.
+		const withoutExceptions = {
+			schema_version: 1,
+			actions: BASE_MANIFEST.actions,
+			permissions: BASE_MANIFEST.permissions,
+			secrets: BASE_MANIFEST.secrets,
+		};
+		assert.deepEqual(
+			parseManifest(JSON.stringify(withoutExceptions)).exceptions,
+			[],
+			'parseManifest normalises the optional key',
+		);
+		const dir = makeRepo({ workflows: { 'ci.yml': CLEAN_WORKFLOW } });
+		const audit = auditWorkflows({
+			workflowsDir: join(dir, '.github', 'workflows'),
+			manifest: withoutExceptions,
+		});
+		assert.deepEqual(rulesOf(audit), []);
+		assert.equal(audit.summary.status, 'PASS');
+	});
+
 	it('documents every rule it can report', () => {
 		for (const rule of [
 			'PIN_NOT_SHA',
@@ -556,11 +698,13 @@ describe('manifest parsing', () => {
 			'PIN_SHA_MISMATCH',
 			'PIN_UNUSED_MANIFEST_ENTRY',
 			'PERMISSIONS_MISSING',
+			'PERMISSIONS_UNPARSED',
 			'PERMISSIONS_WRITE',
 			'PERMISSIONS_WRITE_ALL',
 			'SECRET_REFERENCE',
 			'SECRET_VALUE_ACCESS',
 			'AUTHZ_UNTRUSTED_TRIGGER',
+			'AUTHZ_TRIGGER_UNPARSED',
 			'AUTHZ_PRODUCTION_DEPLOY',
 			'AUTHZ_RELEASE_PUBLISH',
 		]) {
@@ -689,6 +833,25 @@ describe('cli', () => {
 		]);
 		assert.equal(result.code, 1);
 		assert.match(result.stderr, /status: FAIL/);
+	});
+
+	it('prints machine-readable JSON without the raw workflow text', () => {
+		const result = run(['--json']);
+		assert.equal(result.code, 0);
+		const parsed = JSON.parse(result.stdout);
+		assert.equal(parsed.summary.status, 'PASS');
+		assert.equal(parsed.summary.pins, 12);
+		// A Set serialises to `{}`, which would make the machine-readable
+		// output look like it referenced nothing.
+		assert.deepEqual(parsed.referenced, [
+			'actions/cache',
+			'actions/checkout',
+			'actions/setup-node',
+			'actions/upload-artifact',
+			'oven-sh/setup-bun',
+			'pnpm/action-setup',
+		]);
+		assert.equal('lines' in parsed.workflows[0], false);
 	});
 
 	it('exits 2 on bad input', () => {

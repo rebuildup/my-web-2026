@@ -255,7 +255,13 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `architecture:check` +
-  `version:check` + `typecheck` + `test`)
+  `tools:check` + `wrangler:independence:check` +
+  `cloudflare:contract:check` + `test:wiring:check` +
+  `ci:pins:check` (Issue #472, GitHub Actions pin / token audit) +
+  `check-release-assets` + `version:check` + `typecheck` +
+  `infisical:check:coverage` + `test`. The canonical list is
+  `quality/profile.yaml#gates.fast.components`; add a step there, not
+  only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +
   `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +

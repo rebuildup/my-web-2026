@@ -259,6 +259,13 @@ CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 The same job also installs the Playwright Chromium binary and runs
 the E2E suite against `pnpm dev`.
 
+Two workflow gates exist because they answer different questions:
+`lint:ci` (actionlint) owns YAML syntax, and
+[`ci:pins:check`](security/supply-chain-actions-pinning.md) owns the
+Actions supply chain — pinned commit SHAs, least-privilege job
+tokens, and the rule that CI can neither read a secret value nor
+deploy production or publish a Release.
+
 ## Storybook
 
 Storybook 8.6.x previews the visual obligations that currently exist in source.

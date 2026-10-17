@@ -91,6 +91,15 @@ binding API is reachable in the local workerd pool"**, not
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Workflow supply-chain audit runs through `pnpm run ci:pins:check`
+  inside `validate:fast` (`scripts/check-workflow-pinning.mjs`, Issue
+  #472). It fails on a `uses:` that is not a full commit SHA, a job
+  token that is not least privilege, a workflow that can reach a
+  secret value, or a production deploy / Release publish from CI. It
+  fails closed: a `permissions:` / `on:` shape it cannot read is a
+  finding, not an inherited default. Contract, pin manifest and update
+  procedure:
+  [`docs/security/supply-chain-actions-pinning.md`](security/supply-chain-actions-pinning.md).
 
 ## Browser binaries (Playwright)
 

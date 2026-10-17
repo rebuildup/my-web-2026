@@ -1,0 +1,20 @@
+{
+	"real": {
+		"status": "PASS",
+		"workflows": 2,
+		"jobs": 2,
+		"pins": 12,
+		"local_actions": 0,
+		"findings": 0,
+		"waivers": 0
+	},
+	"fixture": {
+		"status": "FAIL",
+		"workflows": 1,
+		"jobs": 1,
+		"pins": 1,
+		"local_actions": 0,
+		"findings": 12,
+		"waivers": 0
+	}
+}

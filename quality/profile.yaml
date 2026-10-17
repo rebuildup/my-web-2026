@@ -35,6 +35,7 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
@@ -102,7 +103,7 @@ change_risk_mapping:
     note: 'src/server.ts, vite.config.ts, cloudflare.config.ts worker.entrypoint'
   ci_workflow_change:
     gate: integration
-    note: '.github/workflows/*.yml requires actionlint pass + cf-typegen:check'
+    note: '.github/workflows/*.yml requires actionlint pass + ci:pins:check + cf-typegen:check'
   release_branch:
     gate: release
 
@@ -150,6 +151,20 @@ security_gates:
     enabled: true
     tool: actionlint
     note: 'Biome does not cover .github/workflows/*.yml. Runs inside the `validate` job.'
+  workflow_action_pinning:
+    enabled: true
+    tool: scripts/check-workflow-pinning.mjs
+    manifest: quality/actions-pins.json
+    run_as: 'pnpm run ci:pins:check (part of validate:fast, so every CI run sees it)'
+    rules:
+      - 'every `uses:` pins a full 40-char commit SHA and records its upstream ref'
+      - 'every job resolves to explicit least-privilege GITHUB_TOKEN permissions'
+      - 'no workflow reads a secret value, deploys production, publishes a Release, or runs on an untrusted trigger'
+      - 'fails closed: a `permissions:` / `on:` / `uses:` shape the scanner cannot resolve is a finding, never an inherited default'
+    note: >-
+      Issue #472. Offline and read-only; waivers require a quality/actions-pins.json
+      `exceptions` entry and are printed in CI output. Update procedure:
+      docs/security/supply-chain-actions-pinning.md
   dependency_review:
     enabled: false
     rationale: 'Deferred to a post-0.1.0 ticket.'

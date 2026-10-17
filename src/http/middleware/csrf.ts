@@ -94,8 +94,8 @@ export type CsrfRejectionReason =
 
 export interface CsrfDecision {
 	allowed: boolean;
-	/** Why the request was allowed. Present on every allow. */
-	accepted_as: 'safe_method' | 'exempt_prefix' | 'same_origin';
+	/** Why the request was allowed. Present on every allow, absent on a refusal. */
+	accepted_as?: 'safe_method' | 'exempt_prefix' | 'same_origin';
 	/** Why the request was refused. Present only on a refusal. */
 	reason?: CsrfRejectionReason;
 }

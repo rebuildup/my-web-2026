@@ -151,7 +151,7 @@ describe('security headers — Tool surfaces (Issue #449)', () => {
 });
 
 describe('security header measurements for the PR report (Issue #449)', () => {
-	// `docs/verification/security/headers-browser.png` is a rendered
+	// `docs/verification/security/headers-browser.webp` is a rendered
 	// report, not a hand-written summary: it embeds the values measured
 	// HERE, from a real workerd run of the real Worker. Emitting them as
 	// one marker line lets the capture script consume the measurement

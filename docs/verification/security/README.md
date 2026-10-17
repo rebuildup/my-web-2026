@@ -1,8 +1,11 @@
 # Security header verification (Issue #449)
 
-`headers-browser.png` is the screenshot the Issue asks for: the
+`headers-browser.webp` is the screenshot the Issue asks for: the
 `nosniff` / `Referrer-Policy` / `Permissions-Policy` policy as it is
-actually observed, not as it is described.
+actually observed, not as it is described. It is stored as a
+moderately compressed WebP (width ≤ 1600, quality 80) rather than a
+PNG so the verification artefact stays small; the content is
+unchanged.
 
 ## What is in the image
 
@@ -40,7 +43,7 @@ The second form additionally reports the Static Assets rows as measured
 from a running preview (see `docs/security/security-headers.md` §4 for
 how to start one and capture the dump). The script re-runs the workerd
 measurement, re-resolves the `_headers` rules, re-runs the browser
-probes and overwrites the PNG. Commit the regenerated image in the same
+probes and overwrites the WebP. Commit the regenerated image in the same
 change as any policy or manifest-grant edit.
 
 The browser section separates the two gates Chromium actually applies:

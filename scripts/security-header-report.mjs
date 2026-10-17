@@ -4,9 +4,11 @@
  *
  *   node scripts/security-header-report.mjs [--static-measurements=<file>]
  *
- * Writes `docs/verification/security/headers-browser.png` — the
- * screenshot the Issue requires — from MEASUREMENTS, not prose, so the
- * image cannot drift away from what the site actually sends:
+ * Writes `docs/verification/security/headers-browser.webp` — the
+ * screenshot the Issue requires (stored as moderately compressed WebP
+ * instead of the Issue's `.png`, which bloats the repository) — from
+ * MEASUREMENTS, not prose, so the image cannot drift away from what the
+ * site actually sends:
  *
  *   1. Worker responses: runs `test/integration/security-headers.test.ts`
  *      in the local workerd pool and reads the
@@ -28,7 +30,7 @@
  * This is a documentation tool, not a gate: it never runs inside
  * `validate:*`, binds loopback only, reads no secret and contacts no
  * production host. Re-run it whenever the policy or the manifest grants
- * change, and commit the regenerated PNG in the same change.
+ * change, and commit the regenerated image in the same change.
  */
 import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -36,6 +38,7 @@ import { createServer } from 'node:http';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import sharp from 'sharp';
 import {
 	loadPolicy,
 	parseHeadersFile,
@@ -44,10 +47,18 @@ import {
 } from './check-security-headers.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT = resolve(root, 'docs/verification/security/headers-browser.png');
+const OUT = resolve(root, 'docs/verification/security/headers-browser.webp');
 const PORT = Number(process.env.SECURITY_HEADER_REPORT_PORT ?? 4599);
 const ORIGIN = `http://127.0.0.1:${PORT}`;
 const MEASUREMENT_MARKER = 'SECURITY_HEADERS_MEASUREMENT';
+/**
+ * Screenshot encode settings. Playwright can only write PNG, so the
+ * capture buffer is re-encoded with `sharp`: a full-page report is
+ * mostly flat dark UI where PNG stays large and WebP at quality 80 is
+ * roughly an order of magnitude smaller at the same legibility.
+ */
+const SHOT_WIDTH = 1600;
+const SHOT_QUALITY = 80;
 
 const policy = loadPolicy();
 const rules = parseHeadersFile(readFileSync(resolve(root, 'public/_headers'), 'utf8'));
@@ -396,12 +407,16 @@ if (measuredStatic) {
 state.browser = await probe();
 
 const browser = await chromium.launch();
-const page = await browser.newPage({ viewport: { width: 1600, height: 1200 } });
+const page = await browser.newPage({ viewport: { width: SHOT_WIDTH, height: 1200 } });
 await page.goto(`${ORIGIN}/`, { waitUntil: 'networkidle' });
 const height = await page.evaluate(() => document.documentElement.scrollHeight);
-await page.setViewportSize({ width: 1600, height });
+await page.setViewportSize({ width: SHOT_WIDTH, height });
 mkdirSync(dirname(OUT), { recursive: true });
-await page.screenshot({ path: OUT, fullPage: true });
+const capture = await page.screenshot({ fullPage: true });
+await sharp(capture)
+	.resize({ width: SHOT_WIDTH, withoutEnlargement: true })
+	.webp({ quality: SHOT_QUALITY })
+	.toFile(OUT);
 await browser.close();
 server.close();
 

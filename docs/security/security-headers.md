@@ -206,7 +206,7 @@ When they do, `/tools/<slug>/app/index.html` is measurable; a Tool that
 is still `host_disabled` (`mic-level`) has no artefact, and its rule is
 covered by the parity check plus the fixture used for the report.
 
-To render those real responses in the verification PNG instead of the
+To render those real responses in the verification image instead of the
 resolved rules, capture the dump into
 `.tmp/security-headers/static-headers.json` — one object per probed
 path:
@@ -231,7 +231,7 @@ implies a measurement it did not take.
 ### The browser pass
 
 `node scripts/security-header-report.mjs` regenerates
-[`docs/verification/security/headers-browser.png`](../../docs/verification/security/headers-browser.png):
+[`docs/verification/security/headers-browser.webp`](../../docs/verification/security/headers-browser.webp):
 it re-runs the workerd measurement, re-resolves the `_headers` rules, and
 lets Chromium try the microphone against documents carrying exactly
 those values, including the full iframe chain. The table in §3 is the

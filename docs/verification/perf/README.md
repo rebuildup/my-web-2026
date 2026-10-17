@@ -45,6 +45,10 @@ positive control として必ず残す。
 - third-party: GA4 / Google Fonts は遮断（オフライン再現を保証するため）
 - 測定は `.tmp/lazy-media/*.json` に書き出され、画像はその JSON から
   レンダリングされる（数値だけを切り貼りした画像にしない）。
+- 画像の source SHA は **2facadc**（tracked tree clean）。その後に積まれた
+  コミットは `test/integration/lazy-media-contract.test.ts` の型 narrowed
+  1 件だけで、測定対象のコード（`src/**`, `e2e/**`, ビルド出力）には
+  差分が無い。ソース SHA を head に合わせる必要はありません。
 
 ### before / after と合格基準
 
@@ -70,6 +74,19 @@ wire 上の before / after は 0 / 0 で、差が出ないのが実測結果そ�
 A/B が 7 → 0 になる。`e2e/lazy-media.spec.ts` は測定した document が
 どちらの形だったかを `digitImagesInlined` として記録し、control leg は
 自分の測定した形のほうを assert する（二つの別物を黙って比較しないため）。
+
+### CI 実測（counter disabled = 既定の E2E 状態）
+
+CI の `Playwright E2E` step（run 39073724283 / SHA 6a0be54, 69 passed）では
+`.dev.vars` が無いため桁ストリップは描画されない。その状態でも契約は検証される:
+
+| 項目 | 値 |
+| --- | --- |
+| `/` の `<img>` 数 | 0（counter disabled） |
+| document bytes | 20,371（enabled 時の 90,284 と対照） |
+| Tool artifact 応答 / iframe / media 応答 | 0 / 0 / 0 |
+| first-party 応答の内訳 | document 1 / stylesheet 1 / script 4 |
+| `/tools/prototype` | iframe 1 / Tool artifact 2 |
 
 ### 再現手順
 

@@ -38,7 +38,10 @@ import type { PortfolioMedia as PortfolioMediaData } from '../../../portfolio/sc
  *   - `placeholder`      `url: null` — the frame the composition
  *                        reserves when no asset is addressable.
  *   - `unknown-size`     `width`/`height` null — the degradation
- *                        path for rows the ingest never measured.
+ *                        path for rows the ingest never measured,
+ *                        plus the trailing `data-cls-sentinel` that
+ *                        the lazy figure would push if its box were
+ *                        not reserved.
  *
  * The fixture rows deliberately bypass `composeMediaUrl`: they carry
  * a site-relative URL, which is what a local deployment can serve.
@@ -147,6 +150,31 @@ export function ImageCls() {
 					loading="lazy"
 				/>
 			</Cell>
+
+			{/*
+			 * Trailing sentinel. A layout shift is only reported when
+			 * rendered content MOVES, so a figure that grows at the
+			 * bottom of the document scores 0 no matter how broken its
+			 * box is. This element is the content the lazy figure
+			 * pushes, which is what makes the measurement real (and
+			 * what makes the pre-#486 rendering measurable at all).
+			 */}
+			<p
+				data-cls-sentinel="below-lazy-cover"
+				className={css({
+					margin: '0',
+					padding: '5',
+					border: '1px solid {colors.border.subtle}',
+					borderRadius: '6px',
+					backgroundColor: 'bg.subtle',
+					fontFamily: 'mono',
+					fontSize: 'sm',
+					color: 'text.muted',
+					letterSpacing: '0.04em',
+				})}
+			>
+				sentinel — この行の y 座標が読み込み前後で動かないこと
+			</p>
 
 			<Cell
 				id="unknown-size"

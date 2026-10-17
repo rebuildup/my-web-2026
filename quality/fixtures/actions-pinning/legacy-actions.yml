@@ -1,0 +1,52 @@
+# FIXTURE — deliberately unfixed workflow (Issue #472).
+#
+# This file is the abnormal-observation fixture for
+# `scripts/check-workflow-pinning.mjs`. It is NOT a workflow: it lives
+# outside `.github/workflows/` on purpose, GitHub Actions never reads it,
+# and nothing executes it. `scripts/check-workflow-pinning.test.mjs` and
+# `scripts/workflow-pin-report.mjs` both point the gate at this directory
+# to prove the gate actually fails — a gate nobody has seen fail is not a
+# gate. `scripts/check-workflow-pinning.test.mjs` asserts that this path
+# stays outside `.github/workflows/`.
+#
+# Every `run:` below is an `echo` of a forbidden command, never the
+# command itself. The text is what the gate matches on; there is no
+# credential, no real environment name and nothing to execute.
+
+name: fixture-legacy-actions
+
+on:
+  pull_request_target:
+    types: [opened]
+  workflow_dispatch: {}
+
+permissions: write-all
+
+jobs:
+  legacy:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      # clean row: full SHA, upstream ref recorded, present in the fixture manifest
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { submodules: recursive }
+      # floating tag
+      - uses: actions/setup-node@v4
+        with: { node-version: 22.18 }
+      # pinned SHA, but nobody recorded which upstream release it is
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6
+        with: { bun-version: 1.4.2 }
+      # movable container image
+      - uses: docker://alpine:3.20
+      - name: fixture only — value listing (AGENTS.md §4)
+        run: echo "FIXTURE ONLY: infisical secrets --env=fixture --path=/ would print real values"
+      - name: fixture only — environment dump
+        run: echo "FIXTURE ONLY: printenv would dump the whole environment"
+      - name: fixture only — repository secret
+        run: echo "FIXTURE ONLY: ${{ secrets.FIXTURE_ONLY_TOKEN }}"
+      - name: fixture only — production deploy belongs to Cloudflare Workers Builds
+        run: echo "FIXTURE ONLY: pnpm run deploy:production would deploy production"
+      - name: fixture only — release publish is a human gate
+        run: echo "FIXTURE ONLY: gh release create v9.9.9 would publish a Release"

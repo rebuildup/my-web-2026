@@ -3,6 +3,7 @@ import packageJson from '../../package.json';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
+import { sharedCacheIsolation } from './middleware/cache-policy';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
@@ -27,6 +28,15 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
 export const externalBoundary = new Hono<{ Bindings: Env }>();
+
+// Shared-cache isolation (Issue #460) is registered FIRST so it wraps
+// every other `/api/v1/*` layer, the local mock gate included. Every
+// response on this boundary is a function of the caller's identity
+// (API key id, `mw_actor_id` cookie, Better Auth session) unless the
+// handler explicitly opts into `public` + a positive freshness
+// lifetime — see `src/http/middleware/cache-policy.ts` for the policy,
+// its opt-in, and the sealed-header failure behaviour.
+externalBoundary.use('/api/v1/*', sharedCacheIsolation);
 
 // Local API mock gate (Issue #166): when `env.LOCAL_API_MODE === 'mock'`
 // (set in `.dev.vars`, NOT in `wrangler.jsonc#vars` — see

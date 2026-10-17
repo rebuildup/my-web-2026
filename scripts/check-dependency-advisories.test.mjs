@@ -156,6 +156,14 @@ describe('check-dependency-advisories — data fetch failure is never zero', () 
 		assert.equal(run(['--help']).status, EXIT.PASS);
 	});
 
+	it('accepts the bare `--` separator pnpm forwards from `pnpm run … -- args`', () => {
+		// This is the exact argument vector the CI step produces, so the
+		// package-script contract is pinned rather than assumed.
+		const { status, stdout } = run(['--', '--input', join(FIXTURES, 'clean.json'), '--now', '2026-10-18']);
+		assert.equal(status, EXIT.PASS);
+		assert.match(stdout, /dependency advisory gate: PASS/);
+	});
+
 	it('reports the unavailable verdict as JSON too, with null counts', () => {
 		const { status, stdout } = run(fixtureArgs('registry-error.json', ['--format', 'json']));
 		assert.equal(status, EXIT.DATA_UNAVAILABLE);

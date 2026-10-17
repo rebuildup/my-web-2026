@@ -94,6 +94,12 @@ export function parseArgs(argv) {
 			return value;
 		};
 		switch (arg) {
+			case '--':
+				// `pnpm run dep-audit:check -- --report …` — pnpm forwards the
+				// separator verbatim, and the CI step uses that form. Skipping
+				// it keeps the canonical npm-script invocation working without
+				// making the CLI aware of which runner invoked it.
+				break;
 			case '--gate':
 				options.gatePath = resolve(next());
 				break;

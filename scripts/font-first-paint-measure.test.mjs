@@ -4,8 +4,8 @@ import {
 	BLOCKED_SETTLE_MS,
 	CPU_THROTTLE_RATE,
 	DEFAULT_ROUTES,
-	DETERMINISTIC_METRICS,
 	FONT_ORIGIN_PATTERNS,
+	LAYOUT_SHIFT_METRICS,
 	SETTLE_MS,
 	SWAP_WAIT_TIMEOUT_MS,
 	WEBFONT_FAMILIES,
@@ -13,6 +13,7 @@ import {
 	compareRuns,
 	cumulativeLayoutShift,
 	evaluateFallbackReadability,
+	fontFaceUrl,
 	formatMetric,
 	isCompletedRequest,
 	parseArgs,
@@ -396,6 +397,9 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 	const report = {
 		command: 'pnpm run perf:fonts:measure',
 		environment: {
+			baseUrl: 'http://127.0.0.1:3000',
+			routes: '/, /about',
+			compareSource: '.tmp/font-first-paint/before/report.json',
 			browser: {
 				name: 'chromium',
 				version: '141.0.7390.0',
@@ -455,10 +459,18 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		assert.match(html, /141\.0\.7390\.0/);
 		assert.match(html, /1280x800/);
 		assert.match(html, /CPU x4/);
+		// Which origin, which routes, which --compare input, and when.
+		assert.match(html, /<th scope="row">origin measured<\/th><td>http:\/\/127\.0\.0\.1:3000/);
+		assert.match(html, /<th scope="row">routes<\/th><td>\/, \/about/);
+		assert.match(html, /2026-10-18T00:00:00\.000Z/);
+		assert.doesNotMatch(html, /undefined/);
 	});
 
-	it('warns loudly when the font origin was unreachable', () => {
-		assert.match(renderReportHtml(report), /font origin NOT reachable/);
+	it('warns loudly when the webfont pipeline was not fully reachable', () => {
+		const html = renderReportHtml(report);
+		assert.match(html, /webfont pipeline is NOT fully reachable/);
+		assert.match(html, /the stylesheet and the face it points at are both probed/);
+		assert.match(html, /treat swap timings as unavailable, not as zero/);
 	});
 
 	it('states that this is a measurement and not a gate', () => {
@@ -505,21 +517,25 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		assert.match(html, /never observed, not that it measured zero/);
 	});
 
-	it('splits the before/after table into deterministic rows and noisy context', () => {
-		// CLS is deterministic; paint / swap timings are single-run and
-		// must not be read as a result.
+	it('splits the before/after table into layout shift rows and noisy context', () => {
+		// CLS is the result column but it is a per-build measurement;
+		// paint / swap timings are single-run and must not be read as a
+		// result.
 		const html = renderReportHtml(report);
-		const deterministic = html
-			.split('<h3>deterministic (layout shift)</h3>')[1]
+		const layoutShift = html
+			.split('<h3>layout shift (single run, per build)</h3>')[1]
 			.split('</table>')[0];
 		const context = html
 			.split('<h3>context (single-run timings — noise)</h3>')[1]
 			.split('</table>')[0];
-		assert.match(deterministic, /<td>cls<\/td>/);
-		assert.doesNotMatch(deterministic, /fcpMs/);
+		assert.match(layoutShift, /<td>cls<\/td>/);
+		assert.doesNotMatch(layoutShift, /fcpMs/);
 		assert.match(context, /<td>fcpMs<\/td>/);
 		assert.doesNotMatch(context, /<td>cls<\/td>/);
 		assert.match(html, /network and machine noise/);
+		// A single before/after pair must not be sold as repeatable.
+		assert.match(html, /a measurement of two builds, not a distribution/);
+		assert.doesNotMatch(html, /deterministic/);
 	});
 
 	it('aggregates the noisy rows into one min-max row per metric', () => {
@@ -534,7 +550,7 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 					metric: 'fcpMs',
 					before: '200–300',
 					after: '180–320',
-					deterministic: false,
+					layoutShift: false,
 					pairedRuns: 2,
 					totalRuns: 2,
 				},
@@ -542,7 +558,7 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 					metric: 'cls',
 					before: '0.5',
 					after: '0.1',
-					deterministic: true,
+					layoutShift: true,
 					pairedRuns: 1,
 					totalRuns: 1,
 				},
@@ -575,8 +591,20 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		assert.equal(rows[0].pairedRuns, 0);
 	});
 
-	it('classifies only layout-shift metrics as deterministic', () => {
-		assert.deepEqual(DETERMINISTIC_METRICS, ['cls', 'clsEntries', 'worstShift']);
+	it('classifies only layout-shift metrics as the result column', () => {
+		assert.deepEqual(LAYOUT_SHIFT_METRICS, ['cls', 'clsEntries', 'worstShift']);
+	});
+
+	it('follows a Google stylesheet to the face it serves', () => {
+		// Reachability has to cover `fonts.gstatic.com` too: a network
+		// that lets the stylesheet through and blocks the face would
+		// otherwise be recorded as a real webfont swap.
+		assert.equal(
+			fontFaceUrl('@font-face{src:url(https://fonts.gstatic.com/s/notosansjp/v36/x.woff2)}'),
+			'https://fonts.gstatic.com/s/notosansjp/v36/x.woff2',
+		);
+		assert.equal(fontFaceUrl('@font-face{src:url(/local/x.woff2)}'), null);
+		assert.equal(fontFaceUrl(''), null);
 	});
 
 	it('omits the comparison table when there is nothing to compare', () => {

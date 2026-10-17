@@ -31,26 +31,50 @@
  *   /about  CLS 0.975 — the desktop nav row wrapped to two lines while
  *          the fallback was in use and unwrapped when the webfont
  *          landed, moving every block below it ~41px down and back.
- *   /       CLS 0.331 on some runs — the hero CTA row re-wrapped the
- *          same way.
+ *   /       the same re-wrap has been seen on the hero CTA row of the
+ *          pre-fix build (CLS 0.146 / 0.331 across runs of it), but in
+ *          the capture recorded in `docs/verification/perf/` the `/`
+ *          route stayed on one line on both builds (CLS 0 / 0.001) —
+ *          which is what a row this close to its limit does. Read a
+ *          single before/after pair as a measurement of two builds, not
+ *          as a distribution over builds.
  *
  * Both rows sit within ~1% of their wrap threshold (`PublicNav`
  * measures 871.5px of items in 880.4px — see the comment on the
  * desktop `<ul>`), so the width difference between the fallback and
  * the webfont is enough to flip them.
  *
- * These two faces close that gap: they ARE the same local font the
+ * These faces close that gap: they ARE the same local font the
  * token chain already names, scaled so its average advance width and
  * its line box match the webfont they stand in for. The values were
  * measured, not guessed — canvas `measureText` at 100px over the
- * actual nav/labels strings, comparing each webfont against
- * `local("Hiragino Kaku Gothic ProN")` on the reference host
- * (Chromium 153, macOS 15 arm64):
+ * actual nav/labels strings, comparing each webfont against the
+ * matching local face on the reference host
+ * (Chromium 153, macOS arm64):
  *
- *   Noto Sans JP       weight 400  size-adjust 94.24%  ascent 123%  descent 30%
- *   Noto Sans JP       weight 700  size-adjust 92.43%  ascent 125%  descent 31%
- *   Zen Kaku Gothic New weight 400  size-adjust 90.45%  ascent 128%  descent 32%
- *   Zen Kaku Gothic New weight 700  size-adjust 86.17%  ascent 134%  descent 33%
+ *   Noto Sans JP       weight 400  local(... W3)  size-adjust 94.24%  ascent 123%  descent 30%
+ *   Noto Sans JP       weight 700  local(... W6)  size-adjust 92.43%  ascent 125%  descent 31%
+ *   Zen Kaku Gothic New weight 400  local(... W3)  size-adjust 90.45%  ascent 128%  descent 32%
+ *   Zen Kaku Gothic New weight 700  local(... W6)  size-adjust 86.17%  ascent 134%  descent 33%
+ *
+ * The 700 face names the BOLD local face, not the regular one. A rule
+ * that registers `local("... W3")` as `font-weight: 700` makes the
+ * browser believe the swap window already has a bold face: heading
+ * tier would be drawn with regular outlines at exactly the moment the
+ * fallback is supposed to look like the page, and no synthetic
+ * bolding would be applied to compensate. The size-adjust above is
+ * the one measured against W6 (measured against W3 it would be
+ * 97.77% / 91.14%), so the `src` and the metrics have to name the same
+ * face.
+ *
+ * There is no 600 rule on purpose. This host resolves only W3 and W6
+ * of `Hiragino Kaku Gothic ProN` (W0/W1/W2/W4/W5/W7 fall back to the
+ * default face — verified by measuring each full name), and macOS
+ * itself answers a family-level 600 request with W6. Declaring 700
+ * only means the 600 requests in the surfaces (`PublicNav`, hero CTA)
+ * resolve through the bold face, which is what the platform already
+ * did — no hierarchy loss during the swap window, and no invented
+ * face.
  *
  * `src: local(...)` is deliberate: on a platform without the named
  * local face the rule simply fails to load and the token chain falls
@@ -62,7 +86,8 @@
  * name `"Hiragino Kaku Gothic ProN"` fails to match and leaves the
  * rule `unloaded`, which is the same as having no rule at all — a
  * silent no-op, not a failure). `document.fonts`-verified on the
- * reference host: `Hiragino Kaku Gothic ProN W3` -> `loaded`.
+ * reference host: `Hiragino Kaku Gothic ProN W3` -> `loaded`,
+ * `Hiragino Kaku Gothic ProN W6` -> `loaded`.
  *
  * Scope: this is ONE element — the fallback face behind the existing
  * `display=swap` swap. The swap window itself, the async-CSS pattern
@@ -81,7 +106,7 @@
 
 @font-face {
 	font-family: "Noto Sans JP Fallback";
-	src: local("Hiragino Kaku Gothic ProN W3");
+	src: local("Hiragino Kaku Gothic ProN W6");
 	font-weight: 700;
 	size-adjust: 92.43%;
 	ascent-override: 125%;
@@ -99,7 +124,7 @@
 
 @font-face {
 	font-family: "Zen Kaku Gothic New Fallback";
-	src: local("Hiragino Kaku Gothic ProN W3");
+	src: local("Hiragino Kaku Gothic ProN W6");
 	font-weight: 700;
 	size-adjust: 86.17%;
 	ascent-override: 134%;

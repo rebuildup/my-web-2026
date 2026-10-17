@@ -247,12 +247,15 @@ export function evaluateFallbackReadability({ probes, webFontAvailable, blocked 
 	return { ok: problems.length === 0, problems, probes: probes.length };
 }
 
-/** Metrics whose before/after delta is a deterministic result rather
- *  than a single-run timing: a wrap either happened or it did not, so
- *  the same build measures the same value. Everything else in the
- *  comparison (paint / swap / response times) depends on the network
- *  and the machine and is rendered as context, never as a result. */
-export const DETERMINISTIC_METRICS = ['cls', 'clsEntries', 'worstShift'];
+/** Metrics rendered as the layout-shift result rather than as timing
+ *  context. "Layout shift" is NOT a promise that a value repeats: a row
+ *  either wraps or it does not **on the build that was measured**, and a
+ *  row sitting within a hair of its wrap threshold flips between builds
+ *  (the `/` baseline has been measured on both sides of it). One
+ *  before/after pair is therefore a measurement of two builds, and the
+ *  report says so next to the table instead of calling the column
+ *  deterministic. */
+export const LAYOUT_SHIFT_METRICS = ['cls', 'clsEntries', 'worstShift'];
 
 function range(values) {
 	if (values.length === 0) return 'n/a';
@@ -288,7 +291,7 @@ export function aggregateComparison(comparison) {
 			metric,
 			before: range(paired.map((r) => r.before)),
 			after: range(paired.map((r) => r.after)),
-			deterministic: DETERMINISTIC_METRICS.includes(metric),
+			layoutShift: LAYOUT_SHIFT_METRICS.includes(metric),
 			pairedRuns: paired.length,
 			totalRuns: rows.length,
 		};
@@ -418,14 +421,14 @@ export function renderReportHtml(report) {
 			].join('');
 		return [
 			'<h2>before / after</h2>',
-			'<p class="note">Read the deterministic table: a wrap either happened or it does not, so the same build measures the same value. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. A range only covers the runs measured on both sides; <code>paired runs</code> states how many of them there were, and a metric with no paired run reads <code>n/a</code> rather than a half-pairing. Every individual row stays in <code>report.json</code>.</p>',
+			'<p class="note">The layout-shift table is the result column, and it is a <em>per-build</em> measurement: a row either wraps or it does not on the build that was measured. A row sitting within ~1% of its wrap threshold flips between builds — the <code>/</code> baseline has been measured on both sides of it — so one before/after pair is a measurement of two builds, not a distribution over repeated runs. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. A range only covers the runs measured on both sides; <code>paired runs</code> states how many of them there were, and a metric with no paired run reads <code>n/a</code> rather than a half-pairing. Every individual row stays in <code>report.json</code>.</p>',
 			table(
-				'deterministic (layout shift)',
-				aggregated.filter((a) => a.deterministic),
+				'layout shift (single run, per build)',
+				aggregated.filter((a) => a.layoutShift),
 			),
 			table(
 				'context (single-run timings — noise)',
-				aggregated.filter((a) => !a.deterministic),
+				aggregated.filter((a) => !a.layoutShift),
 			),
 		].join('');
 	})();
@@ -510,7 +513,7 @@ export function renderReportHtml(report) {
 <body>
 <h1>font first-paint measurement (Issue #485)</h1>
 <p class="note">Measurement only — no threshold is enforced here. Budget + release gate: Issue #386.</p>
-${env.fontOriginReachable ? '' : '<p class="warn">font origin NOT reachable from this host — <code>baseline</code> and <code>slow-font</code> cannot exercise a real webfont swap. The <code>blocked</code> row is still valid (it aborts the origin), but treat swap timings as unavailable, not as zero.</p>'}
+${env.fontOriginReachable ? '' : '<p class="warn">the webfont pipeline is NOT fully reachable from this host (the stylesheet and the face it points at are both probed) — <code>baseline</code> and <code>slow-font</code> cannot exercise a real webfont swap. The <code>blocked</code> row is still valid (it aborts the origin), but treat swap timings as unavailable, not as zero.</p>'}
 <h2>environment (reproduction conditions)</h2>
 <table><tbody>
 ${row('browser', `${env.browser.name} ${env.browser.version} (Playwright ${env.browser.playwright})`)}
@@ -522,8 +525,11 @@ ${row('host', `${env.host.platform} ${env.host.arch}, ${env.host.cpuModel} x${en
 ${row('host memory', `${env.host.totalMemGB} GB`)}
 ${row('source SHA', `${env.source.sha}${env.source.dirty ? ' (dirty tree)' : ''}`)}
 ${row('branch / version', `${env.source.branch} / ${env.source.version}`)}
-${row('captured at', env.capturedAt)}
-${row('command', escapeHtml(report.command))}
+${row('origin measured', env.baseUrl)}
+${row('routes', env.routes)}
+${row('compared against', env.compareSource)}
+${row('captured at', report.capturedAt ?? env.capturedAt)}
+${row('command', report.command)}
 </tbody></table>
 <h2>metrics</h2>
 <p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a blocked row has no webfont face to swap to, so its swap instant does not exist. <code>font-origin reqs</code> counts only font-origin requests that delivered a response; an aborted one is counted separately so it can never read as a font that was fetched. In Chromium the faces the CSS font loader fetches do not appear in this buffer at all, so the counted request is the Google Fonts stylesheet.</p>
@@ -720,13 +726,39 @@ function git(args) {
 	}
 }
 
+/** The face URL a Google Fonts stylesheet points at, or null. */
+export function fontFaceUrl(css) {
+	return css.match(/url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/)?.[1] ?? null;
+}
+
+const FONT_STYLESHEET =
+	'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400&display=swap';
+
+/**
+ * Is the webfont pipeline actually usable from this host?
+ *
+ * Both hosts are checked, not just the stylesheet one. A network that
+ * lets `fonts.googleapis.com` through while blocking `fonts.gstatic.com`
+ * answers "reachable" for the CSS alone, and then `baseline` and
+ * `slow-font` would be recorded as real swap measurements while the page
+ * is really running on the platform fallback — and the wait for a swap
+ * would burn its whole budget on every run. So the probe follows the
+ * stylesheet to the face it references and asks for that too.
+ */
 async function fontOriginReachable() {
 	try {
-		const response = await fetch(
-			'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400&display=swap',
-			{ method: 'GET', redirect: 'follow' },
-		);
-		return { reachable: response.ok, status: `HTTP ${response.status}` };
+		const css = await fetch(FONT_STYLESHEET, { method: 'GET', redirect: 'follow' });
+		if (!css.ok) return { reachable: false, status: `stylesheet HTTP ${css.status}` };
+		const face = fontFaceUrl(await css.text());
+		if (!face) {
+			return { reachable: false, status: 'stylesheet exposed no fonts.gstatic.com face URL' };
+		}
+		const faceResponse = await fetch(face, { method: 'HEAD', redirect: 'follow' });
+		if (!faceResponse.ok) return { reachable: false, status: `face HTTP ${faceResponse.status}` };
+		return {
+			reachable: true,
+			status: `stylesheet HTTP ${css.status} + face HTTP ${faceResponse.status}`,
+		};
 	} catch (error) {
 		return { reachable: false, status: error.message };
 	}
@@ -773,7 +805,7 @@ async function main(argv) {
 
 	if (!origin.reachable) {
 		process.stderr.write(
-			`[font-first-paint] WARNING: ${origin.status} — fonts.googleapis.com is unreachable from this host.\n  baseline / slow-font rows will report the platform fallback, not a real webfont swap.\n`,
+			`[font-first-paint] WARNING: ${origin.status} — the webfont pipeline is not fully reachable from this host.\n  baseline / slow-font rows will report the platform fallback, not a real webfont swap.\n`,
 		);
 	}
 
@@ -805,11 +837,18 @@ async function main(argv) {
 	const report = {
 		tool: 'scripts/font-first-paint-measure.mjs',
 		issue: '#485',
-		command: 'pnpm run perf:fonts:measure',
+		// The real invocation, not a canned string: an artefact that
+		// does not say which origin, which routes and which
+		// `--compare` input it came from cannot be told apart from
+		// another run of the same command on another port.
+		command: `pnpm run perf:fonts:measure${argv.length > 0 ? ` -- ${argv.join(' ')}` : ''}`,
 		generatedAtNote:
 			'Measurement only. No threshold is enforced here; budget + release gate belong to Issue #386.',
 		capturedAt: new Date().toISOString(),
 		environment: {
+			baseUrl: options.baseUrl,
+			routes: options.routes.join(', '),
+			compareSource: options.compare ?? '— (no --compare)',
 			browser: {
 				name: 'chromium',
 				version: browser.version ? browser.version() : 'unknown',
@@ -905,7 +944,19 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir, 
 	// once the swap instant is known: in `slow-font` the swap lands
 	// ~3.8 s in, and a fixed window that closed before it would drop
 	// the shift the swap caused.
-	await page.evaluate(() => document.fonts.ready);
+	await page.evaluate(
+		// `document.fonts.ready` never settles if a font request hangs
+		// (a half-open connection to the origin), so the wait itself
+		// carries the budget. Without it the run would stall before it
+		// ever reached the point where it can report the swap as
+		// absent.
+		(timeoutMs) =>
+			Promise.race([
+				document.fonts.ready,
+				new Promise((resolve) => setTimeout(resolve, timeoutMs)),
+			]),
+		SWAP_WAIT_TIMEOUT_MS,
+	);
 	if (expectSwap) {
 		await page
 			.waitForFunction(() => (window.__fontFirstPaint?.webFontSwapAt ?? null) !== null, null, {

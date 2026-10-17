@@ -6,10 +6,13 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+	buildReport,
+	checkGraphProvenance,
 	evaluateBudgets,
 	evaluateToolBudgets,
 	measureRoutes,
 	measureToolBundles,
+	parseRouteAncestors,
 	parseRouteTree,
 	renderHtml,
 } from './check-bundle-budget.mjs';
@@ -204,6 +207,15 @@ describe('parseRouteTree (Issue #482)', () => {
 		assert.equal(routes.get('/tools/$slug'), 'src/routes/tools.$slug.tsx');
 	});
 
+	it('resolves the layout ancestors of a nested route, outermost first', () => {
+		const ancestors = parseRouteAncestors(ROUTE_TREE);
+		// `/admin/` is rendered inside the /admin layout, so the admin layout
+		// file is part of its first paint. `/about` has no layout route of its
+		// own, so it has no ancestors.
+		assert.deepEqual(ancestors.get('/admin/'), ['src/routes/admin.tsx']);
+		assert.equal(ancestors.get('/about'), undefined);
+	});
+
 	it('keeps the layout route and its index route as separate entries', () => {
 		const routes = parseRouteTree(ROUTE_TREE);
 		assert.equal(routes.get('/admin'), 'src/routes/admin.tsx');
@@ -242,6 +254,70 @@ describe('measureRoutes (Issue #482)', () => {
 		const tools = measured.routes.find((r) => r.route === '/tools/$slug');
 		assert.equal(tools.chunk, 'assets/tools.$slug.js');
 		assert.equal(tools.initial_js_bytes, 112_000);
+	});
+
+	it('picks the component split even when the graph lists the not-found split first', () => {
+		// `graph.chunks` order is a bundler implementation detail. If the winner
+		// were decided by arrival, this ordering would silently measure the
+		// not-found chunk (50,000 B) instead of the rendered one (2,000 B) and
+		// the gate would still print PASS.
+		const base = graph();
+		const chunks = {};
+		for (const key of Object.keys(base.chunks)) {
+			if (key === 'assets/tools.$slug.js') continue;
+			chunks[key] = base.chunks[key];
+			if (key === 'assets/shared.js')
+				chunks['assets/tools.$slug.notFound.js'] = base.chunks['assets/tools.$slug.notFound.js'];
+		}
+		chunks['assets/tools.$slug.js'] = base.chunks['assets/tools.$slug.js'];
+		const measured = measureRoutes({ ...base, chunks }, parseRouteTree(ROUTE_TREE));
+		const tools = measured.routes.find((r) => r.route === '/tools/$slug');
+		assert.equal(tools.chunk, 'assets/tools.$slug.js');
+		assert.equal(tools.initial_js_bytes, 112_000);
+	});
+
+	it('prefers an unsplit facade chunk over a not-found split', () => {
+		const base = graph();
+		const measured = measureRoutes(
+			{
+				...base,
+				chunks: {
+					...base.chunks,
+					// Same facade, no split: the whole route module, which is what
+					// is fetched to render the page.
+					'assets/tools.$slug.js': chunk({
+						name: 'tools._slug',
+						facade_module_id: 'src/routes/tools.$slug.tsx',
+						facade_query: null,
+						is_dynamic_entry: true,
+						bytes: 3_000,
+						imports: ['assets/shared.js'],
+					}),
+				},
+			},
+			parseRouteTree(ROUTE_TREE),
+		);
+		const tools = measured.routes.find((r) => r.route === '/tools/$slug');
+		assert.equal(tools.chunk, 'assets/tools.$slug.js');
+		assert.equal(tools.initial_js_bytes, 113_000);
+	});
+
+	it('charges the layout chunks a nested route renders with it', () => {
+		// `admin.index.js` (800 B) does not import `admin.js` (1,000 B), yet
+		// `/admin/` is rendered inside the admin layout — so the layout bytes
+		// are part of that page's first paint and have to be charged.
+		const measured = measureRoutes(
+			graph(),
+			parseRouteTree(ROUTE_TREE),
+			parseRouteAncestors(ROUTE_TREE),
+		);
+		const adminIndex = measured.routes.find((r) => r.route === '/admin/');
+		assert.equal(adminIndex.initial_js_bytes, 111_800);
+		assert.equal(adminIndex.layout_js_bytes, 1_000);
+		// A route with no layout of its own is unchanged.
+		const about = measured.routes.find((r) => r.route === '/about');
+		assert.equal(about.initial_js_bytes, 115_000);
+		assert.equal(about.layout_js_bytes, 0);
 	});
 
 	it('refuses to guess when the graph has no single client entry', () => {
@@ -463,6 +539,17 @@ describe('renderHtml (Issue #482)', () => {
 		assert.match(html, /FAIL — 1 violation\(s\)/);
 		assert.match(html, /\/tools\/\$slug initial_js_bytes=3112000/);
 	});
+
+	it('escapes interpolated values instead of trusting them', () => {
+		const report = reportFor(false);
+		report.routes[0].route = '/<script>alert(1)</script>';
+		report.violations = [{ route: 'x', message: '<img src=x onerror=alert(2)>' }];
+		const html = renderHtml(report);
+		assert.doesNotMatch(html, /<script>alert/);
+		assert.doesNotMatch(html, /<img src=x/);
+		assert.match(html, /&lt;script&gt;/);
+		assert.match(html, /&lt;img src=x/);
+	});
 });
 
 describe('CLI (Issue #482)', () => {
@@ -480,7 +567,7 @@ describe('CLI (Issue #482)', () => {
 		return dir;
 	}
 
-	function run(dir) {
+	function run(dir, extraArgs = []) {
 		try {
 			const stdout = execFileSync(
 				process.execPath,
@@ -490,6 +577,7 @@ describe('CLI (Issue #482)', () => {
 					`--budget=${join(dir, 'budget.json')}`,
 					`--route-tree=${join(dir, 'routeTree.gen.ts')}`,
 					`--tools=${join(dir, 'tools')}`,
+					...extraArgs,
 				],
 				{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
 			);
@@ -587,6 +675,79 @@ describe('CLI (Issue #482)', () => {
 			const result = run(dir);
 			assert.equal(result.code, 2);
 			assert.match(result.stderr, /tool_iframe\.reason: required/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('exits 2 when the Tool cap section is deleted, instead of measuring nothing', () => {
+		const budget = budgetOf(GENEROUS);
+		Reflect.deleteProperty(budget, 'tool_iframe');
+		const dir = fixture({ budget });
+		try {
+			const result = run(dir);
+			assert.equal(result.code, 2);
+			assert.match(result.stderr, /tool_iframe: required/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('writes one parseable JSON document to stdout under --json', () => {
+		const clean = graph();
+		const dir = mkdtempSync(join(tmpdir(), 'bundle-budget-cli-json-'));
+		try {
+			writeFileSync(join(dir, 'bundle-graph.json'), JSON.stringify(clean));
+			writeFileSync(join(dir, 'routeTree.gen.ts'), ROUTE_TREE);
+			writeFileSync(join(dir, 'budget.json'), JSON.stringify(budgetOf(GENEROUS)));
+			const result = run(dir, ['--json']);
+			assert.equal(result.code, 0);
+			// `node scripts/check-bundle-budget.mjs --json | jq` has to work, so
+			// the human status lines must not be mixed into stdout.
+			const parsed = JSON.parse(result.stdout);
+			assert.equal(parsed.schema_version, 1);
+			assert.equal(parsed.routes.length, 5);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe('the gate cannot be measured around (Issue #482)', () => {
+	function reportFor({ toolsDir, graphInput = graph() }) {
+		return buildReport({
+			graph: graphInput,
+			routesByPath: parseRouteTree(ROUTE_TREE),
+			ancestorsByPath: parseRouteAncestors(ROUTE_TREE),
+			toolsDir,
+			budget: budgetOf(GENEROUS),
+			sourceSha: 'c'.repeat(40),
+		});
+	}
+
+	it('names a missing Tool build output instead of reporting zero Tool bytes', () => {
+		const report = reportFor({ toolsDir: join(tmpdir(), 'bundle-budget-tools-gone-xyz') });
+		assert.deepEqual(report.tool_iframe, []);
+		assert.ok(report.warnings.some((w) => w.kind === 'tool-bundles-absent'));
+		assert.deepEqual(report.violations, []);
+	});
+
+	it('reports a graph whose recorded client assets are gone', () => {
+		const warnings = checkGraphProvenance(graph());
+		assert.equal(warnings.length, 1);
+		assert.equal(warnings[0].kind, 'stale-graph');
+	});
+
+	it('says nothing about provenance when the recorded assets are all present', () => {
+		const base = graph();
+		const dir = mkdtempSync(join(tmpdir(), 'bundle-budget-graph-'));
+		try {
+			for (const file of Object.keys(base.chunks)) {
+				const path = join(dir, file);
+				mkdirSync(dirname(path), { recursive: true });
+				writeFileSync(path, 'x');
+			}
+			assert.deepEqual(checkGraphProvenance({ ...base, out_dir: dir }), []);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

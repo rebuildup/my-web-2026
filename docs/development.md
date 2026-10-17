@@ -269,12 +269,22 @@ outgrows its cap.
 pnpm run build               # vite build writes dist/client/bundle-graph.json
 pnpm run bundle:budget:check # per-route table + PASS/FAIL
 pnpm run bundle:budget:check -- --json --report=.tmp/bundle-budget.json
+pnpm run bundle:budget:check -- --html=.tmp/bundle-budget.html
 ```
 
 It reads the chunk graph the `my-web-2026:client-bundle-graph` Vite plugin
 emits during the client build. For each route in `src/routeTree.gen.ts` it sums
-the client entry chunk plus the transitive **static**-import closure of that
-route's chunk; dynamic imports are never charged to first paint.
+the client entry chunk, the transitive **static**-import closure of that
+route's chunk, and the chunks of its **layout ancestors** (`/admin/keys`
+renders inside `/admin`'s layout, which is a separate chunk the child's own
+closure does not import). Dynamic imports are never charged to first paint.
+When a route file owns more than one chunk — TanStack Start splits a route's
+component from its not-found component — the `component` split is the one
+measured, chosen by an explicit rank rather than by the order the bundler
+happened to emit the chunks in.
+
+`--json` writes exactly one JSON document to **stdout**; every human status
+line goes to stderr, so `pnpm run bundle:budget:check -- --json | jq` works.
 
 Numbers live in [`quality/bundle-budget.json`](../quality/bundle-budget.json);
 the gate records its reproduction conditions (no browser, no network, no CPU
@@ -291,7 +301,7 @@ Tool bundles under `/tools/<slug>/app/**` are independent Vite builds loaded in
 a sandboxed iframe, so they are aggregated and capped separately — a heavy Tool
 cannot hide behind a host route's budget.
 
-Raising a cap needs a reason:
+Accepting an overage needs a reason:
 
 ```json
 "/tools/": {
@@ -307,7 +317,16 @@ Raising a cap needs a reason:
 An exception without a reason of at least 20 characters is a configuration
 error and fails the gate. So is a new route with no budget entry: routes come
 from the generated tree, so forgetting the budget fails loudly instead of
-silently shipping an uncapped page.
+silently shipping an uncapped page. `tool_iframe` is required for the same
+reason — deleting the section would turn the Tool cap off without a word.
+
+Raising a cap is **not** machine-checked. The gate compares numbers; it does
+not compare a cap against the previous cap, so a PR that multiplies
+`initial_js_bytes` gets a green run. What holds the line is review: a cap
+change is a one-line diff in `quality/bundle-budget.json`, and the PR that
+makes it is expected to state the new measurement, the delta, and what caused
+it. An `exception` is the only mechanism that survives that review on its own
+merits, because the gate itself refuses an unreasoned one.
 
 ## Storybook
 

@@ -35,7 +35,7 @@
  * Usage
  * -----
  *   node scripts/check-bundle-budget.mjs
- *   node scripts/check-bundle-budget.mjs --json
+ *   node scripts/check-bundle-budget.mjs --json        # stdout is one JSON document; status lines go to stderr
  *   node scripts/check-bundle-budget.mjs --report=.tmp/bundle-budget.json
  *   node scripts/check-bundle-budget.mjs --html=.tmp/bundle-budget.html
  *   node scripts/check-bundle-budget.mjs --graph=<path> --budget=<path>
@@ -93,6 +93,28 @@ function formatBytes(bytes) {
  * a silently unbudgeted page.
  */
 export function parseRouteTree(source) {
+	return parseRouteTable(source).routes;
+}
+
+/**
+ * For every route path, the route files of its layout ancestors, outermost
+ * first.
+ *
+ * A nested route such as `/admin/keys` renders `/admin`'s layout too, and
+ * that layout is a separate client chunk which is NOT in the child chunk's
+ * static-import closure (verified against the real graph: `admin.keys.js`
+ * imports neither `admin.js` nor anything it owns). Charging only the
+ * child's own closure therefore under-reports the bytes the browser fetches
+ * for a nested page, which is exactly the case a per-route budget has to
+ * catch. Ancestors come from `getParentRoute: () => ParentRoute` in the
+ * generated tree, so the parent/child contract stays owned by the generated
+ * tree rather than guessed from route path strings.
+ */
+export function parseRouteAncestors(source) {
+	return parseRouteTable(source).ancestors;
+}
+
+function parseRouteTable(source) {
 	// `<file>` for the import alias: `import { Route as IndexRouteImport } from './routes/index'`
 	const filesByImportAlias = new Map();
 	for (const match of source.matchAll(
@@ -125,23 +147,51 @@ export function parseRouteTree(source) {
 		return parent ? fileForConst(parent, seen) : undefined;
 	}
 
+	// `getParentRoute: () => AdminRoute,` names the parent const. Each const
+	// block is read between its own `const X = ` line and the next one, so a
+	// multi-line `.update({ ... } as any)` body does not need its own regex.
+	const parentConstByConst = new Map();
+	const constStarts = [...source.matchAll(/^const (\w+) = /gm)];
+	for (const [index, match] of constStarts.entries()) {
+		const end = constStarts[index + 1]?.index ?? source.length;
+		const parent = /getParentRoute: \(\) => (\w+)/.exec(source.slice(match.index, end));
+		if (parent) parentConstByConst.set(match[1], parent[1]);
+	}
+
+	/** Layout ancestors of a route const, outermost first. */
+	function parentFilesOf(constName) {
+		const inner = [];
+		const seen = new Set([constName]);
+		let current = parentConstByConst.get(constName);
+		while (current && !seen.has(current)) {
+			seen.add(current);
+			const file = fileForConst(current);
+			if (file) inner.push(`src/${file}.tsx`);
+			current = parentConstByConst.get(current);
+		}
+		return inner.reverse();
+	}
+
 	const block = /export interface FileRoutesByFullPath \{([\s\S]*?)\n\}/.exec(source);
 	if (!block) {
 		throw new Error('routeTree.gen.ts: FileRoutesByFullPath interface not found');
 	}
 
 	const routes = new Map();
+	const ancestors = new Map();
 	for (const line of block[1].split('\n')) {
 		const match = /^\s*'([^']*)': typeof (\w+)\s*$/.exec(line);
 		if (!match) continue;
 		const file = fileForConst(match[2]);
 		if (!file) continue;
 		routes.set(match[1], `src/${file}.tsx`);
+		const parents = parentFilesOf(match[2]);
+		if (parents.length > 0) ancestors.set(match[1], parents);
 	}
 	if (routes.size === 0) {
 		throw new Error('routeTree.gen.ts: FileRoutesByFullPath produced no routes');
 	}
-	return routes;
+	return { routes, ancestors };
 }
 
 /** Transitive closure of static imports, starting from `entry`. */
@@ -182,14 +232,38 @@ function sumGraph(graph, files) {
 }
 
 /**
+ * Which chunk of a facade is the one a browser fetches to render the route.
+ *
+ * One route file can own two chunks: TanStack Start splits the route
+ * component from its not-found component under the same facade module id.
+ * Only the `component` split is fetched to render the route, so it wins.
+ *
+ * The winner is decided by this explicit rank and never by the order the
+ * chunks happen to appear in `graph.chunks`: that order is a Rollup/Vite
+ * implementation detail, and "whichever came first" silently measures the
+ * not-found chunk — which is not part of first paint — whenever the bundler
+ * emits it first, while the gate still prints PASS.
+ */
+function facadeRank(chunk) {
+	if (chunk.facade_query === 'tsr-split=component') return 0;
+	if (!chunk.facade_query) return 1;
+	return 2;
+}
+
+/**
  * Compute the per-route measurement table.
  *
  * Every route in the generated tree is mapped to its client chunk. A route
  * whose file produced no client chunk is reported with `chunk: null` and zero
  * bytes; the caller turns that into a violation, because "the route exists but
  * was not measured" is exactly the silent gap this gate exists to close.
+ *
+ * `ancestorsByPath` (see `parseRouteAncestors`) adds each route's layout
+ * ancestors to its closure: a nested route renders its parent layouts, and a
+ * parent layout chunk is not part of the child's static-import closure, so
+ * without them a nested page is measured lighter than it actually ships.
  */
-export function measureRoutes(graph, routesByPath) {
+export function measureRoutes(graph, routesByPath, ancestorsByPath = new Map()) {
 	const entries = Object.entries(graph.chunks).filter(([, chunk]) => chunk.is_entry);
 	if (entries.length !== 1) {
 		throw new Error(`bundle-graph: expected exactly 1 client entry chunk, found ${entries.length}`);
@@ -198,20 +272,13 @@ export function measureRoutes(graph, routesByPath) {
 	const shell = closureOf(graph, entryFile);
 	const shellTotals = sumGraph(graph, shell);
 
-	// One route file can own two chunks: TanStack Start splits the route
-	// component from its not-found component under the same module id. Only
-	// the `component` split is fetched to render the route, so it wins.
 	const byFacade = new Map();
 	const facades = new Set();
 	for (const [file, chunk] of Object.entries(graph.chunks)) {
 		if (!chunk.facade_module_id) continue;
 		facades.add(chunk.facade_module_id);
 		const existing = byFacade.get(chunk.facade_module_id);
-		if (existing === undefined) {
-			byFacade.set(chunk.facade_module_id, file);
-			continue;
-		}
-		if ((graph.chunks[existing].facade_query ?? '') === '' && chunk.facade_query) {
+		if (existing === undefined || facadeRank(chunk) < facadeRank(graph.chunks[existing])) {
 			byFacade.set(chunk.facade_module_id, file);
 		}
 	}
@@ -230,12 +297,27 @@ export function measureRoutes(graph, routesByPath) {
 				initial_css_gzip_bytes: 0,
 				route_js_bytes: 0,
 				route_added_js_bytes: 0,
+				layout_js_bytes: 0,
 			});
 			continue;
 		}
-		const files = new Set([...shell, ...closureOf(graph, chunkFile)]);
+		const routeOnly = new Set(closureOf(graph, chunkFile));
+		const files = new Set(shell);
+		for (const file of routeOnly) files.add(file);
+		// Layout ancestors are separate chunks a browser downloads to render a
+		// nested route, even though the child's chunk never imports them.
+		let layoutBytes = 0;
+		for (const ancestorFile of ancestorsByPath.get(route) ?? []) {
+			const ancestorChunk = byFacade.get(ancestorFile);
+			if (!ancestorChunk) continue;
+			for (const file of closureOf(graph, ancestorChunk)) {
+				if (files.has(file)) continue;
+				files.add(file);
+				routeOnly.add(file);
+				layoutBytes += graph.chunks[file]?.bytes ?? 0;
+			}
+		}
 		const totals = sumGraph(graph, files);
-		const routeOnly = closureOf(graph, chunkFile);
 		let addedBytes = 0;
 		for (const file of routeOnly) {
 			if (shell.has(file)) continue;
@@ -251,6 +333,7 @@ export function measureRoutes(graph, routesByPath) {
 			initial_css_gzip_bytes: totals.cssGzipBytes,
 			route_js_bytes: graph.chunks[chunkFile].bytes,
 			route_added_js_bytes: addedBytes,
+			layout_js_bytes: layoutBytes,
 		});
 	}
 
@@ -431,8 +514,18 @@ export function evaluateToolBudgets(bundles, budget) {
 	return violations;
 }
 
+/**
+ * Static checks on the budget file itself.
+ *
+ * Returns both errors (the file is unusable — the run exits 2) and warnings.
+ * The warnings matter because the stale-entry check can only happen here: a
+ * budget entry for a route the generated tree does not have is a configuration
+ * error that exits 2 before `evaluateBudgets` ever runs, so without this the
+ * stale-budget warning would exist only for direct API callers.
+ */
 function validateBudget(budget, routePaths) {
 	const errors = [];
+	const warnings = [];
 	if (budget.schema_version !== 1) {
 		errors.push(`schema_version: expected 1, got ${JSON.stringify(budget.schema_version)}`);
 	}
@@ -447,6 +540,11 @@ function validateBudget(budget, routePaths) {
 	for (const [route, cap] of Object.entries(budget.routes ?? {})) {
 		if (!routePaths.has(route)) {
 			errors.push(`routes["${route}"]: not a route in src/routeTree.gen.ts`);
+			warnings.push({
+				kind: 'stale-budget',
+				route,
+				message: `budget entry "${route}" has no matching route in the generated route tree`,
+			});
 		}
 		const exception = cap.exception;
 		if (!exception) continue;
@@ -461,7 +559,14 @@ function validateBudget(budget, routePaths) {
 			);
 		}
 	}
-	if (budget.tool_iframe !== undefined) {
+	// `tool_iframe` is required, not optional: deleting the whole section would
+	// silently switch the Tool cap off (`evaluateToolBudgets` measures nothing
+	// when it is absent) while the run still exits 0.
+	if (budget.tool_iframe === undefined || budget.tool_iframe === null) {
+		errors.push(
+			'tool_iframe: required — deleting the section would silently switch the Tool bundle cap off',
+		);
+	} else {
 		const reason = budget.tool_iframe.reason;
 		if (typeof reason !== 'string' || reason.trim().length < MIN_EXCEPTION_REASON_LENGTH) {
 			errors.push(
@@ -469,7 +574,43 @@ function validateBudget(budget, routePaths) {
 			);
 		}
 	}
-	return errors;
+	return { errors, warnings };
+}
+
+/**
+ * Is the graph still describing a build output that exists?
+ *
+ * `dist/client/bundle-graph.json` is gitignored build output, and the
+ * Storybook builder merges `vite.config.ts`, so the same path can be
+ * rewritten by a build that is not the client build. The graph records the
+ * `out_dir` it measured, so a graph whose recorded client assets are gone is
+ * reported instead of being measured silently. This is a warning rather than a
+ * hard failure on purpose: the asset layout belongs to the Cloudflare Vite
+ * plugin, not to this gate, and `validate:integration` orders the client build
+ * immediately before this check.
+ */
+export function checkGraphProvenance(graph) {
+	const outDir = graph.out_dir;
+	const chunkFiles = Object.keys(graph.chunks ?? {});
+	if (typeof outDir !== 'string' || outDir.length === 0) {
+		return [
+			{
+				kind: 'stale-graph',
+				route: null,
+				message:
+					'bundle-graph has no out_dir, so it cannot be tied to a client build; re-run `pnpm run build`',
+			},
+		];
+	}
+	const missing = chunkFiles.filter((file) => !existsSync(join(outDir, file)));
+	if (missing.length === 0) return [];
+	return [
+		{
+			kind: 'stale-graph',
+			route: null,
+			message: `bundle-graph records ${missing.length} of ${chunkFiles.length} client chunk(s) that no longer exist under ${outDir} (e.g. ${missing[0]}) — the graph is stale or was written by another build; re-run \`pnpm run build\``,
+		},
+	];
 }
 
 function currentSha() {
@@ -504,6 +645,10 @@ function renderText(report) {
 		);
 	}
 	lines.push('');
+	lines.push(
+		'[bundle-budget] "+route" = bytes this route adds on top of the entry shell: its own chunk closure plus the chunks of its layout ancestors (a nested route renders its parent layouts).',
+	);
+	lines.push('');
 	if (report.tool_iframe.length === 0) {
 		lines.push('[bundle-budget] tool iframe bundles: none present in the build output');
 	} else {
@@ -521,6 +666,24 @@ function renderText(report) {
 		);
 	}
 	return lines.join('\n');
+}
+
+/**
+ * Escape a value interpolated into the HTML report.
+ *
+ * Every input today is repository-controlled (route paths, byte counts,
+ * messages the gate itself composes), so this is defence in depth rather than
+ * a live fix — but a report that renders whatever a message contains is one
+ * refactor away from being an injection sink, and the artefact is opened from
+ * disk in a browser.
+ */
+function escapeHtml(value) {
+	return String(value)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
 }
 
 /**
@@ -547,7 +710,7 @@ export function renderHtml(report) {
 			const limit = cap(route, 'initial_js_bytes');
 			const ratio = limit ? Math.min(1, route.initial_js_bytes / limit) : 0;
 			return `<tr class="${verdict}">
-  <td class="route"><code>${route.route}</code></td>
+  <td class="route"><code>${escapeHtml(route.route)}</code></td>
   <td class="num">${route.initial_js_bytes.toLocaleString('en-US')}</td>
   <td class="num muted">${route.initial_js_gzip_bytes.toLocaleString('en-US')}</td>
   <td class="num">${route.route_added_js_bytes.toLocaleString('en-US')}</td>
@@ -562,7 +725,7 @@ export function renderHtml(report) {
 	const toolRows = report.tool_iframe
 		.map(
 			(tool) => `<tr>
-  <td class="route"><code>/tools/${tool.slug}/app/</code></td>
+  <td class="route"><code>/tools/${escapeHtml(tool.slug)}/app/</code></td>
   <td class="num">${tool.js_bytes.toLocaleString('en-US')}</td>
   <td class="num muted">—</td>
   <td class="num">0</td>
@@ -577,11 +740,11 @@ export function renderHtml(report) {
 		.join('\n');
 
 	const conditions = Object.entries(report.measurement ?? {})
-		.map(([key, value]) => `<dt>${key}</dt><dd>${value}</dd>`)
+		.map(([key, value]) => `<dt>${escapeHtml(key)}</dt><dd>${escapeHtml(value)}</dd>`)
 		.join('\n');
 
 	const failures = report.violations.length
-		? `<ul class="fail">${report.violations.map((v) => `<li>${v.message}</li>`).join('')}</ul>`
+		? `<ul class="fail">${report.violations.map((v) => `<li>${escapeHtml(v.message)}</li>`).join('')}</ul>`
 		: '<p class="pass-note">No route or Tool bundle exceeds its cap.</p>';
 
 	return `<!doctype html>
@@ -635,8 +798,8 @@ export function renderHtml(report) {
 
 <h2>Reproduction conditions</h2>
 <dl>${conditions}
-  <dt>measured_sha</dt><dd><code>${report.source_sha ?? 'unknown'}</code></dd>
-  <dt>client_entry</dt><dd><code>${report.entry}</code> · shell ${formatBytes(report.shell_js_bytes)} JS / ${formatBytes(report.shell_css_bytes)} CSS</dd>
+  <dt>measured_sha</dt><dd><code>${escapeHtml(report.source_sha ?? 'unknown')}</code></dd>
+  <dt>client_entry</dt><dd><code>${escapeHtml(report.entry)}</code> · shell ${formatBytes(report.shell_js_bytes)} JS / ${formatBytes(report.shell_css_bytes)} CSS</dd>
   <dt>command</dt><dd><code>pnpm run build &amp;&amp; pnpm run bundle:budget:check</code></dd>
 </dl>
 
@@ -665,8 +828,8 @@ ${failures}
 `;
 }
 
-export function buildReport({ graph, routesByPath, toolsDir, budget, sourceSha }) {
-	const measured = measureRoutes(graph, routesByPath);
+export function buildReport({ graph, routesByPath, ancestorsByPath, toolsDir, budget, sourceSha }) {
+	const measured = measureRoutes(graph, routesByPath, ancestorsByPath);
 	const routeVerdicts = evaluateBudgets({ routes: measured.routes, budget });
 	const toolBundles = measureToolBundles(toolsDir);
 	const toolViolations = evaluateToolBudgets(toolBundles, budget);
@@ -686,7 +849,7 @@ export function buildReport({ graph, routesByPath, toolsDir, budget, sourceSha }
 		.map((facade) => ({
 			kind: 'uncovered-route-chunk',
 			route: facade,
-			message: `client chunk for ${facade} is not reachable from any route in FileRoutesByFullPath — its bytes are not budgeted anywhere`,
+			message: `client chunk for ${facade} is not reachable from any route in FileRoutesByFullPath — its bytes are not budgeted anywhere. Either it is a route file the tree has not picked up yet, or it is a non-route component under src/routes/ that is only ever dynamically imported (those exist today, e.g. src/routes/design-system/sections/*.tsx) — in the latter case move it out of src/routes/ so the budget stops claiming it is first paint`,
 		}));
 	const uncoveredWarnings = uncovered
 		.filter((facade) => facade === 'src/routes/__root.tsx')
@@ -695,6 +858,18 @@ export function buildReport({ graph, routesByPath, toolsDir, budget, sourceSha }
 			route: facade,
 			message: `${facade} now has its own client chunk; confirm it is part of every route's initial payload (it is currently folded into the entry)`,
 		}));
+
+	// A missing Tool build output measures nothing while the Tool cap still
+	// looks satisfied, so it is named instead of silently skipped.
+	const toolWarnings = existsSync(toolsDir)
+		? []
+		: [
+				{
+					kind: 'tool-bundles-absent',
+					route: null,
+					message: `no Tool build output at ${toolsDir} — the Tool caps were not measured at all; run \`pnpm run build\` (which builds the Tool bundles) or pass --tools`,
+				},
+			];
 
 	return {
 		schema_version: 1,
@@ -711,7 +886,12 @@ export function buildReport({ graph, routesByPath, toolsDir, budget, sourceSha }
 		tool_iframe_reason: budget.tool_iframe?.reason ?? null,
 		violations: [...routeVerdicts.violations, ...uncoveredViolations, ...toolViolations],
 		exceptions: routeVerdicts.exceptions,
-		warnings: [...routeVerdicts.warnings, ...uncoveredWarnings],
+		warnings: [
+			...routeVerdicts.warnings,
+			...uncoveredWarnings,
+			...toolWarnings,
+			...checkGraphProvenance(graph),
+		],
 	};
 }
 
@@ -742,10 +922,13 @@ function main(argv) {
 	let graph;
 	let budget;
 	let routesByPath;
+	let ancestorsByPath;
 	try {
 		graph = JSON.parse(readFileSync(graphPath, 'utf8'));
 		budget = JSON.parse(readFileSync(budgetPath, 'utf8'));
-		routesByPath = parseRouteTree(readFileSync(routeTreePath, 'utf8'));
+		const routeTree = readFileSync(routeTreePath, 'utf8');
+		routesByPath = parseRouteTree(routeTree);
+		ancestorsByPath = parseRouteAncestors(routeTree);
 	} catch (error) {
 		console.error(`[bundle-budget] cannot parse input: ${error.message}`);
 		return 2;
@@ -755,16 +938,24 @@ function main(argv) {
 		return 2;
 	}
 
-	const budgetErrors = validateBudget(budget, new Set(routesByPath.keys()));
-	if (budgetErrors.length > 0) {
+	// `--json` promises one parseable JSON document on stdout, so every human
+	// status line goes to stderr in that mode (`node … --json | jq` must work).
+	const status = asJson ? (line) => console.error(line) : (line) => console.log(line);
+
+	const budgetCheck = validateBudget(budget, new Set(routesByPath.keys()));
+	if (budgetCheck.errors.length > 0) {
 		console.error(`[bundle-budget] budget file ${relative(REPO_ROOT, budgetPath)} is invalid:`);
-		for (const error of budgetErrors) console.error(`  - ${error}`);
+		for (const error of budgetCheck.errors) console.error(`  - ${error}`);
+		for (const warning of budgetCheck.warnings) {
+			console.warn(`[bundle-budget] WARNING ${warning.message}`);
+		}
 		return 2;
 	}
 
 	const report = buildReport({
 		graph,
 		routesByPath,
+		ancestorsByPath,
 		toolsDir,
 		budget,
 		sourceSha: currentSha(),
@@ -773,13 +964,13 @@ function main(argv) {
 	if (reportPath) {
 		const target = resolve(reportPath);
 		writeFileSync(target, `${JSON.stringify(report, null, '\t')}\n`);
-		console.log(`[bundle-budget] report written to ${target}`);
+		status(`[bundle-budget] report written to ${target}`);
 	}
 
 	if (htmlPath) {
 		const target = resolve(htmlPath);
 		writeFileSync(target, renderHtml(report));
-		console.log(`[bundle-budget] HTML report written to ${target}`);
+		status(`[bundle-budget] HTML report written to ${target}`);
 	}
 
 	if (asJson) {
@@ -804,7 +995,7 @@ function main(argv) {
 			`[bundle-budget] ACKNOWLEDGED EXCEPTION ${exception.route} ${exception.metric}=${exception.measured} over ${exception.limit}: ${exception.reason}`,
 		);
 	}
-	console.log('[bundle-budget] PASS — every measured route and Tool bundle is within budget.');
+	status('[bundle-budget] PASS — every measured route and Tool bundle is within budget.');
 	return 0;
 }
 

@@ -46,9 +46,12 @@ gates:
       - fast
       - 'pnpm run build' # vite build -> dist/, Tool artifacts, Build Output sync
       # Issue #482. The budget reads the client bundle graph that
-      # `vite build` writes (dist/client/bundle-graph.json), so it runs
-      # immediately after `pnpm run build` — before Storybook destroys
-      # the Build Output. See the `bundle_budget` section below.
+      # `vite build` writes (dist/client/bundle-graph.json). `pnpm run
+      # validate:integration` actually invokes it after `pnpm run
+      # build:production` (build + build:cf:production + build:cf:verify), so
+      # the Tool build output it aggregates separately is already on disk —
+      # and before `pnpm run build-storybook` merges vite.config.ts and
+      # rewrites the same graph path. See the `bundle_budget` section below.
       - 'pnpm run bundle:budget:check' # per-route initial JS/CSS budget
       - 'pnpm run build:cf:production' # cf build -> .cloudflare/output/v0/
       - 'pnpm run build:cf:verify' # Build Output completeness (Worker bundle + Tool artifacts + mode)
@@ -136,11 +139,12 @@ bundle_budget:
   input: 'dist/client/bundle-graph.json — written by the Vite client build; the deploy artifact in .cloudflare/output/ is NOT modified by it'
   tool_iframe: 'aggregated and capped separately (each Tool is an independent Vite build served from /tools/<slug>/app/ inside a sandboxed iframe)'
   reproduction:
-    measurement: 'static chunk-graph arithmetic — entry chunk + each route chunk transitive STATIC-import closure; dynamic imports are never charged to first paint'
+    measurement: 'static chunk-graph arithmetic — entry chunk + each route chunk transitive STATIC-import closure + the chunks of the route layout ancestors it renders with; dynamic imports are never charged to first paint'
     browser: 'not applicable — no browser is launched'
     network: 'not applicable — RAW on-disk bytes are budgeted; gzip -9 is reported for reference only and is never budgeted (CDN compression is a separate concern)'
     cpu: 'not time-based — deterministic byte arithmetic on any machine; only the `pnpm run build` that produces the input is runner-dependent'
-    source_sha: 'printed as `git rev-parse HEAD` on every run, so a red CI log always names the exact tree that was measured'
+    source_sha: 'printed as `git rev-parse HEAD` on every run, so a red CI log always names the exact tree that was measured (CI builds and measures in one job at one SHA)'
+    stale_input: 'dist/client/bundle-graph.json is gitignored build output and its path is also written by the Storybook builder; the gate WARNs when the recorded out_dir no longer holds the graph chunks, and exits 2 when the graph is missing entirely'
     runner: 'GitHub Actions `validate` job (ubuntu-latest) and any local `pnpm run build`'
     reproduce: 'pnpm run build && pnpm run bundle:budget:check'
   failure_policy:
@@ -148,6 +152,9 @@ bundle_budget:
     - 'a route present in src/routeTree.gen.ts with no budget entry FAILS (a new route is never implicitly free)'
     - 'a route that produced no client chunk FAILS — an unmeasured route must not pass at 0 bytes'
     - 'an overage is allowed only via an `exception` carrying a reason of at least 20 characters; a shorter or missing reason is a configuration error and FAILS'
+    - 'a missing `tool_iframe` section FAILS — deleting it would silently switch the Tool cap off'
+    - 'a missing Tool build output is a WARNING naming the absent directory, not a silent zero-byte pass'
+    - 'raising a cap is not machine-checked (only an `exception` is); a cap change is reviewed in the PR diff with its measurement and rationale'
     - 'a missing build graph exits 2 (input error), never 0'
 
 ci:

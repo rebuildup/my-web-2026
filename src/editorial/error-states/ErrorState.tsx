@@ -22,8 +22,8 @@ import { alternativesFor, errorStateDefinition } from './contract';
  * NO control carries a click handler, and that is a contract rather
  * than an omission:
  *
- *   - `retry` re-requests the URL that actually failed
- *     (`retryHref` = pathname + search) as a document navigation.
+ *   - `retry` re-requests the URL that failed (its pathname plus the
+ *     router's canonical search string) as a document navigation.
  *   - `back` is an `<a href={backHref}>` — the site home by default.
  *
  * A wired retry handler was tried and removed. The only hook the
@@ -48,10 +48,10 @@ import { alternativesFor, errorStateDefinition } from './contract';
 export interface ErrorStateProps {
 	kind: ErrorStateKind;
 	/**
-	 * href the retry anchor points at. `src/router.tsx` passes the URL
-	 * that actually failed (pathname + search string), so the retry
-	 * re-requests it rather than the bare path. Defaults to the site
-	 * home for a caller that has no failed URL in hand.
+	 * href the retry anchor points at. `src/router.tsx` passes the failed
+	 * URL's pathname plus the router's canonical search string, so the
+	 * retry keeps the query the visitor arrived with. Defaults to the
+	 * site home for a caller that has no failed URL in hand.
 	 */
 	retryHref?: string;
 	/**

@@ -101,10 +101,11 @@ Issue は `.png` 経路を指定しているが、本リポジトリで **初め
 | 未一致 URL の body | `<!DOCTYPE html>` + `<h1>` + `data-error-state="not_found"` + back link + 代替 5 link |
 | framework 既定 `<p>Not Found</p>` | **無い**（旧既定の消滅） |
 | loader 実失敗（`/portfolio/<unknown>`、local D1 に `portfolio_project` が無い） | status 500、body は **503 surface**（`<h1>` + 再試行 anchor）。`servedState` は `service_unavailable` に固定して検証（404 に緩지면落下を検知できない） |
-| 再試行 anchor の href | 失敗した URL そのまま（`?ref=newsletter` を含む）。search を落とすと別 URL を再要求してしまう |
+| 再試行 anchor の href | 失敗 URL の pathname + router が正規化した search string（`?ref=newsletter` はそのまま往復。繰り返し指定された param はフレームワークが再直列化する） |
 | framework 既定 "Something went wrong!" と `<pre>` 内の例外 | **無い** |
 | 訪問者が読む document に throwable | **無い** |
 | route 固有 404 の優先 | `/tools/<unknown>` は `data-testid="tools-not-found"`（router 既定の 404 state ではない） |
+| **search 検証失敗**（`/portfolio?facets=a&facets=b`） | status 500 / **503 surface**。恒久的なクライアント入力エラーが transient と同じ surface に落ちる（§6 / §7 #8）。throwable は訪問者の document には出ていない |
 | 正常 route の非回帰 | `/tools` は 200、`data-error-state` なし |
 | cache | 失敗 document も `cache-control: no-cache`（`src/server.ts#applyHtmlCachePolicy` の HTML 分岐を継承） |
 
@@ -115,6 +116,7 @@ loader 失敗が 500 で返るのは TanStack Router の仕様であり、本 Is
 - 失敗 surface は root layout の中に載るだけで、画面全体を覆う UI は無い。`role="alert"` を付けていないため、route error としてスクリーンリーダーへ announce されることは無い（回復導線は視覚・キーボード操作の双方から到達できる）。
 - 代替面の表（§4）は手動維持であり、loader を変更した PR が更新し忘れると「開ける」と宣言した面が失敗する（契約違反であって security 違反ではないが、見落としやすい）。
 - **復旧導線は全部、click handler を持たない素の document 遷移**（hydration 前 / 後 / JS 無効で同じ）。これは検討の結果であって単なる簡略化ではない。TanStack の `CatchBoundary#reset` は local state を clear するだけで loader を再実行せず、`MatchInner` は同じ `status: 'error'` match を再 throw するため、handler を繋いだ retry は「何も起きない + 本来有効だった遷移を `preventDefault()` で潰す」だけになっていた。`router.invalidate()` は実際に loader を再実行するが、**active な loader を全部**再実行し、対象 match が pending になって surface が一瞬 blank になる。「ここから出られるか」に答える手段としては、SSR 全体をやり直す document 遷移の方が単純で確実。
+- **`validateSearch` の失敗が 503 surface に落ちる**。`/portfolio?facets=a&facets=b` や `/admin/invitations/accept?token=`（短い / 無し）は恒久的なクライアント入力エラーだが、`defaultErrorComponent` に着地するため「システムの一部が応答していません」と表示され、再試行は**同じ不正 URL** を再要求する（＝成功し得ない操作。404 で retry を置かない判断と同一の原則に反する）。throwable は泄漏していない（実測済み）。分離するには 4 番目の failure kind（公開契約の変更 = copy / contract test / story / gallery）か、対象 route ごとの `errorComponent` が必要で、いずれも本 Issue の外。§7 #8。
 - root loader（現状は `env.GOOGLE_ANALYTICS_MEASUREMENT_ID` を読むだけ）が失敗した場合、`@tanstack/react-router` は root route も `CatchBoundary` で包むため、`<html>` / `<head>` / `<body>` の shell を **`RootComponent` の代わりに 503 surface が描画**する（読めはするが document shell は無い）。現状この loader は失敗しないので到達しないが、root に binding 依存が増えた場合は fossilize させるべき挙動。
 - 検証画像は Storybook ではなく生成 harness で撮っている（理由は §7 #5）。harness は `.tmp/` に生成されるため、repo には残らない。
 
@@ -129,3 +131,4 @@ loader 失敗が 500 で返るのは TanStack Router の仕様であり、本 Is
 | 5 | Storybook の静的 build が manager-only | `@storybook/react-vite` がプロジェクトの `vite.config.ts` を merge し、Cloudflare / TanStack plugin が出力を奪う。本 Issue の capture は生成 harness で回避した。build 修正は別 ticket |
 | 6 | `/design-system` を failure surface の代替面に含めるか | nav には載っているが loader / binding 依存が無いので「開ける面」には技術的に該当する。failure surface からデザインシステムを案内してよいかは公開ナビゲーションの判断であり、本 Issue が単独で決める話ではない（今は意図的に roster から外し、`/tools` `/contact` のみ提示している） |
 | 7 | DOM レベルのテスト（`*.client.test.tsx`）が gate に載っていない | `pnpm run test:client` は happy-dom 用で、`validate:fast` にも CI にも入っていない。そのため「hydration 後の click が document 遷移のままである」ことは **element tree を walk する test**（`error-states.test.tsx`、CI で回る）で担保している。gate に DOM test を足すのは quality profile の変更なので別 decision |
+| 8 | 恒久的な入力エラー（`validateSearch` 失敗）を 503 surface から分離するか | 実測済み（§5 / §6）。`/portfolio?facets=a&facets=b` が「システムの一部が応答していません」+ 同じ不正 URL の再試行になる。分離方法は (a) 4 番目の failure kind（copy / contract test / story / gallery を含む公開契約の変更）、(b) 対象 route に固有の `errorComponent`。どちらも owner 判断と新規 component が必要で、review fix の範囲を超える |

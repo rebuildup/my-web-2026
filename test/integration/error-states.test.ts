@@ -128,9 +128,9 @@ describe('failure surfaces over the real SSR pipeline (Issue #501)', () => {
 	});
 
 	it('points the retry anchor at the failed URL including its query string', async () => {
-		// The retry anchor is a plain navigation to the URL that failed
+		// The retry anchor is a plain navigation to the failed URL
 		// (`${pathname}${searchStr}`), so a recovery must not silently
-		// re-request a different URL than the one that broke. This is the
+		// drop the query the visitor arrived with. This is the
 		// served-document half of "the retry is never a dead control": a
 		// hydrated click follows the same href.
 		const { html } = await fetchHtml(`/portfolio/${UNKNOWN_PROJECT_SLUG}?ref=newsletter`);

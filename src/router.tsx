@@ -75,14 +75,25 @@ function RouteNotFoundSurface(_props: NotFoundRouteProps) {
  * must not be able to render a throwable's message or stack, and
  * `contract.ts#ERROR_STATE_WITHHELD_INFO` lists that detail as withheld.
  *
- * `retryHref` is the URL that actually failed, search string included, so
- * the retry anchor re-requests it. It stays a PLAIN anchor: `props.reset`
- * is not wired, because `CatchBoundary#reset` only clears local React
- * state — `MatchInner` then re-reads the same `status: 'error'` match and
+ * `retryHref` is the failed URL's pathname plus the router's canonical
+ * search string, so the retry keeps the query the visitor arrived with
+ * (`?ref=newsletter` round-trips; a repeated param is re-serialised by
+ * the framework). It stays a PLAIN anchor: `props.reset` is not wired,
+ * because `CatchBoundary#reset` only clears local React state —
+ * `MatchInner` then re-reads the same `status: 'error'` match and
  * re-throws it, so a hydrated retry would have done nothing while
  * `preventDefault()` suppressed the navigation that does work. See the
  * module comment of `src/editorial/error-states/ErrorState.tsx` for the
  * full reasoning and the `router.invalidate()` alternative.
+ *
+ * Known misclassification, measured and not fixed here: a route's
+ * `validateSearch` failure (`/portfolio?facets=a&facets=b`,
+ * `/admin/invitations/accept` without a `token`) is a PERMANENT
+ * client-input error, but it also lands here, so the visitor is told a
+ * system is unavailable and offered a retry of the same invalid URL.
+ * Separating it needs a fourth published failure kind (copy, contract
+ * test, story, gallery) — an owner decision recorded in
+ * `docs/verification/ops/error-state-gallery.md` §7.
  */
 function RouteFailureSurface(_props: ErrorComponentProps) {
 	const { pathname, searchStr } = useLocation();

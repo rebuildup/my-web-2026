@@ -23,7 +23,15 @@ below remain literal records.
 ## Sprint cycle
 
 1. Decide target version, sprint window, release date.
-2. Branch `release-x-y-z` from `main`.
+2. Branch `release-x-y-z` from `main`. In the cut commit, set
+   `package.json#version` to `<version>` AND stage
+   `release-assets/portfolio/<version>/` in the same step: when the
+   portfolio publication inputs changed, author the new directory; when
+   unchanged, copy the previous version directory and swap the version
+   references (e.g. `manifest.release`). A version-only cut is born red —
+   `node scripts/check-release-assets.mjs` (part of `pnpm run
+   validate:fast`, before `version:check`) reports the absent path
+   directly instead of masking it behind downstream failures.
 3. Define the sprint goal.
 4. Select Ready tickets (respecting dependency and capacity).
 5. Each ticket:

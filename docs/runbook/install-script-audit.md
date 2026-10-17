@@ -64,7 +64,10 @@ pnpm run install:scripts:html   # -> .tmp/install-script-audit.html
 ```
 
 Exit codes: `0` = 監査済み・clean / `1` = violation / `2` = 入力不備
-（policy / allow-list / `package.json` が読めない、または policy が不正）。
+（policy / allow-list / `package.json` が読めない、policy が不正、
+または `node_modules` が未 install で**監査対象自体が無い**）。
+`2` は fail-closed なので、`pnpm install` を先に実行する。
+「未 install でも 0 件 = clean」という偽の green は作らない。
 
 ### 既存 secret SoT / Cloudflare Workers Builds / リリース承認への影響
 
@@ -118,7 +121,7 @@ pin されている version が install-time hook を宣言していないため
 ```bash
 pnpm exec biome check scripts/_install-scripts.mjs \
   scripts/check-install-scripts.mjs scripts/check-install-scripts.test.mjs
-node --test scripts/check-install-scripts.test.mjs     # 29 tests
+node --test scripts/check-install-scripts.test.mjs     # 30 tests
 pnpm run install:scripts:check                        # gate 自体
 pnpm run architecture:check                           # 境界に影響しないこと
 pnpm run test:wiring:check                            # test  が配線されていること
@@ -144,6 +147,7 @@ rm docs/verification/supply-chain/install-script-audit.png
 | `policy decision "block" but pnpm-workspace.yaml allows its lifecycle scripts` | **拒否した code が毎回 install で走っている** | allow-list から名前を削除する（最も緊急） |
 | `policy records hook(s) […] but the installed version(s) declare […]` | manifest 側が二重に fractional（新しい hook が出現） | 新しい hook の必要性を判断し、policy を更新する |
 | `cannot audit: quality/install-scripts.json …` | policy が壊れている / 存在しない | メッセージの `packages[i]` を直して再実行。gate は fail-closed |
+| `required input not found: …/node_modules` | install 前のため監査対象が無い | `pnpm install` を実行してから再実行（空 tree を clean としない） |
 
 ### 6.2 「新しい install-time script が見つかった」手順
 

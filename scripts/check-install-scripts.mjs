@@ -81,10 +81,19 @@ export function runAudit(root) {
 	const policyPath = resolve(root, POLICY_RELATIVE_PATH);
 	const allowlistPath = resolve(root, ALLOWLIST_RELATIVE_PATH);
 	const rootManifestPath = resolve(root, 'package.json');
+	const modulesPath = resolve(root, 'node_modules');
 
 	const inputErrors = [];
 	for (const path of [policyPath, allowlistPath, rootManifestPath]) {
 		if (!existsSync(path)) inputErrors.push(`required input not found: ${path}`);
+	}
+	// Without an installed tree there is nothing to inventory, and an
+	// audit that reports "0 install-time scripts" for an empty scan would
+	// be indistinguishable from a clean repository. Fail closed instead.
+	if (!existsSync(modulesPath)) {
+		inputErrors.push(
+			`required input not found: ${modulesPath}\n  Run \`pnpm install\` first — this audit reads the installed manifests, so it cannot pass on an uninstalled tree.`,
+		);
 	}
 	if (inputErrors.length > 0) return { ok: false, inputErrors, violations: [], warnings: [] };
 

@@ -544,13 +544,28 @@ describe('runAudit (end to end over a fixture repository)', () => {
 		assert.match(result.audit.violations[0], /fixture-pkg/);
 	});
 
-	it('reports a missing input instead of silently auditing nothing', () => {
+	it('reports missing inputs instead of silently auditing nothing', () => {
 		const root = mkdtempSync(join(tmpdir(), 'install-script-audit-empty-'));
 		roots.push(root);
 		const result = runAudit(root);
 		assert.equal(result.ok, false);
-		assert.equal(result.inputErrors.length, 3);
+		assert.equal(result.inputErrors.length, 4);
 		assert.ok(result.inputErrors.every((line) => /required input not found/.test(line)));
+	});
+
+	it('refuses to pass on a tree that was never installed', () => {
+		const root = stageRepo({
+			packages: [],
+			allowlist: 'onlyBuiltDependencies: []\n',
+			policy: { version: 1, default_decision: 'block', packages: [] },
+			rootScripts: {},
+		});
+		rmSync(join(root, 'node_modules'), { recursive: true, force: true });
+		const result = runAudit(root);
+		assert.equal(result.ok, false);
+		assert.ok(
+			result.inputErrors.some((line) => /node_modules/.test(line) && /pnpm install/.test(line)),
+		);
 	});
 
 	after(() => {

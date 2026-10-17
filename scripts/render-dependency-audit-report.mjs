@@ -117,6 +117,13 @@ export function buildReportModel(result, meta = {}) {
 			expiresOn: exception.expiresOn,
 			daysRemaining,
 		})),
+		mismatched: result.mismatchedExceptions.map(({ exception, observed, daysRemaining }) => ({
+			id: exception.advisoryId,
+			declared: `${exception.package}/${exception.severity}`,
+			reportedAs: observed.map(({ package: pkg, severity }) => `${pkg}/${severity}`).join(', '),
+			expiresOn: exception.expiresOn,
+			daysRemaining,
+		})),
 		reported: result.reported.map((finding) => ({
 			id: finding.id,
 			package: finding.package,
@@ -308,6 +315,19 @@ ${table(
 		row.package,
 		row.expiresOn,
 		`${row.daysRemaining}`,
+	]),
+)}
+
+<h2>Exception records that match no finding (${model.mismatched.length})</h2>
+${table(
+	['advisory id', 'declared package/severity', 'reported as', 'expires', 'days left', 'effect'],
+	model.mismatched.map((row) => [
+		row.id,
+		row.declared,
+		row.reportedAs,
+		row.expiresOn,
+		`${row.daysRemaining}`,
+		'suppressed nothing',
 	]),
 )}
 

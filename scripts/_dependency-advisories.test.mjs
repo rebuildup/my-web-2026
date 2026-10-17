@@ -18,6 +18,10 @@ import { fileURLToPath } from 'node:url';
  *   4. Exceptions are records with a deadline. An approved, unexpired
  *      exception converts a blocking finding into a recorded pass; an
  *      expired one stops being an exception and blocks again.
+ *   4b. One advisory, several packages. The ledger is keyed by
+ *      `(advisoryId, package)`, so an approval covers exactly the
+ *      package that was reviewed and a record that matches nothing is
+ *      reported instead of stretching or failing the scan.
  *   5. Unavailable data never reads as clean. There is no path from an
  *      unreadable document to `pass`, and every count is null so a report
  *      cannot render zero.
@@ -31,7 +35,9 @@ import {
 	daysUntilExpiry,
 	evaluateAdvisories,
 	evaluateUnavailableData,
+	exceptionKey,
 	parseAdvisoryPayload,
+	parseEvaluationDate,
 	parseGateDeclaration,
 	renderText,
 } from './_dependency-advisories.mjs';
@@ -45,8 +51,10 @@ const repositoryGate = parseGateDeclaration(
 	JSON.parse(readFileSync(resolve(HERE, '..', 'quality', 'dependency-advisory-gate.json'), 'utf8')),
 );
 const blockingFixture = parseAdvisoryPayload(fixture('blocking.json'));
+const multiPackageFixture = parseAdvisoryPayload(fixture('multi-package.json'));
 const gateWithException = parseGateDeclaration(fixture('gate-with-exception.json'));
 const gateWithExpiredException = parseGateDeclaration(fixture('gate-with-expired-exception.json'));
+const gateWithSplitException = parseGateDeclaration(fixture('gate-with-split-exception.json'));
 
 const NOW = '2026-10-18';
 const asOf = (value) => new Date(`${value}T00:00:00Z`);
@@ -192,7 +200,21 @@ describe('parseGateDeclaration — the reviewed declaration', () => {
 		assert.throws(
 			() =>
 				parseGateDeclaration({ ...fixture('gate-with-exception.json'), exceptions: [base, base] }),
-			/duplicate exception/,
+			/duplicate exception for GHSA-fixt-fixt-fixt in fixture-runtime/,
+		);
+	});
+
+	it('accepts one advisory id under two packages, which is what a GHSA looks like', () => {
+		const [base] = fixture('gate-with-exception.json').exceptions;
+		const second = { ...base, package: 'fixture-server-core' };
+		const parsed = parseGateDeclaration({
+			...fixture('gate-with-exception.json'),
+			exceptions: [base, second],
+		});
+		assert.equal(parsed.exceptions.length, 2);
+		assert.notEqual(
+			exceptionKey(parsed.exceptions[0].advisoryId, parsed.exceptions[0].package),
+			exceptionKey(parsed.exceptions[1].advisoryId, parsed.exceptions[1].package),
 		);
 	});
 });
@@ -329,20 +351,124 @@ describe('evaluateAdvisories — approved exceptions with a deadline', () => {
 		assert.match(renderText(result), /exception records with no matching advisory/);
 	});
 
-	it('rejects an exception whose declared package or severity contradicts the advisory', () => {
+	it('validates the evaluation date shape instead of throwing from the verdict', () => {
+		assert.equal(parseEvaluationDate('2026-10-18').toISOString(), '2026-10-18T00:00:00.000Z');
+		for (const bad of ['garbage', '2026-13-01', '18/10/2026', '2026-10-18T00:00:00Z', '']) {
+			assert.throws(() => parseEvaluationDate(bad), GateDefinitionError, `${bad} must be rejected`);
+		}
+	});
+
+	it('does not apply an exception whose declared package or severity contradicts the advisory', () => {
+		// The document WAS read, so this is an operator mistake to fix, not
+		// a data failure: it must not be reported as `data-unavailable`
+		// with every count collapsed to unknown, and the operator must be
+		// pointed at their own declaration rather than at the network.
 		const mismatched = {
 			...gateWithException,
 			exceptions: [{ ...gateWithException.exceptions[0], package: 'other-package' }],
 		};
-		assert.throws(
-			() =>
-				evaluateAdvisories({
-					findings: blockingFixture.filter((finding) => finding.severity === 'critical'),
-					gate: mismatched,
-					now: asOf(NOW),
-				}),
-			/declares other-package\/critical/,
+		const result = evaluateAdvisories({
+			findings: blockingFixture.filter((finding) => finding.severity === 'critical'),
+			gate: mismatched,
+			now: asOf(NOW),
+		});
+		assert.equal(result.dataStatus, 'available');
+		assert.equal(result.status, STATUS.FAIL);
+		assert.equal(result.blockingCount, 1, 'the record suppressed nothing');
+		assert.equal(result.excepted.length, 0);
+		assert.equal(result.staleExceptions.length, 0, 'the advisory is in the document');
+		assert.equal(result.mismatchedExceptions.length, 1);
+		const [{ exception, observed }] = result.mismatchedExceptions;
+		assert.equal(exception.package, 'other-package');
+		assert.deepEqual(observed, [{ package: 'fixture-runtime', severity: 'critical' }]);
+		const text = renderText(result);
+		assert.match(text, /exception records that match no finding \(1\)/);
+		assert.match(text, /declares other-package\/critical/);
+		assert.match(text, /reports fixture-runtime\/critical/);
+		assert.ok(!text.includes('DATA UNAVAILABLE'));
+	});
+
+	it('does not apply an exception whose severity contradicts the advisory', () => {
+		const mismatched = {
+			...gateWithException,
+			exceptions: [{ ...gateWithException.exceptions[0], severity: 'high' }],
+		};
+		const result = evaluateAdvisories({
+			findings: blockingFixture.filter((finding) => finding.severity === 'critical'),
+			gate: mismatched,
+			now: asOf(NOW),
+		});
+		assert.equal(result.status, STATUS.FAIL);
+		assert.equal(result.excepted.length, 0);
+		assert.equal(result.mismatchedExceptions.length, 1);
+		assert.match(renderText(result), /declares fixture-runtime\/high/);
+	});
+});
+
+describe('evaluateAdvisories — one advisory reported against several packages', () => {
+	it('applies an approval to the package it names and blocks the one it does not', () => {
+		const result = evaluateAdvisories({
+			findings: multiPackageFixture,
+			gate: gateWithSplitException,
+			now: asOf(NOW),
+		});
+		assert.equal(result.status, STATUS.FAIL);
+		assert.deepEqual(
+			result.excepted.map(({ finding }) => finding.package),
+			['fixture-runtime'],
 		);
+		assert.deepEqual(
+			result.blocking.map(({ finding }) => finding.package),
+			['fixture-server-core'],
+		);
+		assert.equal(result.mismatchedExceptions.length, 0);
+		assert.equal(result.staleExceptions.length, 0);
+	});
+
+	it('passes once a second record approves the second package', () => {
+		const bothApproved = {
+			...gateWithSplitException,
+			exceptions: [
+				...gateWithSplitException.exceptions,
+				{ ...gateWithSplitException.exceptions[0], package: 'fixture-server-core' },
+			],
+		};
+		const result = evaluateAdvisories({
+			findings: multiPackageFixture,
+			gate: bothApproved,
+			now: asOf(NOW),
+		});
+		assert.equal(result.status, STATUS.PASS);
+		assert.equal(result.excepted.length, 2);
+		assert.match(renderText(result), /approved exceptions in force \(2\)/);
+	});
+
+	it('counts the shared advisory once per affected package', () => {
+		const result = evaluateAdvisories({
+			findings: multiPackageFixture,
+			gate: { ...gateWithSplitException, exceptions: [] },
+			now: asOf(NOW),
+		});
+		assert.equal(result.total, 2);
+		assert.equal(result.counts.critical, 2);
+	});
+});
+
+describe('evaluateAdvisories — the declared severity policy is enforced', () => {
+	it('fails closed on a severity the declaration classifies as neither blocking nor reported', () => {
+		const result = evaluateAdvisories({
+			findings: blockingFixture,
+			gate: { ...repositoryGate, reportedSeverities: [] },
+			now: asOf(NOW),
+		});
+		assert.equal(result.reported.length, 0, 'an undeclared severity is not merely reported');
+		assert.equal(result.blockingCount, 4);
+		for (const { finding, reason } of result.blocking) {
+			if (finding.severity === 'moderate' || finding.severity === 'low') {
+				assert.match(reason, /neither blocking nor reported; failing closed/);
+			}
+		}
+		assert.notEqual(result.status, STATUS.PASS);
 	});
 });
 

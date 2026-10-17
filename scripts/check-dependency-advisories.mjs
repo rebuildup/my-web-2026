@@ -25,7 +25,7 @@
  * Exit codes:
  *   0  pass, or blocking findings recorded under `audit` enforcement
  *   1  blocking advisories outstanding under `block` enforcement
- *   2  usage or gate-declaration error
+ *   2  usage or gate-declaration error (including an unreadable --input)
  *   3  advisory data unavailable (fail closed; never reported as clean)
  *
  * Secret posture (AGENTS.md section 4): the only inputs are the lockfile's
@@ -45,6 +45,7 @@ import {
 	evaluateAdvisories,
 	evaluateUnavailableData,
 	parseAdvisoryPayload,
+	parseEvaluationDate,
 	parseGateDeclaration,
 	renderText,
 } from './_dependency-advisories.mjs';
@@ -73,6 +74,12 @@ const USAGE = `dependency advisory gate (Issue #470)
   --enforce          evaluate as \`block\` regardless of the declared mode
   --now <YYYY-MM-DD> evaluation date, for reproducible expiry behaviour
   --help             this message
+
+Exit codes:
+  0  pass, or blocking findings recorded under \`audit\` enforcement
+  1  blocking advisories outstanding under \`block\` enforcement
+  2  usage or gate-declaration error (including an unreadable --input path)
+  3  advisory data unavailable (fail closed; never reported as clean)
 `;
 
 export function parseArgs(argv) {
@@ -116,7 +123,10 @@ export function parseArgs(argv) {
 				options.enforce = true;
 				break;
 			case '--now':
-				options.now = next();
+				// Validated here so a typo is a usage error (exit 2) and
+				// never an exception thrown from inside the verdict path,
+				// where it would be indistinguishable from a data failure.
+				options.now = parseEvaluationDate(next());
 				break;
 			case '--help':
 			case '-h':
@@ -157,15 +167,24 @@ export function loadGate(gatePath) {
  * Returns `{ payload, source }` or `{ error, source }`. The error string
  * is the only thing a caller may print about a failed acquisition, and it
  * describes the failure, never the contents of an environment.
+ *
+ * A local `--input` path that cannot be read is a *usage* error, not an
+ * acquisition failure: it throws `GateDefinitionError` so the caller
+ * exits `2` rather than reporting a registry problem that never
+ * happened.
  */
 export function acquireAdvisoryDocument({ input }) {
 	if (input === '-') {
-		const text = readFileSync(0, 'utf8');
-		return parseText(text, 'advisory document from stdin');
+		return parseText(
+			readLocal(0, 'the advisory document on stdin'),
+			'advisory document from stdin',
+		);
 	}
 	if (input) {
-		const text = readFileSync(resolve(input), 'utf8');
-		return parseText(text, `advisory document from ${input}`);
+		return parseText(
+			readLocal(resolve(input), `the advisory document at ${input}`),
+			`advisory document from ${input}`,
+		);
 	}
 	const result = spawnSync(AUDIT_COMMAND, AUDIT_ARGS, {
 		cwd: REPO_ROOT,
@@ -192,23 +211,36 @@ function parseText(text, source) {
 	let payload;
 	try {
 		payload = JSON.parse(text);
-	} catch (error) {
-		return { source, error: `${source} did not return JSON: ${firstLine(text)}` };
-	}
-	if (payload && typeof payload === 'object' && !Array.isArray(payload) && payload.error) {
-		const code = payload.error?.code ? ` ${payload.error.code}` : '';
-		const message = typeof payload.error?.message === 'string' ? payload.error.message : '';
+	} catch {
+		// The body is NOT echoed. It is upstream output, it ends up in a
+		// CI log and in a 90-day artifact, and "status-only" has to mean
+		// status-only on this path too — a registry that answers with an
+		// unexpected payload must not be able to plant text (or a token)
+		// in either. The operator is pointed at the runbook instead.
 		return {
 			source,
-			error: `${source} returned an error document${code}: ${message || firstLine(text)}`,
+			error: `${source} did not return JSON; the response body is withheld (see runbook section 5)`,
+		};
+	}
+	if (payload && typeof payload === 'object' && !Array.isArray(payload) && payload.error) {
+		// The code is the diagnostic; the message is upstream prose and is
+		// not repeated here. Same reasoning as the unparsable branch.
+		const code = payload.error?.code ? ` ${payload.error.code}` : '';
+		return {
+			source,
+			error: `${source} returned an error document${code}; the response body is withheld (see runbook section 5)`,
 		};
 	}
 	return { payload, source };
 }
 
-function firstLine(text) {
-	const line = text.split('\n').find((entry) => entry.trim().length > 0) ?? '';
-	return line.length > 200 ? `${line.slice(0, 200)}…` : line;
+/** Read a caller-supplied path, reporting a usage error instead of crashing. */
+function readLocal(target, label) {
+	try {
+		return readFileSync(target, 'utf8');
+	} catch (error) {
+		throw new GateDefinitionError(`cannot read ${label}: ${error.code ?? error.message}`);
+	}
 }
 
 export function exitCodeFor(result) {
@@ -267,6 +299,19 @@ function renderJson(result, { source, gatePath }) {
 				expiresOn: exception.expiresOn,
 				daysRemaining,
 			})),
+			mismatchedExceptions: result.mismatchedExceptions.map(
+				({ exception, observed, daysRemaining }) => ({
+					id: exception.advisoryId,
+					declaredPackage: exception.package,
+					declaredSeverity: exception.severity,
+					reportedAs: observed.map(({ package: pkg, severity }) => ({
+						package: pkg,
+						severity,
+					})),
+					expiresOn: exception.expiresOn,
+					daysRemaining,
+				}),
+			),
 			reported: result.reported.map((finding) => ({
 				id: finding.id,
 				package: finding.package,
@@ -276,6 +321,25 @@ function renderJson(result, { source, gatePath }) {
 		null,
 		2,
 	)}\n`;
+}
+
+/**
+ * Acquire the advisory document, or report the usage error.
+ *
+ * A `--input` path that does not exist is an operator mistake, so it
+ * exits `2` with one line on stderr. Left unhandled it would throw past
+ * the verdict path and exit `1` — which this tool documents as
+ * "blocking advisories outstanding", i.e. a security verdict, for what
+ * is only a typo.
+ */
+function tryAcquire(options) {
+	try {
+		return acquireAdvisoryDocument(options);
+	} catch (error) {
+		if (!(error instanceof GateDefinitionError)) throw error;
+		process.stderr.write(`${error.message}\n`);
+		return EXIT.USAGE;
+	}
 }
 
 /**
@@ -310,8 +374,9 @@ export function run(argv) {
 		gate = { ...gate, enforcement: 'block' };
 	}
 
-	const acquisition = acquireAdvisoryDocument(options);
-	const now = options.now ? new Date(`${options.now}T00:00:00Z`) : new Date();
+	const acquisition = tryAcquire(options);
+	if (acquisition === EXIT.USAGE) return EXIT.USAGE;
+	const now = options.now ?? new Date();
 	const gatePath = relative(REPO_ROOT, options.gatePath) || options.gatePath;
 
 	let result;
@@ -322,6 +387,10 @@ export function run(argv) {
 			const findings = parseAdvisoryPayload(acquisition.payload);
 			result = evaluateAdvisories({ findings, gate, now });
 		} catch (error) {
+			// Only a *document* problem may become `data-unavailable`. A
+			// verdict is always reachable for a document this gate can
+			// parse, so anything else is a bug, not a scan result, and must
+			// not be laundered into "the registry could not be read".
 			if (!(error instanceof GateDefinitionError)) throw error;
 			result = evaluateUnavailableData({
 				gate,

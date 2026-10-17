@@ -28,6 +28,24 @@
  * and becomes an ordinary blocking finding, so an exception cannot
  * silently become permanent by being left in the file.
  *
+ * One advisory, several packages
+ * ------------------------------
+ * A registry advisory frequently names more than one affected package
+ * (a GHSA for a framework and the framework's server bundle, for
+ * example), and `pnpm audit` reports one finding per package under the
+ * same advisory id. The exception ledger is therefore keyed by the pair
+ * `(advisoryId, package)`, not by the advisory id alone: one approval
+ * cannot silently cover a package the approver never looked at, and one
+ * record *can* cover the packages that were actually reviewed.
+ *
+ * A record that matches no finding — because the package or the
+ * severity in the declaration contradicts the document — is reported,
+ * never silently ignored and never treated as a data failure. It also
+ * suppresses nothing: the finding keeps the verdict its own severity
+ * gives it, which is the same fail-closed treatment an expired record
+ * gets. A declaration that contradicts the data is an operator mistake
+ * to fix, not a reason to report the scan as unreadable.
+ *
  * Secret posture (AGENTS.md section 4)
  * -----------------------------------
  * Nothing in this module reads a credential, `.dev.vars`, Infisical or
@@ -111,6 +129,19 @@ function requireString(value, label, { allowEmpty = false } = {}) {
 
 function uniqueSorted(values) {
 	return [...new Set(values)].sort();
+}
+
+/**
+ * Stable key for one exception record.
+ *
+ * The advisory id alone is not an identity: `pnpm audit` reports one
+ * finding per affected package under a single GHSA id, so a ledger
+ * keyed by id alone can express neither "this package is approved" for
+ * a two-package advisory nor "only this package of it is approved".
+ * The pair is what a reviewer actually signs off on.
+ */
+export function exceptionKey(advisoryId, pkg) {
+	return `${`${advisoryId}`.trim().toUpperCase()}::${`${pkg}`.trim()}`;
 }
 
 /**
@@ -317,9 +348,14 @@ export function parseGateDeclaration(declaration) {
 	const exceptions = rawExceptions.map(normaliseException);
 	const seen = new Set();
 	for (const exception of exceptions) {
-		const key = exception.advisoryId.toUpperCase();
+		const key = exceptionKey(exception.advisoryId, exception.package);
 		if (seen.has(key)) {
-			throw new GateDefinitionError(`duplicate exception for advisory ${exception.advisoryId}`);
+			// The same pair twice is a copy-paste error. The same advisory
+			// id under two *different* packages is legitimate — that is one
+			// GHSA covering two packages — and is one record each.
+			throw new GateDefinitionError(
+				`duplicate exception for ${exception.advisoryId} in ${exception.package}`,
+			);
 		}
 		seen.add(key);
 	}
@@ -335,6 +371,25 @@ export function parseGateDeclaration(declaration) {
 		note: typeof declaration.note === 'string' ? declaration.note : '',
 		exceptions,
 	};
+}
+
+/**
+ * Parse a `--now` argument into a UTC `Date`.
+ *
+ * Validated here rather than at the call site so a usage typo is
+ * reported as a usage error instead of escaping as an exception whose
+ * stack trace would be read as a verdict.
+ */
+export function parseEvaluationDate(value) {
+	const text = requireString(value, '--now').trim();
+	if (!DATE_ONLY.test(text)) {
+		throw new GateDefinitionError(`--now must be a YYYY-MM-DD date (got ${JSON.stringify(value)})`);
+	}
+	const date = new Date(`${text}T00:00:00Z`);
+	if (Number.isNaN(date.getTime())) {
+		throw new GateDefinitionError(`--now is not a real date (got ${JSON.stringify(value)})`);
+	}
+	return date;
 }
 
 /** `YYYY-MM-DD` for the evaluation date, in UTC. */
@@ -359,32 +414,69 @@ export function daysUntilExpiry(expiresOn, from) {
  * `findings` is the parsed advisory document; `now` is the evaluation
  * date (defaults to the current UTC date) so expiry behaviour is
  * testable without freezing the clock.
+ *
+ * Exception matching is by `(advisoryId, package)` plus the severity
+ * the record declares. A record that matches nothing — because the
+ * package or the severity contradicts the document — suppresses
+ * nothing and is reported in `mismatchedExceptions`; a record whose
+ * advisory is absent entirely is reported in `staleExceptions`.
+ * Neither is a data failure: the document *was* read, so this function
+ * never returns `data-unavailable` and the caller never has to guess
+ * whether the counts are unknown.
  */
 export function evaluateAdvisories({ findings, gate, now = new Date() }) {
 	const today = toDateOnly(now);
-	const exceptionsByAdvisory = new Map(
-		gate.exceptions.map((exception) => [exception.advisoryId.toUpperCase(), exception]),
+	// Keyed by the pair, and consumed in place: an entry that survives the
+	// loop matched no finding at all.
+	const exceptionsByKey = new Map(
+		gate.exceptions.map((exception) => [
+			exceptionKey(exception.advisoryId, exception.package),
+			exception,
+		]),
 	);
+	// What the document actually reports per advisory id, so a
+	// contradictory record can be shown the real package/severity rather
+	// than a bare "does not match".
+	const observedByAdvisory = new Map();
+	for (const finding of findings) {
+		const key = finding.id.toUpperCase();
+		const entry = observedByAdvisory.get(key);
+		if (entry) entry.push({ package: finding.package, severity: finding.severity });
+		else observedByAdvisory.set(key, [{ package: finding.package, severity: finding.severity }]);
+	}
 	const counts = Object.fromEntries(SEVERITIES.map((severity) => [severity, 0]));
 	const blocking = [];
 	const excepted = [];
 	const expired = [];
 	const reported = [];
-	const unusedExceptions = new Set(exceptionsByAdvisory.keys());
+	const mismatched = [];
+	const stale = [];
 
 	for (const finding of findings) {
 		counts[finding.severity] += 1;
-		const key = finding.id.toUpperCase();
-		const exception = exceptionsByAdvisory.get(key);
-		if (!gate.blockingSeverities.includes(finding.severity)) {
+		const key = exceptionKey(finding.id, finding.package);
+		const exception = exceptionsByKey.get(key);
+		const isBlocking = gate.blockingSeverities.includes(finding.severity);
+		const isReported = gate.reportedSeverities.includes(finding.severity);
+		if (!isBlocking && !isReported) {
+			// Every severity has exactly one declared meaning. A severity
+			// the declaration never classified fails closed rather than
+			// falling through to "not blocking, therefore fine".
+			blocking.push({
+				finding,
+				reason: `severity "${finding.severity}" is declared neither blocking nor reported; failing closed`,
+			});
+			continue;
+		}
+		if (!isBlocking) {
 			reported.push(finding);
 			continue;
 		}
-		if (!exception) {
+		if (!exception || exception.severity !== finding.severity) {
 			blocking.push({ finding, reason: null });
 			continue;
 		}
-		unusedExceptions.delete(key);
+		exceptionsByKey.delete(key);
 		const daysRemaining = daysUntilExpiry(exception.expiresOn, today);
 		const record = { finding, exception, daysRemaining };
 		// An expired record is not an exception any more. It is reported
@@ -395,20 +487,25 @@ export function evaluateAdvisories({ findings, gate, now = new Date() }) {
 			blocking.push({ finding, reason: `exception expired on ${exception.expiresOn}` });
 			continue;
 		}
-		if (exception.package !== finding.package || exception.severity !== finding.severity) {
-			throw new GateDefinitionError(
-				`exception for ${finding.id} declares ${exception.package}/${exception.severity} but the advisory is ${finding.package}/${finding.severity}`,
-			);
-		}
 		excepted.push(record);
 	}
 
-	const staleExceptions = gate.exceptions
-		.filter((exception) => unusedExceptions.has(exception.advisoryId.toUpperCase()))
-		.map((exception) => ({
+	// Records that survived the loop matched nothing. Split by whether the
+	// advisory is in the document at all: a wrong package/severity is a
+	// fixable declaration mistake, an absent advisory is a record to
+	// delete. Both are reported; neither suppresses a finding.
+	for (const exception of gate.exceptions) {
+		const key = exceptionKey(exception.advisoryId, exception.package);
+		if (!exceptionsByKey.has(key)) continue;
+		const observed = observedByAdvisory.get(exception.advisoryId.toUpperCase()) ?? [];
+		const entry = {
 			exception,
+			observed,
 			daysRemaining: daysUntilExpiry(exception.expiresOn, today),
-		}));
+		};
+		if (observed.length > 0) mismatched.push(entry);
+		else stale.push(entry);
+	}
 
 	const blockingCount = blocking.length;
 	const status =
@@ -433,7 +530,8 @@ export function evaluateAdvisories({ findings, gate, now = new Date() }) {
 		excepted,
 		expired,
 		reported,
-		staleExceptions,
+		staleExceptions: stale,
+		mismatchedExceptions: mismatched,
 		blockingCount,
 	};
 }
@@ -463,6 +561,7 @@ export function evaluateUnavailableData({ gate, now = new Date(), reason }) {
 		expired: [],
 		reported: [],
 		staleExceptions: [],
+		mismatchedExceptions: [],
 		blockingCount: null,
 	};
 }
@@ -553,6 +652,17 @@ export function renderText(result, { source, gatePath } = {}) {
 		for (const { exception, daysRemaining } of result.staleExceptions) {
 			lines.push(
 				`  - ${exception.advisoryId} ${exception.package} — no advisory in this document; remove the record (${daysRemaining} day(s) to expiry)`,
+			);
+		}
+	}
+	if (result.mismatchedExceptions.length > 0) {
+		lines.push('');
+		lines.push(`exception records that match no finding (${result.mismatchedExceptions.length}):`);
+		for (const { exception, observed, daysRemaining } of result.mismatchedExceptions) {
+			lines.push(
+				`  - ${exception.advisoryId} declares ${exception.package}/${exception.severity}; this document reports ${observed
+					.map(({ package: pkg, severity }) => `${pkg}/${severity}`)
+					.join(', ')} — the record suppressed nothing (${daysRemaining} day(s) to expiry)`,
 			);
 		}
 	}

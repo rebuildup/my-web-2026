@@ -33,7 +33,11 @@ const fixture = (name) => JSON.parse(readFileSync(join(FIXTURES, name), 'utf8'))
 const NOW = new Date('2026-10-18T00:00:00Z');
 
 const gateWithException = parseGateDeclaration(fixture('gate-with-exception.json'));
+const gateWithMismatchedException = parseGateDeclaration(
+	fixture('gate-with-mismatched-exception.json'),
+);
 const blockingFindings = parseAdvisoryPayload(fixture('blocking.json'));
+const multiPackageFindings = parseAdvisoryPayload(fixture('multi-package.json'));
 const auditGate = parseGateDeclaration(
 	JSON.parse(readFileSync(join(HERE, '..', 'quality', 'dependency-advisory-gate.json'), 'utf8')),
 );
@@ -89,6 +93,28 @@ describe('buildReportModel', () => {
 		assert.equal(model.excepted[0].trackingIssue, '470');
 		assert.equal(model.excepted[0].daysRemaining, 105);
 	});
+
+	it('shows a record that matches no finding as what it is, next to the finding it failed to cover', () => {
+		const result = evaluateAdvisories({
+			findings: multiPackageFindings,
+			gate: gateWithMismatchedException,
+			now: NOW,
+		});
+		const model = buildReportModel(result, meta);
+		assert.equal(model.status, 'fail');
+		assert.equal(model.blockingCount, 2);
+		assert.equal(model.excepted.length, 0);
+		assert.equal(model.mismatched.length, 1);
+		assert.equal(model.mismatched[0].declared, 'fixture-server-bundle/critical');
+		assert.equal(
+			model.mismatched[0].reportedAs,
+			'fixture-runtime/critical, fixture-server-core/critical',
+		);
+		const html = renderReport(result, model);
+		assert.ok(html.includes('Exception records that match no finding (1)'));
+		assert.ok(html.includes('suppressed nothing'));
+		assert.ok(html.includes('fixture-server-bundle/critical'));
+	});
 });
 
 describe('renderReport — self-contained document', () => {
@@ -133,6 +159,20 @@ describe('renderReport — self-contained document', () => {
 		assert.ok(unavailable.includes('Blocking (unknown)'));
 		assert.doesNotMatch(unavailable, /Blocking \(0\)/);
 		assert.doesNotMatch(unavailable, /advisory data<\/dt><dd>read from the source/);
+	});
+});
+
+describe('renderReport — unavailable data must not carry upstream bytes', () => {
+	it('renders the withheld-body reason, not the upstream message', () => {
+		const result = evaluateUnavailableData({
+			gate: auditGate,
+			now: NOW,
+			reason:
+				'pnpm audit --json returned an error document ERR_PNPM_AUDIT_NO_ADVISORY_DOCUMENT; the response body is withheld (see runbook section 5)',
+		});
+		const html = renderReport(result, buildReportModel(result, meta));
+		assert.ok(html.includes('UNAVAILABLE — pnpm audit --json returned an error document'));
+		assert.ok(html.includes('the response body is withheld'));
 	});
 });
 

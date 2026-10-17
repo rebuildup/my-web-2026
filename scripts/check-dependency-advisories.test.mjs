@@ -16,10 +16,13 @@ import { fileURLToPath } from 'node:url';
  *      2 usage, 3 advisory data unavailable.
  *   2. A registry error document, an unparsable response and a
  *      non-blocking enforcement mode all still fail closed — none of
- *      them can print a zero-finding claim.
+ *      them can print a zero-finding claim, and none of them echoes the
+ *      upstream body into a log or an artifact.
  *   3. `--enforce` decides as `block` without editing the reviewed
  *      declaration, which is the escalation switch in the runbook.
- *   4. Nothing from the environment reaches the output: the gate runs
+ *   4. A usage mistake exits 2. `--now garbage` and `--input /nope` are
+ *      operator typos, and must not be reported as a security verdict.
+ *   5. Nothing from the environment reaches the output: the gate runs
  *      with the real secret-shaped variables present, and none of them
  *      appear in stdout, stderr or the HTML report.
  *
@@ -118,6 +121,54 @@ describe('check-dependency-advisories — exit codes', () => {
 		assert.match(stdout, /blocking after exceptions: 0/);
 		assert.match(stdout, /approved exceptions in force \(1\)/);
 	});
+
+	it('keeps blocking the package an approval does not name, and says why', () => {
+		// One GHSA, two packages, one approved record. The second package
+		// is not covered, so the gate must keep stopping on it and must
+		// not report the record as covering the whole advisory.
+		const { status, stdout } = run(
+			fixtureArgs('multi-package.json', [
+				'--gate',
+				gate('gate-with-split-exception.json'),
+				'--enforce',
+			]),
+		);
+		assert.equal(status, EXIT.BLOCKED);
+		assert.match(stdout, /dependency advisory gate: FAIL/);
+		assert.match(stdout, /\[critical\] GHSA-fixt-fxmp-fxmp fixture-server-core/);
+		assert.match(stdout, /approved exceptions in force \(1\)/);
+		assert.match(stdout, /\[critical\] GHSA-fixt-fxmp-fxmp fixture-runtime/);
+		assert.ok(!stdout.includes('DATA UNAVAILABLE'));
+	});
+
+	it('reports a record that matches no finding without failing the scan as unreadable', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'dep-audit-report-'));
+		try {
+			const reportPath = join(dir, 'report.html');
+			const { status, stdout } = run(
+				fixtureArgs('multi-package.json', [
+					'--gate',
+					gate('gate-with-mismatched-exception.json'),
+					'--enforce',
+					'--report',
+					reportPath,
+				]),
+			);
+			assert.equal(status, EXIT.BLOCKED);
+			assert.match(stdout, /exception records that match no finding \(1\)/);
+			assert.match(stdout, /declares fixture-server-bundle\/critical/);
+			assert.match(stdout, /reports fixture-runtime\/critical, fixture-server-core\/critical/);
+			assert.match(stdout, /the record suppressed nothing/);
+			assert.equal(stdout.match(/\[critical\] GHSA-fixt-fxmp-fxmp/g).length, 2);
+			assert.ok(!stdout.includes('DATA UNAVAILABLE'));
+			assert.ok(!stdout.includes('UNKNOWN, not zero'));
+			const html = readFileSync(reportPath, 'utf8');
+			assert.ok(html.includes('Exception records that match no finding (1)'));
+			assert.ok(html.includes('suppressed nothing'));
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
 });
 
 describe('check-dependency-advisories — data fetch failure is never zero', () => {
@@ -134,6 +185,28 @@ describe('check-dependency-advisories — data fetch failure is never zero', () 
 		const { status, stdout } = run(fixtureArgs('non-json-response.txt'));
 		assert.equal(status, EXIT.DATA_UNAVAILABLE);
 		assert.match(stdout, /did not return JSON/);
+	});
+
+	it('exits 2 — not 1 — for a usage typo, instead of crashing into a security verdict', () => {
+		// Exit 1 means "blocking advisories outstanding". A mistyped date
+		// or a missing file is an operator mistake; an uncaught exception
+		// there would be a stack trace under a security exit code.
+		const badDate = run(['--input', join(FIXTURES, 'clean.json'), '--now', 'garbage']);
+		assert.equal(badDate.status, EXIT.USAGE);
+		assert.match(badDate.stderr, /--now must be a YYYY-MM-DD date/);
+		assert.ok(!badDate.stdout.includes('dependency advisory gate'));
+
+		const missing = run(['--input', join(FIXTURES, 'does-not-exist.json')]);
+		assert.equal(missing.status, EXIT.USAGE);
+		assert.match(missing.stderr, /cannot read the advisory document/);
+		assert.ok(!missing.stdout.includes('dependency advisory gate'));
+
+		const unreadableStdin = spawnSync(
+			process.execPath,
+			[SCRIPT, '--input', '/dev/null/nope', '--now', '2026-10-18'],
+			{ cwd: REPO_ROOT, encoding: 'utf8' },
+		);
+		assert.equal(unreadableStdin.status, EXIT.USAGE);
 	});
 
 	it('exits 3 even under audit enforcement, which is otherwise non-blocking', () => {
@@ -242,6 +315,30 @@ describe('check-dependency-advisories — secret posture', () => {
 		assert.ok(!stderr.includes(CANARY));
 	});
 
+	it('never copies an upstream response body into stdout or the report', () => {
+		// The unavailable verdict is the one branch that would otherwise
+		// carry raw upstream text into a CI log and into a 90-day artifact.
+		// `upstream-echo.txt` is not JSON and carries a token-shaped string
+		// to prove the body is withheld rather than merely truncated.
+		const dir = mkdtempSync(join(tmpdir(), 'dep-audit-report-'));
+		try {
+			const reportPath = join(dir, 'report.html');
+			const { status, stdout, stderr } = run(
+				fixtureArgs('upstream-echo.txt', ['--report', reportPath]),
+			);
+			assert.equal(status, EXIT.DATA_UNAVAILABLE);
+			assert.ok(!stdout.includes('npm_fixtureTokenValueThatMustNotBeCopied'));
+			assert.ok(!stderr.includes('npm_fixtureTokenValueThatMustNotBeCopied'));
+			assert.ok(
+				!readFileSync(reportPath, 'utf8').includes('npm_fixtureTokenValueThatMustNotBeCopied'),
+			);
+			assert.ok(!stdout.includes('registry.npmjs.org'));
+			assert.match(stdout, /the response body is withheld/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
 	it('keeps the canary out of the HTML report as well', () => {
 		const dir = mkdtempSync(join(tmpdir(), 'dep-audit-report-'));
 		try {
@@ -285,6 +382,13 @@ describe('parseArgs', () => {
 			parseArgs(['--gate', 'quality/dependency-advisory-gate.json']).gatePath,
 			REPOSITORY_GATE,
 		);
+	});
+
+	it('parses --now into a UTC date and rejects every other shape', () => {
+		assert.equal(parseArgs(['--now', '2026-10-18']).now.toISOString(), '2026-10-18T00:00:00.000Z');
+		assert.equal(parseArgs([]).now, null);
+		assert.throws(() => parseArgs(['--now', 'yesterday']));
+		assert.throws(() => parseArgs(['--now']));
 	});
 });
 

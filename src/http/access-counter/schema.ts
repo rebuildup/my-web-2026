@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { formatIssues } from '../validation';
 
 /**
  * Access counter — types + validators (Ticket F, branch 38).
@@ -60,6 +61,40 @@ export const HitInput = z.object({
 	key: z.string().min(1).max(MAX_COUNTER_KEY_LEN),
 	session_id: z.string().min(1).max(MAX_SESSION_ID_LEN),
 });
+
+/** Parsed and validated `POST /api/v1/access/hit` body. */
+export interface HitInputValue {
+	key: string;
+	session_id: string;
+}
+
+/**
+ * Parse the `/hit` request body.
+ *
+ * Two dimensions are checked in one place so the router cannot forget
+ * one of them: `HitInput` covers **type** + coarse size, and the
+ * `validate*` functions cover **format** (no whitespace / control
+ * characters). This throws on rejection; the boundary turns the throw
+ * into the defined `400 invalid_body` envelope
+ * (`src/http/validation.ts#jsonBody`).
+ *
+ * Before Issue #450 the router called `validateCounterKey` /
+ * `validateSessionId` outside any try/catch, so a body carrying a
+ * space in `key` escaped as a `500 internal_error`.
+ */
+export function parseHitBody(body: unknown): HitInputValue {
+	if (!body || typeof body !== 'object') {
+		throw new Error('body must be a JSON object');
+	}
+	const parsed = HitInput.safeParse(body);
+	if (!parsed.success) {
+		throw new Error(formatIssues(parsed.error));
+	}
+	return {
+		key: validateCounterKey(parsed.data.key),
+		session_id: validateSessionId(parsed.data.session_id),
+	};
+}
 
 export interface AccessCounterRow {
 	key: string;

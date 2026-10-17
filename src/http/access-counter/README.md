@@ -12,6 +12,24 @@ access counter. Built in Ticket F (branch 38; see ADR-0012).
 
 Both routes require a Better Auth api-key (`Authorization: Bearer …`).
 
+### Rejections
+
+Boundary validation is owned by `src/http/validation.ts`; see
+[`docs/security/input-validation.md`](../../../docs/security/input-validation.md).
+Every rejection below carries `{ error, reason }` and is produced
+before any D1 statement runs.
+
+| Status | Body | Cause |
+|--------|------|-------|
+| 400 | `invalid_body` | `POST` body is not a JSON object, is not JSON, or a field is outside its grammar (e.g. `key` with a space or a control character) |
+| 400 | `invalid_key` | `:key` path segment outside the counter-key grammar |
+| 401 | `missing_authorization` / `invalid_api_key` | auth failed |
+| 403 | `missing_scope` | key lacks the required scope |
+| 405 | `method_not_allowed` | verb not in `Allow` (`POST` on `/hit`, `GET` on `/count/:key`) |
+| 413 | `payload_too_large` | JSON body over `MAX_JSON_BODY_BYTES` (16 KiB) |
+| 415 | `unsupported_media_type` | declared `Content-Type` is not `application/json` / `application/*+json` (a wildcard or an absent header is accepted; `curl --data` sends `application/x-www-form-urlencoded` and is refused — `docs/security/input-validation.md` §4) |
+| 429 | `rate_limited` | budget exhausted |
+
 ### POST /hit
 
 Request:

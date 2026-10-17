@@ -252,6 +252,9 @@ Cloudflare Workers Builds observes `main` push, builds, runs
 Smoke #2 — versioned-runtime smoke (POST #91-merge/deploy; automated)
        │  `pnpm run e2e:prod` — the **core** production smoke only
        │  (canonical surfaces + the versioned contract) +
+       │  representative routes with their documented default
+       │  states (Issue #500 — see "Representative route coverage"
+       │  below) +
        │  anonymous `GET /admin/login` returns 200 (the #106 fix
        │  in production: login form reachable without auth gate).
        │  `wrangler secret list` confirms both bindings still present.
@@ -320,6 +323,68 @@ Two distinct preconditions, do not conflate them:
 | --- | --- |
 | `media.rebuildup.dev` resolves (R2 custom domain attached) | **Pre-release preparation** (#82). Can and should be attached + verified before #91 so it is not a surprise during the publication window. |
 | Portfolio candidates published (`visibility=public`) | **After** `--operation=publish`. Until then `e2e/prod-portfolio.spec.ts` cannot pass. |
+
+## Representative route coverage (Issue #500)
+
+Both automated smokes run `e2e/prod-smoke.spec.ts`, and since Issue
+#500 that spec also registers the five **representative routes**:
+
+| Route | Default state the smoke requires |
+| --- | --- |
+| `/` | six default sections render, and the reactions widget is configured (never the "reactions disabled" placeholder) |
+| `/about` | the repo-controlled identity snapshot renders (identity heading + five narrative sections) |
+| `/portfolio` | exactly one of the two documented branches: `catalogue-empty` (empty state, no card) or `catalogue-published` (at least one card, no empty state) |
+| `/tools` | every manifest Tool renders as one row, each classified as integrated (linked) or `host_disabled` (Coming soon badge), and the row set equals `src/tools/manifest.json` |
+| `/api/v1/health` | `status=ok`, `service=my-web-2026`, `layer=external-boundary`, and a well-formed semantic `version` |
+
+Each route is also checked for its **short navigation path**: `/` offers a
+one-click in-site entry to `/about`, `/portfolio`, and `/tools`, and the
+two `PublicNav` pages among the representative set (`/about`,
+`/portfolio`) link to every sibling representative route.
+
+Where the contract lives
+------------------------
+
+The routes, expectations, default states, and navigation paths are DATA
+in [`scripts/prod-smoke-routes.mjs`](../../scripts/prod-smoke-routes.mjs).
+`auditRoute()` there is a pure classifier;
+[`scripts/prod-smoke-routes.test.mjs`](../../scripts/prod-smoke-routes.test.mjs)
+feeds it fabricated observations offline (no network, no workerd, no
+browser), so the smoke's pass/fail logic cannot silently degrade into
+"always green". `e2e/prod-smoke.spec.ts` is the read-only browser adapter.
+When a smoke goes red, the report names the absolute URL and every
+individual defect; an empty defect list is the only pass.
+
+Read-only boundary
+------------------
+
+The representative-route coverage issues **GET only**. It writes nothing
+to D1, nothing to R2, performs no auth mutation, and clears no cookie.
+The anonymous reaction mutation elsewhere in `e2e/prod-smoke.spec.ts` is
+the one deliberate write in the file; it predates #500, it proves the
+`mw_actor_id` cookie is issued with `Secure`, and it is deliberately NOT
+part of the representative-route registry.
+
+Outbound traffic originates only at the canonical production origin. The
+pages themselves reference Google Fonts, GA4, and `media.rebuildup.dev`;
+the smoke does not exercise or assert on any of them, so it never becomes
+a third-party availability contract.
+
+What it deliberately does not check
+----------------------------------
+
+- `/portfolio/<slug>` detail pages and R2 media. Those remain the G15
+  post-publication contract in `e2e/prod-portfolio.spec.ts`, gated by the
+  publication window below.
+- Anything authenticated. `/admin/*` stays outside the representative set;
+  `GET /admin/login` is still asserted separately, with its own documented
+  phase asymmetry.
+- Load or latency budgets. This is a correctness smoke, not a performance
+  gate.
+- Page composition work. `/tools` currently has no in-site link back to
+  `/` because Issues #199 / #288 keep site chrome off the home and Tools
+  surfaces. That is an information-architecture fact owned by the routes,
+  recorded rather than silently "fixed" here.
 
 ## Diagnosing a failed build (Issue #247)
 

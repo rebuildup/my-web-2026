@@ -287,6 +287,10 @@ exist:
 - `pnpm run e2e:prod` runs `e2e/prod-smoke.spec.ts` against the
   canonical production URL `https://rebuildup.dev` (Issue #43 /
   ADR-0014). Operator-initiated only — never gated by regular CI.
+  Since Issue #500 it also registers the five representative routes
+  (`/`, `/about`, `/portfolio`, `/tools`, `/api/v1/health`) and
+  checks each one's HTTP response, short navigation path, and
+  documented default state, read-only.
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
@@ -302,6 +306,15 @@ The E2E suite asserts the four public surfaces documented in
 - `GET /api/v1/health` (200, `{status:'ok',...}`)
 - `GET /api/v1/db/ping` (200, `{one:1,...}` against the D1 binding)
 - `GET /api/v1/media/ping` (404, `key_not_found` against the R2 binding)
+
+`playwright.config.ts` ignores every `prod-*.spec.ts` when
+`PLAYWRIGHT_BASE_URL` points at localhost, so `pnpm run e2e` can never
+reach the canonical production origin. The production representative-route
+contract is DATA in `scripts/prod-smoke-routes.mjs`; its pass/fail
+classifier `auditRoute()` is unit-tested offline by
+`scripts/prod-smoke-routes.test.mjs` (wired into `pnpm run test`), so the
+smoke logic is verified without a network, without workerd, and without a
+browser.
 
 ## Format and lint
 

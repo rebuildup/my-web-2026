@@ -192,8 +192,13 @@ production domain to be wired (Issue #43 / ADR-0014):
    not documented as canonical.
 
    After Cloudflare reports the production build/deployment successful, run the
-   production smoke and verify `/`, `/admin/login`, `/api/v1/health`,
-   reactions, and the access counter on the canonical origin.
+   production smoke and verify `/`, `/about`, `/portfolio`, `/tools`,
+   `/admin/login`, `/api/v1/health`, reactions, and the access counter on
+   the canonical origin. The five representative routes (`/`, `/about`,
+   `/portfolio`, `/tools`, `/api/v1/health`) carry their own documented
+   default-state contract since Issue #500 — see
+   [`docs/runbook/cloudflare-workers-builds.md`](runbook/cloudflare-workers-builds.md)
+   § "Representative route coverage".
 
 ## 0.1.0 Foundation backlog
 

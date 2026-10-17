@@ -464,9 +464,10 @@ test.describe('production representative routes (Issue #500)', () => {
 	test('short navigation path — every representative page route is one click from /', async ({
 		page,
 	}) => {
-		await page.goto(`${CANONICAL_ORIGIN}/`, { waitUntil: 'domcontentloaded' });
-
 		for (const entry of ONE_CLICK_ENTRIES) {
+			// Re-enter the source surface each round: the previous round
+			// followed its link, so the page is no longer on `entry.from`.
+			await page.goto(`${CANONICAL_ORIGIN}${entry.from}`, { waitUntil: 'domcontentloaded' });
 			const link = page.locator(entry.selector).first();
 			await expect(
 				link,

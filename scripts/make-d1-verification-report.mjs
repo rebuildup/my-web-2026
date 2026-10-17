@@ -6,8 +6,18 @@
  * renders the result as a static HTML page (a "CI report" view) at
  * `.tmp/d1-parameter-report.html`, and screenshots that page with the
  * Playwright chromium already installed for the E2E suite into
- * `docs/verification/security/d1-parameter-tests.png` — the path Issue
- * #452 requires in the PR body.
+ * `docs/verification/security/d1-parameter-tests.webp` — the path Issue
+ * #452 requires in the PR body, with the `.webp` extension substituted for
+ * the Issue's literal `.png` (a committed PNG screenshot is 450 KB and
+ * bloats the repository for no evidentiary gain).
+ *
+ * Screenshot output: Playwright can only encode PNG/JPEG, so the capture is
+ * taken into a Buffer and re-encoded with the existing `sharp`
+ * devDependency as `resize({ width: 1600, withoutEnlargement: true })`
+ * followed by `webp({ quality: 80 })`. No intermediate PNG is written to disk
+ * (`sharp` only sees the in-memory Buffer), and the target extension is
+ * asserted to be `.webp` so a PNG can never drift back into `docs/`.
+ * `sharp` stays a devDependency and is never imported by the Worker / SSR.
  *
  * This script is committed so the required screenshot has a reviewable,
  * reproducible source instead of an uncommitted helper. It reads no
@@ -17,20 +27,22 @@
  *   node scripts/make-d1-verification-report.mjs
  *   pnpm run verify:d1-binding-screenshot   # same thing
  *
- * Intermediate artefacts stay in `.tmp/` (gitignored); only the PNG is
+ * Intermediate artefacts stay in `.tmp/` (gitignored); only the WebP is
  * committed. Chromium must be present — `pnpm run e2e:install`.
  */
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = join(ROOT, '.tmp');
 const JSON_REPORT = join(TMP, 'd1-parameter-results.json');
 const HTML_REPORT = join(TMP, 'd1-parameter-report.html');
-const PNG_TARGET = join(ROOT, 'docs/verification/security/d1-parameter-tests.png');
+const WEBP_TARGET = join(ROOT, 'docs/verification/security/d1-parameter-tests.webp');
+const WEBP_WIDTH = 1600;
+const WEBP_QUALITY = 80;
 
 const SUITE = 'test/integration/d1-parameter-binding.test.ts';
 
@@ -193,27 +205,43 @@ ${testRows}
     <b>拒否の意味:</b> バリデータが 400 等で拒否し、D1 ステートメントが 1 件も実行されない（= SQLite に到達していない）。
   </p>
 
-  <footer>my-web-2026 · Issue #452 · report generated locally from the workerd test pool by scripts/make-d1-verification-report.mjs (no CI token, no production D1/R2).</footer>
+  <footer>my-web-2026 · Issue #452 · report generated locally from the workerd test pool by scripts/make-d1-verification-report.mjs (no CI token, no production D1/R2) · committed as docs/verification/security/d1-parameter-tests.webp (width ≤ ${WEBP_WIDTH}, quality ${WEBP_QUALITY}).</footer>
 </body>
 </html>
 `;
 }
 
 async function shoot(htmlPath, target) {
+	if (extname(target) !== '.webp') {
+		throw new Error(`refusing to write a non-WebP verification artefact: ${target}`);
+	}
 	const { chromium } = await import('@playwright/test');
+	const { default: sharp } = await import('sharp');
 	mkdirSync(dirname(target), { recursive: true });
 	const browser = await chromium.launch();
 	const page = await browser.newPage({
 		viewport: { width: 1280, height: 1400 },
 		deviceScaleFactor: 1,
 	});
-	await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'load' });
-	await page.screenshot({ path: target, fullPage: true });
-	await browser.close();
+	try {
+		await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'load' });
+		// Playwright cannot emit WebP, so capture into a Buffer (never a file)
+		// and re-encode with sharp. The PNG bytes stay in memory only.
+		const capture = await page.screenshot({ fullPage: true });
+		const info = await sharp(capture)
+			.resize({ width: WEBP_WIDTH, withoutEnlargement: true })
+			.webp({ quality: WEBP_QUALITY })
+			.toFile(target);
+		return info;
+	} finally {
+		await browser.close();
+	}
 }
 
 const report = run();
 writeFileSync(HTML_REPORT, render(report));
 process.stdout.write(`wrote ${HTML_REPORT}\n`);
-await shoot(HTML_REPORT, PNG_TARGET);
-process.stdout.write(`wrote ${PNG_TARGET}\n`);
+const info = await shoot(HTML_REPORT, WEBP_TARGET);
+process.stdout.write(
+	`wrote ${WEBP_TARGET} (webp ${info.width}x${info.height}, ${info.size} B, quality ${WEBP_QUALITY})\n`,
+);

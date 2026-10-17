@@ -1,0 +1,126 @@
+# エラー状態のギャラリー — 404 / 503 / 依存取得失敗の復帰導線 (#501)
+
+- 対象: `src/editorial/error-states/**`（failure surface の contract + 3 component）と、その router への結線 `src/router.tsx`
+- Issue: #501（`ops(reliability): エラーページの復帰・再試行の導線を整備`）
+- 成果物: `docs/verification/ops/error-state-gallery.webp`
+- 状態: **本 Issue で実装・検証済み**。残る未決事項は §7 に列挙
+
+## 1. 何を撮ったか（条件・対象範囲）
+
+| 項目 | 値 |
+| --- | --- |
+| 描画対象 | `src/editorial/error-states/error-states.stories.tsx` の `Editorial/ErrorStates` → `Gallery`（shipped story を harness が直接 import して描画） |
+| capture 手段 | `node scripts/capture-error-state-gallery.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
+| 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの。すなわち実際の `src/styles.css` |
+| viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影） |
+| 生成物サイズ | 1440 x 2768 px、**114 kB** WebP（quality 80、budget 300 kB） |
+| Node / OS | v26.x / darwin arm64 |
+| 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
+| 本番非破壊 | 既定で外部通信なし。local harness build と loopback 配信のみ。deploy / remote binding / secret 値の読み出しは無い |
+
+Issue は `.png` 経路を指定しているが、本リポジトリの他の検証 artefact に合わせて **`.webp` を commit** した。`scripts/capture-error-state-gallery.mjs` は `.webp` 以外の出力先を拒否し、中間 PNG は削除する。
+
+## 2. 画面が示している条件
+
+画像の 3 段が、そのまま 3 つの failure surface に対応する。
+
+1. `not_found` — route が一致しない、または loader が `notFound()` を投げたとき。HTTP 404。
+   - 提示: 「戻る」+ **公開面 5 つすべて**（`/` `/portfolio` `/about` `/tools` `/contact`）。
+   - **retry は無い**。存在が確定していない URL を再要求しても成功しないため。押しても効かない操作は訪問者に「ボタンは無視される」という習慣を养成するだけ、という判断。
+2. `service_unavailable` — loader か SSR render が throw したとき（プラットフォーム側が応答できない）。
+   - 提示: **再試行**（第一導線）+「戻る」+ **binding を読まない面のみ**（`/tools` `/contact`）。
+   - 公開文言は binding 名を**名指ししない**。公開面はどちらの binding が壊れたか知らないので、断定すれば推測になるため。
+3. `dependency_failure` — ページ自体は描画できたが、前提データの取得が失敗したとき。
+   - 提示: 再試行（第一導線）+「戻る」+ binding を読まない面のみ。
+   - 外部サービスの identity / payload / SLA は公開しない。
+
+## 3. 公開情報 / 非公開情報の監査表
+
+宣言は `src/editorial/error-states/contract.ts` にあり、テストで固定している。
+
+### 公開する情報
+
+| 項目 | 値 |
+| --- | --- |
+| failure kind と status label | `404` / `503` / `Dependency` |
+| 説明文言 | 日本語 + 英語（日 → 英、` / ` 区切り。repo 内固定定数、リクエストごとの生成なし） |
+| 復旧導線 | back / retry / alternative（kind ごとに宣言。宣言していない操作は描かない） |
+| 代替面 | href + label（`PUBLIC_NAV_ITEMS` と同じ 5 面の部分集合。絶対 URL は出さない） |
+| 訪問者個人情報 | **なし**（session / account / IP / UA / referrer を一切出さない） |
+
+### 公開しない情報
+
+| クラス | 備考 |
+| --- | --- |
+| throwable（message / stack / `cause`） | component に `error` prop が存在しない。描画経路が構造的に無い |
+| binding 詳細（SQL / row count / D1 database id / R2 key） | 公開文言は binding 名すら出さない |
+| runtime 識別子（request id / colo / Worker version / env 名） | 出さない |
+| 第三者サービスの identity / SLA | promoted な外部 integration が存在しない（`docs/domain/integrations.md`） |
+
+### 既知の例外（測定済み・隠していない）
+
+**SSR ハイドレーション payload `$_TSR` には、失敗した match の `error.message` が乗る。**
+
+- 経路: TanStack Router の `Match.tsx` が match state を payload に載せる際、フレームワーク同梱の `ShallowErrorPlugin` が `Error` を `{ message }` のみに直列化する（`NODE_ENV` による分岐は無い）。
+- つまり **stack と `cause` は出ないが、message は page source に出る**。`D1_ERROR: no such table: portfolio_project` のような binding 詳細がこれに当たる。
+- component 側から除去する手段は無い。唯一の手段は custom `startInstance` だが、AGENTS.md §2 により ADR 無しでは導入不可。
+- `test/integration/error-states.test.ts` が両方を固定している。(a) 訪問者が読む document には一切含まれない / (b) payload は `new Error("<message>")` 1 個のみで stack を含まない。将来フレームワークが redaction を入れたら、または payload に情報を増やしたら、このテストが落ちる。
+
+## 4. 外部通信と依存の監査
+
+### 失敗 document が出しうる外部通信
+
+| 相手 | 通信 | 起動側 | 可読性に必要か | 根拠 |
+| --- | --- | --- | --- | --- |
+| Google Fonts | stylesheet + font file | browser | **不要** | `src/routes/__root.tsx`（`media="print"` の非同期 CSS + inline flip） |
+| Google Analytics 4 | measurement script + page_view | browser | **不要** | `src/editorial/analytics/GoogleAnalytics.tsx`（ID は任意） |
+| 第三者 API | **無し** | — | — | `docs/domain/integrations.md`（Current state: promoted なし） |
+
+第三者をすべて block しても、failure メッセージはプラットフォームのフォントで読める。上表 3 行は `contract.ts#ERROR_STATE_EXTERNAL_COMMUNICATIONS` で宣言し、テストが「すべて `requiredForMessage: false`」「server 起点の行は 0 件」を固定する。
+
+### 公開面と platform binding の依存表
+
+| 面 | render 時の binding 依存 | 根拠 |
+| --- | --- | --- |
+| `/` | D1（access counter / reactions）、R2（media） | `src/routes/index.tsx` |
+| `/portfolio` | D1 | `src/portfolio/public.ts` |
+| `/about` | D1（experience subset） | `src/about/public.ts` → `src/portfolio/load.ts` |
+| `/tools` | **無し**（build 時に `manifest.json` を import） | `src/tools/registry.ts` |
+| `/contact` | **無し**（build 時に `channels.json` を import） | `src/contact/public.ts` |
+
+503 / dependency_failure が代替面として提示するのは「依存が 0」の面だけ。これは推測ではなく上記 loader の実装から導出した表であり、loader を変更する PR は同じ commit でこの表を更新する義務がある（`contract.ts#PUBLIC_SURFACE_DEPENDENCIES` のコメントに明記）。
+
+## 5. SSR での実測（CI が常時回す）
+
+`test/integration/error-states.test.ts`（`SELF.fetch` → `src/server.ts` → TanStack Start → `getRouter()`）。スクリーンショットだけでは証明にならないので、実パイプライン側の観測を別途固定する。
+
+| 観測 | 実測 |
+| --- | --- |
+| 未一致 URL の status | **404** |
+| 未一致 URL の body | `<!DOCTYPE html>` + `<h1>` + `data-error-state="not_found"` + back link + 代替 5 link |
+| framework 既定 `<p>Not Found</p>` | **無い**（旧既定の消滅） |
+| loader 実失敗（`/portfolio/<unknown>`、local D1 に `portfolio_project` が無い） | status 500、body は **503 surface**（`<h1>` + 再試行 anchor） |
+| framework 既定 "Something went wrong!" と `<pre>` 内の例外 | **無い** |
+| 訪問者が読む document に throwable | **無い** |
+| route 固有 404 の優先 | `/tools/<unknown>` は `data-testid="tools-not-found"`（router 既定の 404 state ではない） |
+| 正常 route の非回帰 | `/tools` は 200、`data-error-state` なし |
+| cache | 失敗 document も `cache-control: no-cache`（`src/server.ts#applyHtmlCachePolicy` の HTML 分岐を継承） |
+
+loader 失敗が 500 で返るのは TanStack Router の仕様であり、本 Issue のスコープ外。`service_unavailable` の `503` は「条件」のラベルであり、response status の対応は router レベルの設計判断が要るため §7 に送る。
+
+## 6. 残存リスク
+
+- 失敗 surface は root layout の中に載るだけで、画面全体を覆う UI は無い。`role="alert"` を付けていないため、route error としてスクリーンリーダーへ announce されることは無い（回復導線は視覚・キーボード操作の双方から到達できる）。
+- 代替面の表（§4）は手動維持であり、loader を変更した PR が更新し忘れると「開ける」と宣言した面が失敗する（契約違反であって security 違反ではないが、見落としやすい）。
+- `retry` は hydration 前のクリックでは通常の document 遷移になる（router の `reset` は hydration 後にしか存在しない）。これは「JS 無しでも復帰できる」ための意図的な設計だが、loader が副作用を持つ route では二重実行になりうる。
+- 検証画像は Storybook ではなく生成 harness で撮っている（理由は §7 #5）。harness は `.tmp/` に生成されるため、repo には残らない。
+
+## 7. 未決事項（owner 決定が要るもの / follow-up）
+
+| # | 内容 | なぜこの Issue で閉じないか |
+| --- | --- | --- |
+| 1 | `$_TSR` payload に `error.message` が乗る（§3） | component からは除去不能。loader 側で throwable を正規化するか、ADR を伴う framework レベルの変更が必要 |
+| 2 | loader 失敗の response status を 503 にしたい | 外部契約の変更（monitoring / cache / retry 挙動に影響）。router レベルの設計判断が要る |
+| 3 | `DependencyFailureState` の呼び出し元が無い | promoted な外部 integration が存在しないため、page レベルで upstream 失敗を報告する route が無い。contract / story / test として出荷し、捏造した失敗経路には繋いでいない |
+| 4 | 依存表（§4）の手動同期 | loader 変更と同一 commit での更新が運用ルール。自動生成は現 roadmap 外 |
+| 5 | Storybook の静的 build が manager-only | `@storybook/react-vite` がプロジェクトの `vite.config.ts` を merge し、Cloudflare / TanStack plugin が出力を奪う。本 Issue の capture は生成 harness で回避した。build 修正は別 ticket |

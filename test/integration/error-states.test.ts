@@ -154,11 +154,15 @@ describe('failure surfaces over the real SSR pipeline (Issue #501)', () => {
 		// test instead of silently changing the published-information surface.
 		const { html } = await fetchHtml(`/portfolio/${UNKNOWN_PROJECT_SLUG}`);
 		const payload = hydrationPayload(html);
-		expect(payload).toContain('D1_ERROR: no such table: portfolio_project');
-		// `ShallowErrorPlugin` serialises `{ message }` and nothing else.
-		expect(payload).not.toContain('SQLITE_ERROR');
-		expect(payload).not.toContain('    at ');
-		expect(payload).not.toContain('stack');
+		// `ShallowErrorPlugin` serialises exactly `{ message }`: the payload
+		// carries one `new Error("…")` whose argument is the loader's message
+		// and nothing else.
+		const serialized = /new Error\((".*?")\)/.exec(payload)?.[1];
+		expect(serialized).toBe('"D1_ERROR: no such table: portfolio_project: SQLITE_ERROR"');
+		expect([...payload.matchAll(/new Error\(/g)]).toHaveLength(1);
+		// No stack frames and no nested `cause` travel with it.
+		expect(payload).not.toMatch(/\n\s+at /);
+		expect(payload).not.toContain('cause');
 	});
 
 	it('lets a route-specific 404 win over the shared surface', async () => {

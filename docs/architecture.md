@@ -37,7 +37,13 @@ src/
 ├─ editorial/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
-│  └─ primitives/
+│  ├─ primitives/
+│  └─ error-states/
+│     ├─ contract.ts
+│     ├─ ErrorState.tsx
+│     ├─ NotFoundState.tsx
+│     ├─ ServiceUnavailableState.tsx
+│     └─ DependencyFailureState.tsx
 ├─ cloudflare/
 │  └─ health.ts
 ├─ http/
@@ -86,6 +92,14 @@ employment-facing Portfolio surface の data model と publication contract を�
 raw / semantic tokens と、その visual language の primitive をまとめる。
 これは「全 UI component の共有置き場」ではない。別の visual language が必要に
 なった場合、観測された同一 obligation がない限り自動的には統合しない。
+
+`error-states/`（Issue #501）は failure surface の**公開契約**を所有する。
+1 kind につき 1 component（404 / 503 / 依存取得失敗）、共有 shell、そして
+`contract.ts` の宣言 — 訪問者に何を出すか / 何を絶対に出さないか /
+どの公開面なら開けるか。styling ではなく情報公開の判断で変わるため、
+primitive と同列の別 obligation として切っている。結線先は
+`src/router.tsx` の `defaultNotFoundComponent` / `defaultErrorComponent`
+（解決順が route 単位のため、root route に置いても子 route の失敗には届かない）。
 
 ### `cloudflare/`
 

@@ -85,3 +85,20 @@ on `release-x-y-z`. Reconcile by:
 2. Re-validate the affected downstream branches at the new SHA.
 3. Close the relevant Issues only after the landing is confirmed
    on `release-x-y-z`.
+
+## Failure surfaces (Issue #501)
+
+A public route that cannot answer the requested page renders a designed
+failure surface instead of a blank page or a framework default. Three
+kinds exist, all owned by `src/editorial/error-states/`:
+
+| Symptom in a browser | Surface | What to do |
+| --- | --- | --- |
+| URL has no page, or a loader called `notFound()` | 404 state (back + the five public surfaces) | check the URL / the link that produced it |
+| the page itself failed to render (loader or SSR threw) | 503 state (retry first, then back) | retry; if it persists, check the D1 / R2 probes on `/api/v1/db/ping` and `/api/v1/media/ping` |
+| the page rendered but a data read failed | dependency state (retry, plus the two surfaces that read no binding) | retry; check upstream availability |
+
+Route-specific 404s still win over the shared surface (e.g. `/tools/<slug>`).
+The published / withheld contract, the outbound-communication audit and the
+measured limitation in the SSR hydration payload are documented in
+`docs/verification/ops/error-state-gallery.md`.

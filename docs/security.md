@@ -142,7 +142,9 @@ loaders already degrade to an empty widget instead of throwing.
   real boundary (real middleware, real rate-limit binding, real D1)
   for accepted, rejected, and failed requests — including a real D1
   failure produced by dropping the `reactions` table, and injected
-  D1 / R2 binding failures for the 503 branch.
+  D1 / R2 binding failures for the 503 branch. The same suite
+  asserts the rendered `/portfolio` screen: the D1 message does not
+  appear in the HTML, and `portfolio_unavailable (ref)` does.
 - Screenshot:
   [`docs/verification/security/error-redaction-page.png`](verification/security/error-redaction-page.png),
   regenerated with `node scripts/capture-error-redaction-report.mjs`

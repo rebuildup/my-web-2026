@@ -1,4 +1,4 @@
-import { env } from 'cloudflare:test';
+import { env, SELF } from 'cloudflare:test';
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { resetVerifyApiKey, withVerifyApiKey } from '../../src/http/api-keys/middleware';
@@ -334,5 +334,50 @@ describe('failed input is redacted but still correlatable (Issue #457)', () => {
 		expect(body.binding).toBeUndefined();
 		expect(text).not.toContain('my-web-2026');
 		expect(text).not.toContain('bucket');
+	});
+});
+
+/**
+ * The second half of the Issue: a **server function** failure reaching
+ * a visitor as a rendered screen. `SELF.fetch` drives the real SSR
+ * pipeline, so this asserts what an anonymous browser would receive.
+ *
+ * No `portfolio_*` table exists in this suite's D1 — the setup file
+ * applies only the Better Auth schema — which is precisely the state a
+ * deployment is in when a migration has not run. Before Issue #457 the
+ * D1 message travelled through TanStack Start's `ShallowErrorPlugin`
+ * into the rendered error screen.
+ */
+const HTML_FORBIDDEN = [
+	'SQLITE_ERROR',
+	'D1_ERROR',
+	'no such table',
+	'portfolio_project',
+	'portfolio_link',
+	'portfolio_media',
+	'BETTER_AUTH_SECRET',
+	'at Object.',
+];
+
+describe('public server-function surface is redacted (Issue #457)', () => {
+	it('SSR of /portfolio shows the safe description, not the D1 message', async () => {
+		const res = await SELF.fetch('https://example.com/portfolio');
+		const html = await res.text();
+		expect(res.status).toBe(500);
+
+		const rendered = /portfolio_unavailable \(ref=[0-9a-f]{8}\)/.exec(html)?.[0];
+		expect(rendered).toBeDefined();
+
+		const leaked = HTML_FORBIDDEN.filter((needle) => html.includes(needle));
+		expect(leaked).toEqual([]);
+		emit({
+			case: 'GET /portfolio (SSR, portfolio table missing)',
+			meaning: 'failed',
+			request: 'GET /portfolio (SSR HTML)',
+			status: res.status,
+			body: { rendered_error_text: rendered },
+			request_id: /ref=([0-9a-f]{8})/.exec(rendered ?? '')?.[1] ?? null,
+			leaked,
+		});
 	});
 });

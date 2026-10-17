@@ -177,7 +177,9 @@ export function renderHtml(cases) {
   <footer>
     生成: <code>node scripts/capture-error-redaction-report.mjs</code>（<code>${TEST_FILE}</code> の実行結果をそのまま表示）<br>
     撮影対象に secret は含まれない（認証は DI seam の固定スタブキー、実運用 credential には触れない）。<br>
-    保持する契約: 5xx は <code>error</code> / <code>message</code> / <code>request_id</code> のみ。stack・SQL・secret 名・binding 名は内部ログに閉じる。
+    保持する契約: HTTP 5xx は <code>error</code> / <code>message</code> / <code>request_id</code> のみ、
+    server function の失敗画面は <code>portfolio_unavailable (ref)</code> のみ。
+    stack・SQL・secret 名・binding 名は内部ログに閉じる。
   </footer>
 </body>
 </html>

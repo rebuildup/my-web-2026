@@ -9,7 +9,9 @@ reproduce it instead of trusting the image.
 Proof that the external HTTP boundary answers failures with
 `{ error, message, request_id }` only — no stack, SQL, table name,
 secret name, or binding name — while accepted and rejected requests
-keep their documented shapes.
+keep their documented shapes, and that a failing public server
+function renders `portfolio_unavailable (ref)` instead of the D1
+message.
 
 Regenerate:
 
@@ -29,7 +31,7 @@ Reading the page:
 | --- | --- |
 | 成功 (accepted) | Valid input; the documented public contract is returned unchanged. |
 | 拒否 (rejected) | Input the caller got wrong; a stable error code (and at most a repo-authored validator reason) is returned. |
-| 失敗・秘匿 (failed) | An internal error occurred; the body carries only the code, a safe message, and the correlation id. |
+| 失敗・秘匿 (failed) | An internal error occurred; the body carries only the code, a safe message, and the correlation id. The last row is an SSR page: the rendered error screen shows `portfolio_unavailable (ref)`. |
 
 Nothing secret is captured: the suite authenticates with a literal
 stub key through the documented DI seam

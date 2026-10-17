@@ -113,7 +113,25 @@ pnpm exec playwright screenshot --full-page --viewport-size=1280,1000 \
 - 詳細面 `/portfolio/<slug>` は全 fixture で 3 statement のまま（作品的
   link / media 件数に依存しない）。
 
-### 3.3 索引利用（EXPLAIN QUERY PLAN）
+### 3.3 CI での実測（ubuntu-latest）
+
+CI（`.github/workflows/ci.yml` の `validate` job = `validate:integration`）でも
+同じ suite が走り、**statement 数・予算・query plan はローカルと完全に一致**した。
+時間は環境依存の観測値だけがずれる（500 作品ページでローカル 30 ms / CI 43 ms）——
+これが「時間を gate にしない」判断の根拠そのものを示す。
+
+| ページ内の作品数 | 1 | 2 | 5 | 10 | 25 | 50 | 100 | 250 | 500 |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| statement 数（local / CI） | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 7 / 7 | 11 / 11 |
+| 予算 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 7 | 11 |
+| 所要時間（local / CI） | 6 / 6 ms | 5 / 7 ms | 2 / 6 ms | 6 / 5 ms | 5 / 7 ms | 9 / 10 ms | 12 / 12 ms | 22 / 33 ms | 30 / 43 ms |
+
+CI の測定値はそのまま `pnpm run test` の stdout に出る
+（`page_size=… statements=… budget=… legacy=… elapsed_ms=…`）。CI ログから
+レポートを生成する必要があれば `gh run view <run> --log` の出力を
+`node scripts/d1-query-plan-report.mjs --input <capture>` を通せば同じ HTML が出る。
+
+### 3.4 索引利用（EXPLAIN QUERY PLAN）
 
 | statement | plan |
 | --- | --- |

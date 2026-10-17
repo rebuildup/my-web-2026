@@ -73,7 +73,8 @@
 		"cloudflare:contract:check:build": "node scripts/check-cloudflare-contract.mjs --build",
 		"r2:local:proof": "node scripts/r2-local-sharing-proof.mjs",
 		"r2:local:proof:check": "node scripts/r2-local-sharing-proof.mjs",
-		"security:headers:check": "node scripts/check-security-headers.mjs"
+		"security:headers:check": "node scripts/check-security-headers.mjs",
+		"security:headers:report": "node scripts/security-header-report.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

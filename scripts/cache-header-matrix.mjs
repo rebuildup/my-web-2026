@@ -90,6 +90,31 @@ const PERSONAL_PAGE_PATHS = ['/contact', '/', '/about', '/portfolio'];
 
 const API_PATHS = ['/api/v1/health'];
 
+/**
+ * Classes `--verify` refuses to call a success without having measured.
+ *
+ * Every class EXCEPT `reaction-image`, which structurally needs a stored
+ * R2 object that no local probe can produce. The reason this list
+ * exists: an environment where the Worker answers 5xx for every dynamic
+ * path while Static Assets still serve `/favicon.svg` leaves at least
+ * one row MEASURED, so an "at least one row" guard would pass — while
+ * the whole Worker-side contract went unverified. A run that skipped
+ * the Worker classes did not verify the cache contract.
+ */
+const REQUIRED_MEASURED_CLASSES = [
+	'immutable-build-asset',
+	'mutable-static-asset',
+	'personal-page',
+	'admin-page',
+	'api-json',
+];
+
+/** Required classes this run never managed to measure. */
+export function unmeasuredRequiredClasses(rows) {
+	const measured = new Set(rows.filter((row) => !row.skipped).map((row) => row.id));
+	return REQUIRED_MEASURED_CLASSES.filter((id) => !measured.has(id));
+}
+
 function parseArgs(argv) {
 	const args = { baseUrl: 'http://127.0.0.1:3000', out: '.tmp/cache-headers' };
 	for (const raw of argv) {
@@ -237,6 +262,63 @@ async function probe(baseUrl, target) {
 }
 
 /**
+ * Judge what CHROMIUM received.
+ *
+ * The second observer is not decoration. If the browser receives a
+ * different `Cache-Control` / validator than the Node observer did, then
+ * one of the two is reading a different deployment than the other — a
+ * proxy, a CDN rewrite, a stale edge — and that disagreement is the
+ * single most useful thing this tool can report. Printing it beside a
+ * green `ok` and exiting 0 hides exactly the finding it exists to
+ * surface, so the disagreement fails the row.
+ *
+ * @param {object} row the Node-observed row
+ * @param {{ cacheControl: string|null, etag: string|null, vary: string|null } | null | undefined} observation
+ * @returns {{ ok: boolean, problems: string[] }}
+ */
+export function assessBrowserObservation(row, observation) {
+	const problems = [];
+	if (row.browserError) problems.push(`Chromium could not load this URL: ${row.browserError}`);
+	// No observation and no error: `--no-browser`, a skipped row, or a
+	// redirect the browser follows. Nothing was contradicted.
+	if (!observation) return { ok: problems.length === 0, problems };
+
+	const declared = policyById(row.id).cacheControl;
+	const seen = String(observation.cacheControl ?? '');
+	if (seen !== '' && seen.toLowerCase() !== declared.toLowerCase()) {
+		problems.push(`Chromium received Cache-Control "${seen}", expected "${declared}"`);
+	}
+	if (
+		seen !== '' &&
+		typeof row.cacheControl === 'string' &&
+		seen.toLowerCase() !== row.cacheControl.toLowerCase()
+	) {
+		problems.push(
+			`Chromium received "${seen}" where the HTTP observer received "${row.cacheControl}" — a disagreement between the two observers`,
+		);
+	}
+
+	const browserHasValidator = typeof observation.etag === 'string' && observation.etag !== '';
+	const nodeHasValidator = typeof row.etag === 'string' && row.etag !== '';
+	if (browserHasValidator !== nodeHasValidator) {
+		problems.push(
+			`Chromium ${browserHasValidator ? 'received' : 'did not receive'} an ETag where the HTTP observer ${nodeHasValidator ? 'did' : 'did not'}`,
+		);
+	}
+
+	const parsed = parseCacheControl(observation.cacheControl);
+	for (const value of varyValues({ vary: observation.vary })) {
+		if (!USER_SPECIFIC_VARY_HEADERS.includes(value)) continue;
+		problems.push(
+			parsed.noStore || parsed.noCache || parsed.maxAge === 0
+				? `Chromium received "Vary: ${value}", which is user-specific`
+				: `Chromium received "Vary: ${value}", which is user-specific on a response a shared cache may store`,
+		);
+	}
+	return { ok: problems.length === 0, problems };
+}
+
+/**
  * The same matrix, observed by Chromium. Document + subresource
  * headers only — a real navigation, not an API client — so the report
  * shows what a browser actually received for the hashed chunks.
@@ -295,6 +377,12 @@ async function probeWithBrowser(baseUrl, rows) {
 	for (const row of rows) {
 		if (row.skipped || !row.path) continue;
 		row.browser = observed.get(row.path) ?? null;
+		// Fold the second observer into the verdict, not just the report.
+		const verdict = assessBrowserObservation(row, row.browser);
+		if (verdict.problems.length > 0) {
+			row.problems = [...(row.problems ?? []), ...verdict.problems];
+			row.ok = false;
+		}
 	}
 	return { available: true, version };
 }
@@ -409,6 +497,7 @@ function passCriteria(rows) {
 	// Criterion 5: "never silently dropped" is checkable — every skipped
 	// row must carry the reason it was skipped.
 	const unexplainedSkips = skipped.filter((row) => !row.note);
+	const unmeasured = unmeasuredRequiredClasses(rows);
 	const criteria = [
 		{
 			criterion: 'every measured response carries its declared Cache-Control',
@@ -452,12 +541,20 @@ function passCriteria(rows) {
 					: `FAIL (${unexplainedSkips.length} skipped without a reason)`,
 			ok: unexplainedSkips.length === 0,
 		},
+		{
+			criterion: 'every class that needs no fixture was actually measured',
+			result:
+				unmeasured.length === 0
+					? `PASS (${REQUIRED_MEASURED_CLASSES.length} classes measured)`
+					: `FAIL (not measured: ${unmeasured.join(', ')})`,
+			ok: unmeasured.length === 0,
+		},
 	];
 	// Nothing measurable means nothing verified. An empty measurement set
 	// satisfies every "there are no violations of X" formulation, so
-	// without this the report would print five PASS lines over a run that
-	// only ever talked to a wrong `--base-url`. `--verify` exits non-zero
-	// on the same condition (see `main`).
+	// without this the report would print PASS lines over a run that only
+	// ever talked to a wrong `--base-url`. `--verify` exits non-zero on
+	// the same condition (see `main`).
 	if (measured.length === 0) {
 		return criteria.map((entry) => ({
 			criterion: entry.criterion,
@@ -571,6 +668,7 @@ export function toHtml(rows, environment) {
 <table><thead><tr>${head}</tr></thead><tbody>${body}</tbody></table>
 <p class="verdict">A row is SKIPPED only when the environment cannot produce it (no build, no fixture); it is never silently dropped and never counted as a pass.</p>
 <p class="verdict"><code>Vary: Origin</code> in the Vary column is added by the local preview server's CORS middleware, not by the Worker. The matrix's Vary column states the production expectation; no row here carries a user-specific Vary.</p>
+<p class="verdict">A row also FAILS when Chromium received a different <code>Cache-Control</code> / validator than the HTTP observer did: the two observers reading different deployments is the finding this tool exists to surface, not a footnote.</p>
 <h2>Pass criteria</h2>
 <table><thead><tr><th>#</th><th>criterion</th><th>result</th></tr></thead><tbody>${passCriteria(
 		rows,
@@ -670,6 +768,19 @@ async function main() {
 			`[cache-headers] FAIL nothing was measured: no target of ${rows.length} produced a response at ${args.baseUrl} — check the base URL and that the server is running\n`,
 		);
 		return 1;
+	}
+	// ... and an environment where Static Assets still answer while every
+	// Worker-owned class is a 5xx is the subtler version of the same
+	// failure: at least one row was measured, but none of the classes
+	// this tool exists to check were.
+	if (args.verify) {
+		const unmeasured = unmeasuredRequiredClasses(rows);
+		if (unmeasured.length > 0) {
+			process.stderr.write(
+				`[cache-headers] FAIL required classes were not measured at ${args.baseUrl}: ${unmeasured.join(', ')} — the Worker-side cache contract was not verified\n`,
+			);
+			return 1;
+		}
 	}
 	if (args.verify && failures.length > 0) return 1;
 	return 0;

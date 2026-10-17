@@ -20,12 +20,14 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { evaluateObservation, policyById } from './_cache-policy.mjs';
 import {
+	assessBrowserObservation,
 	assessRow,
 	buildTargets,
 	environmentBlock,
 	escapeHtml,
 	toHtml,
 	toMarkdown,
+	unmeasuredRequiredClasses,
 } from './cache-header-matrix.mjs';
 
 const ASSET = { path: '/assets/index-B5Hb0lCH.js', source: 'dist/client/assets', candidates: 12 };
@@ -131,6 +133,70 @@ const ROWS = [
 		note: 'needs a stored reaction image id',
 		ok: false,
 		problems: [],
+	},
+];
+
+/** One clean measured row per class `--verify` requires (see REQUIRED_MEASURED_CLASSES). */
+const REQUIRED_ROWS = [
+	{
+		id: 'immutable-build-asset',
+		path: '/assets/index-B5Hb0lCH.js',
+		status: 200,
+		cacheControl: policyById('immutable-build-asset').cacheControl,
+		etag: '"abc"',
+		vary: 'Origin',
+		revalidation: '304 Not Modified',
+		ok: true,
+		problems: [],
+		skipped: false,
+	},
+	{
+		id: 'mutable-static-asset',
+		path: '/favicon.svg',
+		status: 200,
+		cacheControl: policyById('mutable-static-asset').cacheControl,
+		etag: '"abc"',
+		vary: 'Origin',
+		revalidation: '304 Not Modified',
+		ok: true,
+		problems: [],
+		skipped: false,
+	},
+	{
+		id: 'personal-page',
+		path: '/contact',
+		status: 200,
+		cacheControl: policyById('personal-page').cacheControl,
+		etag: null,
+		vary: 'Origin',
+		revalidation: 'no validator sent',
+		ok: true,
+		problems: [],
+		skipped: false,
+	},
+	{
+		id: 'admin-page',
+		path: '/admin/login',
+		status: 200,
+		cacheControl: policyById('admin-page').cacheControl,
+		etag: null,
+		vary: 'Origin',
+		revalidation: 'no validator sent',
+		ok: true,
+		problems: [],
+		skipped: false,
+	},
+	{
+		id: 'api-json',
+		path: '/api/v1/health',
+		status: 200,
+		cacheControl: policyById('api-json').cacheControl,
+		etag: null,
+		vary: 'Origin',
+		revalidation: 'no validator sent',
+		ok: true,
+		problems: [],
+		skipped: false,
 	},
 ];
 
@@ -334,7 +400,7 @@ test('a run that measured nothing reports NOT MEASURED instead of five PASSes', 
 		ENVIRONMENT,
 	);
 	assert.doesNotMatch(html, /class="ok">PASS/);
-	assert.equal(html.match(/NOT MEASURED/g)?.length, 5);
+	assert.equal(html.match(/NOT MEASURED/g)?.length, 6);
 });
 
 test('a validator that is never revalidated is a row problem, not a footnote', () => {
@@ -364,6 +430,9 @@ test('the browser pass explains why a redirect row was not observed', () => {
 	// Chromium follows the 3xx, so a redirect response is never observed
 	// at the requested URL; the row must say so instead of rendering no
 	// note at all (which read as "nothing to report").
+	// Chromium follows the 3xx, so a redirect response is never observed
+	// at the requested URL; the row must say so instead of rendering no
+	// note at all (which read as "nothing to report").
 	const html = toHtml(
 		[
 			{
@@ -390,4 +459,143 @@ test('the environment block never reports a clean tree it did not check', () => 
 	assert.ok(['clean', 'dirty'].includes(block.workingTree));
 	assert.match(block.runtime, /^Node v/);
 	assert.ok(block.cpu.length > 0);
+});
+
+test('a browser observation that contradicts the declared class fails the row', () => {
+	// Printing the disagreement next to a green `ok` is the failure mode:
+	// the report would state two different policies for one URL.
+	const verdict = assessBrowserObservation(
+		{
+			id: 'personal-page',
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+		},
+		{ cacheControl: 'public, max-age=31556952, immutable', etag: '"deadbeef"', vary: 'Origin' },
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /Chromium received Cache-Control/);
+	assert.match(verdict.problems.join(' '), /received an ETag where the HTTP observer did not/);
+});
+
+test('a browser observation that contradicts the HTTP observer fails the row', () => {
+	// Same declared value, but the two observers read different
+	// deployments — the single most useful thing this tool can report.
+	const verdict = assessBrowserObservation(
+		{
+			id: 'mutable-static-asset',
+			cacheControl: 'public, max-age=0, must-revalidate',
+			etag: '"abc"',
+		},
+		{ cacheControl: 'public, max-age=300', etag: '"abc"', vary: 'Origin' },
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /disagreement between the two observers/);
+});
+
+test('a user-specific Vary seen only by the browser fails the row', () => {
+	const verdict = assessBrowserObservation(
+		{
+			id: 'immutable-build-asset',
+			cacheControl: policyById('immutable-build-asset').cacheControl,
+			etag: '"abc"',
+		},
+		{
+			cacheControl: policyById('immutable-build-asset').cacheControl,
+			etag: '"abc"',
+			vary: 'Accept-Encoding, Cookie',
+		},
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /Vary: cookie"?, which is user-specific/);
+});
+
+test('a navigation error fails the row instead of being dropped', () => {
+	const verdict = assessBrowserObservation(
+		{
+			id: 'personal-page',
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+			browserError: 'net::ERR_CONNECTION_REFUSED',
+		},
+		null,
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /Chromium could not load this URL/);
+});
+
+test('an agreeing browser observation adds no problem', () => {
+	const verdict = assessBrowserObservation(
+		{
+			id: 'personal-page',
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+		},
+		{ cacheControl: policyById('personal-page').cacheControl, etag: null, vary: 'Origin' },
+	);
+	assert.deepEqual(verdict, { ok: true, problems: [] });
+	// `--no-browser`, and a redirect row the browser follows: nothing was
+	// observed, so nothing was contradicted.
+	assert.deepEqual(assessBrowserObservation({ id: 'admin-page', cacheControl: 'no-store' }, null), {
+		ok: true,
+		problems: [],
+	});
+});
+
+test('a run that skipped every Worker-owned class does not verify anything', () => {
+	// The subtler version of a dead `--base-url`: Static Assets still
+	// answer `/favicon.svg` while the Worker returns 5xx, so at least one
+	// row IS measured — and none of the classes this tool exists to check
+	// are among them.
+	const rows = [
+		{
+			id: 'mutable-static-asset',
+			path: '/favicon.svg',
+			status: 200,
+			cacheControl: policyById('mutable-static-asset').cacheControl,
+			etag: '"abc"',
+			vary: 'Origin',
+			revalidation: '304 Not Modified',
+			ok: true,
+			problems: [],
+			skipped: false,
+		},
+		{
+			id: 'personal-page',
+			path: '/contact',
+			status: 503,
+			skipped: true,
+			note: 'server error 503 — this environment could not render the class',
+			ok: false,
+			problems: [],
+		},
+	];
+	assert.deepEqual(unmeasuredRequiredClasses(rows), [
+		'immutable-build-asset',
+		'personal-page',
+		'admin-page',
+		'api-json',
+	]);
+	const criterion = criterionRow(
+		toHtml(rows, ENVIRONMENT),
+		'every class that needs no fixture was actually measured',
+	);
+	assert.equal(criterion.ok, false);
+	assert.match(criterion.text, /not measured: immutable-build-asset, personal-page/);
+});
+
+test('the fixture image class is not required: no local probe can produce it', () => {
+	assert.deepEqual(
+		unmeasuredRequiredClasses([
+			...REQUIRED_ROWS,
+			{
+				id: 'reaction-image',
+				path: null,
+				status: null,
+				skipped: true,
+				note: 'no fixture',
+				ok: false,
+			},
+		]),
+		[],
+	);
 });

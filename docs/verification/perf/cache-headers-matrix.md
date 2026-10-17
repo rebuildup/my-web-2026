@@ -96,7 +96,7 @@ Worker 実測側（`test/integration/cache-policy-matrix.test.ts`）の
 | `/share/**`, `/favicon.svg` | プラットフォーム既定（`max-age=0, must-revalidate`） | 同一（immutable にしないことを明示的に検査） | 維持。「immutable でない」ことが検査対象になった |
 | SSR HTML / `/admin*` | `no-cache` / `no-store` | 同一 | 維持。行列の行との突合テストを追加 |
 
-合格基準（**5つすべてが `rows` から算出される**。定数 `ok: true` は存在しない。
+合格基準（**6つすべてが `rows` から算出される**。定数 `ok: true` は存在しない。
 判定不能な基準は「PASS を表示するだけ」にすぎないため）:
 
 1. 全行の `Cache-Control` が表の値と完全一致する（大小文字のみ無視）。
@@ -105,13 +105,25 @@ Worker 実測側（`test/integration/cache-policy-matrix.test.ts`）の
    表が `none` と宣言したクラスは validator を持たない。
 4. 保存可能な（`no-store`/`no-cache` でなく `max-age>0`）応答が user-specific な `Vary` を持たない。
 5. SKIPPED になった行は**その理由を必ず持っており**、無言で pass に数えられない。
+6. fixture を要しないクラス（`reaction-image` 以外）は**すべて実際に測定された**。
 
-**1行も測定できなかった場合は 5 基準すべてが `NOT MEASURED`（`ok: false`）となり、
+なお基準 3 の「304 で答える」は行の verdict にも反映される
+（表示用の文字列に留めない / `assessRow()`）。
+
+**Chromium の観測も判定材料である。** ブラウザが Node の probe と別の
+`Cache-Control` / validator を受け取った場合、2 つの観測者が別の配線を
+読んでいる可能性があり、その食い違いこそ本ツールが報告すべき finding である。
+そのため行の verdict に `assessBrowserObservation()` として畳み込む
+（green 表示の横に矛盾する値を書くことはしない）。navigation error も同様。
+
+**1行も測定できなかった場合は 6 基準すべてが `NOT MEASURED`（`ok: false`）となり、
 `--verify` も exit 1 になる。** `--base-url` の typo や preview 停止時は
 全 probe が例外になり全行が SKIPPED になるため、「違反ゼロ」を根拠に
 正常終了してはならないという判断である。
-なお基準 3 の「304 で答える」は行の verdict にも反映される
-（表示用の文字列に留めない / `assessRow()`）。
+さらに「fixture 不要のクラスが1つも測定できていない」場合も `--verify` は exit 1 になる
+（基準 6）。Worker の binding 不備で個人ページ / admin / API が 5xx になり、
+静的資産だけ 200 という環境では `measured > 0` になるが、
+Worker 側の主要契約は1行も検証できていないためである。
 
 ## 4. 再現条件の記録（ローカル / CI 共通）
 

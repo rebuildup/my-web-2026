@@ -360,13 +360,11 @@ describe('infisical-verify.mjs — stub-CLI value-handling invariant (Issue #467
 			join(repo, '.infisical.json'),
 			JSON.stringify({ workspaceId: 'fixture-workspace-0000', defaultEnvironment: 'dev' }, null, 2),
 		);
+		// No `version` field: the driver only reads `bin`, and a
+		// semver-shaped literal here would trip `version:check`.
 		writeFileSync(
 			join(cliDir, 'package.json'),
-			JSON.stringify(
-				{ name: '@infisical/cli', version: '0.0.0-fixture', bin: 'bin/infisical' },
-				null,
-				2,
-			),
+			JSON.stringify({ name: '@infisical/cli', bin: 'bin/infisical' }, null, 2),
 		);
 
 		// The stub behaves like a chatty upstream: it prints the values it

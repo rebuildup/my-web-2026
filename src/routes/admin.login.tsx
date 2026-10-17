@@ -25,8 +25,11 @@ import { classifyRedirectTarget } from '../http/security/redirect';
  * **loader** (server-side, before it can reach the DOM) by
  * `classifyRedirectTarget`; anything that is not an internal
  * `/admin…` path is refused and the page falls back to
- * `DEFAULT_RETURN_TO`. The accepted value is embedded as the form's
- * `callbackURL`, which the external boundary validates again at
+ * `DEFAULT_RETURN_TO` with a visible notice. The notice appears only
+ * when a target was actually supplied and refused — opening the login
+ * page without `?returnTo=` is the ordinary case, not a warning. The
+ * accepted value is embedded as the form's `callbackURL`, which the
+ * external boundary validates again at
  * `/api/v1/auth/sign-in/email` (Issue #454) before Better Auth ever
  * sees it — the loader decides what the browser is told, the boundary
  * decides what is served.
@@ -62,7 +65,10 @@ export const Route = createFileRoute('/admin/login')({
 		);
 		return {
 			returnTo: decision.ok ? decision.redirect : DEFAULT_RETURN_TO,
-			rejectedReason: decision.ok ? null : decision.reason,
+			// `missing` means "no target was supplied", which is the
+			// ordinary case — the loader still falls back, but saying so
+			// to someone who just opened the login page is noise.
+			rejectedReason: decision.ok || decision.reason === 'missing' ? null : decision.reason,
 		};
 	},
 	component: LoginRoute,

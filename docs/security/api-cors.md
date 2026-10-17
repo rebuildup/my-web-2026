@@ -30,6 +30,13 @@ Issue #455 で導入。対象は実際に存在する `/api/v1/*` の全ルー�
 | `none` | `/api/v1/db/ping`, `/api/v1/media/ping` | GET | CORS ヘッダなし（body は script から不透明） |
 | `none` | `/webhooks/*`, `/oauth/*`, `/integrations/*` | — | ルータ未実装。`OPTIONS` は従来どおり 404 |
 
+`Access-Control-Allow-Methods` / `Access-Control-Max-Age` /
+`Access-Control-Allow-Headers` は **preflight の応答にだけ**出す。
+実リクエストの応答ではブラウザはこれらを読まない（読むのは
+`Access-Control-Allow-Origin` と `-Credentials` だけ）ので、
+意味を持たない surface を増やさない。プレフライト以外の行では
+スクリーンショット上 `(absent)` になる。
+
 `db/ping` / `media/ping` を `public-read` にしない理由: これは公開
 データではなく運用診断だ。ワイルドカードを渡すと、任何のサイトから
 本番 binding の生存探査（scriptable liveness probe）ができてしまう。
@@ -86,6 +93,25 @@ code は 3 種:
 
 許可されたプレフライトは `204` + policy ヘッダで返す。
 
+実リクエスト（preflight 以外）で credentialed に許可された場合は
+echo + credentials だけが載る。`Vary: Origin` は CORS 分類された
+全応答（`Origin` ヘッダ 無しのもの を含む）に付く。
+
+### ヘッダを「レスポンス確定後」に載せる理由
+
+Hono は `next()` の**前**に呼んだ `c.header()` を内部の
+prepared-header バッグに保留し、それは context 自身が
+`c.json()` / `c.body()` / `c.newResponse()` で作った応答にしか
+載らない。生の `Response` を返す handler
+（`src/http/auth/router.ts` の `auth.handler(c.req.raw)` と
+`LOCAL_API_MODE=mock` ゲートの `mockApp.fetch(...)`）は
+`context.res` を丸ごと差し替えるため、`next()` 前に置いた
+ヘッダは黙って消える。**まさに `credentialed` の許可分岐**が
+その経路を通るので、middleware は `await next()` の**後**に
+確定済み応答へヘッダを載せる。Better Auth の
+`Set-Cookie` は保存されることを
+`src/http/cors/middleware.test.ts` が固定している。
+
 Origin ヘッダのないリクエスト（SSR の self-call、`curl`、E2E）は
 従来どおり handler に届く。変わるのは `Vary: Origin` だけ。これは
 shared cache が「Origin 付きのリクエストに concrete な
@@ -100,7 +126,26 @@ shared cache が「Origin 付きのリクエストに concrete な
 credentials 無しでも handler（＝D1 まで）は到達できてしまう。
 そのため `credentialed` ルートは**実リクエストも**拒否する。同一
 オリジンの実リクエストは Origin ヘッダが request origin と一致する
-ので、§3-(1) により必ず許可される。副作用はない。
+ので、§3-(1) により必ず許可される。
+
+**副作用の正確な範囲（owner 未決の論点。§7 と併せて読むこと）**:
+この判定は「このリクエストがブラウザから来たか」ではなく、`Origin`
+ヘッダの有無だけで行う。したがって `Origin` を勝手に付ける非ブラウザ
+クライアント（一部の SDK は付ける）は、同一オリジンからの呼び出し
+でも `403 cors_origin_rejected` を受ける。§3-(1) の根拠は「同一
+オリジンの実リクエストは `Origin` が request origin と一致するので
+必ず許可される」であり、**同一オリジンの呼び出しにしか当てはま
+ない**。CORS はブラウザの仕組みである以上、サーバ側ゲートは
+ブラウザの script に対して何も買わない、というのがこの絞り込みの
+根拠。したがって:
+
+- **同一オリジンの呼び出し**: 副作用なし（§3-(1) で必ず許可される）。
+- **別オリジンからの非ブラウザ呼び出し**: 従来は通っていたものが
+  落ちる可能性がある。許可リストに無い origin を拒否する形へ意図的
+  に変えた副作用として現れている。
+- 拒否を「ヘッダを出さない（ブラウザに読ませない）」だけに留めるか、
+  サーバ側 403 を残すかは **owner の判断事項**。本 Issue では
+  fail-closed 側（403）を採っている。
 
 ## 5. 絶対条件（テストが機械的に検査する）
 
@@ -117,6 +162,20 @@ credentials 無しでも handler（＝D1 まで）は到達できてしまう。
 5. 境界が実際に登録しているルートはすべて分類済み。
    未分類のまま残ったら `INTENTIONALLY_UNCLASSIFIED` に理由付きで
    載せる必要があり、登録漏れ・古い項目は両方向で検出される。
+   対象は `externalBoundary.routes` だけでなく、`LOCAL_API_MODE=mock`
+   の `createMockApp().routes` も含む（mock も到達可能な面なので）。
+6. `credentialed` の許可分岐は**実際の応答バイト**に出る。
+   `/api/v1/auth/*`（生の `Response` を返す handler）と
+   `LOCAL_API_MODE=mock`（`mockApp.fetch(...)`）は
+   `context.res` を差し替える経路なので、`next()` 前に置いた
+   `c.header()` が消える。`test/integration/cors.test.ts` に
+   `GET|POST /api/v1/auth/get-session` と mock の許可行／拒否行が
+   あり、`src/http/cors/middleware.test.ts` が handler の
+   `Set-Cookie` を保ったままヘッダが載ることを固定する。
+7. preflight の `Access-Control-Request-Method: OPTIONS` は
+   `cors_method_rejected`。`OPTIONS` は route 自身が preflight に
+   答えるために持つだけで、応答するメソッド一覧には含まれないため、
+   受理すると「要求されたメソッドを含まない 204」になる。
 
 ## 6. 既存 auth / security 境界への影響（運用契約）
 
@@ -124,10 +183,10 @@ credentials 無しでも handler（＝D1 まで）は到達できてしまう。
 
 | 対象 | 変更 | 運用上の意味 |
 |------|------|--------------|
-| `/api/v1/auth/*`（Better Auth） | 許可 origin 以外の cross-origin リクエストは Better Auth handler に到達せず 403 | Better Auth 自身の `trustedOrigins` チェックより**前**で効く。origin を増やしたいときは `BETTER_AUTH_URL` を 1 つ直すだけで両方に効く（ずれない） |
+| `/api/v1/auth/*`（Better Auth） | 許可 origin 以外の cross-origin リクエストは Better Auth handler に到達せず 403 | Better Auth 自身の `trustedOrigins` チェックより**前**で効く。origin を増やしたいときは `BETTER_AUTH_URL` を 1 つ直すだけで両方に効く（ずれない）。拒否は `Origin` ヘッダの有無だけで判定するため、`Origin` を付ける非ブラウザ client も 403 になる（§4「副作用の正確な範囲」） |
 | `/api/v1/access/*`, `/api/v1/reactions` | 同上。API key は header 経由なので、client 側は従来通り | 外部 integration が別 origin から叩く想定なら、それは明示的な owner 決定として別 ticket で扱う（§7） |
 | TanStack Start の CSRF middleware | **変更なし**。`src/start.ts` は引き続き不在で、default middleware が有効 | CORS は SSR 面（`/`, `/admin/*`, `/_serverFn/*`）には一切ヘッダを出さない。`test/integration/cors.test.ts` が `/`, `/contact`, `/admin/login` でそのことを検証する |
-| `LOCAL_API_MODE=mock` | middleware を境界の先頭に置いたので mock も同じ CORS 面を持つ | デザイナーが mock で別の CORS 面を見て、production と違う挙動を掴むことがない |
+| `LOCAL_API_MODE=mock` | middleware を境界の先頭に置いたので mock も同じ CORS 面を持つ | デザイナーが mock で別の CORS 面を見て、production と違う挙動を掴むことがない。ただしこの主張は「mount 順が正しい」だけでは成立せず、mock ゲートが生の `Response`（`mockApp.fetch(...)`）を返すため §4 の「確定後に載せる」が必須。`test/integration/cors.test.ts` に mock モードの許可行／拒否行がある |
 | Cloudflare バインディング | **変更なし**（D1 / R2 / rate-limit / ASSETS に手を触れていない） | `pnpm run cf-typegen` の再実行は不要 |
 | Tool Registry | **変更なし**（`src/tools/manifest.json` に手を触れていない） | §8 参照 |
 | `public/_headers` | **変更なし** | §8 参照 |
@@ -211,13 +270,19 @@ Access-Control-Allow-Methods: GET,HEAD,PUT,PATCH,POST,DELETE
 
 ## 10. 検証スクリーンショット
 
-`docs/verification/security/cors-preflight-matrix.png`
+`docs/verification/security/cors-preflight-matrix.webp`
 
 生成: `pnpm run security:cors:report`（`node scripts/cors-preflight-report.mjs` と同じ）
 
+- 形式は **WebP**（`sharp` で幅 1600px 以下・quality 80 に再圧縮）。
+  Issue 本文のスクリーンショット要件にパス拡張子だけがiaccepted されて
+  いないため `.png` ではなく `.webp` を採用している。テキスト表の画像で
+  450KB 级的 PNG はリポジトリの重みに対して割に合わない。
 - 上段: `test/integration/cors.test.ts` が `SELF.fetch` で実測した
   行（status / allow-origin / allow-credentials / allow-methods）。
-  文字起こしではなく測定値。
+  文字起こしではなく測定値。`mock` のラベルがある行だけは
+  `externalBoundary` に `LOCAL_API_MODE=mock` を渡して直接呼んだ
+  もので、それ以外は `SELF.fetch`（`src/server.ts` 経由）。
 - 下段: Chromium が cross-origin `fetch` を実際に試した結果
   （readable / blocked）。ページは `127.0.0.1:4596`、API 側の
   応答は `127.0.0.1:4597` で、ポートが違うので本当に cross-origin。
@@ -225,6 +290,9 @@ Access-Control-Allow-Methods: GET,HEAD,PUT,PATCH,POST,DELETE
   `counterfactual` 行だけは `access-control-allow-origin` だけを差し替えた
   もので、「このポリシーが出さない値を出したらブラウザがどう反応するか」を
   示すためのもの（行ごとに個別にラベル済み。production の主張ではない）。
+- `readable` 行の body は probe 自身が返す合成 JSON で、API の実データ
+  ではない。図は「mechanism」を示すもので、実データが漏れたという意味
+  ではない。
 
 スクリーンショットに secret は含まれない（origin とヘッダ値のみ、
 プローブは `127.0.0.1`、本番への通信なし）。

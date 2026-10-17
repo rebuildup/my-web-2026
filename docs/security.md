@@ -54,6 +54,15 @@ route × origin × method matrix in `src/http/cors/policy.test.ts` and
 again against the real response bytes in
 `test/integration/cors.test.ts`.
 
+The echo is rendered onto the **finalized** response, after
+`await next()`. Hono only merges `c.header()` calls made before
+`next()` into a response the context itself produced, so a handler
+returning a raw `Response` — `auth.handler(c.req.raw)` and the
+`LOCAL_API_MODE=mock` gate's `mockApp.fetch(...)` — would otherwise
+drop the whole allow branch. Both shapes are asserted in
+`src/http/cors/middleware.test.ts` and on the wire in
+`test/integration/cors.test.ts`.
+
 Full contract, the measured matrix and the known local-dev deviation
 (`vite dev` answers preflights itself, so the Worker is never consulted):
 [`docs/security/api-cors.md`](security/api-cors.md).

@@ -28,9 +28,12 @@ assumption a reviewer had to take on trust.
 A cross-origin request that is not permitted is **refused** with
 `403 { "error": "cors_origin_rejected" | "cors_method_rejected" | "cors_header_rejected", "class": … }`
 and no CORS header. A preflight that is permitted is answered `204`
-with the policy headers. A same-origin request, and any request with no
-`Origin` header at all (the SSR self-calls, `curl`, the E2E suite), is
-untouched apart from `Vary: Origin`.
+with the policy headers; `Access-Control-Allow-Methods`,
+`-Max-Age` and `-Allow-Headers` are emitted on preflights only, because
+that is the only response a browser reads them from. A same-origin
+request, and any request with no `Origin` header at all (the SSR
+self-calls, `curl`, the E2E suite), is untouched apart from
+`Vary: Origin`.
 
 ## Files
 
@@ -39,21 +42,33 @@ untouched apart from `Vary: Origin`.
   unit-testable.
 - `middleware.ts` — the Hono adapter. Reads the request inputs, renders
   the decision, short-circuits the two cases that must not reach a
-  handler.
+  handler. On the pass-through branch it renders onto the **finalized**
+  response, after `await next()`: Hono merges a pre-`next()`
+  `c.header()` only into a response the context produced itself, so a
+  handler returning a raw `Response` (`auth.handler(c.req.raw)`, the
+  mock gate's `mockApp.fetch(...)`) would otherwise drop the allow
+  branch — which is exactly the `credentialed` case.
 - `policy.test.ts` / `middleware.test.ts` — unit.
 - `test/integration/cors.test.ts` — the same matrix over the real
   Worker through `SELF.fetch`, plus the route-inventory gate and the
   `CORS_PREFLIGHT_MEASUREMENT` line the verification screenshot is
   generated from.
 
-## The two invariants worth knowing before editing
+## The invariants worth knowing before editing
 
 1. **A `credentialed` route never answers with `*`.** Not on a
    preflight, not on an error, not "only for GET".
    `credentialWildcardViolation()` in `policy.ts` encodes the rule and
    both test suites assert it over the whole route × origin × method
    matrix, including the real response bytes.
-2. **A `credentialed` route never answers the opaque `null` origin.**
+2. **The allow branch reaches the wire, whichever handler shape answers.**
+   This is the one that is easy to get wrong and invisible in review:
+   a header set before `next()` is silently dropped by any handler that
+   returns a raw `Response`, so `/api/v1/auth/*` looked documented and
+   answered with nothing. `middleware.test.ts` reproduces both raw
+   shapes (Better Auth and the mock gate) and asserts the handler's
+   `Set-Cookie` survives alongside the echo.
+3. **A `credentialed` route never answers the opaque `null` origin.**
    `Origin: null` is what a Tool iframe served from
    `/tools/<slug>/app/*` (sandboxed `allow-scripts`, so no
    `allow-same-origin`) sends. Those Tools are same-origin static
@@ -66,4 +81,7 @@ Add it to `CORS_ROUTES` in `policy.ts`, or acknowledge it in
 `INTENTIONALLY_UNCLASSIFIED` in `test/integration/cors.test.ts` with a
 reason. The inventory test compares the two sets in both directions, so
 a route that ships without a decision fails the suite rather than
-quietly inheriting a neighbour's policy.
+quietly inheriting a neighbour's policy. It reads **both**
+`externalBoundary.routes` and `createMockApp().routes`: the mock is a
+second Hono app the boundary mounts behind the `LOCAL_API_MODE` gate,
+so a mock route is as much a reachable surface as a real one.

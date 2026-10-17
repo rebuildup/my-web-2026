@@ -180,10 +180,24 @@ function main(argv) {
 	// The report describes the surface that is being published plus the
 	// transition that was approved to reach it. On a first run there is
 	// no snapshot yet, so it describes the surface with an empty delta.
-	const reported = baselineSurface ?? current;
-	const transition = baseline
-		? baseline.approvedTransition
-		: transitionOf({ ...diff, findings: diff.findings.filter((f) => f.code !== 'E010') });
+	// Write mode describes what it is about to record (the new surface plus
+	// the transition that reaches it); check mode describes what was already
+	// recorded, so the two are byte-comparable.
+	const reported = write ? current : (baselineSurface ?? current);
+	// On the very first record there is no previous snapshot, so the E010
+	// "snapshot missing" delta finding is the expected outcome, not evidence.
+	const freshTransition = () =>
+		transitionOf(
+			{
+				...diff,
+				findings:
+					baseline === null ? diff.findings.filter((f) => f.code !== 'E010') : diff.findings,
+			},
+			invariant,
+		);
+	// Write mode describes what it is about to record; check mode describes
+	// what was already recorded, so the two are byte-comparable.
+	const transition = write || baseline === null ? freshTransition() : baseline.approvedTransition;
 	const reportText = renderMarkdownReport({ surface: reported, transition });
 
 	if (htmlPath) {
@@ -192,13 +206,7 @@ function main(argv) {
 	}
 
 	if (write) {
-		// On the very first record there is no previous snapshot, so the
-		// E010 "snapshot missing" delta finding is the expected outcome,
-		// not a finding worth printing or storing as evidence.
-		const recordedTransition = transitionOf({
-			...diff,
-			findings: baseline === null ? diff.findings.filter((f) => f.code !== 'E010') : diff.findings,
-		});
+		const recordedTransition = freshTransition();
 		writeFileSync(
 			resolve(repoRoot, SNAPSHOT_RELATIVE_PATH),
 			serializeSnapshot(current, recordedTransition),

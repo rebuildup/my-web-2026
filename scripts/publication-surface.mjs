@@ -773,8 +773,13 @@ export function serializeSurfaceCore(surface) {
 	)}\n`;
 }
 
-/** The transition a `--write` run approved, stored beside the surface it produced. */
-export function transitionOf(diff) {
+/**
+ * The transition a `--write` run approved, stored beside the surface it
+ * produced. `invariantFindings` ride along because they are facts about the
+ * surface itself (a loopback URL shipped, a route file with no declaration),
+ * and a reader of the report should see them next to the delta.
+ */
+export function transitionOf(diff, invariantFindings = []) {
 	return {
 		addedPublicUrls: diff.addedPublicUrls,
 		removedPublicUrls: diff.removedPublicUrls,
@@ -783,7 +788,7 @@ export function transitionOf(diff) {
 		addedExternalHosts: diff.addedExternalHosts,
 		removedExternalHosts: diff.removedExternalHosts,
 		classificationChanges: diff.classificationChanges,
-		findings: diff.findings,
+		findings: [...invariantFindings, ...diff.findings],
 	};
 }
 

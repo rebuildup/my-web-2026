@@ -56,6 +56,13 @@ function rawResponseApp(env: Record<string, unknown> = {}) {
 
 	const mockApp = new Hono<{ Bindings: Env }>();
 	mockApp.get('/api/v1/auth/session', (c) => c.json({ user: 'fixture' }));
+	// An immutable header bag (guard `immutable`, which is what a
+	// `Response` forwarded straight from `fetch()` carries). In-place
+	// `.set()` throws on these, so this route exercises the middleware's
+	// fallback rather than leaving it untested.
+	mockApp.get('/api/v1/access/redirect', () =>
+		Response.redirect('https://rebuildup.dev/after', 302),
+	);
 
 	const test = new Hono<{ Bindings: Env }>();
 	test.use('*', corsMiddleware);
@@ -357,6 +364,23 @@ describe('corsMiddleware', () => {
 			);
 			expect(refused.status).toBe(403);
 			expect(refused.headers.get('access-control-allow-origin')).toBeNull();
+		});
+
+		it('falls back to Hono when the response headers are immutable', async () => {
+			// `Response.redirect()` gets the `immutable` guard, so the
+			// in-place write throws and the middleware must rebuild the
+			// response through Hono — otherwise the echo would be silently
+			// dropped on any handler that forwards a `fetch()` response.
+			const mock = rawResponseApp({ BETTER_AUTH_URL: CANONICAL, LOCAL_API_MODE: 'mock' });
+			const res = await mock.test.request(
+				'/api/v1/access/redirect',
+				{ headers: { Origin: CANONICAL } },
+				mock.env,
+			);
+			expect(res.status).toBe(302);
+			expect(res.headers.get('access-control-allow-origin')).toBe(CANONICAL);
+			expect(res.headers.get('access-control-allow-credentials')).toBe('true');
+			expect(res.headers.get('location')).toBe('https://rebuildup.dev/after');
 		});
 	});
 });

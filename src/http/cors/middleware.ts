@@ -1,3 +1,4 @@
+import type { Context } from 'hono';
 import { createMiddleware } from 'hono/factory';
 import { CORS_REFUSAL_STATUS, decideCors } from './policy';
 
@@ -74,11 +75,39 @@ export const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next
 	// allow-listed origin got NO CORS header from `/api/v1/auth/*`.
 	//
 	// `c.header()` after `await next()` takes Hono's finalized-response
-	// path (it re-instantiates `c.res` with a mutable header bag first),
-	// so it is correct for both handler shapes and keeps the handler's
-	// own `Set-Cookie` — which the Better Auth sign-in response carries
-	// and which a re-wrap must not drop.
+	// path, and is correct for both handler shapes and keeps the
+	// handler's own `Set-Cookie` — which the Better Auth sign-in
+	// response carries and which a re-wrap must not drop. It does,
+	// however, re-instantiate the Response (`new Response(body, res)`),
+	// so `renderOntoFinalized` prefers mutating the handler's own header
+	// bag in place and only falls back to Hono when that is impossible.
 	await next();
-	for (const [name, value] of Object.entries(decision.headers)) c.header(name, value);
+	renderOntoFinalized(c, decision.headers);
 	return undefined;
 });
+
+/**
+ * Put the decision on the response the middleware is about to return.
+ *
+ * In-place mutation first. `c.res` IS the handler's `Response` object,
+ * so writing into its header bag leaves the body stream, the
+ * `Set-Cookie` entries and the object identity exactly as the handler
+ * produced them — no second body stream for the Worker to drain, which
+ * matters on the auth route where every response is Better Auth's.
+ *
+ * The fallback covers the one case in-place mutation cannot: a
+ * `Response` whose header bag is immutable (guard `immutable`, e.g. one
+ * forwarded straight from `fetch()`), where `.set()` throws. There
+ * Hono's path is the only way to attach a header, and it is safe
+ * because it rebuilds the response before writing.
+ */
+function renderOntoFinalized(c: Context<{ Bindings: Env }>, headers: Record<string, string>): void {
+	try {
+		const target = c.res.headers;
+		for (const [name, value] of Object.entries(headers)) target.set(name, value);
+		return;
+	} catch {
+		// Immutable header guard: rebuild through Hono instead.
+	}
+	for (const [name, value] of Object.entries(headers)) c.header(name, value);
+}

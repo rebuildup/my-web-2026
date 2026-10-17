@@ -1,9 +1,11 @@
+import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeaders } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import { auth } from '../../cloudflare/auth/better-auth';
 import type { AdminSession } from '../auth/load';
 import { AdminAuthError, requireAdmin } from '../auth/require-admin';
+import { assertStepUpGranted } from '../auth/step-up';
 
 /**
  * Admin API key management — server functions over the Better Auth
@@ -14,6 +16,12 @@ import { AdminAuthError, requireAdmin } from '../auth/require-admin';
  * incoming request headers so Better Auth recognises the caller as
  * an admin (the plugin's `adminMiddleware` is satisfied because the
  * `requireAdmin()` helper above gates on role first).
+ *
+ * Issue #445: key CREATION additionally passes the step-up gate
+ * (`assertStepUpGranted`) because it grants standing authority. The
+ * `*Impl` functions stay ungated so they remain unit-testable without
+ * TanStack Start's request context; the gate lives in the server-fn
+ * wrappers, next to `requireAdmin()`.
  *
  * Permissions shape (resource/action):
  *   `{ access_counter: ["read","write"], reactions: ["read","write"] }`
@@ -139,6 +147,14 @@ export const createApiKey = createServerFn({ method: 'POST' })
 	.validator(CreateApiKeyInput)
 	.handler(async ({ data }): Promise<CreateApiKeyResult> => {
 		const session = await requireAdmin();
+		// Step-up gate (Issue #445). Creating a key both issues a bearer
+		// secret and grants `read` / `write` scopes that outlive this
+		// session, so it is the one high-risk admin operation under the
+		// gate. A missing or lapsed confirmation throws
+		// `StepUpError('step_up_required')`, which the admin UI turns
+		// into a password prompt. `deleteApiKey` below is deliberately
+		// not gated: revoking authority is the safe direction.
+		await assertStepUpGranted(env.DB, session);
 		return createApiKeyImpl(session, getRequestHeaders(), data);
 	});
 

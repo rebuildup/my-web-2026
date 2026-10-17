@@ -427,11 +427,14 @@ describe('session cookie contract — report safety', () => {
 /**
  * Emit one value-free JSON line so the verification screenshot can be
  * produced from a real run (see
- * `docs/verification/security/cookie-header-test.webp`). Printed
- * unconditionally because the workerd test pool exposes neither
- * `process.env` nor Vite env vars, so there is no way to gate it on a
- * flag; the payload is attributes only and cannot contain a session
- * token or user record.
+ * `docs/verification/security/cookie-header-test.webp`). It is not
+ * gated on an env var on purpose: the workerd test pool exposes
+ * neither `process.env` nor Vite env vars, so a flag could not reach
+ * it. Vitest's default reporter only surfaces console output from
+ * failing tests, so the normal `pnpm run test` stays quiet; the
+ * documented reproduction command passes `--reporter=verbose` to see
+ * it. The payload is attributes only and cannot contain a session
+ * token or a user record.
  */
 afterAll(() => {
 	const payload = {

@@ -83,7 +83,8 @@ pnpm exec vitest run src/cloudflare/auth/session-cookie-contract.test.ts --repor
 ```
 
 The run prints one `SESSION_COOKIE_CONTRACT_REPORT {…}` line
-containing attributes only.
+containing attributes only (visible with `--reporter=verbose`; the
+default reporter keeps passing-test console output quiet).
 
 ## Test scope: local workerd vs real Cloudflare
 

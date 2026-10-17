@@ -14,6 +14,7 @@ import {
 	cumulativeLayoutShift,
 	evaluateFallbackReadability,
 	formatMetric,
+	isCompletedRequest,
 	parseArgs,
 	renderReportHtml,
 	round3,
@@ -211,21 +212,24 @@ describe('font-first-paint-measure — summarizeFontResources', () => {
 				name: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP',
 				startTime: 100,
 				duration: 120,
-				responseEnd: 220,
-				transferSize: 0,
+				responseStart: 260,
+				encodedBodySize: 149049,
+				transferSize: 149349,
 			},
 			{
 				name: 'https://fonts.gstatic.com/s/notosansjp/v36/x.woff2',
 				startTime: 400,
 				duration: 480,
-				responseEnd: 880,
+				responseStart: 560,
+				encodedBodySize: 0,
 				transferSize: 0,
 			},
 			{
 				name: 'https://127.0.0.1:3000/_build/assets/app.js',
 				startTime: 50,
 				duration: 30,
-				responseEnd: 80,
+				responseStart: 60,
+				encodedBodySize: 900,
 				transferSize: 900,
 			},
 		]);
@@ -233,41 +237,40 @@ describe('font-first-paint-measure — summarizeFontResources', () => {
 		assert.equal(result.abortedRequests, 0);
 		assert.equal(result.slowestMs, 480);
 		assert.equal(result.lastStartMs, 400);
+		assert.equal(result.transferBytes, 149349);
 	});
 
 	it('keeps an aborted request out of the delivered count', () => {
 		// The blocked scenario aborts every font request on purpose.
-		// Resource timing still records the entry, with responseEnd 0;
-		// counting it would put "font reqs = 1" beside a row that
-		// proves no font arrived.
+		// Chromium keeps the entry in resource timing with a non-zero
+		// `responseEnd` and no response signal at all, so the timestamp
+		// alone would count a font that never arrived.
 		const result = summarizeFontResources([
 			{
 				name: 'https://fonts.googleapis.com/css2?family=Noto+Sans+JP',
-				startTime: 100,
-				duration: 20,
-				responseEnd: 0,
+				startTime: 31,
+				duration: 14.5,
+				responseStart: 0,
+				responseEnd: 45.3,
+				encodedBodySize: 0,
 				transferSize: 0,
 			},
 		]);
 		assert.equal(result.requests, 0);
 		assert.equal(result.abortedRequests, 1);
 		assert.equal(result.transferBytes, 0);
-		// No completed response means no response time — not a 0 ms one.
+		// No delivered response means no response time — not a 0 ms one.
 		assert.equal(result.slowestMs, null);
 		assert.equal(result.lastStartMs, null);
 	});
 
-	it('keeps a zero byte total honest when the origin sends no Timing-Allow-Origin', () => {
-		const result = summarizeFontResources([
-			{
-				name: 'https://fonts.gstatic.com/s/x.woff2',
-				duration: 10,
-				responseEnd: 30,
-				transferSize: 0,
-			},
-		]);
-		assert.equal(result.transferBytes, 0);
-		assert.equal(result.requests, 1);
+	it('does not trust responseStatus, which reads 0 for a delivered response too', () => {
+		// Measured in Chromium: a successful cross-origin response under
+		// route interception reports `responseStatus: 0` because the
+		// status is hidden without Timing-Allow-Origin.
+		assert.equal(isCompletedRequest({ responseStatus: 0, transferSize: 149349 }), true);
+		assert.equal(isCompletedRequest({ responseStatus: 0, responseEnd: 122 }), false);
+		assert.equal(isCompletedRequest({ responseStatus: 200, responseEnd: 0 }), false);
 	});
 
 	it('survives resource entries without a name', () => {

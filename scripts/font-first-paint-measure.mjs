@@ -154,14 +154,14 @@ export function cumulativeLayoutShift(entries) {
  *  what `fonts.gstatic.com` returns today — so the count and the
  *  durations are the honest signal and the byte total may be 0.
  *
- *  A request the route handler aborted still appears in resource timing
- *  with `responseEnd === 0`. Counting it as a delivered font would put
- *  "font reqs = 1" on a row that deliberately blocked the origin, so
- *  attempted requests are counted apart from completed ones and only
- *  completed ones carry bytes and timings. */
+ *  A request the route handler aborted still appears in resource timing:
+ *  the entry keeps a non-zero `responseEnd` but `responseStart`,
+ *  `transferSize` and `encodedBodySize` are all 0 and the protocol is
+ *  empty. Attempted requests are therefore counted apart from completed
+ *  ones, and only completed ones carry bytes and timings. */
 export function summarizeFontResources(resources) {
 	const attempted = resources.filter((r) => FONT_ORIGINS.some((host) => r.name?.includes(host)));
-	const completed = attempted.filter((r) => (r.responseEnd ?? 0) > 0);
+	const completed = attempted.filter(isCompletedRequest);
 	return {
 		requests: completed.length,
 		abortedRequests: attempted.length - completed.length,
@@ -173,6 +173,21 @@ export function summarizeFontResources(resources) {
 			completed.length ? completed.reduce((max, r) => Math.max(max, r.startTime || 0), 0) : null,
 		),
 	};
+}
+
+/** Did a resource-timing entry actually deliver a response?
+ *  Measured against Chromium: an aborted request keeps its entry and a
+ *  non-zero `responseEnd`, but no response ever started, so every
+ *  response signal reads 0. `responseStatus` is NOT usable — it is 0
+ *  for a delivered cross-origin response too (the status is hidden
+ *  without `Timing-Allow-Origin`, and stays 0 under Playwright route
+ *  interception), so it cannot separate the two cases. */
+export function isCompletedRequest(entry) {
+	return (
+		(entry.transferSize ?? 0) > 0 ||
+		(entry.encodedBodySize ?? 0) > 0 ||
+		(entry.responseStart ?? 0) > 0
+	);
 }
 
 /** Round to three decimals while preserving ABSENCE. `Math.round(null *
@@ -451,8 +466,8 @@ ${row('captured at', env.capturedAt)}
 ${row('command', escapeHtml(report.command))}
 </tbody></table>
 <h2>metrics</h2>
-<p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a blocked row has no webfont face to swap to, so its swap instant does not exist. <code>font reqs</code> counts only font-origin requests that completed; the aborted ones are listed separately so an aborted request can never read as a font that was fetched.</p>
-<table><thead><tr><th>route</th><th>scenario</th><th>FCP ms</th><th>LCP ms</th><th>CLS</th><th>font swap ms</th><th>font reqs</th><th>font reqs aborted</th><th>fallback</th><th>screenshot</th></tr></thead>
+<p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a blocked row has no webfont face to swap to, so its swap instant does not exist. <code>font-origin reqs</code> counts only font-origin requests that delivered a response; an aborted one is counted separately so it can never read as a font that was fetched. In Chromium the faces the CSS font loader fetches do not appear in this buffer at all, so the counted request is the Google Fonts stylesheet.</p>
+<table><thead><tr><th>route</th><th>scenario</th><th>FCP ms</th><th>LCP ms</th><th>CLS</th><th>font swap ms</th><th>font-origin reqs</th><th>font-origin reqs aborted</th><th>fallback</th><th>screenshot</th></tr></thead>
 <tbody>
 ${runs}
 </tbody></table>
@@ -527,10 +542,10 @@ function collectorScript(families) {
 					name: entry.name,
 					startTime: entry.startTime,
 					duration: entry.duration,
-					// `responseEnd === 0` is how resource timing records a
-					// request that never completed — the blocked-font
-					// scenario aborts every font request on purpose.
-					responseEnd: entry.responseEnd,
+					// An aborted request keeps its entry with every response
+					// signal at 0; see `isCompletedRequest`.
+					responseStart: entry.responseStart,
+					encodedBodySize: entry.encodedBodySize,
 					transferSize: entry.transferSize,
 				});
 			}
@@ -765,11 +780,16 @@ async function main(argv) {
 	await writeFile(htmlPath, renderReportHtml(report));
 
 	for (const run of runs) {
+		// `n/a` never gets a `ms` suffix: "n/ams" would read as a value.
+		const ms = (value) => {
+			const text = formatMetric(value);
+			return text === 'n/a' ? text : `${text}ms`;
+		};
 		const verdict = run.fallback ? (run.fallback.ok ? 'readable' : 'NOT readable') : '—';
 		process.stdout.write(
-			`${run.route.padEnd(10)} ${run.scenario.padEnd(10)} FCP=${formatMetric(run.metrics.fcpMs).padStart(7)}ms ` +
-				`LCP=${formatMetric(run.metrics.lcpMs).padStart(7)}ms CLS=${formatMetric(run.metrics.cls)} ` +
-				`swap=${formatMetric(run.metrics.fontSwapMs).padStart(7)}ms reqs=${run.metrics.fontRequests} ` +
+			`${run.route.padEnd(10)} ${run.scenario.padEnd(10)} ${ms(run.metrics.fcpMs).padStart(9)} ` +
+				`${ms(run.metrics.lcpMs).padStart(9)} CLS=${formatMetric(run.metrics.cls)} ` +
+				`${ms(run.metrics.fontSwapMs).padStart(10)} reqs=${run.metrics.fontRequests} ` +
 				`aborted=${run.metrics.fontRequestsAborted} fallback=${verdict}\n`,
 		);
 		if (run.fallback && !run.fallback.ok) {

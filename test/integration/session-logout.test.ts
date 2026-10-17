@@ -39,11 +39,12 @@ import { auth } from '../../src/cloudflare/auth/better-auth';
  * Fixture data
  * ------------
  * Every identity here is a local fixture on the reserved `.test.local`
- * domain with a throwaway password. No real credential, no personal
- * data, and no cookie value is ever logged or asserted on directly:
- * cookie values are only compared for identity (`!==`) or for absence,
- * never printed. See `assertNoSecretMaterial` below for the guard on
- * the error path.
+ * domain with a throwaway password. No real credential and no personal
+ * data is ever logged. No cookie value is ever printed either: vitest
+ * echoes BOTH operands of a failed `expect`, so a cookie value is never
+ * used as an operand — it is only compared for identity, for absence,
+ * or for shape. `assertNoSecretMaterial` below proves that a value
+ * carries no fixture credential material.
  *
  * The `Origin` header on the POSTs
  * --------------------------------
@@ -78,6 +79,15 @@ const PASSWORD = 'local-fixture-password-only';
  */
 const SSR_TIMEOUT = 60_000;
 
+/**
+ * Delete every row this suite can create.
+ *
+ * Isolation assumption: `@cloudflare/vitest-plugin` gives each test FILE
+ * its own isolated storage (the default `isolatedStorage: true`), so
+ * these DELETEs can only ever reach rows this file wrote. Turning that
+ * flag off in `vitest.config.ts` would let this file delete another
+ * file's fixtures — re-check this helper before flipping it.
+ */
 async function clearRows(): Promise<void> {
 	for (const table of ['session', 'account', 'verification', 'apikey', 'user']) {
 		await env.DB.prepare(`DELETE FROM ${table}`).run();
@@ -182,7 +192,10 @@ async function primeCacheCookie(token: string): Promise<string | null> {
 
 interface ResolvedSession {
 	status: number;
-	body: { user?: { email?: string; role?: string } } | null;
+	body: {
+		session?: { userId?: string };
+		user?: { id?: string; email?: string; role?: string };
+	} | null;
 }
 
 /** Resolve a session from an arbitrary cookie jar (not just the token). */
@@ -192,7 +205,7 @@ async function getSessionWithJar(jar: string): Promise<ResolvedSession> {
 	});
 	return {
 		status: res.status,
-		body: (await res.json()) as { user?: { email?: string; role?: string } } | null,
+		body: (await res.json()) as ResolvedSession['body'],
 	};
 }
 
@@ -207,21 +220,41 @@ async function getPage(path: string, cookie: string | null): Promise<Response> {
 	});
 }
 
+/**
+ * The path a redirect points at. Comparing the exact path is what keeps
+ * a ROLE denial (bounced back to `/admin`) distinguishable from a
+ * SESSION denial (sent to `/admin/login`) — an `includes('/admin')`
+ * check is satisfied by both.
+ */
+function redirectPath(res: Response): string {
+	return new URL(res.headers.get('location') ?? ORIGIN, ORIGIN).pathname;
+}
+
 async function sessionRowCount(): Promise<number> {
 	const row = await env.DB.prepare('SELECT COUNT(*) as c FROM session').first<{ c: number }>();
 	return row?.c ?? -1;
 }
 
 /**
- * Fail loudly if a fixture secret would ever reach an assertion
- * message. `expect(...).toBe(x)` prints both operands on failure, so a
- * test that compared against a cookie value could print it. No
- * assertion below compares against a cookie value — this helper is the
- * belt-and-braces check that the invariant is being respected by the
- * helpers, not just by convention.
+ * Prove that a cookie value carries no fixture credential material.
+ *
+ * Two things are being enforced here. First, the comparison itself is
+ * written so a failure can only print `true`/`false`: `expect(value)
+ * .not.toContain(x)` would echo the whole value into CI output on the
+ * error path, which is exactly what this file promises not to do. Second,
+ * the value must not embed anything the fixture knows — the throwaway
+ * password or the reserved-domain address — because that is what would
+ * make a leaked value attributable.
  */
-function assertNoSecretMaterial(label: string, secret: string | null, credential: string): void {
-	expect(`${label}:${secret ?? ''}`).not.toContain(credential);
+function assertNoSecretMaterial(
+	label: string,
+	secret: string | null,
+	...credentials: string[]
+): void {
+	const value = secret ?? '';
+	for (const credential of credentials) {
+		expect(`${label}:${value}`.includes(credential)).toBe(false);
+	}
 }
 
 describe('session lifecycle — fixation and logout invalidation (Issue #439)', () => {
@@ -247,10 +280,11 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 				const cookie = cookieValue(res.headers.get('set-cookie'), SESSION_COOKIE);
 				expect(cookie).not.toBeNull();
 				expect((cookie ?? '').length).toBeGreaterThan(0);
-				assertNoSecretMaterial('sign-in cookie', cookie, PASSWORD);
+				assertNoSecretMaterial('sign-in cookie', cookie, PASSWORD, email);
 
-				// A `session` row exists and is bound to the fixture user.
+				// A `session` row exists …
 				expect(await sessionRowCount()).toBe(1);
+				const row = await env.DB.prepare('SELECT userId FROM session').first<{ userId: string }>();
 
 				// The API surface resolves the session, including the role
 				// the admin plugin assigned.
@@ -258,6 +292,11 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 				expect(resolved.status).toBe(200);
 				expect(resolved.body?.user?.email).toBe(email);
 				expect(resolved.body?.user?.role).toBe('admin');
+				// … and it is BOUND to that row: a row count alone would not
+				// prove the cookie resolves to the user whose session it is.
+				expect(resolved.body?.session?.userId).toBe(row?.userId);
+				expect(resolved.body?.user?.id).toBe(row?.userId);
+				expect(row?.userId).toBeTruthy();
 
 				// The SSR admin surface renders for the same cookie instead
 				// of redirecting to the sign-in form.
@@ -287,9 +326,12 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 				expect(admin.status).toBe(200);
 
 				const keys = await getPage('/admin/keys', cookie);
-				expect(keys.status).toBeGreaterThanOrEqual(300);
-				expect(keys.status).toBeLessThan(400);
-				expect(keys.headers.get('location')).toContain('/admin');
+				expect(keys.status).toBe(307);
+				// A role denial sends the user back to the dashboard
+				// (`/admin`), NOT to the sign-in form. Pinning the exact
+				// path is what makes "role gate, not session gate"
+				// observable instead of assumed.
+				expect(redirectPath(keys)).toBe('/admin');
 
 				await signOut(cookie);
 			},
@@ -363,9 +405,8 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 				await signOut(cookie);
 
 				const after = await getPage('/admin', cookie);
-				expect(after.status).toBeGreaterThanOrEqual(300);
-				expect(after.status).toBeLessThan(400);
-				expect(after.headers.get('location')).toContain('/admin/login');
+				expect(after.status).toBe(307);
+				expect(redirectPath(after)).toBe('/admin/login');
 			},
 			SSR_TIMEOUT,
 		);
@@ -385,25 +426,26 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 				await signOut(cookie);
 
 				const after = await getPage('/admin/keys', cookie);
-				expect(after.status).toBeGreaterThanOrEqual(300);
-				expect(after.status).toBeLessThan(400);
-				expect(after.headers.get('location')).toContain('/admin/login');
+				expect(after.status).toBe(307);
+				expect(redirectPath(after)).toBe('/admin/login');
 			},
 			SSR_TIMEOUT,
 		);
 
 		it('a sign-out without a matching Origin is refused and does not invalidate the session', async () => {
-			// Better Auth rejects a state-changing POST whose Origin is
-			// not trusted. The security-relevant half is the second
-			// assertion: a rejected sign-out must leave the session
-			// intact rather than half-invalidate it.
+			// Better Auth rejects a state-changing POST whose Origin is not
+			// trusted with `APIError FORBIDDEN` (403) — pinned exactly so an
+			// internal 5xx can never satisfy this case. The
+			// security-relevant half is the second assertion: a rejected
+			// sign-out must leave the session intact rather than
+			// half-invalidate it.
 			const email = 'negative-origin-guard@test.local';
 			await createUser(email);
 			const cookie = cookieValue((await signIn(email)).headers.get('set-cookie'), SESSION_COOKIE);
 			expect(cookie).not.toBeNull();
 
 			const res = await signOut(cookie, { Origin: 'https://not-trusted.invalid' });
-			expect(res.status).toBeGreaterThanOrEqual(400);
+			expect(res.status).toBe(403);
 
 			expect(await sessionRowCount()).toBe(1);
 			expect((await getSession(cookie as string)).body?.user?.email).toBe(email);
@@ -445,16 +487,17 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 				expect(issued).not.toBeNull();
 				// Regeneration: the server mints its own token and does not
 				// echo the client-supplied one back as a valid session.
-				expect(issued).not.toBe(fixed);
-				assertNoSecretMaterial('issued cookie', issued, PASSWORD);
+				// Compared as a boolean so a failure cannot print the issued
+				// credential (vitest echoes both operands of `not.toBe`).
+				expect(issued === fixed).toBe(false);
+				assertNoSecretMaterial('issued cookie', issued, PASSWORD, email, fixed);
 
 				// The planted value is still not a session afterwards, and
 				// the admin surface refuses it.
 				expect((await getSession(fixed)).body).toBeNull();
 				const adminWithFixed = await getPage('/admin', fixed);
-				expect(adminWithFixed.status).toBeGreaterThanOrEqual(300);
-				expect(adminWithFixed.status).toBeLessThan(400);
-				expect(adminWithFixed.headers.get('location')).toContain('/admin/login');
+				expect(adminWithFixed.status).toBe(307);
+				expect(redirectPath(adminWithFixed)).toBe('/admin/login');
 
 				// Exactly one session exists, and it is the issued one:
 				// the D1 row's user is the account the new token resolves to.
@@ -502,11 +545,31 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 		 * This is a residual risk of the current configuration, not an
 		 * accepted end state: shrinking or disabling the cache changes
 		 * the auth policy that ADR-0009 owns, which is an owner
-		 * decision (recorded in Issue #439). The case is written as
-		 * `it.fails` — i.e. it asserts the DESIRED outcome (the replayed
-		 * pair is refused). Today it fails, which is why the suite is
-		 * green; the day the cache is re-tuned, this case flips to
-		 * failing and the change is converted into a plain `it`.
+		 * decision (recorded in Issue #439).
+		 *
+		 * The case is written as `it.fails`, i.e. it asserts the DESIRED
+		 * outcome — a pair captured before sign-out is refused
+		 * afterwards. Today it fails, which is why the suite is green.
+		 *
+		 * It fires on EITHER way the policy is re-tuned, and only then:
+		 *
+		 *   - cache disabled → no `session_data` cookie is issued at all,
+		 *     so there is no pair to replay and the replay degenerates to
+		 *     the already-proven negative case;
+		 *   - cache kept but shrunk → the pair expires instead of
+		 *     outliving the logout.
+		 *
+		 * In both cases every assertion below passes, `it.fails` reports
+		 * the unexpected pass, and the case is converted into a plain
+		 * `it`. Nothing here may "pass today for an unrelated reason":
+		 * that is what made an earlier revision of this case inert.
+		 *
+		 * Shape of the assertion: `/api/v1/auth/get-session` has NO 401
+		 * path — for an unknown or deleted session it answers 200 with a
+		 * `null` body (`better-auth/dist/api/routes/session.mjs`). So
+		 * "refused" is asserted as "resolves to no user", not as a
+		 * status code. The `/admin` redirect is the second, independent
+		 * witness.
 		 */
 		it.fails(
 			'[known gap] a captured session_token + session_data pair is refused after sign-out',
@@ -515,29 +578,34 @@ describe('session lifecycle — fixation and logout invalidation (Issue #439)', 
 				await createUser(email);
 				const cookie = cookieValue((await signIn(email)).headers.get('set-cookie'), SESSION_COOKIE);
 				expect(cookie).not.toBeNull();
+				expect(await sessionRowCount()).toBe(1);
 
 				// Prime the cache cookie the way a browser would collect it.
+				// `null` is a valid outcome here (no cache → no cache
+				// cookie), NOT a failure: it is already the desired state.
 				const cached = await primeCacheCookie(cookie as string);
-				expect(cached).not.toBeNull();
-				expect(await sessionRowCount()).toBe(1);
+				assertNoSecretMaterial('cache cookie', cached, PASSWORD, email);
 
 				await signOut(cookie, {}, cached);
 				expect(await sessionRowCount()).toBe(0);
 
-				// Replay the captured pair. Today the cookie cache answers
-				// without consulting D1, so this is still authenticated.
-				const jar = `${SESSION_COOKIE}=${cookie}; ${CACHE_COOKIE}=${cached}`;
-				const replayed = await SELF.fetch(`${ORIGIN}/api/v1/auth/get-session`, {
-					headers: { Cookie: jar },
-				});
-				expect(replayed.status).toBe(401);
+				// Replay the captured pair. With the cache on, the cookie
+				// cache answers without consulting D1, so this is still
+				// authenticated today; with the cache off the jar is just
+				// the dead token.
+				const jar =
+					cached === null
+						? `${SESSION_COOKIE}=${cookie}`
+						: `${SESSION_COOKIE}=${cookie}; ${CACHE_COOKIE}=${cached}`;
+				const replayed = await getSessionWithJar(jar);
+				expect(replayed.body).toBeNull();
 
 				const admin = await SELF.fetch(`${ORIGIN}/admin`, {
 					headers: { Cookie: jar },
 					redirect: 'manual',
 				});
-				expect(admin.status).toBeGreaterThanOrEqual(300);
-				expect(admin.status).toBeLessThan(400);
+				expect(admin.status).toBe(307);
+				expect(redirectPath(admin)).toBe('/admin/login');
 			},
 			SSR_TIMEOUT,
 		);

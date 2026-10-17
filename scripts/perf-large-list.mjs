@@ -287,6 +287,14 @@ export function collectNamingViolations(elements, namingRoles = NAMING_ROLES) {
 /**
  * Evaluate the measurement against the documented ceilings.
  *
+ * The accessibility ceiling is scoped to the LIST surface
+ * (`#portfolio-list`): that is the surface whose defect count scales
+ * with the catalogue, and therefore the one this Issue fixes. The
+ * page-wide count is reported next to it but never gates, because the
+ * chrome above the list (the facet filter, the nav) renders once per
+ * page and is explicitly out of scope — see
+ * `docs/verification/perf/large-list-pagination.md` §2.
+ *
  * The script exits non-zero on failure so a terminal run is
  * reproducible, but this is deliberately NOT wired into
  * `validate:*` — see the file header.
@@ -310,9 +318,9 @@ export function evaluateThresholds(report) {
 			`after the append the list shows ${report.cards.afterLoadMore} cards, expected the full catalogue ${report.expectedTotal}`,
 		);
 	}
-	if (report.a11y.namingViolations > 0) {
+	if (report.a11y.namingViolationsInList > 0) {
 		failures.push(
-			`${report.a11y.namingViolations} element(s) carry aria-label without a role that exposes it`,
+			`${report.a11y.namingViolationsInList} list element(s) carry aria-label without a role that exposes it`,
 		);
 	}
 	if (report.a11y.imagesWithoutAlt > 0) {
@@ -395,11 +403,17 @@ export function parseArgs(argv) {
  */
 function collectPageMetrics() {
 	const cards = document.querySelectorAll('#portfolio-list ol > li').length;
-	const labelled = Array.from(document.querySelectorAll('[aria-label]')).map((el) => ({
+	const describe = (el) => ({
 		tag: el.tagName.toLowerCase(),
 		role: el.getAttribute('role'),
 		ariaLabel: el.getAttribute('aria-label'),
-	}));
+	});
+	const labelled = Array.from(document.querySelectorAll('[aria-label]')).map(describe);
+	// The LIST surface only: the defect count that scales with the
+	// catalogue lives here, so this is what the threshold gates on.
+	const labelledInList = Array.from(document.querySelectorAll('#portfolio-list [aria-label]')).map(
+		describe,
+	);
 	const nav = performance.getEntriesByType('navigation')[0];
 	const memory = performance.memory;
 	return {
@@ -407,6 +421,7 @@ function collectPageMetrics() {
 		domNodes: document.querySelectorAll('*').length,
 		heapMb: memory ? Math.round((memory.usedJSHeapSize / 1024 / 1024) * 10) / 10 : null,
 		labelled,
+		labelledInList,
 		imagesWithoutAlt: Array.from(document.querySelectorAll('img')).filter(
 			(img) => !img.getAttribute('alt'),
 		).length,
@@ -506,7 +521,7 @@ async function renderMeasurementPanel(page, report, { pageSize }) {
 				['"Load more" append', `${payload.timings.appendMs} ms`],
 				[
 					'aria-label w/o naming role',
-					`${payload.a11y.namingViolations}${payload.a11y.namingViolationSamples.length > 0 ? ` (e.g. ${payload.a11y.namingViolationSamples[0]})` : ''}`,
+					`list ${payload.a11y.namingViolationsInList} (page ${payload.a11y.namingViolationsPage}${payload.a11y.namingViolationSamplesPage.length > 0 ? `, e.g. ${payload.a11y.namingViolationSamplesPage[0]}` : ''})`,
 				],
 				['AX nodes named "facets"', `${payload.a11y.axFacetGroupsAfterLoadMore}`],
 				[
@@ -638,6 +653,7 @@ async function main() {
 			tree.nodes.filter((node) => node.role?.value === 'group' && node.name?.value === 'facets')
 				.length;
 		const violations = collectNamingViolations(initial.labelled);
+		const violationsInList = collectNamingViolations(initial.labelledInList);
 
 		/** Distinct labelled shapes on the page, for the report. */
 		const inventory = new Map();
@@ -704,8 +720,10 @@ async function main() {
 				appendMs,
 			},
 			a11y: {
-				namingViolations: violations.length,
-				namingViolationSamples: violations.slice(0, 3),
+				namingViolationsInList: violationsInList.length,
+				namingViolationSamplesInList: violationsInList.slice(0, 3),
+				namingViolationsPage: violations.length,
+				namingViolationSamplesPage: violations.slice(0, 3),
 				labelledInventory: [...inventory.values()].sort((a, b) => b.count - a.count),
 				imagesWithoutAlt: initial.imagesWithoutAlt,
 				axFacetGroupsInitial: facetGroupsNamed(axInitial),
@@ -746,7 +764,9 @@ async function main() {
 		);
 		process.stdout.write(`  navigation load      ${initial.timings?.loadMs ?? 'n/a'} ms\n`);
 		process.stdout.write(`  append latency       ${appendMs} ms\n`);
-		process.stdout.write(`  aria-label w/o role  ${report.a11y.namingViolations}\n`);
+		process.stdout.write(
+			`  aria-label w/o role  list ${report.a11y.namingViolationsInList} / page ${report.a11y.namingViolationsPage}\n`,
+		);
 		process.stdout.write(`  AX groups "facets"   ${report.a11y.axFacetGroupsAfterLoadMore}\n`);
 		process.stdout.write(`  verdict              ${report.verdict.pass ? 'PASS' : 'FAIL'}\n`);
 		for (const failure of report.verdict.failures) process.stdout.write(`    - ${failure}\n`);

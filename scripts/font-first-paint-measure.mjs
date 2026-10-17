@@ -192,6 +192,42 @@ export function evaluateFallbackReadability({ probes, webFontAvailable, blocked 
 	return { ok: problems.length === 0, problems, probes: probes.length };
 }
 
+/** Metrics whose before/after delta is a deterministic result rather
+ *  than a single-run timing: a wrap either happened or it did not, so
+ *  the same build measures the same value. Everything else in the
+ *  comparison (paint / swap / response times) depends on the network
+ *  and the machine and is rendered as context, never as a result. */
+export const DETERMINISTIC_METRICS = ['cls', 'clsEntries', 'worstShift'];
+
+function range(values) {
+	const numbers = values.filter((v) => typeof v === 'number');
+	if (numbers.length === 0) return values.join(', ');
+	const min = Math.min(...numbers);
+	const max = Math.max(...numbers);
+	return min === max ? String(min) : `${min}–${max}`;
+}
+
+/**
+ * Collapses the noisy half of the comparison into one row per metric,
+ * as a min–max range across routes and scenarios. Reporting 45 single
+ * -run rows in a PR screenshot is how a noise delta gets mistaken for a
+ * result, so the HTML keeps the range and `report.json` keeps every row.
+ */
+export function aggregateComparison(comparison) {
+	const byMetric = new Map();
+	for (const row of comparison) {
+		const metric = row.key.split(':')[2];
+		if (!byMetric.has(metric)) byMetric.set(metric, []);
+		byMetric.get(metric).push(row);
+	}
+	return [...byMetric.entries()].map(([metric, rows]) => ({
+		metric,
+		before: range(rows.map((r) => r.before)),
+		after: range(rows.map((r) => r.after)),
+		deterministic: DETERMINISTIC_METRICS.includes(metric),
+	}));
+}
+
 /**
  * before/after rows for the report's comparison table. Keyed by
  * `route:scenario:metric` so a route that changed shape between runs
@@ -267,15 +303,43 @@ export function renderReportHtml(report) {
 		})
 		.join('\n');
 
-	const comparison = report.comparison?.length
-		? `<h2>before / after</h2><table><thead><tr><th>metric</th><th>before</th><th>after</th><th>delta</th><th>direction</th></tr></thead><tbody>${report.comparison
-				.map(
-					(c) =>
-						`<tr><td>${escapeHtml(c.key)}</td><td>${escapeHtml(c.before)}</td><td>${escapeHtml(
-							c.after,
-						)}</td><td>${escapeHtml(c.delta)}</td><td class="${c.direction}">${escapeHtml(
-							c.direction,
-						)}</td></tr>`,
+	const comparison = (() => {
+		if (!report.comparison?.length) return '';
+		const aggregated = aggregateComparison(report.comparison);
+		const signal = aggregated.filter((a) => a.deterministic);
+		const context = aggregated.filter((a) => !a.deterministic);
+		const row = (a) =>
+			`<tr><td>${escapeHtml(a.metric)}</td><td>${escapeHtml(a.before)}</td><td>${escapeHtml(a.after)}</td></tr>`;
+		return (
+			`<h2>before / after</h2>` +
+			`<p class="note">Read the deterministic table: a wrap either happened or it does not, so the same build measures the same value. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. Every individual row stays in <code>report.json</code>.</p>` +
+			`<h3>deterministic (layout shift)</h3>` +
+			`<table><thead><tr><th>metric</th><th>before</th><th>after</th></tr></thead><tbody>${signal
+				.map(row)
+				.join('')}</tbody></table>` +
+			`<h3>context (single-run timings — noise)</h3>` +
+			`<table><thead><tr><th>metric</th><th>before</th><th>after</th></tr></thead><tbody>${context
+				.map(row)
+				.join('')}</tbody></table>`
+		);
+	})();
+
+	const diagnosis = report.runs.some((run) => (run.layoutShiftSources ?? []).length > 0)
+		? `<h2>where the shift came from</h2><p class="note">Layout-shift sources for the two largest shifts of every run. A CLS number without these is unattributable — this is the evidence that a shift is a re-wrap (a container height changes when the font swaps) rather than an image or an ad slot.</p><table><thead><tr><th>route</th><th>scenario</th><th>value</th><th>at ms</th><th>sources</th></tr></thead><tbody>${report.runs
+				.flatMap((run) =>
+					(run.layoutShiftSources ?? []).map(
+						(shift) =>
+							`<tr><td>${escapeHtml(run.route)}</td><td>${escapeHtml(run.scenario)}</td><td>${escapeHtml(
+								shift.value,
+							)}</td><td>${escapeHtml(shift.startTimeMs)}</td><td>${shift.sources
+								.map(
+									(source) =>
+										`<div>${escapeHtml(source.tag)} &ldquo;${escapeHtml(source.text)}&rdquo; ${escapeHtml(
+											source.previous,
+										)} &rarr; ${escapeHtml(source.current)}</div>`,
+								)
+								.join('')}</td></tr>`,
+					),
 				)
 				.join('\n')}</tbody></table>`
 		: '';
@@ -288,11 +352,12 @@ export function renderReportHtml(report) {
   body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 24px; color: #111827; background: #ffffff; }
   h1 { font-size: 18px; margin: 0 0 4px; }
   h2 { font-size: 15px; margin: 28px 0 8px; }
+  h3 { font-size: 13px; margin: 18px 0 6px; color: #374151; }
   p.note { margin: 0 0 16px; color: #4b5563; }
   table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
   th, td { border: 1px solid #d1d5db; padding: 4px 8px; text-align: left; vertical-align: top; font-size: 12px; }
   thead th { background: #f3f4f6; }
-  td img { max-width: 260px; border: 1px solid #e5e7eb; display: block; }
+  td img { max-width: 200px; border: 1px solid #e5e7eb; display: block; }
   .ok { color: #047857; font-weight: 700; }
   .bad { color: #b91c1c; font-weight: 700; }
   .better { color: #047857; } .worse { color: #b91c1c; } .flat { color: #6b7280; }
@@ -321,6 +386,7 @@ ${row('command', escapeHtml(report.command))}
 <tbody>
 ${runs}
 </tbody></table>
+${diagnosis}
 ${comparison}
 </body></html>
 `;
@@ -330,13 +396,15 @@ ${comparison}
  * In-page collector (runs before any page script)
  * ------------------------------------------------------------------ */
 
-function collectorScript() {
+function collectorScript(families) {
 	window.__fontFirstPaint = {
 		fcp: null,
 		lcp: null,
+		lcpElement: null,
 		clsEntries: [],
 		fontResources: [],
 		fontsReadyAt: null,
+		webFontSwapAt: null,
 	};
 	try {
 		new PerformanceObserver((list) => {
@@ -349,7 +417,12 @@ function collectorScript() {
 		new PerformanceObserver((list) => {
 			const entries = list.getEntries();
 			const last = entries[entries.length - 1];
-			if (last) window.__fontFirstPaint.lcp = last.startTime;
+			if (last) {
+				window.__fontFirstPaint.lcp = last.startTime;
+				window.__fontFirstPaint.lcpElement = last.element
+					? `${last.element.tagName.toLowerCase()}.${String(last.element.className || '').split(' ')[0]}`
+					: null;
+			}
 		}).observe({ type: 'largest-contentful-paint', buffered: true });
 	} catch {}
 	try {
@@ -357,8 +430,21 @@ function collectorScript() {
 			for (const entry of list.getEntries()) {
 				if (!entry.hadRecentInput) {
 					window.__fontFirstPaint.clsEntries.push({
-						value: entry.startTime === undefined ? 0 : entry.value,
+						value: entry.value,
 						startTime: entry.startTime,
+						// Shift sources are the whole diagnosis: a re-wrap
+						// shows up as a container whose height changes, and
+						// without them a CLS number is unattributable.
+						sources: (entry.sources || []).slice(0, 4).map((source) => ({
+							tag: source.node ? source.node.tagName.toLowerCase() : '?',
+							text: source.node
+								? String(source.node.textContent || '')
+										.trim()
+										.slice(0, 28)
+								: '',
+							previous: `${Math.round(source.previousRect.width)}x${Math.round(source.previousRect.height)}`,
+							current: `${Math.round(source.currentRect.width)}x${Math.round(source.currentRect.height)}`,
+						})),
 					});
 				}
 			}
@@ -376,8 +462,26 @@ function collectorScript() {
 			}
 		}).observe({ type: 'resource', buffered: true });
 	} catch {}
-	// `document.fonts.ready` resolves when the pending font loads settle,
-	// i.e. the moment the swap has been applied (or will not be).
+	// `document.fonts.ready` resolves when the *currently pending* loads
+	// settle — which is NOT the swap: before the Google stylesheet is
+	// parsed no @font-face exists, so it resolves almost immediately and
+	// would report a meaningless "swap". The swap is instead polled from
+	// the FontFaceSet itself: the first instant a webfont face reports
+	// `loaded` is the instant `display=swap` actually replaced the
+	// fallback glyphs.
+	const isWebFont = (face) => families.includes(String(face.family || '').replaceAll('"', ''));
+	window.__fontFirstPaint.fontPoll = setInterval(() => {
+		const now = performance.now();
+		for (const face of document.fonts) {
+			if (
+				isWebFont(face) &&
+				face.status === 'loaded' &&
+				window.__fontFirstPaint.webFontSwapAt === null
+			) {
+				window.__fontFirstPaint.webFontSwapAt = now;
+			}
+		}
+	}, 50);
 	document.fonts.ready.then(() => {
 		window.__fontFirstPaint.fontsReadyAt = performance.now();
 	});
@@ -580,7 +684,7 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir }
 		deviceScaleFactor: 1,
 	});
 	const page = await context.newPage();
-	await page.addInitScript(collectorScript);
+	await page.addInitScript(collectorScript, WEBFONT_FAMILIES);
 
 	const delayMs = scenario.name === 'slow-font' ? options.fontDelayMs : scenario.delayMs;
 	if (scenario.blocked || delayMs > 0) {
@@ -626,6 +730,14 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir }
 				if (!text) continue;
 				const rect = el.getBoundingClientRect();
 				const style = getComputedStyle(el);
+				// `display: none` — on the element OR on any ancestor — is
+				// chrome hidden BY DESIGN at this viewport (the closed
+				// mobile panel, the mobile-only menu button on desktop).
+				// It is not a readability failure, so it is not probed at
+				// all. `checkVisibility()` is the ancestor-aware test; a
+				// *rendered* element with a zero-size box still is a
+				// failure and `evaluateFallbackReadability` fails it.
+				if (typeof el.checkVisibility === 'function' && !el.checkVisibility()) continue;
 				const colorMatch = style.color.match(/rgba?\(([^)]+)\)/);
 				const parts = colorMatch
 					? colorMatch[1].split(',').map((n) => Number(n.trim()))
@@ -635,6 +747,7 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir }
 					textSample: text.slice(0, 40),
 					rectWidth: Math.round(rect.width),
 					rectHeight: Math.round(rect.height),
+					display: style.display,
 					visibility: style.visibility,
 					opacity: Number(style.opacity),
 					color: style.color,
@@ -643,13 +756,31 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir }
 				});
 			}
 			const state = window.__fontFirstPaint ?? {};
+			if (state.fontPoll) clearInterval(state.fontPoll);
+			// `document.fonts.check()` answers for SYSTEM fonts too, so it
+			// returns `true` even when no @font-face was ever parsed — it
+			// cannot tell "webfont loaded" from "no webfont requested".
+			// The FontFaceSet can: a webfont face that exists and is
+			// `loaded` is a webfont that arrived.
+			const faces = [...document.fonts].map((face) => ({
+				family: String(face.family || '').replaceAll('"', ''),
+				weight: face.weight,
+				status: face.status,
+			}));
 			return {
 				probes,
 				fontStatus: document.fonts.status,
-				webFontAvailable: families.every((family) => document.fonts.check(`16px "${family}"`)),
+				fontFaceCount: faces.length,
+				webFaceCount: faces.filter((f) => families.includes(f.family)).length,
+				loadedWebFaceCount: faces.filter(
+					(f) => families.includes(f.family) && f.status === 'loaded',
+				).length,
+				webFontAvailable: faces.some((f) => families.includes(f.family) && f.status === 'loaded'),
 				fcp: state.fcp,
 				lcp: state.lcp,
+				lcpElement: state.lcpElement,
 				fontsReadyAt: state.fontsReadyAt,
+				webFontSwapAt: state.webFontSwapAt,
 				clsEntries: state.clsEntries,
 				fontResources: state.fontResources,
 			};
@@ -684,18 +815,29 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir }
 			cpuThrottleRate: scenario.cpuThrottle,
 			fontStatus: observed.fontStatus,
 			webFontAvailable: observed.webFontAvailable,
+			webFontFaces: observed.webFaceCount,
+			loadedWebFontFaces: observed.loadedWebFaceCount,
 		},
 		metrics: {
 			fcpMs: round3(observed.fcp ?? null),
 			lcpMs: round3(observed.lcp ?? null),
+			lcpElement: observed.lcpElement ?? null,
 			cls: shift.cls,
 			clsEntries: shift.count,
 			worstShift: shift.worst,
-			fontSwapMs: round3(observed.fontsReadyAt ?? null),
+			fontSwapMs: round3(observed.webFontSwapAt ?? null),
 			fontRequests: fonts.requests,
 			fontTransferBytes: fonts.transferBytes,
 			slowestFontResponseMs: fonts.slowestMs,
 		},
+		layoutShiftSources: (observed.clsEntries ?? [])
+			.sort((a, b) => b.value - a.value)
+			.slice(0, 2)
+			.map((entry) => ({
+				value: round3(entry.value),
+				startTimeMs: round3(entry.startTime),
+				sources: entry.sources ?? [],
+			})),
 		fallback,
 		screenshot,
 	};

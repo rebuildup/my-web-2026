@@ -3,8 +3,10 @@ import { describe, it } from 'node:test';
 import {
 	CPU_THROTTLE_RATE,
 	DEFAULT_ROUTES,
+	DETERMINISTIC_METRICS,
 	FONT_ORIGIN_PATTERNS,
 	WEBFONT_FAMILIES,
+	aggregateComparison,
 	compareRuns,
 	cumulativeLayoutShift,
 	evaluateFallbackReadability,
@@ -296,7 +298,10 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 				cpuCount: 10,
 				totalMemGB: 24,
 			},
-			source: { sha: 'abc1234', dirty: false, branch: '485', version: '0.6.3' },
+			// A deliberately non-project-shaped fixture version: the
+			// release-literal gate forbids restating the current release
+			// anywhere in `scripts/**`.
+			source: { sha: 'abc1234', dirty: false, branch: '485', version: '9.9.9-fixture' },
 			capturedAt: '2026-10-18T00:00:00.000Z',
 		},
 		runs: [
@@ -333,7 +338,38 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 	it('renders the before/after table when a comparison is present', () => {
 		const html = renderReportHtml(report);
 		assert.match(html, /before \/ after/);
-		assert.match(html, /\/:baseline:cls/);
+		// The table is aggregated per metric, so the row key collapses to
+		// the metric name and the values survive.
+		assert.match(html, /<td>cls<\/td>/);
+		assert.match(html, /<td>0\.12<\/td>/);
+		assert.match(html, /<td>0\.03<\/td>/);
+	});
+
+	it('splits the before/after table into deterministic rows and noisy context', () => {
+		// CLS is deterministic; paint / swap timings are single-run and
+		// must not be read as a result.
+		const html = renderReportHtml(report);
+		assert.match(html, /deterministic \(layout shift\)/);
+		assert.match(html, /context \(single-run timings — noise\)/);
+		assert.match(html, /network and machine noise/);
+	});
+
+	it('aggregates the noisy rows into one min-max row per metric', () => {
+		assert.deepEqual(
+			aggregateComparison([
+				{ key: '/:baseline:fcpMs', before: 200, after: 180 },
+				{ key: '/about:baseline:fcpMs', before: 300, after: 320 },
+				{ key: '/:baseline:cls', before: 0.5, after: 0.1 },
+			]),
+			[
+				{ metric: 'fcpMs', before: '200–300', after: '180–320', deterministic: false },
+				{ metric: 'cls', before: '0.5', after: '0.1', deterministic: true },
+			],
+		);
+	});
+
+	it('classifies only layout-shift metrics as deterministic', () => {
+		assert.deepEqual(DETERMINISTIC_METRICS, ['cls', 'clsEntries', 'worstShift']);
 	});
 
 	it('omits the comparison table when there is nothing to compare', () => {

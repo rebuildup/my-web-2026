@@ -3,6 +3,7 @@ import packageJson from '../../package.json';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
+import { corsMiddleware } from './cors/middleware';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
@@ -27,6 +28,20 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
 export const externalBoundary = new Hono<{ Bindings: Env }>();
+
+// CORS policy (Issue #455) — mounted FIRST so it covers every path the
+// boundary serves, including the `LOCAL_API_MODE=mock` short-circuit
+// below. A mock that answered with a different CORS surface would be a
+// way to bypass the production policy.
+//
+// The split it enforces: `credentialed` routes (`/api/v1/auth/*`,
+// `/api/v1/access/*`, `/api/v1/reactions`) echo ONE allow-listed origin
+// with `Access-Control-Allow-Credentials: true` and refuse everything
+// else with `403`; `public-read` routes (`/api/v1/health`,
+// `/api/v1/reaction-images/:id`) answer `Access-Control-Allow-Origin: *`
+// and never carry credentials; every other path gets no CORS header at
+// all. See `src/http/cors/README.md` and `docs/security/api-cors.md`.
+externalBoundary.use('*', corsMiddleware);
 
 // Local API mock gate (Issue #166): when `env.LOCAL_API_MODE === 'mock'`
 // (set in `.dev.vars`, NOT in `wrangler.jsonc#vars` — see

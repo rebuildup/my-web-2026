@@ -8,6 +8,45 @@ import {
 import '../styles.css';
 
 /**
+ * Icon family links (Issue #504).
+ *
+ * Every entry is a flat object literal with single-quoted string
+ * values on ONE line, because `scripts/check-app-icons.mjs` parses this
+ * block to prove the published contract is coherent: every `<link>` here
+ * must point at a file that exists at the declared size, must be named
+ * by `public/site.webmanifest` or by this list, and must leave no orphan
+ * in `public/icons/`. Keep the shape; keep the files in sync via
+ * `pnpm run generate:app-icons`.
+ *
+ * `rel: 'icon'` (SVG) stays the primary desktop entry from Issue #285 —
+ * the PNG entries sit beside it as a raster fallback, because a handful
+ * of embedders (and older Safari) still look for a PNG.
+ *
+ * `apple-touch-icon` covers the iOS sizes that matter: 180 (iPhone),
+ * 167 and 152 (iPad), 120 (legacy iOS / Spotlight). iOS ignores
+ * `sizes` and picks the largest entry, so each size is a real file
+ * rather than one file relabelled four times.
+ *
+ * The manifest icons (192 / 512 / maskable 512) are deliberately NOT
+ * linked here: `public/site.webmanifest` names them itself, and
+ * duplicating the list in the document head would create a second
+ * place to forget an update.
+ *
+ * Deliberately absent: `apple-touch-startup-image` (no launch-screen
+ * artwork exists) and any offline declaration (see the manifest).
+ */
+const APP_ICON_LINKS = [
+	{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+	{ rel: 'icon', type: 'image/png', sizes: '16x16', href: '/icons/icon-16x16.png' },
+	{ rel: 'icon', type: 'image/png', sizes: '32x32', href: '/icons/icon-32x32.png' },
+	{ rel: 'apple-touch-icon', sizes: '120x120', href: '/icons/apple-touch-icon-120x120.png' },
+	{ rel: 'apple-touch-icon', sizes: '152x152', href: '/icons/apple-touch-icon-152x152.png' },
+	{ rel: 'apple-touch-icon', sizes: '167x167', href: '/icons/apple-touch-icon-167x167.png' },
+	{ rel: 'apple-touch-icon', sizes: '180x180', href: '/icons/apple-touch-icon-180x180.png' },
+	{ rel: 'manifest', href: '/site.webmanifest' },
+];
+
+/**
  * Root route. Defines the document shell shared by every page.
  *
  * Styling is delegated to Panda CSS (see `src/styles.css`). The
@@ -57,6 +96,16 @@ export const Route = createRootRoute({
 			{ charSet: 'utf-8' },
 			{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
 			{ title: 'my-web-2026' },
+			// Issue #504 — the site ships two appearances (Issue #290),
+			// so the browser-chrome tint is declared per appearance
+			// instead of pinning one colour that is wrong half the time.
+			// Values are the two `bg.canvas` steps from
+			// `src/editorial/semantic-tokens.ts`: `neutral.0` (light) and
+			// `charcoal.950` (dark). The manifest's single `theme_color`
+			// cannot be appearance-conditional, so it carries the static
+			// accent step (`brand.700`) instead.
+			{ name: 'theme-color', media: '(prefers-color-scheme: light)', content: '#ffffff' },
+			{ name: 'theme-color', media: '(prefers-color-scheme: dark)', content: '#0a0b0e' },
 		],
 		// Google Fonts: Noto Sans JP (body) + Zen Kaku Gothic New
 		// (display / heading, applied via the `heading` font token to
@@ -94,8 +143,9 @@ export const Route = createRootRoute({
 		// platform fallback stack — the same face `display=swap` already
 		// shows for the first few hundred ms for everyone else.
 		links: [
-			// Default favicon (Issue #285): a pure-blue circle served
-			// from `public/favicon.svg` (relative to the origin root).
+			// Icon family (Issue #285 SVG favicon, Issue #504 PNG +
+			// Apple Touch Icon + Web App Manifest). `APP_ICON_LINKS`
+			// carries the block-level contract; see its docstring.
 			//
 			// Declared in this `head()`, not in the `<head>` JSX of
 			// `RootComponent`, so it flows through TanStack Router's
@@ -112,9 +162,10 @@ export const Route = createRootRoute({
 			// of the tag — so only byte-identical link tags collapse,
 			// while `meta` dedupes by `name`/`property` with the
 			// deepest route winning. Because no route declares an
-			// icon today, this entry renders exactly once on every
-			// route (root, public pages, admin, and the 404 pages).
-			{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
+			// icon today, every entry below renders exactly once on
+			// every route (root, public pages, admin, and the 404
+			// pages).
+			...APP_ICON_LINKS,
 			{ rel: 'preconnect', href: 'https://fonts.googleapis.com' },
 			{
 				rel: 'preconnect',

@@ -11,6 +11,9 @@
  * `delivery.kind === 'same_origin_static'`:
  *   1. Verifies the submodule is initialised at the pinned SHA
  *      (calls `git submodule status`).
+ *   1b. Verifies the *checked-out* commit equals the pinned SHA and
+ *       records the stamp that ties the collected artefact back to
+ *       that commit (Issue #473).
  *   2. cd's into the submodule path.
  *   3. Runs the manifest's `build.command` (deterministic, fail-fast).
  *   4. Cleans `dist/client/tools/<slug>/` then mirrors
@@ -37,6 +40,7 @@ import {
 } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PROVENANCE_STAMP_DIR, observeCheckout } from './check-submodule-provenance.mjs';
 import { rewriteAssetPaths } from './rewrite-asset-paths.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -149,6 +153,31 @@ for (const tool of targetTools) {
 	}
 	console.error('[build-tools]   ✓ gitlink SHA matches');
 
+	// 1b. Issue #473 — the gitlink says which commit the parent tree
+	// records; the checkout says which commit is actually on disk and
+	// would actually be built. They can differ (a `git -C
+	// external/<slug> checkout <other>` leaves the gitlink untouched),
+	// and then the artefact no longer matches any recorded pin. Refuse
+	// to build rather than ship it.
+	const checkout = observeCheckout(root, tool.source.submodule_path);
+	if (!checkout.initialised) {
+		errors.push(
+			`${tool.slug}: ${tool.source.submodule_path} is not an initialised submodule (its own git toplevel could not be confirmed)`,
+		);
+		console.error('[build-tools]   ✗ submodule checkout unreadable');
+		continue;
+	}
+	if (checkout.head !== tool.source.pinned_sha) {
+		errors.push(
+			`${tool.slug}: checked-out source is ${checkout.head ?? 'unreadable'} but pinned_sha is ${tool.source.pinned_sha}`,
+		);
+		console.error(
+			'[build-tools]   ✗ checkout SHA differs from the pin — the artefact would not match any recorded provenance',
+		);
+		continue;
+	}
+	console.error(`[build-tools]   ✓ checkout SHA ${checkout.head} matches the pin`);
+
 	const submodulePath = join(root, tool.source.submodule_path);
 	if (!existsSync(submodulePath)) {
 		errors.push(`${tool.slug}: submodule path does not exist on disk`);
@@ -236,6 +265,7 @@ for (const tool of targetTools) {
 		mkdirSync(destDir, { recursive: true });
 		mirrorDir(sourceOutputDir, destDir);
 		console.error(`[build-tools]   ✓ artifact collected at ${destDir}`);
+		writeProvenanceStamp(tool, checkout.head);
 	}
 
 	// 4. Entry-point check (the artifact must contain an index.html so
@@ -287,6 +317,39 @@ if (errors.length > 0) {
 }
 
 console.error(`\n[build-tools] all ${targetTools.length} tool(s) built successfully.`);
+
+/**
+ * Issue #473 — record which commit produced the collected artefact.
+ *
+ * The stamp lives at `dist/tool-provenance/<slug>.json`, deliberately
+ * OUTSIDE `dist/client/`: everything under `dist/client` is uploaded as
+ * a public Static Asset, and this record is operator-facing evidence,
+ * not part of the Tool's bundle. `scripts/check-submodule-provenance.mjs`
+ * cross-checks it against the manifest pin, the gitlink, and the live
+ * checkout, so a stale artefact left over from an earlier build is
+ * reported as drift instead of being served silently.
+ *
+ * No timestamp is written on purpose: the stamp must be byte-stable
+ * across two builds of the same commit, so it can be diffed.
+ */
+function writeProvenanceStamp(tool, checkoutSha) {
+	const stamp = {
+		schema: 1,
+		slug: tool.slug,
+		canonical_repo: tool.source.canonical_repo,
+		submodule_path: tool.source.submodule_path,
+		pinned_sha: tool.source.pinned_sha,
+		checkout_sha: checkoutSha ?? tool.source.pinned_sha,
+		artifact_path: tool.delivery.artifact_path,
+		entry_html: tool.delivery.entry_html ?? `${tool.delivery.artifact_path}/index.html`,
+	};
+	const dir = join(root, PROVENANCE_STAMP_DIR);
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, `${tool.slug}.json`), `${JSON.stringify(stamp, null, 2)}\n`);
+	console.error(
+		`[build-tools]   ✓ provenance stamp written at ${PROVENANCE_STAMP_DIR}/${tool.slug}.json`,
+	);
+}
 
 /**
  * Mirror a directory recursively (cp -r semantics, but Node-only).

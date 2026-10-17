@@ -112,7 +112,7 @@ stub adapter の外へ出ない。本番 D1 / R2 / Infisical / Cloudflare API �
   範囲外。`/admin/invitations/accept?token=…` は pathname gate で
   admin 扱いになるため現状 GA には乗らない。
 - **gate の静的解析は限定**: operator script 側は「secret 名の値を読む
-  表現」を検出する靜的ルールであり、値が別名 (`const v = secret`) に
+  表現」を検出する静的ルールであり、値が別名 (`const v = secret`) に
   入った場合は検出しない。実行時の保証は marker ベースの
   `node --test` (stub / fake 入力) が担う。
 - **`src/logging/redact.ts` の over-redaction**: 24 文字以上の不透明な

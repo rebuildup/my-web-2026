@@ -117,6 +117,14 @@ Cloudflare runtime によって変更理由が決まる仕事を所有する。
 `scripts/**` は `logging/` を import しない。Node script は Worker bundle なしで
 動く必要があり、status-only 出力は marker ベースの `node --test` suite が担保する。
 
+境界評価の 5 問 (本章 "How boundaries are evaluated") への回答:
+
+1. **Obligation** — 実行時 stream (Worker log / browser console / GA4 payload) に出してよい値の判定と、その唯一の出力口。
+2. **Change reason** — redaction 規則自体が変わった時。secret の形式、personal data とみなす範囲、log の保持方針を変えた時。
+3. **Authority** — `docs/security/log-redaction.md` の契約と `scripts/check-log-redaction.mjs` の規則。gate の exemption を増やす判断は owner review が持つ。
+4. **Dependency direction** — 全 owner が `logging/` を知る。`logging/` は他の obligation を知らない。
+5. **Lifecycle** — runtime のログ面とともに出生・消滅する。同じ stream 契約を持つ別出力 (外部 APM など) が増えた場合も、この obligation の中に住む。
+
 ### `routes/` and runtime entries
 
 `routes/` は TanStack Start の file-based routing contract によって場所が決まる。

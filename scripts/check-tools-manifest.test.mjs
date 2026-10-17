@@ -82,36 +82,6 @@ describe('Tool manifest — artifact path', () => {
 	});
 });
 
-describe('Tool manifest — sandbox + scripts combination', () => {
-	// Issue #465: the ad-hoc `isDangerousSandbox` helper below is kept
-	// as a historical statement of the ORIGINAL #80 rule (the verifier
-	// used to carry its own copy). The authoritative rules now live in
-	// `src/tools/embed-policy.ts`, which this verifier imports directly
-	// — see the `describe` blocks at the bottom of this file, which
-	// assert the same decisions through the real implementation.
-	function isDangerousSandbox(sandbox) {
-		if (typeof sandbox !== 'string') return false;
-		const tokens = sandbox.split(/\s+/);
-		return tokens.includes('allow-scripts') && tokens.includes('allow-same-origin');
-	}
-
-	it('flags allow-scripts + allow-same-origin as dangerous', () => {
-		assert.equal(isDangerousSandbox('allow-scripts allow-same-origin'), true);
-	});
-
-	it('does NOT flag allow-scripts alone (default for read-only Tools)', () => {
-		assert.equal(isDangerousSandbox('allow-scripts'), false);
-	});
-
-	it('does NOT flag empty sandbox (most restrictive)', () => {
-		assert.equal(isDangerousSandbox(''), false);
-	});
-
-	it('does NOT flag allow-same-origin alone (still no scripts)', () => {
-		assert.equal(isDangerousSandbox('allow-same-origin'), false);
-	});
-});
-
 describe('Tool manifest — classification / delivery.kind coherence', () => {
 	function classificationDeliveryMismatch(tool) {
 		if (
@@ -248,6 +218,114 @@ describe('Tool manifest — embed policy gate (Issue #465)', () => {
 	it('does not police host_disabled entries (nothing is framed)', () => {
 		assert.deepEqual(
 			violationCodes({ kind: 'host_disabled', disabled_reason: 'Tool-side fix pending' }),
+			[],
+		);
+	});
+});
+
+describe('Tool manifest — embed policy gate covers BOTH embeddable kinds (Issue #465)', () => {
+	// Regression for the first review of #569: the gate used to run
+	// `evaluateToolEmbedPolicy` only inside its `same_origin_static`
+	// branch, so an `external_exception` entry shipped any policy
+	// violation (plaintext URL, missing `delivery.iframe`,
+	// `allow-scripts allow-same-origin`, wildcard `expected_origin`)
+	// through `pnpm run tools:check` while the `/tools/<slug>` route
+	// refused to frame it. The gate now runs the policy for EVERY
+	// entry — `host_disabled` still returns `[]` because nothing is
+	// framed — so a manifest that would render a `blocked` placeholder
+	// can never be committed.
+
+	function violationCodes(delivery) {
+		return evaluateToolEmbedPolicy(toEmbedSubject('fixture', delivery)).map((v) => v.code);
+	}
+
+	const okIframe = { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' };
+
+	it('accepts an https external_exception with a declared policy', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'external_exception',
+				external_url: 'https://tool.example/app/',
+				iframe: okIframe,
+			}),
+			[],
+		);
+	});
+
+	it('fails the build for a plaintext external_exception frame', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'external_exception',
+				external_url: 'http://tool.example/app/',
+				iframe: okIframe,
+			}),
+			['embed.frame-src.not-https'],
+		);
+	});
+
+	it('fails the build for a protocol-relative external_exception frame', () => {
+		// `//tool.example/app/` reads like a path and is a foreign origin.
+		assert.deepEqual(
+			violationCodes({
+				kind: 'external_exception',
+				external_url: '//tool.example/app/',
+				iframe: okIframe,
+			}),
+			['embed.frame-src.not-https'],
+		);
+	});
+
+	it('fails the build for an external_exception with no declared iframe policy', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'external_exception',
+				external_url: 'https://tool.example/app/',
+			}),
+			['embed.iframe.missing'],
+		);
+	});
+
+	it('fails the build for allow-scripts + allow-same-origin on an external frame', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'external_exception',
+				external_url: 'https://tool.example/app/',
+				iframe: { sandbox: 'allow-scripts allow-same-origin', referrer_policy: 'no-referrer' },
+			}).sort(),
+			['embed.sandbox.forbidden-token', 'embed.sandbox.same-origin-escape'],
+		);
+	});
+
+	it('fails the build for a leaking referrer policy on an external frame', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'external_exception',
+				external_url: 'https://tool.example/app/',
+				iframe: { sandbox: 'allow-scripts', referrer_policy: 'unsafe-url' },
+			}),
+			['embed.referrer-policy.not-allowed'],
+		);
+	});
+
+	it('fails the build for a wildcard host_message on an external frame', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'external_exception',
+				external_url: 'https://tool.example/app/',
+				iframe: okIframe,
+				host_message: { expected_origin: '*', allowed_types: ['tool:ready'] },
+			}),
+			['host-message.origin.wildcard'],
+		);
+	});
+
+	it('still does not police host_disabled entries (nothing is framed)', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'host_disabled',
+				disabled_reason: 'Tool-side fix pending',
+				iframe: { sandbox: 'allow-scripts allow-same-origin', referrer_policy: 'unsafe-url' },
+			}),
 			[],
 		);
 	});

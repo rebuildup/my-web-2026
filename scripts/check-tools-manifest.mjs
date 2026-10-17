@@ -179,13 +179,6 @@ for (let i = 0; i < manifest.tools.length; i++) {
 					`${prefix}  delivery.artifact_path: "${d.artifact_path}" must match ^/tools/<slug>(/...)?$`,
 				);
 			}
-			// iframe sandbox / referrer policy / frame origin /
-			// host_message contract: Issue #465. The per-rule messages
-			// come from the shared policy module (see the header), so
-			// this block only attributes them to the manifest entry.
-			for (const violation of evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery))) {
-				errors.push(`${prefix}  ${violation.code}: ${violation.message}`);
-			}
 			// mechanical SHA match against the actual gitlink
 			const gitlinkSha = readGitlinkSha(s.submodule_path);
 			if (gitlinkSha === null) {
@@ -203,6 +196,25 @@ for (let i = 0; i < manifest.tools.length; i++) {
 		}
 		if (d.kind === 'host_disabled' && typeof d.disabled_reason !== 'string') {
 			errors.push(`${prefix}  delivery.disabled_reason: required for host_disabled`);
+		}
+		// iframe sandbox / referrer policy / frame origin / host_message
+		// contract: Issue #465.
+		//
+		// Deliberately NOT nested inside a delivery-kind branch: BOTH
+		// embeddable kinds (`same_origin_static` and `external_exception`)
+		// are rendered through the same <iframe> element with the same
+		// declared policy, so both must be policed at commit time — an
+		// `external_exception` with a plaintext URL, a missing
+		// `delivery.iframe`, or `allow-scripts allow-same-origin` is a
+		// commit that would fail closed per request but still pass this
+		// gate, i.e. a manifest that builds and never renders.
+		// `host_disabled` / `not_integrable_yet` are framed by nobody,
+		// and `evaluateToolEmbedPolicy` returns `[]` for them.
+		//
+		// The per-rule messages come from the shared policy module (see
+		// the header), so this loop only attributes them to the entry.
+		for (const violation of evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery))) {
+			errors.push(`${prefix}  ${violation.code}: ${violation.message}`);
 		}
 	}
 

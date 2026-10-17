@@ -147,6 +147,10 @@ export interface PublicToolSummary {
 	readonly iframe: {
 		readonly sandbox: string;
 		readonly referrer_policy: string;
+		// Issue #465: the declared capability grant. Rendered on the
+		// <iframe> as `allow` so the manifest declaration is not inert —
+		// see `docs/tools/embed-policy.md` §2.
+		readonly allow?: string;
 	};
 }
 

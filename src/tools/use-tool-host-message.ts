@@ -26,6 +26,21 @@ import type {
  * Any other event is refused without dispatch. The hook therefore has
  * no fallback branch and no "trusted" flag: the manifest is the only
  * input that can open the channel.
+ *
+ * Two honest limitations, both fail-closed:
+ *
+ *   - The guard is built with `toolWindow: getToolWindow()` SAMPLED
+ *     once, when the effect runs. That sample is taken after the iframe
+ *     is mounted, and a same-frame navigation keeps the same
+ *     `WindowProxy`, so the identity does not go stale; a frame that
+ *     navigates to a foreign origin is refused by the origin check
+ *     regardless. The channel is still rebuilt whenever `slug`,
+ *     `declaration`, `getToolWindow`, `onMessage` or `target` changes.
+ *   - `resolveExpectedToolOrigin`'s optional `frameOrigin` argument is
+ *     NOT supplied here, because a sandboxed `contentWindow` does not
+ *     expose its origin. The runtime defence is therefore
+ *     `event.origin` + `event.source` equality, not a pre-checked frame
+ *     origin — see the function's docstring.
  */
 
 export interface ToolHostMessageChannelOptions {

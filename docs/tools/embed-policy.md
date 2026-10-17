@@ -9,13 +9,18 @@
 ## Why this document exists
 
 ADR-0006 §3 defines *how* a Tool is delivered (build artefact →
-`/tools/<slug>/app/`) and explicitly leaves the embed security
-question open:
+`/tools/<slug>/app/`), and the ADR's **Re-evaluation triggers** section
+(not §3) explicitly leaves the runtime API surface and the sandbox
+rules open:
 
 > "A Tool needs a runtime API surface beyond a static iframe (e.g.
 > cross-origin `postMessage` for collaboration). That is a new
 > architectural decision — revisit the iframe sandbox rules in
 > `delivery.iframe.sandbox` and the `Permissions-Policy` header."
+
+Nothing in ADR-0006 states the `allow-same-origin` rule or requires a
+written reason for a capability token; both requirements are introduced
+by this Issue and by `src/tools/manifest.schema.json`.
 
 Until Issue #465 the only enforcement was one conditional inside
 `scripts/check-tools-manifest.mjs` that flagged
@@ -30,7 +35,7 @@ frame origin, the message channel — was convention expressed in
 
 | state        | condition                                                        | rendered                                   |
 | ------------ | ---------------------------------------------------------------- | ------------------------------------------ |
-| `embeddable` | entry satisfies every rule below                                  | `<iframe>` with the **declared** sandbox / referrer policy |
+| `embeddable` | entry satisfies every rule below                                  | `<iframe>` with the **declared** sandbox / referrer policy / `allow` |
 | `blocked`    | entry violates any rule                                           | violation list, **no iframe**               |
 | `disabled`   | manifest says `host_disabled`                                     | "Coming soon" placeholder                   |
 
@@ -69,7 +74,24 @@ artefact is served from the **host's own origin**, so
 `localStorage`, `indexedDB`, and same-origin `fetch` to `/api/v1/*`.
 The sandbox attribute still reads correctly in review while providing
 no isolation at all. The previous "document the reason" wording is
-therefore replaced by an unconditional rejection.
+therefore replaced by an unconditional rejection. The knock-on
+consequence for the message channel is spelled out in §5.
+
+**`iframe.allow` is applied, not just declared.** The route renders it
+verbatim as the `<iframe allow=…>` attribute
+(`src/routes/tools.$slug.tsx`), because a conditional token whose grant
+is dropped on the floor would be a declaration the gate reports as
+valid and the browser ignores. It only takes effect in combination with
+a matching host-side `Permissions-Policy` **response header**, which the
+host does not send for Tool frames yet — the header is part of
+ADR-0006's re-evaluation trigger and is listed under
+["Not decided here"](#not-decided-here).
+
+**The `sandbox` pattern in `manifest.schema.json` is advisory.** It
+requires `allow-scripts` first and single-space separators, while this
+policy (`parseTokenList`) accepts any order and any whitespace. The
+stricter definition is safe but is NOT the authority: `src/tools/embed-policy.ts`
+is. If ajv validation is ever wired into the verifier, reconcile the two.
 
 ### 3. referrer policy
 
@@ -96,7 +118,7 @@ form of this mistake: it reads like a path and is a foreign origin.
 
 ```jsonc
 "host_message": {
-  "expected_origin": "self",            // or an explicit https origin
+  "expected_origin": "self",            // or an explicit https origin — see §5a
   "allowed_types": ["tool:ready", "tool:resize"],
   "source": "iframe_window"             // the only accepted value
 }
@@ -114,8 +136,40 @@ form of this mistake: it reads like a path and is a foreign origin.
 - `expected_origin` must be `"self"` or an `https` origin literal.
   `"*"` is never valid, and a declared origin that does not match the
   frame's actual origin is a violation at build time.
-- Host → Tool (`postToToolWindow`) refuses `targetOrigin: '*'` and any
-  target origin that is not the declared one.
+- Host → Tool (`postToToolWindow`) resolves the declaration through the
+  same `resolveExpectedToolOrigin` the inbound guard uses, so `"self"`
+  becomes the concrete host origin; it then refuses `targetOrigin: '*'`,
+  any target that is not the resolved origin, and any string
+  `postMessage` would reject (`"self"`, a path, a non-URL) — a manifest
+  typo can never become an uncaught `SyntaxError` on the host page.
+
+#### 5a. The opaque-origin constraint (`"self"` on a same-origin Tool)
+
+This policy always denies `allow-same-origin` (§2), so a
+`same_origin_static` frame runs in an **opaque origin** and every
+message it posts reports `event.origin === "null"` — never the host
+origin. Consequences:
+
+- A `"self"` declaration on a `same_origin_static` Tool passes the
+  manifest gate (the declaration is syntactically valid, and the frame
+  src really is root-relative), the guard attaches, and then **every**
+  event is refused as `origin-mismatch`. It is fail-closed, and inert:
+  no Tool declares `host_message` today.
+- The declaration that can actually be established today is an
+  `external_exception` Tool with an `https` `external_url` and
+  `expected_origin` equal to that URL's origin. A literal
+  `https://…` `expected_origin` on a root-relative `entry_html` is
+  rejected at build time (`host-message.origin.mismatch`), so
+  `same_origin_static` currently has no workable `host_message`
+  declaration at all.
+- Making one work requires a sandbox-compatible identity — frame
+  `contentWindow` alone, or a host-issued nonce handshake — which
+  weakens or replaces the exact-origin rule. That is an
+  architectural decision, i.e. ADR-0006's own re-evaluation trigger,
+  and is deliberately **not** decided here. It is covered by
+  `src/tools/embed-policy.test.ts` →
+  `Tool embed policy — the opaque-origin constraint on a same-origin frame`
+  so the current behaviour cannot be forgotten.
 
 ## Where the rules are enforced
 
@@ -124,6 +178,14 @@ form of this mistake: it reads like a path and is a foreign origin.
 | `scripts/check-tools-manifest.mjs`     | `pnpm run tools:check` (inside `validate:fast`) | exit 1, commit blocked                            |
 | `src/routes/tools.$slug.tsx`           | per request                | `blocked` placeholder, no iframe                  |
 | `src/tools/use-tool-host-message.ts`   | per mount                  | no listener attached                             |
+
+The verifier runs `evaluateToolEmbedPolicy` for **every** manifest
+entry, not only for `same_origin_static`: both embeddable kinds are
+rendered through the same `<iframe>` element with the same declared
+policy, so an `external_exception` with a plaintext URL, a missing
+`delivery.iframe`, or `allow-scripts allow-same-origin` must fail the
+commit instead of shipping a manifest the route will refuse to render.
+`host_disabled` returns `[]` because nothing is framed.
 
 All three import the same module, so a rule cannot be relaxed in one
 place and enforced in another. `scripts/check-tools-manifest.mjs`
@@ -145,18 +207,39 @@ network: each is an object literal plus a fake window.
 
 ```bash
 pnpm run tools:embed-policy:report -- --out=.tmp/tool-iframe-sandbox.html
-# open it in a browser, or screenshot it:
-node .tmp/shoot-embed-policy.mjs   # see the Issue #465 PR body for the exact script
 ```
+
+Then open that file, or screenshot it with the repo's installed
+Playwright chromium — no extra script file is needed:
+
+```bash
+node --input-type=module -e "
+import { chromium } from '@playwright/test';
+import { resolve } from 'node:path';
+const browser = await chromium.launch();
+const page = await browser.newPage({ viewport: { width: 1600, height: 1200 } });
+await page.goto('file://' + resolve('.tmp/tool-iframe-sandbox.html'));
+await page.screenshot({ path: '.tmp/tool-iframe-sandbox.png', fullPage: true });
+await browser.close();
+"
+node -e "require('sharp')('.tmp/tool-iframe-sandbox.png')
+  .resize({ width: 1600, withoutEnlargement: true })
+  .webp({ quality: 80 })
+  .toFile('docs/verification/security/tool-iframe-sandbox.webp')"
+```
+
+Committed screenshot: `docs/verification/security/tool-iframe-sandbox.webp`
+(1600 px wide, WebP quality 80, ~200 KB). The Issue names a `.png`
+path; only the extension differs, chosen to keep the binary small in
+the repository. The intermediate PNG is not committed. **This is an
+open convention question** — the repository has no screenshot-format
+rule of its own, so whether `docs/verification/security/` keeps WebP
+or follows the Issue's literal `.png` is an owner call.
 
 The report renders the per-entry verdict, the sandbox token classes,
 and the hostile-message matrix from §"Hostile message matrix" below.
 It is also a self-check: a fixture whose verdict drifts, or a refused
 message that reaches the host action, makes the script exit non-zero.
-
-Committed screenshot: `docs/verification/security/tool-iframe-sandbox.webp`
-(the Issue names a `.png` path; the repository screenshot rule keeps
-binaries as moderately compressed WebP, so only the extension differs).
 
 ## Hostile message matrix
 
@@ -169,10 +252,14 @@ object.
 | allowlisted type, exact origin, Tool window   | ACCEPTED| —                  |
 | foreign origin, allowlisted type              | REFUSED | `origin-mismatch`  |
 | origin that merely starts with the host origin | REFUSED | `origin-mismatch`  |
-| opaque origin (`null`)                        | REFUSED | `origin-mismatch`  |
+| opaque origin (`null`) — see §5a               | REFUSED | `origin-mismatch`  |
 | host origin, window that is not the Tool frame| REFUSED | `source-mismatch`  |
 | host origin, type outside `allowed_types`     | REFUSED | `type-not-allowed` |
 | host origin, string / array payload           | REFUSED | `malformed-payload`|
+
+The `"null"` row is the origin a **compliant** same-origin Tool frame
+reports (§5a), not a hostile one. It is listed here because the guard
+must refuse it too.
 
 ## Changing a rule
 
@@ -183,14 +270,22 @@ object.
    accepted referrer policy, a wildcard origin), it needs an ADR
    revision: ADR-0006's re-evaluation trigger covers exactly this
    decision.
+4. If the change touches the `sandbox` token grammar, reconcile
+   `manifest.schema.json`'s `pattern` too — it is an advisory subset of
+   the policy, not the authority (§2).
 
 ## Not decided here
 
 `host_message` is undeclared for every Tool today. The first Tool that
 declares one also needs:
 
-- a `Permissions-Policy` review for the header (ADR-0006 trigger),
+- a `Permissions-Policy` review for the header (ADR-0006 trigger) —
+  until the host sends that response header, a declared
+  `iframe.allow` grant has no effect even though it is rendered,
 - an ADR revision if the channel is cross-origin,
+- an answer to §5a: how a `same_origin_static` frame (opaque origin by
+  construction) is identified at all — `contentWindow` alone, or a
+  host-issued nonce handshake,
 - a host-side action behind `onToolMessage`
   (`src/routes/tools.$slug.tsx`), which is currently a deliberate
   no-op seam rather than a missing feature.

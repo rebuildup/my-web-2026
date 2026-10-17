@@ -118,7 +118,13 @@ const hostileEvents = [
 		expect: 'rejected',
 	},
 	{
-		label: 'opaque origin ("null") from a sandboxed frame',
+		// NOT a hostile origin: a frame sandboxed WITHOUT
+		// `allow-same-origin` (which this policy always denies) runs in
+		// an opaque origin and reports "null" — so this is the origin a
+		// COMPLIANT same-origin Tool frame actually sends. It is refused
+		// precisely because an exact-origin contract cannot be satisfied
+		// that way; see `docs/tools/embed-policy.md` §5.
+		label: 'opaque origin ("null") — the origin a compliant same-origin Tool frame reports',
 		origin: 'null',
 		source: TOOL_WINDOW,
 		data: { type: 'tool:ready' },
@@ -336,6 +342,15 @@ ${tokenRows}
 	many times the host action ran. Today no manifest Tool declares
 	<code>host_message</code>, so the production host attaches <strong>no</strong>
 	listener at all and every row here is refused a fortiori.
+</p>
+<p class="sub">
+	Note the <code>"null"</code> row: this policy always denies
+	<code>allow-same-origin</code>, so a same-origin Tool frame is
+	<em>opaque-origin</em> and reports <code>event.origin === "null"</code>. That
+	row is therefore the compliant frame's own origin, not a hostile one —
+	and it is why a <code>"self"</code> contract cannot be satisfied by a
+	<code>same_origin_static</code> Tool. Changing that needs an ADR decision
+	(<code>docs/tools/embed-policy.md</code> §5).
 </p>
 <table>
 	<thead><tr><th>injected event</th><th>event.origin</th><th>event.data</th><th>verdict</th><th>reason</th><th>host dispatch</th></tr></thead>

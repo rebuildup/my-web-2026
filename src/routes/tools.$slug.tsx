@@ -245,6 +245,7 @@ function ToolRoute() {
 			src={resolveToolEntryHtml(tool)}
 			sandbox={summary.iframe.sandbox}
 			referrerPolicy={summary.iframe.referrer_policy}
+			allow={summary.iframe.allow}
 			hostMessage={tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.host_message}
 		/>
 	);
@@ -253,10 +254,14 @@ function ToolRoute() {
 /**
  * The embeddable state (Issue #465).
  *
- * Two responsibilities:
+ * Three responsibilities:
  *
- *   1. Render the iframe with the manifest's DECLARED sandbox and
- *      referrer policy — no defaults, no client-side "upgrade".
+ *   1. Render the iframe with the manifest's DECLARED sandbox,
+ *      referrer policy and capability grant (`allow`) — no defaults,
+ *      no client-side "upgrade". `allow` is what makes a conditional
+ *      sandbox token usable at all: the policy REQUIRES the manifest
+ *      to declare it, so dropping it here would make every such
+ *      declaration inert while the gate reported it as valid.
  *   2. Host the message channel. `useToolHostMessage` attaches a
  *      `message` listener only when the manifest declares
  *      `delivery.host_message`; otherwise there is no listener at all.
@@ -272,6 +277,7 @@ function ToolEmbedShell({
 	src,
 	sandbox,
 	referrerPolicy,
+	allow,
 	hostMessage,
 }: {
 	slug: string;
@@ -279,6 +285,7 @@ function ToolEmbedShell({
 	src: string;
 	sandbox: string;
 	referrerPolicy: string;
+	allow?: string | undefined;
 	hostMessage: ToolHostMessageDeclaration | undefined;
 }) {
 	const frameRef = useRef<HTMLIFrameElement | null>(null);
@@ -313,6 +320,15 @@ function ToolEmbedShell({
 					src={src}
 					sandbox={sandbox}
 					referrerPolicy={referrerPolicy as HTMLAttributeReferrerPolicy}
+					// Issue #465: render the DECLARED capability grant.
+					// `allow` only intersects with the host's own
+					// `Permissions-Policy` response header — the host does
+					// not send one for Tool frames yet (ADR-0006's
+					// re-evaluation trigger covers the header; see
+					// `docs/tools/embed-policy.md` §2). Rendering it is
+					// still required: without the attribute the declared
+					// grant can never take effect when the header lands.
+					allow={allow}
 					style={{
 						width: '100%',
 						height: '100%',

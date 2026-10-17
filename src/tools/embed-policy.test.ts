@@ -431,6 +431,61 @@ describe('Tool embed policy — host message contract', () => {
 	});
 });
 
+describe('Tool embed policy — the opaque-origin constraint on a same-origin frame', () => {
+	// Issue #465 review (P1). The policy ALWAYS denies
+	// `allow-same-origin`, so a `same_origin_static` frame runs in an
+	// opaque origin: every message it posts carries
+	// `event.origin === "null"`, never the host origin. A `'self'`
+	// declaration therefore passes the manifest gate but can never
+	// match at runtime.
+	//
+	// This suite documents that fact on purpose instead of hiding it:
+	// the fix (identify the frame by `contentWindow` alone, or a
+	// host-issued nonce handshake) changes the security contract and
+	// belongs to an ADR-0006 re-evaluation decision, which is out of
+	// scope for this Issue. The behaviour below is fail-closed.
+
+	const HOST_ORIGIN = 'https://host.example';
+	const delivery = okDelivery({
+		host_message: { expected_origin: 'self', allowed_types: ['tool:ready'] },
+	});
+
+	it('passes the manifest gate (the declaration is syntactically valid)', () => {
+		expect(codes(delivery)).toEqual([]);
+	});
+
+	it('builds a guard, so the listener is attached rather than silently skipped', () => {
+		expect(
+			createToolMessageGuard({
+				slug: 'fixture',
+				declaration: { expected_origin: 'self', allowed_types: ['tool:ready'] },
+				hostOrigin: HOST_ORIGIN,
+				toolWindow: { name: 'tool-frame' },
+				dispatch: () => {},
+			}),
+		).not.toBeNull();
+	});
+
+	it('refuses the compliant Tool frame, because its own origin is "null"', () => {
+		const toolWindow = { name: 'tool-frame' };
+		const seen: unknown[] = [];
+		const guard = createToolMessageGuard({
+			slug: 'fixture',
+			declaration: { expected_origin: 'self', allowed_types: ['tool:ready'] },
+			hostOrigin: HOST_ORIGIN,
+			toolWindow,
+			dispatch: (m) => seen.push(m),
+		});
+		const verdict = guard?.({
+			origin: 'null',
+			source: toolWindow,
+			data: { type: 'tool:ready' },
+		});
+		expect(verdict).toEqual({ accepted: false, reason: 'origin-mismatch' });
+		expect(seen).toEqual([]);
+	});
+});
+
 describe('Tool embed policy — runtime message guard', () => {
 	const HOST_ORIGIN = 'https://host.example';
 	const toolWindow = { name: 'tool-frame' };
@@ -664,48 +719,139 @@ describe('Tool embed policy — listener attachment', () => {
 });
 
 describe('Tool embed policy — host → Tool direction', () => {
+	const HOST_ORIGIN = 'https://host.example';
 	const contract: ToolHostMessageDeclaration = {
 		expected_origin: 'https://tool.example',
 		allowed_types: ['tool:ready'],
 	};
 
-	it('sends only to the declared target origin', () => {
+	function sender() {
 		const sent: unknown[][] = [];
-		const result = postToToolWindow(
-			{
+		return {
+			sent,
+			window: {
 				postMessage: (message: unknown, targetOrigin: string) => sent.push([message, targetOrigin]),
 			},
-			contract,
-			'https://tool.example',
-			{ type: 'tool:ack' },
-		);
+		};
+	}
+
+	it('sends only to the declared target origin', () => {
+		const { sent, window } = sender();
+		const result = postToToolWindow(window, contract, HOST_ORIGIN, 'https://tool.example', {
+			type: 'tool:ack',
+		});
 		expect(result).toEqual({ sent: true });
 		expect(sent).toEqual([[{ type: 'tool:ack' }, 'https://tool.example']]);
 	});
 
+	it('resolves "self" to the host origin instead of passing it to postMessage', () => {
+		// Issue #465 review: comparing the RAW declaration made
+		// `targetOrigin: https://host.example` a mismatch against
+		// `expected_origin: "self"` (so host → Tool was impossible for
+		// exactly the same-origin Tools the contract is written for),
+		// while `targetOrigin: "self"` passed the equality check and
+		// then threw a SyntaxError in a real DOM.
+		const { sent, window } = sender();
+		const selfContract: ToolHostMessageDeclaration = {
+			expected_origin: 'self',
+			allowed_types: ['tool:ready'],
+		};
+		expect(postToToolWindow(window, selfContract, HOST_ORIGIN, HOST_ORIGIN, { type: 'a' })).toEqual(
+			{ sent: true },
+		);
+		expect(sent).toEqual([[{ type: 'a' }, HOST_ORIGIN]]);
+		expect(postToToolWindow(window, selfContract, HOST_ORIGIN, 'self', { type: 'a' })).toEqual({
+			sent: false,
+			reason: 'target-origin-invalid',
+		});
+		expect(sent).toHaveLength(1);
+	});
+
 	it('refuses targetOrigin "*" unconditionally', () => {
-		const result = postToToolWindow({ postMessage: () => {} }, contract, '*', { type: 'tool:ack' });
-		expect(result).toEqual({ sent: false, reason: 'wildcard-target-origin' });
+		expect(
+			postToToolWindow({ postMessage: () => {} }, contract, HOST_ORIGIN, '*', { type: 'tool:ack' }),
+		).toEqual({ sent: false, reason: 'wildcard-target-origin' });
 	});
 
 	it('refuses a target origin that differs from the declaration', () => {
-		const result = postToToolWindow({ postMessage: () => {} }, contract, 'https://evil.example', {
-			type: 'tool:ack',
-		});
-		expect(result).toEqual({ sent: false, reason: 'target-origin-mismatch' });
+		expect(
+			postToToolWindow({ postMessage: () => {} }, contract, HOST_ORIGIN, 'https://evil.example', {
+				type: 'tool:ack',
+			}),
+		).toEqual({ sent: false, reason: 'target-origin-mismatch' });
 	});
 
-	it('refuses to send with no contract or no frame window', () => {
+	it('refuses to send with no contract, no host origin, or no frame window', () => {
 		expect(
-			postToToolWindow({ postMessage: () => {} }, undefined, 'https://tool.example', {}),
+			postToToolWindow(
+				{ postMessage: () => {} },
+				undefined,
+				HOST_ORIGIN,
+				'https://tool.example',
+				{},
+			),
 		).toEqual({
 			sent: false,
 			reason: 'no-contract',
 		});
-		expect(postToToolWindow(null, contract, 'https://tool.example', {})).toEqual({
+		expect(
+			postToToolWindow({ postMessage: () => {} }, contract, '', 'https://tool.example', {}),
+		).toEqual({ sent: false, reason: 'no-host-origin' });
+		expect(postToToolWindow(null, contract, HOST_ORIGIN, 'https://tool.example', {})).toEqual({
 			sent: false,
 			reason: 'no-target-window',
 		});
+	});
+
+	it('refuses when the declaration itself has no resolvable origin', () => {
+		for (const declaration of [
+			{ expected_origin: '*', allowed_types: ['a'] },
+			{ expected_origin: 'http://tool.example', allowed_types: ['a'] },
+			{ allowed_types: ['a'] },
+		]) {
+			expect(
+				postToToolWindow(
+					{ postMessage: () => {} },
+					declaration,
+					HOST_ORIGIN,
+					'https://tool.example',
+					{},
+				),
+				JSON.stringify(declaration),
+			).toEqual({ sent: false, reason: 'unresolvable-origin' });
+		}
+	});
+
+	it('never hands postMessage an origin string that would throw', () => {
+		// Belt to the braces: `postMessage(msg, targetOrigin)` throws a
+		// SyntaxError for anything that is not '*' or a parseable URL.
+		const thrown: unknown[] = [];
+		const window = {
+			postMessage: (_message: unknown, targetOrigin: string) => thrown.push(targetOrigin),
+		};
+		const selfContract: ToolHostMessageDeclaration = {
+			expected_origin: 'self',
+			allowed_types: ['a'],
+		};
+		for (const target of [
+			'',
+			'self',
+			'not-an-origin',
+			'https://host.example/path',
+			'https://host.example:443',
+		]) {
+			expect(
+				postToToolWindow(window, selfContract, HOST_ORIGIN, target, { type: 'a' }),
+				target,
+			).toEqual({ sent: false, reason: 'target-origin-invalid' });
+		}
+		// Also covers an unvalidated host origin: a `'self'` declaration
+		// resolves to whatever the caller passed, so the same syntax
+		// guard has to catch it.
+		expect(
+			postToToolWindow(window, selfContract, 'not-an-origin', 'not-an-origin', { type: 'a' }),
+		).toEqual({ sent: false, reason: 'target-origin-invalid' });
+		expect(thrown).toEqual([]);
 	});
 });
 

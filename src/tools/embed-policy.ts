@@ -4,8 +4,10 @@
  *
  * Problem this module solves
  * --------------------------
- * ADR-0006 §3 lets a Tool be embedded as a sandboxed iframe and
- * explicitly leaves the sandbox / message contract open:
+ * ADR-0006 §3 defines *how* a Tool is delivered (build artefact →
+ * `/tools/<slug>/app/`), and the ADR's "Re-evaluation triggers"
+ * section (NOT §3) explicitly leaves the runtime API surface and the
+ * sandbox rules open:
  *
  *   > "A Tool needs a runtime API surface beyond a static iframe
  *   >  (e.g. cross-origin postMessage for collaboration). That is a
@@ -47,9 +49,11 @@
  *    (`allow-top-navigation*`, `allow-popups-to-escape-sandbox`,
  *    `allow-storage-access-by-user-activation`). Capability tokens
  *    (`allow-forms`, `allow-popups`, `allow-modals`, …) are allowed
- *    only together with an explicit capability grant (`iframe.allow`)
- *    and a written reason (`iframe.sandbox_rationale`) — the written
- *    reason ADR-0006 already asks for.
+ *    only together with an explicit capability grant (`iframe.allow`,
+ *    which the route renders as the `<iframe allow=…>` attribute) and a
+ *    written reason (`iframe.sandbox_rationale`). Both are required by
+ *    this Issue's manifest schema — ADR-0006 does NOT contain the
+ *    `allow-same-origin` rule nor a written-reason requirement.
  * 3. **Referrer policy is declared, not defaulted.** Only
  *    `no-referrer`, `same-origin`, and `strict-origin` are accepted;
  *    anything that can leak the full host URL cross-origin
@@ -70,9 +74,25 @@
  *    satisfy all of: `event.origin === expectedOrigin`,
  *    `event.source === iframe.contentWindow`, `data.type ∈ allowed_types`,
  *    and `data` must be a plain object. Anything else is refused
- *    without dispatch. The reverse direction (host → Tool) refuses
- *    `targetOrigin: '*'` and any target origin that is not the declared
+ *    without dispatch. The reverse direction (host → Tool) resolves
+ *    the same expected origin (so `'self'` becomes the host origin
+ *    rather than a literal that `postMessage` would reject) and refuses
+ *    `targetOrigin: '*'` and any target origin that is not the resolved
  *    one.
+ *
+ * Known limitation (owner decision, deliberately NOT decided here):
+ * rule 2 denies `allow-same-origin`, so a `same_origin_static` frame
+ * runs in an OPAQUE origin and every message it posts reports
+ * `event.origin === "null"`, never the host origin. A `'self'`
+ * declaration on a same-origin Tool therefore cannot be satisfied at
+ * runtime: the guard attaches (the declaration is syntactically
+ * valid) and then refuses every event as `origin-mismatch`. That is
+ * fail-closed, and it is also why no Tool declares `host_message`
+ * today. Making such a channel work needs a sandbox-compatible
+ * identity (frame `contentWindow` alone, or a host-issued nonce
+ * handshake) — an architectural change that is ADR-0006's
+ * re-evaluation trigger and belongs to the first Tool that actually
+ * needs it, not to this Issue. See `docs/tools/embed-policy.md` §5a.
  *
  * This module is the single source of truth for those rules. It is
  * consumed by three surfaces, and all three MUST agree:
@@ -144,10 +164,12 @@ export const SANDBOX_TOKENS_FORBIDDEN: ReadonlySet<string> = new Set([
 /**
  * Tokens that grant a capability beyond "run scripts in an opaque
  * origin". They are allowed, but only when the manifest declares BOTH
- * the capability grant (`iframe.allow`) and a written reason
- * (`iframe.sandbox_rationale`). ADR-0006 §3 already states the rule
- * for `allow-same-origin`; this extends it to the whole capability
- * family so the answer is uniform instead of per-token folklore.
+ * the capability grant (`iframe.allow`, rendered as the
+ * `<iframe allow=…>` attribute) and a written reason
+ * (`iframe.sandbox_rationale`). Issue #465 introduces both
+ * requirements (ADR-0006 does not state an `allow-same-origin` rule);
+ * this extends the always-denied family to the whole conditional set
+ * so the answer is uniform instead of per-token folklore.
  */
 export const SANDBOX_TOKENS_CONDITIONAL: ReadonlySet<string> = new Set([
 	'allow-downloads',
@@ -530,7 +552,7 @@ export function evaluateIframeDeclaration(
 						violation(
 							slug,
 							'embed.sandbox.conditional-without-rationale',
-							`${slug}: sandbox token "${token}" requires delivery.iframe.sandbox_rationale (ADR-0006 §3 asks for a written reason)`,
+							`${slug}: sandbox token "${token}" requires delivery.iframe.sandbox_rationale (Issue #465 requires a written reason for every conditional token)`,
 						),
 					);
 				}
@@ -627,6 +649,17 @@ export function evaluateHostMessageDeclaration(
 			),
 		);
 	}
+	// NOTE (Issue #465, first review): a `'self'` declaration on a
+	// `same_origin_static` entry passes this check but CANNOT be
+	// satisfied at runtime. The sandbox denies `allow-same-origin`, so
+	// the frame is opaque-origin and every event it posts carries
+	// `event.origin === "null"`; the guard compares that against the
+	// host origin and refuses it. That stays a runtime refusal rather
+	// than a build-time violation on purpose: turning it into one would
+	// pre-decide the architecture question (opaque-origin identity via
+	// frame `contentWindow` / nonce handshake) that ADR-0006's
+	// re-evaluation trigger owns. The constraint is documented in
+	// `docs/tools/embed-policy.md` §5a instead.
 
 	const types = declaration.allowed_types;
 	if (!Array.isArray(types) || types.length === 0) {
@@ -718,10 +751,21 @@ export interface ToolMessageGuardOptions {
  * attach rather than guessing.
  *
  * `frameOrigin` is the origin the Tool frame actually runs on. It is
- * optional here because the runtime guard does not always know it
- * (`iframe.contentWindow` is opaque to us; only `event.origin` is
- * readable). When it IS known, a mismatch with the declaration is
- * treated as unresolvable rather than silently coerced.
+ * optional here because the runtime guard cannot know it: the host
+ * holds an opaque `iframe.contentWindow` and only `event.origin` is
+ * readable. So this branch is a defence-in-depth helper for callers
+ * that DO know the frame origin (the build-time gate derives it from
+ * the declared `external_url`; `src/tools/use-tool-host-message.ts`
+ * passes nothing, which is why the runtime defence is `event.origin` +
+ * `event.source` equality). Today no production caller supplies it and
+ * only the unit test exercises the mismatch branch — it is not a
+ * runtime guarantee, and the runtime does not claim one.
+ *
+ * This function is also what makes `'self'` usable in BOTH directions:
+ * the inbound guard compares `event.origin` against the resolved host
+ * origin, and `postToToolWindow` compares its `targetOrigin` against
+ * the same resolved value, so a `'self'` declaration can never be used
+ * to smuggle a literal `'self'` string into `postMessage`.
  */
 export function resolveExpectedToolOrigin(
 	declaration: ToolHostMessageDeclaration,
@@ -830,7 +874,10 @@ export interface PostToToolResult {
 	readonly sent: boolean;
 	readonly reason?:
 		| 'no-target-window'
+		| 'no-host-origin'
 		| 'wildcard-target-origin'
+		| 'unresolvable-origin'
+		| 'target-origin-invalid'
 		| 'target-origin-mismatch'
 		| 'no-contract';
 }
@@ -838,22 +885,58 @@ export interface PostToToolResult {
 /**
  * Host → Tool direction.
  *
- * `targetOrigin` must be the declared expected origin. `'*'` is refused
+ * `targetOrigin` must resolve to the ONE origin the declaration
+ * allows — the same origin the inbound guard accepts. `'*'` is refused
  * unconditionally: it would deliver the payload to whatever document
  * happens to occupy the frame after a navigation.
+ *
+ * `hostOrigin` is required because the declaration is written in terms
+ * of `'self'`: comparing a raw `'self'` string against a concrete
+ * target origin would refuse every same-origin Tool (the one case the
+ * contract exists for), and passing `'self'` straight to
+ * `postMessage()` throws a `SyntaxError` in a real DOM (`targetOrigin`
+ * must be `'*'` or a URL). The declaration is therefore resolved
+ * through the SAME `resolveExpectedToolOrigin` the inbound guard uses,
+ * and the result is additionally checked to be a syntactically valid
+ * origin before it reaches `postMessage`.
  */
 export function postToToolWindow(
 	toolWindow: { postMessage(message: unknown, targetOrigin: string): void } | null | undefined,
 	declaration: ToolHostMessageDeclaration | undefined,
+	hostOrigin: string,
 	targetOrigin: string,
 	message: unknown,
 ): PostToToolResult {
 	if (!declaration) return { sent: false, reason: 'no-contract' };
+	if (typeof hostOrigin !== 'string' || hostOrigin.length === 0) {
+		// Without a host origin `'self'` is unresolvable, and guessing
+		// it is exactly the wildcard-in-disguise this function refuses.
+		return { sent: false, reason: 'no-host-origin' };
+	}
 	if (!toolWindow) return { sent: false, reason: 'no-target-window' };
 	if (targetOrigin === '*') return { sent: false, reason: 'wildcard-target-origin' };
-	const declared =
-		typeof declaration.expected_origin === 'string' ? declaration.expected_origin.trim() : '';
-	if (declared !== targetOrigin) return { sent: false, reason: 'target-origin-mismatch' };
+	const declared = resolveExpectedToolOrigin(declaration, hostOrigin);
+	if (declared === null) return { sent: false, reason: 'unresolvable-origin' };
+	// Syntax BEFORE equality, so the reason is the actionable one: a
+	// caller passing `'self'` (or a path-bearing origin) is told the
+	// string is not a usable `postMessage` target, not merely that it
+	// differs from the declaration. `postMessage(msg, targetOrigin)`
+	// throws a `SyntaxError` for anything that is not `'*'` (already
+	// refused above) or a parseable origin, and `declared` inherits the
+	// caller-supplied `hostOrigin` verbatim for a `'self'`
+	// declaration — so an unvalidated host origin is caught here too.
+	let parsed: URL;
+	try {
+		parsed = new URL(targetOrigin);
+	} catch {
+		return { sent: false, reason: 'target-origin-invalid' };
+	}
+	if (parsed.origin !== targetOrigin) {
+		// Rejects 'self', 'https://host/path', 'https://host:443', and
+		// any origin string carrying a path/query/fragment.
+		return { sent: false, reason: 'target-origin-invalid' };
+	}
+	if (targetOrigin !== declared) return { sent: false, reason: 'target-origin-mismatch' };
 	toolWindow.postMessage(message, targetOrigin);
 	return { sent: true };
 }

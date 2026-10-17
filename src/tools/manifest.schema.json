@@ -98,7 +98,7 @@
 								"required": ["sandbox", "referrer_policy"],
 								"properties": {
 									"sandbox": {
-										"description": "sandbox attribute value, space separated. 'allow-scripts' alone is the only value that needs no justification. Forbidden, always (src/tools/embed-policy.ts): allow-same-origin (on a same-origin artefact it hands the Tool the host origin), allow-popups-to-escape-sandbox, allow-storage-access-by-user-activation, allow-top-navigation, allow-top-navigation-by-user-activation, allow-top-navigation-to-custom-protocols. Conditional (require 'allow' + 'sandbox_rationale'): allow-downloads, allow-forms, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-popups, allow-presentation.",
+										"description": "sandbox attribute value, space separated. 'allow-scripts' alone is the only value that needs no justification. Forbidden, always (src/tools/embed-policy.ts): allow-same-origin (on a same-origin artefact it hands the Tool the host origin), allow-popups-to-escape-sandbox, allow-storage-access-by-user-activation, allow-top-navigation, allow-top-navigation-by-user-activation, allow-top-navigation-to-custom-protocols. Conditional (require 'allow' + 'sandbox_rationale'): allow-downloads, allow-forms, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-popups, allow-presentation. NOTE: this pattern is an ADVISORY subset — it requires 'allow-scripts' first and single-space separators. src/tools/embed-policy.ts is the authority and additionally accepts any token order and any whitespace; if ajv validation is wired up later, keep the two in sync.",
 										"type": "string",
 										"pattern": "^allow-scripts( allow-(downloads|forms|modals|orientation-lock|pointer-lock|popups|presentation))*$"
 									},
@@ -108,11 +108,11 @@
 										"enum": ["no-referrer", "same-origin", "strict-origin"]
 									},
 									"allow": {
-										"description": "Permissions-Policy style capability grant list for the frame. Required (non-empty) when the sandbox uses any conditional token.",
+										"description": "Permissions-Policy style capability grant list for the frame. Required (non-empty) when the sandbox uses any conditional token. Rendered verbatim as the <iframe allow=...> attribute by src/routes/tools.$slug.tsx; it only takes effect in combination with a matching host-side 'Permissions-Policy' response header, which is not sent for Tool frames yet (see docs/tools/embed-policy.md section 2).",
 										"type": "string"
 									},
 									"sandbox_rationale": {
-										"description": "Written reason for any conditional sandbox token. Required (non-empty) alongside them — ADR-0006 §3 asks for a written reason before weakening the iframe sandbox.",
+										"description": "Written reason for any conditional sandbox token. Required (non-empty) alongside them — Issue #465 requires a written reason before weakening the iframe sandbox (ADR-0006 does not state this rule).",
 										"type": "string"
 									}
 								},
@@ -124,7 +124,7 @@
 								"required": ["expected_origin", "allowed_types"],
 								"properties": {
 									"expected_origin": {
-										"description": "The ONE origin a Tool message may come from: 'self' (the host's own origin, for a same-origin artefact) or an explicit https origin literal. '*' is never valid.",
+										"description": "The ONE origin a Tool message may come from: 'self' (resolved to the host's own origin at runtime) or an explicit https origin literal. '*' is never valid. CAVEAT (docs/tools/embed-policy.md section 5): a same-origin artefact is framed WITHOUT 'allow-same-origin', so the frame runs in an opaque origin and reports event.origin === 'null'. A 'self' declaration on a same_origin_static Tool therefore passes this schema and the build-time gate but can never match at runtime — making it work needs an ADR decision, not a manifest edit.",
 										"type": "string",
 										"pattern": "^(self|https://[^/?#]+)$"
 									},

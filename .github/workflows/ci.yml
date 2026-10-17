@@ -83,6 +83,13 @@ jobs:
       #   - Unreadable advisory data FAILS CLOSED (exit 3) in either
       #     mode. A registry outage must never be reported as a clean
       #     dependency tree, so this step is not `continue-on-error`.
+      # A usage mistake or a malformed declaration is exit 2, never a
+      # security verdict.
+      # This step is CI-only on purpose: it needs the registry advisory
+      # endpoint, which the offline `validate:fast` path must not reach.
+      # The decision is in scripts/check-dependency-advisories.mjs, not in
+      # this YAML, so `pnpm run dep-audit:check` produces the same
+      # verdict locally.
       # Flipping the declaration to `enforcement: block` is the one-line
       # escalation; `--enforce` previews the same verdict without
       # editing the reviewed file.

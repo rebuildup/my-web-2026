@@ -204,8 +204,9 @@ production domain to be wired (Issue #43 / ADR-0014):
      closed (exit `3`) rather than reporting a clean dependency tree.
    - Every outstanding `critical` / `high` advisory is either
      remediated, or covered by an **unexpired** record in
-     `quality/dependency-advisory-gate.json` — and the release notes
-     name which, with the expiry date.
+     `quality/dependency-advisory-gate.json` for that exact
+     `(advisoryId, package)` — and the release notes name which, with
+     the expiry date.
    - This is a dependency check only. It does not change the runtime
      secret SoT (Infisical, ADR-0015), the Cloudflare Workers Builds
      delivery path, or the release-merge human gate in step 5.

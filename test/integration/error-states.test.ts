@@ -2,7 +2,6 @@
 import { SELF } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
-	ERROR_STATE_KINDS,
 	alternativesFor,
 	errorStateDefinition,
 	withheldDetailNeedles,
@@ -114,19 +113,29 @@ describe('failure surfaces over the real SSR pipeline (Issue #501)', () => {
 		// `loadPortfolioProject` throws `D1_ERROR: no such table`. That is a
 		// REAL loader failure on the REAL SSR pipeline — precisely the
 		// condition the 503 surface exists for. If the test pool ever grows
-		// the portfolio schema this request becomes a 404 and the assertion
-		// below has to move to the not-found case, not be deleted.
+		// the portfolio schema this request becomes a 404 and THIS assertion
+		// has to move to the not-found case, not be loosened.
 		const { status, html } = await fetchHtml(`/portfolio/${UNKNOWN_PROJECT_SLUG}`);
 		expect(status).toBeGreaterThanOrEqual(400);
-		const state = servedState(html);
-		expect(ERROR_STATE_KINDS).toContain(state);
+		expect(servedState(html)).toBe('service_unavailable');
 		expect(html).not.toContain('Something went wrong!');
-		expect(html).toContain(errorStateDefinition(state as 'not_found').headline);
+		expect(html).toContain(errorStateDefinition('service_unavailable').headline);
 		expect(html).toContain('<h1');
 		// The retry affordance must exist in the SERVED document, so a visitor
 		// without JavaScript still has a way back.
 		expect(html).toContain('data-error-action="retry"');
 		expect(html).toContain(`href="/portfolio/${UNKNOWN_PROJECT_SLUG}"`);
+	});
+
+	it('points the retry anchor at the failed URL including its query string', async () => {
+		// The retry anchor is a plain navigation to the URL that failed
+		// (`${pathname}${searchStr}`), so a recovery must not silently
+		// re-request a different URL than the one that broke. This is the
+		// served-document half of "the retry is never a dead control": a
+		// hydrated click follows the same href.
+		const { html } = await fetchHtml(`/portfolio/${UNKNOWN_PROJECT_SLUG}?ref=newsletter`);
+		expect(servedState(html)).toBe('service_unavailable');
+		expect(html).toContain(`href="/portfolio/${UNKNOWN_PROJECT_SLUG}?ref=newsletter"`);
 	});
 
 	it('never renders the throwable that produced the failure', async () => {

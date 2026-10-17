@@ -88,9 +88,10 @@ export const HARNESS_DIST = '.tmp/error-state-gallery/harness-dist';
 /**
  * Committed captures are WebP: width cap, quality, and a size budget.
  *
- * The budget matches the repository's other verification artefacts
- * (`scripts/perf-large-list.mjs`): a screenshot is meant to be looked at,
- * not to become a second copy of the DOM.
+ * This is the first image artefact committed under `docs/`, so the budget
+ * is stated here rather than inherited from a precedent: a screenshot is
+ * meant to be looked at, not to become a second copy of the DOM in the
+ * repository history.
  */
 export const SCREENSHOT_MAX_WIDTH = 1600;
 export const SCREENSHOT_QUALITY = 80;

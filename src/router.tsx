@@ -71,30 +71,22 @@ function RouteNotFoundSurface(_props: NotFoundRouteProps) {
 /**
  * Router-wide failure surface (a loader or the SSR render threw).
  *
- * `error` is never destructured: the component must not be able to render
- * a throwable's message or stack, and `contract.ts#ERROR_STATE_WITHHELD_INFO`
- * lists that detail as withheld. `reset` is the framework's re-run hook —
- * wired as `onRetry` so a hydrated retry re-executes the failed request,
- * while `retryHref` keeps the pre-hydration click a plain reload of the
- * URL that actually failed. `Match.tsx` passes `reset: undefined` while
- * streaming on the server, so `onRetry` is left unwired there and the
- * anchor stays a normal navigation.
+ * The `error` prop is deliberately not even destructured: this component
+ * must not be able to render a throwable's message or stack, and
+ * `contract.ts#ERROR_STATE_WITHHELD_INFO` lists that detail as withheld.
+ *
+ * `retryHref` is the URL that actually failed, search string included, so
+ * the retry anchor re-requests it. It stays a PLAIN anchor: `props.reset`
+ * is not wired, because `CatchBoundary#reset` only clears local React
+ * state — `MatchInner` then re-reads the same `status: 'error'` match and
+ * re-throws it, so a hydrated retry would have done nothing while
+ * `preventDefault()` suppressed the navigation that does work. See the
+ * module comment of `src/editorial/error-states/ErrorState.tsx` for the
+ * full reasoning and the `router.invalidate()` alternative.
  */
-function RouteFailureSurface({ reset }: ErrorComponentProps) {
-	const { pathname } = useLocation();
-	return (
-		<ServiceUnavailableState
-			onRetry={
-				reset
-					? () => {
-							void reset();
-						}
-					: undefined
-			}
-			retryHref={pathname}
-			onBack={() => window.history.back()}
-		/>
-	);
+function RouteFailureSurface(_props: ErrorComponentProps) {
+	const { pathname, searchStr } = useLocation();
+	return <ServiceUnavailableState retryHref={`${pathname}${searchStr}`} />;
 }
 
 declare module '@tanstack/react-router' {

@@ -75,6 +75,7 @@ Current dependency direction:
 routes -> home
 routes -> portfolio
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+router -> editorial (Issue #501 — failure surfaces bound in getRouter())
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)

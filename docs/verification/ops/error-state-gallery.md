@@ -10,7 +10,7 @@
 | 項目 | 値 |
 | --- | --- |
 | 描画対象 | `src/editorial/error-states/error-states.stories.tsx` の `Editorial/ErrorStates` → `Gallery`（shipped story を harness が直接 import して描画） |
-| capture 手段 | `node scripts/capture-error-state-gallery.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
+| capture 手段 | `pnpm run capture:error-states`（`node scripts/capture-error-state-gallery.mjs`。`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの。すなわち実際の `src/styles.css` |
 | viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影） |
 | 生成物サイズ | 1440 x 2768 px、**114 kB** WebP（quality 80、budget 300 kB） |
@@ -18,17 +18,18 @@
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
 | 本番非破壊 | 既定で外部通信なし。local harness build と loopback 配信のみ。deploy / remote binding / secret 値の読み出しは無い |
 
-Issue は `.png` 経路を指定しているが、本リポジトリの他の検証 artefact に合わせて **`.webp` を commit** した。`scripts/capture-error-state-gallery.mjs` は `.webp` 以外の出力先を拒否し、中間 PNG は削除する。
+Issue は `.png` 経路を指定しているが、本リポジトリで **初めて commit する画像 artefact** であり、PNG のままでは 1440x2768 の本文稠密画面に対して検証 artefact として大きすぎる（117,188 bytes → WebP 114 kB、quality 80、budget 300 kB）ため **`.webp`** を commit した。`scripts/capture-error-state-gallery.mjs` は `.webp` 以外の出力先を拒否し、中間 PNG は削除する。
 
 ## 2. 画面が示している条件
 
 画像の 3 段が、そのまま 3 つの failure surface に対応する。
 
 1. `not_found` — route が一致しない、または loader が `notFound()` を投げたとき。HTTP 404。
-   - 提示: 「戻る」+ **公開面 5 つすべて**（`/` `/portfolio` `/about` `/tools` `/contact`）。
+   - 提示: 「戻る」+ **代替面 5 つすべて**（`/` `/portfolio` `/about` `/tools` `/contact`）。
    - **retry は無い**。存在が確定していない URL を再要求しても成功しないため。押しても効かない操作は訪問者に「ボタンは無視される」という習慣を养成するだけ、という判断。
 2. `service_unavailable` — loader か SSR render が throw したとき（プラットフォーム側が応答できない）。
    - 提示: **再試行**（第一導線）+「戻る」+ **binding を読まない面のみ**（`/tools` `/contact`）。
+   - 再試行は click handler を持たない anchor で、失敗 URL（pathname + query）への document 遷移。hydration 前後で挙動は同じ（理由は §6）。
    - 公開文言は binding 名を**名指ししない**。公開面はどちらの binding が壊れたか知らないので、断定すれば推測になるため。
 3. `dependency_failure` — ページ自体は描画できたが、前提データの取得が失敗したとき。
    - 提示: 再試行（第一導線）+「戻る」+ binding を読まない面のみ。
@@ -45,7 +46,7 @@ Issue は `.png` 経路を指定しているが、本リポジトリの他の検
 | failure kind と status label | `404` / `503` / `Dependency` |
 | 説明文言 | 日本語 + 英語（日 → 英、` / ` 区切り。repo 内固定定数、リクエストごとの生成なし） |
 | 復旧導線 | back / retry / alternative（kind ごとに宣言。宣言していない操作は描かない） |
-| 代替面 | href + label（`PUBLIC_NAV_ITEMS` と同じ 5 面の部分集合。絶対 URL は出さない） |
+| 代替面 | href + label（`PUBLIC_NAV_ITEMS` の 6 面のうち `/design-system` を除いた 5 面の部分集合。絶対 URL は出さない） |
 | 訪問者個人情報 | **なし**（session / account / IP / UA / referrer を一切出さない） |
 
 ### 公開しない情報
@@ -88,7 +89,7 @@ Issue は `.png` 経路を指定しているが、本リポジトリの他の検
 | `/tools` | **無し**（build 時に `manifest.json` を import） | `src/tools/registry.ts` |
 | `/contact` | **無し**（build 時に `channels.json` を import） | `src/contact/public.ts` |
 
-503 / dependency_failure が代替面として提示するのは「依存が 0」の面だけ。これは推測ではなく上記 loader の実装から導出した表であり、loader を変更する PR は同じ commit でこの表を更新する義務がある（`contract.ts#PUBLIC_SURFACE_DEPENDENCIES` のコメントに明記）。
+503 / dependency_failure が代替面として提示するのは「依存が 0」の面だけ。これは推測ではなく上記 loader の実装から導出した表であり、loader を変更する PR は同じ commit でこの表を更新する義務がある（`contract.ts#PUBLIC_SURFACE_DEPENDENCIES` のコメントに明記）。`/design-system` は nav には載っているが loader が無く binding も読まないため、この表では**意図的に外して**いる。failure surface がデザインシステムを案内してよいかは公開ナビゲーションの判断なので §7 #6 に送る。
 
 ## 5. SSR での実測（CI が常時回す）
 
@@ -99,7 +100,8 @@ Issue は `.png` 経路を指定しているが、本リポジトリの他の検
 | 未一致 URL の status | **404** |
 | 未一致 URL の body | `<!DOCTYPE html>` + `<h1>` + `data-error-state="not_found"` + back link + 代替 5 link |
 | framework 既定 `<p>Not Found</p>` | **無い**（旧既定の消滅） |
-| loader 実失敗（`/portfolio/<unknown>`、local D1 に `portfolio_project` が無い） | status 500、body は **503 surface**（`<h1>` + 再試行 anchor） |
+| loader 実失敗（`/portfolio/<unknown>`、local D1 に `portfolio_project` が無い） | status 500、body は **503 surface**（`<h1>` + 再試行 anchor）。`servedState` は `service_unavailable` に固定して検証（404 に緩지면落下を検知できない） |
+| 再試行 anchor の href | 失敗した URL そのまま（`?ref=newsletter` を含む）。search を落とすと別 URL を再要求してしまう |
 | framework 既定 "Something went wrong!" と `<pre>` 内の例外 | **無い** |
 | 訪問者が読む document に throwable | **無い** |
 | route 固有 404 の優先 | `/tools/<unknown>` は `data-testid="tools-not-found"`（router 既定の 404 state ではない） |
@@ -112,7 +114,8 @@ loader 失敗が 500 で返るのは TanStack Router の仕様であり、本 Is
 
 - 失敗 surface は root layout の中に載るだけで、画面全体を覆う UI は無い。`role="alert"` を付けていないため、route error としてスクリーンリーダーへ announce されることは無い（回復導線は視覚・キーボード操作の双方から到達できる）。
 - 代替面の表（§4）は手動維持であり、loader を変更した PR が更新し忘れると「開ける」と宣言した面が失敗する（契約違反であって security 違反ではないが、見落としやすい）。
-- `retry` は hydration 前のクリックでは通常の document 遷移になる（router の `reset` は hydration 後にしか存在しない）。これは「JS 無しでも復帰できる」ための意図的な設計だが、loader が副作用を持つ route では二重実行になりうる。
+- **復旧導線は全部、click handler を持たない素の document 遷移**（hydration 前 / 後 / JS 無効で同じ）。これは検討の結果であって単なる簡略化ではない。TanStack の `CatchBoundary#reset` は local state を clear するだけで loader を再実行せず、`MatchInner` は同じ `status: 'error'` match を再 throw するため、handler を繋いだ retry は「何も起きない + 本来有効だった遷移を `preventDefault()` で潰す」だけになっていた。`router.invalidate()` は実際に loader を再実行するが、**active な loader を全部**再実行し、対象 match が pending になって surface が一瞬 blank になる。「ここから出られるか」に答える手段としては、SSR 全体をやり直す document 遷移の方が単純で確実。
+- root loader（現状は `env.GOOGLE_ANALYTICS_MEASUREMENT_ID` を読むだけ）が失敗した場合、`@tanstack/react-router` は root route も `CatchBoundary` で包むため、`<html>` / `<head>` / `<body>` の shell を **`RootComponent` の代わりに 503 surface が描画**する（読めはするが document shell は無い）。現状この loader は失敗しないので到達しないが、root に binding 依存が増えた場合は fossilize させるべき挙動。
 - 検証画像は Storybook ではなく生成 harness で撮っている（理由は §7 #5）。harness は `.tmp/` に生成されるため、repo には残らない。
 
 ## 7. 未決事項（owner 決定が要るもの / follow-up）
@@ -124,3 +127,5 @@ loader 失敗が 500 で返るのは TanStack Router の仕様であり、本 Is
 | 3 | `DependencyFailureState` の呼び出し元が無い | promoted な外部 integration が存在しないため、page レベルで upstream 失敗を報告する route が無い。contract / story / test として出荷し、捏造した失敗経路には繋いでいない |
 | 4 | 依存表（§4）の手動同期 | loader 変更と同一 commit での更新が運用ルール。自動生成は現 roadmap 外 |
 | 5 | Storybook の静的 build が manager-only | `@storybook/react-vite` がプロジェクトの `vite.config.ts` を merge し、Cloudflare / TanStack plugin が出力を奪う。本 Issue の capture は生成 harness で回避した。build 修正は別 ticket |
+| 6 | `/design-system` を failure surface の代替面に含めるか | nav には載っているが loader / binding 依存が無いので「開ける面」には技術的に該当する。failure surface からデザインシステムを案内してよいかは公開ナビゲーションの判断であり、本 Issue が単独で決める話ではない（今は意図的に roster から外し、`/tools` `/contact` のみ提示している） |
+| 7 | DOM レベルのテスト（`*.client.test.tsx`）が gate に載っていない | `pnpm run test:client` は happy-dom 用で、`validate:fast` にも CI にも入っていない。そのため「hydration 後の click が document 遷移のままである」ことは **element tree を walk する test**（`error-states.test.tsx`、CI で回る）で担保している。gate に DOM test を足すのは quality profile の変更なので別 decision |

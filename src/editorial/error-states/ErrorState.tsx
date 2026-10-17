@@ -1,4 +1,3 @@
-import type { MouseEvent } from 'react';
 import { css, cx } from '../../../styled-system/css';
 import { Container } from '../primitives/Container';
 import type { ErrorStateAlternative, ErrorStateKind, ErrorStateRecoveryAction } from './contract';
@@ -18,14 +17,29 @@ import { alternativesFor, errorStateDefinition } from './contract';
  * `<Link>`. A failure surface exists precisely when the router's data
  * layer did not deliver, so the escape hatch must not depend on the
  * router: a client-side `<Link>` click inside a broken loader can fail
- * the same way the page did. Plain anchors also make the two
- * progressive-enhancement rules work without JavaScript:
+ * the same way the page did.
  *
- *   - `retry` is an `<a href={retryHref}>` that the browser follows as a
- *     normal navigation when no `onRetry` handler is wired (pre-hydration),
- *     and that calls `onRetry` instead once it is.
- *   - `back` is an `<a href={backHref}>` — the site home by default —
- *     and calls `onBack` when one is wired.
+ * NO control carries a click handler, and that is a contract rather
+ * than an omission:
+ *
+ *   - `retry` re-requests the URL that actually failed
+ *     (`retryHref` = pathname + search) as a document navigation.
+ *   - `back` is an `<a href={backHref}>` — the site home by default.
+ *
+ * A wired retry handler was tried and removed. The only hook the
+ * framework offers is `CatchBoundary#reset`, and it clears local React
+ * state without touching the router: `MatchInner` then re-reads the
+ * same `status: 'error'` match and re-throws it, so the click did
+ * nothing at all. `router.invalidate()` would re-run the loaders, but
+ * it re-runs EVERY active loader and blanks the surface into a pending
+ * outlet — a worse answer to "can I get out of here" than a navigation
+ * that re-runs the whole SSR pipeline and cannot itself fail the way
+ * the page did.
+ *
+ * The consequence is one rule instead of two: every recovery control
+ * behaves identically before hydration, after hydration, and with
+ * scripting disabled. `error-states.test.tsx` walks the rendered
+ * element tree and asserts that no recovery anchor carries `onClick`.
  *
  * No error value is accepted as a prop, so there is no code path that
  * could render a throwable's message or stack.
@@ -34,26 +48,16 @@ import { alternativesFor, errorStateDefinition } from './contract';
 export interface ErrorStateProps {
 	kind: ErrorStateKind;
 	/**
-	 * Re-run the failed request. Wired by the router error boundary
-	 * (`reset`). Without it the retry anchor is a plain page reload,
-	 * which is also the correct pre-hydration behaviour.
-	 */
-	onRetry?: () => void;
-	/**
-	 * href the retry anchor points at. Defaults to the site home; the
-	 * root route passes the current pathname so a pre-hydration click
-	 * re-requests the page that actually failed.
+	 * href the retry anchor points at. `src/router.tsx` passes the URL
+	 * that actually failed (pathname + search string), so the retry
+	 * re-requests it rather than the bare path. Defaults to the site
+	 * home for a caller that has no failed URL in hand.
 	 */
 	retryHref?: string;
 	/**
-	 * Return to the previous document. Wired by the router error boundary
-	 * so a visitor who navigated within the SPA keeps their place.
-	 */
-	onBack?: () => void;
-	/**
-	 * href the back anchor points at when no `onBack` is wired, and the
-	 * fallback target of an `onBack` click that cannot run (SSR markup).
-	 * Defaults to the site home.
+	 * href the back anchor points at — the way out of a failure
+	 * surface for a visitor with no in-app history (direct entry, a
+	 * crawler, a fresh tab). Defaults to the site home.
 	 */
 	backHref?: string;
 	/**
@@ -95,19 +99,24 @@ const actionClassName = css({
 
 export function ErrorState({
 	kind,
-	onRetry,
 	retryHref = '/',
-	onBack,
 	backHref = '/',
 	alternatives,
 }: ErrorStateProps) {
 	const definition = errorStateDefinition(kind);
 	const alternativeLinks = alternatives ?? alternativesFor(kind);
 	const headingId = `error-state-${kind}-heading`;
+	const descriptionId = `error-state-${kind}-description`;
 
 	return (
-		<Container as="section">
-			<div
+		<Container>
+			{/* The region names itself with the headline the visitor reads,
+			    and points at the explanation as its description, so the whole
+			    message is one navigable/announced unit (the ids are what make
+			    the two attributes mean anything). */}
+			<section
+				aria-labelledby={headingId}
+				aria-describedby={descriptionId}
 				data-testid={`error-state-${kind}`}
 				data-error-state={kind}
 				className={css({
@@ -144,6 +153,7 @@ export function ErrorState({
 					{definition.headline}
 				</h1>
 				<p
+					id={descriptionId}
 					data-error-state-description
 					className={css({
 						margin: '0',
@@ -191,8 +201,6 @@ export function ErrorState({
 						actions={definition.recovery}
 						retryHref={retryHref}
 						backHref={backHref}
-						onRetry={onRetry}
-						onBack={onBack}
 					/>
 					{definition.alternativesNote ? (
 						<p
@@ -211,7 +219,7 @@ export function ErrorState({
 					) : null}
 					<AlternativeList alternatives={alternativeLinks} />
 				</div>
-			</div>
+			</section>
 		</Container>
 	);
 }
@@ -220,11 +228,9 @@ interface RecoveryActionProps {
 	actions: readonly ErrorStateRecoveryAction[];
 	retryHref: string;
 	backHref: string;
-	onRetry?: () => void;
-	onBack?: () => void;
 }
 
-function RecoveryActions({ actions, retryHref, backHref, onRetry, onBack }: RecoveryActionProps) {
+function RecoveryActions({ actions, retryHref, backHref }: RecoveryActionProps) {
 	const rendered = actions.filter((action) => action !== 'alternative');
 	if (rendered.length === 0) return null;
 	return (
@@ -243,35 +249,18 @@ function RecoveryActions({ actions, retryHref, backHref, onRetry, onBack }: Reco
 				{rendered.map((action) =>
 					action === 'retry' ? (
 						<li key={action}>
-							<a
-								href={retryHref}
-								data-error-action="retry"
-								className={actionClassName}
-								onClick={(event: MouseEvent<HTMLAnchorElement>) => {
-									if (!onRetry) return;
-									// Progressive enhancement: once a handler is
-									// wired, let the router re-run the request
-									// instead of navigating the document.
-									event.preventDefault();
-									onRetry();
-								}}
-							>
+							{/* No onClick: the click must stay a real navigation,
+							    so the retry works the same before hydration,
+							    after hydration and with scripting off. See the
+							    module comment for what was tried and dropped. */}
+							<a href={retryHref} data-error-action="retry" className={actionClassName}>
 								再試行する / Try again
 							</a>
 						</li>
 					) : (
 						<li key={action}>
-							<a
-								href={backHref}
-								data-error-action="back"
-								className={actionClassName}
-								onClick={(event: MouseEvent<HTMLAnchorElement>) => {
-									if (!onBack) return;
-									event.preventDefault();
-									onBack();
-								}}
-							>
-								{onBack ? '前のページへ戻る / Go back' : 'ホームへ戻る / Back to home'}
+							<a href={backHref} data-error-action="back" className={actionClassName}>
+								ホームへ戻る / Back to home
 							</a>
 						</li>
 					),

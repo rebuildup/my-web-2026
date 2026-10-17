@@ -73,8 +73,9 @@ export type ErrorStateKind = (typeof ERROR_STATE_KINDS)[number];
 /**
  * Recovery affordances a state may offer.
  *
- *   - `back`        return to the previous document, or the site home.
- *   - `retry`       run the failed request again.
+ *   - `back`        leave the failure surface: a plain navigation to the
+ *                   site home (see `backHref`).
+ *   - `retry`       re-request the URL that failed.
  *   - `alternative` open a public surface that still answers.
  */
 export type ErrorStateRecoveryAction = 'back' | 'retry' | 'alternative';
@@ -92,10 +93,18 @@ export type ErrorStateDependency = 'd1' | 'r2';
 /**
  * Canonical public surfaces (Issue #501).
  *
- * These are the five routes `src/editorial/nav/PublicNav.tsx#PUBLIC_NAV_ITEMS`
- * already publishes. Every alternative an error state offers is a
- * member of this roster, so a visitor can never be sent to a page that
- * does not exist — the exact failure this surface exists to fix.
+ * These are the five ROUTES of `src/editorial/nav/PublicNav.tsx#PUBLIC_NAV_ITEMS`
+ * a failure surface may send a visitor to — `/`, `/portfolio`, `/tools`,
+ * `/about`, `/contact`. `PUBLIC_NAV_ITEMS` also publishes `/design-system`,
+ * which is deliberately NOT on this roster yet: it reads no binding, so it
+ * would qualify for the dependency-free set, and whether a failure surface
+ * should offer the design system to a visitor is a published-navigation
+ * decision, not one this Issue can derive. It is recorded as an open
+ * decision in `docs/verification/ops/error-state-gallery.md` §7.
+ *
+ * Every alternative an error state offers is a member of this roster, so a
+ * visitor can never be sent to a page that does not exist — the exact
+ * failure this surface exists to fix.
  *
  * The dependency column is maintained by hand from each surface's
  * loader, and it is the reason a D1 / R2 outage still leaves the

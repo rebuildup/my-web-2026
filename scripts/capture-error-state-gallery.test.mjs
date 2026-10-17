@@ -61,8 +61,7 @@ describe('capture-error-state-gallery — artefact policy', () => {
 		});
 		assert.equal(screenshotBudgetVerdict(SCREENSHOT_BUDGET_BYTES + 1).withinBudget, false);
 		assert.equal(screenshotBudgetVerdict(SCREENSHOT_BUDGET_BYTES).withinBudget, true);
-		// The encode parameters match the repository's other verification
-		// artefacts (scripts/perf-large-list.mjs).
+		// The encode parameters the capture writes and the report quotes.
 		assert.equal(SCREENSHOT_MAX_WIDTH, 1600);
 		assert.equal(SCREENSHOT_QUALITY, 80);
 		assert.equal(SCREENSHOT_BUDGET_BYTES, 300 * 1024);

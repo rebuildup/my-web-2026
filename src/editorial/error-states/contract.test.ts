@@ -87,7 +87,9 @@ describe('error-state contract', () => {
 		expect(alternatives.length).toBeGreaterThan(0);
 		for (const alternative of alternatives) {
 			expect(CANONICAL_ROSTER).toContain(alternative.href);
-			// Same roster `PublicNav` publishes — see PublicNav.tsx#PUBLIC_NAV_ITEMS.
+			// Every alternative is a site route `PublicNav` publishes
+			// (`PublicNav.tsx#PUBLIC_NAV_ITEMS`), minus `/design-system` —
+			// see the roster comment in `./contract`.
 			expect(alternative.label).toBe(PUBLIC_SURFACE_LABELS[alternative.href]);
 			expect(alternative.label).toContain(' / ');
 			// Internal navigation only. An absolute URL on a failure surface

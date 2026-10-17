@@ -267,6 +267,19 @@ Playwright E2E is a separate CI step on pushes to `main` / `release-*`
 and on PRs with the `ui-change` label; it is not part of the local
 `validate:release` command.
 
+One gate is deliberately **not** in the three entry points: the
+dependency advisory gate (Issue #470,
+[`quality/dependency-advisory-gate.json`](quality/dependency-advisory-gate.json),
+`pnpm run dep-audit:check`). It needs the npm registry advisory
+endpoint, and `validate:fast` is offline and read-only by contract, so
+it runs as the `Dependency advisory audit` step of the `validate` job
+instead. The decision logic is in `scripts/check-dependency-advisories.mjs`,
+not in workflow YAML, and the same verdict is reproducible locally with
+`pnpm run dep-audit:check`; whether it should also join a local entry
+point is an open decision recorded in
+[`quality/profile.yaml`](quality/profile.yaml). Operator reference:
+[`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
+
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are
 **not** enforced at 0.1.0; that decision is in ADR-0007.

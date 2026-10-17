@@ -67,12 +67,12 @@
 			"title": "Fixture advisory: predictable temp file name in fixture-docgen",
 			"url": "https://example.invalid/advisories/GHSA-fixt-fixt-flow",
 			"github_advisory_id": "GHSA-fixt-fixt-flow",
-			"vulnerable_versions": "<0.4.2",
-			"patched_versions": ">=0.4.2",
+			"vulnerable_versions": "<1.4.2",
+			"patched_versions": ">=1.4.2",
 			"cwe": "CWE-377",
 			"findings": [
 				{
-					"version": "0.4.1",
+					"version": "1.4.1",
 					"paths": [".>fixture-app>fixture-tools>fixture-docgen"],
 					"dev": true,
 					"optional": false,

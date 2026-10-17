@@ -147,12 +147,21 @@ approved exceptions in force (1):
       tracking: 470
 ```
 
-![dependency advisory gate — blocking verdict](../verification/supply-chain/dependency-audit-report.png)
+![dependency advisory gate — blocking verdict, fixture data](../verification/supply-chain/dependency-audit-report.webp)
 
 The committed screenshot is the *fixture* verdict (public-safe dummy
 advisories, `example.invalid` URLs), so the artifact can be committed
 without leaking anything about the real dependency tree. The real run
 is reproducible with the same command and no `--input`.
+
+The passing state, with the approved-exception record the gate keeps in
+its output:
+
+![dependency advisory gate — passing verdict with an approved exception](../verification/supply-chain/dependency-audit-report-excepted.webp)
+
+Both images are WebP (quality 80, width 1180, 53–69 KiB) rendered from
+the HTML report the gate writes, not hand-made; the PNG capture stays in
+`.tmp/` and is not committed.
 
 ## 5. Abnormal observation and repair
 
@@ -231,8 +240,8 @@ environment and none of them may appear in stdout, stderr or the report.
 | ------------------------------------------------------ | ------------------------------------------------------------------------ |
 | CI run                                                 | `validate` job → `Dependency advisory audit` step of every CI run        |
 | HTML inspection report                                 | artifact `dependency-advisory-report-<sha>` (90 day retention)           |
-| Committed fixture verdict screenshot                    | [`docs/verification/supply-chain/dependency-audit-report.png`](../verification/supply-chain/dependency-audit-report.png) |
-| Passing-with-exception screenshot                      | [`docs/verification/supply-chain/dependency-audit-report-excepted.png`](../verification/supply-chain/dependency-audit-report-excepted.png) |
+| Committed fixture verdict screenshot                    | [`docs/verification/supply-chain/dependency-audit-report.webp`](../verification/supply-chain/dependency-audit-report.webp) |
+| Passing-with-exception screenshot                      | [`docs/verification/supply-chain/dependency-audit-report-excepted.webp`](../verification/supply-chain/dependency-audit-report-excepted.webp) |
 | Unit / CLI / render tests                              | `pnpm test` (`scripts/_dependency-advisories.test.mjs`, `scripts/check-dependency-advisories.test.mjs`, `scripts/render-dependency-audit-report.test.mjs`) |
 
 This gate is a dependency check only. It does not change the runtime

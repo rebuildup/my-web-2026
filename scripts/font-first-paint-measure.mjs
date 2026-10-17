@@ -299,6 +299,11 @@ export function aggregateComparison(comparison) {
  * before/after rows for the report's comparison table. Keyed by
  * `route:scenario:metric` so a route that changed shape between runs
  * shows as `n/a` instead of silently pairing the wrong numbers.
+ *
+ * The CLS row also carries the shift sources from BOTH captures. A
+ * before/after number quoted from prose is only evidence if the
+ * elements that moved are in the deliverable next to it — otherwise the
+ * attribution lives in a scratch directory no reader can check.
  */
 export function compareRuns(before, after) {
 	const flat = (report) => {
@@ -310,6 +315,9 @@ export function compareRuns(before, after) {
 		}
 		return out;
 	};
+	const sourcesOf = (report, route, scenario) =>
+		report.runs.find((run) => run.route === route && run.scenario === scenario)
+			?.layoutShiftSources ?? [];
 	const beforeFlat = flat(before);
 	const afterFlat = flat(after);
 	const keys = [...new Set([...beforeFlat.keys(), ...afterFlat.keys()])].sort();
@@ -317,7 +325,19 @@ export function compareRuns(before, after) {
 		const b = beforeFlat.get(key);
 		const a = afterFlat.get(key);
 		const delta = typeof b === 'number' && typeof a === 'number' ? round3(a - b) : null;
-		return { key, before: b ?? null, after: a ?? null, delta, direction: directionOf(key, delta) };
+		const row = {
+			key,
+			before: b ?? null,
+			after: a ?? null,
+			delta,
+			direction: directionOf(key, delta),
+		};
+		if (key.endsWith(':cls')) {
+			const [route, scenario] = key.split(':');
+			row.beforeSources = sourcesOf(before, route, scenario);
+			row.afterSources = sourcesOf(after, route, scenario);
+		}
+		return row;
 	});
 }
 
@@ -407,6 +427,16 @@ export function renderReportHtml(report) {
 		].join('');
 	})();
 
+	const shiftSourcesCell = (shift) =>
+		(shift.sources ?? [])
+			.map(
+				(source) =>
+					`<div>${escapeHtml(source.tag)} &ldquo;${escapeHtml(source.text)}&rdquo; ${escapeHtml(
+						source.previous,
+					)} &rarr; ${escapeHtml(source.current)}</div>`,
+			)
+			.join('');
+
 	const diagnosis = report.runs.some((run) => (run.layoutShiftSources ?? []).length > 0)
 		? `<h2>where the shift came from</h2><p class="note">Layout-shift sources for the two largest shifts of every run. A CLS number without these is unattributable — this is the evidence that a shift is a re-wrap (a container height changes when the font swaps) rather than an image or an ad slot.</p><table><thead><tr><th>route</th><th>scenario</th><th>value</th><th>at ms</th><th>sources</th></tr></thead><tbody>${report.runs
 				.flatMap((run) =>
@@ -414,18 +444,45 @@ export function renderReportHtml(report) {
 						(shift) =>
 							`<tr><td>${escapeHtml(run.route)}</td><td>${escapeHtml(run.scenario)}</td><td>${escapeHtml(
 								shift.value,
-							)}</td><td>${escapeHtml(shift.startTimeMs)}</td><td>${shift.sources
-								.map(
-									(source) =>
-										`<div>${escapeHtml(source.tag)} &ldquo;${escapeHtml(source.text)}&rdquo; ${escapeHtml(
-											source.previous,
-										)} &rarr; ${escapeHtml(source.current)}</div>`,
-								)
-								.join('')}</td></tr>`,
+							)}</td><td>${escapeHtml(shift.startTimeMs)}</td><td>${shiftSourcesCell(shift)}</td></tr>`,
 					),
 				)
 				.join('\n')}</tbody></table>`
 		: '';
+
+	// The same attribution for the capture passed with `--compare`. It
+	// lives here, in the deliverable, so that the before number quoted
+	// in prose can be checked against the elements that actually moved
+	// instead of against a scratch directory.
+	const beforeAfterShifts = (() => {
+		const rows = (report.comparison ?? []).filter(
+			(row) =>
+				row.key.endsWith(':cls') && (row.beforeSources?.length > 0 || row.afterSources?.length > 0),
+		);
+		if (rows.length === 0) return '';
+		const body = rows
+			.flatMap((row) => {
+				const [route, scenario] = row.key.split(':');
+				const cells = (shifts, side) =>
+					(shifts ?? [])
+						.map(
+							(shift) =>
+								`<tr><td>${escapeHtml(route)}</td><td>${escapeHtml(scenario)}</td><td>${side}</td><td>${escapeHtml(
+									shift.value,
+								)}</td><td>${escapeHtml(shift.startTimeMs)}</td><td>${shiftSourcesCell(shift)}</td></tr>`,
+						)
+						.join('');
+				return [cells(row.beforeSources, 'before'), cells(row.afterSources, 'after')];
+			})
+			.join('\n');
+		return [
+			'<h2>where the shift came from — before / after</h2>',
+			'<p class="note">The same two largest shifts per run, from the capture passed with <code>--compare</code> (before) and from this capture (after). Quoting a before/after CLS number without these is quoting a number with no cause attached.</p>',
+			'<table><thead><tr><th>route</th><th>scenario</th><th>side</th><th>value</th><th>at ms</th><th>sources</th></tr></thead><tbody>',
+			body,
+			'</tbody></table>',
+		].join('');
+	})();
 
 	return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
@@ -472,6 +529,7 @@ ${row('command', escapeHtml(report.command))}
 ${runs}
 </tbody></table>
 ${diagnosis}
+${beforeAfterShifts}
 ${comparison}
 </body></html>
 `;

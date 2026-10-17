@@ -49,8 +49,8 @@ function probe(overrides = {}) {
 	};
 }
 
-function run(route, scenario, metrics) {
-	return { route, scenario, metrics, fallback: null, screenshot: null };
+function run(route, scenario, metrics, layoutShiftSources = []) {
+	return { route, scenario, metrics, fallback: null, screenshot: null, layoutShiftSources };
 }
 
 describe('font-first-paint-measure — measurement contract constants', () => {
@@ -334,9 +334,40 @@ describe('font-first-paint-measure — compareRuns', () => {
 			{ runs: [run('/', 'baseline', { cls: 0.03, fcpMs: 380 })] },
 		);
 		assert.deepEqual(rows, [
-			{ key: '/:baseline:cls', before: 0.12, after: 0.03, delta: -0.09, direction: 'better' },
+			{
+				key: '/:baseline:cls',
+				before: 0.12,
+				after: 0.03,
+				delta: -0.09,
+				direction: 'better',
+				beforeSources: [],
+				afterSources: [],
+			},
 			{ key: '/:baseline:fcpMs', before: 400, after: 380, delta: -20, direction: 'better' },
 		]);
+	});
+
+	it('carries the shift sources of both captures on the CLS row', () => {
+		// The before number is only evidence if the elements that moved
+		// are in the deliverable next to it.
+		const shifted = (value, rect) => ({
+			value,
+			startTimeMs: 356.8,
+			sources: [{ tag: 'ul', text: 'ホーム', previous: rect, current: '864x70' }],
+		});
+		const rows = compareRuns(
+			{ runs: [run('/about', 'baseline', { cls: 0.975 }, [shifted(0.487, '872x29')])] },
+			{ runs: [run('/about', 'baseline', { cls: 0.001 }, [shifted(0.001, '872x29')])] },
+		);
+		const clsRow = rows.find((row) => row.key === '/about:baseline:cls');
+		assert.equal(clsRow.beforeSources[0].value, 0.487);
+		assert.equal(clsRow.beforeSources[0].sources[0].previous, '872x29');
+		assert.equal(clsRow.afterSources[0].value, 0.001);
+		// A timing row carries no attribution.
+		assert.equal(
+			rows.find((row) => row.key === '/about:baseline:fcpMs'),
+			undefined,
+		);
 	});
 
 	it('marks a regression as worse', () => {
@@ -529,6 +560,49 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 	it('omits the comparison table when there is nothing to compare', () => {
 		const html = renderReportHtml({ ...report, comparison: [] });
 		assert.doesNotMatch(html, /before \/ after/);
+	});
+
+	it('renders the before-capture attribution next to the after one', () => {
+		const shift = (value) => ({
+			value,
+			startTimeMs: 356.8,
+			sources: [{ tag: 'ul', text: 'ホーム', previous: '872x29', current: '864x70' }],
+		});
+		const html = renderReportHtml({
+			...report,
+			comparison: [
+				{
+					key: '/about:baseline:cls',
+					before: 0.487,
+					after: 0.001,
+					delta: -0.486,
+					direction: 'better',
+					beforeSources: [shift(0.487)],
+					afterSources: [shift(0.001)],
+				},
+			],
+		});
+		assert.match(html, /where the shift came from — before \/ after/);
+		assert.match(html, /<td>before<\/td><td>0\.487<\/td><td>356\.8<\/td>/);
+		assert.match(html, /<td>after<\/td><td>0\.001<\/td>/);
+	});
+
+	it('omits the before/after attribution when no shift was recorded', () => {
+		const html = renderReportHtml({
+			...report,
+			comparison: [
+				{
+					key: '/about:baseline:cls',
+					before: 0,
+					after: 0,
+					delta: 0,
+					direction: 'flat',
+					beforeSources: [],
+					afterSources: [],
+				},
+			],
+		});
+		assert.doesNotMatch(html, /where the shift came from — before/);
 	});
 
 	it('escapes route text instead of injecting markup', () => {

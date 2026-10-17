@@ -11,9 +11,12 @@ actually observed, not as it is described.
    the local workerd pool (`SELF.fetch`), over the host page, a 404, the
    external boundary (success + `notFound`), the admin redirect, the admin
    login, and the three Tool shell routes.
-2. **Static Assets responses** — the `public/_headers` rules resolved
-   locally by `scripts/check-security-headers.mjs`, which is the same
-   parser the CI gate uses.
+2. **Static Assets responses** — measured against the local `pnpm
+   preview` Worker (a `curl -D -` dump captured into
+   `.tmp/security-headers/static-headers.json`), or, when that capture
+   is not supplied, resolved from the shipped `public/_headers` rules by
+   `scripts/check-security-headers.mjs` — the same parser the CI gate
+   uses. The report labels which of the two it used.
 3. **Browser enforcement** — Chromium with a fake capture device asking
    `getUserMedia()` for the microphone on: a host-baseline document, the
    Tool document that carries the `mic-level` grant, and the same grant
@@ -28,14 +31,21 @@ fake one.
 ## Regenerating
 
 ```bash
-node scripts/security-header-report.mjs
+node scripts/security-header-report.mjs            # Worker + rules + browser
+node scripts/security-header-report.mjs \
+  --static-measurements=.tmp/security-headers/static-headers.json
 ```
 
-The script re-runs the workerd measurement, re-resolves the `_headers`
-rules, re-runs the browser probes and overwrites the PNG. Commit the
-regenerated image in the same change as any policy or manifest-grant
-edit.
+The second form additionally reports the Static Assets rows as measured
+from a running preview (see `docs/security/security-headers.md` §4 for
+how to start one and capture the dump). The script re-runs the workerd
+measurement, re-resolves the `_headers` rules, re-runs the browser
+probes and overwrites the PNG. Commit the regenerated image in the same
+change as any policy or manifest-grant edit.
 
-Read the interpretation of each column, and the known sandbox caveat the
-measurement exposed, in
+The browser section separates the two gates Chromium actually applies:
+the container document's own `Permissions-Policy` is the ceiling for its
+frame, and a frame sandboxed without `allow-same-origin` has an opaque
+origin that no header can give a capture device back. Both readings, and
+the residual they leave, are in
 [`docs/security/security-headers.md`](../../security/security-headers.md).

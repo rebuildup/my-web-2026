@@ -26,28 +26,36 @@
  *
  * What it checks
  * --------------
- *   1. `/*` carries the host baseline: nosniff, the host
- *      `Referrer-Policy`, and the deny-list `Permissions-Policy`.
- *   2. The Tool artefact rules (`/tools/:slug/app*`) carry nosniff,
- *      the Tool `Referrer-Policy`, and the deny-list policy — a Tool
- *      must not reach a capture device just by being framed.
+ *   1. `nosniff` on every static surface (assets, `/share/**`,
+ *      favicon, Tool artefacts), and nothing else on a wildcard.
+ *   2. Host-owned static documents (`/share/**`) carry the host
+ *      `Referrer-Policy` and the deny-list `Permissions-Policy`.
  *   3. Every manifest `iframe.allow` is a list of FEATURE NAMES that
  *      the baseline actually denies (an unknown feature makes the grant
  *      a no-op, which is worse than an error because it looks applied).
- *   4. Every manifest `iframe.allow` has a matching per-slug `_headers`
- *      rule granting exactly those features, scoped to the canonical
- *      production origin.
- *   5. No `_headers` rule grants a feature no manifest entry declares,
- *      and the wildcard Tool rule never grants a capture device.
+ *   4. A Tool artefact carries its own `Referrer-Policy`, and carries a
+ *      `Permissions-Policy` ONLY when the manifest declares a grant. A
+ *      blanket deny on the Tool namespace is a violation, not a default:
+ *      it breaks every Tool that legitimately needs a capture device.
+ *   5. A granted feature may appear only inside the artefact namespace
+ *      of the Tool that declares it.
+ *   6. No header is declared by two rules that match the same path —
+ *      Cloudflare combines matching rules, which produces an invalid
+ *      value rather than an override.
  *
- * Rule semantics
- * --------------
- * `_headers` rules are applied in file order and every matching rule
- * contributes: a later rule overrides an earlier one for the same
- * header. `resolveHeadersForPath()` implements exactly that, so the
- * per-Tool grant is resolved through the same model the platform uses.
- * If that assumption is ever wrong the failure mode is fail-closed —
- * the Tool loses the microphone; it does not silently gain it.
+ * Rule semantics (measured, not assumed)
+ * -------------------------------------
+ * Cloudflare's Static Assets COMBINE every matching rule: the preview
+ * server that reads this same file returns
+ *
+ *   referrer-policy: strict-origin-when-cross-origin, no-referrer
+ *
+ * when a wildcard and a narrower rule both set it. So two rules that
+ * match the same path and set the same header produce an invalid value,
+ * not an override. `resolveHeadersForPath()` therefore also reports
+ * which rules contributed each header, and check 6 fails when a header
+ * is declared twice for one path. That invariant is what lets the file
+ * stay readable: each rule owns a distinct header name.
  *
  * Exit code 0 when the two surfaces agree, 1 on any violation (each
  * printed as `<file>  <message>`).
@@ -131,6 +139,35 @@ export function resolveHeadersForPath(rules, pathname) {
 	return effective;
 }
 
+/**
+ * Which rules set each header for a path. Two contributors for one
+ * header name is the invalid-combination case Cloudflare's combining
+ * semantics produce, so the check reports the pair rather than the
+ * merged string.
+ */
+export function headerContributors(rules, pathname) {
+	const contributors = {};
+	for (const rule of rules) {
+		if (!patternToRegExp(rule.path).test(pathname)) continue;
+		for (const name of Object.keys(rule.headers)) {
+			contributors[name] ??= [];
+			contributors[name].push(rule.path);
+		}
+	}
+	return contributors;
+}
+
+/** Sample paths that must carry exactly one value per header. */
+export const INVARIANT_SAMPLE_PATHS = Object.freeze([
+	'/share/procon2026/index.html',
+	'/share/procon2026/assets/files/253d8bcd931a.pdf',
+	'/tools/prototype/app/index.html',
+	'/tools/readmark/app/assets/index.js',
+	'/tools/mic-level/app/index.html',
+	'/assets/index-abc123.js',
+	'/favicon.svg',
+]);
+
 /** Features a `Permissions-Policy` value grants (i.e. does not deny). */
 export function grantedFeatures(value) {
 	if (!value) return [];
@@ -199,16 +236,32 @@ export function inspect(options = {}) {
 			);
 		}
 	};
+	const expectAbsent = (pathname, name) => {
+		const actual = resolveHeadersForPath(rules, pathname)[name];
+		if (actual !== undefined) {
+			violations.push(`public/_headers  ${pathname}  ${name}: expected no value, got "${actual}"`);
+		}
+	};
 
-	// 1. Host baseline for every static byte.
-	const sample = '/share/procon2026/index.html';
-	expectHeader(sample, NOSNIFF, policy.x_content_type_options);
-	expectHeader(sample, REFERRER_POLICY, policy.referrer_policy.host);
-	expectHeader(sample, PERMISSIONS_POLICY, baseline);
+	// 1. `nosniff` on every static byte, and nothing else: a wildcard
+	//    that owned a per-path-varying header would combine with the
+	//    narrower rule below it.
+	expectHeader('/share/procon2026/index.html', NOSNIFF, policy.x_content_type_options);
+	expectHeader('/assets/index-abc123.js', NOSNIFF, policy.x_content_type_options);
+	expectHeader('/favicon.svg', NOSNIFF, policy.x_content_type_options);
+	expectHeader('/tools/prototype/app/index.html', NOSNIFF, policy.x_content_type_options);
 
-	// 2. Tool artefact rules: same deny list, Tool referrer policy. The
-	//    sample uses a slug with no declared grant so the wildcard rule
-	//    is measured on its own.
+	// 2. Host-owned static documents (`/share/**`) carry the full deny
+	//    baseline. Permissions-Policy cannot live on a wildcard: the Tool
+	//    namespace must NOT inherit `microphone=()`, because Chromium
+	//    treats the framed document's own policy as binding for that
+	//    document and a blanket deny breaks every Tool that needs a
+	//    capture device (measured; see docs/security/security-headers.md).
+	const hostStatic = '/share/procon2026/index.html';
+	expectHeader(hostStatic, REFERRER_POLICY, policy.referrer_policy.host);
+	expectHeader(hostStatic, PERMISSIONS_POLICY, baseline);
+
+	// 3. Manifest grants must be bare feature names the baseline denies.
 	const grantedTools = [];
 	for (const tool of manifest.tools) {
 		const declared = declaredFeatures(tool.delivery?.iframe?.allow);
@@ -231,34 +284,30 @@ export function inspect(options = {}) {
 			}
 		}
 	}
-	const ungranted = manifest.tools.find(
-		(tool) => declaredFeatures(tool.delivery?.iframe?.allow).length === 0,
-	);
-	if (ungranted) {
-		const artifact = ungranted.delivery?.artifact_path ?? '/tools/prototype/app';
-		expectHeader(`${artifact}/index.html`, NOSNIFF, policy.x_content_type_options);
-		expectHeader(`${artifact}/index.html`, REFERRER_POLICY, policy.referrer_policy.tool_app);
-		expectHeader(`${artifact}/index.html`, PERMISSIONS_POLICY, baseline);
-	}
 
-	// 4. A per-slug rule for every declared grant.
-	for (const { slug, declared, referrer } of grantedTools) {
-		const sample = `/tools/${slug}/app/index.html`;
-		const effective = resolveHeadersForPath(rules, sample);
-		expectHeader(sample, NOSNIFF, policy.x_content_type_options);
-		expectHeader(sample, REFERRER_POLICY, referrer ?? policy.referrer_policy.tool_app);
-		expectHeader(
-			sample,
-			PERMISSIONS_POLICY,
-			permissionsPolicyValue(policy, productionOrigin, declared),
-		);
-		const granted = grantedFeatures(effective[PERMISSIONS_POLICY]);
-		for (const feature of declared) {
-			if (!granted.includes(feature)) {
-				violations.push(
-					`public/_headers  ${sample}  permissions-policy: declared grant "${feature}" is not applied to the Tool artefact`,
-				);
-			}
+	// 4. Tool artefacts: Tool referrer policy, and NO blanket deny (the
+	//    grant is delegated by the host route instead). A Tool that
+	//    declares a grant is checked whether or not it is served yet —
+	//    that is what makes the grant reviewable before the Tool has a
+	//    standalone build.
+	for (const tool of manifest.tools) {
+		const sample = `${artifactPathFor(tool)}/index.html`;
+		const declared = declaredFeatures(tool.delivery?.iframe?.allow);
+		if (tool.delivery?.kind === 'same_origin_static') {
+			expectHeader(
+				sample,
+				REFERRER_POLICY,
+				tool.delivery.iframe?.referrer_policy ?? policy.referrer_policy.tool_app,
+			);
+		}
+		if (declared.length > 0) {
+			expectHeader(
+				sample,
+				PERMISSIONS_POLICY,
+				permissionsPolicyValue(policy, productionOrigin, declared),
+			);
+		} else if (tool.delivery?.kind === 'same_origin_static') {
+			expectAbsent(sample, PERMISSIONS_POLICY);
 		}
 	}
 
@@ -266,6 +315,7 @@ export function inspect(options = {}) {
 	//    of the Tool that declares it. This is the machine form of the
 	//    separation the Issue asks for: the microphone is a per-Tool
 	//    decision, never a host-wide or wildcard-Tool relaxation.
+	const declaredAnywhere = new Set(grantedTools.flatMap((tool) => tool.declared));
 	for (const rule of rules) {
 		const probe = probePathFor(rule.path, manifest);
 		const granted = grantedFeatures(resolveHeadersForPath(rules, probe)[PERMISSIONS_POLICY]);
@@ -283,6 +333,20 @@ export function inspect(options = {}) {
 			if (!pathnameMatches(namespace, probe)) {
 				violations.push(
 					`public/_headers  ${rule.path}  permissions-policy: grants "${feature}" outside the declaring Tool's namespace ${namespace} (probe ${probe})`,
+				);
+			}
+		}
+	}
+
+	// 6. One value per header per path. Cloudflare COMBINES matching
+	//    rules, so two contributors produce `a, b` — an invalid
+	//    Referrer-Policy and an ambiguously-parsed Permissions-Policy.
+	for (const pathname of INVARIANT_SAMPLE_PATHS) {
+		const contributors = headerContributors(rules, pathname);
+		for (const [name, paths] of Object.entries(contributors)) {
+			if (paths.length > 1) {
+				violations.push(
+					`public/_headers  ${pathname}  ${name}: declared by ${paths.length} matching rules (${paths.join(', ')}) — Cloudflare combines them into one invalid value`,
 				);
 			}
 		}

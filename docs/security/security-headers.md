@@ -65,6 +65,10 @@ justify itself. `/admin` copies invitation URLs with
 `navigator.clipboard`; that works precisely because `clipboard-write`
 is not on the list.
 
+The baseline applies to every **host** response: all Worker-generated
+responses, and the host-owned static documents under `/share/**`. It
+deliberately does **not** apply to Tool artefacts — see §3.
+
 ## 3. How a Tool earns a capability
 
 `microphone` is denied everywhere by default, and exactly one Tool
@@ -85,18 +89,69 @@ declared once, in the Tool manifest, and read by three consumers:
 2. **Registry** — `toolRouteSecurityPolicy(pathname)`
    (`src/tools/registry.ts`) resolves the declaration into
    `{ referrerPolicy, grantedPermissions }` per path. `src/server.ts`
-   hands that to `applySecurityHeaders`.
+   hands that to `applySecurityHeaders`, which is why the shell route
+   answers `microphone=(self "http://127.0.0.1:4123")` locally and
+   `microphone=(self "https://rebuildup.dev")` in production.
 3. **Container** — the shell route renders
    `<iframe allow="microphone">` (`src/routes/tools.$slug.tsx`).
-4. **Document** — `public/_headers` grants the same feature on
-   `/tools/mic-level/app/*`.
 
-Steps 3 and 4 are the two halves of the browser contract, and
-Permissions Policy needs both: the container opts the feature **in**,
-and the framed document must not deny it in its own response header.
-`scripts/check-security-headers.mjs` fails if a grant exists on one
-half only, or if a feature is granted anywhere outside the declaring
-Tool's namespace.
+The fourth half — the framed document — is `public/_headers`, and it is
+where the platform forces a design decision (measured, Chromium, fake
+capture device):
+
+| Shell document | `<iframe allow>` | Tool artefact document | Result |
+| --- | --- | --- | --- |
+| `microphone=()` | `microphone` | grants it | **denied** (`NotAllowedError`) |
+| grant | `microphone` | grants it | **granted** |
+| grant | *(none)* | grants it | **granted** |
+| grant | `microphone` | no policy | **granted** |
+
+Two findings, both load-bearing:
+
+- **The container document's own header is the ceiling.** A framed
+  document cannot re-grant what the shell denies, so the shell route
+  MUST carry the grant — this is why `toolRouteSecurityPolicy` runs for
+  `/tools/<slug>` and not only for the artefact path.
+- **A blanket deny on the Tool namespace would break every Tool that
+  legitimately needs a capture device.** Chromium treats the framed
+  document's own policy as binding for that document; `microphone=()`
+  there means no Tool can ever get it, whatever the container does.
+  That is the "do not break Tools with a blanket deny" failure this
+  Issue is about, so `public/_headers` puts the deny baseline on
+  `/share/*` (host-owned documents) and leaves the Tool namespace
+  without a `Permissions-Policy` at all. Which Tool may actually ask is
+  decided by the host route's `<iframe allow=…>`, driven by the manifest.
+
+### Residual exposure of that choice
+
+A Tool artefact opened directly as a top-level document (rather than in
+the host's iframe) has the browser default allowlist (`self`) for the
+features the namespace does not deny — measured as *granted* in the
+verification report. Bounding that is not possible from `_headers`: a
+static rule cannot tell "as a frame" from "as a top-level document".
+The exposure is limited to operator-vetted Tool code (ADR-0006 pins a
+reviewed SHA and license per Tool) and still requires a user prompt.
+
+### `_headers` has no override, only combination
+
+Cloudflare's Static Assets **combine** every matching rule. Measured
+against `pnpm preview`:
+
+```text
+GET /tools/prototype/app/index.html      # /* and /tools/:slug/app/* both set Referrer-Policy
+referrer-policy: strict-origin-when-cross-origin, no-referrer
+permissions-policy: <baseline>, <baseline>
+```
+
+So two rules that match one path and set one header produce an invalid
+value, not an override. `public/_headers` is therefore written so that
+**no two matching rules set the same header**: `/*` owns only
+`nosniff`, `/share/*` adds the host referrer policy and the baseline,
+the Tool rules add CORS plus `no-referrer`, and the per-Tool grant rule
+adds only `Permissions-Policy`. Check 6 of
+`scripts/check-security-headers.mjs` fails the build if that invariant is
+ever broken — it is the check that would have caught the first version
+of this file.
 
 ### Why the grant is origin-scoped
 
@@ -107,15 +162,6 @@ grant is always scoped to the origin that actually served it. The
 `_headers` half is static text and therefore carries the canonical
 production origin (ADR-0014); that is recorded as a known constraint
 below.
-
-### `_headers` rule order is load-bearing
-
-Rules are ordered least-specific first. Every matching rule
-contributes its headers and a later rule overrides an earlier one for
-the same header, so the `/*` baseline sits at the top and each
-narrowing rule below it wins. Appending a new wildcard rule at the
-bottom would silently undo the Tool rules — the check models the same
-order and fails if the effective value changes.
 
 ## 4. Verification
 
@@ -139,36 +185,61 @@ renders them rather than restating them.
 
 `pnpm preview` (the `@cloudflare/vite-plugin` preview server) serves the
 real Worker plus the built Static Assets and parses `public/_headers`,
-so both halves are observable on a laptop:
+so **both** halves are observable on a laptop:
 
 ```bash
-pnpm run build                     # vite build + Tool artefacts
-pnpm preview -- --port 4123
+pnpm run build                      # vite build + Tool artefacts
+node scripts/e2e-local-bootstrap.mjs --port=4123   # migrate D1 + start `pnpm preview`
 curl -sSI http://127.0.0.1:4123/contact                     | grep -iE 'nosniff|referrer|permissions'
 curl -sSI http://127.0.0.1:4123/share/procon2026/index.html | grep -iE 'nosniff|referrer|permissions'
+curl -sSI http://127.0.0.1:4123/tools/prototype/app/index.html | grep -iE 'nosniff|referrer|permissions'
+curl -sSI http://127.0.0.1:4123/tools/mic-level                 | grep -i permissions-policy
 ```
 
-Tool artefacts are only present when the Tool submodules are checked
-out; with the submodules absent the path 404s and the `_headers` rule
-for it is not exercised. The parity check covers that case instead,
-by asserting the rule values rather than a live response.
+`/tools/mic-level` is the interesting one: served by the Worker, it
+answers `microphone=(self "http://127.0.0.1:4123")` — the origin
+allowlist follows the origin that actually served the request, with no
+production value anywhere.
+
+Tool artefacts only exist when the Tool submodules are checked out.
+When they do, `/tools/<slug>/app/index.html` is measurable; a Tool that
+is still `host_disabled` (`mic-level`) has no artefact, and its rule is
+covered by the parity check plus the fixture used for the report.
+
+### The browser pass
+
+`node scripts/security-header-report.mjs` regenerates
+[`docs/verification/security/headers-browser.png`](../../docs/verification/security/headers-browser.png):
+it re-runs the workerd measurement, re-resolves the `_headers` rules, and
+lets Chromium try the microphone against documents carrying exactly
+those values, including the full iframe chain. The table in §3 is the
+result of that pass; the image is the same run rendered.
 
 ## 5. Known constraints
 
-- `_headers` is static, so the Tool-artefact grant names the canonical
-  production origin rather than the request origin. This only matters
-  for a locally-served Tool artefact, where the frame loses the
+- **`mic-level` also needs a frame origin it can use.** Under the
+  shipped `sandbox="allow-scripts"` the Tool frame has an opaque
+  origin, and Chromium rejects `getUserMedia` with
+  `SecurityError: Invalid security origin` before Permissions-Policy is
+  even consulted (measured; last row of the verification report). The
+  grant in this contract is therefore necessary but not sufficient: when
+  `mic-level` graduates it will also need `allow-same-origin` on that
+  one Tool, which `scripts/check-tools-manifest.mjs` deliberately flags
+  as dangerous and ADR-0006 forbids without a written reason. That is an
+  owner decision and is **not** taken here.
+- **`_headers` is static**, so the Tool-artefact grant names the
+  canonical production origin rather than the request origin. This only
+  matters for a locally served Tool artefact, where the frame loses the
   microphone (fail-closed).
-- `mic-level` is still `host_disabled`, so the grant is verified at the
-  header / resolution level, not by an actual capture. The Tool-side
-  standalone build is the remaining blocker (Issue #81 follow-up).
-- `readmark` additionally needs `Cross-Origin-Opener-Policy` /
-  `Cross-Origin-Embedder-Policy` for `SharedArrayBuffer` pdfjs decode.
+- **Tool artefacts keep the browser default allowlist** for features the
+  namespace does not deny (§3 residual exposure).
+- **`readmark` additionally needs `Cross-Origin-Opener-Policy` /
+  `Cross-Origin-Embedder-Policy`** for `SharedArrayBuffer` pdfjs decode.
   Those headers change the site's isolation model (they gate
-  cross-origin popups such as OAuth), so they are deliberately NOT
-  part of this contract and need their own ticket.
-- `Content-Security-Policy` is out of scope for #449. Adding a CSP to
-  a TanStack Start app with a Tool iframe is a separate decision with
+  cross-origin popups such as OAuth), so they are deliberately NOT part
+  of this contract and need their own ticket.
+- **`Content-Security-Policy` is out of scope for #449.** Adding a CSP
+  to a TanStack Start app with a Tool iframe is a separate decision with
   its own breakage surface.
 
 ## 6. Related

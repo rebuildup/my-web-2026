@@ -168,18 +168,54 @@ describe('inspect — repository state', () => {
 	});
 
 	it('rejects a _headers that drops the per-Tool grant rule', () => {
+		// Strip the Permissions-Policy line from the mic-level rule block
+		// (comments may sit between the path and the header).
+		const text = readHeadersText();
+		const block = text.slice(text.indexOf('/tools/mic-level/app/*'));
+		const nextRule = block.indexOf('\n/', 1);
+		const ruleText = nextRule === -1 ? block : block.slice(0, nextRule);
+		const mutatedText = text.replace(
+			ruleText,
+			ruleText.replace(/\n {2}Permissions-Policy: [^\n]*/, ''),
+		);
+		const result = inspect({ headersPath: tempHeadersFile(mutatedText) });
+		assert.ok(
+			result.violations.some((violation) => violation.includes('permissions-policy: expected')),
+			`expected a missing-grant violation, got ${JSON.stringify(result.violations)}`,
+		);
+	});
+
+	it('rejects a header declared by two rules that match the same path', () => {
+		// Cloudflare COMBINES matching rules, so repeating
+		// `Referrer-Policy` in the mic-level rule yields
+		// `no-referrer, no-referrer` on the wire — measured, not assumed.
+		const text = readHeadersText();
+		const marker = '/tools/mic-level/app/*\n';
+		const at = text.indexOf(marker) + marker.length;
 		const mutated = tempHeadersFile(
-			readHeadersText().replace(
-				'/tools/mic-level/app/*\n  Access-Control-Allow-Origin: *\n  Referrer-Policy: no-referrer\n  X-Content-Type-Options: nosniff\n  Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()',
-				'',
-			),
+			`${text.slice(0, at)}  Referrer-Policy: no-referrer${text.slice(at)}`,
 		);
 		const result = inspect({ headersPath: mutated });
 		assert.ok(
-			result.violations.some((violation) =>
-				violation.includes('is not applied to the Tool artefact'),
-			),
-			`expected a missing-grant violation, got ${JSON.stringify(result.violations)}`,
+			result.violations.some((violation) => violation.includes('matching rules')),
+			`expected a duplicate-header violation, got ${JSON.stringify(result.violations)}`,
+		);
+	});
+
+	it('rejects a Tool artefact that blanket-denies a capture device', () => {
+		// The failure this Issue exists to prevent: a deny-all on the Tool
+		// namespace breaks every Tool that legitimately needs one, because
+		// the framed document's own policy is binding for that document.
+		const text = readHeadersText();
+		const marker = '/tools/:slug/app/*\n';
+		const at = text.indexOf(marker) + marker.length;
+		const mutated = tempHeadersFile(
+			`${text.slice(0, at)}  Permissions-Policy: bluetooth=(), camera=(), microphone=(), usb=()${text.slice(at)}`,
+		);
+		const result = inspect({ headersPath: mutated });
+		assert.ok(
+			result.violations.some((violation) => violation.includes('expected no value')),
+			`expected a blanket-deny violation, got ${JSON.stringify(result.violations)}`,
 		);
 	});
 });

@@ -39,7 +39,8 @@
  * it so a reviewer can regenerate and diff.
  *
  * Usage:
- *   node scripts/generate-sbom.mjs [--out=<path>] [--stdout]
+ *   node scripts/generate-sbom.mjs                    # write the release artifact
+ *   node scripts/generate-sbom.mjs --out=<path>       # write elsewhere
  *   node scripts/generate-sbom.mjs --stdout | jq '.components | length'
  *
  * Exit codes: 0 = generated, 1 = unreadable / unsupported input.
@@ -856,13 +857,20 @@ function parseArg(argv, name) {
 	return found ? found.slice(prefix.length) : null;
 }
 
+function propertyValue(properties, name) {
+	const found = properties.find((p) => p.name === name);
+	return found === undefined ? '?' : found.value;
+}
+
 function main() {
 	const argv = process.argv.slice(2);
 	const out = parseArg(argv, 'out');
 	const toStdout = argv.includes('--stdout');
-	if (!out && !toStdout) {
+	if (out && toStdout) {
 		console.error(
-			`Usage: node scripts/generate-sbom.mjs [--out=<path>] [--stdout]\nDefault output path: ${sbomDirFor('<package.json#version>')}/${SBOM_FILE_NAME}`,
+			`Usage: node scripts/generate-sbom.mjs [--out=<path>] [--stdout]
+Default output path: ${sbomDirFor('<package.json#version>')}/${SBOM_FILE_NAME}
+--out and --stdout are mutually exclusive; with neither, the default path is written.`,
 		);
 		process.exit(1);
 	}
@@ -872,13 +880,18 @@ function main() {
 		process.stdout.write(body);
 		return;
 	}
-	const target = resolve(repoRoot, out ?? `${sbomDirFor(version)}/${SBOM_FILE_NAME}`);
+	// No arguments means "write the release artifact", because that is
+	// what the release cut and the CI Build SBOM step both mean by
+	// `pnpm run sbom:build`. Making it a usage error once made CI red
+	// for a command that is otherwise the documented happy path.
+	const relative = out ?? `${sbomDirFor(version)}/${SBOM_FILE_NAME}`;
+	const target = resolve(repoRoot, relative);
 	mkdirSync(dirname(target), { recursive: true });
 	writeFileSync(target, body, 'utf8');
 	console.log(
 		`[generate-sbom] OK: ${bom.components.length} components ` +
-			`(${bom.metadata.properties.find((p) => p.name === 'my-web-2026:npm-component-count').value} npm, ` +
-			`${bom.metadata.properties.find((p) => p.name === 'my-web-2026:tool-component-count').value} tools) -> ${out ?? `${sbomDirFor(version)}/${SBOM_FILE_NAME}`}`,
+			`(${propertyValue(bom.metadata.properties, 'my-web-2026:npm-component-count')} npm, ` +
+			`${propertyValue(bom.metadata.properties, 'my-web-2026:tool-component-count')} tools) -> ${relative}`,
 	);
 }
 

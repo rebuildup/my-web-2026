@@ -1,10 +1,13 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { execFileSync } from 'node:child_process';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
 	SBOM_SOURCE_FILES,
+	SPEC_VERSION,
 	UnsupportedYamlError,
 	buildSbom,
 	collectDirectDependencies,
@@ -24,6 +27,19 @@ import {
 } from './generate-sbom.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const cli = resolve(repoRoot, 'scripts/generate-sbom.mjs');
+
+/** Run the generator CLI exactly as `pnpm run sbom:build` would. */
+function runCli(args) {
+	return execFileSync(process.execPath, [cli, ...args], {
+		cwd: repoRoot,
+		encoding: 'utf8',
+		// `--stdout` emits the whole document, which is around a
+		// megabyte for this repository — well past the 1 MB default.
+		maxBuffer: 64 * 1024 * 1024,
+		env: { ...process.env, SOURCE_DATE_EPOCH: '1767225600' },
+	});
+}
 
 /**
  * A syntactically valid `sha512-<base64>` integrity for a synthetic
@@ -387,5 +403,43 @@ describe('generate-sbom — real repository inputs', () => {
 
 	it('derives the release artifact directory from the version', () => {
 		assert.equal(sbomDirFor('9.9.9'), 'release-assets/supply-chain/9.9.9');
+	});
+});
+
+describe('generate-sbom — CLI contract', () => {
+	it('writes a parseable document to an explicit --out path', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'generate-sbom-cli-'));
+		try {
+			const relative = join(dir, 'nested', 'sbom.json');
+			const stdout = runCli([`--out=${relative}`]);
+			assert.match(stdout, /^\[generate-sbom\] OK: \d+ components \(\d+ npm, \d+ tools\) -> /);
+			const bom = JSON.parse(readFileSync(relative, 'utf8'));
+			assert.equal(bom.specVersion, SPEC_VERSION);
+			assert.equal(bom.metadata.timestamp, '2026-01-01T00:00:00.000Z');
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('prints the document on stdout for --stdout', () => {
+		const bom = JSON.parse(runCli(['--stdout']));
+		assert.equal(bom.bomFormat, 'CycloneDX');
+	});
+
+	it('is byte-reproducible under a pinned SOURCE_DATE_EPOCH', () => {
+		const dir = mkdtempSync(join(tmpdir(), 'generate-sbom-cli-'));
+		try {
+			const first = join(dir, 'a.json');
+			const second = join(dir, 'b.json');
+			runCli([`--out=${first}`]);
+			runCli([`--out=${second}`]);
+			assert.equal(readFileSync(first, 'utf8'), readFileSync(second, 'utf8'));
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('rejects --out together with --stdout rather than guessing', () => {
+		assert.throws(() => runCli(['--out=/tmp/ignored.json', '--stdout']), /mutually exclusive/);
 	});
 });

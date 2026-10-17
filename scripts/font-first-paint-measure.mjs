@@ -318,8 +318,14 @@ export function renderReportHtml(report) {
 		return [
 			'<h2>before / after</h2>',
 			'<p class="note">Read the deterministic table: a wrap either happened or it does not, so the same build measures the same value. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. Every individual row stays in <code>report.json</code>.</p>',
-			table('deterministic (layout shift)', aggregated.filter((a) => a.deterministic)),
-			table('context (single-run timings — noise)', aggregated.filter((a) => !a.deterministic)),
+			table(
+				'deterministic (layout shift)',
+				aggregated.filter((a) => a.deterministic),
+			),
+			table(
+				'context (single-run timings — noise)',
+				aggregated.filter((a) => !a.deterministic),
+			),
 		].join('');
 	})();
 

@@ -118,8 +118,15 @@ test.describe('app icons', () => {
 			'512x512',
 			'512x512',
 		]);
-		// No offline affordance is claimed anywhere in the document.
-		expect(await page.evaluate(() => 'serviceWorker' in navigator)).toBe(false);
+		// No offline affordance is claimed or installed. Chromium exposes
+		// `navigator.serviceWorker` on every secure context (localhost
+		// included), so the API existing proves nothing — the assertion is
+		// that nothing is registered and nothing controls the page.
+		const registrations = await page.evaluate(
+			async () => (await navigator.serviceWorker.getRegistrations()).length,
+		);
+		expect(registrations).toBe(0);
+		expect(await page.evaluate(() => navigator.serviceWorker.controller === null)).toBe(true);
 
 		for (const icon of manifest.icons) {
 			const iconResponse = await request.get(icon.src);

@@ -177,6 +177,10 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
 - レポート内の `source SHA` は**画像を commit する直前の HEAD** を指す。
   スクリーンショット自身を commit すると SHA が変わるため、記録と画像の間に
   1 commit のずれがある（これは避けられない連鎖であり、その旨を明記する）。
+  現在の画像は SHA `9befca3`（review 修正のコード commit）の clean ツリーで採取した。
+- 現在の画像が示す測定結果: **9 measured / 0 failed / 1 skipped**、
+  合格基準 1〜5 はすべて PASS。基準 3・4・5 は行から算出された値
+  （例: 「7 dynamic rows carry no validator, 2 asset rows answered 304」）。
 
 ### 5.1 測定できなかったもの（隠さない）
 

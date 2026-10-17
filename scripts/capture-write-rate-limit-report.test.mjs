@@ -2,6 +2,9 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+	ARTEFACT_ENCODE_OPTIONS,
+	MAX_ARTEFACT_BYTES,
+	OUTPUT,
 	extractTable,
 	findSecretRow,
 	parseRows,
@@ -89,6 +92,35 @@ test('renderHtml escapes markup coming from the measured table', () => {
 	const html = renderHtml(rows);
 	assert.ok(!html.includes('<img src=x'));
 	assert.ok(html.includes('&lt;img src=x'));
+});
+
+test('renderHtml states the auth/throttle budget rule per status class', () => {
+	// Regression (Issue #456 review): the legend used to lump 400 / 401
+	// / 403 into "予算は消費される", which is wrong for 401 —
+	// `requireApiKey` answers before `rateLimit`, so a 401 never calls
+	// `limit()`. A 403 DOES spend the budget because
+	// `requireResourceAction` is the first statement inside the
+	// handler. The artefact is the deliverable an operator reads, so
+	// the distinction must stay visible and must not merge back.
+	const html = renderHtml(parseRows(TABLE));
+	assert.ok(html.includes('<strong>400 / 403</strong>'));
+	assert.ok(html.includes('<strong>401</strong>'));
+	assert.ok(!html.includes('400 / 401 / 403'));
+	// 401: never reaches the limiter.
+	assert.match(html, /401<\/strong>[^<]*—[^<]*throttle[^<]*[\s\S]*?予算は消費されない/);
+	// 403: answered inside the handler, i.e. after the limiter.
+	assert.match(html, /予算は消費される/);
+	assert.match(html, /スコープ不足（403）/);
+});
+
+test('the committed artefact is a bounded WebP, never a PNG', () => {
+	// Review directive: a committed screenshot must not bloat the
+	// repository. The capture rasterises PNG into `.tmp/` and commits
+	// only the WebP encode, so these three constants are the contract.
+	assert.match(OUTPUT, /\.webp$/);
+	assert.deepEqual(ARTEFACT_ENCODE_OPTIONS, { width: 1600, quality: 80 });
+	assert.ok(ARTEFACT_ENCODE_OPTIONS.width <= 1600);
+	assert.ok(MAX_ARTEFACT_BYTES <= 300 * 1024);
 });
 
 test('findSecretRow rejects a row that carries credential material', () => {

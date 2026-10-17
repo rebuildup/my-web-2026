@@ -4,10 +4,12 @@ import { createMiddleware } from 'hono/factory';
  * Rate limit middleware — per-consumer-principal throttle via the
  * Cloudflare Workers Rate Limiting binding (ADR-0010).
  *
- * Two bindings are declared in `cloudflare.config.ts`:
+ * Two bindings are declared in `cloudflare.config.ts` (both budgets
+ * come from `RATE_LIMITS` in `scripts/_cloudflare-contract.mjs`, which
+ * is their only declaration — do not restate the numbers here):
  *
- *   RATE_LIMIT_WRITE  60 req / 60 s   (write endpoints)
- *   RATE_LIMIT_READ   600 req / 60 s  (read endpoints)
+ *   RATE_LIMIT_WRITE  write endpoints, per principal
+ *   RATE_LIMIT_READ   read endpoints, per principal (IP when anonymous)
  *
  * The principal is the API key id (set in `c.var.apiKey.id` by
  * `requireApiKey`). For endpoints without an API key (e.g. public

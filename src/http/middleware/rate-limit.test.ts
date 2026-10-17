@@ -1,6 +1,13 @@
 import { Hono } from 'hono';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { RATE_LIMITS, RATE_LIMIT_BINDING } from '../../../scripts/_cloudflare-contract.mjs';
+import {
+	ApiKeyError,
+	requireApiKey,
+	requireResourceAction,
+	resetVerifyApiKey,
+	withVerifyApiKey,
+} from '../api-keys/middleware';
 import { RATE_LIMIT_RETRY_AFTER_SECONDS, rateLimitRead, rateLimitWrite } from './rate-limit';
 
 /**
@@ -26,6 +33,8 @@ import { RATE_LIMIT_RETRY_AFTER_SECONDS, rateLimitRead, rateLimitWrite } from '.
  *   - read vs write buckets are independent
  *   - the IP fallback is used when no API key is bound
  *   - `Retry-After` matches the configured fixed window (no drift)
+ *   - which layer spends the budget: 401 never calls `limit()`, while
+ *     403 and 400 do (the auth/throttle boundary contract)
  */
 
 interface FakeLimitOutcome {
@@ -208,6 +217,129 @@ describe('rate-limit middleware (in-memory fake binding)', () => {
 		const res = await app.request('/probe', undefined, fakeEnv('RATE_LIMIT_WRITE', limiter));
 		expect(res.status).toBe(200);
 		expect(limiter.calls).toEqual(['anonymous']);
+	});
+});
+
+/**
+ * Which layer spends the budget is a **contract**, not an intuition:
+ * the routers mount `requireApiKey → rateLimit{Write,Read} → handler`,
+ * and the handler's *first statement* is `requireResourceAction`
+ * (`src/http/reactions/router.ts`, `src/http/access-counter/router.ts`)
+ * followed by body validation. So:
+ *
+ *   401 (requireApiKey)          → answers first, `limit()` never runs
+ *   403 (requireResourceAction)  → inside the handler, so `limit()` runs
+ *   400 (body validation)        → inside the handler, so `limit()` runs
+ *
+ * Mounting that exact chain over a counting binding makes the claim an
+ * assertion instead of a comment — see
+ * `docs/security/write-rate-limit.md` §「ミドルウェアの順序と、その意味論」.
+ * "Did the budget shrink?" cannot answer it: a 401 short-circuits
+ * before any principal exists, so there is no bucket to observe.
+ */
+function buildProtectedApp(limiter: FakeRateLimiter) {
+	const app = new Hono<{ Bindings: Env }>();
+	// Mirrors `externalBoundary.onError` (src/http/hono.ts) so the
+	// thrown `ApiKeyError` surfaces as the documented 403.
+	app.onError((err, c) => {
+		if (err instanceof ApiKeyError) return c.json({ error: err.code }, err.status);
+		return c.json({ error: 'internal_error' }, 500);
+	});
+	app.put('/probe', requireApiKey, rateLimitWrite, async (c) => {
+		requireResourceAction(c, 'reactions', 'write');
+		const body = (await c.req.json().catch(() => null)) as { kind?: unknown } | null;
+		if (body?.kind !== 'emoji') return c.json({ error: 'invalid_body' }, 400);
+		return c.json({ ok: true });
+	});
+	return app;
+}
+
+const AUTHORIZED = {
+	authorization: 'Bearer stub-key-not-real',
+	'content-type': 'application/json',
+};
+const VALID_BODY = JSON.stringify({ kind: 'emoji' });
+
+describe('auth / throttle boundary — which layer spends the budget', () => {
+	afterEach(() => {
+		resetVerifyApiKey();
+	});
+
+	it('401 answers before the limiter: limit() is never called', async () => {
+		const limiter = createFakeRateLimiter('RATE_LIMIT_WRITE');
+		const app = buildProtectedApp(limiter);
+		const env = fakeEnv('RATE_LIMIT_WRITE', limiter);
+
+		const missing = await app.request(
+			'/probe',
+			{ method: 'PUT', headers: { 'content-type': 'application/json' }, body: VALID_BODY },
+			env,
+		);
+		expect(missing.status).toBe(401);
+		expect(await missing.json()).toEqual({ error: 'missing_authorization' });
+		expect(limiter.calls).toEqual([]);
+
+		withVerifyApiKey(async () => ({ valid: false, error: 'invalid', key: null }));
+		const invalid = await app.request(
+			'/probe',
+			{ method: 'PUT', headers: AUTHORIZED, body: VALID_BODY },
+			env,
+		);
+		expect(invalid.status).toBe(401);
+		expect(await invalid.json()).toEqual({ error: 'invalid_api_key' });
+		// Neither 401 shape touched the binding — so unauthenticated
+		// spam cannot drain anybody's budget.
+		expect(limiter.calls).toEqual([]);
+	});
+
+	it('403 (missing scope) answers inside the handler, after limit() ran', async () => {
+		const limiter = createFakeRateLimiter('RATE_LIMIT_WRITE');
+		const app = buildProtectedApp(limiter);
+		const env = fakeEnv('RATE_LIMIT_WRITE', limiter);
+		// A read-only key: `requireResourceAction` throws 403 — but the
+		// limiter has already been charged for the request.
+		withVerifyApiKey(async () => ({
+			valid: true,
+			error: null,
+			key: {
+				id: 'key-read-only',
+				referenceId: 'ref-local-simulation',
+				permissions: { reactions: ['read'] },
+				prefix: null,
+			},
+		}));
+		const res = await app.request(
+			'/probe',
+			{ method: 'PUT', headers: AUTHORIZED, body: VALID_BODY },
+			env,
+		);
+		expect(res.status).toBe(403);
+		expect(await res.json()).toEqual({ error: 'missing_scope' });
+		expect(limiter.calls).toEqual(['key-read-only']);
+	});
+
+	it('400 (invalid body) answers inside the handler, after limit() ran', async () => {
+		const limiter = createFakeRateLimiter('RATE_LIMIT_WRITE');
+		const app = buildProtectedApp(limiter);
+		const env = fakeEnv('RATE_LIMIT_WRITE', limiter);
+		withVerifyApiKey(async () => ({
+			valid: true,
+			error: null,
+			key: {
+				id: 'key-writer',
+				referenceId: 'ref-local-simulation',
+				permissions: { reactions: ['read', 'write'] },
+				prefix: null,
+			},
+		}));
+		const res = await app.request(
+			'/probe',
+			{ method: 'PUT', headers: AUTHORIZED, body: JSON.stringify({ kind: 'sticker' }) },
+			env,
+		);
+		expect(res.status).toBe(400);
+		expect(await res.json()).toEqual({ error: 'invalid_body' });
+		expect(limiter.calls).toEqual(['key-writer']);
 	});
 });
 

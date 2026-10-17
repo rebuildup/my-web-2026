@@ -180,8 +180,10 @@ describe('home access counter — server-fn impls', () => {
 		// The write budget is shared with the reactions endpoint, so a
 		// burst on either surface can throttle the other. The consumer
 		// must distinguish "wait and retry" from a generic upstream
-		// failure — the counter tile renders nothing either way, but the
-		// widget alert is driven by this reason.
+		// failure: the value is a contract in its own right (it is what
+		// the widget's alert text keys on), even though the access path
+		// itself renders nothing for it today — `recordHomeHit`'s reason
+		// is discarded by `src/routes/index.tsx`.
 		const fetcher = vi.fn().mockResolvedValue(
 			new Response(JSON.stringify({ error: 'rate_limited' }), {
 				status: 429,

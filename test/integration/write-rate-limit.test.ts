@@ -34,6 +34,18 @@ import { externalBoundary } from '../../src/http/hono';
 const WRITE_LIMIT = RATE_LIMITS.RATE_LIMIT_WRITE.limit;
 const RETRY_AFTER = RATE_LIMITS.RATE_LIMIT_WRITE.period;
 
+/**
+ * Inlined DDL (workerd cannot `fs.readFile`). Same convention as
+ * `test/integration/reactions.test.ts`: the block named `0002_*` is
+ * `migrations/0002_access_counter.sql` **as amended by**
+ * `migrations/0005_access_counter_principal.sql` (the per-principal
+ * `PRIMARY KEY (key, principal)` shape that actually ships), and
+ * `0003_reactions` mirrors `migrations/0003_reactions.sql` including
+ * both `reactions` indexes. This suite only needs the columns the
+ * write paths touch, but the copies must not drift into a *different*
+ * schema than production — see `docs/security/write-rate-limit.md`
+ * (検証) for why the real budgets matter more than the schema here.
+ */
 const MIGRATIONS = [
 	{
 		name: '0002_access_counter',
@@ -46,6 +58,7 @@ const MIGRATIONS = [
         PRIMARY KEY (counter_key, principal, session_id)
     )`,
 			'CREATE INDEX IF NOT EXISTS idx_access_dedup_expires ON access_dedup(expires_at)',
+			// 0005 shape: PK is (key, principal), not key alone.
 			`CREATE TABLE IF NOT EXISTS access_counters (
         key        TEXT    NOT NULL,
         principal  TEXT    NOT NULL,
@@ -70,6 +83,7 @@ const MIGRATIONS = [
         UNIQUE (target_key, principal, actor_id, kind, value)
     )`,
 			'CREATE INDEX IF NOT EXISTS idx_reactions_target ON reactions(target_key)',
+			'CREATE INDEX IF NOT EXISTS idx_reactions_target_kind ON reactions(target_key, kind)',
 			`CREATE TABLE IF NOT EXISTS reaction_images (
         id TEXT PRIMARY KEY,
         content_hash TEXT UNIQUE NOT NULL,
@@ -327,7 +341,7 @@ describe('write rate limit — what is NOT throttled', () => {
 		expect(res.error).toBe('not_found');
 	});
 
-	it('authentication is evaluated before throttling, and spends no budget', async () => {
+	it('authentication is evaluated before throttling', async () => {
 		usePrincipal('rl-auth-order');
 		await exhaustWriteBudget();
 		expect((await putReaction('auth-order-over')).status).toBe(429);
@@ -342,15 +356,38 @@ describe('write rate limit — what is NOT throttled', () => {
 		expect(anonymous.status).toBe(401);
 		expect(anonymous.error).toBe('missing_authorization');
 
-		// Unauthenticated spam never reaches the limiter: a second
-		// principal is still at full budget after five rejected calls.
-		for (let i = 0; i < 5; i += 1) {
-			await putReaction('anonymous', { 'content-type': 'application/json' });
-		}
-		usePrincipal('rl-auth-order-fresh');
+		// "401 spends no budget" is deliberately NOT asserted here: with
+		// the production route shape a 401 short-circuits before the
+		// limiter, so there is no principal whose bucket could shrink —
+		// the IP / `anonymous` write bucket is unreachable because every
+		// write route sits behind `requireApiKey`. The observable form of
+		// the claim lives in `src/http/middleware/rate-limit.test.ts`,
+		// which counts the binding's `limit()` calls through the real
+		// `requireApiKey → rateLimitWrite → requireResourceAction` chain
+		// (401 = 0 calls).
+	});
+
+	it('a missing scope answers 403 and still spends the write budget', async () => {
+		// `requireResourceAction` is the FIRST statement inside the
+		// handler, i.e. it runs *after* `rateLimitWrite`, so every 403
+		// below is charged to the bucket. This is the opposite of the
+		// 401 case above and is the reason the operational contract
+		// cannot say "認証は予算を消費しない" — a read-only principal can
+		// still exhaust the write budget (see
+		// `docs/security/write-rate-limit.md`).
+		usePrincipal('rl-missing-scope', { reactions: ['read'], access_counter: ['read'] });
 		for (let i = 0; i < WRITE_LIMIT; i += 1) {
-			expect((await putReaction(`fresh-${i}`)).status).toBe(200);
+			const res = await putReaction(`scope-${i}`);
+			expect(res.status).toBe(403);
 		}
+		const overBudget = await probe('/api/v1/reactions', {
+			method: 'PUT',
+			headers: JSON_HEADERS,
+			body: reactionBody('scope-over-budget'),
+		});
+		expect(overBudget.status).toBe(429);
+		expect(overBudget.error).toBe('rate_limited');
+		expect(overBudget.retryAfter).toBe(String(RETRY_AFTER));
 	});
 
 	it('a rejected body inside the budget answers 400, not 429', async () => {

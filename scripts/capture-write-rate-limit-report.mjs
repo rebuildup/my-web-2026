@@ -12,18 +12,27 @@
  * report" view), and screenshots it with the Playwright Chromium the
  * E2E suite already uses.
  *
- * Output: `docs/verification/security/reactions-rate-limit.png`
- * Scratch: `.tmp/write-rate-limit-report.html` (gitignored, ephemeral)
+ * The Chromium screenshot is taken as PNG (lossless raster) and then
+ * **converted to WebP** before it is committed: the artefact is a flat
+ * page of text, which WebP q80 encodes at a fraction of the PNG size
+ * with no visible loss, and a committed screenshot must not bloat the
+ * repository. The PNG intermediate stays in `.tmp/` (gitignored) and is
+ * deleted after the conversion.
+ *
+ * Output: `docs/verification/security/reactions-rate-limit.webp`
+ * Scratch: `.tmp/write-rate-limit-report.html`,
+ *         `.tmp/write-rate-limit-report.png` (both gitignored, ephemeral)
  *
  * Usage:
  *   pnpm run verification:write-rate-limit
  *
- * Exits non-zero when the suite fails, when the table is empty, or when
- * a row would leak a credential into the artefact.
+ * Exits non-zero when the suite fails, when the table is empty, when a
+ * row would leak a credential into the artefact, or when the encoded
+ * artefact exceeds `MAX_ARTEFACT_BYTES`.
  */
 
 import { spawn } from 'node:child_process';
-import { mkdirSync, writeFileSync } from 'node:fs';
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -31,8 +40,14 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TEST_FILE = 'test/integration/write-rate-limit.test.ts';
 const START = '<!-- write-rate-limit-matrix:start -->';
 const END = '<!-- write-rate-limit-matrix:end -->';
-const OUTPUT = 'docs/verification/security/reactions-rate-limit.png';
+export const OUTPUT = 'docs/verification/security/reactions-rate-limit.webp';
 const SCRATCH_HTML = '.tmp/write-rate-limit-report.html';
+const SCRATCH_PNG = '.tmp/write-rate-limit-report.png';
+
+/** Encoding contract for the committed artefact (see the header). */
+export const ARTEFACT_ENCODE_OPTIONS = Object.freeze({ width: 1600, quality: 80 });
+/** Hard ceiling so a bigger matrix cannot quietly bloat the repository. */
+export const MAX_ARTEFACT_BYTES = 300 * 1024;
 
 /** Anything matching these must never reach a committed artefact. */
 const SECRET_PATTERNS = [/bearer\s/i, /mk_[a-z0-9_]+/i, /secret/i, /token/i];
@@ -171,15 +186,19 @@ ${body}
     <h2>この表の読み方</h2>
     <ul>
       <li><strong>200</strong> — budget 内の正当なリクエスト。ハンドラまで到達し D1 に書き込まれる。</li>
-      <li><strong>400 / 401 / 403</strong> — 予算内だが拒否された入力。middleware は通過しており、
-          body 検証・API キー検証・スコープ検証がそれぞれ答えている。<strong>予算は消費される</strong>。</li>
+      <li><strong>400 / 403</strong> — 予算内だが拒否された入力。<code>rateLimit</code> は通過しており、
+          body 検証（400）とスコープ検証（403 — handler の先頭で出る）が答えている。<strong>予算は消費される</strong>。</li>
+      <li><strong>401</strong> — API キー検証が throttle より先に答えるので middleware に到達しない。
+          <strong>予算は消費されない</strong>（throttle 済みの principal でも 429 ではなく 401 が先に返る）。</li>
       <li><strong>429 <code>rate_limited</code></strong> — 上限超過で抑制された要求。
           <code>Retry-After</code> は binding の fixed window（60 秒）。<strong>D1 には到達しない</strong>
           ので counter も reactions も増えない。</li>
       <li><strong>read 行（200 / 404）</strong> — write budget を上限まで使い切った同じ principal でも
           read budget（別 binding）は影響を受けない。404 は「形式は正しいが該当行が無い」拒否。</li>
-      <li>認証は throttle より先に評価され、401 は予算を消費しない。本レポートには credential・
-          cookie・レスポンス本文は一切含まれない（描画するのは status と error コードのみ）。</li>
+      <li>認証（401）は throttle より先に評価されるため予算を消費しない。逆にスコープ不足（403）は
+          handler の先頭で出るため予算を消費する（read-only な key でも write バケットを消費できる）。
+          本レポートには credential・cookie・レスポンス本文は一切含まれない（描画するのは status と
+          error コードのみ）。</li>
     </ul>
   </div>
   <footer>再生成: <code>pnpm run verification:write-rate-limit</code> ／ 運用契約:
@@ -223,19 +242,41 @@ async function main() {
 	writeFileSync(resolve(repoRoot, SCRATCH_HTML), html, 'utf8');
 
 	const { chromium } = await import('@playwright/test');
+	const shot = resolve(repoRoot, SCRATCH_PNG);
+	mkdirSync(dirname(shot), { recursive: true });
 	const browser = await chromium.launch();
 	try {
 		const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
 		await page.goto(`file://${resolve(repoRoot, SCRATCH_HTML)}`);
 		await page.waitForLoadState('load');
-		const target = resolve(repoRoot, OUTPUT);
-		mkdirSync(dirname(target), { recursive: true });
-		await page.screenshot({ path: target, fullPage: true });
+		await page.screenshot({ path: shot, fullPage: true });
 	} finally {
 		await browser.close();
 	}
 
-	process.stdout.write(`[write-rate-limit] wrote ${OUTPUT} (${rows.length} cases)\n`);
+	// PNG (raster) -> WebP (committed). `withoutEnlargement` keeps the
+	// capture at its own 1280 CSS px when the viewport is narrower.
+	const { default: sharp } = await import('sharp');
+	const target = resolve(repoRoot, OUTPUT);
+	mkdirSync(dirname(target), { recursive: true });
+	const info = await sharp(shot)
+		.resize({ width: ARTEFACT_ENCODE_OPTIONS.width, withoutEnlargement: true })
+		.webp({ quality: ARTEFACT_ENCODE_OPTIONS.quality })
+		.toFile(target);
+	rmSync(shot, { force: true });
+
+	if (info.size > MAX_ARTEFACT_BYTES) {
+		const limit = `[write-rate-limit] ${OUTPUT} is ${info.size} bytes (> ${MAX_ARTEFACT_BYTES});`;
+		const advice =
+			'lower ARTEFACT_ENCODE_OPTIONS.quality or narrow the report instead of committing it\n';
+		process.stderr.write(`${limit} ${advice}`);
+		return 1;
+	}
+
+	process.stdout.write(
+		`[write-rate-limit] wrote ${OUTPUT} (${rows.length} cases, ` +
+			`${info.width}x${info.height} webp q${ARTEFACT_ENCODE_OPTIONS.quality}, ${info.size} bytes)\n`,
+	);
 	return 0;
 }
 

@@ -360,10 +360,15 @@ export function computeToggleState(input: ComputeToggleInput): ComputeToggleOutp
  * advertised retry window and click again — instead of reading the
  * machine code the transport happens to use.
  *
- * `Retry-After` is the fixed window (60s), so "1分後" is the honest
- * advice; the value is asserted against `RATE_LIMIT_RETRY_AFTER_SECONDS`
- * in `rate-limit.test.ts` and restated in
- * `docs/security/write-rate-limit.md`.
+ * `Retry-After` is the fixed window (`RATE_LIMIT_RETRY_AFTER_SECONDS`
+ * = `RATE_LIMITS[…].period`, 60s), so "1分後" is the honest advice.
+ * That equality is asserted for the header constant in
+ * `src/http/middleware/rate-limit.test.ts`, but the visitor copy
+ * itself is hand-written: `home → http` is a type-only edge
+ * (AGENTS.md §3), so this obligation cannot import the boundary's
+ * constant. A `period` change therefore has to touch this string too —
+ * `docs/security/write-rate-limit.md` records that as an open design
+ * decision rather than a settled contract.
  */
 export const REACTION_ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
 	rate_limited: '短時間にまとめて反応が集中しています。1分後にもう一度お試しください。',

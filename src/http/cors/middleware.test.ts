@@ -27,6 +27,51 @@ function app(env: Record<string, unknown> = {}) {
 	return { test, env: env as unknown as Env };
 }
 
+/**
+ * The two handler shapes that do NOT go through `c.json()`.
+ *
+ * `src/http/auth/router.ts` hands `c.req.raw` to Better Auth and
+ * returns its `Response` verbatim; `src/http/hono.ts`'s
+ * `LOCAL_API_MODE=mock` gate returns `mockApp.fetch(...)`. Both replace
+ * `context.res` wholesale, which is the case where a `c.header()` call
+ * made *before* `next()` is silently dropped — so they are reproduced
+ * here instead of being assumed away.
+ */
+function rawResponseApp(env: Record<string, unknown> = {}) {
+	const authRouter = new Hono<{ Bindings: Env }>();
+	authRouter.on(
+		['GET', 'POST'],
+		'/api/v1/auth/*',
+		() =>
+			// A `Set-Cookie` the middleware must not drop when it renders the
+			// decision onto the finalized response.
+			new Response(JSON.stringify({ session: null }), {
+				status: 200,
+				headers: {
+					'content-type': 'application/json',
+					'set-cookie': 'better-auth.session_token=x',
+				},
+			}),
+	);
+
+	const mockApp = new Hono<{ Bindings: Env }>();
+	mockApp.get('/api/v1/auth/session', (c) => c.json({ user: 'fixture' }));
+
+	const test = new Hono<{ Bindings: Env }>();
+	test.use('*', corsMiddleware);
+	// The mock gate, in the order `src/http/hono.ts` mounts it.
+	test.use('/api/v1/*', async (c, next) => {
+		if (c.env.LOCAL_API_MODE === 'mock') {
+			const mockResponse = await mockApp.fetch(c.req.raw, c.env);
+			if (mockResponse.status !== 404) return mockResponse;
+		}
+		await next();
+	});
+	test.route('/', authRouter);
+	test.notFound((c) => c.json({ error: 'not_found' }, 404));
+	return { test, env: env as unknown as Env };
+}
+
 describe('corsMiddleware', () => {
 	it('answers an allowed preflight with 204 and the policy headers', async () => {
 		// The harness serves on `http://localhost`, so the canonical
@@ -237,5 +282,81 @@ describe('corsMiddleware', () => {
 		expect(res.status).toBe(200);
 		expect(res.headers.get('access-control-allow-origin')).toBeNull();
 		expect(res.headers.get('vary')).toBe('Origin');
+	});
+
+	// The regression the middleware ordering caused: with `c.header()`
+	// before `next()`, a handler that returns a raw `Response` replaced
+	// the context response and the `credentialed` echo never reached the
+	// wire, so an allow-listed origin got no CORS header at all on
+	// `/api/v1/auth/*`. These three cases pin the wire bytes for the two
+	// handler shapes that take that path.
+	describe('handlers that return a raw Response', () => {
+		it('echoes the allow-listed origin on the Better Auth route', async () => {
+			const { test, env } = rawResponseApp({ BETTER_AUTH_URL: CANONICAL });
+			const res = await test.request(
+				'/api/v1/auth/get-session',
+				{ headers: { Origin: CANONICAL } },
+				env,
+			);
+			expect(res.status).toBe(200);
+			expect(res.headers.get('access-control-allow-origin')).toBe(CANONICAL);
+			expect(res.headers.get('access-control-allow-credentials')).toBe('true');
+			expect(res.headers.get('vary')).toBe('Origin');
+			// Still a credentialed echo: never the wildcard.
+			expect(res.headers.get('access-control-allow-origin')).not.toBe('*');
+			// Preflight-only headers stay off an actual response.
+			expect(res.headers.get('access-control-allow-methods')).toBeNull();
+			expect(res.headers.get('access-control-max-age')).toBeNull();
+		});
+
+		it('keeps the handler response body and cookies intact', async () => {
+			const { test, env } = rawResponseApp({ BETTER_AUTH_URL: CANONICAL });
+			const res = await test.request(
+				'/api/v1/auth/sign-in/email',
+				{
+					method: 'POST',
+					headers: { Origin: CANONICAL, 'Content-Type': 'application/json' },
+					body: '{}',
+				},
+				env,
+			);
+			expect(res.status).toBe(200);
+			expect(await res.json()).toEqual({ session: null });
+			expect(res.headers.get('set-cookie')).toBe('better-auth.session_token=x');
+			expect(res.headers.get('access-control-allow-credentials')).toBe('true');
+		});
+
+		it('refuses a foreign origin on the same route', async () => {
+			const { test, env } = rawResponseApp({ BETTER_AUTH_URL: CANONICAL });
+			const res = await test.request(
+				'/api/v1/auth/get-session',
+				{ headers: { Origin: 'https://evil.example' } },
+				env,
+			);
+			expect(res.status).toBe(403);
+			expect(res.headers.get('access-control-allow-origin')).toBeNull();
+			expect(res.headers.get('access-control-allow-credentials')).toBeNull();
+		});
+
+		it('gives the LOCAL_API_MODE=mock gate the same CORS surface', async () => {
+			const mock = rawResponseApp({ BETTER_AUTH_URL: CANONICAL, LOCAL_API_MODE: 'mock' });
+			const res = await mock.test.request(
+				'/api/v1/auth/session',
+				{ headers: { Origin: CANONICAL } },
+				mock.env,
+			);
+			expect(res.status).toBe(200);
+			expect(await res.json()).toEqual({ user: 'fixture' });
+			expect(res.headers.get('access-control-allow-origin')).toBe(CANONICAL);
+			expect(res.headers.get('access-control-allow-credentials')).toBe('true');
+
+			const refused = await mock.test.request(
+				'/api/v1/auth/session',
+				{ headers: { Origin: 'https://evil.example' } },
+				mock.env,
+			);
+			expect(refused.status).toBe(403);
+			expect(refused.headers.get('access-control-allow-origin')).toBeNull();
+		});
 	});
 });

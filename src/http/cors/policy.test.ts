@@ -196,6 +196,57 @@ describe('credentialed routes', () => {
 		expect(decision.code).toBe('cors_method_rejected');
 	});
 
+	it('refuses a preflight that asks for OPTIONS itself', () => {
+		// `OPTIONS` is on every route because the route must ANSWER the
+		// preflight, but it is never in the advertised method list, so
+		// accepting it would answer 204 with a list that does not contain
+		// the requested method. Not reachable from a browser (OPTIONS is
+		// CORS-safelisted); asserted so the 204 stays self-consistent.
+		for (const path of ['/api/v1/auth/get-session', '/api/v1/health']) {
+			const decision = decide({ path, method: 'OPTIONS', origin: CANONICAL, preflight: true });
+			expect(decision.kind).toBe('refuse');
+			if (decision.kind !== 'refuse') throw new Error('unreachable');
+			expect(decision.code).toBe('cors_method_rejected');
+		}
+	});
+
+	it('keeps the preflight-only headers off an actual response', () => {
+		// A browser reads only `Access-Control-Allow-Origin` and
+		// `-Credentials` on a non-preflight response; the rest is surface
+		// nobody consumes, so the policy does not emit it.
+		const credentialed = decide({
+			path: '/api/v1/auth/get-session',
+			method: 'GET',
+			origin: CANONICAL,
+		});
+		if (credentialed.kind !== 'passthrough') throw new Error('unreachable');
+		expect(credentialed.headers['Access-Control-Allow-Origin']).toBe(CANONICAL);
+		expect(credentialed.headers['Access-Control-Allow-Credentials']).toBe('true');
+		expect(credentialed.headers['Access-Control-Allow-Methods']).toBeUndefined();
+		expect(credentialed.headers['Access-Control-Max-Age']).toBeUndefined();
+		expect(credentialed.headers['Access-Control-Allow-Headers']).toBeUndefined();
+
+		const publicRead = decide({ path: '/api/v1/health', method: 'GET', origin: EVIL });
+		if (publicRead.kind !== 'passthrough') throw new Error('unreachable');
+		expect(publicRead.headers['Access-Control-Allow-Origin']).toBe('*');
+		expect(publicRead.headers['Access-Control-Allow-Methods']).toBeUndefined();
+		expect(publicRead.headers['Access-Control-Max-Age']).toBeUndefined();
+	});
+
+	it('still advertises the methods and cache lifetime on a preflight', () => {
+		const decision = decide({
+			path: '/api/v1/reactions',
+			method: 'PUT',
+			origin: CANONICAL,
+			preflight: true,
+			requestedHeaders: ['authorization'],
+		});
+		if (decision.kind !== 'preflight') throw new Error('unreachable');
+		expect(decision.headers['Access-Control-Allow-Methods']).toBe('GET, HEAD, PUT, DELETE');
+		expect(decision.headers['Access-Control-Max-Age']).toBe('600');
+		expect(decision.headers['Access-Control-Allow-Headers']).toBe('authorization');
+	});
+
 	it('classifies a preflight by the requested method, not by OPTIONS', () => {
 		// `DELETE /api/v1/health` is a public-read route with no DELETE
 		// handler. Classifying by the wire method (`OPTIONS`, which is

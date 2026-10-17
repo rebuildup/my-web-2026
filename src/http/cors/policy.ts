@@ -254,6 +254,23 @@ function advertisedMethods(route: CorsRoute): string {
 	return route.methods.filter((method) => method !== 'OPTIONS').join(', ');
 }
 
+/**
+ * Does a preflight asking for `method` name something the route serves?
+ *
+ * `OPTIONS` is listed on every route because the route HAS to answer
+ * the preflight itself, but it is never a method a preflight may ask
+ * for: a route advertises `GET, HEAD, PUT, DELETE`, so accepting a
+ * requested `OPTIONS` would answer `204` with a method list that does
+ * not contain the method that was asked for. `OPTIONS` is CORS-
+ * safelisted, so no browser sends one — the point is that the answer
+ * stays internally consistent rather than silently widening.
+ */
+function servesRequestedMethod(route: CorsRoute, method: string): boolean {
+	const wanted = method.toUpperCase();
+	if (wanted === 'OPTIONS') return false;
+	return route.methods.includes(wanted);
+}
+
 function refuse(
 	route: CorsRoute,
 	code: CorsRefusalCode,
@@ -287,7 +304,7 @@ export function decideCors(input: CorsDecisionInput): CorsDecision {
 		return { kind: 'passthrough', klass: route.klass, headers: base };
 	}
 
-	const allowed = input.preflight ? route.methods.includes(input.method.toUpperCase()) : true;
+	const allowed = input.preflight ? servesRequestedMethod(route, input.method) : true;
 
 	if (route.klass === 'credentialed') {
 		if (!isAllowedOrigin(input.origin, [input.requestOrigin, ...input.extraAllowedOrigins])) {
@@ -306,11 +323,16 @@ export function decideCors(input: CorsDecisionInput): CorsDecision {
 			// Echo ONE concrete origin. Never `*`, never `null`.
 			'Access-Control-Allow-Origin': input.origin,
 			'Access-Control-Allow-Credentials': 'true',
-			'Access-Control-Allow-Methods': advertisedMethods(route),
-			'Access-Control-Max-Age': String(CORS_MAX_AGE_SECONDS),
 		};
-		if (requested.length > 0) {
-			headers['Access-Control-Allow-Headers'] = requested.join(', ');
+		// Preflight-only headers. On an actual response a browser reads
+		// `Access-Control-Allow-Origin` + `-Credentials` and ignores the
+		// rest, so emitting them there would be surface nobody consumes.
+		if (input.preflight) {
+			headers['Access-Control-Allow-Methods'] = advertisedMethods(route);
+			headers['Access-Control-Max-Age'] = String(CORS_MAX_AGE_SECONDS);
+			if (requested.length > 0) {
+				headers['Access-Control-Allow-Headers'] = requested.join(', ');
+			}
 		}
 		if (input.preflight) return { kind: 'preflight', klass: route.klass, headers };
 		return { kind: 'passthrough', klass: route.klass, headers };
@@ -330,9 +352,12 @@ export function decideCors(input: CorsDecisionInput): CorsDecision {
 	const headers: Record<string, string> = {
 		...base,
 		'Access-Control-Allow-Origin': '*',
-		'Access-Control-Allow-Methods': advertisedMethods(route),
-		'Access-Control-Max-Age': String(CORS_MAX_AGE_SECONDS),
 	};
+	// Preflight-only, for the same reason as the credentialed branch.
+	if (input.preflight) {
+		headers['Access-Control-Allow-Methods'] = advertisedMethods(route);
+		headers['Access-Control-Max-Age'] = String(CORS_MAX_AGE_SECONDS);
+	}
 	if (input.preflight) return { kind: 'preflight', klass: route.klass, headers };
 	return { kind: 'passthrough', klass: route.klass, headers };
 }

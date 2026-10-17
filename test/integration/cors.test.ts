@@ -8,6 +8,7 @@ import {
 	credentialWildcardViolation,
 } from '../../src/http/cors/policy';
 import { externalBoundary } from '../../src/http/hono';
+import { createMockApp } from '../../src/http/mock';
 
 /**
  * CORS policy over the real Worker (Issue #455).
@@ -61,6 +62,15 @@ interface Probe {
 	readonly expectStatus: number;
 	readonly expectAllowOrigin: string;
 	readonly expectCredentials: string;
+	/**
+	 * Run the row through the real `externalBoundary` with
+	 * `LOCAL_API_MODE=mock` instead of `SELF.fetch`. `SELF` is the
+	 * production Worker and the pool does not bind the dev-only mock
+	 * var, so the mock gate is exercised by calling the boundary app
+	 * directly with that var — still the real middleware, the real
+	 * composition order and the real mock sub-app.
+	 */
+	readonly mockMode?: boolean;
 }
 
 const PROBES: readonly Probe[] = [
@@ -125,6 +135,64 @@ const PROBES: readonly Probe[] = [
 		expectStatus: 204,
 		expectAllowOrigin: ORIGIN,
 		expectCredentials: 'true',
+	},
+	{
+		// The regression this row exists for: the Better Auth handler
+		// returns a RAW `Response` (`auth.handler(c.req.raw)`), which
+		// replaces `context.res` wholesale. A `c.header()` call made
+		// before `next()` was dropped on exactly this shape, so the
+		// credentialed echo never reached the wire here.
+		label: 'Better Auth session read from the canonical origin',
+		meaning:
+			'allowed: the echo survives a raw-Response handler — this is the allow branch on the wire',
+		method: 'GET',
+		path: '/api/v1/auth/get-session',
+		origin: ORIGIN,
+		expectClass: 'credentialed',
+		expectStatus: 200,
+		expectAllowOrigin: ORIGIN,
+		expectCredentials: 'true',
+	},
+	{
+		label: 'Better Auth session read (POST) from the canonical origin',
+		meaning:
+			'same echo on the other verb Better Auth registers — and on its 415 error answer, which is where a header set before the handler would have been lost',
+		method: 'POST',
+		path: '/api/v1/auth/get-session',
+		origin: ORIGIN,
+		expectClass: 'credentialed',
+		expectStatus: 415,
+		expectAllowOrigin: ORIGIN,
+		expectCredentials: 'true',
+	},
+	{
+		// The mock gate returns `mockApp.fetch(...)` — another raw
+		// `Response`, so it needed the same fix. `docs/security/api-cors.md`
+		// §6 and `src/http/hono.ts` both claim the mock has the same
+		// CORS surface as production; this row is what makes that
+		// claim checkable instead of aspirational.
+		label: 'mock-mode auth read from the canonical origin',
+		meaning: 'same CORS surface under LOCAL_API_MODE=mock — the mock cannot become a bypass',
+		method: 'GET',
+		path: '/api/v1/auth/session',
+		origin: ORIGIN,
+		mockMode: true,
+		expectClass: 'credentialed',
+		expectStatus: 200,
+		expectAllowOrigin: ORIGIN,
+		expectCredentials: 'true',
+	},
+	{
+		label: 'mock-mode auth read from a foreign origin',
+		meaning: 'refused under the mock too: the gate sits before the short-circuit',
+		method: 'GET',
+		path: '/api/v1/auth/session',
+		origin: EVIL,
+		mockMode: true,
+		expectClass: 'credentialed',
+		expectStatus: 403,
+		expectAllowOrigin: ABSENT,
+		expectCredentials: ABSENT,
 	},
 	{
 		label: 'credentialed preflight from a foreign origin',
@@ -256,12 +324,17 @@ async function runProbe(probe: Probe): Promise<Record<string, unknown>> {
 		headers['Content-Type'] = 'text/plain';
 		init.body = 'key=home-page';
 	}
-	const res = await SELF.fetch(`${ORIGIN}${probe.path}`, init);
+	const res = probe.mockMode
+		? await externalBoundary.fetch(new Request(`${ORIGIN}${probe.path}`, init), {
+				LOCAL_API_MODE: 'mock',
+			} as unknown as Env)
+		: await SELF.fetch(`${ORIGIN}${probe.path}`, init);
 	return {
 		label: probe.label,
 		meaning: probe.meaning,
 		method: probe.method,
 		path: probe.path,
+		mode: probe.mockMode === true ? 'mock' : 'self',
 		origin: probe.origin ?? '(none)',
 		requestMethod: probe.requestMethod ?? '',
 		requestHeaders: probe.requestHeaders ?? '',
@@ -300,7 +373,16 @@ describe('boundary CORS policy (Issue #455)', () => {
 		// without a CORS decision fails here until it is either
 		// classified in `CORS_ROUTES` or acknowledged in
 		// `INTENTIONALLY_UNCLASSIFIED` with a reason.
-		const registered = externalBoundary.routes.filter((route) => route.method !== 'ALL');
+		//
+		// `createMockApp()` is a SECOND Hono app that the boundary mounts
+		// behind the `LOCAL_API_MODE=mock` gate, so `externalBoundary.
+		// routes` alone cannot see its routes. Both inventories are
+		// checked: a mock route is as much a reachable surface as a real
+		// one, and it must not be able to sit under a classified prefix
+		// by accident.
+		const registered = [...externalBoundary.routes, ...createMockApp().routes].filter(
+			(route) => route.method !== 'ALL',
+		);
 		const unclassified = registered
 			.filter((route) => classifyRoute(route.method, route.path) === null)
 			.map((route) => `${route.method} ${route.path}`);
@@ -319,15 +401,21 @@ describe('boundary CORS policy (Issue #455)', () => {
 		// decision function: read every CORS header the Worker emitted
 		// above and run the invariant against the actual bytes.
 		for (const probe of PROBES) {
+			await runProbe(probe);
 			const headers: Record<string, string> = {};
 			if (probe.origin !== null) headers.Origin = probe.origin;
 			if (probe.requestMethod) headers['Access-Control-Request-Method'] = probe.requestMethod;
 			if (probe.requestHeaders) headers['Access-Control-Request-Headers'] = probe.requestHeaders;
-			const res = await SELF.fetch(`${ORIGIN}${probe.path}`, {
-				method: probe.method,
-				headers,
-				...(probe.method === 'POST' ? { body: 'key=home-page' } : {}),
-			});
+			const init: RequestInit = { method: probe.method, headers };
+			if (probe.method === 'POST') {
+				headers['Content-Type'] = 'text/plain';
+				init.body = 'key=home-page';
+			}
+			const res = probe.mockMode
+				? await externalBoundary.fetch(new Request(`${ORIGIN}${probe.path}`, init), {
+						LOCAL_API_MODE: 'mock',
+					} as unknown as Env)
+				: await SELF.fetch(`${ORIGIN}${probe.path}`, init);
 			const violation = credentialWildcardViolation({
 				...(res.headers.has('access-control-allow-credentials')
 					? {
@@ -343,15 +431,26 @@ describe('boundary CORS policy (Issue #455)', () => {
 		}
 	});
 
-	it('leaves the SSR surfaces free of API CORS headers', async () => {
-		// The UI is same-origin with the API by construction
-		// (ADR-0014), so nothing outside `/api/v1/*`, `/webhooks/*`,
-		// `/oauth/*` and `/integrations/*` may grow an allow-origin
-		// header as a side effect of mounting the middleware.
-		for (const path of ['/', '/contact', '/admin/login']) {
-			const res = await SELF.fetch(`${ORIGIN}${path}`, { headers: { Origin: EVIL } });
-			expect(res.headers.get('access-control-allow-origin'), path).toBeNull();
-			expect(res.headers.get('access-control-allow-credentials'), path).toBeNull();
-		}
-	});
+	// A generous explicit timeout, and not paranoia: the first `/`
+	// request in a cold workerd pool has to evaluate the whole TanStack
+	// Start module graph, measured at 4.5–6.6 s on this repo, which is
+	// over vitest's 5 s default and produced real flakes under load. The
+	// assertions here are about header bytes, not render latency.
+	it(
+		'leaves the SSR surfaces free of API CORS headers',
+		{
+			timeout: 60_000,
+		},
+		async () => {
+			// The UI is same-origin with the API by construction
+			// (ADR-0014), so nothing outside `/api/v1/*`, `/webhooks/*`,
+			// `/oauth/*` and `/integrations/*` may grow an allow-origin
+			// header as a side effect of mounting the middleware.
+			for (const path of ['/', '/contact', '/admin/login']) {
+				const res = await SELF.fetch(`${ORIGIN}${path}`, { headers: { Origin: EVIL } });
+				expect(res.headers.get('access-control-allow-origin'), path).toBeNull();
+				expect(res.headers.get('access-control-allow-credentials'), path).toBeNull();
+			}
+		},
+	);
 });

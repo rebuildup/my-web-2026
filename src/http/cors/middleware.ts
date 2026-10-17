@@ -58,7 +58,27 @@ export const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next
 		return c.body(null, 204, decision.headers);
 	}
 
-	for (const [name, value] of Object.entries(decision.headers)) c.header(name, value);
+	// Pass-through: render the decision onto the FINALIZED response.
+	//
+	// Hono parks a `c.header()` call made before `next()` in a private
+	// prepared-header bag, and that bag is only merged into a response
+	// the CONTEXT produces (`c.json()` / `c.body()` / `c.newResponse()`).
+	// A handler that returns a raw `Response` replaces `context.res`
+	// wholesale and the prepared headers are silently dropped — and the
+	// two handlers on this boundary that do exactly that are
+	// `auth.handler(c.req.raw)` (`src/http/auth/router.ts`) and the
+	// `mockApp.fetch(...)` the `LOCAL_API_MODE=mock` gate returns. That
+	// is the `credentialed` allow branch, i.e. precisely the
+	// `Access-Control-Allow-Origin` echo + credentials pair this Issue
+	// exists to guarantee: before this ordering, a browser on an
+	// allow-listed origin got NO CORS header from `/api/v1/auth/*`.
+	//
+	// `c.header()` after `await next()` takes Hono's finalized-response
+	// path (it re-instantiates `c.res` with a mutable header bag first),
+	// so it is correct for both handler shapes and keeps the handler's
+	// own `Set-Cookie` — which the Better Auth sign-in response carries
+	// and which a re-wrap must not drop.
 	await next();
+	for (const [name, value] of Object.entries(decision.headers)) c.header(name, value);
 	return undefined;
 });

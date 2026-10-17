@@ -85,7 +85,16 @@ binding API is reachable in the local workerd pool"**, not
 
 - Secret scanning: enabled as an asynchronous CI job (see
   `quality/profile.yaml#security_gates.secret_scanning`).
-- Dependency review: deferred to a post-0.1.0 ticket.
+- Dependency advisory gate: enabled (Issue #470, see
+  `quality/profile.yaml#security_gates.dependency_review`). The
+  `Dependency advisory audit` step of the `validate` job checks the
+  committed lockfile with `pnpm audit --json` and evaluates it against
+  the reviewed declaration in `quality/dependency-advisory-gate.json`:
+  `critical` / `high` are the declared blocking severities, an approved
+  exception is a record with a reason, an approver, a tracking issue and
+  an expiry date, and advisory data that cannot be read fails closed
+  (exit `3`) instead of being reported as "0 vulnerabilities". Runbook:
+  [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 - Code scanning (SAST): deferred.
 - Container scanning: not applicable (no `Containerfile` at 0.1.0).
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the

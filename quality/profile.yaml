@@ -151,8 +151,24 @@ security_gates:
     tool: actionlint
     note: 'Biome does not cover .github/workflows/*.yml. Runs inside the `validate` job.'
   dependency_review:
-    enabled: false
-    rationale: 'Deferred to a post-0.1.0 ticket.'
+    enabled: true
+    issue: '#470'
+    tool: pnpm-audit
+    check_command: 'pnpm run dep-audit:check'
+    report_command: 'pnpm run dep-audit:report'
+    declaration: 'quality/dependency-advisory-gate.json'
+    enforcement: audit
+    blocking_severities: ['critical', 'high']
+    ci_step: 'Dependency advisory audit (every pull_request / push the workflow triggers, and the HTML report is uploaded as dependency-advisory-report-<sha>)'
+    exit_codes:
+      0: 'pass, or blocking findings recorded under audit enforcement'
+      1: 'blocking advisories outstanding under block enforcement'
+      2: 'usage or gate-declaration error'
+      3: 'advisory data unavailable — fail closed, never reported as 0 findings'
+    inputs:
+      - pnpm-lock.yaml
+      - quality/dependency-advisory-gate.json
+    note: 'Severity policy, the exception ledger and every expiry live in the declaration, not in code, so a policy change is a reviewable one-line diff. Advisory data comes from the npm registry advisory endpoint only — no environment credential, .dev.vars, Infisical export or Worker secret value (AGENTS.md section 4). Unreadable data fails closed so a registry outage cannot read as a clean tree. See docs/runbook/dependency-advisories.md.'
   sast:
     enabled: false
     rationale: 'Deferred.'

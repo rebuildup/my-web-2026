@@ -1,5 +1,5 @@
 import type { MouseEvent } from 'react';
-import { css } from '../../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import { Container } from '../primitives/Container';
 import type { ErrorStateAlternative, ErrorStateKind, ErrorStateRecoveryAction } from './contract';
 import { alternativesFor, errorStateDefinition } from './contract';
@@ -178,11 +178,10 @@ export function ErrorState({
 						})}
 					>
 						<span
-							className={css({
-								fontFamily: 'mono',
-								fontWeight: '600',
-								...TONE_STATUS_CLASS[definition.tone],
-							})}
+							className={cx(
+								css({ fontFamily: 'mono', fontWeight: '600' }),
+								TONE_STATUS_CLASS[definition.tone],
+							)}
 						>
 							{definition.statusLabel}
 						</span>

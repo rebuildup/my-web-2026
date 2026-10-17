@@ -206,6 +206,28 @@ When they do, `/tools/<slug>/app/index.html` is measurable; a Tool that
 is still `host_disabled` (`mic-level`) has no artefact, and its rule is
 covered by the parity check plus the fixture used for the report.
 
+To render those real responses in the verification PNG instead of the
+resolved rules, capture the dump into
+`.tmp/security-headers/static-headers.json` — one object per probed
+path:
+
+```json
+[
+  {
+    "path": "/tools/mic-level/app/index.html",
+    "status": "307",
+    "x-content-type-options": "nosniff",
+    "referrer-policy": "no-referrer",
+    "permissions-policy": "bluetooth=(), … microphone=(self \"https://rebuildup.dev\"), …"
+  }
+]
+```
+
+and pass it to `node scripts/security-header-report.mjs
+--static-measurements=.tmp/security-headers/static-headers.json`. The
+report labels which of the two sources it used, so the image never
+implies a measurement it did not take.
+
 ### The browser pass
 
 `node scripts/security-header-report.mjs` regenerates

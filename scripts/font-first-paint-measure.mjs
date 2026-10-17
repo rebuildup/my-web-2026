@@ -379,10 +379,13 @@ export function renderReportHtml(report) {
 						run.fallback.ok ? 'readable' : 'NOT readable',
 					)}</span>`
 				: '—';
+			// No lazy loading: the report is a static document that gets
+			// screenshotted, and a capture below the fold that never
+			// loaded would quietly drop the evidence for its own row.
 			const shot = run.screenshot
 				? `<img src="./${escapeHtml(run.screenshot)}" alt="${escapeHtml(run.route)} ${escapeHtml(
 						run.scenario,
-					)} screenshot" loading="lazy" />`
+					)} screenshot" />`
 				: '';
 			return [
 				'<tr>',

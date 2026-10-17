@@ -474,6 +474,15 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		assert.match(html, /<td>cls<\/td><td>0\.12–0\.975<\/td><td>0\.001–0\.03<\/td>/);
 	});
 
+	it('embeds every capture eagerly so a screenshot cannot miss one', () => {
+		// `loading="lazy"` leaves the below-the-fold captures unloaded
+		// when the report is screenshotted full-page, which silently
+		// drops the evidence for those rows.
+		const html = renderReportHtml(report);
+		assert.doesNotMatch(html, /loading="lazy"/);
+		assert.match(html, /<img src="\.\/_-blocked\.png"/);
+	});
+
 	it('renders a metric row as one table row, cells included', () => {
 		// A dropped `<td>` wrapper makes the browser hoist the row out
 		// of the table and render the report as a stack of images.

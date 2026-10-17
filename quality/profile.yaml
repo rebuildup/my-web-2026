@@ -27,6 +27,7 @@ stack:
   worker_test: '@cloudflare/vitest-plugin@1.1.x'
   language: typescript@5.9.x
   package_manager: pnpm@12.3.4
+  unused_code: knip@6.41.x
 
 gates:
   fast:
@@ -36,6 +37,8 @@ gates:
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
       - 'pnpm run typecheck' # tsc --noEmit
+      - 'pnpm run infisical:check:coverage'
+      - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
     trigger: local + every CI run
@@ -166,3 +169,4 @@ disallowed_patterns:
   - 'duplicate pnpm install across CI jobs (use cache + single shared bootstrap)'
   - 'tabs in YAML files (actionlint enforces spaces; .github/workflows/*.yml uses 2-space indent)'
   - 'cf workers types run as a generation step in CI without a subsequent git diff --exit-code check'
+  - 'knip baseline (quality/knip-baseline.json) hand-edited to silence findings instead of fixing the cause via pnpm run knip:update'

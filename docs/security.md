@@ -29,6 +29,21 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## Write rate limit (Issue #456)
+
+`/api/v1/reactions` (PUT / DELETE) and `/api/v1/access/hit` share one
+`RATE_LIMIT_WRITE` budget per API key id; the read paths use the
+independent `RATE_LIMIT_READ` binding (ADR-0010). The budgets
+themselves are declared once, in `RATE_LIMITS`
+(`scripts/_cloudflare-contract.mjs`). A throttled request answers
+`429 { error: 'rate_limited' }` plus a `Retry-After` equal to the
+binding's fixed window, and never reaches D1.
+
+The operational contract — principal semantics, middleware ordering,
+the client mapping, the drift guard between the retry window and
+`RATE_LIMITS`, and what the local workerd suite does *not* prove —
+lives in [`security/write-rate-limit.md`](security/write-rate-limit.md).
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

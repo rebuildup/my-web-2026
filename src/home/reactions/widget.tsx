@@ -350,6 +350,46 @@ export function computeToggleState(input: ComputeToggleInput): ComputeToggleOutp
 	};
 }
 
+/**
+ * Visitor-facing copy for a failed mutation (Issue #456).
+ *
+ * The upstream write endpoints answer `429 { error: 'rate_limited' }`
+ * once the consumer principal exhausts `RATE_LIMIT_WRITE`; the server
+ * fns translate that into the typed `reason` union in `load.ts`. The
+ * visitor should be told the one actionable thing — wait for the
+ * advertised retry window and click again — instead of reading the
+ * machine code the transport happens to use.
+ *
+ * `Retry-After` is the fixed window (`RATE_LIMIT_RETRY_AFTER_SECONDS`
+ * = `RATE_LIMITS[…].period`, 60s), so "1分後" is the honest advice.
+ * That equality is asserted for the header constant in
+ * `src/http/middleware/rate-limit.test.ts`, but the visitor copy
+ * itself is hand-written: `home → http` is a type-only edge
+ * (AGENTS.md §3), so this obligation cannot import the boundary's
+ * constant. A `period` change therefore has to touch this string too —
+ * `docs/security/write-rate-limit.md` records that as an open design
+ * decision rather than a settled contract.
+ */
+export const REACTION_ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
+	rate_limited: '短時間にまとめて反応が集中しています。1分後にもう一度お試しください。',
+	invalid_body: 'このリアクションは受け付けられませんでした。別のものをお試しください。',
+	api_key_unconfigured: 'リアクションは現在記録できません。時間をおいてお試しください。',
+	upstream_error: 'リアクションを送信できませんでした。時間をおいてお試しください。',
+});
+
+/**
+ * Map a mutation `reason` to the string the visitor reads. Unknown
+ * reasons fall back to the generic failure copy so a future transport
+ * code can never leak a raw identifier into the UI.
+ *
+ * Exported for unit testing.
+ */
+export function describeMutationError(reason: string | null | undefined): string {
+	return (
+		REACTION_ERROR_MESSAGES[reason ?? 'upstream_error'] ?? REACTION_ERROR_MESSAGES.upstream_error
+	);
+}
+
 export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	const [aggregates, setAggregates] = useState<readonly LocalReactionAggregate[]>(data.aggregates);
 	// Local mirror of `data.viewer_reactions` so the toggle predicate
@@ -411,6 +451,10 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				: addHomeReaction({ data: { target, kind, value, codepoint } });
 		void promise
 			.then((result) => {
+				// State holds the machine `reason`; the alert renders the
+				// visitor copy resolved from it. Keeping the reason on the
+				// element (`data-error-reason`) keeps the raw code
+				// inspectable in devtools without showing it to visitors.
 				if (!result.ok) setError(result.reason ?? 'upstream_error');
 			})
 			.catch((err: unknown) => {
@@ -561,6 +605,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			{error ? (
 				<p
 					role="alert"
+					data-error-reason={error}
 					className={css({
 						margin: '0',
 						fontFamily: 'mono',
@@ -568,7 +613,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 						color: 'text.muted',
 					})}
 				>
-					{error}
+					{describeMutationError(error)}
 				</p>
 			) : null}
 		</div>

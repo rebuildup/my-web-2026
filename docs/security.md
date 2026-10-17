@@ -92,6 +92,38 @@ binding API is reachable in the local workerd pool"**, not
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
 
+## Dependency install lifecycle scripts
+
+`pnpm install` can execute third-party code before any repository
+test exists. pnpm 12 is default-deny for that: only the packages
+listed in `pnpm-workspace.yaml#onlyBuiltDependencies` /
+`#allowBuilds` run their `preinstall` / `install` / `postinstall`
+hooks.
+
+That list is audited, not remembered:
+
+- `quality/install-scripts.json` records, per package, whether the
+  build is actually needed and why. `default_decision` is `block`;
+  a record without a `justification` is rejected.
+- `pnpm run install:scripts:check` (part of `validate:fast`) fails
+  when an installed package declares an install-time hook with no
+  reviewed record, when the policy decision and pnpm's execution
+  allow-list disagree in either direction, or when an installed
+  manifest grows an undocumented hook. It warns when an allow-list
+  entry buys no build, on version drift and on stale records.
+- The audit is **status-only**: it reads package manifests plus those
+  two policy files and prints package names, versions, hook names and
+  policy text. No secret value (`.dev.vars`, Infisical, Worker
+  secret) is read or printed, and nothing in the runtime / deploy
+  path is touched.
+
+Operator procedure (what each failure means, how to remediate, and
+the recorded high-risk entry) lives in
+[`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
+Tool-side / upstream changes are deliberately out of scope for the
+audit itself (Issue #474): the gate records the risk and names the
+removal condition instead of patching a dependency.
+
 ## Browser binaries (Playwright)
 
 `pnpm run e2e` runs against `pnpm dev` (locally) or a deployed Worker

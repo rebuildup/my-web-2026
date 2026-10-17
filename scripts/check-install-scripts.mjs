@@ -29,7 +29,7 @@
  * See docs/runbook/install-script-audit.md.
  */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -159,6 +159,7 @@ function main() {
 
 	const context = { policyPath: POLICY_RELATIVE_PATH, allowlistPath: ALLOWLIST_RELATIVE_PATH };
 	if (options.html) {
+		mkdirSync(dirname(options.html), { recursive: true });
 		writeFileSync(options.html, renderHtmlReport(result.audit, context), 'utf8');
 		process.stdout.write(`[check-install-scripts] HTML report written to ${options.html}\n`);
 	}

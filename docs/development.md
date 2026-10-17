@@ -259,6 +259,14 @@ CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 The same job also installs the Playwright Chromium binary and runs
 the E2E suite against `pnpm dev`.
 
+`validate:fast` additionally runs `pnpm run install:scripts:check`,
+the dependency install lifecycle script audit (Issue #474). It fails
+when an installed dependency declares an install-time `preinstall` /
+`install` / `postinstall` hook that the reviewed policy in
+`quality/install-scripts.json` has no record for, or when that record
+and pnpm's execution allow-list (`pnpm-workspace.yaml`) disagree.
+See [`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
+
 ## Storybook
 
 Storybook 8.6.x previews the visual obligations that currently exist in source.

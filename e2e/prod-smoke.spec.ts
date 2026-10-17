@@ -6,6 +6,7 @@ import type { APIRequestContext, Page } from '@playwright/test';
 import {
 	CANONICAL_PRODUCTION_ORIGIN,
 	CHROME_NAV_ROUTES,
+	EXPECTED_SECTION_COUNTS,
 	ONE_CLICK_ENTRIES,
 	REPRESENTATIVE_API_ROUTES,
 	REPRESENTATIVE_PAGE_ROUTES,
@@ -13,6 +14,7 @@ import {
 	auditRoute,
 	formatAuditReport,
 } from '../scripts/prod-smoke-routes.mjs';
+import type { RepresentativeRoute, RouteObservation } from '../scripts/prod-smoke-routes.mjs';
 
 /**
  * Production smoke (Issue #43 / ADR-0014, representative routes added by
@@ -30,10 +32,23 @@ import {
  * `scripts/prod-smoke-routes.test.mjs`, so the pass/fail logic cannot
  * silently degrade into "always green".
  *
- * The representative routes are public, version-independent surfaces, so
- * they run in BOTH smoke phases (`transition` and `versioned`) — unlike
- * the `/admin/login` assertion below, which is deferred in `transition`
- * for a documented pre-#91 reason.
+ * Phase scoping (Issue #500): the representative routes run in Smoke #2
+ * (`versioned`, POST-deploy) only. Smoke #1 (`transition`) runs PRE
+ * merge/deploy, while production still serves the previous `main` build
+ * — but this file's expectations are RELEASE-BRANCH facts (the Tool
+ * Registry row set, the home / about section counts, the declared `<h1>`
+ * text). Asserting them against a deployment that predates the release
+ * would make the mandatory pre-merge smoke red for a difference that has
+ * not been shipped yet, and the runbook's Smoke #1 failure branch is a
+ * release blocker. So the whole representative-route describe is skipped
+ * in `transition`, exactly like `/admin/login` above.
+ *
+ * Origin scoping: the Issue #43 describe below asserts the canonical
+ * PRODUCTION origin (HTTPS, `BETTER_AUTH_URL`, the `#106` login gate), so
+ * it only runs when Playwright is pointed at production. The
+ * representative-route adapter instead follows `PLAYWRIGHT_BASE_URL`, so
+ * `pnpm run e2e:prod:local` can exercise the same contract against a
+ * local build without resolving `https://rebuildup.dev` at all.
  *
  * The smoke verifies the documented Issue #43 acceptance criteria
  * against the live deployment:
@@ -58,6 +73,25 @@ import {
  */
 const CANONICAL_ORIGIN = CANONICAL_PRODUCTION_ORIGIN;
 
+/**
+ * Origin the representative-route adapter talks to.
+ *
+ * `pnpm run e2e:prod` / `pnpm run e2e:prod:transition` set
+ * `PLAYWRIGHT_BASE_URL=https://rebuildup.dev`, so every production run
+ * is unchanged. When Playwright is explicitly pointed at a local build
+ * (`pnpm run e2e:prod:local`, i.e. base URL `http://127.0.0.1:3000`), the
+ * adapter follows THAT origin instead — which is what makes the Issue
+ * #500 contract reproducible offline, and what lets the verification
+ * screenshot be captured without reading production at all. With
+ * `PLAYWRIGHT_BASE_URL` unset the adapter falls back to the canonical
+ * production origin, so an ad-hoc `playwright test e2e/prod-smoke.spec.ts`
+ * keeps its previous meaning.
+ */
+const SMOKE_ORIGIN = (process.env.PLAYWRIGHT_BASE_URL ?? CANONICAL_ORIGIN).replace(/\/+$/, '');
+
+/** True when this run really is pointed at the canonical production origin. */
+const IS_CANONICAL_RUN = SMOKE_ORIGIN === CANONICAL_ORIGIN;
+
 const PROD_SMOKE_PHASE = process.env.PROD_SMOKE_PHASE ?? 'versioned';
 if (PROD_SMOKE_PHASE !== 'transition' && PROD_SMOKE_PHASE !== 'versioned') {
 	throw new Error(
@@ -66,6 +100,10 @@ if (PROD_SMOKE_PHASE !== 'transition' && PROD_SMOKE_PHASE !== 'versioned') {
 }
 
 test.describe('production smoke (Issue #43 / ADR-0014)', () => {
+	test.skip(
+		!IS_CANONICAL_RUN,
+		'this group asserts the canonical PRODUCTION origin (HTTPS, BETTER_AUTH_URL wiring, the #106 login gate). A local replica run (`pnpm run e2e:prod:local`) covers the Issue #500 representative routes only, and must never touch production.',
+	);
 	test('canonical origin is HTTPS and reaches the Worker', async ({ request }) => {
 		// Force the request fixture to use the canonical origin even
 		// when PLAYWRIGHT_BASE_URL is unset (defensive — the script
@@ -265,7 +303,16 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
  * used here is GET, no cookie is cleared, no storage is reset, and no
  * D1 / R2 write is issued. The anonymous reaction mutation further up in
  * this file is the one deliberate mutation, it predates Issue #500, and it
- * is deliberately NOT part of the representative-route registry.
+ * is deliberately NOT part of the representative-route registry — it
+ * also lives in the Issue #43 describe above, which only runs against the
+ * canonical production origin.
+ *
+ * Outbound traffic: every navigation below goes through `SMOKE_ORIGIN`,
+ * i.e. the canonical production origin for `pnpm run e2e:prod` /
+ * `pnpm run e2e:prod:transition`, or whatever `PLAYWRIGHT_BASE_URL` says
+ * for `pnpm run e2e:prod:local`. No navigation in this describe is
+ * hardcoded to production, which is what keeps an offline verification
+ * run from ever resolving the production hostname.
  * ------------------------------------------------------------------------ */
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -305,9 +352,13 @@ async function computePageProbes(
 	switch (path) {
 		case '/':
 			return {
-				// Six `aria-labelledby` sections is the home composition
-				// contract e2e/smoke.spec.ts already pins locally.
-				sixSections: (await page.locator('section[aria-labelledby]').count()) === 6,
+				// The home composition count is registry data
+				// (`EXPECTED_SECTION_COUNTS`), the same fact
+				// `e2e/smoke.spec.ts` pins locally — not a literal that
+				// exists only in this adapter.
+				sixSections:
+					(await page.locator('section[aria-labelledby]').count()) ===
+					EXPECTED_SECTION_COUNTS['/'].labelled,
 				// The disabled placeholder is the home surface's
 				// "consumer API key missing in production" failure mode.
 				// A deployed Worker without it would still return 200 on
@@ -324,7 +375,8 @@ async function computePageProbes(
 			return {
 				identityHeading: await page.locator('h1#about-hero-title').first().isVisible(),
 				narrativeSections:
-					(await page.locator('section[aria-labelledby^="about-section-"]').count()) === 5,
+					(await page.locator('section[aria-labelledby^="about-section-"]').count()) ===
+					EXPECTED_SECTION_COUNTS['/about'].narrative,
 			};
 		case '/portfolio':
 			return {
@@ -342,15 +394,22 @@ async function computePageProbes(
 					.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-tool-slug') ?? ''))
 			).sort();
 			const expected = [...toolSlugs].sort();
-			const everyRowClassified = await page
-				.locator('[data-tool-slug]')
-				.evaluateAll((rows) =>
-					rows.every(
-						(row) =>
-							row.querySelector('a[href^="/tools/"]') !== null ||
-							row.getAttribute('data-tool-state') === 'host_disabled',
-					),
-				);
+			// A row is classified only when it either links to ITS OWN
+			// `/tools/<data-tool-slug>` or carries the documented
+			// `host_disabled` state. Comparing the anchor href against
+			// the row's own slug is what stops a regression where every
+			// row links to the same (or a typo'd) `/tools/...` path from
+			// reading as "integrated".
+			const everyRowClassified = await page.locator('[data-tool-slug]').evaluateAll((rows) =>
+				rows.every((row) => {
+					const slug = row.getAttribute('data-tool-slug') ?? '';
+					const anchor = row.querySelector('a[href^="/tools/"]');
+					return (
+						(anchor !== null && anchor.getAttribute('href') === `/tools/${slug}`) ||
+						row.getAttribute('data-tool-state') === 'host_disabled'
+					);
+				}),
+			);
 			return {
 				allManifestSlugsListed:
 					listed.length === expected.length &&
@@ -372,15 +431,19 @@ async function computePageProbes(
  * `auditRoute()` expects.
  */
 async function observePageRoute(
-	path: string,
+	route: RepresentativeRoute,
 	page: Page,
 	toolSlugs: ReadonlyArray<string>,
 ): Promise<RouteObservation> {
-	const response = await page.goto(`${CANONICAL_ORIGIN}${path}`, {
+	const response = await page.goto(`${SMOKE_ORIGIN}${route.path}`, {
 		waitUntil: 'domcontentloaded',
 	});
 	const canonical = page.locator('link[rel="canonical"]').first();
-	const h1 = page.locator('h1').first();
+	// The registry's own `h1` selector, not a bare `h1`: a route whose
+	// declared heading disappeared (renamed id, wrapper element) must be
+	// reported as "not visible / no text", which is exactly the defect
+	// `auditRoute()` is there to report.
+	const h1 = page.locator(route.h1 ?? 'h1').first();
 	return {
 		status: response?.status() ?? 0,
 		contentType: response?.headers()['content-type'] ?? '',
@@ -391,7 +454,7 @@ async function observePageRoute(
 		h1Visible: await h1.isVisible(),
 		h1Text: await h1.count().then((count) => (count > 0 ? h1.textContent() : null)),
 		json: null,
-		defaultProbes: await computePageProbes(path, page, toolSlugs),
+		defaultProbes: await computePageProbes(route.path, page, toolSlugs),
 	};
 }
 
@@ -403,10 +466,10 @@ async function observePageRoute(
  * shape.
  */
 async function observeApiRoute(
-	path: string,
+	route: RepresentativeRoute,
 	request: APIRequestContext,
 ): Promise<RouteObservation> {
-	const response = await request.get(`${CANONICAL_ORIGIN}${path}`);
+	const response = await request.get(`${SMOKE_ORIGIN}${route.path}`);
 	const body = await response.text();
 	let json: Record<string, unknown> | null = null;
 	try {
@@ -431,19 +494,25 @@ async function observeApiRoute(
 			statusOk: json?.status === 'ok',
 			serviceIdentity: json?.service === 'my-web-2026',
 			boundaryLayer: json?.layer === 'external-boundary',
-			// Shape check only. Production runs the `main` build while
-			// this repository sits on the open release branch, so pinning
-			// the value to package.json#version would be a guaranteed-false
-			// red for the whole sprint (AGENTS.md §1: one version source).
+			// Shape check only, never an equality check. See
+			// "NO RELEASE VERSION LITERAL" in
+			// scripts/prod-smoke-routes.mjs: the release branch stays
+			// open after it is cut and `main` receives fixes
+			// independently, so a release-branch working tree is never a
+			// reliable stand-in for the deployed artifact.
 			semverVersion: typeof json?.version === 'string' && SEMVER.test(json.version),
 		},
 	};
 }
 
 test.describe('production representative routes (Issue #500)', () => {
+	test.skip(
+		PROD_SMOKE_PHASE === 'transition',
+		'Smoke #1 runs PRE merge/deploy, so production still serves the previous `main` build. This registry is release-branch data (Tool Registry row set, home/about section counts, declared <h1> text), and the runbook defers every non-`main`-compatible assertion to Smoke #2. See docs/runbook/cloudflare-workers-builds.md "Representative route coverage (Issue #500)".',
+	);
 	for (const route of REPRESENTATIVE_PAGE_ROUTES) {
 		test(`${route.label} — ${route.path} serves its documented default state`, async ({ page }) => {
-			const observation = await observePageRoute(route.path, page, readToolManifestSlugs());
+			const observation = await observePageRoute(route, page, readToolManifestSlugs());
 			// Assert the problem LIST, not the first problem: a broken
 			// deployment should report everything that is wrong in one go.
 			const problems = auditRoute(route, observation);
@@ -455,7 +524,7 @@ test.describe('production representative routes (Issue #500)', () => {
 		test(`${route.label} — ${route.path} serves its documented default state`, async ({
 			request,
 		}) => {
-			const observation = await observeApiRoute(route.path, request);
+			const observation = await observeApiRoute(route, request);
 			const problems = auditRoute(route, observation);
 			expect(problems, formatAuditReport(route, problems)).toEqual([]);
 		});
@@ -467,7 +536,7 @@ test.describe('production representative routes (Issue #500)', () => {
 		for (const entry of ONE_CLICK_ENTRIES) {
 			// Re-enter the source surface each round: the previous round
 			// followed its link, so the page is no longer on `entry.from`.
-			await page.goto(`${CANONICAL_ORIGIN}${entry.from}`, { waitUntil: 'domcontentloaded' });
+			await page.goto(`${SMOKE_ORIGIN}${entry.from}`, { waitUntil: 'domcontentloaded' });
 			const link = page.locator(entry.selector).first();
 			await expect(
 				link,
@@ -479,7 +548,6 @@ test.describe('production representative routes (Issue #500)', () => {
 				href,
 				`the ${entry.from} → ${entry.to} entry must stay an in-site path, not an absolute or protocol-relative URL`,
 			).toBe(entry.to);
-			expect(href?.startsWith('//') ?? true).toBe(false);
 
 			// Follow it. A link that 200s into the 404 surface, or that
 			// dead-ends, must not pass as "reachable".
@@ -500,7 +568,7 @@ test.describe('production representative routes (Issue #500)', () => {
 		page,
 	}) => {
 		for (const from of CHROME_NAV_ROUTES) {
-			await page.goto(`${CANONICAL_ORIGIN}${from}`, { waitUntil: 'domcontentloaded' });
+			await page.goto(`${SMOKE_ORIGIN}${from}`, { waitUntil: 'domcontentloaded' });
 			const nav = page.locator('nav[aria-label="Public"]');
 			await expect(
 				nav,

@@ -8,7 +8,11 @@ import { defineConfig, devices } from '@playwright/test';
  *   2. `e2e/prod-smoke.spec.ts` — production-only smoke, runs via
  *      `pnpm run e2e:prod` (= `PLAYWRIGHT_BASE_URL=https://rebuildup.dev
  *      playwright test e2e/prod-smoke.spec.ts`). Triggers the GH
- *      Actions `production smoke` workflow on `workflow_dispatch`.
+ *      Actions `production smoke` workflow on `workflow_dispatch`. The
+ *      Issue #500 representative-route group in that file also runs
+ *      offline via `pnpm run e2e:prod:local`, which keeps
+ *      `PLAYWRIGHT_BASE_URL` on localhost so nothing resolves the
+ *      production hostname.
  *   3. `e2e/tools-index.spec.ts` — `/tools` index page contract.
  *   4. `e2e/tools-prototype.spec.ts` — `/tools/prototype` iframe
  *      contract against the **built** Tool artifact.
@@ -89,13 +93,31 @@ export default defineConfig({
 	// so the regular `pnpm run e2e` (CI on push, local dev) does not
 	// DNS-fail against a domain that may not be deployed yet.
 	//
+	// ONE documented exception: `pnpm run e2e:prod:local`, which sets
+	// `E2E_LOCAL_PROD_SMOKE=1` and runs the production spec file
+	// against the LOCAL preview build. It is safe precisely because
+	// `e2e/prod-smoke.spec.ts` resolves its origin from
+	// `PLAYWRIGHT_BASE_URL`: without
+	// `PLAYWRIGHT_BASE_URL=https://…` in the environment, nothing in
+	// that run can resolve `https://rebuildup.dev`, and the Issue #43
+	// canonical-origin group (including the anonymous reaction
+	// mutation, the one write in the file) skips itself. It exists so
+	// the Issue #500 representative-route contract is reproducible
+	// offline and its verification screenshot can be captured without
+	// reading production.
+	// `e2e/prod-portfolio.spec.ts` stays ignored either way: it is the
+	// separate G15 post-publication contract and needs published entries
+	// plus production media.
+	//
 	// `portfolio.spec.ts` likewise targets a local D1 binding: it
 	// seeds draft / unlisted / archived rows into the local D1 and
 	// asserts the public-visibility boundary. The local D1 file is
 	// not addressable from a remote Worker deployment, so the spec
 	// is filtered out of the production-only path.
 	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
-		? '**/prod-*.spec.ts'
+		? process.env.E2E_LOCAL_PROD_SMOKE === '1'
+			? '**/prod-portfolio.spec.ts'
+			: '**/prod-*.spec.ts'
 		: '**/portfolio.spec.ts',
 	// The local project spins up the preview server automatically.
 	// `pnpm preview` is required because the Tool iframe spec reaches

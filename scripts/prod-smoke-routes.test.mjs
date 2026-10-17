@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	CANONICAL_PRODUCTION_ORIGIN,
 	CHROME_NAV_ROUTES,
+	EXPECTED_SECTION_COUNTS,
 	ONE_CLICK_ENTRIES,
 	REPRESENTATIVE_API_ROUTES,
 	REPRESENTATIVE_PAGE_ROUTES,
@@ -284,6 +285,49 @@ describe('representative-route registry — drift guards against the repository'
 				['same_origin_static', 'external_exception', 'host_disabled'].includes(tool.delivery.kind),
 				`${tool.slug} has a delivery kind the /tools row classification does not cover`,
 			);
+		}
+	});
+
+	it('pins the same section counts the local Playwright suites assert', () => {
+		// The section counts are composition facts, so they are registry
+		// data rather than adapter literals. The local suites render the
+		// real pages and pin the same numbers, so a composition change
+		// that updates one contract but not the other is caught here
+		// instead of only at the next production smoke.
+		const pinnedCount = (specPath, locator) => {
+			const source = readFileSync(resolve(REPO_ROOT, specPath), 'utf8');
+			const match = source.match(new RegExp(`${locator}[\\s\\S]{0,120}?toHaveCount\\((\\d+)\\)`));
+			assert.ok(
+				match,
+				`${specPath} no longer pins a count for ${locator} — update this guard together with it`,
+			);
+			return Number(match[1]);
+		};
+		assert.equal(
+			pinnedCount('e2e/smoke.spec.ts', 'section\\[aria-labelledby\\]'),
+			EXPECTED_SECTION_COUNTS['/'].labelled,
+			'the home section count drifted between the local suite and the production contract',
+		);
+		assert.equal(
+			pinnedCount('e2e/about.spec.ts', 'section\\[aria-labelledby\\^="about-section-"\\]'),
+			EXPECTED_SECTION_COUNTS['/about'].narrative,
+			'the /about narrative section count drifted between the local suite and the production contract',
+		);
+	});
+
+	it('declares a section count for exactly the routes whose default state counts sections', () => {
+		const counting = REPRESENTATIVE_PAGE_ROUTES.filter((route) =>
+			Object.keys(route.defaultStates[0].probes).some((probe) => /sections/i.test(probe)),
+		);
+		assert.deepEqual(
+			counting.map((route) => route.path).sort(),
+			Object.keys(EXPECTED_SECTION_COUNTS).sort(),
+			'every count-based default state needs its expected count in EXPECTED_SECTION_COUNTS, and every entry there must be a count-based default state',
+		);
+		for (const [path, counts] of Object.entries(EXPECTED_SECTION_COUNTS)) {
+			for (const [key, value] of Object.entries(counts)) {
+				assert.ok(Number.isInteger(value) && value > 0, `${path}.${key} is not a positive count`);
+			}
 		}
 	});
 });

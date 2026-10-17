@@ -35,6 +35,7 @@
 		"e2e:prod": "cross-env PLAYWRIGHT_BASE_URL=https://rebuildup.dev playwright test e2e/prod-smoke.spec.ts",
 		"e2e:prod:portfolio": "cross-env PLAYWRIGHT_BASE_URL=https://rebuildup.dev playwright test e2e/prod-portfolio.spec.ts",
 		"e2e:prod:transition": "cross-env PLAYWRIGHT_BASE_URL=https://rebuildup.dev PROD_SMOKE_PHASE=transition playwright test e2e/prod-smoke.spec.ts",
+		"e2e:prod:local": "cross-env E2E_LOCAL_PROD_SMOKE=1 playwright test e2e/prod-smoke.spec.ts",
 		"format": "biome format --write .",
 		"format:check": "biome format .",
 		"generate:dev-vars": "node scripts/generate-dev-vars.mjs",

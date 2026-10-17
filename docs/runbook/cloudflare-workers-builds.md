@@ -210,7 +210,11 @@ Smoke #1 — transition smoke (PRE #91-merge; legacy runtime still active)
        │  Automated `pnpm run e2e:prod:transition` checks the
        │  canonical surfaces that are expected to work on the current
        │  `main` while intentionally deferring the #106 login-page
-       │  assertion to Smoke #2. `wrangler secret list` confirms the
+       │  assertion to Smoke #2. The Issue #500 representative
+       │  routes are deferred to Smoke #2 for the same reason: their
+       │  expectations are release-branch facts and nothing of this
+       │  release is deployed yet (see "Representative route
+       │  coverage" below). `wrangler secret list` confirms the
        │  versioned binding is
        │  present alongside the legacy binding. A known pre-#91
        │  Issue #106 baseline (`/admin/login -> 307 /admin/login`)
@@ -252,9 +256,9 @@ Cloudflare Workers Builds observes `main` push, builds, runs
 Smoke #2 — versioned-runtime smoke (POST #91-merge/deploy; automated)
        │  `pnpm run e2e:prod` — the **core** production smoke only
        │  (canonical surfaces + the versioned contract) +
-       │  representative routes with their documented default
-       │  states (Issue #500 — see "Representative route coverage"
-       │  below) +
+       │  the Issue #500 representative routes with their
+       │  documented default states (see "Representative route
+       │  coverage" below) +
        │  anonymous `GET /admin/login` returns 200 (the #106 fix
        │  in production: login form reachable without auth gate).
        │  `wrangler secret list` confirms both bindings still present.
@@ -326,21 +330,43 @@ Two distinct preconditions, do not conflate them:
 
 ## Representative route coverage (Issue #500)
 
-Both automated smokes run `e2e/prod-smoke.spec.ts`, and since Issue
-#500 that spec also registers the five **representative routes**:
+Smoke #2 (`pnpm run e2e:prod`, POST-deploy) runs
+`e2e/prod-smoke.spec.ts` with the five **representative routes**
+registered:
 
 | Route | Default state the smoke requires |
 | --- | --- |
 | `/` | six default sections render, and the reactions widget is configured (never the "reactions disabled" placeholder) |
 | `/about` | the repo-controlled identity snapshot renders (identity heading + five narrative sections) |
 | `/portfolio` | exactly one of the two documented branches: `catalogue-empty` (empty state, no card) or `catalogue-published` (at least one card, no empty state) |
-| `/tools` | every manifest Tool renders as one row, each classified as integrated (linked) or `host_disabled` (Coming soon badge), and the row set equals `src/tools/manifest.json` |
+| `/tools` | every manifest Tool renders as one row, each classified as integrated (linked to its OWN `/tools/<slug>`) or `host_disabled` (Coming soon badge), and the row set equals `src/tools/manifest.json` |
 | `/api/v1/health` | `status=ok`, `service=my-web-2026`, `layer=external-boundary`, and a well-formed semantic `version` |
 
 Each route is also checked for its **short navigation path**: `/` offers a
 one-click in-site entry to `/about`, `/portfolio`, and `/tools`, and the
 two `PublicNav` pages among the representative set (`/about`,
 `/portfolio`) link to every sibling representative route.
+
+Phase scoping
+-------------
+
+**Smoke #1 (`transition`) skips the representative routes entirely.**
+They run in Smoke #2 only. Every expectation in the registry is a
+release-branch fact — the Tool Registry row set, the home / about section
+counts, the declared `<title>` and `<h1>` text, the canonical hrefs —
+while Smoke #1 runs BEFORE the release PR merges, so production still
+serves the previous `main` build and legitimately differs from the branch.
+Asserting release expectations against a pre-deploy deployment would fail
+the mandatory pre-merge smoke for a difference nobody has shipped, and
+the Smoke #1 failure branch above is a release blocker
+(`rollback-versioned-only` → investigate → #89 NOT closed). This is the
+same reasoning that already defers the #106 `/admin/login` assertion.
+
+Open owner decision: whether Smoke #1 should carry a **phase-invariant
+subset** (status / content-type / redirect-self / heading presence) of the
+representative routes. That is a release-sequence semantics decision, and
+this document — not a PR — owns it. Until it is decided, the conservative
+behaviour (skip, exactly like `/admin/login`) is what ships.
 
 Where the contract lives
 ------------------------
@@ -355,6 +381,19 @@ browser), so the smoke's pass/fail logic cannot silently degrade into
 When a smoke goes red, the report names the absolute URL and every
 individual defect; an empty defect list is the only pass.
 
+Offline rehearsal
+-----------------
+
+`pnpm run e2e:prod:local` runs the SAME spec file against the local
+`vite preview` build instead of production. The adapter resolves its
+origin from `PLAYWRIGHT_BASE_URL`, so with no production base URL in the
+environment nothing in that run resolves `https://rebuildup.dev`, and the
+Issue #43 canonical-origin group (including the one deliberate write, the
+anonymous reaction mutation) skips itself. Use it to rehearse the
+representative-route contract, and to capture a verification artefact,
+without reading production at all. It is a rehearsal, not a substitute:
+the deployed-`main` measurement still only exists in Smoke #2.
+
 Read-only boundary
 ------------------
 
@@ -365,10 +404,10 @@ the one deliberate write in the file; it predates #500, it proves the
 `mw_actor_id` cookie is issued with `Secure`, and it is deliberately NOT
 part of the representative-route registry.
 
-Outbound traffic originates only at the canonical production origin. The
-pages themselves reference Google Fonts, GA4, and `media.rebuildup.dev`;
-the smoke does not exercise or assert on any of them, so it never becomes
-a third-party availability contract.
+Outbound traffic originates only at the canonical production origin in a
+production run; the pages themselves reference Google Fonts, GA4, and
+`media.rebuildup.dev`, and the smoke does not exercise or assert on any
+of them, so it never becomes a third-party availability contract.
 
 What it deliberately does not check
 ----------------------------------

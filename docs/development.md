@@ -287,16 +287,28 @@ exist:
 - `pnpm run e2e:prod` runs `e2e/prod-smoke.spec.ts` against the
   canonical production URL `https://rebuildup.dev` (Issue #43 /
   ADR-0014). Operator-initiated only — never gated by regular CI.
-  Since Issue #500 it also registers the five representative routes
-  (`/`, `/about`, `/portfolio`, `/tools`, `/api/v1/health`) and
-  checks each one's HTTP response, short navigation path, and
-  documented default state, read-only.
+  In Smoke #2 (`pnpm run e2e:prod`, POST-deploy) it also registers the
+  five representative routes (`/`, `/about`, `/portfolio`, `/tools`,
+  `/api/v1/health`) and checks each one's HTTP response, short
+  navigation path, and documented default state, read-only. Smoke #1
+  (`pnpm run e2e:prod:transition`) skips them: it runs PRE-merge, while
+  production still serves the previous `main` build and the registry is
+  release-branch data.
+- `pnpm run e2e:prod:local` runs the same spec file against the LOCAL
+  preview build (`http://127.0.0.1:3000`), so the Issue #500
+  representative-route contract is reproducible offline. It changes no
+  origin: the adapter reads `PLAYWRIGHT_BASE_URL`, so nothing in that
+  run resolves `https://rebuildup.dev`, and the Issue #43 canonical-origin
+  group (including the one deliberate write, the anonymous reaction
+  mutation) skips itself.
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
 pnpm run e2e             # run smoke.spec.ts; auto-starts pnpm dev locally
 # Production smoke (Issue #43 / ADR-0014):
 pnpm run e2e:prod        # runs prod-smoke.spec.ts against https://rebuildup.dev
+# Offline rehearsal of the Issue #500 representative-route contract:
+pnpm run e2e:prod:local  # same spec file against http://127.0.0.1:3000
 ```
 
 The E2E suite asserts the four public surfaces documented in
@@ -309,7 +321,9 @@ The E2E suite asserts the four public surfaces documented in
 
 `playwright.config.ts` ignores every `prod-*.spec.ts` when
 `PLAYWRIGHT_BASE_URL` points at localhost, so `pnpm run e2e` can never
-reach the canonical production origin. The production representative-route
+reach the canonical production origin. The single documented exception is
+`pnpm run e2e:prod:local`, which sets `E2E_LOCAL_PROD_SMOKE=1` and keeps
+the base URL on localhost. The production representative-route
 contract is DATA in `scripts/prod-smoke-routes.mjs`; its pass/fail
 classifier `auditRoute()` is unit-tested offline by
 `scripts/prod-smoke-routes.test.mjs` (wired into `pnpm run test`), so the

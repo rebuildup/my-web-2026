@@ -48,8 +48,14 @@
  *   - Information this smoke NEVER reads: response bodies beyond the
  *     fields above, D1 rows, R2 objects, session cookies, headers that
  *     carry credentials, and any authenticated surface.
- *   - Outbound network traffic originates ONLY at the canonical
- *     production origin declared in `CANONICAL_PRODUCTION_ORIGIN`.
+ *   - Outbound network traffic originates ONLY at the origin the spec is
+ *     pointed at, which is the canonical production origin declared in
+ *     `CANONICAL_PRODUCTION_ORIGIN` for `pnpm run e2e:prod` /
+ *     `pnpm run e2e:prod:transition`, and the `PLAYWRIGHT_BASE_URL`
+ *     origin for `pnpm run e2e:prod:local` (an offline rehearsal of the
+ *     same contract against the local build). No navigation is hardcoded
+ *     to production, so an offline run cannot resolve the production
+ *     hostname.
  *     The pages themselves reference Google Fonts, GA4, and
  *     `media.rebuildup.dev`; the smoke does not exercise those and does
  *     not assert on them, so this registry never becomes a third-party
@@ -60,6 +66,26 @@
  *     (`src/http/hono.ts`), and `src/editorial/nav/PublicNav.tsx`. The
  *     contract test re-derives each of these from disk so a registry
  *     entry cannot outlive the route it names.
+ *
+ * PHASE SCOPING — WHY THIS IS A POST-DEPLOY SMOKE
+ * ----------------------------------------------
+ * Every expectation below is a RELEASE-BRANCH fact: the Tool Registry
+ * row set, the home / about section counts, the declared `<title>` and
+ * `<h1>` text, the canonical hrefs. Smoke #1 (`transition`) runs before
+ * the release PR merges, so production still serves the previous `main`
+ * build and legitimately differs from this branch. Asserting release
+ * expectations against a pre-deploy deployment would fail the mandatory
+ * pre-merge smoke for a difference nobody shipped, and the runbook's
+ * Smoke #1 failure branch is a release blocker. So the representative
+ * routes are registered in Smoke #2 (`versioned`, POST-deploy) only,
+ * which is also exactly what Issue #500 asks for ("deploy 後に … 検証").
+ *
+ * That is also why the `/tools` default state may compare production
+ * against the manifest in THIS working tree while `/api/v1/health#version`
+ * is only shape-checked: in the `versioned` phase the deployed artifact
+ * is the merge of this branch, so a manifest difference is an actionable
+ * drift, whereas a version literal is a moving number with no failure
+ * mode attached to it.
  *
  * NO RELEASE VERSION LITERAL
  * --------------------------
@@ -236,6 +262,24 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 		]),
 	}),
 ]);
+
+/**
+ * Section counts the page routes' documented default states depend on.
+ *
+ * These are composition facts, so they live next to the route contract
+ * instead of as literals inside the Playwright adapter: one place to
+ * edit when `/` or `/about` changes shape, and the same prose the
+ * failure report names. The local Playwright suites pin the same facts
+ * against a real render (`e2e/smoke.spec.ts` for the six home sections,
+ * `e2e/about.spec.ts` for the five narrative sections), so a composition
+ * change is caught locally long before a production smoke can see it.
+ *
+ * @type {Readonly<Record<string, Readonly<Record<string, number>>>>}
+ */
+export const EXPECTED_SECTION_COUNTS = Object.freeze({
+	'/': Object.freeze({ labelled: 6 }),
+	'/about': Object.freeze({ narrative: 5 }),
+});
 
 /** @returns {ReadonlyArray<RepresentativeRoute>} */
 export const REPRESENTATIVE_PAGE_ROUTES = Object.freeze(

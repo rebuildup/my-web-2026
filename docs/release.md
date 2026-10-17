@@ -198,7 +198,10 @@ production domain to be wired (Issue #43 / ADR-0014):
    `/portfolio`, `/tools`, `/api/v1/health`) carry their own documented
    default-state contract since Issue #500 — see
    [`docs/runbook/cloudflare-workers-builds.md`](runbook/cloudflare-workers-builds.md)
-   § "Representative route coverage".
+   § "Representative route coverage". That coverage belongs to this
+   POST-deploy smoke (Smoke #2); the PRE-merge Smoke #1 skips it because
+   its expectations are release-branch facts and nothing of the release
+   is deployed yet.
 
 ## 0.1.0 Foundation backlog
 

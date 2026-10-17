@@ -52,6 +52,7 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import sharp from 'sharp';
 import {
 	BOX_EPSILON_PX,
 	CLS_BUDGET,
@@ -73,7 +74,19 @@ import {
 } from './_image-cls.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const OUT_PNG = join(REPO_ROOT, 'docs', 'verification', 'perf', 'images-cls-fixture.png');
+// The Issue names `images-cls-fixture.png`; the artifact is committed as
+// `.webp` instead. A full-page Chromium capture is a photographic-grade
+// screenshot, PNG stores it losslessly at ~360KB, and every regeneration
+// would re-add that to the repository forever. WebP q80 renders this
+// content (flat UI colours, mono glyphs, two flat gradients) with no
+// visible difference at a fraction of the size. The substitution is
+// recorded in `docs/verification/perf/README.md` and on the PR.
+const OUT_IMAGE = join(REPO_ROOT, 'docs', 'verification', 'perf', 'images-cls-fixture.webp');
+
+/** WebP encoding contract — asserted below so a regeneration cannot silently bloat the repo. */
+const IMAGE_MAX_WIDTH = 1600;
+const IMAGE_QUALITY = 80;
+const IMAGE_MAX_BYTES = 300 * 1024;
 const OUT_JSON = join(REPO_ROOT, '.tmp', 'image-cls-report.json');
 const LOCAL_PORT = Number(process.env.IMAGE_CLS_PORT ?? 4310);
 const VIEWPORT = { width: 1280, height: 900 };
@@ -205,7 +218,7 @@ function gitDirty() {
 			.toString()
 			.split('\n')
 			.filter((line) => line.trim().length > 0)
-			.filter((line) => !line.includes('images-cls-fixture.png'));
+			.filter((line) => !line.includes('images-cls-fixture.webp'));
 		return lines.length > 0;
 	} catch {
 		return null;
@@ -448,6 +461,34 @@ function toJson(pass) {
 	};
 }
 
+/**
+ * Encode the captured PNG as WebP and hold it to the size contract.
+ *
+ * Chromium can only write PNG/JPEG, so the conversion happens here and
+ * the file the repo keeps is WebP. The budget is enforced rather than
+ * documented: a report that grows past it means the screenshot changed
+ * shape (e.g. a full-page capture crept in) and the evidence needs a
+ * human decision, not a silent 1MB commit.
+ */
+async function encodeEvidence(png) {
+	const pipeline = sharp(png);
+	const metadata = await pipeline.metadata();
+	if ((metadata.width ?? 0) > IMAGE_MAX_WIDTH) {
+		process.stderr.write(
+			`[image-cls-report] capture is ${metadata.width}px wide, over the ${IMAGE_MAX_WIDTH}px budget — refusing to commit it.\n`,
+		);
+		process.exit(1);
+	}
+	const encoded = await sharp(png).webp({ quality: IMAGE_QUALITY }).toBuffer();
+	if (encoded.length > IMAGE_MAX_BYTES) {
+		process.stderr.write(
+			`[image-cls-report] encoded evidence is ${Math.round(encoded.length / 1024)}KB, over the ${Math.round(IMAGE_MAX_BYTES / 1024)}KB budget — refusing to commit it.\n`,
+		);
+		process.exit(1);
+	}
+	return encoded;
+}
+
 async function main() {
 	const server = await ensureServer();
 	const browser = await chromium.launch();
@@ -476,8 +517,10 @@ async function main() {
 			{ waitUntil: 'load' },
 		);
 
-		mkdirSync(dirname(OUT_PNG), { recursive: true });
-		await reportPage.screenshot({ path: OUT_PNG, fullPage: true });
+		mkdirSync(dirname(OUT_IMAGE), { recursive: true });
+		const shot = await reportPage.screenshot({ fullPage: true });
+		const encoded = await encodeEvidence(shot);
+		writeFileSync(OUT_IMAGE, encoded);
 
 		mkdirSync(dirname(OUT_JSON), { recursive: true });
 		writeFileSync(
@@ -505,7 +548,7 @@ async function main() {
 
 		const verdict = ROWS.every((row) => row.pass(before, after)) ? 'PASS' : 'FAIL';
 		process.stdout.write(
-			`[image-cls-report] ${verdict} — wrote ${OUT_PNG}\n` +
+			`[image-cls-report] ${verdict} — wrote ${OUT_IMAGE} (${Math.round(encoded.length / 1024)}KB webp q${IMAGE_QUALITY})\n` +
 				`[image-cls-report] after : box ${px(after.boxBefore.height)} in flight, Δ ${px(after.boxAfter.height - after.boxBefore.height)}, sentinel Δ ${px(after.offsetAfter - after.offsetBefore)}, scoped CLS ${after.cls.scoped}, page CLS ${after.cls.total}\n` +
 				`[image-cls-report] before: box ${px(before.boxBefore.height)} in flight, Δ ${px(before.boxAfter.height - before.boxBefore.height)}, sentinel Δ ${px(before.offsetAfter - before.offsetBefore)}, scoped CLS ${before.cls.scoped}, page CLS ${before.cls.total}\n`,
 		);

@@ -1,12 +1,19 @@
 # 画像 CLS 回帰の証跡（Issue #486）
 
-`images-cls-fixture.png` は Issue #486 が要求するスクリーンショットであり、
+`images-cls-fixture.webp` は Issue #486 が要求するスクリーンショットであり、
 `/design-system` の `07 — Image` セクションで実測した**ブラウザ / CI レポート**である。
 
-![image CLS regression — Issue #486](./images-cls-fixture.png)
+![image CLS regression — Issue #486](./images-cls-fixture.webp)
 
-このファイルは「その PNG が何を主張しているか」の正本。数値は
+このファイルは「その画像が何を主張しているか」の正本。数値は
 `.tmp/image-cls-report.json`（未 commit）にも machine-readable で残る。
+
+> **拡張子は Issue が名指しした `.png` ではなく `.webp`。** Chromium の full-page
+> capture を PNG で持つと 1 枚 360KB になり、再生成のたびにそれが repository に
+> 積み上がる。WebP quality 80 は平坦な UI color と mono 文字・flat gradient には
+> 視覚差が無く、121KB で収まる。生成 script 側で **幅 ≤ 1600px / quality 80 /
+> 300KB 上限**を assert しており、超過したら commit せず終了する
+> （`scripts/image-cls-report.mjs#encodeEvidence`）。PNG は commit していない。
 
 ## 何の回帰を測るか
 
@@ -70,7 +77,7 @@ sentinel の位置は **region 基準の document 座標**で測る（`regionSen
 ## 再現条件（local / CI 共通）
 
 条件は `scripts/_image-cls.mjs` に**定数**として置き、gate とレポートが同じ値を import する。
-別々の値で測ると、PNG が gate が一度も assert していない数値の証拠になってしまう。
+別々の値で測ると、レポート画像が gate が一度も assert していない数値の証拠になってしまう。
 
 | 条件 | 値 | 理由 |
 | --- | --- | --- |
@@ -78,7 +85,7 @@ sentinel の位置は **region 基準の document 座標**で測る（`regionSen
 | viewport | 1280×900 / deviceScaleFactor 1 | desktop Chrome の既定に相当 |
 | network | fixture raster `/fixtures/cls-inline-1280x720.png` の response を **700ms 保持**、他は unthrottled | lazy fetch が decode 前に終わると intrinsic size を知る機会を消してしまう |
 | CPU | CDP `Emulation.setCPUThrottlingRate` = **4×** | Lighthouse の既定 mobile throttle。CLS は layout property なので verdict は変わらないが、#384–#387 の Lighthouse 数値と可比になるよう固定する |
-| source SHA | 生成時に `git rev-parse HEAD` を PNG へ刻印 | 「どの commit で測ったか」を画像が自分で答える |
+| source SHA | 生成時に `git rev-parse HEAD` を画像へ刻印 | 「どの commit で測ったか」を画像が自分で答える |
 | 判定基準 | scoped CLS **≤ 0**、枠高さ Δ **≤ 0.5px**、sentinel offset Δ **≤ 0.5px** | Core Web Vitals の "good" は 0.1 だが、予約契約は shift を 0 にするためにある |
 
 ローカル: `pnpm run build` 済みで
@@ -162,5 +169,5 @@ node scripts/generate-image-fixtures.mjs       # fixture raster を書き直す
 node scripts/generate-image-fixtures.mjs --check  # commit 済みバイト列との drift を検出
 ```
 
-PNG は timestamp と commit SHA を含むので、再生成すると必ず差分が出る。
+証跡画像は timestamp と commit SHA を含むので、再生成すると必ず差分が出る。
 policy / fixture / component を触った changeset と同じ commit で更新する。

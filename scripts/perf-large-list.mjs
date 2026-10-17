@@ -559,6 +559,17 @@ async function renderMeasurementPanel(page, report, { pageSize }) {
 				const top = boundary.getBoundingClientRect().top + window.scrollY;
 				window.scrollTo({ top: Math.max(0, top - 260), behavior: 'instant' });
 			}
+			// Returned through `dataset` so the Node side can record
+			// WHERE the screenshot was taken; a PNG nobody can verify
+			// is exactly the "stale evidence" this panel exists to avoid.
+			panel.dataset.scrollY = String(Math.round(window.scrollY));
+			panel.dataset.boundaryCard = boundary
+				? (boundary.textContent ?? '').trim().slice(0, 40)
+				: 'missing';
+			panel.dataset.boundaryNextCard = items[boundaryIndex]
+				? (items[boundaryIndex].textContent ?? '').trim().slice(0, 40)
+				: 'missing';
+			panel.dataset.cardCount = String(items.length);
 		},
 		{ payload: report, boundaryIndex: pageSize },
 	);
@@ -739,8 +750,24 @@ async function main() {
 			const target = resolve(REPO_ROOT, options.screenshot);
 			mkdirSync(dirname(target), { recursive: true });
 			await renderMeasurementPanel(page, report, { pageSize: options.pageSize });
+			const capture = await page.evaluate(() => {
+				const panel = document.getElementById('issue-490-measurement-panel');
+				return {
+					scrollY: Number(panel?.dataset.scrollY ?? '0'),
+					boundaryCard: panel?.dataset.boundaryCard ?? 'missing',
+					boundaryNextCard: panel?.dataset.boundaryNextCard ?? 'missing',
+					cardCount: Number(panel?.dataset.cardCount ?? '0'),
+				};
+			});
+			report.screenshot = {
+				path: options.screenshot,
+				viewport: '1280x900',
+				...capture,
+			};
 			await page.screenshot({ path: target, fullPage: false });
-			process.stdout.write(`perf-large-list: wrote ${options.screenshot}\n`);
+			process.stdout.write(
+				`perf-large-list: wrote ${options.screenshot} (scrollY=${capture.scrollY}, boundary card #${options.pageSize} = "${capture.boundaryCard}")\n`,
+			);
 		}
 
 		const jsonTarget = resolve(REPO_ROOT, options.jsonOut);

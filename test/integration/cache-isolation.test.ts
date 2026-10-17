@@ -361,7 +361,9 @@ describe('external boundary cache isolation (Issue #460)', () => {
 		// destroying public image delivery.
 		const uploaded = await uploadImage(D1(), env.MEDIA, {
 			contentType: 'image/png',
-			bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+			// `UploadInput.bytes` is an ArrayBuffer; the PNG magic
+			// header is all the content-type guard looks at.
+			bytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]).buffer,
 			uploadedBy: 'cache-isolation-test',
 		});
 		const cache = new SharedCache();

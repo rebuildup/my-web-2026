@@ -1,4 +1,3 @@
-/// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import {

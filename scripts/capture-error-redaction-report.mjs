@@ -67,10 +67,18 @@ const MEANING_LABELS = {
 /** Run the verification suite and return its captured cases. */
 export function runVerificationSuite(skipTests) {
 	if (skipTests) return [];
+	// `pnpm exec` resolves the vitest bin through the package
+	// manager's own layout, so this documented `pnpm run` entry point
+	// keeps working if the store layout changes (the previous
+	// hard-coded `node node_modules/vitest/vitest.mjs` path only works
+	// because pnpm hoists that entry there).
 	const result = spawnSync(
-		'node',
-		['node_modules/vitest/vitest.mjs', 'run', TEST_FILE, '--disableConsoleIntercept'],
-		{ cwd: repoRoot, encoding: 'utf8' },
+		'pnpm',
+		['exec', 'vitest', 'run', TEST_FILE, '--disableConsoleIntercept'],
+		{
+			cwd: repoRoot,
+			encoding: 'utf8',
+		},
 	);
 	const stdout = `${result.stdout ?? ''}`;
 	if (result.status !== 0) {
@@ -165,7 +173,8 @@ export function renderHtml(cases) {
 </head>
 <body>
   <h1>公開API エラー秘匿検証</h1>
-  <p class="lead">Issue #457 — ローカル workerd 上で実際の外部HTTP境界 (<code>src/http/hono.ts</code>) を駆動した結果。
+  <p class="lead">Issue #457 — ローカル workerd 上で実際の外部HTTP境界 (<code>src/http/hono.ts</code>) と、
+  公開 server function の実SSR画面 (<code>/portfolio</code> / <code>/about</code> / <code>/</code>) を駆動した結果。
   成功・拒否・内部失敗のそれぞれについて、クライアントへ出るレスポンスだけを表示している。
   同じ相関IDが内部ログにも記録されるため、利用者が報告した request_id から Worker ログを追える。</p>
   <div class="legend">
@@ -178,7 +187,8 @@ export function renderHtml(cases) {
     生成: <code>node scripts/capture-error-redaction-report.mjs</code>（<code>${TEST_FILE}</code> の実行結果をそのまま表示）<br>
     撮影対象に secret は含まれない（認証は DI seam の固定スタブキー、実運用 credential には触れない）。<br>
     保持する契約: HTTP 5xx は <code>error</code> / <code>message</code> / <code>request_id</code> のみ、
-    server function の失敗画面は <code>portfolio_unavailable (ref)</code> のみ。
+    server function の失敗画面 (<code>/portfolio</code>・<code>/about</code>) は <code>portfolio_unavailable (ref)</code> のみ、
+    <code>/</code> の widget 入力失敗は縮退表示。
     stack・SQL・secret 名・binding 名は内部ログに閉じる。
   </footer>
 </body>

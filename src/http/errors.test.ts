@@ -1,7 +1,11 @@
 import { Hono } from 'hono';
 import { describe, expect, it, vi } from 'vitest';
 import { publicErrorResponse } from './errors';
-import { generateRequestId, requestIdMiddleware } from './middleware/request-id';
+import {
+	generateRequestId,
+	isAcceptedRequestId,
+	requestIdMiddleware,
+} from './middleware/request-id';
 
 /**
  * Unit tests for the public error contract (Issue #457).
@@ -76,6 +80,40 @@ describe('publicErrorResponse (Issue #457)', () => {
 		const body = JSON.parse(await bodyText(res)) as { request_id: string };
 		expect(body.request_id).toBe('client-correlation-1234');
 		expect(res.headers.get('x-request-id')).toBe('client-correlation-1234');
+	});
+
+	it('mints an id instead of echoing a client string outside the accepted charset', async () => {
+		// Issue #457: the id is now published in the body too, so an
+		// arbitrary client string must not ride along inside a
+		// documented contract field.
+		const res = await probeApp().request('/api/v1/probe', {
+			headers: { 'X-Request-Id': 'not a valid id <script>' },
+		});
+		const body = JSON.parse(await bodyText(res)) as { request_id: string };
+		expect(body.request_id).toMatch(/^[0-9a-f]{32}$/);
+		expect(res.headers.get('x-request-id')).toBe(body.request_id);
+	});
+
+	it('accepts the trace-id alphabets the ecosystem actually uses', () => {
+		for (const id of [
+			'2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b2b', // hex
+			'4bf92f3577b34da6a3ce929d0e0e4736', // W3C trace-id
+			'00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01', // traceparent
+			'req_1234.5678:prod', // dotted service id
+		]) {
+			expect(isAcceptedRequestId(id)).toBe(true);
+		}
+		for (const id of [
+			undefined,
+			null,
+			'',
+			'a'.repeat(129),
+			'has space',
+			'<script>',
+			'id\nwith-newline',
+		]) {
+			expect(isAcceptedRequestId(id)).toBe(false);
+		}
 	});
 
 	it('never leaks a stack, an SQL message, or a binding name', async () => {

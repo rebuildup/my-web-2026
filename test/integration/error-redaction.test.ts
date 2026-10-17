@@ -1,4 +1,4 @@
-import { env, SELF } from 'cloudflare:test';
+import { SELF, env } from 'cloudflare:test';
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { resetVerifyApiKey, withVerifyApiKey } from '../../src/http/api-keys/middleware';
@@ -359,11 +359,12 @@ describe('failed input is redacted but still correlatable (Issue #457)', () => {
  * a visitor as a rendered screen. `SELF.fetch` drives the real SSR
  * pipeline, so this asserts what an anonymous browser would receive.
  *
- * No `portfolio_*` table exists in this suite's D1 — the setup file
- * applies only the Better Auth schema — which is precisely the state a
- * deployment is in when a migration has not run. Before Issue #457 the
- * D1 message travelled through TanStack Start's `ShallowErrorPlugin`
- * into the rendered error screen.
+ * No `portfolio_*` table and no `reaction_emoji_catalog` table exist in
+ * this suite's D1 — the setup file applies only the Better Auth
+ * schema — which is precisely the state a deployment is in when a
+ * migration has not run. Before Issue #457 the D1 message travelled
+ * through TanStack Start's `ShallowErrorPlugin` into the rendered
+ * error screen of `/portfolio`, `/about`, and `/`.
  */
 const HTML_FORBIDDEN = [
 	'SQLITE_ERROR',
@@ -372,29 +373,98 @@ const HTML_FORBIDDEN = [
 	'portfolio_project',
 	'portfolio_link',
 	'portfolio_media',
+	'reaction_emoji_catalog',
 	'BETTER_AUTH_SECRET',
 	'at Object.',
 ];
 
 describe('public server-function surface is redacted (Issue #457)', () => {
-	it('SSR of /portfolio shows the safe description, not the D1 message', async () => {
-		const res = await SELF.fetch('https://example.com/portfolio');
-		const html = await res.text();
-		expect(res.status).toBe(500);
+	// These cases drive the real SSR pipeline of the three public
+	// screens, which is the only way to assert what a visitor's
+	// browser actually receives. The render is heavier than the
+	// boundary cases above (a full workerd render, and for `/` the
+	// home loader's own self-calls), so they carry an explicit
+	// timeout instead of inheriting the 5s default.
+	const SSR_TIMEOUT_MS = 30_000;
 
-		const rendered = /portfolio_unavailable \(ref=[0-9a-f]{8}\)/.exec(html)?.[0];
-		expect(rendered).toBeDefined();
+	it(
+		'SSR of /portfolio shows the safe description, not the D1 message',
+		async () => {
+			const res = await SELF.fetch('https://example.com/portfolio');
+			const html = await res.text();
+			expect(res.status).toBe(500);
 
-		const leaked = HTML_FORBIDDEN.filter((needle) => html.includes(needle));
-		expect(leaked).toEqual([]);
-		emit({
-			case: 'GET /portfolio (SSR, portfolio table missing)',
-			meaning: 'failed',
-			request: 'GET /portfolio (SSR HTML)',
-			status: res.status,
-			body: { rendered_error_text: rendered },
-			request_id: /ref=([0-9a-f]{8})/.exec(rendered ?? '')?.[1] ?? null,
-			leaked,
-		});
-	});
+			const rendered = /portfolio_unavailable \(ref=[0-9a-f]{16}\)/.exec(html)?.[0];
+			expect(rendered).toBeDefined();
+
+			const leaked = HTML_FORBIDDEN.filter((needle) => html.includes(needle));
+			expect(leaked).toEqual([]);
+			emit({
+				case: 'GET /portfolio (SSR, portfolio table missing)',
+				meaning: 'failed',
+				request: 'GET /portfolio (SSR HTML)',
+				status: res.status,
+				body: { rendered_error_text: rendered },
+				request_id: /ref=([0-9a-f]{16})/.exec(rendered ?? '')?.[1] ?? null,
+				leaked,
+			});
+		},
+		SSR_TIMEOUT_MS,
+	);
+
+	it(
+		'SSR of /about shows the safe description, not the D1 message',
+		async () => {
+			// `/about` composes its `experience` subset from the same
+			// public portfolio rows, so the identical failure reached
+			// the identical mechanism. It now runs through the same
+			// redaction boundary with the label `about`.
+			const res = await SELF.fetch('https://example.com/about');
+			const html = await res.text();
+			expect(res.status).toBe(500);
+
+			const rendered = /portfolio_unavailable \(ref=[0-9a-f]{16}\)/.exec(html)?.[0];
+			expect(rendered).toBeDefined();
+
+			const leaked = HTML_FORBIDDEN.filter((needle) => html.includes(needle));
+			expect(leaked).toEqual([]);
+			emit({
+				case: 'GET /about (SSR, portfolio table missing)',
+				meaning: 'failed',
+				request: 'GET /about (SSR HTML)',
+				status: res.status,
+				body: { rendered_error_text: rendered },
+				request_id: /ref=([0-9a-f]{16})/.exec(rendered ?? '')?.[1] ?? null,
+				leaked,
+			});
+		},
+		SSR_TIMEOUT_MS,
+	);
+
+	it(
+		'SSR of / still renders when the reaction catalog cannot be read',
+		async () => {
+			// The home page is the highest-traffic public surface and
+			// its reactions widget reads `reaction_emoji_catalog` on
+			// every SSR pass. The read is best-effort: an unreadable
+			// catalog degrades the widget, it does not throw the route
+			// (Issue #457).
+			const res = await SELF.fetch('https://example.com/');
+			const html = await res.text();
+			expect(res.status).toBe(200);
+
+			const leaked = HTML_FORBIDDEN.filter((needle) => html.includes(needle));
+			expect(leaked).toEqual([]);
+			emit({
+				case: 'GET / (SSR, reaction catalog missing)',
+				meaning: 'failed',
+				request: 'GET / (SSR HTML)',
+				status: res.status,
+				body: { rendered: 'home page rendered with a degraded reactions widget' },
+				request_id: res.headers.get('x-request-id'),
+				leaked,
+			});
+		},
+		SSR_TIMEOUT_MS,
+	);
 });

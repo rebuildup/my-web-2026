@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { PORTFOLIO_UNAVAILABLE, createReferenceId, withPublicErrorBoundary } from './public-errors';
+import {
+	PORTFOLIO_UNAVAILABLE,
+	REFERENCE_ID_HEX_LENGTH,
+	createReferenceId,
+	withPublicErrorBoundary,
+} from './public-errors';
 
 /**
  * Unit tests for the Portfolio public error boundary (Issue #457).
@@ -27,7 +32,7 @@ describe('withPublicErrorBoundary (Issue #457)', () => {
 			}).catch((err: unknown) => err as Error);
 			expect(thrown).toBeInstanceOf(Error);
 			expect(thrown.message).toMatch(
-				new RegExp(`^${PORTFOLIO_UNAVAILABLE} \\(ref=[0-9a-f]{8}\\)$`),
+				new RegExp(`^${PORTFOLIO_UNAVAILABLE} \\(ref=[0-9a-f]{${REFERENCE_ID_HEX_LENGTH}}\\)$`),
 			);
 			expect(thrown.message).not.toContain(SQL_LEAK);
 			expect(thrown.message).not.toContain('SQLITE_ERROR');
@@ -58,7 +63,9 @@ describe('withPublicErrorBoundary (Issue #457)', () => {
 			}).catch((err: unknown) => err as Error);
 			expect(spy).toHaveBeenCalledTimes(1);
 			const [label, logged] = spy.mock.calls[0] as [string, unknown];
-			const reference = /\(ref=([0-9a-f]{8})\)/.exec(thrown.message)?.[1];
+			const reference = new RegExp(`\\(ref=([0-9a-f]{${REFERENCE_ID_HEX_LENGTH}})\\)`).exec(
+				thrown.message,
+			)?.[1];
 			expect(label).toContain(`ref=${reference}`);
 			expect(label).not.toContain(SQL_LEAK);
 			// The internal detail stays available to the operator.
@@ -70,6 +77,6 @@ describe('withPublicErrorBoundary (Issue #457)', () => {
 
 	it('issues a distinct reference per failure', () => {
 		expect(createReferenceId()).not.toBe(createReferenceId());
-		expect(createReferenceId()).toMatch(/^[0-9a-f]{8}$/);
+		expect(createReferenceId()).toMatch(new RegExp(`^[0-9a-f]{${REFERENCE_ID_HEX_LENGTH}}$`));
 	});
 });

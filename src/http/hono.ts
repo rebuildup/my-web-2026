@@ -80,8 +80,11 @@ externalBoundary.get('/api/v1/db/ping', async (c) => {
 	} catch (err) {
 		// Issue #457: the failure body no longer names the binding.
 		// The request path already identifies which probe failed, so
-		// an operator loses nothing, and the client no longer learns
-		// that a D1 binding exists on this Worker.
+		// an operator loses nothing. Scope of the change: the
+		// **failure** branch only — the 200 body below keeps
+		// `binding: 'd1'` because it is a documented operator probe
+		// contract; whether the probe should publish the binding at
+		// all is recorded as an open decision in docs/security.md.
 		return publicErrorResponse(c, err, {
 			status: 503,
 			code: 'service_unavailable',

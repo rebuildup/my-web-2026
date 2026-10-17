@@ -85,7 +85,16 @@ accessCounterRouter.get('/count/:key', requireApiKey, rateLimitRead, async (c) =
 	if (!rawKey || rawKey.length === 0 || rawKey.length > MAX_COUNTER_KEY_LEN) {
 		return c.json({ error: 'invalid_key' }, 400);
 	}
-	const key = validateCounterKey(rawKey);
+	// Same Issue #457 reason as the POST sibling: the length guard
+	// above does not cover the character set, so a key containing a
+	// space or a control char must still answer 400 rather than
+	// escaping as an unhandled throw.
+	let key: string;
+	try {
+		key = validateCounterKey(rawKey);
+	} catch {
+		return c.json({ error: 'invalid_key' }, 400);
+	}
 	// Per-principal isolation (ADR-0012 §3): each consumer sees only
 	// its own counter row for the same `key`. The principal is the
 	// authenticated API key id — no client input accepted.

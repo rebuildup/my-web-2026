@@ -72,8 +72,12 @@ export interface PublicErrorBody {
 type ErrorContext = Context<{ Bindings: Env; Variables: { requestId?: string } }>;
 
 export interface PublicErrorOptions {
-	/** HTTP status for the redacted response (500 or 503 in practice). */
-	status: number;
+	/**
+	 * HTTP status for the redacted response. Narrowed to the two the
+	 * boundary actually emits: an unexpected throw is 500, a failed
+	 * dependency probe is 503.
+	 */
+	status: 500 | 503;
 	/** Stable code exposed to the client. */
 	code: PublicErrorCode;
 	/**
@@ -125,5 +129,5 @@ export function publicErrorResponse(
 		message: PUBLIC_MESSAGES[options.code],
 		request_id: requestId,
 	};
-	return c.json(body, options.status as 500);
+	return c.json(body, options.status);
 }

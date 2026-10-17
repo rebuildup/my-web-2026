@@ -263,6 +263,23 @@ describe('rejected input is named, not leaked (Issue #457)', () => {
 		expect(res.status).toBe(400);
 		expect(body.error).toBe('invalid_key');
 	});
+
+	it('a counter key containing a space answers 400 on the read path too', async () => {
+		// Same defect on `GET /count/:key`: the length guard passed
+		// and `validateCounterKey` then threw out of the handler,
+		// producing a 500 for a plain client mistake.
+		stubApiKey({ access_counter: ['read', 'write'] });
+		const { res, body } = await call(
+			'GET /api/v1/access/count/home%20page (key with a space)',
+			'rejected',
+			{
+				path: '/api/v1/access/count/home%20page',
+				init: { headers: { authorization: 'Bearer mk_home_capture_stub' } },
+			},
+		);
+		expect(res.status).toBe(400);
+		expect(body.error).toBe('invalid_key');
+	});
 });
 
 describe('failed input is redacted but still correlatable (Issue #457)', () => {

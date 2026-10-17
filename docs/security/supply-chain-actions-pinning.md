@@ -182,7 +182,8 @@ accepted exception and should be read as such.
 
 The same output appears in the `validate` job log of any CI run, and
 as a screenshot in
-[`docs/verification/supply-chain/`](../verification/supply-chain/README.md).
+[`docs/verification/supply-chain/`](../verification/supply-chain/README.md)
+(`actions-pin-check.webp`, ≤1600 px, <300 KB).
 
 ## 7. Abnormal observation (異常)
 
@@ -202,7 +203,7 @@ pnpm run ci:pins:check \
 `scripts/check-workflow-pinning.test.mjs` asserts that exact rule
 set, so the screenshot and this section cannot drift apart silently.
 The rendered failure is
-[`actions-pin-check-fixture-fail.png`](../verification/supply-chain/actions-pin-check-fixture-fail.png).
+[`actions-pin-check-fixture-fail.webp`](../verification/supply-chain/actions-pin-check-fixture-fail.webp).
 
 ## 8. Repair procedure (修復手順)
 

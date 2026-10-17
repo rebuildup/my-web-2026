@@ -5,15 +5,23 @@
  *
  *   node scripts/workflow-pin-report.mjs
  *
- * Writes the screenshots the Issue asks for under
+ * Writes the verification images under
  * `docs/verification/supply-chain/`:
  *
- *   - `actions-pin-check.png`          the audit of the shipped
- *                                       workflows (normal observation)
- *   - `actions-pin-check-fixture-fail.png`
- *                                       the same gate pointed at the
- *                                       committed abnormal fixture
- *                                       (abnormal observation)
+ *   - `actions-pin-check.webp`          the audit of the shipped
+ *                                        workflows (normal observation)
+ *   - `actions-pin-check-fixture-fail.webp`
+ *                                        the same gate pointed at the
+ *                                        committed abnormal fixture
+ *                                        (abnormal observation)
+ *
+ * The Issue names `actions-pin-check.png`; the committed artefact is the
+ * same image as **WebP**, because a full-resolution PNG of a text report
+ * is ~1 MB of repository bloat for a document that is only ever read in
+ * a browser. Chromium renders at deviceScaleFactor 2 for legibility and
+ * `sharp` then downscales to `MAX_WIDTH` and encodes WebP at
+ * `WEBP_QUALITY`, so the committed file stays small while the text is
+ * still readable at 100% zoom. No PNG is written or committed.
  *
  * Both images are rendered from the SAME function the CI gate uses
  * (`auditWorkflows`), so a screenshot cannot claim a pin the gate does
@@ -24,7 +32,7 @@
  *
  * This is a documentation tool, not a gate: it never runs inside
  * `validate:*`. Re-run it whenever a workflow, the pin manifest or the
- * gate rules change, and commit the regenerated PNGs in the same
+ * gate rules change, and commit the regenerated images in the same
  * change.
  */
 
@@ -33,6 +41,7 @@ import { createServer } from 'node:http';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
+import sharp from 'sharp';
 import {
 	RULES,
 	auditWorkflows,
@@ -43,6 +52,11 @@ import {
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = resolve(root, 'docs/verification/supply-chain');
 const PORT = 4602;
+
+/** Committed-image budget: a verification screenshot must not bloat the repo. */
+const MAX_WIDTH = 1600;
+const WEBP_QUALITY = 80;
+const MAX_BYTES = 300 * 1024;
 
 const realAudit = auditWorkflows({
 	workflowsDir: resolve(root, '.github/workflows'),
@@ -202,20 +216,31 @@ try {
 		deviceScaleFactor: 2,
 	});
 	await pageHandle.goto(`http://127.0.0.1:${PORT}/`, { waitUntil: 'load' });
-	await pageHandle.screenshot({
-		path: resolve(OUT_DIR, 'actions-pin-check.png'),
-		fullPage: true,
-	});
+
+	/**
+	 * Chromium captures PNG in memory; only the WebP encode is ever
+	 * written. The PNG buffer is discarded, so no oversized artefact can
+	 * be committed by accident.
+	 */
+	async function encode(buffer) {
+		const { data, info } = await sharp(buffer)
+			.resize({ width: MAX_WIDTH, withoutEnlargement: true })
+			.webp({ quality: WEBP_QUALITY })
+			.toBuffer({ resolveWithObject: true });
+		return { data, info };
+	}
+
+	const normal = await encode(await pageHandle.screenshot({ fullPage: true }));
+	writeFileSync(resolve(OUT_DIR, 'actions-pin-check.webp'), normal.data);
 
 	// The abnormal half on its own, for the "the gate must be seen
-	// failing" evidence in the doc and the PR. An element screenshot
-	// rather than a viewport one, so the image is exactly the section.
-	await pageHandle.locator('#abnormal').screenshot({
-		path: resolve(OUT_DIR, 'actions-pin-check-fixture-fail.png'),
-	});
+	// failing" evidence in the doc and the PR. An element screenshot,
+	// not a viewport one, so the image is exactly that section.
+	const abnormal = await encode(await pageHandle.locator('#abnormal').screenshot());
+	writeFileSync(resolve(OUT_DIR, 'actions-pin-check-fixture-fail.webp'), abnormal.data);
 	// Status-only self-check that the rendered page is not blank: what
 	// the browser actually painted, not what the generator intended to
-	// paint. A blank PNG would otherwise look like a passing check.
+	// paint. A blank image would otherwise look like a passing check.
 	const painted = (await pageHandle.locator('body').innerText()).trim();
 	if (
 		!painted.includes(realAudit.summary.status) ||
@@ -224,6 +249,21 @@ try {
 		throw new Error(`rendered report is missing its verdict lines:\n${painted.slice(0, 400)}`);
 	}
 	await pageHandle.close();
+
+	// Budget guard: an image that grew past the repository limit is a
+	// finding here, not a surprise in the diff review.
+	for (const [name, image] of [
+		['actions-pin-check.webp', normal],
+		['actions-pin-check-fixture-fail.webp', abnormal],
+	]) {
+		const bytes = image.data.byteLength;
+		if (image.info.width > MAX_WIDTH || bytes > MAX_BYTES) {
+			throw new Error(
+				`${name} is ${image.info.width}x${image.info.height} / ${bytes} bytes, over the ` +
+					`${MAX_WIDTH}px / ${MAX_BYTES} byte verification-image budget`,
+			);
+		}
+	}
 	writeFileSync(
 		resolve(OUT_DIR, 'audit.json'),
 		`${JSON.stringify({ real: realAudit.summary, fixture: fixtureAudit.summary }, null, '\t')}\n`,
@@ -236,5 +276,5 @@ try {
 const summarise = (audit) =>
 	`${audit.summary.status} ${audit.summary.findings} findings / ${audit.summary.pins} pins`;
 console.log(
-	`[workflow-pin-report] wrote docs/verification/supply-chain/actions-pin-check.png and actions-pin-check-fixture-fail.png (real: ${summarise(realAudit)}, fixture: ${summarise(fixtureAudit)})`,
+	`[workflow-pin-report] wrote docs/verification/supply-chain/actions-pin-check.webp and actions-pin-check-fixture-fail.webp (real: ${summarise(realAudit)}, fixture: ${summarise(fixtureAudit)})`,
 );

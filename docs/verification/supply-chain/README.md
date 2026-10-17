@@ -1,8 +1,17 @@
 # Actions pin / permission verification (Issue #472)
 
-`actions-pin-check.png` is the screenshot the Issue asks for: the
+`actions-pin-check.webp` is the screenshot the Issue asks for: the
 GitHub Actions supply-chain audit **as it is measured**, not as it is
 described.
+
+> **Format note.** Issue #472 names `actions-pin-check.png`. The
+> committed artefact is the same image as **WebP** (≤1600 px wide,
+> quality 80, <300 KB), produced by `scripts/workflow-pin-report.mjs`;
+> the lossless PNG render is kept in memory and never committed, so a
+> text-heavy verification image does not add ~1 MB per run to the
+> repository. Everything a reviewer needs is visible in the WebP at
+> 100% zoom, and the audit data itself is committed next to it as
+> `audit.json`.
 
 ## What is in the image
 
@@ -27,7 +36,7 @@ so the picture cannot claim a pin the gate would reject.
    repair table location
    ([`docs/security/supply-chain-actions-pinning.md`](../../security/supply-chain-actions-pinning.md)).
 
-`actions-pin-check-fixture-fail.png` is the abnormal section alone,
+`actions-pin-check-fixture-fail.webp` is the abnormal section alone,
 for the PR body and quick linking.
 
 ## Nothing secret is involved
@@ -38,7 +47,7 @@ permission scopes and rule ids. No environment is queried, no
 credential is read, no network or production host is contacted. The
 fixture's `run:` lines are `echo`s of the forbidden commands, never
 the commands, and it lives outside `.github/workflows/` so GitHub
-Actions never reads it. `audit.json` next to the PNGs is the
+Actions never reads it. `audit.json` next to the images is the
 status-only summary of the same run.
 
 An image is not the proof: the gate's behaviour is asserted in
@@ -54,8 +63,10 @@ pnpm run ci:pins:report
 ```
 
 The script re-runs both audits, re-renders the report and overwrites
-the PNGs. It also self-checks that the rendered page actually
-contains both verdicts, so a blank screenshot cannot be committed.
-Commit the regenerated images in the same change as any workflow,
-pin-manifest or gate-rule edit. It is a documentation tool and never
-runs inside `validate:*`.
+the WebP files (Chromium PNG in memory → `sharp` resize to 1600 px →
+WebP quality 80). It self-checks that the rendered page contains both
+verdict lines, so a blank screenshot cannot be committed, and fails if
+either image exceeds the 1600 px / 300 KB budget. Commit the
+regenerated images in the same change as any workflow, pin-manifest or
+gate-rule edit. It is a documentation tool and never runs inside
+`validate:*`.

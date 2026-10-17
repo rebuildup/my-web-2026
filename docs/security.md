@@ -48,7 +48,7 @@ The full contract, the per-endpoint table, and the reproduction
 commands live in [`security/input-validation.md`](security/input-validation.md).
 The measured matrix (real requests through the production boundary in
 the local workerd pool) is committed as
-`docs/verification/security/input-validation-matrix.png` and is
+`docs/verification/security/input-validation-matrix.webp` and is
 regenerated with `pnpm run verification:input-matrix`.
 
 ## Test scope: local workerd vs real Cloudflare

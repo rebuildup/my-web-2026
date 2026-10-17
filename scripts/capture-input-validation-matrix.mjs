@@ -11,11 +11,17 @@
  * self-contained HTML report, and screenshots it with the Playwright
  * Chromium that the E2E suite already uses.
  *
- * Output: `docs/verification/security/input-validation-matrix.png`
+ * Output: `docs/verification/security/input-validation-matrix.webp`
  * Scratch: `.tmp/input-validation-matrix.html` (gitignored, ephemeral)
  *
  * Usage:
  *   pnpm run verification:input-matrix
+ *
+ * Playwright cannot encode WebP, so the page is screenshotted into a
+ * Buffer and re-encoded with the `sharp` devDependency already used by
+ * `scripts/generate-counter-digits.mjs`: width-capped and moderately
+ * compressed (quality 80), because a committed PNG screenshot is the
+ * single largest artefact in the repository.
  *
  * Exits non-zero when the suite fails, when the table is empty, or when
  * a row would leak a credential into the artefact.
@@ -30,8 +36,12 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TEST_FILE = 'test/integration/input-validation.test.ts';
 const START = '<!-- input-validation-matrix:start -->';
 const END = '<!-- input-validation-matrix:end -->';
-const OUTPUT = 'docs/verification/security/input-validation-matrix.png';
+const OUTPUT = 'docs/verification/security/input-validation-matrix.webp';
 const SCRATCH_HTML = '.tmp/input-validation-matrix.html';
+
+/** Artefact encoding contract (mirrored in docs/security.md). */
+const MAX_WIDTH_PX = 1600;
+const WEBP_QUALITY = 80;
 
 /** Anything matching these must never reach a committed artefact. */
 const SECRET_PATTERNS = [/bearer\s/i, /mk_[a-z0-9_]+/i, /secret/i, /token/i];
@@ -204,6 +214,7 @@ async function main() {
 	writeFileSync(resolve(repoRoot, SCRATCH_HTML), html, 'utf8');
 
 	const { chromium } = await import('@playwright/test');
+	const { default: sharp } = await import('sharp');
 	const browser = await chromium.launch();
 	try {
 		const page = await browser.newPage({ viewport: { width: 1280, height: 900 } });
@@ -211,12 +222,18 @@ async function main() {
 		await page.waitForLoadState('load');
 		const target = resolve(repoRoot, OUTPUT);
 		mkdirSync(dirname(target), { recursive: true });
-		await page.screenshot({ path: target, fullPage: true });
+		const png = await page.screenshot({ fullPage: true });
+		const { size } = await sharp(png)
+			.resize({ width: MAX_WIDTH_PX, withoutEnlargement: true })
+			.webp({ quality: WEBP_QUALITY })
+			.toFile(target);
+		process.stdout.write(
+			`[input-matrix] wrote ${OUTPUT} (${rows.length} cases, ${Math.round(size / 1024)} KiB WebP)\n`,
+		);
 	} finally {
 		await browser.close();
 	}
 
-	process.stdout.write(`[input-matrix] wrote ${OUTPUT} (${rows.length} cases)\n`);
 	return 0;
 }
 

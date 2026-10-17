@@ -120,15 +120,19 @@ route の middleware 順は `requireApiKey` → `rateLimit*` → `jsonBody(...)`
 pnpm exec vitest run src/http/validation.test.ts
 pnpm exec vitest run --reporter=verbose test/integration/input-validation.test.ts
 
-# 2. 検証アーティファクト（PNG）の再生成
+# 2. 検証アーティファクト（WebP）の再生成
 pnpm run verification:input-matrix
 ```
 
 `test/integration/input-validation.test.ts` は 33 ケースを実際の HTTP リクエストとして
 local workerd pool（D1 / R2 binding 実物、API key は `withVerifyApiKey` seam の fixture）で
-実行し、観測した status / `error` code から matrix を出力する。PNG はその実測値の
+実行し、観測した status / `error` code から matrix を出力する。WebP はその実測値の
 レンダリングであり、secret は含まれない（capture script が credential らしき行を検出したら
 出力しない）。
 
-生成先: `docs/verification/security/input-validation-matrix.png`
+生成先: `docs/verification/security/input-validation-matrix.webp`
+
+capture script は Chromium の PNG スクリーンショットを `sharp` で WebP に再エンコードする
+（幅 1600px 上限・quality 80）。committed な検証スクリーンショットを PNG のまま置くと
+リポジトリの容量を不必要に膨らませるため、`docs/verification/**` は `.webp` のみコミットする。
 (one Issue = 1 PR のため、差分が増えるごとに同じコマンドで再生成する)

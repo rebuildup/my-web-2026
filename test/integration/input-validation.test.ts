@@ -19,7 +19,7 @@ import { MAX_JSON_BODY_BYTES } from '../../src/http/validation';
  * groups pin the two guards that protect those three.
  *
  * Reproduce the verification artefact committed at
- * `docs/verification/security/input-validation-matrix.png` with:
+ * `docs/verification/security/input-validation-matrix.webp` with:
  *
  *     pnpm run verification:input-matrix
  *

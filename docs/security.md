@@ -29,6 +29,18 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## Inbound webhooks
+
+`/webhooks/*` is dispatched to the external boundary but **no handler
+is mounted** — a signed delivery answers `404 {"error":"not_found"}`.
+The verification adapter for a future sender (GitHub, or a CMS later)
+— HMAC signature, timestamp freshness, delivery-id replay
+de-duplication — exists as a reviewed contract with local fixtures and
+tests, and ships without an entry point on purpose. Contract, failure
+behaviour, and the promotion checklist that must be satisfied before a
+route exists:
+[`docs/security/webhook-signature-verification.md`](security/webhook-signature-verification.md).
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

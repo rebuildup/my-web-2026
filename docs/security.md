@@ -29,6 +29,62 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## Session cookie attributes (Issue #438)
+
+The cookies Better Auth sets on a successful sign-in have a pinned
+attribute contract. It lives next to the auth configuration it
+projects from — `src/cloudflare/auth/session-cookie-contract.ts` —
+and is enforced by `src/cloudflare/auth/session-cookie-contract.test.ts`
+in the local workerd pool:
+
+| Cookie                     | Contract                                                        |
+| -------------------------- | --------------------------------------------------------------- |
+| `session_token`            | `HttpOnly`, `SameSite=Lax`, `Path=/`, host-only (no `Domain`), `Max-Age=2592000` (30 days), plus `Secure` + the `__Secure-` name prefix on an https origin |
+| `session_data` (cookie cache) | same attribute policy, `Max-Age=300` (5 min)                  |
+
+The `Secure` attribute and the `__Secure-` prefix are origin-dependent
+by design: Better Auth derives both from the resolved base URL, so the
+contract evaluates against an explicit profile.
+
+- **https** — production. `wrangler.production.jsonc` pins
+  `BETTER_AUTH_URL = https://rebuildup.dev` (ADR-0014) and
+  `scripts/check-cloudflare-contract.mjs --build` proves the built
+  Worker carries it. `Secure` and `__Secure-` are required.
+- **http** — local dev and the test pool, where no origin is pinned.
+  `Secure` is a violation there: a browser on a plain-http origin that
+  is not localhost drops the cookie, and every later request comes back
+  unauthenticated with no error.
+
+The test drives a real sign-in through `SELF.fetch` and then a set of
+forged fixtures in which exactly one attribute is weakened
+(`HttpOnly` removed, `Secure` dropped, `Domain` added, `SameSite=None`,
+`Path` narrowed, `Max-Age` extended, …). Every fixture must **fail**
+the same evaluator; a fixture that passed would mean the contract
+cannot detect the downgrade it exists to detect.
+
+Two properties the test also pins:
+
+- **No value in the report.** The evaluator drops cookie values at
+  parse time and the report type has no field for one, so CI logs,
+  artefacts, and verification screenshots cannot carry a session token
+  or a signed user record.
+- **No production mutation.** The deployed cookie shape is computed
+  locally by handing Better Auth's own `getCookies()` the pinned
+  origin, not by signing in against production. Confirming the emitted
+  headers on the live Worker needs a real account and is left to the
+  operator.
+
+Reproduce the verification report (this is what
+`docs/verification/security/cookie-header-test.webp` was generated
+from):
+
+```bash
+pnpm exec vitest run src/cloudflare/auth/session-cookie-contract.test.ts --reporter=verbose
+```
+
+The run prints one `SESSION_COOKIE_CONTRACT_REPORT {…}` line
+containing attributes only.
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

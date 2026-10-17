@@ -85,8 +85,16 @@ const FIXTURE_USER = {
  */
 interface CaseEvidence {
 	id: string;
+	kind: 'real-response' | 'fixture';
 	expectation: 'pass' | 'fail';
 	profile: SessionCookieProfileId;
+	/**
+	 * The `Set-Cookie` strings the evaluator saw, for the negative
+	 * cases. Values are placeholders, but the renderer still masks
+	 * them so the screenshot shows the same redaction rule the PR body
+	 * claims.
+	 */
+	headers: string[];
 	cookies: {
 		name: string;
 		secure: boolean;
@@ -101,11 +109,19 @@ interface CaseEvidence {
 
 const evidence = new Map<string, CaseEvidence>();
 
-function record(id: string, expectation: 'pass' | 'fail', report: SessionCookieContractReport) {
+function record(
+	id: string,
+	kind: CaseEvidence['kind'],
+	expectation: 'pass' | 'fail',
+	report: SessionCookieContractReport,
+	headers: readonly string[] = [],
+) {
 	evidence.set(id, {
 		id,
+		kind,
 		expectation,
 		profile: report.profile.id,
+		headers: [...headers],
 		cookies: report.cookies.map((cookie) => ({ name: cookie.name, ...cookie.attributes })),
 		violations: report.violations.map((violation) => ({
 			code: violation.code,
@@ -136,12 +152,13 @@ async function signIn(email: string, password: string): Promise<Response> {
  * Serialize a Better Auth cookie descriptor into a `Set-Cookie`
  * string, with the placeholder value. Mirrors Better Auth's own
  * attribute spelling so the fixture is indistinguishable from a real
- * response at the parser.
+ * response at the parser. `expires` / `partitioned` / `prefix` are
+ * carried by the descriptor type but are never set by this
+ * configuration, and the contract does not evaluate them.
  */
-function serializeCookie(
-	name: string,
-	attributes: Record<string, string | number | boolean | undefined>,
-): string {
+type BetterAuthCookieAttributes = ReturnType<typeof getCookies>['sessionToken']['attributes'];
+
+function serializeCookie(name: string, attributes: BetterAuthCookieAttributes): string {
 	const parts = [`${name}=${FIXTURE_VALUE}`];
 	if (attributes.secure === true) parts.push('Secure');
 	if (attributes.httpOnly === true) parts.push('HttpOnly');
@@ -289,7 +306,13 @@ describe('session cookie contract — positive (real workerd response)', () => {
 		expect(res.status).toBe(200);
 
 		const report = evaluateSessionCookies(readSetCookieHeaders(res.headers), localProfile);
-		record('local-workerd-sign-in', 'pass', report);
+		record(
+			'local-workerd-sign-in',
+			'real-response',
+			'pass',
+			report,
+			readSetCookieHeaders(res.headers),
+		);
 
 		expect(report.violations).toEqual([]);
 		expect(report.ok).toBe(true);
@@ -323,8 +346,9 @@ describe('session cookie contract — positive (real workerd response)', () => {
 		// built Worker carries this value.
 		expect(productionProfile.id).toBe('https');
 
-		const report = evaluateSessionCookies(productionShapedCookies(), productionProfile);
-		record('production-shape-fixture', 'pass', report);
+		const headers = productionShapedCookies();
+		const report = evaluateSessionCookies(headers, productionProfile);
+		record('production-shape-fixture', 'fixture', 'pass', report, headers);
 
 		expect(report.violations).toEqual([]);
 		expect(report.ok).toBe(true);
@@ -350,8 +374,9 @@ describe('session cookie contract — negative (real response and forged fixture
 		const res = await signIn(FIXTURE_USER.email, 'wrong-password');
 		expect(res.status).toBe(401);
 
-		const report = evaluateSessionCookies(readSetCookieHeaders(res.headers), localProfile);
-		record('rejected-sign-in', 'fail', report);
+		const headers = readSetCookieHeaders(res.headers);
+		const report = evaluateSessionCookies(headers, localProfile);
+		record('rejected-sign-in', 'real-response', 'fail', report, headers);
 
 		expect(report.ok).toBe(false);
 		expect(codes(report)).toContain('session-cookie-missing');
@@ -361,7 +386,7 @@ describe('session cookie contract — negative (real response and forged fixture
 		it(`rejects the forged fixture: ${fixture.id}`, () => {
 			const profile = fixture.profile === 'https' ? productionProfile : localProfile;
 			const report = evaluateSessionCookies(fixture.cookies, profile);
-			record(fixture.id, 'fail', report);
+			record(fixture.id, 'fixture', 'fail', report, fixture.cookies);
 
 			expect(report.ok).toBe(false);
 			expect(codes(report)).toEqual(expect.arrayContaining(fixture.expectedCodes));

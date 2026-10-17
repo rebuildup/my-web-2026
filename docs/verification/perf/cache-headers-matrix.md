@@ -117,6 +117,15 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
 | 測定対象 | `baseUrl` | 例 `http://127.0.0.1:3000` |
 | 時刻 | `measuredAt` | ISO-8601（UTC） |
 
+**ビルドの同一性。** probe は既に存在する本番同等のpreview に対して走る。
+記録された SHA と probe したビルドが同一であるためには、
+`src/` `public/` `cloudflare.config.ts` `vite.config.ts` `migrations/` が
+その SHA でビルドされている必要がある。本次採取では、ビルドを
+`c11bd77` 相当のツリー（`541e401` の runtime ツリーと同一）で作成し、
+`6557eab` までの差分は `scripts/` `docs/` `package.json`
+`quality/profile.yaml` のみであることを `git diff 541e401 6557eab -- src/ public/` で確認した。
+runtime ツリーを変更した場合は `pnpm run build:production` を再実行してから測り直す。
+
 **指標（スコア）は出ない。** 速度・転送量・TTFB をこのツールは測らない。
 Lighthouse 導入は #384、release gate 化は #385、Web Vitals 予算は #386 の担当であり、
 ここで先行させると「今回の1要素だけを直す」という受け入れ条件3に反する。

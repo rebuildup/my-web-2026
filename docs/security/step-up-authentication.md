@@ -93,6 +93,14 @@ confirmed_at)` に置く。
 - 本番 D1 の破壊的操作は行わない。migration の production 適用は
   リリース時の運用ステップであり、本 PR では適用しない。
 
+UI 側の 3 状態は local dev サーバ（local workerd + local D1 + `.invalid`
+ドメインの fixture 管理者）で Chromium から採取した。
+`docs/verification/security/step-up-auth-state.webp`
+（3 枚を合成。各キャプションに状態と期待結果を記載）。撮影は fixture
+アカウントのみを対象とし、production アカウント・本番 D1・本番
+credential は使用していない。パスワード欄はマスク表示のため、
+画像に資格情報は含まれない。
+
 ## ログ / 出力方針
 
 - 提交的されたパスワード、session token、アカウントの email は

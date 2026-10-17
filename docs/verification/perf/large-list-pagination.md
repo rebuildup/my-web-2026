@@ -11,8 +11,8 @@
 
 | 項目 | 値 |
 | --- | --- |
-| source SHA | `5d257d81909240a8e3b844b6a4653ef4b3e92ecf`（base `release-0-6-3`） |
-| ブラウザ | Chromium 153.0.8010.12（`@playwright/test ^1.63.0`、playwright.config.ts と同じ chromium プロジェクト） |
+| source SHA | `2395ef8`（`release-0-6-3` 起点。before / after とも同じ SHA。§2 参照） |
+| ブラウザ | Chromium 153.0.8010.12（`@playwright/test ^1.63.0`、playwright.config.ts と同じ chromium） |
 | viewport / DPR | 1280x900 / 1 |
 | CPU | CDP `Emulation.setCPUThrottlingRate` = **4x** |
 | ネットワーク | CDP `Network.emulateNetworkConditions` = Slow 4G 相当（RTT 150 ms / down 1638 kbps / up 750 kbps） |
@@ -20,6 +20,7 @@
 | fixture | local D1 に **120 行**（`portfolio_project`）、先頭ページ size **100**（`clampLimit` の既定値） |
 | media | 未投入。`vite preview` は `MEDIA_PUBLIC_BASE_URL` に本番 media origin を束縛するため、card は仕様どおり placeholder / text-only の形状で測定 |
 | Node / OS | v26.12.0 / darwin arm64 |
+| 実行環境 | ローカル開発機（CI runner ではない）。CI 側の再現条件は同じ browser / viewport / CPU / network 設定で同じ**手順**を通す（§3 参照） |
 
 コマンド:
 
@@ -28,64 +29,76 @@ pnpm run build                                   # 実 Worker ビルド（previe
 node scripts/perf-large-list.mjs                 # seed → measure → click Load more → cleanup
 ```
 
-CI での再現条件は上表の browser / viewport / CPU / network / source SHA をそのまま使えば同じ形状の数字が出るが、**runner ノイズのため CI を gate にはしない**（#385 / #386 の領域）。CI が常時守るのは `scripts/perf-large-list.test.mjs`（純ロジック契約）と `src/portfolio/components/list-scale.test.tsx`（100+ 行での DOM / a11y 不変条件）である。
-
 ## 2. 実測結果（120行 fixture）
 
-`Load more` は実際にクリックし、2ページ目が DOM に入ったところで計測した。
+`Load more` は**実際にクリック**し、2ページ目が DOM に入ったところで計測した。
+`before` は「今回の1要素修正」を戻した状態（`src/portfolio/components/ProjectCard.tsx` のみ 7b95c4b 版に差し替え、他は同一）、
+`after` はその修正を含む状態。両 run とも source SHA は `2395ef8`、ハーネスも同じものを使っている。
 
-| 指標 | before（修正前） | after（修正後） | 合格基準 |
+| 指標 | before | after | 合格基準 |
 | --- | --- | --- | --- |
 | 初期描画 card 数 | 100 | 100 | page size 100 と一致（満杯） |
 | Load more 後 card 数 | 120 | 120 | fixture 全件 = 120 |
 | DOM node 数（初期） | 1826 | 1826 | — |
-| DOM node 数 / card | 18.26（pinned 付き card は 20） | 18.26 | **上限 20**（1 card が 1 card のまま） |
+| DOM node 数 / card | 18.26（pinned 付き card は 20） | 18.26（同じ） | **上限 20** |
 | DOM node 数（Load more 後） | 2164 | 2164 | 追加 20 行ぶんの node だけ増える |
-| JS heap | 9.2 MB → 10.9 MB（+1.7 MB） | 9.2 MB → 10.9 MB（+1.7 MB） | 記録のみ（noise が gate 向きでない） |
-| navigation `load` | 12351 ms | 12351 ms | 4x CPU + Slow 4G 条件の記録値 |
-| Load more 追加レイテンシ | 413 ms | 413 ms | 記録のみ |
-| `aria-label` ただし命名ロール無し | **122** | **0** | **0** |
-| アクセシビリティツリー上で "facets" group | **0** | **100** | 1 page あたり card 数と一致 |
+| アクセシビリティツリー全体 node 数 | 3241 | 3241 | 修正で node が増えていないことの証拠 |
+| JS heap | 10.7 MB → 11.6 MB | 9.6 MB → 11.2 MB | 記録のみ（gate 向きでない） |
+| navigation `load` | 12820 ms | 12721 ms | 4x CPU + Slow 4G 条件の記録値 |
+| Load more 追加レイテンシ | 774 ms | 505 ms | 記録のみ |
+| 一覧面の命名不可な `aria-label` | **100** | **0** | **0** |
+| ページ全体の命名不可な `aria-label` | 101 | 1（下記 follow-up） | 記録のみ（§4） |
+| AX 上で "facets" group と読める node | **0** | **100**（追加後は 120） | 描画 card 数と一致 |
+| alt 無し image | 0 | 0 | 0 |
 | ページエラー | 0 | 0 | 0 |
+| verdict | FAIL | **PASS** | — |
 
-### before / after の差分は 1 要素だけ
+### before / after の差は 1 要素だけ
 
 - **修正要素**: `ProjectCard` の facet group（`src/portfolio/components/ProjectCard.tsx`）。
   `aria-label="facets"` を置いた **role 無しの `<div>`** に `role="group"` を足した 1 属性のみ。
 - **なぜこれが 1 card あたりの欠陥なのか**: role `generic` の要素の `aria-label` は prohibited attribute で、
-  どのアクセシビリティ API も名前を読み上げない。1 枚占总card なので、100 行(page 1) なら 100 件、
-  120 行なら 120 件の違反になる。上の「アクセシビリティツリー上で "facets" group = 0」は
-  Chromium が実際にその名前を読み上げていない証拠（after で 100 に増える）。
-- **DOM 	node 数が変わらない理由**: 属性 1 個の追加なので、per-card ceiling 20 も 1826 node も動かない。
-  可視レイアウトも動かない（`role="group"` は表示ロールを持たない）。
-- **意図的に直していないもの**: `FacetFilter` の `aria-label="facet filter chips"` と
-  `PortfolioDetail` の `aria-label="facets"` も同じ `<div>` 形状だが、今回の計測対象は
-  **一覧の card**（件数に比例する面）だけなので|Issue の「今回の1要素のみ」に従って触っていない。
-  残る 2 箇所は本 Issue の known issue として記録し、Follow-up の候補とする（別 Issue）。
+  どのアクセシビリティ API も名前を読み上げない。1 枚当たり card なので、page 1（100 行）では 100 件、
+  fixture 全体（120 行）では 120 件の違反になる。「AX 上で "facets" group = 0」は Chromium が実際に
+  その名前を読み上げていない証拠であり、after で 100（追加後は 120）になる。
+- **DOM node 数が動かない理由**: 属性 1 個の追加なので 1826 node・per-card 18.26・AX node 3241 は before/after 同一。
+  可視レイアウトも動かない（`role="group"` は表示ロールを持たない）。1 属性で、1 card あたりの構造は変えていない。
+- **意図的に直していないもの**: `FacetFilter` の `aria-label="facet filter chips"` と `PortfolioDetail` の
+  `aria-label="facets"` も同じ `<div>` 形状だが、今回の計測対象は**一覧の card**（件数に比例する面）だけ。
+ |Issue の「今回の1要素のみ」に従って触っておらず、ページ全体の計測値 101 → 1 の残りがそれ。
+  1 ページに 1 回しか描かない面なので、件数に比例する gate 対象ではない（§4）。
 
 ## 3. CI が常時守る不変条件（gate ではない）
 
 | ファイル | 何を守るか |
 | --- | --- |
 | `src/portfolio/components/list-scale.test.tsx` | 100 行 page の per-card DOM node 上限、追記 page の node が線形に増えること、role generic 要素に `aria-label` が無いこと、facet group が名前付きで公開されること |
-| `scripts/perf-large-list.test.mjs` | fixture の決定性・列挙値の閉じた範囲・cleanup のスコープ、a11y 不変条件の純関数、上限判定が実際に fail すること、CLI が 100+ を拒否すること |
+| `src/portfolio/components/PortfolioList.pagination.client.test.tsx` | 100+ 行での Load more 操作（1 クリック = 1 ページ要求、busy / disabled、追加後の順序と重複なし、終端で control が消える、エラーが alert で出る） |
+| `scripts/perf-large-list.test.mjs` | fixture の決定性・列挙値の閉じた範囲・cleanup のスコープ、a11y 不変条件の純関数（暗黙ロール解決込み）、上限判定が実際に fail すること、CLI が 100+ を拒否すること |
 
-`pnpm run test` は上記 2 つを含む（`scripts/perf-large-list.test.mjs` は
-`scripts/check-test-wiring.mjs` の契約に従い `package.json#scripts.test` から到達可能）。
+`pnpm run test` は上記のうち `list-scale.test.tsx` と `scripts/perf-large-list.test.mjs` を含む
+（`scripts/check-test-wiring.mjs` の契約に従い package.json から到達可能）。
+`PortfolioList.pagination.client.test.tsx` は happy-dom 用の `pnpm run test:client` 専用（既存方針、§5）。
 
-## 4. スクリーンショット
+## 4. follow-up 候補（今回の scope 外）
+
+`FacetFilter` / `PortfolioDetail` の同名 `<div aria-label>`。件数に比例しない面なので本 Issue の
+1 要素ルールと harness の gate scope の外。計測は「残りを隠さない」ためにページ全体の件数を出している。
+修正するなら別 Issue（1 Issue / 1 PR、`portfolio` obligation の owner は変わらない）。
+
+## 5. スクリーンショット
 
 `docs/verification/perf/large-list-pagination.png` は、計測した**同じページ**の viewport キャプチャに
 計測パネル（source SHA / browser / viewport / CPU / network / fixture / DOM / heap / append /
-a11y 不変条件 / verdict）を載せた 1 枚。ページング境界（100 枚目の card と 101 枚目）が
-画面内に入るスクロール位置で撮り、報告書の数字と食い違わないようにしている。
+a11y 不変条件 / verdict）を載せた 1 枚。ページング境界（100 枚目の card と 101 枚目）が画面内に
+入るスクロール位置で撮っており、JSON レポートの `screenshot` に
+`scrollY` と境界 2 枚の card テキストが記録されている（「stale な画像」が後から判別できるようにするため）。
 
-## 5. 制限（known limitations）
+## 6. 制限（known limitations）
 
 - media 未投入（placeholder 形状）。cover `<img>` がある場合の card node 数は +1 程度だが、
-  本 Issue では images を Production media origin に向けないため測定していない。
-- JS heap / latency は 4x CPU + Slow 4G の 1 回のラボ実測であり、runner ごとの差が大きい。
-  gate 化は #385 / #386 の判断。
-- happy-dom による操作テスト（`PortfolioList.pagination.client.test.tsx`）は
-  `pnpm run test:client` 専用で、`validate:fast` には入っていない（既存方針）。
-  実ページでの操作は本 Issue の計測（実クリック）が担保している。
+  本 Issue では images を本番 media origin に向けないため測定していない。
+- JS heap / latency は 4x CPU + Slow 4G の 1 回のラボ実測で、runner ごとの差が大きい。gate 化は #385 / #386 の判断。
+- before / after は同一 machine・同一 fixture・同一ハーネスでの 1 対 1 の比較だが、それぞれ 1 回の走査であり、
+  ヒープとレイテンシは測定ノイズを含む（DOM node 数と AX node 数はノイズを持たない）。
+- happy-dom による操作テストは `validate:fast` に入っていない（既存方針）。実ページでの操作は本 Issue の計測（実クリック）が担保している。

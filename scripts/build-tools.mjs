@@ -6,14 +6,15 @@
  *   node scripts/build-tools.mjs [--tool=<slug>] [--dry-run]
  *   node scripts/build-tools.mjs --tool=prototype  # single Tool
  *   node scripts/build-tools.mjs --dry-run        # plan only
+ *   node scripts/build-tools.mjs --root=<dir>     # another host repo (tests)
  *
  * Reads `src/tools/manifest.json`, and for each Tool whose
  * `delivery.kind === 'same_origin_static'`:
  *   1. Verifies the submodule is initialised at the pinned SHA
  *      (calls `git submodule status`).
- *   1b. Verifies the *checked-out* commit equals the pinned SHA and
- *       records the stamp that ties the collected artefact back to
- *       that commit (Issue #473).
+ *   1b. Verifies the *checked-out* commit equals the pinned SHA, that
+ *       its tracked files are unmodified, and records the stamp that
+ *       ties the collected artefact back to that commit (Issue #473).
  *   2. cd's into the submodule path.
  *   3. Runs the manifest's `build.command` (deterministic, fail-fast).
  *   4. Cleans `dist/client/tools/<slug>/` then mirrors
@@ -44,11 +45,14 @@ import { PROVENANCE_STAMP_DIR, observeCheckout } from './check-submodule-provena
 import { rewriteAssetPaths } from './rewrite-asset-paths.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = resolve(here, '..');
-
 const args = new Set(process.argv.slice(2));
 const toolFilter = parseArg(args, '--tool');
 const dryRun = args.has('--dry-run');
+// `--root` exists so `scripts/build-tools.test.mjs` can drive the real
+// orchestrator against a synthetic host repository instead of
+// re-implementing its decisions. Unset in every documented invocation.
+const rootArg = parseArg(args, '--root');
+const root = rootArg ? resolve(process.cwd(), rootArg) : resolve(here, '..');
 
 const manifestPath = resolve(root, 'src/tools/manifest.json');
 if (!existsSync(manifestPath)) {
@@ -173,6 +177,22 @@ for (const tool of targetTools) {
 		);
 		console.error(
 			'[build-tools]   ✗ checkout SHA differs from the pin — the artefact would not match any recorded provenance',
+		);
+		continue;
+	}
+	// The HEAD comparison above cannot see an *in-place* edit: HEAD is
+	// still the pinned commit while the bytes on disk are not. The
+	// provenance gate reports this as `CHECKOUT_DIRTY` (warn), which
+	// does not stop a build — and `pnpm run deploy:production` runs this
+	// orchestrator directly, so an unreviewed local edit would otherwise
+	// reach production behind a stamp that attests the pinned commit.
+	// Refuse instead (ADR-0006 §4: the pin is a verified commit).
+	if (checkout.dirty) {
+		errors.push(
+			`${tool.slug}: ${tool.source.submodule_path} has local modifications to tracked files — the artefact would not be built from ${tool.source.pinned_sha}`,
+		);
+		console.error(
+			'[build-tools]   ✗ checkout is dirty — the artefact would be built from modified bytes, not from the pinned commit',
 		);
 		continue;
 	}

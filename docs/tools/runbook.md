@@ -2,7 +2,7 @@
 
 This runbook covers day-to-day operator work for the Tool Registry
 contract. Issue #80 ships the contract; Issue #81 ships the first
-pilot (ProtoType). Anything that has to wait for #81 lives in §6.
+pilot (ProtoType). Anything that has to wait for #81 lives in §7.
 
 ## 1. Read the registry
 
@@ -74,10 +74,13 @@ The orchestrator:
 3. Verifies the **checked-out** commit equals the pin and refuses to
    build otherwise (Issue #473) — a `git -C external/<slug> checkout`
    leaves the gitlink untouched, so step 2 alone cannot see it.
-4. Runs `build.command` inside `external/<slug>/`.
-5. Mirrors the build output to `dist/client/tools/<slug>/`.
-6. Asserts the collected artefact contains `index.html`.
-7. Records `dist/tool-provenance/<slug>.json` so the artefact can be
+4. Refuses to build when the checkout has local modifications to
+   tracked files (Issue #473) — HEAD still equals the pin in that case,
+   so step 3 passes while the bytes on disk are not the pinned commit.
+5. Runs `build.command` inside `external/<slug>/`.
+6. Mirrors the build output to `dist/client/tools/<slug>/`.
+7. Asserts the collected artefact contains `index.html`.
+8. Records `dist/tool-provenance/<slug>.json` so the artefact can be
    traced back to the commit it was built from (§6).
 
 At the end of #80 there are no `same_origin_static` entries, so the
@@ -164,7 +167,7 @@ What it proves, per fetched submodule:
 | `source.canonical_repo`  | the checkout's `remote.origin`          | `CHECKOUT_ORIGIN_MISMATCH`       |
 | pinned commit (no ref)   | `.gitmodules` `branch` / `submodule.<name>.branch` | `BRANCH_TRACKED`      |
 | fetch source             | `submodule.<name>.url`, `url.*.insteadOf` | `LOCAL_URL_OVERRIDE` / `URL_INSTEADOF_REWRITE` |
-| `dist/tool-provenance/<slug>.json` | pin + live checkout    | `ARTIFACT_PIN_MISMATCH` / `ARTIFACT_SOURCE_MISMATCH` |
+| `dist/tool-provenance/<slug>.json` | pin + live checkout    | `ARTIFACT_PIN_MISMATCH` / `ARTIFACT_SOURCE_MISMATCH` / `ARTIFACT_STAMP_INVALID` |
 
 The gate is **offline and status-only**: it runs `git ls-tree`,
 `git rev-parse`, `git config` and `git status` against the local
@@ -172,6 +175,13 @@ repository, performs **no network fetch**, reads **no environment
 variable** and **no secret file**, and prints only a finding code, a
 subject, a message and a remedy. That is why it is safe to paste its
 output into a PR and why it can run in `validate:fast`.
+
+Some of the facts it reads come from the *ambient* git config rather
+than from the repository — `url.*.insteadOf`, a local
+`submodule.<name>.url`, a checkout's `remote.origin` — and those can
+carry an access token. Any URL in a finding or in a report row is
+therefore printed with its userinfo / query / fragment replaced by
+`***`; the checks still run on the full string.
 
 An entry with no gitlink, no `.gitmodules` entry and no checkout is
 **inventory-only** (`delivery.kind` is `host_disabled` /
@@ -197,28 +207,79 @@ the stamp exists and the finding disappears.
 
 ### 6.2 Abnormal observation and repair
 
+This repository is (correctly) never in a drifted state, so the
+abnormal observation has to be produced somewhere. `scripts/make-provenance-fixture.mjs`
+builds a **synthetic** host repository with git plumbing only — one
+healthy Tool, one checkout that moved past its pin, one Tool whose
+`.gitmodules` tracks a branch, one inventory-only entry — and runs the
+real gate over it with `--root=`. No network, no real Tool repository,
+no credential; `GIT_CONFIG_GLOBAL` / `GIT_CONFIG_SYSTEM` are neutralised
+and the commit dates are fixed, so every SHA below is reproducible
+byte for byte. The block is a verbatim capture of that command's
+output, not an illustration:
+
 ```console
-$ pnpm run tools:provenance:check
-[check-submodule-provenance] 1 error(s), 0 warning(s), 1 note(s):
-  [error] CHECKOUT_SHA_MISMATCH external/prototype: prototype: the checked-out source is 1f0c…c31 but the pin is 335e…5c7; the bytes a build would use are not the bytes the manifest describes
-      remedy: git -C external/prototype checkout 335e…5c7 (or bump source.pinned_sha to the reviewed commit), then re-run the gate
-[check-submodule-provenance] 1 submodule(s) inspected: 0 pass, 1 warn, 1 fail (13 inventory-only). Result: FAIL
+$ node scripts/make-provenance-fixture.mjs .tmp/supply-chain-fixture
+[check-submodule-provenance] 2 error(s), 0 warning(s), 2 note(s):
+  [error] CHECKOUT_SHA_MISMATCH external/other-gadget: other-gadget: the checked-out source is d9312a0381c3cc86daa3d7ff3ccaa40726173006 but the pin is 8e67461601b77746bf753a6aaacf42c3cd399c30; the bytes a build would use are not the bytes the manifest describes
+      remedy: git -C external/other-gadget checkout 8e67461601b77746bf753a6aaacf42c3cd399c30 (or bump source.pinned_sha to the reviewed commit), then re-run the gate
+  [info] ARTIFACT_PIN_MISSING external/other-gadget: other-gadget: no build provenance stamp at dist/tool-provenance/other-gadget.json (nothing built yet, or the output was cleaned)
+      remedy: pnpm run build records the stamp; nothing to fix before a build has run
+  [error] BRANCH_TRACKED external/third-tool: third-tool: .gitmodules pins "external/third-tool" to the mutable ref "main"; submodule update --remote would replace the pinned commit with a branch tip
+      remedy: delete the `branch` key from .gitmodules; record the upstream branch in source.branch for documentation only
+  [info] ARTIFACT_PIN_MISSING external/third-tool: third-tool: no build provenance stamp at dist/tool-provenance/third-tool.json (nothing built yet, or the output was cleaned)
+      remedy: pnpm run build records the stamp; nothing to fix before a build has run
+[check-submodule-provenance] 3 submodule(s) inspected: 1 pass, 0 warn, 2 fail (1 inventory-only). Result: FAIL
 ```
+
+The command exits 1. `external/other-gadget` is the headline case
+(§6 table row 2: the checkout moved past the pin), `external/third-tool`
+is the branch-tip case, and the two `ARTIFACT_PIN_MISSING` notes mean
+those two Tools have no build stamp yet — `info`, not a failure. The
+same fixture rendered as HTML is the committed screenshot (below);
+add a second argument to reproduce it:
+
+```console
+$ node scripts/make-provenance-fixture.mjs .tmp/supply-chain-fixture .tmp/supply-chain-fixture/provenance.html
+```
+
+Every finding the gate can raise, and what to do about it:
 
 | finding                      | cause                                              | repair                                                             |
 | ---------------------------- | -------------------------------------------------- | ------------------------------------------------------------------ |
 | `CHECKOUT_SHA_MISMATCH`      | `git -C external/<slug> checkout <other>` — the gitlink and manifest still name the reviewed commit | `git -C external/<slug> checkout $(jq -r … pinned_sha)`, or bump the pin (§5) and commit both files together |
 | `GITLINK_SHA_MISMATCH`       | the gitlink moved but the manifest did not (or vice versa) | commit the reviewed commit as the gitlink **and** record that same SHA in `src/tools/manifest.json` |
+| `GITLINK_MISSING`            | the path is declared as a submodule but the committed tree has no gitlink for it | `git submodule add` the path, then commit the gitlink together with the manifest entry |
+| `PINNED_SHA_INVALID`         | `source.pinned_sha` is not a 40-char lowercase hex commit SHA | record the exact SHA the Tool repo reported for the reviewed change |
 | `URL_MISMATCH`               | `.gitmodules` points at a fork / typo / re-host    | make `.gitmodules` and `source.canonical_repo` name the same reviewed repository |
 | `URL_UNSAFE`                 | ssh / http / credentialed / ref-qualified / non-github url | use `https://github.com/<owner>/<repo>.git`, no credentials, no `#ref`, no query |
 | `BRANCH_TRACKED`             | `.gitmodules` `branch = …` or `submodule.<name>.branch`, so `git submodule update --remote` would resolve to a mutable tip (ADR-0006 §4) | delete the key (`git config --unset submodule.<name>.branch`) |
 | `LOCAL_URL_OVERRIDE`         | a local `submodule.<name>.url` redirect            | `git config --unset submodule.<name>.url`, then `git submodule sync` |
-| `URL_INSTEADOF_REWRITE`      | a git `url.<x>.insteadOf` rewrite can redirect the fetch | remove the rewrite for this repository and re-run the gate        |
+| `URL_INSTEADOF_REWRITE`      | a git `url.<x>.insteadOf` rewrite can redirect the fetch | remove the rewrite for this repository and re-run the gate (see the scope note below) |
 | `CHECKOUT_ORIGIN_MISMATCH`   | the checkout's `remote.origin` is not the declared repository | `git -C external/<slug> remote set-url origin <canonical_repo>`  |
 | `CHECKOUT_MISSING` (warn)    | `git submodule update --init` was not run           | `git submodule update --init --recursive`; `--require-checkout` turns the warning into an error |
-| `CHECKOUT_DIRTY` (warn)      | tracked files were edited in place (ADR-0006 §2 forbids this) | discard the edit, fix the Tool in its own repo, re-checkout the pin |
+| `CHECKOUT_SHA_UNREADABLE`    | the checkout is initialised but HEAD is not a readable 40-char commit SHA (e.g. a fresh repository with no commit) | `git -C external/<slug> status`, then re-run `git submodule update --init` |
+| `CHECKOUT_DIRTY` (warn)      | tracked files were edited in place; HEAD still equals the pin, so the bytes are not the pinned commit (ADR-0006 §4: the pin is a *verified commit*) | discard the edit, fix the Tool in its own repo, re-checkout the pin. `scripts/build-tools.mjs` refuses to build in this state too (§3 step 4), so it cannot reach production |
 | `ARTIFACT_PIN_MISMATCH`      | `dist/` still holds an artefact built from the previous pin | `pnpm run build` (the stamp is rewritten from the current pin)     |
+| `ARTIFACT_SOURCE_MISMATCH`   | the stamp names a different checkout commit or a different source repository than the manifest declares | `pnpm run build` (the stamp is rewritten from the current checkout) |
+| `ARTIFACT_STAMP_INVALID`     | a stamp exists but records no usable provenance: truncated JSON (an interrupted write), `{}`, an older `schema`, or a blank commit SHA | `pnpm run build` rewrites the stamp; delete `dist/tool-provenance/<slug>.json` if the Tool is no longer served |
+| `ARTIFACT_PIN_MISSING` (info) | nothing has been built yet, or `dist/` was cleaned | nothing — before the first build this is the expected state (§6.1) |
+| `DECLARED_DELIVERY_UNFETCHABLE` | a manifest entry declares a `submodule_path` (or is served) but `.gitmodules` has no entry to fetch from | add the `[submodule]` entry, or keep the entry inventory-only until it is integrated |
 | `SUBMODULE_UNDECLARED`       | `.gitmodules` fetches a submodule the registry does not own | add the manifest entry (§4) or drop the submodule                |
+| `INVENTORY_ONLY` (info, row marker) | an entry with no gitlink, no `.gitmodules` entry and no checkout — its recorded SHA is documentation, not a verified pin | nothing; flip `delivery.kind` when the Tool is actually integrated |
+| `GIT_UNAVAILABLE` (warn)     | the gate was run outside a git checkout, so no pin could be compared with a committed tree | run it from a git checkout of the repository |
+
+`URL_INSTEADOF_REWRITE` reads `--local`, `--global` **and** `--system`,
+and reports **any** rewrite it finds, whether or not its prefix can
+affect a URL this repository fetches. That is deliberate fail-closed
+behaviour, but it does mean a benign corporate mirror rewrite (say
+`url."git@github.com:".insteadOf = https://github.com/`) makes
+`validate:fast` fail on a host that never touches a Tool submodule.
+Whether to narrow the rule to rewrites whose prefix matches a
+`.gitmodules` url or a manifest `canonical_repo`, or to allow an
+explicit list, is an open owner decision; until then, treat the finding
+as "this host has a fetch rewrite, confirm it is irrelevant or scope
+it out with `git config --global --unset` in CI".
 
 The `dist/tool-provenance/<slug>.json` stamp is written **outside**
 `dist/client/`: everything under `dist/client` is uploaded as a public
@@ -226,9 +287,19 @@ Static Asset, and this record is operator-facing evidence, not part of
 the Tool's bundle. It carries no timestamp, so two builds of the same
 commit produce identical bytes.
 
+What the stamp proves is that the artefact was collected from a
+checkout at the recorded commit. It is **not** a hash of the artefact
+bytes: nothing binds `dist/tool-provenance/<slug>.json` to the content
+of `dist/client/tools/<slug>/app/`. A bare `vite build` empties
+`dist/client` (Vite clears its `outDir`) and leaves the stamp in place,
+so the gate can report PASS while the served artefact is gone — run
+`pnpm run build`, which re-mirrors and re-stamps. A stamp left behind
+by a Tool that is no longer `same_origin_static` is ignored by the gate
+and is never pruned from `dist/`; delete it by hand.
+
 A compact visual of both observations is committed at
 [`docs/verification/supply-chain/submodule-provenance.webp`](../verification/supply-chain/submodule-provenance.webp)
-(rendered from a synthetic fixture repository, so it is publishable).
+(rendered from the synthetic fixture above, so it is publishable).
 The image is a rendering of the same status-only report the gate prints;
 the repair procedure above is the authoritative part.
 
@@ -277,6 +348,8 @@ change is required, that is a separate ADR-0006 revision ticket.
 - `scripts/check-tools-manifest.mjs` + `.test.mjs` — verifier.
 - `scripts/check-submodule-provenance.mjs` + `.test.mjs` —
   supply-chain provenance gate (§6).
+- `scripts/make-provenance-fixture.mjs` — synthetic host repository
+  behind the §6.2 abnormal observation and the report image.
 - `docs/verification/supply-chain/submodule-provenance.webp` —
   rendered provenance report (normal + drift), §6.2.
 - `scripts/build-tools.mjs` + `.test.mjs` — build orchestrator.

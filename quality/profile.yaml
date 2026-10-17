@@ -156,7 +156,7 @@ security_gates:
     tool: 'scripts/check-submodule-provenance.mjs'
     gate: fast
     mode: offline_status_only
-    note: 'Issue #473 — manifest pin / gitlink / checked-out commit / build-artefact stamp agreement, plus fetch-source identity and branch-tip rejection. No network fetch, no environment variable and no secret file is read, and every finding is status-only.'
+    note: 'Issue #473 — manifest pin / gitlink / checked-out commit / build-artefact stamp agreement, plus fetch-source identity and branch-tip rejection. No network fetch, no environment variable and no secret file is read, every finding is status-only, and a URL that came from the ambient git config is printed with its userinfo / query / fragment redacted.'
   workflow_yaml_lint:
     enabled: true
     tool: actionlint

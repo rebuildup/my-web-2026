@@ -1,15 +1,147 @@
 import assert from 'node:assert/strict';
-import { describe, it } from 'node:test';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { after, describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 /**
- * Pure-helper extraction tests for the Tool Registry build
- * orchestrator. The orchestrator itself shells out to git / the
- * package manager / a build command, so we exercise its decisions
- * (target filter, manifest classification, SHA parsing) via fixtures.
+ * Tests for the Tool Registry build orchestrator.
+ *
+ * Two layers:
+ *
+ *   1. Pure-helper extraction for the decisions the orchestrator makes
+ *      from data (target filter, manifest classification, SHA parsing,
+ *      version comparison). The orchestrator module runs its work at
+ *      import time, so it cannot be imported for unit tests.
+ *   2. Issue #473 — the orchestrator itself, spawned as a CLI against a
+ *      synthetic host repository (`--root=`), to prove the *refusals*
+ *      actually stop a build. Re-implementing those refusals in a test
+ *      would only prove that the test's own copy behaves.
  *
  * The convention matches `check-tools-manifest.test.mjs` and the
  * other migration-style scripts in this repo.
  */
+
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const BUILD_TOOLS = join(repoRoot, 'scripts/build-tools.mjs');
+const SANDBOX_ENV = {
+	...process.env,
+	GIT_CONFIG_GLOBAL: '/dev/null',
+	GIT_CONFIG_SYSTEM: '/dev/null',
+	GIT_AUTHOR_NAME: 'build-tools fixture',
+	GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+	GIT_COMMITTER_NAME: 'build-tools fixture',
+	GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
+};
+const temporaryDirs = [];
+
+after(() => {
+	for (const dir of temporaryDirs) rmSync(dir, { recursive: true, force: true });
+});
+
+function makeTempDir() {
+	const dir = mkdtempSync(join(tmpdir(), 'build-tools-'));
+	temporaryDirs.push(dir);
+	return dir;
+}
+
+function gitIn(cwd, args) {
+	const result = spawnSync('git', args, { cwd, encoding: 'utf8', env: SANDBOX_ENV });
+	assert.equal(result.status, 0, `git ${args.join(' ')} failed: ${result.stderr}`);
+	return result.stdout.trim();
+}
+
+const CANONICAL = 'https://github.com/example-org/example-widget.git';
+
+/**
+ * A synthetic host repository with one `same_origin_static` Tool whose
+ * submodule has two commits, so the checkout can be pinned, drifted, or
+ * dirtied. `build.command` is `false` — every test below must be
+ * refused *before* it runs, and a fixture that actually builds would
+ * shell out to a package manager.
+ */
+function buildHostRepo(state) {
+	const root = makeTempDir();
+	gitIn(root, ['init', '-q', '-b', 'main']);
+
+	const submodulePath = join(root, 'external/example-widget');
+	mkdirSync(submodulePath, { recursive: true });
+	gitIn(submodulePath, ['init', '-q', '-b', 'main']);
+	writeFileSync(join(submodulePath, 'index.html'), '<!doctype html><title>widget v1</title>');
+	writeFileSync(join(submodulePath, 'package.json'), '{"name":"example-widget"}\n');
+	gitIn(submodulePath, ['add', '-A']);
+	gitIn(submodulePath, ['commit', '-q', '-m', 'widget v1']);
+	const pinnedSha = gitIn(submodulePath, ['rev-parse', 'HEAD']);
+	writeFileSync(join(submodulePath, 'index.html'), '<!doctype html><title>widget v2</title>');
+	gitIn(submodulePath, ['commit', '-q', '-am', 'widget v2']);
+	const driftedSha = gitIn(submodulePath, ['rev-parse', 'HEAD']);
+	gitIn(submodulePath, ['remote', 'add', 'origin', CANONICAL]);
+
+	gitIn(submodulePath, ['reset', '--hard', '-q', state === 'drifted' ? driftedSha : pinnedSha]);
+	if (state === 'dirty') {
+		writeFileSync(
+			join(submodulePath, 'index.html'),
+			'<!doctype html><title>edited in place</title>',
+		);
+	}
+
+	mkdirSync(join(root, 'src/tools'), { recursive: true });
+	writeFileSync(
+		join(root, 'src/tools/manifest.json'),
+		`${JSON.stringify(
+			{
+				version: 1,
+				tools: [
+					{
+						slug: 'example-widget',
+						display_name: 'Example Widget',
+						description: 'Synthetic Tool for the orchestrator refusal tests.',
+						source: {
+							canonical_repo: CANONICAL,
+							submodule_path: 'external/example-widget',
+							pinned_sha: pinnedSha,
+							branch: 'main',
+						},
+						build: { command: 'false', output_dir: 'dist', package_manager: 'pnpm' },
+						delivery: {
+							kind: 'same_origin_static',
+							artifact_path: '/tools/example-widget/app',
+						},
+						classification: 'same_origin_static',
+						license: 'MIT',
+					},
+				],
+			},
+			null,
+			2,
+		)}\n`,
+	);
+	writeFileSync(
+		join(root, '.gitmodules'),
+		`[submodule "external/example-widget"]\n\tpath = external/example-widget\n\turl = ${CANONICAL}\n`,
+	);
+	writeFileSync(join(root, 'README.md'), '# synthetic build-tools fixture\n');
+	gitIn(root, ['add', 'README.md', '.gitmodules', 'src/tools/manifest.json']);
+	gitIn(root, [
+		'update-index',
+		'--add',
+		'--cacheinfo',
+		`160000,${pinnedSha},external/example-widget`,
+	]);
+	gitIn(root, ['commit', '-q', '-m', 'host: pin the widget submodule']);
+
+	return { root, pinnedSha, driftedSha };
+}
+
+function runBuildTools(root, extraArgs = []) {
+	return spawnSync('node', [BUILD_TOOLS, `--root=${root}`, ...extraArgs], {
+		cwd: repoRoot,
+		encoding: 'utf8',
+		env: SANDBOX_ENV,
+	});
+}
 
 const SHA_REGEX = /^[0-9a-f]{40}$/;
 
@@ -226,7 +358,7 @@ function compareVersions(a, b) {
 
 /**
  * Issue #233 — mirrors `scripts/build-tools.mjs#parseVersionBanner`.
- * `1.4.2 (df017990)` -> `1.4.2`; `null` when absent.
+ * `1.4.2 (df017032)` -> `1.4.2`; `null` when absent.
  */
 function parseVersionBanner(banner) {
 	const match = /(\d+)\.(\d+)\.(\d+)/.exec(String(banner ?? ''));
@@ -235,3 +367,37 @@ function parseVersionBanner(banner) {
 
 /** The minimum the orchestrator enforces for bun (Issue #233). */
 const MIN_BUN = '1.3.0';
+
+/* -- Issue #473: the orchestrator's own provenance refusals -------------- */
+
+describe('build orchestrator refuses an unprovenanced checkout (Issue #473)', () => {
+	it('refuses to build when the checked-out commit is not the pinned commit', () => {
+		const fixture = buildHostRepo('drifted');
+		const result = runBuildTools(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /checkout SHA differs from the pin/);
+		assert.match(result.stderr, new RegExp(fixture.driftedSha));
+		assert.match(result.stderr, new RegExp(fixture.pinnedSha));
+		// The refusal happens before the build command runs, so no
+		// artefact and no provenance stamp may exist.
+		assert.equal(existsSync(join(fixture.root, 'dist/tool-provenance')), false);
+	});
+
+	it('refuses to build when tracked files were edited in place', () => {
+		// HEAD is still the pinned commit here, so a HEAD-vs-pin check
+		// alone passes and the artefact would be built from bytes the
+		// stamp (which attests the commit) does not describe.
+		const fixture = buildHostRepo('dirty');
+		const result = runBuildTools(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /checkout is dirty/);
+		assert.equal(existsSync(join(fixture.root, 'dist/tool-provenance')), false);
+	});
+
+	it('reports a checkout that does not match the pin as an error line', () => {
+		const fixture = buildHostRepo('drifted');
+		const result = runBuildTools(fixture.root);
+		assert.match(result.stderr, /\[build-tools\] 1 error\(s\):/);
+		assert.match(result.stderr, /checked-out source is /);
+	});
+});

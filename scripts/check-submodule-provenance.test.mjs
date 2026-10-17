@@ -10,6 +10,8 @@ import {
 	normalizeRepoUrl,
 	parseGitlinkStdout,
 	parseGitmodules,
+	readArtifactStamp,
+	redactUrlCredentials,
 	renderHtmlReport,
 	renderJsonReport,
 	renderMarkdownReport,
@@ -166,6 +168,28 @@ describe('provenance — .gitmodules parsing', () => {
 		assert.deepEqual(parseGitmodules(''), []);
 		assert.deepEqual(parseGitmodules(undefined), []);
 	});
+
+	it('reads keys case-insensitively, the way git config does', () => {
+		const sections = parseGitmodules(`
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = ${CANONICAL}
+	Branch = main
+`);
+		assert.equal(sections[0].keys.branch, 'main');
+		assert.equal(sections[0].path, 'external/example-widget');
+	});
+
+	it('does not let a capitalised `Branch` key hide branch tracking', () => {
+		const gitmodules = parseGitmodules(`
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = ${CANONICAL}
+	Branch = main
+`);
+		const result = run([widgetTool()], gitmodules, healthyFacts());
+		assert.ok(codes(result).includes('BRANCH_TRACKED'));
+	});
 });
 
 describe('provenance — git plumbing parsing', () => {
@@ -187,6 +211,10 @@ describe('provenance — git plumbing parsing', () => {
 		assert.deepEqual(splitSubmoduleConfigKey('submodule.external/readmark.update'), {
 			name: 'external/readmark',
 			configKey: 'update',
+		});
+		assert.deepEqual(splitSubmoduleConfigKey('submodule.external/readmark.Branch'), {
+			name: 'external/readmark',
+			configKey: 'branch',
 		});
 		assert.equal(splitSubmoduleConfigKey('url.https://github.com/.insteadof'), null);
 	});
@@ -438,6 +466,93 @@ describe('provenance — checkout state', () => {
 	});
 });
 
+describe('provenance — status-only output never echoes credentials', () => {
+	const TOKEN = 'ghp_EXAMPLE_TOKEN_MUST_NEVER_BE_PRINTED';
+
+	function renderedEverything(result) {
+		return [
+			result.findings.map((item) => `${item.message}\n${item.remedy}`).join('\n'),
+			renderMarkdownReport(result),
+			renderJsonReport(result),
+			renderHtmlReport(result),
+		].join('\n');
+	}
+
+	it('redacts userinfo, query and fragment from a URL', () => {
+		assert.equal(
+			redactUrlCredentials(`https://x-access-token:${TOKEN}@github.com/example-org/x.git`),
+			'https://***@github.com/example-org/x.git',
+		);
+		assert.equal(redactUrlCredentials('https://github.com/x.git'), 'https://github.com/x.git');
+		assert.equal(redactUrlCredentials('git@github.com:'), 'git@github.com:');
+		assert.equal(
+			redactUrlCredentials('https://github.com/x.git?private_token=abc'),
+			'https://github.com/x.git?***',
+		);
+		assert.equal(redactUrlCredentials(`ssh://user:${TOKEN}@host/x`), 'ssh://***@host/x');
+		assert.equal(redactUrlCredentials(undefined), '');
+	});
+
+	it('never prints a credentialed url.*.insteadOf base', () => {
+		const facts = healthyFacts({
+			urlRewrites: [
+				{
+					scope: '--global',
+					key: `url.https://x-access-token:${TOKEN}@github.com/.insteadof`,
+					value: `https://x-access-token:${TOKEN}@`,
+				},
+			],
+		});
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.ok(codes(result).includes('URL_INSTEADOF_REWRITE'));
+		assert.ok(!renderedEverything(result).includes(TOKEN));
+		assert.match(
+			result.findings.find((item) => item.code === 'URL_INSTEADOF_REWRITE').message,
+			/url\.https:\/\/\*\*\*@github\.com\/\.insteadof/,
+		);
+	});
+
+	it('never prints a credentialed local url override or checkout origin', () => {
+		const facts = healthyFacts({
+			localSubmoduleConfig: {
+				'external/example-widget': {
+					url: `https://x-access-token:${TOKEN}@github.com/example-org/example-widget-fork.git`,
+					active: 'true',
+				},
+			},
+			checkouts: {
+				'external/example-widget': {
+					initialised: true,
+					head: PIN_A,
+					origin: `https://x-access-token:${TOKEN}@github.com/example-org/example-widget.git`,
+					dirty: false,
+					toplevelMatches: true,
+				},
+			},
+		});
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.ok(codes(result).includes('LOCAL_URL_OVERRIDE'));
+		assert.ok(!renderedEverything(result).includes(TOKEN));
+		// The origin itself carries a token in some setups; the report
+		// rows must still be status-only.
+		assert.equal(
+			result.rows[0].origin_url,
+			'https://***@github.com/example-org/example-widget.git',
+		);
+	});
+
+	it('never prints a credentialed .gitmodules url', () => {
+		const gitmodules = parseGitmodules(`
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = https://x-access-token:${TOKEN}@github.com/example-org/example-widget.git
+`);
+		const result = run([widgetTool()], gitmodules, healthyFacts());
+		assert.ok(codes(result).includes('URL_UNSAFE'));
+		assert.ok(!renderedEverything(result).includes(TOKEN));
+	});
+});
+
 describe('provenance — build artefact agreement', () => {
 	it('fails when the collected artefact was built from an older pin', () => {
 		const facts = healthyFacts({
@@ -469,6 +584,72 @@ describe('provenance — build artefact agreement', () => {
 		assert.equal(result.findings[0].severity, 'info');
 		assert.equal(result.rows[0].verdict, 'PASS');
 	});
+
+	it('fails closed when a stamp exists but records no commit', () => {
+		const facts = healthyFacts({
+			artifacts: { 'example-widget': null },
+			artifactProblems: {
+				'example-widget': 'records pinned_sha as nothing, not a 40-char commit SHA',
+			},
+		});
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.equal(result.ok, false);
+		assert.deepEqual(codes(result), ['ARTIFACT_STAMP_INVALID']);
+		assert.equal(result.findings[0].severity, 'error');
+		assert.equal(result.rows[0].verdict, 'FAIL');
+	});
+});
+
+describe('provenance — build artefact stamp reading', () => {
+	function stampFixture() {
+		const root = makeTempDir();
+		mkdirSync(join(root, 'dist/tool-provenance'), { recursive: true });
+		return root;
+	}
+
+	it('reports an absent stamp as "not present", not as a failure', () => {
+		const read = readArtifactStamp(makeTempDir(), 'example-widget');
+		assert.deepEqual(read, { present: false, stamp: null, problem: null });
+	});
+
+	it('accepts a stamp that records the commit it was built from', () => {
+		const root = stampFixture();
+		writeFileSync(
+			join(root, 'dist/tool-provenance/example-widget.json'),
+			`${JSON.stringify({
+				schema: 1,
+				slug: 'example-widget',
+				canonical_repo: CANONICAL,
+				pinned_sha: PIN_A,
+				checkout_sha: PIN_A,
+			})}\n`,
+		);
+		const read = readArtifactStamp(root, 'example-widget');
+		assert.equal(read.problem, null);
+		assert.equal(read.stamp.pinned_sha, PIN_A);
+	});
+
+	for (const [label, body, expected] of [
+		['truncated JSON', '{"schema": 1, "pinned_sha"', /not valid JSON/],
+		['an empty object', '{}\n', /schema/],
+		['a JSON array', '[]\n', /not a stamp object/],
+		['an old schema', `{"schema": 0, "slug": "x", "canonical_repo": "${CANONICAL}"}\n`, /schema/],
+		['a missing slug', `{"schema": 1, "canonical_repo": "${CANONICAL}"}\n`, /slug/],
+		[
+			'a non-SHA pin',
+			'{"schema":1,"slug":"x","canonical_repo":"y","pinned_sha":"main","checkout_sha":"main"}\n',
+			/pinned_sha/,
+		],
+	]) {
+		it(`rejects ${label} instead of treating it as "nothing built yet"`, () => {
+			const root = stampFixture();
+			writeFileSync(join(root, 'dist/tool-provenance/example-widget.json'), body);
+			const read = readArtifactStamp(root, 'example-widget');
+			assert.equal(read.present, true);
+			assert.equal(read.stamp, null);
+			assert.match(read.problem, expected);
+		});
+	}
 });
 
 describe('provenance — inventory-only entries', () => {
@@ -663,6 +844,41 @@ describe('provenance CLI — end-to-end over synthetic repositories', () => {
 		const result = runCli(fixture.root);
 		assert.equal(result.status, 1);
 		assert.match(result.stderr, /ARTIFACT_PIN_MISMATCH/);
+	});
+
+	it('fails when a stamp exists but records no commit', () => {
+		const fixture = buildHostRepo('none');
+		mkdirSync(join(fixture.root, 'dist/tool-provenance'), { recursive: true });
+		writeFileSync(join(fixture.root, 'dist/tool-provenance/example-widget.json'), '{}\n');
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /ARTIFACT_STAMP_INVALID/);
+		assert.equal(result.stderr.includes('ARTIFACT_PIN_MISSING'), false);
+	});
+
+	it('fails when the stamp is truncated by an interrupted write', () => {
+		const fixture = buildHostRepo('none');
+		mkdirSync(join(fixture.root, 'dist/tool-provenance'), { recursive: true });
+		writeFileSync(
+			join(fixture.root, 'dist/tool-provenance/example-widget.json'),
+			'{"schema": 1, "pinned_sha"',
+		);
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /ARTIFACT_STAMP_INVALID/);
+	});
+
+	it('fails when .gitmodules spells the branch key with a capital letter', () => {
+		const fixture = buildHostRepo('none');
+		// git reads `Branch =` in .gitmodules as `branch`; the parser must
+		// see it the same way or a capitalised key would hide the drift.
+		writeFileSync(
+			join(fixture.root, '.gitmodules'),
+			`[submodule "external/example-widget"]\n\tpath = external/example-widget\n\turl = ${CANONICAL}\n\tBranch = main\n`,
+		);
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /BRANCH_TRACKED/);
 	});
 
 	it('rejects an unusable root with exit 2', () => {

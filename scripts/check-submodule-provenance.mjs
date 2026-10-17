@@ -38,12 +38,17 @@
  * This gate closes 1-5. It is deliberately **status-only**: every
  * finding is a code + subject + message + remedy, it never prints a
  * credential, never lists secret values, and never performs a network
- * fetch. No production system is contacted; the observed facts come
- * from the committed tree, the local git config, and the local
- * checkout only. That keeps it cheap enough for `validate:fast` and
- * keeps it safe to paste into a PR.
+ * fetch. URLs that come from the ambient git config (an
+ * `insteadOf` rewrite, a local `submodule.<name>.url`, a checkout's
+ * `remote.origin`) are reported with their userinfo / query / fragment
+ * replaced by `***`, because those strings can carry an access token
+ * and the output of this gate is pasted into PRs and CI logs. No
+ * production system is contacted; the observed facts come from the
+ * committed tree, the local git config, and the local checkout only.
+ * That keeps it cheap enough for `validate:fast` and keeps it safe to
+ * paste into a PR.
  *
- * Contract (see docs/tools/runbook.md §4):
+ * Contract (see docs/tools/runbook.md §6):
  *
  *   - `.gitmodules` and `src/tools/manifest.json` must agree on every
  *     submodule: same path, same repository URL.
@@ -113,9 +118,14 @@ export function parseGitmodules(text) {
 		if (!current) continue;
 		const pair = /^([A-Za-z0-9-]+)\s*=\s*(.*)$/.exec(line);
 		if (!pair) continue;
-		current.keys[pair[1]] = pair[2];
-		if (pair[1] === 'path') current.path = pair[2];
-		if (pair[1] === 'url') current.url = pair[2];
+		// Git config variable names are case-insensitive: git itself reads
+		// `Branch = main` in `.gitmodules` as `branch`. Store keys
+		// lowercase so a capitalised spelling cannot slip past a rule that
+		// only reads `keys.branch`.
+		const key = pair[1].toLowerCase();
+		current.keys[key] = pair[2];
+		if (key === 'path') current.path = pair[2];
+		if (key === 'url') current.url = pair[2];
 	}
 	return sections;
 }
@@ -123,6 +133,29 @@ export function parseGitmodules(text) {
 // ---------------------------------------------------------------------------
 // URL policy
 // ---------------------------------------------------------------------------
+
+/**
+ * Strip credential-shaped parts out of anything that will be printed.
+ *
+ * Some of the facts this gate reads come from the *ambient* git config,
+ * not from the repository: `url.<base>.insteadOf` and a local
+ * `submodule.<name>.url` can both carry `https://x-access-token:ghp_…@`
+ * or `https://…?private_token=…`. The gate promises status-only output
+ * (AGENTS.md §4: an agent must never surface a secret value), and that
+ * output gets pasted into PRs and CI logs, so a URL is only ever
+ * reported with its userinfo, query and fragment replaced.
+ *
+ * Deliberately string-based rather than `new URL(...)`: an `insteadOf`
+ * value is a *prefix* (`https://`, `git@github.com:`), not a URL, and
+ * must survive round-tripping unchanged.
+ */
+export function redactUrlCredentials(value) {
+	if (typeof value !== 'string') return '';
+	return value
+		.replace(/(\/\/)[^/@\s]*@/g, '$1***@')
+		.replace(/(^|\s)[A-Za-z0-9._+-]+:[^/@\s]+@/g, '$1***@')
+		.replace(/([?#]).*$/, '$1***');
+}
 
 /**
  * Canonical comparison form of a git URL. Comparison is case-insensitive
@@ -159,8 +192,12 @@ export function classifyRepoUrl(url) {
 		return { ok: false, code: 'URL_MISSING', message: 'no url declared' };
 	}
 	const value = url.trim();
+	// Messages are status-only output: they may be pasted into a PR or a
+	// CI log, so they carry `display` (credentials stripped), never the
+	// raw string, while the checks below still run on `value`.
+	const display = redactUrlCredentials(value);
 	if (/\s/.test(value)) {
-		return { ok: false, code: 'URL_UNSAFE', message: `url contains whitespace: ${value}` };
+		return { ok: false, code: 'URL_UNSAFE', message: `url contains whitespace: ${display}` };
 	}
 	if (/:\/\/[^/@]*@/.test(value) || /^[A-Za-z0-9._-]+@[^:]+:/.test(value)) {
 		return {
@@ -181,14 +218,14 @@ export function classifyRepoUrl(url) {
 		return {
 			ok: false,
 			code: 'URL_UNSAFE',
-			message: `url must address a repository, not a ref or query (${value})`,
+			message: `url must address a repository, not a ref or query (${display})`,
 		};
 	}
 	let parsed;
 	try {
 		parsed = new URL(value);
 	} catch {
-		return { ok: false, code: 'URL_UNSAFE', message: `unparseable url: ${value}` };
+		return { ok: false, code: 'URL_UNSAFE', message: `unparseable url: ${display}` };
 	}
 	if (parsed.hostname.toLowerCase() !== 'github.com') {
 		return {
@@ -205,7 +242,7 @@ export function classifyRepoUrl(url) {
 		return {
 			ok: false,
 			code: 'URL_UNSAFE',
-			message: `url must be https://github.com/<owner>/<repo>.git (got ${value})`,
+			message: `url must be https://github.com/<owner>/<repo>.git (got ${display})`,
 		};
 	}
 	for (const segment of segments) {
@@ -277,7 +314,8 @@ export function parseConfigLines(stdout) {
 export function splitSubmoduleConfigKey(key) {
 	const match = /^submodule\.(.+)\.([A-Za-z0-9-]+)$/.exec(key);
 	if (!match) return null;
-	return { name: match[1], configKey: match[2] };
+	// As with `.gitmodules`, the config key is case-insensitive.
+	return { name: match[1], configKey: match[2].toLowerCase() };
 }
 
 /** True when `path` holds an initialised submodule (a `.git` file/dir). */
@@ -371,9 +409,12 @@ export function collectFacts(root, manifest, gitmodules) {
 	}
 
 	const artifacts = {};
+	const artifactProblems = {};
 	for (const tool of manifest.tools ?? []) {
 		if (tool.delivery?.kind !== 'same_origin_static') continue;
-		artifacts[tool.slug] = readArtifactStamp(root, tool.slug);
+		const stamp = readArtifactStamp(root, tool.slug);
+		artifacts[tool.slug] = stamp.stamp;
+		if (stamp.problem) artifactProblems[tool.slug] = stamp.problem;
 	}
 
 	return {
@@ -384,18 +425,66 @@ export function collectFacts(root, manifest, gitmodules) {
 		urlRewrites,
 		checkouts,
 		artifacts,
+		artifactProblems,
 	};
 }
 
-/** Read `dist/tool-provenance/<slug>.json`, or `null` when absent. */
+/**
+ * Read `dist/tool-provenance/<slug>.json`.
+ *
+ * Returns `{ present, stamp, problem }`:
+ *
+ *   - `present: false` — nothing built yet (or the output was cleaned);
+ *     an `info` note, not a failure.
+ *   - `present: true, problem: <why>` — a stamp exists but records no
+ *     usable provenance (truncated JSON, hand-edited, an older `schema`,
+ *     or a missing/blank commit SHA). This is an **error**: a stamp
+ *     that names no commit must not be accepted as proof that the
+ *     served artefact came from the pin, and reporting it as "missing"
+ *     would launder corruption into the pre-build state.
+ *   - `present: true, stamp: {...}` — a stamp that records the commit
+ *     it was built from; the caller compares it with the pin.
+ */
 export function readArtifactStamp(root, slug) {
 	const stampPath = join(root, PROVENANCE_STAMP_DIR, `${slug}.json`);
-	if (!existsSync(stampPath)) return null;
+	const invalid = (problem) => ({ present: true, stamp: null, problem });
+	if (!existsSync(stampPath)) return { present: false, stamp: null, problem: null };
+	let parsed;
 	try {
-		const parsed = JSON.parse(readFileSync(stampPath, 'utf8'));
-		return typeof parsed === 'object' && parsed !== null ? parsed : null;
+		parsed = JSON.parse(readFileSync(stampPath, 'utf8'));
 	} catch {
-		return null;
+		return invalid('is not valid JSON (a truncated or hand-edited write)');
+	}
+	if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+		return invalid(
+			`is a ${Array.isArray(parsed) ? 'JSON array' : 'JSON scalar'}, not a stamp object`,
+		);
+	}
+	if (parsed.schema !== 1) {
+		return invalid(`declares schema ${describeValue(parsed.schema)}, expected 1`);
+	}
+	for (const field of ['slug', 'canonical_repo']) {
+		if (typeof parsed[field] !== 'string' || parsed[field].length === 0) {
+			return invalid(`is missing the required ${field} field`);
+		}
+	}
+	for (const field of ['pinned_sha', 'checkout_sha']) {
+		if (!SHA_REGEX.test(String(parsed[field] ?? ''))) {
+			return invalid(
+				`records ${field} as ${describeValue(parsed[field])}, not a 40-char commit SHA`,
+			);
+		}
+	}
+	return { present: true, stamp: parsed, problem: null };
+}
+
+/** Render a JSON value for a message without ever printing `undefined`. */
+function describeValue(value) {
+	if (value === undefined) return 'nothing';
+	try {
+		return JSON.stringify(value);
+	} catch {
+		return 'an unreadable value';
 	}
 }
 
@@ -429,7 +518,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 				'URL_INSTEADOF_REWRITE',
 				'error',
 				'git-config',
-				`git config (${rewrite.scope}) ${rewrite.key} rewrites fetches to "${rewrite.value}"; a submodule pin resolved through this is not the recorded source`,
+				`git config (${rewrite.scope}) ${redactUrlCredentials(rewrite.key)} rewrites fetches to "${redactUrlCredentials(rewrite.value)}"; a submodule pin resolved through this is not the recorded source`,
 				'remove the url.*.insteadOf rewrite for this repository, then re-run the gate',
 			),
 		);
@@ -502,7 +591,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 				pinned_sha: null,
 				gitlink_sha: gitlinkSha,
 				checkout_sha: checkout.head,
-				origin_url: checkout.origin,
+				origin_url: redactUrlCredentials(checkout.origin),
 				artifact_pin: null,
 				verdict: 'FAIL',
 				codes: rowNotes,
@@ -539,7 +628,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 					'URL_MISMATCH',
 					'error',
 					subject,
-					`${tool.slug}: .gitmodules fetches ${section.url} but the manifest declares source.canonical_repo ${canonicalRepo}`,
+					`${tool.slug}: .gitmodules fetches ${redactUrlCredentials(section.url)} but the manifest declares source.canonical_repo ${redactUrlCredentials(canonicalRepo)}`,
 					'point both at the same reviewed repository, or change the manifest when the Tool is intentionally re-hosted',
 				);
 			}
@@ -548,7 +637,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 					'URL_MISMATCH',
 					'error',
 					subject,
-					`${tool.slug}: .gitmodules url "${section.url}" cannot be compared with the manifest's ${canonicalRepo}`,
+					`${tool.slug}: .gitmodules url "${redactUrlCredentials(section.url)}" cannot be compared with the manifest's ${redactUrlCredentials(canonicalRepo)}`,
 					'normalise the .gitmodules url to the manifest canonical_repo form',
 				);
 			}
@@ -598,7 +687,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 					'LOCAL_URL_OVERRIDE',
 					'error',
 					subject,
-					`${tool.slug}: local git config submodule.${name}.url="${config.url}" overrides the fetch source declared in the manifest (${canonicalRepo})`,
+					`${tool.slug}: local git config submodule.${name}.url="${redactUrlCredentials(config.url)}" overrides the fetch source declared in the manifest (${redactUrlCredentials(canonicalRepo)})`,
 					`git config --unset submodule.${name}.url, or re-run \`git submodule sync\` after confirming the intended source`,
 				);
 			}
@@ -668,7 +757,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 					'CHECKOUT_ORIGIN_MISMATCH',
 					'error',
 					subject,
-					`${tool.slug}: the checkout's remote.origin is ${checkout.origin}, not the declared ${canonicalRepo}`,
+					`${tool.slug}: the checkout's remote.origin is ${redactUrlCredentials(checkout.origin)}, not the declared ${redactUrlCredentials(canonicalRepo)}`,
 					`git -C ${path} remote set-url origin ${canonicalRepo}`,
 				);
 			}
@@ -677,16 +766,25 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 					'CHECKOUT_DIRTY',
 					'warn',
 					subject,
-					`${tool.slug}: ${path} has local modifications to tracked files, so its build is not reproducible from the pinned commit`,
-					'discard the local edit and fix the Tool in its own repository (ADR-0006 §2), then re-checkout the pinned commit',
+					`${tool.slug}: ${path} has local modifications to tracked files, so its build is not reproducible from the pinned commit (ADR-0006 §4: the pin is a verified commit, and an in-place edit is not it)`,
+					'discard the local edit and fix the Tool in its own repository, then re-checkout the pinned commit',
 				);
 			}
 		}
 
 		// --- build artefact provenance ----------------------------------
 		const stamp = facts.artifacts?.[tool.slug] ?? null;
+		const stampProblem = facts.artifactProblems?.[tool.slug] ?? null;
 		if (isFetched) {
-			if (!stamp) {
+			if (stampProblem) {
+				push(
+					'ARTIFACT_STAMP_INVALID',
+					'error',
+					subject,
+					`${tool.slug}: the build provenance stamp at ${PROVENANCE_STAMP_DIR}/${tool.slug}.json ${stampProblem}; a stamp that records no commit cannot prove which source the artefact was built from`,
+					`pnpm run build rewrites the stamp from the current pin; remove ${PROVENANCE_STAMP_DIR}/${tool.slug}.json if the Tool is no longer served`,
+				);
+			} else if (!stamp) {
 				push(
 					'ARTIFACT_PIN_MISSING',
 					'info',
@@ -729,7 +827,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 						'ARTIFACT_SOURCE_MISMATCH',
 						'error',
 						subject,
-						`${tool.slug}: the collected artefact names source ${stamp.canonical_repo}, not the declared ${canonicalRepo}`,
+						`${tool.slug}: the collected artefact names source ${redactUrlCredentials(stamp.canonical_repo)}, not the declared ${redactUrlCredentials(canonicalRepo)}`,
 						'pnpm run build to rebuild the artefact from the declared source',
 					);
 				}
@@ -744,7 +842,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 			pinned_sha: pinnedSha,
 			gitlink_sha: gitlinkSha,
 			checkout_sha: checkout.head,
-			origin_url: checkout.origin,
+			origin_url: redactUrlCredentials(checkout.origin),
 			artifact_pin: stamp?.pinned_sha ?? null,
 			verdict: 'PASS',
 			codes: rowNotes,

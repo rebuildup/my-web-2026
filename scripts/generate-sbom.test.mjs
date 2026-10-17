@@ -386,6 +386,6 @@ describe('generate-sbom — real repository inputs', () => {
 	});
 
 	it('derives the release artifact directory from the version', () => {
-		assert.equal(sbomDirFor('0.6.3'), 'release-assets/supply-chain/0.6.3');
+		assert.equal(sbomDirFor('9.9.9'), 'release-assets/supply-chain/9.9.9');
 	});
 });

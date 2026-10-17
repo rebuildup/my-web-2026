@@ -194,7 +194,7 @@ describe('check-sbom — inventory drift is rejected', () => {
 
 	it('rejects a purl that disagrees with the declared name/version', () => {
 		const bom = realBom();
-		bom.components.find((c) => c.name === 'hono').purl = 'pkg:npm/hono@0.0.1';
+		bom.components.find((c) => c.name === 'hono').purl = 'pkg:npm/hono@9.9.9';
 		const result = check(bom);
 		assert.equal(result.ok, false);
 		assert.ok(result.errors.some((e) => e.includes('purl disagrees with name/version')));
@@ -304,7 +304,7 @@ describe('check-sbom — secret content is rejected', () => {
 
 describe('check-sbom — on-disk documents', () => {
 	it('reports a missing file rather than throwing', () => {
-		const result = checkSbomFile({ bomPath: 'release-assets/supply-chain/0.0.0/sbom.cdx.json' });
+		const result = checkSbomFile({ bomPath: 'release-assets/supply-chain/9.9.9/sbom.cdx.json' });
 		assert.equal(result.ok, false);
 		assert.match(result.errors[0], /not found/);
 	});

@@ -29,6 +29,48 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## OAuth / OIDC callback: state and redirect (Issue #444)
+
+The shipped auth config (`src/cloudflare/auth/better-auth.ts`) registers
+the `admin()` and `apiKey()` plugins and **no social provider**. The
+OAuth machinery therefore ships unconfigured: `/api/v1/auth/callback/:id`
+and `/api/v1/auth/sign-in/social` are reachable, but no provider round
+trip can complete, so **no callback can mint a session** on this
+deployment. What an attacker controls is everything in front of that
+stop, and that is what the contract test pins.
+
+Contract: [`src/http/auth/oauth-callback.test.ts`](../src/http/auth/oauth-callback.test.ts).
+
+| Gate                                   | Rejection signal                                                  |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| `state` missing                         | redirect to `<base>/error?error=state_not_found`                 |
+| `state` unknown / tampered / replayed   | redirect to `<base>/error?error=state_mismatch`                  |
+| `state` cookie absent or for another id | same (`state_security_mismatch` is reported as `state_mismatch`) |
+| `state` payload expired                 | `state_mismatch`                                                  |
+| valid `state`, provider not configured   | `oauth_provider_not_found` — the *next* gate, i.e. state passed   |
+| `callbackURL` / `redirectTo` / `errorCallbackURL` / `newUserCallbackURL` off-origin | `403` + `INVALID_*` code at the sign-in entry point |
+| `Origin` / `Referer` from another site   | `403` + `INVALID_ORIGIN`                                          |
+| cookie-bearing request with no origin    | `403` + `MISSING_OR_NULL_ORIGIN`                                  |
+
+Two properties are asserted beyond the status codes, because either one
+alone would still be an open redirect:
+
+1. Every callback `Location` stays on the request origin. A
+   `callbackURL` supplied on the **callback request** is ignored — the
+   post-sign-in target comes from the signed state, never from the query
+   string.
+2. No rejection path sets a session cookie or leaves a `session` row.
+
+Each guard is paired with a positive control, so the suite cannot pass by
+rejecting everything.
+
+Fixtures are local only: rows in the workerd test pool's D1 plus a cookie
+signed with the dummy `BETTER_AUTH_SECRETS` binding that
+`vitest.config.ts` declares. No production secret is read, logged, or
+asserted, and no test contacts a real IdP. Response capture from the
+local run:
+[`verification/security/oauth-negative-tests.webp`](verification/security/oauth-negative-tests.webp).
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

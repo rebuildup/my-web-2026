@@ -240,6 +240,25 @@ export default { component: Hero, args: { bucket: env.MEDIA } };
 				'src/home/hero.tsx': 'export function Hero() { return <main>hero</main>; }\n',
 			},
 		},
+		{
+			// A default import whose local name merely starts with "type"
+			// is a runtime edge. Reading it as `import type` would be a
+			// silent false negative: the foreign boundary behind it would
+			// never be reported.
+			name: 'a default import whose name starts with "type"',
+			boundary: 'routes',
+			files: {
+				'src/home/hero.stories.tsx': `import typePayload from './payload';
+
+export default { args: { payload: typePayload } };
+`,
+				'src/home/payload.ts': `import { route } from '../routes/index';
+
+export default { route };
+`,
+				'src/routes/index.tsx': 'export const route = { id: "/" };\n',
+			},
+		},
 	];
 
 	for (const testCase of cases) {

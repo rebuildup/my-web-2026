@@ -112,7 +112,11 @@ function parseEdges(source) {
 		edges.push({
 			specifier: match[2],
 			clause,
-			kind: clause.startsWith('type') ? 'import-type' : 'import',
+			// `^type\b` and not `startsWith('type')`: a default import
+			// named `types` is a runtime edge, and calling it type-only
+			// would be exactly the silent false negative this gate
+			// exists to prevent.
+			kind: /^type(\s|$)/.test(clause) ? 'import-type' : 'import',
 		});
 	}
 	for (const match of source.matchAll(IMPORT_SIDE_EFFECT)) {

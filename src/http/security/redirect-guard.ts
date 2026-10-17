@@ -53,15 +53,50 @@ export interface RedirectGuardOptions {
 	allowedPrefixes?: readonly string[];
 }
 
-/** Bodies larger than this are not redirect-carrying in any shape the
- *  project produces; refusing to buffer them keeps the boundary's cost
- *  bounded on an attacker-controlled request. */
+/** How much of a request body the guard is willing to read. No shape
+ *  this project produces puts a redirect target past it, so a larger
+ *  body is not parsed rather than being buffered whole. */
 const MAX_BODY_BYTES_SCANNED = 16 * 1024;
 
 function resolveTrustedOrigins(options: RedirectGuardOptions, c: Context): readonly string[] {
 	const configured = options.trustedOrigins;
 	if (typeof configured === 'function') return configured(c);
 	return configured ?? [];
+}
+
+/**
+ * Read at most `maxBytes` of a cloned body, then give up.
+ *
+ * `Content-Length` alone is not a bound — a chunked request can declare
+ * nothing — so the read is capped here as well. Cancelling one branch
+ * of the `clone()` tee leaves the original body readable by the
+ * handler below; only this side stops.
+ */
+async function readBoundedText(request: Request, maxBytes: number): Promise<string | null> {
+	const stream = request.clone().body;
+	if (!stream) return null;
+	const reader = stream.getReader();
+	const decoder = new TextDecoder();
+	let text = '';
+	let total = 0;
+	try {
+		for (;;) {
+			const { done, value } = await reader.read();
+			if (done) break;
+			if (!value) continue;
+			total += value.byteLength;
+			if (total > maxBytes) {
+				await reader.cancel();
+				return null;
+			}
+			text += decoder.decode(value, { stream: true });
+		}
+	} catch {
+		return null;
+	} finally {
+		reader.releaseLock();
+	}
+	return text + decoder.decode();
 }
 
 /**
@@ -82,22 +117,15 @@ export async function collectRequestRedirectCandidates(
 	) {
 		return candidates;
 	}
-	// Cheap pre-filter: a body that mentions none of the names cannot
-	// carry a target, so large unrelated payloads are never buffered.
+	// Declared length is the cheap pre-filter; the bounded read below is
+	// the one that actually holds when the request lies about it.
 	const declaration = request.headers.get('content-length');
 	if (declaration !== null && Number(declaration) > MAX_BODY_BYTES_SCANNED) return candidates;
 
-	let buffer: ArrayBuffer;
-	try {
-		// `arrayBuffer` rather than `text()`: workerd warns when
-		// `text()` is called on a `x-www-form-urlencoded` body, and the
-		// bytes are what both parsers below actually consume.
-		buffer = await request.clone().arrayBuffer();
-	} catch {
+	const text = await readBoundedText(request, MAX_BODY_BYTES_SCANNED);
+	if (text === null || text.length === 0 || !params.some((param) => text.includes(param))) {
 		return candidates;
 	}
-	const text = new TextDecoder().decode(buffer);
-	if (text.length === 0 || !params.some((param) => text.includes(param))) return candidates;
 	return [...candidates, ...collectRedirectCandidatesFromBody(text, contentType, params)];
 }
 

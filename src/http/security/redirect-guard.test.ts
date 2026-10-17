@@ -187,6 +187,15 @@ describe('redirect guard — middleware behaviour independent of the auth surfac
 		return guarded;
 	}
 
+	/** Same guard, but the handler actually reads the body — proves the
+	 *  guard's `clone()` read leaves the original stream intact. */
+	function echoBodyApp() {
+		const guarded = new Hono<{ Bindings: Env }>();
+		guarded.use('/echo/*', redirectTargetGuard());
+		guarded.all('/echo/*', async (c) => c.json({ length: (await c.req.text()).length }));
+		return guarded;
+	}
+
 	it('downgrades a trusted absolute URL to an internal path instead of refusing it', async () => {
 		const res = await app({ trustedOrigins: ['https://rebuildup.dev'] }).request(
 			'https://rebuildup.dev/echo?callbackURL=https%3A%2F%2Frebuildup.dev%2Fadmin%2Fkeys',
@@ -225,6 +234,28 @@ describe('redirect guard — middleware behaviour independent of the auth surfac
 		// The endpoint that owns the body reports the oversize; the
 		// guard stays out of the way rather than buffering it.
 		expect(res.status).toBe(200);
+	});
+
+	it('stops at the scan budget on a body that declares no length, and the handler still reads it', async () => {
+		// Chunked: no `Content-Length`, so the cap has to hold during the
+		// read itself. The handler reading the whole body afterwards is
+		// the proof that the guard's `clone()` did not consume it.
+		const body = `{"callbackURL":"${'a'.repeat(20_000)}","email":"demo@example.test"}`;
+		const stream = new ReadableStream<Uint8Array>({
+			start(controller) {
+				controller.enqueue(new TextEncoder().encode(body));
+				controller.close();
+			},
+		});
+		const res = await echoBodyApp().request('https://rebuildup.dev/echo/x', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: stream,
+			// @ts-expect-error undici requires `duplex` for a stream body.
+			duplex: 'half',
+		});
+		expect(res.status).toBe(200);
+		expect(((await res.json()) as { length: number }).length).toBe(body.length);
 	});
 
 	it('enforces allowedPrefixes when the surface scopes its targets', async () => {

@@ -11,7 +11,7 @@
 
 | 項目 | 値 |
 | --- | --- |
-| source SHA | `2395ef8`（`release-0-6-3` 起点。before / after とも同じ SHA。§2 参照） |
+| source SHA | `3dbc481`（after。before は `2395ef8`。差分は docs のみで src / scripts は同一 — §2 参照） |
 | ブラウザ | Chromium 153.0.8010.12（`@playwright/test ^1.63.0`、playwright.config.ts と同じ chromium） |
 | viewport / DPR | 1280x900 / 1 |
 | CPU | CDP `Emulation.setCPUThrottlingRate` = **4x** |
@@ -32,8 +32,11 @@ node scripts/perf-large-list.mjs                 # seed → measure → click Lo
 ## 2. 実測結果（120行 fixture）
 
 `Load more` は**実際にクリック**し、2ページ目が DOM に入ったところで計測した。
-`before` は「今回の1要素修正」を戻した状態（`src/portfolio/components/ProjectCard.tsx` のみ 7b95c4b 版に差し替え、他は同一）、
-`after` はその修正を含む状態。両 run とも source SHA は `2395ef8`、ハーネスも同じものを使っている。
+
+- `before` = `2395ef8` に「今回の1要素修正」だけ戻した状態（`src/portfolio/components/ProjectCard.tsx` を 7b95c4b 版へ差し替え、ほかは同一）
+- `after` = `3dbc481`（clean）。`2395ef8 → 3dbc481` の差分は `docs/verification/perf/**` のみで、
+  `src/` と `scripts/`（ハーネス本体）は同一。したがって **DOM node 数・AX node 数・件数**は
+  同じコードの 1 対 1 比較であり、ヒープとレイテンシだけが 1 回の走査ノイズを含む。
 
 | 指標 | before | after | 合格基準 |
 | --- | --- | --- | --- |
@@ -43,9 +46,9 @@ node scripts/perf-large-list.mjs                 # seed → measure → click Lo
 | DOM node 数 / card | 18.26（pinned 付き card は 20） | 18.26（同じ） | **上限 20** |
 | DOM node 数（Load more 後） | 2164 | 2164 | 追加 20 行ぶんの node だけ増える |
 | アクセシビリティツリー全体 node 数 | 3241 | 3241 | 修正で node が増えていないことの証拠 |
-| JS heap | 10.7 MB → 11.6 MB | 9.6 MB → 11.2 MB | 記録のみ（gate 向きでない） |
-| navigation `load` | 12820 ms | 12721 ms | 4x CPU + Slow 4G 条件の記録値 |
-| Load more 追加レイテンシ | 774 ms | 505 ms | 記録のみ |
+| JS heap | 10.7 MB → 11.6 MB | 10.0 MB → 11.6 MB | 記録のみ（gate 向きでない） |
+| navigation `load` | 12820 ms | 13023 ms | 4x CPU + Slow 4G 条件の記録値 |
+| Load more 追加レイテンシ | 774 ms | 534 ms | 記録のみ |
 | 一覧面の命名不可な `aria-label` | **100** | **0** | **0** |
 | ページ全体の命名不可な `aria-label` | 101 | 1（下記 follow-up） | 記録のみ（§4） |
 | AX 上で "facets" group と読める node | **0** | **100**（追加後は 120） | 描画 card 数と一致 |
@@ -88,11 +91,24 @@ node scripts/perf-large-list.mjs                 # seed → measure → click Lo
 
 ## 5. スクリーンショット
 
-`docs/verification/perf/large-list-pagination.png` は、計測した**同じページ**の viewport キャプチャに
+`docs/verification/perf/large-list-pagination.webp` は、計測した**同じページ**の viewport キャプチャに
 計測パネル（source SHA / browser / viewport / CPU / network / fixture / DOM / heap / append /
 a11y 不変条件 / verdict）を載せた 1 枚。ページング境界（100 枚目の card と 101 枚目）が画面内に
 入るスクロール位置で撮っており、JSON レポートの `screenshot` に
 `scrollY` と境界 2 枚の card テキストが記録されている（「stale な画像」が後から判別できるようにするため）。
+
+### Issue が指定した `.png` との差分（明示）
+
+Issue #490 の必須スクリーンショットは `docs/verification/perf/large-list-pagination.png` だが、
+**提出物は同ディレクトリの `.webp`**。理由は 2 つ:
+
+1. Chromium は PNG しか書けないため、`sharp` で **WebP（幅 <= 1600、quality 80）** に変換してから commit する。
+   一時 PNG は `.tmp/` に書いてその場で削除する（`scripts/perf-large-list.mjs` の `--screenshot` が既定）。
+2. 検証用のバイナリを tree に大きく保持しないためのリポジトリ方針（`scripts/layout-audit-shoot.mjs` の
+   「screenshot は repository 外へ」という記述と同じ考え方）。
+
+変換後のサイズと budget 判定は JSON レポートの `screenshot.bytes` / `screenshot.withinBudget` に記録され、
+上限は `SCREENSHOT_BUDGET_BYTES`（300 kB）。超過時は warning を stderr に出す。
 
 ## 6. 制限（known limitations）
 

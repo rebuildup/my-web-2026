@@ -29,6 +29,9 @@ import {
 	FIXTURE_ID_PREFIX,
 	NAMING_ROLES,
 	PER_CARD_NODE_CEILING,
+	SCREENSHOT_BUDGET_BYTES,
+	SCREENSHOT_MAX_WIDTH,
+	SCREENSHOT_QUALITY,
 	buildFixtureRows,
 	collectNamingViolations,
 	evaluateThresholds,
@@ -36,6 +39,7 @@ import {
 	fixtureProjectStatement,
 	parseArgs,
 	resolveRole,
+	screenshotBudgetVerdict,
 } from './perf-large-list.mjs';
 
 const healthyReport = () => ({
@@ -233,7 +237,16 @@ describe('perf-large-list — CLI contract', () => {
 		assert.equal(options.count, 120);
 		assert.equal(options.pageSize, 100);
 		assert.equal(options.cpuThrottle, 4);
-		assert.equal(options.screenshot, 'docs/verification/perf/large-list-pagination.png');
+		assert.equal(options.screenshot, 'docs/verification/perf/large-list-pagination.webp');
+	});
+
+	it('commits a bounded WebP capture, not a raw PNG', () => {
+		assert.equal(SCREENSHOT_MAX_WIDTH, 1600);
+		assert.equal(SCREENSHOT_QUALITY, 80);
+		assert.equal(screenshotBudgetVerdict(200 * 1024).withinBudget, true);
+		assert.equal(screenshotBudgetVerdict(400 * 1024).withinBudget, false);
+		assert.equal(screenshotBudgetVerdict(SCREENSHOT_BUDGET_BYTES).withinBudget, true);
+		assert.equal(screenshotBudgetVerdict(300 * 1024).kb, 300);
 	});
 
 	it('refuses a catalogue below the 100+ boundary', () => {

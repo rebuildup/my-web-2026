@@ -52,11 +52,11 @@
  *                        spawning a preview process
  *   --json-out=<path>    report destination
  *                        (default .tmp/perf-large-list/report.json)
- *   --screenshot=<path>  PNG destination
- *                        (default docs/verification/perf/large-list-pagination.png)
+ *   --screenshot=<path>  committed capture destination
+ *                        (default docs/verification/perf/large-list-pagination.webp)
  *   --cpu-throttle=<n>   CDP CPU throttling rate (default 4)
  *   --keep-fixtures      leave the seeded rows in the local D1
- *   --no-screenshot      skip the PNG
+ *   --no-screenshot      skip the capture
  */
 
 import { execFileSync, spawn } from 'node:child_process';
@@ -64,6 +64,7 @@ import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
+import sharp from 'sharp';
 import { applyMigrations, executeBatch, runStatement } from './_d1.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -89,6 +90,29 @@ const TECHNOLOGY_CYCLE = ['TypeScript', 'React', 'Cloudflare Workers', 'Panda CS
  * budget: nothing here is expressed in milliseconds.
  */
 export const PER_CARD_NODE_CEILING = 20;
+
+/**
+ * Committed captures are WebP: width cap, quality, and size budget.
+ *
+ * Chromium can only write PNG, and the Issue names a `.png` path, but
+ * a verification artefact does not justify a large binary in the tree.
+ * The capture is therefore converted with `sharp` and the temporary
+ * PNG is deleted; the committed file is the `.webp` sibling of the
+ * Issue's path (the substitution is stated in the PR body and in
+ * `docs/verification/perf/large-list-pagination.md`).
+ */
+export const SCREENSHOT_MAX_WIDTH = 1600;
+export const SCREENSHOT_QUALITY = 80;
+export const SCREENSHOT_BUDGET_BYTES = 300 * 1024;
+
+/** Whether a capture fits the verification-artefact budget (pure). */
+export function screenshotBudgetVerdict(bytes) {
+	return {
+		bytes,
+		kb: Math.round(bytes / 1024),
+		withinBudget: bytes <= SCREENSHOT_BUDGET_BYTES,
+	};
+}
 
 /**
  * Roles that may carry `aria-label`.
@@ -341,7 +365,7 @@ export function parseArgs(argv) {
 		cpuThrottle: 4,
 		baseUrl: null,
 		jsonOut: '.tmp/perf-large-list/report.json',
-		screenshot: 'docs/verification/perf/large-list-pagination.png',
+		screenshot: 'docs/verification/perf/large-list-pagination.webp',
 		keepFixtures: false,
 		noScreenshot: false,
 		withMedia: false,
@@ -759,15 +783,37 @@ async function main() {
 					cardCount: Number(panel?.dataset.cardCount ?? '0'),
 				};
 			});
-			report.screenshot = {
-				path: options.screenshot,
-				viewport: '1280x900',
-				...capture,
-			};
-			await page.screenshot({ path: target, fullPage: false });
-			process.stdout.write(
-				`perf-large-list: wrote ${options.screenshot} (scrollY=${capture.scrollY}, boundary card #${options.pageSize} = "${capture.boundaryCard}")\n`,
-			);
+			// Chromium only writes PNG; the committed artefact is WebP.
+			const rawCapture = join(REPO_ROOT, '.tmp', 'perf-large-list', 'capture.png');
+			await page.screenshot({ path: rawCapture, fullPage: false });
+			try {
+				const written = await sharp(rawCapture)
+					.resize({ width: SCREENSHOT_MAX_WIDTH, withoutEnlargement: true })
+					.webp({ quality: SCREENSHOT_QUALITY })
+					.toFile(target);
+				const budget = screenshotBudgetVerdict(written.size);
+				report.screenshot = {
+					path: options.screenshot,
+					format: 'webp',
+					viewport: '1280x900',
+					maxWidth: SCREENSHOT_MAX_WIDTH,
+					quality: SCREENSHOT_QUALITY,
+					bytes: budget.bytes,
+					kb: budget.kb,
+					withinBudget: budget.withinBudget,
+					...capture,
+				};
+				process.stdout.write(
+					`perf-large-list: wrote ${options.screenshot} (${written.width}x${written.height}, ${budget.kb} kB webp, scrollY=${capture.scrollY}, boundary card #${options.pageSize} = "${capture.boundaryCard}")\n`,
+				);
+				if (!budget.withinBudget) {
+					process.stderr.write(
+						`perf-large-list: WARNING — capture is ${budget.kb} kB, over the ${Math.round(SCREENSHOT_BUDGET_BYTES / 1024)} kB verification-artefact budget\n`,
+					);
+				}
+			} finally {
+				rmSync(rawCapture, { force: true });
+			}
 		}
 
 		const jsonTarget = resolve(REPO_ROOT, options.jsonOut);

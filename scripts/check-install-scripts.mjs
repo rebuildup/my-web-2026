@@ -11,8 +11,8 @@
  * 1. Every installed package that declares an install-time lifecycle
  *    hook (`preinstall` / `install` / `postinstall`) is recorded in
  *    `quality/install-scripts.json` together with the reason its build
- *    is necessary — "必要なものだけを記録" made checkable instead of
- *    remembered.
+ *    is necessary — "record only what is needed" becomes a checkable
+ *    contract instead of a memory.
  * 2. The recorded decision and pnpm's execution allow-list
  *    (`pnpm-workspace.yaml#onlyBuiltDependencies` / `#allowBuilds`)
  *    agree in both directions: an "allow" that pnpm blocks is a build

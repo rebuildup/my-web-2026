@@ -9,6 +9,7 @@ import {
 	type SessionCookieProfileId,
 	type SessionCookieViolationCode,
 	evaluateSessionCookies,
+	maskSetCookieValue,
 	readSetCookieHeaders,
 	sessionCookieProfileFor,
 	splitSetCookieHeader,
@@ -49,12 +50,25 @@ import {
  *
  * Secret / PII invariant
  * ----------------------
- * The report has no field for a cookie value, so the verification
- * evidence printed below (and rendered into
- * `docs/verification/security/cookie-header-test.webp`) carries
- * attribute names and flags only. `it('never carries a cookie value…')`
- * asserts that a report serialised to JSON does not contain the
- * fixture value.
+ * The evaluator drops cookie values at parse time, so a report has no
+ * field for one. That alone is NOT enough for the verification
+ * evidence: a real sign-in response carries the live signed session
+ * token and a `session_data` cookie holding the signed user record
+ * (name, email, role), and `record()` used to keep those raw strings
+ * for the screenshot. Every header is therefore passed through
+ * `maskSetCookieValue` at the moment it enters the evidence map, so the
+ * emitted payload carries attribute names, flags and values only, and
+ * the two `report safety` tests assert that on the payload itself
+ * rather than on the report it is derived from.
+ *
+ * Importing `scripts/_cloudflare-contract.mjs`
+ * -------------------------------------------
+ * This is the one place where `src/**` imports from `scripts/**`. It is
+ * deliberate: the canonical production origin has exactly one
+ * declaration, and the contract must be evaluated against THAT value
+ * rather than a third restatement of it. `scripts/check-architecture.mjs`
+ * models owner-to-owner edges inside `src/` only, so the edge is
+ * documented here rather than registered there.
  */
 
 /**
@@ -80,8 +94,8 @@ const FIXTURE_USER = {
 /**
  * Verification evidence for the required screenshot. Assembled from
  * the reports the assertions below already computed, then emitted as
- * ONE value-free JSON line so a local run can be rendered without
- * re-deriving anything by hand.
+ * ONE JSON line so a local run can be rendered without re-deriving
+ * anything by hand.
  */
 interface CaseEvidence {
 	id: string;
@@ -89,10 +103,11 @@ interface CaseEvidence {
 	expectation: 'pass' | 'fail';
 	profile: SessionCookieProfileId;
 	/**
-	 * The `Set-Cookie` strings the evaluator saw, for the negative
-	 * cases. Values are placeholders, but the renderer still masks
-	 * them so the screenshot shows the same redaction rule the PR body
-	 * claims.
+	 * The `Set-Cookie` strings the evaluator saw, with every value
+	 * replaced by `<masked>` on the way in. Attribute names, flags and
+	 * attribute values survive, because they are what the contract is
+	 * about; the cookie *value* does not, because for a real response
+	 * it is a signed session token / signed user record.
 	 */
 	headers: string[];
 	cookies: {
@@ -109,6 +124,14 @@ interface CaseEvidence {
 
 const evidence = new Map<string, CaseEvidence>();
 
+/**
+ * Store one case for the verification evidence.
+ *
+ * Masking happens HERE, at the boundary where a raw header enters the
+ * evidence map, rather than in whatever later renders it: a renderer
+ * that forgets to redact turns a log line into a credential, and there
+ * is no second line of defence between this call and `console.info`.
+ */
 function record(
 	id: string,
 	kind: CaseEvidence['kind'],
@@ -121,13 +144,38 @@ function record(
 		kind,
 		expectation,
 		profile: report.profile.id,
-		headers: [...headers],
+		headers: headers.map((header) => maskSetCookieValue(header)),
 		cookies: report.cookies.map((cookie) => ({ name: cookie.name, ...cookie.attributes })),
 		violations: report.violations.map((violation) => ({
 			code: violation.code,
 			message: violation.message,
 		})),
 	});
+}
+
+/**
+ * The exact value `afterAll` prints. A function rather than an inline
+ * object literal so the safety tests can assert on the same bytes the
+ * report line carries, instead of on a re-derivation of it.
+ */
+function buildEvidencePayload() {
+	return {
+		marker: 'session-cookie-contract',
+		origin: 'local workerd pool (@cloudflare/vitest-plugin, Miniflare D1)',
+		profiles: {
+			local: {
+				id: localProfile.id,
+				secure: localProfile.secure,
+				namePrefix: localProfile.namePrefix,
+			},
+			production: {
+				id: productionProfile.id,
+				secure: productionProfile.secure,
+				namePrefix: productionProfile.namePrefix,
+			},
+		},
+		cases: [...evidence.values()],
+	};
 }
 
 function codes(report: SessionCookieContractReport): SessionCookieViolationCode[] {
@@ -379,7 +427,7 @@ describe('session cookie contract — negative (real response and forged fixture
 		record('rejected-sign-in', 'real-response', 'fail', report, headers);
 
 		expect(report.ok).toBe(false);
-		expect(codes(report)).toContain('session-cookie-missing');
+		expect(codes(report)).toEqual(['session-cookie-missing']);
 	});
 
 	for (const fixture of NEGATIVE_FIXTURES) {
@@ -389,7 +437,11 @@ describe('session cookie contract — negative (real response and forged fixture
 			record(fixture.id, 'fixture', 'fail', report, fixture.cookies);
 
 			expect(report.ok).toBe(false);
-			expect(codes(report)).toEqual(expect.arrayContaining(fixture.expectedCodes));
+			// Exact, not `arrayContaining`: the fixture weakens ONE
+			// attribute, so an additional violation means the fixture is
+			// weaker than its description and would stop proving that the
+			// contract detects exactly one downgrade.
+			expect(codes(report)).toEqual(fixture.expectedCodes);
 		});
 	}
 });
@@ -422,38 +474,84 @@ describe('session cookie contract — report safety', () => {
 		expect(report.ok).toBe(true);
 		expect(report.cookies).toHaveLength(2);
 	});
+
+	it('masks the value and keeps every attribute, including a base64 padding "="', () => {
+		expect(
+			maskSetCookieValue(
+				`${SECURE_COOKIE_PREFIX}better-auth.session_token=abc123==; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax; Secure`,
+			),
+		).toBe(
+			`${SECURE_COOKIE_PREFIX}better-auth.session_token=<masked>; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax; Secure`,
+		);
+		// A value-less fragment is returned untouched rather than
+		// rewritten into something that looks like a cookie.
+		expect(maskSetCookieValue('garbage-without-a-pair')).toBe('garbage-without-a-pair');
+	});
+});
+
+describe('session cookie contract — verification evidence safety', () => {
+	it('masks a raw header at the moment it enters the evidence payload', () => {
+		// Stand-in for the real workerd sign-in header: a value that is
+		// unmistakably a credential and that must never survive into the
+		// emitted line. Recorded here so this assertion holds even if the
+		// suite order changes.
+		const raw = `${SECURE_COOKIE_PREFIX}better-auth.session_token=live-signed-token-must-not-be-printed; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax; Secure`;
+		const report = evaluateSessionCookies([raw], productionProfile);
+		record('evidence-masking-self-check', 'real-response', 'pass', report, [raw]);
+
+		const payload = buildEvidencePayload();
+		const selfCheck = payload.cases.find((entry) => entry.id === 'evidence-masking-self-check');
+
+		expect(selfCheck?.headers).toEqual([
+			`${SECURE_COOKIE_PREFIX}better-auth.session_token=<masked>; Max-Age=2592000; Path=/; HttpOnly; SameSite=Lax; Secure`,
+		]);
+		expect(JSON.stringify(payload)).not.toContain('live-signed-token-must-not-be-printed');
+	});
+
+	it('emits no cookie value in the payload, including the real sign-in case', () => {
+		const payload = buildEvidencePayload();
+		const serialized = JSON.stringify(payload);
+
+		// Not vacuous: the self-check case above, plus the real workerd
+		// response and the forged fixtures recorded by the suites before
+		// this one, are all in here.
+		expect(payload.cases.length).toBeGreaterThan(1);
+
+		// Structural: every stored header must have `<masked>` exactly
+		// where the value would be.
+		for (const entry of payload.cases) {
+			for (const header of entry.headers) {
+				const value = header.slice(header.indexOf('=') + 1).split(';')[0];
+				expect(value).toBe('<masked>');
+			}
+		}
+
+		expect(serialized).not.toContain(FIXTURE_VALUE);
+		expect(serialized).not.toContain(FIXTURE_USER.email);
+		expect(serialized).not.toContain(FIXTURE_USER.name);
+		// A session cookie may appear, never with a value behind it.
+		expect(serialized).not.toMatch(/session_(?:token|data)=(?![^;"]*<masked>)/);
+	});
 });
 
 /**
- * Emit one value-free JSON line so the verification screenshot can be
- * produced from a real run (see
+ * Emit one JSON line so the verification screenshot can be produced
+ * from a real run (see
  * `docs/verification/security/cookie-header-test.webp`). It is not
  * gated on an env var on purpose: the workerd test pool exposes
  * neither `process.env` nor Vite env vars, so a flag could not reach
  * it. Vitest's default reporter only surfaces console output from
  * failing tests, so the normal `pnpm run test` stays quiet; the
  * documented reproduction command passes `--reporter=verbose` to see
- * it. The payload is attributes only and cannot contain a session
- * token or a user record.
+ * it.
+ *
+ * The payload cannot carry a session token or a user record: values
+ * were dropped at parse time inside the evaluator, and the raw
+ * headers `record()` keeps for the evidence were masked on the way in.
+ * `describe('… verification evidence safety')` asserts both on this
+ * exact payload, and `scripts/render-session-cookie-report.mjs`
+ * refuses to render a payload whose headers are not masked.
  */
 afterAll(() => {
-	const payload = {
-		marker: 'session-cookie-contract',
-		origin: 'local workerd pool (@cloudflare/vitest-plugin, Miniflare D1)',
-		betterAuthVersion: '1.7.5',
-		profiles: {
-			local: {
-				id: localProfile.id,
-				secure: localProfile.secure,
-				namePrefix: localProfile.namePrefix,
-			},
-			production: {
-				id: productionProfile.id,
-				secure: productionProfile.secure,
-				namePrefix: productionProfile.namePrefix,
-			},
-		},
-		cases: [...evidence.values()],
-	};
-	console.info(`SESSION_COOKIE_CONTRACT_REPORT ${JSON.stringify(payload)}`);
+	console.info(`SESSION_COOKIE_CONTRACT_REPORT ${JSON.stringify(buildEvidencePayload())}`);
 });

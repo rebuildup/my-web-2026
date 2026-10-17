@@ -55,36 +55,65 @@ contract evaluates against an explicit profile.
   is not localhost drops the cookie, and every later request comes back
   unauthenticated with no error.
 
+`sessionCookieProfileFor()` mirrors only the base-URL *string* branch
+of Better Auth's inference. `advanced.useSecureCookies` (an explicit
+override the current configuration never sets) and the no-base-URL
+`NODE_ENV=production` fallback are deliberately not modelled — the
+latter means running the suite with `NODE_ENV=production` would make a
+correct response look like a violation. Both are false-alarm risks, not
+false passes.
+
 The test drives a real sign-in through `SELF.fetch` and then a set of
 forged fixtures in which exactly one attribute is weakened
 (`HttpOnly` removed, `Secure` dropped, `Domain` added, `SameSite=None`,
 `Path` narrowed, `Max-Age` extended, …). Every fixture must **fail**
-the same evaluator; a fixture that passed would mean the contract
-cannot detect the downgrade it exists to detect.
+the same evaluator, with exactly the violation codes it declares; a
+fixture that passed, or that failed for an extra reason, would mean the
+contract cannot detect the downgrade it exists to detect.
 
 Two properties the test also pins:
 
-- **No value in the report.** The evaluator drops cookie values at
-  parse time and the report type has no field for one, so CI logs,
-  artefacts, and verification screenshots cannot carry a session token
-  or a signed user record.
+- **No value in the report, and none in the evidence built on top of
+  it.** The evaluator drops cookie values at parse time and the report
+  type has no field for one. The verification evidence is a second
+  layer: it keeps the `Set-Cookie` strings so a screenshot can show
+  them, and a real sign-in response carries the signed session token
+  plus a `session_data` cookie holding the signed user record. Those
+  strings are therefore masked (`maskSetCookieValue`) as they enter the
+  evidence map, and two tests assert the masking on the exact payload
+  that is printed — not only on the report it derives from. CI logs,
+  artefacts and verification screenshots therefore cannot carry a
+  session token or a user record.
 - **No production mutation.** The deployed cookie shape is computed
   locally by handing Better Auth's own `getCookies()` the pinned
   origin, not by signing in against production. Confirming the emitted
   headers on the live Worker needs a real account and is left to the
   operator.
 
-Reproduce the verification report (this is what
+Reproduce the verification report — this is the pipeline
 `docs/verification/security/cookie-header-test.webp` was generated
-from):
+from:
 
 ```bash
-pnpm exec vitest run src/cloudflare/auth/session-cookie-contract.test.ts --reporter=verbose
+mkdir -p .tmp/cookie-contract
+pnpm exec vitest run src/cloudflare/auth/session-cookie-contract.test.ts \
+  --reporter=verbose > .tmp/cookie-contract/run.log 2>&1
+node scripts/render-session-cookie-report.mjs \
+  .tmp/cookie-contract/run.log .tmp/cookie-contract/report.html
+pnpm exec playwright screenshot --full-page --viewport-size=1600,1200 \
+  "file://$PWD/.tmp/cookie-contract/report.html" .tmp/cookie-contract/report.png
+node -e "require('sharp')('.tmp/cookie-contract/report.png')
+  .resize({ width: 1600, withoutEnlargement: true })
+  .webp({ quality: 80 })
+  .toFile('docs/verification/security/cookie-header-test.webp')"
 ```
 
 The run prints one `SESSION_COOKIE_CONTRACT_REPORT {…}` line
-containing attributes only (visible with `--reporter=verbose`; the
-default reporter keeps passing-test console output quiet).
+(visible with `--reporter=verbose`; the default reporter keeps
+passing-test console output quiet). The renderer redacts nothing — it
+**refuses** to render a payload whose headers are not masked, so a
+regression in the test cannot be laundered into a clean-looking
+screenshot.
 
 ## Test scope: local workerd vs real Cloudflare
 

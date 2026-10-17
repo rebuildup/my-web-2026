@@ -46,6 +46,24 @@
  *     `Secure` cookie, and every subsequent request comes back
  *     unauthenticated with no error anywhere.
  *
+ * `sessionCookieProfileFor` mirrors only the base-URL *string* branch
+ * of `createCookieGetter`. Two further branches exist upstream and are
+ * deliberately NOT modelled, because modelling them would mean reading
+ * `process.env` in a module whose value is that it reads nothing:
+ *
+ *   - `advanced.useSecureCookies` — an explicit override of the whole
+ *     inference. This configuration never sets it (see
+ *     `better-auth.ts`), so the branch is unreachable; if a future
+ *     change sets it, the contract reports the resulting header as a
+ *     violation instead of silently widening its own policy.
+ *   - the no-base-URL fallback — upstream ends in `isProduction`
+ *     (`process.env.NODE_ENV === 'production'`). The workerd pool
+ *     leaves `NODE_ENV` unset, so `undefined` really does select the
+ *     plain-http profile here. Running the suite with
+ *     `NODE_ENV=production` would make the real response carry
+ *     `Secure` and the http profile would flag it — a false alarm on
+ *     a correct response, never a false pass.
+ *
  * Nothing in this module reads an env var, sends a request, or imports
  * Better Auth. It is a pure evaluator over `Set-Cookie` strings, which
  * is what lets a forged fixture and a real Worker response be judged
@@ -55,12 +73,19 @@
  * ----------------------
  * A session token is credential material, and the compact cookie cache
  * (`session_data`) carries a signed copy of the user record — id,
- * role, email. The parsed shape therefore has nowhere to put a cookie
- * *value*: `parseSetCookie` drops it at parse time and
- * `SessionCookieObservation` has no field for one. A report can
- * therefore be logged, attached to a CI artefact, or rendered into a
- * verification screenshot without leaking either. That property is
- * asserted in `session-cookie-contract.test.ts`, not just documented.
+ * name, role, email. The parsed shape therefore has nowhere to put a
+ * cookie *value*: `parseSetCookie` drops it at parse time and
+ * `SessionCookieObservation` has no field for one, so a report can be
+ * logged, attached to a CI artefact, or rendered into a verification
+ * screenshot without leaking either.
+ *
+ * That covers the EVALUATOR, not a caller that keeps the raw
+ * `Set-Cookie` strings around for its own evidence. The response of a
+ * real sign-in carries the live signed token and the signed user
+ * record, so an unmasked copy of those strings is a credential in a log
+ * line — which is why `maskSetCookieValue` exists and why the test
+ * asserts the masking on the exact payload it emits, not only on the
+ * report it derives from.
  */
 
 /**
@@ -194,12 +219,14 @@ interface ParsedSetCookie {
 /**
  * Derive the profile Better Auth will actually use for a base URL.
  *
- * This mirrors the one upstream inference that matters here
- * (`createCookieGetter` in `better-auth/dist/cookies/index.mjs`):
- * an `https://` base URL turns on `Secure` and the `__Secure-` prefix,
- * anything else leaves both off. `undefined` models the local workerd
- * pool, where `BETTER_AUTH_URL` is deliberately unbound so the test
- * pool exercises the "no pinned origin" branch.
+ * This mirrors the base-URL *string* branch of the upstream inference
+ * (`createCookieGetter` in `better-auth/dist/cookies/index.mjs`): an
+ * `https://` base URL turns on `Secure` and the `__Secure-` prefix,
+ * anything else leaves both off. See the module header for the two
+ * upstream branches this deliberately does not model.
+ * `undefined` models the local workerd pool, where `BETTER_AUTH_URL`
+ * is deliberately unbound so the test pool exercises the "no pinned
+ * origin" branch.
  */
 export function sessionCookieProfileFor(
 	baseUrl: string | undefined,
@@ -268,6 +295,25 @@ export function parseSetCookie(setCookie: string): ParsedSetCookie | null {
 		attributes.set(attrName, attrValue);
 	}
 	return { name, attributes };
+}
+
+/**
+ * Replace the value of ONE `Set-Cookie` string with `<masked>`, so a
+ * header can be shown as evidence without carrying what it carries.
+ *
+ * This is the ONLY supported way to keep a raw header: the session
+ * token and the cookie cache both hold signed credential material (see
+ * the secret / PII invariant in the module header), and an unmasked
+ * copy inside a verification payload leaks both. Attribute names,
+ * attribute values and their order are preserved — they are the whole
+ * point of the evidence.
+ */
+export function maskSetCookieValue(setCookie: string): string {
+	const valueStart = setCookie.indexOf('=');
+	if (valueStart === -1) return setCookie;
+	const valueEnd = setCookie.indexOf(';', valueStart);
+	if (valueEnd === -1) return `${setCookie.slice(0, valueStart + 1)}<masked>`;
+	return `${setCookie.slice(0, valueStart + 1)}<masked>${setCookie.slice(valueEnd)}`;
 }
 
 function stripSecurePrefix(name: string): string {

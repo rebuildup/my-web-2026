@@ -8,8 +8,10 @@
  * Playwright chromium already installed for the E2E suite into
  * `docs/verification/security/d1-parameter-tests.webp` — the path Issue
  * #452 requires in the PR body, with the `.webp` extension substituted for
- * the Issue's literal `.png` (a committed PNG screenshot is 450 KB and
- * bloats the repository for no evidentiary gain).
+ * the Issue's literal `.png` (a committed PNG screenshot of this report was
+ * roughly twice the size of the WebP and bloated the repository for no
+ * evidentiary gain; the exact sizes are reported per commit in the PR body
+ * rather than hard-coded here, so this comment cannot drift on regeneration).
  *
  * Screenshot output: Playwright can only encode PNG/JPEG, so the capture is
  * taken into a Buffer and re-encoded with the existing `sharp`

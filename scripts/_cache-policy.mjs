@@ -134,7 +134,7 @@ export const CACHE_POLICY_MATRIX = [
 		cacheControl: 'no-store',
 		validator: 'none',
 		vary: 'none',
-		owner: 'external boundary (src/http/middleware/cache-control.ts)',
+		owner: 'Worker entry (src/server.ts)',
 		enforcedBy: 'test/integration/cache-policy-matrix.test.ts',
 	},
 ];

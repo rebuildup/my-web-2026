@@ -150,6 +150,9 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
   （Issue が要求する `docs/verification/perf/cache-headers-matrix.png` と同じ場所だが、
   拡張子のみ `.webp`。PNG を commit するとリポジトリが肥大するため）。
 - 生の数値は上記コマンドで再現でき、`.tmp/cache-headers/matrix.md` に出力される。
+- レポート内の `source SHA` は**画像を commit する直前の HEAD** を指す。
+  スクリーンショット自身を commit すると SHA が変わるため、記録と画像の間に
+  1 commit のずれがある（これは避けられない連鎖であり、その旨を明記する）。
 
 ### 5.1 測定できなかったもの（隠さない）
 

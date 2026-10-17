@@ -67,8 +67,9 @@ rejecting everything.
 Fixtures are local only: rows in the workerd test pool's D1 plus a cookie
 signed with the dummy `BETTER_AUTH_SECRETS` binding that
 `vitest.config.ts` declares. No production secret is read, logged, or
-asserted, and no test contacts a real IdP. Evidence:
-`docs/verification/security/oauth-negative-tests.webp`.
+asserted, and no test contacts a real IdP. Response capture from the
+local run:
+[`verification/security/oauth-negative-tests.webp`](verification/security/oauth-negative-tests.webp).
 
 ## Test scope: local workerd vs real Cloudflare
 

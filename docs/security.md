@@ -29,6 +29,57 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## D1 parameter binding (Issue #452)
+
+### Rule
+
+Every D1 statement that user input reaches must bind that input with
+`?` / `?N` + `.bind(...)`. Splicing a value into the statement text is
+a defect even when the value is escaped today: the statement text is
+the part a reviewer reads as structure, and a bound value cannot change
+the parse tree.
+
+### Where it is enforced
+
+Two gates, both run by `pnpm run test` (and therefore by
+`pnpm run validate:fast` and CI):
+
+| Gate | What it proves | Where |
+| --- | --- | --- |
+| Runtime suite | Attack fixtures reach the real endpoints through `externalBoundary`; the recorded SQL text is byte-identical to the benign run, no payload appears in a statement, and the seeded rows survive. | `test/integration/d1-parameter-binding.test.ts` (workerd pool) |
+| Static gate | No `prepare()` / `exec()` / `batch()` argument in `src/**` interpolates `${…}`. A value built into a variable is out of scope by design — that is a dataflow judgement. | `scripts/check-d1-sql-binding.mjs`, wired via `scripts/check-d1-sql-binding.test.mjs` |
+
+Run the static gate on its own with `node scripts/check-d1-sql-binding.mjs`
+(exit 1 = an interpolated statement exists). Adding an
+`SQL_STRUCTURE_ALLOWLIST` entry is a reviewable decision: it must name
+the file, the interpolated identifier, and why the value cannot carry
+user input. The single current entry is `cursorPredicate` in
+`src/portfolio/load.ts`, a fixed chain of `?` placeholders whose
+components are all bound.
+
+### Covered surfaces
+
+Only endpoints that exist today (Issue #452 forbids inventing one):
+
+- `POST /api/v1/access/hit`, `GET /api/v1/access/count/:key`
+- `PUT` / `DELETE` / `GET /api/v1/reactions` (`target_key`, `actor_id`, `value`)
+- `GET /api/v1/reaction-images/:id`
+- portfolio loader slug read (`loadPortfolioProject`, `loadPortfolioAdjacent`)
+- emoji catalog slug read (`getCatalogEntry`)
+
+Payload families: tautology, comment tail, UNION, stacked statement,
+backslash quote, LIKE wildcard, plus whitespace-free variants that
+survive the access-counter validators and inputs the validators reject
+(over-length, embedded space, control character).
+
+### Operational contract
+
+This gate changes no runtime contract: the auth / API-key boundary,
+the Cloudflare bindings (`DB`, `MEDIA`, `ASSETS`), and the Tool
+Registry dependency are all untouched. A new D1 surface is covered by
+adding it to the runtime suite; an existing one that starts
+interpolating fails the static gate on its own commit.
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

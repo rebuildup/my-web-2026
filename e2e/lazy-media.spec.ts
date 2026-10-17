@@ -119,7 +119,11 @@ interface PageMeasurement {
 	cpuThrottlingRate: number;
 	browser: string;
 	sourceSha: string;
-	sourceDirty: boolean;
+	/** Tracked tree clean? Untracked files are excluded on purpose: the
+	 *  verification image this run produces is itself untracked at the
+	 *  moment the report is written, and a permanently-dirty report is
+	 *  a report nobody reads. */
+	trackedTreeDirty: boolean;
 	viewport: { width: number; height: number };
 	/** Responses observed up to the document's `load` event. */
 	responsesBeforeLoad: number;
@@ -303,7 +307,7 @@ async function measure(
 		cpuThrottlingRate: THROTTLED ? 4 : 1,
 		browser: `chromium ${browser.version()}`,
 		sourceSha: git(['rev-parse', 'HEAD']),
-		sourceDirty: git(['status', '--porcelain']).length > 0,
+		trackedTreeDirty: git(['status', '--porcelain', '--untracked-files=no']).length > 0,
 		viewport: page.viewportSize() ?? { width: 0, height: 0 },
 		responsesBeforeLoad,
 		documentBytes,

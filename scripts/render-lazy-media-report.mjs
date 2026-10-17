@@ -109,7 +109,7 @@ function render({ before, after, tool }) {
 			<tr><th>CPU</th><td>×${escapeHtml(after.cpuThrottlingRate)} / CDP <code>Emulation.setCPUThrottlingRate</code></td></tr>
 			<tr><th>viewport</th><td>${after.viewport.width}×${after.viewport.height} / context ごとに cache 空</td></tr>
 			<tr><th>third-party</th><td>GA4 / Google Fonts は遮断（本 Issue の対象外。オフライン再現を保証するため）</td></tr>
-			<tr><th>source SHA</th><td><code>${escapeHtml(shortSha(after))}</code>${after.sourceDirty ? ' <em>(dirty: 未コミットの変更を含む)</em>' : ' (clean)'}</td></tr>
+			<tr><th>source SHA</th><td><code>${escapeHtml(shortSha(after))}</code>${after.trackedTreeDirty ? ' <em>(dirty: 追跡ファイルに未コミットの変更あり)</em>' : ' (tracked tree clean)'}</td></tr>
 			<tr><th>measured at</th><td>${escapeHtml(after.generatedAt)}</td></tr>
 		</table>`;
 

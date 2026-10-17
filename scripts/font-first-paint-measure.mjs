@@ -1,0 +1,865 @@
+#!/usr/bin/env node
+/**
+ * font-first-paint-measure — first-visit webfont evidence for Issue #485.
+ *
+ * What it measures (and what it deliberately does NOT do)
+ * ------------------------------------------------------
+ * This is a **measurement**, not a gate. It records the real font
+ * pipeline of a first visit on representative local routes:
+ *
+ *   - `first-contentful-paint` / `largest-contentful-paint`
+ *   - the cumulative layout shift (`layout-shift`, input-excluded, with
+ *     the standard 5 s session window), so the swap-induced shift is
+ *     visible as a number instead of a vibe
+ *   - the webfont timeline itself: how many `fonts.gstatic.com` /
+ *     `fonts.googleapis.com` requests landed, their transfer size and
+ *     duration, and when `document.fonts.ready` resolved (the swap)
+ *   - **fallback readability** under a blocked font origin: is there
+ *     still real, visible text, and is it actually rendered by the
+ *     platform fallback rather than by a webfont that slipped past the
+ *     block (which would mean the scenario is invalid, not passing)
+ *
+ * It exits 0 on a completed measurement and non-zero only when the
+ * measurement itself could not be taken (browser launch failure, a
+ * navigation that did not return 2xx, an unreadable base URL). Budget
+ * enforcement is explicitly **not** here: thresholds + release gate are
+ * Issue #386's obligation, and Issue #384 owns the Lighthouse report
+ * harness. Adding a `process.exitCode = 1` on a metric threshold here
+ * would fuse "measure" with "gate" — the exact confusion #485 asks to
+ * avoid.
+ *
+ * Scenarios (all local; nothing here touches production)
+ * ------------------------------------------------------
+ *   baseline   no throttling, font origin reachable when the host has
+ *              network access (the report records whether it does)
+ *   blocked    `fonts.googleapis.com` / `fonts.gstatic.com` aborted —
+ *              the "network cut / font unavailable" condition that
+ *              Issue #291's async-CSS pattern must stay readable under
+ *   slow-font  CPU throttled x4 and every font-origin response delayed
+ *              by `--font-delay-ms` (default 1500) — the FOUT window
+ *
+ * Reproducibility block
+ * ---------------------
+ * Every report carries the browser build, viewport, CPU throttle, font
+ * delay, font-origin reachability, host CPU/OS, and the **source SHA**
+ * plus dirty-tree flag. A number without those is not evidence, so they
+ * are part of the artefact, not of the PR prose.
+ *
+ * Usage:
+ *   node scripts/font-first-paint-measure.mjs [options]
+ *
+ *   --base-url <url>     origin to measure (default http://127.0.0.1:3000)
+ *   --out <dir>          artefact directory (default .tmp/font-first-paint)
+ *   --routes <list>      comma separated paths (default /,/about)
+ *   --compare <file>     a previous report.json to diff against (before/after)
+ *   --font-delay-ms <n>  per-response font delay in the slow-font scenario
+ *   --headed             run Chromium headed (default headless)
+ *   --no-screenshots     skip the per-scenario PNG captures
+ *   --help
+ *
+ * Exit codes: 0 = measurement written, 2 = measurement impossible
+ * (browser/base URL/navigation failure). Never 1 — there is no threshold
+ * to fail here.
+ */
+
+import { execFileSync } from 'node:child_process';
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import { arch, cpus, platform, release, totalmem } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { chromium } from '@playwright/test';
+
+const here = dirname(fileURLToPath(import.meta.url));
+const repoRoot = resolve(here, '..');
+
+/** Hosts that carry the webfont pipeline. Blocking / delaying exactly
+ *  these two is what makes "font unavailable" and "font slow"
+ *  reproducible without touching any production surface. */
+export const FONT_ORIGINS = ['fonts.googleapis.com', 'fonts.gstatic.com'];
+
+/** Playwright route patterns for the two font hosts. */
+export const FONT_ORIGIN_PATTERNS = FONT_ORIGINS.map((host) => `https://${host}/**`);
+
+/** Families whose load/swap behaviour the issue is about. */
+export const WEBFONT_FAMILIES = ['Noto Sans JP', 'Zen Kaku Gothic New'];
+
+/** Representative local routes. `/` is the Japanese-heavy home surface,
+ *  `/about` is the mixed ja/en profile surface — the two documents a
+ *  first visit is most likely to land on. A route that answers non-2xx
+ *  fails the run instead of being skipped silently. */
+export const DEFAULT_ROUTES = ['/', '/about'];
+
+export const DEFAULT_FONT_DELAY_MS = 1500;
+export const CPU_THROTTLE_RATE = 4;
+export const VIEWPORT = { width: 1280, height: 800 };
+
+/* ------------------------------------------------------------------ *
+ * Pure helpers (unit-tested by scripts/font-first-paint-measure.test.mjs)
+ * ------------------------------------------------------------------ */
+
+/**
+ * Cumulative Layout Shift with the standard session windows: entries are
+ * summed while they stay within 1 s of the previous entry and within a
+ * 5 s session, and the reported value is the largest session total —
+ * not the sum of every shift. Summing everything would report a user
+ * scrolling for 30 s as one CLS number and make the measurement useless.
+ */
+export function cumulativeLayoutShift(entries) {
+	const sorted = [...entries].sort((a, b) => a.startTime - b.startTime);
+	const SESSION_GAP_MS = 1000;
+	const SESSION_MAX_MS = 5000;
+	let best = 0;
+	let sessionValue = 0;
+	let sessionStart = 0;
+	let sessionLast = 0;
+	for (const entry of sorted) {
+		const continuesSession =
+			sessionValue > 0 &&
+			entry.startTime - sessionLast < SESSION_GAP_MS &&
+			entry.startTime - sessionStart < SESSION_MAX_MS;
+		if (continuesSession) {
+			sessionValue += entry.value;
+		} else {
+			sessionValue = entry.value;
+			sessionStart = entry.startTime;
+		}
+		sessionLast = entry.startTime;
+		best = Math.max(best, sessionValue);
+	}
+	return {
+		cls: round3(best),
+		count: sorted.length,
+		worst: round3(sorted.reduce((max, e) => Math.max(max, e.value), 0)),
+	};
+}
+
+/** Font-origin resource timing summary. `transferSize` is 0 for
+ *  cross-origin responses without Timing-Allow-Origin, which is exactly
+ *  what `fonts.gstatic.com` returns today — so the count and the
+ *  durations are the honest signal and the byte total may be 0. */
+export function summarizeFontResources(resources) {
+	const fontResources = resources.filter((r) =>
+		FONT_ORIGINS.some((host) => r.name?.includes(host)),
+	);
+	return {
+		requests: fontResources.length,
+		transferBytes: fontResources.reduce((sum, r) => sum + (r.transferSize || 0), 0),
+		slowestMs: round3(fontResources.reduce((max, r) => Math.max(max, r.duration || 0), 0)),
+		lastStartMs: round3(fontResources.reduce((max, r) => Math.max(max, r.startTime || 0), 0)),
+	};
+}
+
+function round3(value) {
+	return Math.round(value * 1000) / 1000;
+}
+
+/**
+ * Fallback-readability verdict for the blocked-font scenario.
+ *
+ * `probes` are the in-page text probes (see `collectProbeResult`).
+ * Two independent failure modes are checked, and BOTH are failures:
+ *
+ *   - no legible text at all (empty text, zero-size box, hidden,
+ *     transparent) — the page became unreadable when the font origin
+ *     went away;
+ *   - `webFontAvailable` true while the scenario claims the origin was
+ *     blocked — the block did not take effect, so the "readable
+ *     fallback" claim would be evidence for nothing. A silently
+ *     ineffective block is the failure mode this catches.
+ */
+export function evaluateFallbackReadability({ probes, webFontAvailable, blocked }) {
+	const problems = [];
+	if (probes.length === 0) {
+		problems.push('no text probe was found — the page exposed nothing to read');
+	}
+	for (const probe of probes) {
+		const where = `${probe.tag}${probe.role ? `[${probe.role}]` : ''} "${probe.textSample}"`;
+		if (!probe.textSample) problems.push(`${where}: empty text`);
+		if (!(probe.rectWidth > 0 && probe.rectHeight > 0)) {
+			problems.push(`${where}: zero-size box (${probe.rectWidth}x${probe.rectHeight})`);
+		}
+		if (probe.visibility === 'hidden' || probe.visibility === 'collapse') {
+			problems.push(`${where}: visibility=${probe.visibility}`);
+		}
+		if (!(probe.opacity > 0)) problems.push(`${where}: opacity=${probe.opacity}`);
+		if (!(probe.colorAlpha > 0)) problems.push(`${where}: fully transparent text color`);
+	}
+	if (blocked && webFontAvailable) {
+		problems.push(
+			'the blocked-font scenario still resolved the webfont — the block did not apply, so this row proves nothing',
+		);
+	}
+	return { ok: problems.length === 0, problems, probes: probes.length };
+}
+
+/** Metrics whose before/after delta is a deterministic result rather
+ *  than a single-run timing: a wrap either happened or it did not, so
+ *  the same build measures the same value. Everything else in the
+ *  comparison (paint / swap / response times) depends on the network
+ *  and the machine and is rendered as context, never as a result. */
+export const DETERMINISTIC_METRICS = ['cls', 'clsEntries', 'worstShift'];
+
+function range(values) {
+	const numbers = values.filter((v) => typeof v === 'number');
+	if (numbers.length === 0) return values.join(', ');
+	const min = Math.min(...numbers);
+	const max = Math.max(...numbers);
+	return min === max ? String(min) : `${min}–${max}`;
+}
+
+/**
+ * Collapses the noisy half of the comparison into one row per metric,
+ * as a min–max range across routes and scenarios. Reporting 45 single
+ * -run rows in a PR screenshot is how a noise delta gets mistaken for a
+ * result, so the HTML keeps the range and `report.json` keeps every row.
+ */
+export function aggregateComparison(comparison) {
+	const byMetric = new Map();
+	for (const row of comparison) {
+		const metric = row.key.split(':')[2];
+		if (!byMetric.has(metric)) byMetric.set(metric, []);
+		byMetric.get(metric).push(row);
+	}
+	return [...byMetric.entries()].map(([metric, rows]) => ({
+		metric,
+		before: range(rows.map((r) => r.before)),
+		after: range(rows.map((r) => r.after)),
+		deterministic: DETERMINISTIC_METRICS.includes(metric),
+	}));
+}
+
+/**
+ * before/after rows for the report's comparison table. Keyed by
+ * `route:scenario:metric` so a route that changed shape between runs
+ * shows as `n/a` instead of silently pairing the wrong numbers.
+ */
+export function compareRuns(before, after) {
+	const flat = (report) => {
+		const out = new Map();
+		for (const run of report.runs) {
+			for (const [metric, value] of Object.entries(run.metrics)) {
+				out.set(`${run.route}:${run.scenario}:${metric}`, value);
+			}
+		}
+		return out;
+	};
+	const beforeFlat = flat(before);
+	const afterFlat = flat(after);
+	const keys = [...new Set([...beforeFlat.keys(), ...afterFlat.keys()])].sort();
+	return keys.map((key) => {
+		const b = beforeFlat.get(key);
+		const a = afterFlat.get(key);
+		const delta = typeof b === 'number' && typeof a === 'number' ? round3(a - b) : null;
+		return { key, before: b ?? null, after: a ?? null, delta, direction: directionOf(key, delta) };
+	});
+}
+
+function directionOf(key, delta) {
+	if (delta === null || delta === 0) return 'flat';
+	const [, , metric] = key.split(':');
+	// Lower is better for every metric collected here: paint timings,
+	// the swap instant and layout shift. The comment keeps the rule
+	// honest if a future metric joins the table.
+	const lowerIsBetter = ['fcpMs', 'lcpMs', 'cls', 'fontSwapMs', 'fallbackProbes'].includes(metric);
+	if (!lowerIsBetter) return 'unknown';
+	return delta < 0 ? 'better' : 'worse';
+}
+
+function escapeHtml(value) {
+	return String(value)
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;');
+}
+
+/** Self-contained HTML rendering of a report. Relative `<img>` srcs
+ *  resolve against the report's own directory, so the file can be
+ *  opened from disk (and screenshotted) without any bundling. */
+export function renderReportHtml(report) {
+	const env = report.environment;
+	const row = (label, value) =>
+		`<tr><th scope="row">${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`;
+	const runs = report.runs
+		.map((run) => {
+			const metrics = Object.entries(run.metrics)
+				.map(([k, v]) => `<td>${escapeHtml(v)}</td>`)
+				.join('');
+			const verdict = run.fallback
+				? `<span class="${run.fallback.ok ? 'ok' : 'bad'}">${escapeHtml(
+						run.fallback.ok ? 'readable' : 'NOT readable',
+					)}</span>`
+				: '—';
+			const shot = run.screenshot
+				? `<img src="./${escapeHtml(run.screenshot)}" alt="${escapeHtml(run.route)} ${escapeHtml(
+						run.scenario,
+					)} screenshot" loading="lazy" />`
+				: '';
+			return `<tr><td>${escapeHtml(run.route)}</td><td>${escapeHtml(run.scenario)}</td><td>${escapeHtml(
+				run.metrics.fcpMs,
+			)}</td><td>${escapeHtml(run.metrics.lcpMs)}</td><td>${escapeHtml(run.metrics.cls)}</td><td>${
+				run.metrics.fontSwapMs
+			}</td><td>${escapeHtml(run.metrics.fontRequests)}</td><td>${verdict}</td><td>${shot}</td></tr>`;
+		})
+		.join('\n');
+
+	const comparison = (() => {
+		if (!report.comparison?.length) return '';
+		const aggregated = aggregateComparison(report.comparison);
+		const row = (a) =>
+			`<tr><td>${escapeHtml(a.metric)}</td><td>${escapeHtml(a.before)}</td><td>${escapeHtml(a.after)}</td></tr>`;
+		const table = (title, rows) =>
+			[
+				`<h3>${escapeHtml(title)}</h3>`,
+				'<table><thead><tr><th>metric</th><th>before</th><th>after</th></tr></thead><tbody>',
+				rows.map(row).join(''),
+				'</tbody></table>',
+			].join('');
+		return [
+			'<h2>before / after</h2>',
+			'<p class="note">Read the deterministic table: a wrap either happened or it does not, so the same build measures the same value. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. Every individual row stays in <code>report.json</code>.</p>',
+			table(
+				'deterministic (layout shift)',
+				aggregated.filter((a) => a.deterministic),
+			),
+			table(
+				'context (single-run timings — noise)',
+				aggregated.filter((a) => !a.deterministic),
+			),
+		].join('');
+	})();
+
+	const diagnosis = report.runs.some((run) => (run.layoutShiftSources ?? []).length > 0)
+		? `<h2>where the shift came from</h2><p class="note">Layout-shift sources for the two largest shifts of every run. A CLS number without these is unattributable — this is the evidence that a shift is a re-wrap (a container height changes when the font swaps) rather than an image or an ad slot.</p><table><thead><tr><th>route</th><th>scenario</th><th>value</th><th>at ms</th><th>sources</th></tr></thead><tbody>${report.runs
+				.flatMap((run) =>
+					(run.layoutShiftSources ?? []).map(
+						(shift) =>
+							`<tr><td>${escapeHtml(run.route)}</td><td>${escapeHtml(run.scenario)}</td><td>${escapeHtml(
+								shift.value,
+							)}</td><td>${escapeHtml(shift.startTimeMs)}</td><td>${shift.sources
+								.map(
+									(source) =>
+										`<div>${escapeHtml(source.tag)} &ldquo;${escapeHtml(source.text)}&rdquo; ${escapeHtml(
+											source.previous,
+										)} &rarr; ${escapeHtml(source.current)}</div>`,
+								)
+								.join('')}</td></tr>`,
+					),
+				)
+				.join('\n')}</tbody></table>`
+		: '';
+
+	return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8" />
+<title>font first-paint measurement — ${escapeHtml(report.environment.source.sha)}</title>
+<style>
+  :root { color-scheme: light; }
+  body { font: 14px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; margin: 24px; color: #111827; background: #ffffff; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 15px; margin: 28px 0 8px; }
+  h3 { font-size: 13px; margin: 18px 0 6px; color: #374151; }
+  p.note { margin: 0 0 16px; color: #4b5563; }
+  table { border-collapse: collapse; width: 100%; margin-bottom: 8px; }
+  th, td { border: 1px solid #d1d5db; padding: 4px 8px; text-align: left; vertical-align: top; font-size: 12px; }
+  thead th { background: #f3f4f6; }
+  td img { max-width: 200px; border: 1px solid #e5e7eb; display: block; }
+  .ok { color: #047857; font-weight: 700; }
+  .bad { color: #b91c1c; font-weight: 700; }
+  .better { color: #047857; } .worse { color: #b91c1c; } .flat { color: #6b7280; }
+  .warn { background: #fef3c7; border: 1px solid #f59e0b; padding: 8px; margin: 8px 0; }
+</style></head>
+<body>
+<h1>font first-paint measurement (Issue #485)</h1>
+<p class="note">Measurement only — no threshold is enforced here. Budget + release gate: Issue #386.</p>
+${env.fontOriginReachable ? '' : '<p class="warn">font origin NOT reachable from this host — <code>baseline</code> and <code>slow-font</code> cannot exercise a real webfont swap. The <code>blocked</code> row is still valid (it aborts the origin), but treat swap timings as unavailable, not as zero.</p>'}
+<h2>environment (reproduction conditions)</h2>
+<table><tbody>
+${row('browser', `${env.browser.name} ${env.browser.version} (Playwright ${env.browser.playwright})`)}
+${row('mode', env.browser.mode)}
+${row('viewport', `${env.viewport.width}x${env.viewport.height} @${env.viewport.deviceScaleFactor}x`)}
+${row('network', `no throttling; font-origin reachable=${env.fontOriginReachable} (${escapeHtml(env.fontOriginStatus)})`)}
+${row('slow-font scenario', `CPU x${env.cpu.throttleRate}, font responses delayed ${env.network.fontDelayMs} ms`)}
+${row('host', `${env.host.platform} ${env.host.arch}, ${env.host.cpuModel} x${env.host.cpuCount}`)}
+${row('host memory', `${env.host.totalMemGB} GB`)}
+${row('source SHA', `${env.source.sha}${env.source.dirty ? ' (dirty tree)' : ''}`)}
+${row('branch / version', `${env.source.branch} / ${env.source.version}`)}
+${row('captured at', env.capturedAt)}
+${row('command', escapeHtml(report.command))}
+</tbody></table>
+<h2>metrics</h2>
+<table><thead><tr><th>route</th><th>scenario</th><th>FCP ms</th><th>LCP ms</th><th>CLS</th><th>font swap ms</th><th>font reqs</th><th>fallback</th><th>screenshot</th></tr></thead>
+<tbody>
+${runs}
+</tbody></table>
+${diagnosis}
+${comparison}
+</body></html>
+`;
+}
+
+/* ------------------------------------------------------------------ *
+ * In-page collector (runs before any page script)
+ * ------------------------------------------------------------------ */
+
+function collectorScript(families) {
+	window.__fontFirstPaint = {
+		fcp: null,
+		lcp: null,
+		lcpElement: null,
+		clsEntries: [],
+		fontResources: [],
+		fontsReadyAt: null,
+		webFontSwapAt: null,
+	};
+	try {
+		new PerformanceObserver((list) => {
+			for (const entry of list.getEntries()) {
+				if (entry.name === 'first-contentful-paint') window.__fontFirstPaint.fcp = entry.startTime;
+			}
+		}).observe({ type: 'paint', buffered: true });
+	} catch {}
+	try {
+		new PerformanceObserver((list) => {
+			const entries = list.getEntries();
+			const last = entries[entries.length - 1];
+			if (last) {
+				window.__fontFirstPaint.lcp = last.startTime;
+				window.__fontFirstPaint.lcpElement = last.element
+					? `${last.element.tagName.toLowerCase()}.${String(last.element.className || '').split(' ')[0]}`
+					: null;
+			}
+		}).observe({ type: 'largest-contentful-paint', buffered: true });
+	} catch {}
+	try {
+		new PerformanceObserver((list) => {
+			for (const entry of list.getEntries()) {
+				if (!entry.hadRecentInput) {
+					window.__fontFirstPaint.clsEntries.push({
+						value: entry.value,
+						startTime: entry.startTime,
+						// Shift sources are the whole diagnosis: a re-wrap
+						// shows up as a container whose height changes, and
+						// without them a CLS number is unattributable.
+						sources: (entry.sources || []).slice(0, 4).map((source) => ({
+							tag: source.node ? source.node.tagName.toLowerCase() : '?',
+							text: source.node
+								? String(source.node.textContent || '')
+										.trim()
+										.slice(0, 28)
+								: '',
+							previous: `${Math.round(source.previousRect.width)}x${Math.round(source.previousRect.height)}`,
+							current: `${Math.round(source.currentRect.width)}x${Math.round(source.currentRect.height)}`,
+						})),
+					});
+				}
+			}
+		}).observe({ type: 'layout-shift', buffered: true });
+	} catch {}
+	try {
+		new PerformanceObserver((list) => {
+			for (const entry of list.getEntries()) {
+				window.__fontFirstPaint.fontResources.push({
+					name: entry.name,
+					startTime: entry.startTime,
+					duration: entry.duration,
+					transferSize: entry.transferSize,
+				});
+			}
+		}).observe({ type: 'resource', buffered: true });
+	} catch {}
+	// `document.fonts.ready` resolves when the *currently pending* loads
+	// settle — which is NOT the swap: before the Google stylesheet is
+	// parsed no @font-face exists, so it resolves almost immediately and
+	// would report a meaningless "swap". The swap is instead polled from
+	// the FontFaceSet itself: the first instant a webfont face reports
+	// `loaded` is the instant `display=swap` actually replaced the
+	// fallback glyphs.
+	const isWebFont = (face) => families.includes(String(face.family || '').replaceAll('"', ''));
+	window.__fontFirstPaint.fontPoll = setInterval(() => {
+		const now = performance.now();
+		for (const face of document.fonts) {
+			if (
+				isWebFont(face) &&
+				face.status === 'loaded' &&
+				window.__fontFirstPaint.webFontSwapAt === null
+			) {
+				window.__fontFirstPaint.webFontSwapAt = now;
+			}
+		}
+	}, 50);
+	document.fonts.ready.then(() => {
+		window.__fontFirstPaint.fontsReadyAt = performance.now();
+	});
+}
+
+/** Text probes: the first text-bearing elements inside the app root, so
+ *  the verdict is about what a visitor can actually read rather than
+ *  about one hard-coded selector that may not exist on a surface. */
+const PROBE_SELECTOR = 'h1, h2, h3, p, li, a, button';
+
+/* ------------------------------------------------------------------ *
+ * CLI
+ * ------------------------------------------------------------------ */
+
+export function parseArgs(argv) {
+	const options = {
+		baseUrl: process.env.PERF_FONT_BASE_URL ?? 'http://127.0.0.1:3000',
+		outDir: '.tmp/font-first-paint',
+		routes: DEFAULT_ROUTES,
+		compare: null,
+		fontDelayMs: DEFAULT_FONT_DELAY_MS,
+		headless: true,
+		screenshots: true,
+	};
+	for (let i = 0; i < argv.length; i += 1) {
+		const arg = argv[i];
+		const next = () => {
+			const value = argv[i + 1];
+			if (value === undefined) throw new Error(`${arg} requires a value`);
+			i += 1;
+			return value;
+		};
+		if (arg === '--base-url') options.baseUrl = next();
+		else if (arg === '--out') options.outDir = next();
+		else if (arg === '--routes')
+			options.routes = next()
+				.split(',')
+				.map((r) => r.trim())
+				.filter(Boolean);
+		else if (arg === '--compare') options.compare = next();
+		else if (arg === '--font-delay-ms') options.fontDelayMs = Number(next());
+		else if (arg === '--headed') options.headless = false;
+		else if (arg === '--no-screenshots') options.screenshots = false;
+		else if (arg === '--help' || arg === '-h') options.help = true;
+		else throw new Error(`unknown argument: ${arg}`);
+	}
+	options.baseUrl = options.baseUrl.replace(/\/$/, '');
+	return options;
+}
+
+const USAGE = `font-first-paint-measure — Issue #485 first-visit webfont measurement
+
+  --base-url <url>     origin to measure (default http://127.0.0.1:3000)
+  --out <dir>          artefact directory (default .tmp/font-first-paint)
+  --routes <list>      comma separated paths (default /,/about)
+  --compare <file>     previous report.json to diff against
+  --font-delay-ms <n>  font delay in the slow-font scenario (default ${DEFAULT_FONT_DELAY_MS})
+  --headed             run Chromium headed
+  --no-screenshots     skip per-scenario captures
+  --help
+`;
+
+function git(args) {
+	try {
+		return execFileSync('git', args, { cwd: repoRoot, encoding: 'utf8' }).trim();
+	} catch {
+		return null;
+	}
+}
+
+async function fontOriginReachable() {
+	try {
+		const response = await fetch(
+			'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400&display=swap',
+			{ method: 'GET', redirect: 'follow' },
+		);
+		return { reachable: response.ok, status: `HTTP ${response.status}` };
+	} catch (error) {
+		return { reachable: false, status: error.message };
+	}
+}
+
+function hostInfo() {
+	const list = cpus();
+	return {
+		platform: platform(),
+		arch: arch(),
+		kernel: release(),
+		cpuModel: list[0]?.model ?? 'unknown',
+		cpuCount: list.length,
+		totalMemGB: Math.round(totalmem() / 1024 / 1024 / 1024),
+	};
+}
+
+async function sourceInfo() {
+	const pkg = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
+	return {
+		sha: git(['rev-parse', 'HEAD']),
+		branch: git(['rev-parse', '--abbrev-ref', 'HEAD']),
+		dirty: (git(['status', '--porcelain']) ?? '') !== '',
+		version: pkg.version,
+	};
+}
+
+const SCENARIOS = [
+	{ name: 'baseline', blocked: false, delayMs: 0, cpuThrottle: 1 },
+	{ name: 'blocked', blocked: true, delayMs: 0, cpuThrottle: 1 },
+	{ name: 'slow-font', blocked: false, delayMs: null, cpuThrottle: CPU_THROTTLE_RATE },
+];
+
+async function main(argv) {
+	const options = parseArgs(argv);
+	if (options.help) {
+		process.stdout.write(USAGE);
+		return 0;
+	}
+	const pkg = JSON.parse(await readFile(join(repoRoot, 'package.json'), 'utf8'));
+	const origin = await fontOriginReachable();
+	const outDir = resolve(repoRoot, options.outDir);
+	await mkdir(outDir, { recursive: true });
+
+	if (!origin.reachable) {
+		process.stderr.write(
+			`[font-first-paint] WARNING: ${origin.status} — fonts.googleapis.com is unreachable from this host.\n  baseline / slow-font rows will report the platform fallback, not a real webfont swap.\n`,
+		);
+	}
+
+	const browser = await chromium.launch({ headless: options.headless });
+	const runs = [];
+	try {
+		for (const route of options.routes) {
+			for (const scenario of SCENARIOS) {
+				runs.push(
+					await measureRun({ browser, baseUrl: options.baseUrl, route, scenario, options, outDir }),
+				);
+			}
+		}
+	} finally {
+		await browser.close();
+	}
+
+	const report = {
+		tool: 'scripts/font-first-paint-measure.mjs',
+		issue: '#485',
+		command: 'pnpm run perf:fonts:measure',
+		generatedAtNote:
+			'Measurement only. No threshold is enforced here; budget + release gate belong to Issue #386.',
+		capturedAt: new Date().toISOString(),
+		environment: {
+			browser: {
+				name: 'chromium',
+				version: browser.version ? browser.version() : 'unknown',
+				playwright: pkg.devDependencies?.['@playwright/test'] ?? 'unknown',
+				mode: options.headless ? 'headless' : 'headed',
+			},
+			viewport: { ...VIEWPORT, deviceScaleFactor: 1 },
+			fontOriginReachable: origin.reachable,
+			fontOriginStatus: origin.status,
+			network: {
+				throttling: 'none (default Chromium) except the slow-font scenario font delay',
+				fontDelayMs: options.fontDelayMs,
+			},
+			cpu: { throttleRate: CPU_THROTTLE_RATE },
+			host: hostInfo(),
+			source: await sourceInfo(),
+		},
+		runs,
+	};
+
+	if (options.compare) {
+		const before = JSON.parse(await readFile(resolve(repoRoot, options.compare), 'utf8'));
+		report.comparison = compareRuns(before, report);
+	}
+
+	const jsonPath = join(outDir, 'report.json');
+	const htmlPath = join(outDir, 'report.html');
+	await writeFile(jsonPath, `${JSON.stringify(report, null, 2)}\n`);
+	await writeFile(htmlPath, renderReportHtml(report));
+
+	for (const run of runs) {
+		const verdict = run.fallback ? (run.fallback.ok ? 'readable' : 'NOT readable') : '—';
+		process.stdout.write(
+			`${run.route.padEnd(10)} ${run.scenario.padEnd(10)} FCP=${String(run.metrics.fcpMs).padStart(7)}ms ` +
+				`LCP=${String(run.metrics.lcpMs).padStart(7)}ms CLS=${run.metrics.cls} ` +
+				`swap=${String(run.metrics.fontSwapMs).padStart(7)}ms reqs=${run.metrics.fontRequests} fallback=${verdict}\n`,
+		);
+		if (run.fallback && !run.fallback.ok) {
+			for (const problem of run.fallback.problems) {
+				process.stderr.write(`  [${run.route} ${run.scenario}] ${problem}\n`);
+			}
+		}
+	}
+	process.stdout.write(`\nreport: ${jsonPath}\nreport: ${htmlPath}\n`);
+	return 0;
+}
+
+async function measureRun({ browser, baseUrl, route, scenario, options, outDir }) {
+	const context = await browser.newContext({
+		viewport: VIEWPORT,
+		deviceScaleFactor: 1,
+	});
+	const page = await context.newPage();
+	await page.addInitScript(collectorScript, WEBFONT_FAMILIES);
+
+	const delayMs = scenario.name === 'slow-font' ? options.fontDelayMs : scenario.delayMs;
+	if (scenario.blocked || delayMs > 0) {
+		await page.route(FONT_ORIGIN_PATTERNS[0], async (route) => {
+			if (scenario.blocked) return route.abort('failed');
+			await sleep(delayMs);
+			return route.continue();
+		});
+		await page.route(FONT_ORIGIN_PATTERNS[1], async (route) => {
+			if (scenario.blocked) return route.abort('failed');
+			await sleep(delayMs);
+			return route.continue();
+		});
+	}
+
+	const cdp = await context.newCDPSession(page);
+	if (scenario.cpuThrottle > 1) {
+		await cdp.send('Emulation.setCPUThrottlingRate', { rate: scenario.cpuThrottle });
+	}
+
+	const response = await page.goto(`${baseUrl}${route}`, { waitUntil: 'load', timeout: 60_000 });
+	if (!response || !response.ok()) {
+		const status = response ? response.status() : 'no response';
+		await context.close();
+		throw new Error(
+			`font-first-paint-measure: GET ${baseUrl}${route} returned ${status} — the measurement is impossible, refusing to report a fallback for an unrenderable page`,
+		);
+	}
+
+	// Let fonts settle (resolves immediately when the origin was blocked
+	// or unreachable), then hold the page still long enough for a late
+	// layout-shift / LCP entry to land.
+	await page.evaluate(() => document.fonts.ready);
+	await page.waitForTimeout(scenario.blocked ? 750 : 2000);
+
+	const observed = await page.evaluate(
+		([selector, families]) => {
+			const root = document.querySelector('#app-root') || document.body;
+			const probes = [];
+			for (const el of root.querySelectorAll(selector)) {
+				if (probes.length >= 8) break;
+				const text = (el.textContent || '').trim().replace(/\s+/g, ' ');
+				if (!text) continue;
+				const rect = el.getBoundingClientRect();
+				const style = getComputedStyle(el);
+				// `display: none` — on the element OR on any ancestor — is
+				// chrome hidden BY DESIGN at this viewport (the closed
+				// mobile panel, the mobile-only menu button on desktop).
+				// It is not a readability failure, so it is not probed at
+				// all. `checkVisibility()` is the ancestor-aware test; a
+				// *rendered* element with a zero-size box still is a
+				// failure and `evaluateFallbackReadability` fails it.
+				if (typeof el.checkVisibility === 'function' && !el.checkVisibility()) continue;
+				const colorMatch = style.color.match(/rgba?\(([^)]+)\)/);
+				const parts = colorMatch
+					? colorMatch[1].split(',').map((n) => Number(n.trim()))
+					: [0, 0, 0, 0];
+				probes.push({
+					tag: el.tagName.toLowerCase(),
+					textSample: text.slice(0, 40),
+					rectWidth: Math.round(rect.width),
+					rectHeight: Math.round(rect.height),
+					display: style.display,
+					visibility: style.visibility,
+					opacity: Number(style.opacity),
+					color: style.color,
+					colorAlpha: parts.length > 3 ? parts[3] : 1,
+					fontFamily: style.fontFamily.split(',')[0].replaceAll('"', ''),
+				});
+			}
+			const state = window.__fontFirstPaint ?? {};
+			if (state.fontPoll) clearInterval(state.fontPoll);
+			// `document.fonts.check()` answers for SYSTEM fonts too, so it
+			// returns `true` even when no @font-face was ever parsed — it
+			// cannot tell "webfont loaded" from "no webfont requested".
+			// The FontFaceSet can: a webfont face that exists and is
+			// `loaded` is a webfont that arrived.
+			const faces = [...document.fonts].map((face) => ({
+				family: String(face.family || '').replaceAll('"', ''),
+				weight: face.weight,
+				status: face.status,
+			}));
+			return {
+				probes,
+				fontStatus: document.fonts.status,
+				fontFaceCount: faces.length,
+				webFaceCount: faces.filter((f) => families.includes(f.family)).length,
+				loadedWebFaceCount: faces.filter(
+					(f) => families.includes(f.family) && f.status === 'loaded',
+				).length,
+				webFontAvailable: faces.some((f) => families.includes(f.family) && f.status === 'loaded'),
+				fcp: state.fcp,
+				lcp: state.lcp,
+				lcpElement: state.lcpElement,
+				fontsReadyAt: state.fontsReadyAt,
+				webFontSwapAt: state.webFontSwapAt,
+				clsEntries: state.clsEntries,
+				fontResources: state.fontResources,
+			};
+		},
+		[PROBE_SELECTOR, WEBFONT_FAMILIES],
+	);
+
+	const shift = cumulativeLayoutShift(observed.clsEntries ?? []);
+	const fonts = summarizeFontResources(observed.fontResources ?? []);
+	const fallback = scenario.blocked
+		? evaluateFallbackReadability({
+				probes: observed.probes ?? [],
+				webFontAvailable: observed.webFontAvailable,
+				blocked: true,
+			})
+		: null;
+
+	let screenshot = null;
+	if (options.screenshots) {
+		const file = `${route.replaceAll('/', '_') || '_root'}-${scenario.name}.png`;
+		await page.screenshot({ path: join(outDir, file), fullPage: false });
+		screenshot = file;
+	}
+	await context.close();
+
+	return {
+		route,
+		scenario: scenario.name,
+		conditions: {
+			fontOriginBlocked: scenario.blocked,
+			fontDelayMs: delayMs,
+			cpuThrottleRate: scenario.cpuThrottle,
+			fontStatus: observed.fontStatus,
+			webFontAvailable: observed.webFontAvailable,
+			webFontFaces: observed.webFaceCount,
+			loadedWebFontFaces: observed.loadedWebFaceCount,
+		},
+		metrics: {
+			fcpMs: round3(observed.fcp ?? null),
+			lcpMs: round3(observed.lcp ?? null),
+			lcpElement: observed.lcpElement ?? null,
+			cls: shift.cls,
+			clsEntries: shift.count,
+			worstShift: shift.worst,
+			fontSwapMs: round3(observed.webFontSwapAt ?? null),
+			fontRequests: fonts.requests,
+			fontTransferBytes: fonts.transferBytes,
+			slowestFontResponseMs: fonts.slowestMs,
+		},
+		layoutShiftSources: (observed.clsEntries ?? [])
+			.sort((a, b) => b.value - a.value)
+			.slice(0, 2)
+			.map((entry) => ({
+				value: round3(entry.value),
+				startTimeMs: round3(entry.startTime),
+				sources: entry.sources ?? [],
+			})),
+		fallback,
+		screenshot,
+	};
+}
+
+function sleep(ms) {
+	return new Promise((r) => setTimeout(r, ms));
+}
+
+// ESM main-module guard: importing this file for unit tests must not
+// launch a browser (same pattern as scripts/check-release-assets.mjs).
+if (import.meta.url === `file://${process.argv[1]}`) {
+	main(process.argv.slice(2)).then(
+		(code) => process.exit(code),
+		(error) => {
+			process.stderr.write(`[font-first-paint] FAIL: ${error.message}\n`);
+			process.exit(2);
+		},
+	);
+}

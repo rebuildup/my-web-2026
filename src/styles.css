@@ -15,6 +15,97 @@
  */
 @layer reset, base, tokens, recipes, utilities;
 
+/*
+ * Metric-compatible fallback faces (Issue #485).
+ *
+ * The webfonts (Noto Sans JP / Zen Kaku Gothic New) load with
+ * `display=swap`, so the first paint is drawn with the platform
+ * fallback and the glyphs are re-laid-out when the webfont arrives.
+ * Issue #291 already removed the third-party stylesheet from the
+ * critical path (`media="print"` + the inline flip script in
+ * `src/routes/__root.tsx`), so the sheet no longer blocks paint — but
+ * the swap itself still moved real boxes. Measured on the local
+ * preview at 1280x800 (`pnpm run perf:fonts:measure`, see
+ * `docs/verification/perf/README.md`):
+ *
+ *   /about  CLS 0.975 — the desktop nav row wrapped to two lines while
+ *          the fallback was in use and unwrapped when the webfont
+ *          landed, moving every block below it ~41px down and back.
+ *   /       CLS 0.331 on some runs — the hero CTA row re-wrapped the
+ *          same way.
+ *
+ * Both rows sit within ~1% of their wrap threshold (`PublicNav`
+ * measures 871.5px of items in 880.4px — see the comment on the
+ * desktop `<ul>`), so the width difference between the fallback and
+ * the webfont is enough to flip them.
+ *
+ * These two faces close that gap: they ARE the same local font the
+ * token chain already names, scaled so its average advance width and
+ * its line box match the webfont they stand in for. The values were
+ * measured, not guessed — canvas `measureText` at 100px over the
+ * actual nav/labels strings, comparing each webfont against
+ * `local("Hiragino Kaku Gothic ProN")` on the reference host
+ * (Chromium 153, macOS 15 arm64):
+ *
+ *   Noto Sans JP       weight 400  size-adjust 94.24%  ascent 123%  descent 30%
+ *   Noto Sans JP       weight 700  size-adjust 92.43%  ascent 125%  descent 31%
+ *   Zen Kaku Gothic New weight 400  size-adjust 90.45%  ascent 128%  descent 32%
+ *   Zen Kaku Gothic New weight 700  size-adjust 86.17%  ascent 134%  descent 33%
+ *
+ * `src: local(...)` is deliberate: on a platform without the named
+ * local face the rule simply fails to load and the token chain falls
+ * through to `system-ui` exactly as before — the override can only
+ * help the platform it was measured on, never make another one worse.
+ *
+ * The local name is the FULL face name, not the family name:
+ * Chromium resolves `local()` against the full name only (the family
+ * name `"Hiragino Kaku Gothic ProN"` fails to match and leaves the
+ * rule `unloaded`, which is the same as having no rule at all — a
+ * silent no-op, not a failure). `document.fonts`-verified on the
+ * reference host: `Hiragino Kaku Gothic ProN W3` -> `loaded`.
+ *
+ * Scope: this is ONE element — the fallback face behind the existing
+ * `display=swap` swap. The swap window itself, the async-CSS pattern
+ * from Issue #291, and the `display` value are untouched, and no
+ * threshold is added anywhere (Issue #386 owns budgets and the
+ * release gate).
+ */
+@font-face {
+	font-family: "Noto Sans JP Fallback";
+	src: local("Hiragino Kaku Gothic ProN W3");
+	font-weight: 400;
+	size-adjust: 94.24%;
+	ascent-override: 123%;
+	descent-override: 30%;
+}
+
+@font-face {
+	font-family: "Noto Sans JP Fallback";
+	src: local("Hiragino Kaku Gothic ProN W3");
+	font-weight: 700;
+	size-adjust: 92.43%;
+	ascent-override: 125%;
+	descent-override: 31%;
+}
+
+@font-face {
+	font-family: "Zen Kaku Gothic New Fallback";
+	src: local("Hiragino Kaku Gothic ProN W3");
+	font-weight: 400;
+	size-adjust: 90.45%;
+	ascent-override: 128%;
+	descent-override: 32%;
+}
+
+@font-face {
+	font-family: "Zen Kaku Gothic New Fallback";
+	src: local("Hiragino Kaku Gothic ProN W3");
+	font-weight: 700;
+	size-adjust: 86.17%;
+	ascent-override: 134%;
+	descent-override: 33%;
+}
+
 @layer base {
 	:where(h1, h2, h3) {
 		font-family: var(--fonts-heading);

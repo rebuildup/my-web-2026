@@ -132,8 +132,8 @@ export function evaluateStepUp(
 		return { state: 'required', confirmedAtMs: null, expiresAtMs: null };
 	}
 	const expiresAtMs = confirmedAtMs + maxAgeMs;
-	// `>=` so a confirmation is spent exactly at the boundary rather
-	// than one millisecond past it.
+	// `<` so the boundary is spent, not granted: at exactly
+	// `confirmedAtMs + maxAgeMs` the window is over.
 	const state: StepUpState = nowMs < expiresAtMs ? 'confirmed' : 'expired';
 	return { state, confirmedAtMs, expiresAtMs };
 }
@@ -233,6 +233,7 @@ function isInvalidPassword(error: unknown): boolean {
  * never logged, echoed, or stored.
  */
 export async function confirmStepUpImpl(
+	db: D1Database,
 	session: AdminSession,
 	headers: Headers,
 	data: { password: string },
@@ -249,7 +250,7 @@ export async function confirmStepUpImpl(
 		// than being reported as one.
 		throw error;
 	}
-	await writeStepUpGrant(env.DB, {
+	await writeStepUpGrant(db, {
 		sessionId: session.session.id,
 		userId: session.user.id,
 		confirmedAtMs: nowMs,
@@ -276,5 +277,5 @@ export const confirmStepUp = createServerFn({ method: 'POST' })
 	.validator(ConfirmStepUpInput)
 	.handler(async ({ data }): Promise<StepUpStatus> => {
 		const session = await requireAdmin();
-		return confirmStepUpImpl(session, getRequestHeaders(), data);
+		return confirmStepUpImpl(env.DB, session, getRequestHeaders(), data);
 	});

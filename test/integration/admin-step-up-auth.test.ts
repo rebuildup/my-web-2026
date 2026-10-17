@@ -174,7 +174,7 @@ describe('step-up gate (Issue #445)', () => {
 		const { headers, session } = await signInAsAdmin();
 
 		await expect(
-			confirmStepUpImpl(session, headers, { password: 'wrong-password-fixture' }),
+			confirmStepUpImpl(env.DB, session, headers, { password: 'wrong-password-fixture' }),
 		).rejects.toMatchObject({ name: 'StepUpError', reason: 'step_up_rejected' });
 
 		// A rejected attempt writes nothing, so a retry cannot inherit
@@ -188,7 +188,9 @@ describe('step-up gate (Issue #445)', () => {
 	it('positive: the correct password opens the window and the gated operation runs', async () => {
 		const { headers, session } = await signInAsAdmin();
 
-		const status = await confirmStepUpImpl(session, headers, { password: FIXTURE_PASSWORD });
+		const status = await confirmStepUpImpl(env.DB, session, headers, {
+			password: FIXTURE_PASSWORD,
+		});
 		expect(status.state).toBe('confirmed');
 		expect(status.confirmedAtMs).toBeGreaterThan(0);
 		expect(status.expiresAtMs).toBe((status.confirmedAtMs ?? 0) + STEP_UP_MAX_AGE_MS);
@@ -272,7 +274,7 @@ describe('step-up gate (Issue #445)', () => {
 
 	it('a revoked session loses its grant, so a stale row cannot authorise anything', async () => {
 		const { headers, session } = await signInAsAdmin();
-		await confirmStepUpImpl(session, headers, { password: FIXTURE_PASSWORD });
+		await confirmStepUpImpl(env.DB, session, headers, { password: FIXTURE_PASSWORD });
 		expect(await readGrantRows()).toHaveLength(1);
 
 		// Revoke every session for the fixture account (no token is

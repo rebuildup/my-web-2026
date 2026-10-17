@@ -61,6 +61,50 @@ in `docs/release.md`), not the per-binding local SELF tests (#006
 binding API is reachable in the local workerd pool"**, not
 **"the production database is online"**.
 
+## Session lifecycle (sign-in / sign-out)
+
+Better Auth (`src/cloudflare/auth/better-auth.ts`, ADR-0009) owns the
+session; the admin gates that consume it live in
+`src/admin/auth/load.ts` and the `/admin/*` route loaders. The
+behavioural contract is pinned by
+`test/integration/session-logout.test.ts` (Issue #439):
+
+| Property                                                          | How it is proven                                                                 |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| A sign-in session authorizes `/admin` and `/api/v1/auth/get-session` | positive case: the issued cookie resolves the user (with role) and the dashboard renders 200 |
+| The same cookie is refused after sign-out                         | negative case: `get-session` resolves no user, `/admin` and `/admin/keys` 307 to `/admin/login`, and the D1 `session` row is deleted |
+| Sign-out clears the browser cookie jar                            | `Set-Cookie` re-issues `better-auth.session_token` **and** `better-auth.session_data` with `Max-Age=0` |
+| A client-supplied cookie is never promoted by sign-in            | fixation case: an attacker-planted value resolves to no session before *and* after login; the server issues its own token |
+| A rejected sign-out does not invalidate the session               | an `Origin` mismatch is refused (4xx) and the session row survives |
+| Replaying a dead cookie is a no-op                                | a second sign-out neither errors nor resurrects a session                          |
+
+Run it locally:
+
+```bash
+pnpm exec vitest run test/integration/session-logout.test.ts
+```
+
+Every request goes through the local workerd pool, because sign-in and
+sign-out write and delete D1 rows; running this against production
+would mutate the operator's database and could invalidate the live
+admin session. Fixture identities are local (`.test.local` addresses,
+throwaway password) and cookie values are never printed or asserted on
+— only cookie names, attributes, and identity comparisons.
+
+Known residual (open owner decision, Issue #439): `session.cookieCache`
+is enabled with `maxAge: 5 * 60`, so a party that captured BOTH
+`better-auth.session_token` and `better-auth.session_data` *before* the
+logout can replay the pair until the cache cookie expires — the cache
+answers without consulting D1. A real browser is not exposed (the
+sign-out response clears the pair), but the window is a real deviation
+from "logout invalidates the session immediately", and closing it means
+re-tuning the auth policy ADR-0009 owns. The case is written as
+`it.fails` in the suite: it asserts the desired outcome and therefore
+fails today; when the cache is re-tuned it flips and the case is
+converted to a plain `it`. A redacted transcript of the observed
+responses is kept at
+[`docs/verification/security/session-logout-e2e.webp`](verification/security/session-logout-e2e.webp).
+
 ## Inventory at 0.1.0
 
 | Package                     | Pinned version | Notes                                 |

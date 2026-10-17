@@ -48,6 +48,7 @@
 		"infisical:reconcile:prod-auth": "node scripts/reconcile-prod-auth-secret.mjs",
 		"infisical:seed": "node scripts/infisical-seed.mjs",
 		"infisical:verify": "node scripts/infisical-verify.mjs",
+		"lazy-media:report": "node scripts/render-lazy-media-report.mjs",
 		"lint:check": "biome lint .",
 		"lint:ci": "node scripts/lint-ci.mjs",
 		"phase-3-plus:flip:production": "node scripts/phase-3-plus-prod-flip.mjs",

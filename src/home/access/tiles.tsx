@@ -83,6 +83,19 @@ const DIGIT_SLOTS = 7;
  * stagger, so the count "rolls up" to its value when the section
  * first appears.
  *
+ * Loading mode (Issue #487): the strip is `loading="lazy"` +
+ * `decoding="async"`. The tile is the FIFTH section of `/`, so the
+ * strip sits far below the fold on every viewport this site ships,
+ * while the markup already forces the browser to download all seven
+ * WebPs the moment the HTML parses (no `loading` attribute means the
+ * implicit `eager` default). Seven images is a small number, but the
+ * contract it broke is the important one — "an image on this surface
+ * is fetched before the visitor can see it" — and
+ * `test/integration/lazy-media-contract.test.ts` now fails if any
+ * `<img>` on home stops declaring its mode. The `role="img"` parent
+ * carries the real number as an accessible label, so nothing
+ * assistive-tech depends on the bitmaps arriving early.
+ *
  * Disabled state (no consumer API key) renders the same rows with a
  * muted `—` placeholder (text, not images) so the section does not
  * disappear but the digit machinery stays out of the way.
@@ -263,6 +276,12 @@ function DigitStrip({ count }: { count: number }) {
 					key={`${index}-${char}`}
 					src={DIGIT_URLS[char]}
 					alt=""
+					// Issue #487 — see "Loading mode" in the module
+					// docstring. `loading` is stated explicitly rather
+					// than left to the UA default so the lazy contract
+					// is assertable from the rendered markup.
+					loading="lazy"
+					decoding="async"
 					draggable="false"
 					className={css({
 						display: 'inline-block',

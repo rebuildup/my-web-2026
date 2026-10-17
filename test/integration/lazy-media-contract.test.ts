@@ -73,10 +73,18 @@ const EMBEDDED_MEDIA = /<(iframe|video|audio)\b/i;
 
 const D1 = () => env.DB;
 
-/** Tool artifact namespaces (`/tools/<slug>/app`) from the manifest. */
-const TOOL_ARTIFACT_PATHS = listAllTools()
-	.filter((tool) => tool.delivery.kind === 'same_origin_static')
-	.map((tool) => tool.delivery.artifact_path);
+/**
+ * Tool artifact namespaces (`/tools/<slug>/app`) from the manifest.
+ *
+ * `flatMap` rather than `filter().map()`: the predicate tests
+ * `tool.delivery.kind`, and TypeScript only narrows `tool.delivery`
+ * inside the branch body — a `.filter()` callback returning a boolean
+ * is not a type predicate, so `artifact_path` would not exist on the
+ * surviving `ManifestTool` values.
+ */
+const TOOL_ARTIFACT_PATHS = listAllTools().flatMap((tool) =>
+	tool.delivery.kind === 'same_origin_static' ? [tool.delivery.artifact_path] : [],
+);
 
 const DISABLED_TOOL = listAllTools().find((tool) => tool.delivery.kind === 'host_disabled');
 

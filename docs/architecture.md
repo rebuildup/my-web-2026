@@ -34,6 +34,12 @@ src/
 │  ├─ seed.ts
 │  ├─ public.ts
 │  └─ index.ts
+├─ external-api/
+│  ├─ contract.ts
+│  ├─ timeout.ts
+│  ├─ reader.ts
+│  ├─ github.ts
+│  └─ ExternalReadCard.tsx
 ├─ editorial/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
@@ -79,6 +85,18 @@ employment-facing Portfolio surface の data model と publication contract を�
 
 `portfolio/` は `home/` の peer obligation で、どちらもお互いを import しない。Cloudflare runtime とは DI seam (`createD1PortfolioLoader(env)`) 経由で結合し、テストでは偽 env を渡して workerd 依存を排除する。
 
+### `external-api/` (Issue #499)
+
+**第三者 API を呼ぶ表示コンポーネントの信頼性契約**を所有する。
+
+- `contract.ts` — snapshot の公開型と状態遷移の純関数。timeout、stale timestamp、非破壊 fallback、breaker（遮断）状態、retry cadence。失敗しても前回の値は破棄されず、確定した試行が `loading` を残さないことが型と関数で保証される
+- `timeout.ts` — **outbound リクエスト発行はここ 1 箇所**。応答サイズ上限、status → 公開 failure reason、credential header の拒否
+- `reader.ts` — 唯一の可変状態（in-flight attempt・breaker・最終成功値）。同時呼び出しは 1 回へ合流し、reader 自身が deadline を強制する
+- `github.ts` — アダプタ 1 件。公開・未認証の read 1 本。allowlist 写像なので未宣言フィールドは表示に到達しない
+- `ExternalReadCard.tsx` — 6 状態を同じ component が描画する（fresh / stale / timeout fallback / 遮断中 / 初回失敗 / 読み込み中）
+
+`home/` / `portfolio/` / `about` とは **peer obligation**。`editorial` primitive だけを消費し、`http/`（inbound boundary）や `cloudflare` binding とは結线しない。route には結线されていないため、現時点で**実行時に外部通信は発生しない**。promotion は `docs/domain/integrations.md`（capability-scoped first）に従う。
+
 ### `editorial/`
 
 現在の public surface が話す editorial visual language を所有する。
@@ -119,6 +137,7 @@ home/status ─────────▶ cloudflare
 home/status ─────────▶ http
 portfolio ───────────▶ cloudflare (DI seam)
 portfolio ───────────▶ editorial
+external-api ────────▶ editorial
 home ────────────────▶ editorial
 server ──────────────▶ http
 ```
@@ -129,6 +148,7 @@ server ──────────────▶ http
 - `http/` は `home/` も `portfolio/` を知らない。
 - `editorial/` は特定 surface を知らない。
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
+- `external-api/` は `home/` / `routes/` / `portfolio/` / `cloudflare/` / `http/` を import しない (peer obligation)。outbound read と inbound boundary は別の obligation。
 - framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。
 
 ## TanStack Start / Hono boundary

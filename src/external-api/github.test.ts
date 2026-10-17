@@ -89,7 +89,7 @@ describe('allowlisted mapping', () => {
 	});
 
 	it('never copies a personal field out of the payload', () => {
-		const facts = parseGitHubRepoFacts(FULL_PAYLOAD) as Record<string, unknown>;
+		const facts: Record<string, unknown> = { ...parseGitHubRepoFacts(FULL_PAYLOAD) };
 		const serialized = JSON.stringify(facts);
 		expect(serialized).not.toContain('owner@example.invalid');
 		expect(serialized).not.toContain('Rebuild Up');

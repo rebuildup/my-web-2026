@@ -82,6 +82,7 @@ admin/emoji-catalog -> reactions
 reactions -> cloudflare (env.DB at SSR time)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
+external-api -> editorial (Issue #499 — display primitives only)
 server -> http
 home -> editorial
 ```
@@ -110,7 +111,22 @@ home -> editorial
   leaking through every consumer — see the home reactions
   loader for the same pattern. The portfolio obligation is a
   peer to `home/`; neither imports from the other.
+- `src/external-api/**` (Issue #499) owns the reliability contract
+  for a display component that reads a third-party API: bounded
+  attempt, stale-aware snapshot, breaker state, and non-destructive
+  fallback (`contract.ts`), the single place an outbound request is
+  issued (`timeout.ts`), the attempt sequencing (`reader.ts`), one
+  adapter (`github.ts`) and the display surface
+  (`ExternalReadCard.tsx`). It composes `editorial` primitives and
+  reads nothing through `http/` or a `cloudflare` binding. Nothing
+  is wired to a route, so the repository makes **no outbound
+  third-party request at runtime**; promotion follows
+  `docs/domain/integrations.md` (capability-scoped first).
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
+- An external third-party read is not an `src/http/**` concern: `http/`
+  owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),
+  while `src/external-api/**` owns OUTBOUND reads a display component
+  makes. The two must not import each other.
 - Internal UI operations use TanStack Start server functions at the obligation
   that composes them (currently `src/home/{status,reactions,access}/load.ts`,
   `src/portfolio/public.ts`, and `src/admin/**/load.ts`).

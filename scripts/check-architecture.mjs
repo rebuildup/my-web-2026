@@ -28,6 +28,13 @@ const forbiddenOwnerDependencies = new Map([
 	// keeps `cloudflare:workers` virtual-module access out of the
 	// obligation), or `http` (external HTTP boundary).
 	['about', new Set(['home', 'routes', 'cloudflare', 'http'])],
+	// `external-api` (Issue #499) owns the reliability contract for
+	// reads of a third-party API behind a display component. It is a
+	// peer obligation to `home` / `portfolio` / `about`, not a layer
+	// under them: it composes `editorial` primitives, performs its own
+	// outbound request (no `http` boundary, no `cloudflare` binding),
+	// and must not be imported BY them until a capability adopts it.
+	['external-api', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
 ]);
 
 /**

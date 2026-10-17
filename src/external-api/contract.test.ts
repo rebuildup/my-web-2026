@@ -201,6 +201,20 @@ describe('freshness', () => {
 	});
 });
 
+/**
+ * Narrow a snapshot for assertions.
+ *
+ * `expect(snapshot.status).toBe('degraded')` does not narrow the type,
+ * and the degraded branch is where this contract lives, so the
+ * assertion helper doubles as the type guard.
+ */
+function degradedOf<T>(snapshot: ExternalSnapshot<T>) {
+	if (snapshot.status !== 'degraded') {
+		throw new Error(`expected a degraded snapshot, got ${snapshot.status}`);
+	}
+	return snapshot;
+}
+
 describe('snapshot transitions', () => {
 	it('replaces loading with a value on the first success', () => {
 		const snapshot = applySuccess(42, T0);
@@ -216,7 +230,7 @@ describe('snapshot transitions', () => {
 	it('keeps the value and the instant when a later attempt fails', () => {
 		const healthy = applySuccess(42, T0);
 		const breaker = { state: 'closed', consecutiveFailures: 1, openedAt: null } as const;
-		const degraded = applyFailure(healthy, 'timeout', T0 + 60_000, breaker, policy);
+		const degraded = degradedOf(applyFailure(healthy, 'timeout', T0 + 60_000, breaker, policy));
 
 		expect(degraded.status).toBe('degraded');
 		expect(degraded.value).toBe(42);
@@ -228,12 +242,14 @@ describe('snapshot transitions', () => {
 	});
 
 	it('degrades with a null value when the FIRST attempt fails', () => {
-		const degraded = applyFailure(
-			{ status: 'loading' },
-			'network',
-			T0,
-			{ state: 'closed', consecutiveFailures: 1, openedAt: null },
-			policy,
+		const degraded = degradedOf(
+			applyFailure(
+				{ status: 'loading' },
+				'network',
+				T0,
+				{ state: 'closed', consecutiveFailures: 1, openedAt: null },
+				policy,
+			),
 		);
 		expect(degraded.status).toBe('degraded');
 		expect(degraded.value).toBeNull();
@@ -253,7 +269,7 @@ describe('snapshot transitions', () => {
 	it('states the next probe instant and refuses retry while open', () => {
 		const healthy = applySuccess(9, T0);
 		const open = { state: 'open', consecutiveFailures: 3, openedAt: T0 } as const;
-		const degraded = applyFailure(healthy, 'rate-limited', T0 + 10_000, open, policy);
+		const degraded = degradedOf(applyFailure(healthy, 'rate-limited', T0 + 10_000, open, policy));
 		expect(degraded.breaker).toBe('open');
 		expect(degraded.retryable).toBe(false);
 		expect(degraded.retryAt).toBe(new Date(T0 + policy.openMs).toISOString());
@@ -261,30 +277,36 @@ describe('snapshot transitions', () => {
 	});
 
 	it('preserves the value and the original failure instant when blocked', () => {
-		const degraded = applyFailure(
-			applySuccess(9, T0),
-			'timeout',
-			T0 + 10_000,
-			{ state: 'open', consecutiveFailures: 3, openedAt: T0 },
-			policy,
+		const degraded = degradedOf(
+			applyFailure(
+				applySuccess(9, T0),
+				'timeout',
+				T0 + 10_000,
+				{ state: 'open', consecutiveFailures: 3, openedAt: T0 },
+				policy,
+			),
 		);
-		const blocked = applyBlocked(degraded, 'timeout', T0 + 20_000, degradedBreaker(), policy);
+		const blocked = degradedOf(
+			applyBlocked(degraded, 'timeout', T0 + 20_000, degradedBreaker(), policy),
+		);
 		expect(blocked.status).toBe('degraded');
 		expect(blocked.value).toBe(9);
 		expect(blocked.reason).toBe('timeout');
 		// The refusal did not invent a new failure instant.
-		expect(blocked.failedAt).toBe(degraded.status === 'degraded' ? degraded.failedAt : null);
+		expect(blocked.failedAt).toBe(degraded.failedAt);
 		expect(blocked.retryable).toBe(false);
 		expect(blocked.retryAt).toBe(new Date(T0 + policy.openMs).toISOString());
 	});
 
 	it('degrades a never-read source with a null value when blocked', () => {
-		const blocked = applyBlocked(
-			{ status: 'loading' },
-			'network',
-			T0,
-			{ state: 'open', consecutiveFailures: 3, openedAt: T0 },
-			policy,
+		const blocked = degradedOf(
+			applyBlocked(
+				{ status: 'loading' },
+				'network',
+				T0,
+				{ state: 'open', consecutiveFailures: 3, openedAt: T0 },
+				policy,
+			),
 		);
 		expect(blocked.value).toBeNull();
 		expect(blocked.observedAt).toBeNull();

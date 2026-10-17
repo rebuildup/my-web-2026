@@ -170,34 +170,49 @@ export function resolveReadPolicy(overrides?: Partial<ExternalReadPolicy>): Exte
  * attempt leaves `loading` for `value` or `degraded`, which is what
  * makes a persistent spinner unrepresentable rather than merely
  * discouraged.
+ *
+ * The two branches are named interfaces rather than inline members so
+ * a caller holding one of them (as every transition returns) can still
+ * have the type parameter inferred from it.
  */
 export type ExternalSnapshot<T> =
 	| { readonly status: 'loading' }
-	| {
-			readonly status: 'value';
-			readonly value: T;
-			readonly observedAt: string;
-			readonly freshness: ExternalFreshness;
-			readonly breaker: ExternalBreakerState;
-	  }
-	| {
-			readonly status: 'degraded';
-			/** Last known good value, preserved. `null` only if none was ever read. */
-			readonly value: T | null;
-			/** When that value was observed. `null` when there is no value. */
-			readonly observedAt: string | null;
-			readonly reason: ExternalFailureReason;
-			readonly failedAt: string;
-			readonly breaker: ExternalBreakerState;
-			/** Whether an attempt may run now (false while the breaker is open). */
-			readonly retryable: boolean;
-			/** When the next attempt becomes possible, for a blocked source. */
-			readonly retryAt: string | null;
-	  };
+	| ExternalValueSnapshot<T>
+	| ExternalDegradedSnapshot<T>;
+
+/** The healthy branch: a value that was observed at a known instant. */
+export interface ExternalValueSnapshot<T> {
+	readonly status: 'value';
+	readonly value: T;
+	readonly observedAt: string;
+	readonly freshness: ExternalFreshness;
+	readonly breaker: ExternalBreakerState;
+}
+
+/**
+ * The degraded branch — a settled attempt that produced no new value.
+ *
+ * `value` is the LAST KNOWN GOOD value, preserved. It is `null` only
+ * when no attempt ever succeeded, which is what makes the card show a
+ * reason instead of an empty space.
+ */
+export interface ExternalDegradedSnapshot<T> {
+	readonly status: 'degraded';
+	readonly value: T | null;
+	readonly observedAt: string | null;
+	readonly reason: ExternalFailureReason;
+	readonly failedAt: string;
+	readonly breaker: ExternalBreakerState;
+	/** Whether an attempt may run now (false while the breaker is open). */
+	readonly retryable: boolean;
+	/** When the next attempt becomes possible, for a blocked source. */
+	readonly retryAt: string | null;
+}
 
 /** The empty state a reader starts from. */
 export const LOADING_SNAPSHOT: ExternalSnapshot<never> = { status: 'loading' };
 
+/** The healthy branch of a snapshot. */
 /** Breaker bookkeeping for one source. */
 export interface ExternalBreaker {
 	readonly state: ExternalBreakerState;
@@ -296,7 +311,7 @@ export function freshnessOf(
  * The previous snapshot is not read here — a success replaces the
  * value, and nothing about a failure may leak into the healthy path.
  */
-export function applySuccess<T>(value: T, now: number): ExternalSnapshot<T> {
+export function applySuccess<T>(value: T, now: number): ExternalValueSnapshot<T> {
 	return {
 		status: 'value',
 		value,
@@ -323,7 +338,6 @@ export function withRecomputedFreshness<T>(
 	const freshness = freshnessOf(snapshot.observedAt, now, policy);
 	return freshness === snapshot.freshness ? snapshot : { ...snapshot, freshness };
 }
-
 /**
  * The snapshot after a failed read.
  *
@@ -338,7 +352,7 @@ export function applyFailure<T>(
 	now: number,
 	breaker: ExternalBreaker,
 	policy: ExternalReadPolicy,
-): ExternalSnapshot<T> {
+): ExternalDegradedSnapshot<T> {
 	// The breaker passed here must ALREADY include this attempt's
 	// outcome (`recordOutcome` first, then `applyFailure`), so the
 	// snapshot's retry cadence matches the breaker the reader owns.
@@ -371,7 +385,7 @@ export function applyBlocked<T>(
 	now: number,
 	breaker: ExternalBreaker,
 	policy: ExternalReadPolicy,
-): ExternalSnapshot<T> {
+): ExternalDegradedSnapshot<T> {
 	const retryAt = (breaker.openedAt ?? now) + policy.openMs;
 	return {
 		status: 'degraded',

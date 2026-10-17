@@ -164,7 +164,10 @@ test('the HTML report states the pass criteria and their result', () => {
 	assert.match(html, /Pass criteria/);
 	// One failing row in ROWS, so criterion 1 must report a failure and
 	// criterion 2 must still pass (no row reuses the asset policy).
-	assert.match(html, /every measured response carries its declared Cache-Control<\/td><td class="fail">FAIL \(1\)/);
+	assert.match(
+		html,
+		/every measured response carries its declared Cache-Control<\/td><td class="fail">FAIL \(1\)/,
+	);
 	assert.match(
 		html,
 		/the immutable asset policy belongs to no other class<\/td><td class="ok">PASS/,

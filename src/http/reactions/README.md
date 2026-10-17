@@ -86,13 +86,24 @@ content-addressed by SHA-256 hash, so safe to cache forever).
 
 ## Errors
 
+Boundary validation is owned by `src/http/validation.ts`; see
+[`docs/security/input-validation.md`](../../../docs/security/input-validation.md)
+for the full contract. Every rejection below carries `{ error, reason }`.
+
 | Status | Body | Cause |
 | --- | --- | --- |
-| 400 | `invalid_body` | malformed body |
-| 400 | `missing_target` / `invalid_target` | `?target=` missing or too long |
+| 400 | `invalid_body` | malformed body, or a `target_key` / `actor_id` / `kind` / `value` outside its grammar |
+| 400 | `missing_target` | `?target=` absent |
+| 400 | `invalid_target` / `invalid_actor_id` | query value outside its grammar (e.g. too long) |
+| 400 | `invalid_query` | the same query name supplied more than once (parameter pollution) |
+| 400 | `invalid_id` | `:id` does not match `[A-Za-z0-9_-]{1,64}` |
 | 401 | `missing_authorization` / `invalid_api_key` | auth failed |
 | 403 | `missing_scope` | key lacks the required scope |
 | 404 | `not_found` | image id not in the library |
+| 405 | `method_not_allowed` | verb not in `Allow` for this path |
+| 413 | `payload_too_large` | JSON body over `MAX_JSON_BODY_BYTES` (16 KiB) |
+| 415 | `unsupported_media_type` | `Content-Type` is not JSON |
+| 422 | `unknown_image_id` | image-kind reaction referencing an image that does not exist |
 | 429 | `rate_limited` | budget exhausted |
 
 ## Atomicity

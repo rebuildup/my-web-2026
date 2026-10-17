@@ -29,6 +29,22 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## Boundary input validation
+
+Every untrusted value that reaches `/api/v1/*` is validated by
+`src/http/validation.ts` on four dimensions — size, format, protocol,
+and type — and an invalid request always answers with a defined
+response (`400` / `405` / `413` / `415`) whose body is
+`{ error, reason }`. Client-side validation in the UI is a user
+convenience, never a security control.
+
+The full contract, the per-endpoint table, and the reproduction
+commands live in [`security/input-validation.md`](security/input-validation.md).
+The measured matrix (real requests through the production boundary in
+the local workerd pool) is committed as
+`docs/verification/security/input-validation-matrix.png` and is
+regenerated with `pnpm run verification:input-matrix`.
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

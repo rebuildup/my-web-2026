@@ -20,10 +20,10 @@ import {
 } from './reactions';
 import type { ReactionInputValue } from './schema';
 import {
+	parseReactionInput,
 	validateActorId,
 	validateReactionImageId,
 	validateTargetKey,
-	parseReactionInput,
 } from './schema';
 
 /**

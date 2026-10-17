@@ -1,12 +1,39 @@
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { expect, test } from '@playwright/test';
+import type { APIRequestContext, Page } from '@playwright/test';
+import {
+	CANONICAL_PRODUCTION_ORIGIN,
+	CHROME_NAV_ROUTES,
+	ONE_CLICK_ENTRIES,
+	REPRESENTATIVE_API_ROUTES,
+	REPRESENTATIVE_PAGE_ROUTES,
+	REPRESENTATIVE_ROUTES,
+	auditRoute,
+	formatAuditReport,
+} from '../scripts/prod-smoke-routes.mjs';
 
 /**
- * Production smoke (Issue #43 / ADR-0014).
+ * Production smoke (Issue #43 / ADR-0014, representative routes added by
+ * Issue #500).
  *
- * Runs against the canonical production URL `https://rebuildup.dev`
- * via `pnpm run e2e:prod`. Triggered manually:
+ * Runs against the canonical production origin (ADR-0014) via
+ * `pnpm run e2e:prod`. Triggered manually:
  *   - locally: `pnpm run e2e:prod`
  *   - CI: GH Actions `production smoke` workflow on `workflow_dispatch`.
+ *
+ * The representative-route contract lives in
+ * `scripts/prod-smoke-routes.mjs`; this file is the browser adapter that
+ * fetches each route read-only and hands the observation to
+ * `auditRoute()`. The classifier itself is unit-tested offline in
+ * `scripts/prod-smoke-routes.test.mjs`, so the pass/fail logic cannot
+ * silently degrade into "always green".
+ *
+ * The representative routes are public, version-independent surfaces, so
+ * they run in BOTH smoke phases (`transition` and `versioned`) — unlike
+ * the `/admin/login` assertion below, which is deferred in `transition`
+ * for a documented pre-#91 reason.
  *
  * The smoke verifies the documented Issue #43 acceptance criteria
  * against the live deployment:
@@ -22,7 +49,14 @@ import { expect, test } from '@playwright/test';
  * production); that flow is covered locally by
  * `src/cloudflare/auth/better-auth.test.ts` in the workerd pool.
  */
-const CANONICAL_ORIGIN = 'https://rebuildup.dev';
+/**
+ * Single declaration of the canonical production origin. It comes from
+ * `scripts/_cloudflare-contract.mjs` (ADR-0014) rather than being
+ * restated here, so this spec cannot drift onto the debug-only
+ * `*.workers.dev` host. Issue #500 folded the previously inline literal
+ * into the shared constant.
+ */
+const CANONICAL_ORIGIN = CANONICAL_PRODUCTION_ORIGIN;
 
 const PROD_SMOKE_PHASE = process.env.PROD_SMOKE_PHASE ?? 'versioned';
 if (PROD_SMOKE_PHASE !== 'transition' && PROD_SMOKE_PHASE !== 'versioned') {
@@ -215,5 +249,271 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 		});
 		expect(res.status()).toBe(200);
 		expect(new URL(res.url()).origin).toBe(CANONICAL_ORIGIN);
+	});
+});
+
+/* ---------------------------------------------------------------------------
+ * Issue #500 — representative routes in the production synthetic smoke.
+ *
+ * The routes, their expected responses, their documented default states,
+ * and their short navigation paths all live in
+ * `scripts/prod-smoke-routes.mjs`. Everything below is the read-only
+ * browser adapter that produces the observation `auditRoute()` classifies.
+ *
+ * Read-only boundary (restated here because this is the file an operator
+ * reads before running the smoke against production): the only HTTP verb
+ * used here is GET, no cookie is cleared, no storage is reset, and no
+ * D1 / R2 write is issued. The anonymous reaction mutation further up in
+ * this file is the one deliberate mutation, it predates Issue #500, and it
+ * is deliberately NOT part of the representative-route registry.
+ * ------------------------------------------------------------------------ */
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * Tool slugs the `/tools` index is contracted to list.
+ *
+ * Read from the registry manifest rather than restated, so the default
+ * state is "the index agrees with the manifest" instead of "the index
+ * agrees with a list someone copied out of it once". The manifest is
+ * repo-controlled data, so this stays a verifiable fact rather than an
+ * expectation about production content.
+ */
+function readToolManifestSlugs(): string[] {
+	const raw = JSON.parse(readFileSync(resolve(REPO_ROOT, 'src/tools/manifest.json'), 'utf8')) as {
+		tools: Array<{ slug: string }>;
+	};
+	return raw.tools.map((tool) => tool.slug).sort();
+}
+
+/** Well-formed semantic version. Deliberately not the repo's version. */
+const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+
+/**
+ * Boolean observations for a page route's documented default states.
+ *
+ * Throwing for an un-implemented path is intentional: if a route is ever
+ * added to the registry without a probe here, the smoke must fail loudly
+ * at authoring time rather than silently observing `undefined` probes and
+ * reporting a confusing "no documented default state matched".
+ */
+async function computePageProbes(
+	path: string,
+	page: Page,
+	toolSlugs: ReadonlyArray<string>,
+): Promise<Record<string, boolean>> {
+	switch (path) {
+		case '/':
+			return {
+				// Six `aria-labelledby` sections is the home composition
+				// contract e2e/smoke.spec.ts already pins locally.
+				sixSections: (await page.locator('section[aria-labelledby]').count()) === 6,
+				// The disabled placeholder is the home surface's
+				// "consumer API key missing in production" failure mode.
+				// A deployed Worker without it would still return 200 on
+				// every other assertion, so this probe is what stops the
+				// smoke from reporting a healthy deployment that a visitor
+				// would call broken.
+				reactionsDisabled: await page
+					.getByText(/reactions disabled/i)
+					.first()
+					.isVisible()
+					.catch(() => false),
+			};
+		case '/about':
+			return {
+				identityHeading: await page.locator('h1#about-hero-title').first().isVisible(),
+				narrativeSections:
+					(await page.locator('section[aria-labelledby^="about-section-"]').count()) === 5,
+			};
+		case '/portfolio':
+			return {
+				emptyState: await page
+					.getByText('ポートフォリオ準備中')
+					.first()
+					.isVisible()
+					.catch(() => false),
+				projectCard: (await page.locator('section#portfolio-list ol > li').count()) > 0,
+			};
+		case '/tools': {
+			const listed = (
+				await page
+					.locator('[data-tool-slug]')
+					.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-tool-slug') ?? ''))
+			).sort();
+			const expected = [...toolSlugs].sort();
+			const everyRowClassified = await page
+				.locator('[data-tool-slug]')
+				.evaluateAll((rows) =>
+					rows.every(
+						(row) =>
+							row.querySelector('a[href^="/tools/"]') !== null ||
+							row.getAttribute('data-tool-state') === 'host_disabled',
+					),
+				);
+			return {
+				allManifestSlugsListed:
+					listed.length === expected.length &&
+					listed.every((slug, index) => slug === expected[index]),
+				// An empty page matches "nothing is misclassified" vacuously,
+				// so a rendered row is part of the condition.
+				everyRowClassified: listed.length > 0 && everyRowClassified,
+			};
+		}
+		default:
+			throw new Error(
+				`No default-state probe is implemented for representative route ${path}. Add it to computePageProbes() in the same change that registers the route.`,
+			);
+	}
+}
+
+/**
+ * Fetch one page route read-only and build the observation
+ * `auditRoute()` expects.
+ */
+async function observePageRoute(
+	path: string,
+	page: Page,
+	toolSlugs: ReadonlyArray<string>,
+): Promise<RouteObservation> {
+	const response = await page.goto(`${CANONICAL_ORIGIN}${path}`, {
+		waitUntil: 'domcontentloaded',
+	});
+	const canonical = page.locator('link[rel="canonical"]').first();
+	const h1 = page.locator('h1').first();
+	return {
+		status: response?.status() ?? 0,
+		contentType: response?.headers()['content-type'] ?? '',
+		finalPath: new URL(page.url()).pathname,
+		title: await page.title(),
+		canonicalHref: (await canonical.count()) > 0 ? await canonical.getAttribute('href') : null,
+		h1Count: await page.locator('h1').count(),
+		h1Visible: await h1.isVisible(),
+		h1Text: await h1.count().then((count) => (count > 0 ? h1.textContent() : null)),
+		json: null,
+		defaultProbes: await computePageProbes(path, page, toolSlugs),
+	};
+}
+
+/**
+ * Fetch one API route read-only and build its observation.
+ *
+ * A non-JSON body is reported through `json: null` rather than thrown, so
+ * `auditRoute()` owns the whole failure surface and the report has one
+ * shape.
+ */
+async function observeApiRoute(
+	path: string,
+	request: APIRequestContext,
+): Promise<RouteObservation> {
+	const response = await request.get(`${CANONICAL_ORIGIN}${path}`);
+	const body = await response.text();
+	let json: Record<string, unknown> | null = null;
+	try {
+		const parsed: unknown = JSON.parse(body);
+		if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+			json = parsed as Record<string, unknown>;
+		}
+	} catch {
+		json = null;
+	}
+	return {
+		status: response.status(),
+		contentType: response.headers()['content-type'] ?? '',
+		finalPath: new URL(response.url()).pathname,
+		title: null,
+		canonicalHref: null,
+		h1Count: 0,
+		h1Visible: false,
+		h1Text: null,
+		json,
+		defaultProbes: {
+			statusOk: json?.status === 'ok',
+			serviceIdentity: json?.service === 'my-web-2026',
+			boundaryLayer: json?.layer === 'external-boundary',
+			// Shape check only. Production runs the `main` build while
+			// this repository sits on the open release branch, so pinning
+			// the value to package.json#version would be a guaranteed-false
+			// red for the whole sprint (AGENTS.md §1: one version source).
+			semverVersion: typeof json?.version === 'string' && SEMVER.test(json.version),
+		},
+	};
+}
+
+test.describe('production representative routes (Issue #500)', () => {
+	for (const route of REPRESENTATIVE_PAGE_ROUTES) {
+		test(`${route.label} — ${route.path} serves its documented default state`, async ({ page }) => {
+			const observation = await observePageRoute(route.path, page, readToolManifestSlugs());
+			// Assert the problem LIST, not the first problem: a broken
+			// deployment should report everything that is wrong in one go.
+			const problems = auditRoute(route, observation);
+			expect(problems, formatAuditReport(route, problems)).toEqual([]);
+		});
+	}
+
+	for (const route of REPRESENTATIVE_API_ROUTES) {
+		test(`${route.label} — ${route.path} serves its documented default state`, async ({
+			request,
+		}) => {
+			const observation = await observeApiRoute(route.path, request);
+			const problems = auditRoute(route, observation);
+			expect(problems, formatAuditReport(route, problems)).toEqual([]);
+		});
+	}
+
+	test('short navigation path — every representative page route is one click from /', async ({
+		page,
+	}) => {
+		await page.goto(`${CANONICAL_ORIGIN}/`, { waitUntil: 'domcontentloaded' });
+
+		for (const entry of ONE_CLICK_ENTRIES) {
+			const link = page.locator(entry.selector).first();
+			await expect(
+				link,
+				`${entry.from} no longer offers a one-click path to ${entry.to}. The representative route is registered but unreachable from the entry surface, which makes the smoke report a route nobody can get to.`,
+			).toBeVisible();
+
+			const href = await link.getAttribute('href');
+			expect(
+				href,
+				`the ${entry.from} → ${entry.to} entry must stay an in-site path, not an absolute or protocol-relative URL`,
+			).toBe(entry.to);
+			expect(href?.startsWith('//') ?? true).toBe(false);
+
+			// Follow it. A link that 200s into the 404 surface, or that
+			// dead-ends, must not pass as "reachable".
+			await link.click();
+			expect(
+				new URL(page.url()).pathname,
+				`clicking the ${entry.from} → ${entry.to} entry landed somewhere else`,
+			).toBe(entry.to);
+			const destination = REPRESENTATIVE_ROUTES.find((candidate) => candidate.path === entry.to);
+			await expect(
+				page.locator(destination?.h1 ?? 'h1').first(),
+				`${entry.to} rendered without its page heading after the one-click path`,
+			).toBeVisible();
+		}
+	});
+
+	test('short navigation path — the PublicNav pages link to every sibling representative route', async ({
+		page,
+	}) => {
+		for (const from of CHROME_NAV_ROUTES) {
+			await page.goto(`${CANONICAL_ORIGIN}${from}`, { waitUntil: 'domcontentloaded' });
+			const nav = page.locator('nav[aria-label="Public"]');
+			await expect(
+				nav,
+				`${from} is registered as a chrome-nav route but does not render the PublicNav landmark`,
+			).toBeVisible();
+
+			const strip = nav.locator('[data-testid="public-nav-desktop"]');
+			for (const sibling of REPRESENTATIVE_PAGE_ROUTES) {
+				if (sibling.path === from) continue;
+				await expect(
+					strip.locator(`a[href="${sibling.path}"]`),
+					`${from} offers no one-click path to ${sibling.path}; the representative set is no longer navigable from the chrome`,
+				).toHaveCount(1);
+			}
+		}
 	});
 });

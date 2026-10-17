@@ -100,8 +100,12 @@
 										"description": "sandbox attribute value. Default: 'allow-scripts'. DO NOT add 'allow-same-origin' without a written reason.",
 										"type": "string"
 									},
+									"referrer_policy": {
+										"description": "Referrer-Policy applied to the Tool artifact responses under artifact_path. 'no-referrer' for Tool-owned content. Mirrored in public/_headers for Static Assets.",
+										"type": "string"
+									},
 									"allow": {
-										"description": "Permissions-Policy allowlist for sensitive features. Empty unless the Tool genuinely requires it.",
+										"description": "Permissions-Policy features this Tool needs from the host. FEATURE NAMES ONLY (e.g. 'microphone'), space separated — the host owns the origin allowlist and derives it from the serving origin. Empty unless the Tool genuinely requires it.",
 										"type": "string"
 									}
 								},

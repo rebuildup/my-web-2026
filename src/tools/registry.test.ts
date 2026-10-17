@@ -1,6 +1,14 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
-import { getPublicTool, getTool, listAllTools, listPublicTools, listTools } from './registry';
+import {
+	getPublicTool,
+	getTool,
+	listAllTools,
+	listPublicTools,
+	listTools,
+	parseGrantedPermissions,
+	toolRouteSecurityPolicy,
+} from './registry';
 
 /**
  * Tool Registry — contract tests (Issue #80).
@@ -197,5 +205,74 @@ describe('Tool Registry — listAllTools / show-all policy', () => {
 		const readmark = getTool('readmark');
 		assert.ok(readmark, 'readmark must be present');
 		assert.equal(readmark?.delivery.kind, 'same_origin_static');
+	});
+});
+
+describe('Tool Registry — per-path security policy (Issue #449)', () => {
+	// The manifest is where a Tool declares the browser capabilities it
+	// needs; the host decides how to grant them. These tests pin the
+	// resolution half so a Tool grant cannot leak onto another route
+	// and so the microphone Tool keeps its grant while it is still
+	// `host_disabled`.
+
+	it('grants microphone on the mic-level shell route', () => {
+		const policy = toolRouteSecurityPolicy('/tools/mic-level');
+		assert.deepEqual(policy?.grantedPermissions, ['microphone']);
+		// The shell is a host document: keep the host Referrer-Policy.
+		assert.equal(policy?.referrerPolicy, undefined);
+	});
+
+	it('grants microphone on the mic-level artifact path too', () => {
+		// Forward-looking half of the grant: Static Assets serves this
+		// path, but the resolver must answer the same question for it so
+		// `public/_headers` and the Worker cannot disagree.
+		const policy = toolRouteSecurityPolicy('/tools/mic-level/app/index.html');
+		assert.deepEqual(policy?.grantedPermissions, ['microphone']);
+		assert.equal(policy?.referrerPolicy, 'no-referrer');
+	});
+
+	it('leaves a Tool with no declared grant untouched', () => {
+		assert.equal(toolRouteSecurityPolicy('/tools/prototype'), undefined);
+		assert.equal(
+			toolRouteSecurityPolicy('/tools/prototype/app/index.html')?.grantedPermissions?.length,
+			0,
+		);
+	});
+
+	it('uses the artifact referrer_policy for a served Tool artifact', () => {
+		const policy = toolRouteSecurityPolicy('/tools/prototype/app/assets/index.js');
+		assert.equal(policy?.referrerPolicy, 'no-referrer');
+		assert.deepEqual(policy?.grantedPermissions, []);
+	});
+
+	it('never grants anything on an unrelated path', () => {
+		for (const path of ['/', '/contact', '/admin/keys', '/api/v1/health', '/share/procon2026/']) {
+			assert.equal(
+				toolRouteSecurityPolicy(path),
+				undefined,
+				`${path} must not inherit a Tool policy`,
+			);
+		}
+	});
+
+	it('does not let a lookalike slug inherit a grant', () => {
+		// `/tools/mic-level-2` is not `mic-level`; the shell match is
+		// exact-segment, mirroring the Worker's exact-prefix-or-/ guard.
+		assert.equal(toolRouteSecurityPolicy('/tools/mic-level-2'), undefined);
+		assert.equal(toolRouteSecurityPolicy('/toolsfoo/mic-level'), undefined);
+	});
+
+	it('parseGrantedPermissions splits feature names and drops empties', () => {
+		assert.deepEqual(parseGrantedPermissions('microphone'), ['microphone']);
+		assert.deepEqual(parseGrantedPermissions('  microphone   camera '), ['microphone', 'camera']);
+		assert.deepEqual(parseGrantedPermissions(''), []);
+		assert.deepEqual(parseGrantedPermissions(undefined), []);
+	});
+
+	it('exposes the grant to the iframe shell route consumer', () => {
+		// `PublicToolSummary.iframe.allow` is what the route turns into
+		// `<iframe allow=...>`. It is normalised to '' when absent so the
+		// route does not have to handle undefined.
+		assert.equal(getPublicTool('prototype')?.iframe.allow, '');
 	});
 });

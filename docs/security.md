@@ -29,6 +29,16 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## Response security headers
+
+`X-Content-Type-Options: nosniff`, `Referrer-Policy` and
+`Permissions-Policy` are emitted on every response. The contract, the
+per-Tool permission grant, and how to verify both delivery surfaces
+(Worker responses and Cloudflare Static Assets) are documented in
+[`docs/security/security-headers.md`](security/security-headers.md).
+The gate is `node scripts/check-security-headers.mjs`
+(`pnpm run security:headers:check`, part of `validate:fast`).
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

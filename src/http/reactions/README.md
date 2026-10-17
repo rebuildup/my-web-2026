@@ -95,6 +95,12 @@ content-addressed by SHA-256 hash, so safe to cache forever).
 | 404 | `not_found` | image id not in the library |
 | 429 | `rate_limited` | budget exhausted |
 
+A throttled response also carries `Retry-After: 60` (the binding's
+fixed window). The write budget is **one bucket per API key id**
+shared with `POST /api/v1/access/hit` — not one per route — and a
+suppressed request never reaches D1. See
+[`docs/security/write-rate-limit.md`](../../../docs/security/write-rate-limit.md).
+
 ## Atomicity
 
 PUT and DELETE are atomic at the storage layer:

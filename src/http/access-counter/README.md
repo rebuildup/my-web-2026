@@ -12,6 +12,15 @@ access counter. Built in Ticket F (branch 38; see ADR-0012).
 
 Both routes require a Better Auth api-key (`Authorization: Bearer …`).
 
+`RATE_LIMIT_WRITE` / `RATE_LIMIT_READ` (ADR-0010) cover the
+write/read paths respectively. The write budget is **one bucket per
+API key id**, shared with `PUT`/`DELETE /api/v1/reactions` — a
+counter burst and a reaction burst consume the same 60 requests / 60 s.
+A throttled request answers `429 { error: 'rate_limited' }` with
+`Retry-After: 60` and is refused before D1, so the counter row does
+not move. The full operational contract is in
+[`docs/security/write-rate-limit.md`](../../../docs/security/write-rate-limit.md).
+
 ### POST /hit
 
 Request:

@@ -2,11 +2,21 @@
 /**
  * Verification screen for the app-icon family (Issue #504).
  *
- * The committed artefact is `docs/verification/web/app-icons-preview.png`
- * — the Issue-required evidence that the icon family is real. A PNG
+ * The committed artefact is `docs/verification/web/app-icons-preview.webp`
+ * — the Issue-required evidence that the icon family is real. A capture
  * nobody can regenerate is an assertion, not evidence, so the generator
  * is committed next to `scripts/generate-app-icons.mjs` (which produces
  * the icons themselves) and the exact capture conditions are fixed here.
+ *
+ * The Issue named a `.png` path; the artefact is committed as `.webp`
+ * instead. A 2360 px device-pixel PNG of a text-dense screen is
+ * 351,784 bytes of mostly-flat rows, which bloats the repository
+ * permanently; the same content as a moderately compressed WebP is
+ * 102,544 bytes (about 3.4x smaller) and renders identically in every
+ * browser that can render the site. Playwright cannot emit WebP itself,
+ * so the shot is taken into a Buffer and encoded here with the `sharp`
+ * devDependency that already generates the icons (no new dependency,
+ * no network, offline).
  *
  * What the screen shows, all read from the RUNNING server rather than
  * from source:
@@ -24,24 +34,56 @@
  *   - viewport 1180 × 1460 CSS px, `deviceScaleFactor: 2`,
  *   - `colorScheme: 'light'`, `waitUntil: 'networkidle'`,
  *   - clip = the verification panel's own bounding box (never the raw
- *     viewport, which can silently cut the last section off).
+ *     viewport, which can silently cut the last section off),
+ *   - encoding: long edge width 1600 px (`withoutEnlargement`),
+ *     WebP `quality: 80`. The capture is 2x device pixels (2360 px
+ *     wide), so the resize is a downscale, and the committed file stays
+ *     far below the ~300 KB artefact budget.
+ *
+ * Byte-identity: the encode step is deterministic for a given capture
+ * Buffer, but the browser capture itself is not bit-reproducible across
+ * processes (sub-pixel text rasterisation), so a re-run yields a
+ * visually identical file, not an identical file. The committed artefact
+ * is one concrete run of this script.
  *
  * Usage:
  *   pnpm run build && pnpm run preview &     # or any served base URL
  *   pnpm run capture:app-icons-preview       # writes the committed path
- *   pnpm run capture:app-icons-preview -- http://127.0.0.1:4600 .tmp/out.png
+ *   pnpm run capture:app-icons-preview -- http://127.0.0.1:4600 .tmp/out.webp
  *
  * No secrets are involved: the page read is `/contact`, and the only
  * values captured are `document.head` and the public static assets.
  */
 
 import { mkdirSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { dirname, extname, resolve } from 'node:path';
 import { chromium } from '@playwright/test';
+import sharp from 'sharp';
+
+/** The one committed artefact path (see module docstring). */
+const DEFAULT_OUT = 'docs/verification/web/app-icons-preview.webp';
 
 const baseURL = process.argv[2] ?? 'http://127.0.0.1:4600';
-const outPath = resolve(process.argv[3] ?? 'docs/verification/web/app-icons-preview.png');
+const outPath = resolve(process.argv[3] ?? DEFAULT_OUT);
 const route = '/contact';
+
+// The Issue required this artefact as a `.png`; it is committed as
+// `.webp` (PNG bloats the repo). Refuse a silent mismatch instead of
+// writing a PNG back into `docs/` under a `.webp` name.
+if (extname(outPath) !== '.webp') {
+	throw new Error(
+		`out path must end in .webp (got ${extname(outPath) || '(none)'}: ${outPath}) — this generator commits WebP, never PNG`,
+	);
+}
+
+/** Encode a raw screenshot Buffer as the committed WebP artefact. */
+async function encodeVerificationWebp(screenshot, target) {
+	await sharp(screenshot)
+		.resize({ width: 1600, withoutEnlargement: true })
+		.webp({ quality: 80 })
+		.toFile(target);
+	return sharp(target).metadata();
+}
 
 const browser = await chromium.launch();
 const context = await browser.newContext({
@@ -216,11 +258,18 @@ const panel = page.locator('#icon-verification');
 const box = await panel.boundingBox();
 if (!box) throw new Error('verification panel is not laid out');
 mkdirSync(dirname(outPath), { recursive: true });
-await page.screenshot({ path: outPath, clip: box });
+// No `path`: keep the bytes in memory so they can be re-encoded as WebP
+// (Playwright itself only writes PNG/JPEG).
+const screenshot = await page.screenshot({ clip: box });
+const encoded = await encodeVerificationWebp(screenshot, outPath);
 console.log(
 	JSON.stringify(
 		{
 			outPath,
+			format: encoded.format,
+			width: encoded.width,
+			height: encoded.height,
+			bytes: encoded.size,
 			page: `${baseURL}${route}`,
 			links: evidence.probes.length,
 			clip: box,
@@ -229,6 +278,8 @@ console.log(
 				deviceScaleFactor: 2,
 				colorScheme: 'light',
 				waitUntil: 'networkidle',
+				clip: 'verification panel bounding box',
+				encode: 'sharp resize width<=1600 withoutEnlargement, webp quality 80',
 			},
 			manifestContentType: evidence.manifestContentType,
 			serviceWorkers: evidence.serviceWorkers,

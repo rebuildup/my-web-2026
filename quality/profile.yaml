@@ -106,6 +106,24 @@ change_risk_mapping:
   release_branch:
     gate: release
 
+# Issue #484 — cache-header contract: NO new gate component.
+#
+# The response cache-header contract (Cache-Control / ETag / Vary across
+# Static Assets, SSR HTML and the external API) is enforced by tests
+# that ride the EXISTING `pnpm run test` entry point:
+#
+#   node --test scripts/cache-policy.test.mjs          (public/_headers)
+#   node --test scripts/cache-header-matrix.test.mjs    (the measurement tool)
+#   test/integration/cache-policy-matrix.test.ts         (vitest, SELF.fetch)
+#
+# `pnpm run cache:headers:measure` is deliberately OPT-IN and is called
+# by no gate: it needs a running production-equivalent server, it is a
+# measurement rather than a threshold, and wiring it into a gate would
+# turn a header contract into the performance gate that Issues #384 /
+# #385 / #386 own. The declared table lives in
+# `scripts/_cache-policy.mjs`; the operator-facing documentation is
+# `docs/verification/perf/cache-headers-matrix.md`.
+
 ci:
   workflow: .github/workflows/ci.yml
   # Single job. `validate:integration` runs on every PR and every

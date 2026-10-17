@@ -7,7 +7,7 @@
 - admin 側の呼び出し: `uploadReactionImageImpl`（`src/admin/images/load.ts`）
 - 失敗表示: `src/admin/images/upload-errors.ts`
 - 検証スイート: `test/integration/upload-guards.test.ts`
-- 検証レポート: `docs/verification/security/image-upload-guards.png`
+- 検証レポート: `docs/verification/security/image-upload-guards.webp`
   （`pnpm run verification:image-upload-guards` で再生成）
 
 ## なぜ宣言だけでは足りないか
@@ -74,8 +74,12 @@ wrapper を避けつつ、**保存可否を決める処理だけをテスト可�
 - `ImagePolicyError` はサーバログにコードと理由を残し、クライアントへは
   `image_policy:<code>` という固定文字列だけを返す。
 - 上限値と許可 MIME は `src/http/reactions/schema.ts` から import する。
-  admin 側のローカル定数は持たず、UI・server function・upload policy が同じ
-  1 か所を参照する。
+  サーバ関数側（`uploadReactionImageImpl`）はローカル定数を持たない。
+  ただし admin の **UI**（`images.tsx`）は選択時の即時フィードバック用に
+  同じ値をローカルに持つ。これはUXヒントにすぎず、正はサーバ関数が持つ。
+  リポジトリは「重複を消す」ために UI から HTTP 境界モジュールへの
+  値 import を増やさない方針で、ずれた場合のコストは
+  `oversize` / `unsupported_content_type` の固定文が1回表示されるだけ。
 
 ## 安全な失敗表示
 
@@ -83,10 +87,17 @@ wrapper を避けつつ、**保存可否を決める処理だけをテスト可�
 表示される文を返す。既知のコードは日本語の固定文、未知の失敗は汎用の 1 文に
 落ちる。生のサーバーメッセージを DOM に出さないのは、拒否理由が bucket 名・SQL・
 スタック断片を含む可能性があるためである。生の値はブラウザコンソールにのみ出る
-（運用者向けの調査用）。
+（運用者向けの調査用。ブラウザコンソールはそのままサポート証跡として共有され
+うるので、失敗時のスクリーンショットを添付する際はこの出力も一緒に削除する
+運用とする。どちらの扱いかは運用側の責任であり本 Issue の範囲外）。
 
-アップロードと削除の両方が `role="alert"` で表示する。削除側は以前 unhandled
-rejection として throw しており、`image_referenced` が UI に届かなかった。
+アップロードと削除の両方が `role="alert"` で表示する。削除側の wire 文字列は
+`DELETE_REFERENCED_FAILURE`（`image_referenced: <理由>`）で、UI は
+`:` より前の**コード部分だけ**で文を選ぶ。したがって削除拒否が
+アップロードの汎用文に落ちることはない。削除側は以前 unhandled rejection とし
+て throw しており、`image_referenced` が UI に届かなかった。
+コード表は `Map` で持ち、`constructor` のような Object.prototype の
+メンバ名をコードとして解決しないようにしている。
 
 ## 検証方法
 
@@ -95,11 +106,12 @@ pnpm exec vitest run test/integration/upload-guards.test.ts   # 判定表
 pnpm run verification:image-upload-guards                     # レポート再生成
 ```
 
-スイートは 30 ケースを実測し、判定表をマーカー区切りで標準出力に印字する。
-`scripts/capture-image-upload-guards-report.mjs` がその出力を HTML に
-レンダリングして Chromium で撮影するため、コミットされる PNG は手書きの主張
-ではなく、このスイートの再生成である。撮影前に credential らしき行があれば
-描画を中断する。
+スイートは 30 ケース（登録 7 / 拒否 23）を実測し、判定表をマーカー区切りで
+標準出力に印字する。`scripts/capture-image-upload-guards-report.mjs` がその
+出力を HTML にレンダリングして Chromium で撮影するため、コミットされる
+WebP は手書きの主張ではなく、このスイートの再生成である。撮影前に credential
+らしき行があれば描画を中断する。成果物は圧縮 WebP（幅 1600 以下 / quality 80）
+で、PNG はリポジトリに載せない。
 
 スイートが証明すること:
 
@@ -120,6 +132,15 @@ pnpm run verification:image-upload-guards                     # レポート再�
 - 署名検査は先頭バイトの比較であり、画像のデコードや構造検証（壊れた PNG、
   中間領域の実行可能データ等）は行わない。ポリシーの目的は「宣言と実体の
   不一致を拒否する」ことであり、デコード検証は範囲外とする。
+- SVG プローブは先頭 1 KiB に限定する。`<svg` がそれより後ろにある SVG は
+  `svg_not_allowed` ではなく `unrecognized_signature` で拒否される（通過は
+  しない）。拒否理由のコードだけが宣言側と実体側で異なる、という差がある。
+- **配信側**の耐性は本 Issue の対象外である。保存されたオブジェクトは
+  アップロード時の署名検査を通っているが、`GIF89a` や `RIFF` で始まる
+  ポリグロットは署名検査を通過し得るうえ、`GET /api/v1/reaction-images/:id` は
+  現在 `X-Content-Type-Options: nosniff` を付けないため、MIME スnioッフィング
+  を試みるブラウザに対して中身の MIME 推定の余地が残る（Issue 本文に記載の
+  ない領域であり、配信ヘッダの追加は別 ticket の owner 判断）。
 - 本番 D1 / R2 に対する確認は行っていない。ローカル workerd の Miniflare
   binding で契約を確認している（`docs/security.md`
   「Test scope: local workerd vs real Cloudflare」参照）。

@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+	ARTIFACT,
 	extractMatrix,
 	findSecretRow,
 	parseRows,
@@ -124,6 +125,16 @@ test('renderHtml ellipsises an over-long cell instead of blowing up the layout',
 	const html = renderHtml(rows);
 	assert.ok(!html.includes('a'.repeat(256)));
 	assert.ok(html.includes('…'));
+});
+
+test('the committed artefact is a compressed WebP, not a PNG', () => {
+	// Verification screenshots are committed, so the repo budget for
+	// them is a moderately compressed WebP at width ≤ 1600 / quality
+	// 80 — the same report is ~390 KB as a lossless PNG.
+	assert.equal(ARTIFACT.path, 'docs/verification/security/image-upload-guards.webp');
+	assert.ok(ARTIFACT.path.endsWith('.webp'));
+	assert.ok(ARTIFACT.maxWidth <= 1600);
+	assert.equal(ARTIFACT.quality, 80);
 });
 
 test('findSecretRow rejects a row that carries credential material', () => {

@@ -11,8 +11,15 @@
  * matrix it prints, renders it as a self-contained HTML report, and
  * screenshots it with the Playwright Chromium the E2E suite uses.
  *
- * Output: `docs/verification/security/image-upload-guards.png`
+ * Output: `docs/verification/security/image-upload-guards.webp`
  * Scratch: `.tmp/image-upload-guards-report.html` (gitignored)
+ *
+ * The artefact is committed, so it is written as a moderately
+ * compressed WebP (width ≤ 1600, quality 80) rather than a PNG: the
+ * same report is ~390 KB as a lossless PNG and well under half that
+ * as WebP. Playwright can only screenshot to PNG/JPEG, so the
+ * screenshot is taken in memory and encoded with the repo's existing
+ * `sharp` devDependency.
  *
  * Usage:
  *   pnpm run verification:image-upload-guards
@@ -32,8 +39,19 @@ const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TEST_FILE = 'test/integration/upload-guards.test.ts';
 const START = '<!-- image-upload-guards-matrix:start -->';
 const END = '<!-- image-upload-guards-matrix:end -->';
-const OUTPUT = 'docs/verification/security/image-upload-guards.png';
+const OUTPUT = 'docs/verification/security/image-upload-guards.webp';
 const SCRATCH_HTML = '.tmp/image-upload-guards-report.html';
+
+/**
+ * Committed-artefact budget, exported so the unit test can pin the
+ * format contract: this repository does not carry PNG verification
+ * screenshots, and a lossless capture of the report is ~390 KB.
+ */
+export const ARTIFACT = {
+	path: OUTPUT,
+	maxWidth: 1600,
+	quality: 80,
+};
 
 /** Anything matching these must never reach a committed artefact. */
 const SECRET_PATTERNS = [
@@ -269,9 +287,15 @@ async function main() {
 		const page = await browser.newPage({ viewport: { width: 1480, height: 900 } });
 		await page.goto(`file://${resolve(repoRoot, SCRATCH_HTML)}`);
 		await page.waitForLoadState('load');
+		// Screenshot in memory (PNG), then encode the committed artefact.
+		const png = await page.screenshot({ fullPage: true });
+		const { default: sharp } = await import('sharp');
 		const target = resolve(repoRoot, OUTPUT);
 		mkdirSync(dirname(target), { recursive: true });
-		await page.screenshot({ path: target, fullPage: true });
+		await sharp(png)
+			.resize({ width: ARTIFACT.maxWidth, withoutEnlargement: true })
+			.webp({ quality: ARTIFACT.quality })
+			.toFile(target);
 	} finally {
 		await browser.close();
 	}

@@ -3,7 +3,7 @@
  * Tests for the knip diff gate (Issue #531).
  *
  * The fixture proves the gate fails on a newly added unused dependency:
- * a synthetic project (in .tmp, gitignored) declares a dependency that
+ * a synthetic project (in an OS temp dir) declares a dependency that
  * no source file imports and exports a symbol nobody consumes. Running
  * `scripts/check-knip.mjs --root <fixture>` must exit non-zero and name
  * both findings.

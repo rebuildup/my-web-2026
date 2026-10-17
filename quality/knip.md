@@ -44,7 +44,7 @@ ticket and MUST NOT be re-baselined silently.
 
 ## Fixtures
 
-`scripts/check-knip.test.mjs` builds a synthetic project in `.tmp/` that
+`scripts/check-knip.test.mjs` builds a synthetic project in an OS temp dir that
 declares an unused dependency and an unused export and asserts
 `scripts/check-knip.mjs --root <fixture>` exits non-zero (and exits zero
 once both findings are removed). This is the CI failure proof required

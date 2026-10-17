@@ -22,6 +22,7 @@
 		"cf-typegen:check": "pnpm run cf-typegen && git diff --exit-code -- .cloudflare/types/index.d.ts",
 		"cf:mode-mismatch:check": "node scripts/check-cf-mode-mismatch.mjs",
 		"ci:pins:check": "node scripts/check-workflow-pinning.mjs",
+		"ci:pins:report": "node scripts/workflow-pin-report.mjs",
 		"db:migrate:apply:local": "node scripts/d1.mjs apply --target=local",
 		"db:migrate:apply:production": "node scripts/d1.mjs apply --target=production --execute",
 		"db:migrate:list:local": "node scripts/d1.mjs list --target=local",

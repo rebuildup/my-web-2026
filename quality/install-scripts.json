@@ -1,0 +1,62 @@
+{
+	"version": 1,
+	"issue": "#474",
+	"default_decision": "block",
+	"note": "Reviewed record of every dependency whose install-time lifecycle script (preinstall / install / postinstall) pnpm may execute. pnpm is default-deny: a package not listed in pnpm-workspace.yaml#onlyBuiltDependencies never runs its build. This file records WHICH decisions were reviewed and WHY a build is (or is not) necessary; pnpm-workspace.yaml remains the execution allow-list and scripts/check-install-scripts.mjs fails when the two disagree. Status-only: no secret value is read, stored or printed here.",
+	"packages": [
+		{
+			"name": ".",
+			"hooks": ["prepare"],
+			"decision": "allow",
+			"justification": "First-party code in this repository: `prepare` runs `panda codegen`, which regenerates styled-system/ from panda.config.ts. Every typecheck / build / Storybook build resolves generated Panda CSS types from that directory, so a fresh clone cannot typecheck without it. The risk is this repository's own, reviewed in PR diffs.",
+			"remediation": "If Panda moves the codegen into a postinstall of a vendored package, move the record to that package and drop this entry."
+		},
+		{
+			"name": "@biomejs/biome",
+			"hooks": ["postinstall"],
+			"decision": "allow",
+			"observed_version": "1.9.4",
+			"justification": "Biome is the repository's only format/lint engine (AGENTS.md section 2 forbids ESLint/Prettier). Its postinstall resolves the platform package (@biomejs/cli-<platform>-<arch>) and writes the `biome` shim into node_modules/.bin; without it `pnpm run format:check` / `lint:check` have no binary and the whole validate:fast gate is dead.",
+			"remediation": "Biome ships platform binaries as optionalDependencies; if a future release links them without a postinstall, drop this entry and the pnpm allow-list line together."
+		},
+		{
+			"name": "esbuild",
+			"hooks": ["postinstall"],
+			"decision": "allow",
+			"observed_versions": ["0.25.12", "0.28.1", "0.28.2"],
+			"justification": "Transitive build dependency of Vite / vite plugins. The postinstall validates that the platform binary package (@esbuild/<platform>) matches the JS shim and falls back to downloading it. Several versions are installed at once because Vite and its plugins pin different minors; each copy needs its own platform check, so a single allow-list name covers all of them.",
+			"remediation": "If a future esbuild resolves the binary purely through optionalDependencies, drop this entry and the allow-list line."
+		},
+		{
+			"name": "workerd",
+			"hooks": ["postinstall"],
+			"decision": "allow",
+			"observed_versions": [
+				"1.20260908.1",
+				"1.20260910.1",
+				"1.20260918.1",
+				"1.20260921.1",
+				"1.20260930.2",
+				"1.20261001.1"
+			],
+			"justification": "The local Worker runtime binary used by @cloudflare/vite-plugin (SSR build) and by @cloudflare/vitest-plugin's workerd test pool. The postinstall links the downloaded platform binary into node_modules/.bin; without it `pnpm run test` (workerd pool) and the Cloudflare Vite plugin cannot start a runtime.",
+			"remediation": "workerd must keep shipping a postinstall until it publishes per-platform optionalDependencies; re-review on every version bump listed above."
+		},
+		{
+			"name": "@infisical/cli",
+			"hooks": ["preinstall"],
+			"decision": "allow",
+			"observed_version": "0.43.137",
+			"justification": "ELEVEST RISK ENTRY, reviewed deliberately. The preinstall (node src/index.cjs) fetches the platform `infisical` binary from the upstream GitHub release for the matching OS/arch into the package's own bin/ directory and marks it executable. It is necessary because the Infisical secret SoT tooling (ADR-0015: scripts/deploy-with-secrets.mjs, scripts/infisical-seed.mjs, scripts/check-cf-secrets.mjs and siblings) resolves @infisical/cli#bin and execs that native binary; with the script blocked those scripts fail closed. Recorded risk: install-time network fetch of an executable, with no checksum verification in the upstream script, and it runs at preinstall (before the rest of the install) rather than postinstall.",
+			"remediation": "Upstream change only (per Issue #474 scope: tool-side changes are a separate PR): ask Infisical to publish platform packages as optionalDependencies, or at minimum to move the fetch to postinstall and verify a published checksum. When that lands, drop this entry together with the pnpm allow-list line and record the removal in docs/runbook/install-script-audit.md."
+		},
+		{
+			"name": "ljharb-monorepo-symlink-test",
+			"hooks": ["postinstall"],
+			"decision": "block",
+			"observed_version": "0.0.0",
+			"justification": "Unnecessary build, detected and kept blocked. Transitive dependency of @isaacs/cliui (the glob chain used by tooling). Its postinstall only asserts the upstream monorepo's own symlink layout, which is meaningful only when developing that package — for a consumer install there is no layout to assert and no artifact to produce. pnpm never allow-listed it, so nothing runs; this entry exists so the next reviewer sees the decision instead of rediscovering it.",
+			"remediation": "If a future version of the glob chain ever needs a real build step, promote the decision to allow in this file and in pnpm-workspace.yaml in the same change."
+		}
+	]
+}

@@ -4,10 +4,16 @@ allowBuilds:
   esbuild: true
   workerd: true
 minimumReleaseAge: 0
+# Issue #474: the execution allow-list below is the security boundary for
+# `pnpm install` (pnpm is default-deny). Every name here must have a
+# reviewed record in quality/install-scripts.json that says why the build
+# is necessary; `pnpm run install:scripts:check` fails when the two
+# disagree in either direction and warns when an entry no longer buys a
+# build. `@cloudflare/vite-plugin` was removed from this list by that
+# audit: the pinned version declares no install-time lifecycle script.
 onlyBuiltDependencies:
   - esbuild
   - workerd
-  - '@cloudflare/vite-plugin'
   - '@biomejs/biome'
   - '@infisical/cli'
 patchedDependencies:

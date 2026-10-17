@@ -17,6 +17,7 @@
 		"build:cf:production": "cf build && node scripts/sync-cf-build-output.mjs",
 		"build:cf:verify": "node scripts/verify-cf-build-output.mjs",
 		"build:production": "pnpm run build && pnpm run build:cf:production && pnpm run build:cf:verify",
+		"capture:app-icons-preview": "node scripts/capture-app-icons-preview.mjs",
 		"cf-build:status": "node scripts/cf-build-status.mjs",
 		"cf-typegen": "cf workers types",
 		"cf-typegen:check": "pnpm run cf-typegen && git diff --exit-code -- .cloudflare/types/index.d.ts",

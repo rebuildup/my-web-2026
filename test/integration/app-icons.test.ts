@@ -123,11 +123,16 @@ describe('Web App Manifest + icon links (Issue #504)', () => {
 		expect(hrefs.filter((href) => href?.startsWith('/icons/apple-touch-icon-'))).toHaveLength(4);
 	});
 
-	it('declares no offline affordance: no service-worker registration, no manifest offline member', async () => {
+	it('declares no offline affordance in the SSR output', async () => {
 		const html = await fetchContactHtml();
 		// The Worker serves the document; nothing in the SSR output may
 		// advertise an offline contract this platform does not have.
+		// Both forms are real ways to declare one — a registration call,
+		// and the `as="serviceworker"` preload link (the HTML-level opt-in
+		// that pairs with a `Service-Worker-Allowed` response header).
+		// Searching for the word "offline" on a `<link rel="manifest">`
+		// tag instead would assert something that cannot happen.
 		expect(html).not.toMatch(/serviceWorker\s*\.\s*register/);
-		expect(html).not.toMatch(/rel=["']manifest["'][^>]*offline/i);
+		expect(html).not.toMatch(/as=["']serviceworker["']/i);
 	});
 });

@@ -118,6 +118,24 @@ test.describe('app icons', () => {
 			'512x512',
 			'512x512',
 		]);
+		// The member SET, not only the member values: an affordance a
+		// value assertion cannot see (`share_target`, `shortcuts`,
+		// `display_override`, `related_applications`, …) would ship an
+		// obligation this ticket never decided. Asserted on the served
+		// bytes, so a stale build output cannot pass it.
+		expect(Object.keys(manifest).sort()).toEqual([
+			'background_color',
+			'dir',
+			'display',
+			'icons',
+			'id',
+			'lang',
+			'name',
+			'scope',
+			'short_name',
+			'start_url',
+			'theme_color',
+		]);
 		// No offline affordance is claimed or installed. Chromium exposes
 		// `navigator.serviceWorker` on every secure context (localhost
 		// included), so the API existing proves nothing — the assertion is

@@ -25,20 +25,33 @@
  *   2. Every `<link>` in `APP_ICON_LINKS` resolves to a file that
  *      exists, with the declared `sizes` matching the real pixels.
  *   3. Every PNG is opaque (no alpha channel) and actually renders the
- *      favicon's mark: centre pixel = mark colour, corner = canvas.
+ *      favicon's mark: centre pixel = the single `fill` parsed out of
+ *      `public/favicon.svg`, corner = the `#ffffff` canvas step taken
+ *      from the token palette. What this item protects is *drift
+ *      between the vector source and the shipped rasters*. It is
+ *      deliberately NOT a palette-membership check for the mark: the
+ *      favicon owns the mark colour, and that colour is outside
+ *      `src/editorial/tokens.ts` on purpose (see the app-icon decision
+ *      doc under `docs/decisions/`, §2 and §6).
  *   4. The bijection: each file in `public/icons/` is referenced by the
  *      head links or the manifest, and referenced exactly once.
  *   5. `APP_ICON_LINKS` still declares the SVG favicon (Issue #285) and
  *      the Apple Touch Icon sizes iOS actually asks for.
- *   6. Every colour involved (manifest `theme_color` /
- *      `background_color`, both `theme-color` meta values) exists in
- *      `src/editorial/tokens.ts` — the icon family cannot introduce a
- *      colour the design system does not own.
+ *   6. Every colour the family *declares as a document value* exists in
+ *      `src/editorial/tokens.ts`: manifest `theme_color` /
+ *      `background_color`, both `theme-color` meta values, and the
+ *      opaque canvas the rasters are drawn on. The favicon mark colour
+ *      is the single documented exception (item 3).
  *   7. `public/_headers` pins the manifest media type and a
  *      revalidating cache policy for `/icons/*`.
  *   8. No service-worker registration exists anywhere in `src/` — the
  *      Issue forbids declaring offline behaviour, and the only way this
- *      platform could start claiming it is a registration.
+ *      platform could start claiming it is a registration. The scan
+ *      covers raw source text of every `.ts` / `.tsx` / `.js` / `.jsx`
+ *      / `.mjs` / `.cjs` file under `src/`, comments included: a
+ *      tripwire that silently exempts prose fails the first time the
+ *      prose turns out to be load-bearing, and a comment that names
+ *      `navigator.serviceWorker` is cheap to rephrase.
  *
  * Exit codes: 0 = coherent, 1 = at least one violation (all printed),
  * 2 = unreadable input.
@@ -95,6 +108,15 @@ const HEX = /^#[0-9a-f]{6}$/i;
 
 /** Raster extensions only; an SVG must never reach the PNG-only platforms. */
 const RASTER_EXTENSIONS = new Set(['.png']);
+
+/**
+ * Source extensions the offline tripwire reads.
+ *
+ * JavaScript is included alongside TypeScript on purpose: the tripwire
+ * is only as good as its file coverage, and a `.js` / `.mjs` module
+ * could register a worker exactly as easily as a `.tsx` route.
+ */
+const SOURCE_EXTENSIONS = new Set(['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs']);
 
 /**
  * The `<link>` object literals inside `APP_ICON_LINKS`.
@@ -176,7 +198,7 @@ function walkSourceFiles(dir) {
 	return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
 		const path = join(dir, entry.name);
 		if (entry.isDirectory()) return walkSourceFiles(path);
-		return ['.ts', '.tsx'].includes(extname(path)) ? [path] : [];
+		return SOURCE_EXTENSIONS.has(extname(path)) ? [path] : [];
 	});
 }
 
@@ -241,8 +263,10 @@ async function inspectRaster(path, expectedSize, { mark, canvas }, errors) {
 /**
  * Run the gate against an explicit repo root.
  *
- * Returns `{ ok, errors }`; every violation is collected so one run
- * reports the whole drift instead of the first symptom.
+ * Returns `{ ok, errors, facts }`; every violation is collected so one
+ * run reports the whole drift instead of the first symptom. `facts`
+ * carries the two resolved colours (`mark`, `canvas`) so a caller —
+ * and the OK line — can state which of them the token palette owns.
  */
 export async function checkAppIcons({ root = repoRoot } = {}) {
 	const errors = [];
@@ -258,9 +282,22 @@ export async function checkAppIcons({ root = repoRoot } = {}) {
 				.sort()
 		: [];
 
-	if (headSource === null) return { ok: false, errors };
+	// `facts` is what the OK line reports: the two colours this gate
+	// resolved, and — the point of the distinction — which of them the
+	// token palette owns. A reader of the CI log should not have to open
+	// the decision doc to learn that the mark is favicon-owned.
+	const facts = { mark: null, canvas: null };
+	if (headSource === null) return { ok: false, errors, facts };
 
 	// --- mark + canvas colours -------------------------------------------
+	// Two different authorities, deliberately:
+	//   - `mark` is parsed out of the favicon, which owns it. It is NOT
+	//     compared against `palette` below: promoting the placeholder
+	//     blue to a design token is an owner decision that has not been
+	//     taken (decision §6), and a gate that demanded it would fail
+	//     the build until it is.
+	//   - `canvas` IS compared against `palette`, because it is a design
+	//     token (`bg.canvas` light = `colors.neutral.0`).
 	const mark = faviconSource ? markColorFromFavicon(faviconSource) : null;
 	if (faviconSource && mark === null) {
 		errors.push(
@@ -275,6 +312,8 @@ export async function checkAppIcons({ root = repoRoot } = {}) {
 	if (tokensSource && canvas === null) {
 		errors.push(`${TOKENS_PATH} no longer declares the #ffffff canvas step the icons are drawn on`);
 	}
+	facts.mark = mark;
+	facts.canvas = canvas;
 
 	// --- manifest ---------------------------------------------------------
 	let manifest = null;
@@ -459,7 +498,7 @@ export async function checkAppIcons({ root = repoRoot } = {}) {
 		}
 	}
 
-	return { ok: errors.length === 0, errors };
+	return { ok: errors.length === 0, errors, facts };
 }
 
 async function main() {
@@ -470,6 +509,7 @@ async function main() {
 		process.stderr.write(`[check-app-icons] FAIL: gate could not run: ${error.stack}\n`);
 		process.exit(2);
 	}
+	const { facts } = result;
 	if (!result.ok) {
 		process.stderr.write(
 			`[check-app-icons] FAIL: ${result.errors.length} published-icon violation(s):\n${result.errors
@@ -480,6 +520,12 @@ async function main() {
 	}
 	console.log(
 		'[check-app-icons] OK: head links, manifest, and public/icons/ describe one icon family.',
+	);
+	console.log(
+		`[check-app-icons]   mark ${facts.mark} — parsed from ${FAVICON_PATH}, NOT owned by ${TOKENS_PATH} (decision §2).`,
+	);
+	console.log(
+		`[check-app-icons]   canvas ${facts.canvas} — owned by ${TOKENS_PATH}; every declared colour was checked against that palette.`,
 	);
 }
 

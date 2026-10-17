@@ -21,12 +21,13 @@ import assert from 'node:assert/strict';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 import {
-	checkAppIcons,
 	HEAD_ROUTE_PATH,
+	TOKENS_PATH,
+	checkAppIcons,
 	markColorFromFavicon,
 	parseHeadIconLinks,
 	parseManifestIcons,
@@ -228,6 +229,49 @@ describe('check-app-icons — coherent fixture passes', () => {
 			rmSync(root, { recursive: true, force: true });
 		}
 	});
+
+	it('accepts a mark colour that no design token owns — the favicon is the mark authority', async () => {
+		// The published mark is `#0000FF`, which `src/editorial/tokens.ts`
+		// does not own. That is a recorded decision, not an accident, so
+		// this case locks the behaviour the decision doc describes: the
+		// palette check covers the canvas and the declared document
+		// colours, never the mark. If a future ticket promotes the mark
+		// to a token, THIS test is the one that must change with it.
+		const root = await stageFixture();
+		try {
+			const palette = tokenPalette(readFileSync(join(root, TOKENS_PATH), 'utf8'));
+			assert.equal(palette.has('#0000ff'), false, 'the fixture tokens must not own the mark');
+
+			const result = await checkAppIcons({ root });
+			assert.deepEqual(result.errors, []);
+			assert.equal(result.facts.mark, '#0000ff');
+			assert.equal(result.facts.canvas, '#ffffff');
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+});
+
+describe('check-app-icons — mark provenance', () => {
+	it('fails when the favicon fill changes but the rasters are not regenerated', async () => {
+		// The drift the palette check cannot see, and the reason the
+		// centre-pixel comparison exists: the mark is favicon-owned, so
+		// the only thing tying the shipped PNGs to it is the pixel test.
+		const root = await stageFixture();
+		try {
+			writeFileSync(
+				join(root, 'public/favicon.svg'),
+				'<svg xmlns="http://www.w3.org/2000/svg"><circle fill="#ff0000" r="1"/></svg>',
+			);
+			const result = await checkAppIcons({ root });
+			assert.match(
+				result.errors.join('\n'),
+				/centre pixel is #0000ff, expected the favicon mark #ff0000/,
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
 });
 
 describe('check-app-icons — head / manifest / file drift', () => {
@@ -406,5 +450,21 @@ describe('check-app-icons — offline behaviour stays undeclared', () => {
 			),
 		);
 		assert.match(result.errors.join('\n'), /registers a service worker/);
+	});
+
+	it('fails when a JavaScript module in src/ registers a service worker', async () => {
+		// The tripwire must not be TypeScript-only: a `.js` / `.mjs` module
+		// could register a worker just as easily as a route.
+		const root = await stageFixture();
+		try {
+			writeFileSync(
+				join(root, 'src/boot.js'),
+				"export function boot() {\n\tnavigator.serviceWorker.register('/sw.js');\n}\n",
+			);
+			const result = await checkAppIcons({ root });
+			assert.match(result.errors.join('\n'), /src\/boot\.js registers a service worker/);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

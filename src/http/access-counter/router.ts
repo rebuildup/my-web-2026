@@ -35,8 +35,27 @@ accessCounterRouter.post('/hit', requireApiKey, rateLimitWrite, async (c) => {
 	if (!parsed.success) {
 		return c.json({ error: 'invalid_body', reason: parsed.error.message }, 400);
 	}
-	const key = validateCounterKey(parsed.data.key);
-	const sessionId = validateSessionId(parsed.data.session_id);
+	// Issue #457: the zod schema bounds the length but not the
+	// character set, so `validateCounterKey` / `validateSessionId`
+	// can still reject a syntactically valid body (a key containing
+	// a space, a control char, or a DEL). Unhandled, that throw
+	// reached the global `onError` and answered a client mistake
+	// with 500 `internal_error`, which both mislabels the failure and
+	// burns the redaction path on input we should have named.
+	// Rejected input is a documented 4xx, exactly like the length
+	// check the sibling GET route already performs.
+	let key: string;
+	try {
+		key = validateCounterKey(parsed.data.key);
+	} catch {
+		return c.json({ error: 'invalid_key' }, 400);
+	}
+	let sessionId: string;
+	try {
+		sessionId = validateSessionId(parsed.data.session_id);
+	} catch {
+		return c.json({ error: 'invalid_session_id' }, 400);
+	}
 
 	// Pre-D1 ingress filters (Issue #170) — reject non-human /
 	// repeat hits before the atomic slot claim below.

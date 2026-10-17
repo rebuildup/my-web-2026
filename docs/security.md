@@ -92,6 +92,63 @@ binding API is reachable in the local workerd pool"**, not
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
 
+## Error redaction (Issue #457)
+
+The external HTTP boundary (`src/http/**`) and the public
+server-function surfaces must never answer a client with an internal
+error. "Internal" means: a stack trace or source location, a
+SQL / D1 / R2 message, a table or column name, a binding name, a
+secret or secret binding name, or the text of a caught exception.
+
+### Boundary 5xx contract
+
+`src/http/errors.ts` owns the only redaction path for 5xx responses.
+Every body is exactly:
+
+```json
+{
+  "error": "internal_error" | "service_unavailable",
+  "message": "<repo-authored sentence>",
+  "request_id": "<correlation id>"
+}
+```
+
+The caught error is handed to `console.error` and to nothing else.
+
+| Concern | Contract |
+| --- | --- |
+| Correlation | `request_id` is byte-identical to the `X-Request-Id` response header, and to the id in the internal log line. A client-supplied `X-Request-Id` (<=128 chars) is reused so a reporter can be traced; otherwise a 128-bit id is minted. |
+| Ops probes | `/api/v1/health`, `/api/v1/db/ping` (200) and `/api/v1/media/ping` (404 `key_not_found`) keep their documented bodies. Only the **failure** branch changed: the old `{"status":"binding_error","binding":"d1"|"r2"}` 503 is now the redacted body above. The request path already identifies which probe failed, so no operational signal is lost. |
+| Auth | 401 / 403 bodies are unchanged (`missing_authorization`, `invalid_api_key`, `missing_scope`). They carry no server state, and the correlation id is still available through the `X-Request-Id` header. |
+| 4xx bodies | Router-owned rejection bodies may echo a **repo-authored** validator message (a closed set: `kind must be one of: emoji, image`). They never echo an error object, a table name, or a stack. |
+
+### Server-function surfaces
+
+TanStack Start serialises a thrown handler error into the
+`/_serverFn/*` payload through `ShallowErrorPlugin`, which copies the
+**message**. A raw D1 failure would therefore render
+`D1_ERROR: no such table: …` on a public page. The representative
+public surface — `src/portfolio/public.ts` — routes every read
+through `withPublicErrorBoundary` (`src/portfolio/public-errors.ts`):
+the internal error is logged once with a short `ref`, and the thrown
+error carries `portfolio_unavailable (ref: …)` instead. The home
+loaders already degrade to an empty widget instead of throwing.
+
+### Verification
+
+- Unit: `src/http/errors.test.ts`,
+  `src/portfolio/public-errors.test.ts`.
+- Local worker: `test/integration/error-redaction.test.ts` drives the
+  real boundary (real middleware, real rate-limit binding, real D1)
+  for accepted, rejected, and failed requests — including a real D1
+  failure produced by dropping the `reactions` table, and injected
+  D1 / R2 binding failures for the 503 branch.
+- Screenshot:
+  [`docs/verification/security/error-redaction-page.png`](verification/security/error-redaction-page.png),
+  regenerated with `node scripts/capture-error-redaction-report.mjs`
+  (or `pnpm run capture:error-redaction-report`). The page renders the
+  responses the Worker actually produced; it contains no credential.
+
 ## Browser binaries (Playwright)
 
 `pnpm run e2e` runs against `pnpm dev` (locally) or a deployed Worker

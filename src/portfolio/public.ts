@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import { createD1PortfolioLoader } from './load';
+import { withPublicErrorBoundary } from './public-errors';
 import { SlugSchema } from './schema';
 
 /**
@@ -27,6 +28,9 @@ import { SlugSchema } from './schema';
  *   * `src/home/reactions/load.ts` — the pattern this file mirrors.
  *   * ADR-0011 consumer pattern — D1 is read by the loader,
  *     never by routes directly.
+ *   * `src/portfolio/public-errors.ts` — the redaction boundary
+ *     every handler below runs its read through (Issue #457). A D1
+ *     failure message must not reach the rendered screen.
  */
 
 const ListOptsSchema = z
@@ -39,34 +43,40 @@ const ListOptsSchema = z
 
 export const loadPortfolioProject = createServerFn({ method: 'GET' })
 	.validator(z.object({ slug: SlugSchema }))
-	.handler(async ({ data }) => {
-		const loader = createD1PortfolioLoader(
-			env as unknown as Parameters<typeof createD1PortfolioLoader>[0],
-		);
-		return loader.loadPortfolioProject(data.slug);
-	});
+	.handler(async ({ data }) =>
+		withPublicErrorBoundary('project', async () => {
+			const loader = createD1PortfolioLoader(
+				env as unknown as Parameters<typeof createD1PortfolioLoader>[0],
+			);
+			return loader.loadPortfolioProject(data.slug);
+		}),
+	);
 
 export const loadPortfolioAdjacent = createServerFn({ method: 'GET' })
 	.validator(z.object({ slug: SlugSchema }))
-	.handler(async ({ data }) => {
-		const loader = createD1PortfolioLoader(
-			env as unknown as Parameters<typeof createD1PortfolioLoader>[0],
-		);
-		return loader.loadPortfolioAdjacent(data.slug);
-	});
+	.handler(async ({ data }) =>
+		withPublicErrorBoundary('adjacent', async () => {
+			const loader = createD1PortfolioLoader(
+				env as unknown as Parameters<typeof createD1PortfolioLoader>[0],
+			);
+			return loader.loadPortfolioAdjacent(data.slug);
+		}),
+	);
 
 export const listPortfolioProjects = createServerFn({ method: 'GET' })
 	.validator(ListOptsSchema)
-	.handler(async ({ data }) => {
-		const loader = createD1PortfolioLoader(
-			env as unknown as Parameters<typeof createD1PortfolioLoader>[0],
-		);
-		const opts = data ?? {};
-		// PUBLIC CONTRACT: facets + cursor + limit only.
-		// No visibility selector is exposed here — see file header.
-		return loader.listPortfolioProjects({
-			facets: opts.facets,
-			cursor: opts.cursor ?? null,
-			limit: opts.limit,
-		});
-	});
+	.handler(async ({ data }) =>
+		withPublicErrorBoundary('list', async () => {
+			const loader = createD1PortfolioLoader(
+				env as unknown as Parameters<typeof createD1PortfolioLoader>[0],
+			);
+			const opts = data ?? {};
+			// PUBLIC CONTRACT: facets + cursor + limit only.
+			// No visibility selector is exposed here — see file header.
+			return loader.listPortfolioProjects({
+				facets: opts.facets,
+				cursor: opts.cursor ?? null,
+				limit: opts.limit,
+			});
+		}),
+	);

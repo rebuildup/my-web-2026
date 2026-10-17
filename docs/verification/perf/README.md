@@ -54,6 +54,19 @@ layout-shift は「描画された content が**動いた**とき」しか記録
 ページ最下端の figure は予約を外れていても下に動かされる content が無いため 0 になる。
 sentinel が「figure が押す相手」であり、これがないと before 状態も測れない。
 
+sentinel の位置は **region 基準の document 座標**で測る（`regionSentinelOffset` /
+`readDocumentBox`）。その理由は 2 つある:
+
+- viewport 座標（`boundingBox()`）だと、scroll anchoring や
+  `scrollIntoViewIfNeeded` の丸めによる**スクロール量**が「移動」として混ざる
+  （実際に 1.4px の偽陽性が出た）
+- sentinel の絶対座標だと、**region より上**にある無関係な reflow（この page では
+  web font swap だけで 1px 超動く）が混ざる。gate が主張すべきことは
+  「lazy figure が下の content を押さない」であって、
+  「page 上のどこでも reflow しない」ではない。
+  region 基準なら上の reflow は region と sentinel を一緒に動かすので差分は 0、
+  一方 region 内での figure の成長は sentinel だけを押すので差分として残る。
+
 ## 再現条件（local / CI 共通）
 
 条件は `scripts/_image-cls.mjs` に**定数**として置き、gate とレポートが同じ値を import する。
@@ -66,7 +79,7 @@ sentinel が「figure が押す相手」であり、これがないと before �
 | network | fixture raster `/fixtures/cls-inline-1280x720.png` の response を **700ms 保持**、他は unthrottled | lazy fetch が decode 前に終わると intrinsic size を知る機会を消してしまう |
 | CPU | CDP `Emulation.setCPUThrottlingRate` = **4×** | Lighthouse の既定 mobile throttle。CLS は layout property なので verdict は変わらないが、#384–#387 の Lighthouse 数値と可比になるよう固定する |
 | source SHA | 生成時に `git rev-parse HEAD` を PNG へ刻印 | 「どの commit で測ったか」を画像が自分で答える |
-| 判定基準 | scoped CLS **≤ 0**、枠高さ Δ **≤ 0.5px**、sentinel y Δ **≤ 0.5px** | Core Web Vitals の "good" は 0.1 だが、予約契約は shift を 0 にするためにある |
+| 判定基準 | scoped CLS **≤ 0**、枠高さ Δ **≤ 0.5px**、sentinel offset Δ **≤ 0.5px** | Core Web Vitals の "good" は 0.1 だが、予約契約は shift を 0 にするためにある |
 
 ローカル: `pnpm run build` 済みで
 `pnpm exec playwright test e2e/image-cls.spec.ts`（Playwright の `webServer` が
@@ -86,7 +99,7 @@ lazy `<img>` から `width` / `height` / inline `aspect-ratio` を取り除い�
 | --- | --- | --- | --- |
 | decode 前の枠高さ | 0px | 321.38px | > 0.5px（すでに予約済み） |
 | decode をまたぐ枠高さ Δ | +321.38px | 0px | \|Δ\| ≤ 0.5px |
-| sentinel の y 座標 Δ | +321.38px | 0px | \|Δ\| ≤ 0.5px |
+| sentinel offset（region 基準）Δ | +321.38px | 0px | \|Δ\| ≤ 0.5px |
 | scoped CLS | 0.06947 | 0 | ≤ 0 |
 
 （viewport 1280×900 での実測。セル幅に依存するため絶対値は環境差が出るが、

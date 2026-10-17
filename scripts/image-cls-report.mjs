@@ -62,9 +62,12 @@ import {
 	LAZY_SCOPE_FIXTURE,
 	LAZY_SCOPE_IMAGE,
 	LAZY_SCOPE_IMG_SELECTOR,
+	LAZY_SCOPE_REGION_SELECTOR,
 	LAZY_SCOPE_SENTINEL_SELECTOR,
 	LAZY_SCOPE_SIZE,
+	readDocumentBox,
 	readLayoutShift,
+	regionSentinelOffset,
 	sleep,
 	stripImageReservation,
 } from './_image-cls.mjs';
@@ -74,9 +77,6 @@ const OUT_PNG = join(REPO_ROOT, 'docs', 'verification', 'perf', 'images-cls-fixt
 const OUT_JSON = join(REPO_ROOT, '.tmp', 'image-cls-report.json');
 const LOCAL_PORT = Number(process.env.IMAGE_CLS_PORT ?? 4310);
 const VIEWPORT = { width: 1280, height: 900 };
-
-/** Selector for the box that holds the lazy figure AND the sentinel below it. */
-const REGION_SELECTOR = '[data-cls-region="lazy-region"]';
 
 const baseUrlFlag = process.argv.find((arg) => arg.startsWith('--base-url='));
 const BASE_URL = baseUrlFlag
@@ -112,6 +112,9 @@ async function measurePass(context, label, { stripReservation }) {
 		await page.goto(`${BASE_URL}${IMAGE_CLS_ROUTE}`);
 		const img = page.locator(LAZY_SCOPE_IMG_SELECTOR);
 		await img.waitFor({ state: 'attached' });
+		// Settle the web fonts BEFORE the lazy fetch is triggered;
+		// afterwards it would eat into IMAGE_RESPONSE_DELAY_MS.
+		await page.evaluate(() => document.fonts.ready.then(() => true));
 		await img.scrollIntoViewIfNeeded();
 
 		let stripped = null;
@@ -122,10 +125,12 @@ async function measurePass(context, label, { stripReservation }) {
 		const decodedBefore = await img.evaluate(
 			(node) => node instanceof HTMLImageElement && node.complete && node.naturalWidth > 0,
 		);
-		const region = page.locator(REGION_SELECTOR);
+		const region = page.locator(LAZY_SCOPE_REGION_SELECTOR);
 		const sentinel = page.locator(LAZY_SCOPE_SENTINEL_SELECTOR);
-		const sentinelBefore = await sentinel.boundingBox();
-		const boxBefore = await img.boundingBox();
+		// Document coordinates: a scroll delta is not a layout shift.
+		const sentinelBefore = await readDocumentBox(sentinel);
+		const boxBefore = await readDocumentBox(img);
+		const regionBefore = await readDocumentBox(page.locator(LAZY_SCOPE_REGION_SELECTOR));
 		// In-flight capture: the reserved (or collapsed) box with the
 		// bytes still on the wire. This is the image that makes "the
 		// placeholder height is already there" reviewable rather than
@@ -140,8 +145,9 @@ async function measurePass(context, label, { stripReservation }) {
 			LAZY_SCOPE_IMG_SELECTOR,
 			{ timeout: 20_000 },
 		);
-		const boxAfter = await img.boundingBox();
-		const sentinelAfter = await sentinel.boundingBox();
+		const boxAfter = await readDocumentBox(img);
+		const sentinelAfter = await readDocumentBox(sentinel);
+		const regionAfter = await readDocumentBox(page.locator(LAZY_SCOPE_REGION_SELECTOR));
 		// Let the compositor settle so a load-time shift, if any, has
 		// been delivered to the observer before it is read.
 		await sleep(250);
@@ -169,6 +175,8 @@ async function measurePass(context, label, { stripReservation }) {
 			boxAfter,
 			sentinelBefore,
 			sentinelAfter,
+			offsetBefore: regionSentinelOffset(regionBefore, sentinelBefore),
+			offsetAfter: regionSentinelOffset(regionAfter, sentinelAfter),
 			cls,
 			surfacePng,
 			beforePng: beforePng.toString('base64'),
@@ -189,9 +197,16 @@ function gitSha() {
 
 function gitDirty() {
 	try {
-		return (
-			execFileSync('git', ['status', '--porcelain'], { cwd: REPO_ROOT }).toString().trim() !== ''
-		);
+		// The PNG is written AFTER this check, so without the exclusion
+		// every run would stamp "(worktree DIRTY)" and the stamp would
+		// stop saying anything about the measured CODE. `.tmp/` is
+		// already gitignored.
+		const lines = execFileSync('git', ['status', '--porcelain'], { cwd: REPO_ROOT })
+			.toString()
+			.split('\n')
+			.filter((line) => line.trim().length > 0)
+			.filter((line) => !line.includes('images-cls-fixture.png'));
+		return lines.length > 0;
 	} catch {
 		return null;
 	}
@@ -281,13 +296,13 @@ const ROWS = [
 			Math.abs(a.boxAfter.height - a.boxBefore.height) <= BOX_EPSILON_PX,
 	},
 	{
-		name: 'sentinel y Δ across decode',
-		before: (m) => px(m.sentinelAfter.y - m.sentinelBefore.y),
-		after: (m) => px(m.sentinelAfter.y - m.sentinelBefore.y),
+		name: 'sentinel offset inside the lazy region Δ',
+		before: (m) => px(m.offsetAfter - m.offsetBefore),
+		after: (m) => px(m.offsetAfter - m.offsetBefore),
 		criterion: `|Δ| ≤ ${BOX_EPSILON_PX}px`,
 		pass: (b, a) =>
-			Math.abs(b.sentinelAfter.y - b.sentinelBefore.y) > BOX_EPSILON_PX &&
-			Math.abs(a.sentinelAfter.y - a.sentinelBefore.y) <= BOX_EPSILON_PX,
+			Math.abs(b.offsetAfter - b.offsetBefore) > BOX_EPSILON_PX &&
+			Math.abs(a.offsetAfter - a.offsetBefore) <= BOX_EPSILON_PX,
 	},
 	{
 		name: 'scoped layout-shift score (CLS)',
@@ -427,6 +442,8 @@ function toJson(pass) {
 		boxAfter: pass.boxAfter,
 		sentinelBefore: pass.sentinelBefore,
 		sentinelAfter: pass.sentinelAfter,
+		offsetBefore: pass.offsetBefore,
+		offsetAfter: pass.offsetAfter,
 		cls: pass.cls,
 	};
 }
@@ -489,8 +506,8 @@ async function main() {
 		const verdict = ROWS.every((row) => row.pass(before, after)) ? 'PASS' : 'FAIL';
 		process.stdout.write(
 			`[image-cls-report] ${verdict} — wrote ${OUT_PNG}\n` +
-				`[image-cls-report] after : box ${px(after.boxBefore.height)} in flight, Δ ${px(after.boxAfter.height - after.boxBefore.height)}, scoped CLS ${after.cls.scoped}, page CLS ${after.cls.total}\n` +
-				`[image-cls-report] before: box ${px(before.boxBefore.height)} in flight, Δ ${px(before.boxAfter.height - before.boxBefore.height)}, scoped CLS ${before.cls.scoped}, page CLS ${before.cls.total}\n`,
+				`[image-cls-report] after : box ${px(after.boxBefore.height)} in flight, Δ ${px(after.boxAfter.height - after.boxBefore.height)}, sentinel Δ ${px(after.offsetAfter - after.offsetBefore)}, scoped CLS ${after.cls.scoped}, page CLS ${after.cls.total}\n` +
+				`[image-cls-report] before: box ${px(before.boxBefore.height)} in flight, Δ ${px(before.boxAfter.height - before.boxBefore.height)}, sentinel Δ ${px(before.offsetAfter - before.offsetBefore)}, scoped CLS ${before.cls.scoped}, page CLS ${before.cls.total}\n`,
 		);
 		if (verdict !== 'PASS') process.exitCode = 1;
 	} finally {

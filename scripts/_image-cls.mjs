@@ -128,8 +128,66 @@ export const LAYOUT_SHIFT_INIT_SCRIPT = `
 })();
 `;
 
+/** Selector for the box that holds the lazy figure AND the sentinel below it. */
+export const LAZY_SCOPE_REGION_SELECTOR = '[data-cls-region="lazy-region"]';
+
+/**
+ * How far the sentinel sits below the top of the lazy region.
+ *
+ * This is the quantity the acceptance criterion is actually about:
+ * "the placeholder height is maintained while the image is lazy", i.e.
+ * the image does not push the content below it.
+ *
+ * The obvious measurements are both wrong:
+ *
+ *   - the sentinel's ABSOLUTE y folds in every unrelated shift ABOVE
+ *     it on the page — the web-font swap alone moves it by more than a
+ *     pixel here — so the gate would really be asserting "this page
+ *     never reflows anywhere", which is neither true nor this
+ *     ticket's claim, and it was observed to flake under CI load.
+ *   - the gap between the figure's BOTTOM and the sentinel is
+ *     invariant to the image's own growth (the sentinel moves down by
+ *     exactly the height the figure gained), so it reads 0 for the
+ *     broken rendering too.
+ *
+ * Referencing the region's top keeps both properties: a shift above
+ * the region moves the region and the sentinel together (offset
+ * unchanged), while growth inside the region pushes only the sentinel
+ * (offset grows by the height gained).
+ */
+export function regionSentinelOffset(region, sentinel) {
+	return sentinel.y - region.y;
+}
+
 /** Selector for the `<img>` the lazy cell renders. */
 export const LAZY_SCOPE_IMG_SELECTOR = `[data-cls-fixture="${LAZY_SCOPE_FIXTURE}"] img`;
+
+/**
+ * Read a locator's box in DOCUMENT coordinates.
+ *
+ * `locator.boundingBox()` is viewport-relative, and the viewport can
+ * move by a fraction of a pixel without any content moving: Chromium's
+ * scroll anchoring reacts to the decoded image, and
+ * `scrollIntoViewIfNeeded` rounds to whole pixels. Measured that way,
+ * the sentinel reads a spurious ~1.4px "movement" in the reserved
+ * rendering that is really a scroll delta.
+ *
+ * CLS itself is computed in document space, so the sentinel has to be
+ * measured there too — otherwise the acceptance check is really
+ * asserting "scrolling did not jitter", which is a different (and much
+ * weaker) claim.
+ */
+export async function readDocumentBox(locator) {
+	return locator.evaluate((node) => {
+		const rect = node.getBoundingClientRect();
+		return {
+			x: rect.x + window.scrollX,
+			y: rect.y + window.scrollY,
+			width: rect.width,
+			height: rect.height,
+		};
+	});
+}
 
 /**
  * Selector for the element the lazy cell's growth would push down.

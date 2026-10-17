@@ -9,9 +9,12 @@ import {
 	LAZY_SCOPE_FIXTURE,
 	LAZY_SCOPE_IMAGE,
 	LAZY_SCOPE_IMG_SELECTOR,
+	LAZY_SCOPE_REGION_SELECTOR,
 	LAZY_SCOPE_SENTINEL_SELECTOR,
 	LAZY_SCOPE_SIZE,
+	readDocumentBox,
 	readLayoutShift,
+	regionSentinelOffset,
 	sleep,
 	stripImageReservation,
 } from '../scripts/_image-cls.mjs';
@@ -49,6 +52,9 @@ type Measurement = {
 	sentinelBefore: { x: number; y: number } | null;
 	sentinelAfter: { x: number; y: number } | null;
 	decodedBefore: boolean;
+	/** region-top → sentinel offset, before and after the decode. */
+	offsetBefore: number;
+	offsetAfter: number;
 };
 
 /**
@@ -115,6 +121,13 @@ async function measure(
 	const img = page.locator(LAZY_SCOPE_IMG_SELECTOR);
 	await img.waitFor({ state: 'attached' });
 
+	// Let the web fonts settle BEFORE the lazy fetch is triggered.
+	// Doing it afterwards would spend part of IMAGE_RESPONSE_DELAY_MS
+	// waiting on a font download, and the "before decode" read would
+	// land after the image had already decoded. `figureSentinelGap`
+	// makes this belt-and-braces rather than load-bearing.
+	await page.evaluate(() => document.fonts.ready.then(() => true));
+
 	// Scrolling is what makes the lazy fetch start; the response is
 	// then held for IMAGE_RESPONSE_DELAY_MS.
 	await img.scrollIntoViewIfNeeded();
@@ -134,9 +147,12 @@ async function measure(
 	const decodedBefore = await img.evaluate(
 		(node) => node instanceof HTMLImageElement && node.complete && node.naturalWidth > 0,
 	);
-	const boxBefore = await img.boundingBox();
+	// Document coordinates, not viewport coordinates — see
+	// `readDocumentBox`: a scroll delta is not a layout shift.
+	const boxBefore = await readDocumentBox(img);
 	const sentinel = page.locator(LAZY_SCOPE_SENTINEL_SELECTOR);
-	const sentinelBefore = await sentinel.boundingBox();
+	const sentinelBefore = await readDocumentBox(sentinel);
+	const regionBefore = await readDocumentBox(page.locator(LAZY_SCOPE_REGION_SELECTOR));
 
 	await page.waitForFunction(
 		(selector) => {
@@ -147,15 +163,25 @@ async function measure(
 		{ timeout: 20_000 },
 	);
 
-	const boxAfter = await img.boundingBox();
-	const sentinelAfter = await sentinel.boundingBox();
+	const boxAfter = await readDocumentBox(img);
+	const sentinelAfter = await readDocumentBox(sentinel);
+	const regionAfter = await readDocumentBox(page.locator(LAZY_SCOPE_REGION_SELECTOR));
 	// Let the compositor settle so the load-time shift, if any, has
 	// been delivered to the observer before it is read.
 	await sleep(250);
 	const cls = await readLayoutShift(page);
 	await client.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 
-	return { cls, boxBefore, boxAfter, sentinelBefore, sentinelAfter, decodedBefore };
+	return {
+		cls,
+		boxBefore,
+		boxAfter,
+		sentinelBefore,
+		sentinelAfter,
+		decodedBefore,
+		offsetBefore: regionSentinelOffset(regionBefore, sentinelBefore),
+		offsetAfter: regionSentinelOffset(regionAfter, sentinelAfter),
+	};
 }
 
 test.describe('image layout contract (/design-system 07 — Image)', () => {
@@ -219,10 +245,12 @@ test.describe('image layout contract (/design-system 07 — Image)', () => {
 		// bytes landed.
 		expect(measurement.decodedBefore).toBe(false);
 
-		// The box is already its final size before the bytes arrive…
+		// The box already has its final height BEFORE the bytes arrive…
+		expect(boxes.before.height).toBeGreaterThan(BOX_EPSILON_PX);
+		// …is unchanged by the decode…
 		expect(Math.abs(boxes.after.height - boxes.before.height)).toBeLessThanOrEqual(BOX_EPSILON_PX);
-		// …and the content below it never moved.
-		expect(Math.abs(boxes.sentinelAfter.y - boxes.sentinelBefore.y)).toBeLessThanOrEqual(
+		// …and the content below it is not pushed by it.
+		expect(Math.abs(measurement.offsetAfter - measurement.offsetBefore)).toBeLessThanOrEqual(
 			BOX_EPSILON_PX,
 		);
 
@@ -246,7 +274,7 @@ test.describe('image layout contract (/design-system 07 — Image)', () => {
 		expect(boxes.after.height).toBeGreaterThan(boxes.before.height + 1);
 
 		// And the sentinel below it was pushed down by that growth.
-		expect(boxes.sentinelAfter.y).toBeGreaterThan(boxes.sentinelBefore.y + 1);
+		expect(measurement.offsetAfter).toBeGreaterThan(measurement.offsetBefore + 1);
 		expect(measurement.cls.scoped).toBeGreaterThan(0);
 	});
 });

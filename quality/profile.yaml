@@ -106,7 +106,7 @@ change_risk_mapping:
     note: '.github/workflows/*.yml requires actionlint pass + cf-typegen:check'
   dependency_or_supply_chain_change:
     gate: fast
-    note: 'scripts/check-sbom.mjs rejects an SBOM whose npm inventory, digests or Tool pins drift from pnpm-lock.yaml / src/tools/manifest.json, and rejects secret-shaped content or a declared runtime-secret name'
+    note: 'scripts/check-sbom.mjs rejects an SBOM whose npm inventory, digests or Tool pins drift from pnpm-lock.yaml / src/tools/manifest.json, and rejects secret-shaped content or a runtime-secret name from scripts/_cloudflare-contract.mjs'
   release_branch:
     gate: release
 

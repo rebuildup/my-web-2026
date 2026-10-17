@@ -4,14 +4,13 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+	SECRET_NAMES,
 	SECRET_VALUE_PATTERNS,
 	canonicalComparable,
 	checkSbom,
 	checkSbomFile,
 	findSecretLikeFindings,
 	readInputs,
-	readRequiredSecretNames,
-	stripJsonComments,
 } from './check-sbom.mjs';
 import { generateSbom, identityKey } from './generate-sbom.mjs';
 
@@ -38,45 +37,25 @@ function check(bom) {
 	return checkSbom({ bom, ...inputs });
 }
 
-describe('check-sbom — JSONC comment stripping', () => {
-	it('keeps `//` inside string literals', () => {
-		const parsed = JSON.parse(
-			stripJsonComments('{"url": "https://example.com/a//b"} // trailing\n'),
-		);
-		assert.equal(parsed.url, 'https://example.com/a//b');
-	});
-
-	it('removes line and block comments', () => {
-		const parsed = JSON.parse(stripJsonComments('{\n// line\n"a": 1, /* block */\n"b": 2\n}'));
-		assert.deepEqual(parsed, { a: 1, b: 2 });
-	});
-
-	it('respects escaped quotes inside strings', () => {
-		const parsed = JSON.parse(stripJsonComments('{"a": "say \\"hi\\" // not a comment"}'));
-		assert.equal(parsed.a, 'say "hi" // not a comment');
-	});
-});
-
 describe('check-sbom — runtime secret names', () => {
-	it('reads the declared names from the real wrangler.jsonc', () => {
-		const names = readRequiredSecretNames(inputs.wranglerText);
-		assert.deepEqual(names, [
+	it('takes its names from the repository secret contract, not a local copy', () => {
+		assert.deepEqual(SECRET_NAMES, [
 			'BETTER_AUTH_SECRETS',
 			'MY_WEB_2026_CONSUMER_API_KEY',
 			'GOOGLE_ANALYTICS_MEASUREMENT_ID',
+			'BETTER_AUTH_SECRET',
 		]);
 	});
 
-	it('returns an empty list when no secret block exists', () => {
-		assert.deepEqual(readRequiredSecretNames('{"name": "x"}'), []);
-	});
-
-	it('flags a declared secret name appearing in the document', () => {
-		const findings = findSecretLikeFindings('{"env": "MY_WEB_2026_CONSUMER_API_KEY"}', {
-			secretNames: ['MY_WEB_2026_CONSUMER_API_KEY'],
-		});
-		assert.equal(findings.length, 1);
-		assert.equal(findings[0].kind, 'runtime-secret-name');
+	it('flags every declared name by default, including the audit-only one', () => {
+		for (const name of SECRET_NAMES) {
+			const findings = findSecretLikeFindings(`{"env": "${name}"}`);
+			assert.ok(findings.length >= 1, `expected a finding for ${name}`);
+			assert.ok(
+				findings.some((f) => f.kind === 'runtime-secret-name' && f.detail.includes(name)),
+				`expected a named finding for ${name}`,
+			);
+		}
 	});
 
 	it('flags credential shapes', () => {
@@ -95,7 +74,7 @@ describe('check-sbom — runtime secret names', () => {
 		}
 	});
 
-	it('does not flag ordinary inventory content', () => {
+	it('does not flag ordinary inventory content.', () => {
 		const clean = JSON.stringify({
 			name: 'hono',
 			version: '4.13.7',

@@ -19,16 +19,18 @@
  *      (every string traces to the tracked files recorded in
  *      `metadata.properties#my-web-2026:source-digests`) and by a
  *      denylist scan for high-signal credential shapes plus every
- *      runtime-secret *name* declared in `wrangler.jsonc`.
+ *      runtime-secret *name* in the repository's secret contract.
  *
  * Secret posture (AGENTS.md section 4)
  * ------------------------------------
- * This script reads `wrangler.jsonc` to learn the runtime-secret
- * **names** only. It never reads a secret *value*: no Infisical call,
- * no `wrangler secret` invocation, no `.dev.vars`, no environment
- * dump. The scan reports the offending token and its location in the
- * document — never a value pulled from a real environment, because
- * there is no code path that could obtain one.
+ * The secret names come from `scripts/_cloudflare-contract.mjs`, the
+ * one module that owns them (`cloudflare.config.ts` derives the
+ * Worker's binding names from the same array). This script consumes
+ * names only: it never resolves a secret *value* — no Infisical call,
+ * no Wrangler secret invocation, no `.dev.vars`, no environment dump,
+ * and no deployment-config read. The scan reports the offending token
+ * inside the document under inspection, which is a public artifact
+ * anyway; there is no code path that could obtain a real value.
  *
  * Usage:
  *   node scripts/check-sbom.mjs                 # generate in memory, then check
@@ -46,6 +48,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { AUDIT_ONLY_SECRETS, REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
 import {
 	BOM_FORMAT,
 	SBOM_FILE_NAME,
@@ -66,11 +69,15 @@ const here = fileURLToPath(new URL('.', import.meta.url));
 const repoRoot = resolve(here, '..');
 
 /**
- * Runtime secret names the SBOM must never mention. Read from the
- * tracked `wrangler.jsonc` rather than hard-coded so adding a secret
- * automatically extends the scan.
+ * Secret names the SBOM must never mention, taken from the
+ * repository's single secret-name contract. Audit-only names are
+ * included too: they are retained as a recovery trail and are just as
+ * wrong to print in a public artifact as the uploaded ones.
  */
-export const SECRET_NAME_REFERENCE = 'wrangler.jsonc#secrets.required';
+export const SECRET_NAMES = Object.freeze([...REQUIRED_RUNTIME_SECRETS, ...AUDIT_ONLY_SECRETS]);
+
+/** Where those names come from, for failure messages and docs. */
+export const SECRET_NAME_SOURCE = 'scripts/_cloudflare-contract.mjs';
 
 /**
  * Credential shapes that cannot legitimately appear in a package
@@ -96,53 +103,6 @@ export const SECRET_VALUE_PATTERNS = Object.freeze([
 ]);
 
 /**
- * Strip `//` and block comments from JSONC without touching comment
- * markers that appear inside string literals (URLs contain `//`).
- */
-export function stripJsonComments(text) {
-	let out = '';
-	let inString = false;
-	let escaped = false;
-	for (let i = 0; i < text.length; i++) {
-		const ch = text[i];
-		const next = text[i + 1];
-		if (inString) {
-			out += ch;
-			if (escaped) escaped = false;
-			else if (ch === '\\') escaped = true;
-			else if (ch === '"') inString = false;
-			continue;
-		}
-		if (ch === '"') {
-			inString = true;
-			out += ch;
-			continue;
-		}
-		if (ch === '/' && next === '/') {
-			while (i < text.length && text[i] !== '\n') i++;
-			out += '\n';
-			continue;
-		}
-		if (ch === '/' && next === '*') {
-			i += 2;
-			while (i < text.length && !(text[i] === '*' && text[i + 1] === '/')) i++;
-			i++;
-			continue;
-		}
-		out += ch;
-	}
-	return out;
-}
-
-/** Runtime secret **names** declared in `wrangler.jsonc`. Names only. */
-export function readRequiredSecretNames(wranglerText) {
-	const parsed = JSON.parse(stripJsonComments(wranglerText));
-	const required = parsed?.secrets?.required;
-	if (!Array.isArray(required)) return [];
-	return required.filter((name) => typeof name === 'string' && name.length > 0);
-}
-
-/**
  * Find secret-shaped content in the serialized document.
  *
  * `secretNames` covers the *names* this repository declares as runtime
@@ -152,14 +112,14 @@ export function readRequiredSecretNames(wranglerText) {
  */
 export function findSecretLikeFindings(
 	text,
-	{ secretNames = [], patterns = SECRET_VALUE_PATTERNS } = {},
+	{ secretNames = SECRET_NAMES, patterns = SECRET_VALUE_PATTERNS } = {},
 ) {
 	const findings = [];
 	for (const name of secretNames) {
 		if (text.includes(name)) {
 			findings.push({
 				kind: 'runtime-secret-name',
-				detail: `the declared runtime secret name "${name}" (${SECRET_NAME_REFERENCE}) appears in the SBOM; the inventory describes software, never credentials`,
+				detail: `the runtime secret name "${name}" (${SECRET_NAME_SOURCE}) appears in the SBOM; the inventory describes software, never credentials`,
 			});
 		}
 	}
@@ -202,7 +162,6 @@ export function checkSbom({
 	lockfileText,
 	workspaceText,
 	toolsManifestText,
-	wranglerText,
 }) {
 	const errors = [];
 	const packageJson = JSON.parse(packageJsonText);
@@ -366,9 +325,7 @@ export function checkSbom({
 
 	// 5. No secret content.
 	const serialized = serializeSbom(bom);
-	const findings = findSecretLikeFindings(serialized, {
-		secretNames: readRequiredSecretNames(wranglerText),
-	});
+	const findings = findSecretLikeFindings(serialized);
 	for (const finding of findings) {
 		errors.push(`${finding.kind}: ${finding.detail}`);
 	}
@@ -414,8 +371,6 @@ export function readInputs(root = repoRoot) {
 		lockfileText: readFileSync(resolve(root, 'pnpm-lock.yaml'), 'utf8'),
 		workspaceText: readFileSync(resolve(root, 'pnpm-workspace.yaml'), 'utf8'),
 		toolsManifestText: readFileSync(resolve(root, 'src/tools/manifest.json'), 'utf8'),
-		// Names only — never a value. See the module header.
-		wranglerText: readFileSync(resolve(root, 'wrangler.jsonc'), 'utf8'),
 	};
 }
 

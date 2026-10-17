@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
-import { findSecretLikeFindings, readInputs, readRequiredSecretNames } from './check-sbom.mjs';
+import { SECRET_NAMES, findSecretLikeFindings, readInputs } from './check-sbom.mjs';
 import { generateSbom } from './generate-sbom.mjs';
 import { buildReportModel, identityKey, renderReport } from './render-sbom-report.mjs';
 
@@ -88,9 +88,7 @@ describe('render-sbom-report — rendered HTML', () => {
 
 	it('publishes neither a credential shape nor a declared runtime secret name', () => {
 		assert.deepEqual(findSecretLikeFindings(html, { secretNames: [] }), []);
-		const findings = findSecretLikeFindings(html, {
-			secretNames: readRequiredSecretNames(inputs.wranglerText),
-		});
+		const findings = findSecretLikeFindings(html, { secretNames: SECRET_NAMES });
 		assert.deepEqual(findings, [], findings.map((f) => f.detail).join('; '));
 	});
 

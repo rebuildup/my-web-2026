@@ -48,15 +48,19 @@ is designed so that question never arises:
 
 - The generator reads **only** the four tracked files above, plus
   `node_modules/.pnpm/*/package.json`. There is no code path to
-  `process.env` credential, `.dev.vars`, Infisical, or `wrangler secret`.
+  `process.env` credential, `.dev.vars`, Infisical, a Wrangler secret
+  subcommand, or a deployment-config read.
 - The document records the SHA-256 of every tracked input in
   `metadata.properties#my-web-2026:source-digests`, so a reader can
   verify the provenance without trusting the generator.
 - The gate additionally rejects the document if it contains **any**
-  runtime secret *name* declared in `wrangler.jsonc#secrets.required`,
-  or if it contains a credential-shaped value (PEM private key, AWS
-  key id, GitHub / Slack / OpenAI-style token, JWT, inline
-  `api_key` / `secret` / `token` / `password` assignment).
+  runtime secret *name* in the repository's secret contract
+  (`scripts/_cloudflare-contract.mjs` — the single module that
+  `cloudflare.config.ts` also derives the Worker's binding names from;
+  audit-only names are included), or if it contains a
+  credential-shaped value (PEM private key, AWS key id, GitHub / Slack
+  / OpenAI-style token, JWT, inline `api_key` / `secret` / `token` /
+  `password` assignment).
 
 If a future change needs a new input, it must be a **tracked,
 value-free** file. Adding an environment read to this path would
@@ -136,7 +140,7 @@ the same remedy line. The categories, with the real cause behind them:
 | `dependsOn points at an unknown component`             | the dependency graph references something the inventory does not list    | generator bug — report it, do not patch the document                           |
 | `tool "<slug>": pinned SHA mismatch`                   | the Tool Registry pin moved without an SBOM rebuild                      | a `src/tools/manifest.json` pin bump; expected on Tool pin-bump PRs            |
 | `tool "<slug>": declared in src/tools/manifest.json but missing` | a Tool was added to the manifest                           | new Tool registration                                                        |
-| `runtime-secret-name: …`                              | a declared Worker secret **name** appears in the document                | the secret SoT was bypassed for this artifact — treat as a security event       |
+| `runtime-secret-name: …`                              | a runtime secret **name** appears in the document                | the secret SoT was bypassed for this artifact — treat as a security event       |
 | `secret-value-shape: …`                               | credential-shaped content is present                                     | same — treat as a security event                                               |
 | `missing input digest for <file>`                     | the provenance record is incomplete, so the document cannot be audited   | a generator regression or a hand-edited document                               |
 | `pnpm-lock.yaml uses an unsupported construct`         | pnpm wrote YAML outside the supported subset                            | pnpm format change; teach the parser, do **not** relax the parse                |

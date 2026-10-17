@@ -159,7 +159,13 @@ describe('check-dependency-advisories — data fetch failure is never zero', () 
 	it('accepts the bare `--` separator pnpm forwards from `pnpm run … -- args`', () => {
 		// This is the exact argument vector the CI step produces, so the
 		// package-script contract is pinned rather than assumed.
-		const { status, stdout } = run(['--', '--input', join(FIXTURES, 'clean.json'), '--now', '2026-10-18']);
+		const { status, stdout } = run([
+			'--',
+			'--input',
+			join(FIXTURES, 'clean.json'),
+			'--now',
+			'2026-10-18',
+		]);
 		assert.equal(status, EXIT.PASS);
 		assert.match(stdout, /dependency advisory gate: PASS/);
 	});

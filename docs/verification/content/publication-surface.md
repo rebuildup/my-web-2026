@@ -69,7 +69,7 @@ gate され、sitemap にも外部 host 集合にも現れません。
 
 - **フォント**: `fonts.googleapis.com`（stylesheet）、`fonts.gstatic.com`（font files）
 - **計測**: `www.googletagmanager.com`（GA4 loader, `src/editorial/analytics/GoogleAnalytics.tsx`）
-- **作者・Kickoff のプロフィール**: `github.com`, `x.com`, `samuido.booth.pm`,
+- **作者プロフィールと配布先**: `github.com`, `x.com`, `samuido.booth.pm`,
   `361do.booth.pm`, `yusuke-kim.com`（`src/contact/channels.json` は 30 日の
   freshness gate を通った channel だけを描画します）
 - **`public/share/procon2026/` の静的ページが参照する第三者の資料**:

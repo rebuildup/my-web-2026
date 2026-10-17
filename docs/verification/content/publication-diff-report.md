@@ -14,8 +14,8 @@
 | Sitemap target URLs | 13 |
 | External hosts | 22 |
 | First-party hosts | 0 |
-| Approved transition | 1 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release publishes)
 
@@ -57,50 +57,17 @@
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (13)
+### Added public URLs (0)
 
-- `/`
-- `/about`
-- `/contact`
-- `/portfolio`
-- `/portfolio/aulymo`
-- `/portfolio/multi-slicer`
-- `/portfolio/my-web-2026`
-- `/portfolio/project-init`
-- `/portfolio/sciencearts-optim-internship-2026`
-- `/portfolio/tastile`
-- `/tools`
-- `/tools/prototype`
-- `/tools/readmark`
+- (none)
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (22)
+### Added external hosts (0)
 
-- `361do.booth.pm`
-- `design.google`
-- `developers.google.com`
-- `fonts.googleapis.com`
-- `fonts.gstatic.com`
-- `github.com`
-- `json-schema.org`
-- `samuido.booth.pm`
-- `schema.org`
-- `scripts.sil.org`
-- `www.apache.org`
-- `www.facebook.com`
-- `www.googletagmanager.com`
-- `www.maff.go.jp`
-- `www.mhlw.go.jp`
-- `www.mlit.go.jp`
-- `www.naprock.jp`
-- `www.procon.gr.jp`
-- `www.stat.go.jp`
-- `www.w3.org`
-- `x.com`
-- `yusuke-kim.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -160,5 +127,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E010 snapshot-missing` No publication-surface snapshot is committed. Run `pnpm run publication:write` to record the surface that this change proposes to publish.
+_No findings._
 

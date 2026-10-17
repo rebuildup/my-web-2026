@@ -2,7 +2,7 @@
 /**
  * Regenerate the Issue #457 verification screenshot.
  *
- *   docs/verification/security/error-redaction-page.png
+ *   docs/verification/security/error-redaction-page.webp
  *
  * What it does, in order:
  *
@@ -18,6 +18,25 @@
  *      frames, …).
  *   3. Renders those responses as a static HTML report in `.tmp/`
  *      and screenshots it with the installed Playwright chromium.
+ *
+ * Screenshot output:
+ *   - The report is committed as WebP, not PNG. A full-page render
+ *     of 13 cases is ~640 KB as PNG and ~90 KB as WebP, and the
+ *     report is a text-heavy page: the pixels a reviewer needs (the
+ *     bodies, the correlation ids, the leak verdicts) survive q80
+ *     intact, while the repository does not carry 600 KB of
+ *     lossless raster for a page that is regenerated on demand.
+ *   - Playwright cannot write WebP (`page.screenshot({ type })`
+ *     only accepts png / jpeg), so the PNG buffer it returns is
+ *     re-encoded with `sharp` — the same devDependency
+ *     `scripts/generate-counter-digits.mjs` uses. sharp stays a
+ *     devDependency: only this script imports it, never the Worker
+ *     or SSR runtime.
+ *   - Width is capped at 1600 px (`withoutEnlargement`, so the
+ *     1280 px viewport is left alone and a wider viewport would be
+ *     shrunk), quality 80.
+ *   - The intermediate PNG lives in memory only; it is never
+ *     written to disk and never committed.
  *
  * Safety: nothing here reads a secret. The suite authenticates with
  * a literal stub key (`mk_home_capture_stub`) through the DI seam in
@@ -37,6 +56,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import sharp from 'sharp';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(here, '..');
@@ -44,7 +64,11 @@ const repoRoot = resolve(here, '..');
 const TEST_FILE = 'test/integration/error-redaction.test.ts';
 const CAPTURE_PREFIX = '[capture]';
 const HTML_PATH = resolve(repoRoot, '.tmp/error-redaction-report.html');
-const SCREENSHOT_PATH = resolve(repoRoot, 'docs/verification/security/error-redaction-page.png');
+const SCREENSHOT_PATH = resolve(repoRoot, 'docs/verification/security/error-redaction-page.webp');
+
+/** Committed report cap (see the "Screenshot output" note above). */
+const SCREENSHOT_MAX_WIDTH = 1600;
+const SCREENSHOT_QUALITY = 80;
 
 const MEANING_LABELS = {
 	accepted: {
@@ -204,7 +228,16 @@ async function shoot() {
 		await page.goto(`file://${HTML_PATH}`);
 		await page.waitForLoadState('load');
 		mkdirSync(dirname(SCREENSHOT_PATH), { recursive: true });
-		await page.screenshot({ path: SCREENSHOT_PATH, fullPage: true });
+		// Playwright only emits png/jpeg, so the PNG buffer is
+		// re-encoded in memory; no intermediate file is written.
+		const png = await page.screenshot({ fullPage: true });
+		const info = await sharp(png)
+			.resize({ width: SCREENSHOT_MAX_WIDTH, withoutEnlargement: true })
+			.webp({ quality: SCREENSHOT_QUALITY })
+			.toFile(SCREENSHOT_PATH);
+		process.stdout.write(
+			`[capture] screenshot: ${SCREENSHOT_PATH} (${info.width}x${info.height}, ${Math.round(info.size / 1024)} KB WebP)\n`,
+		);
 	} finally {
 		await browser.close();
 	}
@@ -226,7 +259,6 @@ async function main() {
 		await shoot();
 	}
 	process.stdout.write(`[capture] ${cases.length} cases, 0 leaks\n`);
-	process.stdout.write(`[capture] screenshot: ${SCREENSHOT_PATH}\n`);
 }
 
 if (process.argv[1] && resolve(process.argv[1]) === resolve(fileURLToPath(import.meta.url))) {

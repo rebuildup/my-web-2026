@@ -160,10 +160,14 @@ a property of the surface:
   HTML, and `/` still answers 200 with a degraded reactions widget
   when `reaction_emoji_catalog` is absent.
 - Screenshot:
-  [`docs/verification/security/error-redaction-page.png`](verification/security/error-redaction-page.png),
+  [`docs/verification/security/error-redaction-page.webp`](verification/security/error-redaction-page.webp),
   regenerated with `node scripts/capture-error-redaction-report.mjs`
   (or `pnpm run capture:error-redaction-report`). The page renders the
   responses the Worker actually produced; it contains no credential.
+  The committed artefact is WebP (width ≤ 1600 px, quality 80) rather
+  than PNG: Playwright cannot write WebP, so the capture script
+  re-encodes the screenshot buffer with the `sharp` devDependency and
+  never writes the intermediate PNG.
 
 ## Browser binaries (Playwright)
 

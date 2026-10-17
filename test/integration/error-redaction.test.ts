@@ -33,7 +33,7 @@ import { externalBoundary } from '../../src/http/hono';
  *
  * Every case also emits a `[capture]` line so
  * `scripts/capture-error-redaction-report.mjs` can render the
- * verification screenshot (`docs/verification/security/error-redaction-page.png`)
+ * verification screenshot (`docs/verification/security/error-redaction-page.webp`)
  * from responses the Worker actually produced. Nothing secret is
  * captured: the verifier stub is a literal fake key, and only
  * statuses / bodies / correlation ids are printed.

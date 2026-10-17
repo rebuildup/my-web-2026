@@ -4,7 +4,7 @@ Screenshots and evidence captured for security tickets. Each artefact
 is regenerable from a repository-controlled command, so a reviewer can
 reproduce it instead of trusting the image.
 
-## `error-redaction-page.png` (Issue #457)
+## `error-redaction-page.webp` (Issue #457)
 
 Proof that the external HTTP boundary answers failures with
 `{ error, message, request_id }` only — no stack, SQL, table name,
@@ -25,6 +25,14 @@ The command runs `test/integration/error-redaction.test.ts` in the
 local workerd pool, reads the responses that suite captured, renders
 them as a static report in `.tmp/`, and screenshots it with the
 Playwright chromium already installed for the E2E suite.
+
+The committed artefact is WebP (width ≤ 1600 px, quality 80), not
+PNG: Playwright cannot write WebP, so the script re-encodes the
+screenshot buffer with the `sharp` devDependency and never writes an
+intermediate PNG. The report is a text-heavy page, so q80 keeps the
+bodies and the leak verdicts legible at a fraction of the PNG size,
+and the repository does not carry a lossless raster for an artefact
+that is regenerated on demand.
 
 Reading the page:
 

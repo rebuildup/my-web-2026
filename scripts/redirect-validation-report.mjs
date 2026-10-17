@@ -19,13 +19,26 @@
  * network request other than the Playwright browser that renders the
  * local HTML.
  *
+ * Regenerating
+ * ------------
+ * The committed artefact is **WebP**, not PNG: the capture is a dense
+ * table of text, so PNG costs several hundred KB for no visual gain.
+ * Chromium screenshots into `.tmp/` (ephemeral), `sharp` converts
+ * (width ≤ 1600, `quality: 80`, retried downward if the result exceeds
+ * 300 KB) and the temporary PNG is deleted. The script fails rather
+ * than committing an image over the size budget, or a non-WebP file.
+ *
+ * The Issue names `docs/verification/security/redirect-validation.png`;
+ * the artefact ships as `redirect-validation.webp` in the same
+ * directory with the same content, and the PR records the substitution.
+ *
  * Usage:
  *   node scripts/redirect-validation-report.mjs [outFile] [--html dumpPath]
  *
- * Default outFile: docs/verification/security/redirect-validation.png
+ * Default outFile: docs/verification/security/redirect-validation.webp
  *
  * `--html` additionally writes the report markup, which is what the
- * PNG renders — useful for reviewing the matrix without an image
+ * image renders — useful for reviewing the matrix without an image
  * viewer. The run fails if any response is neither 200 nor a
  * `400 invalid_redirect_target`, or if the rendered page overflows
  * horizontally (a clipped column would make the report misleading).
@@ -36,12 +49,13 @@
  * this script exists so the matrix can be *read*, not just trusted.
  */
 
-import { mkdir } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { registerHooks } from 'node:module';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import { Hono } from 'hono';
+import sharp from 'sharp';
 
 // `src/http/security/redirect-guard.ts` imports its sibling with the
 // bundler-style extensionless specifier the Worker build uses
@@ -76,7 +90,14 @@ const htmlDump =
 const positional = argv.filter(
 	(value, index) => index !== htmlFlagIndex && index !== htmlFlagIndex + 1,
 );
-const OUT = resolve(ROOT, positional[0] ?? 'docs/verification/security/redirect-validation.png');
+const OUT = resolve(ROOT, positional[0] ?? 'docs/verification/security/redirect-validation.webp');
+
+/** Committed-image budget. A dense text table compresses well as WebP;
+ *  a PNG of the same page costs several times the bytes for pixels
+ *  nobody reads. */
+const MAX_IMAGE_BYTES = 300 * 1024;
+const MAX_IMAGE_WIDTH = 1600;
+const WEBP_QUALITY_LADDER = [80, 72, 64, 56];
 
 /** The canonical production origin (ADR-0014). Used here only as a
  *  trusted-origin configuration value — no request is sent to it. */
@@ -446,22 +467,56 @@ const overflow = await page.evaluate(
 	// so a full-page capture never reports a false overflow.
 	() => document.documentElement.scrollWidth - document.documentElement.clientWidth > 1,
 );
-await page.screenshot({ path: OUT, fullPage: true });
+// The PNG capture is ephemeral (`.tmp/` is gitignored); only the WebP
+// below is ever committed.
+const capturePath = resolve(ROOT, '.tmp/redirect-validation-capture.png');
+await mkdir(dirname(capturePath), { recursive: true });
+await page.screenshot({ path: capturePath, fullPage: true });
 await browser.close();
+
+if (!OUT.endsWith('.webp')) {
+	await rm(capturePath, { force: true });
+	process.stderr.write(
+		`redirect-validation-report: the committed artefact must be WebP (got ${OUT}).\n`,
+	);
+	process.exit(1);
+}
+
+let encoded = null;
+for (const quality of WEBP_QUALITY_LADDER) {
+	const candidate = await sharp(capturePath)
+		.resize({ width: MAX_IMAGE_WIDTH, withoutEnlargement: true })
+		.webp({ quality })
+		.toBuffer();
+	if (candidate.length <= MAX_IMAGE_BYTES) {
+		encoded = { buffer: candidate, quality };
+		break;
+	}
+}
+await rm(capturePath, { force: true });
+
+if (encoded === null) {
+	process.stderr.write(
+		`redirect-validation-report: the report does not fit in ${MAX_IMAGE_BYTES} bytes of WebP at width ${MAX_IMAGE_WIDTH} — split the matrix instead of committing a heavier image.\n`,
+	);
+	process.exit(1);
+}
+
+await mkdir(dirname(OUT), { recursive: true });
+await writeFile(OUT, encoded.buffer);
 
 if (htmlDump) {
 	await mkdir(dirname(htmlDump), { recursive: true });
-	const { writeFile } = await import('node:fs/promises');
 	await writeFile(htmlDump, html, 'utf8');
 }
 
 if (overflow) {
 	process.stderr.write(
-		'redirect-validation-report: the rendered report overflows horizontally — a column is clipped, which would make the PNG misleading.\n',
+		'redirect-validation-report: the rendered report overflows horizontally — a column is clipped, which would make the image misleading.\n',
 	);
 	process.exit(1);
 }
 
 process.stdout.write(
-	`redirect-validation-report: ${acceptedCount} accepted / ${refusedCount} refused -> ${OUT}\n`,
+	`redirect-validation-report: ${acceptedCount} accepted / ${refusedCount} refused -> ${OUT} (webp q${encoded.quality}, ${Math.round(encoded.buffer.length / 1024)} KiB)\n`,
 );

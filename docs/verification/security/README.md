@@ -5,12 +5,20 @@ than hand-written.
 
 | Artefact | Issue | Regenerate |
 | --- | --- | --- |
-| [`redirect-validation.png`](redirect-validation.png) | #454 | `pnpm run security:redirect:report` |
+| [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
 
-## `redirect-validation.png`
+## `redirect-validation.webp`
 
 The open-redirect guard (Issue #454) exercised over a matrix of
 `returnTo` / `callbackURL` values.
+
+The Issue names `redirect-validation.png`; the artefact ships as WebP
+in the same directory. The capture is a dense text table, so PNG cost
+~390 KB for no visual gain while WebP at `quality: 80` is ~155 KB.
+`scripts/redirect-validation-report.mjs` captures a temporary PNG into
+`.tmp/`, converts it with `sharp` (width ≤ 1600, quality ladder
+80 → 72 → 64 → 56 until the result is under 300 KB), deletes the
+temporary file, and refuses to write anything that is not WebP.
 
 1. **Rows are real responses.** `scripts/redirect-validation-report.mjs`
    sends a real `Request` per row through the shipped
@@ -29,13 +37,14 @@ The open-redirect guard (Issue #454) exercised over a matrix of
 Regenerate with:
 
 ```bash
-node scripts/redirect-validation-report.mjs
+pnpm run security:redirect:report
 ```
 
-Add `--html .tmp/report.html` to dump the markup the PNG renders. The
+Add `--html .tmp/report.html` to dump the markup the image renders. The
 script exits non-zero if any response is neither `200` nor a
-`400 invalid_redirect_target`, or if the rendered page overflows
-horizontally (a clipped column would make the PNG misleading).
+`400 invalid_redirect_target`, if the image would exceed 300 KB at
+quality 80, or if the rendered page overflows horizontally (a clipped
+column would make the image misleading).
 
 The same matrix is asserted against the real Worker entry and the real
 Better Auth handler by `src/http/security/redirect-guard.test.ts`; this

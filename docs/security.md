@@ -102,7 +102,7 @@ binding API is reachable in the local workerd pool"**, not
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
 - Redirect-target matrix (Issue #454) is regenerated from the shipped
-  guard by `pnpm run security:redirect:report`; the committed PNG and
+  guard by `pnpm run security:redirect:report`; the committed image and
   its reading guide are in
   [`docs/verification/security/`](verification/security/).
 

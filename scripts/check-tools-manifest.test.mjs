@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import { evaluateToolEmbedPolicy, toEmbedSubject } from '../src/tools/embed-policy.ts';
 
 /**
  * Pure-helper extraction tests for the Tool Registry manifest
@@ -82,9 +83,12 @@ describe('Tool manifest — artifact path', () => {
 });
 
 describe('Tool manifest — sandbox + scripts combination', () => {
-	// The verifier warns on 'allow-scripts allow-same-origin' because
-	// that combination lets the iframe break out of its sandbox via
-	// the parent's origin. We extract the check for unit testing.
+	// Issue #465: the ad-hoc `isDangerousSandbox` helper below is kept
+	// as a historical statement of the ORIGINAL #80 rule (the verifier
+	// used to carry its own copy). The authoritative rules now live in
+	// `src/tools/embed-policy.ts`, which this verifier imports directly
+	// — see the `describe` blocks at the bottom of this file, which
+	// assert the same decisions through the real implementation.
 	function isDangerousSandbox(sandbox) {
 		if (typeof sandbox !== 'string') return false;
 		const tokens = sandbox.split(/\s+/);
@@ -152,5 +156,99 @@ describe('Tool manifest — classification / delivery.kind coherence', () => {
 			delivery: { kind: 'host_disabled' },
 		};
 		assert.equal(classificationDeliveryMismatch(tool), null);
+	});
+});
+
+describe('Tool manifest — embed policy gate (Issue #465)', () => {
+	// `scripts/check-tools-manifest.mjs` imports `evaluateToolEmbedPolicy`
+	// from `src/tools/embed-policy.ts` and prints every violation it
+	// returns, so this block asserts the gate's real decisions through
+	// the same function rather than a restated copy of the rules. If a
+	// rule is relaxed in the policy module, these fail — and so does
+	// `pnpm run tools:check`, which is the point.
+
+	function violationCodes(delivery) {
+		return evaluateToolEmbedPolicy(toEmbedSubject('fixture', delivery)).map((v) => v.code);
+	}
+
+	const okIframe = { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' };
+
+	it('passes the current manifest shape', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'same_origin_static',
+				artifact_path: '/tools/fixture/app',
+				entry_html: '/tools/fixture/app/index.html',
+				iframe: okIframe,
+			}),
+			[],
+		);
+	});
+
+	it('fails the build for allow-scripts + allow-same-origin (was: "document the reason")', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'same_origin_static',
+				artifact_path: '/tools/fixture/app',
+				entry_html: '/tools/fixture/app/index.html',
+				iframe: { sandbox: 'allow-scripts allow-same-origin', referrer_policy: 'no-referrer' },
+			}).sort(),
+			['embed.sandbox.forbidden-token', 'embed.sandbox.same-origin-escape'],
+		);
+	});
+
+	it('fails the build when delivery.iframe is absent (no implicit default)', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'same_origin_static',
+				artifact_path: '/tools/fixture/app',
+				entry_html: '/tools/fixture/app/index.html',
+			}),
+			['embed.iframe.missing'],
+		);
+	});
+
+	it('fails the build when referrer_policy is absent', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'same_origin_static',
+				artifact_path: '/tools/fixture/app',
+				entry_html: '/tools/fixture/app/index.html',
+				iframe: { sandbox: 'allow-scripts' },
+			}),
+			['embed.referrer-policy.missing'],
+		);
+	});
+
+	it('fails the build for a cross-origin src on a same_origin_static entry', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'same_origin_static',
+				artifact_path: '/tools/fixture/app',
+				entry_html: '//evil.example/app/index.html',
+				iframe: okIframe,
+			}),
+			['embed.frame-src.cross-origin'],
+		);
+	});
+
+	it('fails the build for a wildcard host_message expected_origin', () => {
+		assert.deepEqual(
+			violationCodes({
+				kind: 'same_origin_static',
+				artifact_path: '/tools/fixture/app',
+				entry_html: '/tools/fixture/app/index.html',
+				iframe: okIframe,
+				host_message: { expected_origin: '*', allowed_types: ['tool:ready'] },
+			}),
+			['host-message.origin.wildcard'],
+		);
+	});
+
+	it('does not police host_disabled entries (nothing is framed)', () => {
+		assert.deepEqual(
+			violationCodes({ kind: 'host_disabled', disabled_reason: 'Tool-side fix pending' }),
+			[],
+		);
 	});
 });

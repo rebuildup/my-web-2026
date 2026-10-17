@@ -94,15 +94,54 @@
 							},
 							"iframe": {
 								"type": "object",
-								"description": "iframe sandbox + Permissions-Policy for this Tool. Host route renders <iframe src=artifact_path> for same_origin_static.",
+								"description": "iframe sandbox + referrer policy + message contract for this Tool (Issue #465). REQUIRED for every embeddable Tool: the host has no implicit default and fails closed (renders no iframe) when this block is missing or violates the policy enforced by scripts/check-tools-manifest.mjs via src/tools/embed-policy.ts.",
+								"required": ["sandbox", "referrer_policy"],
 								"properties": {
 									"sandbox": {
-										"description": "sandbox attribute value. Default: 'allow-scripts'. DO NOT add 'allow-same-origin' without a written reason.",
-										"type": "string"
+										"description": "sandbox attribute value, space separated. 'allow-scripts' alone is the only value that needs no justification. Forbidden, always (src/tools/embed-policy.ts): allow-same-origin (on a same-origin artefact it hands the Tool the host origin), allow-popups-to-escape-sandbox, allow-storage-access-by-user-activation, allow-top-navigation, allow-top-navigation-by-user-activation, allow-top-navigation-to-custom-protocols. Conditional (require 'allow' + 'sandbox_rationale'): allow-downloads, allow-forms, allow-modals, allow-orientation-lock, allow-pointer-lock, allow-popups, allow-presentation.",
+										"type": "string",
+										"pattern": "^allow-scripts( allow-(downloads|forms|modals|orientation-lock|pointer-lock|popups|presentation))*$"
+									},
+									"referrer_policy": {
+										"description": "referrerpolicy attribute value. Only values that cannot leak the host's full URL are accepted: 'no-referrer', 'same-origin', 'strict-origin'.",
+										"type": "string",
+										"enum": ["no-referrer", "same-origin", "strict-origin"]
 									},
 									"allow": {
-										"description": "Permissions-Policy allowlist for sensitive features. Empty unless the Tool genuinely requires it.",
+										"description": "Permissions-Policy style capability grant list for the frame. Required (non-empty) when the sandbox uses any conditional token.",
 										"type": "string"
+									},
+									"sandbox_rationale": {
+										"description": "Written reason for any conditional sandbox token. Required (non-empty) alongside them — ADR-0006 §3 asks for a written reason before weakening the iframe sandbox.",
+										"type": "string"
+									}
+								},
+								"additionalProperties": false
+							},
+							"host_message": {
+								"type": "object",
+								"description": "OPT-IN Tool↔host postMessage contract (Issue #465). Omit the block entirely unless a Tool genuinely needs the channel: with no declaration the host attaches NO 'message' listener, so an unexpected message from a Tool frame cannot reach host code. When declared, every event must match expected_origin AND come from the iframe's own contentWindow AND carry an allowlisted type.",
+								"required": ["expected_origin", "allowed_types"],
+								"properties": {
+									"expected_origin": {
+										"description": "The ONE origin a Tool message may come from: 'self' (the host's own origin, for a same-origin artefact) or an explicit https origin literal. '*' is never valid.",
+										"type": "string",
+										"pattern": "^(self|https://[^/?#]+)$"
+									},
+									"allowed_types": {
+										"description": "Message types the host will act on. Anything else is refused without dispatch.",
+										"type": "array",
+										"minItems": 1,
+										"uniqueItems": true,
+										"items": {
+											"type": "string",
+											"pattern": "^[a-z0-9][a-z0-9:._-]{0,63}$"
+										}
+									},
+									"source": {
+										"description": "Only 'iframe_window' is accepted: the event must come from the Tool frame's own contentWindow, not merely from a document on the same origin.",
+										"type": "string",
+										"const": "iframe_window"
 									}
 								},
 								"additionalProperties": false

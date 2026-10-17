@@ -24,6 +24,17 @@
  *        required (the Tool is not yet integrated).
  *   8. `source.submodule_path` is unique across all tools.
  *   9. `source.canonical_repo` is unique across all tools.
+ *  10. Issue #465 — embed policy: every embeddable entry
+ *      (`same_origin_static` / `external_exception`) is evaluated by
+ *      `src/tools/embed-policy.ts#evaluateToolEmbedPolicy`, the SAME
+ *      pure function the `/tools/<slug>` route runs per request. The
+ *      iframe sandbox / referrer policy / frame origin /
+ *      `host_message` origin contract therefore has exactly one
+ *      definition. Node loads that `.ts` module through type
+ *      stripping (Node >= 22.18 per `package.json#engines`), so the
+ *      rules are never restated here: a divergence between this gate
+ *      and the route would be a manifest that builds but never
+ *      renders.
  *
  * Exit code 0 on success, 1 on any violation. Each violation is
  * printed as `<file>:<line>  <message>` so the failure points at
@@ -33,6 +44,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { evaluateToolEmbedPolicy, toEmbedSubject } from '../src/tools/embed-policy.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -167,14 +179,12 @@ for (let i = 0; i < manifest.tools.length; i++) {
 					`${prefix}  delivery.artifact_path: "${d.artifact_path}" must match ^/tools/<slug>(/...)?$`,
 				);
 			}
-			// iframe sandbox: warn on allow-same-origin + allow-scripts combo
-			if (d.iframe) {
-				const tokens = d.iframe.sandbox?.split(/\s+/) ?? [];
-				if (tokens.includes('allow-scripts') && tokens.includes('allow-same-origin')) {
-					errors.push(
-						`${prefix}  delivery.iframe.sandbox: 'allow-scripts allow-same-origin' is dangerous; document the reason explicitly`,
-					);
-				}
+			// iframe sandbox / referrer policy / frame origin /
+			// host_message contract: Issue #465. The per-rule messages
+			// come from the shared policy module (see the header), so
+			// this block only attributes them to the manifest entry.
+			for (const violation of evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery))) {
+				errors.push(`${prefix}  ${violation.code}: ${violation.message}`);
 			}
 			// mechanical SHA match against the actual gitlink
 			const gitlinkSha = readGitlinkSha(s.submodule_path);

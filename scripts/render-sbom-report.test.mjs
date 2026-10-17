@@ -93,14 +93,62 @@ describe('render-sbom-report — rendered HTML', () => {
 	});
 
 	it('escapes hostile component content so the report cannot inject markup', () => {
-		const hostile = structuredClone(bom);
-		const target = hostile.components.find((c) =>
-			(c.properties ?? []).some((p) => p.value === 'dependencies'),
-		);
-		target.name = '<script>alert(1)</script>';
+		// A hand-built fixture, not the real lockfile: this assertion is
+		// about escaping, so it must not depend on a live component
+		// staying present in the repository's dependency set.
+		const hostile = {
+			bomFormat: 'CycloneDX',
+			specVersion: '1.6',
+			serialNumber: 'urn:uuid:00000000-0000-4000-8000-000000000000',
+			metadata: {
+				timestamp: '2026-01-01T00:00:00.000Z',
+				component: { type: 'application', name: 'my-web-2026', version: '9.9.9' },
+				properties: [],
+			},
+			components: [
+				{
+					'bom-ref': 'pkg:npm/left-pad@1.3.0',
+					type: 'library',
+					name: 'left-pad',
+					version: '1.3.0',
+					purl: 'pkg:npm/left-pad@1.3.0',
+					licenses: [{ license: { name: 'MIT' } }],
+					properties: [{ name: 'my-web-2026:dependency-group', value: 'dependencies' }],
+				},
+			],
+			dependencies: [],
+		};
+		hostile.components[0].name = '<script>alert(1)</script>';
 		const rendered = renderReport(hostile);
 		assert.equal(rendered.includes('<script>alert(1)</script>'), false);
 		assert.ok(rendered.includes('&lt;script&gt;alert(1)&lt;/script&gt;'));
+	});
+
+	it('reads the deprecation flag back from the namespaced property', () => {
+		// CycloneDX 1.6 has no `component.deprecated`, so the generator
+		// writes `my-web-2026:deprecated`; the report must read that, or
+		// the "Deprecated upstream" card would silently disappear.
+		const fixture = structuredClone(bom);
+		assert.equal(
+			fixture.components.some((c) => 'deprecated' in c),
+			false,
+			'no CycloneDX 1.6 component may carry a deprecated field',
+		);
+		for (const component of fixture.components) {
+			component.properties = (component.properties ?? []).filter(
+				(p) => p.name !== 'my-web-2026:deprecated',
+			);
+		}
+		const target = fixture.components.find((c) => c.name === 'glob');
+		assert.ok(target, 'fixture must contain a package deprecated upstream');
+		target.properties.push({ name: 'my-web-2026:deprecated', value: 'true' });
+		const fixtureModel = buildReportModel(fixture);
+		assert.deepEqual(fixtureModel.deprecated, ['glob@10.5.0']);
+		assert.ok(
+			renderReport(fixture, fixtureModel).includes(
+				'Deprecated upstream: <span class="badge">glob@10.5.0</span>',
+			),
+		);
 	});
 });
 

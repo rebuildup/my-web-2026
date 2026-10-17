@@ -146,21 +146,6 @@ function splitKeyValue(body) {
 	return null;
 }
 
-/** Strip a trailing ` # comment` that is not inside a quoted scalar. */
-function stripTrailingComment(text) {
-	let inSingle = false;
-	let inDouble = false;
-	for (let i = 0; i < text.length; i++) {
-		const ch = text[i];
-		if (ch === "'" && !inDouble) inSingle = !inSingle;
-		else if (ch === '"' && !inSingle) inDouble = !inDouble;
-		else if (ch === '#' && !inSingle && !inDouble && (i === 0 || text[i - 1] === ' ')) {
-			return text.slice(0, i).trim();
-		}
-	}
-	return text.trim();
-}
-
 /** Split a flow collection body on top-level commas. */
 function splitFlowItems(body) {
 	const items = [];
@@ -491,8 +476,17 @@ export function collectDirectDependencies(documents) {
 			for (const [name, entry] of Object.entries(deps)) {
 				const spec = typeof entry === 'string' ? entry : (entry?.version ?? null);
 				if (typeof spec !== 'string') continue;
-				const bare = spec.startsWith('link:') ? spec : spec.split('(')[0];
-				if (bare === '' || (bare.includes('/') && !/^\d/.test(bare) && bare.startsWith('file:'))) {
+				const bare = spec.split('(')[0];
+				// `file:` / `link:` / `workspace:` name a path, not a
+				// resolved registry version. Keeping them would register a
+				// phantom direct identity that matches no component and
+				// then silently vanish from `dependencies[].dependsOn`.
+				if (
+					bare === '' ||
+					bare.startsWith('file:') ||
+					bare.startsWith('link:') ||
+					bare.startsWith('workspace:')
+				) {
 					continue;
 				}
 				const composite = identityKey(name, bare);
@@ -577,8 +571,16 @@ export function npmComponent(record, { groups, patched, license, licenseState })
 	};
 	if (hash) component.hashes = [hash];
 	if (record.deprecated) {
-		component.deprecated = String(record.deprecated);
+		// CycloneDX 1.6 has no `component.deprecated`, and
+		// `definitions.component` sets `additionalProperties: false`, so
+		// writing one would make the whole document invalid for every
+		// schema-conformant consumer. The upstream message is carried as
+		// namespaced properties instead.
 		component.properties.push({ name: 'my-web-2026:deprecated', value: 'true' });
+		component.properties.push({
+			name: 'my-web-2026:deprecation-notice',
+			value: String(record.deprecated),
+		});
 	}
 	// CycloneDX scope: platform-specific packages are `optional`; the
 	// pnpm bootstrap artifacts (the `@pnpm/exe.*` set) never enter a

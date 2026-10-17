@@ -25,6 +25,13 @@ artifact must be verifiable against the real lockfile at every moment,
 and the strongest way to do that is to regenerate it and compare, not
 to trust a committed blob that could be edited by hand.
 
+Facts that CycloneDX 1.6 has no field for — the dependency group, the
+license-resolution split, the patch flag, and an upstream deprecation
+notice — are carried as namespaced `my-web-2026:*` properties instead.
+CycloneDX 1.6 sets `additionalProperties: false` on `component`, so
+inventing a plausible-looking field would invalidate the whole
+document for every schema-conformant consumer.
+
 ## 2. Commands
 
 ```bash
@@ -51,8 +58,11 @@ is designed so that question never arises:
   `process.env` credential, `.dev.vars`, Infisical, a Wrangler secret
   subcommand, or a deployment-config read.
 - The document records the SHA-256 of every tracked input in
-  `metadata.properties#my-web-2026:source-digests`, so a reader can
-  verify the provenance without trusting the generator.
+  `metadata.properties#my-web-2026:source-digests`. `scripts/check-sbom.mjs`
+  recomputes those digests from the files on disk and compares the
+  **values**, not just the keys, so a hand-written or stale provenance
+  record fails closed and a reader can verify the provenance without
+  trusting the generator.
 - The gate additionally rejects the document if it contains **any**
   runtime secret *name* in the repository's secret contract
   (`scripts/_cloudflare-contract.mjs` — the single module that
@@ -115,10 +125,18 @@ Three states appear in `licenses[].license.name` plus the
 | `undeclared`         | the package ships no `license` field at all                              | `NOASSERTION`    |
 | `not-installed`      | a platform-specific optional binary that is not installed on the machine generating the SBOM (a Windows shim while running on darwin-arm64) | `NOASSERTION`    |
 
-The third case is the majority on any single platform and is **not** a
-license finding. Do not "fix" it by asserting a license; it is a
-statement about where the SBOM was generated. A genuinely
+The third case is **not** a license finding — it is a statement about
+where the SBOM was generated, and it covers the large majority of the
+`NOASSERTION` entries (209 of 211 on a darwin-arm64 run, against 2
+genuinely `undeclared` packages). It is not the majority of the
+inventory as a whole: on the same run 548 of 759 npm components are
+`declared`. Do not "fix" it by asserting a license. A genuinely
 license-less package is worth raising as its own ticket.
+
+The counts are platform-dependent by construction — a Linux CI runner
+installs a different optional-dependency set than a macOS laptop — so
+quote the split from `pnpm run sbom:report`, which reads the numbers
+out of the document that is actually attached to the release.
 
 No SPDX identifier list is vendored into this repository, so the
 verbatim upstream string is carried rather than a guessed identifier.
@@ -143,8 +161,21 @@ the same remedy line. The categories, with the real cause behind them:
 | `runtime-secret-name: …`                              | a runtime secret **name** appears in the document                | the secret SoT was bypassed for this artifact — treat as a security event       |
 | `secret-value-shape: …`                               | credential-shaped content is present                                     | same — treat as a security event                                               |
 | `missing input digest for <file>`                     | the provenance record is incomplete, so the document cannot be audited   | a generator regression or a hand-edited document                               |
+| `recorded digest for <file> does not match the file on disk` | the provenance record disagrees with the tracked file          | a hand-edited or stale provenance record                                       |
+| `component-shape: "<key>" is not a CycloneDX 1.6 component property` | the document would be rejected by a schema-conformant consumer | a field that reads like it belongs but does not exist in the format (`additionalProperties` is `false`) |
+| `component-shape: required CycloneDX 1.6 property "type"/"name" is missing` | the component is structurally incomplete | a partial hand edit or a generator regression                                   |
 | `pnpm-lock.yaml uses an unsupported construct`         | pnpm wrote YAML outside the supported subset                            | pnpm format change; teach the parser, do **not** relax the parse                |
 | `<path> differs from a freshly generated SBOM`        | the staged release artifact is stale                                    | rerun `pnpm run sbom:build` at release time                                    |
+
+The `component-shape` rows come from
+`CYCLONEDX_COMPONENT_PROPERTIES` in `scripts/check-sbom.mjs`, which
+mirrors `definitions.component` of the published CycloneDX 1.6 schema
+(whose `additionalProperties` is `false`). It exists because a document
+can be perfectly consistent with the lockfile and still be invalid
+CycloneDX — the gate has to catch the format as well as the inventory.
+Vendoring the full published JSON Schema instead of this hand-mirrored
+list is **still an open decision** (see §8); nothing in this repository
+claims schema conformance beyond what the gate can prove.
 
 The last two deserve emphasis because they are the failure modes a
 generator is most likely to hide: a partial YAML parse produces a
@@ -176,6 +207,15 @@ Release is part of release publication and therefore **human-gated**
 (AGENTS.md section 6 / `skills/github-delivery/SKILL.md#release-pr-merge-human-gate-canonical-rule`);
 agents prepare it and stop.
 
+> **The staged comparison is machine-sensitive.** License evidence is
+> read from `node_modules/.pnpm/*/package.json`, so an artifact built on
+> darwin-arm64 does not record the same `not-installed` set as one built
+> on the Linux CI runner. `sbom:check` then reports
+> `<path> differs from a freshly generated SBOM` on a lockfile-identical
+> document. Regenerate on the machine that will run the gate (or delete
+> the staged file and let CI's `Build SBOM` step produce it) — do not
+> hand-edit it to make the comparison pass.
+
 **Secret-shaped failure**: do not investigate by printing values. Confirm
 only which rule fired and which tracked file introduced the content,
 using the same status-only discipline the Infisical scripts use
@@ -189,7 +229,22 @@ scalars — nothing else. Extend `scripts/generate-sbom.mjs` and its
 tests. Weakening the check to make the gate green would defeat the only
 property this ticket buys.
 
-## 8. Scope boundary
+## 8. Open decisions
+
+Recorded here so the next reader does not mistake an unresolved
+policy question for a settled fact:
+
+- **Full CycloneDX 1.6 JSON Schema validation.** The gate mirrors the
+  `component` property list by hand rather than vendoring the published
+  schema, because the schema file (or an `ajv` dependency) would sit
+  inside the very dependency surface this ticket audits. Whether to
+  vendor it, and under which pin, is an owner decision.
+- **The staged-artifact comparison inside `validate:fast`.** It is
+  cheap and read-only, but license enrichment makes it
+  machine-dependent (see §7). Whether the staged branch belongs in
+  `validate:integration` or behind a flag is also an owner decision.
+
+## 9. Scope boundary
 
 This runbook covers generation, verification and release attachment. It
 does **not** add vulnerability scanning, dependency review or license

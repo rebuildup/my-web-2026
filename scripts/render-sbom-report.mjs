@@ -70,7 +70,10 @@ export function buildReportModel(bom) {
 		licenseResolution[state] = (licenseResolution[state] ?? 0) + 1;
 	}
 	const patched = npm.filter((c) => propertyValue(c, 'my-web-2026:patched') === 'true');
-	const deprecated = npm.filter((c) => c.deprecated);
+	// CycloneDX 1.6 has no `component.deprecated` (see
+	// scripts/generate-sbom.mjs), so the deprecation flag is read back
+	// from the namespaced property the generator writes.
+	const deprecated = npm.filter((c) => propertyValue(c, 'my-web-2026:deprecated') === 'true');
 	return {
 		specVersion: bom.specVersion,
 		bomFormat: bom.bomFormat,

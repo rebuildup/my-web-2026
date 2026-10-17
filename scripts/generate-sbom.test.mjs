@@ -226,6 +226,31 @@ describe('generate-sbom — lockfile identity', () => {
 		assert.deepEqual([...direct.keys()], ['left-pad@9.9.9']);
 	});
 
+	it('ignores path-protocol direct specs, which name no resolved version', () => {
+		const lockfile = `---
+lockfileVersion: '9.0'
+
+importers:
+  .:
+    dependencies:
+      local-dir:
+        specifier: file:./tools/local-dir
+        version: file:./tools/local-dir
+      linked-pkg:
+        specifier: link:../linked-pkg
+        version: link:../linked-pkg
+      workspace-pkg:
+        specifier: workspace:*
+        version: link:../workspace-pkg
+
+packages: {}
+
+snapshots: {}
+`;
+		const direct = collectDirectDependencies(parseYamlDocuments(lockfile));
+		assert.deepEqual([...direct.keys()], []);
+	});
+
 	it('converts base64 sha512 integrity into CycloneDX hex', () => {
 		const hash = integrityToCycloneDxHash(INTEGRITY_A);
 		assert.equal(hash.alg, 'SHA-512');
@@ -296,8 +321,24 @@ describe('generate-sbom — document shape', () => {
 		const leftPad = bom.components.find((c) => c.name === 'left-pad');
 		assert.equal(leftPad['bom-ref'], 'pkg:npm/left-pad@9.9.9');
 		assert.equal(leftPad.hashes[0].alg, 'SHA-512');
-		assert.equal(leftPad.deprecated, 'this fixture is synthetic');
 		assert.equal(leftPad.externalReferences[0].url, npmDistributionUrl('left-pad', '9.9.9'));
+	});
+
+	it('carries an upstream deprecation as a property, never as a CycloneDX field', () => {
+		// CycloneDX 1.6 defines no `component.deprecated` and the schema
+		// forbids additional component properties, so writing one would
+		// invalidate the whole document for every conformant consumer.
+		const bom = fixtureBom();
+		const leftPad = bom.components.find((c) => c.name === 'left-pad');
+		assert.equal('deprecated' in leftPad, false);
+		assert.equal(
+			leftPad.properties.find((p) => p.name === 'my-web-2026:deprecated')?.value,
+			'true',
+		);
+		assert.equal(
+			leftPad.properties.find((p) => p.name === 'my-web-2026:deprecation-notice')?.value,
+			'this fixture is synthetic',
+		);
 	});
 
 	it('marks patched dependencies declared in pnpm-workspace.yaml', () => {

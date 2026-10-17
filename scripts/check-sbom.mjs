@@ -17,9 +17,13 @@
  *      component in the same document (no dangling graph edges);
  *   5. the document contains **no secret**. Proven twice: structurally
  *      (every string traces to the tracked files recorded in
- *      `metadata.properties#my-web-2026:source-digests`) and by a
+ *      `metadata.properties#my-web-2026:source-digests`, whose digest
+ *      *values* are compared against the files on disk) and by a
  *      denylist scan for high-signal credential shapes plus every
- *      runtime-secret *name* in the repository's secret contract.
+ *      runtime-secret *name* in the repository's secret contract;
+ *   6. every component only carries properties the CycloneDX 1.6
+ *      schema defines (see `CYCLONEDX_COMPONENT_PROPERTIES`), so a
+ *      self-consistent but non-conformant document still fails closed.
  *
  * Secret posture (AGENTS.md section 4)
  * ------------------------------------
@@ -63,6 +67,7 @@ import {
 	parseYamlDocuments,
 	sbomDirFor,
 	serializeSbom,
+	sha256Hex,
 } from './generate-sbom.mjs';
 
 const here = fileURLToPath(new URL('.', import.meta.url));
@@ -101,6 +106,90 @@ export const SECRET_VALUE_PATTERNS = Object.freeze([
 		pattern: /"(?:api[_-]?key|secret|token|password|passwd)"\s*:\s*"[^"]{16,}"/i,
 	},
 ]);
+
+/**
+ * Property names `definitions.component` accepts in the CycloneDX
+ * {@link SPEC_VERSION} schema, which also sets
+ * `additionalProperties: false`.
+ *
+ * The gate deliberately does not vendor the full published JSON Schema
+ * (that is a separate open decision, recorded in
+ * `docs/runbook/sbom.md` section 8), but the defect a vendored schema
+ * would have caught is cheap to prevent: emitting a field the format
+ * does not define makes the **whole** document invalid for every
+ * schema-conformant consumer while every consistency check here still
+ * passes. Keep this list in step with `SPEC_VERSION`.
+ */
+export const CYCLONEDX_COMPONENT_PROPERTIES = Object.freeze([
+	'$comment',
+	'author',
+	'authors',
+	'bom-ref',
+	'components',
+	'copyright',
+	'cpe',
+	'cryptoProperties',
+	'data',
+	'description',
+	'evidence',
+	'externalReferences',
+	'group',
+	'hashes',
+	'licenses',
+	'manufacturer',
+	'mime-type',
+	'modelCard',
+	'modified',
+	'name',
+	'omniborId',
+	'pedigree',
+	'properties',
+	'publisher',
+	'purl',
+	'releaseNotes',
+	'scope',
+	'signature',
+	'supplier',
+	'swhid',
+	'swid',
+	'tags',
+	'type',
+	'version',
+]);
+
+/**
+ * Report every component in the document that either carries a field
+ * the format does not define (`additionalProperties: false`, so one
+ * unknown key invalidates the whole document for a schema-conformant
+ * consumer) or omits a required one. Never throws: a malformed
+ * document is a finding, not an exception.
+ */
+export function componentSchemaFindings(bom) {
+	const findings = [];
+	const subjects = [];
+	if (bom?.metadata?.component) subjects.push(['metadata.component', bom.metadata.component]);
+	const metadataTools = bom?.metadata?.tools?.components;
+	if (Array.isArray(metadataTools)) {
+		metadataTools.forEach((c, i) => subjects.push([`metadata.tools.components[${i}]`, c]));
+	}
+	if (Array.isArray(bom?.components)) {
+		bom.components.forEach((c, i) => subjects.push([`components[${i}]`, c]));
+	}
+	for (const [where, component] of subjects) {
+		if (component === null || typeof component !== 'object') continue;
+		for (const key of Object.keys(component)) {
+			if (!CYCLONEDX_COMPONENT_PROPERTIES.includes(key)) {
+				findings.push(`${where}: "${key}" is not a CycloneDX ${SPEC_VERSION} component property`);
+			}
+		}
+		for (const key of ['type', 'name']) {
+			if (component[key] === undefined) {
+				findings.push(`${where}: required CycloneDX ${SPEC_VERSION} property "${key}" is missing`);
+			}
+		}
+	}
+	return findings;
+}
 
 /**
  * Find secret-shaped content in the serialized document.
@@ -330,14 +419,44 @@ export function checkSbom({
 		errors.push(`${finding.kind}: ${finding.detail}`);
 	}
 	// The recorded provenance must cover every tracked input the
-	// generator reads; a document that omits it cannot be audited.
+	// generator reads, and must agree with the file on disk — a
+	// document that omits the record cannot be audited, and a document
+	// whose digests were written by hand cannot be believed.
 	const provenance = bom?.metadata?.properties?.find(
 		(p) => p.name === 'my-web-2026:source-digests',
 	)?.value;
-	for (const file of ['pnpm-lock.yaml', 'pnpm-workspace.yaml', 'src/tools/manifest.json']) {
-		if (!provenance?.includes(`${file}=sha256:`)) {
+	const recordedDigests = new Map(
+		(provenance ?? '')
+			.split(/\s+/)
+			.filter((token) => token !== '')
+			.map((token) => {
+				const at = token.indexOf('=');
+				return at === -1 ? [token, ''] : [token.slice(0, at), token.slice(at + 1)];
+			}),
+	);
+	for (const [file, text] of [
+		['pnpm-lock.yaml', lockfileText],
+		['pnpm-workspace.yaml', workspaceText],
+		['src/tools/manifest.json', toolsManifestText],
+	]) {
+		const recorded = recordedDigests.get(file);
+		if (recorded === undefined || !recorded.startsWith('sha256:')) {
 			errors.push(`metadata.properties: missing input digest for ${file}`);
+			continue;
 		}
+		const actual = `sha256:${sha256Hex(text)}`;
+		if (recorded !== actual) {
+			errors.push(
+				`metadata.properties: recorded digest for ${file} does not match the file on disk ` +
+					`(recorded ${recorded.slice(0, 16)}…, actual ${actual.slice(0, 16)}…)`,
+			);
+		}
+	}
+
+	// 6. The document must be describable as CycloneDX 1.6, not merely
+	// self-consistent with the lockfile.
+	for (const finding of componentSchemaFindings(bom)) {
+		errors.push(`component-shape: ${finding}`);
 	}
 
 	return { ok: errors.length === 0, errors };

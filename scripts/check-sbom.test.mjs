@@ -3,12 +3,16 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
+import { AUDIT_ONLY_SECRETS, REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
 import {
+	CYCLONEDX_COMPONENT_PROPERTIES,
 	SECRET_NAMES,
+	SECRET_NAME_SOURCE,
 	SECRET_VALUE_PATTERNS,
 	canonicalComparable,
 	checkSbom,
 	checkSbomFile,
+	componentSchemaFindings,
 	findSecretLikeFindings,
 	readInputs,
 } from './check-sbom.mjs';
@@ -39,12 +43,18 @@ function check(bom) {
 
 describe('check-sbom — runtime secret names', () => {
 	it('takes its names from the repository secret contract, not a local copy', () => {
+		// The literal pins what this repository actually declares, so a
+		// secret added to the contract cannot land unnoticed.
 		assert.deepEqual(SECRET_NAMES, [
 			'BETTER_AUTH_SECRETS',
 			'MY_WEB_2026_CONSUMER_API_KEY',
 			'GOOGLE_ANALYTICS_MEASUREMENT_ID',
 			'BETTER_AUTH_SECRET',
 		]);
+		// The derivation proves the gate re-exports the contract module
+		// rather than a mirrored copy that can drift.
+		assert.deepEqual(SECRET_NAMES, [...REQUIRED_RUNTIME_SECRETS, ...AUDIT_ONLY_SECRETS]);
+		assert.equal(SECRET_NAME_SOURCE, 'scripts/_cloudflare-contract.mjs');
 	});
 
 	it('flags every declared name by default, including the audit-only one', () => {
@@ -111,6 +121,43 @@ describe('check-sbom — the generated document passes', () => {
 		b.metadata.timestamp = '1999-01-01T00:00:00.000Z';
 		assert.equal(JSON.stringify(canonicalComparable(a)), JSON.stringify(canonicalComparable(b)));
 		assert.notEqual(a.serialNumber, b.serialNumber);
+	});
+
+	it('describes every component with CycloneDX 1.6 properties only', () => {
+		assert.deepEqual(componentSchemaFindings(realBom()), []);
+	});
+});
+
+describe('check-sbom — CycloneDX conformance', () => {
+	it('rejects a component carrying a property the 1.6 schema does not define', () => {
+		// The exact defect the format rejects: `component.deprecated`
+		// does not exist in 1.6 and `component` forbids additional
+		// properties, so the whole document becomes invalid even though
+		// every lockfile comparison still passes.
+		const bom = realBom();
+		bom.components[0].deprecated = 'use of this package is discouraged';
+		const result = check(bom);
+		assert.equal(result.ok, false);
+		assert.ok(
+			result.errors.some(
+				(e) => e.startsWith('component-shape:') && e.includes('"deprecated" is not a CycloneDX'),
+			),
+			result.errors.join('\n'),
+		);
+	});
+
+	it('rejects a component missing a required property', () => {
+		const bom = realBom();
+		bom.components[0].type = undefined;
+		const result = check(bom);
+		assert.equal(result.ok, false);
+		assert.ok(result.errors.some((e) => e.includes('required CycloneDX 1.6 property "type"')));
+	});
+
+	it('accepts every property name it declares as known', () => {
+		assert.ok(CYCLONEDX_COMPONENT_PROPERTIES.includes('bom-ref'));
+		assert.ok(CYCLONEDX_COMPONENT_PROPERTIES.includes('properties'));
+		assert.equal(CYCLONEDX_COMPONENT_PROPERTIES.includes('deprecated'), false);
 	});
 });
 
@@ -299,6 +346,23 @@ describe('check-sbom — secret content is rejected', () => {
 		const result = check(bom);
 		assert.equal(result.ok, false);
 		assert.ok(result.errors.some((e) => e.includes('missing input digest')));
+	});
+
+	it('rejects a hand-written provenance record whose digest is stale', () => {
+		const bom = realBom();
+		bom.metadata.properties = bom.metadata.properties.map((p) =>
+			p.name === 'my-web-2026:source-digests'
+				? { ...p, value: p.value.replace(/sha256:[0-9a-f]{64}/, `sha256:${'f'.repeat(64)}`) }
+				: p,
+		);
+		const result = check(bom);
+		assert.equal(result.ok, false);
+		assert.ok(
+			result.errors.some((e) =>
+				e.includes('recorded digest for pnpm-lock.yaml does not match the file on disk'),
+			),
+			result.errors.join('\n'),
+		);
 	});
 });
 

@@ -8,6 +8,7 @@ import {
 	interpolationsIn,
 	readCallArgument,
 	findInterpolatedSqlStatements,
+	unusedAllowlistEntries,
 } from './check-d1-sql-binding.mjs';
 
 /**
@@ -15,9 +16,10 @@ import {
  *
  * The gate is only worth running if it fails when it should. The
  * fixture below plants one violation of each shape the gate claims to
- * catch and asserts which files it reports; the final case runs the
- * gate against the real repository so a regression in the scanner
- * cannot turn it into a silent no-op.
+ * catch and asserts which files it reports; the dead-allowlist cases
+ * pin the rule that an exemption nobody reaches must fail; the final
+ * case runs the gate against the real repository so a regression in
+ * the scanner cannot turn it into a silent no-op.
  */
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -52,6 +54,21 @@ describe('check-d1-sql-binding — argument reader', () => {
 	});
 });
 
+describe('check-d1-sql-binding — documented scanner limits', () => {
+	it('does not see concatenation inside a call argument', () => {
+		// Documented blind spot, not an accident: only backtick templates are
+		// inspected. See the "Scanner limits" section of the gate docstring.
+		const root = stage({
+			'src/bad/concat.ts': "db.prepare('SELECT * FROM t WHERE k = ' + key).all();\n",
+		});
+		try {
+			assert.deepEqual(findInterpolatedSqlStatements({ root }), []);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+});
+
 describe('check-d1-sql-binding — fixture tree', () => {
 	it('reports interpolated statements and ignores compliant ones', () => {
 		const root = stage({
@@ -63,6 +80,13 @@ describe('check-d1-sql-binding — fixture tree', () => {
 			].join('\n'),
 			// Violation via `exec`, which the gate must cover too.
 			'src/bad/exec.ts': "db.exec(`DELETE FROM t WHERE k = '${key}'`);\n",
+			// Violation via `batch`, the third SQL_CALL and the one whose
+			// argument is an array of statements.
+			'src/bad/batch.ts': [
+				'export function wipe(db, table) {',
+				'\treturn db.batch([`DELETE FROM ${table} WHERE k = ?1`]).run();',
+				'}',
+			].join('\n'),
 			// Compliant: bound parameters.
 			'src/good/filter.ts':
 				"db.prepare('SELECT id FROM project WHERE slug = ?1').bind(slug).all();\n",
@@ -72,7 +96,8 @@ describe('check-d1-sql-binding — fixture tree', () => {
 				'return db.prepare(sql).all();',
 			].join('\n'),
 			// Allowlisted: structure-only interpolation, exactly the shape
-			// `src/portfolio/load.ts` uses for its cursor predicate.
+			// `src/portfolio/load.ts` uses for its cursor predicate — the
+			// statement reaches `prepare()` inline, so the allowlist is live.
 			'src/portfolio/load.ts': [
 				'const cursorPredicate = cursor ? ` AND id > ${value}` : "";',
 				'return db.prepare(`SELECT * FROM portfolio_project${cursorPredicate}`).bind(value).all();',
@@ -84,11 +109,51 @@ describe('check-d1-sql-binding — fixture tree', () => {
 			const violations = findInterpolatedSqlStatements({ root });
 			assert.deepEqual(
 				violations.map((violation) => violation.file),
-				['src/bad/exec.ts', 'src/bad/filter.ts'],
+				['src/bad/batch.ts', 'src/bad/exec.ts', 'src/bad/filter.ts'],
 			);
-			assert.equal(violations[0].method, 'exec');
-			assert.equal(violations[1].method, 'prepare');
-			assert.equal(violations[1].expression, 'slug');
+			assert.equal(violations[0].method, 'batch');
+			assert.equal(violations[0].expression, 'table');
+			assert.equal(violations[1].method, 'exec');
+			assert.equal(violations[2].method, 'prepare');
+			assert.equal(violations[2].expression, 'slug');
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('reports an allowlist entry the scan never reached', () => {
+		// The dead-configuration guard: if `src/portfolio/load.ts` stops
+		// passing its statement inline, the entry exempts nothing and the
+		// gate must say so instead of passing silently.
+		const root = stage({
+			'src/good/filter.ts': "db.prepare('SELECT 1').all();\n",
+			'src/portfolio/load.ts': [
+				'const cursorPredicate = cursor ? ` AND id > ${value}` : "";',
+				'const sql = `SELECT * FROM portfolio_project${cursorPredicate}`;',
+				'return db.prepare(sql).bind(value).all();',
+			].join('\n'),
+		});
+		try {
+			const unused = unusedAllowlistEntries({ root });
+			assert.deepEqual(
+				unused.map((entry) => `${entry.file} / ${entry.identifier}`),
+				['src/portfolio/load.ts / cursorPredicate'],
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('reports no unused entry when the allowlisted statement is inline', () => {
+		const root = stage({
+			'src/portfolio/load.ts': [
+				'const cursorPredicate = cursor ? ` AND id > ${value}` : "";',
+				'return db.prepare(`SELECT * FROM portfolio_project${cursorPredicate}`).bind(value).all();',
+			].join('\n'),
+		});
+		try {
+			assert.deepEqual(unusedAllowlistEntries({ root }), []);
+			assert.deepEqual(findInterpolatedSqlStatements({ root }), []);
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}
@@ -111,6 +176,16 @@ describe('check-d1-sql-binding — this repository', () => {
 			violations.map((violation) => violation.snippet),
 			[],
 			'interpolated D1 statements found — bind them, or justify the structure in the allowlist',
+		);
+	});
+
+	it('every SQL_STRUCTURE_ALLOWLIST entry is reached by a real statement', () => {
+		assert.deepEqual(
+			unusedAllowlistEntries({ root: REPO_ROOT }).map(
+				(entry) => `${entry.file} / ${entry.identifier}`,
+			),
+			[],
+			'dead allowlist entry — delete it, or pass the statement to prepare() inline',
 		);
 	});
 });

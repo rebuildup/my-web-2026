@@ -64,8 +64,15 @@ import {
  * Cloudflare binding, and no Tool Registry dependency is touched.
  *
  * Schema: inlined below because workerd cannot `fs.readFile`. The
- * statements mirror `migrations/0002`, `0003`, `0004`, `0005` and
- * `0007` and are deliberately byte-identical to those files.
+ * `CREATE TABLE` / `DROP TABLE` statements are copied verbatim from
+ * `migrations/0002`, `0003`, `0004`, `0005` and `0007`, except that
+ * three classes of statement are deliberately left out because no
+ * assertion in this suite reads them: SQL comments, every `CREATE
+ * INDEX` statement, and 0004's 16-row `INSERT OR IGNORE` seed. The
+ * suite therefore does not need the seeds or the indexes — it inserts
+ * its own fixtures — but the schema it applies is otherwise the
+ * migrated one. `0001` / `0006` are absent on purpose: both operate on
+ * the better-auth tables, which this suite never creates.
  */
 
 /** The API key id the stubbed verifier resolves every request to. */

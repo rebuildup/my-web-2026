@@ -18,24 +18,41 @@
  * deleted:
  *
  *   - Only template-literal interpolation (`${`) inside a D1 call
- *     argument is a violation. A caller that builds its SQL in a
- *     variable (`const sql = cond ? 'A' : 'B'; db.prepare(sql)`) is
- *     out of scope — that is a dataflow judgement, not a scan.
+ *     argument is a violation. A caller that assembles its SQL in a
+ *     variable first (`const sql = cond ? 'A' : 'B'; db.prepare(sql)`,
+ *     or ``const sql = `…${x}…` ``) is out of scope — that is a
+ *     dataflow judgement, not a scan. **Consequence:** a statement
+ *     written as a variable is invisible to this gate and must be
+ *     covered by `test/integration/d1-parameter-binding.test.ts`.
+ *     `docs/security.md` carries the inventory of the variable-built
+ *     statements that exist today.
  *   - Test files, Storybook stories and spec files are skipped: their
  *     interpolation is fixture setup, never a shipped statement.
  *   - An interpolation is allowable only through the `SQL_STRUCTURE_ALLOWLIST`
  *     below, which names the file and the identifier and states why
- *     the value is structure rather than data.
+ *     the value is structure rather than data. An entry the scan never
+ *     reaches is dead configuration and fails the gate too: it would
+ *     silently exempt a name that nothing is currently guarding.
  *
- * Scanner limits (documented, not hidden): the argument reader is a
- * hand-written character scanner. A regex literal or a comment
- * containing unbalanced quotes inside a D1 call argument could confuse
- * it. That has never happened in this repository, and the alternative
- * — an AST dependency in a quality gate — is a larger change than the
- * risk.
+ * Scanner limits (documented, not hidden):
  *
- * Exit codes: 0 = every D1 statement is literal / structure-only,
- * 1 = at least one interpolated statement, 2 = bad input.
+ *   - The argument reader is a hand-written character scanner. A regex
+ *     literal or a comment containing unbalanced quotes inside a D1 call
+ *     argument could confuse it. That has never happened in this
+ *     repository, and the alternative — an AST dependency in a quality
+ *     gate — is a larger change than the risk.
+ *   - Only backtick templates are inspected for `${`. String
+ *     concatenation inside a call argument
+ *     (`db.prepare('… WHERE k = ' + key)`) is therefore **not**
+ *     detected; no such statement exists in `src/**` today. Write D1
+ *     statements as literals or backtick templates.
+ *   - `exec` is also `RegExp.prototype.exec`. Every `.exec(` site in
+ *     `src/**` today is a regex; there is no shipped D1 `exec()` or
+ *     `batch()` call, and the fixture test covers both entry points.
+ *
+ * Exit codes: 0 = every D1 statement is literal / structure-only and
+ * every allowlist entry was reached, 1 = at least one interpolated
+ * statement or at least one unreached allowlist entry, 2 = bad input.
  *
  * Authority: Issue #452 (SQL injection tests for user-facing D1
  * paths). Paired with `docs/security.md#d1-parameter-binding`.
@@ -59,6 +76,10 @@ const SKIPPED_SUFFIXES = ['.test.ts', '.test.tsx', '.spec.ts', '.spec.tsx', '.st
  * Each entry must name the file (repo-relative, POSIX separators), the
  * interpolated identifier, and why the value cannot carry user input.
  * Adding an entry is a reviewable decision: it weakens the gate.
+ *
+ * An entry only counts if the scan actually reaches the interpolation it
+ * names. `src/portfolio/load.ts` passes its list statement to `prepare()`
+ * as an inline template for exactly that reason — see `unusedAllowlistEntries`.
  */
 export const SQL_STRUCTURE_ALLOWLIST = [
 	{
@@ -219,14 +240,19 @@ export function interpolationsIn(argumentText) {
 }
 
 /**
- * Every interpolated D1 statement under `srcDir`.
+ * Every interpolated D1 statement under `srcDir`, plus the allowlist
+ * entries the scan actually reached.
  *
- * Returns `{ file, line, method, expression, snippet }` records with
- * `file` relative to `root` in POSIX form.
+ * Returns `{ violations, allowlistHits }`. `violations` are
+ * `{ file, line, method, expression, snippet }` records with `file`
+ * relative to `root` in POSIX form; `allowlistHits` are
+ * `{ file, identifier, line }` records, one per allowlist entry the scan
+ * matched.
  */
-export function findInterpolatedSqlStatements({ root = REPO_ROOT, srcDir } = {}) {
+export function scanD1SqlStatements({ root = REPO_ROOT, srcDir } = {}) {
 	const absoluteSrc = resolve(root, srcDir ?? 'src');
 	const violations = [];
+	const allowlistHits = [];
 	for (const file of collectSourceFiles(absoluteSrc)) {
 		const source = readFileSync(file, 'utf8');
 		const relFile = relative(root, file).split(sep).join('/');
@@ -243,11 +269,15 @@ export function findInterpolatedSqlStatements({ root = REPO_ROOT, srcDir } = {})
 					// The allowlist names the interpolated IDENTIFIER, so a
 					// neighbouring `${userInput}` in the same statement is
 					// still reported.
-					if (
-						SQL_STRUCTURE_ALLOWLIST.some(
-							(entry) => entry.file === relFile && entry.identifier === expression,
-						)
-					) {
+					const allowed = SQL_STRUCTURE_ALLOWLIST.find(
+						(entry) => entry.file === relFile && entry.identifier === expression,
+					);
+					if (allowed) {
+						allowlistHits.push({
+							file: relFile,
+							identifier: expression,
+							line: lineOf(source, at),
+						});
 						continue;
 					}
 					violations.push({
@@ -261,7 +291,30 @@ export function findInterpolatedSqlStatements({ root = REPO_ROOT, srcDir } = {})
 			}
 		}
 	}
-	return violations;
+	return { violations, allowlistHits };
+}
+
+/**
+ * Every interpolated D1 statement under `srcDir` that is not allowlisted.
+ */
+export function findInterpolatedSqlStatements(options = {}) {
+	return scanD1SqlStatements(options).violations;
+}
+
+/**
+ * Allowlist entries the scan never reached.
+ *
+ * An unreached entry is dead configuration: it reads like a verified
+ * exemption but exempts nothing, and it keeps its file's name alive as
+ * "allowed" for the next person who interpolates a user value into a
+ * statement the gate cannot see. Reported as a gate failure.
+ */
+export function unusedAllowlistEntries(options = {}) {
+	const { allowlistHits } = scanD1SqlStatements(options);
+	const reached = new Set(allowlistHits.map((hit) => `${hit.file}::${hit.identifier}`));
+	return SQL_STRUCTURE_ALLOWLIST.filter(
+		(entry) => !reached.has(`${entry.file}::${entry.identifier}`),
+	);
 }
 
 function lineOf(source, index) {
@@ -270,22 +323,38 @@ function lineOf(source, index) {
 
 function main(argv) {
 	const root = argv.includes('--root') ? resolve(argv[argv.indexOf('--root') + 1]) : REPO_ROOT;
-	const violations = findInterpolatedSqlStatements({ root });
-	if (violations.length === 0) {
+	const { violations } = scanD1SqlStatements({ root });
+	const unused = unusedAllowlistEntries({ root });
+	if (violations.length === 0 && unused.length === 0) {
 		process.stdout.write('d1 sql binding OK: no interpolated D1 statement in src/\n');
 		return 0;
 	}
-	process.stderr.write(
-		`${violations.length} D1 statement(s) interpolate a value into the statement text.\n`,
-	);
-	process.stderr.write('Bind it with a ? placeholder and .bind(...) instead:\n');
-	for (const violation of violations) {
-		process.stderr.write(`  - ${violation.snippet}\n`);
+	if (violations.length > 0) {
+		process.stderr.write(
+			`${violations.length} D1 statement(s) interpolate a value into the statement text.\n`,
+		);
+		process.stderr.write('Bind it with a ? placeholder and .bind(...) instead:\n');
+		for (const violation of violations) {
+			process.stderr.write(`  - ${violation.snippet}\n`);
+		}
+		process.stderr.write(
+			'\nIf an interpolation is SQL *structure* (never user data), add an entry to\n' +
+				'SQL_STRUCTURE_ALLOWLIST in scripts/check-d1-sql-binding.mjs with the reason.\n',
+		);
 	}
-	process.stderr.write(
-		'\nIf an interpolation is SQL *structure* (never user data), add an entry to\n' +
-			'SQL_STRUCTURE_ALLOWLIST in scripts/check-d1-sql-binding.mjs with the reason.\n',
-	);
+	if (unused.length > 0) {
+		process.stderr.write(
+			`${unused.length} SQL_STRUCTURE_ALLOWLIST entry(ies) were never reached — dead configuration:\n`,
+		);
+		for (const entry of unused) {
+			process.stderr.write(`  - ${entry.file} / ${entry.identifier}\n`);
+		}
+		process.stderr.write(
+			'\nThe scan only reads the literal argument of prepare()/exec()/batch(), so an\n' +
+				'entry naming a statement assembled into a variable can never match. Delete the\n' +
+				'entry, or pass the statement to prepare() inline so the gate can police it.\n',
+		);
+	}
 	return 1;
 }
 

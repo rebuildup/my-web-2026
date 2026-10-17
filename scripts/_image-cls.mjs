@@ -6,7 +6,7 @@
  *
  *   - `e2e/image-cls.spec.ts` — the gate (fails the build),
  *   - `scripts/image-cls-report.mjs` — the evidence PNG in
- *     `docs/verification/perf/images-cls-fixture.png`.
+ *     `docs/verification/perf/images-cls-fixture.webp`.
  *
  * They must not drift. A report that used a shorter delay or no CPU
  * throttling would print a number the gate never asserted, which is

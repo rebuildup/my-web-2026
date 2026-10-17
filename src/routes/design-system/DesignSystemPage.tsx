@@ -306,7 +306,7 @@ function ImageSection() {
 					id="design-system-image"
 					eyebrow="07 — Image"
 					title="画像 / CLS fixture"
-					description="Issue #486 の計測面。実運用の PortfolioMediaFigure を固定データで描画し、width/height・loading=lazy・placeholder の枠予約を E2E で実測する（e2e/image-cls.spec.ts、証跡は docs/verification/perf/images-cls-fixture.png）。"
+					description="Issue #486 の計測面。実運用の PortfolioMediaFigure を固定データで描画し、width/height・loading=lazy・placeholder の枠予約を E2E で実測する（e2e/image-cls.spec.ts、証跡は docs/verification/perf/images-cls-fixture.webp）。"
 					variant="spread"
 				>
 					<ImageCls />

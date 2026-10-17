@@ -4,7 +4,7 @@
  *
  *     pnpm run build && node scripts/image-cls-report.mjs
  *
- * Produces `docs/verification/perf/images-cls-fixture.png` — the
+ * Produces `docs/verification/perf/images-cls-fixture.webp` — the
  * screenshot the Issue requires — plus a machine-readable
  * `.tmp/image-cls-report.json` carrying the same numbers.
  *

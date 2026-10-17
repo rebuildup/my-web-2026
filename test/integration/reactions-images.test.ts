@@ -1,9 +1,11 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { policyById } from '../../scripts/_cache-policy.mjs';
 import {
 	ImagePolicyError,
 	ImageReferencedError,
+	REACTION_IMAGE_CACHE_CONTROL,
 	deleteImage,
 	listImages,
 	uploadImage,
@@ -13,6 +15,7 @@ import {
 	putReaction,
 	reactionImageReferenced,
 } from '../../src/http/reactions/reactions';
+import { reactionImagesRouter } from '../../src/http/reactions/router';
 
 /**
  * Image upload + delete policy tests.
@@ -411,5 +414,45 @@ describe('deleteImage — reference policy', () => {
 			.bind(imageId)
 			.first<{ id: string }>();
 		expect(dangling).toBeNull();
+	});
+});
+
+/**
+ * The public image read is the only boundary response that IS meant to
+ * be stored, so its policy is asserted through the router rather than
+ * through `getImageStream`: the router is what decides the response
+ * header, and `applyExternalCachePolicy` in `src/server.ts` defaults
+ * every other boundary response to `no-store`. That default must not
+ * be able to swallow this one (Issue #484).
+ */
+describe('GET /api/v1/reaction-images/:id — cache policy', () => {
+	it('serves stored bytes as immutable and matches the canonical matrix', async () => {
+		const upload = await uploadImage(D1(), R2(), {
+			contentType: 'image/png',
+			bytes: PNG_BYTES.buffer.slice(
+				PNG_BYTES.byteOffset,
+				PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
+			) as ArrayBuffer,
+			uploadedBy: 'tester',
+		});
+
+		const res = await reactionImagesRouter.request(`/${upload.image.id}`, {}, env);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toBe('image/png');
+		expect(res.headers.get('cache-control')).toBe(REACTION_IMAGE_CACHE_CONTROL);
+		expect(res.headers.get('cache-control')).toBe(policyById('reaction-image').cacheControl);
+		// Stored bytes are content-addressed, so no conditional request is
+		// ever needed — the reason `immutable` is safe here.
+		expect(res.headers.get('etag')).toBeNull();
+	});
+
+	it('does not let a missing image fall back to a cacheable response', async () => {
+		const res = await reactionImagesRouter.request('/definitely-missing', {}, env);
+		expect(res.status).toBe(404);
+		// The router answers a bare JSON 404; in the deployed Worker the
+		// entrypoint fills in `no-store` for it. Asserted here as the
+		// precondition for that default: the router must not claim
+		// `immutable` on a response with no bytes behind it.
+		expect(res.headers.get('cache-control')).not.toBe(REACTION_IMAGE_CACHE_CONTROL);
 	});
 });

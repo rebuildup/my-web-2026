@@ -31,7 +31,30 @@ function matchesExternalBoundary(pathname: string): boolean {
 }
 
 /**
- * Cache policy for Worker-generated HTML (Issue #291).
+ * Attach a `Cache-Control` value unless the response already declares
+ * one, or unless its headers are sealed.
+ *
+ * "Never overwrite" is the whole point: a decision taken closer to the
+ * data (a handler that knows its bytes are content-addressed, a
+ * framework that already answered) always outranks the default set
+ * here. The defaults exist to make the *absence* of a decision
+ * impossible, not to overrule one.
+ */
+function setCacheControl(response: Response, value: string): Response {
+	if (response.headers.has('cache-control')) return response;
+	try {
+		response.headers.set('cache-control', value);
+	} catch {
+		// Sealed headers (immutable guard) — leave the response as-is
+		// rather than fail a request over a cache hint.
+		return response;
+	}
+	return response;
+}
+
+/**
+ * Cache policy for Worker-generated HTML (Issue #291, matrix in Issue
+ * #484).
  *
  * `public/_headers` cannot own this: Cloudflare documents that
  * "Custom headers defined in the `_headers` file are not applied to
@@ -77,8 +100,6 @@ function matchesExternalBoundary(pathname: string): boolean {
  * — the external boundary returns before it.
  */
 function applyHtmlCachePolicy(request: Request, response: Response): Response {
-	if (response.headers.has('cache-control')) return response;
-
 	const { pathname } = new URL(request.url);
 	// Exact-prefix-or-/ so `/administrator` cannot inherit the admin rule,
 	// mirroring how `matchesExternalBoundary` guards `/api/v10`.
@@ -89,15 +110,47 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
 			? 'no-cache'
 			: null;
 	if (value === null) return response;
+	return setCacheControl(response, value);
+}
 
-	try {
-		response.headers.set('cache-control', value);
-	} catch {
-		// Sealed headers (immutable guard) — leave the response as-is
-		// rather than fail a page render over a cache hint.
-		return response;
-	}
-	return response;
+/**
+ * Cache policy for the external HTTP boundary (Issue #484).
+ *
+ * Everything the boundary answers is per-caller: the reaction
+ * aggregate is scoped to the calling API key, the access counter is a
+ * live value, `/api/v1/health` is a liveness probe, the error envelope
+ * echoes the requested path. None of that may become a stored entry in
+ * a browser cache or an edge cache — the hazard the checklist this
+ * Issue cites names directly ("responses whose content varies per user
+ * must not be cached in the CDN or the KV").
+ *
+ * Before this Issue the boundary declared no policy at all, so the
+ * storage behaviour of authenticated JSON was an accident of runtime
+ * defaults rather than a decision. `no-store` is now the explicit
+ * default, and it is the strictest option because the cost of guessing
+ * wrong here is another principal's payload, not a slow page.
+ *
+ * Two boundaries are deliberately left alone:
+ *
+ *   - `GET /api/v1/reaction-images/:id` declares
+ *     `public, max-age=31536000, immutable` inside its handler. Those
+ *     bytes are content-addressed in R2, so `setCacheControl` sees the
+ *     header already present and leaves it alone — a handler that knows
+ *     its bytes never change outranks a blanket default.
+ *   - Anything a framework sets on its own keeps its own value, by the
+ *     same rule.
+ *
+ * No `Vary` is added. No boundary response varies on `Cookie` or
+ * `Authorization` in a way a shared cache could act on, and `no-store`
+ * already forbids shared storage. Emitting `Vary: Cookie` here would
+ * only advertise a per-visitor body that must never be reused.
+ *
+ * The complete matrix across SSR HTML, the boundary and Static Assets
+ * is declared in `scripts/_cache-policy.mjs` and documented in
+ * `docs/verification/perf/cache-headers-matrix.md`.
+ */
+function applyExternalCachePolicy(response: Response): Response {
+	return setCacheControl(response, 'no-store');
 }
 
 /**
@@ -115,7 +168,7 @@ export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
 		if (matchesExternalBoundary(url.pathname)) {
-			return externalBoundary.fetch(request, env, ctx);
+			return applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx));
 		}
 		return applyHtmlCachePolicy(request, await handler.fetch(request));
 	},

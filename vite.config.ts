@@ -87,8 +87,22 @@ function clientBundleGraphPlugin(): Plugin {
 			const outDir = this.environment.config.build.outDir;
 			const reportPath = resolve(__dirname, 'dist/client/bundle-graph.json');
 
-			const assets = {};
-			const chunks = {};
+			const assets: Record<string, { bytes: number; gzip_bytes: number }> = {};
+			const chunks: Record<
+				string,
+				{
+					name: string;
+					facade_module_id: string | null;
+					facade_query: string | null;
+					is_entry: boolean;
+					is_dynamic_entry: boolean;
+					bytes: number;
+					gzip_bytes: number;
+					css_bytes: number;
+					imports: string[];
+					css: string[];
+				}
+			> = {};
 			for (const [fileName, output] of Object.entries(bundle)) {
 				if (output.type === 'asset') {
 					const bytes = output.source.length;

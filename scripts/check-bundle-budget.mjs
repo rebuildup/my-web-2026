@@ -37,6 +37,7 @@
  *   node scripts/check-bundle-budget.mjs
  *   node scripts/check-bundle-budget.mjs --json
  *   node scripts/check-bundle-budget.mjs --report=.tmp/bundle-budget.json
+ *   node scripts/check-bundle-budget.mjs --html=.tmp/bundle-budget.html
  *   node scripts/check-bundle-budget.mjs --graph=<path> --budget=<path>
  *
  * Exit codes: 0 = within budget, 1 = violation or acknowledged exception that
@@ -522,6 +523,148 @@ function renderText(report) {
 	return lines.join('\n');
 }
 
+/**
+ * Render the run as a single self-contained HTML page.
+ *
+ * The gate has to be reviewable by someone who will not read a wall of CI
+ * log lines, and the Issue requires a screenshot as delivery evidence. Both
+ * are served by the same artefact: one run, one file, no external assets and
+ * no server — open it from disk. It contains route names and byte counts
+ * only; nothing here is a secret.
+ */
+export function renderHtml(report) {
+	const budget = report.budget ?? null;
+	const verdictOf = (route) =>
+		report.violations.some((v) => v.route === route.route)
+			? 'over'
+			: report.exceptions.some((e) => e.route === route.route)
+				? 'exempt'
+				: 'ok';
+	const cap = (route, key) => budget?.routes?.[route.route]?.[key] ?? null;
+	const rows = report.routes
+		.map((route) => {
+			const verdict = verdictOf(route);
+			const limit = cap(route, 'initial_js_bytes');
+			const ratio = limit ? Math.min(1, route.initial_js_bytes / limit) : 0;
+			return `<tr class="${verdict}">
+  <td class="route"><code>${route.route}</code></td>
+  <td class="num">${route.initial_js_bytes.toLocaleString('en-US')}</td>
+  <td class="num muted">${route.initial_js_gzip_bytes.toLocaleString('en-US')}</td>
+  <td class="num">${route.route_added_js_bytes.toLocaleString('en-US')}</td>
+  <td class="num">${route.initial_css_bytes.toLocaleString('en-US')}</td>
+  <td class="num">${limit ? limit.toLocaleString('en-US') : '—'}</td>
+  <td class="bar"><span style="width:${(ratio * 100).toFixed(1)}%"></span></td>
+  <td class="verdict">${verdict}</td>
+</tr>`;
+		})
+		.join('\n');
+
+	const toolRows = report.tool_iframe
+		.map(
+			(tool) => `<tr>
+  <td class="route"><code>/tools/${tool.slug}/app/</code></td>
+  <td class="num">${tool.js_bytes.toLocaleString('en-US')}</td>
+  <td class="num muted">—</td>
+  <td class="num">0</td>
+  <td class="num">${tool.css_bytes.toLocaleString('en-US')}</td>
+  <td class="num">${(budget?.tool_iframe?.max_js_bytes_per_tool ?? 0).toLocaleString('en-US')}</td>
+  <td class="bar"><span style="width:${(
+		Math.min(1, tool.js_bytes / (budget?.tool_iframe?.max_js_bytes_per_tool || 1)) * 100
+	).toFixed(1)}%"></span></td>
+  <td class="verdict">separate</td>
+</tr>`,
+		)
+		.join('\n');
+
+	const conditions = Object.entries(report.measurement ?? {})
+		.map(([key, value]) => `<dt>${key}</dt><dd>${value}</dd>`)
+		.join('\n');
+
+	const failures = report.violations.length
+		? `<ul class="fail">${report.violations.map((v) => `<li>${v.message}</li>`).join('')}</ul>`
+		: '<p class="pass-note">No route or Tool bundle exceeds its cap.</p>';
+
+	return `<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>my-web-2026 route bundle budget report</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body { margin: 0; padding: 40px 44px; background: #f7f5f1; color: #16150f;
+         font: 14px/1.55 ui-sans-serif, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  h1 { margin: 0 0 4px; font-size: 26px; letter-spacing: -0.02em; }
+  h2 { margin: 34px 0 10px; font-size: 15px; text-transform: uppercase;
+       letter-spacing: 0.09em; color: #6b6558; }
+  .sub { color: #6b6558; margin-bottom: 22px; }
+  .banner { display: inline-block; padding: 7px 16px; border-radius: 999px;
+            font-weight: 700; letter-spacing: 0.05em; font-size: 13px; }
+  .banner.pass { background: #1f6f43; color: #fff; }
+  .banner.fail { background: #a3231d; color: #fff; }
+  dl { display: grid; grid-template-columns: 150px 1fr; gap: 4px 16px; margin: 0;
+       background: #fff; border: 1px solid #e2ddd2; border-radius: 10px; padding: 18px 20px; }
+  dt { font-weight: 700; color: #6b6558; }
+  dd { margin: 0; }
+  table { width: 100%; border-collapse: collapse; background: #fff;
+          border: 1px solid #e2ddd2; border-radius: 10px; overflow: hidden; }
+  th, td { padding: 7px 10px; text-align: left; border-bottom: 1px solid #efebe2; }
+  th { font-size: 11px; text-transform: uppercase; letter-spacing: 0.07em; color: #6b6558;
+       background: #faf8f4; }
+  tr:last-child td { border-bottom: none; }
+  td.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.muted { color: #8c8577; }
+  td.bar { width: 190px; }
+  td.bar span { display: block; height: 7px; border-radius: 4px; background: #c9c2b2; }
+  tr.over td.bar span { background: #a3231d; }
+  tr.ok td.bar span { background: #1f6f43; }
+  td.verdict { font-weight: 700; text-transform: uppercase; font-size: 11px; letter-spacing: 0.07em; }
+  tr.over td.verdict { color: #a3231d; }
+  tr.ok td.verdict { color: #1f6f43; }
+  tr.exempt td.verdict { color: #8a6d1f; }
+  tr.over { background: #fdf3f2; }
+  ul.fail { margin: 0; padding-left: 20px; color: #a3231d; }
+  .pass-note { margin: 0; color: #1f6f43; }
+  footer { margin-top: 26px; color: #8c8577; font-size: 12px; }
+</style>
+</head>
+<body>
+<h1>Route bundle budget report</h1>
+<p class="sub">my-web-2026 · Issue #482 · per-route initial JS / CSS bytes from the Vite client bundle graph</p>
+<p><span class="banner ${report.violations.length ? 'fail' : 'pass'}">${report.violations.length ? `FAIL — ${report.violations.length} violation(s)` : 'PASS — every route and Tool bundle within budget'}</span></p>
+
+<h2>Reproduction conditions</h2>
+<dl>${conditions}
+  <dt>measured_sha</dt><dd><code>${report.source_sha ?? 'unknown'}</code></dd>
+  <dt>client_entry</dt><dd><code>${report.entry}</code> · shell ${formatBytes(report.shell_js_bytes)} JS / ${formatBytes(report.shell_css_bytes)} CSS</dd>
+  <dt>command</dt><dd><code>pnpm run build &amp;&amp; pnpm run bundle:budget:check</code></dd>
+</dl>
+
+<h2>Host routes</h2>
+<table>
+<thead><tr><th>route</th><th>initial JS</th><th>gzip -9</th><th>route adds</th><th>initial CSS</th><th>budget</th><th>usage</th><th>verdict</th></tr></thead>
+<tbody>
+${rows}
+</tbody>
+</table>
+
+<h2>Tool iframe bundles (aggregated separately)</h2>
+<table>
+<thead><tr><th>bundle</th><th>JS</th><th>gzip -9</th><th>route adds</th><th>CSS</th><th>budget</th><th>usage</th><th>verdict</th></tr></thead>
+<tbody>
+${toolRows || '<tr><td colspan="8">No Tool bundles in this build output.</td></tr>'}
+</tbody>
+</table>
+
+<h2>Result</h2>
+${failures}
+
+<footer>Generated by <code>scripts/check-bundle-budget.mjs</code>. Bytes are raw on-disk sizes of the files a browser fetches before the route is interactive; gzip is reference only. Browser-dependent measurement is Issue #384 / #385, runtime metrics are Issue #386.</footer>
+</body>
+</html>
+`;
+}
+
 export function buildReport({ graph, routesByPath, toolsDir, budget, sourceSha }) {
 	const measured = measureRoutes(graph, routesByPath);
 	const routeVerdicts = evaluateBudgets({ routes: measured.routes, budget });
@@ -557,6 +700,9 @@ export function buildReport({ graph, routesByPath, toolsDir, budget, sourceSha }
 		schema_version: 1,
 		source_sha: sourceSha,
 		measurement: budget.measurement,
+		// Carried so the HTML renderer can draw each route against its cap.
+		// The gate's own verdicts come from `violations` / `exceptions`.
+		budget: { routes: budget.routes, tool_iframe: budget.tool_iframe },
 		entry: measured.entry,
 		shell_js_bytes: measured.shellTotals.bytes,
 		shell_css_bytes: measured.shellTotals.cssBytes,
@@ -575,6 +721,7 @@ function main(argv) {
 	const routeTreePath = resolve(parseArg(argv, '--route-tree') ?? DEFAULT_ROUTE_TREE);
 	const toolsDir = resolve(parseArg(argv, '--tools') ?? DEFAULT_TOOLS_DIR);
 	const reportPath = parseArg(argv, '--report');
+	const htmlPath = parseArg(argv, '--html');
 	const asJson = argv.includes('--json');
 
 	if (!existsSync(graphPath)) {
@@ -627,6 +774,12 @@ function main(argv) {
 		const target = resolve(reportPath);
 		writeFileSync(target, `${JSON.stringify(report, null, '\t')}\n`);
 		console.log(`[bundle-budget] report written to ${target}`);
+	}
+
+	if (htmlPath) {
+		const target = resolve(htmlPath);
+		writeFileSync(target, renderHtml(report));
+		console.log(`[bundle-budget] HTML report written to ${target}`);
 	}
 
 	if (asJson) {

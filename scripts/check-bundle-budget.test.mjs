@@ -11,6 +11,7 @@ import {
 	measureRoutes,
 	measureToolBundles,
 	parseRouteTree,
+	renderHtml,
 } from './check-bundle-budget.mjs';
 
 /**
@@ -418,6 +419,49 @@ describe('Tool iframe bundles are aggregated separately (Issue #482)', () => {
 		assert.equal(violations.length, 1);
 		assert.equal(violations[0].route, 'tool:prototype');
 		assert.match(violations[0].message, /separate Tool budget/);
+	});
+});
+
+describe('renderHtml (Issue #482)', () => {
+	function reportFor(heavy) {
+		const measured = measureRoutes(graph({ heavyToolsChunk: heavy }), parseRouteTree(ROUTE_TREE));
+		const budget = budgetOf(GENEROUS);
+		const result = evaluateBudgets({ routes: measured.routes, budget });
+		return {
+			schema_version: 1,
+			source_sha: 'a'.repeat(40),
+			measurement: { mode: 'static bundle graph', browser: 'not applicable' },
+			budget: { routes: budget.routes, tool_iframe: budget.tool_iframe },
+			entry: measured.entry,
+			shell_js_bytes: measured.shellTotals.bytes,
+			shell_css_bytes: measured.shellTotals.cssBytes,
+			routes: measured.routes,
+			tool_iframe: [
+				{ slug: 'prototype', js_bytes: 5_000, css_bytes: 800, js_files: 1, css_files: 1 },
+			],
+			violations: result.violations,
+			exceptions: result.exceptions,
+			warnings: result.warnings,
+		};
+	}
+
+	it('renders a self-contained PASS page with the measurement conditions', () => {
+		const html = renderHtml(reportFor(false));
+		assert.match(html, /<!doctype html>/);
+		assert.match(html, /PASS — every route and Tool bundle within budget/);
+		assert.match(html, /measured_sha/);
+		assert.match(html, /[a]{40}/);
+		assert.match(html, /not applicable/);
+		// Self-contained: no script tag, no remote asset — the artefact has to
+		// render from disk without a server.
+		assert.doesNotMatch(html, /<script/i);
+		assert.doesNotMatch(html, /<link /i);
+	});
+
+	it('renders the failing route and its message when a cap is exceeded', () => {
+		const html = renderHtml(reportFor(true));
+		assert.match(html, /FAIL — 1 violation\(s\)/);
+		assert.match(html, /\/tools\/\$slug initial_js_bytes=3112000/);
 	});
 });
 

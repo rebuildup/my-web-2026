@@ -141,6 +141,39 @@ requires Node >= 22.18).
 No fixture reaches a Tool repository, a Cloudflare resource, or the
 network: each is an object literal plus a fake window.
 
+## Verification report / screenshot
+
+```bash
+pnpm run tools:embed-policy:report -- --out=.tmp/tool-iframe-sandbox.html
+# open it in a browser, or screenshot it:
+node .tmp/shoot-embed-policy.mjs   # see the Issue #465 PR body for the exact script
+```
+
+The report renders the per-entry verdict, the sandbox token classes,
+and the hostile-message matrix from §"Hostile message matrix" below.
+It is also a self-check: a fixture whose verdict drifts, or a refused
+message that reaches the host action, makes the script exit non-zero.
+
+Committed screenshot: `docs/verification/security/tool-iframe-sandbox.webp`
+(the Issue names a `.png` path; the repository screenshot rule keeps
+binaries as moderately compressed WebP, so only the extension differs).
+
+## Hostile message matrix
+
+Fixtures used by both the unit tests and the report. Host origin
+`https://host.invalid` (never contacted); the Tool window is a plain
+object.
+
+| injected event                                | verdict | reason             |
+| --------------------------------------------- | ------- | ------------------ |
+| allowlisted type, exact origin, Tool window   | ACCEPTED| —                  |
+| foreign origin, allowlisted type              | REFUSED | `origin-mismatch`  |
+| origin that merely starts with the host origin | REFUSED | `origin-mismatch`  |
+| opaque origin (`null`)                        | REFUSED | `origin-mismatch`  |
+| host origin, window that is not the Tool frame| REFUSED | `source-mismatch`  |
+| host origin, type outside `allowed_types`     | REFUSED | `type-not-allowed` |
+| host origin, string / array payload           | REFUSED | `malformed-payload`|
+
 ## Changing a rule
 
 1. Edit `src/tools/embed-policy.ts` and its tests in the same commit.

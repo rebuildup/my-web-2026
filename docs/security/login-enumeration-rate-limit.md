@@ -70,6 +70,25 @@ They do **not** prove anything about the deployed limiter's strength:
 the counter lives in the isolate's heap, so it resets on isolate recycle
 and is not shared across locations. See "Known limits" below.
 
+## Operator-facing behaviour
+
+`/admin/login` (`src/routes/admin.login.tsx`) is a plain HTML form that
+POSTs straight to `/api/v1/auth/sign-in/email`, so Better Auth owns the
+whole response. Consequences worth knowing:
+
+- Three mistyped sign-ins inside 10 seconds now produce `429` instead of a
+  fourth `401`. The browser renders Better Auth's generic body —
+  `{"message":"Too many requests. Please try again later."}` — which is
+  the same shape the wrong-password case already produced, and carries no
+  account information. A programmatic client reads `X-Retry-After`.
+- The message deliberately does not say whether the address is registered,
+  so an operator cannot use the throttle to probe their own account list
+  either.
+- A successful sign-in from the same client after the window elapses is
+  unaffected; the budget is a rolling 10-second window, not a daily cap
+  and not an account lockout. There is no administrative unlock path
+  because there is no lockout state to clear.
+
 ## Reproducing
 
 ```sh

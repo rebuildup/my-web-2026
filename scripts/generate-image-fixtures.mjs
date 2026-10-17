@@ -46,7 +46,7 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import sharp from 'sharp';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -65,7 +65,7 @@ const checkOnly = process.argv.includes('--check');
  * `e2e/image-cls.spec.ts` reads the values back out of the rendered
  * DOM rather than trusting this table.
  */
-const FIXTURES = [
+export const FIXTURES = [
 	{
 		file: 'cls-cover-1600x900.png',
 		width: 1600,
@@ -93,7 +93,7 @@ const FIXTURES = [
  * dimensions. Four flat blocks compress to a few KB and carry exactly
  * the same signal — a real raster of a known size.
  */
-function fixtureSvg({ width, height, from, to, band }) {
+export function fixtureSvg({ width, height, from, to, band }) {
 	const bandHeight = Math.round(height / 6);
 	const bandY = Math.round(height / 2 - bandHeight / 2);
 	const inset = Math.round(width / 12);
@@ -107,7 +107,7 @@ function fixtureSvg({ width, height, from, to, band }) {
 	].join('');
 }
 
-async function render(fixture) {
+export async function render(fixture) {
 	// sharp 0.35.x does not accept a raw SVG string as input — it must
 	// be wrapped in a Buffer (same note as generate-counter-digits.mjs).
 	return sharp(Buffer.from(fixtureSvg(fixture)))
@@ -153,4 +153,14 @@ async function main() {
 	}
 }
 
-await main();
+/**
+ * Run only when invoked directly.
+ *
+ * `scripts/generate-image-fixtures.test.mjs` imports the render
+ * helpers to assert the committed bytes and the declared dimensions;
+ * running `main()` on import would rewrite `public/fixtures/` as a
+ * side effect of importing the module.
+ */
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+	await main();
+}

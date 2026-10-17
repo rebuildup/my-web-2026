@@ -165,7 +165,7 @@ describe('PortfolioMediaFigure — intrinsic size reservation (#486)', () => {
 		return act(async () => {
 			container.querySelector('img')?.dispatchEvent(new Event('error', { bubbles: true }));
 		}).then(() => {
-			const frame = container.querySelector('figure[role="img"]');
+			const frame = container.querySelector<HTMLElement>('figure[role="img"]');
 			expect(frame?.style.aspectRatio).toBe(imageRatio);
 		});
 	});

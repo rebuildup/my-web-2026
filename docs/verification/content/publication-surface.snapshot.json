@@ -1,0 +1,859 @@
+{
+	"schema": "publication-surface.v1",
+	"surface": {
+		"origin": "https://rebuildup.dev",
+		"firstPartyDomain": "rebuildup.dev",
+		"externalBoundaryPrefixes": [
+			"/api/v1",
+			"/integrations",
+			"/oauth",
+			"/webhooks"
+		],
+		"surfaces": [
+			{
+				"id": "/",
+				"path": "/",
+				"classification": "public",
+				"sitemap": true,
+				"dynamic": null,
+				"files": [
+					"src/routes/index.tsx"
+				],
+				"urls": [
+					"/"
+				],
+				"reason": "Canonical landing surface (ADR-0014 production origin)."
+			},
+			{
+				"id": "/__root__",
+				"path": null,
+				"classification": "internal",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/__root.tsx"
+				],
+				"urls": [],
+				"reason": "Root shell — owns head metadata, global nav and the admin chrome gate. No URL of its own."
+			},
+			{
+				"id": "/about",
+				"path": "/about",
+				"classification": "public",
+				"sitemap": true,
+				"dynamic": null,
+				"files": [
+					"src/routes/about.tsx"
+				],
+				"urls": [
+					"/about"
+				],
+				"reason": "Public narrative surface; renders repo-controlled copy only."
+			},
+			{
+				"id": "/admin",
+				"path": "/admin",
+				"classification": "internal",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/admin.tsx"
+				],
+				"urls": [
+					"/admin"
+				],
+				"reason": "Admin layout. Auth gating lives in each child loader (Issue #106 self-redirect fix)."
+			},
+			{
+				"id": "/admin/",
+				"path": null,
+				"classification": "internal",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/admin.index.tsx"
+				],
+				"urls": [],
+				"reason": "Admin landing — signed-in only."
+			},
+			{
+				"id": "/admin/emoji-catalog",
+				"path": "/admin/emoji-catalog",
+				"classification": "internal",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/admin.emoji-catalog.tsx"
+				],
+				"urls": [
+					"/admin/emoji-catalog"
+				],
+				"reason": "Reaction emoji catalog — admin role only."
+			},
+			{
+				"id": "/admin/images",
+				"path": "/admin/images",
+				"classification": "internal",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/admin.images.tsx"
+				],
+				"urls": [
+					"/admin/images"
+				],
+				"reason": "Media library — admin role only."
+			},
+			{
+				"id": "/admin/invitations",
+				"path": "/admin/invitations",
+				"classification": "internal",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/admin.invitations.tsx"
+				],
+				"urls": [
+					"/admin/invitations"
+				],
+				"reason": "Invitation management — admin role only."
+			},
+			{
+				"id": "/admin/invitations/accept",
+				"path": "/admin/invitations/accept",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/admin.invitations_.accept.tsx"
+				],
+				"urls": [
+					"/admin/invitations/accept"
+				],
+				"reason": "PUBLIC BY NECESSITY: the invitation landing page probes an emailed token before any session exists. Renders no project data and never a sitemap target."
+			},
+			{
+				"id": "/admin/keys",
+				"path": "/admin/keys",
+				"classification": "internal",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/admin.keys.tsx"
+				],
+				"urls": [
+					"/admin/keys"
+				],
+				"reason": "API key management — admin role only."
+			},
+			{
+				"id": "/admin/login",
+				"path": "/admin/login",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/admin.login.tsx"
+				],
+				"urls": [
+					"/admin/login"
+				],
+				"reason": "PUBLIC BY NECESSITY: the sign-in waypoint has to be reachable before a session exists. Its loader only redirects already-signed-in users. Never a sitemap target."
+			},
+			{
+				"id": "/contact",
+				"path": "/contact",
+				"classification": "public",
+				"sitemap": true,
+				"dynamic": null,
+				"files": [
+					"src/routes/contact.tsx"
+				],
+				"urls": [
+					"/contact"
+				],
+				"reason": "Public contact surface; renders only channels that pass the fail-closed freshness gate."
+			},
+			{
+				"id": "/design-system",
+				"path": "/design-system",
+				"classification": "public",
+				"sitemap": false,
+				"dynamic": null,
+				"files": [
+					"src/routes/design-system.tsx"
+				],
+				"urls": [
+					"/design-system"
+				],
+				"reason": "Publicly reachable showcase, but it is intentionally outside the editorial IA (SUPPRESS_BREADCRUMB_LEAF_IDS), so it is not a sitemap target."
+			},
+			{
+				"id": "/portfolio/",
+				"path": "/portfolio",
+				"classification": "public",
+				"sitemap": true,
+				"dynamic": null,
+				"files": [
+					"src/routes/portfolio/index.tsx"
+				],
+				"urls": [
+					"/portfolio"
+				],
+				"reason": "Public portfolio index; lists published projects only."
+			},
+			{
+				"id": "/portfolio/$slug",
+				"path": null,
+				"classification": "public",
+				"sitemap": true,
+				"dynamic": "portfolio-projects",
+				"files": [
+					"src/routes/portfolio/$slug.tsx"
+				],
+				"urls": [
+					"/portfolio/aulymo",
+					"/portfolio/multi-slicer",
+					"/portfolio/my-web-2026",
+					"/portfolio/project-init",
+					"/portfolio/sciencearts-optim-internship-2026",
+					"/portfolio/tastile"
+				],
+				"reason": "Per-project detail. Expands from the repo-controlled portfolio seed slugs; the loader serves `visibility = public` rows only."
+			},
+			{
+				"id": "/tools/",
+				"path": "/tools",
+				"classification": "public",
+				"sitemap": true,
+				"dynamic": null,
+				"files": [
+					"src/routes/tools.index.tsx"
+				],
+				"urls": [
+					"/tools"
+				],
+				"reason": "Public tool index. `host_disabled` entries render as \"Coming soon\" and are deliberately not linkable."
+			},
+			{
+				"id": "/tools/$slug",
+				"path": null,
+				"classification": "public",
+				"sitemap": true,
+				"dynamic": "integrated-tools",
+				"files": [
+					"src/routes/tools.$slug.tsx"
+				],
+				"urls": [
+					"/tools/prototype",
+					"/tools/readmark"
+				],
+				"reason": "Per-tool iframe shell. Expands from the tool manifest rows with an embeddable delivery kind."
+			}
+		],
+		"sitemap": [
+			"/",
+			"/about",
+			"/contact",
+			"/portfolio",
+			"/portfolio/aulymo",
+			"/portfolio/multi-slicer",
+			"/portfolio/my-web-2026",
+			"/portfolio/project-init",
+			"/portfolio/sciencearts-optim-internship-2026",
+			"/portfolio/tastile",
+			"/tools",
+			"/tools/prototype",
+			"/tools/readmark"
+		],
+		"externalHosts": [
+			"361do.booth.pm",
+			"design.google",
+			"developers.google.com",
+			"fonts.googleapis.com",
+			"fonts.gstatic.com",
+			"github.com",
+			"json-schema.org",
+			"samuido.booth.pm",
+			"schema.org",
+			"scripts.sil.org",
+			"www.apache.org",
+			"www.facebook.com",
+			"www.googletagmanager.com",
+			"www.maff.go.jp",
+			"www.mhlw.go.jp",
+			"www.mlit.go.jp",
+			"www.naprock.jp",
+			"www.procon.gr.jp",
+			"www.stat.go.jp",
+			"www.w3.org",
+			"x.com",
+			"yusuke-kim.com"
+		],
+		"firstPartyHosts": [],
+		"externalUrls": [
+			{
+				"url": "http://json-schema.org/draft-07/schema#",
+				"host": "json-schema.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"src/tools/manifest.schema.json"
+				]
+			},
+			{
+				"url": "http://scripts.sil.org/OFL",
+				"host": "scripts.sil.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "http://www.apache.org/licenses",
+				"host": "www.apache.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "http://www.apache.org/licenses/LICENSE-2.0",
+				"host": "www.apache.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "http://www.w3.org/2000/svg",
+				"host": "www.w3.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"public/favicon.svg",
+					"src/home/mark.tsx"
+				]
+			},
+			{
+				"url": "https://361do.booth.pm",
+				"host": "361do.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://design.google/library/expressive-material-design-google-research",
+				"host": "design.google",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://developers.google.com/fonts/docs/material_symbols",
+				"host": "developers.google.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://fonts.googleapis.com",
+				"host": "fonts.googleapis.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/routes/__root.tsx"
+				]
+			},
+			{
+				"url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap",
+				"host": "fonts.googleapis.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/routes/__root.tsx"
+				]
+			},
+			{
+				"url": "https://fonts.gstatic.com",
+				"host": "fonts.gstatic.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/routes/__root.tsx"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/data.ts",
+					"src/contact/channels.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/ProtoType.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/design-skills",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2026",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/contact/channels.json",
+					"src/home/footer.tsx",
+					"src/home/hero.tsx",
+					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/routes/design-system/DesignSystemPage.tsx"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/my-web-2026/releases",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/components/EmptyState.tsx"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/project-init",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/readmark.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-ae-expression.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-business-mail-block.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-code-type-p5.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-color-palette.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-fillgen.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-history-quiz.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-mic-level.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-pi-game.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-pomodoro.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-qr-generator.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-sequential-png-preview.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-svg2tsx.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://github.com/rebuildup/tool-text-counter.git",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/contact/channels.json",
+					"src/editorial/nav/route-labels.ts",
+					"src/portfolio/components/Markdown.tsx"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/about",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/about.tsx"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/contact",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/contact.tsx"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/design-system",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/design-system.tsx"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/portfolio",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/portfolio/$slug.tsx",
+					"src/routes/portfolio/index.tsx"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/schema/tools-manifest.v1.json",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/tools/manifest.schema.json"
+				]
+			},
+			{
+				"url": "https://samuido.booth.pm",
+				"host": "samuido.booth.pm",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/data.ts"
+				]
+			},
+			{
+				"url": "https://schema.org",
+				"host": "schema.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"src/editorial/nav/Breadcrumbs.tsx"
+				]
+			},
+			{
+				"url": "https://www.facebook.com/KosenProcon",
+				"host": "www.facebook.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://www.googletagmanager.com/gtag/js?id=",
+				"host": "www.googletagmanager.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/editorial/analytics/GoogleAnalytics.tsx"
+				]
+			},
+			{
+				"url": "https://www.maff.go.jp/j/council/seisaku/kensho/attach/pdf/18siryo-13.pdf",
+				"host": "www.maff.go.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000148322.html",
+				"host": "www.mhlw.go.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://www.mlit.go.jp/hakusyo/mlit/r05/hakusho/r06/pdf/kokudo.pdf",
+				"host": "www.mlit.go.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://www.naprock.jp/intprocon",
+				"host": "www.naprock.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://www.procon.gr.jp",
+				"host": "www.procon.gr.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://www.stat.go.jp/data/topics/pdf/topics138.pdf",
+				"host": "www.stat.go.jp",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"public/share/procon2026/index.html"
+				]
+			},
+			{
+				"url": "https://x.com/samuido",
+				"host": "x.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/about/data.ts"
+				]
+			},
+			{
+				"url": "https://yusuke-kim.com",
+				"host": "yusuke-kim.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/contact/channels.json"
+				]
+			}
+		]
+	},
+	"approvedTransition": {
+		"addedPublicUrls": [
+			"/",
+			"/about",
+			"/contact",
+			"/portfolio",
+			"/portfolio/aulymo",
+			"/portfolio/multi-slicer",
+			"/portfolio/my-web-2026",
+			"/portfolio/project-init",
+			"/portfolio/sciencearts-optim-internship-2026",
+			"/portfolio/tastile",
+			"/tools",
+			"/tools/prototype",
+			"/tools/readmark"
+		],
+		"removedPublicUrls": [],
+		"addedExternalUrls": [
+			"http://json-schema.org/draft-07/schema#",
+			"http://scripts.sil.org/OFL",
+			"http://www.apache.org/licenses",
+			"http://www.apache.org/licenses/LICENSE-2.0",
+			"http://www.w3.org/2000/svg",
+			"https://361do.booth.pm",
+			"https://design.google/library/expressive-material-design-google-research",
+			"https://developers.google.com/fonts/docs/material_symbols",
+			"https://fonts.googleapis.com",
+			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap",
+			"https://fonts.gstatic.com",
+			"https://github.com/rebuildup",
+			"https://github.com/rebuildup/ProtoType.git",
+			"https://github.com/rebuildup/design-skills",
+			"https://github.com/rebuildup/my-web-2026",
+			"https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md",
+			"https://github.com/rebuildup/my-web-2026/releases",
+			"https://github.com/rebuildup/project-init",
+			"https://github.com/rebuildup/readmark.git",
+			"https://github.com/rebuildup/tool-ae-expression.git",
+			"https://github.com/rebuildup/tool-business-mail-block.git",
+			"https://github.com/rebuildup/tool-code-type-p5.git",
+			"https://github.com/rebuildup/tool-color-palette.git",
+			"https://github.com/rebuildup/tool-fillgen.git",
+			"https://github.com/rebuildup/tool-history-quiz.git",
+			"https://github.com/rebuildup/tool-mic-level.git",
+			"https://github.com/rebuildup/tool-pi-game.git",
+			"https://github.com/rebuildup/tool-pomodoro.git",
+			"https://github.com/rebuildup/tool-qr-generator.git",
+			"https://github.com/rebuildup/tool-sequential-png-preview.git",
+			"https://github.com/rebuildup/tool-svg2tsx.git",
+			"https://github.com/rebuildup/tool-text-counter.git",
+			"https://rebuildup.dev",
+			"https://rebuildup.dev/about",
+			"https://rebuildup.dev/contact",
+			"https://rebuildup.dev/design-system",
+			"https://rebuildup.dev/portfolio",
+			"https://rebuildup.dev/schema/tools-manifest.v1.json",
+			"https://samuido.booth.pm",
+			"https://schema.org",
+			"https://www.facebook.com/KosenProcon",
+			"https://www.googletagmanager.com/gtag/js?id=",
+			"https://www.maff.go.jp/j/council/seisaku/kensho/attach/pdf/18siryo-13.pdf",
+			"https://www.mhlw.go.jp/stf/seisakunitsuite/bunya/0000148322.html",
+			"https://www.mlit.go.jp/hakusyo/mlit/r05/hakusho/r06/pdf/kokudo.pdf",
+			"https://www.naprock.jp/intprocon",
+			"https://www.procon.gr.jp",
+			"https://www.stat.go.jp/data/topics/pdf/topics138.pdf",
+			"https://x.com/samuido",
+			"https://yusuke-kim.com"
+		],
+		"removedExternalUrls": [],
+		"addedExternalHosts": [
+			"361do.booth.pm",
+			"design.google",
+			"developers.google.com",
+			"fonts.googleapis.com",
+			"fonts.gstatic.com",
+			"github.com",
+			"json-schema.org",
+			"samuido.booth.pm",
+			"schema.org",
+			"scripts.sil.org",
+			"www.apache.org",
+			"www.facebook.com",
+			"www.googletagmanager.com",
+			"www.maff.go.jp",
+			"www.mhlw.go.jp",
+			"www.mlit.go.jp",
+			"www.naprock.jp",
+			"www.procon.gr.jp",
+			"www.stat.go.jp",
+			"www.w3.org",
+			"x.com",
+			"yusuke-kim.com"
+		],
+		"removedExternalHosts": [],
+		"classificationChanges": [],
+		"findings": [
+			{
+				"code": "E010 snapshot-missing",
+				"severity": "error",
+				"message": "No publication-surface snapshot is committed. Run `pnpm run publication:write` to record the surface that this change proposes to publish."
+			}
+		]
+	}
+}

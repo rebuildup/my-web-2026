@@ -394,8 +394,8 @@ export function renderReportHtml(report) {
 				`<td>${cell(run.metrics.fontSwapMs)}</td>`,
 				`<td>${cell(run.metrics.fontRequests)}</td>`,
 				`<td>${cell(run.metrics.fontRequestsAborted)}</td>`,
-				verdict,
-				shot,
+				`<td>${verdict}</td>`,
+				`<td>${shot}</td>`,
 				'</tr>',
 			].join('');
 		})

@@ -474,6 +474,19 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		assert.match(html, /<td>cls<\/td><td>0\.12–0\.975<\/td><td>0\.001–0\.03<\/td>/);
 	});
 
+	it('renders a metric row as one table row, cells included', () => {
+		// A dropped `<td>` wrapper makes the browser hoist the row out
+		// of the table and render the report as a stack of images.
+		const html = renderReportHtml(report);
+		const metricsRow = html
+			.split('<h2>metrics</h2>')[1]
+			.split('</tbody>')[0]
+			.split('\n')
+			.filter((line) => line.startsWith('<tr>'))[0];
+		assert.equal(metricsRow.match(/<td>/g).length, 10);
+		assert.match(metricsRow, /<td><span class="ok">readable<\/span><\/td><td><img /);
+	});
+
 	it('renders an unobserved metric as n/a, never as 0 ms', () => {
 		const html = renderReportHtml(report);
 		// The fixture run is the blocked scenario: no webfont face ever

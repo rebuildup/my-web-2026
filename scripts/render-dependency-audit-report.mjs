@@ -239,11 +239,21 @@ ${counts}
 
 <h2>Blocking (${escapeHtml(model.blockingCount)})</h2>
 ${table(
-	['advisory id', 'severity', 'package', 'installed', 'patched in', 'dependency path', 'why'],
+	[
+		'advisory id',
+		'severity',
+		'package',
+		'title',
+		'installed',
+		'patched in',
+		'dependency path',
+		'why',
+	],
 	model.blocking.map((row) => [
 		row.id,
 		row.severity,
 		row.package,
+		row.title,
 		row.versions,
 		row.patchedVersions,
 		row.devOnly ? `${row.path} (dev dependency path)` : row.path,

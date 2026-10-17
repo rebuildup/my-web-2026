@@ -187,7 +187,7 @@ describe('home loaders — an upstream that echoes the request cannot poison the
 		const logged = await captureConsole(async () => {
 			result = await getHomeReactionsImpl(
 				envLike,
-				{ cookie: `mw_actor_id=${CANARY_COOKIE_VALUE}` },
+				{ proto: 'https', cookie: `mw_actor_id=${CANARY_COOKIE_VALUE}` },
 				'home-page',
 				'https://rebuildup.dev',
 				echoingFetcher(),
@@ -205,7 +205,7 @@ describe('home loaders — an upstream that echoes the request cannot poison the
 		const logged = await captureConsole(async () => {
 			result = await getHomeReactionsImpl(
 				{},
-				{},
+				{ proto: 'https', cookie: undefined },
 				'home-page',
 				'https://rebuildup.dev',
 				echoingFetcher(),

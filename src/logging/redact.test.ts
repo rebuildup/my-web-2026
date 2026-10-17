@@ -131,7 +131,7 @@ describe('redactLogValue — structure', () => {
 	});
 
 	it('caps array width', () => {
-		const out = redactLogValue(Array.from({ length: 40 }, (_, i) => i));
+		const out = redactLogValue(Array.from({ length: 40 }, (_, i) => i)) as unknown[];
 		expect(out).toHaveLength(26);
 		expect(out[out.length - 1]).toBe('[+15 more]');
 	});
@@ -162,7 +162,7 @@ describe('redactLogError', () => {
 	});
 
 	it('does not expose the stack (frame context can carry request URLs)', () => {
-		const out = redactLogError(new Error('boom')) as Record<string, unknown>;
+		const out: unknown = redactLogError(new Error('boom'));
 		expect(out).toEqual({ name: 'Error', message: 'boom' });
 	});
 

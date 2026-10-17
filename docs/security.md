@@ -83,6 +83,13 @@ binding API is reachable in the local workerd pool"**, not
 
 ## Automated checks
 
+- Log redaction gate (Issue #467): `pnpm run log:redaction:check`
+  fails when `src/**` writes to `console.*` outside `src/logging/`, or
+  when an operator script prints a secret-named value. The contract,
+  the coverage matrix, and the re-run procedure live in
+  [`docs/security/log-redaction.md`](security/log-redaction.md); the
+  verification report it produces is committed at
+  `docs/verification/security/log-redaction-test.webp`.
 - Secret scanning: enabled as an asynchronous CI job (see
   `quality/profile.yaml#security_gates.secret_scanning`).
 - Dependency review: deferred to a post-0.1.0 ticket.

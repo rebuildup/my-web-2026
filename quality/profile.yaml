@@ -35,6 +35,11 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      # Issue #467: log surface gate. `src/**` may only reach `console`
+      # through the `src/logging/` redacting logger, and an operator
+      # script may not print a secret-named value. Without this, a new
+      # log call site silently opts out of redaction.
+      - 'pnpm run log:redaction:check'
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
@@ -142,6 +147,10 @@ coverage_policy:
   rationale: 'ADR-0007 — coverage thresholds are deferred to 0.2.0; coverage data is not collected at 0.1.0.'
 
 security_gates:
+  log_redaction:
+    enabled: true
+    command: 'pnpm run log:redaction:check'
+    note: 'Issue #467 — src/** logs only through the src/logging redacting logger; operator scripts print status only. See docs/security/log-redaction.md.'
   secret_scanning:
     enabled: true
     mode: asynchronous

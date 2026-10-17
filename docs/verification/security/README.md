@@ -11,7 +11,8 @@ Proof that the external HTTP boundary answers failures with
 secret name, or binding name — while accepted and rejected requests
 keep their documented shapes, and that a failing public server
 function renders `portfolio_unavailable (ref)` instead of the D1
-message.
+message. The last rows are real SSR renders of `/portfolio`,
+`/about`, and `/`.
 
 Regenerate:
 
@@ -31,7 +32,7 @@ Reading the page:
 | --- | --- |
 | 成功 (accepted) | Valid input; the documented public contract is returned unchanged. |
 | 拒否 (rejected) | Input the caller got wrong; a stable error code (and at most a repo-authored validator reason) is returned. |
-| 失敗・秘匿 (failed) | An internal error occurred; the body carries only the code, a safe message, and the correlation id. The last row is an SSR page: the rendered error screen shows `portfolio_unavailable (ref)`. |
+| 失敗・秘匿 (failed) | An internal error occurred; the body carries only the code, a safe message, and the correlation id. The last rows are SSR renders: `/portfolio` and `/about` show `portfolio_unavailable (ref)` and nothing else, and `/` still renders with a degraded reactions widget. |
 
 Nothing secret is captured: the suite authenticates with a literal
 stub key through the documented DI seam

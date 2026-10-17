@@ -103,9 +103,15 @@ Issue #457 changed two things in this table:
 - The 422 body is now `{ "error": "unknown_image_id" }`. It used to
   carry `reason`, whose text named the backing table
   (`reaction_images`) — internal schema detail on a public endpoint.
-  The detail now stays in the log; the code is self-describing.
+  The detail now stays in the log; the code is self-describing. This
+  is a **breaking** change for any external consumer that read
+  `reason`; no in-repo consumer does, and the removal is recorded in
+  the release description.
 - A 500 is produced by the boundary-wide redaction contract
   (`src/http/errors.ts`): `error`, `message`, and `request_id` only.
+  `request_id` is byte-identical to the `X-Request-Id` header and to
+  the id in the internal log line; a client-supplied `X-Request-Id` is
+  reused only when it matches `^[A-Za-z0-9._:-]{1,128}$`.
 
 ## Atomicity
 

@@ -61,6 +61,29 @@ in `docs/release.md`), not the per-binding local SELF tests (#006
 binding API is reachable in the local workerd pool"**, not
 **"the production database is online"**.
 
+## R2 object visibility (public keys vs private objects)
+
+Portfolio media is delivered through a **public R2 custom domain**
+(`https://media.rebuildup.dev/<key>`), which bypasses the Worker: any
+key that exists in the `MEDIA` bucket can be fetched by anyone who can
+guess it. `src/cloudflare/media-visibility.ts` (Issue #459) therefore
+owns one rule for the repository — a key is publicly servable only when
+it is well-formed and lives under an explicitly declared **public
+prefix** (`portfolio/`, `reactions/`, `public/`); private and
+undeclared namespaces fail closed. It is enforced at the three points
+that can expose an object: `composeMediaUrl` (returns `null`),
+`getImageStream` / `GET /api/v1/reaction-images/:id` (404), and
+`listPublicMediaKeys` (withholds non-public keys, counts without
+naming them). Refusals are 404, never 403, so the boundary is not an
+existence oracle.
+
+Verified against the local workerd R2 fixture only — object enumeration
+and a `cover-<n>` sequential sweep over the published key layout — by
+`test/integration/r2-media-visibility.test.ts`. The bucket-level half
+(unpublished objects must not sit in a custom-domain-served bucket) is
+operator-side and recorded as an open residual in
+[`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md).
+
 ## Inventory at 0.1.0
 
 | Package                     | Pinned version | Notes                                 |

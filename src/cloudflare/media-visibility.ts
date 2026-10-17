@@ -91,15 +91,29 @@ export type MediaKeyRefusal = 'invalid_key' | 'private_namespace' | 'unlisted_na
 
 export type MediaKeyReason = 'public_namespace' | MediaKeyRefusal;
 
-export interface MediaKeyVerdict {
+interface MediaKeyVerdictBase {
 	/** The key exactly as supplied (never normalised). */
 	key: string;
 	/** First path segment, or `null` when the key is malformed. */
 	namespace: string | null;
-	/** True only when the key is well-formed and under a public prefix. */
-	publiclyServable: boolean;
-	reason: MediaKeyReason;
 }
+
+/**
+ * Discriminated on `publiclyServable`, so narrowing on that boolean
+ * also narrows `reason` to the refusal vocabulary. A caller cannot read
+ * a `public_namespace` reason off a refused key.
+ */
+export interface MediaKeyPublicVerdict extends MediaKeyVerdictBase {
+	publiclyServable: true;
+	reason: 'public_namespace';
+}
+
+export interface MediaKeyRefusedVerdict extends MediaKeyVerdictBase {
+	publiclyServable: false;
+	reason: MediaKeyRefusal;
+}
+
+export type MediaKeyVerdict = MediaKeyPublicVerdict | MediaKeyRefusedVerdict;
 
 /**
  * Conservative object-key grammar: ASCII, no query/fragment

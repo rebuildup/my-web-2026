@@ -249,6 +249,17 @@ const [before, after, tool] = await Promise.all([
 ]);
 
 const html = render({ before, after, tool });
+// A verification image is evidence. An `undefined` or a `NaN` inside it
+// is not a rendering glitch to be ignored — it is a measurement that
+// failed, and shipping it would put a wrong number in front of a
+// reviewer. Fail the render instead.
+for (const poison of ['undefined', 'NaN']) {
+	if (html.includes(poison)) {
+		throw new Error(
+			`render-lazy-media-report: the report contains "${poison}" — a measurement field is missing, so the image would be evidence of nothing`,
+		);
+	}
+}
 await mkdir(dirname(tmpPng), { recursive: true });
 const browser = await chromium.launch();
 const page = await browser.newPage({

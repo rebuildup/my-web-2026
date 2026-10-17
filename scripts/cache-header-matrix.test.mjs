@@ -20,6 +20,7 @@ import assert from 'node:assert/strict';
 import test from 'node:test';
 import { evaluateObservation, policyById } from './_cache-policy.mjs';
 import {
+	assessRow,
 	buildTargets,
 	environmentBlock,
 	escapeHtml,
@@ -111,7 +112,10 @@ const ROWS = [
 		id: 'api-json',
 		path: '/api/v1/health',
 		status: 200,
-		cacheControl: policyById('api-json').cacheControl,
+		// Deliberately NOT the declared value: the row's `problems` and
+		// its `cacheControl` must describe the same failure, or a test
+		// would be asserting against two different worlds.
+		cacheControl: 'public, max-age=60',
 		etag: null,
 		vary: null,
 		revalidation: 'no validator sent',
@@ -166,7 +170,7 @@ test('the HTML report states the pass criteria and their result', () => {
 	// criterion 2 must still pass (no row reuses the asset policy).
 	assert.match(
 		html,
-		/every measured response carries its declared Cache-Control<\/td><td class="fail">FAIL \(1\)/,
+		/every measured response carries its declared Cache-Control<\/td><td class="fail">FAIL \(1 of 2\)/,
 	);
 	assert.match(
 		html,
@@ -174,6 +178,211 @@ test('the HTML report states the pass criteria and their result', () => {
 	);
 	// The skipped row is counted, never folded into the pass total.
 	assert.match(html, /1 SKIPPED/);
+});
+
+/**
+ * A pass criterion that cannot fail is not a criterion: it prints PASS
+ * over a contract it never measured, which is exactly the gap between
+ * "the tool judges this" and "the tool prints PASS here". Each case
+ * below is one criterion driven to FAIL by a synthetic row.
+ */
+const CLEAN_HEADERS = { ok: true, problems: [] };
+
+function criterionRow(html, criterion) {
+	const row = new RegExp(`${criterion}</td><td class="(?:ok|fail)">([^<]*)<`);
+	const match = row.exec(html);
+	assert.ok(match, `criterion "${criterion}" is missing from the report`);
+	return { text: match[1], ok: match[0].includes('class="ok"') };
+}
+
+test('criterion 3 fails when a validator class does not answer 304', () => {
+	const html = toHtml(
+		[
+			{
+				id: 'immutable-build-asset',
+				path: '/assets/index-B5Hb0lCH.js',
+				status: 200,
+				cacheControl: policyById('immutable-build-asset').cacheControl,
+				etag: '"abc"',
+				vary: null,
+				// The bytes were re-sent in full despite a matching validator.
+				revalidation: '200',
+				ok: false,
+				problems: [],
+				skipped: false,
+			},
+		],
+		ENVIRONMENT,
+	);
+	const criterion = criterionRow(
+		html,
+		'dynamic classes offer no validator; asset classes answer 304',
+	);
+	assert.equal(criterion.ok, false);
+	assert.match(criterion.text, /did not answer 304/);
+});
+
+test('criterion 3 fails when a dynamic class offers a validator', () => {
+	const html = toHtml(
+		[
+			{
+				id: 'personal-page',
+				path: '/contact',
+				status: 200,
+				cacheControl: policyById('personal-page').cacheControl,
+				etag: '"abc"',
+				vary: null,
+				revalidation: '304 Not Modified',
+				ok: false,
+				problems: ['unexpected ETag'],
+				skipped: false,
+			},
+		],
+		ENVIRONMENT,
+	);
+	const criterion = criterionRow(
+		html,
+		'dynamic classes offer no validator; asset classes answer 304',
+	);
+	assert.equal(criterion.ok, false);
+	assert.match(criterion.text, /unexpected validator/);
+});
+
+test('criterion 3 passes when the conditional request answered 304', () => {
+	const html = toHtml(ROWS, ENVIRONMENT);
+	const criterion = criterionRow(
+		html,
+		'dynamic classes offer no validator; asset classes answer 304',
+	);
+	assert.equal(criterion.ok, true);
+	assert.match(criterion.text, /asset rows answered 304/);
+});
+
+test('criterion 4 fails when a storable response varies on Cookie', () => {
+	const html = toHtml(
+		[
+			{
+				id: 'immutable-build-asset',
+				path: '/assets/index-B5Hb0lCH.js',
+				status: 200,
+				cacheControl: policyById('immutable-build-asset').cacheControl,
+				etag: '"abc"',
+				vary: 'Cookie',
+				revalidation: '304 Not Modified',
+				ok: false,
+				problems: ['user-specific'],
+				skipped: false,
+			},
+		],
+		ENVIRONMENT,
+	);
+	const criterion = criterionRow(html, 'no storable response varies on Cookie / Authorization');
+	assert.equal(criterion.ok, false);
+	assert.match(criterion.text, /FAIL \(1\)/);
+});
+
+test('criterion 5 fails when a skipped row states no reason', () => {
+	const html = toHtml(
+		[
+			{
+				id: 'personal-page',
+				path: '/contact',
+				status: 200,
+				cacheControl: policyById('personal-page').cacheControl,
+				etag: null,
+				vary: null,
+				revalidation: 'no validator sent',
+				ok: true,
+				problems: [],
+				skipped: false,
+			},
+			{
+				id: 'reaction-image',
+				path: null,
+				status: null,
+				skipped: true,
+				ok: false,
+				problems: [],
+			},
+		],
+		ENVIRONMENT,
+	);
+	const criterion = criterionRow(
+		html,
+		'rows this environment cannot produce are SKIPPED, never counted as passes',
+	);
+	assert.equal(criterion.ok, false);
+	assert.match(criterion.text, /without a reason/);
+});
+
+test('a run that measured nothing reports NOT MEASURED instead of five PASSes', () => {
+	// The shape a wrong `--base-url` or a stopped server takes: every
+	// probe throws, every row becomes a SKIPPED, and "no violation was
+	// found" is trivially true of an empty set.
+	const html = toHtml(
+		[
+			{
+				id: 'personal-page',
+				path: '/contact',
+				status: null,
+				skipped: true,
+				note: 'probe failed: fetch failed',
+				ok: false,
+				problems: [],
+			},
+		],
+		ENVIRONMENT,
+	);
+	assert.doesNotMatch(html, /class="ok">PASS/);
+	assert.equal(html.match(/NOT MEASURED/g)?.length, 5);
+});
+
+test('a validator that is never revalidated is a row problem, not a footnote', () => {
+	const headers = CLEAN_HEADERS;
+	const revalidated = assessRow({ etag: '"abc"', revalidation: '304 Not Modified' }, headers);
+	assert.deepEqual(revalidated, CLEAN_HEADERS);
+	const ignored = assessRow({ etag: '"abc"', revalidation: '200' }, headers);
+	assert.equal(ignored.ok, false);
+	assert.match(ignored.problems.join(' '), /If-None-Match was answered with 200/);
+	// A class with no validator sends no conditional request, which is
+	// correct and must not be reported.
+	const noValidator = assessRow({ etag: null, revalidation: 'no validator sent' }, headers);
+	assert.deepEqual(noValidator, CLEAN_HEADERS);
+	// Header problems from `evaluateObservation` are carried through.
+	const carried = assessRow(
+		{ etag: null, revalidation: 'no validator sent' },
+		{
+			ok: false,
+			problems: ['no Cache-Control'],
+		},
+	);
+	assert.equal(carried.ok, false);
+	assert.deepEqual(carried.problems, ['no Cache-Control']);
+});
+
+test('the browser pass explains why a redirect row was not observed', () => {
+	// Chromium follows the 3xx, so a redirect response is never observed
+	// at the requested URL; the row must say so instead of rendering no
+	// note at all (which read as "nothing to report").
+	const html = toHtml(
+		[
+			{
+				id: 'admin-page',
+				path: '/admin',
+				status: 307,
+				cacheControl: policyById('admin-page').cacheControl,
+				etag: null,
+				vary: null,
+				revalidation: 'no validator sent',
+				ok: true,
+				problems: [],
+				skipped: false,
+				browserNote: 'not probed in Chromium: it follows the 307 redirect',
+			},
+		],
+		ENVIRONMENT,
+	);
+	assert.match(html, /not probed in Chromium: it follows the 307 redirect/);
 });
 
 test('the environment block never reports a clean tree it did not check', () => {

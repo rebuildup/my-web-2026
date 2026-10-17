@@ -42,12 +42,15 @@ error envelope は要求パスを含む。いずれも per-user 応答である�
 
 | id | クラス | 経路例 | `Cache-Control` | validator | `Vary` | 決定者 | 検査 |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `immutable-build-asset` | fingerprinted ビルド資産 | `/assets/<name>-<hash>.js` | `public, max-age=31556952, immutable` | ETag（304） | `Accept-Encoding` のみ | Static Assets（`public/_headers`） | `scripts/cache-policy.test.mjs` |
-| `mutable-static-asset` | URL が内容より長い静的資産 | `/share/**`, `/favicon.svg` | `public, max-age=0, must-revalidate`（プラットフォーム既定＝`_headers` に書かない） | ETag（304） | `Accept-Encoding` のみ | Static Assets 既定 | `scripts/cache-policy.test.mjs` |
-| `reaction-image` | R2 からストリームするリアクション画像 | `/api/v1/reaction-images/:id` | `public, max-age=31536000, immutable` | なし | なし | 外部 boundary の handler | `test/integration/reactions-images.test.ts` |
+| `immutable-build-asset` | fingerprinted ビルド資産 | `/assets/<name>-<hash>.js` | `public, max-age=31556952, immutable` | ETag（304） | `Accept-Encoding`（プラットフォーム付与・本リポジトリは宣言していない / §7-2） | Static Assets（`public/_headers`） | `scripts/cache-policy.test.mjs`（値の完全一致） |
+| `mutable-static-asset` | URL が内容より長い静的資産 | `/share/**`, `/favicon.svg` | `public, max-age=0, must-revalidate`（プラットフォーム既定＝`_headers` に書かない） | ETag（304） | `Accept-Encoding`（同上 / §7-2） | Static Assets 既定 | `scripts/cache-policy.test.mjs`（**immutable にしていないことのみ**）／正確な値は `cache:headers:measure` のみ |
+| `reaction-image` | R2 からストリームするリアクション画像 | `/api/v1/reaction-images/:id` | `public, max-age=31536000, immutable` | なし | なし | 外部 boundary の handler | `test/integration/reactions-images.test.ts`（**Worker entry 経由のランタイム実測**）／`test/integration/cache-policy-matrix.test.ts`（表 = ソース定数） |
 | `personal-page` | 個人ページ（リクエストごとに描画） | `/`, `/about`, `/contact`, `/portfolio` | `no-cache` | なし | なし | Worker entry（`src/server.ts`） | `test/integration/cache-policy-matrix.test.ts` |
 | `admin-page` | 管理画面（HTML / redirect） | `/admin*` | `no-store` | なし | なし | Worker entry（`src/server.ts`） | 同上 |
 | `api-json` | 外部 API JSON | `/api/v1/health`, `/api/v1/*` | `no-store` | なし | なし | Worker entry（`src/server.ts`） | 同上 |
+
+表の `Vary` 列は**観測されるべき値**であり、本リポジトリが宣言する値ではない。
+静的資産 2 行の `varyNote` に明記している。
 
 ### 2.1 受け入れ条件1（immutable 資産と個人ページは明示的に異なる）
 
@@ -93,13 +96,22 @@ Worker 実測側（`test/integration/cache-policy-matrix.test.ts`）の
 | `/share/**`, `/favicon.svg` | プラットフォーム既定（`max-age=0, must-revalidate`） | 同一（immutable にしないことを明示的に検査） | 維持。「immutable でない」ことが検査対象になった |
 | SSR HTML / `/admin*` | `no-cache` / `no-store` | 同一 | 維持。行列の行との突合テストを追加 |
 
-合格基準（すべて自動判定）:
+合格基準（**5つすべてが `rows` から算出される**。定数 `ok: true` は存在しない。
+判定不能な基準は「PASS を表示するだけ」にすぎないため）:
 
 1. 全行の `Cache-Control` が表の値と完全一致する（大小文字のみ無視）。
-2. `separationViolations()` が空である。
-3. immutable 資産以外に validator（ETag）を持たない動的クラスが存在しない。
-4. 保存可能な（`public` かつ `max-age>0`）応答が user-specific な `Vary` を持たない。
-5. 環境要因で生成できなかった行は **SKIPPED として明示**され、無言で pass に数えられない。
+2. `separationViolations()` が空である（= immutable 資産の policy を他クラスが使わない）。
+3. 表が `etag` と宣言したクラスは `If-None-Match` に **304** で答え、
+   表が `none` と宣言したクラスは validator を持たない。
+4. 保存可能な（`no-store`/`no-cache` でなく `max-age>0`）応答が user-specific な `Vary` を持たない。
+5. SKIPPED になった行は**その理由を必ず持っており**、無言で pass に数えられない。
+
+**1行も測定できなかった場合は 5 基準すべてが `NOT MEASURED`（`ok: false`）となり、
+`--verify` も exit 1 になる。** `--base-url` の typo や preview 停止時は
+全 probe が例外になり全行が SKIPPED になるため、「違反ゼロ」を根拠に
+正常終了してはならないという判断である。
+なお基準 3 の「304 で答える」は行の verdict にも反映される
+（表示用の文字列に留めない / `assessRow()`）。
 
 ## 4. 再現条件の記録（ローカル / CI 共通）
 
@@ -155,9 +167,12 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
 ![cache headers matrix](./cache-headers-matrix.webp)
 
 - スクリーンショットは上記の `--screenshot` が生成した `report.html` を WebP 化したもの。
-  リポジトリの画像規範に従い **PNG ではなく WebP** で commit した
-  （Issue が要求する `docs/verification/perf/cache-headers-matrix.png` と同じ場所だが、
-  拡張子のみ `.webp`。PNG を commit するとリポジトリが肥大するため）。
+  Issue が要求する `docs/verification/perf/cache-headers-matrix.png` と同じ場所に置いたが、
+  **拡張子のみ `.webp`**。理由は 2 つで、どちらも本Issueの判断である:
+  (1) PNG を commit するとリポジトリが肥大する（PNG は 968 KB / WebP は 164 KB）、
+  (2) 既に PNG で著的する意味を持たない画像成果物である。
+  （本リポジトリに「画像は WebP で行う」という成文の規範は**存在しない**。
+  したがってこの選択は規範への準拠ではなく、上記の容量判断によるものである。）
 - 生の数値は上記コマンドで再現でき、`.tmp/cache-headers/matrix.md` に出力される。
 - レポート内の `source SHA` は**画像を commit する直前の HEAD** を指す。
   スクリーンショット自身を commit すると SHA が変わるため、記録と画像の間に
@@ -166,7 +181,10 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
 ### 5.1 測定できなかったもの（隠さない）
 
 - `reaction-image` 行: R2 に実在する画像が無く probe 対象 URL を持たない。
-  ルータ実測は D1/R2 fixture がある `test/integration/reactions-images.test.ts` で行う。
+  ランタイム実測は D1/R2 fixture がある `test/integration/reactions-images.test.ts` で、
+  **Worker entry（`SELF.fetch`）経由**で行う。
+  ルータを直接呼ぶと `src/server.ts` の `applyExternalCachePolicy` を通らないため、
+  「既定が handler の宣言を downgrade しない」ことが検証にならない。
 - `/` などの loader 依存ページはローカル D1 の seed 状態に依存するため、
   5xx になった行は **SKIPPED（理由つき）** として扱う。合格とは数えない。
 
@@ -197,5 +215,13 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
 2. **`Vary: Accept-Encoding` を明示的に宣言すべきか**は未決。
    Cloudflare と preview は圧縮時に付与するが、本リポジトリは制御していない。
    宣言の追加は共有キャッシュのキー空間を変えるため、測定せずに追加しない。
+   表の `vary` 列も「宣言値」ではなく「観測されるべき値」であり、
+   静的資産 2 行には `varyNote` を付けてこの未決であることを SoT 側に明記している。
 3. **`cache:headers:measure` を CI に載せるか**は本Issueのスコープ外。
    載せると「gate と可視化の混同」に近づくため、#493 と併せて owner が判断する。
+4. **キャッシュ契約の SoT を `scripts/` に置くべきかは未決**（ADR レベル）。
+   `scripts/_cache-policy.mjs` はランタイム契約の SoT だが、`check-architecture.mjs` は
+   `src/` の外に対し owner を持たないため、`src/ → scripts/` の逆向き import を
+   構造的に禁止できない。現時点では「`src/` からこのファイルを import しない」
+   という散文上の注意のみが記録されている（ファイル冒頭にも明記）。
+   移動するか、`AGENTS.md` §3 に `scripts/` の位置を明記するかは owner 決定。

@@ -62,7 +62,13 @@ import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { CACHE_POLICY_MATRIX, evaluateObservation, policyById } from './_cache-policy.mjs';
+import {
+	CACHE_POLICY_MATRIX,
+	USER_SPECIFIC_VARY_HEADERS,
+	evaluateObservation,
+	parseCacheControl,
+	policyById,
+} from './_cache-policy.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -130,11 +136,13 @@ export function buildTargets(asset) {
 	targets.push({ id: 'mutable-static-asset', path: '/favicon.svg' });
 	// Content-addressed R2 bytes. Probing it needs a stored image id,
 	// which no local fixture guarantees; the policy is asserted in
-	// `test/integration/reactions-images.test.ts` through the router.
+	// `test/integration/reactions-images.test.ts` through the Worker
+	// entry (`SELF.fetch`), because a router-level call would bypass the
+	// boundary default this row has to survive.
 	targets.push({
 		id: 'reaction-image',
 		path: null,
-		note: 'needs a stored reaction image id; asserted at router level in test/integration/reactions-images.test.ts',
+		note: 'needs a stored reaction image id; asserted through the Worker entry in test/integration/reactions-images.test.ts',
 	});
 	for (const path of PERSONAL_PAGE_PATHS) targets.push({ id: 'personal-page', path });
 	targets.push({ id: 'admin-page', path: '/admin/login' });
@@ -142,6 +150,31 @@ export function buildTargets(asset) {
 	targets.push({ id: 'admin-page', path: '/admin' });
 	for (const path of API_PATHS) targets.push({ id: 'api-json', path });
 	return targets;
+}
+
+/**
+ * Turn one measured row into the row's own verdict.
+ *
+ * Exported (and pure) so the rule that a class which OFFERS a validator
+ * must also ANSWER it is unit-testable without a running server, and so
+ * the pass criteria and the row verdict cannot disagree about what a
+ * violation is. `evaluateObservation` sees only the headers of the
+ * first response; the conditional request is the other half of the
+ * contract, so it is folded in here rather than left in a display
+ * column nobody fails on.
+ *
+ * @param {{ revalidation?: string, etag?: string|null }} row
+ * @param {{ ok: boolean, problems: string[] }} headerVerdict
+ */
+export function assessRow(row, headerVerdict) {
+	const problems = [...headerVerdict.problems];
+	const answered = row.revalidation ?? 'no validator sent';
+	if (row.etag && answered !== '304 Not Modified') {
+		problems.push(
+			`offers an ETag but If-None-Match was answered with ${answered}, not 304 — the class cannot revalidate what it advertises`,
+		);
+	}
+	return { ok: problems.length === 0, problems };
 }
 
 /**
@@ -197,7 +230,7 @@ async function probe(baseUrl, target) {
 		return row;
 	}
 
-	const verdict = evaluateObservation(row);
+	const verdict = assessRow(row, evaluateObservation(row));
 	row.ok = verdict.ok;
 	row.problems = verdict.problems;
 	return row;
@@ -233,6 +266,17 @@ async function probeWithBrowser(baseUrl, rows) {
 
 	for (const row of rows) {
 		if (row.skipped || !row.path) continue;
+		// A redirect row cannot be observed in a browser: Chromium
+		// FOLLOWS the 3xx, so the response whose headers matter never
+		// reaches the page and `observed` only ever holds the redirect
+		// target's entry. Reporting the target under the requested path
+		// would be a measurement of a different request, so the row is
+		// skipped for the browser pass with the reason stated — its
+		// headers are still recorded by the Node observer above.
+		if (row.status >= 300 && row.status < 400) {
+			row.browserNote = `not probed in Chromium: it follows the ${row.status} redirect, so no response is observed at this URL`;
+			continue;
+		}
 		// Documents are navigated; assets are fetched directly, because a
 		// navigation is not a request a browser would make for a chunk.
 		// Both go through an absolute URL so the two are handled
@@ -315,21 +359,64 @@ export function toMarkdown(rows, environment) {
 	return `${header}${body}\n\n### measurement conditions\n\n${env}\n`;
 }
 
-/** The acceptance criteria, evaluated against the rows just measured. */
+/** Lower-cased, trimmed `Vary` tokens of a measured row. */
+function varyValues(row) {
+	return String(row.vary ?? '')
+		.split(',')
+		.map((value) => value.trim().toLowerCase())
+		.filter((value) => value !== '');
+}
+
+/** A measured response a shared cache is allowed to store without revalidating. */
+function isStorable(row) {
+	const parsed = parseCacheControl(row.cacheControl);
+	return !parsed.noStore && !parsed.noCache && parsed.maxAge !== null && parsed.maxAge > 0;
+}
+
+/**
+ * The acceptance criteria, evaluated against the rows just measured.
+ *
+ * Every criterion is COMPUTED from `rows` — none of them is a constant.
+ * A criterion that cannot fail is not a criterion: it would print PASS
+ * in a report whose whole purpose is to be checkable by a reader who
+ * does not trust the author.
+ */
 function passCriteria(rows) {
 	const measured = rows.filter((row) => !row.skipped);
-	const failed = measured.filter((row) => !row.ok);
 	const skipped = rows.filter((row) => row.skipped);
 	const assetPolicy = policyById('immutable-build-asset').cacheControl;
 	const assetLeak = measured.filter(
 		(row) => row.id !== 'immutable-build-asset' && row.cacheControl === assetPolicy,
 	);
-	return [
+	// Criterion 1 is exactly what its text says — the `Cache-Control`
+	// VALUE matches the table. The other halves of a row's contract
+	// (validator, revalidation, `Vary`) have their own criteria below, so
+	// this one never reports a failure that belongs to another row.
+	const policyMismatch = measured.filter(
+		(row) =>
+			parseCacheControl(row.cacheControl).raw.toLowerCase() !==
+			policyById(row.id).cacheControl.toLowerCase(),
+	);
+	const validatorRows = measured.filter((row) => policyById(row.id).validator === 'etag');
+	const staleValidatorRows = validatorRows.filter((row) => row.revalidation !== '304 Not Modified');
+	const dynamicRows = measured.filter((row) => policyById(row.id).validator === 'none');
+	const validatorLeaks = dynamicRows.filter((row) => row.etag);
+	// Criterion 4: only a response a shared cache could actually store is
+	// a hazard, so the count is taken over storable rows, not all rows.
+	const userSpecificOnStorable = measured.filter(
+		(row) => isStorable(row) && varyValues(row).some((v) => USER_SPECIFIC_VARY_HEADERS.includes(v)),
+	);
+	// Criterion 5: "never silently dropped" is checkable — every skipped
+	// row must carry the reason it was skipped.
+	const unexplainedSkips = skipped.filter((row) => !row.note);
+	const criteria = [
 		{
 			criterion: 'every measured response carries its declared Cache-Control',
 			result:
-				failed.length === 0 ? `PASS (${measured.length} measured)` : `FAIL (${failed.length})`,
-			ok: failed.length === 0,
+				policyMismatch.length === 0
+					? `PASS (${measured.length} measured)`
+					: `FAIL (${policyMismatch.length} of ${measured.length})`,
+			ok: policyMismatch.length === 0,
 		},
 		{
 			criterion: 'the immutable asset policy belongs to no other class',
@@ -341,20 +428,44 @@ function passCriteria(rows) {
 		},
 		{
 			criterion: 'dynamic classes offer no validator; asset classes answer 304',
-			result: 'PASS (validator + revalidation columns above)',
-			ok: true,
+			result:
+				validatorLeaks.length + staleValidatorRows.length === 0
+					? `PASS (${dynamicRows.length} dynamic rows carry no validator, ${validatorRows.length} asset rows answered 304)`
+					: `FAIL (${validatorLeaks.length} unexpected validator, ${staleValidatorRows.length} did not answer 304)`,
+			ok: validatorLeaks.length + staleValidatorRows.length === 0,
 		},
 		{
 			criterion: 'no storable response varies on Cookie / Authorization',
-			result: 'PASS (no such Vary observed)',
-			ok: true,
+			result:
+				userSpecificOnStorable.length === 0
+					? `PASS (0 of ${measured.filter(isStorable).length} storable rows)`
+					: `FAIL (${userSpecificOnStorable.length})`,
+			ok: userSpecificOnStorable.length === 0,
 		},
 		{
 			criterion: 'rows this environment cannot produce are SKIPPED, never counted as passes',
-			result: skipped.length === 0 ? 'PASS (nothing skipped)' : `${skipped.length} SKIPPED`,
-			ok: true,
+			result:
+				unexplainedSkips.length === 0
+					? skipped.length === 0
+						? 'PASS (nothing skipped)'
+						: `PASS (${skipped.length} SKIPPED, each with a reason)`
+					: `FAIL (${unexplainedSkips.length} skipped without a reason)`,
+			ok: unexplainedSkips.length === 0,
 		},
 	];
+	// Nothing measurable means nothing verified. An empty measurement set
+	// satisfies every "there are no violations of X" formulation, so
+	// without this the report would print five PASS lines over a run that
+	// only ever talked to a wrong `--base-url`. `--verify` exits non-zero
+	// on the same condition (see `main`).
+	if (measured.length === 0) {
+		return criteria.map((entry) => ({
+			criterion: entry.criterion,
+			result: 'NOT MEASURED (no row produced a response — nothing was verified)',
+			ok: false,
+		}));
+	}
+	return criteria;
 }
 
 /** The same content as a self-contained HTML report (screenshotted). */
@@ -377,7 +488,10 @@ export function toHtml(rows, environment) {
 				: row.ok
 					? '<span class="ok">ok</span>'
 					: `<span class="fail">FAIL</span>`;
-			const note = row.skipped && row.note ? `<div class="note">${escapeHtml(row.note)}</div>` : '';
+			const notes = [row.skipped ? row.note : null, row.browserNote].filter(
+				(value) => typeof value === 'string' && value !== '',
+			);
+			const note = notes.length > 0 ? `<div class="note">${escapeHtml(notes.join(' '))}</div>` : '';
 			const browser = row.browser?.cacheControl
 				? `<div class="note">Chromium observed: ${escapeHtml(row.browser.cacheControl)}${
 						row.browser.etag ? ` + ETag ${escapeHtml(row.browser.etag)}` : ''
@@ -538,13 +652,24 @@ async function main() {
 
 	const failures = rows.filter((row) => !row.skipped && !row.ok);
 	const skipped = rows.filter((row) => row.skipped);
+	const measured = rows.length - skipped.length;
 	process.stdout.write(
-		`[cache-headers] ${rows.length - skipped.length} measured, ${failures.length} failed, ${skipped.length} skipped\n`,
+		`[cache-headers] ${measured} measured, ${failures.length} failed, ${skipped.length} skipped\n`,
 	);
 	for (const row of failures) {
 		for (const problem of row.problems) {
 			process.stderr.write(`[cache-headers] FAIL ${row.path ?? row.id}: ${problem}\n`);
 		}
+	}
+	// Every probe failing is the shape a wrong `--base-url` or a stopped
+	// preview server takes: each exception becomes a SKIPPED row, so
+	// `failures` is empty and a naive check would exit 0 having verified
+	// nothing at all. An unmeasured contract is not a passing one.
+	if (args.verify && measured === 0) {
+		process.stderr.write(
+			`[cache-headers] FAIL nothing was measured: no target of ${rows.length} produced a response at ${args.baseUrl} — check the base URL and that the server is running\n`,
+		);
+		return 1;
 	}
 	if (args.verify && failures.length > 0) return 1;
 	return 0;

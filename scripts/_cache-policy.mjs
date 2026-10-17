@@ -51,9 +51,33 @@
  *   cacheControl the exact `Cache-Control` value the class owes
  *   validator    `etag` when the response may answer `If-None-Match`
  *                with 304; `none` when no validator may be emitted
- *   vary         request headers the response varies on, or `'none'`
+ *   vary         request headers the response varies on, or `'none'`.
+ *                A `varyNote` says whether this repository declares the
+ *                value or merely observes what the platform adds.
  *   owner        the module that DECIDES the policy
- *   enforcedBy   the check that fails when the decision drifts
+ *   enforcedBy   the check that fails when the decision drifts. The
+ *                value names the check AND what that check actually
+ *                proves: "the exact value" and "only that it is not
+ *                immutable" are different claims and must not be
+ *                written as one.
+ */
+
+/**
+ * Where this module sits, and why that is still open.
+ *
+ * This table is a RUNTIME contract, but it lives under `scripts/` so
+ * that `node --test`, the measurement tool and the workerd test pool
+ * can all import it (see the `import type` / plain-`import` note in
+ * AGENTS.md §3). `scripts/check-architecture.mjs` gives `ownerOf()`
+ * nothing outside `src/`, so today nothing structurally forbids a
+ * `src/ → scripts/` import that would "single-source" a literal from
+ * here — which would invert the dependency direction AGENTS.md §3
+ * states.
+ *
+ * Whether this table should move under a governed `src/` obligation (or
+ * whether AGENTS.md §3 should name `scripts/` explicitly) is an
+ * architecture decision for the owner / an ADR, not one this Issue may
+ * take. Until then, do not import this file from `src/`.
  */
 
 /**
@@ -84,8 +108,11 @@ export const CACHE_POLICY_MATRIX = [
 		cacheControl: `public, max-age=${IMMUTABLE_ASSET_MAX_AGE_SECONDS}, immutable`,
 		validator: 'etag',
 		vary: 'accept-encoding',
+		varyNote:
+			'observed from the platform, not declared by this repository — whether to declare it explicitly is open (doc §7 item 2)',
 		owner: 'Cloudflare Static Assets via public/_headers',
-		enforcedBy: 'scripts/cache-policy.test.mjs, cache:headers:measure',
+		enforcedBy:
+			'scripts/cache-policy.test.mjs (exact value), cache:headers:measure (observed value)',
 	},
 	{
 		id: 'mutable-static-asset',
@@ -94,8 +121,11 @@ export const CACHE_POLICY_MATRIX = [
 		cacheControl: 'public, max-age=0, must-revalidate',
 		validator: 'etag',
 		vary: 'accept-encoding',
+		varyNote:
+			'observed from the platform, not declared by this repository — whether to declare it explicitly is open (doc §7 item 2)',
 		owner: 'Cloudflare Static Assets default (public/_headers only names the exceptions)',
-		enforcedBy: 'scripts/cache-policy.test.mjs, cache:headers:measure',
+		enforcedBy:
+			'scripts/cache-policy.test.mjs (NOT immutable only), cache:headers:measure (exact value — the platform default is not asserted by a gate)',
 	},
 	{
 		id: 'reaction-image',
@@ -105,7 +135,8 @@ export const CACHE_POLICY_MATRIX = [
 		validator: 'none',
 		vary: 'none',
 		owner: 'external boundary (src/http/reactions/router.ts)',
-		enforcedBy: 'test/integration/cache-policy-matrix.test.ts',
+		enforcedBy:
+			'test/integration/reactions-images.test.ts (runtime, through the Worker entry), test/integration/cache-policy-matrix.test.ts (table = source constant)',
 	},
 	{
 		id: 'personal-page',

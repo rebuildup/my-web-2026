@@ -11,12 +11,12 @@ import '../styles.css';
  * Icon family links (Issue #504).
  *
  * Every entry is a flat object literal with single-quoted string
- * values on ONE line, because `scripts/check-app-icons.mjs` parses this
- * block to prove the published contract is coherent: every `<link>` here
- * must point at a file that exists at the declared size, must be named
- * by `public/site.webmanifest` or by this list, and must leave no orphan
- * in `public/icons/`. Keep the shape; keep the files in sync via
- * `pnpm run generate:app-icons`.
+ * values, because `scripts/check-app-icons.mjs` parses this block to
+ * prove the published contract is coherent: every `<link>` here must
+ * point at a file that exists at the declared size, must be named by
+ * `public/site.webmanifest` or by this list, and must leave no orphan in
+ * `public/icons/`. Keep it flat (no spread, no computed values) and keep
+ * the files in sync via `pnpm run generate:app-icons`.
  *
  * `rel: 'icon'` (SVG) stays the primary desktop entry from Issue #285 —
  * the PNG entries sit beside it as a raster fallback, because a handful
@@ -39,10 +39,30 @@ const APP_ICON_LINKS = [
 	{ rel: 'icon', type: 'image/svg+xml', href: '/favicon.svg' },
 	{ rel: 'icon', type: 'image/png', sizes: '16x16', href: '/icons/icon-16x16.png' },
 	{ rel: 'icon', type: 'image/png', sizes: '32x32', href: '/icons/icon-32x32.png' },
-	{ rel: 'apple-touch-icon', sizes: '120x120', href: '/icons/apple-touch-icon-120x120.png' },
-	{ rel: 'apple-touch-icon', sizes: '152x152', href: '/icons/apple-touch-icon-152x152.png' },
-	{ rel: 'apple-touch-icon', sizes: '167x167', href: '/icons/apple-touch-icon-167x167.png' },
-	{ rel: 'apple-touch-icon', sizes: '180x180', href: '/icons/apple-touch-icon-180x180.png' },
+	{
+		rel: 'apple-touch-icon',
+		type: 'image/png',
+		sizes: '120x120',
+		href: '/icons/apple-touch-icon-120x120.png',
+	},
+	{
+		rel: 'apple-touch-icon',
+		type: 'image/png',
+		sizes: '152x152',
+		href: '/icons/apple-touch-icon-152x152.png',
+	},
+	{
+		rel: 'apple-touch-icon',
+		type: 'image/png',
+		sizes: '167x167',
+		href: '/icons/apple-touch-icon-167x167.png',
+	},
+	{
+		rel: 'apple-touch-icon',
+		type: 'image/png',
+		sizes: '180x180',
+		href: '/icons/apple-touch-icon-180x180.png',
+	},
 	{ rel: 'manifest', href: '/site.webmanifest' },
 ];
 
@@ -96,16 +116,6 @@ export const Route = createRootRoute({
 			{ charSet: 'utf-8' },
 			{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
 			{ title: 'my-web-2026' },
-			// Issue #504 — the site ships two appearances (Issue #290),
-			// so the browser-chrome tint is declared per appearance
-			// instead of pinning one colour that is wrong half the time.
-			// Values are the two `bg.canvas` steps from
-			// `src/editorial/semantic-tokens.ts`: `neutral.0` (light) and
-			// `charcoal.950` (dark). The manifest's single `theme_color`
-			// cannot be appearance-conditional, so it carries the static
-			// accent step (`brand.700`) instead.
-			{ name: 'theme-color', media: '(prefers-color-scheme: light)', content: '#ffffff' },
-			{ name: 'theme-color', media: '(prefers-color-scheme: dark)', content: '#0a0b0e' },
 		],
 		// Google Fonts: Noto Sans JP (body) + Zen Kaku Gothic New
 		// (display / heading, applied via the `heading` font token to
@@ -218,6 +228,21 @@ function RootComponent() {
 		<html lang="ja">
 			<head>
 				<HeadContent />
+				{/* Issue #504 — the browser-chrome tint, one value per
+				    appearance (Issue #290 ships light + dark). Rendered
+				    here rather than declared in `head().meta` because
+				    TanStack Router dedupes `meta` by `name` with the
+				    deepest route winning (see the head-merge note above):
+				    two `theme-color` entries in `head()` collapse into
+				    one, which is exactly the case the two media queries
+				    exist to avoid. The values are the two `bg.canvas`
+				    steps from `src/editorial/semantic-tokens.ts`:
+				    `neutral.0` (light) and `charcoal.950` (dark). The
+				    manifest's single `theme_color` cannot be
+				    appearance-conditional, so it carries the static
+				    accent step (`brand.700`) instead. */}
+				<meta name="theme-color" media="(prefers-color-scheme: light)" content="#ffffff" />
+				<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0b0e" />
 				{!isAdminPath ? <GoogleAnalytics measurementId={gaMeasurementId} /> : null}
 				{/* SPA route-change page_view (Issue #286): always mounted;
 				    the tracker itself stays silent on /admin/*. */}

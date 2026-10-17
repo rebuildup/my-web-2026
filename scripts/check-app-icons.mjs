@@ -106,19 +106,12 @@ const RASTER_EXTENSIONS = new Set(['.png']);
 export function parseHeadIconLinks(source) {
 	const block = /const APP_ICON_LINKS\s*=\s*\[([\s\S]*?)\n\];/.exec(source);
 	if (!block) return null;
-	const links = [];
-	const objectRe = /\{\s*rel:\s*'([^']+)'([^}]*)\}/g;
-	let match;
-	while ((match = objectRe.exec(block[1])) !== null) {
-		const [, rel, rest] = match;
-		links.push({
-			rel,
-			type: pick(rest, 'type'),
-			sizes: pick(rest, 'sizes'),
-			href: pick(rest, 'href'),
-		});
-	}
-	return links;
+	return [...block[1].matchAll(/\{\s*rel:\s*'([^']+)'([^}]*)\}/g)].map(([, rel, rest]) => ({
+		rel,
+		type: pick(rest, 'type'),
+		sizes: pick(rest, 'sizes'),
+		href: pick(rest, 'href'),
+	}));
 }
 
 function pick(text, key) {
@@ -126,15 +119,30 @@ function pick(text, key) {
 	return found ? found[1] : null;
 }
 
-/** The `{ name: 'theme-color', media, content }` meta literals in the head. */
+function pickAttr(text, key) {
+	const found = new RegExp(`${key}="([^"]*)"`).exec(text);
+	return found ? found[1] : null;
+}
+
+/**
+ * The `theme-color` metas in the document shell.
+ *
+ * Two shapes are accepted because the head split forces them: a route
+ * `head().meta` object literal, and the JSX `<meta … />` element inside
+ * `RootComponent`. The latter is the one that actually ships (TanStack
+ * Router dedupes `meta` by `name`, so two entries in `head()` collapse);
+ * the object form is read too so a value that moved cannot slip past.
+ */
 export function parseThemeColorMetas(source) {
-	const metas = [];
-	const objectRe = /\{\s*name:\s*'theme-color'([^}]*)\}/g;
-	let match;
-	while ((match = objectRe.exec(source)) !== null) {
-		metas.push({ media: pick(match[1], 'media'), content: pick(match[1], 'content') });
-	}
-	return metas;
+	const objects = [...source.matchAll(/\{\s*name:\s*'theme-color'([^}]*)\}/g)].map(([, rest]) => ({
+		media: pick(rest, 'media'),
+		content: pick(rest, 'content'),
+	}));
+	const jsx = [...source.matchAll(/<meta\s+name="theme-color"([^>]*?)\/?>/g)].map(([, rest]) => ({
+		media: pickAttr(rest, 'media'),
+		content: pickAttr(rest, 'content'),
+	}));
+	return [...objects, ...jsx];
 }
 
 /** The manifest `icons[]` entries, normalised. */

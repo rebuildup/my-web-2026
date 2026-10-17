@@ -134,47 +134,52 @@ export function ImageCls() {
 				})}
 			/>
 
-			<Cell
-				id="lazy-cover"
-				label="lazy / 1280×720 / scrolled into view"
-				note="CLS の被験体。スクロールで読み込みが起き、枠の高さが維持されること（＝ layout-shift 0）が実測される。"
+			<div
+				data-cls-region="lazy-region"
+				className={css({ display: 'flex', flexDirection: 'column', gap: '8' })}
 			>
-				<PortfolioMediaFigure
-					media={fixtureMedia({
-						id: 'cls-inline-1280x720',
-						url: `${FIXTURE_BASE}/cls-inline-1280x720.png`,
-						width: 1280,
-						height: 720,
-						alt: 'CLS fixture — lazy cover (1280×720)',
-					})}
-					loading="lazy"
-				/>
-			</Cell>
+				<Cell
+					id="lazy-cover"
+					label="lazy / 1280×720 / scrolled into view"
+					note="CLS の被験体。スクロールで読み込みが起き、枠の高さが維持されること（＝ layout-shift 0）が実測される。"
+				>
+					<PortfolioMediaFigure
+						media={fixtureMedia({
+							id: 'cls-inline-1280x720',
+							url: `${FIXTURE_BASE}/cls-inline-1280x720.png`,
+							width: 1280,
+							height: 720,
+							alt: 'CLS fixture — lazy cover (1280×720)',
+						})}
+						loading="lazy"
+					/>
+				</Cell>
 
-			{/*
-			 * Trailing sentinel. A layout shift is only reported when
-			 * rendered content MOVES, so a figure that grows at the
-			 * bottom of the document scores 0 no matter how broken its
-			 * box is. This element is the content the lazy figure
-			 * pushes, which is what makes the measurement real (and
-			 * what makes the pre-#486 rendering measurable at all).
-			 */}
-			<p
-				data-cls-sentinel="below-lazy-cover"
-				className={css({
-					margin: '0',
-					padding: '5',
-					border: '1px solid {colors.border.subtle}',
-					borderRadius: '6px',
-					backgroundColor: 'bg.subtle',
-					fontFamily: 'mono',
-					fontSize: 'sm',
-					color: 'text.muted',
-					letterSpacing: '0.04em',
-				})}
-			>
-				sentinel — この行の y 座標が読み込み前後で動かないこと
-			</p>
+				{/*
+				 * Trailing sentinel. A layout shift is only reported when
+				 * rendered content MOVES, so a figure that grows at the
+				 * bottom of the document scores 0 no matter how broken its
+				 * box is. This element is the content the lazy figure
+				 * pushes, which is what makes the measurement real (and
+				 * what makes the pre-#486 rendering measurable at all).
+				 */}
+				<p
+					data-cls-sentinel="below-lazy-cover"
+					className={css({
+						margin: '0',
+						padding: '5',
+						border: '1px solid {colors.border.subtle}',
+						borderRadius: '6px',
+						backgroundColor: 'bg.subtle',
+						fontFamily: 'mono',
+						fontSize: 'sm',
+						color: 'text.muted',
+						letterSpacing: '0.04em',
+					})}
+				>
+					sentinel — この行の y 座標が読み込み前後で動かないこと
+				</p>
+			</div>
 
 			<Cell
 				id="unknown-size"

@@ -182,11 +182,22 @@ export async function readLayoutShift(page) {
 export async function stripImageReservation(page) {
 	return page.evaluate((selector) => {
 		const img = document.querySelector(selector);
-		if (!img) return { stripped: false };
+		if (!img) return null;
 		img.removeAttribute('width');
 		img.removeAttribute('height');
 		img.style.removeProperty('aspect-ratio');
-		return { stripped: img.getAttribute('src') !== null };
+		const decoded = img instanceof HTMLImageElement && img.complete && img.naturalWidth > 0;
+		return {
+			// The reservation really is gone right now. Verified by the
+			// caller rather than assumed: React re-applies the inline
+			// style during hydration, so a strip that ran before
+			// hydration finished can be silently undone.
+			hasWidth: img.hasAttribute('width'),
+			hasHeight: img.hasAttribute('height'),
+			aspectRatio: img.style.aspectRatio,
+			decoded,
+			src: img.getAttribute('src'),
+		};
 	}, LAZY_SCOPE_IMG_SELECTOR);
 }
 

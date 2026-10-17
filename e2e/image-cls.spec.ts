@@ -48,6 +48,7 @@ type Measurement = {
 	boxAfter: { width: number; height: number } | null;
 	sentinelBefore: { x: number; y: number } | null;
 	sentinelAfter: { x: number; y: number } | null;
+	decodedBefore: boolean;
 };
 
 /**
@@ -75,11 +76,19 @@ function requireBoxes(measurement: Measurement): {
  * Drive one measurement pass.
  *
  * `stripReservation` emulates the pre-#486 rendering (see
- * `stripImageReservation`). It is applied after the DOM is parsed but
- * BEFORE the throttled image response lands, because a decoded image
- * carries its own ratio and stripping after the fact would be a
- * no-op — i.e. a measurement that would silently report "no
- * regression" for a component that never had a reservation.
+ * `stripImageReservation`). The strip runs AFTER the page has loaded
+ * and IMMEDIATELY BEFORE the box is read, for two reasons:
+ *
+ *   1. React re-applies the inline `aspect-ratio` during hydration, so
+ *      a strip performed against the pre-hydration DOM can be
+ *      silently undone a few milliseconds later.
+ *   2. A decoded image carries its own ratio, so stripping after the
+ *      bytes land is a no-op — a measurement that would report "no
+ *      regression" for a component that never had a reservation.
+ *
+ * `decodedBefore` records which of those two the run actually hit. It
+ * is asserted, not logged: measuring a box that is already decoded is
+ * the failure mode that makes a CLS gate decorative.
  */
 async function measure(
 	page: Page,
@@ -97,20 +106,34 @@ async function measure(
 	const client = await page.context().newCDPSession(page);
 	await client.send('Emulation.setCPUThrottlingRate', { rate: CPU_THROUGHPLE_RATE });
 
-	await page.goto(`${IMAGE_CLS_ROUTE}#design-system-image`, {
-		waitUntil: options.stripReservation ? 'commit' : 'load',
-	});
+	// NO fragment in the measurement URL. `#design-system-image` scrolls
+	// the lazy cell into range during the initial navigation, so Chromium
+	// starts the fetch before the run controls anything and the
+	// "before decode" state below is gone. The scroll is done explicitly
+	// below instead.
+	await page.goto(IMAGE_CLS_ROUTE);
 	const img = page.locator(LAZY_SCOPE_IMG_SELECTOR);
 	await img.waitFor({ state: 'attached' });
 
+	// Scrolling is what makes the lazy fetch start; the response is
+	// then held for IMAGE_RESPONSE_DELAY_MS.
+	await img.scrollIntoViewIfNeeded();
+
 	if (options.stripReservation) {
-		const result = await stripImageReservation(page);
-		expect(result.stripped).toBe(true);
+		const state = await stripImageReservation(page);
+		expect(state, 'the lazy <img> was not found — the measurement would be vacuous').not.toBeNull();
+		expect(state?.src, 'the lazy <img> has no src to strip').not.toBeNull();
+		expect(state?.hasWidth, 'width attribute came back (hydration re-applied it?)').toBe(false);
+		expect(state?.hasHeight, 'height attribute came back (hydration re-applied it?)').toBe(false);
+		expect(state?.aspectRatio, 'inline aspect-ratio came back').toBe('');
+		expect(state?.decoded, 'the image decoded before the strip — nothing was measured').toBe(false);
 	}
 
-	// The reservation must already be measurable BEFORE the bytes
-	// arrive: a 0px-tall box here is exactly the regression.
-	await img.scrollIntoViewIfNeeded();
+	// The box must be readable while the bytes are still in flight: a
+	// 0px-tall box here is exactly the regression.
+	const decodedBefore = await img.evaluate(
+		(node) => node instanceof HTMLImageElement && node.complete && node.naturalWidth > 0,
+	);
 	const boxBefore = await img.boundingBox();
 	const sentinel = page.locator(LAZY_SCOPE_SENTINEL_SELECTOR);
 	const sentinelBefore = await sentinel.boundingBox();
@@ -132,7 +155,7 @@ async function measure(
 	const cls = await readLayoutShift(page);
 	await client.send('Emulation.setCPUThrottlingRate', { rate: 1 });
 
-	return { cls, boxBefore, boxAfter, sentinelBefore, sentinelAfter };
+	return { cls, boxBefore, boxAfter, sentinelBefore, sentinelAfter, decodedBefore };
 }
 
 test.describe('image layout contract (/design-system 07 — Image)', () => {
@@ -192,6 +215,9 @@ test.describe('image layout contract (/design-system 07 — Image)', () => {
 		const boxes = requireBoxes(measurement);
 
 		expect(measurement.cls.error).toBeNull();
+		// The measurement only counts if the box was read before the
+		// bytes landed.
+		expect(measurement.decodedBefore).toBe(false);
 
 		// The box is already its final size before the bytes arrive…
 		expect(Math.abs(boxes.after.height - boxes.before.height)).toBeLessThanOrEqual(BOX_EPSILON_PX);
@@ -212,6 +238,7 @@ test.describe('image layout contract (/design-system 07 — Image)', () => {
 		const boxes = requireBoxes(measurement);
 
 		expect(measurement.cls.error).toBeNull();
+		expect(measurement.decodedBefore).toBe(false);
 
 		// The broken rendering collapses the box while the image is in
 		// flight and then grows it back to the same height.

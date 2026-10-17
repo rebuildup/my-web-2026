@@ -28,6 +28,13 @@
   Zod failure は **最初の issue だけ**を `path: message` 形式で返す（旧実装は
   `error.message` まるごとを載せていた）。
 
+size ガードは **request の契約上の境界**であって memory の上限ではない。
+body は `c.req.text()` で一度読み切った後に実測バイト数を比較するため、
+`Content-Length` を持たない chunked request でも `413` になるが、その前に
+body は Worker memory に載る（上限は Cloudflare 側の request size / memory 制限が
+規律する）。`413` を「メモリを守る defense」と読まないこと。このルートは
+`requireApiKey` の後ろにあるので、到達するのは認証済み caller のみ。
+
 ## 2. 認証より**後**に検証する理由
 
 route の middleware 順は `requireApiKey` → `rateLimit*` → `jsonBody(...)` → handler で固定する。
@@ -42,7 +49,7 @@ route の middleware 順は `requireApiKey` → `rateLimit*` → `jsonBody(...)`
 
 実際に存在する API のみを対象にする（未実装 API の adapter は本 Issue の範囲外）。
 
-| Method + Path                     | 検証维度         | 不正入力時の応答                                              |
+| Method + Path                     | 検証軸           | 不正入力時の応答                                              |
 |-----------------------------------|------------------|--------------------------------------------------------------|
 | `POST /api/v1/access/hit`         | body             | `415` / `413` / `400 invalid_body`                          |
 | `PUT /api/v1/reactions`           | body             | `415` / `413` / `400 invalid_body`                          |
@@ -60,17 +67,41 @@ route の middleware 順は `requireApiKey` → `rateLimit*` → `jsonBody(...)`
 
 ## 4. 互換性メモ（=#450 で変わった observable な応答）
 
+**accepted → 定義済み拒否**（従来は handler に到達していたリクエスト）:
+
+| 変更前                                                              | 変更後                          |
+|---------------------------------------------------------------------|---------------------------------|
+| `Content-Type: text/plain` の JSON body → `c.req.json()` が parse して handler に到達 | `415 unsupported_media_type`   |
+| `Content-Type: application/x-www-form-urlencoded`（`curl --data` / `--data-binary` の既定値）→ 同上 | `415 unsupported_media_type`（scripted caller は `-H 'content-type: application/json'` が必須） |
+| 16 KiB 超の JSON body → D1 まで到達                                  | `413 payload_too_large`         |
+| 同一クエリ名の重複（`?target=a&target=b`）→ 最初の値が採用され handler に到達 | `400 invalid_query`        |
+| 上記 path の非対応 verb → `404 not_found`（リソースが無いという誤解を招く） | `405` + `Allow`            |
+
+**500 → 定義済み 400**（本 Issue で解消した実欠陥）:
+
 | 変更前                                                              | 変更後                          |
 |---------------------------------------------------------------------|---------------------------------|
 | `key` に空白を含む `POST /access/hit` → **500 internal_error**         | `400 invalid_body`              |
 | `:key` に空白を含む `GET /access/count/:key` → **500 internal_error** | `400 invalid_key`               |
-| 非対応 verb → `404 not_found`（リソースが無いという誤解を招く）    | `405` + `Allow`                 |
+
+**同じステータス / コードのまま意味が変わったもの**:
+
+| 変更前                                                              | 変更後                          |
+|---------------------------------------------------------------------|---------------------------------|
 | `?target=`（空文字）→ `400 missing_target`                            | `400 invalid_target`            |
 | `reason` に Zod の全 issue（JSON 文字列）が入っていた                | `reason` は1行の `path: message` |
+| scope を持たない key + 不正 body の `POST /access/hit` / `PUT`・`DELETE /reactions` → `403 missing_scope` | `400 invalid_body`（body 検証が `requireResourceAction` より先に走るため。どちらも定義済み 4xx） |
 
-ステータスコード_Errorコード_ の意味が変わるものは無く、`400` の一部が `405` /
-`413` / `415` に昇格する。home は `response.ok` しか見ない
-（`src/home/access/load.ts` / `src/home/reactions/load.ts`）ため影響を受けない。
+脈絡として、在庫の consumer（`src/home/access/load.ts` / `src/home/reactions/load.ts`）
+は既に `content-type: application/json` を付け、`response.ok` と `429` しか見ないので
+どれにも影響を受けない。影響を受けるのは **スクリプトから直接叩く外部 caller**
+だけである。
+
+**未決事項（owner 判断）**: `application/x-www-form-urlencoded` を `415` で拒否する
+方針自体は確定した契約ではない。代替として「`Content-Type` を無視して `JSON.parse`
+に委ねる」方針もあり得る。本 PR はコードと unit test が固定している現行の挙動
+（`415`）を維持し、決定は owner に委ねている。方針を変える場合は §1 の protocol 軸と
+§3 のテーブルも追随する。
 
 ## 5. 変更していない境界
 
@@ -93,7 +124,7 @@ pnpm exec vitest run --reporter=verbose test/integration/input-validation.test.t
 pnpm run verification:input-matrix
 ```
 
-`test/integration/input-validation.test.ts` は 24 ケースを実際の HTTP リクエストとして
+`test/integration/input-validation.test.ts` は 33 ケースを実際の HTTP リクエストとして
 local workerd pool（D1 / R2 binding 実物、API key は `withVerifyApiKey` seam の fixture）で
 実行し、観測した status / `error` code から matrix を出力する。PNG はその実測値の
 レンダリングであり、secret は含まれない（capture script が credential らしき行を検出したら

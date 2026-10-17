@@ -141,11 +141,26 @@ export interface JsonBodyOptions {
  * Content-Type guard for JSON endpoints.
  *
  * `application/json` is required and `application/*+json` is accepted
- * (structured-suffix JSON, RFC 6839). A wildcard media type — which
- * `curl --data-binary` sends by default — is accepted so scripted
- * callers are not broken, and an absent header is treated the same
- * way. Anything else is a protocol mismatch, not a bad value, so it is
- * answered with `415` instead of a `400` about the body.
+ * (structured-suffix JSON, RFC 6839). Two cases are accepted that do
+ * not name a media type at all — a wildcard (`*` followed by `/`) and
+ * an absent header — because that is what callers which never
+ * declared one send, and before Issue #450 the handlers called
+ * `c.req.json()`, which ignores Content-Type entirely and served them.
+ * Accepting them keeps that behaviour unchanged.
+ *
+ * A caller that *declares* a non-JSON media type is a protocol
+ * mismatch rather than a bad value, so it is answered with `415`
+ * instead of a `400` about the body.
+ *
+ * **Scripted callers.** `curl --data` and `curl --data-binary` send
+ * `application/x-www-form-urlencoded` — not a wildcard — so such a
+ * caller is now refused with `415` and must add
+ * `-H 'content-type: application/json'`. That is a real observable
+ * break of the pre-#450 contract and is recorded in
+ * `docs/security/input-validation.md` §4. Whether refusing
+ * form-encoded bodies is the intended long-term policy is an open
+ * owner decision (see the same section); the behaviour shipped here is
+ * the one the unit tests pin (`src/http/validation.test.ts`).
  */
 export function isJsonContentType(headers: Headers): boolean {
 	const raw = headers.get('content-type');

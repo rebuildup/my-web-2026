@@ -36,6 +36,10 @@ describe('isJsonContentType', () => {
 
 	it('rejects anything that is not JSON', () => {
 		expect(isJsonContentType(new Headers({ 'content-type': 'text/plain' }))).toBe(false);
+		// `curl --data` / `curl --data-binary` default to this media
+		// type (not `*/*`), so scripted callers must now pass
+		// `-H 'content-type: application/json'`. See
+		// `docs/security/input-validation.md` §4.
 		expect(
 			isJsonContentType(new Headers({ 'content-type': 'application/x-www-form-urlencoded' })),
 		).toBe(false);

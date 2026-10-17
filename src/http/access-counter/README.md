@@ -27,7 +27,7 @@ before any D1 statement runs.
 | 403 | `missing_scope` | key lacks the required scope |
 | 405 | `method_not_allowed` | verb not in `Allow` (`POST` on `/hit`, `GET` on `/count/:key`) |
 | 413 | `payload_too_large` | JSON body over `MAX_JSON_BODY_BYTES` (16 KiB) |
-| 415 | `unsupported_media_type` | `Content-Type` is not JSON |
+| 415 | `unsupported_media_type` | declared `Content-Type` is not `application/json` / `application/*+json` (a wildcard or an absent header is accepted; `curl --data` sends `application/x-www-form-urlencoded` and is refused — `docs/security/input-validation.md` §4) |
 | 429 | `rate_limited` | budget exhausted |
 
 ### POST /hit

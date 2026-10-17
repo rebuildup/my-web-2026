@@ -83,8 +83,12 @@ const AUTH = { authorization: 'Bearer mk_home_matrix-fixture' };
 const HUMAN_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) matrix-fixture';
 const JSON_HEADERS = { ...AUTH, 'content-type': 'application/json', 'user-agent': HUMAN_UA };
 
-/** Dimensions under test — the four input classes the issue names. */
-type Dimension = 'accepted' | 'size' | 'format' | 'protocol' | 'type';
+/**
+ * Dimensions under test — the four input classes the issue names,
+ * plus `accepted` (reached the handler) and `auth` (proves the
+ * middleware order: authentication runs before validation).
+ */
+type Dimension = 'accepted' | 'size' | 'format' | 'protocol' | 'type' | 'auth';
 type Group = 'body' | 'query' | 'path' | 'protocol' | 'auth';
 
 interface MatrixCase {
@@ -103,6 +107,13 @@ interface MatrixCase {
 
 const LONG = 'x'.repeat(300);
 const ACTOR = 'a1b2c3d4e5f60718293a4b5c6d7e8f90';
+/** Valid `PUT` / `DELETE /api/v1/reactions` body (emoji kind). */
+const REACTION_BODY = {
+	target_key: 'home-page',
+	actor_id: ACTOR,
+	kind: 'emoji',
+	value: '👍',
+} as const;
 
 const CASES: readonly MatrixCase[] = [
 	// ---------------------------------------------------------------- body
@@ -217,6 +228,89 @@ const CASES: readonly MatrixCase[] = [
 		status: 400,
 		code: 'invalid_body',
 	},
+	// ------------------------------------------------- body (reactions)
+	{
+		group: 'body',
+		endpoint: 'PUT /api/v1/reactions',
+		dimension: 'accepted',
+		label: 'valid JSON body',
+		request: {
+			method: 'PUT',
+			path: '/api/v1/reactions',
+			headers: JSON_HEADERS,
+			body: JSON.stringify(REACTION_BODY),
+		},
+		status: 200,
+	},
+	{
+		group: 'body',
+		endpoint: 'PUT /api/v1/reactions',
+		dimension: 'protocol',
+		label: 'form-encoded (curl --data default)',
+		request: {
+			method: 'PUT',
+			path: '/api/v1/reactions',
+			headers: { ...AUTH, 'content-type': 'application/x-www-form-urlencoded' },
+			body: JSON.stringify(REACTION_BODY),
+		},
+		status: 415,
+		code: 'unsupported_media_type',
+	},
+	{
+		group: 'body',
+		endpoint: 'PUT /api/v1/reactions',
+		dimension: 'type',
+		label: '`kind` is not emoji/image',
+		request: {
+			method: 'PUT',
+			path: '/api/v1/reactions',
+			headers: JSON_HEADERS,
+			body: JSON.stringify({ ...REACTION_BODY, kind: 'sticker' }),
+		},
+		status: 400,
+		code: 'invalid_body',
+	},
+	{
+		group: 'body',
+		endpoint: 'PUT /api/v1/reactions',
+		dimension: 'size',
+		label: `body > ${MAX_JSON_BODY_BYTES / 1024} KiB`,
+		request: {
+			method: 'PUT',
+			path: '/api/v1/reactions',
+			headers: JSON_HEADERS,
+			body: JSON.stringify({ ...REACTION_BODY, actor_id: 'a'.repeat(MAX_JSON_BODY_BYTES) }),
+		},
+		status: 413,
+		code: 'payload_too_large',
+	},
+	{
+		group: 'body',
+		endpoint: 'DELETE /api/v1/reactions',
+		dimension: 'accepted',
+		label: 'valid JSON body, absent row',
+		request: {
+			method: 'DELETE',
+			path: '/api/v1/reactions',
+			headers: JSON_HEADERS,
+			body: JSON.stringify({ ...REACTION_BODY, target_key: 'never-put-page' }),
+		},
+		status: 200,
+	},
+	{
+		group: 'body',
+		endpoint: 'DELETE /api/v1/reactions',
+		dimension: 'format',
+		label: '`actor_id` is empty',
+		request: {
+			method: 'DELETE',
+			path: '/api/v1/reactions',
+			headers: JSON_HEADERS,
+			body: JSON.stringify({ ...REACTION_BODY, actor_id: '' }),
+		},
+		status: 400,
+		code: 'invalid_body',
+	},
 	// --------------------------------------------------------------- query
 	{
 		group: 'query',
@@ -268,6 +362,15 @@ const CASES: readonly MatrixCase[] = [
 		},
 		status: 400,
 		code: 'invalid_actor_id',
+	},
+	{
+		group: 'query',
+		endpoint: 'GET /api/v1/reactions',
+		dimension: 'format',
+		label: '`target` present but empty (was missing_target)',
+		request: { method: 'GET', path: '/api/v1/reactions?target=', headers: AUTH },
+		status: 400,
+		code: 'invalid_target',
 	},
 	{
 		group: 'query',
@@ -368,6 +471,16 @@ const CASES: readonly MatrixCase[] = [
 		code: 'method_not_allowed',
 		header: ['allow', 'GET'],
 	},
+	{
+		group: 'protocol',
+		endpoint: 'GET /api/v1/reaction-images/:id',
+		dimension: 'protocol',
+		label: 'POST on the public image path',
+		request: { method: 'POST', path: '/api/v1/reaction-images/deadbeef', headers: {} },
+		status: 405,
+		code: 'method_not_allowed',
+		header: ['allow', 'GET'],
+	},
 	// ---------------------------------------------------------------- auth
 	{
 		group: 'auth',
@@ -389,6 +502,20 @@ const CASES: readonly MatrixCase[] = [
 		dimension: 'protocol',
 		label: 'no Authorization header',
 		request: { method: 'GET', path: '/api/v1/reactions?target=home-page' },
+		status: 401,
+		code: 'missing_authorization',
+	},
+	{
+		group: 'auth',
+		endpoint: 'POST /api/v1/access/hit',
+		dimension: 'auth',
+		label: 'no Authorization, oversized + text/plain body',
+		request: {
+			method: 'POST',
+			path: '/api/v1/access/hit',
+			headers: { 'content-type': 'text/plain', 'user-agent': HUMAN_UA },
+			body: 'x'.repeat(MAX_JSON_BODY_BYTES + 1),
+		},
 		status: 401,
 		code: 'missing_authorization',
 	},

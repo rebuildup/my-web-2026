@@ -31,12 +31,18 @@ authentication and origin checks per ADR-0002.
 
 ## Boundary input validation
 
-Every untrusted value that reaches `/api/v1/*` is validated by
-`src/http/validation.ts` on four dimensions — size, format, protocol,
-and type — and an invalid request always answers with a defined
-response (`400` / `405` / `413` / `415`) whose body is
+Every untrusted value on the `/api/v1/*` endpoints listed in
+[security/input-validation.md §3](security/input-validation.md#3-適用エンドポイントと応答)
+is validated by `src/http/validation.ts` on four dimensions — size,
+format, protocol, and type — and an invalid request always answers
+with a defined response (`400` / `405` / `413` / `415`) whose body is
 `{ error, reason }`. Client-side validation in the UI is a user
 convenience, never a security control.
+
+Not every `/api/v1/*` route is in that table, by design: `/api/v1/auth/*`
+is owned by Better Auth (which validates its own input), and
+`/api/v1/health`, `/api/v1/db/ping`, `/api/v1/media/ping` accept no
+untrusted input.
 
 The full contract, the per-endpoint table, and the reproduction
 commands live in [`security/input-validation.md`](security/input-validation.md).

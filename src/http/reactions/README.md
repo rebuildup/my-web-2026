@@ -102,7 +102,7 @@ for the full contract. Every rejection below carries `{ error, reason }`.
 | 404 | `not_found` | image id not in the library |
 | 405 | `method_not_allowed` | verb not in `Allow` for this path |
 | 413 | `payload_too_large` | JSON body over `MAX_JSON_BODY_BYTES` (16 KiB) |
-| 415 | `unsupported_media_type` | `Content-Type` is not JSON |
+| 415 | `unsupported_media_type` | declared `Content-Type` is not `application/json` / `application/*+json` (a wildcard or an absent header is accepted; `curl --data` sends `application/x-www-form-urlencoded` and is refused — `docs/security/input-validation.md` §4) |
 | 422 | `unknown_image_id` | image-kind reaction referencing an image that does not exist |
 | 429 | `rate_limited` | budget exhausted |
 

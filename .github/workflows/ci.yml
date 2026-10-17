@@ -68,6 +68,23 @@ jobs:
       # is part of `validate:integration` via `pnpm run lint:ci` — see
       # scripts/lint-ci.mjs.
       - run: pnpm run validate:integration
+      # Supply-chain SBOM (Issue #471). `pnpm run sbom:check` already
+      # runs inside `validate:fast` (and therefore inside
+      # `validate:integration` above); this step materialises the
+      # CycloneDX document so the exact inventory CI resolved is
+      # retained as a workflow artifact. The document is derived from
+      # tracked files only and carries no credential, so uploading it
+      # is the same posture as the Cloudflare bundle step below.
+      # Attaching it to the GitHub Release stays a human-gated release
+      # step — see docs/release.md and docs/runbook/sbom.md.
+      - name: Build SBOM
+        run: pnpm run sbom:build
+      - name: Upload SBOM
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ github.sha }}
+          path: release-assets/supply-chain/
+          retention-days: 90
       # On push, the worker-configuration.d.ts must match what
       # `wrangler types` produces. Local `pnpm run validate:release`
       # adds the same gate. GitHub Actions expression language does

@@ -25,6 +25,8 @@
 		"db:migrate:apply:production": "node scripts/d1.mjs apply --target=production --execute",
 		"db:migrate:list:local": "node scripts/d1.mjs list --target=local",
 		"db:migrate:list:production": "node scripts/d1.mjs list --target=production",
+		"dep-audit:check": "node scripts/check-dependency-advisories.mjs",
+		"dep-audit:report": "node scripts/check-dependency-advisories.mjs --report .tmp/dependency-audit-report.html",
 		"deploy:cf:prebuilt:dry-run": "cf deploy --prebuilt --mode production --dry-run",
 		"deploy:cf:prebuilt:selftest": "node scripts/verify-cf-build-output.mjs && node scripts/cf-prebuilt-dry-run.mjs",
 		"deploy:production": "pnpm run build && pnpm run deploy:production:prepared",

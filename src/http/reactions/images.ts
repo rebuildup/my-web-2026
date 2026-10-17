@@ -178,9 +178,16 @@ export function isSafeUploadFilename(filename: string): boolean {
 export function assertImageUploadPolicy(input: {
 	contentType: string;
 	bytes: ArrayBuffer;
-	filename?: string;
+	/**
+	 * `null` is tolerated as "no name": the server-function path is
+	 * gated by Zod before it gets here, but this boundary is exported
+	 * and a null that slipped past `!== undefined` used to reach
+	 * `isSafeUploadFilename` and throw a bare TypeError instead of a
+	 * policy code (#458 review).
+	 */
+	filename?: string | null;
 }): AllowedImageContentType {
-	if (input.filename !== undefined && !isSafeUploadFilename(input.filename)) {
+	if (input.filename != null && !isSafeUploadFilename(input.filename)) {
 		throw new ImagePolicyError(
 			'invalid_filename',
 			`filename must be a plain name of at most ${MAX_FILENAME_BYTES} bytes with no path separator, '..' or control character`,

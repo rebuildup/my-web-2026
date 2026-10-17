@@ -22,15 +22,29 @@ import { requireAdmin } from '../auth/require-admin';
  * `cloudflare:workers` `env` import gives us the project's real D1 +
  * R2 bindings (the same ones `src/server.ts` exposes through Hono).
  *
- * Every rejection is a stable `image_policy:<code>` string (Issue
- * #458): the UI maps known codes to fixed Japanese sentences and shows
- * a generic message for anything else, so an upload failure never
- * renders a raw server message. The authoritative limits live in
- * `src/http/reactions/schema.ts` — this module imports them instead of
- * restating them, so the client-side form and the server cannot drift.
+ * Every rejection is a stable wire string (Issue #458): the upload
+ * path sends `image_policy:<code>` and the delete path sends
+ * `DELETE_REFERENCED_FAILURE`. The UI maps the CODE half of each to a
+ * fixed Japanese sentence and shows a generic message for anything
+ * else, so a failure never renders a raw server message. The
+ * authoritative limits live in `src/http/reactions/schema.ts` — this
+ * module imports them instead of restating them, so the client-side
+ * form and the server cannot drift.
  *
  * Delete refuses when any reaction still references the image.
  */
+
+/**
+ * Exactly what `deleteReactionImage` rejects with when a reaction
+ * still references the image.
+ *
+ * Exported so the failure-display contract can be asserted against
+ * the value the server really sends instead of a hand-written copy of
+ * it (#458 review: the UI matched a bare `image_referenced`, so this
+ * string fell through to the generic upload sentence). The code is
+ * what the UI acts on; the rationale after `:` is for the log.
+ */
+export const DELETE_REFERENCED_FAILURE = 'image_referenced: delete referencing reactions first';
 
 const UploadInput = z.object({
 	contentType: z.enum(ALLOWED_IMAGE_CONTENT_TYPES),
@@ -151,7 +165,7 @@ export const deleteReactionImage = createServerFn({ method: 'POST' })
 			return { deleted: true };
 		} catch (err) {
 			if (err instanceof ImageReferencedError) {
-				throw new Error('image_referenced: delete referencing reactions first');
+				throw new Error(DELETE_REFERENCED_FAILURE);
 			}
 			if (err instanceof ImagePolicyError) {
 				throw policyError(err.code);

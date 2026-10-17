@@ -1,14 +1,21 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { applyD1Migrations, env } from 'cloudflare:test';
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import { uploadReactionImageImpl } from '../../src/admin/images/load';
+import { DELETE_REFERENCED_FAILURE, uploadReactionImageImpl } from '../../src/admin/images/load';
+import {
+	GENERIC_UPLOAD_FAILURE,
+	describeUploadFailure,
+} from '../../src/admin/images/upload-errors';
 import {
 	ImagePolicyError,
+	ImageReferencedError,
 	assertImageUploadPolicy,
+	deleteImage,
 	isSafeUploadFilename,
 	sniffImageContentType,
 	uploadImage,
 } from '../../src/http/reactions/images';
+import { putReaction } from '../../src/http/reactions/reactions';
 import { MAX_IMAGE_BYTES } from '../../src/http/reactions/schema';
 import {
 	GIF89A_BYTES,
@@ -50,7 +57,7 @@ import {
  *
  * The suite also PRINTS the measured matrix between the markers below.
  * `scripts/capture-image-upload-guards-report.mjs` renders exactly
- * that block into `docs/verification/security/image-upload-guards.png`,
+ * that block into `docs/verification/security/image-upload-guards.webp`,
  * so the committed screenshot is a reproduction of these runs rather
  * than a hand-written claim.
  */
@@ -448,6 +455,19 @@ describe('upload guards — policy unit surface', () => {
 		expect(await countObjects()).toBe(0);
 	});
 
+	it('treats a null file name as "no name" instead of crashing', () => {
+		// The exported boundary is reachable with `filename: null` from
+		// anything that is not the Zod-validated server function; it must
+		// answer with a policy decision, not a bare TypeError (#458 review).
+		expect(() =>
+			assertImageUploadPolicy({
+				contentType: 'image/png',
+				bytes: toArrayBuffer(PNG_BYTES),
+				filename: null,
+			}),
+		).not.toThrow();
+	});
+
 	it('uploadImage refuses a body whose bytes disagree with the declared type', async () => {
 		await expect(
 			uploadImage(D1(), R2(), {
@@ -456,5 +476,35 @@ describe('upload guards — policy unit surface', () => {
 				uploadedBy: 'guard-tester',
 			}),
 		).rejects.toMatchObject({ code: 'unrecognized_signature' });
+	});
+});
+
+describe('delete refusal — the wire string the admin page receives', () => {
+	it('resolves to the referenced sentence, not the generic upload one', async () => {
+		// Regression (#458 review): the delete server function rejects
+		// with `image_referenced: <rationale>`. An earlier revision of
+		// `describeUploadFailure` required an exact `image_referenced`,
+		// so an admin who pressed delete on an image another client had
+		// just referenced was shown the generic UPLOAD failure sentence.
+		// The constant below is the server's own, not a copy of it.
+		const upload = await uploadReactionImageImpl({
+			contentType: 'image/png',
+			bytes: toBase64(PNG_BYTES),
+			filename: 'reaction.png',
+			uploadedBy: 'guard-tester',
+		});
+		await putReaction(D1(), {
+			target_key: 'home-page',
+			actor_id: 'visitor',
+			principal: 'guard-tester',
+			kind: 'image',
+			value: upload.id,
+		});
+		await expect(deleteImage(D1(), R2(), upload.id)).rejects.toBeInstanceOf(ImageReferencedError);
+
+		const sentence = describeUploadFailure(new Error(DELETE_REFERENCED_FAILURE));
+		expect(sentence).not.toBe(GENERIC_UPLOAD_FAILURE);
+		expect(sentence).toBe(describeUploadFailure(new Error('image_referenced')));
+		expect(sentence).toContain('削除できません');
 	});
 });

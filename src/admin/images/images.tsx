@@ -25,6 +25,16 @@ import { describeUploadFailure } from './upload-errors';
  * with `image_referenced`.
  */
 
+/*
+ * Client-side pre-checks, for instant feedback only. They are a copy
+ * of `ALLOWED_IMAGE_CONTENT_TYPES` / `MAX_IMAGE_BYTES` in
+ * `src/http/reactions/schema.ts` and are deliberately NOT imported:
+ * this is a React component and the schema module belongs to the
+ * external HTTP boundary, which the client has no reason to know
+ * about. The server function is authoritative — a stale copy here can
+ * only cost the admin one round-trip, and the rejection renders as a
+ * fixed sentence (`oversize` / `unsupported_content_type`).
+ */
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
 const MAX_BYTES = 256 * 1024;
 

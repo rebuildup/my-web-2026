@@ -6,6 +6,8 @@
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
 import { externalBoundary } from './http/hono';
+import { applySecurityHeaders } from './http/security-headers';
+import { toolRouteSecurityPolicy } from './tools/registry';
 
 /**
  * Path prefixes that must be served by the Hono external boundary
@@ -114,9 +116,16 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
-		if (matchesExternalBoundary(url.pathname)) {
-			return externalBoundary.fetch(request, env, ctx);
-		}
-		return applyHtmlCachePolicy(request, await handler.fetch(request));
+		const response = matchesExternalBoundary(url.pathname)
+			? await externalBoundary.fetch(request, env, ctx)
+			: await handler.fetch(request);
+		// Issue #449: security headers are applied AFTER the dispatch so
+		// one choke point covers every Worker-generated response — SSR
+		// HTML, redirects, server-function payloads and the Hono
+		// boundary alike. `public/_headers` cannot do this job for the
+		// SSR path (Cloudflare does not apply `_headers` to Worker-
+		// generated responses).
+		const secured = applySecurityHeaders(request, response, toolRouteSecurityPolicy(url.pathname));
+		return applyHtmlCachePolicy(request, secured);
 	},
 } satisfies ExportedHandler<Env>;

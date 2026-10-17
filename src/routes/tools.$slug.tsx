@@ -204,6 +204,16 @@ function ToolRoute() {
 					src={tool.entry_html}
 					sandbox={tool.iframe.sandbox}
 					referrerPolicy={tool.iframe.referrer_policy as HTMLAttributeReferrerPolicy}
+					// Issue #449: container half of the Permissions-Policy
+					// grant. Permissions Policy is two-sided — the container
+					// must opt the feature IN with `allow`, and the framed
+					// document must not deny it in its own response header.
+					// Both halves are driven by the same manifest field
+					// (`delivery.iframe.allow`), so a Tool that needs the
+					// microphone gets it and every other Tool does not.
+					// Rendered only when the manifest asks for something;
+					// an empty `allow=""` would be noise in the DOM.
+					{...(tool.iframe.allow ? { allow: tool.iframe.allow } : {})}
 					style={{
 						width: '100%',
 						height: '100%',

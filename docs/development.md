@@ -250,7 +250,7 @@ canonical location for the flag is `.dev.vars` only.
 
 ```bash
 pnpm run validate:fast         # format:check + lint:check + typecheck + test
-pnpm run validate:integration  # + build + wrangler:dry-run + lint:ci + build-storybook
+pnpm run validate:integration  # + build + bundle budget + wrangler:dry-run + lint:ci + build-storybook
 pnpm run validate:release      # + cf-typegen:check
 ```
 
@@ -258,6 +258,56 @@ CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 `validate` job on every PR and every push to `main` / `release-*`.
 The same job also installs the Playwright Chromium binary and runs
 the E2E suite against `pnpm dev`.
+
+## Route bundle budget (Issue #482)
+
+`pnpm run bundle:budget:check` measures the **initial JS and CSS bytes** of
+every route from the Vite build, and fails `validate:integration` when a route
+outgrows its cap.
+
+```bash
+pnpm run build               # vite build writes dist/client/bundle-graph.json
+pnpm run bundle:budget:check # per-route table + PASS/FAIL
+pnpm run bundle:budget:check -- --json --report=.tmp/bundle-budget.json
+```
+
+It reads the chunk graph the `my-web-2026:client-bundle-graph` Vite plugin
+emits during the client build. For each route in `src/routeTree.gen.ts` it sums
+the client entry chunk plus the transitive **static**-import closure of that
+route's chunk; dynamic imports are never charged to first paint.
+
+Numbers live in [`quality/bundle-budget.json`](../quality/bundle-budget.json);
+the gate records its reproduction conditions (no browser, no network, no CPU
+dependence, and the measured commit SHA) both in that file and in
+`quality/profile.yaml`.
+
+Three things this gate is **not**:
+
+- It is not a Lighthouse score gate (Issue #384 measures, #385 thresholds).
+- It is not a Core Web Vitals / LCP / CLS budget (Issue #386).
+- It is not a rendering-speed measurement of any kind. It counts shipped bytes.
+
+Tool bundles under `/tools/<slug>/app/**` are independent Vite builds loaded in
+a sandboxed iframe, so they are aggregated and capped separately — a heavy Tool
+cannot hide behind a host route's budget.
+
+Raising a cap needs a reason:
+
+```json
+"/tools/": {
+  "initial_js_bytes": 1560000,
+  "initial_css_bytes": 40000,
+  "exception": {
+    "metric": "initial_js_bytes",
+    "reason": "Why this route knowingly ships more, and what will remove it."
+  }
+}
+```
+
+An exception without a reason of at least 20 characters is a configuration
+error and fails the gate. So is a new route with no budget entry: routes come
+from the generated tree, so forgetting the budget fails loudly instead of
+silently shipping an uncapped page.
 
 ## Storybook
 

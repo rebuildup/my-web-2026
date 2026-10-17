@@ -1,4 +1,6 @@
-import { resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, relative, resolve } from 'node:path';
+import { gzipSync } from 'node:zlib';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
@@ -47,6 +49,102 @@ const cloudflareWorkersClientStub: Plugin = {
 		return resolve(__dirname, 'src/cloudflare/workers-stub.ts');
 	},
 };
+
+/**
+ * Write a client-only bundle graph report for `scripts/check-bundle-budget.mjs`
+ * (Issue #482).
+ *
+ * Why not `build.manifest: true`
+ * -----------------------------
+ * The Cloudflare Vite Plugin materialises the deploy artifact into
+ * `.cloudflare/output/v0/workers/default/assets/`, so Vite's own
+ * `build.manifest` output would land INSIDE that directory and be uploaded
+ * to production as a static asset. Wrangler only ignores `.assetsignore`,
+ * `_headers` and `_redirects` by default — a `.vite/manifest.json` in the
+ * asset tree is a deploy-artifact change nobody asked for. Writing the
+ * graph from the plugin keeps `assets/` byte-for-byte what it is today and
+ * puts the artefact in `dist/client/` next to the Tool bundles.
+ *
+ * Why a graph and not a total
+ * ---------------------------
+ * A single "total bundle size" number cannot attribute bytes to a route, so
+ * it cannot tell a justified growth from an accidental `import` of a heavy
+ * library on one page. The static `imports` closure of each chunk is what
+ * the browser fetches for a route's first paint; recording it per chunk lets
+ * the budget gate compute `entry + route chunk + shared chunks` per route.
+ * Dynamic imports are recorded but never walked — lazy route chunks must not
+ * be charged to first paint.
+ */
+function clientBundleGraphPlugin(): Plugin {
+	return {
+		name: 'my-web-2026:client-bundle-graph',
+		apply: 'build',
+		async generateBundle(_options, bundle) {
+			// The Worker (SSR) bundle gets its own manifest from the
+			// Cloudflare plugin. Only the browser bundle is budgeted.
+			if (this.environment?.name !== 'client') return;
+
+			const outDir = this.environment.config.build.outDir;
+			const reportPath = resolve(__dirname, 'dist/client/bundle-graph.json');
+
+			const assets = {};
+			const chunks = {};
+			for (const [fileName, output] of Object.entries(bundle)) {
+				if (output.type === 'asset') {
+					const bytes = output.source.length;
+					assets[fileName] = {
+						bytes,
+						gzip_bytes: gzipSync(Buffer.from(output.source), { level: 9 }).length,
+					};
+					continue;
+				}
+				const importedCss = [...(output.viteMetadata?.importedCss ?? [])];
+				// `?tsr-split=component` / `?tsr-split=notFoundComponent`
+				// are TanStack Start's virtual split markers. Two chunks can
+				// therefore share one facade id (a route component and its
+				// not-found component); only the component chunk is part of
+				// first paint, so the query has to survive into the graph for
+				// the budget gate to pick the right one.
+				const facadeId = output.facadeModuleId ?? null;
+				const facade = facadeId
+					? relative(__dirname, facadeId.split('?')[0]).split('\\').join('/')
+					: null;
+				chunks[fileName] = {
+					name: output.name,
+					// The file basename alone cannot identify a route: four
+					// distinct chunks are called `index` and two are called
+					// `tools._slug`. `facade_module_id` is the stable key
+					// that maps a chunk back to `src/routes/<file>.tsx`.
+					facade_module_id: facade,
+					facade_query: facadeId?.includes('?') ? facadeId.slice(facadeId.indexOf('?') + 1) : null,
+					is_entry: output.isEntry === true,
+					is_dynamic_entry: output.isDynamicEntry === true,
+					bytes: output.code.length,
+					gzip_bytes: gzipSync(output.code, { level: 9 }).length,
+					css_bytes: importedCss.reduce((sum, css) => sum + (assets[css]?.bytes ?? 0), 0),
+					imports: [...output.imports].filter((dep) => bundle[dep]?.type === 'chunk'),
+					css: importedCss,
+				};
+			}
+
+			const graph = {
+				schema_version: 1,
+				generator: 'my-web-2026:client-bundle-graph',
+				out_dir: outDir,
+				bytes_unit: 'raw',
+				gzip_level: 9,
+				assets,
+				chunks,
+			};
+
+			await mkdir(dirname(reportPath), { recursive: true });
+			await writeFile(reportPath, `${JSON.stringify(graph, null, '\t')}\n`);
+			// Never fail the build on a reporting artefact; the budget gate
+			// reports a missing graph as its own explicit failure.
+			console.log(`[bundle-graph] wrote ${reportPath}`);
+		},
+	};
+}
 
 /**
  * Add `Access-Control-Allow-Origin: *` to every response under
@@ -98,6 +196,7 @@ export default defineConfig({
 	plugins: [
 		cloudflareWorkersClientStub,
 		toolCorsPreviewPlugin(),
+		clientBundleGraphPlugin(),
 		// LOCAL_API_MODE=mock dev-server passthrough (Issue #186).
 		//
 		// `wrangler.jsonc#vars` is intentionally not extended with

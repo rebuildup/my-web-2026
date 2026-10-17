@@ -1,0 +1,38 @@
+{
+	"schema_version": 1,
+	"issue": 482,
+	"unit": "bytes",
+	"measurement": {
+		"mode": "static Vite client bundle graph — no browser, no network, no rendering",
+		"browser": "not applicable. The gate never launches a browser; it reads the chunk graph the Vite build emits (dist/client/bundle-graph.json) and sums the static-import closure of each route's client chunk. Browser-dependent behaviour is out of scope by design — see Issue #384 (Lighthouse measurement) and #385 (score gate).",
+		"network": "not applicable. Budgeted numbers are RAW on-disk bytes of the files a browser must fetch before the route is interactive. gzip -9 figures are printed for reference only and are never budgeted, because a CDN's compression settings are not part of this measurement.",
+		"cpu": "not time-based. The measurement is byte arithmetic over a build artefact, so it is deterministic on any machine and independent of runner speed. Only the wall-clock cost of `pnpm run build` that produces the artefact is runner-dependent.",
+		"source_sha": "the commit the build was produced from. The gate prints `git rev-parse HEAD` on every run; CI runs it inside the `validate` job against the PR head commit, so a red run always names the exact tree that was measured.",
+		"reproduce_locally": "pnpm run build && pnpm run bundle:budget:check",
+		"reproduce_in_ci": "the `validate` job of .github/workflows/ci.yml runs `pnpm run validate:integration`, which runs this check immediately after `pnpm run build:production`."
+	},
+	"headroom_policy": "Each cap is the measured value on release-0-6-3 (Issue #482) rounded up to the next 5,000 bytes — roughly 0.5-1% of slack. The caps are intentionally tight: the entry chunk alone is ~1.47 MiB because `emoji-picker-react` is statically imported (see the Vite chunk warning in the build log), so a per-route cap is the only place a regression of that kind is visible today. Reducing the shell is a separate change with its own Issue; this gate only makes the number visible and stops it from moving silently.",
+	"routes": {
+		"/": { "initial_js_bytes": 1575000, "initial_css_bytes": 40000 },
+		"/about": { "initial_js_bytes": 1570000, "initial_css_bytes": 40000 },
+		"/admin": { "initial_js_bytes": 1555000, "initial_css_bytes": 40000 },
+		"/admin/": { "initial_js_bytes": 1555000, "initial_css_bytes": 40000 },
+		"/admin/emoji-catalog": { "initial_js_bytes": 1560000, "initial_css_bytes": 40000 },
+		"/admin/images": { "initial_js_bytes": 1560000, "initial_css_bytes": 40000 },
+		"/admin/invitations": { "initial_js_bytes": 1560000, "initial_css_bytes": 40000 },
+		"/admin/invitations/accept": { "initial_js_bytes": 1560000, "initial_css_bytes": 40000 },
+		"/admin/keys": { "initial_js_bytes": 1560000, "initial_css_bytes": 40000 },
+		"/admin/login": { "initial_js_bytes": 1555000, "initial_css_bytes": 40000 },
+		"/contact": { "initial_js_bytes": 1565000, "initial_css_bytes": 40000 },
+		"/design-system": { "initial_js_bytes": 1585000, "initial_css_bytes": 40000 },
+		"/portfolio/": { "initial_js_bytes": 1585000, "initial_css_bytes": 40000 },
+		"/portfolio/$slug": { "initial_js_bytes": 1585000, "initial_css_bytes": 40000 },
+		"/tools/": { "initial_js_bytes": 1560000, "initial_css_bytes": 40000 },
+		"/tools/$slug": { "initial_js_bytes": 1555000, "initial_css_bytes": 40000 }
+	},
+	"tool_iframe": {
+		"max_js_bytes_per_tool": 1600000,
+		"max_css_bytes_per_tool": 12000,
+		"reason": "Each Tool is an independent Vite build loaded inside a sandboxed iframe from /tools/<slug>/app/, so its bytes are never part of a host route's first paint. Capping it separately keeps one heavy Tool from being hidden by the host route budget and stops a Tool from inflating the host measurement. The cap is the observed `prototype` bundle (1,502,757 B JS / 8,415 B CSS) plus headroom; the Tool's own repository owns any reduction."
+	}
+}

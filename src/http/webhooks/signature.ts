@@ -132,13 +132,16 @@ export interface WebhookReplayGuard {
  * checklist in `docs/security/webhook-signature-verification.md` names
  * D1 `INSERT ... ON CONFLICT DO NOTHING` as the durable implementation.
  */
-export function createMemoryReplayGuard(now: () => number = Date.now): WebhookReplayGuard {
+export function createMemoryReplayGuard(): WebhookReplayGuard {
 	const claims = new Map<string, number>();
 	return {
 		async claim(deliveryId, { nowMs, ttlMs }) {
-			const sweepAt = nowMs - ttlMs;
+			// Sweep against each entry's OWN expiry, not the incoming
+			// call's `ttlMs`: a claim stored with a long TTL must not be
+			// dropped early just because a later caller passed a short
+			// one.
 			for (const [id, expiresAt] of claims) {
-				if (expiresAt <= sweepAt) claims.delete(id);
+				if (expiresAt <= nowMs) claims.delete(id);
 			}
 			if (claims.has(deliveryId)) return false;
 			claims.set(deliveryId, nowMs + ttlMs);

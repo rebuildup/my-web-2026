@@ -2,6 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { ColorSwatches } from './sections/ColorSwatches';
+import { ImageCls } from './sections/ImageCls';
 import { InteractiveStates } from './sections/InteractiveStates';
 import { SpacingRuler } from './sections/SpacingRuler';
 import { StatusAccents } from './sections/StatusAccents';
@@ -28,6 +29,19 @@ import { Typography } from './sections/Typography';
  *   - 05 Interactive states default / hover / focus / pressed on `<a>` + `<button>`.
  *   - 06 Status / category  positive / negative / warning badges + four
  *                            content-category left-border treatments.
+ *   - 07 Image / CLS         Issue #486 measurement fixture: the real
+ *                            `PortfolioMediaFigure` rendered with
+ *                            fixture rows (eager / lazy / placeholder /
+ *                            unknown size) so the reserved-box contract
+ *                            is measured in a browser instead of
+ *                            asserted in prose. See
+ *                            `docs/verification/perf/README.md`.
+ *
+ * Section 07 is the only one that composes an obligation other than
+ * editorial: it imports the portfolio media component, which is the
+ * production element the CLS regression lives in. The import is
+ * deliberate and allowed — `routes -> portfolio` is a registered
+ * dependency direction (AGENTS.md §3).
  *
  * Each section uses `SectionHeading` with the same editorial spread
  * (4/12 heading cluster + 8/12 body) the home / about / portfolio
@@ -49,6 +63,7 @@ export function DesignSystemPage() {
 				<SurfaceSection />
 				<InteractiveSection />
 				<StatusSection />
+				<ImageSection />
 			</main>
 		</>
 	);
@@ -277,6 +292,24 @@ function StatusSection() {
 					variant="spread"
 				>
 					<StatusAccents />
+				</SectionHeading>
+			</Container>
+		</section>
+	);
+}
+
+function ImageSection() {
+	return (
+		<section aria-labelledby="design-system-image" className={sectionStyle}>
+			<Container>
+				<SectionHeading
+					id="design-system-image"
+					eyebrow="07 — Image"
+					title="画像 / CLS fixture"
+					description="Issue #486 の計測面。実運用の PortfolioMediaFigure を固定データで描画し、width/height・loading=lazy・placeholder の枠予約を E2E で実測する（e2e/image-cls.spec.ts、証跡は docs/verification/perf/images-cls-fixture.png）。"
+					variant="spread"
+				>
+					<ImageCls />
 				</SectionHeading>
 			</Container>
 		</section>

@@ -81,6 +81,16 @@ binding API is reachable in the local workerd pool"**, not
 | `react` / `react-dom`       | `^19.2.0`      | UI runtime                            |
 | `typescript`                | `^5.9.0`       | Language                              |
 
+## Boundary contracts
+
+Operational contracts for the boundaries that accept untrusted input are
+recorded next to this file, so a reviewer can read the shipped rule and not
+only the diff that introduced it.
+
+| Document | Boundary |
+| --- | --- |
+| [`security/image-upload-guards.md`](security/image-upload-guards.md) | Admin reaction-image upload: declared MIME vs magic bytes, size, file name, SVG refusal, safe failure copy (#458) |
+
 ## Automated checks
 
 - Secret scanning: enabled as an asynchronous CI job (see

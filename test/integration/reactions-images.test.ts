@@ -13,6 +13,15 @@ import {
 	putReaction,
 	reactionImageReferenced,
 } from '../../src/http/reactions/reactions';
+import {
+	GIF_BYTES,
+	JPEG_BYTES,
+	PNG_BYTES,
+	SVG_BYTES,
+	WEBP_BYTES,
+	repeatTo,
+	toArrayBuffer,
+} from '../helpers/image-fixtures';
 
 /**
  * Image upload + delete policy tests.
@@ -65,118 +74,6 @@ const MIGRATIONS = [
 const D1 = () => env.DB;
 const R2 = () => env.MEDIA;
 
-/**
- * Minimal real image bytes — tiny but valid. Magic-byte headers are
- * the minimum needed for the content-type guard to make sense;
- * we don't decode pixels in these tests.
- */
-const PNG_BYTES = new Uint8Array([
-	0x89,
-	0x50,
-	0x4e,
-	0x47,
-	0x0d,
-	0x0a,
-	0x1a,
-	0x0a, // PNG signature
-	0x00,
-	0x00,
-	0x00,
-	0x0d,
-	0x49,
-	0x48,
-	0x44,
-	0x52, // IHDR chunk
-	0x00,
-	0x00,
-	0x00,
-	0x01,
-	0x00,
-	0x00,
-	0x00,
-	0x01,
-	0x08,
-	0x06,
-	0x00,
-	0x00,
-	0x00,
-	0x1f,
-	0x15,
-	0xc4,
-	0x89,
-	0x00,
-	0x00,
-	0x00,
-	0x0d,
-	0x49,
-	0x44,
-	0x41,
-	0x54,
-	0x78,
-	0x9c,
-	0x63,
-	0x00,
-	0x01,
-	0x00,
-	0x00,
-	0x05,
-	0x00,
-	0x01,
-	0x0d,
-	0x0a,
-	0x2d,
-	0xb4,
-	0x00,
-	0x00,
-	0x00,
-	0x00,
-	0x49,
-	0x45,
-	0x4e,
-	0x44,
-	0xae,
-	0x42,
-	0x60,
-	0x82,
-]);
-
-// Minimal JPEG (SOI + APP0 + EOI)
-const JPEG_BYTES = new Uint8Array([
-	0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10, 0x4a, 0x46, 0x49, 0x46, 0x00, 0x01, 0x01, 0x00, 0x00, 0x01,
-	0x00, 0x01, 0x00, 0x00, 0xff, 0xd9,
-]);
-
-// Minimal WebP (RIFF + WEBP + VP8 chunk)
-const WEBP_BYTES = new Uint8Array([
-	0x52, 0x49, 0x46, 0x46, 0x1a, 0x00, 0x00, 0x00, 0x57, 0x45, 0x42, 0x50, 0x56, 0x50, 0x38, 0x20,
-	0x18, 0x00, 0x00, 0x00, 0x30, 0x01, 0x00, 0x9d, 0x01, 0x2a, 0x01, 0x00, 0x01, 0x00, 0x02, 0x00,
-	0x34, 0x25, 0xa4, 0x00, 0x03, 0x70, 0x00, 0xfe, 0xfb, 0x94, 0x00, 0x00,
-]);
-
-// Minimal GIF87a (1x1 pixel)
-const GIF_BYTES = new Uint8Array([
-	0x47, 0x49, 0x46, 0x38, 0x37, 0x61, 0x01, 0x00, 0x01, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00,
-	0xff, 0xff, 0xff, 0x21, 0xf9, 0x04, 0x01, 0x00, 0x00, 0x00, 0x00, 0x2c, 0x00, 0x00, 0x00, 0x00,
-	0x01, 0x00, 0x01, 0x00, 0x00, 0x02, 0x02, 0x44, 0x01, 0x00, 0x3b,
-]);
-
-// Valid SVG (rejected by policy)
-const SVG_BYTES = new Uint8Array(
-	'<?xml version="1.0"?><svg xmlns="http://www.w3.org/2000/svg"><circle r="5"/></svg>'
-		.split('')
-		.map((c) => c.charCodeAt(0)),
-);
-
-function makeBytes(content: Uint8Array, totalLen: number): ArrayBuffer {
-	// Repeat `content` to fill totalLen bytes; used to push past
-	// the 256 KiB size cap without fabricating magic-byte headers.
-	const buf = new Uint8Array(totalLen);
-	for (let i = 0; i < totalLen; i += content.length) {
-		buf.set(content.subarray(0, Math.min(content.length, totalLen - i)), i);
-	}
-	return buf.buffer;
-}
-
 beforeAll(async () => {
 	await applyD1Migrations(D1(), MIGRATIONS);
 });
@@ -201,10 +98,7 @@ describe('uploadImage — content-type policy', () => {
 	])('accepts %s', async (contentType, bytes) => {
 		const result = await uploadImage(D1(), R2(), {
 			contentType,
-			bytes: bytes.buffer.slice(
-				bytes.byteOffset,
-				bytes.byteOffset + bytes.byteLength,
-			) as ArrayBuffer,
+			bytes: toArrayBuffer(bytes),
 			uploadedBy: 'tester',
 		});
 		expect(result.image.content_type).toBe(contentType);
@@ -217,10 +111,7 @@ describe('uploadImage — content-type policy', () => {
 		await expect(
 			uploadImage(D1(), R2(), {
 				contentType: 'image/svg+xml',
-				bytes: SVG_BYTES.buffer.slice(
-					SVG_BYTES.byteOffset,
-					SVG_BYTES.byteOffset + SVG_BYTES.byteLength,
-				) as ArrayBuffer,
+				bytes: toArrayBuffer(SVG_BYTES),
 				uploadedBy: 'tester',
 			}),
 		).rejects.toBeInstanceOf(ImagePolicyError);
@@ -230,10 +121,7 @@ describe('uploadImage — content-type policy', () => {
 		await expect(
 			uploadImage(D1(), R2(), {
 				contentType: 'application/octet-stream',
-				bytes: PNG_BYTES.buffer.slice(
-					PNG_BYTES.byteOffset,
-					PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
-				) as ArrayBuffer,
+				bytes: toArrayBuffer(PNG_BYTES),
 				uploadedBy: 'tester',
 			}),
 		).rejects.toMatchObject({ code: 'unsupported_content_type' });
@@ -242,7 +130,7 @@ describe('uploadImage — content-type policy', () => {
 
 describe('uploadImage — size policy', () => {
 	it('rejects payload above 256 KiB with oversize code', async () => {
-		const oversize = makeBytes(PNG_BYTES, 257 * 1024);
+		const oversize = repeatTo(PNG_BYTES, 257 * 1024);
 		await expect(
 			uploadImage(D1(), R2(), {
 				contentType: 'image/png',
@@ -253,7 +141,7 @@ describe('uploadImage — size policy', () => {
 	});
 
 	it('accepts payload exactly at 256 KiB', async () => {
-		const boundary = makeBytes(PNG_BYTES, 256 * 1024);
+		const boundary = repeatTo(PNG_BYTES, 256 * 1024);
 		const result = await uploadImage(D1(), R2(), {
 			contentType: 'image/png',
 			bytes: boundary,
@@ -265,10 +153,7 @@ describe('uploadImage — size policy', () => {
 
 describe('uploadImage — content-addressed dedup', () => {
 	it('returns the same row when the same bytes are uploaded twice', async () => {
-		const buf = PNG_BYTES.buffer.slice(
-			PNG_BYTES.byteOffset,
-			PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
-		) as ArrayBuffer;
+		const buf = toArrayBuffer(PNG_BYTES);
 		const first = await uploadImage(D1(), R2(), {
 			contentType: 'image/png',
 			bytes: buf,
@@ -288,10 +173,7 @@ describe('uploadImage — content-addressed dedup', () => {
 
 describe('deleteImage — reference policy', () => {
 	it('refuses when a reaction references the image', async () => {
-		const buf = PNG_BYTES.buffer.slice(
-			PNG_BYTES.byteOffset,
-			PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
-		) as ArrayBuffer;
+		const buf = toArrayBuffer(PNG_BYTES);
 		const upload = await uploadImage(D1(), R2(), {
 			contentType: 'image/png',
 			bytes: buf,
@@ -313,10 +195,7 @@ describe('deleteImage — reference policy', () => {
 	});
 
 	it('deletes the D1 row + R2 object when no reaction references the image', async () => {
-		const buf = PNG_BYTES.buffer.slice(
-			PNG_BYTES.byteOffset,
-			PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
-		) as ArrayBuffer;
+		const buf = toArrayBuffer(PNG_BYTES);
 		const upload = await uploadImage(D1(), R2(), {
 			contentType: 'image/png',
 			bytes: buf,
@@ -350,10 +229,7 @@ describe('deleteImage — reference policy', () => {
 		// DELETE ... RETURNING that atomically claims the row only
 		// when no reaction references it. Either interleaving is
 		// safe; the invariant is "no dangling reaction survives".
-		const buf = PNG_BYTES.buffer.slice(
-			PNG_BYTES.byteOffset,
-			PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
-		) as ArrayBuffer;
+		const buf = toArrayBuffer(PNG_BYTES);
 		const upload = await uploadImage(D1(), R2(), {
 			contentType: 'image/png',
 			bytes: buf,

@@ -3,6 +3,7 @@ import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeader, getRequestUrl, setResponseHeader } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import type { ReactionAggregate } from '../../http/reactions/schema';
+import { createAuditLogger } from '../../logging/logger';
 import type { CatalogEntry } from '../../reactions/emoji-catalog';
 import {
 	insertCatalogEntry,
@@ -17,6 +18,9 @@ import {
 	readActorIdFromCookieHeader,
 } from './cookie';
 import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
+
+const accessLogger = createAuditLogger('home.access');
+const reactionsLogger = createAuditLogger('home.reactions');
 
 /**
  * The TanStack Start import-protection plugin forbids
@@ -170,7 +174,7 @@ export async function getHomeReactionsImpl(
 ): Promise<HomeReactionsData> {
 	const apiKey = envLike.MY_WEB_2026_CONSUMER_API_KEY;
 	if (!apiKey || apiKey.length === 0) {
-		console.warn('[home.reactions] consumer API key not configured — returning empty');
+		reactionsLogger.warn('consumer API key not configured — returning empty');
 		return {
 			target_key: target,
 			aggregates: [],
@@ -199,7 +203,10 @@ export async function getHomeReactionsImpl(
 		db ? loadCatalog(db) : Promise.resolve([] as readonly CatalogEntry[]),
 	]);
 	if (!response.ok) {
-		console.error('[home.reactions] upstream failed', response.status, await response.text());
+		reactionsLogger.error('upstream failed (GET)', {
+			status: response.status,
+			body: await response.text(),
+		});
 		return { target_key: target, aggregates: [], viewer_reactions: [], catalog, enabled: true };
 	}
 	const payload = (await response.json()) as {
@@ -283,7 +290,7 @@ export async function addHomeReactionImpl(
 			try {
 				await insertCatalogEntry(db, { slug, codepoint, created_by: 'visitor' }, Date.now());
 			} catch (err) {
-				console.error('[home.reactions.add] auto-register failed', err);
+				reactionsLogger.error('auto-register failed', err);
 				return { ok: false, reason: 'invalid_body' };
 			}
 		}
@@ -317,7 +324,10 @@ export async function addHomeReactionImpl(
 	});
 	if (response.status === 429) return { ok: false, reason: 'rate_limited' };
 	if (!response.ok) {
-		console.error('[home.reactions.add] upstream failed', response.status, await response.text());
+		reactionsLogger.error('upstream failed (PUT)', {
+			status: response.status,
+			body: await response.text(),
+		});
 		return { ok: false, reason: 'upstream_error' };
 	}
 	const payload = (await response.json()) as { created?: boolean };

@@ -2,6 +2,10 @@ import { env } from 'cloudflare:workers';
 import { apiKey } from '@better-auth/api-key';
 import { betterAuth } from 'better-auth';
 import { admin } from 'better-auth/plugins/admin';
+import { createAuditLogger } from '../../logging/logger';
+import { redactEmailAddress } from '../../logging/redact';
+
+const authLogger = createAuditLogger('auth.email');
 
 /**
  * Better Auth instance — the project's auth foundation.
@@ -266,7 +270,11 @@ export const auth = betterAuth({
 		// No SMTP is configured. Password reset / verification emails land in
 		// the worker logs and the admin uses the invitation flow
 		// instead of password reset (ADR-0009 §1).
-		console.log('[auth.email]', payload);
+		//
+		// The payload is NOT logged verbatim (Issue #467): `to` is personal
+		// data and `body` carries a single-use link with the token. Only
+		// `describeAuthEmail`'s minimal record is emitted.
+		authLogger.info('email delivery stub (no SMTP configured)', describeAuthEmail(payload));
 	},
 	trustedOrigins: betterAuthUrl ? [betterAuthUrl] : [],
 	// `checkSchema()` runs eagerly at module load and caches a per-adapter
@@ -281,5 +289,33 @@ export const auth = betterAuth({
 	// pattern.
 	advanced: { database: { validateSchema: false } },
 });
+
+/**
+ * The only shape of an outbound auth email that may be logged
+ * (Issue #467).
+ *
+ * `to` is the invitee's email address — personal data. `body` is
+ * Better Auth's rendered message, which for verification / reset
+ * flows embeds a single-use link carrying the token. Logging the
+ * payload verbatim (the pre-#467 behaviour) put both into the
+ * Worker log stream, which is read by operators, mirrored by
+ * vendor dashboards, and pasted into Issues.
+ *
+ * What survives: that an email exists, whether a body was rendered,
+ * and how long it was — enough to debug delivery, nothing that
+ * identifies a person or authorises anything.
+ */
+export function describeAuthEmail(payload: {
+	to: string;
+	subject: string;
+	body?: string;
+}): Record<string, unknown> {
+	return {
+		to: redactEmailAddress(payload.to),
+		subject: typeof payload.subject === 'string' ? payload.subject : undefined,
+		hasBody: typeof payload.body === 'string' && payload.body.length > 0,
+		bodyLength: typeof payload.body === 'string' ? payload.body.length : 0,
+	};
+}
 
 export type Auth = typeof auth;

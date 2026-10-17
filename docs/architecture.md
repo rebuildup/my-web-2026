@@ -101,6 +101,22 @@ Cloudflare runtime によって変更理由が決まる仕事を所有する。
 - `hono.ts` — external REST / webhook / OAuth / integration boundary
 - `health.ts` — この boundary の stable health description
 
+### `logging/` (Issue #467)
+
+実行時ログの redaction contract を所有する leaf obligation。
+
+- `redact.ts` — 「この値を operator が読む stream に書いてよいか」の判定。key 名・値の形・構造の 3 層で redact する
+- `logger.ts` — `src/**` で `console` に触れてよい唯一の module
+
+`logging/` は「何のログを出すか」ではなく「その value を書いてよいか」だけを
+決定する。access counter / reactions / auth email が何を記録するかは、それぞれ
+`home/` / `cloudflare/` の判断であり、`logging/` はその記録を狭めるだけ。
+独立した contract を持つのは、AGENTS.md §4 の「secret 値を	value-listing しない」
+不変条件を operator tooling から runtime stream 全体へ一般化した إليها。
+
+`scripts/**` は `logging/` を import しない。Node script は Worker bundle なしで
+動く必要があり、status-only 出力は marker ベースの `node --test` suite が担保する。
+
 ### `routes/` and runtime entries
 
 `routes/` は TanStack Start の file-based routing contract によって場所が決まる。
@@ -120,6 +136,7 @@ home/status ─────────▶ http
 portfolio ───────────▶ cloudflare (DI seam)
 portfolio ───────────▶ editorial
 home ────────────────▶ editorial
+home/http/cloudflare ─▶ logging (leaf)
 server ──────────────▶ http
 ```
 
@@ -128,6 +145,7 @@ server ──────────────▶ http
 - `cloudflare/` は `home/` も `portfolio/` も知らない。
 - `http/` は `home/` も `portfolio/` を知らない。
 - `editorial/` は特定 surface を知らない。
+- `logging/` は他のどの obligation も知らない (leaf)。
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
 - framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。
 

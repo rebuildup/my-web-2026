@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import packageJson from '../../package.json';
+import { createAuditLogger } from '../logging/logger';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
@@ -27,6 +28,15 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
 export const externalBoundary = new Hono<{ Bindings: Env }>();
+
+/**
+ * Boundary diagnostics. Every argument is redacted before it
+ * reaches the log stream (Issue #467) — an unhandled error thrown
+ * from a handler can carry request context, and the error log is
+ * the one place that is guaranteed to fire exactly when something
+ * has already gone wrong.
+ */
+const boundaryLogger = createAuditLogger('boundary');
 
 // Local API mock gate (Issue #166): when `env.LOCAL_API_MODE === 'mock'`
 // (set in `.dev.vars`, NOT in `wrangler.jsonc#vars` — see
@@ -71,7 +81,7 @@ externalBoundary.get('/api/v1/db/ping', async (c) => {
 		const row = await c.env.DB.prepare('SELECT 1 AS one').first<{ one: number }>();
 		return c.json({ status: 'ok', binding: 'd1', one: row?.one ?? null });
 	} catch (err) {
-		console.error('[boundary] d1 ping failed', err);
+		boundaryLogger.error('d1 ping failed', err);
 		return c.json({ status: 'binding_error', binding: 'd1' }, 503);
 	}
 });
@@ -90,7 +100,7 @@ externalBoundary.get('/api/v1/media/ping', async (c) => {
 		if (/404|not[_ ]?found/i.test(message)) {
 			return c.json({ status: 'key_not_found', binding: 'r2' }, 404);
 		}
-		console.error('[boundary] r2 ping failed', err);
+		boundaryLogger.error('r2 ping failed', err);
 		return c.json({ status: 'binding_error', binding: 'r2' }, 503);
 	}
 });
@@ -110,6 +120,6 @@ externalBoundary.onError((err, c) => {
 	if (err instanceof ApiKeyError) {
 		return c.json({ error: err.code, status: err.status }, err.status);
 	}
-	console.error('[boundary] unhandled', err);
+	boundaryLogger.error('unhandled', err);
 	return c.json({ error: 'internal_error' }, 500);
 });

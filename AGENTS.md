@@ -78,11 +78,14 @@ routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
+home -> logging (Issue #467 — shared log redaction)
 admin/emoji-catalog -> reactions
 reactions -> cloudflare (env.DB at SSR time)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
 server -> http
+http -> logging (Issue #467 — boundary diagnostics)
+cloudflare -> logging (Issue #467 — auth email stub + binding probes)
 home -> editorial
 ```
 
@@ -90,6 +93,21 @@ home -> editorial
 - `src/editorial/**` owns the shipped editorial visual language.
 - `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
 - `src/http/**` owns the external HTTP boundary.
+- `src/logging/**` (Issue #467) is a **leaf** obligation owning
+  the runtime log-redaction contract: `redact.ts` decides what may
+  appear in a log record, `logger.ts` is the only module allowed
+  to touch `console` in `src/**`. It owns the question "may this
+  value be written to an operator-visible stream", not the question
+  "what should be logged about a request" — each owner logs its own
+  narrower record. Its independent contract: the AGENTS.md §4
+  "no value-listing of real secrets" invariant generalizes from
+  operator tooling to every runtime stream, and
+  `scripts/check-log-redaction.mjs` is the gate that keeps
+  `console.*` out of every other `src/**` file. `scripts/**`
+  (operator tooling) does NOT import it: the Node scripts print
+  status-only output by construction and must stay runnable without
+  a Worker bundle, so the shared contract there is the marker-based
+  `node --test` suites, not a shared module.
 - `src/reactions/**` owns the slug-grammar / DB-backed emoji catalog
   shared by `home/` and `admin/`. Promoted in branch 39 from
   `src/http/reactions/` so neither the `home/` nor the `admin/`

@@ -3,6 +3,9 @@ import { createServerFn } from '@tanstack/react-start';
 import { getRequestUrl } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import type { GetCountOutput, RecordHitOutput } from '../../http/access-counter/schema';
+import { createAuditLogger } from '../../logging/logger';
+
+const accessLogger = createAuditLogger('home.access');
 
 /**
  * Home → access counter integration (ADR-0011).
@@ -86,7 +89,10 @@ export async function recordHomeHitImpl(
 	});
 	if (response.status === 429) return { ok: false, reason: 'rate_limited' };
 	if (!response.ok) {
-		console.error('[home.access.hit] upstream failed', response.status, await response.text());
+		accessLogger.error('upstream failed (POST /api/v1/access/hit)', {
+			status: response.status,
+			body: await response.text(),
+		});
 		return { ok: false, reason: 'upstream_error' };
 	}
 	return { ok: true };
@@ -114,7 +120,10 @@ export async function getHomeCounterImpl(
 		},
 	);
 	if (!response.ok) {
-		console.error('[home.access.count] upstream failed', response.status, await response.text());
+		accessLogger.error('upstream failed (GET /api/v1/access/count)', {
+			status: response.status,
+			body: await response.text(),
+		});
 		return { key, count: 0, first_hit: null, last_hit: null, enabled: true };
 	}
 	const payload = (await response.json()) as GetCountOutput;

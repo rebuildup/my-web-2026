@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveAuthSecrets } from './better-auth';
+import { createAuditLogger } from '../../logging/logger';
+import { describeAuthEmail, resolveAuthSecrets } from './better-auth';
 
 /**
  * Better Auth configuration invariants — read-only smoke tests.
@@ -131,5 +132,77 @@ describe('better-auth secret routing (DI seam: resolveAuthSecrets)', () => {
 		// must throw rather than drop to the legacy form — silently
 		// falling back would let a broken rotation binding pass.
 		expect(() => resolveAuthSecrets({ BETTER_AUTH_SECRETS: 'bad-no-colon' })).toThrow();
+	});
+});
+
+/**
+ * Auth log surface (Issue #467).
+ *
+ * The Worker has no SMTP, so `sendEmail` logs the payload instead of
+ * delivering it. The pre-#467 call was `console.log('[auth.email]',
+ * payload)`, which put the invitee's email address and — for
+ * verification / reset flows — a single-use link carrying the token
+ * into the log stream.
+ *
+ * `describeAuthEmail` is the record that is allowed to be logged.
+ * These assertions are the audit: a fabricated token and a
+ * fabricated address must not survive, and the record must still
+ * carry the facts an operator needs (an email was rendered, how
+ * long it was).
+ */
+describe('describeAuthEmail — auth log redaction', () => {
+	const CANARY_ADDRESS = 'canary.person@example.invalid';
+	const CANARY_TOKEN = 'invitation-token-canary-abcdef123456';
+
+	it('replaces the recipient address and keeps only delivery facts', () => {
+		const record = describeAuthEmail({
+			to: CANARY_ADDRESS,
+			subject: 'Invitation',
+			body: `Accept: https://rebuildup.dev/admin/invitations/accept?token=${CANARY_TOKEN}`,
+		});
+		expect(record.to).toBe('[redacted-email]');
+		expect(record.hasBody).toBe(true);
+		expect(record.bodyLength).toBeGreaterThan(0);
+		expect(JSON.stringify(record)).not.toContain(CANARY_ADDRESS);
+		// The body itself is never part of the record.
+		expect(JSON.stringify(record)).not.toContain(CANARY_TOKEN);
+	});
+
+	it('survives a payload with no body', () => {
+		expect(describeAuthEmail({ to: CANARY_ADDRESS, subject: 'Invitation' })).toEqual({
+			to: '[redacted-email]',
+			subject: 'Invitation',
+			hasBody: false,
+			bodyLength: 0,
+		});
+	});
+
+	it('keeps an email embedded in the subject out of the log (logger redaction)', () => {
+		// The subject is not pre-redacted by `describeAuthEmail`; the
+		// shared logger masks it on the way to `console`. Both layers
+		// are asserted here so a future change to either is visible.
+		const records: string[] = [];
+		const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+			records.push(
+				args.map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' '),
+			);
+		});
+		try {
+			createAuditLogger('auth.email').info(
+				'email delivery stub (no SMTP configured)',
+				describeAuthEmail({
+					to: CANARY_ADDRESS,
+					subject: `Invitation for ${CANARY_ADDRESS}`,
+					body: `token=${CANARY_TOKEN}`,
+				}),
+			);
+		} finally {
+			spy.mockRestore();
+		}
+		expect(records).toHaveLength(1);
+		const logged = records[0] ?? '';
+		expect(logged).not.toContain(CANARY_ADDRESS);
+		expect(logged).not.toContain(CANARY_TOKEN);
+		expect(logged).toContain('[auth.email]');
 	});
 });

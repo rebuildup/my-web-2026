@@ -1,9 +1,12 @@
+import { createAuditLogger } from '../../logging/logger';
 import {
 	ALLOWED_IMAGE_CONTENT_TYPES,
 	type AllowedImageContentType,
 	MAX_IMAGE_BYTES,
 	type ReactionImageRow,
 } from './schema';
+
+const imagesLogger = createAuditLogger('reactions.images');
 
 /**
  * Reaction image upload / delete — admin path.
@@ -164,7 +167,7 @@ export async function deleteImage(db: D1Database, media: R2Bucket, id: string): 
 	try {
 		await media.delete(claimed.r2_key);
 	} catch (err) {
-		console.error('[reactions.images] R2 delete failed (orphan):', claimed.r2_key, err);
+		imagesLogger.error('R2 delete failed (orphan)', { r2_key: claimed.r2_key }, err);
 	}
 }
 

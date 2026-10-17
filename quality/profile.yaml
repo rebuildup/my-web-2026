@@ -35,6 +35,13 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      # Issue #509: a Storybook story is feature-local UI, so its runtime
+      # import closure must stay inside the owning obligation — routes,
+      # server.ts, http/, cloudflare/ and the cloudflare:workers virtual
+      # module are foreign boundaries for a browser preview. Kept separate
+      # from check-architecture.mjs because that gate judges the OWNERS'
+      # dependency direction, while this one judges what a preview may load.
+      - 'pnpm run storybook:ownership:check' # story -> foreign boundary walk
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
@@ -94,6 +101,9 @@ change_risk_mapping:
   architecture_boundary:
     gate: fast
     note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; src/home/status/** may use the documented runtime health edges and registered home→http schema edges must be import type only'
+  storybook_story_change:
+    gate: fast
+    note: 'scripts/check-storybook-ownership.mjs walks every story declared by .storybook/main.ts; a runtime import of routes / server.ts / http / cloudflare / cloudflare:workers anywhere in the closure fails the gate, and an unresolvable in-src specifier exits 2 (not run) instead of passing'
   binding_change:
     gate: integration
     note: 'cloudflare.config.ts + .cloudflare/types/index.d.ts must be in the same PR'

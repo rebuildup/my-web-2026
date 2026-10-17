@@ -277,6 +277,42 @@ pnpm run build-storybook # static build to ./storybook-static
 `build-storybook` is part of `validate:integration`. The static
 output is gitignored.
 
+### Story ownership gate (#509)
+
+A story is feature-local UI: it renders a component with props, so its
+runtime import closure must stay inside the obligation that owns it.
+`pnpm run storybook:ownership:check` walks every story declared by
+`.storybook/main.ts` and fails when the closure reaches a foreign
+boundary:
+
+| Boundary | Why it is foreign for a preview |
+| --- | --- |
+| `src/routes/**` | route contract — pulling it in drags the whole app graph |
+| `src/server.ts` | Worker entrypoint |
+| `src/http/**` | external HTTP boundary (Hono) |
+| `src/cloudflare/**` | owns the bindings; a preview has none |
+| `cloudflare:workers` | Workers virtual module — does not resolve in a browser |
+
+Excluded on purpose, and reported as `not applicable` in the output:
+the four boundary roots above (they are the rule's targets, not its
+subjects), `import type` edges (erased by `verbatimModuleSyntax`,
+AGENTS.md §3), npm packages, the generated `styled-system/` layer and
+static assets. The walk stops at the **server-function seam** — a
+module that value-imports `createServerFn` — because its handler only
+runs on the Worker; those edges are printed as `seam`, not hidden.
+
+```bash
+pnpm run storybook:ownership:check
+pnpm run storybook:ownership:check -- --json=.tmp/storybook-ownership.json
+```
+
+Exit codes: `0` every subject passed, `1` at least one foreign-boundary
+reach, `2` a subject could not be fully resolved (`not run` — reported
+as NOT a pass, so an incomplete walk can never be mistaken for green).
+The gate is wired into `validate:fast`, and
+`scripts/check-storybook-ownership.test.mjs` covers it with pass /
+fail / not-run / not-applicable fixtures.
+
 ## Playwright E2E
 
 Playwright 1.63.x covers the deployed Worker smoke. Two surfaces

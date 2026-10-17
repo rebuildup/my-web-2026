@@ -272,3 +272,43 @@ Architecture boundary の変更は path の見た目だけで承認しない。
 - routing convention を変更する → `routes/` / runtime entry が変更を所有し、Home の意味を変えない。
 
 詳細は ADR-0008 を参照する。
+
+### Storybook story の ownership（Issue #509）
+
+Storybook story は feature-local UI の preview 対象である。preview は browser で
+走るため、binding も Worker runtime も存在しない。よって story の **実行時
+import closure** は、その obligation の中に収まっていなければならない。
+
+`scripts/check-storybook-ownership.mjs`（`pnpm run storybook:ownership:check`、
+`validate:fast` に配線済み）がこれを機械的に検証する。foreign boundary は次の
+5 種で、いずれも browser preview では解決・実行できない。
+
+- `src/routes/**` — file-route contract。import すると route tree 一式が入る。
+- `src/server.ts` — Worker runtime entrypoint。
+- `src/http/**` — 外部 HTTP boundary (Hono)。
+- `src/cloudflare/**` — binding を所有する obligation。
+- `cloudflare:workers` — Workers virtual module。
+
+**除外（理由つき）**
+
+- 上記 boundary 自身は本規則の *対象* であり *主語* ではない。owner 間の依存方向は
+  `scripts/check-architecture.mjs` が所有しており、本 checker は preview が何を
+  ロードできるかだけを判定する（出力の `not applicable` 欄）。
+- `import type` は `verbatimModuleSyntax: true` で build 時に消えるため到達と
+  みなさない（AGENTS.md §3 の type-only edge、`home → http` が登録済み）。
+- npm package / 生成物 `styled-system/` / 静的 asset は終端 leaf。
+- **server-function seam**: `createServerFn` を value import する module で walk を
+  止める。handler body は Worker 側でしか実行されず、そのことは
+  `src/home/reactions/widget.stories.tsx` のコメントと `.storybook/main.ts` の
+  `external: ['cloudflare:workers']` が既に宣言している。隠さず `seam` として
+  報告する。
+
+**判定の4状態** — `pass` / `fail` / `not run` / `not applicable`。`not run`
+（`src/` 内で解決できない specifier がある）は「green ではない」として exit 2 に
+する。walk が不完全なまま pass を主張しないため。
+fixture による検証は `scripts/check-storybook-ownership.test.mjs`。
+
+**この checker が所有しないもの** — 「shared UI layer」の新設。違反を直す正しい
+方法は、render できる部分を owner obligation へ移し loader の結果を prop として
+渡すこと（`src/home/status/tiles.stories.tsx` がその形の参照実装）。route 層や
+共通 UI を新設して境界を薄めることは本 checker の目的ではない。

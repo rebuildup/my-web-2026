@@ -29,6 +29,22 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## Step-up re-authentication
+
+A live admin session (30-day `session.expiresIn`, ADR-0009 §8) is the
+right precondition for *reading* the admin surface, but not for
+*granting standing authority*: an API key issued at `/admin/keys`
+outlives the session that created it. So that one operation asks the
+operator to re-confenticate their password first (step-up), with a
+five-minute window keyed on the server-resolved session id.
+
+Implementation, the states it distinguishes (`required` / `confirmed`
+/ `rejected`), and why the grant lives in D1 rather than in a signed
+cookie are recorded in
+[`security/step-up-authentication.md`](security/step-up-authentication.md).
+Verification runs in the local workerd pool; no production account or
+credential is used.
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

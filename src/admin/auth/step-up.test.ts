@@ -25,11 +25,33 @@ import {
  */
 const SESSION_ID = 'session-stepup-unit-fixture';
 const USER_ID = 'user-stepup-unit-fixture';
+const SESSION_TOKEN = 'token-stepup-unit-fixture';
+
+/**
+ * The grant row carries `REFERENCES session(id)` / `user(id)`, so a unit
+ * test that writes one needs the rows it points at. These are local D1
+ * rows inside the workerd pool; no credential material is involved (the
+ * password column stays NULL because nothing here hashes one).
+ */
+async function seedSession(): Promise<void> {
+	await env.DB.prepare(
+		`INSERT OR REPLACE INTO user (id, name, email, emailVerified, createdAt, updatedAt, role)
+		 VALUES (?, ?, ?, 1, ?, ?, 'admin')`,
+	)
+		.bind(USER_ID, 'Step-up Unit', 'stepup-unit@test.local', 1, 1)
+		.run();
+	await env.DB.prepare(
+		`INSERT OR REPLACE INTO session (id, userId, token, expiresAt, createdAt, updatedAt)
+		 VALUES (?, ?, ?, ?, ?, ?)`,
+	)
+		.bind(SESSION_ID, USER_ID, SESSION_TOKEN, 4_102_444_800_000, 1, 1)
+		.run();
+}
 
 async function clearGrants(): Promise<void> {
-	await env.DB.prepare('DELETE FROM admin_step_up_grant WHERE session_id = ?')
-		.bind(SESSION_ID)
-		.run();
+	await env.DB.prepare('DELETE FROM admin_step_up_grant').run();
+	await env.DB.prepare('DELETE FROM session WHERE id = ?').bind(SESSION_ID).run();
+	await env.DB.prepare('DELETE FROM user WHERE id = ?').bind(USER_ID).run();
 }
 
 describe('evaluateStepUp — the freshness decision', () => {
@@ -64,7 +86,7 @@ describe('evaluateStepUp — the freshness decision', () => {
 
 describe('admin_step_up_grant — D1 round-trip', () => {
 	it('write then read returns the stored confirmation for that session', async () => {
-		await clearGrants();
+		await seedSession();
 		await writeStepUpGrant(env.DB, {
 			sessionId: SESSION_ID,
 			userId: USER_ID,
@@ -80,7 +102,7 @@ describe('admin_step_up_grant — D1 round-trip', () => {
 	});
 
 	it('confirming twice refreshes the row instead of duplicating it', async () => {
-		await clearGrants();
+		await seedSession();
 		await writeStepUpGrant(env.DB, {
 			sessionId: SESSION_ID,
 			userId: USER_ID,
@@ -105,6 +127,20 @@ describe('admin_step_up_grant — D1 round-trip', () => {
 		const status = await readStepUpStatus(env.DB, 'session-never-confirmed', Date.now());
 		expect(status.state).toBe('required');
 	});
+
+	it('a grant cannot be written for a session that does not exist', async () => {
+		// The foreign key is what keeps the table honest: a grant always
+		// hangs off a live Better Auth session, so there is no way to
+		// leave a row behind for a session that never existed.
+		await clearGrants();
+		await expect(
+			writeStepUpGrant(env.DB, {
+				sessionId: 'session-does-not-exist',
+				userId: USER_ID,
+				confirmedAtMs: 1_000,
+			}),
+		).rejects.toThrow(/FOREIGN KEY/i);
+	});
 });
 
 describe('assertStepUpGranted — the gate decision', () => {
@@ -114,7 +150,7 @@ describe('assertStepUpGranted — the gate decision', () => {
 	};
 
 	it('refuses with `step_up_required` when nothing was confirmed', async () => {
-		await clearGrants();
+		await seedSession();
 		await expect(assertStepUpGranted(env.DB, session)).rejects.toMatchObject({
 			name: 'StepUpError',
 			reason: 'step_up_required',
@@ -122,7 +158,7 @@ describe('assertStepUpGranted — the gate decision', () => {
 	});
 
 	it('refuses with `step_up_required` once the window has lapsed', async () => {
-		await clearGrants();
+		await seedSession();
 		const confirmedAtMs = 5_000_000;
 		await writeStepUpGrant(env.DB, { sessionId: SESSION_ID, userId: USER_ID, confirmedAtMs });
 		// Same row, evaluated one millisecond past the boundary.
@@ -133,7 +169,7 @@ describe('assertStepUpGranted — the gate decision', () => {
 	});
 
 	it('admits the operation inside the window and reports the remaining time', async () => {
-		await clearGrants();
+		await seedSession();
 		const confirmedAtMs = 5_000_000;
 		await writeStepUpGrant(env.DB, { sessionId: SESSION_ID, userId: USER_ID, confirmedAtMs });
 		const status = await assertStepUpGranted(env.DB, session, confirmedAtMs + 1_000);

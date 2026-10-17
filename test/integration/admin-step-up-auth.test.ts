@@ -247,20 +247,25 @@ describe('step-up gate (Issue #445)', () => {
 
 	it('boundary: Better Auth answers the confirmation endpoint differently per outcome', async () => {
 		const { headers } = await signInAsAdmin();
+		// `Origin` is required by Better Auth's own origin check on every
+		// POST (`MISSING_OR_NULL_ORIGIN` otherwise) and a browser sends it
+		// on a same-origin fetch, so the fixture reproduces that.
+		const post = (body: { password: string }) =>
+			SELF.fetch('https://example.com/api/v1/auth/verify-password', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json',
+					Origin: 'https://example.com',
+					Cookie: headers.get('Cookie') ?? '',
+				},
+				body: JSON.stringify(body),
+			});
 
-		const denied = await SELF.fetch('https://example.com/api/v1/auth/verify-password', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', Cookie: headers.get('Cookie') ?? '' },
-			body: JSON.stringify({ password: 'wrong-password-fixture' }),
-		});
+		const denied = await post({ password: 'wrong-password-fixture' });
 		expect(denied.status).toBe(400);
 		expect(await denied.json()).toMatchObject({ code: 'INVALID_PASSWORD' });
 
-		const allowed = await SELF.fetch('https://example.com/api/v1/auth/verify-password', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json', Cookie: headers.get('Cookie') ?? '' },
-			body: JSON.stringify({ password: FIXTURE_PASSWORD }),
-		});
+		const allowed = await post({ password: FIXTURE_PASSWORD });
 		expect(allowed.status).toBe(200);
 		expect(await allowed.json()).toEqual({ status: true });
 	});

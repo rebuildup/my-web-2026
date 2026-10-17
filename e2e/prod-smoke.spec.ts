@@ -45,10 +45,11 @@ import type { RepresentativeRoute, RouteObservation } from '../scripts/prod-smok
  *
  * Origin scoping: the Issue #43 describe below asserts the canonical
  * PRODUCTION origin (HTTPS, `BETTER_AUTH_URL`, the `#106` login gate), so
- * it only runs when Playwright is pointed at production. The
- * representative-route adapter instead follows `PLAYWRIGHT_BASE_URL`, so
- * `pnpm run e2e:prod:local` can exercise the same contract against a
- * local build without resolving `https://rebuildup.dev` at all.
+ * it only runs when Playwright is EXPLICITLY pointed at production. The
+ * representative-route adapter instead navigates to whatever origin the
+ * `baseURL` fixture resolves, so `pnpm run e2e:prod:local` can exercise
+ * the same contract against a local build without ever resolving
+ * `https://rebuildup.dev`.
  *
  * The smoke verifies the documented Issue #43 acceptance criteria
  * against the live deployment:
@@ -74,23 +75,33 @@ import type { RepresentativeRoute, RouteObservation } from '../scripts/prod-smok
 const CANONICAL_ORIGIN = CANONICAL_PRODUCTION_ORIGIN;
 
 /**
- * Origin the representative-route adapter talks to.
+ * Whether this run was EXPLICITLY pointed at the canonical production
+ * origin.
  *
  * `pnpm run e2e:prod` / `pnpm run e2e:prod:transition` set
- * `PLAYWRIGHT_BASE_URL=https://rebuildup.dev`, so every production run
- * is unchanged. When Playwright is explicitly pointed at a local build
- * (`pnpm run e2e:prod:local`, i.e. base URL `http://127.0.0.1:3000`), the
- * adapter follows THAT origin instead — which is what makes the Issue
- * #500 contract reproducible offline, and what lets the verification
- * screenshot be captured without reading production at all. With
- * `PLAYWRIGHT_BASE_URL` unset the adapter falls back to the canonical
- * production origin, so an ad-hoc `playwright test e2e/prod-smoke.spec.ts`
- * keeps its previous meaning.
+ * `PLAYWRIGHT_BASE_URL=https://rebuildup.dev`, and that is the only thing
+ * that arms the Issue #43 production group below. Deliberately
+ * fail-safe: an UNSET `PLAYWRIGHT_BASE_URL` does not mean "production",
+ * it means `playwright.config.ts` fell back to `http://127.0.0.1:3000`.
+ * Treating unset as production would let a local rehearsal keep hitting
+ * production — including the one deliberate write in this file.
  */
-const SMOKE_ORIGIN = (process.env.PLAYWRIGHT_BASE_URL ?? CANONICAL_ORIGIN).replace(/\/+$/, '');
+const CONFIGURED_BASE_URL = process.env.PLAYWRIGHT_BASE_URL?.replace(/\/+$/, '');
+const IS_CANONICAL_RUN = CONFIGURED_BASE_URL === CANONICAL_ORIGIN;
 
-/** True when this run really is pointed at the canonical production origin. */
-const IS_CANONICAL_RUN = SMOKE_ORIGIN === CANONICAL_ORIGIN;
+/**
+ * Origin the representative-route adapter talks to.
+ *
+ * Resolved from the `baseURL` fixture — i.e. from Playwright's own
+ * configuration, the single place where `PLAYWRIGHT_BASE_URL` and the
+ * localhost default are defined. Production runs (`pnpm run e2e:prod`,
+ * `pnpm run e2e:prod:transition`) therefore keep hitting
+ * `https://rebuildup.dev`, and `pnpm run e2e:prod:local` keeps everything
+ * on `http://127.0.0.1:3000`.
+ */
+function smokeOrigin(baseURL: string | undefined): string {
+	return (baseURL ?? CANONICAL_ORIGIN).replace(/\/+$/, '');
+}
 
 const PROD_SMOKE_PHASE = process.env.PROD_SMOKE_PHASE ?? 'versioned';
 if (PROD_SMOKE_PHASE !== 'transition' && PROD_SMOKE_PHASE !== 'versioned') {
@@ -307,12 +318,12 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
  * also lives in the Issue #43 describe above, which only runs against the
  * canonical production origin.
  *
- * Outbound traffic: every navigation below goes through `SMOKE_ORIGIN`,
- * i.e. the canonical production origin for `pnpm run e2e:prod` /
- * `pnpm run e2e:prod:transition`, or whatever `PLAYWRIGHT_BASE_URL` says
- * for `pnpm run e2e:prod:local`. No navigation in this describe is
- * hardcoded to production, which is what keeps an offline verification
- * run from ever resolving the production hostname.
+ * Outbound traffic: every navigation below goes through the `baseURL`
+ * Playwright was configured with, i.e. the canonical production origin for
+ * `pnpm run e2e:prod` / `pnpm run e2e:prod:transition` and
+ * `http://127.0.0.1:3000` for `pnpm run e2e:prod:local`. No navigation in
+ * this describe is hardcoded to production, which is what keeps an
+ * offline verification run from ever resolving the production hostname.
  * ------------------------------------------------------------------------ */
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -432,10 +443,11 @@ async function computePageProbes(
  */
 async function observePageRoute(
 	route: RepresentativeRoute,
+	origin: string,
 	page: Page,
 	toolSlugs: ReadonlyArray<string>,
 ): Promise<RouteObservation> {
-	const response = await page.goto(`${SMOKE_ORIGIN}${route.path}`, {
+	const response = await page.goto(`${origin}${route.path}`, {
 		waitUntil: 'domcontentloaded',
 	});
 	const canonical = page.locator('link[rel="canonical"]').first();
@@ -467,9 +479,10 @@ async function observePageRoute(
  */
 async function observeApiRoute(
 	route: RepresentativeRoute,
+	origin: string,
 	request: APIRequestContext,
 ): Promise<RouteObservation> {
-	const response = await request.get(`${SMOKE_ORIGIN}${route.path}`);
+	const response = await request.get(`${origin}${route.path}`);
 	const body = await response.text();
 	let json: Record<string, unknown> | null = null;
 	try {
@@ -510,33 +523,51 @@ test.describe('production representative routes (Issue #500)', () => {
 		PROD_SMOKE_PHASE === 'transition',
 		'Smoke #1 runs PRE merge/deploy, so production still serves the previous `main` build. This registry is release-branch data (Tool Registry row set, home/about section counts, declared <h1> text), and the runbook defers every non-`main`-compatible assertion to Smoke #2. See docs/runbook/cloudflare-workers-builds.md "Representative route coverage (Issue #500)".',
 	);
+	test('reads the origin Playwright was pointed at, never a hardcoded production URL', async ({
+		baseURL,
+	}) => {
+		test.skip(IS_CANONICAL_RUN, 'this run IS pointed at the canonical production origin');
+		expect(
+			smokeOrigin(baseURL),
+			'a run that is not pointed at production must not resolve the canonical production origin — that would turn an offline rehearsal into a production read, and would make the Issue #500 verification artefact claim something this code path cannot do',
+		).not.toBe(CANONICAL_ORIGIN);
+	});
+
 	for (const route of REPRESENTATIVE_PAGE_ROUTES) {
-		test(`${route.label} — ${route.path} serves its documented default state`, async ({ page }) => {
-			const observation = await observePageRoute(route, page, readToolManifestSlugs());
+		test(`${route.label} — ${route.path} serves its documented default state`, async ({
+			baseURL,
+			page,
+		}) => {
+			const origin = smokeOrigin(baseURL);
+			const observation = await observePageRoute(route, origin, page, readToolManifestSlugs());
 			// Assert the problem LIST, not the first problem: a broken
 			// deployment should report everything that is wrong in one go.
 			const problems = auditRoute(route, observation);
-			expect(problems, formatAuditReport(route, problems)).toEqual([]);
+			expect(problems, formatAuditReport(route, problems, origin)).toEqual([]);
 		});
 	}
 
 	for (const route of REPRESENTATIVE_API_ROUTES) {
 		test(`${route.label} — ${route.path} serves its documented default state`, async ({
+			baseURL,
 			request,
 		}) => {
-			const observation = await observeApiRoute(route, request);
+			const origin = smokeOrigin(baseURL);
+			const observation = await observeApiRoute(route, origin, request);
 			const problems = auditRoute(route, observation);
-			expect(problems, formatAuditReport(route, problems)).toEqual([]);
+			expect(problems, formatAuditReport(route, problems, origin)).toEqual([]);
 		});
 	}
 
 	test('short navigation path — every representative page route is one click from /', async ({
+		baseURL,
 		page,
 	}) => {
+		const origin = smokeOrigin(baseURL);
 		for (const entry of ONE_CLICK_ENTRIES) {
 			// Re-enter the source surface each round: the previous round
 			// followed its link, so the page is no longer on `entry.from`.
-			await page.goto(`${SMOKE_ORIGIN}${entry.from}`, { waitUntil: 'domcontentloaded' });
+			await page.goto(`${origin}${entry.from}`, { waitUntil: 'domcontentloaded' });
 			const link = page.locator(entry.selector).first();
 			await expect(
 				link,
@@ -565,10 +596,12 @@ test.describe('production representative routes (Issue #500)', () => {
 	});
 
 	test('short navigation path — the PublicNav pages link to every sibling representative route', async ({
+		baseURL,
 		page,
 	}) => {
+		const origin = smokeOrigin(baseURL);
 		for (const from of CHROME_NAV_ROUTES) {
-			await page.goto(`${SMOKE_ORIGIN}${from}`, { waitUntil: 'domcontentloaded' });
+			await page.goto(`${origin}${from}`, { waitUntil: 'domcontentloaded' });
 			const nav = page.locator('nav[aria-label="Public"]');
 			await expect(
 				nav,

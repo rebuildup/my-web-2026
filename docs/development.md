@@ -297,10 +297,11 @@ exist:
 - `pnpm run e2e:prod:local` runs the same spec file against the LOCAL
   preview build (`http://127.0.0.1:3000`), so the Issue #500
   representative-route contract is reproducible offline. It changes no
-  origin: the adapter reads `PLAYWRIGHT_BASE_URL`, so nothing in that
-  run resolves `https://rebuildup.dev`, and the Issue #43 canonical-origin
-  group (including the one deliberate write, the anonymous reaction
-  mutation) skips itself.
+  origin: the representative-route adapter navigates to the `baseURL`
+  Playwright resolved, and the Issue #43 canonical-origin group (which
+  hardcodes the canonical origin, including the one deliberate write, the
+  anonymous reaction mutation) skips itself unless `PLAYWRIGHT_BASE_URL`
+  explicitly names production.
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps

@@ -385,14 +385,18 @@ Offline rehearsal
 -----------------
 
 `pnpm run e2e:prod:local` runs the SAME spec file against the local
-`vite preview` build instead of production. The adapter resolves its
-origin from `PLAYWRIGHT_BASE_URL`, so with no production base URL in the
-environment nothing in that run resolves `https://rebuildup.dev`, and the
-Issue #43 canonical-origin group (including the one deliberate write, the
-anonymous reaction mutation) skips itself. Use it to rehearse the
-representative-route contract, and to capture a verification artefact,
-without reading production at all. It is a rehearsal, not a substitute:
-the deployed-`main` measurement still only exists in Smoke #2.
+`vite preview` build instead of production. The representative-route
+adapter navigates to the `baseURL` Playwright resolved — `pnpm run
+e2e:prod:local` deliberately leaves `PLAYWRIGHT_BASE_URL` unset, so that
+is `http://127.0.0.1:3000` — and the Issue #43 canonical-origin group,
+which does hardcode the canonical origin (including the one deliberate
+write, the anonymous reaction mutation), disarms itself unless
+`PLAYWRIGHT_BASE_URL` explicitly names production. A test in the
+representative group asserts that a non-production run does not resolve
+the canonical origin. Use the command to rehearse the contract, and to
+capture a verification artefact, without reading production at all. It is
+a rehearsal, not a substitute: the deployed-`main` measurement still only
+exists in Smoke #2.
 
 Read-only boundary
 ------------------

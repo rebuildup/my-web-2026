@@ -49,12 +49,13 @@
  *     fields above, D1 rows, R2 objects, session cookies, headers that
  *     carry credentials, and any authenticated surface.
  *   - Outbound network traffic originates ONLY at the origin the spec is
- *     pointed at, which is the canonical production origin declared in
+ *     pointed at: the `baseURL` Playwright resolved, which is the
+ *     canonical production origin declared in
  *     `CANONICAL_PRODUCTION_ORIGIN` for `pnpm run e2e:prod` /
- *     `pnpm run e2e:prod:transition`, and the `PLAYWRIGHT_BASE_URL`
- *     origin for `pnpm run e2e:prod:local` (an offline rehearsal of the
- *     same contract against the local build). No navigation is hardcoded
- *     to production, so an offline run cannot resolve the production
+ *     `pnpm run e2e:prod:transition`, and `http://127.0.0.1:3000` for
+ *     `pnpm run e2e:prod:local` (an offline rehearsal of the same
+ *     contract against the local build). No navigation is hardcoded to
+ *     production, so an offline run cannot resolve the production
  *     hostname.
  *     The pages themselves reference Google Fonts, GA4, and
  *     `media.rebuildup.dev`; the smoke does not exercise those and does
@@ -482,22 +483,25 @@ export function auditRoute(route, observation) {
 /**
  * Render a problem list as one assertion message.
  *
- * The message names the route and every individual problem, because a
- * production smoke is often read from a CI log weeks later by someone
- * who was not in the room when it went red.
+ * The message names the origin that was actually observed (default: the
+ * canonical production origin) plus the route and every individual
+ * problem, because a production smoke is often read from a CI log weeks
+ * later by someone who was not in the room when it went red — and a
+ * rehearsal run must not print a production URL it never touched.
  *
  * @param {RepresentativeRoute} route
  * @param {ReadonlyArray<string>} problems
+ * @param {string} [origin]
  * @returns {string}
  */
-export function formatAuditReport(route, problems) {
-	if (problems.length === 0) return `${CANONICAL_PRODUCTION_ORIGIN}${route.path} — healthy`;
+export function formatAuditReport(route, problems, origin = CANONICAL_PRODUCTION_ORIGIN) {
+	if (problems.length === 0) return `${origin}${route.path} — healthy`;
 	const lines = problems.map((problem) => `  - ${problem}`);
 	return [
-		`${CANONICAL_PRODUCTION_ORIGIN}${route.path} failed the Issue #500 synthetic smoke contract:`,
+		`${origin}${route.path} failed the Issue #500 synthetic smoke contract:`,
 		...lines,
 		'',
 		'This is a read-only check. Nothing in this smoke writes to D1 / R2,',
-		`mutates auth, or resets cookies against ${CANONICAL_PRODUCTION_ORIGIN}.`,
+		`mutates auth, or resets cookies against ${origin}.`,
 	].join('\n');
 }

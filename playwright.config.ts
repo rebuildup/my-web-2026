@@ -96,15 +96,15 @@ export default defineConfig({
 	// ONE documented exception: `pnpm run e2e:prod:local`, which sets
 	// `E2E_LOCAL_PROD_SMOKE=1` and runs the production spec file
 	// against the LOCAL preview build. It is safe precisely because
-	// `e2e/prod-smoke.spec.ts` resolves its origin from
-	// `PLAYWRIGHT_BASE_URL`: without
-	// `PLAYWRIGHT_BASE_URL=https://…` in the environment, nothing in
-	// that run can resolve `https://rebuildup.dev`, and the Issue #43
-	// canonical-origin group (including the anonymous reaction
-	// mutation, the one write in the file) skips itself. It exists so
-	// the Issue #500 representative-route contract is reproducible
-	// offline and its verification screenshot can be captured without
-	// reading production.
+	// `e2e/prod-smoke.spec.ts` navigates to the `baseURL` this config
+	// resolves (here: `http://127.0.0.1:3000`) instead of a hardcoded
+	// production origin, and because its Issue #43 group — which does
+	// hardcode the canonical origin, including the one deliberate write
+	// in the file, the anonymous reaction mutation — disarms itself
+	// unless `PLAYWRIGHT_BASE_URL` EXPLICITLY names production. It
+	// exists so the Issue #500 representative-route contract is
+	// reproducible offline and its verification screenshot can be
+	// captured without reading production.
 	// `e2e/prod-portfolio.spec.ts` stays ignored either way: it is the
 	// separate G15 post-publication contract and needs published entries
 	// plus production media.

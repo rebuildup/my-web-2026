@@ -578,6 +578,20 @@ describe('formatAuditReport — the failure report an operator reads weeks later
 			.filter((line) => line.trimStart().startsWith('- '));
 		assert.equal(bullets.length, problems.length);
 	});
+
+	it('names the origin it was actually given, not always production', () => {
+		// A rehearsal run (`pnpm run e2e:prod:local`) must not print a
+		// production URL it never touched: the whole value of the Issue
+		// #500 verification artefact is that it states which origin was
+		// observed.
+		const tools = findRepresentativeRoute('/tools');
+		const localOrigin = 'http://127.0.0.1:3000';
+		const problems = auditRoute(tools, { ...healthyObservation(tools), status: 502 });
+		const report = formatAuditReport(tools, problems, localOrigin);
+		assert.ok(report.includes(`${localOrigin}/tools`));
+		assert.equal(report.includes('https://rebuildup.dev'), false);
+		assert.equal(formatAuditReport(tools, [], localOrigin), `${localOrigin}/tools — healthy`);
+	});
 });
 
 describe('representative-route registry — classifier coverage guard', () => {

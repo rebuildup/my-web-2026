@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { afterEach, describe, expect, it } from 'vitest';
 import { RATE_LIMITS, RATE_LIMIT_BINDING } from '../../../scripts/_cloudflare-contract.mjs';
+import type { ApiKeyContext } from '../api-keys/middleware';
 import {
 	ApiKeyError,
 	requireApiKey,
@@ -238,7 +239,9 @@ describe('rate-limit middleware (in-memory fake binding)', () => {
  * before any principal exists, so there is no bucket to observe.
  */
 function buildProtectedApp(limiter: FakeRateLimiter) {
-	const app = new Hono<{ Bindings: Env }>();
+	// `Variables` mirrors the routers: `requireApiKey` binds `apiKey`,
+	// and `requireResourceAction` requires that context type.
+	const app = new Hono<{ Bindings: Env; Variables: { apiKey: ApiKeyContext } }>();
 	// Mirrors `externalBoundary.onError` (src/http/hono.ts) so the
 	// thrown `ApiKeyError` surfaces as the documented 403.
 	app.onError((err, c) => {

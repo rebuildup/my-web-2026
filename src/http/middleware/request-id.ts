@@ -23,7 +23,15 @@ export const requestIdMiddleware = createMiddleware<{
 	await next();
 });
 
-function generateRequestId(): string {
+/**
+ * Mint a correlation id for a request that did not supply one.
+ *
+ * Exported for `src/http/errors.ts`: the boundary prefixes other
+ * than `/api/v1/*` do not run this middleware, so the redaction
+ * fallback needs the same generator rather than a second
+ * implementation with a different format.
+ */
+export function generateRequestId(): string {
 	const bytes = new Uint8Array(16);
 	crypto.getRandomValues(bytes);
 	return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('');

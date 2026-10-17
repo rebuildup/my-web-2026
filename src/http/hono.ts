@@ -3,6 +3,7 @@ import packageJson from '../../package.json';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
+import { publicErrorResponse } from './errors';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
@@ -26,7 +27,13 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  * Start. Real Cloudflare `env` (with D1, R2, ASSETS, ...) flows in via
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
-export const externalBoundary = new Hono<{ Bindings: Env }>();
+export const externalBoundary = new Hono<{
+	Bindings: Env;
+	// Optional because only `/api/v1/*` runs `requestIdMiddleware`;
+	// the other prefixes mint their id in the redaction fallback
+	// (`src/http/errors.ts`).
+	Variables: { requestId?: string };
+}>();
 
 // Local API mock gate (Issue #166): when `env.LOCAL_API_MODE === 'mock'`
 // (set in `.dev.vars`, NOT in `wrangler.jsonc#vars` — see
@@ -71,8 +78,15 @@ externalBoundary.get('/api/v1/db/ping', async (c) => {
 		const row = await c.env.DB.prepare('SELECT 1 AS one').first<{ one: number }>();
 		return c.json({ status: 'ok', binding: 'd1', one: row?.one ?? null });
 	} catch (err) {
-		console.error('[boundary] d1 ping failed', err);
-		return c.json({ status: 'binding_error', binding: 'd1' }, 503);
+		// Issue #457: the failure body no longer names the binding.
+		// The request path already identifies which probe failed, so
+		// an operator loses nothing, and the client no longer learns
+		// that a D1 binding exists on this Worker.
+		return publicErrorResponse(c, err, {
+			status: 503,
+			code: 'service_unavailable',
+			logLabel: 'd1 ping',
+		});
 	}
 });
 
@@ -90,8 +104,11 @@ externalBoundary.get('/api/v1/media/ping', async (c) => {
 		if (/404|not[_ ]?found/i.test(message)) {
 			return c.json({ status: 'key_not_found', binding: 'r2' }, 404);
 		}
-		console.error('[boundary] r2 ping failed', err);
-		return c.json({ status: 'binding_error', binding: 'r2' }, 503);
+		return publicErrorResponse(c, err, {
+			status: 503,
+			code: 'service_unavailable',
+			logLabel: 'r2 ping',
+		});
 	}
 });
 
@@ -110,6 +127,13 @@ externalBoundary.onError((err, c) => {
 	if (err instanceof ApiKeyError) {
 		return c.json({ error: err.code, status: err.status }, err.status);
 	}
-	console.error('[boundary] unhandled', err);
-	return c.json({ error: 'internal_error' }, 500);
+	// Issue #457: the generic 500 answers with the redacted body —
+	// stable code, repo-authored message, and the correlation id the
+	// log line above just wrote. The `err` object never leaves
+	// `console.error`.
+	return publicErrorResponse(c, err, {
+		status: 500,
+		code: 'internal_error',
+		logLabel: 'unhandled error',
+	});
 });

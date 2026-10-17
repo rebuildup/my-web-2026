@@ -315,6 +315,14 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		],
 		comparison: [
 			{ key: '/:baseline:cls', before: 0.12, after: 0.03, delta: -0.09, direction: 'better' },
+			{ key: '/:baseline:fcpMs', before: 268, after: 164, delta: -104, direction: 'better' },
+			{
+				key: '/about:baseline:cls',
+				before: 0.975,
+				after: 0.001,
+				delta: -0.974,
+				direction: 'better',
+			},
 		],
 	};
 
@@ -338,19 +346,25 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 	it('renders the before/after table when a comparison is present', () => {
 		const html = renderReportHtml(report);
 		assert.match(html, /before \/ after/);
-		// The table is aggregated per metric, so the row key collapses to
-		// the metric name and the values survive.
-		assert.match(html, /<td>cls<\/td>/);
-		assert.match(html, /<td>0\.12<\/td>/);
-		assert.match(html, /<td>0\.03<\/td>/);
+		// The table aggregates per metric across routes, so the two `cls`
+		// rows (0.12 and 0.975 before) collapse into one min-max range.
+		assert.match(html, /<td>cls<\/td><td>0\.12–0\.975<\/td><td>0\.001–0\.03<\/td>/);
 	});
 
 	it('splits the before/after table into deterministic rows and noisy context', () => {
 		// CLS is deterministic; paint / swap timings are single-run and
 		// must not be read as a result.
 		const html = renderReportHtml(report);
-		assert.match(html, /deterministic \(layout shift\)/);
-		assert.match(html, /context \(single-run timings — noise\)/);
+		const deterministic = html
+			.split('<h3>deterministic (layout shift)</h3>')[1]
+			.split('</table>')[0];
+		const context = html
+			.split('<h3>context (single-run timings — noise)</h3>')[1]
+			.split('</table>')[0];
+		assert.match(deterministic, /<td>cls<\/td>/);
+		assert.doesNotMatch(deterministic, /fcpMs/);
+		assert.match(context, /<td>fcpMs<\/td>/);
+		assert.doesNotMatch(context, /<td>cls<\/td>/);
 		assert.match(html, /network and machine noise/);
 	});
 

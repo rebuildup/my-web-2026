@@ -306,22 +306,21 @@ export function renderReportHtml(report) {
 	const comparison = (() => {
 		if (!report.comparison?.length) return '';
 		const aggregated = aggregateComparison(report.comparison);
-		const signal = aggregated.filter((a) => a.deterministic);
-		const context = aggregated.filter((a) => !a.deterministic);
 		const row = (a) =>
 			`<tr><td>${escapeHtml(a.metric)}</td><td>${escapeHtml(a.before)}</td><td>${escapeHtml(a.after)}</td></tr>`;
-		return (
-			`<h2>before / after</h2>` +
-			`<p class="note">Read the deterministic table: a wrap either happened or it does not, so the same build measures the same value. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. Every individual row stays in <code>report.json</code>.</p>` +
-			`<h3>deterministic (layout shift)</h3>` +
-			`<table><thead><tr><th>metric</th><th>before</th><th>after</th></tr></thead><tbody>${signal
-				.map(row)
-				.join('')}</tbody></table>` +
-			`<h3>context (single-run timings — noise)</h3>` +
-			`<table><thead><tr><th>metric</th><th>before</th><th>after</th></tr></thead><tbody>${context
-				.map(row)
-				.join('')}</tbody></table>`
-		);
+		const table = (title, rows) =>
+			[
+				`<h3>${escapeHtml(title)}</h3>`,
+				'<table><thead><tr><th>metric</th><th>before</th><th>after</th></tr></thead><tbody>',
+				rows.map(row).join(''),
+				'</tbody></table>',
+			].join('');
+		return [
+			'<h2>before / after</h2>',
+			'<p class="note">Read the deterministic table: a wrap either happened or it does not, so the same build measures the same value. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. Every individual row stays in <code>report.json</code>.</p>',
+			table('deterministic (layout shift)', aggregated.filter((a) => a.deterministic)),
+			table('context (single-run timings — noise)', aggregated.filter((a) => !a.deterministic)),
+		].join('');
 	})();
 
 	const diagnosis = report.runs.some((run) => (run.layoutShiftSources ?? []).length > 0)

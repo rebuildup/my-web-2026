@@ -29,6 +29,35 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## CORS
+
+The external boundary splits its routes into three origin classes
+(Issue #455):
+
+- `credentialed` — `/api/v1/auth/*`, `/api/v1/access/*`,
+  `/api/v1/reactions`. The response echoes **one** allow-listed origin
+  plus `Access-Control-Allow-Credentials: true`, restricted to a fixed
+  method and request-header allow-list. Any other origin — including the
+  opaque `null` origin a sandboxed Tool iframe sends — is refused with
+  `403` and no CORS header.
+- `public-read` — `/api/v1/health` and `/api/v1/reaction-images/:id`.
+  `Access-Control-Allow-Origin: *`, and never a credentials header.
+- `none` — everything else, including `/api/v1/db/ping`,
+  `/api/v1/media/ping` and the unimplemented `/webhooks/*`, `/oauth/*`,
+  `/integrations/*` prefixes. No CORS header at all.
+
+The allow-list is derived from runtime input only: the origin the
+request arrived on, plus `env.BETTER_AUTH_URL` — the same value that
+feeds Better Auth's `trustedOrigins`. A wildcard never reaches a
+credentialed route, and that invariant is asserted over the whole
+route × origin × method matrix in `src/http/cors/policy.test.ts` and
+again against the real response bytes in
+`test/integration/cors.test.ts`.
+
+Full contract, the measured matrix and the known local-dev deviation
+(`vite dev` answers preflights itself, so the Worker is never consulted):
+[`docs/security/api-cors.md`](security/api-cors.md).
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

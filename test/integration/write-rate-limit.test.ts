@@ -130,7 +130,7 @@ async function probe(path: string, init: RequestInit): Promise<Probe> {
 	};
 }
 
-function putReaction(
+async function putReaction(
 	actorId: string,
 	headers: Record<string, string> = JSON_HEADERS,
 ): Promise<Response> {
@@ -141,7 +141,7 @@ function putReaction(
 	);
 }
 
-function deleteReaction(actorId: string): Promise<Response> {
+async function deleteReaction(actorId: string): Promise<Response> {
 	return externalBoundary.request(
 		'/api/v1/reactions',
 		{ method: 'DELETE', headers: JSON_HEADERS, body: reactionBody(actorId) },
@@ -149,7 +149,7 @@ function deleteReaction(actorId: string): Promise<Response> {
 	);
 }
 
-function postHit(index: number): Promise<Response> {
+async function postHit(index: number): Promise<Response> {
 	return externalBoundary.request(
 		'/api/v1/access/hit',
 		{
@@ -509,7 +509,9 @@ describe('accepted vs rejected input matrix (measured)', () => {
 		);
 
 		const header = ['#', 'エンドポイント', '入力 / 条件', 'status', 'error', 'Retry-After'];
-		const table = [header, ...rows].map((row) => `| ${row.join(' | ')} |`).join('\n');
+		const table = [header, header.map(() => '---'), ...rows]
+			.map((row) => `| ${row.join(' | ')} |`)
+			.join('\n');
 		console.log('<!-- write-rate-limit-matrix:start -->');
 		console.log(table);
 		console.log('<!-- write-rate-limit-matrix:end -->');

@@ -3,16 +3,20 @@
  *
  * Why this obligation
  * -------------------
- * The `MEDIA` R2 bucket (`my-web-2026`) is delivered to browsers through
- * a **public R2 custom domain** (`https://media.rebuildup.dev/<key>`,
- * see `docs/portfolio/decisions.md` Decision 5). A custom domain
- * bypasses the Worker entirely: the Cloudflare edge serves the object
- * at its key, so *every* key that exists in the bucket is anonymously
- * fetchable by anyone who can guess or enumerate the key. There is no
- * session, no API key, no signed URL, and no Worker code in that path.
+ * Portfolio media is delivered by **a public R2 custom domain** on
+ * the `MEDIA` bucket (`https://media.rebuildup.dev/<key>`) — the
+ * accepted mechanism recorded in `docs/portfolio/decisions.md`
+ * Decision 5. That attachment is a **release prerequisite owned by
+ * the Cloudflare account, and this repository cannot confirm its
+ * production state**. Conditional on it being attached, the custom
+ * domain bypasses the Worker entirely: the Cloudflare edge serves the
+ * object at its key, so *every* key that exists in the bucket is
+ * anonymously fetchable by anyone who can guess or enumerate the key.
+ * There is no session, no API key, no signed URL, and no Worker code
+ * in that path.
  *
- * That makes the key namespace the security boundary. This module owns
- * the one rule the rest of the codebase may consult:
+ * That is what makes the key namespace the security boundary. This
+ * module owns the one rule the rest of the codebase may consult:
  *
  *   > A key is publicly servable only when it is a well-formed object
  *   > key that lives under an explicitly declared **public** prefix.
@@ -33,21 +37,29 @@
  * namespace decides "may this class of object ever be public at all",
  * approval decides "is this particular object published right now".
  *
- * What this module deliberately does NOT do
- * -----------------------------------------
- * It cannot make a private object private once it is in a bucket
- * served by a public custom domain. That control is bucket-level
- * (a separate bucket, or no custom domain on a bucket that holds
- * unapproved objects) and lives in the Cloudflare account, not in
- * this repository. What this module makes possible is that the
- * repository never *depends* on that control: it never emits a URL
- * for a non-public key, never reads a non-public key back, and never
- * hands a non-public key to a listing surface. The unresolved
- * bucket-level half is recorded in `docs/security/r2-media-visibility.md`.
+ * What is enforced where — read this before trusting the boundary
+ * --------------------------------------------------------------
+ * Production code enforces the rule on the two key-handling paths
+ * that exist today: `composeMediaUrl` (portfolio URL composition) and
+ * `getImageStream` (the reaction-image HTTP read). Those gates stop
+ * the repository from *emitting* a URL for a non-public key and from
+ * *reading* a non-public key back.
+ *
+ * The delivery adapter (`createPublicMediaDelivery`) and the listing
+ * walk (`listPublicMediaKeys`) below are the **same boundary, modelled
+ * for a caller that has to serve objects itself** (Issue #459's third
+ * acceptance item asks for exactly that adapter/stub/test). They have
+ * **no production caller today**, and this module does **not** claim
+ * otherwise: the custom-domain edge serves bucket keys without running
+ * any of this code. Closing the bucket-level half — split the bucket,
+ * or move delivery behind the Worker / signed URLs — is an owner
+ * decision that is deliberately *not* taken here; it is tracked as an
+ * open residual in `docs/security/r2-media-visibility.md` and as
+ * Issue #577.
  *
  * This module is pure: no `cloudflare:workers` import, no binding
- * access. `portfolio/`, `http/reactions/` and `admin/` consume the
- * rule; none of them may re-derive it.
+ * access. `portfolio/` and `http/reactions/` consume the rule; none of
+ * them may re-derive it.
  */
 
 /**
@@ -61,9 +73,14 @@
  *   the layout `scripts/upload-portfolio-media.mjs` writes.
  * - `reactions/` — reaction images (`reactions/<sha256>.<ext>`),
  *   public reaction data by design (`src/http/reactions/images.ts`).
- * - `public/` — reserved canonical namespace for future producers.
+ *
+ * Only prefixes with a real producer belong here. A producer that
+ * lands later adds its prefix **in the same review that introduces it**
+ * (AGENTS.md §3: no pre-declared namespaces), because an entry added
+ * after the fact publishes every key written under it without anyone
+ * re-reading this decision.
  */
-export const PUBLIC_MEDIA_PREFIXES: readonly string[] = ['portfolio/', 'reactions/', 'public/'];
+export const PUBLIC_MEDIA_PREFIXES: readonly string[] = ['portfolio/', 'reactions/'];
 
 /**
  * Namespaces that must never be served publicly. The deny check runs
@@ -239,7 +256,6 @@ export type MediaApprovalCheck = (key: string) => boolean | Promise<boolean>;
 
 export interface PublicMediaDeliveryServed {
 	status: 200;
-	reason: 'served';
 	key: string;
 	body: ReadableStream | null;
 	contentType: string | null;
@@ -247,9 +263,18 @@ export interface PublicMediaDeliveryServed {
 	etag: string | null;
 }
 
+/**
+ * A refusal carries **no reason code**. Every refusal is the same
+ * value, on purpose: if the result said "private namespace" or "not
+ * published" it would be an existence oracle the moment a caller
+ * serialised it into a response, a header, or a client-visible log.
+ * Which gate refused is observable through instrumentation instead
+ * (a refused key never reaches the bucket — see
+ * `createPublicMediaDelivery`), not through the returned value.
+ * `key` is echoed because the caller supplied it.
+ */
 export interface PublicMediaDeliveryRefused {
 	status: 404;
-	reason: MediaKeyRefusal | 'refused_unapproved' | 'not_found';
 	key: string;
 }
 
@@ -263,18 +288,24 @@ export interface PublicMediaDelivery {
 /**
  * Build the gated delivery adapter.
  *
+ * **No production caller today** (see the module header): the public
+ * custom domain serves bucket keys without running Worker code, so
+ * this adapter is the boundary *as modelled* for a caller that serves
+ * objects itself, not a claim about the current delivery path.
+ *
  * Order of checks (each one short-circuits, so a refused private key
  * never reaches the bucket and never differs observably from a
  * missing key):
  *
- *   1. malformed key            → 404 `invalid_key`
- *   2. private namespace        → 404 `private_namespace`
- *   3. unlisted namespace       → 404 `unlisted_namespace`
- *   4. owner approval check     → 404 `refused_unapproved`
- *   5. bucket lookup            → 404 `not_found`
- *   6. otherwise                → 200 `served`
+ *   1. malformed key            → 404
+ *   2. private namespace        → 404
+ *   3. unlisted namespace       → 404
+ *   4. owner approval check     → 404
+ *   5. bucket lookup            → 404 (`not found`)
+ *   6. otherwise                → 200 + stored metadata
  *
- * Every refusal is a **404**, never a 403: a 403 would confirm that
+ * Every refusal is the **same 404 value**, never a 403 and never a
+ * reason code: a 403 — or a distinguishable 404 — would confirm that
  * the object exists, which is exactly the oracle an enumeration sweep
  * wants.
  */
@@ -285,17 +316,12 @@ export function createPublicMediaDelivery(
 	return {
 		fetch: async (key: string): Promise<PublicMediaDeliveryResult> => {
 			const verdict = classifyMediaKey(key);
-			if (!verdict.publiclyServable) {
-				return { status: 404, reason: verdict.reason, key };
-			}
-			if (opts?.isApproved && !(await opts.isApproved(key))) {
-				return { status: 404, reason: 'refused_unapproved', key };
-			}
+			if (!verdict.publiclyServable) return { status: 404, key };
+			if (opts?.isApproved && !(await opts.isApproved(key))) return { status: 404, key };
 			const object = await source.get(key);
-			if (!object) return { status: 404, reason: 'not_found', key };
+			if (!object) return { status: 404, key };
 			return {
 				status: 200,
-				reason: 'served',
 				key,
 				body: object.body,
 				contentType: object.httpMetadata?.contentType ?? null,
@@ -359,20 +385,4 @@ export async function listPublicMediaKeys(
 	} while (truncated && cursor);
 
 	return { keys, scanned, withheld, truncated };
-}
-
-/**
- * The sequential-key sweep an attacker would run against a public
- * custom domain, expressed as data so the test and the report share
- * one definition. It probes `portfolio/<slug>/cover-<n>.webp` for a
- * range of `n` — the layout real media uses, so an unpublished object
- * stored next to a published one would be found here if the boundary
- * did not hold.
- */
-export function sequentialGuessKeys(slug: string, count: number): string[] {
-	const keys: string[] = [];
-	for (let n = 1; n <= count; n += 1) {
-		keys.push(`portfolio/${slug}/cover-${n}.webp`);
-	}
-	return keys;
 }

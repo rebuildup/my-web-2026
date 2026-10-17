@@ -7,19 +7,24 @@
  * result as a static HTML page (a "CI report" view) at
  * `.tmp/r2-media-visibility-report.html`, and screenshots that page
  * with the Playwright chromium already installed for the E2E suite
- * into `docs/verification/security/r2-public-private.webp` — the path
- * Issue #459 requires in the PR body, with the `.webp` extension
- * substituted for the Issue's literal `.png` (a committed PNG is
- * several times larger for no evidentiary gain).
+ * into `docs/verification/security/r2-public-private.webp`.
+ *
+ * Issue #459 names the artefact `…/r2-public-private.png`. This
+ * repository's verification-pipeline rule commits screenshots as
+ * moderately compressed WebP (a committed PNG is several times larger
+ * for no evidentiary gain), so only the extension is substituted —
+ * a documented deviation, not a silent one. The script therefore
+ * accepts **either** extension and encodes to match
+ * (`R2_VISIBILITY_TARGET=…png` writes a PNG); it does not hard-code
+ * the deviation as the only possible outcome. The default target is
+ * `.webp`.
  *
  * Screenshot output: Playwright can only encode PNG/JPEG, so the
  * capture is taken into a Buffer and re-encoded with the existing
  * `sharp` devDependency as `resize({ width: 1600, withoutEnlargement:
- * true })` followed by `webp({ quality: 80 })`. No intermediate PNG
- * reaches disk (`sharp` only sees the in-memory Buffer), and the
- * target extension is asserted to be `.webp` so a PNG can never drift
- * back into `docs/`. `sharp` stays a devDependency and is never
- * imported by the Worker / SSR.
+ * true })` followed by `webp({ quality: 80 })`. No intermediate file
+ * reaches disk (`sharp` only sees the in-memory Buffer). `sharp`
+ * stays a devDependency and is never imported by the Worker / SSR.
  *
  * This script is committed so the required screenshot has a
  * reviewable, reproducible source instead of an uncommitted helper.
@@ -36,7 +41,7 @@
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, extname, join, resolve } from 'node:path';
+import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,6 +52,15 @@ const WEBP_TARGET = join(ROOT, 'docs/verification/security/r2-public-private.web
 const WEBP_WIDTH = 1600;
 const WEBP_QUALITY = 80;
 
+/**
+ * Where the artefact goes. `.webp` is the repository default (see the
+ * header); `R2_VISIBILITY_TARGET` exists so the Issue's literal `.png`
+ * path stays reachable instead of being locked out by this script.
+ */
+const TARGET = process.env.R2_VISIBILITY_TARGET
+	? resolve(ROOT, process.env.R2_VISIBILITY_TARGET)
+	: WEBP_TARGET;
+
 const SUITE = 'test/integration/r2-media-visibility.test.ts';
 
 /**
@@ -56,13 +70,13 @@ const SUITE = 'test/integration/r2-media-visibility.test.ts';
  * table, it comes from the JSON reporter output of the real run.
  */
 const FIXTURE = [
-	['portfolio/aulymo/cover.webp', 'public', 'published', '200 served'],
-	['portfolio/aulymo/cover-3.webp', 'public', 'not published', '404 refused_unapproved'],
-	['portfolio/aulymo/cover-17.webp', 'public', 'not published', '404 refused_unapproved'],
-	['private/draft/secret.webp', 'private', 'n/a', '404 private_namespace'],
-	['staging/wip.webp', 'private', 'n/a', '404 private_namespace'],
-	['wip/unlisted.webp', 'undeclared', 'n/a', '404 unlisted_namespace'],
-	['reactions/<sha256>.png', 'public', 'uploaded via uploadImage', '200 served'],
+	['portfolio/aulymo/cover.webp', 'public', 'published', '200（配信）'],
+	['portfolio/aulymo/cover-3.webp', 'public', 'not published', '404（承認ゲート）'],
+	['portfolio/aulymo/cover-17.webp', 'public', 'not published', '404（承認ゲート）'],
+	['private/draft/secret.webp', 'private', 'n/a', '404（namespace ゲート）'],
+	['staging/wip.webp', 'private', 'n/a', '404（namespace ゲート）'],
+	['wip/unlisted.webp', 'undeclared', 'n/a', '404（namespace ゲート）'],
+	['reactions/<sha256>.png', 'public', 'uploaded via uploadImage', '200（配信）'],
 ];
 
 /** The two attack legs the suite runs, and what they may observe. */
@@ -83,7 +97,7 @@ const ATTACKS = [
 		'HTTP route',
 		'GET /api/v1/reaction-images/:id',
 		'行が private namespace を指す',
-		'404 refused / 200 never（403 は返さない）',
+		'404 / 200 never（403 は返さない）',
 	],
 ];
 
@@ -167,8 +181,8 @@ function render(report) {
 </style>
 </head>
 <body>
-  <h1>R2 public / private object boundary — 未承認オブジェクト参照の遮断 (Issue #459)</h1>
-  <p class="sub">local worker (Miniflare / workerd pool) + <code>${escapeHtml(SUITE)}</code> の実行結果。MEDIA bucket は public R2 custom domain で配信されるため key が分かれば誰でも取得でき、namespace が境界になる。secret は含まれない（fixture は 1x1 の合成 PNG、binding は test 用の dummy）。</p>
+  <h1>R2 media key の公開可否契約 — namespace / approval gate (Issue #459)</h1>
+  <p class="sub">local worker (Miniflare / workerd pool) + <code>${escapeHtml(SUITE)}</code> の実行結果。MEDIA bucket に public R2 custom domain が接続されると edge が key 存在=status で配信するため（その接続は Cloudflare アカウント側の release 前提であり本 repo は確認できない）、namespace 契約をコード側で固定する。secret は含まれない（fixture は 1x1 の合成 PNG、binding は test 用の dummy）。本 report が証明するのは repository 内のゲートであり、custom domain 経路そのものは Worker を経由しない。</p>
 
   <div class="cards">
     <div class="card"><div class="k">tests</div><div class="v">${assertions.length}</div></div>
@@ -202,19 +216,20 @@ ${testRows}
   </table>
 
   <p class="legend">
-    <b>200 の意味:</b> 公開 namespace にあり、公開承認済みで、bucket に実在する object だけが 200。
-    <b>404 の意味:</b> private / 未宣言 namespace、未承認、不在のいずれも<b>同じ 404</b> で返す（403 を返さないのは、存在 oracle を作らないため）。
+    <b>200 の意味:</b> 公開 namespace にあり、公開承認済みで、bucket に実在する object だけが 200。<br/>
+    <b>404 の意味:</b> private / 未宣言 namespace、未承認、不在のいずれも<b>同一の 404 値</b>で返す（403 も reason code も返さないのは、存在 oracle を作らないため）。
   </p>
 
-  <footer>my-web-2026 · Issue #459 · report generated locally from the workerd test pool by scripts/make-r2-visibility-verification-report.mjs (no CI token, no production D1/R2, no deploy) · committed as docs/verification/security/r2-public-private.webp (width ≤ ${WEBP_WIDTH}, quality ${WEBP_QUALITY}).</footer>
+  <footer>my-web-2026 · Issue #459 · report generated locally from the workerd test pool by scripts/make-r2-visibility-verification-report.mjs (no CI token, no production D1/R2, no deploy) · committed artefact: ${escapeHtml(relative(ROOT, TARGET))} (width ≤ ${WEBP_WIDTH}, ${escapeHtml(extname(TARGET).slice(1))} quality ${WEBP_QUALITY}).</footer>
 </body>
 </html>
 `;
 }
 
 async function shoot(htmlPath, target) {
-	if (extname(target) !== '.webp') {
-		throw new Error(`refusing to write a non-WebP verification artefact: ${target}`);
+	const extension = extname(target);
+	if (extension !== '.webp' && extension !== '.png') {
+		throw new Error(`verification artefact must be .webp or .png: ${target}`);
 	}
 	const { chromium } = await import('@playwright/test');
 	const { default: sharp } = await import('sharp');
@@ -229,10 +244,11 @@ async function shoot(htmlPath, target) {
 		// Playwright cannot emit WebP, so capture into a Buffer (never a
 		// file) and re-encode with sharp. The PNG bytes stay in memory.
 		const capture = await page.screenshot({ fullPage: true });
-		const info = await sharp(capture)
-			.resize({ width: WEBP_WIDTH, withoutEnlargement: true })
-			.webp({ quality: WEBP_QUALITY })
-			.toFile(target);
+		const image = sharp(capture).resize({ width: WEBP_WIDTH, withoutEnlargement: true });
+		const info =
+			extension === '.webp'
+				? await image.webp({ quality: WEBP_QUALITY }).toFile(target)
+				: await image.png({ compressionLevel: 9 }).toFile(target);
 		return info;
 	} finally {
 		await browser.close();
@@ -242,7 +258,7 @@ async function shoot(htmlPath, target) {
 const report = run();
 writeFileSync(HTML_REPORT, render(report));
 process.stdout.write(`wrote ${HTML_REPORT}\n`);
-const info = await shoot(HTML_REPORT, WEBP_TARGET);
+const info = await shoot(HTML_REPORT, TARGET);
 process.stdout.write(
-	`wrote ${WEBP_TARGET} (webp ${info.width}x${info.height}, ${info.size} B, quality ${WEBP_QUALITY})\n`,
+	`wrote ${TARGET} (${extname(TARGET).slice(1)} ${info.width}x${info.height}, ${info.size} B)\n`,
 );

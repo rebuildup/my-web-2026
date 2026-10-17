@@ -1,25 +1,41 @@
 # R2 object visibility — public keys and private objects
 
 > Which `MEDIA` bucket keys may be served from the public delivery
-> surface, which may not, where that decision is made, and what the
-> repository deliberately cannot enforce.
+> surface, which may not, where that decision is enforced in code, and
+> what this repository deliberately does **not** enforce.
 
 Authoritative implementation:
 [`src/cloudflare/media-visibility.ts`](../../src/cloudflare/media-visibility.ts).
 Introduced by Issue #459.
 
+## Read this first — what is enforced where
+
+Issue #459 asks that unpublished material stay invisible to
+enumeration and sequential guessing. This repository can satisfy that
+**for the code it owns**. It cannot satisfy it **for the R2 custom
+domain**, and the difference matters more than anything else on this
+page:
+
+| | Enforced in code today? | Where |
+| --- | --- | --- |
+| Portfolio media URL composition | **yes** | `composeMediaUrl` → `null` |
+| Reaction-image read over HTTP | **yes** | `getImageStream` → router 404 |
+| Delivery adapter / listing walk | modelled, **no production caller** | `createPublicMediaDelivery`, `listPublicMediaKeys` |
+| Anonymous GET of `https://media.rebuildup.dev/<key>` | **no — no repository code runs on that path** | Cloudflare edge |
+
+Attaching a public custom domain to the `MEDIA` bucket is Decision 5
+([`docs/portfolio/decisions.md`](../portfolio/decisions.md)); the
+attachment itself is a Cloudflare account setting and a release
+prerequisite this repository cannot verify. Conditional on that
+attachment, the edge serves every key that exists in the bucket, with
+no session, no API key, no signed URL, and no line of our code
+involved. The concrete failure case is written out under
+[What the code does not do](#what-the-code-does-not-do).
+
 ## The threat
 
-Portfolio media is delivered through a **public R2 custom domain**
-(`https://media.rebuildup.dev/<key>` — see
-[`docs/portfolio/decisions.md`](../portfolio/decisions.md) Decision 5).
-A custom domain bypasses the Worker: the Cloudflare edge fetches the
-object and returns it. There is no session check, no API key, no
-signed URL, and no line of our code in that path.
-
-So the only thing standing between an unpublished asset and a stranger
-is **the key namespace**: if an object exists in the bucket, anyone who
-can guess its key can fetch it. Two attacks follow, and both are cheap:
+If a public custom domain serves the bucket, then a key that exists is
+a key anyone can fetch. Two attacks follow, and both are cheap:
 
 | Attack | What it needs | What it yields |
 | --- | --- | --- |
@@ -28,8 +44,8 @@ can guess its key can fetch it. Two attacks follow, and both are cheap:
 
 The repository-side answer is therefore not "authenticate the fetch" —
 that would mean abandoning the custom domain — but "never create the
-situation": no URL for a non-public key, no read of a non-public key,
-and no listing that emits one.
+situation from this side": no URL for a non-public key, no read of a
+non-public key, and no listing that emits one.
 
 ## The contract
 
@@ -37,29 +53,44 @@ Two gates compose. Both must pass before an object is served.
 
 | Gate | Question | Owner of the answer | Rule |
 | --- | --- | --- | --- |
-| **Namespace** | may this *class* of key ever be public? | `PUBLIC_MEDIA_PREFIXES` in the module | allowlist: `portfolio/`, `reactions/`, `public/`. Declared private prefixes are refused first (`private/`, `draft/`, `staging/`, `internal/`, `backup/`, `tmp/`). Anything else is `unlisted_namespace` — an undeclared prefix fails closed, so a new producer cannot publish by accident. |
+| **Namespace** | may this *class* of key ever be public? | `PUBLIC_MEDIA_PREFIXES` in the module | allowlist: `portfolio/`, `reactions/`. Declared private prefixes are refused first (`private/`, `draft/`, `staging/`, `internal/`, `backup/`, `tmp/`). Anything else is `unlisted_namespace` — an undeclared prefix fails closed, so a new producer cannot publish by accident. |
 | **Approval** | is this *particular* object published right now? | the caller (a D1 row) | passed in as an approval check. Portfolio: the loader filters `status='published' AND visibility='public'` before it ever sees a media row. Reaction images: the row itself is the approval. |
 
 The namespace gate is deliberately an **allowlist**. A denylist would
 make "I forgot to name the prefix" publish by default, which is the
 failure this Issue exists to remove.
 
+The allowlist names only namespaces that have a real producer. A
+prefix with no producer is **not** pre-declared: `public/` (the Vite
+static-asset directory name) was removed in this revision, because a
+key written under a namespace nobody re-reviewed would become
+publicly servable without anyone revisiting the decision (AGENTS.md
+§3). A new producer adds its prefix in the same review that introduces
+it.
+
 `public namespace ≠ published`. A draft project's cover is a perfectly
-well-formed `portfolio/…` key; what keeps it dark is the approval gate,
+well-formed `portfolio/…` key; what keeps it dark is the approval gate
+and the loader's `status='published' AND visibility='public'` filter,
 not the prefix.
 
-## Where the decision is made
+## Where the decision is enforced
 
-| Surface | Where | Behaviour on refusal |
-| --- | --- | --- |
-| Portfolio media URL composition | `composeMediaUrl` (`src/portfolio/media.ts`) | `null` → the UI renders its documented placeholder (`media-empty`); the media row and its metadata still load |
-| Reaction image read over HTTP | `getImageStream` (`src/http/reactions/images.ts`) → `GET /api/v1/reaction-images/:id` | `null` → router answers **404** |
-| Object listing | `listPublicMediaKeys` (`src/cloudflare/media-visibility.ts`) | the key is dropped; only a withheld **count** is reported |
+| Surface | Where | Enforced in production code? | Behaviour on refusal |
+| --- | --- | --- | --- |
+| Portfolio media URL composition | `composeMediaUrl` (`src/portfolio/media.ts`) | yes | `null` → the UI renders its documented placeholder (`media-empty`); the media row and its metadata still load |
+| Reaction image read over HTTP | `getImageStream` (`src/http/reactions/images.ts`) → `GET /api/v1/reaction-images/:id` | yes | `null` → router answers **404** |
+| Object delivery through Worker code | `createPublicMediaDelivery` (`src/cloudflare/media-visibility.ts`) | **no caller today** — modelled for a future Worker-side delivery path | 404, identical value for every refusal |
+| Object listing | `listPublicMediaKeys` (`src/cloudflare/media-visibility.ts`) | **no caller today** — no listing surface over the bucket exists in production | the key is dropped; only a withheld **count** is reported |
 
-Every refusal is a **404, never a 403**. A 403 confirms that the object
-exists, which is precisely the oracle an enumeration sweep wants. The
-refusal also short-circuits before the bucket read, so a private key
-cannot be used as a read-timing oracle either.
+Every refusal is a **404, never a 403**, and the refusal value carries
+**no reason code**: `{ status: 404, key }` is returned whether the key
+was malformed, private, undeclared, unapproved, or simply absent. A
+distinguishable refusal would be the existence oracle an enumeration
+sweep wants, and a reason code in a returned object is one careless
+`JSON.stringify` away from becoming one. Which gate fired is observable
+through instrumentation instead — a refused key never reaches the
+bucket at all, so bucket-read counts separate the cases without the
+response ever doing so.
 
 `listPublicMediaKeys` reports `withheld` as a number and never as key
 names: an audit trail that printed the keys it hid would become a
@@ -80,11 +111,11 @@ there is no production bucket, deploy, or remote mutation.
 | Key | State in the bucket | Namespace | Expected |
 | --- | --- | --- | --- |
 | `portfolio/aulymo/cover.webp` | present, published | public | 200 |
-| `portfolio/aulymo/cover-3.webp` | present, **not** published | public | 404 `refused_unapproved` |
-| `portfolio/aulymo/cover-17.webp` | present, **not** published | public | 404 `refused_unapproved` |
-| `private/draft/secret.webp` | present | private | 404 `private_namespace` |
-| `staging/wip.webp` | present | private | 404 `private_namespace` |
-| `wip/unlisted.webp` | present | undeclared | 404 `unlisted_namespace` |
+| `portfolio/aulymo/cover-3.webp` | present, **not** published | public | 404 |
+| `portfolio/aulymo/cover-17.webp` | present, **not** published | public | 404 |
+| `private/draft/secret.webp` | present | private | 404 |
+| `staging/wip.webp` | present | private | 404 |
+| `wip/unlisted.webp` | present | undeclared | 404 |
 | `reactions/<sha256>.png` | uploaded through `uploadImage` | public | 200 |
 
 Two attack legs run against those objects:
@@ -99,29 +130,53 @@ Two attack legs run against those objects:
   same namespace still answers 200 (the control, so a broken delivery
   path cannot pass for a boundary).
 
+The probe itself is **test data, not policy**: it lives in
+[`test/helpers/r2-sequential-probe.ts`](../../test/helpers/r2-sequential-probe.ts)
+(`test/helpers/better-auth.ts` is the precedent for a shared helper),
+so the shipped module carries the rule and not the attacker's script.
+
 The HTTP leg adds `GET /api/v1/reaction-images/:id` for a row whose
 `r2_key` points into `private/`: the object is in the bucket, the row
 is in D1, and the route still answers 404.
 
+**What these tests prove:** that the gates hold, and that the
+composition and HTTP paths refuse a non-public key even when the
+object is present in the bucket. **What they do not prove:** that an
+anonymous request to the custom domain is filtered. No test in this
+repository can prove that, because no repository code sits on that
+path.
+
 ## Failure behaviour
 
-| Condition | Result |
-| --- | --- |
-| Malformed key (`..`, leading `/`, whitespace, query characters, >512 chars) | 404 `invalid_key`; never reaches the bucket |
-| Declared private prefix | 404 `private_namespace`; never reaches the bucket |
-| Undeclared prefix | 404 `unlisted_namespace`; never reaches the bucket |
-| Public prefix, not published | 404 `refused_unapproved`; never reaches the bucket |
-| Public prefix, published, object absent | 404 `not_found` |
-| Public prefix, published, object present | 200 + stored `Content-Type` / `Cache-Control` |
+| Condition | Gate that refuses | Result |
+| --- | --- | --- |
+| Malformed key (`..`, leading `/`, whitespace, query characters, >512 chars) | key grammar | 404; never reaches the bucket |
+| Declared private prefix | namespace | 404; never reaches the bucket |
+| Undeclared prefix | namespace | 404; never reaches the bucket |
+| Public prefix, not published | approval | 404; never reaches the bucket |
+| Public prefix, published, object absent | bucket lookup | 404 |
+| Public prefix, published, object present | — | 200 + stored `Content-Type` / `Cache-Control` |
 
-Refusals are indistinguishable from a missing object to the caller,
-which is the point: the boundary must not be observable to a sweeper.
+Every 404 in that table is the same value. Refusals are
+indistinguishable from a missing object to the caller, which is the
+point: the boundary must not be observable to a sweeper.
 
-## What the code cannot do
+## What the code does not do
 
 This is the half that lives outside the repository, and it is not
-optional — the code above makes the repository *stop depending* on it,
-it does not replace it:
+optional — the code above makes the repository *stop depending* on
+it, it does not replace it.
+
+**The failure case, concretely.** Put `portfolio/aulymo/cover-3.webp`
+— or any `draft/…` object — into the `MEDIA` bucket, then have an
+anonymous client `GET https://media.rebuildup.dev/portfolio/aulymo/cover-3.webp`.
+With the custom domain attached, the edge serves the object with 200.
+No line of this repository runs between the request and the object, so
+no gate in this document executes. The suite's own control leg proves
+the shape is reachable: `bucket.list()` returns the unpublished
+fixture objects from the very bucket the delivery adapter reads.
+
+Consequently:
 
 1. **Do not put unpublished objects in the public bucket.** The custom
    domain serves every key it holds. Until a separate bucket (or a
@@ -132,12 +187,13 @@ it does not replace it:
    repository can only record the expectation (Decision 5's release
    prerequisite already tracks the attachment itself).
 
-If either is violated, the repository's guarantees are unaffected but
-they no longer protect the objects: a `private/draft/secret.webp` in a
-custom-domain-served bucket is still readable by anyone who guesses the
-key. Closing that gap is an owner decision — split the bucket, or
-replace custom-domain delivery with Worker-side signed URLs — and it is
-tracked as an open residual, not as a code task.
+Closing this gap is an **owner decision** — an enforced read-only
+key-set audit plus a release gate, a bucket split, or moving delivery
+behind the Worker / signed URLs. Security, cost, and the public
+delivery contract are all in play, so it is not decided inside a PR
+(AGENTS.md §8); it is tracked as its own Issue
+([#577](https://github.com/rebuildup/my-web-2026/issues/577)) and
+**Issue #459 must not be closed on this repository's gates alone.**
 
 ## How to re-verify
 
@@ -154,14 +210,23 @@ The committed screenshot
 [`docs/verification/security/r2-public-private.webp`](../verification/security/r2-public-private.webp)
 is rendered from the JSON reporter output of the integration run, so a
 number in the image cannot drift from the assertions that produced it.
-It uses the Issue-required `.png` path with the `.webp` extension
-(a committed PNG screenshot is several times larger for no evidentiary
-gain).
+
+**Deviation from Issue #459's file path (recorded, not silent):** the
+Issue names `docs/verification/security/r2-public-private.png`. This
+repository's verification-pipeline rule commits screenshots as
+moderately compressed WebP, so the committed artefact keeps the same
+path stem with a `.webp` extension. Nothing else about the artefact
+differs. The generator is *not* hard-wired to that choice — it accepts
+either extension and encodes to match, so
+`R2_VISIBILITY_TARGET=docs/verification/security/r2-public-private.png`
+produces the Issue's literal path if that decision is ever reversed.
 
 ## Cross-references
 
 - `src/cloudflare/media-visibility.ts` — the rule, the adapter, the
   listing walk.
+- `test/helpers/r2-sequential-probe.ts` — the attacker's probe, kept
+  in test support.
 - `src/portfolio/media.ts` — URL composition gate.
 - `src/http/reactions/images.ts` — reaction-image read gate.
 - `docs/portfolio/decisions.md` Decision 5 — why delivery is a public

@@ -5,25 +5,36 @@ import {
 	createPublicMediaDelivery,
 	isPublicMediaKey,
 	listPublicMediaKeys,
-	sequentialGuessKeys,
 } from '../../src/cloudflare/media-visibility';
 import { getImageStream, uploadImage } from '../../src/http/reactions/images';
 import { composeMediaUrl } from '../../src/portfolio/media';
+import { sequentialGuessKeys } from '../helpers/r2-sequential-probe';
 
 /**
  * R2 public / private object boundary, executed against the local
  * workerd R2 binding (Issue #459).
  *
- * The threat this file exists for: the `MEDIA` bucket is delivered
- * through a **public R2 custom domain**, so the Cloudflare edge serves
- * any key that exists. Two attacks follow, and both are run here
- * against real objects rather than a mock:
+ * The threat this file exists for: **if** a public R2 custom domain
+ * is attached to the `MEDIA` bucket (Decision 5 — a Cloudflare
+ * account setting this repository cannot confirm), the Cloudflare
+ * edge serves any key that exists. Two attacks follow, and both are
+ * run here against real objects rather than a mock:
  *
  *   1. **Enumeration** — walk `bucket.list()` and see which unpublished
  *      objects exist.
  *   2. **Sequential guessing** — probe the predictable published-key
  *      layout (`portfolio/<slug>/cover-<n>.webp`) for unpublished
  *      material.
+ *
+ * **Scope, stated precisely:** what is proven here is the *gate*, on
+ * the two paths that handle keys in production code
+ * (`composeMediaUrl`, `getImageStream`) and on the modelled delivery
+ * adapter. It is **not** a proof about the production delivery path:
+ * the custom domain bypasses the Worker, so no line of this
+ * repository runs between an anonymous GET and a bucket object. The
+ * bucket-level half is a tracked residual
+ * (`docs/security/r2-media-visibility.md`), not something this suite
+ * can settle.
  *
  * Everything runs against the local Miniflare R2 fixture. No production
  * bucket, no deploy, no remote mutation: `env.MEDIA` here is the
@@ -115,7 +126,6 @@ describe('gated delivery — the published object is served', () => {
 		const result = await delivery.fetch(PUBLISHED_KEY);
 		expect(result.status).toBe(200);
 		if (result.status !== 200) return;
-		expect(result.reason).toBe('served');
 		expect(result.contentType).toBe('image/png');
 	});
 });
@@ -130,11 +140,10 @@ describe('gated delivery — unpublished and private objects are refused', () =>
 
 			const delivery = createPublicMediaDelivery(R2(), { isApproved: isPublished });
 			const result = await delivery.fetch(key);
-			expect(result.status).toBe(404);
-			if (result.status !== 404) return;
-			expect(['private_namespace', 'unlisted_namespace', 'refused_unapproved']).toContain(
-				result.reason,
-			);
+			// Every refusal is the identical value: no reason code, so
+			// the response cannot be turned into an existence oracle
+			// even by a caller that logs or serialises it.
+			expect(result).toEqual({ status: 404, key });
 		},
 	);
 
@@ -211,7 +220,16 @@ describe('sequential guessing — cover-<n> sweep', () => {
 		const miss = await delivery.fetch('portfolio/aulymo/cover-9999.webp');
 		expect(hit.status).toBe(404);
 		expect(miss.status).toBe(404);
-		expect(Object.keys(hit).sort()).toEqual(Object.keys(miss).sort());
+		// Not just "the same keys": the same *observable values*. `key`
+		// is what the caller itself supplied, so it is excluded; what
+		// remains is the status a client could ever see — a refused key
+		// that exists and a key that is simply absent are
+		// indistinguishable, with no code saying which gate fired.
+		const { key: hitKey, ...hitPayload } = hit;
+		const { key: missKey, ...missPayload } = miss;
+		expect(hitPayload).toEqual(missPayload);
+		expect(Object.keys(hitPayload)).toEqual(['status']);
+		expect(hitKey).toBe(UNPUBLISHED_KEYS[0]);
 	});
 });
 

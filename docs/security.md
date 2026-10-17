@@ -63,26 +63,39 @@ binding API is reachable in the local workerd pool"**, not
 
 ## R2 object visibility (public keys vs private objects)
 
-Portfolio media is delivered through a **public R2 custom domain**
-(`https://media.rebuildup.dev/<key>`), which bypasses the Worker: any
-key that exists in the `MEDIA` bucket can be fetched by anyone who can
-guess it. `src/cloudflare/media-visibility.ts` (Issue #459) therefore
-owns one rule for the repository — a key is publicly servable only when
-it is well-formed and lives under an explicitly declared **public
-prefix** (`portfolio/`, `reactions/`, `public/`); private and
-undeclared namespaces fail closed. It is enforced at the three points
-that can expose an object: `composeMediaUrl` (returns `null`),
-`getImageStream` / `GET /api/v1/reaction-images/:id` (404), and
-`listPublicMediaKeys` (withholds non-public keys, counts without
-naming them). Refusals are 404, never 403, so the boundary is not an
-existence oracle.
+Portfolio media is delivered by **a public R2 custom domain**
+(`https://media.rebuildup.dev/<key>`) — a Cloudflare account setting
+this repository cannot verify, recorded as Decision 5's release
+prerequisite. If that custom domain is attached, it bypasses the
+Worker: any key that exists in the `MEDIA` bucket can be fetched by
+anyone who can guess it, and no code of ours runs on that path.
+`src/cloudflare/media-visibility.ts` (Issue #459) therefore owns one
+rule for the repository — a key is publicly servable only when it is
+well-formed and lives under an explicitly declared **public prefix**
+(`portfolio/`, `reactions/`); private and undeclared namespaces fail
+closed.
+
+The rule is **enforced in production code on the two key-handling
+paths that exist today**: `composeMediaUrl` (returns `null`) and
+`getImageStream` / `GET /api/v1/reaction-images/:id` (404). Refusals
+are 404, never 403, and carry no reason code, so the boundary is not
+an existence oracle. The module's delivery adapter
+(`createPublicMediaDelivery`) and listing walk (`listPublicMediaKeys`)
+model the same boundary for a Worker-side delivery path and for a
+listing surface; **neither has a production caller today**, and they
+are not evidence about the custom-domain path.
 
 Verified against the local workerd R2 fixture only — object enumeration
 and a `cover-<n>` sequential sweep over the published key layout — by
 `test/integration/r2-media-visibility.test.ts`. The bucket-level half
-(unpublished objects must not sit in a custom-domain-served bucket) is
-operator-side and recorded as an open residual in
-[`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md).
+(unpublished objects must not sit in a custom-domain-served bucket)
+is operator-side, is **not** closed by the repository, and is recorded
+as an open residual with its concrete failure case in
+[`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md)
+and tracked as Issue
+[#577](https://github.com/rebuildup/my-web-2026/issues/577) (owner
+decision: enforced key-set audit / bucket split / Worker-side
+delivery).
 
 ## Inventory at 0.1.0
 

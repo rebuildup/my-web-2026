@@ -13,15 +13,16 @@
  *   cache it; no signing round-trip.
  * - `srcset` can list multiple sizes of the same custom-domain URL.
  *
- * That same fact is the risk: the custom domain serves **every** key in
- * the bucket, so composing a URL *is* publishing. Since #459 the
+ * That same fact is the risk: **if** the custom domain is attached
+ * (an R2 bucket setting in the Cloudflare account, which this
+ * repository cannot verify), the edge serves **every** key in the
+ * bucket, so composing a URL *is* publishing. Since #459 the
  * composition therefore goes through the R2 visibility boundary
  * (`src/cloudflare/media-visibility.ts`): only a well-formed key under
- * a declared public prefix (`portfolio/`, `reactions/`, `public/`)
- * can become a URL. A draft project's cover, a WIP upload, or an
- * undeclared prefix resolves to `null` and renders the placeholder, so
- * an unpublished asset is never handed to a browser and never becomes a
- * URL an attacker could enumerate.
+ * a declared public prefix (`portfolio/`, `reactions/`) can become a
+ * URL. A WIP upload or an undeclared prefix resolves to `null` and
+ * renders the placeholder, so an unpublished asset is never handed to
+ * a browser and never becomes a URL an attacker could enumerate.
  * - The custom domain itself is **not** a code change — it is an R2
  *   bucket setting in the Cloudflare dashboard. Until the operator
  *   wires it, `composeMediaUrl` returns `null` and the UI renders a

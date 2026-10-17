@@ -83,6 +83,8 @@ reactions -> cloudflare (env.DB at SSR time)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
 server -> http
+http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
+  `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
 home -> editorial
 ```
 

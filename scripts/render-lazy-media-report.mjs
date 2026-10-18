@@ -117,6 +117,21 @@ function mediaCountClaim(leg) {
 	return `桁が独立した asset として配信された document（<code>digitImagesInlined=false</code>）なので digit が <code>image</code> 応答として出るのは仕様どおり: image ${images} / media ${media}。`;
 }
 
+/**
+ * Which document shape the digits were served in, in words the reader
+ * of the image can act on. A disabled counter renders no digits at all,
+ * which is a third case that is neither "inlined" nor "separate asset".
+ */
+function inlineShape(leg) {
+	if (leg.digitImageCount === 0) {
+		return '桁ストリップ未描画（counter disabled）のため、桁の inline 判定は該当しない。';
+	}
+	if (leg.digitImagesInlined) {
+		return '本番ビルドは桁 WebP（0.2–0.9 KB/枚）を <code>data:image/webp;base64</code> として HTML に inline する（Vite <code>assetsInlineLimit</code>）。したがって本番 document には digit の network リクエストが存在せず、<code>loading</code> 属性は decode スケジューリング（viewport 接近まで復号しない）に効く。wire 上は before / after とも 0 リクエストで差が出ないのが実測であり、この Ticket が 7 → 0 を主張していないのはそのため。';
+	}
+	return '桁 WebP は独立した asset リクエストとして配信されている。';
+}
+
 function render({ before, after, tool }) {
 	const hasDigits = after.digitImageCount > 0;
 	const conditions = `
@@ -189,9 +204,7 @@ function render({ before, after, tool }) {
 			</tbody>
 		</table>`;
 
-	const shape = after.digitImagesInlined
-		? '本番ビルドは桁 WebP（0.2–0.9 KB/枚）を <code>data:image/webp;base64</code> として HTML に inline する（Vite <code>assetsInlineLimit</code>）。したがって本番 document には digit の network リクエストが存在せず、<code>loading</code> 属性は decode スケジューリング（viewport 接近まで復号しない）に効く。wire 上は before / after とも 0 リクエストで差が出ないのが実測であり、この Ticket が 7 → 0 を主張していないのはそのため。'
-		: '桁 WebP は独立した asset リクエストとして配信されている。';
+	const shape = inlineShape(after);
 
 	const ab = `
 		<h2>before / after（同一ビルド・同一ブラウザ・同一 throttle、<code>loading</code> 属性だけを変えた A/B）</h2>
@@ -268,11 +281,49 @@ function render({ before, after, tool }) {
 </body></html>`;
 }
 
+/**
+ * Refuse to render an A/B from legs that did not come from the same
+ * run.
+ *
+ * `.tmp/lazy-media/` is per-leg JSON, so re-running one Playwright test
+ * overwrites only its own file and leaves the other two behind. Without
+ * this check the report would silently pair a fresh `after` with a stale
+ * `before` / `tool` leg — different commit, different profile, different
+ * build — and print the `after` leg's SHA and conditions at the top as if
+ * they described all of them. A wrong number wearing a right caption is
+ * the exact failure mode this script exists to prevent.
+ */
+const RUN_IDENTITY_FIELDS = [
+	'sourceSha',
+	'environment',
+	'profile',
+	'cpuThrottlingRate',
+	'trackedTreeDirty',
+	'viewport',
+];
+
+function assertSameRun(legs) {
+	const [reference, ...rest] = legs;
+	for (const leg of rest) {
+		for (const field of RUN_IDENTITY_FIELDS) {
+			const a = JSON.stringify(reference[field] ?? null);
+			const b = JSON.stringify(leg[field] ?? null);
+			if (a !== b) {
+				throw new Error(
+					`render-lazy-media-report: leg "${leg.label}" has ${field}=${b}, but "${reference.label}" has ${a} — the legs come from different runs, so the A/B would compare unrelated numbers. Re-run the whole spec: pnpm run e2e -- e2e/lazy-media.spec.ts`,
+				);
+			}
+		}
+	}
+}
+
 const [before, after, tool] = await Promise.all([
 	readLeg('home-before.json'),
 	readLeg('home-after.json'),
 	readLeg('tool-route.json'),
 ]);
+
+assertSameRun([after, before, tool]);
 
 const html = render({ before, after, tool });
 // A verification image is evidence. An `undefined` or a `NaN` inside it

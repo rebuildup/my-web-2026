@@ -181,10 +181,12 @@ interface PageMeasurement {
 	/** Image responses for the digit strip, split by when they arrived. */
 	digitImagesBeforeLoad: number;
 	digitImagesAfterScroll: number;
-	/** True when the build inlined the digit WebPs as `data:` URIs. */
+	/** True when the build inlined the digit strip's WebPs as `data:` URIs. */
 	digitImagesInlined: boolean;
 	/** `<img>` elements in the digit strip, and how many decoded. */
 	digitImageCount: number;
+	/** `<img>` markup inside the counter tile — what the inline flag is read from. */
+	digitImgTags: string[];
 	loadedImageCount: number | null;
 	responseCount: number;
 	/** Uncompressed document size, measured with an explicit API request. */
@@ -394,7 +396,19 @@ async function measure(
 	// wire, and the A/B numbers below mean different things per
 	// environment. Recording which shape was measured is what keeps the
 	// report honest instead of quietly comparing two different things.
-	const digitImagesInlined = imgTags.length > 0 && imgTags.every((tag) => /src="data:/i.test(tag));
+	//
+	// Scoped to the counter tile on purpose: the question is whether
+	// *the digits* are inlined, and a page-wide `every()` would answer
+	// it wrongly the day home carries a normal-URL image (one such
+	// image would flip the flag to `false`, and the control leg would
+	// then demand seven digit requests that were never going to be
+	// made).
+	const digitImgTags = await page
+		.locator(`${COUNTER_TILE} img`)
+		.evaluateAll((nodes) => nodes.map((node) => node.outerHTML))
+		.catch(() => [] as string[]);
+	const digitImagesInlined =
+		digitImgTags.length > 0 && digitImgTags.every((tag) => /src="data:/i.test(tag));
 
 	const measurement: PageMeasurement = {
 		label,
@@ -414,6 +428,7 @@ async function measure(
 		digitImagesAfterScroll: responses.filter(isDigitImage).length,
 		digitImagesInlined,
 		digitImageCount,
+		digitImgTags,
 		loadedImageCount,
 		responseCount: responses.length,
 		topResponses: [...responses].sort((a, b) => b.bytes - a.bytes).slice(0, 12),

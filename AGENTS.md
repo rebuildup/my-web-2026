@@ -74,12 +74,20 @@ Current dependency direction:
 ```text
 routes -> home
 routes -> portfolio
+routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+about -> editorial (Issue #422 — approved snapshot → `Person` projection; the fact stays owned by `about`)
+
+routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
+           /admin/login loader; the security classifier only, no router,
+           no handler)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
 admin/emoji-catalog -> reactions
 reactions -> cloudflare (env.DB at SSR time)
+http/seo -> portfolio (public project index only; the public-visibility
+             filter stays in the portfolio obligation — Issue #420)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
 server -> http
@@ -266,6 +274,19 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 Playwright E2E is a separate CI step on pushes to `main` / `release-*`
 and on PRs with the `ui-change` label; it is not part of the local
 `validate:release` command.
+
+One gate is deliberately **not** in the three entry points: the
+dependency advisory gate (Issue #470,
+[`quality/dependency-advisory-gate.json`](quality/dependency-advisory-gate.json),
+`pnpm run dep-audit:check`). It needs the npm registry advisory
+endpoint, and `validate:fast` is offline and read-only by contract, so
+it runs as the `Dependency advisory audit` step of the `validate` job
+instead. The decision logic is in `scripts/check-dependency-advisories.mjs`,
+not in workflow YAML, and the same verdict is reproducible locally with
+`pnpm run dep-audit:check`; whether it should also join a local entry
+point is an open decision recorded in
+[`quality/profile.yaml`](quality/profile.yaml). Operator reference:
+[`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are

@@ -150,6 +150,92 @@ See also: [`ADR-0002`](adr/ADR-0002-architecture-boundary.md) (the
 two-layer split), [`ADR-0010`](adr/ADR-0010-abuse-protection-rate-limit.md)
 (the write-path rate limit that still applies after the guard).
 
+## Session cookie attributes (Issue #438)
+
+The cookies Better Auth sets on a successful sign-in have a pinned
+attribute contract. It lives next to the auth configuration it
+projects from — `src/cloudflare/auth/session-cookie-contract.ts` —
+and is enforced by `src/cloudflare/auth/session-cookie-contract.test.ts`
+in the local workerd pool:
+
+| Cookie                     | Contract                                                        |
+| -------------------------- | --------------------------------------------------------------- |
+| `session_token`            | `HttpOnly`, `SameSite=Lax`, `Path=/`, host-only (no `Domain`), `Max-Age=2592000` (30 days), plus `Secure` + the `__Secure-` name prefix on an https origin |
+| `session_data` (cookie cache) | same attribute policy, `Max-Age=300` (5 min)                  |
+
+The `Secure` attribute and the `__Secure-` prefix are origin-dependent
+by design: Better Auth derives both from the resolved base URL, so the
+contract evaluates against an explicit profile.
+
+- **https** — production. `wrangler.production.jsonc` pins
+  `BETTER_AUTH_URL = https://rebuildup.dev` (ADR-0014) and
+  `scripts/check-cloudflare-contract.mjs --build` proves the built
+  Worker carries it. `Secure` and `__Secure-` are required.
+- **http** — local dev and the test pool, where no origin is pinned.
+  `Secure` is a violation there: a browser on a plain-http origin that
+  is not localhost drops the cookie, and every later request comes back
+  unauthenticated with no error.
+
+`sessionCookieProfileFor()` mirrors only the base-URL *string* branch
+of Better Auth's inference. `advanced.useSecureCookies` (an explicit
+override the current configuration never sets) and the no-base-URL
+`NODE_ENV=production` fallback are deliberately not modelled — the
+latter means running the suite with `NODE_ENV=production` would make a
+correct response look like a violation. Both are false-alarm risks, not
+false passes.
+
+The test drives a real sign-in through `SELF.fetch` and then a set of
+forged fixtures in which exactly one attribute is weakened
+(`HttpOnly` removed, `Secure` dropped, `Domain` added, `SameSite=None`,
+`Path` narrowed, `Max-Age` extended, …). Every fixture must **fail**
+the same evaluator, with exactly the violation codes it declares; a
+fixture that passed, or that failed for an extra reason, would mean the
+contract cannot detect the downgrade it exists to detect.
+
+Two properties the test also pins:
+
+- **No value in the report, and none in the evidence built on top of
+  it.** The evaluator drops cookie values at parse time and the report
+  type has no field for one. The verification evidence is a second
+  layer: it keeps the `Set-Cookie` strings so a screenshot can show
+  them, and a real sign-in response carries the signed session token
+  plus a `session_data` cookie holding the signed user record. Those
+  strings are therefore masked (`maskSetCookieValue`) as they enter the
+  evidence map, and two tests assert the masking on the exact payload
+  that is printed — not only on the report it derives from. CI logs,
+  artefacts and verification screenshots therefore cannot carry a
+  session token or a user record.
+- **No production mutation.** The deployed cookie shape is computed
+  locally by handing Better Auth's own `getCookies()` the pinned
+  origin, not by signing in against production. Confirming the emitted
+  headers on the live Worker needs a real account and is left to the
+  operator.
+
+Reproduce the verification report — this is the pipeline
+`docs/verification/security/cookie-header-test.webp` was generated
+from:
+
+```bash
+mkdir -p .tmp/cookie-contract
+pnpm exec vitest run src/cloudflare/auth/session-cookie-contract.test.ts \
+  --reporter=verbose > .tmp/cookie-contract/run.log 2>&1
+node scripts/render-session-cookie-report.mjs \
+  .tmp/cookie-contract/run.log .tmp/cookie-contract/report.html
+pnpm exec playwright screenshot --full-page --viewport-size=1600,1200 \
+  "file://$PWD/.tmp/cookie-contract/report.html" .tmp/cookie-contract/report.png
+node -e "require('sharp')('.tmp/cookie-contract/report.png')
+  .resize({ width: 1600, withoutEnlargement: true })
+  .webp({ quality: 80 })
+  .toFile('docs/verification/security/cookie-header-test.webp')"
+```
+
+The run prints one `SESSION_COOKIE_CONTRACT_REPORT {…}` line
+(visible with `--reporter=verbose`; the default reporter keeps
+passing-test console output quiet). The renderer redacts nothing — it
+**refuses** to render a payload whose headers are not masked, so a
+regression in the test cannot be laundered into a clean-looking
+screenshot.
+
 ## Login enumeration and credential brute force
 
 `POST /api/v1/auth/sign-in/email` is the only unauthenticated

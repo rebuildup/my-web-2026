@@ -1,9 +1,11 @@
+import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeaders } from '@tanstack/react-start/server';
 import { z } from 'zod';
 import { auth } from '../../cloudflare/auth/better-auth';
 import type { AdminSession } from '../auth/load';
 import { AdminAuthError, requireAdmin } from '../auth/require-admin';
+import { StepUpError, assertStepUpGranted } from '../auth/step-up';
 
 /**
  * Admin API key management — server functions over the Better Auth
@@ -15,6 +17,16 @@ import { AdminAuthError, requireAdmin } from '../auth/require-admin';
  * an admin (the plugin's `adminMiddleware` is satisfied because the
  * `requireAdmin()` helper above gates on role first).
  *
+ * Issue #445: key CREATION additionally passes the step-up gate
+ * (`assertStepUpGranted`) because it grants standing authority. The
+ * gate and the create half are composed by `createApiKeyOutcome`, a
+ * plain function the integration test executes end to end — testing
+ * the gate and `createApiKeyImpl` separately would prove neither that
+ * the gate runs, nor that it runs first. `createApiKeyImpl` itself
+ * stays ungated so it remains unit-testable without TanStack Start's
+ * request context; the gate lives in `createApiKeyOutcome`, next to
+ * `requireAdmin()`.
+ *
  * Permissions shape (resource/action):
  *   `{ access_counter: ["read","write"], reactions: ["read","write"] }`
  * Documented in ADR-0009 §3. We validate this shape on the way in
@@ -25,12 +37,13 @@ import { AdminAuthError, requireAdmin } from '../auth/require-admin';
  * subsequent `listApiKeys` returns only the prefix + start, never
  * the key. The admin UI surfaces this in a single copy-block.
  *
- * Testability: each server-fn wrapper delegates to an `*Impl`
- * function that takes the resolved `session` (already verified
- * admin by `requireAdmin()`) plus the request `headers`. Tests
- * exercise the impls directly without going through
- * `createServerFn`'s AsyncLocalStorage context — see
- * `src/admin/keys/load.test.ts`.
+ * Testability: each server-fn wrapper delegates to a plain function
+ * that takes the resolved `session` (already verified admin by
+ * `requireAdmin()`) plus the request `headers`. Tests exercise those
+ * functions directly without going through `createServerFn`'s
+ * AsyncLocalStorage context — see `src/admin/keys/load.test.ts` for
+ * the ungated CRUD and `test/integration/admin-step-up-auth.test.ts`
+ * for the gated create composition.
  */
 
 export type ApiKeyPermissionAction = 'read' | 'write';
@@ -65,6 +78,21 @@ export interface CreateApiKeyResult {
 	key: AdminApiKey;
 	plaintext: string;
 }
+
+/**
+ * Wire-safe result of the gated create path.
+ *
+ * A thrown `StepUpError` cannot carry `reason` to the browser: TanStack
+ * Start serialises thrown `Error`s with `ShallowErrorPlugin`, which
+ * keeps only `message` and drops own properties. Anything the admin UI
+ * has to branch on therefore travels as a return value, not as an
+ * error. Failures that are not the step-up gate (adapter errors,
+ * plugin validation) still throw and reach the UI as a generic
+ * failure, because they say nothing about which step is missing.
+ */
+export type CreateApiKeyOutcome =
+	| { ok: true; result: CreateApiKeyResult }
+	| { ok: false; reason: 'step_up_required' };
 
 export async function listApiKeysImpl(
 	session: AdminSession,
@@ -135,11 +163,50 @@ export async function createApiKeyImpl(
 	return { key, plaintext: created.key };
 }
 
+/**
+ * The gated create path, as ONE function.
+ *
+ * Ordering is the whole point: the gate runs BEFORE `createApiKeyImpl`,
+ * so a session without a fresh confirmation cannot reach the code that
+ * mints a bearer token. Keeping both halves in one exported function is
+ * what lets `test/integration/admin-step-up-auth.test.ts` assert that
+ * the operation is refused and nothing is written — calling the gate
+ * and the impl separately would leave that composition untested, and a
+ * deleted gate line would keep the suite green.
+ *
+ * `db` is passed rather than read from `cloudflare:workers` so the
+ * workerd pool can run this against the real D1 binding.
+ */
+export async function createApiKeyOutcome(
+	db: D1Database,
+	session: AdminSession,
+	headers: Headers,
+	data: z.infer<typeof CreateApiKeyInput>,
+	nowMs: number = Date.now(),
+): Promise<CreateApiKeyOutcome> {
+	// Step-up gate (Issue #445). Creating a key both issues a bearer
+	// secret and grants `read` / `write` scopes that outlive this
+	// session, so it is the one high-risk admin operation under the
+	// gate. A missing or lapsed confirmation becomes
+	// `{ ok: false }`, which the admin UI turns into a password prompt.
+	// `deleteApiKey` below is deliberately not gated: revoking
+	// authority is the safe direction.
+	try {
+		await assertStepUpGranted(db, session, nowMs);
+	} catch (error) {
+		if (error instanceof StepUpError && error.reason === 'step_up_required') {
+			return { ok: false, reason: 'step_up_required' };
+		}
+		throw error;
+	}
+	return { ok: true, result: await createApiKeyImpl(session, headers, data) };
+}
+
 export const createApiKey = createServerFn({ method: 'POST' })
 	.validator(CreateApiKeyInput)
-	.handler(async ({ data }): Promise<CreateApiKeyResult> => {
+	.handler(async ({ data }): Promise<CreateApiKeyOutcome> => {
 		const session = await requireAdmin();
-		return createApiKeyImpl(session, getRequestHeaders(), data);
+		return createApiKeyOutcome(env.DB, session, getRequestHeaders(), data);
 	});
 
 const DeleteApiKeyInput = z.object({ id: z.string().min(1).max(128) });

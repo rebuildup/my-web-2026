@@ -263,10 +263,12 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `architecture:check` +
-  `compat:check` + `tools:check` + `wrangler:independence:check` +
-  `cloudflare:contract:check` + `test:wiring:check` +
-  release-asset checks + `version:check` + `typecheck` +
-  `infisical:check:coverage` + `test`)
+  `compat:check` + `structured-data:check` + `index:boundary:check` +
+  `tools:check` + `install:scripts:check` +
+  `wrangler:independence:check` + `cloudflare:contract:check` +
+  `test:wiring:check` + release-asset checks + `version:check` +
+  `typecheck` + `infisical:check:coverage` + `csrf:contract:check` +
+  `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +
   `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
@@ -277,6 +279,27 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 Playwright E2E is a separate CI step on pushes to `main` / `release-*`
 and on PRs with the `ui-change` label; it is not part of the local
 `validate:release` command.
+
+`validate:fast` also runs `install:scripts:check` (Issue #474): the
+dependency install-lifecycle audit that keeps
+`pnpm-workspace.yaml#allowBuilds` and
+[`quality/install-scripts.json`](quality/install-scripts.json) in
+agreement. It reads installed manifests and those two files only, is
+status-only, and fails closed when the tree is not a pnpm install.
+Runbook: [`docs/runbook/install-script-audit.md`](docs/runbook/install-script-audit.md).
+
+One gate is deliberately **not** in the three entry points: the
+dependency advisory gate (Issue #470,
+[`quality/dependency-advisory-gate.json`](quality/dependency-advisory-gate.json),
+`pnpm run dep-audit:check`). It needs the npm registry advisory
+endpoint, and `validate:fast` is offline and read-only by contract, so
+it runs as the `Dependency advisory audit` step of the `validate` job
+instead. The decision logic is in `scripts/check-dependency-advisories.mjs`,
+not in workflow YAML, and the same verdict is reproducible locally with
+`pnpm run dep-audit:check`; whether it should also join a local entry
+point is an open decision recorded in
+[`quality/profile.yaml`](quality/profile.yaml). Operator reference:
+[`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are

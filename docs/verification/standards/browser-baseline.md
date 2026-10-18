@@ -111,10 +111,10 @@ node --test scripts/check-browser-baseline.test.mjs    # fixture suite（20 case
 pnpm run verify:browser-baseline-screenshot            # report HTML + WebP を再生成
 ```
 
-期待結果（`src/**` の増加に合わせて scanned files は増える。下の行は本 gate 導入時点の値）:
+期待結果（`src/**` の増加に合わせて scanned files は増える。下の行はこの report を最後に再生成した時点の値）:
 
 ```
-surfaces  12 declared · 144 files scanned · 0 uncovered
+surfaces  12 declared · 149 files scanned · 0 uncovered
 features  14 adopted (3 below the bar, each with a verified fallback) · 9 guarded
 warnings (3)   # word-break-auto-phrase / text-wrap-balance / text-wrap-pretty
 errors (0)

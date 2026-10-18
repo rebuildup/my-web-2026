@@ -7,12 +7,14 @@ of trusting the image.
 
 | Artefact | Issue | Regenerate |
 | --- | --- | --- |
+| [`frame-ancestors-test.webp`](frame-ancestors-test.webp) | #448 | `pnpm run verify:frame-ancestors-screenshot` |
 | [`ssrf-url-adapter.webp`](ssrf-url-adapter.webp) | #453 | `pnpm run security:ssrf:report` |
 | [`hsts-response.webp`](hsts-response.webp) | #446 | `pnpm run verify:hsts-screenshot` |
 | [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
 | [`markdown-xss-fixture.webp`](markdown-xss-fixture.webp) | #451 | capture generator is **not** in the repository — see [`## markdown-xss-fixture.webp`](#markdown-xss-fixturewebp); the same properties are asserted on every push by `pnpm exec vitest run test/integration/markdown-xss-ssr.test.ts` and by `pnpm run e2e` |
 | [`webhook-signature-fixture.webp`](webhook-signature-fixture.webp) | #463 | `pnpm run webhook:fixture:report` |
 | [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
+| [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 
 ## `webhook-signature-fixture.webp`
 
@@ -76,6 +78,52 @@ in the same directory, for the same reason as `redirect-validation.webp`
 below — Playwright cannot write WebP, so the generator re-encodes the
 screenshot buffer with `sharp` and never commits an intermediate PNG.
 
+## `frame-ancestors-test.webp`
+
+The inbound embed policy (Issue #448) exercised over the surfaces that
+exist today: public documents, the Tool shell and its artefact, the
+Admin redirect and child routes, the Account boundary, the
+lookalike paths that must not inherit a denial, and the committed
+public static HTML under `public/` (`/share/procon2026/`), which
+Static Assets answer before the Worker runs.
+
+The Issue names `frame-ancestors-test.png`; the artefact ships as WebP
+in the same directory, because the capture is a dense text table where
+PNG costs several times the bytes for no visual gain.
+`scripts/make-frame-ancestors-report.mjs` runs the workerd suite with
+Vitest's JSON reporter, runs the static gate over `public/_headers` and
+over four deliberately broken fixtures, renders both into one report,
+and encodes it as WebP in memory (Playwright cannot emit WebP, so the
+PNG bytes are captured into a Buffer and re-encoded with `sharp`, width
+≤ 1600, quality 80). It refuses to write anything that is not WebP.
+
+The four fixtures are the *rejected* direction the Issue asks to be
+reproducible: a Tool artefact rule switched to `'none'`, one opened to
+`*`, an `/admin*` rule in `_headers`, and a `public/` HTML document
+left with no rule at all (the Tool-only rule set evaluated against the
+real `public/` scan — what the review found before the `/share/*` rule
+was added). Each is rejected by
+`scripts/check-frame-ancestors-policy.mjs`, so the table shows what
+"denied" means without reading the source. Nothing secret is in the
+picture: the suite runs against the local workerd pool's dummy bindings
+and the gate reads two static files and the `public/` tree.
+
+## `log-redaction-test.webp`
+
+The redaction verification report (Issue #467): every fabricated sample
+rendered through the shipped `src/logging/redact.ts`, with before / after
+columns and the generator's own canary self-check.
+
+The Issue names `log-redaction-test.png`; the artefact ships as WebP in
+the same directory, following the same repository rule as the artefacts
+above (screenshot = WebP at quality 80, width ≤ 1600; the intermediate
+PNG stays in `.tmp/` and is never committed). Accepting that substitution
+— or amending the Issue requirement — is an open owner decision recorded
+in the PR body. The report HTML is the capture source; it is generated
+into `.tmp/` by `node scripts/log-redaction-report.mjs`, which exits
+non-zero without writing a page when a canary survives or a sample is
+unguarded.
+
 ## `ssrf-url-adapter.webp`
 
 The outbound URL policy and fetch adapter (Issue #453) exercised over a
@@ -108,8 +156,13 @@ matrix of 38 destinations — 3 fetched, 35 refused.
 Regenerate with:
 
 ```bash
+pnpm run verify:frame-ancestors-screenshot
 node scripts/capture-ssrf-url-adapter-report.mjs
 ```
+
+The frame-ancestors policy table, the enforcement halves, and the
+unscanned inventory are in
+[`docs/security.md`](../../security.md#csp-frame-ancestors).
 
 Add `--html .tmp/report.html` to dump the markup the image renders. The
 run fails if a measurement contradicts its row's declared outcome, if a

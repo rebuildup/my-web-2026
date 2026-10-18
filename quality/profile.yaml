@@ -40,6 +40,11 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      # Issue #467: log surface gate. `src/**` may only reach `console`
+      # through the `src/logging/` redacting logger, and an operator
+      # script may not print a secret-named value. Without this, a new
+      # log call site silently opts out of redaction.
+      - 'pnpm run log:redaction:check'
       # Issue #414: the Web feature adoption gate. Offline and vendored
       # (quality/browser-baseline.json pins the web-features Baseline
       # snapshot), so it costs a directory walk and never a network call.
@@ -58,6 +63,11 @@ gates:
       - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
       - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
+      # Issue #473: Tool submodule supply-chain provenance. Offline,
+      # status-only: proves manifest pin == gitlink == checked-out commit
+      # == build-artefact stamp, and that the fetch source is the declared
+      # credential-free https repository with no branch-tip tracking.
+      - 'pnpm run tools:provenance:check'
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
@@ -365,6 +375,10 @@ compatibility:
       - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
+  log_redaction:
+    enabled: true
+    command: 'pnpm run log:redaction:check'
+    note: 'Issue #467 — src/** logs only through the src/logging redacting logger; operator scripts print status only. See docs/security/log-redaction.md.'
   secret_scanning:
     enabled: true
     mode: asynchronous
@@ -400,6 +414,12 @@ security_gates:
       moved to a version the record never reviewed. It warns when an
       allow-list entry buys no build. Status-only output; no secret value
       is read or printed. Runbook: docs/runbook/install-script-audit.md
+  submodule_provenance:
+    enabled: true
+    tool: 'scripts/check-submodule-provenance.mjs'
+    gate: fast
+    mode: offline_status_only
+    note: 'Issue #473 — manifest pin / gitlink / checked-out commit / build-artefact stamp agreement, plus fetch-source identity and branch-tip rejection. No network fetch, no environment variable and no secret file is read, every finding is status-only, and a URL that came from the ambient git config is printed with its userinfo / query / fragment redacted.'
   workflow_yaml_lint:
     enabled: true
     tool: actionlint

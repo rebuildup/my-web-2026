@@ -527,4 +527,41 @@ describe('portfolio — D1 loader (workerd pool, DI seam)', () => {
 		// R2 binding in the test pool we expect null.
 		expect(project?.media[0]?.url).toBeNull();
 	});
+
+	// Public project index (Issue #420) — the input of `/sitemap.xml`.
+	// Same public boundary as the list surface, reduced to URL identity.
+	it('listPublishedProjectIndex — returns only public + published rows', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('public1', { visibility: 'public', status: 'published' });
+		await seedOne('draft1', { visibility: 'draft', status: 'published' });
+		await seedOne('archived1', { visibility: 'public', status: 'archived' });
+		await seedOne('unlisted1', { visibility: 'unlisted', status: 'published' });
+
+		const index = await loader.listPublishedProjectIndex();
+		expect(index.map((e) => e.slug)).toEqual(['public1']);
+	});
+
+	it('listPublishedProjectIndex — carries updated_at for lastmod', async () => {
+		const loader = createD1PortfolioLoader(env);
+		const updatedAt = 1_767_322_945_000;
+		await seedOne('tastile', { updated_at: updatedAt });
+
+		const index = await loader.listPublishedProjectIndex();
+		expect(index).toEqual([{ slug: 'tastile', updatedAt }]);
+	});
+
+	it('listPublishedProjectIndex — follows canonical sort order', async () => {
+		const loader = createD1PortfolioLoader(env);
+		await seedOne('pinned', { pinned: 1, display_order: 99 });
+		await seedOne('second', { display_order: 1 });
+		await seedOne('first', { display_order: 0 });
+
+		const index = await loader.listPublishedProjectIndex();
+		expect(index.map((e) => e.slug)).toEqual(['pinned', 'first', 'second']);
+	});
+
+	it('listPublishedProjectIndex — empty array when the binding is missing', async () => {
+		const loader = createD1PortfolioLoader({});
+		expect(await loader.listPublishedProjectIndex()).toEqual([]);
+	});
 });

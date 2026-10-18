@@ -7,6 +7,7 @@ import { sharedCacheIsolation } from './middleware/cache-policy';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
+import { seoRouter } from './seo/router';
 
 /**
  * External HTTP boundary for my-web-2026.
@@ -18,6 +19,14 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  *   - `/webhooks/*`     inbound webhooks from external services
  *   - `/oauth/*`        OAuth callback handlers
  *   - `/integrations/*` third-party integration adapters
+ *   - `/sitemap.xml`,   crawler-facing SEO documents. These are not
+ *     `/robots.txt`     HTML and cannot be produced by the SSR
+ *                        pipeline (TanStack Start 1.168 has no
+ *                        raw-response route primitive — ADR-0002
+ *                        "Re-evaluation triggers"), so they are
+ *                        served here and registered in the
+ *                        `EXTERNAL_BOUNDARY_PREFIXES` list in
+ *                        `src/server.ts`.
  *
  * Internal application operations invoked from the UI are TanStack
  * Start server functions and **must not** be exposed through Hono.
@@ -63,6 +72,7 @@ externalBoundary.use('/api/v1/*', async (c, next) => {
 // change to `src/server.ts` is required.
 externalBoundary.use('/api/v1/*', requestIdMiddleware);
 externalBoundary.route('/', authRouter);
+externalBoundary.route('/', seoRouter);
 externalBoundary.route('/api/v1/access', accessCounterRouter);
 externalBoundary.route('/api/v1/reactions', reactionsRouter);
 externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);

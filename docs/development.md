@@ -249,14 +249,16 @@ canonical location for the flag is `.dev.vars` only.
 ## Validate
 
 ```bash
-pnpm run validate:fast         # format:check + lint:check + architecture:check + compat:check + typecheck + test
+pnpm run validate:fast         # read-only gate chain (format / lint / architecture / compat / tools / wiring / release-assets / version / typecheck / infisical coverage / test — see quality/profile.yaml)
 pnpm run validate:integration  # + build + wrangler:dry-run + lint:ci + build-storybook
 pnpm run validate:release      # + cf-typegen:check
 ```
 
 `pnpm run compat:check` は Web API / CSS の採用可否を Baseline（web-features）で
-判定する gate（Issue #414）。バー未満の採用は fallback 要件が明示され evidence が
-検証できた場合のみ warning、fallback 宣言が無い採用は fail。定義は
+判定する gate（Issue #414）。走査面は `src/**` に加えて生成 CSS の入力である
+`panda.config.ts`（`app-shell` surface の `files`）で、`src/` 以外のファイルは
+surface に明示しない限り走査されない。バー未満の採用は fallback 要件が明示され
+evidence が検証できた場合のみ warning、fallback 宣言が無い採用は fail。定義は
 `quality/browser-baseline.json`、詳細は
 [`docs/verification/standards/browser-baseline.md`](verification/standards/browser-baseline.md)。
 

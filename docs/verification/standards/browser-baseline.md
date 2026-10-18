@@ -44,6 +44,10 @@ bar-implied floor は「採用済み機能のうち最新の `baseline_high_date
 `dialog` と `focus-visible`）以降の最初のリリース」を vendored したリリース表
 （`dataset.browsers`）から導出する。手書きの数字ではなく、宣言 floor がこれを
 下回ると **fail** する（下げるのではなく、floor を上げるか機能を外す）。
+採用済み機能が 1 つも Baseline Widely available に達していないと bar が何も
+示唆しないため、この比較は実行されない。その場合も無言では通さず
+`target_floor_unverifiable` を **warning** として出す（「比較が回っていない」
+という事実そのものを gate の出力に残す）。
 
 ## manifest の構造
 
@@ -63,6 +67,9 @@ bar-implied floor は「採用済み機能のうち最新の `baseline_high_date
 ```
 
 - `surfaces` … gate が走査する obligation ごとの面。`root` か `files` のどちらか一方。
+  `files` 型 surface は `panda.config.ts` も含む（生成 CSS の入力の片方。`src/**`
+  がもう片方）。1 つの path が 2 つの surface に属すると二重走査・二重計上になる
+  ため fail する。`src/` 以外を走査させるには surface への明示的宣言が要る。
 - `features[].detect` … その機能の検出正規表現（`RegExp` ソース文字列）。
 - `features[].dataset` … Baseline 状態と browser ごとの最初の対応バージョン。
   `compat_key` を指定すると web-features の granular key（例:
@@ -79,6 +86,7 @@ gate が黙って通さないよう、以下はすべて **fail**：
 | --- | --- |
 | `surface_empty` | 宣言した surface が 1 ファイルも拾えなかった（route が移動した等） |
 | `surface_uncovered` | `src/` 配下の走査対象ファイルが、どの surface にも属していない |
+| `surface_file_duplicate` | 1 つの path が複数の surface に属している（二重走査・二重計上） |
 | `feature_not_detected` | 宣言した機能が未抑制の 등장箇所 0 件（宣言やパターンがずれた） |
 | `fallback_required` | バー未満の採用に fallback 宣言が無い |
 | `fallback_evidence_missing` | 宣言した fallback の evidence ファイル / パターンが無い |
@@ -99,15 +107,15 @@ gate が黙って通さないよう、以下はすべて **fail**：
 ```bash
 pnpm run compat:check                                 # gate 本体（validate:fast に含まれる）
 node scripts/check-browser-baseline.mjs --json         # 機械可読な結果
-node --test scripts/check-browser-baseline.test.mjs    # fixture suite（18 cases）
+node --test scripts/check-browser-baseline.test.mjs    # fixture suite（20 cases）
 pnpm run verify:browser-baseline-screenshot            # report HTML + WebP を再生成
 ```
 
 期待結果（現在の main 相当）:
 
 ```
-surfaces  12 declared · 127 files scanned · 0 uncovered
-features  12 adopted (3 below the bar, each with a verified fallback) · 9 guarded
+surfaces  12 declared · 128 files scanned · 0 uncovered
+features  14 adopted (3 below the bar, each with a verified fallback) · 9 guarded
 warnings (3)   # word-break-auto-phrase / text-wrap-balance / text-wrap-pretty
 errors (0)
 exit 0
@@ -124,7 +132,7 @@ exit 0
 
 この 2 例は PR 添付の report
 [`browser-baseline.webp`](./browser-baseline.webp) にも同じ checker の実行結果として
-載っている（report _words に A/B の判定と exit code を表示）。
+載っている（report 内で fixture A / B の判定と exit code を表示）。
 
 ## snapshot の更新手順
 
@@ -156,8 +164,25 @@ node scripts/check-browser-baseline.mjs --dataset /tmp/web-features.json
 
 ## 既知の制約
 
-- 検出は正規表現による。生成済み CSS（`styled-system/**`）は走査対象外だが、
-  その入力である `panda.config.ts` / `src/**` は走査している。
+- 検出は正規表現による。生成済み CSS（`styled-system/**`）は走査対象外だが、その入力である
+  `panda.config.ts`（`app-shell` surface の `files` に宣言済み）と `src/**`（surface +
+  coverage root）は走査している。逆向きの限界もある: `src/` 以外のファイルは surface に
+  明示しない限り走査されない。root-level に CSS 入力を増やした時は、そのファイルも
+  surface に足すこと。
+- evidence の照合も生テキストへの正規表現照合で、コメント内の文字列でも一致する。
+  「宣言された evidence が実宣言の行に載っている」のはレビュー上の規律であって、
+  gate がコメントと宣言を区別するわけではない。
+- 宣言モデルであるため、manifest に無い機能にはどの rule も掛からない
+  （undeclared adoption）。採用する機能は `features[]` に Baseline 状態と fallback と
+  ともに、採用しない機能は `guarded_features[]` に理由ごと登録する運用が前提。
+  未宣言の採用そのものを検出する仕組み（検出パターンの集合の別途管理）は本 gate の
+  スコープ外。
+- `guarded_features` の検出パターンもコメントに一致する。例えば `popover` は単語単位の
+  パターンなので、走査ファイルのコメントに "popover" と書くと CI が落ちる。意図した
+  誤検知は `features[].allow` で明示的に免除する（glob スコープ必須・`reason` 必須・
+  空回り fail）。検出パターンを狭めてコメント誤検知を回避すると、本命の検出漏れを
+  増やす。よって誤検知はパターンで隠すのではなく、`allow` で明示的に免除する運用を
+  優先した。
 - web-features に存在しない機能（例: `FormData` コンストラクタ。dataset の
   `fetch-formdata` は `Request/Response.formData()` の話）は manifest に載らない。
   採用を検討する時は Baseline データを另行取得してから登録する。

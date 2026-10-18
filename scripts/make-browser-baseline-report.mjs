@@ -27,10 +27,12 @@
  *
  * Screenshot output: Playwright can only encode PNG/JPEG, so the capture
  * is taken into a Buffer and re-encoded with the existing `sharp`
- * devDependency as `resize({ width: 1600, withoutEnlargement: true })`
- * followed by `webp({ quality: 80 })`. No intermediate PNG is written to
- * disk, and the target extension is asserted to be `.webp` so a PNG can
- * never drift back into `docs/`. `sharp` stays a devDependency and is
+ * devDependency as `resize({ width: WEBP_WIDTH, withoutEnlargement: true })`
+ * followed by `webp({ quality: WEBP_QUALITY })` — both constants are
+ * declared below and are printed in the report footer, so this comment
+ * cannot drift from the encoder settings. No intermediate PNG is written
+ * to disk, and the target extension is asserted to be `.webp` so a PNG
+ * can never drift back into `docs/`. `sharp` stays a devDependency and is
  * never imported by the Worker / SSR.
  *
  *   node scripts/make-browser-baseline-report.mjs
@@ -53,7 +55,7 @@ const TMP = join(ROOT, '.tmp');
 const HTML_REPORT = join(TMP, 'browser-baseline-report.html');
 const WEBP_TARGET = join(ROOT, 'docs/verification/standards/browser-baseline.webp');
 const WEBP_WIDTH = 1600;
-const WEBP_QUALITY = 68;
+const WEBP_QUALITY = 62;
 
 const REPRODUCTION = [
 	'pnpm run compat:check                              # the gate itself (exit 0 + warnings)',
@@ -351,7 +353,8 @@ function render(result) {
     <div class="card"><div class="k">adopted</div><div class="v">${stats.adopted}</div></div>
     <div class="card"><div class="k">below bar (warn)</div><div class="v warnc">${stats.belowBar}</div></div>
     <div class="card"><div class="k">guarded</div><div class="v">${stats.guarded}</div></div>
-    <div class="card"><div class="k">errors</div><div class="v ok">0</div></div>
+    <div class="card"><div class="k">errors</div><div class="v ${result.errors.length === 0 ? 'ok' : 'failc'}">${result.errors.length}</div></div>
+    <div class="card"><div class="k">warnings</div><div class="v warnc">${result.warnings.length}</div></div>
   </div>
 
   <h2>互換対象ブラウザ（採用集合が Baseline Widely available を満たす範囲: ${escapeHtml(targets.earliest ?? '—')} … ${escapeHtml(targets.latest ?? '—')}）</h2>
@@ -467,7 +470,7 @@ mkdirSync(TMP, { recursive: true });
 writeFileSync(HTML_REPORT, render(result));
 process.stdout.write(`wrote ${HTML_REPORT}\n`);
 process.stdout.write(
-	`gate: ${result.stats.adopted} adopted / ${result.stats.belowBar} below bar / ${result.stats.guarded} guarded / 0 errors\n`,
+	`gate: ${result.stats.adopted} adopted / ${result.stats.belowBar} below bar / ${result.stats.guarded} guarded / ${result.errors.length} errors / ${result.warnings.length} warnings\n`,
 );
 for (const fixture of FIXTURES) {
 	process.stdout.write(`fixture ${fixture.id}: exit ${fixture.exitCode} (${fixture.title})\n`);

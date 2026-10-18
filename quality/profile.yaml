@@ -165,13 +165,20 @@ compatibility:
     below_bar_with_verified_fallback: 'warning (fallback requirement is explicit and its evidence is re-checked against the working tree)'
     below_bar_without_fallback: 'fail'
     guarded_feature_adopted: 'fail (must be registered with a Baseline status and a fallback first)'
+    warning_only:
+      - 'below_baseline_with_fallback'
+      - 'target_floor_unverifiable — no adopted feature is Baseline Widely available, so the declared floor cannot be compared with the bar-implied floor (the comparison is reported as not run rather than skipped silently)'
     silent_pass_guards:
       - 'a declared surface that matches no file fails'
       - 'a scanned source file owned by no declared surface fails'
+      - 'a scanned path claimed by two surfaces fails (it would be counted twice)'
       - 'a declared feature with no unsuppressed occurrence fails'
       - 'a declared fallback whose evidence file/pattern vanished fails'
       - 'a declared false-positive waiver that suppresses nothing fails'
       - 'a declared target-browser floor below the Baseline-implied floor fails'
+    known_limits:
+      - 'regex detection: comments match the same patterns as live declarations, for both feature detection and fallback evidence'
+      - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
   secret_scanning:

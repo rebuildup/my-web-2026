@@ -41,7 +41,10 @@
  *   - a false-positive suppression (`allow`) that matches nothing, or
  *     that is scoped too broadly to be reviewable
  *   - a declared target-browser floor below the Baseline bar implied by
- *     the adopted feature set
+ *     the adopted feature set (and a warning when the adopted set
+ *     implies no bar at all, so the rule cannot switch itself off)
+ *   - a scanned path claimed by two surfaces, which would be counted
+ *     twice
  *
  * Usage:
  *   node scripts/check-browser-baseline.mjs
@@ -367,13 +370,26 @@ export function collectFiles(root, manifest) {
 	};
 
 	const files = [];
+	const owner = new Map();
+	const duplicates = [];
+	// A path claimed by two surfaces would be scanned (and counted) twice,
+	// so every occurrence beyond the first is recorded instead of added.
+	const add = (surfaceId, path) => {
+		const firstOwner = owner.get(path);
+		if (firstOwner !== undefined) {
+			duplicates.push({ path, surfaces: [firstOwner, surfaceId] });
+			return;
+		}
+		owner.set(path, surfaceId);
+		files.push({ surface: surfaceId, path });
+	};
 	for (const surface of manifest.surfaces) {
 		if (surface.root) {
 			const absRoot = join(root, surface.root);
 			let matched = 0;
 			for (const absPath of walk(absRoot)) {
 				if (!isScanned(absPath)) continue;
-				files.push({ surface: surface.id, path: relative(root, absPath).split(sep).join('/') });
+				add(surface.id, relative(root, absPath).split(sep).join('/'));
 				matched += 1;
 			}
 			surface.__matched = matched;
@@ -387,7 +403,7 @@ export function collectFiles(root, manifest) {
 				continue;
 			}
 			if (!isScanned(absPath)) continue;
-			files.push({ surface: surface.id, path: file });
+			add(surface.id, file);
 			matched += 1;
 		}
 		surface.__matched = matched;
@@ -403,7 +419,7 @@ export function collectFiles(root, manifest) {
 		.map((absPath) => relative(root, absPath).split(sep).join('/'))
 		.filter((path) => !covered.has(path));
 
-	return { files, uncovered };
+	return { files, uncovered, duplicates };
 }
 
 /* ------------------------------------------------------------------ *
@@ -496,7 +512,7 @@ export function computeTargetFloors(manifest) {
 	return { earliest, latest, floors };
 }
 
-export function evaluate({ manifest, root, files, uncovered, detections }) {
+export function evaluate({ manifest, root, files, uncovered, duplicates = [], detections }) {
 	const errors = [];
 	const warnings = [];
 	const rows = [];
@@ -522,6 +538,12 @@ export function evaluate({ manifest, root, files, uncovered, detections }) {
 		error(
 			'surface_uncovered',
 			`${uncovered.length} scanned file(s) under ${manifest.scan.coverage_root} are owned by no surface:\n    ${formatList(uncovered)}`,
+		);
+	}
+	if (duplicates.length > 0) {
+		error(
+			'surface_file_duplicate',
+			`${duplicates.length} path(s) are claimed by more than one surface, so they would be scanned and counted twice:\n    ${formatList(duplicates.map((entry) => `${entry.path} (${entry.surfaces.join(' + ')})`))}\n    each scanned path belongs to exactly one surface.`,
 		);
 	}
 
@@ -672,6 +694,15 @@ export function evaluate({ manifest, root, files, uncovered, detections }) {
 	}
 
 	const targets = computeTargetFloors(manifest);
+	// The floor comparison is only meaningful when the adopted set actually
+	// reaches the bar. With no above-bar adoption the comparison would be
+	// skipped silently, so the skipped check is reported instead.
+	if (manifest.features.length > 0 && !targets.latest) {
+		warn(
+			'target_floor_unverifiable',
+			`no adopted feature is Baseline Widely available (bar "${BAR}"), so the declared floors cannot be verified against the bar-implied floors; the "a declared floor may not sit below the bar" rule is inert here`,
+		);
+	}
 	for (const floor of targets.floors) {
 		if (floor.implied && compareVersions(floor.declared, floor.implied) < 0) {
 			error(
@@ -692,6 +723,7 @@ export function evaluate({ manifest, root, files, uncovered, detections }) {
 			surfaces: manifest.surfaces.length,
 			files: files.length,
 			uncovered: uncovered.length,
+			duplicates: duplicates.length,
 			adopted: manifest.features.length,
 			belowBar: rows.filter((row) => row.belowBar).length,
 			guarded: manifest.guarded_features.length,
@@ -772,13 +804,13 @@ export function runCheck({
 	datasetPath = null,
 } = {}) {
 	const manifest = loadManifest(join(root, manifestPath));
-	const { files, uncovered } = collectFiles(root, manifest);
+	const { files, uncovered, duplicates } = collectFiles(root, manifest);
 	const cache = new Map();
 	const detections = scanContent(manifest, files, (path) => {
 		if (!cache.has(path)) cache.set(path, readFileSync(join(root, path), 'utf8'));
 		return cache.get(path);
 	});
-	const result = evaluate({ manifest, root, files, uncovered, detections });
+	const result = evaluate({ manifest, root, files, uncovered, duplicates, detections });
 	result.datasetDrift = datasetPath ? verifyDataset(manifest, datasetPath) : null;
 	return result;
 }

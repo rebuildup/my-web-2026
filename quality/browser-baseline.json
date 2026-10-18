@@ -35,7 +35,7 @@
 				"floor": "18"
 			}
 		],
-		"floor_rule": "A declared floor is verified against the gate: it may never sit below the Baseline Widely available date implied by the adopted feature set (the latest `baseline_high_date` among adopted features, mapped through the vendored release calendar). Raise the floor or drop the feature — never lower the declaration."
+		"floor_rule": "A declared floor is verified against the gate: it may never sit below the Baseline Widely available date implied by the adopted feature set (the latest `baseline_high_date` among adopted features, mapped through the vendored release calendar). Raise the floor or drop the feature — never lower the declaration. When no adopted feature is Baseline Widely available the bar implies nothing; the gate cannot compare the floors then and reports `target_floor_unverifiable` as a warning instead of quietly passing."
 	},
 	"dataset": {
 		"name": "web-features",
@@ -656,7 +656,7 @@
 		"coverage_root": "src",
 		"extensions": [".ts", ".tsx", ".css"],
 		"exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.stories.tsx", "**/*.md"],
-		"exclude_note": "Test / Storybook / design-doc files never ship to a browser, so they are not adoptions. Generated CSS (`styled-system/**`) is derived from `panda.config.ts` and `src/`, both of which are scanned."
+		"exclude_note": "Test / Storybook / design-doc files never ship to a browser, so they are not adoptions. Generated CSS (`styled-system/**`) is not scanned; both of its inputs are — `panda.config.ts` through the `app-shell` surface, `src/**` through the surfaces above and the coverage root. Files outside `src/` are covered only by explicit surface membership, so a new root-level CSS input has to be declared in a surface to be checked."
 	},
 	"surfaces": [
 		{
@@ -732,10 +732,11 @@
 				"src/router.tsx",
 				"src/server.ts",
 				"src/routeTree.gen.ts",
-				"src/styles.css"
+				"src/styles.css",
+				"panda.config.ts"
 			],
-			"min_files": 5,
-			"role": "App shell: client entry, router, the generated route tree (the route contract itself), Worker entry and the global Panda layer stylesheet"
+			"min_files": 6,
+			"role": "App shell: client entry, router, the generated route tree (the route contract itself), Worker entry, the global Panda layer stylesheet, and `panda.config.ts` — the other input of the generated CSS, whose conditions / globalCss / utilities / theme tokens ship to every browser exactly like `src/**` does"
 		}
 	],
 	"features": [
@@ -921,6 +922,46 @@
 			"fallback": null
 		},
 		{
+			"id": "prefers-color-scheme",
+			"label": "`@media (prefers-color-scheme: dark)` (OS-level dark appearance: the `dark` Panda condition in `panda.config.ts` plus the UA control / scrollbar rules in `src/styles.css`)",
+			"kind": "css",
+			"detect": ["prefers-color-scheme"],
+			"dataset": {
+				"feature_id": "prefers-color-scheme",
+				"baseline": "high",
+				"baseline_low_date": "2020-01-15",
+				"baseline_high_date": "2022-07-15",
+				"support": {
+					"chrome": "76",
+					"edge": "79",
+					"firefox": "67",
+					"safari": "12.1",
+					"safari_ios": "13"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "color-scheme",
+			"label": "`color-scheme: light | dark` (form control + scrollbar theming for both appearances)",
+			"kind": "css",
+			"detect": ["(?<!-)\\bcolor-scheme\\s*:"],
+			"dataset": {
+				"feature_id": "color-scheme",
+				"baseline": "high",
+				"baseline_low_date": "2022-02-03",
+				"baseline_high_date": "2024-08-03",
+				"support": {
+					"chrome": "98",
+					"edge": "98",
+					"firefox": "96",
+					"safari": "13",
+					"safari_ios": "13"
+				}
+			},
+			"fallback": null
+		},
+		{
 			"id": "word-break-auto-phrase",
 			"label": "`word-break: auto-phrase` (Japanese phrase-aware breaking)",
 			"kind": "css",
@@ -946,7 +987,7 @@
 						"file": "src/styles.css",
 						"pattern": "[ \\t]*word-break:[ \\t]*normal;",
 						"precedes": true,
-						"proves": "the supported value is a real declaration in the same rule and it precedes the enhancement, so the cascade fallback is live code rather than a comment"
+						"proves": "the supported value is declared in the same rule and precedes the enhancement, so the cascade fallback is anchored to a declaration that must still be there (the pattern matches raw file text, so a comment would satisfy it too — see the known limits in docs/verification/standards/browser-baseline.md)"
 					}
 				]
 			}

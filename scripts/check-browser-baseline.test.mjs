@@ -212,8 +212,9 @@ test('a below-bar feature with verified fallback evidence warns instead of faili
 	});
 
 	assert.deepEqual(result.errors, []);
-	assert.equal(result.warnings.length, 1);
-	assert.match(result.warnings[0].message, /progressive fallback/);
+	const belowBar = result.warnings.filter((entry) => entry.rule === 'below_baseline_with_fallback');
+	assert.equal(belowBar.length, 1);
+	assert.match(belowBar[0].message, /progressive fallback/);
 	assert.equal(result.rows[0].fallbackEvidence.length, 1);
 });
 
@@ -275,7 +276,7 @@ test('a fallback declared after the enhancement fails the ordering check', (t) =
 	assert.ok(rules(result).includes('fallback_evidence_unordered'));
 });
 
-test('a web-api feature may not declare a progressive CSS fallback', () => {
+test('a web-api feature may not declare a progressive CSS fallback', (t) => {
 	assert.throws(
 		() =>
 			loadManifest(
@@ -292,6 +293,7 @@ test('a web-api feature may not declare a progressive CSS fallback', () => {
 							}),
 						],
 					}),
+					t,
 				),
 			),
 		ManifestError,
@@ -439,7 +441,7 @@ test('a declaration whose every occurrence is waived fails, so a dead entry cann
 	assert.match(failure.message, /no unsuppressed occurrence/);
 });
 
-test('a repository-wide waiver is rejected at manifest load', () => {
+test('a repository-wide waiver is rejected at manifest load', (t) => {
 	assert.throws(
 		() =>
 			loadManifest(
@@ -451,6 +453,7 @@ test('a repository-wide waiver is rejected at manifest load', () => {
 							}),
 						],
 					}),
+					t,
 				),
 			),
 		ManifestError,
@@ -475,6 +478,50 @@ test('a declared target-browser floor below the Baseline bar fails', (t) => {
 		failure.message,
 		/declared target Chrome floor 90 .* below the Baseline Widely available bar/,
 	);
+});
+
+test('the floor comparison reports itself as unverifiable instead of switching off when nothing is above the bar', (t) => {
+	const result = check(t, {
+		manifest: fixtureManifest({
+			features: [
+				fixtureFeature({ dataset: datasetBaseline('high', { baseline_high_date: null }) }),
+			],
+			policy: {
+				bar: 'baseline-widely-available',
+				target_browsers: [{ id: 'chrome', label: 'Chrome', role: 'Baseline core', floor: '1' }],
+			},
+		}),
+		files: { 'src/routes/index.tsx': '// fixture-marker\n' },
+	});
+
+	assert.deepEqual(rules(result), []);
+	assert.equal(result.targets.latest, null);
+	assert.deepEqual(
+		result.targets.floors.map((floor) => floor.implied),
+		[null],
+	);
+	const warning = result.warnings.find((entry) => entry.rule === 'target_floor_unverifiable');
+	assert.ok(warning, 'a floor comparison that cannot run must not pass silently');
+	assert.match(warning.message, /cannot be verified/);
+});
+
+test('a path claimed by two surfaces fails instead of being scanned and counted twice', (t) => {
+	const result = check(t, {
+		manifest: fixtureManifest({
+			features: [fixtureFeature()],
+			surfaces: [
+				{ id: 'routes', root: 'src/routes', min_files: 1, role: 'fixture routes' },
+				{ id: 'shared', files: ['src/routes/index.tsx'], min_files: 1, role: 'duplicate owner' },
+			],
+		}),
+		files: { 'src/routes/index.tsx': '// fixture-marker\n' },
+	});
+
+	const failure = result.errors.find((entry) => entry.rule === 'surface_file_duplicate');
+	assert.ok(failure);
+	assert.match(failure.message, /src\/routes\/index\.tsx \(routes \+ shared\)/);
+	assert.equal(result.stats.duplicates, 1);
+	assert.equal(result.stats.files, 1, 'a duplicated path must be counted once');
 });
 
 test('an unusable manifest exits 2 with a message instead of passing', () => {
@@ -550,8 +597,9 @@ test('--dataset re-verifies the vendored snapshot and reports drift', (t) => {
 });
 
 /** Write a manifest to a temp file and return its path (loadManifest input). */
-function writeTempManifest(manifest) {
+function writeTempManifest(manifest, t) {
 	const dir = mkdtempSync(join(tmpdir(), 'my-web-baseline-manifest-'));
+	t?.after(() => rmSync(dir, { recursive: true, force: true }));
 	const path = join(dir, 'browser-baseline.json');
 	writeFileSync(path, JSON.stringify(manifest));
 	return path;

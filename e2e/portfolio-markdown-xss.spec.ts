@@ -118,7 +118,7 @@ test.describe('portfolio article — XSS boundary (Issue #451)', () => {
 
 	test('every refused link is visible and inert', async ({ page }) => {
 		await page.goto(`/portfolio/${SLUG}`);
-		const markers = page.locator(`[data-blocked-reason]`);
+		const markers = page.locator('[data-blocked-reason]');
 		await expect(markers).toHaveCount(blockedLinkFixtures().length);
 
 		// The refusal is a <span>, so there is nothing to click.

@@ -91,6 +91,11 @@ http/seo -> portfolio (public project index only; the public-visibility
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
 server -> http
+server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
+             `delivery.iframe.allow` / `referrer_policy` from the Tool
+             manifest; the policy object is passed into the HTTP
+             boundary, so the Tool Registry still imports nothing
+             from `src/http/**`)
 home -> editorial
 ```
 

@@ -166,11 +166,17 @@ export function applySecurityHeaders(
 		try {
 			target.headers.set(name, value);
 		} catch {
-			// Sealed header list. Re-create the response once with a
-			// mutable header list, then continue on the copy.
+			// Either the header list is sealed or the runtime refuses
+			// this value. Re-create the response once with a mutable
+			// header list and retry; if the retry still throws, give up
+			// on the remaining headers rather than failing the request.
 			target = withMutableHeaders(target);
 			if (target === response) break;
-			target.headers.set(name, value);
+			try {
+				target.headers.set(name, value);
+			} catch {
+				break;
+			}
 		}
 	}
 	return target;

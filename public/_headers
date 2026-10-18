@@ -37,7 +37,8 @@
 # ONE VALUE PER HEADER, PER PATH — the load-bearing rule
 # --------------------------------------------------------
 # Measured against `pnpm preview` (the Cloudflare preview server reads
-# this same file):
+# this same file) — a local measurement, not a quoted platform
+# guarantee; the file is written to be safe under either semantics:
 #
 #   GET /tools/prototype/app/index.html      # with /* + :slug rules both set
 #   referrer-policy: strict-origin-when-cross-origin, no-referrer
@@ -128,11 +129,13 @@
 # is what keeps it off every other site that embeds the Tool.
 #
 # Merge semantics: a Cloudflare rule applies only to the paths it
-# matches, and the more specific path below wins for the headers it
-# sets. Verified locally with `pnpm preview` (see the verification
-# note in `docs/security/security-headers.md`). If that assumption ever
-# breaks, the failure mode is fail-closed — the Tool loses the
-# microphone, it does not silently gain it.
+# matches, and this file is written to be correct under either
+# merge behaviour — every rule below sets a header no other matching
+# rule sets (see ONE VALUE PER HEADER above), so combining and
+# overriding produce the same bytes. The combination behaviour was
+# measured on `pnpm preview`; if it ever changed, the failure mode is
+# fail-closed — the Tool loses the microphone, it does not silently
+# gain it.
 # ---------------------------------------------------------------------------
 
 /tools/mic-level/app/*

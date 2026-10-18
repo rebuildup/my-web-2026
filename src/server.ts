@@ -116,8 +116,10 @@ function matchesExternalBoundary(pathname: string): boolean {
  *                the next is a privacy leak, not a stale-pixel bug.
  *
  * An existing `cache-control` is never overwritten, so anything the
- * framework already decided wins, and Hono never reaches this function
- * — the external boundary returns before it.
+ * framework already decided wins. Since Issue #449 both dispatch
+ * branches flow through it (the Hono half no longer returns before
+ * it), so an `text/html` answer from a `/oauth/*` or `/integrations/*`
+ * handler would be classified here too.
  *
  * The directive vocabulary (`private, no-store`, `Vary` merging) is
  * owned by `src/http/middleware/cache-policy.ts` and imported, so the

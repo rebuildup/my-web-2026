@@ -106,6 +106,15 @@ capture device):
 | grant | *(none)* | grants it | **granted** |
 | grant | `microphone` | no policy | **granted** |
 
+Read the last three rows with §5 in hand: the *granted* rows were
+measured with `sandbox="allow-scripts allow-same-origin"` on the Tool
+frame, because under the shipped `sandbox="allow-scripts"` the frame has
+an opaque origin and Chromium refuses `getUserMedia` with
+`SecurityError: Invalid security origin` before Permissions-Policy is
+consulted. Only the first row is the configuration that ships today.
+The header contract below is what `mic-level` will need when it
+graduates; it is necessary, not sufficient.
+
 Two findings, both load-bearing:
 
 - **The container document's own header is the ceiling.** A framed
@@ -135,7 +144,8 @@ reviewed SHA and license per Tool) and still requires a user prompt.
 ### `_headers` has no override, only combination
 
 Cloudflare's Static Assets **combine** every matching rule. Measured
-against `pnpm preview`:
+against `pnpm preview` (the Workers preview server reads this same
+`_headers` file):
 
 ```text
 GET /tools/prototype/app/index.html      # /* and /tools/:slug/app/* both set Referrer-Policy
@@ -143,15 +153,20 @@ referrer-policy: strict-origin-when-cross-origin, no-referrer
 permissions-policy: <baseline>, <baseline>
 ```
 
-So two rules that match one path and set one header produce an invalid
-value, not an override. `public/_headers` is therefore written so that
-**no two matching rules set the same header**: `/*` owns only
-`nosniff`, `/share/*` adds the host referrer policy and the baseline,
-the Tool rules add CORS plus `no-referrer`, and the per-Tool grant rule
-adds only `Permissions-Policy`. Check 6 of
+That observation is a local measurement, not a quoted platform
+guarantee, so the file is written to be correct under EITHER semantics
+(combine or override): no two rules that match one path ever set the
+same header. Two rules that match one path and set one header produce an
+invalid combined value, not an override. `public/_headers` is therefore
+written so that **no two matching rules set the same header**: `/*` owns
+only `nosniff`, `/share/*` adds the host referrer policy and the
+baseline, the Tool rules add CORS plus `no-referrer`, and the per-Tool
+grant rule adds only `Permissions-Policy`. Check 6 of
 `scripts/check-security-headers.mjs` fails the build if that invariant is
 ever broken — it is the check that would have caught the first version
-of this file.
+of this file. The check derives its sample paths from every shipped rule
+(plus the frozen deep paths it also pins), so a rule added later is
+judged on its own commit instead of passing silently.
 
 ### Why the grant is origin-scoped
 
@@ -253,6 +268,13 @@ result of that pass; the image is the same run rendered.
   canonical production origin rather than the request origin. This only
   matters for a locally served Tool artefact, where the frame loses the
   microphone (fail-closed).
+- **The exact path `/tools/mic-level/app` gets no grant.** The `_headers`
+  grant rule is `/tools/mic-level/app/*`, so the extensionless path
+  matches the `:slug` rule (which sets CORS and `no-referrer`) but no
+  `Permissions-Policy`. That is fail-closed — the artefact is served
+  from the `/*` `index.html`-style paths — and it is intentional: the
+  grant would otherwise have to cover a path that is not part of the
+  Tool artefact contract.
 - **Tool artefacts keep the browser default allowlist** for features the
   namespace does not deny (§3 residual exposure).
 - **`readmark` additionally needs `Cross-Origin-Opener-Policy` /

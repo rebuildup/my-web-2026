@@ -168,6 +168,18 @@ export const INVARIANT_SAMPLE_PATHS = Object.freeze([
 	'/favicon.svg',
 ]);
 
+/**
+ * Every path check 6 must judge: the frozen samples above plus one
+ * probe per shipped `_headers` rule, so a rule added outside the
+ * frozen list (e.g. an `/admin/*` or `/portfolio/*` rule) is judged on
+ * its own commit instead of passing silently.
+ */
+export function invariantSamplePaths(rules, manifest) {
+	const paths = new Set(INVARIANT_SAMPLE_PATHS);
+	for (const rule of rules) paths.add(probePathFor(rule.path, manifest));
+	return [...paths];
+}
+
 /** Features a `Permissions-Policy` value grants (i.e. does not deny). */
 export function grantedFeatures(value) {
 	if (!value) return [];
@@ -341,7 +353,7 @@ export function inspect(options = {}) {
 	// 6. One value per header per path. Cloudflare COMBINES matching
 	//    rules, so two contributors produce `a, b` — an invalid
 	//    Referrer-Policy and an ambiguously-parsed Permissions-Policy.
-	for (const pathname of INVARIANT_SAMPLE_PATHS) {
+	for (const pathname of invariantSamplePaths(rules, manifest)) {
 		const contributors = headerContributors(rules, pathname);
 		for (const [name, paths] of Object.entries(contributors)) {
 			if (paths.length > 1) {
@@ -353,41 +365,6 @@ export function inspect(options = {}) {
 	}
 
 	return { violations, rules, policy, productionOrigin, grantedTools, baseline };
-}
-
-/**
- * Render the effective header matrix for a path, for docs / the
- * verification report. Reuses the same rule model as the check.
- */
-export function headerMatrix(policy, rules) {
-	return [
-		{ surface: 'Worker', path: '/ (any host document)', value: baselineFor(policy, null) },
-		{
-			surface: 'Worker',
-			path: '/tools/<slug> with delivery.iframe.allow',
-			value: baselineFor(policy, 'microphone'),
-		},
-		{
-			surface: 'Static Assets',
-			path: '/share/**, /assets/*, favicon',
-			value: baselineFor(policy, null),
-		},
-		{
-			surface: 'Static Assets',
-			path: '/tools/<slug>/app/** (no grant)',
-			value: baselineFor(policy, null),
-		},
-	];
-}
-
-function baselineFor(policy, granted) {
-	const origin = new URL(PRODUCTION_BETTER_AUTH_URL).origin;
-	const headers = {
-		[NOSNIFF]: policy.x_content_type_options,
-		[REFERRER_POLICY]: granted ? policy.referrer_policy.tool_app : policy.referrer_policy.host,
-		[PERMISSIONS_POLICY]: permissionsPolicyValue(policy, origin, granted ? [granted] : []),
-	};
-	return headers;
 }
 
 export function main(argv = process.argv.slice(2)) {

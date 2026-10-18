@@ -131,4 +131,20 @@ describe('applySecurityHeaders', () => {
 			applySecurityHeaders(new Request('https://rebuildup.dev/admin'), sealed),
 		).not.toThrow();
 	});
+
+	it('survives a header value the runtime refuses, and still sets the rest', () => {
+		// `set()` throws for a malformed value as well as for a sealed
+		// list, and the retry on a rebuilt response can throw again.
+		// Either way the request must survive: an uncaught throw here
+		// would turn every response whose policy value is unusable into
+		// a 500.
+		let response: Response | undefined;
+		expect(() => {
+			response = applySecurityHeaders(new Request('https://rebuildup.dev/'), new Response('ok'), {
+				referrerPolicy: 'strict-origin\nwhen-cross-origin',
+			});
+		}).not.toThrow();
+		expect(response?.headers.get('X-Content-Type-Options')).toBe('nosniff');
+		expect(response?.headers.get('Referrer-Policy')).toBeNull();
+	});
 });

@@ -81,9 +81,10 @@ declares no license), default branch `main` (except `tool-pi-game` =
    it captures the user's microphone via `getUserMedia`. Same-origin
    hosting works as long as the iframe is served over `https` (which
    the canonical production origin `rebuildup.dev` provides). The
-   CSP / `Permissions-Policy: microphone=(self)` requirement is a
-   header concern, not an origin concern. It may graduate to
-   `same_origin_static` once we add a Tool-side build script.
+   CSP / `Permissions-Policy: microphone=(self "https://rebuildup.dev")`
+   requirement is a header concern, not an origin concern. It may
+   graduate to `same_origin_static` once we add a Tool-side build
+   script.
 
 4. **`tool-pi-game` has `default_branch = develop`**, not `main`. This
    affects the registered gitlink branch in `.gitmodules` if we ever
@@ -156,7 +157,11 @@ invokes the Tool's own `pnpm run build` and copies `dist/` into
 
 For `mic-level`, the same standalone build is also possible; the
 only difference is that the iframe hosting it must carry
-`Permissions-Policy: microphone=(self)` on the host origin.
+`Permissions-Policy: microphone=(self "https://rebuildup.dev")` — the
+origin-scoped form `self` alone cannot satisfy, because the framed
+document has an opaque origin under the shipped
+`sandbox="allow-scripts"` (Issue #449; see
+[`docs/security/security-headers.md`](../security/security-headers.md)).
 
 ## Policy change (2026-09-29, Issue #195)
 

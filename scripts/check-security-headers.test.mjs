@@ -202,6 +202,21 @@ describe('inspect — repository state', () => {
 		);
 	});
 
+	it('rejects a duplicate header in a rule outside the frozen sample paths', () => {
+		// The frozen sample list cannot enumerate every future rule, so
+		// check 6 derives a probe per rule as well. `/portfolio/*` is not
+		// in that list; a duplicate `nosniff` there would still be two
+		// contributors for one header on one path.
+		const mutated = tempHeadersFile(
+			`${readHeadersText()}\n/portfolio/*\n  X-Content-Type-Options: nosniff\n`,
+		);
+		const result = inspect({ headersPath: mutated });
+		assert.ok(
+			result.violations.some((violation) => violation.includes('matching rules')),
+			`expected a duplicate-header violation, got ${JSON.stringify(result.violations)}`,
+		);
+	});
+
 	it('rejects a Tool artefact that blanket-denies a capture device', () => {
 		// The failure this Issue exists to prevent: a deny-all on the Tool
 		// namespace breaks every Tool that legitimately needs one, because

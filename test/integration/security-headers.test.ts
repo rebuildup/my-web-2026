@@ -182,5 +182,14 @@ describe('security header measurements for the PR report (Issue #449)', () => {
 		}
 		console.log(`SECURITY_HEADERS_MEASUREMENT ${JSON.stringify(rows)}`);
 		expect(rows).toHaveLength(paths.length);
+		// One value is asserted as well as emitted, so the report is a
+		// test and not only a generator: the per-Tool grant is the one
+		// header whose value is not the deny baseline, and it must be
+		// scoped to the canonical production origin (ADR-0014).
+		const micLevel = rows.find((row) => row.path === '/tools/mic-level');
+		expect(micLevel?.['permissions-policy']).toContain('microphone=(self "https://rebuildup.dev")');
+		expect(micLevel?.['x-content-type-options']).toBe('nosniff');
+		const readmark = rows.find((row) => row.path === '/tools/readmark');
+		expect(readmark?.['permissions-policy']).toContain('microphone=()');
 	});
 });

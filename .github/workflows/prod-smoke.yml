@@ -20,6 +20,12 @@ concurrency:
   group: prod-smoke-${{ github.workflow }}
   cancel-in-progress: true
 
+# Issue #472 — every `uses:` is pinned to a full commit SHA and the
+# upstream tag it was reviewed against is recorded in the comment and in
+# `quality/actions-pins.json`. This workflow reads the repository and runs
+# an E2E pass against the canonical production URL; it holds no write
+# scope and no repository secret, which is what keeps the production smoke
+# diagnostic from becoming a deploy path.
 permissions:
   contents: read
 
@@ -31,16 +37,16 @@ jobs:
     env:
       PLAYWRIGHT_BASE_URL: https://rebuildup.dev
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with: { submodules: recursive }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22.18 }
       # corepack is forbidden in this repository (see ADR-0003).
       # pnpm/action-setup@v4 downloads the pnpm 12.3.4 standalone binary
       # directly from pnpm's release CDN; it does not use corepack.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with: { version: 12.3.4 }
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -50,7 +56,7 @@ jobs:
       - run: pnpm run e2e:prod
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: prod-smoke-report-${{ github.run_id }}
           path: playwright-report/

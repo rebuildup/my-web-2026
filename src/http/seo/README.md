@@ -39,8 +39,9 @@ One `<url>` per public entry:
 User-agent: *
 Allow: /
 
-# Authenticated admin surface. …
-Disallow: /admin
+# No Disallow rules on purpose: /admin and /tools/$slug are de-indexed
+# by the `robots: noindex` meta the page itself carries, and a blocked
+# page can never deliver its own noindex (Issue #423).
 
 Sitemap: https://rebuildup.dev/sitemap.xml
 ```

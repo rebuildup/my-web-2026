@@ -289,6 +289,7 @@
 		],
 		"externalHosts": [
 			"361do.booth.pm",
+			"api.github.com",
 			"design.google",
 			"developers.google.com",
 			"fonts.googleapis.com",
@@ -401,6 +402,15 @@
 				"identifier": false,
 				"files": [
 					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://api.github.com/repos/rebuildup/my-web-2026",
+				"host": "api.github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/external-api/github.ts"
 				]
 			},
 			{
@@ -891,39 +901,27 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
-		"removedExternalUrls": [
-			"https://example.com/docs",
-			"https://example.invalid/frame"
+		"addedExternalUrls": [
+			"https://api.github.com/repos/rebuildup/my-web-2026"
 		],
-		"addedExternalHosts": [],
-		"removedExternalHosts": [
-			"example.com",
-			"example.invalid"
+		"removedExternalUrls": [],
+		"addedExternalHosts": [
+			"api.github.com"
 		],
+		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: https://example.com/docs"
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host api.github.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
 			},
 			{
-				"code": "W003 external-url-removed",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL removed: https://example.invalid/frame"
-			},
-			{
-				"code": "W001 external-host-removed",
-				"severity": "warn",
-				"message": "External host no longer referenced: example.com"
-			},
-			{
-				"code": "W001 external-host-removed",
-				"severity": "warn",
-				"message": "External host no longer referenced: example.invalid"
+				"message": "External URL added: https://api.github.com/repos/rebuildup/my-web-2026"
 			}
 		]
 	}

@@ -13,10 +13,10 @@
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 17 |
-| External hosts | 26 |
+| External hosts | 27 |
 | First-party hosts | 0 |
-| Approved transition | 4 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | 2 finding(s) |
+| Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -90,14 +90,13 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (0)
+### Added external hosts (1)
+
+- `api.github.com`
+
+### Removed external hosts (0)
 
 - (none)
-
-### Removed external hosts (2)
-
-- `example.com`
-- `example.invalid`
 
 ### Added external HTTP boundary prefixes (0)
 
@@ -123,6 +122,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
 | `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/home/mark.tsx` |
 | `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
+| `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
@@ -169,8 +169,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W003 external-url-removed` External URL removed: https://example.com/docs
-- **WARN** `W003 external-url-removed` External URL removed: https://example.invalid/frame
-- **WARN** `W001 external-host-removed` External host no longer referenced: example.com
-- **WARN** `W001 external-host-removed` External host no longer referenced: example.invalid
+- **ERROR** `E004 external-host-added` New external host api.github.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://api.github.com/repos/rebuildup/my-web-2026
 

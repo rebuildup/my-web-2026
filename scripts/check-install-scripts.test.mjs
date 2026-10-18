@@ -1,11 +1,14 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { after, describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
 	auditInstallScripts,
 	classifyHooks,
+	collectGitHostedNames,
 	collectInstalledManifests,
 	formatTextReport,
 	groupInstalledByName,
@@ -15,6 +18,8 @@ import {
 	renderHtmlReport,
 } from './_install-scripts.mjs';
 import { runAudit } from './check-install-scripts.mjs';
+
+const scriptPath = join(dirname(fileURLToPath(import.meta.url)), 'check-install-scripts.mjs');
 
 // Fixture versions deliberately avoid the `0.x.y` release-literal shape
 // so scripts/check-release-version.mjs never flags this file.
@@ -30,14 +35,23 @@ function policyEntry(overrides = {}) {
 	};
 }
 
-function manifest({ name, version = FIXTURE_VERSION, scripts = {} }) {
+function manifest({
+	name,
+	version = FIXTURE_VERSION,
+	scripts = {},
+	dependencies = {},
+	devDependencies = {},
+	optionalDependencies = {},
+	requiresBuild = false,
+}) {
 	return {
 		name,
 		version,
 		scripts,
-		dependencies: {},
-		devDependencies: {},
-		optionalDependencies: {},
+		requiresBuild,
+		dependencies,
+		devDependencies,
+		optionalDependencies,
 	};
 }
 
@@ -62,6 +76,18 @@ describe('classifyHooks', () => {
 			'prepack',
 			'postpack',
 		]);
+	});
+
+	it('promotes a git-hosted prepare to install-time', () => {
+		const registryDep = classifyHooks({ prepare: 'npm run build' });
+		assert.deepEqual(registryDep.rootInstallTime, ['prepare']);
+		assert.deepEqual(registryDep.installTime, []);
+
+		// pnpm prepares git-hosted dependencies while fetching them, so
+		// the same hook is unreviewed install-time code there.
+		const gitDep = classifyHooks({ prepare: 'npm run build' }, { gitHosted: true });
+		assert.deepEqual(gitDep.installTime, ['prepare']);
+		assert.deepEqual(gitDep.rootInstallTime, []);
 	});
 
 	it('ignores non-string and blank hook values', () => {
@@ -161,8 +187,8 @@ describe('parsePolicy', () => {
 });
 
 describe('readPnpmAllowlist', () => {
-	it('reads both the sequence form and the map form', () => {
-		const { names, errors } = readPnpmAllowlist(
+	it('reads both the effective map and the legacy sequence', () => {
+		const { names, effectiveKey, legacyOnly, errors } = readPnpmAllowlist(
 			[
 				'allowBuilds:',
 				"  '@scope/pkg': true",
@@ -177,24 +203,55 @@ describe('readPnpmAllowlist', () => {
 			].join('\n'),
 		);
 		assert.deepEqual(errors, []);
+		assert.equal(effectiveKey, 'allowBuilds');
 		assert.deepEqual(names.get('@scope/pkg'), ['allowBuilds']);
 		assert.deepEqual(names.get('third-pkg'), ['allowBuilds']);
-		assert.deepEqual(names.get('esbuild'), ['onlyBuiltDependencies']);
-		assert.deepEqual(names.get('@biomejs/biome'), ['onlyBuiltDependencies']);
 		assert.equal(names.has('other-pkg'), false, 'a false map entry is not a permission');
 		assert.equal(names.has('cf@1.0.0-beta.12'), false, 'patchedDependencies is not an allow-list');
+		// Neither legacy name is granted by the effective map: pnpm 12 would
+		// not run those builds, so they are reported instead of trusted.
+		assert.equal(names.has('esbuild'), false);
+		assert.equal(names.has('@biomejs/biome'), false);
+		assert.deepEqual(legacyOnly, ['@biomejs/biome', 'esbuild']);
 	});
 
-	it('records both keys when a package appears in each', () => {
-		const { names } = readPnpmAllowlist(
+	it('treats permissions as the effective list and refuses an ambiguous pair', () => {
+		// pnpm ignores "allowBuilds" entries when "permissions" is
+		// present. A second grant map is therefore never read silently:
+		// the effective list has to be unambiguous to audit.
+		const superseded = readPnpmAllowlist(
+			['permissions:', '  esbuild: true', 'allowBuilds:', '  workerd: true'].join('\n'),
+		);
+		assert.equal(superseded.effectiveKey, 'permissions');
+		assert.deepEqual([...superseded.names.keys()], ['esbuild']);
+		assert.equal(superseded.errors.length, 1);
+		assert.match(superseded.errors[0], /pnpm 12 ignores this entry/);
+
+		const singleKey = readPnpmAllowlist(['permissions:', '  esbuild: true'].join('\n'));
+		assert.deepEqual(singleKey.errors, []);
+		assert.deepEqual([...singleKey.names.keys()], ['esbuild']);
+
+		const ambiguous = readPnpmAllowlist(
+			['allowBuilds:', '  esbuild: true', 'permissions:', '  esbuild: true'].join('\n'),
+		);
+		assert.equal(ambiguous.errors.length, 1);
+		assert.match(ambiguous.errors[0], /keep exactly one of the two keys/);
+	});
+
+	it('records both keys when a package is granted by the effective and the legacy list', () => {
+		const { names, legacyOnly } = readPnpmAllowlist(
 			['allowBuilds:', '  esbuild: true', 'onlyBuiltDependencies:', '  - esbuild'].join('\n'),
 		);
 		assert.deepEqual(names.get('esbuild'), ['allowBuilds', 'onlyBuiltDependencies']);
+		assert.deepEqual(legacyOnly, []);
 	});
 
-	it('reads an inline array', () => {
-		const { names } = readPnpmAllowlist('onlyBuiltDependencies: [esbuild, workerd]\n');
-		assert.deepEqual([...names.keys()], ['esbuild', 'workerd']);
+	it('reads an inline array and an explicit deny list', () => {
+		const { names, ignored } = readPnpmAllowlist(
+			['allowBuilds:', '  workerd: true', 'ignoredBuiltDependencies: [sharp]', ''].join('\n'),
+		);
+		assert.deepEqual([...names.keys()], ['workerd']);
+		assert.deepEqual([...ignored], ['sharp']);
 	});
 
 	it('reports a non-boolean map value instead of silently allowing it', () => {
@@ -252,6 +309,49 @@ describe('collectInstalledManifests', () => {
 		assert.equal(readPackageManifest(join(root, 'node_modules/absent/package.json')), null);
 	});
 
+	it('does not treat a fixture shipped inside a package as an installed package', () => {
+		// pnpm never builds `examples/` or `test/fixtures/`; only package
+		// boundaries are part of the installed tree.
+		const root = stageTree({
+			files: [
+				['node_modules/real-pkg/package.json', { name: 'real-pkg', version: '1.2.3' }],
+				[
+					'node_modules/real-pkg/examples/demo/package.json',
+					{
+						name: 'example-fixture',
+						version: FIXTURE_VERSION,
+						scripts: { postinstall: 'node x.js' },
+					},
+				],
+				[
+					'node_modules/real-pkg/test/fixtures/fixture-pkg/package.json',
+					{
+						name: 'fixture-pkg',
+						version: FIXTURE_VERSION,
+						scripts: { postinstall: 'lerna bootstrap' },
+					},
+				],
+			],
+		});
+		assert.deepEqual(
+			collectInstalledManifests(root).map((entry) => entry.name),
+			['real-pkg'],
+		);
+	});
+
+	it('reads binding.gyp as an implicit build requirement', () => {
+		const root = stageTree({
+			files: [
+				['node_modules/native-pkg/package.json', { name: 'native-pkg', version: '1.2.3' }],
+				['node_modules/native-pkg/binding.gyp', '{}'],
+			],
+		});
+		const [record] = collectInstalledManifests(root);
+		assert.equal(record.requiresBuild, true);
+		const groups = groupInstalledByName([record]);
+		assert.deepEqual([...groups.get('native-pkg').hooks], ['implicit:binding.gyp']);
+	});
+
 	after(() => {
 		for (const root of roots) rmSync(root, { recursive: true, force: true });
 	});
@@ -267,6 +367,31 @@ describe('groupInstalledByName', () => {
 		assert.deepEqual([...groups.get('esbuild').versions].sort(), ['1.8.0', '1.9.0']);
 		assert.deepEqual([...groups.get('esbuild').hooks], ['postinstall']);
 		assert.deepEqual([...groups.get('plain').hooks], []);
+	});
+
+	it('records the implicit node-gyp build of a binding.gyp package', () => {
+		const groups = groupInstalledByName([
+			manifest({ name: 'native-pkg', version: '1.0.0', requiresBuild: true }),
+		]);
+		assert.deepEqual([...groups.get('native-pkg').hooks], ['implicit:binding.gyp']);
+	});
+});
+
+describe('collectGitHostedNames', () => {
+	it('finds git-hosted dependencies in every manifest', () => {
+		const names = collectGitHostedNames(
+			[
+				manifest({
+					name: 'consumer',
+					dependencies: { 'git-dep': 'github:owner/repo#v1', 'registry-dep': '^1.2.3' },
+				}),
+			],
+			manifest({
+				name: 'app',
+				devDependencies: { 'other-git': 'git+ssh://git@host/o/r.git#main' },
+			}),
+		);
+		assert.deepEqual([...names].sort(), ['git-dep', 'other-git']);
 	});
 });
 
@@ -389,7 +514,7 @@ describe('auditInstallScripts', () => {
 		assert.match(audit.warnings[0], /remove the entry/);
 	});
 
-	it('warns on version drift and on stale policy records', () => {
+	it('warns on version drift of a blocked record and on stale policy records', () => {
 		const audit = auditInstallScripts(
 			baseInput({
 				manifests: [
@@ -398,17 +523,134 @@ describe('auditInstallScripts', () => {
 				policy: {
 					version: 1,
 					default_decision: 'block',
-					packages: [policyEntry({ observed_version: '1.0.0' }), policyEntry({ name: 'gone-pkg' })],
+					packages: [
+						policyEntry({ observed_version: '1.0.0', decision: 'block' }),
+						policyEntry({ name: 'gone-pkg' }),
+					],
 				},
-				pnpmAllowlist: new Map([['fixture-pkg', ['onlyBuiltDependencies']]]),
+				pnpmAllowlist: new Map(),
 			}),
 		);
 		assert.deepEqual(audit.violations, []);
 		assert.equal(audit.warnings.length, 2);
-		assert.ok(audit.warnings.some((warning) => /re-review the new version/.test(warning)));
+		assert.ok(audit.warnings.some((warning) => /!=\s*installed/.test(warning)));
 		assert.ok(
 			audit.warnings.some((warning) => /"gone-pkg" matches no installed package/.test(warning)),
 		);
+	});
+
+	it('fails when an allowed package moved to a version the record never reviewed', () => {
+		// pnpm executes the new version's hook on the very install that
+		// pulls it in, so an "allow" record that no longer matches the
+		// installed version is unreviewed code, not a warning.
+		const audit = auditInstallScripts(
+			baseInput({
+				manifests: [
+					manifest({ name: 'fixture-pkg', version: '9.9.9', scripts: { postinstall: 'a' } }),
+				],
+				policy: {
+					version: 1,
+					default_decision: 'block',
+					packages: [policyEntry({ observed_version: '1.0.0' })],
+				},
+				pnpmAllowlist: new Map([['fixture-pkg', ['allowBuilds']]]),
+			}),
+		);
+		assert.equal(audit.violations.length, 1);
+		assert.match(
+			audit.violations[0],
+			/policy observed version\(s\) \[1\.0\.0\] != installed \[9\.9\.9\]/,
+		);
+		assert.match(audit.violations[0], /re-reviewed/);
+		assert.equal(audit.findings[0].version_drift, true);
+	});
+
+	it('fails when a grant survives only in the legacy onlyBuiltDependencies list', () => {
+		const audit = auditInstallScripts(
+			baseInput({
+				manifests: [manifest({ name: 'fixture-pkg', scripts: { postinstall: 'a' } })],
+				policy: { version: 1, default_decision: 'block', packages: [policyEntry()] },
+				pnpmAllowlist: readPnpmAllowlist(['onlyBuiltDependencies:', '  - fixture-pkg'].join('\n')),
+			}),
+		);
+		assert.equal(audit.summary.violations, 2);
+		assert.ok(
+			audit.violations.some((violation) => /onlyBuiltDependencies lists it/.test(violation)),
+			audit.violations.join('\n'),
+		);
+		assert.ok(
+			audit.violations.some((violation) =>
+				/decision "allow" but pnpm-workspace\.yaml does not list/.test(violation),
+			),
+		);
+	});
+
+	it('fails when one package is granted and denied at the same time', () => {
+		const audit = auditInstallScripts(
+			baseInput({
+				manifests: [manifest({ name: 'fixture-pkg', scripts: { postinstall: 'a' } })],
+				policy: { version: 1, default_decision: 'block', packages: [policyEntry()] },
+				pnpmAllowlist: readPnpmAllowlist(
+					['allowBuilds:', '  fixture-pkg: true', 'ignoredBuiltDependencies: [fixture-pkg]'].join(
+						'\n',
+					),
+				),
+			}),
+		);
+		assert.ok(audit.violations.some((violation) => /keep one intent/.test(violation)));
+	});
+
+	it('treats a git-hosted prepare as unreviewed install-time code', () => {
+		const gitManifest = manifest({ name: 'git-dep', scripts: { prepare: 'npm run build' } });
+		const audit = auditInstallScripts(
+			baseInput({
+				manifests: [gitManifest],
+				rootManifest: manifest({
+					name: 'app',
+					dependencies: { 'git-dep': 'github:owner/repo#v1' },
+				}),
+				pnpmAllowlist: new Map(),
+			}),
+		);
+		assert.equal(audit.violations.length, 1);
+		assert.match(audit.violations[0], /git-dep@/);
+		assert.match(audit.violations[0], /no entry in quality\/install-scripts\.json/);
+		assert.equal(audit.findings[0].git_hosted, true);
+
+		// The same manifest reached from the registry cannot run at install
+		// time, so it needs no record.
+		const registryAudit = auditInstallScripts(baseInput({ manifests: [gitManifest] }));
+		assert.deepEqual(registryAudit.violations, []);
+		assert.equal(registryAudit.summary.publish_time_only, 1);
+	});
+
+	it('treats a binding.gyp package as unreviewed install-time code', () => {
+		const audit = auditInstallScripts(
+			baseInput({
+				manifests: [manifest({ name: 'native-pkg', requiresBuild: true })],
+				policy: {
+					version: 1,
+					default_decision: 'block',
+					packages: [
+						{
+							name: 'native-pkg',
+							hooks: ['implicit:binding.gyp'],
+							decision: 'allow',
+							justification: 'fixture native build',
+						},
+					],
+				},
+				pnpmAllowlist: new Map([['native-pkg', ['allowBuilds']]]),
+			}),
+		);
+		assert.deepEqual(audit.violations, []);
+		assert.equal(audit.findings[0].implicit_build, true);
+
+		const unreviewed = auditInstallScripts(
+			baseInput({ manifests: [manifest({ name: 'native-pkg', requiresBuild: true })] }),
+		);
+		assert.equal(unreviewed.violations.length, 1);
+		assert.match(unreviewed.violations[0], /implicit:binding\.gyp/);
 	});
 
 	it('warns when the root record outlives the root hook', () => {
@@ -493,6 +735,9 @@ describe('runAudit (end to end over a fixture repository)', () => {
 		mkdirSync(join(root, 'quality'), { recursive: true });
 		writeFileSync(join(root, 'quality/install-scripts.json'), JSON.stringify(policy));
 		writeFileSync(join(root, 'pnpm-workspace.yaml'), allowlist);
+		// pnpm writes this marker into a completed install; without it the
+		// audit refuses to treat the directory as an installed tree.
+		mkdirSync(join(root, 'node_modules', '.pnpm'), { recursive: true });
 		for (const entry of packages) {
 			const dir = join(root, 'node_modules', entry.name, 'node_modules', entry.name);
 			mkdirSync(dir, { recursive: true });
@@ -508,29 +753,32 @@ describe('runAudit (end to end over a fixture repository)', () => {
 		{ name: 'fixture-pkg', version: FIXTURE_VERSION, scripts: { postinstall: 'node build.js' } },
 	];
 
+	const agreeingPolicy = {
+		version: 1,
+		default_decision: 'block',
+		packages: [
+			policyEntry({ observed_version: FIXTURE_VERSION }),
+			{ name: '.', hooks: ['prepare'], decision: 'allow', justification: 'own codegen' },
+		],
+	};
+
 	it('passes when the allow-list and the reviewed policy agree', () => {
 		const root = stageRepo({
 			packages,
-			allowlist: 'onlyBuiltDependencies:\n  - fixture-pkg\n',
-			policy: {
-				version: 1,
-				default_decision: 'block',
-				packages: [
-					policyEntry({ observed_version: FIXTURE_VERSION }),
-					{ name: '.', hooks: ['prepare'], decision: 'allow', justification: 'own codegen' },
-				],
-			},
+			allowlist: 'allowBuilds:\n  fixture-pkg: true\n',
+			policy: agreeingPolicy,
 		});
 		const result = runAudit(root);
 		assert.deepEqual(result.inputErrors, []);
 		assert.deepEqual(result.audit.violations, []);
 		assert.equal(result.ok, true);
+		assert.equal(result.audit.allowlist_source, 'allowBuilds');
 	});
 
 	it('fails when a dependency gains an install-time hook nobody reviewed', () => {
 		const root = stageRepo({
 			packages,
-			allowlist: 'onlyBuiltDependencies:\n  - fixture-pkg\n',
+			allowlist: 'allowBuilds:\n  fixture-pkg: true\n',
 			policy: {
 				version: 1,
 				default_decision: 'block',
@@ -542,6 +790,20 @@ describe('runAudit (end to end over a fixture repository)', () => {
 		const result = runAudit(root);
 		assert.equal(result.ok, false);
 		assert.match(result.audit.violations[0], /fixture-pkg/);
+	});
+
+	it('fails a grant that exists only in the legacy onlyBuiltDependencies list', () => {
+		const root = stageRepo({
+			packages,
+			allowlist: 'onlyBuiltDependencies:\n  - fixture-pkg\n',
+			policy: agreeingPolicy,
+		});
+		const result = runAudit(root);
+		assert.equal(result.ok, false);
+		assert.ok(
+			result.audit.violations.some((violation) => /onlyBuiltDependencies lists it/.test(violation)),
+			result.audit.violations.join('\n'),
+		);
 	});
 
 	it('reports missing inputs instead of silently auditing nothing', () => {
@@ -566,6 +828,50 @@ describe('runAudit (end to end over a fixture repository)', () => {
 		assert.ok(
 			result.inputErrors.some((line) => /node_modules/.test(line) && /pnpm install/.test(line)),
 		);
+	});
+
+	it('refuses to pass on an empty or interrupted node_modules', () => {
+		const root = stageRepo({
+			packages: [],
+			allowlist: 'onlyBuiltDependencies: []\n',
+			policy: { version: 1, default_decision: 'block', packages: [] },
+			rootScripts: {},
+		});
+		// `mkdir node_modules` is not an install: no marker, no manifest.
+		rmSync(join(root, 'node_modules'), { recursive: true, force: true });
+		mkdirSync(join(root, 'node_modules'), { recursive: true });
+		const result = runAudit(root);
+		assert.equal(result.ok, false);
+		assert.ok(
+			result.inputErrors.some((line) => /is not a pnpm installation/.test(line)),
+			result.inputErrors.join('\n'),
+		);
+
+		// A marked but empty tree is refused too: 0 manifests must never
+		// read as "0 install-time scripts, clean".
+		mkdirSync(join(root, 'node_modules', '.pnpm'), { recursive: true });
+		const emptyTree = runAudit(root);
+		assert.equal(emptyTree.ok, false);
+		assert.ok(
+			emptyTree.inputErrors.some((line) => /holds no installed package manifest/.test(line)),
+			emptyTree.inputErrors.join('\n'),
+		);
+	});
+
+	it('writes only the JSON document to stdout in --json mode', () => {
+		const root = stageRepo({
+			packages,
+			allowlist: 'allowBuilds:\n  fixture-pkg: true\n',
+			policy: agreeingPolicy,
+		});
+		const run = spawnSync(process.execPath, [scriptPath, `--root=${root}`, '--json'], {
+			encoding: 'utf8',
+		});
+		assert.equal(run.status, 0, run.stderr);
+		const parsed = JSON.parse(run.stdout);
+		assert.equal(parsed.summary.violations, 0);
+		assert.equal(parsed.allowlist_source, 'allowBuilds');
+		assert.match(run.stderr, /\[check-install-scripts\] OK:/);
 	});
 
 	after(() => {

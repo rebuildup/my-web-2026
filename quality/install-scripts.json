@@ -2,7 +2,7 @@
 	"version": 1,
 	"issue": "#474",
 	"default_decision": "block",
-	"note": "Reviewed record of every dependency whose install-time lifecycle script (preinstall / install / postinstall) pnpm may execute. pnpm is default-deny: a package not listed in pnpm-workspace.yaml#onlyBuiltDependencies never runs its build. This file records WHICH decisions were reviewed and WHY a build is (or is not) necessary; pnpm-workspace.yaml remains the execution allow-list and scripts/check-install-scripts.mjs fails when the two disagree. Status-only: no secret value is read, stored or printed here.",
+	"note": "Reviewed record of every dependency whose install-time lifecycle script (preinstall / install / postinstall, an implicit node-gyp rebuild via binding.gyp, or the prepare of a git-hosted dependency) pnpm may execute. pnpm is default-deny: a package not granted in pnpm-workspace.yaml#allowBuilds never runs its build. This file records WHICH decisions were reviewed and WHY a build is (or is not) necessary; pnpm-workspace.yaml remains the execution allow-list and scripts/check-install-scripts.mjs fails when the two disagree. Status-only: no secret value is read, stored or printed here.",
 	"packages": [
 		{
 			"name": ".",
@@ -49,14 +49,6 @@
 			"observed_version": "0.43.137",
 			"justification": "ELEVEST RISK ENTRY, reviewed deliberately. The preinstall (node src/index.cjs) fetches the platform `infisical` binary from the upstream GitHub release for the matching OS/arch into the package's own bin/ directory and marks it executable. It is necessary because the Infisical secret SoT tooling (ADR-0015: scripts/deploy-with-secrets.mjs, scripts/infisical-seed.mjs, scripts/check-cf-secrets.mjs and siblings) resolves @infisical/cli#bin and execs that native binary; with the script blocked those scripts fail closed. Recorded risk: install-time network fetch of an executable, with no checksum verification in the upstream script, and it runs at preinstall (before the rest of the install) rather than postinstall.",
 			"remediation": "Upstream change only (per Issue #474 scope: tool-side changes are a separate PR): ask Infisical to publish platform packages as optionalDependencies, or at minimum to move the fetch to postinstall and verify a published checksum. When that lands, drop this entry together with the pnpm allow-list line and record the removal in docs/runbook/install-script-audit.md."
-		},
-		{
-			"name": "ljharb-monorepo-symlink-test",
-			"hooks": ["postinstall"],
-			"decision": "block",
-			"observed_version": "0.0.0",
-			"justification": "Unnecessary build, detected and kept blocked. Transitive dependency of @isaacs/cliui (the glob chain used by tooling). Its postinstall only asserts the upstream monorepo's own symlink layout, which is meaningful only when developing that package — for a consumer install there is no layout to assert and no artifact to produce. pnpm never allow-listed it, so nothing runs; this entry exists so the next reviewer sees the decision instead of rediscovering it.",
-			"remediation": "If a future version of the glob chain ever needs a real build step, promote the decision to allow in this file and in pnpm-workspace.yaml in the same change."
 		}
 	]
 }

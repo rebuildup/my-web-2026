@@ -36,8 +36,12 @@ import { join as joinNodePath } from 'node:path';
 
 /**
  * Hooks pnpm may execute for an installed dependency. `prepare` is
- * NOT here: pnpm does not run a registry dependency's `prepare`, only
- * the workspace root project's own.
+ * NOT here: pnpm does not run a *registry* dependency's `prepare`,
+ * only the workspace root project's own. A **git-hosted** dependency
+ * is the exception — pnpm prepares git-hosted packages while fetching
+ * them (pnpm gates that with `ERR_PNPM_GIT_DEP_PREPARE_NOT_ALLOWED`,
+ * so the allow-list still governs it), which is why
+ * `classifyHooks` promotes `prepare` to install-time for git specs.
  */
 export const INSTALL_TIME_HOOKS = ['preinstall', 'install', 'postinstall'];
 
@@ -53,7 +57,21 @@ export const ROOT_INSTALL_HOOKS = ['prepare'];
  */
 export const PUBLISH_TIME_HOOKS = ['prepublish', 'prepublishOnly', 'prepack', 'postpack'];
 
-export const KNOWN_HOOKS = [...INSTALL_TIME_HOOKS, ...ROOT_INSTALL_HOOKS, ...PUBLISH_TIME_HOOKS];
+/**
+ * pnpm treats a package that ships a `binding.gyp` as buildable even
+ * when its manifest declares no lifecycle script at all: an allowed
+ * such package gets an implicit `node-gyp rebuild` (pnpm docs, "Build
+ * dependencies"). The manifest therefore under-reports what can
+ * execute, so the file itself is inventoried as a hook.
+ */
+export const IMPLICIT_BUILD_HOOK = 'implicit:binding.gyp';
+
+export const KNOWN_HOOKS = [
+	...INSTALL_TIME_HOOKS,
+	...ROOT_INSTALL_HOOKS,
+	...PUBLISH_TIME_HOOKS,
+	IMPLICIT_BUILD_HOOK,
+];
 
 /** Policy decisions. Default is deny (see `parsePolicy`). */
 export const DECISIONS = ['allow', 'block'];
@@ -67,11 +85,54 @@ export const POLICY_VERSION = 1;
 export const ELEVATED_HOOKS = ['preinstall'];
 
 /**
+ * Dependency specifiers that resolve to a git checkout rather than a
+ * registry tarball. pnpm builds those from source, which is why their
+ * `prepare` hook executes at install time.
+ */
+const GIT_SPECIFIER =
+	/^(?:git(?:\+[a-z]+)?:|github:|gitlab:|bitbucket:|ssh:\/\/|git@|https?:\/\/\S*\.git(?:#\S*)?$)/i;
+
+/** Does this dependency specifier resolve to a git-hosted package? */
+export function isGitSpecifier(specifier) {
+	return typeof specifier === 'string' && GIT_SPECIFIER.test(specifier.trim());
+}
+
+/**
+ * Names of git-hosted dependencies, discovered from the manifests
+ * themselves (the root project's and every installed package's
+ * dependency maps).
+ *
+ * A registry dependency is installed from a published tarball, so its
+ * `prepare` never fires during `pnpm install`. A git dependency is
+ * cloned and *prepared* (pnpm `git-fetcher`), so its `prepare` is
+ * install-time code that must clear the same reviewed allow-list.
+ * Without this distinction an unreviewed git dependency could run
+ * arbitrary code with no policy record at all.
+ */
+export function collectGitHostedNames(manifests = [], rootManifest = null) {
+	const names = new Set();
+	const inspect = (manifest) => {
+		if (!manifest) return;
+		for (const field of ['dependencies', 'devDependencies', 'optionalDependencies']) {
+			for (const [name, specifier] of Object.entries(manifest[field] ?? {})) {
+				if (isGitSpecifier(specifier)) names.add(name);
+			}
+		}
+	};
+	inspect(rootManifest);
+	for (const manifest of manifests) inspect(manifest);
+	return names;
+}
+
+/**
  * Split a manifest's `scripts` map into the three firing classes.
  * Only hooks whose value is a non-empty string count — npm treats a
  * non-string / empty script as absent.
+ *
+ * `options.gitHosted` promotes `prepare` from root-only to
+ * install-time (pnpm prepares git-hosted dependencies).
  */
-export function classifyHooks(scripts) {
+export function classifyHooks(scripts, options = {}) {
 	const source = scripts && typeof scripts === 'object' ? scripts : {};
 	const installTime = [];
 	const rootInstallTime = [];
@@ -80,8 +141,10 @@ export function classifyHooks(scripts) {
 		const value = source[hook];
 		if (typeof value !== 'string' || value.trim() === '') continue;
 		if (INSTALL_TIME_HOOKS.includes(hook)) installTime.push(hook);
-		else if (ROOT_INSTALL_HOOKS.includes(hook)) rootInstallTime.push(hook);
-		else publishTime.push(hook);
+		else if (hook === 'prepare') {
+			if (options.gitHosted) installTime.push(hook);
+			else rootInstallTime.push(hook);
+		} else publishTime.push(hook);
 	}
 	return { installTime, rootInstallTime, publishTime };
 }
@@ -199,21 +262,44 @@ export function parsePolicy(rawText) {
 }
 
 /**
+ * pnpm-workspace.yaml keys that decide whether a lifecycle script runs.
+ *
+ * `allowBuilds` is the grant list pnpm 12 actually honours, and
+ * `permissions` supersedes it when both are declared ("Their
+ * "allowBuilds" entries are ignored in favor of "permissions"" — pnpm
+ * diagnostics). `onlyBuiltDependencies` is the legacy list and
+ * `ignoredBuiltDependencies` the explicit deny list.
+ */
+export const GRANT_MAP_KEYS = ['allowBuilds', 'permissions'];
+export const LEGACY_GRANT_KEY = 'onlyBuiltDependencies';
+export const DENY_SEQUENCE_KEY = 'ignoredBuiltDependencies';
+
+/**
  * Read the pnpm execution allow-list out of `pnpm-workspace.yaml`.
  *
  * Deliberately a targeted line reader rather than a YAML dependency:
- * only the two top-level keys that decide whether a lifecycle script
- * runs are needed, and both shapes pnpm accepts are sequences
- * (`onlyBuiltDependencies`) and maps (`allowBuilds: {name: true}`).
- * Adding a YAML parser for this would be a dependency whose own
- * install surface the audit then has to audit.
+ * only the top-level keys that decide whether a lifecycle script runs
+ * are needed, and the shapes pnpm accepts are sequences
+ * (`onlyBuiltDependencies`, `ignoredBuiltDependencies`) and maps
+ * (`allowBuilds: {name: true}`, `permissions: {name: true}`). Adding a
+ * YAML parser for this would be a dependency whose own install surface
+ * the audit then has to audit.
+ *
+ * Returns the **effective** grants only. A name that survives solely
+ * in the legacy `onlyBuiltDependencies` list grants nothing under
+ * pnpm 12, so counting it as permission would make the audit report a
+ * build as permitted while pnpm skips it — the exact false green this
+ * gate exists to remove. Those names come back in `legacyOnly` and are
+ * reported as violations.
  */
 export function readPnpmAllowlist(rawText) {
 	const names = new Map(); // name -> declaring keys, sorted
 	const errors = [];
+	const sequences = new Map(); // key -> [names]
+	const maps = new Map(); // key -> Map(name -> boolean)
 	const lines = String(rawText ?? '').split('\n');
-	const wanted = new Set(['onlyBuiltDependencies', 'allowBuilds']);
 	let activeKey = null;
+	let activeShape = null;
 	for (const rawLine of lines) {
 		const line = rawLine.replace(/\t/g, '  ');
 		if (line.trim() === '' || line.trimStart().startsWith('#')) continue;
@@ -221,13 +307,16 @@ export function readPnpmAllowlist(rawText) {
 		const topLevel = indent === 0;
 		if (topLevel) {
 			const match = /^([A-Za-z][A-Za-z0-9]*):\s*(.*)$/.exec(line.trim());
-			activeKey = match && wanted.has(match[1]) ? match[1] : null;
+			const key = match ? match[1] : null;
+			activeKey = key && (GRANT_MAP_KEYS.includes(key) || sequencesHas(key)) ? key : null;
+			activeShape = activeKey ? (GRANT_MAP_KEYS.includes(activeKey) ? 'map' : 'sequence') : null;
 			if (activeKey === null) continue;
+			recordKey(activeKey, sequences, maps);
 			const inline = match[2].trim();
-			if (inline.startsWith('[') && inline.endsWith(']')) {
+			if (activeShape === 'sequence' && inline.startsWith('[') && inline.endsWith(']')) {
 				for (const item of inline.slice(1, -1).split(',')) {
 					const name = unquote(item.trim());
-					if (name) record(names, name, activeKey);
+					if (name) sequences.get(activeKey).push(name);
 				}
 				activeKey = null;
 			}
@@ -237,7 +326,7 @@ export function readPnpmAllowlist(rawText) {
 		const item = /^\s*-\s*(.+)$/.exec(line);
 		if (item) {
 			const name = unquote(item[1].split('#')[0].trim());
-			if (name) record(names, name, activeKey);
+			if (name) sequences.get(activeKey).push(name);
 			continue;
 		}
 		const pair = /^\s+(['"]?)([^:'"]+)\1\s*:\s*(.+)$/.exec(line);
@@ -251,10 +340,85 @@ export function readPnpmAllowlist(rawText) {
 				);
 				continue;
 			}
-			if (value === 'true') record(names, name, activeKey);
+			maps.get(activeKey).set(name, value === 'true');
 		}
 	}
-	return { names, errors };
+
+	const granted = new Map(); // grant map key -> Set(names granted)
+	for (const key of GRANT_MAP_KEYS) {
+		const map = maps.get(key) ?? new Map();
+		granted.set(
+			key,
+			new Set([...map.entries()].filter(([, value]) => value).map(([name]) => name)),
+		);
+	}
+	const bothGranted = [...granted.get('allowBuilds')].some((name) =>
+		granted.get('permissions').has(name),
+	);
+	if (bothGranted) {
+		errors.push(
+			'pnpm-workspace.yaml: "allowBuilds" and "permissions" both grant build scripts for the same package; pnpm ignores the "allowBuilds" entry in favour of "permissions", so the effective grant cannot be read from the file — keep exactly one of the two keys',
+		);
+	}
+	const effectiveKey =
+		granted.get('permissions').size > 0
+			? 'permissions'
+			: granted.get('allowBuilds').size > 0
+				? 'allowBuilds'
+				: null;
+	if (!bothGranted) {
+		for (const key of GRANT_MAP_KEYS) {
+			if (key === effectiveKey) continue;
+			for (const name of granted.get(key)) {
+				errors.push(
+					`pnpm-workspace.yaml#${key}.${name}: grants build scripts while "${effectiveKey ?? 'no key'}" is the effective grant list; pnpm 12 ignores this entry`,
+				);
+			}
+		}
+	}
+
+	const effective = effectiveKey ? granted.get(effectiveKey) : new Set();
+	const legacy = sequences.get(LEGACY_GRANT_KEY) ?? [];
+	const denied = new Set(sequences.get(DENY_SEQUENCE_KEY) ?? []);
+	const legacyOnly = [];
+	for (const name of [...effective].sort()) {
+		record(names, name, effectiveKey);
+		// Naming the legacy list too keeps the report honest about where a
+		// grant is declared; it never grants anything on its own.
+		if (legacy.includes(name)) record(names, name, LEGACY_GRANT_KEY);
+	}
+	for (const name of legacy) {
+		if (!effective.has(name)) legacyOnly.push(name);
+	}
+	const conflicts = [...effective].filter((name) => denied.has(name)).sort();
+
+	return { names, effectiveKey, legacyOnly: legacyOnly.sort(), ignored: denied, conflicts, errors };
+}
+
+function sequencesHas(key) {
+	return key === LEGACY_GRANT_KEY || key === DENY_SEQUENCE_KEY;
+}
+
+function recordKey(key, sequences, maps) {
+	if (GRANT_MAP_KEYS.includes(key)) {
+		if (!maps.has(key)) maps.set(key, new Map());
+		return;
+	}
+	if (!sequences.has(key)) sequences.set(key, []);
+}
+
+/** Accept either the reader's output or a bare name -> keys map (tests). */
+export function normalizeAllowlist(input) {
+	if (input instanceof Map) {
+		return { names: input, effectiveKey: null, legacyOnly: [], ignored: [], conflicts: [] };
+	}
+	return {
+		names: input?.names ?? new Map(),
+		effectiveKey: input?.effectiveKey ?? null,
+		legacyOnly: input?.legacyOnly ?? [],
+		ignored: input?.ignored ?? new Set(),
+		conflicts: input?.conflicts ?? [],
+	};
 }
 
 function record(names, name, key) {
@@ -272,40 +436,77 @@ function unquote(value) {
  * Walk an installed `node_modules` tree and return one record per
  * distinct package directory.
  *
- * pnpm stores the real directories under `node_modules/.pnpm/...` and
- * exposes them as symlinks at the top level, so records are keyed by
- * realpath to keep one package one record.
+ * Only real package boundaries are visited: the entries of a
+ * `node_modules` directory (scope directories one level down), the
+ * `.pnpm` virtual-store slots, and each package's own nested
+ * `node_modules`. Files a dependency merely *ships* — `examples/`,
+ * `test/fixtures/`, `vendor/` — are not package boundaries: pnpm
+ * never builds them, so counting their manifests would invent
+ * install-time code that does not exist and make the gate fail on a
+ * fixture. Records are keyed by realpath so the top-level symlink and
+ * the virtual-store copy stay one package.
  */
 export function collectInstalledManifests(rootDir, options = {}) {
-	const maxDepth = options.maxDepth ?? 8;
-	const manifests = new Map(); // realpath -> record
+	const maxDepth = options.maxDepth ?? 12;
+	const manifests = new Map(); // realpath -> manifest
 	const visited = new Set();
 	const queue = [{ dir: options.manifestsDir ?? joinNodePath(rootDir, 'node_modules'), depth: 0 }];
 	while (queue.length > 0) {
-		const current = queue.pop();
+		const { dir, depth } = queue.pop();
 		let realDir;
 		try {
-			realDir = realpathSync(current.dir);
+			realDir = realpathSync(dir);
 		} catch {
 			continue;
 		}
 		if (visited.has(realDir)) continue;
 		visited.add(realDir);
 
-		const manifest = readPackageManifest(joinNodePath(current.dir, 'package.json'));
-		if (manifest) manifests.set(realDir, manifest);
+		for (const pkgDir of listPackageDirs(dir)) {
+			let realPkgDir;
+			try {
+				realPkgDir = realpathSync(pkgDir);
+			} catch {
+				continue;
+			}
+			if (visited.has(realPkgDir)) continue;
+			visited.add(realPkgDir);
 
-		if (current.depth >= maxDepth) continue;
-		for (const name of listDirectories(current.dir)) {
-			if (name === '.bin') continue;
-			queue.push({ dir: joinNodePath(current.dir, name), depth: current.depth + 1 });
-		}
-		const nested = joinNodePath(current.dir, 'node_modules');
-		if (existsSync(nested)) {
-			queue.push({ dir: nested, depth: current.depth + 1 });
+			const manifest = readPackageManifest(joinNodePath(pkgDir, 'package.json'));
+			if (manifest) manifests.set(realPkgDir, manifest);
+
+			const nested = joinNodePath(pkgDir, 'node_modules');
+			if (depth < maxDepth && existsSync(nested)) {
+				queue.push({ dir: nested, depth: depth + 1 });
+			}
 		}
 	}
 	return [...manifests.values()];
+}
+
+/** Package directories directly inside one `node_modules` directory. */
+function listPackageDirs(nodeModulesDir) {
+	const dirs = [];
+	for (const name of listDirectories(nodeModulesDir)) {
+		if (name === '.bin') continue;
+		const entry = joinNodePath(nodeModulesDir, name);
+		if (name === '.pnpm') {
+			// Each virtual-store slot (`name@version`) holds its own
+			// node_modules; the hoisted `node_modules` inside `.pnpm` is a
+			// container, not a package.
+			for (const slot of listDirectories(entry)) {
+				if (slot === 'node_modules') continue;
+				dirs.push(joinNodePath(entry, slot));
+			}
+			continue;
+		}
+		if (name.startsWith('@')) {
+			for (const scoped of listDirectories(entry)) dirs.push(joinNodePath(entry, scoped));
+			continue;
+		}
+		dirs.push(entry);
+	}
+	return dirs;
 }
 
 function listDirectories(dir) {
@@ -337,6 +538,9 @@ export function readPackageManifest(path) {
 		name: parsed.name,
 		version: typeof parsed.version === 'string' ? parsed.version : 'unknown',
 		scripts: parsed.scripts && typeof parsed.scripts === 'object' ? parsed.scripts : {},
+		// pnpm builds a package that ships `binding.gyp` even without a
+		// lifecycle script, so the file has to be part of the inventory.
+		requiresBuild: existsSync(joinNodePath(dirnameOf(path), 'binding.gyp')),
 		dependencies:
 			parsed.dependencies && typeof parsed.dependencies === 'object' ? parsed.dependencies : {},
 		devDependencies:
@@ -350,6 +554,12 @@ export function readPackageManifest(path) {
 	};
 }
 
+function dirnameOf(path) {
+	const normalized = String(path).replace(/\/+$/, '');
+	const cut = normalized.lastIndexOf('/');
+	return cut <= 0 ? normalized : normalized.slice(0, cut);
+}
+
 /**
  * Group installed manifests by package name.
  *
@@ -358,11 +568,17 @@ export function readPackageManifest(path) {
  * Worker runtime pins separately), so a policy record — and a report
  * row — has to be about the *name*, not one directory. Versions are
  * collected as a sorted set so the report stays deterministic.
+ *
+ * `options.gitHostedNames` promotes `prepare` to install-time for
+ * git-hosted dependencies, and a package shipping `binding.gyp`
+ * contributes the implicit `node-gyp rebuild` pnpm would run.
  */
-export function groupInstalledByName(manifests) {
+export function groupInstalledByName(manifests, options = {}) {
+	const gitHostedNames = options.gitHostedNames ?? new Set();
 	const groups = new Map();
 	for (const manifest of manifests) {
-		const hooks = classifyHooks(manifest.scripts);
+		const gitHosted = gitHostedNames.has(manifest.name);
+		const hooks = classifyHooks(manifest.scripts, { gitHosted });
 		let group = groups.get(manifest.name);
 		if (!group) {
 			group = {
@@ -371,11 +587,16 @@ export function groupInstalledByName(manifests) {
 				hooks: new Set(),
 				publishTimeHooks: new Set(),
 				rootHooks: new Set(),
+				gitHosted,
+				requiresBuild: false,
 			};
 			groups.set(manifest.name, group);
 		}
 		group.versions.add(manifest.version);
+		group.gitHosted = group.gitHosted || gitHosted;
+		group.requiresBuild = group.requiresBuild || manifest.requiresBuild === true;
 		for (const hook of hooks.installTime) group.hooks.add(hook);
+		if (manifest.requiresBuild === true) group.hooks.add(IMPLICIT_BUILD_HOOK);
 		for (const hook of hooks.publishTime) group.publishTimeHooks.add(hook);
 		for (const hook of hooks.rootInstallTime) group.rootHooks.add(hook);
 	}
@@ -402,16 +623,19 @@ export function auditInstallScripts(input) {
 		manifests = [],
 		rootManifest = null,
 		policy = { packages: [] },
-		pnpmAllowlist = new Map(),
+		pnpmAllowlist: allowlistInput = new Map(),
 		directNames = new Set(),
 	} = input;
+	const allowlist = normalizeAllowlist(allowlistInput);
+	const pnpmAllowlist = allowlist.names;
 
 	const violations = [];
 	const warnings = [];
 	const findings = [];
 	const publishTimeOnly = [];
 
-	const groups = groupInstalledByName(manifests);
+	const gitHostedNames = collectGitHostedNames(manifests, rootManifest);
+	const groups = groupInstalledByName(manifests, { gitHostedNames });
 	const policyEntries = new Map(policy.packages.map((entry) => [entry.name, entry]));
 
 	const record = ({ name, versions, hooks, kind }) => {
@@ -427,6 +651,8 @@ export function auditInstallScripts(input) {
 			kind, // 'root' | 'direct' | 'transitive'
 			direct: kind !== 'transitive',
 			elevated: sortedHooks.some((hook) => ELEVATED_HOOKS.includes(hook)),
+			git_hosted: gitHostedNames.has(name),
+			implicit_build: sortedHooks.includes(IMPLICIT_BUILD_HOOK),
 			decision: entry?.decision ?? null,
 			justification: entry?.justification ?? null,
 			observed_versions: recorded,
@@ -458,9 +684,21 @@ export function auditInstallScripts(input) {
 			);
 		}
 		if (finding.version_drift) {
-			warnings.push(
-				`${name}: policy observed version(s) [${recorded.join(', ')}] != installed [${sortedVersions.join(', ')}] — re-review the new version's lifecycle scripts and update the record`,
-			);
+			const drift = `${name}: policy observed version(s) [${recorded.join(', ')}] != installed [${sortedVersions.join(', ')}]`;
+			if (entry.decision === 'allow') {
+				// An allowed package keeps its permission across version
+				// bumps, so the code that runs on the next install is
+				// unreviewed until the record is updated. That is not a
+				// warning: pnpm would execute the new version in CI before
+				// this audit even sees it.
+				violations.push(
+					`${drift} — an "allow" record runs the new version's lifecycle scripts on every install, so the version must be re-reviewed and the record updated in the same change`,
+				);
+			} else {
+				warnings.push(
+					`${drift} — the record blocks the build, so re-review the new version's lifecycle scripts when the decision changes`,
+				);
+			}
 		}
 		// The workspace ROOT project is not a dependency, so pnpm's
 		// `onlyBuiltDependencies` allow-list does not govern it: the root
@@ -480,7 +718,9 @@ export function auditInstallScripts(input) {
 		findings.push(finding);
 	};
 
-	const rootHooks = rootManifest ? classifyHooks(rootManifest.scripts) : null;
+	const rootHooks = rootManifest
+		? classifyHooks(rootManifest.scripts, { gitHosted: gitHostedNames.has(ROOT_PACKAGE_KEY) })
+		: null;
 	if (rootHooks && (rootHooks.rootInstallTime.length > 0 || rootHooks.installTime.length > 0)) {
 		record({
 			name: ROOT_PACKAGE_KEY,
@@ -527,6 +767,22 @@ export function auditInstallScripts(input) {
 		);
 	}
 
+	// A grant that survives only in the legacy `onlyBuiltDependencies`
+	// list grants nothing under pnpm 12, which reads `allowBuilds` (or
+	// `permissions`). Reporting it as permitted would tell a reviewer
+	// "this build runs" while pnpm skips it, so the drift is a failure
+	// instead of a note.
+	for (const name of allowlist.legacyOnly) {
+		violations.push(
+			`${name}: pnpm-workspace.yaml#${LEGACY_GRANT_KEY} lists it, but the effective grant list is ${allowlist.effectiveKey ? `#${allowlist.effectiveKey}` : 'missing'} — a build allowed only in the legacy list never runs under pnpm 12; move the entry to ${allowlist.effectiveKey ?? 'allowBuilds'} or delete it`,
+		);
+	}
+	for (const name of allowlist.conflicts) {
+		violations.push(
+			`${name}: pnpm-workspace.yaml grants it in #${allowlist.effectiveKey} and denies it in #${DENY_SEQUENCE_KEY} at the same time — keep one intent`,
+		);
+	}
+
 	// A policy record only earns its place while the package actually
 	// ships an install-time hook. A record for a package that lost the
 	// hook (or is no longer installed at all) is stale: it would keep
@@ -548,6 +804,7 @@ export function auditInstallScripts(input) {
 	return {
 		findings,
 		publishTimeOnly,
+		allowlist_source: allowlist.effectiveKey,
 		violations: violations.sort(),
 		warnings: warnings.sort(),
 		summary: {
@@ -580,12 +837,16 @@ export function formatTextReport(audit, context = {}) {
 		`  package manager : ${context.packageManager ?? 'pnpm'} (default-deny: build scripts run only for allow-listed packages)`,
 	);
 	lines.push(`  policy          : ${context.policyPath ?? 'quality/install-scripts.json'}`);
-	lines.push(`  execution allow : ${context.allowlistPath ?? 'pnpm-workspace.yaml'}`);
+	lines.push(
+		`  execution allow : ${context.allowlistPath ?? 'pnpm-workspace.yaml'}${
+			context.allowlistSource ? `#${context.allowlistSource} (effective grant list)` : ''
+		}`,
+	);
 	lines.push(`  packages scanned: ${summary.packages_scanned} installed manifests`);
 	lines.push('');
 
 	lines.push(
-		`Install-time lifecycle scripts (preinstall / install / postinstall) — ${summary.install_time_packages} package(s)`,
+		`Install-time lifecycle scripts (preinstall / install / postinstall, ${IMPLICIT_BUILD_HOOK}, and a git-hosted \`prepare\`) — ${summary.install_time_packages} package(s)`,
 	);
 	if (audit.findings.length === 0) {
 		lines.push('  (none)');
@@ -595,6 +856,8 @@ export function formatTextReport(audit, context = {}) {
 		const flags = [
 			finding.kind === 'transitive' ? 'transitive' : finding.kind,
 			finding.elevated ? 'ELEVATED preinstall' : null,
+			finding.git_hosted ? 'git-hosted (prepare runs at install)' : null,
+			finding.implicit_build ? 'implicit node-gyp rebuild (binding.gyp)' : null,
 			finding.version_drift
 				? `version drift [${finding.observed_versions.join(', ')}] -> [${finding.versions.join(', ')}]`
 				: null,
@@ -670,7 +933,9 @@ export function renderHtmlReport(audit, context = {}) {
   <td><span class="badge ${tone}">${escapeHtml(decision)}</span></td>
   <td class="pkg">${escapeHtml(name)}<span class="ver">${escapeHtml(finding.versions.join(', '))}</span></td>
   <td><code>${escapeHtml(finding.hooks.join(', '))}</code></td>
-  <td>${escapeHtml(finding.kind)}${finding.elevated ? ' <span class="badge warn">PREINSTALL</span>' : ''}</td>
+  <td>${escapeHtml(finding.kind)}${finding.elevated ? ' <span class="badge warn">PREINSTALL</span>' : ''}${
+		finding.implicit_build ? ' <span class="badge warn">NODE-GYP</span>' : ''
+	}${finding.git_hosted ? ' <span class="badge warn">GIT</span>' : ''}</td>
   <td class="allow">${escapeHtml(
 		finding.kind === 'root'
 			? 'root project (allow-list n/a)'
@@ -735,12 +1000,14 @@ export function renderHtmlReport(audit, context = {}) {
 <h1>Dependency install lifecycle script audit</h1>
 <p class="sub">package manager: ${escapeHtml(context.packageManager ?? 'pnpm')} &middot;
 policy: ${escapeHtml(context.policyPath ?? 'quality/install-scripts.json')} &middot;
-execution allow-list: ${escapeHtml(context.allowlistPath ?? 'pnpm-workspace.yaml')} &middot;
+execution allow-list: ${escapeHtml(context.allowlistPath ?? 'pnpm-workspace.yaml')}${
+		context.allowlistSource ? `#${escapeHtml(context.allowlistSource)}` : ''
+	} &middot;
 generated by <code>scripts/check-install-scripts.mjs</code></p>
 <div class="cards">
 ${cards.map(([label, value]) => `  <div class="card"><div class="n">${escapeHtml(value)}</div><div class="l">${escapeHtml(label)}</div></div>`).join('\n')}
 </div>
-<h2>Install-time lifecycle scripts (preinstall / install / postinstall)</h2>
+<h2>Install-time lifecycle scripts (declared hooks, implicit node-gyp rebuild, git-hosted prepare)</h2>
 <table>
 <thead><tr><th>Decision</th><th>Package</th><th>Hooks</th><th>Origin</th><th>pnpm allow-list</th><th>Why it is necessary</th></tr></thead>
 <tbody>

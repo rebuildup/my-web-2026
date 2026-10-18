@@ -8,20 +8,27 @@
  *
  * What it proves
  * --------------
- * 1. Every installed package that declares an install-time lifecycle
- *    hook (`preinstall` / `install` / `postinstall`) is recorded in
- *    `quality/install-scripts.json` together with the reason its build
- *    is necessary — "record only what is needed" becomes a checkable
- *    contract instead of a memory.
+ * 1. Every installed package that can execute code during an install is
+ *    recorded in `quality/install-scripts.json` together with the
+ *    reason its build is necessary — "record only what is needed"
+ *    becomes a checkable contract instead of a memory. "Can execute"
+ *    includes the three declared hooks, an implicit `node-gyp rebuild`
+ *    for a package shipping `binding.gyp`, and a `prepare` of a
+ *    git-hosted dependency (pnpm prepares git dependencies while
+ *    fetching them).
  * 2. The recorded decision and pnpm's execution allow-list
- *    (`pnpm-workspace.yaml#onlyBuiltDependencies` / `#allowBuilds`)
- *    agree in both directions: an "allow" that pnpm blocks is a build
- *    that silently does not run, and a "block" that pnpm allows is code
- *    that runs on every install against policy.
+ *    (`pnpm-workspace.yaml#allowBuilds`, or `#permissions` when that
+ *    key is present) agree in both directions: an "allow" that pnpm
+ *    blocks is a build that silently does not run, and a "block" that
+ *    pnpm allows is code that runs on every install against policy. A
+ *    grant that survives only in the legacy `onlyBuiltDependencies`
+ *    list grants nothing under pnpm 12, so that drift fails too.
  * 3. No allow-list entry survives without a build to justify it, which
  *    is how unnecessary `preinstall` execution permission gets removed.
  *
- * Exit codes: 0 = audited and clean, 1 = violation(s), 2 = bad input.
+ * Exit codes: 0 = audited and clean, 1 = violation(s), 2 = bad input
+ * (including "the installed tree is absent or not a pnpm install", so
+ * an interrupted install can never be reported as a clean repository).
  *
  * Status-only by construction: it reads package manifests plus the two
  * policy files. It never reads `.dev.vars`, Infisical, or a Worker
@@ -53,11 +60,18 @@ export const REMEDY_TEXT = [
 	'  1. Read the recorded hook in the installed package manifest and decide whether the build is actually needed.',
 	'  2. Record the decision + justification in quality/install-scripts.json (add an entry for an unreviewed package,',
 	'     or set "decision": "block" when the build is unnecessary).',
-	'  3. Keep pnpm-workspace.yaml#onlyBuiltDependencies / #allowBuilds in sync with an "allow" decision, and remove the',
-	'     entry when the package stops needing a build.',
+	'  3. Keep pnpm-workspace.yaml#allowBuilds in sync with an "allow" decision, and remove the entry when the package',
+	'     stops needing a build.',
 	'  4. Re-run `pnpm run install:scripts:check`.',
 	'Never silence this gate with a blanket allow: an install-time hook runs before any repository test exists.',
 ].join('\n');
+
+/**
+ * Files pnpm itself writes into a completed `node_modules`. Their
+ * absence means "there is nothing installed", whatever else the
+ * directory happens to contain.
+ */
+const INSTALL_MARKERS = ['node_modules/.modules.yaml', 'node_modules/.pnpm'];
 
 function parseArgs(argv) {
 	const options = { root: defaultRoot, json: false, html: null };
@@ -95,6 +109,15 @@ export function runAudit(root) {
 			`required input not found: ${modulesPath}\n  Run \`pnpm install\` first — this audit reads the installed manifests, so it cannot pass on an uninstalled tree.`,
 		);
 	}
+	// An existing-but-empty (or half-written) `node_modules` is the same
+	// trap: `mkdir node_modules` or an install interrupted after linking
+	// nothing would otherwise be reported as "0 packages, clean".
+	const markers = INSTALL_MARKERS.filter((marker) => existsSync(resolve(root, marker)));
+	if (existsSync(modulesPath) && markers.length === 0) {
+		inputErrors.push(
+			`${modulesPath} exists but is not a pnpm installation: none of ${INSTALL_MARKERS.join(', ')} is present.\n  Run \`pnpm install\` and re-run — an empty or interrupted install must not be audited as clean.`,
+		);
+	}
 	if (inputErrors.length > 0) return { ok: false, inputErrors, violations: [], warnings: [] };
 
 	const { policy, errors: policyErrors } = parsePolicy(readFileSync(policyPath, 'utf8'));
@@ -110,9 +133,8 @@ export function runAudit(root) {
 		};
 	}
 
-	const { names: pnpmAllowlist, errors: allowlistErrors } = readPnpmAllowlist(
-		readFileSync(allowlistPath, 'utf8'),
-	);
+	const parsedAllowlist = readPnpmAllowlist(readFileSync(allowlistPath, 'utf8'));
+	const { errors: allowlistErrors } = parsedAllowlist;
 	if (allowlistErrors.length > 0) {
 		return {
 			ok: false,
@@ -127,6 +149,16 @@ export function runAudit(root) {
 
 	const rootManifest = readPackageManifest(rootManifestPath);
 	const manifests = collectInstalledManifests(root);
+	if (manifests.length === 0) {
+		return {
+			ok: false,
+			inputErrors: [
+				`${modulesPath} holds no installed package manifest, so there is nothing to audit.\n  Run \`pnpm install\` and re-run — a tree with no dependency must not be reported as clean.`,
+			],
+			violations: [],
+			warnings: [],
+		};
+	}
 	const directNames = new Set([
 		...Object.keys(rootManifest?.dependencies ?? {}),
 		...Object.keys(rootManifest?.devDependencies ?? {}),
@@ -137,7 +169,7 @@ export function runAudit(root) {
 		manifests,
 		rootManifest,
 		policy,
-		pnpmAllowlist,
+		pnpmAllowlist: parsedAllowlist,
 		directNames,
 	});
 	return { ok: audit.violations.length === 0, inputErrors: [], audit };
@@ -166,11 +198,19 @@ function main() {
 		return 2;
 	}
 
-	const context = { policyPath: POLICY_RELATIVE_PATH, allowlistPath: ALLOWLIST_RELATIVE_PATH };
+	// `--json` is documented as machine-readable, so stdout carries the
+	// JSON document and nothing else; progress and verdict lines go to
+	// stderr, where they cannot corrupt a `jq` pipeline.
+	const info = options.json ? process.stderr : process.stdout;
+	const context = {
+		policyPath: POLICY_RELATIVE_PATH,
+		allowlistPath: ALLOWLIST_RELATIVE_PATH,
+		allowlistSource: result.audit.allowlist_source,
+	};
 	if (options.html) {
 		mkdirSync(dirname(options.html), { recursive: true });
 		writeFileSync(options.html, renderHtmlReport(result.audit, context), 'utf8');
-		process.stdout.write(`[check-install-scripts] HTML report written to ${options.html}\n`);
+		info.write(`[check-install-scripts] HTML report written to ${options.html}\n`);
 	}
 	if (options.json) {
 		process.stdout.write(`${JSON.stringify({ ...context, ...result.audit }, null, 2)}\n`);
@@ -184,7 +224,7 @@ function main() {
 		);
 		return 1;
 	}
-	process.stdout.write(
+	info.write(
 		`[check-install-scripts] OK: ${result.audit.summary.install_time_packages} install-time lifecycle script package(s) reviewed, ${result.audit.summary.warnings} warning(s).\n`,
 	);
 	return 0;

@@ -2,8 +2,8 @@
  * Accepted / rejected Markdown corpus for the XSS boundary
  * (Issue #451).
  *
- * Why the corpus lives in `src/`, not in a test file
- * -------------------------------------------------
+ * Why the corpus lives in `test/fixtures/`
+ * ----------------------------------------
  * The Issue asks for ONE reproduction that both test layers and the
  * verification artefact can share:
  *
@@ -14,12 +14,20 @@
  *      seeded D1 row).
  *   3. `.tmp/capture-markdown-xss-fixture.mjs` — the browser
  *      screenshot that lands in
- *      `docs/verification/security/markdown-xss-fixture.png`.
+ *      `docs/verification/security/markdown-xss-fixture.webp`.
  *
- * A corpus that lives in a test file can only ever serve layer 1, and
- * the page that gets screenshotted would drift from what CI asserts.
- * This module is pure data plus one pure predicate, so all three
- * consume the same bytes.
+ * A corpus that lives in a `.test.` file can only ever serve layer 1,
+ * and the page that gets screenshotted would drift from what CI
+ * asserts. This module is pure data plus one pure predicate, so all
+ * three consume the same bytes.
+ *
+ * The file is not itself a test, so any layer can import it, but it
+ * stays outside `SCAN_ROOTS` (`src/`, `public/`). The publication
+ * gate scans shipped source for external hosts and deliberately
+ * skips test files because "a fixture URL is not a published URL"
+ * (`scripts/check-publication-diff.mjs`). Living under `src/` made
+ * these reserved documentation hosts look like outbound dependencies
+ * and turned release CI red (Issue #599).
  *
  * Payload policy
  * --------------

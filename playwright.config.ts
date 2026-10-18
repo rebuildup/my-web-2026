@@ -112,7 +112,7 @@ export default defineConfig({
 	// production origin, and because its Issue #43 group — which does
 	// hardcode the canonical origin, including the one deliberate write
 	// in the file, the anonymous reaction mutation — disarms itself
-	// unless `PLAYWRIGHT_BASE_URL` EXPLICITLY names production. It
+	// unless the run is explicitly canonical, and local mode never is. It
 	// exists so the Issue #500 representative-route contract is
 	// reproducible offline and its verification screenshot can be
 	// captured without reading production.
@@ -120,16 +120,25 @@ export default defineConfig({
 	// separate G15 post-publication contract and needs published entries
 	// plus production media.
 	//
-	// `portfolio.spec.ts` likewise targets a local D1 binding: it
-	// seeds draft / unlisted / archived rows into the local D1 and
-	// asserts the public-visibility boundary. The local D1 file is
-	// not addressable from a remote Worker deployment, so the spec
-	// is filtered out of the production-only path.
+	// `portfolio.spec.ts` and `portfolio-markdown-xss.spec.ts` likewise
+	// target a local D1 binding: they seed rows into the local D1
+	// (`draft` / `unlisted` / `archived` visibility rows, and the
+	// Issue #451 XSS corpus) and assert against them. The local D1 file
+	// is not addressable from a remote Worker deployment, so a full
+	// `PLAYWRIGHT_BASE_URL=https://rebuildup.dev pnpm exec playwright
+	// test` (no file filter) would seed the local file, read the
+	// deployed page, and fail every assertion on a 404 — a failure
+	// signature that reads as "production portfolio is broken" when
+	// nothing is. Both files are therefore filtered out of the
+	// non-local path. Each also skips itself in-file, so a
+	// file-filtered invocation (`playwright test <file>`, which is how
+	// the production scripts name their spec) cannot seed a row against
+	// a deployed origin either.
 	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
 		? LOCAL_SMOKE
 			? '**/prod-portfolio.spec.ts'
 			: '**/prod-*.spec.ts'
-		: '**/portfolio.spec.ts',
+		: ['**/portfolio.spec.ts', '**/portfolio-markdown-xss.spec.ts'],
 	// The local project spins up the preview server automatically.
 	// `pnpm preview` is required because the Tool iframe spec reaches
 	// into `dist/client/tools/<slug>/app/` (the collected Tool artifact)

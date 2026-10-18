@@ -267,13 +267,20 @@ canonical location for the flag is `.dev.vars` only.
 ## Validate
 
 ```bash
-pnpm run validate:fast         # format:check + lint:check + typecheck + test
+pnpm run validate:fast         # read-only gate chain (see quality/profile.yaml for the ordered component list)
 pnpm run validate:integration  # + build + wrangler:dry-run + lint:ci + build-storybook
 pnpm run validate:release      # + cf-typegen:check
 ```
 
 `validate:fast` には UI copy の locale 契約検査 `pnpm run copy:i18n:check` も含まれる
 (下記「UI copy の locale 契約」参照)。
+`pnpm run compat:check` は Web API / CSS の採用可否を Baseline（web-features）で
+判定する gate（Issue #414）。走査面は `src/**` に加えて生成 CSS の入力である
+`panda.config.ts`（`app-shell` surface の `files`）で、`src/` 以外のファイルは
+surface に明示しない限り走査されない。バー未満の採用は fallback 要件が明示され
+evidence が検証できた場合のみ warning、fallback 宣言が無い採用は fail。定義は
+`quality/browser-baseline.json`、詳細は
+[`docs/verification/standards/browser-baseline.md`](verification/standards/browser-baseline.md)。
 
 CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 `validate` job on every PR and every push to `main` / `release-*`.
@@ -318,12 +325,30 @@ exist:
 - `pnpm run e2e:prod` runs `e2e/prod-smoke.spec.ts` against the
   canonical production URL `https://rebuildup.dev` (Issue #43 /
   ADR-0014). Operator-initiated only — never gated by regular CI.
+  In Smoke #2 (`pnpm run e2e:prod`, POST-deploy) it also registers the
+  five representative routes (`/`, `/about`, `/portfolio`, `/tools`,
+  `/api/v1/health`) and checks each one's HTTP response, short
+  navigation path, and documented default state, read-only. Smoke #1
+  (`pnpm run e2e:prod:transition`) skips them: it runs PRE-merge, while
+  production still serves the previous `main` build and the registry is
+  release-branch data.
+- `pnpm run e2e:prod:local` runs the same spec file against the LOCAL
+  preview build (`http://127.0.0.1:3000`), so the Issue #500
+  representative-route contract is reproducible offline. It builds the
+  working tree first and forces the localhost origin even if the parent
+  shell exported a production `PLAYWRIGHT_BASE_URL`; the Issue #43
+  canonical-origin group (which hardcodes the canonical origin, including
+  the one deliberate write, the anonymous reaction mutation) skips itself
+  in local mode, and subresource requests to any other origin are aborted
+  before navigation.
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
 pnpm run e2e             # run smoke.spec.ts; auto-starts pnpm dev locally
 # Production smoke (Issue #43 / ADR-0014):
 pnpm run e2e:prod        # runs prod-smoke.spec.ts against https://rebuildup.dev
+# Offline rehearsal of the Issue #500 representative-route contract:
+pnpm run e2e:prod:local  # same spec file against http://127.0.0.1:3000
 ```
 
 The E2E suite asserts the four public surfaces documented in
@@ -333,6 +358,19 @@ The E2E suite asserts the four public surfaces documented in
 - `GET /api/v1/health` (200, `{status:'ok',...}`)
 - `GET /api/v1/db/ping` (200, `{one:1,...}` against the D1 binding)
 - `GET /api/v1/media/ping` (404, `key_not_found` against the R2 binding)
+`playwright.config.ts` ignores every `prod-*.spec.ts` when
+`PLAYWRIGHT_BASE_URL` points at localhost, so `pnpm run e2e` can never
+reach the canonical production origin. The single documented exception is
+`pnpm run e2e:prod:local`, which builds first, sets
+`E2E_LOCAL_PROD_SMOKE=1`, and forces the base URL to localhost. The
+production representative-route
+contract is DATA in `scripts/prod-smoke-routes.mjs`; its pass/fail
+classifier `auditRoute()` is unit-tested offline by
+`scripts/prod-smoke-routes.test.mjs` (wired into `pnpm run test`), so the
+smoke logic is verified without a network, without workerd, and without a
+browser. Each observation carries the final (post-redirect) origin and
+pathname, and the classifier rejects either kind of drift, so a route that
+answered from another host cannot pass as a healthy canonical origin.
 
 ## UI copy の locale 契約
 

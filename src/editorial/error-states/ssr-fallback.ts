@@ -42,7 +42,10 @@
  * Keep the copy in `./contract` — do not duplicate it here.
  */
 
+import { createAuditLogger } from '../../logging/logger';
 import { SSR_FALLBACK_ALTERNATIVES_NOTE, alternativesFor, errorStateDefinition } from './contract';
+
+const ssrFallbackLogger = createAuditLogger('ssr.fallback');
 
 /**
  * React's marker for a Suspense boundary whose server render errored
@@ -115,10 +118,12 @@ export async function settleSsrDocumentResponse(
 		});
 	}
 
-	// The framework already logged the throwable; this line records only the
-	// request path, which the failure surface would publish anyway.
-	console.error(
-		'[ssr] render failure; serving the fallback document',
+	// The framework already logged the throwable; this record carries only the
+	// request path, which the failure surface would publish anyway. It still
+	// goes through the shared logger (Issue #467): the path is visitor-supplied
+	// and may carry a token, so the redaction obligation applies here too.
+	ssrFallbackLogger.error(
+		'render failure; serving the fallback document',
 		new URL(request.url).pathname,
 	);
 	return createSsrFailureResponse(request);

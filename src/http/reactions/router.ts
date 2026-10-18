@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { createAuditLogger } from '../../logging/logger';
 import type { ApiKeyContext } from '../api-keys/middleware';
 import { requireApiKey, requireResourceAction } from '../api-keys/middleware';
 import { rateLimitRead, rateLimitWrite } from '../middleware/rate-limit';
@@ -48,6 +49,14 @@ export const reactionsRouter = new Hono<{
 	Variables: { apiKey: ApiKeyContext };
 }>();
 
+/**
+ * Router diagnostics. Every argument is redacted before it reaches
+ * the log stream (Issue #467): a rejected reaction-image reference
+ * carries the submitted id, so the raw `err` must not be written
+ * verbatim.
+ */
+const reactionsLogger = createAuditLogger('http.reactions');
+
 reactionsRouter.put('/', requireApiKey, rateLimitWrite, jsonBody(parseReactionInput), async (c) => {
 	const apiKey = requireResourceAction(c, 'reactions', 'write');
 	const input = c.get('boundaryBody') as ReactionInputValue;
@@ -61,7 +70,7 @@ reactionsRouter.put('/', requireApiKey, rateLimitWrite, jsonBody(parseReactionIn
 			// is internal schema detail, not a client-facing reason.
 			// The stable code is self-describing and is the whole
 			// public contract; the message stays in the log.
-			console.warn('[http.reactions] image reference rejected', err);
+			reactionsLogger.warn('image reference rejected', err);
 			return c.json({ error: err.code }, 422);
 		}
 		throw err;

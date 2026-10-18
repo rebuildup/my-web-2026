@@ -91,7 +91,9 @@ routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
+home -> logging (Issue #467 — shared log redaction)
 admin/emoji-catalog -> reactions
+admin -> logging (Issue #467 — admin image diagnostics)
 reactions -> cloudflare (env.DB at SSR time)
 http/seo -> portfolio (public project index only; the public-visibility
              filter stays in the portfolio obligation — Issue #420)
@@ -101,6 +103,11 @@ reactions -> i18n (Issue #433)
 portfolio -> i18n (Issue #433)
 external-api -> editorial (Issue #499 — display primitives only)
 server -> http
+http -> logging (Issue #467 — boundary diagnostics)
+http/reactions -> logging (Issue #467 — image-reference rejection record)
+portfolio -> logging (Issue #467 — server-function public error boundary)
+cloudflare -> logging (Issue #467 — auth email stub + binding probes)
+editorial -> logging (Issue #467 — SSR fallback failure record)
 home -> editorial
 ```
 
@@ -130,6 +137,21 @@ home -> editorial
 - `src/editorial/**` owns the shipped editorial visual language.
 - `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
 - `src/http/**` owns the external HTTP boundary.
+- `src/logging/**` (Issue #467) is a **leaf** obligation owning
+  the runtime log-redaction contract: `redact.ts` decides what may
+  appear in a log record, `logger.ts` is the only module allowed
+  to touch `console` in `src/**`. It owns the question "may this
+  value be written to an operator-visible stream", not the question
+  "what should be logged about a request" — each owner logs its own
+  narrower record. Its independent contract: the AGENTS.md §4
+  "no value-listing of real secrets" invariant generalizes from
+  operator tooling to every runtime stream, and
+  `scripts/check-log-redaction.mjs` is the gate that keeps
+  `console.*` out of every other `src/**` file. `scripts/**`
+  (operator tooling) does NOT import it: the Node scripts print
+  status-only output by construction and must stay runnable without
+  a Worker bundle, so the shared contract there is the marker-based
+  `node --test` suites, not a shared module.
 - `src/reactions/**` owns the slug-grammar / DB-backed emoji catalog
   shared by `home/` and `admin/`. Promoted in branch 39 from
   `src/http/reactions/` so neither the `home/` nor the `admin/`
@@ -310,13 +332,18 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `architecture:check` +
-  `structured-data:check` + `index:boundary:check` + `tools:check` +
-  `install:scripts:check` + `wrangler:independence:check` +
-  `cloudflare:contract:check` + `test:wiring:check` +
-  release-asset checks + `version:check` + `typecheck` +
-  `infisical:check:coverage` + `sbom:check` (Issue #471) +
-  `csrf:contract:check` + `compat:check` + `publication:check` +
-  `i18n:policy:check` + `ci:pins:check` (Issue #472, GitHub
+  `log:redaction:check` (Issue #467 — `src/**` may only reach
+  `console` through `src/logging/logger.ts`, and operator scripts may
+  not print a secret value) +
+  `structured-data:check` + `index:boundary:check` +
+  `tools:check` + `install:scripts:check` +
+  `wrangler:independence:check` + `cloudflare:contract:check` +
+  `test:wiring:check` + release-asset checks + `version:check` +
+  `typecheck` + `infisical:check:coverage` + `sbom:check` +
+  `csrf:contract:check` + `compat:check` +
+  `tools:provenance:check` + `publication:check` +
+  `routes:quality:check` + `i18n:policy:check` +
+  `ci:pins:check` (Issue #472, GitHub
   Actions pin / token audit) + `test`. The canonical list is
   `quality/profile.yaml#gates.fast.components`; add a step there,
   not only in the script.)

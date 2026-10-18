@@ -27,6 +27,15 @@ const SQL_LEAK = 'D1_ERROR: no such table: reactions: SQLITE_ERROR';
 const BUCKET_LEAK = 'The specified bucket does not exist. (my-web-2026)';
 const SECRET_LEAK = 'BETTER_AUTH_SECRET is not configured for this Worker';
 
+/**
+ * Fabricated credentials/personal data used to prove the boundary
+ * record is redacted before it reaches the log stream (Issue #467).
+ * Nothing here is a real value.
+ */
+const CANARY_KEY = 'mk_canary_b7c3d9e0f1a26488';
+const CANARY_EMAIL = 'canary.person@example.invalid';
+const CANARY_TEXT = `upstream rejected ${CANARY_KEY} for ${CANARY_EMAIL}`;
+
 function probeApp() {
 	const app = new Hono<{ Bindings: Env; Variables: { requestId?: string } }>();
 	app.use('/api/v1/*', requestIdMiddleware);
@@ -38,6 +47,9 @@ function probeApp() {
 	});
 	app.get('/api/v1/secret', () => {
 		throw new Error(SECRET_LEAK);
+	});
+	app.get('/api/v1/canary', () => {
+		throw new Error(CANARY_TEXT);
 	});
 	app.onError((err, c) =>
 		publicErrorResponse(c, err, {
@@ -174,9 +186,55 @@ describe('publicErrorResponse (Issue #457)', () => {
 			const body = JSON.parse(await bodyText(res)) as { request_id: string };
 			expect(spy).toHaveBeenCalledTimes(1);
 			const [label, logged] = spy.mock.calls[0] as [string, unknown];
+			// The id is greppable because THIS Worker minted it (the
+			// logger proves the mint format before printing it).
 			expect(label).toContain(`request_id=${body.request_id}`);
 			expect(label).not.toContain(SQL_LEAK);
-			expect((logged as Error).message).toBe(SQL_LEAK);
+			// The record is the redacting logger's collapsed shape
+			// (`{ name, message }`, Issue #467) — the internal detail
+			// is still there for the operator, but the value passed to
+			// `console` is no longer the raw `Error` instance.
+			expect(logged).toEqual({ name: 'Error', message: SQL_LEAK });
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	it('never writes a client-supplied id into the operator log (Issue #467)', async () => {
+		const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			// The response contract is unchanged (Issue #457): the id
+			// the client supplied is published back in body + header.
+			// The log record is a different surface — a client chose
+			// this string, so it is not proof of anything and is not
+			// printed (open owner decision, docs/security.md).
+			const res = await probeApp().request('/api/v1/probe', {
+				headers: { 'X-Request-Id': 'client-correlation-1234' },
+			});
+			const body = JSON.parse(await bodyText(res)) as { request_id: string };
+			expect(body.request_id).toBe('client-correlation-1234');
+			const [label] = spy.mock.calls[0] as [string, unknown];
+			expect(label).toContain('request_id=[redacted-correlation]');
+			expect(label).not.toContain('client-correlation-1234');
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	it('redacts a credential and an address out of the boundary record (Issue #467)', async () => {
+		const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			const res = await probeApp().request('/api/v1/canary');
+			expect(res.status).toBe(500);
+			const body = await bodyText(res);
+			expect(body).not.toContain(CANARY_KEY);
+			expect(body).not.toContain(CANARY_EMAIL);
+			const [, logged] = spy.mock.calls[0] as [string, unknown];
+			const record = JSON.stringify(logged);
+			expect(record).not.toContain(CANARY_KEY);
+			expect(record).not.toContain(CANARY_EMAIL);
+			// The scope survives, so the operator's grep is unchanged.
+			expect((spy.mock.calls[0] as [string, unknown])[0]).toContain('[boundary]');
 		} finally {
 			spy.mockRestore();
 		}

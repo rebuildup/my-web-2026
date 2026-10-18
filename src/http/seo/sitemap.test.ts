@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { PUBLIC_NAV_ITEMS } from '../../editorial/nav/PublicNav';
-import { PORTFOLIO_SEED } from '../../portfolio/seed';
 import { SLUG_REGEX } from '../../portfolio/schema';
+import { PORTFOLIO_SEED } from '../../portfolio/seed';
 import {
 	SITEMAP_DYNAMIC_ROUTES,
 	SITEMAP_ENTRIES,
@@ -182,8 +182,14 @@ describe('robots.txt', () => {
 		expect(renderRobotsTxt()).toContain(`Sitemap: ${SITEMAP_ORIGIN}/sitemap.xml`);
 	});
 
-	it('disallows the authenticated admin prefix', () => {
-		expect(renderRobotsTxt()).toContain('Disallow: /admin');
+	it('does NOT disallow the noindex admin subtree', () => {
+		// `/admin` is de-indexed by the `robots: noindex` meta the admin
+		// layout declares (Issue #423). A `Disallow` would stop the
+		// crawler before it reads that meta, which leaves the URL
+		// "Indexed, though blocked by robots.txt" — worse than either
+		// pure state. `scripts/check-index-boundary.mjs` enforces this
+		// (`noindex-blocked`).
+		expect(renderRobotsTxt()).not.toMatch(/^Disallow:/m);
 	});
 
 	it('keeps noindex Tool shells crawlable', () => {

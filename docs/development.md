@@ -370,7 +370,24 @@ makes it is expected to state the new measurement, the delta, and what caused
 it. An `exception` is the only mechanism that survives that review on its own
 merits, because the gate itself refuses an unreasoned one.
 
-## Route × quality-gate coverage
+Two workflow gates exist because they answer different questions:
+`lint:ci` (actionlint) owns YAML syntax, and
+[`ci:pins:check`](security/supply-chain-actions-pinning.md) owns the
+Actions supply chain — pinned commit SHAs, least-privilege job
+tokens, and the rule that CI can neither read a secret value nor
+deploy production or publish a Release.
+
+`validate:fast` additionally runs `pnpm run install:scripts:check`,
+the dependency install lifecycle script audit (Issue #474). It fails
+when an installed dependency can execute code during `pnpm install`
+(a `preinstall` / `install` / `postinstall` hook, the implicit
+`node-gyp rebuild` of a package that ships `binding.gyp`, or the
+`prepare` of a git-hosted dependency) that the reviewed policy in
+`quality/install-scripts.json` has no record for, or when that record
+and pnpm's execution allow-list (`pnpm-workspace.yaml`) disagree. See
+[`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
+
+### Route × quality-gate coverage
 
 The published route roster and the quality gates that measure it are
 kept in sync by a cheap gate that runs inside `validate:fast`:
@@ -384,16 +401,6 @@ Adding a route file without a `quality/route-coverage.json` entry fails
 the gate on purpose: the PR must add the route as a gate target, or
 exclude it with a reason for every gate family. See
 [`docs/verification/quality/route-quality-coverage.md`](verification/quality/route-quality-coverage.md).
-
-`validate:fast` additionally runs `pnpm run install:scripts:check`,
-the dependency install lifecycle script audit (Issue #474). It fails
-when an installed dependency can execute code during `pnpm install`
-(a `preinstall` / `install` / `postinstall` hook, the implicit
-`node-gyp rebuild` of a package that ships `binding.gyp`, or the
-`prepare` of a git-hosted dependency) that the reviewed policy in
-`quality/install-scripts.json` has no record for, or when that record
-and pnpm's execution allow-list (`pnpm-workspace.yaml`) disagree. See
-[`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
 
 ## Storybook
 

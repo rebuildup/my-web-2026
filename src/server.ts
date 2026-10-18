@@ -185,6 +185,12 @@ function setCacheHeaders(response: Response, cacheControl: string, vary: boolean
 }
 
 function applyHtmlCachePolicy(request: Request, response: Response): Response {
+	// Same rule as the external boundary: a decision made closer to the
+	// data outranks the default. No current SSR route declares its own
+	// `Cache-Control`, but the invariant is what the docblock above
+	// promises, so keep it enforced here too.
+	if (response.headers.has('cache-control')) return response;
+
 	const { pathname } = new URL(request.url);
 	// Exact-prefix-or-/ so `/administrator` cannot inherit the admin rule,
 	// mirroring how `matchesExternalBoundary` guards `/api/v10`.

@@ -72,7 +72,7 @@ probe は資格情報なしで実行されるため `personal-page` は無認証
 - 誤った方向A: 個人ページが `immutable` になる → 訪問者ごとに違う HTML
   （ヒットカウンタ桁、その訪問者自身のリアクション）が凍結される。
 - 誤った方向B: asset が `no-cache` になる → 訪問のたびに chunk ごとに
-  再検証のラウンドトリップが発生する（#291 が直した的就是ち）。
+  再検証のラウンドトリップが発生する（#291 が直した当のもの）。
 
 検査は静的側（`scripts/cache-policy.test.mjs`）と
 Worker 実測側（`test/integration/cache-policy-matrix.test.ts`）の
@@ -171,12 +171,28 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
 その SHA でビルドされている必要がある。
 マージで base（`31ea9d8`）を取り込んだ `abb9997` の clean ツリーで
 `pnpm run build:production` を実行し、そのまま測定した
-（記録された SHA とビルドは同一）。その後の commit
-（`93b1c50` の本ドキュメントと画像、`179f723` の base 再マージ）が
-`src/` `public/` `cloudflare.config.ts` `vite.config.ts` `migrations/`
-触れていないことは `git diff abb9997 HEAD -- src/ public/ vite.config.ts cloudflare.config.ts migrations/`
-が空であることで確認できる（差分は `package.json` と `docs/` のみ）。
-runtime ツリーを変更した場合は `pnpm run build:production` を再実行してから測り直す。
+（記録された SHA とビルドは同一）。その後の変更は 3 種類だけである:
+`93b1c50` の本ドキュメントと画像、以降の base 再マージ、そして review follow-up での
+`src/server.ts#applyHtmlCachePolicy` への「既存 `Cache-Control` を上書きしない」
+早期 return の復元。この早期 return は**現在のどの SSR ルートも独自の
+`Cache-Control` を宣言していないため送出値を変えない**（docblock が約束していた
+不変条件の回復であり、挙動変更ではない）。
+
+本Issueが所有する他の契約ファイルは `abb9997` 以降変更していない:
+
+```
+git diff abb9997 HEAD -- src/http/reactions/images.ts public/_headers \
+  scripts/_cache-policy.mjs scripts/cache-header-matrix.mjs \
+  scripts/cache-policy.test.mjs scripts/cache-header-matrix.test.mjs \
+  test/integration/cache-policy-matrix.test.ts test/integration/reactions-images.test.ts
+```
+
+は空である。base マージ自体は他の `src/` ファイル（CSRF、tools など）を
+進めているため `git diff abb9997 HEAD -- src/` 全体は空ではないが、
+それらは本Issueの測定対象クラスの `Cache-Control` / validator 契約を
+変更しない。`applyHtmlCachePolicy` の早期 return を含め、
+送出値が変わる変更を入れた場合は `pnpm run build:production` を
+再実行してから測り直す。
 
 **指標（スコア）は出ない。** 速度・転送量・TTFB をこのツールは測らない。
 Lighthouse 導入は #384、release gate 化は #385、Web Vitals 予算は #386 の担当であり、
@@ -210,7 +226,7 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
   Issue が要求する `docs/verification/perf/cache-headers-matrix.png` と同じ場所に置いたが、
   **拡張子のみ `.webp`**。理由は 2 つで、どちらも本Issueの判断である:
   (1) PNG を commit するとリポジトリが肥大する（PNG は 968 KB / WebP は 183 KB）、
-  (2) 既に PNG で著的する意味を持たない画像成果物である。
+  (2) 既に PNG で保存する意味を持たない画像成果物である。
   （本リポジトリに「画像は WebP で行う」という成文の規範は**存在しない**。
   したがってこの選択は規範への準拠ではなく、上記の容量判断によるものである。）
 - 生の数値は上記コマンドで再現でき、`.tmp/cache-headers/matrix.md` に出力される。
@@ -225,7 +241,7 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
   「5 classes measured」）。
 - 否定対照: サーバーを落とした URL を測ると **exit 1**
   （`FAIL nothing was measured: no target of 10 produced a response …`）。
-- 測定ポートは 3000 ではなく **3487** を使用した。同ホストで別の worktree の
+- 測定ポートは 3000 ではなく **3493** を使用した（レポートの `baseUrl` に記録されている）。同ホストで別の worktree の
   `vite preview` が 3000 を掴んでいると、`--base-url` は別ワークツリーの配線を
   測ってしまう（実際、`/api/v1/health` に `Cache-Control` が無い別のビルドを
   測定して FAIL となった）。ポートを明示的に空いているものを選ぶこと。

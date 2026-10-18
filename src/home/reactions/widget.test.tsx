@@ -3,7 +3,13 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { CatalogEntry } from './emoji-catalog';
 import type { HomeReactionsData } from './load';
-import { ReactionsWidget, computeToggleState, deriveSlugFromPicker } from './widget';
+import {
+	REACTION_ERROR_MESSAGES,
+	ReactionsWidget,
+	computeToggleState,
+	deriveSlugFromPicker,
+	describeMutationError,
+} from './widget';
 
 /**
  * ReactionsWidget smoke tests — server-render the disabled state, the
@@ -349,5 +355,28 @@ describe('computeToggleState', () => {
 		});
 		expect(viewerReactions).toEqual(snapshotV);
 		expect(aggregates).toEqual(snapshotA);
+	});
+});
+
+describe('describeMutationError (Issue #456)', () => {
+	it('turns the upstream 429 reason into actionable visitor copy', () => {
+		const message = describeMutationError('rate_limited');
+		expect(message).toBe(REACTION_ERROR_MESSAGES.rate_limited);
+		// The advice must be the retry window the API advertises, not a
+		// bare machine code.
+		expect(message).toContain('1分後');
+		expect(message).not.toContain('rate_limited');
+	});
+
+	it('falls back to the generic failure copy for an unknown or absent reason', () => {
+		expect(describeMutationError('something_new')).toBe(REACTION_ERROR_MESSAGES.upstream_error);
+		expect(describeMutationError(undefined)).toBe(REACTION_ERROR_MESSAGES.upstream_error);
+		expect(describeMutationError(null)).toBe(REACTION_ERROR_MESSAGES.upstream_error);
+	});
+
+	it('every mapped reason resolves to non-empty Japanese copy', () => {
+		for (const reason of Object.keys(REACTION_ERROR_MESSAGES)) {
+			expect(describeMutationError(reason).length).toBeGreaterThan(0);
+		}
 	});
 });

@@ -400,7 +400,11 @@ Strict-Transport-Security: max-age=31536000
   避けるため 1 年で止める。
 - 値は `src/server.ts` の `HSTS_DIRECTIVE` 1 箇所だけが所有する。
   他の場所（テスト・`_headers`・生成スクリプト）に書くと
-  `scripts/check-hsts-policy.mjs` が exit 1 になる。
+  `scripts/check-hsts-policy.mjs` が exit 1 になる。この定数は
+  **export しない**: Cloudflare Worker の entry module は handler 以外を
+  export できず、`export const` にすると workerd が
+  `Incorrect type for map entry 'HSTS_DIRECTIVE'` で起動に失敗する。
+  gate は module の namespace ではなく `src/server.ts` のソース文を読む。
 
 ### 検証（4 層）
 

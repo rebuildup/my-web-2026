@@ -240,8 +240,16 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  * The ramp and the preconditions are documented in
  * `docs/security.md`; `scripts/check-hsts-policy.mjs` fails the build
  * if either directive is added while the audit is unrecorded.
+ *
+ * Deliberately NOT exported: this is the Cloudflare Worker entry
+ * module, and workerd only accepts functions / `ExportedHandler`
+ * objects as module exports. An `export const` here made `vite
+ * preview` (and therefore the E2E gate) fail with
+ * `Incorrect type for map entry 'HSTS_DIRECTIVE'`. The single-source
+ * guarantee is a static property of this file, not a runtime export;
+ * the policy gate reads the declaration from the source text.
  */
-export const HSTS_DIRECTIVE = 'max-age=31536000';
+const HSTS_DIRECTIVE = 'max-age=31536000';
 
 const HSTS_HEADER = 'strict-transport-security';
 

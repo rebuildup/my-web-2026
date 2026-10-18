@@ -49,9 +49,26 @@ function withStaged(files, run) {
 
 const ENTRY = { 'src/server.ts': "export const HSTS_DIRECTIVE = 'max-age=31536000';\n" };
 
+/**
+ * The shipped shape: the Worker entry owns the directive but does not
+ * export it, because workerd only accepts handlers as module exports.
+ */
+const SHIPPED_ENTRY = { 'src/server.ts': "const HSTS_DIRECTIVE = 'max-age=31536000';\n" };
+
 describe('check-hsts-policy — source of truth', () => {
 	it('reads the canonical directive from the Worker entry', () => {
 		withStaged(ENTRY, (root) => {
+			const { directive, violations } = readCanonicalDirective({ root });
+			assert.equal(directive, 'max-age=31536000');
+			assert.deepEqual(violations, []);
+		});
+	});
+
+	it('accepts the shipped non-exported declaration', () => {
+		// The Worker entry cannot export a string: workerd treats every
+		// module export as a handler. The single-source guarantee must
+		// therefore hold without `export`.
+		withStaged(SHIPPED_ENTRY, (root) => {
 			const { directive, violations } = readCanonicalDirective({ root });
 			assert.equal(directive, 'max-age=31536000');
 			assert.deepEqual(violations, []);

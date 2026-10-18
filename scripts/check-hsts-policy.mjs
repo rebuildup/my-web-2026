@@ -133,8 +133,14 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /** The Worker entry — owner of the HSTS delivery policy (Issue #446). */
 const POLICY_FILE = join('src', 'server.ts');
 
-/** The declaration that carries the single canonical directive. */
-const DECLARATION = /export const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
+/**
+ * The declaration that carries the single canonical directive.
+ *
+ * `export` is optional: the Worker entry must not export non-handler
+ * values (workerd rejects them), so the shipped declaration is a plain
+ * `const`. The gate reads source text, not the module namespace.
+ */
+const DECLARATION = /(?:export\s+)?const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
 
 /**
  * A string literal: single-quoted, double-quoted, or a template literal.
@@ -518,7 +524,7 @@ export function readCanonicalDirective({ root = REPO_ROOT } = {}) {
 	const violations = [];
 	if (declared.length === 0) {
 		violations.push(
-			`${POLICY_FILE} declares no \`export const HSTS_DIRECTIVE = '…'\` — the HSTS policy lost its source of truth.`,
+			`${POLICY_FILE} declares no \`const HSTS_DIRECTIVE = '…'\` — the HSTS policy lost its source of truth.`,
 		);
 	}
 	if (declared.length > 1) {

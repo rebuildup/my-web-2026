@@ -29,6 +29,77 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## OAuth / OIDC callback: state and redirect (Issue #444)
+
+The shipped auth config (`src/cloudflare/auth/better-auth.ts`) registers
+the `admin()` and `apiKey()` plugins and **no social provider**. The
+OAuth machinery therefore ships unconfigured: `/api/v1/auth/callback/:id`
+and `/api/v1/auth/sign-in/social` are reachable, but no provider round
+trip can complete, so **no callback can mint a session** on this
+deployment. What an attacker controls is everything in front of that
+stop, and that is what the contract test pins.
+
+Contract: [`src/http/auth/oauth-callback.test.ts`](../src/http/auth/oauth-callback.test.ts).
+
+An untrusted redirect target crosses two gates before a session could
+exist: the project-owned
+[`redirectTargetGuard`](../src/http/security/redirect-guard.ts) mounted
+in front of the handler (Issue #454), and then Better Auth's own origin
+check. Which gate answers is part of the contract, so both are pinned.
+
+| Gate                                   | Rejection signal                                                  |
+| -------------------------------------- | ----------------------------------------------------------------- |
+| `state` missing                         | redirect to `<base>/error?error=state_not_found`                 |
+| `state` unknown / tampered / replayed   | redirect to `<base>/error?error=state_mismatch`                  |
+| `state` cookie absent, for another id, or with a forged signature | same (`state_security_mismatch` is reported as `state_mismatch`) |
+| `state` payload expired                 | `state_mismatch`                                                  |
+| valid `state`, provider not configured   | `oauth_provider_not_found` — the *next* gate, i.e. state passed   |
+| redirect target in query or body that is not an internal path | `400` + `invalid_redirect_target { param, reason, source }`, and no `Location` |
+| `Origin` / `Referer` from another site   | `403` + `INVALID_ORIGIN`                                          |
+| cookie-bearing request with no origin    | `403` + `MISSING_OR_NULL_ORIGIN`                                  |
+
+Three properties are asserted beyond the status codes, because any one
+of them alone would still leave a redirect open:
+
+1. Every callback `Location` stays on the base URL Better Auth resolved
+   for that request. The suite runs without `BETTER_AUTH_URL` (see
+   "Test scope" below), so Better Auth infers the base URL from the
+   request origin — the assertion is *weaker* than production, where the
+   base URL is pinned by the binding (ADR-0014), never stronger.
+2. A guard rejection carries **no** `Location` header at all, and its
+   body names the field, the reason and the source without echoing the
+   value. A `callbackURL` injected on the callback request therefore
+   cannot become the redirect target. The *success*-path redirect target
+   is not observed on this deployment (there is no provider to reach
+   it), so it is not claimed here.
+3. No rejection path sets a session cookie or leaves a `session` row.
+
+Each guard is paired with a positive control, so the suite cannot pass
+by rejecting everything: a correctly bound `state` reaches the provider
+gate instead of the state gate, and a *relative* `callbackURL` passes
+both redirect gates instead of being refused.
+
+One deviation is deliberate and recorded in the test: the pool omits
+`BETTER_AUTH_URL`, so the guard's trusted-origin list is empty there and
+**every** absolute URL is refused — including this origin's own
+(`400`, reason `external_origin`). With the production binding that
+value is trusted and downgraded to its path. The suite pins the
+fail-closed direction, not the pinned-origin production configuration.
+
+Scope note: the callback rejections above all take Better Auth's default
+`${baseURL}/error` branch. A flow started with a validated
+`errorCallbackURL` redirects to that trusted origin instead — a branch
+this suite does not observe, because the fixture never writes `errorURL`
+into the signed state. The chain is still defended at the entry point,
+where an off-origin `errorCallbackURL` is refused.
+
+Fixtures are local only: rows in the workerd test pool's D1 plus a cookie
+signed with the dummy `BETTER_AUTH_SECRETS` binding that
+`vitest.config.ts` declares. No production secret is read, logged, or
+asserted, and no test contacts a real IdP. Response capture from the
+local run:
+[`verification/security/oauth-negative-tests.webp`](verification/security/oauth-negative-tests.webp).
+
 ## API key scope and revocation
 
 The API keys that guard `/api/v1/access/*` and `/api/v1/reactions/*`
@@ -285,6 +356,25 @@ deploy 前のベースライン取得には
 キャッシュポリシー（Issue #291）はいずれも不変。`_headers` には
 一切変更を加えていない（Static Assets は本ポリシーの対象外という
 判断であり、意図的な据え置き）。
+
+## Step-up re-authentication
+
+A live admin session (30-day `session.expiresIn`, ADR-0009 §8) is the
+right precondition for *reading* the admin surface, but not for
+*granting standing authority*: an API key issued at `/admin/keys`
+outlives the session that created it. So that one operation asks the
+operator to re-confenticate their password first (step-up), with a
+five-minute window keyed on the server-resolved session id.
+
+Implementation, the states it distinguishes (`required` / `confirmed`
+/ `expired` / `rejected`), why the grant lives in D1 rather than in a
+signed cookie, and why the refusals the UI branches on travel as
+returned outcomes rather than thrown errors (TanStack Start's
+`ShallowErrorPlugin` drops an `Error` subclass's own properties on the
+wire) are recorded in
+[`security/step-up-authentication.md`](security/step-up-authentication.md).
+Verification runs in the local workerd pool; no production account or
+credential is used.
 
 ## Test scope: local workerd vs real Cloudflare
 

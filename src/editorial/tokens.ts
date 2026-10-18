@@ -138,15 +138,24 @@ export const rawTokens = {
 		// Body / UI default. Noto Sans JP is loaded via Google Fonts
 		// (see src/routes/__root.tsx); the platform Japanese fallback
 		// chain keeps first paint legible if the webfont request stalls.
+		//
+		// The `… Fallback` entry is the metric-compatible face defined
+		// at the top of `src/styles.css` (Issue #485): the SAME local
+		// font the chain already names, scaled so the pre-swap fallback
+		// occupies the same space as the webfont. Without it the swap
+		// re-wrapped rows that sit within ~1% of their wrap threshold
+		// (desktop nav, hero CTAs) and moved everything below them.
 		sans: {
-			value: '"Noto Sans JP", "Hiragino Kaku Gothic ProN", system-ui, sans-serif',
+			value:
+				'"Noto Sans JP", "Noto Sans JP Fallback", "Hiragino Kaku Gothic ProN", system-ui, sans-serif',
 		},
 		// Heading / display tier. Reserved for h1/h2/h3 and any
 		// non-heading element that renders at font-size xl (24px) or
 		// above — applied via :where(h1,h2,h3) in src/styles.css and
 		// explicit `fontFamily: 'heading'` overrides where needed.
 		heading: {
-			value: '"Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", system-ui, sans-serif',
+			value:
+				'"Zen Kaku Gothic New", "Zen Kaku Gothic New Fallback", "Hiragino Kaku Gothic ProN", system-ui, sans-serif',
 		},
 		mono: { value: '"JetBrains Mono", ui-monospace, monospace' },
 	},

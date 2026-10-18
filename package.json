@@ -98,7 +98,6 @@
 		"verify:hsts-screenshot": "node scripts/make-hsts-verification-report.mjs",
 		"verification:write-rate-limit": "node scripts/capture-write-rate-limit-report.mjs",
 		"webhook:fixture:report": "node scripts/webhook-signature-fixture-report.mjs",
-		"webhook:fixture:report": "node scripts/webhook-signature-fixture-report.mjs",
 		"verification:login-rate-limit": "node scripts/capture-login-rate-limit-report.mjs"
 	},
 	"dependencies": {

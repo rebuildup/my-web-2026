@@ -33,6 +33,18 @@
  * this module has zero router dependencies and can be rendered in
  * any React environment (workerd pool, happy-dom, Storybook).
  *
+ * Query-string gating (Issue #467). Pathname gating is not enough
+ * on its own: the route-change tracker forwards the router location
+ * key to GA4, and that key ends with the search string.
+ * `/admin/invitations/accept?token=…` happens to be admin-gated, but
+ * the gate is a prefix match on the pathname, so a public route
+ * carrying a token, an email, or free text in its query would forward
+ * it to a third-party property by default. `stripAnalyticsQuery`
+ * reduces every payload this module emits to the pathname alone. The
+ * initial page_view that `gtag('config', …)` records is the one
+ * remaining path where GA reads the document URL itself — see
+ * `docs/security/log-redaction.md` ("Known limits").
+ *
  * Why a module-level captured value. The root route loader runs on
  * the server during SSR (where `cloudflare:workers` resolves to the
  * real workerd env) and on the client during subsequent
@@ -172,6 +184,27 @@ interface AnalyticsGlobals {
 	dataLayer?: unknown;
 }
 
+/**
+ * Drop the query string and hash from a router location key
+ * (Issue #467).
+ *
+ * The tracker used to forward the location key verbatim, so a
+ * query string reached GA4 as `page_path` / `page_location`. Query
+ * strings are where the project puts things that must not leave the
+ * browser: `/admin/invitations/accept?token=…` carries a single-use
+ * invitation token, and any future public route with `?email=`,
+ * `?q=`, or `?token=` would forward personal data or a credential to
+ * a third-party analytics property by default. The pathname is what
+ * the funnel is measured on; the search string is not.
+ *
+ * Exported for the audit test in `GoogleAnalytics.test.tsx` and
+ * reusable by any future analytics surface.
+ */
+export function stripAnalyticsQuery(locationKey: string): string {
+	const cut = locationKey.search(/[?#]/);
+	return cut === -1 ? locationKey : locationKey.slice(0, cut);
+}
+
 function analyticsGlobals(): AnalyticsGlobals {
 	return globalThis as unknown as AnalyticsGlobals;
 }
@@ -182,15 +215,17 @@ const ADMIN_PATH_PREFIX = '/admin';
 /**
  * Returns the page_view params for a route change.
  *
- * `page_path` is always the router location key. `page_location` and
+ * `page_path` is the location key with the query string and hash
+ * removed (see `stripAnalyticsQuery`). `page_location` and
  * `page_title` are added only when the host exposes `location` /
  * `document` (they always exist in a browser; they do not exist in
  * the workerd test pool).
  */
 function buildPageViewParams(locationKey: string): Record<string, string> {
-	const params: Record<string, string> = { page_path: locationKey };
+	const publicPath = stripAnalyticsQuery(locationKey);
+	const params: Record<string, string> = { page_path: publicPath };
 	if (typeof globalThis.location !== 'undefined') {
-		params.page_location = new URL(locationKey, globalThis.location.href).href;
+		params.page_location = new URL(publicPath, globalThis.location.href).href;
 	}
 	if (typeof globalThis.document !== 'undefined') {
 		params.page_title = globalThis.document.title;

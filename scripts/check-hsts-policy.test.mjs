@@ -58,6 +58,14 @@ describe('check-hsts-policy — source of truth', () => {
 		});
 	});
 
+	it('accepts a non-exported declaration (Worker entries must not export values)', () => {
+		withStaged({ 'src/server.ts': "const HSTS_DIRECTIVE = 'max-age=31536000';\n" }, (root) => {
+			const { directive, violations } = readCanonicalDirective({ root });
+			assert.equal(directive, 'max-age=31536000');
+			assert.deepEqual(violations, []);
+		});
+	});
+
 	it('fails when the declaration is missing', () => {
 		withStaged({ 'src/server.ts': 'export default { fetch() {} };\n' }, (root) => {
 			const { directive, violations } = readCanonicalDirective({ root });

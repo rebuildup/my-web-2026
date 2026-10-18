@@ -830,7 +830,7 @@ function renderReport({ rows, failures, ua, shots }) {
 	return `<!doctype html><html lang="ja"><head><meta charset="utf-8"><style>${REPORT_CSS}</style></head><body>
 <h1>Issue #431 — CJK 禁則処理 / line-break 検証レポート</h1>
 <p class="meta">
-  測定面: <code>${ROUTE}</code> の 07 — CJK line-break セクション（<code>src/editorial/cjk-line-break.tsx</code> × <code>SectionHeading</code> の title / description ＝出荷レシピ）<br>
+  測定面: <code>${ROUTE}</code> の 08 — CJK line-break セクション（<code>src/editorial/cjk-line-break.tsx</code> × <code>SectionHeading</code> の title / description ＝出荷レシピ）<br>
   エンジン: ${htmlEscape(ua)} ／ 測定: ${rows.length} 行（mode × viewport × locale × role）<br>
   計算値: <code>word-break: ${htmlEscape(uniq((r) => r.style.wordBreak))}</code> ／
   <code>line-break: ${htmlEscape(uniq((r) => r.style.lineBreak))}</code> ／

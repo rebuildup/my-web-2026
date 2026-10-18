@@ -149,6 +149,19 @@ describe('redactLogValue — structure', () => {
 		expect(out.ok).toBe(true);
 		expect(JSON.stringify(out)).not.toContain('mk_canary_0000000000');
 	});
+
+	it('keeps an own __proto__ key as redacted data, not as a prototype write', () => {
+		const payload = JSON.parse(
+			'{"__proto__":{"authorization":"Bearer mk_canary_0000000000"},"ok":true}',
+		);
+		const out = redactLogValue(payload) as Record<string, unknown>;
+		expect(Object.getPrototypeOf(out)).toBe(Object.prototype);
+		expect(Object.hasOwn(out, '__proto__')).toBe(true);
+		expect(Object.getOwnPropertyDescriptor(out, '__proto__')?.value).toEqual({
+			authorization: '[redacted]',
+		});
+		expect(JSON.stringify(out)).toContain('"__proto__"');
+	});
 });
 
 describe('redactLogError', () => {

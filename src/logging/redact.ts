@@ -196,7 +196,17 @@ function redactUnknown(value: unknown, depth: number, seen: Set<object>): unknow
 	const keys = Object.keys(value as Record<string, unknown>);
 	for (const key of keys.slice(0, MAX_OBJECT_KEYS)) {
 		const raw = (value as Record<string, unknown>)[key];
-		out[key] = isSensitiveKey(key) ? REDACTED : redactUnknown(raw, depth + 1, seen);
+		// `defineProperty`, not `out[key] = …`: an own `__proto__`
+		// key (which `JSON.parse` produces from an untrusted body)
+		// would otherwise mutate `out`'s PROTOTYPE instead of being
+		// redacted as data, and the field would vanish from the
+		// record the operator reads.
+		Object.defineProperty(out, key, {
+			value: isSensitiveKey(key) ? REDACTED : redactUnknown(raw, depth + 1, seen),
+			enumerable: true,
+			writable: true,
+			configurable: true,
+		});
 	}
 	seen.delete(object);
 	if (keys.length > MAX_OBJECT_KEYS) {

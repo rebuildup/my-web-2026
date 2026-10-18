@@ -292,6 +292,7 @@
 			"api.github.com",
 			"design.google",
 			"developers.google.com",
+			"example.com",
 			"fonts.googleapis.com",
 			"fonts.gstatic.com",
 			"github.com",
@@ -438,6 +439,33 @@
 				"identifier": false,
 				"files": [
 					"src/editorial/structured-data/validate.ts"
+				]
+			},
+			{
+				"url": "https://example.com",
+				"host": "example.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/fixtures/markdown/hostile.md"
+				]
+			},
+			{
+				"url": "https://example.com/frame",
+				"host": "example.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/fixtures/markdown/hostile.md"
+				]
+			},
+			{
+				"url": "https://example.com/safe",
+				"host": "example.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/fixtures/markdown/hostile.md"
 				]
 			},
 			{
@@ -689,6 +717,7 @@
 					"src/contact/channels.json",
 					"src/editorial/nav/route-labels.ts",
 					"src/editorial/structured-data/contract.json",
+					"src/http/outbound-fetch.ts",
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
 					"src/portfolio/components/Markdown.tsx",
@@ -880,6 +909,15 @@
 				]
 			},
 			{
+				"url": "https://www.w3.org/International",
+				"host": "www.w3.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"src/portfolio/fixtures/markdown/technical-article.md"
+				]
+			},
+			{
 				"url": "https://x.com/samuido",
 				"host": "x.com",
 				"kind": "external",
@@ -903,11 +941,14 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://api.github.com/repos/rebuildup/my-web-2026"
+			"https://example.com",
+			"https://example.com/frame",
+			"https://example.com/safe",
+			"https://www.w3.org/International"
 		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [
-			"api.github.com"
+			"example.com"
 		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
@@ -917,12 +958,27 @@
 			{
 				"code": "E004 external-host-added",
 				"severity": "error",
-				"message": "New external host api.github.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+				"message": "New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
 			},
 			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://api.github.com/repos/rebuildup/my-web-2026"
+				"message": "External URL added: https://example.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://example.com/frame"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://example.com/safe"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.w3.org/International"
 			}
 		]
 	}

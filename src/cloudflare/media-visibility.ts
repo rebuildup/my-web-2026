@@ -335,15 +335,6 @@ export function createPublicMediaDelivery(
 export interface PublicMediaKeyListing {
 	/** Publicly servable (and approved) keys, in listing order. */
 	keys: string[];
-	/** Objects the walk looked at, public and private alike. */
-	scanned: number;
-	/**
-	 * How many objects were withheld. Deliberately a **count and not
-	 * the withheld key names**: a listing surface that reported the
-	 * names it hid would leak the private key namespace through its own
-	 * audit output.
-	 */
-	withheld: number;
 	/** True when the bucket had more pages than this walk read. */
 	truncated: boolean;
 }
@@ -354,6 +345,16 @@ export interface PublicMediaKeyListing {
  * This is the enumeration-safe counterpart of `R2Bucket.list()`: an
  * object-listing surface that uses it can page the whole bucket and
  * still never emit a private, unapproved, or undeclared key.
+ *
+ * The result deliberately carries **no scan count and no withheld
+ * count**. A listing callback receives a `prefix` chosen by its
+ * caller; if that caller forwards a visitor-supplied prefix, a count
+ * of "objects the walk saw" or "objects it hid" answers whether a
+ * guessed key exists — the same existence oracle a refused 404
+ * avoids, delivered as a number instead of a key. Audit counters are
+ * therefore **not part of this return value**: an operator that needs
+ * them counts out of band against a prefix it controls, never on the
+ * response path.
  */
 export async function listPublicMediaKeys(
 	source: MediaObjectLister,
@@ -362,27 +363,18 @@ export async function listPublicMediaKeys(
 	const limit = opts?.limit ?? 1000;
 	let cursor: string | undefined;
 	let truncated = false;
-	let scanned = 0;
-	let withheld = 0;
 	const keys: string[] = [];
 
 	do {
 		const page = await source.list({ prefix: opts?.prefix, cursor, limit });
 		for (const object of page.objects ?? []) {
-			scanned += 1;
-			if (!isPublicMediaKey(object.key)) {
-				withheld += 1;
-				continue;
-			}
-			if (opts?.isApproved && !(await opts.isApproved(object.key))) {
-				withheld += 1;
-				continue;
-			}
+			if (!isPublicMediaKey(object.key)) continue;
+			if (opts?.isApproved && !(await opts.isApproved(object.key))) continue;
 			keys.push(object.key);
 		}
 		truncated = page.truncated === true;
 		cursor = truncated ? page.cursor : undefined;
 	} while (truncated && cursor);
 
-	return { keys, scanned, withheld, truncated };
+	return { keys, truncated };
 }

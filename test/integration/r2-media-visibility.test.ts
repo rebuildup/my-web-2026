@@ -173,9 +173,10 @@ describe('enumeration — bucket listing leaks nothing', () => {
 		expect(listing.keys).toEqual([PUBLISHED_KEY]);
 		expect(listing.keys).not.toContain(UNPUBLISHED_KEYS[0]);
 		for (const key of PRIVATE_KEYS) expect(listing.keys).not.toContain(key);
-		expect(listing.withheld).toBeGreaterThan(0);
-		// Withheld objects are counted, never named: the audit output
-		// must not become a secondary disclosure channel.
+		// Neither the withheld keys nor a count of them: with a
+		// caller-supplied prefix, "how many were hidden" is an
+		// existence oracle just like the key itself.
+		expect(Object.keys(listing).sort()).toEqual(['keys', 'truncated']);
 		expect(JSON.stringify(listing)).not.toContain('secret.webp');
 		expect(JSON.stringify(listing)).not.toContain('cover-3.webp');
 	});

@@ -223,7 +223,7 @@ describe('createPublicMediaDelivery — gated fetch', () => {
 });
 
 describe('listPublicMediaKeys — enumeration-safe listing', () => {
-	it('returns only public keys and counts withheld objects without naming them', async () => {
+	it('returns only public keys and no withheld or scanned count', async () => {
 		const keys = [
 			'portfolio/aulymo/cover.webp',
 			'portfolio/aulymo/thumb.webp',
@@ -236,10 +236,13 @@ describe('listPublicMediaKeys — enumeration-safe listing', () => {
 		};
 		const listing = await listPublicMediaKeys(lister);
 		expect(listing.keys).toEqual(['portfolio/aulymo/cover.webp', 'portfolio/aulymo/thumb.webp']);
-		expect(listing.scanned).toBe(5);
-		expect(listing.withheld).toBe(3);
-		// The withheld count is a number on purpose: naming the
-		// withheld keys would leak them through the audit output.
+		// The return shape is the contract: a count of scanned or
+		// withheld objects would answer "does this guessed key exist?"
+		// whenever the caller forwards a visitor-supplied prefix.
+		expect(listing).toEqual({
+			keys: ['portfolio/aulymo/cover.webp', 'portfolio/aulymo/thumb.webp'],
+			truncated: false,
+		});
 		expect(JSON.stringify(listing)).not.toContain('secret.webp');
 	});
 
@@ -252,7 +255,7 @@ describe('listPublicMediaKeys — enumeration-safe listing', () => {
 			isApproved: (key) => !key.includes('draft-project'),
 		});
 		expect(listing.keys).toEqual(['portfolio/aulymo/cover.webp']);
-		expect(listing.withheld).toBe(1);
+		expect(listing).not.toHaveProperty('withheld');
 	});
 
 	it('pages through a truncated listing', async () => {
@@ -269,8 +272,7 @@ describe('listPublicMediaKeys — enumeration-safe listing', () => {
 		};
 		const listing = await listPublicMediaKeys(lister);
 		expect(listing.keys).toEqual(['portfolio/a/cover.webp', 'portfolio/b/cover.webp']);
-		expect(listing.scanned).toBe(4);
-		expect(listing.withheld).toBe(2);
 		expect(listing.truncated).toBe(false);
+		expect(Object.keys(listing).sort()).toEqual(['keys', 'truncated']);
 	});
 });

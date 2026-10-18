@@ -85,7 +85,7 @@ const ATTACKS = [
 		'object listing',
 		'bucket.list() をそのまま辿る',
 		'private / 未公開 key が返る（対照実験）',
-		'listPublicMediaKeys は公開 key だけを返し、抑止分は件数のみ',
+		'listPublicMediaKeys は公開 key だけを返す（抑止 key も件数も返さない）',
 	],
 	[
 		'sequential guessing',

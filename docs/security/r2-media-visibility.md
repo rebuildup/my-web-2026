@@ -80,7 +80,7 @@ not the prefix.
 | Portfolio media URL composition | `composeMediaUrl` (`src/portfolio/media.ts`) | yes | `null` → the UI renders its documented placeholder (`media-empty`); the media row and its metadata still load |
 | Reaction image read over HTTP | `getImageStream` (`src/http/reactions/images.ts`) → `GET /api/v1/reaction-images/:id` | yes | `null` → router answers **404** |
 | Object delivery through Worker code | `createPublicMediaDelivery` (`src/cloudflare/media-visibility.ts`) | **no caller today** — modelled for a future Worker-side delivery path | 404, identical value for every refusal |
-| Object listing | `listPublicMediaKeys` (`src/cloudflare/media-visibility.ts`) | **no caller today** — no listing surface over the bucket exists in production | the key is dropped; only a withheld **count** is reported |
+| Object listing | `listPublicMediaKeys` (`src/cloudflare/media-visibility.ts`) | **no caller today** — no listing surface over the bucket exists in production | the key is dropped; neither the key nor a withheld **count** is returned |
 
 Every refusal is a **404, never a 403**, and the refusal value carries
 **no reason code**: `{ status: 404, key }` is returned whether the key
@@ -92,9 +92,13 @@ through instrumentation instead — a refused key never reaches the
 bucket at all, so bucket-read counts separate the cases without the
 response ever doing so.
 
-`listPublicMediaKeys` reports `withheld` as a number and never as key
-names: an audit trail that printed the keys it hid would become a
-second disclosure channel.
+`listPublicMediaKeys` returns only the servable keys and a `truncated`
+flag. It deliberately reports **no scan count and no withheld count**:
+a listing caller receives a `prefix` argument, and when that prefix is
+visitor-supplied, "objects seen" or "objects hidden" answers whether a
+guessed key exists — an existence oracle delivered as a number. Audit
+counters belong in an operator-side tool that runs against a prefix the
+operator controls, never in the public listing response.
 
 The key grammar (`isValidMediaKey`) also lives in this module.
 `src/portfolio/media.ts#isValidR2Key` remains as a portfolio-facing
@@ -122,8 +126,8 @@ Two attack legs run against those objects:
 
 - **Enumeration** — a raw `bucket.list()` does return the private keys
   (that is the control that makes the filter meaningful), while
-  `listPublicMediaKeys` returns only the published key and counts the
-  rest.
+  `listPublicMediaKeys` returns only the published key — the private
+  keys are neither named nor counted.
 - **Sequential guessing** — `sequentialGuessKeys('aulymo', 40)` probes
   `cover-1` … `cover-40`, walking straight over the two unpublished
   objects. Every probe answers 404, and the one published cover in the

@@ -4,7 +4,7 @@
 source と実際の描画結果の左右比較と、判定表を 1 枚にまとめたもの。
 
 Issue は `.png` のパスで指定しているが、**リポジトリに残すのは WebP**
-（幅 1440、quality 72、223,540 bytes ≒ 218 KB）である。Playwright が書けるのは PNG だけなので、
+（幅 1440、quality 80、264,692 bytes ≒ 258 KB）である。Playwright が書けるのは PNG だけなので、
 `node scripts/markdown-format-report.mjs` が出力した HTML を Chromium で撮影し、
 同じ `sharp`（devDependency）で WebP に再エンコードしている。内容は同一で、
 `scripts/security-header-report.mjs` の扱いと同じ方針である。
@@ -18,7 +18,9 @@ Issue は `.png` のパスで指定しているが、**リポジトリに残す�
    同じ画面に写る。
 2. **hostile.md** — `<script>` / `<img onerror>` / `<svg onload>` /
    `<iframe>` / `javascript:` / `data:` / `vbscript:` / `file:` の payload。
-   描画結果は markup として 1 つも現れず、inert なテキストとして画面に出る。
+   raw HTML は markup として 1 つも現れず、inert なテキストとして画面に出る。
+   危険 scheme の link は anchor にならず、理由と拒否 URL を持つ可視の
+   `portfolio-md-link-blocked` marker として出る（Issue #451）。
 3. **判定表** — fixture ごとに 5 項目（inert markup / href scheme /
    行の欠落なし / locale 属性なし / 文字の置換なし）の PASS/FAIL と計測値。
 

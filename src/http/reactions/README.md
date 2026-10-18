@@ -86,15 +86,24 @@ content-addressed by SHA-256 hash, so safe to cache forever).
 
 ## Errors
 
+Boundary validation is owned by `src/http/validation.ts`; see
+[`docs/security/input-validation.md`](../../../docs/security/input-validation.md)
+for the full contract. Every rejection below carries `{ error, reason }`.
+
 | Status | Body | Cause |
 | --- | --- | --- |
-| 400 | `invalid_body` | malformed body (`reason` is a repo-authored validator message) |
-| 400 | `missing_target` / `invalid_target` | `?target=` missing or too long |
-| 400 | `invalid_actor_id` | `?actor_id=` fails the validator |
+| 400 | `invalid_body` | malformed body, or a `target_key` / `actor_id` / `kind` / `value` outside its grammar |
+| 400 | `missing_target` | `?target=` absent |
+| 400 | `invalid_target` / `invalid_actor_id` | query value outside its grammar (e.g. too long) |
+| 400 | `invalid_query` | the same query name supplied more than once (parameter pollution) |
+| 400 | `invalid_id` | `:id` does not match `[A-Za-z0-9_-]{1,64}` |
 | 401 | `missing_authorization` / `invalid_api_key` | auth failed |
 | 403 | `missing_scope` | key lacks the required scope |
 | 404 | `not_found` | image id not in the library |
-| 422 | `unknown_image_id` | `kind: "image"` referenced an id that is not in the library |
+| 405 | `method_not_allowed` | verb not in `Allow` for this path |
+| 413 | `payload_too_large` | JSON body over `MAX_JSON_BODY_BYTES` (16 KiB) |
+| 415 | `unsupported_media_type` | declared `Content-Type` is not `application/json` / `application/*+json` (a wildcard or an absent header is accepted; `curl --data` sends `application/x-www-form-urlencoded` and is refused — `docs/security/input-validation.md` §4) |
+| 422 | `unknown_image_id` | image-kind reaction referencing an image that does not exist |
 | 429 | `rate_limited` | budget exhausted |
 | 500 | `internal_error` + `request_id` | unexpected failure; redacted (see `docs/security.md`) |
 
@@ -145,10 +154,18 @@ R2 layout: `reactions/{sha256-hex}.{ext}`.
 
 - Allowed content types: `image/png`, `image/jpeg`, `image/webp`,
   `image/gif`. SVG excluded for MVP (active content risk).
+- The declared type must agree with the **magic bytes** of the body;
+  a text / HTML / ZIP / SVG payload renamed to `.png` is refused
+  (`unrecognized_signature`, `content_type_mismatch`, `svg_not_allowed`).
+- Client-supplied file names are validated (no separator, no `..`, no
+  control character, ≤255 bytes) but never stored and never part of the
+  R2 key — the key is `reactions/{sha256}.{ext}` by construction.
 - Max size: 256 KiB.
 - Content hash (SHA-256) is the dedup key — uploading the same
   bytes twice returns the existing image id.
 - Image GET is public; upload / delete is admin-only.
+
+Full contract, failure codes and verification: [`docs/security/image-upload-guards.md`](../../../docs/security/image-upload-guards.md).
 
 ## Self-consumption from home
 

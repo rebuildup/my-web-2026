@@ -28,7 +28,7 @@
  * Why WebP and not PNG: the Issue names a `.png` path, but Playwright can only
  * write PNG and this artefact is a flat UI screenshot that bloats the repo in
  * that format. The capture therefore screenshots into memory and re-encodes it
- * with `sharp` (width <= 1440, WebP quality 72). No intermediate PNG is ever
+ * with `sharp` (width <= 1440, WebP quality 80). No intermediate PNG is ever
  * written to disk.
  */
 
@@ -96,7 +96,7 @@ async function captureReport(reportPath) {
 		const png = await page.screenshot({ fullPage: true });
 		const webp = await sharp(png)
 			.resize({ width: 1440, withoutEnlargement: true })
-			.webp({ quality: 72 })
+			.webp({ quality: 80 })
 			.toBuffer();
 		mkdirSync(dirname(CAPTURE_PATH), { recursive: true });
 		writeFileSync(CAPTURE_PATH, webp);

@@ -276,7 +276,63 @@ metadata (alt / caption / displayOrder) is reachable.
 - `migrations/0007_portfolio.sql` — `portfolio_media` shape
   unchanged.
 
-## Decision 6 — unsupported Markdown degrades to literal text, and locale stays opt-in
+## Decision 6 — untrusted article bodies: one href oracle, one visible refusal
+
+**Status:** Accepted (Issue #451).
+
+**Context.** Article bodies are editor-controlled and, for the
+Notion-sourced material, third-party-controlled. The Markdown lexer
+already refused raw HTML by not parsing it, and already stripped
+non-`http(s)` link targets — but it did so silently, rewriting a
+refused href to `#`. A silently rewritten link is indistinguishable
+from a broken one: the author sees a dead anchor, a reviewer sees
+nothing, and the only trace of an attack attempt is gone.
+
+**Decision.**
+
+- `classifyHref` (`src/portfolio/markdown.lexer.ts`) is the **single
+  href oracle**. `safeHref` / `isExternalHref` are compatibility
+  wrappers over it, so no caller can hold a second opinion about what
+  is safe.
+- Scheme policy: `http:` / `https:` / root-relative / fragment.
+  Control-character and character-reference obfuscation are resolved
+  before the check, and protocol-relative hrefs are resolved and
+  treated as external rather than passed through as internal paths.
+- A refused href renders as an **inert, visible marker**
+  (`portfolio-md-link-blocked`, with `data-blocked-reason` and
+  `data-blocked-href`), never as an anchor. The reasons are an
+  enumerated set (`empty`, `control-character`,
+  `scheme-not-allowed`, `encoded-scheme`, `unparsable`) so the visible
+  error names the actual cause.
+- Notion-derived HTML has exactly one entry point,
+  `sanitizeNotionHtml` (`src/portfolio/markdown.notion.ts`): element
+  and attribute allow lists, active subtrees dropped, URL attributes
+  delegated to `classifyHref`, refusals returned rather than
+  discarded, no exceptions on malformed input.
+
+**Why not a sanitiser library.**
+
+A dependency that parses HTML would bring its own parser, its own
+allow-list, and its own CVE surface into a Worker bundle, to convert
+a shape we do not ingest yet. A ~300-line adapter in the obligation
+that owns the renderer is auditable in review, bounded by design
+(depth + output ceilings), and refuses to throw. Revisit when an
+ingest path actually needs HTML, and prefer promoting one library
+over maintaining a second home-grown parser.
+
+**Why not delete the payload instead of escaping it.**
+
+Escaping keeps the refusal reviewable: the screenshot and the served
+page show the exact payload that was neutralised. Silent deletion
+would also pass "nothing executes" while destroying the evidence.
+
+**Cross-references.**
+
+- `src/portfolio/markdown.lexer.ts` — the oracle.
+- `src/portfolio/markdown.notion.ts` — the HTML adapter.
+- `test/fixtures/markdown-xss-fixtures.ts` — the shared corpus.
+- `docs/security.md` §"Markdown / Notion-derived HTML input boundary".
+## Decision 7 — unsupported Markdown degrades to literal text, and locale stays opt-in
 
 **Status:** Accepted (Issue #435). No behaviour change ships with this
 Decision — it records the contract the safety suite pins.
@@ -311,9 +367,11 @@ runtime.
   changes.** `![alt](url)` splits into the character `!` plus the
   SUPPORTED `[alt](url)` link syntax, so it renders as `!` followed by
   an anchor — `![](url)` renders `!` plus a nameless anchor. No `<img>`
-  is created and the URL still goes through the link policy (external
-  targets get `rel="noopener noreferrer"`, dangerous schemes fall back
-  to `href="#"`). Likewise a line-initial `- [ ] task` consumes the
+  is created and the URL still goes through the link policy. External
+  targets get `rel="noopener noreferrer"`; a dangerous scheme does not
+  become an anchor at all — it renders the visible, inert blocked
+  marker from Decision 6 (`data-blocked-reason` / `data-blocked-href`).
+  Likewise a line-initial `- [ ] task` consumes the
   supported `- ` list marker and renders `<ul><li>[ ] task</li></ul>`;
   only the inline code-span form stays literal. Meaning survives in
   all three cases, but the SHAPE does not, and an operator has to be
@@ -334,14 +392,16 @@ runtime.
   example) must be opted into explicitly by the surface that needs it
   and must arrive under its own ticket — never as a global default.
 
-**Known limitations recorded, not fixed.** Intraword `_` becomes
+**Known limitation recorded, not fixed.** Intraword `_` becomes
 emphasis (CommonMark would not), so a bare `MAX_RETRY_COUNT` renders
 as `MAXRETRYCOUNT`; authors are told to write identifiers in a code
-span, which is byte-exact. A link whose scheme was stripped to `href="#"`
-keeps `target="_blank"`, because classification is by origin. Both are
-pinned by tests so a future fix is a deliberate, visible change, and
-both change how already-published bodies read, which is an owner
-decision rather than a test-suite decision.
+span, which is byte-exact. It is pinned by a test so a future fix is a
+deliberate, visible change, and it changes how already-published
+bodies read, which is an owner decision rather than a test-suite
+decision. (The former "stripped-scheme link keeps `target=_blank`"
+limitation was removed by Decision 6 / Issue #451: a refused href is no
+longer rendered as an anchor with `href="#"`, so there is no dead
+anchor left to inherit the target.)
 
 **Cross-references.**
 

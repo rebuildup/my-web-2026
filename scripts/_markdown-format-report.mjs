@@ -135,6 +135,13 @@ export function markupIsInert(html) {
 export function evaluateContract({ source, html }) {
 	const rendered = String(html ?? '');
 	const text = visibleTextOf(rendered);
+	// Renderer-owned chrome is not article text. Issue #451 renders a
+	// refused href as a visible blocked marker: an aria-hidden glyph and
+	// a reason note. The marker is part of the safety contract (it must
+	// be visible), but it must not count as text the article lost or as
+	// characters the renderer invented. Strip exactly that chrome for
+	// the fidelity checks; `markupIsInert` still inspects the raw markup.
+	const articleText = text.replace(/⛔\s*/g, '').replace(/ — blocked link \([a-z-]+\)/g, '');
 	const tags = tagsOf(rendered);
 	const hrefs = hrefsOf(rendered);
 	const sourceLines = String(source ?? '')
@@ -148,7 +155,7 @@ export function evaluateContract({ source, html }) {
 	const injectedTags = tags.filter((tag) => EXECUTABLE_TAG.test(tag));
 	const handlerTags = tags.filter((tag) => /\son[a-z]+\s*=/i.test(tag));
 	const badHrefs = hrefs.filter((href) => !isInertHref(href));
-	const missingLines = sourceLines.filter((line) => !text.includes(line));
+	const missingLines = sourceLines.filter((line) => !articleText.includes(line));
 	const forbiddenAttributes = [/\slang=/i, /\sdir=/i, /data-locale/].filter((pattern) =>
 		pattern.test(rendered),
 	);
@@ -156,7 +163,7 @@ export function evaluateContract({ source, html }) {
 	// source newline into a space, and that fold is not an invented
 	// character.
 	const sourceCharacters = new Set(`${String(source ?? '').replace(/\s+/g, ' ')}"'\`*-_#>[]()`);
-	const introducedCharacters = [...new Set(text)].filter((ch) => !sourceCharacters.has(ch));
+	const introducedCharacters = [...new Set(articleText)].filter((ch) => !sourceCharacters.has(ch));
 
 	return [
 		{
@@ -170,7 +177,7 @@ export function evaluateContract({ source, html }) {
 		},
 		{
 			id: 'href-scheme',
-			label: 'href が http(s) / 相対 / inert fallback に閉じている',
+			label: 'href が http(s) / 相対 に閉じている',
 			detail:
 				badHrefs.length === 0
 					? `href ${hrefs.length} 件 / 非許可 ${badHrefs.length} 件`

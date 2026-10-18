@@ -55,7 +55,7 @@ Issue は「未確定な推敲を勝手に公開しない」を完了条件に�
 - 将来、日本語の改行禁則のように locale が本質的に必要な機能を入れる場合、それは
   **消費側の surface が明示的に opt-in する**。レンダラが文脈から推測して
   適用することはない。opt-in する機能ごとに別の Issue を立てる。判断の記録は
-  `docs/portfolio/decisions.md` Decision 6。
+  `docs/portfolio/decisions.md` Decision 7。
 
 ## 2. 対応している構文
 
@@ -71,9 +71,12 @@ Issue は「未確定な推敲を勝手に公開しない」を完了条件に�
 | 罫線 | `---` / `***` / `___` | `<hr>` |
 | inline | `**` `*` `_` / `` ` `` / `[text](url)` | `<strong>` / `<em>` / `<code>` / `<a>` |
 
-リンクの URL policy：同一 origin と相対リンクは `target="_self"`、別 origin と
-`http(s)` 以外の scheme は `target="_blank"` + `rel="noopener noreferrer"`。
-`javascript:` / `data:` / `vbscript:` / `file:` は `href="#"` に落ちる。
+リンクの URL policy：同一 origin と相対リンクは `target="_self"`、別 origin の
+`http(s)` は `target="_blank"` + `rel="noopener noreferrer"`。
+`javascript:` / `data:` / `vbscript:` / `file:` は anchor にならない。
+代わりに `<span class="portfolio-md-link-blocked">` として、理由
+（`data-blocked-reason`）と拒否した URL（`data-blocked-href`）を可視の inert
+marker に載せる（Issue #451）。拒否は黙って `#` に書き換えられない。
 
 Raw HTML は**解釈されない**。`<script>` のような入力は `<` と `>` が escape された
 テキストとして画面に出る（削除も変換もされない）。
@@ -116,7 +119,8 @@ fixture 記事（`src/portfolio/fixtures/markdown/technical-article.md`）はこ
 | `![alt](https://example.com/x.png)` | `!<a href="https://example.com/x.png" target="_blank" rel="noopener noreferrer">alt</a>` | `!alt` |
 
 URL は link policy を通る（別 origin は `target="_blank"` + `rel="noopener noreferrer"`、
-危険 scheme は `href="#"`）。安全性は link とまったく同じで、**形だけが違う**。
+危険 scheme は anchor にならず可視の blocked marker になる）。安全性は link と
+まったく同じで、**形だけが違う**。
 alt テキストのない `![](url)` は名前のない anchor になり、reader は「名前のない
 リンク + 余分な `!`」を見る。画像を使うなら未対応であることを本文に書くか、
 code span で囲んで literal text として出すこと。この挙動は suite の
@@ -130,7 +134,7 @@ code span で囲んで literal text として出すこと。この挙動は suit
 数式、取り消し線、4 段以上の見出し、reference link、setext 見出し、定義リスト、
 task list（行頭 / inline の 2 形態）、画像の link 劣化、入れ子リストの段落劣化、
 複数段落の blockquote の分割 — つまり表の全部。`docs/portfolio/decisions.md`
-Decision 6 の「文字のまま残る」という主張と、この表および § 3.1 の例外の主張は、
+Decision 7 の「文字のまま残る」という主張と、この表および § 3.1 の例外の主張は、
 同じ suite が支えている。
 
 ## 4. 既知の limitation（test が固定している挙動）
@@ -145,17 +149,16 @@ CommonMark は単語の途中の `_` を emphasis にしないが、この lexer
 - lexer の意味論を変えると公開済みの本文の表示が変わるため、**owner 判断が必要**。
   #435 では修正せず、挙動を test で固定して記録するだけにしている。
 
-### 4.2 scheme を落とされた link が `target="_blank"` を保持する
+### 4.2 （解消済み）scheme を落とされた link が `target="_blank"` を保持する
 
-`isExternalHref` は origin で分類するため、`href="#"` に落とされた link にも
-`target="_blank"` が残る。安全ではあるが、死んだ link が新しい tab を開くという
-UX 上の問題。`#` を href に持たない link は内部リンク扱いにするのが素直だが、
-これも公開済み本文の表示が変わるため #435 では記録のみ。
+#435 の作業中に Issue #451 が入り、拒否された href は `href="#"` の anchor
+ではなく可視の inert marker として描画されるようになった。`target` を保持する
+dead anchor 自体が存在しないため、この limitation は解消している。
 
 ## 5. 検証の再現手順
 
 ```bash
-# CI fixture（workerd pool、33 ケース）
+# CI fixture（workerd pool、32 ケース）
 pnpm exec vitest run src/portfolio/markdown.safety.test.tsx
 
 # プレビュー（実画面）
@@ -186,4 +189,4 @@ fixture と Storybook とレポートが同じものを読む。表示だけが�
 - `src/portfolio/components/Markdown.tsx` — AST を JSX に歩く唯一の面。
 - `src/portfolio/markdown.safety.test.tsx` — この文書の fixture 級 test。
 - `src/portfolio/markdown.test.tsx` — 単位レベルの AST / 描画 test。
-- `docs/portfolio/decisions.md` Decision 6 — locale opt-in と未対応構文の判断。
+- `docs/portfolio/decisions.md` Decision 7 — locale opt-in と未対応構文の判断。

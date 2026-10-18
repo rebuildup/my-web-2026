@@ -53,9 +53,15 @@ function tagsIn(html: string): string[] {
 	return html.match(/<[^>]*>/g) ?? [];
 }
 
-/** Every `href` value in a markup string, in document order. */
+/**
+ * Every `href` value in a markup string, in document order.
+ *
+ * The leading whitespace keeps this from matching `data-blocked-href=`,
+ * which records a REFUSED target on the inert marker and is not an
+ * anchor target.
+ */
 function hrefsIn(html: string): string[] {
-	return [...html.matchAll(/href="([^"]*)"/g)].map((match) => match[1]);
+	return [...html.matchAll(/\shref="([^"]*)"/g)].map((match) => match[1]);
 }
 
 /** Every anchor in a markup string, with the two link-policy attributes. */
@@ -156,20 +162,28 @@ describe('markdown safety: dangerous input never becomes executable', () => {
 		expect(text).toContain('引用の中の <script>alert(2)</script> も inert。');
 	});
 
-	it('resolves every anchor to http(s), relative, or the inert fallback', () => {
+	it('renders no refused target as an anchor and shows the refusal instead', () => {
 		const anchors = anchorsIn(html);
 		expect(anchors.length).toBeGreaterThan(0);
-		const stripped = anchors.filter((anchor) => anchor.href === '#');
-		// javascript:, JaVaScRiPt:, whitespace-padded javascript:, data: and
-		// vbscript: payloads all collapse onto the same inert fallback.
-		expect(stripped.length).toBeGreaterThanOrEqual(5);
+		// Issue #451: a refused href is not rewritten to a dead `#`
+		// anchor. It becomes an inert `<span class="portfolio-md-link-blocked">`
+		// carrying the reason, so the author and reviewer can see it.
 		for (const anchor of anchors) {
-			expect(
-				anchor.href === '#' ||
-					anchor.href.startsWith('/') ||
-					/^https:\/\/example\.com\//.test(anchor.href),
-			).toBe(true);
+			expect(anchor.href.startsWith('/') || /^https:\/\/example\.com\//.test(anchor.href)).toBe(
+				true,
+			);
 		}
+		const blocked = tagsIn(html).filter((tag) => /portfolio-md-link-blocked/.test(tag));
+		// javascript:, JaVaScRiPt:, whitespace-padded javascript:, data:,
+		// vbscript: and file: payloads all become visible blocked markers.
+		expect(blocked.length).toBeGreaterThanOrEqual(6);
+		for (const marker of blocked) {
+			expect(/data-blocked-reason="[a-z-]+"/.test(marker)).toBe(true);
+			expect(/data-blocked-href="/.test(marker)).toBe(true);
+			expect(marker.startsWith('<span')).toBe(true);
+		}
+		// The refusal is visible prose, not a silent disappearance.
+		expect(visibleText(html)).toContain('blocked link (scheme-not-allowed)');
 	});
 
 	it('classifies the surviving links by origin', () => {
@@ -186,16 +200,6 @@ describe('markdown safety: dangerous input never becomes executable', () => {
 		expect(internal).toHaveLength(1);
 		expect(internal[0].target).toBe('_self');
 		expect(internal[0].rel).toBe('');
-	});
-
-	it('keeps the external target on a stripped link — a known limitation', () => {
-		// `isExternalHref` classifies by origin, so a link whose scheme was
-		// stripped still inherits `target="_blank"` next to its `href="#"`.
-		// Recorded in docs/portfolio/markdown-format.md § 4.2; pinned here
-		// so a follow-up fix is a visible change to this test.
-		const stripped = anchorsIn(html).filter((anchor) => anchor.href === '#');
-		expect(stripped.length).toBeGreaterThan(0);
-		expect(stripped.every((anchor) => anchor.target === '_blank')).toBe(true);
 	});
 
 	it('escapes markup inside a fenced code block instead of parsing it', () => {
@@ -360,7 +364,7 @@ describe('markdown safety: image syntax degrades into a link, not literal text',
 	// Image syntax is the one unsupported construct that does NOT stay
 	// literal: the parser splits `![alt](url)` into the character `!` plus
 	// the SUPPORTED `[alt](url)` link syntax. docs/portfolio/decisions.md
-	// Decision 6 and docs/portfolio/markdown-format.md § 3.1 record this
+	// Decision 7 and docs/portfolio/markdown-format.md § 3.1 record this
 	// exception; this suite is what makes the recorded shape true.
 	it('keeps the "!" and renders the bracketed part as a link', () => {
 		const internal = render('![図](/media/a.png)');
@@ -381,10 +385,13 @@ describe('markdown safety: image syntax degrades into a link, not literal text',
 		expect(anchorsIn(external)).toEqual([
 			{ href: 'https://example.com/x.png', target: '_blank', rel: 'noopener noreferrer' },
 		]);
-		// The degradation changes the shape, never the safety.
+		// The degradation changes the shape, never the safety. A refused
+		// image target is a visible blocked marker, not an anchor.
 		const hostile = render('![x](javascript:alert(1))');
-		expect(hrefsIn(hostile)).toEqual(['#']);
-		expect(anchorsIn(hostile)[0]?.target).toBe('_blank');
+		expect(hrefsIn(hostile)).toEqual([]);
+		expect(anchorsIn(hostile)).toEqual([]);
+		expect(hostile).toContain('portfolio-md-link-blocked');
+		expect(visibleText(hostile)).toContain('blocked link (scheme-not-allowed)');
 	});
 });
 

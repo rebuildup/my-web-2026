@@ -1,8 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { createElement } from 'react';
-import { escapeInline, isExternalHref, parseMarkdown, safeHref } from './markdown.lexer';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { describe, expect, it } from 'vitest';
 import { PortfolioMarkdown, renderInline } from './components/Markdown';
+import {
+	BLOCKED_LINK_CLASS,
+	classifyHref,
+	escapeInline,
+	isExternalHref,
+	parseMarkdown,
+	safeHref,
+} from './markdown.lexer';
 
 /**
  * Tests for the minimal Markdown renderer (Issue #77).
@@ -25,6 +32,8 @@ describe('markdown: helpers', () => {
 		expect(isExternalHref('https://rebuildup.dev/foo', origin)).toBe(false);
 		expect(isExternalHref('https://example.com/x', origin)).toBe(true);
 		expect(isExternalHref('javascript:alert(1)', origin)).toBe(true);
+		// An empty href is malformed, not off-site.
+		expect(isExternalHref('', origin)).toBe(false);
 	});
 
 	it('safeHref strips javascript: scheme', () => {
@@ -34,6 +43,21 @@ describe('markdown: helpers', () => {
 		expect(safeHref('data:text/html,<script>', origin)).toBe('#');
 		expect(safeHref('https://example.com', origin)).toBe('https://example.com/');
 		expect(safeHref('/x', origin)).toBe('/x');
+	});
+
+	it('classifyHref is the oracle both wrappers read (Issue #451)', () => {
+		const origin = 'https://rebuildup.dev';
+		// A wrapper that disagreed with the oracle would let the
+		// renderer and the callers disagree about what is safe.
+		const blocked = classifyHref('javascript:alert(1)', origin);
+		expect(blocked.outcome).toBe('blocked');
+		expect(safeHref('javascript:alert(1)', origin)).toBe('#');
+
+		const allowed = classifyHref('https://example.com/x', origin);
+		expect(allowed).toMatchObject({ outcome: 'allowed', external: true });
+		expect(safeHref('https://example.com/x', origin)).toBe(
+			allowed.outcome === 'allowed' ? allowed.href : '#',
+		);
 	});
 });
 
@@ -127,10 +151,16 @@ describe('markdown: rendering (React)', () => {
 		expect(html).not.toContain('target="_blank"');
 	});
 
-	it('strips javascript: links to a # anchor', () => {
+	it('renders a javascript: link as a visible blocked marker, not an anchor', () => {
+		// Issue #451: a refused target must be visible. Rewriting it to
+		// `<a href="#">` hid the refusal behind a dead link.
 		const html = render('[click](javascript:alert(1))');
-		expect(html).not.toContain('javascript:');
-		expect(html).toMatch(/href="#"/);
+		expect(html).toContain(BLOCKED_LINK_CLASS);
+		expect(html).toContain('blocked link (scheme-not-allowed)');
+		expect(html).not.toContain('<a ');
+		// The boundary matters: `data-blocked-href="javascript:…"` is inert text,
+		// so the pattern must not read the `href=` inside its name.
+		expect(html).not.toMatch(/(?:^|[\s<])href="\s*javascript:/i);
 	});
 
 	it('hides empty source (renders nothing)', () => {

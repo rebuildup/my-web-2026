@@ -13,7 +13,12 @@
  *
  *   - Raw HTML is **not** parsed — the renderer never reads HTML.
  *     Markdown bodies in seed data cannot carry `<script>` /
- *     `<iframe>` / arbitrary attributes.
+ *     `<iframe>` / arbitrary attributes. The React wrapper escapes
+ *     every text node, so a `<script>` in the source reaches the
+ *     DOM as visible text (`&lt;script&gt;`), never as markup.
+ *     Notion-derived HTML has no such guarantee, so it never
+ *     reaches this lexer unfiltered: `markdown.notion.ts` is the
+ *     adapter that converts it to Markdown first (Issue #451).
  *   - Tables, images, footnotes, HTML-entity decoding beyond
  *     `&amp; / &lt; / &gt; / &quot; / &#39;`, definition lists,
  *     task lists, math, etc. — not part of Portfolio bodies today.
@@ -21,19 +26,28 @@
  *   - No CommonMark line-compatibility edge cases (e.g. setext
  *     headings, reference links).
  *
- * External link policy (decided at render time):
+ * External link policy (decided at render time, Issue #451):
  *   - Anchors that target the same origin are rendered as
  *     `<a href="…" target="_self" rel="">`.
- *   - Anchors that target a different origin (or use a non-`http(s)`
- *     scheme) are rendered with
+ *   - Anchors that target a different origin are rendered with
  *     `target="_blank" rel="noopener noreferrer"`.
  *   - Schemes limited to `http:` / `https:` / relative.
- *     `javascript:`, `data:`, `file:`, `vbscript:` are stripped
- *     to `#` (no XSS path through `[click](javascript:...)`).
+ *     `javascript:`, `data:`, `file:`, `vbscript:` and anything
+ *     that only *looks* relative (entity-encoded or control-char
+ *     obfuscated schemes) are **blocked**, not rewritten to `#`.
+ *     The renderer turns a blocked href into a visible, inert
+ *     marker so the author can see the rejection instead of
+ *     clicking a dead `#`. `classifyHref` is the single oracle;
+ *     `safeHref` / `isExternalHref` are thin wrappers kept for
+ *     callers that only need the old boolean/string shape.
  *
  * Cross-references:
  *   - `docs/portfolio/decisions.md` Decision 5 — markdown is part
  *     of the foundation obligation.
+ *   - `docs/security.md` §"Markdown / Notion-derived HTML input
+ *     boundary" — the input contract this module implements.
+ *   - `src/portfolio/markdown.xss-fixtures.ts` — the accepted /
+ *     rejected corpus both test layers assert against.
  *   - `src/portfolio/components/Markdown.tsx` — the React wrapper
  *     that walks this AST and renders to JSX.
  */
@@ -86,30 +100,220 @@ export function escapeInline(s: string): string {
 	return s.replace(/[&<>"']/g, (ch) => SAFE_INLINE_ESCAPES[ch] ?? ch);
 }
 
-export function isExternalHref(href: string, siteOrigin: string): boolean {
-	if (!href) return false;
-	if (href.startsWith('/') || href.startsWith('#')) return false;
-	try {
-		const u = new URL(href, siteOrigin);
-		if (!ALLOWED_SCHEMES.has(u.protocol)) return true;
-		return u.origin !== siteOrigin;
-	} catch {
-		return true;
-	}
+/**
+ * Why an href was refused. Every reason is a *visible* outcome in the
+ * renderer (`components/Markdown.tsx`), so an operator reviewing the
+ * page can tell "the author linked a blocked URL" apart from "the
+ * renderer dropped something silently".
+ */
+export const BLOCKED_HREF_REASONS = [
+	/** The href was empty / whitespace only. */
+	'empty',
+	/** The href carried C0/DEL controls or Unicode line separators. */
+	'control-character',
+	/** The href carries a scheme other than `http:` / `https:`. */
+	'scheme-not-allowed',
+	/** The href only *looked* schemeless; its decoded form has one. */
+	'encoded-scheme',
+	/** `new URL()` refused the value. */
+	'unparsable',
+] as const;
+
+export type BlockedHrefReason = (typeof BLOCKED_HREF_REASONS)[number];
+
+/**
+ * Class the renderer puts on every refused link.
+ *
+ * Declared here (not in the renderer, and not in the test corpus) so
+ * the render contract, the documentation, and the assertions all
+ * name the same string.
+ */
+export const BLOCKED_LINK_CLASS = 'portfolio-md-link-blocked';
+
+/**
+ * Result of classifying a Markdown link target.
+ *
+ * `blocked` deliberately keeps the ORIGINAL string: the renderer shows
+ * it to the author (escaped, as text) so the rejection is explainable,
+ * and it never becomes an attribute value.
+ */
+export type MarkdownHrefVerdict =
+	| {
+			readonly outcome: 'allowed';
+			/** Normalised href: relative paths stay relative, absolute ones are URL-serialised. */
+			readonly href: string;
+			readonly external: boolean;
+			readonly target: '_self' | '_blank';
+			readonly rel: '' | 'noopener noreferrer';
+	  }
+	| {
+			readonly outcome: 'blocked';
+			readonly reason: BlockedHrefReason;
+			readonly raw: string;
+	  };
+
+/**
+ * ASCII C0 controls + DEL + the Unicode line / paragraph separators.
+ *
+ * A browser strips TAB / LF / CR out of a URL *before* the scheme
+ * parser runs, so `java\tscript:alert(1)` navigates as
+ * `javascript:alert(1)`. Refusing the whole value is both safer and
+ * more honest than relying on the browser to normalise it.
+ *
+ * U+0020 (space) is deliberately NOT in this set: browsers percent-
+ * encode it rather than dropping it, so it is not an obfuscation
+ * vector and blocking it would refuse legitimate hrefs.
+ */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point — the pattern is the deny-list.
+const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F-\u009F\u2028\u2029]/;
+
+/** `scheme:` per RFC 3986 §3.1, restricted to what a link may carry. */
+const EXPLICIT_SCHEME = /^[a-zA-Z][a-zA-Z0-9+.-]*:/;
+
+/**
+ * Numeric character references plus the handful of named references
+ * that can spell a scheme or a control character (`&#58;`, `&colon;`,
+ * `&Tab;`, …).
+ *
+ * React escapes `&` when it writes an attribute, so the DOM value the
+ * browser sees is the RAW string. This decoder is therefore a
+ * defence-in-depth check, not the primary defence: it catches the
+ * value *before* it is written, and it also covers the non-React
+ * consumers of this module (migration tooling, exports). Unknown
+ * entities are left literal — a literal `&foo;` in a URL is an
+ * ordinary path character.
+ */
+const NAMED_ENTITIES: Readonly<Record<string, string>> = {
+	amp: '&',
+	apos: "'",
+	colon: ':',
+	gt: '>',
+	lt: '<',
+	nbsp: ' ',
+	NewLine: '\n',
+	quot: '"',
+	semi: ';',
+	sol: '/',
+	Tab: '\t',
+};
+
+// The body MUST stay a capturing group: the replacer receives it as
+// `p1`, and a non-capturing alternative would hand the callback the
+// match OFFSET instead of the entity body.
+const ENTITY_PATTERN = /&((?:#\d{1,7}|#[xX][0-9a-fA-F]{1,6}|[a-zA-Z][a-zA-Z0-9]{1,31}));?/g;
+
+/**
+ * Decode HTML character references. Used for CLASSIFICATION ONLY —
+ * the emitted href is derived from the decoded value because that is
+ * what a browser would navigate to.
+ */
+export function decodeHtmlEntities(value: string): string {
+	return value.replace(ENTITY_PATTERN, (match, body: string) => {
+		if (body.startsWith('#')) {
+			const codePoint =
+				body[1] === 'x' || body[1] === 'X'
+					? Number.parseInt(body.slice(2), 16)
+					: Number.parseInt(body.slice(1), 10);
+			if (!Number.isFinite(codePoint) || codePoint <= 0 || codePoint > 0x10ffff) return match;
+			try {
+				return String.fromCodePoint(codePoint);
+			} catch {
+				return match;
+			}
+		}
+		const decoded = NAMED_ENTITIES[body] ?? NAMED_ENTITIES[body.toLowerCase()];
+		return decoded ?? match;
+	});
 }
 
-/** Normalise href so it only carries http/https/relative. */
-export function safeHref(href: string, siteOrigin: string): string {
-	const trimmed = href.trim();
-	if (!trimmed) return '#';
-	if (trimmed.startsWith('/') || trimmed.startsWith('#')) return trimmed;
-	try {
-		const u = new URL(trimmed, siteOrigin);
-		if (ALLOWED_SCHEMES.has(u.protocol)) return u.toString();
-	} catch {
-		// fall through
+/**
+ * The single oracle for "may this href become an anchor target?".
+ *
+ * Order matters: emptiness, then control characters (both on the raw
+ * value and after entity decoding), then the same-origin fast path,
+ * then `new URL()` resolution against the site origin.
+ *
+ * Protocol-relative hrefs (`//host/path`) are resolved rather than
+ * passed through: they leave the site origin, so they must inherit
+ * the external-link policy (`target=_blank rel=noopener noreferrer`)
+ * instead of masquerading as an internal path.
+ */
+export function classifyHref(raw: string, siteOrigin: string): MarkdownHrefVerdict {
+	const original = typeof raw === 'string' ? raw : '';
+	const trimmed = original.trim();
+	if (trimmed === '') return { outcome: 'blocked', reason: 'empty', raw: original };
+	if (CONTROL_CHARACTERS.test(trimmed)) {
+		return { outcome: 'blocked', reason: 'control-character', raw: original };
 	}
-	return '#';
+
+	const value = decodeHtmlEntities(trimmed);
+	if (CONTROL_CHARACTERS.test(value)) {
+		return { outcome: 'blocked', reason: 'control-character', raw: original };
+	}
+
+	if (value.startsWith('#')) return allowed(value, siteOrigin, false);
+	if (value.startsWith('/') && !value.startsWith('//')) return allowed(value, siteOrigin, false);
+
+	const resolved = resolveAbsolute(value, siteOrigin);
+	if (resolved.outcome === 'blocked') {
+		// A schemeless-looking raw value that decodes into a scheme is
+		// the entity-encoding bypass (`javascript&#58;…`); report it as
+		// its own reason so the visible error names the real cause.
+		if (resolved.reason === 'scheme-not-allowed' && !EXPLICIT_SCHEME.test(trimmed)) {
+			return { outcome: 'blocked', reason: 'encoded-scheme', raw: original };
+		}
+		return resolved;
+	}
+	return resolved;
+}
+
+function allowed(href: string, siteOrigin: string, external: boolean): MarkdownHrefVerdict {
+	return {
+		outcome: 'allowed',
+		href,
+		external,
+		target: external ? '_blank' : '_self',
+		rel: external ? 'noopener noreferrer' : '',
+	};
+}
+
+function resolveAbsolute(value: string, siteOrigin: string): MarkdownHrefVerdict {
+	let url: URL;
+	try {
+		url = new URL(value, siteOrigin);
+	} catch {
+		return { outcome: 'blocked', reason: 'unparsable', raw: value };
+	}
+	if (!ALLOWED_SCHEMES.has(url.protocol)) {
+		return { outcome: 'blocked', reason: 'scheme-not-allowed', raw: value };
+	}
+	return allowed(url.toString(), siteOrigin, url.origin !== siteOrigin);
+}
+
+/**
+ * `true` when the href leaves the site origin.
+ *
+ * A blocked href counts as external: it is definitely not something
+ * this site should own. An EMPTY href does not — it is a malformed
+ * link, not an off-site one.
+ */
+export function isExternalHref(href: string, siteOrigin: string): boolean {
+	const verdict = classifyHref(href, siteOrigin);
+	if (verdict.outcome === 'allowed') return verdict.external;
+	return verdict.reason !== 'empty';
+}
+
+/**
+ * Normalise href so it only carries http/https/relative.
+ *
+ * Blocked hrefs collapse to `#` so no caller can smuggle a dangerous
+ * value into an attribute. The renderer does NOT use this for
+ * rendering — it renders the blocked marker from `classifyHref`
+ * instead, so the rejection stays visible.
+ */
+export function safeHref(href: string, siteOrigin: string): string {
+	const verdict = classifyHref(href, siteOrigin);
+	return verdict.outcome === 'blocked' ? '#' : verdict.href;
 }
 
 function parseBlocks(input: string): MarkdownBlock[] {

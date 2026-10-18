@@ -53,6 +53,10 @@ export const Route = createFileRoute('/admin')({
 	// which is the whole failure `scripts/_index-boundary.mjs` exists to
 	// prevent. That trade is the contract's, and the `noindex-blocked`
 	// violation fails the build if the two are ever paired.
+	//
+	// Issue #418's public-route head gate asserts both halves of this
+	// policy on `/admin/login`: the document declares `robots: noindex`
+	// and declares no canonical.
 	head: () => ({
 		meta: [{ name: 'robots', content: 'noindex, nofollow' }],
 	}),

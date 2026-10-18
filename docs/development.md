@@ -323,12 +323,30 @@ exist:
 - `pnpm run e2e:prod` runs `e2e/prod-smoke.spec.ts` against the
   canonical production URL `https://rebuildup.dev` (Issue #43 /
   ADR-0014). Operator-initiated only — never gated by regular CI.
+  In Smoke #2 (`pnpm run e2e:prod`, POST-deploy) it also registers the
+  five representative routes (`/`, `/about`, `/portfolio`, `/tools`,
+  `/api/v1/health`) and checks each one's HTTP response, short
+  navigation path, and documented default state, read-only. Smoke #1
+  (`pnpm run e2e:prod:transition`) skips them: it runs PRE-merge, while
+  production still serves the previous `main` build and the registry is
+  release-branch data.
+- `pnpm run e2e:prod:local` runs the same spec file against the LOCAL
+  preview build (`http://127.0.0.1:3000`), so the Issue #500
+  representative-route contract is reproducible offline. It builds the
+  working tree first and forces the localhost origin even if the parent
+  shell exported a production `PLAYWRIGHT_BASE_URL`; the Issue #43
+  canonical-origin group (which hardcodes the canonical origin, including
+  the one deliberate write, the anonymous reaction mutation) skips itself
+  in local mode, and subresource requests to any other origin are aborted
+  before navigation.
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
 pnpm run e2e             # run smoke.spec.ts; auto-starts pnpm dev locally
 # Production smoke (Issue #43 / ADR-0014):
 pnpm run e2e:prod        # runs prod-smoke.spec.ts against https://rebuildup.dev
+# Offline rehearsal of the Issue #500 representative-route contract:
+pnpm run e2e:prod:local  # same spec file against http://127.0.0.1:3000
 ```
 
 The E2E suite asserts the four public surfaces documented in
@@ -338,6 +356,19 @@ The E2E suite asserts the four public surfaces documented in
 - `GET /api/v1/health` (200, `{status:'ok',...}`)
 - `GET /api/v1/db/ping` (200, `{one:1,...}` against the D1 binding)
 - `GET /api/v1/media/ping` (404, `key_not_found` against the R2 binding)
+`playwright.config.ts` ignores every `prod-*.spec.ts` when
+`PLAYWRIGHT_BASE_URL` points at localhost, so `pnpm run e2e` can never
+reach the canonical production origin. The single documented exception is
+`pnpm run e2e:prod:local`, which builds first, sets
+`E2E_LOCAL_PROD_SMOKE=1`, and forces the base URL to localhost. The
+production representative-route
+contract is DATA in `scripts/prod-smoke-routes.mjs`; its pass/fail
+classifier `auditRoute()` is unit-tested offline by
+`scripts/prod-smoke-routes.test.mjs` (wired into `pnpm run test`), so the
+smoke logic is verified without a network, without workerd, and without a
+browser. Each observation carries the final (post-redirect) origin and
+pathname, and the classifier rejects either kind of drift, so a route that
+answered from another host cannot pass as a healthy canonical origin.
 
 ## Bundle map (Issue #483)
 
@@ -405,6 +436,35 @@ Run them:
 ```bash
 pnpm test
 ```
+
+## Public-route head metadata gate
+
+Issue #418 added a gate over the `<head>` of every public route:
+title / description / canonical for the indexable surface, a
+`noindex` policy for `/admin/*`, a no-canonical policy for 404
+documents, and a query-free canonical for search-query URLs.
+
+```bash
+# CI gate (runs inside `pnpm run validate:fast` via `pnpm test`):
+pnpm exec vitest run test/integration/seo-head.test.ts
+
+# Point the same policy at any origin (dev server, vite preview, …):
+pnpm run seo:head:check -- --live http://localhost:5173
+pnpm run seo:head:check -- --live http://localhost:5173 --html .tmp/seo-head-report.html
+
+# Regenerate the verification screenshot:
+pnpm run verify:seo-head-screenshot
+```
+
+The policy lives in `scripts/seo-head-contract.mjs`; the CI test and
+the `--live` CLI are two front-ends over that one engine. The route
+inventory is the framework's own route tree, so a new route without
+description / canonical metadata fails the gate instead of quietly
+passing (the root layout's fallback title means a route that forgot
+its own title is caught as a duplicate title, not as a missing one).
+A request that errored is a finding too — an unfetched route is never
+a pass. Details and the last report are in
+`docs/verification/seo/head-metadata-check.md`.
 
 ## Generated artefacts
 

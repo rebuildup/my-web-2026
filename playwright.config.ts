@@ -14,6 +14,8 @@ import { defineConfig, devices } from '@playwright/test';
  *      contract against the **built** Tool artifact.
  *   5. `e2e/csrf.spec.ts` — boundary CSRF contract over real HTTP
  *      (same-origin write accepted, cross-site write refused).
+ *   6. `e2e/admin-authorization.spec.ts` — admin route / API-key scope
+ *      matrix in a real browser (Issue #441).
  *
  * The webServer block below spins up `pnpm preview` (= `vite preview`
  * against `dist/client/`) automatically when `PLAYWRIGHT_BASE_URL`

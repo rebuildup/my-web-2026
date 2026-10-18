@@ -183,7 +183,7 @@ const CASES: readonly MatrixCase[] = [
 			body: JSON.stringify({ key: 'home page', session_id: ACTOR }),
 		},
 		status: 400,
-		code: 'invalid_body',
+		code: 'invalid_key',
 	},
 	{
 		group: 'body',
@@ -197,7 +197,7 @@ const CASES: readonly MatrixCase[] = [
 			body: JSON.stringify({ key: 'home-page', session_id: `a${String.fromCharCode(0)}b` }),
 		},
 		status: 400,
-		code: 'invalid_body',
+		code: 'invalid_session_id',
 	},
 	{
 		group: 'body',

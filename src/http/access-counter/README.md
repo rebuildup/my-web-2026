@@ -17,18 +17,30 @@ Both routes require a Better Auth api-key (`Authorization: Bearer …`).
 Boundary validation is owned by `src/http/validation.ts`; see
 [`docs/security/input-validation.md`](../../../docs/security/input-validation.md).
 Every rejection below carries `{ error, reason }` and is produced
-before any D1 statement runs.
+before any D1 statement runs. The field-specific codes
+(`invalid_key` / `invalid_session_id`) are the ones shipped since
+Issue #457 — Issue #450 only moved them behind the boundary layer and
+guaranteed that a grammar violation can no longer escape as a `500`.
 
 | Status | Body | Cause |
 |--------|------|-------|
-| 400 | `invalid_body` | `POST` body is not a JSON object, is not JSON, or a field is outside its grammar (e.g. `key` with a space or a control character) |
-| 400 | `invalid_key` | `:key` path segment outside the counter-key grammar |
+| 400 | `invalid_body` | `POST` body is not a JSON object, is not JSON, or a field is outside its type / length bound (e.g. `key` empty or over 256) |
+| 400 | `invalid_key` | `key` (body field or `:key` path segment) contains whitespace / control characters, or the `:key` segment is empty or over 256 |
+| 400 | `invalid_session_id` | `session_id` contains whitespace / control characters |
 | 401 | `missing_authorization` / `invalid_api_key` | auth failed |
-| 403 | `missing_scope` | key lacks the required scope |
+| 403 | `missing_scope` | key lacks `access_counter:read` / `access_counter:write` |
 | 405 | `method_not_allowed` | verb not in `Allow` (`POST` on `/hit`, `GET` on `/count/:key`) |
 | 413 | `payload_too_large` | JSON body over `MAX_JSON_BODY_BYTES` (16 KiB) |
 | 415 | `unsupported_media_type` | declared `Content-Type` is not `application/json` / `application/*+json` (a wildcard or an absent header is accepted; `curl --data` sends `application/x-www-form-urlencoded` and is refused — `docs/security/input-validation.md` §4) |
 | 429 | `rate_limited` | budget exhausted |
+| 500 | `internal_error` + `request_id` | unexpected failure; redacted (see `docs/security.md`) |
+
+The 400 codes are also the answer to input the zod schema cannot
+express: `HitInput` bounds `key` / `session_id` length but not their
+character set, and `validateCounterKey` / `validateSessionId` reject
+whitespace and control characters. Since Issue #457 that rejection is
+a 400 with a stable code, not an unhandled throw that reached the
+global error handler as a 500.
 
 ### POST /hit
 

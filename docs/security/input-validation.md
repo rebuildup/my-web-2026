@@ -13,7 +13,7 @@
 | 軸          | ガード                        | 定義済みレスポンス                                    |
 |-------------|-------------------------------|-------------------------------------------------------|
 | size        | `MAX_JSON_BODY_BYTES` (16 KiB) | `413 payload_too_large`                              |
-| format      | endpoint schema module の `validate*` | `400` + endpoint 固有コード（`invalid_body` / `invalid_key` / …） |
+| format      | endpoint schema module の `validate*` | `400` + endpoint 固有コード（`invalid_key` / `invalid_session_id` / `invalid_target` / …） |
 | protocol    | `Content-Type` / HTTP verb    | `415 unsupported_media_type` / `405 method_not_allowed` |
 | type        | Zod schema                    | `400 invalid_body`                                   |
 
@@ -51,7 +51,7 @@ route の middleware 順は `requireApiKey` → `rateLimit*` → `jsonBody(...)`
 
 | Method + Path                     | 検証軸           | 不正入力時の応答                                              |
 |-----------------------------------|------------------|--------------------------------------------------------------|
-| `POST /api/v1/access/hit`         | body             | `415` / `413` / `400 invalid_body`                          |
+| `POST /api/v1/access/hit`         | body             | `415` / `413` / `400 invalid_body` / `invalid_key` / `invalid_session_id` |
 | `PUT /api/v1/reactions`           | body             | `415` / `413` / `400 invalid_body`                          |
 | `DELETE /api/v1/reactions`        | body             | `415` / `413` / `400 invalid_body`                          |
 | `GET /api/v1/reactions`           | query            | `400 missing_target` / `invalid_target` / `invalid_actor_id` / `invalid_query` |
@@ -61,6 +61,10 @@ route の middleware 順は `requireApiKey` → `rateLimit*` → `jsonBody(...)`
 
 - `invalid_query` … 同一名が複数回指定された HTTP parameter pollution
   （`?target=a&target=b`）。どちらの値を正とするか実装層で割れる前に 400 にする。
+- `invalid_key` / `invalid_session_id` … Zod が表現できない**文法**違反
+  （空白・制御文字）。Issue #457 で公開済みのコードであり、#450 でハンドラから
+  boundary middleware へ移動しただけで、コード自体は変えていない。schema module は
+  `BoundaryInputError(code, message)` を投げることでコードを選べる。
 - 認証・rate limit の応答（`401 missing_authorization` / `401 invalid_api_key` /
   `403 missing_scope` / `429 rate_limited`）は本 Issue の変更対象外。
 - `GET /api/v1/auth/*` は Better Auth の handler が own するため対象外。
@@ -81,8 +85,14 @@ route の middleware 順は `requireApiKey` → `rateLimit*` → `jsonBody(...)`
 
 | 変更前                                                              | 変更後                          |
 |---------------------------------------------------------------------|---------------------------------|
-| `key` に空白を含む `POST /access/hit` → **500 internal_error**         | `400 invalid_body`              |
+| `key` に空白を含む `POST /access/hit` → **500 internal_error**         | `400 invalid_key`               |
+| `session_id` に制御文字を含む `POST /access/hit` → **500 internal_error** | `400 invalid_session_id`   |
 | `:key` に空白を含む `GET /access/count/:key` → **500 internal_error** | `400 invalid_key`               |
+
+形式违反のコード（`invalid_key` / `invalid_session_id`）は `release-0-6-3` で
+Issue #457 が公開したものがそのまま維持される。#450 が変えたのは応答が `500` だった
+という事実と、boundary middleware への集約であって、コード名ではない。
+Zod が表現できる型・長さ違反は `400 invalid_body` のまま。
 
 **同じステータス / コードのまま意味が変わったもの**:
 

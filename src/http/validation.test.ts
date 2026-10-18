@@ -1,7 +1,9 @@
 import { Hono } from 'hono';
 import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
+import { parseHitBody } from './access-counter/schema';
 import {
+	BoundaryInputError,
 	MAX_JSON_BODY_BYTES,
 	declaredBodyBytes,
 	formatIssues,
@@ -110,6 +112,55 @@ describe('parseBoundaryInput', () => {
 		};
 		const result = parseBoundaryInput('invalid_body', explode, undefined);
 		expect(result.ok).toBe(false);
+	});
+
+	it('lets a validator pick its own stable code', () => {
+		const thrower = (): string => {
+			throw new BoundaryInputError('invalid_key', 'key must not contain whitespace');
+		};
+		const result = parseBoundaryInput('invalid_body', thrower, 'any');
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.failure).toEqual({
+			status: 400,
+			code: 'invalid_key',
+			reason: 'key must not contain whitespace',
+		});
+	});
+});
+
+describe('parseHitBody', () => {
+	// The published codes of `POST /api/v1/access/hit`: a type / length
+	// problem is `invalid_body`, a character-grammar problem keeps the
+	// field-specific code shipped on `release-0-6-3` (Issue #457).
+	// Both are defined 400s — none of them may escape as a 500.
+	const grammar = (value: unknown, code: string) => {
+		const result = parseBoundaryInput('invalid_body', parseHitBody, value);
+		expect(result.ok).toBe(false);
+		if (result.ok) throw new Error('unreachable');
+		expect(result.failure.status).toBe(400);
+		expect(result.failure.code).toBe(code);
+	};
+
+	it('accepts a well-formed body', () => {
+		expect(
+			parseBoundaryInput('invalid_body', parseHitBody, {
+				key: 'home-page',
+				session_id: 'session-1',
+			}),
+		).toEqual({ ok: true, value: { key: 'home-page', session_id: 'session-1' } });
+	});
+
+	it('answers invalid_body for type and length', () => {
+		grammar({ key: 42, session_id: 'session-1' }, 'invalid_body');
+		grammar({ key: 'home-page' }, 'invalid_body');
+		grammar({ key: 'x'.repeat(257), session_id: 'session-1' }, 'invalid_body');
+		grammar({ key: 'home-page', session_id: 'y'.repeat(257) }, 'invalid_body');
+	});
+
+	it('answers the field-specific codes for a grammar violation', () => {
+		grammar({ key: 'home page', session_id: 'session-1' }, 'invalid_key');
+		grammar({ key: 'home-page', session_id: `a${String.fromCharCode(0)}b` }, 'invalid_session_id');
 	});
 });
 

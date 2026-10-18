@@ -94,11 +94,35 @@ function failure(code: string, reason: string, status: 400 | 413 | 415 = 400): B
 }
 
 /**
+ * A validator rejection that carries its own stable error code.
+ *
+ * One endpoint can need more than one code on the same axis:
+ * `POST /api/v1/access/hit` answers `invalid_body` for a type or
+ * length problem and `invalid_key` / `invalid_session_id` for a
+ * character-grammar problem. Those field-specific codes shipped on
+ * `release-0-6-3` (Issue #457) and are part of the published
+ * contract, so a schema module may still choose the code by throwing
+ * this instead of a bare `Error`. Issue #450 removed the unhandled
+ * throw (which escaped as a `500`); it does not rename the codes.
+ */
+export class BoundaryInputError extends Error {
+	readonly code: string;
+
+	constructor(code: string, message: string) {
+		super(message);
+		this.name = 'BoundaryInputError';
+		this.code = code;
+	}
+}
+
+/**
  * Run an untrusted value through a boundary validator.
  *
  * Zod schemas are checked through `safeParse`; a throwing `validate*`
  * function is invoked inside a try/catch. Both shapes produce the same
- * defined 400 — a format violation must never escape as a 500.
+ * defined 400 — a format violation must never escape as a 500. A
+ * validator that throws `BoundaryInputError` chooses its own stable
+ * code; any other throw is attributed to the `code` argument.
  */
 export function parseBoundaryInput<T>(
 	code: string,
@@ -109,9 +133,10 @@ export function parseBoundaryInput<T>(
 		try {
 			return { ok: true, value: validator(value) };
 		} catch (err) {
+			const codeFromValidator = err instanceof BoundaryInputError ? err.code : code;
 			return {
 				ok: false,
-				failure: failure(code, err instanceof Error ? err.message : String(err)),
+				failure: failure(codeFromValidator, err instanceof Error ? err.message : String(err)),
 			};
 		}
 	}

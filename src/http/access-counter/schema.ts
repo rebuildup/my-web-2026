@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { formatIssues } from '../validation';
+import { BoundaryInputError, formatIssues } from '../validation';
 
 /**
  * Access counter — types + validators (Ticket F, branch 38).
@@ -75,12 +75,19 @@ export interface HitInputValue {
  * one of them: `HitInput` covers **type** + coarse size, and the
  * `validate*` functions cover **format** (no whitespace / control
  * characters). This throws on rejection; the boundary turns the throw
- * into the defined `400 invalid_body` envelope
- * (`src/http/validation.ts#jsonBody`).
+ * into the defined `400` envelope (`src/http/validation.ts#jsonBody`).
  *
  * Before Issue #450 the router called `validateCounterKey` /
  * `validateSessionId` outside any try/catch, so a body carrying a
  * space in `key` escaped as a `500 internal_error`.
+ *
+ * **Codes.** A rejection the zod schema can express (wrong type,
+ * `key` empty or over `MAX_COUNTER_KEY_LEN`) answers `invalid_body`.
+ * The grammar rejections that the schema cannot express keep the
+ * field-specific codes published on `release-0-6-3` (Issue #457):
+ * `invalid_key` and `invalid_session_id`. Issue #450 changed *when*
+ * and *how* they are answered (always `400`, never an escaping
+ * throw), not which code a caller sees.
  */
 export function parseHitBody(body: unknown): HitInputValue {
 	if (!body || typeof body !== 'object') {
@@ -91,9 +98,31 @@ export function parseHitBody(body: unknown): HitInputValue {
 		throw new Error(formatIssues(parsed.error));
 	}
 	return {
-		key: validateCounterKey(parsed.data.key),
-		session_id: validateSessionId(parsed.data.session_id),
+		key: counterKeyField(parsed.data.key),
+		session_id: sessionIdField(parsed.data.session_id),
 	};
+}
+
+/** `key` past the zod length bound: `invalid_key`, not `invalid_body`. */
+function counterKeyField(key: string): string {
+	try {
+		return validateCounterKey(key);
+	} catch (err) {
+		throw new BoundaryInputError('invalid_key', message(err));
+	}
+}
+
+/** `session_id` past the zod length bound: `invalid_session_id`. */
+function sessionIdField(sessionId: string): string {
+	try {
+		return validateSessionId(sessionId);
+	} catch (err) {
+		throw new BoundaryInputError('invalid_session_id', message(err));
+	}
+}
+
+function message(err: unknown): string {
+	return err instanceof Error ? err.message : String(err);
 }
 
 export interface AccessCounterRow {

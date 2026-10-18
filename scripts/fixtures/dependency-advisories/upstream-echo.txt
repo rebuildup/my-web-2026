@@ -1,0 +1,5 @@
+ERR_PNPM_AUDIT_NON_JSON   Unexpected response from the advisory endpoint
+  registry: https://registry.npmjs.org
+  note: an upstream endpoint that echoes a token-shaped string must never
+        have it copied into a CI log or a 90-day artifact
+  echoed: npm_fixtureTokenValueThatMustNotBeCopied0123456789

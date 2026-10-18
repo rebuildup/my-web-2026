@@ -16,10 +16,21 @@
 - 画像 CLS 回帰の証跡（Issue #486）— `portfolio_media` の予約枠契約
 - Lazy media / iframe の遅延ロード契約（Issue #487）— 初回 Home の未要求 asset
 
+#483（bundle map）の記録は節ではなく別ファイル
+[`bundle-map.md`](./bundle-map.md) / `bundle-map.webp` にある。
+
 
 ---
 
 ## 画像 CLS 回帰の証跡（Issue #486）
+
+> このディレクトリの証跡は 1 Issue 1 ファイルが基本だが、索引になるものは各 README に置く。
+> 本ファイルは Issue #486（画像 CLS）の証跡で、同ディレクトリの
+> [`bundle-map.md`](./bundle-map.md)（Issue #483: client bundle map =
+> route 依存 / 重複 chunk / Tool 分離）と
+> [`large-list-pagination.md`](./large-list-pagination.md)
+> はそれぞれ Issue 本文と PR body が canonical。ファイル名は
+> `docs/verification/perf/<topic>.{md,webp}` の形で Issue 名に依存しない。
 
 `images-cls-fixture.webp` は Issue #486 が要求するスクリーンショットであり、
 `/design-system` の `07 — Image` セクションで実測した**ブラウザ / CI レポート**である。

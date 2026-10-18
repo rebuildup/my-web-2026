@@ -443,7 +443,7 @@ second HTML path is a review failure, not a style preference.
 
 - Renderer level: `src/portfolio/markdown.security.test.tsx` and
   `src/portfolio/markdown.notion.test.tsx` over the shared corpus in
-  `src/portfolio/markdown.xss-fixtures.ts`.
+  `test/fixtures/markdown-xss-fixtures.ts`.
 - Worker level: `test/integration/markdown-xss-ssr.test.ts` drives
   `GET /portfolio/<fixture>` through `SELF.fetch` with the corpus in a
   D1 row, and asserts over the served `<article>` region.

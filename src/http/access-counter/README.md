@@ -12,6 +12,25 @@ access counter. Built in Ticket F (branch 38; see ADR-0012).
 
 Both routes require a Better Auth api-key (`Authorization: Bearer …`).
 
+### Errors
+
+| Status | Body | Cause |
+|--------|-------|-------|
+| 400 | `invalid_body` | malformed body (`reason` is a repo-authored validator message) |
+| 400 | `invalid_key` | `key` failed `validateCounterKey` (empty, >256, or contains whitespace / control chars) |
+| 400 | `invalid_session_id` | `session_id` failed `validateSessionId` (same rules) |
+| 401 | `missing_authorization` / `invalid_api_key` | auth failed |
+| 403 | `missing_scope` | key lacks `access_counter:read` / `access_counter:write` |
+| 429 | `rate_limited` | budget exhausted |
+| 500 | `internal_error` + `request_id` | unexpected failure; redacted (see `docs/security.md`) |
+
+The 400 codes are also the answer to input the zod schema cannot
+express: `HitInput` bounds `key` / `session_id` length but not their
+character set, and `validateCounterKey` / `validateSessionId` reject
+whitespace and control characters. Since Issue #457 that rejection is
+a 400 with a stable code, not an unhandled throw that reached the
+global error handler as a 500.
+
 ### POST /hit
 
 Request:

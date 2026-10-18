@@ -640,6 +640,16 @@ A redacted transcript of the observed responses is kept at
 
 - Secret scanning: enabled as an asynchronous CI job (see
   `quality/profile.yaml#security_gates.secret_scanning`).
+- Supply-chain SBOM: CycloneDX 1.6, generated from `pnpm-lock.yaml`,
+  `package.json`, `pnpm-workspace.yaml` and `src/tools/manifest.json`
+  by `pnpm run sbom:build`, verified against the live lockfile by
+  `pnpm run sbom:check` inside `validate:fast`. The generator reads no
+  environment credential, no `.dev.vars` file, no Infisical export and
+  no Worker secret value; the gate rejects a document that contains a
+  declared runtime-secret *name* or a credential-shaped value. CI
+  retains the document as the `sbom-<sha>` workflow artifact, and the
+  release attachment step is human-gated. See
+  [`docs/runbook/sbom.md`](runbook/sbom.md).
 - Dependency advisory gate: enabled (Issue #470, see
   `quality/profile.yaml#security_gates.dependency_review`). The
   `Dependency advisory audit` step of the `validate` job checks the
@@ -668,6 +678,83 @@ A redacted transcript of the observed responses is kept at
   guard by `pnpm run security:redirect:report`; the committed image and
   its reading guide are in
   [`docs/verification/security/`](verification/security/).
+
+## Error redaction (Issue #457)
+
+The external HTTP boundary (`src/http/**`) and the public
+server-function surfaces must never answer a client with an internal
+error. "Internal" means: a stack trace or source location, a
+SQL / D1 / R2 message, a table or column name, a binding name, a
+secret or secret binding name, or the text of a caught exception.
+
+### Boundary 5xx contract
+
+`src/http/errors.ts` owns the only redaction path for 5xx responses.
+Every body is exactly:
+
+```json
+{
+  "error": "internal_error" | "service_unavailable",
+  "message": "<repo-authored sentence>",
+  "request_id": "<correlation id>"
+}
+```
+
+The caught error is handed to `console.error` and to nothing else.
+
+| Concern | Contract |
+| --- | --- |
+| Correlation | `request_id` is byte-identical to the `X-Request-Id` response header, and to the id in the internal log line. A client-supplied `X-Request-Id` is reused when it matches `^[A-Za-z0-9._:-]{1,128}$` — the trace-id alphabets in real use (hex, UUID, W3C `traceparent`, dotted service ids) — so a reporter can be traced; anything else (empty, too long, spaces, control characters) is replaced by a freshly minted 128-bit hex id. The charset is not cosmetic: since #457 the id is published in the **body** too, so an unconstrained echo would let any client string ride inside a documented contract field. |
+| Ops probes | `/api/v1/health`, `/api/v1/db/ping` (200) and `/api/v1/media/ping` (404 `key_not_found`) keep their documented bodies, including the `binding` field. Only the **failure** branch changed: the old `{"status":"binding_error","binding":"d1"\|"r2"}` 503 is now the redacted body above. The request path already identifies which probe failed, so no operational signal is lost. |
+| Minting outside `/api/v1/*` | `resolveRequestId` mints an id when the request-id middleware did not run — that is, the `/webhooks`, `/oauth`, and `/integrations` prefixes. None of those prefixes has a handler yet, so the branch is currently unreachable in production; it exists so that a future handler on those prefixes is correct by default rather than by remembering. |
+| Auth | 401 / 403 bodies are unchanged (`missing_authorization`, `invalid_api_key`, `missing_scope`). They carry no server state, and the correlation id is still available through the `X-Request-Id` header. |
+| 4xx bodies | Router-owned rejection bodies may echo a **repo-authored** validator message (a closed set: `kind must be one of: emoji, image`). They never echo an error object, a table name, or a stack. |
+
+Open question (deliberately not decided here): whether the `binding`
+field in the **200 / 404** probe bodies counts as internal
+information. The failure branch no longer publishes it and the success
+branch still does; this record states that fact rather than claiming
+the binding is hidden.
+
+### Server-function surfaces
+
+TanStack Start serialises a thrown handler error into the
+`/_serverFn/*` payload through `ShallowErrorPlugin`, which copies the
+**message**. A raw D1 failure would therefore render
+`D1_ERROR: no such table: …` on a public page.
+
+Two rules cover the public server functions, and which one applies is
+a property of the surface:
+
+| Surface | Rule |
+| --- | --- |
+| `src/portfolio/public.ts` (`project` / `adjacent` / `list`) and `src/about/public.ts` (`about`) | The read **is** the page. A failure throws through `withPublicErrorBoundary` (`src/portfolio/public-errors.ts`): the internal error is logged once with a short `ref`, and the thrown error carries `portfolio_unavailable (ref=…)` — 16 hex chars — instead. `/about` uses the same boundary because its `experience` subset is composed from the same public portfolio rows, so it failed through the same mechanism. |
+| `src/home/reactions/load.ts` (the `/` widget) | The read is an **input** to a widget on a page that must render regardless. Both legs are best-effort: the `reaction_emoji_catalog` read and the upstream `fetch` degrade to an empty catalog / empty aggregate list and log the internal error, so a storage or transport outage costs the widget its content rather than the home page its error screen. The sibling home loaders already worked this way (`getHomeCounter`, `getHomeSystemStatus`, `probeCloudflareHealth`); #457 brought `getHomeReactions` in line. |
+
+### Verification
+
+- Unit: `src/http/errors.test.ts`,
+  `src/portfolio/public-errors.test.ts`, and the degradation cases in
+  `src/home/reactions/load.test.ts`.
+- Local worker: `test/integration/error-redaction.test.ts` drives the
+  real boundary (real middleware, real rate-limit binding, real D1)
+  for accepted, rejected, and failed requests — including a real D1
+  failure produced by dropping the `reactions` table, and injected
+  D1 / R2 binding failures for the 503 branch. The same suite
+  asserts the three rendered public screens through the real SSR
+  pipeline: `/portfolio` and `/about` answer 500 with
+  `portfolio_unavailable (ref=…)` and no D1 marker anywhere in the
+  HTML, and `/` still answers 200 with a degraded reactions widget
+  when `reaction_emoji_catalog` is absent.
+- Screenshot:
+  [`docs/verification/security/error-redaction-page.webp`](verification/security/error-redaction-page.webp),
+  regenerated with `node scripts/capture-error-redaction-report.mjs`
+  (or `pnpm run capture:error-redaction-report`). The page renders the
+  responses the Worker actually produced; it contains no credential.
+  The committed artefact is WebP (width ≤ 1600 px, quality 80) rather
+  than PNG: Playwright cannot write WebP, so the capture script
+  re-encodes the screenshot buffer with the `sharp` devDependency and
+  never writes the intermediate PNG.
 
 ## Search index boundary (robots.txt is not access control)
 

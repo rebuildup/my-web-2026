@@ -287,6 +287,12 @@ describe('the analytics payload carries no owner-unapproved data', () => {
 	}, 30_000);
 
 	it('a route-change page_view reports the route and nothing else', () => {
+		// Deliberately overlaps GoogleAnalytics.client.test.tsx, which
+		// owns the analytics contract. This case re-asserts the same
+		// payload through the privacy vocabulary so the allowlist
+		// cannot drift into a field name this contract would reject;
+		// it is the one test here that does not read a public surface,
+		// and it stays for that reason.
 		__resetCapturedMeasurementIdForTests();
 		captureMeasurementId('G-DUMMYTEST00');
 

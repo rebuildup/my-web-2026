@@ -106,10 +106,11 @@
 		"perf:d1-query-plan:report": "node scripts/d1-query-plan-report.mjs",
 		"perf:fonts:measure": "node scripts/font-first-paint-measure.mjs",
 		"verification:image-upload-guards": "node scripts/capture-image-upload-guards-report.mjs",
-"cache:headers:measure": "node scripts/cache-header-matrix.mjs",
-"e2e:prod:local": "node scripts/run-prod-smoke-local.mjs",
+		"cache:headers:measure": "node scripts/cache-header-matrix.mjs",
+		"e2e:prod:local": "node scripts/run-prod-smoke-local.mjs",
 		"verify:seo-head-screenshot": "node scripts/make-seo-head-verification-report.mjs",
-		"seo:head:check": "node scripts/check-seo-head.mjs"	},
+		"seo:head:check": "node scripts/check-seo-head.mjs"
+	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",
 		"@tanstack/react-router": "^1.168.52",

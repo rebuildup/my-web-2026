@@ -49,6 +49,7 @@
 		"files scripts/upload-portfolio-media.mjs scripts/upload-portfolio-media.mjs",
 		"files scripts/verify-portfolio.mjs scripts/verify-portfolio.mjs",
 		"files src/about/index.ts src/about/index.ts",
+		"files src/external-api/index.ts src/external-api/index.ts",
 		"files src/portfolio/index.ts src/portfolio/index.ts",
 		"files src/routes/design-system/index.ts src/routes/design-system/index.ts",
 		"files src/tools/public.ts src/tools/public.ts",

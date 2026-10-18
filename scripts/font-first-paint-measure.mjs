@@ -52,7 +52,7 @@
  *
  *   --base-url <url>     origin to measure (default http://127.0.0.1:3000)
  *   --out <dir>          artefact directory (default .tmp/font-first-paint)
- *   --routes <list>      comma separated paths (default /,/about)
+ *   --routes <list>      comma separated paths, at least one (default /,/about)
  *   --compare <file>     a previous report.json to diff against (before/after)
  *   --font-delay-ms <n>  per-response font delay in the slow-font scenario
  *   --headed             run Chromium headed (default headless)
@@ -679,12 +679,18 @@ export function parseArgs(argv) {
 		};
 		if (arg === '--base-url') options.baseUrl = next();
 		else if (arg === '--out') options.outDir = next();
-		else if (arg === '--routes')
-			options.routes = next()
+		else if (arg === '--routes') {
+			const routes = next()
 				.split(',')
 				.map((r) => r.trim())
 				.filter(Boolean);
-		else if (arg === '--compare') options.compare = next();
+			// `--routes ,` and `--routes ""` leave nothing to measure. The
+			// loop then never runs and the script still writes a report
+			// and exits 0 — a "completed measurement" with no run in it.
+			// Reject the argument instead of producing that artefact.
+			if (routes.length === 0) throw new Error('--routes requires at least one non-empty route');
+			options.routes = routes;
+		} else if (arg === '--compare') options.compare = next();
 		else if (arg === '--font-delay-ms') {
 			const raw = next();
 			const delay = Number(raw);
@@ -710,7 +716,7 @@ const USAGE = `font-first-paint-measure — Issue #485 first-visit webfont measu
 
   --base-url <url>     origin to measure (default http://127.0.0.1:3000)
   --out <dir>          artefact directory (default .tmp/font-first-paint)
-  --routes <list>      comma separated paths (default /,/about)
+  --routes <list>      comma separated paths, at least one (default /,/about)
   --compare <file>     previous report.json to diff against
   --font-delay-ms <n>  font delay in the slow-font scenario (default ${DEFAULT_FONT_DELAY_MS})
   --headed             run Chromium headed
@@ -724,6 +730,20 @@ function git(args) {
 	} catch {
 		return null;
 	}
+}
+
+/** File name for one run's screenshot.
+ *
+ *  `/` becomes `_` so the name stays readable, which is only safe if the
+ *  route's own underscores are escaped first: `--routes /a/b,/a_b` names
+ *  two distinct routes, and a bare slash-to-underscore rewrite writes
+ *  both captures to `_a_b-<scenario>.png`. The second one overwrites the
+ *  first file while both runs keep pointing at it, so the report would
+ *  show one route's screenshot as another route's evidence. The escaping
+ *  is reversible: `__` decodes to `_`, a lone `_` to `/`. */
+export function screenshotFileName(route, scenarioName) {
+	const stem = route.replaceAll('_', '__').replaceAll('/', '_') || '_root';
+	return `${stem}-${scenarioName}.png`;
 }
 
 /** The face URL a Google Fonts stylesheet points at, or null. */
@@ -1080,7 +1100,7 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir, 
 
 	let screenshot = null;
 	if (options.screenshots) {
-		const file = `${route.replaceAll('/', '_') || '_root'}-${scenario.name}.png`;
+		const file = screenshotFileName(route, scenario.name);
 		await page.screenshot({ path: join(outDir, file), fullPage: false });
 		screenshot = file;
 	}

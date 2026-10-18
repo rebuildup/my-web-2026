@@ -22,6 +22,7 @@ import {
 	parseArgs,
 	renderReportHtml,
 	round3,
+	screenshotFileName,
 	summarizeFontResources,
 } from './font-first-paint-measure.mjs';
 
@@ -184,6 +185,31 @@ describe('font-first-paint-measure — parseArgs', () => {
 		assert.throws(() => parseArgs(['--font-delay-ms', 'abc']), /--font-delay-ms requires/);
 		assert.throws(() => parseArgs(['--font-delay-ms', '-1']), /--font-delay-ms requires/);
 		assert.throws(() => parseArgs(['--font-delay-ms', '']), /--font-delay-ms requires/);
+	});
+
+	it('rejects a route list that leaves nothing to measure', () => {
+		// An empty list ran the loop zero times and still wrote a
+		// report and exited 0 — a "completed measurement" holding no run.
+		assert.throws(() => parseArgs(['--routes', ',']), /--routes requires at least one/);
+		assert.throws(() => parseArgs(['--routes', '']), /--routes requires at least one/);
+		assert.throws(() => parseArgs(['--routes', ' , , ']), /--routes requires at least one/);
+	});
+
+	it('names a screenshot so no two routes can share one file', () => {
+		// `/a/b` and `/a_b` are distinct routes a caller can pass in the
+		// same list. A plain slash-to-underscore rewrite gave both the
+		// same file, so the later capture overwrote the earlier one while
+		// both runs kept pointing at it.
+		assert.notEqual(screenshotFileName('/a/b', 'baseline'), screenshotFileName('/a_b', 'baseline'));
+		assert.equal(screenshotFileName('/a/b', 'baseline'), '_a_b-baseline.png');
+		assert.equal(screenshotFileName('/a_b', 'baseline'), '_a__b-baseline.png');
+	});
+
+	it('keeps the default route file names unchanged', () => {
+		// The committed snapshot's report names these two files, so the
+		// escaping must not touch a route that has no underscore.
+		assert.equal(screenshotFileName('/', 'baseline'), '_-baseline.png');
+		assert.equal(screenshotFileName('/about', 'slow-font'), '_about-slow-font.png');
 	});
 });
 

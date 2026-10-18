@@ -81,7 +81,13 @@ reactionsRouter.put('/', requireApiKey, rateLimitWrite, async (c) => {
 		return c.json({ created: result.created, id: result.id });
 	} catch (err) {
 		if (err instanceof ReactionReferenceError) {
-			return c.json({ error: err.code, reason: err.message }, 422);
+			// Issue #457: `err.message` names the backing table
+			// (`reaction_images`) and echoes the submitted id, so it
+			// is internal schema detail, not a client-facing reason.
+			// The stable code is self-describing and is the whole
+			// public contract; the message stays in the log.
+			console.warn('[http.reactions] image reference rejected', err);
+			return c.json({ error: err.code }, 422);
 		}
 		throw err;
 	}

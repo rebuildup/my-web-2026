@@ -25,6 +25,32 @@ import { parseVersionedSecrets } from '../../cloudflare/auth/better-auth';
  *     (CSRF nonce + PKCE verifier carrier) and the redirect targets.
  *     Those gates are what this file tests, with fake fixtures.
  *
+ * Two gates in front of the handler
+ * ---------------------------------
+ *
+ * An untrusted redirect target is refused twice over, by two owners,
+ * and this suite pins both layers:
+ *
+ *   1. `src/http/security/redirect-guard.ts` (Issue #454) is mounted
+ *      in front of the Better Auth handler, so an untrusted
+ *      `callbackURL` / `redirectTo` / `errorCallbackURL` /
+ *      `newUserCallbackURL` is answered `400
+ *      invalid_redirect_target` and never reaches the handler.
+ *   2. Better Auth's own origin check then sees only what the project
+ *      guard accepted, and refuses a cross-site `Origin` / `Referer`
+ *      with `403 INVALID_ORIGIN` (or `MISSING_OR_NULL_ORIGIN`).
+ *
+ * Which layer answers is part of the contract, so both are asserted.
+ *
+ * Deliberate deviation: `vitest.config.ts` omits the production-only
+ * `BETTER_AUTH_URL` text binding, so the guard's trusted-origin list
+ * is empty in this pool and every absolute URL is refused (fail
+ * closed). In production the binding is `https://rebuildup.dev`
+ * (ADR-0014), so an absolute same-origin target is trusted and
+ * downgraded to its path. This suite therefore pins the fail-closed
+ * direction, not the pinned-origin production configuration. The
+ * accepted form used as positive control is the *relative* target.
+ *
  * Fixtures, not credentials
  * -------------------------
  *
@@ -157,6 +183,8 @@ interface CallbackOptions {
 	state?: string;
 	/** Value of the `better-auth.state` cookie; omit for "no cookie". */
 	cookieState?: string;
+	/** Raw `Cookie` header value, used verbatim (forged-signature case). */
+	rawCookie?: string;
 	/** Extra query parameters appended verbatim to the callback URL. */
 	extraQuery?: Record<string, string>;
 }
@@ -170,7 +198,9 @@ async function fetchCallback(path: string, options: CallbackOptions = {}): Promi
 		url.searchParams.set(key, value);
 	}
 	const headers = new Headers();
-	if (options.cookieState !== undefined) {
+	if (options.rawCookie !== undefined) {
+		headers.set('Cookie', options.rawCookie);
+	} else if (options.cookieState !== undefined) {
 		headers.set('Cookie', `${STATE_COOKIE_NAME}=${await signedStateCookie(options.cookieState)}`);
 	}
 	return SELF.fetch(url.toString(), { redirect: 'manual', headers });
@@ -196,6 +226,38 @@ async function fetchSocialSignIn(
 
 async function jsonBody(response: Response): Promise<{ code?: string; message?: string }> {
 	return (await response.json()) as { code?: string; message?: string };
+}
+
+interface GuardRejection {
+	/** Field the guard refused first. */
+	param: string;
+	/** Stable reason vocabulary from `src/http/security/redirect.ts`. */
+	reason: string;
+	/** Where the value was found. */
+	source: 'query' | 'body';
+}
+
+/**
+ * The project-owned open-redirect guard refuses the request itself:
+ * `400`, a machine-readable body, and **no** `Location` header at all.
+ *
+ * A redirect is the thing being prevented, so its absence is asserted
+ * explicitly rather than inferred from the status code. The body names
+ * the field, the reason and the source, and never echoes the value —
+ * that is also asserted, by exact equality.
+ */
+async function expectGuardRejectedWith(
+	response: Response,
+	expected: GuardRejection,
+): Promise<void> {
+	expect(response.status).toBe(400);
+	expect(response.headers.get('location')).toBeNull();
+	expect(await response.json()).toEqual({
+		error: 'invalid_redirect_target',
+		param: expected.param,
+		reason: expected.reason,
+		source: expected.source,
+	});
 }
 
 /**
@@ -353,14 +415,31 @@ describe('oauth callback — state binding', () => {
 		await expectNoSessionIssued(second);
 	});
 
-	it('ignores a redirect target supplied on the callback request', async () => {
+	it('rejects a forged state cookie even when the server-side row is valid', async () => {
 		const seeded = stateFixture();
 		await seedState(seeded);
 
-		// `callbackURL` on the *callback* request is attacker-controlled
+		// Well-formed value, invalid HMAC: the browser half of the
+		// binding is present but was not signed by this Worker, so it
+		// cannot be trusted to belong to the flow the row describes.
+		const res = await fetchCallback('google', {
+			state: seeded.state,
+			rawCookie: `${STATE_COOKIE_NAME}=${seeded.state}.forged-signature`,
+		});
+
+		await expectCallbackRejectedWith(res, 'state_mismatch');
+		await expectNoSessionIssued(res);
+	});
+
+	it('refuses a redirect target injected on the callback request', async () => {
+		const seeded = stateFixture();
+		await seedState(seeded);
+
+		// `callbackURL` on the **callback** request is attacker-controlled
 		// and is not where the post-sign-in target comes from: that value
-		// lives in the signed state. The rejection must therefore stay on
-		// this origin instead of following the injected host.
+		// lives in the signed state. The boundary refuses the request
+		// before any handler runs, so there is no redirect for a browser
+		// to follow to the attacker's host.
 		const res = await fetchCallback('google', {
 			state: seeded.state,
 			cookieState: seeded.state,
@@ -371,28 +450,40 @@ describe('oauth callback — state binding', () => {
 			},
 		});
 
-		const url = await expectCallbackRejectedWith(res, 'oauth_provider_not_found');
-		expect(url.host).toBe('example.com');
-		expect(res.headers.get('location')).not.toContain('attacker.example');
+		await expectGuardRejectedWith(res, {
+			param: 'callbackURL',
+			reason: 'external_origin',
+			source: 'query',
+		});
 		await expectNoSessionIssued(res);
 	});
 });
 
 describe('oauth entry point — redirect and origin guards', () => {
-	it('accepts a same-origin callbackURL (positive control)', async () => {
-		// Reaching the provider lookup means the origin check passed; the
-		// 404 is the honest answer for a deployment with no provider.
-		const res = await fetchSocialSignIn({ provider: 'google', callbackURL: `${ORIGIN}/admin` });
-
-		expect(res.status).toBe(404);
-		expect((await jsonBody(res)).code).toBe('PROVIDER_NOT_FOUND');
-	});
-
-	it('accepts a relative same-origin callbackURL', async () => {
+	it('accepts a relative callbackURL (positive control)', async () => {
+		// Passing the project guard *and* Better Auth's origin check means
+		// the request reached the provider lookup; the 404 is the honest
+		// answer for a deployment that configures no provider.
 		const res = await fetchSocialSignIn({ provider: 'google', callbackURL: '/admin' });
 
 		expect(res.status).toBe(404);
 		expect((await jsonBody(res)).code).toBe('PROVIDER_NOT_FOUND');
+		await expectNoSessionIssued(res);
+	});
+
+	it('refuses an absolute same-origin callbackURL while BETTER_AUTH_URL is unbound', async () => {
+		// Fail-closed, and observed on purpose. The test pool has no
+		// `BETTER_AUTH_URL`, so the guard's trusted-origin list is empty
+		// and even this origin's own absolute URL is refused. With the
+		// production binding (ADR-0014) the same value is trusted and
+		// downgraded to `/admin`, which this pool cannot represent.
+		const res = await fetchSocialSignIn({ provider: 'google', callbackURL: `${ORIGIN}/admin` });
+
+		await expectGuardRejectedWith(res, {
+			param: 'callbackURL',
+			reason: 'external_origin',
+			source: 'body',
+		});
 	});
 
 	it('rejects an off-origin callbackURL', async () => {
@@ -401,8 +492,12 @@ describe('oauth entry point — redirect and origin guards', () => {
 			callbackURL: 'https://attacker.example/collect',
 		});
 
-		expect(res.status).toBe(403);
-		expect((await jsonBody(res)).code).toBe('INVALID_CALLBACK_URL');
+		await expectGuardRejectedWith(res, {
+			param: 'callbackURL',
+			reason: 'external_origin',
+			source: 'body',
+		});
+		await expectNoSessionIssued(res);
 	});
 
 	it('rejects a protocol-relative callbackURL', async () => {
@@ -413,8 +508,12 @@ describe('oauth entry point — redirect and origin guards', () => {
 			callbackURL: '//attacker.example/collect',
 		});
 
-		expect(res.status).toBe(403);
-		expect((await jsonBody(res)).code).toBe('INVALID_CALLBACK_URL');
+		await expectGuardRejectedWith(res, {
+			param: 'callbackURL',
+			reason: 'protocol_relative',
+			source: 'body',
+		});
+		await expectNoSessionIssued(res);
 	});
 
 	it('rejects an off-origin errorCallbackURL', async () => {
@@ -423,8 +522,12 @@ describe('oauth entry point — redirect and origin guards', () => {
 			errorCallbackURL: 'https://attacker.example/collect',
 		});
 
-		expect(res.status).toBe(403);
-		expect((await jsonBody(res)).code).toBe('INVALID_ERROR_CALLBACK_URL');
+		await expectGuardRejectedWith(res, {
+			param: 'errorCallbackURL',
+			reason: 'external_origin',
+			source: 'body',
+		});
+		await expectNoSessionIssued(res);
 	});
 
 	it('rejects an off-origin newUserCallbackURL', async () => {
@@ -433,8 +536,12 @@ describe('oauth entry point — redirect and origin guards', () => {
 			newUserCallbackURL: 'https://attacker.example/collect',
 		});
 
-		expect(res.status).toBe(403);
-		expect((await jsonBody(res)).code).toBe('INVALID_NEW_USER_CALLBACK_URL');
+		await expectGuardRejectedWith(res, {
+			param: 'newUserCallbackURL',
+			reason: 'external_origin',
+			source: 'body',
+		});
+		await expectNoSessionIssued(res);
 	});
 
 	it('rejects an off-origin redirectTo', async () => {
@@ -443,8 +550,12 @@ describe('oauth entry point — redirect and origin guards', () => {
 			redirectTo: 'https://attacker.example/collect',
 		});
 
-		expect(res.status).toBe(403);
-		expect((await jsonBody(res)).code).toBe('INVALID_REDIRECT_URL');
+		await expectGuardRejectedWith(res, {
+			param: 'redirectTo',
+			reason: 'external_origin',
+			source: 'body',
+		});
+		await expectNoSessionIssued(res);
 	});
 
 	it('rejects a cross-site Origin header', async () => {
@@ -455,6 +566,7 @@ describe('oauth entry point — redirect and origin guards', () => {
 
 		expect(res.status).toBe(403);
 		expect((await jsonBody(res)).code).toBe('INVALID_ORIGIN');
+		await expectNoSessionIssued(res);
 	});
 
 	it('rejects a cross-site Referer when no Origin is sent', async () => {
@@ -465,6 +577,7 @@ describe('oauth entry point — redirect and origin guards', () => {
 
 		expect(res.status).toBe(403);
 		expect((await jsonBody(res)).code).toBe('INVALID_ORIGIN');
+		await expectNoSessionIssued(res);
 	});
 
 	it('rejects a cookie-bearing request with no Origin and no Referer', async () => {
@@ -472,5 +585,6 @@ describe('oauth entry point — redirect and origin guards', () => {
 
 		expect(res.status).toBe(403);
 		expect((await jsonBody(res)).code).toBe('MISSING_OR_NULL_ORIGIN');
+		await expectNoSessionIssued(res);
 	});
 });

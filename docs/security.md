@@ -41,28 +41,57 @@ stop, and that is what the contract test pins.
 
 Contract: [`src/http/auth/oauth-callback.test.ts`](../src/http/auth/oauth-callback.test.ts).
 
+An untrusted redirect target crosses two gates before a session could
+exist: the project-owned
+[`redirectTargetGuard`](../src/http/security/redirect-guard.ts) mounted
+in front of the handler (Issue #454), and then Better Auth's own origin
+check. Which gate answers is part of the contract, so both are pinned.
+
 | Gate                                   | Rejection signal                                                  |
 | -------------------------------------- | ----------------------------------------------------------------- |
 | `state` missing                         | redirect to `<base>/error?error=state_not_found`                 |
 | `state` unknown / tampered / replayed   | redirect to `<base>/error?error=state_mismatch`                  |
-| `state` cookie absent or for another id | same (`state_security_mismatch` is reported as `state_mismatch`) |
+| `state` cookie absent, for another id, or with a forged signature | same (`state_security_mismatch` is reported as `state_mismatch`) |
 | `state` payload expired                 | `state_mismatch`                                                  |
 | valid `state`, provider not configured   | `oauth_provider_not_found` — the *next* gate, i.e. state passed   |
-| `callbackURL` / `redirectTo` / `errorCallbackURL` / `newUserCallbackURL` off-origin | `403` + `INVALID_*` code at the sign-in entry point |
+| redirect target in query or body that is not an internal path | `400` + `invalid_redirect_target { param, reason, source }`, and no `Location` |
 | `Origin` / `Referer` from another site   | `403` + `INVALID_ORIGIN`                                          |
 | cookie-bearing request with no origin    | `403` + `MISSING_OR_NULL_ORIGIN`                                  |
 
-Two properties are asserted beyond the status codes, because either one
-alone would still be an open redirect:
+Three properties are asserted beyond the status codes, because any one
+of them alone would still leave a redirect open:
 
-1. Every callback `Location` stays on the request origin. A
-   `callbackURL` supplied on the **callback request** is ignored — the
-   post-sign-in target comes from the signed state, never from the query
-   string.
-2. No rejection path sets a session cookie or leaves a `session` row.
+1. Every callback `Location` stays on the base URL Better Auth resolved
+   for that request. The suite runs without `BETTER_AUTH_URL` (see
+   "Test scope" below), so Better Auth infers the base URL from the
+   request origin — the assertion is *weaker* than production, where the
+   base URL is pinned by the binding (ADR-0014), never stronger.
+2. A guard rejection carries **no** `Location` header at all, and its
+   body names the field, the reason and the source without echoing the
+   value. A `callbackURL` injected on the callback request therefore
+   cannot become the redirect target. The *success*-path redirect target
+   is not observed on this deployment (there is no provider to reach
+   it), so it is not claimed here.
+3. No rejection path sets a session cookie or leaves a `session` row.
 
-Each guard is paired with a positive control, so the suite cannot pass by
-rejecting everything.
+Each guard is paired with a positive control, so the suite cannot pass
+by rejecting everything: a correctly bound `state` reaches the provider
+gate instead of the state gate, and a *relative* `callbackURL` passes
+both redirect gates instead of being refused.
+
+One deviation is deliberate and recorded in the test: the pool omits
+`BETTER_AUTH_URL`, so the guard's trusted-origin list is empty there and
+**every** absolute URL is refused — including this origin's own
+(`400`, reason `external_origin`). With the production binding that
+value is trusted and downgraded to its path. The suite pins the
+fail-closed direction, not the pinned-origin production configuration.
+
+Scope note: the callback rejections above all take Better Auth's default
+`${baseURL}/error` branch. A flow started with a validated
+`errorCallbackURL` redirects to that trusted origin instead — a branch
+this suite does not observe, because the fixture never writes `errorURL`
+into the signed state. The chain is still defended at the entry point,
+where an off-origin `errorCallbackURL` is refused.
 
 Fixtures are local only: rows in the workerd test pool's D1 plus a cookie
 signed with the dummy `BETTER_AUTH_SECRETS` binding that

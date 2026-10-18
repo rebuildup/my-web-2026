@@ -330,5 +330,5 @@ would also pass "nothing executes" while destroying the evidence.
 
 - `src/portfolio/markdown.lexer.ts` — the oracle.
 - `src/portfolio/markdown.notion.ts` — the HTML adapter.
-- `src/portfolio/markdown.xss-fixtures.ts` — the shared corpus.
+- `test/fixtures/markdown-xss-fixtures.ts` — the shared corpus.
 - `docs/security.md` §"Markdown / Notion-derived HTML input boundary".

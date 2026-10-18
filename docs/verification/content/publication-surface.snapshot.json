@@ -292,8 +292,6 @@
 			"api.github.com",
 			"design.google",
 			"developers.google.com",
-			"example.com",
-			"example.invalid",
 			"fonts.googleapis.com",
 			"fonts.gstatic.com",
 			"github.com",
@@ -440,24 +438,6 @@
 				"identifier": false,
 				"files": [
 					"src/editorial/structured-data/validate.ts"
-				]
-			},
-			{
-				"url": "https://example.com/docs",
-				"host": "example.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/markdown.xss-fixtures.ts"
-				]
-			},
-			{
-				"url": "https://example.invalid/frame",
-				"host": "example.invalid",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/markdown.xss-fixtures.ts"
 				]
 			},
 			{
@@ -922,15 +902,11 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://api.github.com/repos/rebuildup/my-web-2026",
-			"https://example.com/docs",
-			"https://example.invalid/frame"
+			"https://api.github.com/repos/rebuildup/my-web-2026"
 		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [
-			"api.github.com",
-			"example.com",
-			"example.invalid"
+			"api.github.com"
 		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
@@ -943,29 +919,9 @@
 				"message": "New external host api.github.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
 			},
 			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host example.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
 				"message": "External URL added: https://api.github.com/repos/rebuildup/my-web-2026"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.com/docs"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.invalid/frame"
 			}
 		]
 	}

@@ -20,6 +20,13 @@
  * password, or address reached the block. Nothing here reads a
  * secret, a real credential, or a deployed environment.
  *
+ * For the same reason a *failed* suite is reported by exit code only:
+ * a failing assertion (for example the suite's own
+ * `not.toContain(credential)`) makes Vitest print the received value in
+ * its diagnostics, so replaying the child's raw output here would put
+ * exactly the value the capture exists to exclude into stderr and the
+ * CI log. Operators re-run the suite directly when they need details.
+ *
  * The Chromium screenshot is taken as PNG (lossless raster) and then
  * **converted to WebP** before it is committed: the artefact is a flat
  * page of text, which WebP q80 encodes at a fraction of the PNG size
@@ -107,6 +114,24 @@ export function findSecretRow(rows) {
 export function refusalMessage(row) {
 	return `[login-rate-limit] refusing to render row ${row.index} — it matches credential-shaped material (row content not echoed)\n`;
 }
+
+/**
+ * The line printed when the suite exits non-zero.
+ *
+ * The child's stdout/stderr is deliberately **not** replayed: a failing
+ * assertion can echo the received value in Vitest's diagnostics, so
+ * forwarding `output` would leak the credential the suite is proving
+ * stays out of the report. Only the exit code is reported; the operator
+ * can re-run the suite directly to inspect the failure. Exported so the
+ * "no raw output on failure" contract is unit-testable.
+ */
+export function failureMessage(code) {
+	return `[login-rate-limit] the suite exited with code ${code}; raw output withheld (it can echo credential material) — re-run \`pnpm exec vitest run ${TEST_FILE}\` to inspect\n`;
+}
+
+/** Printed when the suite passed but never emitted the measurement block. */
+export const MISSING_MATRIX_MESSAGE =
+	'[login-rate-limit] the suite printed no matrix block; raw output withheld (it can echo credential material)\n';
 
 export function runVitest() {
 	return new Promise((resolvePromise, rejectPromise) => {
@@ -283,15 +308,13 @@ ${body}
 async function main() {
 	const { code, output } = await runVitest();
 	if (code !== 0) {
-		process.stderr.write(output);
-		process.stderr.write('\n[login-rate-limit] the suite failed; artefact not written\n');
+		process.stderr.write(failureMessage(code));
 		return 1;
 	}
 
 	const table = extractTable(output);
 	if (!table) {
-		process.stderr.write(output);
-		process.stderr.write('\n[login-rate-limit] the suite printed no matrix block\n');
+		process.stderr.write(MISSING_MATRIX_MESSAGE);
 		return 1;
 	}
 

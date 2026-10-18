@@ -4,8 +4,10 @@ import {
 	ARTEFACT_ENCODE_OPTIONS,
 	CAPTURE_VIEWPORT,
 	MAX_ARTEFACT_BYTES,
+	MISSING_MATRIX_MESSAGE,
 	OUTPUT,
 	extractTable,
+	failureMessage,
 	findSecretRow,
 	parseCells,
 	parseRows,
@@ -45,6 +47,23 @@ test('artefact contract: committed as WebP under a hard size ceiling', () => {
 	assert.ok(ARTEFACT_ENCODE_OPTIONS.width <= CAPTURE_VIEWPORT.width);
 	assert.equal(ARTEFACT_ENCODE_OPTIONS.quality, 80);
 	assert.ok(MAX_ARTEFACT_BYTES <= 300 * 1024, 'the ceiling must stay at or below 300 KB');
+});
+
+test('a failed suite is reported by exit code only, never by replayed output', () => {
+	// Vitest echoes the received value in a failed assertion's diagnostics,
+	// so forwarding the child's raw output could put the very credential
+	// the guard rejects into stderr / the CI log. The capture reports only
+	// the exit code and withholds the output.
+	const message = failureMessage(1);
+	assert.match(message, /exited with code 1/);
+	assert.match(message, /raw output withheld/);
+	for (const secret of ['mk_home_secretvalue', 'session_token=abc', 'local-fixture-password']) {
+		assert.ok(!message.includes(secret), `no raw output (${secret}) in the failure line`);
+		assert.ok(
+			!MISSING_MATRIX_MESSAGE.includes(secret),
+			`no raw output (${secret}) in the empty-matrix line`,
+		);
+	}
 });
 
 test('rendered legend keeps the throttle prose intact', () => {

@@ -48,6 +48,11 @@ export const Route = createFileRoute('/tools/')({
 			disabled: [...disabled].sort(bySlug),
 		};
 	},
+	// Index boundary (Issue #423): `/tools` is a public, indexable page,
+	// so it declares the same canonical URL the sitemap advertises
+	// (`public/sitemap.xml`, generated from the route inventory). The
+	// per-Tool pages under `/tools/$slug` stay `noindex` — see
+	// `scripts/_index-boundary.mjs` for why they must remain crawlable.
 	head: () => ({
 		meta: [
 			{ title: 'Tools — my-web-2026' },
@@ -55,7 +60,11 @@ export const Route = createFileRoute('/tools/')({
 				name: 'description',
 				content: 'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.',
 			},
+			{ property: 'og:type', content: 'website' },
+			{ property: 'og:title', content: 'Tools — my-web-2026' },
+			{ property: 'og:url', content: 'https://rebuildup.dev/tools' },
 		],
+		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/tools' }],
 	}),
 	component: ToolsIndexRoute,
 });

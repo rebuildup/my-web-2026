@@ -28,6 +28,30 @@ import { Outlet, createFileRoute } from '@tanstack/react-router';
  * this route layout — that gate remains unchanged.
  */
 export const Route = createFileRoute('/admin')({
+	// Index boundary (Issue #423). The admin subtree must never appear
+	// in a search index, and `robots.txt` cannot deliver that: a
+	// `Disallow` stops the crawler before it fetches the document, so
+	// the URL is dropped from the CRAWL, not from the INDEX (Google
+	// then reports it as "Indexed, though blocked by robots.txt"). The
+	// page itself has to say so, and the whole subtree is one layout
+	// route — TanStack Router merges `head().meta` along the matched
+	// route chain (child wins on attribute collision, see
+	// `buildTagsFromMatches` in `@tanstack/react-router`), so this one
+	// declaration covers `/admin`, `/admin/login`, `/admin/keys`,
+	// `/admin/images`, `/admin/invitations`,
+	// `/admin/invitations/accept` and `/admin/emoji-catalog`.
+	//
+	// `nofollow` alongside `noindex` keeps an authenticated admin page
+	// from lending link equity to whatever it renders.
+	//
+	// This is NOT access control and does not replace one: the gate is
+	// still `requireAdmin()` in the child loaders / server functions
+	// (`src/admin/auth/require-admin.ts`). `public/robots.txt` marks the
+	// subtree as `Disallow` purely as crawl hygiene; deleting that file
+	// changes nothing about who can read what.
+	head: () => ({
+		meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+	}),
 	component: AdminLayout,
 });
 

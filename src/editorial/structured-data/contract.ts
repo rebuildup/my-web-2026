@@ -68,7 +68,8 @@ export interface StructuredDataRouteCoverage {
  * proves each entry against the real SSR output — so "not
  * implemented" is a visible state, never a silent pass.
  */
-export const ROUTE_COVERAGE: readonly StructuredDataRouteCoverage[] = CONTRACT.routes;
+export const ROUTE_COVERAGE: readonly StructuredDataRouteCoverage[] =
+	CONTRACT.routes as StructuredDataRouteCoverage[];
 
 /** Build an absolute URL against the canonical origin. */
 export function canonicalUrl(path: string): string {

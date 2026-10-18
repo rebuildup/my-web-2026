@@ -74,7 +74,9 @@ Current dependency direction:
 ```text
 routes -> home
 routes -> portfolio
+routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+about -> editorial (Issue #422 — approved snapshot → `Person` projection; the fact stays owned by `about`)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)

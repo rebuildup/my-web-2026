@@ -1,8 +1,13 @@
 import { env } from 'cloudflare:test';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import {
+	applyPortfolioSchema,
+	clearPortfolioTables,
+	seedPortfolioRow,
+} from '../../test/integration/fixtures/portfolio-d1';
 import { createD1PortfolioLoader, intersectsAny } from './load';
-import { PORTFOLIO_SEED } from './seed';
 import { encodeCursor } from './schema';
+import { PORTFOLIO_SEED } from './seed';
 
 /**
  * Portfolio loader integration tests (Issue #76).
@@ -32,111 +37,16 @@ import { encodeCursor } from './schema';
  *   7. cover media is exposed at `media[0]` with `isCover=true`
  */
 
-const SCHEMA_SQL = `
-CREATE TABLE IF NOT EXISTS portfolio_project (
-    id TEXT PRIMARY KEY, slug TEXT NOT NULL UNIQUE, title TEXT NOT NULL,
-    summary TEXT NOT NULL, role TEXT NOT NULL,
-    period_start INTEGER NOT NULL, period_end INTEGER, period_label TEXT,
-    motivation_md TEXT NOT NULL DEFAULT '', architecture_md TEXT, constraints_md TEXT,
-    implementation_md TEXT, evidence_md TEXT, retrospective_md TEXT,
-    facets TEXT NOT NULL DEFAULT '[]', technologies TEXT NOT NULL DEFAULT '[]',
-    visibility TEXT NOT NULL DEFAULT 'public'
-        CHECK (visibility IN ('public', 'unlisted', 'draft')),
-    status TEXT NOT NULL DEFAULT 'published'
-        CHECK (status IN ('published', 'archived')),
-    pinned INTEGER NOT NULL DEFAULT 0, display_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL, updated_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS portfolio_link (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES portfolio_project(id) ON DELETE CASCADE,
-    kind TEXT NOT NULL
-        CHECK (kind IN ('repo', 'demo', 'release', 'article', 'shop', 'video', 'other')),
-    label TEXT, url TEXT NOT NULL,
-    display_order INTEGER NOT NULL DEFAULT 0, created_at INTEGER NOT NULL
-);
-CREATE TABLE IF NOT EXISTS portfolio_media (
-    id TEXT PRIMARY KEY,
-    project_id TEXT NOT NULL REFERENCES portfolio_project(id) ON DELETE CASCADE,
-    r2_key TEXT NOT NULL, content_type TEXT NOT NULL,
-    width INTEGER, height INTEGER,
-    alt TEXT NOT NULL, caption TEXT,
-    is_cover INTEGER NOT NULL DEFAULT 0, display_order INTEGER NOT NULL DEFAULT 0,
-    created_at INTEGER NOT NULL
-);
-`;
-
 async function applySchema(): Promise<void> {
-	for (const stmt of SCHEMA_SQL.split(';')
-		.map((s) => s.trim())
-		.filter(Boolean)) {
-		await env.DB.prepare(stmt).run();
-	}
+	await applyPortfolioSchema(env.DB);
 }
 
 async function clearTables(): Promise<void> {
-	for (const table of ['portfolio_link', 'portfolio_media', 'portfolio_project']) {
-		await env.DB.prepare(`DELETE FROM ${table}`).run();
-	}
+	await clearPortfolioTables(env.DB);
 }
 
 async function seedOne(slug: string, overrides: Record<string, unknown> = {}): Promise<string> {
-	const id = `t_${slug}`;
-	const now = Date.now();
-	const base = {
-		slug,
-		title: `Test ${slug}`,
-		summary: 'summary',
-		role: 'Solo developer',
-		period_start: now,
-		period_end: null,
-		period_label: null,
-		motivation_md: '',
-		architecture_md: null,
-		constraints_md: null,
-		implementation_md: null,
-		evidence_md: null,
-		retrospective_md: null,
-		facets: '["develop"]',
-		technologies: '["TypeScript"]',
-		visibility: 'public',
-		status: 'published',
-		pinned: 0,
-		display_order: 100,
-		created_at: now,
-		updated_at: now,
-	};
-	const row = { ...base, ...overrides, id };
-	await env.DB.prepare(
-		`INSERT INTO portfolio_project (id, slug, title, summary, role, period_start, period_end, period_label, motivation_md, architecture_md, constraints_md, implementation_md, evidence_md, retrospective_md, facets, technologies, visibility, status, pinned, display_order, created_at, updated_at)
-			 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17, ?18, ?19, ?20, ?21, ?22)`,
-	)
-		.bind(
-			row.id,
-			row.slug,
-			row.title,
-			row.summary,
-			row.role,
-			row.period_start,
-			row.period_end,
-			row.period_label,
-			row.motivation_md,
-			row.architecture_md,
-			row.constraints_md,
-			row.implementation_md,
-			row.evidence_md,
-			row.retrospective_md,
-			row.facets,
-			row.technologies,
-			row.visibility,
-			row.status,
-			row.pinned,
-			row.display_order,
-			row.created_at,
-			row.updated_at,
-		)
-		.run();
-	return id;
+	return seedPortfolioRow(env.DB, slug, overrides);
 }
 
 describe('portfolio — intersectsAny', () => {

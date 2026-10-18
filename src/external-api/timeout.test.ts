@@ -66,7 +66,36 @@ describe('readJson', () => {
 		expect(headers?.has('authorization')).toBe(false);
 		expect(headers?.has('cookie')).toBe(false);
 		expect(headers?.has('proxy-authorization')).toBe(false);
-		expect(headers?.get('accept')).toBe('application/vnd.github+json');
+	});
+
+	it('sends no source-specific content negotiation of its own', async () => {
+		// The transport is adapter-agnostic: `accept` is the upstream's
+		// media type, so it comes from the ADAPTER. A hardcoded GitHub
+		// media type here would leak into every future adapter (the
+		// second source is expected to be Notion).
+		let headers: Headers | undefined;
+		await readJson('https://example.invalid/read', {
+			policy,
+			fetchImpl: async (_url, init) => {
+				headers = new Headers(init?.headers);
+				return jsonResponse({});
+			},
+		});
+		expect(headers?.get('accept')).toBeNull();
+		expect(headers?.get('user-agent')).toBe('my-web-2026-public-metadata-read');
+	});
+
+	it('lets an adapter negotiate its own representation', async () => {
+		let headers: Headers | undefined;
+		await readJson('https://example.invalid/read', {
+			policy,
+			headers: { accept: 'application/vnd.example+json' },
+			fetchImpl: async (_url, init) => {
+				headers = new Headers(init?.headers);
+				return jsonResponse({});
+			},
+		});
+		expect(headers?.get('accept')).toBe('application/vnd.example+json');
 	});
 
 	it('refuses a caller-supplied credential header instead of dropping it silently', async () => {

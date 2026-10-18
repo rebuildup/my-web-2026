@@ -169,7 +169,10 @@ export function resolveReadPolicy(overrides?: Partial<ExternalReadPolicy>): Exte
  * reachable ONLY while no value has ever been read: every settled
  * attempt leaves `loading` for `value` or `degraded`, which is what
  * makes a persistent spinner unrepresentable rather than merely
- * discouraged.
+ * discouraged. That is a property of the SEQUENCER
+ * (`reader.ts` re-enters `loading` only while no value is held), not
+ * of this type: the union keeps `{status:'loading'}` constructible so
+ * a consumer can express the empty state it was handed.
  *
  * The two branches are named interfaces rather than inline members so
  * a caller holding one of them (as every transition returns) can still
@@ -203,9 +206,9 @@ export interface ExternalDegradedSnapshot<T> {
 	readonly reason: ExternalFailureReason;
 	readonly failedAt: string;
 	readonly breaker: ExternalBreakerState;
-	/** Whether an attempt may run now (false while the breaker is open). */
+	/** Whether an attempt may run right now (false while an attempt is refused). */
 	readonly retryable: boolean;
-	/** When the next attempt becomes possible, for a blocked source. */
+	/** When the next attempt becomes possible: open cooldown or retry cadence. */
 	readonly retryAt: string | null;
 }
 
@@ -237,14 +240,26 @@ export interface ExternalAttemptDecision {
 /**
  * May an attempt run right now?
  *
- * Open breaker + cooldown not elapsed -> blocked, and the caller is
- * told exactly when the next probe is due so the UI can state it
- * instead of hiding a button that would do nothing.
+ * Three refusals, and each one names the instant an attempt becomes
+ * possible again so the caller can state it instead of hiding a button
+ * that would do nothing:
+ *
+ *   - open breaker whose cooldown has not elapsed (a refusal that
+ *     releases as a single probe),
+ *   - closed breaker whose PUBLISHED retry cadence has not elapsed —
+ *     `retryAt` is a contract, not a hint, so a visitor hammering a
+ *     still-enabled retry button cannot spend the upstream budget the
+ *     cadence exists to protect,
+ *   - and, symmetrically, an allowed decision.
+ *
+ * `notBefore` is the `retryAt` the current snapshot published; `null`
+ * when it published none (a fresh value publishes no cadence).
  */
 export function allowAttempt(
 	breaker: ExternalBreaker,
 	now: number,
 	policy: ExternalReadPolicy,
+	notBefore: number | null = null,
 ): ExternalAttemptDecision {
 	if (breaker.state === 'open') {
 		const retryAt = (breaker.openedAt ?? now) + policy.openMs;
@@ -254,6 +269,9 @@ export function allowAttempt(
 	}
 	if (breaker.state === 'half-open') {
 		return { allowed: true, probe: true, retryAt: null };
+	}
+	if (notBefore !== null && now < notBefore) {
+		return { allowed: false, probe: false, retryAt: notBefore };
 	}
 	return { allowed: true, probe: false, retryAt: null };
 }
@@ -372,30 +390,36 @@ export function applyFailure<T>(
 }
 
 /**
- * The snapshot a caller sees when the breaker refuses the attempt.
+ * The snapshot a caller sees when the attempt was REFUSED.
  *
  * No upstream call happened, so `failedAt` is the moment the refusal
  * was observed rather than a failure of the upstream at that instant;
  * the previous value is preserved exactly as `applyFailure` preserves
  * it.
+ *
+ * `notBefore` is the instant the refused attempt becomes possible —
+ * the decision's own `retryAt`, whether it came from the breaker's
+ * open cooldown or from the published retry cadence. The snapshot
+ * reports the breaker it ACTUALLY has: a cadence refusal leaves it
+ * `closed`, so the card cannot imply an incident that was never
+ * declared.
  */
 export function applyBlocked<T>(
 	current: ExternalSnapshot<T>,
 	reason: ExternalFailureReason,
 	now: number,
 	breaker: ExternalBreaker,
-	policy: ExternalReadPolicy,
+	notBefore: number,
 ): ExternalDegradedSnapshot<T> {
-	const retryAt = (breaker.openedAt ?? now) + policy.openMs;
 	return {
 		status: 'degraded',
 		value: current.status === 'loading' ? null : current.value,
 		observedAt: current.status === 'loading' ? null : current.observedAt,
 		reason,
 		failedAt: current.status === 'degraded' ? current.failedAt : new Date(now).toISOString(),
-		breaker: 'open',
+		breaker: breaker.state,
 		retryable: false,
-		retryAt: new Date(retryAt).toISOString(),
+		retryAt: new Date(notBefore).toISOString(),
 	};
 }
 

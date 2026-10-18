@@ -31,13 +31,27 @@ export interface ReadJsonOptions {
 	readonly policy: ExternalReadPolicy;
 	/** Caller-provided abort signal (the reader's deadline signal). */
 	readonly signal?: AbortSignal;
-	/** Extra headers. Merged AFTER the fixed set, so a caller can still not add credentials. */
+	/**
+	 * Source-specific request headers, supplied by the ADAPTER.
+	 *
+	 * Content negotiation is a property of the upstream, not of the
+	 * transport: GitHub's `application/vnd.github+json` belongs to
+	 * `github.ts`, so a second adapter cannot inherit it by accident.
+	 * Merged AFTER the fixed set, and still refused for credential
+	 * names below.
+	 */
 	readonly headers?: Readonly<Record<string, string>>;
 }
 
-/** Headers an unauthenticated public metadata read needs — and nothing more. */
+/**
+ * Headers the read identifies ITSELF with — and nothing more.
+ *
+ * `user-agent` states that the request comes from this site's public
+ * metadata read, which is true of every source. It deliberately does
+ * NOT include `accept`: which representation an upstream should return
+ * is the adapter's decision (see `ReadJsonOptions.headers`).
+ */
 const BASE_HEADERS: Readonly<Record<string, string>> = {
-	accept: 'application/vnd.github+json',
 	'user-agent': 'my-web-2026-public-metadata-read',
 };
 

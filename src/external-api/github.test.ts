@@ -182,6 +182,19 @@ describe('transport contract', () => {
 		expect(seen?.has('cookie')).toBe(false);
 	});
 
+	it('negotiates the GitHub media type as the adapter-side decision it is', async () => {
+		let seen: Headers | undefined;
+		const adapter = createGitHubRepoAdapter({
+			policy,
+			fetchImpl: async (_url, init) => {
+				seen = new Headers(init?.headers);
+				return new Response(JSON.stringify(FULL_PAYLOAD), { status: 200 });
+			},
+		});
+		await adapter.read(new AbortController().signal);
+		expect(seen?.get('accept')).toBe('application/vnd.github+json');
+	});
+
 	it('surfaces an upstream 404 as the public not-found reason', async () => {
 		const adapter = adapterOver('{"message":"Not Found"}', 404);
 		const reader = createExternalReader(adapter, { policy });

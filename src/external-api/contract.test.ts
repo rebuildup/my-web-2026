@@ -138,6 +138,31 @@ describe('breaker', () => {
 		const breaker = recordAll(initialBreaker(), ['failure'], T0, strict);
 		expect(breaker.state).toBe('open');
 	});
+
+	it('refuses an attempt inside the published retry cadence while closed', () => {
+		// `retryAt` is a contract with the visitor, so the reader
+		// enforces it even though the breaker never opened.
+		const notBefore = T0 + retryDelayMs(2, policy);
+		const refused = allowAttempt(initialBreaker(), notBefore - 1, policy, notBefore);
+		expect(refused).toEqual({ allowed: false, probe: false, retryAt: notBefore });
+	});
+
+	it('allows the attempt the cadence promised, at that instant', () => {
+		const notBefore = T0 + retryDelayMs(2, policy);
+		expect(allowAttempt(initialBreaker(), notBefore, policy, notBefore)).toEqual({
+			allowed: true,
+			probe: false,
+			retryAt: null,
+		});
+	});
+
+	it('ignores a cadence instant that is already in the past', () => {
+		expect(allowAttempt(initialBreaker(), T0, policy, T0 - 1)).toEqual({
+			allowed: true,
+			probe: false,
+			retryAt: null,
+		});
+	});
 });
 
 function recordAll(
@@ -287,7 +312,7 @@ describe('snapshot transitions', () => {
 			),
 		);
 		const blocked = degradedOf(
-			applyBlocked(degraded, 'timeout', T0 + 20_000, degradedBreaker(), policy),
+			applyBlocked(degraded, 'timeout', T0 + 20_000, degradedBreaker(), T0 + policy.openMs),
 		);
 		expect(blocked.status).toBe('degraded');
 		expect(blocked.value).toBe(9);
@@ -298,6 +323,20 @@ describe('snapshot transitions', () => {
 		expect(blocked.retryAt).toBe(new Date(T0 + policy.openMs).toISOString());
 	});
 
+	it('reports the breaker it actually has when a cadence attempt is refused', () => {
+		// A cadence refusal is not an incident: the breaker stays closed,
+		// and the snapshot must not imply an incident that was never
+		// declared (the card badges the breaker state).
+		const notBefore = T0 + retryDelayMs(1, policy);
+		const blocked = degradedOf(
+			applyBlocked({ status: 'loading' }, 'timeout', T0, initialBreaker(), notBefore),
+		);
+		expect(blocked.breaker).toBe('closed');
+		expect(blocked.retryable).toBe(false);
+		expect(blocked.retryAt).toBe(new Date(notBefore).toISOString());
+		expect(blocked.value).toBeNull();
+	});
+
 	it('degrades a never-read source with a null value when blocked', () => {
 		const blocked = degradedOf(
 			applyBlocked(
@@ -305,11 +344,12 @@ describe('snapshot transitions', () => {
 				'network',
 				T0,
 				{ state: 'open', consecutiveFailures: 3, openedAt: T0 },
-				policy,
+				T0 + policy.openMs,
 			),
 		);
 		expect(blocked.value).toBeNull();
 		expect(blocked.observedAt).toBeNull();
+		expect(blocked.breaker).toBe('open');
 	});
 
 	function degradedBreaker() {

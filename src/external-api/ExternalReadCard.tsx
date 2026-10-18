@@ -24,6 +24,12 @@ import {
  *   - a blocked source offers a DISABLED retry and the instant the
  *     next probe may run, instead of a button that would do nothing.
  *
+ * The BADGE states what is on screen, never a neighbouring state's
+ * wording: a card with no value never claims a stale value is being
+ * shown, and `loading` never borrows a settled state's label. That
+ * rule is what `badgeKey` + `BADGE_LABEL` implement, and it is
+ * asserted per state in `ExternalReadCard.test.tsx`.
+ *
  * Copy is a closed set of repository constants. No upstream text,
  * status line or exception message has a path into this component, so
  * the only thing a visitor can read about a failure is its reason
@@ -39,6 +45,7 @@ const STALE_LABEL = '古い値を表示中 / Showing a stale value';
 const FALLBACK_LABEL =
 	'更新に失敗しました・前回の値を表示中 / Update failed — showing the last known value';
 const UNAVAILABLE_LABEL = '値を取得できません / Value unavailable';
+const FAILED_LABEL = '取得失敗 / Read failed';
 const RETRY_LABEL = '再試行 / Retry';
 const BLOCKED_LABEL = '遮断中 / Blocked';
 const FRESH_LABEL = '取得済み / Up to date';
@@ -46,22 +53,35 @@ const NEXT_ATTEMPT_LABEL = '次の試行 / Next attempt';
 const OBSERVED_AT_LABEL = 'observed at';
 const FAILED_AT_LABEL = 'failed at';
 
-const BADGE_LABEL: Readonly<Record<ExternalFreshness | ExternalBreakerState, string>> = {
+/**
+ * Every badge the card can show.
+ *
+ * The freshness / breaker states the contract publishes, plus the two
+ * states the contract itself names but the published vocabulary does
+ * not (`loading`, and a settled failure that produced NO value). They
+ * exist so a badge never has to borrow a neighbouring state's label.
+ */
+type ExternalBadgeKey = ExternalFreshness | ExternalBreakerState | 'loading' | 'failed';
+
+const BADGE_LABEL: Readonly<Record<ExternalBadgeKey, string>> = {
 	fresh: FRESH_LABEL,
 	stale: STALE_LABEL,
 	closed: FRESH_LABEL,
 	open: BLOCKED_LABEL,
 	'half-open': STALE_LABEL,
+	loading: LOADING_LABEL,
+	failed: FAILED_LABEL,
 };
 
-const BADGE_TONE: Readonly<Record<ExternalFreshness | ExternalBreakerState, 'accent' | 'neutral'>> =
-	{
-		fresh: 'accent',
-		stale: 'neutral',
-		closed: 'accent',
-		open: 'neutral',
-		'half-open': 'neutral',
-	};
+const BADGE_TONE: Readonly<Record<ExternalBadgeKey, 'accent' | 'neutral'>> = {
+	fresh: 'accent',
+	stale: 'neutral',
+	closed: 'accent',
+	open: 'neutral',
+	'half-open': 'neutral',
+	loading: 'neutral',
+	failed: 'neutral',
+};
 
 /**
  * SSR-safe instant formatter.
@@ -90,11 +110,20 @@ function timelineLine(snapshot: ExternalSnapshot<unknown>): string {
 	return `${OBSERVED_AT_LABEL} ${formatInstant(snapshot.observedAt)} — ${failed}`;
 }
 
-/** Which badge a snapshot earns: a blocked source outranks a stale value. */
-function badgeKey(snapshot: ExternalSnapshot<unknown>): ExternalFreshness | ExternalBreakerState {
-	if (snapshot.status === 'degraded') return snapshot.breaker === 'open' ? 'open' : 'stale';
-	if (snapshot.status === 'value') return snapshot.freshness;
-	return 'half-open';
+/**
+ * Which badge a snapshot earns.
+ *
+ * A blocked source outranks a stale value, and a state with no value
+ * on screen never claims one: `loading` says it is loading and a
+ * failed read with nothing to show says the read failed.
+ */
+function badgeKey(snapshot: ExternalSnapshot<unknown>): ExternalBadgeKey {
+	if (snapshot.status === 'loading') return 'loading';
+	if (snapshot.status === 'degraded') {
+		if (snapshot.breaker === 'open') return 'open';
+		return snapshot.value === null ? 'failed' : 'stale';
+	}
+	return snapshot.freshness;
 }
 
 export interface ExternalReadCardProps<T> {

@@ -21,6 +21,8 @@ import {
  *   - a degraded card with a value keeps that value visible,
  *   - the retry control is disabled exactly when the source is
  *     blocked, and absent when there is nothing to retry,
+ *   - every badge names the state actually on screen — no state ever
+ *     borrows a neighbour's label,
  *   - no upstream detail has a path into the markup.
  */
 
@@ -92,6 +94,17 @@ describe('loading state', () => {
 		expect(html).toContain('aria-busy="true"');
 	});
 
+	it('badges itself as loading, never as a settled state', () => {
+		// The badge must describe what is on screen. A loading card shows
+		// NO value, so a stale-value badge there would tell a visitor a
+		// lie about the data behind the spinner.
+		const html = render({ status: 'loading' });
+		expect(html).toContain('読み込み中 / Loading');
+		expect(html).not.toContain('古い値を表示中');
+		expect(html).not.toContain('取得済み');
+		expect(html).not.toContain('遮断中');
+	});
+
 	it('offers no retry control — there is nothing to retry yet', () => {
 		expect(render({ status: 'loading' }, () => {})).not.toContain('external-read-retry');
 	});
@@ -150,6 +163,12 @@ describe('degraded with a value (non-destructive fallback)', () => {
 		expect(render(degradedWithValue())).not.toContain('external-read-indicator');
 	});
 
+	it('badges the held value as stale, which is what is on screen', () => {
+		const html = render(degradedWithValue());
+		expect(html).toContain('古い値を表示中');
+		expect(html).not.toContain('取得失敗');
+	});
+
 	it('offers an enabled retry', () => {
 		const html = render(degradedWithValue(), () => {});
 		expect(html).toContain('data-testid="external-read-retry"');
@@ -184,6 +203,21 @@ describe('degraded without a value', () => {
 			DEFAULTS,
 		);
 		expect(render(failed, () => {})).toContain('data-testid="external-read-retry"');
+	});
+
+	it('badges a failed read with no value as failed, not as a stale value', () => {
+		// Nothing is displayed, so 「古い値を表示中」 would be false here
+		// exactly as it is in the loading state.
+		const failed = applyFailure<typeof FACTS>(
+			{ status: 'loading' },
+			'network',
+			T0,
+			initialBreaker(),
+			DEFAULTS,
+		);
+		const html = render(failed, () => {});
+		expect(html).toContain('取得失敗 / Read failed');
+		expect(html).not.toContain('古い値を表示中');
 	});
 });
 

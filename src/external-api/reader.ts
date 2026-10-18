@@ -8,7 +8,9 @@
  *
  *   1. An attempt always settles. The deadline is enforced here as
  *      well as in the transport, so an adapter that ignores the abort
- *      signal still cannot leave the page in `loading`.
+ *      signal still cannot leave the page in `loading`. An adapter
+ *      that throws BEFORE returning a Promise is a failed read too,
+ *      not a thrown reader.
  *   2. Concurrent callers share one attempt. Fifty SSR renders in the
  *      same window produce ONE upstream request, which is the load
  *      property that keeps an unbudgeted public API from being
@@ -16,6 +18,9 @@
  *   3. A failure never destroys the last good value. The snapshot
  *      transition lives in `contract.ts`; this module only decides
  *      WHICH transition to apply.
+ *   4. The published retry cadence is enforced here. A snapshot's
+ *      `retryAt` is a contract with the visitor, so an attempt before
+ *      it is refused without touching the upstream.
  *
  * There is no internal timer beyond one attempt's deadline: retry
  * cadence is expressed as `retryAt` on the snapshot, and the CALLER
@@ -118,11 +123,18 @@ export function createExternalReader<T>(
 
 	async function attempt(): Promise<ExternalSnapshot<T>> {
 		const now = clock();
-		const decision = allowAttempt(breaker, now, policy);
+		const decision = allowAttempt(breaker, now, policy, cooldownUntil());
 		if (!decision.allowed) {
-			// No upstream call. The snapshot states the block and the
-			// instant the next probe may run.
-			snapshot = applyBlocked(snapshot, lastReason ?? 'network', now, breaker, policy);
+			// No upstream call. The snapshot states the refusal and the
+			// instant the next attempt may run. `decision.retryAt` is
+			// non-null exactly when `allowed` is false.
+			snapshot = applyBlocked(
+				snapshot,
+				lastReason ?? 'network',
+				now,
+				breaker,
+				decision.retryAt ?? now,
+			);
 			return snapshot;
 		}
 		if (decision.probe) breaker = { ...breaker, state: 'half-open' };
@@ -132,7 +144,18 @@ export function createExternalReader<T>(
 		if (!hasValue) snapshot = { status: 'loading' };
 
 		const controller = new AbortController();
-		const pending = adapter.read(controller.signal);
+		let pending: Promise<T>;
+		try {
+			pending = adapter.read(controller.signal);
+		} catch (thrown) {
+			// A synchronous throw is a failed READ, not a thrown reader:
+			// `ExternalAdapter.read` returns a Promise in the type, but
+			// nothing stops an implementation from raising before it.
+			// Routing it through the normal failure transition is what
+			// keeps the breaker and `lastReason` truthful — and keeps the
+			// snapshot from being left in `loading` forever.
+			return settleFailure(thrown);
+		}
 		// The race below consumes the outcome; this handler exists so a
 		// LATE rejection (the deadline fired first) is never an
 		// unhandled rejection in the Worker.
@@ -144,11 +167,30 @@ export function createExternalReader<T>(
 			lastReason = null;
 			snapshot = applySuccess(value, clock());
 		} catch (thrown) {
-			const reason = classifyThrown(thrown);
-			breaker = recordOutcome(breaker, 'failure', clock(), policy);
-			lastReason = reason;
-			snapshot = applyFailure(snapshot, reason, clock(), breaker, policy);
+			return settleFailure(thrown);
 		}
+		return snapshot;
+	}
+
+	/**
+	 * The instant the published retry cadence refuses an attempt.
+	 *
+	 * Read from the snapshot's own `retryAt`, so honouring it needs no
+	 * extra reader state: what the visitor was told and what the reader
+	 * enforces cannot drift apart.
+	 */
+	function cooldownUntil(): number | null {
+		if (snapshot.status !== 'degraded' || snapshot.retryAt === null) return null;
+		const parsed = Date.parse(snapshot.retryAt);
+		return Number.isNaN(parsed) ? null : parsed;
+	}
+
+	/** The one failure transition, whether the attempt threw early or late. */
+	function settleFailure(thrown: unknown): ExternalSnapshot<T> {
+		const reason = classifyThrown(thrown);
+		breaker = recordOutcome(breaker, 'failure', clock(), policy);
+		lastReason = reason;
+		snapshot = applyFailure(snapshot, reason, clock(), breaker, policy);
 		return snapshot;
 	}
 

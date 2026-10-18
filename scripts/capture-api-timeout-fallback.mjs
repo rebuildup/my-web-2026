@@ -41,6 +41,12 @@
  * committed file is the `.webp` sibling. The script REFUSES any
  * non-`.webp` output path and deletes the intermediate PNG.
  *
+ * Whether the `.webp` substitution becomes the convention (or whether
+ * the Issue's `.png` path is shipped after all) is an OWNER decision
+ * recorded in `docs/verification/ops/api-timeout-fallback.md` §7; this
+ * script only refuses the impossible middle ground of silently writing
+ * a PNG into the tree.
+ *
  * Usage:
  *   node scripts/capture-api-timeout-fallback.mjs [options]
  *
@@ -188,15 +194,41 @@ const CONTENT_TYPES = {
 };
 
 /**
+ * Whether a request URL is the loopback harness itself (pure).
+ *
+ * The report claims the capture issues no third-party request. That
+ * claim is MEASURED with this predicate over Playwright's request
+ * events rather than asserted as a literal, so a future edit that
+ * fetches something shows up as a non-zero count instead of a stale
+ * sentence.
+ */
+export function isLoopbackRequestUrl(url) {
+	try {
+		const { hostname } = new URL(url);
+		return hostname === '127.0.0.1' || hostname === 'localhost' || hostname === '::1';
+	} catch {
+		return false;
+	}
+}
+
+/**
  * Resolve one request path inside the served root (pure).
  *
  * Kept separate from the HTTP wiring so the traversal rule is testable
  * without a socket: a request may never leave the served directory,
- * and a directory request falls back to its `index.html`.
+ * a directory request falls back to its `index.html`, and a path that
+ * is not valid percent-encoding is refused as a bad request instead of
+ * throwing out of the request listener.
  */
 export function resolveStaticTarget(root, requestPath) {
 	const base = resolve(root);
-	const candidate = resolve(base, `.${decodeURIComponent(requestPath)}`);
+	let decoded;
+	try {
+		decoded = decodeURIComponent(requestPath);
+	} catch {
+		return { status: 400, file: null };
+	}
+	const candidate = resolve(base, `.${decoded}`);
 	if (candidate !== base && !candidate.startsWith(`${base}/`)) {
 		return { status: 403, file: null };
 	}
@@ -219,7 +251,13 @@ export function serveDirectory(root) {
 		const url = new URL(req.url ?? '/', 'http://127.0.0.1');
 		const resolved = resolveStaticTarget(root, url.pathname);
 		if (resolved.status !== 200) {
-			res.writeHead(resolved.status).end(resolved.status === 403 ? 'forbidden' : 'not found');
+			const body =
+				resolved.status === 403
+					? 'forbidden'
+					: resolved.status === 400
+						? 'bad request'
+						: 'not found';
+			res.writeHead(resolved.status).end(body);
 			return;
 		}
 		res.writeHead(200, { 'content-type': resolved.contentType });
@@ -320,6 +358,8 @@ async function main() {
 
 	const server = await serveDirectory(distRoot);
 	let capture = null;
+	/** Measured, not asserted: every non-loopback URL the page requested. */
+	const outboundUrls = [];
 	try {
 		if (!options.capture) {
 			process.stdout.write('[capture] --no-capture: harness built, nothing written\n');
@@ -333,6 +373,9 @@ async function main() {
 				const page = await browser.newPage({
 					viewport: { width: options.width, height: 900 },
 					deviceScaleFactor: 1,
+				});
+				page.on('request', (request) => {
+					if (!isLoopbackRequestUrl(request.url())) outboundUrls.push(request.url());
 				});
 				await page.goto(`${server.baseUrl}/`, { waitUntil: 'networkidle' });
 				// The gallery's own marker is the readiness signal: without
@@ -372,6 +415,11 @@ async function main() {
 				if (cards !== 6) {
 					throw new Error(`expected 6 rendered states, found ${cards}`);
 				}
+				if (outboundUrls.length > 0) {
+					throw new Error(
+						`the gallery is fixture-only but issued ${outboundUrls.length} non-loopback request(s): ${outboundUrls.join(', ')}`,
+					);
+				}
 				process.stdout.write(
 					`[capture] wrote ${options.screenshot} (${capture.width}x${capture.height}, ${capture.cardsRendered} states, ${verdict.kb} kB)\n`,
 				);
@@ -392,13 +440,17 @@ async function main() {
 			encoding: 'utf8',
 		}).trim(),
 		harness: { dir: HARNESS_DIR, dist: HARNESS_DIST, root: harness },
-		outboundRequests: 0,
+		// Observed over Playwright request events, not asserted: `null`
+		// on a `--no-capture` run, where no browser ever opened.
+		outboundRequests: capture === null ? null : outboundUrls.length,
+		outboundRequestUrls: outboundUrls,
 		policy: {
 			webpOnly: true,
 			maxWidth: SCREENSHOT_MAX_WIDTH,
 			quality: SCREENSHOT_QUALITY,
 			budgetBytes: SCREENSHOT_BUDGET_BYTES,
-			issuePathSubstituted: 'docs/verification/ops/api-timeout-fallback.png -> .webp',
+			issuePathSubstituted:
+				'docs/verification/ops/api-timeout-fallback.png -> .webp (open owner decision: keep the substitution or ship the Issue path)',
 			reproducible:
 				'the encode step is deterministic; the browser capture is not byte-reproducible',
 		},

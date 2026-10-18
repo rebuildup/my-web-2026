@@ -14,6 +14,7 @@ import {
 	harnessIndexHtml,
 	harnessMainTsx,
 	harnessViteConfig,
+	isLoopbackRequestUrl,
 	resolveStaticTarget,
 	screenshotBudgetVerdict,
 } from './capture-api-timeout-fallback.mjs';
@@ -95,9 +96,25 @@ test('static resolution cannot escape the served root', () => {
 		assert.equal(resolveStaticTarget(dist, '/../secrets.txt').status, 403);
 		assert.equal(resolveStaticTarget(dist, '/%2e%2e/%2e%2e/secrets.txt').status, 403);
 		assert.equal(resolveStaticTarget(dist, '/does-not-exist.js').status, 404);
+		// A malformed percent-encoding throws inside `decodeURIComponent`.
+		// Refusing it as a bad request keeps the single-run dev server
+		// from dying on a URL Chromium would never send.
+		assert.equal(resolveStaticTarget(dist, '/%').status, 400);
+		assert.equal(resolveStaticTarget(dist, '/%zz').status, 400);
 	} finally {
 		rmSync(dist, { force: true, recursive: true });
 	}
+});
+
+test('the outbound-request measurement counts only what leaves loopback', () => {
+	// The report claims zero third-party requests; this predicate is
+	// what turns that claim into an observation.
+	assert.equal(isLoopbackRequestUrl('http://127.0.0.1:41234/assets/app.js'), true);
+	assert.equal(isLoopbackRequestUrl('http://localhost:4173/'), true);
+	assert.equal(isLoopbackRequestUrl('https://api.github.com/repos/rebuildup/my-web-2026'), false);
+	assert.equal(isLoopbackRequestUrl('data:text/css,'), false);
+	// Unparseable input must not be silently treated as loopback.
+	assert.equal(isLoopbackRequestUrl('not a url'), false);
 });
 
 test('the readiness marker is the one the gallery renders', () => {

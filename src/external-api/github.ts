@@ -67,6 +67,18 @@ export interface GitHubRepoFacts {
 	readonly pushedAt: string | null;
 }
 
+/**
+ * The one request this adapter makes, stated once.
+ *
+ * `accept` is GitHub's own media type: the transport sends no
+ * source-specific header of its own, so content negotiation stays the
+ * adapter's decision and a second adapter cannot inherit it.
+ */
+const GITHUB_REPO_REQUEST = {
+	url: GITHUB_REPO_SOURCE.endpoint,
+	headers: { accept: 'application/vnd.github+json' },
+} as const;
+
 /** Keys the allowlist may produce. A test pins this list. */
 export const GITHUB_REPO_FACT_KEYS = [
 	'stars',
@@ -146,7 +158,12 @@ export function createGitHubRepoAdapter(
 		source: GITHUB_REPO_SOURCE,
 		read: async (signal) =>
 			parseGitHubRepoFacts(
-				await readJson(GITHUB_REPO_SOURCE.endpoint, { fetchImpl, policy, signal }),
+				await readJson(GITHUB_REPO_REQUEST.url, {
+					fetchImpl,
+					policy,
+					signal,
+					headers: GITHUB_REPO_REQUEST.headers,
+				}),
 			),
 	};
 }

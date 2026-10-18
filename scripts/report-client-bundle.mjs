@@ -219,8 +219,9 @@ async function measureRoutes({ baseUrl, routes, inventoryByPath }) {
 				if (response.request().method() !== 'GET') return;
 				const url = new URL(response.url());
 				if (url.origin !== origin) return;
-				const path = decodeURIComponent(url.pathname).replace(/^\//, '');
-				if (path === '') return;
+				// `/` keeps its slash so the SSR document of the Home route is
+				// recorded as `/` rather than dropped as an empty path.
+				const path = decodeURIComponent(url.pathname).replace(/^\//, '') || '/';
 				// The navigation response is the SSR document rendered by the
 				// Worker. It is not an emitted file, so it must not be counted
 				// as an asset — nor as a missing one.

@@ -11,71 +11,71 @@
 		"reproduce_locally": "pnpm run build && pnpm run bundle:budget:check",
 		"reproduce_in_ci": "the `validate` job of .github/workflows/ci.yml runs `pnpm run validate:integration`, which runs this check immediately after `pnpm run build:production`."
 	},
-	"headroom_policy": "Every JS cap is the measured `initial_js_bytes` plus at least 0.35% headroom, rounded up to the next multiple of 5,000 bytes: `ceil(measured * 1.0035 / 5000) * 5000`. The caps were last re-derived from one `pnpm run build` of this tree (release-0-6-3 merged into Issue #482's branch at 0343ace), after the base brought new route code. Observed slack on that build is +0.37% (`/admin`) to +0.67% (`/admin/images`) for initial JS, and a flat 40,000 B against a measured 38,681 B for initial CSS. A dependency bump that moves a measurement therefore turns the validate job red until the cap is re-measured with `pnpm run build && pnpm run bundle:budget:check`; that is the gate doing its job, not a flaky test. The caps are intentionally tight: the entry chunk alone is ~1.48 MiB because `emoji-picker-react` is statically imported (see the Vite chunk warning in the build log), so a per-route cap is the only place a regression of that kind is visible today. Reducing the shell is a separate change with its own Issue; this gate only makes the number visible and stops it from moving silently. Note that raising a cap is not machine-checked — only an `exception` is — so a cap change is expected to carry its measurement and rationale in the PR diff.",
+	"headroom_policy": "Every JS cap is the measured `initial_js_bytes` plus at least 0.35% headroom, rounded up to the next multiple of 5,000 bytes: `ceil(measured * 1.0035 / 5000) * 5000`. The caps were last re-derived from one `pnpm run build` of this tree (release-0-6-3 merged into Issue #482's branch at 0343ace), after the base brought new route code. Observed slack on the build that derived the JS caps is +0.37% (`/admin`) to +0.67% (`/admin/images`) for initial JS. CSS is budgeted on one shared cap rather than per route: the initial stylesheet is a single asset every route pulls in, so a per-route CSS cap would be 16 copies of the same number. That shared CSS cap was re-derived once more after the base merged #485 (`src/styles.css` font first-paint work), which moved the measured initial CSS from 38,681 B to 40,028 B; the cap is 45,000 B for the same reason JS caps are rounded to 5,000 B boundaries (one boundary of headroom on a number that is already inside it). A dependency bump that moves a measurement therefore turns the validate job red until the cap is re-measured with `pnpm run build && pnpm run bundle:budget:check`; that is the gate doing its job, not a flaky test. The caps are intentionally tight: the entry chunk alone is ~1.48 MiB because `emoji-picker-react` is statically imported (see the Vite chunk warning in the build log), so a per-route cap is the only place a regression of that kind is visible today. Reducing the shell is a separate change with its own Issue; this gate only makes the number visible and stops it from moving silently. Note that raising a cap is not machine-checked — only an `exception` is — so a cap change is expected to carry its measurement and rationale in the PR diff.",
 	"routes": {
 		"/": {
 			"initial_js_bytes": 1590000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/about": {
 			"initial_js_bytes": 1585000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/admin": {
 			"initial_js_bytes": 1560000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/admin/": {
 			"initial_js_bytes": 1565000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/admin/emoji-catalog": {
 			"initial_js_bytes": 1570000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/admin/images": {
 			"initial_js_bytes": 1570000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/admin/invitations": {
 			"initial_js_bytes": 1570000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/admin/invitations/accept": {
 			"initial_js_bytes": 1565000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/admin/keys": {
 			"initial_js_bytes": 1575000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/admin/login": {
 			"initial_js_bytes": 1565000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/contact": {
 			"initial_js_bytes": 1575000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/design-system": {
 			"initial_js_bytes": 1600000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/portfolio/": {
 			"initial_js_bytes": 1595000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/portfolio/$slug": {
 			"initial_js_bytes": 1595000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/tools/": {
 			"initial_js_bytes": 1565000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		},
 		"/tools/$slug": {
 			"initial_js_bytes": 1565000,
-			"initial_css_bytes": 40000
+			"initial_css_bytes": 45000
 		}
 	},
 	"tool_iframe": {

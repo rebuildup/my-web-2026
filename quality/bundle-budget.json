@@ -1,0 +1,86 @@
+{
+	"schema_version": 1,
+	"issue": 482,
+	"unit": "bytes",
+	"measurement": {
+		"mode": "static Vite client bundle graph — no browser, no network, no rendering",
+		"browser": "not applicable. The gate never launches a browser; it reads the chunk graph the Vite build emits (dist/client/bundle-graph.json) and sums, per route, the client entry chunk, the static-import closure of the route's own chunk, and the chunks of its layout ancestors (a nested route renders its parent layouts). Browser-dependent behaviour is out of scope by design — see Issue #384 (Lighthouse measurement) and #385 (score gate).",
+		"network": "not applicable. Budgeted numbers are RAW on-disk bytes of the files a browser must fetch before the route is interactive. gzip -9 figures are printed for reference only and are never budgeted, because a CDN's compression settings are not part of this measurement.",
+		"cpu": "not time-based. The measurement is byte arithmetic over a build artefact, so it is deterministic on any machine and independent of runner speed. Only the wall-clock cost of `pnpm run build` that produces the artefact is runner-dependent.",
+		"source_sha": "the commit the run is executed at, printed as `git rev-parse HEAD`. In CI the client build and this check run in the same job against the same SHA, so a red run always names the exact tree that was measured; locally, rebuild before rerunning if the tree changed. The gate also warns (it does not fail) when the graph's recorded client assets no longer exist under its own out_dir, which is what a stale or foreign `dist/client/bundle-graph.json` looks like.",
+		"reproduce_locally": "pnpm run build && pnpm run bundle:budget:check",
+		"reproduce_in_ci": "the `validate` job of .github/workflows/ci.yml runs `pnpm run validate:integration`, which runs this check immediately after `pnpm run build:production`."
+	},
+	"headroom_policy": "Every JS cap is the measured `initial_js_bytes` plus at least 0.35% headroom, rounded up to the next multiple of 5,000 bytes: `ceil(measured * 1.0035 / 5000) * 5000`. The caps were last re-derived from one `pnpm run build` of this branch with `origin/release-0-6-3` at `afe7293e` merged in, so the numbers describe the tree this PR merges into — not the tree the first draft was written against. Observed slack on that build is +0.36% (`/admin`) to +0.67% (`/portfolio/$slug`) for initial JS. The initial CSS measured 40,451 B on that build, still inside the shared 45,000 B cap. CSS is budgeted on one shared cap rather than per route: the initial stylesheet is a single asset every route pulls in, so a per-route CSS cap would be 16 copies of the same number. That shared CSS cap was re-derived after the base merged #485 (`src/styles.css` font first-paint work), which moved the measured initial CSS from 38,681 B to 40,028 B; the cap is 45,000 B for the same reason JS caps are rounded to 5,000 B boundaries (one boundary of headroom on a number that is already inside it). Measured bytes are read back from the files Rollup emitted (`writeBundle` in `vite.config.ts` → `scripts/_client-bundle-graph.mjs`), so a cap is compared against the exact bytes a browser downloads — including the preload marker and dependency map that Vite injects after an ordinary user plugin's `generateBundle` runs. Because the entry shell is shared, ~1.5 MiB of every admin route, a base merge that adds a few hundred bytes to the shell re-derives several route caps at once; that is why a release merge turns this gate red until the caps are re-measured with `pnpm run build && pnpm run bundle:budget:check`. It is the gate doing its job, not a flaky test. The caps are intentionally tight: the entry chunk alone is ~1.48 MiB because `emoji-picker-react` is statically imported (see the Vite chunk warning in the build log), so a per-route cap is the only place a regression of that kind is visible today. Reducing the shell is a separate change with its own Issue; this gate only makes the number visible and stops it from moving silently. Note that raising a cap is not machine-checked — only an `exception` is — so a cap change is expected to carry its measurement and rationale in the PR diff.",
+	"routes": {
+		"/": {
+			"initial_js_bytes": 1605000,
+			"initial_css_bytes": 45000
+		},
+		"/about": {
+			"initial_js_bytes": 1600000,
+			"initial_css_bytes": 45000
+		},
+		"/admin": {
+			"initial_js_bytes": 1575000,
+			"initial_css_bytes": 45000
+		},
+		"/admin/": {
+			"initial_js_bytes": 1580000,
+			"initial_css_bytes": 45000
+		},
+		"/admin/emoji-catalog": {
+			"initial_js_bytes": 1585000,
+			"initial_css_bytes": 45000
+		},
+		"/admin/images": {
+			"initial_js_bytes": 1585000,
+			"initial_css_bytes": 45000
+		},
+		"/admin/invitations": {
+			"initial_js_bytes": 1585000,
+			"initial_css_bytes": 45000
+		},
+		"/admin/invitations/accept": {
+			"initial_js_bytes": 1580000,
+			"initial_css_bytes": 45000
+		},
+		"/admin/keys": {
+			"initial_js_bytes": 1590000,
+			"initial_css_bytes": 45000
+		},
+		"/admin/login": {
+			"initial_js_bytes": 1580000,
+			"initial_css_bytes": 45000
+		},
+		"/contact": {
+			"initial_js_bytes": 1590000,
+			"initial_css_bytes": 45000
+		},
+		"/design-system": {
+			"initial_js_bytes": 1620000,
+			"initial_css_bytes": 45000
+		},
+		"/portfolio/": {
+			"initial_js_bytes": 1610000,
+			"initial_css_bytes": 45000
+		},
+		"/portfolio/$slug": {
+			"initial_js_bytes": 1615000,
+			"initial_css_bytes": 45000
+		},
+		"/tools/": {
+			"initial_js_bytes": 1580000,
+			"initial_css_bytes": 45000
+		},
+		"/tools/$slug": {
+			"initial_js_bytes": 1580000,
+			"initial_css_bytes": 45000
+		}
+	},
+	"tool_iframe": {
+		"max_js_bytes_per_tool": 1600000,
+		"max_css_bytes_per_tool": 12000,
+		"reason": "Each Tool is an independent Vite build loaded inside a sandboxed iframe from /tools/<slug>/app/, so its bytes are never part of a host route's first paint. Capping it separately keeps one heavy Tool from being hidden by the host route budget and stops a Tool from inflating the host measurement. The cap is the observed `prototype` bundle (1,502,757 B JS / 8,415 B CSS) plus headroom; the Tool's own repository owns any reduction."
+	}
+}

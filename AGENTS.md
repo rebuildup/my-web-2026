@@ -74,8 +74,10 @@ Current dependency direction:
 ```text
 routes -> home
 routes -> portfolio
+routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
+about -> editorial (Issue #422 — approved snapshot → `Person` projection; the fact stays owned by `about`)
 routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
            /admin/login loader; the security classifier only, no router,
            no handler)

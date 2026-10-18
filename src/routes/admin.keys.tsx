@@ -4,13 +4,18 @@ import { useState } from 'react';
 import { css } from '../../styled-system/css';
 import { KeysView } from '../admin/keys/keys';
 import { createApiKey, listApiKeys } from '../admin/keys/load';
-import type { ApiKeyPermissions } from '../admin/keys/load';
-import { getCurrentSession } from '../admin/public';
+import type { ApiKeyPermissions, CreateApiKeyOutcome } from '../admin/keys/load';
+import { StepUpPanel } from '../admin/keys/step-up-panel';
+import { type StepUpStatus, getCurrentSession, getStepUpStatus } from '../admin/public';
 
 /**
  * `/admin/keys` — admin API key management.
  *
- * Loader: admin-only. Lists existing API keys plus their scopes.
+ * Loader: admin-only. Lists existing API keys plus their scopes, and
+ * reports the session's step-up status so the SSR render already shows
+ * whether issuing a key needs a fresh password confirmation (Issue
+ * #445) instead of flashing an enabled form.
+ *
  * The create form lives in this route component (composition over a
  * generic UI primitive) so that `useServerFn(createApiKey)` wires
  * here, and the view stays free of server-only imports.
@@ -29,14 +34,47 @@ export const Route = createFileRoute('/admin/keys')({
 			throw redirect({ to: '/admin' });
 		}
 		const keys = await listApiKeys({ data: {} });
-		return { keys };
+		const stepUp = await getStepUpStatus();
+		return { keys, stepUp };
 	},
 	component: KeysRoute,
 });
 
 function KeysRoute() {
-	const { keys } = Route.useLoaderData();
-	return <KeysView keys={keys} createForm={<CreateKeyForm />} />;
+	const { keys, stepUp } = Route.useLoaderData();
+	const [status, setStatus] = useState<StepUpStatus>(stepUp);
+	return (
+		<KeysView
+			keys={keys}
+			createSection={
+				<>
+					{/* Both handlers are `setStatus`: a fresh confirmation replaces the
+					    status, and the panel hands back the lapsed one when its own clock
+					    reaches `expiresAtMs` — the same transition, computed by the same
+					    `evaluateStepUp` rule, as the refused create below. */}
+					<StepUpPanel status={status} onConfirmed={setStatus} onExpired={setStatus} />
+					<CreateKeyForm
+						stepUpState={status.state}
+						onStepUpRequired={() =>
+							setStatus((prev) =>
+								// A lapsed confirmation is not the same as never
+								// having confirmed one, so the timestamps survive
+								// and the panel can say "expired" instead of
+								// resetting to "required".
+								prev.state === 'confirmed'
+									? {
+											state: 'expired',
+											confirmedAtMs: prev.confirmedAtMs,
+											expiresAtMs: prev.expiresAtMs,
+										}
+									: { state: 'required', confirmedAtMs: null, expiresAtMs: null },
+							)
+						}
+					/>
+				</>
+			}
+		/>
+	);
 }
 
 const RESOURCE_LABELS: Record<string, string> = {
@@ -44,7 +82,13 @@ const RESOURCE_LABELS: Record<string, string> = {
 	reactions: 'reactions',
 };
 
-function CreateKeyForm() {
+function CreateKeyForm({
+	stepUpState,
+	onStepUpRequired,
+}: {
+	stepUpState: StepUpStatus['state'];
+	onStepUpRequired: () => void;
+}) {
 	const create = useServerFn(createApiKey);
 	const [name, setName] = useState('');
 	const [scopes, setScopes] = useState<Record<string, { read: boolean; write: boolean }>>({
@@ -63,6 +107,10 @@ function CreateKeyForm() {
 	};
 
 	const anyScopeSelected = Object.values(scopes).some((s) => s.read || s.write);
+	// Issue #445: the server refuses issuance without an unexpired
+	// step-up confirmation, so the button mirrors that rule instead of
+	// letting the click produce a refusal.
+	const locked = stepUpState !== 'confirmed';
 
 	const onSubmit = async (e: React.FormEvent) => {
 		e.preventDefault();
@@ -77,16 +125,30 @@ function CreateKeyForm() {
 				if (actions.length > 0) permissions[resource] = actions;
 			}
 			const typedPermissions = permissions as ApiKeyPermissions;
-			const result = await create({ data: { name, permissions: typedPermissions } });
-			setPlaintext(result.plaintext);
+			const outcome: CreateApiKeyOutcome = await create({
+				data: { name, permissions: typedPermissions },
+			});
+			if (!outcome.ok) {
+				// The server refused at the gate, BEFORE minting anything.
+				// The window lapsed while the form was open (or this tab
+				// rendered before another one confirmed): show the
+				// confirmation prompt instead of leaving a dead button.
+				onStepUpRequired();
+				setError('確認の有効期限が切れました。上の Step-up check で再確認してください。');
+				return;
+			}
+			setPlaintext(outcome.result.plaintext);
 			setName('');
 			setScopes({
 				access_counter: { read: false, write: false },
 				reactions: { read: false, write: false },
 			});
-		} catch (err) {
-			const reason = (err as { reason?: string }).reason;
-			setError(reason ?? '作成に失敗しました。');
+		} catch {
+			// Everything that is not the step-up gate (adapter failure,
+			// plugin validation, a dropped request) reaches the UI as a
+			// thrown error with no `reason` on it, so it is reported
+			// without claiming to know which step failed.
+			setError('作成に失敗しました。時間をおいて再度お試しください。');
 		} finally {
 			setBusy(false);
 		}
@@ -189,7 +251,7 @@ function CreateKeyForm() {
 
 				<button
 					type="submit"
-					disabled={busy || name.length === 0 || !anyScopeSelected}
+					disabled={busy || locked || name.length === 0 || !anyScopeSelected}
 					className={css({
 						fontFamily: 'sans',
 						fontSize: 'md',
@@ -204,7 +266,7 @@ function CreateKeyForm() {
 						_disabled: { opacity: '0.5' },
 					})}
 				>
-					{busy ? 'Creating…' : 'Create API key'}
+					{busy ? 'Creating…' : locked ? 'Confirm above to create' : 'Create API key'}
 				</button>
 			</form>
 

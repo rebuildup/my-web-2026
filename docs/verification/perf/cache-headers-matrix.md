@@ -190,33 +190,39 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
 その SHA でビルドされている必要がある。
 マージで base（`31ea9d8`）を取り込んだ `abb9997` の clean ツリーで
 `pnpm run build:production` を実行し、そのまま測定した
-（記録された SHA とビルドは同一）。その後の変更は 4 種類だけである:
-`93b1c50` の本ドキュメントと画像、以降の base 再マージ（#446 の HSTS、#471 の SBOM gate、
-#457 の error redaction、#596 の HSTS 定数私有化、webhook signature fixture を含む）、そして review follow-up での
-`src/server.ts#applyHtmlCachePolicy` への「既存 `Cache-Control` を上書きしない」
-早期 return の復元。この早期 return は**現在のどの SSR ルートも独自の
-`Cache-Control` を宣言していないため送出値を変えない**（docblock が約束していた
-不変条件の回復であり、挙動変更ではない）。#446 / #596 のマージは
-`applyTransportSecurityPolicy` を dispatch の後段に足し、HSTS 定数を module-private にしただけで、
-`setCacheControl` / `applyExternalCachePolicy` / `applyHtmlCachePolicy` が書く
-`Cache-Control` の値には触れていない（HSTS は別ヘッダー）。
+（記録された SHA とビルドは同一）。その後に landed した変更は次のとおり:
 
-本Issueが所有する他の契約ファイルは `abb9997` 以降変更していない:
+- `93b1c50` の本ドキュメントと画像。
+- 以降の base 再マージ: #446 / #596 の HSTS、#471 の SBOM gate、#457 の error redaction、
+  webhook signature fixture、#572 の prod-smoke 整備、#582 の SEO head gate、
+  および画像アップロード guard（`src/http/reactions/images.ts` の `uploadImage` / policy 領域）。
+- review follow-up: `src/server.ts#applyHtmlCachePolicy` への「既存 `Cache-Control` を
+  上書きしない」早期 return の復元、計測ツールの合格基準 3〜6 の行からの導出、
+  `reactions-images.test.ts` の Worker entry 経由化。
+
+したがって `git diff abb9997 HEAD` はこれらのファイルで**空ではない**。
+それでも本表の値が現在の head を記述しているのは、ヘッダーを決めるコードが
+変わっていないためである。確認方法:
 
 ```
-git diff abb9997 HEAD -- src/http/reactions/images.ts public/_headers \
-  scripts/_cache-policy.mjs scripts/cache-header-matrix.mjs \
-  scripts/cache-policy.test.mjs scripts/cache-header-matrix.test.mjs \
-  test/integration/cache-policy-matrix.test.ts test/integration/reactions-images.test.ts
+# 宣言値: 変更なし
+git diff abb9997 HEAD -- public/_headers            # 空
+# 読み取り経路: 差分は uploadImage / ImagePolicyError 周辺のみ
+git diff abb9997 HEAD -- src/http/reactions/images.ts
+# SoT の cacheControl 値: 差分は comment / varyNote / varyDeclared のみ
+git diff abb9997 HEAD -- scripts/_cache-policy.mjs
 ```
 
-は空である。base マージ自体は他の `src/` ファイル（CSRF、tools、HSTS など）を
-進めているため `git diff abb9997 HEAD -- src/` 全体は空ではないが、
-それらは本Issueの測定対象クラスの `Cache-Control` / validator 契約を
-変更しない（HSTS は `Strict-Transport-Security` を追加するだけで、
-本表が記録するヘッダー群には含まれない）。`applyHtmlCachePolicy` の早期 return を含め、
-送出値が変わる変更を入れた場合は `pnpm run build:production` を
-再実行してから測り直す。
+- `REACTION_IMAGE_CACHE_CONTROL` は `public, max-age=31536000, immutable` のまま。
+- `setCacheControl` / `applyExternalCachePolicy` / `applyHtmlCachePolicy` が書く値は不変。
+  早期 return は**現在のどの SSR ルートも独自の `Cache-Control` を宣言していないため
+  送出値を変えない**（docblock が約束していた不変条件の回復であり、挙動変更ではない）。
+- #446 / #596 のマージは `applyTransportSecurityPolicy` を dispatch の後段に足し、
+  HSTS 定数を module-private にしただけで、`Cache-Control` の値には触れていない
+  （HSTS は別ヘッダー）。
+
+`applyHtmlCachePolicy` の早期 return を含め、送出値が変わる変更を入れた場合は
+`pnpm run build:production` を再実行してから測り直す。
 
 **指標（スコア）は出ない。** 速度・転送量・TTFB をこのツールは測らない。
 Lighthouse 導入は #384、release gate 化は #385、Web Vitals 予算は #386 の担当であり、

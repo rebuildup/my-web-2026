@@ -1,4 +1,5 @@
 import { css } from '../../../styled-system/css';
+import { COUNTER_ROLL_MOTION, usePrefersReducedMotion } from '../../editorial/reduced-motion';
 // Digit WebPs are pre-rasterised mono glyphs (see
 // `scripts/generate-counter-digits.mjs` and `src/home/digits/`).
 // The bake colour is `#0b1020` so the rasterised glyph matches
@@ -33,6 +34,14 @@ export interface CounterTileProps {
 	 * rendered instant is deterministic.
 	 */
 	now?: () => number;
+	/**
+	 * Force the reduced-motion answer instead of asking the OS
+	 * (Issue #403). Production passes nothing and the live
+	 * `prefers-reduced-motion` preference decides; the Storybook
+	 * fixture and the unit tests pass an explicit boolean so one
+	 * document can show both modes on one machine.
+	 */
+	reducedMotion?: boolean;
 }
 
 /**
@@ -134,8 +143,19 @@ const DIGIT_SLOTS = 7;
  * adapter, so the same instant reads per locale. The surrounding
  * metadata copy ("page views", "last hit:", "since") stays English
  * until an approved translation exists; only the value is localised.
+ *
+ * Reduced motion (Issue #403): the roll-up is decoration over a
+ * value, so the visitor's OS preference decides whether it is
+ * created at all. With motion reduced, `DigitStrip` emits no
+ * `animation-name` and renders exactly the resting frame — the same
+ * seven slots, the same glyphs, the same `aria-label` — so nothing
+ * about the count is lost by turning the movement off. The count is
+ * never carried by the animation: the `role="img"` label is the
+ * accessible source and the digits are its visual echo.
  */
-export function CounterTile({ data, locale, now }: CounterTileProps) {
+export function CounterTile({ data, locale, now, reducedMotion }: CounterTileProps) {
+	const systemPrefersReducedMotion = usePrefersReducedMotion();
+	const reduceMotion = reducedMotion ?? systemPrefersReducedMotion;
 	const format = createHomeFormat({ locale, now });
 	const lastHitLabel = format.formatRelative(data.last_hit);
 	const periodLabel = formatPeriod(data.first_hit, format);
@@ -192,7 +212,7 @@ export function CounterTile({ data, locale, now }: CounterTileProps) {
 				})}
 			>
 				{enabled ? (
-					<DigitStrip count={data.count} format={format} />
+					<DigitStrip count={data.count} format={format} reducedMotion={reduceMotion} />
 				) : (
 					<span
 						aria-label="counter disabled"
@@ -291,15 +311,33 @@ function padCount(count: number): string {
  *
  * Each digit slides up from below with a per-index stagger
  * (`counterDigitRoll`). The keyframe is defined in
- * `panda.config.ts`; the reduced-motion override sits in
- * `src/styles.css`.
+ * `panda.config.ts`; the reduced-motion opt-out has two layers — the
+ * render-time branch below (no `animation-name` is emitted at all,
+ * see `src/editorial/reduced-motion.ts`) and the `data-motion` scoped
+ * override in `src/styles.css` for the case where the markup was
+ * produced without a client preference read (an SSR document replayed
+ * from cache, a Storybook build that pinned the prop).
+ *
+ * `data-motion={COUNTER_ROLL_MOTION}` is the hook the stylesheet
+ * pairs with this element (`MOTION_HOOK_ATTRIBUTE` in
+ * `src/editorial/reduced-motion.ts` is the attribute's one owner; JSX
+ * writes the name literally, the value comes from the constant).
  */
-function DigitStrip({ count, format }: { count: number; format: HomeFormat }) {
+function DigitStrip({
+	count,
+	format,
+	reducedMotion,
+}: {
+	count: number;
+	format: HomeFormat;
+	reducedMotion: boolean;
+}) {
 	const digits = padCount(count);
 	return (
 		<div
 			role="img"
 			aria-label={`${format.formatCount(count)} page views`}
+			data-motion={COUNTER_ROLL_MOTION}
 			className={css({
 				display: 'inline-flex',
 				alignItems: 'baseline',
@@ -333,13 +371,19 @@ function DigitStrip({ count, format }: { count: number; format: HomeFormat }) {
 						// Per-digit stagger: each digit enters ~80ms after
 						// the previous one. The first digit starts at 0 so
 						// the whole strip finishes inside ~560ms for the
-						// default 7-digit display. prefers-reduced-motion
-						// skips the animation entirely.
-						animationName: 'counterDigitRoll',
-						animationDuration: '320ms',
-						animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
-						animationFillMode: 'both',
-						animationDelay: `calc(var(--counter-stagger, 0ms) + ${index * 80}ms)`,
+						// default 7-digit display. The spread is the
+						// whole "movement" contract: with motion reduced
+						// these declarations are simply not emitted, so
+						// the resting frame IS the reduced-motion frame.
+						...(reducedMotion
+							? {}
+							: {
+									animationName: 'counterDigitRoll',
+									animationDuration: '320ms',
+									animationTimingFunction: 'cubic-bezier(0.2, 0.8, 0.2, 1)',
+									animationFillMode: 'both',
+									animationDelay: `calc(var(--counter-stagger, 0ms) + ${index * 80}ms)`,
+								}),
 					})}
 					style={{ '--counter-stagger': '0ms' } as Record<string, string>}
 				/>

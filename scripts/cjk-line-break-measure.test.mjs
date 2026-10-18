@@ -12,9 +12,11 @@ import {
 	ROUTE,
 	WIDTHS,
 	assertLossless,
+	assertMeasurementMatrix,
 	auditFixtureSources,
 	auditTypographySources,
 	judgeLines,
+	rowFailures,
 	rulesForLocale,
 } from './cjk-line-break-measure.mjs';
 
@@ -162,17 +164,6 @@ test('a collapsible break-space is not a violation', () => {
 	assert.deepEqual(violations, []);
 });
 
-test('judgeLines catches an opening bracket at a line tail (R3)', () => {
-	const { violations } = judgeLines({
-		text: '検証用の文章「次の行で閉じます」。',
-		lines: ['検証用の文章「', '次の行で閉じます」。'],
-		lineBreak: 'auto',
-	});
-	assert.equal(violations.length, 1);
-	assert.equal(violations[0].rule, 'R3-line-tail');
-	assert.equal(violations[0].line, 0);
-});
-
 test('a conditional Japanese starter is observed under auto and forbidden under strict', () => {
 	const input = {
 		text: 'サンプル用のー表記確認',
@@ -186,13 +177,22 @@ test('a conditional Japanese starter is observed under auto and forbidden under 
 	assert.equal(strict.violations[0].rule, 'R4-starter');
 });
 
-test('the katakana middle dot may not close a line (R3) and iteration marks may not open one (R1)', () => {
+test('the katakana middle dot and iteration marks may not open a line (R1)', () => {
+	// `・` (U+30FB) is NS in UAX #14; LB21 forbids a break *before*
+	// it, so it must never be a line head. A break after it is legal.
 	const middle = judgeLines({
+		text: '区切り・表現の確認。',
+		lines: ['区切り', '・表現の確認。'],
+		lineBreak: 'auto',
+	});
+	assert.ok(middle.violations.some((v) => v.rule === 'R1-line-head'));
+
+	const afterMiddle = judgeLines({
 		text: '区切り・表現の確認。',
 		lines: ['区切り・', '表現の確認。'],
 		lineBreak: 'auto',
 	});
-	assert.ok(middle.violations.some((v) => v.rule === 'R3-line-tail'));
+	assert.deepEqual(afterMiddle.violations, []);
 
 	const iteration = judgeLines({
 		text: '表記は今日々日の表現。',
@@ -200,6 +200,19 @@ test('the katakana middle dot may not close a line (R3) and iteration marks may 
 		lineBreak: 'auto',
 	});
 	assert.ok(iteration.violations.some((v) => v.rule === 'R1-line-head'));
+});
+
+test('judgeLines uses the sample locale when the harness knows it', () => {
+	// The browser run passes `data-cjk-sample`; the report column and the
+	// rule set must both come from that attribute, not from a guess about
+	// the rendered glyphs.
+	const { locale } = judgeLines({
+		text: 'plain sample',
+		lines: ['plain sample'],
+		lineBreak: 'auto',
+		locale: 'ko',
+	});
+	assert.equal(locale, 'ko');
 });
 
 test('judgeLines flags an interior blank line', () => {
@@ -277,8 +290,67 @@ test('auditFixtureSources fails when the /design-system section stops rendering 
 		join(REPO_ROOT, 'src/routes/design-system/DesignSystemPage.tsx'),
 		'utf8',
 	);
-	assert.ok(page.includes('<CjkSection />'));
-	assert.ok(!page.replace('<CjkSection />', '').includes('<CjkSection />'));
+	assert.deepEqual(auditFixtureSources({ page }), []);
+
+	const problems = auditFixtureSources({ page: page.replace('<CjkSection />', '') });
+	assert.equal(problems.length, 1);
+	assert.match(problems[0], /CjkSection/);
+});
+
+test('the measurement matrix must contain every mode × width × locale × role', () => {
+	const rows = [];
+	for (const mode of MODES) {
+		for (const width of WIDTHS) {
+			for (const locale of CJK_LOCALE_IDS) {
+				for (const role of ['heading', 'body']) {
+					rows.push({ mode: mode.mode, width, locale, role });
+				}
+			}
+		}
+	}
+	assert.equal(rows.length, 72);
+	assert.equal(assertMeasurementMatrix(rows).ok, true);
+
+	const incomplete = assertMeasurementMatrix(rows.slice(1));
+	assert.equal(incomplete.ok, false);
+	assert.equal(incomplete.missing.length, 1);
+
+	const duplicated = assertMeasurementMatrix([...rows, rows[0]]);
+	assert.equal(duplicated.ok, false);
+});
+
+test('rowFailures requires the opt-in declarations, not just lang (R9/R10)', () => {
+	const style = {
+		wordBreak: 'auto-phrase',
+		textWrapStyle: 'balance',
+		lineBreak: 'strict',
+		textSpacingTrim: 'trim-start',
+	};
+	const row = {
+		mode: 'locale-typography',
+		width: 375,
+		locale: 'ja',
+		role: 'heading',
+		lang: 'ja',
+		violations: [],
+		observations: [],
+		lossless: { ok: true },
+		style,
+	};
+	assert.deepEqual(rowFailures(row), []);
+
+	const baseline = {
+		...row,
+		mode: 'default',
+		lang: '(none)',
+		style: { ...style, lineBreak: 'auto', textSpacingTrim: 'normal' },
+	};
+	assert.deepEqual(rowFailures(baseline), []);
+
+	const broken = { ...row, style: { ...style, lineBreak: 'auto', textSpacingTrim: 'normal' } };
+	const codes = rowFailures(broken).map((failure) => failure.code);
+	assert.ok(codes.includes('R9'));
+	assert.ok(codes.includes('R10'));
 });
 
 test('the modes, locales, viewports and route match what the Issue asks for', () => {

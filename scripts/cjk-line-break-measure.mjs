@@ -5,13 +5,14 @@
  *
  * What it measures
  * ----------------
- * `src/editorial/cjk-line-break.stories.tsx` renders the shipped
- * editorial recipes (`SectionHeading` `title` + `description`) for
- * `ja` / `zh-Hans` / `zh-Hant` / `ko`, in three opt-in levels: the
- * shipped default, `lang` only, and `lang` + CJK typography. This
- * script drives those stories in a real Chromium, reconstructs the
- * per-character line boxes with `Range.getClientRects()`, and turns
- * the resulting break positions into pass / fail facts.
+ * `src/editorial/cjk-line-break.tsx` renders the shipped editorial
+ * recipes (`SectionHeading` `title` + `description`) for `ja` /
+ * `zh-Hans` / `zh-Hant` / `ko`, in three opt-in levels: the shipped
+ * default, `lang` only, and `lang` + CJK typography. The
+ * `/design-system` page mounts that fixture as section 08, and this
+ * script drives it in a real Chromium, reconstructs the per-character
+ * line boxes with `Range.getClientRects()`, and turns the resulting
+ * break positions into pass / fail facts.
  *
  * It is a measurement, not a claim
  * --------------------------------
@@ -28,28 +29,38 @@
  * Line breaking is a user-agent layout feature. No JSDOM / happy-dom
  * run can answer "did the engine put 。 at a line head?", so the only
  * honest surface is the engine. That is also why the fixture renders
- * in Storybook — the Issue's requested surface — instead of a
- * synthetic HTML page: a measurement taken against a hand-written
- * stylesheet would be measuring the stylesheet, not the product.
+ * on the shipped `/design-system` route instead of a synthetic HTML
+ * page: a measurement taken against a hand-written stylesheet would be
+ * measuring the stylesheet, not the product. `storybook-static/` is not
+ * a usable surface — this repository's Storybook build emits no preview
+ * `iframe.html` (a pre-existing defect, tracked outside this harness).
  *
- * The static server
- * -----------------
- * `storybook-static/` is the output of `pnpm run build-storybook`,
- * which `validate:integration` already runs, so the harness needs no
- * extra build step and no network. Point it at a running dev server
- * with `--storybook-url http://127.0.0.1:6006` instead.
+ * The server
+ * ----------
+ * With no `--base-url`, the harness does not build anything itself: it
+ * requires an existing `pnpm run build`, starts
+ * `scripts/e2e-local-bootstrap.mjs` (local D1 only) → `pnpm preview` on
+ * `--port` (default 39217), and stops that process group on exit. It
+ * never adopts a server it did not start: a listener already answering
+ * on the port is a hard error, so a stray preview from another worktree
+ * cannot be measured by accident.
  *
  * Usage
  * -----
  *   node scripts/cjk-line-break-measure.mjs [--write-artefact]
- *     [--storybook-url <url>] [--storybook-dir <dir>] [--widths 320,375,768]
+ *     [--base-url <url>] [--port <n>] [--widths 320,375,768]
  *
  *   --write-artefact  also (re)writes docs/verification/i18n/cjk-line-break.webp.
  *                     Omitted by default so a plain measurement run
  *                     cannot silently replace a committed artefact.
+ *   --base-url        measure an already running preview instead of
+ *                     starting one; the harness never reuses a port.
+ *   --port            port for the preview this harness starts.
+ *   --widths          comma-separated viewport widths.
  *
  * Exit codes: 0 = every rule holds, 1 = at least one rule failed,
- * 2 = the harness could not run (no build, no browser, bad input).
+ * 2 = the harness could not run (no build, no browser, bad input,
+ * occupied port, incomplete measurement matrix).
  */
 
 import { spawn } from 'node:child_process';
@@ -63,31 +74,35 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * Kinsoku character tables.
  *
  * `headForbidden` are characters that must not OPEN a line (行頭禁則):
- * closing brackets, closing punctuation and the iteration marks
- * (UAX #14 line-break classes CL / CP / ID). Mandatory in every
+ * closing brackets, closing punctuation, iteration marks and the
+ * katakana middle dot `・` (UAX #14 line-break classes CL / CP / NS).
+ * LB21 forbids a break *before* an NS character, so `・` belongs on the
+ * line-head side, not the line-tail side. Mandatory in every
  * `line-break` value except `anywhere`, so it is a hard rule for every
  * story.
  *
  * `tailForbidden` are characters that must not CLOSE a line (行末禁則):
- * opening brackets, prefix currency signs and the katakana middle dot
- * (classes OP / PR / NS). Also mandatory everywhere.
+ * opening brackets and prefix currency signs (classes OP / PR). Also
+ * mandatory everywhere.
  *
  * `starterSensitive` are Japanese starters whose treatment depends on
  * the `line-break` value (UAX #14 resolves the Conditional Japanese
- * Starter class CJ differently per value): small kana and the
- * prolonged sound mark. Under `line-break: strict` they are a hard
- * rule; under `auto` the engine may legally leave one at a line head,
- * so it is recorded as an observation instead of a failure. Reporting
- * it either way is the point — the difference between the two stories
- * IS the finding.
+ * Starter class CJ differently per value): the small kana and the
+ * prolonged sound mark. LineBreak.txt assigns both CJ (not NS), so they
+ * must not move into `headForbidden`: a break before one is legal under
+ * `auto` and forbidden only under `strict`. Under
+ * `line-break: strict` they are a hard rule; under `auto` the engine
+ * may legally leave one at a line head, so it is recorded as an
+ * observation instead of a failure. Reporting it either way is the
+ * point — the difference between the two stories IS the finding.
  *
  * Exported so `scripts/cjk-line-break-measure.test.mjs` can prove the
  * tables themselves are well formed (non-empty, disjoint, inside the
  * script ranges they claim to cover) without launching a browser.
  */
 export const KINSHOKU = {
-	headForbidden: '。、，．：；！？!?‼⁇⁈⁉…‥’”」』）〕］｝〉》〗〙〛｠»›】々〆ゝゞヽヾ',
-	tailForbidden: '‘“「『（〔［｛〈《〖〘〝｟«‹([{$￥＄＃＠§・',
+	headForbidden: '。、，．：；！？!?‼⁇⁈⁉…‥’”」』）〕］｝〉》〗〙〛｠»›】々〆ゝゞヽヾ・',
+	tailForbidden: '‘“「『（〔［｛〈《〖〘〝｟«‹([{$￥＄',
 	starterSensitive: 'ぁぃぅぇぉっゃゅょゎゕゖァィゥェォッャュョヮヵヶー',
 };
 
@@ -173,8 +188,8 @@ const DEFAULT_PORT = 39217;
 
 /**
  * The Issue names `docs/verification/i18n/cjk-line-break.png`; the
- * artefact is the same picture as a compressed WebP (1600px wide,
- * quality 72) so a verification screenshot cannot bloat the
+ * artefact is the same picture as a compressed WebP (1280px wide,
+ * quality 56) so a verification screenshot cannot bloat the
  * repository. Exported so the unit test can assert the substitution
  * stays deliberate.
  */
@@ -187,11 +202,17 @@ export const ARTEFACT = ARTEFACT_PATH;
 /**
  * Turn reconstructed lines into violations + observations.
  *
- * @param {{ text: string, lines: string[], lineBreak: string }} input
+ * `locale` is the sample's own `data-cjk-sample` id when the browser
+ * run supplies it; the text-based fallback exists only so the rule
+ * engine can be exercised from a unit test with a bare string. Passing
+ * the known locale keeps a sample whose kana or hangul failed to render
+ * from being silently judged with the wrong rule set.
+ *
+ * @param {{ text: string, lines: string[], lineBreak: string, locale?: string }} input
  */
-export function judgeLines({ text, lines, lineBreak }) {
-	const locale = detectLocale(text);
-	const rules = rulesForLocale(locale);
+export function judgeLines({ text, lines, lineBreak, locale }) {
+	const resolvedLocale = locale ?? detectLocale(text);
+	const rules = rulesForLocale(resolvedLocale);
 	const strict = lineBreak === 'strict';
 	const violations = [];
 	const observations = [];
@@ -237,7 +258,7 @@ export function judgeLines({ text, lines, lineBreak }) {
 		}
 	});
 
-	return { locale, violations, observations };
+	return { locale: resolvedLocale, violations, observations };
 }
 
 /**
@@ -323,10 +344,11 @@ function readRepoFile(relative) {
  * succeeds and silently measures nothing. These checks read the source
  * so the breakage is a failed unit test rather than an empty report.
  */
-export function auditFixtureSources() {
-	const fixture = readRepoFile('src/editorial/cjk-line-break.tsx');
-	const section = readRepoFile('src/routes/design-system/sections/CjkLineBreak.tsx');
-	const page = readRepoFile('src/routes/design-system/DesignSystemPage.tsx');
+export function auditFixtureSources(sources = {}) {
+	const fixture = sources.fixture ?? readRepoFile('src/editorial/cjk-line-break.tsx');
+	const section =
+		sources.section ?? readRepoFile('src/routes/design-system/sections/CjkLineBreak.tsx');
+	const page = sources.page ?? readRepoFile('src/routes/design-system/DesignSystemPage.tsx');
 	const problems = [];
 
 	for (const [haystack, needle, message] of [
@@ -334,7 +356,7 @@ export function auditFixtureSources() {
 		[fixture, 'data-cjk-mode', 'the fixture must keep the data-cjk-mode hook'],
 		[fixture, 'data-cjk-showcase', 'the showcase must keep the data-cjk-showcase hook'],
 		[section, 'CjkLineBreakShowcase', 'the /design-system section must render the shared showcase'],
-		[page, '<CjkSection />', 'DesignSystemPage must render the CJK section'],
+		[page, '<CjkSection />', 'DesignSystemPage must render <CjkSection />'],
 	]) {
 		if (!haystack.includes(needle)) problems.push(message);
 	}
@@ -560,6 +582,7 @@ function buildRows(measurements) {
 					text: measured.text,
 					lines: measured.lines,
 					lineBreak: measured.style.lineBreak,
+					locale: sample.locale,
 				});
 				rows.push({
 					mode: sample.mode,
@@ -584,44 +607,114 @@ function buildRows(measurements) {
 }
 
 /**
+ * Every (mode, width, locale, role) the fixture is expected to produce.
+ *
+ * `buildRows` skips a wrapper whose `h2` or `p` is missing, which is
+ * the right behaviour for one malformed element but the wrong
+ * behaviour for the run as a whole: a locale that stops rendering, or
+ * a viewport where the fixture collapses, would otherwise shrink the
+ * matrix silently and still PASS on the rows that survive. The
+ * expected set is derived from the same constants the fixture and the
+ * CLI use, so a missing combination is a hard failure rather than an
+ * absence of evidence.
+ */
+export function assertMeasurementMatrix(rows, widths = WIDTHS) {
+	const expected = new Set();
+	for (const mode of MODES) {
+		for (const width of widths) {
+			for (const locale of CJK_LOCALE_IDS) {
+				for (const role of ['heading', 'body']) {
+					expected.add(`${mode.mode}|${width}|${locale}|${role}`);
+				}
+			}
+		}
+	}
+	const actual = new Set(rows.map((row) => `${row.mode}|${row.width}|${row.locale}|${row.role}`));
+	const missing = [...expected].filter((key) => !actual.has(key));
+	const unexpected = [...actual].filter((key) => !expected.has(key));
+	return {
+		ok: missing.length === 0 && unexpected.length === 0 && rows.length === expected.size,
+		expected: expected.size,
+		missing,
+		unexpected,
+	};
+}
+
+/**
+ * Everything that can make one row fail: the per-line break positions
+ * plus the style contract (R5-R8) the fixture depends on. `collectFailures`
+ * and the report's per-row verdict both read this, so a row can never
+ * read OK while the overall run says FAIL.
+ */
+export function rowFailures(row) {
+	const failures = [];
+	for (const violation of row.violations) {
+		failures.push({ code: violation.rule, detail: `line ${violation.line} — ${violation.detail}` });
+	}
+	if (!row.lossless.ok) failures.push({ code: 'R5', detail: row.lossless.detail });
+
+	// R6: the shipped base rule must survive. A surface that forces
+	// `break-all` / `keep-all` onto prose reintroduces exactly the
+	// mid-word splits this fixture exists to watch.
+	if (!['normal', 'auto-phrase'].includes(row.style.wordBreak)) {
+		failures.push({
+			code: 'R6',
+			detail: `word-break is ${row.style.wordBreak}, expected normal|auto-phrase`,
+		});
+	}
+
+	// R7: each role keeps the wrap mode its own recipe asks for, so a
+	// change to SectionHeading surfaces as a failed measurement instead
+	// of as a silently different picture.
+	const expectedWrap = row.role === 'heading' ? 'balance' : 'pretty';
+	if (row.style.textWrapStyle !== expectedWrap) {
+		failures.push({
+			code: 'R7',
+			detail: `text-wrap-style is ${row.style.textWrapStyle}, expected ${expectedWrap}`,
+		});
+	}
+
+	// R8: `lang` is opt-in and scoped to the sample's own locale — never
+	// set on the shipped baseline, never set to another locale.
+	if (row.mode === 'default' && row.lang !== '(none)') {
+		failures.push({ code: 'R8', detail: `baseline mode must carry no lang, got ${row.lang}` });
+	}
+	if (row.mode !== 'default' && row.lang !== row.locale) {
+		failures.push({ code: 'R8', detail: `lang is ${row.lang}, expected ${row.locale}` });
+	}
+
+	// R9/R10: the third mode's declarations must actually be applied.
+	// Checking only `lang` would let a Panda codegen change or an engine
+	// that ignores the property exit 0 with a third mode that renders
+	// exactly like the second one.
+	const expectedLineBreak = row.mode === 'locale-typography' ? 'strict' : 'auto';
+	if (row.style.lineBreak !== expectedLineBreak) {
+		failures.push({
+			code: 'R9',
+			detail: `line-break is ${row.style.lineBreak}, expected ${expectedLineBreak}`,
+		});
+	}
+	const expectedSpacingTrim = row.mode === 'locale-typography' ? 'trim-start' : 'normal';
+	if (row.style.textSpacingTrim !== expectedSpacingTrim) {
+		failures.push({
+			code: 'R10',
+			detail: `text-spacing-trim is ${row.style.textSpacingTrim}, expected ${expectedSpacingTrim}`,
+		});
+	}
+	return failures;
+}
+
+/**
  * Everything that is not a per-line break position: the style contract
  * the fixture depends on, and the R5 losslessness check.
  */
 function collectFailures(rows) {
 	const failures = [];
 	for (const row of rows) {
+		row.failures = rowFailures(row);
 		const where = `${row.mode}/${row.width}px/${row.locale}/${row.role}`;
-		for (const violation of row.violations) {
-			failures.push(`${where}: ${violation.rule} (line ${violation.line}) — ${violation.detail}`);
-		}
-		if (!row.lossless.ok) failures.push(`${where}: R5 ${row.lossless.detail}`);
-
-		// R6: the shipped base rule must survive. A surface that forces
-		// `break-all` / `keep-all` onto prose reintroduces exactly the
-		// mid-word splits this fixture exists to watch.
-		if (!['normal', 'auto-phrase'].includes(row.style.wordBreak)) {
-			failures.push(
-				`${where}: R6 word-break is ${row.style.wordBreak}, expected normal|auto-phrase`,
-			);
-		}
-
-		// R7: each role keeps the wrap mode its own recipe asks for, so
-		// a change to SectionHeading surfaces as a failed measurement
-		// instead of as a silently different picture.
-		const expectedWrap = row.role === 'heading' ? 'balance' : 'pretty';
-		if (row.style.textWrapStyle !== expectedWrap) {
-			failures.push(
-				`${where}: R7 text-wrap-style is ${row.style.textWrapStyle}, expected ${expectedWrap}`,
-			);
-		}
-
-		// R8: `lang` is opt-in and scoped to the sample's own locale —
-		// never set on the shipped baseline, never set to another locale.
-		if (row.mode === 'default' && row.lang !== '(none)') {
-			failures.push(`${where}: R8 baseline mode must carry no lang, got ${row.lang}`);
-		}
-		if (row.mode !== 'default' && row.lang !== row.locale) {
-			failures.push(`${where}: R8 lang is ${row.lang}, expected ${row.locale}`);
+		for (const failure of row.failures) {
+			failures.push(`${where}: ${failure.code} — ${failure.detail}`);
 		}
 	}
 	return failures;
@@ -689,11 +782,12 @@ li{margin-bottom:5px}
 function renderReport({ rows, failures, ua, shots }) {
 	const uniq = (pick) => [...new Set(rows.map(pick))].filter(Boolean).sort().join(' / ');
 	const verdict = failures.length === 0 ? 'PASS' : 'FAIL';
+	const observations = rows.reduce((count, row) => count + row.observations.length, 0);
 
 	const tableRow = (row) => {
-		const bad = row.violations.length > 0 || !row.lossless.ok;
+		const bad = row.failures.length > 0;
 		const heads = row.firstChars.slice(1).join('');
-		const rules = bad ? htmlEscape(row.violations.map((v) => v.rule).join(', ')) : '';
+		const rules = bad ? htmlEscape(row.failures.map((failure) => failure.code).join(', ')) : '';
 		return `<tr>
   <td>${row.width}</td>
   <td>${htmlEscape(row.locale)}</td>
@@ -743,7 +837,7 @@ function renderReport({ rows, failures, ua, shots }) {
   <code>text-wrap-style: ${htmlEscape(uniq((r) => r.style.textWrapStyle))}</code> ／
   <code>text-spacing-trim: ${htmlEscape(uniq((r) => r.style.textSpacingTrim))}</code><br>
   総合判定: <strong class="${verdict === 'PASS' ? 'ok' : 'bad'}">${verdict}</strong> ／ 違反 ${failures.length} 件 ／
-  R4-starter（条件付き行頭禁則）は engine が line-break の値に応じて合法とする差なので判定には数えません（今回は 0 件）。
+  R4-starter（条件付き行頭禁則）は engine が line-break の値に応じて合法とする差なので判定には数えません（今回は ${observations} 件）。
 </p>
 
 <h2>1. 実画面 — 出荷状態（① Default / viewport 375px）</h2>
@@ -765,11 +859,19 @@ ${table(grouped.slice(0, split))}
 ${table(grouped.slice(split))}
 </div>
 
-<h2>5. この測定が何を主張しないか（未対応範囲）</h2>
+${
+	failures.length
+		? `<h2>5. 失敗内容</h2>
+<ul>${failures.map((failure) => `<li>${htmlEscape(failure)}</li>`).join('')}</ul>
+
+<h2>6. この測定が何を主張しないか（未対応範囲）</h2>`
+		: '<h2>5. この測定が何を主張しないか（未対応範囲）</h2>'
+}
 <p class="note" style="margin:0">
 <strong>文章品質</strong>（翻訳・推敲・トーン・用語統一）は対象外 — 禁則処理が通ることは文章が良いことを意味しません。 ／
 <strong>Firefox / WebKit</strong> は 0.6.x のブラウザ対象が Chromium のみのため未測定。 ／
-<strong><code>word-break: auto-phrase</code></strong>（Issue #300 の base 宣言）と <strong><code>text-spacing-trim</code></strong> はエンジンの実装状況に依存するため、計算値として記録するだけで成否の判定には使いません。 ／
+<strong><code>word-break: auto-phrase</code></strong>（Issue #300 の base 宣言）はエンジンの実装状況に依存するため、計算値として記録し、R6 では <code>normal</code> / <code>auto-phrase</code> のいずれかを要求します。 ／
+<strong><code>line-break</code> / <code>text-spacing-trim</code></strong> は R9 / R10 で opt-in 段階の計算値（③ = <code>strict</code> / <code>trim-start</code>、①② = <code>auto</code> / <code>normal</code>）を検証します。 ／
 <strong>Storybook</strong> にも同じ fixture を <code>src/editorial/cjk-line-break.stories.tsx</code> として公開していますが、本リポジトリでは preview bundle が manager 側にしか出力されないため測定は app 側（<code>${ROUTE}</code>）で行っています。 ／
 <strong>ロケール別ルーティング・翻訳・言語別フォント</strong>（#338 / #341 / #342-#347）には依存しません。fixture の文言は検証専用で、製品コピーの変更はゼロです。
 </p>
@@ -786,26 +888,29 @@ async function writeArtefact(browser, payload) {
 	// sub-pixel line boxes, and capturing the report at 2x as well only
 	// adds pixels that are thrown away by the resize.
 	const context = await browser.newContext({ deviceScaleFactor: 1 });
-	const page = await context.newPage();
-	await page.setViewportSize({ width: ARTEFACT_WIDTH, height: 1200 });
-	await page.setContent(renderReport(payload), { waitUntil: 'load' });
 	const webpPath = resolve(REPO_ROOT, ARTEFACT_PATH);
 	const pngPath = webpPath.replace(/\.webp$/, '.png');
 	mkdirSync(dirname(webpPath), { recursive: true });
-	await page.screenshot({ path: pngPath, fullPage: true });
-	const { default: sharp } = await import('sharp');
-	const info = await sharp(pngPath)
-		.resize({ width: ARTEFACT_WIDTH, withoutEnlargement: true })
-		.webp({ quality: ARTEFACT_QUALITY })
-		.toFile(webpPath);
-	unlinkSync(pngPath);
-	if (info.size > ARTEFACT_MAX_BYTES) {
-		throw new Error(
-			`${ARTEFACT_PATH} is ${Math.round(info.size / 1024)} KB, over the ${Math.round(ARTEFACT_MAX_BYTES / 1024)} KB budget. Shrink ARTEFACT_WIDTH / ARTEFACT_QUALITY / CROP_WIDTH in this file, or cut a section, rather than committing the bloat.`,
-		);
+	try {
+		const page = await context.newPage();
+		await page.setViewportSize({ width: ARTEFACT_WIDTH, height: 1200 });
+		await page.setContent(renderReport(payload), { waitUntil: 'load' });
+		await page.screenshot({ path: pngPath, fullPage: true });
+		const { default: sharp } = await import('sharp');
+		const info = await sharp(pngPath)
+			.resize({ width: ARTEFACT_WIDTH, withoutEnlargement: true })
+			.webp({ quality: ARTEFACT_QUALITY })
+			.toFile(webpPath);
+		if (info.size > ARTEFACT_MAX_BYTES) {
+			throw new Error(
+				`${ARTEFACT_PATH} is ${Math.round(info.size / 1024)} KB, over the ${Math.round(ARTEFACT_MAX_BYTES / 1024)} KB budget. Shrink ARTEFACT_WIDTH / ARTEFACT_QUALITY / CROP_WIDTH in this file, or cut a section, rather than committing the bloat.`,
+			);
+		}
+		return { path: ARTEFACT_PATH, bytes: info.size, width: info.width, height: info.height };
+	} finally {
+		await context.close();
+		if (existsSync(pngPath)) unlinkSync(pngPath);
 	}
-	await context.close();
-	return { path: ARTEFACT_PATH, bytes: info.size, width: info.width, height: info.height };
 }
 
 /* ------------------------------------------------------------------ *
@@ -841,7 +946,7 @@ function printTable(rows) {
 		`${row.contentBox}px`,
 		row.lines,
 		row.firstChars.slice(1).join('') || '-',
-		row.violations.length ? `NG(${row.violations.length})` : 'OK',
+		row.failures.length ? `NG(${row.failures.length})` : 'OK',
 	];
 	const columns = header.map((label, index) =>
 		Math.max(label.length, ...rows.map((row) => String(cells(row)[index] ?? '').length)),
@@ -861,19 +966,21 @@ async function main() {
 		return 2;
 	}
 
-	const external =
-		options.baseUrl ??
-		((await reachable(`http://127.0.0.1:${options.port}`))
-			? `http://127.0.0.1:${options.port}`
-			: null);
-	const preview = external ? null : await startPreview(options.port);
-	const baseUrl = external ?? preview.baseUrl;
+	const baseUrl = options.baseUrl ?? `http://127.0.0.1:${options.port}`;
+	if (!options.baseUrl && (await reachable(baseUrl))) {
+		throw new Error(
+			`${baseUrl} already answers. This harness measures only the build it starts in this worktree; stop the listener on port ${options.port} or pass --base-url <url> explicitly.`,
+		);
+	}
+	const preview = options.baseUrl ? null : await startPreview(options.port);
 
-	const { chromium } = await import('@playwright/test');
-	const browser = await chromium.launch();
-	const context = await browser.newContext({ deviceScaleFactor: 2 });
+	let browser;
+	let context;
 
 	try {
+		const { chromium } = await import('@playwright/test');
+		browser = await chromium.launch();
+		context = await browser.newContext({ deviceScaleFactor: 2 });
 		const measurements = [];
 		const shots = { realScreen: [], compare: [], narrow: [] };
 
@@ -911,9 +1018,14 @@ async function main() {
 		}
 
 		const rows = buildRows(measurements);
+		const matrix = assertMeasurementMatrix(rows, options.widths);
+		if (!matrix.ok) {
+			throw new Error(
+				`measurement matrix incomplete: expected ${matrix.expected} rows, got ${rows.length}; missing [${matrix.missing.join(', ')}] unexpected [${matrix.unexpected.join(', ')}]`,
+			);
+		}
 		const failures = collectFailures(rows);
 		const ua = `Chromium ${browser.version()}`;
-		const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'));
 
 		printTable(rows);
 		process.stdout.write(`\n${rows.length} measurement row(s), ${failures.length} failure(s)\n`);
@@ -955,8 +1067,8 @@ async function main() {
 		process.stdout.write(`\n${rows.length} row(s) measured; report at ${REPORT_PATH}\n`);
 		return 0;
 	} finally {
-		await context.close();
-		await browser.close();
+		await context?.close();
+		await browser?.close();
 		stopPreview(preview?.child);
 	}
 }

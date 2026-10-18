@@ -1,5 +1,4 @@
 import { css } from '../../styled-system/css';
-import { Container } from './primitives/Container';
 import { SectionHeading } from './primitives/SectionHeading';
 
 /**
@@ -235,20 +234,5 @@ export function CjkLineBreakShowcase({ spec }: { spec: CjkModeSpec }) {
 				<CjkSample key={sample.id} sample={sample} spec={spec} />
 			))}
 		</section>
-	);
-}
-
-/**
- * `CjkLineBreakFixture` — all three modes in one container. This is
- * what `/design-system` renders: the comparison only means anything
- * with the baseline and the opt-in levels side by side.
- */
-export function CjkLineBreakFixture() {
-	return (
-		<Container className={css({ display: 'flex', flexDirection: 'column' })}>
-			{CJK_MODES.map((spec) => (
-				<CjkLineBreakShowcase key={spec.mode} spec={spec} />
-			))}
-		</Container>
 	);
 }

@@ -1,0 +1,16 @@
+{
+	"schemaVersion": 1,
+	"gate": "dependency-advisory",
+	"issue": "#470",
+	"enforcement": "audit",
+	"blockingSeverities": ["critical", "high"],
+	"reportedSeverities": ["moderate", "low", "info"],
+	"dataUnavailable": "fail",
+	"advisorySource": {
+		"command": "pnpm audit --json",
+		"lockfile": "pnpm-lock.yaml",
+		"note": "The npm registry advisory endpoint answers from the lockfile's resolved name@version set. No node_modules, credential or environment value is read."
+	},
+	"note": "Blocking severities are declared here, not in code, so a policy change is a reviewable one-line diff. `enforcement: audit` records blocking findings and still fails on unavailable advisory data; flipping it to `block` is the escalation step described in docs/runbook/dependency-advisories.md section 6.",
+	"exceptions": []
+}

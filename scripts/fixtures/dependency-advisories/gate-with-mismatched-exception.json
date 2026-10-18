@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"gate": "dependency-advisory",
+	"issue": "#470",
+	"enforcement": "block",
+	"blockingSeverities": ["critical", "high"],
+	"reportedSeverities": ["moderate", "low", "info"],
+	"dataUnavailable": "fail",
+	"advisorySource": {
+		"command": "pnpm audit --json",
+		"lockfile": "pnpm-lock.yaml",
+		"note": "Fixture gate. The exception below is fixture data, not a real approval."
+	},
+	"note": "Fixture gate: the exception names a package the advisory does not report. This is the shape that used to be laundered into `DATA UNAVAILABLE`; it must instead suppress nothing and say so.",
+	"exceptions": [
+		{
+			"advisoryId": "GHSA-fixt-fxmp-fxmp",
+			"package": "fixture-server-bundle",
+			"severity": "critical",
+			"reason": "Fixture: the package name in this record is wrong; the approved path is fixture-runtime and fixture-server-core.",
+			"approvedBy": "fixture: repository owner (not a real approval)",
+			"trackingIssue": 470,
+			"expiresOn": "2027-01-31"
+		}
+	]
+}

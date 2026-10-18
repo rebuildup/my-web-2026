@@ -259,6 +259,16 @@ CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 The same job also installs the Playwright Chromium binary and runs
 the E2E suite against `pnpm dev`.
 
+`validate:fast` additionally runs `pnpm run install:scripts:check`,
+the dependency install lifecycle script audit (Issue #474). It fails
+when an installed dependency can execute code during `pnpm install`
+(a `preinstall` / `install` / `postinstall` hook, the implicit
+`node-gyp rebuild` of a package that ships `binding.gyp`, or the
+`prepare` of a git-hosted dependency) that the reviewed policy in
+`quality/install-scripts.json` has no record for, or when that record
+and pnpm's execution allow-list (`pnpm-workspace.yaml`) disagree. See
+[`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
+
 ## Storybook
 
 Storybook 8.6.x previews the visual obligations that currently exist in source.
@@ -365,6 +375,34 @@ my-web-2026. The traversal check is therefore skipped there instead of
 being weakened everywhere; the skip-link contract itself (the link
 exists and its `#main` target resolves) is still asserted on WebKit by
 `assertRouteContract`. The matrix shows the cell as `SKIP`.
+
+## Bundle map (Issue #483)
+
+`pnpm run verify:bundle-map` renders a **report** about an emitted client
+build: which chunks each route loads and what they cost, which chunks are
+duplicated, which are unreachable, and whether any host route pulls in the
+Tool artifacts under `tools/**`. It reads the build output only — no
+network, no Cloudflare API, no production read — and it is wired into no
+`validate:*` entry point, so it can never block a build or a release.
+`quality/profile.yaml#diagnostic_entry_points` records the same contract.
+
+```bash
+pnpm exec vite build                                   # emit the client build
+node scripts/build-tools.mjs                           # Tool artefacts
+node scripts/sync-cf-build-output.mjs                 # copy them into Build Output
+node scripts/e2e-local-bootstrap.mjs --port=3000       # preview server (terminal 1)
+pnpm run verify:bundle-map -- --base-url=http://127.0.0.1:3000
+```
+
+Without `--base-url` the script still runs a static pass over the emitted
+files; the route matrix and the Home Tool-isolation finding need the
+measurement and are reported as not measured.
+
+The committed snapshot lives at
+[`docs/verification/perf/bundle-map.md`](../docs/verification/perf/bundle-map.md),
+with its screenshot at `docs/verification/perf/bundle-map.webp`
+(Issue #483 names a `.png`; the WebP substitution is stated in the PR body).
+Regenerate both when the client chunking changes.
 
 ## Format and lint
 

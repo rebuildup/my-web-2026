@@ -140,11 +140,16 @@ function UploadForm() {
 
 	const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
+		// React nulls `currentTarget` once the dispatch returns, so the
+		// form element is captured before the first `await`. Reading it
+		// after the upload would throw and be rendered as a bogus upload
+		// failure — the success path could never actually complete.
+		const form = e.currentTarget;
 		setBusy(true);
 		setError(null);
 		setSuccess(null);
 		try {
-			const formData = new FormData(e.currentTarget);
+			const formData = new FormData(form);
 			const file = formData.get('image');
 			if (!(file instanceof File) || file.size === 0) {
 				setError('ファイルを選択してください。');
@@ -171,7 +176,7 @@ function UploadForm() {
 				},
 			});
 			setSuccess(`uploaded: ${result.id}`);
-			e.currentTarget.reset();
+			form.reset();
 		} catch (err) {
 			// Raw text stays in the console (redacted); the page shows
 			// only the mapped sentence for a known policy code.

@@ -168,6 +168,7 @@ export function TextField({ name, label, description, error, required, ...rest }
 			control={(association) => (
 				<input
 					{...rest}
+					name={name}
 					required={required}
 					className={inputClassName({ invalid: hasError(error) })}
 					{...association}
@@ -214,6 +215,7 @@ export function FileField({
 			control={(association) => (
 				<input
 					{...rest}
+					name={name}
 					type="file"
 					accept={accept}
 					required={required}

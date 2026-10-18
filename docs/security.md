@@ -29,6 +29,136 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## API key scope and revocation
+
+The API keys that guard `/api/v1/access/*` and `/api/v1/reactions/*`
+have two decision layers: the boundary middleware
+(`src/http/api-keys/middleware.ts`) owns the `Authorization` shape and
+the resource/action scope lookup, and `@better-auth/api-key` owns hash
+verification, revocation, and expiry. Every denial collapses to a single
+shape (`401 missing_authorization`, `401 invalid_api_key`, or
+`403 missing_scope`) so a refusal cannot become an oracle.
+
+The scope matrix, the fixtures that pin each refusal, and the
+secret-handling invariants live in
+[`docs/security/api-key-scope.md`](security/api-key-scope.md). Its
+measured artefact is
+[`docs/verification/security/api-key-scope-matrix.webp`](verification/security/api-key-scope-matrix.webp)
+(regenerate with `pnpm run verification:api-key-scope`). Verification is
+local-only: fixtures live in a throwaway Miniflare D1 database, and no
+production endpoint, secret, or operator account is read or written.
+
+## Cache isolation
+
+Responses whose body depends on who asked for them (per-principal
+counters, per-visitor reaction state, sessions, `/admin*`, and
+server-function payloads) are marked so that a **shared** cache — CDN
+edge, corporate proxy — cannot store them: `private, no-store` on the
+external boundary, `private, no-cache` on caller-specific SSR
+documents, `no-store` under `/admin*`. Public immutable payloads opt
+in explicitly with `public, max-age=…, immutable`.
+
+The full contract, the audit it came from, and the verification
+suites are documented in
+[`docs/security/cache-isolation.md`](security/cache-isolation.md).
+
+## Open redirect
+
+Every `returnTo`-shaped value that crosses the external boundary is
+untrusted. `src/http/security/**` refuses anything that is not an
+internal absolute path, and is mounted in front of the Better Auth
+handler at `/api/v1/auth/*`. `BETTER_AUTH_URL` is the trusted-origin
+allow-list; when it is unset the guard refuses every absolute URL
+(fail-closed). The shipped contract, operator duties and known limits:
+[`docs/security/open-redirect.md`](security/open-redirect.md).
+
+## D1 parameter binding (Issue #452)
+
+### Rule
+
+Every D1 statement that user input reaches must bind that input with
+`?` / `?N` + `.bind(...)`. Splicing a value into the statement text is
+a defect even when the value is escaped today: the statement text is
+the part a reviewer reads as structure, and a bound value cannot change
+the parse tree.
+
+### Where it is enforced
+
+Two gates, both run by `pnpm run test` (and therefore by
+`pnpm run validate:fast` and CI):
+
+| Gate | What it proves | Where |
+| --- | --- | --- |
+| Runtime suite | Attack fixtures reach the real endpoints through `externalBoundary`; the recorded SQL text is byte-identical to the benign run, no payload appears in a statement, and the seeded rows survive. | `test/integration/d1-parameter-binding.test.ts` (workerd pool) |
+| Static gate | The **literal argument** of every `prepare()` / `exec()` / `batch()` call in `src/**` contains no `${…}` interpolation. A statement assembled into a variable before the call is out of scope by design — that is a dataflow judgement, not a scan. | `scripts/check-d1-sql-binding.mjs`, wired via `scripts/check-d1-sql-binding.test.mjs` |
+
+Run the static gate on its own with `node scripts/check-d1-sql-binding.mjs`.
+Exit 1 means one of two things: an interpolated statement, or an
+`SQL_STRUCTURE_ALLOWLIST` entry the scan never reached (dead
+configuration). Adding an entry is a reviewable decision: it must name
+the file, the interpolated identifier, and why the value cannot carry
+user input. The single current entry is `cursorPredicate` in
+`src/portfolio/load.ts` — a fixed chain of `?` placeholders whose
+components are all bound — and it is **live** only because that file
+passes its list statement to `prepare()` inline. Write the statement
+inline; a `const sql = …` in front of it hides the interpolation from
+the gate, and the gate then fails on the unreachable entry rather than
+letting it rot.
+
+### Known unscanned inventory
+
+The static gate reads literal arguments, so these D1 statements are
+**not** covered by it. None of them interpolates — each is a constant,
+or a choice between two literals — so what actually guards them is the
+combination of that reading and review:
+
+| Site | Shape | Other coverage |
+| --- | --- | --- |
+| `src/http/reactions/reactions.ts` (`REACTION_INSERT_SQL`, `REACTION_LOOKUP_SQL`) | module-level string constant | runtime suite (`PUT` / `DELETE` / `GET /api/v1/reactions`) |
+| `src/portfolio/load.ts` (`prevSql`, `nextSql` in `loadPortfolioAdjacent`) | local string constant | runtime suite (portfolio slug read) |
+| `src/reactions/emoji-catalog.ts` (`loadCatalog`) | `cond ? 'literal A' : 'literal B'` | `src/reactions/emoji-catalog.test.ts` (home widget read; no user input reaches either branch) |
+
+Two further limits are deliberate and documented in the gate's own
+docstring: string concatenation inside a call argument
+(`db.prepare('… WHERE k = ' + key)`) is not inspected, and `exec`
+also matches `RegExp.prototype.exec` — all five `.exec(` sites in
+`src/**` today are regexes, so D1 `exec()` / `batch()` have no shipped
+call site yet (the fixture test covers both).
+
+### Covered surfaces
+
+Only endpoints that exist today (Issue #452 forbids inventing one):
+
+- `POST /api/v1/access/hit`, `GET /api/v1/access/count/:key`
+- `PUT` / `DELETE` / `GET /api/v1/reactions` (`target_key`, `actor_id`, `value`)
+- `GET /api/v1/reaction-images/:id`
+- portfolio loader slug read (`loadPortfolioProject`, `loadPortfolioAdjacent`)
+- emoji catalog slug read (`getCatalogEntry`)
+
+Payload families: tautology, comment tail, UNION, stacked statement,
+backslash quote, LIKE wildcard, plus whitespace-free variants that
+survive the access-counter validators and inputs the validators reject
+(over-length, embedded space, control character).
+
+### Operational contract
+
+This gate changes no runtime contract: the auth / API-key boundary,
+the Cloudflare bindings (`DB`, `MEDIA`, `ASSETS`), and the Tool
+Registry dependency are all untouched. (One production statement was
+reshaped for the gate — `listPortfolioProjectsImpl` now passes its SQL
+to `prepare()` inline instead of through a `const sql` local. The
+statement text is byte-identical; only where it is written changed, so
+the allowlist entry above is enforced rather than dead.)
+
+A new D1 surface is covered by adding it to the runtime suite. An
+existing one is covered by the static gate **only if it is written as
+the literal argument of `prepare()` / `exec()` / `batch()`**: a
+statement written inline fails the gate on its own commit, while a
+statement assembled in a variable is not scanned at all and must be
+caught by the runtime suite (or by review). The inventory above names
+the variable-built statements that exist today — keep it current when
+one is added.
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd
@@ -91,6 +221,10 @@ binding API is reachable in the local workerd pool"**, not
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Redirect-target matrix (Issue #454) is regenerated from the shipped
+  guard by `pnpm run security:redirect:report`; the committed image and
+  its reading guide are in
+  [`docs/verification/security/`](verification/security/).
 
 ## Browser binaries (Playwright)
 

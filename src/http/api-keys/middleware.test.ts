@@ -74,6 +74,10 @@ function buildApp() {
 		const apiKey = requireResourceAction(c, 'reactions', 'write');
 		return c.json({ ok: true, key: apiKey.id });
 	});
+	app.get('/protected/unknown-resource/read', (c) => {
+		const apiKey = requireResourceAction(c, 'portfolio', 'read');
+		return c.json({ ok: true, key: apiKey.id });
+	});
 	app.onError((err, c) => {
 		if (err instanceof ApiKeyError) {
 			return c.json({ error: err.code }, err.status);
@@ -217,5 +221,100 @@ describe('requireApiKey middleware', () => {
 		} as unknown as Parameters<typeof requireResourceAction>[0];
 		const result = requireResourceAction(ctx, 'access_counter', 'read');
 		expect(result.id).toBe('k4');
+	});
+
+	// Issue #442: the middleware decides the *shape* of a refusal; the
+	// real denial semantics (revoked / expired / wrong hash) belong to
+	// Better Auth and are pinned in `test/integration/api-key-scope.test.ts`.
+	// What is asserted here is that our half never turns a missing scope
+	// into a 500 and never widens what a key may do.
+
+	it('treats a null permissions block as no scope (403, not a crash)', async () => {
+		// Better Auth returns `permissions: null` for a key created
+		// without a permission block. `requireApiKey` must normalise
+		// that to `{}` so the lookup below stays a lookup.
+		verifyApiKey.mockResolvedValue({
+			valid: true,
+			error: null,
+			key: {
+				id: 'k5',
+				referenceId: 'user-1',
+				permissions: null,
+				prefix: 'mk_',
+			},
+		});
+
+		const response = await app.request('/protected/access-counter/read', {
+			headers: { authorization: 'Bearer mk_test_noperms_xxxxxxxxxxxxxxxxxxxxxxxx' },
+		});
+		expect(response.status).toBe(403);
+		const body = (await response.json()) as { error: string };
+		expect(body.error).toBe('missing_scope');
+	});
+
+	it('refuses a resource the key was never granted (no wildcard)', async () => {
+		// ADR-0009 §5 defines exactly two resources at this release.
+		// A key holding both actions on `access_counter` still cannot
+		// reach a resource that is absent from its permission block.
+		verifyApiKey.mockResolvedValue({
+			valid: true,
+			error: null,
+			key: {
+				id: 'k6',
+				referenceId: 'user-1',
+				permissions: { access_counter: ['read', 'write'], reactions: ['read', 'write'] },
+				prefix: 'mk_',
+			},
+		});
+
+		const response = await app.request('/protected/unknown-resource/read', {
+			headers: { authorization: 'Bearer mk_test_nowildcard_xxxxxxxxxxxxxxxxxxx' },
+		});
+		expect(response.status).toBe(403);
+		const body = (await response.json()) as { error: string };
+		expect(body.error).toBe('missing_scope');
+	});
+
+	it('refusal bodies carry the stable code only — no key, resource, or action', async () => {
+		// The response must not become an oracle: it may not echo the
+		// key id, the resource name, or the action that was refused.
+		verifyApiKey.mockResolvedValue({
+			valid: true,
+			error: null,
+			key: {
+				id: 'k7-secret-key-id',
+				referenceId: 'user-1',
+				permissions: { access_counter: ['read'] },
+				prefix: 'mk_',
+			},
+		});
+
+		const response = await app.request('/protected/reactions/write', {
+			headers: { authorization: 'Bearer mk_test_noecho_xxxxxxxxxxxxxxxxxxxxxxxxxx' },
+		});
+		expect(response.status).toBe(403);
+		const text = await response.text();
+		expect(JSON.parse(text)).toEqual({ error: 'missing_scope' });
+		expect(text).not.toContain('k7-secret-key-id');
+		expect(text).not.toContain('reactions');
+		expect(text).not.toContain('write');
+	});
+
+	it('401 bodies do not distinguish unknown, disabled, or expired keys', async () => {
+		// The middleware collapses every verifier failure into one
+		// shape. Better Auth's own reasons (`KEY_DISABLED`,
+		// `KEY_EXPIRED`, `KEY_NOT_FOUND`, …) are internal state.
+		for (const error of [
+			{ code: 'KEY_NOT_FOUND' },
+			{ code: 'KEY_DISABLED' },
+			{ code: 'KEY_EXPIRED' },
+		]) {
+			verifyApiKey.mockResolvedValueOnce({ valid: false, error, key: null });
+			const response = await app.request('/protected', {
+				headers: { authorization: 'Bearer mk_test_opaque_xxxxxxxxxxxxxxxxxxxxxxxxxxx' },
+			});
+			expect(response.status).toBe(401);
+			expect(await response.text()).toBe('{"error":"invalid_api_key"}');
+		}
 	});
 });

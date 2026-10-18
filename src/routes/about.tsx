@@ -1,9 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router';
 import { AboutPage } from '../about/components';
 import { loadAboutPage } from '../about/public';
+import { personFactsFromAbout } from '../about/structured-data';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { PersonJsonLd } from '../editorial/structured-data';
 
 /**
  * `/about` — single page route (Issue #102, Issue #199).
@@ -31,9 +33,17 @@ import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
  * is present; the page falls back to `null` and the head renders
  * without an `og:image`).
  *
+ * Structured data (Issue #422): `<PersonJsonLd />` renders the
+ * machine-readable projection of the SAME approved snapshot the page
+ * renders, built by `src/about/structured-data.ts`. It carries no
+ * fact the page does not already show, and it deliberately carries
+ * no award / education / credential — see
+ * `src/editorial/structured-data/contract.json`.
+ *
  * Cross-references:
  *   - `docs/decisions/about-cv-contact.md`
  *   - `src/about/components/AboutPage.tsx` — page composition
+ *   - `src/about/structured-data.ts` — the approved projection
  *   - `src/portfolio/load.ts` — DI seam that supplies experience
  */
 export const Route = createFileRoute('/about')({
@@ -87,6 +97,7 @@ function AboutRoute() {
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
+			<PersonJsonLd facts={personFactsFromAbout(data)} />
 			<AboutPage data={data} />
 		</>
 	);

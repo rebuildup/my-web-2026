@@ -9,6 +9,7 @@ import {
 	ERROR_STATE_WITHHELD_INFO,
 	PUBLIC_SURFACE_DEPENDENCIES,
 	PUBLIC_SURFACE_LABELS,
+	SSR_FALLBACK_ALTERNATIVES_NOTE,
 	alternativesFor,
 	errorStateDefinition,
 	withheldDetailNeedles,
@@ -116,6 +117,14 @@ describe('error-state contract', () => {
 			expect(errorStateDefinition(kind).alternativesNote).toBeTruthy();
 		},
 	);
+
+	it('pins the standalone fallback note literal against copy corruption', () => {
+		// The note is rendered verbatim into the visitor-facing fallback
+		// document, so a mixed-script or typo regression must fail here
+		// instead of shipping. The gate found a corrupted clause once.
+		expect(SSR_FALLBACK_ALTERNATIVES_NOTE).toContain('同じ原因で失敗する可能性があります。');
+		expect(SSR_FALLBACK_ALTERNATIVES_NOTE).not.toMatch(/[\uac00-\ud7a3]/);
+	});
 
 	it('the dependency table is never empty for the whole roster', () => {
 		// Guards the derivation itself: if every surface were marked

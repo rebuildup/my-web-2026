@@ -234,6 +234,24 @@ literal string `"mock"`. Any other value (unset, empty, `on`, `1`,
 `off`) routes through to the real production handlers — the mock
 layer is the surgical opt-in, never the default.
 
+**Calling the write endpoints directly in dev.** With the mock gate
+off, `/api/v1/*` writes go through `csrfGuard`
+(see [`docs/security.md`](security.md#csrf)), which requires a
+same-origin signal. A `curl` therefore has to declare the origin it
+is calling:
+
+```bash
+curl -s -X POST http://127.0.0.1:3000/api/v1/access/hit \
+  -H 'Authorization: Bearer …' \
+  -H 'Origin: http://127.0.0.1:3000' \
+  -H 'Content-Type: application/json' -d '{}'
+# without -H 'Origin: …' → 403 {"error":"csrf_rejected","reason":"origin_check_missing"}
+```
+
+Reads need no header. The first-party server functions are unaffected:
+they self-call the boundary with the origin they are calling (see
+`src/home/{access,reactions}/load.ts`).
+
 **Regression tests:**
 
 - `src/http/hono.test.ts` — the gate against the real
@@ -261,6 +279,16 @@ CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 `validate` job on every PR and every push to `main` / `release-*`.
 The same job also installs the Playwright Chromium binary and runs
 the E2E suite against `pnpm dev`.
+
+`validate:fast` additionally runs `pnpm run install:scripts:check`,
+the dependency install lifecycle script audit (Issue #474). It fails
+when an installed dependency can execute code during `pnpm install`
+(a `preinstall` / `install` / `postinstall` hook, the implicit
+`node-gyp rebuild` of a package that ships `binding.gyp`, or the
+`prepare` of a git-hosted dependency) that the reviewed policy in
+`quality/install-scripts.json` has no record for, or when that record
+and pnpm's execution allow-list (`pnpm-workspace.yaml`) disagree. See
+[`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
 
 ## Storybook
 
@@ -334,6 +362,34 @@ node --test scripts/check-copy-i18n.test.mjs   # fixture で finding class を�
 
 契約の意味、schema、2 番目の locale を opt-in する手順は
 [`copy/README.md`](../copy/README.md) を参照。
+
+## Bundle map (Issue #483)
+
+`pnpm run verify:bundle-map` renders a **report** about an emitted client
+build: which chunks each route loads and what they cost, which chunks are
+duplicated, which are unreachable, and whether any host route pulls in the
+Tool artifacts under `tools/**`. It reads the build output only — no
+network, no Cloudflare API, no production read — and it is wired into no
+`validate:*` entry point, so it can never block a build or a release.
+`quality/profile.yaml#diagnostic_entry_points` records the same contract.
+
+```bash
+pnpm exec vite build                                   # emit the client build
+node scripts/build-tools.mjs                           # Tool artefacts
+node scripts/sync-cf-build-output.mjs                 # copy them into Build Output
+node scripts/e2e-local-bootstrap.mjs --port=3000       # preview server (terminal 1)
+pnpm run verify:bundle-map -- --base-url=http://127.0.0.1:3000
+```
+
+Without `--base-url` the script still runs a static pass over the emitted
+files; the route matrix and the Home Tool-isolation finding need the
+measurement and are reported as not measured.
+
+The committed snapshot lives at
+[`docs/verification/perf/bundle-map.md`](../docs/verification/perf/bundle-map.md),
+with its screenshot at `docs/verification/perf/bundle-map.webp`
+(Issue #483 names a `.png`; the WebP substitution is stated in the PR body).
+Regenerate both when the client chunking changes.
 
 ## Format and lint
 

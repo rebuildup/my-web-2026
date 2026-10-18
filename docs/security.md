@@ -336,6 +336,21 @@ asserted, and no test contacts a real IdP. Response capture from the
 local run:
 [`verification/security/oauth-negative-tests.webp`](verification/security/oauth-negative-tests.webp).
 
+## Write rate limit (Issue #456)
+
+`/api/v1/reactions` (PUT / DELETE) and `/api/v1/access/hit` share one
+`RATE_LIMIT_WRITE` budget per API key id; the read paths use the
+independent `RATE_LIMIT_READ` binding (ADR-0010). The budgets
+themselves are declared once, in `RATE_LIMITS`
+(`scripts/_cloudflare-contract.mjs`). A throttled request answers
+`429 { error: 'rate_limited' }` plus a `Retry-After` equal to the
+binding's fixed window, and never reaches D1.
+
+The operational contract — principal semantics, middleware ordering,
+the client mapping, the drift guard between the retry window and
+`RATE_LIMITS`, and what the local workerd suite does *not* prove —
+lives in [`security/write-rate-limit.md`](security/write-rate-limit.md).
+
 ## CORS
 
 The external boundary splits its routes into three origin classes
@@ -567,7 +582,6 @@ This change adds no service, no binding, and no secret. Specifically:
   the static gate locally, renders the report, and encodes it as WebP.
   The Issue names a `.png`; the `.webp` extension is a deliberate
   substitution (the same one Issue #452 made for its report).
-
 ## Outbound fetch (SSRF)
 
 A URL that did not come from this repository — a visitor-supplied
@@ -861,7 +875,11 @@ Strict-Transport-Security: max-age=31536000
   避けるため 1 年で止める。
 - 値は `src/server.ts` の `HSTS_DIRECTIVE` 1 箇所だけが所有する。
   他の場所（テスト・`_headers`・生成スクリプト）に書くと
-  `scripts/check-hsts-policy.mjs` が exit 1 になる。
+  `scripts/check-hsts-policy.mjs` が exit 1 になる。この定数は
+  **export しない**: Cloudflare Worker の entry module は handler 以外を
+  export できず、`export const` にすると workerd が
+  `Incorrect type for map entry 'HSTS_DIRECTIVE'` で起動に失敗する。
+  gate は module の namespace ではなく `src/server.ts` のソース文を読む。
 
 ### 検証（4 層）
 

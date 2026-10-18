@@ -1,5 +1,6 @@
 import { Hono } from 'hono';
 import { auth } from '../../cloudflare/auth/better-auth';
+import { redirectTargetGuard } from '../security/redirect-guard';
 
 /**
  * Better Auth handler mounted at `/api/v1/auth/*`.
@@ -19,5 +20,35 @@ import { auth } from '../../cloudflare/auth/better-auth';
  * (Ticket C) compose around this router.
  */
 export const authRouter = new Hono<{ Bindings: Env }>();
+
+/**
+ * Open-redirect guard (Issue #454) — mounted in front of the Better
+ * Auth handler, not inside it.
+ *
+ * Better Auth already validates `callbackURL` / `redirectTo` /
+ * `errorCallbackURL` / `newUserCallbackURL` against `trustedOrigins`,
+ * but that list is derived from the `BETTER_AUTH_URL` binding
+ * (`src/cloudflare/auth/better-auth.ts`). If that binding is absent —
+ * a mis-provisioned deploy, or any environment that forgets to set it
+ * — the effective trust decision stops being project-owned. The guard
+ * below reads the same binding, resolves the request's redirect
+ * targets to internal paths, and refuses the request with
+ * `400 invalid_redirect_target` before any handler sees it.
+ *
+ * `trustedOrigins` is resolved per request from `c.env` so it follows
+ * the deployed binding rather than a module-load snapshot; the cast is
+ * the same documented escape hatch `better-auth.ts` uses, because the
+ * top-level `vars` block deliberately omits `BETTER_AUTH_URL` (see
+ * ADR-0014).
+ */
+authRouter.use(
+	'/api/v1/auth/*',
+	redirectTargetGuard({
+		trustedOrigins: (c) => {
+			const url = (c.env as unknown as { BETTER_AUTH_URL?: string }).BETTER_AUTH_URL;
+			return url ? [url] : [];
+		},
+	}),
+);
 
 authRouter.on(['GET', 'POST'], '/api/v1/auth/*', (c) => auth.handler(c.req.raw));

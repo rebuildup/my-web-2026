@@ -56,6 +56,10 @@ export const Route = createFileRoute('/tools/')({
 				content: 'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.',
 			},
 		],
+		// Issue #420 — canonical for the sitemap entry. See
+		// `src/routes/index.tsx` for the rationale; the per-Tool
+		// shells stay `noindex` and out of the sitemap.
+		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/tools' }],
 	}),
 	component: ToolsIndexRoute,
 });

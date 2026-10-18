@@ -11,6 +11,7 @@ import {
 	type PortfolioMedia,
 	type PortfolioMediaRow,
 	type PortfolioProject,
+	type PortfolioProjectIndexEntry,
 	type PortfolioProjectRow,
 	VisibilitySchema,
 	decodeCursor,
@@ -109,6 +110,7 @@ export function createD1PortfolioLoader(env: PortfolioEnv): PortfolioLoader {
 		loadPortfolioProject: (slug) => loadPortfolioProjectImpl(env, slug),
 		loadPortfolioAdjacent: (slug) => loadPortfolioAdjacentImpl(env, slug),
 		listPortfolioProjects: (opts) => listPortfolioProjectsImpl(env, opts),
+		listPublishedProjectIndex: () => listPublishedProjectIndexImpl(env),
 	};
 }
 
@@ -326,6 +328,45 @@ function emptyPage(): PortfolioListPage {
 	return { projects: [], nextCursor: null };
 }
 
+/**
+ * Public project index (Issue #420) — the URL identity of every
+ * public+published project.
+ *
+ * One narrow query: `slug` + `updated_at` + the two visibility
+ * columns. Unlike `listPortfolioProjectsImpl` it does not fan out to
+ * the per-project link / media tables, because a URL enumerator has
+ * no use for them, and it does not carry a `LIMIT`: a silent cap
+ * would drop real published projects from a consumer's output without
+ * any signal, which is exactly the failure mode this method exists to
+ * prevent. If the project count ever approaches the sitemap protocol
+ * ceiling (50 000 URLs), the right fix is an explicit, logged cap —
+ * not a quiet one.
+ *
+ * `isVisible` re-checks each row in JavaScript for the same defence in
+ * depth the rest of this module applies: the SQL predicate is the fast
+ * path, not the guarantee.
+ */
+async function listPublishedProjectIndexImpl(
+	env: PortfolioEnv,
+): Promise<readonly PortfolioProjectIndexEntry[]> {
+	const db = env.DB;
+	if (!db) return [];
+	const result = await db
+		.prepare(
+			`SELECT slug, updated_at, visibility, status FROM portfolio_project
+			 WHERE status = 'published' AND visibility = 'public'
+			 ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC`,
+		)
+		.all<Pick<PortfolioProjectRow, 'slug' | 'updated_at' | 'visibility' | 'status'>>();
+	const rows = result.results ?? [];
+	const entries: PortfolioProjectIndexEntry[] = [];
+	for (const row of rows) {
+		if (!isVisible(row)) continue;
+		entries.push({ slug: row.slug, updatedAt: row.updated_at });
+	}
+	return entries;
+}
+
 function clampLimit(input: number | undefined): number {
 	if (typeof input !== 'number' || !Number.isFinite(input)) return 100;
 	return Math.max(1, Math.min(500, Math.floor(input)));
@@ -384,9 +425,12 @@ function cursorBinds(c: PortfolioCursor): ReadonlyArray<string | number> {
  * rows always resolve to invisible.
  *
  * Defence in depth: even if a future query path drops the SQL
- * filter, `isVisible` still refuses non-public rows.
+ * filter, `isVisible` still refuses non-public rows. The parameter
+ * is the two-column projection it actually reads, so narrow queries
+ * (the public project index) can reuse it without widening their
+ * result type to the full row.
  */
-function isVisible(row: PortfolioProjectRow): boolean {
+function isVisible(row: Pick<PortfolioProjectRow, 'visibility' | 'status'>): boolean {
 	const visibility = VisibilitySchema.safeParse(row.visibility);
 	if (!visibility.success) return false;
 	if (row.status !== 'published') return false;

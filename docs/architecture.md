@@ -173,6 +173,12 @@ src/server.ts
 TanStack Start の default CSRF middleware を維持するため、custom
 `src/start.ts` / `startInstance` は ADR なしで追加しない。
 
+`/api/v1/*` は dispatch により TanStack Start に到達しないため、
+外部境界は独自の Origin チェックを持つ: `csrfGuard`
+(`src/http/middleware/csrf.ts`, `src/http/hono.ts` で `/api/v1/*` に
+mount)。書込メソッドだけを検査し、fail-closed。契約・拒否コード・
+運用上の影響は [`docs/security.md`](security.md#csrf) を参照。
+
 UI から使う internal operation は TanStack Start server function とする。
 第三者向け stable HTTP contract は Hono が所有する。
 

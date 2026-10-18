@@ -39,9 +39,12 @@ import {
  * JSON, and the GA4 analytics payload.
  *
  * D1 bootstrap: `GET /` reads the reactions tables through the home
- * loader. Workerd cannot read `migrations/*.sql`, so the schema is
- * inlined below, byte-identical to `test/integration/d1.test.ts` and
- * to `migrations/0003_reactions.sql` / `0004_emoji_catalog.sql`.
+ * loader. Workerd cannot read `migrations/*.sql`, so the DDL is
+ * copied here from `migrations/0003_reactions.sql` /
+ * `0004_emoji_catalog.sql` (the same copy `test/integration/d1.test.ts`
+ * carries). The catalog seed rows are omitted on purpose: this suite
+ * asserts what the public surfaces carry, not what the emoji catalog
+ * contains, and an empty catalog still renders the home page.
  */
 const MIGRATIONS = [
 	{

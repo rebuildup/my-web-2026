@@ -8,7 +8,7 @@ import {
 	articleRegion,
 	executableMarkupFindings,
 	markdownXssFixtureRowValues,
-} from '../../src/portfolio/markdown.xss-fixtures';
+} from '../fixtures/markdown-xss-fixtures';
 
 /**
  * Worker-level XSS boundary for the article renderer (Issue #451).

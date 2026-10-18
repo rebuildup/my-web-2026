@@ -291,8 +291,6 @@
 			"361do.booth.pm",
 			"design.google",
 			"developers.google.com",
-			"example.com",
-			"example.invalid",
 			"fonts.googleapis.com",
 			"fonts.gstatic.com",
 			"github.com",
@@ -430,24 +428,6 @@
 				"identifier": false,
 				"files": [
 					"src/editorial/structured-data/validate.ts"
-				]
-			},
-			{
-				"url": "https://example.com/docs",
-				"host": "example.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/markdown.xss-fixtures.ts"
-				]
-			},
-			{
-				"url": "https://example.invalid/frame",
-				"host": "example.invalid",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/markdown.xss-fixtures.ts"
 				]
 			},
 			{
@@ -911,39 +891,39 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
+		"addedExternalUrls": [],
+		"removedExternalUrls": [
 			"https://example.com/docs",
 			"https://example.invalid/frame"
 		],
-		"removedExternalUrls": [],
-		"addedExternalHosts": [
+		"addedExternalHosts": [],
+		"removedExternalHosts": [
 			"example.com",
 			"example.invalid"
 		],
-		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host example.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "W002 external-url-added",
+				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "External URL added: https://example.com/docs"
+				"message": "External URL removed: https://example.com/docs"
 			},
 			{
-				"code": "W002 external-url-added",
+				"code": "W003 external-url-removed",
 				"severity": "warn",
-				"message": "External URL added: https://example.invalid/frame"
+				"message": "External URL removed: https://example.invalid/frame"
+			},
+			{
+				"code": "W001 external-host-removed",
+				"severity": "warn",
+				"message": "External host no longer referenced: example.com"
+			},
+			{
+				"code": "W001 external-host-removed",
+				"severity": "warn",
+				"message": "External host no longer referenced: example.invalid"
 			}
 		]
 	}

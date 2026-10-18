@@ -1,0 +1,91 @@
+{
+	"advisories": {
+		"1700001": {
+			"id": 1700001,
+			"module_name": "fixture-runtime",
+			"severity": "critical",
+			"title": "Fixture advisory: request smuggling in fixture-runtime",
+			"url": "https://example.invalid/advisories/GHSA-fixt-fixt-fixt",
+			"github_advisory_id": "GHSA-fixt-fixt-fixt",
+			"vulnerable_versions": "<2.4.0",
+			"patched_versions": ">=2.4.0",
+			"cwe": "CWE-444",
+			"findings": [
+				{
+					"version": "2.3.1",
+					"paths": [".>fixture-app>fixture-runtime"],
+					"dev": false,
+					"optional": false,
+					"bundled": false
+				}
+			]
+		},
+		"1700002": {
+			"id": 1700002,
+			"module_name": "fixture-parser",
+			"severity": "high",
+			"title": "Fixture advisory: unbounded recursion in fixture-parser",
+			"url": "https://example.invalid/advisories/GHSA-fixt-fixt-figh",
+			"github_advisory_id": "GHSA-fixt-fixt-figh",
+			"vulnerable_versions": "<1.9.3",
+			"patched_versions": ">=1.9.3",
+			"cwe": "CWE-674",
+			"findings": [
+				{
+					"version": "1.9.2",
+					"paths": [".>fixture-app>fixture-tools>fixture-parser"],
+					"dev": true,
+					"optional": false,
+					"bundled": false
+				}
+			]
+		},
+		"1700003": {
+			"id": 1700003,
+			"module_name": "fixture-cli",
+			"severity": "moderate",
+			"title": "Fixture advisory: verbose error output in fixture-cli",
+			"url": "https://example.invalid/advisories/GHSA-fixt-fixt-fmod",
+			"github_advisory_id": "GHSA-fixt-fixt-fmod",
+			"vulnerable_versions": "<3.1.0",
+			"patched_versions": ">=3.1.0",
+			"cwe": "CWE-209",
+			"findings": [
+				{
+					"version": "3.0.4",
+					"paths": [".>fixture-app>fixture-cli"],
+					"dev": true,
+					"optional": false,
+					"bundled": false
+				}
+			]
+		},
+		"1700004": {
+			"id": 1700004,
+			"module_name": "fixture-docgen",
+			"severity": "low",
+			"title": "Fixture advisory: predictable temp file name in fixture-docgen",
+			"url": "https://example.invalid/advisories/GHSA-fixt-fixt-flow",
+			"github_advisory_id": "GHSA-fixt-fixt-flow",
+			"vulnerable_versions": "<1.4.2",
+			"patched_versions": ">=1.4.2",
+			"cwe": "CWE-377",
+			"findings": [
+				{
+					"version": "1.4.1",
+					"paths": [".>fixture-app>fixture-tools>fixture-docgen"],
+					"dev": true,
+					"optional": false,
+					"bundled": false
+				}
+			]
+		}
+	},
+	"metadata": {
+		"vulnerabilities": { "info": 0, "low": 1, "moderate": 1, "high": 1, "critical": 1 },
+		"dependencies": 1204,
+		"devDependencies": 1180,
+		"optionalDependencies": 24,
+		"totalDependencies": 1204
+	}
+}

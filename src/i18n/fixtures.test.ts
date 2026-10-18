@@ -2,13 +2,12 @@ import { describe, expect, it } from 'vitest';
 import { PORTFOLIO_SLUG_GRAMMAR } from '../portfolio/schema';
 import { EMOJI_SLUG_GRAMMAR } from '../reactions/slug-regex';
 import {
-	type SlugGrammar,
 	UNICODE_FIXTURES,
 	type UnicodeFixture,
 	unicodeFixtureById,
 	unicodeFixtureIds,
 } from './fixtures';
-import { type SlugRejectionReason, classifySlugCandidate } from './slug-identity';
+import { classifySlugCandidate, type SlugGrammar, type SlugRejectionReason } from './slug-identity';
 import { describeUnicode, foldForComparison } from './unicode';
 
 /**

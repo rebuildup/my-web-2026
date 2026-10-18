@@ -51,7 +51,7 @@ Actions never reads it. `audit.json` next to the images is the
 status-only summary of the same run.
 
 An image is not the proof: the gate's behaviour is asserted in
-`scripts/check-workflow-pinning.test.mjs` (46 tests, including the
+`scripts/check-workflow-pinning.test.mjs` (51 tests, including the
 exact rule set the fixture produces), and the interpretation of each
 rule is in
 [`docs/security/supply-chain-actions-pinning.md`](../../security/supply-chain-actions-pinning.md).
@@ -63,10 +63,10 @@ pnpm run ci:pins:report
 ```
 
 The script re-runs both audits, re-renders the report and overwrites
-the WebP files (Chromium PNG in memory → `sharp` resize to 1600 px →
+the WebP files (Chromium PNG in memory → `sharp` resize to 1480 px →
 WebP quality 80). It self-checks that the rendered page contains both
 verdict lines, so a blank screenshot cannot be committed, and fails if
-either image exceeds the 1600 px / 300 KB budget. Commit the
+either image exceeds the 1480 px / 300 KB budget. Commit the
 regenerated images in the same change as any workflow, pin-manifest or
 gate-rule edit. It is a documentation tool and never runs inside
 `validate:*`.

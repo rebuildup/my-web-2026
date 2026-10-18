@@ -74,6 +74,9 @@ export const RULES = {
 	PIN_UNKNOWN_ACTION: 'the action is absent from the pin manifest',
 	PIN_SHA_MISMATCH: 'the workflow SHA does not match the pin manifest SHA',
 	PIN_UNUSED_MANIFEST_ENTRY: 'the manifest pins an action no workflow uses',
+	JOBS_UNPARSED:
+		'the `jobs:` block is a shape the gate cannot resolve, so no job is known to be audited',
+	USES_UNPARSED: 'a `uses:` appears in a shape the gate cannot resolve, so its pin is unproved',
 	PERMISSIONS_MISSING: 'workflow or job has no explicit `permissions:` block',
 	PERMISSIONS_UNPARSED:
 		'a `permissions:` block is in a shape the gate cannot resolve, so its scopes are unproved',
@@ -288,7 +291,7 @@ function findKey(lines, indent, name, from = 0, to = lines.length) {
 	for (let i = from; i < to; i += 1) {
 		if (isSkippable(lines[i])) continue;
 		if (indentOf(lines[i]) !== indent) continue;
-		const m = new RegExp(`^${' '.repeat(indent)}["']?${name}["']?:\\s*(.*)$`).exec(lines[i]);
+		const m = new RegExp(`^${' '.repeat(indent)}["']?${name}["']?\\s*:\\s*(.*)$`).exec(lines[i]);
 		if (m) return { index: i, inline: stripComment(m[1]).trim(), lines };
 	}
 	return null;
@@ -335,11 +338,27 @@ export function parseTriggers(onKey) {
 }
 
 /**
+ * A key at exactly `indent` columns, quoted or plain.
+ *
+ * Plain keys may contain dots (`build.prod`) and hyphens; a sequence item
+ * is not a mapping key and is left for the caller to fail closed on.
+ */
+function parseJobHeader(line, indent) {
+	if (indentOf(line) !== indent || /^\s*-\s/.test(line)) return null;
+	const m = new RegExp(`^ {${indent}}(?:"([^"]+)"|'([^']+)'|([^\\s:#][^:#]*?))\\s*:\\s*(.*)$`).exec(
+		line,
+	);
+	if (!m) return null;
+	return { name: (m[1] ?? m[2] ?? m[3]).trim(), value: stripComment(m[4] ?? '').trim() };
+}
+
+/**
  * Split a workflow file into jobs.
  *
  * `jobs:` is a top-level key; each job is a key at the first indentation
  * level below it. Every non-blank line after a job header belongs to that
- * job until the next job header.
+ * job until the next job header. A shape the scan cannot place is recorded
+ * in `unparsedJobs` / `unparsedUses` and reported by `scanAuthority`.
  */
 export function parseWorkflow(text, file) {
 	const lines = text.split('\n');
@@ -376,6 +395,15 @@ export function parseWorkflow(text, file) {
 		lines,
 	};
 
+	// `jobs: {build: …}` / `jobs: *jobs` is a flow value the line scanner
+	// cannot walk. Reading zero jobs from it would make every PIN_/PERM_
+	// rule vacuously true, so it is reported instead of ignored.
+	const unparsedJobs = [];
+	const unparsedUses = [];
+	if (jobsKey && jobsKey.inline !== '') {
+		unparsedJobs.push({ line: jobsKey.index + 1, raw: jobsKey.inline });
+	}
+
 	let jobIndent = null;
 	let current = null;
 	for (let i = jobsKey ? jobsKey.index + 1 : 0; i < jobsEnd; i += 1) {
@@ -384,21 +412,40 @@ export function parseWorkflow(text, file) {
 		const indent = indentOf(line);
 		if (jobIndent === null && indent > 0) jobIndent = indent;
 		if (jobIndent !== null && indent <= jobIndent) {
-			const header = /^\s{0,4}([A-Za-z0-9_-]+):\s*(.*)$/.exec(line);
-			if (header) {
-				current = {
-					name: header[1],
-					startLine: i + 1,
-					permissions: null,
-					permissionsLine: null,
-				};
-				workflow.jobs.push(current);
+			// A line that is not a mapping key at the job level (a sequence
+			// item, a malformed header) cannot own a job. Dropping it would
+			// hide the `uses:` / `permissions:` written below it.
+			if (indent < jobIndent) {
+				unparsedJobs.push({ line: i + 1, raw: line.trim() });
+				current = null;
+				continue;
+			}
+			const header = parseJobHeader(line, jobIndent);
+			if (header === null) {
+				unparsedJobs.push({ line: i + 1, raw: line.trim() });
+				current = null;
+				continue;
+			}
+			current = {
+				name: header.name,
+				startLine: i + 1,
+				permissions: null,
+				permissionsLine: null,
+			};
+			workflow.jobs.push(current);
+			// A job declared with an inline flow body carries steps the line
+			// scanner did not read; its `uses:` would otherwise be invisible.
+			if (header.value !== '') {
+				unparsedJobs.push({ line: i + 1, raw: line.trim(), job: header.name });
 			}
 			continue;
 		}
-		if (!current) continue;
+		if (!current) {
+			unparsedJobs.push({ line: i + 1, raw: line.trim() });
+			continue;
+		}
 
-		const uses = /^\s*(?:-\s+)?uses:\s*(.*)$/.exec(line);
+		const uses = /^\s*(?:-\s+)?["']?uses["']?\s*:\s*(.*)$/.exec(line);
 		if (uses) {
 			workflow.uses.push({
 				file,
@@ -406,18 +453,27 @@ export function parseWorkflow(text, file) {
 				job: current.name,
 				...splitUsesValue(uses[1]),
 			});
+		} else if (/\{/.test(line) && /(?:^|[\s,{])["']?uses["']?\s*:/.test(line)) {
+			// `steps: [{uses: …}]` is valid YAML the line scanner does not
+			// walk. Fail closed instead of reporting no unpinned action.
+			unparsedUses.push({ line: i + 1, raw: line.trim() });
 		}
 
 		// Any `permissions:` deeper than the job header is that job's own
 		// block. Keying it on an exact `jobIndent + 2` missed the same block
 		// written at a wider indentation, which is still valid YAML.
-		const permissions = /^(\s+)permissions:\s*(.*)$/.exec(line);
+		const permissions = /^(\s+)["']?permissions["']?\s*:\s*(.*)$/.exec(line);
 		if (permissions && indent > jobIndent) {
 			const inline = stripComment(permissions[2]);
 			current.permissions = parsePermissions(inline ? [inline] : blockLines(lines, i, indent));
 			current.permissionsLine = i + 1;
+		} else if (/(?:^|[\s,{])["']?permissions["']?\s*:/.test(line) && /\{/.test(line)) {
+			current.permissions = { mode: 'invalid', scopes: [], raw: [line.trim()] };
+			current.permissionsLine = i + 1;
 		}
 	}
+	workflow.unparsedJobs = unparsedJobs;
+	workflow.unparsedUses = unparsedUses;
 	return workflow;
 }
 
@@ -454,6 +510,28 @@ function finding(audit, rule, file, line, message, extra = {}) {
  * all — a workflow that only runs shell is still a supply-chain surface.
  */
 function scanAuthority(workflow, audit) {
+	// Shapes `parseWorkflow` could not place are findings, never a silent
+	// "nothing to check here". This is the fail-closed half of the job and
+	// `uses:` scans.
+	for (const item of workflow.unparsedJobs ?? []) {
+		finding(
+			audit,
+			'JOBS_UNPARSED',
+			workflow.file,
+			item.line,
+			`\`jobs:\` is a shape the gate cannot resolve: ${JSON.stringify(item.raw)}`,
+		);
+	}
+	for (const item of workflow.unparsedUses ?? []) {
+		finding(
+			audit,
+			'USES_UNPARSED',
+			workflow.file,
+			item.line,
+			`\`uses:\` is a shape the gate cannot resolve: ${JSON.stringify(item.raw)}`,
+		);
+	}
+
 	const allowedWriteScopes = new Set(
 		audit.manifest.permissions?.allow_writes?.map((e) => e.scope) ?? [],
 	);

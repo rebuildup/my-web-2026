@@ -32,10 +32,10 @@ reviewable-by-eye:
 pull_request_target]`, `permissions: {contents: write}`,
 `${{ secrets['NAME'] }}`) and forms a line scanner cannot resolve
 (a YAML alias). A shape this gate cannot read is a finding
-(`PERMISSIONS_UNPARSED`, `AUTHZ_TRIGGER_UNPARSED`), never an
-inherited default: `status: PASS` means the gate *read* the workflow
-and found nothing, not that it failed to look. What remains outside
-the gate is listed in §9.
+(`JOBS_UNPARSED`, `USES_UNPARSED`, `PERMISSIONS_UNPARSED`,
+`AUTHZ_TRIGGER_UNPARSED`), never an inherited default: `status: PASS`
+means the gate *read* the workflow and found nothing, not that it
+failed to look. What remains outside the gate is listed in §9.
 
 `pnpm run ci:pins:check` is part of `validate:fast`
 (`quality/profile.yaml#gates.fast.components`), so every local
@@ -109,6 +109,8 @@ The procedure in §5 therefore always takes the peeled `^{}` ref.
 | `PIN_UNKNOWN_ACTION` | action is not in the manifest | add the manifest entry |
 | `PIN_SHA_MISMATCH` | workflow SHA ≠ manifest SHA | re-run §5 for that action |
 | `PIN_UNUSED_MANIFEST_ENTRY` | manifest pins an action no workflow uses | delete the entry, or add the workflow |
+| `JOBS_UNPARSED` | the `jobs:` block is a shape the gate cannot walk (an inline flow mapping, an alias, a job declared with an inline body) | write the jobs and steps in block form |
+| `USES_UNPARSED` | a `uses:` appears inside a flow mapping the line scanner does not walk (e.g. `steps: [{uses: …}]`) | write the step as a block mapping |
 | `PERMISSIONS_MISSING` | workflow or job resolves no explicit `permissions:` | add the read-only block |
 | `PERMISSIONS_UNPARSED` | a `permissions:` value is a shape the gate cannot resolve (a YAML alias, a folded scalar) | write the scopes out, or use `read-all` / `write-all` / `{}` |
 | `PERMISSIONS_WRITE` | a `write` scope without a manifest allow-list entry | drop the scope, or justify it in the manifest |
@@ -238,6 +240,8 @@ The rendered failure is
 | `PIN_UNKNOWN_ACTION` | a new action was added without a manifest entry | add the entry with `sha` / `ref` / `repository` / review Issue |
 | `PIN_MISSING_REF_COMMENT` | a SHA was pasted from an audit log | add `# <upstream tag>`; recover the tag with §5 step 1 |
 | `PIN_UNUSED_MANIFEST_ENTRY` | an action was removed from a workflow | delete the manifest entry |
+| `JOBS_UNPARSED` | the jobs were written as an inline flow mapping, or a job carries an inline body | write the jobs and steps as block mappings |
+| `USES_UNPARSED` | an action step was written inside a flow mapping (`steps: [{uses: …}]`) | write the step as a block mapping |
 | `PERMISSIONS_*` | a step needs a token scope | prefer not granting it; if unavoidable, add a justified `permissions.allow_writes` entry naming the scope and why |
 | `PERMISSIONS_UNPARSED` | the block was written in a shape the gate cannot read (e.g. `permissions: *token`) | write the scopes out in the block form the gate models, or add a justified exception |
 | `SECRET_VALUE_ACCESS` | someone moved a secret script into CI | run it locally through the dedicated status-only script (AGENTS.md §4); a CI step that can read a value is a new credential path |
@@ -253,12 +257,15 @@ authorisation.
 ## 9. Known constraints
 
 - **The gate is a structural scan, not a YAML parse.** It reads
-  `uses:`, `permissions:`, `on:` and `run:` shapes; actionlint owns
-  syntax. Where a shape exists but the scanner cannot read it, the gate
-  fails closed (`PERMISSIONS_UNPARSED`, `AUTHZ_TRIGGER_UNPARSED`) or
+  `jobs:`, `uses:`, `permissions:`, `on:` and `run:` shapes; actionlint
+  owns syntax. Where a shape exists but the scanner cannot read it
+  (`jobs: {…}`, `steps: [{uses: …}]`, a quoted or flow-form value it
+  does not model), the gate fails closed (`JOBS_UNPARSED`,
+  `USES_UNPARSED`, `PERMISSIONS_UNPARSED`, `AUTHZ_TRIGGER_UNPARSED`) or
   reports the value as unproved (`PIN_NOT_SHA` for an unresolvable
-  `uses:`). What no line-level scan can prove is narrower and is named
-  here rather than assumed:
+  `uses:`). This applies to every rule family, not only `PIN_*`. What no
+  line-level scan can prove is narrower and is named here rather than
+  assumed:
   - a secret reached through a *computed* expression, e.g.
     `secrets[format('{0}', name)]` — the literal name is not in the
     text, so the `secrets.allow_references` allow-list cannot be

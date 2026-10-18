@@ -379,6 +379,98 @@ describe('token permission rules', () => {
 		assert.deepEqual(rulesOf(workflowAlias), ['PERMISSIONS_UNPARSED']);
 	});
 
+	it('parses quoted and dotted job keys and a quoted uses key', () => {
+		const workflow = [
+			'name: ci',
+			'on:',
+			'  pull_request:',
+			'permissions:',
+			'  contents: read',
+			'jobs:',
+			'  "build.prod":',
+			'    runs-on: ubuntu-latest',
+			'    steps:',
+			`      - "uses": actions/checkout@${CHECKOUT_SHA} # v4.4.0`,
+			'',
+		].join('\n');
+		const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': workflow } }));
+		assert.deepEqual(audit.findings, []);
+		assert.equal(audit.workflows[0].jobs[0].name, 'build.prod');
+		assert.equal(audit.pins.length, 1);
+	});
+
+	it('parses a job block indented wider than four columns', () => {
+		const wide = [
+			'name: ci',
+			'on:',
+			'  pull_request:',
+			'permissions:',
+			'  contents: read',
+			'jobs:',
+			'      validate:',
+			'        runs-on: ubuntu-latest',
+			'        "permissions": {issues: write}',
+			'        steps:',
+			`          - uses: actions/checkout@${CHECKOUT_SHA} # v4.4.0`,
+			'',
+		].join('\n');
+		const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': wide } }));
+		assert.deepEqual(rulesOf(audit), ['PERMISSIONS_WRITE']);
+		assert.equal(audit.workflows[0].jobs[0].name, 'validate');
+	});
+
+	it('fails closed on an inline jobs mapping', () => {
+		const inline = [
+			'name: ci',
+			'on:',
+			'  pull_request:',
+			'permissions:',
+			'  contents: read',
+			`jobs: { "build": { runs-on: ubuntu-latest, steps: [ { "uses": actions/checkout@${CHECKOUT_SHA} } ] } }`,
+			'',
+		].join('\n');
+		const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': inline } }));
+		assert.ok(rulesOf(audit).includes('JOBS_UNPARSED'));
+		assert.equal(audit.summary.status, 'FAIL');
+	});
+
+	it('fails closed on a job declared with an inline flow body', () => {
+		const workflow = [
+			'name: ci',
+			'on:',
+			'  pull_request:',
+			'permissions:',
+			'  contents: read',
+			'jobs:',
+			`  build: { runs-on: ubuntu-latest, steps: [ { uses: actions/checkout@${CHECKOUT_SHA} } ] }`,
+			'',
+		].join('\n');
+		const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': workflow } }));
+		assert.ok(rulesOf(audit).includes('JOBS_UNPARSED'));
+		assert.equal(audit.summary.status, 'FAIL');
+	});
+
+	it('fails closed on a flow-mapping step that hides a uses value', () => {
+		const workflow = [
+			'name: ci',
+			'on:',
+			'  pull_request:',
+			'permissions:',
+			'  contents: read',
+			'jobs:',
+			'  validate:',
+			'    runs-on: ubuntu-latest',
+			'    steps: [{ uses: actions/checkout@v4 }]',
+			'',
+		].join('\n');
+		const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': workflow } }));
+		assert.ok(rulesOf(audit).includes('USES_UNPARSED'));
+		assert.equal(audit.summary.status, 'FAIL');
+		// The hidden step still consumed nothing the scanner could read, so
+		// the manifest entry is correctly reported as unused as well.
+		assert.ok(rulesOf(audit).includes('PIN_UNUSED_MANIFEST_ENTRY'));
+	});
+
 	it('reads a job permissions block at any indentation', () => {
 		const wide = [
 			'name: ci',

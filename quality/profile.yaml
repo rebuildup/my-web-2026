@@ -381,7 +381,7 @@ security_gates:
       - 'every `uses:` pins a full 40-char commit SHA and records its upstream ref'
       - 'every job resolves to explicit least-privilege GITHUB_TOKEN permissions'
       - 'no workflow reads a secret value, deploys production, publishes a Release, or runs on an untrusted trigger'
-      - 'fails closed: a `permissions:` / `on:` / `uses:` shape the scanner cannot resolve is a finding, never an inherited default'
+      - 'fails closed: a `jobs:` / `permissions:` / `on:` / `uses:` shape the scanner cannot resolve is a finding (`JOBS_UNPARSED`, `USES_UNPARSED`, `PERMISSIONS_UNPARSED`, `AUTHZ_TRIGGER_UNPARSED`), never an inherited default'
     note: >-
       Issue #472. Offline and read-only; waivers require a quality/actions-pins.json
       `exceptions` entry and are printed in CI output. Update procedure:

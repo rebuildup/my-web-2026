@@ -5,6 +5,8 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { gzipSync } from 'node:zlib';
+import { buildClientBundleGraph, rawByteLength } from './_client-bundle-graph.mjs';
 import {
 	buildReport,
 	checkGraphProvenance,
@@ -855,5 +857,107 @@ describe('the gate cannot be measured around (Issue #482)', () => {
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}
+	});
+});
+
+/**
+ * The graph writer (`scripts/_client-bundle-graph.mjs`, imported by
+ * `vite.config.ts`) has to measure the file the browser downloads, not the
+ * code Rollup held before Vite's `build-import-analysis` rewrote it. A budget
+ * gate that under-counts its own artefacts looks like it works.
+ */
+describe('the client bundle graph records post-finalization sizes (Issue #482)', () => {
+	/** A chunk whose on-disk content is larger than the in-memory `code`. */
+	function chunkBundle({ code, disk, facadeModuleId, ...rest }) {
+		return {
+			'assets/index-abc.js': {
+				type: 'chunk',
+				name: 'index',
+				code,
+				facadeModuleId: facadeModuleId ?? null,
+				imports: [],
+				isEntry: true,
+				isDynamicEntry: false,
+				viteMetadata: {},
+				...rest,
+			},
+		};
+	}
+
+	it('records the emitted file size even when it is larger than the in-memory code', async () => {
+		const dir = mkdtempSync(join(tmpdir(), 'bundle-graph-disk-'));
+		try {
+			// Vite's build-import-analysis injects the __vitePreload marker and
+			// the dependency map AFTER an ordinary user plugin's generateBundle.
+			const inMemory = 'const a=1;';
+			const emitted = `${inMemory}/*__vitePreload(()=>{__vite__mapDeps(["assets/lazy.js"])})*/`;
+			mkdirSync(join(dir, 'assets'), { recursive: true });
+			writeFileSync(join(dir, 'assets/index-abc.js'), emitted);
+
+			const { graph, fallback_files } = await buildClientBundleGraph({
+				bundle: chunkBundle({
+					code: inMemory,
+					disk: emitted,
+					facadeModuleId: join(REPO_ROOT, 'src/client.tsx'),
+				}),
+				outDir: dir,
+				rootDir: REPO_ROOT,
+			});
+
+			assert.equal(graph.chunks['assets/index-abc.js'].bytes, Buffer.byteLength(emitted));
+			assert.ok(
+				graph.chunks['assets/index-abc.js'].bytes > Buffer.byteLength(inMemory),
+				'the graph must not fall back to the smaller pre-finalization size',
+			);
+			assert.equal(graph.bytes_source, 'emitted-file');
+			assert.deepEqual(fallback_files, []);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('gzip_bytes are measured on the same emitted bytes', async () => {
+		const dir = mkdtempSync(join(tmpdir(), 'bundle-graph-gzip-'));
+		try {
+			const code = 'x'.repeat(4096);
+			mkdirSync(join(dir, 'assets'), { recursive: true });
+			writeFileSync(join(dir, 'assets/index-abc.js'), code);
+			const { graph } = await buildClientBundleGraph({
+				bundle: chunkBundle({ code, disk: code }),
+				outDir: dir,
+				rootDir: REPO_ROOT,
+			});
+			assert.equal(graph.chunks['assets/index-abc.js'].bytes, 4096);
+			assert.equal(
+				graph.chunks['assets/index-abc.js'].gzip_bytes,
+				gzipSync(code, { level: 9 }).length,
+			);
+			assert.equal(graph.gzip_level, 9);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('falls back to the in-memory bytes and says so when a file cannot be read', async () => {
+		const dir = mkdtempSync(join(tmpdir(), 'bundle-graph-missing-'));
+		try {
+			const code = 'missing-on-disk';
+			const { graph, fallback_files } = await buildClientBundleGraph({
+				bundle: chunkBundle({ code, disk: code }),
+				outDir: dir,
+				rootDir: REPO_ROOT,
+			});
+			assert.equal(graph.chunks['assets/index-abc.js'].bytes, Buffer.byteLength(code));
+			assert.equal(graph.bytes_source, 'emitted-file-with-memory-fallback');
+			assert.deepEqual(graph.bytes_fallback_files, ['assets/index-abc.js']);
+			assert.deepEqual(fallback_files, ['assets/index-abc.js']);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('counts multi-byte characters as their UTF-8 length', () => {
+		assert.equal(rawByteLength('日本語'), 9);
+		assert.equal(Buffer.from('日本語').length, 9);
 	});
 });

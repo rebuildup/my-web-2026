@@ -314,10 +314,15 @@ line goes to stderr, so `pnpm run bundle:budget:check -- --json | jq` works.
 `--report=` and `--html=` create their parent directory, so the `.tmp/` paths
 above work on a fresh checkout where `.tmp/` does not exist yet.
 
-Sizes are **UTF-8 byte lengths of the emitted files**, not JavaScript string
-lengths — a chunk carrying a Japanese literal is larger on disk than
-`code.length` suggests, and a budget gate that undercounts its own artefacts
-could pass a real over-cap file.
+Sizes are **byte lengths of the emitted files**, read back from disk after
+Rollup flushed them — not JavaScript string lengths, and not the pre-finalize
+copy. That matters twice: a chunk carrying a Japanese literal is larger on disk
+than `code.length` suggests, and Vite's `build-import-analysis` rewrites
+`chunk.code` *after* an ordinary user plugin's `generateBundle` runs (it is
+what injects the preload marker and dependency map). A budget gate that
+undercounts its own artefacts could pass a real over-cap file, so the graph
+plugin runs in post order from `writeBundle`
+(`vite.config.ts` → `scripts/_client-bundle-graph.mjs`).
 
 An acknowledged `exception` keeps the run green while the bundle is still above
 its cap, so the HTML report lists every exception with its measurement, cap,

@@ -186,7 +186,7 @@ bundle_budget:
   gate: integration
   cost_class: cheap
   trigger: every `validate:integration` run (pull_request, push_to_main, push_to_release_branch)
-  input: 'dist/client/bundle-graph.json — written by the Vite client build; the deploy artifact in .cloudflare/output/ is NOT modified by it'
+  input: 'dist/client/bundle-graph.json — written by the Vite client build from `writeBundle`, measuring the files emitted into the Cloudflare plugin asset output (.cloudflare/output/v0/workers/default/assets); it only READS that deploy artifact, it never modifies it'
   tool_iframe: 'aggregated and capped separately (each Tool is an independent Vite build served from /tools/<slug>/app/ inside a sandboxed iframe)'
   reproduction:
     measurement: 'static chunk-graph arithmetic — entry chunk + each route chunk transitive STATIC-import closure + the chunks of the route layout ancestors it renders with; dynamic imports are never charged to first paint'

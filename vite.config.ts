@@ -1,10 +1,10 @@
 import { mkdir, writeFile } from 'node:fs/promises';
-import { dirname, relative, resolve } from 'node:path';
-import { gzipSync } from 'node:zlib';
+import { dirname, resolve } from 'node:path';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
+import { buildClientBundleGraph } from './scripts/_client-bundle-graph.mjs';
 import { LOCAL_STATE_DIR } from './scripts/_cloudflare-identity.mjs';
 
 /**
@@ -74,102 +74,51 @@ const cloudflareWorkersClientStub: Plugin = {
  * the budget gate compute `entry + route chunk + shared chunks` per route.
  * Dynamic imports are recorded but never walked — lazy route chunks must not
  * be charged to first paint.
- */
-/**
- * On-disk size of a Rollup output, in bytes.
  *
- * `output.code.length` / `output.source.length` count UTF-16 code units, so a
- * chunk carrying a non-ASCII literal (this app ships Japanese editorial copy)
- * would be recorded as smaller than the file Vite actually writes. A budget
- * gate that undercounts its own artefacts can pass a real over-cap file, so the
- * byte count has to be the byte count. `gzipSync(Buffer.from(source))` below
- * already measures real bytes, which is why the two can disagree.
+ * When it writes the graph
+ * ------------------------
+ * From `writeBundle`, in post order, and the sizes are read back from the
+ * emitted files. A `generateBundle` hook in ordinary user-plugin order sees
+ * chunks that Vite's `vite:build-import-analysis` has not rewritten yet, so
+ * its numbers are smaller than the files the browser downloads — and a budget
+ * gate that under-counts is worse than no gate at all. See
+ * `scripts/_client-bundle-graph.mjs` for the full argument.
  */
-function rawByteLength(source: string | Uint8Array): number {
-	return typeof source === 'string' ? Buffer.byteLength(source, 'utf8') : source.byteLength;
-}
-
 function clientBundleGraphPlugin(): Plugin {
 	return {
 		name: 'my-web-2026:client-bundle-graph',
 		apply: 'build',
-		async generateBundle(_options, bundle) {
+		// Post ordering matters here: an ordinary user plugin's `generateBundle`
+		// runs BEFORE Vite's `vite:build-import-analysis`, which rewrites
+		// `chunk.code` afterwards to inject the preload marker and the
+		// dependency map. Sizes taken there under-count every file that has
+		// dynamic imports to preload. See scripts/_client-bundle-graph.mjs.
+		enforce: 'post',
+		async writeBundle(options, bundle) {
 			// The Worker (SSR) bundle gets its own manifest from the
 			// Cloudflare plugin. Only the browser bundle is budgeted.
 			if (this.environment?.name !== 'client') return;
 
-			const outDir = this.environment.config.build.outDir;
+			// `writeBundle` runs after Rollup flushed every file, so the byte
+			// counts are read back from the emitted files rather than from
+			// Rollup's in-memory copy.
+			const outDir =
+				typeof options.dir === 'string' ? options.dir : this.environment.config.build.outDir;
 			const reportPath = resolve(__dirname, 'dist/client/bundle-graph.json');
 
-			const assets: Record<string, { bytes: number; gzip_bytes: number }> = {};
-			const chunks: Record<
-				string,
-				{
-					name: string;
-					facade_module_id: string | null;
-					facade_query: string | null;
-					is_entry: boolean;
-					is_dynamic_entry: boolean;
-					bytes: number;
-					gzip_bytes: number;
-					css_bytes: number;
-					imports: string[];
-					css: string[];
-				}
-			> = {};
-			for (const [fileName, output] of Object.entries(bundle)) {
-				if (output.type === 'asset') {
-					const bytes = rawByteLength(output.source);
-					assets[fileName] = {
-						bytes,
-						gzip_bytes: gzipSync(Buffer.from(output.source), { level: 9 }).length,
-					};
-					continue;
-				}
-				const importedCss = [...(output.viteMetadata?.importedCss ?? [])];
-				// `?tsr-split=component` / `?tsr-split=notFoundComponent`
-				// are TanStack Start's virtual split markers. Two chunks can
-				// therefore share one facade id (a route component and its
-				// not-found component); only the component chunk is part of
-				// first paint, so the query has to survive into the graph for
-				// the budget gate to pick the right one.
-				const facadeId = output.facadeModuleId ?? null;
-				const facade = facadeId
-					? relative(__dirname, facadeId.split('?')[0]).split('\\').join('/')
-					: null;
-				chunks[fileName] = {
-					name: output.name,
-					// The file basename alone cannot identify a route: four
-					// distinct chunks are called `index` and two are called
-					// `tools._slug`. `facade_module_id` is the stable key
-					// that maps a chunk back to `src/routes/<file>.tsx`.
-					facade_module_id: facade,
-					facade_query: facadeId?.includes('?') ? facadeId.slice(facadeId.indexOf('?') + 1) : null,
-					is_entry: output.isEntry === true,
-					is_dynamic_entry: output.isDynamicEntry === true,
-					bytes: rawByteLength(output.code),
-					gzip_bytes: gzipSync(output.code, { level: 9 }).length,
-					css_bytes: importedCss.reduce((sum, css) => sum + (assets[css]?.bytes ?? 0), 0),
-					imports: [...output.imports].filter((dep) => bundle[dep]?.type === 'chunk'),
-					css: importedCss,
-				};
-			}
-
-			const graph = {
-				schema_version: 1,
-				generator: 'my-web-2026:client-bundle-graph',
-				out_dir: outDir,
-				bytes_unit: 'raw',
-				gzip_level: 9,
-				assets,
-				chunks,
-			};
+			const { graph, measured_files, fallback_files } = await buildClientBundleGraph({
+				bundle,
+				outDir,
+				rootDir: __dirname,
+			});
 
 			await mkdir(dirname(reportPath), { recursive: true });
 			await writeFile(reportPath, `${JSON.stringify(graph, null, '\t')}\n`);
 			// Never fail the build on a reporting artefact; the budget gate
 			// reports a missing graph as its own explicit failure.
-			console.log(`[bundle-graph] wrote ${reportPath}`);
+			console.log(
+				`[bundle-graph] wrote ${reportPath} (${measured_files} emitted file(s) measured from disk, ${fallback_files.length} in-memory fallback(s))`,
+			);
 		},
 	};
 }

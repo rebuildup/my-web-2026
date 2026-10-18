@@ -393,6 +393,7 @@
 					"external/prototype/public/vite.svg",
 					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
+					"src/editorial/primitives/StateMark.tsx",
 					"src/home/mark.tsx"
 				]
 			},
@@ -940,46 +941,13 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://example.com",
-			"https://example.com/frame",
-			"https://example.com/safe",
-			"https://www.w3.org/International"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [
-			"example.com"
-		],
+		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.com"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.com/frame"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.com/safe"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.w3.org/International"
-			}
-		]
+		"findings": []
 	}
 }

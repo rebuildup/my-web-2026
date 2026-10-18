@@ -26,8 +26,6 @@ exits non-zero if any fixture deviates. No key material is rendered.
 `/webhooks/*` still has no mounted handler — the report documents an
 adapter, not a published entry point. Reading guide:
 [`docs/security/webhook-signature-verification.md`](../../security/webhook-signature-verification.md).
-| [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
-
 
 ## `error-redaction-page.webp` (Issue #457)
 

@@ -80,7 +80,9 @@
 		"verify:sitemap-screenshot": "node --experimental-strip-types scripts/make-sitemap-verification-report.mjs",
 		"verification:api-key-scope": "node scripts/capture-api-key-scope-matrix.mjs",
 		"structured-data:check": "node scripts/check-structured-data-coverage.mjs",
-		"verify:structured-data-screenshot": "node scripts/make-seo-structured-data-report.mjs"
+		"verify:structured-data-screenshot": "node scripts/make-seo-structured-data-report.mjs",
+		"dep-audit:check": "node scripts/check-dependency-advisories.mjs",
+		"dep-audit:report": "node scripts/check-dependency-advisories.mjs --report .tmp/dependency-audit-report.html"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

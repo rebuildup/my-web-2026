@@ -131,7 +131,10 @@ export const Route = createFileRoute('/tools/$slug')({
 		// throws `notFound()` (the route still needs an HTTP <head>
 		// before the notFound boundary can short-circuit). Guard
 		// against `loaderData` being undefined — fall back to a
-		// generic head instead of crashing the SSR pipeline.
+		// generic head instead of crashing the SSR pipeline. The
+		// fallback deliberately declares NO canonical: a 404 document
+		// must not name a canonical URL (the public-route head gate,
+		// Issue #418, fails the build on `not-found.canonical-present`).
 		if (!loaderData) {
 			return {
 				meta: [{ title: 'Tool — my-web-2026' }, { name: 'robots', content: 'noindex' }],
@@ -139,6 +142,7 @@ export const Route = createFileRoute('/tools/$slug')({
 		}
 		if (loaderData.state === 'disabled') {
 			const tool = loaderData.tool;
+			const url = `https://rebuildup.dev/tools/${tool.slug}`;
 			return {
 				meta: [
 					{ title: `${tool.display_name} — coming soon — my-web-2026 Tools` },
@@ -146,8 +150,10 @@ export const Route = createFileRoute('/tools/$slug')({
 						name: 'description',
 						content: `${tool.display_name} is registered in the my-web-2026 Tool Registry but not yet integrated.`,
 					},
+					{ property: 'og:url', content: url },
 					{ name: 'robots', content: 'noindex' },
 				],
+				links: [{ rel: 'canonical', href: url }],
 			};
 		}
 		if (loaderData.state === 'blocked') {
@@ -163,6 +169,7 @@ export const Route = createFileRoute('/tools/$slug')({
 			};
 		}
 		const tool = loaderData.public;
+		const url = `https://rebuildup.dev/tools/${tool.slug}`;
 		return {
 			meta: [
 				{ title: `${tool.display_name} — my-web-2026 Tools` },
@@ -170,13 +177,20 @@ export const Route = createFileRoute('/tools/$slug')({
 					name: 'description',
 					content: tool.description,
 				},
+				{ property: 'og:url', content: url },
 				// Explicit noindex for Tool iframe shell routes — Tool content
 				// is served at /tools/<slug>/<artifact_path>/, and the host
 				// shell is intentionally not part of the public canonical
 				// surface. Operators can flip this once the Tool surface
 				// graduates from pilot to production.
+				//
+				// Issue #418: the exclusion is declared in
+				// `INDEX_EXCLUSIONS` (scripts/seo-head-contract.mjs), so
+				// the gate reads this as a recorded decision rather than
+				// as drift, and it still requires the canonical below.
 				{ name: 'robots', content: 'noindex' },
 			],
+			links: [{ rel: 'canonical', href: url }],
 		};
 	},
 	notFoundComponent: ToolNotFound,

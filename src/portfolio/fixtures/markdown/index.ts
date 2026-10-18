@@ -33,6 +33,3 @@ export const TECHNICAL_ARTICLE_MD: string = technicalArticleSource;
 
 /** The hostile sample. Every payload must survive as inert, visible text. */
 export const HOSTILE_MD: string = hostileSource;
-
-/** Canonical production origin (ADR-0014) used by every fixture render. */
-export const FIXTURE_SITE_ORIGIN = 'https://rebuildup.dev';

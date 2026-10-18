@@ -60,6 +60,39 @@ test('markupIsInert rejects executable markup and accepts escaped markup', () =>
 	assert.equal(markupIsInert(HOSTILE_HTML), true);
 	assert.equal(markupIsInert('<div><script>alert(1)</script></div>'), false);
 	assert.equal(markupIsInert('<p><img src=x onerror="alert(1)"></p>'), false);
+	assert.equal(markupIsInert('<div><p onclick="alert(1)">text</p></div>'), false);
+});
+
+test('markupIsInert rejects a dangerous href scheme, not only tags', () => {
+	// The report injects rendered markup verbatim, so a live anchor is as
+	// much a payload as a <script>. The rule is the same one the
+	// `href-scheme` contract check applies.
+	assert.equal(markupIsInert('<a href="javascript:alert(1)">x</a>'), false);
+	assert.equal(markupIsInert("<a href='javascript:alert(1)'>x</a>"), false);
+	assert.equal(markupIsInert('<a href="data:text/html,<script>alert(1)</script>">x</a>'), false);
+	assert.equal(markupIsInert('<a href="vbscript:msgbox(1)">x</a>'), false);
+});
+
+test('markupIsInert rejects media and interactive elements', () => {
+	assert.equal(markupIsInert('<p><img src=x alt=y></p>'), false);
+	assert.equal(markupIsInert('<svg width="10"><circle /></svg>'), false);
+	assert.equal(markupIsInert('<video src="movie.mp4" autoplay></video>'), false);
+	assert.equal(markupIsInert('<audio src="a.mp3"></audio>'), false);
+	assert.equal(markupIsInert('<form action="/x"><input name="y"></form>'), false);
+});
+
+test('markupIsInert still accepts the shapes the renderer actually emits', () => {
+	assert.equal(
+		markupIsInert('<p><a href="#" target="_blank" rel="noopener noreferrer">a</a></p>'),
+		true,
+	);
+	assert.equal(markupIsInert('<p><a href="/portfolio" target="_self" rel="">b</a></p>'), true);
+	assert.equal(
+		markupIsInert(
+			'<p><a href="https://example.com/x" target="_blank" rel="noopener noreferrer">c</a></p>',
+		),
+		true,
+	);
 });
 
 test('evaluateContract passes a clean render and explains each verdict', () => {
@@ -101,6 +134,9 @@ test('evaluateContract rejects a non-http href scheme', () => {
 	const href = checks.find((check) => check.id === 'href-scheme');
 	assert.equal(href.status, 'fail');
 	assert.equal(href.detail.includes('javascript:'), true);
+	// The artefact half of the guard must agree with the verdict table:
+	// the same markup that FAILs `href-scheme` is never injected verbatim.
+	assert.equal(markupIsInert('<div><p><a href="javascript:alert(1)">x</a></p></div>'), false);
 });
 
 test('buildReportHtml escapes fixture text and keeps inert markup verbatim', () => {
@@ -122,6 +158,10 @@ test('buildReportHtml escapes fixture text and keeps inert markup verbatim', () 
 	assert.equal(report.includes('&lt;script&gt;alert(1)&lt;/script&gt;'), true);
 	assert.equal(report.includes('href="#" target="_blank"'), true);
 	assert.equal(report.startsWith('<!doctype html>'), true);
+	// The page's own prose is Japanese; declaring `lang="en"` on the
+	// artefact that demonstrates the locale-free contract would be its
+	// own small lie.
+	assert.equal(report.includes('<html lang="ja">'), true);
 });
 
 test('buildReportHtml escapes a render that turned out not to be inert', () => {

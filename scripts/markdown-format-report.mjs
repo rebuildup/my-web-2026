@@ -42,7 +42,6 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURE_DIR = join(REPO_ROOT, 'src/portfolio/fixtures/markdown');
 const DEFAULT_OUT_DIR = join(REPO_ROOT, '.tmp/markdown-format-report');
 const CAPTURE_PATH = join(REPO_ROOT, 'docs/verification/content/markdown-format-regression.webp');
-const SITE_ORIGIN = 'https://rebuildup.dev';
 
 const FIXTURES = [
 	{
@@ -59,11 +58,20 @@ const FIXTURES = [
 	},
 ];
 
+const USAGE = 'usage: node scripts/markdown-format-report.mjs [--out <dir>] [--capture]';
+
 function parseArgs(argv) {
 	const outIndex = argv.indexOf('--out');
+	const outValue = outIndex === -1 ? undefined : argv[outIndex + 1];
+	if (outIndex !== -1 && !outValue) {
+		// `--out` with no directory is a usage error, not a crash with a
+		// raw TypeError from `resolve(undefined)`.
+		process.stderr.write(`error: --out requires a directory argument\n${USAGE}\n`);
+		process.exit(2);
+	}
 	return {
 		capture: argv.includes('--capture'),
-		outDir: outIndex === -1 ? DEFAULT_OUT_DIR : resolve(REPO_ROOT, argv[outIndex + 1]),
+		outDir: outValue === undefined ? DEFAULT_OUT_DIR : resolve(REPO_ROOT, outValue),
 	};
 }
 
@@ -128,7 +136,11 @@ async function renderFixtures() {
 		server: { middlewareMode: true },
 	});
 	try {
-		const [{ PortfolioMarkdown }, { createElement }, { renderToStaticMarkup }] = await Promise.all([
+		const [
+			{ PortfolioMarkdown, DEFAULT_SITE_ORIGIN },
+			{ createElement },
+			{ renderToStaticMarkup },
+		] = await Promise.all([
 			server.ssrLoadModule('/src/portfolio/components/Markdown.tsx'),
 			import('react'),
 			import('react-dom/server'),
@@ -136,7 +148,7 @@ async function renderFixtures() {
 		return FIXTURES.map((fixture) => {
 			const source = readFileSync(join(FIXTURE_DIR, fixture.file), 'utf8');
 			const html = renderToStaticMarkup(
-				createElement(PortfolioMarkdown, { source, siteOrigin: SITE_ORIGIN }),
+				createElement(PortfolioMarkdown, { source, siteOrigin: DEFAULT_SITE_ORIGIN }),
 			);
 			return {
 				...fixture,

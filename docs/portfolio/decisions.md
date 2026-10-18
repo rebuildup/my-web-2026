@@ -299,13 +299,27 @@ runtime.
 
 **Decision.**
 
-- **Unsupported syntax degrades to literal text.** Footnote markers,
-  pipe tables, `$…$` / `$$…$$`, `~~…~~`, task-list boxes, heading
-  levels past `###`, definition lists, images and reference links are
-  NOT dropped and NOT silently transformed. They stay in the rendered
-  paragraph as the characters the operator typed. Silent deletion would
-  change the meaning of an article without evidence; literal text is
-  visible, reviewable and reversible.
+- **Unsupported syntax degrades to literal text, with two recorded
+  exceptions.** Footnote markers, pipe tables, `$…$` / `$$…$$`,
+  `~~…~~`, heading levels past `###`, definition lists, setext
+  headings and reference links are NOT dropped and NOT silently
+  transformed: they stay in the rendered paragraph as the characters
+  the operator typed. Silent deletion would change the meaning of an
+  article without evidence; literal text is visible, reviewable and
+  reversible.
+- **The two exceptions are shape changes, never meaning or safety
+  changes.** `![alt](url)` splits into the character `!` plus the
+  SUPPORTED `[alt](url)` link syntax, so it renders as `!` followed by
+  an anchor — `![](url)` renders `!` plus a nameless anchor. No `<img>`
+  is created and the URL still goes through the link policy (external
+  targets get `rel="noopener noreferrer"`, dangerous schemes fall back
+  to `href="#"`). Likewise a line-initial `- [ ] task` consumes the
+  supported `- ` list marker and renders `<ul><li>[ ] task</li></ul>`;
+  only the inline code-span form stays literal. Meaning survives in
+  all three cases, but the SHAPE does not, and an operator has to be
+  told that rather than discovering it in production. All three
+  behaviours are pinned by `src/portfolio/markdown.safety.test.tsx` and
+  stated per-construct in `docs/portfolio/markdown-format.md` § 3.
 - **Safety, typography and text quality are three separate claims.**
   The renderer owns the first two and can be tested for them. It owns
   neither the third nor publication: `src/portfolio/load.ts` decides

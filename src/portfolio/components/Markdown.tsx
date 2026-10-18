@@ -28,7 +28,14 @@ export interface PortfolioMarkdownProps {
 	siteOrigin?: string;
 }
 
-const DEFAULT_SITE_ORIGIN = 'https://rebuildup.dev';
+/**
+ * Canonical production origin (ADR-0014).
+ *
+ * Exported so the fixtures, the safety suite and the report generator
+ * all resolve the SAME literal instead of each carrying a third copy
+ * that can drift away from the domain the renderer classifies against.
+ */
+export const DEFAULT_SITE_ORIGIN = 'https://rebuildup.dev';
 
 export function PortfolioMarkdown({
 	source,

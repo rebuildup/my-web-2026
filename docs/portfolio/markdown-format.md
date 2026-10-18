@@ -31,7 +31,10 @@ Issue は「未確定な推敲を勝手に公開しない」を完了条件に�
   Decision 3）。
 - レンダラは要約も補完も言い換えも行わない。**入力に無い文字を 1 つも出力しない**
   ことを test で構造的にアサートしている（可視テキストの文字集合 ⊆ 入力の文字集合
-  ∪ Markdown marker）。
+  ∪ Markdown marker）。さらに、**入力に無い文字列（空白を含まない 4 文字以上の
+  連続）も 1 つも出力しない**ことを、marker を外した入力行からの部分文字列として
+  アサートしている。文字集合だけの検査では「入力が既に持つ文字を並べただけの
+  盗作」を許してしまうため、個々の連続そのものを閉じている。
 - [yomiyasu](https://github.com/nanaism/yomiyasu) のような文章編集補助は**原稿を
   直す道具**であって、**品質を保証する検査ではない**。Issue の「参考」にある
   「利用は文章編集補助であり、自動品質保証の証明にはならない」を、そのまま
@@ -82,19 +85,53 @@ Raw HTML は**解釈されない**。`<script>` のような入力は `<` と `>
 fixture 記事（`src/portfolio/fixtures/markdown/technical-article.md`）はこれを
 実際に書いているので、test だけでなく reader にも見える。
 
+**ただし 2 つだけ例外がある**。行頭の `- ` は対応済みの list syntax として消費される
+（task list）と、图片構文は対応済みの link syntax に一部分落ちる（画像）。どちらも
+意味を消さないが**形は変わる**ので、operator に明示する。
+
 | 構文 | 例 | 現状 |
 | --- | --- | --- |
 | 脚注 | `[^1]` と定義行 `[^1]: 定義` | 未対応。marker も定義行も本文のまま残り、リンクは作られない |
 | 表 | `\| a \| b \|` と区切り行 | 未対応。行が 1 段落として残る |
 | 数式 | `$E = mc^2$` / `$$\sum…$$` | 未対応。TeX として解釈されない |
-| 取り消し線 | `~~text~~` | 未対応 |
-| task list | `- [ ]` / `- [x]` | 未対応。`- [ ]` がそのまま残る |
+| 取り消し線 | `~~text~~` | 未対応。`~~…~~` がそのまま残る |
 | 4 段以上の見出し | `####` | 未対応。`####` が段落に残る |
-| 定義リスト / 画像 / setext 見出し / reference link | | 未対応 |
-| 入れ子リスト / 複数段落の blockquote | | 未対応。1 行ずつ平坦化される |
+| reference link | `[text][ref]` | 未対応。`[text][ref]` がそのまま残り、リンクは作られない |
+| setext 見出し / 定義リスト | `見出し` + `===` / `用語` + `: 定義` | 未対応。行がそのまま段落になる |
+| **task list（行頭）** | `- [ ] 読書中` / `- [x] 完了` | 未対応。ただし行頭の `- ` は対応済みの list syntax として**消費される**ので `<ul><li>[ ] 読書中</li></ul>` になる。`[ ] …` の文字は残るが bullet は読者に表示されない |
+| **task list（inline）** | `` `- [ ] 読書中` `` | 未対応。code span の中は解釈されないので `- [ ] 読書中` がそのまま残る |
+| **画像** | `![図](/media/a.png)` | 未対応。ただし **link として部分的に劣化する**（§ 3.1） |
+| 入れ子リスト | `- a` の後にインデント付き `- b` | 未対応。`a` は list、`  - b` はインデントを残したまま**段落**になる（list item に平坦化されない） |
+| 複数段落の blockquote | `> a` の後に空行と `> b` | 未対応。2 つの blockquote に分かれる（結合されない） |
 
-**足すときの条件**：構文を足すのは「実際に必要になったとき」だけ。この test で未対応
-であることを固定しているが、実装を先取りしない。
+### 3.1 画像だけは「文字のまま残る」ではない
+
+`![alt](url)` は parser が `!` と `[alt](url)` に分解する。`[alt](url)` は**対応済み**
+の link syntax なので、画面には `<a>` として出る。`<img>` は作られない。
+
+| 入力 | 描画 | 可視テキスト |
+| --- | --- | --- |
+| `![図](/media/a.png)` | `!<a href="/media/a.png" target="_self" rel="">図</a>` | `!図` |
+| `![](/media/a.png)` | `!<a href="/media/a.png" target="_self" rel=""></a>` | `!` |
+| `![alt](https://example.com/x.png)` | `!<a href="https://example.com/x.png" target="_blank" rel="noopener noreferrer">alt</a>` | `!alt` |
+
+URL は link policy を通る（別 origin は `target="_blank"` + `rel="noopener noreferrer"`、
+危険 scheme は `href="#"`）。安全性は link とまったく同じで、**形だけが違う**。
+alt テキストのない `![](url)` は名前のない anchor になり、reader は「名前のない
+リンク + 余分な `!」」を見る。画像を使うなら未対応であることを本文に書くか、
+code span で囲んで literal text として出すこと。この挙動は suite の
+`markdown safety: image syntax degrades into a link, not literal text` で固定している。
+
+### 3.2 足すときの条件
+
+構文を足すのは「実際に必要になったとき」だけ。実装を先取りしない。
+
+上の表のうち **test で固定しているもの** は、脚注（marker / 定義行）、pipe table、
+数式、取り消し線、4 段以上の見出し、reference link、setext 見出し、定義リスト、
+task list（行頭 / inline の 2 形態）、画像の link 劣化、入れ子リストの段落劣化、
+複数段落の blockquote の分割 — つまり表の全部。`docs/portfolio/decisions.md`
+Decision 6 の「文字のまま残る」という主張と、この表および § 3.1 の例外の主張は、
+同じ suite が支えている。
 
 ## 4. 既知の limitation（test が固定している挙動）
 
@@ -118,7 +155,7 @@ UX 上の問題。`#` を href に持たない link は内部リンク扱いに�
 ## 5. 検証の再現手順
 
 ```bash
-# CI fixture（workerd pool、26 ケース）
+# CI fixture（workerd pool、33 ケース）
 pnpm exec vitest run src/portfolio/markdown.safety.test.tsx
 
 # プレビュー（実画面）
@@ -128,7 +165,7 @@ pnpm run storybook    # portfolio/Markdown → SupportedSyntax / HostileInput
 node scripts/markdown-format-report.mjs
 # → .tmp/markdown-format-report/report.html
 
-# 検証画像を Issue 指定のパスへ取り直す
+# 検証画像を Issue 指定パス（.png）の WebP 版へ取り直す
 node scripts/markdown-format-report.mjs --capture
 # → docs/verification/content/markdown-format-regression.webp
 

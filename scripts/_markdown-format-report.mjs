@@ -72,6 +72,37 @@ function tagsOf(html) {
 }
 
 /**
+ * Elements that can load, embed or run a payload in a browser.
+ *
+ * Media elements (`img` / `svg` / `video` / …) belong here even though
+ * they cannot run script: they fetch a remote resource the moment the
+ * artefact is opened, which is exactly what a verification artefact
+ * must not do on behalf of whoever reviews it. `form` / `input` /
+ * `button` are here for the same reason — they are interactive
+ * surfaces, not text.
+ */
+const EXECUTABLE_TAG =
+	/^<\/?(?:script|iframe|object|embed|style|link|meta|form|base|img|svg|video|audio|source|track|picture|canvas|input|button|textarea|frame|frameset|applet)\b/i;
+
+/**
+ * The only `href` shapes the artefact leaves clickable: the inert `#`
+ * fallback the renderer falls back to, a site-relative path, or plain
+ * `http(s)`. Anything else (`javascript:`, `data:`, `vbscript:`, a
+ * scheme added later) is treated as executable until someone decides
+ * otherwise in a review.
+ */
+function isInertHref(href) {
+	return href === '#' || href.startsWith('/') || /^https?:\/\//i.test(href);
+}
+
+/** Every `href` value, in either quote style (React emits double quotes). */
+function hrefsOf(html) {
+	return [...String(html ?? '').matchAll(/\shref\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map(
+		(match) => match[1] ?? match[2] ?? '',
+	);
+}
+
+/**
  * True when a markup string carries nothing a browser would execute.
  *
  * The report injects the rendered fixture verbatim — that is the whole
@@ -79,17 +110,19 @@ function tagsOf(html) {
  * renderer change made the markup executable, the report shows the markup
  * escaped inside a `<pre>` instead of running it. The regression becomes
  * visible in the artefact rather than in the browser viewing it.
+ *
+ * The guard covers three independent things, and all three are needed:
+ * an element that runs or loads a payload, an `on*=` handler attribute,
+ * and an `href` scheme outside http(s)/relative. Blocking only the first
+ * two would make this predicate agree with itself while disagreeing
+ * with the `href-scheme` contract check below, which is the same rule.
  */
 export function markupIsInert(html) {
-	return !tagsOf(html).some(
-		(tag) =>
-			/^<\/?(?:script|iframe|object|embed|style|link|meta|form)\b/i.test(tag) ||
-			/\son[a-z]+\s*=/i.test(tag),
-	);
-}
-
-function hrefsOf(html) {
-	return [...String(html ?? '').matchAll(/href="([^"]*)"/g)].map((match) => match[1]);
+	const rendered = String(html ?? '');
+	if (tagsOf(rendered).some((tag) => EXECUTABLE_TAG.test(tag) || /\son[a-z]+\s*=/i.test(tag))) {
+		return false;
+	}
+	return hrefsOf(rendered).every(isInertHref);
 }
 
 /**
@@ -109,13 +142,12 @@ export function evaluateContract({ source, html }) {
 		.map(stripMarkdownMarkers)
 		.filter(Boolean);
 
-	const injectedTags = tags.filter((tag) =>
-		/^<\/?(?:script|iframe|img|svg|object|embed|form|style|link|meta)\b/i.test(tag),
-	);
+	// Both halves of the inertness guard are the SAME predicates the
+	// `markupIsInert` decision is made from, so the verdict table can
+	// never PASS while the artefact would have been escaped.
+	const injectedTags = tags.filter((tag) => EXECUTABLE_TAG.test(tag));
 	const handlerTags = tags.filter((tag) => /\son[a-z]+\s*=/i.test(tag));
-	const badHrefs = hrefs.filter(
-		(href) => href !== '#' && !href.startsWith('/') && !/^https?:\/\//i.test(href),
-	);
+	const badHrefs = hrefs.filter((href) => !isInertHref(href));
 	const missingLines = sourceLines.filter((line) => !text.includes(line));
 	const forbiddenAttributes = [/\slang=/i, /\sdir=/i, /data-locale/].filter((pattern) =>
 		pattern.test(rendered),
@@ -252,7 +284,7 @@ ${renderedPane}
 		.join('\n');
 
 	return `<!doctype html>
-<html lang="en">
+<html lang="ja">
 	<head>
 		<meta charset="utf-8" />
 		<meta name="viewport" content="width=device-width, initial-scale=1" />

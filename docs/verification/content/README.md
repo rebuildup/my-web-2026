@@ -4,7 +4,7 @@
 source と実際の描画結果の左右比較と、判定表を 1 枚にまとめたもの。
 
 Issue は `.png` のパスで指定しているが、**リポジトリに残すのは WebP**
-（幅 1440、quality 72、約 235 KB）である。Playwright が書けるのは PNG だけなので、
+（幅 1440、quality 72、223,540 bytes ≒ 218 KB）である。Playwright が書けるのは PNG だけなので、
 `node scripts/markdown-format-report.mjs` が出力した HTML を Chromium で撮影し、
 同じ `sharp`（devDependency）で WebP に再エンコードしている。内容は同一で、
 `scripts/security-header-report.mjs` の扱いと同じ方針である。
@@ -40,6 +40,8 @@ node scripts/markdown-format-report.mjs --capture
 変換する（中間 PNG は書かない）。FAIL が混ざった判定表でも撮影は行う — この
 成果物は測定の記録であり、将来の regression は diff に出るべきものだから。
 render が inert でなかった場合だけ、script は非 0 で終了する。
+生成される HTML は日本語なので `<html lang="ja">` であり、report 自身が locale を
+推論しないことの証拠でもある。
 
 ## 検証そのものの入口
 

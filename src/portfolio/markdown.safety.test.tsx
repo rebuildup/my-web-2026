@@ -2,8 +2,8 @@ import type { ComponentType } from 'react';
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { PortfolioMarkdown } from './components/Markdown';
-import { FIXTURE_SITE_ORIGIN, HOSTILE_MD, TECHNICAL_ARTICLE_MD } from './fixtures/markdown';
+import { DEFAULT_SITE_ORIGIN, PortfolioMarkdown } from './components/Markdown';
+import { HOSTILE_MD, TECHNICAL_ARTICLE_MD } from './fixtures/markdown';
 import { parseMarkdown } from './markdown.lexer';
 
 /**
@@ -37,8 +37,14 @@ import { parseMarkdown } from './markdown.lexer';
  * is the fixture-level regression suite the Issue asks for.
  */
 
-/** Render a source through the real component and return static markup. */
-function render(source: string, siteOrigin: string = FIXTURE_SITE_ORIGIN): string {
+/**
+ * Render a source through the real component and return static markup.
+ *
+ * The site origin is the renderer's own default (ADR-0014) rather than a
+ * copy written out here, so the origin these assertions classify links
+ * against and the origin the component defaults to cannot drift apart.
+ */
+function render(source: string, siteOrigin: string = DEFAULT_SITE_ORIGIN): string {
 	return renderToStaticMarkup(createElement(PortfolioMarkdown, { source, siteOrigin }));
 }
 
@@ -91,9 +97,18 @@ function decodeEntities(value: string): string {
 }
 
 /**
- * The text a reader must still see for one source line: the line with its
+ * Text a reader must still see for one source line: the line with its
  * Markdown markers removed and nothing else. Anything this function has to
  * "correct" is a place where the renderer is allowed to change meaning.
+ *
+ * Intentionally duplicated from `scripts/_markdown-format-report.mjs`
+ * rather than imported: that module must stay plain ESM so `node --test`
+ * can load it without a transform, while this suite runs through Vite in
+ * the workerd pool, so a shared helper would drag one module system into
+ * the other. The two allow-lists differ on purpose — the report folds
+ * whitespace and adds `[]()` because it measures a whole rendered page,
+ * this one measures a single article — so a PASS in the artefact is not
+ * byte-for-byte the same assertion as a PASS here.
  */
 function withoutMarkdownMarkers(line: string): string {
 	return line
@@ -117,9 +132,13 @@ describe('markdown safety: dangerous input never becomes executable', () => {
 	const html = render(HOSTILE_MD);
 
 	it('renders no element the hostile fixture tries to inject', () => {
-		for (const injected of ['script', 'iframe', 'img', 'svg', 'a href="javascript']) {
-			expect(html.toLowerCase()).not.toContain(`<${injected}`);
-		}
+		// Structural, not a substring probe: a tag broken across a newline
+		// (`<\nscript>`) or written with single quotes would slip through
+		// `not.toContain('<script')` while still being an element.
+		const injected = tagsIn(html).filter((tag) =>
+			/^<\/?(?:script|iframe|img|svg|object|embed|form|style|link|meta)\b/i.test(tag),
+		);
+		expect(injected).toEqual([]);
 	});
 
 	it('attaches no event-handler attribute to any tag', () => {
@@ -175,6 +194,7 @@ describe('markdown safety: dangerous input never becomes executable', () => {
 		// Recorded in docs/portfolio/markdown-format.md § 4.2; pinned here
 		// so a follow-up fix is a visible change to this test.
 		const stripped = anchorsIn(html).filter((anchor) => anchor.href === '#');
+		expect(stripped.length).toBeGreaterThan(0);
 		expect(stripped.every((anchor) => anchor.target === '_blank')).toBe(true);
 	});
 
@@ -209,11 +229,23 @@ describe('markdown safety: the sample article keeps its claim', () => {
 		}
 	});
 
-	it('does not publish anything the article did not already contain', () => {
-		// No summariser, no auto-title, no teaser: the rendered text is a
-		// subset of the source characters plus Markdown markers, so a
-		// speculative sentence cannot be introduced by the renderer.
-		const sourceCharacters = new Set(`${TECHNICAL_ARTICLE_MD}${'"\'`*-_#>'}`);
+	it('publishes no text the article did not already contain', () => {
+		// No summariser, no auto-title, no teaser. The strong form: every
+		// run of 4+ non-space characters a reader sees already exists in
+		// the source with markers stripped, so a fabricated sentence cannot
+		// be introduced even by assembling characters the source owns.
+		const sourceText = ARTICLE_LINES.join('').replace(/\s+/g, '');
+		const runs = text.replace(/\s+/g, ' ').match(/\S{4,}/g) ?? [];
+		expect(runs.length).toBeGreaterThan(20);
+		for (const run of runs) {
+			expect(sourceText.includes(run.replace(/\s+/g, ''))).toBe(true);
+		}
+
+		// The narrower character-set claim follows from the run check and
+		// is kept as the direct expression of the contract in
+		// docs/portfolio/markdown-format.md § 1.1: no character the input
+		// does not contain is emitted.
+		const sourceCharacters = new Set(`${TECHNICAL_ARTICLE_MD}${'"\'`*-_#>[]()'}`);
 		for (const character of new Set(text)) {
 			expect(sourceCharacters.has(character)).toBe(true);
 		}
@@ -278,11 +310,81 @@ describe('markdown safety: unsupported syntax degrades to literal text', () => {
 		expect(visibleText(render('#### 4 段目は未対応'))).toBe('#### 4 段目は未対応');
 	});
 
+	it('consumes the bullet of a line-initial task list but keeps the checkbox literal', () => {
+		// A line-initial `- ` IS the supported list syntax, so it is
+		// consumed: `- [ ] 読書中` becomes a list item whose text is
+		// `[ ] 読書中`. Only the inline code-span form keeps the whole
+		// token literal — and that is the form the article fixture uses.
+		// docs/portfolio/markdown-format.md § 3 states both.
+		expect(parseMarkdown('- [ ] 読書中')).toEqual([
+			{ kind: 'list', ordered: false, items: [[{ kind: 'text', value: '[ ] 読書中' }]] },
+		]);
+		expect(visibleText(render('- [ ] 読書中'))).toBe('[ ] 読書中');
+		expect(visibleText(render('- [x] 完了'))).toBe('[x] 完了');
+		expect(visibleText(render('task list `- [ ] 読書中` は inline では文字のまま'))).toBe(
+			'task list - [ ] 読書中 は inline では文字のまま',
+		);
+	});
+
+	it('keeps reference links, setext headings and definition lists literal', () => {
+		expect(parseMarkdown('[text][ref]')).toEqual([
+			{ kind: 'paragraph', children: [{ kind: 'text', value: '[text][ref]' }] },
+		]);
+		expect(visibleText(render('[text][ref]'))).toBe('[text][ref]');
+		expect(visibleText(render('見出し\n==='))).toBe('見出し ===');
+		expect(visibleText(render('用語\n: 定義'))).toBe('用語 : 定義');
+	});
+
+	it('leaves an indented nested list as a paragraph instead of flattening it', () => {
+		const blocks = parseMarkdown('- a\n  - b');
+		expect(blocks.map((block) => block.kind)).toEqual(['list', 'paragraph']);
+		expect(visibleText(render('- a\n  - b'))).toBe('a - b');
+	});
+
+	it('splits a multi-paragraph blockquote into two blockquotes', () => {
+		expect(parseMarkdown('> a\n\n> b').map((block) => block.kind)).toEqual([
+			'blockquote',
+			'blockquote',
+		]);
+	});
+
 	it('keeps footnote markers as text on both the reference and the definition line', () => {
 		const text = visibleText(render('本文[^1]\n\n[^1]: 定義'));
 		expect(text).toContain('本文[^1]');
 		expect(text).toContain('[^1]: 定義');
 		expect(hrefsIn(render('本文[^1]\n\n[^1]: 定義'))).toEqual([]);
+	});
+});
+
+describe('markdown safety: image syntax degrades into a link, not literal text', () => {
+	// Image syntax is the one unsupported construct that does NOT stay
+	// literal: the parser splits `![alt](url)` into the character `!` plus
+	// the SUPPORTED `[alt](url)` link syntax. docs/portfolio/decisions.md
+	// Decision 6 and docs/portfolio/markdown-format.md § 3.1 record this
+	// exception; this suite is what makes the recorded shape true.
+	it('keeps the "!" and renders the bracketed part as a link', () => {
+		const internal = render('![図](/media/a.png)');
+		expect(hrefsIn(internal)).toEqual(['/media/a.png']);
+		expect(anchorsIn(internal)).toEqual([{ href: '/media/a.png', target: '_self', rel: '' }]);
+		expect(visibleText(internal)).toBe('!図');
+	});
+
+	it('renders an image with no alt text as a nameless anchor', () => {
+		const empty = render('![](/media/a.png)');
+		expect(hrefsIn(empty)).toEqual(['/media/a.png']);
+		expect(visibleText(empty)).toBe('!');
+		expect(empty).not.toContain('<img');
+	});
+
+	it('sends an image URL through the same link policy as a link', () => {
+		const external = render('![alt](https://example.com/x.png)');
+		expect(anchorsIn(external)).toEqual([
+			{ href: 'https://example.com/x.png', target: '_blank', rel: 'noopener noreferrer' },
+		]);
+		// The degradation changes the shape, never the safety.
+		const hostile = render('![x](javascript:alert(1))');
+		expect(hrefsIn(hostile)).toEqual(['#']);
+		expect(anchorsIn(hostile)[0]?.target).toBe('_blank');
 	});
 });
 

@@ -1,0 +1,36 @@
+{
+	"about": {
+		"person": {
+			"@context": "https://schema.org",
+			"@type": "Person",
+			"@id": "https://rebuildup.dev/about#person",
+			"name": "木村友亮 / Yusuke Kimura",
+			"url": "https://rebuildup.dev/about",
+			"sameAs": [
+				"https://github.com/rebuildup",
+				"https://x.com/samuido",
+				"https://samuido.booth.pm"
+			],
+			"alternateName": ["samuido"],
+			"description": "ソフトウェアと映像・デザインを行き来しながら、作ったものを公開・運用まで持っていく developer / creator。"
+		}
+	},
+	"portfolio": {
+		"creativeWork": {
+			"@context": "https://schema.org",
+			"@type": "CreativeWork",
+			"@id": "https://rebuildup.dev/portfolio/aulymo#creativework",
+			"name": "Aulymo — After Effects lyric motion tool",
+			"description": "After Effects で lyric motion を作るための tool。実装だけでなく productization / support / update まで経験。",
+			"url": "https://rebuildup.dev/portfolio/aulymo",
+			"author": {
+				"@type": "Person",
+				"@id": "https://rebuildup.dev/about#person",
+				"name": "木村友亮 / Yusuke Kimura",
+				"url": "https://rebuildup.dev/about"
+			},
+			"dateCreated": "2022",
+			"dateModified": "2026-01-02T00:00:00.000Z"
+		}
+	}
+}

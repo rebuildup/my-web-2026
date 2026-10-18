@@ -188,24 +188,30 @@ describe('login enumeration + brute-force throttle (Issue #443)', () => {
 		// Pinned header **set**, not just parity: the 401 carries only
 		// `content-type` from Better Auth plus the headers the boundary
 		// adds to every `/api/v1/*` response: `cache-control` + `vary`
-		// (`src/http/middleware/cache-policy.ts`, Issue #460),
-		// `content-security-policy` carrying `frame-ancestors 'none'` on
-		// the Account path (`src/server.ts`, Issue #448) and, on an
-		// HTTPS request, `strict-transport-security` (`src/server.ts`,
-		// Issue #446; the suite fetches `https://…`) — no `set-cookie`,
-		// no `www-authenticate`, no hint about which account was
-		// addressed. Those four are constants (neither the cache policy,
-		// the framing policy, nor the transport policy branches on the
-		// account that was addressed), so they say nothing about
-		// existence; an upstream library change that adds a header
-		// therefore surfaces here instead of quietly widening the
-		// response contract.
+		// (`src/http/middleware/cache-policy.ts`, Issue #460), the
+		// route-independent security baseline `x-content-type-options` +
+		// `referrer-policy` + `permissions-policy`
+		// (`src/http/security-headers.ts`, Issue #449 — the deny list
+		// does not depend on the route or the account), the framing
+		// policy `content-security-policy` carrying `frame-ancestors`
+		// (`src/server.ts`, Issue #448) and, on an HTTPS request,
+		// `strict-transport-security` (`src/server.ts`, Issue #446; the
+		// suite fetches `https://…`) — no `set-cookie`, no
+		// `www-authenticate`, no hint about which account was
+		// addressed. Those seven are constants (the cache, security,
+		// framing and transport policies do not branch on the account),
+		// so they say nothing about existence; an upstream library
+		// change that adds a header therefore surfaces here instead of
+		// quietly widening the response contract.
 		expect(wrongPassword.observed.headers.map(([name]) => name)).toEqual([
 			'cache-control',
 			'content-security-policy',
 			'content-type',
+			'permissions-policy',
+			'referrer-policy',
 			'strict-transport-security',
 			'vary',
+			'x-content-type-options',
 		]);
 	}, 120_000);
 

@@ -304,6 +304,37 @@ function clauseBindings(clause) {
 const pieces = (entry) => entry.split(/\s+as\s+/).map((piece) => piece.trim());
 
 /**
+ * The export names an import clause asks the target module for.
+ *
+ * `import { A as b }` asks the seam for `A`, not for the local name
+ * `b`: the seam's declaration map is keyed by the names the module
+ * exports, and requesting the local alias would find no declaration
+ * and silently walk nothing. A default or namespace import can reach
+ * any export, so it is flagged `all` and the target is walked
+ * conservatively (every non-handler edge) instead of narrowing the
+ * request to a local name that does not exist in the seam.
+ */
+function clauseRequests(clause) {
+	const requests = [];
+	const namespace = /\*\s+as\s+[A-Za-z_$][\w$]*/.test(clause);
+	// `Foo, { … }` / `Foo, * as ns` / `Foo` binds the default export.
+	const defaultPart = clause.split('{')[0].split(',')[0].trim();
+	let all = namespace || /^[A-Za-z_$][\w$]*$/.test(defaultPart);
+	const named = clause.match(/\{([\s\S]*)\}/);
+	if (named) {
+		for (const part of named[1].split(',')) {
+			const entry = part.trim();
+			if (entry.length === 0) continue;
+			const imported = pieces(entry)[0];
+			if (imported === 'type' || imported.startsWith('type ')) continue;
+			if (imported === 'default') all = true;
+			else if (/^[A-Za-z_$][\w$]*$/.test(imported)) requests.push(imported);
+		}
+	}
+	return { requests: [...new Set(requests)], all };
+}
+
+/**
  * Parse the runtime-relevant edges of a masked module.
  *
  * `import type … from` and `export type … from` are erased by
@@ -325,6 +356,7 @@ function parseEdges(masked, literals) {
 			// exists to prevent.
 			kind: /^type(\s|$)/.test(clause) ? 'import-type' : 'import',
 			bindings: clauseBindings(clause),
+			...clauseRequests(clause),
 		});
 	}
 	for (const match of masked.matchAll(IMPORT_SIDE_EFFECT)) {
@@ -333,6 +365,8 @@ function parseEdges(masked, literals) {
 			clause: '',
 			kind: 'import-side-effect',
 			bindings: [],
+			requests: [],
+			all: false,
 		});
 	}
 	for (const match of masked.matchAll(IMPORT_DYNAMIC)) {
@@ -341,6 +375,8 @@ function parseEdges(masked, literals) {
 			clause: '',
 			kind: 'import-dynamic',
 			bindings: [],
+			requests: [],
+			all: false,
 		});
 	}
 	for (const match of masked.matchAll(EXPORT_FROM)) {
@@ -350,6 +386,8 @@ function parseEdges(masked, literals) {
 			clause,
 			kind: match[1] ? 'export-type' : 'export-from',
 			bindings: [],
+			requests: [],
+			all: false,
 		});
 	}
 	return edges;
@@ -732,7 +770,14 @@ function inspectStory(root, srcRoot, storyFile) {
 			if (targetModule.seam) {
 				seams.push({ edge: label, via: [...path, label] });
 			}
-			queue.push({ file: resolved, path: [...path, label], requested: edge.bindings });
+			// The target is a seam: pass the *export* names the importer
+			// asks for (not the local aliases), and let a default /
+			// namespace import walk every export conservatively.
+			queue.push({
+				file: resolved,
+				path: [...path, label],
+				requested: edge.all ? null : edge.requests,
+			});
 		}
 	}
 

@@ -479,6 +479,75 @@ export const addReaction = createServerFn({ method: 'POST' }).handler(async () =
 	});
 });
 
+describe('storybook ownership check — an alias never narrows a seam request', () => {
+	// The request passed into a seam must name the seam's export, not
+	// the importer's local binding. Requesting `title` from a module
+	// that exports `ROUTE_TITLE` finds no declaration and would walk
+	// nothing, hiding the very edge the seam rule exists to expose.
+	const seam = `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const ROUTE_TITLE = route.title;
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+\treturn route.id;
+});
+`;
+
+	it('fails for an aliased named import of a client-reachable export', async () => {
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { ROUTE_TITLE as title } from './load';
+
+export default { component: title };
+`,
+			'src/home/status/load.ts': seam,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('fails for a namespace import of a seam module', async () => {
+		// A namespace import may touch any export, so the walk is
+		// conservative rather than narrowing to the local name `load`.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import * as load from './load';
+
+export default { component: load.ROUTE_TITLE };
+`,
+			'src/home/status/load.ts': seam,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('fails for a default import of a seam module', async () => {
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import load from './load';
+
+export default { component: load.title };
+`,
+			'src/home/status/load.ts': `${seam}\nexport default { title: ROUTE_TITLE };\n`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+	});
+});
+
 describe('storybook ownership check — the subject set is exactly the stories globs', () => {
 	it('checks a story declared outside src/', async () => {
 		const root = await fixture(

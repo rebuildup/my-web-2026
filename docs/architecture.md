@@ -318,7 +318,9 @@ glob が repository 外を解決する場合は「主語集合が読めない」
   preview が実際に import した export だけが client に到達する、という前提で
   扱う。クライアント側から見える export（と、それを参照する同ファイル内の宣言）
   だけを walk し、`.handler(…)` body 内の import は Worker 側でしか実行されない
-  ので walk しない。edge 自体は隠さず `seam` として報告する。
+  ので walk しない。named import は alias ではなく **import 元の export 名**で
+  要求を解決し、default / namespace import は任意の export に触れ得るため
+  handler 外の edge を保守的に walk する。edge 自体は隠さず `seam` として報告する。
   `src/home/reactions/widget.stories.tsx` のコメントと `.storybook/main.ts` の
   `external: ['cloudflare:workers']` が既に宣言している前提を refinements している。
 

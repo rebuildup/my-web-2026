@@ -338,8 +338,10 @@ comment is not read as a **server-function seam** that would stop the
 walk. Inside a seam module (one that value-imports `createServerFn`)
 only the exports the preview imports, plus what those reference, are
 client-reachable; imports confined to a `.handler(…)` body run on the
-Worker and are not walked. The seam edge itself is printed as `seam`,
-not hidden.
+Worker and are not walked. A named import is resolved by the export name
+it imports, so an alias (`{ ROUTE_TITLE as title }`) cannot narrow the
+request, and a default / namespace import is walked conservatively.
+The seam edge itself is printed as `seam`, not hidden.
 
 ```bash
 pnpm run storybook:ownership:check

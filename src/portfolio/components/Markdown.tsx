@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { css } from '../../../styled-system/css';
 import {
-	isExternalHref,
-	parseMarkdown,
-	safeHref,
+	BLOCKED_LINK_CLASS,
 	type MarkdownInline,
 	type MarkdownLinkContext,
+	classifyHref,
+	parseMarkdown,
 } from '../markdown.lexer';
 
 /**
@@ -22,13 +22,59 @@ import {
  * `siteOrigin` controls how the renderer decides whether a link is
  * internal or external. Default value matches the canonical
  * production domain (ADR-0014).
+ *
+ * Refused links (Issue #451): `classifyHref` in `markdown.lexer.ts`
+ * is the only href oracle. A blocked target is NOT rendered as a
+ * dead `<a href="#">` — it becomes an inert `<span>` that says so,
+ * carrying `data-blocked-reason` and `data-blocked-href`, so a
+ * refused URL is visible to the author and to a reviewer instead of
+ * silently disappearing behind an anchor.
  */
 export interface PortfolioMarkdownProps {
 	source: string;
 	siteOrigin?: string;
 }
 
-const DEFAULT_SITE_ORIGIN = 'https://rebuildup.dev';
+/**
+ * Canonical production origin (ADR-0014).
+ *
+ * Exported so the fixtures, the safety suite and the report generator
+ * all resolve the SAME literal instead of each carrying a third copy
+ * that can drift away from the domain the renderer classifies against.
+ */
+export const DEFAULT_SITE_ORIGIN = 'https://rebuildup.dev';
+
+/**
+ * Tooltip for a refused link. The href itself stays in
+ * `data-blocked-href` (React escapes it), so the tooltip only names
+ * the reason and never repeats an attacker-controlled URL where a
+ * browser might render it as a link.
+ */
+const BLOCKED_LINK_TITLE =
+	'This link was refused by the Markdown renderer (see docs/security.md). Its target is shown as inert text, not as a clickable URL.';
+
+/**
+ * Refused-link styling. Deliberately NOT anchor-like: no colour that
+ * reads as "clickable", an underline that carries a reason rather
+ * than an affordance, and `textDecoration: none` on hover so the
+ * cursor never promises navigation that does not exist.
+ */
+const BLOCKED_LINK_STYLE = {
+	display: 'inline',
+	fontFamily: 'sans',
+	color: 'text.muted',
+	textDecorationLine: 'none',
+	backgroundColor: 'bg.subtle',
+	borderRadius: '2px',
+	paddingInline: '1',
+} as const;
+
+const BLOCKED_LINK_NOTE_STYLE = {
+	fontFamily: 'mono',
+	fontSize: 'xs',
+	letterSpacing: '0.04em',
+	color: 'text.muted',
+} as const;
 
 export function PortfolioMarkdown({
 	source,
@@ -75,12 +121,26 @@ function renderInlineNode(node: MarkdownInline, ctx: MarkdownLinkContext, key: s
 		case 'em':
 			return <em key={key}>{renderInline(node.children, ctx, key)}</em>;
 		case 'link': {
-			const href = safeHref(node.href, ctx.siteOrigin);
-			const external = isExternalHref(node.href, ctx.siteOrigin);
-			const rel = external ? 'noopener noreferrer' : '';
-			const target = external ? '_blank' : '_self';
+			const verdict = classifyHref(node.href, ctx.siteOrigin);
+			if (verdict.outcome === 'blocked') {
+				return (
+					<span
+						key={key}
+						className={`${BLOCKED_LINK_CLASS} ${css(BLOCKED_LINK_STYLE)}`}
+						data-blocked-reason={verdict.reason}
+						data-blocked-href={verdict.raw}
+						title={BLOCKED_LINK_TITLE}
+					>
+						<span aria-hidden="true">⛔ </span>
+						{renderInline(node.children, ctx, key)}
+						<span className={css(BLOCKED_LINK_NOTE_STYLE)}>
+							{` — blocked link (${verdict.reason})`}
+						</span>
+					</span>
+				);
+			}
 			return (
-				<a key={key} href={href} target={target} rel={rel}>
+				<a key={key} href={verdict.href} target={verdict.target} rel={verdict.rel}>
 					{renderInline(node.children, ctx, key)}
 				</a>
 			);

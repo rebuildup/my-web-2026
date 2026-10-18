@@ -32,6 +32,22 @@ below remain literal records.
    `node scripts/check-release-assets.mjs` (part of `pnpm run
    validate:fast`, before `version:check`) reports the absent path
    directly instead of masking it behind downstream failures.
+   The same cut is also where the publication surface is recorded:
+   `node scripts/check-publication-diff.mjs --write` (Issue #505,
+   `pnpm run publication:write`) re-records
+   `docs/verification/content/publication-surface.snapshot.json` and the
+   diff report beside it. `pnpm run publication:check` (also part of
+   `validate:fast`) fails when a public URL disappeared, when an
+   internal surface became public, when a new external host appeared,
+   or when a route file exists that no surface declaration claims. See
+   [`docs/verification/content/publication-surface.md`](verification/content/publication-surface.md).
+
+   The CycloneDX SBOM is generated rather than committed: run
+   `pnpm run sbom:build` after the version bump to write
+   `release-assets/supply-chain/<version>/sbom.cdx.json`
+   (gitignored). `pnpm run sbom:check` then reports
+   `matches a fresh generation` instead of `not staged`. See
+   [`docs/runbook/sbom.md`](runbook/sbom.md).
 3. Define the sprint goal.
 4. Select Ready tickets (respecting dependency and capacity).
 5. Each ticket:
@@ -192,8 +208,34 @@ production domain to be wired (Issue #43 / ADR-0014):
    not documented as canonical.
 
    After Cloudflare reports the production build/deployment successful, run the
-   production smoke and verify `/`, `/admin/login`, `/api/v1/health`,
-   reactions, and the access counter on the canonical origin.
+   production smoke and verify `/`, `/about`, `/portfolio`, `/tools`,
+   `/admin/login`, `/api/v1/health`, reactions, and the access counter on
+   the canonical origin. The five representative routes (`/`, `/about`,
+   `/portfolio`, `/tools`, `/api/v1/health`) carry their own documented
+   default-state contract since Issue #500 — see
+   [`docs/runbook/cloudflare-workers-builds.md`](runbook/cloudflare-workers-builds.md)
+   § "Representative route coverage". That coverage belongs to this
+   POST-deploy smoke (Smoke #2); the PRE-merge Smoke #1 skips it because
+   its expectations are release-branch facts and nothing of the release
+   is deployed yet.
+
+8. The dependency advisory gate (Issue #470) has run against the release
+   branch head — the `Dependency advisory audit` step of the `validate`
+   job, whose HTML report is retained as the
+   `dependency-advisory-report-<sha>` artifact.
+
+   - Unreadable advisory data is a release blocker: the gate fails
+     closed (exit `3`) rather than reporting a clean dependency tree.
+   - Every outstanding `critical` / `high` advisory is either
+     remediated, or covered by an **unexpired** record in
+     `quality/dependency-advisory-gate.json` for that exact
+     `(advisoryId, package)` — and the release notes name which, with
+     the expiry date.
+   - This is a dependency check only. It does not change the runtime
+     secret SoT (Infisical, ADR-0015), the Cloudflare Workers Builds
+     delivery path, or the release-merge human gate in step 5.
+
+   See [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 
 ## 0.1.0 Foundation backlog
 
@@ -253,6 +295,12 @@ updated directly.
 ## Post-release
 
 - Tag the merged commit with `v<version>`.
+- Attach `release-assets/supply-chain/<version>/sbom.cdx.json` to the
+  GitHub Release. This is part of release publication, so it is covered
+  by the same human gate as the tag push and the Release body: prepare
+  the file, then stop. The document is derived from tracked files only
+  and carries no credential — see
+  [`docs/runbook/sbom.md`](runbook/sbom.md) §3.
 - Update any downstream consumers (Tools submodules, RSS feeds,
   integration endpoints) according to their own release cadence.
 - Archive the release branch once the next sprint starts (the

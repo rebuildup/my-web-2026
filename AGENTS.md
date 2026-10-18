@@ -74,22 +74,89 @@ Current dependency direction:
 ```text
 routes -> home
 routes -> portfolio
+routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+home/reactions -> i18n (Issue #433)
+
+server -> editorial (Issue #501 — SSR render-failure fallback document;
+                     `src/server.ts` replaces a document React could not
+                     render with `editorial/error-states/ssr-fallback.ts`; the
+                     entrypoint is the only layer outside React)
+router -> editorial (Issue #501 — failure surfaces bound in getRouter())
+about -> editorial (Issue #422 — approved snapshot → `Person` projection; the fact stays owned by `about`)
+
+routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
+           /admin/login loader; the security classifier only, no router,
+           no handler)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
+home -> logging (Issue #467 — shared log redaction)
 admin/emoji-catalog -> reactions
+admin -> logging (Issue #467 — admin image diagnostics)
 reactions -> cloudflare (env.DB at SSR time)
+http/seo -> portfolio (public project index only; the public-visibility
+             filter stays in the portfolio obligation — Issue #420)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
+reactions -> i18n (Issue #433)
+portfolio -> i18n (Issue #433)
+external-api -> editorial (Issue #499 — display primitives only)
 server -> http
+http -> logging (Issue #467 — boundary diagnostics)
+http/reactions -> logging (Issue #467 — image-reference rejection record)
+portfolio -> logging (Issue #467 — server-function public error boundary)
+cloudflare -> logging (Issue #467 — auth email stub + binding probes)
+editorial -> logging (Issue #467 — SSR fallback failure record)
+server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
+             `delivery.iframe.allow` / `referrer_policy` from the Tool
+             manifest; the policy object is passed into the HTTP
+             boundary, so the Tool Registry still imports nothing
+             from `src/http/**`)
 home -> editorial
 ```
+
+- `src/i18n/**` owns the platform's Unicode text
+  policy (Issue #433): display text is preserved
+  byte-exact and a URL slug is authored rather than
+  derived, so normalization can never merge two
+  distinct words onto one published URL. It is a
+  **leaf obligation** — no repository imports — so
+  `home/`, `portfolio/`, `reactions/`, `admin/` and
+  `routes/` can all obey one rule without depending
+  on each other. `scripts/check-architecture.mjs`
+  enforces the leaf rule (every `*.test.*` /
+  `*.spec.*` file under a leaf is exempt, so
+  `src/i18n/fixtures.test.ts` can assert against
+  the owner-owned grammars; implementation modules
+  are not exempt). Each obligation keeps
+  ownership of its own slug grammar:
+  `src/reactions/slug-regex.ts` publishes
+  `EMOJI_SLUG_GRAMMAR`, `src/portfolio/schema.ts`
+  publishes `PORTFOLIO_SLUG_GRAMMAR`, and `i18n`
+  owns only the rule for applying them. See
+  `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`
+  and `docs/domain/i18n.md`.
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
 - `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
 - `src/http/**` owns the external HTTP boundary.
+- `src/logging/**` (Issue #467) is a **leaf** obligation owning
+  the runtime log-redaction contract: `redact.ts` decides what may
+  appear in a log record, `logger.ts` is the only module allowed
+  to touch `console` in `src/**`. It owns the question "may this
+  value be written to an operator-visible stream", not the question
+  "what should be logged about a request" — each owner logs its own
+  narrower record. Its independent contract: the AGENTS.md §4
+  "no value-listing of real secrets" invariant generalizes from
+  operator tooling to every runtime stream, and
+  `scripts/check-log-redaction.mjs` is the gate that keeps
+  `console.*` out of every other `src/**` file. `scripts/**`
+  (operator tooling) does NOT import it: the Node scripts print
+  status-only output by construction and must stay runnable without
+  a Worker bundle, so the shared contract there is the marker-based
+  `node --test` suites, not a shared module.
 - `src/reactions/**` owns the slug-grammar / DB-backed emoji catalog
   shared by `home/` and `admin/`. Promoted in branch 39 from
   `src/http/reactions/` so neither the `home/` nor the `admin/`
@@ -110,7 +177,22 @@ home -> editorial
   leaking through every consumer — see the home reactions
   loader for the same pattern. The portfolio obligation is a
   peer to `home/`; neither imports from the other.
+- `src/external-api/**` (Issue #499) owns the reliability contract
+  for a display component that reads a third-party API: bounded
+  attempt, stale-aware snapshot, breaker state, and non-destructive
+  fallback (`contract.ts`), the single place an outbound request is
+  issued (`timeout.ts`), the attempt sequencing (`reader.ts`), one
+  adapter (`github.ts`) and the display surface
+  (`ExternalReadCard.tsx`). It composes `editorial` primitives and
+  reads nothing through `http/` or a `cloudflare` binding. Nothing
+  is wired to a route, so the repository makes **no outbound
+  third-party request at runtime**; promotion follows
+  `docs/domain/integrations.md` (capability-scoped first).
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
+- An external third-party read is not an `src/http/**` concern: `http/`
+  owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),
+  while `src/external-api/**` owns OUTBOUND reads a display component
+  makes. The two must not import each other.
 - Internal UI operations use TanStack Start server functions at the obligation
   that composes them (currently `src/home/{status,reactions,access}/load.ts`,
   `src/portfolio/public.ts`, and `src/admin/**/load.ts`).
@@ -255,17 +337,53 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `architecture:check` +
-  `version:check` + `typecheck` + `test`)
+  `log:redaction:check` (Issue #467 — `src/**` may only reach
+  `console` through `src/logging/logger.ts`, and operator scripts may
+  not print a secret value) +
+  `structured-data:check` + `index:boundary:check` +
+  `tools:check` + `security:headers:check` + `install:scripts:check` +
+  `wrangler:independence:check` + `cloudflare:contract:check` +
+  `test:wiring:check` + release-asset checks + `version:check` +
+  `typecheck` + `infisical:check:coverage` + `sbom:check` +
+  `csrf:contract:check` + `compat:check` +
+  `tools:provenance:check` + `publication:check` +
+  `routes:quality:check` (Issue #492) + `i18n:policy:check` +
+  `ci:pins:check` (Issue #472, GitHub
+  Actions pin / token audit) + `test`. The canonical list is
+  `quality/profile.yaml#gates.fast.components`; add a step there,
+  not only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.
-  (`validate:fast` + `build` + default/production Wrangler dry-runs +
-  `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
-  `build-storybook`)
+  (`validate:fast` + `build:production` + per-route bundle budget
+  (`bundle:budget:check`, Issue #482) + default/production Wrangler
+  dry-runs + `lint:ci` (actionlint 1.7.12, downloaded by
+  `scripts/lint-ci.mjs`) + `build-storybook`)
 - `pnpm run validate:release` — pre-`main` verification.
   (`validate:integration` + `cf-typegen:check`)
 
 Playwright E2E is a separate CI step on pushes to `main` / `release-*`
 and on PRs with the `ui-change` label; it is not part of the local
 `validate:release` command.
+
+`validate:fast` also runs `install:scripts:check` (Issue #474): the
+dependency install-lifecycle audit that keeps
+`pnpm-workspace.yaml#allowBuilds` and
+[`quality/install-scripts.json`](quality/install-scripts.json) in
+agreement. It reads installed manifests and those two files only, is
+status-only, and fails closed when the tree is not a pnpm install.
+Runbook: [`docs/runbook/install-script-audit.md`](docs/runbook/install-script-audit.md).
+
+One gate is deliberately **not** in the three entry points: the
+dependency advisory gate (Issue #470,
+[`quality/dependency-advisory-gate.json`](quality/dependency-advisory-gate.json),
+`pnpm run dep-audit:check`). It needs the npm registry advisory
+endpoint, and `validate:fast` is offline and read-only by contract, so
+it runs as the `Dependency advisory audit` step of the `validate` job
+instead. The decision logic is in `scripts/check-dependency-advisories.mjs`,
+not in workflow YAML, and the same verdict is reproducible locally with
+`pnpm run dep-audit:check`; whether it should also join a local entry
+point is an open decision recorded in
+[`quality/profile.yaml`](quality/profile.yaml). Operator reference:
+[`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are

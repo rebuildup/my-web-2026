@@ -2,9 +2,11 @@ import { Hono } from 'hono';
 import type { ApiKeyContext } from '../api-keys/middleware';
 import { requireApiKey, requireResourceAction } from '../api-keys/middleware';
 import { rateLimitRead, rateLimitWrite } from '../middleware/rate-limit';
+import { jsonBody, methodNotAllowed, parsePathInput, rejection } from '../validation';
 import { getCount, recordHit } from './counter';
 import { dedupeCache, isBot, isPrefetch } from './filter';
-import { HitInput, MAX_COUNTER_KEY_LEN, validateCounterKey, validateSessionId } from './schema';
+import type { HitInputValue } from './schema';
+import { parseHitBody, validateCounterKey } from './schema';
 
 /**
  * Access counter router — `/api/v1/access/*` (Ticket F, branch 38).
@@ -28,51 +30,59 @@ export const accessCounterRouter = new Hono<{
 	Variables: { apiKey: ApiKeyContext };
 }>();
 
-accessCounterRouter.post('/hit', requireApiKey, rateLimitWrite, async (c) => {
-	const apiKey = requireResourceAction(c, 'access_counter', 'write');
-	const raw = (await c.req.json().catch(() => null)) as unknown;
-	const parsed = HitInput.safeParse(raw);
-	if (!parsed.success) {
-		return c.json({ error: 'invalid_body', reason: parsed.error.message }, 400);
-	}
-	const key = validateCounterKey(parsed.data.key);
-	const sessionId = validateSessionId(parsed.data.session_id);
+accessCounterRouter.post(
+	'/hit',
+	requireApiKey,
+	rateLimitWrite,
+	jsonBody(parseHitBody),
+	async (c) => {
+		const apiKey = requireResourceAction(c, 'access_counter', 'write');
+		const { key, session_id: sessionId } = c.get('boundaryBody') as HitInputValue;
 
-	// Pre-D1 ingress filters (Issue #170) — reject non-human /
-	// repeat hits before the atomic slot claim below.
-	const ua = c.req.header('user-agent');
-	const ip = c.req.header('cf-connecting-ip') ?? 'unknown';
-	const filterReason = preD1FilterReject(c.req.raw.headers, ua, ip, key);
-	if (filterReason) {
-		return c.json({ incremented: false, reason: filterReason });
-	}
+		// Pre-D1 ingress filters (Issue #170) — reject non-human /
+		// repeat hits before the atomic slot claim below.
+		const ua = c.req.header('user-agent');
+		const ip = c.req.header('cf-connecting-ip') ?? 'unknown';
+		const filterReason = preD1FilterReject(c.req.raw.headers, ua, ip, key);
+		if (filterReason) {
+			return c.json({ incremented: false, reason: filterReason });
+		}
 
-	const result = await recordHit(c.env.DB, {
-		key,
-		principal: apiKey.id,
-		session_id: sessionId,
-	});
-	return c.json({
-		incremented: result.incremented,
-		count: result.count,
-		first_hit: result.first_hit,
-		last_hit: result.last_hit,
-	});
-});
+		const result = await recordHit(c.env.DB, {
+			key,
+			principal: apiKey.id,
+			session_id: sessionId,
+		});
+		return c.json({
+			incremented: result.incremented,
+			count: result.count,
+			first_hit: result.first_hit,
+			last_hit: result.last_hit,
+		});
+	},
+);
 
 accessCounterRouter.get('/count/:key', requireApiKey, rateLimitRead, async (c) => {
 	const apiKey = requireResourceAction(c, 'access_counter', 'read');
-	const rawKey = c.req.param('key');
-	if (!rawKey || rawKey.length === 0 || rawKey.length > MAX_COUNTER_KEY_LEN) {
-		return c.json({ error: 'invalid_key' }, 400);
-	}
-	const key = validateCounterKey(rawKey);
+	const keyResult = parsePathInput(c, 'key', validateCounterKey, 'invalid_key');
+	if (!keyResult.ok) return rejection(c, keyResult.failure);
+	const key = keyResult.value;
 	// Per-principal isolation (ADR-0012 §3): each consumer sees only
 	// its own counter row for the same `key`. The principal is the
 	// authenticated API key id — no client input accepted.
 	const result = await getCount(c.env.DB, key, apiKey.id);
 	return c.json(result);
 });
+
+/**
+ * Protocol guard (Issue #450): `/hit` and `/count/:key` are the only
+ * methods on this router. A `PATCH /api/v1/access/hit` used to fall
+ * through to the boundary `notFound` handler and answer `404`, which
+ * told the caller "no such resource" instead of "wrong verb". The
+ * handler is registered last so the real routes match first.
+ */
+accessCounterRouter.all('/hit', methodNotAllowed(['POST']));
+accessCounterRouter.all('/count/:key', methodNotAllowed(['GET']));
 
 /**
  * Pre-D1 ingress filter chain (Issue #170). Returns a non-null

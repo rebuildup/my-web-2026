@@ -56,6 +56,16 @@ test-results/
 playwright/.cache/
 storybook-static/
 
+# Release artifacts
+#
+# `release-assets/portfolio/<version>/` IS tracked (the publish path
+# verifies it). `release-assets/supply-chain/<version>/` is generated
+# instead: `pnpm run sbom:check` regenerates the CycloneDX document in
+# memory and fails closed when the staged file stops matching
+# `pnpm-lock.yaml`, so the artifact never needs to be committed to be
+# trustworthy. Rebuild it with `pnpm run sbom:build`.
+release-assets/supply-chain/
+
 # Project-local ephemeral state (project-init policy)
 .tmp/
 .reference/

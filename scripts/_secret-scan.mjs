@@ -273,6 +273,34 @@ export const ALLOWLIST = Object.freeze([
 			'gate can be proven red at all.',
 	},
 	{
+		path: 'scripts/check-sbom.test.mjs',
+		detector: 'private-key-block',
+		reason:
+			'The SBOM gate own detector fixtures (Issue #471). A gate that asserts it REJECTS credential ' +
+			'shapes must hold those shapes; they are the documented sample strings, not issued values.',
+	},
+	{
+		path: 'scripts/check-sbom.test.mjs',
+		detector: 'github-token',
+		reason:
+			'Same SBOM detector fixtures (Issue #471): the value under test is the literal alphabet ' +
+			'`abcdefghijklmnopqrstuvwxyz0123456789`, which is a shape sample by construction.',
+	},
+	{
+		path: 'scripts/check-sbom.test.mjs',
+		detector: 'jwt',
+		reason:
+			'Same SBOM detector fixtures (Issue #471): the RFC 7519 example token, present precisely ' +
+			'because the SBOM gate asserts it is rejected.',
+	},
+	{
+		path: 'src/logging/redact.test.ts',
+		detector: 'jwt',
+		reason:
+			'The log-redaction masking test (Issue #467). Asserting that a JWT is masked REQUIRES an ' +
+			'unmasked JWT in the fixture; it is the header/payload/signature of the RFC 7519 example.',
+	},
+	{
 		path: 'scripts/_secret-scan.mjs',
 		reason: 'The detector table itself: regex sources are shapes, not values.',
 	},

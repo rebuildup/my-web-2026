@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
-import { resolveAuthSecrets } from './better-auth';
+import { createAuditLogger } from '../../logging/logger';
+import { describeAuthEmail, resolveAuthSecrets } from './better-auth';
 
 /**
  * Better Auth configuration invariants — read-only smoke tests.
@@ -81,6 +82,48 @@ describe('better-auth config', () => {
 		expect(options.options.emailAndPassword?.enabled).toBe(true);
 		expect(options.options.emailAndPassword?.disableSignUp).toBe(true);
 	});
+
+	// Issue #443. Better Auth 1.7.5 defaults `rateLimit.enabled` to
+	// `NODE_ENV === 'production'`, so an unset option makes the
+	// brute-force control depend on an ambient variable this repository
+	// never declares. These assertions exist so that "the throttle is on
+	// because we pinned it" cannot silently become "the throttle is on
+	// because some build environment happened to set NODE_ENV".
+	// The runtime behaviour is asserted in
+	// `test/integration/auth-login-hardening.test.ts`; this is the
+	// config-level guard.
+	it('pins the credential throttle instead of inheriting the NODE_ENV default', () => {
+		const options = betterAuthModule.auth as unknown as {
+			options: {
+				rateLimit?: {
+					enabled?: boolean;
+					window?: number;
+					max?: number;
+					storage?: string;
+					customRules?: Record<string, { window?: number; max?: number }>;
+				};
+			};
+		};
+		const rateLimit = options.options.rateLimit;
+		expect(rateLimit?.enabled).toBe(true);
+		expect(rateLimit?.storage).toBe('memory');
+		// `/sign-in/email` — normalized against `basePath`, so the key is
+		// not the externally-visible `/api/v1/auth/sign-in/email`.
+		expect(rateLimit?.customRules?.['/sign-in/email']).toEqual({ window: 10, max: 3 });
+	});
+
+	it('resolves the throttle client IP from CF-Connecting-IP', () => {
+		// Better Auth trusts a forwarded header only when it carries a
+		// single address; Cloudflare's `x-forwarded-for` is a chain, so a
+		// two-hop request would resolve to no IP and collapse into one
+		// shared bucket. `CF-Connecting-IP` is single-valued and set by
+		// Cloudflare, and it is what `src/http/middleware/rate-limit.ts`
+		// already trusts for the Workers Rate Limiting binding.
+		const options = betterAuthModule.auth as unknown as {
+			options: { advanced?: { ipAddress?: { ipAddressHeaders?: string[] } } };
+		};
+		expect(options.options.advanced?.ipAddress?.ipAddressHeaders).toEqual(['cf-connecting-ip']);
+	});
 });
 
 // ADR-0015 §11.2: when `BETTER_AUTH_SECRETS` is unset, `BETTER_AUTH_SECRET`
@@ -131,5 +174,77 @@ describe('better-auth secret routing (DI seam: resolveAuthSecrets)', () => {
 		// must throw rather than drop to the legacy form — silently
 		// falling back would let a broken rotation binding pass.
 		expect(() => resolveAuthSecrets({ BETTER_AUTH_SECRETS: 'bad-no-colon' })).toThrow();
+	});
+});
+
+/**
+ * Auth log surface (Issue #467).
+ *
+ * The Worker has no SMTP, so `sendEmail` logs the payload instead of
+ * delivering it. The pre-#467 call was `console.log('[auth.email]',
+ * payload)`, which put the invitee's email address and — for
+ * verification / reset flows — a single-use link carrying the token
+ * into the log stream.
+ *
+ * `describeAuthEmail` is the record that is allowed to be logged.
+ * These assertions are the audit: a fabricated token and a
+ * fabricated address must not survive, and the record must still
+ * carry the facts an operator needs (an email was rendered, how
+ * long it was).
+ */
+describe('describeAuthEmail — auth log redaction', () => {
+	const CANARY_ADDRESS = 'canary.person@example.invalid';
+	const CANARY_TOKEN = 'invitation-token-canary-abcdef123456';
+
+	it('replaces the recipient address and keeps only delivery facts', () => {
+		const record = describeAuthEmail({
+			to: CANARY_ADDRESS,
+			subject: 'Invitation',
+			body: `Accept: https://rebuildup.dev/admin/invitations/accept?token=${CANARY_TOKEN}`,
+		});
+		expect(record.to).toBe('[redacted-email]');
+		expect(record.hasBody).toBe(true);
+		expect(record.bodyLength).toBeGreaterThan(0);
+		expect(JSON.stringify(record)).not.toContain(CANARY_ADDRESS);
+		// The body itself is never part of the record.
+		expect(JSON.stringify(record)).not.toContain(CANARY_TOKEN);
+	});
+
+	it('survives a payload with no body', () => {
+		expect(describeAuthEmail({ to: CANARY_ADDRESS, subject: 'Invitation' })).toEqual({
+			to: '[redacted-email]',
+			subject: 'Invitation',
+			hasBody: false,
+			bodyLength: 0,
+		});
+	});
+
+	it('keeps an email embedded in the subject out of the log (logger redaction)', () => {
+		// The subject is not pre-redacted by `describeAuthEmail`; the
+		// shared logger masks it on the way to `console`. Both layers
+		// are asserted here so a future change to either is visible.
+		const records: string[] = [];
+		const spy = vi.spyOn(console, 'log').mockImplementation((...args: unknown[]) => {
+			records.push(
+				args.map((arg) => (typeof arg === 'string' ? arg : JSON.stringify(arg))).join(' '),
+			);
+		});
+		try {
+			createAuditLogger('auth.email').info(
+				'email delivery stub (no SMTP configured)',
+				describeAuthEmail({
+					to: CANARY_ADDRESS,
+					subject: `Invitation for ${CANARY_ADDRESS}`,
+					body: `token=${CANARY_TOKEN}`,
+				}),
+			);
+		} finally {
+			spy.mockRestore();
+		}
+		expect(records).toHaveLength(1);
+		const logged = records[0] ?? '';
+		expect(logged).not.toContain(CANARY_ADDRESS);
+		expect(logged).not.toContain(CANARY_TOKEN);
+		expect(logged).toContain('[auth.email]');
 	});
 });

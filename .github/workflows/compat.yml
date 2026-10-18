@@ -1,0 +1,111 @@
+name: browser compat
+
+# Issue #415 — three-engine public UI smoke.
+#
+# This is a SEPARATE workflow from `ci.yml` on purpose. `ci.yml`'s
+# `validate` job is the required check and runs `validate:integration`
+# (build + storybook + dry-run + the full Vitest suite); multiplying
+# that job by three Playwright engines would triple the required gate
+# and mix two different questions ("does the build pass" and "does the
+# public surface render everywhere"). This workflow answers only the
+# second question, and it publishes the matrix the Issue asks for as a
+# downloadable artefact so a per-engine failure is inspectable without
+# re-running locally.
+#
+# Triggers mirror the Playwright gate in `ci.yml`: pushes to `main` /
+# `release-*`, every PR into `main` / `release-*`, and a manual run.
+# `workflow_dispatch` also takes a `runner` input so an OS difference
+# can be re-measured on a different host instead of being argued about
+# (the Issue asks for OS differences to be recorded separately).
+#
+# Nothing here deploys, touches production, or reads a secret: the
+# suite runs against the local preview server (`vite preview`) with the
+# local D1 state prepared by `scripts/e2e-local-bootstrap.mjs`, exactly
+# like the existing E2E gate.
+
+on:
+  pull_request:
+    branches: [main, 'release-*']
+  push:
+    branches: [main, 'release-*']
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner OS for this comparison run'
+        required: false
+        default: ubuntu-latest
+        type: choice
+        options:
+          - ubuntu-latest
+          - macos-latest
+
+concurrency:
+  group: compat-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  compat:
+    name: compat (${{ github.event.inputs.runner || 'ubuntu-latest' }})
+    runs-on: ${{ github.event.inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { submodules: recursive }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22.18 }
+      # corepack is forbidden in this repository (see ADR-0003).
+      # pnpm/action-setup@v4 downloads the pnpm 12.3.4 standalone binary
+      # directly from pnpm's release CDN; it does not use corepack.
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with: { version: 12.3.4 }
+      # Same reason as `ci.yml`: `pnpm run build` → `scripts/build-tools.mjs`
+      # builds the collected Tool artifacts with Bun.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with: { bun-version: 1.4.2 }
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      # `vite preview` (the webServer the compat config inherits from
+      # `playwright.config.ts`) serves the built Worker, so the build has
+      # to exist before Playwright boots the server.
+      - run: pnpm run build
+      # All three engines: the gate is only meaningful when every column
+      # actually ran. `--with-deps` installs the Linux system libraries
+      # Firefox and WebKit need; on macOS runners it is a no-op.
+      - run: pnpm run e2e:compat:install
+      - name: Playwright compat (chromium / firefox / webkit)
+        run: pnpm run e2e:compat
+      # Renders the engine x test matrix and the per-route captures into
+      # a single HTML report, uploaded below. Written to `.tmp/` so a CI
+      # run can never touch the committed verification artefact.
+      - name: Build the compat matrix report
+        if: always()
+        run: |
+          pnpm run verify:compat-screenshot -- \
+            --out .tmp/compat-matrix.webp \
+            --html .tmp/compat-matrix.html
+      - name: Upload compat matrix
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: compat-matrix-${{ github.run_id }}
+          path: |
+            .tmp/compat-matrix.html
+            .tmp/compat-matrix.webp
+            .tmp/compat-results.json
+            .tmp/compat-routes.json
+            .tmp/compat-screenshots/
+          retention-days: 14
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: compat-playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 7

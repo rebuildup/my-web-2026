@@ -153,17 +153,15 @@ or, for a live environment value, follow the status-only flows in
 
 ```console
 $ pnpm run secret:scan          # no build present — the validate:fast case
-[scan-secrets] tracked files + build artifacts — 559 file(s) scanned, 0 blocking finding(s), 6 waived
-[scan-secrets] source surface: 556 tracked + 3 untracked-not-ignored
-  scripts/rotate-home-api-key.test.mjs:1009 [home-consumer-api-key] len=40 sha256:c3a18104 — Home consumer API key PLAINTEXT …
-      waived: Rotation unit tests assert the SHA-256 hash of synthetic plaintexts. …
-  scripts/scan-secrets.mjs:213 [home-consumer-api-key] len=40 sha256:bfc13aba — Home consumer API key PLAINTEXT …
-      waived: The CLI wrapper: its self-test fixtures must contain credential shapes to be a fixture.
+[scan-secrets] tracked files + build artifacts — 974 file(s) scanned, 0 blocking finding(s), 11 waived
+[scan-secrets] source surface: 974 tracked + 0 untracked-not-ignored
+  scripts/check-sbom.test.mjs:73 [private-key-block] len=31 sha256:8bcac790 — PEM private key block. …
+      waived: The SBOM gate own detector fixtures (Issue #471). …
   …
   [skipped] dist (not built in this run)
   [skipped] .cloudflare/output (not built in this run)
   [skipped] dist-cloudflare (not built in this run)
-[scan-secrets] 6 waiver(s) in _secret-scan.mjs ALLOWLIST (6 entries, each with a reason)
+[scan-secrets] 11 waiver(s) in _secret-scan.mjs ALLOWLIST (10 entries, each with a reason)
 
 $ pnpm run secret:scan:bundle   # after pnpm run build:production — the validate:integration case
 [scan-secrets] build artifacts — 207 file(s) scanned, 0 blocking finding(s), 0 waived
@@ -172,8 +170,12 @@ $ pnpm run secret:scan:bundle   # after pnpm run build:production — the valida
 Four things are normal and must not be "fixed":
 
 - the **waiver lines** — they are printed so the waiver set stays visible
-  in CI logs instead of hiding behind a green build. Every one of them is
-  the scanner's own fixture material;
+  in CI logs instead of hiding behind a green build. Every current waiver
+  is a *fixture whose job is to contain a credential shape*: this
+  scanner's own self-test fixtures, the SBOM gate's rejection samples
+  (`scripts/check-sbom.test.mjs`), and the log-redaction masking sample
+  (`src/logging/redact.test.ts`). A gate that asserts it REJECTS a shape
+  has to hold that shape;
 - the **`[skipped]` build-artifact lines** in `secret:scan` (the bundle is
   not built during `validate:fast`; the bundle scan runs later in
   `validate:integration`);
@@ -218,8 +220,8 @@ worktree (never a pushed branch) and read the finding:
 ```console
 $ printf 'export const k = "%s";\n' "mk_home_$(printf 'D%.0s' {1..32})" > src/home/scan-probe.ts
 $ pnpm run secret:scan
-[scan-secrets] tracked files + build artifacts — 770 file(s) scanned, 1 blocking finding(s), 6 waived
-[scan-secrets] source surface: 559 tracked + 1 untracked-not-ignored
+[scan-secrets] tracked files + build artifacts — 1182 file(s) scanned, 1 blocking finding(s), 11 waived
+[scan-secrets] source surface: 974 tracked + 1 untracked-not-ignored
   src/home/scan-probe.ts:1 [home-consumer-api-key] len=40 sha256:bfc13aba — Home consumer API key PLAINTEXT …
 $ echo $?
 1
@@ -274,5 +276,10 @@ scripts/scan-secrets.test.mjs` asserts that each entry has a substantive
 reason, that an unlisted path still fails, and that a waiver does not leak
 into a sibling file.
 
-The waiver list is short on purpose. A growing waiver list is a signal
-that a detector is too broad — fix the detector instead.
+The waiver list is short on purpose, and it is not only this scanner's own
+fixtures: a file whose *purpose* is to contain a credential shape (a gate's
+rejection sample, a redaction test) is a legitimate entry. A waiver still
+has to name a file and a reason, because "the test needed it" is a claim a
+reviewer can check and "some tests need it" is not. A waiver list that
+starts absorbing non-test source is a signal that a detector is too broad —
+fix the detector instead.

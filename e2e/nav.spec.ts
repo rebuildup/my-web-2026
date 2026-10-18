@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { NAV_ROSTER } from './nav-roster';
 
 /**
  * PublicNav — per-page opt-in site chrome (Issue #168, re-scoped by
@@ -44,20 +45,6 @@ const NAV_OPT_IN_PAGES: ReadonlyArray<{ path: string; h1: RegExp }> = [
 	{ path: '/contact', h1: /Contact/ },
 	{ path: '/portfolio', h1: /主要な制作物/ },
 	{ path: '/design-system', h1: /Design System/ },
-];
-
-/**
- * Canonical nav roster. Mirrors `PUBLIC_NAV_ITEMS` — order is
- * editorial, not alphabetical. `/design-system` is last because it
- * is a showcase surface, not part of the primary IA.
- */
-const NAV_ROSTER: ReadonlyArray<string> = [
-	'/',
-	'/portfolio',
-	'/tools',
-	'/about',
-	'/contact',
-	'/design-system',
 ];
 
 test.describe('public nav — home exclusion (Issue #199)', () => {

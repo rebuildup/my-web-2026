@@ -34,10 +34,30 @@ src/
 │  ├─ seed.ts
 │  ├─ public.ts
 │  └─ index.ts
+├─ i18n/
+│  ├─ unicode.ts
+│  ├─ slug-identity.ts
+│  ├─ fixtures.ts
+│  └─ index.ts
+├─ external-api/
+│  ├─ contract.ts
+│  ├─ timeout.ts
+│  ├─ reader.ts
+│  ├─ github.ts
+│  ├─ ExternalReadCard.tsx
+│  ├─ ExternalReadCard.stories.tsx
+│  └─ index.ts
 ├─ editorial/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
-│  └─ primitives/
+│  ├─ primitives/
+│  └─ error-states/
+│     ├─ contract.ts
+│     ├─ ErrorState.tsx
+│     ├─ NotFoundState.tsx
+│     ├─ ServiceUnavailableState.tsx
+│     ├─ DependencyFailureState.tsx
+│     └─ ssr-fallback.ts
 ├─ cloudflare/
 │  └─ health.ts
 ├─ http/
@@ -79,6 +99,30 @@ employment-facing Portfolio surface の data model と publication contract を�
 
 `portfolio/` は `home/` の peer obligation で、どちらもお互いを import しない。Cloudflare runtime とは DI seam (`createD1PortfolioLoader(env)`) 経由で結合し、テストでは偽 env を渡して workerd 依存を排除する。
 
+### `i18n/` (Issue #433)
+
+テキストの Unicode と URL identity の**規則**を所有する。surface ではなく policy なので、依存は 1 方向（誰かが `i18n` を知る）だけ。
+
+- `unicode.ts` — 表示本文ポリシー。byte-exact に保持し、比較用の NFC fold だけを行い、互換 fold が何を変えるかは報告する
+- `slug-identity.ts` — slug ポリシー。候補を owner の grammar で分類し（`non-ascii` は導出せずに拒否）、カタログの衝突を監査する
+- `fixtures.ts` — 判断表。unit test・`scripts/check-i18n-policy.mjs`・検証 capture が共有する単一のデータ
+
+**leaf obligation**（repository 内の import なし）。`scripts/check-architecture.mjs` が強制する。
+slug grammar の所有は各 obligation のまま（`reactions/slug-regex.ts` の `EMOJI_SLUG_GRAMMAR`、`portfolio/schema.ts` の `PORTFOLIO_SLUG_GRAMMAR`）。
+決定記録は `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`、説明は `docs/domain/i18n.md`。
+
+### `external-api/` (Issue #499)
+
+**第三者 API を呼ぶ表示コンポーネントの信頼性契約**を所有する。
+
+- `contract.ts` — snapshot の公開型と状態遷移の純関数。timeout、stale timestamp、非破壊 fallback、breaker（遮断）状態、retry cadence。失敗しても前回の値は破棄されず、確定した試行が `loading` を残さないことは関数と `reader.ts` が保証する（型だけでは強制しない）
+- `timeout.ts` — **outbound リクエスト発行はここ 1 箇所**。応答サイズ上限、status → 公開 failure reason、credential header の拒否
+- `reader.ts` — 唯一の可変状態（in-flight attempt・breaker・最終成功値）。同時呼び出しは 1 回へ合流し、reader 自身が deadline を強制する。snapshot が公開した `retryAt` より前の試行は上流に到達しない（宣言した cadence は守られる）。**policy の解決もここ 1 箇所**（`reader.policy` は adapter へ試行ごとに渡す同一オブジェクト）
+- `github.ts` — アダプタ 1 件。公開・未認証の read 1 本。allowlist 写像なので未宣言フィールドは表示に到達しない。`accept` のような source 固有の header は adapter 側が持ち、transport は持たない。**policy は持たない**（解決済みのものを reader から受け取るので、`reader.policy` の境界と transport が強制する境界が二重設定で食い違わない）
+- `ExternalReadCard.tsx` — 6 状態を同じ component が描画する（fresh / stale / timeout fallback / 遮断中 / 初回失敗 / 読み込み中）。badge は画面上の状態だけを名指しし、近傍の状態の文言を借りない。再試行ボタンの可否は snapshot の `retryAt` と現在時刻から `retryAffordanceOf` で**導出**する（押しても reader が拒否する上有効なボタンを描かない）。その deadline 到来時だけ 1 回の再描画を自身で予約する（poll ではなく、試行も発行しない）
+
+`home/` / `portfolio/` / `about` とは **peer obligation**。`editorial` primitive だけを消費し、`http/`（inbound boundary）や `cloudflare` binding とは結線しない。route には結線されていないため、現時点で**実行時に外部通信は発生しない**。promotion は `docs/domain/integrations.md`（capability-scoped first）に従う。
+
 ### `editorial/`
 
 現在の public surface が話す editorial visual language を所有する。
@@ -86,6 +130,25 @@ employment-facing Portfolio surface の data model と publication contract を�
 raw / semantic tokens と、その visual language の primitive をまとめる。
 これは「全 UI component の共有置き場」ではない。別の visual language が必要に
 なった場合、観測された同一 obligation がない限り自動的には統合しない。
+
+`error-states/`（Issue #501）は failure surface の**公開契約**を所有する。
+1 kind につき 1 component（404 / 503 / 依存取得失敗）、共有 shell、そして
+`contract.ts` の宣言 — 訪問者に何を出すか / 何を絶対に出さないか /
+どの公開面なら開けるか。styling ではなく情報公開の判断で変わるため、
+primitive と同列の別 obligation として切っている。結線先は
+`src/router.tsx` の `defaultNotFoundComponent` / `defaultErrorComponent`
+（解決順が route 単位のため、root route に置いても子 route の失敗には届かない）。
+
+同じ `defaultErrorComponent` には transient な loader 失敗と恒久的な
+入力検証失敗が着地するため、`src/router.tsx` が両者を分類する。判定は
+route 自身の検証結果から導出する（`isPermanentInputFailure`）。訪問者に
+公開する kind の集合は増やしていない。
+
+route component 自体が SSR 中に throw する場合は React の Error Boundary
+では捕まらないため、`ssr-fallback.ts` が standalone の fallback document を
+組み立て、`src/server.ts` が SSR handler の HTML response を検査して
+置き換える（`settleSsrDocumentResponse`）。fallback の文言・代替面は
+`contract.ts` と同じ宣言から導出し、公開契約を二重化しない。
 
 ### `cloudflare/`
 
@@ -101,6 +164,30 @@ Cloudflare runtime によって変更理由が決まる仕事を所有する。
 - `hono.ts` — external REST / webhook / OAuth / integration boundary
 - `health.ts` — この boundary の stable health description
 
+### `logging/` (Issue #467)
+
+実行時ログの redaction contract を所有する leaf obligation。
+
+- `redact.ts` — 「この値を operator が読む stream に書いてよいか」の判定。key 名・値の形・構造の 3 層で redact する
+- `logger.ts` — `src/**` で `console` に触れてよい唯一の module
+
+`logging/` は「何のログを出すか」ではなく「その value を書いてよいか」だけを
+決定する。access counter / reactions / auth email が何を記録するかは、それぞれ
+`home/` / `cloudflare/` の判断であり、`logging/` はその記録を狭めるだけ。
+独立した contract を持つのは、AGENTS.md §4 の「secret 値を	value-listing しない」
+不変条件を operator tooling から runtime stream 全体へ一般化したもの。
+
+`scripts/**` は `logging/` を import しない。Node script は Worker bundle なしで
+動く必要があり、status-only 出力は marker ベースの `node --test` suite が担保する。
+
+境界評価の 5 問 (本章 "How boundaries are evaluated") への回答:
+
+1. **Obligation** — 実行時 stream (Worker log / browser console / GA4 payload) に出してよい値の判定と、その唯一の出力口。
+2. **Change reason** — redaction 規則自体が変わった時。secret の形式、personal data とみなす範囲、log の保持方針を変えた時。
+3. **Authority** — `docs/security/log-redaction.md` の契約と `scripts/check-log-redaction.mjs` の規則。gate の exemption を増やす判断は owner review が持つ。
+4. **Dependency direction** — 全 owner が `logging/` を知る。`logging/` は他の obligation を知らない。
+5. **Lifecycle** — runtime のログ面とともに出生・消滅する。同じ stream 契約を持つ別出力 (外部 APM など) が増えた場合も、この obligation の中に住む。
+
 ### `routes/` and runtime entries
 
 `routes/` は TanStack Start の file-based routing contract によって場所が決まる。
@@ -115,12 +202,18 @@ entrypoint である。
 ```text
 routes ───────────────▶ home
 routes ───────────────▶ portfolio
+home/reactions ──────▶ i18n
+reactions ───────────▶ i18n
+portfolio ───────────▶ i18n
 home/status ─────────▶ cloudflare
 home/status ─────────▶ http
 portfolio ───────────▶ cloudflare (DI seam)
 portfolio ───────────▶ editorial
+external-api ────────▶ editorial
 home ────────────────▶ editorial
+home/http/cloudflare ─▶ logging (leaf)
 server ──────────────▶ http
+server ──────────────▶ editorial (SSR render-failure fallback document)
 ```
 
 逆向きは禁止する。
@@ -128,7 +221,10 @@ server ──────────────▶ http
 - `cloudflare/` は `home/` も `portfolio/` も知らない。
 - `http/` は `home/` も `portfolio/` を知らない。
 - `editorial/` は特定 surface を知らない。
+- `logging/` は他のどの obligation も知らない (leaf)。
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
+- `i18n/` は他の obligation を import しない (leaf obligation)。policy の例外を足すなら、ここ、拡大ではなく ADR 改訂が先。
+- `external-api/` は `home/` / `routes/` / `portfolio/` / `cloudflare/` / `http/` を import しない (peer obligation)。outbound read と inbound boundary は別の obligation。
 - framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。
 
 ## TanStack Start / Hono boundary
@@ -146,10 +242,23 @@ src/server.ts
         └─ everything else
                 ▼
        @tanstack/react-start/server-entry
+                ▼
+       settleSsrDocumentResponse (render failure -> fallback document)
 ```
+
+`settleSsrDocumentResponse` は SSR が返した HTML を読み、React の
+client-rendered boundary marker を見つけた場合だけ `editorial/error-states`
+の fallback document に差し替える。loader 失敗のように React が error
+component を描画できた場合は何もしない。
 
 TanStack Start の default CSRF middleware を維持するため、custom
 `src/start.ts` / `startInstance` は ADR なしで追加しない。
+
+`/api/v1/*` は dispatch により TanStack Start に到達しないため、
+外部境界は独自の Origin チェックを持つ: `csrfGuard`
+(`src/http/middleware/csrf.ts`, `src/http/hono.ts` で `/api/v1/*` に
+mount)。書込メソッドだけを検査し、fail-closed。契約・拒否コード・
+運用上の影響は [`docs/security.md`](security.md#csrf) を参照。
 
 UI から使う internal operation は TanStack Start server function とする。
 第三者向け stable HTTP contract は Hono が所有する。

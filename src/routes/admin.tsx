@@ -28,6 +28,38 @@ import { Outlet, createFileRoute } from '@tanstack/react-router';
  * this route layout — that gate remains unchanged.
  */
 export const Route = createFileRoute('/admin')({
+	// Index boundary (Issue #423). The admin subtree must never appear
+	// in a search index, and `robots.txt` cannot deliver that: a
+	// `Disallow` stops the crawler before it fetches the document, so
+	// the URL is dropped from the CRAWL, not from the INDEX (Google
+	// then reports it as "Indexed, though blocked by robots.txt"). The
+	// page itself has to say so, and the whole subtree is one layout
+	// route — TanStack Router merges `head().meta` along the matched
+	// route chain (child wins on attribute collision, see
+	// `buildTagsFromMatches` in `@tanstack/react-router`), so this one
+	// declaration covers `/admin`, `/admin/login`, `/admin/keys`,
+	// `/admin/images`, `/admin/invitations`,
+	// `/admin/invitations/accept` and `/admin/emoji-catalog`.
+	//
+	// `nofollow` alongside `noindex` keeps an authenticated admin page
+	// from lending link equity to whatever it renders.
+	//
+	// This is NOT access control and does not replace one: the gate is
+	// still `requireAdmin()` in the child loaders / server functions
+	// (`src/admin/auth/require-admin.ts`). Keeping the subtree
+	// crawlable costs a crawl of `/admin/login` and the redirects in
+	// front of every gated child; the alternative — a `Disallow` — buys
+	// that budget at the price of never being able to de-index the URL,
+	// which is the whole failure `scripts/_index-boundary.mjs` exists to
+	// prevent. That trade is the contract's, and the `noindex-blocked`
+	// violation fails the build if the two are ever paired.
+	//
+	// Issue #418's public-route head gate asserts both halves of this
+	// policy on `/admin/login`: the document declares `robots: noindex`
+	// and declares no canonical.
+	head: () => ({
+		meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+	}),
 	component: AdminLayout,
 });
 

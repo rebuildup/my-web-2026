@@ -2,13 +2,22 @@ import { type EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import type { ReactionAggregate } from '../../http/reactions/schema';
+import { classifySlugCandidate } from '../../i18n/slug-identity';
+import { createAuditLogger } from '../../logging/logger';
+import { EMOJI_SLUG_GRAMMAR } from '../../reactions/slug-regex';
 import { resolveEmojiSlug } from './emoji-catalog';
 import type { HomeReactionsData } from './load';
 import { addHomeReaction, removeHomeReaction } from './load';
 
 const MAX_RECORDED_CHIPS = 8;
-const EMOJI_SLUG_REGEX = /^[a-z][a-z0-9_]*$/;
-const MAX_EMOJI_SLUG_LEN = 16;
+
+/**
+ * Widget-side diagnostics go through the shared redacting logger
+ * (Issue #467): the rejection value of a server function can carry
+ * upstream response detail, and this runs in the visitor's browser
+ * console, which is trivially captured.
+ */
+const widgetLogger = createAuditLogger('home.reactions');
 
 /**
  * Visitor-facing emoji reactions widget for the home page
@@ -81,19 +90,23 @@ export interface ReactionsWidgetProps {
  * Returns `null` when neither path yields a valid slug — caller
  * surfaces an inline error instead of forwarding the reaction.
  *
+ * Issue #433: both paths go through the canonical
+ * `EMOJI_SLUG_GRAMMAR` (`src/reactions/slug-regex.ts`) and the shared
+ * `classifySlugCandidate`, so this widget no longer carries its own
+ * copy of the pattern and a non-ASCII CLDR name is refused by the
+ * platform's Unicode policy instead of by a duplicated regex. The
+ * `u_<unified>` fallback is unaffected: `unified` is ASCII hex by
+ * definition, and nothing here derives a slug from the DISPLAY glyph.
+ *
  * Exported for unit testing.
  */
 export function deriveSlugFromPicker(clicked: EmojiClickData): string | null {
 	for (const name of clicked.names) {
-		if (name.length >= 1 && name.length <= MAX_EMOJI_SLUG_LEN && EMOJI_SLUG_REGEX.test(name)) {
-			return name;
-		}
+		const verdict = classifySlugCandidate(name, EMOJI_SLUG_GRAMMAR);
+		if (verdict.ok) return verdict.slug;
 	}
-	const fallback = `u_${clicked.unified.toLowerCase()}`;
-	if (fallback.length <= MAX_EMOJI_SLUG_LEN && EMOJI_SLUG_REGEX.test(fallback)) {
-		return fallback;
-	}
-	return null;
+	const verdict = classifySlugCandidate(`u_${clicked.unified.toLowerCase()}`, EMOJI_SLUG_GRAMMAR);
+	return verdict.ok ? verdict.slug : null;
 }
 
 /**
@@ -350,6 +363,46 @@ export function computeToggleState(input: ComputeToggleInput): ComputeToggleOutp
 	};
 }
 
+/**
+ * Visitor-facing copy for a failed mutation (Issue #456).
+ *
+ * The upstream write endpoints answer `429 { error: 'rate_limited' }`
+ * once the consumer principal exhausts `RATE_LIMIT_WRITE`; the server
+ * fns translate that into the typed `reason` union in `load.ts`. The
+ * visitor should be told the one actionable thing — wait for the
+ * advertised retry window and click again — instead of reading the
+ * machine code the transport happens to use.
+ *
+ * `Retry-After` is the fixed window (`RATE_LIMIT_RETRY_AFTER_SECONDS`
+ * = `RATE_LIMITS[…].period`, 60s), so "1分後" is the honest advice.
+ * That equality is asserted for the header constant in
+ * `src/http/middleware/rate-limit.test.ts`, but the visitor copy
+ * itself is hand-written: `home → http` is a type-only edge
+ * (AGENTS.md §3), so this obligation cannot import the boundary's
+ * constant. A `period` change therefore has to touch this string too —
+ * `docs/security/write-rate-limit.md` records that as an open design
+ * decision rather than a settled contract.
+ */
+export const REACTION_ERROR_MESSAGES: Readonly<Record<string, string>> = Object.freeze({
+	rate_limited: '短時間にまとめて反応が集中しています。1分後にもう一度お試しください。',
+	invalid_body: 'このリアクションは受け付けられませんでした。別のものをお試しください。',
+	api_key_unconfigured: 'リアクションは現在記録できません。時間をおいてお試しください。',
+	upstream_error: 'リアクションを送信できませんでした。時間をおいてお試しください。',
+});
+
+/**
+ * Map a mutation `reason` to the string the visitor reads. Unknown
+ * reasons fall back to the generic failure copy so a future transport
+ * code can never leak a raw identifier into the UI.
+ *
+ * Exported for unit testing.
+ */
+export function describeMutationError(reason: string | null | undefined): string {
+	return (
+		REACTION_ERROR_MESSAGES[reason ?? 'upstream_error'] ?? REACTION_ERROR_MESSAGES.upstream_error
+	);
+}
+
 export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 	const [aggregates, setAggregates] = useState<readonly LocalReactionAggregate[]>(data.aggregates);
 	// Local mirror of `data.viewer_reactions` so the toggle predicate
@@ -411,10 +464,14 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				: addHomeReaction({ data: { target, kind, value, codepoint } });
 		void promise
 			.then((result) => {
+				// State holds the machine `reason`; the alert renders the
+				// visitor copy resolved from it. Keeping the reason on the
+				// element (`data-error-reason`) keeps the raw code
+				// inspectable in devtools without showing it to visitors.
 				if (!result.ok) setError(result.reason ?? 'upstream_error');
 			})
 			.catch((err: unknown) => {
-				console.error('[home.reactions] toggle failed', err);
+				widgetLogger.error('toggle failed', err);
 				setError('upstream_error');
 			});
 	};
@@ -561,6 +618,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 			{error ? (
 				<p
 					role="alert"
+					data-error-reason={error}
 					className={css({
 						margin: '0',
 						fontFamily: 'mono',
@@ -568,7 +626,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 						color: 'text.muted',
 					})}
 				>
-					{error}
+					{describeMutationError(error)}
 				</p>
 			) : null}
 		</div>

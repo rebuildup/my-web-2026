@@ -12,6 +12,48 @@ access counter. Built in Ticket F (branch 38; see ADR-0012).
 
 Both routes require a Better Auth api-key (`Authorization: Bearer …`).
 
+### Rejections
+
+Boundary validation is owned by `src/http/validation.ts`; see
+[`docs/security/input-validation.md`](../../../docs/security/input-validation.md).
+Every rejection below carries `{ error, reason }` and is produced
+before any D1 statement runs. The field-specific codes
+(`invalid_key` / `invalid_session_id`) are the ones shipped since
+Issue #457 — Issue #450 only moved them behind the boundary layer and
+guaranteed that a grammar violation can no longer escape as a `500`.
+
+| Status | Body | Cause |
+|--------|------|-------|
+| 400 | `invalid_body` | `POST` body is not a JSON object, is not JSON, or a field is outside its type / length bound (e.g. `key` empty or over 256) |
+| 400 | `invalid_key` | `key` (body field or `:key` path segment) contains whitespace / control characters, or the `:key` segment is empty or over 256 |
+| 400 | `invalid_session_id` | `session_id` contains whitespace / control characters |
+| 401 | `missing_authorization` / `invalid_api_key` | auth failed |
+| 403 | `missing_scope` | key lacks `access_counter:read` / `access_counter:write` |
+| 405 | `method_not_allowed` | verb not in `Allow` (`POST` on `/hit`, `GET` on `/count/:key`) |
+| 413 | `payload_too_large` | JSON body over `MAX_JSON_BODY_BYTES` (16 KiB) |
+| 415 | `unsupported_media_type` | declared `Content-Type` is not `application/json` / `application/*+json` (a wildcard or an absent header is accepted; `curl --data` sends `application/x-www-form-urlencoded` and is refused — `docs/security/input-validation.md` §4) |
+| 429 | `rate_limited` | budget exhausted |
+| 500 | `internal_error` + `request_id` | unexpected failure; redacted (see `docs/security.md`) |
+
+The 400 codes are also the answer to input the zod schema cannot
+express: `HitInput` bounds `key` / `session_id` length but not their
+character set, and `validateCounterKey` / `validateSessionId` reject
+whitespace and control characters. Since Issue #457 that rejection is
+a 400 with a stable code, not an unhandled throw that reached the
+global error handler as a 500.
+
+`RATE_LIMIT_WRITE` / `RATE_LIMIT_READ` (ADR-0010) cover the
+write/read paths respectively; the numbers live in `RATE_LIMITS`
+(`scripts/_cloudflare-contract.mjs`) and are not restated here. The
+write budget is **one bucket per API key id**, shared with
+`PUT`/`DELETE /api/v1/reactions` — a counter burst and a reaction
+burst consume the same single budget. A throttled request answers
+`429 { error: 'rate_limited' }` with `Retry-After` set to the binding's
+fixed window (`RATE_LIMIT_RETRY_AFTER_SECONDS`) and is refused before
+D1, so the counter row does not move. The full operational contract
+is in
+[`docs/security/write-rate-limit.md`](../../../docs/security/write-rate-limit.md).
+
 ### POST /hit
 
 Request:

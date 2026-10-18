@@ -169,6 +169,11 @@ default `<p>Not Found</p>` string.
   runbook `docs/tools/runbook.md`).
 - `scripts/check-tools-manifest.mjs` — manifest verifier
   (companion runbook).
+- `scripts/check-submodule-provenance.mjs` — Tool submodule
+  supply-chain provenance gate (manifest pin / gitlink / checkout /
+  build-artefact agreement, fetch-source identity, branch-tip
+  rejection; offline and status-only). Documented in companion runbook
+  `docs/tools/runbook.md` §6.
 - `docs/tools/inventory.md` — durable inventory of all 14 Tools.
 - `docs/tools/runbook.md` — companion runbook (submodule /
   inventory / verification).

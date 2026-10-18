@@ -379,6 +379,25 @@ Full contract, the measured matrix and the known local-dev deviation
 (`vite dev` answers preflights itself, so the Worker is never consulted):
 [`docs/security/api-cors.md`](security/api-cors.md).
 
+## Outbound fetch (SSRF)
+
+A URL that did not come from this repository — a visitor-supplied
+source URL, a stored record, an upstream service — is fetched through
+`fetchExternalUrl()` in `src/http/outbound-fetch.ts` and nothing else.
+`src/http/outbound.ts` refuses non-`http(s)` schemes, userinfo,
+single-label and reserved/internal host names, and the loopback /
+private / link-local / CGNAT / multicast / reserved address space
+(including the IPv4-mapped, NAT64 and 6to4 embeddings of it). Redirects
+are followed with `redirect: 'manual'` and every `Location` target is
+re-classified before the next connection, so a hop is not a way around
+the policy.
+
+The classifier runs before DNS, so the runtime's
+`global_fetch_strictly_public` flag is what refuses a connection that
+resolves to a non-public address — both layers are load-bearing. The
+shipped contract, operator duties and known limits:
+[`docs/security/outbound-fetch.md`](security/outbound-fetch.md).
+
 ## Boundary input validation
 
 Every untrusted value on the `/api/v1/*` endpoints listed in
@@ -942,6 +961,10 @@ only the diff that introduced it.
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Outbound URL matrix (Issue #453) is regenerated from the shipped
+  adapter by `pnpm run security:ssrf:report`; the committed artefact
+  and its reading guide are in
+  [`docs/verification/security/`](verification/security/).
 - Redirect-target matrix (Issue #454) is regenerated from the shipped
   guard by `pnpm run security:redirect:report`; the committed image and
   its reading guide are in

@@ -717,6 +717,7 @@
 					"src/contact/channels.json",
 					"src/editorial/nav/route-labels.ts",
 					"src/editorial/structured-data/contract.json",
+					"src/http/outbound-fetch.ts",
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
 					"src/portfolio/components/Markdown.tsx",

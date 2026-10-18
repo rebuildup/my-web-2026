@@ -14,7 +14,7 @@
 | capture 手段 | `node scripts/capture-i18n-unicode-slug.mjs`（= `pnpm run capture:i18n-verification`） |
 | 描画 CSS | `src/editorial/semantic-tokens.ts`（light）を CSS custom property に解決したもの。**webfont は取得しない**（宣言のみ、システム fallback で描画） |
 | viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影） |
-| 生成物サイズ | 1440 x 3668 px、**243 kB** WebP（quality 75、budget 300 kB） |
+| 生成物サイズ | 1440 x 3812 px、**265 kB** WebP（quality 75、budget 300 kB） |
 | 撮影時の fixture 行数 | 17（`assertFixtureCount` が 17 以外で失敗する。空または部分的な画面の黙認をしない） |
 | 外部通信 | **0 件**。webfont を fetch せず `setContent` で描画するので、origin 自体が存在しない |
 | 再現性 | 判断表と分類結果は決定的。ブラウザ撮影は byte 再現ではない |
@@ -131,7 +131,7 @@ walk する）。同じ式を 2 回渡す恒真な assertion は置かない。
 | URL parameter の case folding | gate に「URL slug を case fold する」rule が無いため、`/tools/MultiSlicer` は 200 を返す | 意図的に未決。ADR-0017 §6.4 / §7.4 に記録。緑 = 「classified 済み」ではない |
 | カタログ衝突 audit の未配線 | `findSlugCollisions` / `assertNoSlugCollisions` に production caller が無い | 検証画面の §2.4 は固定サンプルでの機構デモ。実カタログの監査は別 ticket |
 | capture は browser 依存 | Playwright chromium を local に必要とする | 既に devDependency。`--no-capture` なら browser 無しで evidence を生成できる |
-| 画像サイズ | 243 kB / budget 300 kB | quality 75、width <= 1600 で抑制。budget 超過時は script が失敗する |
+| 画像サイズ | 265 kB / budget 300 kB | quality 75、width <= 1600 で抑制。budget 超過時は script が失敗する |
 
 ## 7. 未決事項（owner 判断）
 

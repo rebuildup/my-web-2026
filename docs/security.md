@@ -150,6 +150,25 @@ See also: [`ADR-0002`](adr/ADR-0002-architecture-boundary.md) (the
 two-layer split), [`ADR-0010`](adr/ADR-0010-abuse-protection-rate-limit.md)
 (the write-path rate limit that still applies after the guard).
 
+## Login enumeration and credential brute force
+
+`POST /api/v1/auth/sign-in/email` is the only unauthenticated
+credential endpoint on the boundary. Two properties are pinned and
+asserted in `test/integration/auth-login-hardening.test.ts`:
+
+- A wrong password on an **existing** account and an attempt on a
+  **non-existent** account return byte-identical responses (status,
+  body, header set), so the endpoint is not an existence oracle.
+- Failed logins are throttled **per client IP** — 3 attempts per 10
+  seconds, then `429` with `X-Retry-After`. The throttle is evaluated
+  before the password is checked, so it leaks nothing either, and it is
+  scoped to one client so it cannot be used as a lockout.
+
+The budget and the client-IP source are stated explicitly in
+`src/cloudflare/auth/better-auth.ts` rather than inherited from Better
+Auth's `NODE_ENV` / `x-forwarded-for` defaults, because neither default
+holds for this deployment. Full contract, evidence, and known limits:
+[`docs/security/login-enumeration-rate-limit.md`](security/login-enumeration-rate-limit.md).
 ## OAuth / OIDC callback: state and redirect (Issue #444)
 
 The shipped auth config (`src/cloudflare/auth/better-auth.ts`) registers
@@ -368,6 +387,76 @@ statement assembled in a variable is not scanned at all and must be
 caught by the runtime suite (or by review). The inventory above names
 the variable-built statements that exist today — keep it current when
 one is added.
+
+## Markdown / Notion-derived HTML input boundary
+
+Article bodies (Portfolio projects) are editor-controlled, third-party
+originated text. Two input shapes exist, and each has exactly one
+sanctioned entry point.
+
+### Markdown — `src/portfolio/markdown.lexer.ts`
+
+- The lexer **does not parse raw HTML**. Every text node reaches React
+  as text, so `<script>` in a body renders as visible `&lt;script&gt;`,
+  never as markup.
+- `classifyHref` is the single href oracle. It allows `http:`,
+  `https:`, root-relative and fragment hrefs, and **blocks**
+  everything else — including values a browser would treat as a
+  scheme after normalising: control-character obfuscation
+  (`java<TAB>script:`), character-reference obfuscation
+  (`javascript&#58;`), and protocol-relative hrefs (`//host`), which
+  are resolved and inherit the external-link policy instead of
+  masquerading as internal paths.
+- A blocked href is **not** rewritten to `#`. It renders as an inert
+  `<span class="portfolio-md-link-blocked">` carrying
+  `data-blocked-reason` and `data-blocked-href`, so the refusal is
+  visible to the author and to a reviewer. `safeHref` /
+  `isExternalHref` remain for callers that only need the old
+  string / boolean shape; they read the same oracle.
+
+### Notion-derived HTML — `src/portfolio/markdown.notion.ts`
+
+Notion exports carry `<script>`, `on*` handlers, `javascript:` hrefs
+and inline `<svg>`, so HTML may only enter the renderer through this
+adapter:
+
+- **Allow list.** Elements not named in the module are unwrapped (text
+  survives, markup does not); elements on the active list (`script`,
+  `style`, `iframe`, `object`, `embed`, `svg`, `form`, …) are dropped
+  with their subtree.
+- **Attribute allow list.** Every `on*` attribute is dropped and
+  recorded; every attribute outside the allow list is dropped; URL
+  attributes go through `classifyHref`, so the scheme policy is not
+  re-implemented.
+- **Auditable.** `sanitizeNotionHtml` returns the refusals
+  (`dropped[]`) rather than failing silently, and it never throws —
+  malformed markup degrades to text, bounded by a depth and an output
+  ceiling.
+
+**Wiring status.** The adapter is **not** yet called by any ingest
+path: the portfolio migration writes plain Markdown today. It landed
+first, with tests, so that whichever migration introduces Notion HTML
+inherits one sanitiser. Any new caller must go through it; adding a
+second HTML path is a review failure, not a style preference.
+
+### Verification
+
+- Renderer level: `src/portfolio/markdown.security.test.tsx` and
+  `src/portfolio/markdown.notion.test.tsx` over the shared corpus in
+  `src/portfolio/markdown.xss-fixtures.ts`.
+- Worker level: `test/integration/markdown-xss-ssr.test.ts` drives
+  `GET /portfolio/<fixture>` through `SELF.fetch` with the corpus in a
+  D1 row, and asserts over the served `<article>` region.
+- Browser level: `e2e/portfolio-markdown-xss.spec.ts` seeds the same
+  corpus into the local D1 and asserts in chromium that no payload
+  executed. It is a local-only spec: the fixture row is only readable
+  by the local Worker, so `playwright.config.ts` filters the file out
+  of a non-local run and the spec also skips itself in-file.
+- Screenshot: `docs/verification/security/markdown-xss-fixture.webp`
+  (see `docs/verification/security/README.md` for how to read it and
+  why its capture generator is not committed). The corpus carries
+  attack simulations on purpose; it contains no credentials and no
+  live third-party origin.
 
 ## HTTPS 強制と HSTS (Issue #446)
 

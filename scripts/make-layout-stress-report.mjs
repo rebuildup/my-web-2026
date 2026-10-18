@@ -14,13 +14,21 @@
  *
  * The report is not a picture of a green run. It contains:
  *
- *   1. the healthy fixture captured at 320px — legible captures of the
- *      heading / table / gutter stories plus a full-page strip,
+ *   1. the healthy fixture captured at 320px — one legible capture per
+ *      declared story, taken from `STRESS_STORY_IDS` so a story cannot
+ *      be added to the fixture and stay out of the evidence,
  *   2. the deliberately broken `control-overflow` variant captured at
- *      the same width, so the failing path is visible and not only
- *      described,
+ *      the same width with the document scrolled to the injected 1200px
+ *      block, so the failing path is visible and not only described,
  *   3. the per-rule verdict table, the environment the numbers came
  *      from, and the commands that reproduce all of it.
+ *
+ * A caption is a claim about the pixels next to it, so the control
+ * capture is checked: the fixture paints its defect `#0ea5e9`, and the
+ * generator refuses to write the report unless that colour is actually
+ * present in the capture. Without that check a screenshot taken at
+ * scroll 0 (the defect sits below the fold) would still be captioned
+ * "意図的 defect" and committed as evidence.
  *
  *   node scripts/make-layout-stress-report.mjs
  *   pnpm run verify:compat-stress-screenshot   # same thing
@@ -33,7 +41,10 @@
  * Buffer (never a file) and the final report is re-encoded with the
  * existing `sharp` devDependency as
  * `resize({ width: WEBP_WIDTH, withoutEnlargement: true })` +
- * `webp({ quality: WEBP_QUALITY })`. The target extension is asserted to
+ * `webp({ quality: WEBP_QUALITY })`. `WEBP_QUALITY` is below the 80 the
+ * single-figure reports use because this report embeds eleven viewport
+ * captures; 80 does not fit the shared 300 KB budget and a shorter report
+ * is worse evidence than a slightly softer one. The target extension is asserted to
  * be `.webp` and the size is checked against the shared evidence budget
  * (`scripts/_lazy-media-image.mjs`), so a longer report fails loudly
  * instead of quietly doubling the blob. `sharp` and `@playwright/test`
@@ -49,27 +60,41 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { MAX_EVIDENCE_WIDTH, assertEvidenceSize } from './_lazy-media-image.mjs';
 import { runLayoutStressCheck } from './check-layout-stress.mjs';
-import { STRESS_VIEWPORT, TOLERANCE_PX } from './layout-stress.mjs';
+import { STRESS_STORY_IDS, STRESS_VIEWPORT, TOLERANCE_PX } from './layout-stress.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = join(ROOT, '.tmp');
 const HTML_REPORT = join(TMP, 'layout-stress-report.html');
 const WEBP_TARGET = join(ROOT, 'docs/verification/compat/stress-story.webp');
-const WEBP_WIDTH = 1600;
-const WEBP_QUALITY = 50;
+/**
+ * Render width. The shared cap is 1600px; this report renders slightly
+ * under it because eleven 320px viewport captures do not fit the 300 KB
+ * evidence budget at 1600 (measured: 309 KB at quality 45, 321 KB at 50).
+ * Shrinking the page keeps the small type legible; shrinking the font
+ * would not.
+ */
+const WEBP_WIDTH = Math.min(MAX_EVIDENCE_WIDTH, 1500);
+const WEBP_QUALITY = 45;
 
-/** Stories captured legibly at 320px (the whole story is 10 sections tall). */
-const FEATURED_SECTIONS = [
-	'heading',
-	'link',
-	'identifier',
-	'multilingual',
-	'grid',
-	'table',
-	'code',
-	'cta',
-	'gutter',
-];
+/**
+ * Every declared story is captured, in declaration order. This is derived
+ * from the fixture spec on purpose: a hand-written list of story names is
+ * how a story ends up in the fixture but not in the evidence.
+ */
+const CAPTURED_STORIES = STRESS_STORY_IDS;
+
+/** The colour `FIXTURE_CSS` paints the injected `control-overflow` block. */
+const CONTROL_DEFECT_RGB = { r: 14, g: 165, b: 233 };
+
+/**
+ * How many defect pixels the control capture must contain. The block is
+ * 1200x8 CSS px and 320px of it are on screen when the defect is framed,
+ * so this is a wide margin over "one stray pixel".
+ */
+const MIN_CONTROL_DEFECT_PIXELS = 100;
+
+/** Context kept above and below the defect block so the capture reads as a page. */
+const CONTROL_CONTEXT_PX = 150;
 
 const REPRODUCTION = [
 	'pnpm run compat:stress:check                                # the gate (exit 0, two controls caught)',
@@ -92,23 +117,63 @@ function escapeHtml(value) {
  * ------------------------------------------------------------------ */
 
 /**
+ * Count pixels close to a colour, so a caption can be checked against the
+ * image it describes.
+ *
+ * @param {Buffer} buffer encoded image
+ * @param {{r: number, g: number, b: number}} rgb colour to look for
+ * @returns {Promise<number>}
+ */
+async function countPixelsNear(buffer, rgb) {
+	const { default: sharp } = await import('sharp');
+	const { data, info } = await sharp(buffer)
+		.removeAlpha()
+		.raw()
+		.toBuffer({ resolveWithObject: true });
+	let hits = 0;
+	for (let offset = 0; offset + 2 < data.length; offset += info.channels) {
+		if (
+			Math.abs(data[offset] - rgb.r) <= 12 &&
+			Math.abs(data[offset + 1] - rgb.g) <= 12 &&
+			Math.abs(data[offset + 2] - rgb.b) <= 12
+		) {
+			hits += 1;
+		}
+	}
+	return hits;
+}
+
+/**
  * Capture the fixture in a real browser.
  *
- * @returns {Promise<{captures: object[], sizes: string[]}>}
+ * @param {import('@playwright/test').Browser} browser
+ * @param {object} result the gate result the captures belong to
+ * @returns {Promise<{captures: object, sizes: string[]}>}
  */
-async function capture(result) {
-	const { chromium } = await import('@playwright/test');
+async function capture(browser, result) {
 	const { default: sharp } = await import('sharp');
-	const browser = await chromium.launch();
 	const sizes = [];
 
 	/**
+	 * The fixture HTML the gate actually measured. Taken from the run that
+	 * wrote it, not re-derived from a path: a stale `.tmp` from an earlier
+	 * `--width 375` run must not become this report's evidence.
+	 *
 	 * @param {string} variant
-	 * @param {{prepare?: (page: import('@playwright/test').Page) => Promise<void>, scale?: number, options?: import('@playwright/test').PageScreenshotOptions}} [shot]
-	 * @returns {Promise<{base64: string, width: number, height: number, bytes: number}>}
+	 * @returns {string}
+	 */
+	function fixturePath(variant) {
+		const run = result.runs.find((entry) => entry.id === variant);
+		if (!run?.htmlPath) throw new Error(`the gate reported no fixture HTML for "${variant}"`);
+		return join(ROOT, run.htmlPath);
+	}
+
+	/**
+	 * @param {string} variant
+	 * @param {{frame?: (page: import('@playwright/test').Page) => Promise<import('@playwright/test').PageScreenshotOptions>, scale?: number}} [shot]
+	 * @returns {Promise<{base64: string, buffer: Buffer, width: number, height: number, bytes: number}>}
 	 */
 	async function shoot(variant, shot = {}) {
-		const htmlPath = join(ROOT, '.tmp/layout-stress', `${variant}.html`);
 		const context = await browser.newContext({
 			viewport: { width: result.viewport.width, height: result.viewport.height },
 			deviceScaleFactor: shot.scale ?? 1,
@@ -117,16 +182,26 @@ async function capture(result) {
 		});
 		try {
 			const page = await context.newPage();
-			await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'load' });
+			await page.goto(pathToFileURL(fixturePath(variant)).href, { waitUntil: 'load' });
 			await page.evaluate(() => document.fonts.ready);
-			if (shot.prepare) await shot.prepare(page);
-			const buffer = await page.screenshot(shot.options ?? {});
+			// `frame` picks the region to shoot, so the caption and the pixels
+			// cannot drift apart: nothing here relies on "scroll 0 happens to
+			// be the interesting part".
+			const buffer = await page.screenshot(
+				shot.frame
+					? await shot.frame(page)
+					: {
+							fullPage: true,
+							clip: { x: 0, y: 0, width: result.viewport.width, height: result.viewport.height },
+						},
+			);
 			const meta = await sharp(buffer).metadata();
 			sizes.push(
 				`${variant} ${meta.width}x${meta.height} ${Math.round(buffer.length / 1024)} KB PNG`,
 			);
 			return {
 				base64: buffer.toString('base64'),
+				buffer,
 				width: meta.width,
 				height: meta.height,
 				bytes: buffer.length,
@@ -137,16 +212,59 @@ async function capture(result) {
 	}
 
 	const captures = {};
-	for (const section of FEATURED_SECTIONS) {
+	for (const section of CAPTURED_STORIES) {
 		captures[section] = await shoot('baseline', {
-			prepare: async (page) => {
-				await page.locator(`[data-stress-section="${section}"]`).scrollIntoViewIfNeeded();
+			// The story itself, never the fold: a viewport-height frame from
+			// scroll 0 says nothing about story 07.
+			frame: async (page) => {
+				const box = await page.locator(`[data-stress-section="${section}"]`).boundingBox();
+				if (!box) throw new Error(`the fixture did not render the "${section}" story`);
+				const top = Math.max(0, Math.floor(box.y));
+				return {
+					fullPage: true,
+					clip: {
+						x: 0,
+						y: top,
+						width: result.viewport.width,
+						height: Math.min(result.viewport.height, Math.ceil(box.y + box.height) - top),
+					},
+				};
 			},
 		});
 	}
-	captures.control = await shoot('control-overflow');
 
-	await browser.close();
+	// The injected block is the last child of <body>, roughly eight
+	// viewports below the fold, so an unframed capture shows the healthy
+	// fixture's first screen and nothing about the defect. Frame the
+	// document's leftmost 320px around it instead: the 1200px block starts
+	// at x=0, so it fills the frame and is cut off at its right edge.
+	captures.control = await shoot('control-overflow', {
+		frame: async (page) => {
+			const box = await page.locator('[data-stress-control="overflow"]').boundingBox();
+			if (!box) throw new Error('the control-overflow fixture did not render its defect block');
+			const top = Math.max(0, Math.floor(box.y) - CONTROL_CONTEXT_PX);
+			return {
+				fullPage: true,
+				clip: {
+					x: 0,
+					y: top,
+					width: result.viewport.width,
+					height: Math.min(
+						result.viewport.height,
+						Math.ceil(box.y + box.height) - top + CONTROL_CONTEXT_PX,
+					),
+				},
+			};
+		},
+	});
+	const defectPixels = await countPixelsNear(captures.control.buffer, CONTROL_DEFECT_RGB);
+	if (defectPixels < MIN_CONTROL_DEFECT_PIXELS) {
+		throw new Error(
+			`the control-overflow capture shows only ${defectPixels} px of the injected defect (#0ea5e9, need ${MIN_CONTROL_DEFECT_PIXELS}) — it is not the evidence its caption claims`,
+		);
+	}
+	sizes.push(`control defect px ${defectPixels}`);
+
 	return { captures, sizes };
 }
 
@@ -165,6 +283,9 @@ function figure(image, caption, extraClass = '') {
 function render(result, captures, sizes) {
 	const baseline = result.runs.find((run) => run.id === 'baseline');
 	const controls = result.runs.filter((run) => !run.mustPass);
+	const gutterNote = baseline?.stats.gutterObservable
+		? 'platform scrollbar の予約幅が実測できたので、gutter 系 2 rule も実測済み。'
+		: 'この host は overlay scrollbar（予約幅 0px）で <code>gutter_not_reserved</code> / <code>content_shift</code> が<b>実測できていない</b>。warning のまま残し、PASS の証拠には数えていない。';
 
 	const verdictRows = result.runs
 		.map((run) => {
@@ -271,6 +392,7 @@ ${verdictRows}
     environment: ${escapeHtml(result.environment?.userAgent ?? '—')} · language ${escapeHtml(result.environment?.language ?? '—')} ·
     許差は ${TOLERANCE_PX}px（sub-pixel）。platform scrollbar が 0px（overlay scrollbar）なら
     gutter の実効性は観測できないため <code>gutter_not_observable</code> として warning に残す（無言では合格にしない）。
+    ${gutterNote}
     control の期待ルール: ${controls
 			.map(
 				(run) =>
@@ -279,10 +401,10 @@ ${verdictRows}
 			.join(' · ')}
   </p>
 
-  <h2>healthy fixture の実測（320px · 各ストーリーの実画面）</h2>
+  <h2>healthy fixture の実測（320px · 宣言された全 ${CAPTURED_STORIES.length} story の実画面）</h2>
   <div class="shots">
-${FEATURED_SECTIONS.map((section) => figure(captures[section], `${section} ストーリー`)).join('\n')}
-${figure(captures.control, 'control-overflow — 固定幅 1200px ブロック（意図的 defect）', 'control')}
+${CAPTURED_STORIES.map((section) => figure(captures[section], `${section} ストーリー`)).join('\n')}
+${figure(captures.control, 'control-overflow — 末尾に注入した固定幅 1200px ブロック（意図的 defect。document 幅 1200px に対し viewport は 320px なので、青帯は画面幅いっぱいまで伸びて右端で切れている。数値は上の判定表）', 'control')}
   </div>
 
   <h2>再現コマンド / URL</h2>
@@ -315,20 +437,22 @@ if (!result.ok) {
 	process.exit(1);
 }
 
-const { captures, sizes } = await capture(result);
-mkdirSync(TMP, { recursive: true });
-writeFileSync(HTML_REPORT, render(result, captures, sizes));
-process.stdout.write(`wrote ${HTML_REPORT}\n`);
-
 const { chromium } = await import('@playwright/test');
 const { default: sharp } = await import('sharp');
 if (!WEBP_TARGET.endsWith('.webp')) {
 	process.stderr.write(`refusing to write a non-WebP verification artefact: ${WEBP_TARGET}\n`);
 	process.exit(1);
 }
-const browser = await chromium.launch();
+
 let encoded;
+const browser = await chromium.launch();
 try {
+	const { captures, sizes } = await capture(browser, result);
+	mkdirSync(TMP, { recursive: true });
+	writeFileSync(HTML_REPORT, render(result, captures, sizes));
+	process.stdout.write(`wrote ${HTML_REPORT}\n`);
+	for (const size of sizes) process.stdout.write(`capture: ${size}\n`);
+
 	mkdirSync(dirname(WEBP_TARGET), { recursive: true });
 	const page = await browser.newPage({
 		viewport: { width: WEBP_WIDTH, height: 1400 },
@@ -354,7 +478,6 @@ try {
 process.stdout.write(
 	`gate: baseline PASS · ${result.runs.filter((run) => !run.mustPass).length} controls caught · ${result.errors.length} errors\n`,
 );
-for (const size of sizes) process.stdout.write(`capture: ${size}\n`);
 process.stdout.write(
 	`wrote ${WEBP_TARGET} (webp ${encoded.width}x${encoded.height}, ${encoded.size} B, quality ${WEBP_QUALITY})\n`,
 );

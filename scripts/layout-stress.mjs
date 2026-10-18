@@ -42,6 +42,9 @@
  *   gutter_policy_missing        `scrollbar-gutter: stable` is not applied
  *   gutter_not_reserved          the declaration reserves no gutter on a
  *                                platform with a classic scrollbar
+ *   gutter_probe_missing         a declared gutter probe was not measured in
+ *                                both scrollbar states (the shift rule would
+ *                                silently compare nothing)
  *   content_shift                a full-width probe changes width when the
  *                                scrollbar appears / disappears
  *
@@ -468,6 +471,16 @@ export const STRESS_SECTIONS = [
       </div>`,
 	},
 ];
+
+/**
+ * Every declared story id, in declaration order.
+ *
+ * The verification report screenshots *this* list. It used to keep its own
+ * hand-written array of story names, which silently dropped stories from the
+ * evidence (`prose` never reached the image). Deriving the capture list here
+ * means adding a story to `STRESS_SECTIONS` cannot leave the report behind.
+ */
+export const STRESS_STORY_IDS = STRESS_SECTIONS.map((section) => section.id);
 
 /** Every declared measurement target, in declaration order. */
 export const DECLARED_TARGETS = [

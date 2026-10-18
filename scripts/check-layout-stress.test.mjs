@@ -9,6 +9,7 @@ import {
 	DECLARED_OPTIONAL_TARGETS,
 	DECLARED_TARGETS,
 	STRESS_SECTIONS,
+	STRESS_STORY_IDS,
 	STRESS_VIEWPORT,
 	TOLERANCE_PX,
 	VARIANTS,
@@ -467,5 +468,43 @@ describe('collectLayoutSnapshot', () => {
 		assert.ok(source.includes('data-stress-section'));
 		assert.ok(source.includes('data-stress-target'));
 		assert.ok(source.includes('data-gutter-probe'));
+	});
+});
+
+/* ------------------------------------------------------------------ *
+ * the verification report must not fall behind the fixture spec
+ * ------------------------------------------------------------------ */
+
+describe('verification report capture list', () => {
+	const reportSource = () =>
+		readFileSync(join(ROOT, 'scripts/make-layout-stress-report.mjs'), 'utf8');
+
+	it('captures every declared story, in declaration order', () => {
+		assert.deepEqual(
+			STRESS_STORY_IDS,
+			STRESS_SECTIONS.map((section) => section.id),
+		);
+		assert.equal(STRESS_STORY_IDS.length, 10);
+	});
+
+	it('derives its captures from the spec instead of a hand-written subset', () => {
+		const source = reportSource();
+		assert.ok(source.includes('STRESS_STORY_IDS'), 'take the story list from layout-stress.mjs');
+		assert.ok(
+			!/const CAPTURED_STORIES = \[/.test(source),
+			'the report must not re-declare the story list it captures',
+		);
+	});
+
+	it('frames the injected defect and checks it reached the pixels', () => {
+		const source = reportSource();
+		assert.ok(
+			source.includes('data-stress-control'),
+			'the control capture must frame the injected block',
+		);
+		assert.ok(
+			source.includes('MIN_CONTROL_DEFECT_PIXELS'),
+			'a caption claims what the image shows, so the defect colour must be counted',
+		);
 	});
 });

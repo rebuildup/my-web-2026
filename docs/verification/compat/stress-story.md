@@ -62,6 +62,7 @@ generation した CSS は 出荷済みの visual language（`src/styles.css` の
 | `target_overflow` | target がコンテンツボックスをはみ出す |
 | `gutter_policy_missing` | `scrollbar-gutter: stable` が適用されていない |
 | `gutter_not_reserved` | classic scrollbar の環境で gutter の予約幅が実測と合わない |
+| `gutter_probe_missing` | 宣言した gutter probe が「スクロールバーあり / なし」の両方で測定されていない（shift 比較が無言で空振りするのを防ぐ） |
 | `content_shift` | 全幅 probe の幅が、スクロールバーの有無で変わる |
 
 さらに **warning** が 1 つある。platform が overlay scrollbar（予約幅 0px）で
@@ -92,13 +93,36 @@ pnpm run verify:compat-stress-screenshot                    # report HTML + WebP
 
 fixture 自体は `pnpm run compat:stress:check` が生成する
 `file://$PWD/.tmp/layout-stress/baseline.html`（`.tmp/` は gitignored）。
-同じ URL をブラウザで開けば 320px でそのまま見られる。expected result:
+同じ URL をブラウザで開けば 320px でそのまま見られる。expected result
+（本 PR の記録環境で実行した実出力そのまま。overlay scrollbar のため
+`gutter_not_observable` warning が毎回付き、gutter probe の Δ は 0.00px で
+「予約幅が 0px なので差も 0」という観測であることに注意）:
 
 ```text
-PASS    baseline          sections 10 · targets 21 · scrollWidth 320 / clientWidth 320
-CONTROL control-gutter    ERROR gutter_policy_missing: … computed value is "auto"
-CONTROL control-overflow  ERROR viewport_overflow: … (scrollWidth 1200 > clientWidth 320)
-                          ERROR target_overflow: target "control-overflow-block" … by 880.00px
+layout stress (Issue #416) · viewport 320x640 · chromium 153.0.8010.12
+environment: Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) HeadlessChrome/153.0.8010.12 Safari/537.36 · language en-US
+
+PASS  baseline
+  sections 10 · targets 21 · scrollWidth 320 / clientWidth 320 · scrollbar 0px · gutter declared "stable" (overlay scrollbars: shift not observable)
+  gutter probe gutter-band: 288.00px with scrollbar / 288.00px without (Δ 0.00px)
+  gutter probe gutter-container: 288.00px with scrollbar / 288.00px without (Δ 0.00px)
+  WARN  gutter_not_observable: this platform paints overlay scrollbars (reserved gutter 0px) — gutter reservation and shift cannot be measured here
+
+CONTROL  control-gutter  (deliberate defect: `scrollbar-gutter: auto` — the gutter is released when the scrollbar is not in play, so full-width content shifts)
+  sections 10 · targets 21 · scrollWidth 320 / clientWidth 320 · scrollbar 0px · gutter declared "auto" (overlay scrollbars: shift not observable)
+  gutter probe gutter-band: 288.00px with scrollbar / 288.00px without (Δ 0.00px)
+  gutter probe gutter-container: 288.00px with scrollbar / 288.00px without (Δ 0.00px)
+  ERROR gutter_policy_missing: the fixture declares scrollbar-gutter: stable but the computed value is "auto"
+  WARN  gutter_not_observable: this platform paints overlay scrollbars (reserved gutter 0px) — gutter reservation and shift cannot be measured here
+
+CONTROL  control-overflow  (deliberate defect: a fixed 1200px block — the classic long-unbreakable-content overflow)
+  sections 10 · targets 22 · scrollWidth 1200 / clientWidth 320 · scrollbar 0px · gutter declared "stable" (overlay scrollbars: shift not observable)
+  gutter probe gutter-band: 288.00px with scrollbar / 288.00px without (Δ 0.00px)
+  gutter probe gutter-container: 288.00px with scrollbar / 288.00px without (Δ 0.00px)
+  ERROR viewport_overflow: the document scrolls horizontally at 320px (scrollWidth 1200 > clientWidth 320)
+  ERROR target_overflow: target "control-overflow-block" (control-overflow の固定幅ブロック) leaves the content box by 880.00px
+  WARN  gutter_not_observable: this platform paints overlay scrollbars (reserved gutter 0px) — gutter reservation and shift cannot be measured here
+
 errors (0)
 ```
 
@@ -106,7 +130,7 @@ errors (0)
 
 | 対象 | どこで走る | 結果 |
 | --- | --- | --- |
-| `evaluateStressRun` の全 rule（26 cases） | `pnpm run test` → CI `validate` job | pass |
+| `evaluateStressRun` の全 rule（29 cases） | `pnpm run test` → CI `validate` job | pass |
 | browser 半の gate（3 variant の実測） | `pnpm run compat:stress:check`（Chromium 必要） | baseline PASS / control 2 件捕捉 / exit 0 |
 | report と WebP | `pnpm run verify:compat-stress-screenshot` | `docs/verification/compat/stress-story.webp` 生成 |
 
@@ -120,7 +144,8 @@ viewport    320x640, deviceScaleFactor 1
 scrollbar   予約幅 0px → overlay scrollbar。gutter の実効性はこの環境では
             観測できないため gutter_not_observable の warning として記録される。
             content_shift / gutter_not_reserved は classic scrollbar の
-            環境でのみ観測される（例: CI runner ubuntu-latest で実行した場合）。
+            環境でのみ観測される。本リポジトリには現在その条件を満たす
+            記録が 1 件も存在しない（下の「既知の制約」参照）。
 ```
 
 **CI について**: browser を起動する `compat:stress:check` は `validate:fast` にも、
@@ -145,9 +170,24 @@ CI では「検出器が必ず落ちること」が毎回検証される。実�
   capture は Chromium の PNG buffer を memory 上だけで持ち、最後に `sharp` で
   WebP 化。`scripts/_lazy-media-image.mjs` の 300 KB budget を超える場合は
   file を消して失敗する）
-- 画像の内容: gate の判定表 + healthy fixture の 10 story の実画面（320px 実寸）
-  + `control-overflow` の実画面。**緑 1 枚だけの report にしていない**のは、
-  壊れているときの見え方も同じ report にあるべきだから。
+- 画像の内容: gate の判定表 + healthy fixture の**宣言された 10 story 全部**の実画面
+  （320px 実寸。撮影リストは fixture 宣言 `STRESS_STORY_IDS` から生成しているので、
+  story を追加しても撮影だけが取り残されない）+ `control-overflow` の実画面。
+  **緑 1 枚だけの report にしていない**のは、壊れているときの見え方も同じ report に
+  あるべきだから。
+- capture の画角: 各 story はその section の領域を切り出して撮る（fold をまたいで
+  半分だけ入ることを避けるため）。`control-overflow` は注入 block を含む document
+  末尾の領域を切り出す。block は `<body>` の最後の子で 10 section のおよそ 8
+  viewport 下にあるため、画角を指定しないと「fold 上の健全な画面」だけが写って
+  いた。
+- caption と画素の対応: `control-overflow` の capture には fixture が
+  描画する defect 色 `#0ea5e9` が実際に含まれていることを生成時に数え、
+  足りない場合は report を書かずに失敗する。キャプションは画像の主张なので、
+  画素を伴わないまま「意図的 defect」を名乗ることを構造的に防ぐ。
+- 符号化: 1500px / quality 45（`scripts/_lazy-media-image.mjs` の 300 KB budget 内、
+  実測 261,298 B）。他の verification report が quality 80 を使うのに下回るのは、
+  下回るのは、11 枚の 320px viewport capture を含むため。page の幅を縮めたのであって、
+  文字サイズを縮めたわけではない。
 
 ## 既知の制約
 
@@ -160,9 +200,21 @@ CI では「検出器が必ず落ちること」が毎回検証される。実�
   fixture ではそのケースを identifier story（`src/styles.css` が break-all を
   宣言している場所）に置いてある。見出し側で break を許す判断は別の決定。
 - overlay scrollbar の環境では gutter 系（`content_shift` / `gutter_not_reserved`）が
-  原理的に観測できない。warning として残すのが正しいが、その環境では
-  「gutter に関するこの gate は何も主張していない」ので、CI（classic scrollbar）と
-  併読する必要がある。
+  原理的に観測できず、`gutter_not_observable` の warning になる。**本リポジトリには
+  classic scrollbar で観測した記録が 1 件も存在しない。** macOS の Chromium は
+  overlay scrollbar 固定で、この host で実測した範囲（既定 / `--headless=new` /
+  `--disable-features=OverlayScrollbar` /
+  `--disable-features=OverlayScrollbar,FluentOverlayScrollbar` / headful のいずれも
+  予約幅 0px）では classic 化しない。したがって「gutter に関するこの gate は何も
+  主張していない」という状態はすでに存在し、CI に実測が記録されているわけでは
+  ない（下の「CI について」の通り、browser 半はどの workflow にも入っていない）。
+  証拠になっているのは次の 2 点だけである。
+  1. 判定の pure 半は classic scrollbar を**模した snapshot**
+     （`scripts/check-layout-stress.test.mjs`）で `gutter_not_reserved` /
+     `content_shift` / `gutter_probe_missing` が落ちることが検証されている。
+  2. 実 browser で classic scrollbar を 1 度でも観測する条件を CI（Linux runner）
+     へ追加するか、受け入れ条件の「visible scrollbar」をこのプラットフォーム
+     現実に合わせて再定義するかは **owner の判断**であり、本 PR では決めていない。
 - 検出は Chromium 1 engine での実測（E2E と同じ方針）。多 engine の検証は
   Issue #415（`.github/workflows/compat.yml`、3 engine の public UI smoke）が
   所有し、CJK 禁則処理の実測は Issue #431（`scripts/cjk-line-break-measure.mjs`、

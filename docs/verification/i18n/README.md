@@ -66,8 +66,11 @@ run).
 The rules it checks are the typography contract only: R1 行頭禁則,
 R2 行頭空白, R3 行末禁則, R4 Conditional Japanese starters, R5
 lossless reconstruction, R6 `word-break`, R7 wrap mode, R8 `lang`
-scoping. Text quality (translation, editing, tone) is explicitly out of
-scope, and no product copy is measured or changed by this artefact.
+scoping, plus the opt-in declarations themselves — R9 `line-break`
+(`auto` for the baseline / `lang` modes, `strict` for the typography
+mode) and R10 `text-spacing-trim` (`normal` / `trim-start`). Text
+quality (translation, editing, tone) is explicitly out of scope, and no
+product copy is measured or changed by this artefact.
 
 ### How to reproduce it
 

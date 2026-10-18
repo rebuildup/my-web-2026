@@ -377,8 +377,11 @@ export function decideCors(input: CorsDecisionInput): CorsDecision {
 		}
 		const headers: Record<string, string> = {
 			...base,
-			// Echo ONE concrete origin. Never `*`, never `null`.
-			'Access-Control-Allow-Origin': input.origin,
+			// Echo ONE concrete origin. Never `*`, never `null`. The
+			// wire value is the normalized form, so a non-browser
+			// caller that sends a trailing slash still gets the
+			// canonical origin the allow check compared against.
+			'Access-Control-Allow-Origin': normalizeOrigin(input.origin) ?? input.origin,
 			'Access-Control-Allow-Credentials': 'true',
 		};
 		// Preflight-only headers. On an actual response a browser reads

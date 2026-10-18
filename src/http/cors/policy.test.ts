@@ -146,6 +146,18 @@ describe('credentialed routes', () => {
 		expect(decision.headers['Access-Control-Allow-Origin']).toBe('http://localhost:3000');
 	});
 
+	it('echoes the normalized origin, not a raw trailing-slash value', () => {
+		const decision = decide({
+			path: '/api/v1/reactions',
+			method: 'GET',
+			origin: `${CANONICAL}/`,
+			requestOrigin: 'https://preview.example',
+			extraAllowedOrigins: [CANONICAL],
+		});
+		if (decision.kind !== 'passthrough') throw new Error('expected passthrough');
+		expect(decision.headers['Access-Control-Allow-Origin']).toBe(CANONICAL);
+	});
+
 	it('refuses an origin outside the allow-list with no CORS header', () => {
 		const decision = decide({ path: '/api/v1/reactions', method: 'PUT', origin: EVIL });
 		expect(decision.kind).toBe('refuse');

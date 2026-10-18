@@ -42,6 +42,17 @@ maintenance scripts under `scripts/`, `gifenc` / `wrangler` devDeps,
 unused public re-exports). They are tracked debt for a separate cleanup
 ticket and MUST NOT be re-baselined silently.
 
+The baseline is **fail-closed for this repository**: if
+`quality/knip-baseline.json` is missing or unparsable, `pnpm run knip:check`
+exits non-zero instead of degrading into "every finding is new".
+
+Absorbing the trunk is part of the same rule. When `release-*` lands other
+tickets that ship their own unused exports / one-off scripts, `knip:check`
+reports them as *new* until the baseline is regenerated. Run
+`pnpm run knip:update` in the same PR as that merge and let the diff show
+exactly which findings were absorbed; never edit the baseline by hand and
+never fix another ticket's debt from here.
+
 ## Fixtures
 
 `scripts/check-knip.test.mjs` builds a synthetic project in an OS temp dir that
@@ -49,3 +60,10 @@ declares an unused dependency and an unused export and asserts
 `scripts/check-knip.mjs --root <fixture>` exits non-zero (and exits zero
 once both findings are removed). This is the CI failure proof required
 by Issue #531.
+
+Further cases drive the diff itself, which is the path that actually runs
+in CI: a finding recorded in the fixture's `quality/knip-baseline.json`
+does not fail the gate, an unbaselined one does, and a baseline entry whose
+finding disappeared is reported as resolved. A `--root` fixture with no
+baseline file at all means "no debt recorded yet" and is the only case in
+which the baseline is optional.

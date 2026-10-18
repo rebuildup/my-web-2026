@@ -30,7 +30,18 @@ const SCRIPT_DIR = dirname(fileURLToPath(import.meta.url));
 const argv = process.argv.slice(2);
 const update = argv.includes('--update');
 const rootIdx = argv.indexOf('--root');
-const ROOT = rootIdx !== -1 ? argv[rootIdx + 1] : join(SCRIPT_DIR, '..');
+const ROOT_ARG = rootIdx === -1 ? undefined : argv[rootIdx + 1];
+if (rootIdx !== -1 && (!ROOT_ARG || ROOT_ARG.startsWith('--'))) {
+	console.error('::error::--root requires a directory argument');
+	process.exit(1);
+}
+if (update && rootIdx !== -1) {
+	console.error(
+		'::error::--update only rewrites the repository baseline; it cannot be combined with --root. Use --root <dir> to inspect a fixture.',
+	);
+	process.exit(1);
+}
+const ROOT = ROOT_ARG ?? join(SCRIPT_DIR, '..');
 const BASELINE_PATH = join(ROOT, 'quality', 'knip-baseline.json');
 const KNIP_BIN = join(SCRIPT_DIR, '..', 'node_modules', 'knip', 'bin', 'knip.js');
 
@@ -110,11 +121,16 @@ if (update) {
 	process.exit(0);
 }
 
+// The repository baseline is mandatory and fail-closed: without it the gate
+// would silently degrade into "everything is new". A `--root` fixture may
+// legitimately carry no baseline (meaning "no debt recorded yet"), but a
+// malformed one is still an error.
 let baseline = { findings: [] };
-if (rootIdx === -1) {
-	try {
-		baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
-	} catch {
+try {
+	baseline = JSON.parse(readFileSync(BASELINE_PATH, 'utf8'));
+} catch (error) {
+	const missing = error?.code === 'ENOENT';
+	if (!missing || rootIdx === -1) {
 		console.error(
 			`::error::baseline missing or unreadable: ${BASELINE_PATH}. Run \`pnpm run knip:update\` and review the diff.`,
 		);

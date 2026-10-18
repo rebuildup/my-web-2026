@@ -7,11 +7,16 @@
  * no source file imports and exports a symbol nobody consumes. Running
  * `scripts/check-knip.mjs --root <fixture>` must exit non-zero and name
  * both findings.
+ *
+ * A second pair of cases drives the baseline diff itself (the production
+ * path): a finding recorded in `quality/knip-baseline.json` must not fail
+ * the gate, an unbaselined one must, and a baseline entry whose finding
+ * disappeared must be reported as resolved rather than silently ignored.
  */
 
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
@@ -69,6 +74,74 @@ test('knip gate passes on a fixture without findings', () => {
 			encoding: 'utf8',
 		});
 		assert.equal(result.status, 0, `expected exit 0, stderr: ${result.stderr}`);
+	} finally {
+		rmSync(fixture, { recursive: true, force: true });
+	}
+});
+
+/** Record a baseline for a fixture, as `pnpm run knip:update` would. */
+function writeBaseline(fixture, findings) {
+	mkdirSync(join(fixture, 'quality'), { recursive: true });
+	writeFileSync(
+		join(fixture, 'quality', 'knip-baseline.json'),
+		`${JSON.stringify({ _schema: 1, findings }, null, '\t')}\n`,
+	);
+}
+
+test('knip gate diffs against the baseline: baselined finding passes, unbaselined one fails', () => {
+	// This is the production path (Issue #531 diff-gate semantics) that the two
+	// fixture tests above cannot reach: only findings missing from the baseline
+	// may fail the gate, and a finding that disappeared is reported as resolved.
+	const fixture = makeFixture();
+	writeBaseline(fixture, ['dependencies package.json totally-unused-dep']);
+	try {
+		const baselined = spawnSync(process.execPath, [SCRIPT, '--root', fixture], {
+			encoding: 'utf8',
+		});
+		assert.equal(baselined.status, 1, 'the unbaselined export must still fail');
+		assert.match(baselined.stderr, /exports src\/lib\.js dead/);
+		assert.doesNotMatch(baselined.stderr, /totally-unused-dep/);
+		assert.match(baselined.stdout, /2 findings \(1 baselined, 1 new\)/);
+
+		// Baseline both findings: the gate is green and the baselined-only
+		// finding is reported as resolved debt to clean up.
+		writeBaseline(fixture, [
+			'dependencies package.json totally-unused-dep',
+			'exports src/lib.js dead',
+		]);
+		const allBaselined = spawnSync(process.execPath, [SCRIPT, '--root', fixture], {
+			encoding: 'utf8',
+		});
+		assert.equal(allBaselined.status, 0, `expected exit 0, stderr: ${allBaselined.stderr}`);
+		assert.match(allBaselined.stdout, /2 findings \(2 baselined, 0 new\)/);
+
+		// Remove the unused export without touching the baseline: the gate must
+		// stay green but nag that the baseline is now stale.
+		writeFileSync(join(fixture, 'src', 'lib.js'), "export const used = 'used';\n");
+		const resolved = spawnSync(process.execPath, [SCRIPT, '--root', fixture], {
+			encoding: 'utf8',
+		});
+		assert.equal(resolved.status, 0, `expected exit 0, stderr: ${resolved.stderr}`);
+		assert.match(resolved.stdout, /1 findings \(2 baselined, 0 new\)/);
+		assert.match(resolved.stdout, /1 baselined findings no longer appear/);
+		assert.match(resolved.stdout, /pnpm run knip:update/);
+	} finally {
+		rmSync(fixture, { recursive: true, force: true });
+	}
+});
+
+test('knip gate rejects a --root or --update invocation that cannot be honoured', () => {
+	const fixture = makeFixture();
+	try {
+		const noValue = spawnSync(process.execPath, [SCRIPT, '--root'], { encoding: 'utf8' });
+		assert.equal(noValue.status, 1, '--root without a directory must fail');
+		assert.match(noValue.stderr, /--root requires a directory argument/);
+
+		const both = spawnSync(process.execPath, [SCRIPT, '--update', '--root', fixture], {
+			encoding: 'utf8',
+		});
+		assert.equal(both.status, 1, '--update with --root must fail');
+		assert.match(both.stderr, /cannot be combined with --root/);
 	} finally {
 		rmSync(fixture, { recursive: true, force: true });
 	}

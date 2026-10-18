@@ -114,7 +114,7 @@ pnpm run verify:browser-baseline-screenshot            # report HTML + WebP を�
 期待結果（現在の main 相当）:
 
 ```
-surfaces  12 declared · 128 files scanned · 0 uncovered
+surfaces  12 declared · 136 files scanned · 0 uncovered
 features  14 adopted (3 below the bar, each with a verified fallback) · 9 guarded
 warnings (3)   # word-break-auto-phrase / text-wrap-balance / text-wrap-pretty
 errors (0)

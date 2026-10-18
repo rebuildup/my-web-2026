@@ -101,6 +101,11 @@ primitive と同列の別 obligation として切っている。結線先は
 `src/router.tsx` の `defaultNotFoundComponent` / `defaultErrorComponent`
 （解決順が route 単位のため、root route に置いても子 route の失敗には届かない）。
 
+同じ `defaultErrorComponent` には transient な loader 失敗と恒久的な
+入力検証失敗が着地するため、`src/router.tsx` が両者を分類する。判定は
+route 自身の検証結果から導出する（`isPermanentInputFailure`）。訪問者に
+公開する kind の集合は増やしていない。
+
 ### `cloudflare/`
 
 Cloudflare runtime によって変更理由が決まる仕事を所有する。

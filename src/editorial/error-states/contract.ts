@@ -50,6 +50,16 @@
  * measurement script), and neither is required for the message to be
  * readable — see `ERROR_STATE_EXTERNAL_COMMUNICATIONS`, which records
  * the parties, the channel and the evidence file for each.
+ *
+ * Which failure maps to which kind
+ * --------------------------------
+ * That mapping is `src/router.tsx`'s decision, not this module's, and it
+ * needs no fourth kind: a loader failure is `service_unavailable`
+ * (transient — a retry can help), while a PERMANENT input failure (a
+ * route's own `validateSearch` / `validateParams` / `loaderDeps`) is
+ * answered with `not_found`, whose copy already names a mistyped link
+ * as a cause and which offers no retry. See
+ * `src/router.tsx#isPermanentInputFailure`.
  */
 
 /** Bilingual labels for the canonical public roster. Keyed by href. */

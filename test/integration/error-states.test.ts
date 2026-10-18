@@ -198,3 +198,95 @@ describe('failure surfaces over the real SSR pipeline (Issue #501)', () => {
 		expect(res.headers.get('cache-control')).toBe('no-cache');
 	});
 });
+
+/**
+ * A PERMANENT client-input failure must not be reported as an outage.
+ *
+ * `validateSearch` runs before the loader, so its failure reaches the
+ * same `defaultErrorComponent` as a D1 outage — but the same URL can
+ * never answer either time. Telling the visitor "part of the system did
+ * not respond, please try again shortly" would be false, and the retry
+ * control would be a dead end. `src/router.tsx#isPermanentInputFailure`
+ * answers these with the `not_found` surface instead; these tests pin
+ * that over the real SSR pipeline, including the fact that NO retry
+ * control is published for them.
+ */
+describe('permanent input failures over the real SSR pipeline (Issue #501)', () => {
+	beforeAll(async () => {
+		await SELF.fetch('https://example.com/tools', { redirect: 'manual' });
+	}, 60_000);
+
+	it('answers a repeated search param with the 404 surface, not the 503 one', async () => {
+		// `?facets=a&facets=b` parses `facets` to an ARRAY; the route's
+		// `SearchSchema` declares `facets: z.string().optional()`, so
+		// `validateSearch` throws before the loader ever runs.
+		const { status, html } = await fetchHtml('/portfolio?facets=a&facets=b');
+		// The response STATUS is still the framework's error status, and is
+		// not asserted to a value here: the document's status label and the
+		// response status are a recorded gap (report §7), and pinning the
+		// number here would fail the day that is closed.
+		expect(status).toBeGreaterThanOrEqual(400);
+		expect(servedState(html)).toBe('not_found');
+		expect(html).toContain(errorStateDefinition('not_found').headline);
+		expect(html).not.toContain(errorStateDefinition('service_unavailable').headline);
+		// No retry: re-requesting this exact URL can never succeed, so a
+		// retry control here would be a promise the platform cannot keep.
+		expect(html).not.toContain('data-error-action="retry"');
+		// The recovery affordances that CAN work are still offered.
+		expect(html).toContain('data-error-action="back"');
+		for (const alternative of alternativesFor('not_found')) {
+			expect(html).toContain(`href="${alternative.href}"`);
+		}
+	});
+
+	it('answers an invitation URL whose token fails validation the same way', async () => {
+		// The second measured route: `/admin/invitations/accept` declares
+		// `token: z.string().min(20).max(256)`, so a shorter token (or a
+		// missing one) is a permanent client-input failure — and no
+		// invitation is ever probed, so no token material is published.
+		for (const path of ['/admin/invitations/accept?token=too-short', '/admin/invitations/accept']) {
+			const { html } = await fetchHtml(path);
+			expect(servedState(html)).toBe('not_found');
+			expect(html).not.toContain('data-error-action="retry"');
+			expect(html).not.toContain(errorStateDefinition('service_unavailable').headline);
+		}
+	});
+
+	it('accepts the valid form of the token the test above rejects', async () => {
+		// The discriminator is "does THIS URL validate", not "does this
+		// route declare a search schema": a 24-character token satisfies
+		// the same schema, renders the route's own view and never reaches a
+		// failure surface of either kind.
+		const { status, html } = await fetchHtml(`/admin/invitations/accept?token=${'t'.repeat(24)}`);
+		expect(status).toBe(200);
+		expect(servedState(html)).toBeNull();
+	});
+
+	it('publishes no withheld runtime detail for an input failure either', async () => {
+		// The Zod issue list is a thrown value like any other: the
+		// rendered document must carry none of it, and the surface must
+		// not leak the route's validation schema to a visitor.
+		const { html } = await fetchHtml('/portfolio?facets=a&facets=b');
+		const visible = visibleDocument(html);
+		for (const needle of withheldDetailNeedles()) {
+			expect(visible).not.toContain(needle);
+		}
+		expect(visible).not.toMatch(/facets|ZodError|invalid_type/);
+		expect(visible).toContain('<h1');
+	});
+
+	it('keeps a loader failure on the same route a 503, with its retry', async () => {
+		// The separation must not swallow the case it is meant to keep:
+		// `/portfolio/<valid slug>` has a valid search and fails in the
+		// loader (no `portfolio_project` table in the test pool), which is
+		// transient and therefore keeps the retry control. The valid
+		// `?facets=develop` form of the query the first test rejects lands
+		// here too — so the discriminator keys on whether THIS URL
+		// validates, not on whether the route declares a search schema.
+		for (const path of [`/portfolio/${UNKNOWN_PROJECT_SLUG}`, '/portfolio?facets=develop']) {
+			const { html } = await fetchHtml(path);
+			expect(servedState(html)).toBe('service_unavailable');
+			expect(html).toContain('data-error-action="retry"');
+		}
+	});
+});

@@ -95,6 +95,7 @@ kinds exist, all owned by `src/editorial/error-states/`:
 | Symptom in a browser | Surface | What to do |
 | --- | --- | --- |
 | URL has no page, or a loader called `notFound()` | 404 state (back + the five public surfaces) | check the URL / the link that produced it |
+| the URL fails its own input validation (`validateSearch` / `validateParams` / `loaderDeps`), e.g. a repeated `?facets=a&facets=b` or an invitation `token` shorter than 20 characters | 404 state, deliberately without a retry — the same URL can never answer, so a retry would be a promise the platform cannot keep | fix the URL; a route that validates its input inside its loader instead of `validateParams` still lands on the 503 state below |
 | the page itself failed to render (loader or SSR threw) | 503 state (retry first, then back) | retry; if it persists, check the D1 / R2 probes on `/api/v1/db/ping` and `/api/v1/media/ping` |
 | the page rendered but a data read failed | dependency state (retry, plus the two surfaces that read no binding) | retry; check upstream availability |
 

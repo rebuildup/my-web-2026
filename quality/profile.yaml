@@ -39,6 +39,7 @@ gates:
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).
       - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
+      - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       - 'pnpm run typecheck' # tsc --noEmit
@@ -119,6 +120,9 @@ change_risk_mapping:
   ci_workflow_change:
     gate: integration
     note: '.github/workflows/*.yml requires actionlint pass + cf-typegen:check'
+  dependency_or_supply_chain_change:
+    gate: fast
+    note: 'scripts/check-sbom.mjs rejects an SBOM whose npm inventory, digests or Tool pins drift from pnpm-lock.yaml / src/tools/manifest.json, and rejects secret-shaped content or a runtime-secret name from scripts/_cloudflare-contract.mjs'
   release_branch:
     gate: release
 
@@ -146,6 +150,27 @@ ci:
       release_extra:
         - 'pnpm run cf-typegen:check'
         - 'pnpm run e2e'
+      # Every step in the `validate` job, in workflow order. Listed
+      # explicitly so no step can appear in workflow YAML without an
+      # entry here (profile header: "Do not add hidden steps inside
+      # workflow YAML"). `pnpm run sbom:check` is NOT a step of its
+      # own — it runs inside `validate:fast`, which the first command
+      # above already covers; the two SBOM steps below only materialise
+      # and retain the document after the gate has passed. The two
+      # dependency advisory steps come from the release trunk (Issue
+      # #470) and are listed here so the inventory stays complete in
+      # merged order.
+      steps_after_validate_integration:
+        - name: Dependency advisory audit
+          run: 'pnpm run dep-audit:check -- --report .tmp/dependency-audit-report.html'
+        - name: Upload dependency advisory report
+          uses: actions/upload-artifact@v4
+          note: 'artifact dependency-advisory-report-<sha>, 90 day retention (see security_gates.dependency_review.ci_step)'
+        - name: Build SBOM
+          run: 'pnpm run sbom:build'
+        - name: Upload SBOM
+          uses: actions/upload-artifact@v4
+          note: 'artifact sbom-<sha>, 90 day retention (see security_gates.sbom.ci_artifact)'
   required_checks:
     public_repo_main: ['validate']
     public_repo_release_pr: ['validate']
@@ -169,6 +194,20 @@ security_gates:
     enabled: true
     mode: asynchronous
     note: 'Enabled via GitHub Push Protection + cloud bot.'
+  sbom:
+    enabled: true
+    issue: '#471'
+    format: cyclonedx-1.6
+    check_command: 'pnpm run sbom:check'
+    build_command: 'pnpm run sbom:build'
+    report_command: 'pnpm run sbom:report'
+    ci_artifact: 'sbom-<sha> (actions/upload-artifact@v4, 90 day retention)'
+    inputs:
+      - pnpm-lock.yaml
+      - package.json
+      - pnpm-workspace.yaml
+      - src/tools/manifest.json
+    note: 'Fail-closed on inventory drift, digest mismatch (SHA-512 per component and SHA-256 provenance per tracked input), dangling graph edges, components carrying properties CycloneDX 1.6 does not define, and secret-shaped content or a runtime-secret name from scripts/_cloudflare-contract.mjs. The generator reads only the listed tracked files — no environment credential, .dev.vars, Infisical export or Worker secret value (AGENTS.md section 4). See docs/runbook/sbom.md.'
   install_script_audit:
     enabled: true
     tool: scripts/check-install-scripts.mjs

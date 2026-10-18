@@ -33,6 +33,14 @@ import { CounterTile } from './tiles';
  * The digit URL imports resolve to the same hashed path Vite emits
  * into the SSR / client bundles; the assertion compares against the
  * import value so the test stays correct as Vite re-hashes assets.
+ *
+ * Locale rendering (Issue #430). The tile renders its period date,
+ * its relative "last hit" span, and its grouped count through the
+ * home format adapter, so the same instant reads per locale. The
+ * digit strip itself stays locale-independent: the odometer is a
+ * fixed-width sequence of digit images and a grouping separator
+ * would break its geometry, so only the accessible label and the
+ * delta label carry the grouped form.
  */
 
 const SLOT_COUNT = 7;
@@ -137,5 +145,52 @@ describe('CounterTile', () => {
 		};
 		const html = renderToStaticMarkup(<CounterTile data={data} />);
 		expect(html).not.toContain('last hit:');
+	});
+});
+
+describe('CounterTile — locale rendering (Issue #430)', () => {
+	/** Fixed clock so the relative span is deterministic. */
+	const now = Date.UTC(2026, 0, 5, 9, 0, 0);
+	const data: HomeCounterData = {
+		key: 'home-page',
+		count: 1234,
+		first_hit: Date.UTC(2026, 0, 1, 0, 0, 0),
+		last_hit: now - 5 * 60_000,
+		enabled: true,
+	};
+
+	it('reads the same instant per locale', () => {
+		const en = renderToStaticMarkup(<CounterTile data={data} locale="en" now={() => now} />);
+		const ja = renderToStaticMarkup(<CounterTile data={data} locale="ja" now={() => now} />);
+		const ko = renderToStaticMarkup(<CounterTile data={data} locale="ko" now={() => now} />);
+		// The period date is the locale's own date order.
+		expect(en).toContain('since Jan 1, 2026');
+		expect(ja).toContain('since 2026/01/01');
+		expect(ko).toContain('since 2026. 1. 1.');
+		// The relative span is worded by the locale, with the unit.
+		expect(en).toContain('5 minutes ago');
+		expect(ja).toMatch(/5[\s　]分前/);
+		expect(ko).toMatch(/5분\s전/);
+	});
+
+	it('defaults to the shipped English rendering when no locale is passed', () => {
+		const html = renderToStaticMarkup(<CounterTile data={data} now={() => now} />);
+		expect(html).toContain('since Jan 1, 2026');
+		expect(html).toContain('5 minutes ago');
+	});
+
+	it('groups the count for the screen-reader label without changing the digit strip', () => {
+		const html = renderToStaticMarkup(<CounterTile data={data} locale="ja" now={() => now} />);
+		// The accessible label carries the grouped number.
+		expect(html).toContain('aria-label="1,234 page views"');
+		// The strip is unchanged: the same seven digit images as the
+		// English rendering ("0001234" — three leading zeros).
+		// (The strip is images, so the grouped form only ever appears
+		// in the accessible label — never as a visible separator.)
+		expect(html.match(new RegExp(`src="${digit0Url}"`, 'g'))?.length).toBe(3);
+		expect(html).toContain(`src="${digit1Url}"`);
+		expect(html).toContain(`src="${digit2Url}"`);
+		expect(html).toContain(`src="${digit3Url}"`);
+		expect(html).toContain(`src="${digit4Url}"`);
 	});
 });

@@ -291,6 +291,14 @@ Playwright E2E is a separate CI step on pushes to `main` / `release-*`
 and on PRs with the `ui-change` label; it is not part of the local
 `validate:release` command.
 
+`validate:fast` also runs `install:scripts:check` (Issue #474): the
+dependency install-lifecycle audit that keeps
+`pnpm-workspace.yaml#allowBuilds` and
+[`quality/install-scripts.json`](quality/install-scripts.json) in
+agreement. It reads installed manifests and those two files only, is
+status-only, and fails closed when the tree is not a pnpm install.
+Runbook: [`docs/runbook/install-script-audit.md`](docs/runbook/install-script-audit.md).
+
 One gate is deliberately **not** in the three entry points: the
 dependency advisory gate (Issue #470,
 [`quality/dependency-advisory-gate.json`](quality/dependency-advisory-gate.json),

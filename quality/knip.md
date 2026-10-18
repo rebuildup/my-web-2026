@@ -59,7 +59,8 @@ Absorbed so far (each line is an addition the diff shows, never a removal):
 | --- | --- |
 | `types src/http/webhooks/signature.ts WebhookSignedMaterial` | #463 (webhook signature adapter) landed on `release-0-6-3`; the type is documented vocabulary for the not-yet-mounted `/webhooks/*` route, so it is #463's debt, not this gate's. |
 | `exports scripts/publication-surface.mjs TOOL_SHIPPED_SUBPATHS` | #505 (publication surface snapshot) landed on `release-0-6-3`; the constant documents what a Tool checkout ships but has no consumer yet, so it is #505's debt, not this gate's. |
-| `exports src/portfolio/markdown.xss-fixtures.ts acceptedMarkdownFixtures` | #451 (portfolio markdown XSS boundary) landed on `release-0-6-3`; the accessor has no consumer in the three verification layers #451 shipped, so it is #451's debt, not this gate's. |
+| `exports src/portfolio/markdown.xss-fixtures.ts acceptedMarkdownFixtures` | #451 (portfolio markdown XSS boundary) landed on `release-0-6-3`; absorbed on arrival, then resolved by #451's own follow-up (the corpus moved to `test/fixtures/` and the accessor gained a consumer). Listed here so the removal in the baseline diff is not read as a silent shrink. |
+| `files scripts/render-session-cookie-report.mjs` | #438 (session cookie contract) landed on `release-0-6-3`; a one-off verification report script, so it is #438's debt, not this gate's. |
 
 ## Fixtures
 

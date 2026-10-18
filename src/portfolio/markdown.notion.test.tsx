@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { PortfolioMarkdown } from './components/Markdown';
 import { BLOCKED_LINK_CLASS, parseMarkdown } from './markdown.lexer';
 import { sanitizeNotionHtml } from './markdown.notion';
-import { executableMarkupFindings } from './markdown.xss-fixtures';
+import { executableMarkupFindings } from '../../test/fixtures/markdown-xss-fixtures';
 
 /**
  * Notion-derived HTML sanitiser (Issue #451).

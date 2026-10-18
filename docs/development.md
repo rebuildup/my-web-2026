@@ -339,6 +339,16 @@ makes it is expected to state the new measurement, the delta, and what caused
 it. An `exception` is the only mechanism that survives that review on its own
 merits, because the gate itself refuses an unreasoned one.
 
+`validate:fast` additionally runs `pnpm run install:scripts:check`,
+the dependency install lifecycle script audit (Issue #474). It fails
+when an installed dependency can execute code during `pnpm install`
+(a `preinstall` / `install` / `postinstall` hook, the implicit
+`node-gyp rebuild` of a package that ships `binding.gyp`, or the
+`prepare` of a git-hosted dependency) that the reviewed policy in
+`quality/install-scripts.json` has no record for, or when that record
+and pnpm's execution allow-list (`pnpm-workspace.yaml`) disagree. See
+[`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
+
 ## Storybook
 
 Storybook 8.6.x previews the visual obligations that currently exist in source.

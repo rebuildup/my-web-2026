@@ -8,7 +8,11 @@ import { defineConfig, devices } from '@playwright/test';
  *   2. `e2e/prod-smoke.spec.ts` — production-only smoke, runs via
  *      `pnpm run e2e:prod` (= `PLAYWRIGHT_BASE_URL=https://rebuildup.dev
  *      playwright test e2e/prod-smoke.spec.ts`). Triggers the GH
- *      Actions `production smoke` workflow on `workflow_dispatch`.
+ *      Actions `production smoke` workflow on `workflow_dispatch`. The
+ *      Issue #500 representative-route group in that file also runs
+ *      offline via `pnpm run e2e:prod:local`, which keeps
+ *      `PLAYWRIGHT_BASE_URL` on localhost so nothing resolves the
+ *      production hostname.
  *   3. `e2e/tools-index.spec.ts` — `/tools` index page contract.
  *   4. `e2e/tools-prototype.spec.ts` — `/tools/prototype` iframe
  *      contract against the **built** Tool artifact.
@@ -41,7 +45,14 @@ import { defineConfig, devices } from '@playwright/test';
  * as canonical.
  */
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
+const LOCAL_SMOKE = process.env.E2E_LOCAL_PROD_SMOKE === '1';
+// `e2e:prod:local` is a deliberately local-only rehearsal: force the
+// localhost origin even if a parent shell/CI job still exports a production
+// `PLAYWRIGHT_BASE_URL`. The wrapper script also overwrites it; this is the
+// config-side fail-safe for anyone invoking Playwright directly.
+const BASE_URL = LOCAL_SMOKE
+	? `http://127.0.0.1:${PORT}`
+	: (process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`);
 
 // The local D1 state (`.tmp/d1state`) must be migrated and seeded
 // BEFORE the preview server starts serving from it. That work runs in
@@ -93,6 +104,22 @@ export default defineConfig({
 	// so the regular `pnpm run e2e` (CI on push, local dev) does not
 	// DNS-fail against a domain that may not be deployed yet.
 	//
+	// ONE documented exception: `pnpm run e2e:prod:local`, which sets
+	// `E2E_LOCAL_PROD_SMOKE=1` and runs the production spec file
+	// against the LOCAL preview build. It is safe precisely because
+	// `e2e/prod-smoke.spec.ts` navigates to the `baseURL` this config
+	// resolves (here: `http://127.0.0.1:3000`) instead of a hardcoded
+	// production origin, and because its Issue #43 group — which does
+	// hardcode the canonical origin, including the one deliberate write
+	// in the file, the anonymous reaction mutation — disarms itself
+	// unless the run is explicitly canonical, and local mode never is. It
+	// exists so the Issue #500 representative-route contract is
+	// reproducible offline and its verification screenshot can be
+	// captured without reading production.
+	// `e2e/prod-portfolio.spec.ts` stays ignored either way: it is the
+	// separate G15 post-publication contract and needs published entries
+	// plus production media.
+	//
 	// `portfolio.spec.ts` and `portfolio-markdown-xss.spec.ts` likewise
 	// target a local D1 binding: they seed rows into the local D1
 	// (`draft` / `unlisted` / `archived` visibility rows, and the
@@ -115,7 +142,9 @@ export default defineConfig({
 	testIgnore: [
 		'**/compat/**',
 		...(BASE_URL.startsWith('http://127.0.0.1')
-			? ['**/prod-*.spec.ts']
+			? LOCAL_SMOKE
+				? ['**/prod-portfolio.spec.ts']
+				: ['**/prod-*.spec.ts']
 			: ['**/portfolio.spec.ts', '**/portfolio-markdown-xss.spec.ts']),
 	],
 	// The local project spins up the preview server automatically.

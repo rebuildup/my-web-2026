@@ -81,6 +81,13 @@ export async function recordHomeHitImpl(
 			authorization: `Bearer ${apiKey}`,
 			accept: 'application/json',
 			'content-type': 'application/json',
+			// Issue #440: the boundary's CSRF guard requires a
+			// same-origin signal on every unsafe method. This self-call
+			// targets `upstreamOrigin` — the origin of the request that
+			// triggered it — so it declares that origin. Without the
+			// header the upstream boundary answers 403 `csrf_rejected`
+			// and the counter silently stops recording.
+			origin: upstreamOrigin,
 		},
 		body: JSON.stringify({ key, session_id }),
 	});

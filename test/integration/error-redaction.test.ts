@@ -42,6 +42,16 @@ import { externalBoundary } from '../../src/http/hono';
 const CAPTURE_PREFIX = '[capture]';
 
 /**
+ * Writes must declare a same-origin signal: the boundary's CSRF guard
+ * (Issue #440) runs before authentication on every unsafe method.
+ * `externalBoundary.request(path, init, env)` resolves a relative path
+ * against `http://localhost` (Hono's default), so that is the origin a
+ * first-party caller has to send here — the same shape
+ * `src/home/{access,reactions}/load.ts` sends in production.
+ */
+const BOUNDARY_ORIGIN = 'http://localhost';
+
+/**
  * Byte-identical to the `reactions` table in
  * `migrations/0003_reactions.sql` (workerd cannot read files).
  *
@@ -196,6 +206,7 @@ describe('rejected input is named, not leaked (Issue #457)', () => {
 					headers: {
 						authorization: 'Bearer mk_home_capture_stub',
 						'content-type': 'application/json',
+						origin: BOUNDARY_ORIGIN,
 					},
 					body: JSON.stringify({
 						target_key: 'home-page',
@@ -225,6 +236,7 @@ describe('rejected input is named, not leaked (Issue #457)', () => {
 					headers: {
 						authorization: 'Bearer mk_home_capture_stub',
 						'content-type': 'application/json',
+						origin: BOUNDARY_ORIGIN,
 					},
 					body: JSON.stringify({
 						target_key: 'home-page',
@@ -256,6 +268,7 @@ describe('rejected input is named, not leaked (Issue #457)', () => {
 				headers: {
 					authorization: 'Bearer mk_home_capture_stub',
 					'content-type': 'application/json',
+					origin: BOUNDARY_ORIGIN,
 				},
 				body: JSON.stringify({ key: 'home page', session_id: 'session-1' }),
 			},

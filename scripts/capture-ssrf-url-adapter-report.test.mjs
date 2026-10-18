@@ -9,6 +9,7 @@ import {
 	findUnprovenPolicyRow,
 	measure,
 	renderHtml,
+	resolveOutFile,
 } from './capture-ssrf-url-adapter-report.mjs';
 
 /**
@@ -242,4 +243,23 @@ test('renderHtml draws a group header per group and counts both outcomes', () =>
 test('renderHtml survives an empty matrix rather than throwing', () => {
 	const html = renderHtml([]);
 	assert.ok(html.includes('取得成功 0 / 拒否 0'));
+});
+
+test('resolveOutFile honours a positional argument and ignores --html', () => {
+	const root = new URL('../', import.meta.url).pathname;
+	assert.equal(
+		resolveOutFile(['/tmp/custom.webp']),
+		'/tmp/custom.webp',
+		'a lone positional must not be dropped (it used to resolve to the committed path)',
+	);
+	assert.equal(
+		resolveOutFile(['/tmp/custom.webp', '--html', '/tmp/report.html']),
+		'/tmp/custom.webp',
+		'the --html value must not be mistaken for the outFile',
+	);
+	assert.equal(
+		resolveOutFile(['--html', '/tmp/report.html']),
+		`${root}docs/verification/security/ssrf-url-adapter.webp`,
+		'no positional falls back to the committed artefact',
+	);
 });

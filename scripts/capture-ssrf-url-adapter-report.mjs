@@ -76,10 +76,26 @@ const htmlDump =
 	htmlFlagIndex === -1
 		? null
 		: resolve(ROOT, argv[htmlFlagIndex + 1] ?? '.tmp/ssrf-url-adapter.html');
-const positional = argv.filter(
-	(value, index) => index !== htmlFlagIndex && index !== htmlFlagIndex + 1,
-);
-const OUT = resolve(ROOT, positional[0] ?? 'docs/verification/security/ssrf-url-adapter.webp');
+
+/**
+ * The committed artefact path, optionally overridden by the first
+ * positional argument.
+ *
+ * `--html <path>` must be removed before the positional lookup, but only
+ * when the flag is actually present: filtering by `htmlFlagIndex` when it
+ * is `-1` would drop argv[0] and silently fall back to the committed
+ * path, overwriting the artefact a caller only meant to read.
+ */
+export function resolveOutFile(args) {
+	const flagIndex = args.indexOf('--html');
+	const positional =
+		flagIndex === -1
+			? args
+			: args.filter((value, index) => index !== flagIndex && index !== flagIndex + 1);
+	return resolve(ROOT, positional[0] ?? 'docs/verification/security/ssrf-url-adapter.webp');
+}
+
+const OUT = resolveOutFile(argv);
 
 /**
  * Anything matching these must never reach a committed artefact.
@@ -644,6 +660,9 @@ ${body}
       <li><strong>host_not_allowed</strong> — 予約 / internal ゾーン（<code>.internal</code> /
           <code>.local</code> / <code>.home.arpa</code> など）および単一ラベル。
           ラベル境界で判定するので <code>evil-internal.example.org</code> は通る。</li>
+      <li><strong>port_not_allowed</strong> — <code>80</code> / <code>443</code> 以外の port
+          （行内の理由列が実際の port 番号を示す）。非 default port は別サービスへの入口になりうるため、
+          URL の形だけで拒否する。</li>
       <li><strong>credentials_in_url</strong> — <code>https://api.github.com@169.254.169.254/</code> は
           「安全なホストを userinfo に重ねて内側へ誘う」古典的な手口。接続前に拒否される。</li>
       <li><strong>redirect hop の行</strong> — 1 段目は通るが <code>Location</code> の先で拒否されたもの。

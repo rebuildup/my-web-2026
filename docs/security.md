@@ -542,7 +542,6 @@ A redacted transcript of the observed responses is kept at
   adapter by `pnpm run security:ssrf:report`; the committed artefact
   and its reading guide are in
   [`docs/verification/security/`](verification/security/).
-
 - Redirect-target matrix (Issue #454) is regenerated from the shipped
   guard by `pnpm run security:redirect:report`; the committed image and
   its reading guide are in

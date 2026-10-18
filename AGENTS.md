@@ -78,6 +78,7 @@ routes -> about (`/portfolio/[slug]` embeds the approved person identity as the 
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
 about -> editorial (Issue #422 — approved snapshot → `Person` projection; the fact stays owned by `about`)
+
 routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
            /admin/login loader; the security classifier only, no router,
            no handler)
@@ -287,8 +288,8 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `architecture:check` +
-  `i18n:policy:check` + `version:check` + `typecheck` +
-  `test`)
+  `i18n:policy:check` + `publication:check` + `version:check` +
+  `typecheck` + `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +
   `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +

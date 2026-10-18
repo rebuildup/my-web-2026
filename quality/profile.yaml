@@ -40,6 +40,10 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      # Issue #423: robots.txt / sitemap.xml / per-route noindex meta must
+      # agree with the generated route inventory. Runs as a fast gate
+      # because it is a pure Node script (no worker, no build).
+      - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       - 'pnpm run typecheck' # tsc --noEmit

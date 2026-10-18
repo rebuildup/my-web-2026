@@ -359,7 +359,13 @@ fail / not-run / not-applicable fixtures.
 The `docs/verification/platform/storybook-ownership-check.webp`
 screenshot in #576 is a rendering of this gate's text report; re-create
 it from `--json` output, the gate itself needs nothing but the command
-above.
+above. Issue #509 names a `.png` for this screenshot; the repository
+ships it as `.webp` at the same path stem under the WebP policy / #452
+precedent, and the intermediate PNG is not committed. Whether the
+Issue path should be amended to `.webp` or a `.png` should also be
+added is an owner decision, recorded as an open item in the PR body
+(the same substitution is already stated for
+`docs/verification/perf/bundle-map.webp` above).
 
 ## Playwright E2E
 

@@ -4,6 +4,7 @@ import { personFactsFromAbout } from '../../about/structured-data';
 import { PublicNav } from '../../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
+import { composeSocialCard, socialCardUrl } from '../../editorial/social-card';
 import { CreativeWorkJsonLd } from '../../editorial/structured-data';
 import { PortfolioDetail } from '../../portfolio/components';
 import { loadPortfolioAdjacent, loadPortfolioProject } from '../../portfolio/public';
@@ -35,12 +36,17 @@ import { creativeWorkFactsFromProject } from '../../portfolio/structured-data';
  * side (and both queries can hit the D1 prepared-statement
  * cache, since they share the public-visibility filter).
  *
- * OGP / metadata contract:
- *   `title`, `description`, `canonical`, `og:title`,
- *   `og:description`, `og:url`, `og:type=article`,
- *   `og:image` (cover, only if present), and Twitter card
- *   metadata are all derived from the loader result, not
- *   hardcoded. See `head: ...` below.
+ * OGP / metadata contract (Issue #421):
+ *   `title`, `description`, `canonical` and the whole og / twitter
+ *   set are composed by `src/editorial/social-card/card.ts` from the
+ *   loader result, never restated per route. The interesting branch
+ *   is the media-less project: the cover row is absent, or the R2
+ *   custom domain is unbound so `composeMediaUrl` returns `null`.
+ *   That used to degrade silently to an image-less summary card;
+ *   it now publishes the site-owned fallback card
+ *   (`src/editorial/social-card/contract.json#fallbackCard`) so the
+ *   unfurl always has an image AND the degradation is nameable — the
+ *   gate reads the emitted `og:image` and reports `fallback`.
  */
 export const Route = createFileRoute('/portfolio/$slug')({
 	loader: async ({ params }) => {
@@ -59,28 +65,22 @@ export const Route = createFileRoute('/portfolio/$slug')({
 		const { project } = loaderData;
 		const title = `${project.title} — Portfolio`;
 		const description = project.summary;
-		const url = `https://rebuildup.dev/portfolio/${project.slug}`;
-		const cover = project.media.find((m) => m.isCover) ?? project.media[0];
-		const ogImage = cover?.url ?? undefined;
+		const url = socialCardUrl(`/portfolio/${project.slug}`);
+		const card = composeSocialCard({
+			title,
+			socialTitle: project.title,
+			description,
+			url,
+			ogType: 'article',
+			image: coverImage(project.media),
+		});
 		return {
 			meta: [
 				{ charSet: 'utf-8' },
 				{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
 				{ title },
 				{ name: 'description', content: description },
-				{ property: 'og:type', content: 'article' },
-				{ property: 'og:title', content: project.title },
-				{ property: 'og:description', content: description },
-				{ property: 'og:url', content: url },
-				...(ogImage
-					? [
-							{ property: 'og:image', content: ogImage },
-							{ name: 'twitter:card', content: 'summary_large_image' },
-							{ name: 'twitter:title', content: project.title },
-							{ name: 'twitter:description', content: description },
-							{ name: 'twitter:image', content: ogImage },
-						]
-					: [{ name: 'twitter:card', content: 'summary' }]),
+				...card.meta,
 			],
 			links: [{ rel: 'canonical', href: url }],
 		};
@@ -102,4 +102,29 @@ function DetailRoute() {
 			<PortfolioDetail project={project} adjacent={adjacent} />
 		</>
 	);
+}
+
+/**
+ * The cover this route publishes as its card, or `null` when the
+ * project publishes no usable image (no media row, unbound media
+ * domain, or a row without alt text). `composeSocialCard` decides
+ * what that means; the route only reports what the loader found.
+ */
+function coverImage(
+	media: ReadonlyArray<{
+		isCover: boolean;
+		url: string | null;
+		alt: string;
+		width: number | null;
+		height: number | null;
+	}>,
+) {
+	const cover = media.find((m) => m.isCover) ?? media[0];
+	if (!cover) return null;
+	return {
+		url: cover.url,
+		alt: cover.alt,
+		width: cover.width,
+		height: cover.height,
+	};
 }

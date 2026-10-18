@@ -2,14 +2,14 @@ import { type EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import type { ReactionAggregate } from '../../http/reactions/schema';
+import { classifySlugCandidate } from '../../i18n/slug-identity';
 import { createAuditLogger } from '../../logging/logger';
+import { EMOJI_SLUG_GRAMMAR } from '../../reactions/slug-regex';
 import { resolveEmojiSlug } from './emoji-catalog';
 import type { HomeReactionsData } from './load';
 import { addHomeReaction, removeHomeReaction } from './load';
 
 const MAX_RECORDED_CHIPS = 8;
-const EMOJI_SLUG_REGEX = /^[a-z][a-z0-9_]*$/;
-const MAX_EMOJI_SLUG_LEN = 16;
 
 /**
  * Widget-side diagnostics go through the shared redacting logger
@@ -90,19 +90,23 @@ export interface ReactionsWidgetProps {
  * Returns `null` when neither path yields a valid slug — caller
  * surfaces an inline error instead of forwarding the reaction.
  *
+ * Issue #433: both paths go through the canonical
+ * `EMOJI_SLUG_GRAMMAR` (`src/reactions/slug-regex.ts`) and the shared
+ * `classifySlugCandidate`, so this widget no longer carries its own
+ * copy of the pattern and a non-ASCII CLDR name is refused by the
+ * platform's Unicode policy instead of by a duplicated regex. The
+ * `u_<unified>` fallback is unaffected: `unified` is ASCII hex by
+ * definition, and nothing here derives a slug from the DISPLAY glyph.
+ *
  * Exported for unit testing.
  */
 export function deriveSlugFromPicker(clicked: EmojiClickData): string | null {
 	for (const name of clicked.names) {
-		if (name.length >= 1 && name.length <= MAX_EMOJI_SLUG_LEN && EMOJI_SLUG_REGEX.test(name)) {
-			return name;
-		}
+		const verdict = classifySlugCandidate(name, EMOJI_SLUG_GRAMMAR);
+		if (verdict.ok) return verdict.slug;
 	}
-	const fallback = `u_${clicked.unified.toLowerCase()}`;
-	if (fallback.length <= MAX_EMOJI_SLUG_LEN && EMOJI_SLUG_REGEX.test(fallback)) {
-		return fallback;
-	}
-	return null;
+	const verdict = classifySlugCandidate(`u_${clicked.unified.toLowerCase()}`, EMOJI_SLUG_GRAMMAR);
+	return verdict.ok ? verdict.slug : null;
 }
 
 /**

@@ -76,6 +76,28 @@ const forbiddenOwnerDependencies = new Map([
 const parentSourceRoots = ['src', 'scripts', 'e2e', 'migrations'];
 
 /**
+ * Leaf obligations (Issue #433): pure policy that owns a rule, not a
+ * surface, so it may not depend on any other obligation. Keeping the
+ * rule at the bottom of the graph is what lets `home/`, `portfolio/`,
+ * `reactions/`, `admin/` and `routes/` all obey the same Unicode /
+ * slug policy without any of them depending on each other.
+ *
+ * The exemption is for EVERY `*.test.*` / `*.spec.*` file under a
+ * leaf obligation, not just the one file that needs it today: a
+ * decision table's tests assert that the policy agrees with the
+ * owner-owned grammars it was written against
+ * (`src/i18n/fixtures.test.ts` imports `EMOJI_SLUG_GRAMMAR` and
+ * `PORTFOLIO_SLUG_GRAMMAR`), and that shape is not going to be
+ * special-cased per file. The RULE the leaf states — "policy depends
+ * on nothing" — is still enforced on every implementation module.
+ */
+const leafOwners = new Set(['i18n']);
+
+function isTestFile(path) {
+	return /\.(test|spec)\.tsx?$/.test(relative(srcRoot, path).split(sep).join('/'));
+}
+
+/**
  * Owner pairs where the dependency is allowed only through
  * `import type ...`. These exceptions preserve the runtime owner
  * graph because TypeScript erases the edge under
@@ -162,6 +184,19 @@ for (const file of sourceFiles(srcRoot)) {
 	const source = readFileSync(file, 'utf8');
 	const staticImports = importStatements(source);
 	const runtimeImports = runtimeImportSpecifiers(source);
+
+	if (leafOwners.has(fromOwner) && !isTestFile(file)) {
+		const specifiers = [...staticImports.map((stmt) => stmt.specifier), ...runtimeImports];
+		for (const specifier of specifiers) {
+			const target = resolveInternalImport(file, specifier);
+			if (!target) continue;
+			const toOwner = ownerOf(target);
+			if (!toOwner || toOwner === fromOwner) continue;
+			errors.push(
+				`${relative(root, file)}: ${fromOwner} is a leaf obligation and must not depend on ${toOwner} (${specifier})`,
+			);
+		}
+	}
 
 	for (const stmt of staticImports) {
 		const target = resolveInternalImport(file, stmt.specifier);

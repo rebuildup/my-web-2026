@@ -726,6 +726,12 @@
 			"role": "DB-backed emoji catalog shared by home/ and admin/"
 		},
 		{
+			"id": "i18n",
+			"root": "src/i18n",
+			"min_files": 1,
+			"role": "Unicode / URL-slug policy leaf obligation (display-text preservation, slug classification, shared decision table)"
+		},
+		{
 			"id": "external-api",
 			"root": "src/external-api",
 			"min_files": 1,

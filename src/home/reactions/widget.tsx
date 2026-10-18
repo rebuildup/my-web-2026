@@ -3,12 +3,21 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import type { ReactionAggregate } from '../../http/reactions/schema';
 import { classifySlugCandidate } from '../../i18n/slug-identity';
+import { createAuditLogger } from '../../logging/logger';
 import { EMOJI_SLUG_GRAMMAR } from '../../reactions/slug-regex';
 import { resolveEmojiSlug } from './emoji-catalog';
 import type { HomeReactionsData } from './load';
 import { addHomeReaction, removeHomeReaction } from './load';
 
 const MAX_RECORDED_CHIPS = 8;
+
+/**
+ * Widget-side diagnostics go through the shared redacting logger
+ * (Issue #467): the rejection value of a server function can carry
+ * upstream response detail, and this runs in the visitor's browser
+ * console, which is trivially captured.
+ */
+const widgetLogger = createAuditLogger('home.reactions');
 
 /**
  * Visitor-facing emoji reactions widget for the home page
@@ -462,7 +471,7 @@ export function ReactionsWidget({ data }: ReactionsWidgetProps) {
 				if (!result.ok) setError(result.reason ?? 'upstream_error');
 			})
 			.catch((err: unknown) => {
-				console.error('[home.reactions] toggle failed', err);
+				widgetLogger.error('toggle failed', err);
 				setError('upstream_error');
 			});
 	};

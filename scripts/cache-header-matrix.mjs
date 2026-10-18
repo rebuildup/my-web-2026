@@ -213,11 +213,24 @@ export function assessRow(row, headerVerdict) {
  * `If-None-Match` on the first fetch would change what is being
  * measured.
  */
+/**
+ * Resolve a matrix path against the supplied base URL.
+ *
+ * String concatenation turned `--base-url=http://host:3000/` into
+ * `http://host:3000//favicon.svg`, a different pathname than the one
+ * the contract names (and than Chromium navigates to via `new URL`).
+ * `URL` resolution keeps a single slash and matches the browser
+ * observer.
+ */
+export function resolveProbeUrl(baseUrl, path) {
+	return new URL(path, baseUrl).href;
+}
+
 async function probe(baseUrl, target) {
 	if (!target.path) {
 		return { ...target, status: null, skipped: true, note: target.note };
 	}
-	const url = `${baseUrl}${target.path}`;
+	const url = resolveProbeUrl(baseUrl, target.path);
 	const response = await fetch(url, { redirect: 'manual' });
 	const row = {
 		id: target.id,
@@ -349,7 +362,16 @@ async function probeWithBrowser(baseUrl, rows) {
 		return { available: false, reason: `playwright unavailable: ${error.message}` };
 	}
 
-	const browser = await chromium.launch();
+	let browser;
+	try {
+		browser = await chromium.launch();
+	} catch (error) {
+		// Importing `@playwright/test` succeeds even when the Chromium
+		// binary was never installed (the repository installs it in a
+		// separate `e2e:install` step). Without this catch the documented
+		// command dies before writing any report at all.
+		return { available: false, reason: `chromium launch failed: ${error.message}` };
+	}
 	const version = browser.version();
 	const page = await browser.newPage();
 	const observed = new Map();

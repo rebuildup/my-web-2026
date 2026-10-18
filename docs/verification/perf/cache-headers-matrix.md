@@ -49,6 +49,18 @@ error envelope は要求パスを含む。いずれも per-user 応答である�
 | `admin-page` | 管理画面（HTML / redirect） | `/admin*` | `no-store` | なし | `Cookie, Authorization`（`no-store` と同じ呼び出しで宣言 / #460） | Worker entry（`src/server.ts`） | 同上 |
 | `api-json` | 外部 API JSON | `/api/v1/health`, `/api/v1/*` | `private, no-store` | なし | `Cookie, Authorization`（boundary isolation middleware が宣言 / #460） | 外部 boundary の isolation（`src/http/middleware/cache-policy.ts`）が `src/server.ts` の既定に上乗せ | `test/integration/cache-policy-matrix.test.ts` / `test/integration/cache-isolation.test.ts` |
 
+**この表の対象範囲。** 表は本契約が所有する外部レスポンスクラスだけを列挙する。
+次の 2 系統は**別の契約が決定する**ため意図的に含めていない（表の外にあること自体が「方針なし」を意味しない）:
+
+- `/sitemap.xml` / `/robots.txt` — `src/http/seo/router.ts` が
+  `public, max-age=300, must-revalidate` を宣言する。crawler の鮮度判断であり、
+  asset と個人ページの分離とは別の決定である。
+- `/_serverFn/*` — `src/server.ts` が `private, no-store` を宣言する（#460）。
+  外部 HTTP ではなくアプリ内部の transport である。
+
+これらを含めないことを「全クラスを網羅した」と読ませないよう、
+行列の module docblock にも同じ境界を書いている。
+
 表の `Vary` 列のうち**静的資産 2 行**は**観測されるべき値**であって
 本リポジトリが宣言する値ではない（`varyNote` に明記）。
 一方 `admin-page` / `api-json` / `personal-page`（caller 付き）の `Vary` は

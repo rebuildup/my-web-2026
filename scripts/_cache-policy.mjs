@@ -3,11 +3,29 @@
  *
  * What this module is
  * -------------------
- * ONE table of every response class the site can serve, and the
+ * ONE table of every response class THIS CONTRACT owns, and the
  * `Cache-Control` / validator / `Vary` contract each class owes. It is
  * data plus pure functions only — no `node:fs`, no network — so it is
  * importable from plain Node scripts (`node --test`, the measurement
  * tool) and from the workerd test pool TypeScript alike.
+ *
+ * Scope boundary
+ * --------------
+ * Two response families stay OUTSIDE this table because another
+ * contract decides them, and listing them here would make this table a
+ * second SoT for a decision it does not own:
+ *
+ *   - `/sitemap.xml` and `/robots.txt` are owned by
+ *     `src/http/seo/router.ts` (`public, max-age=300,
+ *     must-revalidate`). That is a crawler-freshness decision, not the
+ *     asset/personal-page split this Issue reconciles.
+ *   - `/_serverFn/*` is owned by `src/server.ts` (`private, no-store`,
+ *     Issue #460). It is an internal application transport, not an
+ *     external HTTP response class.
+ *
+ * Both are still real policies and still have their own tests; the
+ * sentence "every response class the site can serve" would overclaim
+ * this matrix, so the report states the boundary instead.
  *
  * Why a table at all
  * ------------------

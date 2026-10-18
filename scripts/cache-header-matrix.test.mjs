@@ -25,12 +25,25 @@ import {
 	buildTargets,
 	environmentBlock,
 	escapeHtml,
+	resolveProbeUrl,
 	toHtml,
 	toMarkdown,
 	unmeasuredRequiredClasses,
 } from './cache-header-matrix.mjs';
 
 const ASSET = { path: '/assets/index-B5Hb0lCH.js', source: 'dist/client/assets', candidates: 12 };
+
+test('a trailing slash in --base-url does not change the probed pathname', () => {
+	// String concatenation produced `//favicon.svg`, which the Worker
+	// treats as a different path than the contract names — while
+	// Chromium navigated to `/favicon.svg`, creating a false
+	// Node-vs-browser disagreement.
+	const withSlash = resolveProbeUrl('http://127.0.0.1:3000/', '/favicon.svg');
+	const withoutSlash = resolveProbeUrl('http://127.0.0.1:3000', '/favicon.svg');
+	assert.equal(withSlash, 'http://127.0.0.1:3000/favicon.svg');
+	assert.equal(new URL(withSlash).pathname, '/favicon.svg');
+	assert.equal(withSlash, withoutSlash);
+});
 
 test('every matrix class is probed at least once', () => {
 	const targets = buildTargets(ASSET);

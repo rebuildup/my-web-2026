@@ -36,7 +36,7 @@ function leg(overrides = {}) {
 		environment: 'preview (pnpm run build, local)',
 		profile: 'Fast 4G (9 Mbit/s down, 150 ms RTT) + CPU x4',
 		cpuThrottlingRate: 4,
-		browser: 'chromium 0.0.0',
+		browser: 'chromium (fixture build)',
 		trackedTreeDirty: false,
 		viewport: { width: 1280, height: 800 },
 		...overrides,

@@ -119,6 +119,7 @@
 		"routes:quality:report": "node scripts/check-route-quality-coverage.mjs --report=.tmp/route-quality-report.html",
 		"i18n:policy:check": "node scripts/check-i18n-policy.mjs",
 		"capture:i18n-verification": "node scripts/capture-i18n-unicode-slug.mjs",
+		"capture:glyph-coverage": "node --experimental-strip-types scripts/capture-glyph-coverage.mjs",
 		"security:ssrf:report": "node scripts/capture-ssrf-url-adapter-report.mjs",
 		"log:redaction:check": "node scripts/check-log-redaction.mjs",
 		"security:embed:check": "node scripts/check-frame-ancestors-policy.mjs",

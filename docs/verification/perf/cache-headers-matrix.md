@@ -168,11 +168,11 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
 **ビルドの同一性。** probe は既に存在する本番同等のpreview に対して走る。
 記録された SHA と probe したビルドが同一であるためには、
 `src/` `public/` `cloudflare.config.ts` `vite.config.ts` `migrations/` が
-その SHA でビルドされている必要がある。本次採取では、ビルドを
-`c11bd77` 相当のツリー（`541e401` の runtime ツリーと同一）で作成し、
-`6557eab` までの差分は `scripts/` `docs/` `package.json`
-`quality/profile.yaml` のみであることを `git diff 541e401 6557eab -- src/ public/` で確認した。
-runtime ツリーを変更した場合は `pnpm run build:production` を再実行してから測り直す。
+その SHA でビルドされている必要がある。
+マージで base（`31ea9d8`）を取り込んだ `abb9997` の clean ツリーで
+`pnpm run build:production` を実行し、そのまま測定した
+（記録された SHA とビルドは同一）。runtime ツリーを変更した場合は
+`pnpm run build:production` を再実行してから測り直す。
 
 **指標（スコア）は出ない。** 速度・転送量・TTFB をこのツールは測らない。
 Lighthouse 導入は #384、release gate 化は #385、Web Vitals 予算は #386 の担当であり、
@@ -205,7 +205,7 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
 - スクリーンショットは上記の `--screenshot` が生成した `report.html` を WebP 化したもの。
   Issue が要求する `docs/verification/perf/cache-headers-matrix.png` と同じ場所に置いたが、
   **拡張子のみ `.webp`**。理由は 2 つで、どちらも本Issueの判断である:
-  (1) PNG を commit するとリポジトリが肥大する（PNG は 968 KB / WebP は 164 KB）、
+  (1) PNG を commit するとリポジトリが肥大する（PNG は 968 KB / WebP は 183 KB）、
   (2) 既に PNG で著的する意味を持たない画像成果物である。
   （本リポジトリに「画像は WebP で行う」という成文の規範は**存在しない**。
   したがってこの選択は規範への準拠ではなく、上記の容量判断によるものである。）
@@ -213,11 +213,14 @@ pnpm run cache:headers:measure -- --base-url=http://127.0.0.1:3000 \
 - レポート内の `source SHA` は**画像を commit する直前の HEAD** を指す。
   スクリーンショット自身を commit すると SHA が変わるため、記録と画像の間に
   1 commit のずれがある（これは避けられない連鎖であり、その旨を明記する）。
-  現在の画像は SHA `fcf6452`（review 修正のコード commit）の clean ツリーで採取した。
+  現在の画像は SHA `abb9997`（base マージと #460 への reconciled を含むコード commit）の
+  clean ツリーで採取した。ビルドもその SHA のツリーから `pnpm run build:production` で作成している。
 - 現在の画像が示す測定結果: **9 measured / 0 failed / 1 skipped**、
   合格基準 1〜6 はすべて PASS で、基準 3〜6 は行から算出された値
   （例: 「7 dynamic rows carry no validator, 2 asset rows answered 304」、
   「5 classes measured」）。
+- 否定対照: サーバーを落とした URL を測ると **exit 1**
+  （`FAIL nothing was measured: no target of 10 produced a response …`）。
 - 測定ポートは 3000 ではなく **3487** を使用した。同ホストで別の worktree の
   `vite preview` が 3000 を掴んでいると、`--base-url` は別ワークツリーの配線を
   測ってしまう（実際、`/api/v1/health` に `Cache-Control` が無い別のビルドを

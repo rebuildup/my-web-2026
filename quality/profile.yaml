@@ -72,6 +72,8 @@ gates:
       # credential-free https repository with no branch-tip tracking.
       - 'pnpm run tools:provenance:check'
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
+      # Issue #492: published route roster vs. quality-gate coverage.
+      - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run infisical:check:coverage'
       - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
@@ -91,6 +93,14 @@ gates:
     components:
       - fast
       - 'pnpm run build' # vite build -> dist/, Tool artifacts, Build Output sync
+      # Issue #482. The budget reads the client bundle graph that
+      # `vite build` writes (dist/client/bundle-graph.json). `pnpm run
+      # validate:integration` actually invokes it after `pnpm run
+      # build:production` (build + build:cf:production + build:cf:verify), so
+      # the Tool build output it aggregates separately is already on disk —
+      # and before `pnpm run build-storybook` merges vite.config.ts and
+      # rewrites the same graph path. See the `bundle_budget` section below.
+      - 'pnpm run bundle:budget:check' # per-route initial JS/CSS budget
       - 'pnpm run build:cf:production' # cf build -> .cloudflare/output/v0/
       - 'pnpm run build:cf:verify' # Build Output completeness (Worker bundle + Tool artifacts + mode)
       - 'pnpm run deploy:cf:prebuilt:dry-run' # cf deploy --prebuilt --mode production --dry-run
@@ -149,6 +159,9 @@ change_risk_mapping:
   entrypoint_change:
     gate: integration
     note: 'src/server.ts, vite.config.ts, cloudflare.config.ts worker.entrypoint'
+  bundle_budget_change:
+    gate: integration
+    note: 'quality/bundle-budget.json, scripts/check-bundle-budget.mjs, or the vite.config.ts client-bundle-graph plugin require a real `pnpm run build`; validate:fast alone cannot re-measure'
   ci_workflow_change:
     gate: integration
     note: '.github/workflows/*.yml requires actionlint pass + ci:pins:check + cf-typegen:check'
@@ -157,6 +170,46 @@ change_risk_mapping:
     note: 'scripts/check-sbom.mjs rejects an SBOM whose npm inventory, digests or Tool pins drift from pnpm-lock.yaml / src/tools/manifest.json, and rejects secret-shaped content or a runtime-secret name from scripts/_cloudflare-contract.mjs'
   release_branch:
     gate: release
+
+# Issue #482 — per-route initial JS/CSS byte budget.
+#
+# This is a SHIPPED-BYTES gate, not a performance gate. It is deliberately
+# kept separate from the three adjacent works so they are never confused:
+#   #384 Lighthouse measurement infrastructure (browser, page loads)
+#   #385 Lighthouse score thresholds (browser, release gate)
+#   #386 Core Web Vitals / LCP / CLS budgets (browser, runtime metrics)
+#   #482 this section — raw bundle bytes per route (no browser at all)
+# A Lighthouse score can drop without any byte changing (a slow runner, a
+# cold cache), and bytes can grow without the score noticing until it
+# matters. Both are true; only one of them is decided here.
+bundle_budget:
+  source_of_truth: 'quality/bundle-budget.json'
+  command: 'pnpm run bundle:budget:check'
+  implementation: 'scripts/check-bundle-budget.mjs (gate) + the my-web-2026:client-bundle-graph plugin in vite.config.ts (measurement input)'
+  tests: 'scripts/check-bundle-budget.test.mjs'
+  gate: integration
+  cost_class: cheap
+  trigger: every `validate:integration` run (pull_request, push_to_main, push_to_release_branch)
+  input: 'dist/client/bundle-graph.json — written by the Vite client build from `writeBundle`, measuring the files emitted into the Cloudflare plugin asset output (.cloudflare/output/v0/workers/default/assets); it only READS that deploy artifact, it never modifies it'
+  tool_iframe: 'aggregated and capped separately (each Tool is an independent Vite build served from /tools/<slug>/app/ inside a sandboxed iframe)'
+  reproduction:
+    measurement: 'static chunk-graph arithmetic — entry chunk + each route chunk transitive STATIC-import closure + the chunks of the route layout ancestors it renders with; dynamic imports are never charged to first paint'
+    browser: 'not applicable — no browser is launched'
+    network: 'not applicable — RAW on-disk bytes are budgeted; gzip -9 is reported for reference only and is never budgeted (CDN compression is a separate concern)'
+    cpu: 'not time-based — deterministic byte arithmetic on any machine; only the `pnpm run build` that produces the input is runner-dependent'
+    source_sha: 'printed as `git rev-parse HEAD` on every run, so a red CI log always names the exact tree that was measured (CI builds and measures in one job at one SHA)'
+    stale_input: 'dist/client/bundle-graph.json is gitignored build output and its path is also written by the Storybook builder; the gate WARNs when the recorded out_dir no longer holds the graph chunks, and exits 2 when the graph is missing entirely'
+    runner: 'GitHub Actions `validate` job (ubuntu-latest) and any local `pnpm run build`'
+    reproduce: 'pnpm run build && pnpm run bundle:budget:check'
+  failure_policy:
+    - 'a route above its cap FAILS the validate job'
+    - 'a route present in src/routeTree.gen.ts with no budget entry FAILS (a new route is never implicitly free)'
+    - 'a route that produced no client chunk FAILS — an unmeasured route must not pass at 0 bytes'
+    - 'an overage is allowed only via an `exception` carrying a reason of at least 20 characters; a shorter or missing reason is a configuration error and FAILS'
+    - 'a missing `tool_iframe` section FAILS — deleting it would silently switch the Tool cap off'
+    - 'a missing Tool build output is a WARNING naming the absent directory, not a silent zero-byte pass'
+    - 'raising a cap is not machine-checked (only an `exception` is); a cap change is reviewed in the PR diff with its measurement and rationale'
+    - 'a missing build graph exits 2 (input error), never 0'
 
 # Issue #492 — the published route roster and its quality-gate
 # coverage are one reviewable artefact, and a cheap gate keeps the two

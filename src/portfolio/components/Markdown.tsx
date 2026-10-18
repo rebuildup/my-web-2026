@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
 import { css } from '../../../styled-system/css';
 import {
+	type MarkdownInline,
+	type MarkdownLinkContext,
 	isExternalHref,
 	parseMarkdown,
 	safeHref,
-	type MarkdownInline,
-	type MarkdownLinkContext,
 } from '../markdown.lexer';
 
 /**

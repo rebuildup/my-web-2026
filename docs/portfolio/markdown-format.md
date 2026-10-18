@@ -86,7 +86,7 @@ fixture 記事（`src/portfolio/fixtures/markdown/technical-article.md`）はこ
 実際に書いているので、test だけでなく reader にも見える。
 
 **ただし 2 つだけ例外がある**。行頭の `- ` は対応済みの list syntax として消費される
-（task list）と、图片構文は対応済みの link syntax に一部分落ちる（画像）。どちらも
+（task list）と、画像構文は対応済みの link syntax に一部分落ちる（画像）。どちらも
 意味を消さないが**形は変わる**ので、operator に明示する。
 
 | 構文 | 例 | 現状 |
@@ -118,7 +118,7 @@ fixture 記事（`src/portfolio/fixtures/markdown/technical-article.md`）はこ
 URL は link policy を通る（別 origin は `target="_blank"` + `rel="noopener noreferrer"`、
 危険 scheme は `href="#"`）。安全性は link とまったく同じで、**形だけが違う**。
 alt テキストのない `![](url)` は名前のない anchor になり、reader は「名前のない
-リンク + 余分な `!」」を見る。画像を使うなら未対応であることを本文に書くか、
+リンク + 余分な `!`」を見る。画像を使うなら未対応であることを本文に書くか、
 code span で囲んで literal text として出すこと。この挙動は suite の
 `markdown safety: image syntax degrades into a link, not literal text` で固定している。
 

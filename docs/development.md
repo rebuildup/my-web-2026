@@ -369,7 +369,13 @@ The walk reads imports off a masked copy of each module — comments,
 string literals and template text are blanked first — so a story that
 *shows* an import example is not read as an edge, and an import-shaped
 comment is not read as a **server-function seam** that would stop the
-walk. Inside a seam module (one that value-imports `createServerFn`)
+walk. The same mask reads the `stories` globs, so a commented-out
+`stories: [...]` above the real config cannot become the subject set. A
+template literal without an interpolation stays readable as a
+placeholder, because `import(`../x`)` names a real specifier, and a `/`
+that follows a keyword (`return /['"]/.test(x)`) is read as a regular
+expression rather than a division. Inside a seam module (one that
+value-imports `createServerFn`)
 only the exports the preview imports, plus what those reference, are
 client-reachable; imports confined to a `.handler(…)` body run on the
 Worker and are not walked. A named import is resolved by the export name
@@ -388,11 +394,19 @@ dynamic `import()` binds no name, so it is attributed to the top-level
 declaration that contains it: `const unused = () => import(…)` is not a
 client edge when the preview never reaches `unused`, while an
 `import()` outside every declaration runs at module load and is walked.
+A member left side (`config.title = route.title`) blocks its root
+binding, and a property key (`{ health: 'ok' }`) or a member name
+(`route.title`) is not read as a value reference, so neither invents a
+dependency. A barrel's named re-export (`export { safe } from './load'`)
+asks the target for that name; only `export *` widens the request.
 
 ```bash
 pnpm run storybook:ownership:check
 pnpm run storybook:ownership:check -- --json=.tmp/storybook-ownership.json
 ```
+
+`--json=<path>` creates the parent directory, so the documented
+`.tmp/…` path works on a fresh checkout.
 
 Exit codes: `0` every subject passed, `1` at least one foreign-boundary
 reach, `2` a subject could not be fully resolved or the subject set

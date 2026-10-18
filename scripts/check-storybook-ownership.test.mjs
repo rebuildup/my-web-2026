@@ -998,6 +998,170 @@ export default { component: load.title };
 		assert.equal(report.subjects[0].verdict, 'fail');
 		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
 	});
+
+	it('fails when a seam export is filled by a member assignment', async () => {
+		// `config.title = route.title` mutates a binding the preview
+		// imports. Blocking only the declaration leaves `route` out of
+		// `config`'s reference set, so the walk would find nothing.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { config } from './load';
+
+export default { component: config.title };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const config = { title: 'home' };
+config.title = route.title;
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return route.id;
+});
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('fails when a regular expression after return swallows the rest of the line', async () => {
+		// `/['"]/` after `return` is a regex literal. Reading it as a
+		// division lets the quote inside the pattern open a "string",
+		// which masks `route.title` and hides the edge behind it.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { hasRouteTitle } from './load';
+
+export default { component: hasRouteTitle };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const hasRouteTitle = () => /['"]/.test(route.title);
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return route.id;
+});
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('fails for a dynamic import written with backticks', async () => {
+		// `import(`../x`)` names a real specifier: an interpolation-free
+		// template is one literal, and masking it whole would drop the
+		// edge the walk exists to report.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { loadRoute } from './load';
+
+export default { component: loadRoute };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return null;
+});
+
+export const loadRoute = () => import(\`../../routes/index\`);
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('does not read an object property key as a binding reference', async () => {
+		// `meta` is the only export the story reads, and the Cloudflare
+		// import stays inside the handler. `{ health: 'ok' }` names a
+		// key, not the imported `probeHealth`, so the edge must not be
+		// dragged into the preview.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { meta } from './load';
+
+export default { component: meta.title };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { health } from '../../cloudflare/health';
+
+export const meta = { title: 'home', health: 'ok' };
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return health.status();
+});
+`,
+			'src/cloudflare/health.ts': "export const health = { status: () => 'ok' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'pass');
+		assert.deepEqual(report.subjects[0].violations, []);
+		assert.equal(report.subjects[0].seams.length, 1);
+	});
+
+	it('carries a named re-export into the seam request', async () => {
+		// A barrel that re-exports one name from a seam must not widen
+		// the request to every export of that seam, or the handler-only
+		// Cloudflare import would look client-reachable.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { title } from './index';
+
+export default { component: title };
+`,
+			'src/home/status/index.ts': "export { title } from './load';\n",
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { health } from '../../cloudflare/health';
+
+export const title = 'home';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return health.status();
+});
+`,
+			'src/cloudflare/health.ts': "export const health = { status: () => 'ok' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'pass');
+		assert.deepEqual(report.subjects[0].violations, []);
+		assert.equal(report.subjects[0].seams.length, 1);
+	});
+
+	it('still walks every export behind `export *`', async () => {
+		// The complement of the named re-export: `export *` can reach any
+		// export, so the request stays wide and the edge is reported.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { title } from './index';
+
+export default { component: title };
+`,
+			'src/home/status/index.ts': "export * from './load';\n",
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { health } from '../../cloudflare/health';
+
+export const title = 'home';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return health.status();
+});
+`,
+			'src/cloudflare/health.ts': "export const health = { status: () => 'ok' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'cloudflare');
+	});
 });
 
 describe('storybook ownership check — the subject set is exactly the stories globs', () => {
@@ -1042,6 +1206,56 @@ export default { args: { route } };
 		const result = run(root);
 		assert.equal(result.status, 2);
 		assert.match(result.stderr, /cannot read the subject set: non-literal-story-entry/);
+	});
+
+	it('ignores a commented-out stories array in the config', async () => {
+		// The config is read from the active settings, not from the first
+		// `stories:` the text contains: a comment left above the real
+		// config would otherwise narrow the subject set to stories that
+		// all pass and the gate would return green.
+		const root = await fixture(
+			{
+				'src/home/hero.stories.tsx': 'export default {};\n',
+				'src/home/tiles.stories.tsx': `import { route } from '../routes/index';
+
+export default { component: route.title };
+`,
+				'src/routes/index.tsx': "export const route = { title: 'home' };\n",
+			},
+			`import type { StorybookConfig } from '@storybook/react-vite';
+
+// stories: ['../src/home/hero.stories.tsx']
+const config: StorybookConfig = {
+	stories: ['../src/**/*.stories.@(ts|tsx)'],
+	framework: { name: '@storybook/react-vite', options: {} },
+};
+
+export default config;
+`,
+		);
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.counts.subjects, 2);
+		assert.equal(
+			report.subjects.find((entry) => entry.file === 'src/home/tiles.stories.tsx').violations[0]
+				.boundary,
+			'routes',
+		);
+	});
+
+	it('creates the parent directory of the requested --json path', async () => {
+		// `.tmp/` is gitignored, so a fresh checkout has no such
+		// directory: the documented `--json=.tmp/…` invocation must not
+		// fail with ENOENT after the walk already succeeded.
+		const root = await fixture({ 'src/home/hero.stories.tsx': 'export default {};\n' });
+		const nested = join(root, '.tmp', 'nested', 'report.json');
+		const result = spawnSync(process.execPath, [checker, `--root=${root}`, `--json=${nested}`], {
+			encoding: 'utf8',
+		});
+		assert.equal(result.status, 0);
+		assert.equal(JSON.parse(readFileSync(nested, 'utf8')).verdict, 'pass');
 	});
 
 	it('does not count a story inside a foreign boundary as a subject', async () => {

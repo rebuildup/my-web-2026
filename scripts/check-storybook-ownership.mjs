@@ -72,7 +72,7 @@
  * `scripts/check-test-wiring.mjs`).
  */
 
-import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -126,13 +126,35 @@ const FOREIGN_BOUNDARIES = [
 /** Static ES imports, with enough clause context to classify them. */
 const IMPORT_FROM = /(?:^|[\n;])\s*import\s+([\s\S]*?)\s*from\s*['"]([^'"]+)['"]/g;
 const IMPORT_SIDE_EFFECT = /(?:^|[\n;])\s*import\s*['"]([^'"]+)['"]/g;
-const IMPORT_DYNAMIC = /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
+const IMPORT_DYNAMIC = /\bimport\(\s*(?:['"]([^'"]+)['"]|(\uE000\d+\uE000))\s*\)/g;
 const EXPORT_FROM = /(?:^|[\n;])\s*export\s+(type\s+)?([\s\S]*?)\s*from\s*['"]([^'"]+)['"]/g;
 /** A local `export { … }` clause (its `from` form is filtered out). */
 const EXPORT_LOCAL_CLAUSE = /(?:^|[\n;])\s*export\s*\{([\s\S]*?)\}/g;
 
 /** A bare identifier, used to read a declaration's reference set. */
 const IDENTIFIER = /[A-Za-z_$][\w$]*/g;
+/**
+ * Keywords after which a `/` opens a regular expression rather than a
+ * division. Without them `return /['"]/.test(x)` reads as a division,
+ * and the quote inside the pattern opens a "string" that masks the rest
+ * of the line — hiding a real edge behind a fake literal.
+ */
+const REGEX_KEYWORDS = new Set([
+	'await',
+	'case',
+	'delete',
+	'do',
+	'else',
+	'in',
+	'instanceof',
+	'new',
+	'of',
+	'return',
+	'throw',
+	'typeof',
+	'void',
+	'yield',
+]);
 /** The placeholder a masked string literal is replaced with. */
 const MASK_SENTINEL = '\uE000';
 const MASKED_LITERAL = /^\uE000(\d+)\uE000$/;
@@ -152,12 +174,17 @@ const BODY_KINDS = new Set(['function', 'class', 'interface']);
 const MULTI_BINDING_KINDS = new Set(['const', 'let', 'var']);
 /**
  * A top-level statement that rebinds an existing binding, such as
- * `title = route.title;`. Blocking only the declaration would leave
- * such an export (`let title; … export { title }`) with a reference set
- * that never mentions the value it was given, so a preview importing it
- * would walk nothing and pass although `route` is really in its graph.
+ * `title = route.title;` or `config.title = route.title;`.
+ *
+ * Blocking only the declaration would leave such an export (`let title;
+ * … export { title }`) with a reference set that never mentions the
+ * value it was given, so a preview importing it would walk nothing and
+ * pass although `route` is really in its graph. The left side may be a
+ * member expression; the root binding is the one blocked, because that
+ * mutation is what drags `route` into the preview.
  */
-const ASSIGNMENT = /^(?:export\s+)?([A-Za-z_$][\w$]*)\s*(?:\*\*|>>>?|<<|\?\?|[+\-*/%&|^])?=(?!=)/;
+const ASSIGNMENT =
+	/^(?:export\s+)?([A-Za-z_$][\w$]*)\s*(?:\??\.[A-Za-z_$][\w$]*|\[[^\]]*\])*\s*(?:\*\*|>>>?|<<|\?\?|[+\-*/%&|^])?=(?!=)/;
 
 const maskNonCodeLength = (text) => text.replace(/[^\n]/g, ' ');
 
@@ -178,6 +205,7 @@ function maskNonCode(source) {
 	const top = () => stack[stack.length - 1];
 	let out = '';
 	let lastSignificant = '';
+	let lastWord = '';
 	let i = 0;
 
 	while (i < source.length) {
@@ -191,12 +219,29 @@ function maskNonCode(source) {
 				continue;
 			}
 			if (char === '`') {
+				const frame = top();
 				stack.pop();
+				// A template without an interpolation is one literal, and
+				// `import(`…`)` is a real specifier: keep it readable as a
+				// placeholder instead of masking it away, so a dynamic
+				// import written with backticks is still walked. A
+				// multi-line template keeps the newline-preserving mask.
+				if (!frame.interpolated && !frame.hasNewline) {
+					literals.push(source.slice(frame.sourceStart, i));
+					out = `${out.slice(0, frame.outStart)}${MASK_SENTINEL}${literals.length - 1}${MASK_SENTINEL}`;
+				}
 				out += ' ';
 				i += 1;
 				continue;
 			}
+			if (char === '\n') {
+				top().hasNewline = true;
+				out += '\n';
+				i += 1;
+				continue;
+			}
 			if (char === '$' && next === '{') {
+				top().interpolated = true;
 				stack.push({ type: 'code', braceDepth: 0 });
 				out += '  ';
 				i += 2;
@@ -223,7 +268,9 @@ function maskNonCode(source) {
 		}
 		if (
 			char === '/' &&
-			(lastSignificant === '' || '(,=:[!&|?{};+-*%^~<>'.includes(lastSignificant))
+			(lastSignificant === '' ||
+				'(,=:[!&|?{};+-*%^~<>'.includes(lastSignificant) ||
+				REGEX_KEYWORDS.has(lastWord))
 		) {
 			// A regular-expression literal, not a division. Masking it
 			// keeps a quote inside the pattern from opening a "string"
@@ -277,7 +324,14 @@ function maskNonCode(source) {
 			continue;
 		}
 		if (char === '`') {
-			stack.push({ type: 'template', braceDepth: 0 });
+			stack.push({
+				type: 'template',
+				braceDepth: 0,
+				interpolated: false,
+				hasNewline: false,
+				sourceStart: i + 1,
+				outStart: out.length,
+			});
 			out += ' ';
 			i += 1;
 			continue;
@@ -296,6 +350,7 @@ function maskNonCode(source) {
 		}
 
 		if (!/\s/.test(char)) lastSignificant = char;
+		lastWord = /[A-Za-z0-9_$]/.test(char) ? lastWord + char : '';
 		out += char;
 		i += 1;
 	}
@@ -462,7 +517,7 @@ function parseEdges(masked, literals) {
 	}
 	for (const match of masked.matchAll(IMPORT_DYNAMIC)) {
 		edges.push({
-			specifier: specifier(match[1]),
+			specifier: specifier(match[1] ?? match[2]),
 			clause: '',
 			kind: 'import-dynamic',
 			bindings: [],
@@ -473,13 +528,16 @@ function parseEdges(masked, literals) {
 	}
 	for (const match of masked.matchAll(EXPORT_FROM)) {
 		const clause = match[2].trim();
+		const typeOnly = Boolean(match[1]) || isTypeOnlyExportClause(clause);
 		edges.push({
 			specifier: specifier(match[3]),
 			clause,
-			kind: match[1] || isTypeOnlyExportClause(clause) ? 'export-type' : 'export-from',
-			bindings: [],
-			requests: [],
-			all: false,
+			kind: typeOnly ? 'export-type' : 'export-from',
+			// A named re-export (`export { safe } from './load'`) asks the
+			// target for exactly those exports, so a barrel does not widen
+			// a seam's request to all of its exports. Only `export *` (and
+			// `export * as ns`) can reach any of them.
+			...(typeOnly ? { bindings: [], requests: [], all: false } : clauseRequests(clause)),
 			start: match.index ?? 0,
 		});
 	}
@@ -723,6 +781,72 @@ function assignmentBindings(statement) {
 }
 
 /**
+ * The identifiers a statement reads as values, with their positions.
+ *
+ * A property key (`{ health: 'ok' }`) and a member name (`route.title`)
+ * are not references to a binding, and counting them as such invents a
+ * dependency: `export const meta = { health: 'ok' }` next to an
+ * imported `health` would drag that import into a preview that never
+ * reads it, and fail a legitimate story. A shorthand property
+ * (`{ health }`) really is a value read, so only the `key:` form and the
+ * member position are dropped.
+ *
+ * The object-literal test is deliberately one-sided: `{` after `=`,
+ * `(`, `,`, `:`, `[`, `?` or `return` opens an object literal, and
+ * anything else (an arrow body, a block) keeps every identifier. A
+ * missed key only over-approximates the reference set, which is the
+ * safe direction for a gate; a key wrongly dropped would hide an edge.
+ */
+function valueReferenceMatches(text) {
+	const matches = [];
+	const objectAt = [];
+	let depth = 0;
+	let lastSignificant = '';
+	let lastWord = '';
+	let i = 0;
+	while (i < text.length) {
+		const char = text[i];
+		if (/\s/.test(char)) {
+			i += 1;
+			continue;
+		}
+		if (char === '{') {
+			depth += 1;
+			const opensObject =
+				'=(,:[?'.includes(lastSignificant) || lastSignificant === '(' || lastWord === 'return';
+			objectAt.push(opensObject ? depth : -1);
+			lastSignificant = '{';
+			lastWord = '';
+			i += 1;
+			continue;
+		}
+		if (char === '}') {
+			objectAt.pop();
+			depth -= 1;
+			lastSignificant = '}';
+			lastWord = '';
+			i += 1;
+			continue;
+		}
+		if (/[A-Za-z_$]/.test(char)) {
+			const name = /^[A-Za-z_$][\w$]*/.exec(text.slice(i))[0];
+			const isMemberName = lastSignificant === '.';
+			const next = text.slice(i + name.length).trimStart()[0] ?? '';
+			const isKey = next === ':' && objectAt.at(-1) === depth;
+			if (!isMemberName && !isKey) matches.push({ name, index: i });
+			lastSignificant = name[name.length - 1];
+			lastWord = name;
+			i += name.length;
+			continue;
+		}
+		lastSignificant = char;
+		lastWord = '';
+		i += 1;
+	}
+	return matches;
+}
+
+/**
  * Map each top-level statement to the identifiers it references
  * outside every handler range — the "what this symbol drags into the
  * preview" set used for a seam module — and record the range each
@@ -746,12 +870,12 @@ function topLevelBlocks(masked, handlerRanges) {
 		if (names.length > 0) ranges.push({ start, end, names });
 		for (const binding of bindings) {
 			const refs = new Set();
-			for (const match of binding.text.matchAll(IDENTIFIER)) {
-				const position = start + binding.offset + (match.index ?? 0);
+			for (const match of valueReferenceMatches(binding.text)) {
+				const position = start + binding.offset + match.index;
 				if (handlerRanges.some((range) => position >= range.start && position < range.end)) {
 					continue;
 				}
-				refs.add(match[0]);
+				refs.add(match.name);
 			}
 			for (const name of binding.names) {
 				const existing = blocks.get(name);
@@ -945,8 +1069,12 @@ function globToRegExp(pattern) {
 function readStoryPatterns(root) {
 	const configPath = join(root, '.storybook', 'main.ts');
 	if (!existsSync(configPath)) return { patterns: [], reason: 'config-missing' };
-	const source = readFileSync(configPath, 'utf8');
-	const block = source.match(/stories\s*:\s*\[([\s\S]*?)\]/);
+	// Comments and string literals are masked first, so a commented-out
+	// `stories: ['../src/safe/**']` left above the real config cannot
+	// become the subject set and silently narrow the gate to stories that
+	// all pass. The array entries survive as placeholders.
+	const { masked, literals } = maskNonCode(readFileSync(configPath, 'utf8'));
+	const block = masked.match(/stories\s*:\s*\[([\s\S]*?)\]/);
 	if (!block) return { patterns: [], reason: 'no-stories-field' };
 	const patterns = [];
 	let residue = '';
@@ -955,9 +1083,9 @@ function readStoryPatterns(root) {
 		residue += block[1].slice(cursor, match.index);
 		cursor = match.index + match[0].length;
 		patterns.push({
-			pattern: match[2],
-			baseDir: resolve(dirname(configPath), patternBase(match[2])),
-			regexp: globToRegExp(resolve(dirname(configPath), match[2])),
+			pattern: literalText(match[2], literals),
+			baseDir: resolve(dirname(configPath), patternBase(literalText(match[2], literals))),
+			regexp: globToRegExp(resolve(dirname(configPath), literalText(match[2], literals))),
 		});
 	}
 	residue += block[1].slice(cursor);
@@ -1283,13 +1411,14 @@ function main(argv) {
 			'the walk reads ES import syntax, not JSX text: a story that renders an import example as literal JSX children (`<code>import … from …</code>`) instead of a string still needs a comment, not raw text.',
 			`${WORKER_VIRTUAL_MODULES.size} Workers virtual module (${[...WORKER_VIRTUAL_MODULES].join(', ')}) cannot resolve in a browser preview at all — this check treats any direct or transitive edge to it as a violation.`,
 			'a specifier that resolves outside src/ is a terminal leaf only when it is generated output (`styled-system/`) or an asset; a source file outside src/ is walked like any other module. When such a path does not exist it is printed as `external` instead of failing the walk, so a stale generated path is a documented manual check.',
-			'the walk is regex-based over ES import syntax; computed specifiers, CommonJS require() and non-literal import() are not inspected.',
+			'the walk is regex-based over ES import syntax; computed specifiers, CommonJS require() and an interpolated import(`${name}`) are not inspected (a template without interpolation names a real specifier and is walked).',
 		],
 	};
 
 	printReport(report, process.stdout);
 
 	if (options.json) {
+		mkdirSync(dirname(options.json), { recursive: true });
 		writeFileSync(options.json, `${JSON.stringify(report, null, 2)}\n`);
 		process.stdout.write(`\njson report: ${toPosix(relative(root, options.json))}\n`);
 	}

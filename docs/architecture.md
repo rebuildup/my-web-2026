@@ -425,7 +425,9 @@ glob が repository 外を解決する場合は「主語集合が読めない」
   扱う。クライアント側から見える export（と、それを参照する同ファイル内の宣言）
   だけを walk し、`.handler(…)` body 内の import は Worker 側でしか実行されない
   ので walk しない。named import は alias ではなく **import 元の export 名**で
-  要求を解決し、default / namespace import は任意の export に触れ得るため
+  要求を解決し（barrel の named re-export `export { safe } from './load'` もその
+  export 名で要求し、`export *` だけが全 export として扱う）、default / namespace
+  import は任意の export に触れ得るため
   handler 外の edge を保守的に walk する。factory は import 句のローカル名
   （`import { createServerFn as serverFn }` なら `serverFn`）でも検出し、
   ローカル `export { a as b }` は宣言名 `a` へ解決してから到達集合を計算する。
@@ -434,13 +436,21 @@ glob が repository 外を解決する場合は「主語集合が読めない」
   binding を持たないため要求では絞れず、呼び出しを含む top-level 宣言に
   関連付ける（`const unused = () => import(…)` は preview がその宣言へ
   到達しない限り client edge ではない。宣言の外にあれば module 読み込み時
-  に評価されるため walk する）。
+  に評価されるため walk する）。代入の左辺が member 参照
+  （`config.title = route.title`）でも、その根の binding を依存として追跡する。
+  値参照と区別するため、オブジェクトリテラルのキー（`{ health: 'ok' }`）と member
+  名（`route.title` の `title`）は参照集合に数えない（shorthand `{ health }` は実参照）。
   edge 自体は隠さず `seam` として報告する。
   `src/home/reactions/widget.stories.tsx` のコメントと `.storybook/main.ts` の
   `external: ['cloudflare:workers']` が既に宣言している前提を refinements している。
 
 **ソースの読み方** — import の照合は、コメント・文字列リテラル・テンプレート
-リテラルを伏せた”上に対して行う。ドキュメントとして import 例を表示する story
+リテラルを伏せた上に対して行う。補間なしテンプレートは placeholder として残し、
+`import(`../x`)` も edge として読む。`return` などキーワード直後の `/` は正規表現
+リテラルとしてマスクする）。
+`.storybook/main.ts` の `stories` も同じマスクの上から読むため、コメントアウト
+された古い `stories` 配列が subject set になることはない。
+ドキュメントとして import 例を表示する story
 が誤って違反になり、逆に import 形のコメントが server-function seam と読まれて
 本物の違反が隠れることを防ぐ。
 

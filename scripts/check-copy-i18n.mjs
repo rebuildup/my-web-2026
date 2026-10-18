@@ -809,11 +809,25 @@ export function fallbackChain(feature, locale) {
 export function resolveMessage(contract, featureId, locale, key) {
 	const feature = contract?.features?.find((item) => item?.id === featureId);
 	if (!feature) {
-		return { ok: false, reason: 'unknown-feature', text: null, resolvedFrom: null, locale };
+		return {
+			ok: false,
+			reason: 'unknown-feature',
+			text: null,
+			resolvedFrom: null,
+			locale,
+			draftsSkipped: [],
+		};
 	}
 	const entry = (feature.keys ?? []).find((item) => item?.key === key);
 	if (!entry) {
-		return { ok: false, reason: 'unknown-key', text: null, resolvedFrom: null, locale };
+		return {
+			ok: false,
+			reason: 'unknown-key',
+			text: null,
+			resolvedFrom: null,
+			locale,
+			draftsSkipped: [],
+		};
 	}
 	const declared = feature.locales ?? {};
 	if (!declared[locale]) {
@@ -823,6 +837,7 @@ export function resolveMessage(contract, featureId, locale, key) {
 			text: entry.source,
 			resolvedFrom: feature.sourceLocale,
 			locale,
+			draftsSkipped: [],
 		};
 	}
 	const order = [locale];

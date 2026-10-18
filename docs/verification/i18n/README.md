@@ -1,4 +1,13 @@
-# Verification — Intl locale formatting (Issue #430)
+# Verification — i18n artifacts
+
+## Index
+
+| Artifact | What it records | Documented in |
+| --- | --- | --- |
+| `intl-date-number.webp` | locale formatting comparison for the home format adapter (Issue #430) | this file |
+| `missing-keys-report.webp` | copy locale contract gate: opt-in matrix, fixture findings, legend (Issue #428) | [`copy/README.md`](../../../copy/README.md) |
+
+## Intl locale formatting (Issue #430)
 
 `intl-date-number.webp` is the committed screenshot of the locale
 comparison report for the home format adapter. It shows **one

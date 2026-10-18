@@ -10,7 +10,7 @@ import {
 	blockedRawHtmlFixtures,
 	composeMarkdownFixtureBody,
 	executableMarkupFindings,
-} from './markdown.xss-fixtures';
+} from '../../test/fixtures/markdown-xss-fixtures';
 
 /**
  * XSS boundary of the article renderer (Issue #451).
@@ -20,8 +20,8 @@ import {
  * the rendered HTML must contain no executable markup, and every
  * refused link must be visible rather than silently rewritten to `#`.
  *
- * The corpus lives in `markdown.xss-fixtures.ts` because the same
- * bytes drive the Worker-level SSR test
+ * The corpus lives in `test/fixtures/markdown-xss-fixtures.ts` because
+ * the same bytes drive the Worker-level SSR test
  * (`test/integration/markdown-xss-ssr.test.ts`) and the screenshot
  * in `docs/verification/security/markdown-xss-fixture.webp`. A corpus
  * copied into a test file is a corpus that drifts.

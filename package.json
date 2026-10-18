@@ -110,6 +110,7 @@
 		"e2e:prod:local": "node scripts/run-prod-smoke-local.mjs",
 		"verify:seo-head-screenshot": "node scripts/make-seo-head-verification-report.mjs",
 		"seo:head:check": "node scripts/check-seo-head.mjs",
+		"tools:provenance:check": "node scripts/check-submodule-provenance.mjs",
 		"verify:route-quality-screenshot": "node scripts/make-route-quality-report.mjs",
 		"routes:quality:check": "node scripts/check-route-quality-coverage.mjs",
 		"routes:quality:report": "node scripts/check-route-quality-coverage.mjs --report=.tmp/route-quality-report.html",

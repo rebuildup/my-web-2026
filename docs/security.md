@@ -150,6 +150,92 @@ See also: [`ADR-0002`](adr/ADR-0002-architecture-boundary.md) (the
 two-layer split), [`ADR-0010`](adr/ADR-0010-abuse-protection-rate-limit.md)
 (the write-path rate limit that still applies after the guard).
 
+## Session cookie attributes (Issue #438)
+
+The cookies Better Auth sets on a successful sign-in have a pinned
+attribute contract. It lives next to the auth configuration it
+projects from — `src/cloudflare/auth/session-cookie-contract.ts` —
+and is enforced by `src/cloudflare/auth/session-cookie-contract.test.ts`
+in the local workerd pool:
+
+| Cookie                     | Contract                                                        |
+| -------------------------- | --------------------------------------------------------------- |
+| `session_token`            | `HttpOnly`, `SameSite=Lax`, `Path=/`, host-only (no `Domain`), `Max-Age=2592000` (30 days), plus `Secure` + the `__Secure-` name prefix on an https origin |
+| `session_data` (cookie cache) | same attribute policy, `Max-Age=300` (5 min)                  |
+
+The `Secure` attribute and the `__Secure-` prefix are origin-dependent
+by design: Better Auth derives both from the resolved base URL, so the
+contract evaluates against an explicit profile.
+
+- **https** — production. `wrangler.production.jsonc` pins
+  `BETTER_AUTH_URL = https://rebuildup.dev` (ADR-0014) and
+  `scripts/check-cloudflare-contract.mjs --build` proves the built
+  Worker carries it. `Secure` and `__Secure-` are required.
+- **http** — local dev and the test pool, where no origin is pinned.
+  `Secure` is a violation there: a browser on a plain-http origin that
+  is not localhost drops the cookie, and every later request comes back
+  unauthenticated with no error.
+
+`sessionCookieProfileFor()` mirrors only the base-URL *string* branch
+of Better Auth's inference. `advanced.useSecureCookies` (an explicit
+override the current configuration never sets) and the no-base-URL
+`NODE_ENV=production` fallback are deliberately not modelled — the
+latter means running the suite with `NODE_ENV=production` would make a
+correct response look like a violation. Both are false-alarm risks, not
+false passes.
+
+The test drives a real sign-in through `SELF.fetch` and then a set of
+forged fixtures in which exactly one attribute is weakened
+(`HttpOnly` removed, `Secure` dropped, `Domain` added, `SameSite=None`,
+`Path` narrowed, `Max-Age` extended, …). Every fixture must **fail**
+the same evaluator, with exactly the violation codes it declares; a
+fixture that passed, or that failed for an extra reason, would mean the
+contract cannot detect the downgrade it exists to detect.
+
+Two properties the test also pins:
+
+- **No value in the report, and none in the evidence built on top of
+  it.** The evaluator drops cookie values at parse time and the report
+  type has no field for one. The verification evidence is a second
+  layer: it keeps the `Set-Cookie` strings so a screenshot can show
+  them, and a real sign-in response carries the signed session token
+  plus a `session_data` cookie holding the signed user record. Those
+  strings are therefore masked (`maskSetCookieValue`) as they enter the
+  evidence map, and two tests assert the masking on the exact payload
+  that is printed — not only on the report it derives from. CI logs,
+  artefacts and verification screenshots therefore cannot carry a
+  session token or a user record.
+- **No production mutation.** The deployed cookie shape is computed
+  locally by handing Better Auth's own `getCookies()` the pinned
+  origin, not by signing in against production. Confirming the emitted
+  headers on the live Worker needs a real account and is left to the
+  operator.
+
+Reproduce the verification report — this is the pipeline
+`docs/verification/security/cookie-header-test.webp` was generated
+from:
+
+```bash
+mkdir -p .tmp/cookie-contract
+pnpm exec vitest run src/cloudflare/auth/session-cookie-contract.test.ts \
+  --reporter=verbose > .tmp/cookie-contract/run.log 2>&1
+node scripts/render-session-cookie-report.mjs \
+  .tmp/cookie-contract/run.log .tmp/cookie-contract/report.html
+pnpm exec playwright screenshot --full-page --viewport-size=1600,1200 \
+  "file://$PWD/.tmp/cookie-contract/report.html" .tmp/cookie-contract/report.png
+node -e "require('sharp')('.tmp/cookie-contract/report.png')
+  .resize({ width: 1600, withoutEnlargement: true })
+  .webp({ quality: 80 })
+  .toFile('docs/verification/security/cookie-header-test.webp')"
+```
+
+The run prints one `SESSION_COOKIE_CONTRACT_REPORT {…}` line
+(visible with `--reporter=verbose`; the default reporter keeps
+passing-test console output quiet). The renderer redacts nothing — it
+**refuses** to render a payload whose headers are not masked, so a
+regression in the test cannot be laundered into a clean-looking
+screenshot.
+
 ## Login enumeration and credential brute force
 
 `POST /api/v1/auth/sign-in/email` is the only unauthenticated
@@ -239,6 +325,28 @@ signed with the dummy `BETTER_AUTH_SECRETS` binding that
 asserted, and no test contacts a real IdP. Response capture from the
 local run:
 [`verification/security/oauth-negative-tests.webp`](verification/security/oauth-negative-tests.webp).
+
+## Boundary input validation
+
+Every untrusted value on the `/api/v1/*` endpoints listed in
+[security/input-validation.md §3](security/input-validation.md#3-適用エンドポイントと応答)
+is validated by `src/http/validation.ts` on four dimensions — size,
+format, protocol, and type — and an invalid request always answers
+with a defined response (`400` / `405` / `413` / `415`) whose body is
+`{ error, reason }`. Client-side validation in the UI is a user
+convenience, never a security control.
+
+Not every `/api/v1/*` route is in that table, by design: `/api/v1/auth/*`
+is owned by Better Auth (which validates its own input), and
+`/api/v1/health`, `/api/v1/db/ping`, `/api/v1/media/ping` accept no
+untrusted input.
+
+The full contract, the per-endpoint table, and the reproduction
+commands live in [`security/input-validation.md`](security/input-validation.md).
+The measured matrix (real requests through the production boundary in
+the local workerd pool) is committed as
+`docs/verification/security/input-validation-matrix.webp` and is
+regenerated with `pnpm run verification:input-matrix`.
 
 ## API key scope and revocation
 
@@ -381,6 +489,76 @@ statement assembled in a variable is not scanned at all and must be
 caught by the runtime suite (or by review). The inventory above names
 the variable-built statements that exist today — keep it current when
 one is added.
+
+## Markdown / Notion-derived HTML input boundary
+
+Article bodies (Portfolio projects) are editor-controlled, third-party
+originated text. Two input shapes exist, and each has exactly one
+sanctioned entry point.
+
+### Markdown — `src/portfolio/markdown.lexer.ts`
+
+- The lexer **does not parse raw HTML**. Every text node reaches React
+  as text, so `<script>` in a body renders as visible `&lt;script&gt;`,
+  never as markup.
+- `classifyHref` is the single href oracle. It allows `http:`,
+  `https:`, root-relative and fragment hrefs, and **blocks**
+  everything else — including values a browser would treat as a
+  scheme after normalising: control-character obfuscation
+  (`java<TAB>script:`), character-reference obfuscation
+  (`javascript&#58;`), and protocol-relative hrefs (`//host`), which
+  are resolved and inherit the external-link policy instead of
+  masquerading as internal paths.
+- A blocked href is **not** rewritten to `#`. It renders as an inert
+  `<span class="portfolio-md-link-blocked">` carrying
+  `data-blocked-reason` and `data-blocked-href`, so the refusal is
+  visible to the author and to a reviewer. `safeHref` /
+  `isExternalHref` remain for callers that only need the old
+  string / boolean shape; they read the same oracle.
+
+### Notion-derived HTML — `src/portfolio/markdown.notion.ts`
+
+Notion exports carry `<script>`, `on*` handlers, `javascript:` hrefs
+and inline `<svg>`, so HTML may only enter the renderer through this
+adapter:
+
+- **Allow list.** Elements not named in the module are unwrapped (text
+  survives, markup does not); elements on the active list (`script`,
+  `style`, `iframe`, `object`, `embed`, `svg`, `form`, …) are dropped
+  with their subtree.
+- **Attribute allow list.** Every `on*` attribute is dropped and
+  recorded; every attribute outside the allow list is dropped; URL
+  attributes go through `classifyHref`, so the scheme policy is not
+  re-implemented.
+- **Auditable.** `sanitizeNotionHtml` returns the refusals
+  (`dropped[]`) rather than failing silently, and it never throws —
+  malformed markup degrades to text, bounded by a depth and an output
+  ceiling.
+
+**Wiring status.** The adapter is **not** yet called by any ingest
+path: the portfolio migration writes plain Markdown today. It landed
+first, with tests, so that whichever migration introduces Notion HTML
+inherits one sanitiser. Any new caller must go through it; adding a
+second HTML path is a review failure, not a style preference.
+
+### Verification
+
+- Renderer level: `src/portfolio/markdown.security.test.tsx` and
+  `src/portfolio/markdown.notion.test.tsx` over the shared corpus in
+  `test/fixtures/markdown-xss-fixtures.ts`.
+- Worker level: `test/integration/markdown-xss-ssr.test.ts` drives
+  `GET /portfolio/<fixture>` through `SELF.fetch` with the corpus in a
+  D1 row, and asserts over the served `<article>` region.
+- Browser level: `e2e/portfolio-markdown-xss.spec.ts` seeds the same
+  corpus into the local D1 and asserts in chromium that no payload
+  executed. It is a local-only spec: the fixture row is only readable
+  by the local Worker, so `playwright.config.ts` filters the file out
+  of a non-local run and the spec also skips itself in-file.
+- Screenshot: `docs/verification/security/markdown-xss-fixture.webp`
+  (see `docs/verification/security/README.md` for how to read it and
+  why its capture generator is not committed). The corpus carries
+  attack simulations on purpose; it contains no credentials and no
+  live third-party origin.
 
 ## HTTPS 強制と HSTS (Issue #446)
 

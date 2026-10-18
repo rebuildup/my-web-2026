@@ -77,9 +77,19 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * closing brackets, closing punctuation, iteration marks and the
  * katakana middle dot `・` (UAX #14 line-break classes CL / CP / NS).
  * LB21 forbids a break *before* an NS character, so `・` belongs on the
- * line-head side, not the line-tail side. Mandatory in every
- * `line-break` value except `anywhere`, so it is a hard rule for every
- * story.
+ * line-head side, not the line-tail side. Hard rule for every story.
+ *
+ * How unconditional is it? Two groups, and only one of them is absolute.
+ * The bracket members (CL / CP) are prohibited in every `line-break`
+ * value except `anywhere`. The punctuation / iteration-mark members are
+ * prohibited by the Unicode default algorithm (LB21 `× NS`, plus the
+ * JLREQ 行頭禁則 rules) and by `strict` — which is exactly what the
+ * fixture measures, because no mode here sets `line-break: loose`
+ * (modes resolve to `auto` or `strict`). CSS Text 4 `loose` relaxes
+ * precisely those members, so adopting `loose` later would require
+ * splitting this table into an unconditional bracket set and a
+ * strict-only set. That split is an owner decision, not a harness
+ * detail, and it is not made here.
  *
  * `tailForbidden` are characters that must not CLOSE a line (行末禁則):
  * opening brackets and prefix currency signs (classes OP / PR). Also

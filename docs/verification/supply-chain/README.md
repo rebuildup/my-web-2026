@@ -19,7 +19,7 @@ The image is rendered from `scripts/check-workflow-pinning.mjs` — the
 same function `pnpm run ci:pins:check` runs inside `validate:fast` —
 so the picture cannot claim a pin the gate would reject.
 
-1. **Shipped workflows — normal observation.** All 12 `uses:` lines of
+1. **Shipped workflows — normal observation.** All 13 `uses:` lines of
    `.github/workflows/ci.yml` and `prod-smoke.yml` with their upstream
    ref and full 40-char commit SHA, plus the effective
    `GITHUB_TOKEN` permissions each job resolves to

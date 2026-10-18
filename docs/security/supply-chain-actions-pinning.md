@@ -50,7 +50,7 @@ different questions, so both run.
 
 ## 2. The audit: before and after
 
-Both workflows were on floating tags before this Issue. 12 `uses:`
+Both workflows were on floating tags before this Issue. 13 `uses:`
 lines, 6 distinct actions, 0 permissions findings.
 
 | Workflow | Job | Action | Before | After (SHA) | Upstream |
@@ -188,7 +188,7 @@ $ pnpm run ci:pins:check
 …
 findings: 0
 
-status: PASS (workflows 2, jobs 2, pins 12, waivers 0)
+status: PASS (workflows 2, jobs 2, pins 13, waivers 0)
 ```
 
 Two things must be true at once: `findings: 0`, and every job row

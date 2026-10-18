@@ -92,8 +92,7 @@
 		"csrf:contract:check": "node scripts/check-csrf-contract.mjs",
 		"lazy-media:report": "node scripts/render-lazy-media-report.mjs",
 		"seo:head:check": "node scripts/check-seo-head.mjs",
-		"verify:seo-head-screenshot": "node scripts/make-seo-head-verification-report.mjs"
-,
+		"verify:seo-head-screenshot": "node scripts/make-seo-head-verification-report.mjs",
 		"verify:hsts-screenshot": "node scripts/make-hsts-verification-report.mjs"
 	},
 	"dependencies": {

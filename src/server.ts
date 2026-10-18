@@ -241,11 +241,11 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  * `docs/security.md`; `scripts/check-hsts-policy.mjs` fails the build
  * if either directive is added while the audit is unrecorded.
  *
- * Intentionally module-private. This file is the Workers entry module,
- * and workerd reads every named export as a service-binding entrypoint:
- * `export const HSTS_DIRECTIVE` made the runtime reject the module with
- * "the provided value is not of type 'function or ExportedHandler'" and
- * prevented `vite preview` (and every E2E gate) from booting (Issue #596).
+ * This constant stays module-private on purpose. The Workers runtime
+ * treats every named export of the entry module as a service entrypoint
+ * and refuses to start when the value is not an ExportedHandler
+ * (`Incorrect type for map entry 'HSTS_DIRECTIVE'`). Exporting it broke
+ * release CI until Issue #596. The gate enforces the private form.
  */
 const HSTS_DIRECTIVE = 'max-age=31536000';
 

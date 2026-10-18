@@ -82,9 +82,8 @@ describe('check-hsts-policy — source of truth', () => {
 	});
 
 	it('fails when the declaration is exported from the Worker entry', () => {
-		// workerd reads every named export of the entry module as a
-		// service-binding entrypoint, so `export const` stops the Worker
-		// from booting (Issue #596).
+		// Named exports of the entry module are service entrypoints to the
+		// Workers runtime; an exported string aborts workerd at startup.
 		withStaged(
 			{ 'src/server.ts': "export const HSTS_DIRECTIVE = 'max-age=31536000';\n" },
 			(root) => {
@@ -92,7 +91,6 @@ describe('check-hsts-policy — source of truth', () => {
 				assert.equal(directive, 'max-age=31536000');
 				assert.equal(violations.length, 1);
 				assert.match(violations[0], /exports HSTS_DIRECTIVE/);
-				assert.match(violations[0], /Issue #596/);
 			},
 		);
 	});

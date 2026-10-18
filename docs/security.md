@@ -29,6 +29,25 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## Outbound fetch (SSRF)
+
+A URL that did not come from this repository — a visitor-supplied
+source URL, a stored record, an upstream service — is fetched through
+`fetchExternalUrl()` in `src/http/outbound-fetch.ts` and nothing else.
+`src/http/outbound.ts` refuses non-`http(s)` schemes, userinfo,
+single-label and reserved/internal host names, and the loopback /
+private / link-local / CGNAT / multicast / reserved address space
+(including the IPv4-mapped, NAT64 and 6to4 embeddings of it). Redirects
+are followed with `redirect: 'manual'` and every `Location` target is
+re-classified before the next connection, so a hop is not a way around
+the policy.
+
+The classifier runs before DNS, so the runtime's
+`global_fetch_strictly_public` flag is what refuses a connection that
+resolves to a non-public address — both layers are load-bearing. The
+shipped contract, operator duties and known limits:
+[`docs/security/outbound-fetch.md`](security/outbound-fetch.md).
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd
@@ -91,6 +110,10 @@ binding API is reachable in the local workerd pool"**, not
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Outbound URL matrix (Issue #453) is regenerated from the shipped
+  adapter by `pnpm run security:ssrf:report`; the committed artefact
+  and its reading guide are in
+  [`docs/verification/security/`](verification/security/).
 
 ## Browser binaries (Playwright)
 

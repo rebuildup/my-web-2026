@@ -48,6 +48,10 @@ const INTENTIONALLY_UNCLASSIFIED: Readonly<Record<string, string>> = Object.free
 	'GET /api/v1/db/ping':
 		'operator diagnostic — a wildcard would expose binding liveness to any site',
 	'GET /api/v1/media/ping': 'operator diagnostic — same reasoning as db/ping',
+	'GET /robots.txt':
+		'crawler-facing text document (Issue #420) — read by crawlers, which do not read CORS headers, and same-origin by construction',
+	'GET /sitemap.xml':
+		'crawler-facing XML document (Issue #420) — a wildcard read would hand the whole site map to any origin, and no consumer needs it cross-origin',
 });
 
 interface Probe {

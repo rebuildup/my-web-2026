@@ -23,7 +23,7 @@ assumption a reviewer had to take on trust.
 |----------------|-------------------------------------------------------------------------|----------------------------------------------------------------------|
 | `credentialed` | `/api/v1/auth/*`, `/api/v1/access/*`, `/api/v1/reactions`                | echo ONE allow-listed origin + `Access-Control-Allow-Credentials: true` |
 | `public-read`  | `/api/v1/health`, `/api/v1/reaction-images/:id`                          | `Access-Control-Allow-Origin: *`, never any credentials header        |
-| `none`         | everything else, including `/api/v1/db/ping`, `/webhooks/*`, `/oauth/*`, `/integrations/*` | no CORS header at all            |
+| `none`         | everything else, including `/api/v1/db/ping`, `/robots.txt`, `/sitemap.xml`, `/webhooks/*`, `/oauth/*`, `/integrations/*` | no CORS header at all            |
 
 A cross-origin request that is not permitted is **refused** with
 `403 { "error": "cors_origin_rejected" | "cors_method_rejected" | "cors_header_rejected", "class": … }`
@@ -33,7 +33,11 @@ with the policy headers; `Access-Control-Allow-Methods`,
 that is the only response a browser reads them from. A same-origin
 request, and any request with no `Origin` header at all (the SSR
 self-calls, `curl`, the E2E suite), is untouched apart from
-`Vary: Origin`.
+`Vary: Origin` on a `credentialed` route. `public-read` does not get
+that header at all: `Access-Control-Allow-Origin: *` is the same
+answer for every origin, so varying on it would only fragment the
+shared immutable reaction-image payload that Issue #460 keeps free of a
+`Vary` dimension.
 
 ## Files
 

@@ -94,8 +94,16 @@ code は 3 種:
 許可されたプレフライトは `204` + policy ヘッダで返す。
 
 実リクエスト（preflight 以外）で credentialed に許可された場合は
-echo + credentials だけが載る。`Vary: Origin` は CORS 分類された
-全応答（`Origin` ヘッダ 無しのもの を含む）に付く。
+echo + credentials だけが載る。`Vary: Origin` は**origin で結果が変わる
+応答**にだけ付く。具体的には credentialed の echo と refusal
+（refusal は origin についての判定なので、shared cache が別 origin の
+refusal を再利用してよいから）。`public-read` は
+`Access-Control-Allow-Origin: *` で、どの origin に対しても
+バイトが同一なので `Vary: Origin` を付けない。付けると
+Issue #460 の「public な immutable 応答は `Vary` を持たない」という
+契約と衝突し（`/api/v1/reaction-images/:id` は
+`public, max-age=31536000, immutable` で意図的に共有キャッシュに
+載せる）、shared cache のヒット率だけを下げて正しさは増さない。
 
 ### ヘッダを「レスポンス確定後」に載せる理由
 
@@ -113,11 +121,21 @@ prepared-header バッグに保留し、それは context 自身が
 `src/http/cors/middleware.test.ts` が固定している。
 
 Origin ヘッダのないリクエスト（SSR の self-call、`curl`、E2E）は
-従来どおり handler に届く。変わるのは `Vary: Origin` だけ。これは
-shared cache が「Origin 付きのリクエストに concrete な
-`Access-Control-Allow-Origin` を持つレスポンス」を別リクエストに
-再利用しないための必須条件で、クラス分類が origin で変わらない以上
-害がない。
+従来どおり handler に届く。credentialed ルートで変わるのは
+`Vary: Origin` だけ。これは shared cache が「Origin 付きの
+リクエストに concrete な `Access-Control-Allow-Origin` を持つ
+レスポンス」を別リクエストに再利用しないための必須条件である。
+`public-read` は origin 非依存なので、このヘッダすら付かない。
+
+### 併存する middleware との Vary の合成順（Issue #460）
+
+`src/http/hono.ts` の登録順は
+`use('/api/v1/*', sharedCacheIsolation)` →
+`use('*', corsMiddleware)` で固定している。内側の CORS が
+`Vary: Origin` を先に書き、外側の cache-policy が `mergeVary` で
+`Cookie, Authorization` を足す。逆にすると CORS の `Vary` 書き込みが
+cache-policy の値を上書きし、per-principal レスポンスのキャッシュ
+分離が壊れるので、この順は変えないこと。
 
 ### なぜ preflight だけ拒否しないのか（実リクエストも拒否する）
 
@@ -164,6 +182,9 @@ credentials 無しでも handler（＝D1 まで）は到達できてしまう。
    載せる必要があり、登録漏れ・古い項目は両方向で検出される。
    対象は `externalBoundary.routes` だけでなく、`LOCAL_API_MODE=mock`
    の `createMockApp().routes` も含む（mock も到達可能な面なので）。
+   現在は `GET /api/v1/db/ping` / `GET /api/v1/media/ping` に加えて、
+   Issue #420 で追加された `GET /robots.txt` / `GET /sitemap.xml` が
+   `none`（crawler 向)で、理由付きで承知済み。
 6. `credentialed` の許可分岐は**実際の応答バイト**に出る。
    `/api/v1/auth/*`（生の `Response` を返す handler）と
    `LOCAL_API_MODE=mock`（`mockApp.fetch(...)`）は
@@ -186,7 +207,8 @@ credentials 無しでも handler（＝D1 まで）は到達できてしまう。
 | `/api/v1/auth/*`（Better Auth） | 許可 origin 以外の cross-origin リクエストは Better Auth handler に到達せず 403 | Better Auth 自身の `trustedOrigins` チェックより**前**で効く。origin を増やしたいときは `BETTER_AUTH_URL` を 1 つ直すだけで両方に効く（ずれない）。拒否は `Origin` ヘッダの有無だけで判定するため、`Origin` を付ける非ブラウザ client も 403 になる（§4「副作用の正確な範囲」） |
 | `/api/v1/access/*`, `/api/v1/reactions` | 同上。API key は header 経由なので、client 側は従来通り | 外部 integration が別 origin から叩く想定なら、それは明示的な owner 決定として別 ticket で扱う（§7） |
 | TanStack Start の CSRF middleware | **変更なし**。`src/start.ts` は引き続き不在で、default middleware が有効 | CORS は SSR 面（`/`, `/admin/*`, `/_serverFn/*`）には一切ヘッダを出さない。`test/integration/cors.test.ts` が `/`, `/contact`, `/admin/login` でそのことを検証する |
-| `LOCAL_API_MODE=mock` | middleware を境界の先頭に置いたので mock も同じ CORS 面を持つ | デザイナーが mock で別の CORS 面を見て、production と違う挙動を掴むことがない。ただしこの主張は「mount 順が正しい」だけでは成立せず、mock ゲートが生の `Response`（`mockApp.fetch(...)`）を返すため §4 の「確定後に載せる」が必須。`test/integration/cors.test.ts` に mock モードの許可行／拒否行がある |
+| `LOCAL_API_MODE=mock` | middleware を全 router より前（かつ mock ゲートより前）に置いているので mock も同じ CORS 面を持つ | デザイナーが mock で別の CORS 面を見て、production と違う挙動を掴むことがない。ただしこの主張は「mount 順が正しい」だけでは成立せず、mock ゲートが生の `Response`（`mockApp.fetch(...)`）を返すため §4 の「確定後に載せる」が必須。`test/integration/cors.test.ts` に mock モードの許可行／拒否行がある |
+| 共有キャッシュ隔離（Issue #460、`src/http/middleware/cache-policy.ts`） | **併存のみ**。`src/http/hono.ts` では cache-policy が `use('/api/v1/*', sharedCacheIsolation)`、CORS がその直後の `use('*', corsMiddleware)` | 順序は依存関係として固定している。(1) CORS の 403 拒否は cache-policy の内側で短絡するが、外側にいることで `private, no-store` が付く（拒否レスポンスが共有キャッシュに入らない）。(2) CORS の `Vary: Origin` を先に書き、cache-policy がその後に `mergeVary` で `Cookie, Authorization` を足す。逆順だと CORS の `Vary` 書き込みが `Cookie, Authorization` を上書きし、per-principal レスポンスのキャッシュ分離が壊れるため、この順序を変えないこと |
 | Cloudflare バインディング | **変更なし**（D1 / R2 / rate-limit / ASSETS に手を触れていない） | `pnpm run cf-typegen` の再実行は不要 |
 | Tool Registry | **変更なし**（`src/tools/manifest.json` に手を触れていない） | §8 参照 |
 | `public/_headers` | **変更なし** | §8 参照 |

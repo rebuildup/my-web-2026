@@ -272,6 +272,27 @@ describe('public-read routes', () => {
 		expect(decision.headers['Access-Control-Allow-Credentials']).toBeUndefined();
 	});
 
+	it('carries no Vary: Origin, because `*` does not vary on Origin', () => {
+		// Issue #460 requires the public immutable reaction-image payload
+		// to stay free of a `Vary` dimension. A wildcard answer is the
+		// same byte-for-byte for every origin, so `Vary: Origin` would
+		// only cost shared-cache hits. The credentialed echo, which DOES
+		// vary on Origin, keeps the header (asserted above).
+		for (const probe of [
+			{ origin: EVIL, preflight: false },
+			{ origin: null, preflight: false },
+			{ origin: EVIL, preflight: true },
+		]) {
+			const decision = decide({
+				path: '/api/v1/reaction-images/abc',
+				method: 'GET',
+				origin: probe.origin,
+				preflight: probe.preflight,
+			});
+			expect(decision.headers.Vary, JSON.stringify(probe)).toBeUndefined();
+		}
+	});
+
 	it('refuses a preflight that names a request header (credentialed request)', () => {
 		const decision = decide({
 			path: '/api/v1/reaction-images/abc',
@@ -309,14 +330,20 @@ describe('unclassified paths and non-browser callers', () => {
 
 	it('emits no CORS header and refuses nothing without an Origin header', () => {
 		// The SSR self-calls, curl and the E2E suite send no `Origin`.
-		// They must reach the handlers exactly as before; only `Vary` is
-		// added so a shared cache cannot mix origins.
-		for (const path of ['/api/v1/reactions', '/api/v1/access/hit', '/api/v1/health']) {
+		// They must reach the handlers exactly as before; on the
+		// credentialed routes only `Vary` is added so a shared cache
+		// cannot mix an echoed origin with an origin-less request.
+		for (const path of ['/api/v1/reactions', '/api/v1/access/hit']) {
 			const decision = decide({ path, method: 'POST', origin: null });
 			expect(decision.kind).toBe('passthrough');
 			if (decision.kind !== 'passthrough') throw new Error('unreachable');
 			expect(decision.headers).toEqual({ Vary: 'Origin' });
 		}
+		// `public-read` is origin-independent (`*`), so a same-origin /
+		// origin-less self-call must not even grow a `Vary`.
+		const health = decide({ path: '/api/v1/health', method: 'POST', origin: null });
+		if (health.kind !== 'passthrough') throw new Error('unreachable');
+		expect(health.headers).toEqual({});
 	});
 });
 

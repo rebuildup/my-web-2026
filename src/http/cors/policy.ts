@@ -290,12 +290,24 @@ export function decideCors(input: CorsDecisionInput): CorsDecision {
 		return { kind: 'passthrough', klass: 'none', headers: {} };
 	}
 
-	// `Vary: Origin` is emitted on every CORS-classified response,
-	// including the ones with no `Origin` header: a shared cache must
-	// never reuse a response that carried a concrete
-	// `Access-Control-Allow-Origin` for a request that arrives without
-	// one (or the other way round).
-	const base: Record<string, string> = { Vary: 'Origin' };
+	// `Vary: Origin` accompanies every outcome that DEPENDS ON the
+	// request's origin — the credentialed echo, and (for the same
+	// reason) the credentialed refusals: a refusal is a decision ABOUT
+	// an origin, so a shared cache must never serve one origin's
+	// refusal to another. It is emitted whether or not the request
+	// carried an `Origin` header, because a response that echoed a
+	// concrete origin must never be replayed to a request that carries
+	// none (or the other way round).
+	//
+	// The `public-read` class deliberately carries NO `Vary`. Its
+	// answer is `Access-Control-Allow-Origin: *`, which is byte-identical
+	// for every origin — a wildcard does not vary on `Origin` — so the
+	// header would buy no correctness and would fragment the public
+	// immutable reaction-image payload across shared caches for no
+	// reason. Issue #460's cache-isolation contract requires that
+	// payload to stay free of a `Vary` dimension
+	// (`test/integration/cache-isolation.test.ts`).
+	const base: Record<string, string> = route.klass === 'credentialed' ? { Vary: 'Origin' } : {};
 
 	if (input.origin === null) {
 		// No `Origin`: not a cross-origin browser request. The SSR

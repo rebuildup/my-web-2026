@@ -4,9 +4,11 @@ import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { corsMiddleware } from './cors/middleware';
+import { sharedCacheIsolation } from './middleware/cache-policy';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
+import { seoRouter } from './seo/router';
 
 /**
  * External HTTP boundary for my-web-2026.
@@ -18,6 +20,14 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  *   - `/webhooks/*`     inbound webhooks from external services
  *   - `/oauth/*`        OAuth callback handlers
  *   - `/integrations/*` third-party integration adapters
+ *   - `/sitemap.xml`,   crawler-facing SEO documents. These are not
+ *     `/robots.txt`     HTML and cannot be produced by the SSR
+ *                        pipeline (TanStack Start 1.168 has no
+ *                        raw-response route primitive — ADR-0002
+ *                        "Re-evaluation triggers"), so they are
+ *                        served here and registered in the
+ *                        `EXTERNAL_BOUNDARY_PREFIXES` list in
+ *                        `src/server.ts`.
  *
  * Internal application operations invoked from the UI are TanStack
  * Start server functions and **must not** be exposed through Hono.
@@ -29,10 +39,26 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  */
 export const externalBoundary = new Hono<{ Bindings: Env }>();
 
-// CORS policy (Issue #455) — mounted FIRST so it covers every path the
-// boundary serves, including the `LOCAL_API_MODE=mock` short-circuit
-// below. A mock that answered with a different CORS surface would be a
-// way to bypass the production policy.
+// Shared-cache isolation (Issue #460) is registered FIRST so it wraps
+// every other `/api/v1/*` layer, the CORS policy below, and the local
+// mock gate included. Every response on this boundary is a function of
+// the caller's identity (API key id, `mw_actor_id` cookie, Better Auth
+// session) unless the handler explicitly opts into `public` + a positive
+// freshness lifetime — see `src/http/middleware/cache-policy.ts` for
+// the policy, its opt-in, and the sealed-header failure behaviour.
+// A `403 cors_origin_rejected` refusal short-circuits inside the CORS
+// layer, so registering isolation first is what keeps that refusal out
+// of a shared cache too.
+externalBoundary.use('/api/v1/*', sharedCacheIsolation);
+
+// CORS policy (Issue #455) — mounted before every path the boundary
+// serves, including the `LOCAL_API_MODE=mock` short-circuit below. A
+// mock that answered with a different CORS surface would be a way to
+// bypass the production policy. It runs INSIDE the cache-isolation
+// layer on purpose: its pass-through renders `Vary: Origin` on the
+// finalized response, and cache isolation merges that with
+// `Cookie, Authorization` afterwards instead of letting the CORS write
+// overwrite them.
 //
 // The split it enforces: `credentialed` routes (`/api/v1/auth/*`,
 // `/api/v1/access/*`, `/api/v1/reactions`) echo ONE allow-listed origin
@@ -68,6 +94,7 @@ externalBoundary.use('/api/v1/*', async (c, next) => {
 // change to `src/server.ts` is required.
 externalBoundary.use('/api/v1/*', requestIdMiddleware);
 externalBoundary.route('/', authRouter);
+externalBoundary.route('/', seoRouter);
 externalBoundary.route('/api/v1/access', accessCounterRouter);
 externalBoundary.route('/api/v1/reactions', reactionsRouter);
 externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);

@@ -12,10 +12,16 @@ import { CORS_REFUSAL_STATUS, decideCors } from './policy';
  * decision about *which* origin, method or header is acceptable lives in
  * `policy.ts`, which is pure and unit-tested without workerd.
  *
- * Mounted first on `externalBoundary` (`src/http/hono.ts`) so the
- * policy also covers the `LOCAL_API_MODE=mock` short-circuit — a
- * designer running in mock mode must see the same CORS surface as
- * production, otherwise the mock would be a way to bypass it.
+ * Mounted on `externalBoundary` (`src/http/hono.ts`) ahead of every
+ * router, ahead of the request-id layer, and ahead of the
+ * `LOCAL_API_MODE=mock` short-circuit — a designer running in mock mode
+ * must see the same CORS surface as production, otherwise the mock would
+ * be a way to bypass it. The one layer in front of it is shared-cache
+ * isolation (`src/http/middleware/cache-policy.ts`), which is a
+ * response-header concern for `/api/v1/*` only; CORS still covers the
+ * paths cache isolation is not registered on, and it renders
+ * `Vary: Origin` before cache isolation merges `Cookie, Authorization`
+ * into it.
  */
 export const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next) => {
 	const preflight =

@@ -351,7 +351,7 @@ pnpm run verify:compat-screenshot  # render the matrix + write the WebP
 | Path                              | What it is                                        |
 | --------------------------------- | ------------------------------------------------- |
 | `playwright.compat.config.ts`     | 3 projects + JSON reporter; spreads the base config so `baseURL`, the local D1 `webServer` and `globalSetup` are inherited |
-| `e2e/compat/contract.ts`          | closed public route roster + observe/judge pair    |
+| `e2e/compat/contract.ts`          | closed public landing-route roster + observe/judge pair |
 | `e2e/compat/public-ui.spec.ts`    | route display contract + basic operations         |
 | `e2e/compat/negative-control.spec.ts` | deliberate breakage, rejected by the same judge |
 | `.tmp/compat-results.json`        | Playwright JSON report (matrix source)            |
@@ -373,7 +373,15 @@ How a failure is kept visible
 - **SKIP is not PASS.** A skipped test renders as `SKIP`, and a retry
   that only passed on the second attempt renders as `FLAKY`.
 - **Uncovered routes are reported.** A roster route with no executed
-  test is listed in its own band instead of being folded into a pass.
+  test is listed in its own band instead of being folded into a pass,
+  and the report script exits non-zero while that band is non-empty.
+- **A degraded run cannot replace the evidence.** If no engine binary
+  can be launched, the report script refuses to overwrite the
+  committed WebP instead of recording an all-`unavailable` matrix.
+
+The roster is specifically the public *landing* routes. Detail
+surfaces (`/portfolio/$slug`, `/tools/$slug`) are not part of the
+shell / display contract this gate holds.
 - **The gate is shown to fail.** `negative-control.spec.ts` feeds the
   same judge three broken fixtures, an unimplemented route, and one
   real page, and asserts that each is rejected by the rule that owns

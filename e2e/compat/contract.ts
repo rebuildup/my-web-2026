@@ -1,8 +1,11 @@
 /**
  * Cross-engine public UI contract (Issue #415).
  *
- * The roster below is the closed set of public routes this repository
- * ships today. "Closed" is the important word: the compat gate asserts
+ * The roster below is the closed set of public LANDING routes this
+ * repository ships today. Detail surfaces that embed user content
+ * (`/portfolio/$slug`, `/tools/$slug`) are out of scope by design: the
+ * gate is about the shell / display contract, not per-record pages.
+ * "Closed" is the important word: the compat gate asserts
  * every entry against three engines, and a route that is NOT in this
  * list is never reported as a pass — it is reported as "not covered"
  * (`docs/development.md` § Compat matrix). That is the anti-silent-pass

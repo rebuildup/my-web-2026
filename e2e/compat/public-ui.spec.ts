@@ -28,6 +28,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { expect, test } from '@playwright/test';
+import { NAV_ROSTER } from '../nav-roster';
 import { COMPAT_ROUTES, assertRouteContract, observeRoute } from './contract';
 
 const SCREENSHOT_DIR = join('.tmp', 'compat-screenshots');
@@ -188,7 +189,7 @@ test.describe('basic operations — mobile viewport', () => {
 
 		const panel = nav.locator('[data-testid="public-nav-mobile-panel"]');
 		await expect(panel).toBeVisible();
-		await expect(panel.locator('a')).toHaveCount(6);
+		await expect(panel.locator('a')).toHaveCount(NAV_ROSTER.length);
 
 		await expect(async () => {
 			await panel.locator('a[href="/contact"]').click();

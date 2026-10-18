@@ -232,6 +232,24 @@ describe('make-compat-matrix-report — rendering', () => {
 		assert.doesNotMatch(html, /<script>alert/);
 		assert.match(html, /&lt;script&gt;/);
 	});
+
+	it('escapes quotes in failure messages used inside an attribute', () => {
+		// `cell.detail` lands in `title="..."`, so a message containing a
+		// quote must not be able to terminate the attribute and inject
+		// markup (or an event handler) into the locally opened report.
+		const failing = collectMatrix(
+			report([
+				spec('/x satisfies the public display contract', [
+					test_('chromium', 'unexpected', {
+						message: 'boom" onmouseover="alert(1)',
+					}),
+				]),
+			]),
+		);
+		const html = renderMatrixHtml({ ...base, matrix: failing, uncovered: [] });
+		assert.doesNotMatch(html, /onmouseover="alert/);
+		assert.match(html, /&quot; onmouseover=&quot;alert\(1\)/);
+	});
 });
 
 describe('make-compat-matrix-report — guards', () => {

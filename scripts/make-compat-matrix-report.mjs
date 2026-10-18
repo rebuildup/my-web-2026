@@ -199,7 +199,12 @@ export function findUncoveredRoutes(roster, rows) {
 }
 
 function escapeHtml(value) {
-	return String(value).replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+	return String(value)
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;')
+		.replaceAll("'", '&#39;');
 }
 
 /**
@@ -354,7 +359,7 @@ ${body}
 
   ${uncoveredBlock}
 
-  <h2>route roster（閉集合）</h2>
+  <h2>route roster（public landing routes の閉集合）</h2>
   <table>
     <thead><tr><th style="width:180px">path</th><th style="width:160px">label</th><th>h1 契約</th></tr></thead>
     <tbody>
@@ -468,6 +473,15 @@ async function main() {
 
 	const pkg = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
 	const versions = await browserVersions(flags.get('skip-versions') === 'true');
+	// A run without a single usable engine binary says nothing about
+	// cross-engine compatibility. Refuse to overwrite the committed
+	// evidence with an all-`unavailable` environment block; install the
+	// engines (`pnpm run e2e:compat:install`) and re-run instead.
+	if (Object.values(versions).every((version) => version.startsWith('unavailable ('))) {
+		throw new Error(
+			`No engine binary could be launched (chromium/firefox/webkit all unavailable). Refusing to overwrite ${outPath}. Run \`pnpm run e2e:compat:install\` first.`,
+		);
+	}
 	const environment = {
 		OS: `${type()} ${platform()} ${release()} (${arch()})`,
 		Node: process.version,
@@ -507,6 +521,11 @@ async function main() {
 		process.stderr.write(
 			`[compat matrix] ${uncovered.length} roster route(s) were NOT executed: ${uncovered.join(', ')}\n`,
 		);
+		// The report is not a green signal while a roster route is
+		// unaccounted for. CI is already red from the Playwright step in
+		// that case; this keeps a future report-only invocation honest
+		// instead of exiting 0 over an uncovered band.
+		process.exitCode = 1;
 	}
 
 	const info = await shoot(htmlPath, outPath);

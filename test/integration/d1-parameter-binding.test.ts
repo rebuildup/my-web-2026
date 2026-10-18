@@ -368,6 +368,21 @@ function authHeaders(): Record<string, string> {
 	return { authorization: 'Bearer mk_home_fixture-not-a-real-key', origin: BOUNDARY_ORIGIN };
 }
 
+/**
+ * Headers for a request that carries a JSON body.
+ *
+ * `Request` labels a string body `text/plain;charset=UTF-8` when the
+ * caller declares no media type, and `src/http/validation.ts`
+ * (Issue #450) answers `415 unsupported_media_type` for a declared
+ * non-JSON media type. Every body-carrying request in this suite is a
+ * JSON request, so it declares `application/json` explicitly — the
+ * same header `src/home/{access,reactions}/load.ts` sends in
+ * production.
+ */
+function jsonBodyHeaders(base: Record<string, string>): Record<string, string> {
+	return { 'content-type': 'application/json', ...base };
+}
+
 beforeEach(async () => {
 	// API key verification is stubbed through the documented DI seam
 	// so the suite never depends on a Better Auth apikey row.
@@ -666,7 +681,7 @@ describe('DELETE /api/v1/reactions — a payload deletes only its own row', () =
 			'/api/v1/reactions',
 			{
 				method: 'DELETE',
-				headers: authHeaders(),
+				headers: jsonBodyHeaders(authHeaders()),
 				body: JSON.stringify({
 					target_key: payload,
 					actor_id: 'actor-seed',
@@ -927,7 +942,7 @@ function putReaction(workerEnv: Env, body: PutReactionBody): Promise<Response> |
 		'/api/v1/reactions',
 		{
 			method: 'PUT',
-			headers: authHeaders(),
+			headers: jsonBodyHeaders(authHeaders()),
 			body: JSON.stringify({ kind: 'emoji', ...body }),
 		},
 		workerEnv,
@@ -939,7 +954,7 @@ function recordHit(workerEnv: Env, key: string, sessionId: string): Promise<Resp
 		'/api/v1/access/hit',
 		{
 			method: 'POST',
-			headers: hitHeaders(),
+			headers: jsonBodyHeaders(hitHeaders()),
 			body: JSON.stringify({ key, session_id: sessionId }),
 		},
 		workerEnv,

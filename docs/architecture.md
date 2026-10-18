@@ -264,7 +264,10 @@ manifest 駆動の生成 precedent がある。ただし shared namespace につ
 ## Repository-level contracts outside `src/`
 
 `src/` 以外の top-level directory も、耐久的な契約を持つものは存在する。
-現時点で観測されるのは 3 つ。
+以下は **resource 契約**として観測されたものの表で、全体像ではない。
+（`wrangler.jsonc` / `wrangler.production.jsonc` のような Cloudflare 構成契約も
+`src/` 外にある。AGENTS.md §4「Wrangler 構成に宣言されたものしか存在しない」の
+相手であり、この表の対象外。）
 
 | Path | 所有する契約 | gate |
 | --- | --- | --- |

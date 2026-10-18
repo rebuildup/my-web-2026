@@ -28,8 +28,9 @@ const SCRIPT = join(REPO_ROOT, 'scripts/check-copy-i18n.mjs');
  * The gate's whole value is failing when it should, so the fixture
  * contract plants one violation of every finding class and the first
  * case asserts each class still fires. The remaining cases pin the
- * fallback semantics (an untranslated key and an undetermined draft
- * must both degrade to the author's own text), the structural rules
+ * fallback semantics (an untranslated key degrades to the author's own
+ * text; an undetermined draft is skipped so the walk can still reach a
+ * reviewed translation), the structural rules
  * that make a report trustworthy, and the fact that the gate runs
  * clean against the real repository contract — a scanner regression
  * must not be able to turn the gate into a silent no-op.
@@ -122,11 +123,40 @@ describe('check-copy-i18n — fallback and draft semantics', () => {
 		assert.equal(resolved.text, '7 日以内に返信します');
 	});
 
-	it('never serves a draft and reports why', () => {
+	it('never serves a draft and keeps walking the chain for a reviewed text', () => {
 		const resolved = resolveMessage(fixture, 'contact', 'en', 'contact.publish.cap');
-		assert.equal(resolved.ok, false);
-		assert.equal(resolved.reason, 'draft-not-served');
+		assert.equal(resolved.ok, true, 'a skipped draft still resolves to readable text');
+		assert.equal(resolved.reason, 'missing', 'nothing reviewed remains in the chain');
+		assert.deepEqual(resolved.draftsSkipped, ['en'], 'the draft was skipped, not served');
+		assert.equal(resolved.resolvedFrom, 'ja');
 		assert.equal(resolved.text, '公開できるプロジェクトは上限 3 つまでです');
+	});
+
+	it('resolves past a draft in the requested locale to a reviewed fallback locale', () => {
+		const contract = {
+			features: [
+				{
+					id: 'contact',
+					owner: 'contact',
+					sourceLocale: 'ja',
+					locales: {
+						ja: { state: 'source' },
+						en: { state: 'translating', fallback: 'fr' },
+						fr: { state: 'published', fallback: 'ja' },
+					},
+					keys: [{ key: 'k.title', source: '原文のタイトル' }],
+					messages: {
+						en: { 'k.title': { text: 'draft title', status: 'draft', prose: 'unverified' } },
+						fr: { 'k.title': { text: 'titre verifie', status: 'reviewed', prose: 'verified' } },
+					},
+				},
+			],
+		};
+		const resolved = resolveMessage(contract, 'contact', 'en', 'k.title');
+		assert.equal(resolved.reason, 'fallback');
+		assert.equal(resolved.resolvedFrom, 'fr');
+		assert.equal(resolved.text, 'titre verifie');
+		assert.deepEqual(resolved.draftsSkipped, ['en']);
 	});
 
 	it('degrades to the source locale for a locale the feature never opted into', () => {
@@ -312,6 +342,15 @@ describe('check-copy-i18n — the gate as CI runs it', () => {
 		assert.equal(runCli(['--unknown-flag']).status, 2);
 	});
 
+	it('reports a malformed features field instead of crashing on it', () => {
+		const result = runChecks(
+			{ schemaVersion: 1, knownLocales: ['ja'], features: {} },
+			{ repoRoot: REPO_ROOT },
+		);
+		assert.ok(codesOf(result.findings).has('no-features'));
+		assert.equal(result.summary.features, 0);
+	});
+
 	it('renders every format from the same findings', () => {
 		const runs = [
 			{
@@ -375,7 +414,13 @@ describe('check-copy-i18n — the shipped repository contract', () => {
 		}
 	});
 
-	it('declares the source locale from shipped copy, not from a target-language wish', () => {
+	it('pins the single-locale shape the repository contract declares today', () => {
+		// The shipped contract records `ja` for every feature. `/tools`
+		// and `/contact` ship bilingual / English-authored copy, so
+		// whether their `sourceLocale` should be `en` is an owner copy
+		// decision (recorded in `copy/README.md`), not something this
+		// gate may settle. This test pins the shape as it is, so the
+		// decision shows up as a diff when it is taken.
 		const contract = JSON.parse(readFileSync(join(REPO_ROOT, CONTRACT_PATH), 'utf8'));
 		assert.deepEqual(contract.knownLocales, ['ja']);
 		for (const feature of contract.features) {

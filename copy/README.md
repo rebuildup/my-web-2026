@@ -75,6 +75,12 @@ locale で終わる（循环・未宣言 locale・source 到達不能は `error`
 否定・権限の検出は marker の集合による heuristic であり、誤検出より見落としを避ける側に
 振っている。誤検出のコストは人の確認 1 回、誤検出漏れのコストは原文と反対の意味の出稿である。
 
+`{placeholder}` も **集合**で照合する（順序は問わない）。この gate が答えるのは
+「翻訳が全 placeholder を保っているか」だけなので、2 つ以上の placeholder の
+引数が入れ替わった場合（`{a} を {b}` → `{b} を {a}`）は報告しない。
+文言と値の結び付けを機械で断定しないための取舍であり、binding の検証は将来
+component 側のテストの担当である。
+
 Issue の参考先（yomiyasu を含む編集補助ツール）は **推敲の提案**として offline で使えるが、
 その出力が品質を証明することはありません。`prose: "verified"` を書くのは、原文と突き合わせた
 人が読んだときだけです。gate 自体に Python も機械翻訳サービスもネットワークも要りません
@@ -119,11 +125,28 @@ fixture の finding が gate を赤くすることはない（`--include-fixture
 6. 人が原文と突き合わせて確認した key だけ `status: "reviewed"`, `prose: "verified"` にする。
 7. 全 key が揃ったら locale の `state` を `published` にする。
 
+**宣言は逐次ではなくまとめて行う。** `locales` に載せた locale は
+「公開言語として出す」と宣言した時点で `missing-key` が `error` になるため、
+ステップ 2 と 4 の間に key が揃わない半端な状態を作ると gate は赤くなる。
+新 locale を gate に入れてよいのは、その key に対するリソース（作業中なら
+`draft`）が同じ変更に載っているときだけである。draft は served されないので、
+途中状態でも visitor が見るのは source の原文である。
+
 ## 現在の未登録 scope
 
 - `/admin/**` は意図的に登録していない。admin の文言は「招待 / Invitations」のように
   日英併記で書かれており、1 つの source locale として current code から導けない。
   登録は owner の copy decision。
+- `knownLocales` は `["ja"]`。Issue の「全 10 言語」は repository から導けないため、
+  2 番目の言語は owner が opt-in を決めた時点で追加する（open decision）。
+- **未決の owner decision（#428 review で提起）**: `tools` と `contact` は出荷文言が
+  英語主体（`src/tools/manifest.json`、`src/routes/tools.index.tsx`）または日英併記
+  （`src/contact/page.tsx`）だが、現在の実物は 5 feature すべて `sourceLocale: "ja"`。
+  `/admin/**` を bilingual として除外したのと同じ基準なら `tools` も `en` を記録すべきで、
+  どちらが正しいかは**リポジトリからは決まらない owner の copy decision** である。
+  agent はこの値を勝手に変えず、実物と一致する `["ja"]` のまま残し、
+  `scripts/check-copy-i18n.test.mjs` の「pins the single-locale shape」テストがこの
+  形を固定している（決定が下りたときは差分として見える）。
 - どの capability も 2 番目の locale に opt-in していないため、`keys` は空である。
   gate はこれを「未翻訳 0 件」と表示する。coverage を無いまま green にするのは
   「公開言語が 1 つ」という観測であり、10 言語対応 progress ではない。

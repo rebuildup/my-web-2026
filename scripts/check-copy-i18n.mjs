@@ -272,6 +272,14 @@ function numericTokens(text) {
 	return [...new Set(text.match(/\d+(?:[.,]\d+)*/g) ?? [])];
 }
 
+/**
+ * Placeholder names in one text, compared as a **set**, not a
+ * sequence: the check answers "did the translation keep every
+ * placeholder?", and word order legitimately differs between
+ * locales. The trade-off is recorded in `copy/README.md`: a
+ * translation that swaps the arguments of two or more placeholders
+ * (`{a} を {b}` -> `{b} を {a}`) is not reported by this gate.
+ */
 function placeholderTokens(text) {
 	return [...new Set([...text.matchAll(PLACEHOLDER_PATTERN)].map((m) => m[1]))].sort();
 }
@@ -791,9 +799,12 @@ export function fallbackChain(feature, locale) {
 /**
  * Resolve one message the way the contract says a reader must see it.
  *
- * Only a `reviewed` resource is ever served. A `draft`, a missing
- * resource, or a locale the feature never opted into all degrade to the
- * next locale in the chain, which terminates at the author's own text.
+ * Only a `reviewed` resource is ever served. A `draft` is *skipped*, not
+ * short-circuited: the walk continues down the chain so the nearest
+ * reviewed translation wins, exactly as the header and `copy/README.md`
+ * describe. If nothing later in the chain is reviewed, the answer is
+ * the ordinary `missing` case (the author's own text, `ok: true`) with
+ * `draftsSkipped` recording which locales held an unserved draft.
  */
 export function resolveMessage(contract, featureId, locale, key) {
 	const feature = contract?.features?.find((item) => item?.id === featureId);
@@ -817,6 +828,7 @@ export function resolveMessage(contract, featureId, locale, key) {
 	const order = [locale];
 	const chain = fallbackChain(feature, locale);
 	for (const next of chain.ok ? chain.chain.slice(1) : []) order.push(next);
+	const draftsSkipped = [];
 	for (const candidate of order) {
 		const message = feature.messages?.[candidate]?.[key];
 		if (message?.status === 'reviewed') {
@@ -826,17 +838,12 @@ export function resolveMessage(contract, featureId, locale, key) {
 				text: message.text,
 				resolvedFrom: candidate,
 				locale,
+				draftsSkipped,
 			};
 		}
-		if (message?.status === 'draft') {
-			return {
-				ok: false,
-				reason: 'draft-not-served',
-				text: entry.source,
-				resolvedFrom: feature.sourceLocale,
-				locale,
-			};
-		}
+		// A draft is never served; keep walking the chain for a
+		// reviewed translation before degrading to the source text.
+		if (message?.status === 'draft') draftsSkipped.push(candidate);
 	}
 	return {
 		ok: true,
@@ -844,6 +851,7 @@ export function resolveMessage(contract, featureId, locale, key) {
 		text: entry.source,
 		resolvedFrom: feature.sourceLocale,
 		locale,
+		draftsSkipped,
 	};
 }
 
@@ -1096,9 +1104,13 @@ export function checkMessage({
 
 /** Run every check over one parsed contract. */
 export function runChecks(contract, { repoRoot = REPO_ROOT } = {}) {
+	// `validateContract` already reports a non-array `features` as the
+	// `no-features` error; the walk must survive the same shape so the
+	// report is emitted instead of a raw TypeError.
+	const featureList = Array.isArray(contract?.features) ? contract.features : [];
 	const findings = [
 		...validateContract(contract, { repoRoot }),
-		...(contract?.features ?? []).flatMap((feature) => checkFeature(feature)),
+		...featureList.flatMap((feature) => checkFeature(feature)),
 	];
 	const sorted = sortFindings(findings);
 	return {
@@ -1112,8 +1124,8 @@ export function runChecks(contract, { repoRoot = REPO_ROOT } = {}) {
 				sorted.filter((item) => item.severity === 'error'),
 				'class',
 			),
-			features: (contract?.features ?? []).length,
-			optInPairs: (contract?.features ?? []).reduce(
+			features: featureList.length,
+			optInPairs: featureList.reduce(
 				(total, feature) => total + Object.keys(feature?.locales ?? {}).length,
 				0,
 			),

@@ -72,7 +72,7 @@ bar-implied floor は「採用済み機能のうち最新の `baseline_high_date
   ため fail する。`src/` 以外を走査させるには surface への明示的宣言が要る。
   **新しい obligation ディレクトリを足すときは surface も足す**: 宣言が
   無いと走査対象のファイルが `surface_uncovered` で fail する（trunk に
-  追加された `src/external-api/`（Issue #499）で実際に一度そうなった）。
+  追加された `src/external-api/`（Issue #499）や `src/i18n/`（Issue #433）で実際にそうなった）。
 - `features[].detect` … その機能の検出正規表現（`RegExp` ソース文字列）。
 - `features[].dataset` … Baseline 状態と browser ごとの最初の対応バージョン。
   `compat_key` を指定すると web-features の granular key（例:
@@ -117,7 +117,7 @@ pnpm run verify:browser-baseline-screenshot            # report HTML + WebP を�
 期待結果（`src/**` の増加に合わせて scanned files は増える。下の行はこの report を最後に再生成した時点の値）:
 
 ```
-surfaces  13 declared · 163 files scanned · 0 uncovered
+surfaces  14 declared · 167 files scanned · 0 uncovered
 features  14 adopted (3 below the bar, each with a verified fallback) · 9 guarded
 warnings (3)   # word-break-auto-phrase / text-wrap-balance / text-wrap-pretty
 exit 0         # `errors (n)` 行はエラーが 1 件以上あるときだけ出力される（0 件なら出ない）

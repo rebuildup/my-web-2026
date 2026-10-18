@@ -81,18 +81,20 @@
  *    one.
  *
  * Known limitation (owner decision, deliberately NOT decided here):
- * rule 2 denies `allow-same-origin`, so a `same_origin_static` frame
- * runs in an OPAQUE origin and every message it posts reports
- * `event.origin === "null"`, never the host origin. A `'self'`
- * declaration on a same-origin Tool therefore cannot be satisfied at
- * runtime: the guard attaches (the declaration is syntactically
- * valid) and then refuses every event as `origin-mismatch`. That is
- * fail-closed, and it is also why no Tool declares `host_message`
- * today. Making such a channel work needs a sandbox-compatible
- * identity (frame `contentWindow` alone, or a host-issued nonce
- * handshake) — an architectural change that is ADR-0006's
- * re-evaluation trigger and belongs to the first Tool that actually
- * needs it, not to this Issue. See `docs/tools/embed-policy.md` §5a.
+ * rule 2 denies `allow-same-origin`, so EVERY framed Tool runs in an
+ * OPAQUE origin — on both delivery kinds, whatever its `src` URL says —
+ * and every message it posts reports `event.origin === "null"`, never
+ * a concrete origin. A `'self'` declaration therefore cannot be
+ * satisfied at runtime, and neither can a literal `https://…` one: the
+ * guard attaches (the declaration is syntactically valid) and then
+ * refuses every event as `origin-mismatch`. That is fail-closed, and it
+ * is also why no Tool declares `host_message` today. Making such a
+ * channel work needs a sandbox-compatible identity (an opaque-origin
+ * marker, frame `contentWindow` plus a nonce handshake) — an
+ * architectural change that is ADR-0006's re-evaluation trigger and
+ * belongs to the first Tool that actually needs it, not to this Issue.
+ * Both candidate contracts are written out in
+ * `docs/tools/embed-policy.md` §5a.
  *
  * This module is the single source of truth for those rules. It is
  * consumed by three surfaces, and all three MUST agree:
@@ -621,8 +623,10 @@ export function evaluateHostMessageDeclaration(
 			);
 		} else if (subject.frame_origin !== 'unresolved') {
 			// Cross-origin frame: the declared origin must match the
-			// frame's ACTUAL origin, so a manifest cannot name an origin
-			// the frame does not have.
+			// origin the frame's URL implies, so a manifest cannot name
+			// an origin the frame does not even point at. (It is NOT the
+			// origin the frame runs on — under this policy the sandbox
+			// makes every frame opaque; see the NOTE below.)
 			let frameOrigin: string | null = null;
 			try {
 				frameOrigin = new URL(subject.frame_src).origin;
@@ -649,17 +653,21 @@ export function evaluateHostMessageDeclaration(
 			),
 		);
 	}
-	// NOTE (Issue #465, first review): a `'self'` declaration on a
-	// `same_origin_static` entry passes this check but CANNOT be
-	// satisfied at runtime. The sandbox denies `allow-same-origin`, so
-	// the frame is opaque-origin and every event it posts carries
-	// `event.origin === "null"`; the guard compares that against the
-	// host origin and refuses it. That stays a runtime refusal rather
-	// than a build-time violation on purpose: turning it into one would
-	// pre-decide the architecture question (opaque-origin identity via
-	// frame `contentWindow` / nonce handshake) that ADR-0006's
-	// re-evaluation trigger owns. The constraint is documented in
-	// `docs/tools/embed-policy.md` §5a instead.
+	// NOTE (Issue #465, reviews): under this policy NO `host_message`
+	// declaration can be satisfied at runtime, on either embeddable
+	// kind. `allow-same-origin` is always denied, so every framed Tool
+	// runs in an opaque origin and every event it posts carries
+	// `event.origin === "null"` — a `'self'` declaration on a
+	// `same_origin_static` entry, and a literal `https://…` declaration
+	// on an `external_exception` entry alike. The guard attaches (the
+	// declaration is syntactically valid) and then refuses every event
+	// as `origin-mismatch`. That stays a runtime refusal rather than a
+	// build-time violation on purpose: the gate would be pre-deciding
+	// the architecture question (opaque-origin identity via frame
+	// `contentWindow` or a host-issued nonce handshake) that ADR-0006's
+	// re-evaluation trigger owns. Both constraints, and the two
+	// candidate contracts, are written out in `docs/tools/embed-policy.md`
+	// §5a; the behaviour is pinned by `src/tools/embed-policy.test.ts`.
 
 	const types = declaration.allowed_types;
 	if (!Array.isArray(types) || types.length === 0) {

@@ -143,33 +143,80 @@ form of this mistake: it reads like a path and is a foreign origin.
   `postMessage` would reject (`"self"`, a path, a non-URL) — a manifest
   typo can never become an uncaught `SyntaxError` on the host page.
 
-#### 5a. The opaque-origin constraint (`"self"` on a same-origin Tool)
+#### 5a. The opaque-origin constraint (every framed Tool)
 
-This policy always denies `allow-same-origin` (§2), so a
-`same_origin_static` frame runs in an **opaque origin** and every
-message it posts reports `event.origin === "null"` — never the host
-origin. Consequences:
+This policy always denies `allow-same-origin` (§2), so **every**
+framed Tool — `same_origin_static` and `external_exception` alike —
+runs in an **opaque origin**, whatever URL its `src` names, and every
+message it posts reports `event.origin === "null"`. The sandbox, not
+the `src`, decides the origin a document runs on. Consequences:
 
 - A `"self"` declaration on a `same_origin_static` Tool passes the
   manifest gate (the declaration is syntactically valid, and the frame
   src really is root-relative), the guard attaches, and then **every**
   event is refused as `origin-mismatch`. It is fail-closed, and inert:
   no Tool declares `host_message` today.
-- The declaration that can actually be established today is an
-  `external_exception` Tool with an `https` `external_url` and
-  `expected_origin` equal to that URL's origin. A literal
-  `https://…` `expected_origin` on a root-relative `entry_html` is
-  rejected at build time (`host-message.origin.mismatch`), so
-  `same_origin_static` currently has no workable `host_message`
-  declaration at all.
-- Making one work requires a sandbox-compatible identity — frame
-  `contentWindow` alone, or a host-issued nonce handshake — which
-  weakens or replaces the exact-origin rule. That is an
-  architectural decision, i.e. ADR-0006's own re-evaluation trigger,
-  and is deliberately **not** decided here. It is covered by
+- The other form the gate accepts — an `external_exception` Tool whose
+  `https://…` `expected_origin` matches its `external_url` — is
+  refused at runtime **for the same reason**: the frame is still
+  sandboxed without `allow-same-origin`, so it reports `"null"`, not
+  `https://tool.example`. The build gate compares the declaration with
+  the origin the **URL** implies; the browser compares the message with
+  the origin the **frame** runs on, and under this policy those are
+  never the same. (A literal `https://…` `expected_origin` on a
+  root-relative `entry_html` is rejected outright at build time —
+  `host-message.origin.mismatch`.)
+- So no `host_message` declaration of either form can be satisfied
+  today, on either embeddable kind. This is a property of the sandbox
+  rules, not of the manifest: the channel is fully implemented and
+  fully tested, and gated off until the identity question below is
+  answered.
+- Making one work requires a sandbox-compatible identity, which weakens
+  or replaces the exact-origin rule. That is an architectural decision,
+  i.e. ADR-0006's own re-evaluation trigger, and is deliberately
+  **not** decided here. The current behaviour is pinned by
   `src/tools/embed-policy.test.ts` →
-  `Tool embed policy — the opaque-origin constraint on a same-origin frame`
-  so the current behaviour cannot be forgotten.
+  `Tool embed policy — the opaque-origin constraint on a framed Tool`
+  so it cannot be forgotten.
+
+##### The two contracts that would resolve it (owner decision)
+
+Neither exists in the code. Both replace the *identity primitive* the
+channel is gated on, so both need an ADR-0006 revision.
+
+**A — opaque-origin marker.** Require `event.origin === "null"` (what
+a sandboxed document always reports) in addition to today's
+`event.source === iframe.contentWindow`.
+
+- A frame that navigates away from the sandboxed artefact reports a
+  real origin and is refused, so the frame-navigation case still fails
+  closed.
+- But **every** document that ends up in that frame is then inside the
+  trust boundary, and `expected_origin` stops meaning an origin.
+
+**B — host-issued nonce.** The host posts a per-render nonce into the
+frame — `postMessage(…, "*")`, the only form an opaque-origin frame
+accepts — and the Tool echoes it in every message.
+
+- The Tool has to implement a handshake it never asked for, and the
+  nonce has to reach the artefact at all (render-time query, or a
+  host-authored bootstrap): a Tool-facing contract, not a host-internal
+  one.
+- The trust boundary becomes "a document that was handed the nonce".
+
+Two sub-questions a decision has to answer before either is adopted:
+
+1. **What is trusted?** Under A the host trusts whatever document
+   occupies the Tool frame; under B only a document that was handed the
+   nonce. The build gate polices the **manifest**, not the artefact's
+   runtime behaviour, so this has to be accepted explicitly.
+2. **Outbound.** `postMessage` cannot target an opaque-origin frame
+   except with `"*"`, which this policy refuses unconditionally
+   (`postToToolWindow` → `wildcard-target-origin`). Under either
+   candidate the host → Tool direction therefore stays unavailable
+   unless the outbound rule changes as well — a decision of its own.
+
+Until they are answered, the runtime refusal is the correct outcome.
 
 ## Where the rules are enforced
 
@@ -283,9 +330,10 @@ declares one also needs:
   until the host sends that response header, a declared
   `iframe.allow` grant has no effect even though it is rendered,
 - an ADR revision if the channel is cross-origin,
-- an answer to §5a: how a `same_origin_static` frame (opaque origin by
-  construction) is identified at all — `contentWindow` alone, or a
-  host-issued nonce handshake,
+- an answer to §5a: how a framed Tool — opaque origin by construction,
+  under both delivery kinds — is identified at all. The two candidate
+  contracts, and what each one costs, are written out in §5a so the
+  decision is a choice rather than a research task,
 - a host-side action behind `onToolMessage`
   (`src/routes/tools.$slug.tsx`), which is currently a deliberate
   no-op seam rather than a missing feature.

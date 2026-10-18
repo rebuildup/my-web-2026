@@ -431,19 +431,20 @@ describe('Tool embed policy — host message contract', () => {
 	});
 });
 
-describe('Tool embed policy — the opaque-origin constraint on a same-origin frame', () => {
-	// Issue #465 review (P1). The policy ALWAYS denies
-	// `allow-same-origin`, so a `same_origin_static` frame runs in an
-	// opaque origin: every message it posts carries
-	// `event.origin === "null"`, never the host origin. A `'self'`
-	// declaration therefore passes the manifest gate but can never
-	// match at runtime.
+describe('Tool embed policy — the opaque-origin constraint on a framed Tool', () => {
+	// Issue #465 reviews (P1). The policy ALWAYS denies
+	// `allow-same-origin`, on both delivery kinds, so EVERY framed Tool
+	// runs in an opaque origin: every message it posts carries
+	// `event.origin === "null"`, whatever the frame's `src` URL says.
+	// No `host_message` declaration can therefore be satisfied at
+	// runtime — neither `'self'` on a same-origin artefact, nor a
+	// literal `https://…` on an `external_exception` one.
 	//
 	// This suite documents that fact on purpose instead of hiding it:
-	// the fix (identify the frame by `contentWindow` alone, or a
-	// host-issued nonce handshake) changes the security contract and
-	// belongs to an ADR-0006 re-evaluation decision, which is out of
-	// scope for this Issue. The behaviour below is fail-closed.
+	// the fix (an opaque-origin marker, or a host-issued nonce
+	// handshake) changes the security contract and belongs to an
+	// ADR-0006 re-evaluation decision, which is out of scope for this
+	// Issue. The behaviour below is fail-closed.
 
 	const HOST_ORIGIN = 'https://host.example';
 	const delivery = okDelivery({
@@ -483,6 +484,68 @@ describe('Tool embed policy — the opaque-origin constraint on a same-origin fr
 		});
 		expect(verdict).toEqual({ accepted: false, reason: 'origin-mismatch' });
 		expect(seen).toEqual([]);
+	});
+
+	it('refuses a cross-origin Tool frame too — it reports "null", not its URL origin', () => {
+		// The gate-accepted `external_exception` form: the declared
+		// origin matches the frame src's URL. The browser still reports
+		// the frame as opaque, so the runtime refusal is identical.
+		const crossOrigin = {
+			kind: 'external_exception',
+			external_url: 'https://tool.example/app/',
+			iframe: { sandbox: 'allow-scripts', referrer_policy: 'no-referrer' },
+			host_message: {
+				expected_origin: 'https://tool.example',
+				allowed_types: ['tool:ready'],
+			},
+		};
+		expect(codes(crossOrigin)).toEqual([]);
+
+		const toolWindow = { name: 'tool-frame' };
+		const seen: unknown[] = [];
+		const guard = createToolMessageGuard({
+			slug: 'fixture',
+			declaration: crossOrigin.host_message,
+			hostOrigin: HOST_ORIGIN,
+			toolWindow,
+			dispatch: (m) => seen.push(m),
+		});
+		expect(guard?.({ origin: 'null', source: toolWindow, data: { type: 'tool:ready' } })).toEqual({
+			accepted: false,
+			reason: 'origin-mismatch',
+		});
+		expect(seen).toEqual([]);
+	});
+
+	it('closes on the sandbox, not on the guard: a matching origin would be accepted', () => {
+		// `MessageEvent.origin` is written by the browser, never by the
+		// sender, so the guard's equality check is trustworthy — but it
+		// can only be satisfied by the origin the frame actually runs
+		// on, and this policy makes that `"null"` for every framed Tool.
+		// So the accept branch is unreachable under this sandbox policy
+		// NOT because the guard would refuse it, but because no document
+		// in the frame can report that origin. The channel is therefore
+		// closed by the sandbox rules, not by the manifest.
+		const toolWindow = { name: 'tool-frame' };
+		const seen: unknown[] = [];
+		const guard = createToolMessageGuard({
+			slug: 'fixture',
+			declaration: {
+				expected_origin: 'https://tool.example',
+				allowed_types: ['tool:ready'],
+			},
+			hostOrigin: HOST_ORIGIN,
+			toolWindow,
+			dispatch: (m) => seen.push(m),
+		});
+		expect(
+			guard?.({
+				origin: 'https://tool.example',
+				source: toolWindow,
+				data: { type: 'tool:ready', payload: { version: 1 } },
+			}),
+		).toEqual({ accepted: true, message: { type: 'tool:ready', payload: { version: 1 } } });
+		expect(seen).toHaveLength(1);
 	});
 });
 

@@ -40,8 +40,10 @@
  *   node scripts/check-bundle-budget.mjs --html=.tmp/bundle-budget.html
  *   node scripts/check-bundle-budget.mjs --graph=<path> --budget=<path>
  *
- * Exit codes: 0 = within budget, 1 = violation or acknowledged exception that
- * ran out of budget, 2 = bad input (missing build output, malformed budget).
+ * Exit codes: 0 = every measured bundle is within its cap, or the only
+ * overages are acknowledged exceptions carrying a recorded reason; 1 = at
+ * least one unbudgeted violation; 2 = bad input (missing build output,
+ * malformed budget).
  */
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
@@ -621,6 +623,30 @@ function currentSha() {
 	}
 }
 
+/**
+ * The PASS wording has to branch on `exceptions`, not only on `violations`.
+ *
+ * An acknowledged exception is a bundle that IS above its cap: `evaluateBudgets`
+ * records it separately and leaves `violations` empty so the run still exits 0.
+ * A summary that branches on `violations` alone therefore prints "every route
+ * and Tool bundle within budget" in the same report that lists over-cap bundles
+ * in the exceptions table below it — the conclusion and the evidence
+ * contradict each other. The banner is the sentence a reviewer quotes, so it
+ * states the exception count instead.
+ */
+export function verdictBanner(report) {
+	if (report.violations.length > 0) {
+		return { tone: 'fail', text: `FAIL — ${report.violations.length} violation(s)` };
+	}
+	if (report.exceptions.length > 0) {
+		return {
+			tone: 'exempt',
+			text: `PASS — ${report.exceptions.length} acknowledged exception(s) above cap (recorded reasons below)`,
+		};
+	}
+	return { tone: 'pass', text: 'PASS — every route and Tool bundle within budget' };
+}
+
 function renderText(report) {
 	const lines = [];
 	lines.push('[bundle-budget] per-route initial JS/CSS budget (Issue #482)');
@@ -743,9 +769,12 @@ export function renderHtml(report) {
 		.map(([key, value]) => `<dt>${escapeHtml(key)}</dt><dd>${escapeHtml(value)}</dd>`)
 		.join('\n');
 
+	const banner = verdictBanner(report);
 	const failures = report.violations.length
 		? `<ul class="fail">${report.violations.map((v) => `<li>${escapeHtml(v.message)}</li>`).join('')}</ul>`
-		: '<p class="pass-note">No route or Tool bundle exceeds its cap.</p>';
+		: report.exceptions.length
+			? '<p class="pass-note">No unbudgeted overage: every bundle above its cap is an acknowledged exception listed below.</p>'
+			: '<p class="pass-note">No route or Tool bundle exceeds its cap.</p>';
 
 	// An acknowledged exception is still an overage: `violations` stays empty
 	// so the run passes, and a report that only rendered `violations` would
@@ -793,6 +822,7 @@ ${exceptionRows}
             font-weight: 700; letter-spacing: 0.05em; font-size: 13px; }
   .banner.pass { background: #1f6f43; color: #fff; }
   .banner.fail { background: #a3231d; color: #fff; }
+  .banner.exempt { background: #8a6d1f; color: #fff; }
   dl { display: grid; grid-template-columns: 150px 1fr; gap: 4px 16px; margin: 0;
        background: #fff; border: 1px solid #e2ddd2; border-radius: 10px; padding: 18px 20px; }
   dt { font-weight: 700; color: #6b6558; }
@@ -823,7 +853,7 @@ ${exceptionRows}
 <body>
 <h1>Route bundle budget report</h1>
 <p class="sub">my-web-2026 · Issue #482 · per-route initial JS / CSS bytes from the Vite client bundle graph</p>
-<p><span class="banner ${report.violations.length ? 'fail' : 'pass'}">${report.violations.length ? `FAIL — ${report.violations.length} violation(s)` : 'PASS — every route and Tool bundle within budget'}</span></p>
+<p><span class="banner ${banner.tone}">${banner.text}</span></p>
 
 <h2>Reproduction conditions</h2>
 <dl>${conditions}
@@ -1029,7 +1059,7 @@ function main(argv) {
 			`[bundle-budget] ACKNOWLEDGED EXCEPTION ${exception.route} ${exception.metric}=${exception.measured} over ${exception.limit}: ${exception.reason}`,
 		);
 	}
-	status('[bundle-budget] PASS — every measured route and Tool bundle is within budget.');
+	status(`[bundle-budget] ${verdictBanner(report).text}`);
 	return 0;
 }
 

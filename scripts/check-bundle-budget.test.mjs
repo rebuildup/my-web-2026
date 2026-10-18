@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -563,8 +563,20 @@ describe('renderHtml (Issue #482)', () => {
 		assert.match(html, /200,000/);
 		assert.match(html, /\+2,912,000/);
 		assert.match(html, /Issue #501/);
-		// The violation list stays empty, so the run still reports PASS.
+		// The run still passes (`violations` is empty), but the banner must not
+		// claim every bundle is within budget while the table above lists one
+		// that is 2.78 MiB over its cap.
+		assert.match(html, /PASS — 1 acknowledged exception\(s\) above cap/);
+		assert.doesNotMatch(html, /PASS — every route and Tool bundle within budget/);
+		assert.doesNotMatch(html, /No route or Tool bundle exceeds its cap/);
+		assert.match(html, /No unbudgeted overage/);
+	});
+
+	it('keeps the clean-PASS wording when there is no exception', () => {
+		const html = renderHtml(reportFor(false));
 		assert.match(html, /PASS — every route and Tool bundle within budget/);
+		assert.match(html, /No route or Tool bundle exceeds its cap/);
+		assert.doesNotMatch(html, /acknowledged exception/);
 	});
 
 	it('escapes an exception reason instead of trusting it', () => {
@@ -613,23 +625,22 @@ describe('CLI (Issue #482)', () => {
 	}
 
 	function run(dir, extraArgs = []) {
-		try {
-			const stdout = execFileSync(
-				process.execPath,
-				[
-					join(REPO_ROOT, 'scripts', 'check-bundle-budget.mjs'),
-					`--graph=${join(dir, 'bundle-graph.json')}`,
-					`--budget=${join(dir, 'budget.json')}`,
-					`--route-tree=${join(dir, 'routeTree.gen.ts')}`,
-					`--tools=${join(dir, 'tools')}`,
-					...extraArgs,
-				],
-				{ encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] },
-			);
-			return { code: 0, stdout, stderr: '' };
-		} catch (error) {
-			return { code: error.status, stdout: error.stdout, stderr: error.stderr };
-		}
+		// `spawnSync` rather than `execFileSync`: an acknowledged exception
+		// exits 0 and the warning that names it goes to stderr, so a helper
+		// that throws away stderr on success cannot assert on it.
+		const result = spawnSync(
+			process.execPath,
+			[
+				join(REPO_ROOT, 'scripts', 'check-bundle-budget.mjs'),
+				`--graph=${join(dir, 'bundle-graph.json')}`,
+				`--budget=${join(dir, 'budget.json')}`,
+				`--route-tree=${join(dir, 'routeTree.gen.ts')}`,
+				`--tools=${join(dir, 'tools')}`,
+				...extraArgs,
+			],
+			{ encoding: 'utf8' },
+		);
+		return { code: result.status, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 	}
 
 	it('exits 1 and names the offending route when the budget is exceeded', () => {
@@ -659,6 +670,31 @@ describe('CLI (Issue #482)', () => {
 			const result = run(dir);
 			assert.equal(result.code, 0, result.stderr);
 			assert.match(result.stdout, /PASS/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('exits 0 but never claims "within budget" when an exception covers the overage', () => {
+		const dir = fixture({
+			budget: budgetOf({
+				...GENEROUS,
+				'/tools/$slug': {
+					initial_js_bytes: 200_000,
+					initial_css_bytes: 40_000,
+					exception: {
+						metric: 'initial_js_bytes',
+						reason: 'The markdown renderer is loaded eagerly until Issue #501 splits it out.',
+					},
+				},
+			}),
+		});
+		try {
+			const result = run(dir);
+			assert.equal(result.code, 0, result.stderr);
+			assert.match(result.stdout, /PASS — 1 acknowledged exception\(s\) above cap/);
+			assert.doesNotMatch(result.stdout, /every route and Tool bundle within budget/);
+			assert.match(result.stderr, /ACKNOWLEDGED EXCEPTION \/tools\/\$slug/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

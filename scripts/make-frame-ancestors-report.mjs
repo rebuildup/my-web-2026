@@ -19,7 +19,10 @@
  * The report deliberately shows the FAILING direction too: the Tool
  * artefact rule flipped to `'none'` and the third-party-permissive `*`
  * are rendered from fixtures the gate rejects, so a reader can see what
- * "denied" looks like without reading the source.
+ * "denied" looks like without reading the source. A fourth fixture — the
+ * Tool-only rule set evaluated against the real `public/` scan, i.e. the
+ * shipped file with its `/share/*` rule removed — renders the coverage
+ * direction the review raised.
  *
  * Screenshot output: Playwright can only encode PNG/JPEG, so the capture
  * is taken into a Buffer and re-encoded with the existing `sharp`
@@ -39,7 +42,11 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { evaluateEmbedPolicy, parseHeadersFile } from './check-frame-ancestors-policy.mjs';
+import {
+	evaluateEmbedPolicy,
+	findStaticHtmlDocuments,
+	parseHeadersFile,
+} from './check-frame-ancestors-policy.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = join(ROOT, '.tmp');
@@ -103,6 +110,12 @@ const POLICY = [
 		'Static Assets 側。shell だけが祖先になり得る',
 	],
 	[
+		'/share/*（public 静的 HTML）',
+		"frame-ancestors 'self'",
+		'public/_headers',
+		'Static Assets が Worker より先に返すため Worker の既定値は届かない',
+	],
+	[
 		'/contact, /tools, /api/v1/health',
 		"frame-ancestors 'self'",
 		'Worker',
@@ -135,6 +148,10 @@ const DENIED = [
 		'/admin* or /api/v1/auth* in _headers',
 		'Worker 生成レスポンスには _headers が適用されないため到達不能な設定',
 	],
+	[
+		'public/*.html に _headers ルールが無い状態',
+		'Static Assets は Worker より先に返すため Worker の frame-ancestors は効かない',
+	],
 ];
 
 /** Run the workerd suite with Vitest's JSON reporter. */
@@ -147,8 +164,9 @@ function runSuite() {
 	return JSON.parse(readFileSync(JSON_REPORT, 'utf8'));
 }
 
-/** Run the static gate over the shipped file and over two broken fixtures. */
+/** Run the static gate over the shipped file and over the broken fixtures. */
 function runStaticGate() {
+	const publicHtml = findStaticHtmlDocuments(join(ROOT, 'public'));
 	const shipped = parseHeadersFile(readFileSync(join(ROOT, 'public/_headers'), 'utf8'));
 	const fixtures = [
 		{
@@ -171,9 +189,22 @@ function runStaticGate() {
 				parseHeadersFile("/admin*\n  Content-Security-Policy: frame-ancestors 'none'\n").rules,
 			),
 		},
+		{
+			// The Tool-only rule set evaluated against the real `public/`
+			// scan: what the review found, i.e. the shipped file with the
+			// `/share/*` rule removed.
+			id: 'public/*.html left with no _headers rule',
+			errors: evaluateEmbedPolicy(
+				parseHeadersFile(
+					"/tools/:slug/app/*\n  Access-Control-Allow-Origin: *\n  Content-Security-Policy: frame-ancestors 'self'\n",
+				).rules,
+				publicHtml,
+			),
+		},
 	];
 	return {
-		shipped: evaluateEmbedPolicy(shipped.rules),
+		publicHtml,
+		shipped: evaluateEmbedPolicy(shipped.rules, publicHtml),
 		fixtures,
 	};
 }
@@ -277,6 +308,7 @@ function render(report, gate) {
     <div class="card"><div class="k">passed</div><div class="v ok">${passed}</div></div>
     <div class="card"><div class="k">failed</div><div class="v">${failed}</div></div>
     <div class="card"><div class="k">_headers violations</div><div class="v ${gate.shipped.length === 0 ? 'ok' : 'bad'}">${gate.shipped.length}</div></div>
+    <div class="card"><div class="k">public HTML docs</div><div class="v ${gate.publicHtml.length === 0 ? '' : 'ok'}">${gate.publicHtml.length}<span style="font-size:13px"> / covered</span></div></div>
     <div class="card"><div class="k">duration</div><div class="v">${durationMs}<span style="font-size:13px"> ms</span></div></div>
   </div>
 
@@ -321,7 +353,7 @@ ${testRows}
         <td>shipped public/_headers</td>
         <td>${escapeHtml(
 					gate.shipped.length === 0
-						? '違反なし。Tool artifact は self のみ、Worker 管理 path へのルールなし'
+						? `違反なし。Tool artifact と public 静的 HTML (${gate.publicHtml.map((document) => document.file).join(', ')}) はいずれも frame-ancestors で保護され、Worker 管理 path へのルールなし`
 						: gate.shipped.join(' — '),
 				)}</td>
       </tr>
@@ -336,6 +368,8 @@ ${fixtureRows}
     Tool shell は同一 origin の artifact を iframe で読み込む状態のまま。
     <b>拒否の意味:</b> gate が fixture を弾いた = その変更は「拒否される入力」。<code>'none'</code> を Tool artifact に
     書くと全 Tool の iframe が mount されない（shell は描画される）、<code>*</code> を書くと第三者埋め込みが再度開く。
+    <code>public/</code> 配下の HTML に <code>_headers</code> ルールが無い場合も拒否される。Static Assets が Worker より先に
+    返すため、<code>src/server.ts</code> の <code>'self'</code> 既定値は <code>/share/*</code> には届かない。
   </p>
 
   <footer>my-web-2026 · Issue #448 · report generated locally from the workerd test pool + static gate by scripts/make-frame-ancestors-report.mjs (no CI token, no production origin) · committed as docs/verification/security/frame-ancestors-test.webp (width ≤ ${WEBP_WIDTH}, quality ${WEBP_QUALITY}).</footer>

@@ -225,6 +225,14 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  *   /api/v1/auth, ...       -> frame-ancestors 'none'   (Account)
  *   everything else         -> frame-ancestors 'self'
  *
+ *   The table above is about RESPONSES THIS WORKER GENERATES, and only
+ *   those. Static Assets answer before the Worker runs, so a document
+ *   served out of `public/` (`/share/<slug>/`, the committed public
+ *   HTML namespace) never reaches this file and gets no value from
+ *   that default branch; its framing policy is a `_headers` rule in
+ *   `public/_headers`, which `scripts/check-frame-ancestors-policy.mjs`
+ *   keeps in step with this one (Issue #448).
+ *
  *   - Public surfaces keep `'self'` rather than `'none'`: same-origin
  *     framing is a legitimate authoring/debugging tool, and a public
  *     marketing surface has no secret to clickjack.

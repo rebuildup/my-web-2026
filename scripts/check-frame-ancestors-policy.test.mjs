@@ -5,12 +5,15 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
 	evaluateEmbedPolicy,
+	evaluateStaticHtmlCoverage,
 	evaluateWorkerCanary,
+	findStaticHtmlDocuments,
 	frameAncestorsValues,
 	isUnder,
 	main,
 	normalizePattern,
 	parseHeadersFile,
+	patternMatchesPath,
 } from './check-frame-ancestors-policy.mjs';
 
 /**
@@ -28,9 +31,9 @@ import {
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** Evaluate a `_headers` document and return its violations. */
-function violations(text) {
+function violations(text, staticHtml = []) {
 	const { rules, problems } = parseHeadersFile(text);
-	return [...problems, ...evaluateEmbedPolicy(rules)];
+	return [...problems, ...evaluateEmbedPolicy(rules, staticHtml)];
 }
 
 const GOOD = `# comment
@@ -153,6 +156,82 @@ describe('check-frame-ancestors-policy — the direction that denies third parti
 	});
 });
 
+/** The only committed public HTML document, in both served forms. */
+const SHARE_DOCUMENT = [
+	{
+		file: '/share/procon2026/index.html',
+		paths: ['/share/procon2026/', '/share/procon2026/index.html'],
+	},
+];
+
+/** A generated Tool artefact document, which lives in `dist/`, not `public/`. */
+const TOOL_DOCUMENT = [
+	{
+		file: '/tools/example/app/index.html',
+		paths: ['/tools/example/app/', '/tools/example/app/index.html'],
+	},
+];
+
+describe('check-frame-ancestors-policy — public HTML coverage', () => {
+	it('accepts the shipped /share rule', () => {
+		const text = "/share/*\n  Content-Security-Policy: frame-ancestors 'self'\n";
+		assert.deepEqual(evaluateStaticHtmlCoverage(parseHeadersFile(text).rules, SHARE_DOCUMENT), []);
+		assert.deepEqual(violations(text, SHARE_DOCUMENT), []);
+	});
+
+	it('fails when a public HTML document has no rule at all', () => {
+		// GOOD covers only the Tool namespace, so the share document is
+		// framable by any third party — the exact gap this rule closes.
+		const errors = violations(GOOD, SHARE_DOCUMENT);
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /\/share\/procon2026\/index\.html \(public HTML document\)/);
+		assert.match(errors[0], /no framing policy/);
+	});
+
+	it('fails when the matching rule carries no frame-ancestors directive', () => {
+		const text = '/share/*\n  Cache-Control: public, max-age=0, must-revalidate\n';
+		const errors = evaluateStaticHtmlCoverage(parseHeadersFile(text).rules, SHARE_DOCUMENT);
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /no _headers rule matches it with a frame-ancestors directive/);
+	});
+
+	it('accepts a :param rule that covers a generated Tool artefact document', () => {
+		assert.deepEqual(evaluateStaticHtmlCoverage(parseHeadersFile(GOOD).rules, TOOL_DOCUMENT), []);
+	});
+
+	it('does not let a sibling prefix match', () => {
+		// Prefix matching is not string matching: `/share-other/*` is not
+		// a rule for `/share/`, exactly like `/administrator` is not an
+		// Admin path in the Worker policy.
+		const text = "/share-other/*\n  Content-Security-Policy: frame-ancestors 'self'\n";
+		assert.equal(
+			evaluateStaticHtmlCoverage(parseHeadersFile(text).rules, SHARE_DOCUMENT).length,
+			1,
+		);
+	});
+
+	it('matches a path pattern without treating punctuation as a wildcard', () => {
+		assert.equal(patternMatchesPath('/tools/:slug/app/*', '/tools/proto/app/index.html'), true);
+		assert.equal(patternMatchesPath('/tools/:slug/app/*', '/tools/proto/other/index.html'), false);
+		assert.equal(patternMatchesPath('/share/*', '/share/procon2026/'), true);
+		assert.equal(patternMatchesPath('/share/*', '/shared/x'), false);
+	});
+
+	it('discovers the committed public HTML documents', () => {
+		const documents = findStaticHtmlDocuments(join(REPO_ROOT, 'public'));
+		const files = documents.map((document) => document.file);
+		assert.ok(files.includes('/share/procon2026/index.html'), `not found in ${files.join(', ')}`);
+		for (const document of documents) {
+			// Every document is reported in both served forms when it is an
+			// entry document, so a rule cannot cover only one URL.
+			assert.ok(document.paths.includes(document.file));
+			if (document.file.endsWith('/index.html')) {
+				assert.ok(document.paths.includes(document.file.slice(0, -'index.html'.length)));
+			}
+		}
+	});
+});
+
 describe('check-frame-ancestors-policy — Worker half canary', () => {
 	it('passes on the real src/server.ts', () => {
 		const source = readFileSync(join(REPO_ROOT, 'src/server.ts'), 'utf8');
@@ -176,7 +255,8 @@ describe('check-frame-ancestors-policy — Worker half canary', () => {
 describe('check-frame-ancestors-policy — against the real repository', () => {
 	it('reports no violation for the shipped public/_headers', () => {
 		const text = readFileSync(join(REPO_ROOT, 'public/_headers'), 'utf8');
-		assert.deepEqual(violations(text), []);
+		const documents = findStaticHtmlDocuments(join(REPO_ROOT, 'public'));
+		assert.deepEqual(violations(text, documents), []);
 	});
 
 	it('exits 0 when run as a CLI', () => {

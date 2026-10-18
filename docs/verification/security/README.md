@@ -12,26 +12,31 @@ than hand-written.
 
 The inbound embed policy (Issue #448) exercised over the surfaces that
 exist today: public documents, the Tool shell and its artefact, the
-Admin redirect and child routes, the Account boundary, and the
-lookalike paths that must not inherit a denial.
+Admin redirect and child routes, the Account boundary, the
+lookalike paths that must not inherit a denial, and the committed
+public static HTML under `public/` (`/share/procon2026/`), which
+Static Assets answer before the Worker runs.
 
 The Issue names `frame-ancestors-test.png`; the artefact ships as WebP
 in the same directory, because the capture is a dense text table where
 PNG costs several times the bytes for no visual gain.
 `scripts/make-frame-ancestors-report.mjs` runs the workerd suite with
 Vitest's JSON reporter, runs the static gate over `public/_headers` and
-over three deliberately broken fixtures, renders both into one report,
+over four deliberately broken fixtures, renders both into one report,
 and encodes it as WebP in memory (Playwright cannot emit WebP, so the
 PNG bytes are captured into a Buffer and re-encoded with `sharp`, width
 ≤ 1600, quality 80). It refuses to write anything that is not WebP.
 
-The three fixtures are the *rejected* direction the Issue asks to be
+The four fixtures are the *rejected* direction the Issue asks to be
 reproducible: a Tool artefact rule switched to `'none'`, one opened to
-`*`, and an `/admin*` rule in `_headers`. Each is rejected by
+`*`, an `/admin*` rule in `_headers`, and a `public/` HTML document
+left with no rule at all (the Tool-only rule set evaluated against the
+real `public/` scan — what the review found before the `/share/*` rule
+was added). Each is rejected by
 `scripts/check-frame-ancestors-policy.mjs`, so the table shows what
 "denied" means without reading the source. Nothing secret is in the
 picture: the suite runs against the local workerd pool's dummy bindings
-and the gate reads two static files.
+and the gate reads two static files and the `public/` tree.
 
 Regenerate with:
 

@@ -40,7 +40,14 @@
  *   4. No rule targets `/admin*` or `/api/v1/auth*`. Those responses
  *      are Worker-generated, so such a rule can never apply; it would
  *      be dead configuration that reads as if it protected something.
- *   5. Canary: `src/server.ts` still carries the Worker half. If that
+ *   5. Every committed public HTML document (any `.html` file under
+ *      `public/`, e.g. `/share/procon2026/index.html`) is covered by at
+ *      least one rule that carries `frame-ancestors`. A Static Assets
+ *      response with no CSP has NO stated framing policy at all, and no
+ *      Worker rule can reach it — Static Assets answer before the Worker
+ *      runs — so a public namespace added under `public/` would
+ *      otherwise ship framable by any third party, silently.
+ *   6. Canary: `src/server.ts` still carries the Worker half. If that
  *      policy is moved or deleted, this gate fails with a message
  *      telling the reader to update it rather than silently guarding
  *      only one half.
@@ -51,7 +58,13 @@
  * indented. It does not implement the full path-matching grammar; the
  * normalization below (strip `*`, strip `:param` segments) is enough to
  * classify a pattern as Tool / Admin / Account, and an unrecognized
- * pattern is left to rules 1-2 rather than guessed at.
+ * pattern is left to rules 1-2 rather than guessed at. Rule 5 does match
+ * patterns against concrete paths, but only with the subset the grammar
+ * needs here: `:param` is one path segment and `*` is "anything to the
+ * end". The document set is a filesystem scan of `public/`, which is
+ * the directory Static Assets serves, so a generated Tool artefact
+ * (built into `dist/client/tools/`, never `public/`) is out of scope by
+ * construction.
  *
  * Exit codes: 0 = policy intact, 1 = at least one violation, 2 = bad
  * input (unreadable / unparseable file).
@@ -59,8 +72,8 @@
  * Authority: Issue #448. Paired with `docs/security.md`.
  */
 
-import { readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -138,6 +151,72 @@ export function isUnder(pattern, prefix) {
 	return base === prefix || base.startsWith(`${prefix}/`);
 }
 
+/**
+ * Compile a `_headers` pattern to a RegExp over a concrete request path.
+ *
+ * Only the two placeholders the shipped rules use are honoured: `:param`
+ * is exactly one path segment and `*` runs to the end. Every other
+ * character is matched literally (regex metacharacters escaped), so a
+ * path cannot be talked into matching by its own punctuation.
+ */
+function patternToRegExp(pattern) {
+	const METACHARACTERS = '.\\+?^$()[]{}|';
+	let source = '^';
+	for (let index = 0; index < pattern.length; index += 1) {
+		const char = pattern[index];
+		if (char === '*') {
+			source += '.*';
+		} else if (char === ':') {
+			while (index < pattern.length && pattern[index] !== '/') index += 1;
+			source += '[^/]+';
+			index -= 1;
+		} else {
+			source += METACHARACTERS.includes(char) ? `\\${char}` : char;
+		}
+	}
+	return new RegExp(`${source}$`);
+}
+
+/** True when a `_headers` rule pattern matches a concrete served path. */
+export function patternMatchesPath(pattern, requestPath) {
+	return patternToRegExp(pattern).test(requestPath);
+}
+
+/**
+ * Every committed HTML document under `public/`, as the paths Static
+ * Assets serves it under.
+ *
+ * An `index.html` is reported with both forms because Static Assets
+ * answers `/share/<slug>/` (directory) and `/share/<slug>/index.html`
+ * (explicit file); a rule that covers one but not the other would leave
+ * a framable URL. Returns POSIX-style paths so the scan is comparable
+ * across platforms.
+ */
+export function findStaticHtmlDocuments(publicDir) {
+	const documents = [];
+	const walk = (dir) => {
+		for (const entry of readdirSync(dir, { withFileTypes: true }).sort((a, b) =>
+			a.name < b.name ? -1 : 1,
+		)) {
+			const absolute = join(dir, entry.name);
+			if (entry.isDirectory()) {
+				walk(absolute);
+				continue;
+			}
+			if (!entry.isFile() || !entry.name.toLowerCase().endsWith('.html')) continue;
+			const served = `/${relative(publicDir, absolute).split(sep).join('/')}`;
+			documents.push({
+				file: served,
+				paths: served.endsWith('/index.html')
+					? [served.slice(0, -'index.html'.length), served]
+					: [served],
+			});
+		}
+	};
+	walk(resolve(publicDir));
+	return documents;
+}
+
 /** Every `frame-ancestors` directive value carried by a header value. */
 export function frameAncestorsValues(cspValue) {
 	return String(cspValue)
@@ -152,10 +231,44 @@ export function frameAncestorsValues(cspValue) {
 }
 
 /**
+ * Every public HTML document the rules leave framable by any third
+ * party. Returns the list of violations; empty means covered.
+ *
+ * A document counts as covered when at least one matching rule carries a
+ * `Content-Security-Policy` with a `frame-ancestors` directive. The
+ * VALUE is rule 2's business (`evaluateEmbedPolicy` rejects a permissive
+ * one); this only asserts that the namespace states a policy at all,
+ * because no Worker rule can reach a Static Assets response.
+ */
+export function evaluateStaticHtmlCoverage(rules, documents) {
+	const errors = [];
+	for (const document of documents) {
+		const covered = rules.some((rule) => {
+			const matched = document.paths.some((path) => patternMatchesPath(rule.pattern, path));
+			if (!matched) return false;
+			return rule.headers.some(
+				(header) =>
+					header.name.toLowerCase() === CSP_HEADER && frameAncestorsValues(header.value).length > 0,
+			);
+		});
+		if (covered) continue;
+		const patterns = rules.map((rule) => rule.pattern).join(', ') || '(none)';
+		errors.push(
+			`${document.file} (public HTML document): no _headers rule matches it with a ${FRAME_ANCESTORS} directive. Static Assets answer before the Worker runs, so src/server.ts cannot cover this document and it currently carries no framing policy — any third-party site may iframe it. Add a rule (e.g. \`/share/*\` with \`${CSP_HEADER}: ${FRAME_ANCESTORS} 'self'\`); matching rules today: ${patterns}.`,
+		);
+	}
+	return errors;
+}
+
+/**
  * Evaluate one parsed `_headers` document against the embed policy.
  * Returns the list of violations; empty means intact.
+ *
+ * `staticHtml` is the output of {@link findStaticHtmlDocuments}. It is
+ * optional so a fixture-only caller can evaluate the header rules alone;
+ * the CLI always passes the real document set.
  */
-export function evaluateEmbedPolicy(rules) {
+export function evaluateEmbedPolicy(rules, staticHtml = []) {
 	const errors = [];
 
 	for (const rule of rules) {
@@ -210,7 +323,7 @@ export function evaluateEmbedPolicy(rules) {
 		}
 	}
 
-	return errors;
+	return [...errors, ...evaluateStaticHtmlCoverage(rules, staticHtml)];
 }
 
 /**
@@ -242,13 +355,16 @@ function main(argv) {
 	const headersPath = argv.headers
 		? resolve(REPO_ROOT, argv.headers)
 		: join(REPO_ROOT, 'public/_headers');
+	const publicDir = argv.public ? resolve(REPO_ROOT, argv.public) : join(REPO_ROOT, 'public');
 	const serverPath = join(REPO_ROOT, 'src/server.ts');
 
 	let headersText;
 	let serverSource;
+	let staticHtml;
 	try {
 		headersText = readFileSync(headersPath, 'utf8');
 		serverSource = readFileSync(serverPath, 'utf8');
+		staticHtml = findStaticHtmlDocuments(publicDir);
 	} catch (error) {
 		process.stderr.write(`cannot read ${error.path ?? 'input'}: ${error.message}\n`);
 		return 2;
@@ -257,13 +373,13 @@ function main(argv) {
 	const { rules, problems } = parseHeadersFile(headersText);
 	const errors = [
 		...problems,
-		...evaluateEmbedPolicy(rules),
+		...evaluateEmbedPolicy(rules, staticHtml),
 		...evaluateWorkerCanary(serverSource),
 	];
 
 	if (errors.length === 0) {
 		process.stdout.write(
-			`embed policy OK: ${rules.length} _headers rule(s), Tool artefacts framed by 'self' only, no rule targets a Worker-owned path\n`,
+			`embed policy OK: ${rules.length} _headers rule(s), ${staticHtml.length} public HTML document(s) covered, Tool artefacts framed by 'self' only, no rule targets a Worker-owned path\n`,
 		);
 		return 0;
 	}
@@ -277,11 +393,12 @@ function main(argv) {
 	return 1;
 }
 
-/** Minimal `--headers=<path>` parsing so the gate can run on a fixture. */
+/** Minimal `--headers=<path>` / `--public=<dir>` parsing so the gate can run on a fixture. */
 function parseArgs(argv) {
-	const args = { headers: null };
+	const args = { headers: null, public: null };
 	for (const entry of argv) {
 		if (entry.startsWith('--headers=')) args.headers = entry.slice('--headers='.length);
+		if (entry.startsWith('--public=')) args.public = entry.slice('--public='.length);
 	}
 	return args;
 }

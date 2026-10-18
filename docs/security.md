@@ -57,8 +57,9 @@ document has is our own shell.
 | --- | --- | --- |
 | `/admin`, `/admin/*` | `frame-ancestors 'none'` | `src/server.ts` (Worker) |
 | `/api/v1/auth`, `/api/v1/auth/*` (Better Auth — Account) | `frame-ancestors 'none'` | `src/server.ts` (covers the Hono response) |
-| everything else (`/`, `/about`, `/contact`, `/portfolio/*`, `/tools*`, `/api/v1/*`) | `frame-ancestors 'self'` | `src/server.ts` (Worker) |
+| every other **Worker-generated** response (`/`, `/about`, `/contact`, `/portfolio/*`, `/tools*`, `/api/v1/*`) | `frame-ancestors 'self'` | `src/server.ts` (Worker) |
 | `/tools/:slug/app`, `/tools/:slug/app/*` (Tool artefacts) | `frame-ancestors 'self'` | `public/_headers` (Static Assets) |
+| `/share/*` (public static documents, e.g. `/share/procon2026/`) | `frame-ancestors 'self'` | `public/_headers` (Static Assets) |
 
 Decisions behind the table:
 
@@ -75,6 +76,14 @@ Decisions behind the table:
   protecting. Same reasoning as the cache policy in `src/server.ts`.
 - **Prefix matching is exact-or-`/`**, so `/administrator` and
   `/api/v1/authentication` do not inherit a denial.
+- **"Everything else" is a statement about Worker responses, not about
+  every file this site serves.** Static Assets answer before the Worker
+  runs (`wrangler.jsonc` declares no `assets.run_worker_first` and no
+  `not_found_handling`), so the Worker's `'self'` default never reaches
+  them. `/share/<slug>/` is the committed public HTML namespace
+  (`docs/architecture.md`), and it carries its own `'self'` rule. The
+  two Worker rows and the two `_headers` rows are disjoint halves of one
+  policy, not overlapping descriptions of it.
 
 ### Why the existing Tool iframes keep working
 
@@ -97,17 +106,35 @@ static gate fails on that direction rather than leaving it to review.
 `frame-ancestors *` would re-open third-party framing of Tool
 documents, which is what the issue denies; the gate fails on it too.
 
+### Why public static documents need their own rule
+
+`/share/procon2026/` (and every future `share/<slug>/`) is delivered as
+a Static Asset, so the Worker's default branch never runs for it: no
+`_headers` rule means **no** `frame-ancestors`, which is precisely the
+state the issue opened by describing ("no surface returned
+`frame-ancestors`, so every page could be embedded by any third-party
+iframe"). The rule is `'self'` for the same reason the Worker default
+is: these are public documents with no signed-in state, so there is
+nothing to clickjack, and same-origin framing stays available.
+
+Coverage is checked rather than remembered. The static gate walks every
+`.html` file under `public/`, derives the URLs Static Assets serves it
+under (`/share/<slug>/` and `/share/<slug>/index.html`), and fails when
+no rule matches that URL with a `frame-ancestors` directive — so adding a
+public document cannot ship framable by any third party by omission.
+
 ### Where it is enforced
 
 | Gate | What it proves | Where |
 | --- | --- | --- |
 | Runtime suite | Real headers through `SELF.fetch` for every Worker response: `/admin*` and `/api/v1/auth/*` are `'none'`, public surfaces are `'self'`, the anonymous `/admin` redirect carries the header with no content-type, lookalike paths do not inherit a denial, and `/tools/prototype` still mounts its same-origin artefact. | `test/integration/frame-ancestors.test.ts` (workerd pool) |
-| Static gate | The Static Assets half, which no runtime test can observe: every `_headers` rule under `/tools` carries `frame-ancestors 'self'`, no shipped value is permissive (`*`, `https:`, absolute origins), no rule targets a Worker-owned path, and the Worker half still exists. | `scripts/check-frame-ancestors-policy.mjs`, wired via `scripts/check-frame-ancestors-policy.test.mjs` |
+| Static gate | The Static Assets half, which no runtime test can observe: every `_headers` rule under `/tools` carries `frame-ancestors 'self'`, every committed public HTML document under `public/` is covered by a rule that carries one, no shipped value is permissive (`*`, `https:`, absolute origins), no rule targets a Worker-owned path, and the Worker half still exists. | `scripts/check-frame-ancestors-policy.mjs`, wired via `scripts/check-frame-ancestors-policy.test.mjs` |
 
 Run the static gate on its own with `pnpm run security:embed:check`
 (`node scripts/check-frame-ancestors-policy.mjs`). Exit 1 means a
-`_headers` rule would widen framing, would break the Tool iframes, or
-targets a path Cloudflare never applies `_headers` to.
+`_headers` rule would widen framing, would break the Tool iframes,
+targets a path Cloudflare never applies `_headers` to, or leaves a
+committed public HTML document without a framing policy.
 
 `test/integration/frame-ancestors.test.ts` is the only runtime proof
 of the Worker half, because it is the only layer that observes the
@@ -115,14 +142,14 @@ actual response headers the runtime emits.
 
 ### Known unscanned inventory
 
-- **Tool artefact responses are not observed at runtime.** The
-  workerd pool declares no `assets` binding (`vitest.config.ts`), so
-  `public/_headers` is never applied there. The static gate is the
-  whole of their coverage; `e2e/tools-prototype.spec.ts` proves the
-  artefact is served and mounts in a real browser but does not assert
-  headers. Cloudflare applies `_headers` to Static Assets responses,
-  and the same file is parsed by `vite preview`, so the rule is
-  observable locally and in production.
+- **Tool artefact and `share/` responses are not observed at
+  runtime.** The workerd pool declares no `assets` binding
+  (`vitest.config.ts`), so `public/_headers` is never applied there.
+  The static gate is the whole of their coverage; `e2e/tools-prototype.spec.ts`
+  proves the artefact is served and mounts in a real browser but does not
+  assert headers. Cloudflare applies `_headers` to Static Assets
+  responses, and the same file is parsed by `vite preview`, so the rules
+  are observable locally and in production.
 - **No `X-Frame-Options`.** `frame-ancestors` is CSP 3 and is ignored
   by browsers without CSP support. Every browser this project targets
   supports CSP 3; the legacy header is deliberately not sent so the
@@ -130,11 +157,25 @@ actual response headers the runtime emits.
 - **`/api/v1/*` non-account endpoints carry `'self'`.** They are JSON
   with no document to frame; the value is the default branch, not a
   per-endpoint decision.
-- **A CSP that already carries `frame-ancestors` is left untouched**,
-  byte-for-byte, and a CSP with other directives gains ours as one
-  more directive. Whichever layer set the policy owns the decision;
-  `test/integration/frame-ancestors.test.ts` fails if that ever stops
-  being true for a shipped surface.
+- **The existing-CSP branches of `withFrameAncestors` are not observed
+  at runtime.** No shipped layer emits a CSP today, so every case in
+  `test/integration/frame-ancestors.test.ts` reaches the Worker with no
+  pre-existing header. "A CSP that already carries `frame-ancestors` is
+  left untouched, byte-for-byte" and "a CSP with other directives gains
+  ours as one more directive" are therefore defensive code for a future
+  caller, not asserted behaviour: the suite cannot fail if they regress
+  until some layer starts sending a CSP, and the static gate does not
+  cover them either (it reads `public/_headers` and canaries
+  `src/server.ts` for the policy's presence). Exporting the helper from
+  the Worker entry purely to test it is not worth the extra export.
+- **Leaving an existing `frame-ancestors` alone is fail-open for
+  `/admin`.** If a future layer stamps `frame-ancestors 'self'` on an
+  Admin response, the Worker keeps it — ownership beats escalation.
+  No layer does this today; recorded so the trade-off is visible if an
+  Admin CSP is ever introduced.
+- **A response with sealed `Headers` is returned unchanged** and
+  silently gets no framing policy. Same trade-off, same rationale, as
+  the cache policy in `src/server.ts`.
 
 ### Operational contract
 
@@ -154,9 +195,10 @@ This change adds no service, no binding, and no secret. Specifically:
 - **Rollout / rollback** is a normal commit revert: the Worker
   half (`src/server.ts`) and the static half (`public/_headers`) are
   independent, so either can be reverted alone; reverting only
-  `public/_headers` would leave Tool artefacts with no stated framing
-  policy, and `scripts/check-frame-ancestors-policy.mjs` would fail on
-  the next commit that touched either file. Revert both together.
+  `public/_headers` would leave Tool artefacts and `share/` documents
+  with no stated framing policy, and
+  `scripts/check-frame-ancestors-policy.mjs` would fail on the next
+  commit that touched either file. Revert both together.
 - **Verification artefact.** `docs/verification/security/frame-ancestors-test.webp`
   is generated by `pnpm run verify:frame-ancestors-screenshot`
   (`scripts/make-frame-ancestors-report.mjs`), which runs the suite and

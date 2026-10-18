@@ -13,7 +13,7 @@
 | | before (#492 の前) | after |
 | --- | --- | --- |
 | 公開 route roster | `src/routeTree.gen.ts` の生成物を読むしかなく、**比較される相手がいない** | `src/routes/**` の `createFileRoute('<id>')` 呼び出しから取得し、`quality/route-coverage.json` と機械的に突き合わせる |
-| 新 route 追加時 | どの品質ゲートの対象にもならないことを誰も察觉できない | manifest エントリが無いと `pnpm run routes:quality:check` が fail（PR で「対象追加 / 正当な除外」を強制） |
+| 新 route 追加時 | どの品質ゲートの対象にもならないことを誰も気づくできない | manifest エントリが無いと `pnpm run routes:quality:check` が fail（PR で「対象追加 / 正当な除外」を強制） |
 | 対象漏れ（例: `/portfolio` の SEO metadata） | 仕様書にのみ暗黙。spec を消しても fail しない | `covered` の evidence は実ファイル、かつそのファイルが route path を単独で含む場合だけ成立（含まない場合 fail） |
 | 除外の記録 | なし | 全 cell が `covered`（evidence 付き）か `excluded`（理由付き）。`TBD` のような placeholder は fail |
 
@@ -32,7 +32,7 @@ performance / a11y / cross_browser / security_headers の閾値（95 点、viola
 | ネットワーク | **不要**（0 回の fetch）。ローカルでも CI でも同一入力なら同一結果 |
 | CPU / 負荷 | 依存なし。Node.js 起動を含めて約 0.2 秒（Apple Silicon ローカル実測、`real 0.11s` / `real 0.24s` の 3 連続実行）。並列実行による flaky 化はない |
 | Runtime | Node.js `>=22.18`（`package.json#engines`、CI は 22.18 固定） |
-| ソース SHA | レポートヘッダに `git rev-parse --short=12 HEAD` を出力する。gate 自体は SHA 非依存で、tree が同じなら**すべての 셀と verdict が同一**（HTML も `source sha` 行以外は byte 同一） |
+| ソース SHA | レポートヘッダに `git rev-parse --short=12 HEAD` を出力する。gate 自体は SHA 非依存で、tree が同じなら**すべての セルと verdict が同一**（HTML も `source sha` 行以外は byte 同一） |
 | 依存 install | 不要（`pnpm install` 済みなら Node 標準モジュールのみ） |
 
 再現手順:

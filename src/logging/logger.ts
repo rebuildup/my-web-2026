@@ -30,7 +30,7 @@
  * than inventing a second vocabulary.
  */
 
-import { redactLogError, redactLogText, redactLogValue } from './redact';
+import { redactCorrelationId, redactLogError, redactLogText, redactLogValue } from './redact';
 
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -44,6 +44,19 @@ export interface AuditLogger {
 	info(message: string, ...details: readonly unknown[]): void;
 	warn(message: string, ...details: readonly unknown[]): void;
 	error(message: string, ...details: readonly unknown[]): void;
+	/**
+	 * Emit an error record that also carries a correlation token.
+	 *
+	 * Shape: `[scope] <message> (request_id=<token>)`. The token is
+	 * the ONLY value that may reach the line verbatim, and only after
+	 * `redactCorrelationId` proved it is this repository's own mint
+	 * format (128-bit lowercase hex). Pass `null` when the caller
+	 * cannot prove it minted the id — a client-supplied `X-Request-Id`
+	 * is accepted from a far wider alphabet and must not be laundered
+	 * into an operator-visible record. Everything else (the message
+	 * and every detail) is redacted exactly as `error` does.
+	 */
+	errorCorrelated(message: string, requestId: string | null, ...details: readonly unknown[]): void;
 }
 
 /** Console method per level. Kept explicit so the gate's allowlist is readable. */
@@ -69,6 +82,25 @@ function emit(level: LogLevel, scope: string, message: string, details: readonly
 	// status lines and error text into it.
 	console[LEVEL_METHOD[level]](
 		`[${scope}] ${redactLogText(message)}`,
+		...details.map(redactDetail),
+	);
+}
+
+/**
+ * Emit an error record that carries a verified correlation token.
+ *
+ * The token is appended AFTER the message redaction, because the point
+ * of the channel is that a minted id survives the opaque-blob rule; the
+ * message itself and every detail are redacted exactly as in `emit`.
+ */
+function emitWithCorrelation(
+	scope: string,
+	message: string,
+	requestId: string | null,
+	details: readonly unknown[],
+): void {
+	console.error(
+		`[${scope}] ${redactLogText(message)} (request_id=${redactCorrelationId(requestId)})`,
 		...details.map(redactDetail),
 	);
 }
@@ -110,6 +142,13 @@ export function createAuditLogger(scope: string): AuditLogger {
 		},
 		error(message: string, ...details: readonly unknown[]): void {
 			emit('error', scope, message, details);
+		},
+		errorCorrelated(
+			message: string,
+			requestId: string | null,
+			...details: readonly unknown[]
+		): void {
+			emitWithCorrelation(scope, message, requestId, details);
 		},
 	};
 }

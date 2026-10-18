@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
 	REDACTED,
 	REDACTED_BLOB,
+	REDACTED_CORRELATION,
 	REDACTED_EMAIL,
 	REDACTED_TOKEN,
 	isSensitiveKey,
+	redactCorrelationId,
 	redactEmailAddress,
 	redactLogError,
 	redactLogText,
@@ -223,5 +225,41 @@ describe('redactEmailAddress', () => {
 
 	it('passes an empty string through', () => {
 		expect(redactEmailAddress('')).toBe('');
+	});
+});
+
+describe('redactCorrelationId', () => {
+	// A minted id is 128-bit lowercase hex (`generateRequestId`), so
+	// it survives verbatim — otherwise the published correlation id of
+	// Issue #457 could not be grepped in the operator log.
+	it('keeps a token this repository minted', () => {
+		const minted = 'a979b75d5b3db6aff86ed49021ecd0c0';
+		expect(redactCorrelationId(minted)).toBe(minted);
+	});
+
+	// Everything else is a value somebody else chose, or a shape the
+	// mint format does not have. Fail closed.
+	it.each([
+		['a client-supplied trace id', 'client-correlation-1234'],
+		['a uuid with dashes', '550e8400-e29b-41d4-a716-446655440000'],
+		['an api key', 'mk_canary_a1b2c3d4e5f60000'],
+		['an email address', 'canary.person@example.invalid'],
+		['uppercase hex', 'A979B75D5B3DBAFF86ED49021ECD0C0'],
+		['a 31-char prefix of a minted id', 'a979b75d5b3db6aff86ed49021ecd0c'],
+		['an empty string', ''],
+	])('replaces %s', (_label, value) => {
+		expect(redactCorrelationId(value)).toBe(REDACTED_CORRELATION);
+	});
+
+	it('replaces a missing token', () => {
+		expect(redactCorrelationId(null)).toBe(REDACTED_CORRELATION);
+		expect(redactCorrelationId(undefined)).toBe(REDACTED_CORRELATION);
+	});
+
+	it('cannot be used to smuggle a value through the ordinary text path', () => {
+		// The exception lives on the correlation channel only: the same
+		// string interpolated into a normal message is still masked.
+		const minted = 'a979b75d5b3db6aff86ed49021ecd0c0';
+		expect(redactLogText(`request_id=${minted}`)).toContain(REDACTED_BLOB);
 	});
 });

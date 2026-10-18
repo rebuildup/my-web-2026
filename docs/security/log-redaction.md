@@ -38,6 +38,25 @@ src/logging/logger.ts   src/** で console に触れてよい唯一の module
    循環参照の検出、class instance (`Headers` など getter を持つ型) は
    歩かない。`Error` は `{ name, message }` に畳み、stack は落とす。
 
+### correlation token (唯一の例外)
+
+`#457` が公開する request id (`X-Request-Id` / 5xx body) は
+128-bit lowercase hex で、operator がログを grep する token。
+層 2 の「24 文字以上の不透明 blob」はこの形と区別できないので、
+**別 channel** に置く: `AuditLogger.errorCorrelated(message,
+requestId, ...details)` は `[scope] message (request_id=<token>)`
+を出し、token だけを `redactCorrelationId()` が **このリポジトリの
+mint 形式と一致した場合だけ** 残す。形式 外 (UUID 付き dash、
+128 文字の trace-id、`mk_…`、空文字) と `null` は
+`[redacted-correlation]` になる。
+
+例外が安全なのは、**caller が自分で mint した id であることを
+示した場合だけ通す**からである。`src/http/middleware/request-id.ts`
+が `requestIdMinted` を記録し、`src/http/errors.ts` はそれを見る。
+client が選んだ文字列は response body / header にはそのまま載る
+(#457 の契約。client は自分の値を知っている) が、operator が読む
+log には書かれない。
+
 redaction は **lossy** が既定。安全と判定できない値は置換する。
 _call site_ がより多く-carry する必要がある場合は、生 payload ではなく
 目的特化の最小 record をログする (実装例: `describeAuthEmail`)。
@@ -88,7 +107,7 @@ node scripts/log-redaction-report.mjs                         # 検証レポー�
 
 | ログ面 | 入口 | 注入する疑似入力 | 主張 | 証跡 |
 | --- | --- | --- | --- | --- |
-| API error | `src/http/hono.ts` / `src/home/{access,reactions}/load.ts` | canary Authorization / cookie / `?token=`、upstream 502 が request を echo | response body と console のどちらにも canary なし。loader は縮小結果を返す | `test/integration/log-redaction.test.ts` |
+| API error | `src/http/errors.ts` (`publicErrorResponse` ← `src/http/hono.ts`) / `src/home/{access,reactions}/load.ts` / `src/portfolio/public-errors.ts` | canary Authorization / cookie / `?token=`、upstream 502 が request を echo、canary を含む例外 | response body と console のどちらにも canary なし。loader は縮小結果を返す | `test/integration/log-redaction.test.ts`, `src/http/errors.test.ts`, `src/portfolio/public-errors.test.ts` |
 | Auth | `src/cloudflare/auth/better-auth.ts` (`sendEmail`) | 宛先 address + `?token=` を含む本文 | `to: [redacted-email]` / `hasBody` / `bodyLength` のみ | `src/cloudflare/auth/better-auth.test.ts` |
 | Infisical | `scripts/infisical-verify.mjs` ほか | stdout と stderr に canary を吐く stub CLI | driver の出力は status 行のみ | `scripts/infisical-verify.test.mjs` |
 | Analytics | `src/editorial/analytics/GoogleAnalytics.tsx` | `?token=…&email=…` 付き location key | `page_path` / `page_location` は pathname のみ (SPA 遷移の page_view。初回 page_view の制約は Known limits) | `src/editorial/analytics/GoogleAnalytics.test.tsx` |
@@ -131,10 +150,20 @@ stub adapter の外へ出ない。本番 D1 / R2 / Infisical / Cloudflare API �
   `src/logging/logger.ts` 1 ファイルのみ除外)。実行時の保証は marker
   ベースの `node --test` (stub / fake 入力) が担う。
 - **`Error` の stack は落ちる**: `redactLogError` は `{ name, message }`
-  に畳むので、`src/http/hono.ts` の `onError` のような「例外を投げられた
-  境界」のログにも stack が出ない。fail-closed を debuggability より
-  優先した意図的な選択であり、意図しない運用 regression として扱う
-  場合はこの Known limits の再判断が要る。
+  に畳むので、`src/http/errors.ts` の `publicErrorResponse`（= `/api/v1/*`
+  の 5xx と `/api/v1/db|media/ping` の失敗経路が使う境界 record）にも
+  stack が出ない。fail-closed を debuggability より優先した意図的な
+  選択であり、意図しない運用 regression として扱う場合はこの Known
+  limits の再判断が要る。
+- **client が選んだ request id は log に残らない**: `#457` は
+  「body / header / log line に同じ id を載せる」契約だったが、`#467`
+  の opaque-blob 規則とは衝突する (32 桁 hex は credential と区別不能)。
+  解決として **worker 自身が mint した id だけ** を log に出し、
+  client 由来の id は `[redacted-correlation]` にする。採否は
+  `requestIdMinted` で証明する。response body / header の契約は
+  変わらない。**owner decision**: client 由来 id の log 追跡が
+  運用上必要なら、追跡可能な別値 (例: hash 済み fingerprint) を
+  別途導入する必要がある — この PR では決定していない。
 - **`src/logging/redact.ts` の over-redaction**: 24 文字以上の不透明な
   token 風文字列 (UUID を含む) は `[redacted-blob]` になる。debug 上の
   可読性より漏えいを優先した意図的な選択。

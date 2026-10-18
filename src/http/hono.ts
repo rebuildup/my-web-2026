@@ -1,9 +1,9 @@
 import { Hono } from 'hono';
 import packageJson from '../../package.json';
-import { createAuditLogger } from '../logging/logger';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
+import { publicErrorResponse } from './errors';
 import { sharedCacheIsolation } from './middleware/cache-policy';
 import { csrfGuard } from './middleware/csrf';
 import { requestIdMiddleware } from './middleware/request-id';
@@ -38,16 +38,13 @@ import { seoRouter } from './seo/router';
  * Start. Real Cloudflare `env` (with D1, R2, ASSETS, ...) flows in via
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
-export const externalBoundary = new Hono<{ Bindings: Env }>();
-
-/**
- * Boundary diagnostics. Every argument is redacted before it
- * reaches the log stream (Issue #467) — an unhandled error thrown
- * from a handler can carry request context, and the error log is
- * the one place that is guaranteed to fire exactly when something
- * has already gone wrong.
- */
-const boundaryLogger = createAuditLogger('boundary');
+export const externalBoundary = new Hono<{
+	Bindings: Env;
+	// Optional because only `/api/v1/*` runs `requestIdMiddleware`;
+	// the other prefixes mint their id in the redaction fallback
+	// (`src/http/errors.ts`).
+	Variables: { requestId?: string };
+}>();
 
 // Shared-cache isolation (Issue #460) is registered FIRST so it wraps
 // every other `/api/v1/*` layer, the local mock gate included. Every
@@ -112,8 +109,18 @@ externalBoundary.get('/api/v1/db/ping', async (c) => {
 		const row = await c.env.DB.prepare('SELECT 1 AS one').first<{ one: number }>();
 		return c.json({ status: 'ok', binding: 'd1', one: row?.one ?? null });
 	} catch (err) {
-		boundaryLogger.error('d1 ping failed', err);
-		return c.json({ status: 'binding_error', binding: 'd1' }, 503);
+		// Issue #457: the failure body no longer names the binding.
+		// The request path already identifies which probe failed, so
+		// an operator loses nothing. Scope of the change: the
+		// **failure** branch only — the 200 body below keeps
+		// `binding: 'd1'` because it is a documented operator probe
+		// contract; whether the probe should publish the binding at
+		// all is recorded as an open decision in docs/security.md.
+		return publicErrorResponse(c, err, {
+			status: 503,
+			code: 'service_unavailable',
+			logLabel: 'd1 ping',
+		});
 	}
 });
 
@@ -131,8 +138,11 @@ externalBoundary.get('/api/v1/media/ping', async (c) => {
 		if (/404|not[_ ]?found/i.test(message)) {
 			return c.json({ status: 'key_not_found', binding: 'r2' }, 404);
 		}
-		boundaryLogger.error('r2 ping failed', err);
-		return c.json({ status: 'binding_error', binding: 'r2' }, 503);
+		return publicErrorResponse(c, err, {
+			status: 503,
+			code: 'service_unavailable',
+			logLabel: 'r2 ping',
+		});
 	}
 });
 
@@ -151,6 +161,14 @@ externalBoundary.onError((err, c) => {
 	if (err instanceof ApiKeyError) {
 		return c.json({ error: err.code, status: err.status }, err.status);
 	}
-	boundaryLogger.error('unhandled', err);
-	return c.json({ error: 'internal_error' }, 500);
+	// Issue #457: the generic 500 answers with the redacted body —
+	// stable code, repo-authored message, and the correlation id the
+	// log line above just wrote. The `err` object never leaves the
+	// internal log record (`publicErrorResponse` writes it through
+	// the redacting boundary logger, Issue #467).
+	return publicErrorResponse(c, err, {
+		status: 500,
+		code: 'internal_error',
+		logLabel: 'unhandled error',
+	});
 });

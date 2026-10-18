@@ -93,6 +93,8 @@ portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
 server -> http
 http -> logging (Issue #467 — boundary diagnostics)
+http/reactions -> logging (Issue #467 — image-reference rejection record)
+portfolio -> logging (Issue #467 — server-function public error boundary)
 cloudflare -> logging (Issue #467 — auth email stub + binding probes)
 home -> editorial
 ```

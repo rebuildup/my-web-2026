@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAuditLogger } from './logger';
-import { REDACTED, REDACTED_EMAIL } from './redact';
+import { REDACTED, REDACTED_CORRELATION, REDACTED_EMAIL } from './redact';
 
 /**
  * Audit-logger contract (Issue #467).
@@ -113,5 +113,51 @@ describe('createAuditLogger — no canary survives', () => {
 		logger.audit('unhandled', { request: new Request('https://rebuildup.dev/?token=x') });
 		expect(records).toHaveLength(1);
 		expect(records[0]?.text).toContain('[Request]');
+	});
+});
+
+describe('createAuditLogger — the correlation channel', () => {
+	it('writes a minted id so the record stays greppable, and redacts everything else', () => {
+		const records = captureConsole();
+		const logger = createAuditLogger('boundary');
+		logger.errorCorrelated(
+			`upstream failed for ${CANARY_EMAIL}`,
+			'a979b75d5b3db6aff86ed49021ecd0c0',
+			new Error(`Bearer ${CANARY_TOKEN}`),
+		);
+		expect(records).toHaveLength(1);
+		const line = records[0]?.text ?? '';
+		expect(line).toContain('[boundary] upstream failed for');
+		expect(line).toContain('request_id=a979b75d5b3db6aff86ed49021ecd0c0');
+		expect(line).not.toContain(CANARY_EMAIL);
+		expect(line).not.toContain(CANARY_TOKEN);
+	});
+
+	it.each([
+		['a client-supplied id', 'client-correlation-1234'],
+		['a uuid with dashes', '550e8400-e29b-41d4-a716-446655440000'],
+		['an api key', CANARY_TOKEN],
+	])('refuses to print %s as a correlation token', (_label, value) => {
+		const records = captureConsole();
+		const logger = createAuditLogger('boundary');
+		logger.errorCorrelated('d1 ping failed (status=503)', value, new Error('boom'));
+		const line = records[0]?.text ?? '';
+		expect(line).toContain(`request_id=${REDACTED_CORRELATION}`);
+		expect(line).not.toContain(value);
+	});
+
+	it('prints a placeholder when the caller cannot prove it minted the id', () => {
+		const records = captureConsole();
+		const logger = createAuditLogger('boundary');
+		logger.errorCorrelated('r2 ping failed (status=503)', null, new Error('boom'));
+		const line = records[0]?.text ?? '';
+		expect(line).toContain(`request_id=${REDACTED_CORRELATION}`);
+	});
+
+	it('emits on the error method', () => {
+		const records = captureConsole();
+		const logger = createAuditLogger('boundary');
+		logger.errorCorrelated('unhandled error (status=500)', 'a979b75d5b3db6aff86ed49021ecd0c0');
+		expect(records[0]?.method).toBe('error');
 	});
 });

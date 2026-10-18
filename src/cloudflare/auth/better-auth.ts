@@ -241,6 +241,48 @@ export const auth = betterAuth({
 			maxAge: 5 * 60,
 		},
 	},
+	// Credential-endpoint throttle (Issue #443). See
+	// `docs/security/login-enumeration-rate-limit.md` for the audit and
+	// the evidence this config is pinned by
+	// (`test/integration/auth-login-hardening.test.ts`).
+	//
+	// `enabled: true` is the load-bearing line. Better Auth 1.7.5
+	// defaults this option to `isProduction` (`NODE_ENV === 'production'`),
+	// so leaving it unset makes the brute-force control depend on an
+	// ambient build/runtime variable that this repository never declares
+	// (`wrangler.jsonc#vars` sets only the two MY_WEB_2026_* vars, and no
+	// `define` pins NODE_ENV for the Worker bundle). Pinning it here means
+	// dev, the local workerd pool, and the deployed Worker all throttle
+	// identically, and the control becomes locally reproducible instead of
+	// being an assumption about a runtime variable.
+	//
+	// `window` / `max` restate the library defaults (10 s / 100) so a
+	// library upgrade cannot silently change this project's budget; the
+	// per-path rule below is what actually protects the credential endpoint.
+	//
+	// `customRules['/sign-in/email']` mirrors Better Auth's own special
+	// rule for `/sign-in*` (3 attempts / 10 s). Pinning it explicitly moves
+	// the value out of the library's internals into this file, where it is
+	// reviewable, and lets the local test assert the real number instead of
+	// discovering it at runtime. Paths are normalized against `basePath`, so
+	// the key is `/sign-in/email`, not `/api/v1/auth/sign-in/email`.
+	//
+	// `storage: 'memory'` is stated explicitly for the same reason. It is
+	// the library default, and it is also the documented weak point: the
+	// counter lives in the isolate's heap, so it resets on isolate recycle
+	// and is not shared across locations. Deduplicating to a durable store
+	// would need a `rateLimit` table (migration) or a KV/RL binding
+	// (new binding + ADR) — out of scope for Issue #443 and recorded as an
+	// open decision in the doc above.
+	rateLimit: {
+		enabled: true,
+		window: 10,
+		max: 100,
+		storage: 'memory',
+		customRules: {
+			'/sign-in/email': { window: 10, max: 3 },
+		},
+	},
 	plugins: [
 		admin(),
 		// The @better-auth/api-key plugin's per-key rate limit is
@@ -287,7 +329,28 @@ export const auth = betterAuth({
 	// schema validation is redundant. See ADR-0009 §6 and the test
 	// setup notes in `test/integration/` for the migration-driven
 	// pattern.
-	advanced: { database: { validateSchema: false } },
+	advanced: {
+		database: { validateSchema: false },
+		// Resolve the client IP from `CF-Connecting-IP` (Issue #443).
+		//
+		// Better Auth keys the throttle — and records the session IP —
+		// on this resolved value, defaulting to `x-forwarded-for`.
+		// On Cloudflare that header is a *chain*: a client that already
+		// arrived through a proxy sends `client, proxy`, and Better Auth
+		// trusts a forwarded header only when it carries exactly one
+		// address (no `trustedProxies` is configured here). A two-hop
+		// request therefore resolves to no IP at all and collapses into
+		// one shared `no-trusted-ip` bucket — a single caller could then
+		// lock every other caller out of sign-in.
+		//
+		// `CF-Connecting-IP` is the header Cloudflare sets and overwrites
+		// on every request, so it is both single-valued and unspoofable
+		// from the client side. It is also what `src/http/middleware/
+		// rate-limit.ts` already trusts for the Workers Rate Limiting
+		// binding, so auth and the external boundary now key on the same
+		// notion of "client".
+		ipAddress: { ipAddressHeaders: ['cf-connecting-ip'] },
+	},
 });
 
 /**

@@ -82,6 +82,48 @@ describe('better-auth config', () => {
 		expect(options.options.emailAndPassword?.enabled).toBe(true);
 		expect(options.options.emailAndPassword?.disableSignUp).toBe(true);
 	});
+
+	// Issue #443. Better Auth 1.7.5 defaults `rateLimit.enabled` to
+	// `NODE_ENV === 'production'`, so an unset option makes the
+	// brute-force control depend on an ambient variable this repository
+	// never declares. These assertions exist so that "the throttle is on
+	// because we pinned it" cannot silently become "the throttle is on
+	// because some build environment happened to set NODE_ENV".
+	// The runtime behaviour is asserted in
+	// `test/integration/auth-login-hardening.test.ts`; this is the
+	// config-level guard.
+	it('pins the credential throttle instead of inheriting the NODE_ENV default', () => {
+		const options = betterAuthModule.auth as unknown as {
+			options: {
+				rateLimit?: {
+					enabled?: boolean;
+					window?: number;
+					max?: number;
+					storage?: string;
+					customRules?: Record<string, { window?: number; max?: number }>;
+				};
+			};
+		};
+		const rateLimit = options.options.rateLimit;
+		expect(rateLimit?.enabled).toBe(true);
+		expect(rateLimit?.storage).toBe('memory');
+		// `/sign-in/email` — normalized against `basePath`, so the key is
+		// not the externally-visible `/api/v1/auth/sign-in/email`.
+		expect(rateLimit?.customRules?.['/sign-in/email']).toEqual({ window: 10, max: 3 });
+	});
+
+	it('resolves the throttle client IP from CF-Connecting-IP', () => {
+		// Better Auth trusts a forwarded header only when it carries a
+		// single address; Cloudflare's `x-forwarded-for` is a chain, so a
+		// two-hop request would resolve to no IP and collapse into one
+		// shared bucket. `CF-Connecting-IP` is single-valued and set by
+		// Cloudflare, and it is what `src/http/middleware/rate-limit.ts`
+		// already trusts for the Workers Rate Limiting binding.
+		const options = betterAuthModule.auth as unknown as {
+			options: { advanced?: { ipAddress?: { ipAddressHeaders?: string[] } } };
+		};
+		expect(options.options.advanced?.ipAddress?.ipAddressHeaders).toEqual(['cf-connecting-ip']);
+	});
 });
 
 // ADR-0015 §11.2: when `BETTER_AUTH_SECRETS` is unset, `BETTER_AUTH_SECRET`

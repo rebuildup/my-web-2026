@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -499,9 +499,9 @@ describe('Tool iframe bundles are aggregated separately (Issue #482)', () => {
 });
 
 describe('renderHtml (Issue #482)', () => {
-	function reportFor(heavy) {
+	function reportFor(heavy, routeBudgets = GENEROUS) {
 		const measured = measureRoutes(graph({ heavyToolsChunk: heavy }), parseRouteTree(ROUTE_TREE));
-		const budget = budgetOf(GENEROUS);
+		const budget = budgetOf(routeBudgets);
 		const result = evaluateBudgets({ routes: measured.routes, budget });
 		return {
 			schema_version: 1,
@@ -538,6 +538,51 @@ describe('renderHtml (Issue #482)', () => {
 		const html = renderHtml(reportFor(true));
 		assert.match(html, /FAIL — 1 violation\(s\)/);
 		assert.match(html, /\/tools\/\$slug initial_js_bytes=3112000/);
+	});
+
+	it('renders an acknowledged exception with its measurement, cap and reason', () => {
+		// An exception keeps `violations` empty so the run passes, but the
+		// bundle IS above its cap. A report that only rendered `violations`
+		// would say "No route or Tool bundle exceeds its cap" and hide the
+		// reason a reviewer has to approve.
+		const reason =
+			'The embedded markdown renderer is loaded eagerly on purpose until the lazy split lands in Issue #501.';
+		const html = renderHtml(
+			reportFor(true, {
+				...GENEROUS,
+				'/tools/$slug': {
+					initial_js_bytes: 200_000,
+					initial_css_bytes: 40_000,
+					exception: { metric: 'initial_js_bytes', reason },
+				},
+			}),
+		);
+		assert.match(html, /Acknowledged exceptions/);
+		assert.match(html, /\/tools\/\$slug/);
+		assert.match(html, /3,112,000/);
+		assert.match(html, /200,000/);
+		assert.match(html, /\+2,912,000/);
+		assert.match(html, /Issue #501/);
+		// The violation list stays empty, so the run still reports PASS.
+		assert.match(html, /PASS — every route and Tool bundle within budget/);
+	});
+
+	it('escapes an exception reason instead of trusting it', () => {
+		const html = renderHtml(
+			reportFor(true, {
+				...GENEROUS,
+				'/tools/$slug': {
+					initial_js_bytes: 200_000,
+					initial_css_bytes: 40_000,
+					exception: {
+						metric: 'initial_js_bytes',
+						reason: '<img src=x onerror=alert(3)> a reason that is twenty characters long',
+					},
+				},
+			}),
+		);
+		assert.doesNotMatch(html, /<img src=x/);
+		assert.match(html, /&lt;img src=x/);
 	});
 
 	it('escapes interpolated values instead of trusting them', () => {
@@ -688,6 +733,29 @@ describe('CLI (Issue #482)', () => {
 			const result = run(dir);
 			assert.equal(result.code, 2);
 			assert.match(result.stderr, /tool_iframe: required/);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('creates the parent directory of --report and --html before writing', () => {
+		// `.tmp/` is gitignored, so a fresh checkout has no such directory and
+		// the documented `--report=.tmp/bundle-budget.json` would abort with
+		// ENOENT instead of producing the artefact.
+		const clean = graph();
+		const dir = mkdtempSync(join(tmpdir(), 'bundle-budget-cli-nested-'));
+		try {
+			writeFileSync(join(dir, 'bundle-graph.json'), JSON.stringify(clean));
+			writeFileSync(join(dir, 'routeTree.gen.ts'), ROUTE_TREE);
+			writeFileSync(join(dir, 'budget.json'), JSON.stringify(budgetOf(GENEROUS)));
+			const reportTarget = join(dir, 'artefacts', 'nested', 'bundle-budget.json');
+			const htmlTarget = join(dir, 'artefacts', 'nested', 'bundle-budget.html');
+			const result = run(dir, [`--report=${reportTarget}`, `--html=${htmlTarget}`]);
+			assert.equal(result.code, 0, result.stderr);
+			assert.equal(existsSync(reportTarget), true);
+			assert.equal(existsSync(htmlTarget), true);
+			assert.equal(JSON.parse(readFileSync(reportTarget, 'utf8')).schema_version, 1);
+			assert.match(readFileSync(htmlTarget, 'utf8'), /<!doctype html>/);
 		} finally {
 			rmSync(dir, { recursive: true, force: true });
 		}

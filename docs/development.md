@@ -285,6 +285,17 @@ happened to emit the chunks in.
 
 `--json` writes exactly one JSON document to **stdout**; every human status
 line goes to stderr, so `pnpm run bundle:budget:check -- --json | jq` works.
+`--report=` and `--html=` create their parent directory, so the `.tmp/` paths
+above work on a fresh checkout where `.tmp/` does not exist yet.
+
+Sizes are **UTF-8 byte lengths of the emitted files**, not JavaScript string
+lengths — a chunk carrying a Japanese literal is larger on disk than
+`code.length` suggests, and a budget gate that undercounts its own artefacts
+could pass a real over-cap file.
+
+An acknowledged `exception` keeps the run green while the bundle is still above
+its cap, so the HTML report lists every exception with its measurement, cap,
+overage and reason instead of only printing the violations.
 
 Numbers live in [`quality/bundle-budget.json`](../quality/bundle-budget.json);
 the gate records its reproduction conditions (no browser, no network, no CPU

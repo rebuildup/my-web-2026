@@ -75,6 +75,20 @@ const cloudflareWorkersClientStub: Plugin = {
  * Dynamic imports are recorded but never walked — lazy route chunks must not
  * be charged to first paint.
  */
+/**
+ * On-disk size of a Rollup output, in bytes.
+ *
+ * `output.code.length` / `output.source.length` count UTF-16 code units, so a
+ * chunk carrying a non-ASCII literal (this app ships Japanese editorial copy)
+ * would be recorded as smaller than the file Vite actually writes. A budget
+ * gate that undercounts its own artefacts can pass a real over-cap file, so the
+ * byte count has to be the byte count. `gzipSync(Buffer.from(source))` below
+ * already measures real bytes, which is why the two can disagree.
+ */
+function rawByteLength(source: string | Uint8Array): number {
+	return typeof source === 'string' ? Buffer.byteLength(source, 'utf8') : source.byteLength;
+}
+
 function clientBundleGraphPlugin(): Plugin {
 	return {
 		name: 'my-web-2026:client-bundle-graph',
@@ -105,7 +119,7 @@ function clientBundleGraphPlugin(): Plugin {
 			> = {};
 			for (const [fileName, output] of Object.entries(bundle)) {
 				if (output.type === 'asset') {
-					const bytes = output.source.length;
+					const bytes = rawByteLength(output.source);
 					assets[fileName] = {
 						bytes,
 						gzip_bytes: gzipSync(Buffer.from(output.source), { level: 9 }).length,
@@ -133,7 +147,7 @@ function clientBundleGraphPlugin(): Plugin {
 					facade_query: facadeId?.includes('?') ? facadeId.slice(facadeId.indexOf('?') + 1) : null,
 					is_entry: output.isEntry === true,
 					is_dynamic_entry: output.isDynamicEntry === true,
-					bytes: output.code.length,
+					bytes: rawByteLength(output.code),
 					gzip_bytes: gzipSync(output.code, { level: 9 }).length,
 					css_bytes: importedCss.reduce((sum, css) => sum + (assets[css]?.bytes ?? 0), 0),
 					imports: [...output.imports].filter((dep) => bundle[dep]?.type === 'chunk'),

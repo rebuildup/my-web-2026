@@ -15,14 +15,34 @@ import { externalBoundary } from './http/hono';
  *   /webhooks/*      inbound webhooks from external services
  *   /oauth/*         OAuth callback handlers
  *   /integrations/*  third-party integration adapters
+ *   /sitemap.xml     crawler-facing sitemap (Issue #420)
+ *   /robots.txt      crawler-facing crawler policy (Issue #420)
+ *
+ * The two SEO documents are the only non-API entries. They are
+ * documents Hono can answer and the SSR pipeline cannot: TanStack
+ * Start 1.168 has no raw-response route primitive, so a route file
+ * always renders through the document shell. This is exactly the
+ * "TanStack Start ships a first-class HTTP-route primitive" case ADR-0002
+ * lists as a re-evaluation trigger — when that primitive lands, these
+ * two paths move back into `src/routes/` and leave this list.
  *
  * Internal application operations invoked from the UI use TanStack
  * Start server functions and never appear under these prefixes.
  *
  * Matching is exact-prefix-or-/ to avoid collisions like /api/v10 or
- * /api/v1evil accidentally entering the external boundary.
+ * /api/v1evil accidentally entering the external boundary. The SEO
+ * entries are exact-match in practice: `/sitemap.xml` and
+ * `/robots.txt` have no children, and neither prefix below them can
+ * collide with a page route.
  */
-const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations'] as const;
+const EXTERNAL_BOUNDARY_PREFIXES = [
+	'/api/v1',
+	'/webhooks',
+	'/oauth',
+	'/integrations',
+	'/sitemap.xml',
+	'/robots.txt',
+] as const;
 
 function matchesExternalBoundary(pathname: string): boolean {
 	return EXTERNAL_BOUNDARY_PREFIXES.some(

@@ -237,6 +237,10 @@ export function parseArgs(argv) {
 		noScreenshot: false,
 	};
 	for (const arg of argv) {
+		// `pnpm run perf:interaction:memory -- --cycles=5` forwards a bare
+		// `--` separator; the documented README invocation style uses it,
+		// so it is consumed rather than rejected as an unknown option.
+		if (arg === '--') continue;
 		const [key, value] = arg.replace(/^--/, '').split('=');
 		switch (key) {
 			case 'cycles':
@@ -407,6 +411,38 @@ function playwrightVersion() {
 }
 
 /**
+ * Click a real emoji inside the open picker.
+ *
+ * The picker's category label is `position: sticky` and overlaps the first
+ * emoji row, so `locator.click()` on the first match spends its whole
+ * actionability budget retrying against an intercepting element and the
+ * run dies before any number is recorded. This picks the first visible
+ * emoji whose centre point is genuinely the topmost element at that
+ * coordinate, and clicks it through the real input pipeline — a synthetic
+ * `dispatchEvent` would exercise React's handler without exercising the
+ * hit-testing the visitor actually performs.
+ */
+async function clickPickerEmoji(page, dialog) {
+	const target = await dialog.evaluate((root) => {
+		const emojiNodes = Array.from(root.querySelectorAll('.epr-emoji'));
+		for (const node of emojiNodes) {
+			const box = node.getBoundingClientRect();
+			if (box.width === 0 || box.height === 0) continue;
+			const x = box.left + box.width / 2;
+			const y = box.top + box.height / 2;
+			if (x < 0 || y < 0 || x > window.innerWidth || y > window.innerHeight) continue;
+			const hit = document.elementFromPoint(x, y);
+			if (hit && (hit === node || node.contains(hit)))
+				return { x, y, label: node.getAttribute('aria-label') };
+		}
+		return null;
+	});
+	if (!target) return null;
+	await page.mouse.click(target.x, target.y);
+	return target;
+}
+
+/**
  * Leg `react` — one real visitor journey on `/`: open the picker, type a
  * search, pick an emoji, close. The chip that appears is the optimistic
  * aggregate from the shipped widget.
@@ -424,6 +460,7 @@ async function runReactionLeg(page, cycles) {
 
 	const sample = async () => page.evaluate(() => window.__interactionMemoryProbe.snapshot());
 	const series = [{ cycle: 0, ...(await sample()) }];
+	const picked = [];
 
 	for (let cycle = 1; cycle <= cycles; cycle += 1) {
 		await trigger.click();
@@ -434,10 +471,7 @@ async function runReactionLeg(page, cycles) {
 			await search.fill('thumbs');
 			await page.waitForTimeout(400);
 		}
-		const emoji = dialog.locator('.epr-emoji').first();
-		if ((await emoji.count()) > 0) {
-			await emoji.click({ timeout: 10_000 });
-		}
+		picked.push((await clickPickerEmoji(page, dialog))?.label ?? null);
 		await page.waitForTimeout(600);
 		await page.keyboard.press('Escape');
 		await page.waitForTimeout(400);
@@ -450,7 +484,7 @@ async function runReactionLeg(page, cycles) {
 			...snapshot,
 		});
 	}
-	return { skipped: false, series };
+	return { skipped: false, series, picked };
 }
 
 /**

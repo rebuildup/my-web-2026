@@ -199,6 +199,11 @@ describe('parseArgs', () => {
 		assert.throws(() => parseArgs(['--cycles=abc']), /--cycles must be an integer >= 2/);
 	});
 
+	it('consumes the bare `--` separator that `pnpm run <script> --` forwards', () => {
+		const options = parseArgs(['--', '--cycles=3']);
+		assert.equal(options.cycles, 3);
+	});
+
 	it('rejects an unknown option instead of ignoring it', () => {
 		assert.throws(() => parseArgs(['--nope=1']), /unknown option: --nope=1/);
 	});

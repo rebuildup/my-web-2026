@@ -13,9 +13,9 @@
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 17 |
-| External hosts | 26 |
+| External hosts | 28 |
 | First-party hosts | 0 |
-| Approved transition | 2 finding(s) |
+| Approved transition | 4 finding(s) |
 | Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -90,9 +90,10 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (1)
+### Added external hosts (2)
 
-- `host.invalid`
+- `example.com`
+- `example.invalid`
 
 ### Removed external hosts (0)
 
@@ -125,6 +126,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
+| `https://example.com/docs` | `example.com` | external | `src/portfolio/markdown.xss-fixtures.ts` |
+| `https://example.invalid/frame` | `example.invalid` | external | `src/portfolio/markdown.xss-fixtures.ts` |
 | `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/routes/__root.tsx` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
@@ -168,6 +171,8 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host host.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://host.invalid
+- **ERROR** `E004 external-host-added` New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host example.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://example.com/docs
+- **WARN** `W002 external-url-added` External URL added: https://example.invalid/frame
 

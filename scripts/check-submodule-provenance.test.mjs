@@ -569,9 +569,12 @@ describe('provenance — every configured fetch URL, not just the last one', () 
 		assert.ok(codes(result).includes('URL_UNSAFE'));
 		assert.equal(codes(result).includes('CHECKOUT_ORIGIN_MISMATCH'), false);
 		assert.ok(!findingsText(result).includes(TOKEN));
+		// The origin is not echoed at all, not even redacted: a value
+		// that fails the URL policy may hide a credential in its
+		// hostname, which an `@`-keyed redaction rule cannot catch.
 		assert.match(
 			result.findings.find((item) => item.code === 'URL_UNSAFE').message,
-			/https:\/\/\*\*\*@github\.com\/example-org\/example-widget\.git/,
+			/\(not echoed: not a credential-free https:\/\/github\.com repository url\)/,
 		);
 	});
 
@@ -766,13 +769,77 @@ describe('provenance — status-only output never echoes credentials', () => {
 
 	it('never prints a credential hidden in an invalid url path segment', () => {
 		const gitmodules = parseGitmodules(`
-[submodule "external/example-widget"]
+[submodule "example-widget"]
 	path = external/example-widget
 	url = https://github.com/example-org/${TOKEN}@repo.git
 `);
 		const result = run([widgetTool()], gitmodules, healthyFacts());
 		assert.ok(codes(result).includes('URL_UNSAFE'));
 		assert.ok(!renderedEverything(result).includes(TOKEN));
+	});
+
+	it('never prints a non-github host that carries a credential', () => {
+		// `redactUrlCredentials` keys on an `@`, so a token embedded in
+		// the *hostname* of an ambient `submodule.<name>.url` /
+		// `remote.origin.url` survives it. The classifier must therefore
+		// report the host with fixed text only.
+		for (const [label, gitmodules, facts] of [
+			[
+				'.gitmodules',
+				parseGitmodules(`
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = https://${TOKEN}.example.com/example-org/example-widget.git
+`),
+				healthyFacts(),
+			],
+			[
+				'remote.origin',
+				GITMODULES,
+				healthyFacts({
+					checkouts: {
+						'external/example-widget': {
+							initialised: true,
+							head: PIN_A,
+							origin: `https://${TOKEN}.example.com/example-org/example-widget.git`,
+							dirty: false,
+							toplevelMatches: true,
+						},
+					},
+				}),
+			],
+		]) {
+			const result = run([widgetTool()], gitmodules, facts);
+			assert.ok(codes(result).includes('URL_UNSAFE'), label);
+			assert.ok(!renderedEverything(result).includes(TOKEN), label);
+			assert.ok(!renderedEverything(result).includes('example.com'), label);
+			assert.ok(!renderedEverything(result).includes(TOKEN.slice(0, 12)), label);
+		}
+		assert.equal(
+			classifyRepoUrl('https://gitlab.com/example-org/example-widget.git').message,
+			'url host must be github.com (a non-github host is reported without its name)',
+		);
+	});
+
+	it('never prints a value recorded in an unusable artefact stamp', () => {
+		const root = makeTempDir();
+		mkdirSync(join(root, 'dist/tool-provenance'), { recursive: true });
+		writeFileSync(
+			join(root, 'dist/tool-provenance/example-widget.json'),
+			`${JSON.stringify({
+				schema: 1,
+				slug: 'example-widget',
+				canonical_repo: CANONICAL,
+				pinned_sha: TOKEN,
+				checkout_sha: TOKEN,
+			})}\n`,
+		);
+		const read = readArtifactStamp(root, 'example-widget');
+		assert.equal(read.present, true);
+		assert.equal(read.stamp, null);
+		assert.match(read.problem, /records pinned_sha as/);
+		assert.match(read.problem, /not a 40-char commit SHA/);
+		assert.ok(!read.problem.includes(TOKEN));
 	});
 
 	it('never prints a credentialed url.*.insteadOf base', () => {
@@ -815,11 +882,12 @@ describe('provenance — status-only output never echoes credentials', () => {
 		const result = run([widgetTool()], GITMODULES, facts);
 		assert.ok(codes(result).includes('LOCAL_URL_OVERRIDE'));
 		assert.ok(!renderedEverything(result).includes(TOKEN));
-		// The origin itself carries a token in some setups; the report
-		// rows must still be status-only.
+		// An origin that carries a credential is not echoed at all — not
+		// even with `***` — because redaction rules that key on an `@`
+		// cannot recognise a token inside the hostname.
 		assert.equal(
 			result.rows[0].origin_url,
-			'https://***@github.com/example-org/example-widget.git',
+			'(not echoed: not a credential-free https://github.com repository url)',
 		);
 	});
 
@@ -871,7 +939,8 @@ describe('provenance — build artefact agreement', () => {
 		const facts = healthyFacts({
 			artifacts: { 'example-widget': null },
 			artifactProblems: {
-				'example-widget': 'records pinned_sha as nothing, not a 40-char commit SHA',
+				'example-widget':
+					'records pinned_sha as a string (44 character(s)), not a 40-char commit SHA',
 			},
 		});
 		const result = run([widgetTool()], GITMODULES, facts);

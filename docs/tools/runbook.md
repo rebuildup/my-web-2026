@@ -223,6 +223,29 @@ the full string. A credential pasted into a *path* segment (the
 syntax errors and malformed path segments are reported with fixed text,
 not with the offending value.
 
+The same rule covers the *hostname*, which the redaction rules above
+cannot reach (they all key on an `@`). A url that does **not** satisfy
+the URL policy — a non-github host, a credentialed userinfo, an ssh
+transport, a ref or query — is therefore reported with fixed text in
+both findings and report rows: the row prints `(not echoed: not a
+credential-free https://github.com repository url)` and the finding
+names the class (`url host must be github.com …`, `url embeds
+credentials …`) instead of the value. That is what closes the
+`https://ghp_TOKEN.example.com/org/repo.git` shape, where the token sits
+inside the host. The same applies to `dist/tool-provenance/<slug>.json`:
+an unusable stamp is reported by field name and expected format only
+(`records pinned_sha as a string (44 character(s)), not a 40-char commit
+SHA`), never by value, because a hand-edited stamp is exactly where a
+pasted token ends up.
+
+One residual stays, on purpose visible: the base of a `url.*.insteadOf`
+rewrite is a *prefix*, not a url, so the policy classifier does not
+apply to it. It is printed with the `***` rules above together with its
+scope and key name. A rewrite base that hides a credential in its own
+hostname is therefore not masked — which is tolerable because any
+rewrite at all is already an error (`URL_INSTEADOF_REWRITE`) whose
+remedy names the key to `git config --unset`.
+
 Every URL it reads is checked against the URL policy on its **raw**
 value, and identity is compared on the normalised value. The two
 checks are not redundant: `https://user:TOKEN@github.com/<owner>/<repo>.git`

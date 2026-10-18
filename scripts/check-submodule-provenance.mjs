@@ -218,6 +218,27 @@ export function normalizeRepoUrl(url) {
  * repository URL. Anything else would make "the pinned SHA came from
  * where we say it came from" unverifiable.
  */
+/**
+ * Status-only rendering of a URL that did **not** come from a committed
+ * file: the ambient git config (`submodule.<name>.url`,
+ * `remote.origin.url`, `url.*.insteadOf`) or a generated file on disk
+ * (`dist/tool-provenance/<slug>.json`).
+ *
+ * The value is echoed only when it satisfies the URL policy, which by
+ * construction means it carries no credential in its userinfo, its host
+ * or its path. Anything else becomes fixed text, because an ambient url
+ * can hide a token in the *hostname* (`https://ghp_TOKEN.example.com/
+ * org/repo.git`) — a shape `redactUrlCredentials` cannot recognise,
+ * since every rule there keys on an `@`. The finding keeps the diagnosis
+ * and the remedy, so the operator still learns what to change.
+ */
+export function describeReportedUrl(value) {
+	if (typeof value !== 'string' || value.trim() === '') return '(not declared)';
+	return classifyRepoUrl(value).ok
+		? redactUrlCredentials(value)
+		: '(not echoed: not a credential-free https://github.com repository url)';
+}
+
 export function classifyRepoUrl(url) {
 	if (typeof url !== 'string' || url.trim().length === 0) {
 		return { ok: false, code: 'URL_MISSING', message: 'no url declared' };
@@ -264,10 +285,16 @@ export function classifyRepoUrl(url) {
 		return { ok: false, code: 'URL_UNSAFE', message: 'unparseable url' };
 	}
 	if (parsed.hostname.toLowerCase() !== 'github.com') {
+		// Fixed text, like a malformed path segment below. An ambient
+		// `submodule.<name>.url` or `remote.origin.url` can carry a
+		// credential *inside* the host (`https://ghp_TOKEN.example.com/…`),
+		// a shape `redactUrlCredentials` cannot recognise: its rules all
+		// key on an `@`. Reporting the host verbatim would therefore leak
+		// into stderr, the Markdown, the JSON and the HTML report.
 		return {
 			ok: false,
 			code: 'URL_UNSAFE',
-			message: `url host must be github.com (got ${parsed.hostname})`,
+			message: 'url host must be github.com (a non-github host is reported without its name)',
 		};
 	}
 	const segments = parsed.pathname
@@ -614,7 +641,7 @@ export function readArtifactStamp(root, slug) {
 		);
 	}
 	if (parsed.schema !== 1) {
-		return invalid(`declares schema ${describeValue(parsed.schema)}, expected 1`);
+		return invalid(`declares schema ${describeShape(parsed.schema)}, expected 1`);
 	}
 	for (const field of ['slug', 'canonical_repo']) {
 		if (typeof parsed[field] !== 'string' || parsed[field].length === 0) {
@@ -623,22 +650,34 @@ export function readArtifactStamp(root, slug) {
 	}
 	for (const field of ['pinned_sha', 'checkout_sha']) {
 		if (!SHA_REGEX.test(String(parsed[field] ?? ''))) {
+			// The field name and the expected format only. A stamp is a
+			// file on disk, and an unusable stamp is exactly where a
+			// hand-pasted token ends up; quoting the value would put it
+			// into every surface this gate writes.
 			return invalid(
-				`records ${field} as ${describeValue(parsed[field])}, not a 40-char commit SHA`,
+				`records ${field} as ${describeShape(parsed[field])}, not a 40-char commit SHA`,
 			);
 		}
 	}
 	return { present: true, stamp: parsed, problem: null };
 }
 
-/** Render a JSON value for a message without ever printing `undefined`. */
-function describeValue(value) {
+/**
+ * Describe the *shape* of a JSON value, never its content.
+ *
+ * An invalid stamp is reported by name and expected format only, so a
+ * token or a pasted credential that reached the file cannot reach a
+ * message — and therefore cannot reach stderr, the Markdown, the JSON
+ * or the HTML report. The type is enough for an operator to see whether
+ * the file is truncated, hand-edited or written by an older schema.
+ */
+function describeShape(value) {
 	if (value === undefined) return 'nothing';
-	try {
-		return JSON.stringify(value);
-	} catch {
-		return 'an unreadable value';
-	}
+	if (value === null) return 'null';
+	if (Array.isArray(value)) return 'an array';
+	if (typeof value === 'object') return 'an object';
+	if (typeof value === 'string') return `a string (${value.length} character(s))`;
+	return `a ${typeof value}`;
 }
 
 function sectionForPath(gitmodules, path) {
@@ -764,7 +803,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 				pinned_sha: null,
 				gitlink_sha: gitlinkSha,
 				checkout_sha: checkout.head,
-				origin_url: redactUrlCredentials(checkout.origin),
+				origin_url: describeReportedUrl(checkout.origin),
 				artifact_pin: null,
 				verdict: 'FAIL',
 				codes: rowNotes,
@@ -877,7 +916,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 						'LOCAL_URL_OVERRIDE',
 						'error',
 						subject,
-						`${tool.slug}: git config${scopeOf('url')} submodule.${name}.url="${redactUrlCredentials(config.url)}" overrides the fetch source declared in the manifest (${redactUrlCredentials(canonicalRepo)})`,
+						`${tool.slug}: git config${scopeOf('url')} submodule.${name}.url="${describeReportedUrl(config.url)}" overrides the fetch source declared in the manifest (${redactUrlCredentials(canonicalRepo)})`,
 						'git config --unset submodule.<name>.url, or re-run `git submodule sync` after confirming the intended source',
 					);
 				}
@@ -959,7 +998,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 						'URL_UNSAFE',
 						'error',
 						subject,
-						`${tool.slug}: the checkout's remote.origin ${redactUrlCredentials(origin)} is not a credential-free https://github.com repository — ${classified.message}`,
+						`${tool.slug}: the checkout's remote.origin ${describeReportedUrl(origin)} is not a credential-free https://github.com repository — ${classified.message}`,
 						`git -C ${path} config --unset-all remote.origin.url, then git -C ${path} remote add origin ${canonicalRepo ?? 'https://github.com/<owner>/<repo>.git'} (a credential in a fetch URL becomes a credential in every CI log that prints it)`,
 					);
 					continue;
@@ -1053,7 +1092,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 						'ARTIFACT_SOURCE_MISMATCH',
 						'error',
 						subject,
-						`${tool.slug}: the collected artefact names source ${redactUrlCredentials(stamp.canonical_repo)}, not the declared ${redactUrlCredentials(canonicalRepo)}`,
+						`${tool.slug}: the collected artefact names source ${describeReportedUrl(stamp.canonical_repo)}, not the declared ${redactUrlCredentials(canonicalRepo)}`,
 						'pnpm run build to rebuild the artefact from the declared source',
 					);
 				}
@@ -1068,7 +1107,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 			pinned_sha: pinnedSha,
 			gitlink_sha: gitlinkSha,
 			checkout_sha: checkout.head,
-			origin_url: redactUrlCredentials(checkout.origin),
+			origin_url: describeReportedUrl(checkout.origin),
 			artifact_pin: stamp?.pinned_sha ?? null,
 			verdict: 'PASS',
 			codes: rowNotes,

@@ -44,6 +44,13 @@ gates:
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       - 'pnpm run typecheck' # tsc --noEmit
+      # `pnpm run test` also carries the Issue #491 D1 statement-count
+      # budget (src/portfolio/load.query-budget.test.ts): the portfolio
+      # list surface must stay at or below 1 + 2 * ceil(pageSize / 100)
+      # D1 statements. It is deliberately an assertion inside the EXISTING
+      # `test` component, not a new gate: statement counts are
+      # deterministic, whereas wall-clock time is reported as an
+      # observation only (Lighthouse / Web Vitals budgets are #384-#386).
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
     trigger: local + every CI run

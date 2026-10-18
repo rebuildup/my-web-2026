@@ -76,6 +76,13 @@ routes -> home
 routes -> portfolio
 routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+home/reactions -> i18n (Issue #433)
+
+server -> editorial (Issue #501 — SSR render-failure fallback document;
+                     `src/server.ts` replaces a document React could not
+                     render with `editorial/error-states/ssr-fallback.ts`; the
+                     entrypoint is the only layer outside React)
+router -> editorial (Issue #501 — failure surfaces bound in getRouter())
 about -> editorial (Issue #422 — approved snapshot → `Person` projection; the fact stays owned by `about`)
 
 routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
@@ -84,21 +91,72 @@ routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
+home -> logging (Issue #467 — shared log redaction)
 admin/emoji-catalog -> reactions
+admin -> logging (Issue #467 — admin image diagnostics)
 reactions -> cloudflare (env.DB at SSR time)
 http/seo -> portfolio (public project index only; the public-visibility
              filter stays in the portfolio obligation — Issue #420)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
+reactions -> i18n (Issue #433)
+portfolio -> i18n (Issue #433)
 external-api -> editorial (Issue #499 — display primitives only)
 server -> http
+http -> logging (Issue #467 — boundary diagnostics)
+http/reactions -> logging (Issue #467 — image-reference rejection record)
+portfolio -> logging (Issue #467 — server-function public error boundary)
+cloudflare -> logging (Issue #467 — auth email stub + binding probes)
+editorial -> logging (Issue #467 — SSR fallback failure record)
+server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
+             `delivery.iframe.allow` / `referrer_policy` from the Tool
+             manifest; the policy object is passed into the HTTP
+             boundary, so the Tool Registry still imports nothing
+             from `src/http/**`)
 home -> editorial
 ```
+
+- `src/i18n/**` owns the platform's Unicode text
+  policy (Issue #433): display text is preserved
+  byte-exact and a URL slug is authored rather than
+  derived, so normalization can never merge two
+  distinct words onto one published URL. It is a
+  **leaf obligation** — no repository imports — so
+  `home/`, `portfolio/`, `reactions/`, `admin/` and
+  `routes/` can all obey one rule without depending
+  on each other. `scripts/check-architecture.mjs`
+  enforces the leaf rule (every `*.test.*` /
+  `*.spec.*` file under a leaf is exempt, so
+  `src/i18n/fixtures.test.ts` can assert against
+  the owner-owned grammars; implementation modules
+  are not exempt). Each obligation keeps
+  ownership of its own slug grammar:
+  `src/reactions/slug-regex.ts` publishes
+  `EMOJI_SLUG_GRAMMAR`, `src/portfolio/schema.ts`
+  publishes `PORTFOLIO_SLUG_GRAMMAR`, and `i18n`
+  owns only the rule for applying them. See
+  `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`
+  and `docs/domain/i18n.md`.
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
 - `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
 - `src/http/**` owns the external HTTP boundary.
+- `src/logging/**` (Issue #467) is a **leaf** obligation owning
+  the runtime log-redaction contract: `redact.ts` decides what may
+  appear in a log record, `logger.ts` is the only module allowed
+  to touch `console` in `src/**`. It owns the question "may this
+  value be written to an operator-visible stream", not the question
+  "what should be logged about a request" — each owner logs its own
+  narrower record. Its independent contract: the AGENTS.md §4
+  "no value-listing of real secrets" invariant generalizes from
+  operator tooling to every runtime stream, and
+  `scripts/check-log-redaction.mjs` is the gate that keeps
+  `console.*` out of every other `src/**` file. `scripts/**`
+  (operator tooling) does NOT import it: the Node scripts print
+  status-only output by construction and must stay runnable without
+  a Worker bundle, so the shared contract there is the marker-based
+  `node --test` suites, not a shared module.
 - `src/reactions/**` owns the slug-grammar / DB-backed emoji catalog
   shared by `home/` and `admin/`. Promoted in branch 39 from
   `src/http/reactions/` so neither the `home/` nor the `admin/`
@@ -279,12 +337,16 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `architecture:check` +
+  `log:redaction:check` (Issue #467 — `src/**` may only reach
+  `console` through `src/logging/logger.ts`, and operator scripts may
+  not print a secret value) +
   `structured-data:check` + `index:boundary:check` +
-  `tools:check` + `install:scripts:check` +
+  `tools:check` + `security:headers:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` + `publication:check` +
+  `i18n:policy:check` +
   `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +

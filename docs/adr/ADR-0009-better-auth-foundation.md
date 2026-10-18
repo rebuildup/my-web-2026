@@ -161,6 +161,23 @@ protects the auth path itself; the Workers Rate Limiting layer
 protects the feature paths against abuse from authenticated
 principals.
 
+**Addendum — credential endpoints (Issue #443).** The two rows above
+cover API key validation and the feature endpoints. The one
+*unauthenticated credential* endpoint, `POST /api/v1/auth/sign-in/email`,
+is governed by Better Auth's own per-client-IP limiter, which this
+project now pins explicitly instead of inheriting: `rateLimit.enabled:
+true` (the library default is `NODE_ENV === 'production'`, a variable
+this Worker never declares) and
+`customRules['/sign-in/email'] = { window: 10, max: 3 }`, the same value
+as the library's own `/sign-in*` special rule. The client IP is
+resolved from `CF-Connecting-IP` rather than the default
+`x-forwarded-for`, which is a proxy chain on Cloudflare and resolves to
+no IP at all for multi-hop callers. The audit, the response contract, and
+the memory-backed counter's limits are in
+[`docs/security/login-enumeration-rate-limit.md`](../security/login-enumeration-rate-limit.md);
+the runtime assertions live in
+`test/integration/auth-login-hardening.test.ts`.
+
 ### 7. Bootstrap
 
 The first admin is created via the Better Auth CLI:

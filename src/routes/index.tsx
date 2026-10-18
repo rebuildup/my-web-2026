@@ -23,31 +23,6 @@ import {
  * for the read paths.
  */
 export const Route = createFileRoute('/')({
-	// Index boundary (Issue #423): the home surface is the canonical
-	// public page, so it declares the same canonical URL the sitemap
-	// advertises (`public/sitemap.xml` is generated from the route
-	// inventory in `scripts/_index-boundary.mjs`, and the check fails if
-	// the two disagree). No `robots` meta is emitted here on purpose —
-	// an accidental `noindex` on this route would silently de-index the
-	// entire site, which is why the checker treats a noindex meta on any
-	// public route as a violation rather than a style choice.
-	head: () => ({
-		meta: [
-			{ title: 'my-web-2026' },
-			{
-				name: 'description',
-				content:
-					'rebuildup の個人 Web プラットフォーム。Home / Portfolio / Tools / Contact の公開面と、Admin の運用面を同一の Cloudflare Worker で配信しています。',
-			},
-			{ property: 'og:type', content: 'website' },
-			{ property: 'og:title', content: 'my-web-2026' },
-			{ property: 'og:url', content: 'https://rebuildup.dev/' },
-		],
-		// Issue #420 — the sitemap contract is that every `<loc>` is the
-		// page's canonical URL; `scripts/check-sitemap-route-coverage.test.mjs`
-		// asserts that this literal and the sitemap inventory agree.
-		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/' }],
-	}),
 	loader: async () => {
 		await recordHomeHit({ data: {} });
 		const [statuses, reactions, counter] = await Promise.all([
@@ -62,6 +37,48 @@ export const Route = createFileRoute('/')({
 			observedAt: new Date().toISOString(),
 			reactions,
 			counter,
+		};
+	},
+	/**
+	 * Home head metadata (Issue #418).
+	 *
+	 * The home route had no `head()`, so it inherited the root
+	 * fallback title (`my-web-2026`) and declared no description and
+	 * no canonical at all — the flagship URL of the site was the one
+	 * page a crawler could not resolve to a canonical document. The
+	 * public-route head gate (`test/integration/seo-head.test.ts`)
+	 * now fails on that, which is the point of the gate.
+	 *
+	 * The description restates the hero lead rather than inventing
+	 * copy: `src/home/hero.tsx` says the same thing on the page, and
+	 * the migration state ("段階的に移行中") is the honest state, not a
+	 * claim the site cannot back.
+	 *
+	 * Canonical is the origin WITH its trailing slash — `/` is the
+	 * home document and the gate derives the expected value from the
+	 * route id, so `/` and `` must not disagree. The same link is
+	 * also the sitemap entry's target (Issue #420): the sitemap
+	 * contract is that every `<loc>` IS the page's canonical URL, and
+	 * `scripts/check-sitemap-route-coverage.test.mjs` asserts this
+	 * literal and the sitemap inventory agree, so the two cannot
+	 * drift apart silently.
+	 */
+	head: () => {
+		const title = 'my-web-2026 — rebuildup.dev';
+		const description =
+			'開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio / content / activity を段階的に移行中です。この 2026 edition は移行途中の public preview です。';
+		const url = 'https://rebuildup.dev/';
+		return {
+			meta: [
+				{ title },
+				{ name: 'description', content: description },
+				{ property: 'og:type', content: 'website' },
+				{ property: 'og:title', content: title },
+				{ property: 'og:description', content: description },
+				{ property: 'og:url', content: url },
+				{ name: 'twitter:card', content: 'summary' },
+			],
+			links: [{ rel: 'canonical', href: url }],
 		};
 	},
 	component: HomeRoute,

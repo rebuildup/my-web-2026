@@ -230,6 +230,29 @@ test('a route whose navigation failed is reported, never dropped', () => {
 	assert.match(loaded.detail, /1\/2 measured route\(s\) loaded/);
 });
 
+test('a 5xx asset response fails the run instead of measuring zero bytes', () => {
+	const inventory = collectClientInventory(healthyBuild());
+	const graph = buildChunkGraph([{ path: entry, imports: {} }], { entryChunks: [entry] });
+	const findings = evaluateBundleFindings({
+		inventory,
+		graph,
+		routeSummary: summarizeRouteLoads([
+			{
+				route: '/',
+				status: 200,
+				assets: [
+					{ path: '/', kind: 'document', status: 200, bytes: null },
+					{ path: 'assets/stale-chunk.js', kind: 'asset', status: 500, bytes: null },
+				],
+			},
+		]),
+		homeRoute: '/',
+	});
+	const failed = findings.find((item) => item.id === 'no-failed-assets');
+	assert.equal(failed.status, 'fail');
+	assert.deepEqual(failed.evidence.failedAssets, ['/ -> assets/stale-chunk.js (500)']);
+});
+
 test('evaluateBundleFindings fails when a route requests an unbuilt asset', () => {
 	const inventory = collectClientInventory(healthyBuild());
 	const graph = buildChunkGraph(

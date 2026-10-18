@@ -432,6 +432,26 @@ export function evaluateBundleFindings({ inventory, graph, routeSummary, homeRou
 		);
 	}
 
+	if (routeSummary) {
+		// A stale or half-written preview serves HTML that references chunks
+		// the current output does not contain. Those responses come back 4xx/5xx,
+		// so the run must fail loudly instead of quietly measuring zero bytes.
+		const failedAssets = routeSummary.routes.flatMap((route) =>
+			route.assets
+				.filter((asset) => asset.kind !== 'document' && asset.status && asset.status >= 400)
+				.map((asset) => `${route.route} -> ${asset.path} (${asset.status})`),
+		);
+		findings.push(
+			finding(
+				'no-failed-assets',
+				'Every asset a measured route requests was served successfully',
+				failedAssets.length === 0 ? 'pass' : 'fail',
+				`${failedAssets.length} asset response(s) were 4xx/5xx. A non-zero answer here usually means the preview server is serving a build other than the analysed output (stale preview, or a rebuild while it was running).`,
+				{ failedAssets: failedAssets.slice(0, 10) },
+			),
+		);
+	}
+
 	findings.push(
 		finding(
 			'no-duplicate-content',

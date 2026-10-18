@@ -35,6 +35,14 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      # Issue #414: the Web feature adoption gate. Offline and vendored
+      # (quality/browser-baseline.json pins the web-features Baseline
+      # snapshot), so it costs a directory walk and never a network call.
+      # Below the Baseline Widely available bar an adoption is a warning
+      # only when its fallback requirement is declared AND its evidence
+      # still matches the working tree; an adoption without a fallback
+      # fails.
+      - 'pnpm run compat:check' # Baseline Web feature adoption gate (browser compatibility)
       # Issue #423: robots.txt / sitemap.xml / per-route noindex meta must
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).
@@ -189,6 +197,37 @@ ci:
 coverage_policy:
   enabled: false
   rationale: 'ADR-0007 — coverage thresholds are deferred to 0.2.0; coverage data is not collected at 0.1.0.'
+
+compatibility:
+  # Issue #414 — browser compatibility is a first-class gate, not a
+  # bundler side effect. Panda emits plain CSS and Vite emits plain JS,
+  # so nothing else in the toolchain would ever ask whether a Web API or
+  # CSS feature runs on the browsers we support.
+  bar: 'baseline-widely-available'
+  manifest: 'quality/browser-baseline.json'
+  dataset: 'web-features (vendored snapshot; refreshed out-of-band, re-verified with --dataset)'
+  command: 'pnpm run compat:check'
+  fixture_suite: 'node --test scripts/check-browser-baseline.test.mjs'
+  report: 'pnpm run verify:browser-baseline-screenshot'
+  semantics:
+    above_bar: 'pass (declared in features[] with its Baseline status)'
+    below_bar_with_verified_fallback: 'warning (fallback requirement is explicit and its evidence is re-checked against the working tree)'
+    below_bar_without_fallback: 'fail'
+    guarded_feature_adopted: 'fail (must be registered with a Baseline status and a fallback first)'
+    warning_only:
+      - 'below_baseline_with_fallback'
+      - 'target_floor_unverifiable — no adopted feature is Baseline Widely available, so the declared floor cannot be compared with the bar-implied floor (the comparison is reported as not run rather than skipped silently)'
+    silent_pass_guards:
+      - 'a declared surface that matches no file fails'
+      - 'a scanned source file owned by no declared surface fails'
+      - 'a scanned path claimed by two surfaces fails (it would be counted twice)'
+      - 'a declared feature with no unsuppressed occurrence fails'
+      - 'a declared fallback whose evidence file/pattern vanished fails'
+      - 'a declared false-positive waiver that suppresses nothing fails'
+      - 'a declared target-browser floor below the Baseline-implied floor fails'
+    known_limits:
+      - 'regex detection: comments match the same patterns as live declarations, for both feature detection and fallback evidence'
+      - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
   secret_scanning:

@@ -1,0 +1,1251 @@
+{
+	"schema_version": 1,
+	"policy": {
+		"bar": "baseline-widely-available",
+		"bar_meaning": "`baseline === \"high\"` in the web-features dataset: the feature reached Baseline \"newly available\" in every core browser and has been available for the 30-month Baseline window. A feature below the bar is only acceptable with an explicit, verified fallback.",
+		"target_browsers": [
+			{
+				"id": "chrome",
+				"label": "Chrome",
+				"role": "Baseline core (desktop)",
+				"floor": "129"
+			},
+			{
+				"id": "edge",
+				"label": "Edge",
+				"role": "Baseline core (desktop)",
+				"floor": "129"
+			},
+			{
+				"id": "firefox",
+				"label": "Firefox",
+				"role": "Baseline core (desktop)",
+				"floor": "131"
+			},
+			{
+				"id": "safari",
+				"label": "Safari",
+				"role": "Baseline core (desktop)",
+				"floor": "18"
+			},
+			{
+				"id": "safari_ios",
+				"label": "Safari on iOS",
+				"role": "mobile Baseline representative",
+				"floor": "18"
+			}
+		],
+		"floor_rule": "A declared floor is verified against the gate: it may never sit below the Baseline Widely available date implied by the adopted feature set (the latest `baseline_high_date` among adopted features, mapped through the vendored release calendar). Raise the floor or drop the feature — never lower the declaration. When no adopted feature is Baseline Widely available the bar implies nothing; the gate cannot compare the floors then and reports `target_floor_unverifiable` as a warning instead of quietly passing."
+	},
+	"dataset": {
+		"name": "web-features",
+		"source_url": "https://github.com/web-platform-dx/web-features/blob/main/data.json",
+		"mdn_source": "https://developer.mozilla.org/en-US/docs/Glossary/Baseline/Compatibility",
+		"snapshot_date": "2026-10-18",
+		"snapshot_note": "Vendored so the gate is offline and deterministic in CI. Refresh with `node scripts/check-browser-baseline.mjs --dataset <downloaded data.json>` after copying the new Baseline blocks into the entries below; the refresh procedure is documented in docs/verification/standards/browser-baseline.md.",
+		"releases_from": "2024-01-01",
+		"browsers": {
+			"chrome": {
+				"name": "Chrome",
+				"releases": [
+					{
+						"date": "2024-01-23",
+						"version": "121"
+					},
+					{
+						"date": "2024-02-20",
+						"version": "122"
+					},
+					{
+						"date": "2024-03-19",
+						"version": "123"
+					},
+					{
+						"date": "2024-04-16",
+						"version": "124"
+					},
+					{
+						"date": "2024-05-14",
+						"version": "125"
+					},
+					{
+						"date": "2024-06-11",
+						"version": "126"
+					},
+					{
+						"date": "2024-07-23",
+						"version": "127"
+					},
+					{
+						"date": "2024-08-20",
+						"version": "128"
+					},
+					{
+						"date": "2024-09-17",
+						"version": "129"
+					},
+					{
+						"date": "2024-10-15",
+						"version": "130"
+					},
+					{
+						"date": "2024-11-12",
+						"version": "131"
+					},
+					{
+						"date": "2025-01-14",
+						"version": "132"
+					},
+					{
+						"date": "2025-02-04",
+						"version": "133"
+					},
+					{
+						"date": "2025-03-04",
+						"version": "134"
+					},
+					{
+						"date": "2025-04-01",
+						"version": "135"
+					},
+					{
+						"date": "2025-04-29",
+						"version": "136"
+					},
+					{
+						"date": "2025-05-27",
+						"version": "137"
+					},
+					{
+						"date": "2025-06-24",
+						"version": "138"
+					},
+					{
+						"date": "2025-08-05",
+						"version": "139"
+					},
+					{
+						"date": "2025-09-02",
+						"version": "140"
+					},
+					{
+						"date": "2025-09-30",
+						"version": "141"
+					},
+					{
+						"date": "2025-10-28",
+						"version": "142"
+					},
+					{
+						"date": "2025-12-02",
+						"version": "143"
+					},
+					{
+						"date": "2026-01-13",
+						"version": "144"
+					},
+					{
+						"date": "2026-02-10",
+						"version": "145"
+					},
+					{
+						"date": "2026-03-10",
+						"version": "146"
+					},
+					{
+						"date": "2026-04-07",
+						"version": "147"
+					},
+					{
+						"date": "2026-05-05",
+						"version": "148"
+					},
+					{
+						"date": "2026-06-02",
+						"version": "149"
+					},
+					{
+						"date": "2026-06-30",
+						"version": "150"
+					},
+					{
+						"date": "2026-07-28",
+						"version": "151"
+					},
+					{
+						"date": "2026-08-25",
+						"version": "152"
+					},
+					{
+						"date": "2026-09-08",
+						"version": "153"
+					},
+					{
+						"date": "2026-09-22",
+						"version": "154"
+					},
+					{
+						"date": "2026-10-06",
+						"version": "155"
+					}
+				]
+			},
+			"edge": {
+				"name": "Edge",
+				"releases": [
+					{
+						"date": "2024-01-25",
+						"version": "121"
+					},
+					{
+						"date": "2024-02-23",
+						"version": "122"
+					},
+					{
+						"date": "2024-03-22",
+						"version": "123"
+					},
+					{
+						"date": "2024-04-18",
+						"version": "124"
+					},
+					{
+						"date": "2024-05-17",
+						"version": "125"
+					},
+					{
+						"date": "2024-06-13",
+						"version": "126"
+					},
+					{
+						"date": "2024-07-25",
+						"version": "127"
+					},
+					{
+						"date": "2024-08-22",
+						"version": "128"
+					},
+					{
+						"date": "2024-09-19",
+						"version": "129"
+					},
+					{
+						"date": "2024-10-17",
+						"version": "130"
+					},
+					{
+						"date": "2024-11-14",
+						"version": "131"
+					},
+					{
+						"date": "2025-01-17",
+						"version": "132"
+					},
+					{
+						"date": "2025-02-06",
+						"version": "133"
+					},
+					{
+						"date": "2025-03-06",
+						"version": "134"
+					},
+					{
+						"date": "2025-04-04",
+						"version": "135"
+					},
+					{
+						"date": "2025-05-01",
+						"version": "136"
+					},
+					{
+						"date": "2025-05-29",
+						"version": "137"
+					},
+					{
+						"date": "2025-06-26",
+						"version": "138"
+					},
+					{
+						"date": "2025-08-07",
+						"version": "139"
+					},
+					{
+						"date": "2025-09-05",
+						"version": "140"
+					},
+					{
+						"date": "2025-10-03",
+						"version": "141"
+					},
+					{
+						"date": "2025-10-31",
+						"version": "142"
+					},
+					{
+						"date": "2025-12-05",
+						"version": "143"
+					},
+					{
+						"date": "2026-01-21",
+						"version": "144"
+					},
+					{
+						"date": "2026-02-14",
+						"version": "145"
+					},
+					{
+						"date": "2026-03-13",
+						"version": "146"
+					},
+					{
+						"date": "2026-04-10",
+						"version": "147"
+					},
+					{
+						"date": "2026-05-07",
+						"version": "148"
+					},
+					{
+						"date": "2026-06-04",
+						"version": "149"
+					},
+					{
+						"date": "2026-07-02",
+						"version": "150"
+					},
+					{
+						"date": "2026-07-31",
+						"version": "151"
+					},
+					{
+						"date": "2026-08-28",
+						"version": "152"
+					},
+					{
+						"date": "2026-09-11",
+						"version": "153"
+					},
+					{
+						"date": "2026-09-24",
+						"version": "154"
+					},
+					{
+						"date": "2026-10-08",
+						"version": "155"
+					}
+				]
+			},
+			"firefox": {
+				"name": "Firefox",
+				"releases": [
+					{
+						"date": "2024-01-23",
+						"version": "122"
+					},
+					{
+						"date": "2024-02-20",
+						"version": "123"
+					},
+					{
+						"date": "2024-03-19",
+						"version": "124"
+					},
+					{
+						"date": "2024-04-16",
+						"version": "125"
+					},
+					{
+						"date": "2024-05-14",
+						"version": "126"
+					},
+					{
+						"date": "2024-06-11",
+						"version": "127"
+					},
+					{
+						"date": "2024-07-09",
+						"version": "128"
+					},
+					{
+						"date": "2024-08-06",
+						"version": "129"
+					},
+					{
+						"date": "2024-09-03",
+						"version": "130"
+					},
+					{
+						"date": "2024-10-01",
+						"version": "131"
+					},
+					{
+						"date": "2024-10-29",
+						"version": "132"
+					},
+					{
+						"date": "2024-11-26",
+						"version": "133"
+					},
+					{
+						"date": "2025-01-07",
+						"version": "134"
+					},
+					{
+						"date": "2025-02-04",
+						"version": "135"
+					},
+					{
+						"date": "2025-03-04",
+						"version": "136"
+					},
+					{
+						"date": "2025-04-01",
+						"version": "137"
+					},
+					{
+						"date": "2025-04-29",
+						"version": "138"
+					},
+					{
+						"date": "2025-05-27",
+						"version": "139"
+					},
+					{
+						"date": "2025-06-24",
+						"version": "140"
+					},
+					{
+						"date": "2025-07-22",
+						"version": "141"
+					},
+					{
+						"date": "2025-08-19",
+						"version": "142"
+					},
+					{
+						"date": "2025-09-16",
+						"version": "143"
+					},
+					{
+						"date": "2025-10-14",
+						"version": "144"
+					},
+					{
+						"date": "2025-11-11",
+						"version": "145"
+					},
+					{
+						"date": "2025-12-09",
+						"version": "146"
+					},
+					{
+						"date": "2026-01-13",
+						"version": "147"
+					},
+					{
+						"date": "2026-02-24",
+						"version": "148"
+					},
+					{
+						"date": "2026-03-24",
+						"version": "149"
+					},
+					{
+						"date": "2026-04-21",
+						"version": "150"
+					},
+					{
+						"date": "2026-05-19",
+						"version": "151"
+					},
+					{
+						"date": "2026-06-16",
+						"version": "152"
+					},
+					{
+						"date": "2026-07-21",
+						"version": "153"
+					},
+					{
+						"date": "2026-08-18",
+						"version": "154"
+					},
+					{
+						"date": "2026-09-01",
+						"version": "155"
+					},
+					{
+						"date": "2026-09-15",
+						"version": "156"
+					},
+					{
+						"date": "2026-09-29",
+						"version": "157"
+					},
+					{
+						"date": "2026-10-13",
+						"version": "158"
+					}
+				]
+			},
+			"safari": {
+				"name": "Safari",
+				"releases": [
+					{
+						"date": "2024-01-22",
+						"version": "17.3"
+					},
+					{
+						"date": "2024-03-05",
+						"version": "17.4"
+					},
+					{
+						"date": "2024-05-13",
+						"version": "17.5"
+					},
+					{
+						"date": "2024-07-29",
+						"version": "17.6"
+					},
+					{
+						"date": "2024-09-16",
+						"version": "18"
+					},
+					{
+						"date": "2024-10-28",
+						"version": "18.1"
+					},
+					{
+						"date": "2024-12-11",
+						"version": "18.2"
+					},
+					{
+						"date": "2025-01-27",
+						"version": "18.3"
+					},
+					{
+						"date": "2025-03-31",
+						"version": "18.4"
+					},
+					{
+						"date": "2025-05-12",
+						"version": "18.5"
+					},
+					{
+						"date": "2025-07-29",
+						"version": "18.6"
+					},
+					{
+						"date": "2025-09-15",
+						"version": "26"
+					},
+					{
+						"date": "2025-11-03",
+						"version": "26.1"
+					},
+					{
+						"date": "2025-12-12",
+						"version": "26.2"
+					},
+					{
+						"date": "2026-02-11",
+						"version": "26.3"
+					},
+					{
+						"date": "2026-03-24",
+						"version": "26.4"
+					},
+					{
+						"date": "2026-05-11",
+						"version": "26.5"
+					},
+					{
+						"date": "2026-07-27",
+						"version": "26.6"
+					},
+					{
+						"date": "2026-09-14",
+						"version": "27"
+					}
+				]
+			},
+			"safari_ios": {
+				"name": "Safari on iOS",
+				"releases": [
+					{
+						"date": "2024-01-22",
+						"version": "17.3"
+					},
+					{
+						"date": "2024-03-05",
+						"version": "17.4"
+					},
+					{
+						"date": "2024-05-13",
+						"version": "17.5"
+					},
+					{
+						"date": "2024-07-29",
+						"version": "17.6"
+					},
+					{
+						"date": "2024-09-16",
+						"version": "18"
+					},
+					{
+						"date": "2024-10-28",
+						"version": "18.1"
+					},
+					{
+						"date": "2024-12-11",
+						"version": "18.2"
+					},
+					{
+						"date": "2025-01-27",
+						"version": "18.3"
+					},
+					{
+						"date": "2025-03-31",
+						"version": "18.4"
+					},
+					{
+						"date": "2025-05-12",
+						"version": "18.5"
+					},
+					{
+						"date": "2025-07-29",
+						"version": "18.6"
+					},
+					{
+						"date": "2025-09-15",
+						"version": "26"
+					},
+					{
+						"date": "2025-11-03",
+						"version": "26.1"
+					},
+					{
+						"date": "2025-12-12",
+						"version": "26.2"
+					},
+					{
+						"date": "2026-02-11",
+						"version": "26.3"
+					},
+					{
+						"date": "2026-03-24",
+						"version": "26.4"
+					},
+					{
+						"date": "2026-05-11",
+						"version": "26.5"
+					},
+					{
+						"date": "2026-07-27",
+						"version": "26.6"
+					},
+					{
+						"date": "2026-09-14",
+						"version": "27"
+					}
+				]
+			}
+		}
+	},
+	"scan": {
+		"coverage_root": "src",
+		"extensions": [".ts", ".tsx", ".css"],
+		"exclude": ["**/*.test.ts", "**/*.test.tsx", "**/*.stories.tsx", "**/*.md"],
+		"exclude_note": "Test / Storybook / design-doc files never ship to a browser, so they are not adoptions. Generated CSS (`styled-system/**`) is not scanned; both of its inputs are — `panda.config.ts` through the `app-shell` surface, `src/**` through the surfaces above and the coverage root. Files outside `src/` are covered only by explicit surface membership, so a new root-level CSS input has to be declared in a surface to be checked."
+	},
+	"surfaces": [
+		{
+			"id": "routes",
+			"root": "src/routes",
+			"min_files": 1,
+			"role": "TanStack Start file routes — every public and admin page entry"
+		},
+		{
+			"id": "editorial",
+			"root": "src/editorial",
+			"min_files": 1,
+			"role": "Shipped editorial visual language: tokens, primitives, nav, analytics"
+		},
+		{
+			"id": "home",
+			"root": "src/home",
+			"min_files": 1,
+			"role": "Home surface (status, reactions, access counter)"
+		},
+		{
+			"id": "portfolio",
+			"root": "src/portfolio",
+			"min_files": 1,
+			"role": "Portfolio surface and media composition"
+		},
+		{
+			"id": "admin",
+			"root": "src/admin",
+			"min_files": 1,
+			"role": "Admin surfaces (keys, invitations, images, emoji catalog)"
+		},
+		{
+			"id": "contact",
+			"root": "src/contact",
+			"min_files": 1,
+			"role": "Contact surface"
+		},
+		{
+			"id": "about",
+			"root": "src/about",
+			"min_files": 1,
+			"role": "About surface"
+		},
+		{
+			"id": "tools",
+			"root": "src/tools",
+			"min_files": 1,
+			"role": "Tools registry / detail pages"
+		},
+		{
+			"id": "cloudflare",
+			"root": "src/cloudflare",
+			"min_files": 1,
+			"role": "Cloudflare runtime boundary (auth, health)"
+		},
+		{
+			"id": "http",
+			"root": "src/http",
+			"min_files": 1,
+			"role": "Hono external HTTP boundary"
+		},
+		{
+			"id": "reactions",
+			"root": "src/reactions",
+			"min_files": 1,
+			"role": "DB-backed emoji catalog shared by home/ and admin/"
+		},
+		{
+			"id": "external-api",
+			"root": "src/external-api",
+			"min_files": 1,
+			"role": "Outbound third-party API reliability contract (snapshot contract, single timeout point, coalescing reader) plus its display primitives"
+		},
+		{
+			"id": "logging",
+			"root": "src/logging",
+			"min_files": 1,
+			"role": "Runtime log-redaction contract: what may appear in a console record, and the only module allowed to reach `console`"
+		},
+		{
+			"id": "app-shell",
+			"files": [
+				"src/client.tsx",
+				"src/router.tsx",
+				"src/server.ts",
+				"src/routeTree.gen.ts",
+				"src/styles.css",
+				"panda.config.ts"
+			],
+			"min_files": 6,
+			"role": "App shell: client entry, router, the generated route tree (the route contract itself), Worker entry, the global Panda layer stylesheet, and `panda.config.ts` — the other input of the generated CSS, whose conditions / globalCss / utilities / theme tokens ship to every browser exactly like `src/**` does"
+		}
+	],
+	"features": [
+		{
+			"id": "dialog",
+			"label": "`<dialog>` element + `showModal()` (Home emoji-reaction picker)",
+			"kind": "web-api",
+			"detect": ["\\.showModal\\s*\\(", "<dialog\\b"],
+			"dataset": {
+				"feature_id": "dialog",
+				"baseline": "high",
+				"baseline_low_date": "2022-03-14",
+				"baseline_high_date": "2024-09-14",
+				"support": {
+					"chrome": "37",
+					"edge": "79",
+					"firefox": "98",
+					"safari": "15.4",
+					"safari_ios": "15.4"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "clipboard-write",
+			"label": "`navigator.clipboard.writeText()` (Admin copy buttons)",
+			"kind": "web-api",
+			"detect": ["navigator\\.clipboard\\.writeText\\s*\\("],
+			"dataset": {
+				"feature_id": "async-clipboard",
+				"compat_key": "api.Clipboard.writeText",
+				"baseline": "high",
+				"baseline_low_date": "2020-03-24",
+				"baseline_high_date": "2022-09-24",
+				"support": {
+					"chrome": "66",
+					"edge": "79",
+					"firefox": "63",
+					"safari": "13.1",
+					"safari_ios": "13.4"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "web-cryptography",
+			"label": "`crypto.subtle.digest()` + `crypto.randomUUID()`",
+			"kind": "web-api",
+			"detect": ["crypto\\.subtle\\b", "crypto\\.randomUUID\\b"],
+			"dataset": {
+				"feature_id": "web-cryptography",
+				"baseline": "high",
+				"baseline_low_date": "2017-09-19",
+				"baseline_high_date": "2020-03-19",
+				"support": {
+					"chrome": "37",
+					"edge": "12",
+					"firefox": "34",
+					"safari": "11",
+					"safari_ios": "11"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "intl",
+			"label": "`Intl.NumberFormat` (access-counter \"+N since launch\")",
+			"kind": "web-api",
+			"detect": ["\\bIntl\\.[A-Z]"],
+			"dataset": {
+				"feature_id": "intl",
+				"baseline": "high",
+				"baseline_low_date": "2017-09-28",
+				"baseline_high_date": "2020-03-28",
+				"support": {
+					"chrome": "24",
+					"edge": "12",
+					"firefox": "29",
+					"safari": "10",
+					"safari_ios": "10"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "focus-visible",
+			"label": "`:focus-visible` keyboard focus ring (Panda `_focusVisible`)",
+			"kind": "css",
+			"detect": ["_focusVisible\\b", ":focus-visible"],
+			"dataset": {
+				"feature_id": "focus-visible",
+				"baseline": "high",
+				"baseline_low_date": "2022-03-14",
+				"baseline_high_date": "2024-09-14",
+				"support": {
+					"chrome": "86",
+					"edge": "86",
+					"firefox": "85",
+					"safari": "15.4",
+					"safari_ios": "15.4"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "aspect-ratio",
+			"label": "`aspect-ratio` media frame (Portfolio project cards)",
+			"kind": "css",
+			"detect": ["\\baspectRatio\\s*:", "aspect-ratio\\s*:"],
+			"dataset": {
+				"feature_id": "aspect-ratio",
+				"baseline": "high",
+				"baseline_low_date": "2021-09-20",
+				"baseline_high_date": "2024-03-20",
+				"support": {
+					"chrome": "88",
+					"edge": "88",
+					"firefox": "89",
+					"safari": "15",
+					"safari_ios": "15"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "css-transitions",
+			"label": "CSS transitions (hover / focus state changes)",
+			"kind": "css",
+			"detect": ["\\btransition\\s*:"],
+			"dataset": {
+				"feature_id": "transitions",
+				"baseline": "high",
+				"baseline_low_date": "2015-09-30",
+				"baseline_high_date": "2018-03-30",
+				"support": {
+					"chrome": "26",
+					"edge": "12",
+					"firefox": "16",
+					"safari": "9",
+					"safari_ios": "9"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "word-break",
+			"label": "`word-break` (Japanese line breaking base + mono token names)",
+			"kind": "css",
+			"detect": ["\\bwordBreak\\s*:", "word-break\\s*:"],
+			"dataset": {
+				"feature_id": "word-break",
+				"baseline": "high",
+				"baseline_low_date": "2015-09-30",
+				"baseline_high_date": "2018-03-30",
+				"support": {
+					"chrome": "44",
+					"edge": "12",
+					"firefox": "15",
+					"safari": "9",
+					"safari_ios": "9"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "prefers-reduced-motion",
+			"label": "`@media (prefers-reduced-motion: reduce)` (access-counter roll-up opt-out)",
+			"kind": "css",
+			"detect": ["prefers-reduced-motion"],
+			"dataset": {
+				"feature_id": "prefers-reduced-motion",
+				"baseline": "high",
+				"baseline_low_date": "2020-01-15",
+				"baseline_high_date": "2022-07-15",
+				"support": {
+					"chrome": "74",
+					"edge": "79",
+					"firefox": "63",
+					"safari": "10.1",
+					"safari_ios": "10.3"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "prefers-color-scheme",
+			"label": "`@media (prefers-color-scheme: dark)` (OS-level dark appearance: the `dark` Panda condition in `panda.config.ts` plus the UA control / scrollbar rules in `src/styles.css`)",
+			"kind": "css",
+			"detect": ["prefers-color-scheme"],
+			"dataset": {
+				"feature_id": "prefers-color-scheme",
+				"baseline": "high",
+				"baseline_low_date": "2020-01-15",
+				"baseline_high_date": "2022-07-15",
+				"support": {
+					"chrome": "76",
+					"edge": "79",
+					"firefox": "67",
+					"safari": "12.1",
+					"safari_ios": "13"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "color-scheme",
+			"label": "`color-scheme: light | dark` (form control + scrollbar theming for both appearances)",
+			"kind": "css",
+			"detect": ["(?<!-)\\bcolor-scheme\\s*:"],
+			"dataset": {
+				"feature_id": "color-scheme",
+				"baseline": "high",
+				"baseline_low_date": "2022-02-03",
+				"baseline_high_date": "2024-08-03",
+				"support": {
+					"chrome": "98",
+					"edge": "98",
+					"firefox": "96",
+					"safari": "13",
+					"safari_ios": "13"
+				}
+			},
+			"fallback": null
+		},
+		{
+			"id": "word-break-auto-phrase",
+			"label": "`word-break: auto-phrase` (Japanese phrase-aware breaking)",
+			"kind": "css",
+			"detect": ["word-break\\s*:\\s*auto-phrase"],
+			"dataset": {
+				"feature_id": "word-break-auto-phrase",
+				"baseline": false,
+				"baseline_low_date": null,
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "119",
+					"edge": "119",
+					"firefox": null,
+					"safari": null,
+					"safari_ios": null
+				}
+			},
+			"fallback": {
+				"kind": "progressive",
+				"strategy": "Progressive enhancement inside the `:where(body)` base rule: the supported `word-break: normal` is declared first and `auto-phrase` second, so an engine that does not know the value drops it at parse time and keeps the previous declaration. Line breaking degrades to the pre-audit behaviour, never to mid-word or unreadable text.",
+				"evidence": [
+					{
+						"file": "src/styles.css",
+						"pattern": "[ \\t]*word-break:[ \\t]*normal;",
+						"precedes": true,
+						"proves": "the supported value is declared in the same rule and precedes the enhancement, so the cascade fallback is anchored to a declaration that must still be there (the pattern matches raw file text, so a comment would satisfy it too — see the known limits in docs/verification/standards/browser-baseline.md)"
+					}
+				]
+			}
+		},
+		{
+			"id": "text-wrap-balance",
+			"label": "`text-wrap: balance` (multi-line section titles)",
+			"kind": "css",
+			"detect": ["textWrap\\s*:\\s*'balance'", "text-wrap\\s*:\\s*balance"],
+			"dataset": {
+				"feature_id": "text-wrap-balance",
+				"baseline": "low",
+				"baseline_low_date": "2024-05-13",
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "114",
+					"edge": "114",
+					"firefox": "121",
+					"safari": "17.5",
+					"safari_ios": "17.5"
+				}
+			},
+			"fallback": {
+				"kind": "progressive",
+				"strategy": "Progressive enhancement: `textWrap: 'balance'` is a standalone Panda declaration, and an engine that does not implement the value drops that declaration at parse time. The title keeps the initial `text-wrap-style: auto` plus the site-wide `word-break: normal` base, so balancing stays typography polish and is never required for layout correctness.",
+				"evidence": [
+					{
+						"file": "src/editorial/primitives/SectionHeading.tsx",
+						"pattern": "textWrap:[ \\t]*'balance'",
+						"proves": "the enhancement is one self-contained property; no other declaration in the rule is replaced when it is dropped"
+					},
+					{
+						"file": "src/styles.css",
+						"pattern": "[ \\t]*word-break:[ \\t]*normal;",
+						"proves": "the site base keeps the supported Japanese wrapping behaviour that the dropped value would have improved"
+					}
+				]
+			}
+		},
+		{
+			"id": "text-wrap-pretty",
+			"label": "`text-wrap: pretty` (prose orphan control on body and section descriptions)",
+			"kind": "css",
+			"detect": ["textWrap\\s*:\\s*'pretty'", "text-wrap\\s*:\\s*pretty"],
+			"dataset": {
+				"feature_id": "text-wrap-pretty",
+				"baseline": false,
+				"baseline_low_date": null,
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "117",
+					"edge": "117",
+					"firefox": null,
+					"safari": "26",
+					"safari_ios": "26"
+				}
+			},
+			"fallback": {
+				"kind": "progressive",
+				"strategy": "Progressive enhancement: both call sites are standalone declarations (`text-wrap: pretty` in the `:where(body)` base rule, `textWrap: 'pretty'` on the section description). An engine without the value drops the declaration and prose falls back to the initial wrapping plus `word-break: normal`, so the worst case is the orphan last line the audit removed — never broken text.",
+				"evidence": [
+					{
+						"file": "src/styles.css",
+						"pattern": "[ \\t]*text-wrap:[ \\t]*pretty;",
+						"proves": "the body-level enhancement is a standalone declaration, not a value the rest of the rule depends on"
+					},
+					{
+						"file": "src/editorial/primitives/SectionHeading.tsx",
+						"pattern": "textWrap:[ \\t]*'pretty'",
+						"proves": "the description-level enhancement is a standalone Panda declaration with no paired requirement"
+					}
+				]
+			}
+		}
+	],
+	"guarded_features": [
+		{
+			"id": "webgpu",
+			"label": "`navigator.gpu` (WebGPU compute / render)",
+			"detect": ["navigator\\.gpu\\b", "\\.requestAdapter\\s*\\("],
+			"dataset": {
+				"feature_id": "webgpu",
+				"baseline": false,
+				"baseline_low_date": null,
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "144",
+					"edge": "144",
+					"firefox": null,
+					"safari": "26",
+					"safari_ios": "26"
+				}
+			},
+			"rationale": "Firefox ships no implementation at all, so there is no capability detection that can carry a required feature. Any adoption must arrive with a Canvas/WebGL path behind a feature check."
+		},
+		{
+			"id": "view-transitions",
+			"label": "View Transitions (`document.startViewTransition`, `view-transition-name`)",
+			"detect": ["startViewTransition", "view-transition-name"],
+			"dataset": {
+				"feature_id": "view-transitions",
+				"baseline": "low",
+				"baseline_low_date": "2025-10-14",
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "111",
+					"edge": "111",
+					"firefox": "144",
+					"safari": "18",
+					"safari_ios": "18"
+				}
+			},
+			"rationale": "Below the bar and cross-document transitions are still in flux; navigation animation is not part of the editorial obligation, so the guarded state is cheaper than a fallback for a transition nobody asked for."
+		},
+		{
+			"id": "anchor-positioning",
+			"label": "CSS anchor positioning (`anchor-name`, `position-anchor`, `anchor()`)",
+			"detect": ["\\banchor-name\\s*:", "\\bposition-anchor\\s*:", "anchor\\(\\s*--"],
+			"dataset": {
+				"feature_id": "anchor-positioning",
+				"baseline": false,
+				"baseline_low_date": null,
+				"baseline_high_date": null,
+				"support": {
+					"chrome": null,
+					"edge": null,
+					"firefox": null,
+					"safari": "27",
+					"safari_ios": "27"
+				}
+			},
+			"rationale": "Safari-only in this snapshot. The nav and portfolio surfaces are positioned with grid tracks instead, which every target browser supports."
+		},
+		{
+			"id": "scroll-driven-animations",
+			"label": "Scroll-driven animations (`animation-timeline`, `scroll-timeline`, `view-timeline`)",
+			"detect": ["\\banimation-timeline\\s*:", "\\bscroll-timeline", "\\bview-timeline"],
+			"dataset": {
+				"feature_id": "scroll-driven-animations",
+				"baseline": false,
+				"baseline_low_date": null,
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "115",
+					"edge": "115",
+					"firefox": null,
+					"safari": "26",
+					"safari_ios": "26"
+				}
+			},
+			"rationale": "Below the bar and purely decorative. The access-counter motion is a time-based keyframe animation gated by `prefers-reduced-motion` instead."
+		},
+		{
+			"id": "popover",
+			"label": "Popover API (`popover` attribute)",
+			"detect": ["\\bpopover\\b"],
+			"dataset": {
+				"feature_id": "popover",
+				"baseline": "low",
+				"baseline_low_date": "2025-01-27",
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "116",
+					"edge": "116",
+					"firefox": "125",
+					"safari": "17",
+					"safari_ios": "18.3"
+				}
+			},
+			"rationale": "The one modal in the product is a native `<dialog>` opened with `showModal()`, which is Baseline widely available; a second overlay primitive would only add a fallback surface."
+		},
+		{
+			"id": "starting-style",
+			"label": "`@starting-style` transition entry point",
+			"detect": ["@starting-style"],
+			"dataset": {
+				"feature_id": "starting-style",
+				"baseline": "low",
+				"baseline_low_date": "2024-08-06",
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "117",
+					"edge": "117",
+					"firefox": "129",
+					"safari": "17.5",
+					"safari_ios": "17.5"
+				}
+			},
+			"rationale": "Below the bar; the editorial motion layer uses plain transitions, so no entry animation depends on it."
+		},
+		{
+			"id": "field-sizing",
+			"label": "`field-sizing: content` on form controls",
+			"detect": ["field-sizing\\s*:"],
+			"dataset": {
+				"feature_id": "field-sizing",
+				"baseline": "low",
+				"baseline_low_date": "2026-06-16",
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "123",
+					"edge": "123",
+					"firefox": "152",
+					"safari": "26.2",
+					"safari_ios": "26.2"
+				}
+			},
+			"rationale": "Below the bar. Contact / admin forms size to the Grid container instead, which is Baseline widely available."
+		},
+		{
+			"id": "cookie-store",
+			"label": "`cookieStore` (async Cookie Store API)",
+			"detect": ["cookieStore\\b"],
+			"dataset": {
+				"feature_id": "cookie-store",
+				"baseline": false,
+				"baseline_low_date": null,
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "87",
+					"edge": "87",
+					"firefox": "140",
+					"safari": null,
+					"safari_ios": null
+				}
+			},
+			"rationale": "Below the bar. Actor-id persistence stays on `document.cookie`, which every target browser supports."
+		},
+		{
+			"id": "requestidlecallback",
+			"label": "`requestIdleCallback()`",
+			"detect": ["requestIdleCallback"],
+			"dataset": {
+				"feature_id": "requestidlecallback",
+				"baseline": false,
+				"baseline_low_date": null,
+				"baseline_high_date": null,
+				"support": {
+					"chrome": "47",
+					"edge": "79",
+					"firefox": "55",
+					"safari": null,
+					"safari_ios": null
+				}
+			},
+			"rationale": "Not Baseline in this snapshot (Safari has no implementation). Nothing in the product schedules low-priority work; if that changes, the fallback is `setTimeout`, and the declaration will say so."
+		}
+	]
+}

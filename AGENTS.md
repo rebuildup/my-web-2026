@@ -86,6 +86,7 @@ home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
 home -> logging (Issue #467 — shared log redaction)
 admin/emoji-catalog -> reactions
+admin -> logging (Issue #467 — admin image diagnostics)
 reactions -> cloudflare (env.DB at SSR time)
 http/seo -> portfolio (public project index only; the public-visibility
              filter stays in the portfolio obligation — Issue #420)
@@ -302,7 +303,13 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `log:redaction:check` (Issue #467 — `src/**` may only reach
   `console` through `src/logging/logger.ts`, and operator scripts may
   not print a secret value) +
-  `publication:check` + `version:check` + `typecheck` + `test`)
+  `structured-data:check` + `index:boundary:check` +
+  `tools:check` + `install:scripts:check` +
+  `wrangler:independence:check` + `cloudflare:contract:check` +
+  `test:wiring:check` + release-asset checks + `version:check` +
+  `typecheck` + `infisical:check:coverage` + `sbom:check` +
+  `csrf:contract:check` + `compat:check` + `publication:check` +
+  `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +
   `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +

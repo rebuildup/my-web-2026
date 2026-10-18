@@ -112,6 +112,20 @@ function probeOrder(identity: 'anonymous' | 'member' | 'admin') {
 	);
 }
 
+/**
+ * Origin of the server under test, as `csrfGuard`
+ * (`src/http/middleware/csrf.ts`) computes it: the origin it resolved
+ * the request to. Every boundary WRITE below must declare it, exactly
+ * as a first-party caller such as `src/home/{access,reactions}/load.ts`
+ * does; without it the guard refuses before authentication, and these
+ * rows would measure the CSRF contract instead of the API-key scope.
+ * The guard's own positive / negative cases live in
+ * `e2e/csrf.spec.ts`.
+ */
+function sameOriginHeaders(): Record<string, string> {
+	return { origin: new URL(test.info().project.use.baseURL as string).origin };
+}
+
 test.describe('admin UI routes — anonymous', () => {
 	test('every admin-only route lands on the sign-in form and shows no private data', async ({
 		page,
@@ -143,6 +157,7 @@ test.describe('admin UI routes — anonymous', () => {
 			const res = await request.fetch(api.path, {
 				method: api.method,
 				failOnStatusCode: false,
+				headers: sameOriginHeaders(),
 				...(api.body ? { data: api.body } : {}),
 			});
 			expect(res.status(), `${api.label} must refuse an anonymous caller`).toBe(
@@ -195,7 +210,9 @@ test.describe('internal APIs — API key scopes', () => {
 			const send = (token: string | null) => ({
 				method: api.method,
 				failOnStatusCode: false,
-				headers: token ? { authorization: `Bearer ${token}` } : undefined,
+				headers: token
+					? { ...sameOriginHeaders(), authorization: `Bearer ${token}` }
+					: sameOriginHeaders(),
 				...(api.body ? { data: api.body } : {}),
 			});
 

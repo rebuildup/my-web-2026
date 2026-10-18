@@ -29,10 +29,29 @@ import { redirectTargetGuard } from './redirect-guard';
 
 const ORIGIN = 'https://example.com';
 
+/**
+ * Each request presents a distinct synthetic client IP from the
+ * TEST-NET-2 documentation range (RFC 5737, never routable).
+ *
+ * Why: `/sign-in/email` is throttled per client IP — 3 attempts per 10 s
+ * (Issue #443). This file posts more than three times; without a per-call
+ * IP every request would share the localhost fallback bucket and a case
+ * that should reach the guard would answer `429` instead. The throttle
+ * itself is asserted deliberately in
+ * `test/integration/auth-login-hardening.test.ts`.
+ */
+let signInIpCounter = 0;
+
+function nextSignInIp(): string {
+	signInIpCounter += 1;
+	// 198.51.100.0/24 — TEST-NET-2, reserved for documentation.
+	return `198.51.100.${signInIpCounter}`;
+}
+
 async function postJson(body: unknown): Promise<Response> {
 	return SELF.fetch(`${ORIGIN}/api/v1/auth/sign-in/email`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': nextSignInIp() },
 		body: JSON.stringify(body),
 	});
 }
@@ -40,7 +59,10 @@ async function postJson(body: unknown): Promise<Response> {
 async function postForm(fields: Record<string, string>): Promise<Response> {
 	return SELF.fetch(`${ORIGIN}/api/v1/auth/sign-in/email`, {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+		headers: {
+			'Content-Type': 'application/x-www-form-urlencoded',
+			'CF-Connecting-IP': nextSignInIp(),
+		},
 		body: new URLSearchParams(fields).toString(),
 	});
 }

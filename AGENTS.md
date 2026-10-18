@@ -285,7 +285,7 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` + `publication:check` +
-  `test`)
+  `routes:quality:check` (Issue #492) + `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build:production` + per-route bundle budget
   (`bundle:budget:check`, Issue #482) + default/production Wrangler

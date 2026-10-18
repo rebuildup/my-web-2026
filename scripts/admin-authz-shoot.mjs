@@ -30,6 +30,21 @@
  * bytes of the WebP this script writes (quality 80, width capped at
  * 1600px, well under 300KB). The path is therefore the Issue's path
  * with the `.webp` extension; nothing else about the artefact changes.
+ * Playwright can only encode PNG/JPEG, so the capture is taken into a
+ * Buffer and re-encoded with the existing `sharp` devDependency. No
+ * intermediate PNG is written to disk, and the target extension is
+ * asserted to be `.webp` so a PNG can never drift back into `docs/`.
+ * `sharp` stays a devDependency and is never imported by the Worker /
+ * SSR.
+ *
+ * This script is committed so the required screenshot has a reviewable,
+ * reproducible source instead of an uncommitted helper. It reads no
+ * secret: the fixture seeds synthetic `.invalid` identities into the
+ * LOCAL D1 binding and signs its session cookie with Better Auth's
+ * published fallback secret.
+ *
+ *   node scripts/admin-authz-shoot.mjs
+ *   pnpm run verify:admin-authz-screenshot   # same thing
  *
  * Secrets
  * -------
@@ -51,8 +66,8 @@
  */
 
 import { spawn } from 'node:child_process';
-import { mkdir, unlink, writeFile } from 'node:fs/promises';
-import { dirname, resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, extname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
@@ -232,20 +247,30 @@ async function main() {
 	const matrix = await collectMatrix({ baseUrl: BASE_URL, fixture });
 	const html = renderReport(matrix, { generatedAt: new Date().toISOString(), baseUrl: BASE_URL });
 
-	// The HTML report and the intermediate PNG are both debugging aids
-	// and belong in `.tmp/` (AGENTS.md §9). Only the WebP is an
-	// artefact, and only the WebP is committed.
-	const tmpPng = resolve(REPO_ROOT, '.tmp/admin-authorization-matrix.png');
-	await mkdir(dirname(tmpPng), { recursive: true });
+	// The HTML report is a debugging aid and belongs in `.tmp/`
+	// (AGENTS.md §9). Only the WebP is an artefact, and only the WebP
+	// is committed.
+	const htmlPath = resolve(REPO_ROOT, '.tmp/admin-authorization-matrix.html');
+	await mkdir(dirname(htmlPath), { recursive: true });
+	await writeFile(htmlPath, html, 'utf8');
+
+	if (extname(OUT_PATH) !== '.webp') {
+		const remedy =
+			'A PNG screenshot bloats the repository for no evidentiary gain (see the WebP note in the script header).';
+		throw new Error(`the artefact path must end in .webp (got ${OUT_PATH}). ${remedy}`);
+	}
 
 	const browser = await chromium.launch();
+	let capture;
 	try {
 		const page = await browser.newPage({ viewport: { width: IMAGE.width, height: 900 } });
 		await page.setContent(html, { waitUntil: 'load' });
 		await page.evaluate(() => document.fonts.ready);
 		// fullPage: the report is taller than one viewport, and a
 		// clipped picture would hide the API table it exists to show.
-		await page.screenshot({ path: tmpPng, fullPage: true });
+		// The PNG bytes stay in memory only — nothing is written to disk
+		// except the WebP below.
+		capture = await page.screenshot({ fullPage: true });
 	} finally {
 		await browser.close();
 	}
@@ -253,14 +278,10 @@ async function main() {
 	// PNG -> WebP: the screenshot is flat colour and text, so WebP at
 	// quality 80 keeps it legible at a fraction of the bytes.
 	await mkdir(dirname(OUT_PATH), { recursive: true });
-	await sharp(tmpPng)
+	await sharp(capture)
 		.resize({ width: IMAGE.width, withoutEnlargement: true })
 		.webp({ quality: IMAGE.quality })
 		.toFile(OUT_PATH);
-	await unlink(tmpPng, { force: true });
-
-	const htmlPath = resolve(REPO_ROOT, '.tmp/admin-authorization-matrix.html');
-	await writeFile(htmlPath, html, 'utf8');
 
 	for (const row of matrix.routes) {
 		for (const id of IDENTITIES) {

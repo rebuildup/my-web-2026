@@ -13,9 +13,9 @@
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 17 |
-| External hosts | 27 |
+| External hosts | 28 |
 | First-party hosts | 0 |
-| Approved transition | 2 finding(s) |
+| Approved transition | 5 finding(s) |
 | Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -92,7 +92,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ### Added external hosts (1)
 
-- `api.github.com`
+- `example.com`
 
 ### Removed external hosts (0)
 
@@ -126,6 +126,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
+| `https://example.com` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
+| `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
+| `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/routes/__root.tsx` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
@@ -164,11 +167,15 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://www.naprock.jp/intprocon` | `www.naprock.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.procon.gr.jp` | `www.procon.gr.jp` | external | `public/share/procon2026/index.html` |
 | `https://www.stat.go.jp/data/topics/pdf/topics138.pdf` | `www.stat.go.jp` | external | `public/share/procon2026/index.html` |
+| `https://www.w3.org/International` | `www.w3.org` | external / identifier | `src/portfolio/fixtures/markdown/technical-article.md` |
 | `https://x.com/samuido` | `x.com` | external | `src/about/data.ts` |
 | `https://yusuke-kim.com` | `yusuke-kim.com` | external | `src/contact/channels.json` |
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host api.github.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://api.github.com/repos/rebuildup/my-web-2026
+- **ERROR** `E004 external-host-added` New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://example.com
+- **WARN** `W002 external-url-added` External URL added: https://example.com/frame
+- **WARN** `W002 external-url-added` External URL added: https://example.com/safe
+- **WARN** `W002 external-url-added` External URL added: https://www.w3.org/International
 

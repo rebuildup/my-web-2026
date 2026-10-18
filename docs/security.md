@@ -29,6 +29,141 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## CSP frame-ancestors
+
+> The inbound embed policy: which ancestor may put one of our
+> responses inside an iframe. Issue #448. Distinct from the **outbound**
+> Tool embed policy (`src/tools/registry.ts` + the manifest's
+> `delivery.iframe`), which decides which Tools this host embeds.
+
+### Three questions that are not the same question
+
+| Question | Directive / contract | Owner |
+| --- | --- | --- |
+| Who may **read** a Tool artefact cross-origin? | `Access-Control-Allow-Origin` | `public/_headers` (Static Assets) |
+| Who may **frame** one of our documents? | `Content-Security-Policy: frame-ancestors` | `src/server.ts` + `public/_headers` |
+| Which Tools may this host **embed**? | `delivery.kind` / `delivery.iframe` | `src/tools/registry.ts` + `src/tools/manifest.json` |
+
+The failure this separation prevents: `/tools/<slug>` renders an
+`<iframe>`, which reads like "the Tool surface must be framable", and
+by extension every surface. It is not. A document may embed an iframe
+without being framable itself. Only the **ancestors of the Tool
+document** matter for the Tool rule, and the only ancestor the Tool
+document has is our own shell.
+
+### Policy table
+
+| Surface | Directive | Enforced in |
+| --- | --- | --- |
+| `/admin`, `/admin/*` | `frame-ancestors 'none'` | `src/server.ts` (Worker) |
+| `/api/v1/auth`, `/api/v1/auth/*` (Better Auth — Account) | `frame-ancestors 'none'` | `src/server.ts` (covers the Hono response) |
+| everything else (`/`, `/about`, `/contact`, `/portfolio/*`, `/tools*`, `/api/v1/*`) | `frame-ancestors 'self'` | `src/server.ts` (Worker) |
+| `/tools/:slug/app`, `/tools/:slug/app/*` (Tool artefacts) | `frame-ancestors 'self'` | `public/_headers` (Static Assets) |
+
+Decisions behind the table:
+
+- **Public stays `'self'`, not `'none'`.** Same-origin framing is a
+  legitimate authoring/debugging affordance and a public marketing
+  surface has no signed-in state to clickjack. Denying framing
+  everywhere would buy nothing and cost the same-origin case.
+- **Admin and Account are `'none'`** — clickjacking an operator's
+  session is the threat (OWASP ASVS framing requirement, the second
+  source cited by Issue #448).
+- **Path only, no content-type or status gate.** Anonymous
+  `GET /admin` answers `307` with no `content-type`, so a
+  content-type-gated rule would skip exactly the response most worth
+  protecting. Same reasoning as the cache policy in `src/server.ts`.
+- **Prefix matching is exact-or-`/`**, so `/administrator` and
+  `/api/v1/authentication` do not inherit a denial.
+
+### Why the existing Tool iframes keep working
+
+`/tools/<slug>` (shell) is a Worker response carrying
+`frame-ancestors 'self'`; the artefact it frames
+(`/tools/<slug>/app/index.html`) is a Static Asset carrying
+`frame-ancestors 'self'` in `public/_headers`. Both halves evaluate
+against the **ancestor's** origin — the host, which is the same
+origin in both cases — so `'self'` permits the embedding.
+
+The `sandbox="allow-scripts"` (no `allow-same-origin`) attribute
+makes the framed document's own origin opaque, but `frame-ancestors`
+is matched against the ancestor, not the framed document, so the
+sandbox changes nothing here. It still blocks the Tool from reading
+the host DOM.
+
+`frame-ancestors 'none'` on the artefact would break every integrated
+Tool (the shell renders, the iframe never mounts), which is why the
+static gate fails on that direction rather than leaving it to review.
+`frame-ancestors *` would re-open third-party framing of Tool
+documents, which is what the issue denies; the gate fails on it too.
+
+### Where it is enforced
+
+| Gate | What it proves | Where |
+| --- | --- | --- |
+| Runtime suite | Real headers through `SELF.fetch` for every Worker response: `/admin*` and `/api/v1/auth/*` are `'none'`, public surfaces are `'self'`, the anonymous `/admin` redirect carries the header with no content-type, lookalike paths do not inherit a denial, and `/tools/prototype` still mounts its same-origin artefact. | `test/integration/frame-ancestors.test.ts` (workerd pool) |
+| Static gate | The Static Assets half, which no runtime test can observe: every `_headers` rule under `/tools` carries `frame-ancestors 'self'`, no shipped value is permissive (`*`, `https:`, absolute origins), no rule targets a Worker-owned path, and the Worker half still exists. | `scripts/check-frame-ancestors-policy.mjs`, wired via `scripts/check-frame-ancestors-policy.test.mjs` |
+
+Run the static gate on its own with `pnpm run security:embed:check`
+(`node scripts/check-frame-ancestors-policy.mjs`). Exit 1 means a
+`_headers` rule would widen framing, would break the Tool iframes, or
+targets a path Cloudflare never applies `_headers` to.
+
+`test/integration/frame-ancestors.test.ts` is the only runtime proof
+of the Worker half, because it is the only layer that observes the
+actual response headers the runtime emits.
+
+### Known unscanned inventory
+
+- **Tool artefact responses are not observed at runtime.** The
+  workerd pool declares no `assets` binding (`vitest.config.ts`), so
+  `public/_headers` is never applied there. The static gate is the
+  whole of their coverage; `e2e/tools-prototype.spec.ts` proves the
+  artefact is served and mounts in a real browser but does not assert
+  headers. Cloudflare applies `_headers` to Static Assets responses,
+  and the same file is parsed by `vite preview`, so the rule is
+  observable locally and in production.
+- **No `X-Frame-Options`.** `frame-ancestors` is CSP 3 and is ignored
+  by browsers without CSP support. Every browser this project targets
+  supports CSP 3; the legacy header is deliberately not sent so the
+  two headers cannot disagree about what is allowed.
+- **`/api/v1/*` non-account endpoints carry `'self'`.** They are JSON
+  with no document to frame; the value is the default branch, not a
+  per-endpoint decision.
+- **A CSP that already carries `frame-ancestors` is left untouched**,
+  byte-for-byte, and a CSP with other directives gains ours as one
+  more directive. Whichever layer set the policy owns the decision;
+  `test/integration/frame-ancestors.test.ts` fails if that ever stops
+  being true for a shipped surface.
+
+### Operational contract
+
+This change adds no service, no binding, and no secret. Specifically:
+
+- **Auth boundary untouched.** `/api/v1/auth/*` still runs through the
+  same Better Auth handler with the same session checks; the header is
+  stamped on the response in the Worker entry, not by an auth
+  middleware. No token, cookie, or session semantic changed.
+- **Cloudflare bindings untouched.** `ASSETS`, `DB`, `MEDIA` are
+  unchanged; `wrangler.jsonc` is unchanged, so `cf-typegen` output is
+  unchanged.
+- **Tool Registry untouched.** `src/tools/manifest.json` and
+  `src/tools/registry.ts` are unchanged — the outbound Tool policy is
+  not derived from `frame-ancestors`, and no manifest field was added
+  to express framing. `pnpm run tools:check` still passes unmodified.
+- **Rollout / rollback** is a normal commit revert: the Worker
+  half (`src/server.ts`) and the static half (`public/_headers`) are
+  independent, so either can be reverted alone; reverting only
+  `public/_headers` would leave Tool artefacts with no stated framing
+  policy, and `scripts/check-frame-ancestors-policy.mjs` would fail on
+  the next commit that touched either file. Revert both together.
+- **Verification artefact.** `docs/verification/security/frame-ancestors-test.webp`
+  is generated by `pnpm run verify:frame-ancestors-screenshot`
+  (`scripts/make-frame-ancestors-report.mjs`), which runs the suite and
+  the static gate locally, renders the report, and encodes it as WebP.
+  The Issue names a `.png`; the `.webp` extension is a deliberate
+  substitution (the same one Issue #452 made for its report).
+
 ## D1 parameter binding (Issue #452)
 
 ### Rule

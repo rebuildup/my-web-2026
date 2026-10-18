@@ -34,6 +34,11 @@ src/
 │  ├─ seed.ts
 │  ├─ public.ts
 │  └─ index.ts
+├─ i18n/
+│  ├─ unicode.ts
+│  ├─ slug-identity.ts
+│  ├─ fixtures.ts
+│  └─ index.ts
 ├─ editorial/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
@@ -79,6 +84,18 @@ employment-facing Portfolio surface の data model と publication contract を�
 
 `portfolio/` は `home/` の peer obligation で、どちらもお互いを import しない。Cloudflare runtime とは DI seam (`createD1PortfolioLoader(env)`) 経由で結合し、テストでは偽 env を渡して workerd 依存を排除する。
 
+### `i18n/` (Issue #433)
+
+テキストの Unicode と URL identity の**規則**を所有する。surface ではなく policy なので、依存は 1 方向（誰かが `i18n` を知る）だけ。
+
+- `unicode.ts` — 表示本文ポリシー。byte-exact に保持し、比較用の NFC fold だけを行い、互換 fold が何を変えるかは報告する
+- `slug-identity.ts` — slug ポリシー。候補を owner の grammar で分類し（`non-ascii` は導出せずに拒否）、カタログの衝突を監査する
+- `fixtures.ts` — 判断表。unit test・`scripts/check-i18n-policy.mjs`・検証 capture が共有する単一のデータ
+
+**leaf obligation**（repository 内の import なし）。`scripts/check-architecture.mjs` が強制する。
+slug grammar の所有は各 obligation のまま（`reactions/slug-regex.ts` の `EMOJI_SLUG_GRAMMAR`、`portfolio/schema.ts` の `PORTFOLIO_SLUG_GRAMMAR`）。
+決定記録は `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`、説明は `docs/domain/i18n.md`。
+
 ### `editorial/`
 
 現在の public surface が話す editorial visual language を所有する。
@@ -115,6 +132,9 @@ entrypoint である。
 ```text
 routes ───────────────▶ home
 routes ───────────────▶ portfolio
+home/reactions ──────▶ i18n
+reactions ───────────▶ i18n
+portfolio ───────────▶ i18n
 home/status ─────────▶ cloudflare
 home/status ─────────▶ http
 portfolio ───────────▶ cloudflare (DI seam)
@@ -129,6 +149,7 @@ server ──────────────▶ http
 - `http/` は `home/` も `portfolio/` を知らない。
 - `editorial/` は特定 surface を知らない。
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
+- `i18n/` は他の obligation を import しない (leaf obligation)。policy の例外を足すなら、ここ，扩大ではなく ADR 改訂が先。
 - framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。
 
 ## TanStack Start / Hono boundary

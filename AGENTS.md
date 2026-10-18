@@ -75,6 +75,7 @@ Current dependency direction:
 routes -> home
 routes -> portfolio
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+home/reactions -> i18n (Issue #433)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
@@ -82,9 +83,31 @@ admin/emoji-catalog -> reactions
 reactions -> cloudflare (env.DB at SSR time)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
+reactions -> i18n (Issue #433)
+portfolio -> i18n (Issue #433)
 server -> http
 home -> editorial
 ```
+
+- `src/i18n/**` owns the platform's Unicode text
+  policy (Issue #433): display text is preserved
+  byte-exact and a URL slug is authored rather than
+  derived, so normalization can never merge two
+  distinct words onto one published URL. It is a
+  **leaf obligation** — no repository imports — so
+  `home/`, `portfolio/`, `reactions/`, `admin/` and
+  `routes/` can all obey one rule without depending
+  on each other. `scripts/check-architecture.mjs`
+  enforces the leaf rule (test files are exempt so
+  `src/i18n/fixtures.test.ts` can assert against the
+  owner-owned grammars). Each obligation keeps
+  ownership of its own slug grammar:
+  `src/reactions/slug-regex.ts` publishes
+  `EMOJI_SLUG_GRAMMAR`, `src/portfolio/schema.ts`
+  publishes `PORTFOLIO_SLUG_GRAMMAR`, and `i18n`
+  owns only the rule for applying them. See
+  `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`
+  and `docs/domain/i18n.md`.
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
@@ -255,7 +278,8 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `architecture:check` +
-  `version:check` + `typecheck` + `test`)
+  `i18n:policy:check` + `version:check` + `typecheck` +
+  `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +
   `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +

@@ -199,6 +199,13 @@ policy / fixture / component を触った changeset と同じ commit で更新�
 
 ![Lazy media / iframe waterfall](lazy-media-waterfall.webp)
 
+> **拡張子は Issue のチェックボックスが名指しした `.png` ではなく `.webp`。**
+> Chromium の full-page capture を PNG で持つと、生成のたびに数百 KB の
+> blob が repository に積み上がる。生成 script 側は 幅 ≤ 1600px /
+> quality 80 / 300KB 上限を assert しており、超過したら commit せず
+> 終了する（`scripts/render-lazy-media-report.mjs`）。同ディレクトリの
+> #486 レポートも同じ運用に従う。
+
 ### 何を保証しているか
 
 初回 Home 表示は、**訪問者がまだ求めていない asset を持ってこない**。
@@ -209,6 +216,7 @@ Its rules are pinned in two places, on purpose:
 | markup 契約 | `test/integration/lazy-media-contract.test.ts` | 決定的な契約 | `validate:fast`（全 PR / 全 release push） |
 | browser 測定 | `e2e/lazy-media.spec.ts` | 分散のある実測 | Playwright E2E（main / release push、`ui-change` PR） |
 | 画像レポート | `scripts/render-lazy-media-report.mjs` | 成果物生成 | 手動（PR 作成時） |
+| 構成の契約 | `src/portfolio/components/PortfolioMedia.test.tsx` | 決定的な契約（media の loading 契約） | `validate:fast` |
 
 契約の内容:
 
@@ -222,6 +230,13 @@ Its rules are pinned in two places, on purpose:
 規則 5 がない測定は「何もロードしない」ことで全部通ってしまうため、
 positive control として必ず残す。
 
+規則 1 は markup（`validate:fast`）と browser（`e2e/lazy-media.spec.ts`）の
+**両方で `<video>` / `<audio>` も数える**。SSR 契約は「サーバーが返した
+markup」しか見ないので、hydration の後に client コードが挿入する
+`<video>` を検出できない。穴を埋められるのは browser 側だけなので、
+3 要素をすべて記録しすべて assert する（iframe だけ数えると、`<video>`
+を 1 枚出したページが `0` PASS として報告される）。
+
 ### 実測結果（`docs/verification/perf/lazy-media-waterfall.webp`）
 
 - surface: `pnpm run build` の出力（dev server ではない）
@@ -231,23 +246,27 @@ positive control として必ず残す。
 - third-party: GA4 / Google Fonts は遮断（オフライン再現を保証するため）
 - 測定は `.tmp/lazy-media/*.json` に書き出され、画像はその JSON から
   レンダリングされる（数値だけを切り貼りした画像にしない）。
-- 画像の source SHA は **2facadc**（tracked tree clean）。その後に積まれた
-  コミットは `test/integration/lazy-media-contract.test.ts` の型 narrowed
-  1 件だけで、測定対象のコード（`src/**`, `e2e/**`, ビルド出力）には
-  差分が無い。ソース SHA を head に合わせる必要はありません。
+- 画像の source SHA は **906e22b**（tracked tree clean）。その後に積まれた
+  コミットはこの README とこの画像ファイルだけで、測定対象のコード
+  （`src/**` / `e2e/**` / ビルド出力）には差分が無い。ソース SHA を head に
+  合わせる必要はありません。
 
 ### before / after と合格基準
 
-| 項目 | before（#487 以前の markup） | after（`loading="lazy"` 宣言） |
+| 項目 | before（#487 以前の markup） | after（`loading="lazy"` + `decoding="async"` 宣言） |
 | --- | --- | --- |
 | 初回 Home の Tool artifact リクエスト | 0 | **0** |
-| 初回 Home の iframe / video / audio | 0 | **0** |
+| 初回 Home の iframe / video / audio（hydration 後） | 0 | **0** |
 | 初回 Home の `<img>` で loading 明示 | 0 / 7 | **7 / 7** |
 | 初回 Home の image / media 応答 | 0 | **0** |
-| document bytes | 90,179 | 90,284（属性のコスト = 105 bytes = 7 × ` loading="lazy"`） |
+| document bytes | 90,115 | 90,339（属性のコスト = 224 bytes = 7 × （` loading="lazy"` 15 B + ` decoding="async"` 17 B）） |
 | スクロール後に復号できた digit | — | **7 / 7** |
 | `/tools/<slug>` の iframe src | `/tools/prototype/app/index.html` | 同一 |
 | `/tools/<slug>` の Tool artifact 応答 | 2 | 2（明示遷移後のみ） |
+
+「before」列は after と同じ document の body から、**本チケットが追加した
+2 属性（`loading` と `decoding`）を両方**除いたものです。片方だけ除くと
+差分が 105 bytes に見えて、実際の markup コストの半分しか測りません。
 
 **重要 — 「7 → 0 リクエスト」は主張しません。** 本番ビルドでは桁 WebP
 （0.2–0.9 KB/枚）が Vite の `assetsInlineLimit` 未満なので
@@ -263,14 +282,15 @@ A/B が 7 → 0 になる。`e2e/lazy-media.spec.ts` は測定した document �
 
 ### CI 実測（counter disabled = 既定の E2E 状態）
 
-CI の `Playwright E2E` step（run 39073724283 / SHA 6a0be54, 69 passed）では
-`.dev.vars` が無いため桁ストリップは描画されない。その状態でも契約は検証される:
+CI の `Playwright E2E` step には `.dev.vars` が無く、桁ストリップは描画
+されない。その状態でも契約は検証される（下の数値は同じ spec を
+ローカルで counter disabled = `.dev.vars` 無しで走らせた実測）:
 
 | 項目 | 値 |
 | --- | --- |
 | `/` の `<img>` 数 | 0（counter disabled） |
-| document bytes | 20,371（enabled 時の 90,284 と対照） |
-| Tool artifact 応答 / iframe / media 応答 | 0 / 0 / 0 |
+| document bytes | 20,426（enabled 時の 90,339 と対照） |
+| Tool artifact 応答 / iframe / video / audio | 0 / 0 / 0 / 0 |
 | first-party 応答の内訳 | document 1 / stylesheet 1 / script 4 |
 | `/tools/prototype` | iframe 1 / Tool artifact 2 |
 
@@ -334,3 +354,21 @@ enabled 状態の markup 規則は workerd 側（`validate:fast`）が常に検�
 - 本 Issue は「1 要素のみ」を修正する指示に従い、product コードの変更は
   `src/home/access/tiles.tsx` の `<img loading>` 明示だけ。GA4・フォント・
   Tool 本体の bundle 分割などは範囲外（それぞれ別 ticket の領域）。
+
+### 未決の owner decision（この PR では決めない）
+
+1. **桁のロールアップと lazy の相互作用**。`counterDigitRoll` は mount 時の
+   アニメーション（delay 0–480 ms）なので、fold より下で mount された strip は
+   lazy 取得より先にロールを終えます。訪問者がスクロールして lazy な画像が
+   届いた時点では「転がる」ではなく「定位置に着く」表示になります。intersection
+   でロールを再発火させるか `eager` に戻すかは**見え方の product decision** で、
+   本 Issue の「1 要素」スコープ（loading モードの宣言）外のため、ここでは
+   決めるしていません。docstring にはその事実だけを残しています。
+2. **portfolio media の loading 契約テストの帰属**。
+   `src/portfolio/components/PortfolioMedia.test.tsx` は本 Issue が変更しない
+   surface の characterization test ですが、「media は既定 lazy」という契約は
+   home 側と同じなので本 PR に置きました。`architecture:check` はクリーンで
+   新しい dependency edge もありませんが、**portfolio obligation の owner の
+   ratify が必要**です（別 ticket に移す判断を含む）。
+3. **検証画像の拡張子**。Issue のチェックボックスは `.png`、出荷物は `.webp`
+   （上部の注記のとおり）。repo 全体の画像 policy 決着は #387 の領域です。

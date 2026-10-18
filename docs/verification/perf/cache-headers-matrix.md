@@ -67,6 +67,13 @@ error envelope は要求パスを含む。いずれも per-user 応答である�
 本リポジトリが明示的に送出する宣言値である（#460 の契約）。
 probe は資格情報なしで実行されるため `personal-page` は無認証の行を測定する。
 
+**宣言した `Vary` は欠落も検査する。** `admin-page` / `api-json` は
+`varyDeclared: true` を持ち、応答から `Cookie` / `Authorization` が
+1 つでも欠ければその行は FAIL になる（静的資産の 2 行は
+プラットフォーム観測値なので記録のみ）。あわせて、代表パスが
+4xx/5xx を返した場合はヘッダーが正しくても測定成功に数えない
+（`/admin` の 307 は 400 未満なので有効）。
+
 `api-json` の行が `no-store` ではなく `private, no-store` である理由:
 #460 が外部 boundary の**手前**に isolation middleware を登録し、
 `public` かつ正の lifetime で明示 opt-in した応答

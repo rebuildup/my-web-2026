@@ -109,6 +109,34 @@ test('a correct observation evaluates clean', () => {
 	assert.deepEqual(verdict, { ok: true, problems: [] });
 });
 
+test('a declared Vary token that the response omits fails the row', () => {
+	// `admin-page` and `api-json` declare `Vary: Cookie, Authorization`.
+	// A proxy that strips the header must be a failure, not a clean row.
+	const verdict = evaluateObservation({
+		id: 'api-json',
+		status: 200,
+		cacheControl: policyById('api-json').cacheControl,
+		etag: null,
+		vary: null,
+	});
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /Vary .* expected to include "cookie"/);
+});
+
+test('a 404 on a representative admin path is not a measured success', () => {
+	// Right headers on a missing route are not evidence that the
+	// admin surface exists; `--verify` must not count it.
+	const verdict = evaluateObservation({
+		id: 'admin-page',
+		status: 404,
+		cacheControl: policyById('admin-page').cacheControl,
+		etag: null,
+		vary: 'Cookie, Authorization',
+	});
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /status 404/);
+});
+
 const ENVIRONMENT = environmentBlock('http://127.0.0.1:3000', '141.0.7390.0');
 const ROWS = [
 	{

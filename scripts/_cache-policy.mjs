@@ -87,6 +87,10 @@
  *   vary         request headers the response varies on, or `'none'`.
  *                A `varyNote` says whether this repository declares the
  *                value or merely observes what the platform adds.
+ *   varyDeclared `true` when the response OWES the `vary` tokens and a
+ *                missing token must fail the observation. Absent for
+ *                platform-observed values (static assets), where the
+ *                value is recorded but not enforced.
  *   owner        the module that DECIDES the policy
  *   enforcedBy   the check that fails when the decision drifts. The
  *                value names the check AND what that check actually
@@ -190,6 +194,7 @@ export const CACHE_POLICY_MATRIX = [
 		cacheControl: 'no-store',
 		validator: 'none',
 		vary: 'cookie, authorization',
+		varyDeclared: true,
 		varyNote:
 			'declared by src/server.ts in the same call as `no-store` (Issue #460): the directive documents the per-caller request, and `no-store` is what forbids storing it',
 		owner: 'Worker entry (src/server.ts)',
@@ -202,6 +207,7 @@ export const CACHE_POLICY_MATRIX = [
 		cacheControl: 'private, no-store',
 		validator: 'none',
 		vary: 'cookie, authorization',
+		varyDeclared: true,
 		varyNote:
 			'declared by src/http/middleware/cache-policy.ts (Issue #460), which rewrites every boundary response that is not an explicit public + positive-lifetime opt-in. The `no-store` default in src/server.ts is the subset of this value; `private` is the part that additionally forbids a browser cache',
 		owner:
@@ -365,7 +371,11 @@ export function evaluateObservation(observation) {
 	if (observation.status === null) {
 		return { ok: false, problems: ['not reachable (skipped class)'] };
 	}
-	if (observation.status >= 400 && row.id !== 'admin-page' && row.id !== 'api-json') {
+	if (observation.status >= 400) {
+		// A representative path that answers 404/5xx is not a measured
+		// success just because it carries the right headers: a routing
+		// regression or a wrong deployment would otherwise verify as
+		// green. `307` for `/admin` stays valid (< 400).
 		problems.push(`status ${observation.status} — expected a served response`);
 	}
 
@@ -388,6 +398,20 @@ export function evaluateObservation(observation) {
 		.split(',')
 		.map((value) => value.trim().toLowerCase())
 		.filter((value) => value !== '');
+	if (row.varyDeclared) {
+		const declared = row.vary
+			.split(',')
+			.map((value) => value.trim().toLowerCase())
+			.filter((value) => value !== '');
+		for (const value of declared) {
+			if (!varyValues.includes(value)) {
+				problems.push(
+					`Vary is "${observation.vary ?? ''}", expected to include "${value}" — the declaration is part of the contract`,
+				);
+			}
+		}
+	}
+
 	for (const value of varyValues) {
 		if (!USER_SPECIFIC_VARY_HEADERS.includes(value)) continue;
 		// A user-specific `Vary` is only a hole when the response can

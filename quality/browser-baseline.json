@@ -726,6 +726,12 @@
 			"role": "DB-backed emoji catalog shared by home/ and admin/"
 		},
 		{
+			"id": "external-api",
+			"root": "src/external-api",
+			"min_files": 1,
+			"role": "Outbound third-party API reliability contract (snapshot contract, single timeout point, coalescing reader) plus its display primitives"
+		},
+		{
 			"id": "app-shell",
 			"files": [
 				"src/client.tsx",

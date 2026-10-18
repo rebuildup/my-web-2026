@@ -82,3 +82,37 @@ export const EmptyStatuses: Story = {
 		observedAt: '2026-09-17T15:02:16.985Z',
 	},
 };
+
+/**
+ * Locale previews (Issue #430). The observed-at line is the section's
+ * only instant, and it is rendered through the home format adapter:
+ * the same snapshot reads per locale and names the zone it was read
+ * in. The zone defaults to UTC so the server HTML and the hydrated
+ * HTML stay identical.
+ */
+export const LocaleJa: Story = {
+	args: {
+		services,
+		statuses: allOk,
+		observedAt: '2026-01-05T09:00:00.000Z',
+		locale: 'ja',
+	},
+};
+
+export const LocaleKo: Story = {
+	args: {
+		services,
+		statuses: allOk,
+		observedAt: '2026-01-05T09:00:00.000Z',
+		locale: 'ko',
+	},
+};
+
+export const LocaleTokyo: Story = {
+	args: {
+		services,
+		statuses: allOk,
+		observedAt: '2026-01-05T09:00:00.000Z',
+		timeZone: 'Asia/Tokyo',
+	},
+};

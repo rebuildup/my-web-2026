@@ -17,8 +17,8 @@ import { externalBoundary } from '../../src/http/hono';
  * per principal per minute" is measured here rather than declared.
  *
  * What this proves that the middleware unit test cannot:
- *   - the production middleware ordering (`requireApiKey` → rate limit
- *     → handler) and which layer answers first;
+ *   - the production middleware ordering (`csrfGuard` → `requireApiKey`
+ *     → rate limit → handler) and which layer answers first;
  *   - that a suppressed request never reaches D1;
  *   - that the write budget is **one bucket per principal** shared by
  *     `PUT /api/v1/reactions`, `DELETE /api/v1/reactions` and
@@ -98,7 +98,16 @@ const MIGRATIONS = [
 ];
 
 const AUTH_HEADER = { authorization: 'Bearer mk_home_local-simulation-not-real' };
-const JSON_HEADERS = { ...AUTH_HEADER, 'content-type': 'application/json' };
+/**
+ * `csrfGuard` (Issue #440) runs before any rate-limit middleware and
+ * requires a same-origin signal on unsafe methods. These requests
+ * model a first-party browser fetch, which always carries
+ * `Sec-Fetch-Site: same-origin`; without it every write below would be
+ * refused with `403 csrf_rejected` before authentication or throttling.
+ */
+const SAME_ORIGIN = { 'sec-fetch-site': 'same-origin' };
+const JSON_HEADERS = { ...AUTH_HEADER, ...SAME_ORIGIN, 'content-type': 'application/json' };
+const ANONYMOUS_JSON_HEADERS = { ...SAME_ORIGIN, 'content-type': 'application/json' };
 
 /**
  * Browser-shaped UA per request index. The access-counter ingress
@@ -350,7 +359,7 @@ describe('write rate limit — what is NOT throttled', () => {
 		// throttled — the auth layer answers first.
 		const anonymous = await probe('/api/v1/reactions', {
 			method: 'PUT',
-			headers: { 'content-type': 'application/json' },
+			headers: ANONYMOUS_JSON_HEADERS,
 			body: reactionBody('anonymous'),
 		});
 		expect(anonymous.status).toBe(401);
@@ -365,6 +374,29 @@ describe('write rate limit — what is NOT throttled', () => {
 		// which counts the binding's `limit()` calls through the real
 		// `requireApiKey → rateLimitWrite → requireResourceAction` chain
 		// (401 = 0 calls).
+	});
+
+	it('a cross-site write is refused before the write bucket is touched', async () => {
+		// `csrfGuard` is mounted before authentication and throttling, so
+		// a refused cross-site write spends no budget. Sixty of them in a
+		// row must leave the bucket intact: the next same-origin write is
+		// accepted, not 429.
+		usePrincipal('rl-csrf-order');
+		for (let i = 0; i < WRITE_LIMIT; i += 1) {
+			const refused = await probe('/api/v1/reactions', {
+				method: 'PUT',
+				headers: { ...JSON_HEADERS, 'sec-fetch-site': 'cross-site' },
+				body: reactionBody(`csrf-${i}`),
+			});
+			expect(refused.status).toBe(403);
+			expect(refused.error).toBe('csrf_rejected');
+		}
+		const accepted = await probe('/api/v1/reactions', {
+			method: 'PUT',
+			headers: JSON_HEADERS,
+			body: reactionBody('csrf-then-allowed'),
+		});
+		expect(accepted.status).toBe(200);
 	});
 
 	it('a missing scope answers 403 and still spends the write budget', async () => {
@@ -467,7 +499,7 @@ describe('accepted vs rejected input matrix (measured)', () => {
 			'Authorization ヘッダー無し',
 			await probe('/api/v1/reactions', {
 				method: 'PUT',
-				headers: { 'content-type': 'application/json' },
+				headers: ANONYMOUS_JSON_HEADERS,
 				body: reactionBody('matrix-anon'),
 			}),
 		);

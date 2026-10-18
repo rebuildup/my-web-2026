@@ -40,36 +40,50 @@ binding の宣言は `cloudflare.config.ts` の `bindings.rateLimit()`
 ## ミドルウェアの順序と、その意味論
 
 ```text
-requireApiKey → rateLimit{Write,Read} → requireResourceAction → body validation → D1
+csrfGuard → requireApiKey → rateLimit{Write,Read} → requireResourceAction → body validation → D1
 ```
+
+`csrfGuard`（Issue #440）は境界の write method に対する最初の security
+middleware であり、same-origin の証拠（`Sec-Fetch-Site` / `Origin` /
+`Referer`）を持たない書き込みを認証より前に `403 csrf_rejected` で
+拒否する。第一者呼び出し（`src/home/{access,reactions}/load.ts`）は
+`Origin` を送り、ブラウザの fetch は `Sec-Fetch-Site` を自動で付ける。
+script から API を叩く運用者も same-origin の証拠を 1 つ送る必要がある
+（`docs/security.md` の CSRF 節）。
 
 `requireResourceAction` は handler の**最初の文**（`src/http/reactions/router.ts`
 と `src/http/access-counter/router.ts`）なので、throttle の**後ろ**で走る。
 「認証は予算を消費しない」という取り違えを避けるため、**どの層が答えるか**で
-3 ケースに分けて契約にする（いずれも自動試験で固定している）。
+4 ケースに分けて契約にする（いずれも自動試験で固定している）。
 
 | 応答 | 答える層 | binding の `limit()` | write budget |
 | --- | --- | --- | --- |
+| 403 `csrf_rejected` | `csrfGuard`（境界で最初の security middleware） | **呼ばない** | **消費しない** |
 | 401 `missing_authorization` / `invalid_api_key` | `requireApiKey` | **呼ばない** | **消費しない** |
 | 403 `missing_scope` | `requireResourceAction`（handler の先頭） | 呼ぶ | **消費する** |
 | 400 `invalid_body` | handler の body 検証 | 呼ぶ | **消費する** |
 
-1. **401 は予算を消費しない。** `requireApiKey` は `rateLimit` より前に
+1. **CSRF 拒否は予算を消費しない。** `csrfGuard` は `requireApiKey` と
+   `rateLimit` より前に答えるため `limit()` は一度も呼ばれない。same-origin
+   証拠を送らない連打は write budget を減らさず `403 csrf_rejected` で
+   終わる。したがって **`403` という status だけでは予算消費の有無を
+   判断できない** — `csrf_rejected` は消費せず、`missing_scope` は消費する。
+2. **401 は予算を消費しない。** `requireApiKey` は `rateLimit` より前に
    答えるため `limit()` は一度も呼ばれない。認証されていない連打は
    budget を消費せず、認証レイヤーが先に答えられる（429 ではなく 401）。
-2. **403 は予算を消費する。** スコープ検証は handler の最初の文、つまり
-   throttle の**後ろ**にある。`reactions:read` しか持たない key が
-   `PUT /api/v1/reactions` を連打すると、その 403 が 1 件ずつ write
-   budget を消費し `RATE_LIMIT_WRITE` を枯渇させうる。運用上の含意として、
-   **read-only な principal でも write budget を消費できる**（書き込みが
-   無料ではない）。枯渇後は 429 が 403 より先に返る。
-3. **400 も予算を消費する。** middleware は handler より前に走るため、
+3. **403 `missing_scope` は予算を消費する。** スコープ検証は handler の
+   最初の文、つまり throttle の**後ろ**にある。`reactions:read` しか
+   持たない key が `PUT /api/v1/reactions` を連打すると、その 403 が 1 件
+   ずつ write budget を消費し `RATE_LIMIT_WRITE` を枯渇させうる。運用上の
+   含意として、**read-only な principal でも write budget を消費できる**
+   （書き込みが無料ではない）。枯渇後は 429 が 403 より先に返る。
+4. **400 も予算を消費する。** middleware は handler より前に走るため、
    上限に達している場合は不正な body であっても 429 が先に返る
    （400 より前）。レート制限は入口で動く制御であり、入力を種類別に
    別予算へ分ける設計は Middleware の責務ではない。必要になったら
    ADR-0010 の改訂として扱う。
 
-この 3 ケースを固定している自動試験:
+この 4 ケースを固定している自動試験:
 
 - `src/http/middleware/rate-limit.test.ts` — 本物の `requireApiKey` /
   `rateLimitWrite` / `requireResourceAction` を上記の順序で並べ、binding
@@ -79,7 +93,9 @@ requireApiKey → rateLimit{Write,Read} → requireResourceAction → body valid
 - `test/integration/write-rate-limit.test.ts` — 実 binding 上で
   `reactions:read` だけの key を 60 回叩くと 60 回とも 403、61 回目が 429。
   順序（throttle 済み principal でも 429 ではなく 401 が先に返る）も
-  同じファイルで固定する。
+  同じファイルで固定する。さらに `Sec-Fetch-Site: cross-site` の write を
+  60 回送った後でも same-origin の 1 回目が 200 になることを固定し、
+  CSRF 拒否が write budget を消費しないことを観測する。
 
 なお 401 の「予算を消費しない」は、本番のルート構成では write バケットを
 観測して確認できない（`limit()` に到達しないので消費先の principal も無い。
@@ -155,6 +171,8 @@ pnpm run verification:write-rate-limit
 - 認証（401）が throttle より先に答え、`limit()` を呼ばないこと。
 - スコープ不足（403）は throttle の後ろなので write budget を**消費する**こと
   （read-only key で 60 回 403 → 61 回目が 429）。
+- CSRF 拒否（`403 csrf_rejected`）は throttle より前なので write budget を
+  **消費しない**こと（cross-site の write 60 回 → 次の same-origin write が 200）。
 
 ローカル試験が**証明しない**こと（`docs/security.md` の
 「local workerd vs real Cloudflare」節が同日旨）:
@@ -183,8 +201,11 @@ credential らしき文字列を含む行は描画前に拒否する（描画し
 **この WebP は手動再生成であり、CI は再生成も差分も検証しない。** matrix が
 変わったら `pnpm run verification:write-rate-limit` で作り直し、同じ Issue の
 ticket で差分をレビューすること。画像内の凡例にある「どの応答が予算を消費するか」
-の記述は、本文の 3 ケース表（401 = 消費しない / 400・403 = 消費する）と
-一致させること。
+の記述は、本文の 4 ケース表（CSRF 403 = 消費しない / 401 = 消費しない /
+400・403 `missing_scope` = 消費する）と一致させること。ただし matrix 自体は
+rate limit 層の測定であり CSRF 行を含まない（`csrf_rejected` は throttle に
+到達しないため、その意味論は `test/integration/write-rate-limit.test.ts` の
+専用ケースで固定している）。
 
 ## 変更時の運用影響
 

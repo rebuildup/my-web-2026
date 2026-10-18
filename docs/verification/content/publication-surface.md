@@ -34,7 +34,7 @@
 | tools の公開 URL | `src/tools/manifest.json` の `delivery.kind ∈ {same_origin_static, external_exception}` | `host_disabled` / `not_integrable_yet` は `/tools` 上で "Coming soon" になるだけで、リンク先 URL を持たない |
 | Static Assets が直接配信する公開ページ | `public/**` の `.html` | `public/index.html` は `/`、`public/<dir>/index.html` は `/<dir>/`、その他はそのままの path。削除は `E001` |
 | 外部 HTTP boundary | `src/server.ts` の `EXTERNAL_BOUNDARY_PREFIXES` | sitemap 対象外だが機械的な公開面。**prefix の増減も差分**（減ると `E012`、増えると `W005`） |
-| 絶対 URL | `src/**` と `public/**` の shipped source（`*.test.*` は除外、`js` / `mjs` / `cjs` を含む） | first-party / external / identifier namespace に分類して差分を取る |
+| 絶対 URL | `src/**` と `public/**` の shipped source（`*.test.*` は除外、`js` / `mjs` / `cjs` を含む） | first-party / external / identifier namespace に分類して差分を取る。`*.stories.tsx` も `src/**` にあるため監査対象に含める（Storybook は配信されないが、sample に外部 URL を置くと `E004` として記録される） |
 | Tool iframe が実際に持ち込む外部 URL | 各 `same_origin_static` Tool の checkout の `index.html` と `public/**` | `/tools/<slug>/app/` として配信される document の由来。checkout が無い場合は `E013` で fail-closed |
 
 ## 3. 公開している情報（現在の記録）
@@ -133,13 +133,14 @@ sitemap target にはしません。**prefix の増減も差分対象**で、減
   検出できません。
 - **`external/` の Tool ソースのその他（lockfile / docs / アプリ本体）** — 上記の
   shipped ファイルは build 入力ではあるものの、訪問者のブラウザが取得する document に
-  はなりません。実際に出る host は entry document 側に出ます。
+  そのままなるのは `index.html` だけです。ただし bundler がアプリ本体から生成する
+  JS chunk は build 後にしか存在せず、その中の URL は監査できません（上の gap と同じ）。
 - **R2 media host `media.rebuildup.dev`** — `wrangler.production.jsonc` の
   `MEDIA_PUBLIC_BASE_URL` で宣言されますが、shipped source に URL literal が
   ありません（`MEDIA_PUBLIC_BASE_URL` を実行時に読むため）。したがって host 集合には
   現れません。**first-party host が 0 件なのはこの理由**であり、回帰ではありません。
 - **sitemap.xml / robots.txt の実体** — この Issue は「sitemap 対象の比較」を
-  作る 것이目的で、sitemap 自体の配信は別 ticket の領域です。宣言表が唯一の正なので、
+  作ることが目的で、sitemap 自体の配信は別 ticket の領域です。宣言表が唯一の正なので、
   sitemap を配信する段階ではこの表を使うことになります。
 - **visual / layout** — 別 gate（`scripts/layout-audit-check.mjs`）の領域です。
 

@@ -669,7 +669,7 @@ describe('publication-surface — snapshot + report determinism', () => {
 });
 
 describe('publication-surface — load contract (Issue #505 DoD)', () => {
-	it('stays linear and bounded on a surface far larger than the live one', () => {
+	it('stays within a wall-clock bound on a surface far larger than the live one', () => {
 		const many = Array.from({ length: 4000 }, (_, i) => ({ slug: `slug-${i}` }));
 		const started = process.hrtime.bigint();
 		const surface = buildSurface({

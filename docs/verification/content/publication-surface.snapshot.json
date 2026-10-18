@@ -294,6 +294,7 @@
 			"fonts.googleapis.com",
 			"fonts.gstatic.com",
 			"github.com",
+			"host.invalid",
 			"json-schema.org",
 			"redirect-guard.invalid",
 			"samuido.booth.pm",
@@ -661,6 +662,15 @@
 				]
 			},
 			{
+				"url": "https://host.invalid",
+				"host": "host.invalid",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/embed-policy.ts"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev",
 				"host": "rebuildup.dev",
 				"kind": "origin",
@@ -880,13 +890,28 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://host.invalid"
+		],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [],
+		"addedExternalHosts": [
+			"host.invalid"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host host.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://host.invalid"
+			}
+		]
 	}
 }

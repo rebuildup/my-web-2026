@@ -77,7 +77,7 @@ interpolation されるため、`release-0-6-3` で追加された静的 gate
 
 | 項目 | ローカル（記録した実行） | CI |
 | --- | --- | --- |
-| source SHA | `ce19a43`（測定コードが確定した head。この後の差分は本ドキュメントと画像のみ） | §3.3 の run に明記 |
+| source SHA | `ce19a43`（測定コードが確定した head。この後の差分は本ドキュメントと画像のみ） | PR #546 本文の「検証」節に run ID と head SHA を明記 |
 | OS / CPU | macOS 27.0.1 (Darwin 27.0.0), arm64, Apple M5 ×10, 24 GiB | `ubuntu-latest`（`.github/workflows/ci.yml`、標準 4 vCPUランナー） |
 | Node / pnpm | v26.12.0 / 12.3.4 | 22.18 / 12.3.4（`quality/profile.yaml#ci.bootstrap`） |
 | D1 | `vitest.config.ts` の **local miniflare SQLite binding**（`d1Databases.DB`）。本番 D1 には一切接続しない | 同左（`validate:integration` 内の `pnpm run test`） |

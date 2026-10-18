@@ -5,8 +5,45 @@ than hand-written.
 
 | Artefact | Issue | Regenerate |
 | --- | --- | --- |
+| [`hsts-response.webp`](hsts-response.webp) | #446 | `pnpm run verify:hsts-screenshot` |
 | [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
 | [`markdown-xss-fixture.webp`](markdown-xss-fixture.webp) | #451 | capture generator is **not** in the repository — see [`## markdown-xss-fixture.webp`](#markdown-xss-fixturewebp); the same properties are asserted on every push by `pnpm exec vitest run test/integration/markdown-xss-ssr.test.ts` and by `pnpm run e2e` |
+
+## `hsts-response.webp`
+
+The HSTS delivery policy (Issue #446) as the runtime actually applies it:
+the workerd test pool result plus the static gate verdict.
+
+The Issue names `hsts-response.png`; the artefact ships as WebP in the
+same directory. `scripts/make-hsts-verification-report.mjs` runs the
+suite with Vitest's JSON reporter, renders a static HTML report, and
+captures it in Chromium. Playwright cannot encode WebP, so the capture
+stays in a Buffer and `sharp` writes WebP at quality 80; no intermediate
+PNG reaches the disk, and the script refuses to write any non-`.webp`
+target.
+
+1. **The policy shown is the shipped policy.** The generator reads the
+   directive from `src/server.ts` through the same function the static
+   gate uses (`readCanonicalDirective`), so the report cannot advertise a
+   value the runtime does not serve.
+2. **PASS means an exact match.** Each row asserts the observed header
+   equals the restated literal exactly, over HTTPS *and* over plaintext,
+   across the SSR document, the external boundary and the auth redirect.
+   A test whose title no longer exists renders as `MISSING` rather than
+   disappearing, so a rename cannot quietly delete a row.
+3. **Nothing secret is in the picture.** The bindings are the test-only
+   dummies from `vitest.config.ts`, `/api/v1/health` touches no binding,
+   and the generator makes no network call — no cookie value, no token,
+   no production D1/R2.
+
+Regenerate with:
+
+```bash
+pnpm run verify:hsts-screenshot
+```
+
+The interpretation of each row is in
+[`docs/security.md`](../../security.md#https-強制と-hsts-issue-446).
 
 ## `redirect-validation.webp`
 

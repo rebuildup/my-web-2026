@@ -188,23 +188,27 @@ export function isPrivateFieldName(name: string): boolean {
  * calendar entry. This is the 不正常 fixture — the detector must
  * flag it wherever it appears.
  *
- * The values are deliberately invented and local to this file: they
- * are test data, not a claim about where the owner is.
+ * The values are synthetic and local to this file: pattern-shaped
+ * numbers (`12.3456` / `-98.7654`) that geocode nowhere meaningful,
+ * and a venue that is not a real place. A fixture in a *privacy*
+ * contract must not itself carry an approximation of where the owner
+ * is — that would put the record this suite forbids onto the public
+ * surface (the repository) in the name of testing for it.
  */
 export const PRIVATE_OWNER_RECORD = {
 	visibility: 'private' as const,
 	location: {
-		latitude: 33.9846,
-		longitude: 131.4216,
+		latitude: 12.3456,
+		longitude: -98.7654,
 		/** The GeoJSON / `geo:` shape: one string carrying both halves. */
-		coordinates: '33.9846, 131.4216',
+		coordinates: '12.3456, -98.7654',
 		accuracy: 12.5,
 		capturedAt: '2026-10-18T09:12:00+09:00',
 	},
 	events: [
 		{
 			eventTitle: 'Pivot 406 private review',
-			venue: '宇部工業高等専門学校',
+			venue: 'Fixture Venue (架空の会場 / not a real place)',
 			startsAt: '2026-10-18T13:00:00+09:00',
 			endsAt: '2026-10-18T14:30:00+09:00',
 		},
@@ -239,7 +243,20 @@ export const PUBLIC_FALLBACK_PROJECTION = {
  */
 const COORDINATE_PAIR = /(?<![\w.])-?\d{1,3}\.\d{3,}\s*[,、]\s*-?\d{1,3}\.\d{3,}(?![\w.])/g;
 const GEO_URI = /geo:(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/g;
-/** `"latitude":` / `"eventTitle":` — JSON keys inside serialised payloads. */
+/**
+ * `"latitude":` / `"eventTitle":` — JSON keys inside serialised
+ * payloads.
+ *
+ * Known limitation (precision over recall, documented rather than
+ * fixed): the rule requires a **quoted** key. An unquoted JS literal
+ * * (`{latitude:12.3456,longitude:-98.7654}`) inside a `<script>` is
+ * therefore invisible to this rule; only the coordinate-pair rule
+ * would still catch it, and only if it carries 3+ decimals. Today
+ * TanStack Start serialises JSON, so the JSON shape is what arrives
+ * on the public surface — but a future serialiser that emits an
+ * object literal would silently narrow rule 1. Treat a change of
+ * serialiser as a change to this rule.
+ */
 const SERIALISED_KEY = /"([^"\\]{1,64})"\s*:/g;
 /** `<div ...>` — a tag and its attribute block. */
 const TAG = /<\/?([a-zA-Z][a-zA-Z0-9:-]*)((?:"[^"]*"|'[^']*'|[^>"'])*)>/g;

@@ -45,6 +45,25 @@ import {
  * carries). The catalog seed rows are omitted on purpose: this suite
  * asserts what the public surfaces carry, not what the emoji catalog
  * contains, and an empty catalog still renders the home page.
+ *
+ * Full list of what this bootstrap does NOT create, so nobody reads
+ * the scanned `/` HTML as byte-identical to production:
+ *
+ *   - `reaction_images` (same migration, `0003_reactions.sql`) —
+ *     no image reaction can be stored here.
+ *   - the access-counter migrations `0002` / `0005` / `0006` — and,
+ *     independently of the DDL, `src/home/access/load.ts` reaches the
+ *     counter through a self-call to `/api/v1/access/*`, which leaves
+ *     the pool (workerd answers it with the outbound stub, hence the
+ *     `[home.access.*] upstream failed` stderr). Either way the home
+ *     access-counter tile renders its empty / degraded state instead
+ *     of a live count.
+ *
+ * Both deltas are about which *rows* exist, not about what the
+ * surfaces may carry, so they cannot hide an owner-unapproved
+ * location / schedule record. Closing them would mean duplicating
+ * more DDL here; the production-equality of these tables is owned by
+ * the D1 integration suites, not by this one.
  */
 const MIGRATIONS = [
 	{
@@ -83,12 +102,31 @@ const MIGRATIONS = [
 /**
  * Public HTML surfaces that render in this pool.
  *
- * `/about` and `/portfolio` are deliberately absent: their loaders
- * read the portfolio D1 schema, which this file does not bootstrap
- * (it only needs the reactions tables for `/`), so both answer 500
- * here and there is no HTML to scan.
+ * `/design-system` (no loader, in the public nav) and
+ * `/tools/text-counter` (loader reads the build-time Tool registry,
+ * not D1) are included: they are public surfaces a future location or
+ * calendar widget could be added to, and leaving them unscanned would
+ * make the suite's coverage claim false.
+ *
+ * `/about`, `/portfolio` and `/portfolio/$slug` are deliberately
+ * absent: their loaders read the portfolio D1 schema, which this file
+ * does not bootstrap (it only needs the reactions tables for `/`), so
+ * they answer 500 here and there is no HTML to scan. The
+ * `describe('excluded surfaces stay excluded')` block below keeps that
+ * exclusion honest — if one of them ever starts rendering 200 in this
+ * pool, that test fails and the exclusion has to be revisited here, in
+ * the README and in the PR body.
  */
-const PUBLIC_SSR_PATHS = ['/', '/contact', '/tools'] as const;
+const PUBLIC_SSR_PATHS = [
+	'/',
+	'/contact',
+	'/tools',
+	'/tools/text-counter',
+	'/design-system',
+] as const;
+
+/** Surfaces the suite does NOT scan, with the reason recorded below. */
+const EXCLUDED_SSR_PATHS = ['/about', '/portfolio', '/portfolio/my-web-2026'] as const;
 
 /**
  * Public JSON surfaces that answer without an API key.
@@ -133,7 +171,7 @@ describe('privacy fixtures — the detector fires, and the private surface still
 	});
 
 	it('flags a geo: URI even when no field name says "location"', () => {
-		const leaks = findTextLeaks('<a href="geo:33.9846,131.4216">current place</a>');
+		const leaks = findTextLeaks('<a href="geo:12.3456,-98.7654">current place</a>');
 		expect(leaks.map((leak) => leak.rule)).toContain('geo-uri');
 	});
 
@@ -187,6 +225,25 @@ describe('public SSR surfaces carry no owner-unapproved data', () => {
 		expect(html).toContain('planned');
 		expect(html).not.toContain('href="/activity"');
 	}, 30_000);
+});
+
+describe('excluded surfaces stay excluded (the 対象外 list is a claim)', () => {
+	it.each(EXCLUDED_SSR_PATHS)(
+		'GET %s renders no HTML to scan here',
+		async (path) => {
+			// `docs/verification/privacy/README.md` and the PR body both
+			// state that these render nothing in this pool. That is a
+			// claim about coverage, so it is asserted here instead of
+			// only being written down: if a future bootstrap — or a
+			// loader that stops needing the portfolio schema — makes one
+			// of them answer 200, this fails and the surface has to be
+			// added to the scan, not quietly dropped from the exclusion
+			// list.
+			const res = await SELF.fetch(`https://example.com${path}`);
+			expect(res.status).not.toBe(200);
+		},
+		30_000,
+	);
 });
 
 describe('public JSON surfaces carry no owner-unapproved data', () => {

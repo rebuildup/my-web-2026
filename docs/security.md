@@ -236,6 +236,25 @@ passing-test console output quiet). The renderer redacts nothing — it
 regression in the test cannot be laundered into a clean-looking
 screenshot.
 
+## Login enumeration and credential brute force
+
+`POST /api/v1/auth/sign-in/email` is the only unauthenticated
+credential endpoint on the boundary. Two properties are pinned and
+asserted in `test/integration/auth-login-hardening.test.ts`:
+
+- A wrong password on an **existing** account and an attempt on a
+  **non-existent** account return byte-identical responses (status,
+  body, header set), so the endpoint is not an existence oracle.
+- Failed logins are throttled **per client IP** — 3 attempts per 10
+  seconds, then `429` with `X-Retry-After`. The throttle is evaluated
+  before the password is checked, so it leaks nothing either, and it is
+  scoped to one client so it cannot be used as a lockout.
+
+The budget and the client-IP source are stated explicitly in
+`src/cloudflare/auth/better-auth.ts` rather than inherited from Better
+Auth's `NODE_ENV` / `x-forwarded-for` defaults, because neither default
+holds for this deployment. Full contract, evidence, and known limits:
+[`docs/security/login-enumeration-rate-limit.md`](security/login-enumeration-rate-limit.md).
 ## OAuth / OIDC callback: state and redirect (Issue #444)
 
 The shipped auth config (`src/cloudflare/auth/better-auth.ts`) registers

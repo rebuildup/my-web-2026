@@ -1,5 +1,5 @@
 {
-	"schema": "publication-surface.v1",
+	"schema": "publication-surface.v2",
 	"surface": {
 		"origin": "https://rebuildup.dev",
 		"firstPartyDomain": "rebuildup.dev",
@@ -7,6 +7,8 @@
 			"/api/v1",
 			"/integrations",
 			"/oauth",
+			"/robots.txt",
+			"/sitemap.xml",
 			"/webhooks"
 		],
 		"surfaces": [
@@ -266,6 +268,25 @@
 			"/tools/prototype",
 			"/tools/readmark"
 		],
+		"publicUrls": [
+			"/",
+			"/about",
+			"/admin/invitations/accept",
+			"/admin/login",
+			"/contact",
+			"/design-system",
+			"/portfolio",
+			"/portfolio/aulymo",
+			"/portfolio/multi-slicer",
+			"/portfolio/my-web-2026",
+			"/portfolio/project-init",
+			"/portfolio/sciencearts-optim-internship-2026",
+			"/portfolio/tastile",
+			"/share/procon2026/",
+			"/tools",
+			"/tools/prototype",
+			"/tools/readmark"
+		],
 		"externalHosts": [
 			"361do.booth.pm",
 			"design.google",
@@ -274,9 +295,11 @@
 			"fonts.gstatic.com",
 			"github.com",
 			"json-schema.org",
+			"redirect-guard.invalid",
 			"samuido.booth.pm",
 			"schema.org",
 			"scripts.sil.org",
+			"use.typekit.net",
 			"www.apache.org",
 			"www.facebook.com",
 			"www.googletagmanager.com",
@@ -285,6 +308,7 @@
 			"www.mlit.go.jp",
 			"www.naprock.jp",
 			"www.procon.gr.jp",
+			"www.sitemaps.org",
 			"www.stat.go.jp",
 			"www.w3.org",
 			"x.com",
@@ -329,11 +353,42 @@
 				]
 			},
 			{
+				"url": "http://www.sitemaps.org/schemas/sitemap/0.9",
+				"host": "www.sitemaps.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"src/http/seo/README.md",
+					"src/http/seo/sitemap.ts"
+				]
+			},
+			{
+				"url": "http://www.w3.org/1999/xhtml",
+				"host": "www.w3.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"src/http/seo/README.md",
+					"src/http/seo/sitemap.ts"
+				]
+			},
+			{
+				"url": "http://www.w3.org/1999/xlink",
+				"host": "www.w3.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"external/prototype/public/vite.svg"
+				]
+			},
+			{
 				"url": "http://www.w3.org/2000/svg",
 				"host": "www.w3.org",
 				"kind": "external",
 				"identifier": true,
 				"files": [
+					"external/prototype/public/vite.svg",
+					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
 					"src/home/mark.tsx"
 				]
@@ -366,12 +421,31 @@
 				]
 			},
 			{
+				"url": "https://developers.google.com/search/docs/appearance/structured-data/search-gallery",
+				"host": "developers.google.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/editorial/structured-data/validate.ts"
+				]
+			},
+			{
 				"url": "https://fonts.googleapis.com",
 				"host": "fonts.googleapis.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"external/prototype/index.html",
 					"src/routes/__root.tsx"
+				]
+			},
+			{
+				"url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap",
+				"host": "fonts.googleapis.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"external/prototype/index.html"
 				]
 			},
 			{
@@ -389,6 +463,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"external/prototype/index.html",
 					"src/routes/__root.tsx"
 				]
 			},
@@ -593,7 +668,11 @@
 				"files": [
 					"src/contact/channels.json",
 					"src/editorial/nav/route-labels.ts",
-					"src/portfolio/components/Markdown.tsx"
+					"src/editorial/structured-data/contract.json",
+					"src/http/seo/README.md",
+					"src/http/seo/sitemap.ts",
+					"src/portfolio/components/Markdown.tsx",
+					"src/routes/index.tsx"
 				]
 			},
 			{
@@ -634,12 +713,48 @@
 				]
 			},
 			{
+				"url": "https://rebuildup.dev/portfolio/tastile",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/http/seo/README.md"
+				]
+			},
+			{
 				"url": "https://rebuildup.dev/schema/tools-manifest.v1.json",
 				"host": "rebuildup.dev",
 				"kind": "origin",
 				"identifier": false,
 				"files": [
 					"src/tools/manifest.schema.json"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/sitemap.xml",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/http/seo/README.md"
+				]
+			},
+			{
+				"url": "https://rebuildup.dev/tools",
+				"host": "rebuildup.dev",
+				"kind": "origin",
+				"identifier": false,
+				"files": [
+					"src/routes/tools.index.tsx"
+				]
+			},
+			{
+				"url": "https://redirect-guard.invalid",
+				"host": "redirect-guard.invalid",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/security/redirect.ts"
 				]
 			},
 			{
@@ -657,7 +772,17 @@
 				"kind": "external",
 				"identifier": true,
 				"files": [
-					"src/editorial/nav/Breadcrumbs.tsx"
+					"src/editorial/nav/Breadcrumbs.tsx",
+					"src/editorial/structured-data/types.ts"
+				]
+			},
+			{
+				"url": "https://use.typekit.net",
+				"host": "use.typekit.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"external/prototype/index.html"
 				]
 			},
 			{
@@ -759,6 +884,8 @@
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
+		"addedBoundaryPrefixes": [],
+		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": []
 	}

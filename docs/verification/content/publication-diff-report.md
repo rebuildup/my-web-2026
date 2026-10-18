@@ -8,16 +8,17 @@
 | --- | --- |
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
-| External HTTP boundary | `/api/v1`, `/integrations`, `/oauth`, `/webhooks` |
+| External HTTP boundary | `/api/v1`, `/integrations`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
 | Declared surfaces | 17 |
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
-| External hosts | 22 |
+| Publicly reachable URLs (surface + Static Assets) | 17 |
+| External hosts | 25 |
 | First-party hosts | 0 |
 | Approved transition | no delta (first record, or unchanged surface) |
 | Verdict of the approved transition | **pass** |
 
-## Sitemap targets (what this release publishes)
+## Sitemap targets (what this release asks crawlers for)
 
 - `/`
 - `/about`
@@ -29,6 +30,30 @@
 - `/portfolio/project-init`
 - `/portfolio/sciencearts-optim-internship-2026`
 - `/portfolio/tastile`
+- `/tools`
+- `/tools/prototype`
+- `/tools/readmark`
+
+## Publicly reachable URLs (the compared surface)
+
+Everything an unauthenticated visitor can reach: every `public` surface above
+(including the deliberately non-sitemap ones) plus the HTML documents Static
+Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
+
+- `/`
+- `/about`
+- `/admin/invitations/accept`
+- `/admin/login`
+- `/contact`
+- `/design-system`
+- `/portfolio`
+- `/portfolio/aulymo`
+- `/portfolio/multi-slicer`
+- `/portfolio/my-web-2026`
+- `/portfolio/project-init`
+- `/portfolio/sciencearts-optim-internship-2026`
+- `/portfolio/tastile`
+- `/share/procon2026/`
 - `/tools`
 - `/tools/prototype`
 - `/tools/readmark`
@@ -73,6 +98,14 @@
 
 - (none)
 
+### Added external HTTP boundary prefixes (0)
+
+- (none)
+
+### Removed external HTTP boundary prefixes (0)
+
+- (none)
+
 ## Audit targets — external URLs in shipped source
 
 `identifier` rows are non-dereferenced namespaces / dialects / license IDs; every
@@ -84,13 +117,18 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://scripts.sil.org/OFL` | `scripts.sil.org` | external / identifier | `public/share/procon2026/index.html` |
 | `http://www.apache.org/licenses` | `www.apache.org` | external / identifier | `public/share/procon2026/index.html` |
 | `http://www.apache.org/licenses/LICENSE-2.0` | `www.apache.org` | external / identifier | `public/share/procon2026/index.html` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `public/favicon.svg`, `src/home/mark.tsx` |
+| `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
+| `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
+| `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/home/mark.tsx` |
 | `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
+| `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/routes/__root.tsx` |
+| `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `src/routes/__root.tsx` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/routes/__root.tsx` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
@@ -112,8 +150,10 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/tool-sequential-png-preview.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-svg2tsx.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-text-counter.git` | `github.com` | external | `src/tools/manifest.json` |
+| `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
-| `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx` |
+| `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
+| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
 | `https://www.googletagmanager.com/gtag/js?id=` | `www.googletagmanager.com` | external | `src/editorial/analytics/GoogleAnalytics.tsx` |
 | `https://www.maff.go.jp/j/council/seisaku/kensho/attach/pdf/18siryo-13.pdf` | `www.maff.go.jp` | external | `public/share/procon2026/index.html` |

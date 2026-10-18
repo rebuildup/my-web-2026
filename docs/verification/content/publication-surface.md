@@ -28,11 +28,14 @@
 | 対象 | 取得元 | 扱い |
 | --- | --- | --- |
 | route surface の分類（public / internal） | `scripts/publication-surface.mjs` の `SURFACE_DECLARATIONS` | route file との網羅性を検査し、漏れた route file は `E005` |
-| sitemap 対象 URL | 同宣言の `sitemap: true` | 直前の snapshot と比較 |
+| sitemap 対象 URL | 同宣言の `sitemap: true` | 宣言表の出力であり、sitemap.xml の実体ではない |
+| **公開到達可能 URL 全体**（sitemap 対象 + sitemap 外の public surface + 静的ページ） | 宣言の `classification: 'public'` の URL 展開 + `public/**` の HTML | **これが比較対象**。減ると `E001`（Issue の「review 必要」状態） |
 | portfolio の公開 URL | `src/portfolio/seed.ts` の slug | seed は `visibility: 'public'` / `status: 'published'` で投入される契約（`migrations/0007_portfolio.sql` の DEFAULT と `scripts/seed-portfolio.mjs`） |
 | tools の公開 URL | `src/tools/manifest.json` の `delivery.kind ∈ {same_origin_static, external_exception}` | `host_disabled` / `not_integrable_yet` は `/tools` 上で "Coming soon" になるだけで、リンク先 URL を持たない |
-| 外部 HTTP boundary | `src/server.ts` の `EXTERNAL_BOUNDARY_PREFIXES` | sitemap 対象外だが機械的な公開面なので記録する |
-| 絶対 URL | `src/**` と `public/**` の shipped source（`*.test.*` は除外） | first-party / external / identifier namespace に分類して差分を取る |
+| Static Assets が直接配信する公開ページ | `public/**` の `.html` | `public/index.html` は `/`、`public/<dir>/index.html` は `/<dir>/`、その他はそのままの path。削除は `E001` |
+| 外部 HTTP boundary | `src/server.ts` の `EXTERNAL_BOUNDARY_PREFIXES` | sitemap 対象外だが機械的な公開面。**prefix の増減も差分**（減ると `E012`、増えると `W005`） |
+| 絶対 URL | `src/**` と `public/**` の shipped source（`*.test.*` は除外、`js` / `mjs` / `cjs` を含む） | first-party / external / identifier namespace に分類して差分を取る |
+| Tool iframe が実際に持ち込む外部 URL | 各 `same_origin_static` Tool の checkout の `index.html` と `public/**` | `/tools/<slug>/app/` として配信される document の由来。checkout が無い場合は `E013` で fail-closed |
 
 ## 3. 公開している情報（現在の記録）
 
@@ -53,6 +56,11 @@
   ログインできません。loader は「サイン済みなら `/admin` へ redirect」だけを行います。
 - `/admin/invitations/accept` — **公開が前提**。メールで届いた token を
   server-side で probe する landing page。project データも描画せず sitemap にもしません。
+- `/share/procon2026/` — `public/share/procon2026/index.html` が Static Assets
+  で直接配信する静的ページ。route ではないので宣言表には現れず、sitemap にもしません。
+
+**公開到達可能 URL は合計 17 件**（sitemap 13 + sitemap 外の public surface 3 +
+静的ページ 1）。`E001 removed-public-url` が比較するのはこの 17 件です。
 
 ### 3.3 非公開 surface
 
@@ -64,8 +72,8 @@ gate され、sitemap にも外部 host 集合にも現れません。
 
 ### 4.1 訪問者がたどれる / ブラウザが取得する外部 host
 
-`src/**` と `public/**` から観測された host を、用途ごとに分けたものです。
-**新しい host の追加は `E004`（error）になります。**
+`src/**` と `public/**`、および統合済み Tool が持ち込む document から観測された host を、
+用途ごとに分けたものです。**新しい host の追加は `E004`（error）になります。**
 
 - **フォント**: `fonts.googleapis.com`（stylesheet）、`fonts.gstatic.com`（font files）
 - **計測**: `www.googletagmanager.com`（GA4 loader, `src/editorial/analytics/GoogleAnalytics.tsx`）
@@ -76,33 +84,56 @@ gate され、sitemap にも外部 host 集合にも現れません。
   `www.procon.gr.jp`, `www.naprock.jp`, `www.facebook.com`, `www.stat.go.jp`,
   `www.mlit.go.jp`, `www.mhlw.go.jp`, `www.maff.go.jp`, `design.google`,
   `developers.google.com`
+- **Tool iframe（`/tools/prototype`）がフォント取得に使う host**: `use.typekit.net`
+  （`external/prototype/index.html`）。この document の build 成果物がそのまま
+  `/tools/prototype/app/index.html` として配信されるため、Tool 側が持ち込む host も
+  監査対象に含めます。
+- **到達できないリゾルバ用センチネル**: `redirect-guard.invalid`
+  （`src/http/security/redirect.ts` の `PARSER_BASE`）。RFC 2606 の予約 TLD なので
+  public DNS からは到達できず、URL parser の比較基準としてのみ使われます。
 
 ### 4.2 取得されない identifier namespace（`http://` を宣言的に許容）
 
-XML namespace URI、JSON-LD context IRI、JSON Schema dialect IRI、SPDX license identifier です。
-参照されるだけで browser / runtime が取得することはないので `http://` を
-insecure 扱いしません。宣言は `IDENTIFIER_NAMESPACE_HOSTS` に集約してあり、
-ここに無い host の `http://` は `E007`（error）になります。
+XML namespace URI、sitemap schema の namespace IRI、JSON-LD context IRI、JSON Schema
+dialect IRI、SPDX license identifier です。参照されるだけで browser / runtime が取得する
+ことはないので `http://` を insecure 扱いしません。宣言は
+`IDENTIFIER_NAMESPACE_HOSTS` に集約してあり、ここに無い host の `http://` は
+`E007`（error）になります。
 
-- `www.w3.org`（SVG namespace）
+- `www.w3.org`（SVG namespace、`xhtml` namespace）
+- `www.sitemaps.org`（sitemap schema namespace。`src/http/seo/sitemap.ts` が生成する
+  XML document の `xmlns`。取得される対象ではない）
 - `schema.org`（JSON-LD `@context`）
 - `json-schema.org`（`src/tools/manifest.schema.json` の `$schema`）
 - `www.apache.org`, `scripts.sil.org`（license identifier）
 
 ### 4.3 同一オリジンの機械的 boundary（sitemap 対象外）
 
-`/api/v1`, `/webhooks`, `/oauth`, `/integrations`。canonical origin
-(`https://rebuildup.dev`, ADR-0014) の下で配信され、`src/server.ts` が
+`/api/v1`, `/webhooks`, `/oauth`, `/integrations`, `/sitemap.xml`, `/robots.txt`。canonical
+origin (`https://rebuildup.dev`, ADR-0014) の下で配信され、`src/server.ts` が
 prefix 一致で Hono と TanStack Start を振り分けます。URL 集合としては記録しますが、
-sitemap target にはしません。
+sitemap target にはしません。**prefix の増減も差分対象**で、減ると `E012`（error）、
+増えると `W005`（warn）になります。
 
 ## 5. 監査対象外（out of scope）とその理由
 
 - **`docs/`, `e2e/`, `migrations/`, `scripts/`, `test/`** — 訪問者に配信されません。
 - **`release-assets/`** — publication pipeline の入力であって shipped surface ではありません。
   既に `scripts/check-release-assets.mjs` が manifest 整合を gate しています。
-- **`external/` submodule** — Tool の実装そのもので、配信は `/tools/<slug>` の
-  iframe shell 経由です。host 側の入力は `src/tools/manifest.json` のみ。
+- **Tool の build 成果物そのもの（`dist/client/tools/**`）** — `publication:check` は
+  build より前に走るため成果物が存在しません。代わりに build の入力のうち訪問者に
+  そのまま届く deterministic な部分、つまり各 `same_origin_static` Tool の
+  `index.html`（build 後に iframe document になるファイル）と `public/**`
+  （verbatim で複製される静的ファイル）を監査対象にしています。checkout が 1 つでも
+  無ければ「監査できていない」ので、無かったことにせず `E013 tool-source-missing`
+  で fail-closed にします（CI は submodule を checkout します。ローカルでは
+  `git submodule update --init --recursive` が必要）。
+  **残る gap**: bundler が JS chunk に注入する URL（lazy import 先の chunk、
+  実行時に評価される文字列など）は build 後にはじめて現れるため、この gate では
+  検出できません。
+- **`external/` の Tool ソースのその他（lockfile / docs / アプリ本体）** — 上記の
+  shipped ファイルは build 入力ではあるものの、訪問者のブラウザが取得する document に
+  はなりません。実際に出る host は entry document 側に出ます。
 - **R2 media host `media.rebuildup.dev`** — `wrangler.production.jsonc` の
   `MEDIA_PUBLIC_BASE_URL` で宣言されますが、shipped source に URL literal が
   ありません（`MEDIA_PUBLIC_BASE_URL` を実行時に読むため）。したがって host 集合には
@@ -133,7 +164,7 @@ snapshot 内の `approvedTransition` と report に保存します。次に surf
 
 | Code | severity | 意味 |
 | --- | --- | --- |
-| `E001 removed-public-url` | error | sitemap 対象 URL が減った（Issue の「review 必要」状態） |
+| `E001 removed-public-url` | error | 公開到達可能 URL（sitemap 対象 / sitemap 外の public route / 静的ページ）が減った（Issue の「review 必要」状態） |
 | `E002 public-surface-withdrawn` | error | public → internal への変更 |
 | `E003 internal-surface-published` | error | internal → public への変更 |
 | `E004 external-host-added` | error | 新しい外部 host（新しい外部依存） |
@@ -141,9 +172,13 @@ snapshot 内の `approvedTransition` と report に保存します。次に surf
 | `E006 orphan-surface-declaration` | error | 宣言が実在しない file を指す、または 2 重的 |
 | `E007 insecure-external-url` | error | 取得される外部 URL が `http://` |
 | `E008 external-url-with-userinfo` | error | URL に credential が埋め込まれている |
-| `E009 loopback-or-private-host-url` | error | loopback / private host が shipped source にある |
-| `E010 snapshot-missing` | error | snapshot が未記録 |
+| `E009 loopback-or-private-host-url` | error | loopback / RFC 1918 / CGNAT / link-local / ULA / `.local` / `.internal` などの private host が shipped source にある |
+| `E010 snapshot-missing` | error | snapshot が未記録（この schema で読めない snapshot もここに帰着する） |
 | `E011 stale-report` | error | surface が変わったが記録が更新されていない |
-| `W001`–`W004` | warn | host / URL の増減、public URL の追加（レビュー対象、fail しない） |
+| `E012 external-boundary-prefix-removed` | error | 外部 HTTP boundary の prefix が消えた |
+| `E013 tool-source-missing` | error | 統合済み Tool の checkout が無く、iframe が持ち込む URL を監査できていない |
+| `W001`–`W005` | warn | host / URL の増減、public URL の追加、boundary prefix の追加（レビュー対象、fail しない） |
 
-`W004`（public URL の追加）が fail しないのは、公開面が**減ること**が事故であると Issue が判断しているためです。追加はレビュー情報として report と PR body に必ず残ります。
+`W004`（public URL の追加）と `W005`（boundary prefix の追加）が fail しないのは、
+公開面が**減ること**が事故であると Issue が判断しているためです。追加はレビュー情報として
+report と PR body に必ず残ります。

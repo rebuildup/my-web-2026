@@ -11,13 +11,17 @@
  *
  * Check mode fails closed when any of these hold:
  *
- *   1. an invariant finding (undeclared route file, loopback URL,
- *      credential-bearing URL, http:// on a dereferenced host),
- *   2. a public URL disappeared since the committed snapshot,
+ *   1. an invariant finding (undeclared route file, loopback / private
+ *      host URL, credential-bearing URL, http:// on a dereferenced
+ *      host, a Tool checkout that could not be audited),
+ *   2. a publicly reachable URL disappeared since the committed
+ *      snapshot (sitemap target, non-sitemap public route, or a Static
+ *      Assets page),
  *   3. a surface was reclassified in either direction,
  *   4. a new external host appears in shipped source,
- *   5. no snapshot is committed yet,
- *   6. the committed report no longer matches the surface — i.e.
+ *   5. an external HTTP boundary prefix disappeared,
+ *   6. no snapshot is committed yet,
+ *   7. the committed report no longer matches the surface — i.e.
  *      the surface changed and nobody re-recorded the evidence.
  *
  * Rule 2 is the DoD's "review required" state: additions are
@@ -42,6 +46,7 @@ import {
 	parseSnapshot,
 	renderHtmlReport,
 	renderMarkdownReport,
+	sameOriginStaticToolSubmodules,
 	serializeSnapshot,
 	serializeSurfaceCore,
 	transitionOf,
@@ -106,25 +111,94 @@ export function collectSourceFiles() {
 	return files.sort((a, b) => (a.path < b.path ? -1 : 1));
 }
 
+/**
+ * Every file Cloudflare Static Assets serves out of `public/`.
+ * The HTML ones are public pages the declaration table does not own,
+ * so they join the compared public URL set.
+ */
+export function collectPublicAssetFiles() {
+	const publicRoot = join(repoRoot, 'public');
+	if (!existsSync(publicRoot)) return [];
+	const files = [];
+	walk(publicRoot, (full) => files.push(rel(full)));
+	return files.sort();
+}
+
+/**
+ * Shipped files of every `same_origin_static` Tool: the entry document
+ * whose build output IS the iframe document at `/tools/<slug>/app/`,
+ * and the tool's `public/` directory, which the build copies verbatim.
+ *
+ * A Tool checkout that is absent is reported, never skipped silently —
+ * otherwise the audit would depend on whether the local clone happened
+ * to have submodules, and the same commit would record two different
+ * surfaces.
+ */
+export function collectToolShippedSources(toolsManifest) {
+	const files = [];
+	const missing = [];
+	for (const tool of sameOriginStaticToolSubmodules(toolsManifest)) {
+		const toolRoot = join(repoRoot, tool.submodulePath);
+		if (!existsSync(toolRoot)) {
+			missing.push(tool.submodulePath);
+			continue;
+		}
+		const entry = join(toolRoot, 'index.html');
+		if (existsSync(entry)) files.push({ path: rel(entry), text: readFileSync(entry, 'utf8') });
+		const staticRoot = join(toolRoot, 'public');
+		if (existsSync(staticRoot)) {
+			walk(staticRoot, (full) => {
+				const name = rel(full);
+				if (!SCAN_EXTENSIONS.some((ext) => name.endsWith(ext))) return;
+				files.push({ path: name, text: readFileSync(full, 'utf8') });
+			});
+		}
+	}
+	files.sort((a, b) => (a.path < b.path ? -1 : 1));
+	return { files, missing };
+}
+
 /** Compute the publication surface of the working tree. */
 export function readCurrentSurface() {
+	const toolsManifest = JSON.parse(
+		readFileSync(join(repoRoot, TOOLS_MANIFEST_RELATIVE_PATH), 'utf8'),
+	);
+	const toolSources = collectToolShippedSources(toolsManifest);
 	return buildSurface({
 		routeFiles: collectRouteFiles(),
 		sourceFiles: collectSourceFiles(),
+		publicFiles: collectPublicAssetFiles(),
+		toolSourceFiles: toolSources.files,
+		toolSourcesMissing: toolSources.missing,
 		origin: canonicalOriginFromSource(
 			readFileSync(join(repoRoot, ORIGIN_SOURCE_RELATIVE_PATH), 'utf8'),
 		),
 		portfolioSeedSource: readFileSync(join(repoRoot, PORTFOLIO_SEED_RELATIVE_PATH), 'utf8'),
-		toolsManifest: JSON.parse(readFileSync(join(repoRoot, TOOLS_MANIFEST_RELATIVE_PATH), 'utf8')),
+		toolsManifest,
 		workerEntrySource: readFileSync(join(repoRoot, WORKER_ENTRY_RELATIVE_PATH), 'utf8'),
 	});
 }
 
-/** The committed snapshot, or `null` when none exists yet. */
+/**
+ * The committed snapshot, or `null` when none exists yet.
+ *
+ * A snapshot this build cannot read (older schema tag, truncated JSON)
+ * is treated as "no baseline" rather than as a pass: check mode then
+ * fails closed with `E010 snapshot-missing`, which is the same remedy
+ * as a missing snapshot, and the reason is printed so an upgrade does
+ * not look like data loss.
+ */
 export function readBaseline(root = repoRoot) {
 	const full = resolve(root, SNAPSHOT_RELATIVE_PATH);
 	if (!existsSync(full)) return null;
-	return parseSnapshot(readFileSync(full, 'utf8'));
+	try {
+		return parseSnapshot(readFileSync(full, 'utf8'));
+	} catch (error) {
+		console.error(
+			`[check-publication-diff] committed snapshot is unreadable (${error.message}); treating it as no baseline`,
+		);
+		return null;
+	}
 }
 
 function parseArgs(argv) {
@@ -158,7 +232,7 @@ function toApprovedTransition(finding) {
 function finish(blockingFindings, diff, current) {
 	const verdict = verdictOf(blockingFindings);
 	console.log(
-		`[check-publication-diff] ${verdict.toUpperCase()}: ${current.sitemap.length} public URLs, +${diff.addedPublicUrls.length}/-${diff.removedPublicUrls.length}, external hosts +${diff.addedExternalHosts.length}/-${diff.removedExternalHosts.length}`,
+		`[check-publication-diff] ${verdict.toUpperCase()}: ${(current.publicUrls ?? current.sitemap).length} public URLs, +${diff.addedPublicUrls.length}/-${diff.removedPublicUrls.length}, external hosts +${diff.addedExternalHosts.length}/-${diff.removedExternalHosts.length}, boundary +${diff.addedBoundaryPrefixes.length}/-${diff.removedBoundaryPrefixes.length}`,
 	);
 	if (verdict === 'fail') {
 		process.exitCode = 1;
@@ -191,7 +265,9 @@ function main(argv) {
 			{
 				...diff,
 				findings:
-					baseline === null ? diff.findings.filter((f) => f.code !== 'E010') : diff.findings,
+					baseline === null
+						? diff.findings.filter((f) => !f.code.startsWith('E010'))
+						: diff.findings,
 			},
 			invariant,
 		);
@@ -213,7 +289,7 @@ function main(argv) {
 		);
 		writeFileSync(resolve(repoRoot, REPORT_RELATIVE_PATH), reportText);
 		console.log(
-			`[check-publication-diff] recorded: ${current.sitemap.length} sitemap targets, ${current.externalHosts.length} external hosts, ${current.firstPartyHosts.length} first-party hosts`,
+			`[check-publication-diff] recorded: ${current.publicUrls.length} publicly reachable URLs (${current.sitemap.length} sitemap targets, ${current.staticAssetPages.length} static pages), ${current.externalHosts.length} external hosts, ${current.firstPartyHosts.length} first-party hosts`,
 		);
 		// Recording IS the approval act, so the delta findings are what
 		// the author just approved — they are reported, not blocking.

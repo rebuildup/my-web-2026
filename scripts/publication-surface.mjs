@@ -9,10 +9,16 @@
  *      session, `internal` = behind an auth loader), with the
  *      subset that belongs in a sitemap;
  *   2. the dynamic expansions of those surfaces (portfolio
- *      projects, integrated tools);
- *   3. the absolute URLs that shipped source contains, split into
+ *      projects, integrated tools) plus the HTML documents Cloudflare
+ *      Static Assets serve straight out of `public/**`;
+ *   3. the external HTTP boundary prefixes declared by the worker
+ *      entry point, compared like URLs so a boundary can neither
+ *      appear nor disappear unnoticed;
+ *   4. the absolute URLs that shipped source contains, split into
  *      first-party, external, and non-dereferenced identifier
- *      namespaces.
+ *      namespaces — including the entry document and static assets
+ *      of each `same_origin_static` Tool, because `/tools/<slug>`
+ *      serves that content from this origin.
  *
  * Why a declared table instead of a route-tree parser
  * ---------------------------------------------------
@@ -33,7 +39,7 @@
  */
 
 /** Snapshot schema identifier. Bump on any breaking shape change. */
-export const SNAPSHOT_SCHEMA = 'publication-surface.v1';
+export const SNAPSHOT_SCHEMA = 'publication-surface.v2';
 
 /**
  * Declared route surfaces, one entry per file-route that owns a
@@ -204,6 +210,7 @@ export const ROUTE_DIR_INERT_FILES = [
 	'src/routes/design-system/index.ts',
 	'src/routes/design-system/DesignSystemPage.tsx',
 	'src/routes/design-system/sections/ColorSwatches.tsx',
+	'src/routes/design-system/sections/ImageCls.tsx',
 	'src/routes/design-system/sections/InteractiveStates.tsx',
 	'src/routes/design-system/sections/SpacingRuler.tsx',
 	'src/routes/design-system/sections/StatusAccents.tsx',
@@ -213,21 +220,85 @@ export const ROUTE_DIR_INERT_FILES = [
 
 /**
  * Host roots whose URLs are identifiers, never dereferenced
- * resources: XML namespace URIs, the JSON-LD context IRI, the JSON
- * Schema dialect IRI, and SPDX license identifiers. They are
- * compared like any other URL, but a `http://` scheme on one of
- * them is not an insecure-mix finding.
+ * resources: XML namespace URIs, the sitemap schema namespace, the
+ * JSON-LD context IRI, the JSON Schema dialect IRI, and SPDX license
+ * identifiers. They are compared like any other URL, but a `http://`
+ * scheme on one of them is not an insecure-mix finding.
  */
 export const IDENTIFIER_NAMESPACE_HOSTS = [
 	'schema.org',
 	'json-schema.org',
 	'www.w3.org',
 	'www.apache.org',
+	'www.sitemaps.org',
 	'scripts.sil.org',
 ];
 
-/** Hosts that must never appear in shipped source. */
-const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '0.0.0.0', '::1', '[::1]']);
+/** Host *names* that only ever resolve to the local machine. */
+const LOOPBACK_HOSTNAMES = new Set(['localhost', 'ip6-localhost', 'ip6-loopback']);
+
+/**
+ * Suffixes reserved for private / site-local name resolution
+ * (RFC 6762 mDNS, RFC 8375 home.arpa, the `.internal` namespace).
+ * A browser or a Worker cannot resolve them from the public
+ * internet, so a URL on one is a private-network reference.
+ */
+const PRIVATE_HOST_SUFFIXES = ['.local', '.localdomain', '.internal', '.home.arpa'];
+
+const stripIpv6Brackets = (host) =>
+	host.startsWith('[') && host.endsWith(']') ? host.slice(1, -1).split('%')[0] : host;
+
+/** RFC 1918 / loopback / link-local / CGNAT / reserved IPv4. */
+function isPrivateIpv4(host) {
+	const parts = host.split('.');
+	if (parts.length !== 4) return false;
+	if (!parts.every((part) => /^\d{1,3}$/.test(part))) return false;
+	const octets = parts.map(Number);
+	if (octets.some((octet) => octet > 255)) return false;
+	const [a, b] = octets;
+	if (a === 0 || a === 10 || a === 127) return true;
+	if (a === 100 && b >= 64 && b <= 127) return true;
+	if (a === 169 && b === 254) return true;
+	if (a === 172 && b >= 16 && b <= 31) return true;
+	if (a === 192 && b === 168) return true;
+	if (a >= 224) return true;
+	return false;
+}
+
+/** fc00::/7 unique-local, fe80::/10 link-local, ff00::/8 multicast, ::1, ::. */
+function isPrivateIpv6(host) {
+	const bare = stripIpv6Brackets(host);
+	if (!bare.includes(':')) return false;
+	if (bare === '::' || bare === '::1') return true;
+	const [headText, tailText] = bare.split('::');
+	const head = headText ? headText.split(':') : [];
+	const tail = tailText ? tailText.split(':') : [];
+	const parts = [...head, ...new Array(8 - head.length - tail.length).fill('0'), ...tail];
+	if (parts.length !== 8) return false;
+	if (!parts.every((part) => /^[0-9a-f]{1,4}$/.test(part))) return false;
+	const first = Number.parseInt(parts[0], 16);
+	if ((first & 0xfe00) === 0xfc00) return true;
+	if ((first & 0xffc0) === 0xfe80) return true;
+	if ((first & 0xff00) === 0xff00) return true;
+	return false;
+}
+
+/**
+ * True when a host can only be reached from a private network or
+ * the local machine: RFC 1918 / CGNAT / link-local IPv4, unique-local
+ * / link-local IPv6, loopback names, and site-local suffixes. This
+ * is what `E009` promises, so the promise is computed rather than
+ * asserted.
+ */
+export function isPrivateHost(host) {
+	const bare = String(host ?? '')
+		.toLowerCase()
+		.replace(/:\d+$/, '');
+	if (bare.length === 0) return false;
+	if (LOOPBACK_HOSTNAMES.has(bare)) return true;
+	if (PRIVATE_HOST_SUFFIXES.some((suffix) => bare.endsWith(suffix))) return true;
+	return isPrivateIpv4(bare) || isPrivateIpv6(bare);
+}
 
 /** Tool manifest `delivery.kind` values that get a linkable `/tools/<slug>` page. */
 export const INTEGRATED_TOOL_DELIVERY_KINDS = ['same_origin_static', 'external_exception'];
@@ -235,8 +306,32 @@ export const INTEGRATED_TOOL_DELIVERY_KINDS = ['same_origin_static', 'external_e
 /** Shipped source roots scanned for absolute URLs. */
 export const SCAN_ROOTS = ['src', 'public'];
 
-/** File extensions scanned inside `SCAN_ROOTS`. */
-export const SCAN_EXTENSIONS = ['.ts', '.tsx', '.json', '.css', '.html', '.svg', '.md', '.txt'];
+/**
+ * File extensions scanned inside `SCAN_ROOTS`. Browser JavaScript
+ * is included because `public/**` is served verbatim by Static
+ * Assets: a `.js` there is shipped source like any other.
+ */
+export const SCAN_EXTENSIONS = [
+	'.ts',
+	'.tsx',
+	'.js',
+	'.mjs',
+	'.cjs',
+	'.json',
+	'.css',
+	'.html',
+	'.svg',
+	'.md',
+	'.txt',
+];
+
+/**
+ * Files inside a `same_origin_static` Tool checkout that ship to
+ * the visitor: the Vite entry document (its built form is the iframe
+ * document at `/tools/<slug>/app/index.html`) and everything under
+ * the tool's `public/` directory, which the build copies verbatim.
+ */
+export const TOOL_SHIPPED_SUBPATHS = ['index.html', 'public'];
 
 /**
  * Canonical production origin, read out of the source of truth that
@@ -394,8 +489,9 @@ export function normalizeUrl(raw) {
  *
  * `identifier` marks a non-dereferenced namespace / dialect /
  * license URL. `insecure` marks `http://` on a real (derefereferenced)
- * external host, `loopback` marks a private / dev host, and
- * `userinfo` marks embedded `user:password@` credentials.
+ * external host, `privateHost` marks a loopback / RFC 1918 /
+ * site-local host, and `userinfo` marks embedded
+ * `user:password@` credentials.
  */
 export function classifyUrl(raw, { origin, firstPartyDomain }) {
 	const identity = normalizeUrl(raw);
@@ -419,7 +515,7 @@ export function classifyUrl(raw, { origin, firstPartyDomain }) {
 		kind,
 		identifier,
 		insecure: scheme === 'http' && kind !== 'origin' && !identifier,
-		loopback: LOOPBACK_HOSTS.has(host),
+		privateHost: isPrivateHost(host),
 		userinfo: userinfo.length > 0,
 	};
 }
@@ -450,6 +546,48 @@ export function extractIntegratedToolSlugs(manifest) {
 		.map((tool) => tool?.slug)
 		.filter((slug) => typeof slug === 'string' && slug.length > 0);
 	return [...new Set(slugs)].sort();
+}
+
+/** Tools whose own source is served from this origin, with its checkout path. */
+export function sameOriginStaticToolSubmodules(manifest) {
+	const tools = Array.isArray(manifest?.tools) ? manifest.tools : [];
+	return tools
+		.filter((tool) => tool?.delivery?.kind === 'same_origin_static')
+		.map((tool) => ({
+			slug: tool?.slug,
+			submodulePath: tool?.source?.submodule_path,
+			pinnedSha: tool?.source?.pinned_sha,
+		}))
+		.filter((tool) => typeof tool.slug === 'string' && typeof tool.submodulePath === 'string');
+}
+
+/**
+ * Public URLs that Cloudflare Static Assets serve directly out of
+ * `public/**`, independent of the file-route declaration table.
+ *
+ * `public/index.html` is `/` and `public/<dir>/index.html` is `/<dir>/`
+ * (Cloudflare Static Assets' `auto-trailing-slash` html handling).
+ * Every other `.html` file is served verbatim at its own path, so
+ * `public/<dir>/page.html` is `/<dir>/page.html`. Deleting one of
+ * these files removes a reachable page, which is why they belong in
+ * the compared public URL set rather than only in the sitemap set.
+ */
+export function staticAssetPublicPaths(publicFiles) {
+	const paths = new Set();
+	for (const file of publicFiles) {
+		const withoutRoot = file.startsWith('public/') ? file.slice('public/'.length) : file;
+		if (!withoutRoot.endsWith('.html')) continue;
+		if (withoutRoot === 'index.html') {
+			paths.add('/');
+			continue;
+		}
+		if (withoutRoot.endsWith('/index.html')) {
+			paths.add(`/${withoutRoot.slice(0, -'index.html'.length)}`);
+			continue;
+		}
+		paths.add(`/${withoutRoot}`);
+	}
+	return [...paths].sort();
 }
 
 /** Route files on disk must each be claimed by exactly one declaration. */
@@ -505,6 +643,10 @@ export function assertRouteCoverage(routeFiles) {
  * `inputs`:
  *   - `routeFiles`   repo-relative route files found on disk
  *   - `sourceFiles`  `{ path, text }` for every scanned shipped file
+ *   - `publicFiles`  repo-relative files under `public/` (Static Assets)
+ *   - `toolSourceFiles` `{ path, text }` for the shipped files of each
+ *                    `same_origin_static` Tool checkout
+ *   - `toolSourcesMissing` Tool checkout paths that are not on disk
  *   - `origin`       canonical production origin
  *   - `portfolioSeedSource` text of the portfolio seed module
  *   - `toolsManifest` parsed `src/tools/manifest.json`
@@ -512,6 +654,9 @@ export function assertRouteCoverage(routeFiles) {
 export function buildSurface({
 	routeFiles,
 	sourceFiles,
+	publicFiles = [],
+	toolSourceFiles = [],
+	toolSourcesMissing = [],
 	origin,
 	portfolioSeedSource,
 	toolsManifest,
@@ -545,8 +690,21 @@ export function buildSurface({
 
 	const sitemap = [...new Set(surfaces.filter((s) => s.sitemap).flatMap((s) => s.urls))].sort();
 
+	// Everything an unauthenticated visitor can reach: the expanded URLs of
+	// every `public` surface (sitemap targets AND the deliberately
+	// non-sitemap ones such as `/admin/login`) plus the HTML documents
+	// Static Assets serve out of `public/**`. The sitemap list stays a
+	// separate concept; this is the set whose shrinkage is an accident.
+	const staticAssetPages = staticAssetPublicPaths(publicFiles);
+	const publicUrls = [
+		...new Set([
+			...surfaces.filter((s) => s.classification === 'public').flatMap((s) => s.urls),
+			...staticAssetPages,
+		]),
+	].sort();
+
 	const byUrl = new Map();
-	for (const file of sourceFiles) {
+	for (const file of [...sourceFiles, ...toolSourceFiles]) {
 		for (const literal of extractUrlLiterals(file.text)) {
 			const entry = byUrl.get(literal) ?? {
 				...classifyUrl(literal, { origin, firstPartyDomain }),
@@ -573,9 +731,12 @@ export function buildSurface({
 		firstPartyDomain,
 		externalBoundaryPrefixes:
 			workerEntrySource.length > 0 ? extractExternalBoundaryPrefixes(workerEntrySource) : [],
+		toolSourcesMissing: [...toolSourcesMissing].sort(),
 		findings: coverage.findings,
 		surfaces,
 		sitemap,
+		publicUrls,
+		staticAssetPages,
 		externalUrls,
 		externalHosts,
 		firstPartyHosts,
@@ -585,12 +746,19 @@ export function buildSurface({
 /** Findings that hold for the surface on its own, independent of any baseline. */
 export function invariantFindings(current) {
 	const findings = [...current.findings];
+	for (const missing of current.toolSourcesMissing ?? []) {
+		findings.push({
+			code: 'E013 tool-source-missing',
+			severity: 'error',
+			message: `Tool source ${missing} is not checked out, so the URLs its iframe ships to the visitor could not be audited. Run \`git submodule update --init --recursive\` (CI checks submodules out) and re-run \`pnpm run publication:check\`.`,
+		});
+	}
 	for (const entry of current.externalUrls) {
-		if (entry.loopback) {
+		if (entry.privateHost) {
 			findings.push({
 				code: 'E009 loopback-or-private-host-url',
 				severity: 'error',
-				message: `${entry.url} points at a loopback / dev host but lives in shipped source (${entry.files.join(', ')}).`,
+				message: `${entry.url} points at a loopback / private / site-local host but lives in shipped source (${entry.files.join(', ')}).`,
 			});
 		}
 		if (entry.userinfo) {
@@ -611,10 +779,14 @@ export function invariantFindings(current) {
 	return findings;
 }
 
-const setDiff = (from, to) => ({
-	added: to.filter((value) => !from.includes(value)),
-	removed: from.filter((value) => !to.includes(value)),
-});
+const setDiff = (from, to) => {
+	const fromSet = new Set(from);
+	const toSet = new Set(to);
+	return {
+		added: [...toSet].filter((value) => !fromSet.has(value)),
+		removed: [...fromSet].filter((value) => !toSet.has(value)),
+	};
+};
 
 /**
  * Compare a committed baseline snapshot with the surface computed
@@ -637,17 +809,30 @@ export function diffSurfaces({ baseline, current }) {
 						'No publication-surface snapshot is committed. Run `pnpm run publication:write` to record the surface that this change proposes to publish.',
 				},
 			],
-			addedPublicUrls: current.sitemap,
+			addedPublicUrls: current.publicUrls ?? current.sitemap,
 			removedPublicUrls: [],
 			addedExternalUrls: current.externalUrls.map((e) => e.url),
 			removedExternalUrls: [],
 			addedExternalHosts: current.externalHosts,
 			removedExternalHosts: [],
+			addedBoundaryPrefixes: current.externalBoundaryPrefixes ?? [],
+			removedBoundaryPrefixes: [],
 			classificationChanges: [],
 		};
 	}
 
-	const urls = setDiff(baseline.sitemap, current.sitemap);
+	// The compared set is every publicly reachable URL, not only the
+	// sitemap targets: `/admin/login`, `/admin/invitations/accept` and
+	// `/design-system` are public by declaration, and the Static Assets
+	// pages under `public/**` are public by being served at all.
+	const urls = setDiff(
+		baseline.publicUrls ?? baseline.sitemap,
+		current.publicUrls ?? current.sitemap,
+	);
+	const boundary = setDiff(
+		baseline.externalBoundaryPrefixes ?? [],
+		current.externalBoundaryPrefixes ?? [],
+	);
 	const externalUrls = setDiff(
 		baseline.externalUrls.map((e) => e.url),
 		current.externalUrls.map((e) => e.url),
@@ -663,7 +848,14 @@ export function diffSurfaces({ baseline, current }) {
 		findings.push({
 			code: 'E001 removed-public-url',
 			severity: 'error',
-			message: `Public URL ${url} disappeared from the sitemap targets. If that is intentional, re-record the surface with \`pnpm run publication:write\` and say so in the PR body.`,
+			message: `Public URL ${url} disappeared from the published surface. If that is intentional, re-record the surface with \`pnpm run publication:write\` and say so in the PR body.`,
+		});
+	}
+	for (const prefix of boundary.removed) {
+		findings.push({
+			code: 'E012 external-boundary-prefix-removed',
+			severity: 'error',
+			message: `External HTTP boundary prefix ${prefix} no longer exists. Removing a public API or webhook prefix breaks third-party callers; re-record it deliberately and note it in the PR body.`,
 		});
 	}
 	for (const change of classificationChanges) {
@@ -716,6 +908,13 @@ export function diffSurfaces({ baseline, current }) {
 			message: `Public URL added: ${url}`,
 		});
 	}
+	for (const prefix of boundary.added) {
+		findings.push({
+			code: 'W005 external-boundary-prefix-added',
+			severity: 'warn',
+			message: `External HTTP boundary prefix added: ${prefix}`,
+		});
+	}
 
 	return {
 		findings,
@@ -725,6 +924,8 @@ export function diffSurfaces({ baseline, current }) {
 		removedExternalUrls: externalUrls.removed,
 		addedExternalHosts: hosts.added,
 		removedExternalHosts: hosts.removed,
+		addedBoundaryPrefixes: boundary.added,
+		removedBoundaryPrefixes: boundary.removed,
 		classificationChanges,
 	};
 }
@@ -758,6 +959,7 @@ export function serializeSurfaceCore(surface) {
 				reason: s.reason,
 			})),
 			sitemap: surface.sitemap,
+			publicUrls: surface.publicUrls ?? surface.sitemap,
 			externalHosts: surface.externalHosts,
 			firstPartyHosts: surface.firstPartyHosts,
 			externalUrls: surface.externalUrls.map((entry) => ({
@@ -787,6 +989,8 @@ export function transitionOf(diff, invariantFindings = []) {
 		removedExternalUrls: diff.removedExternalUrls,
 		addedExternalHosts: diff.addedExternalHosts,
 		removedExternalHosts: diff.removedExternalHosts,
+		addedBoundaryPrefixes: diff.addedBoundaryPrefixes ?? [],
+		removedBoundaryPrefixes: diff.removedBoundaryPrefixes ?? [],
 		classificationChanges: diff.classificationChanges,
 		findings: [...invariantFindings, ...diff.findings],
 	};
@@ -842,6 +1046,8 @@ export function renderMarkdownReport({ surface, transition }) {
 		removedExternalUrls: [],
 		addedExternalHosts: [],
 		removedExternalHosts: [],
+		addedBoundaryPrefixes: [],
+		removedBoundaryPrefixes: [],
 		classificationChanges: [],
 		findings: [],
 	};
@@ -860,14 +1066,23 @@ export function renderMarkdownReport({ surface, transition }) {
 		`| Declared surfaces | ${surface.surfaces.length} |`,
 		`| Publicly reachable surfaces | ${surface.surfaces.filter((s) => s.classification === 'public').length} |`,
 		`| Sitemap target URLs | ${surface.sitemap.length} |`,
+		`| Publicly reachable URLs (surface + Static Assets) | ${(surface.publicUrls ?? surface.sitemap).length} |`,
 		`| External hosts | ${surface.externalHosts.length} |`,
 		`| First-party hosts | ${surface.firstPartyHosts.length} |`,
 		`| Approved transition | ${t.findings.length === 0 ? 'no delta (first record, or unchanged surface)' : `${t.findings.length} finding(s)`} |`,
 		`| Verdict of the approved transition | **${verdictOf(t.findings)}** |`,
 		'',
-		'## Sitemap targets (what this release publishes)',
+		'## Sitemap targets (what this release asks crawlers for)',
 		'',
 		bullet(surface.sitemap),
+		'',
+		'## Publicly reachable URLs (the compared surface)',
+		'',
+		'Everything an unauthenticated visitor can reach: every `public` surface above',
+		'(including the deliberately non-sitemap ones) plus the HTML documents Static',
+		'Assets serve out of `public/`. Shrinking this list is what `E001` fails on.',
+		'',
+		bullet(surface.publicUrls ?? surface.sitemap),
 		'',
 		'## Declared surfaces',
 		'',
@@ -895,6 +1110,14 @@ export function renderMarkdownReport({ surface, transition }) {
 		`### Removed external hosts (${t.removedExternalHosts.length})`,
 		'',
 		bullet(t.removedExternalHosts),
+		'',
+		`### Added external HTTP boundary prefixes (${t.addedBoundaryPrefixes.length})`,
+		'',
+		bullet(t.addedBoundaryPrefixes),
+		'',
+		`### Removed external HTTP boundary prefixes (${t.removedBoundaryPrefixes.length})`,
+		'',
+		bullet(t.removedBoundaryPrefixes),
 		'',
 		'## Audit targets — external URLs in shipped source',
 		'',
@@ -946,9 +1169,12 @@ export function renderHtmlReport({ surface, transition }) {
 		removedExternalUrls: [],
 		addedExternalHosts: [],
 		removedExternalHosts: [],
+		addedBoundaryPrefixes: [],
+		removedBoundaryPrefixes: [],
 		classificationChanges: [],
 		findings: [],
 	};
+	const publicUrls = surface.publicUrls ?? surface.sitemap;
 	const verdict = verdictOf(t.findings);
 	const row = (cells) => `<tr>${cells.map((cell) => `<td>${cell}</td>`).join('')}</tr>`;
 	const listOrEmpty = (values, empty = 'none') =>
@@ -995,6 +1221,7 @@ export function renderHtmlReport({ surface, transition }) {
   <tr><td class="metric">Declared surfaces</td><td>${surface.surfaces.length}</td></tr>
   <tr><td class="metric">Publicly reachable surfaces</td><td>${surface.surfaces.filter((s) => s.classification === 'public').length}</td></tr>
   <tr><td class="metric">Sitemap target URLs</td><td>${surface.sitemap.length}</td></tr>
+  <tr><td class="metric">Publicly reachable URLs (surface + Static Assets)</td><td>${publicUrls.length}</td></tr>
   <tr><td class="metric">External hosts</td><td>${surface.externalHosts.length}</td></tr>
   <tr><td class="metric">First-party hosts</td><td>${surface.firstPartyHosts.length}</td></tr>
   <tr><td class="metric">Findings in the approved transition</td><td>${t.findings.length}</td></tr>
@@ -1003,14 +1230,21 @@ export function renderHtmlReport({ surface, transition }) {
 <h2>Approved transition against the previous snapshot</h2>
 <table>
   <tr><th>Signal</th><th>Added</th><th>Removed</th></tr>
-  <tr><td>Public URLs (sitemap)</td><td>${t.addedPublicUrls.length}</td><td>${t.removedPublicUrls.length}</td></tr>
+  <tr><td>Publicly reachable URLs</td><td>${t.addedPublicUrls.length}</td><td>${t.removedPublicUrls.length}</td></tr>
   <tr><td>External hosts</td><td>${t.addedExternalHosts.length}</td><td>${t.removedExternalHosts.length}</td></tr>
   <tr><td>External URLs</td><td>${t.addedExternalUrls.length}</td><td>${t.removedExternalUrls.length}</td></tr>
+  <tr><td>External HTTP boundary prefixes</td><td>${t.addedBoundaryPrefixes.length}</td><td>${t.removedBoundaryPrefixes.length}</td></tr>
   <tr><td>Surface classification changes</td><td colspan="2">${t.classificationChanges.length === 0 ? 'none' : t.classificationChanges.map((c) => escapeHtml(`${c.id}: ${c.from} → ${c.to}`)).join(', ')}</td></tr>
 </table>
 
 <h2>Sitemap targets (${surface.sitemap.length})</h2>
 ${listOrEmpty(surface.sitemap)}
+
+<h2>Publicly reachable URLs (${publicUrls.length})</h2>
+<p class="muted">every <code>public</code> surface (including the deliberately non-sitemap ones)
+plus the HTML documents Static Assets serve out of <code>public/</code>. Shrinking this list is what
+<code>E001</code> fails on.</p>
+${listOrEmpty(publicUrls)}
 
 <h2>Added public URLs (${t.addedPublicUrls.length})</h2>
 ${listOrEmpty(t.addedPublicUrls)}

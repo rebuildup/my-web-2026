@@ -15,12 +15,15 @@ import {
 	extractUrlLiterals,
 	firstPartyDomainOf,
 	invariantFindings,
+	isPrivateHost,
 	normalizeUrl,
 	parseSnapshot,
 	renderHtmlReport,
 	renderMarkdownReport,
+	sameOriginStaticToolSubmodules,
 	serializeSnapshot,
 	serializeSurfaceCore,
+	staticAssetPublicPaths,
 	stripComments,
 	transitionOf,
 	verdictOf,
@@ -152,8 +155,38 @@ describe('publication-surface — URL normalisation and classification', () => {
 	});
 
 	it('flags loopback hosts', () => {
-		assert.equal(classifyUrl('http://127.0.0.1:3000/x', CTX).loopback, true);
-		assert.equal(classifyUrl('http://localhost:8787/x', CTX).loopback, true);
+		assert.equal(classifyUrl('http://127.0.0.1:3000/x', CTX).privateHost, true);
+		assert.equal(classifyUrl('http://localhost:8787/x', CTX).privateHost, true);
+	});
+
+	it('flags RFC 1918, CGNAT and link-local hosts over https', () => {
+		for (const host of [
+			'10.0.0.5',
+			'172.16.0.9',
+			'192.168.1.10',
+			'169.254.169.254',
+			'100.64.0.1',
+		]) {
+			assert.equal(classifyUrl(`https://${host}/x`, CTX).privateHost, true, host);
+		}
+	});
+
+	it('flags site-local suffixes and the Docker host alias', () => {
+		for (const host of ['printer.local', 'db.internal', 'host.docker.internal', 'box.home.arpa']) {
+			assert.equal(classifyUrl(`https://${host}/x`, CTX).privateHost, true, host);
+		}
+	});
+
+	it('flags unique-local and link-local IPv6', () => {
+		assert.equal(classifyUrl('https://[fd00::1]/x', CTX).privateHost, true);
+		assert.equal(classifyUrl('https://[fe80::1]/x', CTX).privateHost, true);
+		assert.equal(classifyUrl('https://[::1]:8787/x', CTX).privateHost, true);
+	});
+
+	it('does not flag a routable address or host', () => {
+		for (const host of ['8.8.8.8', '1.1.1.1', 'cdn.test', 'rebuildup.dev', '[2606:4700::1111]']) {
+			assert.equal(isPrivateHost(host), false, host);
+		}
 	});
 
 	it('flags http on a dereferenced external host but not on an identifier namespace', () => {
@@ -200,6 +233,40 @@ describe('publication-surface — dynamic expansion inputs', () => {
 		].join('\n');
 		assert.deepEqual(extractExternalBoundaryPrefixes(source), ['/api/v1', '/webhooks']);
 	});
+
+	it('lists only the Tool checkouts this origin serves', () => {
+		const manifest = {
+			tools: [
+				{
+					slug: 'live',
+					delivery: { kind: 'same_origin_static' },
+					source: { submodule_path: 'external/live', pinned_sha: 'abc' },
+				},
+				{ slug: 'disabled', delivery: { kind: 'host_disabled' }, source: {} },
+				{ slug: 'foreign', delivery: { kind: 'external_exception' }, source: {} },
+			],
+		};
+		assert.deepEqual(sameOriginStaticToolSubmodules(manifest), [
+			{ slug: 'live', submodulePath: 'external/live', pinnedSha: 'abc' },
+		]);
+	});
+});
+
+describe('publication-surface — Static Assets public pages', () => {
+	it('maps served HTML paths, not file paths', () => {
+		const paths = staticAssetPublicPaths([
+			'public/_headers',
+			'public/favicon.svg',
+			'public/index.html',
+			'public/share/procon2026/index.html',
+			'public/legal/terms.html',
+		]);
+		assert.deepEqual(paths, ['/', '/legal/terms.html', '/share/procon2026/']);
+	});
+
+	it('ignores non-HTML assets and paths outside the served namespace', () => {
+		assert.deepEqual(staticAssetPublicPaths(['public/robots.txt', 'src/routes/index.tsx']), []);
+	});
 });
 
 describe('publication-surface — route coverage contract', () => {
@@ -237,6 +304,10 @@ describe('publication-surface — surface construction', () => {
 				'const ns = "http://schema.org";',
 			].join('\n'),
 		),
+		publicFiles: ['public/share/briefing/index.html'],
+		toolSourceFiles: [
+			{ path: 'external/live/index.html', text: '<link href="https://fonts.test/css" />' },
+		],
 		origin: ORIGIN,
 		portfolioSeedSource: "export const PORTFOLIO_SEED = [{ slug: 'alpha' }, { slug: 'beta' }];",
 		toolsManifest: {
@@ -263,13 +334,35 @@ describe('publication-surface — surface construction', () => {
 		assert.ok(!surface.sitemap.includes('/design-system'));
 	});
 
+	it('compares every reachable URL, not only the sitemap targets', () => {
+		// 5 static sitemap surfaces + 2 portfolio slugs + 1 integrated tool
+		assert.equal(surface.sitemap.length, 8);
+		for (const url of ['/admin/login', '/admin/invitations/accept', '/design-system']) {
+			assert.ok(surface.publicUrls.includes(url), url);
+		}
+		assert.ok(!surface.publicUrls.includes('/admin/keys'));
+	});
+
+	it('counts a Static Assets page as a public URL', () => {
+		assert.deepEqual(surface.staticAssetPages, ['/share/briefing/']);
+		assert.ok(surface.publicUrls.includes('/share/briefing/'));
+		assert.ok(!surface.sitemap.includes('/share/briefing/'));
+	});
+
+	it('audits the URLs a Tool ships into its iframe', () => {
+		assert.deepEqual(surface.externalHosts, ['cdn.test', 'fonts.test', 'schema.org']);
+		assert.deepEqual(surface.externalUrls.find((e) => e.host === 'fonts.test').files, [
+			'external/live/index.html',
+		]);
+	});
+
 	it('records every declared URL exactly once', () => {
 		const flattened = surface.surfaces.filter((s) => s.sitemap).flatMap((s) => s.urls);
 		assert.equal(new Set(flattened).size, flattened.length);
 	});
 
 	it('splits hosts into first-party, external and origin', () => {
-		assert.deepEqual(surface.externalHosts, ['cdn.test', 'schema.org']);
+		assert.deepEqual(surface.externalHosts, ['cdn.test', 'fonts.test', 'schema.org']);
 		assert.deepEqual(surface.firstPartyHosts, ['media.rebuildup.test']);
 		assert.ok(surface.externalUrls.some((e) => e.kind === 'origin'));
 	});
@@ -280,6 +373,23 @@ describe('publication-surface — surface construction', () => {
 
 	it('records no coverage findings for a matching route tree', () => {
 		assert.deepEqual(invariantFindings(surface), []);
+	});
+});
+
+describe('publication-surface — unauditable Tool checkout', () => {
+	it('fails closed instead of silently skipping a missing Tool source', () => {
+		const surface = buildSurface({
+			routeFiles,
+			sourceFiles: [],
+			origin: ORIGIN,
+			portfolioSeedSource: 'const PORTFOLIO_SEED = [];',
+			toolsManifest: { tools: [] },
+			toolSourcesMissing: ['external/live'],
+		});
+		const finding = invariantFindings(surface).find((f) => f.code === 'E013 tool-source-missing');
+		assert.ok(finding);
+		assert.equal(finding.severity, 'error');
+		assert.match(finding.message, /submodule update --init --recursive/);
 	});
 });
 
@@ -363,6 +473,7 @@ describe('publication-surface — delta rules', () => {
 			},
 		],
 		sitemap: ['/', '/about'],
+		publicUrls: ['/', '/about', '/admin/login', '/share/briefing/'],
 		externalHosts: ['cdn.test'],
 		firstPartyHosts: [],
 		externalUrls: [
@@ -385,23 +496,67 @@ describe('publication-surface — delta rules', () => {
 	});
 
 	it('raises E001 when a public URL disappears', () => {
-		const diff = diffSurfaces({ baseline: base(), current: base({ sitemap: ['/'] }) });
+		const diff = diffSurfaces({ baseline: base(), current: base({ publicUrls: ['/', '/about'] }) });
 		assert.ok(codes(diff.findings).includes('E001 removed-public-url'));
-		assert.deepEqual(diff.removedPublicUrls, ['/about']);
+		assert.deepEqual(diff.removedPublicUrls, ['/admin/login', '/share/briefing/']);
+	});
+
+	it('raises E001 for a non-sitemap public route, not only sitemap targets', () => {
+		const diff = diffSurfaces({
+			baseline: base(),
+			current: base({ publicUrls: ['/', '/about', '/share/briefing/'] }),
+		});
+		assert.deepEqual(diff.removedPublicUrls, ['/admin/login']);
+		assert.ok(codes(diff.findings).includes('E001 removed-public-url'));
 	});
 
 	it('treats a public URL addition as review information, not a failure', () => {
 		const diff = diffSurfaces({
 			baseline: base(),
-			current: base({ sitemap: ['/', '/about', '/contact'] }),
+			current: base({
+				sitemap: ['/', '/about', '/contact'],
+				publicUrls: ['/', '/about', '/admin/login', '/contact', '/share/briefing/'],
+			}),
 		});
 		assert.deepEqual(diff.addedPublicUrls, ['/contact']);
 		assert.equal(codes(diff.findings).includes('E001 removed-public-url'), false);
 		assert.equal(verdictOf(diff.findings), 'review');
 	});
 
+	it('raises E012 when an external HTTP boundary prefix is removed', () => {
+		const diff = diffSurfaces({
+			baseline: base(),
+			current: base({ externalBoundaryPrefixes: [] }),
+		});
+		assert.ok(codes(diff.findings).includes('E012 external-boundary-prefix-removed'));
+		assert.deepEqual(diff.removedBoundaryPrefixes, ['/api/v1']);
+		assert.equal(verdictOf(diff.findings), 'fail');
+	});
+
+	it('treats a new external HTTP boundary prefix as review information', () => {
+		const diff = diffSurfaces({
+			baseline: base(),
+			current: base({ externalBoundaryPrefixes: ['/api/v1', '/webhooks'] }),
+		});
+		assert.deepEqual(diff.addedBoundaryPrefixes, ['/webhooks']);
+		assert.deepEqual(codes(diff.findings), ['W005 external-boundary-prefix-added']);
+		assert.equal(verdictOf(diff.findings), 'review');
+	});
+
+	it('reads a snapshot without a public URL set through the sitemap fallback', () => {
+		const legacy = base();
+		legacy.publicUrls = undefined;
+		const diff = diffSurfaces({ baseline: legacy, current: legacy });
+		assert.deepEqual(diff.addedPublicUrls, []);
+		assert.deepEqual(diff.removedPublicUrls, []);
+		assert.deepEqual(codes(diff.findings), []);
+	});
+
 	it('raises E003 when an internal surface becomes public', () => {
-		const next = base({ sitemap: ['/', '/about', '/admin/keys'] });
+		const next = base({
+			sitemap: ['/', '/about', '/admin/keys'],
+			publicUrls: ['/', '/about', '/admin/keys', '/admin/login', '/share/briefing/'],
+		});
 		next.surfaces = base().surfaces.map((s) =>
 			s.id === '/admin/keys' ? { ...s, classification: 'public', sitemap: true } : s,
 		);
@@ -410,7 +565,10 @@ describe('publication-surface — delta rules', () => {
 	});
 
 	it('raises E002 when a public surface is withdrawn', () => {
-		const next = base({ sitemap: [] });
+		const next = base({
+			sitemap: [],
+			publicUrls: ['/admin/login', '/share/briefing/'],
+		});
 		next.surfaces = base({ sitemap: [] }).surfaces.map((s) =>
 			s.id === '/about' ? { ...s, classification: 'internal', sitemap: false, urls: [] } : s,
 		);
@@ -473,6 +631,7 @@ describe('publication-surface — snapshot + report determinism', () => {
 		assert.equal(parsed.schema, SNAPSHOT_SCHEMA);
 		assert.equal(serializeSurfaceCore(parsed.surface), baseline);
 		assert.deepEqual(parsed.approvedTransition.addedPublicUrls, transition.addedPublicUrls);
+		assert.ok(parsed.surface.publicUrls.includes('/admin/login'));
 	});
 
 	it('rejects an unknown schema tag', () => {
@@ -532,6 +691,7 @@ describe('publication-surface — load contract (Issue #505 DoD)', () => {
 		const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
 		assert.equal(surface.sitemap.length, 5 + 4000 + 4000);
 		assert.equal(surface.externalHosts.length, 4000);
+		assert.equal(surface.publicUrls.length, surface.sitemap.length + 3);
 		assert.ok(elapsedMs < 10000, `surface build took ${elapsedMs.toFixed(0)}ms`);
 	});
 });

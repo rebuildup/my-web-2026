@@ -12,7 +12,7 @@ is deliberately **not** wired into `validate:fast` / `validate:integration`
 
 | File | What it is |
 | --- | --- |
-| `font-firstpaint-snapshot.webp` | The committed measurement report: environment block (including the exact invocation it was produced by), per-run metrics, layout-shift attribution for this capture **and for the before capture it was compared against**, before/after tables, and the per-scenario page captures. The Issue names `font-firstpaint-snapshot.png`; the committed file is the WebP conversion of that capture (1280x3327, 341 KB) so the binary stays small. The intermediate PNG is never committed. |
+| `font-firstpaint-snapshot.webp` | The committed measurement report: environment block (including the exact invocation it was produced by), per-run metrics, layout-shift attribution for this capture **and for the before capture it was compared against**, before/after tables, and the per-scenario page captures. The Issue names `font-firstpaint-snapshot.png`; the committed file is the WebP conversion of that capture (1280x3327, 256 KB, sharp WebP at quality 80 — the intermediate PNG is never committed) |
 
 ## What is measured
 

@@ -44,11 +44,32 @@ const REACTION_PAYLOAD = {
 };
 
 test.describe('Hono boundary: cross-site writes are refused', () => {
-	test('cross-site PUT answers 403 csrf_rejected', async ({ request, baseURL }) => {
+	test('cross-site PUT from a foreign origin is answered by CORS', async ({ request }) => {
 		const res = await request.put('/api/v1/reactions', {
 			headers: {
 				origin: CROSS_SITE_ORIGIN,
 				referer: `${CROSS_SITE_ORIGIN}/attack.html`,
+				'sec-fetch-site': 'cross-site',
+			},
+			data: REACTION_PAYLOAD,
+		});
+		expect(res.status()).toBe(403);
+		// The CORS layer (Issue #455) runs first and owns the origin
+		// refusal for an origin outside its allow-list. The CSRF
+		// outcome — no write, no handler — is the same.
+		expect(await res.json()).toEqual({
+			error: 'cors_origin_rejected',
+			class: 'credentialed',
+		});
+	});
+
+	test('cross-site fetch metadata from an allow-listed origin is answered by CSRF', async ({
+		request,
+		baseURL,
+	}) => {
+		const res = await request.put('/api/v1/reactions', {
+			headers: {
+				origin: String(baseURL),
 				'sec-fetch-site': 'cross-site',
 			},
 			data: REACTION_PAYLOAD,

@@ -326,7 +326,12 @@ describe('external boundary cache isolation (Issue #460)', () => {
 		expect(asAlpha.body).not.toBe(asBeta.body);
 
 		expect(asAlpha.cacheControl).toBe(PRIVATE_NO_STORE);
-		expect(asAlpha.vary).toBe('Cookie, Authorization');
+		// `Origin` leads the list because the CORS layer (Issue #455,
+		// `/api/v1/reactions` is a `credentialed` route) renders
+		// `Vary: Origin` first and isolation merges its own fields into
+		// it afterwards — see the registration order in
+		// `src/http/hono.ts`. The identity fields are all still here.
+		expect(asAlpha.vary).toBe('Origin, Cookie, Authorization');
 		expect(cache.storedCount()).toBe(0);
 	});
 
@@ -335,9 +340,12 @@ describe('external boundary cache isolation (Issue #460)', () => {
 		const res = await externalBoundary.request('/api/v1/auth/get-session', undefined, env);
 		expect(res.status).toBe(200);
 		// The origin's own decision is preserved and strengthened, and
-		// the response now names the auth context it varies on.
+		// the response now names the auth context it varies on. `/api/v1/
+		// auth/*` is a `credentialed` CORS route (Issue #455), so the
+		// value is the CORS `Vary: Origin` with isolation's fields
+		// merged in, in that order.
 		expect(res.headers.get('cache-control')).toBe(PRIVATE_NO_STORE);
-		expect(res.headers.get('vary')).toBe('Cookie, Authorization');
+		expect(res.headers.get('vary')).toBe('Origin, Cookie, Authorization');
 		expect(cache.storedCount()).toBe(0);
 	});
 

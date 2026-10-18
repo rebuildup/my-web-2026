@@ -71,6 +71,16 @@ it:
 `referer_mismatch`, `origin_check_missing`. It names the header that
 failed, never its value.
 
+One precedence note: the CORS layer (Issue #455) is mounted ahead of
+this guard, so on a non-auth route a write whose `Origin` is outside
+its allow-list is refused there first, with
+`{ "error": "cors_origin_rejected" }` (`/api/v1/auth/*` is CSRF-exempt
+and delegates to Better Auth). The
+CSRF contract is unaffected — both refusals are `403` before
+authentication or D1 — and a request whose `Origin` *is* allow-listed
+but whose `Sec-Fetch-Site` says `cross-site` still gets
+`csrf_rejected`.
+
 The guard is mounted in `src/http/hono.ts` after the local mock gate
 and the request-id middleware, and before every router — so a refused
 cross-site write never reaches authentication, rate limiting, or D1.
@@ -325,6 +335,49 @@ signed with the dummy `BETTER_AUTH_SECRETS` binding that
 asserted, and no test contacts a real IdP. Response capture from the
 local run:
 [`verification/security/oauth-negative-tests.webp`](verification/security/oauth-negative-tests.webp).
+
+## CORS
+
+The external boundary splits its routes into three origin classes
+(Issue #455):
+
+- `credentialed` — `/api/v1/auth/*`, `/api/v1/access/*`,
+  `/api/v1/reactions`. The response echoes **one** allow-listed origin
+  plus `Access-Control-Allow-Credentials: true`, restricted to a fixed
+  method and request-header allow-list. Any other origin — including the
+  opaque `null` origin a sandboxed Tool iframe sends — gets `403` and no
+  CORS header for preflights and state-changing requests. A `GET`/`HEAD`
+  from a foreign origin still reaches the handler (Issue #440's CSRF
+  contract keeps safe reads unaffected) but carries no CORS echo, so the
+  browser cannot read the body. On `/api/v1/auth/*` the actual-request
+  refusal is Better Auth's (`INVALID_ORIGIN`, Issue #444); CORS only
+  withholds the echo and owns the preflight refusal.
+- `public-read` — `/api/v1/health` and `/api/v1/reaction-images/:id`.
+  `Access-Control-Allow-Origin: *`, and never a credentials header.
+- `none` — everything else, including `/api/v1/db/ping`,
+  `/api/v1/media/ping` and the unimplemented `/webhooks/*`, `/oauth/*`,
+  `/integrations/*` prefixes. No CORS header at all.
+
+The allow-list is derived from runtime input only: the origin the
+request arrived on, plus `env.BETTER_AUTH_URL` — the same value that
+feeds Better Auth's `trustedOrigins`. A wildcard never reaches a
+credentialed route, and that invariant is asserted over the whole
+route × origin × method matrix in `src/http/cors/policy.test.ts` and
+again against the real response bytes in
+`test/integration/cors.test.ts`.
+
+The echo is rendered onto the **finalized** response, after
+`await next()`. Hono only merges `c.header()` calls made before
+`next()` into a response the context itself produced, so a handler
+returning a raw `Response` — `auth.handler(c.req.raw)` and the
+`LOCAL_API_MODE=mock` gate's `mockApp.fetch(...)` — would otherwise
+drop the whole allow branch. Both shapes are asserted in
+`src/http/cors/middleware.test.ts` and on the wire in
+`test/integration/cors.test.ts`.
+
+Full contract, the measured matrix and the known local-dev deviation
+(`vite dev` answers preflights itself, so the Worker is never consulted):
+[`docs/security/api-cors.md`](security/api-cors.md).
 
 ## Response security headers
 

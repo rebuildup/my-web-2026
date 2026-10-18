@@ -76,6 +76,8 @@ routes -> home
 routes -> portfolio
 routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+home/reactions -> i18n (Issue #433)
+
 server -> editorial (Issue #501 — SSR render-failure fallback document;
                      `src/server.ts` replaces a document React could not
                      render with `editorial/error-states/ssr-fallback.ts`; the
@@ -95,12 +97,36 @@ http/seo -> portfolio (public project index only; the public-visibility
              filter stays in the portfolio obligation — Issue #420)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
+reactions -> i18n (Issue #433)
+portfolio -> i18n (Issue #433)
 external-api -> editorial (Issue #499 — display primitives only)
 server -> http
 http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
   `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
 home -> editorial
 ```
+
+- `src/i18n/**` owns the platform's Unicode text
+  policy (Issue #433): display text is preserved
+  byte-exact and a URL slug is authored rather than
+  derived, so normalization can never merge two
+  distinct words onto one published URL. It is a
+  **leaf obligation** — no repository imports — so
+  `home/`, `portfolio/`, `reactions/`, `admin/` and
+  `routes/` can all obey one rule without depending
+  on each other. `scripts/check-architecture.mjs`
+  enforces the leaf rule (every `*.test.*` /
+  `*.spec.*` file under a leaf is exempt, so
+  `src/i18n/fixtures.test.ts` can assert against
+  the owner-owned grammars; implementation modules
+  are not exempt). Each obligation keeps
+  ownership of its own slug grammar:
+  `src/reactions/slug-regex.ts` publishes
+  `EMOJI_SLUG_GRAMMAR`, `src/portfolio/schema.ts`
+  publishes `PORTFOLIO_SLUG_GRAMMAR`, and `i18n`
+  owns only the rule for applying them. See
+  `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`
+  and `docs/domain/i18n.md`.
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
@@ -292,6 +318,7 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` + `publication:check` +
+  `i18n:policy:check` +
   `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +

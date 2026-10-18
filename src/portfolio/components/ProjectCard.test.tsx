@@ -12,9 +12,14 @@ import { ProjectCard } from './ProjectCard';
  * identical bar, so the tests below pin the two things that survive
  * when hue is removed:
  *
- *   1. **the shape** — every facet maps to its own `StateMark`
- *      silhouette (`data-state-mark`), so no two categories collapse
- *      into the same rectangle;
+ *   1. **the mark** — every facet maps to its own `StateMark` kind
+ *      (`data-state-mark`), so no two categories share one entry of
+ *      the shape vocabulary. What each entry DRAWS is pinned
+ *      separately by `src/editorial/primitives/StateMark.test.tsx`,
+ *      which compares the resolved silhouette (inline `clip-path` +
+ *      utility classes). This file cannot see geometry: it would stay
+ *      green if two kinds were renamed apart while drawing the same
+ *      polygon, which is the regression SC 1.4.1 forbids;
  *   2. **the word** — the category still renders as upper-case text
  *      beside the mark, and the facet pills still name the facet for
  *      the accessibility tree.
@@ -76,8 +81,10 @@ describe('ProjectCard category cue (Issue #411)', () => {
 			marks(renderToStaticMarkup(<ProjectCard project={project([facet])} />)),
 		);
 		expect(rendered).toEqual([['design'], ['code'], ['tool'], ['writing']]);
-		// The property under test: removing hue cannot collapse two
-		// categories into the same shape.
+		// The property under test: one vocabulary entry per category,
+		// so no two categories are even asking for the same mark. The
+		// silhouettes those entries resolve to are checked in
+		// `src/editorial/primitives/StateMark.test.tsx`.
 		expect(new Set(rendered.flat()).size).toBe(4);
 	});
 

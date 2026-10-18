@@ -48,6 +48,16 @@ import { css, cx } from '../../../styled-system/css';
  * cross) and the four category kinds are geometric (diamond /
  * square / stacked bars / chevron). A status row shows status; a
  * portfolio card shows category.
+ *
+ * What is pinned where
+ * --------------------
+ * `StateMark.test.tsx` compares the RESOLVED silhouette of all seven
+ * kinds (inline `clip-path` plus the utility classes), so collapsing
+ * two kinds onto one polygon fails there — a `data-state-mark`
+ * consumer test cannot see that. Whether two DIFFERENT silhouettes
+ * are far enough apart at the shipped 8px to read apart is a
+ * rendering question and is answered by the rasterised evidence in
+ * `docs/verification/a11y/status-monochrome.md`.
  */
 export type StateMarkKind =
 	| 'ok'
@@ -61,10 +71,12 @@ export type StateMarkKind =
 export interface StateMarkProps {
 	kind: StateMarkKind;
 	/**
-	 * `sm` (8px) is the size a status badge uses — the label beside
-	 * it is `fontSize.xs`, so a larger mark would out-weigh the word
-	 * that carries the actual state. `md` (12px) is the default and
-	 * is what a category rule on a portfolio card uses.
+	 * `sm` (space token 2 = 8px) is the size both shipped surfaces
+	 * render: the status badge and the portfolio card's category row
+	 * pass it, because the label beside the mark is `fontSize.xs` and
+	 * a larger mark would out-weigh the word that carries the actual
+	 * state. `md` (12px) is the default, used where the mark is shown
+	 * on its own (the Storybook vocabulary sheet), not on a card.
 	 */
 	size?: 'sm' | 'md';
 	className?: string;

@@ -24,8 +24,11 @@ import { StatusTiles } from './tiles';
  * pill and both failure states shared one neutral fill, so in
  * greyscale the three states were three identical rounded
  * rectangles. The tests assert the two channels that survive
- * greyscale — a silhouette unique per health, and the existing word
- * — and that the silhouette is decorative.
+ * greyscale — a distinct mark per health, and the existing word —
+ * and that the mark is decorative. The geometry behind each kind is
+ * pinned separately in `src/editorial/primitives/StateMark.test.tsx`;
+ * the assertions below can only see which kind a badge asked for, not
+ * what that kind draws.
  */
 
 const OBSERVED_AT = '2026-01-05T09:00:00.000Z';
@@ -134,8 +137,10 @@ describe('StatusTiles', () => {
 					/>,
 				),
 			);
-			// One silhouette per health, and no two share it: this is
-			// the property that survives greyscale / forced colours.
+			// One mark kind per health, and no two share it, so no two
+			// badges are asking the vocabulary for the same shape. The
+			// geometry itself is `StateMark.test.tsx`'s property to
+			// keep.
 			const marks = rendered.map((html) => html.match(/data-state-mark="([^"]+)"/)?.[1]);
 			expect(marks).toEqual([...allHealths]);
 			expect(new Set(marks).size).toBe(allHealths.length);

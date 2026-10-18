@@ -62,6 +62,19 @@ The proof (greyscale captures in both appearances, the machine checks
 and the human review that are explicitly separated) lives in
 [`docs/verification/a11y/status-monochrome.md`](../../../docs/verification/a11y/status-monochrome.md).
 
+**Scope of the rule, and the one surface that does not satisfy it yet.**
+The rule binds any consumer that paints an `accent.*` status or
+`accent.category.*` hue as a state cue. This ticket wired two of them:
+the home status badges and the portfolio card category rules. One
+consumer is **not** wired: the external-read card badges
+(`src/external-api/ExternalReadCard.tsx` — fresh / stale / failed /
+blocked / loading) still render `Badge tone={accent | neutral}` with no
+`StateMark`. That surface is **not** a violation today — every badge
+carries a text label, so 1.4.1 is met by text and no hue is its only
+cue — but it does not yet follow the shape vocabulary. Whether it
+should is an owner decision (open); the rule is stated here so the gap
+is visible rather than implied.
+
 ## Dark appearance
 
 Every semantic token is declared as `{ value: { base, _dark } }`.
@@ -314,7 +327,10 @@ Two independent checks accompany the table:
   `currentColor`, so it inherits the label's contrast instead of
   adding a non-text contrast obligation of its own. Home status badges
   and portfolio category rules are the two surfaces this ticket wired;
-  `accent.{positive,negative,warning}` token values are unchanged.
+  `accent.{positive,negative,warning}` token values are unchanged. The
+  `src/external-api` badge states are a named exception, documented in
+  the rule section above: they carry a text label but do not compose
+  `StateMark` yet, and that assignment is an open owner decision.
 - **2026-10-09** (Issue #290, rework round) — Dark palette re-anchored
   on the new near-neutral `charcoal` ladder (`950/900/800/600/400`)
   after the owner's 「ダークテーマがダサい」 review; slate's blue

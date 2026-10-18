@@ -8,9 +8,9 @@ Client output analysed: `.cloudflare/output/v0/workers/default/assets` (133 emit
 
 | Condition | Value |
 | --- | --- |
-| source SHA | `cfa93540d8a1d4e0074ed5ab4beb600931a74daf` |
+| source SHA | `8284991c22e75d552fe32e14930733b2695e59cd` |
 | source ref | `483` |
-| measured at | `2026-10-18T03:46:32.368Z` |
+| measured at | `2026-10-18T03:47:22.241Z` |
 | client output | `.cloudflare/output/v0/workers/default/assets` |
 | node | `v26.12.0` |
 | vite | `7.3.6` |
@@ -61,7 +61,7 @@ Largest host chunks (this is where an unexpectedly heavy dependency shows up):
 
 | Route | Status | Assets | SSR docs | Total | gzip -9 (est.) | Of which Tool artifacts | Not in output |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `/` | 200 | 5 | 0 | 1.54 MB | 438.0 kB | 0 B (0 file(s)) | 0 |
+| `/` | 200 | 5 | 1 | 1.54 MB | 438.0 kB | 0 B (0 file(s)) | 0 |
 | `/about` | 200 | 7 | 1 | 1.53 MB | 432.4 kB | 0 B (0 file(s)) | 0 |
 | `/contact` | 200 | 7 | 1 | 1.53 MB | 431.4 kB | 0 B (0 file(s)) | 0 |
 | `/portfolio` | 200 | 9 | 1 | 1.54 MB | 436.0 kB | 0 B (0 file(s)) | 0 |

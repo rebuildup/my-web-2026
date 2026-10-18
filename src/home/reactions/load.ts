@@ -307,6 +307,11 @@ export async function addHomeReactionImpl(
 			authorization: `Bearer ${apiKey}`,
 			accept: 'application/json',
 			'content-type': 'application/json',
+			// Issue #440: declare the origin this same-origin self-call
+			// is made from so the boundary's CSRF guard accepts it. The
+			// request URL is `${upstreamOrigin}/api/v1/reactions`, so
+			// `upstreamOrigin` is its origin by construction.
+			origin: upstreamOrigin,
 		},
 		body: JSON.stringify({
 			target_key: input.target,
@@ -352,6 +357,8 @@ export async function removeHomeReactionImpl(
 			authorization: `Bearer ${apiKey}`,
 			accept: 'application/json',
 			'content-type': 'application/json',
+			// Same-origin self-call — see the PUT path above (Issue #440).
+			origin: upstreamOrigin,
 		},
 		body: JSON.stringify({
 			target_key: input.target,

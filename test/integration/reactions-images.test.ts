@@ -15,9 +15,7 @@ import {
 	putReaction,
 	reactionImageReferenced,
 } from '../../src/http/reactions/reactions';
-<<<<<<< HEAD
 import { reactionImagesRouter } from '../../src/http/reactions/router';
-=======
 import {
 	GIF_BYTES,
 	JPEG_BYTES,
@@ -27,7 +25,6 @@ import {
 	repeatTo,
 	toArrayBuffer,
 } from '../helpers/image-fixtures';
->>>>>>> origin/release-0-6-3
 
 /**
  * Image upload + delete policy tests.

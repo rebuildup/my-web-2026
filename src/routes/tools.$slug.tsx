@@ -322,12 +322,16 @@ function ToolEmbedShell({
 					referrerPolicy={referrerPolicy as HTMLAttributeReferrerPolicy}
 					// Issue #465: render the DECLARED capability grant.
 					// `allow` only intersects with the host's own
-					// `Permissions-Policy` response header — the host does
-					// not send one for Tool frames yet (ADR-0006's
-					// re-evaluation trigger covers the header; see
-					// `docs/tools/embed-policy.md` §2). Rendering it is
-					// still required: without the attribute the declared
-					// grant can never take effect when the header lands.
+					// `Permissions-Policy` response header, and since
+					// Issue #449 that header IS sent: the shell route
+					// goes through `toolRouteSecurityPolicy()` in
+					// `src/server.ts` and `public/_headers` carries the
+					// grant for `/tools/<slug>/app/**` (see
+					// `docs/security/security-headers.md` §3). What stays
+					// undecided is `mic-level`'s graduation to
+					// `allow-same-origin` (Issue #598); the header half is
+					// delivered, the sandbox half is not. See
+					// `docs/tools/embed-policy.md` §2.
 					allow={allow}
 					style={{
 						width: '100%',

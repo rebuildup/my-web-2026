@@ -1,0 +1,146 @@
+#!/usr/bin/env node
+/**
+ * intl-format-report — static verification report for the home locale
+ * format adapter (Issue #430).
+ *
+ * Usage:
+ *   node --experimental-strip-types scripts/intl-format-report.mjs [outHtml]
+ *
+ * Defaults: outHtml `.tmp/intl-date-number.html`
+ *
+ * What it does
+ * ------------
+ * Renders the canonical locale comparison (the same fixture the
+ * Storybook preview uses) as a self-contained HTML document, so the
+ * acceptance criterion "the same instant reads consistently per
+ * locale" can be inspected — and screenshotted — without a running
+ * Worker and without waiting for any other issue.
+ *
+ * The values are produced by the **shipped** adapter
+ * (`src/home/format.ts` + `src/home/format.compare.ts`), not by a
+ * copy of the formatting logic: a report that re-implemented the
+ * formatting would prove nothing. That is the only reason this script
+ * imports application source; it is a verification tool for that
+ * source, and it is the tool the committed screenshot was taken from.
+ *
+ * The `--experimental-strip-types` flag is what lets plain Node load
+ * the TypeScript module. It is a no-op on Node >= 23 and required on
+ * Node 22.18 (the repository's minimum).
+ */
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, relative, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+const OUT = resolve(REPO_ROOT, process.argv[2] ?? '.tmp/intl-date-number.html');
+
+const { LOCALE_COMPARISON_ROWS } = await import('../src/home/format.compare.ts');
+const { HOME_LOCALES, createHomeFormat } = await import('../src/home/format.ts');
+
+const NOW = Date.UTC(2026, 0, 5, 9, 0, 0);
+
+const escapeHtml = (value) =>
+	String(value)
+		.replaceAll('&', '&amp;')
+		.replaceAll('<', '&lt;')
+		.replaceAll('>', '&gt;')
+		.replaceAll('"', '&quot;');
+
+const rows = LOCALE_COMPARISON_ROWS.map((row) => {
+	const cells = HOME_LOCALES.map((locale) =>
+		escapeHtml(row.render(createHomeFormat({ locale, timeZone: row.timeZone, now: () => NOW }))),
+	);
+	return `<tr>
+			<th scope="row">${escapeHtml(row.label)}${row.note ? `<span class="note">${escapeHtml(row.note)}</span>` : ''}</th>
+			${cells.map((cell) => `<td>${cell}</td>`).join('\n\t\t\t')}
+		</tr>`;
+}).join('\n');
+
+const html = `<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<title>Issue #430 — Intl date / number / unit formatting</title>
+		<style>
+			:root {
+				--canvas: #ffffff;
+				--surface: #f7f8fa;
+				--text: #0b1020;
+				--muted: #5b6472;
+				--rule: #e3e6ec;
+			}
+			* { box-sizing: border-box; }
+			body {
+				margin: 0;
+				padding: 40px 48px 48px;
+				background: var(--canvas);
+				color: var(--text);
+				font-family: "Noto Sans JP", "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+				font-size: 14px;
+				line-height: 1.6;
+			}
+			.wrap { max-width: 1180px; margin: 0 auto; }
+			.eyebrow {
+				font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+				font-size: 11px;
+				letter-spacing: 0.08em;
+				text-transform: uppercase;
+				color: var(--muted);
+			}
+			h1 { margin: 8px 0 0; font-size: 26px; line-height: 1.3; font-weight: 700; }
+			.lede { margin: 12px 0 0; max-width: 78ch; color: var(--muted); }
+			table { width: 100%; margin-top: 28px; border-collapse: collapse; }
+			th, td { text-align: left; vertical-align: top; padding: 10px 12px; }
+			thead th {
+				font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+				font-size: 12px;
+				font-weight: 400;
+				color: var(--muted);
+				border-bottom: 1px solid var(--rule);
+			}
+			tbody th { font-weight: 400; white-space: nowrap; }
+			tbody tr + tr th, tbody tr + tr td { border-top: 1px solid var(--rule); }
+			td {
+				font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+				font-size: 13px;
+				white-space: nowrap;
+			}
+			.note { display: block; font-size: 11px; color: var(--muted); }
+			footer { margin-top: 28px; color: var(--muted); font-size: 12px; }
+			code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; }
+		</style>
+	</head>
+	<body>
+		<div class="wrap">
+			<p class="eyebrow">Issue #430 — Intl date / number / unit formatting</p>
+			<h1>One instant, three locales / 同一 instant・3 ロケール</h1>
+			<p class="lede">
+				Every value below is the same instant / count / span rendered by the shipped home format
+				adapter (<code>src/home/format.ts</code>) in <code>en</code>, <code>ja</code> and
+				<code>ko</code>. The adapter formats; it never rewrites the value. The surrounding labels
+				stay English until an approved translation exists — only the value is localised.
+			</p>
+			<table>
+				<thead>
+					<tr>
+						<th>Value</th>
+						${HOME_LOCALES.map((locale) => `<th>${locale}</th>`).join('\n\t\t\t\t\t')}
+					</tr>
+				</thead>
+				<tbody>
+					${rows}
+				</tbody>
+			</table>
+			<footer>
+				Generated by <code>scripts/intl-format-report.mjs</code> from the comparison fixture in
+				<code>src/home/format.compare.ts</code>. Digit grouping is identical in all three
+				locales today (<code>1,234,567</code>) — a recorded observation, not an assumption.
+			</footer>
+		</div>
+	</body>
+</html>
+`;
+
+await mkdir(dirname(OUT), { recursive: true });
+await writeFile(OUT, html, 'utf8');
+console.log(`intl-format-report: wrote ${relative(REPO_ROOT, OUT)}`);

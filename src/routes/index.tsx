@@ -23,6 +23,17 @@ import {
  * for the read paths.
  */
 export const Route = createFileRoute('/')({
+	head: () => ({
+		// Issue #420 — the platform entry is the root of the sitemap,
+		// and the sitemap contract is that every `<loc>` is the
+		// page's canonical URL. `/` and `/tools` were the only public
+		// routes without a canonical, so they gained the same
+		// `rel="canonical"` their siblings already declared.
+		// `scripts/check-sitemap-route-coverage.test.mjs` asserts that
+		// this literal and the sitemap inventory agree, so the two
+		// cannot drift apart silently.
+		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/' }],
+	}),
 	loader: async () => {
 		await recordHomeHit({ data: {} });
 		const [statuses, reactions, counter] = await Promise.all([

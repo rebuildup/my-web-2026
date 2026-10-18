@@ -260,7 +260,7 @@ markup」しか見ないので、hydration の後に client コードが挿入�
 - third-party: GA4 / Google Fonts は遮断（オフライン再現を保証するため）
 - 測定は `.tmp/lazy-media/*.json` に書き出され、画像はその JSON から
   レンダリングされる（数値だけを切り貼りした画像にしない）。
-- 画像の source SHA は **MEASUREMENT_SHA**（tracked tree clean）。その後に積まれた
+- 画像の source SHA は **30b4a66**（tracked tree clean）。その後に積まれた
   コミットはこの README とこの画像ファイルだけで、測定対象のコード
   （`src/**` / `e2e/**` / ビルド出力）には差分が無い。ソース SHA を head に
   合わせる必要はありません。

@@ -14,10 +14,23 @@ integration は「外部サービス名が登場すること」ではなく、my
 
 | ID | Service | Current status | Current owner | Promotion condition | Evidence / note |
 | --- | --- | --- | --- | --- | --- |
-| github | GitHub API / events | **not integrated** | none | activity 等が API / webhook / auth / rate limit を継続的に所有し、複数 consumer で identity が一致したとき | Source repository への link は存在するが API integration ではない |
+| github | GitHub API / events | **not integrated** | none | activity 等が API / webhook / auth / rate limit を継続的に所有し、複数 consumer で identity が一致したとき | Source repository への link は存在するが API integration ではない。未結線の参照アダプタ（`src/external-api/github.ts`, Issue #499）は信頼性契約の検証対象であり、runtime の外部通信は 0 件。integration ではない |
 | notion | Notion API | **uncommitted** | none | 実際の capability が Notion data を source of truth として読む必要が生じたとき | scaffold 上の候補のみ。current code evidence なし |
 | discord | Discord API | **uncommitted** | none | webhook / OAuth / bot event を capability が実際に必要としたとき | current code evidence なし |
 | stripe | Stripe API | **uncommitted** | none | billing / checkout obligation が current product scope に入り、price / payment lifecycle を所有するとき | old commission surface があっても Stripe 採用の evidence にはならない |
+
+### Unwired reference adapters are not integrations
+
+`src/external-api/`（Issue #499）は、外部 read の一貫した信頼性契約（timeout / stale
+timestamp / 非破壊 fallback / breaker）を持ち、アダプタ 1 件で証明する obligation である。
+
+- 参照アダプタは **どの capability からも参照されていない**。route に結線されていないので、
+  Worker は外部 API に 1 リクエストも送らない。
+- 参照アダプタの存在は promotion の根拠に**ならない**。上の「Capability-scoped first」の
+  観測条件（二つ以上の capability が同じ external contract を使う等）を満たすまで、status は
+  `not integrated` のまま。
+- アダプタを増やしても integration を作らない。`contract.ts`（snapshot と failure vocabulary）
+  が共有されていることが、共通 contract を持つ consumer 数の観測として積み上がる。
 
 ## Platform dependencies are not third-party integrations
 

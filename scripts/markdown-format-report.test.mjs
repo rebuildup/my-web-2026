@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
@@ -180,6 +181,21 @@ test('buildReportHtml escapes a render that turned out not to be inert', () => {
 	});
 	assert.equal(report.includes('<img src=x onerror='), false);
 	assert.equal(report.includes('Rendered markup was NOT inert'), true);
+});
+
+test('--out without a directory is a usage error, not a crash', () => {
+	const result = spawnSync(
+		process.execPath,
+		[join(REPO_ROOT, 'scripts/markdown-format-report.mjs'), '--out'],
+		{
+			cwd: REPO_ROOT,
+			encoding: 'utf8',
+		},
+	);
+	assert.equal(result.status, 2);
+	assert.equal(result.stderr.includes('--out requires a directory argument'), true);
+	assert.equal(result.stderr.includes('usage: node scripts/markdown-format-report.mjs'), true);
+	assert.equal(result.stdout.includes('PASS'), false);
 });
 
 test('the committed fixtures are the ones this report describes', () => {

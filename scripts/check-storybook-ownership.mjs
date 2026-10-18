@@ -138,11 +138,18 @@ const MASK_SENTINEL = '\uE000';
 const MASKED_LITERAL = /^\uE000(\d+)\uE000$/;
 /** The `stories` array of a Storybook config, with its string literals. */
 const STRING_LITERAL = /(['"])((?:\\.|(?!\1)[^\\])*)\1/g;
-/** A top-level declaration header, enough to name the symbol it binds. */
+/**
+ * A top-level declaration header, enough to find the start of the
+ * statement. The bound name is read from the whole statement later,
+ * because `const a = 1, title = route.title` and `const { title } =
+ * route` bind names this header alone cannot enumerate.
+ */
 const DECLARATION =
-	/^(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?(function\*?|class|interface|const|let|var|type|enum)\s+\*?([A-Za-z_$][\w$]*)/;
+	/^(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?(function\*?|class|interface|const|let|var|type|enum)\s+\*?(?:[A-Za-z_$][\w$]*|\{|\[)/;
 /** Declaration kinds whose body is the statement's closing brace. */
 const BODY_KINDS = new Set(['function', 'class', 'interface']);
+/** Declaration kinds that can introduce several comma-separated bindings. */
+const MULTI_BINDING_KINDS = new Set(['const', 'let', 'var']);
 
 const maskNonCodeLength = (text) => text.replace(/[^\n]/g, ' ');
 
@@ -385,12 +392,40 @@ function isTypeOnlyClause(clause) {
 }
 
 /**
+ * Whether an `export { … }` clause re-exports type-only bindings.
+ *
+ * `export { type Data } from …` is erased exactly like `export type {
+ * Data } from …`; reading only the leading `type` keyword would treat
+ * the inline form as a runtime re-export and report a false boundary
+ * hit. A mixed clause (`export { type A, b } from …`) still ships `b`,
+ * so it stays runtime.
+ */
+function isTypeOnlyExportClause(clause) {
+	const named = clause.match(/\{([\s\S]*)\}/);
+	if (!named) return false;
+	const entries = named[1]
+		.split(',')
+		.map((part) => part.trim())
+		.filter((part) => part.length > 0);
+	if (entries.length === 0) return false;
+	return entries.every((entry) => {
+		const exported = pieces(entry)[0];
+		return exported === 'type' || exported.startsWith('type ');
+	});
+}
+
+/**
  * Parse the runtime-relevant edges of a masked module.
  *
- * `import type … from`, `import { type A } from` and `export type … from`
- * are erased by TypeScript under `verbatimModuleSyntax`, so they are
- * recorded as type-only edges and never traversed. `import { type A, b }`
- * stays a runtime edge: the statement also binds `b`.
+ * `import type … from`, `import { type A } from`, `export type … from`
+ * and `export { type A } from` are erased by TypeScript under
+ * `verbatimModuleSyntax`, so they are recorded as type-only edges and
+ * never traversed. `import { type A, b }` stays a runtime edge: the
+ * statement also binds `b`.
+ *
+ * Each edge keeps its position in the masked source so the walk can
+ * tell a dynamic `import()` inside a `.handler(…)` body (Worker-only)
+ * from one the preview evaluates.
  */
 function parseEdges(masked, literals) {
 	const specifier = (token) => literalText(token, literals);
@@ -402,6 +437,7 @@ function parseEdges(masked, literals) {
 			clause,
 			kind: isTypeOnlyClause(clause) ? 'import-type' : 'import',
 			bindings: clauseBindings(clause),
+			start: match.index ?? 0,
 			...clauseRequests(clause),
 		});
 	}
@@ -413,6 +449,7 @@ function parseEdges(masked, literals) {
 			bindings: [],
 			requests: [],
 			all: false,
+			start: match.index ?? 0,
 		});
 	}
 	for (const match of masked.matchAll(IMPORT_DYNAMIC)) {
@@ -423,6 +460,7 @@ function parseEdges(masked, literals) {
 			bindings: [],
 			requests: [],
 			all: false,
+			start: match.index ?? 0,
 		});
 	}
 	for (const match of masked.matchAll(EXPORT_FROM)) {
@@ -430,10 +468,11 @@ function parseEdges(masked, literals) {
 		edges.push({
 			specifier: specifier(match[3]),
 			clause,
-			kind: match[1] ? 'export-type' : 'export-from',
+			kind: match[1] || isTypeOnlyExportClause(clause) ? 'export-type' : 'export-from',
 			bindings: [],
 			requests: [],
 			all: false,
+			start: match.index ?? 0,
 		});
 	}
 	return edges;
@@ -560,6 +599,115 @@ function exportAliasMap(masked) {
 	return aliases;
 }
 
+/** Split `text` on a top-level delimiter, keeping each part's offset. */
+function splitTopLevelWithOffsets(text, delimiter) {
+	const parts = [];
+	let depth = 0;
+	let start = 0;
+	for (let i = 0; i < text.length; i++) {
+		const char = text[i];
+		if (char === '(' || char === '[' || char === '{') depth += 1;
+		else if (char === ')' || char === ']' || char === '}') depth = Math.max(0, depth - 1);
+		else if (char === delimiter && depth === 0) {
+			parts.push({ text: text.slice(start, i), offset: start });
+			start = i + 1;
+		}
+	}
+	parts.push({ text: text.slice(start), offset: start });
+	return parts;
+}
+
+/** Drop a top-level `= initializer` from a binding pattern. */
+function stripDefault(pattern) {
+	let depth = 0;
+	for (let i = 0; i < pattern.length; i++) {
+		const char = pattern[i];
+		if (char === '(' || char === '[' || char === '{') depth += 1;
+		else if (char === ')' || char === ']' || char === '}') depth = Math.max(0, depth - 1);
+		else if (char === '=' && depth === 0) return pattern.slice(0, i);
+	}
+	return pattern;
+}
+
+/** The closing index of the pattern that starts `text`, or -1. */
+function leadingPatternEnd(text) {
+	const open = text[0];
+	const close = open === '{' ? '}' : ']';
+	let depth = 0;
+	for (let i = 0; i < text.length; i++) {
+		if (text[i] === open) depth += 1;
+		else if (text[i] === close) {
+			depth -= 1;
+			if (depth === 0) return i;
+		}
+	}
+	return -1;
+}
+
+/**
+ * Every name a binding pattern introduces.
+ *
+ * `const unused = 1, title = route.title` binds both declarators, and
+ * `const { title, body: { x } } = route` binds `title` and `x`. Naming
+ * only the first identifier would leave the export `title` without a
+ * block, so a preview that imports it would walk nothing and pass even
+ * though `route` is in its graph. A type annotation after the pattern
+ * (`const { title }: Route = route`) is ignored.
+ */
+function patternBindings(pattern) {
+	const text = stripDefault(pattern).trim();
+	if (!text.startsWith('{') && !text.startsWith('[')) {
+		const identifier = /^[A-Za-z_$][\w$]*/.exec(text);
+		return identifier ? [identifier[0]] : [];
+	}
+	const close = leadingPatternEnd(text);
+	if (close === -1) return [];
+	const entries = splitTopLevelWithOffsets(text.slice(1, close), ',');
+	if (text.startsWith('[')) {
+		return entries.flatMap(({ text: entry }) => {
+			const part = entry.trim();
+			if (part.length === 0) return [];
+			return patternBindings(part.startsWith('...') ? part.slice(3) : part);
+		});
+	}
+	return entries.flatMap(({ text: entry }) => {
+		const part = entry.trim();
+		if (part.length === 0) return [];
+		if (part.startsWith('...')) return patternBindings(part.slice(3));
+		const [head, ...rest] = splitTopLevelWithOffsets(part, ':');
+		if (rest.length > 0) {
+			return patternBindings(rest.map((piece) => piece.text).join(':'));
+		}
+		return patternBindings(head.text);
+	});
+}
+
+/**
+ * The bindings a top-level declaration statement introduces.
+ *
+ * A `const`/`let`/`var` statement is scanned per comma-separated
+ * declarator for its names, but every name shares the whole statement's
+ * reference set: a preview that imports any of them evaluates the
+ * statement, so over-approximating is the safe direction for a gate.
+ */
+function declarationBindings(kind, statement) {
+	if (!MULTI_BINDING_KINDS.has(kind)) {
+		const name =
+			/^(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?(?:function\*?|class|interface|const|let|var|type|enum)\s+\*?([A-Za-z_$][\w$]*)/.exec(
+				statement,
+			);
+		return name ? [{ names: [name[1]], text: statement, offset: 0 }] : [];
+	}
+	const keyword = /\b(?:const|let|var)\b/.exec(statement);
+	if (!keyword) return [];
+	const bodyStart = keyword.index + keyword[0].length;
+	const names = splitTopLevelWithOffsets(statement.slice(bodyStart), ',').flatMap(({ text }) =>
+		patternBindings(text),
+	);
+	if (names.length === 0) return [];
+	return [{ names: [...new Set(names)], text: statement, offset: 0 }];
+}
+
 /**
  * Map each top-level declaration to the identifiers it references
  * outside every handler range — the "what this symbol drags into the
@@ -570,23 +718,27 @@ function topLevelBlocks(masked, handlerRanges) {
 	let depth = 0;
 	let start = -1;
 	let kind = null;
-	let name = null;
 	let i = 0;
 
 	const close = (end) => {
-		if (start === -1 || name === null) return;
-		const refs = new Set();
-		for (const match of masked.slice(start, end).matchAll(IDENTIFIER)) {
-			const position = start + (match.index ?? 0);
-			if (handlerRanges.some((range) => position >= range.start && position < range.end)) continue;
-			refs.add(match[0]);
+		if (start === -1) return;
+		for (const binding of declarationBindings(kind, masked.slice(start, end))) {
+			const refs = new Set();
+			for (const match of binding.text.matchAll(IDENTIFIER)) {
+				const position = start + binding.offset + (match.index ?? 0);
+				if (handlerRanges.some((range) => position >= range.start && position < range.end)) {
+					continue;
+				}
+				refs.add(match[0]);
+			}
+			for (const name of binding.names) {
+				const existing = blocks.get(name);
+				if (existing) for (const ref of refs) existing.refs.add(ref);
+				else blocks.set(name, { name, refs });
+			}
 		}
-		const existing = blocks.get(name);
-		if (existing) for (const ref of refs) existing.refs.add(ref);
-		else blocks.set(name, { name, refs });
 		start = -1;
 		kind = null;
-		name = null;
 	};
 
 	while (i < masked.length) {
@@ -600,7 +752,6 @@ function topLevelBlocks(masked, handlerRanges) {
 			if (match) {
 				start = i;
 				kind = match[1];
-				name = match[2];
 			}
 		}
 		if (char === '(' || char === '[' || char === '{') {
@@ -641,9 +792,25 @@ function clientReachableNames(module_, requested) {
 	return reachable;
 }
 
+/**
+ * A dynamic `import()` the Worker alone evaluates: the call sits inside
+ * a `.handler(…)` body, which never runs in the preview. The edge is
+ * still a real server-only dependency, so it must not turn a legitimate
+ * story into a failure. Static imports cannot appear inside a function
+ * body, so only dynamic edges need this check.
+ */
+function isHandlerConfinedEdge(edge, handlerRanges) {
+	return (
+		edge.kind === 'import-dynamic' &&
+		handlerRanges.some((range) => edge.start >= range.start && edge.start < range.end)
+	);
+}
+
 /** The edges of a seam module that a preview with `requested` reaches. */
 function clientReachableEdges(module_, requested) {
-	const runtime = module_.edges.filter((edge) => !isTypeOnlyEdge(edge));
+	const runtime = module_.edges.filter(
+		(edge) => !isTypeOnlyEdge(edge) && !isHandlerConfinedEdge(edge, module_.handlerRanges),
+	);
 	if (!module_.seam || requested === null || requested.length === 0) return runtime;
 	const reachable = clientReachableNames(module_, requested);
 	return runtime.filter(

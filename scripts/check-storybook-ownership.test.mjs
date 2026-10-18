@@ -168,6 +168,53 @@ export function ReactionsWidget({ rows }: { rows: readonly ReactionAggregate[] }
 		assert.equal(readReport(result.jsonPath).verdict, 'pass');
 	});
 
+	it('treats an inline type re-export of the HTTP boundary as an allowed edge', async () => {
+		// `export { type Data } from …` is erased exactly like
+		// `export type { Data } from …`. Reading only the leading `type`
+		// keyword would file this re-export as runtime surface and report
+		// a boundary hit the build never produces.
+		const root = await fixture({
+			'src/home/reactions/widget.stories.tsx': `import { ReactionsWidget } from './widget';
+
+export default { component: ReactionsWidget };
+`,
+			'src/home/reactions/widget.tsx': `export { type ReactionAggregate } from '../../http/reactions/schema';
+export function ReactionsWidget() {
+	return <ul />;
+}
+`,
+			'src/http/reactions/schema.ts':
+				'export interface ReactionAggregate { slug: string; count: number }\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		assert.equal(readReport(result.jsonPath).verdict, 'pass');
+	});
+
+	it('still treats a mixed type and value re-export as a runtime edge', async () => {
+		// The conservative half: `{ type A, b }` ships `b`, so the
+		// boundary really is in the preview graph.
+		const root = await fixture({
+			'src/home/reactions/widget.stories.tsx': `import { ReactionsWidget } from './widget';
+
+export default { component: ReactionsWidget };
+`,
+			'src/home/reactions/widget.tsx': `export { type ReactionAggregate, reactionsApp } from '../../http/reactions/app';
+export function ReactionsWidget() {
+	return <ul />;
+}
+`,
+			'src/http/reactions/app.ts': `export interface ReactionAggregate { slug: string }
+export const reactionsApp = {};
+`,
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'http');
+	});
+
 	it('still treats a mixed `{ type A, b }` clause as a runtime edge', async () => {
 		// The conservative half of the same rule: one runtime binding
 		// ships the module, so the boundary really is in the graph.
@@ -608,6 +655,62 @@ export const addReaction = createServerFn({ method: 'POST' }).handler(async () =
 		assert.equal(report.subjects[0].seams.length, 1);
 	});
 
+	it('fails when a later declarator of a multi-binding export reaches a boundary', async () => {
+		// `export const unused = 1, title = route.title` binds `title`
+		// second. Naming only the first declarator leaves the export the
+		// story imports without a block, so the walk finds no reference
+		// to `route` and passes.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { title } from './load';
+
+export default { component: title };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const unused: Map<string, number> = new Map(), title = route.title;
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return route.id;
+});
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('fails when a destructured export of a multi-binding declaration reaches a boundary', async () => {
+		// The destructuring form binds `title` without a name after
+		// `const`, which the declaration header alone does not expose.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { title } from './load';
+
+export default { component: title };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const { title }: { title: string } = route;
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return route.id;
+});
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+	});
+
 	it('keeps handler-confined imports of a seam module out of the walk', async () => {
 		// Same module shape, opposite answer: nothing but the handler
 		// body reaches `src/cloudflare/**`, so the preview stays clean.
@@ -639,6 +742,68 @@ export const addReaction = createServerFn({ method: 'POST' }).handler(async () =
 		assert.equal(report.verdict, 'pass');
 		assert.deepEqual(report.subjects[0].violations, []);
 		assert.equal(report.subjects[0].seams.length, 1);
+	});
+	it('keeps a dynamic import inside a handler body out of the walk', async () => {
+		// `import()` inside `.handler(…)` runs on the Worker only, so it
+		// is not a client edge even though a dynamic import has no
+		// binding the request could narrow it by.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { StatusTiles } from './tiles';
+
+export default { component: StatusTiles };
+`,
+			'src/home/status/tiles.tsx': `import { addReaction } from './load';
+
+export function StatusTiles() {
+	return <button onClick={() => addReaction()} />;
+}
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	const { probeCloudflareHealth } = await import('../../cloudflare/health');
+	return probeCloudflareHealth();
+});
+`,
+			'src/cloudflare/health.ts': 'export async function probeCloudflareHealth() {}\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'pass');
+		assert.deepEqual(report.subjects[0].violations, []);
+		assert.equal(report.subjects[0].seams.length, 1);
+	});
+
+	it('still walks a dynamic import outside every handler body', async () => {
+		// The other half of the same rule: a module-level `import()` is
+		// evaluated by the preview, so it stays a violation.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { StatusTiles } from './tiles';
+
+export default { component: StatusTiles };
+`,
+			'src/home/status/tiles.tsx': `import { addReaction } from './load';
+
+export function StatusTiles() {
+	return <button onClick={() => addReaction()} />;
+}
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return null;
+});
+
+export const health = () => import('../../cloudflare/health');
+`,
+			'src/cloudflare/health.ts': 'export async function probeCloudflareHealth() {}\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'cloudflare');
 	});
 });
 

@@ -51,6 +51,7 @@
 		"lint:check": "biome lint .",
 		"lint:ci": "node scripts/lint-ci.mjs",
 		"phase-3-plus:flip:production": "node scripts/phase-3-plus-prod-flip.mjs",
+		"perf:fonts:measure": "node scripts/font-first-paint-measure.mjs",
 		"prepare": "panda codegen",
 		"preview": "vite preview",
 		"rotate:better-auth-secret": "node scripts/rotate-better-auth-secret.mjs",

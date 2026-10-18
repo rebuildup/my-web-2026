@@ -734,6 +734,20 @@ export function fontFaceUrl(css) {
 const FONT_STYLESHEET =
 	'https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400&display=swap';
 
+/** Deadline for the reachability probe itself. The probe runs before the
+ *  browser launches and carries no page-level timeout, so a network that
+ *  accepts the connection and never finishes the response (a half-open
+ *  connection to Google Fonts or a proxy in between) would stall the
+ *  whole measurement on Node's default fetch timeout instead of producing
+ *  the report this script promises: "the origin is not usable, here is the
+ *  measurement anyway". */
+export const ORIGIN_PROBE_TIMEOUT_MS = 10_000;
+
+/** `fetch` with an explicit deadline, so no probe can outlive it. */
+export async function fetchWithDeadline(url, init = {}, timeoutMs = ORIGIN_PROBE_TIMEOUT_MS) {
+	return fetch(url, { ...init, signal: AbortSignal.timeout(timeoutMs) });
+}
+
 /**
  * Is the webfont pipeline actually usable from this host?
  *
@@ -744,23 +758,37 @@ const FONT_STYLESHEET =
  * is really running on the platform fallback — and the wait for a swap
  * would burn its whole budget on every run. So the probe follows the
  * stylesheet to the face it references and asks for that too.
+ *
+ * Both requests carry the probe deadline, so an origin that accepts the
+ * connection and never answers is reported as unreachable instead of
+ * hanging the measurement.
  */
 async function fontOriginReachable() {
 	try {
-		const css = await fetch(FONT_STYLESHEET, { method: 'GET', redirect: 'follow' });
+		const css = await fetchWithDeadline(FONT_STYLESHEET, {
+			method: 'GET',
+			redirect: 'follow',
+		});
 		if (!css.ok) return { reachable: false, status: `stylesheet HTTP ${css.status}` };
 		const face = fontFaceUrl(await css.text());
 		if (!face) {
 			return { reachable: false, status: 'stylesheet exposed no fonts.gstatic.com face URL' };
 		}
-		const faceResponse = await fetch(face, { method: 'HEAD', redirect: 'follow' });
+		const faceResponse = await fetchWithDeadline(face, {
+			method: 'HEAD',
+			redirect: 'follow',
+		});
 		if (!faceResponse.ok) return { reachable: false, status: `face HTTP ${faceResponse.status}` };
 		return {
 			reachable: true,
 			status: `stylesheet HTTP ${css.status} + face HTTP ${faceResponse.status}`,
 		};
 	} catch (error) {
-		return { reachable: false, status: error.message };
+		const timedOut = error.name === 'TimeoutError' || error.name === 'AbortError';
+		return {
+			reachable: false,
+			status: timedOut ? `probe timed out after ${ORIGIN_PROBE_TIMEOUT_MS}ms` : error.message,
+		};
 	}
 }
 

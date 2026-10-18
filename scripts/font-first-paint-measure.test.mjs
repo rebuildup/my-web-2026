@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import { describe, it } from 'node:test';
 import {
 	BLOCKED_SETTLE_MS,
@@ -6,6 +7,7 @@ import {
 	DEFAULT_ROUTES,
 	FONT_ORIGIN_PATTERNS,
 	LAYOUT_SHIFT_METRICS,
+	ORIGIN_PROBE_TIMEOUT_MS,
 	SETTLE_MS,
 	SWAP_WAIT_TIMEOUT_MS,
 	WEBFONT_FAMILIES,
@@ -13,6 +15,7 @@ import {
 	compareRuns,
 	cumulativeLayoutShift,
 	evaluateFallbackReadability,
+	fetchWithDeadline,
 	fontFaceUrl,
 	formatMetric,
 	isCompletedRequest,
@@ -60,6 +63,28 @@ describe('font-first-paint-measure — measurement contract constants', () => {
 			'https://fonts.googleapis.com/**',
 			'https://fonts.gstatic.com/**',
 		]);
+	});
+
+	it('bounds the reachability probe itself, not only the page wait', async () => {
+		// The probe runs before the browser launches and carries no page-level
+		// timeout, so a network that accepts the connection and then never
+		// answers would stall the run on Node's default fetch timeout instead
+		// of reporting "the origin is not usable" as this script promises.
+		assert.ok(ORIGIN_PROBE_TIMEOUT_MS > 0);
+		assert.ok(ORIGIN_PROBE_TIMEOUT_MS <= SWAP_WAIT_TIMEOUT_MS);
+		const server = createServer(() => {
+			// accept and never respond
+		});
+		await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+		try {
+			const { port } = server.address();
+			await assert.rejects(fetchWithDeadline(`http://127.0.0.1:${port}/`, {}, 150), {
+				name: 'TimeoutError',
+			});
+		} finally {
+			server.closeAllConnections();
+			await new Promise((resolve) => server.close(resolve));
+		}
 	});
 
 	it('probes the webfont families the tokens actually reference', () => {

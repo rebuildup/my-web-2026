@@ -59,11 +59,10 @@ import { ProjectCard } from './ProjectCard';
  * Per-card DOM node ceiling; mirrors `PER_CARD_NODE_CEILING` in the harness.
  *
  * Issue #411 moved it from 20 to 22 because every card now renders the
- * `StateMark` (Issue #411): a `<svg>` plus exactly one shape element.
- * Two nodes, constant per card — which is what the "cheapest and worst
- * card differ by at most one node" invariant below now measures, since
- * it can no longer tell a category whose mark is drawn with more
- * elements than another.
+ * `StateMark` (Issue #411): ONE `<span>` per card, no children. The
+ * measured card is 20 nodes (21 when pinned), so the ceiling still
+ * leaves exactly one node of headroom — the property this gate protects
+ * is that the per-card cost stays CONSTANT, not that it stays at 19.
  */
 const PER_CARD_NODE_CEILING = 22;
 
@@ -97,9 +96,9 @@ describe('project card — 100+ row pagination boundary', () => {
 		const worst = Math.max(...perCard);
 		// A pinned row carries one extra node (the `Pinned` badge); a
 		// shape difference larger than that is a card that stopped
-		// being one card. This is also what keeps the `StateMark`
-		// honest: a category drawn with three elements instead of one
-		// would show up here as a two-node spread.
+		// being one card. It also keeps the `StateMark` honest: a
+		// category whose silhouette needed a second element would
+		// show up here as a two-node spread.
 		expect(worst - cheapest).toBeLessThanOrEqual(1);
 		expect(worst).toBeLessThanOrEqual(PER_CARD_NODE_CEILING);
 	});

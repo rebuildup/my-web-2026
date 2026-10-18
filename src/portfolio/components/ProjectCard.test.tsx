@@ -92,7 +92,7 @@ describe('ProjectCard category cue (Issue #411)', () => {
 		// The mark is `aria-hidden`; the facet pills are what name the
 		// category to assistive technology. A mark that carried the name
 		// would leave one channel instead of the two 1.4.1 asks for.
-		expect(html).toContain('<svg aria-hidden="true" data-state-mark="tool"');
+		expect(html).toContain('<span aria-hidden="true" data-state-mark="tool"');
 		expect(html).toContain('aria-label="facets"');
 	});
 

@@ -159,8 +159,8 @@ describe('StatusTiles', () => {
 			const html = renderToStaticMarkup(
 				<StatusTiles services={services} statuses={statuses} observedAt={OBSERVED_AT} />,
 			);
-			expect(html).toContain('<svg aria-hidden="true" data-state-mark="ok"');
-			expect(html).toContain('<svg aria-hidden="true" data-state-mark="degraded"');
+			expect(html).toContain('<span aria-hidden="true" data-state-mark="ok"');
+			expect(html).toContain('<span aria-hidden="true" data-state-mark="degraded"');
 		});
 
 		it('falls back to the unreachable silhouette when a service has no read', () => {

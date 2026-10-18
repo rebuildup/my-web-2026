@@ -15,7 +15,8 @@
 | Status badge | `ok` だけ accent 塗り、`degraded` と `unreachable` は同じ neutral 塗り | 3 状態すべて同じ角丸ピル |
 | Portfolio card rule | `accent.category.<facet>` を塗った 4px の rule（4 hue × 同一形状） | 4 category すべて同じ bar |
 
-`StateMark`（`src/editorial/primitives/StateMark.tsx`）が形状語彙を持ち、
+`StateMark`（`src/editorial/primitives/StateMark.tsx`）が形状語彙を持ち（1 要素の `<span>` + `clip-path`。
+inline `<svg>` は採用しない — 理由下記）、
 status 3 状態は **円 / 三角 / 交叉**、category 4 種は
 **菱形 / 正方形 / 横棒 / シェブロン** を使う。badge / card の既存テキストと
 併せることで **shape + text の 2 channel** になり、色は補強に降格した。
@@ -26,7 +27,7 @@ status 3 状態は **円 / 三角 / 交叉**、category 4 種は
 | 基準 | レベル | 該当箇所 | 判定 |
 | --- | --- | --- | --- |
 | SC 1.4.1 Use of Color | A | status badge / category rule | 適合 — 形状 + テキストの 2 channel |
-| SC 1.1.1 Non-text Content | A | `StateMark` の `<svg>` | 適合 — 装飾なので text alternative 不要。`aria-hidden="true"` で AT には露出しない（機械検査で確認） |
+| SC 1.1.1 Non-text Content | A | `StateMark` の `<span>` | 適合 — 装飾なので text alternative 不要。`aria-hidden="true"` で AT には露出しない（機械検査で確認） |
 | SC 1.4.11 Non-text Contrast | AA | マーク（`currentColor` 継承）、4px rule | 適合 — 下表の測定値 |
 | SC 1.3.1 Info and Relationships | A | status 行 | 適合 — 構造は変更なし（`<dl>` / `<dt>` / `<dd>`）。色を情報の符号化に使っていない |
 | SC 4.1.2 Name, Role, Value | A | status / portfolio | 適合 — 新しい role / 属性は無く、mark は accessibility tree から消える |
@@ -97,3 +98,11 @@ emulate** した（story 側を 2 つに増やしていない）。
   `@id/__x00__virtual:/@storybook/builder-vite/vite-app.js` を 404 で落とす）。
   本 Issue のスクリーンショットは同じ fixture 構成を静的 render して撮影した。
   Storybook 自体の修正は別 Issue の領域。
+
+- **形状は inline `<svg>` ではなく CSS（`clip-path` / `border-radius`）で描画している。**
+  当初 `<svg>` で実装したが、`test/fixtures/markdown-xss-fixtures.ts` は
+  article 領域内の `<svg` を「実行可能 markup」として検出する（Issue #451 の
+  `<svg onload>` コーパス）ため、`/portfolio` 一覧の card（1 行 = 1 `<article>`）が
+  `test/integration/markdown-xss-ssr.test.ts` を落とした。セキュリティ不変条件を
+  装飾のために弱める判断はしなかった。副次的に、1 要素・子要素 0 で
+  per-card DOM cost も最小（+1 node）になった。

@@ -1,0 +1,230 @@
+{
+	"$comment": "HTML standards gate declaration (Issue #412). Read by scripts/check-html-standards.mjs and by test/integration/html-standards.test.ts, which drive the same engine (scripts/html-standards-contract.mjs) over the real SSR documents. Severity, the route roster and the waiver ledger live HERE so a policy change is a reviewable diff, not a code change. See docs/verification/standards/html-nu-validator.md.",
+	"version": 1,
+	"profile": "nu-html5-subset",
+	"profile_note": "The engine emulates the Nu Html Checker message TYPES (validator.w3.org/nu) for the three defect classes Issue #412 names — invalid markup, duplicate ids, attribute errors — not the whole HTML5 algorithm. It is offline on purpose: validator.nu would upload every rendered document (including /admin pages and their copy) to a third party. The rule ids below map 1:1 onto RULE_CATALOGUE in scripts/html-standards-contract.mjs, and a mismatch in EITHER direction fails the gate.",
+	"routes": [
+		{
+			"route_id": "/",
+			"path": "/",
+			"source": "src/routes/index.tsx",
+			"mode": "render",
+			"why": "canonical home: the surface every visitor lands on, and the one with the most composed markup (reactions, counter, nav)."
+		},
+		{
+			"route_id": "/about",
+			"path": "/about",
+			"source": "src/routes/about.tsx",
+			"mode": "render",
+			"why": "person identity surface with structured data and an experience list."
+		},
+		{
+			"route_id": "/contact",
+			"path": "/contact",
+			"source": "src/routes/contact.tsx",
+			"mode": "render",
+			"why": "the only form surface; label/for and button/input attributes live here."
+		},
+		{
+			"route_id": "/portfolio",
+			"path": "/portfolio",
+			"source": "src/routes/portfolio/index.tsx",
+			"mode": "render",
+			"why": "the longest public document (a project list), so it is where a nesting or duplicate-id regression would first show."
+		},
+		{
+			"route_id": "/portfolio/$slug",
+			"path": "/portfolio/my-web-2026",
+			"source": "src/routes/portfolio/$slug.tsx",
+			"mode": "render",
+			"why": "dynamic detail route; the fixture row is the slug src/portfolio/seed.ts already publishes, so this is a real document and not an empty state."
+		},
+		{
+			"route_id": "/tools",
+			"path": "/tools",
+			"source": "src/routes/tools.index.tsx",
+			"mode": "render",
+			"why": "Tool registry index: the surface with the most external links and iframe-related markup."
+		},
+		{
+			"route_id": "/tools/$slug",
+			"path": "/tools/prototype",
+			"source": "src/routes/tools.$slug.tsx",
+			"mode": "render",
+			"why": "the same_origin_static Tool shell that e2e/tools-prototype.spec.ts already loads in a browser."
+		},
+		{
+			"route_id": "/design-system",
+			"path": "/design-system",
+			"source": "src/routes/design-system.tsx",
+			"mode": "render",
+			"why": "the editorial primitive gallery: inline SVG, definition lists and the widest attribute surface in the repository, so it is the gate's false-positive canary."
+		},
+		{
+			"route_id": "/admin/login",
+			"path": "/admin/login",
+			"source": "src/routes/admin.login.tsx",
+			"mode": "render",
+			"why": "the only admin route an anonymous request can render; the auth gate answers 307 for every other admin URL, so this is where the admin document contract is asserted."
+		},
+		{
+			"route_id": "/admin",
+			"path": "/admin",
+			"source": "src/routes/admin.index.tsx",
+			"mode": "excluded",
+			"reason": "the admin auth gate answers an anonymous request with a 307 and no document; the rendered admin document is checked at /admin/login."
+		},
+		{
+			"route_id": "/admin/emoji-catalog",
+			"path": "/admin/emoji-catalog",
+			"source": "src/routes/admin.emoji-catalog.tsx",
+			"mode": "excluded",
+			"reason": "auth-gated: an anonymous request never renders this document (see /admin/login for the rendered admin surface)."
+		},
+		{
+			"route_id": "/admin/images",
+			"path": "/admin/images",
+			"source": "src/routes/admin.images.tsx",
+			"mode": "excluded",
+			"reason": "auth-gated: an anonymous request never renders this document (see /admin/login for the rendered admin surface)."
+		},
+		{
+			"route_id": "/admin/invitations",
+			"path": "/admin/invitations",
+			"source": "src/routes/admin.invitations.tsx",
+			"mode": "excluded",
+			"reason": "auth-gated: an anonymous request never renders this document (see /admin/login for the rendered admin surface)."
+		},
+		{
+			"route_id": "/admin/invitations/accept",
+			"path": "/admin/invitations/accept",
+			"source": "src/routes/admin.invitations_.accept.tsx",
+			"mode": "excluded",
+			"reason": "rejected before rendering when its required token is absent, so there is no anonymous document to validate."
+		},
+		{
+			"route_id": "/admin/keys",
+			"path": "/admin/keys",
+			"source": "src/routes/admin.keys.tsx",
+			"mode": "excluded",
+			"reason": "auth-gated: an anonymous request never renders this document (see /admin/login for the rendered admin surface)."
+		}
+	],
+	"inventory": {
+		"route_root": "src/routes",
+		"route_tree": "src/routeTree.gen.ts",
+		"note": "The gate re-derives the published roster from src/routes/** (a file is a route when it calls createFileRoute) and from the generated route tree, and requires this manifest to declare every id in BOTH lists. A route that exists but is not declared fails (inventory.unlisted); a route declared here that no longer exists fails (inventory.missing). An unimplemented route can therefore never pass silently: it has to be rendered and validated, or excluded with a reason."
+	},
+	"rules": {
+		"missing-doctype": {
+			"severity": "error",
+			"nu_type": "missing-doctype",
+			"reason": "SSR renders the doctype; a document without one is in quirks mode and the shipped CSS does not account for it."
+		},
+		"bad-doctype": {
+			"severity": "error",
+			"nu_type": "bad-doctype",
+			"reason": "the published document is HTML5; an XHTML or HTML4 doctype would make the browser parse differently from the validator."
+		},
+		"obsolete-doctype": {
+			"severity": "warning",
+			"nu_type": "obsolete-doctype",
+			"reason": "a legacy doctype still parses, so this is reported rather than blocking."
+		},
+		"missing-element": {
+			"severity": "error",
+			"nu_type": "missing-element",
+			"reason": "html / head / body / title are the document skeleton the root route always renders."
+		},
+		"duplicate-element": {
+			"severity": "error",
+			"nu_type": "duplicate-element",
+			"reason": "a second <title> or <body> means one of two trees won and the other is dead markup."
+		},
+		"missing-attribute": {
+			"severity": "error",
+			"nu_type": "missing-attribute",
+			"reason": "required attributes (html[lang], img[alt], img[src]) are accessibility and language metadata, not decoration."
+		},
+		"unknown-attribute": {
+			"severity": "error",
+			"nu_type": "attribute-error",
+			"reason": "an attribute the element does not accept is a typo or a component prop that leaked into the DOM; React forwards unknown props verbatim."
+		},
+		"duplicate-attribute": {
+			"severity": "error",
+			"nu_type": "duplicate-attribute",
+			"reason": "HTML keeps the first occurrence, so a duplicate silently drops a value a reviewer believed was applied."
+		},
+		"bad-value": {
+			"severity": "error",
+			"nu_type": "attribute-error",
+			"reason": "a boolean/enumerated/ID-valued attribute with a value outside its grammar renders a control the author did not ask for."
+		},
+		"duplicate-id": {
+			"severity": "error",
+			"nu_type": "duplicate-id",
+			"reason": "the first duplicate-id defect class in the Issue; every aria-* / label[for] / headers reference resolves to only one of the duplicates."
+		},
+		"bad-id": {
+			"severity": "error",
+			"nu_type": "attribute-error",
+			"reason": "an empty id, or one containing whitespace, cannot be referenced by an IDREF attribute."
+		},
+		"bad-idref": {
+			"severity": "error",
+			"nu_type": "attribute-error",
+			"reason": "an aria-labelledby / aria-describedby / label[for] / td[headers] reference that resolves to nothing is an accessible-name or association bug that no runtime test would catch."
+		},
+		"invalid-nesting": {
+			"severity": "error",
+			"nu_type": "invalid-nesting",
+			"reason": "the invalid-markup defect class: a block inside a phrasing parent, an interactive control inside a link, an <li> outside a list."
+		},
+		"misnested-tag": {
+			"severity": "error",
+			"nu_type": "misnested-tag",
+			"reason": "a misnested pair silently reparents content in the browser, so the rendered DOM is not the authored one."
+		},
+		"stray-end-tag": {
+			"severity": "error",
+			"nu_type": "stray-end-tag",
+			"reason": "an end tag with no open element is dropped by the parser, which means an unclosed element upstream."
+		},
+		"unclosed-element": {
+			"severity": "error",
+			"nu_type": "unclosed-element",
+			"reason": "an element left open at EOF swallows the rest of the document into itself."
+		},
+		"empty-title": {
+			"severity": "error",
+			"nu_type": "empty-title",
+			"reason": "the <head> contract gate (Issue #418) requires a non-empty title; an empty one would render as a blank SERP entry."
+		},
+		"heading-level-skip": {
+			"severity": "warning",
+			"nu_type": "heading-order",
+			"reason": "a skipped heading level is a document-outline defect for screen-reader navigation, but it does not change what the page means, so it is reported rather than blocking."
+		}
+	},
+	"fixtures": {
+		"valid": "test/fixtures/html-standards/valid-page.html",
+		"invalid": "test/fixtures/html-standards/invalid-page.html",
+		"note": "The Issue's first acceptance condition: the invalid fixture MUST fail and the valid fixture MUST pass. The offline mode of the gate asserts exactly that on every run, so a gate that can no longer detect the seeded defects fails instead of reporting green. `expect` lists the rules the invalid fixture is required to produce (each one must appear at least once); `forbidden` lists rules it must NOT produce, which is how a false positive in the engine is caught by its own fixture.",
+		"expect": [
+			"bad-idref",
+			"bad-value",
+			"duplicate-attribute",
+			"duplicate-id",
+			"heading-level-skip",
+			"invalid-nesting",
+			"misnested-tag",
+			"missing-attribute",
+			"missing-doctype",
+			"stray-end-tag",
+			"unknown-attribute"
+		],
+		"forbidden": ["duplicate-element", "empty-title", "unclosed-element", "bad-id"]
+	},
+	"waivers": []
+}

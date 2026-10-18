@@ -1,0 +1,114 @@
+{
+	"canonicalOrigin": "https://rebuildup.dev",
+	"nodeIdFragments": {
+		"Person": "person",
+		"CreativeWork": "creativework"
+	},
+	"knownTypes": ["BreadcrumbList", "Person", "CreativeWork"],
+	"person": {
+		"unapprovedProperties": [
+			{
+				"property": "award",
+				"reason": "受賞歴は docs/personal/domain.md §8 の narrative としてしか存在せず、発行主体・審査基準・付与日を持つ構造化レコードがない。schema.org の award は assertion なので、narrative 文言をそのまま機械可読な主張として昇格させない。"
+			},
+			{
+				"property": "education",
+				"reason": "学歴に対応する構造化レコード（入学日・卒業見込み・課程・取得単位）がまだ存在しない。docs/personal/knowledge-model.md の「日付の精度を捏造しない」に従い、期間の無い record を emit しない。"
+			},
+			{
+				"property": "alumniOf",
+				"reason": "alumniOf は卒業を成立させる述語。在学中という Temporal State を卒業 fact に変換することになるため、卒業が確認できる record が無い限り emit しない。"
+			},
+			{
+				"property": "hasCredential",
+				"reason": "資格の主催団体・取得日・有効期限が記録されていない。Webデザイン技能検定3級は docs/personal/domain.md §8 の narrative であり、検証可能な credential record ではない。"
+			},
+			{
+				"property": "jobTitle",
+				"reason": "src/about/data.ts の identity.role は表示用の合成文字列（学校名 + 学年 + 肩書き）で、期間も権限も持たない。jobTitle として出すと display-only な文字列が職位／学歴の主張に昇格する。"
+			},
+			{
+				"property": "affiliation",
+				"reason": "所属は Temporal State（在学中）であり、期間が確定した record ではない。jobTitle と同じく、構造化 record が無い状態で emit しない。"
+			},
+			{
+				"property": "knowsAbout",
+				"reason": "docs/personal/domain.md §15 は skill の数値レベル・分類を推論で確定することを禁じている。now / skill の申告は Person ではなく作品側の metadata としてのみ扱う。"
+			}
+		]
+	},
+	"routes": [
+		{
+			"path": "/",
+			"public": true,
+			"status": "not-implemented",
+			"expectedTypes": [],
+			"samplePath": null,
+			"note": "Home は breadcrumb leaf が意図的に suppress されるため JSON-LD を 1 件も emit しない（src/editorial/nav/Breadcrumbs.test.ts が `/` の suppression を検証）。Person / WebSite の emit は別 ticket。home loader は reactions D1 table を要求し、本 suite はその migration を bootstrap しないため sample もしない。"
+		},
+		{
+			"path": "/about",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList", "Person"],
+			"samplePath": "/about",
+			"note": "Person は承認済み snapshot（identity + externalHandles）だけから組み立てる。"
+		},
+		{
+			"path": "/contact",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/contact",
+			"note": "channel は active かつ freshness window 内のものだけが loader に出るので、Person には載せない。"
+		},
+		{
+			"path": "/portfolio",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList"],
+			"samplePath": "/portfolio",
+			"note": "一覧なので個別の CreativeWork は出さない（ItemList / CollectionPage の emit は別 ticket）。"
+		},
+		{
+			"path": "/portfolio/[slug]",
+			"public": true,
+			"status": "implemented",
+			"expectedTypes": ["BreadcrumbList", "CreativeWork"],
+			"samplePath": "/portfolio/aulymo",
+			"note": "CreativeWork は public + published row のみから組み立てる（loader の可視性境界をそのまま継承）。"
+		},
+		{
+			"path": "/tools",
+			"public": true,
+			"status": "not-implemented",
+			"expectedTypes": [],
+			"samplePath": "/tools",
+			"note": "Issue #288 で breadcrumb chrome を撤去した surface。Tool の構造化表現（SoftwareApplication 等）は別 ticket。"
+		},
+		{
+			"path": "/tools/[slug]",
+			"public": true,
+			"status": "not-implemented",
+			"expectedTypes": [],
+			"samplePath": "/tools/prototype",
+			"note": "同上。iframe shell であり、Tool 自体の記述は manifest が owning する。"
+		},
+		{
+			"path": "/design-system",
+			"public": true,
+			"status": "not-implemented",
+			"expectedTypes": [],
+			"samplePath": "/design-system",
+			"note": "内部 showcase surface。breadcrumb も意図的に suppress されている（route-labels.ts の suppression 集合）。"
+		},
+		{
+			"path": "/admin/**",
+			"public": false,
+			"status": "out-of-scope",
+			"expectedTypes": [],
+			"samplePath": null,
+			"note": "認証必須の内部 surface。search 流入を意図していないため structured data の対象外。"
+		}
+	]
+}

@@ -286,7 +286,7 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `log:redaction:check` (Issue #467 — `src/**` may only reach
   `console` through `src/logging/logger.ts`, and operator scripts may
   not print a secret value) +
-  `version:check` + `typecheck` + `test`)
+  `publication:check` + `version:check` + `typecheck` + `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +
   `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +

@@ -18,7 +18,8 @@
 			"*.tsbuildinfo",
 			"worker-configuration.d.ts",
 			"src/routeTree.gen.ts",
-			"external"
+			"external",
+			"docs/verification/content"
 		]
 	},
 	"formatter": {

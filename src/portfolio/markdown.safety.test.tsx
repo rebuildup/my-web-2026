@@ -172,8 +172,8 @@ describe('markdown safety: dangerous input never becomes executable', () => {
 	it('keeps the external target on a stripped link — a known limitation', () => {
 		// `isExternalHref` classifies by origin, so a link whose scheme was
 		// stripped still inherits `target="_blank"` next to its `href="#"`.
-		// Documented in docs/portfolio/markdown-format.md § Known
-		// limitations; pinned here so the follow-up fix is a visible change.
+		// Recorded in docs/portfolio/markdown-format.md § 4.2; pinned here
+		// so a follow-up fix is a visible change to this test.
 		const stripped = anchorsIn(html).filter((anchor) => anchor.href === '#');
 		expect(stripped.every((anchor) => anchor.target === '_blank')).toBe(true);
 	});
@@ -365,12 +365,12 @@ describe('markdown safety: code expressions are byte-exact', () => {
 	});
 
 	it('documents the known limitation: intraword underscores become emphasis', () => {
-		// Known limitation, documented in docs/portfolio/markdown-format.md:
-		// CommonMark does not allow intraword `_` emphasis, but this lexer
-		// does, so a bare identifier loses its underscores on screen. The
-		// source characters are not restored — which is why the contract
-		// tells authors to wrap identifiers in a code span instead. Pinned
-		// so a future fix shows up as a deliberate change to this test.
+		// Known limitation, documented in docs/portfolio/markdown-format.md
+		// § 4.1: CommonMark does not allow intraword `_` emphasis, but this
+		// lexer does, so a bare identifier loses its underscores on screen.
+		// The source characters are not restored — which is why the contract
+		// tells authors to wrap identifiers in a code span instead. Pinned so
+		// a future fix shows up as a deliberate change to this test.
 		const source = 'MAX_RETRY_COUNT を設定する';
 		const ast = parseMarkdown(source);
 		if (ast[0].kind === 'paragraph') {

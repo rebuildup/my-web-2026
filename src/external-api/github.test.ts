@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { ExternalReadError, type ExternalSource, resolveReadPolicy } from './contract';
+import {
+	ExternalReadError,
+	type ExternalSource,
+	resolveReadPolicy,
+	retryAffordanceOf,
+} from './contract';
 import {
 	GITHUB_REPO_FACT_KEYS,
 	GITHUB_REPO_SOURCE,
@@ -81,10 +86,22 @@ describe('allowlisted mapping', () => {
 		expect(parseGitHubRepoFacts(FULL_PAYLOAD)).toEqual({
 			stars: 12,
 			forks: 3,
-			openIssues: 0,
+			openIssuesAndPullRequests: 0,
 			license: 'MIT',
 			pushedAt: '2026-10-17T12:00:00.000Z',
 		});
+	});
+
+	it('names the count GitHub counts together: issues AND pull requests', () => {
+		// GitHub's REST API counts every open pull request as an issue
+		// (docs.github.com/en/rest/issues/issues), so publishing the
+		// number under an issues-only name would overstate it. The
+		// published key says so; nothing here filters pull requests out,
+		// which would cost a second unauthenticated request.
+		const facts = parseGitHubRepoFacts({ ...FULL_PAYLOAD, open_issues_count: 7 });
+		expect(facts.openIssuesAndPullRequests).toBe(7);
+		expect(GITHUB_REPO_FACT_KEYS).not.toContain('openIssues');
+		expect(GITHUB_REPO_FACT_KEYS).toContain('openIssuesAndPullRequests');
 	});
 
 	it('never copies a personal field out of the payload', () => {
@@ -101,7 +118,7 @@ describe('allowlisted mapping', () => {
 		expect(facts).toEqual({
 			stars: null,
 			forks: null,
-			openIssues: null,
+			openIssuesAndPullRequests: null,
 			license: null,
 			pushedAt: null,
 		});
@@ -116,7 +133,7 @@ describe('allowlisted mapping', () => {
 		});
 		expect(facts.stars).toBeNull();
 		expect(facts.forks).toBeNull();
-		expect(facts.openIssues).toBeNull();
+		expect(facts.openIssuesAndPullRequests).toBeNull();
 	});
 
 	it('keeps only a plausible SPDX identifier', () => {
@@ -225,7 +242,14 @@ describe('transport contract', () => {
 		const reader = createExternalReader(adapter, { policy });
 		const snapshot = await reader.read();
 		expect(snapshot.status === 'degraded' && snapshot.reason).toBe('rate-limited');
-		expect(snapshot.status === 'degraded' && snapshot.retryable).toBe(true);
+		// A refused read publishes a deadline; whether an attempt may run
+		// is derived from it and from "now", not stamped on the snapshot.
+		const degraded = snapshot.status === 'degraded' ? snapshot : null;
+		if (degraded === null) throw new Error('expected a degraded snapshot');
+		expect(retryAffordanceOf(degraded, Date.parse(degraded.retryAt ?? ''))).toEqual({
+			retryable: true,
+			retryAt: degraded.retryAt,
+		});
 	});
 
 	it('refuses a private-repository payload as malformed-response', async () => {

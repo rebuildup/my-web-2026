@@ -54,8 +54,20 @@ export interface GitHubRepoFacts {
 	readonly stars: number | null;
 	/** `forks_count`, when a non-negative integer. */
 	readonly forks: number | null;
-	/** `open_issues_count`, when a non-negative integer. */
-	readonly openIssues: number | null;
+	/**
+	 * `open_issues_count`, when a non-negative integer — ISSUES **AND
+	 * PULL REQUESTS**.
+	 *
+	 * The name says so because GitHub's REST API counts every open
+	 * pull request as an issue
+	 * (https://docs.github.com/en/rest/issues/issues), so publishing
+	 * the number as `openIssues` would show a visitor a count larger
+	 * than the repository's open issues. Excluding pull requests would
+	 * cost a SECOND unauthenticated request against a 60/hour budget,
+	 * which this adapter does not spend: the honest number under an
+	 * honest name is the cheaper contract.
+	 */
+	readonly openIssuesAndPullRequests: number | null;
 	/** `license.spdx_id` — the identifier only, never license prose. */
 	readonly license: string | null;
 	/** `pushed_at`, normalised to an ISO instant. */
@@ -78,7 +90,7 @@ const GITHUB_REPO_REQUEST = {
 export const GITHUB_REPO_FACT_KEYS = [
 	'stars',
 	'forks',
-	'openIssues',
+	'openIssuesAndPullRequests',
 	'license',
 	'pushedAt',
 ] as const;
@@ -127,7 +139,7 @@ export function parseGitHubRepoFacts(payload: unknown): GitHubRepoFacts {
 	return {
 		stars: countOf(record, 'stargazers_count'),
 		forks: countOf(record, 'forks_count'),
-		openIssues: countOf(record, 'open_issues_count'),
+		openIssuesAndPullRequests: countOf(record, 'open_issues_count'),
 		license: spdxIdOf(record),
 		pushedAt: isoInstantOf(record, 'pushed_at'),
 	};

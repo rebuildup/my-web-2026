@@ -281,9 +281,10 @@ output is gitignored.
 
 A story is feature-local UI: it renders a component with props, so its
 runtime import closure must stay inside the obligation that owns it.
-`pnpm run storybook:ownership:check` walks every story declared by
-`.storybook/main.ts` and fails when the closure reaches a foreign
-boundary:
+`pnpm run storybook:ownership:check` walks every story the `stories`
+globs in `.storybook/main.ts` actually match — the walk starts from
+each glob's non-glob prefix, so a story declared outside `src/` is a
+subject too — and fails when the closure reaches a foreign boundary:
 
 | Boundary | Why it is foreign for a preview |
 | --- | --- |
@@ -294,12 +295,23 @@ boundary:
 | `cloudflare:workers` | Workers virtual module — does not resolve in a browser |
 
 Excluded on purpose, and reported as `not applicable` in the output:
-the four boundary roots above (they are the rule's targets, not its
-subjects), `import type` edges (erased by `verbatimModuleSyntax`,
-AGENTS.md §3), npm packages, the generated `styled-system/` layer and
-static assets. The walk stops at the **server-function seam** — a
-module that value-imports `createServerFn` — because its handler only
-runs on the Worker; those edges are printed as `seam`, not hidden.
+the four boundary *paths* above (they are the rule's targets, not its
+subjects — a story living inside one is listed there too, not counted),
+`import type` edges (erased by `verbatimModuleSyntax`, AGENTS.md §3),
+npm packages, the generated `styled-system/` layer and static assets
+(an unresolvable path outside `src/` is printed as `external`).
+`cloudflare:workers` is not a path, so it appears as a violation and
+under known limitations instead.
+
+The walk reads imports off a masked copy of each module — comments,
+string literals and template text are blanked first — so a story that
+*shows* an import example is not read as an edge, and an import-shaped
+comment is not read as a **server-function seam** that would stop the
+walk. Inside a seam module (one that value-imports `createServerFn`)
+only the exports the preview imports, plus what those reference, are
+client-reachable; imports confined to a `.handler(…)` body run on the
+Worker and are not walked. The seam edge itself is printed as `seam`,
+not hidden.
 
 ```bash
 pnpm run storybook:ownership:check
@@ -307,11 +319,17 @@ pnpm run storybook:ownership:check -- --json=.tmp/storybook-ownership.json
 ```
 
 Exit codes: `0` every subject passed, `1` at least one foreign-boundary
-reach, `2` a subject could not be fully resolved (`not run` — reported
-as NOT a pass, so an incomplete walk can never be mistaken for green).
-The gate is wired into `validate:fast`, and
-`scripts/check-storybook-ownership.test.mjs` covers it with pass /
+reach, `2` a subject could not be fully resolved or the subject set
+could not be read (`not run` — reported as NOT a pass, so an incomplete
+walk, a glob outside the repository and a non-literal `stories` entry
+can never be mistaken for green). The gate is wired into `validate:fast`,
+and `scripts/check-storybook-ownership.test.mjs` covers it with pass /
 fail / not-run / not-applicable fixtures.
+
+The `docs/verification/platform/storybook-ownership-check.webp`
+screenshot in #576 is a rendering of this gate's text report; re-create
+it from `--json` output, the gate itself needs nothing but the command
+above.
 
 ## Playwright E2E
 

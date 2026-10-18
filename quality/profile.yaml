@@ -106,7 +106,7 @@ change_risk_mapping:
     note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; src/home/status/** may use the documented runtime health edges and registered home→http schema edges must be import type only'
   storybook_story_change:
     gate: fast
-    note: 'scripts/check-storybook-ownership.mjs walks every story declared by .storybook/main.ts; a runtime import of routes / server.ts / http / cloudflare / cloudflare:workers anywhere in the closure fails the gate, and an unresolvable in-src specifier exits 2 (not run) instead of passing'
+    note: 'scripts/check-storybook-ownership.mjs walks every story the .storybook/main.ts stories globs match; a runtime import of routes / server.ts / http / cloudflare / cloudflare:workers anywhere in the closure fails the gate, an unresolvable in-src specifier or an unreadable subject set exits 2 (not run) instead of passing, and comments/strings are masked so a documented import example is not read as an edge'
   binding_change:
     gate: integration
     note: 'cloudflare.config.ts + .cloudflare/types/index.d.ts must be in the same PR'

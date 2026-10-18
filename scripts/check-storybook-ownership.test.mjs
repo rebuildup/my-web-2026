@@ -34,11 +34,22 @@ const config: StorybookConfig = {
 export default config;
 `;
 
-async function fixture(files) {
+/** A config that declares extra globs, so the subject set can be probed. */
+const storybookConfig = (stories) => `import type { StorybookConfig } from '@storybook/react-vite';
+
+const config: StorybookConfig = {
+\tstories: [${stories}],
+\tframework: { name: '@storybook/react-vite', options: {} },
+};
+
+export default config;
+`;
+
+async function fixture(files, config = STORYBOOK_CONFIG) {
 	const root = await mkdtemp(join(tmpdir(), 'my-web-storybook-ownership-'));
 	tempRoots.push(root);
 	await mkdir(join(root, '.storybook'), { recursive: true });
-	await writeFile(join(root, '.storybook', 'main.ts'), STORYBOOK_CONFIG, 'utf8');
+	await writeFile(join(root, '.storybook', 'main.ts'), config, 'utf8');
 	for (const [path, contents] of Object.entries(files)) {
 		const absolute = join(root, path);
 		await mkdir(dirname(absolute), { recursive: true });
@@ -99,6 +110,12 @@ export function StatusTiles({ services }: { services: readonly SystemService[] }
 		// The generated Panda layer (`styled-system/`) is a terminal
 		// leaf: neither a violation nor an unresolvable edge.
 		assert.deepEqual(report.subjects[0].unresolved, []);
+		// The generated Panda layer is a terminal leaf even when the
+		// fixture has not run `panda codegen`: an unresolvable
+		// out-of-src path is printed, not silently swallowed.
+		assert.equal(report.subjects[0].unresolvedExternal.length, 1);
+		assert.match(report.subjects[0].unresolvedExternal[0], /styled-system\/css$/);
+		assert.match(result.stdout, /external .*styled-system\/css/);
 		assert.match(result.stdout, /summary: 1 subject\(s\) — pass 1 \/ fail 0 \/ not run 0/);
 	});
 
@@ -337,6 +354,190 @@ export default { component: Hero };
 		const report = readReport(result.jsonPath);
 		assert.deepEqual(report.subjectPatterns, ['../src/**/*.stories.@(ts|tsx)']);
 		assert.equal(report.counts.subjects, 1);
+	});
+});
+
+describe('storybook ownership check — a comment or a string is not an import', () => {
+	it('ignores an import example a story renders inside a template literal', async () => {
+		// Documentation code samples are the reason masking exists: the
+		// text below names `src/routes/index`, but no runtime edge does.
+		const root = await fixture({
+			'src/home/hero.stories.tsx': `import { Hero } from './hero';
+
+const example = \`import { Route } from '../../routes/index';\`;
+
+export default { component: Hero, args: { example } };
+`,
+			'src/home/hero.tsx': 'export function Hero() { return <main>hero</main>; }\n',
+			'src/routes/index.tsx': 'export const Route = { id: "/" };\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'pass');
+		assert.deepEqual(report.subjects[0].violations, []);
+		assert.deepEqual(report.subjects[0].seams, []);
+	});
+
+	it('still reports the real edge when a comment mentions createServerFn', async () => {
+		// An import-shaped comment must not be read as a server-function
+		// seam: a seam stops the walk, so a false seam would hide the
+		// boundary violation behind it.
+		const root = await fixture({
+			'src/home/hero.stories.tsx': `import { Hero } from './hero';
+
+export default { component: Hero };
+`,
+			'src/home/hero.tsx': `// import { createServerFn } from '@tanstack/react-start';
+import { route } from '../routes/index';
+
+export function Hero() {
+\treturn <main>{String(route)}</main>;
+}
+`,
+			'src/routes/index.tsx': 'export const route = { id: "/" };\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+		assert.deepEqual(report.subjects[0].seams, []);
+	});
+});
+
+describe('storybook ownership check — a seam module is walked client-side', () => {
+	it('fails when a client-reachable export of a seam module reaches a boundary', async () => {
+		// Stopping at the seam module itself would hide this: the story
+		// imports ROUTE_TITLE, so `src/routes/index` really does enter
+		// the preview graph.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { StatusTiles } from './tiles';
+
+export default { component: StatusTiles };
+`,
+			'src/home/status/tiles.tsx': `import { ROUTE_TITLE } from './load';
+
+export function StatusTiles() {
+\treturn <h1>{ROUTE_TITLE}</h1>;
+}
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const ROUTE_TITLE = route.title;
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+\treturn route.id;
+});
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		const [violation] = report.subjects[0].violations;
+		assert.equal(violation.boundary, 'routes');
+		assert.match(violation.via.join(' -> '), /load\.ts -> \.\.\/\.\.\/routes\/index$/);
+		assert.equal(report.subjects[0].seams.length, 1);
+	});
+
+	it('keeps handler-confined imports of a seam module out of the walk', async () => {
+		// Same module shape, opposite answer: nothing but the handler
+		// body reaches `src/cloudflare/**`, so the preview stays clean.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { StatusTiles } from './tiles';
+
+export default { component: StatusTiles };
+`,
+			'src/home/status/tiles.tsx': `import { addReaction } from './load';
+
+export function StatusTiles() {
+\treturn <button onClick={() => addReaction()} />;
+}
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { env } from 'cloudflare:workers';
+import { probeCloudflareHealth } from '../../cloudflare/health';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+\tawait probeCloudflareHealth(env.DB);
+});
+`,
+			'src/cloudflare/health.ts': 'export async function probeCloudflareHealth() {}\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'pass');
+		assert.deepEqual(report.subjects[0].violations, []);
+		assert.equal(report.subjects[0].seams.length, 1);
+	});
+});
+
+describe('storybook ownership check — the subject set is exactly the stories globs', () => {
+	it('checks a story declared outside src/', async () => {
+		const root = await fixture(
+			{
+				'src/home/hero.stories.tsx': 'export default {};\n',
+				'stories/legacy.stories.tsx': `import { route } from '../src/routes/index';
+
+export default { args: { route } };
+`,
+				'src/routes/index.tsx': 'export const route = {};\n',
+			},
+			storybookConfig(`'../src/**/*.stories.@(ts|tsx)', '../stories/**/*.stories.@(ts|tsx)'`),
+		);
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.counts.subjects, 2);
+		assert.equal(report.subjects[1].verdict, 'fail');
+		assert.equal(report.subjects[1].violations[0].boundary, 'routes');
+	});
+
+	it('exits 2 when a glob resolves outside the repository', async () => {
+		const root = await fixture(
+			{ 'src/home/hero.stories.tsx': 'export default {};\n' },
+			storybookConfig(`'../src/**/*.stories.@(ts|tsx)', '../../*.stories.ts'`),
+		);
+
+		const result = run(root);
+		assert.equal(result.status, 2);
+		assert.match(result.stderr, /resolves outside the repository/);
+	});
+
+	it('exits 2 when the stories array contains a non-literal entry', async () => {
+		const root = await fixture(
+			{ 'src/home/hero.stories.tsx': 'export default {};\n' },
+			storybookConfig(`...sharedStories, '../src/**/*.stories.@(ts|tsx)'`),
+		);
+
+		const result = run(root);
+		assert.equal(result.status, 2);
+		assert.match(result.stderr, /cannot read the subject set: non-literal-story-entry/);
+	});
+
+	it('does not count a story inside a foreign boundary as a subject', async () => {
+		const root = await fixture({
+			'src/home/hero.stories.tsx': 'export default {};\n',
+			'src/routes/index.stories.tsx': 'export default {};\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.counts.subjects, 1);
+		assert.deepEqual(
+			report.notApplicableSubjects.map((entry) => [entry.file, entry.boundary]),
+			[['src/routes/index.stories.tsx', 'routes']],
+		);
+		assert.match(result.stdout, /rule targets, not subjects/);
 	});
 });
 

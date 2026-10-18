@@ -9,12 +9,16 @@
  * What it asserts
  * ---------------
  * The subject set is every file matched by the `stories` globs declared
- * in `.storybook/main.ts` (today: every `src/…/*.stories.ts(x)`). For
- * each
- * subject it walks the **runtime** import closure — value imports,
- * side-effect imports, dynamic `import()` with a literal specifier and
- * `export … from` re-exports — and fails when the closure reaches a
- * foreign boundary:
+ * in `.storybook/main.ts` (today: every `src/…/*.stories.ts(x)`). Each
+ * glob's non-glob prefix is the directory the walk starts from, so a
+ * story declared outside `src/` is a subject too — and a glob that
+ * cannot be read, or that resolves outside the repository, is an error
+ * rather than a silently narrower subject set.
+ *
+ * For each subject it walks the **runtime** import closure — value
+ * imports, side-effect imports, dynamic `import()` with a literal
+ * specifier and `export … from` re-exports — and fails when the
+ * closure reaches a foreign boundary:
  *
  *   - `src/routes/**`   the TanStack Start file-route contract
  *   - `src/server.ts`   the Worker entrypoint
@@ -23,30 +27,46 @@
  *   - `cloudflare:workers`  the Workers virtual module (does not
  *     resolve in a browser preview at all)
  *
- * The walk stops at the **server-function seam**: a module that
- * value-imports `createServerFn` / `createServerFunction` from
- * `@tanstack/react-start`. Those handlers run on the Worker, never in
- * the preview — `src/home/reactions/widget.stories.tsx` already
- * documents that the on-screen mutations are inert here, and
+ * The walk stops inside the **server-function seam handler**: a
+ * module that value-imports `createServerFn` /
+ * `createServerFunction` from `@tanstack/react-start` only ships the
+ * exports the preview actually imports, so only those exports' own
+ * (non-handler) dependencies are client-reachable. Everything the
+ * client imports from a seam module is walked; imports confined to a
+ * `.handler(…)` body are not. A seam edge is reported as an
+ * annotation, never hidden. `src/home/reactions/widget.stories.tsx`
+ * already documents that the on-screen mutations are inert here, and
  * `.storybook/main.ts` already marks `cloudflare:workers` external for
- * exactly this reason. The seam edge is reported as an annotation, not
- * as a violation, so the report never hides it.
+ * exactly this reason.
+ *
+ * How the source is read
+ * ----------------------
+ * Matching runs on a masked copy of each module: comments, string
+ * literals and template-literal text are blanked out first, so a story
+ * that *shows* an import example (documentation, a code sample, a
+ * comment) is not read as an edge, and an import-shaped string is not
+ * read as a `createServerFn` seam that would hide a real boundary
+ * violation. The mask is index-aligned with the original source, so
+ * every edge still carries its original position.
  *
  * Excluded, with reasons (printed in the report as `not applicable`)
  * -----------------------------------------------------------------
  * The rule constrains what a *story* may reach. It is not a second
  * ownership rule for the foreign boundaries themselves, which is what
  * `scripts/check-architecture.mjs` already owns; those modules are the
- * rule's TARGETS, not its subjects. Type-only imports are excluded
- * because `verbatimModuleSyntax: true` erases them at build time
- * (AGENTS.md §3 type-only edges — `home → http` is the registered one).
- * Bare specifiers (npm packages), `styled-system/**` (generated Panda
+ * rule's TARGETS, not its subjects, and a story that happens to live
+ * inside one of them is listed as `not applicable` instead of being
+ * counted as a subject. Type-only imports are excluded because
+ * `verbatimModuleSyntax: true` erases them at build time (AGENTS.md §3
+ * type-only edges — `home → http` is the registered one). Bare
+ * specifiers (npm packages), `styled-system/**` (generated Panda
  * output) and asset imports are terminal leaves.
  *
  * Exit codes: 0 = every subject passed, 1 = at least one violation,
- * 2 = the graph could not be fully resolved (a subject is reported as
- * `not run`, so a green result is never claimed from an incomplete
- * walk — the same reasoning as `scripts/check-test-wiring.mjs`).
+ * 2 = the graph could not be fully resolved or the subject set could
+ * not be read (a subject is reported as `not run`, so a green result
+ * is never claimed from an incomplete walk — the same reasoning as
+ * `scripts/check-test-wiring.mjs`).
  */
 
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
@@ -55,6 +75,15 @@ import { fileURLToPath } from 'node:url';
 
 const repoRootDefault = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs'];
+/** Directories never worth walking when a glob base is the repo root. */
+const PRUNED_DIRECTORIES = new Set([
+	'.git',
+	'.tmp',
+	'dist',
+	'node_modules',
+	'storybook-static',
+	'styled-system',
+]);
 
 /** Virtual modules that only exist inside the Workers runtime. */
 const WORKER_VIRTUAL_MODULES = new Set(['cloudflare:workers']);
@@ -97,39 +126,230 @@ const IMPORT_SIDE_EFFECT = /(?:^|[\n;])\s*import\s*['"]([^'"]+)['"]/g;
 const IMPORT_DYNAMIC = /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
 const EXPORT_FROM = /(?:^|[\n;])\s*export\s+(type\s+)?([\s\S]*?)\s*from\s*['"]([^'"]+)['"]/g;
 
+/** A bare identifier, used to read a declaration's reference set. */
+const IDENTIFIER = /[A-Za-z_$][\w$]*/g;
+/** The placeholder a masked string literal is replaced with. */
+const MASK_SENTINEL = '\uE000';
+const MASKED_LITERAL = /^\uE000(\d+)\uE000$/;
+/** The `stories` array of a Storybook config, with its string literals. */
+const STRING_LITERAL = /(['"])((?:\\.|(?!\1)[^\\])*)\1/g;
+/** A top-level declaration header, enough to name the symbol it binds. */
+const DECLARATION =
+	/^(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?(function\*?|class|interface|const|let|var|type|enum)\s+\*?([A-Za-z_$][\w$]*)/;
+/** Declaration kinds whose body is the statement's closing brace. */
+const BODY_KINDS = new Set(['function', 'class', 'interface']);
+
+const maskNonCodeLength = (text) => text.replace(/[^\n]/g, ' ');
+
 /**
- * Parse the runtime-relevant edges of a module.
+ * Blank out every region of `source` that cannot contain a real import
+ * declaration: comments, string literals and template-literal text.
+ *
+ * Each string literal is replaced by a placeholder that carries its
+ * index, so the import regexes keep matching `from '<placeholder>'`
+ * and the original specifier is recovered by `literalText()`. The mask
+ * keeps the source length and every newline, so positions still map
+ * one-to-one onto the original.
+ */
+function maskNonCode(source) {
+	const literals = [];
+	const stack = [{ type: 'code', braceDepth: 0 }];
+	const top = () => stack[stack.length - 1];
+	let out = '';
+	let lastSignificant = '';
+	let i = 0;
+
+	while (i < source.length) {
+		const char = source[i];
+		const next = source[i + 1];
+
+		if (top().type === 'template') {
+			if (char === '\\') {
+				out += '  ';
+				i += 2;
+				continue;
+			}
+			if (char === '`') {
+				stack.pop();
+				out += ' ';
+				i += 1;
+				continue;
+			}
+			if (char === '$' && next === '{') {
+				stack.push({ type: 'code', braceDepth: 0 });
+				out += '  ';
+				i += 2;
+				continue;
+			}
+			out += char === '\n' ? '\n' : ' ';
+			i += 1;
+			continue;
+		}
+
+		if (char === '/' && next === '/') {
+			let end = source.indexOf('\n', i);
+			if (end === -1) end = source.length;
+			out += maskNonCodeLength(source.slice(i, end));
+			i = end;
+			continue;
+		}
+		if (char === '/' && next === '*') {
+			let end = source.indexOf('*/', i + 2);
+			end = end === -1 ? source.length : end + 2;
+			out += maskNonCodeLength(source.slice(i, end));
+			i = end;
+			continue;
+		}
+		if (
+			char === '/' &&
+			(lastSignificant === '' || '(,=:[!&|?{};+-*%^~<>'.includes(lastSignificant))
+		) {
+			// A regular-expression literal, not a division. Masking it
+			// keeps a quote inside the pattern from opening a "string"
+			// that would swallow real code.
+			let end = i + 1;
+			let inClass = false;
+			while (end < source.length) {
+				const current = source[end];
+				if (current === '\\') {
+					end += 2;
+					continue;
+				}
+				if (current === '[') inClass = true;
+				else if (current === ']') inClass = false;
+				else if (current === '/' && !inClass) break;
+				else if (current === '\n') break;
+				end += 1;
+			}
+			end = Math.min(end, source.length);
+			out += maskNonCodeLength(source.slice(i, end));
+			i = end;
+			continue;
+		}
+		if (char === "'" || char === '"') {
+			let end = i + 1;
+			while (end < source.length) {
+				if (source[end] === '\\') {
+					end += 2;
+					continue;
+				}
+				if (source[end] === char || source[end] === '\n') break;
+				end += 1;
+			}
+			end = Math.min(end, source.length);
+			literals.push(source.slice(i + 1, end));
+			out += `"${MASK_SENTINEL}${literals.length - 1}${MASK_SENTINEL}"`;
+			i = end + 1;
+			continue;
+		}
+		if (char === '`') {
+			stack.push({ type: 'template', braceDepth: 0 });
+			out += ' ';
+			i += 1;
+			continue;
+		}
+		if (char === '{') {
+			top().braceDepth += 1;
+		} else if (char === '}') {
+			if (top().braceDepth === 0 && stack.length > 1) {
+				// Closes a `${ … }` interpolation: back to template text.
+				stack.pop();
+				out += ' ';
+				i += 1;
+				continue;
+			}
+			top().braceDepth = Math.max(0, top().braceDepth - 1);
+		}
+
+		if (!/\s/.test(char)) lastSignificant = char;
+		out += char;
+		i += 1;
+	}
+
+	return { masked: out, literals };
+}
+
+/** Recover the original specifier behind a masked placeholder. */
+function literalText(token, literals) {
+	const match = MASKED_LITERAL.exec(token);
+	if (!match) return token;
+	return literals[Number(match[1])] ?? token;
+}
+
+/**
+ * The local names an import clause binds. `import { type A, b as c }`
+ * binds only `c`; a default import binds its own name.
+ */
+function clauseBindings(clause) {
+	const bindings = [];
+	for (const part of clause.split('{')[0].split(',')) {
+		const name = part.trim();
+		if (/^[A-Za-z_$][\w$]*$/.test(name)) bindings.push(name);
+	}
+	const named = clause.match(/\{([\s\S]*)\}/);
+	if (named) {
+		for (const part of named[1].split(',')) {
+			const entry = part.trim();
+			if (entry.length === 0) continue;
+			if (pieces(entry)[0].startsWith('type ')) continue;
+			const local = pieces(entry).at(-1);
+			if (local && /^[A-Za-z_$][\w$]*$/.test(local)) bindings.push(local);
+		}
+	}
+	const namespace = clause.match(/\*\s+as\s+([A-Za-z_$][\w$]*)/);
+	if (namespace) bindings.push(namespace[1]);
+	return [...new Set(bindings)];
+}
+
+const pieces = (entry) => entry.split(/\s+as\s+/).map((piece) => piece.trim());
+
+/**
+ * Parse the runtime-relevant edges of a masked module.
  *
  * `import type … from` and `export type … from` are erased by
  * TypeScript under `verbatimModuleSyntax`, so they are recorded as
  * type-only edges and never traversed. `import { type A, b }` stays a
  * runtime edge: the statement also binds `b`.
  */
-function parseEdges(source) {
+function parseEdges(masked, literals) {
+	const specifier = (token) => literalText(token, literals);
 	const edges = [];
-	for (const match of source.matchAll(IMPORT_FROM)) {
+	for (const match of masked.matchAll(IMPORT_FROM)) {
 		const clause = match[1].trim();
 		edges.push({
-			specifier: match[2],
+			specifier: specifier(match[2]),
 			clause,
 			// `^type\b` and not `startsWith('type')`: a default import
 			// named `types` is a runtime edge, and calling it type-only
 			// would be exactly the silent false negative this gate
 			// exists to prevent.
 			kind: /^type(\s|$)/.test(clause) ? 'import-type' : 'import',
+			bindings: clauseBindings(clause),
 		});
 	}
-	for (const match of source.matchAll(IMPORT_SIDE_EFFECT)) {
-		edges.push({ specifier: match[1], clause: '', kind: 'import-side-effect' });
-	}
-	for (const match of source.matchAll(IMPORT_DYNAMIC)) {
-		edges.push({ specifier: match[1], clause: '', kind: 'import-dynamic' });
-	}
-	for (const match of source.matchAll(EXPORT_FROM)) {
+	for (const match of masked.matchAll(IMPORT_SIDE_EFFECT)) {
 		edges.push({
-			specifier: match[3],
-			clause: match[2].trim(),
+			specifier: specifier(match[1]),
+			clause: '',
+			kind: 'import-side-effect',
+			bindings: [],
+		});
+	}
+	for (const match of masked.matchAll(IMPORT_DYNAMIC)) {
+		edges.push({
+			specifier: specifier(match[1]),
+			clause: '',
+			kind: 'import-dynamic',
+			bindings: [],
+		});
+	}
+	for (const match of masked.matchAll(EXPORT_FROM)) {
+		const clause = match[2].trim();
+		edges.push({
+			specifier: specifier(match[3]),
+			clause,
 			kind: match[1] ? 'export-type' : 'export-from',
+			bindings: [],
 		});
 	}
 	return edges;
@@ -139,8 +359,8 @@ const isTypeOnlyEdge = (edge) => edge.kind === 'import-type' || edge.kind === 'e
 
 /**
  * A server-function seam: a module that declares a TanStack Start
- * server function. Its handler body only runs on the Worker, so the
- * walk stops here instead of following the handler's imports.
+ * server function. Only the exports the preview imports reach the
+ * browser, and their `.handler(…)` bodies only run on the Worker.
  */
 function isServerFnSeam(edges) {
 	return edges.some(
@@ -149,6 +369,163 @@ function isServerFnSeam(edges) {
 			edge.specifier === '@tanstack/react-start' &&
 			/\bcreateServerFn(?:eration)?\b/.test(edge.clause),
 	);
+}
+
+/** The index just past the group opened at `open`, or -1. */
+function balancedClose(text, open) {
+	let depth = 0;
+	for (let i = open; i < text.length; i++) {
+		const char = text[i];
+		if (char === '(' || char === '[' || char === '{') depth += 1;
+		else if (char === ')' || char === ']' || char === '}') {
+			depth -= 1;
+			if (depth === 0) return i;
+			if (depth < 0) return -1;
+		}
+	}
+	return -1;
+}
+
+/**
+ * The ranges covered by a `createServerFn(…).handler(…)` body.
+ *
+ * Only the `.handler(…)` group is treated as Worker-only: everything
+ * else in the chain (input validators, the method descriptor) is code
+ * the client bundle carries.
+ */
+function findHandlerRanges(masked) {
+	const ranges = [];
+	for (const match of masked.matchAll(/\bcreateServerFn(?:eration)?\s*\(/g)) {
+		let open = masked.indexOf('(', match.index);
+		let chain = 0;
+		while (chain < 32) {
+			chain += 1;
+			const close = balancedClose(masked, open);
+			if (close === -1) break;
+			const rest = masked.slice(close + 1);
+			const next = /^\s*\.\s*([A-Za-z_$][\w$]*)\s*\(/.exec(rest);
+			if (!next) break;
+			const groupStart = close + 1 + rest.indexOf('(');
+			const groupEnd = balancedClose(masked, groupStart);
+			if (groupEnd === -1) break;
+			if (next[1] === 'handler') {
+				ranges.push({ start: close + 1, end: groupEnd + 1 });
+			}
+			open = groupStart;
+		}
+	}
+	return ranges;
+}
+
+/**
+ * Map each top-level declaration to the identifiers it references
+ * outside every handler range — the "what this symbol drags into the
+ * preview" set used for a seam module.
+ */
+function topLevelBlocks(masked, handlerRanges) {
+	const blocks = new Map();
+	let depth = 0;
+	let start = -1;
+	let kind = null;
+	let name = null;
+	let i = 0;
+
+	const close = (end) => {
+		if (start === -1 || name === null) return;
+		const refs = new Set();
+		for (const match of masked.slice(start, end).matchAll(IDENTIFIER)) {
+			const position = start + (match.index ?? 0);
+			if (handlerRanges.some((range) => position >= range.start && position < range.end)) continue;
+			refs.add(match[0]);
+		}
+		const existing = blocks.get(name);
+		if (existing) for (const ref of refs) existing.refs.add(ref);
+		else blocks.set(name, { name, refs });
+		start = -1;
+		kind = null;
+		name = null;
+	};
+
+	while (i < masked.length) {
+		const char = masked[i];
+		if (start === -1) {
+			if (char === ' ' || char === '\t' || char === '\r' || char === '\n' || char === ';') {
+				i += 1;
+				continue;
+			}
+			const match = DECLARATION.exec(masked.slice(i, i + 400));
+			if (match) {
+				start = i;
+				kind = match[1];
+				name = match[2];
+			}
+		}
+		if (char === '(' || char === '[' || char === '{') {
+			depth += 1;
+		} else if (char === ')' || char === ']' || char === '}') {
+			depth -= 1;
+			if (depth === 0 && start !== -1 && BODY_KINDS.has(kind)) close(i + 1);
+		} else if (char === ';' && depth === 0) {
+			close(i + 1);
+		} else if (char === '\n' && depth === 0 && start !== -1) {
+			// Semicolon-less statements: the next declaration ends this one.
+			const rest = masked.slice(i + 1);
+			const offset = rest.length - rest.trimStart().length;
+			if (DECLARATION.test(rest.slice(offset, offset + 400))) close(i + 1);
+		}
+		i += 1;
+	}
+	close(masked.length);
+	return blocks;
+}
+
+/**
+ * The names a seam module's client actually pulls in: the imported
+ * export names, plus every local declaration they reference (a wrapper
+ * that delegates to a same-file helper drags that helper in too).
+ */
+function clientReachableNames(module_, requested) {
+	const reachable = new Set();
+	const queue = [...requested];
+	while (queue.length > 0) {
+		const name = queue.shift();
+		if (reachable.has(name)) continue;
+		reachable.add(name);
+		const block = module_.blocks.get(name);
+		if (!block) continue;
+		for (const ref of block.refs) if (!reachable.has(ref)) queue.push(ref);
+	}
+	return reachable;
+}
+
+/** The edges of a seam module that a preview with `requested` reaches. */
+function clientReachableEdges(module_, requested) {
+	const runtime = module_.edges.filter((edge) => !isTypeOnlyEdge(edge));
+	if (!module_.seam || requested === null || requested.length === 0) return runtime;
+	const reachable = clientReachableNames(module_, requested);
+	return runtime.filter(
+		(edge) =>
+			// A side-effect import or a re-export is module surface: it
+			// runs / ships whether or not an export is used.
+			edge.kind === 'import-side-effect' ||
+			edge.kind === 'export-from' ||
+			edge.bindings.length === 0 ||
+			edge.bindings.some((name) => reachable.has(name)),
+	);
+}
+
+/** Parse one module's source into the walk's view of it. */
+function analyzeModule(source) {
+	const { masked, literals } = maskNonCode(source);
+	const edges = parseEdges(masked, literals);
+	const seam = isServerFnSeam(edges);
+	const handlerRanges = seam ? findHandlerRanges(masked) : [];
+	return {
+		edges,
+		seam,
+		handlerRanges,
+		blocks: seam ? topLevelBlocks(masked, handlerRanges) : new Map(),
+	};
 }
 
 /**
@@ -196,7 +573,13 @@ function globToRegExp(pattern) {
 	return new RegExp(`^${out}$`);
 }
 
-/** The `stories: [ … ]` globs declared by the Storybook config. */
+/**
+ * The `stories: [ … ]` globs declared by the Storybook config.
+ *
+ * A `stories` array that contains anything other than string literals
+ * (a spread, a template literal, a helper call) is reported as
+ * unreadable instead of being silently narrowed to the literals.
+ */
 function readStoryPatterns(root) {
 	const configPath = join(root, '.storybook', 'main.ts');
 	if (!existsSync(configPath)) return { patterns: [], reason: 'config-missing' };
@@ -204,18 +587,35 @@ function readStoryPatterns(root) {
 	const block = source.match(/stories\s*:\s*\[([\s\S]*?)\]/);
 	if (!block) return { patterns: [], reason: 'no-stories-field' };
 	const patterns = [];
-	for (const match of block[1].matchAll(/['"]([^'"]+)['"]/g)) {
+	let residue = '';
+	let cursor = 0;
+	for (const match of block[1].matchAll(STRING_LITERAL)) {
+		residue += block[1].slice(cursor, match.index);
+		cursor = match.index + match[0].length;
 		patterns.push({
-			pattern: match[1],
-			regexp: globToRegExp(resolve(dirname(configPath), match[1])),
+			pattern: match[2],
+			baseDir: resolve(dirname(configPath), patternBase(match[2])),
+			regexp: globToRegExp(resolve(dirname(configPath), match[2])),
 		});
+	}
+	residue += block[1].slice(cursor);
+	if (residue.replace(/[\s,]/g, '') !== '') {
+		return { patterns: [], reason: 'non-literal-story-entry' };
 	}
 	if (patterns.length === 0) return { patterns: [], reason: 'no-stories-field' };
 	return { patterns, reason: null };
 }
 
+/** The directory part of a glob: everything before its first wildcard. */
+function patternBase(pattern) {
+	const index = pattern.search(/[*?@{(]/);
+	return index === -1 ? pattern : pattern.slice(0, index);
+}
+
 function collectSourceFiles(directory) {
 	if (!existsSync(directory)) return [];
+	if (statSync(directory).isFile()) return [directory];
+	if (PRUNED_DIRECTORIES.has(directory.split(sep).at(-1))) return [];
 	return readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
 		const path = join(directory, entry.name);
 		if (entry.isDirectory()) return collectSourceFiles(path);
@@ -239,6 +639,9 @@ function resolveModuleFile(base) {
 }
 
 const isInside = (parent, child) => child === parent || child.startsWith(`${parent}${sep}`);
+const toPosix = (path) => path.split(sep).join('/');
+const boundaryOf = (relativePath) =>
+	FOREIGN_BOUNDARIES.find((candidate) => candidate.pattern.test(relativePath)) ?? null;
 
 /**
  * Walk one story's runtime import closure.
@@ -247,23 +650,42 @@ const isInside = (parent, child) => child === parent || child.startsWith(`${pare
  * that has to change, instead of just the two endpoints.
  */
 function inspectStory(root, srcRoot, storyFile) {
-	const storyRel = relative(root, storyFile).split(sep).join('/');
+	const storyRel = toPosix(relative(root, storyFile));
 	const violations = [];
 	const unresolved = [];
+	const unresolvedExternal = [];
 	const seams = [];
 	const externalPackages = new Set();
 	const externalModules = new Set();
+	const modules = new Set();
 	const visited = new Set();
-	const queue = [{ file: storyFile, path: [] }];
+	const seamRequests = new Set();
+	const cache = new Map();
+	const queue = [{ file: storyFile, path: [], requested: null }];
+
+	const analyze = (file) => {
+		const cached = cache.get(file);
+		if (cached) return cached;
+		const analyzed = analyzeModule(readFileSync(file, 'utf8'));
+		cache.set(file, analyzed);
+		return analyzed;
+	};
 
 	while (queue.length > 0) {
-		const { file, path } = queue.shift();
-		if (visited.has(file)) continue;
-		visited.add(file);
-		const fromRel = relative(root, file).split(sep).join('/');
-		const edges = parseEdges(readFileSync(file, 'utf8'));
+		const { file, path, requested } = queue.shift();
+		// A seam module is walked once per distinct set of requested
+		// exports, because a different import really does pull a
+		// different part of the module into the preview.
+		const key = requested === null ? file : `${file}\u0000${[...requested].sort().join(',')}`;
+		const seen = requested === null ? visited : seamRequests;
+		if (seen.has(key)) continue;
+		seen.add(key);
+		modules.add(file);
 
-		for (const edge of edges) {
+		const fromRel = toPosix(relative(root, file));
+		const module_ = analyze(file);
+
+		for (const edge of clientReachableEdges(module_, requested)) {
 			if (isTypeOnlyEdge(edge)) continue;
 			const label = `${fromRel} -> ${edge.specifier}`;
 
@@ -285,7 +707,8 @@ function inspectStory(root, srcRoot, storyFile) {
 			if (!isInside(srcRoot, target)) {
 				// Outside `src/`: the generated Panda layer (`styled-system/`)
 				// or a static asset. Terminal either way.
-				externalModules.add(resolved ? relative(root, resolved) : label);
+				if (resolved) externalModules.add(toPosix(relative(root, resolved)));
+				else unresolvedExternal.push(label);
 				continue;
 			}
 
@@ -294,35 +717,38 @@ function inspectStory(root, srcRoot, storyFile) {
 				continue;
 			}
 			if (!SOURCE_EXTENSIONS.includes(extname(resolved))) {
-				externalModules.add(relative(root, resolved));
+				externalModules.add(toPosix(relative(root, resolved)));
 				continue;
 			}
 
-			const toRel = relative(root, resolved).split(sep).join('/');
-			const boundary = FOREIGN_BOUNDARIES.find((candidate) => candidate.pattern.test(toRel));
+			const toRel = toPosix(relative(root, resolved));
+			const boundary = boundaryOf(toRel);
 			if (boundary) {
 				violations.push({ boundary: boundary.id, edge: label, via: [...path, label] });
 				continue;
 			}
 
-			const targetEdges = parseEdges(readFileSync(resolved, 'utf8'));
-			if (isServerFnSeam(targetEdges)) {
+			const targetModule = analyze(resolved);
+			if (targetModule.seam) {
 				seams.push({ edge: label, via: [...path, label] });
-				continue;
 			}
-
-			queue.push({ file: resolved, path: [...path, label] });
+			queue.push({ file: resolved, path: [...path, label], requested: edge.bindings });
 		}
 	}
 
+	const dedupeChains = (entries) => [
+		...new Map(entries.map((entry) => [entry.via.join('\u0000'), entry])).values(),
+	];
+	const dedupeLabels = (entries) => [...new Set(entries)];
 	const verdict = violations.length > 0 ? 'fail' : unresolved.length > 0 ? 'not-run' : 'pass';
 	return {
 		file: storyRel,
 		verdict,
-		modules: visited.size,
-		violations,
-		unresolved,
-		seams,
+		modules: modules.size,
+		violations: dedupeChains(violations),
+		unresolved: dedupeLabels(unresolved),
+		unresolvedExternal: dedupeLabels(unresolvedExternal),
+		seams: dedupeChains(seams),
 		externalPackages: [...externalPackages].sort(),
 		externalModules: [...externalModules].sort(),
 	};
@@ -362,11 +788,20 @@ function printReport(report, out) {
 		for (const edge of story.unresolved) {
 			out.write(`        not run  ${edge}\n`);
 		}
+		for (const edge of story.unresolvedExternal) {
+			out.write(`        external ${edge} (outside src/, unresolvable — see known limitations)\n`);
+		}
 	}
 
 	out.write('\nnot applicable — foreign boundaries excluded from the subject set\n');
 	for (const boundary of report.notApplicable) {
 		out.write(`  - ${boundary.label}\n      ${boundary.reason}\n`);
+	}
+	if (report.notApplicableSubjects.length > 0) {
+		out.write('  stories living inside a foreign boundary (rule targets, not subjects):\n');
+		for (const entry of report.notApplicableSubjects) {
+			out.write(`  - ${entry.file}  [${entry.boundary}]\n`);
+		}
 	}
 
 	const { pass, fail, notRun } = report.counts;
@@ -397,14 +832,42 @@ function main(argv) {
 	const { patterns, reason } = readStoryPatterns(root);
 	if (patterns.length === 0) {
 		process.stderr.write(
-			`[storybook:ownership:check] cannot read the subject set: ${reason}\nExpected \`stories: [ … ]\` in .storybook/main.ts.\n`,
+			`[storybook:ownership:check] cannot read the subject set: ${reason}\nExpected \`stories: [ … ]\` string literals in .storybook/main.ts.\n`,
 		);
 		return 2;
 	}
 
-	const subjects = collectSourceFiles(srcRoot)
-		.filter((file) => patterns.some((entry) => entry.regexp.test(file)))
-		.sort();
+	const outsideRepo = patterns.filter((entry) => !isInside(root, entry.baseDir));
+	if (outsideRepo.length > 0) {
+		process.stderr.write(
+			`[storybook:ownership:check] a stories glob resolves outside the repository: ${outsideRepo
+				.map((entry) => entry.pattern)
+				.join(', ')}\nA narrower subject set is never reported as a pass.\n`,
+		);
+		return 2;
+	}
+
+	// Every glob's non-glob prefix is a walk root, so a story declared
+	// outside `src/` is still a subject.
+	const candidates = [...new Set(patterns.flatMap((entry) => collectSourceFiles(entry.baseDir)))];
+
+	const subjects = [];
+	const notApplicableSubjects = [];
+	for (const file of candidates.sort()) {
+		if (!patterns.some((entry) => entry.regexp.test(file))) continue;
+		const relativePath = toPosix(relative(root, file));
+		const boundary = boundaryOf(relativePath);
+		if (boundary) {
+			notApplicableSubjects.push({
+				file: relativePath,
+				boundary: boundary.id,
+				label: boundary.label,
+				reason: boundary.reason,
+			});
+			continue;
+		}
+		subjects.push(file);
+	}
 
 	if (subjects.length === 0) {
 		process.stderr.write('[storybook:ownership:check] no story file matches .storybook/main.ts\n');
@@ -431,9 +894,12 @@ function main(argv) {
 			label: boundary.label,
 			reason: boundary.reason,
 		})),
+		notApplicableSubjects,
 		knownLimitations: [
-			'server-function seam: createServerFn handler imports are not walked (the handler only runs on the Worker). A UI module that reaches a foreign boundary ONLY through its own ./load.ts is reported as a seam, not a violation.',
+			'server-function seam: inside a createServerFn(…).handler(…) body the walk stops, because that code only runs on the Worker. Everything the preview imports from a seam module — including its non-handler exports and their own dependencies — IS walked, so a boundary reached through a client-reachable export is still reported.',
+			'the walk reads ES import syntax, not JSX text: a story that renders an import example as literal JSX children (`<code>import … from …</code>`) instead of a string still needs a comment, not raw text.',
 			`${WORKER_VIRTUAL_MODULES.size} Workers virtual module (${[...WORKER_VIRTUAL_MODULES].join(', ')}) cannot resolve in a browser preview at all — this check treats any direct or transitive edge to it as a violation.`,
+			'a specifier that resolves outside src/ (a generated `styled-system/` file, a static asset) is a terminal leaf; when such a path does not exist it is printed as `external` instead of failing the walk, so a stale generated path is a documented manual check.',
 			'the walk is regex-based over ES import syntax; computed specifiers, CommonJS require() and non-literal import() are not inspected.',
 		],
 	};
@@ -442,7 +908,7 @@ function main(argv) {
 
 	if (options.json) {
 		writeFileSync(options.json, `${JSON.stringify(report, null, 2)}\n`);
-		process.stdout.write(`\njson report: ${relative(root, options.json)}\n`);
+		process.stdout.write(`\njson report: ${toPosix(relative(root, options.json))}\n`);
 	}
 
 	if (fail.length > 0) {

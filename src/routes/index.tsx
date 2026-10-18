@@ -56,7 +56,12 @@ export const Route = createFileRoute('/')({
 	 *
 	 * Canonical is the origin WITH its trailing slash — `/` is the
 	 * home document and the gate derives the expected value from the
-	 * route id, so `/` and `` must not disagree.
+	 * route id, so `/` and `` must not disagree. The same link is
+	 * also the sitemap entry's target (Issue #420): the sitemap
+	 * contract is that every `<loc>` IS the page's canonical URL, and
+	 * `scripts/check-sitemap-route-coverage.test.mjs` asserts this
+	 * literal and the sitemap inventory agree, so the two cannot
+	 * drift apart silently.
 	 */
 	head: () => {
 		const title = 'my-web-2026 — rebuildup.dev';

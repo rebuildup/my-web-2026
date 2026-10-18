@@ -65,7 +65,10 @@ export const Route = createFileRoute('/tools/')({
 			],
 			// Issue #418: the index declared a title and a
 			// description but no canonical, so the Tool registry had
-			// no preferred URL of its own.
+			// no preferred URL of its own. Issue #420 makes the same
+			// link the sitemap entry's target; the per-Tool shells
+			// stay `noindex` and out of the sitemap (see
+			// `src/routes/index.tsx` for the rationale).
 			links: [{ rel: 'canonical', href: url }],
 		};
 	},

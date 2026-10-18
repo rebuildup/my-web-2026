@@ -29,6 +29,20 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## Cache isolation
+
+Responses whose body depends on who asked for them (per-principal
+counters, per-visitor reaction state, sessions, `/admin*`, and
+server-function payloads) are marked so that a **shared** cache — CDN
+edge, corporate proxy — cannot store them: `private, no-store` on the
+external boundary, `private, no-cache` on caller-specific SSR
+documents, `no-store` under `/admin*`. Public immutable payloads opt
+in explicitly with `public, max-age=…, immutable`.
+
+The full contract, the audit it came from, and the verification
+suites are documented in
+[`docs/security/cache-isolation.md`](security/cache-isolation.md).
+
 ## Open redirect
 
 Every `returnTo`-shaped value that crosses the external boundary is

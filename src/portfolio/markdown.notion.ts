@@ -29,7 +29,7 @@
  * Cross-references:
  *   - `src/portfolio/markdown.lexer.ts` — `classifyHref` is the URL
  *     oracle; this module does not re-implement scheme filtering.
- *   - `src/portfolio/markdown.xss-fixtures.ts` — `executableMarkupFindings`,
+ *   - `test/fixtures/markdown-xss-fixtures.ts` — `executableMarkupFindings`,
  *     the oracle the round-trip test asserts against.
  *   - `docs/security.md` §"Markdown / Notion-derived HTML input boundary".
  */

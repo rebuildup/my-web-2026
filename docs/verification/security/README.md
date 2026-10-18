@@ -166,7 +166,7 @@ in the picture.
 - **Issue:** #451 (Markdown / Notion-derived HTML XSS boundary).
 - **What it shows:** the article route (`GET /portfolio/<slug>`)
   rendering a `portfolio_project` row whose `motivation_md` is the
-  shared attack corpus from `src/portfolio/markdown.xss-fixtures.ts`.
+  shared attack corpus from `test/fixtures/markdown-xss-fixtures.ts`.
 - **How to read it:**
   - Rows labelled *(accepted / text | markdown-link)* are normal
     article copy: bold, italic, an internal link and an external link.
@@ -197,7 +197,7 @@ artefact cannot be regenerated from the tree alone. To rebuild it:
 
 1. Seed the local D1 with the fixture row from the shared corpus:
    `markdownXssFixtureRowValues()` in
-   `src/portfolio/markdown.xss-fixtures.ts` (write it into the local
+   `test/fixtures/markdown-xss-fixtures.ts` (write it into the local
    `.tmp/d1state` binding with `scripts/_d1.mjs`; never into a remote
    binding).
 2. Start the local Worker (`pnpm run dev`, or `pnpm preview` after

@@ -6,6 +6,7 @@ import { CounterTile } from './access/tiles';
 import type { Capability } from './capabilities/capability';
 import { CapabilitiesGrid } from './capabilities/grid';
 import { Footer } from './footer';
+import type { HomeLocale } from './format';
 import { Hero } from './hero';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
@@ -23,6 +24,19 @@ export interface HomePageData {
 
 export interface HomePageProps {
 	data: HomePageData;
+	/**
+	 * Opt-in locale for the format adapter (Issue #430). The route
+	 * passes nothing today, so the shipped page keeps the `'en'`
+	 * default; picking the locale source (URL, cookie,
+	 * `Accept-Language`) is a product decision this ticket does not
+	 * make.
+	 */
+	locale?: HomeLocale;
+	/**
+	 * IANA time zone the observed-at snapshot is read in. Defaults to
+	 * `'UTC'` — see `StatusTilesProps#timeZone`.
+	 */
+	timeZone?: string;
 }
 
 /**
@@ -45,7 +59,7 @@ export interface HomePageProps {
  * `<SectionHeading variant="spread">`). Reactions and counter no
  * longer roll their own inline eyebrow / heading / padding.
  */
-export function HomePage({ data }: HomePageProps) {
+export function HomePage({ data, locale, timeZone }: HomePageProps) {
 	return (
 		<>
 			<a
@@ -75,6 +89,8 @@ export function HomePage({ data }: HomePageProps) {
 					services={data.services}
 					statuses={data.statuses}
 					observedAt={data.observedAt}
+					locale={locale}
+					timeZone={timeZone}
 				/>
 				<section
 					aria-labelledby="reactions-heading"
@@ -108,7 +124,7 @@ export function HomePage({ data }: HomePageProps) {
 							description="各リクエストは短時間ウィンドウ内で重複加算されません。"
 							variant="spread"
 						>
-							<CounterTile data={data.counter} />
+							<CounterTile data={data.counter} locale={locale} />
 						</SectionHeading>
 					</Container>
 				</section>

@@ -510,3 +510,70 @@ next to the element that uses it:
   (`#ffd627` body / `#fff` highlight / `#000` eyes) verbatim for
   provenance. The single-accent rule governs UI accents (CTA, pill,
   card hover) — it does not recolor the logo.
+
+## Locale formatting amendment (Issue #430)
+
+> Adds a *feature-local* format adapter for the home surface. It
+> extends the brief; the `Avoid`, `Color direction`, `Motion`, and
+> `Typography direction` sections above remain in force, and the
+> "Explicitly unresolved" note about i18n is narrowed, not removed.
+
+### What changed
+
+- **A format adapter, not an i18n framework.** `src/home/format.ts`
+  owns the formatting of instants, counts, and relative spans through
+  `Intl` (`DateTimeFormat` / `NumberFormat` / `RelativeTimeFormat`).
+  It is a *home* module on purpose: the home is the only obligation
+  that renders these values today, and AGENTS.md §3 forbids
+  promoting a local implementation into a cross-cutting abstraction
+  before a second obligation needs it. `portfolio`, `admin`, and
+  `about` each grow their own adapter, or this one is promoted, when
+  the second consumer actually appears.
+- **Locale is opt-in per surface, never global.** The adapter's
+  default is `'en'` + `'UTC'`, which is what the home shipped before
+  it existed, so a surface that passes nothing keeps its previous
+  output. `CounterTile` and `StatusTiles` take a `locale` prop;
+  `HomePage` forwards it. The route passes nothing today.
+- **No negotiation.** `Accept-Language`, URL prefixes, and cookies
+  are not implemented. Choosing the locale source is a product
+  decision, and guessing one would publish an unconfirmed default to
+  every visitor. The adapter is ready for a decision, not a decision.
+- **Formatting only, values untouched.** The adapter returns display
+  strings; it never rewrites, rounds, re-units, or re-scales a value.
+  The odometer digit strip stays locale-independent (a grouping
+  separator would break its geometry) — only the accessible label and
+  the delta label carry the grouped form.
+- **Copy stays English.** The home's labels ("page views", "last
+  hit:", "since") remain English until an approved translation
+  source exists; only the value they wrap is localised. Choosing
+  wording for a `ja` / `ko` reader is an editorial decision, not a
+  formatting one.
+
+### What was deliberately not changed
+
+- **No visitor-local time zone.** The observed-at snapshot is one
+  server instant shared by every visitor of a response, so it renders
+  in UTC. A local-zone rendering has to be a post-mount upgrade, and
+  a server/client zone mismatch would break hydration.
+- **No message catalogue, no plural rules, no locale negotiation.**
+  The adapter is `Intl` plus a locale list; everything else a full
+  i18n layer would need is still deferred.
+- **No CLDR unit wrapper.** The only unit-bearing values are the
+  relative spans, which `Intl.RelativeTimeFormat` words per locale.
+  No home surface renders a quantity whose unit is a CLDR unit, so
+  the adapter does not wrap one.
+
+### Typography / writing-quality differences (recorded, CLDR)
+
+- `ja` separates the number from the unit with a space ("5 分前");
+  `ko` writes the unit tight against the number ("5분 전") and puts
+  the space in the word order. The exact space code point is ICU
+  data, so nothing may depend on it.
+- `ko` carries a day period ("오전 9:00"), `ja` is 24-hour ("9:00"),
+  `en` is 12-hour ("9:00 AM"). The adapter does not pin `hourCycle`:
+  the locale's own convention is the point.
+- Date order flips: `en` "Jan 5, 2026", `ja` "2026/01/05", `ko`
+  "2026. 1. 5.".
+- Digit grouping does **not** differ today: `en` / `ja` / `ko` all
+  render "1,234,567". Recorded as an observation, not an assumption —
+  `src/home/format.test.ts` asserts it.

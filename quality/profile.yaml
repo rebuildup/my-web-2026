@@ -46,6 +46,7 @@ gates:
       # script may not print a secret-named value. Without this, a new
       # log call site silently opts out of redaction.
       - 'pnpm run log:redaction:check'
+      - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
       # Issue #414: the Web feature adoption gate. Offline and vendored
       # (quality/browser-baseline.json pins the web-features Baseline
       # snapshot), so it costs a directory walk and never a network call.

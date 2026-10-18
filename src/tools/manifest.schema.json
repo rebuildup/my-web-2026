@@ -103,12 +103,12 @@
 										"pattern": "^allow-scripts( allow-(downloads|forms|modals|orientation-lock|pointer-lock|popups|presentation))*$"
 									},
 									"referrer_policy": {
-										"description": "referrerpolicy attribute value. Only values that cannot leak the host's full URL are accepted: 'no-referrer', 'same-origin', 'strict-origin'.",
+										"description": "referrerpolicy attribute value AND the Referrer-Policy applied to the Tool artifact responses under artifact_path (Issue #449 mirrors it into public/_headers). Only values that cannot leak the host's full URL are accepted: 'no-referrer', 'same-origin', 'strict-origin'.",
 										"type": "string",
 										"enum": ["no-referrer", "same-origin", "strict-origin"]
 									},
 									"allow": {
-										"description": "Permissions-Policy style capability grant list for the frame. Required (non-empty) when the sandbox uses any conditional token. Rendered verbatim as the <iframe allow=...> attribute by src/routes/tools.$slug.tsx; it only takes effect in combination with a matching host-side 'Permissions-Policy' response header, which is not sent for Tool frames yet (see docs/tools/embed-policy.md section 2).",
+										"description": "Permissions-Policy features this Tool needs from the host. FEATURE NAMES ONLY (e.g. 'microphone'), space separated — the host owns the origin allowlist and derives it from the serving origin (Issue #449). Required (non-empty) when the sandbox uses any conditional token (Issue #465). Rendered verbatim as the <iframe allow=...> attribute by src/routes/tools.$slug.tsx, and mirrored into the host-side 'Permissions-Policy' response header and public/_headers grant.",
 										"type": "string"
 									},
 									"sandbox_rationale": {

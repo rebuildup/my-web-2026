@@ -171,6 +171,14 @@ of this file. The check derives its sample paths from every shipped rule
 (plus the frozen deep paths it also pins), so a rule added later is
 judged on its own commit instead of passing silently.
 
+One deliberate exception (reconciled with Issue #448): every Tool rule
+must state `Content-Security-Policy: frame-ancestors 'self'`, so the
+namespace rule and the `mic-level` grant rule both carry it on the same
+path. Multiple CSP policies are valid, and two identical policies
+intersect to the same policy under both combine and override semantics,
+so check 6 accepts **identical** duplicate CSP values and still rejects
+two different ones. No other header gets this exception.
+
 ### Why the grant is origin-scoped
 
 The emitted value is `microphone=(self "https://rebuildup.dev")` in

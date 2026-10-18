@@ -80,6 +80,11 @@ function buildHostRepo(state) {
 	gitIn(submodulePath, ['remote', 'add', 'origin', CANONICAL]);
 
 	gitIn(submodulePath, ['reset', '--hard', '-q', state === 'drifted' ? driftedSha : pinnedSha]);
+	if (state === 'status-unreadable') {
+		// A corrupt index: HEAD stays readable, `git status --porcelain`
+		// exits non-zero, so the worktree state was never observed.
+		writeFileSync(join(submodulePath, '.git/index'), 'not an index\n');
+	}
 	if (state === 'dirty') {
 		writeFileSync(
 			join(submodulePath, 'index.html'),
@@ -397,6 +402,16 @@ describe('build orchestrator refuses an unprovenanced checkout (Issue #473)', ()
 		const result = runBuildTools(fixture.root);
 		assert.equal(result.status, 1);
 		assert.match(result.stderr, /checkout is dirty/);
+		assert.equal(existsSync(join(fixture.root, 'dist/tool-provenance')), false);
+	});
+
+	it('refuses to build when the checkout status cannot be read', () => {
+		// `rev-parse HEAD` still reports the pin, so a SHA-only check would
+		// build and stamp a worktree whose modifications were never read.
+		const fixture = buildHostRepo('status-unreadable');
+		const result = runBuildTools(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /checkout state unreadable/);
 		assert.equal(existsSync(join(fixture.root, 'dist/tool-provenance')), false);
 	});
 

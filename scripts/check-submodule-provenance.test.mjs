@@ -104,7 +104,7 @@ function healthyFacts(overrides = {}) {
 		gitAvailable: true,
 		head: PIN_A,
 		gitlinks: { 'external/example-widget': PIN_A },
-		localSubmoduleConfig: {
+		submoduleConfig: {
 			'external/example-widget': { url: CANONICAL, active: 'true' },
 		},
 		urlRewrites: [],
@@ -181,6 +181,49 @@ describe('provenance — .gitmodules parsing', () => {
 `);
 		assert.equal(sections[0].keys.branch, 'main');
 		assert.equal(sections[0].path, 'external/example-widget');
+	});
+
+	it('merges repeated sections for the same submodule name, as git config does', () => {
+		const sections = parseGitmodules(`
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = ${CANONICAL}
+	branch = main
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = ${CANONICAL}
+`);
+		assert.equal(sections.length, 1);
+		assert.equal(sections[0].keys.branch, 'main');
+		assert.equal(sections[0].url, CANONICAL);
+	});
+
+	it('does not let a repeated section hide an earlier `branch` key', () => {
+		const gitmodules = parseGitmodules(`
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = ${CANONICAL}
+	branch = main
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = ${CANONICAL}
+`);
+		const result = run([widgetTool()], gitmodules, healthyFacts());
+		assert.ok(codes(result).includes('BRANCH_TRACKED'));
+	});
+
+	it('fails when two submodule names claim the same path', () => {
+		const gitmodules = parseGitmodules(`
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = ${CANONICAL}
+[submodule "external/example-widget-alias"]
+	path = external/example-widget
+	url = ${CANONICAL}
+`);
+		const result = run([widgetTool()], gitmodules, healthyFacts());
+		assert.equal(result.ok, false);
+		assert.ok(codes(result).includes('GITMODULES_DUPLICATE_PATH'));
 	});
 
 	it('does not let a capitalised `Branch` key hide branch tracking', () => {
@@ -342,7 +385,7 @@ describe('provenance — fetch source identity', () => {
 
 	it('fails when local git config redirects the submodule fetch', () => {
 		const facts = healthyFacts({
-			localSubmoduleConfig: {
+			submoduleConfig: {
 				'external/example-widget': {
 					url: 'https://github.com/example-org/example-widget-fork.git',
 					active: 'true',
@@ -397,7 +440,7 @@ describe('provenance — branch tips are not a pin', () => {
 
 	it('fails when git config submodule.<name>.branch is set', () => {
 		const facts = healthyFacts({
-			localSubmoduleConfig: {
+			submoduleConfig: {
 				'external/example-widget': { url: CANONICAL, branch: 'main' },
 			},
 		});
@@ -537,7 +580,7 @@ describe('provenance — every configured fetch URL, not just the last one', () 
 		// identity comparison sees the manifest's own repository and stays
 		// quiet while the fetch URL carries a credential.
 		const facts = healthyFacts({
-			localSubmoduleConfig: {
+			submoduleConfig: {
 				'external/example-widget': {
 					url: `https://x-access-token:${TOKEN}@github.com/example-org/example-widget.git`,
 				},
@@ -559,6 +602,28 @@ describe('provenance — every configured fetch URL, not just the last one', () 
 		assert.match(
 			result.findings.find((item) => item.code === 'CHECKOUT_DIRTY').message,
 			/uncommitted changes or untracked files/,
+		);
+	});
+
+	it('fails closed when `git status` could not be read', () => {
+		// A corrupt index makes `git status --porcelain` exit non-zero while
+		// `rev-parse HEAD` still succeeds. That is not a clean checkout.
+		const facts = healthyFacts(checkoutFacts({ dirty: false, statusReadable: false }));
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.equal(result.ok, false);
+		assert.ok(codes(result).includes('CHECKOUT_STATUS_UNREADABLE'));
+		assert.equal(codes(result).includes('CHECKOUT_DIRTY'), false);
+	});
+
+	it('reports the scope a submodule config value came from', () => {
+		const facts = healthyFacts({
+			submoduleConfig: { 'external/example-widget': { branch: 'main' } },
+			submoduleConfigScopes: { 'external/example-widget': { branch: 'worktree' } },
+		});
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.match(
+			result.findings.find((item) => item.code === 'BRANCH_TRACKED').message,
+			/git config \(worktree\) submodule\.external\/example-widget\.branch/,
 		);
 	});
 });
@@ -692,7 +757,22 @@ describe('provenance — status-only output never echoes credentials', () => {
 			'https://github.com/x.git?***',
 		);
 		assert.equal(redactUrlCredentials(`ssh://user:${TOKEN}@host/x`), 'ssh://***@host/x');
+		assert.equal(
+			redactUrlCredentials(`https://github.com/example-org/${TOKEN}@repo.git`),
+			'https://github.com/example-org/***@repo.git',
+		);
 		assert.equal(redactUrlCredentials(undefined), '');
+	});
+
+	it('never prints a credential hidden in an invalid url path segment', () => {
+		const gitmodules = parseGitmodules(`
+[submodule "external/example-widget"]
+	path = external/example-widget
+	url = https://github.com/example-org/${TOKEN}@repo.git
+`);
+		const result = run([widgetTool()], gitmodules, healthyFacts());
+		assert.ok(codes(result).includes('URL_UNSAFE'));
+		assert.ok(!renderedEverything(result).includes(TOKEN));
 	});
 
 	it('never prints a credentialed url.*.insteadOf base', () => {
@@ -716,7 +796,7 @@ describe('provenance — status-only output never echoes credentials', () => {
 
 	it('never prints a credentialed local url override or checkout origin', () => {
 		const facts = healthyFacts({
-			localSubmoduleConfig: {
+			submoduleConfig: {
 				'external/example-widget': {
 					url: `https://x-access-token:${TOKEN}@github.com/example-org/example-widget-fork.git`,
 					active: 'true',
@@ -1017,6 +1097,76 @@ describe('provenance CLI — end-to-end over synthetic repositories', () => {
 		const result = runCli(fixture.root);
 		assert.equal(result.status, 1);
 		assert.match(result.stderr, /LOCAL_URL_OVERRIDE/);
+	});
+
+	it('fails when a worktree-scope config redirects the submodule fetch', () => {
+		// `extensions.worktreeConfig` moves `submodule.<name>.url` /
+		// `.branch` into `config.worktree`, where it overrides the local
+		// value and is what git actually uses. Reading only `--local`
+		// would inspect the value being overridden.
+		const fixture = buildHostRepo('none');
+		gitIn(fixture.root, ['config', 'extensions.worktreeConfig', 'true']);
+		const worktreeConfig = resolve(
+			fixture.root,
+			gitIn(fixture.root, ['rev-parse', '--git-path', 'config.worktree']),
+		);
+		writeFileSync(
+			worktreeConfig,
+			`[submodule "external/example-widget"]
+\turl = https://github.com/example-org/example-widget-fork.git
+`,
+		);
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /LOCAL_URL_OVERRIDE/);
+		assert.match(result.stderr, /git config \(worktree\)/);
+	});
+
+	it('fails when a worktree-scope submodule config tracks a branch', () => {
+		const fixture = buildHostRepo('none');
+		gitIn(fixture.root, ['config', 'extensions.worktreeConfig', 'true']);
+		const worktreeConfig = resolve(
+			fixture.root,
+			gitIn(fixture.root, ['rev-parse', '--git-path', 'config.worktree']),
+		);
+		writeFileSync(
+			worktreeConfig,
+			`[submodule "external/example-widget"]
+\tbranch = main
+`,
+		);
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /BRANCH_TRACKED/);
+		assert.match(
+			result.stderr,
+			/git config \(worktree\) submodule\.external\/example-widget\.branch/,
+		);
+	});
+
+	it("fails closed when the checkout's git status cannot be read", () => {
+		// A corrupt index: `rev-parse HEAD` succeeds, so the SHA comparison
+		// still passes, but `git status --porcelain` exits non-zero. The
+		// worktree state was never observed, so it must not pass.
+		const fixture = buildHostRepo('none');
+		writeFileSync(join(fixture.submodulePath, '.git/index'), 'not an index\n');
+		assert.notEqual(
+			spawnSync('git', ['status', '--porcelain'], {
+				cwd: fixture.submodulePath,
+				encoding: 'utf8',
+				env: SANDBOX_ENV,
+			}).status,
+			0,
+		);
+		assert.equal(
+			gitIn(fixture.submodulePath, ['rev-parse', 'HEAD']),
+			fixture.pinnedSha,
+			'sanity: HEAD is still readable',
+		);
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /CHECKOUT_STATUS_UNREADABLE/);
+		assert.equal(result.stderr.includes('CHECKOUT_DIRTY'), false);
 	});
 
 	it('warns when the checkout carries an untracked file', () => {

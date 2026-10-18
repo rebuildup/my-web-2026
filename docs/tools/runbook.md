@@ -54,10 +54,31 @@ The verifier asserts:
 - `classification=needs_tool_side_fix` + `delivery.kind=same_origin_static`
   is a contradiction and is reported as a violation.
 
+Issue #465 replaced the last-but-two bullet and added the embed
+policy pass: for every embeddable entry the verifier now runs
+`evaluateToolEmbedPolicy()` from
+[`src/tools/embed-policy.ts`](../../src/tools/embed-policy.ts) — the
+same function the `/tools/<slug>` route runs per request. That covers
+the sandbox token classes, `referrer_policy`, the frame origin, and
+the optional `host_message` origin contract. The rules are defined
+once; this gate and the route cannot drift apart.
+
 Run it before committing any change to `manifest.json`. CI runs it as
 part of `pnpm run validate:fast`. It proves the manifest pin matches
 the **recorded gitlink**; §6 covers the remaining provenance (the
 fetched source, the checked-out commit, the collected artefact).
+
+To produce the human-readable audit used by the Issue #465 PR
+screenshot:
+
+```bash
+pnpm run tools:embed-policy:report -- --out=.tmp/tool-iframe-sandbox.html
+```
+
+It renders every manifest entry with its sandbox / referrer /
+message verdict, plus the hostile-message fixture matrix (what the
+host guard does with each injected event). The report is generated
+into `.tmp/` and is never committed.
 
 ## 3. Run the build orchestrator
 
@@ -119,6 +140,17 @@ Forbidden shortcuts (re-stated because they keep being re-attempted):
 - **Do not** ship an unverified Tool-side fix in the parent repo.
   Open a PR in the Tool's own repo, merge it there, then bump
   `source.pinned_sha` here.
+- **Do not** add a sandbox token without checking
+  [`docs/tools/embed-policy.md`](embed-policy.md). `allow-same-origin`
+  and the navigation / escape / storage tokens are rejected by
+  `pnpm run tools:check`, and a capability token without `iframe.allow`
+  + `iframe.sandbox_rationale` is rejected too. If the check refuses
+  your entry, the rule is doing its job — do not work around it in the
+  manifest.
+- **Do not** declare `delivery.host_message` for a Tool that does not
+  need it. With no declaration the host attaches no message listener at
+  all, which is the safest default; declaring one opens an
+  origin-exact, type-allowlisted channel that has to be reviewed.
 
 ## 5. Bump a submodule
 
@@ -169,8 +201,9 @@ What it proves, per fetched submodule:
 | `source.pinned_sha`      | `git -C external/<slug> rev-parse HEAD`  | `CHECKOUT_SHA_MISMATCH`          |
 | `source.canonical_repo`  | `.gitmodules` `url`                     | `URL_MISMATCH` / `URL_UNSAFE`    |
 | `source.canonical_repo`  | **every** configured `remote.origin.url` | `CHECKOUT_ORIGIN_MISMATCH`     |
-| pinned commit (no ref)   | `.gitmodules` `branch` / `submodule.<name>.branch` | `BRANCH_TRACKED`      |
-| fetch source             | `submodule.<name>.url`, `url.*.insteadOf` (whole effective config) | `LOCAL_URL_OVERRIDE` / `URL_INSTEADOF_REWRITE` |
+| pinned commit (no ref)   | `.gitmodules` `branch` / `submodule.<name>.branch` (whole effective config, scope reported) | `BRANCH_TRACKED` |
+| fetch source             | `submodule.<name>.url`, `url.*.insteadOf` (whole effective config, scope reported) | `LOCAL_URL_OVERRIDE` / `URL_INSTEADOF_REWRITE` |
+| path ownership           | one `.gitmodules` submodule name per path | `GITMODULES_DUPLICATE_PATH` |
 | `dist/tool-provenance/<slug>.json` | pin + live checkout    | `ARTIFACT_PIN_MISMATCH` / `ARTIFACT_SOURCE_MISMATCH` / `ARTIFACT_STAMP_INVALID` |
 
 The gate is **offline and status-only**: it runs `git ls-tree`,
@@ -181,11 +214,14 @@ subject, a message and a remedy. That is why it is safe to paste its
 output into a PR and why it can run in `validate:fast`.
 
 Some of the facts it reads come from the *ambient* git config rather
-than from the repository — `url.*.insteadOf`, a local
-`submodule.<name>.url`, a checkout's `remote.origin` — and those can
-carry an access token. Any URL in a finding or in a report row is
-therefore printed with its userinfo / query / fragment replaced by
-`***`; the checks still run on the full string.
+than from the repository — `url.*.insteadOf`, a `submodule.<name>.url`,
+a checkout's `remote.origin` — and those can carry an access token.
+Any URL in a finding or in a report row is therefore printed with its
+userinfo / query / fragment replaced by `***`; the checks still run on
+the full string. A credential pasted into a *path* segment (the
+`https://github.com/owner/ghp_…@repo.git` shape) is never echoed: URL
+syntax errors and malformed path segments are reported with fixed text,
+not with the offending value.
 
 Every URL it reads is checked against the URL policy on its **raw**
 value, and identity is compared on the normalised value. The two
@@ -289,6 +325,7 @@ Every finding the gate can raise, and what to do about it:
 | `CHECKOUT_ORIGIN_MISMATCH`   | a configured `remote.origin.url` is not the declared repository. **Every** value is checked, because a fetch uses the first one and `git config --get` reports only the last | `git -C external/<slug> remote set-url origin <canonical_repo>`; drop the extra values first with `git -C external/<slug> config --unset-all remote.origin.url` |
 | `CHECKOUT_MISSING` (warn)    | `git submodule update --init` was not run           | `git submodule update --init --recursive`; `--require-checkout` turns the warning into an error |
 | `CHECKOUT_SHA_UNREADABLE`    | the checkout is initialised but HEAD is not a readable 40-char commit SHA (e.g. a fresh repository with no commit) | `git -C external/<slug> status`, then re-run `git submodule update --init` |
+| `CHECKOUT_STATUS_UNREADABLE` | the checkout is initialised but `git status --porcelain` exited non-zero (corrupt index, permissions, broken worktree), so the gate cannot tell whether it is clean — HEAD is still readable, so a SHA check alone would pass | `git -C external/<slug> status` to see the underlying error; repair the checkout (e.g. `rm .git/index && git reset`) or re-run `git submodule update --init --recursive`. `scripts/build-tools.mjs` also refuses to build in this state (§3 step 4) |
 | `CHECKOUT_DIRTY` (warn)      | tracked files were edited in place **or** an untracked file was dropped into the checkout (a `public/` asset, an auto-detected config file); HEAD still equals the pin, so the bytes are not the pinned commit's bytes (ADR-0006 §4: the pin is a *verified commit*) | `git -C external/<slug> status --porcelain` lists it; discard the edit or delete the file, fix the Tool in its own repo, re-checkout the pin. `scripts/build-tools.mjs` refuses to build in this state too (§3 step 4), so it cannot reach production. Ignored paths (the Tool's `.gitignore`, e.g. `node_modules/`, `dist/`) do not count |
 | `ARTIFACT_PIN_MISMATCH`      | `dist/` still holds an artefact built from the previous pin | `pnpm run build` (the stamp is rewritten from the current pin)     |
 | `ARTIFACT_SOURCE_MISMATCH`   | the stamp names a different checkout commit or a different source repository than the manifest declares | `pnpm run build` (the stamp is rewritten from the current checkout) |
@@ -296,8 +333,17 @@ Every finding the gate can raise, and what to do about it:
 | `ARTIFACT_PIN_MISSING` (info) | nothing has been built yet, or `dist/` was cleaned | nothing — before the first build this is the expected state (§6.1) |
 | `DECLARED_DELIVERY_UNFETCHABLE` | a manifest entry declares a `submodule_path` (or is served) but `.gitmodules` has no entry to fetch from | add the `[submodule]` entry, or keep the entry inventory-only until it is integrated |
 | `SUBMODULE_UNDECLARED`       | `.gitmodules` fetches a submodule the registry does not own | add the manifest entry (§4) or drop the submodule                |
+| `GITMODULES_DUPLICATE_PATH`  | two different `[submodule "<name>"]` sections claim the same `path`; git cannot fetch both and the applicable `submodule.<name>.*` config is ambiguous | keep a single section for that path |
 | `INVENTORY_ONLY` (info, row marker) | an entry with no gitlink, no `.gitmodules` entry and no checkout — its recorded SHA is documentation, not a verified pin | nothing; flip `delivery.kind` when the Tool is actually integrated |
 | `GIT_UNAVAILABLE` (warn)     | the gate was run outside a git checkout, so no pin could be compared with a committed tree | run it from a git checkout of the repository |
+
+The same effective-config read (`git config --list --show-scope
+--includes`) supplies `submodule.<name>.url` and `.branch`, so a
+per-worktree value (`config.worktree`, behind
+`extensions.worktreeConfig`) is inspected with the scope it came from
+and the last value for a key wins exactly as it does for
+`git config --get`. Reading only `--local` would inspect the value
+that the worktree level is overriding.
 
 `URL_INSTEADOF_REWRITE` reads the whole **effective** git config —
 `git config --list --show-scope --includes`, so system, global, local,
@@ -376,11 +422,15 @@ change is required, that is a separate ADR-0006 revision ticket.
 
 ## 9. Related artefacts
 
+- [`docs/tools/embed-policy.md`](embed-policy.md) — the iframe sandbox /
+  referrer policy / `postMessage` origin contract (Issue #465).
 - `docs/tools/inventory.md` — durable inventory of all 14 known Tools,
   with classification reasoning.
 - `src/tools/manifest.json` — the registry.
 - `src/tools/manifest.schema.json` — JSON Schema (draft-07) for the
   registry.
+- `src/tools/embed-policy.ts` + `.test.ts` — the embed policy and its
+  contract tests.
 - `scripts/check-tools-manifest.mjs` + `.test.mjs` — verifier.
 - `scripts/check-submodule-provenance.mjs` + `.test.mjs` —
   supply-chain provenance gate (§6).
@@ -388,6 +438,8 @@ change is required, that is a separate ADR-0006 revision ticket.
   behind the §6.2 abnormal observation and the report image.
 - `docs/verification/supply-chain/submodule-provenance.webp` —
   rendered provenance report (normal + drift), §6.2.
+- `scripts/tools-embed-policy-report.mjs` — verification report used
+  for the Issue #465 screenshot.
 - `scripts/build-tools.mjs` + `.test.mjs` — build orchestrator.
 - `docs/adr/ADR-0006-tools-submodule-policy.md` — the ADR this
   runbook operationalises.

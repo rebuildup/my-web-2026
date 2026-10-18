@@ -193,6 +193,18 @@ for (const tool of targetTools) {
 	// orchestrator directly, so an unreviewed local edit or file would
 	// otherwise reach production behind a stamp that attests the pinned
 	// commit. Refuse instead (ADR-0006 §4: the pin is a verified commit).
+	// A failed `git status` is not a clean tree. `Boolean(status)` used to
+	// collapse a non-zero exit into `dirty: false`, so a corrupt index
+	// could still build and stamp the pinned commit. Refuse instead.
+	if (checkout.statusReadable === false) {
+		errors.push(
+			`${tool.slug}: ${tool.source.submodule_path} is initialised but \`git status --porcelain\` failed — the worktree state could not be observed`,
+		);
+		console.error(
+			'[build-tools]   ✗ checkout state unreadable — refusing to build over a worktree whose modifications were never observed',
+		);
+		continue;
+	}
 	if (checkout.dirty) {
 		errors.push(
 			`${tool.slug}: ${tool.source.submodule_path} has uncommitted changes or untracked files — the artefact would not be built from ${tool.source.pinned_sha}`,

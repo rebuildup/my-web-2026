@@ -124,6 +124,17 @@ export function parseGitmodules(text) {
 		if (line.length === 0 || line.startsWith('#') || line.startsWith(';')) continue;
 		const section = /^\[submodule\s+"(.+)"\]$/.exec(line);
 		if (section) {
+			// Git treats a repeated `[submodule "<name>"]` as the same
+			// subsection and merges its keys (a later value wins). A
+			// fresh record per occurrence would drop an earlier
+			// `branch =` key as soon as a later section repeats the
+			// name, and `git submodule status` would still follow the
+			// branch while this parser saw none.
+			const existing = sections.find((entry) => entry.name === section[1]);
+			if (existing) {
+				current = existing;
+				continue;
+			}
 			current = { name: section[1], path: null, url: null, keys: {} };
 			sections.push(current);
 			continue;
@@ -161,12 +172,19 @@ export function parseGitmodules(text) {
  * Deliberately string-based rather than `new URL(...)`: an `insteadOf`
  * value is a *prefix* (`https://`, `git@github.com:`), not a URL, and
  * must survive round-tripping unchanged.
+ *
+ * A credential is not always in the userinfo. `https://github.com/
+ * owner/ghp_TOKEN@repo.git` puts the token in a *path* segment, where
+ * `new URL()` will not classify it as userinfo; the `path@` rule below
+ * redacts that shape before the value can reach stderr, a finding, or
+ * a report.
  */
 export function redactUrlCredentials(value) {
 	if (typeof value !== 'string') return '';
 	return value
 		.replace(/(\/\/)[^/@\s]*@/g, '$1***@')
 		.replace(/(^|\s)[A-Za-z0-9._+-]+:[^/@\s]+@/g, '$1***@')
+		.replace(/(\/)[^/\s@]+@/g, '$1***@')
 		.replace(/([?#]).*$/, '$1***');
 }
 
@@ -210,7 +228,7 @@ export function classifyRepoUrl(url) {
 	// raw string, while the checks below still run on `value`.
 	const display = redactUrlCredentials(value);
 	if (/\s/.test(value)) {
-		return { ok: false, code: 'URL_UNSAFE', message: `url contains whitespace: ${display}` };
+		return { ok: false, code: 'URL_UNSAFE', message: 'url contains whitespace' };
 	}
 	if (/:\/\/[^/@]*@/.test(value) || /^[A-Za-z0-9._-]+@[^:]+:/.test(value)) {
 		return {
@@ -221,24 +239,28 @@ export function classifyRepoUrl(url) {
 		};
 	}
 	if (!/^https:\/\//i.test(value)) {
+		// Report only the scheme. The rest of the value is arbitrary
+		// operator input and may carry a credential in a position
+		// `redactUrlCredentials` cannot recognise.
+		const scheme = /^([A-Za-z][A-Za-z0-9+.-]*):/.exec(value)?.[1] ?? 'unknown';
 		return {
 			ok: false,
 			code: 'URL_UNSAFE',
-			message: `url must be https:// (got ${value.split(':')[0]}:); ssh/git/file transports hide the fetch source`,
+			message: `url must be https:// (got ${scheme}:); ssh/git/file transports hide the fetch source`,
 		};
 	}
 	if (value.includes('?') || value.includes('#')) {
 		return {
 			ok: false,
 			code: 'URL_UNSAFE',
-			message: `url must address a repository, not a ref or query (${display})`,
+			message: 'url must address a repository, not a ref or query',
 		};
 	}
 	let parsed;
 	try {
 		parsed = new URL(value);
 	} catch {
-		return { ok: false, code: 'URL_UNSAFE', message: `unparseable url: ${display}` };
+		return { ok: false, code: 'URL_UNSAFE', message: 'unparseable url' };
 	}
 	if (parsed.hostname.toLowerCase() !== 'github.com') {
 		return {
@@ -255,15 +277,18 @@ export function classifyRepoUrl(url) {
 		return {
 			ok: false,
 			code: 'URL_UNSAFE',
-			message: `url must be https://github.com/<owner>/<repo>.git (got ${display})`,
+			message: 'url must be https://github.com/<owner>/<repo>.git',
 		};
 	}
 	for (const segment of segments) {
 		if (!/^[A-Za-z0-9._-]+$/.test(segment) || segment.startsWith('.') || segment.endsWith('.git')) {
+			// Never echo the segment: an invalid segment is exactly
+			// where a pasted access token tends to end up (see the
+			// `https://github.com/owner/ghp_…@repo.git` case).
 			return {
 				ok: false,
 				code: 'URL_UNSAFE',
-				message: `url path segment "${segment}" is not an owner/repo name`,
+				message: 'url path segment is not an owner/repo name',
 			};
 		}
 	}
@@ -271,7 +296,7 @@ export function classifyRepoUrl(url) {
 		return {
 			ok: false,
 			code: 'URL_UNSAFE',
-			message: `url must not pin a ref (got ${value})`,
+			message: 'url must not pin a ref',
 		};
 	}
 	return { ok: true, code: 'URL_OK', message: value };
@@ -351,6 +376,8 @@ export function observeCheckout(root, path) {
 		origin: null,
 		origins: [],
 		dirty: false,
+		// No status was read, so it is not evidence of a clean tree.
+		statusReadable: false,
 		toplevelMatches: false,
 	});
 	if (!existsSync(absolutePath) || !statSync(absolutePath).isDirectory()) {
@@ -389,6 +416,13 @@ export function observeCheckout(root, path) {
 	// precisely that case. Porcelain's default mode (`normal`) still
 	// honours the Tool repository's own `.gitignore`, so the
 	// `node_modules/` and `dist/` the build itself creates do not trip it.
+	// `null` and the empty string mean different things: an empty string
+	// is a successful `--porcelain` run that reported no change, while
+	// `null` is a non-zero exit (a corrupt index, a permission problem,
+	// a broken worktree). `Boolean(status)` collapses both into
+	// "clean", which would let a build proceed over a tree whose state
+	// was never actually observed. Keep the distinction and let the
+	// callers fail closed.
 	const status = git(absolutePath, ['status', '--porcelain']);
 	return {
 		initialised: true,
@@ -398,6 +432,7 @@ export function observeCheckout(root, path) {
 		origin: origins[0] ?? null,
 		origins,
 		dirty: Boolean(status),
+		statusReadable: status !== null,
 		toplevelMatches: true,
 	};
 }
@@ -444,19 +479,23 @@ export function parseScopedConfigStdout(stdout) {
 }
 
 /**
- * Every `url.<base>.insteadOf` rewrite that can affect a fetch made from
- * `root`, with the scope it was read from.
+ * The **effective** git config for `root`, as `{ scope, key, value }`
+ * records in precedence order (low to high; the last value for a key is
+ * the one `git config --get` returns).
  *
  * Enumerating `--local` / `--global` / `--system` with
- * `--get-regexp` is not the same thing as reading the *effective*
- * config, and the difference is load-bearing for this rule:
+ * `--get-regexp` is not the same thing as reading the effective config,
+ * and the difference is load-bearing for this gate:
  *
  *   - `git config --global`/`--system`/`--local` do not expand
  *     `include` / `includeIf` unless `--includes` is passed, so a
- *     rewrite parked in an included file was invisible.
+ *     rewrite or `submodule.<name>` setting parked in an included file
+ *     was invisible.
  *   - `config.worktree` (used by any checkout that enables
- *     `extensions.worktreeConfig`) is a level none of those flags reads,
- *     and it can redirect an HTTPS fetch to another host.
+ *     `extensions.worktreeConfig`) is a level none of `--local` reads.
+ *     A `submodule.<name>.url` or `.branch` there is what a fetch and
+ *     `git submodule update` actually use, so reading only `--local`
+ *     would inspect a setting that is being overridden.
  *   - `command`-scope entries (`git -c`, `GIT_CONFIG_*`) can do the same.
  *
  * `git config --list` reads every level and expands includes by
@@ -464,19 +503,20 @@ export function parseScopedConfigStdout(stdout) {
  * whole effective config. The per-scope fallback keeps the gate working
  * on a git that does not know `--show-scope`.
  */
-export function collectUrlRewrites(root) {
+export function collectEffectiveConfig(root) {
 	const listed = git(root, ['config', '--list', '--show-scope', '--includes']);
 	const scoped = listed === null ? null : parseScopedConfigStdout(listed);
-	const entries =
-		scoped ??
-		['--local', '--worktree', '--global', '--system'].flatMap((flag) =>
-			Object.entries(
-				parseConfigLines(
-					git(root, ['config', flag, '--includes', '--get-regexp', '^url\\..*\\.insteadof$']) ?? '',
-				),
-			).map(([key, value]) => ({ scope: flag.slice(2), key, value })),
-		);
-	return entries.filter((entry) => /^url\..*\.insteadof$/i.test(entry.key));
+	if (scoped !== null) return scoped;
+	return ['--local', '--worktree', '--global', '--system'].flatMap((flag) =>
+		Object.entries(
+			parseConfigLines(git(root, ['config', flag, '--includes', '--get-regexp', '^.*$']) ?? ''),
+		).map(([key, value]) => ({ scope: flag.slice(2), key, value })),
+	);
+}
+
+/** Every `url.<base>.insteadOf` rewrite in the effective config. */
+export function collectUrlRewrites(root) {
+	return collectEffectiveConfig(root).filter((entry) => /^url\..*\.insteadof$/i.test(entry.key));
 }
 
 export function collectFacts(root, manifest, gitmodules) {
@@ -486,17 +526,22 @@ export function collectFacts(root, manifest, gitmodules) {
 		? parseGitlinkStdout(git(root, ['ls-tree', '-r', 'HEAD']) ?? '')
 		: {};
 
-	const localSubmoduleConfig = {};
+	const submoduleConfig = {};
+	const submoduleConfigScopes = {};
 	const urlRewrites = [];
 	if (gitAvailable) {
-		const local = parseConfigLines(
-			git(root, ['config', '--local', '--get-regexp', '^submodule\\.']) ?? '',
-		);
-		for (const [key, value] of Object.entries(local)) {
-			const split = splitSubmoduleConfigKey(key);
+		// Effective, not `--local`: `extensions.worktreeConfig` moves
+		// `submodule.<name>.url` / `.branch` into `config.worktree`, where
+		// it overrides the local value and is what git actually uses.
+		for (const entry of collectEffectiveConfig(root)) {
+			const split = splitSubmoduleConfigKey(entry.key);
 			if (!split) continue;
-			localSubmoduleConfig[split.name] ??= {};
-			localSubmoduleConfig[split.name][split.configKey] = value;
+			submoduleConfig[split.name] ??= {};
+			submoduleConfigScopes[split.name] ??= {};
+			// Precedence order, so the last value for a key wins exactly
+			// as it does for `git config --get`.
+			submoduleConfig[split.name][split.configKey] = entry.value;
+			submoduleConfigScopes[split.name][split.configKey] = entry.scope;
 		}
 		for (const rewrite of collectUrlRewrites(root)) {
 			urlRewrites.push(rewrite);
@@ -527,7 +572,8 @@ export function collectFacts(root, manifest, gitmodules) {
 		gitAvailable,
 		head: head ?? null,
 		gitlinks,
-		localSubmoduleConfig,
+		submoduleConfig,
+		submoduleConfigScopes,
 		urlRewrites,
 		checkouts,
 		artifacts,
@@ -631,8 +677,27 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 	}
 
 	const declaredPaths = new Map();
+	const declaredNamesByPath = new Map();
 	for (const section of gitmodules) {
-		if (section.path) declaredPaths.set(section.path, section);
+		if (!section.path) continue;
+		const previousName = declaredNamesByPath.get(section.path);
+		if (previousName !== undefined && previousName !== section.name) {
+			// Two different submodule names claim one path. Git cannot fetch
+			// both into it, and which `submodule.<name>.*` config applies is
+			// ambiguous, so treat it as an error instead of silently letting
+			// the last section win.
+			findings.push(
+				finding(
+					'GITMODULES_DUPLICATE_PATH',
+					'error',
+					section.path,
+					`.gitmodules declares ${section.path} under both "${previousName}" and "${section.name}"; one path can only be one submodule`,
+					'keep a single [submodule] section for this path and drop the duplicate',
+				),
+			);
+		}
+		declaredNamesByPath.set(section.path, section.name);
+		declaredPaths.set(section.path, section);
 	}
 
 	const toolByPath = new Map();
@@ -670,6 +735,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 			head: null,
 			origin: null,
 			dirty: false,
+			statusReadable: false,
 			toplevelMatches: false,
 		};
 		const pinnedSha = tool?.source?.pinned_sha ?? null;
@@ -771,15 +837,19 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 			}
 		}
 		const configName = section?.name ?? path;
-		for (const [name, config] of Object.entries(facts.localSubmoduleConfig ?? {})) {
+		for (const [name, config] of Object.entries(facts.submoduleConfig ?? {})) {
 			if (name !== configName) continue;
+			const scopes = facts.submoduleConfigScopes?.[name] ?? {};
+			const scopeOf = (key) => (scopes[key] ? ` (${scopes[key]})` : '');
+			const unsetHint = (key) =>
+				`git config --unset ${key === 'url' ? 'submodule.<name>.url' : `submodule.<name>.${key}`}, then re-run the gate`;
 			for (const key of MUTABLE_TRACKING_KEYS) {
 				if (config[key]) {
 					push(
 						'BRANCH_TRACKED',
 						'error',
 						subject,
-						`${tool.slug}: local git config submodule.${name}.${key}="${config[key]}" makes the checkout follow a mutable ref`,
+						`${tool.slug}: git config${scopeOf(key)} submodule.${name}.${key}="${config[key]}" makes the checkout follow a mutable ref`,
 						`git config --unset submodule.${name}.${key}, then re-run the gate`,
 					);
 				}
@@ -791,14 +861,14 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 				// `https://user:TOKEN@github.com/<owner>/<repo>.git`,
 				// which normalises to the same owner/repo as the manifest
 				// while still being a fetch URL that carries a credential.
-				const localUrl = classifyRepoUrl(config.url);
-				if (!localUrl.ok) {
+				const configUrl = classifyRepoUrl(config.url);
+				if (!configUrl.ok) {
 					push(
 						'URL_UNSAFE',
 						'error',
 						subject,
-						`${tool.slug}: local git config submodule.${name}.url is not a credential-free https://github.com repository — ${localUrl.message}`,
-						'git config --unset submodule.<name>.url, then re-run `git submodule sync` after confirming the intended source',
+						`${tool.slug}: git config${scopeOf('url')} submodule.${name}.url is not a credential-free https://github.com repository — ${configUrl.message}`,
+						unsetHint('url'),
 					);
 				}
 				if (canonicalRepo && normalizeRepoUrl(config.url) !== normalizeRepoUrl(canonicalRepo)) {
@@ -806,7 +876,7 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 						'LOCAL_URL_OVERRIDE',
 						'error',
 						subject,
-						`${tool.slug}: local git config submodule.${name}.url="${redactUrlCredentials(config.url)}" overrides the fetch source declared in the manifest (${redactUrlCredentials(canonicalRepo)})`,
+						`${tool.slug}: git config${scopeOf('url')} submodule.${name}.url="${redactUrlCredentials(config.url)}" overrides the fetch source declared in the manifest (${redactUrlCredentials(canonicalRepo)})`,
 						'git config --unset submodule.<name>.url, or re-run `git submodule sync` after confirming the intended source',
 					);
 				}
@@ -904,7 +974,19 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 					);
 				}
 			}
-			if (checkout.dirty) {
+			if (checkout.statusReadable === false) {
+				// Fail closed: a non-zero `git status` is not a clean tree.
+				// `rev-parse HEAD` can still succeed with a corrupt index, so
+				// without this branch the gate would report PASS for a
+				// checkout whose modifications it never observed.
+				push(
+					'CHECKOUT_STATUS_UNREADABLE',
+					'error',
+					subject,
+					`${tool.slug}: ${path} is initialised but \`git status --porcelain\` failed, so the gate cannot tell whether the worktree matches the pinned commit`,
+					`git -C ${path} status; repair the checkout (corrupt index, permissions) or re-run \`git submodule update --init --recursive\``,
+				);
+			} else if (checkout.dirty) {
 				push(
 					'CHECKOUT_DIRTY',
 					'warn',

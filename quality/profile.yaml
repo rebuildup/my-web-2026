@@ -41,6 +41,7 @@ gates:
       # == build-artefact stamp, and that the fetch source is the declared
       # credential-free https repository with no branch-tip tracking.
       - 'pnpm run tools:provenance:check'
+      - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap

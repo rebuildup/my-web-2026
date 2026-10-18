@@ -271,12 +271,15 @@ const inventory = buildInventory(
 /**
  * Every discovered route, observed.
  *
- * The admin children other than `/admin/login` answer 307 for an
- * anonymous request — there is no document to evaluate — so they are
- * observed as explicitly SKIPPED rows. They are still in the
- * inventory, so a route disappearing from the admin surface is still
- * a discovery event, and their noindex policy is asserted through
- * the layout head every admin child inherits.
+ * The admin children other than `/admin/login` render no document for
+ * an anonymous request — the auth gate answers 307, and
+ * `/admin/invitations/accept` rejects a token-less request before
+ * rendering — so they are observed as explicitly SKIPPED rows. They
+ * are still in the inventory, so a route disappearing from the admin
+ * surface is still a discovery event, and their noindex policy is
+ * asserted through the layout head every admin child inherits. The
+ * assumption that earns each SKIP is asserted by the case "renders no
+ * anonymous document for an auth-gated admin route".
  */
 async function observeInventory(): Promise<Observed[]> {
 	const observations: Observed[] = [];
@@ -291,7 +294,7 @@ async function observeInventory(): Promise<Observed[]> {
 				tags: [],
 				head: summarizeHead([]),
 				skipped: true,
-				note: `anonymous request is auth-gated; the noindex policy is asserted on ${NON_PUBLIC_SAMPLE_PATH}`,
+				note: `anonymous request renders no admin document (auth-gated, or rejected before rendering); the noindex policy is asserted on ${NON_PUBLIC_SAMPLE_PATH}`,
 			});
 			continue;
 		}
@@ -346,7 +349,6 @@ async function observeInventory(): Promise<Observed[]> {
 }
 
 const PUBLIC_ROUTES = inventory.filter((entry) => entry.kind === 'public');
-const OBSERVED_TITLES = new Map<string, string[]>();
 
 describe('public-route <head> metadata (Issue #418)', () => {
 	// One case per discovered public route. A route-level failure then
@@ -360,12 +362,10 @@ describe('public-route <head> metadata (Issue #418)', () => {
 			expect(head.title, `${entry.path} title`).toBeTruthy();
 			expect(head.description, `${entry.path} description`).toBeTruthy();
 			expect(head.canonical, `${entry.path} canonical`).toBe(entry.expectedCanonical);
-
-			// Titles are unique across the public surface. Recorded here
-			// (and asserted in aggregate below) so a duplicate is
-			// reported against both routes, not just the later one.
-			const key = (head.title ?? '').toLowerCase();
-			OBSERVED_TITLES.set(key, [...(OBSERVED_TITLES.get(key) ?? []), entry.path]);
+			// Uniqueness across the public surface is asserted in
+			// aggregate by the case below ("declares a distinct title
+			// on every public route"), which reports a duplicate
+			// against BOTH routes instead of only the later one.
 		});
 	}
 
@@ -422,6 +422,30 @@ describe('public-route <head> metadata (Issue #418)', () => {
 		const { head } = await observe(NON_PUBLIC_SAMPLE_PATH);
 		expect(head.robots ?? '').toContain('noindex');
 		expect(head.canonical).toBeNull();
+	});
+
+	it('renders no anonymous document for an auth-gated admin route (the SKIP is earned)', async () => {
+		// A SKIP row is only justified while the route has no document
+		// to evaluate. If an admin route ever answered an anonymous
+		// request with a 200 document it would be indexable and would
+		// leave the gate without anybody noticing, so the assumption
+		// behind every admin SKIP is asserted here: no 200 document.
+		//
+		// Two shapes satisfy it today: the auth gate answers 307, and
+		// `/admin/invitations/accept` — an intentionally anonymous
+		// landing page — rejects a request without its required
+		// `token` search param before rendering anything (500). The
+		// gate holds no token, and the document it renders with one
+		// inherits the layout's `noindex`, which is what `/admin/login`
+		// asserts.
+		const gated = inventory.filter(
+			(entry) => entry.kind === 'non-public' && entry.path !== NON_PUBLIC_SAMPLE_PATH,
+		);
+		expect(gated.length).toBeGreaterThan(0);
+		for (const entry of gated) {
+			const { status } = await observe(entry.path);
+			expect(status, `${entry.path} answered a document to an anonymous request`).not.toBe(200);
+		}
 	});
 
 	it('canonicalizes a search-query URL to its query-free form', async () => {

@@ -31,9 +31,12 @@
  * an explicit PASS / FAIL / SKIP verdict, and a route whose request
  * errored is a FAIL, never a skip. Admin routes other than
  * `/admin/login` are the only SKIPs, because an anonymous request to
- * them is a 307 with no document to evaluate — they are still
- * discovered, still listed, and the CI gate asserts the same policy
- * through the admin layout's inherited head.
+ * them renders no document (the auth gate answers 307, and
+ * `/admin/invitations/accept` rejects a request without its required
+ * token before rendering) — they are still discovered, still listed,
+ * and the CI gate asserts the same policy through the admin layout's
+ * inherited head, plus that no admin route answers an anonymous
+ * request with a 200 document.
  */
 
 import { writeFileSync } from 'node:fs';
@@ -127,15 +130,12 @@ async function observeRoute(baseUrl, entry) {
 			tags: [],
 			head: summarizeHead([]),
 			requestFailed: true,
-			findings: [
-				{
-					rule: 'observation.request-failed',
-					severity: 'error',
-					routeId: entry.routeId,
-					path: entry.path,
-					message: `GET ${entry.path} failed: ${error}`,
-				},
-			],
+			requestError: error,
+			// The engine turns `requestFailed` into the
+			// `observation.request-failed` finding; the observer never
+			// decides a verdict of its own, so a finding cannot be
+			// attached here and then overwritten by the evaluator.
+			findings: [],
 		};
 	}
 
@@ -179,6 +179,11 @@ async function observeNotFound(baseUrl, probe) {
 		expectedCanonical: null,
 		tags,
 		head: summarizeHead(tags),
+		// A 404 probe that never arrived is NOT a pass: it becomes
+		// `observation.request-failed` in the engine, and an absent
+		// status without this flag still fails `not-found.not-404`.
+		requestFailed: Boolean(error),
+		requestError: error ?? undefined,
 		findings: [],
 	};
 }
@@ -198,6 +203,8 @@ async function observeQueryProbe(baseUrl, probe) {
 		expectedCanonical: null,
 		tags,
 		head: summarizeHead(tags),
+		requestFailed: Boolean(error),
+		requestError: error ?? undefined,
 		findings: [],
 	};
 }
@@ -209,8 +216,8 @@ async function collect(baseUrl) {
 
 	for (const entry of inventory) {
 		// The admin surface renders a document only at `/admin/login`;
-		// every other admin route is auth-gated (see the note emitted
-		// by observeRoute).
+		// every other admin route answers an anonymous request with no
+		// document (see the note emitted by observeRoute).
 		if (entry.kind === 'non-public' && entry.path !== NON_PUBLIC_SAMPLE_PATH) {
 			observations.push({
 				routeId: entry.routeId,
@@ -221,7 +228,7 @@ async function collect(baseUrl) {
 				tags: [],
 				head: summarizeHead([]),
 				skipped: true,
-				note: `anonymous request is auth-gated; the noindex policy is asserted on ${NON_PUBLIC_SAMPLE_PATH}`,
+				note: `anonymous request renders no admin document (auth-gated, or rejected before rendering); the noindex policy is asserted on ${NON_PUBLIC_SAMPLE_PATH}`,
 				findings: [],
 			});
 			continue;
@@ -251,17 +258,12 @@ async function main() {
 	}
 
 	const { inventory, observations } = await collect(parsed.options.live);
+	// The engine is the single place a verdict is produced: each row
+	// carries the findings the engine derived from that observation
+	// (including `observation.request-failed` for a route whose request
+	// errored), so the exit code, the row verdicts and the top-level
+	// findings list are the same list by construction.
 	const result = evaluateHeadInventory({ inventory, observations });
-
-	// A route whose request failed is a finding the per-row evaluator
-	// already produced; make sure it reaches the top-level findings
-	// list so the exit code and the report agree.
-	for (const row of result.rows) {
-		for (const item of row.findings ?? []) {
-			if (item.rule === 'observation.request-failed') result.findings.push(item);
-		}
-	}
-	result.stats.errors = result.findings.length;
 
 	if (parsed.options.json) {
 		process.stdout.write(

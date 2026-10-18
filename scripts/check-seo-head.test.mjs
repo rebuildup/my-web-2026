@@ -278,6 +278,50 @@ describe('seo-head-contract: 404 policy', () => {
 	it('detects a probe that did not actually 404', () => {
 		assert.ok(rulesFor(notFound([], 200)).includes('not-found.not-404'));
 	});
+
+	it('fails a probe that produced no response at all (never a silent pass)', () => {
+		// `status: null` is what an unreadable request leaves behind.
+		// Reading "no status" as "nothing to check" is exactly the
+		// silent pass the gate exists to prevent: an operator running
+		// --live against an origin where only these two URLs fail to
+		// resolve would otherwise read two green "the 404 policy is
+		// fine" rows that were never tested.
+		const rules = rulesFor(notFound([], null));
+		assert.ok(rules.includes('not-found.not-404'), JSON.stringify(rules));
+		const [first] = evaluateObservation(notFound([], null));
+		assert.match(first.message, /no response/);
+	});
+
+	it('reports a request that errored as its own finding, not as missing metadata', () => {
+		const failed = (extra) => ({
+			routeId: '/about',
+			path: '/about',
+			surface: 'public',
+			status: null,
+			tags: [],
+			head: summarizeHead([]),
+			requestFailed: true,
+			requestError: 'fetch failed',
+			...extra,
+		});
+		// One network error, one finding: attributing it to
+		// title/description/canonical would report three metadata
+		// defects for a document that never arrived.
+		assert.deepEqual(rulesFor(failed()), ['observation.request-failed']);
+		assert.deepEqual(rulesFor(failed({ surface: 'not-found', routeId: '404:tool-detail' })), [
+			'observation.request-failed',
+		]);
+		assert.deepEqual(
+			rulesFor({
+				...failed({ routeId: '/portfolio', path: '/portfolio?facets=develop' }),
+				queryProbe: true,
+			}),
+			['observation.request-failed'],
+		);
+		const [finding] = evaluateObservation(failed());
+		assert.equal(finding.severity, 'error');
+		assert.match(finding.message, /GET \/about failed: fetch failed/);
+	});
 });
 
 describe('seo-head-contract: coverage (no silent pass)', () => {
@@ -409,14 +453,30 @@ describe('seo-head-contract: head normalization', () => {
 		assert.equal(fromHtml.canonical, 'https://rebuildup.dev/portfolio');
 	});
 
-	it('keeps the first value of each field (deepest-route-wins merge shape)', () => {
+	it('keeps the deepest title and first robots of a merged head (deepest-route-wins)', () => {
+		// `buildTagsFromMatches` dedupes `meta` deepest-first, so a
+		// route's own title renders BEFORE the root fallback it
+		// overrides, and first-in-document is what a crawler reads.
 		const summary = summarizeHead([
-			{ title: 'my-web-2026' },
 			{ title: 'Portfolio — rebuildup.dev' },
+			{ title: 'my-web-2026' },
 			{ name: 'robots', content: 'noindex' },
 		]);
-		assert.equal(summary.title, 'my-web-2026');
+		assert.equal(summary.title, 'Portfolio — rebuildup.dev');
 		assert.equal(summary.robots, 'noindex');
+	});
+
+	it('renders two canonicals root-first, so the summary reads the root one', () => {
+		// Pinned because it is the assumption a future
+		// `src/routes/__root.tsx` canonical would silently violate:
+		// links are flat-mapped root-first by the router (unlike
+		// meta), so the ROOT's canonical would be what every route
+		// resolves to and reported against.
+		const summary = summarizeHead([
+			{ rel: 'canonical', href: `${CANONICAL_ORIGIN}/` },
+			{ rel: 'canonical', href: `${CANONICAL_ORIGIN}/portfolio` },
+		]);
+		assert.equal(summary.canonical, `${CANONICAL_ORIGIN}/`);
 	});
 
 	it('decodes numeric and named entities', () => {
@@ -467,6 +527,34 @@ describe('seo-head-contract: route discovery against the real src/routes', () =>
 		assert.equal(canonicalPathFor('/tools/$slug', 'prototype'), '/tools/prototype');
 		assert.equal(expectedCanonicalFor('/about'), `${CANONICAL_ORIGIN}/about`);
 	});
+
+	it('keeps one inventory entry per requestable URL (layout + index are one route)', () => {
+		// `src/routes/admin.tsx` and `src/routes/admin.index.tsx`
+		// both normalize to `/admin`. One URL is one document to
+		// check; reporting both would fetch it twice and, once such a
+		// pair is PUBLIC, raise a duplicate title against itself.
+		const merged = buildInventory([
+			{ routeId: '/admin', file: 'src/routes/admin.tsx' },
+			{ routeId: '/admin/', file: 'src/routes/admin.index.tsx' },
+		]);
+		assert.equal(merged.length, 1);
+		assert.equal(merged[0].path, '/admin');
+		assert.equal(merged[0].routeId, '/admin');
+
+		const publicPair = buildInventory([
+			{ routeId: '/portfolio', file: 'src/routes/portfolio.tsx' },
+			{ routeId: '/portfolio/', file: 'src/routes/portfolio/index.tsx' },
+			{ routeId: '/portfolio/$slug', file: 'src/routes/portfolio/$slug.tsx' },
+		]);
+		assert.deepEqual(
+			publicPair.map((entry) => entry.path),
+			['/portfolio', '/portfolio/my-web-2026'],
+		);
+
+		// The real tree: exactly one `/admin` entry, no duplicates.
+		const paths = inventory.map((entry) => entry.path);
+		assert.equal(new Set(paths).size, paths.length, `duplicate paths: ${paths.join(', ')}`);
+	});
 });
 
 describe('seo-head-contract: report rendering', () => {
@@ -480,5 +568,22 @@ describe('seo-head-contract: report rendering', () => {
 		assert.match(text, /FAIL\s+\/about/);
 		assert.match(text, /public\.canonical-missing/);
 		assert.match(text, /public\.description-missing/);
+	});
+
+	it('states that a row was not fetched instead of omitting the status line', () => {
+		const result = evaluateHeadInventory({
+			inventory: buildInventory([{ routeId: '/about', file: 'a' }]),
+			observations: [
+				observationFor('/about', [{ title: 'About' }], {
+					status: null,
+					requestFailed: true,
+					requestError: 'fetch failed',
+				}),
+			],
+		});
+		const text = renderTextReport(result);
+		assert.match(text, /FAIL\s+\/about/);
+		assert.match(text, /status\s+\(not fetched\)/);
+		assert.match(text, /!! \[observation\.request-failed\]/);
 	});
 });

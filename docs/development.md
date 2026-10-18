@@ -364,8 +364,12 @@ pnpm run verify:seo-head-screenshot
 The policy lives in `scripts/seo-head-contract.mjs`; the CI test and
 the `--live` CLI are two front-ends over that one engine. The route
 inventory is the framework's own route tree, so a new route without
-head metadata fails the gate instead of quietly passing. Details and
-the last report are in `docs/verification/seo/head-metadata-check.md`.
+description / canonical metadata fails the gate instead of quietly
+passing (the root layout's fallback title means a route that forgot
+its own title is caught as a duplicate title, not as a missing one).
+A request that errored is a finding too — an unfetched route is never
+a pass. Details and the last report are in
+`docs/verification/seo/head-metadata-check.md`.
 
 ## Generated artefacts
 

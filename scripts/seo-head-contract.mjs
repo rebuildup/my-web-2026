@@ -33,6 +33,11 @@
  *   3. A dynamic route that cannot be enumerated from the
  *      filesystem must declare a sample in `DYNAMIC_ROUTE_SAMPLES`;
  *      an undeclared dynamic route fails with `inventory.dynamic-no-sample`.
+ *   4. A request that ERRORED is a FAIL (`observation.request-failed`),
+ *      on every surface, and the metadata rules are not evaluated
+ *      against a document that does not exist. A 404 probe that never
+ *      arrived is `not-found.not-404`, not a pass. Silence is the bug
+ *      in both directions: an unchecked route AND an unfetched one.
  *
  * The three policies the Issue asks to define separately
  * -------------------------------------------------------
@@ -218,6 +223,8 @@ export const INDEX_EXCLUSIONS = Object.freeze({
  * @property {string} [note]
  * @property {string} [query]
  * @property {boolean} [queryProbe]
+ * @property {boolean} [requestFailed]  true when the request itself errored (no response was read)
+ * @property {string} [requestError]    the fetch error message, when `requestFailed`
  */
 
 /**
@@ -351,34 +358,49 @@ export function expectedCanonicalFor(routeId, sampleSegment = null) {
  * everything else — including `/design-system`, which is a
  * deliberately public showcase page.
  *
+ * Two route ids can normalize to ONE requestable URL (an index route
+ * such as `/admin/` beside the layout route `/admin`), and a URL is
+ * what a crawler requests, so the inventory keeps one entry per
+ * normalized `path`. Reporting both would fetch the same document
+ * twice and — once such a pair is public — raise a duplicate title
+ * against the route with itself. The shorter id (the layout) wins,
+ * because it is the one whose `path` is the canonical URL.
+ *
  * @param {Array<{ routeId: string, file?: string }>} routeModules
  * @param {Record<string, { segment: string, source: string }>} [samples]
  * @returns {RouteInventoryEntry[]}
  */
 export function buildInventory(routeModules, samples = DYNAMIC_ROUTE_SAMPLES) {
-	return routeModules.map(({ routeId, file = '' }) => {
-		const dynamic = isDynamicRouteId(routeId);
-		const sample = dynamic ? samples[routeId] : undefined;
-		const path = canonicalPathFor(
-			routeId,
-			dynamic ? (sample ? sample.segment : 'UNSAMPLED') : null,
-		);
-		return {
-			routeId,
-			file,
-			kind: isNonPublicPath(path) ? 'non-public' : 'public',
-			dynamic,
-			sample: sample ?? null,
-			path,
-			// `null` only for a dynamic route whose sample is missing:
-			// the coverage rule reports `inventory.dynamic-no-sample`
-			// for that route, and an invented expected canonical here
-			// would let the missing sample masquerade as a verified
-			// route. Every other route gets its expected canonical here.
-			expectedCanonical:
-				dynamic && !sample ? null : expectedCanonicalFor(routeId, sample ? sample.segment : null),
-		};
-	});
+	const seenPaths = new Set();
+	return routeModules
+		.map(({ routeId, file = '' }) => {
+			const dynamic = isDynamicRouteId(routeId);
+			const sample = dynamic ? samples[routeId] : undefined;
+			const path = canonicalPathFor(
+				routeId,
+				dynamic ? (sample ? sample.segment : 'UNSAMPLED') : null,
+			);
+			return {
+				routeId,
+				file,
+				kind: isNonPublicPath(path) ? 'non-public' : 'public',
+				dynamic,
+				sample: sample ?? null,
+				path,
+				// `null` only for a dynamic route whose sample is missing:
+				// the coverage rule reports `inventory.dynamic-no-sample`
+				// for that route, and an invented expected canonical here
+				// would let the missing sample masquerade as a verified
+				// route. Every other route gets its expected canonical here.
+				expectedCanonical:
+					dynamic && !sample ? null : expectedCanonicalFor(routeId, sample ? sample.segment : null),
+			};
+		})
+		.filter((entry) => {
+			if (seenPaths.has(entry.path)) return false;
+			seenPaths.add(entry.path);
+			return true;
+		});
 }
 
 /* ------------------------------------------------------------------ *
@@ -398,9 +420,21 @@ function collapse(value) {
  *   - parsed SSR HTML (see `parseHeadTags` in `check-seo-head.mjs`):
  *     the same three shapes, so both front-ends normalize identically.
  *
- * The first occurrence wins for every field, matching the head merge
- * (deepest matched route wins; the root's `my-web-2026` title is the
- * fallback a page without its own title inherits).
+ * The first occurrence wins for every field — which is what the head
+ * merge puts FIRST in the document for every field this reads:
+ * `buildTagsFromMatches` (`@tanstack/react-router`) dedupes `meta`
+ * deepest-matched-route-first, so the deepest title / description /
+ * robots / og tag renders first, and it flat-maps `links`
+ * root-first, so a `rel=canonical` also renders root-first. First-in-
+ * document is therefore what a crawler resolves, for every field
+ * alike; the unit tests pin both halves of that claim
+ * (`keeps the deepest title` / `renders two canonicals root-first`).
+ *
+ * The one place that assumption bites: if a root route ever declares
+ * its own canonical, EVERY route renders it (root-first) and every
+ * route then reports `public.canonical-mismatch` against `/`. That is
+ * the honest report of what the document contains — but the fix
+ * belongs in `src/routes/__root.tsx`, not in this normalizer.
  *
  * @param {Array<Record<string, unknown>>} [tags]
  * @returns {HeadSummary}
@@ -551,6 +585,23 @@ export function evaluateObservation(observation, inventoryEntry = null) {
 	// and the policy it would have failed is asserted on the route that
 	// does render (`/admin/login`).
 	if (observation.skipped) return findings;
+	// A request that ERRORED has no document to evaluate. Every rule
+	// below would then report metadata defects for a network failure,
+	// and a not-found probe would read "no status" as "not a 404" —
+	// a PASS nobody earned, which is the silent pass this gate exists
+	// to prevent. So the request failure IS the finding, on every
+	// surface, and the document rules are not evaluated against a
+	// document that does not exist.
+	if (observation.requestFailed) {
+		findings.push(
+			finding(
+				'observation.request-failed',
+				observation,
+				`GET ${observation.path} failed: ${observation.requestError ?? 'unknown error'}`,
+			),
+		);
+		return findings;
+	}
 	const head = observation.head ?? summarizeHead(observation.tags ?? []);
 	const surface = observation.surface ?? inventoryEntry?.kind ?? 'public';
 
@@ -575,12 +626,19 @@ export function evaluateObservation(observation, inventoryEntry = null) {
 				),
 			);
 		}
-		if (observation.status !== null && observation.status !== 404) {
+		// A probe is verified only by its answer. Anything other than
+		// a 404 — including NO answer, i.e. an absent status — is a
+		// finding, because "could not ask" is not "the 404 policy is
+		// fine". (`requestFailed` observations already returned above;
+		// this covers the case of an absent status reached without it,
+		// which is exactly what a hand-built or future probe shape can
+		// still produce.)
+		if (observation.status !== 404) {
 			findings.push(
 				finding(
 					'not-found.not-404',
 					observation,
-					`probe expected HTTP 404, received ${observation.status}`,
+					`probe expected HTTP 404, received ${observation.status ?? 'no response'}`,
 				),
 			);
 		}
@@ -611,6 +669,16 @@ export function evaluateObservation(observation, inventoryEntry = null) {
 	}
 
 	// Public / indexable policy.
+	//
+	// Reachability note: through SSR a public route always renders
+	// SOME title — `src/routes/__root.tsx` contributes the fallback
+	// `my-web-2026` — so a route that forgot its own title is normally
+	// caught by `public.duplicate-title` (two routes falling back to
+	// the same root title) rather than by the rule below. The rule
+	// still fires for a front-end that reads `head()` output directly
+	// and for any surface where no fallback exists, which is why it
+	// stays; do not read it as "an SSR page with no title is caught
+	// here".
 	if (!head.title) {
 		findings.push(finding('public.title-missing', observation, 'no <title> in the document head'));
 	} else if (head.title.length > TITLE_MAX_LENGTH) {
@@ -861,6 +929,12 @@ export function renderTextReport(result) {
 		}
 		if (row.status !== null && row.status !== undefined) {
 			lines.push(`       ${'status'.padEnd(11)} ${row.status}`);
+		} else {
+			// "Not fetched" is stated, never implied by an absent line:
+			// a reader must be able to tell a PASS from an unmeasured
+			// row without counting lines (the HTML report says the same
+			// thing in `<em>(not fetched)</em>`).
+			lines.push(`       ${'status'.padEnd(11)} (not fetched)`);
 		}
 		for (const item of row.findings) {
 			lines.push(`       !! [${item.rule}] ${item.message}`);

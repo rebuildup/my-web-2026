@@ -17,8 +17,12 @@ head metadata を書かないまま route を追加すると次の実行で必�
 | --- | --- |
 | public（indexable） | `title` / `description` / `canonical` の3点が存在し、canonical は `https://rebuildup.dev` + path の絶対 URL。title は公開surface全体で一意 |
 | non-public（`/admin/*`） | `robots: noindex` を宣言し、canonical を宣言しない |
-| 404（`notFound()`） | canonical を宣言しない。HTTP 404 であること自体も assertion |
+| 404（`notFound()`） | canonical を宣言しない。HTTP 404 であること自体も assertion（応答が返らない場合も `not-found.not-404` で失敗） |
 | 検索クエリ付きURL | `rel=canonical` にクエリ / フラグメントを含まない（`/portfolio?facets=develop` は `/portfolio` に寄る） |
+| 取得失敗 | どの surface でも `observation.request-failed` で **失敗**。metadata の欠落として誤報告しない |
+
+inventory は正規化後の **URL ごとに1件**（`src/routes/admin.tsx` の layout と `src/routes/admin.index.tsx` の
+index route はどちらも `/admin` に正規化されるため1件に畳まれる。1つの URL は1回的 document 検証に過ぎない）。
 
 ## 2つの front-end（同じポリシーエンジン）
 
@@ -39,7 +43,7 @@ head metadata を書かないまま route を追加すると次の実行で必�
 pnpm exec vitest run test/integration/seo-head.test.ts
 ```
 
-期待結果: `Test Files 1 passed` / `Tests 19 passed`。workerd test pool 上で実行し、
+期待結果: `Test Files 1 passed` / `Tests 20 passed`。workerd test pool 上で実行し、
 D1 は `migrations/` と同じ形の schema を inlined 適用し、`/portfolio/$slug` の sample 行 1件を
 投入する（`FIXTURE_PROJECT`）。secret は読まない（binding は test pool の dummy 値）。
 
@@ -83,7 +87,14 @@ pnpm run verify:seo-head-screenshot
 - 検索クエリ付きURLは「同じ document」として title 重複判定から除外する
   （`/portfolio` と `/portfolio?facets=develop` は重複 title ではない）。
 - 404 document は title 重複判定から除外する（`/portfolio/<不明slug>` と実在route が同じ title でも重複ではない）。
-- admin の auth-gated 子route（匿名だと 307 で document を持たない）は **SKIP** として明示され、
+- admin の auth-gated 子route（匿名だと document が出ない）は **SKIP** として明示され、
   noindex policy は document が実際に描画される `/admin/login` で検証する。
+  `/admin/invitations/accept` は token 必須の匿名ランディングページで、`token` 無しのリクエストは
+  描画前に 500 で弾かれる（ゲートは token を持たないため document を見られない。token ありの document は
+  layout の `noindex` を継承する）。SKIP の前提条件「匿名で 200 document を返さない」は
+  `renders no anonymous document for an auth-gated admin route` の case で assert している。
 - SKIP は finding にならないが、route は inventory に残り続け、観測ゼロのrouteは
   `inventory.unobserved` として失敗する。
+- **取得できなかった route / probe は PASS にならない。** `--live` の対象 origin へ到達できない場合は
+  各行が `FAIL / observation.request-failed`（status は `(not fetched)`）になり、終了コードは 1 になる。
+  metadata の欠落（`public.title-missing` 等）として報告しないのは、document が存在しないから。

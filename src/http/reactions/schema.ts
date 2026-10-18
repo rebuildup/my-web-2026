@@ -61,6 +61,8 @@ export const MAX_TARGET_KEY_LEN = 256;
 export const MAX_ACTOR_ID_LEN = 256;
 /** Maximum emoji length (RFC suggests grapheme clusters; we cap codepoints). */
 export const MAX_EMOJI_LEN = 16;
+/** Grammar of a reaction-image id (path segment of `/reaction-images/:id`). */
+export const IMAGE_ID_PATTERN = /^[A-Za-z0-9_-]{1,64}$/;
 
 export function validateTargetKey(v: unknown): string {
 	if (typeof v !== 'string' || v.length === 0 || v.length > MAX_TARGET_KEY_LEN) {
@@ -90,8 +92,59 @@ export function validateReactionValue(kind: ReactionKind, value: unknown): strin
 		throw new Error(`emoji value must be ≤${MAX_EMOJI_LEN} codepoints`);
 	}
 	// image kind: value is an image id (≤64 chars hex / ulid-ish).
-	if (kind === 'image' && !/^[A-Za-z0-9_-]{1,64}$/.test(value)) {
+	if (kind === 'image' && !IMAGE_ID_PATTERN.test(value)) {
 		throw new Error('image value must match [A-Za-z0-9_-]{1,64}');
 	}
 	return value;
+}
+
+/**
+ * Reaction-image id as it arrives in the `/api/v1/reaction-images/:id`
+ * path segment. Same grammar as an image-kind `value`; extracted so
+ * the router and the body validator share one definition instead of
+ * two regexes that can drift.
+ */
+export function validateReactionImageId(v: unknown): string {
+	if (typeof v !== 'string' || !IMAGE_ID_PATTERN.test(v)) {
+		throw new Error('id must match [A-Za-z0-9_-]{1,64}');
+	}
+	return v;
+}
+
+/** Parsed + validated `PUT` / `DELETE /api/v1/reactions` body. */
+export interface ReactionInputValue {
+	target_key: string;
+	actor_id: string;
+	kind: ReactionKind;
+	value: string;
+}
+
+interface ReactionBody {
+	target_key?: unknown;
+	actor_id?: unknown;
+	kind?: unknown;
+	value?: unknown;
+}
+
+/**
+ * Parse a reaction write body.
+ *
+ * The `kind`-conditional rule (`emoji` codepoint cap vs. `image` id
+ * grammar) needs the discriminator, so this is a plain throwing
+ * validator rather than a flat Zod object. The boundary wraps it —
+ * `jsonBody(parseReactionInput)` in `src/http/validation.ts` converts
+ * the throw into the defined `400 invalid_body` envelope.
+ */
+export function parseReactionInput(body: unknown): ReactionInputValue {
+	if (!body || typeof body !== 'object') {
+		throw new Error('body must be an object');
+	}
+	const b = body as ReactionBody;
+	const kind = validateReactionKind(b.kind);
+	return {
+		target_key: validateTargetKey(b.target_key),
+		actor_id: validateActorId(b.actor_id),
+		kind,
+		value: validateReactionValue(kind, b.value),
+	};
 }

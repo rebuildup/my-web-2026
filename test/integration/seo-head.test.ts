@@ -216,8 +216,16 @@ beforeAll(async () => {
 		.run();
 });
 
-/** Fetch a path through the real SSR pipeline and read its `<head>`. */
-async function observe(path: string) {
+/**
+ * Fetch a path through the real SSR pipeline and read its `<head>`.
+ *
+ * Memoized: the per-route cases below and the whole-inventory case
+ * read the same documents, and re-running the SSR pipeline for each
+ * would make the suite pay N times for one page.
+ */
+const observed = new Map<string, Promise<Awaited<ReturnType<typeof observeOnce>>>>();
+
+async function observeOnce(path: string) {
 	const response = await SELF.fetch(`https://rebuildup.dev${path}`, { redirect: 'manual' });
 	const html = await response.text();
 	const tags = parseHeadTags(html);
@@ -226,6 +234,14 @@ async function observe(path: string) {
 		tags,
 		head: summarizeHead(tags),
 	};
+}
+
+function observe(path: string) {
+	const cached = observed.get(path);
+	if (cached) return cached;
+	const pending = observeOnce(path);
+	observed.set(path, pending);
+	return pending;
 }
 
 /**
@@ -321,7 +337,30 @@ async function observeInventory() {
 	return observations;
 }
 
+const PUBLIC_ROUTES = inventory.filter((entry) => entry.kind === 'public');
+const OBSERVED_TITLES = new Map<string, string[]>();
+
 describe('public-route <head> metadata (Issue #418)', () => {
+	// One case per discovered public route. A route-level failure then
+	// names the route instead of dumping every finding of the run, and
+	// the verification report (scripts/make-seo-head-verification-report.mjs)
+	// gets one row per route out of these case names.
+	for (const entry of PUBLIC_ROUTES) {
+		it(`${entry.path} declares a title, a description and its canonical`, async () => {
+			const { status, head } = await observe(entry.path);
+			expect(status, `${entry.path} status`).toBe(200);
+			expect(head.title, `${entry.path} title`).toBeTruthy();
+			expect(head.description, `${entry.path} description`).toBeTruthy();
+			expect(head.canonical, `${entry.path} canonical`).toBe(entry.expectedCanonical);
+
+			// Titles are unique across the public surface. Recorded here
+			// (and asserted in aggregate below) so a duplicate is
+			// reported against both routes, not just the later one.
+			const key = (head.title ?? '').toLowerCase();
+			OBSERVED_TITLES.set(key, [...(OBSERVED_TITLES.get(key) ?? []), entry.path]);
+		});
+	}
+
 	it('renders every discovered public route and satisfies the policy', async () => {
 		const observations = await observeInventory();
 		const result = evaluateHeadInventory({ inventory, observations });
@@ -404,10 +443,7 @@ describe('public-route <head> metadata (Issue #418)', () => {
 			// A missing expected canonical means the route could not be
 			// checked against one — that is `inventory.dynamic-no-sample`,
 			// and it must never be silently tolerated.
-			expect(
-				entry.expectedCanonical,
-				`${entry.routeId} has no expected canonical`,
-			).not.toBeNull();
+			expect(entry.expectedCanonical, `${entry.routeId} has no expected canonical`).not.toBeNull();
 			expect(entry.expectedCanonical).toContain(CANONICAL_ORIGIN);
 		}
 	});

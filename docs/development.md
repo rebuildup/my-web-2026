@@ -342,6 +342,31 @@ Run them:
 pnpm test
 ```
 
+## Public-route head metadata gate
+
+Issue #418 added a gate over the `<head>` of every public route:
+title / description / canonical for the indexable surface, a
+`noindex` policy for `/admin/*`, a no-canonical policy for 404
+documents, and a query-free canonical for search-query URLs.
+
+```bash
+# CI gate (runs inside `pnpm run validate:fast` via `pnpm test`):
+pnpm exec vitest run test/integration/seo-head.test.ts
+
+# Point the same policy at any origin (dev server, vite preview, …):
+pnpm run seo:head:check -- --live http://localhost:5173
+pnpm run seo:head:check -- --live http://localhost:5173 --html .tmp/seo-head-report.html
+
+# Regenerate the verification screenshot:
+pnpm run verify:seo-head-screenshot
+```
+
+The policy lives in `scripts/seo-head-contract.mjs`; the CI test and
+the `--live` CLI are two front-ends over that one engine. The route
+inventory is the framework's own route tree, so a new route without
+head metadata fails the gate instead of quietly passing. Details and
+the last report are in `docs/verification/seo/head-metadata-check.md`.
+
 ## Generated artefacts
 
 | Path               | Source                                   | Gitignored |

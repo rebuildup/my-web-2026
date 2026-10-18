@@ -6,6 +6,7 @@ import {
 	__resetCapturedMeasurementIdForTests,
 	captureMeasurementId,
 	createPageViewRouteState,
+	stripAnalyticsQuery,
 	trackRoutePageView,
 } from './GoogleAnalytics';
 
@@ -206,14 +207,16 @@ describe('GoogleAnalytics — SPA route-change page_view (Issue #286)', () => {
 		trackRoutePageView(state, '/about');
 		expect(gtag).toHaveBeenCalledTimes(1);
 
-		// The next distinct location fires the next page_view; the
-		// search string is part of the location key.
+		// The next distinct location fires the next page_view. The
+		// search string is part of the DEDUPE key but is stripped from
+		// the payload (Issue #467) — see the analytics redaction
+		// describe block at the end of this file.
 		trackRoutePageView(state, '/portfolio?tab=work');
 		expect(gtag).toHaveBeenCalledTimes(2);
 		expect(gtag).toHaveBeenLastCalledWith(
 			'event',
 			'page_view',
-			expect.objectContaining({ page_path: '/portfolio?tab=work' }),
+			expect.objectContaining({ page_path: '/portfolio' }),
 		);
 	});
 
@@ -284,5 +287,74 @@ describe('GoogleAnalytics — SPA route-change page_view (Issue #286)', () => {
 		expect((queue[2] as unknown[])[0]).toBe('event');
 		expect((queue[2] as unknown[])[1]).toBe('page_view');
 		expect((queue[2] as unknown[])[2]).toEqual(expect.objectContaining({ page_path: '/about' }));
+	});
+});
+
+/**
+ * Analytics log surface (Issue #467).
+ *
+ * GA4 is a THIRD-PARTY sink: anything pushed through `gtag` leaves
+ * the browser. The route tracker used to forward the router location
+ * key verbatim, so the search string — the part of a URL this project
+ * puts tokens and personal data in — was sent as `page_path` and
+ * `page_location`.
+ *
+ * The audit asserts the negative: a fabricated invitation token in
+ * the query must not reach `gtag`, while the pathname (what the
+ * funnel is actually measured on) must.
+ */
+describe('GoogleAnalytics — analytics log redaction', () => {
+	beforeEach(() => {
+		__resetCapturedMeasurementIdForTests();
+		resetAnalyticsGlobals();
+	});
+
+	afterEach(() => {
+		__resetCapturedMeasurementIdForTests();
+	});
+
+	it('strips the query string and hash from a location key', () => {
+		expect(stripAnalyticsQuery('/portfolio')).toBe('/portfolio');
+		expect(stripAnalyticsQuery('/portfolio?facets=web,design')).toBe('/portfolio');
+		expect(stripAnalyticsQuery('/admin/invitations/accept?token=canary-token-abcdef123456')).toBe(
+			'/admin/invitations/accept',
+		);
+		expect(stripAnalyticsQuery('/about#section')).toBe('/about');
+	});
+
+	it('never pushes a query-string token into gtag', () => {
+		const gtag = vi.fn();
+		analyticsGlobals().gtag = gtag;
+		captureMeasurementId('G-TEST000');
+
+		const state = createPageViewRouteState('/');
+		trackRoutePageView(
+			state,
+			'/portfolio?token=canary-token-abcdef123456&email=canary.person@example.invalid',
+		);
+
+		expect(gtag).toHaveBeenCalledTimes(1);
+		const [command, event, params] = gtag.mock.calls[0] as [string, string, Record<string, string>];
+		expect(command).toBe('event');
+		expect(event).toBe('page_view');
+		expect(params.page_path).toBe('/portfolio');
+		expect(JSON.stringify(params)).not.toContain('canary-token-abcdef123456');
+		expect(JSON.stringify(params)).not.toContain('canary.person@example.invalid');
+	});
+
+	it('still distinguishes two route changes that differ only in query', () => {
+		// Dedupe is keyed on the FULL location key, so `/portfolio?a=1`
+		// and `/portfolio?a=2` remain distinct events; only the payload
+		// is stripped.
+		const gtag = vi.fn();
+		analyticsGlobals().gtag = gtag;
+		captureMeasurementId('G-TEST000');
+
+		const state = createPageViewRouteState('/');
+		trackRoutePageView(state, '/portfolio?a=1');
+		trackRoutePageView(state, '/portfolio?a=2');
+		trackRoutePageView(state, '/portfolio?a=2');
+
+		expect(gtag).toHaveBeenCalledTimes(2);
 	});
 });

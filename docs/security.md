@@ -378,6 +378,17 @@ drop the whole allow branch. Both shapes are asserted in
 Full contract, the measured matrix and the known local-dev deviation
 (`vite dev` answers preflights itself, so the Worker is never consulted):
 [`docs/security/api-cors.md`](security/api-cors.md).
+
+## Response security headers
+
+`X-Content-Type-Options: nosniff`, `Referrer-Policy` and
+`Permissions-Policy` are emitted on every response. The contract, the
+per-Tool permission grant, and how to verify both delivery surfaces
+(Worker responses and Cloudflare Static Assets) are documented in
+[`docs/security/security-headers.md`](security/security-headers.md).
+The gate is `node scripts/check-security-headers.mjs`
+(`pnpm run security:headers:check`, part of `validate:fast`).
+
 ## CSP frame-ancestors
 
 > The inbound embed policy: which ancestor may put one of our

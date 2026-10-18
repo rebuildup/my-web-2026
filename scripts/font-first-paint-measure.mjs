@@ -772,7 +772,19 @@ export function shellQuote(arg) {
  *  show one route's screenshot as another route's evidence. The escaping
  *  is reversible: `__` decodes to `_`, a lone `_` to `/`. */
 export function screenshotFileName(route, scenarioName) {
-	const stem = route.replaceAll('_', '__').replaceAll('/', '_') || '_root';
+	const stem =
+		route
+			.replaceAll('_', '__')
+			.replaceAll('/', '_')
+			// `?`, `#` and `%` are valid in a route and survive the rewrite
+			// above, which breaks the `<img src>`: `_about?variant=a.png`
+			// reads as the path `_about` plus a query string, so the report
+			// would point at a file that does not exist. Percent-encoding
+			// covers every character a URL path cannot carry verbatim — `%`
+			// included, so an encoded route cannot collide with a literal
+			// one. Undo it after the underscore pass; that pass only ever
+			// produces `/` and `_`, so nothing it writes is decoded here.
+			.replaceAll(/[^A-Za-z0-9_.-]/g, (c) => encodeURIComponent(c)) || '_root';
 	return `${stem}-${scenarioName}.png`;
 }
 

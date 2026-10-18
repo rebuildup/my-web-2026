@@ -213,6 +213,24 @@ describe('font-first-paint-measure — parseArgs', () => {
 		assert.equal(screenshotFileName('/', 'baseline'), '_-baseline.png');
 		assert.equal(screenshotFileName('/about', 'slow-font'), '_about-slow-font.png');
 	});
+
+	it('encodes a query or fragment so the report URL still resolves', () => {
+		// `_about?variant=a-baseline.png` reads as the path `_about` plus
+		// a query string, so the report pointed at a file that does not
+		// exist. Percent-encoding survives a URL path verbatim.
+		assert.equal(
+			screenshotFileName('/about?variant=a', 'baseline'),
+			'_about%3Fvariant%3Da-baseline.png',
+		);
+		assert.equal(screenshotFileName('/a#b', 'baseline'), '_a%23b-baseline.png');
+		assert.equal(screenshotFileName('/a%3Fb', 'baseline'), '_a%253Fb-baseline.png');
+		// An encoded route must not collide with a route that already
+		// contained the encoded text.
+		assert.notEqual(
+			screenshotFileName('/a?b', 'baseline'),
+			screenshotFileName('/a%3Fb', 'baseline'),
+		);
+	});
 });
 
 describe('font-first-paint-measure — cumulativeLayoutShift', () => {

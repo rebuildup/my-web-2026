@@ -117,7 +117,7 @@ pnpm run verify:browser-baseline-screenshot            # report HTML + WebP を�
 期待結果（`src/**` の増加に合わせて scanned files は増える。下の行はこの report を最後に再生成した時点の値）:
 
 ```
-surfaces  15 declared · 179 files scanned · 0 uncovered
+surfaces  15 declared · 181 files scanned · 0 uncovered
 features  14 adopted (3 below the bar, each with a verified fallback) · 9 guarded
 warnings (3)   # word-break-auto-phrase / text-wrap-balance / text-wrap-pretty
 exit 0         # `errors (n)` 行はエラーが 1 件以上あるときだけ出力される（0 件なら出ない）

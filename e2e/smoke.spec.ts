@@ -41,6 +41,24 @@ test.describe('deployed Worker smoke', () => {
 		const body = await res.json();
 		expect(body.status).toBe('key_not_found');
 	});
+
+	test('a plaintext origin does not answer with HSTS (Issue #446)', async ({
+		baseURL,
+		request,
+	}, testInfo) => {
+		// `pnpm preview` serves `http://127.0.0.1:3000`, so this suite's
+		// default base URL is plaintext. RFC 6797 §7.2 requires a user
+		// agent to IGNORE an HSTS header received over insecure transport,
+		// so a header here would be inert — and, worse, it would read as
+		// "HTTPS is configured here" for a response that proves nothing.
+		const origin = baseURL ?? testInfo.project.use.baseURL ?? '';
+		test.skip(
+			new URL(origin).protocol !== 'http:',
+			'an HTTPS base URL was supplied; the positive case is covered by test/integration/hsts-transport-security.test.ts and the production smoke',
+		);
+		const res = await request.get('/');
+		expect(res.headers()['strict-transport-security']).toBeUndefined();
+	});
 });
 
 /**

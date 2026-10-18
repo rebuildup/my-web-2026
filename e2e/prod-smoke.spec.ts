@@ -217,3 +217,72 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 		expect(new URL(res.url()).origin).toBe(CANONICAL_ORIGIN);
 	});
 });
+
+/**
+ * Transport security read-only check (Issue #446).
+ *
+ * The Worker's HSTS policy (`src/server.ts` → `applyTransportSecurityPolicy`)
+ * is proven against the local workerd pool in
+ * `test/integration/hsts-transport-security.test.ts`; this block observes the
+ * real canonical origin, because only the deployed edge can prove that HTTPS
+ * is actually reachable for visitors.
+ *
+ * Read-only by construction: two `GET`s of the home page and the health
+ * endpoint, no mutation, no credential, no configuration change. It asserts
+ * the shape of the directive, never a value the repository cannot know, and
+ * it deliberately requires the policy to stay HOST-SCOPED — `includeSubDomains`
+ * and `preload` need the per-subdomain HTTPS audit recorded in
+ * `docs/security.md`, which does not exist yet.
+ *
+ * Skipped during the `transition` phase, which runs BEFORE the deploy that
+ * introduces the header (see `pnpm run e2e:prod:transition`).
+ */
+test.describe('transport security (Issue #446)', () => {
+	test('the canonical origin serves a host-scoped HSTS directive', async ({ request }) => {
+		test.skip(
+			PROD_SMOKE_PHASE === 'transition',
+			'pre-deploy transition smoke runs before the Worker that carries the HSTS policy is live',
+		);
+
+		const observed: string[] = [];
+		for (const path of ['/', '/api/v1/health']) {
+			const res = await request.get(`${CANONICAL_ORIGIN}${path}`, { maxRedirects: 0 });
+			expect(res.status()).toBe(200);
+			// Cloudflare can add its own zone-level HSTS on top of the
+			// Worker's, so every value is inspected rather than the first.
+			observed.push(...(await res.headerValues('strict-transport-security')));
+		}
+
+		expect(
+			observed.length,
+			'no Strict-Transport-Security header on the canonical origin — the Worker policy is not live',
+		).toBeGreaterThan(0);
+
+		for (const value of observed) {
+			// Two layers of policy may arrive as comma-separated directives.
+			const directives = value
+				.split(',')
+				.flatMap((part) => part.split(';'))
+				.map((directive) => directive.trim())
+				.filter((directive) => directive !== '');
+			const names = directives.map((directive) => directive.split('=')[0].trim().toLowerCase());
+
+			expect(names, `unexpected HSTS directive in "${value}"`).toContain('max-age');
+			expect(
+				names,
+				`${value} widens the policy beyond this host; the subdomain HTTPS audit is still missing`,
+			).not.toContain('includesubdomains');
+			expect(names, `${value} commits the zone to the browser preload list`).not.toContain(
+				'preload',
+			);
+
+			const maxAge = Number(
+				directives.find((directive) => directive.split('=')[0].trim() === 'max-age')?.split('=')[1],
+			);
+			expect(
+				Number.isInteger(maxAge) && maxAge >= 86_400,
+				`implausible max-age in "${value}"`,
+			).toBe(true);
+		}
+	});
+});

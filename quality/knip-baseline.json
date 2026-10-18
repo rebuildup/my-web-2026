@@ -81,6 +81,7 @@
 		"types src/home/public.ts SystemServiceStatus",
 		"types src/http/access-counter/schema.ts AccessCounterRow",
 		"types src/http/security/redirect.ts RedirectTargetParamName",
+		"types src/http/webhooks/signature.ts WebhookSignedMaterial",
 		"types src/reactions/emoji-catalog.ts ReactionEmojiRow"
 	]
 }

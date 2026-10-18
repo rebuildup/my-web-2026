@@ -53,6 +53,12 @@ reports them as *new* until the baseline is regenerated. Run
 exactly which findings were absorbed; never edit the baseline by hand and
 never fix another ticket's debt from here.
 
+Absorbed so far (each line is an addition the diff shows, never a removal):
+
+| Finding | Origin |
+| --- | --- |
+| `types src/http/webhooks/signature.ts WebhookSignedMaterial` | #463 (webhook signature adapter) landed on `release-0-6-3`; the type is documented vocabulary for the not-yet-mounted `/webhooks/*` route, so it is #463's debt, not this gate's. |
+
 ## Fixtures
 
 `scripts/check-knip.test.mjs` builds a synthetic project in an OS temp dir that

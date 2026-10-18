@@ -3,6 +3,7 @@ import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import { CjkLineBreak } from './sections/CjkLineBreak';
 import { ColorSwatches } from './sections/ColorSwatches';
+import { ImageCls } from './sections/ImageCls';
 import { InteractiveStates } from './sections/InteractiveStates';
 import { SpacingRuler } from './sections/SpacingRuler';
 import { StatusAccents } from './sections/StatusAccents';
@@ -29,9 +30,22 @@ import { Typography } from './sections/Typography';
  *   - 05 Interactive states default / hover / focus / pressed on `<a>` + `<button>`.
  *   - 06 Status / category  positive / negative / warning badges + four
  *                            content-category left-border treatments.
- *   - 07 CJK line-break      ja / zh-Hans / zh-Hant / ko headings and body
+ *   - 07 Image / CLS         Issue #486 measurement fixture: the real
+ *                            `PortfolioMediaFigure` rendered with
+ *                            fixture rows (eager / lazy / placeholder /
+ *                            unknown size) so the reserved-box contract
+ *                            is measured in a browser instead of
+ *                            asserted in prose. See
+ *                            `docs/verification/perf/README.md`.
+ *   - 08 CJK line-break      ja / zh-Hans / zh-Hant / ko headings and body
  *                            in three opt-in levels, so 禁則処理 and 折り返し
  *                            can be read at narrow widths (Issue #431).
+ *
+ * Section 07 is the only one that composes an obligation other than
+ * editorial: it imports the portfolio media component, which is the
+ * production element the CLS regression lives in. The import is
+ * deliberate and allowed — `routes -> portfolio` is a registered
+ * dependency direction (AGENTS.md §3).
  *
  * Each section uses `SectionHeading` with the same editorial spread
  * (4/12 heading cluster + 8/12 body) the home / about / portfolio
@@ -53,6 +67,7 @@ export function DesignSystemPage() {
 				<SurfaceSection />
 				<InteractiveSection />
 				<StatusSection />
+				<ImageSection />
 				<CjkSection />
 			</main>
 		</>
@@ -288,8 +303,26 @@ function StatusSection() {
 	);
 }
 
+function ImageSection() {
+	return (
+		<section aria-labelledby="design-system-image" className={sectionStyle}>
+			<Container>
+				<SectionHeading
+					id="design-system-image"
+					eyebrow="07 — Image"
+					title="画像 / CLS fixture"
+					description="Issue #486 の計測面。実運用の PortfolioMediaFigure を固定データで描画し、width/height・loading=lazy・placeholder の枠予約を E2E で実測する（e2e/image-cls.spec.ts、証跡は docs/verification/perf/images-cls-fixture.webp）。"
+					variant="spread"
+				>
+					<ImageCls />
+				</SectionHeading>
+			</Container>
+		</section>
+	);
+}
+
 /**
- * 07 — CJK line-break (Issue #431).
+ * 08 — CJK line-break (Issue #431).
  *
  * The only section whose content is a *fixture* rather than a token
  * demonstration, and it says so in its description: the text is
@@ -303,7 +336,7 @@ function CjkSection() {
 			<Container>
 				<SectionHeading
 					id="design-system-cjk"
-					eyebrow="07 — CJK line-break"
+					eyebrow="08 — CJK line-break"
 					title="禁則処理 / Line breaking"
 					description="ja / zh-Hans / zh-Hant / ko の見出しと本文を 3 段階の opt-in（出荷状態 → lang のみ → lang + CJK タイポグラフィ）で並べます。表示用の検証文言であり、公開コピーの推敲ではありません。幅を狭くして禁則と折り返しの実挙動を確認してください。"
 					variant="spread"

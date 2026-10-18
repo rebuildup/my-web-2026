@@ -27,6 +27,24 @@ the surface must still show something when the data is private.
   pnpm exec vitest run test/integration/privacy-projection.test.ts
   ```
 
+- **受け入れ条件の状態**
+
+  Issue #511 の「非公開設定時に GPS・私的イベント名がレスポンスから
+  消え、公開用代替表示が残る」は、publication policy
+  （`visibility` スイッチ / 非公開スケジュール storage / admin トグル）が
+  `src/**` に存在しないため、**この PR では検証していない（未達・owner 決定）**。
+  この suite が固定するのは次の 2 つであり、「非公開時に抑制される」
+  ことの実証ではない。
+
+  1. 現存する公開面（SSR HTML・`/api/v1/*` JSON・GA4 payload）が
+     owner 未承認の location / schedule データを運ばない**回帰契約**。
+  2. その判定に使う検出器が fixture に対して実際に発火する
+     **非空虚性契約**。
+
+  条件を満たすには owner が publication policy を決定し、
+  private-state の request-level case を suite に追加する必要がある。
+  それまでは「公開面に非公開データが無い」ことだけを保証する。
+
 - **画像について**
 
   CI レポート形式のレンダリング結果。dev サーバーは Infisical の
@@ -57,7 +75,9 @@ the surface must still show something when the data is private.
     integration suite が所有。この除外は
     `describe('excluded surfaces stay excluded')` で「非 200 であること」
     として assert してあり、主張を prose だけにしない。
-  - publication 設定の実装（owner 決定が必要）。
+  - publication 設定の実装（`visibility` スイッチ、admin トグル、
+    非公開スケジュール storage）。owner 決定が必要で、本 PR では
+    実装も private-state の検証もしない。
   - 多言語表示。
   - この suite の D1 bootstrap が production と一致しない差分。
     `reaction_images`（`0003`）と access counter の
@@ -67,3 +87,16 @@ the surface must still show something when the data is private.
     （`[home.access.*] upstream failed`）、`/` の access-counter
     タイルは空 / 縮退表示になる。いずれも「どの行があるか」の差であり、
     公開面が持ちうる owner 未承認データの差ではない。
+
+- **将来の手作業**
+
+  1. 位置情報 / 活動 feature の着地時、実装側が `PRIVATE_OWNER_RECORD` を
+     参照して「公開 projection に含めてはいけない」を test から強制する。
+  2. publication policy を owner が確定したら、同じ検出器を admin 経路と
+     storage 境界にも拡張し、private-state の request-level case を
+     この suite に追加する（Issue #511 の条件はその時点で初めて検証可能になる）。
+  3. `/about` `/portfolio` `/portfolio/$slug` も HTML スキャン対象にする場合は、
+     portfolio D1 schema の bootstrap をこの suite へ追加するか、共通 fixture へ
+     切り出す。
+  4. 「`docs/verification/**` の生成器を commit するか」を owner が決定したら、
+     本レポートの生成器を `scripts/` へ移す。

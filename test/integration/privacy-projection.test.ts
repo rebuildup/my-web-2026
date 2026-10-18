@@ -33,7 +33,11 @@ import {
  *     exist (no `visibility` switch, no admin toggle, no private
  *     schedule storage). Those need an owner decision and an
  *     implementation; inventing them here would fabricate a feature
- *     the Issue explicitly does not ask for.
+ *     the Issue explicitly does not ask for. Consequently the Issue's
+ *     conditional ("when private, GPS / private event names
+ *     disappear") is **not exercised** and is not claimed as met:
+ *     this suite is the regression half of that contract, not proof
+ *     that a private record is suppressed.
  *
  * The three public surfaces the rule covers are SSR HTML, `/api/v1/*`
  * JSON, and the GA4 analytics payload.

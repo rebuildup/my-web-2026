@@ -45,6 +45,7 @@ import {
 	evaluateRoutes,
 	renderHtmlReport,
 	renderTextReport,
+	severitiesFrom,
 	validateHtml,
 } from './html-standards-contract.mjs';
 
@@ -154,6 +155,33 @@ export function loadManifest(path) {
 		if (!isRealReason(waiver.reason)) {
 			errors.push(`waivers: the waiver for ${waiver.rule} has no reason`);
 		}
+		// A waiver must scope itself. One that names neither the routes nor
+		// the message shape it covers would mute a whole rule across the
+		// whole site, which is exactly the blanket this ledger must not
+		// be able to express.
+		if ((waiver.route_id === undefined || waiver.route_id === '*') && !waiver.message_pattern) {
+			errors.push(
+				`waivers: the waiver for ${waiver.rule} must declare route_id or message_pattern`,
+			);
+		}
+		if (waiver.message_pattern) {
+			try {
+				new RegExp(waiver.message_pattern);
+			} catch (error) {
+				errors.push(
+					`waivers: the waiver for ${waiver.rule} has an invalid message_pattern (${
+						error instanceof Error ? error.message : String(error)
+					})`,
+				);
+			}
+		}
+		if (
+			waiver.rule &&
+			!declared.includes(waiver.rule) &&
+			!String(waiver.rule).startsWith('html.')
+		) {
+			errors.push(`waivers: ${waiver.rule} is neither a rule nor an engine finding id`);
+		}
 	}
 
 	if (errors.length > 0) throw new ManifestError(errors.join('\n  - '));
@@ -162,13 +190,6 @@ export function loadManifest(path) {
 
 function isRealReason(reason) {
 	return typeof reason === 'string' && reason.trim().length >= 12;
-}
-
-/** Severity map in the shape `validateHtml` consumes. */
-export function severitiesFrom(manifest) {
-	return Object.fromEntries(
-		Object.entries(manifest.rules).map(([rule, entry]) => [rule, entry.severity]),
-	);
 }
 
 /* ------------------------------------------------------------------ *

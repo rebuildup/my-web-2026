@@ -101,6 +101,21 @@ export const DEFAULT_SEVERITIES = Object.freeze(
 /** Every rule id, sorted — the manifest's completeness check. */
 export const RULE_IDS = Object.freeze(Object.keys(RULE_CATALOGUE).sort());
 
+/**
+ * Severity map in the shape `validateHtml` consumes.
+ *
+ * The manifest owns the policy; this is only the projection of it, so
+ * every front-end (offline CLI, live CLI, workerd SSR suite) resolves
+ * severity the same way and cannot drift from the declaration.
+ *
+ * @param {{ rules: Record<string, { severity: string }> }} manifest
+ */
+export function severitiesFrom(manifest) {
+	return Object.fromEntries(
+		Object.entries(manifest.rules ?? {}).map(([rule, entry]) => [rule, entry.severity]),
+	);
+}
+
 /* ------------------------------------------------------------------ *
  * Element tables
  * ------------------------------------------------------------------ */
@@ -276,6 +291,7 @@ const FLOW_CONTENT = new Set([
 	'header',
 	'hgroup',
 	'hr',
+	'legend',
 	'li',
 	'main',
 	'menu',
@@ -397,6 +413,31 @@ const REQUIRED_PARENTS = {
 	rt: ['ruby'],
 	rp: ['ruby'],
 };
+
+/**
+ * Parent-requirement exceptions.
+ *
+ * HTML5 lets a `<dl>` group a run of `<dt>`/`<dd>` inside a `<div>`, so
+ * those two are valid under `dl` OR under a `div` that is itself inside a
+ * `dl`. Nothing else in REQUIRED_PARENTS has such an alternative.
+ */
+const REQUIRED_PARENT_ALTERNATIVES = {
+	dt: [['div', 'dl']],
+	dd: [['div', 'dl']],
+};
+
+function satisfiesRequiredParent(element) {
+	const required = REQUIRED_PARENTS[element.tag];
+	if (!required) return true;
+	const parent = element.parent;
+	if (!parent || parent.type !== 'element') return true;
+	if (required.includes(parent.tag)) return true;
+	for (const [direct, ancestor] of REQUIRED_PARENT_ALTERNATIVES[element.tag] ?? []) {
+		if (parent.tag !== direct) continue;
+		if (ancestorsOf(element).some((node) => node.tag === ancestor)) return true;
+	}
+	return false;
+}
 
 /** Interactive content: never allowed inside an `<a>` or a `<button>`. */
 const INTERACTIVE_CONTENT = new Set([
@@ -765,6 +806,9 @@ const ENUMERATED_ATTRIBUTES = new Map([
 	['dialog:open', ['']],
 	['details:open', ['']],
 ]);
+
+/** `type` on a <script> may carry a MIME type (`application/ld+json`). */
+const MIME_TYPE_PATTERN = /^[a-z0-9!#$&^_.+-]+\/[a-z0-9!#$&^_.+-]+$/i;
 
 /** Attributes whose value is a boolean and may only be empty or self-named. */
 const BOOLEAN_ATTRIBUTES = new Set([
@@ -1425,11 +1469,18 @@ function checkAttributes(element, messages) {
 
 		const enumValues = ENUMERATED_ATTRIBUTES.get(`${element.tag}:${name}`);
 		if (enumValues && attr.value !== null) {
-			// `rel` (and friends) are token lists, so every token has to be
-			// a known one; an unknown token inside a valid list is still a
+			// `type` on a <script> is either a keyword or a MIME type: this
+			// project emits `application/ld+json` for structured data, so a
+			// well-formed MIME string is accepted and anything else is not.
+			const isScriptType = element.tag === 'script' && name === 'type';
+			const lowered = value.toLowerCase();
+			const tokens = lowered.split(/\s+/).filter(Boolean);
+			// Every other enumerated attribute (`rel` and friends) is a
+			// token list, so an unknown token inside a valid list is still a
 			// bad value.
-			const tokens = value.toLowerCase().split(/\s+/).filter(Boolean);
-			const accepted = tokens.length > 0 && tokens.every((token) => enumValues.includes(token));
+			const accepted = isScriptType
+				? enumValues.includes(lowered) || MIME_TYPE_PATTERN.test(lowered)
+				: tokens.length > 0 && tokens.every((token) => enumValues.includes(token));
 			if (!accepted) {
 				messages.push({
 					rule: 'bad-value',
@@ -1502,9 +1553,21 @@ function checkRequiredAttributes(element, messages) {
 
 function checkNesting(element, messages) {
 	const parent = element.parent;
-	if (parent && parent.type === 'element' && KNOWN_ELEMENTS.has(element.tag)) {
+	// A hoisted <style> in the body is framework-owned markup: React 19
+	// emits `<div hidden><style>…</style></div>` for streaming suspense
+	// styles (every route renders through React's streaming SSR), and the
+	// Nu validator flags it. The documents this project ships cannot avoid
+	// it, so it is a documented divergence rather than a finding — see the
+	// `html_standards.known_limits` entry in quality/profile.yaml.
+	const isHoistedStyle =
+		element.tag === 'style' &&
+		Boolean(parent) &&
+		parent.type === 'element' &&
+		contentModelFor(parent.tag) === 'flow' &&
+		ancestorsOf(element).some((node) => node.tag === 'body');
+	if (parent && parent.type === 'element' && KNOWN_ELEMENTS.has(element.tag) && !isHoistedStyle) {
 		const required = REQUIRED_PARENTS[element.tag];
-		if (required && !required.includes(parent.tag)) {
+		if (required && !satisfiesRequiredParent(element)) {
 			messages.push({
 				rule: 'invalid-nesting',
 				message: `Element "${element.tag}" not allowed as child of element "${parent.tag}".`,
@@ -1934,20 +1997,45 @@ export function evaluateRoutes({ manifest, observations, severities }) {
 /**
  * Apply the manifest's waiver ledger.
  *
+ * A waiver may name the routes it covers (`route_id`, or `*`) and the
+ * message shape it covers (`message_pattern`, a regular expression
+ * source). At least one of the two is required, so a blanket waiver that
+ * mutes a whole rule across the whole site cannot be written by accident.
+ *
  * A waiver that suppresses nothing is an ERROR: an entry that stops
- * matching (because the defect was fixed, or because the route id was
- * renamed) must not sit in the manifest turning a real failure green.
+ * matching (because the defect was fixed, or because the message text
+ * changed) must not sit in the manifest turning a real failure green.
  */
 function applyWaivers({ manifest, findings }) {
 	const waivers = manifest.waivers ?? [];
 	for (const waiver of waivers) {
-		const key = `${waiver.route_id ?? '*'}|${waiver.rule}`;
+		const key = `${waiver.route_id ?? '*'}|${waiver.rule}${
+			waiver.message_pattern ? `|/${waiver.message_pattern}/` : ''
+		}`;
+		let pattern = null;
+		if (waiver.message_pattern) {
+			try {
+				pattern = new RegExp(waiver.message_pattern);
+			} catch (error) {
+				findings.push({
+					rule: 'waiver.malformed',
+					severity: 'error',
+					route_id: waiver.route_id ?? null,
+					path: null,
+					message: `Waiver for ${key} has an invalid message_pattern: ${
+						error instanceof Error ? error.message : String(error)
+					}`,
+				});
+				continue;
+			}
+		}
 		const matched = findings.filter(
 			(finding) =>
 				finding.rule === waiver.rule &&
 				(waiver.route_id === undefined ||
 					waiver.route_id === '*' ||
-					finding.route_id === waiver.route_id),
+					finding.route_id === waiver.route_id) &&
+				(pattern === null || pattern.test(String(finding.message))),
 		);
 		if (matched.length === 0) {
 			findings.push({

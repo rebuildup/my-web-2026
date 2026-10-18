@@ -37,13 +37,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-import {
-	DEFAULT_MANIFEST,
-	loadManifest,
-	runOfflineCheck,
-	severitiesFrom,
-} from './check-html-standards.mjs';
-import { renderHtmlReport, validateHtml } from './html-standards-contract.mjs';
+import { DEFAULT_MANIFEST, loadManifest, runOfflineCheck } from './check-html-standards.mjs';
+import { renderHtmlReport, severitiesFrom, validateHtml } from './html-standards-contract.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = join(ROOT, '.tmp');
@@ -132,6 +127,17 @@ const ruleRows = Object.entries(manifest.rules)
 // entry lives in quality/html-standards.json and in the verification doc,
 // so the screenshot keeps the DECISION (render / excluded) next to the
 // path without repeating a paragraph per row.
+const waiverRows = manifest.waivers
+	.map(
+		(waiver) =>
+			`<tr class="excluded"><td>${escapeText(waiver.rule)}</td><td>${escapeText(
+				waiver.route_id ?? '*',
+			)}</td><td>${escapeText(waiver.message_pattern ?? '(route scope only)')}</td><td>${escapeText(
+				waiver.reason,
+			)}</td></tr>`,
+	)
+	.join('\n');
+
 const routeRows = manifest.routes
 	.map(
 		(route) =>
@@ -172,6 +178,14 @@ ${inventorySection}
 <thead><tr><th>path</th><th class="c">mode</th><th>route module (full reason: quality/html-standards.json)</th></tr></thead>
 <tbody>
 ${routeRows}
+</tbody>
+</table>
+
+<h2>waiver ledger（PRE-EXISTING。finding を消すのではなく「レビュー対象として記録」する）</h2>
+<table>
+<thead><tr><th>rule</th><th>route</th><th>message_pattern</th><th>reason</th></tr></thead>
+<tbody>
+${waiverRows}
 </tbody>
 </table>
 

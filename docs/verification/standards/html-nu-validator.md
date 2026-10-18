@@ -87,6 +87,41 @@ engine の誤検知（false positive）に対する canary として意図的に
 
 つまり「invalid fixture が通るよう書き換えた」時点で gate は落ちます。
 
+## この gate が最初に見つけた既存 defect（waiver ledger）
+
+SSR half を実 Worker に対して走らせた結果、**この gate が新規に検出した既存の
+defect が 3 件**ありました。いずれも app markup 側の所有（TIssue #412 の範囲外）で、
+横断的な markup 修正＋既存 e2e selector の更新を伴う owner 判断なので、
+gate は検出した上で `quality/html-standards.json#waivers` に **message 形状で**
+記録しています。
+
+| rule | 形状 | 場所 / 理由 |
+| --- | --- | --- |
+| `invalid-nesting` | `Element "a" not allowed as child of element "ul"` | `src/editorial/nav/PublicNav.tsx` の desktop nav。同一ファイルの mobile list は `<li>` で囲んでいるのに対し desktop は `<a>` を直接置いている。`e2e/nav.spec.ts` が `> a` の直接子セレクタを前提にしているため、修正は editorial と e2e の同時変更 |
+| `invalid-nesting` | `Element "div" not allowed as child of element "button"` | home の絵文字 picker の clear-search ボタン（`src/home/reactions/` が描画）。`<button>` は phrasing content のみ。icon wrapper の `div` → `span` 化は primitive の layout に影響する |
+| `bad-idref` | `for attribute "aria-controls"` | picker の検索 input が `aria-controls="epr-search-id"` を宣言するが、その listbox は client 側のみで mount されるため SSR document に id が存在しない |
+
+waiver ledger の性質:
+
+- **shape 必須**。`route_id` と `message_pattern` の少なくとも一方を宣言しないと
+  manifest が読み込まれません（rule 全体を黙らせる blanket は書けない）。
+- **使わなければ fail**。修正されて該当しなくなった waiver は `waiver.unused` で
+  落ちるので、放置された waiver が緑を維持することはありません。
+- **suppress しても finding は report に出続けます**（`WAIVED` 表示）。
+
+これらは **#412 で直していない既知の debt** であり、follow-up ticket の
+対象です（新規 route / 新規 component では同じ形が blocking になります）。
+
+## engine と Nu Validator の意図的な差分
+
+- **body 直下の hoisted `<style>`** は finding にしません。React 19 は
+  streaming SSR で `<div hidden><style>…</style></div>` を出すため、判定すると
+  本リポジトリが出せる全ての document が落ちます（Nu は error 扱い）。
+  phrasing な親（`<ul>` / `<p>` / `<button>` など）の中の `<style>` は
+  従来どおり報告します。
+- foreign content、任意 custom element、ARIA の role/token 辞書も同様に
+  対象外です（上記「既知の制約」参照）。
+
 ## 実行方法
 
 ```sh
@@ -134,7 +169,8 @@ exit 2 は manifest が読めない/使えない場合です。
   （`aria-labelledby` / `aria-describedby` / `label[for]` / `td[headers]` が
   実在する `id` を指しているか）だけが対象で、role と token の妥当性は
   対象外です。axe-core 相当の a11y gate は別系統の作業です。
-- **waiver ledger**（`quality/html-standards.json#waivers`）は現在空です。
+- **waiver ledger**（`quality/html-standards.json#waivers`）には、この gate が
+  検出した既存 defect 3 件が記録されています（上一个 section参照）。
   entry を足すのは owner review 側の判断で、**何も suppress しない waiver は
   fail** するので、放置された waiver が緑を維持することはありません。
 - live mode は local/dev 相当の origin を想定しており、production origin への

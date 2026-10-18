@@ -26,9 +26,8 @@ import {
 	loadManifest,
 	publishedPathForId,
 	runOfflineCheck,
-	severitiesFrom,
 } from './check-html-standards.mjs';
-import { evaluateRoutes, validateHtml } from './html-standards-contract.mjs';
+import { evaluateRoutes, severitiesFrom, validateHtml } from './html-standards-contract.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECKER = join(REPO_ROOT, 'scripts/check-html-standards.mjs');
@@ -186,6 +185,40 @@ test('valid markup is not reported — false positives are the failure mode', as
 		assert.deepEqual(errorRules(svg), []);
 	});
 
+	await t.test('a <dl> may group dt/dd in a div', () => {
+		assert.deepEqual(errorRules('<dl><div><dt>a</dt><dd>b</dd></div></dl>'), []);
+		assert.ok(
+			errorRules('<div><dt>a</dt></div>').includes('invalid-nesting'),
+			'a dt outside a <dl> is still invalid',
+		);
+	});
+
+	await t.test('a <legend> may be the first child of a <fieldset>', () => {
+		assert.deepEqual(errorRules('<fieldset><legend>L</legend><p>b</p></fieldset>'), []);
+	});
+
+	await t.test('a JSON-LD script type is a MIME type, not a bad keyword', () => {
+		assert.ok(
+			!errorRules('<p>x</p>', { head: '<script type="application/ld+json">{}</script>' }).includes(
+				'bad-value',
+			),
+		);
+		assert.ok(
+			errorRules('<p>x</p>', { head: '<script type="modulee">x</script>' }).includes('bad-value'),
+		);
+	});
+
+	await t.test('a hoisted <style> in the body is a documented divergence, not a finding', () => {
+		// React 19 streams suspense styles as `<div hidden><style>…</style></div>`
+		// and the Nu validator flags it; the SSR documents this project ships
+		// cannot avoid it, so the engine records the divergence instead.
+		assert.deepEqual(errorRules('<div hidden><style>.a{color:red}</style></div>'), []);
+		assert.ok(
+			errorRules('<div><ul><style>.a{color:red}</style></ul></div>').includes('invalid-nesting'),
+			'a <style> inside a non-flow parent is still reported',
+		);
+	});
+
 	await t.test('data-* and aria-* are allowed anywhere they make sense', () => {
 		assert.deepEqual(errorRules('<div data-state="" data-x="1">x</div>'), []);
 		assert.deepEqual(errorRules('<div role="note" aria-current="page">x</div>'), []);
@@ -271,6 +304,17 @@ test('a route roster entry that reads as coverage but checks nothing fails', asy
 		const offline = runOfflineCheck({ root: REPO_ROOT, manifest });
 		assert.deepEqual(offline.inventory, []);
 		assert.deepEqual(offline.errors, []);
+	});
+
+	await t.test('every shipped waiver names the shape it covers', () => {
+		assert.ok(manifest.waivers.length > 0, 'the shipped ledger records the pre-existing defects');
+		for (const waiver of manifest.waivers) {
+			assert.ok(
+				waiver.route_id || waiver.message_pattern,
+				`waiver ${waiver.rule} must scope itself`,
+			);
+			assert.match(waiver.reason, /PRE-EXISTING/);
+		}
 	});
 
 	await t.test('nested route ids normalize to their published path', () => {
@@ -383,6 +427,52 @@ test('a waiver that suppresses nothing fails', () => {
 		2,
 		'the unused waiver fails, and the unwaived defect still fails',
 	);
+});
+
+test('a waiver is scoped to the message shape it names', () => {
+	const base = {
+		routes: [{ route_id: '/x', path: '/x', mode: 'render', why: 'fixture route for the suite' }],
+	};
+	const observation = {
+		routeId: '/x',
+		path: '/x',
+		status: 200,
+		html: document('<p id="a">one</p><p id="a">two</p><h1>a</h1><h4>b</h4>'),
+		contentType: 'text/html',
+	};
+
+	// A message-shaped waiver covers only the shape it names.
+	const scoped = evaluateRoutes({
+		manifest: {
+			...base,
+			waivers: [
+				{
+					rule: 'html.duplicate-id',
+					message_pattern: 'Duplicate ID "a"',
+					reason: 'fixture waiver scoped to one message shape for this suite',
+				},
+			],
+		},
+		observations: [observation],
+	});
+	assert.equal(scoped.findings.filter((finding) => finding.rule === 'html.duplicate-id').length, 1);
+	assert.ok(scoped.findings.some((finding) => finding.waived));
+	assert.ok(
+		scoped.findings.some(
+			(finding) => finding.rule === 'html.heading-level-skip' && !finding.waived,
+		),
+		'a waiver for one rule does not mute another',
+	);
+
+	// A waiver that names neither a route nor a message shape is a blanket,
+	// and the manifest loader refuses to load it. `version` is carried over
+	// from the shipped manifest because the fixture only exercises waivers.
+	const blanket = {
+		version: loadManifest(MANIFEST_PATH).version,
+		...base,
+		waivers: [{ rule: 'html.duplicate-id', reason: 'fixture blanket waiver for this suite' }],
+	};
+	assert.throws(() => loadManifestFixture(blanket), /route_id or message_pattern/);
 });
 
 test('the offline CLI half — exit codes and fail-closed behaviour', async (t) => {

@@ -242,6 +242,7 @@ html_standards:
     - 'subset of HTML5: the rule table covers the elements this repository renders, and an element name outside the table is not a finding'
     - 'foreign content (<svg>/<math>) is not checked for attributes or nesting; id uniqueness still is'
     - 'no external schema, no CSS, no ARIA role/attribute value vocabulary beyond the referenced-id graph'
+    - 'a hoisted <style> inside a flow element of <body> is a documented divergence from the Nu validator: React 19 streams suspense styles as `<div hidden><style>…</style></div>` through every route, so flagging it would mean flagging every document this project can ship. A <style> inside a phrasing-only parent (<ul>, <p>, <button>, …) is still reported.'
 
 ci:
   workflow: .github/workflows/ci.yml

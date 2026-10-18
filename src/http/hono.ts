@@ -5,6 +5,7 @@ import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { publicErrorResponse } from './errors';
 import { sharedCacheIsolation } from './middleware/cache-policy';
+import { csrfGuard } from './middleware/csrf';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
@@ -78,6 +79,16 @@ externalBoundary.use('/api/v1/*', async (c, next) => {
 // New routers compose under the existing `/api/v1/*` prefixes; no
 // change to `src/server.ts` is required.
 externalBoundary.use('/api/v1/*', requestIdMiddleware);
+// Cross-site request forgery guard (Issue #440). TanStack Start's
+// default CSRF middleware only ever sees requests the Worker entry
+// hands to the Start handler; everything answered here never reaches
+// it, so the boundary owes the write methods their own origin check
+// (inferred from ADR-0002 §1/§2's two-layer split; recorded in
+// docs/security.md). Mounted after the request-id middleware so a refusal
+// still carries the correlation header, and before the routers so a
+// cross-site write is rejected before authentication, rate limiting,
+// or D1 are touched.
+externalBoundary.use('/api/v1/*', csrfGuard);
 externalBoundary.route('/', authRouter);
 externalBoundary.route('/', seoRouter);
 externalBoundary.route('/api/v1/access', accessCounterRouter);

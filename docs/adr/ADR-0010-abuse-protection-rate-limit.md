@@ -153,6 +153,25 @@ preserved and only the backing implementation changes.
 - Manual sweep after Ticket D lands: spam 100 `POST /api/v1/access/hit`
   → some 429; revoke key → 401 takes precedence over 429.
 
+## Addendum — 2026-10-18, Issue #456
+
+The Decision above is unchanged. This ticket added the **evidence**
+and one additive header:
+
+- The behavioural claims in "Validation" are now executed by
+  `test/integration/write-rate-limit.test.ts` against the **real**
+  Miniflare rate-limit binding in the local workerd pool: the 60-write
+  budget, a 100-request burst capped at the budget, the write bucket
+  being shared across `PUT` / `DELETE /api/v1/reactions` and
+  `POST /api/v1/access/hit`, per-principal isolation, the read budget
+  surviving write exhaustion, and a suppressed request never reaching
+  D1.
+- `rateLimit` now adds `Retry-After: 60` to the 429. The body stays
+  `{ error: 'rate_limited' }`. See
+  [`docs/security/write-rate-limit.md`](../security/write-rate-limit.md).
+- The middleware unit test no longer runs an inlined copy of the
+  middleware; it mounts the exported middleware with a fake binding.
+
 ## Consequences
 
 ### Positive

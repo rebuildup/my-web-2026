@@ -20,9 +20,11 @@ import {
 	formatMetric,
 	isCompletedRequest,
 	parseArgs,
+	parseRunKey,
 	renderReportHtml,
 	round3,
 	screenshotFileName,
+	shellQuote,
 	summarizeFontResources,
 } from './font-first-paint-measure.mjs';
 
@@ -380,6 +382,41 @@ describe('font-first-paint-measure — fallback readability verdict', () => {
 });
 
 describe('font-first-paint-measure — compareRuns', () => {
+	it('splits a run key from the right, so a colon in a route stays in the route', () => {
+		// `/docs:v2` is a valid route. Splitting on every colon read
+		// `v2` as the scenario and `baseline` as the metric, which moved
+		// the CLS row out of the layout-shift table and pointed the
+		// shift attribution at a scenario that does not exist.
+		assert.deepEqual(parseRunKey('/docs:v2:baseline:cls'), {
+			route: '/docs:v2',
+			scenario: 'baseline',
+			metric: 'cls',
+		});
+		assert.deepEqual(parseRunKey('/about:slow-font:fontSwapMs'), {
+			route: '/about',
+			scenario: 'slow-font',
+			metric: 'fontSwapMs',
+		});
+	});
+
+	it('keeps a colon route on the layout-shift side of the comparison', () => {
+		const shifted = (value) => ({
+			value,
+			startTimeMs: 400,
+			sources: [{ tag: 'ul', text: 'ホーム', previous: '872x29', current: '864x70' }],
+		});
+		const rows = compareRuns(
+			{ runs: [run('/docs:v2', 'baseline', { cls: 0.4 }, [shifted(0.4)])] },
+			{ runs: [run('/docs:v2', 'baseline', { cls: 0.002 }, [shifted(0.002)])] },
+		);
+		const clsRow = rows.find((row) => row.key === '/docs:v2:baseline:cls');
+		assert.equal(clsRow.beforeSources[0].value, 0.4);
+		assert.equal(clsRow.afterSources[0].value, 0.002);
+		assert.equal(clsRow.direction, 'better');
+		const aggregate = aggregateComparison(rows).find((row) => row.metric === 'cls');
+		assert.equal(aggregate.layoutShift, true);
+		assert.equal(aggregate.pairedRuns, 1);
+	});
 	it('diffs matching keys and marks a lower-is-better improvement', () => {
 		const rows = compareRuns(
 			{ runs: [run('/', 'baseline', { cls: 0.12, fcpMs: 400 })] },
@@ -515,6 +552,27 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		assert.match(html, /<th scope="row">routes<\/th><td>\/, \/about/);
 		assert.match(html, /2026-10-18T00:00:00\.000Z/);
 		assert.doesNotMatch(html, /undefined/);
+	});
+
+	it('quotes an argument that contains a space so the recorded command re-runs', () => {
+		// The report is the reproduction record. `--out ".tmp/font report"`
+		// joined with plain spaces reads back as two arguments and dies on
+		// an unknown flag, so the recorded invocation would not reproduce.
+		assert.equal(shellQuote('--out .tmp/font report'), `'--out .tmp/font report'`);
+		assert.equal(shellQuote("it's"), `'it'\\''s'`);
+		assert.equal(shellQuote('plain'), `'plain'`);
+		const argv = ['--out', '.tmp/font report', '--routes', '/, /about'];
+		const html = renderReportHtml({
+			...report,
+			argv,
+			// what `main()` builds from those argv entries
+			command: `pnpm run perf:fonts:measure -- ${argv.map(shellQuote).join(' ')}`,
+		});
+		assert.match(
+			html,
+			/<th scope="row">command<\/th><td>pnpm run perf:fonts:measure -- '--out' '\.tmp\/font report' '--routes' '\/, \/about'/,
+		);
+		assert.match(html, /<th scope="row">arguments<\/th><td>'--out' '\.tmp\/font report'/);
 	});
 
 	it('warns loudly when the webfont pipeline was not fully reachable', () => {

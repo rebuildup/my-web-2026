@@ -265,6 +265,23 @@ function range(values) {
 }
 
 /**
+ * `route:scenario:metric`, split from the right.
+ *
+ * The route is caller-supplied and may contain a colon (`/docs:v2`), so
+ * splitting on every colon read the route's own tail as the scenario and
+ * the scenario as the metric — which moved the CLS row out of the
+ * layout-shift table and attributed shift sources to the wrong run. The
+ * scenario and the metric are fixed vocabularies, so the last two
+ * segments are the unambiguous ones.
+ */
+export function parseRunKey(key) {
+	const parts = key.split(':');
+	const metric = parts.pop();
+	const scenario = parts.pop();
+	return { route: parts.join(':'), scenario, metric };
+}
+
+/**
  * Collapses the noisy half of the comparison into one row per metric,
  * as a min–max range across routes and scenarios. Reporting 45 single
  * -run rows in a PR screenshot is how a noise delta gets mistaken for a
@@ -281,7 +298,7 @@ function range(values) {
 export function aggregateComparison(comparison) {
 	const byMetric = new Map();
 	for (const row of comparison) {
-		const metric = row.key.split(':')[2];
+		const metric = parseRunKey(row.key).metric;
 		if (!byMetric.has(metric)) byMetric.set(metric, []);
 		byMetric.get(metric).push(row);
 	}
@@ -336,7 +353,7 @@ export function compareRuns(before, after) {
 			direction: directionOf(key, delta),
 		};
 		if (key.endsWith(':cls')) {
-			const [route, scenario] = key.split(':');
+			const { route, scenario } = parseRunKey(key);
 			row.beforeSources = sourcesOf(before, route, scenario);
 			row.afterSources = sourcesOf(after, route, scenario);
 		}
@@ -346,7 +363,7 @@ export function compareRuns(before, after) {
 
 function directionOf(key, delta) {
 	if (delta === null || delta === 0) return 'flat';
-	const [, , metric] = key.split(':');
+	const { metric } = parseRunKey(key);
 	// Lower is better for every metric collected here: paint timings,
 	// the swap instant and layout shift. The comment keeps the rule
 	// honest if a future metric joins the table.
@@ -468,7 +485,7 @@ export function renderReportHtml(report) {
 		if (rows.length === 0) return '';
 		const body = rows
 			.flatMap((row) => {
-				const [route, scenario] = row.key.split(':');
+				const { route, scenario } = parseRunKey(row.key);
 				const cells = (shifts, side) =>
 					(shifts ?? [])
 						.map(
@@ -530,6 +547,7 @@ ${row('routes', env.routes)}
 ${row('compared against', env.compareSource)}
 ${row('captured at', report.capturedAt ?? env.capturedAt)}
 ${row('command', report.command)}
+${report.argv?.length ? row('arguments', report.argv.map(shellQuote).join(' ')) : ''}
 </tbody></table>
 <h2>metrics</h2>
 <p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a blocked row has no webfont face to swap to, so its swap instant does not exist. <code>font-origin reqs</code> counts only font-origin requests that delivered a response; an aborted one is counted separately so it can never read as a font that was fetched. In Chromium the faces the CSS font loader fetches do not appear in this buffer at all, so the counted request is the Google Fonts stylesheet.</p>
@@ -732,6 +750,18 @@ function git(args) {
 	}
 }
 
+/** One argument as a copy-pasteable shell token: single-quoted, with
+ *  embedded single quotes spliced out and back in.
+ *
+ *  The report is a reproduction record, so `argv.join(' ')` breaks its own
+ *  contract the moment a value contains a space: `--out ".tmp/font
+ *  report"` reads back as two arguments and fails as an unknown flag.
+ *  `report.argv` carries the array for readers who would rather not shell
+ *  out at all. */
+export function shellQuote(arg) {
+	return `'${arg.replaceAll("'", `'\\''`)}'`;
+}
+
 /** File name for one run's screenshot.
  *
  *  `/` becomes `_` so the name stays readable, which is only safe if the
@@ -889,7 +919,8 @@ async function main(argv) {
 		// does not say which origin, which routes and which
 		// `--compare` input it came from cannot be told apart from
 		// another run of the same command on another port.
-		command: `pnpm run perf:fonts:measure${argv.length > 0 ? ` -- ${argv.join(' ')}` : ''}`,
+		command: `pnpm run perf:fonts:measure${argv.length > 0 ? ` -- ${argv.map(shellQuote).join(' ')}` : ''}`,
+		argv: [...argv],
 		generatedAtNote:
 			'Measurement only. No threshold is enforced here; budget + release gate belong to Issue #386.',
 		capturedAt: new Date().toISOString(),

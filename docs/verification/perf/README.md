@@ -12,7 +12,7 @@ is deliberately **not** wired into `validate:fast` / `validate:integration`
 
 | File | What it is |
 | --- | --- |
-| `font-firstpaint-snapshot.webp` | The committed measurement report: environment block, per-run metrics, layout-shift attribution for this capture **and for the before capture it was compared against**, before/after tables, and the per-scenario page captures. The Issue names `font-firstpaint-snapshot.png`; the committed file is the WebP conversion of that capture (1280x3123, 223 KB) so the binary stays small. The intermediate PNG is never committed. |
+| `font-firstpaint-snapshot.webp` | The committed measurement report: environment block (including the exact invocation it was produced by), per-run metrics, layout-shift attribution for this capture **and for the before capture it was compared against**, before/after tables, and the per-scenario page captures. The Issue names `font-firstpaint-snapshot.png`; the committed file is the WebP conversion of that capture (1280x3327, 341 KB) so the binary stays small. The intermediate PNG is never committed. |
 
 ## What is measured
 
@@ -31,6 +31,12 @@ per route and scenario:
   requests that **delivered** a response and requests that were **aborted**
   (the blocked scenario aborts them on purpose, and Chromium keeps the
   entry either way),
+- whether the webfont pipeline is usable **from this host at all**: the
+  probe fetches the Google stylesheet, follows it to the `gstatic` face
+  it references and asks for that too. Checking only the stylesheet host
+  would report a run as a real webfont swap on a network that serves the
+  CSS and blocks the font file, which is precisely the state in which no
+  swap can ever be observed,
 - layout-shift **sources** — the element and rect pairs that moved, for
   this capture and for the before capture passed with `--compare`,
 - a fallback-readability verdict over real text probes in the blocked
@@ -59,8 +65,14 @@ improvement.
 
 The settle window opens **when the swap lands**, not at a fixed offset:
 in `slow-font` the swap is ~3.8 s in, and a fixed window that closed
-before it would drop the very shift the swap causes. The wait is bounded
-(15 s), and a swap that never lands stays `n/a`.
+before it would drop the very shift the swap causes. Both waits are
+bounded (15 s) — including the `document.fonts.ready` settle, which
+otherwise hangs forever on a stalled font request and would stall the run
+before it can report anything — and a swap that never lands stays `n/a`.
+
+The report records the invocation that produced it (origin, routes,
+`--compare` input, timestamp, command line) next to the numbers, so two
+captures of the same command on two ports can never be confused.
 
 The script exits `0` on a completed measurement and non-zero only when
 the measurement is impossible (no browser, unreachable base URL, a route
@@ -114,12 +126,19 @@ without them is not evidence:
 | --- | --- |
 | Browser | Chromium 153.0.8010.12 (Playwright `^1.63.0`), headless |
 | Viewport | 1280x800 @1x |
-| Network | default Chromium (no throttling); font origin reachable (`HTTP 200`) |
+| Network | default Chromium (no throttling); webfont pipeline reachable — `stylesheet HTTP 200 + face HTTP 200` (both hosts probed) |
 | CPU | throttle x4 in `slow-font`; host Apple M5 x10, darwin arm64 |
 | Font delay | 1500 ms per font-origin response in `slow-font` |
 | Host | macOS (darwin 27.0.0, arm64), 24 GB |
-| Source (after, this snapshot) | branch `485`, commit `1d00d9a`, clean tree |
-| Source (before, `--compare` input) | branch `485`, commit `a16cbce`, dirty tree — `src/styles.css` and `src/editorial/tokens.ts` restored to their pre-fix content, which is exactly what the fix changes |
+| Source (after, this snapshot) | branch `485`, commit `7acb11d`, clean tree |
+| Source (before, `--compare` input) | branch `485`, commit `7acb11d`, dirty tree — `src/styles.css` and `src/editorial/tokens.ts` restored to their pre-fix content, which is exactly what the fix changes |
+
+Both captures ran the same script commit, so the only difference between
+them is the two restored files. The before capture names `7acb11d` rather
+than the SHA it was built from on purpose: the script that produced the
+numbers is the thing a reader has to trust to be the same, and that is
+provable, while the built state is documented by `dirty: true` plus the
+restore recipe above.
 
 Desktop viewport only. A mobile matrix is not measured here — it belongs
 with the Core Web Vitals budgets in Issue #386, which owns device and
@@ -134,28 +153,33 @@ swap to.
 
 | Route | Scenario | CLS before | CLS after | FCP before / after (ms) | swap before / after (ms) |
 | --- | --- | --- | --- | --- | --- |
-| `/` | baseline | 0 | 0.001 | 132 / 128 | 626.5 / 629.8 |
-| `/` | blocked | 0 | 0 | 108 / 144 | n/a / n/a |
-| `/` | slow-font | 0 | 0.001 | 300 / 364 | 3846.7 / 3810.9 |
-| `/about` | baseline | 0.975 | **0.001** | 140 / 164 | 580.7 / 1057 |
-| `/about` | blocked | 0 | 0 | 144 / 192 | n/a / n/a |
-| `/about` | slow-font | 0.487 | **0.001** | 408 / 460 | 3785.4 / 4137.3 |
+| `/` | baseline | 0 | 0.002 | 144 / 140 | 686.1 / 730.6 |
+| `/` | blocked | 0 | 0 | 128 / 116 | n/a / n/a |
+| `/` | slow-font | 0.146 | **0.001** | 348 / 336 | 4550.9 / 3957.8 |
+| `/about` | baseline | 0.975 | **0.001** | 152 / 148 | 532.3 / 529.1 |
+| `/about` | blocked | 0 | 0 | 144 / 148 | n/a / n/a |
+| `/about` | slow-font | 0.487 | **0.001** | 444 / 464 | 3931.7 / 3841.8 |
 
 Read the CLS column and ignore the paint/swap columns: those are
 single-run timings against a third-party origin and move by ±100 ms
-between runs of the same build. CLS is deterministic — a row either wraps
-or it does not.
+between runs of the same build.
 
-In these two captures the `/` route stayed on one line on both builds
-(0 before, 0.001 after); the re-wrap reproduced on `/about`, in both
-`baseline` and `slow-font`.
+The CLS column is a **per-build** measurement, not a promise that the
+value repeats. A row either wraps or it does not on the build that was
+measured, and the `/` route sits close enough to its wrap threshold to
+be measured on both sides of it: in these two captures `/` `baseline` is
+`0` before and `0.002` after — both three orders of magnitude below the
+criterion, but not the same number. The re-wrap reproduced on `/about`,
+in both `baseline` and `slow-font`, where the shift is large enough
+(0.487 / 0.975) that the verdict does not depend on which side of the
+threshold the row falls.
 
 **Pass criteria used for this ticket** (informational, not a gate):
 
 | Criterion | Before | After |
 | --- | --- | --- |
 | `/about` and `/` read with the font origin blocked | readable (8/8 probes each) | readable (8/8 probes each) |
-| CLS <= 0.1 in every scenario on both routes | 2 of 6 runs failed (`/about` 0.975 / 0.487) | 6 of 6 pass (max 0.001) |
+| CLS <= 0.1 in every scenario on both routes | 2 of 6 runs failed (`/about` 0.975 / 0.487) | 6 of 6 pass (max 0.002) |
 
 0.1 is the Web Vitals "good" boundary for CLS and is used here only to
 state whether the fix worked; nothing enforces it.
@@ -168,21 +192,33 @@ sources for the two largest shifts of every run **of both captures**
 be checked against the elements that moved:
 
 ```
-/about  baseline   before   shift 0.487 at 343.7ms
+/about  baseline   before   shift 0.487 at 320.7ms
     ul    "ホームHome…"  872x29 -> 864x70     <- the desktop nav wraps to a second row
     main  "01 — Identity…"  1280x112 -> 1280x71
-/about  baseline   before   shift 0.487 at 619.9ms
+/about  baseline   before   shift 0.487 at 574.8ms
     ul    "ホームHome…"  864x70 -> 868x29     <- and unwraps when the webfont settles
-/about  baseline   after    shift 0.001 at 899ms
-    ul    "ホームHome…"  872x29 -> 835x29     <- same row, still one line
-/about  baseline   after    shift 0.001 at 1318.9ms
-    ul    "ホームHome…"  839x29 -> 872x29
+/about  baseline   after    shift 0.001 at 358.7ms
+    ul    "ホームHome…"  872x29 -> 836x29     <- same row, still one line
+/about  baseline   after    shift 0.001 at 652.9ms
+    ul    "ホームHome…"  836x29 -> 872x29
+/about  slow-font  before   shift 0.487 at 2082.1ms  (same pair again, 3.9 s in)
+    ul    "ホームHome…"  872x29 -> 864x70
+/about  slow-font  after    shift 0.001 at 2073.8ms
+    ul    "ホームHome…"  872x29 -> 836x29
 ```
 
 Before, the nav row's height goes 29px -> 70px and back: a re-wrap, not
-an image or an ad slot. After, the same row changes width (872 -> 835 ->
+an image or an ad slot. After, the same row changes width (872 -> 836 ->
 872) while its height stays 29px, which is a shift of 0.001 instead of
 0.487.
+
+On `/` the fix shows up differently, and both captures say so
+explicitly: the pre-fix `slow-font` run re-wrapped the hero CTA row
+(`main` 1280x331 -> 1280x365, `a` 199x24 -> 194x40, plus a `li`
+appearing, 0.146 at 4796 ms), while after it records two 0.001 shifts on
+an unchanged `307x77` `p` box. The `baseline` rows for `/` are the
+knife-edge case described above: 0 before, 0.002 after, both far below
+the criterion, from a different element than the one that used to wrap.
 
 The desktop nav row sits within ~1% of its wrap threshold — the
 component already records this ("at `lg`+ gap 3 brings the full roster
@@ -208,12 +244,32 @@ crossing the threshold.
 The values were measured, not guessed — canvas `measureText` at 100 px
 over the real nav/label strings, on the reference host above:
 
-| Webfont | Weight | size-adjust | ascent | descent |
-| --- | --- | --- | --- | --- |
-| Noto Sans JP | 400 | 94.24% | 123% | 30% |
-| Noto Sans JP | 700 | 92.43% | 125% | 31% |
-| Zen Kaku Gothic New | 400 | 90.45% | 128% | 32% |
-| Zen Kaku Gothic New | 700 | 86.17% | 134% | 33% |
+| Webfont | Weight | local face | size-adjust | ascent | descent |
+| --- | --- | --- | --- | --- | --- |
+| Noto Sans JP | 400 | `Hiragino Kaku Gothic ProN W3` | 94.24% | 123% | 30% |
+| Noto Sans JP | 700 | `Hiragino Kaku Gothic ProN W6` | 92.43% | 125% | 31% |
+| Zen Kaku Gothic New | 400 | `Hiragino Kaku Gothic ProN W3` | 90.45% | 128% | 32% |
+| Zen Kaku Gothic New | 700 | `Hiragino Kaku Gothic ProN W6` | 86.17% | 134% | 33% |
+
+Each rule's `src` and its metrics name the **same** face, and the face is
+the right weight for the rule. The 700 rules point at `W6` (bold): a
+`font-weight: 700` rule naming `W3` would make the browser believe the
+swap window already has a bold face, so heading tier would be drawn with
+regular outlines exactly when the fallback is supposed to look like the
+page, and nothing would compensate with synthetic bolding. Measured
+against `W3` the 700 faces would be 97.77% / 91.14% instead — which is
+the mismatch an earlier revision of this ticket shipped, since the
+metrics were taken at family level (where macOS answers 600 and 700 with
+`W6`) while the rule named `W3`.
+
+There is no 600 rule, deliberately. On this host only `W3` and `W6` of
+`Hiragino Kaku Gothic ProN` resolve — `W0/W1/W2/W4/W5/W7` fall back to
+the default face (verified by measuring every full name, and by the
+identical fallback width they produce) — and macOS itself answers a
+family-level 600 request with `W6`. Declaring 700 only means the 600
+requests in the shipped surfaces resolve through the bold face, which is
+what the platform already did: no hierarchy loss in the swap window, and
+no invented face.
 
 Two things this deliberately does **not** touch:
 
@@ -222,13 +278,13 @@ Two things this deliberately does **not** touch:
   no longer moves boxes;
 - any threshold, gate or CI step.
 
-`src: local('Hiragino Kaku Gothic ProN W3')` names the **full** face
-name: Chromium resolves `local()` against the full name only, and the
-family name leaves the rule `unloaded` — a silent no-op rather than a
-failure. Verified on the reference host. Where the local face does not
-exist, the rule fails to load and the token chain falls through to
-`system-ui` exactly as before, so the override cannot make a platform it
-was not measured on worse.
+`src: local('Hiragino Kaku Gothic ProN W3')` (or `W6`) names the
+**full** face name: Chromium resolves `local()` against the full name
+only, and the family name leaves the rule `unloaded` — a silent no-op
+rather than a failure. Verified on the reference host. Where the local
+face does not exist, the rule fails to load and the token chain falls
+through to `system-ui` exactly as before, so the override cannot make a
+platform it was not measured on worse.
 
 ## Impact on `quality/profile.yaml`
 
@@ -264,15 +320,18 @@ Making it CI-reproducible needs an owner decision, not a script change:
 3. run the measurement on a macOS runner.
 
 All three also assume the runner can reach `fonts.googleapis.com` /
-`fonts.gstatic.com`; the report records reachability per run, but a
-runner without egress turns `baseline` and `slow-font` into "platform
-fallback, no swap" rows.
+`fonts.gstatic.com`; the report probes both hosts and says so per run,
+but a runner without egress turns `baseline` and `slow-font` into
+"platform fallback, no swap" rows.
 
 ## Known limits
 
 - Desktop viewport only; no mobile matrix (Issue #386).
-- One run per scenario. The CLS rows are deterministic; the timing rows
-  are not, and this ticket deliberately does not average them.
+- One run per scenario. A layout shift is a measurement of the build it
+  was taken on, not a distribution: the `/` `baseline` row reads 0 before
+  and 0.002 after, and `/about` is far enough from its threshold for the
+  verdict not to depend on which side it falls. The timing rows are not
+  repeatable at all, and this ticket deliberately does not average them.
 - The metric values are macOS-specific by construction (see above). Other
   platforms keep today's behaviour via the chain fallback; a
   platform-specific override would need its own measurement.

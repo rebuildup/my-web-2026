@@ -19,15 +19,136 @@ patch release.
 
 ## CSRF
 
-TanStack Start's **default CSRF middleware** is the canonical
-mutation-protection mechanism for server functions. It is enabled by
-default because `src/start.ts` is intentionally absent — adding a
-custom `startInstance` override would disable the default
-middleware, so do not add one without an ADR.
+The Worker serves two mutation layers, and **each layer owns a
+different CSRF check**. `src/server.ts` dispatches by path prefix
+*before* the TanStack Start handler runs, so anything under the
+external boundary prefixes never reaches the framework middleware —
+which is why the two cannot be one mechanism.
 
-External boundary handlers under `src/http/**` are not protected by
-the default CSRF middleware; they are responsible for their own
-authentication and origin checks per ADR-0002.
+| Layer                            | Owner                                         | Applies to                                      |
+| -------------------------------- | --------------------------------------------- | ----------------------------------------------- |
+| TanStack Start server functions  | **framework default** CSRF middleware          | `/_serverFn/*` (`handlerType === 'serverFn'`)   |
+| Hono external boundary           | `csrfGuard` (`src/http/middleware/csrf.ts`)   | `/api/v1/*` unsafe methods                      |
+| `/api/v1/auth/*`                 | Better Auth (`trustedOrigins` + form CSRF)     | cookie-carrying writes                          |
+
+### TanStack Start layer (default middleware)
+
+`createStartHandler` installs
+`createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === 'serverFn' })`
+**only while no custom `startInstance` exists**. `src/start.ts` is
+intentionally absent: adding one would replace the default middleware
+with whatever that file declares and leave every server-function
+mutation unprotected, with no production warning. AGENTS.md §2
+requires an ADR before that happens.
+
+### Hono boundary layer (`csrfGuard`)
+
+ADR-0002 §1/§2 split the Worker into two layers, so the external
+boundary never reaches the framework middleware and therefore owes its
+write methods their own origin check (that obligation is inferred
+from the split, not quoted from the ADR; whether it deserves its own
+ADR is an open owner decision). `csrfGuard` implements it for unsafe
+methods (`POST` / `PUT` / `PATCH` / `DELETE`) under `/api/v1/*`:
+
+1. Safe methods are **never** checked — the boundary exposes no
+   state-changing `GET`.
+2. `Sec-Fetch-Site` present → must be `same-origin`.
+3. Else `Origin` present → must equal the request origin
+   (`Origin: null` is never same-origin).
+4. Else `Referer` present → must be same-origin, with a delimiter
+   check so `https://host.evil.example` cannot pass.
+5. Else → **rejected**. Fail-closed, matching the framework default
+   (`allowRequestsWithoutOriginCheck: false`).
+
+A refusal is `403` with a stable body and no caller-supplied value in
+it:
+
+```json
+{ "error": "csrf_rejected", "reason": "cross_site_fetch_metadata" }
+```
+
+`reason` is one of `cross_site_fetch_metadata`, `origin_mismatch`,
+`referer_mismatch`, `origin_check_missing`. It names the header that
+failed, never its value.
+
+The guard is mounted in `src/http/hono.ts` after the local mock gate
+and the request-id middleware, and before every router — so a refused
+cross-site write never reaches authentication, rate limiting, or D1.
+
+**No credential-based exemption.** The boundary's writes use
+`Authorization: Bearer <api key>`, which a browser cannot attach
+cross-site by itself. Exempting bearer requests anyway would make the
+guard untestable for the requests that matter, so first-party callers
+declare their origin instead: the Home self-calls
+(`src/home/{access,reactions}/load.ts`) send
+`Origin: <the origin they are calling>`.
+
+**Consequence for scripted API calls.** A non-browser client hitting a
+write endpoint directly must send the header itself:
+
+```bash
+curl -s -X POST https://rebuildup.dev/api/v1/access/hit \
+  -H 'Authorization: Bearer …' \
+  -H 'Origin: https://rebuildup.dev' \
+  -H 'Content-Type: application/json' -d '{…}'
+```
+
+Reads (`GET` / `HEAD` / `OPTIONS`) are unaffected. The local
+`LOCAL_API_MODE=mock` gate answers before the guard, so the mock smoke
+commands in [`docs/development.md`](development.md) keep working; the
+mock has no D1 / R2 side effects.
+
+**Consequence for the repository's own suites.** The same signal
+applies in-process: a workerd integration suite that writes through the
+real boundary must declare the origin in its shared request headers,
+otherwise it measures the guard instead of what it was written to prove.
+The suites that write today do exactly that —
+`test/integration/d1-parameter-binding.test.ts` (`http://localhost`, the
+origin Hono's `app.request()` resolves a relative path against),
+`test/integration/admin-authorization.test.ts` and
+`test/integration/api-key-scope.test.ts` (`https://example.com`, the
+pool's Worker origin). The guard's refusal behaviour is asserted
+separately in `test/integration/csrf-contract.test.ts`.
+
+### What breaks the contract, and what catches it
+
+| Break                                                | Caught by                                                     |
+| ---------------------------------------------------- | ------------------------------------------------------------- |
+| Adding `src/start.ts` / a custom `startInstance`      | `pnpm run csrf:contract:check` (`validate:fast`), integration test |
+| Turning on `skipCSRFCheck` / `disableCSRFCheck` / `disableOriginCheck` / `disableCsrfMiddlewareWarning` | `pnpm run csrf:contract:check` |
+| Removing or unmounting `csrfGuard`                    | `pnpm run csrf:contract:check`, workerd integration test       |
+| Moving the guard mount below `route()` (Hono dispatches in registration order) | `pnpm run csrf:contract:check` (order rule) |
+| Changing the rejection code / behaviour               | `src/http/middleware/csrf.test.ts`, `test/integration/csrf-contract.test.ts` |
+| A write endpoint answering on `GET`                   | `test/integration/csrf-contract.test.ts` (D1 before/after read on `GET /api/v1/reactions`) |
+
+Where the assertions live:
+
+- `src/http/middleware/csrf.test.ts` — decision matrix (unit).
+- `test/integration/csrf-contract.test.ts` — end-to-end through the
+  real Worker in the local workerd pool: a cross-site write with a
+  **valid** API key is refused and leaves no D1 row; a same-origin
+  write is accepted; cross-site reads stay readable and write nothing.
+  The "GET writes nothing" evidence is a D1 before/after read on
+  `GET /api/v1/reactions` only — the boundary's other reads
+  (`/api/v1/access/count/:key`, `/api/v1/reaction-images/:id`,
+  `/api/v1/db/ping`, `/api/v1/media/ping`) are asserted reachable but
+  have no side-effect assertion, so widening that claim is future work
+  rather than something this record overstates.
+- `e2e/csrf.spec.ts` — the same positive/negative cases over HTTP
+  against the built preview server, including the `/_serverFn/*`
+  endpoint (the workerd pool does not wire that URL, see below).
+- `scripts/check-csrf-contract.mjs` — the structural gate; its own
+  tests are `scripts/check-csrf-contract.test.mjs`.
+
+Why the `/_serverFn/*` half is not asserted in the workerd pool:
+`TSS_SERVER_FN_BASE` is injected by the Vite plugin's `define`, which
+the vitest worker bundle does not apply, so `createStartHandler` skips
+its server-function branch and the router answers 404. Probing it
+there would test the harness rather than the contract.
+
+See also: [`ADR-0002`](adr/ADR-0002-architecture-boundary.md) (the
+two-layer split), [`ADR-0010`](adr/ADR-0010-abuse-protection-rate-limit.md)
+(the write-path rate limit that still applies after the guard).
 
 ## OAuth / OIDC callback: state and redirect (Issue #444)
 

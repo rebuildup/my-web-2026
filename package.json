@@ -79,7 +79,6 @@
 		"verify:admin-authz-screenshot": "node scripts/admin-authz-shoot.mjs",
 		"verify:d1-binding-screenshot": "node scripts/make-d1-verification-report.mjs",
 		"structured-data:check": "node scripts/check-structured-data-coverage.mjs",
-		"verification:api-key-scope": "node scripts/capture-api-key-scope-matrix.mjs",
 		"verify:frame-ancestors-screenshot": "node scripts/make-frame-ancestors-report.mjs",
 		"verify:sitemap-screenshot": "node --experimental-strip-types scripts/make-sitemap-verification-report.mjs",
 		"verify:structured-data-screenshot": "node scripts/make-seo-structured-data-report.mjs"

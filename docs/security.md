@@ -164,6 +164,49 @@ This change adds no service, no binding, and no secret. Specifically:
   The Issue names a `.png`; the `.webp` extension is a deliberate
   substitution (the same one Issue #452 made for its report).
 
+## API key scope and revocation
+
+The API keys that guard `/api/v1/access/*` and `/api/v1/reactions/*`
+have two decision layers: the boundary middleware
+(`src/http/api-keys/middleware.ts`) owns the `Authorization` shape and
+the resource/action scope lookup, and `@better-auth/api-key` owns hash
+verification, revocation, and expiry. Every denial collapses to a single
+shape (`401 missing_authorization`, `401 invalid_api_key`, or
+`403 missing_scope`) so a refusal cannot become an oracle.
+
+The scope matrix, the fixtures that pin each refusal, and the
+secret-handling invariants live in
+[`docs/security/api-key-scope.md`](security/api-key-scope.md). Its
+measured artefact is
+[`docs/verification/security/api-key-scope-matrix.webp`](verification/security/api-key-scope-matrix.webp)
+(regenerate with `pnpm run verification:api-key-scope`). Verification is
+local-only: fixtures live in a throwaway Miniflare D1 database, and no
+production endpoint, secret, or operator account is read or written.
+
+## Cache isolation
+
+Responses whose body depends on who asked for them (per-principal
+counters, per-visitor reaction state, sessions, `/admin*`, and
+server-function payloads) are marked so that a **shared** cache — CDN
+edge, corporate proxy — cannot store them: `private, no-store` on the
+external boundary, `private, no-cache` on caller-specific SSR
+documents, `no-store` under `/admin*`. Public immutable payloads opt
+in explicitly with `public, max-age=…, immutable`.
+
+The full contract, the audit it came from, and the verification
+suites are documented in
+[`docs/security/cache-isolation.md`](security/cache-isolation.md).
+
+## Open redirect
+
+Every `returnTo`-shaped value that crosses the external boundary is
+untrusted. `src/http/security/**` refuses anything that is not an
+internal absolute path, and is mounted in front of the Better Auth
+handler at `/api/v1/auth/*`. `BETTER_AUTH_URL` is the trusted-origin
+allow-list; when it is unset the guard refuses every absolute URL
+(fail-closed). The shipped contract, operator duties and known limits:
+[`docs/security/open-redirect.md`](security/open-redirect.md).
+
 ## D1 parameter binding (Issue #452)
 
 ### Rule
@@ -313,6 +356,15 @@ binding API is reachable in the local workerd pool"**, not
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Redirect-target matrix (Issue #454) is regenerated from the shipped
+  guard by `pnpm run security:redirect:report`; the committed image and
+  its reading guide are in
+  [`docs/verification/security/`](verification/security/).
+- Embed policy (Issue #448) is asserted at runtime by
+  `test/integration/frame-ancestors.test.ts` and, for the Static
+  Assets half no runtime test can observe, by
+  `pnpm run security:embed:check`; the committed report is in
+  [`docs/verification/security/`](verification/security/).
 
 ## Browser binaries (Playwright)
 

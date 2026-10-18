@@ -208,8 +208,16 @@ production domain to be wired (Issue #43 / ADR-0014):
    not documented as canonical.
 
    After Cloudflare reports the production build/deployment successful, run the
-   production smoke and verify `/`, `/admin/login`, `/api/v1/health`,
-   reactions, and the access counter on the canonical origin.
+   production smoke and verify `/`, `/about`, `/portfolio`, `/tools`,
+   `/admin/login`, `/api/v1/health`, reactions, and the access counter on
+   the canonical origin. The five representative routes (`/`, `/about`,
+   `/portfolio`, `/tools`, `/api/v1/health`) carry their own documented
+   default-state contract since Issue #500 — see
+   [`docs/runbook/cloudflare-workers-builds.md`](runbook/cloudflare-workers-builds.md)
+   § "Representative route coverage". That coverage belongs to this
+   POST-deploy smoke (Smoke #2); the PRE-merge Smoke #1 skips it because
+   its expectations are release-branch facts and nothing of the release
+   is deployed yet.
 
 8. The dependency advisory gate (Issue #470) has run against the release
    branch head — the `Dependency advisory audit` step of the `validate`

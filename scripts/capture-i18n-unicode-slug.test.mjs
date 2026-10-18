@@ -108,7 +108,10 @@ test('codePointList prints the code points a reader cannot see', () => {
 });
 
 test('assertFixtureCount refuses a partial decision table', () => {
-	assert.equal(assertFixtureCount(new Array(EXPECTED_FIXTURE_COUNT).fill({})), EXPECTED_FIXTURE_COUNT);
+	assert.equal(
+		assertFixtureCount(new Array(EXPECTED_FIXTURE_COUNT).fill({})),
+		EXPECTED_FIXTURE_COUNT,
+	);
 	assert.throws(() => assertFixtureCount([]), /whole decision table/);
 	assert.throws(() => assertFixtureCount(new Array(3).fill({})), /expected 17 fixture rows/);
 });
@@ -129,10 +132,10 @@ test('the evidence is produced by the shipped policy, not a copy', async () => {
 	assert.equal(evidence.rows.length, EXPECTED_FIXTURE_COUNT);
 	assert.equal(evidence.gate.violations.length, 0);
 	// The collision catalog is fixed data: two findings every run.
-	assert.deepEqual(
-		evidence.collisions.map((collision) => collision.kind).sort(),
-		['duplicate-url', 'normalization-alias'],
-	);
+	assert.deepEqual(evidence.collisions.map((collision) => collision.kind).sort(), [
+		'duplicate-url',
+		'normalization-alias',
+	]);
 	// Every accepted slug is ASCII, so the artefact can state the
 	// guarantee rather than assert it.
 	for (const row of evidence.rows) {
@@ -167,7 +170,11 @@ test('buildReportHtml renders one row per fixture and escapes command output', (
 	};
 	const html = buildReportHtml(evidence);
 	assert.match(html, /<html lang="ja">/);
-	assert.equal(html.match(/<td class="id">/g).length, 1, 'one fixture row per decision-table entry');
+	assert.equal(
+		html.match(/<td class="id">/g).length,
+		1,
+		'one fixture row per decision-table entry',
+	);
 	assert.match(html, /<td><code>duplicate-url<\/code><\/td>/);
 	assert.match(html, /拒否 \(non-ascii\)/);
 	assert.match(html, /受理 \/cafe/);
@@ -188,5 +195,9 @@ test('buildPalette resolves the shipped semantic tokens into CSS', async () => {
 	]);
 	const palette = buildPalette(editorial.rawTokens, semantic.semanticTokens);
 	assert.match(palette, /--bg-canvas: #[0-9a-f]{6};/);
-	assert.equal(palette.includes('{colors.'), false, 'no unresolved token reference may reach the CSS');
+	assert.equal(
+		palette.includes('{colors.'),
+		false,
+		'no unresolved token reference may reach the CSS',
+	);
 });

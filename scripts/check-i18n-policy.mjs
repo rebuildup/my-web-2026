@@ -350,9 +350,13 @@ export async function renderGateSummary() {
 		);
 	}
 	lines.push('');
-	lines.push(`[i18n:policy:check] ${rows.length} fixture rows classified with the shipped grammars`);
+	lines.push(
+		`[i18n:policy:check] ${rows.length} fixture rows classified with the shipped grammars`,
+	);
 	if (mismatches.length > 0) {
-		lines.push(`[i18n:policy:check] ${mismatches.length} fixture row(s) disagree with the shipped policy`);
+		lines.push(
+			`[i18n:policy:check] ${mismatches.length} fixture row(s) disagree with the shipped policy`,
+		);
 	}
 	return { lines, rows, mismatches };
 }

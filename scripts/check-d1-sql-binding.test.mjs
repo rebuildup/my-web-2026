@@ -5,9 +5,9 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+	findInterpolatedSqlStatements,
 	interpolationsIn,
 	readCallArgument,
-	findInterpolatedSqlStatements,
 	unusedAllowlistEntries,
 } from './check-d1-sql-binding.mjs';
 
@@ -33,6 +33,28 @@ function stage(files) {
 	}
 	return root;
 }
+
+/**
+ * The batched `IN (…)` reads `src/portfolio/load.ts` issues for a
+ * whole page of project ids (Issue #491). The placeholder chain is
+ * allowlisted structure, so a fixture tree that stages that file has
+ * to stage the statements too — otherwise the reachability guard
+ * reports the real entries as dead configuration.
+ */
+const BATCHED_DECLS = [
+	'const linkPlaceholders = chunk.map((_, i) => `?${i + 1}`).join(", ");',
+	'const mediaPlaceholders = chunk.map((_, i) => `?${i + 1}`).join(", ");',
+];
+
+// The statements must reach `prepare()` INLINE: a template assigned to a
+// variable first is out of the scanner's scope by design, which is exactly
+// the case the gate is supposed to report as dead configuration.
+const BATCHED_STATEMENTS = [
+	'return db.prepare(`SELECT * FROM portfolio_link WHERE project_id IN (${linkPlaceholders})`).bind(...chunk).all();',
+	'return db.prepare(`SELECT * FROM portfolio_media WHERE project_id IN (${mediaPlaceholders})`).bind(...chunk).all();',
+];
+
+const BATCHED_LINES = [...BATCHED_DECLS, ...BATCHED_STATEMENTS];
 
 describe('check-d1-sql-binding — argument reader', () => {
 	it('keeps parentheses that belong to the argument', () => {
@@ -101,6 +123,7 @@ describe('check-d1-sql-binding — fixture tree', () => {
 			'src/portfolio/load.ts': [
 				'const cursorPredicate = cursor ? ` AND id > ${value}` : "";',
 				'return db.prepare(`SELECT * FROM portfolio_project${cursorPredicate}`).bind(value).all();',
+				...BATCHED_LINES,
 			].join('\n'),
 			// Skipped: fixture setup in a test file is not a shipped statement.
 			'src/bad/filter.test.ts': 'db.prepare(`DELETE FROM ${table}`).run();\n',
@@ -131,6 +154,7 @@ describe('check-d1-sql-binding — fixture tree', () => {
 				'const cursorPredicate = cursor ? ` AND id > ${value}` : "";',
 				'const sql = `SELECT * FROM portfolio_project${cursorPredicate}`;',
 				'return db.prepare(sql).bind(value).all();',
+				...BATCHED_LINES,
 			].join('\n'),
 		});
 		try {
@@ -149,6 +173,7 @@ describe('check-d1-sql-binding — fixture tree', () => {
 			'src/portfolio/load.ts': [
 				'const cursorPredicate = cursor ? ` AND id > ${value}` : "";',
 				'return db.prepare(`SELECT * FROM portfolio_project${cursorPredicate}`).bind(value).all();',
+				...BATCHED_LINES,
 			].join('\n'),
 		});
 		try {

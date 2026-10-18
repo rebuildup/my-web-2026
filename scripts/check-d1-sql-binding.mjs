@@ -90,6 +90,22 @@ export const SQL_STRUCTURE_ALLOWLIST = [
 			'decoded. Every cursor COMPONENT is still bound (see cursorBinds in the same file), ' +
 			'so no user value reaches the statement text.',
 	},
+	{
+		file: 'src/portfolio/load.ts',
+		identifier: 'linkPlaceholders',
+		reason:
+			'a chain of `?N` placeholders whose length is the id chunk size (Issue #491 batched ' +
+			'link read). It is derived from `chunk.length` alone and every project id is bound ' +
+			'with `.bind(...chunk)`, so no user value reaches the statement text.',
+	},
+	{
+		file: 'src/portfolio/load.ts',
+		identifier: 'mediaPlaceholders',
+		reason:
+			'a chain of `?N` placeholders whose length is the id chunk size (Issue #491 batched ' +
+			'media read). It is derived from `chunk.length` alone and every project id is bound ' +
+			'with `.bind(...chunk)`, so no user value reaches the statement text.',
+	},
 ];
 
 /**

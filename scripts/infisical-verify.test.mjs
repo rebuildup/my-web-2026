@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { describe, it } from 'node:test';
 
 /**
@@ -19,8 +20,9 @@ import { describe, it } from 'node:test';
  *   4. argv / log / error message invariant: no secret value
  *      reaches stdout (the inner script outputs booleans only).
  */
-import { readFileSync } from 'node:fs';
-import { dirname, resolve } from 'node:path';
+import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -309,5 +311,120 @@ describe('infisical-verify.mjs', () => {
 				'script must set INFISICAL_DOMAIN in spawnSync env (dev + prod checks)',
 			);
 		});
+	});
+});
+
+/**
+ * Value-handling invariant, end to end with a stub CLI (Issue #467).
+ *
+ * The unit tests above prove the pure helpers emit booleans. This
+ * block closes the loop the Issue asks for: a REAL Infisical CLI
+ * behaves like a noisy upstream — it can print whatever it fetched —
+ * and the driver's own stdout / stderr must still carry nothing but
+ * status.
+ *
+ * The Infisical CLI is REPLACED by a local stub (acceptance
+ * condition 3: an external capability without its prerequisites is
+ * completed as an independent adapter / stub). The stub fabricates
+ * canary values, dumps them to its own stdout AND stderr (so any
+ * leak of the child's output would be caught), and then runs the
+ * inner presence check with those canaries in its environment.
+ *
+ * Nothing here contacts a network, an Infisical workspace, or a
+ * credential store: `.infisical.json` in the fixture holds a
+ * fabricated workspace id and `INFISICAL_API_URL` points at an
+ * unroutable host.
+ */
+describe('infisical-verify.mjs — stub-CLI value-handling invariant (Issue #467)', () => {
+	const CANARY_TOKEN = 'canary-infisical-token-9f3a7c';
+	const CANARY_SECRET = 'canary-better-auth-secret-2b8e11';
+	const CANARY_LEGACY = 'canary-better-auth-secrets-77aa20';
+	const CANARY_API_KEY = 'mk_home_canary-api-key-4d1e93';
+	const ALL_CANARIES = [CANARY_TOKEN, CANARY_SECRET, CANARY_LEGACY, CANARY_API_KEY];
+
+	/**
+	 * Build `<tmp>/{scripts,.infisical.json,node_modules/@infisical/cli}` so
+	 * `infisical-verify.mjs` resolves the stub CLI through
+	 * `require.resolve('@infisical/cli/package.json')` exactly as it does
+	 * in the repo.
+	 */
+	function buildFixtureRepo() {
+		const repo = mkdtempSync(join(tmpdir(), 'infisical-verify-audit-'));
+		const scriptsDir = join(repo, 'scripts');
+		const cliDir = join(repo, 'node_modules', '@infisical', 'cli');
+		mkdirSync(scriptsDir, { recursive: true });
+		mkdirSync(join(cliDir, 'bin'), { recursive: true });
+
+		writeFileSync(join(scriptsDir, 'infisical-verify.mjs'), SOURCE);
+		writeFileSync(
+			join(repo, '.infisical.json'),
+			JSON.stringify({ workspaceId: 'fixture-workspace-0000', defaultEnvironment: 'dev' }, null, 2),
+		);
+		// No `version` field: the driver only reads `bin`, and a
+		// semver-shaped literal here would trip `version:check`.
+		writeFileSync(
+			join(cliDir, 'package.json'),
+			JSON.stringify({ name: '@infisical/cli', bin: 'bin/infisical' }, null, 2),
+		);
+
+		// The stub behaves like a chatty upstream: it prints the values it
+		// "fetched" to BOTH streams and injects them into the inner command.
+		// CommonJS on purpose: the CLI entry the real package exposes has
+		// no `.mjs` extension and its directory declares no `type`, so an
+		// ESM stub would be a syntax error rather than a faithful stand-in.
+		const stub = [
+			'#!/usr/bin/env node',
+			"const { spawnSync } = require('node:child_process');",
+			`const CANARIES = ${JSON.stringify({
+				BETTER_AUTH_SECRET: CANARY_SECRET,
+				BETTER_AUTH_SECRETS: CANARY_LEGACY,
+				MY_WEB_2026_CONSUMER_API_KEY: CANARY_API_KEY,
+			})};`,
+			'const argv = process.argv.slice(2);',
+			"const separator = argv.indexOf('--');",
+			'const inner = separator === -1 ? [] : argv.slice(separator + 1);',
+			"process.stdout.write('debug: resolved secret BETTER_AUTH_SECRET=' + CANARIES.BETTER_AUTH_SECRET + '\\n');",
+			"process.stderr.write('debug: token in use ' + process.env.INFISICAL_TOKEN + '\\n');",
+			'if (inner.length === 0) process.exit(2);',
+			'// The real CLI runs the command after `--`, so inner[0] IS the executable.',
+			'const result = spawnSync(inner[0], inner.slice(1), {',
+			'\tenv: { ...process.env, ...CANARIES },',
+			"\tstdio: 'inherit',",
+			'});',
+			'process.exit(result.status ?? 1);',
+			'',
+		].join('\n');
+		const stubPath = join(cliDir, 'bin', 'infisical');
+		writeFileSync(stubPath, stub);
+		chmodSync(stubPath, 0o755);
+		return repo;
+	}
+
+	it('prints status only, even when the CLI dumps canary values to both streams', () => {
+		const repo = buildFixtureRepo();
+		try {
+			const result = spawnSync(process.execPath, [join(repo, 'scripts', 'infisical-verify.mjs')], {
+				encoding: 'utf8',
+				timeout: 30_000,
+				env: {
+					...process.env,
+					INFISICAL_TOKEN: CANARY_TOKEN,
+					INFISICAL_API_URL: 'https://this-host-does-not-exist.invalid',
+				},
+			});
+			assert.equal(result.status, 0, result.stderr);
+			// The driver still reports the contract it was asked to verify.
+			assert.match(result.stdout, /Fileless dev \(--env=dev\)/);
+			assert.match(result.stdout, /✓ BETTER_AUTH_SECRET/);
+			// …and none of the fabricated values reached either stream.
+			for (const canary of ALL_CANARIES) {
+				assert.doesNotMatch(result.stdout, new RegExp(canary), `stdout leaked ${canary}`);
+				assert.doesNotMatch(result.stderr, new RegExp(canary), `stderr leaked ${canary}`);
+			}
+			// The presence markers are booleans; the child noise is not parsed.
+			assert.match(result.stdout, /✓ MY_WEB_2026_CONSUMER_API_KEY/);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
 	});
 });

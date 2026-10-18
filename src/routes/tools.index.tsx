@@ -48,27 +48,30 @@ export const Route = createFileRoute('/tools/')({
 			disabled: [...disabled].sort(bySlug),
 		};
 	},
-	// Index boundary (Issue #423): `/tools` is a public, indexable page,
-	// so it declares the same canonical URL the sitemap advertises
-	// (`public/sitemap.xml`, generated from the route inventory). The
-	// per-Tool pages under `/tools/$slug` stay `noindex` — see
-	// `scripts/_index-boundary.mjs` for why they must remain crawlable.
-	head: () => ({
-		meta: [
-			{ title: 'Tools — my-web-2026' },
-			{
-				name: 'description',
-				content: 'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.',
-			},
-			{ property: 'og:type', content: 'website' },
-			{ property: 'og:title', content: 'Tools — my-web-2026' },
-			{ property: 'og:url', content: 'https://rebuildup.dev/tools' },
-		],
-		// Issue #420 — canonical for the sitemap entry. See
-		// `src/routes/index.tsx` for the rationale; the per-Tool
-		// shells stay `noindex` and out of the sitemap.
-		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/tools' }],
-	}),
+	head: () => {
+		const title = 'Tools — my-web-2026';
+		const description =
+			'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.';
+		const url = 'https://rebuildup.dev/tools';
+		return {
+			meta: [
+				{ title },
+				{ name: 'description', content: description },
+				{ property: 'og:type', content: 'website' },
+				{ property: 'og:title', content: title },
+				{ property: 'og:description', content: description },
+				{ property: 'og:url', content: url },
+				{ name: 'twitter:card', content: 'summary' },
+			],
+			// Issue #418: the index declared a title and a
+			// description but no canonical, so the Tool registry had
+			// no preferred URL of its own. Issue #420 makes the same
+			// link the sitemap entry's target; the per-Tool shells
+			// stay `noindex` and out of the sitemap (see
+			// `src/routes/index.tsx` for the rationale).
+			links: [{ rel: 'canonical', href: url }],
+		};
+	},
 	component: ToolsIndexRoute,
 });
 

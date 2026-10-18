@@ -11,6 +11,11 @@
 # Coverage thresholds are intentionally disabled at 0.1.0; see ADR-0007.
 # Component-level cost comes from the framework-native tools listed
 # in `components`. Do not add hidden steps inside workflow YAML.
+#
+# Issue #492 adds one cheap gate that is neither of the three
+# entry points: `routes:quality:check` keeps the published route
+# roster and its quality-gate coverage in sync. See the
+# `route_quality_coverage` block below.
 
 schema_version: 1
 
@@ -35,6 +40,14 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      # Issue #414: the Web feature adoption gate. Offline and vendored
+      # (quality/browser-baseline.json pins the web-features Baseline
+      # snapshot), so it costs a directory walk and never a network call.
+      # Below the Baseline Widely available bar an adoption is a warning
+      # only when its fallback requirement is declared AND its evidence
+      # still matches the working tree; an adoption without a fallback
+      # fails.
+      - 'pnpm run compat:check' # Baseline Web feature adoption gate (browser compatibility)
       # Issue #423: robots.txt / sitemap.xml / per-route noindex meta must
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).
@@ -126,6 +139,41 @@ change_risk_mapping:
   release_branch:
     gate: release
 
+# Issue #492 — the published route roster and its quality-gate
+# coverage are one reviewable artefact, and a cheap gate keeps the two
+# in sync. This is a **coverage ledger**: it proves every published
+# route has a decision (covered with evidence, or excluded with a
+# reason). It does not run Lighthouse, axe, or a second browser engine.
+route_quality_coverage:
+  manifest: 'quality/route-coverage.json'
+  route_source: 'src/routes/** (files calling createFileRoute)'
+  generated_route_tree: 'src/routeTree.gen.ts'
+  command: 'pnpm run routes:quality:check'
+  report_command: 'pnpm run routes:quality:report'
+  tests: 'node --test scripts/check-route-quality-coverage.test.mjs'
+  gate: fast
+  gate_placement: >-
+    validate:fast, immediately before `pnpm run test` and after `pnpm run
+    publication:check` (the chain order belongs to release-0-6-3, so
+    this records the neighbouring steps rather than an absolute index).
+  documentation: 'docs/verification/quality/route-quality-coverage.md'
+  gate_families:
+    - 'e2e' # implemented — Playwright spec asserts the rendered surface
+    - 'seo' # implemented — canonical / Open Graph metadata assertion
+    - 'a11y' # planned — axe-core scan (not yet ticketed)
+    - 'performance' # planned — Lighthouse (#384 measures, #385 gates, #386 budgets)
+    - 'cross_browser' # planned — a second browser engine (CI is Chromium-only)
+    - 'security_headers' # planned — response security-header assertion
+  scope_note: >-
+    Measurement of a11y / performance / cross_browser / security_headers
+    is explicitly out of scope here and belongs to #384-#387. Adding a
+    family to this ledger does not add a gate; flipping a family from
+    `planned` to `implemented` requires evidence for at least one route.
+  addition_rule: >-
+    A new route file with no manifest entry fails the gate on purpose, so
+    a ticket PR must either add the route as a gate target or record an
+    exclusion reason for every gate family.
+
 ci:
   workflow: .github/workflows/ci.yml
   # Single job. `validate:integration` runs on every PR and every
@@ -188,6 +236,37 @@ ci:
 coverage_policy:
   enabled: false
   rationale: 'ADR-0007 — coverage thresholds are deferred to 0.2.0; coverage data is not collected at 0.1.0.'
+
+compatibility:
+  # Issue #414 — browser compatibility is a first-class gate, not a
+  # bundler side effect. Panda emits plain CSS and Vite emits plain JS,
+  # so nothing else in the toolchain would ever ask whether a Web API or
+  # CSS feature runs on the browsers we support.
+  bar: 'baseline-widely-available'
+  manifest: 'quality/browser-baseline.json'
+  dataset: 'web-features (vendored snapshot; refreshed out-of-band, re-verified with --dataset)'
+  command: 'pnpm run compat:check'
+  fixture_suite: 'node --test scripts/check-browser-baseline.test.mjs'
+  report: 'pnpm run verify:browser-baseline-screenshot'
+  semantics:
+    above_bar: 'pass (declared in features[] with its Baseline status)'
+    below_bar_with_verified_fallback: 'warning (fallback requirement is explicit and its evidence is re-checked against the working tree)'
+    below_bar_without_fallback: 'fail'
+    guarded_feature_adopted: 'fail (must be registered with a Baseline status and a fallback first)'
+    warning_only:
+      - 'below_baseline_with_fallback'
+      - 'target_floor_unverifiable — no adopted feature is Baseline Widely available, so the declared floor cannot be compared with the bar-implied floor (the comparison is reported as not run rather than skipped silently)'
+    silent_pass_guards:
+      - 'a declared surface that matches no file fails'
+      - 'a scanned source file owned by no declared surface fails'
+      - 'a scanned path claimed by two surfaces fails (it would be counted twice)'
+      - 'a declared feature with no unsuppressed occurrence fails'
+      - 'a declared fallback whose evidence file/pattern vanished fails'
+      - 'a declared false-positive waiver that suppresses nothing fails'
+      - 'a declared target-browser floor below the Baseline-implied floor fails'
+    known_limits:
+      - 'regex detection: comments match the same patterns as live declarations, for both feature detection and fallback evidence'
+      - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
   secret_scanning:

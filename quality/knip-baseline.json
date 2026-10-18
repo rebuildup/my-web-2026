@@ -32,6 +32,7 @@
 		"exports src/portfolio/components/index.ts PortfolioMarkdown",
 		"exports src/portfolio/components/index.ts PortfolioMediaFigure",
 		"exports src/portfolio/components/index.ts ProjectCard",
+		"exports src/portfolio/markdown.xss-fixtures.ts acceptedMarkdownFixtures",
 		"exports src/reactions/emoji-catalog.ts MAX_CODEPOINT_LEN",
 		"exports src/reactions/emoji-catalog.ts isEnabled",
 		"files scripts/build-cache-isolation-report.mjs scripts/build-cache-isolation-report.mjs",

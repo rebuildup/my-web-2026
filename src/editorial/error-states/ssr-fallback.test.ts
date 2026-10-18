@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { alternativesFor, errorStateDefinition, withheldDetailNeedles } from './contract';
+import {
+	SSR_FALLBACK_ALTERNATIVES_NOTE,
+	alternativesFor,
+	errorStateDefinition,
+	withheldDetailNeedles,
+} from './contract';
 import {
 	containsServerRenderFailure,
 	createSsrFailureResponse,
@@ -52,6 +57,31 @@ describe('containsServerRenderFailure', () => {
 			),
 		).toBe(false);
 	});
+
+	it('ignores the marker text inside raw-text element bodies', () => {
+		// A repo-controlled JSON-LD block is serialised into a script element
+		// verbatim (`CreativeWorkJsonLd` renders a D1 title / summary), so a
+		// description that quotes the marker must not turn a healthy 200
+		// document into a 500 fallback.
+		expect(
+			containsServerRenderFailure(
+				'<!DOCTYPE html><html><body><script type="application/ld+json">{"description":"<!--$!--><template id=\\"B:0\\"></template>"}</script><h1>作品</h1></body></html>',
+			),
+		).toBe(false);
+		expect(
+			containsServerRenderFailure(
+				'<!DOCTYPE html><html><head><style>/* <!--$!--><template> */</style></head><body><h1>作品</h1></body></html>',
+			),
+		).toBe(false);
+	});
+
+	it('still detects a real boundary next to raw-text content', () => {
+		expect(
+			containsServerRenderFailure(
+				'<!DOCTYPE html><html><body><script>const a = 1;</script><!--$!--><template data-dgst=""></template></body></html>',
+			),
+		).toBe(true);
+	});
 });
 
 describe('renderSsrFailureDocument', () => {
@@ -79,6 +109,18 @@ describe('renderSsrFailureDocument', () => {
 		expect(html).not.toContain('<script');
 		expect(html).not.toContain('http://');
 		expect(html).not.toContain('https://');
+	});
+
+	it('does not promise the alternatives survive a generic render throw', () => {
+		const html = renderSsrFailureDocument();
+		const hydratedNote = errorStateDefinition('service_unavailable').alternativesNote;
+		// The hydrated 503 note is a promise ("この状態の影響を受けずに開けます")
+		// that only holds for a loader failure; a render throw can come from
+		// shared render code, so the fallback states the weaker fact.
+		expect(hydratedNote).not.toBeNull();
+		expect(html).not.toContain(hydratedNote ?? '');
+		expect(html).toContain(SSR_FALLBACK_ALTERNATIVES_NOTE);
+		expect(html).toContain('data-error-state-alternatives-note');
 	});
 
 	it('escapes visitor-controlled hrefs and never renders a throwable', () => {

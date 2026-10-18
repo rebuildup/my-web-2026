@@ -48,6 +48,7 @@ Issue は `.png` 経路を指定しているが、本リポジトリで **初め
 | 説明文言 | 日本語 + 英語（日 → 英、` / ` 区切り。repo 内固定定数、リクエストごとの生成なし） |
 | 復旧導線 | back / retry / alternative（kind ごとに宣言。宣言していない操作は描かない） |
 | 代替面 | href + label（`PUBLIC_NAV_ITEMS` の 6 面のうち `/design-system` を除いた 5 面の部分集合。絶対 URL は出さない） |
+| 代替面の注記 | hydrated な 503 surface は「この状態の影響を受けずに開けます」と宣言する（loader 障害なので読み数据的にも無関係）。standalone SSR fallback だけは共有描画コードに依らない保証ができないため、弱い注記（`SSR_FALLBACK_ALTERNATIVES_NOTE`）を出す |
 | 訪問者個人情報 | **なし**（session / account / IP / UA / referrer を一切出さない） |
 
 ### 公開しない情報
@@ -130,7 +131,8 @@ React の Error Boundary は **server-side rendering 中の例外を捕捉しな
 | retry anchor | 失敗 URL の pathname + query string（`?ref=newsletter` を保持） |
 | 外部通信 | 無し（inline CSS、`<script>` 無し） |
 | 非 HTML response / 正常 document | 変更しない（`settleSsrDocumentResponse` は `content-type` が `text/html` のときだけ読む。正常 document は同じ status / headers で再構築） |
-| 回帰テスト（CI） | `src/editorial/error-states/ssr-fallback.test.ts` が dev / production 両方の React marker、query 保持、全 href の escape、throwable 非公開、stream reject、非 HTML の pass-through を固定 |
+| JSON-LD script 内に marker 文字列を含む正常 document | **置換しない**（`script` / `style` の body は markup ではなく text なので、走査前に除外する。D1 の `title` / `summary` は `CreativeWorkJsonLd` で script 内へ直列化されるため、これが無いと作品説明に marker 文字列を含むだけで正常な 200 が 500 fallback に置換される） |
+| 回帰テスト（CI） | `src/editorial/error-states/ssr-fallback.test.ts` が dev / production 両方の React marker、raw-text 内 marker の除外、query 保持、全 href の escape、throwable 非公開、stream reject、非 HTML の pass-through、fallback 側のみ弱い代替面注記を固定 |
 
 live の throw を commit した route で常時再現することはしない（壊れた route を出荷しないため）。代わりに response 層の変換を、React が実際に出す marker の形で固定している。
 
@@ -142,7 +144,8 @@ live の throw を commit した route で常時再現することはしない�
 - **`validateSearch` / `validateParams` / `loaderDeps` の失敗は 404 surface に落ちる（今回対応）**。`/portfolio?facets=a&facets=b` や `/admin/invitations/accept?token=`（短い / 無し）は恒久的なクライアント入力エラーで、以前は `defaultErrorComponent` に着地して「システムの一部が応答していません」と表示され、再試行は**同じ不正 URL** を再要求していた（＝成功し得ない操作。404 で retry を置かない判断と同一の原則に反する）。`src/router.tsx#isPermanentInputFailure` が URL から route 自身の検証結果を引き直し、**既存の 404 surface** で返す。throwable は泄漏していない（実測済み）。判定は `props.error` ではなく URL から行う: hydration payload は framework の `SearchParamError` を素の `Error` として復元するため、`instanceof` だと hydration 前後で答えが変わる。
 - **loader 内で入力を検証する route は、まだ 503 surface に落ちる**。`/portfolio/$slug` は slug を loader の中で `SlugSchema.parse` しているため、入力の検証が loader 失敗に吸収される。route が自分の入力を `validateParams` / `validateSearch` に移せば同じ判定経路に乗るが、route 側の契約変更なので本 Issue の外（§7 #8）。
 - root loader（現状は `env.GOOGLE_ANALYTICS_MEASUREMENT_ID` を読むだけ）が失敗した場合、`@tanstack/react-router` は root route も `CatchBoundary` で包むため、`<html>` / `<head>` / `<body>` の shell を **`RootComponent` の代わりに 503 surface が描画**する（読めはするが document shell は無い）。現状この loader は失敗しないので到達しないが、root に binding 依存が増えた場合は fossilize させるべき挙動。
-- **SSR render fallback の検出は React の marker (`<!--$!--><template`) に依存する**。framework が marker を変えた場合、fallback は発動せず元の 200 + error template に戻る。`ssr-fallback.test.ts` は現在の dev / production の形を固定しているので、React 更新で marker が変われば test が落ちる（silent には壊れない）。ただし live の throw を常時再現する route は無いため、「実際に throw したときに必ず置換される」ことの CI 証明は response 層の変換に限られる。
+- **SSR render fallback の検出は React の marker (`<!--$!--><template`) に依存する**。framework が marker を変えた場合、fallback は発動せず元の 200 + error template に戻る。`ssr-fallback.test.ts` は現在の dev / production の形を固定しているので、React 更新で marker が変われば test が落ちる（silent には壊れない）。ただし live の throw を常時再現する route は無いため、「実際に throw したときに必ず置換される」ことの CI 証明は response 層の変換に限られる。走査は `script` / `style` の body を除外してから行う（raw-text は text であり markup ではない）：これにより、JSON-LD に埋め込まれたリポジトリ制御の文字列が marker を/compose した場合の**偽陽性**（正常な 200 が 500 fallback になる）を防ぐ。逆に言えば、この除外は「marker と同じ文字列を script 内に持つ正常 document も trigger しない」ことを意味するので、fallback が真に発火すべき document の判定は HTML コメントとしての出現に限られる。
+- **fallback の代替面は「開く」とは宣言しない**。hydrated な 503 surface の注記（`下の面は … この状態の影響を受けずに開けます`）は loader 障害なら正しい。render throw は `RootComponent` / `RootLayout` / analytics tracker のような共有描画コードから来的可能性があり、その場合 `/tools` / `/contact` も同じコードを実行して同じ fallback に落ちる。よって standalone fallback だけが弱い注記（`SSR_FALLBACK_ALTERNATIVES_NOTE`）を出す。代替面の一覧自体は同じ（`alternativesFor('service_unavailable')`）。
 - **SSR render fallback は app shell / Panda CSS を使わない**。document を組み立てている React 自体が失敗しているため、router の CSS link や hydration script は取得できない。fallback は inline CSS の standalone document で、retry / back / alternatives は素の anchor。見た目は gallery の 503 surface と同一ではない（同じ公開契約・同じ copy）。また JS が無いため、fallback からの復帰は document 遷移だけになる（これは他の failure surface と同じ方針）。
 - **SSR render 失敗はすべて fallback に置き換わる（保守的）**。React が部分的に client-render で復帰できるケースでも、部分的な document を返さず 500 + 完全な fallback にする。hydrated な client が後から復帰できる可能性より、「読める完全な document を返す」ことを優先した判断。
 - **SSR document は entrypoint で一度 buffer する**。marker の有無は document 全体を見ないと判定できないため。TanStack Start は `progressiveChunkSize: Number.POSITIVE_INFINITY` で document を組み立ててから flush するので通常ページの TTFB への影響は小さいが、SSR 中に解決しない Suspense boundary を持つ route を将来追加した場合、その完了まで response が返らなくなる。現状 `/` の lazy picker は client 側の境界で、integration test の `/` 取得は完了している（`html-cache-policy.test.ts`）。streaming を維持したまま同じ保証をするには framework 側の error hook が必要で、本 Issue の範囲外。

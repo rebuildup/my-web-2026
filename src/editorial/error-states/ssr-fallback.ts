@@ -42,7 +42,7 @@
  * Keep the copy in `./contract` — do not duplicate it here.
  */
 
-import { alternativesFor, errorStateDefinition } from './contract';
+import { SSR_FALLBACK_ALTERNATIVES_NOTE, alternativesFor, errorStateDefinition } from './contract';
 
 /**
  * React's marker for a Suspense boundary whose server render errored
@@ -55,9 +55,27 @@ import { alternativesFor, errorStateDefinition } from './contract';
  */
 const CLIENT_RENDERED_BOUNDARY = /<!--\$!-->\s*<template\b/;
 
+/**
+ * Raw-text element content (`<script>` / `<style>` bodies) is text, not
+ * markup, so a React marker quoted inside it is content — not a boundary
+ * that failed to render. A repo-controlled JSON-LD block is the realistic
+ * case: a portfolio title / summary is serialised into a script element
+ * verbatim, so a description that happens to contain the marker text
+ * would otherwise turn a healthy 200 document into a 500 fallback.
+ * Blank the bodies before scanning; the marker can only be emitted as a
+ * real HTML comment.
+ */
+const RAW_TEXT_ELEMENT = /<(script|style)\b[^>]*>[\s\S]*?<\/\1\s*>/gi;
+
+function withoutRawTextContent(html: string): string {
+	return html.replace(RAW_TEXT_ELEMENT, (element, tag: string) =>
+		element.replace(/[\s\S]*$/, `</${tag}>`),
+	);
+}
+
 /** Does this SSR document contain a React client-rendered error boundary? */
 export function containsServerRenderFailure(html: string): boolean {
-	return CLIENT_RENDERED_BOUNDARY.test(html);
+	return CLIENT_RENDERED_BOUNDARY.test(withoutRawTextContent(html));
 }
 
 /**
@@ -211,7 +229,14 @@ h2 { margin: 1.5rem 0 0; font-size: 0.75rem; letter-spacing: 0.04em; text-transf
 <li><a href="${escapeHtml(backHref)}" data-error-action="back">ホームへ戻る / Back to home</a></li>
 </ul>
 </nav>
-${definition.alternativesNote ? `<p class="note" data-error-state-alternatives-note>${escapeHtml(definition.alternativesNote)}</p>` : ''}
+${
+	// The gate is "does this kind publish an alternatives note at all?"; the
+	// text is the fallback's own weaker variant, never the hydrated promise
+	// (see SSR_FALLBACK_ALTERNATIVES_NOTE in ./contract).
+	definition.alternativesNote
+		? `<p class="note" data-error-state-alternatives-note>${escapeHtml(SSR_FALLBACK_ALTERNATIVES_NOTE)}</p>`
+		: ''
+}
 <h2>開けるページ / Surfaces you can open</h2>
 <ul class="alternatives" data-error-state-alternatives>
 ${alternativeItems}

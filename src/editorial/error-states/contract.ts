@@ -272,6 +272,22 @@ export function alternativesFor(kind: ErrorStateKind): readonly ErrorStateAltern
 	return kind === 'not_found' ? ALL_SURFACES : DEPENDENCY_FREE;
 }
 
+/**
+ * The alternatives note for the standalone SSR fallback document
+ * (`./ssr-fallback`), which is deliberately weaker than the hydrated
+ * `service_unavailable` note.
+ *
+ * A hydrated 503 surface is reached because one loader failed, and the
+ * dependency-free surfaces do not read that binding — the strong note
+ * holds. A render throw is different: it can come from shared render
+ * code (`RootComponent` / `RootLayout` / the analytics tracker), which
+ * every surface executes, so offering `/tools` and `/contact` cannot be
+ * promised to work. The fallback therefore states the dependency fact
+ * (what the surfaces avoid) without promising the outcome.
+ */
+export const SSR_FALLBACK_ALTERNATIVES_NOTE =
+	'下の面はビルド時に取り込んだリポジトリ内の内容だけを使います（この失敗が読み取るデータには依存しません）。ただし描画処理を共有しているため、同じ原因で失敗对孩子です。 / The surfaces below are built from repository content only and read none of the data this failure touches, but they share the rendering code, so the same failure can affect them too.';
+
 /** Typed accessor. An unknown kind is a programming error, not a fallback. */
 export function errorStateDefinition(kind: ErrorStateKind): ErrorStateDefinition {
 	return ERROR_STATE_DEFINITIONS[kind];

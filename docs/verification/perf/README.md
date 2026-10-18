@@ -216,7 +216,7 @@ be checked against the elements that moved:
 /about  baseline   after    shift 0.001 at 358.7ms
     ul    "ホームHome…"  872x29 -> 836x29     <- same row, still one line
 /about  baseline   after    shift 0.001 at 652.9ms
-    ul    "ホームHome…"  836x29 -> 872x29
+    ul    "ホームHome…"  842x29 -> 872x29
 /about  slow-font  before   shift 0.487 at 2082.1ms  (same pair again, 3.9 s in)
     ul    "ホームHome…"  872x29 -> 864x70
 /about  slow-font  after    shift 0.001 at 2073.8ms
@@ -224,9 +224,9 @@ be checked against the elements that moved:
 ```
 
 Before, the nav row's height goes 29px -> 70px and back: a re-wrap, not
-an image or an ad slot. After, the same row changes width (872 -> 836 ->
-872) while its height stays 29px, which is a shift of 0.001 instead of
-0.487.
+an image or an ad slot. After, the same row changes width (872 -> 836,
+then 842 -> 872) while its height stays 29px, which is a shift of 0.001
+instead of 0.487.
 
 On `/` the fix shows up differently, and both captures say so
 explicitly: the pre-fix `slow-font` run re-wrapped the hero CTA row

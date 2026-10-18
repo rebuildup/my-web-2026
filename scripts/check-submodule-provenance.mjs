@@ -223,10 +223,11 @@ export function classifyRepoUrl(url) {
 		return { ok: false, code: 'URL_MISSING', message: 'no url declared' };
 	}
 	const value = url.trim();
-	// Messages are status-only output: they may be pasted into a PR or a
-	// CI log, so they carry `display` (credentials stripped), never the
-	// raw string, while the checks below still run on `value`.
-	const display = redactUrlCredentials(value);
+	// Messages are status-only output and may be pasted into a PR or a CI
+	// log. A value that fails a syntax check is never echoed verbatim —
+	// only fixed text, a scheme, or a host is reported — because an
+	// invalid URL is exactly where a pasted credential tends to sit and
+	// no redaction rule can recognise every such shape.
 	if (/\s/.test(value)) {
 		return { ok: false, code: 'URL_UNSAFE', message: 'url contains whitespace' };
 	}

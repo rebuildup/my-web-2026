@@ -370,20 +370,38 @@ export function renderSitemapXml(
 /**
  * Render `robots.txt`.
  *
- * `Disallow` is scoped to the authenticated admin prefix only. The
- * Tool shell pages are deliberately crawlable even though they are
- * `noindex`: blocking them would stop a crawler from ever reading the
- * `noindex` tag, and the sitemap exclusion already keeps them out of
- * the advertised set.
+ * There is deliberately NO `Disallow` rule here.
+ *
+ * The admin subtree is de-indexed by the `robots: noindex, nofollow`
+ * meta its own layout route declares (`src/routes/admin.tsx`), and a
+ * meta is only read once the document has been FETCHED. Blocking the
+ * crawl would therefore hide the `noindex` from the very crawler that
+ * has to act on it: Google keeps the URL and reports "Indexed, though
+ * blocked by robots.txt" — a worse outcome than either pure state. The
+ * same rule keeps the `noindex` Tool shells crawlable.
+ *
+ * `robots.txt` is not the access control anyway: it is a public
+ * document that `curl`, a browser or a scraper ignores. The admin
+ * surface is protected by `requireAdmin()` in the child loaders and
+ * server functions, which is also what makes a crawler fetching
+ * `/admin` harmless — it gets the same redirect to `/admin/login` as
+ * anyone else.
+ *
+ * The invariant is not just documented, it is enforced:
+ * `scripts/_index-boundary.mjs` classifies every route's crawl / index
+ * intent and fails the build (`noindex-blocked`,
+ * `robots-overbroad-rule`, `indexable-blocked`) if a rule here ever
+ * blocks a page that only its own `noindex` can de-index.
  */
 export function renderRobotsTxt(origin: string = SITEMAP_ORIGIN): string {
 	return [
 		'User-agent: *',
 		'Allow: /',
 		'',
-		'# Authenticated admin surface. Not linked, not in the sitemap,',
-		'# and a redirect to /admin/login for anyone who reaches it.',
-		'Disallow: /admin',
+		'# No Disallow rules on purpose. /admin and /tools/$slug are',
+		'# de-indexed by the `robots: noindex` meta the page itself',
+		'# carries, and a blocked page can never deliver its own noindex.',
+		'# This file is not access control either: requireAdmin() is.',
 		'',
 		`Sitemap: ${absoluteUrl(SITEMAP_PATH, origin)}`,
 		'',

@@ -31,7 +31,10 @@
  *      truth: the `HSTS_DIRECTIVE` string literal in the Worker entry
  *      (`src/server.ts`). Zero declarations or two declarations both
  *      fail — the first means the policy moved, the second means a
- *      second copy is drifting.
+ *      second copy is drifting. The declaration must stay module-private:
+ *      workerd treats a named export of the entry module as a
+ *      service-binding entrypoint, so `export const HSTS_DIRECTIVE`
+ *      stops the Worker from booting (Issue #596).
  *   2. **Grammar and band.** Exactly one `max-age` directive, with a
  *      decimal-seconds value inside the band this project allows
  *      (see `MIN_MAX_AGE_SECONDS` / `MAX_MAX_AGE_SECONDS`). An

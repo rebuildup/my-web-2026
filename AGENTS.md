@@ -77,6 +77,12 @@ routes -> portfolio
 routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
+
+server -> editorial (Issue #501 — SSR render-failure fallback document;
+                     `src/server.ts` replaces a document React could not
+                     render with `editorial/error-states/ssr-fallback.ts`; the
+                     entrypoint is the only layer outside React)
+router -> editorial (Issue #501 — failure surfaces bound in getRouter())
 about -> editorial (Issue #422 — approved snapshot → `Person` projection; the fact stays owned by `about`)
 
 routes -> http/security (Issue #454 — `classifyRedirectTarget` in the

@@ -50,7 +50,14 @@ src/
 ├─ editorial/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
-│  └─ primitives/
+│  ├─ primitives/
+│  └─ error-states/
+│     ├─ contract.ts
+│     ├─ ErrorState.tsx
+│     ├─ NotFoundState.tsx
+│     ├─ ServiceUnavailableState.tsx
+│     ├─ DependencyFailureState.tsx
+│     └─ ssr-fallback.ts
 ├─ cloudflare/
 │  └─ health.ts
 ├─ http/
@@ -124,6 +131,25 @@ raw / semantic tokens と、その visual language の primitive をまとめる
 これは「全 UI component の共有置き場」ではない。別の visual language が必要に
 なった場合、観測された同一 obligation がない限り自動的には統合しない。
 
+`error-states/`（Issue #501）は failure surface の**公開契約**を所有する。
+1 kind につき 1 component（404 / 503 / 依存取得失敗）、共有 shell、そして
+`contract.ts` の宣言 — 訪問者に何を出すか / 何を絶対に出さないか /
+どの公開面なら開けるか。styling ではなく情報公開の判断で変わるため、
+primitive と同列の別 obligation として切っている。結線先は
+`src/router.tsx` の `defaultNotFoundComponent` / `defaultErrorComponent`
+（解決順が route 単位のため、root route に置いても子 route の失敗には届かない）。
+
+同じ `defaultErrorComponent` には transient な loader 失敗と恒久的な
+入力検証失敗が着地するため、`src/router.tsx` が両者を分類する。判定は
+route 自身の検証結果から導出する（`isPermanentInputFailure`）。訪問者に
+公開する kind の集合は増やしていない。
+
+route component 自体が SSR 中に throw する場合は React の Error Boundary
+では捕まらないため、`ssr-fallback.ts` が standalone の fallback document を
+組み立て、`src/server.ts` が SSR handler の HTML response を検査して
+置き換える（`settleSsrDocumentResponse`）。fallback の文言・代替面は
+`contract.ts` と同じ宣言から導出し、公開契約を二重化しない。
+
 ### `cloudflare/`
 
 Cloudflare runtime によって変更理由が決まる仕事を所有する。
@@ -162,6 +188,7 @@ portfolio ───────────▶ editorial
 external-api ────────▶ editorial
 home ────────────────▶ editorial
 server ──────────────▶ http
+server ──────────────▶ editorial (SSR render-failure fallback document)
 ```
 
 逆向きは禁止する。
@@ -189,7 +216,14 @@ src/server.ts
         └─ everything else
                 ▼
        @tanstack/react-start/server-entry
+                ▼
+       settleSsrDocumentResponse (render failure -> fallback document)
 ```
+
+`settleSsrDocumentResponse` は SSR が返した HTML を読み、React の
+client-rendered boundary marker を見つけた場合だけ `editorial/error-states`
+の fallback document に差し替える。loader 失敗のように React が error
+component を描画できた場合は何もしない。
 
 TanStack Start の default CSRF middleware を維持するため、custom
 `src/start.ts` / `startInstance` は ADR なしで追加しない。

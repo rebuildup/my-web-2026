@@ -121,9 +121,13 @@ heading-glyph measurement report. It renders the 16 rows of
 `src/i18n/glyphs.fixture.ts` (French / German / Portuguese / Russian)
 with the **shipped** font stack, then measures every non-ASCII code
 point the fixture carries: whether it renders as `.notdef` (a missing
-glyph), whether the shipped webfont supplies it, and whether a
-selection plus a system-clipboard round trip preserves the author's
-code points. The report, the measured numbers, the reproduction
+glyph) **in the tier that actually draws it** — a code point that only
+appears in body rows is judged against the body stack, because the
+heading stack never draws it — whether the shipped webfont supplies it,
+and whether a selection plus a system-clipboard round trip preserves
+the author's code points. A column whose tier has no row for a code
+point reads `no row` rather than a verdict: coverage evidence for a
+rendering that does not exist would be worse than no evidence. The report, the measured numbers, the reproduction
 commands and the **out-of-scope list** are in
 [`diacritic-cyrillic-font.md`](diacritic-cyrillic-font.md).
 
@@ -143,9 +147,9 @@ is `src/i18n/glyphs.test.ts` and runs in CI. Storybook shows the same
 fixture as `editorial/Glyph headings`.
 
 The capture exits non-zero when the webfont did not load, when a code
-point renders as `.notdef`, when a verdict cell could not be filled,
-or when the copy/paste round trip changed a code point — an artefact
-that measured nothing must not look complete.
+point renders as `.notdef` in any tier that draws it, when a verdict
+cell could not be filled, or when the copy/paste round trip changed a
+code point — an artefact that measured nothing must not look complete.
 
 ## Why a committed binary
 

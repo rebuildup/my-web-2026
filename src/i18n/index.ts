@@ -78,6 +78,7 @@ export {
 	GLYPH_LOCALES,
 	type GlyphLocale,
 	type GlyphLocaleFixture,
+	type GlyphTier,
 	glyphCodePointUsage,
 	glyphSampleById,
 	glyphSampleCodePoints,

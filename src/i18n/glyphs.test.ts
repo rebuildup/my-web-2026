@@ -55,6 +55,68 @@ const FOLD_AFFECTED_GUARDS = [
 	'ru-number',
 ];
 
+/**
+ * Every guard token, pinned HERE rather than only in the fixture.
+ *
+ * `keeps every guard token inside its own heading` can only catch an
+ * edit to ONE side of the pair: guard and heading live in the same
+ * literal, so a "correction" that rewrote both — a U+202F turned into a
+ * plain space in the row AND in the guard — would pass every other
+ * assertion. Pinning the bytes outside the fixture file is what makes
+ * the domain document's "a proofread that touches a guard fails the
+ * suite" claim a fact instead of a self-consistency check: the change
+ * then has to be made in two files, and a reviewer sees both.
+ *
+ * Escapes, like the fixture. No non-ASCII literal appears in a source
+ * file unless a policy asks for it.
+ */
+const EXPECTED_GUARD_TOKENS: Record<string, string> = {
+	// fr
+	'fr-accent-e': '\u00C9',
+	'fr-cafe-nfc-accent': '\u00E9',
+	'fr-cafe-nfd-mark': 'Cafe\u0301',
+	'fr-fi-ligature': '\uFB01',
+	'fr-guillemets': '\u00AB\u202Flecture\u202Fseule\u202F\u00BB',
+	'fr-negation': 'ne pas modifier',
+	'fr-negation-2': 'ne pas traduire',
+	'fr-number': '1\u202F234,56',
+	'fr-oe': '\u0153',
+	'fr-permission': 'lecture\u202Fseule',
+	// de
+	'de-diaeresis': 'u\u0308',
+	'de-negation': 'nicht \u00FCbersetzen',
+	'de-number': '1.234,56',
+	'de-o-umlaut': '\u00F6',
+	'de-permission': 'nur lesen',
+	'de-quote-open': '\u201E',
+	'de-sharp-s': '\u00DF',
+	'de-sharp-s-nfc': '\u00DF',
+	'de-sharp-s-nfd': '\u00DF',
+	'de-sharp-s-quoted': '\u00DF',
+	'de-u-umlaut-nfc': '\u00FC',
+	// pt
+	'pt-cedilla': '\u00E7',
+	'pt-cedilla-mark': 'c\u0327',
+	'pt-cedilla-nfc': '\u00E7',
+	'pt-negation': 'n\u00E3o',
+	'pt-number': '1.234,56',
+	'pt-permission': 'somente leitura',
+	'pt-quote-pair': '\u201C',
+	'pt-tilde-a': '\u00E3',
+	'pt-tilde-mark': 'a\u0303',
+	'pt-tilde-nfc': '\u00E3',
+	// ru
+	'ru-breve': '\u0418\u0306',
+	'ru-cyrillic-i': '\u0419',
+	'ru-guillemets': '\u00AB\u00A0\u0419\u043E\u0433\u0438\u00A0\u00BB',
+	'ru-negation': '\u043D\u0435 \u043F\u0435\u0440\u0435\u0432\u043E\u0434\u0438\u0442\u044C',
+	'ru-number': '1\u00A0234,56',
+	'ru-permission':
+		'\u0442\u043E\u043B\u044C\u043A\u043E \u0434\u043B\u044F \u0447\u0442\u0435\u043D\u0438\u044F',
+	'ru-yo': '\u0451',
+	'ru-yo-nfd': '\u0451',
+};
+
 /** HTML escaping, the way the report and any SSR renderer does it. */
 function escapeHtml(value: string): string {
 	return value
@@ -136,6 +198,16 @@ describe('glyph fixture - the four claims that must survive', () => {
 			for (const guard of sample.guards) {
 				expect(sample.heading.includes(guard.token), `${sample.id} / ${guard.id}`).toBe(true);
 			}
+		}
+	});
+
+	it('pins every guard token outside the fixture, byte-exact', () => {
+		const guards = glyphSamples().flatMap((sample) => sample.guards);
+		const ids = guards.map((guard) => guard.id);
+		expect(new Set(ids).size, 'guard ids must be unique').toBe(ids.length);
+		expect([...ids].sort()).toEqual(Object.keys(EXPECTED_GUARD_TOKENS).sort());
+		for (const guard of guards) {
+			expect(guard.token, guard.id).toBe(EXPECTED_GUARD_TOKENS[guard.id]);
 		}
 	});
 
@@ -242,6 +314,12 @@ describe('glyph fixture - authored forms and code points', () => {
 			expect(entry.hex).toBe(`U+${entry.codePoint.toString(16).toUpperCase().padStart(4, '0')}`);
 			expect(String.fromCodePoint(entry.codePoint)).toBe(entry.char);
 			expect(entry.sampleIds.length).toBeGreaterThan(0);
+			// A row is a row. A code point repeated five times inside ONE
+			// heading is one sample, so the work list must not count
+			// occurrences — the report's rows column would repeat the row
+			// name and any consumer reading `sampleIds.length` as a row
+			// count would be reading a number about nothing.
+			expect(new Set(entry.sampleIds).size, entry.hex).toBe(entry.sampleIds.length);
 			for (const id of entry.sampleIds) expect(ids.has(id)).toBe(true);
 			expect(entry.focuses.length).toBeGreaterThan(0);
 		}
@@ -252,6 +330,34 @@ describe('glyph fixture - authored forms and code points', () => {
 		for (const sample of glyphSamples()) {
 			for (const claimed of sample.probe) expect(measured.has(claimed)).toBe(true);
 		}
+	});
+
+	it('attributes every code point to the tiers its rows render with', () => {
+		const usage = glyphCodePointUsage();
+		// The fixture has to exercise BOTH tiers, or a tier-aware
+		// measurement has nothing to be tier-aware about.
+		expect([...new Set(glyphSamples().map((sample) => sample.tier))].sort()).toEqual([
+			'body',
+			'heading',
+		]);
+		for (const entry of usage) {
+			const samples = entry.sampleIds.map((id) => {
+				const sample = glyphSampleById(id);
+				if (!sample) throw new Error(`${entry.hex} names an unknown sample ${id}`);
+				return sample;
+			});
+			expect([...entry.tiers].sort(), entry.hex).toEqual(
+				[...new Set(samples.map((sample) => sample.tier))].sort(),
+			);
+			// One entry per row, and the rows are exactly the ones whose
+			// heading carries the character.
+			const carrying = glyphSamples().filter((sample) => sample.heading.includes(entry.char));
+			expect(entry.sampleIds, entry.hex).toEqual(carrying.map((sample) => sample.id));
+		}
+		// And at least one code point lives ONLY in body rows: that is the
+		// case a heading-stack-only `.notdef` comparison would judge
+		// against a stack that never draws it.
+		expect(usage.some((entry) => entry.tiers.length === 1 && entry.tiers[0] === 'body')).toBe(true);
 	});
 
 	it('flags the combining marks that need a face shaped for the base letter', () => {

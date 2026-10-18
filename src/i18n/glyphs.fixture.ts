@@ -110,6 +110,18 @@ export interface GlyphGuard {
  */
 export type GlyphForm = 'NFC' | 'NFD' | 'mixed';
 
+/**
+ * Which tier of the shipped type scale renders a sample.
+ *
+ * A tier is a TYPE TIER, never a font: the stacks stay owned by
+ * `src/editorial/tokens.ts`. The tier is what tells a measurement which
+ * stack the row is drawn with, because the heading tier and the body
+ * tier are two DIFFERENT stacks — a code point that appears only in body
+ * rows has to be judged against the body stack's `.notdef`, or the
+ * verdict is about a stack that never drew it.
+ */
+export type GlyphTier = 'heading' | 'body';
+
 export interface GlyphHeadingSample {
 	readonly id: string;
 	readonly locale: GlyphLocale;
@@ -117,7 +129,7 @@ export interface GlyphHeadingSample {
 	readonly lang: string;
 	readonly focus: GlyphFocus;
 	/** Which tier of the shipped type scale renders this sample. */
-	readonly tier: 'heading' | 'body';
+	readonly tier: GlyphTier;
 	/** The display text exactly as an author wrote it. */
 	readonly heading: string;
 	readonly form: GlyphForm;
@@ -767,9 +779,24 @@ export interface GlyphCodePointUsage {
 	readonly codePoint: number;
 	/** The character itself — a combining mark is a character on its own. */
 	readonly char: string;
+	/**
+	 * The samples it appears in, once each, in table order.
+	 *
+	 * A ROW, not an occurrence: a code point repeated five times inside
+	 * one heading is still one sample, because the consumers of this
+	 * list (the report's rows column, a coverage count) count rows.
+	 */
 	readonly sampleIds: readonly string[];
 	/** Scripts / classes the code point belongs to, as the fixture claims them. */
 	readonly focuses: readonly GlyphFocus[];
+	/**
+	 * The tiers its samples render with, in table order.
+	 *
+	 * The measurement reads this to decide which stack owns the code
+	 * point: `['body']` means only the body stack ever draws it, so only
+	 * the body stack's `.notdef` can call it missing.
+	 */
+	readonly tiers: readonly GlyphTier[];
 	/** True when the character is a combining mark (zero advance of its own). */
 	readonly combining: boolean;
 }
@@ -785,14 +812,25 @@ export interface GlyphCodePointUsage {
  * "renders fine" would bury the four rows that do not.
  */
 export function glyphCodePointUsage(): readonly GlyphCodePointUsage[] {
-	const usage = new Map<number, { sampleIds: string[]; focuses: Set<GlyphFocus> }>();
+	const usage = new Map<
+		number,
+		{ sampleIds: string[]; focuses: Set<GlyphFocus>; tiers: Set<GlyphTier> }
+	>();
 	for (const sample of glyphSamples()) {
 		for (const character of sample.heading) {
 			const codePoint = character.codePointAt(0);
 			if (codePoint === undefined || codePoint <= 0x7f) continue;
-			const entry = usage.get(codePoint) ?? { sampleIds: [], focuses: new Set<GlyphFocus>() };
-			entry.sampleIds.push(sample.id);
+			const entry = usage.get(codePoint) ?? {
+				sampleIds: [],
+				focuses: new Set<GlyphFocus>(),
+				tiers: new Set<GlyphTier>(),
+			};
+			// Table order, one entry per ROW: the same letter appearing
+			// three times in one heading is one sample, and a list of
+			// occurrences would make every row count a row over.
+			if (!entry.sampleIds.includes(sample.id)) entry.sampleIds.push(sample.id);
 			entry.focuses.add(sample.focus);
+			entry.tiers.add(sample.tier);
 			usage.set(codePoint, entry);
 		}
 	}
@@ -806,6 +844,7 @@ export function glyphCodePointUsage(): readonly GlyphCodePointUsage[] {
 				char: String.fromCodePoint(codePoint),
 				sampleIds: entry.sampleIds,
 				focuses: [...entry.focuses],
+				tiers: [...entry.tiers],
 				// Combining marks live in the Mn block; the platform's own
 				// curated table is the authority for names, so this is a
 				// range check rather than a second name table.

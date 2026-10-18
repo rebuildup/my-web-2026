@@ -69,6 +69,7 @@
 
 import { execFileSync, spawn } from 'node:child_process';
 import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { arch, platform as osPlatform, release as osRelease } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
@@ -510,11 +511,24 @@ async function runNavigateLeg(page, cycles, baseUrl) {
 		await page.waitForURL(/\/tools$/, { timeout: 20_000 });
 		await page.waitForTimeout(1200);
 		const back = await sample();
+		// The series sample is the TOOL ROUTE, taken right after the click:
+		// a listener leaked by a route change is already visible there, so
+		// the series cannot flatter the build by being taken only after the
+		// round trip completed. `returned` keeps the post-Back sample for
+		// the same reason — a round trip that leaves residue is the other
+		// half of the claim, and the report should be able to show both.
 		series.push({
 			cycle,
 			leg: 'tool-route',
 			...forward,
-			returned: { liveGlobal: back.liveGlobal, liveConnected: back.liveConnected, path: back.path },
+			returned: {
+				liveGlobal: back.liveGlobal,
+				liveConnected: back.liveConnected,
+				detached: back.detached,
+				domNodes: back.domNodes,
+				heapMb: back.heapMb,
+				path: back.path,
+			},
 		});
 	}
 	return { skipped: false, series, baseUrl };
@@ -552,24 +566,28 @@ async function renderMeasurementPanel(page, report) {
 				'leg react  verdict',
 				payload.legs.react.skipped
 					? `SKIPPED — ${payload.legs.react.skippedReason}`
-					: payload.verdicts.react.pass
+					: payload.verdict.verdicts.react.pass
 						? 'PASS'
 						: 'FAIL',
 			),
-			line('  live window/document', growth(payload.verdicts.react.metrics)),
+			line('  live window/document', growth(payload.verdict.verdicts.react.metrics)),
 			line(
 				'leg navigate verdict',
 				payload.legs.navigate.skipped
 					? 'SKIPPED'
-					: payload.verdicts.navigate.pass
+					: payload.verdict.verdicts.navigate.pass
 						? 'PASS'
 						: 'FAIL',
 			),
-			line('  live window/document', growth(payload.verdicts.navigate.metrics)),
+			line('  live window/document', growth(payload.verdict.verdicts.navigate.metrics)),
 			'',
 			line(
-				'navigate last',
-				`DOM ${payload.legs.navigate.series.at(-1)?.domNodes} nodes · heap ${payload.legs.navigate.series.at(-1)?.heapMb} MB · head links ${payload.legs.navigate.series.at(-1)?.headLinks}`,
+				'navigate last (tool route)',
+				`DOM ${payload.legs.navigate.series.at(-1)?.domNodes} nodes · heap ${payload.legs.navigate.series.at(-1)?.heapMb} MB · head links ${payload.legs.navigate.series.at(-1)?.headLinks} · detached-only ${payload.legs.navigate.series.at(-1)?.detached}`,
+			),
+			line(
+				'navigate after Back',
+				`liveGlobal ${payload.legs.navigate.series.map((s) => s.returned?.liveGlobal).join('→')} · heap ${payload.legs.navigate.series.map((s) => s.returned?.heapMb).join('→')} MB`,
 			),
 			line(
 				'top live listeners',
@@ -580,7 +598,7 @@ async function renderMeasurementPanel(page, report) {
 			rows.unshift(
 				line(
 					'BEFORE (compare)',
-					`${payload.before.sourceShaShort} · navigate liveGlobal ${payload.before.navigateFrom}→${payload.before.navigateTo} · react liveGlobal ${payload.before.reactFrom}→${payload.before.reactTo}`,
+					`${payload.before.sourceShaShort} · navigate liveGlobal ${payload.before.navigate} · react liveGlobal ${payload.before.react}`,
 				),
 				'',
 			);
@@ -675,7 +693,7 @@ async function main() {
 				browser: `Chromium ${browser.version()}`,
 				playwright: playwrightVersion(),
 				node: process.version,
-				platform: `${process.platform} ${process.arch} ${process.release}`,
+				platform: `${osPlatform()} ${arch()} ${osRelease()}`,
 				viewport: '1280x900',
 				deviceScaleFactor: 1,
 				cpuThrottlingRate: options.cpuThrottle,
@@ -710,10 +728,8 @@ async function main() {
 					sourceShaShort: (before?.environment?.sourceSha ?? 'unknown').slice(0, 12),
 					generatedAt: before?.generatedAt ?? 'unknown',
 					cycles: before?.options?.cycles ?? null,
-					navigateFrom: pick('navigate', 'liveGlobal'),
-					navigateTo: pick('navigate', 'liveGlobal'),
-					reactFrom: pick('react', 'liveGlobal'),
-					reactTo: pick('react', 'liveGlobal'),
+					navigate: pick('navigate', 'liveGlobal'),
+					react: pick('react', 'liveGlobal'),
 					browser: before?.environment?.browser ?? 'unknown',
 					verdict: before?.verdict?.pass ?? null,
 				};
@@ -789,8 +805,15 @@ async function main() {
 			);
 		}
 		process.stdout.write(
-			`  navigate  DOM ${lastNavigate?.domNodes} nodes · heap ${lastNavigate?.heapMb} MB · head links ${lastNavigate?.headLinks}\n`,
+			`  navigate  DOM ${lastNavigate?.domNodes} nodes · heap ${lastNavigate?.heapMb} MB · head links ${lastNavigate?.headLinks} · detached-only listeners ${lastNavigate?.detached}\n`,
 		);
+		if (!navigate.skipped) {
+			process.stdout.write(
+				`  navigate  after Back liveGlobal ${navigate.series
+					.map((s) => s.returned?.liveGlobal)
+					.join(' → ')} | heap ${navigate.series.map((s) => s.returned?.heapMb).join(' → ')} MB\n`,
+			);
+		}
 		if (!react.skipped) {
 			process.stdout.write(
 				`  react     DOM ${lastReact?.domNodes} nodes · heap ${lastReact?.heapMb} MB\n`,

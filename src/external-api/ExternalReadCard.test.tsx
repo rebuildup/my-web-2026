@@ -19,8 +19,9 @@ import {
  *
  *   - the spinner exists only in `loading`, never beside a value,
  *   - a degraded card with a value keeps that value visible,
- *   - the retry control is disabled exactly when the source is
- *     blocked, and absent when there is nothing to retry,
+ *   - the retry control is disabled exactly while the published
+ *     `retryAt` has not arrived, becomes actionable when it has, and
+ *     is absent when there is nothing to retry,
  *   - every badge names the state actually on screen — no state ever
  *     borrows a neighbour's label,
  *   - no upstream detail has a path into the markup.
@@ -36,15 +37,26 @@ const SOURCE = {
 	budgetNote: 'unauthenticated read',
 } as const satisfies ExternalSource;
 
-const FACTS = { stars: 12, forks: 3, openIssues: 0, license: 'MIT', pushedAt: null };
+const FACTS = {
+	stars: 12,
+	forks: 3,
+	openIssuesAndPullRequests: 0,
+	license: 'MIT',
+	pushedAt: null,
+};
 
-function render(snapshot: ExternalSnapshot<typeof FACTS>, onRetry?: () => void): string {
+function render(
+	snapshot: ExternalSnapshot<typeof FACTS>,
+	onRetry?: () => void,
+	now?: () => number,
+): string {
 	return renderToStaticMarkup(
 		<ExternalReadCard
 			title="公開リポジトリの事実 / Public repository facts"
 			source={SOURCE}
 			snapshot={snapshot}
 			onRetry={onRetry}
+			now={now}
 			renderValue={(value) => (
 				<ul>
 					{Object.entries(value).map(([key, entry]) => (
@@ -169,11 +181,44 @@ describe('degraded with a value (non-destructive fallback)', () => {
 		expect(html).not.toContain('取得失敗');
 	});
 
-	it('offers an enabled retry', () => {
+	it('refuses the retry while the published cadence has not elapsed', () => {
+		// The snapshot publishes the deadline; the card evaluates it. An
+		// enabled button here would offer a retry the reader refuses.
 		const html = render(degradedWithValue(), () => {});
+		expect(html).toMatch(/data-testid="external-read-retry"[^>]*disabled/);
+		expect(html).toContain('次の試行 / Next attempt 2026-10-18 00:01:01 UTC');
+	});
+
+	it('offers the retry once the deadline has arrived', () => {
+		const html = render(
+			degradedWithValue(),
+			() => {},
+			() => T0 + 61_000,
+		);
 		expect(html).toContain('data-testid="external-read-retry"');
 		expect(html).toContain('再試行');
 		expect(html).not.toMatch(/data-testid="external-read-retry"[^>]*disabled/);
+		// Nothing is left to state: the next attempt may run now.
+		expect(html).not.toContain('external-read-blocked');
+	});
+
+	it('renders identically for a clock that has not moved', () => {
+		// Deterministic first paint: the same snapshot and the same
+		// clock produce the same markup, which is what keeps the server
+		// render and the hydration identical.
+		expect(
+			render(
+				degradedWithValue(),
+				() => {},
+				() => T0 + 60_000,
+			),
+		).toBe(
+			render(
+				degradedWithValue(),
+				() => {},
+				() => T0 + 60_000,
+			),
+		);
 	});
 });
 
@@ -194,7 +239,7 @@ describe('degraded without a value', () => {
 		expect(html).toContain('接続不可');
 	});
 
-	it('offers an enabled retry from the very first failure', () => {
+	it('offers the retry from the very first failure once its cadence elapses', () => {
 		const failed = applyFailure<typeof FACTS>(
 			{ status: 'loading' },
 			'network',
@@ -202,7 +247,22 @@ describe('degraded without a value', () => {
 			initialBreaker(),
 			DEFAULTS,
 		);
-		expect(render(failed, () => {})).toContain('data-testid="external-read-retry"');
+		// Inside the published cadence: disabled, with the instant stated.
+		const inside = render(
+			failed,
+			() => {},
+			() => T0,
+		);
+		expect(inside).toMatch(/data-testid="external-read-retry"[^>]*disabled/);
+		expect(inside).toContain('次の試行 / Next attempt 2026-10-18 00:00:01 UTC');
+		// One second later the same snapshot offers it again.
+		expect(
+			render(
+				failed,
+				() => {},
+				() => T0 + 1_000,
+			),
+		).not.toMatch(/data-testid="external-read-retry"[^>]*disabled/);
 	});
 
 	it('badges a failed read with no value as failed, not as a stale value', () => {
@@ -223,7 +283,13 @@ describe('degraded without a value', () => {
 
 describe('blocked source (breaker open)', () => {
 	it('keeps the value and states the next probe instant', () => {
-		const html = render(degradedWithValue({ breaker: 'open' }), () => {});
+		// One millisecond before the cooldown ends, so the state under
+		// test is "cooldown running", not "cooldown already elapsed".
+		const html = render(
+			degradedWithValue({ breaker: 'open' }),
+			() => {},
+			() => T0 + 59_999,
+		);
 		expect(html).toContain('data-testid="external-read-value"');
 		expect(html).toContain('data-breaker="open"');
 		expect(html).toContain('data-testid="external-read-blocked"');
@@ -232,12 +298,35 @@ describe('blocked source (breaker open)', () => {
 	});
 
 	it('disables the retry so the control cannot look actionable', () => {
-		const html = render(degradedWithValue({ breaker: 'open' }), () => {});
+		const html = render(
+			degradedWithValue({ breaker: 'open' }),
+			() => {},
+			() => T0 + 59_999,
+		);
 		expect(html).toMatch(/data-testid="external-read-retry"[^>]*disabled/);
 	});
 
+	it('releases the retry when the open cooldown has elapsed', () => {
+		// After the cooldown the next attempt is a single probe, and the
+		// card says so by allowing the control: the deadline, not the
+		// breaker word, decides what the button does.
+		const html = render(
+			degradedWithValue({ breaker: 'open' }),
+			() => {},
+			() => T0 + 120_000,
+		);
+		expect(html).not.toMatch(/data-testid="external-read-retry"[^>]*disabled/);
+		expect(html).not.toContain('external-read-blocked');
+	});
+
 	it('marks the source as rate limited rather than guessing', () => {
-		expect(render(degradedWithValue({ breaker: 'open' }))).toContain('回数制限');
+		expect(
+			render(
+				degradedWithValue({ breaker: 'open' }),
+				() => {},
+				() => T0 + 59_999,
+			),
+		).toContain('回数制限');
 	});
 });
 

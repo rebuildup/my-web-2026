@@ -13,9 +13,9 @@
 | capture 手段 | `node scripts/capture-api-timeout-fallback.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの（実際の `src/styles.css`） |
 | viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影） |
-| 生成物サイズ | 1440 x 1300 px、**97 kB** WebP（quality 80、budget 300 kB） |
+| 生成物サイズ | 1440 x 1395 px、**103 kB** WebP（quality 80、budget 300 kB） |
 | 撮影時の rendered card 数 | 6（script が `cardsRendered !== 6` で失敗する。空ページ撮影の黙認をしない） |
-| fixture | **定数**（`T0 = 2026-10-18T00:00:00Z` 基準）。`Date.now()` を使わないので、Storybook を開き直しても「何時間前」の意味が変わらない |
+| fixture | **定数**（`T0 = 2026-10-18T00:00:00Z` 基準）。`Date.now()` を使わないので、Storybook を開き直しても「何時間前」の意味が変わらない。`retryAt` の評価時計も定数（`T2` = fixture の失敗時刻）に固定しており、実時刻では全 cadence が経過済みに見えて了该状態が写らなくなるため |
 | 外部通信 | **0 件（実測）**。gallery は fixture 描画のみで、upstream には何も要求しない。capture script が Playwright の request イベントを数え、loopback 以外が 1 件でもあれば artefact を書かずに失敗する |
 | 成果物の書き込み | **検証通過後にだけ** 確定置き換わる。候補は `.tmp/api-timeout-fallback/staging/` に encode され、budget / card 数 / 外部通信の検証を全部通ってから committed 経路へ move する。失敗した撮影は committed の WebP に触れない |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
@@ -30,9 +30,9 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 | --- | --- | --- | --- |
 | 01 | `value` / `fresh` | window 内で観測した値 | 再試行なし（正常時） |
 | 02 | `value` / `stale` | 同じ値のまま `古い値を表示中` | 再試行なし（age は隠さない） |
-| 03 | `degraded`（timeout、breaker closed） | **前回の値を保持したまま** `応答时间内.timeout` を表示 | 再試行（有効） |
-| 04 | `degraded`（rate limited、breaker **open**） | 前回の値を保持し `遮断中` + `次の試行 <時刻>` | 再試行（**無効**）。押しても上流が増えない |
-| 05 | `degraded`（初回失敗、値なし） | `取得失敗` + `値を取得できません` + reason。**spinner は出ない** | 再試行（有効） |
+| 03 | `degraded`（timeout、breaker closed） | **前回の値を保持したまま** `応答时间内.timeout` を表示 | 再試行（**無効**）。cadence 満了まで `次の試行 <時刻>` を表示し、満了後は自動で有効化 |
+| 04 | `degraded`（rate limited、breaker **open**） | 前回の値を保持し `遮断中` + `次の試行 <時刻>` | 再試行（**無効**）。押しても上流が増えない。cooldown 満了後は probe として 1 回だけ有効化 |
+| 05 | `degraded`（初回失敗、値なし） | `取得失敗` + `値を取得できません` + reason。**spinner は出ない** | 再試行（cadence 満了まで無効、その後は有効） |
 | 06 | `loading` | まだ一度も値が取れていない状態だけ。badge は `読み込み中`（`古い値を表示中` を借りない） | 操作なし |
 
 **badge が嘘をつかない理由**: badge は「いま画面にあるもの」を名指しする。`loading` は `読み込み中`、値のない失敗は `取得失敗`、値が残っている stale は `古い値を表示中`、遮断中は `遮断中`。近傍状態の文言を借りる経路を持たず、`ExternalReadCard.test.tsx` が各状態で「古い値を表示中」が出ていないこと（loading / 値なし失敗）を固定する。
@@ -40,6 +40,8 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 **永続スピナーが構造的に存在しない理由**: `loading` snapshot は「一度も値を取得していない」場合にしか到達できず、確定した試行は必ず `value` か `degraded` に遷移する（`applySuccess` / `applyFailure` が唯一の遷移）。reader は deadline を自分で強制するため、abort signal を無視する adapter でも `loading` には留まらない。
 
 **元データの状態が明確な理由**: `degraded` は `value`（前回の値）と `observedAt`（その値の観測時刻）を保持したまま `reason` と `failedAt` を追加する。既存表示は「消えない・古さが書ける・理由が言える」の 3 つ。
+
+**再試行ボタンの可否が嘘にならない理由**: snapshot が公開するのは `retryAt`（瞬間）**だけ**で、「今すぐ押せるか」は `retryAffordanceOf(snapshot, now)` が導出する。同じ事実の 2 表現（stamped な boolean と deadline）を持たないため、reader が拒否する瞬間にも押せてしまうボタンや、期限後も無効のままのボタンを描かない。card は `retryWakeupMs` から **deadline 到着時の 1 回だけ**再描画を予約し（poll しない・試行も発行しない）、その再描画で button が有効になる。SSR/first paint は snapshot 自身の `failedAt`（または明示された固定時計）で評価するため、server と hydration の markup は一致する。
 
 ## 3. 公開情報 / 非公開情報の監査表
 
@@ -49,7 +51,8 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 
 | 項目 | 由来 | 備考 |
 | --- | --- | --- |
-| `stars` / `forks` / `openIssues` | `stargazers_count` / `forks_count` / `open_issues_count` | 非負整数のみ。欠損は `null`（0 を捏造しない） |
+| `stars` / `forks` | `stargazers_count` / `forks_count` | 非負整数のみ。欠損は `null`（0 を捏造しない） |
+| `openIssuesAndPullRequests` | `open_issues_count` | GitHub REST は **open の pull request も issue として数える**（公式仕様: https://docs.github.com/en/rest/issues/issues）ため、issue だけの件数として `openIssues` という名前で公開すると訪問者に過大に見せる。名前で明示する。`pull_request` を除外する別 read は**行わない**（未認証 60 req/hour の budget を 2 本目の要求で消費しないため） |
 | `license` | `license.spdx_id` | **SPDX id のみ**。ライセンス本文は載せない |
 | `pushedAt` | `pushed_at` | ISO に正規化。解析不能なら `null` |
 | source label | `ExternalSource.label`（`api.github.com`） | host のみ。path / query は表示しない |
@@ -101,14 +104,14 @@ GitHub の repository payload には `subscribers_count` / `network_count` / `pe
 
 | テスト | 固定している性質 |
 | --- | --- |
-| `src/external-api/contract.test.ts` | 遷移が `value` / `degraded` の 2 種しかないこと。`loading` に留まらないこと。失敗が値と観測時刻を壊さないこと。breaker の open/probe/close。**`retryAt` を reader が守る**（cadence 内の試行は refusal になり上流が増えない）。cadence refusal が breaker を `open` と嘘になること（実際の breaker state を報告する）。retry 間隔が有限かつ非負。失敗語彙が label 付きで閉じていること |
-| `src/external-api/reader.test.ts` | deadline（signal を無視する adapter でも `timeout` に収束・signal を abort する・**fake timer で timer 残存 0**）。**同期 throw する adapter でも通常失敗遷移へ収束する**。**負荷**: 同時 50 呼び出し → 上流 1 回。blocked 中は上流 0 回。probe は 1 回だけ。cadence 内 retry は上流 0 回 |
+| `src/external-api/contract.test.ts` | 遷移が `value` / `degraded` の 2 種しかないこと。`loading` に留まらないこと。失敗が値と観測時刻を壊さないこと。breaker の open/probe/close。**`retryAt` を reader が守る**（cadence 内の試行は refusal になり上流が増えない）。cadence refusal が breaker を `open` と嘘になること（実際の breaker state を報告する）。retry 間隔が有限かつ非負。失敗語彙が label 付きで閉じていること。**retry の可否は `retryAt` から導出する**（snapshot は `retryable` を持たない。deadline の 1 ms 前は拒否・ちょうど deadline で許可、壊れた deadline は「未到来 + 時刻は出す」、`retryWakeupMs` は待つ時間だけを返す） |
+| `src/external-api/reader.test.ts` | deadline（signal を無視する adapter でも `timeout` に収束・signal を abort する・**fake timer で timer 残存 0**）。**同期 throw する adapter でも通常失敗遷移へ収束する**。**負荷**: 同時 50 呼び出し → 上流 1 回。blocked 中は上流 0 回。probe は 1 回だけ。cadence 内 retry は上流 0 回。**refusal した snapshot は自身の `retryAt` 到達で「押せる」になり、その再評価で上流は増えない** |
 | `src/external-api/timeout.test.ts` | status → 公開 reason の写像。応答サイズ上限（body-less 応答でも byte 単位で）。credential header の拒否（送信前に fail）。**transport 自身は source 固有の `accept` を持たない**（adapter が `accept` を持つ）。upstream 詳細が error に残らないこと |
-| `src/external-api/github.test.ts` | allowlist（個人フィールド・private payload の拒否）。header に credential がないこと。**GitHub の `accept` は adapter が送る**。404 / 403 が公開 reason になること。**adapter は policy を持たない**: reader が解決した `maxResponseBytes` がそのまま transport の上限になる（1 KiB 指定なら oversized body は `malformed-response`、既定 64 KiB なら同じ body を読む） |
-| `src/external-api/ExternalReadCard.test.tsx` | spinner は `loading` のみ。失敗時も値が残る。blocked なら retry が無効。**badge は画面上の状態を名指しする**（loading / 値なし失敗が `古い値を表示中` を出さない）。upstream 詳細が markup に出ない |
+| `src/external-api/github.test.ts` | allowlist（個人フィールド・private payload の拒否）。header に credential がないこと。**GitHub の `accept` は adapter が送る**。404 / 403 が公開 reason になること。**adapter は policy を持たない**: reader が解決した `maxResponseBytes` がそのまま transport の上限になる（1 KiB 指定なら oversized body は `malformed-response`、既定 64 KiB なら同じ body を読む）。**件数は `openIssuesAndPullRequests` という名前で公開する**（GitHub は PR も issue として数える。issue だけの名前 `openIssues` は allowlist に入っていない） |
+| `src/external-api/ExternalReadCard.test.tsx` | spinner は `loading` のみ。失敗時も値が残る。**cadence 未到来なら retry は無効 + `次の試行` を表示、到着後は有効**（`now` prop で評価時計を固定して検証）。**badge は画面上の状態を名指しする**（loading / 値なし失敗が `古い値を表示中` を出さない）。upstream 詳細が markup に出ない |
 | `scripts/capture-api-timeout-fallback.test.mjs` | `.webp` 以外の出力拒否。リポジトリ外への書き出し拒否。harness が shipped story を import すること。静的配信の traversal 防御と不正 percent-encoding の 400。loopback 判定（外部通信の実測に使う純関数）。**候補は `.tmp/` に staging され、通過後のみ promotion される**。`--png` のような「書いたことのないファイルを消す」option は存在しない |
 
-ローカル実測: `pnpm exec vitest run src/external-api/` = **108 passed**、`node --test scripts/capture-api-timeout-fallback.test.mjs` = **12 passed**。
+ローカル実測: `pnpm exec vitest run src/external-api/` = **118 passed**、`node --test scripts/capture-api-timeout-fallback.test.mjs` = **12 passed**。
 
 ## 6. 残るリスク（測定済み・隠していない）
 
@@ -118,6 +121,7 @@ GitHub の repository payload には `subscribers_count` / `network_count` / `pe
 | 実 upstream への接続試験がない | テストは全て注入 transport。GitHub の実レスポンスは `github.test.ts` の fixture（実 API と同一 schema を手入力）で代替 | promotion 時に実接続の contract test を追加する（本 PR のスコープ外） |
 | 訪問者のローカル時刻で描画しない | 観測時刻は UTC 固定で描画する | 意図的。localized 表示は「同じ瞬間を指す」ことを崩すため採用しない |
 | 未認証 read の budget | 60 req/hour per source IP。共有 egress ではさらに早く枯渇しうる | 同時呼び出しの合流（50→1）、**`retryAt` より前の試行の refusal**、breaker による遮断で 緩和。stale window を 6h に置いた根拠でもある |
+| card の deadline 再描画はブラウザ実装に依存 | mount 後の 1 回だけ再描画するため、hydrated 前のタブがバックグラウンドにあれば実行が遅れる（押せる時刻が数秒遅れることはあるが、`次の試行 <時刻>` の表示自体は初稿で正しい） | UI 層の再描画 1 回のみで上流要求は増えない。試行成败の判断は reader 側が同じ `retryAt` で再評価するため、結果は変わらない |
 | 失敗語彙の文言 | `EXTERNAL_FAILURE_LABEL` の日本語は visitor 向け文言として未レビュー（例: `応答时间内.timeout` は「応答時間内」と読める） | 閉じた語彙であることだけを固定している。文言の最終判断は owner（§7） |
 
 ## 7. 未決事項（owner 判断）

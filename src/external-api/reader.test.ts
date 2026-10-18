@@ -4,6 +4,7 @@ import {
 	ExternalReadError,
 	type ExternalSnapshot,
 	type ExternalSource,
+	retryAffordanceOf,
 } from './contract';
 import { type ExternalAdapter, createExternalReader } from './reader';
 
@@ -188,7 +189,7 @@ describe('an adapter that throws before it returns a Promise', () => {
 		await reader.read();
 		const refused = await reader.retry();
 		expect(refused.status === 'degraded' && refused.breaker).toBe('open');
-		expect(refused.status === 'degraded' && refused.retryable).toBe(false);
+		expect(refused.status === 'degraded' && retryAffordanceOf(refused, now).retryable).toBe(false);
 	});
 });
 
@@ -243,7 +244,7 @@ describe('breaker', () => {
 		expect(attempts()).toBe(3); // no upstream traffic while blocked
 		expect(blocked.status).toBe('degraded');
 		expect(blocked.status === 'degraded' && blocked.breaker).toBe('open');
-		expect(blocked.status === 'degraded' && blocked.retryable).toBe(false);
+		expect(blocked.status === 'degraded' && retryAffordanceOf(blocked, now).retryable).toBe(false);
 		expect(blocked.status === 'degraded' && blocked.retryAt).toBe(
 			new Date(T0 + 3_000 + 60_000).toISOString(),
 		);
@@ -266,7 +267,7 @@ describe('breaker', () => {
 		const early = await reader.retry();
 		expect(attempts()).toBe(1); // still inside the published cadence
 		expect(early.status === 'degraded' && early.breaker).toBe('closed');
-		expect(early.status === 'degraded' && early.retryable).toBe(false);
+		expect(early.status === 'degraded' && retryAffordanceOf(early, now).retryable).toBe(false);
 		expect(early.status === 'degraded' && early.retryAt).toBe(
 			failed.status === 'degraded' ? failed.retryAt : null,
 		);
@@ -276,6 +277,32 @@ describe('breaker', () => {
 		expect(attempts()).toBe(2);
 		expect(recovered.status === 'value' && recovered.value).toBe(5);
 	});
+
+	it('makes the refused snapshot actionable again exactly at its deadline', async () => {
+		// The visitor keeps ONE snapshot after a refusal. It has to say
+		// "not yet" while the deadline is in the future and "now" the
+		// instant it arrives, or a disabled retry button would stay
+		// disabled until something unrelated re-rendered the card.
+		const { adapter, attempts } = fakeAdapter([fails(new ExternalReadError('network')), ok(5)]);
+		const now = T0;
+		const reader = createExternalReader(adapter, {
+			now: () => now,
+			policy: { retryBaseMs: 1_000, failureThreshold: 3 },
+		});
+		await reader.read();
+		const refused = degradedAt(await reader.retry());
+		const deadline = Date.parse(refused.retryAt ?? '');
+		expect(retryAffordanceOf(refused, deadline - 1).retryable).toBe(false);
+		expect(retryAffordanceOf(refused, deadline).retryable).toBe(true);
+		expect(attempts()).toBe(1); // the re-evaluation spent no request
+	});
+
+	function degradedAt(snapshot: ExternalSnapshot<number>) {
+		if (snapshot.status !== 'degraded') {
+			throw new Error(`expected a degraded snapshot, got ${snapshot.status}`);
+		}
+		return snapshot;
+	}
 
 	it('runs exactly one probe after the cooldown and closes on success', async () => {
 		const { adapter, attempts } = fakeAdapter([

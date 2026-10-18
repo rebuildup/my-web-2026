@@ -206,9 +206,16 @@ export interface ExternalDegradedSnapshot<T> {
 	readonly reason: ExternalFailureReason;
 	readonly failedAt: string;
 	readonly breaker: ExternalBreakerState;
-	/** Whether an attempt may run right now (false while an attempt is refused). */
-	readonly retryable: boolean;
-	/** When the next attempt becomes possible: open cooldown or retry cadence. */
+	/**
+	 * When the next attempt becomes possible: open cooldown or retry
+	 * cadence, or `null` when the snapshot publishes no deadline.
+	 *
+	 * This is the ONLY retry fact a snapshot carries. Whether an
+	 * attempt may run NOW is derived from it and from the current
+	 * instant by `retryAffordanceOf`, because a stamped boolean would
+	 * be a second copy of the same fact — and the two copies are what
+	 * let a card offer a retry the reader was about to refuse.
+	 */
 	readonly retryAt: string | null;
 }
 
@@ -384,7 +391,6 @@ export function applyFailure<T>(
 		reason,
 		failedAt: new Date(now).toISOString(),
 		breaker: breaker.state,
-		retryable: !blocked,
 		retryAt: new Date(retryAt).toISOString(),
 	};
 }
@@ -418,9 +424,60 @@ export function applyBlocked<T>(
 		reason,
 		failedAt: current.status === 'degraded' ? current.failedAt : new Date(now).toISOString(),
 		breaker: breaker.state,
-		retryable: false,
 		retryAt: new Date(notBefore).toISOString(),
 	};
+}
+
+/** The retry affordance a snapshot offers at one instant. */
+export interface ExternalRetryAffordance {
+	/** Whether an attempt may run at the instant this was computed for. */
+	readonly retryable: boolean;
+	/** The published deadline, or `null` when the snapshot published none. */
+	readonly retryAt: string | null;
+}
+
+/**
+ * Derive the retry affordance from the ONE fact a snapshot publishes.
+ *
+ * A degraded snapshot publishes `retryAt`; whether an attempt may run
+ * is a question about `retryAt` AND "now", so it is answered here
+ * instead of being stamped into the snapshot at some earlier instant.
+ * One fact, one derivation: a card cannot show an enabled retry for
+ * a deadline the reader is about to refuse, because both read this.
+ *
+ * A snapshot that is not degraded publishes no deadline, so an attempt
+ * is allowed (`loading` already has one in flight; a `value` snapshot
+ * carries no cadence).
+ */
+export function retryAffordanceOf<T>(
+	snapshot: ExternalSnapshot<T>,
+	now: number,
+): ExternalRetryAffordance {
+	if (snapshot.status !== 'degraded' || snapshot.retryAt === null) {
+		return { retryable: true, retryAt: null };
+	}
+	const deadline = Date.parse(snapshot.retryAt);
+	// An unparsable deadline is treated as "not yet", never as "now":
+	// showing an enabled retry would spend a request the reader may
+	// refuse, and hiding the instant would hide the reason.
+	if (Number.isNaN(deadline)) return { retryable: false, retryAt: snapshot.retryAt };
+	return { retryable: now >= deadline, retryAt: snapshot.retryAt };
+}
+
+/**
+ * How long a caller has to wait before the published deadline arrives.
+ *
+ * `null` when there is nothing to wait for: no deadline published, or
+ * the deadline has already passed. A caller that wants the display to
+ * change exactly at the deadline schedules THIS and re-evaluates with
+ * `retryAffordanceOf`; it must not poll, and it must not retry the
+ * upstream on its own.
+ */
+export function retryWakeupMs(retryAt: string | null, now: number): number | null {
+	if (retryAt === null) return null;
+	const deadline = Date.parse(retryAt);
+	if (Number.isNaN(deadline)) return null;
+	return Math.max(0, deadline - now);
 }
 
 /**

@@ -15,7 +15,9 @@ import {
 	initialBreaker,
 	recordOutcome,
 	resolveReadPolicy,
+	retryAffordanceOf,
 	retryDelayMs,
+	retryWakeupMs,
 	withRecomputedFreshness,
 } from './contract';
 
@@ -29,6 +31,9 @@ import {
  *   - every settled attempt leaves `loading`,
  *   - a failure preserves the last known value AND its instant,
  *   - the retry cadence is bounded and always finite,
+ *   - the retry affordance is DERIVED from the published deadline, so a
+ *     card and the reader can never disagree about whether a retry may
+ *     run,
  *   - the public failure vocabulary is closed and label-complete.
  */
 
@@ -262,7 +267,12 @@ describe('snapshot transitions', () => {
 		expect(degraded.observedAt).toBe(healthy.status === 'value' ? healthy.observedAt : null);
 		expect(degraded.reason).toBe('timeout');
 		expect(degraded.failedAt).toBe(new Date(T0 + 60_000).toISOString());
-		expect(degraded.retryable).toBe(true);
+		// The cadence is a contract with the visitor, so the snapshot
+		// publishes the instant and NOTHING else about retryability: a
+		// stamped boolean is a second copy that can disagree with it.
+		expect(Object.keys(degraded)).not.toContain('retryable');
+		expect(retryAffordanceOf(degraded, T0 + 60_000).retryable).toBe(false);
+		expect(retryAffordanceOf(degraded, T0 + 61_000).retryable).toBe(true);
 		expect(degraded.breaker).toBe('closed');
 	});
 
@@ -279,7 +289,7 @@ describe('snapshot transitions', () => {
 		expect(degraded.status).toBe('degraded');
 		expect(degraded.value).toBeNull();
 		expect(degraded.observedAt).toBeNull();
-		expect(degraded.retryable).toBe(true);
+		expect(retryAffordanceOf(degraded, T0).retryable).toBe(false);
 	});
 
 	it('is never loading again after a settled attempt', () => {
@@ -296,8 +306,9 @@ describe('snapshot transitions', () => {
 		const open = { state: 'open', consecutiveFailures: 3, openedAt: T0 } as const;
 		const degraded = degradedOf(applyFailure(healthy, 'rate-limited', T0 + 10_000, open, policy));
 		expect(degraded.breaker).toBe('open');
-		expect(degraded.retryable).toBe(false);
 		expect(degraded.retryAt).toBe(new Date(T0 + policy.openMs).toISOString());
+		expect(retryAffordanceOf(degraded, T0 + 10_000).retryable).toBe(false);
+		expect(retryAffordanceOf(degraded, T0 + policy.openMs).retryable).toBe(true);
 		expect(degraded.value).toBe(9);
 	});
 
@@ -319,8 +330,11 @@ describe('snapshot transitions', () => {
 		expect(blocked.reason).toBe('timeout');
 		// The refusal did not invent a new failure instant.
 		expect(blocked.failedAt).toBe(degraded.failedAt);
-		expect(blocked.retryable).toBe(false);
 		expect(blocked.retryAt).toBe(new Date(T0 + policy.openMs).toISOString());
+		expect(retryAffordanceOf(blocked, T0 + 20_000)).toEqual({
+			retryable: false,
+			retryAt: new Date(T0 + policy.openMs).toISOString(),
+		});
 	});
 
 	it('reports the breaker it actually has when a cadence attempt is refused', () => {
@@ -332,7 +346,6 @@ describe('snapshot transitions', () => {
 			applyBlocked({ status: 'loading' }, 'timeout', T0, initialBreaker(), notBefore),
 		);
 		expect(blocked.breaker).toBe('closed');
-		expect(blocked.retryable).toBe(false);
 		expect(blocked.retryAt).toBe(new Date(notBefore).toISOString());
 		expect(blocked.value).toBeNull();
 	});
@@ -355,4 +368,68 @@ describe('snapshot transitions', () => {
 	function degradedBreaker() {
 		return { state: 'open', consecutiveFailures: 3, openedAt: T0 } as const;
 	}
+});
+
+describe('retry affordance', () => {
+	/**
+	 * The defect this derivation exists for: a snapshot stamped
+	 * `retryable: true` while its own `retryAt` was still in the future
+	 * let a card offer a retry the reader was about to refuse, and the
+	 * button then stayed disabled forever after the refusal because
+	 * nothing re-evaluated the deadline.
+	 */
+	const failed = degradedOf(
+		applyFailure(
+			applySuccess(9, T0),
+			'timeout',
+			T0,
+			{ state: 'closed', consecutiveFailures: 1, openedAt: null },
+			policy,
+		),
+	);
+	const deadline = Date.parse(failed.retryAt ?? '');
+
+	it('refuses a retry one millisecond before the published deadline', () => {
+		expect(retryAffordanceOf(failed, deadline - 1)).toEqual({
+			retryable: false,
+			retryAt: failed.retryAt,
+		});
+	});
+
+	it('allows the retry AT the published deadline, not after it', () => {
+		expect(retryAffordanceOf(failed, deadline)).toEqual({
+			retryable: true,
+			retryAt: failed.retryAt,
+		});
+		expect(retryAffordanceOf(failed, deadline + 60_000).retryable).toBe(true);
+	});
+
+	it('answers for a healthy and a loading snapshot without a deadline', () => {
+		expect(retryAffordanceOf(applySuccess(9, T0), T0)).toEqual({ retryable: true, retryAt: null });
+		expect(retryAffordanceOf({ status: 'loading' }, T0)).toEqual({
+			retryable: true,
+			retryAt: null,
+		});
+	});
+
+	it('treats an unparsable deadline as not yet, and still states it', () => {
+		// Showing an enabled retry would spend a request the reader may
+		// refuse; hiding the instant would hide why it is refused.
+		const broken = degradedOf({
+			...failed,
+			retryAt: 'not an instant',
+		});
+		expect(retryAffordanceOf(broken, T0)).toEqual({
+			retryable: false,
+			retryAt: 'not an instant',
+		});
+	});
+
+	it('publishes how long a caller waits, and nothing to wait for otherwise', () => {
+		expect(retryWakeupMs(failed.retryAt, deadline - 5_000)).toBe(5_000);
+		expect(retryWakeupMs(failed.retryAt, deadline)).toBe(0);
+		expect(retryWakeupMs(failed.retryAt, deadline + 1)).toBe(0);
+		expect(retryWakeupMs(null, T0)).toBeNull();
+		expect(retryWakeupMs('not an instant', T0)).toBeNull();
+	});
 });

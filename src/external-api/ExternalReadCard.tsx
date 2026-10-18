@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { css } from '../../styled-system/css';
 import { Badge } from '../editorial/primitives/Badge';
 import {
@@ -7,22 +7,38 @@ import {
 	type ExternalFreshness,
 	type ExternalSnapshot,
 	type ExternalSource,
+	retryAffordanceOf,
+	retryWakeupMs,
 } from './contract';
 
 /**
  * ExternalReadCard — the display surface for one third-party read.
  *
- * The card renders a snapshot and nothing else. It has no fetch, no
- * timer and no knowledge of which upstream it shows, so every
- * reliability property is decided upstream in `contract.ts`:
+ * The card renders a snapshot and nothing else. It has no fetch and
+ * no knowledge of which upstream it shows, so every reliability
+ * property is decided upstream in `contract.ts`:
  *
  *   - `loading` is only reachable before the FIRST value, so a
  *     persistent spinner would require a snapshot that cannot be
  *     constructed;
  *   - `degraded` keeps the last known value on screen and states the
  *     reason beside it (non-destructive fallback);
- *   - a blocked source offers a DISABLED retry and the instant the
- *     next probe may run, instead of a button that would do nothing.
+ *   - a source whose published `retryAt` has not arrived offers a
+ *     DISABLED retry and the instant the next attempt may run,
+ *     instead of a button that would do nothing.
+ *
+ * The one timer the card owns exists to make that last promise true:
+ * it re-renders ONCE, at the published deadline, so a disabled retry
+ * becomes actionable when the instant arrives instead of waiting for
+ * an unrelated re-render. It is scheduled from `retryWakeupMs`, never
+ * polled, and it is cleaned up on unmount or when the snapshot
+ * changes. It schedules NO attempt: the reader still decides whether
+ * one may run.
+ *
+ * The first paint is deterministic — a snapshot is evaluated at its
+ * own `failedAt` unless a `now` clock is passed, and the live clock
+ * is adopted after mount. That is what keeps server and client markup
+ * identical while the deadline still updates the display on time.
  *
  * The BADGE states what is on screen, never a neighbouring state's
  * wording: a card with no value never claims a stale value is being
@@ -136,12 +152,21 @@ export interface ExternalReadCardProps<T> {
 	renderValue: (value: T) => ReactNode;
 	/**
 	 * Retry handler. When omitted the card renders no control at all;
-	 * when the source is blocked it renders a disabled one, because a
-	 * button that silently does nothing is worse than no button.
+	 * when the source's published deadline has not arrived it renders a
+	 * disabled one, because a button that silently does nothing is
+	 * worse than no button.
 	 */
 	onRetry?: () => void;
 	/** Marks the card busy while a retry is in flight. */
 	busy?: boolean;
+	/**
+	 * Clock the published `retryAt` is evaluated against. Defaults to
+	 * `Date.now` after mount. Pass a FIXED clock to render a
+	 * reproducible state (Storybook, the verification screenshot, SSR
+	 * markup tests): it then applies to the first paint too, so
+	 * server and client agree without an effect.
+	 */
+	now?: () => number;
 }
 
 export function ExternalReadCard<T>({
@@ -151,6 +176,7 @@ export function ExternalReadCard<T>({
 	renderValue,
 	onRetry,
 	busy = false,
+	now,
 }: ExternalReadCardProps<T>) {
 	const value: T | null =
 		snapshot.status === 'value'
@@ -160,7 +186,31 @@ export function ExternalReadCard<T>({
 				: null;
 	const degraded = snapshot.status === 'degraded' ? snapshot : null;
 	const key = badgeKey(snapshot);
-	const retryDisabled = degraded !== null && !degraded.retryable;
+
+	// Before mount the snapshot is evaluated at its OWN instant, so the
+	// first paint is a pure function of the snapshot plus an explicit
+	// clock. `liveNow` is the only thing that makes it time-dependent,
+	// and it is set from an effect, never during render.
+	const [liveNow, setLiveNow] = useState<number | null>(null);
+	const clock = now ?? (() => Date.now());
+	const snapshotInstant = degraded === null ? Number.NaN : Date.parse(degraded.failedAt);
+	const evaluatedAt = liveNow ?? now?.() ?? (Number.isNaN(snapshotInstant) ? 0 : snapshotInstant);
+	const affordance = retryAffordanceOf(snapshot, evaluatedAt);
+	const retryDisabled = degraded !== null && !affordance.retryable;
+
+	useEffect(() => {
+		setLiveNow(clock());
+	}, [clock]);
+
+	useEffect(() => {
+		// ONE wake-up at the published deadline, so a refused retry
+		// becomes actionable when the instant arrives. No polling, and
+		// no attempt: the reader still owns whether a read may run.
+		const remaining = retryWakeupMs(affordance.retryAt, clock());
+		if (remaining === null || remaining <= 0) return;
+		const timer = setTimeout(() => setLiveNow(clock()), remaining);
+		return () => clearTimeout(timer);
+	}, [affordance.retryAt, clock]);
 
 	return (
 		<section
@@ -293,7 +343,7 @@ export function ExternalReadCard<T>({
 				</p>
 				{degraded === null ? null : (
 					<span className={css({ display: 'flex', alignItems: 'baseline', gap: '2' })}>
-						{degraded.retryable ? null : (
+						{affordance.retryable ? null : (
 							<span
 								data-testid="external-read-blocked"
 								className={css({
@@ -302,7 +352,7 @@ export function ExternalReadCard<T>({
 									color: 'text.muted',
 								})}
 							>
-								{NEXT_ATTEMPT_LABEL} {formatInstant(degraded.retryAt)}
+								{NEXT_ATTEMPT_LABEL} {formatInstant(affordance.retryAt)}
 							</span>
 						)}
 						{onRetry === undefined ? null : (

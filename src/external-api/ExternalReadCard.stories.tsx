@@ -36,7 +36,7 @@ const SOURCE = GITHUB_REPO_SOURCE;
 const FACTS: GitHubRepoFacts = {
 	stars: 12,
 	forks: 3,
-	openIssues: 0,
+	openIssuesAndPullRequests: 0,
 	license: 'MIT',
 	pushedAt: '2026-10-17T12:00:00.000Z',
 };
@@ -71,7 +71,7 @@ function renderFacts(value: GitHubRepoFacts) {
 	const rows: [string, string | number | null][] = [
 		['stars', value.stars],
 		['forks', value.forks],
-		['openIssues', value.openIssues],
+		['openIssues+PRs', value.openIssuesAndPullRequests],
 		['license', value.license],
 	];
 	return (
@@ -106,6 +106,18 @@ function renderFacts(value: GitHubRepoFacts) {
 	);
 }
 
+/**
+ * The instant every card's published `retryAt` is evaluated against.
+ *
+ * A fixed clock is what keeps this screen reproducible: with the real
+ * clock the fixed fixture instants would be hours in the past, so every
+ * cadence would read as elapsed and the gallery would stop showing the
+ * "next attempt" state at all. `T2` is the moment of both fixture
+ * failures, so the gallery shows what a visitor sees when a read fails
+ * — retry refused, deadline stated.
+ */
+const EVALUATED_AT = () => T2;
+
 function card(snapshot: ExternalSnapshot<GitHubRepoFacts>) {
 	return (
 		<ExternalReadCard
@@ -114,6 +126,7 @@ function card(snapshot: ExternalSnapshot<GitHubRepoFacts>) {
 			snapshot={snapshot}
 			renderValue={renderFacts}
 			onRetry={() => {}}
+			now={EVALUATED_AT}
 		/>
 	);
 }
@@ -160,13 +173,14 @@ export const Stale: Story = {
 };
 
 export const TimeoutFallback: Story = {
-	name: '03 timeout — value kept, retry offered',
+	name: '03 timeout — value kept, retry refused until the cadence ends',
 	args: {
 		snapshot: TIMED_OUT,
 		renderValue: renderFacts,
 		title: '公開リポジトリの事実',
 		source: SOURCE,
 		onRetry: () => {},
+		now: EVALUATED_AT,
 	},
 };
 
@@ -178,17 +192,19 @@ export const Blocked: Story = {
 		title: '公開リポジトリの事実',
 		source: SOURCE,
 		onRetry: () => {},
+		now: EVALUATED_AT,
 	},
 };
 
 export const FirstFailure: Story = {
-	name: '05 first failure — no value, no spinner, retry offered',
+	name: '05 first failure — no value, no spinner, cadence stated',
 	args: {
 		snapshot: FIRST_FAILURE,
 		renderValue: renderFacts,
 		title: '公開リポジトリの事実',
 		source: SOURCE,
 		onRetry: () => {},
+		now: EVALUATED_AT,
 	},
 };
 
@@ -347,9 +363,10 @@ export function ApiTimeoutFallbackGallery() {
 					>
 						{[
 							...POLICY_ROWS.map((row) => [`policy.${row[0]}`, row[1]] as const),
+							['retryAt evaluated at', new Date(T2).toISOString()],
 							['source', `${SOURCE.label} — ${SOURCE.endpoint}`],
 							['sendsCredentials', String(SOURCE.sendsCredentials)],
-							['publishedFields', 'stars / forks / openIssues / license(SPDX id) / pushedAt'],
+							['publishedFields', 'stars / forks / openIssues+PRs / license(SPDX id) / pushedAt'],
 						].map(([label, value]) => (
 							<div key={label} className={css({ display: 'contents' })}>
 								<dt className={css({ fontFamily: 'mono', fontSize: 'sm', color: 'text.muted' })}>
@@ -385,6 +402,7 @@ export function ApiTimeoutFallbackGallery() {
 				<span>fixture constants — no live request in this gallery</span>
 				<span>allowlist mapping — owner.email / private payload refused</span>
 				<span>concurrent callers coalesce into one upstream request</span>
+				<span>retry is refused until the published deadline, then offered again</span>
 			</footer>
 		</div>
 	);

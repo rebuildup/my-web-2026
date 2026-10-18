@@ -99,6 +99,7 @@
 		"verify:compat-screenshot": "node scripts/make-compat-matrix-report.mjs",
 		"e2e:compat": "playwright test --config playwright.compat.config.ts",
 		"e2e:compat:install": "playwright install --with-deps chromium firefox webkit",
+		"verification:input-matrix": "node scripts/capture-input-validation-matrix.mjs",
 		"webhook:fixture:report": "node scripts/webhook-signature-fixture-report.mjs",
 		"verification:login-rate-limit": "node scripts/capture-login-rate-limit-report.mjs",
 		"publication:write": "node scripts/check-publication-diff.mjs --write",

@@ -1,0 +1,51 @@
+{
+	"advisories": {
+		"1700005": {
+			"id": 1700005,
+			"module_name": "fixture-runtime",
+			"severity": "critical",
+			"title": "Fixture advisory: request smuggling in fixture-runtime and fixture-server-core",
+			"url": "https://example.invalid/advisories/GHSA-fixt-fxmp-fxmp",
+			"github_advisory_id": "GHSA-fixt-fxmp-fxmp",
+			"vulnerable_versions": "<2.4.0",
+			"patched_versions": ">=2.4.0",
+			"cwe": "CWE-444",
+			"findings": [
+				{
+					"version": "2.3.1",
+					"paths": [".>fixture-app>fixture-runtime"],
+					"dev": false,
+					"optional": false,
+					"bundled": false
+				}
+			]
+		},
+		"1700006": {
+			"id": 1700006,
+			"module_name": "fixture-server-core",
+			"severity": "critical",
+			"title": "Fixture advisory: request smuggling in fixture-runtime and fixture-server-core",
+			"url": "https://example.invalid/advisories/GHSA-fixt-fxmp-fxmp",
+			"github_advisory_id": "GHSA-fixt-fxmp-fxmp",
+			"vulnerable_versions": "<2.4.0",
+			"patched_versions": ">=2.4.0",
+			"cwe": "CWE-444",
+			"findings": [
+				{
+					"version": "2.3.1",
+					"paths": [".>fixture-app>fixture-runtime>fixture-server-core"],
+					"dev": false,
+					"optional": false,
+					"bundled": false
+				}
+			]
+		}
+	},
+	"metadata": {
+		"vulnerabilities": { "info": 0, "low": 0, "moderate": 0, "high": 0, "critical": 2 },
+		"dependencies": 1204,
+		"devDependencies": 1180,
+		"optionalDependencies": 24,
+		"totalDependencies": 1204
+	}
+}

@@ -263,11 +263,12 @@ Three deterministic entry points defined in `quality/profile.yaml`:
 
 - `pnpm run validate:fast` — local feedback. Read-only.
   (`format:check` + `lint:check` + `architecture:check` +
-  `compat:check` + `structured-data:check` + `index:boundary:check` +
+  `structured-data:check` + `index:boundary:check` +
   `tools:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
   `test:wiring:check` + release-asset checks + `version:check` +
-  `typecheck` + `infisical:check:coverage` + `csrf:contract:check` +
+  `typecheck` + `infisical:check:coverage` + `sbom:check` +
+  `csrf:contract:check` + `compat:check` + `publication:check` +
   `test`)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +

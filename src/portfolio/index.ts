@@ -33,6 +33,40 @@ export type { PortfolioLoader, PortfolioEnv } from './contract';
 
 export { isValidR2Key, composeMediaUrl } from './media';
 
+/**
+ * Input-boundary surface (Issue #451).
+ *
+ * `classifyHref` is the single href oracle: scheme allow-list,
+ * control-character refusal, entity decoding, protocol-relative
+ * resolution. `safeHref` / `isExternalHref` are the compatibility
+ * shapes for callers that only need the old string / boolean.
+ *
+ * `sanitizeNotionHtml` is the adapter for Notion-derived HTML. It is
+ * NOT wired to an ingest path yet — it lands first so that whichever
+ * migration introduces Notion HTML inherits one sanitiser instead of
+ * writing a second one. See `docs/security.md`.
+ */
+export {
+	BLOCKED_HREF_REASONS,
+	BLOCKED_LINK_CLASS,
+	type BlockedHrefReason,
+	classifyHref,
+	decodeHtmlEntities,
+	escapeInline,
+	isExternalHref,
+	type MarkdownHrefVerdict,
+	parseMarkdown,
+	safeHref,
+} from './markdown.lexer';
+
+export {
+	NOTION_DROP_REASONS,
+	type NotionDropReason,
+	type NotionSanitizeOptions,
+	type NotionSanitizeResult,
+	sanitizeNotionHtml,
+} from './markdown.notion';
+
 export { createD1PortfolioLoader } from './load';
 export { intersectsAny } from './load';
 

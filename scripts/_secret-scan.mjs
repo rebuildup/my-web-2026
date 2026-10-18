@@ -278,17 +278,14 @@ export const ALLOWLIST = Object.freeze([
 	},
 	{
 		path: 'scripts/scan-secrets.mjs',
-		reason: 'The CLI wrapper: it embeds the detector table via import and holds no value.',
-	},
-	{
-		path: 'docs/security/supply-chain-secret-scan.md',
 		reason:
-			'The runbook documents shapes with synthetic samples so a reviewer can recognise them. Every ' +
-			'sample is generated from a fixed dummy alphabet.',
+			'The CLI wrapper: its self-test fixtures must contain credential shapes to be a fixture.',
 	},
 	{
-		path: 'docs/verification/supply-chain/secret-scan-fail.png',
-		reason: 'Binary screenshot of the synthetic dummy-credential report.',
+		path: 'scripts/shoot-secret-scan-report.mjs',
+		reason:
+			'The verification-artefact generator. It runs the self-test and screenshots its report; it ' +
+			'holds no value of its own.',
 	},
 ]);
 

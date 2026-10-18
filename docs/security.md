@@ -84,7 +84,12 @@ binding API is reachable in the local workerd pool"**, not
 ## Automated checks
 
 - Secret scanning: enabled as an asynchronous CI job (see
-  `quality/profile.yaml#security_gates.secret_scanning`).
+  `quality/profile.yaml#security_gates.secret_scanning`), plus a
+  deterministic pre-merge gate in this repository — `pnpm run secret:scan`
+  over tracked files and `pnpm run secret:scan:bundle` over the built
+  bundle, both inside `validate`. Findings are status-only (path, line,
+  detector, length, SHA-256 prefix) and never render the matched value.
+  Runbook: [`docs/security/supply-chain-secret-scan.md`](security/supply-chain-secret-scan.md).
 - Dependency review: deferred to a post-0.1.0 ticket.
 - Code scanning (SAST): deferred.
 - Container scanning: not applicable (no `Containerfile` at 0.1.0).

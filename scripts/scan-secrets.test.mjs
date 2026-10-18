@@ -443,6 +443,33 @@ describe('CLI — repository scan', () => {
 		}
 	});
 
+	it('turns the gate red on an UNTRACKED, not-ignored file before it is committed', () => {
+		const repo = isolatedRepo({ 'src/clean.ts': 'export const a = 1;\n' });
+		try {
+			writeFileSync(join(repo, 'src', 'probe.ts'), `const k='${DUMMY.homeKey}';\n`);
+			const result = runCli([], repo);
+			assert.equal(result.status, 1, 'an untracked-but-not-ignored credential must already fail');
+			assert.match(result.stdout, /src\/probe\.ts:1/);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it('still honours .gitignore for the source surface', () => {
+		const repo = isolatedRepo({
+			'.gitignore': '.dev.vars\ndist\n',
+			'.dev.vars': `BETTER_AUTH_SECRETS="${DUMMY.versionedSecret}"\n`,
+		});
+		try {
+			// The file is ignored, so it is not in the source surface at all —
+			// which is exactly why a tracked `.dev.vars` is its own finding.
+			const result = runCli([], repo);
+			assert.equal(result.status, 0, result.stdout + result.stderr);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
 	it('exits 2 on an unknown argument instead of silently passing', () => {
 		const result = runCli(['--not-a-flag']);
 		assert.equal(result.status, 2);

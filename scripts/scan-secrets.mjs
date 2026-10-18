@@ -101,21 +101,37 @@ function parseArgs(argv) {
 	return options;
 }
 
-/** Tracked files, NUL-separated so a path with a space cannot break parsing. */
-function trackedFiles() {
-	let stdout;
-	try {
-		stdout = execFileSync('git', ['ls-files', '-z'], {
-			cwd: REPO_ROOT,
-			encoding: 'utf8',
-			maxBuffer: 32 * 1024 * 1024,
-		});
-	} catch (error) {
-		throw new Error(
-			`git ls-files failed in ${REPO_ROOT} (${error.message}). The scan needs a git worktree; it does not guess a file set.`,
-		);
-	}
-	return stdout.split('\0').filter(Boolean);
+/**
+ * Repository source surface, NUL-separated so a path with a space cannot
+ * break parsing.
+ *
+ * `untracked` is the other half of that surface: files that are not yet in
+ * the index but are also not ignored. A credential sitting in a worktree
+ * file that is one `git add` away from being committed is worth catching
+ * while the operator is still looking at it, and `--exclude-standard` is
+ * what keeps `.dev.vars`, `dist/`, `.tmp/` and every other gitignored path
+ * out of the scan by construction — no second ignore list to maintain.
+ */
+function repoFiles() {
+	const list = (args) => {
+		try {
+			return execFileSync('git', args, {
+				cwd: REPO_ROOT,
+				encoding: 'utf8',
+				maxBuffer: 32 * 1024 * 1024,
+			})
+				.split('\0')
+				.filter(Boolean);
+		} catch (error) {
+			throw new Error(
+				`git ${args.join(' ')} failed in ${REPO_ROOT} (${error.message}). The scan needs a git worktree; it does not guess a file set.`,
+			);
+		}
+	};
+	return {
+		tracked: list(['ls-files', '-z']),
+		untracked: list(['ls-files', '--others', '--exclude-standard', '-z']),
+	};
 }
 
 function walk(directory) {
@@ -152,18 +168,28 @@ function bundleFiles() {
 }
 
 async function scanTracked(mode) {
+	const { tracked, untracked } = repoFiles();
 	const violations = [];
 	let scanned = 0;
-	for (const relativePath of trackedFiles()) {
-		const absolute = join(REPO_ROOT, relativePath);
-		// A gitlink (submodule entry, e.g. `external/readmark`) is listed by
-		// `git ls-files` but is a directory here — and in a checkout without
-		// submodules it may not exist at all. Neither is scannable.
-		if (!existsSync(absolute) || !statSync(absolute).isFile()) continue;
-		scanned++;
-		violations.push(...(await scanContent(relativePath, readFileSync(absolute), { mode })));
+	let trackedCount = 0;
+	let untrackedCount = 0;
+	for (const [paths, isTracked] of [
+		[tracked, true],
+		[untracked, false],
+	]) {
+		for (const relativePath of paths) {
+			const absolute = join(REPO_ROOT, relativePath);
+			// A gitlink (submodule entry, e.g. `external/readmark`) is listed by
+			// `git ls-files` but is a directory here — and in a checkout without
+			// submodules it may not exist at all. Neither is scannable.
+			if (!existsSync(absolute) || !statSync(absolute).isFile()) continue;
+			scanned++;
+			if (isTracked) trackedCount++;
+			else untrackedCount++;
+			violations.push(...(await scanContent(relativePath, readFileSync(absolute), { mode })));
+		}
 	}
-	return { violations, scanned };
+	return { violations, scanned, trackedCount, untrackedCount };
 }
 
 async function scanBundles() {
@@ -308,6 +334,11 @@ function printReport(report, options) {
 	console.log(
 		`[scan-secrets] ${report.target} — ${report.scannedFiles} file(s) scanned, ${report.failures.length} blocking finding(s), ${report.waived.length} waived`,
 	);
+	if (report.mode !== 'bundle') {
+		console.log(
+			`[scan-secrets] source surface: ${report.trackedFiles} tracked + ${report.untrackedFiles} untracked-not-ignored`,
+		);
+	}
 	for (const failure of report.failures) console.log(`  ${describeMatch(failure)}`);
 	for (const waiver of report.waived) {
 		console.log(`  ${describeMatch(waiver)}`);
@@ -334,7 +365,7 @@ async function main() {
 			[
 				'Usage: node scripts/scan-secrets.mjs [--bundle] [--self-test] [--json] [--report=<path>]',
 				'',
-				'  (no flag)     scan tracked files, plus build artifacts when present',
+				'  (no flag)     scan tracked + untracked-not-ignored files, plus build artifacts when present',
 				'  --bundle      scan build artifacts only (used after `pnpm run build:production`)',
 				'  --self-test   prove the gate on synthetic dummy credentials (never touches the repo)',
 				'  --json        machine-readable findings (same status-only fields)',
@@ -382,6 +413,8 @@ async function main() {
 
 	const violations = [];
 	let scanned = 0;
+	let trackedCount = 0;
+	let untrackedCount = 0;
 	const skipped = [];
 	const missing = [];
 
@@ -389,6 +422,8 @@ async function main() {
 		const source = await scanTracked('source');
 		violations.push(...source.violations);
 		scanned += source.scanned;
+		trackedCount = source.trackedCount;
+		untrackedCount = source.untrackedCount;
 	}
 	const bundle = await scanBundles();
 	violations.push(...bundle.violations);
@@ -405,6 +440,8 @@ async function main() {
 		mode: options.bundleOnly ? 'bundle' : 'source+bundle',
 		generatedAt: new Date().toISOString(),
 		scannedFiles: scanned,
+		trackedFiles: trackedCount,
+		untrackedFiles: untrackedCount,
 		failures,
 		waived,
 		skipped,

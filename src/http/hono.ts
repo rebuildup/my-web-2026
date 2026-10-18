@@ -3,9 +3,13 @@ import packageJson from '../../package.json';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
+import { publicErrorResponse } from './errors';
+import { sharedCacheIsolation } from './middleware/cache-policy';
+import { csrfGuard } from './middleware/csrf';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
+import { seoRouter } from './seo/router';
 
 /**
  * External HTTP boundary for my-web-2026.
@@ -17,6 +21,14 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  *   - `/webhooks/*`     inbound webhooks from external services
  *   - `/oauth/*`        OAuth callback handlers
  *   - `/integrations/*` third-party integration adapters
+ *   - `/sitemap.xml`,   crawler-facing SEO documents. These are not
+ *     `/robots.txt`     HTML and cannot be produced by the SSR
+ *                        pipeline (TanStack Start 1.168 has no
+ *                        raw-response route primitive — ADR-0002
+ *                        "Re-evaluation triggers"), so they are
+ *                        served here and registered in the
+ *                        `EXTERNAL_BOUNDARY_PREFIXES` list in
+ *                        `src/server.ts`.
  *
  * Internal application operations invoked from the UI are TanStack
  * Start server functions and **must not** be exposed through Hono.
@@ -26,7 +38,22 @@ import { reactionImagesRouter, reactionsRouter } from './reactions/router';
  * Start. Real Cloudflare `env` (with D1, R2, ASSETS, ...) flows in via
  * the `{ Bindings: Env }` type and Hono's `c.env` accessor.
  */
-export const externalBoundary = new Hono<{ Bindings: Env }>();
+export const externalBoundary = new Hono<{
+	Bindings: Env;
+	// Optional because only `/api/v1/*` runs `requestIdMiddleware`;
+	// the other prefixes mint their id in the redaction fallback
+	// (`src/http/errors.ts`).
+	Variables: { requestId?: string };
+}>();
+
+// Shared-cache isolation (Issue #460) is registered FIRST so it wraps
+// every other `/api/v1/*` layer, the local mock gate included. Every
+// response on this boundary is a function of the caller's identity
+// (API key id, `mw_actor_id` cookie, Better Auth session) unless the
+// handler explicitly opts into `public` + a positive freshness
+// lifetime — see `src/http/middleware/cache-policy.ts` for the policy,
+// its opt-in, and the sealed-header failure behaviour.
+externalBoundary.use('/api/v1/*', sharedCacheIsolation);
 
 // Local API mock gate (Issue #166): when `env.LOCAL_API_MODE === 'mock'`
 // (set in `.dev.vars`, NOT in `wrangler.jsonc#vars` — see
@@ -52,7 +79,18 @@ externalBoundary.use('/api/v1/*', async (c, next) => {
 // New routers compose under the existing `/api/v1/*` prefixes; no
 // change to `src/server.ts` is required.
 externalBoundary.use('/api/v1/*', requestIdMiddleware);
+// Cross-site request forgery guard (Issue #440). TanStack Start's
+// default CSRF middleware only ever sees requests the Worker entry
+// hands to the Start handler; everything answered here never reaches
+// it, so the boundary owes the write methods their own origin check
+// (inferred from ADR-0002 §1/§2's two-layer split; recorded in
+// docs/security.md). Mounted after the request-id middleware so a refusal
+// still carries the correlation header, and before the routers so a
+// cross-site write is rejected before authentication, rate limiting,
+// or D1 are touched.
+externalBoundary.use('/api/v1/*', csrfGuard);
 externalBoundary.route('/', authRouter);
+externalBoundary.route('/', seoRouter);
 externalBoundary.route('/api/v1/access', accessCounterRouter);
 externalBoundary.route('/api/v1/reactions', reactionsRouter);
 externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);
@@ -71,8 +109,18 @@ externalBoundary.get('/api/v1/db/ping', async (c) => {
 		const row = await c.env.DB.prepare('SELECT 1 AS one').first<{ one: number }>();
 		return c.json({ status: 'ok', binding: 'd1', one: row?.one ?? null });
 	} catch (err) {
-		console.error('[boundary] d1 ping failed', err);
-		return c.json({ status: 'binding_error', binding: 'd1' }, 503);
+		// Issue #457: the failure body no longer names the binding.
+		// The request path already identifies which probe failed, so
+		// an operator loses nothing. Scope of the change: the
+		// **failure** branch only — the 200 body below keeps
+		// `binding: 'd1'` because it is a documented operator probe
+		// contract; whether the probe should publish the binding at
+		// all is recorded as an open decision in docs/security.md.
+		return publicErrorResponse(c, err, {
+			status: 503,
+			code: 'service_unavailable',
+			logLabel: 'd1 ping',
+		});
 	}
 });
 
@@ -90,8 +138,11 @@ externalBoundary.get('/api/v1/media/ping', async (c) => {
 		if (/404|not[_ ]?found/i.test(message)) {
 			return c.json({ status: 'key_not_found', binding: 'r2' }, 404);
 		}
-		console.error('[boundary] r2 ping failed', err);
-		return c.json({ status: 'binding_error', binding: 'r2' }, 503);
+		return publicErrorResponse(c, err, {
+			status: 503,
+			code: 'service_unavailable',
+			logLabel: 'r2 ping',
+		});
 	}
 });
 
@@ -110,6 +161,13 @@ externalBoundary.onError((err, c) => {
 	if (err instanceof ApiKeyError) {
 		return c.json({ error: err.code, status: err.status }, err.status);
 	}
-	console.error('[boundary] unhandled', err);
-	return c.json({ error: 'internal_error' }, 500);
+	// Issue #457: the generic 500 answers with the redacted body —
+	// stable code, repo-authored message, and the correlation id the
+	// log line above just wrote. The `err` object never leaves
+	// `console.error`.
+	return publicErrorResponse(c, err, {
+		status: 500,
+		code: 'internal_error',
+		logLabel: 'unhandled error',
+	});
 });

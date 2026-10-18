@@ -67,7 +67,11 @@ import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
  * Graceful degradation: if the API key is missing (operator has not
  * run the bootstrap yet), `getHomeReactions` returns an empty list
  * and the write fns short-circuit. The widget renders a disabled
- * state in that case — see `widget.tsx`.
+ * state in that case — see `widget.tsx`. The same rule applies to
+ * the DB-backed catalog read: it is best-effort (see
+ * `loadCatalogDegraded`) because a storage failure must not turn the
+ * highest-traffic public page into a rendered D1 error (Issue
+ * #457).
  *
  * Upstream origin: the loader self-calls `/api/v1/reactions` and
  * `/api/v1/access/*` against the same origin it was invoked from.
@@ -151,6 +155,60 @@ export interface HomeReactionsRequestContext {
 }
 
 /**
+ * Best-effort catalog read for the public home surfaces.
+ *
+ * The catalog is a *widget input*, not the page: when it cannot be
+ * read (D1 outage, a deployment whose `reaction_emoji_catalog`
+ * migration has not run) the reactions widget renders with no
+ * catalog instead of the whole `/` route throwing. Before Issue #457
+ * this read was unguarded, so the provider's message
+ * (`D1_ERROR: no such table: reaction_emoji_catalog: SQLITE_ERROR`)
+ * reached the highest-traffic public screen through TanStack Start's
+ * `ShallowErrorPlugin`.
+ *
+ * This mirrors the sibling home loaders, which already degrade rather
+ * than throw (`getHomeCounter` in `src/home/access/load.ts`,
+ * `probeCloudflareHealth` in `src/cloudflare/health.ts`). The internal
+ * error goes to `console.error` only; the visitor sees an empty
+ * catalog.
+ */
+async function loadCatalogDegraded(db: D1Database | null): Promise<readonly CatalogEntry[]> {
+	if (!db) return [];
+	try {
+		return await loadCatalog(db);
+	} catch (err) {
+		console.error('[home.reactions] catalog read failed — degrading to an empty catalog', err);
+		return [];
+	}
+}
+
+/**
+ * Call the upstream reactions API without letting a transport failure
+ * escape the loader.
+ *
+ * The self-call targets the same Worker, so a rejection here means the
+ * request never got an answer at all. Letting that reject would throw
+ * the `/` route loader — the same rendered-error-screen path the
+ * catalog read had. The upstream 4xx/5xx answer is already redacted by
+ * the external boundary; a rejected `fetch` carries no contract at all,
+ * so it degrades to the same empty widget state. Returns `null` when
+ * the call could not be completed.
+ */
+async function fetchUpstreamSafely(
+	operation: 'get' | 'add' | 'remove',
+	fetcher: typeof fetch,
+	url: string,
+	init: RequestInit,
+): Promise<Response | null> {
+	try {
+		return await fetcher(url, init);
+	} catch (err) {
+		console.error(`[home.reactions] upstream ${operation} could not be reached`, err);
+		return null;
+	}
+}
+
+/**
  * Read-only upstream caller for `getHomeReactions`. Returns the parsed
  * payload; callers decide how to render. Returns `enabled: false`
  * when the upstream API key is not configured so the caller can
@@ -158,7 +216,8 @@ export interface HomeReactionsRequestContext {
  *
  * Also reads the DB-backed catalog (`reaction_emoji_catalog`) once
  * per call. The loader runs inside the Worker, so `env.DB` is the
- * canonical D1 binding.
+ * canonical D1 binding. The catalog read is best-effort — see
+ * `loadCatalogDegraded`.
  */
 export async function getHomeReactionsImpl(
 	envLike: HomeReactionsEnv,
@@ -189,15 +248,18 @@ export async function getHomeReactionsImpl(
 	if (existingActorId) query.set('actor_id', existingActorId);
 	const upstream = `${upstreamOrigin}/api/v1/reactions?${query.toString()}`;
 	const [response, catalog] = await Promise.all([
-		fetcher(upstream, {
+		fetchUpstreamSafely('get', fetcher, upstream, {
 			method: 'GET',
 			headers: {
 				authorization: `Bearer ${apiKey}`,
 				accept: 'application/json',
 			},
 		}),
-		db ? loadCatalog(db) : Promise.resolve([] as readonly CatalogEntry[]),
+		db ? loadCatalogDegraded(db) : Promise.resolve([] as readonly CatalogEntry[]),
 	]);
+	if (response === null) {
+		return { target_key: target, aggregates: [], viewer_reactions: [], catalog, enabled: true };
+	}
 	if (!response.ok) {
 		console.error('[home.reactions] upstream failed', response.status, await response.text());
 		return { target_key: target, aggregates: [], viewer_reactions: [], catalog, enabled: true };
@@ -235,9 +297,10 @@ export function resolveOrIssueActorId(
 }
 
 async function loadCatalogForWrite(envLike: HomeReactionsEnv): Promise<readonly CatalogEntry[]> {
-	const db = (envLike.DB ?? null) as D1Database | null;
-	if (!db) return [];
-	return loadCatalog(db);
+	// Same degradation rule as the read path (Issue #457): a failed
+	// catalog read makes the emoji look unregistered, which the write
+	// paths answer as `invalid_body` — never as a throw.
+	return loadCatalogDegraded((envLike.DB ?? null) as D1Database | null);
 }
 
 export async function addHomeReactionImpl(
@@ -301,12 +364,17 @@ export async function addHomeReactionImpl(
 	// the row the visitor just created (P1 review finding).
 	if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
 	const upstream = `${upstreamOrigin}/api/v1/reactions`;
-	const response = await fetcher(upstream, {
+	const response = await fetchUpstreamSafely('add', fetcher, upstream, {
 		method: 'PUT',
 		headers: {
 			authorization: `Bearer ${apiKey}`,
 			accept: 'application/json',
 			'content-type': 'application/json',
+			// Issue #440: declare the origin this same-origin self-call
+			// is made from so the boundary's CSRF guard accepts it. The
+			// request URL is `${upstreamOrigin}/api/v1/reactions`, so
+			// `upstreamOrigin` is its origin by construction.
+			origin: upstreamOrigin,
 		},
 		body: JSON.stringify({
 			target_key: input.target,
@@ -315,6 +383,7 @@ export async function addHomeReactionImpl(
 			value: input.value,
 		}),
 	});
+	if (response === null) return { ok: false, reason: 'upstream_error' };
 	if (response.status === 429) return { ok: false, reason: 'rate_limited' };
 	if (!response.ok) {
 		console.error('[home.reactions.add] upstream failed', response.status, await response.text());
@@ -346,12 +415,14 @@ export async function removeHomeReactionImpl(
 	// resolved in the handler so PUT body and Set-Cookie agree.
 	if (!isWellFormedActorId(actorId)) return { ok: false, reason: 'invalid_body' };
 	const upstream = `${upstreamOrigin}/api/v1/reactions`;
-	const response = await fetcher(upstream, {
+	const response = await fetchUpstreamSafely('remove', fetcher, upstream, {
 		method: 'DELETE',
 		headers: {
 			authorization: `Bearer ${apiKey}`,
 			accept: 'application/json',
 			'content-type': 'application/json',
+			// Same-origin self-call — see the PUT path above (Issue #440).
+			origin: upstreamOrigin,
 		},
 		body: JSON.stringify({
 			target_key: input.target,
@@ -360,6 +431,7 @@ export async function removeHomeReactionImpl(
 			value: input.value,
 		}),
 	});
+	if (response === null) return { ok: false, reason: 'upstream_error' };
 	if (response.status === 429) return { ok: false, reason: 'rate_limited' };
 	if (!response.ok) return { ok: false, reason: 'upstream_error' };
 	const payload = (await response.json()) as { deleted?: boolean };

@@ -1,0 +1,31 @@
+{
+	"advisories": {
+		"1700001": {
+			"id": 1700001,
+			"module_name": "fixture-runtime",
+			"severity": "critical",
+			"title": "Fixture advisory: request smuggling in fixture-runtime",
+			"url": "https://example.invalid/advisories/GHSA-fixt-fixt-fixt",
+			"github_advisory_id": "GHSA-fixt-fixt-fixt",
+			"vulnerable_versions": "<2.4.0",
+			"patched_versions": ">=2.4.0",
+			"cwe": "CWE-444",
+			"findings": [
+				{
+					"version": "2.3.1",
+					"paths": [".>fixture-app>fixture-runtime"],
+					"dev": false,
+					"optional": false,
+					"bundled": false
+				}
+			]
+		}
+	},
+	"metadata": {
+		"vulnerabilities": { "info": 0, "low": 0, "moderate": 0, "high": 0, "critical": 1 },
+		"dependencies": 1204,
+		"devDependencies": 1180,
+		"optionalDependencies": 24,
+		"totalDependencies": 1204
+	}
+}

@@ -1,14 +1,15 @@
 # Compatibility / layout verification
 
-> Baseline feature adoption and layout stress records for this directory.
-> Both answer "will this break for a real visitor", at different layers:
-> the first asks whether an adopted Web API / CSS exists, the second asks
-> whether the layout survives a narrow viewport, long content and a visible
-> scrollbar.
+> Browser-level compatibility records for this directory. They answer the same
+> question at different layers: does an adopted Web API / CSS exist in every engine
+> (#415), does the shipped layout survive a narrow viewport, long content and a
+> visible scrollbar (#416), and is an adoption Baseline-compatible at all (#414,
+> recorded under `standards/`).
 
 | Document | Issue | Committed screenshot |
 | --- | --- | --- |
-| Web feature adoption gate (Baseline) | #414 | `../../standards/browser-baseline.webp` |
+| Web feature adoption gate (Baseline) | #414 | `../standards/browser-baseline.webp` |
+| Multi-engine public UI matrix | #415 | `browsers-matrix.webp` |
 | Layout stress fixture (320px / long content / visible scrollbar) | #416 | `stress-story.webp` |
 
 ## Layout stress fixture (Issue #416)

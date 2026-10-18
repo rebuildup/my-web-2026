@@ -361,6 +361,85 @@ export function compareRuns(before, after) {
 	});
 }
 
+/**
+ * Measurement conditions that decide whether two captures may be read
+ * as a before/after pair.
+ *
+ * `--compare` is handed a previous `report.json` by hand, so nothing
+ * stops it being a capture from another host, another browser build,
+ * another origin, or one where the font origin was unreachable. Copying
+ * the numbers and the shift sources out of it — while the report shows
+ * only THIS capture's environment — is how a platform-specific
+ * fallback and a font that could not be reached at all get read as a
+ * code difference. These conditions are compared, and a difference is
+ * stated in the report next to the comparison.
+ *
+ * What is deliberately NOT compared: source SHA, branch, version and
+ * timestamp. Those differ by definition (that is the point of a
+ * before/after pair) and carry no measurement condition. The origin is
+ * compared by host only — the capture runs on an ephemeral local port,
+ * so a different port is not a different condition.
+ */
+const COMPARE_CONDITIONS = [
+	{
+		condition: 'browser',
+		read: (env) =>
+			`${env?.browser?.name} ${env?.browser?.version} (Playwright ${env?.browser?.playwright})`,
+	},
+	{ condition: 'browser mode', read: (env) => env?.browser?.mode },
+	{
+		condition: 'viewport',
+		read: (env) =>
+			env?.viewport
+				? `${env.viewport.width}x${env.viewport.height} @${env.viewport.deviceScaleFactor}x`
+				: null,
+	},
+	{ condition: 'font origin reachable', read: (env) => env?.fontOriginReachable ?? null },
+	{ condition: 'font delay (slow-font)', read: (env) => env?.network?.fontDelayMs ?? null },
+	{ condition: 'CPU throttle (slow-font)', read: (env) => env?.cpu?.throttleRate ?? null },
+	{ condition: 'origin host', read: (env) => originHost(env?.baseUrl) },
+	{
+		condition: 'routes',
+		read: (env) =>
+			String(env?.routes ?? '')
+				.split(',')
+				.map((r) => r.trim())
+				.filter(Boolean)
+				.sort()
+				.join(', ') || null,
+	},
+	{
+		condition: 'host OS / arch',
+		read: (env) => (env?.host ? `${env.host.platform} ${env.host.arch}` : null),
+	},
+];
+
+/** The origin's host, without the ephemeral port. */
+function originHost(baseUrl) {
+	if (!baseUrl) return null;
+	try {
+		return new URL(baseUrl).hostname;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * Every condition under which the two captures disagree.
+ *
+ * An empty list means the before/after table may be read as a
+ * comparison. A non-empty list is reported, never silently dropped:
+ * the numbers stay in the artefact, but the report says the pair is
+ * not like-for-like.
+ */
+export function compareConditionDifferences(beforeEnv, afterEnv) {
+	return COMPARE_CONDITIONS.map(({ condition, read }) => {
+		const before = read(beforeEnv);
+		const after = read(afterEnv);
+		return { condition, before, after, same: before === after };
+	}).filter((entry) => !entry.same);
+}
+
 function directionOf(key, delta) {
 	if (delta === null || delta === 0) return 'flat';
 	const { metric } = parseRunKey(key);
@@ -403,7 +482,7 @@ export function renderReportHtml(report) {
 			// screenshotted, and a capture below the fold that never
 			// loaded would quietly drop the evidence for its own row.
 			const shot = run.screenshot
-				? `<img src="./${escapeHtml(run.screenshot)}" alt="${escapeHtml(run.route)} ${escapeHtml(
+				? `<img src="./${escapeHtml(screenshotSrcUrl(run.screenshot))}" alt="${escapeHtml(run.route)} ${escapeHtml(
 						run.scenario,
 					)} screenshot" />`
 				: '';
@@ -438,7 +517,7 @@ export function renderReportHtml(report) {
 			].join('');
 		return [
 			'<h2>before / after</h2>',
-			'<p class="note">The layout-shift table is the result column, and it is a <em>per-build</em> measurement: a row either wraps or it does not on the build that was measured. A row sitting within ~1% of its wrap threshold flips between builds — the <code>/</code> baseline has been measured on both sides of it — so one before/after pair is a measurement of two builds, not a distribution over repeated runs. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. A range only covers the runs measured on both sides; <code>paired runs</code> states how many of them there were, and a metric with no paired run reads <code>n/a</code> rather than a half-pairing. Every individual row stays in <code>report.json</code>.</p>',
+			'<p class="note">The layout-shift table is the result column, and it is a <em>per-build</em> measurement: a row either wraps or it does not on the build that was measured. A row sitting within ~1% of its wrap threshold flips between builds — the <code>/</code> baseline has been measured on both sides of it — so one before/after pair is a measurement of two builds, not a distribution over repeated runs. The context table is SINGLE-RUN timing against a third-party font origin, shown as a min&ndash;max range across routes and scenarios — it is network and machine noise, not a result. A range only covers the runs measured on both sides; <code>paired runs</code> states how many of them there were, and a metric with no paired run reads <code>n/a</code> rather than a half-pairing. Every individual row stays in <code>report.json</code>. Read it together with the before-capture conditions above: a difference there makes this table a difference of conditions, not of builds.</p>',
 			table(
 				'layout shift (single run, per build)',
 				aggregated.filter((a) => a.layoutShift),
@@ -507,6 +586,86 @@ export function renderReportHtml(report) {
 		].join('');
 	})();
 
+	// The conditions of the capture passed with `--compare`. They
+	// travel with the comparison: a before/after table whose before
+	// side was measured on another host, another browser, another
+	// origin, or without a reachable font origin is a difference of
+	// conditions, and the report has to say which it is.
+	const beforeConditions = (() => {
+		if (!report.compare) return '';
+		const env = report.compare.environment ?? {};
+		const shown = (value, fallback = 'unknown') =>
+			value === null || value === undefined || value === '' ? fallback : String(value);
+		const rows = [
+			['capture', shown(report.compare.path)],
+			['captured at', shown(report.compare.capturedAt)],
+			[
+				'browser',
+				`${shown(env.browser?.name)} ${shown(env.browser?.version)} (Playwright ${shown(env.browser?.playwright)})`,
+			],
+			['mode', shown(env.browser?.mode)],
+			[
+				'viewport',
+				env.viewport
+					? `${env.viewport.width}x${env.viewport.height} @${env.viewport.deviceScaleFactor}x`
+					: 'unknown',
+			],
+			[
+				'font origin',
+				`reachable=${shown(env.fontOriginReachable)} (${shown(env.fontOriginStatus)})`,
+			],
+			[
+				'slow-font scenario',
+				`CPU x${shown(env.cpu?.throttleRate)}, font responses delayed ${shown(env.network?.fontDelayMs)} ms`,
+			],
+			[
+				'host',
+				env.host
+					? `${shown(env.host.platform)} ${shown(env.host.arch)}, ${shown(env.host.cpuModel)} x${shown(env.host.cpuCount)}`
+					: 'unknown',
+			],
+			['host memory', env.host ? `${shown(env.host.totalMemGB)} GB` : 'unknown'],
+			['origin measured', shown(env.baseUrl)],
+			['routes', shown(env.routes)],
+			[
+				'source SHA',
+				env.source
+					? `${shown(env.source.sha)}${env.source.dirty ? ' (dirty tree)' : ''}`
+					: 'unknown',
+			],
+			[
+				'branch / version',
+				env.source ? `${shown(env.source.branch)} / ${shown(env.source.version)}` : 'unknown',
+			],
+			['command', shown(report.compare.command)],
+			[
+				'arguments',
+				report.compare.argv?.length
+					? report.compare.argv.map(shellQuote).join(' ')
+					: '(none recorded)',
+			],
+		].map(([label, value]) => row(label, value));
+		const differences = report.compareConditionDifferences ?? [];
+		const warning = differences.length
+			? `<p class="warn">These measurement conditions DIFFER between the before capture and this one, so the before/after tables below are NOT a like-for-like comparison of two builds:<ul>${differences
+					.map(
+						(d) =>
+							`<li><code>${escapeHtml(d.condition)}</code>: before <code>${escapeHtml(
+								d.before === null ? 'unknown' : d.before,
+							)}</code> &rarr; after <code>${escapeHtml(d.after === null ? 'unknown' : d.after)}</code></li>`,
+					)
+					.join(
+						'',
+					)}</ul>A difference in <code>font origin reachable</code>, the browser build, the viewport, the host or the origin means at least one side did not measure the same thing, so a delta here must not be read as an effect of the change.</p>`
+			: '<p class="note">The measurement conditions of the two captures match on every compared item, so the before/after tables below compare the same thing on both sides.</p>';
+		return [
+			'<h2>before capture (--compare) conditions</h2>',
+			'<p class="note">The conditions the capture passed with <code>--compare</code> was measured under. They are recorded here because a before/after number is only evidence when both sides were taken the same way.</p>',
+			warning,
+			`<table><tbody>${rows.join('')}</tbody></table>`,
+		].join('');
+	})();
+
 	return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8" />
 <title>font first-paint measurement — ${escapeHtml(report.environment.source.sha)}</title>
@@ -530,13 +689,13 @@ export function renderReportHtml(report) {
 <body>
 <h1>font first-paint measurement (Issue #485)</h1>
 <p class="note">Measurement only — no threshold is enforced here. Budget + release gate: Issue #386.</p>
-${env.fontOriginReachable ? '' : '<p class="warn">the webfont pipeline is NOT fully reachable from this host (the stylesheet and the face it points at are both probed) — <code>baseline</code> and <code>slow-font</code> cannot exercise a real webfont swap. The <code>blocked</code> row is still valid (it aborts the origin), but treat swap timings as unavailable, not as zero.</p>'}
+${env.fontOriginReachable ? '' : '<p class="warn">the webfont pipeline is NOT fully reachable from this host (the stylesheet and the face it points at are both probed) — <code>baseline</code> and <code>slow-font</code> cannot exercise a real webfont swap. The font origin is therefore aborted in EVERY scenario, so the page never waits on a third-party stylesheet that may never answer; the rows are all platform-fallback measurements and their swap timings are unavailable, not zero.</p>'}
 <h2>environment (reproduction conditions)</h2>
 <table><tbody>
 ${row('browser', `${env.browser.name} ${env.browser.version} (Playwright ${env.browser.playwright})`)}
 ${row('mode', env.browser.mode)}
 ${row('viewport', `${env.viewport.width}x${env.viewport.height} @${env.viewport.deviceScaleFactor}x`)}
-${row('network', `no throttling; font-origin reachable=${env.fontOriginReachable} (${escapeHtml(env.fontOriginStatus)})`)}
+${row('network', `no throttling; font-origin reachable=${env.fontOriginReachable} (${escapeHtml(env.fontOriginStatus)})${env.fontOriginAbortedInEveryScenario ? '; aborted in every scenario, so no row here measured a webfont swap' : ''}`)}
 ${row('slow-font scenario', `CPU x${env.cpu.throttleRate}, font responses delayed ${env.network.fontDelayMs} ms`)}
 ${row('host', `${env.host.platform} ${env.host.arch}, ${env.host.cpuModel} x${env.host.cpuCount}`)}
 ${row('host memory', `${env.host.totalMemGB} GB`)}
@@ -549,8 +708,9 @@ ${row('captured at', report.capturedAt ?? env.capturedAt)}
 ${row('command', report.command)}
 ${report.argv?.length ? row('arguments', report.argv.map(shellQuote).join(' ')) : ''}
 </tbody></table>
+${beforeConditions}
 <h2>metrics</h2>
-<p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a blocked row has no webfont face to swap to, so its swap instant does not exist. <code>font-origin reqs</code> counts only font-origin requests that delivered a response; an aborted one is counted separately so it can never read as a font that was fetched. In Chromium the faces the CSS font loader fetches do not appear in this buffer at all, so the counted request is the Google Fonts stylesheet.</p>
+<p class="note"><code>n/a</code> means the metric was never observed, not that it measured zero — a row whose font origin was aborted has no webfont face to swap to, so its swap instant does not exist. The <code>fallback</code> verdict is reported for every row that ran with the font origin aborted: the <code>blocked</code> scenario, and — when the pre-flight probe found the origin unusable — every other scenario too. <code>font-origin reqs</code> counts only font-origin requests that delivered a response; an aborted one is counted separately so it can never read as a font that was fetched. In Chromium the faces the CSS font loader fetches do not appear in this buffer at all, so the counted request is the Google Fonts stylesheet.</p>
 <table><thead><tr><th>route</th><th>scenario</th><th>FCP ms</th><th>LCP ms</th><th>CLS</th><th>font swap ms</th><th>font-origin reqs</th><th>font-origin reqs aborted</th><th>fallback</th><th>screenshot</th></tr></thead>
 <tbody>
 ${runs}
@@ -784,8 +944,27 @@ export function screenshotFileName(route, scenarioName) {
 			// included, so an encoded route cannot collide with a literal
 			// one. Undo it after the underscore pass; that pass only ever
 			// produces `/` and `_`, so nothing it writes is decoded here.
-			.replaceAll(/[^A-Za-z0-9_.-]/g, (c) => encodeURIComponent(c)) || '_root';
+			.replaceAll(/[^A-Za-z0-9_.-]/gu, (c) => encodeURIComponent(c)) || '_root';
 	return `${stem}-${scenarioName}.png`;
+}
+
+/** The URL the report's `<img src>` must use for one capture file.
+ *
+ *  `screenshotFileName` percent-encodes what a route may carry that a
+ *  URL path cannot, so the file on disk is
+ *  `_about%3Fvariant%3Da-baseline.png`. Repeating that string verbatim
+ *  in an `src` does NOT point at the file: URL resolution decodes the
+ *  path, `%3F` becomes `?`, and the browser asks for
+ *  `_about?variant=a-baseline.png` — a file that does not exist, so the
+ *  evidence silently renders as a broken image. The literal `%` in the
+ *  file name therefore has to be encoded again (`%25`) so the decode
+ *  lands back on the character the file actually carries.
+ *
+ *  Only characters outside the URL "unreserved" set are touched, which
+ *  is the whole difference between the name on disk and the name in the
+ *  attribute: `decodeURIComponent` of the result is the file name. */
+export function screenshotSrcUrl(fileName) {
+	return String(fileName).replaceAll(/[^A-Za-z0-9._~-]/gu, (c) => encodeURIComponent(c));
 }
 
 /** The face URL a Google Fonts stylesheet points at, or null. */
@@ -895,7 +1074,7 @@ async function main(argv) {
 
 	if (!origin.reachable) {
 		process.stderr.write(
-			`[font-first-paint] WARNING: ${origin.status} — the webfont pipeline is not fully reachable from this host.\n  baseline / slow-font rows will report the platform fallback, not a real webfont swap.\n`,
+			`[font-first-paint] WARNING: ${origin.status} — the webfont pipeline is not fully reachable from this host.\n  baseline / slow-font rows will report the platform fallback, not a real webfont swap, and the font origin is aborted in EVERY scenario so no navigation waits on a stylesheet that may never answer.\n`,
 		);
 	}
 
@@ -916,6 +1095,12 @@ async function main(argv) {
 						// happen, so waiting for one would only add the
 						// timeout to every run.
 						expectSwap: origin.reachable && !scenario.blocked,
+						// An unusable origin aborts every scenario, not
+						// only `blocked`: the page would otherwise wait on
+						// a third-party stylesheet that may never answer
+						// and never reach the fallback report its warning
+						// promises.
+						originReachable: origin.reachable,
 					}),
 				);
 			}
@@ -949,6 +1134,10 @@ async function main(argv) {
 			viewport: { ...VIEWPORT, deviceScaleFactor: 1 },
 			fontOriginReachable: origin.reachable,
 			fontOriginStatus: origin.status,
+			// True when every run aborted the font origin because the
+			// probe failed, so a reader knows the swap timings are absent
+			// by construction rather than by chance.
+			fontOriginAbortedInEveryScenario: !origin.reachable,
 			network: {
 				throttling: 'none (default Chromium) except the slow-font scenario font delay',
 				fontDelayMs: options.fontDelayMs,
@@ -963,6 +1152,25 @@ async function main(argv) {
 	if (options.compare) {
 		const before = JSON.parse(await readFile(resolve(repoRoot, options.compare), 'utf8'));
 		report.comparison = compareRuns(before, report);
+		// The comparison carries the before capture's own conditions and
+		// invocation, so a pair measured under different conditions can
+		// be told apart from a pair measured the same way twice.
+		report.compare = {
+			path: options.compare,
+			capturedAt: before.capturedAt ?? null,
+			command: before.command ?? null,
+			argv: Array.isArray(before.argv) ? before.argv : [],
+			environment: before.environment ?? null,
+		};
+		report.compareConditionDifferences = compareConditionDifferences(
+			before.environment,
+			report.environment,
+		);
+		for (const difference of report.compareConditionDifferences) {
+			process.stderr.write(
+				`[font-first-paint] WARNING: the --compare capture was measured under different conditions — ${difference.condition}: before ${difference.before ?? 'unknown'}, after ${difference.after ?? 'unknown'}. The before/after numbers are not a like-for-like comparison.\n`,
+			);
+		}
 	}
 
 	const jsonPath = join(outDir, 'report.json');
@@ -993,7 +1201,16 @@ async function main(argv) {
 	return 0;
 }
 
-async function measureRun({ browser, baseUrl, route, scenario, options, outDir, expectSwap }) {
+async function measureRun({
+	browser,
+	baseUrl,
+	route,
+	scenario,
+	options,
+	outDir,
+	expectSwap,
+	originReachable,
+}) {
 	const context = await browser.newContext({
 		viewport: VIEWPORT,
 		deviceScaleFactor: 1,
@@ -1001,15 +1218,21 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir, 
 	const page = await context.newPage();
 	await page.addInitScript(collectorScript, WEBFONT_FAMILIES);
 
-	const delayMs = scenario.name === 'slow-font' ? options.fontDelayMs : scenario.delayMs;
-	if (scenario.blocked || delayMs > 0) {
+	const requestedDelayMs = scenario.name === 'slow-font' ? options.fontDelayMs : scenario.delayMs;
+	const plan = fontOriginPlan({
+		blocked: scenario.blocked,
+		reachable: originReachable,
+		delayMs: requestedDelayMs,
+	});
+	const delayMs = plan.delayMs;
+	if (plan.abort || delayMs > 0) {
 		await page.route(FONT_ORIGIN_PATTERNS[0], async (route) => {
-			if (scenario.blocked) return route.abort('failed');
+			if (plan.abort) return route.abort('failed');
 			await sleep(delayMs);
 			return route.continue();
 		});
 		await page.route(FONT_ORIGIN_PATTERNS[1], async (route) => {
-			if (scenario.blocked) return route.abort('failed');
+			if (plan.abort) return route.abort('failed');
 			await sleep(delayMs);
 			return route.continue();
 		});
@@ -1061,7 +1284,7 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir, 
 				// observe.
 			});
 	}
-	await page.waitForTimeout(scenario.blocked ? BLOCKED_SETTLE_MS : SETTLE_MS);
+	await page.waitForTimeout(plan.abort ? BLOCKED_SETTLE_MS : SETTLE_MS);
 
 	const observed = await page.evaluate(
 		([selector, families]) => {
@@ -1133,7 +1356,7 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir, 
 
 	const shift = cumulativeLayoutShift(observed.clsEntries ?? []);
 	const fonts = summarizeFontResources(observed.fontResources ?? []);
-	const fallback = scenario.blocked
+	const fallback = plan.abort
 		? evaluateFallbackReadability({
 				probes: observed.probes ?? [],
 				webFontAvailable: observed.webFontAvailable,
@@ -1153,7 +1376,11 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir, 
 		route,
 		scenario: scenario.name,
 		conditions: {
-			fontOriginBlocked: scenario.blocked,
+			// True for the `blocked` scenario AND for every scenario when
+			// the pre-flight probe found the origin unusable, so the row
+			// says which of the two it was.
+			fontOriginBlocked: plan.abort,
+			fontOriginBlockedBy: plan.reason,
 			fontDelayMs: delayMs,
 			cpuThrottleRate: scenario.cpuThrottle,
 			fontStatus: observed.fontStatus,
@@ -1185,6 +1412,31 @@ async function measureRun({ browser, baseUrl, route, scenario, options, outDir, 
 		fallback,
 		screenshot,
 	};
+}
+
+/**
+ * Whether one run aborts the font origin, and how long a delivered
+ * response is held instead.
+ *
+ * `blocked` is the scenario that asks for it. `reachable: false` is the
+ * pre-flight probe's verdict, and it has to abort in EVERY scenario:
+ * the page's async stylesheet is `media="print"`, which does not block
+ * rendering but does keep the document's `load` event pending, so an
+ * origin that accepts the connection and never answers makes
+ * `page.goto(..., { waitUntil: 'load' })` run into its 60 s timeout
+ * before the bounded `document.fonts.ready` wait — the code path that
+ * reports a swap as unavailable — is ever reached. The warning the
+ * script prints for an unreachable origin therefore promises a
+ * platform-fallback report; aborting is what makes that report exist
+ * instead of an exception.
+ *
+ * `delayMs` is the per-response hold for the `slow-font` scenario, which
+ * is meaningless once the request is aborted.
+ */
+export function fontOriginPlan({ blocked, reachable, delayMs }) {
+	if (blocked) return { abort: true, delayMs: 0, reason: 'scenario' };
+	if (!reachable) return { abort: true, delayMs: 0, reason: 'unreachable-probe' };
+	return { abort: false, delayMs: delayMs > 0 ? delayMs : 0, reason: null };
 }
 
 function sleep(ms) {

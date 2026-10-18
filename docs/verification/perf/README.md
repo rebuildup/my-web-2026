@@ -28,7 +28,7 @@ is deliberately **not** wired into `validate:fast` / `validate:integration`
 
 | File | What it is |
 | --- | --- |
-| `font-firstpaint-snapshot.webp` | The committed measurement report: environment block (including the exact invocation it was produced by), per-run metrics, layout-shift attribution for this capture **and for the before capture it was compared against**, before/after tables, and the per-scenario page captures. The Issue names `font-firstpaint-snapshot.png`; the committed file is the WebP conversion of that capture (1280x3327, 256 KB, sharp WebP at quality 80 — the intermediate PNG is never committed) |
+| `font-firstpaint-snapshot.webp` | The committed measurement report: environment block (including the exact invocation it was produced by), per-run metrics, layout-shift attribution for this capture **and for the before capture it was compared against**, before/after tables, and the per-scenario page captures. The Issue names `font-firstpaint-snapshot.png`; the committed file is the WebP conversion of that capture (1280x3327, 256 KB, sharp WebP at quality 80 — the intermediate PNG is never committed). It was rendered by the script at commit `7acb11d`; the report-rendering fixes landed after that commit and are listed under “Artefact provenance” below |
 
 ### What is measured
 
@@ -52,7 +52,14 @@ per route and scenario:
   it references and asks for that too. Checking only the stylesheet host
   would report a run as a real webfont swap on a network that serves the
   CSS and blocks the font file, which is precisely the state in which no
-  swap can ever be observed,
+  swap can ever be observed. When the probe says the origin is unusable,
+  **every** scenario aborts it, not only `blocked`: the page's async
+  stylesheet is `media="print"`, so it never blocks rendering but it does
+  hold the document's `load` event, and an origin that accepts the
+  connection and never answers would otherwise make the navigation run
+  into its timeout before the bounded `document.fonts.ready` wait — i.e.
+  the platform-fallback report the warning promises would never be
+  written,
 - layout-shift **sources** — the element and rect pairs that moved, for
   this capture and for the before capture passed with `--compare`,
 - a fallback-readability verdict over real text probes in the blocked
@@ -89,6 +96,17 @@ before it can report anything — and a swap that never lands stays `n/a`.
 The report records the invocation that produced it (origin, routes,
 `--compare` input, timestamp, command line) next to the numbers, so two
 captures of the same command on two ports can never be confused.
+
+A `--compare` pair carries the **before** capture's conditions and
+invocation too, not only its numbers: browser build and mode, viewport,
+font-origin reachability, CPU throttle, font delay, origin host, routes,
+host OS/arch, source SHA and command line. Every condition under which
+the two captures disagree is printed as a warning next to the
+before/after tables, because a before/after number measured on another
+host, with another browser, or on an origin whose font pipeline was
+unreachable is a difference of **conditions**, not of builds. Source SHA,
+branch and the ephemeral preview port are deliberately not compared — they
+differ by definition between a before and an after capture.
 
 The script exits `0` on a completed measurement and non-zero only when
 the measurement is impossible (no browser, unreachable base URL, a route
@@ -155,6 +173,25 @@ than the SHA it was built from on purpose: the script that produced the
 numbers is the thing a reader has to trust to be the same, and that is
 provable, while the built state is documented by `dirty: true` plus the
 restore recipe above.
+
+#### Artefact provenance
+
+The committed snapshot is the output of the script **as of `7acb11d`**.
+Later commits on this branch changed the report, not the measurement path
+used on a host where the font origin is reachable:
+
+| Commit | Change | Effect on the recorded numbers |
+| --- | --- | --- |
+| `7acb11d` | the capture itself (script at this commit produced `report.html`) | — |
+| after `7acb11d` | a capture file name that carries `%` (a route with `?` / `#`) is percent-encoded again in the report's `<img src>`, so the URL decodes back to the file that exists instead of a broken image | none — the recorded routes are `/` and `/about`, whose capture names contain no `%`, and their `<img src>` is byte-identical |
+| after `7acb11d` | the before capture's conditions and invocation are preserved in the report, and any condition the two captures disagree on is stated next to the comparison | none — the pair above shares browser, viewport, CPU throttle, font delay, host and routes (see the table); the section is simply absent from the already-rendered snapshot |
+| after `7acb11d` | an unreachable font origin aborts every scenario, so the navigation cannot wait on a stylesheet that never answers | none — the recording host reported `stylesheet HTTP 200 + face HTTP 200`, so the probe passed and only the `blocked` scenario aborted, exactly as before |
+
+Re-running the recipe above reproduces the numbers with the current
+script; the snapshot itself is not re-rendered, so it stays the record of
+the `7acb11d` run. Folding the newer report layout into the committed
+image means re-capturing both sides — the same recipe, re-run — which is
+a deliberate follow-up, not something this branch claims.
 
 Desktop viewport only. A mobile matrix is not measured here — it belongs
 with the Core Web Vitals budgets in Issue #386, which owns device and

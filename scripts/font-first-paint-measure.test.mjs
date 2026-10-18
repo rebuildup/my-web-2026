@@ -12,11 +12,13 @@ import {
 	SWAP_WAIT_TIMEOUT_MS,
 	WEBFONT_FAMILIES,
 	aggregateComparison,
+	compareConditionDifferences,
 	compareRuns,
 	cumulativeLayoutShift,
 	evaluateFallbackReadability,
 	fetchWithDeadline,
 	fontFaceUrl,
+	fontOriginPlan,
 	formatMetric,
 	isCompletedRequest,
 	parseArgs,
@@ -24,6 +26,7 @@ import {
 	renderReportHtml,
 	round3,
 	screenshotFileName,
+	screenshotSrcUrl,
 	shellQuote,
 	summarizeFontResources,
 } from './font-first-paint-measure.mjs';
@@ -108,6 +111,41 @@ describe('font-first-paint-measure — measurement contract constants', () => {
 		// caused, which is the one thing this ticket measures.
 		assert.ok(SWAP_WAIT_TIMEOUT_MS > SETTLE_MS);
 		assert.ok(SETTLE_MS > BLOCKED_SETTLE_MS);
+	});
+});
+
+describe('font-first-paint-measure — fontOriginPlan', () => {
+	it('aborts the origin in every scenario when the pre-flight probe failed', () => {
+		// The page's async stylesheet is `media="print"`: it does not
+		// block rendering, but it does keep the document's `load` event
+		// pending. An origin that accepts the connection and never
+		// answers therefore makes `page.goto(..., { waitUntil: 'load' })`
+		// hit its 60 s timeout before the bounded `document.fonts.ready`
+		// wait runs — so the platform-fallback report the warning
+		// promises was never produced. Aborting is what produces it.
+		for (const blocked of [false, true]) {
+			const plan = fontOriginPlan({ blocked, reachable: false, delayMs: 1500 });
+			assert.equal(plan.abort, true);
+			// A held response is meaningless once the request is aborted.
+			assert.equal(plan.delayMs, 0);
+			assert.equal(plan.reason, blocked ? 'scenario' : 'unreachable-probe');
+		}
+	});
+
+	it('leaves baseline alone when the origin is reachable', () => {
+		assert.deepEqual(fontOriginPlan({ blocked: false, reachable: true, delayMs: 0 }), {
+			abort: false,
+			delayMs: 0,
+			reason: null,
+		});
+	});
+
+	it('delays font responses, not aborts them, for slow-font on a reachable origin', () => {
+		assert.deepEqual(fontOriginPlan({ blocked: false, reachable: true, delayMs: 1500 }), {
+			abort: false,
+			delayMs: 1500,
+			reason: null,
+		});
 	});
 });
 
@@ -230,6 +268,32 @@ describe('font-first-paint-measure — parseArgs', () => {
 			screenshotFileName('/a?b', 'baseline'),
 			screenshotFileName('/a%3Fb', 'baseline'),
 		);
+	});
+
+	it('escapes the percent in the file name when it becomes a URL', () => {
+		// The file on disk is `_about%3Fvariant%3Da-baseline.png`. That
+		// string cannot be repeated in an `<img src>`: URL resolution
+		// percent-decodes the path, so `%3F` becomes `?` and the browser
+		// looks for `_about?variant=a-baseline.png` — a file that does
+		// not exist, i.e. the evidence renders as a broken image. The
+		// literal `%` has to be encoded again so the decode lands back
+		// on the character the file name carries.
+		const file = screenshotFileName('/about?variant=a', 'baseline');
+		assert.equal(file, '_about%3Fvariant%3Da-baseline.png');
+		const src = screenshotSrcUrl(file);
+		assert.equal(src, '_about%253Fvariant%253Da-baseline.png');
+		// The contract is a round trip: what the URL decodes to is the
+		// file name on disk, character for character.
+		assert.equal(decodeURIComponent(src), file);
+		// An unreserved-only name is already its own URL.
+		assert.equal(screenshotSrcUrl('_about-slow-font.png'), '_about-slow-font.png');
+		assert.equal(screenshotSrcUrl('_-blocked.png'), '_-blocked.png');
+	});
+
+	it('escapes a space or a quote in a capture name instead of breaking the attribute', () => {
+		const src = screenshotSrcUrl('a b"c<d>.png');
+		assert.equal(src, 'a%20b%22c%3Cd%3E.png');
+		assert.equal(decodeURIComponent(src), 'a b"c<d>.png');
 	});
 });
 
@@ -499,6 +563,82 @@ describe('font-first-paint-measure — compareRuns', () => {
 	});
 });
 
+describe('font-first-paint-measure — compareConditionDifferences', () => {
+	const env = (overrides = {}) => ({
+		baseUrl: 'http://127.0.0.1:15907',
+		routes: '/, /about',
+		browser: {
+			name: 'chromium',
+			version: '153.0.8010.12',
+			playwright: '^1.63.0',
+			mode: 'headless',
+		},
+		viewport: { width: 1280, height: 800, deviceScaleFactor: 1 },
+		fontOriginReachable: true,
+		network: { fontDelayMs: 1500 },
+		cpu: { throttleRate: 4 },
+		host: { platform: 'darwin', arch: 'arm64' },
+		source: { sha: '7acb11d', dirty: true, branch: '485', version: 'x.y.z-fixture' },
+		...overrides,
+	});
+
+	it('reports no difference when both captures measured the same way', () => {
+		// The source SHA and the port differ by definition between a
+		// before and an after capture, and neither is a condition.
+		assert.deepEqual(
+			compareConditionDifferences(
+				env({ source: { sha: 'aaaaaaa', dirty: true } }),
+				env({ baseUrl: 'http://127.0.0.1:16000', source: { sha: 'bbbbbbb', dirty: false } }),
+			),
+			[],
+		);
+	});
+
+	it('names every condition under which the two captures disagree', () => {
+		const differences = compareConditionDifferences(
+			env({ host: { platform: 'darwin', arch: 'arm64' }, fontOriginReachable: false }),
+			env({ host: { platform: 'linux', arch: 'x64' } }),
+		);
+		const byCondition = Object.fromEntries(
+			differences.map((d) => [d.condition, `${d.before} -> ${d.after}`]),
+		);
+		assert.equal(byCondition['host OS / arch'], 'darwin arm64 -> linux x64');
+		// A side where the font origin was unreachable did not measure a
+		// webfont swap at all, so the swap deltas are not comparable.
+		assert.equal(byCondition['font origin reachable'], 'false -> true');
+	});
+
+	it('catches a different browser, viewport, delay, origin and route set', () => {
+		const differences = compareConditionDifferences(
+			env(),
+			env({
+				browser: {
+					name: 'chromium',
+					version: '141.0.0.0',
+					playwright: '^1.60.0',
+					mode: 'headless',
+				},
+				viewport: { width: 390, height: 844, deviceScaleFactor: 2 },
+				network: { fontDelayMs: 3000 },
+				cpu: { throttleRate: 6 },
+				baseUrl: 'http://localhost:3000',
+				routes: '/',
+			}),
+		);
+		const conditions = differences.map((d) => d.condition);
+		for (const expected of [
+			'browser',
+			'viewport',
+			'font delay (slow-font)',
+			'CPU throttle (slow-font)',
+			'origin host',
+			'routes',
+		]) {
+			assert.ok(conditions.includes(expected), `${expected} missing from ${conditions.join(', ')}`);
+		}
+	});
+});
+
 describe('font-first-paint-measure — renderReportHtml', () => {
 	const report = {
 		command: 'pnpm run perf:fonts:measure',
@@ -597,7 +737,10 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		const html = renderReportHtml(report);
 		assert.match(html, /webfont pipeline is NOT fully reachable/);
 		assert.match(html, /the stylesheet and the face it points at are both probed/);
-		assert.match(html, /treat swap timings as unavailable, not as zero/);
+		// An unusable origin aborts every scenario, so the report is still
+		// produced and no row claims a webfont swap.
+		assert.match(html, /aborted in EVERY scenario/);
+		assert.match(html, /never waits on a third-party stylesheet/);
 	});
 
 	it('states that this is a measurement and not a gate', () => {
@@ -789,6 +932,88 @@ describe('font-first-paint-measure — renderReportHtml', () => {
 		});
 		assert.doesNotMatch(html, /<img src=x/);
 		assert.match(html, /&lt;img src=x/);
+	});
+
+	it('points a screenshot src at the file that exists', () => {
+		const html = renderReportHtml({
+			...report,
+			runs: [
+				{
+					...report.runs[0],
+					route: '/about?variant=a',
+					screenshot: '_about%3Fvariant%3Da-blocked.png',
+				},
+			],
+		});
+		// A verbatim copy of the file name would decode `%3F` back to `?`
+		// and the browser would look for `_about?variant=a-blocked.png`.
+		assert.match(html, /<img src="\.\/_about%253Fvariant%253Da-blocked\.png"/);
+		const src = html.match(/<img src="([^"]+)"/)[1].replace('./', '');
+		assert.equal(decodeURIComponent(src), '_about%3Fvariant%3Da-blocked.png');
+	});
+
+	it('keeps the before-capture conditions with the before/after numbers', () => {
+		const beforeEnvironment = {
+			...report.environment,
+			browser: { ...report.environment.browser, version: '141.0.7000.0' },
+			fontOriginReachable: true,
+			source: { sha: 'aaaaaaa', dirty: true, branch: '485', version: '9.9.9-fixture' },
+		};
+		const html = renderReportHtml({
+			...report,
+			compare: {
+				path: '.tmp/font-first-paint/before/report.json',
+				capturedAt: '2026-10-17T23:00:00.000Z',
+				command: "pnpm run perf:fonts:measure -- '--no-screenshots'",
+				argv: ['--no-screenshots'],
+				environment: beforeEnvironment,
+			},
+			compareConditionDifferences: compareConditionDifferences(
+				beforeEnvironment,
+				report.environment,
+			),
+		});
+		assert.match(html, /before capture \(--compare\) conditions/);
+		assert.match(
+			html,
+			/<th scope="row">capture<\/th><td>\.tmp\/font-first-paint\/before\/report\.json/,
+		);
+		assert.match(html, /<th scope="row">captured at<\/th><td>2026-10-17T23:00:00\.000Z/);
+		assert.match(html, /<th scope="row">browser<\/th><td>chromium 141\.0\.7000\.0/);
+		assert.match(html, /<th scope="row">source SHA<\/th><td>aaaaaaa \(dirty tree\)/);
+		assert.match(html, /<th scope="row">arguments<\/th><td>'--no-screenshots'/);
+		// The after side's own SHA stays in the environment table above.
+		assert.match(html, /<th scope="row">source SHA<\/th><td>abc1234/);
+		// A different browser build is stated, not assumed comparable.
+		assert.match(html, /these measurement conditions DIFFER/i);
+		assert.match(html, /<code>browser<\/code>: before <code>chromium 141\.0\.7000\.0/);
+	});
+
+	it('says the conditions match when they do', () => {
+		const html = renderReportHtml({
+			...report,
+			compare: {
+				path: '.tmp/font-first-paint/before/report.json',
+				capturedAt: '2026-10-17T23:00:00.000Z',
+				command: 'pnpm run perf:fonts:measure',
+				argv: [],
+				environment: {
+					...report.environment,
+					source: { ...report.environment.source, sha: 'aaaaaaa' },
+				},
+			},
+			compareConditionDifferences: [],
+		});
+		assert.match(html, /measurement conditions of the two captures match/);
+		assert.doesNotMatch(html, /these measurement conditions DIFFER/i);
+		// A `--compare` input that recorded no arguments must not print
+		// `undefined`.
+		assert.match(html, /<th scope="row">arguments<\/th><td>\(none recorded\)/);
+		assert.doesNotMatch(html, /undefined/);
+	});
+
+	it('omits the before-conditions block when there is no comparison input', () => {
+		assert.doesNotMatch(renderReportHtml(report), /before capture \(--compare\) conditions/);
 	});
 
 	it('never interpolates a metric value raw', () => {

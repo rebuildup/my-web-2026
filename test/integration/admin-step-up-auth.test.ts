@@ -106,6 +106,24 @@ async function bootstrapAdmin(): Promise<void> {
 }
 
 /**
+ * Each call presents a distinct synthetic client IP from the TEST-NET-2
+ * documentation range (RFC 5737, never routable).
+ *
+ * Why: `/sign-in/email` is throttled per client IP — 3 attempts per 10 s
+ * (Issue #443). Without a per-call IP this file would share the localhost
+ * fallback bucket and its six sign-ins would trip the throttle instead of
+ * exercising the step-up gate. The throttle itself is asserted
+ * deliberately in `test/integration/auth-login-hardening.test.ts`.
+ */
+let signInIpCounter = 0;
+
+function nextSignInIp(): string {
+	signInIpCounter += 1;
+	// 198.51.100.0/24 — TEST-NET-2, reserved for documentation.
+	return `198.51.100.${signInIpCounter}`;
+}
+
+/**
  * Sign in through the Worker entrypoint and resolve the session the way
  * the server functions do (`getCurrentHeaders` → Better Auth). Only the
  * cookie value is passed around; it is never printed or asserted on.
@@ -113,7 +131,7 @@ async function bootstrapAdmin(): Promise<void> {
 async function signInAsAdmin(): Promise<{ headers: Headers; session: AdminSession }> {
 	const res = await SELF.fetch('https://example.com/api/v1/auth/sign-in/email', {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': nextSignInIp() },
 		body: JSON.stringify({ email: FIXTURE_EMAIL, password: FIXTURE_PASSWORD }),
 	});
 	if (res.status !== 200) throw new Error(`fixture sign-in failed: ${res.status}`);

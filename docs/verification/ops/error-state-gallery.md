@@ -64,9 +64,9 @@ Issue は `.png` 経路を指定しているが、本リポジトリで **初め
 **SSR ハイドレーション payload `$_TSR` には、失敗した match の `error.message` が乗る。**
 
 - 経路: TanStack Router の `Match.tsx` が match state を payload に載せる際、フレームワーク同梱の `ShallowErrorPlugin` が `Error` を `{ message }` のみに直列化する（`NODE_ENV` による分岐は無い）。
-- つまり **stack と `cause` は出ないが、message は page source に出る**。`D1_ERROR: no such table: portfolio_project` のような binding 詳細がこれに当たる。
+- つまり **stack と `cause` は出ないが、message は page source に出る**。どの message が乗るかは loader の throw 契約に依存する。`release-0-6-3` で merge した Issue #457 以降、`/portfolio/**` と `/about` は `src/portfolio/public-errors.ts` で `portfolio_unavailable (ref=…)` に正規化されるため、この経路では binding 詳細は乗らない。正規化していない loader は依然として `D1_ERROR: no such table: …` のような runtime message を載せうる。
 - component 側から除去する手段は無い。唯一の手段は custom `startInstance` だが、AGENTS.md §2 により ADR 無しでは導入不可。
-- `test/integration/error-states.test.ts` が両方を固定している。(a) 訪問者が読む document には一切含まれない / (b) payload は `new Error("<message>")` 1 個のみで stack を含まない。将来フレームワークが redaction を入れたら、または payload に情報を増やしたら、このテストが落ちる。
+- `test/integration/error-states.test.ts` が両方を固定している。(a) 訪問者が読む document には一切含まれない / (b) payload は `new Error("<message>")` 1 個のみで stack を含まず、`/portfolio/<unknown>` では #457 の redaction 契約どおり `portfolio_unavailable (ref=<16 hex>)` になる。将来フレームワークが payload に情報を増やしたら、または redaction 境界が失われたら、このテストが落ちる。
 - SSR render 失敗ではこの例外すら残らない。React が出す `data-msg` / `data-stck` 付き error template を含む document 全体を `src/server.ts` が fallback に置き換えるため、message も stack も served HTML に入らない（§5.1 で実測）。
 
 ## 4. 外部通信と依存の監査
@@ -152,7 +152,7 @@ live の throw を commit した route で常時再現することはしない�
 
 | # | 内容 | なぜこの Issue で閉じないか |
 | --- | --- | --- |
-| 1 | `$_TSR` payload に `error.message` が乗る（§3） | component からは除去不能。loader 側で throwable を正規化するか、ADR を伴う framework レベルの変更が必要 |
+| 1 | `$_TSR` payload に `error.message` が乗る（§3） | component からは除去不能。`/portfolio/**` と `/about` は #457 で正規化済みだが、残る loader は個別に throwable を正規化するか、ADR を伴う framework レベルの変更が必要 |
 | 2 | loader 失敗の response status を 503 にしたい | 外部契約の変更（monitoring / cache / retry 挙動に影響）。router レベルの設計判断が要る |
 | 3 | `DependencyFailureState` の呼び出し元が無い | promoted な外部 integration が存在しないため、page レベルで upstream 失敗を報告する route が無い。contract / story / test として出荷し、捏造した失敗経路には繋いでいない |
 | 4 | 依存表（§4）の手動同期 | loader 変更と同一 commit での更新が運用ルール。自動生成は現 roadmap 外 |

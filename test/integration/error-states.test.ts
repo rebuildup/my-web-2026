@@ -158,16 +158,21 @@ describe('failure surfaces over the real SSR pipeline (Issue #501)', () => {
 		// the SSR hydration payload `$_TSR` embeds the failed match's
 		// `error.message` through TanStack's `ShallowErrorPlugin`. Nothing this
 		// Issue owns renders it, and the stack / `cause` never serialise — but
-		// the message IS in the page source. Pinning it here means a framework
-		// upgrade that starts redacting it (or starts shipping more) fails a
-		// test instead of silently changing the published-information surface.
+		// the message IS in the page source. Since Issue #457 the portfolio
+		// read throws `portfolio_unavailable (ref=…)` from
+		// `src/portfolio/public-errors.ts`, so the pinned message is the
+		// repo-authored redaction, not the D1 failure. Pinning it here means a
+		// framework upgrade that starts shipping more (or a lost redaction
+		// boundary) fails a test instead of silently changing the
+		// published-information surface.
 		const { html } = await fetchHtml(`/portfolio/${UNKNOWN_PROJECT_SLUG}`);
 		const payload = hydrationPayload(html);
 		// `ShallowErrorPlugin` serialises exactly `{ message }`: the payload
 		// carries one `new Error("…")` whose argument is the loader's message
 		// and nothing else.
 		const serialized = /new Error\((".*?")\)/.exec(payload)?.[1];
-		expect(serialized).toBe('"D1_ERROR: no such table: portfolio_project: SQLITE_ERROR"');
+		expect(serialized).toMatch(/^"portfolio_unavailable \(ref=[0-9a-f]{16}\)"$/);
+		expect(serialized).not.toMatch(/D1_ERROR|no such table|SQLITE|portfolio_project/);
 		expect([...payload.matchAll(/new Error\(/g)]).toHaveLength(1);
 		// No stack frames and no nested `cause` travel with it.
 		expect(payload).not.toMatch(/\n\s+at /);

@@ -438,13 +438,19 @@ Exit 1 means one of two things: an interpolated statement, or an
 `SQL_STRUCTURE_ALLOWLIST` entry the scan never reached (dead
 configuration). Adding an entry is a reviewable decision: it must name
 the file, the interpolated identifier, and why the value cannot carry
-user input. The single current entry is `cursorPredicate` in
-`src/portfolio/load.ts` — a fixed chain of `?` placeholders whose
-components are all bound — and it is **live** only because that file
-passes its list statement to `prepare()` inline. Write the statement
-inline; a `const sql = …` in front of it hides the interpolation from
-the gate, and the gate then fails on the unreachable entry rather than
-letting it rot.
+user input. The current entries all live in `src/portfolio/load.ts`
+and are **structure, never data**:
+
+| Identifier | Shape |
+| --- | --- |
+| `cursorPredicate` | a fixed chain of `?` placeholders (or the empty string), chosen by whether a cursor decoded; every cursor component is still bound |
+| `linkPlaceholders` | a `?N` chain whose length is the id chunk size (Issue #491 batched link read); every project id is bound |
+| `mediaPlaceholders` | the same chain for the batched media read |
+
+They are **live** only because that file passes its statements to
+`prepare()` inline. Write the statement inline; a `const sql = …` in
+front of it hides the interpolation from the gate, and the gate then
+fails on the unreachable entry rather than letting it rot.
 
 ### Known unscanned inventory
 

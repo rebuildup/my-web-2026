@@ -91,11 +91,11 @@ employment-facing Portfolio surface の data model と publication contract を�
 
 **第三者 API を呼ぶ表示コンポーネントの信頼性契約**を所有する。
 
-- `contract.ts` — snapshot の公開型と状態遷移の純関数。timeout、stale timestamp、非破壊 fallback、breaker（遮断）状態、retry cadence。失敗しても前回の値は破棄されず、確定した試行が `loading` を残さないことが型と関数で保証される
+- `contract.ts` — snapshot の公開型と状態遷移の純関数。timeout、stale timestamp、非破壊 fallback、breaker（遮断）状態、retry cadence。失敗しても前回の値は破棄されず、確定した試行が `loading` を残さないことは関数と `reader.ts` が保証する（型だけでは強制しない）
 - `timeout.ts` — **outbound リクエスト発行はここ 1 箇所**。応答サイズ上限、status → 公開 failure reason、credential header の拒否
 - `reader.ts` — 唯一の可変状態（in-flight attempt・breaker・最終成功値）。同時呼び出しは 1 回へ合流し、reader 自身が deadline を強制する。snapshot が公開した `retryAt` より前の試行は上流に到達しない（宣言した cadence は守られる）。**policy の解決もここ 1 箇所**（`reader.policy` は adapter へ試行ごとに渡す同一オブジェクト）
 - `github.ts` — アダプタ 1 件。公開・未認証の read 1 本。allowlist 写像なので未宣言フィールドは表示に到達しない。`accept` のような source 固有の header は adapter 側が持ち、transport は持たない。**policy は持たない**（解決済みのものを reader から受け取るので、`reader.policy` の境界と transport が強制する境界が二重設定で食い違わない）
-- `ExternalReadCard.tsx` — 6 状態を同じ component が描画する（fresh / stale / timeout fallback / 遮断中 / 初回失敗 / 読み込み中）。badge は画面上の状態だけを名前のない状態で名指ししない
+- `ExternalReadCard.tsx` — 6 状態を同じ component が描画する（fresh / stale / timeout fallback / 遮断中 / 初回失敗 / 読み込み中）。badge は画面上の状態だけを名指しし、近傍の状態の文言を借りない
 
 `home/` / `portfolio/` / `about` とは **peer obligation**。`editorial` primitive だけを消費し、`http/`（inbound boundary）や `cloudflare` binding とは結線しない。route には結線されていないため、現時点で**実行時に外部通信は発生しない**。promotion は `docs/domain/integrations.md`（capability-scoped first）に従う。
 

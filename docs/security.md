@@ -547,6 +547,66 @@ A redacted transcript of the observed responses is kept at
   its reading guide are in
   [`docs/verification/security/`](verification/security/).
 
+## Search index boundary (robots.txt is not access control)
+
+`GET /robots.txt` and `GET /sitemap.xml` are served by
+`src/http/seo/` (Issue #420: TanStack Start 1.168 cannot answer a
+non-HTML document from a route file, so they are external-boundary
+routes). What is a **contract** is `scripts/_index-boundary.mjs`: it
+classifies every route in the generated route tree as crawlable /
+indexable / `noindex`, and `pnpm run index:boundary:check` (part of
+`validate:fast`) fails when the served documents contradict it.
+Inspect the per-route intent with `pnpm run index:boundary:report`.
+
+There is deliberately **no committed `public/robots.txt`**: Cloudflare
+Static Assets answers a matching asset BEFORE the Worker runs
+(`assets.run_worker_first` is unset), so a file in `public/` would
+silently shadow the route instead of documenting it.
+
+The boundary has exactly two halves, and they are not interchangeable:
+
+- **Crawl control** — `Disallow` in `robots.txt` keeps a URL out of
+  the crawl. The served policy declares none today, and in particular
+  none for `/admin`: the admin subtree is de-indexed by its own
+  `noindex` meta, which is only readable at fetch time, so blocking
+  the crawl would leave the URLs "indexed, though blocked by
+  robots.txt". The gate rejects that combination (`noindex-blocked`)
+  rather than trusting this paragraph. Crawl budget for the machine
+  boundaries (`/api/v1`, `/webhooks`, `/oauth`, `/integrations`,
+  `/_serverFn`) is the SEO owner's call — they answer 401/404 rather
+  than serving a document, so the contract neither demands nor forbids
+  a rule for them.
+- **Index control** — `<meta name="robots" content="noindex, nofollow">`
+  is what actually removes a URL from the index. It is declared by the
+  page itself (`src/routes/admin.tsx` for the whole admin subtree, and
+  the Tool shell routes), which is why those pages stay crawlable: a
+  page a crawler cannot fetch cannot deliver its own noindex, and
+  Google then reports the URL as "Indexed, though blocked by
+  robots.txt".
+
+Neither half is authentication. `robots.txt` is a public document
+served to anonymous clients — `curl`, a browser, or a scraper ignores
+it — so the admin surface stays protected by `requireAdmin()`
+(`src/admin/auth/require-admin.ts`) and `/api/v1/*` by the API-key
+middleware. `test/integration/index-boundary.test.ts` proves the two
+are independent: a `Googlebot` User-Agent gets no privilege on
+`/admin` or `/admin/keys`, and the API boundary still answers `401`.
+
+The gate fails loudly rather than silently on: a site-wide
+`Disallow: /`, a raw-prefix `Disallow` that would shadow a sibling
+public route, an `indexable` route that a rule blocks, a route
+de-indexed by its own `noindex` meta that is also kept out of the
+crawl (`noindex-blocked` — the combination this paragraph describes),
+a crawl-blocked route that lost its rule, a `noindex` meta on a public
+route, a sitemap entry whose route does not exist (or vice versa), a
+sitemap URL that disagrees with the page's own `canonical`, a sitemap
+rendered off the canonical origin, a `Sitemap:` directive that is not
+the canonical one, and any new route that has no declared index intent.
+The meta and canonical checks strip comments before matching, so a
+declaration that only survives in a comment — or that splits
+`name: 'robots'` and `content: 'noindex'` across two entries — does
+not count.
+
 ## Dependency install lifecycle scripts
 
 `pnpm install` can execute third-party code before any repository

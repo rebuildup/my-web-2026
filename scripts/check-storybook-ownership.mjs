@@ -62,7 +62,8 @@
  * `verbatimModuleSyntax: true` erases them at build time (AGENTS.md §3
  * type-only edges — `home → http` is the registered one). Bare
  * specifiers (npm packages), `styled-system/**` (generated Panda
- * output) and asset imports are terminal leaves.
+ * output) and asset imports are terminal leaves; a *source* file
+ * outside `src/` is not a leaf and is walked like any other module.
  *
  * Exit codes: 0 = every subject passed, 1 = at least one violation,
  * 2 = the graph could not be fully resolved or the subject set could
@@ -127,6 +128,8 @@ const IMPORT_FROM = /(?:^|[\n;])\s*import\s+([\s\S]*?)\s*from\s*['"]([^'"]+)['"]
 const IMPORT_SIDE_EFFECT = /(?:^|[\n;])\s*import\s*['"]([^'"]+)['"]/g;
 const IMPORT_DYNAMIC = /\bimport\(\s*['"]([^'"]+)['"]\s*\)/g;
 const EXPORT_FROM = /(?:^|[\n;])\s*export\s+(type\s+)?([\s\S]*?)\s*from\s*['"]([^'"]+)['"]/g;
+/** A local `export { … }` clause (its `from` form is filtered out). */
+const EXPORT_LOCAL_CLAUSE = /(?:^|[\n;])\s*export\s*\{([\s\S]*?)\}/g;
 
 /** A bare identifier, used to read a declaration's reference set. */
 const IDENTIFIER = /[A-Za-z_$][\w$]*/g;
@@ -212,6 +215,7 @@ function maskNonCode(source) {
 			// that would swallow real code.
 			let end = i + 1;
 			let inClass = false;
+			let terminated = false;
 			while (end < source.length) {
 				const current = source[end];
 				if (current === '\\') {
@@ -220,11 +224,23 @@ function maskNonCode(source) {
 				}
 				if (current === '[') inClass = true;
 				else if (current === ']') inClass = false;
-				else if (current === '/' && !inClass) break;
-				else if (current === '\n') break;
+				else if (current === '/' && !inClass) {
+					terminated = true;
+					break;
+				} else if (current === '\n') break;
 				end += 1;
 			}
 			end = Math.min(end, source.length);
+			if (terminated) {
+				// The terminating `/` and its flags belong to the same
+				// literal. Leaving the `/` in place would make the next
+				// iteration read it as the *start* of another literal
+				// (`lastSignificant` is still `=`), and the rest of the
+				// line — `/home/gi.test(route.title)` — would be masked
+				// as pattern text, hiding a real edge behind it.
+				end += 1;
+				while (end < source.length && /[a-z]/i.test(source[end])) end += 1;
+			}
 			out += maskNonCodeLength(source.slice(i, end));
 			i = end;
 			continue;
@@ -338,12 +354,43 @@ function clauseRequests(clause) {
 }
 
 /**
+ * Whether an import clause ships runtime code at all.
+ *
+ * `import type … from` and `import { type A } from` are both erased by
+ * TypeScript under `verbatimModuleSyntax`, so neither is a runtime edge
+ * (`home → http` in AGENTS.md §3 may be written either way). A clause
+ * that binds anything at runtime stays a runtime edge:
+ * `import { type A, b }` binds `b`, and `import Def, { type A }`
+ * binds the default export.
+ */
+function isTypeOnlyClause(clause) {
+	// `^type\b` and not `startsWith('type')`: a default import named
+	// `types` is a runtime edge, and calling it type-only would be
+	// exactly the silent false negative this gate exists to prevent.
+	if (/^type(\s|$)/.test(clause)) return true;
+	const named = clause.match(/\{([\s\S]*)\}/);
+	if (!named) return false;
+	// A default or namespace binding outside the braces is runtime.
+	if (clause.split('{')[0].trim().length > 0) return false;
+	const entries = named[1]
+		.split(',')
+		.map((part) => part.trim())
+		.filter((part) => part.length > 0);
+	// `import {} from` binds nothing; treat it as a runtime edge.
+	if (entries.length === 0) return false;
+	return entries.every((entry) => {
+		const imported = pieces(entry)[0];
+		return imported === 'type' || imported.startsWith('type ');
+	});
+}
+
+/**
  * Parse the runtime-relevant edges of a masked module.
  *
- * `import type … from` and `export type … from` are erased by
- * TypeScript under `verbatimModuleSyntax`, so they are recorded as
- * type-only edges and never traversed. `import { type A, b }` stays a
- * runtime edge: the statement also binds `b`.
+ * `import type … from`, `import { type A } from` and `export type … from`
+ * are erased by TypeScript under `verbatimModuleSyntax`, so they are
+ * recorded as type-only edges and never traversed. `import { type A, b }`
+ * stays a runtime edge: the statement also binds `b`.
  */
 function parseEdges(masked, literals) {
 	const specifier = (token) => literalText(token, literals);
@@ -353,11 +400,7 @@ function parseEdges(masked, literals) {
 		edges.push({
 			specifier: specifier(match[2]),
 			clause,
-			// `^type\b` and not `startsWith('type')`: a default import
-			// named `types` is a runtime edge, and calling it type-only
-			// would be exactly the silent false negative this gate
-			// exists to prevent.
-			kind: /^type(\s|$)/.test(clause) ? 'import-type' : 'import',
+			kind: isTypeOnlyClause(clause) ? 'import-type' : 'import',
 			bindings: clauseBindings(clause),
 			...clauseRequests(clause),
 		});
@@ -412,6 +455,33 @@ function isServerFnSeam(edges) {
 	);
 }
 
+/**
+ * The local names a module calls the server-function factory by.
+ *
+ * `import { createServerFn as serverFn }` means the chain on disk is
+ * `serverFn(…).handler(…)`. Searching for the *imported* name would
+ * find no handler range, so every handler-only import would look
+ * client-reachable and a legitimate seam would be reported as a
+ * violation.
+ */
+function seamFactoryNames(edges) {
+	const names = new Set(['createServerFn', 'createServerFunction']);
+	for (const edge of edges) {
+		if (isTypeOnlyEdge(edge)) continue;
+		if (edge.specifier !== '@tanstack/react-start') continue;
+		const named = edge.clause.match(/\{([\s\S]*)\}/);
+		if (!named) continue;
+		for (const part of named[1].split(',')) {
+			const entry = part.trim();
+			if (entry.length === 0) continue;
+			const [imported, local] = pieces(entry);
+			if (!names.has(imported)) continue;
+			names.add(local ?? imported);
+		}
+	}
+	return [...names];
+}
+
 /** The index just past the group opened at `open`, or -1. */
 function balancedClose(text, open) {
 	let depth = 0;
@@ -432,11 +502,17 @@ function balancedClose(text, open) {
  *
  * Only the `.handler(…)` group is treated as Worker-only: everything
  * else in the chain (input validators, the method descriptor) is code
- * the client bundle carries.
+ * the client bundle carries. The factory is matched under every local
+ * name the module imports it as.
  */
-function findHandlerRanges(masked) {
+function findHandlerRanges(masked, factoryNames = ['createServerFn', 'createServerFunction']) {
+	const alternation = [...new Set(factoryNames)]
+		.sort((a, b) => b.length - a.length)
+		.map((name) => name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+		.join('|');
+	const factory = new RegExp(`\\b(?:${alternation})\\s*\\(`, 'g');
 	const ranges = [];
-	for (const match of masked.matchAll(/\bcreateServerFn(?:eration)?\s*\(/g)) {
+	for (const match of masked.matchAll(factory)) {
 		let open = masked.indexOf('(', match.index);
 		let chain = 0;
 		while (chain < 32) {
@@ -456,6 +532,32 @@ function findHandlerRanges(masked) {
 		}
 	}
 	return ranges;
+}
+
+/**
+ * The declaration name behind each local `export { local as exported }`.
+ *
+ * A seam module is keyed by its *declarations*, while an importer asks
+ * for the *exported* name: `const routeTitle = route.title; export {
+ * routeTitle as title }` must resolve `title` to `routeTitle`, or the
+ * request finds no block and the export looks client-reachable when it
+ * is not (or the reverse). `export … from` is a re-export of another
+ * module's declaration and is deliberately not mapped here.
+ */
+function exportAliasMap(masked) {
+	const aliases = new Map();
+	for (const match of masked.matchAll(EXPORT_LOCAL_CLAUSE)) {
+		if (/^from\b/.test(masked.slice(match.index + match[0].length).trimStart())) continue;
+		for (const part of match[1].split(',')) {
+			const entry = part.trim();
+			if (entry.length === 0) continue;
+			const [local, exported] = pieces(entry);
+			if (!exported) continue;
+			if (!/^[A-Za-z_$][\w$]*$/.test(local)) continue;
+			aliases.set(exported, local);
+		}
+	}
+	return aliases;
 }
 
 /**
@@ -527,7 +629,7 @@ function topLevelBlocks(masked, handlerRanges) {
  */
 function clientReachableNames(module_, requested) {
 	const reachable = new Set();
-	const queue = [...requested];
+	const queue = requested.map((name) => module_.exportAliases.get(name) ?? name);
 	while (queue.length > 0) {
 		const name = queue.shift();
 		if (reachable.has(name)) continue;
@@ -560,12 +662,13 @@ function analyzeModule(source) {
 	const { masked, literals } = maskNonCode(source);
 	const edges = parseEdges(masked, literals);
 	const seam = isServerFnSeam(edges);
-	const handlerRanges = seam ? findHandlerRanges(masked) : [];
+	const handlerRanges = seam ? findHandlerRanges(masked, seamFactoryNames(edges)) : [];
 	return {
 		edges,
 		seam,
 		handlerRanges,
 		blocks: seam ? topLevelBlocks(masked, handlerRanges) : new Map(),
+		exportAliases: exportAliasMap(masked),
 	};
 }
 
@@ -746,10 +849,24 @@ function inspectStory(root, srcRoot, storyFile) {
 			const resolved = resolveModuleFile(target);
 
 			if (!isInside(srcRoot, target)) {
-				// Outside `src/`: the generated Panda layer (`styled-system/`)
-				// or a static asset. Terminal either way.
-				if (resolved) externalModules.add(toPosix(relative(root, resolved)));
-				else unresolvedExternal.push(label);
+				// Outside `src/`: only generated output (`styled-system/`)
+				// and assets are terminal leaves. A *source* file there is
+				// still part of the preview graph, so it is walked —
+				// otherwise a story declared outside `src/` could reach a
+				// boundary through its sibling helper and pass.
+				if (!resolved) {
+					unresolvedExternal.push(label);
+					continue;
+				}
+				if (!SOURCE_EXTENSIONS.includes(extname(resolved))) {
+					externalModules.add(toPosix(relative(root, resolved)));
+					continue;
+				}
+				queue.push({
+					file: resolved,
+					path: [...path, label],
+					requested: edge.all ? null : edge.requests,
+				});
 				continue;
 			}
 
@@ -947,7 +1064,7 @@ function main(argv) {
 			'server-function seam: inside a createServerFn(…).handler(…) body the walk stops, because that code only runs on the Worker. Everything the preview imports from a seam module — including its non-handler exports and their own dependencies — IS walked, so a boundary reached through a client-reachable export is still reported.',
 			'the walk reads ES import syntax, not JSX text: a story that renders an import example as literal JSX children (`<code>import … from …</code>`) instead of a string still needs a comment, not raw text.',
 			`${WORKER_VIRTUAL_MODULES.size} Workers virtual module (${[...WORKER_VIRTUAL_MODULES].join(', ')}) cannot resolve in a browser preview at all — this check treats any direct or transitive edge to it as a violation.`,
-			'a specifier that resolves outside src/ (a generated `styled-system/` file, a static asset) is a terminal leaf; when such a path does not exist it is printed as `external` instead of failing the walk, so a stale generated path is a documented manual check.',
+			'a specifier that resolves outside src/ is a terminal leaf only when it is generated output (`styled-system/`) or an asset; a source file outside src/ is walked like any other module. When such a path does not exist it is printed as `external` instead of failing the walk, so a stale generated path is a documented manual check.',
 			'the walk is regex-based over ES import syntax; computed specifiers, CommonJS require() and non-literal import() are not inspected.',
 		],
 	};

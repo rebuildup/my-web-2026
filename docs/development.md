@@ -325,9 +325,13 @@ subject too — and fails when the closure reaches a foreign boundary:
 Excluded on purpose, and reported as `not applicable` in the output:
 the four boundary *paths* above (they are the rule's targets, not its
 subjects — a story living inside one is listed there too, not counted),
-`import type` edges (erased by `verbatimModuleSyntax`, AGENTS.md §3),
-npm packages, the generated `styled-system/` layer and static assets
-(an unresolvable path outside `src/` is printed as `external`).
+`import type` and `import { type A } from` edges (both erased by
+`verbatimModuleSyntax`, AGENTS.md §3; a clause that still binds one
+runtime name stays a runtime edge), npm packages, the generated
+`styled-system/` layer and static assets. A *source* file outside
+`src/` is not a leaf — it is walked like any other module, so an
+external story cannot reach a boundary through a sibling helper; an
+unresolvable path outside `src/` is printed as `external`).
 `cloudflare:workers` is not a path, so it appears as a violation and
 under known limitations instead.
 
@@ -341,7 +345,13 @@ client-reachable; imports confined to a `.handler(…)` body run on the
 Worker and are not walked. A named import is resolved by the export name
 it imports, so an alias (`{ ROUTE_TITLE as title }`) cannot narrow the
 request, and a default / namespace import is walked conservatively.
-The seam edge itself is printed as `seam`, not hidden.
+The seam edge itself is printed as `seam`, not hidden. The factory is
+found under whatever local name the module imports it as
+(`import { createServerFn as serverFn }`), a regular-expression
+literal is consumed whole including its terminating slash and flags,
+and a local `export { a as b }` is resolved to the declaration `a`
+before the reachability set is computed — otherwise an aliased seam
+could pass or fail for the wrong reason.
 
 ```bash
 pnpm run storybook:ownership:check

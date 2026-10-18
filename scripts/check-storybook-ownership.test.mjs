@@ -143,6 +143,169 @@ export function ReactionsWidget({ rows }: { rows: readonly ReactionAggregate[] }
 		assert.equal(readReport(result.jsonPath).verdict, 'pass');
 	});
 
+	it('treats an inline `import { type A }` clause as an allowed type-only edge', async () => {
+		// Same registered `home → http` edge as above, written with an
+		// inline type specifier instead of `import type`. The clause does
+		// not start with `type`, so a reader that only checks the clause
+		// head reports a violation the build never produces.
+		const root = await fixture({
+			'src/home/reactions/widget.stories.tsx': `import { ReactionsWidget } from './widget';
+
+export default { component: ReactionsWidget };
+`,
+			'src/home/reactions/widget.tsx': `import { type ReactionAggregate } from '../../http/reactions/schema';
+
+export function ReactionsWidget({ rows }: { rows: readonly ReactionAggregate[] }) {
+	return <ul>{rows.length}</ul>;
+}
+`,
+			'src/http/reactions/schema.ts':
+				'export interface ReactionAggregate { slug: string; count: number }\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		assert.equal(readReport(result.jsonPath).verdict, 'pass');
+	});
+
+	it('still treats a mixed `{ type A, b }` clause as a runtime edge', async () => {
+		// The conservative half of the same rule: one runtime binding
+		// ships the module, so the boundary really is in the graph.
+		const root = await fixture({
+			'src/home/reactions/widget.stories.tsx': `import { ReactionsWidget } from './widget';
+
+export default { component: ReactionsWidget };
+`,
+			'src/home/reactions/widget.tsx': `import { type ReactionAggregate, reactionsApp } from '../../http/reactions/app';
+
+export function ReactionsWidget({ rows }: { rows: readonly ReactionAggregate[] }) {
+	return <ul>{rows.length}{String(reactionsApp)}</ul>;
+}
+`,
+			'src/http/reactions/app.ts': 'export const reactionsApp = { routes: [] };\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'http');
+	});
+
+	it('keeps handler-confined imports of an aliased createServerFn seam out of the walk', async () => {
+		// `import { createServerFn as serverFn }` puts the handler chain
+		// under a local name. Reading only the imported name finds no
+		// handler range, the handler body counts as a client-reachable
+		// reference, and this legitimate seam is reported as a violation.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { addReaction } from './load';
+
+export default { component: addReaction };
+`,
+			'src/home/status/load.ts': `import { createServerFn as serverFn } from '@tanstack/react-start';
+import { env } from 'cloudflare:workers';
+import { probeCloudflareHealth } from '../../cloudflare/health';
+
+export const addReaction = serverFn({ method: 'POST' }).handler(async () => {
+\tawait probeCloudflareHealth(env.DB);
+});
+`,
+			'src/cloudflare/health.ts': 'export async function probeCloudflareHealth() {}\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'pass');
+		assert.deepEqual(report.subjects[0].violations, []);
+		assert.equal(report.subjects[0].seams.length, 1);
+	});
+
+	it('reports a client-reachable export of an aliased seam through a regex literal', async () => {
+		// Two masking hazards in one declaration: the regex must be
+		// consumed whole (terminating slash and flags included), and the
+		// factory must be found under its local name.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { isHome } from './load';
+
+export default { component: isHome };
+`,
+			'src/home/status/load.ts': `import { createServerFn as serverFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const isHome = /home/gi.test(route.title);
+
+export const addReaction = serverFn({ method: 'POST' }).handler(async () => {
+\treturn route.id;
+});
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('resolves a local `export { a as b }` alias to its declaration', async () => {
+		// The importer asks the seam for `title`; the declaration map is
+		// keyed by `routeTitle`. Without the alias the request matches no
+		// block, the route edge looks unreachable, and the story passes.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { title } from './load';
+
+export default { component: title };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+const routeTitle = route.title;
+
+export { routeTitle as title };
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+\treturn route.id;
+});
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('walks a source file outside src/ instead of treating it as a leaf', async () => {
+		// The subject set includes stories declared outside `src/`, so
+		// their closure has to be complete: a sibling helper is part of
+		// the preview graph, not a generated artefact.
+		const root = await fixture(
+			{
+				'src/home/hero.stories.tsx': 'export default {};\n',
+				'stories/legacy.stories.tsx': `import { legacyTitle } from './helpers';
+
+export default { args: { legacyTitle } };
+`,
+				'stories/helpers.ts': `import { route } from '../src/routes/index';
+
+export const legacyTitle = route.title;
+`,
+				'src/routes/index.tsx': 'export const route = { id: "/", title: "home" };\n',
+			},
+			storybookConfig(`'../src/**/*.stories.@(ts|tsx)', '../stories/**/*.stories.@(ts|tsx)'`),
+		);
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		const legacy = report.subjects.find((entry) => entry.file === 'stories/legacy.stories.tsx');
+		assert.equal(legacy.verdict, 'fail');
+		assert.equal(legacy.violations[0].boundary, 'routes');
+		assert.match(legacy.violations[0].via.join(' -> '), /helpers\.ts -> \.\.\/src\/routes\/index$/);
+	});
+
 	it('stops at the server-function seam instead of walking its handler imports', async () => {
 		const root = await fixture({
 			'src/home/status/tiles.stories.tsx': `import { StatusTiles } from './tiles';

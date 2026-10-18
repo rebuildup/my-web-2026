@@ -309,18 +309,24 @@ glob が repository 外を解決する場合は「主語集合が読めない」
   置かれた story も主語にせず、`not applicable` として列挙する。
   `cloudflare:workers` は path ではないため、この欄には現れず、違反と
   known limitations（出力の最終段）に現れる。
-- `import type` は `verbatimModuleSyntax: true` で build 時に消えるため到達と
-  みなさない（AGENTS.md §3 の type-only edge、`home → http` が登録済み）。
+- `import type` と `import { type A } from` は `verbatimModuleSyntax: true` で
+  build 時に消えるため到達とみなさない（AGENTS.md §3 の type-only edge、
+  `home → http` が登録済み）。`import { type A, b }` のように runtime binding が
+  1 つでも残る clause は runtime edge として扱う。
 - npm package / 生成物 `styled-system/` / 静的 asset は終端 leaf。`src/` 外の
-  specifier が解決できない場合は `external` として表示する（生成物の codegen 未実行
-  を CI の失敗にしないため）。
+  **source file** は leaf ではなく walk する（外部 story の helper 経由の境界到達を
+  取りこぼさないため）。`src/` 外の specifier が解決できない場合は `external` として
+  表示する（生成物の codegen 未実行を CI の失敗にしないため）。
 - **server-function seam**: `createServerFn` を value import する module は、
   preview が実際に import した export だけが client に到達する、という前提で
   扱う。クライアント側から見える export（と、それを参照する同ファイル内の宣言）
   だけを walk し、`.handler(…)` body 内の import は Worker 側でしか実行されない
   ので walk しない。named import は alias ではなく **import 元の export 名**で
   要求を解決し、default / namespace import は任意の export に触れ得るため
-  handler 外の edge を保守的に walk する。edge 自体は隠さず `seam` として報告する。
+  handler 外の edge を保守的に walk する。factory は import 句のローカル名
+  （`import { createServerFn as serverFn }` なら `serverFn`）でも検出し、
+  ローカル `export { a as b }` は宣言名 `a` へ解決してから到達集合を計算する。
+  edge 自体は隠さず `seam` として報告する。
   `src/home/reactions/widget.stories.tsx` のコメントと `.storybook/main.ts` の
   `external: ['cloudflare:workers']` が既に宣言している前提を refinements している。
 

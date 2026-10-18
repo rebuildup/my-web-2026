@@ -67,10 +67,36 @@ function parseCookie(setCookieHeader: string | null, name: string): string | nul
 	return null;
 }
 
+/**
+ * Sign-in helper. Each call presents a **distinct synthetic client IP**
+ * from the TEST-NET-2 documentation range (RFC 5737, never routable).
+ *
+ * Why: Better Auth throttles `/sign-in/email` per client IP — 3
+ * attempts per 10 s (Issue #443, pinned in
+ * `src/cloudflare/auth/better-auth.ts`). Without a per-call IP every
+ * request in this file would share the localhost fallback bucket and the
+ * suite would trip its own throttle. Distinct IPs model distinct clients,
+ * which is what the throttle is about; the throttle itself is asserted on
+ * purpose in `test/integration/auth-login-hardening.test.ts`.
+ *
+ * The throttle's counter is module-level memory, so a fresh IP per call
+ * is sufficient only while Vitest gives every test file its own module
+ * registry (it does today — the pool isolates files). If that pool
+ * configuration ever changes, a fifth sign-in in this file would
+ * legitimately see `429` here and the failure would point here.
+ */
+let signInIpCounter = 0;
+
+function nextSignInIp(): string {
+	signInIpCounter += 1;
+	// 198.51.100.0/24 — TEST-NET-2, reserved for documentation.
+	return `198.51.100.${signInIpCounter}`;
+}
+
 async function signIn(email: string, password: string): Promise<Response> {
 	return SELF.fetch('https://example.com/api/v1/auth/sign-in/email', {
 		method: 'POST',
-		headers: { 'Content-Type': 'application/json' },
+		headers: { 'Content-Type': 'application/json', 'CF-Connecting-IP': nextSignInIp() },
 		body: JSON.stringify({ email, password }),
 	});
 }

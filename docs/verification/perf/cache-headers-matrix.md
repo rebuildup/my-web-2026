@@ -195,6 +195,8 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
 - `93b1c50` の本ドキュメントと画像。
 - 以降の base 再マージ: #446 / #596 の HSTS、#471 の SBOM gate、#457 の error redaction、
   webhook signature fixture、#572 の prod-smoke 整備、#582 の SEO head gate、
+  #448 の CSP `frame-ancestors`（`src/server.ts` の `applyFrameAncestorsPolicy` と
+  `public/_headers` の Static Assets 側）、
   および画像アップロード guard（`src/http/reactions/images.ts` の `uploadImage` / policy 領域）。
 - review follow-up: `src/server.ts#applyHtmlCachePolicy` への「既存 `Cache-Control` を
   上書きしない」早期 return の復元、計測ツールの合格基準 3〜6 の行からの導出、
@@ -205,13 +207,19 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
 変わっていないためである。確認方法:
 
 ```
-# 宣言値: 変更なし
-git diff abb9997 HEAD -- public/_headers            # 空
+# 宣言値: 差分はあるが Cache-Control を含む行は 1 本も無い
+git diff abb9997 HEAD -- public/_headers | grep -E 'Cache-Control|cache-control|max-age|immutable'
+                                                       # 空（#448 は CSP のみ追加）
 # 読み取り経路: 差分は uploadImage / ImagePolicyError 周辺のみ
 git diff abb9997 HEAD -- src/http/reactions/images.ts
 # SoT の cacheControl 値: 差分は comment / varyNote / varyDeclared のみ
 git diff abb9997 HEAD -- scripts/_cache-policy.mjs
 ```
+
+`public/_headers` だけは **差分が空ではない**（#448 が `Content-Security-Policy:
+frame-ancestors` を追加したため）。ただし `Cache-Control` / `max-age` /
+`immutable` を含む行が 1 本も無いことは上の grep で確認できる。
+`/assets/*` の宣言値 `public, max-age=31556952, immutable` は不変である。
 
 - `REACTION_IMAGE_CACHE_CONTROL` は `public, max-age=31536000, immutable` のまま。
 - `setCacheControl` / `applyExternalCachePolicy` / `applyHtmlCachePolicy` が書く値は不変。
@@ -220,6 +228,20 @@ git diff abb9997 HEAD -- scripts/_cache-policy.mjs
 - #446 / #596 のマージは `applyTransportSecurityPolicy` を dispatch の後段に足し、
   HSTS 定数を module-private にしただけで、`Cache-Control` の値には触れていない
   （HSTS は別ヘッダー）。
+- #448 のマージは dispatch に `applyFrameAncestorsPolicy` を
+  `applyTransportSecurityPolicy` の内側へ足した（= CSP のみ）。boundary 側の
+  `applyExternalCachePolicy` は従来どおり境界の直後に置かれている。
+  合成結果の dispatch は次のとおりで、両方の Issue の挙動が共存する:
+
+  ```ts
+  const response = matchesExternalBoundary(url.pathname)
+    ? applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx))
+    : applyHtmlCachePolicy(
+        request,
+        await settleSsrDocumentResponse(request, await handler.fetch(request)),
+      );
+  return applyTransportSecurityPolicy(request, applyFrameAncestorsPolicy(request, response));
+  ```
 
 `applyHtmlCachePolicy` の早期 return を含め、送出値が変わる変更を入れた場合は
 `pnpm run build:production` を再実行してから測り直す。

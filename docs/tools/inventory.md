@@ -50,7 +50,7 @@ declares no license), default branch `main` (except `tool-pi-game` =
 | `history-quiz` | [rebuildup/tool-history-quiz](https://github.com/rebuildup/tool-history-quiz) | `72328139de1ac5ceee84babbf76cd82899fde8c3` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | none (quiz state machine) | `needs_tool_side_fix` |
 | `pi-game` | [rebuildup/tool-pi-game](https://github.com/rebuildup/tool-pi-game) | `9e19ec5d63c84fad9be625b33b0455e922ba3570` | **`develop`** | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | none (typing game) | `needs_tool_side_fix` (note: default branch `develop`, not `main`) |
 | `ae-expression` | [rebuildup/tool-ae-expression](https://github.com/rebuildup/tool-ae-expression) | `cd136e251ae7372143a0ee4af4c727324df47655` | `main` | MIT | pnpm (peer `next: ^16.3.0`) | NONE — Next.js component library | `navigator.clipboard` | `needs_tool_side_fix` |
-| `mic-level` | [rebuildup/tool-mic-level](https://github.com/rebuildup/tool-mic-level) | `5df7ac64539ec82fe4a7f4d7de1f2bb9d0b808c3` | `main` | MIT | pnpm + `bun test` (dep `next: ^16.3.0`) | NONE — Next.js component library | `navigator.mediaDevices.getUserMedia({ audio: true })` | `external_exception` (mic capture requires `https` + user gesture; same-origin via `/tools/mic-level` works too, but CSP must allow `microphone`) |
+| `mic-level` | [rebuildup/tool-mic-level](https://github.com/rebuildup/tool-mic-level) | `5df7ac64539ec82fe4a7f4d7de1f2bb9d0b808c3` | `main` | MIT | pnpm + `bun test` (dep `next: ^16.3.0`) | NONE — Next.js component library | `navigator.mediaDevices.getUserMedia({ audio: true })` | `external_exception` (mic capture requires `https` + user gesture; the host grants it via `Permissions-Policy: microphone=(self "<serving origin>")` and `<iframe allow="microphone">` — see `docs/security/security-headers.md`; CSP is not the gate and is out of scope for #449) |
 
 ## Counts
 
@@ -81,9 +81,10 @@ declares no license), default branch `main` (except `tool-pi-game` =
    it captures the user's microphone via `getUserMedia`. Same-origin
    hosting works as long as the iframe is served over `https` (which
    the canonical production origin `rebuildup.dev` provides). The
-   CSP / `Permissions-Policy: microphone=(self)` requirement is a
-   header concern, not an origin concern. It may graduate to
-   `same_origin_static` once we add a Tool-side build script.
+   CSP / `Permissions-Policy: microphone=(self "https://rebuildup.dev")`
+   requirement is a header concern, not an origin concern. It may
+   graduate to `same_origin_static` once we add a Tool-side build
+   script.
 
 4. **`tool-pi-game` has `default_branch = develop`**, not `main`. This
    affects the registered gitlink branch in `.gitmodules` if we ever
@@ -156,7 +157,11 @@ invokes the Tool's own `pnpm run build` and copies `dist/` into
 
 For `mic-level`, the same standalone build is also possible; the
 only difference is that the iframe hosting it must carry
-`Permissions-Policy: microphone=(self)` on the host origin.
+`Permissions-Policy: microphone=(self "https://rebuildup.dev")` — the
+origin-scoped form `self` alone cannot satisfy, because the framed
+document has an opaque origin under the shipped
+`sandbox="allow-scripts"` (Issue #449; see
+[`docs/security/security-headers.md`](../security/security-headers.md)).
 
 ## Policy change (2026-09-29, Issue #195)
 

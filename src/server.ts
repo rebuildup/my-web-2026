@@ -8,6 +8,8 @@ import handler from '@tanstack/react-start/server-entry';
 import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
 import { externalBoundary } from './http/hono';
 import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
+import { applySecurityHeaders } from './http/security-headers';
+import { toolRouteSecurityPolicy } from './tools/registry';
 
 /**
  * Path prefixes that must be served by the Hono external boundary
@@ -438,6 +440,17 @@ export default {
 					request,
 					await settleSsrDocumentResponse(request, await handler.fetch(request)),
 				);
-		return applyTransportSecurityPolicy(request, applyFrameAncestorsPolicy(request, response));
+		// Issue #449: security headers are applied AFTER the dispatch so
+		// one choke point covers every Worker-generated response — SSR
+		// HTML, redirects, server-function payloads and the Hono
+		// boundary alike. `public/_headers` cannot do this job for the
+		// SSR path (Cloudflare does not apply `_headers` to Worker-
+		// generated responses). HSTS (#446) keeps the same choke point.
+		const secured = applySecurityHeaders(request, response, toolRouteSecurityPolicy(url.pathname));
+		// Issue #448: the inbound embed policy is applied to the same
+		// choke point, after the #449 baseline, so every Worker response
+		// also carries `frame-ancestors`. HSTS (#446) stays outermost.
+		const framed = applyFrameAncestorsPolicy(request, secured);
+		return applyTransportSecurityPolicy(request, framed);
 	},
 } satisfies ExportedHandler<Env>;

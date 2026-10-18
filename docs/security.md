@@ -98,6 +98,18 @@ Reads (`GET` / `HEAD` / `OPTIONS`) are unaffected. The local
 commands in [`docs/development.md`](development.md) keep working; the
 mock has no D1 / R2 side effects.
 
+**Consequence for the repository's own suites.** The same signal
+applies in-process: a workerd integration suite that writes through the
+real boundary must declare the origin in its shared request headers,
+otherwise it measures the guard instead of what it was written to prove.
+The suites that write today do exactly that —
+`test/integration/d1-parameter-binding.test.ts` (`http://localhost`, the
+origin Hono's `app.request()` resolves a relative path against),
+`test/integration/admin-authorization.test.ts` and
+`test/integration/api-key-scope.test.ts` (`https://example.com`, the
+pool's Worker origin). The guard's refusal behaviour is asserted
+separately in `test/integration/csrf-contract.test.ts`.
+
 ### What breaks the contract, and what catches it
 
 | Break                                                | Caught by                                                     |

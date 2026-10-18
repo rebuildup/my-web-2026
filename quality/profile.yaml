@@ -59,6 +59,11 @@ gates:
       - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
       - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
+      # Issue #473: Tool submodule supply-chain provenance. Offline,
+      # status-only: proves manifest pin == gitlink == checked-out commit
+      # == build-artefact stamp, and that the fetch source is the declared
+      # credential-free https repository with no branch-tip tracking.
+      - 'pnpm run tools:provenance:check'
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       - 'pnpm run typecheck' # tsc --noEmit
       # `pnpm run test` also carries the Issue #491 D1 statement-count
@@ -348,6 +353,12 @@ security_gates:
       moved to a version the record never reviewed. It warns when an
       allow-list entry buys no build. Status-only output; no secret value
       is read or printed. Runbook: docs/runbook/install-script-audit.md
+  submodule_provenance:
+    enabled: true
+    tool: 'scripts/check-submodule-provenance.mjs'
+    gate: fast
+    mode: offline_status_only
+    note: 'Issue #473 — manifest pin / gitlink / checked-out commit / build-artefact stamp agreement, plus fetch-source identity and branch-tip rejection. No network fetch, no environment variable and no secret file is read, every finding is status-only, and a URL that came from the ambient git config is printed with its userinfo / query / fragment redacted.'
   workflow_yaml_lint:
     enabled: true
     tool: actionlint

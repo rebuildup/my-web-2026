@@ -30,14 +30,19 @@
 
 import {
 	GITHUB_WEBHOOK_SCHEME,
+	SUPPORTED_ALGORITHM,
 	TIMESTAMPED_WEBHOOK_SCHEME,
+	UNBOUNDED_REPLAY_RETENTION_MS,
 	type VerifyWebhookOptions,
 	type WebhookRejectionReason,
 	type WebhookSignatureScheme,
 	type WebhookVerificationResult,
 	createMemoryReplayGuard,
+	readWebhookHeader,
 	signWebhookPayload,
 	verifyWebhookDelivery,
+	webhookReplayMaterialKey,
+	webhookReplayTtlMs,
 } from './signature.ts';
 
 export const GITHUB_SCHEME = GITHUB_WEBHOOK_SCHEME;
@@ -66,6 +71,13 @@ const BODY = JSON.stringify({
 	entry: { id: 'entry-4711', slug: 'release-notes', revision: 12 },
 });
 
+/** A genuinely different event (different bytes → different signature). */
+const OTHER_BODY = JSON.stringify({
+	source: 'cms',
+	action: 'unpublished',
+	entry: { id: 'entry-4711', slug: 'release-notes', revision: 12 },
+});
+
 const DELIVERY_ID = 'd0000000-0000-4000-8000-000000000001';
 const OTHER_DELIVERY_ID = 'd0000000-0000-4000-8000-000000000002';
 
@@ -82,11 +94,12 @@ export interface WebhookFixture {
 	/** Arguments handed to `verifyWebhookDelivery`. */
 	delivery: VerifyWebhookOptions;
 	/**
-	 * Pre-claim this delivery id in the replay guard before verifying,
-	 * which is how a "second copy of an already accepted delivery" is
-	 * expressed as data instead of as test ordering.
+	 * Express "this delivery was already accepted" as data instead of
+	 * as test ordering. `deliveryId` primes the sender-identity claim;
+	 * `material: true` additionally primes the authenticated-material
+	 * claim — the same signed bytes arriving under a *different* id.
 	 */
-	primeReplay?: { deliveryId: string };
+	primeReplay?: { deliveryId: string; material?: boolean };
 	/**
 	 * Verify without the injected replay guard. Used by the fixtures
 	 * that pin the adapter's refusal to verify a `body-only` delivery
@@ -99,8 +112,8 @@ export interface WebhookFixture {
 const seconds = (deltaSeconds: number): string => String(FIXTURE_NOW_SECONDS + deltaSeconds);
 
 /** GitHub-shaped headers: `sha256=` HMAC of the raw body, delivery id. */
-async function githubHeaders(deliveryId?: string): Promise<Record<string, string>> {
-	const signature = await signWebhookPayload({ secret: FIXTURE_SECRET, body: BODY });
+async function githubHeaders(deliveryId?: string, body = BODY): Promise<Record<string, string>> {
+	const signature = await signWebhookPayload({ secret: FIXTURE_SECRET, body });
 	const headers: Record<string, string> = { [GITHUB_SCHEME.signatureHeader]: signature };
 	if (deliveryId) headers[GITHUB_SCHEME.deliveryHeader] = deliveryId;
 	return headers;
@@ -295,17 +308,26 @@ export async function buildWebhookFixtures(): Promise<WebhookFixture[]> {
 		},
 		{
 			id: 'invalid_replay_ttl',
-			label: 'claim window shorter than the freshness window',
+			label: 'claim window shorter than the accepted span',
 			input: 'tolerance = 300s but replayTtlMs = 60s (sender retry would look new)',
-			delivery: deliveryFor(GITHUB_SCHEME, github, { replayTtlMs: 60_000 }),
+			delivery: deliveryFor(TIMESTAMPED_SCHEME, timestamped, { replayTtlMs: 60_000 }),
 			expected: { accepted: false, reason: 'invalid_replay_ttl', status: 500 },
 		},
 		{
-			id: 'replayed_other_delivery',
-			label: 'second delivery is not confused with the first one',
-			input: 'same body, different delivery id than the primed one',
+			id: 'replayed_relabelled',
+			label: 'captured delivery re-sent under a fresh delivery id',
+			input: 'same signed body as `signed`, only x-github-delivery changed',
 			delivery: deliveryFor(GITHUB_SCHEME, await githubHeaders(OTHER_DELIVERY_ID)),
-			primeReplay: { deliveryId: DELIVERY_ID },
+			primeReplay: { deliveryId: DELIVERY_ID, material: true },
+			expected: { accepted: false, reason: 'replayed_delivery', status: 409 },
+		},
+		{
+			id: 'distinct_event',
+			label: 'a different event is not confused with the first one',
+			input: 'same key + same freshness, different payload bytes',
+			delivery: deliveryFor(GITHUB_SCHEME, await githubHeaders(OTHER_DELIVERY_ID, OTHER_BODY), {
+				body: OTHER_BODY,
+			}),
 			expected: { accepted: true },
 		},
 	];
@@ -327,12 +349,24 @@ export interface WebhookFixtureOutcome {
 export async function runWebhookFixture(fixture: WebhookFixture): Promise<WebhookFixtureOutcome> {
 	const guard = createMemoryReplayGuard();
 	if (fixture.primeReplay) {
-		await guard.claim(fixture.primeReplay.deliveryId, {
-			nowMs: FIXTURE_NOW_MS,
-			// Prime with the same window the delivery itself would get, so
-			// the primed claim cannot expire before the fixture runs.
-			ttlMs: fixture.delivery.replayTtlMs ?? 60 * 60 * 1000,
-		});
+		// Prime with the retention the delivery itself would get, so the
+		// primed claim cannot expire before the fixture runs.
+		const ttlMs =
+			fixture.delivery.scheme?.signedMaterial === 'body-only'
+				? UNBOUNDED_REPLAY_RETENTION_MS
+				: webhookReplayTtlMs(fixture.delivery.toleranceSeconds ?? FIXTURE_TOLERANCE_SECONDS);
+		await guard.claim(fixture.primeReplay.deliveryId, { nowMs: FIXTURE_NOW_MS, ttlMs });
+		if (fixture.primeReplay.material) {
+			// The same signed bytes arriving under a different id. The
+			// second claim key is derived from the fixture's own header,
+			// so it cannot drift from what the adapter hashes.
+			const scheme = fixture.delivery.scheme ?? GITHUB_SCHEME;
+			const raw = readWebhookHeader(fixture.delivery.headers, scheme.signatureHeader) ?? '';
+			await guard.claim(webhookReplayMaterialKey(raw.replace(`${SUPPORTED_ALGORITHM}=`, '')), {
+				nowMs: FIXTURE_NOW_MS,
+				ttlMs,
+			});
+		}
 	}
 	const result = await verifyWebhookDelivery({
 		...fixture.delivery,

@@ -52,7 +52,25 @@ describe('webhook delivery fixtures (Issue #463)', () => {
 			.filter((outcome) => outcome.result.accepted)
 			.map((outcome) => outcome.fixture.id);
 		// One per shipped scheme, plus the no-false-positive control.
-		expect(accepted.sort()).toEqual(['replayed_other_delivery', 'signed', 'signed_timestamped']);
+		expect(accepted.sort()).toEqual(['distinct_event', 'signed', 'signed_timestamped']);
+	});
+
+	it('rejects a re-labelled capture as well as a byte-identical retry', async () => {
+		// The delivery id is not authenticated material. An attacker who
+		// captured one valid delivery must not get a second accepted copy
+		// by changing only `x-github-delivery`, so the signed digest is
+		// claimed too.
+		const outcomes = await runWebhookFixtures();
+		const relabelled = outcomes.find((outcome) => outcome.fixture.id === 'replayed_relabelled');
+		expect(relabelled?.result).toMatchObject({
+			accepted: false,
+			reason: 'replayed_delivery',
+			status: 409,
+		});
+		expect(relabelled?.fixture.primeReplay?.material).toBe(true);
+		// ...while a genuinely different event still gets through.
+		const distinct = outcomes.find((outcome) => outcome.fixture.id === 'distinct_event');
+		expect(distinct?.result.accepted).toBe(true);
 	});
 
 	it('keeps every defect-named fixture rejected', async () => {

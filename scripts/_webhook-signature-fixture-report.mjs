@@ -19,7 +19,6 @@ import {
 	GITHUB_WEBHOOK_SCHEME,
 	TIMESTAMPED_WEBHOOK_SCHEME,
 	schemeTimestampHeader,
-	webhookReplayTtlMs,
 } from '../src/http/webhooks/signature.ts';
 
 /**
@@ -136,7 +135,7 @@ export function renderReportHtml({ outcomes, version, frozenClockSeconds }) {
     <div class="card"><div class="k">digest</div><div class="v">sha256=&lt;hex&gt;</div></div>
     <div class="card"><div class="k">signed material</div><div class="v">body · ts.body</div></div>
     <div class="card"><div class="k">freshness window</div><div class="v">±${DEFAULT_TOLERANCE_SECONDS}s</div></div>
-    <div class="card"><div class="k">replay claim TTL</div><div class="v">${Math.round(webhookReplayTtlMs(DEFAULT_TOLERANCE_SECONDS) / 1000)}s</div></div>
+    <div class="card"><div class="k">claim keys</div><div class="v">id + digest</div></div>
     <div class="card"><div class="k">frozen clock</div><div class="v">${escapeHtml(frozenClockSeconds)}</div></div>
   </div>
 
@@ -172,9 +171,13 @@ ${ROWS(outcomes)}
     body-only delivery verified with no replay guard. The generic sender signs
     <code>&lt;timestamp&gt;.&lt;body&gt;</code>
     (<code>${escapeHtml(timestampedHeader)}</code>), which is what makes
-    <code>stale_timestamp</code> / <code>future_timestamp</code> reachable. The claim
-    TTL is derived from the freshness window in use, and a TTL shorter than the
-    window is refused (<code>invalid_replay_ttl</code>) rather than clamped.
+    <code>stale_timestamp</code> / <code>future_timestamp</code> reachable. Replay
+    claims two keys — the sender's delivery id <em>and</em> the signed digest,
+    because a delivery id is not authenticated material: re-labelling
+    <code>X-GitHub-Delivery</code> would otherwise buy a second accepted copy of a
+    captured delivery. A timestamped claim is retained for the delivery's whole
+    accepted span (2 × window, derived); a <code>body-only</code> claim is its own
+    freshness bound and therefore does not expire by default.
     <br /><br />
     <strong>Not published.</strong> <code>/webhooks/*</code> is dispatched to the
     external HTTP boundary but has no mounted handler, so a signed delivery

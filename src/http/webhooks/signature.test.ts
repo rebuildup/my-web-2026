@@ -4,10 +4,12 @@ import {
 	DEFAULT_TOLERANCE_SECONDS,
 	GITHUB_WEBHOOK_SCHEME,
 	TIMESTAMPED_WEBHOOK_SCHEME,
+	UNBOUNDED_REPLAY_RETENTION_MS,
 	type WebhookReplayGuard,
 	createMemoryReplayGuard,
 	signWebhookPayload,
 	verifyWebhookDelivery,
+	webhookReplayMaterialKey,
 	webhookReplayTtlMs,
 } from './signature.ts';
 
@@ -314,31 +316,35 @@ describe('verifyWebhookDelivery — configuration faults (Issue #463)', () => {
 		}
 	});
 
-	it('refuses a claim window shorter than the freshness window', async () => {
-		// A 60 s claim under a 300 s window: at t+61s a byte-identical
-		// resend of a delivery that is still inside its freshness window
-		// is claimed as a new delivery, and the replay guarantee is gone.
-		const short = await verifyWebhookDelivery({
-			headers: await githubHeaders(),
+	it("refuses a claim that expires inside the delivery's accepted span", async () => {
+		// A delivery whose timestamp sits `toleranceSeconds` in the future
+		// is accepted now and stays acceptable for `2 x toleranceSeconds`
+		// more. A claim that lives only one window dies halfway through
+		// that span, so the same delivery is accepted a second time.
+		const oneWindow = DEFAULT_TOLERANCE_SECONDS * 1000;
+		const tooShort = await verifyWebhookDelivery({
+			headers: await timestampedHeaders(NOW_SECONDS + DEFAULT_TOLERANCE_SECONDS),
 			body: BODY,
 			secret: SECRET,
 			nowMs: NOW_MS,
-			replayTtlMs: 60_000,
+			scheme: TIMESTAMPED_WEBHOOK_SCHEME,
+			replayTtlMs: oneWindow,
 			replayGuard: createMemoryReplayGuard(),
 		});
-		expect(short).toMatchObject({
+		expect(tooShort).toMatchObject({
 			accepted: false,
 			reason: 'invalid_replay_ttl',
 			status: 500,
 		});
 
 		// Shrinking the window keeps the same TTL legal — the rule is
-		// "TTL >= window", not a fixed number.
+		// "TTL >= 2 x window", not a fixed number.
 		const tight = await verifyWebhookDelivery({
-			headers: await githubHeaders(),
+			headers: await timestampedHeaders(NOW_SECONDS),
 			body: BODY,
 			secret: SECRET,
 			nowMs: NOW_MS,
+			scheme: TIMESTAMPED_WEBHOOK_SCHEME,
 			toleranceSeconds: 10,
 			replayTtlMs: 60_000,
 			replayGuard: createMemoryReplayGuard(),
@@ -346,9 +352,41 @@ describe('verifyWebhookDelivery — configuration faults (Issue #463)', () => {
 		expect(tight.accepted).toBe(true);
 	});
 
+	it('never expires a body-only claim unless a replay horizon is stated', async () => {
+		// GitHub signs no timestamp, so the claim IS the freshness bound:
+		// an expiring one hands the captured delivery back every cycle.
+		const claims: Array<{ key: string; ttlMs: number }> = [];
+		const guard: WebhookReplayGuard = {
+			async claim(deliveryId, { ttlMs }) {
+				claims.push({ key: deliveryId, ttlMs });
+				return true;
+			},
+		};
+		await verifyWebhookDelivery({
+			headers: await githubHeaders(),
+			body: BODY,
+			secret: SECRET,
+			nowMs: NOW_MS,
+			replayGuard: guard,
+		});
+		expect(claims.every((claim) => claim.ttlMs === Number.POSITIVE_INFINITY)).toBe(true);
+
+		claims.length = 0;
+		await verifyWebhookDelivery({
+			headers: await githubHeaders(),
+			body: BODY,
+			secret: SECRET,
+			nowMs: NOW_MS,
+			replayRetentionMs: 86_400_000,
+			replayGuard: guard,
+		});
+		expect(claims.every((claim) => claim.ttlMs === 86_400_000)).toBe(true);
+	});
+
 	it('derives the claim window from the freshness window actually in use', async () => {
 		// A fixed default TTL is only correct for the default window: at a
-		// one-hour window a 660 s claim dies long before the window closes.
+		// one-hour window a 660 s claim dies long before the delivery stops
+		// being acceptable.
 		const claimed: Array<{ deliveryId: string; ttlMs: number }> = [];
 		const guard: WebhookReplayGuard = {
 			async claim(deliveryId, { ttlMs }) {
@@ -356,27 +394,33 @@ describe('verifyWebhookDelivery — configuration faults (Issue #463)', () => {
 				return true;
 			},
 		};
-		const headers = await githubHeaders();
+		const headers = await timestampedHeaders(NOW_SECONDS);
 		await verifyWebhookDelivery({
 			headers,
 			body: BODY,
 			secret: SECRET,
 			nowMs: NOW_MS,
+			scheme: TIMESTAMPED_WEBHOOK_SCHEME,
 			replayGuard: guard,
 		});
 		await verifyWebhookDelivery({
-			headers,
-			body: BODY,
+			headers: await timestampedHeaders(NOW_SECONDS, { body: `${BODY} ` }),
+			body: `${BODY} `,
 			secret: SECRET,
 			nowMs: NOW_MS,
 			toleranceSeconds: 3600,
+			scheme: TIMESTAMPED_WEBHOOK_SCHEME,
 			replayGuard: guard,
 		});
-		expect(claimed.map((entry) => entry.ttlMs)).toEqual([
+		// Two claim keys per delivery (delivery id + signed material).
+		const ttls = claimed.map((entry) => entry.ttlMs);
+		expect(ttls).toEqual([
+			webhookReplayTtlMs(DEFAULT_TOLERANCE_SECONDS),
 			webhookReplayTtlMs(DEFAULT_TOLERANCE_SECONDS),
 			webhookReplayTtlMs(3600),
+			webhookReplayTtlMs(3600),
 		]);
-		expect(claimed[1]?.ttlMs).toBeGreaterThanOrEqual(3600 * 1000);
+		expect(ttls[2]).toBeGreaterThanOrEqual(3600 * 1000 * 2);
 	});
 });
 
@@ -444,6 +488,73 @@ describe('verifyWebhookDelivery — replay ordering (Issue #463)', () => {
 			status: 400,
 		});
 	});
+
+	it('rejects a captured delivery re-sent under a fresh delivery id', async () => {
+		// `X-GitHub-Delivery` is not signed, so re-labelling it is the
+		// cheapest possible replay. The signed digest is claimed as well,
+		// so the second copy is refused even though the id is new.
+		const guard = createMemoryReplayGuard();
+		const captured = await githubHeaders();
+		const first = await verifyWebhookDelivery({
+			headers: captured,
+			body: BODY,
+			secret: SECRET,
+			nowMs: NOW_MS,
+			replayGuard: guard,
+		});
+		expect(first).toMatchObject({ accepted: true, deliveryId: 'delivery-0001' });
+
+		const relabelled = await verifyWebhookDelivery({
+			headers: { ...captured, [GITHUB_WEBHOOK_SCHEME.deliveryHeader]: 'delivery-9999' },
+			body: BODY,
+			secret: SECRET,
+			nowMs: NOW_MS,
+			replayGuard: guard,
+		});
+		expect(relabelled).toMatchObject({
+			accepted: false,
+			reason: 'replayed_delivery',
+			status: 409,
+		});
+		// The blocked copy must not have burned the new id for the
+		// sender's own legitimate retry of that delivery.
+		expect(
+			await guard.claim('delivery-9999', {
+				nowMs: NOW_MS,
+				ttlMs: DEFAULT_REPLAY_TTL_MS,
+			}),
+		).toBe(true);
+	});
+
+	it('still accepts a different event under the same key', async () => {
+		// De-duplication that rejects everything is not a control.
+		const guard = createMemoryReplayGuard();
+		const first = await verifyWebhookDelivery({
+			headers: await githubHeaders(),
+			body: BODY,
+			secret: SECRET,
+			nowMs: NOW_MS,
+			replayGuard: guard,
+		});
+		expect(first.accepted).toBe(true);
+
+		const other = await verifyWebhookDelivery({
+			headers: {
+				...(await githubHeaders({ body: `${BODY} ` })),
+				[GITHUB_WEBHOOK_SCHEME.deliveryHeader]: 'delivery-0002',
+			},
+			body: `${BODY} `,
+			secret: SECRET,
+			nowMs: NOW_MS,
+			replayGuard: guard,
+		});
+		expect(other).toMatchObject({ accepted: true, replayChecked: true });
+		// ...and the material key is the digest, not a sender-chosen id.
+		expect(webhookReplayMaterialKey('a'.repeat(64))).toMatch(/^sha256-material:a{64}$/);
+		expect(webhookReplayMaterialKey('b'.repeat(64))).not.toBe(
+			webhookReplayMaterialKey('a'.repeat(64)),
+		);
+	});
 });
 
 describe('signWebhookPayload (Issue #463)', () => {
@@ -494,11 +605,12 @@ describe('createMemoryReplayGuard (Issue #463)', () => {
 		expect(await guard.claim('a', options)).toBe(true);
 	});
 
-	it('keeps the default TTL above the default freshness window', async () => {
-		// If the claim expired before the freshness window closed, a
-		// sender's legitimate retry would be accepted as a new delivery.
+	it('keeps the default TTL above the whole accepted span of a delivery', async () => {
+		// If the claim expired while the delivery was still acceptable,
+		// the same delivery would be accepted a second time.
 		expect(DEFAULT_REPLAY_TTL_MS).toBe(webhookReplayTtlMs(DEFAULT_TOLERANCE_SECONDS));
-		expect(DEFAULT_REPLAY_TTL_MS).toBeGreaterThan(DEFAULT_TOLERANCE_SECONDS * 1000);
+		expect(DEFAULT_REPLAY_TTL_MS).toBeGreaterThanOrEqual(DEFAULT_TOLERANCE_SECONDS * 2 * 1000);
+		expect(UNBOUNDED_REPLAY_RETENTION_MS).toBe(Number.POSITIVE_INFINITY);
 	});
 });
 

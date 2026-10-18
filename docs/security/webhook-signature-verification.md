@@ -25,7 +25,7 @@ sees an unverified body.
 | Piece | State |
 | --- | --- |
 | `src/http/webhooks/signature.ts` — verification adapter | implemented, binding-free |
-| `src/http/webhooks/fixtures.ts` — local fixtures | implemented, 19 inputs |
+| `src/http/webhooks/fixtures.ts` — local fixtures | implemented, 20 inputs |
 | Contract tests (`src/http/webhooks/*.test.ts`) | implemented |
 | Report generator + its own test (`scripts/webhook-signature-fixture-report*.{mjs,test.mjs}`) | implemented, wired into `pnpm run test` |
 | Entry-point absence tests (`boundary.test.ts`, `test/integration/webhook-entry.test.ts`) | implemented |
@@ -45,8 +45,8 @@ sender:
 
 | scheme | signed material | headers | freshness bound |
 | --- | --- | --- | --- |
-| `GITHUB_WEBHOOK_SCHEME` (default) | the raw body alone | `x-hub-signature-256`, `x-github-delivery` | the replay claim window — GitHub signs no timestamp |
-| `TIMESTAMPED_WEBHOOK_SCHEME` | `"<timestamp>.<raw body>"` | `x-webhook-signature`, `x-webhook-timestamp`, `x-webhook-delivery` | the signed timestamp (±window) |
+| `GITHUB_WEBHOOK_SCHEME` (default) | the raw body alone | `x-hub-signature-256`, `x-github-delivery` | the replay claim — GitHub signs no timestamp, so the claim does not expire by default |
+| `TIMESTAMPED_WEBHOOK_SCHEME` | `"<timestamp>.<raw body>"` | `x-webhook-signature`, `x-webhook-timestamp`, `x-webhook-delivery` | the signed timestamp (±window); the claim only has to outlast it |
 
 Both are `sha256=<64 hex>` HMAC-SHA256 compared in constant time.
 
@@ -76,16 +76,16 @@ Check order is part of the contract — the *first* failing check is the
 reported reason:
 
 1. secret present → `missing_secret` (500)
-2. claim window covers the freshness window → `invalid_replay_ttl` (500)
+2. claim retention covers the delivery's whole accepted span → `invalid_replay_ttl` (500)
 3. `body-only` sender has a replay guard → `replay_guard_required` (500)
 4. signature header present → `missing_signature`
 5. `sha256=` + 64 hex digits → `unsupported_algorithm` / `malformed_signature`
 6. *timestamped-body only:* timestamp present and integer → `missing_timestamp` / `malformed_timestamp`
 7. *timestamped-body only:* inside the freshness window (±300 s) → `stale_timestamp` / `future_timestamp`
 8. HMAC matches → `signature_mismatch`
-9. delivery id claimed → `missing_delivery_id` / `replayed_delivery`
+9. delivery id **and** signed digest claimed → `missing_delivery_id` / `replayed_delivery`
 
-Four properties are load-bearing:
+Five properties are load-bearing:
 
 - **Constant-time comparison.** Only `crypto.subtle.verify` decides the
   signature. A `!==` on the hex strings leaks how many leading
@@ -95,26 +95,38 @@ Four properties are load-bearing:
   sender's legitimate retry out: an unauthenticated DoS. A delivery
   that fails verification never consumes a claim
   (`signature.test.ts` asserts this).
+- **The replay key is authenticated material, not a sender-chosen id.**
+  `X-GitHub-Delivery` is not signed, so an attacker holding one captured
+  delivery would get a second accepted copy by changing only that
+  header. Two keys are therefore claimed: the delivery id (the
+  sender's retry identity) **and** the signed digest
+  (`sha256-material:<hex>`), which cannot be changed without the key. A
+  blocked re-labelled copy releases the delivery-id claim it took, so an
+  attacker's replay cannot burn an id the sender still needs.
+- **The claim outlives the delivery it protects.** For a
+  `timestamped-body` sender a delivery accepted at the *future* edge
+  stays acceptable for `2 x toleranceSeconds`, so a claim must cover
+  that whole span; `webhookReplayTtlMs(toleranceSeconds)` is the only
+  default, and an explicit `replayTtlMs` shorter than `2 x` the window
+  is **refused** (`invalid_replay_ttl`) rather than silently clamped.
+- **A `body-only` claim does not expire.** GitHub signs no timestamp,
+  so the claim is the freshness bound; expiring it hands the captured
+  delivery back on every cycle (a byte-identical delivery accepted
+  again at 661 s, at 1321 s, …). `body-only` claims default to
+  `UNBOUNDED_REPLAY_RETENTION_MS` and only take an explicit
+  `replayRetentionMs` — at which point that number is a *replay
+  horizon* (the sender's redelivery window), not a cleanup hint, and a
+  promotion decision.
+
 - **No algorithm downgrade.** `sha1=` is rejected, not accepted with a
   warning.
-- **The claim window is derived from the freshness window, not fixed.**
-  `webhookReplayTtlMs(toleranceSeconds)` is the only default, so a
-  one-hour window gets a claim TTL that outlives it. A fixed TTL would
-  be correct only for the default window: at ±1 h a 660 s claim dies at
-  11 minutes, and a byte-identical resend of a delivery that is still
-  inside its freshness window is accepted as a new delivery. An
-  explicit `replayTtlMs` shorter than the window is **refused**
-  (`invalid_replay_ttl`) rather than silently clamped, because a
-  misconfiguration must be visible. For a `body-only` sender the claim
-  window is the *only* freshness bound there is, which is why step 3
-  refuses a body-only delivery verified with no replay guard.
 
 ### Failure behaviour
 
 | reason | status | meaning |
 | --- | --- | --- |
 | `missing_secret` | `500` | operator fault — no HMAC key registered; must page, never look like a rejected caller |
-| `invalid_replay_ttl` | `500` | operator fault — `replayTtlMs` shorter than the freshness window |
+| `invalid_replay_ttl` | `500` | operator fault — `replayTtlMs` shorter than the delivery's accepted span (`2 x window`) |
 | `replay_guard_required` | `500` | operator fault — `body-only` sender verified with no replay guard, so nothing bounds a captured body |
 | `missing_signature` | `401` | no signature header (or empty) |
 | `unsupported_algorithm` | `401` | not `sha256=` |
@@ -172,14 +184,17 @@ neither sender may be only half-pinned.
 | `weak_algorithm` | `sha1=<40 hex>` | `unsupported_algorithm` → 401 |
 | `truncated_signature` | `sha256=abcd` | `malformed_signature` → 401 |
 | `replayed` | byte-identical second copy of an accepted delivery | `replayed_delivery` → 409 |
+| `replayed_relabelled` | the same signed body under a *fresh* delivery id | `replayed_delivery` → 409 |
 | `missing_delivery_id` | signed delivery without a delivery id | `missing_delivery_id` → 400 |
 | `missing_secret` | no HMAC key on our side | `missing_secret` → 500 |
 | `replay_guard_required` | GitHub-shaped delivery, no replay guard | `replay_guard_required` → 500 |
 | `invalid_replay_ttl` | window 300 s, `replayTtlMs` 60 s | `invalid_replay_ttl` → 500 |
-| `replayed_other_delivery` | same body, different delivery id | accepted (no false positive) |
+| `distinct_event` | same key, different payload bytes | accepted (no false positive) |
 
 The last row matters as much as the rejects: de-duplication that
-rejects everything is not a security control, it is an outage.
+rejects everything is not a security control, it is an outage. And
+`replayed_relabelled` is the row that separates a replay guard from a
+delivery-id equality check.
 
 ## Reproduce
 
@@ -214,7 +229,9 @@ PR records.
 
 - state lives in one Worker isolate, so a second isolate — or a
   redeploy — starts empty and accepts a replay;
-- entries are pruned by TTL, so the map is bounded but not durable.
+- entries are pruned by TTL, so the map is bounded but not durable;
+- `ttlMs: Infinity` (the `body-only` default) never prunes, so the map
+  grows without bound for the life of the isolate.
 
 The seam (`WebhookReplayGuard`) is the contract; the implementation is
 a stub until a route exists.
@@ -225,10 +242,13 @@ The entry point stays unpublished until every item is done in the same
 ticket:
 
 1. **Durable replay store** — implement `WebhookReplayGuard` on D1
-   (`INSERT` on a unique delivery id, expire rows after the window).
-   Anything less than durable means the third guarantee is absent, and
-   for a `body-only` sender (GitHub) it also means there is no
-   freshness bound at all.
+   (`INSERT` on a unique key, expire rows after the horizon). Anything
+   less than durable means the third guarantee is absent, and for a
+   `body-only` sender (GitHub) it also means there is no freshness
+   bound at all. Store **both** claim keys (delivery id and
+   `sha256-material:<hex>`) and decide the `body-only` replay horizon:
+   `UNBOUNDED_REPLAY_RETENTION_MS` is correct only for a fixture run,
+   a real deployment needs a stated horizon plus row retention for it.
 2. **HMAC key registration** — add the secret name to
    `wrangler.jsonc#secrets.required` **and** its
    `wrangler.production.jsonc` mirror, seed it in Infisical

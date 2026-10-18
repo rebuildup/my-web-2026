@@ -43,14 +43,17 @@
  *   - Other senders sign `"<timestamp>.<raw body>"`, which puts the
  *     timestamp inside the MAC and makes a re-stamped captured
  *     payload fail on its own.
+ * - A sender's delivery id is **not** authenticated material, so the
+ *   replay claim is keyed on the signed digest as well: re-labelling
+ *   `X-GitHub-Delivery` does not buy a second accepted copy.
  *
  * So the scheme states which material the sender signs
  * ({@link WebhookSignedMaterial}) instead of assuming one shape, and
  * {@link GITHUB_WEBHOOK_SCHEME} is GitHub's, exactly. The freshness
  * question is answered where the sender lets it be answered: from the
  * signed timestamp when there is one, otherwise by the delivery-id
- * claim window — which is why a `body-only` sender is refused unless a
- * replay guard is configured (`replay_guard_required`).
+ * claim — which is why a `body-only` sender is refused unless a replay
+ * guard is configured (`replay_guard_required`).
  *
  * Runtime shape
  * -------------
@@ -131,18 +134,34 @@ export const SUPPORTED_ALGORITHM = 'sha256';
 export const DEFAULT_TOLERANCE_SECONDS = 300;
 
 /**
- * Claim TTL for a given freshness window.
+ * Claim TTL for a `timestamped-body` sender, where the signature itself
+ * expires the delivery.
  *
- * It must be **derived from the window**, not fixed: a fixed TTL is
- * only correct for the default window. Set the window to an hour and
- * a 660 s claim dies at 11 minutes, so a byte-identical retry of a
- * delivery that is still inside its freshness window is accepted as a
- * new delivery and the replay guarantee is quietly gone. Two windows
- * of headroom cover clock drift on both ends.
+ * It must cover the **whole** accepted span of one delivery — from the
+ * future edge to the stale edge, `2 x toleranceSeconds` — not one
+ * window. A delivery whose timestamp sits exactly `toleranceSeconds`
+ * in the future is accepted now and stays acceptable for a further
+ * `2 x toleranceSeconds`; a TTL of one window expires halfway through
+ * that span, so the same delivery is accepted a second time. Two
+ * windows of headroom cover clock drift and the inclusive boundary.
  */
 export function webhookReplayTtlMs(toleranceSeconds: number): number {
 	return (toleranceSeconds * 2 + 60) * 1000;
 }
+
+/**
+ * Retention for a `body-only` sender (GitHub).
+ *
+ * Its signature carries no timestamp, so nothing else bounds how long
+ * a captured body stays acceptable: **the claim is the freshness
+ * bound**. Expiring the claim hands the captured delivery back to the
+ * attacker on every cycle — a byte-identical delivery accepted again
+ * at 661 s, at 1321 s, and so on. So a `body-only` claim does not
+ * expire unless the operator states a horizon explicitly with
+ * `replayRetentionMs` (that horizon is then a replay window, not a
+ * cleanup hint, and belongs in the promotion decision).
+ */
+export const UNBOUNDED_REPLAY_RETENTION_MS = Number.POSITIVE_INFINITY;
 
 /** Claim TTL implied by {@link DEFAULT_TOLERANCE_SECONDS}. */
 export const DEFAULT_REPLAY_TTL_MS = webhookReplayTtlMs(DEFAULT_TOLERANCE_SECONDS);
@@ -153,7 +172,14 @@ export const DEFAULT_REPLAY_TTL_MS = webhookReplayTtlMs(DEFAULT_TOLERANCE_SECOND
  */
 export type WebhookHeaderSource = Headers | Record<string, string | undefined>;
 
-function readHeader(source: WebhookHeaderSource, name: string): string | undefined {
+/**
+ * Case-insensitive header read over either header source.
+ *
+ * Exported so a fixture (or a handler building its own inputs) reads a
+ * header exactly the way the adapter does, instead of indexing the bag
+ * with its own casing rules.
+ */
+export function readWebhookHeader(source: WebhookHeaderSource, name: string): string | undefined {
 	if (source instanceof Headers) return source.get(name) ?? undefined;
 	const target = name.toLowerCase();
 	for (const [key, value] of Object.entries(source)) {
@@ -186,11 +212,15 @@ export interface WebhookReplayGuard {
 /**
  * In-memory replay guard — fixtures and tests ONLY.
  *
- * Two properties a production route must not inherit:
+ * Three properties a production route must not inherit:
  *   - state lives in one Worker isolate, so a second isolate (or a
  *     redeploy) starts with an empty map and accepts a replay;
  *   - entries are pruned by `ttlMs` on a best-effort sweep, so the
- *     map is bounded but not durable.
+ *     map is bounded but not durable;
+ *   - `ttlMs: Infinity` (the `body-only` default, see
+ *     {@link UNBOUNDED_REPLAY_RETENTION_MS}) never prunes, so the map
+ *     grows without bound. Correct for a fixture run, wrong for a
+ *     Worker that serves real traffic.
  *
  * It exists so the *contract* (first delivery accepted, second one
  * rejected) is provable without provisioning a store. The promotion
@@ -343,13 +373,26 @@ export interface VerifyWebhookOptions {
 	/** Optional replay de-duplication; required for a `body-only` scheme. */
 	replayGuard?: WebhookReplayGuard;
 	/**
-	 * Override the delivery-id TTL (tests shrink it to prove expiry).
+	 * Override how long a claimed key is remembered
+	 * (`timestamped-body` only; tests shrink it to prove expiry).
 	 *
-	 * Must not be shorter than `toleranceSeconds`; the adapter refuses
-	 * `invalid_replay_ttl` rather than silently accepting a claim
-	 * window that outlives nothing.
+	 * Must cover the delivery's whole accepted span, `2 x
+	 * toleranceSeconds`; shorter is refused as `invalid_replay_ttl`
+	 * rather than silently clamped, because a claim that dies while the
+	 * delivery is still acceptable re-accepts it.
 	 */
 	replayTtlMs?: number;
+	/**
+	 * Replay horizon for a `body-only` sender: how long a captured
+	 * body stays unacceptable.
+	 *
+	 * Defaults to {@link UNBOUNDED_REPLAY_RETENTION_MS} — see the note
+	 * there for why expiring it by default would hand the captured
+	 * delivery back on every cycle. A promoted route sets this to the
+	 * sender's redelivery horizon and lets the durable store expire
+	 * rows after it.
+	 */
+	replayRetentionMs?: number;
 	/** Header names and signed material (default {@link GITHUB_WEBHOOK_SCHEME}). */
 	scheme?: WebhookSignatureScheme;
 }
@@ -385,6 +428,18 @@ export function webhookSignedMaterial(
 	body: string,
 ): string {
 	return scheme.signedMaterial === 'body-only' ? body : `${timestamp}.${body}`;
+}
+
+/**
+ * Replay key for the authenticated material of a delivery.
+ *
+ * Keyed on the signature digest, which is what the sender's key covers:
+ * re-labelling `X-GitHub-Delivery` cannot change it, so a captured
+ * delivery stays blocked under any id. The prefix keeps it from
+ * colliding with a delivery id chosen by the sender.
+ */
+export function webhookReplayMaterialKey(digest: string): string {
+	return `sha256-material:${digest}`;
 }
 
 /**
@@ -435,7 +490,7 @@ export async function signWebhookPayload(input: {
  * check is the reported reason:
  *
  *   1. secret present                       → `missing_secret` (500)
- *   2. claim window covers the freshness window → `invalid_replay_ttl` (500)
+ *   2. claim retention covers the accepted span → `invalid_replay_ttl` (500)
  *   3. `body-only` sender has a replay guard  → `replay_guard_required` (500)
  *   4. signature header present             → `missing_signature`
  *   5. `sha256=` + 64 hex digits             → `unsupported_algorithm` / `malformed_signature`
@@ -443,6 +498,10 @@ export async function signWebhookPayload(input: {
  *   7. inside freshness window               → `stale_timestamp` / `future_timestamp` (timestamped-body only)
  *   8. HMAC matches                          → `signature_mismatch`
  *   9. delivery claimed                      → `missing_delivery_id` / `replayed_delivery`
+ *
+ * Step 9 claims two keys: the sender's delivery id (its retry
+ * identity) and the signed digest (the material an attacker cannot
+ * re-label).
  *
  * Steps 1-3 are our own configuration, not the caller's fault, so
  * they are checked before anything an unauthenticated caller controls
@@ -464,11 +523,16 @@ export async function verifyWebhookDelivery(
 	const nowMs = options.nowMs ?? Date.now();
 	const toleranceSeconds = options.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
 	const toleranceMs = toleranceSeconds * 1000;
-	const replayTtlMs = options.replayTtlMs ?? webhookReplayTtlMs(toleranceSeconds);
-	// A claim that dies before the freshness window closes turns the
-	// sender's in-window retry into an accepted "new" delivery. Refuse
-	// the misconfiguration rather than silently widening the window.
-	if (replayTtlMs < toleranceMs) return reject('invalid_replay_ttl');
+	// A claim has to outlive the delivery's whole accepted span
+	// (future edge -> stale edge = 2 x window), otherwise the same
+	// delivery is accepted a second time while still inside it. A
+	// `body-only` sender gets no expiry unless the operator states a
+	// replay horizon, because that claim IS its freshness bound.
+	const replayTtlMs =
+		scheme.signedMaterial === 'body-only'
+			? (options.replayRetentionMs ?? UNBOUNDED_REPLAY_RETENTION_MS)
+			: (options.replayTtlMs ?? webhookReplayTtlMs(toleranceSeconds));
+	if (replayTtlMs < toleranceMs * 2) return reject('invalid_replay_ttl');
 	// GitHub signs no timestamp, so the claim window is the only thing
 	// bounding how long a captured body stays acceptable. No guard, no
 	// freshness — refuse instead of verifying the signature alone.
@@ -476,7 +540,7 @@ export async function verifyWebhookDelivery(
 		return reject('replay_guard_required');
 	}
 
-	const rawSignature = readHeader(headers, scheme.signatureHeader)?.trim();
+	const rawSignature = readWebhookHeader(headers, scheme.signatureHeader)?.trim();
 	if (!rawSignature) return reject('missing_signature');
 
 	const separator = rawSignature.indexOf('=');
@@ -489,7 +553,7 @@ export async function verifyWebhookDelivery(
 	const timestampHeader = schemeTimestampHeader(scheme);
 	let rawTimestamp: string | undefined;
 	if (timestampHeader) {
-		rawTimestamp = readHeader(headers, timestampHeader)?.trim();
+		rawTimestamp = readWebhookHeader(headers, timestampHeader)?.trim();
 		if (!rawTimestamp) return reject('missing_timestamp');
 		if (!NUMERIC_TIMESTAMP.test(rawTimestamp)) return reject('malformed_timestamp');
 
@@ -526,10 +590,26 @@ export async function verifyWebhookDelivery(
 		};
 	}
 
-	const deliveryId = readHeader(headers, scheme.deliveryHeader)?.trim();
+	const deliveryId = readWebhookHeader(headers, scheme.deliveryHeader)?.trim();
 	if (!deliveryId) return reject('missing_delivery_id');
 	const claimed = await options.replayGuard.claim(deliveryId, { nowMs, ttlMs: replayTtlMs });
 	if (!claimed) return reject('replayed_delivery');
+	// The delivery id is *not* authenticated material — an attacker who
+	// captured one valid delivery can re-send it under a fresh id and
+	// walk straight past the check above. So the signed digest is
+	// claimed as well: it is the only part of a replay that cannot be
+	// changed without the key. A failure here releases the delivery-id
+	// claim first, so an attacker's copy cannot burn an id the sender
+	// still needs for its own retry.
+	const materialKey = webhookReplayMaterialKey(digest);
+	const materialClaimed = await options.replayGuard.claim(materialKey, {
+		nowMs,
+		ttlMs: replayTtlMs,
+	});
+	if (!materialClaimed) {
+		await options.replayGuard.release?.(deliveryId);
+		return reject('replayed_delivery');
+	}
 
 	return { accepted: true, deliveryId, timestamp: rawTimestamp, replayChecked: true };
 }

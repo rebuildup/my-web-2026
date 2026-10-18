@@ -5,8 +5,11 @@
  * Reads the JSON line the session cookie contract test prints
  * (`SESSION_COOKIE_CONTRACT_REPORT …`) and renders it as a static HTML
  * page that a Playwright screenshot captures into
- * `docs/verification/security/cookie-header-test.webp`. Nothing here
- * invents data: every row comes from the report the test computed.
+ * `docs/verification/security/cookie-header-test.webp`. Every table row
+ * comes from the report the test computed. The two run-level statements
+ * ("Production request issued", "Account exercised") are fixed prose
+ * about how the test runs, not payload fields, and are labelled as such
+ * on the page.
  *
  * Why this script is committed
  * ----------------------------
@@ -194,8 +197,8 @@ const html = `<!doctype html>
   <dt>Environment</dt><dd>${esc(payload.origin)}</dd>
   <dt>Local profile</dt><dd>${esc(payload.profiles.local.id)} — Secure ${show(payload.profiles.local.secure)}, name prefix “${esc(payload.profiles.local.namePrefix || '(none)')}”</dd>
   <dt>Production profile</dt><dd>${esc(payload.profiles.production.id)} — Secure ${show(payload.profiles.production.secure)}, name prefix “${esc(payload.profiles.production.namePrefix)}”</dd>
-  <dt>Production request issued</dt><dd>none — the production shape is computed locally from the pinned origin constant</dd>
-  <dt>Account exercised</dt><dd>local-only fixture user <code>session-contract-admin@test.local</code> (role <code>admin</code>, Miniflare D1, rows deleted after the run); no real account and no production data</dd>
+  <dt>Production request issued (fixed statement)</dt><dd>none — the production shape is computed locally from the pinned origin constant</dd>
+  <dt>Account exercised (fixed statement)</dt><dd>local-only fixture user <code>session-contract-admin@test.local</code> (role <code>admin</code>, Miniflare D1, rows deleted after the run); no real account and no production data</dd>
 </dl>
 
 <h2>1. Positive — observed attributes (must pass)</h2>
@@ -212,7 +215,7 @@ ${negativeRows}
 ${maskingSection}
 
 <div class="note">
-Reproduce: <code>pnpm exec vitest run src/cloudflare/auth/session-cookie-contract.test.ts --reporter=verbose</code> — the evaluator drops cookie values at parse time and <code>record()</code> masks every header it keeps, so this report (and the CI log) cannot contain a session token or a user record. No secret value and no personal information is read or printed by this check.
+Reproduce: <code>pnpm exec vitest run src/cloudflare/auth/session-cookie-contract.test.ts --reporter=verbose</code> — the evaluator drops cookie values at parse time and <code>record()</code> masks every header it keeps, so this report (and the CI log) cannot contain a session token or a user record. No real secret value and no real personal information is read or printed by this check; the only account named above is the synthetic local fixture.
 </div>
 </main>
 </html>

@@ -273,13 +273,24 @@ export function readContractConstants(contractPath = `${PREFERENCE_CONTRACT}.ts`
 	return constants;
 }
 
-/** Whether a file reads the shared preference contract. */
+/**
+ * Whether a file reads the shared preference contract. Comments are
+ * stripped first: prose that NAMES the contract is documentation, and
+ * a rule that let a comment satisfy it would stay green on a component
+ * that imports nothing.
+ */
 export function readsPreferenceContract(scanPath, code) {
-	if (scanPath === PREFERENCE_CONTRACT || scanPath.startsWith(`${PREFERENCE_CONTRACT}/`)) {
+	if (
+		scanPath === PREFERENCE_CONTRACT ||
+		scanPath.startsWith(`${PREFERENCE_CONTRACT}.`) ||
+		scanPath.startsWith(`${PREFERENCE_CONTRACT}/`)
+	) {
 		return true;
 	}
+	const source = stripComments(code);
 	return (
-		/from\s*['"][^'"]*reduced-motion['"]/.test(code) || /\busePrefersReducedMotion\s*\(/.test(code)
+		/from\s*['"][^'"]*reduced-motion['"]/.test(source) ||
+		/\busePrefersReducedMotion\s*\(/.test(source)
 	);
 }
 

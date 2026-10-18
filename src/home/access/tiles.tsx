@@ -338,6 +338,12 @@ function DigitStrip({
 			role="img"
 			aria-label={`${format.formatCount(count)} page views`}
 			data-motion={COUNTER_ROLL_MOTION}
+			// The applied motion state as a DOM fact, not a test hook: the
+			// reduced-motion capture script reads it next to
+			// `getComputedStyle(...).animationName` in a real browser, and a
+			// reviewer can check the same pairing by hand. Same idea as the
+			// `data-state` grid on `/design-system`.
+			data-motion-state={reducedMotion ? 'reduced' : 'animated'}
 			className={css({
 				display: 'inline-flex',
 				alignItems: 'baseline',
@@ -368,13 +374,27 @@ function DigitStrip({
 						height: { base: '48px', lg: '56px' },
 						width: 'auto',
 						verticalAlign: 'baseline',
-						// Per-digit stagger: each digit enters ~80ms after
-						// the previous one. The first digit starts at 0 so
-						// the whole strip finishes inside ~560ms for the
-						// default 7-digit display. The spread is the
-						// whole "movement" contract: with motion reduced
-						// these declarations are simply not emitted, so
-						// the resting frame IS the reduced-motion frame.
+						// The whole "movement" contract, and the only place
+						// this component can animate. With motion reduced the
+						// spread contributes nothing, so the resting frame IS
+						// the reduced-motion frame and no `animation-name` is
+						// emitted at all.
+						// The whole "movement" contract, in one place. With motion
+						// reduced the spread contributes NOTHING, so the document
+						// carries no `animation-name` at all rather than an
+						// animation the stylesheet has to neutralise — the resting
+						// frame IS the reduced-motion frame.
+						//
+						// The declarations stay LITERAL here on purpose. Panda
+						// extracts the utility classes by reading this object at
+						// build time; moving them into a helper function emits
+						// classes that no stylesheet rule matches, and the roll-up
+						// silently stops animating (caught by the Issue #403 capture,
+						// which reads `getComputedStyle(...).animationName`).
+						//
+						// Per-digit stagger: each digit enters ~80ms after the
+						// previous one, the first at 0, so a 7-slot strip finishes
+						// inside ~560ms.
 						...(reducedMotion
 							? {}
 							: {

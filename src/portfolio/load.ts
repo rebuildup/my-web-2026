@@ -461,10 +461,16 @@ async function fetchLinksForProjects(
 ): Promise<Map<string, PortfolioLink[]>> {
 	const grouped = new Map<string, PortfolioLink[]>();
 	for (const chunk of chunkProjectIds(projectIds)) {
-		const placeholders = chunk.map((_, i) => `?${i + 1}`).join(', ');
+		// `linkPlaceholders` is STRUCTURE, never data: it is a chain of
+		// `?N` placeholders derived from the chunk's own length. Every
+		// project id is bound with `.bind(...chunk)`. The static D1
+		// statement-shape gate (Issue #452) sees this interpolation, so
+		// the identifier is named in `SQL_STRUCTURE_ALLOWLIST`
+		// (`scripts/check-d1-sql-binding.mjs`) together with that reason.
+		const linkPlaceholders = chunk.map((_, i) => `?${i + 1}`).join(', ');
 		const result = await db
 			.prepare(
-				`SELECT * FROM portfolio_link WHERE project_id IN (${placeholders}) ORDER BY project_id ASC, display_order ASC, created_at ASC`,
+				`SELECT * FROM portfolio_link WHERE project_id IN (${linkPlaceholders}) ORDER BY project_id ASC, display_order ASC, created_at ASC`,
 			)
 			.bind(...chunk)
 			.all<PortfolioLinkRow>();
@@ -491,10 +497,13 @@ async function fetchMediaForProjects(
 ): Promise<Map<string, PortfolioMedia[]>> {
 	const grouped = new Map<string, PortfolioMedia[]>();
 	for (const chunk of chunkProjectIds(projectIds)) {
-		const placeholders = chunk.map((_, i) => `?${i + 1}`).join(', ');
+		// `mediaPlaceholders` carries the same STRUCTURE-NOT-DATA argument
+		// as `linkPlaceholders` above, and is allowlisted under the same
+		// Issue #452 gate.
+		const mediaPlaceholders = chunk.map((_, i) => `?${i + 1}`).join(', ');
 		const result = await db
 			.prepare(
-				`SELECT * FROM portfolio_media WHERE project_id IN (${placeholders}) ORDER BY project_id ASC, is_cover DESC, display_order ASC, created_at ASC`,
+				`SELECT * FROM portfolio_media WHERE project_id IN (${mediaPlaceholders}) ORDER BY project_id ASC, is_cover DESC, display_order ASC, created_at ASC`,
 			)
 			.bind(...chunk)
 			.all<PortfolioMediaRow>();

@@ -7,6 +7,7 @@ import {
 	createD1PortfolioLoader,
 	portfolioListQueryBudget,
 } from './load';
+import type { PortfolioProject } from './schema';
 
 /**
  * D1 N+1 / query-plan detector — Issue #491.
@@ -61,6 +62,9 @@ import {
  */
 
 const REPORT_PREFIX = 'D1_QUERY_PLAN_V1 ';
+
+/** Tables the portfolio migration owns, children first for DROP order. */
+const TABLES = ['portfolio_link', 'portfolio_media', 'portfolio_project'] as const;
 
 /**
  * Fixture page sizes. `1` is the degenerate page, `500` is the
@@ -174,8 +178,23 @@ async function applyMigration(): Promise<void> {
 	}
 }
 
+/**
+ * Drop the tables before applying the migration.
+ *
+ * `applyMigration` uses `CREATE TABLE IF NOT EXISTS`, and the local
+ * workerd D1 storage is SHARED between test files in one session, so
+ * whichever file seeds a table first decides its shape. Dropping
+ * first makes "the indexes measured below are the migration's own"
+ * true regardless of the file execution order.
+ */
+async function dropTables(): Promise<void> {
+	for (const table of TABLES) {
+		await env.DB.prepare(`DROP TABLE IF EXISTS ${table}`).run();
+	}
+}
+
 async function clearTables(): Promise<void> {
-	for (const table of ['portfolio_link', 'portfolio_media', 'portfolio_project']) {
+	for (const table of TABLES) {
 		await env.DB.prepare(`DELETE FROM ${table}`).run();
 	}
 }
@@ -323,29 +342,71 @@ interface PageMeasurement {
 	elapsedMs: number;
 	linksPerProject: number;
 	mediaPerProject: number;
-	firstLinkIsCover: boolean;
+	/** `media[0].isCover` of the FIRST project — the series shape the report prints. */
+	firstMediaIsCover: boolean;
+	/** Whole-page checks: how many projects on THIS page violate each contract. */
+	linkOrderViolations: number;
+	mediaCoverViolations: number;
+	/** Statement texts the loader ACTUALLY issued, captured at the call site. */
+	sql: { page: string; links: string; media: string; legacyLink: string };
+	/** Rows the batched statements read, and the most parameters any one statement bound. */
+	linkRows: number;
+	mediaRows: number;
+	maxBindsPerStatement: number;
 }
 
 const measurements: PageMeasurement[] = [];
 const detailMeasurements: Array<{ projectId: string; statements: number }> = [];
 
+/** The statement a counted run issued against `table` — captured, never transcribed. */
+function capturedSql(entries: readonly RecordedStatement[], table: string): string {
+	const found = entries.find((entry) => entry.sql.includes(`FROM ${table}`));
+	if (!found) throw new Error(`no captured statement for ${table}`);
+	return found.sql;
+}
+
+/** Rows the captured statements against `table` returned. */
+function capturedRows(entries: readonly RecordedStatement[], table: string): number {
+	return entries
+		.filter((entry) => entry.sql.includes(`FROM ${table}`))
+		.reduce((sum, entry) => sum + entry.rows, 0);
+}
+
+/** Bound parameters in a captured statement (every `?`, numbered or bare). */
+function placeholderCount(sql: string): number {
+	return (sql.match(/\?/g) ?? []).length;
+}
+
 /**
- * The statements the loader actually issues, kept verbatim so the
- * query-plan assertions and the HTML report cannot drift apart.
+ * Projects whose links are not in `display_order ASC` order. Checked
+ * over the WHOLE page, not only `projects[0]`: a batched read that
+ * grouped correctly for the first project and scrambled the 101st
+ * would still pass a one-project check.
  */
-const STATEMENTS = {
-	links:
-		'SELECT * FROM portfolio_link WHERE project_id IN (?1, ?2) ORDER BY project_id ASC, display_order ASC, created_at ASC',
-	media:
-		'SELECT * FROM portfolio_media WHERE project_id IN (?1, ?2) ORDER BY project_id ASC, is_cover DESC, display_order ASC, created_at ASC',
-	page: "SELECT * FROM portfolio_project WHERE status = 'published' AND visibility = 'public' ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC LIMIT ?",
-	legacyLink:
-		'SELECT * FROM portfolio_link WHERE project_id = ?1 ORDER BY display_order ASC, created_at ASC',
-} as const;
+function linkOrderViolations(projects: readonly PortfolioProject[]): number {
+	let violations = 0;
+	for (const project of projects) {
+		for (let i = 1; i < project.links.length; i++) {
+			if (project.links[i - 1].displayOrder > project.links[i].displayOrder) violations++;
+		}
+	}
+	return violations;
+}
+
+/** Projects whose `media[0]` is not the cover. */
+function mediaCoverViolations(projects: readonly PortfolioProject[]): number {
+	let violations = 0;
+	for (const project of projects) {
+		if (project.media.length === 0) continue;
+		if (!project.media[0].isCover) violations++;
+	}
+	return violations;
+}
 
 const plans: Record<string, string[]> = {};
 
 beforeAll(async () => {
+	await dropTables();
 	await applyMigration();
 	await clearTables();
 
@@ -376,7 +437,18 @@ beforeAll(async () => {
 			elapsedMs,
 			linksPerProject: page.projects[0]?.links.length ?? 0,
 			mediaPerProject: page.projects[0]?.media.length ?? 0,
-			firstLinkIsCover: page.projects[0]?.media[0]?.isCover ?? false,
+			firstMediaIsCover: page.projects[0]?.media[0]?.isCover ?? false,
+			linkOrderViolations: linkOrderViolations(page.projects),
+			mediaCoverViolations: mediaCoverViolations(page.projects),
+			sql: {
+				page: capturedSql(statements, 'portfolio_project'),
+				links: capturedSql(statements, 'portfolio_link'),
+				media: capturedSql(statements, 'portfolio_media'),
+				legacyLink: capturedSql(legacy.statements, 'portfolio_link'),
+			},
+			linkRows: capturedRows(statements, 'portfolio_link'),
+			mediaRows: capturedRows(statements, 'portfolio_media'),
+			maxBindsPerStatement: Math.max(0, ...statements.map((entry) => placeholderCount(entry.sql))),
 		});
 
 		// The detail surface must not depend on how many children a
@@ -393,11 +465,20 @@ beforeAll(async () => {
 
 	// The largest fixture is intentionally LEFT in place so the query
 	// plans below describe a populated table; `afterAll` clears it.
+	// The plans are read for the statements that were MEASURED: the
+	// captured text carries the real id count, so a loader-side SQL
+	// change can no longer leave a hand-transcribed assertion green.
+	const largest = measurements[measurements.length - 1];
+	const largestIds = Array.from({ length: D1_BATCH_ID_CHUNK }, (_, i) => `qb_p${i}`);
 	for (const key of ['links', 'media'] as const) {
-		plans[key] = await explain(env.DB, STATEMENTS[key], ['qb_p0', 'qb_p1']);
+		plans[key] = await explain(
+			env.DB,
+			largest.sql[key],
+			largestIds.slice(0, placeholderCount(largest.sql[key])),
+		);
 	}
-	plans.page = await explain(env.DB, STATEMENTS.page, [51]);
-	plans.legacyLink = await explain(env.DB, STATEMENTS.legacyLink, ['qb_p0']);
+	plans.page = await explain(env.DB, largest.sql.page, [51]);
+	plans.legacyLink = await explain(env.DB, largest.sql.legacyLink, ['qb_p0']);
 
 	emitReport();
 });
@@ -426,10 +507,14 @@ function emitReport(): void {
 			(legacyLargest - legacyFirst) / Math.max(1, largest.pageSize - first.pageSize),
 		currentGrowthPerProject:
 			(largest.statements - first.statements) / Math.max(1, largest.pageSize - first.pageSize),
-		rows: measurements,
+		// The per-row series stays compact: only the captured SQL of the
+		// largest fixture travels with the record, under `statements`.
+		rows: measurements.map(({ sql: _sql, ...row }) => row),
 		detail: detailMeasurements,
 		plans,
-		statements: STATEMENTS,
+		// The SQL text behind each plan, captured from the statements the
+		// measured run actually issued (never transcribed by hand).
+		statements: largest.sql,
 	};
 	console.log(`${REPORT_PREFIX}${JSON.stringify(records)}`);
 
@@ -488,7 +573,15 @@ describe('portfolio — D1 statement budget (Issue #491 N+1 boundary)', () => {
 		for (const m of measurements) {
 			expect(m.linksPerProject).toBe(LINKS_PER_PROJECT);
 			expect(m.mediaPerProject).toBe(MEDIA_PER_PROJECT);
-			expect(m.firstLinkIsCover).toBe(true);
+			expect(m.firstMediaIsCover).toBe(true);
+			// The contract is claimed for the WHOLE page, so it is checked
+			// on the whole page — every project, including the ones past the
+			// first id chunk (100/101, 200/201, 400/401 boundaries).
+			expect(m.linkOrderViolations, `page size ${m.pageSize}`).toBe(0);
+			expect(m.mediaCoverViolations, `page size ${m.pageSize}`).toBe(0);
+			// And the batched statements really did read every child row.
+			expect(m.linkRows, `page size ${m.pageSize}`).toBe(m.projects * LINKS_PER_PROJECT);
+			expect(m.mediaRows, `page size ${m.pageSize}`).toBe(m.projects * MEDIA_PER_PROJECT);
 		}
 	});
 });
@@ -523,20 +616,61 @@ describe('portfolio — D1 query plans (index utilisation, Issue #491)', () => {
 		expect(plan.some((l) => l.includes('idx_portfolio_link_project'))).toBe(true);
 	});
 
-	it('a statement never binds more than the D1 bound-parameter cap', async () => {
-		// The batched statements bind exactly one parameter per id and
-		// are chunked at the cap, so a 500-row page cannot build a
-		// statement D1 would reject. The fixture left by `beforeAll`
-		// holds 500 projects x LINKS_PER_PROJECT links, and the largest
-		// page-size chunk resolves exactly one chunk's worth.
-		const chunk = Array.from({ length: D1_BATCH_ID_CHUNK }, (_, i) => `qb_p${i}`);
-		const placeholders = chunk.map((_, i) => `?${i + 1}`).join(', ');
-		expect(chunk.length).toBe(100);
-		const result = await env.DB.prepare(
-			`SELECT COUNT(*) AS n FROM portfolio_link WHERE project_id IN (${placeholders})`,
-		)
-			.bind(...chunk)
-			.all<{ n: number }>();
-		expect(result.results?.[0]?.n ?? 0).toBe(D1_BATCH_ID_CHUNK * LINKS_PER_PROJECT);
+	it('no issued statement binds more than the D1 bound-parameter cap', () => {
+		// Measured on the CAPTURED statements, so the claim covers every
+		// statement the loader actually issued at every fixture size —
+		// not a hand-built statement that happens to fit.
+		expect(measurements.length).toBeGreaterThan(0);
+		for (const m of measurements) {
+			expect(
+				m.maxBindsPerStatement,
+				`page size ${m.pageSize} (${m.statements} statements)`,
+			).toBeLessThanOrEqual(D1_BATCH_ID_CHUNK);
+		}
+		// The largest fixture fills exactly one chunk per table, so the
+		// cap is REACHED (not merely respected).
+		const largest = measurements[measurements.length - 1];
+		expect(largest.maxBindsPerStatement).toBe(D1_BATCH_ID_CHUNK);
+	});
+});
+
+describe('portfolio — id chunk boundary (Issue #491)', () => {
+	it('crossing the cap by one project adds exactly one statement per table', async () => {
+		// `D1_BATCH_ID_CHUNK` is asserted, not assumed: at exactly the cap
+		// the two batched reads fit one chunk each (3 statements), and one
+		// project more forces a second chunk for both tables (5).
+		await clearTables();
+		await seedProjects(D1_BATCH_ID_CHUNK);
+		const atCap = countStatements(env.DB);
+		const atCapPage = await createD1PortfolioLoader({ DB: atCap.counted }).listPortfolioProjects({
+			limit: D1_BATCH_ID_CHUNK,
+		});
+		expect(atCapPage.projects).toHaveLength(D1_BATCH_ID_CHUNK);
+		expect(atCap.statements).toHaveLength(3);
+		expect(linkOrderViolations(atCapPage.projects)).toBe(0);
+		expect(mediaCoverViolations(atCapPage.projects)).toBe(0);
+		expect(Math.max(0, ...atCap.statements.map((e) => placeholderCount(e.sql)))).toBe(
+			D1_BATCH_ID_CHUNK,
+		);
+
+		await clearTables();
+		await seedProjects(D1_BATCH_ID_CHUNK + 1);
+		const overCap = countStatements(env.DB);
+		const overCapPage = await createD1PortfolioLoader({
+			DB: overCap.counted,
+		}).listPortfolioProjects({ limit: D1_BATCH_ID_CHUNK + 1 });
+		expect(overCapPage.projects).toHaveLength(D1_BATCH_ID_CHUNK + 1);
+		expect(overCap.statements).toHaveLength(5);
+		// The whole page is still ordered, including the project that fell
+		// into the second chunk.
+		expect(linkOrderViolations(overCapPage.projects)).toBe(0);
+		expect(mediaCoverViolations(overCapPage.projects)).toBe(0);
+
+		// The chunks are observable in the statements themselves: the page
+		// query binds one parameter, each full chunk binds the cap, and the
+		// overflow chunk binds the single remaining id.
+		const bindsPerStatement = overCap.statements.map((entry) => placeholderCount(entry.sql));
+		expect([...bindsPerStatement].sort((a, b) => b - a)).toEqual([100, 100, 1, 1, 1]);
+		expect(Math.max(...bindsPerStatement)).toBeLessThanOrEqual(D1_BATCH_ID_CHUNK);
 	});
 });

@@ -16,6 +16,8 @@ import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { main } from './d1-query-plan-report.mjs';
+
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SCRIPT = resolve(HERE, 'd1-query-plan-report.mjs');
 const PREFIX = 'D1_QUERY_PLAN_V1 ';
@@ -151,5 +153,51 @@ describe('d1-query-plan-report', () => {
 		assert.equal(result.status, 0, result.stderr);
 		assert.match(result.stdout, /source abc1234/);
 		assert.match(result.stdout, /node v\d+/);
+	});
+
+	it('lists every accepted option in the usage line', () => {
+		const result = run(['--help'], '');
+		assert.equal(result.status, 0, result.stderr);
+		for (const option of ['--input', '--out', '--title', '--source-sha']) {
+			assert.match(result.stderr, new RegExp(option.replace(/-/g, '\\-')));
+		}
+	});
+
+	it('routes --input and --out through the injected io seams', () => {
+		const readPaths = [];
+		const written = [];
+		let stdinReads = 0;
+		const capture = `${PREFIX}${JSON.stringify(SERIES)}\n`;
+		const status = main(['--input', 'capture.log', '--out', 'report.html'], {
+			readFile: (path) => {
+				readPaths.push(path);
+				return capture;
+			},
+			readStdin: () => {
+				stdinReads += 1;
+				return capture;
+			},
+			writeFile: (path, text) => written.push([path, text]),
+			writeStdout: () => assert.fail('stdout must not be used with --out'),
+		});
+		assert.equal(status, 0);
+		assert.deepEqual(readPaths, ['capture.log']);
+		assert.equal(stdinReads, 0);
+		assert.equal(written.length, 1);
+		assert.equal(written[0][0], 'report.html');
+		assert.match(written[0][1], /<!doctype html>/i);
+	});
+
+	it('routes stdin and stdout through the injected io seams', () => {
+		const written = [];
+		const status = main([], {
+			readFile: () => assert.fail('--input was not passed'),
+			readStdin: () => `${PREFIX}${JSON.stringify(SERIES)}\n`,
+			writeFile: () => assert.fail('--out was not passed'),
+			writeStdout: (text) => written.push(text),
+		});
+		assert.equal(status, 0);
+		assert.equal(written.length, 1);
+		assert.match(written[0], /<!doctype html>/i);
 	});
 });

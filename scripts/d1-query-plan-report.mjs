@@ -32,6 +32,10 @@
  *
  * Exit codes: 0 = rendered, 1 = bad input / no measurement record,
  *             2 = bad usage.
+ *
+ * `main(argv, io)` is the test seam: every input and output path goes
+ * through `io` (`readFile`, `readStdin`, `writeFile`, `writeStdout`),
+ * so a caller can render a report without touching the filesystem.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
@@ -301,13 +305,18 @@ export function main(argv, io = {}) {
 	const options = parseArgs(argv);
 	if (!options || options.help) {
 		process.stderr.write(
-			'usage: d1-query-plan-report [--input <file>] [--out <file>] [--title <text>]\n',
+			'usage: d1-query-plan-report [--input <file>] [--out <file>] [--title <text>] [--source-sha <sha>]\n',
 		);
 		return options?.help ? 0 : 2;
 	}
-	const read = io.readFile ?? readStdin;
-	const write = io.writeFile ?? ((path, text) => process.stdout.write(text));
-	const source = options.input ? readFileSync(options.input, 'utf8') : read();
+	// Every I/O path — stdin, `--input`, `--out`, stdout — goes through
+	// `io`, so the renderer can be driven (and asserted) without touching
+	// the filesystem or the real stdout.
+	const readFile = io.readFile ?? ((path) => readFileSync(path, 'utf8'));
+	const readStdinText = io.readStdin ?? readStdin;
+	const writeFile = io.writeFile ?? ((path, text) => writeFileSync(path, text));
+	const writeStdout = io.writeStdout ?? ((text) => process.stdout.write(text));
+	const source = options.input ? readFile(options.input) : readStdinText();
 	const series = parseRecord(source);
 	const html = renderHtml(series, {
 		title: options.title ?? undefined,
@@ -315,10 +324,10 @@ export function main(argv, io = {}) {
 	});
 	if (options.out) {
 		mkdirSync(dirname(options.out), { recursive: true });
-		writeFileSync(options.out, html);
+		writeFile(options.out, html);
 		process.stderr.write(`d1-query-plan-report: wrote ${options.out}\n`);
 	} else {
-		write(options.out ?? '-', html);
+		writeStdout(html);
 	}
 	return 0;
 }

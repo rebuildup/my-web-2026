@@ -41,7 +41,13 @@
  *      of the Tool that declares it.
  *   6. No header is declared by two rules that match the same path —
  *      Cloudflare combines matching rules, which produces an invalid
- *      value rather than an override.
+ *      value rather than an override. The one exception is
+ *      `Content-Security-Policy`: multiple policies are valid, and
+ *      two IDENTICAL policies intersect to the same policy under both
+ *      combine and override semantics, so duplicate identical CSP
+ *      values are accepted (Issue #448 requires each Tool rule to
+ *      state `frame-ancestors`, while the #449 grant rule overlaps
+ *      the namespace rule). Different CSP values are still a violation.
  *
  * Rule semantics (measured, not assumed)
  * -------------------------------------
@@ -356,11 +362,20 @@ export function inspect(options = {}) {
 	for (const pathname of invariantSamplePaths(rules, manifest)) {
 		const contributors = headerContributors(rules, pathname);
 		for (const [name, paths] of Object.entries(contributors)) {
-			if (paths.length > 1) {
-				violations.push(
-					`public/_headers  ${pathname}  ${name}: declared by ${paths.length} matching rules (${paths.join(', ')}) — Cloudflare combines them into one invalid value`,
-				);
-			}
+			if (paths.length <= 1) continue;
+			const values = rules
+				.filter(
+					(rule) => patternToRegExp(rule.path).test(pathname) && rule.headers[name] !== undefined,
+				)
+				.map((rule) => rule.headers[name]);
+			const identicalCsp =
+				name === 'content-security-policy' &&
+				values.length === paths.length &&
+				values.every((value) => value === values[0]);
+			if (identicalCsp) continue;
+			violations.push(
+				`public/_headers  ${pathname}  ${name}: declared by ${paths.length} matching rules (${paths.join(', ')}) — Cloudflare combines them into one invalid value`,
+			);
 		}
 	}
 

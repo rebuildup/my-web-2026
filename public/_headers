@@ -50,7 +50,11 @@
 # `Permissions-Policy` key resolves by parser, not by policy. So this
 # file is written so that no two rules that match the same path ever set
 # the same header: `scripts/check-security-headers.mjs` enforces exactly
-# that invariant, and a violation fails `validate:fast`.
+# that invariant, and a violation fails `validate:fast`. The one
+# exception is `Content-Security-Policy: frame-ancestors 'self'`, which
+# every Tool rule states per Issue #448; identical CSP policies intersect
+# to the same policy, so the check accepts identical duplicates and still
+# rejects different values.
 #
 # Consequence for Permissions-Policy: the deny baseline is NOT on a
 # wildcard. It sits on `/share/*` — the only host-owned static document
@@ -78,8 +82,10 @@
 /share/*
   # Host-owned static documents. These get the full deny baseline,
   # including `microphone=()`: nothing in the conference site asks for
-  # a capture device.
+  # a capture device. The `frame-ancestors` directive is the Issue #448
+  # inbound embed policy for these documents.
   Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: frame-ancestors 'self'
   Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(), payment=(), serial=(), usb=(), xr-spatial-tracking=()
 # ---------------------------------------------------------------------------
 # CORS — Tool iframes
@@ -99,12 +105,45 @@
 # scripts from the host page, no CORS).
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# Inbound embed policy — Tool artefacts (Issue #448)
+#
+# `frame-ancestors` answers "who may FRAME this document". That is a
+# different question from the CORS question above ("who may READ it"),
+# and a different question again from the host's OUTBOUND policy ("which
+# Tools may this site embed, and under what sandbox" — owned by
+# `src/tools/registry.ts` and the manifest's `delivery.iframe`). The
+# three are deliberately not derived from each other.
+#
+# `'self'` is the value that keeps the existing Tool iframes working: the
+# only ancestor of `/tools/<slug>/app/index.html` is our own shell at
+# `/tools/<slug>`, same origin, so `'self'` permits it. A third party
+# embedding a Tool document directly is denied. The shell itself is a
+# Worker response, so it is covered by the sibling policy in
+# `src/server.ts` (also `'self'` on public paths, `'none'` on Admin /
+# Account) — nothing that works today stops working.
+#
+# The rule that matters is `/tools/:slug/app/*`, because the entry
+# document is `<artifact_path>/index.html` and the `:slug/app` pattern
+# matches only the bare path. Both rules carry the header so the whole
+# Tool namespace is covered whichever one a future entry HTML lands on.
+#
+# Do NOT write `'none'` here: Tool documents are framed BY us, so `'none'`
+# breaks every integrated Tool. (The `allow-scripts`-only sandbox gives the
+# framed document an opaque origin, but `frame-ancestors` is matched
+# against the ANCESTOR's origin, which is still the host.) Do NOT write
+# `*`: that is precisely the third-party framing this issue denies.
+# `scripts/check-frame-ancestors-policy.mjs` enforces both directions, and
+# `test/integration/frame-ancestors.test.ts` proves the Worker half.
+# ---------------------------------------------------------------------------
+
 /tools/:slug/app/*
   # Issue #449: the Tool artefact's own `Referrer-Policy` (from
   # `delivery.iframe.referrer_policy`). No Permissions-Policy here on
   # purpose — see the ceiling note above.
   Access-Control-Allow-Origin: *
   Referrer-Policy: no-referrer
+  Content-Security-Policy: frame-ancestors 'self'
 
 /tools/:slug/app
   # The iframe document itself is fetched as a navigation (not a
@@ -113,6 +152,7 @@
   # comprehensive for the whole Tool namespace.
   Access-Control-Allow-Origin: *
   Referrer-Policy: no-referrer
+  Content-Security-Policy: frame-ancestors 'self'
 
 # ---------------------------------------------------------------------------
 # Per-Tool permission grant (Issue #449)
@@ -150,6 +190,29 @@
   # origin-scoped, which is what keeps it off any other site that
   # embeds the Tool.
   Permissions-Policy: bluetooth=(), camera=(), display-capture=(), geolocation=(), hid=(), microphone=(self "https://rebuildup.dev"), payment=(), serial=(), usb=(), xr-spatial-tracking=()
+  Content-Security-Policy: frame-ancestors 'self'
+
+# ---------------------------------------------------------------------------
+# Inbound embed policy — public static documents (Issue #448)
+#
+# `Content-Security-Policy: frame-ancestors 'self'` for `/share/*` lives
+# on that rule above, because ONE VALUE PER HEADER, PER PATH means the
+# two #448 rules and the #449 header set must not re-declare each other.
+#
+# Static Assets answer BEFORE the Worker runs (`wrangler.jsonc` declares
+# no `assets.run_worker_first` and no `not_found_handling`), so
+# `src/server.ts` never observes these requests and the Worker's
+# `'self'` default does not apply. Without a rule here such a document
+# carried no `frame-ancestors` at all, which is the state Issue #448
+# set out to end.
+#
+# `scripts/check-frame-ancestors-policy.mjs` discovers every
+# `public/**/*.html` and fails when no rule gives that document a
+# `frame-ancestors` directive, so a new `share/<slug>/` cannot ship
+# unprotected. The gate is the only coverage available: the workerd pool
+# declares no `assets` binding, so no runtime test can observe a Static
+# Assets response header.
+# ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
 # Caching — fingerprinted build assets (Issue #291)

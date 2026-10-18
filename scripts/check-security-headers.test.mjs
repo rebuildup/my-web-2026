@@ -202,6 +202,33 @@ describe('inspect — repository state', () => {
 		);
 	});
 
+	it('accepts identical CSP values on overlapping rules', () => {
+		// Issue #448 requires every Tool rule to state `frame-ancestors`,
+		// so the namespace rule and the #449 grant rule both carry the
+		// same CSP. Multiple CSP policies are valid and identical
+		// policies intersect to the same policy, so this is not the
+		// invalid-combination case check 6 rejects.
+		const mutated = tempHeadersFile(
+			`${readHeadersText()}\n/tools/mic-level/app/*\n  Content-Security-Policy: frame-ancestors 'self'\n`,
+		);
+		const result = inspect({ headersPath: mutated });
+		assert.deepStrictEqual(
+			result.violations.filter((violation) => violation.includes('matching rules')),
+			[],
+		);
+	});
+
+	it('rejects different CSP values on overlapping rules', () => {
+		const mutated = tempHeadersFile(
+			`${readHeadersText()}\n/tools/mic-level/app/*\n  Content-Security-Policy: frame-ancestors 'none'\n`,
+		);
+		const result = inspect({ headersPath: mutated });
+		assert.ok(
+			result.violations.some((violation) => violation.includes('matching rules')),
+			`expected a duplicate-header violation, got ${JSON.stringify(result.violations)}`,
+		);
+	});
+
 	it('rejects a duplicate header in a rule outside the frozen sample paths', () => {
 		// The frozen sample list cannot enumerate every future rule, so
 		// check 6 derives a probe per rule as well. `/portfolio/*` is not

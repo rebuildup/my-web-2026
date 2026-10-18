@@ -201,8 +201,8 @@ function UploadForm() {
 			/>
 			<FileField
 				name="image"
-				label="Image (PNG / JPEG / WebP / GIF, ≤256 KiB)"
-				description="256 KiB 以下の PNG / JPEG / WebP / GIF を 1 つ選択してください。"
+				label="Image"
+				description="PNG / JPEG / WebP / GIF の 1 つを、256 KiB 以下で選択してください。"
 				accept={ALLOWED.join(',')}
 				required
 				error={error}

@@ -55,8 +55,11 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
 | `/admin/invitations/accept` | refusal が form 末尾の無地 `<p>`。どの control が悪いか不明 | 要約 + `weak_password` のみ password control に `aria-invalid` |
 | `/admin/images`（upload） | `role="alert"` が field error と二重、label はあったが説明なし | `FileField` + 要約（client 3 gate と server policy code を全て field refined に集約） |
 
-いずれも既存の**文言は変更していない**（`describeUploadFailure` / `FAILURE_COPY` / 分類器が
-返す message）。変更したのは「その文言をどう関連付けるか」だけである。
+
+エラーメッセージの**文言は変更していない**（`describeUploadFailure` / `FAILURE_COPY` / 分類器が
+返す message）。変更したのは「その文言をどう関連付けるか」だけである。ただし
+`/admin/images` の label は「許可形式と上限」を重複して読み上げていた（label と description の
+両方に同じ情報）ため、label を `Image`、許容条件を description 側へ一本化した。
 
 ## 4. 機械検査（人手レビューなしで再現する部分）
 
@@ -119,7 +122,9 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
    アルゴリズムを実装していないため、`images.client.test.tsx` では assert していない。
 4. Storybook 自体の static build は manager のみ（Issue #501 と同一の制約）のため、capture は
    `.tmp/` の harness 経由。`build-storybook` 自体は `validate:integration` で走る。
-5. `/admin/images` の成功パスに **既存の latent bug を 1 件修正**した: submit handler が
+5. E2E（`e2e/admin-form-a11y.spec.ts`）は `ui-change` label 付きで CI が実行する。local では
+   preview server が dev secret を要求するため実行できない（secret は値ごと取得しない）。
+6. `/admin/images` の成功パスに **既存の latent bug を 1 件修正**した: submit handler が
    `await` の後に `e.currentTarget` を読んでいたため（React は dispatch 後に
    `currentTarget` を null にする）、アップロード成功時に必ず例外になり「アップロードに
    失敗しました。」が出ていた。form 要素を `await` 前に捕捉する形に変更。

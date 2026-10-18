@@ -165,8 +165,8 @@ function GalleryStory() {
 				<form className={formClassName} action="#">
 					<TextField
 						name="image"
-						label="Image (PNG / JPEG / WebP / GIF, ≤256 KiB)"
-						description="256 KiB 以下の PNG / JPEG / WebP / GIF を 1 つ選択してください。"
+						label="Image"
+						description="PNG / JPEG / WebP / GIF の 1 つを、256 KiB 以下で選択してください。"
 						required
 						error="ファイルが大きすぎます。256 KiB 以下にしてください。"
 					/>
@@ -284,8 +284,8 @@ export const WithError: Story = {
 		<Container>
 			<TextField
 				name="image"
-				label="Image (PNG / JPEG / WebP / GIF, ≤256 KiB)"
-				description="256 KiB 以下の PNG / JPEG / WebP / GIF を 1 つ選択してください。"
+				label="Image"
+				description="PNG / JPEG / WebP / GIF の 1 つを、256 KiB 以下で選択してください。"
 				required
 				error="ファイルが大きすぎます。256 KiB 以下にしてください。"
 			/>

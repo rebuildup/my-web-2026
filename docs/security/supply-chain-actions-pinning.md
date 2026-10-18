@@ -60,7 +60,7 @@ lines, 6 distinct actions, 0 permissions findings.
 | `ci.yml` | `validate` | `pnpm/action-setup` | `@v4` | `fc06bc1257f3…` | v4.4.0 |
 | `ci.yml` | `validate` | `oven-sh/setup-bun` | `@v2` | `0c5077e51419…` | v2.2.0 |
 | `ci.yml` | `validate` | `actions/cache` | `@v4` | `0057852bfaa8…` | v4.3.0 |
-| `ci.yml` | `validate` | `actions/upload-artifact` ×2 | `@v4` | `ea165f8d65b6…` | v4.6.2 |
+| `ci.yml` | `validate` | `actions/upload-artifact` ×3 | `@v4` | `ea165f8d65b6…` | v4.6.2 |
 | `prod-smoke.yml` | `prod-smoke` | `actions/checkout` | `@v4` | `11d5960a3267…` | v4.4.0 |
 | `prod-smoke.yml` | `prod-smoke` | `actions/setup-node` | `@v4` | `49933ea5288c…` | v4.4.0 |
 | `prod-smoke.yml` | `prod-smoke` | `pnpm/action-setup` | `@v4` | `fc06bc1257f3…` | v4.4.0 |

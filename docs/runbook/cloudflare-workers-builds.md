@@ -393,18 +393,19 @@ Offline rehearsal
 -----------------
 
 `pnpm run e2e:prod:local` runs the SAME spec file against the local
-`vite preview` build instead of production. The representative-route
-adapter navigates to the `baseURL` Playwright resolved — `pnpm run
-e2e:prod:local` deliberately leaves `PLAYWRIGHT_BASE_URL` unset, so that
-is `http://127.0.0.1:3000` — and the Issue #43 canonical-origin group,
-which does hardcode the canonical origin (including the one deliberate
-write, the anonymous reaction mutation), disarms itself unless
-`PLAYWRIGHT_BASE_URL` explicitly names production. A test in the
-representative group asserts that a non-production run does not resolve
-the canonical origin. Use the command to rehearse the contract, and to
-capture a verification artefact, without reading production at all. It is
-a rehearsal, not a substitute: the deployed-`main` measurement still only
-exists in Smoke #2.
+`vite preview` build instead of production. It builds the current working
+tree first (the preview server serves `dist/client`), then forces
+`PLAYWRIGHT_BASE_URL` to `http://127.0.0.1:${PLAYWRIGHT_PORT:-3000}` even
+if the parent shell exported production, so the command cannot silently
+run against production. The representative-route adapter navigates to that
+resolved `baseURL`, and the Issue #43 canonical-origin group, which does
+hardcode the canonical origin (including the one deliberate write, the
+anonymous reaction mutation), disarms itself unless the run is explicitly
+canonical — local mode always is not. A test in the representative group
+asserts that a non-production run does not resolve the canonical origin.
+Use the command to rehearse the contract, and to capture a verification
+artefact, without reading production at all. It is a rehearsal, not a
+substitute: the deployed-`main` measurement still only exists in Smoke #2.
 
 Read-only boundary
 ------------------
@@ -419,11 +420,12 @@ part of the representative-route registry.
 Outbound traffic originates only at the canonical production origin in a
 production run; the pages themselves reference Google Fonts, GA4, and
 `media.rebuildup.dev`, and the smoke does not exercise or assert on any
-of them, so it never becomes a third-party availability contract. That
-first half is asserted, not trusted: an observation whose final
-(post-redirect) origin differs from the origin the run was pointed at is
-reported as a defect, so the "no third-party request" statement cannot be
-falsified by a redirect the classifier did not notice.
+of them, so it never becomes a third-party availability contract. That is
+enforced, not trusted: an observation whose final (post-redirect) origin
+differs from the origin the run was pointed at is reported as a defect,
+and the browser adapter aborts every subresource request whose origin is
+not that same origin before the first navigation. A redirect or a
+third-party subresource therefore cannot falsify the boundary silently.
 
 What it deliberately does not check
 ----------------------------------

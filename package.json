@@ -95,7 +95,7 @@
 		"sbom:build": "node scripts/generate-sbom.mjs",
 		"csrf:contract:check": "node scripts/check-csrf-contract.mjs",
 		"lazy-media:report": "node scripts/render-lazy-media-report.mjs",
-		"e2e:prod:local": "cross-env E2E_LOCAL_PROD_SMOKE=1 MY_WEB_2026_CONSUMER_API_KEY=local-rehearsal-not-a-credential playwright test e2e/prod-smoke.spec.ts",
+		"e2e:prod:local": "node scripts/run-prod-smoke-local.mjs",
 		"verify:hsts-screenshot": "node scripts/make-hsts-verification-report.mjs",
 		"webhook:fixture:report": "node scripts/webhook-signature-fixture-report.mjs",
 		"verification:login-rate-limit": "node scripts/capture-login-rate-limit-report.mjs"

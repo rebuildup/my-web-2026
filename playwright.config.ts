@@ -45,7 +45,14 @@ import { defineConfig, devices } from '@playwright/test';
  * as canonical.
  */
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
+const LOCAL_SMOKE = process.env.E2E_LOCAL_PROD_SMOKE === '1';
+// `e2e:prod:local` is a deliberately local-only rehearsal: force the
+// localhost origin even if a parent shell/CI job still exports a production
+// `PLAYWRIGHT_BASE_URL`. The wrapper script also overwrites it; this is the
+// config-side fail-safe for anyone invoking Playwright directly.
+const BASE_URL = LOCAL_SMOKE
+	? `http://127.0.0.1:${PORT}`
+	: (process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`);
 
 // The local D1 state (`.tmp/d1state`) must be migrated and seeded
 // BEFORE the preview server starts serving from it. That work runs in
@@ -119,7 +126,7 @@ export default defineConfig({
 	// not addressable from a remote Worker deployment, so the spec
 	// is filtered out of the production-only path.
 	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
-		? process.env.E2E_LOCAL_PROD_SMOKE === '1'
+		? LOCAL_SMOKE
 			? '**/prod-portfolio.spec.ts'
 			: '**/prod-*.spec.ts'
 		: '**/portfolio.spec.ts',

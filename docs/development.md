@@ -324,12 +324,13 @@ exist:
   release-branch data.
 - `pnpm run e2e:prod:local` runs the same spec file against the LOCAL
   preview build (`http://127.0.0.1:3000`), so the Issue #500
-  representative-route contract is reproducible offline. It changes no
-  origin: the representative-route adapter navigates to the `baseURL`
-  Playwright resolved, and the Issue #43 canonical-origin group (which
-  hardcodes the canonical origin, including the one deliberate write, the
-  anonymous reaction mutation) skips itself unless `PLAYWRIGHT_BASE_URL`
-  explicitly names production.
+  representative-route contract is reproducible offline. It builds the
+  working tree first and forces the localhost origin even if the parent
+  shell exported a production `PLAYWRIGHT_BASE_URL`; the Issue #43
+  canonical-origin group (which hardcodes the canonical origin, including
+  the one deliberate write, the anonymous reaction mutation) skips itself
+  in local mode, and subresource requests to any other origin are aborted
+  before navigation.
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
@@ -350,8 +351,9 @@ The E2E suite asserts the four public surfaces documented in
 `playwright.config.ts` ignores every `prod-*.spec.ts` when
 `PLAYWRIGHT_BASE_URL` points at localhost, so `pnpm run e2e` can never
 reach the canonical production origin. The single documented exception is
-`pnpm run e2e:prod:local`, which sets `E2E_LOCAL_PROD_SMOKE=1` and keeps
-the base URL on localhost. The production representative-route
+`pnpm run e2e:prod:local`, which builds first, sets
+`E2E_LOCAL_PROD_SMOKE=1`, and forces the base URL to localhost. The
+production representative-route
 contract is DATA in `scripts/prod-smoke-routes.mjs`; its pass/fail
 classifier `auditRoute()` is unit-tested offline by
 `scripts/prod-smoke-routes.test.mjs` (wired into `pnpm run test`), so the

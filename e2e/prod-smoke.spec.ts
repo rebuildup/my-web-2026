@@ -88,7 +88,8 @@ const CANONICAL_ORIGIN = CANONICAL_PRODUCTION_ORIGIN;
  * production — including the one deliberate write in this file.
  */
 const CONFIGURED_BASE_URL = process.env.PLAYWRIGHT_BASE_URL?.replace(/\/+$/, '');
-const IS_CANONICAL_RUN = CONFIGURED_BASE_URL === CANONICAL_ORIGIN;
+const E2E_LOCAL_PROD_SMOKE = process.env.E2E_LOCAL_PROD_SMOKE === '1';
+const IS_CANONICAL_RUN = !E2E_LOCAL_PROD_SMOKE && CONFIGURED_BASE_URL === CANONICAL_ORIGIN;
 
 /**
  * Origin the representative-route adapter talks to.
@@ -102,6 +103,34 @@ const IS_CANONICAL_RUN = CONFIGURED_BASE_URL === CANONICAL_ORIGIN;
  */
 function smokeOrigin(baseURL: string | undefined): string {
 	return (baseURL ?? CANONICAL_ORIGIN).replace(/\/+$/, '');
+}
+
+/**
+ * Abort every request that leaves the origin Playwright was pointed at.
+ *
+ * The representative-route contract promises that the smoke exercises the
+ * canonical origin only. Checking the final top-level URL is not enough:
+ * pages also load subresources (Google Fonts, GA4, third-party images), and
+ * those requests would both violate the boundary and pollute production
+ * analytics. Installing this before the first navigation makes the boundary
+ * executable instead of prose.
+ *
+ * `data:` / `blob:` / `about:` are browser-internal and never reach the
+ * network, so they are allowed through.
+ */
+async function guardOutboundTraffic(page: Page, origin: string): Promise<void> {
+	await page.route('**/*', (route) => {
+		const url = new URL(route.request().url());
+		if (
+			url.origin === origin ||
+			url.protocol === 'data:' ||
+			url.protocol === 'blob:' ||
+			url.protocol === 'about:'
+		) {
+			return route.continue();
+		}
+		return route.abort();
+	});
 }
 
 const PROD_SMOKE_PHASE = process.env.PROD_SMOKE_PHASE ?? 'versioned';
@@ -329,6 +358,9 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
  * the final (post-redirect) origin and `auditRoute()` rejects any route
  * that answered from anywhere else, so a redirect to a look-alike host
  * serving the same pathname cannot pass as a healthy canonical origin.
+ * Subresource requests (fonts, analytics, third-party images) are aborted
+ * by `guardOutboundTraffic()` before each navigation, so the boundary also
+ * holds for everything the page loads on its own.
  * ------------------------------------------------------------------------ */
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -472,6 +504,7 @@ async function observePageRoute(
 	page: Page,
 	manifest: { slugs: string[]; deliveryKinds: Record<string, string> },
 ): Promise<RouteObservation> {
+	await guardOutboundTraffic(page, origin);
 	const response = await page.goto(`${origin}${route.path}`, {
 		waitUntil: 'domcontentloaded',
 	});
@@ -595,6 +628,7 @@ test.describe('production representative routes (Issue #500)', () => {
 		page,
 	}) => {
 		const origin = smokeOrigin(baseURL);
+		await guardOutboundTraffic(page, origin);
 		for (const entry of ONE_CLICK_ENTRIES) {
 			// Re-enter the source surface each round: the previous round
 			// followed its link, so the page is no longer on `entry.from`.
@@ -633,21 +667,42 @@ test.describe('production representative routes (Issue #500)', () => {
 		page,
 	}) => {
 		const origin = smokeOrigin(baseURL);
+		await guardOutboundTraffic(page, origin);
 		for (const from of CHROME_NAV_ROUTES) {
-			await page.goto(`${origin}${from}`, { waitUntil: 'domcontentloaded' });
-			const nav = page.locator('nav[aria-label="Public"]');
-			await expect(
-				nav,
-				`${from} is registered as a chrome-nav route but does not render the PublicNav landmark`,
-			).toBeVisible();
-
-			const strip = nav.locator('[data-testid="public-nav-desktop"]');
 			for (const sibling of REPRESENTATIVE_PAGE_ROUTES) {
 				if (sibling.path === from) continue;
+				// Re-enter the source page for every link: the previous
+				// iteration navigated away, and this loop is also the proof
+				// that the chrome keeps working after a navigation.
+				await page.goto(`${origin}${from}`, { waitUntil: 'domcontentloaded' });
+				const nav = page.locator('nav[aria-label="Public"]');
 				await expect(
-					strip.locator(`a[href="${sibling.path}"]`),
+					nav,
+					`${from} is registered as a chrome-nav route but does not render the PublicNav landmark`,
+				).toBeVisible();
+
+				const link = nav.locator(`[data-testid="public-nav-desktop"] a[href="${sibling.path}"]`);
+				await expect(
+					link,
 					`${from} offers no one-click path to ${sibling.path}; the representative set is no longer navigable from the chrome`,
 				).toHaveCount(1);
+				// A link that is in the DOM but hidden (CSS regression) or
+				// blocked by an overlay is not a navigation path. Follow it
+				// like a visitor and check where that lands.
+				await expect(
+					link,
+					`${from} renders the ${sibling.path} link but it is not visible`,
+				).toBeVisible();
+				await link.click();
+				const landed = new URL(page.url());
+				expect(
+					`${landed.origin}${landed.pathname}`,
+					`clicking ${from} → ${sibling.path} in the PublicNav left the origin it was pointed at or landed somewhere else`,
+				).toBe(`${origin}${sibling.path}`);
+				await expect(
+					page.locator(sibling.h1 ?? 'h1').first(),
+					`${sibling.path} rendered without its page heading after the PublicNav path`,
+				).toBeVisible();
 			}
 		}
 	});

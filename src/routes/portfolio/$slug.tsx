@@ -1,10 +1,14 @@
 import { createFileRoute, notFound } from '@tanstack/react-router';
+import { ABOUT_DATA } from '../../about/data';
+import { personFactsFromAbout } from '../../about/structured-data';
 import { PublicNav } from '../../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
+import { CreativeWorkJsonLd } from '../../editorial/structured-data';
+import { PortfolioDetail } from '../../portfolio/components';
 import { loadPortfolioAdjacent, loadPortfolioProject } from '../../portfolio/public';
 import { SlugSchema } from '../../portfolio/schema';
-import { PortfolioDetail } from '../../portfolio/components';
+import { creativeWorkFactsFromProject } from '../../portfolio/structured-data';
 
 /**
  * `/portfolio/[slug]` — detail route (Issue #77).
@@ -15,6 +19,14 @@ import { PortfolioDetail } from '../../portfolio/components';
  * public-visibility boundary enforced by the loader (#76) is
  * preserved here — the page just renders nothing for an
  * invisible slug.
+ *
+ * Structured data (Issue #422): `<CreativeWorkJsonLd />` projects
+ * the loader result — a `public + published` row, so the visibility
+ * boundary is inherited by construction. The author is the same
+ * approved person identity `/about` emits, taken from `ABOUT_DATA`
+ * rather than restated here: one fact source, one person. No award,
+ * education or credential is emitted anywhere in this graph (see
+ * `src/editorial/structured-data/contract.json`).
  *
  * Prev / next: the detail surface renders the project that sits
  * immediately above / below the target in canonical sort order.
@@ -83,6 +95,10 @@ function DetailRoute() {
 			<PublicNav />
 			<Breadcrumbs className={breadcrumbsChrome} />
 			<BreadcrumbJsonLd />
+			<CreativeWorkJsonLd
+				facts={creativeWorkFactsFromProject(project)}
+				author={personFactsFromAbout(ABOUT_DATA)}
+			/>
 			<PortfolioDetail project={project} adjacent={adjacent} />
 		</>
 	);

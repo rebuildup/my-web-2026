@@ -166,6 +166,19 @@ describe('credentialed routes', () => {
 		}
 	});
 
+	it('delegates a foreign-origin auth write to Better Auth without a CORS echo', () => {
+		const decision = decide({
+			path: '/api/v1/auth/sign-in/email',
+			method: 'POST',
+			origin: EVIL,
+		});
+		expect(decision.kind).toBe('passthrough');
+		if (decision.kind !== 'passthrough') throw new Error('unreachable');
+		expect(decision.headers['Access-Control-Allow-Origin']).toBeUndefined();
+		expect(decision.headers['Access-Control-Allow-Credentials']).toBeUndefined();
+		expect(decision.headers.Vary).toBe('Origin');
+	});
+
 	it('still refuses a foreign-origin preflight that asks for GET', () => {
 		const decision = decide({
 			path: '/api/v1/access/count/home-page',
@@ -178,11 +191,23 @@ describe('credentialed routes', () => {
 		expect(decision.code).toBe('cors_origin_rejected');
 	});
 
-	it('refuses the opaque `null` origin', () => {
-		const decision = decide({ path: '/api/v1/auth/sign-in/email', method: 'POST', origin: 'null' });
+	it('refuses the opaque `null` origin on a non-auth credentialed route', () => {
+		const decision = decide({ path: '/api/v1/reactions', method: 'PUT', origin: 'null' });
 		expect(decision.kind).toBe('refuse');
 		if (decision.kind !== 'refuse') throw new Error('unreachable');
 		expect(decision.code).toBe('cors_origin_rejected');
+	});
+
+	it('delegates the opaque `null` origin on auth writes to Better Auth, without an echo', () => {
+		const decision = decide({
+			path: '/api/v1/auth/sign-in/email',
+			method: 'POST',
+			origin: 'null',
+		});
+		expect(decision.kind).toBe('passthrough');
+		if (decision.kind !== 'passthrough') throw new Error('unreachable');
+		expect(decision.headers['Access-Control-Allow-Origin']).toBeUndefined();
+		expect(decision.headers['Access-Control-Allow-Credentials']).toBeUndefined();
 	});
 
 	it('refuses a preflight whose requested header is outside the allow-list', () => {

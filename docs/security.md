@@ -72,8 +72,10 @@ it:
 failed, never its value.
 
 One precedence note: the CORS layer (Issue #455) is mounted ahead of
-this guard, so a write whose `Origin` is outside its allow-list is
-refused there first, with `{ "error": "cors_origin_rejected" }`. The
+this guard, so on a non-auth route a write whose `Origin` is outside
+its allow-list is refused there first, with
+`{ "error": "cors_origin_rejected" }` (`/api/v1/auth/*` is CSRF-exempt
+and delegates to Better Auth). The
 CSRF contract is unaffected — both refusals are `403` before
 authentication or D1 — and a request whose `Origin` *is* allow-listed
 but whose `Sec-Fetch-Site` says `cross-site` still gets
@@ -242,7 +244,9 @@ The external boundary splits its routes into three origin classes
   CORS header for preflights and state-changing requests. A `GET`/`HEAD`
   from a foreign origin still reaches the handler (Issue #440's CSRF
   contract keeps safe reads unaffected) but carries no CORS echo, so the
-  browser cannot read the body.
+  browser cannot read the body. On `/api/v1/auth/*` the actual-request
+  refusal is Better Auth's (`INVALID_ORIGIN`, Issue #444); CORS only
+  withholds the echo and owns the preflight refusal.
 - `public-read` — `/api/v1/health` and `/api/v1/reaction-images/:id`.
   `Access-Control-Allow-Origin: *`, and never a credentials header.
 - `none` — everything else, including `/api/v1/db/ping`,

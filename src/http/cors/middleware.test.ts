@@ -124,14 +124,15 @@ describe('corsMiddleware', () => {
 		expect(await res.json()).toEqual({ error: 'cors_origin_rejected', class: 'credentialed' });
 	});
 
-	it('refuses the opaque `null` origin on the Better Auth router', async () => {
+	it('refuses the opaque `null` origin in a Better Auth preflight', async () => {
+		// Preflights never reach Better Auth, so the CORS layer owns
+		// this refusal. An actual auth write is delegated instead.
 		const { test, env } = app();
 		const res = await test.request(
 			'/api/v1/auth/sign-in/email',
 			{
-				method: 'POST',
-				headers: { Origin: 'null', 'Content-Type': 'application/json' },
-				body: JSON.stringify({ email: 'a@b.c' }),
+				method: 'OPTIONS',
+				headers: { Origin: 'null', 'Access-Control-Request-Method': 'POST' },
 			},
 			env,
 		);
@@ -333,12 +334,33 @@ describe('corsMiddleware', () => {
 			expect(res.headers.get('access-control-allow-credentials')).toBe('true');
 		});
 
-		it('refuses a foreign-origin write on the same route', async () => {
+		it('passes a foreign-origin auth write to Better Auth without a CORS echo', async () => {
+			// Better Auth owns the `/api/v1/auth/*` origin contract
+			// (Issue #444): this layer must not replace its
+			// `INVALID_ORIGIN` refusal. The missing echo still keeps any
+			// browser from reading the answer.
 			const { test, env } = rawResponseApp({ BETTER_AUTH_URL: CANONICAL });
 			const res = await test.request(
 				'/api/v1/auth/sign-in/email',
 				{
 					method: 'POST',
+					headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' },
+					body: '{}',
+				},
+				env,
+			);
+			expect(res.status).toBe(200);
+			expect(res.headers.get('access-control-allow-origin')).toBeNull();
+			expect(res.headers.get('access-control-allow-credentials')).toBeNull();
+			expect(res.headers.get('set-cookie')).toBe('better-auth.session_token=x');
+		});
+
+		it('still refuses a foreign-origin write on a non-auth credentialed route', async () => {
+			const { test, env } = app({ BETTER_AUTH_URL: CANONICAL });
+			const res = await test.request(
+				'/api/v1/reactions',
+				{
+					method: 'PUT',
 					headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' },
 					body: '{}',
 				},
@@ -389,10 +411,10 @@ describe('corsMiddleware', () => {
 			expect(foreignRead.headers.get('access-control-allow-credentials')).toBeNull();
 
 			const refusedWrite = await mock.test.request(
-				'/api/v1/auth/sign-in/email',
+				'/api/v1/access/hit',
 				{
 					method: 'POST',
-					headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' },
+					headers: { Origin: 'https://evil.example', 'Content-Type': 'text/plain' },
 					body: '{}',
 				},
 				mock.env,

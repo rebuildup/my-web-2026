@@ -34,13 +34,20 @@
  * correlate) instead of the silent `204` a permissive preflight handler
  * would produce.
  *
- * The one exception is an actual (non-preflight) `GET`/`HEAD` from an
- * origin outside the allow-list: it reaches the handler with no
- * `Access-Control-Allow-Origin`, so a browser still cannot read the
- * body, but a cross-site read stays non-destructive. Issue #440's CSRF
- * contract records `GET`/`HEAD` as unaffected by the origin check, and
- * refusing them here would turn a CORS concern into a server-side read
- * outage for non-browser clients that set `Origin`.
+ * Two actual (non-preflight) shapes reach the handler with no
+ * `Access-Control-Allow-Origin` instead of getting a `403`:
+ *
+ *   - `GET`/`HEAD` from any origin. A browser still cannot read the
+ *     body, but the read stays non-destructive. Issue #440's CSRF
+ *     contract records `GET`/`HEAD` as unaffected by the origin check,
+ *     and refusing them here would turn a CORS concern into a
+ *     server-side read outage for non-browser clients that set `Origin`.
+ *   - Any request under `/api/v1/auth/*`. Better Auth owns the origin
+ *     check for that surface (`trustedOrigins`, plus its own
+ *     `INVALID_ORIGIN` answer); refusing first would replace a
+ *     documented auth-layer contract with this one (Issue #444), and
+ *     the browser still gets no CORS echo either way. Preflights are
+ *     still refused here because Better Auth never sees them.
  *
  * Origin allow-list sources (in resolution order, all of them runtime
  * inputs — this module holds no origin literal):
@@ -290,6 +297,16 @@ function isSafeReadMethod(method: string): boolean {
 	return wanted === 'GET' || wanted === 'HEAD';
 }
 
+/**
+ * `/api/v1/auth/*` owns its own origin contract in Better Auth
+ * (`trustedOrigins`, `INVALID_ORIGIN`). The CORS layer still answers
+ * the preflight and withholds the echo, but it does not replace the
+ * auth-layer refusal for an actual request.
+ */
+function delegatesOriginCheck(route: CorsRoute): boolean {
+	return route.path === '/api/v1/auth';
+}
+
 function refuse(
 	route: CorsRoute,
 	code: CorsRefusalCode,
@@ -345,7 +362,7 @@ export function decideCors(input: CorsDecisionInput): CorsDecision {
 			// readable" contract and non-browser clients that set an
 			// `Origin` header keep working. Preflights and every
 			// state-changing method still fail closed.
-			if (!input.preflight && isSafeReadMethod(input.method)) {
+			if (!input.preflight && (isSafeReadMethod(input.method) || delegatesOriginCheck(route))) {
 				return { kind: 'passthrough', klass: route.klass, headers: base };
 			}
 			return refuse(route, 'cors_origin_rejected', base);

@@ -105,7 +105,14 @@ Issue #440 の CSRF 契約が「cross-site の `GET`/`HEAD` は origin 検査の
 API の可用性（`Origin` を付ける非ブラウザクライアントを含む）を
 壊すため、読み取りだけは「ヘッダを出さない」で fail closed とする。
 `Vary: Origin` はこの分岐にも付く（allow-list 内なら echo が付くので、
-応答は origin で変わる）。`Vary: Origin` は**origin で結果が変わる
+応答は origin で変わる）。
+
+`/api/v1/auth/*` の実リクエストは origin 判定を Better Auth に委ねる。
+Better Auth 自身が `trustedOrigins` と `INVALID_ORIGIN` で write を
+拒否する契約を持っており（Issue #444）、CORS 層が先に別の code で
+上書きすると、その「どの層が答えるか」という記録を壊すため。CORS は
+echo を付けないので、ブラウザからは従来どおり読めない。preflight は
+Better Auth に届かないため CORS 層が拒否する。`Vary: Origin` は**origin で結果が変わる
 応答**にだけ付く。具体的には credentialed の echo と refusal
 （refusal は origin についての判定なので、shared cache が別 origin の
 refusal を再利用してよいから）。`public-read` は
@@ -221,7 +228,7 @@ handler には到達させる（CORS ヘッダを出さないので browser は
 
 | 対象 | 変更 | 運用上の意味 |
 |------|------|--------------|
-| `/api/v1/auth/*`（Better Auth） | 許可 origin 以外の cross-origin **write / preflight** は Better Auth handler に到達せず 403。`GET`/`HEAD` は handler に到達するが CORS ヘッダは付かない | Better Auth 自身の `trustedOrigins` チェックより**前**で効く。origin を増やしたいときは `BETTER_AUTH_URL` を 1 つ直すだけで両方に効く（ずれない）。write の拒否は `Origin` ヘッダの有無だけで判定するため、`Origin` を付ける非ブラウザ client の write も 403 になる（§4「副作用の正確な範囲」） |
+| `/api/v1/auth/*`（Better Auth） | 許可 origin 以外の **preflight** は CORS 層が 403。**実リクエスト**は Better Auth に到達し、同層が `trustedOrigins` に基づいて `403 INVALID_ORIGIN` を返す（CORS echo なし） | origin を増やしたいときは `BETTER_AUTH_URL` を 1 つ直すだけで Better Auth と CORS の allow-list の両方に効く（ずれない）。`/api/v1/auth/*` の write の拒否 code は CORS ではなく Better Auth が所有し、`test/integration/oauth-callback.test.ts`（Issue #444）がそれを固定している |
 | `/api/v1/access/*`, `/api/v1/reactions` | 同上。API key は header 経由なので、client 側は従来通り | 外部 integration が別 origin から叩く想定なら、それは明示的な owner 決定として別 ticket で扱う（§7） |
 | TanStack Start の CSRF middleware | **変更なし**。`src/start.ts` は引き続き不在で、default middleware が有効 | CORS は SSR 面（`/`, `/admin/*`, `/_serverFn/*`）には一切ヘッダを出さない。`test/integration/cors.test.ts` が `/`, `/contact`, `/admin/login` でそのことを検証する |
 | `LOCAL_API_MODE=mock` | middleware を全 router より前（かつ mock ゲートより前）に置いているので mock も同じ CORS 面を持つ | デザイナーが mock で別の CORS 面を見て、production と違う挙動を掴むことがない。ただしこの主張は「mount 順が正しい」だけでは成立せず、mock ゲートが生の `Response`（`mockApp.fetch(...)`）を返すため §4 の「確定後に載せる」が必須。`test/integration/cors.test.ts` に mock モードの許可行／拒否行がある |

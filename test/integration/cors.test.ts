@@ -160,12 +160,12 @@ const PROBES: readonly Probe[] = [
 	{
 		label: 'Better Auth session read (POST) from the canonical origin',
 		meaning:
-			'same echo on the other verb Better Auth registers — and on its 415 error answer, which is where a header set before the handler would have been lost',
+			'same echo on the other verb for this path — and on its 405 error answer, which is where a header set before the handler would have been lost',
 		method: 'POST',
 		path: '/api/v1/auth/get-session',
 		origin: ORIGIN,
 		expectClass: 'credentialed',
-		expectStatus: 415,
+		expectStatus: 405,
 		expectAllowOrigin: ORIGIN,
 		expectCredentials: 'true',
 	},
@@ -263,7 +263,8 @@ const PROBES: readonly Probe[] = [
 	},
 	{
 		label: 'sandboxed Tool iframe (Origin: null) on the auth route',
-		meaning: 'refused: the opaque origin of /tools/<slug>/app/* is never allow-listed',
+		meaning:
+			'refused: the opaque origin of /tools/<slug>/app/* is never allow-listed; Better Auth owns this actual-request refusal',
 		method: 'POST',
 		path: '/api/v1/auth/sign-in/email',
 		origin: 'null',
@@ -338,8 +339,17 @@ async function runProbe(probe: Probe): Promise<Record<string, unknown>> {
 	if (probe.requestHeaders) headers['Access-Control-Request-Headers'] = probe.requestHeaders;
 	const init: RequestInit = { method: probe.method, headers };
 	if (probe.method === 'POST') {
-		headers['Content-Type'] = 'text/plain';
-		init.body = 'key=home-page';
+		// `/api/v1/auth/*` writes are delegated to Better Auth (Issue
+		// #444), which rejects a non-JSON media type with `415` before
+		// its origin check. Send the shape a real sign-in form posts so
+		// the row measures the origin contract rather than that guard.
+		const authWrite = probe.path.startsWith('/api/v1/auth/');
+		headers['Content-Type'] = authWrite ? 'application/json' : 'text/plain';
+		init.body = probe.path.endsWith('/sign-in/email')
+			? JSON.stringify({ email: 'probe@invalid.example', password: 'not-a-real-password' })
+			: authWrite
+				? '{}'
+				: 'key=home-page';
 	}
 	const res = probe.mockMode
 		? await externalBoundary.fetch(new Request(`${ORIGIN}${probe.path}`, init), {

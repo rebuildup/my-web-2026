@@ -157,6 +157,16 @@ const KEY_NAME = 'authz-matrix-key';
 const ACCEPT_TOKEN = 'authz-matrix-accept-token-aaaaaaaaaaaaaaaaaa';
 /** Local-only fixture credential. Never a real password; never printed. */
 const FIXTURE_PASSWORD = 'authz-matrix-fixture-password';
+/**
+ * Origin the Worker entry answers on in this pool (`https://example.com`).
+ * `csrfGuard` (`src/http/middleware/csrf.ts`) refuses an unsafe method
+ * that carries no same-origin signal, so the write rows below declare
+ * this origin — the same thing a first-party caller such as
+ * `src/home/{access,reactions}/load.ts` sends. The CSRF contract itself
+ * is asserted in `test/integration/csrf-contract.test.ts`; declaring the
+ * origin here keeps each row measuring only the authorization outcome.
+ */
+const WORKER_ORIGIN = 'https://example.com';
 
 interface Marker {
 	/** Human-readable name, safe to print in a failing assertion. */
@@ -520,13 +530,18 @@ describe('internal APIs — write paths and the public image read (Issue #441)',
 		const url = 'https://example.com/api/v1/access/hit';
 		const body = JSON.stringify({ key: 'authz-matrix', session_id: 'authz-matrix-actor' });
 
-		const anon = await SELF.fetch(url, { method: 'POST', body });
+		const anon = await SELF.fetch(url, {
+			method: 'POST',
+			headers: { origin: WORKER_ORIGIN },
+			body,
+		});
 		expect(anon.status).toBe(401);
 		expect(await anon.json()).toEqual({ error: 'missing_authorization' });
 
 		const wrongScope = await SELF.fetch(url, {
 			method: 'POST',
 			headers: {
+				origin: WORKER_ORIGIN,
 				authorization: `Bearer ${reactionsKey.token}`,
 				'content-type': 'application/json',
 			},
@@ -538,6 +553,7 @@ describe('internal APIs — write paths and the public image read (Issue #441)',
 		const authorized = await SELF.fetch(url, {
 			method: 'POST',
 			headers: {
+				origin: WORKER_ORIGIN,
 				authorization: `Bearer ${accessKey.token}`,
 				'content-type': 'application/json',
 			},
@@ -556,12 +572,13 @@ describe('internal APIs — write paths and the public image read (Issue #441)',
 			value: '👍',
 		});
 
-		const anon = await SELF.fetch(url, { method: 'PUT', body });
+		const anon = await SELF.fetch(url, { method: 'PUT', headers: { origin: WORKER_ORIGIN }, body });
 		expect(anon.status).toBe(401);
 
 		const wrongScope = await SELF.fetch(url, {
 			method: 'PUT',
 			headers: {
+				origin: WORKER_ORIGIN,
 				authorization: `Bearer ${accessKey.token}`,
 				'content-type': 'application/json',
 			},
@@ -573,6 +590,7 @@ describe('internal APIs — write paths and the public image read (Issue #441)',
 		const authorized = await SELF.fetch(url, {
 			method: 'PUT',
 			headers: {
+				origin: WORKER_ORIGIN,
 				authorization: `Bearer ${reactionsKey.token}`,
 				'content-type': 'application/json',
 			},

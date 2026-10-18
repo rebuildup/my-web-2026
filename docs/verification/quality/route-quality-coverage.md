@@ -13,7 +13,7 @@
 | | before (#492 の前) | after |
 | --- | --- | --- |
 | 公開 route roster | `src/routeTree.gen.ts` の生成物を読むしかなく、**比較される相手がいない** | `src/routes/**` の `createFileRoute('<id>')` 呼び出しから取得し、`quality/route-coverage.json` と機械的に突き合わせる |
-| 新 route 追加時 | どの品質ゲートの対象にもならないことを誰も気づくできない | manifest エントリが無いと `pnpm run routes:quality:check` が fail（PR で「対象追加 / 正当な除外」を強制） |
+| 新 route 追加時 | どの品質ゲートの対象にもならないことを誰も気づけない | manifest エントリが無いと `pnpm run routes:quality:check` が fail（PR で「対象追加 / 正当な除外」を強制） |
 | 対象漏れ（例: `/portfolio` の SEO metadata） | 仕様書にのみ暗黙。spec を消しても fail しない | `covered` の evidence は実ファイル、かつそのファイルが route path を単独で含む場合だけ成立（含まない場合 fail） |
 | 除外の記録 | なし | 全 cell が `covered`（evidence 付き）か `excluded`（理由付き）。`TBD` のような placeholder は fail |
 

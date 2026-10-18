@@ -23,15 +23,29 @@ import {
  * for the read paths.
  */
 export const Route = createFileRoute('/')({
+	// Index boundary (Issue #423): the home surface is the canonical
+	// public page, so it declares the same canonical URL the sitemap
+	// advertises (`public/sitemap.xml` is generated from the route
+	// inventory in `scripts/_index-boundary.mjs`, and the check fails if
+	// the two disagree). No `robots` meta is emitted here on purpose —
+	// an accidental `noindex` on this route would silently de-index the
+	// entire site, which is why the checker treats a noindex meta on any
+	// public route as a violation rather than a style choice.
 	head: () => ({
-		// Issue #420 — the platform entry is the root of the sitemap,
-		// and the sitemap contract is that every `<loc>` is the
-		// page's canonical URL. `/` and `/tools` were the only public
-		// routes without a canonical, so they gained the same
-		// `rel="canonical"` their siblings already declared.
-		// `scripts/check-sitemap-route-coverage.test.mjs` asserts that
-		// this literal and the sitemap inventory agree, so the two
-		// cannot drift apart silently.
+		meta: [
+			{ title: 'my-web-2026' },
+			{
+				name: 'description',
+				content:
+					'rebuildup の個人 Web プラットフォーム。Home / Portfolio / Tools / Contact の公開面と、Admin の運用面を同一の Cloudflare Worker で配信しています。',
+			},
+			{ property: 'og:type', content: 'website' },
+			{ property: 'og:title', content: 'my-web-2026' },
+			{ property: 'og:url', content: 'https://rebuildup.dev/' },
+		],
+		// Issue #420 — the sitemap contract is that every `<loc>` is the
+		// page's canonical URL; `scripts/check-sitemap-route-coverage.test.mjs`
+		// asserts that this literal and the sitemap inventory agree.
 		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/' }],
 	}),
 	loader: async () => {

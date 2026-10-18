@@ -192,17 +192,21 @@ async function listPortfolioProjectsImpl(
 			(pinned = ? AND display_order = ? AND updated_at = ? AND id > ?)
 		)`
 		: '';
-	const sql = `
+	// Fetch limit+1 so we can detect "has next page" without a
+	// separate COUNT query.
+	const fetchLimit = limit + 1;
+	// The statement text is passed inline on purpose. `scripts/check-d1-sql-binding.mjs`
+	// only reads the literal argument of `prepare()`, so assembling this into a
+	// `const sql` first would hide the `${cursorPredicate}` interpolation from the gate
+	// and make its `SQL_STRUCTURE_ALLOWLIST` entry dead configuration. Inline, the gate
+	// sees the interpolation and holds it to the reason recorded there.
+	// See `docs/security.md#d1-parameter-binding-issue-452`.
+	const stmt = db.prepare(`
 		SELECT * FROM portfolio_project
 		WHERE status = 'published' AND visibility = 'public'${cursorPredicate}
 		ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC
 		LIMIT ?
-	`;
-
-	// Fetch limit+1 so we can detect "has next page" without a
-	// separate COUNT query.
-	const fetchLimit = limit + 1;
-	const stmt = db.prepare(sql);
+	`);
 	const binds: Array<string | number> = [];
 	if (cursor) binds.push(...cursorBinds(cursor));
 	binds.push(fetchLimit);

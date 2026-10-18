@@ -79,7 +79,10 @@ describe('GET /robots.txt', () => {
 		expect(res.headers.get('content-type')).toBe('text/plain; charset=utf-8');
 		const body = await res.text();
 		expect(body).toContain('User-agent: *');
-		expect(body).toContain('Disallow: /admin');
+		// No `Disallow:` directive at all: /admin is de-indexed by its own
+		// `noindex` meta, which a blocked crawler could never read
+		// (Issue #423).
+		expect(body).not.toMatch(/^Disallow:/m);
 		expect(body).toContain(`Sitemap: ${SITEMAP_ORIGIN}/sitemap.xml`);
 	});
 });

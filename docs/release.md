@@ -32,6 +32,16 @@ below remain literal records.
    `node scripts/check-release-assets.mjs` (part of `pnpm run
    validate:fast`, before `version:check`) reports the absent path
    directly instead of masking it behind downstream failures.
+   The same cut is also where the publication surface is recorded:
+   `node scripts/check-publication-diff.mjs --write` (Issue #505,
+   `pnpm run publication:write`) re-records
+   `docs/verification/content/publication-surface.snapshot.json` and the
+   diff report beside it. `pnpm run publication:check` (also part of
+   `validate:fast`) fails when a public URL disappeared, when an
+   internal surface became public, when a new external host appeared,
+   or when a route file exists that no surface declaration claims. See
+   [`docs/verification/content/publication-surface.md`](verification/content/publication-surface.md).
+
    The CycloneDX SBOM is generated rather than committed: run
    `pnpm run sbom:build` after the version bump to write
    `release-assets/supply-chain/<version>/sbom.cdx.json`

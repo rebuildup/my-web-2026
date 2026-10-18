@@ -283,6 +283,18 @@ allow-list; when it is unset the guard refuses every absolute URL
 (fail-closed). The shipped contract, operator duties and known limits:
 [`docs/security/open-redirect.md`](security/open-redirect.md).
 
+## Inbound webhooks
+
+`/webhooks/*` is dispatched to the external boundary but **no handler
+is mounted** — a signed delivery answers `404 {"error":"not_found"}`.
+The verification adapter for a future sender (GitHub, or a CMS later)
+— HMAC signature, freshness window, delivery-id replay
+de-duplication — exists as a reviewed contract with local fixtures and
+tests, and ships without an entry point on purpose. Contract, failure
+behaviour, and the promotion checklist that must be satisfied before a
+route exists:
+[`docs/security/webhook-signature-verification.md`](security/webhook-signature-verification.md).
+
 ## D1 parameter binding (Issue #452)
 
 ### Rule

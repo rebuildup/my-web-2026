@@ -88,10 +88,15 @@ function runKnip() {
 /** Normalize a per-file issue object into flat "category file[:symbol]" strings. */
 function normalizeEntry(issue) {
 	const entries = [];
+	// Most findings carry a file. Project-level categories (duplicates,
+	// binaries) may not, so fall back to a stable label instead of
+	// interpolating `undefined` into the baseline entry.
+	const file = issue.file ?? '<project>';
 	for (const key of GATED_KEYS) {
 		for (const item of issue[key] ?? []) {
 			// Files have {name}; symbols have {name, line, col}; deps have {name, filePath}.
-			entries.push(`${key} ${issue.file} ${item.name}`);
+			const label = item.name ?? item.namePath ?? '<unknown>';
+			entries.push(`${key} ${file} ${label}`);
 		}
 	}
 	return entries;

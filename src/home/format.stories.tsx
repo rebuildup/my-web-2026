@@ -2,11 +2,11 @@ import type { Meta, StoryObj } from '@storybook/react';
 import { css } from '../../styled-system/css';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
-import type { HomeFormat, HomeLocale } from './format';
 import { HOME_LOCALES, createHomeFormat } from './format';
+import { LOCALE_COMPARISON_ROWS } from './format.compare';
 
 /**
- * Locale comparison — the verification surface for Issue #430.
+ * Locale comparison — the preview surface for Issue #430.
  *
  * The home format adapter formats instants, counts, and relative
  * spans. This story renders **one** instant, **one** count, and
@@ -14,11 +14,9 @@ import { HOME_LOCALES, createHomeFormat } from './format';
  * side by side, so a reviewer can see the difference without any
  * other issue landing and without a running Worker.
  *
- * It is a preview fixture, not a product surface: it exists so the
- * acceptance criteria ("the same instant reads consistently per
- * locale") can be checked from a build artifact — `pnpm run
- * build-storybook` is part of `validate:integration`, so the story
- * is CI-verified to compile on every ticket PR.
+ * The rows come from `src/home/format.compare.ts` — the same
+ * fixture the static verification report is generated from, so the
+ * story and the committed screenshot can never disagree.
  *
  * What the rows deliberately show:
  *
@@ -50,67 +48,8 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-/** The fixed instant every row formats. */
-const INSTANT = '2026-01-05T09:00:00.000Z';
-
 /** The fixed clock the relative rows measure from. */
 const NOW = Date.UTC(2026, 0, 5, 9, 0, 0);
-
-interface Row {
-	/** Row label — what the value is. */
-	label: string;
-	/** Why the row exists (rendered as a quiet note). */
-	note?: string;
-	/** Time zone the row is read in. Defaults to UTC. */
-	timeZone?: string;
-	/** The value, rendered in the row's locale. */
-	render: (format: HomeFormat) => string;
-}
-
-const ROWS: readonly Row[] = [
-	{
-		label: 'Instant — 2026-01-05T09:00:00Z',
-		note: 'the same instant, read in UTC',
-		render: (format) => format.formatInstant(INSTANT),
-	},
-	{
-		label: 'Instant — same moment in Asia/Tokyo',
-		note: 'the zone moves the clock reading, not the instant',
-		timeZone: 'Asia/Tokyo',
-		render: (format) => format.formatInstant(INSTANT),
-	},
-	{
-		label: 'Date only — UTC',
-		note: 'date order and separators are locale data',
-		render: (format) => format.formatDate(INSTANT),
-	},
-	{
-		label: 'Count — 1,234,567 page views',
-		note: 'grouping is identical in en / ja / ko today',
-		render: (format) => format.formatCount(1_234_567),
-	},
-	{
-		label: 'Relative — 5 minutes ago',
-		note: 'the unit is worded by the locale',
-		render: (format) => format.formatRelative(NOW - 5 * 60_000),
-	},
-	{
-		label: 'Relative — 3 hours ago',
-		note: 'the unit is worded by the locale',
-		render: (format) => format.formatRelative(NOW - 3 * 3_600_000),
-	},
-	{
-		label: 'Relative — 12 days ago',
-		note: 'measured spans stay measured (no "yesterday")',
-		render: (format) => format.formatRelative(NOW - 12 * 86_400_000),
-	},
-	{
-		label: 'Unit reference — 12 hours',
-		note: 'preview only: no home surface renders a CLDR unit yet',
-		render: (format) =>
-			new Intl.NumberFormat(format.locale, { style: 'unit', unit: 'hour' }).format(12),
-	},
-];
 
 /** Counter data shared by the three locale previews below the table. */
 const COUNTER: HomeCounterData = {
@@ -155,7 +94,7 @@ function LocaleComparison() {
 						lineHeight: '1.3',
 					})}
 				>
-					One instant, three locales / 同一instant・3ロケール
+					One instant, three locales / 同一 instant・3 ロケール
 				</h2>
 				<p
 					className={css({
@@ -211,7 +150,7 @@ function LocaleComparison() {
 					</tr>
 				</thead>
 				<tbody>
-					{ROWS.map((row) => (
+					{LOCALE_COMPARISON_ROWS.map((row) => (
 						<tr key={row.label}>
 							<th
 								scope="row"
@@ -290,7 +229,7 @@ function LocaleComparison() {
 							>
 								{locale}
 							</span>
-							<CounterTile data={COUNTER} locale={locale as HomeLocale} now={() => NOW} />
+							<CounterTile data={COUNTER} locale={locale} now={() => NOW} />
 						</div>
 					))}
 				</div>

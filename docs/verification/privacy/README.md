@@ -15,11 +15,12 @@ the surface must still show something when the data is private.
 
   | 対象 | 基準 |
   | --- | --- |
-  | 公開SSR HTML | owner未承認のフィールド名・**3桁以上の小数**座標ペア・`geo:` URI が含まれない（`/` `/contact` `/tools` `/tools/text-counter` `/design-system`）。粗い座標（`35.1, 139.7`）や整数座標は precision over recall の方針で検出対象外 |
-  | 公開 JSON | `/api/v1/*` の 200 / 401 レスポンスに同じ語彙が含まれない |
+  | 公開SSR HTML | owner未承認のフィールド名・**3桁以上の小数**座標ペア・`geo:` URI が含まれない（`/` `/about` `/contact` `/portfolio` `/portfolio/<public>` `/tools` `/tools/text-counter` `/tools/prototype` `/design-system`）。粗い座標（`35.1, 139.7`）や整数座標は precision over recall の方針で検出対象外 |
+  | 公開 JSON | `/api/v1/*` の 200 / 404 / 401 レスポンスに同じ語彙が含まれない |
   | Analytics | GA4 bootstrap は measurement ID のみ、`page_view` は `page_path` 系のみ |
-  | 公開用代替表示 | 非公開でも surface は空にならない。本 PR では Home が既存の Activity capability を `planned` として提示し続けることを assert する（private record の置換ではなく、出荷済みの代替表示の確認） |
-  | 非空虚性 | 検出器が fixture に対して実際に発火する |
+  | 非公開状態（storage → 公開 response） | `PRIVATE_OWNER_RECORD` の値を持つ行が `visibility='draft'` で D1 に実在し、`/portfolio` と `/portfolio/<slug>` のレスポンスには title / venue / 座標が一切現れない。slug 直叩きは 404 |
+  | 公開用代替表示 | 非公開でも surface は空にならない。`/portfolio` は `published + public` の行を提示し続ける。Home も既存の Activity capability を `planned` として提示し続ける |
+  | 非空虚性 | 検出器が fixture に対して実際に発火する。加えて、private 行が D1 に**存在する**ことも assert する（書けていなければ「response に無い」は無意味になる） |
 
 - **実行手順**
 
@@ -30,27 +31,45 @@ the surface must still show something when the data is private.
 - **受け入れ条件の状態**
 
   Issue #511 の「非公開設定時に GPS・私的イベント名がレスポンスから
-  消え、公開用代替表示が残る」は、publication policy
-  （`visibility` スイッチ / 非公開スケジュール storage / admin トグル）が
-  `src/**` に存在しないため、**この PR では検証していない（未達・owner 決定）**。
-  この suite が固定するのは次の 2 つであり、「非公開時に抑制される」
-  ことの実証ではない。
+  消え、公開用代替表示が残る」は、**このリポジトリが出荷している
+  publication boundary については検証済み**である。
 
-  1. 現存する公開面（SSR HTML・`/api/v1/*` JSON・GA4 payload）が
-     owner 未承認の location / schedule データを運ばない**回帰契約**。
-  2. その判定に使う検出器が fixture に対して実際に発火する
-     **非空虚性契約**。
+  唯一の公開境界は portfolio の公開 projection
+  （`src/portfolio/load.ts` の
+  `status = 'published' AND visibility = 'public'`）で、suite は
+  `PRIVATE_OWNER_RECORD` の値を持つ行を `visibility = 'draft'`
+  で D1 に書き化し、次を request-level で assert する。
 
-  条件を満たすには、owner が次のいずれかを決定する必要がある。
+  1. その行が storage に実在し、検出器がその行に対して発火する
+     （抑制の主張が空振りしないための非空虚性）。
+  2. `/portfolio` は `published + public` の行を提示し続ける一方、
+     private 行の title / venue / 座標がレスポンスに現れない。
+  3. slug を直叩きしても `/portfolio/<private>` は 404 で、private
+     記録のどの部分も運ばない。
 
-  - **(a) publication policy を実装する**: `visibility` スイッチ /
-    admin トグル / 非公開スケジュール storage を `src/**` に追加し、
-    private-state の request-level case をこの suite に追加する。
-  - **(b) Issue #511 の当該条件を明示的に descope する**: この PR を
-    「公開面の回帰契約 + 検出器の非空虚性契約」として受け入れる。
+  一方、**現在地 / 活動 / カレンダー slice 自体には publication
+  policy が存在しない**。`visibility` 列は portfolio の公開列だけで、
+  location / activity / calendar 用の `visibility` スイッチ・admin
+  トグル・非公開スケジュール storage は `src/**` に無い。この slice を
+  どの状態で公開するかは owner 決定であり、agent が意味を実装すれば
+  Issue が要求していない機能を捏造することになる。
 
-  いずれが選ばれるまでは、この受け入れ条件は **未達** のままであり、
-  本 suite は「公開面に非公開データが無い」ことだけを保証する。
+  よって条件は「**存在する publication boundary について met /
+  未実装の slice について open**」。owner が次をどちらかに決めるまで
+  latter は open のまま。
+
+  - **(a) publication policy を実装する**: location / activity /
+    calendar 用に `visibility` スイッチ / admin トグル / 非公開
+    スケジュール storage を追加し、private-state の request-level
+    case をこの suite に追加する（上の portfolio 側の case と同じ形）。
+  - **(b) Issue #511 の当該 slice を明示的に descope する**: この PR を
+    「公開面の回帰契約 + 検出器の非空虚性契約 + 出荷済み publication
+    boundary の抑制契約」として受け入れる。
+
+  なお `src/editorial/structured-data/contract.json` の
+  `person.unapprovedProperties` は、同じ「公開するしない」を
+  理由付きで宣言する既存の先例であり、**(a)** で publication policy を
+  決めたときの置き場所は同ファイルである。
 
 - **画像について**
 
@@ -68,23 +87,26 @@ the surface must still show something when the data is private.
 
 - **スキャン対象の公開SSR HTML**
 
-  `/` `/contact` `/tools` `/tools/text-counter` `/design-system`。
-  `/tools/$slug` は loader が build 時 Tool manifest を読むだけ、
-  `/design-system` は loader を持たず、どちらも D1 を要求しないので
-  この pool で 200 を返す。公開 nav に載る面なので「未スキャン」を
-  受け入れる側ではなくスキャン側に倒している。
+  `src/routes/**` の public route file ごとに 1 サンプル:
+  `index.tsx` → `/`、`about.tsx` → `/about`、`contact.tsx` → `/contact`、
+  `portfolio/index.tsx` → `/portfolio`、
+  `portfolio/$slug.tsx` → `/portfolio/privacy-fixture-public`、
+  `tools.index.tsx` → `/tools`、`tools.$slug.tsx` →
+  `/tools/text-counter` と `/tools/prototype`、
+  `design-system.tsx` → `/design-system`。
+
+  `/about` と `/portfolio` は portfolio D1 schema を bootstrap する
+  ことで 200 を返すので、**除外ではなくスキャン側に倒している**
+  （schema は `test/integration/fixtures/portfolio-d1.ts`（Issue #422）
+  の共有 fixture から使い、migration のコピーを二重に持たない）。
 
 - **対象外**
 
-  - `/about` / `/portfolio` / `/portfolio/$slug` の HTML（loader が
-    portfolio D1 schema を要求し、対象 suite は reactions のみ
-    bootstrap するため 500）。該当 route の描画は既存の D1 / R2
-    integration suite が所有。この除外は
-    `describe('excluded surfaces stay excluded')` で「非 200 であること」
-    として assert してあり、主張を prose だけにしない。
-  - publication 設定の実装（`visibility` スイッチ、admin トグル、
-    非公開スケジュール storage）。owner 決定が必要で、本 PR では
-    実装も private-state の検証もしない。
+  - `/admin/**`。auth boundary の内側であり公開面ではない。admin 経路に
+    位置情報を載せる場合の publication 判断は owner 決定待ち（**(a)**）。
+  - publication policy の実装そのもの（location / activity / calendar
+    slice の `visibility` スイッチ、admin トグル、非公開スケジュール
+    storage）。owner 決定が必要で、本 PR では実装しない。
   - 多言語表示。
   - この suite の D1 bootstrap が production と一致しない差分。
     `reaction_images`（`0003`）と access counter の
@@ -93,7 +115,9 @@ the surface must still show something when the data is private.
     この pool では outbound fetch が pool 外に出るため
     （`[home.access.*] upstream failed`）、`/` の access-counter
     タイルは空 / 縮退表示になる。いずれも「どの行があるか」の差であり、
-    公開面が持ちうる owner 未承認データの差ではない。
+    公開面が持ちうる owner 未承認データの差ではない。portfolio 側は
+    private 行を**意図的に**持つため、ここだけは production と違い、
+    それが検出の前提になっている。
 
 - **将来の手作業**
 
@@ -101,9 +125,10 @@ the surface must still show something when the data is private.
      参照して「公開 projection に含めてはいけない」を test から強制する。
   2. publication policy を owner が確定したら、同じ検出器を admin 経路と
      storage 境界にも拡張し、private-state の request-level case を
-     この suite に追加する（Issue #511 の条件はその時点で初めて検証可能になる）。
-  3. `/about` `/portfolio` `/portfolio/$slug` も HTML スキャン対象にする場合は、
-     portfolio D1 schema の bootstrap をこの suite へ追加するか、共通 fixture へ
-     切り出す。
+     この suite に追加する（**(a)**）。既存の portfolio 側の case が
+     そのときの実装范例になる。
+  3. public route を追加したら `PUBLIC_SSR_PATHS` に path を足す
+     （route file ごとに 1 サンプル）。逆に 200 を返さなくなった path を
+     黙って外さない。
   4. 「`docs/verification/**` の生成器を commit するか」を owner が決定したら、
      本レポートの生成器を `scripts/` へ移す。

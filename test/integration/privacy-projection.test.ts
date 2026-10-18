@@ -15,6 +15,11 @@ import {
 	formatLeaks,
 	isPrivateFieldName,
 } from '../helpers/privacy-surface';
+import {
+	applyPortfolioSchema,
+	clearPortfolioTables,
+	seedPortfolioRow,
+} from './fixtures/portfolio-d1';
 
 /**
  * Owner-unapproved location / schedule data must not reach a public
@@ -29,15 +34,27 @@ import {
  *     that is proven to fire on a real leak (`describe('fixtures')`
  *     below). When the feature lands, `PRIVATE_OWNER_RECORD` becomes
  *     the shape it must never forward.
- *   - It does NOT assert publication policy behaviour that does not
- *     exist (no `visibility` switch, no admin toggle, no private
- *     schedule storage). Those need an owner decision and an
- *     implementation; inventing them here would fabricate a feature
- *     the Issue explicitly does not ask for. Consequently the Issue's
- *     conditional ("when private, GPS / private event names
- *     disappear") is **not exercised** and is not claimed as met:
- *     this suite is the regression half of that contract, not proof
- *     that a private record is suppressed.
+ *   - The "private state" half of the Issue's conditional IS
+ *     exercised, on the one publication boundary this repository
+ *     actually ships: the portfolio public projection
+ *     (`status = 'published' AND visibility = 'public'`,
+ *     `src/portfolio/load.ts`). A row holding the very values of
+ *     `PRIVATE_OWNER_RECORD` is seeded as `visibility = 'draft'`
+ *     and asserted to be absent from `/portfolio` and from
+ *     `/portfolio/<slug>`, while the public row keeps rendering.
+ *     That is a request-level suppression observation against a real
+ *     production projection and a real storage boundary, not a
+ *     hand-built fixture — see the `describe('a private publication
+ *     record …')` block below.
+ *   - It still does NOT assert a publication policy for the
+ *     location / activity / calendar slice itself, because none
+ *     exists in `src/**` (no `visibility` switch for that slice, no
+ *     admin toggle, no private schedule storage). Those need an owner
+ *     decision and an implementation; inventing them here would
+ *     fabricate a feature the Issue explicitly does not ask for. So
+ *     the Issue's criterion is exercised for every publication
+ *     boundary that exists, and stays open for the slice that does
+ *     not exist yet.
  *
  * The three public surfaces the rule covers are SSR HTML, `/api/v1/*`
  * JSON, and the GA4 analytics payload.
@@ -49,6 +66,11 @@ import {
  * carries). The catalog seed rows are omitted on purpose: this suite
  * asserts what the public surfaces carry, not what the emoji catalog
  * contains, and an empty catalog still renders the home page.
+ *
+ * The portfolio tables come from the shared workerd fixture
+ * (`test/integration/fixtures/portfolio-d1.ts`, Issue #422) instead
+ * of a second inline copy of `migrations/0007_portfolio.sql`, so
+ * `/about` and `/portfolio` are scanned rather than excluded.
  *
  * Full list of what this bootstrap does NOT create, so nobody reads
  * the scanned `/` HTML as byte-identical to production:
@@ -104,33 +126,52 @@ const MIGRATIONS = [
 ];
 
 /**
+ * Fixtures for the one publication boundary that ships today.
+ *
+ * `PUBLIC_FIXTURE_SLUG` is a normal published row. `PRIVATE_FIXTURE_SLUG`
+ * carries the failing fixture verbatim — the owner-unapproved
+ * coordinates, venue and event title — and is stored with
+ * `visibility = 'draft'`, which is exactly the state the Issue's
+ * conditional is about. Both are synthetic (see
+ * `test/helpers/privacy-surface.ts`), so seeding the private row is not
+ * itself a disclosure.
+ */
+const PUBLIC_FIXTURE_SLUG = 'privacy-fixture-public';
+const PRIVATE_FIXTURE_SLUG = 'privacy-fixture-private';
+const PUBLIC_FIXTURE_TITLE = 'Fixture Public Project';
+const PRIVATE_EVENT = PRIVATE_OWNER_RECORD.events[0];
+
+/**
  * Public HTML surfaces that render in this pool.
  *
- * `/design-system` (no loader, in the public nav) and
- * `/tools/text-counter` (loader reads the build-time Tool registry,
- * not D1) are included: they are public surfaces a future location or
- * calendar widget could be added to, and leaving them unscanned would
- * make the suite's coverage claim false.
+ * One sample per public route file under `src/routes/**`:
+ * `index.tsx` `/`, `about.tsx` `/about`, `contact.tsx` `/contact`,
+ * `portfolio/index.tsx` `/portfolio`, `portfolio/$slug.tsx`
+ * `/portfolio/$slug`, `tools.index.tsx` `/tools`, `tools.$slug.tsx`
+ * `/tools/$slug`, `design-system.tsx` `/design-system`. `/admin/**`
+ * is deliberately absent: it is behind the auth boundary, not a public
+ * surface, and its content is owner-approved by definition.
  *
- * `/about`, `/portfolio` and `/portfolio/$slug` are deliberately
- * absent: their loaders read the portfolio D1 schema, which this file
- * does not bootstrap (it only needs the reactions tables for `/`), so
- * they answer 500 here and there is no HTML to scan. The
- * `describe('excluded surfaces stay excluded')` block below keeps that
- * exclusion honest — if one of them ever starts rendering 200 in this
- * pool, that test fails and the exclusion has to be revisited here, in
- * the README and in the PR body.
+ * `/tools/text-counter` and `/tools/prototype` are two samples of the
+ * same `$slug` loader (build-time Tool registry, not D1) because both
+ * are public nav entries. `/design-system` has no loader and is in the
+ * public nav. `/about` and `/portfolio` render here because the
+ * portfolio schema is bootstrapped below.
+ *
+ * Nothing is excluded: a public surface this list does not name is a
+ * coverage hole, so adding a public route means adding its path here.
  */
 const PUBLIC_SSR_PATHS = [
 	'/',
+	'/about',
 	'/contact',
+	'/portfolio',
+	`/portfolio/${PUBLIC_FIXTURE_SLUG}`,
 	'/tools',
 	'/tools/text-counter',
+	'/tools/prototype',
 	'/design-system',
 ] as const;
-
-/** Surfaces the suite does NOT scan, with the reason recorded below. */
-const EXCLUDED_SSR_PATHS = ['/about', '/portfolio', '/portfolio/my-web-2026'] as const;
 
 /**
  * Public JSON surfaces that answer without an API key.
@@ -144,6 +185,18 @@ const PUBLIC_JSON_PATHS = ['/api/v1/health', '/api/v1/db/ping', '/api/v1/media/p
 
 beforeAll(async () => {
 	await applyD1Migrations(env.DB, MIGRATIONS);
+	await applyPortfolioSchema(env.DB);
+	await clearPortfolioTables(env.DB);
+	await seedPortfolioRow(env.DB, PUBLIC_FIXTURE_SLUG, {
+		title: PUBLIC_FIXTURE_TITLE,
+		summary: '公開可能な 1 行サマリー。位置も予定も持たない。',
+	});
+	await seedPortfolioRow(env.DB, PRIVATE_FIXTURE_SLUG, {
+		// The failing fixture, stored in the real table.
+		title: PRIVATE_EVENT.eventTitle,
+		summary: `${PRIVATE_EVENT.venue} / ${PRIVATE_OWNER_RECORD.location.coordinates} / ${PRIVATE_EVENT.startsAt}`,
+		visibility: 'draft',
+	});
 });
 
 describe('privacy fixtures — the detector fires, and the private surface still reads', () => {
@@ -231,23 +284,61 @@ describe('public SSR surfaces carry no owner-unapproved data', () => {
 	}, 30_000);
 });
 
-describe('excluded surfaces stay excluded (the 対象外 list is a claim)', () => {
-	it.each(EXCLUDED_SSR_PATHS)(
-		'GET %s renders no HTML to scan here',
-		async (path) => {
-			// `docs/verification/privacy/README.md` and the PR body both
-			// state that these render nothing in this pool. That is a
-			// claim about coverage, so it is asserted here instead of
-			// only being written down: if a future bootstrap — or a
-			// loader that stops needing the portfolio schema — makes one
-			// of them answer 200, this fails and the surface has to be
-			// added to the scan, not quietly dropped from the exclusion
-			// list.
-			const res = await SELF.fetch(`https://example.com${path}`);
-			expect(res.status).not.toBe(200);
-		},
-		30_000,
-	);
+describe('a private publication record is suppressed on the projection that ships', () => {
+	it('the private row is stored, with the values a response must not carry', async () => {
+		// Non-vacuity at the storage boundary. If this write silently
+		// did not happen, every "the response does not carry it"
+		// assertion below would pass for the wrong reason.
+		const row = await env.DB.prepare(
+			'SELECT title, summary, visibility, status FROM portfolio_project WHERE slug = ?1',
+		)
+			.bind(PRIVATE_FIXTURE_SLUG)
+			.first<{ title: string; summary: string; visibility: string; status: string }>();
+		expect(row).not.toBeNull();
+		expect(row?.visibility).toBe('draft');
+		// `status` stays `published`: the row is not unpublished, it is
+		// merely not public — the distinction the publication boundary
+		// exists to make.
+		expect(row?.status).toBe('published');
+		expect(row?.title).toBe(PRIVATE_EVENT.eventTitle);
+		// The stored record is the failing fixture, verbatim: if the
+		// detector stops seeing it here, the suppression assertions
+		// below stop meaning anything.
+		expect(formatLeaks(findJsonLeaks(row))).toContain('coordinate-pair');
+	});
+
+	it('GET /portfolio keeps the public projection and drops the private record', async () => {
+		// The Issue's conditional, observed end to end: a private record
+		// does not reach the response, and the public alternative
+		// display survives instead of the page going blank.
+		const res = await SELF.fetch('https://example.com/portfolio');
+		expect(res.status).toBe(200);
+		const html = await res.text();
+		expect(html).toContain(PUBLIC_FIXTURE_TITLE);
+		expect(html).not.toContain(PRIVATE_EVENT.eventTitle);
+		expect(html).not.toContain(PRIVATE_EVENT.venue);
+		expect(formatLeaks(findTextLeaks(html))).toBe('no owner-unapproved data found');
+	}, 30_000);
+
+	it('GET /portfolio/<public> renders the public projection', async () => {
+		const res = await SELF.fetch(`https://example.com/portfolio/${PUBLIC_FIXTURE_SLUG}`);
+		expect(res.status).toBe(200);
+		const html = await res.text();
+		expect(html).toContain(PUBLIC_FIXTURE_TITLE);
+		expect(formatLeaks(findTextLeaks(html))).toBe('no owner-unapproved data found');
+	}, 30_000);
+
+	it('GET /portfolio/<private> answers 404 and carries no part of the record', async () => {
+		// Even by direct slug the public projection cannot reach a
+		// non-public row — `src/portfolio/load.ts` filters in SQL and
+		// re-checks with `isVisible`.
+		const res = await SELF.fetch(`https://example.com/portfolio/${PRIVATE_FIXTURE_SLUG}`);
+		expect(res.status).toBe(404);
+		const html = await res.text();
+		expect(html).not.toContain(PRIVATE_EVENT.eventTitle);
+		expect(html).not.toContain(PRIVATE_EVENT.venue);
+		expect(formatLeaks(findTextLeaks(html))).toBe('no owner-unapproved data found');
+	}, 30_000);
 });
 
 describe('public JSON surfaces carry no owner-unapproved data', () => {

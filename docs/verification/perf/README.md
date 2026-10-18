@@ -1,4 +1,18 @@
-# First-visit webfont measurement (Issue #485)
+# Performance evidence (`docs/verification/perf/`)
+
+Two independent measurement records live in this directory, one per Issue.
+They answer different questions, so they are kept as separate documents
+appended here rather than merged into one narrative.
+
+| Document | Issue | Committed screenshot |
+| --- | --- | --- |
+| First-visit webfont measurement | #485 | `font-firstpaint-snapshot.webp` |
+| 画像 CLS 回帰の証跡 | #486 | `images-cls-fixture.webp` |
+| Large-list pagination measurement | #490 | `large-list-pagination.webp` (see `large-list-pagination.md`) |
+
+---
+
+## First-visit webfont measurement (Issue #485)
 
 Reproduction record for the first-visit webfont / FOUT / CLS
 measurement of the shipped Home and About surfaces.
@@ -8,13 +22,13 @@ This directory is evidence for one ticket, not a gate. Nothing in
 is deliberately **not** wired into `validate:fast` / `validate:integration`
 / `validate:release` — see "Impact on `quality/profile.yaml`" below.
 
-## Contents
+### Contents
 
 | File | What it is |
 | --- | --- |
 | `font-firstpaint-snapshot.webp` | The committed measurement report: environment block (including the exact invocation it was produced by), per-run metrics, layout-shift attribution for this capture **and for the before capture it was compared against**, before/after tables, and the per-scenario page captures. The Issue names `font-firstpaint-snapshot.png`; the committed file is the WebP conversion of that capture (1280x3327, 256 KB, sharp WebP at quality 80 — the intermediate PNG is never committed) |
 
-## What is measured
+### What is measured
 
 `scripts/font-first-paint-measure.mjs` (`pnpm run perf:fonts:measure`) drives
 the installed Playwright Chromium against a **local** origin and records,
@@ -43,7 +57,7 @@ per route and scenario:
   scenario, which fails both when the page has nothing legible left and
   when the block silently did not apply.
 
-### Absence is not zero
+#### Absence is not zero
 
 A metric that was never observed is recorded as `null` and rendered as
 `n/a` — in `report.json`, in the report table and on stdout. The blocked
@@ -55,7 +69,7 @@ runs measured on **both** sides and prints how many that was (`paired
 runs`): a route that only exists in one capture cannot be shown as an
 improvement.
 
-### Scenarios
+#### Scenarios
 
 | Scenario | Condition | Question it answers |
 | --- | --- | --- |
@@ -81,7 +95,7 @@ Issue #386's obligation, the Lighthouse report harness is Issue #384's,
 and the release gate is Issue #385's. Fusing them here is the confusion
 Issue #485 asks to avoid.
 
-## How to reproduce
+### How to reproduce
 
 ```sh
 pnpm run build                                  # production-equivalent local build
@@ -117,7 +131,7 @@ A working-tree restore is why the before capture is recorded with
 `dirty: true`; the after capture was taken on a clean commit, so the
 committed snapshot is verifiable against the SHA it names.
 
-## Recorded conditions
+### Recorded conditions
 
 Every number in the committed snapshot carries these, because a number
 without them is not evidence:
@@ -144,7 +158,7 @@ Desktop viewport only. A mobile matrix is not measured here — it belongs
 with the Core Web Vitals budgets in Issue #386, which owns device and
 budget definitions.
 
-## Results
+### Results
 
 Pre-fix and post-fix, same script version, same host, same routes,
 captured from the local preview build. The blocked rows have no swap
@@ -184,7 +198,7 @@ threshold the row falls.
 0.1 is the Web Vitals "good" boundary for CLS and is used here only to
 state whether the fix worked; nothing enforces it.
 
-## What the shift actually was
+### What the shift actually was
 
 A bare CLS number is unattributable. The committed snapshot carries the
 sources for the two largest shifts of every run **of both captures**
@@ -228,7 +242,7 @@ puts the brand mark in the same flex line, and the brand is set in the
 row's remaining budget crosses the threshold and wraps — then unwraps
 when the webfont settles.
 
-## The one fix
+### The one fix
 
 One element, one root cause: a **metric-compatible fallback face** for
 each webfont family, defined at the top of `src/styles.css` and placed
@@ -286,7 +300,7 @@ face does not exist, the rule fails to load and the token chain falls
 through to `system-ui` exactly as before, so the override cannot make a
 platform it was not measured on worse.
 
-## Impact on `quality/profile.yaml`
+### Impact on `quality/profile.yaml`
 
 Recorded, and **deliberately zero**:
 
@@ -303,7 +317,7 @@ measurement into a threshold decision before Issue #386 has defined
 budgets and device matrices, and would make a flaky third-party origin a
 red CI run. That ordering is the point of the split.
 
-## Reproducing on a CI runner
+### Reproducing on a CI runner
 
 Not wired, deliberately — and not reproducible as written. The metric
 face is `src: local('Hiragino Kaku Gothic ProN W3')`, which cannot
@@ -324,7 +338,7 @@ All three also assume the runner can reach `fonts.googleapis.com` /
 but a runner without egress turns `baseline` and `slow-font` into
 "platform fallback, no swap" rows.
 
-## Known limits
+### Known limits
 
 - Desktop viewport only; no mobile matrix (Issue #386).
 - One run per scenario. A layout shift is a measurement of the build it
@@ -346,3 +360,179 @@ but a runner without egress turns `baseline` and `slow-font` into
   measuring the old build means), so it records `dirty: true`. The after
   capture, which is what the committed snapshot renders, was taken on a
   clean commit.
+
+---
+
+## 画像 CLS 回帰の証跡（Issue #486）
+
+`images-cls-fixture.webp` は Issue #486 が要求するスクリーンショットであり、
+`/design-system` の `07 — Image` セクションで実測した**ブラウザ / CI レポート**である。
+
+![image CLS regression — Issue #486](./images-cls-fixture.webp)
+
+このファイルは「その画像が何を主張しているか」の正本。数値は
+`.tmp/image-cls-report.json`（未 commit）にも machine-readable で残る。
+
+> **拡張子は Issue が名指しした `.png` ではなく `.webp`。** Chromium の full-page
+> capture を PNG で持つと 1 枚 360KB になり、再生成のたびにそれが repository に
+> 積み上がる。WebP quality 80 は平坦な UI color と mono 文字・flat gradient には
+> 視覚差が無く、121KB で収まる。生成 script 側で **幅 ≤ 1600px / quality 80 /
+> 300KB 上限**を assert しており、超過したら commit せず終了する
+> （`scripts/image-cls-report.mjs#encodeEvidence`）。PNG は commit していない。
+
+### 何の回帰を測るか
+
+`portfolio_media` は intrinsic size（`width` / `height`）を D1 に持っていたが、
+UI の `<img>` はそれを表現していなかった。`<img>` は `width: 100%` + `height: auto`
+だけで、intrinsic size を知らない状態では **height 0px** から始まる。`loading="lazy"`
+の cover が訪問者のスクロール後に解決すると、その下の要素がすべて押し下げられる。
+つまり画像入り surface における純粋な CLS shift である。
+
+修正は 1 要素（`PortfolioMediaFigure` の `<img>`）に閉じていて、
+予約機構は次の 3 つだけ:
+
+1. row が正の intrinsic size を持つとき `width` / `height` 属性を出す
+   → UA が `aspect-ratio: auto <w> / <h>` を導出し|first paint から枠を確保する
+2. 同じ比率を inline `aspect-ratio` として明示する
+   → 属性から比率を導出しない engine でも予約が効く
+3. （同じ枠契約の延長）`error` で placeholder に差し替えるとき、placeholder frame
+   も同じ比率で塗るので**差し替えでも高さが変わらない**
+
+`src/portfolio/components/PortfolioMedia.tsx` が canonical。
+
+### fixture を使う理由（`/portfolio` を測らない理由）
+
+`/portfolio` はローカルで画像を 1 枚も描画できない。`composeMediaUrl`
+（`src/portfolio/media.ts`）は R2 の public custom domain が束縛されるまで `null` を返し、
+`MEDIA_PUBLIC_BASE_URL` は production-only var である（`wrangler.production.jsonc`）。
+したがってローカルの `/portfolio` は常に placeholder 分岐を通り、`<img>` について何も語らない。
+
+fixture（`src/routes/design-system/sections/ImageCls.tsx`）は**本番と同じ
+`PortfolioMediaFigure`** を固定データで描画する。測っている要素は出荷される要素で、
+固定しているのはデータだけ。Issue が求める「他機能の完成を待たない fixture での計測」が
+これに当たる。
+
+4 セル（各 `data-cls-fixture`）:
+
+| セル | 内容 | 測るもの |
+| --- | --- | --- |
+| `eager-cover` | `loading="eager"` / 1600×900 / first viewport | LCP 相当。読み込み前後で枠が同じ |
+| `placeholder` | `url: null` / 1600×900 | 配信 URL が無いときの予約枠 |
+| `unknown-size` | `width`/`height` = null | 寸法未計測 row の劣化経路（予約しない = 仕様） |
+| `lazy-cover` | `loading="lazy"` / 1280×720 / 220vh 下の spacer の後 | **CLS の被験体** |
+
+`lazy-cover` の直後にある `data-cls-sentinel` 行が測定の中心になっている理由:
+layout-shift は「描画された content が**動いた**とき」しか記録されない。
+ページ最下端の figure は予約を外れていても下に動かされる content が無いため 0 になる。
+sentinel が「figure が押す相手」であり、これがないと before 状態も測れない。
+
+sentinel の位置は **region 基準の document 座標**で測る（`regionSentinelOffset` /
+`readDocumentBox`）。その理由は 2 つある:
+
+- viewport 座標（`boundingBox()`）だと、scroll anchoring や
+  `scrollIntoViewIfNeeded` の丸めによる**スクロール量**が「移動」として混ざる
+  （実際に 1.4px の偽陽性が出た）
+- sentinel の絶対座標だと、**region より上**にある無関係な reflow（この page では
+  web font swap だけで 1px 超動く）が混ざる。gate が主張すべきことは
+  「lazy figure が下の content を押さない」であって、
+  「page 上のどこでも reflow しない」ではない。
+  region 基準なら上の reflow は region と sentinel を一緒に動かすので差分は 0、
+  一方 region 内での figure の成長は sentinel だけを押すので差分として残る。
+
+### 再現条件（local / CI 共通）
+
+条件は `scripts/_image-cls.mjs` に**定数**として置き、gate とレポートが同じ値を import する。
+別々の値で測ると、レポート画像が gate が一度も assert していない数値の証拠になってしまう。
+
+| 条件 | 値 | 理由 |
+| --- | --- | --- |
+| browser | Chromium（Playwright 1.63.x、CI でも同じ project） | `playwright.config.ts` は 0.1.0 で Chromium only |
+| viewport | 1280×900 / deviceScaleFactor 1 | desktop Chrome の既定に相当 |
+| network | fixture raster `/fixtures/cls-inline-1280x720.png` の response を **700ms 保持**、他は unthrottled | lazy fetch が decode 前に終わると intrinsic size を知る機会を消してしまう |
+| CPU | CDP `Emulation.setCPUThrottlingRate` = **4×** | Lighthouse の既定 mobile throttle。CLS は layout property なので verdict は変わらないが、#384–#387 の Lighthouse 数値と可比になるよう固定する |
+| source SHA | 生成時に `git rev-parse HEAD` を画像へ刻印 | 「どの commit で測ったか」を画像が自分で答える |
+| 判定基準 | scoped CLS **≤ 0**、枠高さ Δ **≤ 0.5px**、sentinel offset Δ **≤ 0.5px** | Core Web Vitals の "good" は 0.1 だが、予約契約は shift を 0 にするためにある |
+
+ローカル: `pnpm run build` 済みで
+`pnpm exec playwright test e2e/image-cls.spec.ts`（Playwright の `webServer` が
+migration + seed 込みで preview を起動する）。
+
+CI: `.github/workflows/ci.yml` の Playwright step だけがこの spec を回す。
+起動条件は push to `main` / `release-*`、または `ui-change` label 付き PR。
+Draft PR の `validate:integration` には含まれない点に注意。
+
+### before / after の実測値
+
+`before` は revision を checkout したものではなく、**同じページ・同じ browser・同じ条件で**
+lazy `<img>` から `width` / `height` / inline `aspect-ratio` を取り除いた DOM
+（= この ticket 以前の描画そのもの）から測定した値。
+
+| 測定 | before（#486 以前） | after（出荷状態） | 合格基準 |
+| --- | --- | --- | --- |
+| decode 前の枠高さ | 0px | 321.38px | > 0.5px（すでに予約済み） |
+| decode をまたぐ枠高さ Δ | +321.38px | 0px | \|Δ\| ≤ 0.5px |
+| sentinel offset（region 基準）Δ | +321.38px | 0px | \|Δ\| ≤ 0.5px |
+| scoped CLS | 0.06947 | 0 | ≤ 0 |
+
+（viewport 1280×900 での実測。セル幅に依存するため絶対値は環境差が出るが、
+Δ と CLS は条件が固定されていれば再現する。）
+
+### この gate が空振りしないための仕組み
+
+`e2e/image-cls.spec.ts` には 4 本の test がある。最後の 1 本は
+**false-green guard**: 同じ条件で予約を外した状態を作り、必ず shift が出ることを確認する。
+
+これがないと「何も測っていない 0」と「予約が効いた 0」を gate が区別できない。
+さらに測定中は
+
+- `decodedBefore`（decode 前に枠を読めたか）を assert する
+- `#design-system-image` fragment を**付けない**（fragment で初期 navigation 中に
+  lazy fetch が始まり、「decode 前」を観測できなくなるため）
+
+の 2 つで「測れていなかった」ケースを失敗させる。
+
+### `srcset` / `sizes` について（未決の owner decision）
+
+実測すると **現状 `srcset` も `sizes` も absent** である。これは意図的で、
+gate として固定してある（`toBeNull()`）。理由:
+
+- `composeMediaUrl` は 1 つの object key → 1 つの R2 URL を返すだけで、
+  bucket の前段で画像を resize する mechanism がリポジトリに存在しない
+- `srcset` を書くことは「配信面が実行しない transformation の URL 構文を捏造する」ことになる
+- 実際に low-volume rendition を用意するときの選択肢は 2 つあり、**どちらも owner 決定**:
+  1. Cloudflare Image Resizing（`/cdn-cgi/image/...`）— zone 側の設定と費用、
+     custom domain が Worker route を通る必要がある
+  2. ingest 時に R2 へ variant を pre-generate する —
+     `portfolio_media` に variant 幅の行を持てる schema 変更と job が必要
+
+決定されるまで `<img>` は 1 枚だけを送る。#384–#387（Lighthouse 計測 / gate / CWV budget）
+とは重複しない: あちらは budget と gate、本 ticket は 1 要素の予約契約と証跡。
+
+### `quality/profile.yaml` への影響
+
+**変更なし。** 判断根拠:
+
+- 変更 risk は `src_unit`（component）+ 既存 fixture route。既存 profile では
+  `fast` gate（`pnpm run validate:fast`）で十分
+- E2E step は `release_extra` の既存項目。新規 job / 新規 trigger / 新規 script を
+  足していない（`disallowed_patterns` の "duplicate … on the same trigger" に該当しない）
+- gate を 1 つ増やすなら `security_gates` に budget として書くのが本筋だが、
+  #486 の gate は「0 ayakude 达不到たら落ちる」assertion であり、
+  Lighthouse / CWV budget という別の axis（#386）着她しない
+
+fixture raster の再生成を CI で gate するのは **していない**
+（`scripts/generate-image-fixtures.mjs --check` は手動実行用）。
+gate を増やす判断は owner 決定として次 Issue に残す。
+
+### 再生成
+
+```bash
+pnpm run build
+node scripts/image-cls-report.mjs              # 4310 番で preview を自分で上げる
+node scripts/image-cls-report.mjs --base-url=http://127.0.0.1:3000  # 既存 server に|population
+node scripts/generate-image-fixtures.mjs       # fixture raster を書き直す
+node scripts/generate-image-fixtures.mjs --check  # commit 済みバイト列との drift を検出
+```
+
+証跡画像は timestamp と commit SHA を含むので、再生成すると必ず差分が出る。
+policy / fixture / component を触った changeset と同じ commit で更新する。

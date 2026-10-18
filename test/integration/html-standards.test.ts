@@ -9,9 +9,9 @@ import accessCounterPrincipalSql from '../../migrations/0005_access_counter_prin
 import portfolioSql from '../../migrations/0007_portfolio.sql?raw';
 import manifestJson from '../../quality/html-standards.json';
 import {
-	evaluateRoutes,
-	severitiesFrom,
-	validateHtml,
+	evaluateRoutes as evaluateRoutesUntyped,
+	severitiesFrom as severitiesFromUntyped,
+	validateHtml as validateHtmlUntyped,
 } from '../../scripts/html-standards-contract.mjs';
 import { seedPortfolioRow } from './fixtures/portfolio-d1';
 
@@ -65,6 +65,74 @@ import { seedPortfolioRow } from './fixtures/portfolio-d1';
  * row. Nothing is fetched from production and no secret is read.
  */
 
+type Severity = 'error' | 'warning';
+
+/** One engine message, in the shape `validateHtml` returns. */
+type HtmlMessage = {
+	rule: string;
+	message: string;
+	line: number;
+	col: number;
+	severity: Severity;
+	nuType: string;
+};
+
+type HtmlStats = {
+	elements: number;
+	attributes: number;
+	ids: number;
+	doctype: string | null;
+	errors: number;
+	warnings: number;
+};
+
+/** One route-level finding, in the shape `evaluateRoutes` returns. */
+type Finding = {
+	rule: string;
+	severity: Severity;
+	route_id: string | null;
+	path: string | null;
+	line?: number;
+	message: string;
+	waived?: boolean;
+	waiver_reason?: string;
+};
+
+type Observation = {
+	routeId: string;
+	path: string;
+	status: number | null;
+	html: string;
+	contentType: string | null;
+	requestFailed: boolean;
+	note?: string;
+};
+
+/**
+ * The engine is plain `.mjs` with JSDoc types, and TypeScript resolves
+ * those composite returns to `object`. The shapes are declared here
+ * instead of imported, so a change to the engine's return value is a type
+ * error in this suite rather than a silent `any` at every call site.
+ */
+const validateHtml = validateHtmlUntyped as unknown as (
+	html: string,
+	options?: { severities?: Record<string, Severity>; routeId?: string },
+) => { messages: HtmlMessage[]; stats: HtmlStats };
+
+const evaluateRoutes = evaluateRoutesUntyped as unknown as (input: {
+	manifest: { routes: unknown[]; waivers?: unknown[] };
+	observations: Observation[];
+	severities?: Record<string, Severity>;
+}) => {
+	rows: Array<Record<string, unknown>>;
+	findings: Finding[];
+	stats: { routes: number; rendered: number; excluded: number; errors: number; warnings: number };
+};
+
+const severitiesFrom = severitiesFromUntyped as unknown as (manifest: {
+	rules: Record<string, { severity: Severity }>;
+}) => Record<string, Severity>;
+
 type Manifest = {
 	profile: string;
 	routes: Array<{
@@ -75,13 +143,12 @@ type Manifest = {
 		reason?: string;
 	}>;
 	fixtures: { valid: string; invalid: string };
-	waivers: Array<{ route_id?: string; rule: string; reason: string }>;
+	waivers: Array<{ route_id?: string; rule: string; reason: string; message_pattern?: string }>;
+	rules: Record<string, { severity: Severity; nu_type: string; reason: string }>;
 };
 
 const manifest = manifestJson as unknown as Manifest;
-const severities = severitiesFrom(
-	manifestJson as unknown as { rules: Record<string, { severity: string }> },
-);
+const severities = severitiesFrom(manifest);
 
 /** The route this suite asserts renders an anonymously reachable document. */
 const RENDERABLE = manifest.routes.filter((route) => route.mode === 'render');
@@ -155,7 +222,7 @@ describe('SSR HTML conformance (Issue #412)', () => {
 	});
 
 	it('every renderable route returns a valid HTML document', async () => {
-		const observations = [];
+		const observations: Observation[] = [];
 		for (const route of RENDERABLE) {
 			const observation = await observe(route.path);
 			observations.push({ routeId: route.route_id, path: route.path, ...observation });
@@ -202,9 +269,8 @@ describe('SSR HTML conformance (Issue #412)', () => {
 		// non-blocking finding on the live documents (the `<h3>` project
 		// card under the `<h1>` page heading on /portfolio), and this
 		// assertion pins that list so a NEW warning cannot appear silently.
-		const { validateHtml: validate } = await import('../../scripts/html-standards-contract.mjs');
 		const { html } = await observe('/portfolio');
-		const parsed = validate(html, { severities });
+		const parsed = validateHtml(html, { severities });
 		const nonBlocking = parsed.messages
 			.filter((message) => message.severity !== 'error')
 			.map((message) => `${message.rule}: ${message.message}`);

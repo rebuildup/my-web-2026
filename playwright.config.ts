@@ -94,9 +94,14 @@ export default defineConfig({
 	// asserts the public-visibility boundary. The local D1 file is
 	// not addressable from a remote Worker deployment, so the spec
 	// is filtered out of the production-only path.
-	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
-		? '**/prod-*.spec.ts'
-		: '**/portfolio.spec.ts',
+	// Issue #415: `e2e/compat/**` is owned by
+	// `playwright.compat.config.ts` (Chromium / Firefox / WebKit) and
+	// is always ignored here, so the two suites never run each other
+	// and the default chromium-only gate keeps its current cost.
+	testIgnore: [
+		'**/compat/**',
+		...(BASE_URL.startsWith('http://127.0.0.1') ? ['**/prod-*.spec.ts'] : ['**/portfolio.spec.ts']),
+	],
 	// The local project spins up the preview server automatically.
 	// `pnpm preview` is required because the Tool iframe spec reaches
 	// into `dist/client/tools/<slug>/app/` (the collected Tool artifact)

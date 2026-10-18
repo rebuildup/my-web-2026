@@ -7,9 +7,9 @@ command, the URL and the expected result so a reviewer can re-run it.
 ## `robots-txt-browser.webp`
 
 Chromium rendering of the **live** `/robots.txt` served by the local
-Vite dev server (`@cloudflare/vite-plugin`), captured with
-`.tmp/shoot-robots.mjs` (Playwright `chromium`, 1280×900 @2x, then
-`sharp` → WebP q80 at 1600px wide).
+Vite dev server (`@cloudflare/vite-plugin`), captured by
+`scripts/shoot-robots-screenshot.mjs` (Playwright `chromium`,
+1280×900 @2x, `sharp` → WebP q80 at 1600px wide).
 
 - Issue: #423 — robots.txt / secret-route index boundary
 - Path: `docs/verification/web/robots-txt-browser.webp`
@@ -30,15 +30,15 @@ curl -i http://localhost:15923/robots.txt
 #   -> no "Disallow: /" anywhere (a site-wide noindex would silently
 #      de-index every public page)
 
-# 3. the browser capture (writes .tmp/robots-txt-browser.png)
-node .tmp/shoot-robots.mjs http://localhost:15923/robots.txt .tmp/robots-txt-browser.png
-node -e "require('sharp')('.tmp/robots-txt-browser.png').resize({width:1600,withoutEnlargement:true}).webp({quality:80}).toFile('docs/verification/web/robots-txt-browser.webp')"
+# 3. the browser capture (writes the committed WebP directly)
+node scripts/shoot-robots-screenshot.mjs \
+  http://localhost:15923/robots.txt docs/verification/web/robots-txt-browser.webp
 ```
 
-`.tmp/shoot-robots.mjs` is intentionally **not** committed (`.tmp/` is
-gitignored per AGENTS.md §9); it is 20 lines — navigate, assert the
-response is 200, print `document.body.innerText`, screenshot — and is
-reproduced by the three commands above.
+The generator refuses to write a capture that would be worthless: it
+fails on a non-200 response AND when the rendered body differs from the
+committed `public/robots.txt`, so the image can never show something the
+deployment would not serve.
 
 ### Expected result
 

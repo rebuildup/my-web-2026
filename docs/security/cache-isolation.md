@@ -18,7 +18,7 @@ The rule this repository enforces:
 
 | Response | `Cache-Control` | `Vary` |
 | --- | --- | --- |
-| Anything caller-specific (see below) | `private, no-store` | `Cookie, Authorization` |
+| Anything caller-specific (see below) | `private, no-store` | `Cookie, Authorization` (`Origin` too on credentialed CORS routes) |
 | Caller-specific SSR document | `private, no-cache` | `Cookie, Authorization` |
 | Public document (no cookie, no `Authorization`, no `Set-Cookie`) | `no-cache` | — |
 | `/admin*` (any response) | `no-store` | `Cookie, Authorization` |
@@ -63,7 +63,14 @@ Deny by default, opt in explicitly:
   `Vary: Cookie, Authorization`. The rewrite is monotone: the result
   is never weaker than what it replaced, so it can only tighten a
   handler's own policy (Better Auth's session `no-store` is kept as a
-  subset).
+  subset). Responses whose route is `credentialed` for CORS (Issue
+  #455) also carry `Vary: Origin`: the CORS layer runs *inside* this
+  one and renders `Origin` first, then `mergeVary` appends the
+  identity fields, producing `Origin, Cookie, Authorization`. That
+  order is deliberate — if it were reversed, a CORS `set('Vary', …)`
+  would erase the isolation fields. `test/integration/cache-isolation.test.ts`
+  pins the merged value on `/api/v1/reactions` and
+  `/api/v1/auth/get-session`; see `docs/security/api-cors.md` §4.
 - An explicit public opt-in is left completely untouched, `Vary`
   included. Adding `Vary: Cookie` to a public immutable image would
   fragment the shared cache per visitor and change nothing about

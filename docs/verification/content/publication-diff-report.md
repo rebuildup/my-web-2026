@@ -13,9 +13,9 @@
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 17 |
-| External hosts | 26 |
+| External hosts | 27 |
 | First-party hosts | 0 |
-| Approved transition | 2 finding(s) |
+| Approved transition | 8 finding(s) |
 | Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -90,13 +90,14 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (1)
+### Added external hosts (2)
 
-- `host.invalid`
+- `example.com`
+- `example.invalid`
 
-### Removed external hosts (0)
+### Removed external hosts (1)
 
-- (none)
+- `use.typekit.net`
 
 ### Added external HTTP boundary prefixes (0)
 
@@ -119,16 +120,16 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.apache.org/licenses/LICENSE-2.0` | `www.apache.org` | external / identifier | `public/share/procon2026/index.html` |
 | `http://www.sitemaps.org/schemas/sitemap/0.9` | `www.sitemaps.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
 | `http://www.w3.org/1999/xhtml` | `www.w3.org` | external / identifier | `src/http/seo/README.md`, `src/http/seo/sitemap.ts` |
-| `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
-| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/home/mark.tsx` |
+| `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `public/favicon.svg`, `src/home/mark.tsx` |
 | `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/routes/__root.tsx` |
-| `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
+| `https://example.com/docs` | `example.com` | external | `src/portfolio/markdown.xss-fixtures.ts` |
+| `https://example.invalid/frame` | `example.invalid` | external | `src/portfolio/markdown.xss-fixtures.ts` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/routes/__root.tsx` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `src/routes/__root.tsx` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
@@ -154,7 +155,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
-| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
 | `https://www.googletagmanager.com/gtag/js?id=` | `www.googletagmanager.com` | external | `src/editorial/analytics/GoogleAnalytics.tsx` |
 | `https://www.maff.go.jp/j/council/seisaku/kensho/attach/pdf/18siryo-13.pdf` | `www.maff.go.jp` | external | `public/share/procon2026/index.html` |
@@ -168,6 +168,12 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host host.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://host.invalid
+- **ERROR** `E004 external-host-added` New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **ERROR** `E004 external-host-added` New external host example.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://example.com/docs
+- **WARN** `W002 external-url-added` External URL added: https://example.invalid/frame
+- **WARN** `W003 external-url-removed` External URL removed: http://www.w3.org/1999/xlink
+- **WARN** `W003 external-url-removed` External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap
+- **WARN** `W003 external-url-removed` External URL removed: https://use.typekit.net
+- **WARN** `W001 external-host-removed` External host no longer referenced: use.typekit.net
 

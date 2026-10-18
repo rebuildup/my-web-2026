@@ -738,6 +738,12 @@
 			"role": "Outbound third-party API reliability contract (snapshot contract, single timeout point, coalescing reader) plus its display primitives"
 		},
 		{
+			"id": "logging",
+			"root": "src/logging",
+			"min_files": 1,
+			"role": "Runtime log-redaction contract: what may appear in a console record, and the only module allowed to reach `console`"
+		},
+		{
 			"id": "app-shell",
 			"files": [
 				"src/client.tsx",

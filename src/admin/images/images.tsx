@@ -4,9 +4,12 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { createAuditLogger } from '../../logging/logger';
 import { deleteReactionImage, uploadReactionImage } from './load';
 import type { AdminImage } from './load';
 import { describeUploadFailure } from './upload-errors';
+
+const imagesLogger = createAuditLogger('admin.images');
 
 /**
  * Admin reaction-image UI — list + upload + delete.
@@ -159,9 +162,9 @@ function UploadForm() {
 			setSuccess(`uploaded: ${result.id}`);
 			e.currentTarget.reset();
 		} catch (err) {
-			// Raw text stays in the console; the page shows only the
-			// mapped sentence for a known policy code.
-			console.error('[admin/images] upload failed:', err);
+			// Raw text stays in the console (redacted); the page shows
+			// only the mapped sentence for a known policy code.
+			imagesLogger.error('upload failed:', err);
 			setError(describeUploadFailure(err));
 		} finally {
 			setBusy(false);
@@ -305,7 +308,7 @@ function ImageRow({ image }: { image: AdminImage }) {
 						try {
 							await del({ data: { id: image.id } });
 						} catch (err) {
-							console.error('[admin/images] delete failed:', err);
+							imagesLogger.error('delete failed:', err);
 							setError(describeUploadFailure(err));
 						} finally {
 							setBusy(false);

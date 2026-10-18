@@ -1,3 +1,5 @@
+import { createAuditLogger } from '../logging/logger';
+
 /**
  * Public error boundary for the Portfolio server functions
  * (Issue #457).
@@ -48,6 +50,14 @@
 export const PORTFOLIO_UNAVAILABLE = 'portfolio_unavailable';
 
 /**
+ * Server-function diagnostics. Every argument is redacted before it
+ * reaches the log stream (Issue #467) — a D1 failure message names
+ * the table and the schema, and the log record is the last place
+ * that detail is still useful to an operator.
+ */
+const portfolioPublicLogger = createAuditLogger('portfolio.public');
+
+/**
  * Length (in hex chars) of the correlation reference shown to the
  * visitor. 16 chars = 64 bits, which keeps accidental collisions off
  * the "grep this in the Worker log" workflow even after a long run of
@@ -78,7 +88,7 @@ export async function withPublicErrorBoundary<T>(label: string, run: () => Promi
 		return await run();
 	} catch (err) {
 		const reference = createReferenceId();
-		console.error(`[portfolio.public] ${label} failed (ref=${reference})`, err);
+		portfolioPublicLogger.error(`${label} failed (ref=${reference})`, err);
 		throw new Error(`${PORTFOLIO_UNAVAILABLE} (ref=${reference})`);
 	}
 }

@@ -289,8 +289,11 @@
 		],
 		"externalHosts": [
 			"361do.booth.pm",
+			"api.github.com",
 			"design.google",
 			"developers.google.com",
+			"example.com",
+			"example.invalid",
 			"fonts.googleapis.com",
 			"fonts.gstatic.com",
 			"github.com",
@@ -404,6 +407,15 @@
 				]
 			},
 			{
+				"url": "https://api.github.com/repos/rebuildup/my-web-2026",
+				"host": "api.github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/external-api/github.ts"
+				]
+			},
+			{
 				"url": "https://design.google/library/expressive-material-design-google-research",
 				"host": "design.google",
 				"kind": "external",
@@ -428,6 +440,24 @@
 				"identifier": false,
 				"files": [
 					"src/editorial/structured-data/validate.ts"
+				]
+			},
+			{
+				"url": "https://example.com/docs",
+				"host": "example.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/markdown.xss-fixtures.ts"
+				]
+			},
+			{
+				"url": "https://example.invalid/frame",
+				"host": "example.invalid",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/portfolio/markdown.xss-fixtures.ts"
 				]
 			},
 			{
@@ -682,6 +712,7 @@
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
 					"src/portfolio/components/Markdown.tsx",
+					"src/portfolio/markdown.notion.ts",
 					"src/routes/index.tsx"
 				]
 			},
@@ -891,11 +922,15 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://host.invalid"
+			"https://api.github.com/repos/rebuildup/my-web-2026",
+			"https://example.com/docs",
+			"https://example.invalid/frame"
 		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [
-			"host.invalid"
+			"api.github.com",
+			"example.com",
+			"example.invalid"
 		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
@@ -905,12 +940,32 @@
 			{
 				"code": "E004 external-host-added",
 				"severity": "error",
-				"message": "New external host host.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+				"message": "New external host api.github.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host example.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
 			},
 			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://host.invalid"
+				"message": "External URL added: https://api.github.com/repos/rebuildup/my-web-2026"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://example.com/docs"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://example.invalid/frame"
 			}
 		]
 	}

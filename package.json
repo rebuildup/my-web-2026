@@ -75,7 +75,8 @@
 		"r2:local:proof:check": "node scripts/r2-local-sharing-proof.mjs",
 		"routes:quality:check": "node scripts/check-route-quality-coverage.mjs",
 		"routes:quality:report": "node scripts/check-route-quality-coverage.mjs --report=.tmp/route-quality-report.html",
-		"verify:d1-binding-screenshot": "node scripts/make-d1-verification-report.mjs"
+		"verify:d1-binding-screenshot": "node scripts/make-d1-verification-report.mjs",
+		"verify:route-quality-screenshot": "node scripts/make-route-quality-report.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

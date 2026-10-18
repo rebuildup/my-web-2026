@@ -534,6 +534,20 @@ export function renderReport({ manifest, routes, result, sourceSha }) {
 	const totalCells = result.rows.length * families.length;
 	const verdict = result.errors.length === 0 ? 'PASS' : 'FAIL';
 
+	// Identical exclusion reasons are shared by many routes, so the
+	// report numbers them once and prints the prose in a legend. The
+	// screenshot stays readable instead of repeating 90-character
+	// sentences in every cell.
+	const reasonIds = new Map();
+	const reasonList = [];
+	for (const row of result.rows) {
+		for (const gate of row.gates) {
+			if (gate.status !== 'excluded' || reasonIds.has(gate.detail)) continue;
+			reasonIds.set(gate.detail, `R${reasonList.length + 1}`);
+			reasonList.push({ id: `R${reasonList.length + 1}`, reason: gate.detail });
+		}
+	}
+
 	const familyHeaders = families
 		.map(
 			(family) =>
@@ -544,9 +558,10 @@ export function renderReport({ manifest, routes, result, sourceSha }) {
 	const routeRows = result.rows
 		.map((row) => {
 			const cells = row.gates
-				.map(
-					(gate) =>
-						`<td class="${gate.status}"><span class="mark">${gate.status === 'covered' ? 'covered' : 'excluded'}</span><div class="detail">${escapeHtml(gate.detail)}</div></td>`,
+				.map((gate) =>
+					gate.status === 'covered'
+						? `<td class="covered"><span class="mark">covered</span><div class="detail">${escapeHtml(gate.detail)}</div></td>`
+						: `<td class="excluded"><span class="mark">excluded</span><div class="detail">${escapeHtml(reasonIds.get(gate.detail) ?? '—')}</div></td>`,
 				)
 				.join('');
 			const probe = row.sample_path ?? row.path;
@@ -565,6 +580,13 @@ export function renderReport({ manifest, routes, result, sourceSha }) {
 		)
 		.join('\n');
 
+	const reasonRows = reasonList
+		.map(
+			({ id, reason }) =>
+				`<tr><td class="rid"><code>${escapeHtml(id)}</code></td><td>${escapeHtml(reason)}</td></tr>`,
+		)
+		.join('\n');
+
 	const errorBlock =
 		result.errors.length === 0
 			? ''
@@ -579,11 +601,11 @@ export function renderReport({ manifest, routes, result, sourceSha }) {
 <title>public route × quality gate coverage — Issue #492</title>
 <style>
   :root { color-scheme: light; }
-  body { margin: 0; padding: 32px; background: #fbfbf9; color: #14140f;
-         font: 14px/1.55 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; }
+  body { margin: 0; padding: 24px; background: #fbfbf9; color: #14140f;
+         font: 13px/1.5 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; }
   h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.01em; }
-  h2 { font-size: 14px; margin: 26px 0 8px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
-  .sub { margin: 0 0 20px; font-size: 13px; color: #3d3d33; max-width: 1100px; }
+  h2 { font-size: 13px; margin: 18px 0 6px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
+  .sub { margin: 0 0 16px; font-size: 12.5px; color: #3d3d33; max-width: 1100px; }
   .cards { display: flex; gap: 12px; margin-bottom: 8px; }
   .card { border: 1px solid #dedcd2; background: #fff; padding: 12px 16px; min-width: 130px; }
   .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #77776a; }
@@ -591,17 +613,17 @@ export function renderReport({ manifest, routes, result, sourceSha }) {
   .ok { color: #1c6b3a; }
   .ng { color: #a12020; }
   table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #dedcd2; }
-  th, td { text-align: left; padding: 6px 10px; border-bottom: 1px solid #eceadf; vertical-align: top; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #eceadf; vertical-align: top; }
   th { background: #f3f1e8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12.5px; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
   td.route { width: 190px; }
-  td.meta { width: 250px; }
-  .probe { font-size: 11.5px; color: #77776a; margin-top: 2px; }
+  td.meta { width: 230px; }
+  .probe { font-size: 11px; color: #77776a; margin-top: 2px; }
   .state { font-size: 11px; color: #77776a; font-family: inherit; text-transform: none; letter-spacing: 0; }
   .mark { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
   td.covered .mark { color: #1c6b3a; }
   td.excluded .mark { color: #8a6d1f; }
-  .detail { font-size: 11.5px; color: #3d3d33; margin-top: 2px; }
+  .detail { font-size: 11px; color: #3d3d33; margin-top: 2px; }
   ul { margin: 0; padding-left: 18px; }
   li { margin-bottom: 4px; }
   ul.errors li { color: #a12020; }
@@ -634,6 +656,14 @@ ${familyList}
     <thead><tr><th>route</th><th>source / audience</th>${familyHeaders}</tr></thead>
     <tbody>
 ${routeRows}
+    </tbody>
+  </table>
+
+  <h2>除外理由 (exclusion reasons)</h2>
+  <table>
+    <thead><tr><th style="width:44px">id</th><th>reason — 同じ文言は route 間で共有される</th></tr></thead>
+    <tbody>
+${reasonRows}
     </tbody>
   </table>
 

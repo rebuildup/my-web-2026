@@ -95,7 +95,7 @@ walk する）。同じ式を 2 回渡す恒真な assertion は置かない。
 | `scripts/capture-i18n-unicode-slug.test.mjs`（14） | WebP 限定・サイズ予算・RIFF ヘッダ、反実仮想 slugify の実測値、evidence が**出荷済みポリシー由来**であること、レポートが「証明していないこと」を明記すること |
 
 ローカル実測: `pnpm exec vitest run src/i18n/` = **89 passed**、
-`pnpm exec vitest run src/i18n/ src/portfolio/schema.test.ts src/reactions/ src/home/reactions/` = **218 passed**（9 files）、
+`pnpm exec vitest run src/i18n/ src/portfolio/schema.test.ts src/reactions/ src/home/reactions/` = **222 passed**（9 files）、
 `node --test scripts/check-i18n-policy.test.mjs` = **16 passed**、
 `node --test scripts/capture-i18n-unicode-slug.test.mjs` = **14 passed**。
 
@@ -113,7 +113,7 @@ walk する）。同じ式を 2 回渡す恒真な assertion は置かない。
 | `no-lossy-derivation` | `slugify(` / `deburr(` / `transliterate(` 等 | slug は導出せず、著作者が書く |
 
 加えて、判断表が**出荷済みポリシーと食い違えば** fail する（表が古いドキュメントになるのを防ぐ）。
-現在の実測: **207 ファイル走査 / 違反 0 / 判断表 17 行一致**。
+現在の実測: **252 ファイル走査 / 違反 0 / 判断表 17 行一致**。
 
 **この gate が検査しないもの**（scope note に明記）:
 

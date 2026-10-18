@@ -246,10 +246,18 @@ markup」しか見ないので、hydration の後に client コードが挿入�
 - third-party: GA4 / Google Fonts は遮断（オフライン再現を保証するため）
 - 測定は `.tmp/lazy-media/*.json` に書き出され、画像はその JSON から
   レンダリングされる（数値だけを切り貼りした画像にしない）。
-- 画像の source SHA は **906e22b**（tracked tree clean）。その後に積まれた
+- 画像の source SHA は **458f58f**（tracked tree clean）。その後に積まれた
   コミットはこの README とこの画像ファイルだけで、測定対象のコード
   （`src/**` / `e2e/**` / ビルド出力）には差分が無い。ソース SHA を head に
   合わせる必要はありません。
+- 画像は 3 leg（`home-before` / `home-after` / `tool-route`）の
+  `sourceSha` / `environment` / `profile` / `cpuThrottlingRate` /
+  viewport が一致しない場合、**生成せずに失敗する**。`.tmp/lazy-media/` は
+  leg ごとの file なので、Playwright の test だけを再実行すると他の leg が
+  古いまま残る。その状態で生成すると `after` leg の source SHA と測定条件を
+  3 leg まとめて表示してしまう（= 検証画像が最も避けたいもの）。
+  この拒否は `scripts/render-lazy-media-report.test.mjs`（`pnpm run test` に
+  参加）が固定している。
 
 ### before / after と合格基準
 
@@ -279,6 +287,10 @@ wire 上の before / after は 0 / 0 で、差が出ないのが実測結果そ�
 A/B が 7 → 0 になる。`e2e/lazy-media.spec.ts` は測定した document が
 どちらの形だったかを `digitImagesInlined` として記録し、control leg は
 自分の測定した形のほうを assert する（二つの別物を黙って比較しないため）。
+`digitImagesInlined` は**桁ストリップ（counter tile）内の画像だけ**から判定する。
+ページ全体の `<img>` で判定すると、桁が inline のまま横に通常 URL の画像が
+1 枚増えただけでフラグが `false` に振れ、control leg が「出るはずの無い
+7 件」を要求してしまう。
 
 ### CI 実測（counter disabled = 既定の E2E 状態）
 

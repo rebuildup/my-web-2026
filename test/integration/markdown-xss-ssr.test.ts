@@ -33,12 +33,17 @@ import {
  */
 
 /**
- * The portfolio migration, inlined byte-for-byte.
+ * The portfolio migration, inlined.
  *
  * workerd cannot `fs.readFile`, so every suite that needs a table
- * carries its own copy of the SQL — and the copy MUST stay identical
- * to `migrations/0007_portfolio.sql`, or this test would validate a
- * schema production never runs.
+ * carries its own copy of the SQL. The copy is SCHEMA-EQUIVALENT to
+ * `migrations/0007_portfolio.sql` (same columns, types, constraints and
+ * indexes) and MUST stay so, or this test would validate a schema
+ * production never runs. It is not a byte-for-byte copy and does not
+ * claim to be: inside `--` comments this file writes `'Solo
+ * developer'` where the migration writes `"Solo developer"`. Comments
+ * carry no schema, so the D1 statement text is equivalent — but any
+ * *structural* difference here is drift, not style.
  */
 const MIGRATIONS = [
 	{

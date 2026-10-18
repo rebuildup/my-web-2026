@@ -140,6 +140,34 @@ describe('notion html: allowed structure becomes Markdown', () => {
 		expect(result.markdown).toBe('```ts\nconst a = 1;\n```');
 	});
 
+	it('lengthens the fence so a body containing ``` stays inside the code block', () => {
+		const body = '<pre><code>a\n```\nwindow.__xssFired=1\n```\nb</code></pre>';
+		const result = sanitizeNotionHtml(body);
+		expect(result.markdown).toBe('````\na\n```\nwindow.__xssFired=1\n```\nb\n````');
+
+		// Round-trip through the REAL renderer: the fence must survive
+		// as ONE code node, or the payload leaks into the article text.
+		const ast = parseMarkdown(result.markdown);
+		expect(ast).toHaveLength(1);
+		expect(ast[0].kind).toBe('code');
+		if (ast[0].kind === 'code') expect(ast[0].value).toBe('a\n```\nwindow.__xssFired=1\n```\nb');
+	});
+
+	it('lengthens the inline code delimiter so <code> carrying a backtick round-trips', () => {
+		const result = sanitizeNotionHtml('<p>a <code>x`y</code> b</p>');
+		expect(result.markdown).toBe('a ``x`y`` b');
+
+		const ast = parseMarkdown(result.markdown);
+		expect(ast).toHaveLength(1);
+		if (ast[0].kind === 'paragraph') {
+			expect(ast[0].children).toEqual([
+				{ kind: 'text', value: 'a ' },
+				{ kind: 'code', value: 'x`y' },
+				{ kind: 'text', value: ' b' },
+			]);
+		}
+	});
+
 	it('drops comments and doctypes', () => {
 		const result = sanitizeNotionHtml(
 			'<!doctype html><!-- <script>window.__xssFired=1</script> --><p>text</p>',

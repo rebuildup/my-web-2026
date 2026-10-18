@@ -262,7 +262,11 @@ export function classifyHref(raw: string, siteOrigin: string): MarkdownHrefVerdi
 		if (resolved.reason === 'scheme-not-allowed' && !EXPLICIT_SCHEME.test(trimmed)) {
 			return { outcome: 'blocked', reason: 'encoded-scheme', raw: original };
 		}
-		return resolved;
+		// `resolveAbsolute` classifies the DECODED value, so its `raw` is
+		// the decoded text; the contract above is the ORIGINAL string the
+		// author wrote, which is what an operator needs to see in order to
+		// fix the link.
+		return { ...resolved, raw: original };
 	}
 	return resolved;
 }
@@ -376,19 +380,24 @@ function parseBlocks(input: string): MarkdownBlock[] {
 			continue;
 		}
 
-		// Fenced code block.
-		if (/^```/.test(line)) {
+		// Fenced code block. The opening run is 3+ backticks (CommonMark),
+		// and only a run at least as long closes it, so a 4-backtick fence
+		// can hold a body that itself contains ```.
+		const fenceOpen = /^(`{3,})([^`]*)$/.exec(line);
+		if (fenceOpen) {
 			flushParagraph();
 			flushList();
-			const lang = line.slice(3).trim();
+			const marker = fenceOpen[1];
+			const lang = fenceOpen[2].trim();
+			const closeRe = new RegExp(`^\`{${marker.length},}\\s*$`);
 			const buf: string[] = [];
 			i++;
-			while (i < lines.length && !/^```\s*$/.test(lines[i])) {
+			while (i < lines.length && !closeRe.test(lines[i])) {
 				buf.push(lines[i]);
 				i++;
 			}
 			// Skip closing fence if present.
-			if (i < lines.length && /^```\s*$/.test(lines[i])) i++;
+			if (i < lines.length && closeRe.test(lines[i])) i++;
 			blocks.push({ kind: 'code', lang, value: buf.join('\n') });
 			continue;
 		}
@@ -444,6 +453,33 @@ function parseBlocks(input: string): MarkdownBlock[] {
 	return blocks;
 }
 
+/**
+ * Close an inline code span opened by a run of `runLength` backticks.
+ *
+ * CommonMark rule: the span ends at the next run of AT LEAST that many
+ * backticks, and a backslash does not escape one. Returning the end of
+ * the closing run (not its first backtick) is what keeps the scan
+ * aligned for the rest of the line.
+ */
+function findCodeSpanClose(
+	input: string,
+	from: number,
+	runLength: number,
+): { value: string; end: number } | null {
+	let i = from;
+	while (i < input.length) {
+		if (input[i] !== '`') {
+			i++;
+			continue;
+		}
+		let j = i;
+		while (j < input.length && input[j] === '`') j++;
+		if (j - i >= runLength) return { value: input.slice(from, i), end: j };
+		i = j;
+	}
+	return null;
+}
+
 function parseInlines(input: string): MarkdownInline[] {
 	const out: MarkdownInline[] = [];
 	let i = 0;
@@ -458,13 +494,17 @@ function parseInlines(input: string): MarkdownInline[] {
 	while (i < input.length) {
 		const ch = input[i];
 
-		// Inline code.
+		// Inline code. The opening run is 1+ backticks and only a run at
+		// least as long closes it, so a span can carry a backtick of its
+		// own when the writer uses a longer delimiter.
 		if (ch === '`') {
-			const close = input.indexOf('`', i + 1);
-			if (close !== -1) {
+			let runEnd = i;
+			while (runEnd < input.length && input[runEnd] === '`') runEnd++;
+			const close = findCodeSpanClose(input, runEnd, runEnd - i);
+			if (close) {
 				flushText();
-				out.push({ kind: 'code', value: input.slice(i + 1, close) });
-				i = close + 1;
+				out.push({ kind: 'code', value: close.value });
+				i = close.end;
 				continue;
 			}
 		}

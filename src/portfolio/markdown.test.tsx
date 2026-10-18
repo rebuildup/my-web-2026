@@ -85,6 +85,30 @@ describe('markdown: parseMarkdown AST', () => {
 		}
 	});
 
+	it('closes a fenced code block only on a run at least as long as the opening fence', () => {
+		// What `sanitizeNotionHtml` emits for a `<pre><code>` body that
+		// itself contains ```: a longer fence, so the payload stays
+		// inside the code block instead of terminating it early.
+		const ast = parseMarkdown('````\na\n```\nwindow.x=1\n```\nb\n````');
+		expect(ast).toHaveLength(1);
+		if (ast[0].kind === 'code') {
+			expect(ast[0].lang).toBe('');
+			expect(ast[0].value).toBe('a\n```\nwindow.x=1\n```\nb');
+		}
+	});
+
+	it('closes an inline code span only on a run at least as long as the opening one', () => {
+		const ast = parseMarkdown('a ``x`y`` b');
+		expect(ast).toHaveLength(1);
+		if (ast[0].kind === 'paragraph') {
+			expect(ast[0].children).toEqual([
+				{ kind: 'text', value: 'a ' },
+				{ kind: 'code', value: 'x`y' },
+				{ kind: 'text', value: ' b' },
+			]);
+		}
+	});
+
 	it('parses inline code and bold', () => {
 		const ast = parseMarkdown('A `code` and **strong** here.');
 		expect(ast).toHaveLength(1);

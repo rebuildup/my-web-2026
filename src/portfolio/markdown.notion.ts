@@ -570,8 +570,11 @@ function renderFencedCode(node: ElementNode, dropped: NotionDroppedFragment[]): 
 		return '';
 	}
 	const lang = languageFromClass(source.attributes.get('class'));
-	// A longer fence keeps a payload containing ``` from closing the block early.
-	const fence = raw.includes('```') ? '````' : '```';
+	// A fence one backtick longer than the longest run inside the body
+	// (and never shorter than three) keeps a payload that contains ```
+	// from closing the block early. The lexer reads the opening run and
+	// only closes on an equal or longer one, so the round-trip survives.
+	const fence = '`'.repeat(Math.max(3, longestBacktickRun(raw) + 1));
 	return `${fence}${lang}\n${raw.replace(/\n+$/, '')}\n${fence}`;
 }
 
@@ -615,7 +618,15 @@ function renderInline(
 			}
 			case 'code': {
 				const raw = textContent(node.children);
-				if (raw.trim()) out += `\`${raw.replace(/`/g, '\\`')}\``;
+				if (raw.trim()) {
+					// Code spans close at the NEXT backtick run, and a
+					// backslash does not escape one (CommonMark). So the
+					// delimiter is one backtick longer than the longest run
+					// in the content; `\`-escaping would leak as literal
+					// text and truncate the span.
+					const ticks = '`'.repeat(longestBacktickRun(raw) + 1);
+					out += `${ticks}${raw}${ticks}`;
+				}
 				continue;
 			}
 			case 'br':
@@ -670,6 +681,20 @@ function collapseWhitespace(value: string): string {
  */
 function escapeInlineMarkdown(value: string): string {
 	return value.replace(/[\\`*_[\]]/g, (ch) => `\\${ch}`);
+}
+
+/**
+ * Length of the longest backtick run in `value` (0 when there is none).
+ *
+ * Both delimiters the adapter emits — a fence and an inline code span —
+ * must be one backtick longer than that run, because the lexer closes
+ * them at the next run of equal or greater length (and a backslash does
+ * not escape a backtick inside a code span).
+ */
+function longestBacktickRun(value: string): number {
+	let longest = 0;
+	for (const match of value.matchAll(/`+/g)) longest = Math.max(longest, match[0].length);
+	return longest;
 }
 
 function preview(raw: string): string {

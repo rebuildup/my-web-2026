@@ -31,13 +31,33 @@ import {
  * fails — this is what turns "the HTML looked escaped" into "nothing
  * ran".
  *
- * Local-only: the fixture row lives in the local D1 file, which a
- * remote Worker cannot read, so `playwright.config.ts` filters this
- * file out of the production path the same way it filters
- * `portfolio.spec.ts`.
+ * Local-only, twice over. The fixture row lives in the local D1
+ * file (`.tmp/d1state`), which a remote Worker cannot read, so this
+ * file is meaningless — and actively misleading — against a deployed
+ * origin. Two mechanisms keep it local:
+ *
+ *   1. `playwright.config.ts` lists this file in the non-local
+ *      `testIgnore`, next to `portfolio.spec.ts`, so a full
+ *      `PLAYWRIGHT_BASE_URL=https://rebuildup.dev pnpm exec playwright
+ *      test` never collects it.
+ *   2. The `test.skip` below repeats the check in-file, because an
+ *      explicitly named file (`playwright test <file>`, the form the
+ *      production scripts use) is not protected by `testIgnore`, and
+ *      because a skip is louder than a silently missing test. It is a
+ *      describe-level modifier, which Playwright evaluates in the
+ *      `beforeAll` phase *before* the suite's own `beforeAll` hook, so
+ *      the non-local run never seeds anything either.
+ *
+ * The guard must not be replaced by pointing the seed at a remote
+ * database: this file is the only E2E spec that writes a
+ * `portfolio_project` row, and production data is not its fixture.
  */
 
 const SLUG = MARKDOWN_XSS_FIXTURE_SLUG;
+
+// Same condition as `playwright.config.ts`: the local preview server.
+// `PLAYWRIGHT_BASE_URL` defaults to `http://127.0.0.1:<port>`.
+const LOCAL_BASE_URL = process.env.PLAYWRIGHT_BASE_URL?.startsWith('http://127.0.0.1') ?? true;
 
 const sqlLiteral = (value: string | number | null) =>
 	value === null
@@ -71,6 +91,11 @@ test.describe('portfolio article — XSS boundary (Issue #451)', () => {
 	// security boundary. Serial keeps one worker, so the seed and the
 	// cleanup each run exactly once.
 	test.describe.configure({ mode: 'serial' });
+
+	test.skip(
+		!LOCAL_BASE_URL,
+		'local-only spec: the fixture row is seeded into the local D1 file, which a deployed origin cannot read',
+	);
 
 	test.beforeAll(() => {
 		seedFixture();

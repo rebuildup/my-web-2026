@@ -357,6 +357,141 @@ caught by the runtime suite (or by review). The inventory above names
 the variable-built statements that exist today — keep it current when
 one is added.
 
+## HTTPS 強制と HSTS (Issue #446)
+
+### ルール
+
+**HTTPS で届いたリクエストに対する Worker のレスポンスだけが**、
+意図した `Strict-Transport-Security` を返す。値は **`max-age` 単独**で、
+`includeSubDomains` / `preload` は付けない。
+
+| 経路 | HSTS | 根拠 |
+| --- | --- | --- |
+| SSR ドキュメント（`/` `/contact` など） | 付与 | `src/server.ts` の `applyTransportSecurityPolicy`（dispatch の外側） |
+| 外部境界 `/api/v1/*` | 付与 | 同上（Hono パスにも同一ポリシーが乗る） |
+| リダイレクト（`/admin` の 307 → `/admin/login` など） | 付与 | body / content-type が無くても同じ分岐を通る |
+| `http://` で届いたリクエスト | **付与しない** | RFC 6797 §7.2 は非 secure 受信の HSTS を無視すると規定。付与しても無意味で、「HTTPS が設定済み」という誤解を生むだけ |
+| Cloudflare Static Assets（`/assets/*` など） | **付与しない** | asset server のレスポンスであり Worker は header を付けられない（`_headers` の責務。Issue #291 と同じ制約） |
+
+Static Assets .Named response が HSTS を持たないことは
+**到達経路の穴ではない**。HSTS は host 単位で、一度でも secure 応答で
+受け取るとその origin に対して固定され、ドキュメント応答がそれを
+設定する。origin 全体で普遍に効かせるコントロールは Cloudflare
+zone 設定（SSL/TLS → Edge Certificates → HSTS）であり、これは
+operator 所有で**リポジトリからは観測できない**（後述「観測していないもの」）。
+
+### 意図した値
+
+```
+Strict-Transport-Security: max-age=31536000
+```
+
+- 31536000 s = 365 日。ブラウザの preload 申請に必要な 2 年
+  （63072000 s）にせず、zone の全ホストに対する長期コミットメントを
+  避けるため 1 年で止める。
+- 値は `src/server.ts` の `HSTS_DIRECTIVE` 1 箇所だけが所有する。
+  他の場所（テスト・`_headers`・生成スクリプト）に書くと
+  `scripts/check-hsts-policy.mjs` が exit 1 になる。
+
+### 検証（4 層）
+
+| Layer | 何を証明するか | Where |
+| --- | --- | --- |
+| 実行時スイート | HTTPS での SSR / 外部境界 / リダイレクトが正確に意図した値を 1 つだけ持つこと、http では 0 個であること、値に `includeSubDomains` / `preload` が無いこと | `test/integration/hsts-transport-security.test.ts`（workerd pool） |
+| 静的 gate | 宣言が 1 箇所だけであること、`max-age` が許可域（1 日〜2 年）であること、未知 directive が無いこと、`includeSubDomains` / `preload` が無いこと、コード全体のリテラルが canonical と一致すること | `scripts/check-hsts-policy.mjs`（fixture は `scripts/check-hsts-policy.test.mjs`） |
+| E2E（local） | `pnpm preview`（`http://127.0.0.1:3000`）の応答に HSTS が無いこと。plaintext 配信を「HTTPS 化済み」に見せない | `e2e/smoke.spec.ts` |
+| E2E（production、read-only） | canonical origin の**各 surface**（`/` と `/api/v1/health`）がそれぞれ host-scoped な値であること | `e2e/prod-smoke.spec.ts`（手動 `workflow_dispatch` / `pnpm run e2e:prod`） |
+
+静的 gate 単体の実行:
+
+```bash
+node scripts/check-hsts-policy.mjs
+```
+
+gate は Cookie の `Max-Age` と Cache-Control の `max-age` を
+HSTS と見間違えないよう、token 名ではなく**文脈**（`_headers` の
+`Strict-Transport-Security:` 行、または `max-age` を含む文字列リテラル）で
+判定する。対象は単一引用符・二重引用符・**テンプレートリテラル**の
+3 種すべて（`` c.header(HSTS_HEADER, `max-age=…; includeSubDomains`) ``
+のような拡張も走査対象）。RFC 6797 の directive 名は大文字小文字を
+区別しないため、`MAX-AGE=…` も同じ候補として読み、canonical との比較も
+case-insensitive に行う（Set-Cookie の `Max-Age` は属性の正確な綴りで
+単独のときだけ Cookie として除外する）。`+` で連結されたリテラルは
+**1 つの式として畳み込む**ため、`'max-age=31536000' + '; includeSubDomains'`
+は拡張として落ちる。連結の相手がリテラルでない場合
+（`SUFFIX + 'max-age=…'`、`HSTS_DIRECTIVE + '; …'`）は実行値が
+静的には不明なので「composed at runtime」として報告する。
+コメントは走査前に空白で埋めるため、
+doc comment の markdown（`` `max-age=0` ``）を宣言と誤読しない。
+`max-age` の一部が Cache-Control / Set-Cookie の token を伴う文字列
+（`public, max-age=31536000, immutable` など）は他ヘッダーの値と
+みなして対象外にする。RFC 6797 が定義しない token を含むリテラル
+（`max-age=31536000; includeSubDomains; report-uri=x`）や、実行時に
+組み立てられるため比較できないリテラル（`max-age=${seconds}`）は
+「読み飛ばす」のではなく**違反として報告する**。fixture ファイル
+（`*.test.*` / `*.spec.*`）は違反を意図的に植えるため対象外で、
+実行時スイートと canonical 値の不一致は
+`test/integration/hsts-transport-security.test.ts` が落とす。
+
+production smoke は **deploy 後**の観測専用である。HSTS を返す Worker
+が本番に載る前に `pnpm run e2e:prod` を走らせると
+「Worker policy is not live」で失敗するのが正しい挙動であり、
+deploy 前のベースライン取得には
+[`docs/runbook/issue-139-rotation.md`](runbook/issue-139-rotation.md)
+の transition フェーズ
+（`pnpm run e2e:prod:transition`、この検査を skip する）を使う。
+
+### includeSubDomains / preload を付ける条件
+
+両方とも **コード変更ではなく owner 決定**であり、下列を先に満たすまで
+不可（gate が機械的に落とす）。
+
+1. **サブドメインごとの HTTPS 到達性の監査**が本ドキュメントに
+   記録されていること。zone には現在 `rebuildup.dev` 以外にも
+   `media.rebuildup.dev`（R2 custom domain。`wrangler.production.jsonc`
+   の `MEDIA_PUBLIC_BASE_URL`）が存在する。HTTPS 応答できない
+   サブドメインが 1 つでもあれば、そのホストは `max-age` の間だけ
+   到達不能になる。
+2. **zone 設定側で HSTS を有効化**していること。zone の
+   Edge Certificates → HSTS が Worker ヘッダーと二重にならないか
+   確認する（両方が付く場合、ブラウザはカンマ区切り directives として
+   解釈する。Worker は「既にヘッダーがある応答には付けない」ガードを
+   持つが、zone 側は Worker から制御できない）。
+3. `preload` はさらにブラウザ preload list への申請が prerequisite で、
+   取り下げに月単位を要する。申請しない。
+
+段階的な ramp（値を変更する場合は必ず gate とテストも同時に更新する）:
+
+| 段階 | 値 | 条件 |
+| --- | --- | --- |
+| 1（現状） | `max-age=31536000` | HTTPS 到達性を local workerd で確認済み |
+| 2 | `max-age=63072000` | 運用実績に基づいて長期化の可否を判断 |
+| 3 | + `includeSubDomains` | サブドメイン監査（上記 1）が記録されていること |
+| 4 | + `preload` | preload 申請の判断（上記 3） |
+
+### 観測していないもの / 捏造していないもの
+
+- **Cloudflare zone 設定**（Always Use HTTPS、Edge Certificates →
+  HSTS、Minimum TLS Version 等）は dashboard 側の状態であり、
+  Wrangler 設定ファイルには現れない。本 Issue はこれを変更せず、
+  本番を触って観測もしない。production で実測するのは
+  `e2e/prod-smoke.spec.ts` の read-only GET のみ。
+- **本番の TLS チェーン / リダイレクトの実測値**は本 PR の証跡に
+  含まれない（本番を破壊的操作に触れないという受け入れ条件のため）。
+- **サブドメインの HTTPS 対応状況**は未監査。したがって
+  `includeSubDomains` は付けない。
+- 新規の HTTPS 強制機構（リダイレクト Worker、redirect rule、
+  新しい endpoint）は追加していない。
+
+### 運用契約
+
+本 Issue で変更するのは**レスポンス header 1 つ**の付与のみ。
+認証（Better Auth / API key）、rate limit、Cloudflare binding
+（`DB` / `MEDIA` / `ASSETS`）、Tool Registry 依存、外部 HTTP 契約、
+キャッシュポリシー（Issue #291）はいずれも不変。`_headers` には
+一切変更を加えていない（Static Assets は本ポリシーの対象外という
+判断であり、意図的な据え置き）。
+
 ## Step-up re-authentication
 
 A live admin session (30-day `session.expiresIn`, ADR-0009 §8) is the
@@ -529,6 +664,66 @@ A redacted transcript of the observed responses is kept at
   guard by `pnpm run security:redirect:report`; the committed image and
   its reading guide are in
   [`docs/verification/security/`](verification/security/).
+
+## Search index boundary (robots.txt is not access control)
+
+`GET /robots.txt` and `GET /sitemap.xml` are served by
+`src/http/seo/` (Issue #420: TanStack Start 1.168 cannot answer a
+non-HTML document from a route file, so they are external-boundary
+routes). What is a **contract** is `scripts/_index-boundary.mjs`: it
+classifies every route in the generated route tree as crawlable /
+indexable / `noindex`, and `pnpm run index:boundary:check` (part of
+`validate:fast`) fails when the served documents contradict it.
+Inspect the per-route intent with `pnpm run index:boundary:report`.
+
+There is deliberately **no committed `public/robots.txt`**: Cloudflare
+Static Assets answers a matching asset BEFORE the Worker runs
+(`assets.run_worker_first` is unset), so a file in `public/` would
+silently shadow the route instead of documenting it.
+
+The boundary has exactly two halves, and they are not interchangeable:
+
+- **Crawl control** — `Disallow` in `robots.txt` keeps a URL out of
+  the crawl. The served policy declares none today, and in particular
+  none for `/admin`: the admin subtree is de-indexed by its own
+  `noindex` meta, which is only readable at fetch time, so blocking
+  the crawl would leave the URLs "indexed, though blocked by
+  robots.txt". The gate rejects that combination (`noindex-blocked`)
+  rather than trusting this paragraph. Crawl budget for the machine
+  boundaries (`/api/v1`, `/webhooks`, `/oauth`, `/integrations`,
+  `/_serverFn`) is the SEO owner's call — they answer 401/404 rather
+  than serving a document, so the contract neither demands nor forbids
+  a rule for them.
+- **Index control** — `<meta name="robots" content="noindex, nofollow">`
+  is what actually removes a URL from the index. It is declared by the
+  page itself (`src/routes/admin.tsx` for the whole admin subtree, and
+  the Tool shell routes), which is why those pages stay crawlable: a
+  page a crawler cannot fetch cannot deliver its own noindex, and
+  Google then reports the URL as "Indexed, though blocked by
+  robots.txt".
+
+Neither half is authentication. `robots.txt` is a public document
+served to anonymous clients — `curl`, a browser, or a scraper ignores
+it — so the admin surface stays protected by `requireAdmin()`
+(`src/admin/auth/require-admin.ts`) and `/api/v1/*` by the API-key
+middleware. `test/integration/index-boundary.test.ts` proves the two
+are independent: a `Googlebot` User-Agent gets no privilege on
+`/admin` or `/admin/keys`, and the API boundary still answers `401`.
+
+The gate fails loudly rather than silently on: a site-wide
+`Disallow: /`, a raw-prefix `Disallow` that would shadow a sibling
+public route, an `indexable` route that a rule blocks, a route
+de-indexed by its own `noindex` meta that is also kept out of the
+crawl (`noindex-blocked` — the combination this paragraph describes),
+a crawl-blocked route that lost its rule, a `noindex` meta on a public
+route, a sitemap entry whose route does not exist (or vice versa), a
+sitemap URL that disagrees with the page's own `canonical`, a sitemap
+rendered off the canonical origin, a `Sitemap:` directive that is not
+the canonical one, and any new route that has no declared index intent.
+The meta and canonical checks strip comments before matching, so a
+declaration that only survives in a comment — or that splits
+`name: 'robots'` and `content: 'noindex'` across two entries — does
+not count.
 
 ## Dependency install lifecycle scripts
 

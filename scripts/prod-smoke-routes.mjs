@@ -63,7 +63,8 @@
  *     availability contract.
  *   - Dependencies the expectations rest on: the TanStack Router route
  *     tree (`src/routeTree.gen.ts`), the Tool Registry manifest
- *     (`src/tools/manifest.json`), the Hono external boundary
+ *     (`src/tools/manifest.json`) and its delivery rules
+ *     (`src/tools/registry.ts`), the Hono external boundary
  *     (`src/http/hono.ts`), and `src/editorial/nav/PublicNav.tsx`. The
  *     contract test re-derives each of these from disk so a registry
  *     entry cannot outlive the route it names.
@@ -232,7 +233,7 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 			Object.freeze({
 				name: 'tools-registry',
 				description:
-					'every manifest Tool renders as one row, each classified as integrated (linked) or host_disabled (Coming soon badge)',
+					'every manifest Tool renders as one row classified the way its manifest delivery kind demands: a public Tool links to its own /tools/<slug>, a host_disabled Tool shows the Coming soon badge and links nowhere',
 				probes: Object.freeze({ allManifestSlugsListed: true, everyRowClassified: true }),
 			}),
 		]),
@@ -262,6 +263,26 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 			}),
 		]),
 	}),
+]);
+
+/**
+ * Delivery kinds the `/tools` index renders as a LINKED row.
+ *
+ * Mirrors `PUBLIC_DELIVERY_KINDS` in `src/tools/registry.ts` (which
+ * drives `listPublicTools()`). The registry contract test re-derives the
+ * set from that source, so this copy cannot drift.
+ *
+ * Why the classification is checked against the manifest rather than
+ * against the rendered attribute: a Tool that is public in the manifest
+ * but renders as `data-tool-state="host_disabled"` (or a disabled row
+ * that renders a link) still renders a correct `data-tool-slug` set, so
+ * a set comparison alone would call a fully regressed index healthy.
+ *
+ * @type {ReadonlyArray<string>}
+ */
+export const LINKED_TOOL_DELIVERY_KINDS = Object.freeze([
+	'same_origin_static',
+	'external_exception',
 ]);
 
 /**

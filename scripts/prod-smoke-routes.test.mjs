@@ -7,6 +7,7 @@ import {
 	CANONICAL_PRODUCTION_ORIGIN,
 	CHROME_NAV_ROUTES,
 	EXPECTED_SECTION_COUNTS,
+	LINKED_TOOL_DELIVERY_KINDS,
 	ONE_CLICK_ENTRIES,
 	REPRESENTATIVE_API_ROUTES,
 	REPRESENTATIVE_PAGE_ROUTES,
@@ -286,6 +287,25 @@ describe('representative-route registry — drift guards against the repository'
 				`${tool.slug} has a delivery kind the /tools row classification does not cover`,
 			);
 		}
+	});
+
+	it('keeps the linked-row delivery kinds in step with the Tool Registry', () => {
+		// `/tools` renders a LINKED row for every `PUBLIC_DELIVERY_KINDS`
+		// entry and a disabled row for everything else, so the smoke's
+		// per-row classification is only as good as this copy of the rule.
+		// Re-derive it from `src/tools/registry.ts` instead of trusting the
+		// copy.
+		const source = readFileSync(resolve(REPO_ROOT, 'src/tools/registry.ts'), 'utf8');
+		const match = source.match(/PUBLIC_DELIVERY_KINDS\s*(?::[^=]*)?=\s*new Set[^(]*\(\[(.*?)\]/s);
+		assert.ok(match, 'could not read PUBLIC_DELIVERY_KINDS out of src/tools/registry.ts');
+		const kinds = [...match[1].matchAll(/'([^']+)'/g)].map((entry) => entry[1]);
+		assert.ok(kinds.length > 0, 'PUBLIC_DELIVERY_KINDS parsed as empty');
+		assert.deepEqual([...LINKED_TOOL_DELIVERY_KINDS].sort(), kinds.sort());
+		assert.equal(
+			LINKED_TOOL_DELIVERY_KINDS.includes('host_disabled'),
+			false,
+			'a host_disabled Tool must be classified as a Coming soon row, never as a linked one',
+		);
 	});
 
 	it('pins the same section counts the local Playwright suites assert', () => {

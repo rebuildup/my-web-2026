@@ -7,6 +7,7 @@ import {
 	CANONICAL_PRODUCTION_ORIGIN,
 	CHROME_NAV_ROUTES,
 	EXPECTED_SECTION_COUNTS,
+	LINKED_TOOL_DELIVERY_KINDS,
 	ONE_CLICK_ENTRIES,
 	REPRESENTATIVE_API_ROUTES,
 	REPRESENTATIVE_PAGE_ROUTES,
@@ -329,19 +330,22 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /**
- * Tool slugs the `/tools` index is contracted to list.
+ * What the `/tools` index is contracted to render, read from the Tool
+ * Registry manifest: slug → delivery kind, plus the sorted slug list.
  *
- * Read from the registry manifest rather than restated, so the default
- * state is "the index agrees with the manifest" instead of "the index
- * agrees with a list someone copied out of it once". The manifest is
- * repo-controlled data, so this stays a verifiable fact rather than an
- * expectation about production content.
+ * Read from the manifest rather than restated, so the default state is
+ * "the index agrees with the manifest" instead of "the index agrees with
+ * a list someone copied out of it once". The manifest is repo-controlled
+ * data, so this stays a verifiable fact rather than an expectation about
+ * production content.
  */
-function readToolManifestSlugs(): string[] {
+function readToolManifest(): { slugs: string[]; deliveryKinds: Record<string, string> } {
 	const raw = JSON.parse(readFileSync(resolve(REPO_ROOT, 'src/tools/manifest.json'), 'utf8')) as {
-		tools: Array<{ slug: string }>;
+		tools: Array<{ slug: string; delivery: { kind: string } }>;
 	};
-	return raw.tools.map((tool) => tool.slug).sort();
+	const deliveryKinds: Record<string, string> = {};
+	for (const tool of raw.tools) deliveryKinds[tool.slug] = tool.delivery.kind;
+	return { slugs: Object.keys(deliveryKinds).sort(), deliveryKinds };
 }
 
 /** Well-formed semantic version. Deliberately not the repo's version. */
@@ -358,7 +362,7 @@ const SEMVER = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 async function computePageProbes(
 	path: string,
 	page: Page,
-	toolSlugs: ReadonlyArray<string>,
+	manifest: { slugs: string[]; deliveryKinds: Record<string, string> },
 ): Promise<Record<string, boolean>> {
 	switch (path) {
 		case '/':
@@ -399,27 +403,40 @@ async function computePageProbes(
 				projectCard: (await page.locator('section#portfolio-list ol > li').count()) > 0,
 			};
 		case '/tools': {
+			const rows = page.locator('[data-tool-slug]');
 			const listed = (
-				await page
-					.locator('[data-tool-slug]')
-					.evaluateAll((rows) => rows.map((row) => row.getAttribute('data-tool-slug') ?? ''))
+				await rows.evaluateAll((elements) =>
+					elements.map((row) => row.getAttribute('data-tool-slug') ?? ''),
+				)
 			).sort();
-			const expected = [...toolSlugs].sort();
-			// A row is classified only when it either links to ITS OWN
-			// `/tools/<data-tool-slug>` or carries the documented
-			// `host_disabled` state. Comparing the anchor href against
-			// the row's own slug is what stops a regression where every
-			// row links to the same (or a typo'd) `/tools/...` path from
-			// reading as "integrated".
-			const everyRowClassified = await page.locator('[data-tool-slug]').evaluateAll((rows) =>
-				rows.every((row) => {
-					const slug = row.getAttribute('data-tool-slug') ?? '';
-					const anchor = row.querySelector('a[href^="/tools/"]');
-					return (
-						(anchor !== null && anchor.getAttribute('href') === `/tools/${slug}`) ||
-						row.getAttribute('data-tool-state') === 'host_disabled'
-					);
-				}),
+			const expected = [...manifest.slugs].sort();
+			// Every row must be classified the way ITS OWN manifest entry
+			// demands, which is stronger than "the slug set matches" — a
+			// fully regressed index can render every public Tool as a
+			// disabled row and still list exactly the right slugs:
+			//   - a public delivery kind links to its OWN `/tools/<slug>`
+			//     and carries no disabled state;
+			//   - a `host_disabled` Tool links nowhere, carries
+			//     `data-tool-state="host_disabled"`, and shows the Coming
+			//     soon badge.
+			const everyRowClassified = await rows.evaluateAll(
+				(elements, contract: { linked: string[]; kinds: Record<string, string> }) => {
+					const linked = new Set(contract.linked);
+					return elements.every((row) => {
+						const slug = row.getAttribute('data-tool-slug') ?? '';
+						const kind = contract.kinds[slug];
+						if (kind === undefined) return false;
+						const href = row.querySelector('a[href^="/tools/"]')?.getAttribute('href') ?? null;
+						const state = row.getAttribute('data-tool-state');
+						if (linked.has(kind)) return href === `/tools/${slug}` && state === null;
+						return (
+							state === 'host_disabled' &&
+							href === null &&
+							row.querySelector('[data-tool-badge="coming-soon"]') !== null
+						);
+					});
+				},
+				{ linked: [...LINKED_TOOL_DELIVERY_KINDS], kinds: manifest.deliveryKinds },
 			);
 			return {
 				allManifestSlugsListed:
@@ -445,7 +462,7 @@ async function observePageRoute(
 	route: RepresentativeRoute,
 	origin: string,
 	page: Page,
-	toolSlugs: ReadonlyArray<string>,
+	manifest: { slugs: string[]; deliveryKinds: Record<string, string> },
 ): Promise<RouteObservation> {
 	const response = await page.goto(`${origin}${route.path}`, {
 		waitUntil: 'domcontentloaded',
@@ -466,7 +483,7 @@ async function observePageRoute(
 		h1Visible: await h1.isVisible(),
 		h1Text: await h1.count().then((count) => (count > 0 ? h1.textContent() : null)),
 		json: null,
-		defaultProbes: await computePageProbes(route.path, page, toolSlugs),
+		defaultProbes: await computePageProbes(route.path, page, manifest),
 	};
 }
 
@@ -539,7 +556,7 @@ test.describe('production representative routes (Issue #500)', () => {
 			page,
 		}) => {
 			const origin = smokeOrigin(baseURL);
-			const observation = await observePageRoute(route, origin, page, readToolManifestSlugs());
+			const observation = await observePageRoute(route, origin, page, readToolManifest());
 			// Assert the problem LIST, not the first problem: a broken
 			// deployment should report everything that is wrong in one go.
 			const problems = auditRoute(route, observation);

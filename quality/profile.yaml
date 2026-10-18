@@ -39,6 +39,8 @@ gates:
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).
       - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
+      - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
+      - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
@@ -93,6 +95,9 @@ change_risk_mapping:
     gate: fast
   config_only:
     gate: fast
+  client_bundle_report_change:
+    gate: fast
+    note: 'Issue #483 — scripts/_client-bundle.mjs + scripts/report-client-bundle.mjs + its fixture test. The analyser has a unit test (`scripts/_client-bundle.test.mjs`) that `pnpm run test` runs inside validate:fast, so the analyser cannot silently stop detecting an orphaned chunk or a leaking Tool import. The REPORT it produces is not a gate and no byte budget is enforced here: budget thresholds are Issue #383 / #385.'
   src_unit:
     gate: fast
   architecture_boundary:
@@ -157,13 +162,48 @@ security_gates:
     enabled: true
     mode: asynchronous
     note: 'Enabled via GitHub Push Protection + cloud bot.'
+  install_script_audit:
+    enabled: true
+    tool: scripts/check-install-scripts.mjs
+    policy: quality/install-scripts.json
+    execution_allowlist: pnpm-workspace.yaml#allowBuilds
+    note: >-
+      Issue #474. pnpm is default-deny for dependency build scripts; this
+      gate fails when an installed package can execute code during an
+      install (preinstall / install / postinstall, an implicit node-gyp
+      rebuild for a package shipping binding.gyp, or the prepare of a
+      git-hosted dependency) that the reviewed policy has no record for,
+      when the policy decision and pnpm's effective execution allow-list
+      disagree in either direction, when a grant survives only in the
+      legacy onlyBuiltDependencies list, or when an allowed package
+      moved to a version the record never reviewed. It warns when an
+      allow-list entry buys no build. Status-only output; no secret value
+      is read or printed. Runbook: docs/runbook/install-script-audit.md
   workflow_yaml_lint:
     enabled: true
     tool: actionlint
     note: 'Biome does not cover .github/workflows/*.yml. Runs inside the `validate` job.'
   dependency_review:
-    enabled: false
-    rationale: 'Deferred to a post-0.1.0 ticket.'
+    enabled: true
+    issue: '#470'
+    tool: pnpm-audit
+    check_command: 'pnpm run dep-audit:check'
+    report_command: 'pnpm run dep-audit:report'
+    declaration: 'quality/dependency-advisory-gate.json'
+    enforcement: audit
+    blocking_severities: ['critical', 'high']
+    open_owner_decision: '`enforcement: audit` with 18 outstanding blocking advisories (3 critical) is the shipped state. Remediation, narrowing blocking_severities and per-package exception approval are owner calls; no exception is written on the owner''s behalf. See docs/runbook/dependency-advisories.md section 6.'
+    ci_step: 'Dependency advisory audit (every pull_request / push the workflow triggers, and the HTML report is uploaded as dependency-advisory-report-<sha>)'
+    entry_points: 'CI only — the gate needs the npm registry advisory endpoint, so it is deliberately not part of the offline validate:fast / validate:integration / validate:release path. The decision lives in scripts/check-dependency-advisories.mjs (not in workflow YAML) and the same verdict is reproducible locally with `pnpm run dep-audit:check`.'
+    exit_codes:
+      0: 'pass, or blocking findings recorded under audit enforcement'
+      1: 'blocking advisories outstanding under block enforcement'
+      2: 'usage error, unreadable --input path, or gate-declaration error'
+      3: 'advisory data unavailable — fail closed, never reported as 0 findings'
+    inputs:
+      - pnpm-lock.yaml
+      - quality/dependency-advisory-gate.json
+    note: 'Severity policy, the exception ledger and every expiry live in the declaration, not in code, so a policy change is a reviewable one-line diff. The severity policy is enforced in both directions: a severity classified as neither blocking nor reported fails closed, and an exception is keyed by (advisoryId, package) because one advisory commonly spans several packages — a record that matches no finding suppresses nothing and is reported, never laundered into `data unavailable`. Advisory data comes from the npm registry advisory endpoint only — no environment credential, .dev.vars, Infisical export or Worker secret value (AGENTS.md section 4); an upstream response body is never echoed into stdout or the artifact. Unreadable data fails closed so a registry outage cannot read as a clean tree. See docs/runbook/dependency-advisories.md.'
   sast:
     enabled: false
     rationale: 'Deferred.'
@@ -177,3 +217,39 @@ disallowed_patterns:
   - 'duplicate pnpm install across CI jobs (use cache + single shared bootstrap)'
   - 'tabs in YAML files (actionlint enforces spaces; .github/workflows/*.yml uses 2-space indent)'
   - 'cf workers types run as a generation step in CI without a subsequent git diff --exit-code check'
+  - 'a performance/visualisation report wired into validate:fast / validate:integration / validate:release (see diagnostic_entry_points; budgets are Issue #383 / #385)'
+
+# Deterministic entry points that produce EVIDENCE without gating.
+# They are deliberately outside `gates:` above: running them must never
+# turn a visualisation into a release condition. A finding from one of
+# them is an input to a human decision or to a follow-up Issue.
+#
+# `pnpm run verify:bundle-map` (Issue #483) reads an emitted client build
+# and reports, per route, which chunks load, how large they are, which
+# chunks are duplicated, and whether any host route pulls in the Tool
+# artifacts under `tools/**`. Reproduction conditions (source SHA, node,
+# vite, OS/arch, CPU, browser, network) are part of the report body,
+# because a bundle number without its conditions is not comparable.
+#
+# Local reproduction (production-equivalent preview):
+#   pnpm exec vite build && node scripts/build-tools.mjs
+#   node scripts/sync-cf-build-output.mjs
+#   node scripts/e2e-local-bootstrap.mjs --port=3000   # terminal 1
+#   pnpm run verify:bundle-map -- --base-url=http://127.0.0.1:3000
+#
+# CI reproduction: the same command against the same build step that
+# `validate:integration` runs, plus `--screenshot=` to refresh the
+# committed WebP. No workflow runs it today — it is opt-in, invoked by a
+# human, and a workflow that starts running it must keep it out of the
+# `gates:` above.
+diagnostic_entry_points:
+  - name: verify:bundle-map
+    command: 'pnpm run verify:bundle-map -- --base-url=<preview base url>'
+    scope: 'client build output only; no network, no Cloudflare API, no production read'
+    output: '.tmp/bundle-report/bundle-map.{json,md,html} (gitignored)'
+    committed_artefacts:
+      - 'docs/verification/perf/bundle-map.md'
+      - 'docs/verification/perf/bundle-map.webp'
+    gates: none
+    owner_issue: '#483'
+    prerequisites: 'a built client output (pnpm exec vite build; scripts/build-tools.mjs + scripts/sync-cf-build-output.mjs for Tool artefacts) and, for the route matrix, a preview server'

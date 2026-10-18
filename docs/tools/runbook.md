@@ -54,8 +54,29 @@ The verifier asserts:
 - `classification=needs_tool_side_fix` + `delivery.kind=same_origin_static`
   is a contradiction and is reported as a violation.
 
+Issue #465 replaced the last-but-two bullet and added the embed
+policy pass: for every embeddable entry the verifier now runs
+`evaluateToolEmbedPolicy()` from
+[`src/tools/embed-policy.ts`](../../src/tools/embed-policy.ts) — the
+same function the `/tools/<slug>` route runs per request. That covers
+the sandbox token classes, `referrer_policy`, the frame origin, and
+the optional `host_message` origin contract. The rules are defined
+once; this gate and the route cannot drift apart.
+
 Run it before committing any change to `manifest.json`. CI runs it as
 part of `pnpm run validate:fast`.
+
+To produce the human-readable audit used by the Issue #465 PR
+screenshot:
+
+```bash
+pnpm run tools:embed-policy:report -- --out=.tmp/tool-iframe-sandbox.html
+```
+
+It renders every manifest entry with its sandbox / referrer /
+message verdict, plus the hostile-message fixture matrix (what the
+host guard does with each injected event). The report is generated
+into `.tmp/` and is never committed.
 
 ## 3. Run the build orchestrator
 
@@ -105,6 +126,17 @@ Forbidden shortcuts (re-stated because they keep being re-attempted):
 - **Do not** ship an unverified Tool-side fix in the parent repo.
   Open a PR in the Tool's own repo, merge it there, then bump
   `source.pinned_sha` here.
+- **Do not** add a sandbox token without checking
+  [`docs/tools/embed-policy.md`](embed-policy.md). `allow-same-origin`
+  and the navigation / escape / storage tokens are rejected by
+  `pnpm run tools:check`, and a capability token without `iframe.allow`
+  + `iframe.sandbox_rationale` is rejected too. If the check refuses
+  your entry, the rule is doing its job — do not work around it in the
+  manifest.
+- **Do not** declare `delivery.host_message` for a Tool that does not
+  need it. With no declaration the host attaches no message listener at
+  all, which is the safest default; declaring one opens an
+  origin-exact, type-allowlisted channel that has to be reviewed.
 
 ## 5. Bump a submodule
 
@@ -168,12 +200,18 @@ change is required, that is a separate ADR-0006 revision ticket.
 
 ## 8. Related artefacts
 
+- [`docs/tools/embed-policy.md`](embed-policy.md) — the iframe sandbox /
+  referrer policy / `postMessage` origin contract (Issue #465).
 - `docs/tools/inventory.md` — durable inventory of all 14 known Tools,
   with classification reasoning.
 - `src/tools/manifest.json` — the registry.
 - `src/tools/manifest.schema.json` — JSON Schema (draft-07) for the
   registry.
+- `src/tools/embed-policy.ts` + `.test.ts` — the embed policy and its
+  contract tests.
 - `scripts/check-tools-manifest.mjs` + `.test.mjs` — verifier.
+- `scripts/tools-embed-policy-report.mjs` — verification report used
+  for the Issue #465 screenshot.
 - `scripts/build-tools.mjs` + `.test.mjs` — build orchestrator.
 - `docs/adr/ADR-0006-tools-submodule-policy.md` — the ADR this
   runbook operationalises.

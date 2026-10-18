@@ -801,8 +801,7 @@ async function writeArtefact(browser, payload) {
 	unlinkSync(pngPath);
 	if (info.size > ARTEFACT_MAX_BYTES) {
 		throw new Error(
-			`${ARTEFACT_PATH} is ${Math.round(info.size / 1024)} KB, over the ${Math.round(ARTEFACT_MAX_BYTES / 1024)} KB budget. ` +
-				'Shrink ARTEFACT_WIDTH / ARTEFACT_QUALITY / CROP_WIDTH in this file, or cut a section, rather than committing the bloat.',
+			`${ARTEFACT_PATH} is ${Math.round(info.size / 1024)} KB, over the ${Math.round(ARTEFACT_MAX_BYTES / 1024)} KB budget. Shrink ARTEFACT_WIDTH / ARTEFACT_QUALITY / CROP_WIDTH in this file, or cut a section, rather than committing the bloat.`,
 		);
 	}
 	await context.close();

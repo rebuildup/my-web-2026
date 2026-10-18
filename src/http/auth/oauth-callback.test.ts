@@ -206,6 +206,25 @@ async function fetchCallback(path: string, options: CallbackOptions = {}): Promi
 	return SELF.fetch(url.toString(), { redirect: 'manual', headers });
 }
 
+/**
+ * Each call presents a distinct synthetic client IP from the TEST-NET-2
+ * documentation range (RFC 5737, never routable).
+ *
+ * Why: `/sign-in/social` matches Better Auth's `/sign-in*` special rule
+ * (3 attempts / 10 s per client IP, Issue #443). Without a per-call IP
+ * every request in this file would share the localhost fallback bucket
+ * and the suite would trip the throttle instead of exercising the
+ * guards it is about. The throttle itself is asserted deliberately in
+ * `test/integration/auth-login-hardening.test.ts`.
+ */
+let signInIpCounter = 0;
+
+function nextSignInIp(): string {
+	signInIpCounter += 1;
+	// 198.51.100.0/24 — TEST-NET-2, reserved for documentation.
+	return `198.51.100.${signInIpCounter}`;
+}
+
 /** Drive a POST at the OAuth entry point that mints `state`. */
 async function fetchSocialSignIn(
 	body: Record<string, unknown>,
@@ -217,6 +236,7 @@ async function fetchSocialSignIn(
 		headers: {
 			'Content-Type': 'application/json',
 			Origin: ORIGIN,
+			'CF-Connecting-IP': nextSignInIp(),
 			Cookie: SESSIONLESS_COOKIE,
 			...headers,
 		},

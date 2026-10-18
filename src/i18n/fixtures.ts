@@ -115,7 +115,7 @@ export const UNICODE_FIXTURES: readonly UnicodeFixture[] = [
 	{
 		id: 'japanese-title-ascii-slug',
 		subject: 'A Japanese title whose slug stays ASCII',
-		displayText: 'Audi \u81ea\u52d5\u5316', // Audi 自動化,
+		displayText: 'Audi \u81ea\u52d5\u5316', // Audi 自動化
 		slugCandidate: 'audi',
 		compatFoldRisk: false,
 		expectations: [
@@ -213,7 +213,7 @@ export const UNICODE_FIXTURES: readonly UnicodeFixture[] = [
 	{
 		id: 'roman-numeral-value',
 		subject: 'ROMAN NUMERAL FOUR — a compatibility fold changes the value',
-		displayText: '\u2163 \u671f', // Ⅳ 期,
+		displayText: '\u2163 \u671f', // Ⅳ 期
 		slugCandidate: '\u2163', // Ⅳ,
 		compatFoldRisk: true,
 		expectations: [
@@ -237,7 +237,7 @@ export const UNICODE_FIXTURES: readonly UnicodeFixture[] = [
 	{
 		id: 'negation-preserved',
 		subject: 'A negation the platform must not quietly reverse',
-		displayText: 'N \u2260 3 (\u975e\u5bfe\u5fdc)', // N ≠ 3 (非対応),
+		displayText: 'N \u2260 3 (\u975e\u5bfe\u5fdc)', // N ≠ 3 (非対応)
 		slugCandidate: 'threshold',
 		compatFoldRisk: false,
 		expectations: [

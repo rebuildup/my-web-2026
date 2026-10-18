@@ -328,6 +328,44 @@ function usage() {
 	);
 }
 
+/**
+ * The fixture section of the gate output, as lines.
+ *
+ * Shared by the CLI and by the Issue #433 capture script so the report
+ * and CI print the same evidence from the same data.
+ */
+export async function renderGateSummary() {
+	const policy = await loadPolicy();
+	const rows = summarizeFixtures(policy);
+	const mismatches = fixtureMismatches(rows);
+	const lines = ['[i18n:policy:check] shared decision table (src/i18n/fixtures.ts)'];
+	for (const row of rows) {
+		const verdicts = row.verdicts
+			.map((verdict) =>
+				verdict.ok ? `${verdict.grammar}: accept` : `${verdict.grammar}: refuse(${verdict.reason})`,
+			)
+			.join(' | ');
+		lines.push(
+			`  ${row.id.padEnd(32)} form=${row.displayForm.padEnd(4)} nfkc-risk=${String(row.compatFoldRisk).padEnd(5)} ${verdicts}`,
+		);
+	}
+	lines.push('');
+	lines.push(`[i18n:policy:check] ${rows.length} fixture rows classified with the shipped grammars`);
+	if (mismatches.length > 0) {
+		lines.push(`[i18n:policy:check] ${mismatches.length} fixture row(s) disagree with the shipped policy`);
+	}
+	return { lines, rows, mismatches };
+}
+
+/** Formatted violations across the whole `src/` tree (empty when clean). */
+export function scanAllViolations() {
+	const files = collectScanFiles();
+	const violations = files.flatMap((file) =>
+		scanSource(toScanPath(file), readFileSync(file, 'utf8')),
+	);
+	return violations.map(formatViolation);
+}
+
 async function main() {
 	const args = process.argv.slice(2);
 	if (args.some((arg) => arg === '--help' || arg === '-h')) {
@@ -352,45 +390,23 @@ async function main() {
 		return 2;
 	}
 
-	const files = collectScanFiles();
-	const violations = files.flatMap((file) =>
-		scanSource(toScanPath(file), readFileSync(file, 'utf8')),
-	);
-
-	const policy = await loadPolicy();
-	const rows = summarizeFixtures(policy);
-	const mismatches = fixtureMismatches(rows);
+	const violations = scanAllViolations();
+	const { lines, rows, mismatches } = await renderGateSummary();
 
 	if (!quiet) {
-		process.stdout.write('[i18n:policy:check] shared decision table (src/i18n/fixtures.ts)\n');
-		for (const row of rows) {
-			const verdicts = row.verdicts
-				.map((verdict) =>
-					verdict.ok
-						? `${verdict.grammar}: accept`
-						: `${verdict.grammar}: refuse(${verdict.reason})`,
-				)
-				.join(' | ');
-			process.stdout.write(
-				`  ${row.id.padEnd(32)} form=${row.displayForm.padEnd(4)} nfkc-risk=${String(row.compatFoldRisk).padEnd(5)} ${verdicts}\n`,
-			);
-		}
-		process.stdout.write(
-			`\n[i18n:policy:check] ${rows.length} fixture rows classified with the shipped grammars\n`,
-		);
+		process.stdout.write(`${lines.join('\n')}\n`);
 	}
 
 	if (violations.length > 0) {
 		process.stderr.write('\n[i18n:policy:check] policy violations in the shipped surface:\n');
-		for (const violation of violations) process.stderr.write(`- ${formatViolation(violation)}\n`);
+		for (const violation of violations) process.stderr.write(`- ${violation}\n`);
 	}
 	if (mismatches.length > 0) {
 		process.stderr.write('\n[i18n:policy:check] fixture rows disagree with the shipped policy:\n');
 		for (const mismatch of mismatches) process.stderr.write(`- ${mismatch}\n`);
 	}
 
-	const failures = violations.length + mismatches.length;
-	if (failures > 0) {
+	if (violations.length + mismatches.length > 0) {
 		process.stderr.write(
 			`\n[i18n:policy:check] FAILED: ${violations.length} source violation(s), ${mismatches.length} fixture mismatch(es) (Issue #433, ADR-0017)\n`,
 		);
@@ -398,9 +414,14 @@ async function main() {
 	}
 
 	process.stdout.write(
-		`[i18n:policy:check] OK: ${files.length} scanned file(s), no implicit normalization, no compatibility fold, every locale explicit\n`,
+		`[i18n:policy:check] OK: ${collectScanFiles().length} scanned file(s), no implicit normalization, no compatibility fold, every locale explicit\n`,
 	);
 	return 0;
 }
 
-process.exitCode = await main();
+// Imported by the Issue #433 capture script, which renders the same
+// evidence; only the CLI invocation runs the gate.
+const isEntryPoint = process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url);
+if (isEntryPoint) {
+	process.exitCode = await main();
+}

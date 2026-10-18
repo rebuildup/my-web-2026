@@ -159,6 +159,25 @@ caught by the runtime suite (or by review). The inventory above names
 the variable-built statements that exist today — keep it current when
 one is added.
 
+## Step-up re-authentication
+
+A live admin session (30-day `session.expiresIn`, ADR-0009 §8) is the
+right precondition for *reading* the admin surface, but not for
+*granting standing authority*: an API key issued at `/admin/keys`
+outlives the session that created it. So that one operation asks the
+operator to re-confenticate their password first (step-up), with a
+five-minute window keyed on the server-resolved session id.
+
+Implementation, the states it distinguishes (`required` / `confirmed`
+/ `expired` / `rejected`), why the grant lives in D1 rather than in a
+signed cookie, and why the refusals the UI branches on travel as
+returned outcomes rather than thrown errors (TanStack Start's
+`ShallowErrorPlugin` drops an `Error` subclass's own properties on the
+wire) are recorded in
+[`security/step-up-authentication.md`](security/step-up-authentication.md).
+Verification runs in the local workerd pool; no production account or
+credential is used.
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

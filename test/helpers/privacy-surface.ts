@@ -249,7 +249,7 @@ const GEO_URI = /geo:(-?\d{1,3}\.\d+),(-?\d{1,3}\.\d+)/g;
  *
  * Known limitation (precision over recall, documented rather than
  * fixed): the rule requires a **quoted** key. An unquoted JS literal
- * * (`{latitude:12.3456,longitude:-98.7654}`) inside a `<script>` is
+ * (`{latitude:12.3456,longitude:-98.7654}`) inside a `<script>` is
  * therefore invisible to this rule; only the coordinate-pair rule
  * would still catch it, and only if it carries 3+ decimals. Today
  * TanStack Start serialises JSON, so the JSON shape is what arrives

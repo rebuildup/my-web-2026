@@ -15,10 +15,10 @@ the surface must still show something when the data is private.
 
   | 対象 | 基準 |
   | --- | --- |
-  | 公開SSR HTML | owner未承認のフィールド名・座標ペア・`geo:` URI が含まれない（`/` `/contact` `/tools` `/tools/text-counter` `/design-system`） |
+  | 公開SSR HTML | owner未承認のフィールド名・**3桁以上の小数**座標ペア・`geo:` URI が含まれない（`/` `/contact` `/tools` `/tools/text-counter` `/design-system`）。粗い座標（`35.1, 139.7`）や整数座標は precision over recall の方針で検出対象外 |
   | 公開 JSON | `/api/v1/*` の 200 / 401 レスポンスに同じ語彙が含まれない |
   | Analytics | GA4 bootstrap は measurement ID のみ、`page_view` は `page_path` 系のみ |
-  | 公開用代替表示 | 非公開でも surface は空にならない（Home は Activity を `planned` として提示し続ける） |
+  | 公開用代替表示 | 非公開でも surface は空にならない。本 PR では Home が既存の Activity capability を `planned` として提示し続けることを assert する（private record の置換ではなく、出荷済みの代替表示の確認） |
   | 非空虚性 | 検出器が fixture に対して実際に発火する |
 
 - **実行手順**
@@ -41,9 +41,16 @@ the surface must still show something when the data is private.
   2. その判定に使う検出器が fixture に対して実際に発火する
      **非空虚性契約**。
 
-  条件を満たすには owner が publication policy を決定し、
-  private-state の request-level case を suite に追加する必要がある。
-  それまでは「公開面に非公開データが無い」ことだけを保証する。
+  条件を満たすには、owner が次のいずれかを決定する必要がある。
+
+  - **(a) publication policy を実装する**: `visibility` スイッチ /
+    admin トグル / 非公開スケジュール storage を `src/**` に追加し、
+    private-state の request-level case をこの suite に追加する。
+  - **(b) Issue #511 の当該条件を明示的に descope する**: この PR を
+    「公開面の回帰契約 + 検出器の非空虚性契約」として受け入れる。
+
+  いずれが選ばれるまでは、この受け入れ条件は **未達** のままであり、
+  本 suite は「公開面に非公開データが無い」ことだけを保証する。
 
 - **画像について**
 

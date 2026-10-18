@@ -49,6 +49,10 @@ gates:
       # still matches the working tree; an adoption without a fallback
       # fails.
       - 'pnpm run compat:check' # Baseline Web feature adoption gate (browser compatibility)
+      # Issue #433: the Unicode / URL-slug policy is enforced on the
+      # shipped surface, and the gate prints the shared decision table
+      # classified with the real owner grammars.
+      - 'pnpm run i18n:policy:check' # no implicit normalization / locale
       # Issue #423: robots.txt / sitemap.xml / per-route noindex meta must
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).

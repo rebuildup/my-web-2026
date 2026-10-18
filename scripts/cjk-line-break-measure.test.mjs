@@ -5,6 +5,7 @@ import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
 	ARTEFACT,
+	ARTEFACT_MAX_BYTES,
 	CJK_LOCALE_IDS,
 	KINSHOKU,
 	MODES,
@@ -292,4 +293,10 @@ test('the modes, locales, viewports and route match what the Issue asks for', ()
 
 test('the artefact path is the Issue path, with the WebP substitution', () => {
 	assert.equal(ARTEFACT, 'docs/verification/i18n/cjk-line-break.webp');
+});
+
+test('the artefact budget is asserted, not assumed', () => {
+	// The Intl report capture fails over 300 KB; this one has to agree,
+	// or the repository grows a screenshot nobody opens.
+	assert.equal(ARTEFACT_MAX_BYTES, 300 * 1024);
 });

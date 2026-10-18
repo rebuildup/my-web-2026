@@ -154,6 +154,13 @@ const ARTEFACT_PATH = 'docs/verification/i18n/cjk-line-break.webp';
  */
 const ARTEFACT_WIDTH = 1280;
 const ARTEFACT_QUALITY = 56;
+/**
+ * Hard ceiling, asserted after every capture. A verification
+ * screenshot is documentation; once it is the heaviest thing in the
+ * repository it stops being looked at. Same rule as the Intl report
+ * capture, so the two artefacts cannot drift apart on this.
+ */
+export const ARTEFACT_MAX_BYTES = 300 * 1024;
 const REPORT_PATH = '.tmp/cjk-line-break/report.json';
 /**
  * Default preview port for the harness's own server. It is deliberately
@@ -792,6 +799,12 @@ async function writeArtefact(browser, payload) {
 		.webp({ quality: ARTEFACT_QUALITY })
 		.toFile(webpPath);
 	unlinkSync(pngPath);
+	if (info.size > ARTEFACT_MAX_BYTES) {
+		throw new Error(
+			`${ARTEFACT_PATH} is ${Math.round(info.size / 1024)} KB, over the ${Math.round(ARTEFACT_MAX_BYTES / 1024)} KB budget. ` +
+				'Shrink ARTEFACT_WIDTH / ARTEFACT_QUALITY / CROP_WIDTH in this file, or cut a section, rather than committing the bloat.',
+		);
+	}
 	await context.close();
 	return { path: ARTEFACT_PATH, bytes: info.size, width: info.width, height: info.height };
 }

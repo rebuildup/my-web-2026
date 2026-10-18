@@ -527,10 +527,16 @@ export async function collectMatrix({ baseUrl, fixture, fetchImpl = probeFetch }
 			const res = await fetchImpl(new URL(row.path, baseUrl), {
 				method: row.method,
 				redirect: 'manual',
-				...(row.body
-					? { body: JSON.stringify(row.body), headers: { 'content-type': 'application/json' } }
-					: {}),
-				...(token ? bearerInit(token) : {}),
+				// `csrfGuard` refuses an unsafe method that carries no
+				// same-origin signal, so every probe declares the origin
+				// it is calling — the same thing a first-party caller
+				// does. `e2e/csrf.spec.ts` owns the refusal contract.
+				headers: {
+					origin: new URL(baseUrl).origin,
+					...(row.body ? { 'content-type': 'application/json' } : {}),
+					...(token ? { authorization: `Bearer ${token}` } : {}),
+				},
+				...(row.body ? { body: JSON.stringify(row.body) } : {}),
 			});
 			const text = await res.text();
 			const seen = leakedMarkerIds(text, markers);

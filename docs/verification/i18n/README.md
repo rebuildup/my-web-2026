@@ -1,6 +1,6 @@
 # Verification — i18n artifacts
 
-This directory holds the committed screenshots for three verification
+This directory holds the committed screenshots for four verification
 tickets:
 
 | Artefact | Issue | What it proves |
@@ -8,6 +8,7 @@ tickets:
 | `intl-date-number.webp` | #430 | one instant, one count and a set of relative spans rendered per locale by the shipped home format adapter |
 | `cjk-line-break.webp` | #431 | 72 measured CJK line-breaking rows (禁則 / `word-break` / wrap mode) from the shipped editorial recipes |
 | `missing-keys-report.webp` | #428 | copy locale contract gate: opt-in matrix, fixture findings, legend (see [`copy/README.md`](../../../copy/README.md)) |
+| `unicode-slug-validation.webp` | #433 | the 17-row Unicode / URL-slug decision table classified by the shipped `EMOJI_SLUG_GRAMMAR` / `PORTFOLIO_SLUG_GRAMMAR`, plus the counterfactual lossy-slug results |
 
 ## Intl locale formatting (Issue #430)
 
@@ -94,6 +95,24 @@ The browser half needs Playwright and a build, so it is not part of
 `pnpm test`; the pure rule/table half is
 `scripts/cjk-line-break-measure.test.mjs` and is wired into
 `package.json#scripts.test`.
+
+## Unicode / URL slug policy (Issue #433)
+
+`unicode-slug-validation.webp` is the committed screenshot of the
+Unicode / URL-slug evidence report. It renders the 17 fixture rows from
+`src/i18n/fixtures.ts` through the shipped `describeUnicode` /
+`classifySlugCandidate` policy and the owner grammars, so the artefact
+cannot drift from the code. The report, scope and reproduction commands
+are in [`unicode-slug-validation.md`](unicode-slug-validation.md).
+
+```sh
+pnpm run capture:i18n-verification
+```
+
+The script imports the shipped modules directly, uses no network, and
+deletes the intermediate PNG. The conflict audit table in the artefact
+is a fixed sample catalog — the shipped reactions/portfolio catalog is
+not audited yet (disclosed in the artefact itself).
 
 ## Why a committed binary
 

@@ -34,6 +34,11 @@ src/
 │  ├─ seed.ts
 │  ├─ public.ts
 │  └─ index.ts
+├─ i18n/
+│  ├─ unicode.ts
+│  ├─ slug-identity.ts
+│  ├─ fixtures.ts
+│  └─ index.ts
 ├─ external-api/
 │  ├─ contract.ts
 │  ├─ timeout.ts
@@ -45,7 +50,14 @@ src/
 ├─ editorial/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
-│  └─ primitives/
+│  ├─ primitives/
+│  └─ error-states/
+│     ├─ contract.ts
+│     ├─ ErrorState.tsx
+│     ├─ NotFoundState.tsx
+│     ├─ ServiceUnavailableState.tsx
+│     ├─ DependencyFailureState.tsx
+│     └─ ssr-fallback.ts
 ├─ cloudflare/
 │  └─ health.ts
 ├─ http/
@@ -87,6 +99,18 @@ employment-facing Portfolio surface の data model と publication contract を�
 
 `portfolio/` は `home/` の peer obligation で、どちらもお互いを import しない。Cloudflare runtime とは DI seam (`createD1PortfolioLoader(env)`) 経由で結合し、テストでは偽 env を渡して workerd 依存を排除する。
 
+### `i18n/` (Issue #433)
+
+テキストの Unicode と URL identity の**規則**を所有する。surface ではなく policy なので、依存は 1 方向（誰かが `i18n` を知る）だけ。
+
+- `unicode.ts` — 表示本文ポリシー。byte-exact に保持し、比較用の NFC fold だけを行い、互換 fold が何を変えるかは報告する
+- `slug-identity.ts` — slug ポリシー。候補を owner の grammar で分類し（`non-ascii` は導出せずに拒否）、カタログの衝突を監査する
+- `fixtures.ts` — 判断表。unit test・`scripts/check-i18n-policy.mjs`・検証 capture が共有する単一のデータ
+
+**leaf obligation**（repository 内の import なし）。`scripts/check-architecture.mjs` が強制する。
+slug grammar の所有は各 obligation のまま（`reactions/slug-regex.ts` の `EMOJI_SLUG_GRAMMAR`、`portfolio/schema.ts` の `PORTFOLIO_SLUG_GRAMMAR`）。
+決定記録は `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`、説明は `docs/domain/i18n.md`。
+
 ### `external-api/` (Issue #499)
 
 **第三者 API を呼ぶ表示コンポーネントの信頼性契約**を所有する。
@@ -106,6 +130,25 @@ employment-facing Portfolio surface の data model と publication contract を�
 raw / semantic tokens と、その visual language の primitive をまとめる。
 これは「全 UI component の共有置き場」ではない。別の visual language が必要に
 なった場合、観測された同一 obligation がない限り自動的には統合しない。
+
+`error-states/`（Issue #501）は failure surface の**公開契約**を所有する。
+1 kind につき 1 component（404 / 503 / 依存取得失敗）、共有 shell、そして
+`contract.ts` の宣言 — 訪問者に何を出すか / 何を絶対に出さないか /
+どの公開面なら開けるか。styling ではなく情報公開の判断で変わるため、
+primitive と同列の別 obligation として切っている。結線先は
+`src/router.tsx` の `defaultNotFoundComponent` / `defaultErrorComponent`
+（解決順が route 単位のため、root route に置いても子 route の失敗には届かない）。
+
+同じ `defaultErrorComponent` には transient な loader 失敗と恒久的な
+入力検証失敗が着地するため、`src/router.tsx` が両者を分類する。判定は
+route 自身の検証結果から導出する（`isPermanentInputFailure`）。訪問者に
+公開する kind の集合は増やしていない。
+
+route component 自体が SSR 中に throw する場合は React の Error Boundary
+では捕まらないため、`ssr-fallback.ts` が standalone の fallback document を
+組み立て、`src/server.ts` が SSR handler の HTML response を検査して
+置き換える（`settleSsrDocumentResponse`）。fallback の文言・代替面は
+`contract.ts` と同じ宣言から導出し、公開契約を二重化しない。
 
 ### `cloudflare/`
 
@@ -135,6 +178,9 @@ entrypoint である。
 ```text
 routes ───────────────▶ home
 routes ───────────────▶ portfolio
+home/reactions ──────▶ i18n
+reactions ───────────▶ i18n
+portfolio ───────────▶ i18n
 home/status ─────────▶ cloudflare
 home/status ─────────▶ http
 portfolio ───────────▶ cloudflare (DI seam)
@@ -142,6 +188,7 @@ portfolio ───────────▶ editorial
 external-api ────────▶ editorial
 home ────────────────▶ editorial
 server ──────────────▶ http
+server ──────────────▶ editorial (SSR render-failure fallback document)
 ```
 
 逆向きは禁止する。
@@ -150,6 +197,7 @@ server ──────────────▶ http
 - `http/` は `home/` も `portfolio/` を知らない。
 - `editorial/` は特定 surface を知らない。
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
+- `i18n/` は他の obligation を import しない (leaf obligation)。policy の例外を足すなら、ここ、拡大ではなく ADR 改訂が先。
 - `external-api/` は `home/` / `routes/` / `portfolio/` / `cloudflare/` / `http/` を import しない (peer obligation)。outbound read と inbound boundary は別の obligation。
 - framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。
 
@@ -168,7 +216,14 @@ src/server.ts
         └─ everything else
                 ▼
        @tanstack/react-start/server-entry
+                ▼
+       settleSsrDocumentResponse (render failure -> fallback document)
 ```
+
+`settleSsrDocumentResponse` は SSR が返した HTML を読み、React の
+client-rendered boundary marker を見つけた場合だけ `editorial/error-states`
+の fallback document に差し替える。loader 失敗のように React が error
+component を描画できた場合は何もしない。
 
 TanStack Start の default CSRF middleware を維持するため、custom
 `src/start.ts` / `startInstance` は ADR なしで追加しない。

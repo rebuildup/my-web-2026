@@ -6,6 +6,7 @@
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
 import { externalBoundary } from './http/hono';
+import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
 
 /**
  * Path prefixes that must be served by the Hono external boundary
@@ -15,14 +16,34 @@ import { externalBoundary } from './http/hono';
  *   /webhooks/*      inbound webhooks from external services
  *   /oauth/*         OAuth callback handlers
  *   /integrations/*  third-party integration adapters
+ *   /sitemap.xml     crawler-facing sitemap (Issue #420)
+ *   /robots.txt      crawler-facing crawler policy (Issue #420)
+ *
+ * The two SEO documents are the only non-API entries. They are
+ * documents Hono can answer and the SSR pipeline cannot: TanStack
+ * Start 1.168 has no raw-response route primitive, so a route file
+ * always renders through the document shell. This is exactly the
+ * "TanStack Start ships a first-class HTTP-route primitive" case ADR-0002
+ * lists as a re-evaluation trigger — when that primitive lands, these
+ * two paths move back into `src/routes/` and leave this list.
  *
  * Internal application operations invoked from the UI use TanStack
  * Start server functions and never appear under these prefixes.
  *
  * Matching is exact-prefix-or-/ to avoid collisions like /api/v10 or
- * /api/v1evil accidentally entering the external boundary.
+ * /api/v1evil accidentally entering the external boundary. The SEO
+ * entries are exact-match in practice: `/sitemap.xml` and
+ * `/robots.txt` have no children, and neither prefix below them can
+ * collide with a page route.
  */
-const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations'] as const;
+const EXTERNAL_BOUNDARY_PREFIXES = [
+	'/api/v1',
+	'/webhooks',
+	'/oauth',
+	'/integrations',
+	'/sitemap.xml',
+	'/robots.txt',
+] as const;
 
 function matchesExternalBoundary(pathname: string): boolean {
 	return EXTERNAL_BOUNDARY_PREFIXES.some(
@@ -70,12 +91,76 @@ function matchesExternalBoundary(pathname: string): boolean {
  *
  * The `no-cache` branch for the rest of the site still requires
  * `text/html`: `/_serverFn/*` payloads and streamed data are not
- * documents and must not inherit a document cache policy.
+ * documents and must not inherit a document cache policy — the
+ * server-function branch below handles those separately.
+ *
+ * Cache isolation (Issue #460) adds two rules on top of #291:
+ *
+ *   `/_serverFn/*` -> `private, no-store`. Server-function payloads
+ *                are per-caller by construction and are JSON, not
+ *                documents, so the content-type branch below would
+ *                have skipped them entirely.
+ *   caller-specific documents -> `private, no-cache`. A response
+ *                that carries `Cookie` / `Authorization` on the way in
+ *                (or a `Set-Cookie` on the way out) is tied to one
+ *                identity, and `private` is the directive that forbids
+ *                a shared cache from storing it (RFC 9111 §5.2.2.7).
+ *                Both rules add `Vary: Cookie, Authorization` as the
+ *                signal a non-conforming intermediary understands.
+ *                The home page is the case that matters: the reactions
+ *                widget renders the visitor's own selection
+ *                (`viewer_reactions`) out of the `mw_actor_id` cookie,
+ *                so a shared cache replaying one visitor's document to
+ *                the next is a privacy leak, not a stale-pixel bug.
  *
  * An existing `cache-control` is never overwritten, so anything the
  * framework already decided wins, and Hono never reaches this function
  * — the external boundary returns before it.
+ *
+ * The directive vocabulary (`private, no-store`, `Vary` merging) is
+ * owned by `src/http/middleware/cache-policy.ts` and imported, so the
+ * SSR half and the external-boundary half of Issue #460 cannot drift.
  */
+
+/**
+ * Base path the framework mounts server functions on. Matches the
+ * `tanstackStart()` default (`serverFns.base`), which this project
+ * does not override; a start config that changed it would need to
+ * change this constant with it.
+ */
+const SERVER_FN_BASE = '/_serverFn';
+
+/**
+ * Does this request/response pair belong to a specific caller?
+ *
+ * The signal is the request's own `Cookie` / `Authorization` header,
+ * plus any `Set-Cookie` the response issues. It is deliberately
+ * derived from what the request actually carries rather than from a
+ * list of "private pages": a page is per-caller precisely when
+ * something in the exchange ties the body to one identity, and a
+ * route list would be wrong the moment a new cookie-reading route
+ * ships.
+ */
+function isCallerSpecific(request: Request, response: Response): boolean {
+	if (response.headers.has('set-cookie')) return true;
+	return AUTH_REQUEST_HEADERS.some((name) => request.headers.has(name));
+}
+
+/** Attach a cache policy without ever failing the response. */
+function setCacheHeaders(response: Response, cacheControl: string, vary: boolean): Response {
+	try {
+		response.headers.set('cache-control', cacheControl);
+		if (vary) {
+			response.headers.set('vary', mergeVary(response.headers.get('vary')));
+		}
+	} catch {
+		// Sealed headers (immutable guard) — leave the response as-is
+		// rather than fail a page render over a cache hint.
+		return response;
+	}
+	return response;
+}
+
 function applyHtmlCachePolicy(request: Request, response: Response): Response {
 	if (response.headers.has('cache-control')) return response;
 
@@ -83,21 +168,33 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
 	// Exact-prefix-or-/ so `/administrator` cannot inherit the admin rule,
 	// mirroring how `matchesExternalBoundary` guards `/api/v10`.
 	const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
-	const value = isAdmin
-		? 'no-store'
-		: response.headers.get('content-type')?.includes('text/html')
-			? 'no-cache'
-			: null;
-	if (value === null) return response;
+	if (isAdmin) return setCacheHeaders(response, 'no-store', true);
 
-	try {
-		response.headers.set('cache-control', value);
-	} catch {
-		// Sealed headers (immutable guard) — leave the response as-is
-		// rather than fail a page render over a cache hint.
-		return response;
+	// Server-function payloads (`/_serverFn/*`, Issue #460). These are
+	// per-caller by construction — the handlers read the session
+	// cookie and the `mw_actor_id` cookie — and they are NOT documents,
+	// so the content-type branch below would have skipped them
+	// entirely. Decided by path alone, for the same reason the admin
+	// rule is: a JSON payload with a sealed or unexpected content-type
+	// must not escape the policy.
+	if (pathname === SERVER_FN_BASE || pathname.startsWith(`${SERVER_FN_BASE}/`)) {
+		return setCacheHeaders(response, PRIVATE_NO_STORE, true);
 	}
-	return response;
+
+	if (!response.headers.get('content-type')?.includes('text/html')) return response;
+
+	// A document that varies by caller must never be stored by a
+	// shared cache. `private` says exactly that while keeping the
+	// `no-cache` revalidation contract Issue #291 chose — the hit
+	// counter and the reaction aggregates are rendered on every
+	// request, so the browser cache must revalidate, but a CDN must not
+	// hold the body at all.
+	const callerSpecific = isCallerSpecific(request, response);
+	return setCacheHeaders(
+		response,
+		callerSpecific ? 'private, no-cache' : 'no-cache',
+		callerSpecific,
+	);
 }
 
 /**

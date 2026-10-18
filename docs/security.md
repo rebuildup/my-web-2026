@@ -29,6 +29,136 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## API key scope and revocation
+
+The API keys that guard `/api/v1/access/*` and `/api/v1/reactions/*`
+have two decision layers: the boundary middleware
+(`src/http/api-keys/middleware.ts`) owns the `Authorization` shape and
+the resource/action scope lookup, and `@better-auth/api-key` owns hash
+verification, revocation, and expiry. Every denial collapses to a single
+shape (`401 missing_authorization`, `401 invalid_api_key`, or
+`403 missing_scope`) so a refusal cannot become an oracle.
+
+The scope matrix, the fixtures that pin each refusal, and the
+secret-handling invariants live in
+[`docs/security/api-key-scope.md`](security/api-key-scope.md). Its
+measured artefact is
+[`docs/verification/security/api-key-scope-matrix.webp`](verification/security/api-key-scope-matrix.webp)
+(regenerate with `pnpm run verification:api-key-scope`). Verification is
+local-only: fixtures live in a throwaway Miniflare D1 database, and no
+production endpoint, secret, or operator account is read or written.
+
+## Cache isolation
+
+Responses whose body depends on who asked for them (per-principal
+counters, per-visitor reaction state, sessions, `/admin*`, and
+server-function payloads) are marked so that a **shared** cache — CDN
+edge, corporate proxy — cannot store them: `private, no-store` on the
+external boundary, `private, no-cache` on caller-specific SSR
+documents, `no-store` under `/admin*`. Public immutable payloads opt
+in explicitly with `public, max-age=…, immutable`.
+
+The full contract, the audit it came from, and the verification
+suites are documented in
+[`docs/security/cache-isolation.md`](security/cache-isolation.md).
+
+## Open redirect
+
+Every `returnTo`-shaped value that crosses the external boundary is
+untrusted. `src/http/security/**` refuses anything that is not an
+internal absolute path, and is mounted in front of the Better Auth
+handler at `/api/v1/auth/*`. `BETTER_AUTH_URL` is the trusted-origin
+allow-list; when it is unset the guard refuses every absolute URL
+(fail-closed). The shipped contract, operator duties and known limits:
+[`docs/security/open-redirect.md`](security/open-redirect.md).
+
+## D1 parameter binding (Issue #452)
+
+### Rule
+
+Every D1 statement that user input reaches must bind that input with
+`?` / `?N` + `.bind(...)`. Splicing a value into the statement text is
+a defect even when the value is escaped today: the statement text is
+the part a reviewer reads as structure, and a bound value cannot change
+the parse tree.
+
+### Where it is enforced
+
+Two gates, both run by `pnpm run test` (and therefore by
+`pnpm run validate:fast` and CI):
+
+| Gate | What it proves | Where |
+| --- | --- | --- |
+| Runtime suite | Attack fixtures reach the real endpoints through `externalBoundary`; the recorded SQL text is byte-identical to the benign run, no payload appears in a statement, and the seeded rows survive. | `test/integration/d1-parameter-binding.test.ts` (workerd pool) |
+| Static gate | The **literal argument** of every `prepare()` / `exec()` / `batch()` call in `src/**` contains no `${…}` interpolation. A statement assembled into a variable before the call is out of scope by design — that is a dataflow judgement, not a scan. | `scripts/check-d1-sql-binding.mjs`, wired via `scripts/check-d1-sql-binding.test.mjs` |
+
+Run the static gate on its own with `node scripts/check-d1-sql-binding.mjs`.
+Exit 1 means one of two things: an interpolated statement, or an
+`SQL_STRUCTURE_ALLOWLIST` entry the scan never reached (dead
+configuration). Adding an entry is a reviewable decision: it must name
+the file, the interpolated identifier, and why the value cannot carry
+user input. The single current entry is `cursorPredicate` in
+`src/portfolio/load.ts` — a fixed chain of `?` placeholders whose
+components are all bound — and it is **live** only because that file
+passes its list statement to `prepare()` inline. Write the statement
+inline; a `const sql = …` in front of it hides the interpolation from
+the gate, and the gate then fails on the unreachable entry rather than
+letting it rot.
+
+### Known unscanned inventory
+
+The static gate reads literal arguments, so these D1 statements are
+**not** covered by it. None of them interpolates — each is a constant,
+or a choice between two literals — so what actually guards them is the
+combination of that reading and review:
+
+| Site | Shape | Other coverage |
+| --- | --- | --- |
+| `src/http/reactions/reactions.ts` (`REACTION_INSERT_SQL`, `REACTION_LOOKUP_SQL`) | module-level string constant | runtime suite (`PUT` / `DELETE` / `GET /api/v1/reactions`) |
+| `src/portfolio/load.ts` (`prevSql`, `nextSql` in `loadPortfolioAdjacent`) | local string constant | runtime suite (portfolio slug read) |
+| `src/reactions/emoji-catalog.ts` (`loadCatalog`) | `cond ? 'literal A' : 'literal B'` | `src/reactions/emoji-catalog.test.ts` (home widget read; no user input reaches either branch) |
+
+Two further limits are deliberate and documented in the gate's own
+docstring: string concatenation inside a call argument
+(`db.prepare('… WHERE k = ' + key)`) is not inspected, and `exec`
+also matches `RegExp.prototype.exec` — all five `.exec(` sites in
+`src/**` today are regexes, so D1 `exec()` / `batch()` have no shipped
+call site yet (the fixture test covers both).
+
+### Covered surfaces
+
+Only endpoints that exist today (Issue #452 forbids inventing one):
+
+- `POST /api/v1/access/hit`, `GET /api/v1/access/count/:key`
+- `PUT` / `DELETE` / `GET /api/v1/reactions` (`target_key`, `actor_id`, `value`)
+- `GET /api/v1/reaction-images/:id`
+- portfolio loader slug read (`loadPortfolioProject`, `loadPortfolioAdjacent`)
+- emoji catalog slug read (`getCatalogEntry`)
+
+Payload families: tautology, comment tail, UNION, stacked statement,
+backslash quote, LIKE wildcard, plus whitespace-free variants that
+survive the access-counter validators and inputs the validators reject
+(over-length, embedded space, control character).
+
+### Operational contract
+
+This gate changes no runtime contract: the auth / API-key boundary,
+the Cloudflare bindings (`DB`, `MEDIA`, `ASSETS`), and the Tool
+Registry dependency are all untouched. (One production statement was
+reshaped for the gate — `listPortfolioProjectsImpl` now passes its SQL
+to `prepare()` inline instead of through a `const sql` local. The
+statement text is byte-identical; only where it is written changed, so
+the allowlist entry above is enforced rather than dead.)
+
+A new D1 surface is covered by adding it to the runtime suite. An
+existing one is covered by the static gate **only if it is written as
+the literal argument of `prepare()` / `exec()` / `batch()`**: a
+statement written inline fails the gate on its own commit, while a
+statement assembled in a variable is not scanned at all and must be
+caught by the runtime suite (or by review). The inventory above names
+the variable-built statements that exist today — keep it current when
+one is added.
+
 ## Markdown / Notion-derived HTML input boundary
 
 Article bodies (Portfolio projects) are editor-controlled, third-party
@@ -88,10 +218,16 @@ second HTML path is a review failure, not a style preference.
 - Worker level: `test/integration/markdown-xss-ssr.test.ts` drives
   `GET /portfolio/<fixture>` through `SELF.fetch` with the corpus in a
   D1 row, and asserts over the served `<article>` region.
+- Browser level: `e2e/portfolio-markdown-xss.spec.ts` seeds the same
+  corpus into the local D1 and asserts in chromium that no payload
+  executed. It is a local-only spec: the fixture row is only readable
+  by the local Worker, so `playwright.config.ts` filters the file out
+  of a non-local run and the spec also skips itself in-file.
 - Screenshot: `docs/verification/security/markdown-xss-fixture.webp`
-  (see `docs/verification/security/README.md` for how to regenerate
-  it). The corpus carries attack simulations on purpose; it contains
-  no credentials and no live third-party origin.
+  (see `docs/verification/security/README.md` for how to read it and
+  why its capture generator is not committed). The corpus carries
+  attack simulations on purpose; it contains no credentials and no
+  live third-party origin.
 
 ## Test scope: local workerd vs real Cloudflare
 
@@ -125,6 +261,75 @@ in `docs/release.md`), not the per-binding local SELF tests (#006
 binding API is reachable in the local workerd pool"**, not
 **"the production database is online"**.
 
+## Session lifecycle (sign-in / sign-out)
+
+Better Auth (`src/cloudflare/auth/better-auth.ts`, ADR-0009) owns the
+session; the admin gates that consume it live in
+`src/admin/auth/load.ts` and the `/admin/*` route loaders. The
+behavioural contract is pinned by
+`test/integration/session-logout.test.ts` (Issue #439):
+
+| Property                                                          | How it is proven                                                                 |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| A sign-in session authorizes `/admin` and `/api/v1/auth/get-session` | positive case: the issued cookie resolves the user (with role) and the dashboard renders 200 |
+| The same cookie is refused after sign-out                         | negative case: `get-session` resolves no user, `/admin` and `/admin/keys` 307 to `/admin/login`, and the D1 `session` row is deleted |
+| Sign-out clears the browser cookie jar                            | `Set-Cookie` re-issues `better-auth.session_token` **and** `better-auth.session_data` with `Max-Age=0` |
+| A client-supplied cookie is never promoted by sign-in            | fixation case: an attacker-planted value resolves to no session before *and* after login; the server issues its own token |
+| A rejected sign-out does not invalidate the session               | an `Origin` mismatch is refused (4xx) and the session row survives |
+| Replaying a dead cookie is a no-op                                | a second sign-out neither errors nor resurrects a session                          |
+
+Two notes on reading that table. The redirect is pinned as **307**
+(TanStack Start `redirect()`) and the **exact** path is asserted, so a
+role denial (bounced back to `/admin`) can never be mistaken for a
+session denial (`/admin/login`). And the cookie names are the test
+pool's un-prefixed form: under `https://` — production, where
+`BETTER_AUTH_URL=https://rebuildup.dev` is pinned by ADR-0014 — Better
+Auth prefixes both with `__Secure-`, so the production names are
+`__Secure-better-auth.session_token` / `__Secure-better-auth.session_data`.
+The local pool (no `baseURL`) exercises the un-prefixed form; the
+prefix is a transport attribute, not a contract change.
+
+Run it locally:
+
+```bash
+pnpm exec vitest run test/integration/session-logout.test.ts
+```
+
+Every request goes through the local workerd pool, because sign-in and
+sign-out write and delete D1 rows; running this against production
+would mutate the operator's database and could invalidate the live
+admin session. Fixture identities are local (`.test.local` addresses,
+throwaway password) and cookie values are never printed — they are
+never used as an operand of an assertion at all (vitest echoes both
+operands of a failed `expect`), only cookie names, attributes, and
+non-printing identity comparisons are asserted on.
+
+Known residual (open owner decision, Issue #439): `session.cookieCache`
+is enabled with `maxAge: 5 * 60`, so a party that captured BOTH
+`better-auth.session_token` and `better-auth.session_data` *before* the
+logout can replay the pair until the cache cookie expires — the cache
+answers without consulting D1. A real browser is not exposed (the
+sign-out response clears the pair), but the window is a real deviation
+from "logout invalidates the session immediately", and closing it means
+re-tuning the auth policy ADR-0009 owns. Until an owner decision is
+taken, the window is **documented, not closed**.
+
+The suite watches it as one `it.fails` case that asserts the *desired*
+outcome ("a pair captured before sign-out is refused afterwards") and
+therefore fails today. Because `/api/v1/auth/get-session` has no 401
+path — an unknown or deleted session answers 200 with a `null` body —
+"refused" is asserted as "resolves to no user" plus the `/admin`
+redirect, never as a status code. The case fires on either remedy:
+disabling the cache means no `session_data` cookie is issued at all, so
+there is no pair to replay; shrinking it means the pair expires instead
+of outliving the logout. Either way `it.fails` reports the unexpected
+pass and the case is converted to a plain `it`. (Disabling the cache
+also requires re-tuning the "sign-out clears the browser jar" case,
+which by construction requires a cache cookie to clear.)
+
+A redacted transcript of the observed responses is kept at
+[`docs/verification/security/session-logout-e2e.webp`](verification/security/session-logout-e2e.webp).
+
 ## Inventory at 0.1.0
 
 | Package                     | Pinned version | Notes                                 |
@@ -149,12 +354,34 @@ binding API is reachable in the local workerd pool"**, not
 
 - Secret scanning: enabled as an asynchronous CI job (see
   `quality/profile.yaml#security_gates.secret_scanning`).
-- Dependency review: deferred to a post-0.1.0 ticket.
+- Dependency advisory gate: enabled (Issue #470, see
+  `quality/profile.yaml#security_gates.dependency_review`). The
+  `Dependency advisory audit` step of the `validate` job checks the
+  committed lockfile with `pnpm audit --json` and evaluates it against
+  the reviewed declaration in `quality/dependency-advisory-gate.json`:
+  `critical` / `high` are the declared blocking severities, an approved
+  exception is a record — keyed by `(advisoryId, package)`, because one
+  advisory commonly spans several packages — carrying a reason, an
+  approver, a tracking issue and an expiry date, and advisory data that
+  cannot be read fails closed (exit `3`) instead of being reported as
+  "0 vulnerabilities". A usage mistake or a malformed declaration is
+  exit `2`, never a security verdict. The gate runs in CI rather than in
+  `validate:fast` because it needs the registry advisory endpoint; the
+  decision logic is in `scripts/check-dependency-advisories.mjs` and the
+  same verdict is reproducible with `pnpm run dep-audit:check`. It ships
+  with `enforcement: audit` and no approved exceptions, so outstanding
+  findings are recorded rather than blocking; moving to `block` is an
+  owner decision. Runbook:
+  [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 - Code scanning (SAST): deferred.
 - Container scanning: not applicable (no `Containerfile` at 0.1.0).
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Redirect-target matrix (Issue #454) is regenerated from the shipped
+  guard by `pnpm run security:redirect:report`; the committed image and
+  its reading guide are in
+  [`docs/verification/security/`](verification/security/).
 
 ## Browser binaries (Playwright)
 

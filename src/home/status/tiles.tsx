@@ -2,6 +2,8 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import type { HomeLocale } from '../format';
+import { createHomeFormat } from '../format';
 import type { SystemService, SystemServiceHealth, SystemServiceStatus } from './health';
 import { HEALTH_LABEL } from './health';
 
@@ -9,6 +11,19 @@ export interface StatusTilesProps {
 	services: readonly SystemService[];
 	statuses: readonly SystemServiceStatus[];
 	observedAt: string;
+	/**
+	 * Opt-in locale for the observed-at instant (Issue #430). Defaults
+	 * to `'en'`, which is what this section shipped before the
+	 * adapter existed.
+	 */
+	locale?: HomeLocale;
+	/**
+	 * IANA time zone the snapshot is read in. Defaults to `'UTC'`:
+	 * the observed-at instant is one server snapshot shared by every
+	 * visitor of the response, so a per-visitor zone would make the
+	 * server HTML and the hydrated HTML disagree.
+	 */
+	timeZone?: string;
 }
 
 const HEALTH_TONE: Record<SystemServiceHealth, 'accent' | 'neutral' | 'neutral'> = {
@@ -16,20 +31,6 @@ const HEALTH_TONE: Record<SystemServiceHealth, 'accent' | 'neutral' | 'neutral'>
 	degraded: 'neutral',
 	unreachable: 'neutral',
 };
-
-function formatObservedAt(iso: string): string {
-	// SSR-safe formatter. We render in the visitor's local locale on
-	// the client; on the server we render UTC. Either way the value
-	// is the same instant — only the displayed time changes.
-	const date = new Date(iso);
-	if (Number.isNaN(date.getTime())) {
-		return iso;
-	}
-	return date
-		.toISOString()
-		.replace('T', ' ')
-		.replace(/\.\d+Z$/, ' UTC');
-}
 
 function statusFor(
 	id: SystemService['id'],
@@ -52,8 +53,20 @@ function statusFor(
  * transition from heading cluster to service rows. The `dt` is
  * sans-bold at `lg` with the binding rendering adjacent in mono
  * `sm`; the badge anchors the right edge.
+ *
+ * The observed-at line renders the snapshot instant through the home
+ * format adapter (Issue #430): the same instant reads per locale and
+ * names the time zone it was read in. The zone defaults to UTC so
+ * the server HTML and the hydrated HTML stay identical.
  */
-export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps) {
+export function StatusTiles({
+	services,
+	statuses,
+	observedAt,
+	locale,
+	timeZone,
+}: StatusTilesProps) {
+	const format = createHomeFormat({ locale, timeZone });
 	return (
 		<section
 			aria-labelledby="status-heading"
@@ -161,7 +174,7 @@ export function StatusTiles({ services, statuses, observedAt }: StatusTilesProps
 							color: 'text.muted',
 						})}
 					>
-						observed at {formatObservedAt(observedAt)}
+						observed at {format.formatInstant(observedAt)}
 					</p>
 				</SectionHeading>
 			</Container>

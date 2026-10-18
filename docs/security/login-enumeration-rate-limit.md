@@ -16,7 +16,7 @@ for the decision this implements.
 
 | Question | Before this change | Now |
 | --- | --- | --- |
-| Does a wrong password on an existing account differ from an attempt on a non-existent one? | No — both `401` / `INVALID_EMAIL_OR_PASSWORD`, single `content-type` header. Correct, but unpinned. | Same, and pinned by an equality assertion over status + body + the whole header set. |
+| Does a wrong password on an existing account differ from an attempt on a non-existent one? | No — both `401` / `INVALID_EMAIL_OR_PASSWORD`, no `set-cookie` and no `www-authenticate`. Correct, but unpinned. | Same, and pinned by an equality assertion over status + body + the whole header set. |
 | Does a burst of failed logins from one client get throttled? | **No.** 12 consecutive failures from one client IP all returned `401`. Better Auth 1.7.5 defaults `rateLimit.enabled` to `NODE_ENV === 'production'`, and this Worker declares no `NODE_ENV` (`wrangler.jsonc#vars` holds only the two `MY_WEB_2026_*` vars). | Yes: `401, 401, 401, 429`, then `429` with `X-Retry-After`. Pinned explicitly, so the control no longer depends on an ambient build/runtime variable. |
 | What identifies the client for throttling? | Better Auth's default header `x-forwarded-for`. On Cloudflare that header is a **chain**; a two-hop request resolves to *no* IP, which collapses every caller into one shared bucket — one caller could lock out every other caller, including the operator. | `CF-Connecting-IP`, which Cloudflare sets and overwrites on every request, and which `src/http/middleware/rate-limit.ts` already trusts for the Workers Rate Limiting binding. |
 
@@ -39,8 +39,8 @@ in `src/cloudflare/auth/better-auth.test.ts` (config level) plus
 | Situation | Status | Body | Headers |
 | --- | --- | --- | --- |
 | Correct credentials | `200` | session payload | `set-cookie` carries `better-auth.session_token` |
-| Wrong password **or** non-existent account | `401` | `{"message":"Invalid email or password","code":"INVALID_EMAIL_OR_PASSWORD"}` | `content-type` only — the header **set** itself is pinned by the suite, so an upstream addition surfaces as a test failure |
-| Over budget (4th attempt in 10 s from one client IP) | `429` | `{"message":"Too many requests. Please try again later."}` — generic, no `code`, and identical whether or not the account exists | `content-type` + `X-Retry-After` |
+| Wrong password **or** non-existent account | `401` | `{"message":"Invalid email or password","code":"INVALID_EMAIL_OR_PASSWORD"}` | `content-type` from Better Auth, plus the boundary-wide `cache-control: private, no-store` and `vary: Cookie, Authorization` (Issue #460) — no `set-cookie`, no `www-authenticate`. The header **set** itself is pinned by the suite, so an upstream addition surfaces as a test failure; the two cache headers are constants that do not branch on the account, so they carry no existence signal |
+| Over budget (4th attempt in 10 s from one client IP) | `429` | `{"message":"Too many requests. Please try again later."}` — generic, no `code`, and identical whether or not the account exists | the same three headers as the `401`, plus `X-Retry-After` |
 
 Three properties the tests hold in place:
 

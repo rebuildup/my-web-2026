@@ -9,6 +9,7 @@ import {
 	findSecretRow,
 	parseCells,
 	parseRows,
+	refusalMessage,
 	renderHtml,
 } from './capture-login-rate-limit-report.mjs';
 
@@ -161,6 +162,32 @@ test('credential guard rejects a row carrying a session cookie or an API key', (
 		].join('\n'),
 	);
 	assert.ok(findSecretRow(apiKey), 'a row carrying an API key prefix must be refused');
+});
+
+test('the refusal reports the row number and never the row content', () => {
+	// Echoing the rejected cell would re-emit the credential the guard
+	// exists to keep out of the artefact — into the terminal and into
+	// whatever CI log captured it.
+	const rows = parseRows(
+		[
+			'| endpoint | input / condition | status | error | X-Retry-After |',
+			'| --- | --- | --- | --- | --- |',
+			'| /api/v1/auth/sign-in/email | key mk_home_secretvalue | 200 | — | — |',
+		].join('\n'),
+	);
+	const leak = findSecretRow(rows);
+	assert.ok(leak, 'the guard must reject the API-key row');
+
+	const message = refusalMessage(leak);
+	assert.match(message, /refusing to render row 1\b/, 'the row number locates the rejection');
+	assert.ok(!message.includes('mk_home_secretvalue'), 'no API key in the refusal');
+	for (const cell of Object.entries(leak)
+		// `index` is what the refusal is *meant* to report; `—` is the
+		// empty-cell placeholder, not row content.
+		.filter(([field, value]) => field !== 'index' && value !== '—')
+		.map(([, value]) => value)) {
+		assert.ok(!message.includes(cell), `no row content (${cell}) in the refusal`);
+	}
 });
 
 test('rendered report escapes markup and separates ok / reject / throttle', () => {

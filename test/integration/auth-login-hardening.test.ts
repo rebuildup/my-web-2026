@@ -185,12 +185,21 @@ describe('login enumeration + brute-force throttle (Issue #443)', () => {
 		// status, body, or any header.
 		expect(unknownAccount.observed).toEqual(wrongPassword.observed);
 		expect(wrongPassword.observed.body).toContain('INVALID_EMAIL_OR_PASSWORD');
-		// Pinned header **set**, not just parity: the 401 carries
-		// `content-type` and nothing else — no `set-cookie`, no
-		// `www-authenticate`, no hint about which account was addressed.
-		// An upstream library change that adds a header therefore surfaces
-		// here instead of quietly widening the response contract.
-		expect(wrongPassword.observed.headers.map(([name]) => name)).toEqual(['content-type']);
+		// Pinned header **set**, not just parity: the 401 carries only
+		// `content-type` from Better Auth plus the two headers the
+		// boundary adds to every `/api/v1/*` response
+		// (`src/http/middleware/cache-policy.ts`, Issue #460) — no
+		// `set-cookie`, no `www-authenticate`, no hint about which
+		// account was addressed. Those two are constants (the cache
+		// policy does not branch on the route), so they say nothing
+		// about existence; an upstream library change that adds a
+		// header therefore surfaces here instead of quietly widening
+		// the response contract.
+		expect(wrongPassword.observed.headers.map(([name]) => name)).toEqual([
+			'cache-control',
+			'content-type',
+			'vary',
+		]);
 	}, 120_000);
 
 	it('keeps the failure response free of the submitted identity and the password', async () => {

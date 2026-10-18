@@ -13,8 +13,11 @@
  *
  * Safety posture: the suite prints status codes, Better Auth error codes,
  * and the retry hint — nothing else. This script refuses to render a row
- * that looks like a credential, and the suite itself asserts that no
- * email, password, or address reached the block. Nothing here reads a
+ * that looks like a credential, and the refusal itself reports only the
+ * row number: the rejected cell may *be* the credential, so echoing it
+ * would copy the leak into the terminal and into whatever CI log
+ * captured that terminal. The suite itself asserts that no email,
+ * password, or address reached the block. Nothing here reads a
  * secret, a real credential, or a deployed environment.
  *
  * The Chromium screenshot is taken as PNG (lossless raster) and then
@@ -88,6 +91,21 @@ const SECRET_PATTERNS = [/bearer\s/i, /mk_[a-z0-9_]+/i, /secret/i, /token/i, /se
  */
 export function findSecretRow(rows) {
 	return rows.find((row) => SECRET_PATTERNS.some((pattern) => pattern.test(JSON.stringify(row))));
+}
+
+/**
+ * The refusal line printed when the guard rejects a row.
+ *
+ * Only the row **number** is reported. The rejected cell may itself be
+ * the credential the guard exists to keep out of the artefact, so
+ * interpolating it into the message would re-emit the leak on stderr —
+ * into the terminal, and into whatever CI log captured that terminal.
+ * (`capture-api-key-scope-matrix.mjs` already refuses the same way.)
+ * Exported so "the refusal does not echo the row" is unit-testable
+ * rather than only observable by running the whole capture.
+ */
+export function refusalMessage(row) {
+	return `[login-rate-limit] refusing to render row ${row.index} — it matches credential-shaped material (row content not echoed)\n`;
 }
 
 export function runVitest() {
@@ -285,9 +303,7 @@ async function main() {
 
 	const leak = findSecretRow(rows);
 	if (leak) {
-		process.stderr.write(
-			`[login-rate-limit] refusing to render a row that looks like a credential: ${leak.input}\n`,
-		);
+		process.stderr.write(refusalMessage(leak));
 		return 1;
 	}
 

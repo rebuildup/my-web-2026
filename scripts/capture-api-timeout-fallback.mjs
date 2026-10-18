@@ -34,19 +34,14 @@
  *
  * WebP, not PNG
  * -------------
- * Chromium only writes PNG and Issue #499 names a `.png` path, but a
- * verification artefact does not justify a permanently large binary in
- * the tree. The capture is taken into memory, encoded with the
- * existing `sharp` devDependency (width <= 1600, quality 80) and the
- * committed file is the `.webp` sibling. The script REFUSES any
- * non-`.webp` output path, and it writes nothing but the final bytes:
- * there is no PNG file anywhere.
- *
- * Whether the `.webp` substitution becomes the convention (or whether
- * the Issue's `.png` path is shipped after all) is an OWNER decision
- * recorded in `docs/verification/ops/api-timeout-fallback.md` §7; this
- * script only refuses the impossible middle ground of silently writing
- * a PNG into the tree.
+ * Chromium only writes PNG, but verification artefacts in this
+ * repository are stored as compressed WebP (`docs/verification/security/
+ * README.md`, Issues #446 / #457): Playwright cannot encode WebP, so
+ * the capture buffer is re-encoded with the existing `sharp`
+ * devDependency (width <= 1600, quality 80) and the committed file is
+ * the `.webp` sibling of the Issue's `.png` path. The script REFUSES
+ * any non-`.webp` output path, and it writes nothing but the final
+ * bytes: there is no PNG file anywhere.
  *
  * Staged, then promoted
  * ---------------------
@@ -496,7 +491,7 @@ async function main() {
 			// moved onto `capture.artefact` only after every check.
 			stagingDir: STAGING_DIR,
 			issuePathSubstituted:
-				'docs/verification/ops/api-timeout-fallback.png -> .webp (open owner decision: keep the substitution or ship the Issue path)',
+				'docs/verification/ops/api-timeout-fallback.png -> .webp (repository convention: verification artefacts are compressed WebP, never PNG)',
 			reproducible:
 				'the encode step is deterministic; the browser capture is not byte-reproducible',
 		},

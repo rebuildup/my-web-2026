@@ -20,7 +20,7 @@
 | 成果物の書き込み | **検証通過後にだけ** 確定置き換わる。候補は `.tmp/api-timeout-fallback/staging/` に encode され、budget / card 数 / 外部通信の検証を全部通ってから committed 経路へ move する。失敗した撮影は committed の WebP に触れない |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
 
-Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅 1440、quality 80）で commit した。`scripts/capture-api-timeout-fallback.mjs` は `.webp` 以外の出力先を拒否する。PNG はメモリ上の buffer のみで、ファイルは書かない（そのため削除 대상になる path も存在しない）。この置き換えが repo の慣習になるか（Issue 名の `.png` を出荷すべきか）は **owner 判断**で §7 に未決として記す。`release-0-6-3` には `docs/verification/` が存在せず、「リポジトリの他の検証 artefact に合わせた」という先例は本 PR の base には無い（先行する同種の capture は Issue #501 / branch `501` にある）。
+Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅 1440、quality 80）で commit した。`scripts/capture-api-timeout-fallback.mjs` は `.webp` 以外の出力先を拒否する。PNG はメモリ上の buffer のみで、ファイルは書かない（そのため削除対象になる path も存在しない）。これは本 PR 独自の判断ではなく、`release-0-6-3` の `docs/verification/**` が既に採用している規約に従ったものである: Playwright は WebP を書けないため、撮影 buffer を `sharp` で WebP に再エンコードし、Issue が `.png` を名指ししていても同名の `.webp` を出荷し、中間 PNG はコミットしない（例: `docs/verification/security/README.md` の `error-redaction-page.webp`（Issue #457）と `hsts-response.webp`（Issue #446）。`docs/verification/supply-chain/`・`docs/verification/perf/`・`docs/verification/seo/` もすべて WebP）。したがって `.png` → `.webp` の置き換えは未決の owner 判断ではなく、リポジトリの検証 artefact 規約として確定している。
 
 ## 2. 画面が示している条件
 
@@ -125,10 +125,9 @@ GitHub の repository payload には `subscribers_count` / `network_count` / `pe
 1. **promotion するかどうか**。外部通信を**実際に**発生させる decision は privacy / 外部契約に及ぶため、agent は決めない。判断するときの入力は本レポート §3 / §4。
 2. **どの capability が adapter を消費するか**。`docs/domain/integrations.md` の観測条件（2 以上の consumer / 独立した auth・rate limit lifecycle）が揃うまで `not integrated` のまま。
 3. **Storybook build の修正**は別 ticket。capture harness はその修正に依存しない。
-4. **`.png` → `.webp` の置き換えを慣習にするか**。Issue が名指しした `.png` をそのまま出荷する選択も残っている。#499 と #501 が独立に同じ置き換えをしているので、慣習にするなら `skills/quality-gate` か ADR の対象であり、2 つの独立 PR の中で黙って決められるものではない。
-5. **`external-api` の reverse import guard を `check-architecture.mjs` に登録するか**。現状登録されているのは `external-api -> {home, routes, portfolio, about, cloudflare, http}` の一方向だけで、`home` / `portfolio` / `about` / `routes` からの reverse edge は機械的に守られていない（現在はどの file も import していない）。promotion 時に「capability が採用した」ことを明示する mechanism にするかは owner 判断。
-6. **capture harness の重複**。`scripts/capture-api-timeout-fallback.mjs`（本 PR）と `scripts/capture-error-state-gallery.mjs`（branch `501`）は同形の約 420 行。共通 `scripts/_capture-harness.mjs` へ昇格させるかは AGENTS.md §3 の promotion 規則による owner 調整事項。
-7. **失敗語彙の visitor 向け文言**。閉じた語彙としての一貫性は固定済みだが、日本語の文言（特に `応答时间内.timeout`）は出荷前に owner がレビューすること。
+4. **`external-api` の reverse import guard を `check-architecture.mjs` に登録するか**。現状登録されているのは `external-api -> {home, routes, portfolio, about, cloudflare, http}` の一方向だけで、`home` / `portfolio` / `about` / `routes` からの reverse edge は機械的に守られていない（現在はどの file も import していない）。promotion 時に「capability が採用した」ことを明示する mechanism にするかは owner 判断。
+5. **capture harness の重複**。`scripts/capture-api-timeout-fallback.mjs`（本 PR）と `scripts/capture-error-state-gallery.mjs`（branch `501`）は同形の約 420 行。共通 `scripts/_capture-harness.mjs` へ昇格させるかは AGENTS.md §3 の promotion 規則による owner 調整事項。
+6. **失敗語彙の visitor 向け文言**。閉じた語彙としての一貫性は固定済みだが、日本語の文言（特に `応答时间内.timeout`）は出荷前に owner がレビューすること。
 
 ## 8. 再生成方法
 

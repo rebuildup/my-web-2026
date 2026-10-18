@@ -2,7 +2,7 @@ import { type EmojiClickData, EmojiStyle, Theme } from 'emoji-picker-react';
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import type { ReactionAggregate } from '../../http/reactions/schema';
-import { classifySlugCandidate } from '../../i18n/slug-identity.ts';
+import { classifySlugCandidate } from '../../i18n/slug-identity';
 import { EMOJI_SLUG_GRAMMAR } from '../../reactions/slug-regex';
 import { resolveEmojiSlug } from './emoji-catalog';
 import type { HomeReactionsData } from './load';

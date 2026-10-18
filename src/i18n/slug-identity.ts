@@ -231,7 +231,11 @@ export function findSlugCollisions(
 		'normalization-alias': 1,
 	};
 	return collisions.sort(
-		(a, b) => kindOrder[a.kind] - kindOrder[b.kind] || a.key.localeCompare(b.key),
+		(a, b) =>
+			kindOrder[a.kind] - kindOrder[b.kind] ||
+			// Code-point order, not `localeCompare`: the report must not depend on
+			// the runtime's locale. Keys are ASCII (the grammars reject the rest).
+			(a.key < b.key ? -1 : a.key > b.key ? 1 : 0),
 	);
 }
 

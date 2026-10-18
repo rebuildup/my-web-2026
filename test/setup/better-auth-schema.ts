@@ -13,7 +13,19 @@ import { env } from 'cloudflare:test';
  * first imported, the cached verdict is a `SchemaMismatchError` and
  * is rethrown on every subsequent `auth.api.*` call.
  *
- * The schema here mirrors `migrations/0001_better_auth.sql`.
+ * The schema here mirrors `migrations/0001_better_auth.sql` plus the
+ * project-owned tables that later migrations add
+ * (`migrations/0008_admin_step_up.sql` is mirrored here so the
+ * step-up gate is exercised against a real D1 binding).
+ *
+ * This DDL is duplicated, not shared, on purpose: each suite that
+ * needs a table repeats it with `IF NOT EXISTS` so it stays
+ * self-contained and can be reasoned about in one file (the same
+ * choice `src/admin/keys/load.test.ts` documents for its own
+ * schema). The cost is that a column added to a migration has to be
+ * added in every mirror — so a mirror must match the migration,
+ * indexes included, and the migration stays the reference. Keep this
+ * file in sync when `migrations/` changes.
  */
 const MIGRATION_SQL = `
 CREATE TABLE IF NOT EXISTS user (
@@ -97,6 +109,13 @@ CREATE TABLE IF NOT EXISTS auth_invitation (
   consumed_at INTEGER,
   created_at INTEGER NOT NULL
 );
+CREATE TABLE IF NOT EXISTS admin_step_up_grant (
+  session_id TEXT PRIMARY KEY REFERENCES session(id) ON DELETE CASCADE,
+  user_id TEXT NOT NULL REFERENCES user(id) ON DELETE CASCADE,
+  confirmed_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_admin_step_up_grant_user
+  ON admin_step_up_grant(user_id, confirmed_at);
 `;
 
 for (const stmt of MIGRATION_SQL.split(';')

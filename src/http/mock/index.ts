@@ -15,7 +15,11 @@ import { createMockReactionsRouter } from './reactions';
  *   - No D1 / R2 access.
  *   - No API-key middleware, no rate-limit middleware, no CSRF
  *     middleware — the mock exists to render UI against canned data,
- *     not to exercise the production security boundary.
+ *     not to exercise the production security boundary. The gate in
+ *     `src/http/hono.ts` answers BEFORE `csrfGuard`, so a designer
+ *     using curl (no `Origin`, no `Authorization`) still gets canned
+ *     data; there is no durable state for a cross-site request to
+ *     corrupt either way.
  *   - State is module-level mutable in-memory storage (see
  *     `./fixtures.ts`); resets on dev server restart only.
  *

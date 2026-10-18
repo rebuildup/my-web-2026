@@ -50,7 +50,7 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
 
 | フォーム | 直前の欠陥 | 適用後 |
 | --- | --- | --- |
-| `/admin/login` | 説明なし、`autoComplete` なし、refused `?returnTo=` は無地の `<output>` | `TextField` x2（`username` / `current-password`）、refusal は form-level 要約 |
+| `/admin/login` | 説明なし、`autoComplete` なし、refused `?returnTo=` は無地の `<output>` | `TextField` x2（`username` / `current-password`）、refusal は `<form>` **内**の form-level 要約（form navigation から届く必要があり、form の外側の字幕だと届かない） |
 | `/admin/invitations`（作成） | **label が無く placeholder のみ**、サーバー refusal は form 外の無地 `<p>` | `TextField`（`email`）+ 要約。`email_already_registered` は field  refined、それ以外は form  refined |
 | `/admin/invitations/accept` | refusal が form 末尾の無地 `<p>`。どの control が悪いか不明 | 要約 + `weak_password` のみ password control に `aria-invalid` |
 | `/admin/images`（upload） | `role="alert"` が field error と二重、label はあったが説明なし | `FileField` + 要約（client 3 gate と server policy code を全て field refined に集約） |

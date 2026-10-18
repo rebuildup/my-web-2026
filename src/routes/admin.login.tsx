@@ -103,19 +103,6 @@ function LoginRoute() {
 					description="招待された管理者のみ。Sign-up は無効。"
 					variant="spread"
 				>
-					{rejectedReason ? (
-						<ErrorSummary
-							heading="移動先を確認できませんでした"
-							testId="return-to-rejected"
-							dataAttributes={{ 'data-reject-reason': rejectedReason }}
-							errors={[
-								{
-									label: '移動先',
-									message: `returnTo が安全ではないため、${DEFAULT_RETURN_TO} に移動します。`,
-								},
-							]}
-						/>
-					) : null}
 					<form
 						method="post"
 						action="/api/v1/auth/sign-in/email"
@@ -128,6 +115,23 @@ function LoginRoute() {
 						})}
 					>
 						<input type="hidden" name="callbackURL" value={returnTo} />
+						{/* The summary lives INSIDE the form: it is a statement about
+						    this submission, so it must be reachable in form
+						    navigation rather than sitting beside the form as a
+						    separate caption. */}
+						{rejectedReason ? (
+							<ErrorSummary
+								heading="移動先を確認できませんでした"
+								testId="return-to-rejected"
+								dataAttributes={{ 'data-reject-reason': rejectedReason }}
+								errors={[
+									{
+										label: '移動先',
+										message: `returnTo が安全ではないため、${DEFAULT_RETURN_TO} に移動します。`,
+									},
+								]}
+							/>
+						) : null}
 						<TextField
 							name="email"
 							label="Email"

@@ -35,6 +35,7 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
       # Issue #509: a Storybook story is feature-local UI, so its runtime
       # import closure must stay inside the owning obligation — routes,
       # server.ts, http/, cloudflare/ and the cloudflare:workers virtual
@@ -166,6 +167,23 @@ security_gates:
     enabled: true
     mode: asynchronous
     note: 'Enabled via GitHub Push Protection + cloud bot.'
+  install_script_audit:
+    enabled: true
+    tool: scripts/check-install-scripts.mjs
+    policy: quality/install-scripts.json
+    execution_allowlist: pnpm-workspace.yaml#allowBuilds
+    note: >-
+      Issue #474. pnpm is default-deny for dependency build scripts; this
+      gate fails when an installed package can execute code during an
+      install (preinstall / install / postinstall, an implicit node-gyp
+      rebuild for a package shipping binding.gyp, or the prepare of a
+      git-hosted dependency) that the reviewed policy has no record for,
+      when the policy decision and pnpm's effective execution allow-list
+      disagree in either direction, when a grant survives only in the
+      legacy onlyBuiltDependencies list, or when an allowed package
+      moved to a version the record never reviewed. It warns when an
+      allow-list entry buys no build. Status-only output; no secret value
+      is read or printed. Runbook: docs/runbook/install-script-audit.md
   workflow_yaml_lint:
     enabled: true
     tool: actionlint

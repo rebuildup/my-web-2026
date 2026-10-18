@@ -14,6 +14,7 @@ of trusting the image.
 | [`markdown-xss-fixture.webp`](markdown-xss-fixture.webp) | #451 | capture generator is **not** in the repository — see [`## markdown-xss-fixture.webp`](#markdown-xss-fixturewebp); the same properties are asserted on every push by `pnpm exec vitest run test/integration/markdown-xss-ssr.test.ts` and by `pnpm run e2e` |
 | [`webhook-signature-fixture.webp`](webhook-signature-fixture.webp) | #463 | `pnpm run webhook:fixture:report` |
 | [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
+| [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 
 ## `webhook-signature-fixture.webp`
 
@@ -75,6 +76,22 @@ The Issue names `error-redaction-page.png`; the artefact ships as WebP
 in the same directory, for the same reason as `redirect-validation.webp`
 below — Playwright cannot write WebP, so the generator re-encodes the
 screenshot buffer with `sharp` and never commits an intermediate PNG.
+
+## `log-redaction-test.webp`
+
+The redaction verification report (Issue #467): every fabricated sample
+rendered through the shipped `src/logging/redact.ts`, with before / after
+columns and the generator's own canary self-check.
+
+The Issue names `log-redaction-test.png`; the artefact ships as WebP in
+the same directory, following the same repository rule as the artefacts
+above (screenshot = WebP at quality 80, width ≤ 1600; the intermediate
+PNG stays in `.tmp/` and is never committed). Accepting that substitution
+— or amending the Issue requirement — is an open owner decision recorded
+in the PR body. The report HTML is the capture source; it is generated
+into `.tmp/` by `node scripts/log-redaction-report.mjs`, which exits
+non-zero without writing a page when a canary survives or a sample is
+unguarded.
 
 ## `ssrf-url-adapter.webp`
 

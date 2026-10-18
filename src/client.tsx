@@ -3,8 +3,11 @@ import { hydrateStart } from '@tanstack/react-start/client';
 import { StrictMode } from 'react';
 import { startTransition } from 'react';
 import { hydrateRoot } from 'react-dom/client';
+import { createAuditLogger } from './logging/logger';
 import { getRouter } from './router';
 import './styles.css';
+
+const clientLogger = createAuditLogger('client');
 
 /**
  * Client hydration entry. Invoked by `@tanstack/react-start` after the SSR
@@ -50,6 +53,6 @@ function mount(router: Parameters<typeof RouterProvider>[0]['router']) {
 hydrateStart()
 	.then(mount)
 	.catch((error: unknown) => {
-		console.error('[client] hydrateStart failed; mounting without SSR handoff', error);
+		clientLogger.error('hydrateStart failed; mounting without SSR handoff', error);
 		mount(getRouter());
 	});

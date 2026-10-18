@@ -329,7 +329,9 @@ contract is DATA in `scripts/prod-smoke-routes.mjs`; its pass/fail
 classifier `auditRoute()` is unit-tested offline by
 `scripts/prod-smoke-routes.test.mjs` (wired into `pnpm run test`), so the
 smoke logic is verified without a network, without workerd, and without a
-browser.
+browser. Each observation carries the final (post-redirect) origin and
+pathname, and the classifier rejects either kind of drift, so a route that
+answered from another host cannot pass as a healthy canonical origin.
 
 ## Format and lint
 

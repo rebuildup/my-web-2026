@@ -109,6 +109,7 @@ function healthyObservation(route) {
 	return {
 		status: route.status,
 		contentType: `${route.contentType}; charset=utf-8`,
+		finalOrigin: CANONICAL_PRODUCTION_ORIGIN,
 		finalPath: route.path,
 		title: fixture.title,
 		canonicalHref: route.canonical,
@@ -419,6 +420,12 @@ const DEFECTS = [
 		expect: /expected status 200, got 503/,
 	},
 	{
+		name: 'a redirect to a different origin',
+		applies: () => true,
+		mutate: (observation) => ({ ...observation, finalOrigin: 'https://look-alike.example' }),
+		expect: /served from origin "https:\/\/look-alike\.example" after redirects/,
+	},
+	{
 		name: 'a redirect to a different path',
 		applies: () => true,
 		mutate: (observation) => ({ ...observation, finalPath: '/404' }),
@@ -560,6 +567,61 @@ describe('auditRoute — every failure mode is reported, never swallowed', () =>
 				`the report must name the failing probe "${probe}":\n${problems.join('\n')}`,
 			);
 		}
+	});
+});
+
+describe('auditRoute — the origin the run was pointed at is part of the contract', () => {
+	it('defaults to the canonical production origin', () => {
+		// A run that does not pass an origin is a production run by
+		// definition (`pnpm run e2e:prod` / `pnpm run e2e:prod:transition`),
+		// so the default must be the canonical origin — never "accept
+		// whatever answered", which is exactly the false success the
+		// origin guard exists to remove.
+		for (const route of REPRESENTATIVE_ROUTES) {
+			const problems = auditRoute(route, {
+				...healthyObservation(route),
+				finalOrigin: 'https://look-alike.example',
+			});
+			assert.ok(
+				problems.some((problem) => /must not leave the origin it was pointed at/.test(problem)),
+				`${route.path} served from another origin must be reported with the default expected origin`,
+			);
+		}
+	});
+
+	it('accepts a rehearsal origin instead of production when the caller passes one', () => {
+		// `pnpm run e2e:prod:local` points the same contract at the local
+		// preview build; the origin guard must follow the run, not insist
+		// on production and turn every rehearsal red.
+		const localOrigin = 'http://127.0.0.1:3000';
+		for (const route of REPRESENTATIVE_ROUTES) {
+			const observation = { ...healthyObservation(route), finalOrigin: localOrigin };
+			assert.deepEqual(
+				auditRoute(route, observation, localOrigin),
+				[],
+				`a healthy local-origin observation must pass when the run was pointed at ${localOrigin}`,
+			);
+			assert.ok(
+				auditRoute(route, observation, CANONICAL_PRODUCTION_ORIGIN).some((problem) =>
+					/must not leave the origin it was pointed at/.test(problem),
+				),
+				`${route.path} answered on ${localOrigin} must not pass a production run`,
+			);
+		}
+	});
+
+	it('reports an unobserved origin rather than skipping the guard', () => {
+		// Fail closed: an adapter that forgot to report the origin must
+		// produce a problem, not an undefined comparison that silently
+		// passes.
+		const home = findRepresentativeRoute('/');
+		const { finalOrigin, ...withoutOrigin } = healthyObservation(home);
+		assert.ok(finalOrigin);
+		const problems = auditRoute(home, withoutOrigin);
+		assert.ok(
+			problems.some((problem) => /served from origin "undefined"/.test(problem)),
+			`an observation with no final origin must be reported, got:\n${problems.join('\n')}`,
+		);
 	});
 });
 

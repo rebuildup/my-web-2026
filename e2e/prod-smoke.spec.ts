@@ -325,6 +325,10 @@ test.describe('production smoke (Issue #43 / ADR-0014)', () => {
  * `http://127.0.0.1:3000` for `pnpm run e2e:prod:local`. No navigation in
  * this describe is hardcoded to production, which is what keeps an
  * offline verification run from ever resolving the production hostname.
+ * That boundary is ASSERTED rather than prose: each observation carries
+ * the final (post-redirect) origin and `auditRoute()` rejects any route
+ * that answered from anywhere else, so a redirect to a look-alike host
+ * serving the same pathname cannot pass as a healthy canonical origin.
  * ------------------------------------------------------------------------ */
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -480,6 +484,11 @@ async function observePageRoute(
 	return {
 		status: response?.status() ?? 0,
 		contentType: response?.headers()['content-type'] ?? '',
+		// Origin AND path. The path alone cannot distinguish "the origin
+		// the smoke was pointed at answered" from "a look-alike origin
+		// with the same pathname answered", so both are observed here and
+		// `auditRoute()` rejects either kind of drift.
+		finalOrigin: new URL(page.url()).origin,
 		finalPath: new URL(page.url()).pathname,
 		title: await page.title(),
 		canonicalHref: (await canonical.count()) > 0 ? await canonical.getAttribute('href') : null,
@@ -517,6 +526,7 @@ async function observeApiRoute(
 	return {
 		status: response.status(),
 		contentType: response.headers()['content-type'] ?? '',
+		finalOrigin: new URL(response.url()).origin,
 		finalPath: new URL(response.url()).pathname,
 		title: null,
 		canonicalHref: null,
@@ -563,7 +573,7 @@ test.describe('production representative routes (Issue #500)', () => {
 			const observation = await observePageRoute(route, origin, page, readToolManifest());
 			// Assert the problem LIST, not the first problem: a broken
 			// deployment should report everything that is wrong in one go.
-			const problems = auditRoute(route, observation);
+			const problems = auditRoute(route, observation, origin);
 			expect(problems, formatAuditReport(route, problems, origin)).toEqual([]);
 		});
 	}
@@ -575,7 +585,7 @@ test.describe('production representative routes (Issue #500)', () => {
 		}) => {
 			const origin = smokeOrigin(baseURL);
 			const observation = await observeApiRoute(route, origin, request);
-			const problems = auditRoute(route, observation);
+			const problems = auditRoute(route, observation, origin);
 			expect(problems, formatAuditReport(route, problems, origin)).toEqual([]);
 		});
 	}
@@ -601,13 +611,15 @@ test.describe('production representative routes (Issue #500)', () => {
 				`the ${entry.from} → ${entry.to} entry must stay an in-site path, not an absolute or protocol-relative URL`,
 			).toBe(entry.to);
 
-			// Follow it. A link that 200s into the 404 surface, or that
-			// dead-ends, must not pass as "reachable".
+			// Follow it. A link that 200s into the 404 surface, that
+			// dead-ends, or that leaves the origin entirely must not pass
+			// as "reachable".
 			await link.click();
+			const landed = new URL(page.url());
 			expect(
-				new URL(page.url()).pathname,
-				`clicking the ${entry.from} → ${entry.to} entry landed somewhere else`,
-			).toBe(entry.to);
+				`${landed.origin}${landed.pathname}`,
+				`clicking the ${entry.from} → ${entry.to} entry left the origin it was pointed at or landed somewhere else`,
+			).toBe(`${origin}${entry.to}`);
 			const destination = REPRESENTATIVE_ROUTES.find((candidate) => candidate.path === entry.to);
 			await expect(
 				page.locator(destination?.h1 ?? 'h1').first(),

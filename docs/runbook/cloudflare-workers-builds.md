@@ -347,6 +347,14 @@ one-click in-site entry to `/about`, `/portfolio`, and `/tools`, and the
 two `PublicNav` pages among the representative set (`/about`,
 `/portfolio`) link to every sibling representative route.
 
+Every route must answer **for itself, from the origin the run was pointed
+at**. `auditRoute()` compares the final (post-redirect) origin AND
+pathname against the route contract and against the origin Playwright was
+pointed at, so a redirect to a look-alike host serving the same pathname
+is a defect rather than a pass — that is what makes "the canonical origin
+itself serves this route" and "the smoke never leaves the origin it was
+pointed at" verifiable claims rather than prose.
+
 Phase scoping
 -------------
 
@@ -411,7 +419,11 @@ part of the representative-route registry.
 Outbound traffic originates only at the canonical production origin in a
 production run; the pages themselves reference Google Fonts, GA4, and
 `media.rebuildup.dev`, and the smoke does not exercise or assert on any
-of them, so it never becomes a third-party availability contract.
+of them, so it never becomes a third-party availability contract. That
+first half is asserted, not trusted: an observation whose final
+(post-redirect) origin differs from the origin the run was pointed at is
+reported as a defect, so the "no third-party request" statement cannot be
+falsified by a redirect the classifier did not notice.
 
 What it deliberately does not check
 ----------------------------------

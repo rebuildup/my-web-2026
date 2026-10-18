@@ -40,11 +40,11 @@
  * Stated once here so the audit surface is explicit rather than implied:
  *
  *   - Information this smoke reads: HTTP status, `Content-Type`, the
- *     final (post-redirect) path, `<title>`, `link[rel=canonical]`, the
- *     single `<h1>` plus its text, and the booleans named in each
- *     route's `defaultStates[].probes`. For `/tools` it also reads
- *     `data-tool-slug` off each rendered row so the set can be compared
- *     against `src/tools/manifest.json`.
+ *     final (post-redirect) origin AND path, `<title>`,
+ *     `link[rel=canonical]`, the single `<h1>` plus its text, and the
+ *     booleans named in each route's `defaultStates[].probes`. For
+ *     `/tools` it also reads `data-tool-slug` off each rendered row so
+ *     the set can be compared against `src/tools/manifest.json`.
  *   - Information this smoke NEVER reads: response bodies beyond the
  *     fields above, D1 rows, R2 objects, session cookies, headers that
  *     carry credentials, and any authenticated surface.
@@ -373,6 +373,7 @@ export function findRepresentativeRoute(path) {
  * @typedef {object} RouteObservation
  * @property {number} status HTTP status of the response.
  * @property {string} contentType `Content-Type` response header.
+ * @property {string} finalOrigin Origin the response was actually served from (redirects followed).
  * @property {string} finalPath Pathname the response was actually served from (redirects followed).
  * @property {string|null} title `<title>` text, or null when the document declares none.
  * @property {string|null} canonicalHref `link[rel=canonical]` href, or null when absent.
@@ -415,9 +416,12 @@ export function resolveDefaultState(route, probes) {
  *
  * @param {RepresentativeRoute} route
  * @param {RouteObservation} observation
+ * @param {string} [expectedOrigin] The origin the run was pointed at.
+ *   Defaults to the canonical production origin; a rehearsal run passes
+ *   the local origin it actually used.
  * @returns {ReadonlyArray<string>}
  */
-export function auditRoute(route, observation) {
+export function auditRoute(route, observation, expectedOrigin = CANONICAL_PRODUCTION_ORIGIN) {
 	/** @type {string[]} */
 	const problems = [];
 
@@ -425,10 +429,24 @@ export function auditRoute(route, observation) {
 		problems.push(`HTTP ${route.path}: expected status ${route.status}, got ${observation.status}`);
 	}
 
-	// Anti-false-success guard. Playwright's request fixture follows
-	// redirects, so a route that 302s to a working page would otherwise
-	// satisfy every remaining assertion. A representative route must
-	// serve ITSELF.
+	// Anti-false-success guard, origin half. `finalPath` alone cannot
+	// tell "the origin the smoke was pointed at answered for this route"
+	// from "another host with the same pathname did": a redirect to a
+	// look-alike origin that returns the expected HTML/JSON would satisfy
+	// every remaining assertion, so the smoke would report a healthy
+	// canonical deployment it never reached — and the documented
+	// boundary ("outbound traffic stays on the origin Playwright was
+	// pointed at") would be prose rather than an assertion.
+	if (observation.finalOrigin !== expectedOrigin) {
+		problems.push(
+			`HTTP ${route.path}: served from origin "${observation.finalOrigin}" after redirects, expected "${expectedOrigin}" — the smoke must not leave the origin it was pointed at`,
+		);
+	}
+
+	// Anti-false-success guard, path half. Playwright's request fixture
+	// follows redirects, so a route that 302s to a working page would
+	// otherwise satisfy every remaining assertion. A representative route
+	// must serve ITSELF.
 	if (observation.finalPath !== route.path) {
 		problems.push(
 			`HTTP ${route.path}: served from "${observation.finalPath}" after redirects — this route is not answering for itself`,

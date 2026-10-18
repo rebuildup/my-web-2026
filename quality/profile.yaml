@@ -164,6 +164,13 @@ ci:
   # Playwright E2E step run only on push to main / release-* plus on
   # pull requests that opt in via the `ui-change` label (Playwright
   # E2E only — cf-typegen:check is not meaningful on a draft PR).
+  #
+  # Issue #486: the image CLS regression spec
+  # (`e2e/image-cls.spec.ts`) rides this same Playwright step. No new
+  # job, trigger, script or budget entry was added for it — a CLS
+  # budget is #386's axis, and re-running the E2E step on another
+  # trigger is a `disallowed_patterns` violation. The recorded impact
+  # is in `docs/verification/perf/README.md`.
   jobs:
     - name: validate
       command: 'pnpm run validate:integration'

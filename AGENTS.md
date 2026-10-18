@@ -75,6 +75,9 @@ Current dependency direction:
 routes -> home
 routes -> portfolio
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
+routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
+           /admin/login loader; the security classifier only, no router,
+           no handler)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)

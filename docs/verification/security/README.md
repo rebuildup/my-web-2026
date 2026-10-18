@@ -10,7 +10,22 @@ of trusting the image.
 | [`hsts-response.webp`](hsts-response.webp) | #446 | `pnpm run verify:hsts-screenshot` |
 | [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
 | [`markdown-xss-fixture.webp`](markdown-xss-fixture.webp) | #451 | capture generator is **not** in the repository — see [`## markdown-xss-fixture.webp`](#markdown-xss-fixturewebp); the same properties are asserted on every push by `pnpm exec vitest run test/integration/markdown-xss-ssr.test.ts` and by `pnpm run e2e` |
+| [`webhook-signature-fixture.webp`](webhook-signature-fixture.webp) | #463 | `pnpm run webhook:fixture:report` |
 | [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
+
+## `webhook-signature-fixture.webp`
+
+The inbound-webhook verification contract table (Issue #463): every
+local fixture — signature, freshness window, replay claim — with its
+declared and observed verdict. The rows are produced by
+`scripts/webhook-signature-fixture-report.mjs` running the **same**
+`src/http/webhooks/fixtures.ts` builder the Vitest contract test
+asserts on, so the picture cannot disagree with the suite; the script
+exits non-zero if any fixture deviates. No key material is rendered.
+`/webhooks/*` still has no mounted handler — the report documents an
+adapter, not a published entry point. Reading guide:
+[`docs/security/webhook-signature-verification.md`](../../security/webhook-signature-verification.md).
+
 
 ## `error-redaction-page.webp` (Issue #457)
 

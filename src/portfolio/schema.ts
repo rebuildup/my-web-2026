@@ -1,4 +1,9 @@
 import { z } from 'zod';
+import {
+	type SlugGrammar,
+	classifySlugCandidate,
+	describeSlugRejection,
+} from '../i18n/slug-identity.ts'; // `.ts` on purpose: `scripts/check-i18n-policy.mjs` imports this module directly, and Node's ESM resolver does not add extensions
 
 /**
  * Portfolio schema — TypeScript types + Zod validators.
@@ -13,6 +18,16 @@ import { z } from 'zod';
  *   * `docs/personal/domain.md` §11 narrative invariants
  *   * `docs/personal/knowledge-model.md` — Temporal State semantics
  *   * ADR-0008 obligation-oriented — `portfolio` is its own obligation
+ *
+ * Import specifiers: the `../i18n/**` imports below carry the `.ts`
+ * extension on purpose. `scripts/check-i18n-policy.mjs` and
+ * `scripts/capture-i18n-unicode-slug.mjs` load THIS module directly so
+ * the CI evidence is produced by the code the Worker ships; Node's
+ * type-stripping loader resolves ESM specifiers literally and raises
+ * `ERR_MODULE_NOT_FOUND` for an extensionless specifier, so
+ * `tsconfig.json#allowImportingTsExtensions` is what lets TypeScript
+ * accept them. Local imports in this file stay extensionless, as
+ * everywhere else in `src/`.
  *
  * Notes on choices:
  *   * `facets` is a closed enum today (`develop` | `video` |
@@ -54,9 +69,54 @@ export type PortfolioLinkKind = (typeof PORTFOLIO_LINK_KINDS)[number];
  */
 export const SLUG_REGEX = /^[a-z0-9][a-z0-9-]{0,127}$/;
 
-export const SlugSchema = z
-	.string()
-	.regex(SLUG_REGEX, 'slug must match /^[a-z0-9][a-z0-9-]{0,127}$/');
+/** Maximum slug length, shared by the pattern and the grammar descriptor. */
+export const MAX_SLUG_LEN = 128;
+
+/**
+ * The portfolio slug grammar as one value (Issue #433).
+ *
+ * `portfolio/` owns the grammar; `src/i18n/slug-identity.ts` owns the
+ * rule for applying it — which is why a non-ASCII candidate is refused
+ * as a policy decision with a reason, instead of silently failing a
+ * pattern test that a reader cannot interpret.
+ */
+export const PORTFOLIO_SLUG_GRAMMAR: SlugGrammar = {
+	name: 'portfolio-slug',
+	pattern: SLUG_REGEX,
+	maxLength: MAX_SLUG_LEN,
+};
+
+/**
+ * The single validation seam for a portfolio slug.
+ *
+ * The accept set is unchanged, so route parsing, admin writes and the
+ * existing tests keep their contract. Two message details do change:
+ *
+ *   - the ASCII / grammar rejection is now rendered from the owner's
+ *     own pattern (`describeSlugRejection`), which has no `/…/`
+ *     delimiters, so `slug must match ^[a-z0-9][a-z0-9-]{0,127}$`
+ *     replaces the older hand-written literal; and
+ *   - the Zod issue `code` is `custom` (a `superRefine` refusal) rather
+ *     than `invalid_format` (a `regex` failure).
+ *
+ * Both are reason-compatible, not byte-identical, and no shipped
+ * consumer reads either (`src/portfolio/public.ts` and
+ * `src/routes/portfolio/$slug.tsx` branch on `success`).
+ *
+ * What is new is the non-ASCII refusal: a slug candidate such as
+ * `café` (NFC) or `café` (NFD) now fails with the code point that was
+ * found instead of an unexplained pattern mismatch — and, crucially,
+ * it is NOT folded into `/cafe`, which would silently merge two
+ * different projects.
+ */
+export const SlugSchema = z.string().superRefine((value, ctx) => {
+	const verdict = classifySlugCandidate(value, PORTFOLIO_SLUG_GRAMMAR);
+	if (verdict.ok) return;
+	ctx.addIssue({
+		code: 'custom',
+		message: `slug ${describeSlugRejection(verdict, PORTFOLIO_SLUG_GRAMMAR)}`,
+	});
+});
 export const FacetSchema = z.enum(PORTFOLIO_FACETS);
 export const VisibilitySchema = z.enum(PORTFOLIO_VISIBILITIES);
 export const StatusSchema = z.enum(PORTFOLIO_STATUSES);
@@ -381,6 +441,21 @@ export function rowToProject(
 	return {
 		id: row.id,
 		slug: row.slug,
+		// Display body, kept byte-exact (Issue #433). This mapping is an
+		// identity by construction — the author's bytes are assigned, not
+		// computed — so a D1 round-trip cannot re-compose, fold or strip
+		// anything, including an NFD spelling of an accented word.
+		//
+		// The property is pinned by `schema.test.ts` ("display text
+		// preservation"), which asserts the code points of the returned
+		// value against the row. A runtime `===` guard was previously
+		// written here as `assertDisplayTextPreserved(row.title,
+		// row.title, …)`; it compared one expression with itself and
+		// therefore could never fire, so it proved nothing while reading
+		// like a boundary check. If this mapping ever grows a
+		// transformation, guard it with `assertDisplayTextPreserved`
+		// (`src/i18n/unicode.ts`) comparing the RAW row value against the
+		// TRANSFORMED value — never the same expression twice.
 		title: row.title,
 		summary: row.summary,
 		role: row.role,

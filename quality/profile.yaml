@@ -43,6 +43,7 @@ gates:
       # from check-architecture.mjs because that gate judges the OWNERS'
       # dependency direction, while this one judges what a preview may load.
       - 'pnpm run storybook:ownership:check' # story -> foreign boundary walk
+      - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap

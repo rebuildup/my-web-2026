@@ -254,6 +254,9 @@ pnpm run validate:integration  # + build + wrangler:dry-run + lint:ci + build-st
 pnpm run validate:release      # + cf-typegen:check
 ```
 
+`validate:fast` には UI copy の locale 契約検査 `pnpm run copy:i18n:check` も含まれる
+(下記「UI copy の locale 契約」参照)。
+
 CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 `validate` job on every PR and every push to `main` / `release-*`.
 The same job also installs the Playwright Chromium binary and runs
@@ -302,6 +305,35 @@ The E2E suite asserts the four public surfaces documented in
 - `GET /api/v1/health` (200, `{status:'ok',...}`)
 - `GET /api/v1/db/ping` (200, `{one:1,...}` against the D1 binding)
 - `GET /api/v1/media/ping` (404, `key_not_found` against the R2 binding)
+
+## UI copy の locale 契約
+
+visitor-facing copy がどの言語で公開されているかは
+[`copy/resources.json`](../copy/resources.json) が宣言し、
+`pnpm run copy:i18n:check` (`scripts/check-copy-i18n.mjs`) が検査する。
+`validate:fast` の一部として CI でも走る。
+
+検査するのは「その locale で未翻訳のキー」「feature が登録していないキーを名指ししている
+リソース」「source locale に到達できない fallback 連鎖」、そして原文の意味を守るための
+機械判定 (数値 / `{placeholder}` / 否定 / 権限マーカー / 禁則・full-width 残留) である。
+locale は機能ごとに opt-in なので、全機能に全言語を要求しない — 未 opt-in の locale は
+情報として記録されるだけで失敗にしない。
+
+文の語調・敬称・語順 (prose quality) は gate が判定しない。`prose: "verified"` は
+原文と突き合わせた人が記録する主張であり、`published` locale では未検証の状態で
+公開できない。推敲途中のリソース (`status: "draft"`) は解決時に fallback され、
+`served` されない。
+
+```bash
+pnpm run copy:i18n:check                       # gate (exit 1 で失敗)
+node scripts/check-copy-i18n.mjs --format=html --out=.tmp/copy-i18n.html
+node scripts/check-copy-i18n.mjs --include-fixture --format=html \
+  --out=.tmp/missing-keys-report.html          # fixture 込みのレポート (fixture は gate しない)
+node --test scripts/check-copy-i18n.test.mjs   # fixture で finding class を検証
+```
+
+契約の意味、schema、2 番目の locale を opt-in する手順は
+[`copy/README.md`](../copy/README.md) を参照。
 
 ## Format and lint
 

@@ -155,18 +155,19 @@ export const LOCALE_SCRIPTS = {
  * sentence that says the opposite of the author's.
  */
 export const NEGATION_MARKERS = {
-	ja: ['ない', 'ません', 'ません', 'なし', 'ぬ', '不可', '禁止', '非表示', 'しない', 'できない'],
+	ja: ['ない', 'ません', 'なし', '不可', '禁止', '非表示', 'しない', 'できない'],
 	en: [
-		'not ',
-		'no ',
+		'not',
+		'no',
 		'never',
+		'nothing',
+		'none',
 		'cannot',
 		"can't",
 		"don't",
 		"doesn't",
 		"won't",
 		'without',
-		'none',
 		'unavailable',
 		'disabled',
 	],
@@ -276,22 +277,36 @@ function placeholderTokens(text) {
 }
 
 /**
+ * Marker search.
+ *
+ * Japanese has no word delimiters, so its markers are matched as
+ * substrings. A Latin-script locale is matched on whole tokens instead:
+ * `"cannot use"` must not be missed because the marker sits at the end
+ * of the string, and `"noon"` must not be read as the negation `"no"`.
+ */
+function hasMarker(text, locale, markers) {
+	if (!markers) return null;
+	if (locale !== 'en') return markers.some((marker) => text.includes(marker));
+	const tokens = new Set(
+		text
+			.toLowerCase()
+			.split(/[^\p{L}\p{N}']+/u)
+			.filter(Boolean),
+	);
+	return markers.some((marker) => tokens.has(marker.toLowerCase()));
+}
+
+/**
  * Does the text carry a negation marker in this locale? A locale with
  * no marker list cannot answer, which is reported rather than guessed.
  */
 function hasNegation(text, locale) {
-	const markers = NEGATION_MARKERS[locale];
-	if (!markers) return null;
-	const haystack = locale === 'en' ? text.toLowerCase() : text;
-	return markers.some((marker) => haystack.includes(marker.toLowerCase()));
+	return hasMarker(text, locale, NEGATION_MARKERS[locale]);
 }
 
 /** Does the text carry a permission / authority marker in this locale? */
 function hasPermissionMarker(text, locale) {
-	const markers = PERMISSION_MARKERS[locale];
-	if (!markers) return null;
-	const haystack = locale === 'en' ? text.toLowerCase() : text;
-	return markers.some((marker) => haystack.includes(marker.toLowerCase()));
+	return hasMarker(text, locale, PERMISSION_MARKERS[locale]);
 }
 
 /**
@@ -1106,6 +1121,40 @@ export function runChecks(contract, { repoRoot = REPO_ROOT } = {}) {
 	};
 }
 
+/**
+ * Opt-in matrix: feature x known locale.
+ *
+ * The whole point of per-feature locale declaration is that coverage
+ * is uneven on purpose, so the report has to show the shape of that
+ * unevenness rather than only its failures. A `—` cell is a locale the
+ * feature never opted into, which is a copy decision and not a gap.
+ */
+export function renderCoverageMatrix(contract) {
+	if (!contract || !Array.isArray(contract.features)) return null;
+	const locales = knownLocaleList(contract);
+	const head = ['feature', 'owner', ...locales];
+	const rows = contract.features.map((feature) => [
+		feature?.id ?? '—',
+		feature?.owner ?? '—',
+		...locales.map((locale) => {
+			const declaration = feature?.locales?.[locale];
+			if (!declaration) return '—';
+			return declaration.state === 'source' ? 'source' : `${declaration.state}`;
+		}),
+	]);
+	return { head, rows };
+}
+
+function textCoverageMatrix(contract) {
+	const matrix = renderCoverageMatrix(contract);
+	if (!matrix) return [];
+	return [
+		'  locale opt-in (— = not opted in, never a failure):',
+		`    ${matrix.head.join(' | ')}`,
+		...matrix.rows.map((row) => `    ${row.join(' | ')}`),
+	];
+}
+
 function escapeHtml(value) {
 	return String(value)
 		.replace(/&/g, '&amp;')
@@ -1146,6 +1195,7 @@ export function renderText(runs) {
 				'  OK: every declared locale is complete, its fallback chain terminates, and no mechanical rule fired.',
 			);
 		}
+		lines.push(...textCoverageMatrix(run.contract));
 		for (const item of run.findings) {
 			lines.push(
 				`  [${item.severity}] ${item.code} ${item.class}  ${locationOf(item)}  ${item.message}`,
@@ -1169,6 +1219,27 @@ export function renderJson(runs) {
  * artefact and a reviewer can open it without a build step. This is
  * also the surface the Issue's verification screenshot captures.
  */
+function htmlCoverageMatrix(contract) {
+	const matrix = renderCoverageMatrix(contract);
+	if (!matrix) return '';
+	const cells = matrix.rows
+		.map(
+			(row) =>
+				`<tr>${row
+					.map((cell, index) => {
+						if (index > 1 && cell === '—') return '<td class="off">—</td>';
+						if (index > 1 && cell === 'source') return '<td class="on">source</td>';
+						return `<td>${escapeHtml(cell)}</td>`;
+					})
+					.join('')}</tr>`,
+		)
+		.join('\n');
+	return `<table class="matrix">
+			<thead><tr>${matrix.head.map((cell) => `<th>${escapeHtml(cell)}</th>`).join('')}</tr></thead>
+			<tbody>${cells}</tbody>
+		</table>`;
+}
+
 export function renderHtml(runs) {
 	const sections = runs
 		.map((run) => {
@@ -1183,6 +1254,7 @@ export function renderHtml(runs) {
 					</tr>`,
 				)
 				.join('\n');
+			const matrix = htmlCoverageMatrix(run.contract);
 			return `<section>
 				<h2>${escapeHtml(run.label)}</h2>
 				<p class="path"><code>${escapeHtml(run.path)}</code></p>
@@ -1192,6 +1264,11 @@ export function renderHtml(runs) {
 					<span class="info">${run.summary.info} info</span>
 					<span class="plain">${run.summary.features} features · ${run.summary.optInPairs} opt-in pairs</span>
 				</p>
+				${
+					matrix
+						? `<p class="matrix-note">Locale opt-in per feature — <code>—</code> is a locale this feature never opted into, which is a copy decision and not a gap.</p>${matrix}`
+						: ''
+				}
 				${
 					run.findings.length === 0
 						? '<p class="empty">No findings: every declared locale is complete, its fallback chain terminates, and no mechanical rule fired.</p>'
@@ -1237,6 +1314,10 @@ export function renderHtml(runs) {
 	tr.sev-review td:first-child { box-shadow: inset 3px 0 0 #d0a338; }
 	tr.sev-info td:first-child { box-shadow: inset 3px 0 0 #6c8fb0; }
 	.empty { margin: 0; color: #4a473c; }
+	table.matrix { margin-bottom: 18px; }
+	table.matrix td.off { color: #a9a495; text-align: center; }
+	table.matrix td.on { background: #eef3e8; color: #3c5a2c; text-align: center; }
+	.matrix-note { margin: 0 0 8px; font-size: 13px; color: #6b6759; }
 	.legend { background: #fffdf8; border: 1px solid #e2ddd1; border-radius: 10px; padding: 24px 28px; }
 	.legend h2 { margin-bottom: 12px; }
 	.legend dl { margin: 0; display: grid; grid-template-columns: 260px 1fr; gap: 8px 20px; }
@@ -1324,6 +1405,7 @@ function main(argv) {
 			label: input.label,
 			path: input.path,
 			gating: input.gating,
+			contract: loaded.contract,
 			findings: result.findings,
 			summary: result.summary,
 		});

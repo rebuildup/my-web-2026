@@ -76,11 +76,16 @@ routes -> home
 routes -> portfolio
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
+routes -> http/security (Issue #454 — `classifyRedirectTarget` in the
+           /admin/login loader; the security classifier only, no router,
+           no handler)
 home/status -> cloudflare
 home/reactions -> reactions
 home/access -> http/access-counter (schema types only)
 admin/emoji-catalog -> reactions
 reactions -> cloudflare (env.DB at SSR time)
+http/seo -> portfolio (public project index only; the public-visibility
+             filter stays in the portfolio obligation — Issue #420)
 portfolio -> cloudflare (env.DB / env.MEDIA at SSR time, DI seam)
 portfolio -> editorial
 reactions -> i18n (Issue #433)

@@ -91,12 +91,12 @@ walk する）。同じ式を 2 回渡す恒真な assertion は置かない。
 | `src/i18n/slug-identity.test.ts` | 判定順序（not-a-string → empty → **non-ascii** → too-long → grammar-mismatch）。非 ASCII は grammar 不一致より先に理由になる。confusable は決して slug にならない。衝突監査の 2 種と「異なる語を alias と誤検出しない」こと |
 | `src/i18n/fixtures.test.ts` | 判断表 17 行を**出荷済みの owner grammar** で分類する。**publish される slug はすべて ASCII** であり、採用された候補と byte 単位で一致する |
 | `src/portfolio/schema.test.ts` | NFD / NFC / 互換文字のタイトルが row → model を byte-exact で通過すること。加えて「display text preservation」ケースが `rowToProject` の**全** display field（title / summary / role / period_label / markdown 5 種）を walk するため、trim / decode / NFC 再構成を 1 つでも入れると落ちる |
-| `scripts/check-i18n-policy.test.mjs`（15） | コメント除去（URL や regex を誤読しない）、行番号の保持、exempt リスト、`toLocaleString(undefined)` / `new Intl.X(undefined)` / 変数 locale の検出、gate 自身が `src/**` に対して clean であること |
+| `scripts/check-i18n-policy.test.mjs`（16） | コメント除去（URL や regex を誤読しない）、行番号の保持、exempt リスト、`toLocaleString(undefined)` / `new Intl.X(undefined)` の検出、型付き locale 変数を**違反にしない**こと、gate 自身が `src/**` に対して clean であること |
 | `scripts/capture-i18n-unicode-slug.test.mjs`（14） | WebP 限定・サイズ予算・RIFF ヘッダ、反実仮想 slugify の実測値、evidence が**出荷済みポリシー由来**であること、レポートが「証明していないこと」を明記すること |
 
 ローカル実測: `pnpm exec vitest run src/i18n/` = **89 passed**、
 `pnpm exec vitest run src/i18n/ src/portfolio/schema.test.ts src/reactions/ src/home/reactions/` = **218 passed**（9 files）、
-`node --test scripts/check-i18n-policy.test.mjs` = **15 passed**、
+`node --test scripts/check-i18n-policy.test.mjs` = **16 passed**、
 `node --test scripts/capture-i18n-unicode-slug.test.mjs` = **14 passed**。
 
 ## 5. CI gate（`pnpm run i18n:policy:check`）
@@ -108,18 +108,24 @@ walk する）。同じ式を 2 回渡す恒真な assertion は置かない。
 | --- | --- | --- |
 | `no-compatibility-fold` | コード中の `'NFKC'` / `'NFKD'` | 互換正規化は文字・数値・単位を書き換える |
 | `no-implicit-normalize` | `src/i18n/**` 以外の `.normalize(` | 表示本文は記述どおり。正規化は owner 1 箇所に閉じる |
-| `explicit-locale` | `toLocaleString()` 等の locale 引数が無い・`undefined`・変数である呼び出し | 訪問者環境に依存すると数値の意味が変わる。`undefined` は「決定していない」ことであって opt-in ではない |
-| `intl-without-locale` | `new Intl.X()` の locale 引数が無い・`undefined`・変数である呼び出し | locale は opt-in であり、opt-in は明示である |
+| `explicit-locale` | `toLocaleString()` 等の locale を名指ししていない呼び出し（引数なし、または明示的な `undefined`） | 訪問者環境に依存すると数値の意味が変わる。`undefined` は「決定していない」ことであって opt-in ではない |
+| `intl-without-locale` | `new Intl.X()` の locale を名指ししていない呼び出し（引数なし、または明示的な `undefined`） | locale は opt-in であり、opt-in は明示である |
 | `no-lossy-derivation` | `slugify(` / `deburr(` / `transliterate(` 等 | slug は導出せず、著作者が書く |
 
 加えて、判断表が**出荷済みポリシーと食い違えば** fail する（表が古いドキュメントになるのを防ぐ）。
-現在の実測: **176 ファイル走査 / 違反 0 / 判断表 17 行一致**。
+現在の実測: **195 ファイル走査 / 違反 0 / 判断表 17 行一致**。
 
 **この gate が検査しないもの**（scope note に明記）:
 
 - `scripts/`（§6 参照）。
 - **URL parameter の case folding**。`src/routes/tools.$slug.tsx` は今も
   `params.slug.toLowerCase()` を使うため、該当する rule は無い。→ §7.4。
+- **変数 locale**。`new Intl.NumberFormat(locale)` は違反にしない。Issue #430 の
+  `src/home/format.ts` は型付き `HomeLocale`（`'en' | 'ja' | 'ko'`）を渡し、
+  訪問者 locale のネゴシエーションを**意図的に未実装**と明記している。これは本ポリシーが
+  求める opt-in そのものである。呼び出し側を読むだけでは「名指しされた locale」か
+  「継承された locale」かを判定できないため、gate は推測しない。契約は所有
+  obligation のドキュメントにある。
 - 出荷済みカタログの衝突 audit（§2.4）。
 
 ## 6. 残るリスク（測定済み・隠していない）
@@ -141,8 +147,11 @@ walk する）。同じ式を 2 回渡す恒真な assertion は置かない。
    `seed-portfolio-path-a.mjs` / `publish-portfolio-production.mjs` は slug を legacy id から**導出**する
    （ASCII 以外を除去）。今回のポリシーを共有していない。実データは ASCII slug のみだが、
    衝突検出の追加が必要かは owner 判断。
-3. **locale opt-in の拡張**: 現在は `Intl.NumberFormat('en-US')` のような明示指定だけが許可される。
-   訪問者 locale を尊重する表示を今後追加する場合の契約（fallback、SSR と hydration の一致）は未定義。
+3. **locale opt-in の拡張**: 現在は `Intl.NumberFormat('en-US')` のような明示指定と、
+   Issue #430 が追加した型付き `HomeLocale`（`src/home/format.ts`）のような**型で閉じた**
+   locale 集合だけが通る。訪問者 locale を尊重する表示を今後追加する場合の契約
+   （fallback、SSR と hydration の一致、ネゴシエーションのソース）は未定義。gate は
+   変数 locale を検査しないため、この拡張は人手によるレビューが担う。
 4. **`/tools/<slug>` の case folding**: 3 つ目の公開 URL 空間だが、このポリシーの分類を通っていない。
    `src/routes/tools.$slug.tsx` は `params.slug.toLowerCase()`（Issue #183 の display-case 許容）で
    lookup key を作るため、`/tools/MultiSlicer` と `/tools/multislicer` は同一 identity に解決する。

@@ -18,12 +18,15 @@
  *                              performs is the NFC comparison key inside
  *                              `src/i18n`.
  *   explicit-locale            `toLocaleString()` / `new Intl.X()`
- *                              whose locale argument is missing,
- *                              `undefined` or a variable. That inherits
- *                              the VISITOR's environment, which makes a
- *                              number or a date change meaning depending
- *                              on who is looking. Locale is opt-in, and
- *                              opt-in means named.
+ *                              that name no locale at all — an empty
+ *                              argument list or an explicit
+ *                              `undefined`. Either resolves to the
+ *                              VISITOR's environment at runtime, which
+ *                              makes a number or a date change meaning
+ *                              depending on who is looking. Locale is
+ *                              opt-in, and opt-in means named.
+ *                              A *variable* locale is not flagged: see
+ *                              the rule comment below.
  *   no-lossy-derivation        no `slugify` / `deburr` /
  *                              `transliterate`-shaped helper: a slug is
  *                              authored, not derived from a title.
@@ -98,18 +101,24 @@ export const RULES = [
 	},
 	{
 		id: 'explicit-locale',
-		// Any first argument that is not a string literal is
-		// locale-implicit: no argument at all, or an explicit
-		// `undefined` / a variable. A named locale must be written
-		// down, so `toLocaleString('en-US')` passes and
-		// `toLocaleString(undefined)` does not.
-		pattern: /\btoLocale(?:String|DateString|TimeString)\s*\(\s*(?!['"`])/g,
+		// Locale-implicit means the call site names NO locale: either an
+		// empty argument list or an explicit `undefined`, both of which
+		// resolve to the visitor's environment at runtime.
+		//
+		// A *variable* locale is deliberately NOT flagged. Issue #430's
+		// `src/home/format.ts` passes a typed `HomeLocale` ('en' | 'ja' |
+		// 'ko') and documents that negotiation is not implemented; that
+		// is the opt-in the rule is for. Whether an arbitrary variable is
+		// a named locale or an inherited one is not decidable from the
+		// source, so it is left to the owning obligation's contract
+		// rather than guessed at here.
+		pattern: /\btoLocale(?:String|DateString|TimeString)\s*\(\s*(?:\)|undefined\b)/g,
 		message:
-			'pass an explicit locale: a bare call (or an undefined / variable locale) inherits the visitor environment and changes what a number or date means',
+			'pass an explicit locale: a bare call (or an explicit undefined) inherits the visitor environment and changes what a number or date means',
 	},
 	{
 		id: 'intl-without-locale',
-		pattern: /\bnew\s+Intl\.[A-Za-z]+\s*\(\s*(?!['"`])/g,
+		pattern: /\bnew\s+Intl\.[A-Za-z]+\s*\(\s*(?:\)|undefined\b)/g,
 		message:
 			'new Intl.X() needs an explicit locale argument (Issue #433): locale is opt-in, and opt-in means named',
 	},

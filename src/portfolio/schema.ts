@@ -258,6 +258,20 @@ export interface PortfolioCursor {
 }
 
 /**
+ * One row of the public project index — the minimal identity a
+ * consumer needs to address a project URL (Issue #420 sitemap).
+ *
+ * Deliberately narrower than `PortfolioProject`: a URL enumerator
+ * must not pay for (nor be tempted to serialise) Markdown bodies,
+ * links, and media.
+ */
+export interface PortfolioProjectIndexEntry {
+	readonly slug: string;
+	/** Epoch milliseconds (`portfolio_project.updated_at`). */
+	readonly updatedAt: number;
+}
+
+/**
  * Page returned by `listPortfolioProjects`. `nextCursor` is `null`
  * when the caller has reached the end of the result set.
  */
@@ -267,7 +281,7 @@ export interface PortfolioListPage {
 }
 
 /**
- * Lightweight project reference returned by `loadPortfolioAdjacent`.
+ * Public project reference returned by `loadPortfolioAdjacent`.
  *
  * Only `slug` and `title` are needed to render prev/next on the
  * detail surface — full media / links / markdown bodies stay on

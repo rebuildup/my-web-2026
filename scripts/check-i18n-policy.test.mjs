@@ -121,16 +121,15 @@ test('scanSource reports an explicit locale as clean', () => {
 	assert.deepEqual(scanSource('src/example.ts', source), []);
 });
 
-test('scanSource treats an explicit undefined or variable locale as implicit', () => {
+test('scanSource treats an explicit undefined locale as implicit', () => {
 	// `undefined` is not a decision — it is the absence of one, and it
-	// resolves to the visitor's environment at runtime. A variable is
-	// only as good as its value, so the policy requires the locale to be
-	// written at the call site.
+	// resolves to the visitor's environment at runtime, exactly like the
+	// bare call the rule already caught.
 	for (const source of [
 		'const label = count.toLocaleString(undefined);',
-		'const label = count.toLocaleString(LOCALE);',
+		'const label = count.toLocaleDateString(undefined, opts);',
 		'const format = new Intl.NumberFormat(undefined);',
-		'const format = new Intl.NumberFormat(LOCALE, opts);',
+		'const when = new Intl.DateTimeFormat(undefined, opts);',
 	]) {
 		const violations = scanSource('src/example.ts', source);
 		assert.equal(violations.length, 1, `expected exactly one finding for ${source}`);
@@ -140,6 +139,17 @@ test('scanSource treats an explicit undefined or variable locale as implicit', (
 			`unexpected rule for ${source}`,
 		);
 	}
+});
+
+test('scanSource leaves a typed locale variable to the owning obligation', () => {
+	// Issue #430's `src/home/format.ts` passes a typed `HomeLocale`
+	// ('en' | 'ja' | 'ko') and documents that visitor negotiation is not
+	// implemented — that IS the opt-in the rule exists to protect. A
+	// gate cannot tell a named locale from an inherited one by reading
+	// the call site, so flagging every variable would fail a correct
+	// adapter. The contract belongs to the obligation that declares it.
+	assert.deepEqual(scanSource('src/example.ts', 'new Intl.NumberFormat(locale);'), []);
+	assert.deepEqual(scanSource('src/example.ts', 'count.toLocaleString(LOCALE);'), []);
 });
 
 test('scanSource handles several violations in one file, in line order', () => {

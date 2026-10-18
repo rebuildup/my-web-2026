@@ -106,6 +106,12 @@ locale-implicit `toLocaleString()` / `new Intl.X()`, and a lossy
 derivation helper. It also fails when a fixture row no longer matches
 the shipped policy.
 
+"Locale-implicit" means the call names no locale at all — an empty
+argument list or an explicit `undefined`. A *variable* locale is not
+flagged, because a correct opt-in adapter (Issue #430's typed
+`HomeLocale`) and an inherited locale look identical at the call site;
+guessing would make the gate fail a right answer. See §6.3.
+
 ## 3. Why refusing beats normalising
 
 Every mainstream slugifier ends with a lossy fold (`NFKD` +
@@ -161,7 +167,8 @@ to NFC, and neither can mint a URL because non-ASCII is refused first.
 - The home widget no longer owns a private copy of the emoji regex.
 - `pnpm run i18n:policy:check` is part of `validate:fast`; a developer
   who writes `text.normalize('NFKC')` or `count.toLocaleString()` in
-  `src/` gets a failing gate instead of a runtime surprise.
+  `src/` gets a failing gate instead of a runtime surprise. A locale
+  passed as a *variable* is not machine-checked — see §6.3.
 - The gate and the capture script import TypeScript sources directly,
   which needs Node >= 22.18 (already the `engines` floor and the CI
   version). Node's type-stripping loader resolves ESM specifiers
@@ -182,9 +189,21 @@ to NFC, and neither can mint a URL because non-ASCII is refused first.
    their own ASCII-strip implementation. Whether they adopt this policy
    or get a collision audit is an owner decision; today's data is
    ASCII-only.
-3. If a visitor-locale-respecting surface is ever wanted, its contract
-   (fallback, SSR/hydration agreement) must be defined before it is
-   allowed past `explicit-locale`.
+3. **The visitor-locale question is now partly answered by Issue #430.**
+   `src/home/format.ts` (home obligation) landed after this ADR and
+   declares a typed `HomeLocale` ('en' | 'ja' | 'ko') plus a `'UTC'`
+   default, and documents that auto-negotiation (`Accept-Language`,
+   URL prefix, cookie) is deliberately not implemented. That satisfies
+   the "opt-in means named" half of `explicit-locale`: the locale is
+   named and closed, not inherited. What remains undecided is the half
+   this ADR asked for first — if a visitor-locale-respecting surface is
+   ever wanted, its negotiation source, its fallback, and its
+   SSR/hydration agreement must be defined before it is allowed past
+   `explicit-locale`. The gate cannot enforce that part: it flags a
+   call that names no locale, not one that names a *variable*, because
+   the call site cannot be read to tell the two apart. The contract
+   belongs to the obligation that declares it, and `src/home/format.ts`
+   declares its own.
 4. **`/tools/$slug` is a published URL space that this policy does not
    cover.** `src/routes/tools.$slug.tsx` derives its lookup key with
    `params.slug.toLowerCase()` (Issue #183 display-case tolerance) and

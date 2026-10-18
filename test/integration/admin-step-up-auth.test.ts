@@ -7,10 +7,11 @@ import {
 	StepUpError,
 	assertStepUpGranted,
 	confirmStepUpImpl,
+	confirmStepUpOutcome,
 	evaluateStepUp,
 	readStepUpGrant,
 } from '../../src/admin/auth/step-up';
-import { createApiKeyImpl } from '../../src/admin/keys/load';
+import { createApiKeyOutcome } from '../../src/admin/keys/load';
 import { auth } from '../../src/cloudflare/auth/better-auth';
 
 /**
@@ -20,19 +21,29 @@ import { auth } from '../../src/cloudflare/auth/better-auth';
  * against the REAL pieces rather than mocks: the local workerd pool
  * (`SELF.fetch` for the sign-in and the boundary request), the real
  * D1 binding, the real Better Auth instance and its password
- * verification, and the real gate `assertStepUpGranted` that
- * `createApiKey` calls in production.
+ * verification, and the real composition `createApiKeyOutcome` that
+ * `createApiKey` runs in production.
+ *
+ * The composition is exercised as a WHOLE — `createApiKeyOutcome`
+ * runs the gate and then the create half — because that ordering is
+ * the security property. Calling `assertStepUpGranted` and
+ * `createApiKeyImpl` separately would leave the wiring untested: a
+ * deleted gate line, or a gate moved after the create, would keep
+ * every case here green while the session cookie alone regained the
+ * power to mint a key.
  *
  * Cases
  * -----
- *   negative  a session that never confirmed is refused by the gate
- *             (`step_up_required`) and no grant row exists.
+ *   negative  a session that never confirmed is refused by the
+ *             operation itself (`{ ok: false }`), no grant row
+ *             exists, and no `apikey` row is written.
  *   negative  a confirmation with the wrong password is refused
  *             (`step_up_rejected`), writes NOTHING, and leaves the
  *             gate refusing.
  *   positive  a confirmation with the correct password opens the
- *             window, the gate admits, and the gated operation
- *             (API key creation) persists its row.
+ *             window and the gated operation persists its row.
+ *   boundary  a window read at the moment it closes refuses the whole
+ *             operation, not just the status query.
  *   boundary  over HTTP, `/api/v1/auth/verify-password` — the endpoint
  *             the gate delegates to — answers 400 `INVALID_PASSWORD`
  *             vs 200 `{ status: true }`, so "denied" is distinguishable
@@ -50,8 +61,9 @@ import { auth } from '../../src/cloudflare/auth/better-auth';
  *     the session and not to the account.
  *
  * Fixture account: role `admin`, local D1 only. The project defines no
- * other roles (ADR-0009 §1), so no permission is invented here, and no
- * production account, credential, or database is touched.
+ * other roles (`src/admin/auth/require-admin.ts`), so no permission is
+ * invented here, and no production account, credential, or database is
+ * touched.
  */
 
 const FIXTURE_EMAIL = 'stepup-admin@test.local';
@@ -151,18 +163,22 @@ describe('step-up gate (Issue #445)', () => {
 		await clearRows();
 	});
 
-	it('negative: an unconfirmed session cannot pass the gate API-key creation calls', async () => {
-		const { session } = await signInAsAdmin();
+	it('negative: the operation itself is refused while unconfirmed, and mints nothing', async () => {
+		const { headers, session } = await signInAsAdmin();
 
-		// The gate every gated server function calls. Nothing was
-		// confirmed, so the operation is refused BEFORE it can mint a
-		// key — and the refusal names the missing step, not the account.
-		await expect(assertStepUpGranted(env.DB, session)).rejects.toMatchObject({
-			name: 'StepUpError',
-			reason: 'step_up_required',
+		// The production path: the server fn resolves the session with
+		// `requireAdmin()` and then runs exactly this function. Nothing
+		// was confirmed, so the gate refuses and the create half is
+		// never reached — the refusal is reported as a result, because
+		// a thrown `StepUpError` loses `reason` on the wire.
+		const outcome = await createApiKeyOutcome(env.DB, session, headers, {
+			name: 'must-not-be-created',
+			permissions: { access_counter: ['write'] },
 		});
+		expect(outcome).toEqual({ ok: false, reason: 'step_up_required' });
 
-		// No key row exists: the refusal happened at the gate, not after.
+		// No key row exists: the refusal happened at the gate, before
+		// the code that mints a bearer token ran.
 		const keys = await env.DB.prepare('SELECT COUNT(*) AS c FROM apikey').first<{ c: number }>();
 		expect(keys?.c).toBe(0);
 
@@ -176,6 +192,11 @@ describe('step-up gate (Issue #445)', () => {
 		await expect(
 			confirmStepUpImpl(env.DB, session, headers, { password: 'wrong-password-fixture' }),
 		).rejects.toMatchObject({ name: 'StepUpError', reason: 'step_up_rejected' });
+
+		// The same refusal, in the shape the server function returns it.
+		await expect(
+			confirmStepUpOutcome(env.DB, session, headers, { password: 'wrong-password-fixture' }),
+		).resolves.toEqual({ ok: false, reason: 'step_up_rejected' });
 
 		// A rejected attempt writes nothing, so a retry cannot inherit
 		// a half-written grant.
@@ -210,15 +231,15 @@ describe('step-up gate (Issue #445)', () => {
 		expect(rows[0]?.user_id).toBe(session.user.id);
 		expect(Object.keys(rows[0] ?? {}).sort()).toEqual(['confirmed_at', 'session_id', 'user_id']);
 
-		// The gated operation itself: `createApiKey` runs
-		// `assertStepUpGranted` and then this impl, so exercising the
-		// impl with a granted session is the post-gate half of the
-		// production path.
-		const created = await createApiKeyImpl(session, headers, {
+		// The gated operation, run as one composition: gate first, then
+		// create. A granted session gets its row.
+		const outcome = await createApiKeyOutcome(env.DB, session, headers, {
 			name: 'step-up-fixture-key',
 			permissions: { access_counter: ['write'] },
 		});
-		expect(created.key.name).toBe('step-up-fixture-key');
+		expect(outcome.ok).toBe(true);
+		if (!outcome.ok) throw new Error('expected the gate to admit a confirmed session');
+		expect(outcome.result.key.name).toBe('step-up-fixture-key');
 		const persisted = await env.DB.prepare('SELECT COUNT(*) AS c FROM apikey').first<{
 			c: number;
 		}>();
@@ -226,7 +247,7 @@ describe('step-up gate (Issue #445)', () => {
 	});
 
 	it('the window lapses: a confirmation older than the step-up age is refused again', async () => {
-		const { session } = await signInAsAdmin();
+		const { headers, session } = await signInAsAdmin();
 		const confirmedAtMs = Date.now();
 		await env.DB.prepare(
 			`INSERT INTO admin_step_up_grant (session_id, user_id, confirmed_at)
@@ -245,6 +266,20 @@ describe('step-up gate (Issue #445)', () => {
 		await expect(
 			assertStepUpGranted(env.DB, session, confirmedAtMs + STEP_UP_MAX_AGE_MS),
 		).rejects.toMatchObject({ reason: 'step_up_required' });
+
+		// And the operation refuses for the same reason, still minting
+		// nothing: a stale confirmation is not a pass.
+		await expect(
+			createApiKeyOutcome(
+				env.DB,
+				session,
+				headers,
+				{ name: 'lapsed-window-key', permissions: { reactions: ['write'] } },
+				confirmedAtMs + STEP_UP_MAX_AGE_MS,
+			),
+		).resolves.toEqual({ ok: false, reason: 'step_up_required' });
+		const keys = await env.DB.prepare('SELECT COUNT(*) AS c FROM apikey').first<{ c: number }>();
+		expect(keys?.c).toBe(0);
 	});
 
 	it('boundary: Better Auth answers the confirmation endpoint differently per outcome', async () => {

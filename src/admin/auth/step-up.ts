@@ -44,8 +44,8 @@ import { requireAdmin } from './require-admin';
  * ---------------------------------------------
  * A cookie would need a signing key to be unforgeable, and this
  * repository has no signing key that is not a Better Auth secret
- * (ADR-0015 §1 / §11.2 keep runtime secret ownership with Infisical,
- * and `wrangler.jsonc#secrets.required` declares names only). Minting a
+ * (ADR-0015 §1 keeps runtime secret ownership with Infisical, and
+ * `wrangler.jsonc#secrets.required` declares names only). Minting a
  * new secret is an operator decision this ticket does not get to make.
  * A D1 row keyed by the session id Better Auth already resolved from
  * the request needs no new secret, is inspectable read-only, and cannot
@@ -103,13 +103,22 @@ export interface StepUpStatus {
 	expiresAtMs: number | null;
 }
 
+/** The two things that can be refused, and what the gate must say. */
+export type StepUpErrorReason = 'step_up_required' | 'step_up_rejected';
+
 /**
  * Thrown by the gate (`step_up_required`) and by the confirmation
- * (`step_up_rejected`). `reason` is the wire-visible discriminator the
- * admin UI switches on; the message carries nothing about the account.
+ * (`step_up_rejected`). The message carries nothing about the account.
+ *
+ * NOTE: `reason` is NOT a wire contract. TanStack Start serialises a
+ * thrown `Error` with `ShallowErrorPlugin`, which keeps only `message`
+ * and drops own properties, so a client that branched on `err.reason`
+ * would see `undefined`. Server functions that must be branched on
+ * therefore translate the throw into a returned outcome —
+ * `confirmStepUpOutcome` below.
  */
 export class StepUpError extends Error {
-	constructor(public reason: 'step_up_required' | 'step_up_rejected') {
+	constructor(public reason: StepUpErrorReason) {
 		super(reason);
 		this.name = 'StepUpError';
 	}
@@ -258,12 +267,64 @@ export async function confirmStepUpImpl(
 	return evaluateStepUp(nowMs, nowMs);
 }
 
-const ConfirmStepUpInput = z.object({ password: z.string().min(1).max(256) });
+const ConfirmStepUpInput = z.object({
+	// The cap is an input bound only: `verifyPassword` never sets a
+	// password, it compares one. Better Auth refuses to store anything
+	// above `emailAndPassword.maxPasswordLength` (128 by default), so
+	// this stays wider than any password the project can hold rather
+	// than duplicating Better Auth's limit as a second source of
+	// truth that could drift.
+	password: z.string().min(1).max(256),
+});
+
+/**
+ * Wire-safe result of the confirmation.
+ *
+ * A thrown `StepUpError` loses `reason` in transit (see the class
+ * comment), so the refusal travels as a returned value. Errors that
+ * are NOT a verdict about the password — an expired session, an
+ * adapter failure — still throw, because "we could not check" must not
+ * be rendered as "wrong password".
+ */
+export type ConfirmStepUpOutcome =
+	| { ok: true; status: StepUpStatus }
+	| { ok: false; reason: Extract<StepUpErrorReason, 'step_up_rejected'> };
+
+/**
+ * The confirmation as the server function runs it: `confirmStepUpImpl`
+ * plus the throw-to-outcome translation, in one function, so the whole
+ * production path is callable from a test without TanStack Start's
+ * request context.
+ */
+export async function confirmStepUpOutcome(
+	db: D1Database,
+	session: AdminSession,
+	headers: Headers,
+	data: { password: string },
+	nowMs: number = Date.now(),
+): Promise<ConfirmStepUpOutcome> {
+	try {
+		return { ok: true, status: await confirmStepUpImpl(db, session, headers, data, nowMs) };
+	} catch (error) {
+		if (error instanceof StepUpError && error.reason === 'step_up_rejected') {
+			return { ok: false, reason: 'step_up_rejected' };
+		}
+		throw error;
+	}
+}
 
 /**
  * Read-only status probe for the admin UI. Server-fn wrapper (the
  * obligation that owns the session composes it), so the route never
  * imports the D1 helpers.
+ *
+ * `D1Database` and `Headers` are passed into the `*Impl` / `*Outcome`
+ * helpers rather than read from `cloudflare:workers` inside them, and
+ * `getRequestHeaders()` is read in the wrapper rather than in the
+ * helper: both are ambient context that exists only inside a server
+ * function. Taking them as parameters is what makes the same
+ * composition runnable in the workerd pool, where neither ambient
+ * value exists. The asymmetry is deliberate, not an oversight.
  */
 export const getStepUpStatus = createServerFn({ method: 'GET' }).handler(
 	async (): Promise<StepUpStatus> => {
@@ -275,7 +336,7 @@ export const getStepUpStatus = createServerFn({ method: 'GET' }).handler(
 /** Password confirmation for the step-up window. */
 export const confirmStepUp = createServerFn({ method: 'POST' })
 	.validator(ConfirmStepUpInput)
-	.handler(async ({ data }): Promise<StepUpStatus> => {
+	.handler(async ({ data }): Promise<ConfirmStepUpOutcome> => {
 		const session = await requireAdmin();
-		return confirmStepUpImpl(env.DB, session, getRequestHeaders(), data);
+		return confirmStepUpOutcome(env.DB, session, getRequestHeaders(), data);
 	});

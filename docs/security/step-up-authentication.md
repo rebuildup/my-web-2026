@@ -20,20 +20,49 @@ Issue #445 が指定する「高リスク管理操作 1 種」を **API キー�
 | 操作 | 判断 |
 | --- | --- |
 | `deleteApiKey`（キーの失効） | 権限を**奪う**方向の操作。step-up を課すと非常時の失効手段まで塞ぐ。安全方向なので対象外 |
+| `POST /api/v1/auth/api-key/create`（HTTP 面） | Better Auth の api-key plugin が公開している endpoint で、`/api/v1/auth/*` 経由で**本ゲートを迂回して到達できる**。ただし scope 付き発行はできない（`permissions` を渡すと `SERVER_ONLY_PROPERTY` で拒否される）ので、本ゲートが守りたい「恒久的な scope 付き権限の発行」は迂回されない。session cookie だけで **scope なし** の apikey 行を作れることは本 Issue 由来の退行ではなく、HTTP boundary 全体の設計上の既存事項。gate 対象へ昇格させるかは owner 判断（未決） |
 | 招待の発行 / 画像アップロード | Issue #445 のスコープは 1 種。次回の候補であり、本 PR では実装しない（捏造しない） |
 | `/admin` の閲覧・`listApiKeys` | 読み取りのみ。step-up は権限を**付与する**操作に限定 |
+
+**本ゲートは総当たり防御ではない。** `confirmStepUp` は
+`auth.api.verifyPassword` を in-process で呼ぶため、Better Auth の
+`onRequestRateLimit` を通らない（HTTP 経由の `/api/v1/auth/verify-password`
+は既定の窓で保護される）。step-up ゲートが保証するのは
+「session cookie だけでは権限を発行できない」ことだけであり、
+パスワードの試行回数を制限するものではない。試行回数の制限を
+本ゲートの前提とするなら、別 ticket で Better Auth の rate limit
+設定を決める必要がある（owner 判断・未決）。
 
 ## 状態の定義（必要 / 成功 / 拒否を区別する）
 
 `src/admin/auth/step-up.ts` が返す `StepUpStatus.state` と
 `StepUpError.reason` が UI とサーバの唯一のcontracts になる。
 
-| 状態 | 発生条件 | `state` | error | UI |
+| 状態 | 発生条件 | `state` | 返り値 | UI |
 | --- | --- | --- | --- | --- |
-| 必要 | まだ確認していない | `required` | `step_up_required` | パスワード入力欄を出現させる |
-| 成功 | 5 分以内に確認済み | `confirmed` | — | 残り分数を表示し、発行ボタンを有効化 |
-| 期限切れ | 確認済みだが窓を過ぎた | `expired` | `step_up_required` | 「期限切れ」と明示して再入力させる |
-| 拒否 | パスワード不一致 | `required` のまま | `step_up_rejected` | 固定の文言のみ（詳細を返さない） |
+| 必要 | まだ確認していない | `required` | `createApiKey` が `{ ok: false, reason: 'step_up_required' }` | パスワード入力欄を出現させる |
+| 成功 | 5 分以内に確認済み | `confirmed` | `{ ok: true, result }` | 残り分数を表示し、発行ボタンを有効化 |
+| 期限切れ | 確認済みだが窓を過ぎた | `expired` | `createApiKey` が `{ ok: false, reason: 'step_up_required' }` | 「期限切れ」と明示して再入力させる |
+| 拒否 | パスワード不一致 | `required` のまま | `confirmStepUp` が `{ ok: false, reason: 'step_up_rejected' }` | 固定の文言のみ（詳細を返さない） |
+
+### 判別子は「throw」ではなく「戻り値」で運ぶ
+
+TanStack Start は throw された `Error` を `ShallowErrorPlugin`
+（`@tanstack/router-core`）でシリアライズする。この plugin は
+**`message` だけ**を保存し、`Error` サブクラスの独自プロパティ
+（本案の `StepUpError.reason`）は**落ちる**。したがって UI 側が
+`err.reason` を読む実装は `undefined` になり、期限切れ時に
+「再入力フォームを出す」分岐が発火しない。
+
+そのため wire 上で分岐するものはすべて**戻り値**として返す:
+
+- `createApiKeyOutcome()` → `CreateApiKeyOutcome`
+- `confirmStepUpOutcome()` → `ConfirmStepUpOutcome`
+
+`assertStepUpGranted` / `confirmStepUpImpl` は `StepUpError` を
+**投げる**ままでよい（サーバ側の不変条件であり、テストが直接
+検証する）。throw を wire 変換するのは server-fn wrapper の責務で、
+その変換は `*Outcome` 関数として一緒にテストされる。
 
 `expired` と `required` を分けているのは、UI が「一度確認済みだが
 失効した」ことを正直に表示できるようにするため。**ゲートは両方を
@@ -88,7 +117,11 @@ confirmed_at)` に置く。
   5 分）と D1 grant の round-trip / 一意性 / 外部キー制約。
 - `test/integration/admin-step-up-auth.test.ts` — local workerd
   プール上の positive / negative ペア。実 entrypoint、実 D1、実
-  Better Auth。HTTP 境界の `/verify-password` も 400
+  Better Auth。gate と発行処理は**一つの関数
+  `createApiKeyOutcome`** として実行するので、
+  「gate が操作の入口で呼ばれている」ことまで検証している
+  （gate と impl を別々に呼ぶテストでは、配線を消しても green に
+  なってしまう）。HTTP 境界の `/verify-password` も 400
   `INVALID_PASSWORD` / 200 `{status:true}` を確認する。
 - 本番 D1 の破壊的操作は行わない。migration の production 適用は
   リリース時の運用ステップであり、本 PR では適用しない。

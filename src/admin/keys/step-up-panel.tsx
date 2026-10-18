@@ -1,5 +1,5 @@
 import { useServerFn } from '@tanstack/react-start';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { STEP_UP_MAX_AGE_SECONDS, type StepUpStatus, confirmStepUp } from '../auth/step-up';
@@ -22,6 +22,12 @@ import { STEP_UP_MAX_AGE_SECONDS, type StepUpStatus, confirmStepUp } from '../au
  * password renders a fixed sentence — Better Auth's error detail is
  * not forwarded, and no account field appears here.
  *
+ * Two failure sentences, not one: a refusal the server actually
+ * decided on (`step_up_rejected` — the password did not match) reads
+ * differently from a request that never reached a verdict (expired
+ * session, dropped connection). `step-up.ts` is careful to keep those
+ * apart on the server; collapsing them here would undo that.
+ *
  * The window length in the copy comes from `STEP_UP_MAX_AGE_SECONDS`,
  * the same constant the gate enforces, so the sentence cannot drift
  * away from the rule.
@@ -37,28 +43,64 @@ export function StepUpPanel({ status, onConfirmed }: StepUpPanelProps) {
 	const [password, setPassword] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [rejected, setRejected] = useState(false);
+	const [undetermined, setUndetermined] = useState(false);
+	// `null` until the client has a clock. See `remainingMinutes`.
+	const [nowMs, setNowMs] = useState<number | null>(null);
 
 	const confirmed = status.state === 'confirmed';
+
+	// The countdown runs off a client-only clock. `null` during SSR and
+	// during the first client render, so the SSR markup and the hydrated
+	// markup are the same sentence — see `remainingMinutes`.
+	useEffect(() => {
+		if (status.state !== 'confirmed') {
+			setNowMs(null);
+			return;
+		}
+		const tick = () => setNowMs(Date.now());
+		tick();
+		const timer = setInterval(tick, STEP_UP_TICK_MS);
+		return () => clearInterval(timer);
+	}, [status.state]);
 
 	const onSubmit = async (event: React.FormEvent) => {
 		event.preventDefault();
 		if (password.length === 0) return;
 		setBusy(true);
 		setRejected(false);
+		setUndetermined(false);
 		try {
-			const next = await confirm({ data: { password } });
-			onConfirmed(next);
+			const outcome = await confirm({ data: { password } });
+			if (outcome.ok) {
+				onConfirmed(outcome.status);
+			} else {
+				// A verdict about the password. Which part was wrong is
+				// never described.
+				setRejected(true);
+			}
 		} catch {
-			// `step_up_rejected` and anything else collapse to the same
-			// sentence on purpose: the UI has no reason to describe which
-			// part of the credential was wrong.
-			setRejected(true);
+			// No verdict at all — the request failed, or the session it
+			// needed is gone. Saying "wrong password" here would be a
+			// claim the server never made.
+			setUndetermined(true);
 		} finally {
 			// Never keep the submitted password in component state.
 			setPassword('');
 			setBusy(false);
 		}
 	};
+
+	// Before the client clock exists (and therefore during SSR) the
+	// sentence quotes the constant instead of a live countdown — see
+	// `remainingMinutes`.
+	const left = remainingMinutes(status, nowMs);
+	const summary = confirmed
+		? left === null
+			? `このセッションは確認済み。API キー発行は ${STEP_UP_MAX_AGE_SECONDS / 60} 分以内。`
+			: `このセッションは確認済み。API キー発行は ${left} 分以内。`
+		: status.state === 'expired'
+			? '確認の有効期限が切れました。発行前にパスワードで再確認してください。'
+			: 'API キーを発行する操作は、期限内のパスワード再認証が必要です。';
 
 	return (
 		<section
@@ -110,11 +152,7 @@ export function StepUpPanel({ status, onConfirmed }: StepUpPanelProps) {
 					color: 'text.muted',
 				})}
 			>
-				{confirmed
-					? `このセッションは確認済み。API キー発行は ${remainingMinutes(status)} 分以内。`
-					: status.state === 'expired'
-						? '確認の有効期限が切れました。発行前にパスワードで再確認してください。'
-						: 'API キーを発行する操作は、期限内のパスワード再認証が必要です。'}
+				{summary}
 			</output>
 
 			{!confirmed && (
@@ -180,7 +218,7 @@ export function StepUpPanel({ status, onConfirmed }: StepUpPanelProps) {
 				</form>
 			)}
 
-			{rejected && !confirmed && (
+			{(rejected || undetermined) && !confirmed && (
 				<p
 					role="alert"
 					className={css({
@@ -190,7 +228,9 @@ export function StepUpPanel({ status, onConfirmed }: StepUpPanelProps) {
 						color: 'text.muted',
 					})}
 				>
-					パスワードを確認できませんでした。再入力してください。
+					{undetermined
+						? '確認を完了できませんでした。セッションの有効性を確認して再試行してください。'
+						: 'パスワードを確認できませんでした。再入力してください。'}
 				</p>
 			)}
 		</section>
@@ -198,12 +238,28 @@ export function StepUpPanel({ status, onConfirmed }: StepUpPanelProps) {
 }
 
 /**
- * Whole minutes left in the window, floored at 1 while the window is
- * still open, so a confirmation one second from lapsing never renders
- * "0 分".
+ * How often the countdown re-reads the clock while the window is open.
+ * The window is five minutes, so half of that is already too coarse to
+ * be noticeable; it only has to be short enough that the number in the
+ * copy never claims more time than is left.
  */
-function remainingMinutes(status: StepUpStatus): number {
-	if (status.expiresAtMs === null) return 0;
-	const remaining = status.expiresAtMs - Date.now();
+const STEP_UP_TICK_MS = 30_000;
+
+/**
+ * Whole minutes left in the window, or `null` while there is no
+ * client clock yet. Floored at 1 while the window is still open, so a
+ * confirmation one second from lapsing never renders "0 分".
+ *
+ * The clock is passed in rather than read here because this component
+ * renders on the server too. Reading `Date.now()` during render makes
+ * the SSR pass and the hydration pass disagree near the boundary — and
+ * when the window lapses between them the sentence changes wholesale,
+ * which React reports as a hydration mismatch. The caller supplies
+ * `null` until `useEffect` has run, and the copy quotes the constant
+ * instead of a live countdown in that render.
+ */
+function remainingMinutes(status: StepUpStatus, nowMs: number | null): number | null {
+	if (nowMs === null || status.expiresAtMs === null) return null;
+	const remaining = status.expiresAtMs - nowMs;
 	return remaining <= 0 ? 0 : Math.max(1, Math.ceil(remaining / 60_000));
 }

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { css } from '../../styled-system/css';
 import { KeysView } from '../admin/keys/keys';
 import { createApiKey, listApiKeys } from '../admin/keys/load';
-import type { ApiKeyPermissions } from '../admin/keys/load';
+import type { ApiKeyPermissions, CreateApiKeyOutcome } from '../admin/keys/load';
 import { StepUpPanel } from '../admin/keys/step-up-panel';
 import { type StepUpStatus, getCurrentSession, getStepUpStatus } from '../admin/public';
 
@@ -52,7 +52,19 @@ function KeysRoute() {
 					<CreateKeyForm
 						stepUpState={status.state}
 						onStepUpRequired={() =>
-							setStatus({ state: 'required', confirmedAtMs: null, expiresAtMs: null })
+							setStatus((prev) =>
+								// A lapsed confirmation is not the same as never
+								// having confirmed one, so the timestamps survive
+								// and the panel can say "expired" instead of
+								// resetting to "required".
+								prev.state === 'confirmed'
+									? {
+											state: 'expired',
+											confirmedAtMs: prev.confirmedAtMs,
+											expiresAtMs: prev.expiresAtMs,
+										}
+									: { state: 'required', confirmedAtMs: null, expiresAtMs: null },
+							)
 						}
 					/>
 				</>
@@ -109,26 +121,30 @@ function CreateKeyForm({
 				if (actions.length > 0) permissions[resource] = actions;
 			}
 			const typedPermissions = permissions as ApiKeyPermissions;
-			const result = await create({ data: { name, permissions: typedPermissions } });
-			setPlaintext(result.plaintext);
+			const outcome: CreateApiKeyOutcome = await create({
+				data: { name, permissions: typedPermissions },
+			});
+			if (!outcome.ok) {
+				// The server refused at the gate, BEFORE minting anything.
+				// The window lapsed while the form was open (or this tab
+				// rendered before another one confirmed): show the
+				// confirmation prompt instead of leaving a dead button.
+				onStepUpRequired();
+				setError('確認の有効期限が切れました。上の Step-up check で再確認してください。');
+				return;
+			}
+			setPlaintext(outcome.result.plaintext);
 			setName('');
 			setScopes({
 				access_counter: { read: false, write: false },
 				reactions: { read: false, write: false },
 			});
-		} catch (err) {
-			const reason = (err as { reason?: string }).reason;
-			if (reason === 'step_up_required') {
-				// The window lapsed (or this tab rendered before another
-				// one confirmed): show the confirmation prompt instead of
-				// leaving a dead button.
-				onStepUpRequired();
-			}
-			setError(
-				reason === 'step_up_required'
-					? '確認の有効期限が切れました。上の Step-up check で再確認してください。'
-					: ((reason ?? '作成に失敗しました。') as string),
-			);
+		} catch {
+			// Everything that is not the step-up gate (adapter failure,
+			// plugin validation, a dropped request) reaches the UI as a
+			// thrown error with no `reason` on it, so it is reported
+			// without claiming to know which step failed.
+			setError('作成に失敗しました。時間をおいて再度お試しください。');
 		} finally {
 			setBusy(false);
 		}

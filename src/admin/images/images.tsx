@@ -4,22 +4,40 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { createAuditLogger } from '../../logging/logger';
 import { deleteReactionImage, uploadReactionImage } from './load';
 import type { AdminImage } from './load';
+import { describeUploadFailure } from './upload-errors';
+
+const imagesLogger = createAuditLogger('admin.images');
 
 /**
  * Admin reaction-image UI — list + upload + delete.
  *
  * Upload accepts PNG / JPEG / WebP / GIF (≤256 KiB). The form does
  * client-side validation for nicer UX; the server function does
- * authoritative validation. Same image uploaded twice returns the
- * existing id (content-addressed by SHA-256).
+ * authoritative validation — declared type, size, and the magic
+ * bytes that must agree with the declaration (Issue #458). A server
+ * rejection is rendered through `describeUploadFailure`, so the page
+ * shows a fixed sentence per policy code and never a raw server
+ * message. Same image uploaded twice returns the existing id
+ * (content-addressed by SHA-256).
  *
  * Delete is disabled with a tooltip when any reaction still
  * references the image. The server rejects the call in that case
  * with `image_referenced`.
  */
 
+/*
+ * Client-side pre-checks, for instant feedback only. They are a copy
+ * of `ALLOWED_IMAGE_CONTENT_TYPES` / `MAX_IMAGE_BYTES` in
+ * `src/http/reactions/schema.ts` and are deliberately NOT imported:
+ * this is a React component and the schema module belongs to the
+ * external HTTP boundary, which the client has no reason to know
+ * about. The server function is authoritative — a stale copy here can
+ * only cost the admin one round-trip, and the rejection renders as a
+ * fixed sentence (`oversize` / `unsupported_content_type`).
+ */
 const ALLOWED = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
 const MAX_BYTES = 256 * 1024;
 
@@ -132,13 +150,22 @@ function UploadForm() {
 			const bytes = await file.arrayBuffer();
 			const b64 = arrayBufferToBase64(bytes);
 			const result = await upload({
-				data: { contentType: file.type as (typeof ALLOWED)[number], bytes: b64 },
+				data: {
+					contentType: file.type as (typeof ALLOWED)[number],
+					bytes: b64,
+					// Advisory: the server validates the name and never
+					// lets it reach the R2 key, but a traversal attempt
+					// is refused instead of silently ignored.
+					filename: file.name,
+				},
 			});
 			setSuccess(`uploaded: ${result.id}`);
 			e.currentTarget.reset();
 		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			setError(message);
+			// Raw text stays in the console (redacted); the page shows
+			// only the mapped sentence for a known policy code.
+			imagesLogger.error('upload failed:', err);
+			setError(describeUploadFailure(err));
 		} finally {
 			setBusy(false);
 		}
@@ -192,6 +219,7 @@ function UploadForm() {
 			</button>
 			{error && (
 				<p
+					role="alert"
 					className={css({
 						margin: '0',
 						fontFamily: 'sans',
@@ -221,6 +249,7 @@ function UploadForm() {
 function ImageRow({ image }: { image: AdminImage }) {
 	const del = useServerFn(deleteReactionImage);
 	const [busy, setBusy] = useState(false);
+	const [error, setError] = useState<string | null>(null);
 	const title = image.referenced
 		? 'reactions still reference this image; delete them first'
 		: 'delete (irreversible)';
@@ -275,8 +304,12 @@ function ImageRow({ image }: { image: AdminImage }) {
 					title={title}
 					onClick={async () => {
 						setBusy(true);
+						setError(null);
 						try {
 							await del({ data: { id: image.id } });
+						} catch (err) {
+							imagesLogger.error('delete failed:', err);
+							setError(describeUploadFailure(err));
 						} finally {
 							setBusy(false);
 						}
@@ -299,6 +332,20 @@ function ImageRow({ image }: { image: AdminImage }) {
 					{busy ? '…' : 'delete'}
 				</button>
 			</div>
+			{error && (
+				<p
+					role="alert"
+					className={css({
+						gridColumn: '1 / -1',
+						margin: '0',
+						fontFamily: 'sans',
+						fontSize: 'sm',
+						color: 'text.muted',
+					})}
+				>
+					{error}
+				</p>
+			)}
 		</li>
 	);
 }

@@ -149,7 +149,7 @@ server ──────────────▶ http
 - `http/` は `home/` も `portfolio/` を知らない。
 - `editorial/` は特定 surface を知らない。
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
-- `i18n/` は他の obligation を import しない (leaf obligation)。policy の例外を足すなら、ここ，扩大ではなく ADR 改訂が先。
+- `i18n/` は他の obligation を import しない (leaf obligation)。policy の例外を足すなら、ここ、拡大ではなく ADR 改訂が先。
 - framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。
 
 ## TanStack Start / Hono boundary

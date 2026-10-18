@@ -48,6 +48,20 @@ measured artefact is
 local-only: fixtures live in a throwaway Miniflare D1 database, and no
 production endpoint, secret, or operator account is read or written.
 
+## Cache isolation
+
+Responses whose body depends on who asked for them (per-principal
+counters, per-visitor reaction state, sessions, `/admin*`, and
+server-function payloads) are marked so that a **shared** cache — CDN
+edge, corporate proxy — cannot store them: `private, no-store` on the
+external boundary, `private, no-cache` on caller-specific SSR
+documents, `no-store` under `/admin*`. Public immutable payloads opt
+in explicitly with `public, max-age=…, immutable`.
+
+The full contract, the audit it came from, and the verification
+suites are documented in
+[`docs/security/cache-isolation.md`](security/cache-isolation.md).
+
 ## Open redirect
 
 Every `returnTo`-shaped value that crosses the external boundary is

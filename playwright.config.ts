@@ -93,18 +93,30 @@ export default defineConfig({
 	// so the regular `pnpm run e2e` (CI on push, local dev) does not
 	// DNS-fail against a domain that may not be deployed yet.
 	//
-	// `portfolio.spec.ts` likewise targets a local D1 binding: it
-	// seeds draft / unlisted / archived rows into the local D1 and
-	// asserts the public-visibility boundary. The local D1 file is
-	// not addressable from a remote Worker deployment, so the spec
-	// is filtered out of the production-only path.
+	// `portfolio.spec.ts` and `portfolio-markdown-xss.spec.ts` likewise
+	// target a local D1 binding: they seed rows into the local D1
+	// (`draft` / `unlisted` / `archived` visibility rows, and the
+	// Issue #451 XSS corpus) and assert against them. The local D1 file
+	// is not addressable from a remote Worker deployment, so a full
+	// `PLAYWRIGHT_BASE_URL=https://rebuildup.dev pnpm exec playwright
+	// test` (no file filter) would seed the local file, read the
+	// deployed page, and fail every assertion on a 404 — a failure
+	// signature that reads as "production portfolio is broken" when
+	// nothing is. Both files are therefore filtered out of the
+	// non-local path. Each also skips itself in-file, so a
+	// file-filtered invocation (`playwright test <file>`, which is how
+	// the production scripts name their spec) cannot seed a row against
+	// a deployed origin either.
+	//
 	// Issue #415: `e2e/compat/**` is owned by
-	// `playwright.compat.config.ts` (Chromium / Firefox / WebKit) and
-	// is always ignored here, so the two suites never run each other
-	// and the default chromium-only gate keeps its current cost.
+	// `playwright.compat.config.ts` (Chromium / Firefox / WebKit) and is
+	// always ignored here, so the two suites never run each other and the
+	// default chromium-only gate keeps its current cost.
 	testIgnore: [
 		'**/compat/**',
-		...(BASE_URL.startsWith('http://127.0.0.1') ? ['**/prod-*.spec.ts'] : ['**/portfolio.spec.ts']),
+		...(BASE_URL.startsWith('http://127.0.0.1')
+			? ['**/prod-*.spec.ts']
+			: ['**/portfolio.spec.ts', '**/portfolio-markdown-xss.spec.ts']),
 	],
 	// The local project spins up the preview server automatically.
 	// `pnpm preview` is required because the Tool iframe spec reaches

@@ -379,13 +379,14 @@ How a failure is kept visible
   can be launched, the report script refuses to overwrite the
   committed WebP instead of recording an all-`unavailable` matrix.
 
-The roster is specifically the public *landing* routes. Detail
-surfaces (`/portfolio/$slug`, `/tools/$slug`) are not part of the
-shell / display contract this gate holds.
 - **The gate is shown to fail.** `negative-control.spec.ts` feeds the
   same judge three broken fixtures, an unimplemented route, and one
   real page, and asserts that each is rejected by the rule that owns
   it while the real page still passes.
+
+The roster is specifically the public *landing* routes. Detail
+surfaces (`/portfolio/$slug`, `/tools/$slug`) are not part of the
+shell / display contract this gate holds.
 
 Recorded OS / engine differential
 ---------------------------------

@@ -288,6 +288,40 @@ describe('schema — display text preservation (Issue #433)', () => {
 		expect(out.title).toBe(title);
 		expect(out.title).not.toBe(title.normalize('NFKC'));
 	});
+
+	// The mapping is an identity BY CONSTRUCTION — it assigns the row's
+	// bytes, it does not compute them. This case is the regression guard
+	// for that: it covers every display field at once, so a `.trim()`, a
+	// `decodeURIComponent` or an NFC re-compose introduced anywhere in
+	// `rowToProject` fails here rather than reaching a renderer.
+	it('maps every display field as an identity, not just title/summary', () => {
+		const display = {
+			title: ' Cafe\u0301 ',
+			summary: ' 5 \u00b5m / \u03bcm ',
+			role: ' Solo ',
+			period_label: ' 2026 \u2460 ',
+			motivation_md: ' \u2163 ',
+			architecture_md: ' \u33a1 ',
+			constraints_md: ' \u212b ',
+			implementation_md: ' \ufb01nance ',
+			evidence_md: ' \u200b ',
+			retrospective_md: ' \uff21 ',
+		};
+		const out = rowToProject(row(display), [], []);
+		expect(out.title).toBe(display.title);
+		expect(out.summary).toBe(display.summary);
+		expect(out.role).toBe(display.role);
+		expect(out.periodLabel).toBe(display.period_label);
+		expect(out.motivationMd).toBe(display.motivation_md);
+		expect(out.architectureMd).toBe(display.architecture_md);
+		expect(out.constraintsMd).toBe(display.constraints_md);
+		expect(out.implementationMd).toBe(display.implementation_md);
+		expect(out.evidenceMd).toBe(display.evidence_md);
+		expect(out.retrospectiveMd).toBe(display.retrospective_md);
+		// Nothing was trimmed, folded, or decoded along the way.
+		expect(out.title).toBe(' Cafe\u0301 ');
+		expect(out.summary).toBe(' 5 \u00b5m / \u03bcm ');
+	});
 });
 
 describe('schema — SLUG_REGEX sanity', () => {

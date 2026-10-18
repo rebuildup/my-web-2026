@@ -4,7 +4,6 @@ import {
 	classifySlugCandidate,
 	describeSlugRejection,
 } from '../i18n/slug-identity.ts';
-import { assertDisplayTextPreserved } from '../i18n/unicode.ts';
 
 /**
  * Portfolio schema — TypeScript types + Zod validators.
@@ -80,13 +79,25 @@ export const PORTFOLIO_SLUG_GRAMMAR: SlugGrammar = {
 /**
  * The single validation seam for a portfolio slug.
  *
- * Acceptance and the ASCII/grammar messages are unchanged
- * (`slug must match /^[a-z0-9][a-z0-9-]{0,127}$/`), so route parsing,
- * admin writes and the existing tests keep their contract. What is new
- * is the non-ASCII refusal: a slug candidate such as `café` (NFC) or
- * `café` (NFD) now fails with the code point that was found instead of
- * an unexplained pattern mismatch — and, crucially, it is NOT folded
- * into `/cafe`, which would silently merge two different projects.
+ * The accept set is unchanged, so route parsing, admin writes and the
+ * existing tests keep their contract. Two message details do change:
+ *
+ *   - the ASCII / grammar rejection is now rendered from the owner's
+ *     own pattern (`describeSlugRejection`), which has no `/…/`
+ *     delimiters, so `slug must match ^[a-z0-9][a-z0-9-]{0,127}$`
+ *     replaces the older hand-written literal; and
+ *   - the Zod issue `code` is `custom` (a `superRefine` refusal) rather
+ *     than `invalid_format` (a `regex` failure).
+ *
+ * Both are reason-compatible, not byte-identical, and no shipped
+ * consumer reads either (`src/portfolio/public.ts` and
+ * `src/routes/portfolio/$slug.tsx` branch on `success`).
+ *
+ * What is new is the non-ASCII refusal: a slug candidate such as
+ * `café` (NFC) or `café` (NFD) now fails with the code point that was
+ * found instead of an unexplained pattern mismatch — and, crucially,
+ * it is NOT folded into `/cafe`, which would silently merge two
+ * different projects.
  */
 export const SlugSchema = z.string().superRefine((value, ctx) => {
 	const verdict = classifySlugCandidate(value, PORTFOLIO_SLUG_GRAMMAR);
@@ -406,12 +417,23 @@ export function rowToProject(
 	return {
 		id: row.id,
 		slug: row.slug,
-		// Display body, kept byte-exact (Issue #433). A D1 round-trip
-		// must not re-compose, fold or strip anything the author typed —
-		// including an NFD spelling of an accented word, which some
-		// editors produce and which has to survive to the renderer.
-		title: assertDisplayTextPreserved(row.title, row.title, 'title'),
-		summary: assertDisplayTextPreserved(row.summary, row.summary, 'summary'),
+		// Display body, kept byte-exact (Issue #433). This mapping is an
+		// identity by construction — the author's bytes are assigned, not
+		// computed — so a D1 round-trip cannot re-compose, fold or strip
+		// anything, including an NFD spelling of an accented word.
+		//
+		// The property is pinned by `schema.test.ts` ("display text
+		// preservation"), which asserts the code points of the returned
+		// value against the row. A runtime `===` guard was previously
+		// written here as `assertDisplayTextPreserved(row.title,
+		// row.title, …)`; it compared one expression with itself and
+		// therefore could never fire, so it proved nothing while reading
+		// like a boundary check. If this mapping ever grows a
+		// transformation, guard it with `assertDisplayTextPreserved`
+		// (`src/i18n/unicode.ts`) comparing the RAW row value against the
+		// TRANSFORMED value — never the same expression twice.
+		title: row.title,
+		summary: row.summary,
 		role: row.role,
 		periodStart: row.period_start,
 		periodEnd: row.period_end,

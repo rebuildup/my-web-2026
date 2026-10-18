@@ -20,6 +20,11 @@ tells them apart:
    the portfolio (`src/portfolio/schema.ts`). Machine identity, published
    in a path segment, and effectively permanent once shared.
 
+There is a third published URL space that this ADR deliberately does
+NOT claim: `/tools/<slug>` (`src/routes/tools.$slug.tsx`), whose
+grammar is owned by `src/tools/manifest.schema.json` and whose loader
+case-folds the URL parameter instead of classifying it. See §6.4.
+
 The two were already implicitly separated — both grammars are
 ASCII-only — but nothing said so, nothing checked it, and each call site
 re-derived what "a valid slug" meant. `src/home/reactions/widget.tsx`
@@ -41,8 +46,15 @@ refuses, for a reason that is measurable rather than stylistic.
   URL, never written to the DOM.
 - `describeUnicode` — reports normalization form, code points, and the
   characters an NFKC fold would change. Reporting only.
-- `assertDisplayTextPreserved` — a `===` identity check a loader can
-  use to prove a display field crossed a boundary unmodified.
+- `assertDisplayTextPreserved` — a `===` identity check for a seam
+  that *transforms* display text: it compares the raw value captured on
+  one side of the transformation with the transformed value on the
+  other. It is only meaningful with two distinct values; passing the
+  same expression twice is a tautology that can never fail, and
+  `rowToProject` was found doing exactly that during review (§5).
+  No shipped mapper needs it today, because every display-text mapping
+  in the repository is an identity by construction and the unit tests
+  pin that property directly.
 
 ### 2.2 A slug is authored, never derived
 
@@ -58,7 +70,9 @@ owner-supplied grammar and returns a reason:
 | `grammar-mismatch` | ASCII, but not this owner's grammar |
 
 `non-ascii` is checked *before* length and pattern so the reason a caller
-sees is a policy decision, not an accident of a pattern.
+sees is a policy decision, not an accident of a pattern. The two URL
+spaces listed in §1 route their candidates through this classifier;
+`/tools/$slug` does not, by a recorded owner decision (§6.4).
 
 `findSlugCollisions` audits a catalog for the two failures D1 cannot
 catch: `duplicate-url` (two rows claim one path) and
@@ -126,17 +140,35 @@ to NFC, and neither can mint a URL because non-ASCII is refused first.
 
 ## 5. Consequences
 
-- `validateSlug` / `SlugSchema` keep their existing messages and accept
-  sets; they gain a reason for non-ASCII candidates.
-- `rowToProject` now proves display fields crossed the row → model
-  boundary unmodified.
+- `validateSlug` keeps its existing messages and accept set exactly;
+  `SlugSchema` keeps its accept set, and its ASCII/grammar rejection is
+  now rendered from the owner's own pattern (`must match
+  ^[a-z0-9][a-z0-9-]{0,127}$`, no `/…/` delimiters) with a Zod issue
+  `code` of `custom` rather than `invalid_format`. Both changes are
+  reason-compatible rather than byte-identical, and no shipped consumer
+  reads either — the two spaces are classified, not string-matched.
+  Both gain a reason for non-ASCII candidates.
+- `rowToProject` leaves display text byte-exact. That is a property of
+  the mapping (it assigns, it does not compute) and it is pinned by
+  `src/portfolio/schema.test.ts`, not by a runtime assertion. An earlier
+  revision wrapped two fields in `assertDisplayTextPreserved` with the
+  same expression on both sides; review showed the guard could never
+  fire and that it read as a boundary check, so it was removed rather
+  than kept as decoration.
 - The home widget no longer owns a private copy of the emoji regex.
 - `pnpm run i18n:policy:check` is part of `validate:fast`; a developer
   who writes `text.normalize('NFKC')` or `count.toLocaleString()` in
   `src/` gets a failing gate instead of a runtime surprise.
 - The gate and the capture script import TypeScript sources directly,
   which needs Node >= 22.18 (already the `engines` floor and the CI
-  version).
+  version). Node's type-stripping loader resolves ESM specifiers
+  literally — an extensionless `./slug-identity` inside a shipped
+  module raises `ERR_MODULE_NOT_FOUND` — so every module reachable
+  from those two scripts (`src/i18n/**`, `src/portfolio/schema.ts`)
+  uses explicit `.ts` specifiers, and
+  `tsconfig.json#allowImportingTsExtensions` is what lets TypeScript
+  accept them. The rest of `src/` keeps the repo-wide extensionless
+  convention.
 
 ## 6. Open questions (owner decisions, not decided here)
 
@@ -150,3 +182,26 @@ to NFC, and neither can mint a URL because non-ASCII is refused first.
 3. If a visitor-locale-respecting surface is ever wanted, its contract
    (fallback, SSR/hydration agreement) must be defined before it is
    allowed past `explicit-locale`.
+4. **`/tools/$slug` is a published URL space that this policy does not
+   cover.** `src/routes/tools.$slug.tsx` derives its lookup key with
+   `params.slug.toLowerCase()` (Issue #183 display-case tolerance) and
+   never calls `classifySlugCandidate`, so `/tools/MultiSlicer` and
+   `/tools/multislicer` resolve to the same published identity. The
+   grammar itself (`^[a-z0-9][a-z0-9-]{0,127}$`) is already ASCII-only
+   and is declared by the tools obligation in
+   `src/tools/manifest.schema.json`, so nothing can leak a non-ASCII
+   character into that path today; what is unresolved is the
+   case-folding tolerance. Two owner decisions are on the table and
+   neither is made here:
+
+   - route `params.slug` through `classifySlugCandidate` against a
+     `tools-slug` grammar descriptor published by the tools obligation,
+     which retires the display-case tolerance; or
+   - record the case folding as a deliberate, permanent exception to
+     "a slug is authored, never derived", in which case this ADR needs
+     an explicit exception clause rather than a note.
+
+   The CI gate does **not** detect `.toLowerCase()` on a route
+   parameter, so nothing here will fail if the wiring is forgotten; the
+   gap is recorded instead. Deciding it belongs to a ticket of its own
+   because it changes Issue #183's shipped behaviour.

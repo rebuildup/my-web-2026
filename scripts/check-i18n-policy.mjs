@@ -33,6 +33,22 @@
  * slugifier would do" column, and a gate that flagged its own
  * evidence generator would only teach people to disable it.
  *
+ * What this gate does NOT cover, so nobody reads a green run as more
+ * than it is:
+ *
+ *   - `scripts/` (see above).
+ *   - Case folding of a URL parameter. There is no rule for
+ *     `params.slug.toLowerCase()`, because the shipped
+ *     `src/routes/tools.$slug.tsx` still does it (Issue #183 display
+ *     -case tolerance) and a rule that flagged it would be red on a
+ *     clean base. That gap is recorded as an open owner decision in
+ *     ADR-0017 §6.4; until it is decided, "every shipped URL slug
+ *     space is classified" is NOT a property this gate establishes.
+ *   - A published catalog audit. `findSlugCollisions` /
+ *     `assertNoSlugCollisions` have no production caller yet, so the
+ *     collision section of the verification artefact runs against the
+ *     capture script's fixed sample catalog, not the real one.
+ *
  * Test files are exempt: a test may build an NFD fixture or call a
  * locale API while proving that the shipped surface does not.
  *

@@ -73,6 +73,7 @@
 		"cloudflare:contract:check:build": "node scripts/check-cloudflare-contract.mjs --build",
 		"r2:local:proof": "node scripts/r2-local-sharing-proof.mjs",
 		"r2:local:proof:check": "node scripts/r2-local-sharing-proof.mjs",
+		"verify:admin-authz-screenshot": "node scripts/admin-authz-shoot.mjs",
 		"verify:d1-binding-screenshot": "node scripts/make-d1-verification-report.mjs"
 	},
 	"dependencies": {

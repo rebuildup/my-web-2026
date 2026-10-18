@@ -429,6 +429,12 @@ glob が repository 外を解決する場合は「主語集合が読めない」
   handler 外の edge を保守的に walk する。factory は import 句のローカル名
   （`import { createServerFn as serverFn }` なら `serverFn`）でも検出し、
   ローカル `export { a as b }` は宣言名 `a` へ解決してから到達集合を計算する。
+  到達集合は宣言だけでなく **top-level assignment**（`let title; title =
+  route.title; export { title }`）が与えた値も含む。dynamic `import()` は
+  binding を持たないため要求では絞れず、呼び出しを含む top-level 宣言に
+  関連付ける（`const unused = () => import(…)` は preview がその宣言へ
+  到達しない限り client edge ではない。宣言の外にあれば module 読み込み時
+  に評価されるため walk する）。
   edge 自体は隠さず `seam` として報告する。
   `src/home/reactions/widget.stories.tsx` のコメントと `.storybook/main.ts` の
   `external: ['cloudflare:workers']` が既に宣言している前提を refinements している。

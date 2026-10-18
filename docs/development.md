@@ -374,7 +374,13 @@ found under whatever local name the module imports it as
 literal is consumed whole including its terminating slash and flags,
 and a local `export { a as b }` is resolved to the declaration `a`
 before the reachability set is computed — otherwise an aliased seam
-could pass or fail for the wrong reason.
+could pass or fail for the wrong reason. A top-level assignment counts as
+part of the declaration it feeds — `let title; title = route.title;
+export { title }` drags `route` into `title`'s reference set — and a
+dynamic `import()` binds no name, so it is attributed to the top-level
+declaration that contains it: `const unused = () => import(…)` is not a
+client edge when the preview never reaches `unused`, while an
+`import()` outside every declaration runs at module load and is walked.
 
 ```bash
 pnpm run storybook:ownership:check

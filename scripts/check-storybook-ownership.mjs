@@ -150,6 +150,14 @@ const DECLARATION =
 const BODY_KINDS = new Set(['function', 'class', 'interface']);
 /** Declaration kinds that can introduce several comma-separated bindings. */
 const MULTI_BINDING_KINDS = new Set(['const', 'let', 'var']);
+/**
+ * A top-level statement that rebinds an existing binding, such as
+ * `title = route.title;`. Blocking only the declaration would leave
+ * such an export (`let title; … export { title }`) with a reference set
+ * that never mentions the value it was given, so a preview importing it
+ * would walk nothing and pass although `route` is really in its graph.
+ */
+const ASSIGNMENT = /^(?:export\s+)?([A-Za-z_$][\w$]*)\s*(?:\*\*|>>>?|<<|\?\?|[+\-*/%&|^])?=(?!=)/;
 
 const maskNonCodeLength = (text) => text.replace(/[^\n]/g, ' ');
 
@@ -708,13 +716,22 @@ function declarationBindings(kind, statement) {
 	return [{ names: [...new Set(names)], text: statement, offset: 0 }];
 }
 
+/** The bindings a top-level assignment rebinds (`title = route.title`). */
+function assignmentBindings(statement) {
+	const match = ASSIGNMENT.exec(statement);
+	return match ? [{ names: [match[1]], text: statement, offset: 0 }] : [];
+}
+
 /**
- * Map each top-level declaration to the identifiers it references
+ * Map each top-level statement to the identifiers it references
  * outside every handler range — the "what this symbol drags into the
- * preview" set used for a seam module.
+ * preview" set used for a seam module — and record the range each
+ * statement occupies, so an edge with no binding of its own can still
+ * be attributed to the declaration that contains it.
  */
 function topLevelBlocks(masked, handlerRanges) {
 	const blocks = new Map();
+	const ranges = [];
 	let depth = 0;
 	let start = -1;
 	let kind = null;
@@ -722,7 +739,12 @@ function topLevelBlocks(masked, handlerRanges) {
 
 	const close = (end) => {
 		if (start === -1) return;
-		for (const binding of declarationBindings(kind, masked.slice(start, end))) {
+		const statement = masked.slice(start, end);
+		const bindings =
+			kind === 'assign' ? assignmentBindings(statement) : declarationBindings(kind, statement);
+		const names = [...new Set(bindings.flatMap((binding) => binding.names))];
+		if (names.length > 0) ranges.push({ start, end, names });
+		for (const binding of bindings) {
 			const refs = new Set();
 			for (const match of binding.text.matchAll(IDENTIFIER)) {
 				const position = start + binding.offset + (match.index ?? 0);
@@ -748,10 +770,14 @@ function topLevelBlocks(masked, handlerRanges) {
 				i += 1;
 				continue;
 			}
-			const match = DECLARATION.exec(masked.slice(i, i + 400));
+			const statement = masked.slice(i, i + 400);
+			const match = DECLARATION.exec(statement);
 			if (match) {
 				start = i;
 				kind = match[1];
+			} else if (ASSIGNMENT.test(statement)) {
+				start = i;
+				kind = 'assign';
 			}
 		}
 		if (char === '(' || char === '[' || char === '{') {
@@ -762,15 +788,19 @@ function topLevelBlocks(masked, handlerRanges) {
 		} else if (char === ';' && depth === 0) {
 			close(i + 1);
 		} else if (char === '\n' && depth === 0 && start !== -1) {
-			// Semicolon-less statements: the next declaration ends this one.
+			// Semicolon-less statements: the next top-level statement
+			// ends this one.
 			const rest = masked.slice(i + 1);
 			const offset = rest.length - rest.trimStart().length;
-			if (DECLARATION.test(rest.slice(offset, offset + 400))) close(i + 1);
+			const next = rest.slice(offset, offset + 400);
+			if (DECLARATION.test(next) || ASSIGNMENT.test(next) || /^(?:export|import)\b/.test(next)) {
+				close(i + 1);
+			}
 		}
 		i += 1;
 	}
 	close(masked.length);
-	return blocks;
+	return { blocks, ranges };
 }
 
 /**
@@ -806,6 +836,27 @@ function isHandlerConfinedEdge(edge, handlerRanges) {
 	);
 }
 
+/**
+ * A dynamic `import()` that only a top-level declaration the preview
+ * never reaches holds.
+ *
+ * A dynamic import binds no name, so the request cannot narrow it the
+ * way it narrows a static import. Its position still can: when the call
+ * sits inside a declaration, the preview evaluates that declaration
+ * only if it reaches the name it binds, so `const unused = () =>
+ * import('…')` is not a client edge for a story that imports a
+ * different export. An `import()` outside every declaration runs when
+ * the module loads and stays one.
+ */
+function isUnreachedDeclarationEdge(module_, edge, reachable) {
+	if (edge.kind !== 'import-dynamic') return false;
+	const range = module_.declarationRanges.find(
+		(candidate) => edge.start >= candidate.start && edge.start < candidate.end,
+	);
+	if (!range) return false;
+	return !range.names.some((name) => reachable.has(name));
+}
+
 /** The edges of a seam module that a preview with `requested` reaches. */
 function clientReachableEdges(module_, requested) {
 	const runtime = module_.edges.filter(
@@ -813,15 +864,13 @@ function clientReachableEdges(module_, requested) {
 	);
 	if (!module_.seam || requested === null || requested.length === 0) return runtime;
 	const reachable = clientReachableNames(module_, requested);
-	return runtime.filter(
-		(edge) =>
-			// A side-effect import or a re-export is module surface: it
-			// runs / ships whether or not an export is used.
-			edge.kind === 'import-side-effect' ||
-			edge.kind === 'export-from' ||
-			edge.bindings.length === 0 ||
-			edge.bindings.some((name) => reachable.has(name)),
-	);
+	return runtime.filter((edge) => {
+		// A side-effect import or a re-export is module surface: it
+		// runs / ships whether or not an export is used.
+		if (edge.kind === 'import-side-effect' || edge.kind === 'export-from') return true;
+		if (edge.bindings.length > 0) return edge.bindings.some((name) => reachable.has(name));
+		return !isUnreachedDeclarationEdge(module_, edge, reachable);
+	});
 }
 
 /** Parse one module's source into the walk's view of it. */
@@ -830,11 +879,13 @@ function analyzeModule(source) {
 	const edges = parseEdges(masked, literals);
 	const seam = isServerFnSeam(edges);
 	const handlerRanges = seam ? findHandlerRanges(masked, seamFactoryNames(edges)) : [];
+	const walk = seam ? topLevelBlocks(masked, handlerRanges) : { blocks: new Map(), ranges: [] };
 	return {
 		edges,
 		seam,
 		handlerRanges,
-		blocks: seam ? topLevelBlocks(masked, handlerRanges) : new Map(),
+		blocks: walk.blocks,
+		declarationRanges: walk.ranges,
 		exportAliases: exportAliasMap(masked),
 	};
 }

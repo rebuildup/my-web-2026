@@ -777,17 +777,18 @@ export const addReaction = createServerFn({ method: 'POST' }).handler(async () =
 	});
 
 	it('still walks a dynamic import outside every handler body', async () => {
-		// The other half of the same rule: a module-level `import()` is
-		// evaluated by the preview, so it stays a violation.
+		// The other half of the same rule: a module-level `import()` the
+		// preview reaches is evaluated by the preview, so it stays a
+		// violation.
 		const root = await fixture({
 			'src/home/status/tiles.stories.tsx': `import { StatusTiles } from './tiles';
 
 export default { component: StatusTiles };
 `,
-			'src/home/status/tiles.tsx': `import { addReaction } from './load';
+			'src/home/status/tiles.tsx': `import { addReaction, health } from './load';
 
 export function StatusTiles() {
-	return <button onClick={() => addReaction()} />;
+	return <button onClick={() => addReaction()} data-health={String(health)} />;
 }
 `,
 			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
@@ -804,6 +805,129 @@ export const health = () => import('../../cloudflare/health');
 		const result = run(root);
 		assert.equal(result.status, 1);
 		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'cloudflare');
+	});
+
+	it('keeps an unreferenced dynamic import out of the client edge', async () => {
+		// A dynamic import binds no name, so the request cannot narrow it
+		// by binding. Its declaration can: `unused` is never reached from
+		// `ROUTE_TITLE`, so the preview never evaluates the call and the
+		// edge is not a client edge.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { ROUTE_TITLE } from './load';
+
+export default { component: ROUTE_TITLE };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+
+export const ROUTE_TITLE = 'home';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return null;
+});
+
+const unused = () => import('../../routes/index');
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'pass');
+		assert.deepEqual(report.subjects[0].violations, []);
+		assert.equal(report.subjects[0].seams.length, 1);
+	});
+
+	it('walks a dynamic import whose declaration the preview reaches', async () => {
+		// The narrowing must not hide a real edge: naming the declaration
+		// in a reachable export's reference set puts the call back in the
+		// walk.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { ROUTE_TITLE } from './load';
+
+export default { component: ROUTE_TITLE };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+
+const unused = () => import('../../routes/index');
+
+export const ROUTE_TITLE = String(unused);
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return null;
+});
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('fails when an export is filled by a top-level assignment', async () => {
+		// `let title; title = route.title; export { title };` binds the
+		// export without a declaration value. Blocking the declaration
+		// alone would leave `route` out of `title`'s reference set and the
+		// walk would find nothing.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { title } from './load';
+
+export default { component: title };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return route.id;
+});
+
+let title;
+title = route.title;
+export { title };
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('keeps an unreferenced assignment out of the walk', async () => {
+		// The assignment rule is the same rule the declaration rule
+		// already had: the export the preview imports decides what is
+		// walked, so an assignment to a name it never reaches stays out
+		// of the client edge.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { title } from './load';
+
+export default { component: title };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { route } from '../../routes/index';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return route.id;
+});
+
+let title = 'home';
+let unrelated;
+unrelated = route.title;
+title = 'home';
+export { title };
+`,
+			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 0);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.verdict, 'pass');
+		assert.deepEqual(report.subjects[0].violations, []);
+		assert.equal(report.subjects[0].seams.length, 1);
 	});
 });
 

@@ -63,14 +63,25 @@ Issue は `.png` 経路を指定しているが、リポジトリの検証 artef
 
 どちらも D1 の PRIMARY KEY では検出できない（byte 列が異なるため）。公開前に検出する。
 
+**この表は固定サンプルカタログの結果である。** `COLLISION_CATALOG`
+（`scripts/capture-i18n-unicode-slug.mjs`）に対する audit であり、出荷済みの
+reactions / portfolio カタログを監査したものではない。`findSlugCollisions` /
+`assertNoSlugCollisions` はまだ production caller を持たないため、この画面が示すのは
+**audit 機構が 2 種の衝突を検出できること**であって、**実カタログが clean であること**
+ではない。画面上にも明記している。
+
 ## 3. 適用した seam
 
 | seam | 変更 | 既存契約への影響 |
 | --- | --- | --- |
 | `src/reactions/slug-regex.ts` | `EMOJI_SLUG_GRAMMAR` を公開（grammar の所有は reactions のまま） | なし（追加のみ） |
 | `src/reactions/slug-validate.ts` | `classifySlugCandidate` 経由に変更 | 例外メッセージは互換（`must be a string` / `must be 1..16 chars` / `must match ^[a-z][a-z0-9_]*$`）。非 ASCII に新しい理由が追加 |
-| `src/portfolio/schema.ts` | `PORTFOLIO_SLUG_GRAMMAR` を公開、`SlugSchema` を classify 経由に、`rowToProject` の表示列を byte-exact で保持 | 受理結果と ASCII / grammar のメッセージは同一 |
+| `src/portfolio/schema.ts` | `PORTFOLIO_SLUG_GRAMMAR` を公開、`SlugSchema` を classify 経由に、row → model の表示列を byte-exact で保持 | **受理集合は同一**。メッセージは byte 一致ではない: ASCII / grammar の拒否は owner の pattern から描画されるため `must match ^[a-z0-9][a-z0-9-]{0,127}$`（`/…/` の囲みなし）になり、Zod の issue `code` は `invalid_format` から `custom` になる。どちらも reason 互換であり、出荷済み consumer（`src/portfolio/public.ts` / `src/routes/portfolio/$slug.tsx`）はいずれも読まない（`success` で分岐するだけ） |
 | `src/home/reactions/widget.tsx` | ローカル複製していた regex を canonical grammar に置換 | 受理集合は同一（`deriveSlugFromPicker` の既存テスト Green） |
+
+`rowToProject` の byte-exact 性は **runtime assertion ではなく mapping の性質**として
+固定している（`schema.test.ts` の「display text preservation」が全 display field を
+walk する）。同じ式を 2 回渡す恒真な assertion は置かない。
 
 ## 4. 契約テストが固定していること
 
@@ -79,12 +90,13 @@ Issue は `.png` 経路を指定しているが、リポジトリの検証 artef
 | `src/i18n/unicode.test.ts` | fold は NFC のみ。`describeUnicode` は text を書き換えない。NFC / NFD は foldKey が一致し byte は異なる。`≠` は NFKC では変化しない（mark 除去は別のリスク）。code point 表示は curated label |
 | `src/i18n/slug-identity.test.ts` | 判定順序（not-a-string → empty → **non-ascii** → too-long → grammar-mismatch）。非 ASCII は grammar 不一致より先に理由になる。confusable は決して slug にならない。衝突監査の 2 種と「異なる語を alias と誤検出しない」こと |
 | `src/i18n/fixtures.test.ts` | 判断表 17 行を**出荷済みの owner grammar** で分類する。**publish される slug はすべて ASCII** であり、採用された候補と byte 単位で一致する |
-| `src/portfolio/schema.test.ts` | NFD / NFC / 互換文字のタイトルが row → model を byte-exact で通過すること |
-| `scripts/check-i18n-policy.test.mjs`（14） | コメント除去（URL や regex を誤読しない）、行番号の保持、exempt リスト、gate 自身が `src/**` に対して clean であること |
+| `src/portfolio/schema.test.ts` | NFD / NFC / 互換文字のタイトルが row → model を byte-exact で通過すること。加えて「display text preservation」ケースが `rowToProject` の**全** display field（title / summary / role / period_label / markdown 5 種）を walk するため、trim / decode / NFC 再構成を 1 つでも入れると落ちる |
+| `scripts/check-i18n-policy.test.mjs`（15） | コメント除去（URL や regex を誤読しない）、行番号の保持、exempt リスト、`toLocaleString(undefined)` / `new Intl.X(undefined)` / 変数 locale の検出、gate 自身が `src/**` に対して clean であること |
 | `scripts/capture-i18n-unicode-slug.test.mjs`（14） | WebP 限定・サイズ予算・RIFF ヘッダ、反実仮想 slugify の実測値、evidence が**出荷済みポリシー由来**であること、レポートが「証明していないこと」を明記すること |
 
 ローカル実測: `pnpm exec vitest run src/i18n/` = **89 passed**、
-`node --test scripts/check-i18n-policy.test.mjs` = **14 passed**、
+`pnpm exec vitest run src/i18n/ src/portfolio/schema.test.ts src/reactions/ src/home/reactions/` = **218 passed**（9 files）、
+`node --test scripts/check-i18n-policy.test.mjs` = **15 passed**、
 `node --test scripts/capture-i18n-unicode-slug.test.mjs` = **14 passed**。
 
 ## 5. CI gate（`pnpm run i18n:policy:check`）
@@ -96,12 +108,19 @@ Issue は `.png` 経路を指定しているが、リポジトリの検証 artef
 | --- | --- | --- |
 | `no-compatibility-fold` | コード中の `'NFKC'` / `'NFKD'` | 互換正規化は文字・数値・単位を書き換える |
 | `no-implicit-normalize` | `src/i18n/**` 以外の `.normalize(` | 表示本文は記述どおり。正規化は owner 1 箇所に閉じる |
-| `explicit-locale` | `toLocaleString()` 等の locale なし呼び出し | 訪問者環境に依存すると数値の意味が変わる |
-| `intl-without-locale` | `new Intl.X()` の locale なし | locale は opt-in であり、opt-in は明示である |
+| `explicit-locale` | `toLocaleString()` 等の locale 引数が無い・`undefined`・変数である呼び出し | 訪問者環境に依存すると数値の意味が変わる。`undefined` は「決定していない」ことであって opt-in ではない |
+| `intl-without-locale` | `new Intl.X()` の locale 引数が無い・`undefined`・変数である呼び出し | locale は opt-in であり、opt-in は明示である |
 | `no-lossy-derivation` | `slugify(` / `deburr(` / `transliterate(` 等 | slug は導出せず、著作者が書く |
 
 加えて、判断表が**出荷済みポリシーと食い違えば** fail する（表が古いドキュメントになるのを防ぐ）。
 現在の実測: **176 ファイル走査 / 違反 0 / 判断表 17 行一致**。
+
+**この gate が検査しないもの**（scope note に明記）:
+
+- `scripts/`（§6 参照）。
+- **URL parameter の case folding**。`src/routes/tools.$slug.tsx` は今も
+  `params.slug.toLowerCase()` を使うため、該当する rule は無い。→ §7.4。
+- 出荷済みカタログの衝突 audit（§2.4）。
 
 ## 6. 残るリスク（測定済み・隠していない）
 
@@ -109,6 +128,8 @@ Issue は `.png` 経路を指定しているが、リポジトリの検証 artef
 | --- | --- | --- |
 | Node 実行依存 | gate と capture は TypeScript を直接 import する（Node >= 22.18 の型ストリップ） | `package.json#engines` と CI の node 22.18 に一致。Node が應じた場合は明確なメッセージで失敗する |
 | スキャン対象 | gate は `scripts/` を含まない（capture の反実仮想列に `NFKD` / `slugify(` が現れるため） | 意図的。対象範囲は gate のヘッダと ADR に明記 |
+| URL parameter の case folding | gate に「URL slug を case fold する」rule が無いため、`/tools/MultiSlicer` は 200 を返す | 意図的に未決。ADR-0017 §6.4 / §7.4 に記録。緑 = 「classified 済み」ではない |
+| カタログ衝突 audit の未配線 | `findSlugCollisions` / `assertNoSlugCollisions` に production caller が無い | 検証画面の §2.4 は固定サンプルでの機構デモ。実カタログの監査は別 ticket |
 | capture は browser 依存 | Playwright chromium を local に必要とする | 既に devDependency。`--no-capture` なら browser 無しで evidence を生成できる |
 | 画像サイズ | 243 kB / budget 300 kB | quality 75、width <= 1600 で抑制。budget 超過時は script が失敗する |
 
@@ -122,12 +143,20 @@ Issue は `.png` 経路を指定しているが、リポジトリの検証 artef
    衝突検出の追加が必要かは owner 判断。
 3. **locale opt-in の拡張**: 現在は `Intl.NumberFormat('en-US')` のような明示指定だけが許可される。
    訪問者 locale を尊重する表示を今後追加する場合の契約（fallback、SSR と hydration の一致）は未定義。
+4. **`/tools/<slug>` の case folding**: 3 つ目の公開 URL 空間だが、このポリシーの分類を通っていない。
+   `src/routes/tools.$slug.tsx` は `params.slug.toLowerCase()`（Issue #183 の display-case 許容）で
+   lookup key を作るため、`/tools/MultiSlicer` と `/tools/multislicer` は同一 identity に解決する。
+   grammar は `src/tools/manifest.schema.json` が所有する ASCII 限定表現なので、現時点で非 ASCII が
+   この path に入ることはない。owner が決めるべきは「`classifySlugCandidate` を通す（＝Issue #183 の
+   許容を廃止する）」か「恒久的な例外として ADR に明記する」か。gate はこれを検出しない。
+   Issue #183 の出荷済み挙動を変えるため、本 PR では決定していない。
 
 ## 8. 再現手順
 
 ```bash
 pnpm run i18n:policy:check                 # 判断表と出荷済みソースの policy 検査
 pnpm exec vitest run src/i18n/             # policy の契約テスト
+pnpm exec vitest run src/portfolio/schema.test.ts
 node --test scripts/check-i18n-policy.test.mjs
 node --test scripts/capture-i18n-unicode-slug.test.mjs
 pnpm run capture:i18n-verification         # 検証画面を再生成（docs/verification/i18n/*.webp）

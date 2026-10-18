@@ -45,7 +45,7 @@ import {
 	describeCodePoint,
 	findNonAscii,
 	foldForComparison,
-} from './unicode.ts';
+} from './unicode.ts'; // `.ts` on purpose: see `./index.ts` — the Node-side gate imports this module
 
 /**
  * An owner's slug grammar. The pattern MUST be ASCII-only: a grammar

@@ -84,8 +84,11 @@ the other NFD).
 It imports nothing from the repository, so `home/`, `portfolio/`,
 `reactions/`, `admin/` and `routes/` can all obey the same policy
 without depending on each other. `scripts/check-architecture.mjs`
-enforces the leaf rule; test files are exempt so the fixture table can
-assert against the grammars it was written for.
+enforces the leaf rule; every `*.test.*` / `*.spec.*` file under the
+leaf is exempt, because the decision table's tests assert the policy
+against the owner-owned grammars it was written for
+(`src/i18n/fixtures.test.ts`). The implementation modules are not
+exempt.
 
 ### 2.4 The decision table is shared data
 

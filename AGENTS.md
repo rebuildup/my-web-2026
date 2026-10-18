@@ -98,9 +98,11 @@ home -> editorial
   `home/`, `portfolio/`, `reactions/`, `admin/` and
   `routes/` can all obey one rule without depending
   on each other. `scripts/check-architecture.mjs`
-  enforces the leaf rule (test files are exempt so
-  `src/i18n/fixtures.test.ts` can assert against the
-  owner-owned grammars). Each obligation keeps
+  enforces the leaf rule (every `*.test.*` /
+  `*.spec.*` file under a leaf is exempt, so
+  `src/i18n/fixtures.test.ts` can assert against
+  the owner-owned grammars; implementation modules
+  are not exempt). Each obligation keeps
   ownership of its own slug grammar:
   `src/reactions/slug-regex.ts` publishes
   `EMOJI_SLUG_GRAMMAR`, `src/portfolio/schema.ts`

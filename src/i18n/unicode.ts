@@ -21,9 +21,13 @@
  *     GREEK SMALL LETTER MU) — two different words — `①` becomes
  *     `1`, `Ⅳ` becomes `IV`, `Ａ` becomes `A`. Applying them to
  *     display text silently changes letters, numbers and units.
- *     Therefore this module never produces NFKC/NFKD output; it only
- *     *reports* what a compatibility fold would have destroyed, so a
- *     reviewer can see the risk instead of inheriting it silently.
+ *     Therefore this module never APPLIES a compatibility fold to a
+ *     display field or to a URL; it only *reports* what such a fold
+ *     would have destroyed, so a reviewer can see the risk instead of
+ *     inheriting it silently. (The report itself does contain folded
+ *     strings — \`replacement\` in \`CompatibilityFoldChange\`, the \`form\`
+ *     detection in \`describeUnicode\` — as DIAGNOSTIC data attached to a
+ *     character fact, never as output text.)
  *
  * Consequences enforced here:
  *
@@ -31,8 +35,11 @@
  *   2. `describeUnicode` reports the form, the non-ASCII code points,
  *      and the characters that a compatibility fold would change.
  *   3. `assertDisplayTextPreserved` is a cheap identity check
- *      (`===`, no normalization cost) that a loader can use to prove
- *      a display field crossed the boundary unmodified.
+ *      (`===`, no normalization cost) for a seam that TRANSFORMS a
+ *      display field: it compares the raw value captured before the
+ *      transformation with the transformed one. Passing the same
+ *      expression twice compares a value with itself and proves
+ *      nothing — see its own docstring.
  *
  * This module is a leaf: it imports nothing from the repository, so
  * `home/`, `portfolio/`, `reactions/`, `admin/` and `routes/` may all
@@ -93,16 +100,6 @@ export interface UnicodeFacts {
 	readonly changesUnderCompatibilityFold: boolean;
 }
 
-/**
- * Curated Unicode names for the characters this platform actually
- * shows in fixtures, reports and admin surfaces.
- *
- * Deliberately a repo-owned table rather than an ICU lookup: a
- * character name is presentation, and presentation must not vary with
- * the runtime's ICU data (a different Node build must not change a
- * validation message or a verification artefact). Anything missing
- * renders as `U+XXXX UNNAMED`, which is still unambiguous.
- */
 /**
  * Curated Unicode names for the characters this platform actually
  * shows in fixtures, reports and admin surfaces.
@@ -262,7 +259,7 @@ export function describeUnicode(text: string): UnicodeFacts {
 }
 
 /**
- * Prove that a display field crossed a boundary unmodified.
+ * Prove that a display field crossed a TRANSFORMING boundary unmodified.
  *
  * This is an identity check (`===`), not a normalization check: it
  * costs nothing and it fails loudly if a loader, a mapper or an editor
@@ -272,6 +269,14 @@ export function describeUnicode(text: string): UnicodeFacts {
  * It deliberately does NOT compare `foldKey`s. Two canonically
  * equivalent spellings are the same word, but they are not the same
  * bytes, and this contract is about the bytes reaching the renderer.
+ *
+ * `original` and `current` MUST be two distinct values — the raw input
+ * and the transformed output. Calling this with one expression twice
+ * (e.g. `assertDisplayTextPreserved(row.title, row.title, 'title')`)
+ * compares a value with itself, can never throw, and reads like a
+ * boundary check while checking nothing. If a mapping is already an
+ * identity by construction, do not call this at all; pin the property
+ * with a test instead.
  */
 export function assertDisplayTextPreserved(
 	original: string,

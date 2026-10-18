@@ -18,8 +18,9 @@
  *                              performs is the NFC comparison key inside
  *                              `src/i18n`.
  *   explicit-locale            `toLocaleString()` / `new Intl.X()`
- *                              without a locale argument inherits the
- *                              VISITOR's environment, which makes a
+ *                              whose locale argument is missing,
+ *                              `undefined` or a variable. That inherits
+ *                              the VISITOR's environment, which makes a
  *                              number or a date change meaning depending
  *                              on who is looking. Locale is opt-in, and
  *                              opt-in means named.
@@ -97,13 +98,18 @@ export const RULES = [
 	},
 	{
 		id: 'explicit-locale',
-		pattern: /\btoLocale(?:String|DateString|TimeString)\s*\(\s*\)/g,
+		// Any first argument that is not a string literal is
+		// locale-implicit: no argument at all, or an explicit
+		// `undefined` / a variable. A named locale must be written
+		// down, so `toLocaleString('en-US')` passes and
+		// `toLocaleString(undefined)` does not.
+		pattern: /\btoLocale(?:String|DateString|TimeString)\s*\(\s*(?!['"`])/g,
 		message:
-			'pass an explicit locale: a bare call inherits the visitor environment and changes what a number or date means',
+			'pass an explicit locale: a bare call (or an undefined / variable locale) inherits the visitor environment and changes what a number or date means',
 	},
 	{
 		id: 'intl-without-locale',
-		pattern: /\bnew\s+Intl\.[A-Za-z]+\s*\(\s*\)/g,
+		pattern: /\bnew\s+Intl\.[A-Za-z]+\s*\(\s*(?!['"`])/g,
 		message:
 			'new Intl.X() needs an explicit locale argument (Issue #433): locale is opt-in, and opt-in means named',
 	},

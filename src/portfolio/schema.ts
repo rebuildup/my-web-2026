@@ -3,7 +3,7 @@ import {
 	type SlugGrammar,
 	classifySlugCandidate,
 	describeSlugRejection,
-} from '../i18n/slug-identity.ts';
+} from '../i18n/slug-identity.ts'; // `.ts` on purpose: `scripts/check-i18n-policy.mjs` imports this module directly, and Node's ESM resolver does not add extensions
 
 /**
  * Portfolio schema — TypeScript types + Zod validators.
@@ -18,6 +18,16 @@ import {
  *   * `docs/personal/domain.md` §11 narrative invariants
  *   * `docs/personal/knowledge-model.md` — Temporal State semantics
  *   * ADR-0008 obligation-oriented — `portfolio` is its own obligation
+ *
+ * Import specifiers: the `../i18n/**` imports below carry the `.ts`
+ * extension on purpose. `scripts/check-i18n-policy.mjs` and
+ * `scripts/capture-i18n-unicode-slug.mjs` load THIS module directly so
+ * the CI evidence is produced by the code the Worker ships; Node's
+ * type-stripping loader resolves ESM specifiers literally and raises
+ * `ERR_MODULE_NOT_FOUND` for an extensionless specifier, so
+ * `tsconfig.json#allowImportingTsExtensions` is what lets TypeScript
+ * accept them. Local imports in this file stay extensionless, as
+ * everywhere else in `src/`.
  *
  * Notes on choices:
  *   * `facets` is a closed enum today (`develop` | `video` |

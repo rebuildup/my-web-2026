@@ -18,7 +18,12 @@
  *     evidence for the refusal, never an implementation — the policy
  *     module ships no lossy derivation, and this script exists to show
  *     the collision the policy prevents,
- *   - the catalog collision audit (duplicate URL / NFC-NFD alias),
+ *   - the catalog collision audit (duplicate URL / NFC-NFD alias).
+ *     NOTE: this runs against the script's own fixed `COLLISION_CATALOG`,
+ *     not the shipped reactions / portfolio catalog —
+ *     `findSlugCollisions` has no production caller yet, so the section
+ *     proves the audit MECHANISM finds both kinds, not that the real
+ *     catalog is clean. The rendered report says so on screen.
  *   - the `check-i18n-policy` gate result over the same tree, so the
  *     image carries the CI evidence and not only a pretty table.
  *
@@ -396,6 +401,13 @@ export function buildReportHtml(evidence) {
 	NFC / NFD の表記違いが別 slug として登録されている場合（<code>normalization-alias</code>）。
 	どちらも「1 語 1 URL」を壊すので、公開前に検出する。
 </p>
+<p class="lede">
+	<strong>この表は固定サンプルカタログ（<code>COLLISION_CATALOG</code>）の結果であり、
+	出荷済みの reactions / portfolio カタログを監査したものではない。</strong>
+	<code>findSlugCollisions</code> / <code>assertNoSlugCollisions</code> はまだ
+	production caller を持たないため、この画面は監査<em>機構</em>が 2 種の衝突を
+	検出できることを示す。実際のカタログが衝突していないことの証拠ではない。
+</p>
 <table>
 	<thead><tr><th>kind</th><th>key</th><th>detail</th></tr></thead>
 	<tbody>
@@ -414,6 +426,8 @@ export function buildReportHtml(evidence) {
 		<li>文章品質: この PR は本文を<strong>評価も修正もしない</strong>。校正は編集者の作業であり、この画面は自動品質保証の証拠ではない。</li>
 		<li>タイポグラフィ: webfont は取得しない（システム fallback で描画）。行間・字間の検証は別の visual 検証の担当。</li>
 		<li><code>/portfolio/&lt;非ASCII&gt;</code> が 404 になるか 500 になるかは本 PR の対象外（route の 404 契約は別 ticket）。</li>
+		<li>実カタログの衝突: §3 は固定サンプルでの<strong>監査機構</strong>のデモである。出荷済み reactions / portfolio カタログの衝突監査はまだ動いていない。</li>
+		<li><code>/tools/&lt;slug&gt;</code>: 3 つ目の公開 URL 空間だが、このポリシーでは分類していない（loader が <code>toLowerCase()</code> で case を畳む。ADR-0017 §6.4 の未決事項）。</li>
 		<li>ブラウザ撮影は byte 再現ではない。表のデータは決定的だが、画像の bytes は、環境によって変わる。</li>
 	</ul>
 </div>
@@ -429,6 +443,12 @@ export function buildReportHtml(evidence) {
 /**
  * The catalog used for the collision audit. Fixed data, so the report
  * shows the same findings on every run.
+ *
+ * NOT the shipped catalog: `src/i18n/slug-identity.ts` exports the
+ * audit, but no obligation calls it on its real rows yet. Auditing D1
+ * here would need a remote read, which this script does not do by
+ * design (no network, no binding). Wiring the audit into the catalog
+ * loaders is separate work.
  */
 export const COLLISION_CATALOG = [
 	{ id: 'nfc-cafe', slug: 'cafe-a', displayText: 'Caf\u00e9' },

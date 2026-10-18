@@ -16,6 +16,18 @@
  * policy gate and the Issue #433 verification capture all read, so the
  * three cannot drift apart.
  *
+ * Import specifiers in this obligation carry the `.ts` extension on
+ * purpose, and so do the other modules the Node-side gate imports
+ * (`src/portfolio/schema.ts`). `scripts/check-i18n-policy.mjs` and
+ * `scripts/capture-i18n-unicode-slug.mjs` load the shipped TypeScript
+ * directly so the CI evidence comes from the code the Worker runs; the
+ * Node type-stripping loader resolves ESM specifiers literally and
+ * raises `ERR_MODULE_NOT_FOUND` for an extensionless `./unicode`, so
+ * `tsconfig.json#allowImportingTsExtensions` is what lets TypeScript
+ * accept the same specifiers. Every other `src/` import in the
+ * repository stays extensionless — the relaxation is scoped to what
+ * the evidence path needs, not adopted repo-wide.
+ *
  * Leaf obligation: no repository imports, no platform bindings. See
  * `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`
  * and `docs/domain/i18n.md`.

@@ -116,8 +116,30 @@ test('scanSource reports an explicit locale as clean', () => {
 	const source = [
 		"const label = count.toLocaleString('en-US');",
 		"const format = new Intl.NumberFormat('en-US');",
+		"const when = new Intl.DateTimeFormat('ja-JP', { dateStyle: 'short' });",
 	].join('\n');
 	assert.deepEqual(scanSource('src/example.ts', source), []);
+});
+
+test('scanSource treats an explicit undefined or variable locale as implicit', () => {
+	// `undefined` is not a decision — it is the absence of one, and it
+	// resolves to the visitor's environment at runtime. A variable is
+	// only as good as its value, so the policy requires the locale to be
+	// written at the call site.
+	for (const source of [
+		'const label = count.toLocaleString(undefined);',
+		'const label = count.toLocaleString(LOCALE);',
+		'const format = new Intl.NumberFormat(undefined);',
+		'const format = new Intl.NumberFormat(LOCALE, opts);',
+	]) {
+		const violations = scanSource('src/example.ts', source);
+		assert.equal(violations.length, 1, `expected exactly one finding for ${source}`);
+		assert.match(
+			violations[0].rule,
+			/^(explicit-locale|intl-without-locale)$/,
+			`unexpected rule for ${source}`,
+		);
+	}
 });
 
 test('scanSource handles several violations in one file, in line order', () => {

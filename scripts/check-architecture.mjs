@@ -44,9 +44,14 @@ const parentSourceRoots = ['src', 'scripts', 'e2e', 'migrations'];
  * `reactions/`, `admin/` and `routes/` all obey the same Unicode /
  * slug policy without any of them depending on each other.
  *
- * Test files are exempt: a test that verifies a boundary may import
- * whatever it needs to assert that boundary (for example
- * `src/i18n/fixtures.test.ts` reads the owner-owned slug grammars).
+ * The exemption is for EVERY `*.test.*` / `*.spec.*` file under a
+ * leaf obligation, not just the one file that needs it today: a
+ * decision table's tests assert that the policy agrees with the
+ * owner-owned grammars it was written against
+ * (`src/i18n/fixtures.test.ts` imports `EMOJI_SLUG_GRAMMAR` and
+ * `PORTFOLIO_SLUG_GRAMMAR`), and that shape is not going to be
+ * special-cased per file. The RULE the leaf states — "policy depends
+ * on nothing" — is still enforced on every implementation module.
  */
 const leafOwners = new Set(['i18n']);
 

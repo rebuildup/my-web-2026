@@ -40,7 +40,7 @@ binding の宣言は `cloudflare.config.ts` の `bindings.rateLimit()`
 ## ミドルウェアの順序と、その意味論
 
 ```text
-csrfGuard → requireApiKey → rateLimit{Write,Read} → requireResourceAction → body validation → D1
+csrfGuard → requireApiKey → rateLimit{Write,Read} → body validation → requireResourceAction → D1
 ```
 
 `csrfGuard`（Issue #440）は境界の write method に対する最初の security
@@ -51,8 +51,10 @@ middleware であり、same-origin の証拠（`Sec-Fetch-Site` / `Origin` /
 script から API を叩く運用者も same-origin の証拠を 1 つ送る必要がある
 （`docs/security.md` の CSRF 節）。
 
-`requireResourceAction` は handler の**最初の文**（`src/http/reactions/router.ts`
-と `src/http/access-counter/router.ts`）なので、throttle の**後ろ**で走る。
+body validation は `jsonBody(parseReactionInput)` / `jsonBody(parseHitBody)` として
+handler の**前**に mount され、`requireResourceAction` は handler の**最初の文**
+（`src/http/reactions/router.ts` と `src/http/access-counter/router.ts`）なので、
+どちらも throttle の**後ろ**で走る（両方が不正な要求では 400 が 403 より先に返る）。
 「認証は予算を消費しない」という取り違えを避けるため、**どの層が答えるか**で
 4 ケースに分けて契約にする（いずれも自動試験で固定している）。
 
@@ -60,8 +62,8 @@ script から API を叩く運用者も same-origin の証拠を 1 つ送る必�
 | --- | --- | --- | --- |
 | 403 `csrf_rejected` | `csrfGuard`（境界で最初の security middleware） | **呼ばない** | **消費しない** |
 | 401 `missing_authorization` / `invalid_api_key` | `requireApiKey` | **呼ばない** | **消費しない** |
+| 400 `invalid_body` | `jsonBody`（handler の前） | 呼ぶ | **消費する** |
 | 403 `missing_scope` | `requireResourceAction`（handler の先頭） | 呼ぶ | **消費する** |
-| 400 `invalid_body` | handler の body 検証 | 呼ぶ | **消費する** |
 
 1. **CSRF 拒否は予算を消費しない。** `csrfGuard` は `requireApiKey` と
    `rateLimit` より前に答えるため `limit()` は一度も呼ばれない。same-origin
@@ -71,25 +73,28 @@ script から API を叩く運用者も same-origin の証拠を 1 つ送る必�
 2. **401 は予算を消費しない。** `requireApiKey` は `rateLimit` より前に
    答えるため `limit()` は一度も呼ばれない。認証されていない連打は
    budget を消費せず、認証レイヤーが先に答えられる（429 ではなく 401）。
-3. **403 `missing_scope` は予算を消費する。** スコープ検証は handler の
+3. **400 も予算を消費する。** `jsonBody` は handler より前、`rateLimit`
+   より後にあるため、上限に達している場合は不正な body であっても 429 が
+   先に返る（400 より前）。レート制限は入口で動く制御であり、入力を種類別に
+   別予算へ分ける設計は Middleware の責務ではない。必要になったら
+   ADR-0010 の改訂として扱う。
+4. **403 `missing_scope` は予算を消費する。** スコープ検証は handler の
    最初の文、つまり throttle の**後ろ**にある。`reactions:read` しか
    持たない key が `PUT /api/v1/reactions` を連打すると、その 403 が 1 件
    ずつ write budget を消費し `RATE_LIMIT_WRITE` を枯渇させうる。運用上の
    含意として、**read-only な principal でも write budget を消費できる**
    （書き込みが無料ではない）。枯渇後は 429 が 403 より先に返る。
-4. **400 も予算を消費する。** middleware は handler より前に走るため、
-   上限に達している場合は不正な body であっても 429 が先に返る
-   （400 より前）。レート制限は入口で動く制御であり、入力を種類別に
-   別予算へ分ける設計は Middleware の責務ではない。必要になったら
-   ADR-0010 の改訂として扱う。
+   両方が不正な要求では body validation が先に走るため 400 が返る。
 
 この 4 ケースを固定している自動試験:
 
 - `src/http/middleware/rate-limit.test.ts` — 本物の `requireApiKey` /
-  `rateLimitWrite` / `requireResourceAction` を上記の順序で並べ、binding
-  の `limit()` **呼び出し回数**を数える（401 = 0 回、403 / 400 = 1 回）。
-   予算の総量ではなく「誰が `limit()` を呼ぶか」を直接見るため、順序が
-   入れ替われば落ちる。
+  `rateLimitWrite` / `requireResourceAction` を production の router と同じ
+  相対順序で並べ、binding の `limit()` **呼び出し回数**を数える
+  （401 = 0 回、403 / 400 = 1 回）。400 は handler 内の検証で再現しているが、
+  production の `jsonBody` も `rateLimit` の後ろなので結論は同じ。
+  予算の総量ではなく「誰が `limit()` を呼ぶか」を直接見るため、順序が
+  入れ替われば落ちる。
 - `test/integration/write-rate-limit.test.ts` — 実 binding 上で
   `reactions:read` だけの key を 60 回叩くと 60 回とも 403、61 回目が 429。
   順序（throttle 済み principal でも 429 ではなく 401 が先に返る）も

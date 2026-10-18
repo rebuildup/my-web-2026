@@ -223,14 +223,17 @@ describe('rate-limit middleware (in-memory fake binding)', () => {
 
 /**
  * Which layer spends the budget is a **contract**, not an intuition:
- * the routers mount `requireApiKey → rateLimit{Write,Read} → handler`,
- * and the handler's *first statement* is `requireResourceAction`
- * (`src/http/reactions/router.ts`, `src/http/access-counter/router.ts`)
- * followed by body validation. So:
+ * the routers mount `requireApiKey → rateLimit{Write,Read} → jsonBody →
+ * handler`, and the handler's *first statement* is `requireResourceAction`
+ * (`src/http/reactions/router.ts`, `src/http/access-counter/router.ts`).
+ * So:
  *
  *   401 (requireApiKey)          → answers first, `limit()` never runs
+ *   400 (jsonBody)               → after throttle, so `limit()` runs
  *   403 (requireResourceAction)  → inside the handler, so `limit()` runs
- *   400 (body validation)        → inside the handler, so `limit()` runs
+ *
+ * Body validation precedes scope validation, so a doubly-invalid request
+ * is a 400, not a 403.
  *
  * Mounting that exact chain over a counting binding makes the claim an
  * assertion instead of a comment — see

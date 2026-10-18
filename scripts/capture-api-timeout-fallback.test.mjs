@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -9,14 +9,19 @@ import {
 	SCREENSHOT_BUDGET_BYTES,
 	SCREENSHOT_MAX_WIDTH,
 	SCREENSHOT_QUALITY,
+	STAGING_DIR,
 	STORY_MODULE,
 	assertWebpOutputPath,
+	discardStagedCapture,
 	harnessIndexHtml,
 	harnessMainTsx,
 	harnessViteConfig,
 	isLoopbackRequestUrl,
+	parseArgs,
+	promoteStagedCapture,
 	resolveStaticTarget,
 	screenshotBudgetVerdict,
+	stagedCapturePath,
 } from './capture-api-timeout-fallback.mjs';
 
 const REPO_ROOT = resolve(fileURLToPath(import.meta.url), '../..');
@@ -119,4 +124,58 @@ test('the outbound-request measurement counts only what leaves loopback', () => 
 
 test('the readiness marker is the one the gallery renders', () => {
 	assert.equal(GALLERY_TEST_ID, 'api-timeout-fallback');
+});
+
+test('a candidate capture is staged under .tmp/, never on the committed path', () => {
+	// Overwriting the committed artefact BEFORE the checks run is what
+	// left a failed capture in the tree; staging makes the committed
+	// path reachable only through a successful promotion.
+	const staged = stagedCapturePath('docs/verification/ops/api-timeout-fallback.webp');
+	assert.equal(staged, join(REPO_ROOT, STAGING_DIR, 'api-timeout-fallback.webp'));
+	assert.ok(
+		staged.startsWith(join(REPO_ROOT, '.tmp')),
+		'staged outside the repository tree proper',
+	);
+	assert.notEqual(staged, join(REPO_ROOT, 'docs/verification/ops/api-timeout-fallback.webp'));
+});
+
+test('promotion replaces the artefact once and discards the candidate', () => {
+	const root = resolve(REPO_ROOT, '.tmp/api-timeout-fallback-test-promotion');
+	const artefact = 'docs/verification/ops/api-timeout-fallback.webp';
+	rmSync(root, { force: true, recursive: true });
+	mkdirSync(join(root, STAGING_DIR), { recursive: true });
+	mkdirSync(join(root, 'docs/verification/ops'), { recursive: true });
+	const committed = join(root, artefact);
+	writeFileSync(committed, 'previous artefact');
+	const staged = stagedCapturePath(artefact, root);
+	writeFileSync(staged, 'validated candidate');
+	try {
+		assert.equal(promoteStagedCapture({ staged, screenshot: artefact, repoRoot: root }), committed);
+		assert.equal(readFileSync(committed, 'utf8'), 'validated candidate');
+		assert.equal(existsSync(staged), false);
+		// A candidate that was never promoted is dropped, not left behind.
+		writeFileSync(staged, 'rejected candidate');
+		discardStagedCapture(staged, root);
+		assert.equal(existsSync(staged), false);
+		assert.equal(readFileSync(committed, 'utf8'), 'validated candidate');
+	} finally {
+		rmSync(root, { force: true, recursive: true });
+	}
+});
+
+test('no option deletes a file the capture never wrote', () => {
+	// `--png` used to be accepted and then `rm`-ed unconditionally,
+	// so `--png=../existing.webp` deleted a file the script had never
+	// created. The option is gone: the PNG is a memory buffer only.
+	assert.throws(() => parseArgs(['--png=/tmp/existing.png']), /unknown option: --png/);
+	assert.throws(() => parseArgs(['--png=../existing.webp']), /unknown option: --png/);
+	assert.equal(existsSync(join(REPO_ROOT, '.tmp/api-timeout-fallback/capture.png')), false);
+	const options = parseArgs(['--screenshot=docs/verification/ops/other.webp']);
+	assert.deepEqual(Object.keys(options).sort(), [
+		'build',
+		'capture',
+		'jsonOut',
+		'screenshot',
+		'width',
+	]);
 });

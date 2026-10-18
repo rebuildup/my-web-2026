@@ -53,7 +53,6 @@ const FULL_PAYLOAD = {
 
 function adapterOver(body: string, status = 200) {
 	return createGitHubRepoAdapter({
-		policy,
 		fetchImpl: async () => new Response(body, { status }),
 	});
 }
@@ -157,13 +156,12 @@ describe('transport contract', () => {
 	it('requests the declared endpoint once and parses the response', async () => {
 		const urls: string[] = [];
 		const adapter = createGitHubRepoAdapter({
-			policy,
 			fetchImpl: async (url) => {
 				urls.push(url);
 				return new Response(JSON.stringify(FULL_PAYLOAD), { status: 200 });
 			},
 		});
-		const facts = await adapter.read(new AbortController().signal);
+		const facts = await adapter.read(new AbortController().signal, policy);
 		expect(urls).toEqual([GITHUB_REPO_SOURCE.endpoint]);
 		expect(facts.license).toBe('MIT');
 	});
@@ -171,13 +169,12 @@ describe('transport contract', () => {
 	it('sends no authorization header', async () => {
 		let seen: Headers | undefined;
 		const adapter = createGitHubRepoAdapter({
-			policy,
 			fetchImpl: async (_url, init) => {
 				seen = new Headers(init?.headers);
 				return new Response(JSON.stringify(FULL_PAYLOAD), { status: 200 });
 			},
 		});
-		await adapter.read(new AbortController().signal);
+		await adapter.read(new AbortController().signal, policy);
 		expect(seen?.has('authorization')).toBe(false);
 		expect(seen?.has('cookie')).toBe(false);
 	});
@@ -185,14 +182,32 @@ describe('transport contract', () => {
 	it('negotiates the GitHub media type as the adapter-side decision it is', async () => {
 		let seen: Headers | undefined;
 		const adapter = createGitHubRepoAdapter({
-			policy,
 			fetchImpl: async (_url, init) => {
 				seen = new Headers(init?.headers);
 				return new Response(JSON.stringify(FULL_PAYLOAD), { status: 200 });
 			},
 		});
-		await adapter.read(new AbortController().signal);
+		await adapter.read(new AbortController().signal, policy);
 		expect(seen?.get('accept')).toBe('application/vnd.github+json');
+	});
+
+	it('enforces the reader policy it is given, with no policy of its own', async () => {
+		// The adapter used to resolve its own copy of the policy, so a
+		// reader-level override (1 KiB here) was published by the
+		// reader while the transport still buffered 64 KiB. There is now
+		// one policy object: the one the reader resolved.
+		const oversize = JSON.stringify({ ...FULL_PAYLOAD, note: 'x'.repeat(4096) });
+		const adapter = createGitHubRepoAdapter({
+			fetchImpl: async () => new Response(oversize, { status: 200 }),
+		});
+		const reader = createExternalReader(adapter, { policy: { maxResponseBytes: 1_024 } });
+		expect(reader.policy.maxResponseBytes).toBe(1_024);
+		const snapshot = await reader.read();
+		expect(snapshot.status === 'degraded' && snapshot.reason).toBe('malformed-response');
+		// The same reader with the default cap reads the very same body.
+		const permissive = createExternalReader(adapter, { policy: { maxResponseBytes: 65_536 } });
+		const read = await permissive.read();
+		expect(read.status).toBe('value');
 	});
 
 	it('surfaces an upstream 404 as the public not-found reason', async () => {

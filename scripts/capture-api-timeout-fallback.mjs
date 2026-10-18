@@ -36,10 +36,11 @@
  * -------------
  * Chromium only writes PNG and Issue #499 names a `.png` path, but a
  * verification artefact does not justify a permanently large binary in
- * the tree. The capture is taken into `.tmp/`, encoded with the
+ * the tree. The capture is taken into memory, encoded with the
  * existing `sharp` devDependency (width <= 1600, quality 80) and the
  * committed file is the `.webp` sibling. The script REFUSES any
- * non-`.webp` output path and deletes the intermediate PNG.
+ * non-`.webp` output path, and it writes nothing but the final bytes:
+ * there is no PNG file anywhere.
  *
  * Whether the `.webp` substitution becomes the convention (or whether
  * the Issue's `.png` path is shipped after all) is an OWNER decision
@@ -47,13 +48,20 @@
  * script only refuses the impossible middle ground of silently writing
  * a PNG into the tree.
  *
+ * Staged, then promoted
+ * ---------------------
+ * A candidate capture is encoded into `.tmp/` FIRST. Only after the
+ * size budget, the rendered-state count and the zero-outbound-request
+ * measurement have all passed is it moved onto the committed path. A
+ * run that fails any of those checks therefore leaves the previously
+ * committed artefact byte-for-byte untouched, instead of replacing it
+ * with an invalid image and failing afterwards.
+ *
  * Usage:
  *   node scripts/capture-api-timeout-fallback.mjs [options]
  *
  *   --screenshot=<path>  committed artefact destination
  *                         (default docs/verification/ops/api-timeout-fallback.webp)
- *   --png=<path>          temporary PNG capture
- *                         (default .tmp/api-timeout-fallback/capture.png)
  *   --json-out=<path>     report destination
  *                         (default .tmp/api-timeout-fallback/report.json)
  *   --width=<n>           viewport width (default 1440)
@@ -62,9 +70,17 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { createReadStream, existsSync, mkdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
+import {
+	createReadStream,
+	existsSync,
+	mkdirSync,
+	renameSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from 'node:fs';
 import { createServer } from 'node:http';
-import { dirname, extname, join, relative, resolve } from 'node:path';
+import { basename, dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -85,6 +101,32 @@ export const HARNESS_DIST = '.tmp/api-timeout-fallback/harness-dist';
 export const SCREENSHOT_MAX_WIDTH = 1600;
 export const SCREENSHOT_QUALITY = 80;
 export const SCREENSHOT_BUDGET_BYTES = 300 * 1024;
+
+/** Where a candidate capture is encoded before it has passed every check. */
+export const STAGING_DIR = '.tmp/api-timeout-fallback/staging';
+
+/** The staged candidate for an output path (pure). Always under `.tmp/`. */
+export function stagedCapturePath(screenshot, repoRoot = REPO_ROOT) {
+	return join(resolve(repoRoot, STAGING_DIR), basename(screenshot));
+}
+
+/**
+ * Move a fully validated candidate onto the committed path.
+ *
+ * Single write, and only after the checks: a failed run leaves the
+ * committed artefact exactly as it was.
+ */
+export function promoteStagedCapture({ staged, screenshot, repoRoot = REPO_ROOT }) {
+	const finalPath = resolve(repoRoot, screenshot);
+	mkdirSync(dirname(finalPath), { recursive: true });
+	renameSync(resolve(repoRoot, staged), finalPath);
+	return finalPath;
+}
+
+/** Drop a candidate that was never promoted. Safe when it never existed. */
+export function discardStagedCapture(staged, repoRoot = REPO_ROOT) {
+	rmSync(resolve(repoRoot, staged), { force: true });
+}
 
 /** Whether a capture fits the verification-artefact budget (pure). */
 export function screenshotBudgetVerdict(bytes) {
@@ -278,10 +320,9 @@ export function serveDirectory(root) {
 	});
 }
 
-function parseArgs(argv) {
+export function parseArgs(argv) {
 	const options = {
 		screenshot: 'docs/verification/ops/api-timeout-fallback.webp',
-		png: '.tmp/api-timeout-fallback/capture.png',
 		jsonOut: '.tmp/api-timeout-fallback/report.json',
 		width: 1440,
 		build: true,
@@ -296,9 +337,6 @@ function parseArgs(argv) {
 		switch (flag) {
 			case 'screenshot':
 				options.screenshot = value;
-				break;
-			case 'png':
-				options.png = value;
 				break;
 			case 'json-out':
 				options.jsonOut = value;
@@ -367,7 +405,10 @@ async function main() {
 			// Imported lazily so a `--no-capture` run needs no browser.
 			const { chromium } = await import('@playwright/test');
 			const sharp = (await import('sharp')).default;
-			ensureDir(options.png);
+			// Encoded into `.tmp/` first: the committed artefact is
+			// replaced only after every check below has passed.
+			const stagedPath = stagedCapturePath(options.screenshot);
+			ensureDir(stagedPath);
 			const browser = await chromium.launch();
 			try {
 				const page = await browser.newPage({
@@ -384,16 +425,14 @@ async function main() {
 				await page.waitForSelector(`[data-testid="${GALLERY_TEST_ID}"]`, { timeout: 30_000 });
 				const cards = await page.locator('[data-testid="external-read-card"]').count();
 				const png = await page.screenshot({ fullPage: true, type: 'png' });
-				const outPath = resolve(REPO_ROOT, options.screenshot);
-				ensureDir(options.screenshot);
 				await sharp(png)
 					.resize({ width: SCREENSHOT_MAX_WIDTH, withoutEnlargement: true })
 					.webp({ quality: SCREENSHOT_QUALITY })
-					.toFile(outPath);
-				const meta = await sharp(outPath).metadata();
+					.toFile(stagedPath);
+				const meta = await sharp(stagedPath).metadata();
 				// `metadata()` carries dimensions but not the encoded byte
 				// size, so the budget is measured from the file on disk.
-				const verdict = screenshotBudgetVerdict(statSync(outPath).size);
+				const verdict = screenshotBudgetVerdict(statSync(resolve(REPO_ROOT, stagedPath)).size);
 				capture = {
 					artefact: options.screenshot,
 					component: `${STORY_MODULE}#${GALLERY_EXPORT}`,
@@ -405,8 +444,6 @@ async function main() {
 					quality: SCREENSHOT_QUALITY,
 					...verdict,
 				};
-				// The intermediate PNG never reaches the repository.
-				rmSync(resolve(REPO_ROOT, options.png), { force: true });
 				if (!verdict.withinBudget) {
 					throw new Error(
 						`capture is ${verdict.kb} kB, over the ${Math.round(SCREENSHOT_BUDGET_BYTES / 1024)} kB budget`,
@@ -420,11 +457,16 @@ async function main() {
 						`the gallery is fixture-only but issued ${outboundUrls.length} non-loopback request(s): ${outboundUrls.join(', ')}`,
 					);
 				}
+				// Every check passed: replace the committed artefact once.
+				promoteStagedCapture({ staged: stagedPath, screenshot: options.screenshot });
 				process.stdout.write(
 					`[capture] wrote ${options.screenshot} (${capture.width}x${capture.height}, ${capture.cardsRendered} states, ${verdict.kb} kB)\n`,
 				);
 			} finally {
 				await browser.close();
+				// A candidate that was never promoted never reaches the
+				// tree, and does not linger in `.tmp/` either.
+				discardStagedCapture(stagedPath);
 			}
 		}
 	} finally {
@@ -449,6 +491,10 @@ async function main() {
 			maxWidth: SCREENSHOT_MAX_WIDTH,
 			quality: SCREENSHOT_QUALITY,
 			budgetBytes: SCREENSHOT_BUDGET_BYTES,
+			// A failed run must not be able to leave an invalid image on
+			// the committed path, so the candidate is staged here and
+			// moved onto `capture.artefact` only after every check.
+			stagingDir: STAGING_DIR,
 			issuePathSubstituted:
 				'docs/verification/ops/api-timeout-fallback.png -> .webp (open owner decision: keep the substitution or ship the Issue path)',
 			reproducible:

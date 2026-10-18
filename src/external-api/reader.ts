@@ -54,12 +54,23 @@ export interface ExternalAdapter<T> {
 	 * Perform one read. MUST honour `signal`; the reader enforces the
 	 * deadline regardless, but an adapter that ignores it leaves the
 	 * socket open until the runtime tears it down.
+	 *
+	 * `policy` is the reader's ALREADY RESOLVED policy, handed to the
+	 * adapter per attempt. An adapter therefore keeps no policy of
+	 * its own: the boundary `reader.policy` publishes is the boundary
+	 * the transport enforces, because they are one object. A second
+	 * copy is what made a reader claim 1 KiB while the socket accepted
+	 * 64 KiB.
 	 */
-	read(signal: AbortSignal): Promise<T>;
+	read(signal: AbortSignal, policy: ExternalReadPolicy): Promise<T>;
 }
 
 export interface ExternalReaderOptions {
-	/** Overrides over `DEFAULT_EXTERNAL_READ_POLICY`. */
+	/**
+	 * Overrides over `DEFAULT_EXTERNAL_READ_POLICY`. This is the ONE
+	 * place a boundary is configured: the resolved result is both
+	 * `reader.policy` and the policy every adapter call receives.
+	 */
 	readonly policy?: Partial<ExternalReadPolicy>;
 	/** Clock injection point. Defaults to `Date.now`. */
 	readonly now?: () => number;
@@ -146,7 +157,7 @@ export function createExternalReader<T>(
 		const controller = new AbortController();
 		let pending: Promise<T>;
 		try {
-			pending = adapter.read(controller.signal);
+			pending = adapter.read(controller.signal, policy);
 		} catch (thrown) {
 			// A synchronous throw is a failed READ, not a thrown reader:
 			// `ExternalAdapter.read` returns a Promise in the type, but

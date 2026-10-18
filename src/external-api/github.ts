@@ -28,12 +28,7 @@
  * `docs/verification/ops/api-timeout-fallback.md`.
  */
 
-import {
-	ExternalReadError,
-	type ExternalReadPolicy,
-	type ExternalSource,
-	resolveReadPolicy,
-} from './contract';
+import { ExternalReadError, type ExternalSource } from './contract';
 import type { ExternalAdapter } from './reader';
 import { type FetchLike, readJson } from './timeout';
 
@@ -141,11 +136,6 @@ export function parseGitHubRepoFacts(payload: unknown): GitHubRepoFacts {
 export interface GitHubRepoAdapterOptions {
 	/** Injected transport. Defaults to the runtime `fetch`. */
 	readonly fetchImpl?: FetchLike;
-	/**
-	 * Transport policy. Pass the SAME overrides the reader is created
-	 * with; the reader's deadline stays authoritative either way.
-	 */
-	readonly policy?: Partial<ExternalReadPolicy>;
 }
 
 export function createGitHubRepoAdapter(
@@ -153,10 +143,12 @@ export function createGitHubRepoAdapter(
 ): ExternalAdapter<GitHubRepoFacts> {
 	const fetchImpl: FetchLike =
 		options.fetchImpl ?? ((input, init) => globalThis.fetch(input, init));
-	const policy = resolveReadPolicy(options.policy);
 	return {
 		source: GITHUB_REPO_SOURCE,
-		read: async (signal) =>
+		// The policy arrives per attempt, resolved by the reader. This
+		// adapter holds none of its own, so the deadline and the body
+		// cap it enforces are exactly the ones `reader.policy` reports.
+		read: async (signal, policy) =>
 			parseGitHubRepoFacts(
 				await readJson(GITHUB_REPO_REQUEST.url, {
 					fetchImpl,

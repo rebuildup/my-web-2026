@@ -17,9 +17,10 @@
 | 撮影時の rendered card 数 | 6（script が `cardsRendered !== 6` で失敗する。空ページ撮影の黙認をしない） |
 | fixture | **定数**（`T0 = 2026-10-18T00:00:00Z` 基準）。`Date.now()` を使わないので、Storybook を開き直しても「何時間前」の意味が変わらない |
 | 外部通信 | **0 件（実測）**。gallery は fixture 描画のみで、upstream には何も要求しない。capture script が Playwright の request イベントを数え、loopback 以外が 1 件でもあれば artefact を書かずに失敗する |
+| 成果物の書き込み | **検証通過後にだけ** 確定置き換わる。候補は `.tmp/api-timeout-fallback/staging/` に encode され、budget / card 数 / 外部通信の検証を全部通ってから committed 経路へ move する。失敗した撮影は committed の WebP に触れない |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
 
-Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅 1440、quality 80）で commit した。`scripts/capture-api-timeout-fallback.mjs` は `.webp` 以外の出力先を拒否し、中間 PNG は削除する。この置き換えが repo の慣習になるか（Issue 名の `.png` を出荷すべきか）は **owner 判断**で §7 に未決として記す。`release-0-6-3` には `docs/verification/` が存在せず、「リポジトリの他の検証 artefact に合わせた」という先例は本 PR の base には無い（先行する同種の capture は Issue #501 / branch `501` にある）。
+Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅 1440、quality 80）で commit した。`scripts/capture-api-timeout-fallback.mjs` は `.webp` 以外の出力先を拒否する。PNG はメモリ上の buffer のみで、ファイルは書かない（そのため削除 대상になる path も存在しない）。この置き換えが repo の慣習になるか（Issue 名の `.png` を出荷すべきか）は **owner 判断**で §7 に未決として記す。`release-0-6-3` には `docs/verification/` が存在せず、「リポジトリの他の検証 artefact に合わせた」という先例は本 PR の base には無い（先行する同種の capture は Issue #501 / branch `501` にある）。
 
 ## 2. 画面が示している条件
 
@@ -103,11 +104,11 @@ GitHub の repository payload には `subscribers_count` / `network_count` / `pe
 | `src/external-api/contract.test.ts` | 遷移が `value` / `degraded` の 2 種しかないこと。`loading` に留まらないこと。失敗が値と観測時刻を壊さないこと。breaker の open/probe/close。**`retryAt` を reader が守る**（cadence 内の試行は refusal になり上流が増えない）。cadence refusal が breaker を `open` と嘘になること（実際の breaker state を報告する）。retry 間隔が有限かつ非負。失敗語彙が label 付きで閉じていること |
 | `src/external-api/reader.test.ts` | deadline（signal を無視する adapter でも `timeout` に収束・signal を abort する・**fake timer で timer 残存 0**）。**同期 throw する adapter でも通常失敗遷移へ収束する**。**負荷**: 同時 50 呼び出し → 上流 1 回。blocked 中は上流 0 回。probe は 1 回だけ。cadence 内 retry は上流 0 回 |
 | `src/external-api/timeout.test.ts` | status → 公開 reason の写像。応答サイズ上限（body-less 応答でも byte 単位で）。credential header の拒否（送信前に fail）。**transport 自身は source 固有の `accept` を持たない**（adapter が `accept` を持つ）。upstream 詳細が error に残らないこと |
-| `src/external-api/github.test.ts` | allowlist（個人フィールド・private payload の拒否）。header に credential がないこと。**GitHub の `accept` は adapter が送る**。404 / 403 が公開 reason になること |
+| `src/external-api/github.test.ts` | allowlist（個人フィールド・private payload の拒否）。header に credential がないこと。**GitHub の `accept` は adapter が送る**。404 / 403 が公開 reason になること。**adapter は policy を持たない**: reader が解決した `maxResponseBytes` がそのまま transport の上限になる（1 KiB 指定なら oversized body は `malformed-response`、既定 64 KiB なら同じ body を読む） |
 | `src/external-api/ExternalReadCard.test.tsx` | spinner は `loading` のみ。失敗時も値が残る。blocked なら retry が無効。**badge は画面上の状態を名指しする**（loading / 値なし失敗が `古い値を表示中` を出さない）。upstream 詳細が markup に出ない |
-| `scripts/capture-api-timeout-fallback.test.mjs` | `.webp` 以外の出力拒否。リポジトリ外への書き出し拒否。harness が shipped story を import すること。静的配信の traversal 防御と不正 percent-encoding の 400。loopback 判定（外部通信の実測に使う純関数） |
+| `scripts/capture-api-timeout-fallback.test.mjs` | `.webp` 以外の出力拒否。リポジトリ外への書き出し拒否。harness が shipped story を import すること。静的配信の traversal 防御と不正 percent-encoding の 400。loopback 判定（外部通信の実測に使う純関数）。**候補は `.tmp/` に staging され、通過後のみ promotion される**。`--png` のような「書いたことのないファイルを消す」option は存在しない |
 
-ローカル実測: `pnpm exec vitest run src/external-api/` = **107 passed**、`node --test scripts/capture-api-timeout-fallback.test.mjs` = **9 passed**。
+ローカル実測: `pnpm exec vitest run src/external-api/` = **108 passed**、`node --test scripts/capture-api-timeout-fallback.test.mjs` = **12 passed**。
 
 ## 6. 残るリスク（測定済み・隠していない）
 

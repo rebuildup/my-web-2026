@@ -14,7 +14,10 @@
  *
  * `./fixtures.ts` is the shared decision table the unit tests, the CI
  * policy gate and the Issue #433 verification capture all read, so the
- * three cannot drift apart.
+ * three cannot drift apart. `./glyphs.fixture.ts` is the same kind of
+ * shared table for Issue #432: the fr / de / pt / ru heading samples a
+ * glyph-display verification measures, read by the unit tests, the
+ * Storybook preview and the coverage capture.
  *
  * Import specifiers in this obligation carry the `.ts` extension on
  * purpose, and so do the other modules the Node-side gate imports
@@ -63,6 +66,25 @@ export {
 	type SlugRejectionReason,
 	type SlugVerdict,
 } from './slug-identity.ts';
+
+export {
+	type GlyphCodePointUsage,
+	type GlyphFocus,
+	type GlyphForm,
+	type GlyphGuard,
+	type GlyphGuardKind,
+	type GlyphHeadingSample,
+	GLYPH_HEADING_FIXTURES,
+	GLYPH_LOCALES,
+	type GlyphLocale,
+	type GlyphLocaleFixture,
+	glyphCodePointUsage,
+	glyphSampleById,
+	glyphSampleCodePoints,
+	glyphSampleIds,
+	glyphSamples,
+	type GlyphTypographyNote,
+} from './glyphs.fixture.ts';
 
 export {
 	type SlugExpectation,

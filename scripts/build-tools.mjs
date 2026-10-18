@@ -6,11 +6,15 @@
  *   node scripts/build-tools.mjs [--tool=<slug>] [--dry-run]
  *   node scripts/build-tools.mjs --tool=prototype  # single Tool
  *   node scripts/build-tools.mjs --dry-run        # plan only
+ *   node scripts/build-tools.mjs --root=<dir>     # another host repo (tests)
  *
  * Reads `src/tools/manifest.json`, and for each Tool whose
  * `delivery.kind === 'same_origin_static'`:
  *   1. Verifies the submodule is initialised at the pinned SHA
  *      (calls `git submodule status`).
+ *   1b. Verifies the *checked-out* commit equals the pinned SHA, that
+ *       its tracked files are unmodified, and records the stamp that
+ *       ties the collected artefact back to that commit (Issue #473).
  *   2. cd's into the submodule path.
  *   3. Runs the manifest's `build.command` (deterministic, fail-fast).
  *   4. Cleans `dist/client/tools/<slug>/` then mirrors
@@ -37,14 +41,18 @@ import {
 } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { PROVENANCE_STAMP_DIR, observeCheckout } from './check-submodule-provenance.mjs';
 import { rewriteAssetPaths } from './rewrite-asset-paths.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-const root = resolve(here, '..');
-
 const args = new Set(process.argv.slice(2));
 const toolFilter = parseArg(args, '--tool');
 const dryRun = args.has('--dry-run');
+// `--root` exists so `scripts/build-tools.test.mjs` can drive the real
+// orchestrator against a synthetic host repository instead of
+// re-implementing its decisions. Unset in every documented invocation.
+const rootArg = parseArg(args, '--root');
+const root = rootArg ? resolve(process.cwd(), rootArg) : resolve(here, '..');
 
 const manifestPath = resolve(root, 'src/tools/manifest.json');
 if (!existsSync(manifestPath)) {
@@ -149,6 +157,65 @@ for (const tool of targetTools) {
 	}
 	console.error('[build-tools]   ✓ gitlink SHA matches');
 
+	// 1b. Issue #473 — the gitlink says which commit the parent tree
+	// records; the checkout says which commit is actually on disk and
+	// would actually be built. They can differ (a `git -C
+	// external/<slug> checkout <other>` leaves the gitlink untouched),
+	// and then the artefact no longer matches any recorded pin. Refuse
+	// to build rather than ship it.
+	const checkout = observeCheckout(root, tool.source.submodule_path);
+	if (!checkout.initialised) {
+		errors.push(
+			`${tool.slug}: ${tool.source.submodule_path} is not an initialised submodule (its own git toplevel could not be confirmed)`,
+		);
+		console.error('[build-tools]   ✗ submodule checkout unreadable');
+		continue;
+	}
+	if (checkout.head !== tool.source.pinned_sha) {
+		errors.push(
+			`${tool.slug}: checked-out source is ${checkout.head ?? 'unreadable'} but pinned_sha is ${tool.source.pinned_sha}`,
+		);
+		console.error(
+			'[build-tools]   ✗ checkout SHA differs from the pin — the artefact would not match any recorded provenance',
+		);
+		continue;
+	}
+	// The HEAD comparison above cannot see an *in-place* edit: HEAD is
+	// still the pinned commit while the bytes on disk are not. The same
+	// is true of a dropped-in untracked file (a `public/` asset, an
+	// auto-detected config file), which no tree comparison can see at
+	// all. `observeCheckout().dirty` covers tracked modifications *and*
+	// untracked files (porcelain's default mode still honours the Tool
+	// repository's `.gitignore`, so `node_modules/` and `dist/` — the
+	// directories this orchestrator itself fills — do not trip it). The
+	// provenance gate reports this as `CHECKOUT_DIRTY` (warn), which
+	// does not stop a build — and `pnpm run deploy:production` runs this
+	// orchestrator directly, so an unreviewed local edit or file would
+	// otherwise reach production behind a stamp that attests the pinned
+	// commit. Refuse instead (ADR-0006 §4: the pin is a verified commit).
+	// A failed `git status` is not a clean tree. `Boolean(status)` used to
+	// collapse a non-zero exit into `dirty: false`, so a corrupt index
+	// could still build and stamp the pinned commit. Refuse instead.
+	if (checkout.statusReadable === false) {
+		errors.push(
+			`${tool.slug}: ${tool.source.submodule_path} is initialised but \`git status --porcelain\` failed — the worktree state could not be observed`,
+		);
+		console.error(
+			'[build-tools]   ✗ checkout state unreadable — refusing to build over a worktree whose modifications were never observed',
+		);
+		continue;
+	}
+	if (checkout.dirty) {
+		errors.push(
+			`${tool.slug}: ${tool.source.submodule_path} has uncommitted changes or untracked files — the artefact would not be built from ${tool.source.pinned_sha}`,
+		);
+		console.error(
+			'[build-tools]   ✗ checkout is dirty — the artefact would be built from modified or untracked bytes, not from the pinned commit',
+		);
+		continue;
+	}
+	console.error(`[build-tools]   ✓ checkout SHA ${checkout.head} matches the pin`);
+
 	const submodulePath = join(root, tool.source.submodule_path);
 	if (!existsSync(submodulePath)) {
 		errors.push(`${tool.slug}: submodule path does not exist on disk`);
@@ -236,6 +303,7 @@ for (const tool of targetTools) {
 		mkdirSync(destDir, { recursive: true });
 		mirrorDir(sourceOutputDir, destDir);
 		console.error(`[build-tools]   ✓ artifact collected at ${destDir}`);
+		writeProvenanceStamp(tool, checkout.head);
 	}
 
 	// 4. Entry-point check (the artifact must contain an index.html so
@@ -287,6 +355,39 @@ if (errors.length > 0) {
 }
 
 console.error(`\n[build-tools] all ${targetTools.length} tool(s) built successfully.`);
+
+/**
+ * Issue #473 — record which commit produced the collected artefact.
+ *
+ * The stamp lives at `dist/tool-provenance/<slug>.json`, deliberately
+ * OUTSIDE `dist/client/`: everything under `dist/client` is uploaded as
+ * a public Static Asset, and this record is operator-facing evidence,
+ * not part of the Tool's bundle. `scripts/check-submodule-provenance.mjs`
+ * cross-checks it against the manifest pin, the gitlink, and the live
+ * checkout, so a stale artefact left over from an earlier build is
+ * reported as drift instead of being served silently.
+ *
+ * No timestamp is written on purpose: the stamp must be byte-stable
+ * across two builds of the same commit, so it can be diffed.
+ */
+function writeProvenanceStamp(tool, checkoutSha) {
+	const stamp = {
+		schema: 1,
+		slug: tool.slug,
+		canonical_repo: tool.source.canonical_repo,
+		submodule_path: tool.source.submodule_path,
+		pinned_sha: tool.source.pinned_sha,
+		checkout_sha: checkoutSha ?? tool.source.pinned_sha,
+		artifact_path: tool.delivery.artifact_path,
+		entry_html: tool.delivery.entry_html ?? `${tool.delivery.artifact_path}/index.html`,
+	};
+	const dir = join(root, PROVENANCE_STAMP_DIR);
+	mkdirSync(dir, { recursive: true });
+	writeFileSync(join(dir, `${tool.slug}.json`), `${JSON.stringify(stamp, null, 2)}\n`);
+	console.error(
+		`[build-tools]   ✓ provenance stamp written at ${PROVENANCE_STAMP_DIR}/${tool.slug}.json`,
+	);
+}
 
 /**
  * Mirror a directory recursively (cp -r semantics, but Node-only).

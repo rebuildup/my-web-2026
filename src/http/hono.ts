@@ -3,6 +3,7 @@ import packageJson from '../../package.json';
 import { accessCounterRouter } from './access-counter/router';
 import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
+import { corsMiddleware } from './cors/middleware';
 import { publicErrorResponse } from './errors';
 import { sharedCacheIsolation } from './middleware/cache-policy';
 import { csrfGuard } from './middleware/csrf';
@@ -47,13 +48,34 @@ export const externalBoundary = new Hono<{
 }>();
 
 // Shared-cache isolation (Issue #460) is registered FIRST so it wraps
-// every other `/api/v1/*` layer, the local mock gate included. Every
-// response on this boundary is a function of the caller's identity
-// (API key id, `mw_actor_id` cookie, Better Auth session) unless the
-// handler explicitly opts into `public` + a positive freshness
-// lifetime — see `src/http/middleware/cache-policy.ts` for the policy,
-// its opt-in, and the sealed-header failure behaviour.
+// every other `/api/v1/*` layer, the CORS policy below, and the local
+// mock gate included. Every response on this boundary is a function of
+// the caller's identity (API key id, `mw_actor_id` cookie, Better Auth
+// session) unless the handler explicitly opts into `public` + a positive
+// freshness lifetime — see `src/http/middleware/cache-policy.ts` for
+// the policy, its opt-in, and the sealed-header failure behaviour.
+// A `403 cors_origin_rejected` refusal short-circuits inside the CORS
+// layer, so registering isolation first is what keeps that refusal out
+// of a shared cache too.
 externalBoundary.use('/api/v1/*', sharedCacheIsolation);
+
+// CORS policy (Issue #455) — mounted before every path the boundary
+// serves, including the `LOCAL_API_MODE=mock` short-circuit below. A
+// mock that answered with a different CORS surface would be a way to
+// bypass the production policy. It runs INSIDE the cache-isolation
+// layer on purpose: its pass-through renders `Vary: Origin` on the
+// finalized response, and cache isolation merges that with
+// `Cookie, Authorization` afterwards instead of letting the CORS write
+// overwrite them.
+//
+// The split it enforces: `credentialed` routes (`/api/v1/auth/*`,
+// `/api/v1/access/*`, `/api/v1/reactions`) echo ONE allow-listed origin
+// with `Access-Control-Allow-Credentials: true` and refuse everything
+// else with `403`; `public-read` routes (`/api/v1/health`,
+// `/api/v1/reaction-images/:id`) answer `Access-Control-Allow-Origin: *`
+// and never carry credentials; every other path gets no CORS header at
+// all. See `src/http/cors/README.md` and `docs/security/api-cors.md`.
+externalBoundary.use('*', corsMiddleware);
 
 // Local API mock gate (Issue #166): when `env.LOCAL_API_MODE === 'mock'`
 // (set in `.dev.vars`, NOT in `wrangler.jsonc#vars` — see
@@ -163,8 +185,9 @@ externalBoundary.onError((err, c) => {
 	}
 	// Issue #457: the generic 500 answers with the redacted body —
 	// stable code, repo-authored message, and the correlation id the
-	// log line above just wrote. The `err` object never leaves
-	// `console.error`.
+	// log line above just wrote. The `err` object never leaves the
+	// internal log record (`publicErrorResponse` writes it through
+	// the redacting boundary logger, Issue #467).
 	return publicErrorResponse(c, err, {
 		status: 500,
 		code: 'internal_error',

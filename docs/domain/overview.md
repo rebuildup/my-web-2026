@@ -105,3 +105,6 @@ my-web-2026 の domain inventory は固定リストではない。
 新しい capability は、ページを作りたいから追加するのではなく、独立した invariant / authority / lifecycle / boundary value が観測されたときに成立する。逆に、旧サイトで別ページだったものでも、同一 obligation の facet と判断できれば統合する。
 
 現時点の inventory と確度は [`capabilities.md`](capabilities.md) を canonical とする。
+
+cross-cutting な契約（テキスト表現と URL identity の扱い）は [`i18n.md`](i18n.md) を参照。
+表示本文は保持し、URL slug は導出せず拒否する、という分離は Issue #433 で導入した。

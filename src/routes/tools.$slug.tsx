@@ -65,6 +65,20 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  * itself remains lowercase (`/tools/prototype`) — this is URL
  * tolerance, not a canonicalisation contract.
  *
+ * This is a THIRD published URL slug space, and it is the one URL
+ * space the Issue #433 Unicode policy does NOT classify. The loader
+ * folds case with `.toLowerCase()` instead of routing `params.slug`
+ * through `classifySlugCandidate`, which means
+ * `/tools/MultiSlicer` and `/tools/multislicer` resolve to one
+ * published identity. The grammar is ASCII-only
+ * (`src/tools/manifest.schema.json`), so no non-ASCII character can
+ * reach this path today; what stays unresolved is the case-folding
+ * tolerance. Recorded as an open owner decision in
+ * `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`
+ * §6.4 — do not read `pnpm run i18n:policy:check` as coverage here: the
+ * gate has no rule for case folding a URL parameter. Retiring the
+ * tolerance is Issue #183's behaviour change, not this file's call.
+ *
  * Fail-closed embed policy (Issue #465): the loader runs
  * `evaluateToolEmbedPolicy()` (src/tools/embed-policy.ts) over the
  * manifest entry BEFORE deciding to render a frame. Three states:
@@ -91,7 +105,9 @@ export const Route = createFileRoute('/tools/$slug')({
 	loader: ({ params }) => {
 		// Display-case tolerance (see module docstring). The manifest
 		// schema is lowercase-only, so this is purely a URL-input
-		// concession — the canonical slug remains lowercase.
+		// concession — the canonical slug remains lowercase. It is NOT
+		// routed through `classifySlugCandidate`; that gap is the open
+		// owner decision recorded in ADR-0017 §6.4.
 		const slug = params.slug.toLowerCase();
 		const tool = getTool(slug);
 		if (!tool) throw notFound();
@@ -336,12 +352,16 @@ function ToolEmbedShell({
 					referrerPolicy={referrerPolicy as HTMLAttributeReferrerPolicy}
 					// Issue #465: render the DECLARED capability grant.
 					// `allow` only intersects with the host's own
-					// `Permissions-Policy` response header — the host does
-					// not send one for Tool frames yet (ADR-0006's
-					// re-evaluation trigger covers the header; see
-					// `docs/tools/embed-policy.md` §2). Rendering it is
-					// still required: without the attribute the declared
-					// grant can never take effect when the header lands.
+					// `Permissions-Policy` response header, and since
+					// Issue #449 that header IS sent: the shell route
+					// goes through `toolRouteSecurityPolicy()` in
+					// `src/server.ts` and `public/_headers` carries the
+					// grant for `/tools/<slug>/app/**` (see
+					// `docs/security/security-headers.md` §3). What stays
+					// undecided is `mic-level`'s graduation to
+					// `allow-same-origin` (Issue #598); the header half is
+					// delivered, the sandbox half is not. See
+					// `docs/tools/embed-policy.md` §2.
 					allow={allow}
 					style={{
 						width: '100%',

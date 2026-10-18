@@ -71,6 +71,16 @@ it:
 `referer_mismatch`, `origin_check_missing`. It names the header that
 failed, never its value.
 
+One precedence note: the CORS layer (Issue #455) is mounted ahead of
+this guard, so on a non-auth route a write whose `Origin` is outside
+its allow-list is refused there first, with
+`{ "error": "cors_origin_rejected" }` (`/api/v1/auth/*` is CSRF-exempt
+and delegates to Better Auth). The
+CSRF contract is unaffected — both refusals are `403` before
+authentication or D1 — and a request whose `Origin` *is* allow-listed
+but whose `Sec-Fetch-Site` says `cross-site` still gets
+`csrf_rejected`.
+
 The guard is mounted in `src/http/hono.ts` after the local mock gate
 and the request-id middleware, and before every router — so a refused
 cross-site write never reaches authentication, rate limiting, or D1.
@@ -325,6 +335,257 @@ signed with the dummy `BETTER_AUTH_SECRETS` binding that
 asserted, and no test contacts a real IdP. Response capture from the
 local run:
 [`verification/security/oauth-negative-tests.webp`](verification/security/oauth-negative-tests.webp).
+
+## CORS
+
+The external boundary splits its routes into three origin classes
+(Issue #455):
+
+- `credentialed` — `/api/v1/auth/*`, `/api/v1/access/*`,
+  `/api/v1/reactions`. The response echoes **one** allow-listed origin
+  plus `Access-Control-Allow-Credentials: true`, restricted to a fixed
+  method and request-header allow-list. Any other origin — including the
+  opaque `null` origin a sandboxed Tool iframe sends — gets `403` and no
+  CORS header for preflights and state-changing requests. A `GET`/`HEAD`
+  from a foreign origin still reaches the handler (Issue #440's CSRF
+  contract keeps safe reads unaffected) but carries no CORS echo, so the
+  browser cannot read the body. On `/api/v1/auth/*` the actual-request
+  refusal is Better Auth's (`INVALID_ORIGIN`, Issue #444); CORS only
+  withholds the echo and owns the preflight refusal.
+- `public-read` — `/api/v1/health` and `/api/v1/reaction-images/:id`.
+  `Access-Control-Allow-Origin: *`, and never a credentials header.
+- `none` — everything else, including `/api/v1/db/ping`,
+  `/api/v1/media/ping` and the unimplemented `/webhooks/*`, `/oauth/*`,
+  `/integrations/*` prefixes. No CORS header at all.
+
+The allow-list is derived from runtime input only: the origin the
+request arrived on, plus `env.BETTER_AUTH_URL` — the same value that
+feeds Better Auth's `trustedOrigins`. A wildcard never reaches a
+credentialed route, and that invariant is asserted over the whole
+route × origin × method matrix in `src/http/cors/policy.test.ts` and
+again against the real response bytes in
+`test/integration/cors.test.ts`.
+
+The echo is rendered onto the **finalized** response, after
+`await next()`. Hono only merges `c.header()` calls made before
+`next()` into a response the context itself produced, so a handler
+returning a raw `Response` — `auth.handler(c.req.raw)` and the
+`LOCAL_API_MODE=mock` gate's `mockApp.fetch(...)` — would otherwise
+drop the whole allow branch. Both shapes are asserted in
+`src/http/cors/middleware.test.ts` and on the wire in
+`test/integration/cors.test.ts`.
+
+Full contract, the measured matrix and the known local-dev deviation
+(`vite dev` answers preflights itself, so the Worker is never consulted):
+[`docs/security/api-cors.md`](security/api-cors.md).
+
+## Response security headers
+
+`X-Content-Type-Options: nosniff`, `Referrer-Policy` and
+`Permissions-Policy` are emitted on every response. The contract, the
+per-Tool permission grant, and how to verify both delivery surfaces
+(Worker responses and Cloudflare Static Assets) are documented in
+[`docs/security/security-headers.md`](security/security-headers.md).
+The gate is `node scripts/check-security-headers.mjs`
+(`pnpm run security:headers:check`, part of `validate:fast`).
+
+## CSP frame-ancestors
+
+> The inbound embed policy: which ancestor may put one of our
+> responses inside an iframe. Issue #448. Distinct from the **outbound**
+> Tool embed policy (`src/tools/registry.ts` + the manifest's
+> `delivery.iframe`), which decides which Tools this host embeds.
+
+### Three questions that are not the same question
+
+| Question | Directive / contract | Owner |
+| --- | --- | --- |
+| Who may **read** a Tool artefact cross-origin? | `Access-Control-Allow-Origin` | `public/_headers` (Static Assets) |
+| Who may **frame** one of our documents? | `Content-Security-Policy: frame-ancestors` | `src/server.ts` + `public/_headers` |
+| Which Tools may this host **embed**? | `delivery.kind` / `delivery.iframe` | `src/tools/registry.ts` + `src/tools/manifest.json` |
+
+The failure this separation prevents: `/tools/<slug>` renders an
+`<iframe>`, which reads like "the Tool surface must be framable", and
+by extension every surface. It is not. A document may embed an iframe
+without being framable itself. Only the **ancestors of the Tool
+document** matter for the Tool rule, and the only ancestor the Tool
+document has is our own shell.
+
+### Policy table
+
+| Surface | Directive | Enforced in |
+| --- | --- | --- |
+| `/admin`, `/admin/*` | `frame-ancestors 'none'` | `src/server.ts` (Worker) |
+| `/api/v1/auth`, `/api/v1/auth/*` (Better Auth — Account) | `frame-ancestors 'none'` | `src/server.ts` (covers the Hono response) |
+| every other **Worker-generated** response (`/`, `/about`, `/contact`, `/portfolio/*`, `/tools*`, `/api/v1/*`) | `frame-ancestors 'self'` | `src/server.ts` (Worker) |
+| `/tools/:slug/app`, `/tools/:slug/app/*` (Tool artefacts) | `frame-ancestors 'self'` | `public/_headers` (Static Assets) |
+| `/share/*` (public static documents, e.g. `/share/procon2026/`) | `frame-ancestors 'self'` | `public/_headers` (Static Assets) |
+
+Decisions behind the table:
+
+- **Public stays `'self'`, not `'none'`.** Same-origin framing is a
+  legitimate authoring/debugging affordance and a public marketing
+  surface has no signed-in state to clickjack. Denying framing
+  everywhere would buy nothing and cost the same-origin case.
+- **Admin and Account are `'none'`** — clickjacking an operator's
+  session is the threat (OWASP ASVS framing requirement, the second
+  source cited by Issue #448).
+- **Path only, no content-type or status gate.** Anonymous
+  `GET /admin` answers `307` with no `content-type`, so a
+  content-type-gated rule would skip exactly the response most worth
+  protecting. Same reasoning as the cache policy in `src/server.ts`.
+- **Prefix matching is exact-or-`/`**, so `/administrator` and
+  `/api/v1/authentication` do not inherit a denial.
+- **"Everything else" is a statement about Worker responses, not about
+  every file this site serves.** Static Assets answer before the Worker
+  runs (`wrangler.jsonc` declares no `assets.run_worker_first` and no
+  `not_found_handling`), so the Worker's `'self'` default never reaches
+  them. `/share/<slug>/` is the committed public HTML namespace
+  (`docs/architecture.md`), and it carries its own `'self'` rule. The
+  two Worker rows and the two `_headers` rows are disjoint halves of one
+  policy, not overlapping descriptions of it.
+
+### Why the existing Tool iframes keep working
+
+`/tools/<slug>` (shell) is a Worker response carrying
+`frame-ancestors 'self'`; the artefact it frames
+(`/tools/<slug>/app/index.html`) is a Static Asset carrying
+`frame-ancestors 'self'` in `public/_headers`. Both halves evaluate
+against the **ancestor's** origin — the host, which is the same
+origin in both cases — so `'self'` permits the embedding.
+
+The `sandbox="allow-scripts"` (no `allow-same-origin`) attribute
+makes the framed document's own origin opaque, but `frame-ancestors`
+is matched against the ancestor, not the framed document, so the
+sandbox changes nothing here. It still blocks the Tool from reading
+the host DOM.
+
+`frame-ancestors 'none'` on the artefact would break every integrated
+Tool (the shell renders, the iframe never mounts), which is why the
+static gate fails on that direction rather than leaving it to review.
+`frame-ancestors *` would re-open third-party framing of Tool
+documents, which is what the issue denies; the gate fails on it too.
+
+### Why public static documents need their own rule
+
+`/share/procon2026/` (and every future `share/<slug>/`) is delivered as
+a Static Asset, so the Worker's default branch never runs for it: no
+`_headers` rule means **no** `frame-ancestors`, which is precisely the
+state the issue opened by describing ("no surface returned
+`frame-ancestors`, so every page could be embedded by any third-party
+iframe"). The rule is `'self'` for the same reason the Worker default
+is: these are public documents with no signed-in state, so there is
+nothing to clickjack, and same-origin framing stays available.
+
+Coverage is checked rather than remembered. The static gate walks every
+`.html` file under `public/`, derives the URLs Static Assets serves it
+under (`/share/<slug>/` and `/share/<slug>/index.html`), and fails when
+**either** served URL is not matched by a rule carrying a
+`frame-ancestors` directive — so adding a public document, or protecting
+only one of its two URLs, cannot ship framable by any third party by
+omission.
+
+### Where it is enforced
+
+| Gate | What it proves | Where |
+| --- | --- | --- |
+| Runtime suite | Real headers through `SELF.fetch` for every Worker response: `/admin*` and `/api/v1/auth/*` are `'none'`, public surfaces are `'self'`, the anonymous `/admin` redirect carries the header with no content-type, lookalike paths do not inherit a denial, and `/tools/prototype` still mounts its same-origin artefact. | `test/integration/frame-ancestors.test.ts` (workerd pool) |
+| Static gate | The Static Assets half, which no runtime test can observe: every `_headers` rule under `/tools` carries `frame-ancestors 'self'`; every rule that is **not** written under `/tools` but whose pattern still matches a Tool delivery URL (`/*`, `/tools*`, …) carries `'self'` too, because Static Assets applies every matching rule and comma-joins same-named headers, so a wide `'none'` would deny the host shell's iframe even though the rule never mentions `/tools`; every served URL of every committed public HTML document under `public/` (directory and explicit `index.html`) is matched by a rule that carries one; no shipped value is permissive (`*`, `https:`, absolute origins); no rule targets a Worker-owned path; and the Worker half still exists. | `scripts/check-frame-ancestors-policy.mjs`, wired via `scripts/check-frame-ancestors-policy.test.mjs` |
+
+Run the static gate on its own with `pnpm run security:embed:check`
+(`node scripts/check-frame-ancestors-policy.mjs`). Exit 1 means a
+`_headers` rule would widen framing, would break the Tool iframes,
+targets a path Cloudflare never applies `_headers` to, or leaves a
+committed public HTML document without a framing policy.
+
+`test/integration/frame-ancestors.test.ts` is the only runtime proof
+of the Worker half, because it is the only layer that observes the
+actual response headers the runtime emits.
+
+### Known unscanned inventory
+
+- **Tool artefact and `share/` responses are not observed at
+  runtime.** The workerd pool declares no `assets` binding
+  (`vitest.config.ts`), so `public/_headers` is never applied there.
+  The static gate is the whole of their coverage; `e2e/tools-prototype.spec.ts`
+  proves the artefact is served and mounts in a real browser but does not
+  assert headers. Cloudflare applies `_headers` to Static Assets
+  responses, and the same file is parsed by `vite preview`, so the rules
+  are observable locally and in production.
+- **No `X-Frame-Options`.** `frame-ancestors` is CSP 3 and is ignored
+  by browsers without CSP support. Every browser this project targets
+  supports CSP 3; the legacy header is deliberately not sent so the
+  two headers cannot disagree about what is allowed.
+- **`/api/v1/*` non-account endpoints carry `'self'`.** They are JSON
+  with no document to frame; the value is the default branch, not a
+  per-endpoint decision.
+- **The existing-CSP branches of `withFrameAncestors` are not observed
+  at runtime.** No shipped layer emits a CSP today, so every case in
+  `test/integration/frame-ancestors.test.ts` reaches the Worker with no
+  pre-existing header. "A CSP that already carries `frame-ancestors` is
+  left untouched, byte-for-byte" and "a CSP with other directives gains
+  ours as one more directive" are therefore defensive code for a future
+  caller, not asserted behaviour: the suite cannot fail if they regress
+  until some layer starts sending a CSP, and the static gate does not
+  cover them either (it reads `public/_headers` and canaries
+  `src/server.ts` for the policy's presence). Exporting the helper from
+  the Worker entry purely to test it is not worth the extra export.
+- **Leaving an existing `frame-ancestors` alone is fail-open for
+  `/admin`.** If a future layer stamps `frame-ancestors 'self'` on an
+  Admin response, the Worker keeps it — ownership beats escalation.
+  No layer does this today; recorded so the trade-off is visible if an
+  Admin CSP is ever introduced.
+- **A response with sealed `Headers` is returned unchanged** and
+  silently gets no framing policy. Same trade-off, same rationale, as
+  the cache policy in `src/server.ts`.
+
+### Operational contract
+
+This change adds no service, no binding, and no secret. Specifically:
+
+- **Auth boundary untouched.** `/api/v1/auth/*` still runs through the
+  same Better Auth handler with the same session checks; the header is
+  stamped on the response in the Worker entry, not by an auth
+  middleware. No token, cookie, or session semantic changed.
+- **Cloudflare bindings untouched.** `ASSETS`, `DB`, `MEDIA` are
+  unchanged; `wrangler.jsonc` is unchanged, so `cf-typegen` output is
+  unchanged.
+- **Tool Registry untouched.** `src/tools/manifest.json` and
+  `src/tools/registry.ts` are unchanged — the outbound Tool policy is
+  not derived from `frame-ancestors`, and no manifest field was added
+  to express framing. `pnpm run tools:check` still passes unmodified.
+- **Rollout / rollback** is a normal commit revert: the Worker
+  half (`src/server.ts`) and the static half (`public/_headers`) are
+  independent, so either can be reverted alone; reverting only
+  `public/_headers` would leave Tool artefacts and `share/` documents
+  with no stated framing policy, and
+  `scripts/check-frame-ancestors-policy.mjs` would fail on the next
+  commit that touched either file. Revert both together.
+- **Verification artefact.** `docs/verification/security/frame-ancestors-test.webp`
+  is generated by `pnpm run verify:frame-ancestors-screenshot`
+  (`scripts/make-frame-ancestors-report.mjs`), which runs the suite and
+  the static gate locally, renders the report, and encodes it as WebP.
+  The Issue names a `.png`; the `.webp` extension is a deliberate
+  substitution (the same one Issue #452 made for its report).
+
+## Outbound fetch (SSRF)
+
+A URL that did not come from this repository — a visitor-supplied
+source URL, a stored record, an upstream service — is fetched through
+`fetchExternalUrl()` in `src/http/outbound-fetch.ts` and nothing else.
+`src/http/outbound.ts` refuses non-`http(s)` schemes, userinfo,
+single-label and reserved/internal host names, and the loopback /
+private / link-local / CGNAT / multicast / reserved address space
+(including the IPv4-mapped, NAT64 and 6to4 embeddings of it). Redirects
+are followed with `redirect: 'manual'` and every `Location` target is
+re-classified before the next connection, so a hop is not a way around
+the policy.
+
+The classifier runs before DNS, so the runtime's
+`global_fetch_strictly_public` flag is what refuses a connection that
+resolves to a non-public address — both layers are load-bearing. The
+shipped contract, operator duties and known limits:
+[`docs/security/outbound-fetch.md`](security/outbound-fetch.md).
 
 ## Boundary input validation
 
@@ -853,6 +1114,13 @@ only the diff that introduced it.
 
 ## Automated checks
 
+- Log redaction gate (Issue #467): `pnpm run log:redaction:check`
+  fails when `src/**` writes to `console.*` outside `src/logging/`, or
+  when an operator script prints a secret-named value. The contract,
+  the coverage matrix, and the re-run procedure live in
+  [`docs/security/log-redaction.md`](security/log-redaction.md); the
+  verification report it produces is committed at
+  `docs/verification/security/log-redaction-test.webp`.
 - Secret scanning: enabled as an asynchronous CI job (see
   `quality/profile.yaml#security_gates.secret_scanning`).
 - Supply-chain SBOM: CycloneDX 1.6, generated from `pnpm-lock.yaml`,
@@ -889,9 +1157,18 @@ only the diff that introduced it.
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Outbound URL matrix (Issue #453) is regenerated from the shipped
+  adapter by `pnpm run security:ssrf:report`; the committed artefact
+  and its reading guide are in
+  [`docs/verification/security/`](verification/security/).
 - Redirect-target matrix (Issue #454) is regenerated from the shipped
   guard by `pnpm run security:redirect:report`; the committed image and
   its reading guide are in
+  [`docs/verification/security/`](verification/security/).
+- Embed policy (Issue #448) is asserted at runtime by
+  `test/integration/frame-ancestors.test.ts` and, for the Static
+  Assets half no runtime test can observe, by
+  `pnpm run security:embed:check`; the committed report is in
   [`docs/verification/security/`](verification/security/).
 
 ## Error redaction (Issue #457)
@@ -915,11 +1192,11 @@ Every body is exactly:
 }
 ```
 
-The caught error is handed to `console.error` and to nothing else.
+The caught error is handed to the redacting logger and to nothing else.
 
 | Concern | Contract |
 | --- | --- |
-| Correlation | `request_id` is byte-identical to the `X-Request-Id` response header, and to the id in the internal log line. A client-supplied `X-Request-Id` is reused when it matches `^[A-Za-z0-9._:-]{1,128}$` — the trace-id alphabets in real use (hex, UUID, W3C `traceparent`, dotted service ids) — so a reporter can be traced; anything else (empty, too long, spaces, control characters) is replaced by a freshly minted 128-bit hex id. The charset is not cosmetic: since #457 the id is published in the **body** too, so an unconstrained echo would let any client string ride inside a documented contract field. |
+| Correlation | `request_id` is byte-identical to the `X-Request-Id` response header. In the **log line** the id is printed only when this Worker minted it (Issue #467: a 32-hex id is indistinguishable from an opaque credential, so the redaction layer proves the mint format before printing it; a client-supplied id is replaced by `[redacted-correlation]` there — see the open decision below). A client-supplied `X-Request-Id` is reused when it matches `^[A-Za-z0-9._:-]{1,128}$` — the trace-id alphabets in real use (hex, UUID, W3C `traceparent`, dotted service ids) — so a reporter can be traced in the response; anything else (empty, too long, spaces, control characters) is replaced by a freshly minted 128-bit hex id. The charset is not cosmetic: since #457 the id is published in the **body** too, so an unconstrained echo would let any client string ride inside a documented contract field. |
 | Ops probes | `/api/v1/health`, `/api/v1/db/ping` (200) and `/api/v1/media/ping` (404 `key_not_found`) keep their documented bodies, including the `binding` field. Only the **failure** branch changed: the old `{"status":"binding_error","binding":"d1"\|"r2"}` 503 is now the redacted body above. The request path already identifies which probe failed, so no operational signal is lost. |
 | Minting outside `/api/v1/*` | `resolveRequestId` mints an id when the request-id middleware did not run — that is, the `/webhooks`, `/oauth`, and `/integrations` prefixes. None of those prefixes has a handler yet, so the branch is currently unreachable in production; it exists so that a future handler on those prefixes is correct by default rather than by remembering. |
 | Auth | 401 / 403 bodies are unchanged (`missing_authorization`, `invalid_api_key`, `missing_scope`). They carry no server state, and the correlation id is still available through the `X-Request-Id` header. |
@@ -930,6 +1207,17 @@ field in the **200 / 404** probe bodies counts as internal
 information. The failure branch no longer publishes it and the success
 branch still does; this record states that fact rather than claiming
 the binding is hidden.
+
+Open question (deliberately not decided here, Issue #467
+reconciliation): whether a **client-supplied** `X-Request-Id` still has
+to be greppable in the log line. The redaction contract masks any
+24+ character opaque run, so the log now prints the id only when the
+Worker minted it, and answers `request_id=[redacted-correlation]`
+otherwise. The response contract (body + header) is unchanged. If
+tracing a client-supplied id matters operationally, a different,
+deliberately non-reversible value (for example a truncated fingerprint)
+has to be designed and reviewed as its own change; that decision was
+not taken here.
 
 ### Server-function surfaces
 

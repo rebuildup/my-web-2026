@@ -46,8 +46,10 @@
  * that *shows* an import example (documentation, a code sample, a
  * comment) is not read as an edge, and an import-shaped string is not
  * read as a `createServerFn` seam that would hide a real boundary
- * violation. The mask is index-aligned with the original source, so
- * every edge still carries its original position.
+ * violation. The mask preserves every newline and replaces each
+ * string literal with an index-carrying placeholder, so the original
+ * specifier is recovered; masked regions are shorter than the text
+ * they replace, and only masked-relative positions are used.
  *
  * Excluded, with reasons (printed in the report as `not applicable`)
  * -----------------------------------------------------------------
@@ -148,8 +150,9 @@ const maskNonCodeLength = (text) => text.replace(/[^\n]/g, ' ');
  * Each string literal is replaced by a placeholder that carries its
  * index, so the import regexes keep matching `from '<placeholder>'`
  * and the original specifier is recovered by `literalText()`. The mask
- * keeps the source length and every newline, so positions still map
- * one-to-one onto the original.
+ * preserves every newline; it is not length-preserving (a masked
+ * region is shorter than the literal it replaces), so only
+ * masked-relative positions are used.
  */
 function maskNonCode(source) {
 	const literals = [];

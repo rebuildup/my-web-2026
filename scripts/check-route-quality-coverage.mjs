@@ -39,7 +39,8 @@
  *      least one evidence path, or `excluded` with a non-empty reason.
  *      An unresolved cell is the "対象漏れ" this Issue is about.
  *   7. `covered` evidence must obey the family's `evidence_kind`, exist
- *      on disk, and actually mention the route's probe path
+ *      on disk, and actually mention the route's probe path as a
+ *      standalone path
  *      (`sample_path` for dynamic routes, otherwise `path`). A coverage
  *      claim cannot be satisfied by naming an unrelated spec.
  *   8. A `planned` family may not claim `covered`, and an `implemented`
@@ -58,9 +59,11 @@
  *     that passed its id through a variable would not be seen; the
  *     generated-tree cross-check (#5) catches that as a mismatch
  *     rather than a silent omission.
- *   - Evidence matching is `content.includes(probe)`. It proves the
- *     route is *named* in the evidence, not that the assertion still
- *     runs; the specs themselves remain the authority for that.
+ *   - Evidence matching is a whole-path text match (see
+ *     `mentionsProbe`), not an execution trace. It proves the route is
+ *     *named as a standalone path* in the evidence, not that the
+ *     assertion still runs; the specs themselves remain the authority
+ *     for that.
  *
  * Exit codes: 0 = manifest and published routes agree, 1 = drift or a
  * malformed manifest, 2 = bad input (unreadable manifest / route root).
@@ -71,7 +74,7 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, relative, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -131,6 +134,31 @@ export function isSampleUnderRoute(id, sample) {
 		.map((segment) => (segment.startsWith('$') ? '[^/]+' : escapeRegExp(segment.replace(/_$/, ''))))
 		.join('/');
 	return new RegExp(`^/${pattern}$`).test(sample);
+}
+
+/** Characters that can continue a URL path token in an evidence file. */
+const PATH_TOKEN_CHAR = /[A-Za-z0-9_./$-]/;
+
+/**
+ * Does `text` mention `probe` as a whole path?
+ *
+ * A bare substring test is too weak: `/tools` is a substring of
+ * `/tools/prototype`, so a spec that only ever visits the nested route
+ * would satisfy the parent route's coverage cell. The probe therefore
+ * has to stand on its own — delimited on both sides by something that
+ * cannot extend a path — which is what a quoted `page.goto('/about')`
+ * or a bare `/about` in prose looks like.
+ */
+export function mentionsProbe(text, probe) {
+	let from = 0;
+	for (;;) {
+		const at = text.indexOf(probe, from);
+		if (at === -1) return false;
+		const before = at === 0 ? '' : text[at - 1];
+		const after = text[at + probe.length] ?? '';
+		if (!PATH_TOKEN_CHAR.test(before) && !PATH_TOKEN_CHAR.test(after)) return true;
+		from = at + probe.length;
+	}
 }
 
 /**
@@ -367,7 +395,7 @@ export function evaluateCoverage({ manifest, routes, routeTreeIds = [], evidence
 						errors.push(`${gateLabel}.evidence: "${evidencePath}" does not exist`);
 						continue;
 					}
-					if (!text.includes(probe)) {
+					if (!mentionsProbe(text, probe)) {
 						errors.push(
 							`${gateLabel}.evidence: "${evidencePath}" never mentions "${probe}" — the route is not actually a target there`,
 						);
@@ -715,7 +743,13 @@ function main(argv) {
 			result,
 			sourceSha: headSha(root),
 		});
-		writeFileSync(resolve(root, reportPath), html);
+		const target = resolve(root, reportPath);
+		// The documented target is `.tmp/route-quality-report.html`, and
+		// `.tmp/` is gitignored, so a clean checkout has no such directory.
+		// Create the parents instead of crashing with ENOENT — the same
+		// contract scripts/make-route-quality-report.mjs already follows.
+		mkdirSync(dirname(target), { recursive: true });
+		writeFileSync(target, html);
 		process.stdout.write(`wrote ${reportPath}\n`);
 	}
 

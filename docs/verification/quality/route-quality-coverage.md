@@ -14,7 +14,7 @@
 | --- | --- | --- |
 | 公開 route roster | `src/routeTree.gen.ts` の生成物を読むしかなく、**比較される相手がいない** | `src/routes/**` の `createFileRoute('<id>')` 呼び出しから取得し、`quality/route-coverage.json` と機械的に突き合わせる |
 | 新 route 追加時 | どの品質ゲートの対象にもならないことを誰も察觉できない | manifest エントリが無いと `pnpm run routes:quality:check` が fail（PR で「対象追加 / 正当な除外」を強制） |
-| 対象漏れ（例: `/portfolio` の SEO metadata） | 仕様書にのみ暗黙。spec を消しても fail しない | `covered` の evidence は実ファイル，并且そのファイルが実際に route path を含まない場合 fail |
+| 対象漏れ（例: `/portfolio` の SEO metadata） | 仕様書にのみ暗黙。spec を消しても fail しない | `covered` の evidence は実ファイル、かつそのファイルが route path を単独で含む場合だけ成立（含まない場合 fail） |
 | 除外の記録 | なし | 全 cell が `covered`（evidence 付き）か `excluded`（理由付き）。`TBD` のような placeholder は fail |
 
 合格基準は **1 つ**で、`pnpm run routes:quality:check` の exit code が 0。
@@ -57,7 +57,10 @@ CI では `validate:fast` の `architecture:check` の直後に同じコマン�
 4. `src/routeTree.gen.ts` の id 集合が `src/routes/**` と一致しない（生成物の stale）
 5. ある (route, gate family) が `covered` でも `excluded` でもない
 6. `covered` の evidence が実在しない / family の `evidence_kind` に反する /
-   そのファイルが route の probe path（dynamic route は `sample_path`）を含まない
+   そのファイルが route の probe path（dynamic route は `sample_path`）を
+   **単独トークンとして**含まない（`/tools` は `/tools/prototype` の部分文字列なので
+   成立しない: `page.goto('/tools/prototype')` だけがある spec は `/tools` の
+   coverage を満たさない）
 7. `excluded` に理由がない、または `TBD` などの placeholder
 8. `state: planned` の family が `covered` を主張している
 9. `state: implemented` の family が全 route で `excluded`（dead configuration）

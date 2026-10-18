@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
@@ -10,6 +11,7 @@ import {
 	evaluateCoverage,
 	isDynamicId,
 	isSampleUnderRoute,
+	mentionsProbe,
 	parseRouteTreeIds,
 	publishedPathForId,
 	renderReport,
@@ -29,6 +31,7 @@ import {
  */
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
+const GATE_SCRIPT = join(REPO_ROOT, 'scripts/check-route-quality-coverage.mjs');
 
 const FAMILIES = [
 	{
@@ -227,6 +230,35 @@ describe('coverage evaluation — the cell itself', () => {
 		assert.ok(
 			result.errors.some(
 				(error) => error.includes('e2e/home.spec.ts') && error.includes('never mentions "/about"'),
+			),
+		);
+	});
+
+	it('does not accept a nested route path as evidence for its parent route', () => {
+		const toolsRoute = {
+			source: 'src/routes/tools.index.tsx',
+			id: '/tools/',
+			path: '/tools',
+			dynamic: false,
+		};
+		const result = evaluateCoverage({
+			manifest: manifestWith([
+				entryFor(toolsRoute, {
+					gates: {
+						e2e: { status: 'covered', evidence: ['e2e/prototype.spec.ts'] },
+					},
+				}),
+			]),
+			routes: [toolsRoute],
+			routeTreeIds: ['/tools/'],
+			// `/tools` is a substring of the nested path, so a bare
+			// `content.includes()` would have called this coverage.
+			evidence: { 'e2e/prototype.spec.ts': "await page.goto('/tools/prototype');\n" },
+		});
+		assert.ok(
+			result.errors.some(
+				(error) =>
+					error.includes('e2e/prototype.spec.ts') && error.includes('never mentions "/tools"'),
 			),
 		);
 	});
@@ -578,5 +610,34 @@ describe('report rendering', () => {
 		assert.equal(first, second);
 		assert.match(first, /deadbeefcafe/);
 		assert.match(first, /<code>e2e<\/code>/);
+	});
+});
+
+describe('the --report writer', () => {
+	it('creates the missing parent directory of the report target', () => {
+		const root = stageRepo({
+			'src/routes/about.tsx': ROUTE_FILE,
+			'e2e/about.spec.ts': "await page.goto('/about');\n",
+			'quality/route-coverage.json': JSON.stringify(
+				manifestWith([entryFor({ source: 'src/routes/about.tsx', id: '/about', path: '/about' })]),
+			),
+		});
+		// `.tmp/` is gitignored, so a clean checkout has no such directory —
+		// exactly the state in which the documented reproduction procedure
+		// (`pnpm run routes:quality:report`) has to work.
+		const target = join(root, '.tmp/nested/route-quality-report.html');
+		assert.equal(existsSync(dirname(target)), false);
+		try {
+			const stdout = execFileSync(
+				process.execPath,
+				[GATE_SCRIPT, `--root=${root}`, `--report=${target}`],
+				{ encoding: 'utf8' },
+			);
+			assert.match(stdout, /wrote /);
+			assert.equal(existsSync(target), true);
+			assert.match(readFileSync(target, 'utf8'), /public route × quality gate coverage/);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });

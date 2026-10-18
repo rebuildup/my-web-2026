@@ -396,6 +396,7 @@ pnpm run verify:compat-screenshot  # render the matrix + write the WebP
 | `.tmp/compat-results.json`        | Playwright JSON report (matrix source)            |
 | `.tmp/compat-screenshots/`        | per-engine, per-route captures (matrix source)     |
 | `.tmp/compat-matrix.html`         | rendered engine x test matrix                     |
+| `playwright-report/`              | Playwright HTML report (CI only, uploaded for failure inspection) |
 | `docs/verification/compat/browsers-matrix.webp` | committed verification screenshot       |
 
 CI runs the same command from `.github/workflows/compat.yml` (push to

@@ -24,6 +24,9 @@ import base from './playwright.config';
  *               and screenshots for the Issue's required evidence.
  *   - `github`— annotations on the CI run, so a per-engine failure is
  *               visible in the PR checks list without opening logs.
+ *   - `html`  — `playwright-report/` on CI only, uploaded by
+ *               `.github/workflows/compat.yml` for failure inspection
+ *               (retry traces, per-engine attachments).
  *
  * Local:
  *   pnpm run build            # `vite preview` serves dist/client
@@ -42,7 +45,12 @@ const config: PlaywrightTestConfig = {
 	// production-only or D1-mutating spec.
 	testIgnore: [],
 	reporter: process.env.CI
-		? [['github'], ['list'], ['json', { outputFile: JSON_REPORT }]]
+		? [
+				['github'],
+				['list'],
+				['json', { outputFile: JSON_REPORT }],
+				['html', { open: 'never', outputFolder: 'playwright-report' }],
+			]
 		: [['list'], ['json', { outputFile: JSON_REPORT }]],
 	projects: [
 		{ name: 'chromium', use: { ...devices['Desktop Chrome'] } },

@@ -220,6 +220,8 @@ compat:
       source: 'Playwright JSON reporter'
     - path: '.tmp/compat-matrix.html'
       source: 'scripts/make-compat-matrix-report.mjs'
+    - path: 'playwright-report/'
+      source: 'Playwright html reporter (CI only)'
     - path: 'docs/verification/compat/browsers-matrix.webp'
       source: 'committed verification screenshot (Issue #415 PR evidence)'
   os_differential:

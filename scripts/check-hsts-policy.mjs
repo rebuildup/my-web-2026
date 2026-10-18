@@ -62,6 +62,23 @@
  *     natural way to widen the policy, and a gate that cannot read it
  *     cannot refuse it.
  *
+ * Directive NAMES are matched case-insensitively, as RFC 6797 defines
+ * them: `MAX-AGE=31536000; includeSubDomains` is a valid HSTS header a
+ * browser honours, so it is a candidate exactly like the lower-case
+ * spelling. The one exception is the Set-Cookie attribute's exact
+ * `Max-Age` spelling when it is the whole literal (RFC 6265 §4.1); the
+ * cookie module builds its lifetime as that single part, and reading it
+ * as a policy would make the gate fail on a cookie.
+ *
+ * A directive assembled with `+` is read as ONE expression. Reading the
+ * parts separately would accept `'max-age=31536000'` and then ignore
+ * `'; includeSubDomains'`, which is the same blindness that template
+ * literals used to have; `'max-age=31536000' + '; includeSubDomains'`
+ * is therefore folded into one value and reported as drift. When an
+ * operand is not a literal (`SUFFIX + '; …'`, `HSTS_DIRECTIVE + '; …'`)
+ * the runtime value is invisible to a source scan, so the expression is
+ * reported as composed rather than accepted.
+ *
  * A literal that carries a `max-age` part together with a token RFC
  * 6797 does not define is STILL a candidate: it is reported as drift,
  * and the undefined token is reported on its own line. Dropping such a
@@ -92,11 +109,17 @@
  *     small hand-written scanner rather than an AST pass. It tracks
  *     strings, template literals and regex literals, so `'https://…'`,
  *     `/['"]/` and `/\/\//` are never mistaken for comment syntax.
- *   - One documented blind spot: a literal that mixes a `max-age` part
- *     with a token that belongs to another header's grammar
- *     (`OTHER_HEADER_TOKENS`) is attributed to that other header. That
- *     is what keeps `public, max-age=31536000, immutable` out of the
- *     report, and the list is the price of that decision.
+ *   - Two documented blind spots, both chosen to keep other headers out
+ *     of the report:
+ *       * a literal that mixes a `max-age` part with a token that
+ *         belongs to another header's grammar (`OTHER_HEADER_TOKENS`)
+ *         is attributed to that other header. That is what keeps
+ *         `public, max-age=31536000, immutable` out of the report, and
+ *         the list is the price of that decision;
+ *       * a literal that is exactly the Set-Cookie attribute spelling
+ *         `Max-Age=…` and nothing else is the actor-cookie lifetime. An
+ *         HSTS header written in that exact mixed casing with no other
+ *         directive is not flagged; every other casing is.
  *
  * Exit codes: 0 = policy holds, 1 = violation, 2 = bad input.
  */
@@ -179,13 +202,21 @@ function directiveParts(literal) {
 }
 
 /**
- * Is this part the policy's lifetime, spelled the way RFC 6797 §6.1.1 spells
- * it? `Max-Age` is deliberately a different shape: that is the Set-Cookie
- * attribute spelling, which `src/home/reactions/cookie.ts` uses for the actor
- * cookie, so a cookie literal is never read as a policy.
+ * Is this part the policy's lifetime? RFC 6797 directive names are
+ * case-insensitive, so `MAX-AGE=` must be a candidate; the exact Set-Cookie
+ * spelling is handled in `isHstsLiteral`, where the whole literal is known.
  */
 function isMaxAgePart(part) {
-	return /^max-age=/.test(part.replace(/\s*=\s*/, '='));
+	return /^max-age=/i.test(part.replace(/\s*=\s*/, '='));
+}
+
+/**
+ * The exact RFC 6265 §4.1 spelling of the Set-Cookie lifetime attribute.
+ * `src/home/reactions/cookie.ts` builds its header from this one part, so a
+ * literal that is nothing but this attribute is a cookie, not a policy.
+ */
+function isSetCookieMaxAge(part) {
+	return /^Max-Age\s*=/.test(part);
 }
 
 /**
@@ -212,7 +243,14 @@ function isMaxAgePart(part) {
 function isHstsLiteral(literal) {
 	const parts = directiveParts(literal);
 	if (!parts.some(isMaxAgePart)) return false;
-	return !parts.some((part) => OTHER_HEADER_TOKENS.has(part.split('=')[0].trim().toLowerCase()));
+	if (parts.some((part) => OTHER_HEADER_TOKENS.has(part.split('=')[0].trim().toLowerCase()))) {
+		return false;
+	}
+	// A lone `Max-Age=…` is the actor-cookie lifetime. Any second directive
+	// (`Max-Age=…; includeSubDomains`) makes it an HSTS header and it is
+	// scanned like any other casing.
+	if (parts.length === 1 && isSetCookieMaxAge(parts[0])) return false;
+	return true;
 }
 
 /** Parts of a candidate literal that RFC 6797 §6.1.1 does not define. */
@@ -561,6 +599,47 @@ export function normalizeDirective(value) {
 		.join(';');
 }
 
+/** Every string literal in a file, in source order, with its source span. */
+function literalSpans(code) {
+	const spans = [];
+	for (const match of code.matchAll(QUOTED)) {
+		spans.push({
+			index: match.index,
+			end: match.index + match[0].length,
+			value: match[1] ?? match[2] ?? match[3] ?? '',
+		});
+	}
+	return spans;
+}
+
+/**
+ * Literals joined only by `+` are one expression. Grouping them keeps the
+ * scan from reading the first half of a rewritten directive and ignoring the
+ * half that widens it.
+ */
+function literalGroups(code) {
+	const groups = [];
+	let group = [];
+	for (const span of literalSpans(code)) {
+		const previous = group[group.length - 1];
+		if (previous && /^\s*\+\s*$/.test(code.slice(previous.end, span.index))) {
+			group.push(span);
+		} else {
+			if (group.length > 0) groups.push(group);
+			group = [span];
+		}
+	}
+	if (group.length > 0) groups.push(group);
+	return groups;
+}
+
+/** A `+` joins the group to an operand the group does not contain. */
+function hasExternalOperand(code, group) {
+	const before = code.slice(0, group[0].index);
+	const after = code.slice(group[group.length - 1].end);
+	return /\+\s*$/.test(before) || /^\s*\+/.test(after);
+}
+
 /** Every HSTS directive in one file, in source order. */
 export function hstsDirectivesIn(path, source) {
 	const directives = [];
@@ -573,24 +652,54 @@ export function hstsDirectivesIn(path, source) {
 	}
 	// Comments are prose, not declaration sites — see `stripComments`.
 	const code = stripComments(source);
-	for (const match of code.matchAll(QUOTED)) {
-		const literal = match[1] ?? match[2] ?? match[3] ?? '';
-		if (isHstsLiteral(literal)) directives.push(literal);
+	for (const group of literalGroups(code)) {
+		const folded = group.map((span) => span.value).join('');
+		if (isHstsLiteral(folded)) directives.push(folded);
 	}
 	return directives;
 }
 
+/**
+ * HSTS expressions whose value a source scan cannot know.
+ *
+ * A candidate literal joined to a non-literal operand (`SUFFIX + '; …'`), or
+ * the canonical constant used in a concatenation (`HSTS_DIRECTIVE + '; …'`),
+ * can produce any directive at runtime. Both are reported rather than skipped,
+ * the same way an interpolated template literal is.
+ */
+export function composedHstsExpressionsIn(path, source) {
+	if (path.endsWith('_headers')) return [];
+	const code = stripComments(source);
+	const expressions = [];
+	for (const group of literalGroups(code)) {
+		const folded = group.map((span) => span.value).join('');
+		if (!isHstsLiteral(folded)) continue;
+		if (!hasExternalOperand(code, group)) continue;
+		expressions.push({ value: folded, reason: 'string concatenation' });
+	}
+	if (/\bHSTS_DIRECTIVE\b\s*\+|\+\s*\bHSTS_DIRECTIVE\b/.test(code)) {
+		expressions.push({
+			value: 'HSTS_DIRECTIVE concatenation',
+			reason: 'the canonical constant is concatenated',
+		});
+	}
+	return expressions;
+}
+
 /** Every HSTS directive in the scanned trees that differs from the canonical one. */
 export function driftedDirectives({ root = REPO_ROOT, canonical }) {
-	const expected = normalizeDirective(canonical);
+	// RFC 6797 directive names are case-insensitive, so the comparison is too;
+	// the reported value keeps the spelling the source used.
+	const expected = normalizeDirective(canonical).toLowerCase();
 	const violations = [];
 	for (const scanRoot of SCAN_ROOTS) {
 		for (const path of sourceFiles(join(root, scanRoot))) {
 			const file = relative(root, path).split(sep).join('/');
 			if (file === SELF || TEST_FILE.test(file)) continue;
-			for (const literal of hstsDirectivesIn(file, readFileSync(path, 'utf8'))) {
+			const source = readFileSync(path, 'utf8');
+			for (const literal of hstsDirectivesIn(file, source)) {
 				const normalized = normalizeDirective(literal);
-				if (normalized === expected) continue;
+				if (normalized.toLowerCase() === expected) continue;
 				violations.push(`${file}: "${normalized}" differs from the shipped directive ${expected}.`);
 				for (const part of undefinedParts(literal)) {
 					violations.push(
@@ -602,6 +711,11 @@ export function driftedDirectives({ root = REPO_ROOT, canonical }) {
 						`${file}: "${normalized}" is composed at runtime, so the gate cannot compare it with ${expected}. Build the header value from HSTS_DIRECTIVE instead of assembling it.`,
 					);
 				}
+			}
+			for (const expression of composedHstsExpressionsIn(file, source)) {
+				violations.push(
+					`${file}: "${expression.value}" is composed at runtime (${expression.reason}), so the gate cannot compare it with ${expected}. Build the header value from HSTS_DIRECTIVE and pass it unchanged instead of assembling it.`,
+				);
 			}
 		}
 	}

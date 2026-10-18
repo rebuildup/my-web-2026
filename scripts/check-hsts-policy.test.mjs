@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+	composedHstsExpressionsIn,
 	driftedDirectives,
 	hstsDirectivesIn,
 	normalizeDirective,
@@ -239,9 +240,50 @@ describe('check-hsts-policy — HSTS-shaped literals only', () => {
 
 	it('does not mistake a Set-Cookie Max-Age attribute for a policy', () => {
 		// `src/home/reactions/cookie.ts` spells the cookie attribute
-		// `Max-Age`, the RFC 6265 casing; RFC 6797 spells HSTS `max-age`.
+		// `Max-Age`, the RFC 6265 casing, as the whole literal. RFC 6797
+		// HSTS names are case-insensitive, but the cookie survives because
+		// this is the attribute's exact spelling and the only part.
 		const source = 'const COOKIE = `Max-Age=${ACTOR_COOKIE_MAX_AGE_SECONDS}`;\n';
 		assert.deepEqual(hstsDirectivesIn('src/home/reactions/cookie.ts', source), []);
+	});
+
+	it('reads a directive assembled from concatenated literals as one value', () => {
+		// Reading `'max-age=31536000'` on its own would accept the first half
+		// and ignore the half that widens the policy.
+		const source = "const D = 'max-age=31536000' + '; includeSubDomains';\n";
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/transport.ts', source), [
+			'max-age=31536000; includeSubDomains',
+		]);
+	});
+
+	it('reads a scope directive whose name is upper-cased', () => {
+		// HSTS directive names are case-insensitive, so a browser honours
+		// this header and the gate has to read it as a candidate.
+		const source = "const D = 'MAX-AGE=31536000; includeSubDomains';\n";
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/transport.ts', source), [
+			'MAX-AGE=31536000; includeSubDomains',
+		]);
+	});
+
+	it('accepts an upper-cased spelling of the canonical value', () => {
+		const source = "const D = 'MAX-AGE=31536000';\n";
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/transport.ts', source), [
+			'MAX-AGE=31536000',
+		]);
+	});
+
+	it('reports a candidate concatenated with a non-literal operand as composed', () => {
+		const source = "const D = SUFFIX + 'max-age=31536000';\n";
+		assert.deepEqual(composedHstsExpressionsIn('src/http/middleware/transport.ts', source), [
+			{ value: 'max-age=31536000', reason: 'string concatenation' },
+		]);
+	});
+
+	it('reports a concatenation of the canonical constant as composed', () => {
+		const source = "const D = HSTS_DIRECTIVE + '; includeSubDomains';\n";
+		assert.deepEqual(composedHstsExpressionsIn('src/http/middleware/transport.ts', source), [
+			{ value: 'HSTS_DIRECTIVE concatenation', reason: 'the canonical constant is concatenated' },
+		]);
 	});
 
 	it('reads a Strict-Transport-Security rule out of _headers', () => {
@@ -351,6 +393,66 @@ describe('check-hsts-policy — drift scan', () => {
 				const violations = driftedDirectives({ root, canonical: 'max-age=31536000' });
 				assert.ok(
 					violations.some((violation) => /report-uri=x.*RFC 6797/.test(violation)),
+					JSON.stringify(violations),
+				);
+			},
+		);
+	});
+
+	it('reports a policy widened by string concatenation on a runtime path', () => {
+		// The reviewer's reproducer: two literals joined at runtime used to be
+		// read as a canonical first half plus an ignored second half.
+		withStaged(
+			{
+				...ENTRY,
+				'src/http/middleware/transport.ts':
+					"c.header(HSTS_HEADER, 'max-age=31536000' + '; includeSubDomains');\n",
+			},
+			(root) => {
+				const violations = runGate({ root }).violations;
+				assert.ok(
+					violations.some(
+						(violation) =>
+							violation.includes('src/http/middleware/transport.ts') &&
+							violation.includes('includeSubDomains'),
+					),
+					`the gate missed a concatenated widening: ${JSON.stringify(violations)}`,
+				);
+			},
+		);
+	});
+
+	it('reports an upper-cased widening that a browser would honour', () => {
+		withStaged(
+			{
+				...ENTRY,
+				'src/http/middleware/transport.ts':
+					"c.header(HSTS_HEADER, 'MAX-AGE=31536000; includeSubDomains');\n",
+			},
+			(root) => {
+				const violations = runGate({ root }).violations;
+				assert.ok(
+					violations.some(
+						(violation) =>
+							violation.includes('src/http/middleware/transport.ts') &&
+							violation.includes('includeSubDomains'),
+					),
+					`the gate missed an upper-cased widening: ${JSON.stringify(violations)}`,
+				);
+			},
+		);
+	});
+
+	it('does not accept a directive assembled from an unknown operand', () => {
+		withStaged(
+			{
+				...ENTRY,
+				'scripts/make-hsts-report.mjs': "const D = SUFFIX + 'max-age=31536000';\n",
+			},
+			(root) => {
+				const violations = driftedDirectives({ root, canonical: 'max-age=31536000' });
+				assert.ok(
+					violations.some((violation) => /composed at runtime/.test(violation)),
 					JSON.stringify(violations),
 				);
 			},

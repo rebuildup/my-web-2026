@@ -286,7 +286,15 @@ HSTS と見間違えないよう、token 名ではなく**文脈**（`_headers` 
 `Strict-Transport-Security:` 行、または `max-age` を含む文字列リテラル）で
 判定する。対象は単一引用符・二重引用符・**テンプレートリテラル**の
 3 種すべて（`` c.header(HSTS_HEADER, `max-age=…; includeSubDomains`) ``
-のような拡張も走査対象）。コメントは走査前に空白で埋めるため、
+のような拡張も走査対象）。RFC 6797 の directive 名は大文字小文字を
+区別しないため、`MAX-AGE=…` も同じ候補として読み、canonical との比較も
+case-insensitive に行う（Set-Cookie の `Max-Age` は属性の正確な綴りで
+単独のときだけ Cookie として除外する）。`+` で連結されたリテラルは
+**1 つの式として畳み込む**ため、`'max-age=31536000' + '; includeSubDomains'`
+は拡張として落ちる。連結の相手がリテラルでない場合
+（`SUFFIX + 'max-age=…'`、`HSTS_DIRECTIVE + '; …'`）は実行値が
+静的には不明なので「composed at runtime」として報告する。
+コメントは走査前に空白で埋めるため、
 doc comment の markdown（`` `max-age=0` ``）を宣言と誤読しない。
 `max-age` の一部が Cache-Control / Set-Cookie の token を伴う文字列
 （`public, max-age=31536000, immutable` など）は他ヘッダーの値と

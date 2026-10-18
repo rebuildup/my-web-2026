@@ -42,6 +42,18 @@ whitespace and control characters. Since Issue #457 that rejection is
 a 400 with a stable code, not an unhandled throw that reached the
 global error handler as a 500.
 
+`RATE_LIMIT_WRITE` / `RATE_LIMIT_READ` (ADR-0010) cover the
+write/read paths respectively; the numbers live in `RATE_LIMITS`
+(`scripts/_cloudflare-contract.mjs`) and are not restated here. The
+write budget is **one bucket per API key id**, shared with
+`PUT`/`DELETE /api/v1/reactions` — a counter burst and a reaction
+burst consume the same single budget. A throttled request answers
+`429 { error: 'rate_limited' }` with `Retry-After` set to the binding's
+fixed window (`RATE_LIMIT_RETRY_AFTER_SECONDS`) and is refused before
+D1, so the counter row does not move. The full operational contract
+is in
+[`docs/security/write-rate-limit.md`](../../../docs/security/write-rate-limit.md).
+
 ### POST /hit
 
 Request:

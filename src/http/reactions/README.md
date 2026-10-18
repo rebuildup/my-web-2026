@@ -82,7 +82,7 @@ Public read. Streams the image from R2 with `Content-Type` and
 `Cache-Control: public, max-age=31536000, immutable` (images are
 content-addressed by SHA-256 hash, so safe to cache forever).
 
-**Rate limit**: 600 req/min per request IP (read binding).
+**Rate limit**: the `RATE_LIMIT_READ` budget (`RATE_LIMITS`), keyed per request IP.
 
 ## Errors
 
@@ -121,6 +121,13 @@ Issue #457 changed two things in this table:
   `request_id` is byte-identical to the `X-Request-Id` header and to
   the id in the internal log line; a client-supplied `X-Request-Id` is
   reused only when it matches `^[A-Za-z0-9._:-]{1,128}$`.
+
+A throttled response also carries `Retry-After` equal to the
+binding's fixed window (`RATE_LIMIT_RETRY_AFTER_SECONDS`).
+The write budget is **one bucket per API key id**
+shared with `POST /api/v1/access/hit` — not one per route — and a
+suppressed request never reaches D1. See
+[`docs/security/write-rate-limit.md`](../../../docs/security/write-rate-limit.md).
 
 ## Atomicity
 

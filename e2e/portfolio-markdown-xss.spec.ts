@@ -2,10 +2,12 @@ import { expect, test } from '@playwright/test';
 import { runStatement } from '../scripts/_d1.mjs';
 import { BLOCKED_LINK_CLASS } from '../src/portfolio/markdown.lexer';
 import {
+	MARKDOWN_XSS_FIXTURE_COLUMNS,
+	MARKDOWN_XSS_FIXTURE_SLUG,
 	blockedLinkFixtures,
 	blockedRawHtmlFixtures,
-	composeMarkdownFixtureBody,
 	executableMarkupFindings,
+	markdownXssFixtureRowValues,
 } from '../src/portfolio/markdown.xss-fixtures';
 
 /**
@@ -35,62 +37,41 @@ import {
  * `portfolio.spec.ts`.
  */
 
-const SLUG = 'markdown-xss-fixture';
+const SLUG = MARKDOWN_XSS_FIXTURE_SLUG;
 
-const sqlLiteral = (value: string) => `'${value.replaceAll("'", "''")}'`;
+const sqlLiteral = (value: string | number | null) =>
+	value === null
+		? 'NULL'
+		: typeof value === 'number'
+			? String(value)
+			: `'${String(value).replaceAll("'", "''")}'`;
 
 function d1Local(sql: string): void {
 	runStatement(sql, { target: 'local' });
 }
 
 function seedFixture(): void {
-	const now = Date.UTC(2026, 0, 1);
-	const cols = [
-		'id',
-		'slug',
-		'title',
-		'summary',
-		'role',
-		'period_start',
-		'period_label',
-		'motivation_md',
-		'facets',
-		'technologies',
-		'visibility',
-		'status',
-		'pinned',
-		'display_order',
-		'created_at',
-		'updated_at',
-	].join(', ');
-	const values = [
-		sqlLiteral('xss_fixture'),
-		sqlLiteral(SLUG),
-		sqlLiteral('Markdown XSS fixture'),
-		sqlLiteral('Local reproduction of the Issue #451 corpus. Not published content.'),
-		sqlLiteral('Fixture'),
-		String(now),
-		sqlLiteral('verification'),
-		sqlLiteral(composeMarkdownFixtureBody()),
-		sqlLiteral('["develop"]'),
-		sqlLiteral('["TypeScript"]'),
-		"'public'",
-		"'published'",
-		'0',
-		'900',
-		String(now),
-		String(now),
-	].join(', ');
+	const columns = MARKDOWN_XSS_FIXTURE_COLUMNS.join(', ');
+	const values = markdownXssFixtureRowValues().map(sqlLiteral).join(', ');
 	// `INSERT OR REPLACE`, not DELETE + INSERT: Playwright runs this
 	// file's tests in parallel (`fullyParallel`), so every worker runs
 	// this `beforeAll`. A delete-then-insert pair races with itself on
 	// the `portfolio_project.slug` UNIQUE index; a single atomic upsert
 	// is idempotent under concurrency, the same reason
 	// `e2e/portfolio.spec.ts` uses `INSERT OR IGNORE`.
-	d1Local(`INSERT OR REPLACE INTO portfolio_project (${cols}) VALUES (${values})`);
+	d1Local(`INSERT OR REPLACE INTO portfolio_project (${columns}) VALUES (${values})`);
 }
 
 test.describe('portfolio article — XSS boundary (Issue #451)', () => {
+	// Serial on purpose. Every test in this file reads the SAME row out
+	// of the local D1 file, and `afterAll` deletes it. Under
+	// `fullyParallel` each worker gets its own `beforeAll`/`afterAll`,
+	// so the first worker to finish deletes the row the others are
+	// still asserting on — a 404 that has nothing to do with the
+	// security boundary. Serial keeps one worker, so the seed and the
+	// cleanup each run exactly once.
+	test.describe.configure({ mode: 'serial' });
+
 	test.beforeAll(() => {
 		seedFixture();
 	});

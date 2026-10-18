@@ -4,9 +4,10 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { BLOCKED_LINK_CLASS } from '../../src/portfolio/markdown.lexer';
 import {
 	MARKDOWN_XSS_FIXTURES,
+	MARKDOWN_XSS_FIXTURE_SLUG,
 	articleRegion,
-	composeMarkdownFixtureBody,
 	executableMarkupFindings,
+	markdownXssFixtureRowValues,
 } from '../../src/portfolio/markdown.xss-fixtures';
 
 /**
@@ -108,33 +109,21 @@ const MIGRATIONS = [
 	},
 ];
 
-const FIXTURE_SLUG = 'markdown-xss-fixture';
+const FIXTURE_SLUG = MARKDOWN_XSS_FIXTURE_SLUG;
 const D1 = () => env.DB;
 
 beforeAll(async () => {
 	await applyD1Migrations(D1(), MIGRATIONS);
+	const values = markdownXssFixtureRowValues();
 	await D1()
 		.prepare(
 			`INSERT OR REPLACE INTO portfolio_project (
 			id, slug, title, summary, role, period_start, period_end, period_label,
 			motivation_md, facets, technologies, visibility, status, pinned,
 			display_order, created_at, updated_at
-		) VALUES (?1, ?2, ?3, ?4, ?5, ?6, NULL, ?7, ?8, ?9, ?10, 'public', 'published', 0, ?11, ?12, ?12)`,
+		) VALUES (${values.map((_, index) => `?${index + 1}`).join(', ')})`,
 		)
-		.bind(
-			'xss_fixture',
-			FIXTURE_SLUG,
-			'Markdown XSS fixture',
-			'Local reproduction of the Issue #451 corpus. Not published content.',
-			'Fixture',
-			Date.UTC(2026, 0, 1),
-			'fixture',
-			composeMarkdownFixtureBody(),
-			'["develop"]',
-			'["TypeScript"]',
-			900,
-			Date.UTC(2026, 0, 1),
-		)
+		.bind(...values)
 		.run();
 });
 

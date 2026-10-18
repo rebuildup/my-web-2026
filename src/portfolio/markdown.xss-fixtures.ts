@@ -248,6 +248,83 @@ export function composeMarkdownFixtureBody(): string {
 	).join('\n\n');
 }
 
+/** Slug of the row that carries the corpus to the renderer. */
+export const MARKDOWN_XSS_FIXTURE_SLUG = 'markdown-xss-fixture';
+
+/**
+ * The fixture row, as DATA — deliberately not as SQL.
+ *
+ * The write path belongs to each caller: a bound `?n` statement in the
+ * workerd integration test, a `--batch` JSON file in the Playwright
+ * layer, a batch file in the screenshot generator. Sharing the row
+ * values (not a statement string) is what keeps those three layers
+ * from drifting into seeding *different* content behind the same slug.
+ */
+export const MARKDOWN_XSS_FIXTURE_PROJECT = {
+	id: 'xss_fixture',
+	slug: MARKDOWN_XSS_FIXTURE_SLUG,
+	title: 'Markdown XSS fixture',
+	summary: 'Local reproduction of the Issue #451 corpus. Not published content.',
+	role: 'Fixture',
+	periodStart: Date.UTC(2026, 0, 1),
+	periodLabel: 'fixture',
+	periodEnd: null,
+	facets: '["develop"]',
+	technologies: '["TypeScript"]',
+	visibility: 'public',
+	status: 'published',
+	pinned: 0,
+	displayOrder: 900,
+	createdAt: Date.UTC(2026, 0, 1),
+	updatedAt: Date.UTC(2026, 0, 1),
+	motivationMd: composeMarkdownFixtureBody(),
+} as const;
+
+/** Column order for {@link MARKDOWN_XSS_FIXTURE_PROJECT}. */
+export const MARKDOWN_XSS_FIXTURE_COLUMNS: readonly string[] = [
+	'id',
+	'slug',
+	'title',
+	'summary',
+	'role',
+	'period_start',
+	'period_end',
+	'period_label',
+	'motivation_md',
+	'facets',
+	'technologies',
+	'visibility',
+	'status',
+	'pinned',
+	'display_order',
+	'created_at',
+	'updated_at',
+];
+
+/** Values in {@link MARKDOWN_XSS_FIXTURE_COLUMNS} order. */
+export function markdownXssFixtureRowValues(): readonly (string | number | null)[] {
+	const p = MARKDOWN_XSS_FIXTURE_PROJECT;
+	return [
+		p.id,
+		p.slug,
+		p.title,
+		p.summary,
+		p.role,
+		p.periodStart,
+		p.periodEnd,
+		p.periodLabel,
+		p.motivationMd,
+		p.facets,
+		p.technologies,
+		p.visibility,
+		p.status,
+		p.pinned,
+		p.displayOrder,
+		p.createdAt,
+		p.updatedAt,
+	];
+}
+
 /**
  * Markup that would let a payload run if it ever reached the DOM.
  *

@@ -1,4 +1,7 @@
 import { env } from 'cloudflare:workers';
+import { createAuditLogger } from '../logging/logger';
+
+const healthLogger = createAuditLogger('cloudflare');
 
 export type CloudflareServiceId = 'd1' | 'r2';
 export type CloudflareServiceHealth = 'ok' | 'degraded' | 'unreachable';
@@ -38,7 +41,7 @@ export async function safeProbe(
 	try {
 		return map(await probe());
 	} catch (err) {
-		console.error(`[cloudflare] ${logLabel} probe failed`, err);
+		healthLogger.error(`${logLabel} probe failed`, err);
 		return { id, health: 'unreachable' };
 	}
 }
@@ -64,7 +67,7 @@ async function probeR2(): Promise<CloudflareServiceStatus> {
 		if (/404|not[_ ]?found/i.test(message)) {
 			return { id: 'r2', health: 'ok', detail: 'bucket reachable, probe key absent' };
 		}
-		console.error('[cloudflare] r2 probe failed', err);
+		healthLogger.error('r2 probe failed', err);
 		return { id: 'r2', health: 'unreachable' };
 	}
 }

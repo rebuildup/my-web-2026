@@ -185,8 +185,9 @@ externalBoundary.onError((err, c) => {
 	}
 	// Issue #457: the generic 500 answers with the redacted body —
 	// stable code, repo-authored message, and the correlation id the
-	// log line above just wrote. The `err` object never leaves
-	// `console.error`.
+	// log line above just wrote. The `err` object never leaves the
+	// internal log record (`publicErrorResponse` writes it through
+	// the redacting boundary logger, Issue #467).
 	return publicErrorResponse(c, err, {
 		status: 500,
 		code: 'internal_error',

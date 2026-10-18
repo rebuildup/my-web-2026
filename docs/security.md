@@ -925,6 +925,13 @@ only the diff that introduced it.
 
 ## Automated checks
 
+- Log redaction gate (Issue #467): `pnpm run log:redaction:check`
+  fails when `src/**` writes to `console.*` outside `src/logging/`, or
+  when an operator script prints a secret-named value. The contract,
+  the coverage matrix, and the re-run procedure live in
+  [`docs/security/log-redaction.md`](security/log-redaction.md); the
+  verification report it produces is committed at
+  `docs/verification/security/log-redaction-test.webp`.
 - Secret scanning: enabled as an asynchronous CI job (see
   `quality/profile.yaml#security_gates.secret_scanning`).
 - Supply-chain SBOM: CycloneDX 1.6, generated from `pnpm-lock.yaml`,
@@ -991,11 +998,11 @@ Every body is exactly:
 }
 ```
 
-The caught error is handed to `console.error` and to nothing else.
+The caught error is handed to the redacting logger and to nothing else.
 
 | Concern | Contract |
 | --- | --- |
-| Correlation | `request_id` is byte-identical to the `X-Request-Id` response header, and to the id in the internal log line. A client-supplied `X-Request-Id` is reused when it matches `^[A-Za-z0-9._:-]{1,128}$` — the trace-id alphabets in real use (hex, UUID, W3C `traceparent`, dotted service ids) — so a reporter can be traced; anything else (empty, too long, spaces, control characters) is replaced by a freshly minted 128-bit hex id. The charset is not cosmetic: since #457 the id is published in the **body** too, so an unconstrained echo would let any client string ride inside a documented contract field. |
+| Correlation | `request_id` is byte-identical to the `X-Request-Id` response header. In the **log line** the id is printed only when this Worker minted it (Issue #467: a 32-hex id is indistinguishable from an opaque credential, so the redaction layer proves the mint format before printing it; a client-supplied id is replaced by `[redacted-correlation]` there — see the open decision below). A client-supplied `X-Request-Id` is reused when it matches `^[A-Za-z0-9._:-]{1,128}$` — the trace-id alphabets in real use (hex, UUID, W3C `traceparent`, dotted service ids) — so a reporter can be traced in the response; anything else (empty, too long, spaces, control characters) is replaced by a freshly minted 128-bit hex id. The charset is not cosmetic: since #457 the id is published in the **body** too, so an unconstrained echo would let any client string ride inside a documented contract field. |
 | Ops probes | `/api/v1/health`, `/api/v1/db/ping` (200) and `/api/v1/media/ping` (404 `key_not_found`) keep their documented bodies, including the `binding` field. Only the **failure** branch changed: the old `{"status":"binding_error","binding":"d1"\|"r2"}` 503 is now the redacted body above. The request path already identifies which probe failed, so no operational signal is lost. |
 | Minting outside `/api/v1/*` | `resolveRequestId` mints an id when the request-id middleware did not run — that is, the `/webhooks`, `/oauth`, and `/integrations` prefixes. None of those prefixes has a handler yet, so the branch is currently unreachable in production; it exists so that a future handler on those prefixes is correct by default rather than by remembering. |
 | Auth | 401 / 403 bodies are unchanged (`missing_authorization`, `invalid_api_key`, `missing_scope`). They carry no server state, and the correlation id is still available through the `X-Request-Id` header. |
@@ -1006,6 +1013,17 @@ field in the **200 / 404** probe bodies counts as internal
 information. The failure branch no longer publishes it and the success
 branch still does; this record states that fact rather than claiming
 the binding is hidden.
+
+Open question (deliberately not decided here, Issue #467
+reconciliation): whether a **client-supplied** `X-Request-Id` still has
+to be greppable in the log line. The redaction contract masks any
+24+ character opaque run, so the log now prints the id only when the
+Worker minted it, and answers `request_id=[redacted-correlation]`
+otherwise. The response contract (body + header) is unchanged. If
+tracing a client-supplied id matters operationally, a different,
+deliberately non-reversible value (for example a truncated fingerprint)
+has to be designed and reviewed as its own change; that decision was
+not taken here.
 
 ### Server-function surfaces
 

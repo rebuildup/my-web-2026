@@ -161,10 +161,18 @@ R2 layout: `reactions/{sha256-hex}.{ext}`.
 
 - Allowed content types: `image/png`, `image/jpeg`, `image/webp`,
   `image/gif`. SVG excluded for MVP (active content risk).
+- The declared type must agree with the **magic bytes** of the body;
+  a text / HTML / ZIP / SVG payload renamed to `.png` is refused
+  (`unrecognized_signature`, `content_type_mismatch`, `svg_not_allowed`).
+- Client-supplied file names are validated (no separator, no `..`, no
+  control character, ≤255 bytes) but never stored and never part of the
+  R2 key — the key is `reactions/{sha256}.{ext}` by construction.
 - Max size: 256 KiB.
 - Content hash (SHA-256) is the dedup key — uploading the same
   bytes twice returns the existing image id.
 - Image GET is public; upload / delete is admin-only.
+
+Full contract, failure codes and verification: [`docs/security/image-upload-guards.md`](../../../docs/security/image-upload-guards.md).
 
 ## Self-consumption from home
 

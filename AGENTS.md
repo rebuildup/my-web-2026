@@ -108,6 +108,11 @@ http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)
 cloudflare -> logging (Issue #467 — auth email stub + binding probes)
 editorial -> logging (Issue #467 — SSR fallback failure record)
+server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
+             `delivery.iframe.allow` / `referrer_policy` from the Tool
+             manifest; the policy object is passed into the HTTP
+             boundary, so the Tool Registry still imports nothing
+             from `src/http/**`)
 home -> editorial
 ```
 
@@ -336,7 +341,7 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `console` through `src/logging/logger.ts`, and operator scripts may
   not print a secret value) +
   `structured-data:check` + `index:boundary:check` +
-  `tools:check` + `install:scripts:check` +
+  `tools:check` + `security:headers:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +

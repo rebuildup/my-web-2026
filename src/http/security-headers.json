@@ -1,0 +1,23 @@
+{
+	"$comment": "Canonical response security-header values for my-web-2026 (Issue #449). This file is the single source of truth: src/http/security-headers.ts emits these values for every Worker-generated response, and scripts/check-security-headers.mjs asserts that public/_headers carries the same strings for Cloudflare Static Assets. Editing a value here without editing public/_headers (or the reverse) fails `pnpm run validate:fast`.",
+	"x_content_type_options": "nosniff",
+	"referrer_policy": {
+		"$comment": "`host` is the fallback for every Worker-generated response. `tool_app` is used for a Tool artifact served under the manifest's delivery.artifact_path (/tools/<slug>/app/...); a Tool bundle is third-party-shaped content and must not leak the host URL to whatever it fetches.",
+		"host": "strict-origin-when-cross-origin",
+		"tool_app": "no-referrer"
+	},
+	"denied_permissions": [
+		"bluetooth",
+		"camera",
+		"display-capture",
+		"geolocation",
+		"hid",
+		"microphone",
+		"payment",
+		"serial",
+		"usb",
+		"xr-spatial-tracking"
+	],
+	"granted_origin_token": "(self \"{origin}\")",
+	"$denied_permissions_rationale": "The list is deliberately explicit and minimal rather than a blanket deny-all. A feature that is NOT listed keeps the browser default allowlist ('self'), so a future Tool that needs a new capability does not have to amend the host baseline first. Each listed feature has no plausible use on this site: bluetooth/hid/serial/usb are hardware bridges, camera/display-capture/geolocation/microphone are capture devices, payment and xr-spatial-tracking are platform-gated products. microphone is listed because at least one registered Tool (mic-level) needs it — that is exactly why the grant is per-Tool (delivery.iframe.allow in src/tools/manifest.json) rather than host-wide."
+}

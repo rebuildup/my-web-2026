@@ -302,6 +302,21 @@ when an installed dependency can execute code during `pnpm install`
 and pnpm's execution allow-list (`pnpm-workspace.yaml`) disagree. See
 [`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
 
+### Route × quality-gate coverage
+
+The published route roster and the quality gates that measure it are
+kept in sync by a cheap gate that runs inside `validate:fast`:
+
+```bash
+pnpm run routes:quality:check  # quality/route-coverage.json vs src/routes/**
+pnpm run routes:quality:report # .tmp/route-quality-report.html (no browser needed)
+```
+
+Adding a route file without a `quality/route-coverage.json` entry fails
+the gate on purpose: the PR must add the route as a gate target, or
+exclude it with a reason for every gate family. See
+[`docs/verification/quality/route-quality-coverage.md`](verification/quality/route-quality-coverage.md).
+
 ## Storybook
 
 Storybook 8.6.x previews the visual obligations that currently exist in source.

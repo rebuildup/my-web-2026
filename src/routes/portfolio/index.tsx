@@ -5,7 +5,7 @@ import { z } from 'zod';
 import { PublicNav } from '../../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
-import { composeSocialCard, socialCardUrl } from '../../editorial/social-card';
+import { composeSocialCard } from '../../editorial/social-card';
 import { PortfolioList } from '../../portfolio/components';
 import { listPortfolioProjects } from '../../portfolio/public';
 import {
@@ -56,7 +56,9 @@ export const Route = createFileRoute('/portfolio/')({
 		const title = 'Portfolio — rebuildup.dev';
 		const description =
 			'主要な制作物、技術選定、設計、成果、振り返り。facet で絞り込み、各 project の詳細ページから repository / release / 解説へ。';
-		const url = socialCardUrl('/portfolio');
+		// Literal for the same reason as /about: the index-boundary gate
+		// matches this canonical against the sitemap entry (Issue #423).
+		const url = 'https://rebuildup.dev/portfolio';
 		// The list card is the first public project that actually
 		// publishes a cover; with no project on this page yet it is
 		// null and `composeSocialCard` publishes the site fallback card

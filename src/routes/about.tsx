@@ -5,7 +5,7 @@ import { personFactsFromAbout } from '../about/structured-data';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
-import { composeSocialCard, socialCardUrl } from '../editorial/social-card';
+import { composeSocialCard } from '../editorial/social-card';
 import { PersonJsonLd } from '../editorial/structured-data';
 
 /**
@@ -60,7 +60,11 @@ export const Route = createFileRoute('/about')({
 		const role = identity?.role ?? '';
 		const title = `${name} — About`;
 		const description = identity?.lead ?? 'developer / creator の自己紹介と公開作品。';
-		const url = socialCardUrl('/about');
+		// The canonical stays a literal here: `scripts/check-index-boundary.mjs`
+		// cross-checks this string against the sitemap entry for /about
+		// textually (Issue #423), so the declared URL has to be readable
+		// in this file, not derived.
+		const url = 'https://rebuildup.dev/about';
 		const card = composeSocialCard({
 			title,
 			description,

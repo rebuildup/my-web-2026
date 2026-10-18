@@ -13,7 +13,7 @@
  *
  *   pnpm exec vite dev --port 15923 --strictPort
  *   pnpm run capture:robots            # same as the `node …` line below
- *   node scripts/shoot-robots-screenshot.mjs \
+ *   node --experimental-strip-types scripts/shoot-robots-screenshot.mjs \
  *     http://localhost:15923/robots.txt docs/verification/web/robots-txt-browser.webp
  *
  * Writes WebP directly (the repository stores verification captures as
@@ -21,12 +21,11 @@
  * as the output suffix to get a PNG instead.
  *
  * Exits non-zero when the capture would be worthless: a non-200
- * response, or a body that is not the committed robots.txt.
+ * response, or a body that is not what `renderRobotsTxt()` produces.
  */
 
-import { readFileSync } from 'node:fs';
 import { extname, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
 
@@ -34,7 +33,13 @@ const REPO_ROOT = resolve(fileURLToPath(new URL('..', import.meta.url)));
 const url = process.argv[2] ?? 'http://localhost:15923/robots.txt';
 const out = process.argv[3] ?? 'docs/verification/web/robots-txt-browser.webp';
 
-const expected = readFileSync(resolve(REPO_ROOT, 'public/robots.txt'), 'utf8');
+// The document the SEO router renders (Issue #420), imported rather
+// than transcribed: the capture is only evidence if it shows what the
+// deployment really serves, and that body is owned by
+// `src/http/seo/sitemap.ts`. Requires `--experimental-strip-types`,
+// which `package.json#capture:robots` passes.
+const seo = await import(pathToFileURL(resolve(REPO_ROOT, 'src/http/seo/sitemap.ts')).href);
+const expected = seo.renderRobotsTxt();
 
 const browser = await chromium.launch();
 try {
@@ -50,7 +55,7 @@ try {
 	console.log(`GET ${url} -> ${response.status()} ${response.headers()['content-type']}`);
 	if (served.replace(/\r\n/g, '\n').trim() !== expected.trim()) {
 		throw new Error(
-			`the served robots.txt does not match public/robots.txt (${served.length} vs ${expected.length} chars) — regenerate public/robots.txt before capturing`,
+			`the served robots.txt does not match renderRobotsTxt() (${served.length} vs ${expected.length} chars) — the capture would show something the module does not produce`,
 		);
 	}
 
@@ -63,7 +68,7 @@ try {
 			.webp({ quality: 80 })
 			.toFile(out);
 	}
-	console.log(`captured ${out} (${served.length} chars verified against public/robots.txt)`);
+	console.log(`captured ${out} (${served.length} chars verified against renderRobotsTxt())`);
 } finally {
 	await browser.close();
 }

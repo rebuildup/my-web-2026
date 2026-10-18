@@ -64,6 +64,9 @@ export const Route = createFileRoute('/tools/')({
 			{ property: 'og:title', content: 'Tools — my-web-2026' },
 			{ property: 'og:url', content: 'https://rebuildup.dev/tools' },
 		],
+		// Issue #420 — canonical for the sitemap entry. See
+		// `src/routes/index.tsx` for the rationale; the per-Tool
+		// shells stay `noindex` and out of the sitemap.
 		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/tools' }],
 	}),
 	component: ToolsIndexRoute,

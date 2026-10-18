@@ -1,19 +1,22 @@
 /**
  * Index-boundary contract tests (Issue #423).
  *
- * Run with `node --test scripts/check-index-boundary.test.mjs`
+ * Run with
+ * `node --experimental-strip-types --test scripts/check-index-boundary.test.mjs`
  * (wired into `pnpm run test` — see `scripts/check-test-wiring.mjs`).
+ * Type stripping is needed because the last case imports the SEO owner's
+ * real module (`src/http/seo/sitemap.ts`), exactly as the gate does.
  *
  * What is under test
  * ------------------
  * The failure modes this gate exists to prevent, each as its own case:
  *
  *   - an unintended SITE-WIDE noindex (`Disallow: /`) shipping unnoticed;
- *   - a `Disallow` rule that silently shadows an indexable public route;
+ *   - a raw-prefix `Disallow` that silently shadows a sibling public route;
  *   - the forbidden combination — a page de-indexed by its own `noindex`
  *     meta that is ALSO kept out of the crawl, which can only ever end
  *     as "Indexed, though blocked by robots.txt";
- *   - a `Disallow` rule lost by a route or machine boundary that needs it;
+ *   - a crawl-blocked route that lost its `Disallow` rule;
  *   - a URL appearing in the sitemap that no route serves (an
  *     unimplemented route passing as "implemented"), or an indexable
  *     page that quietly dropped out of the sitemap;
@@ -25,7 +28,9 @@
  *
  * Every fixture is built from a route tree that mirrors the real
  * generated file, so the assertions exercise the same code path CI runs
- * — with the mutation applied.
+ * — with the mutation applied. The final group runs against the REAL
+ * served documents, so a fixture-only green can never hide a violation
+ * in what the site actually serves.
  */
 
 import assert from 'node:assert/strict';
@@ -33,14 +38,12 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
 	CANONICAL_ORIGIN,
 	EXTERNAL_BOUNDARY_PREFIXES,
 	FRAMEWORK_PREFIXES,
 	SITEMAP_PATH,
-	buildRobotsTxt,
-	buildSitemapXml,
 	classifyRoutes,
 	declaresNoindexMeta,
 	evaluateIndexBoundary,
@@ -48,7 +51,6 @@ import {
 	noindexBlockedViolations,
 	parseRobotsTxt,
 	parseRouteTree,
-	parseSitemapLocs,
 	robotsRuleCovers,
 	routeModuleCandidates,
 	stripComments,
@@ -125,21 +127,34 @@ function routeFileSources(routes = FIXTURE_ROUTES) {
 	return sources;
 }
 
+/**
+ * The robots.txt body the SEO router renders (Issue #420's shape, which
+ * this contract verifies rather than generates).
+ */
+const SERVED_ROBOTS = [
+	'User-agent: *',
+	'Allow: /',
+	'',
+	`Sitemap: ${ORIGIN}${SITEMAP_PATH}`,
+	'',
+].join('\n');
+
+/** The static entries `SITEMAP_ENTRIES` advertises. */
+const SERVED_SITEMAP_PATHS = ['/', '/about', '/contact', '/design-system', '/portfolio', '/tools'];
+
 /** Evaluate the boundary for a fixture, with optional mutations. */
 function evaluate(overrides = {}) {
 	const routes = overrides.routes ?? FIXTURE_ROUTES;
 	const sources = routeFileSources(routes);
 	const tree = routeTreeSource(routes);
-	const { classified } = classifyRoutes(parseRouteTree(tree).routes);
-	const baseRobots = buildRobotsTxt(classified, ORIGIN);
 	const robotsTxt =
 		overrides.robotsTxt ??
-		(overrides.robotsMutate ? overrides.robotsMutate(baseRobots) : baseRobots);
-	const sitemapXml = overrides.sitemapXml ?? buildSitemapXml(classified, ORIGIN);
+		(overrides.robotsMutate ? overrides.robotsMutate(SERVED_ROBOTS) : SERVED_ROBOTS);
 	return evaluateIndexBoundary({
 		routeTreeSource: tree,
 		robotsTxt,
-		sitemapXml,
+		sitemapPaths: overrides.sitemapPaths ?? SERVED_SITEMAP_PATHS,
+		sitemapOrigin: overrides.sitemapOrigin ?? ORIGIN,
 		serverSource: overrides.serverSource ?? readFileSync(join(REPO_ROOT, 'src/server.ts'), 'utf8'),
 		readRouteFile: (file) => {
 			if (overrides.fileOverrides && file in overrides.fileOverrides) {
@@ -192,10 +207,9 @@ describe('robots.txt parsing and matching', () => {
 	});
 });
 
-describe('the generated artefacts', () => {
-	it('never emits a site-wide Disallow and pairs every gated prefix with `$` + `/`', () => {
-		const { classified } = classifyRoutes(parseRouteTree(routeTreeSource()).routes);
-		const robots = buildRobotsTxt(classified, ORIGIN);
+describe('the served crawler documents', () => {
+	it('has no site-wide Disallow and every rule it does carry is exact or subtree', () => {
+		const robots = SERVED_ROBOTS;
 		assert.equal(robots.includes('Disallow: /\n'), false);
 		for (const rule of parseRobotsTxt(robots).disallow) {
 			assert.ok(rule.endsWith('$') || rule.endsWith('/'), `rule ${rule} is not exact or subtree`);
@@ -204,32 +218,27 @@ describe('the generated artefacts', () => {
 	});
 
 	it('never blocks a route that is de-indexed by its own noindex meta', () => {
-		// The rule the module doc states and the generator must obey: a
+		// The rule the module doc states and the gate now enforces: a
 		// page the crawler may not fetch can never deliver its own
 		// noindex, so `/admin/**` and `/tools/$slug` must stay
-		// crawlable. Machine endpoints are the only Disallow sources.
+		// crawlable.
 		const { classified } = classifyRoutes(parseRouteTree(routeTreeSource()).routes);
-		const blocked = noindexBlockedViolations(
-			classified,
-			parseRobotsTxt(buildRobotsTxt(classified, ORIGIN)).disallow,
-		);
+		const blocked = noindexBlockedViolations(classified, parseRobotsTxt(SERVED_ROBOTS).disallow);
 		assert.deepEqual(blocked, []);
-		for (const rule of parseRobotsTxt(buildRobotsTxt(classified, ORIGIN)).disallow) {
+		for (const rule of parseRobotsTxt(SERVED_ROBOTS).disallow) {
 			assert.equal(rule.includes('admin'), false, `${rule} blocks a noindex route`);
 		}
 	});
 
-	it('lists only indexable routes in the sitemap', () => {
+	it('advertises exactly the routes the contract classifies as indexable', () => {
 		const { classified } = classifyRoutes(parseRouteTree(routeTreeSource()).routes);
-		const locs = parseSitemapLocs(buildSitemapXml(classified, ORIGIN));
-		assert.deepEqual(locs, [
-			`${ORIGIN}/`,
-			`${ORIGIN}/about`,
-			`${ORIGIN}/contact`,
-			`${ORIGIN}/design-system`,
-			`${ORIGIN}/portfolio`,
-			`${ORIGIN}/tools`,
-		]);
+		assert.deepEqual(
+			classified
+				.filter((route) => route.intent.index === 'sitemap')
+				.map((route) => route.path)
+				.sort(),
+			SERVED_SITEMAP_PATHS,
+		);
 	});
 });
 
@@ -348,24 +357,21 @@ describe('evaluateIndexBoundary — robots.txt is not access control, but is not
 		// subtree must stay crawlable so its own noindex can be read), so
 		// the rule is exercised against the extracted checker directly.
 		const classified = [{ path: '/private', intent: { crawl: 'disallow' } }];
-		const machineRules = [...EXTERNAL_BOUNDARY_PREFIXES, ...FRAMEWORK_PREFIXES].flatMap(
-			(prefix) => [`${prefix}$`, `${prefix}/`],
-		);
-		assert.deepEqual(
-			missingDisallowViolations(classified, [...machineRules, '/private$', '/private/']),
-			[],
-		);
-		const violations = missingDisallowViolations(classified, machineRules);
+		assert.deepEqual(missingDisallowViolations(classified, ['/private$', '/private/']), []);
+		const violations = missingDisallowViolations(classified, []);
 		assert.equal(violations.length, 1);
 		assert.equal(violations[0].code, 'missing-disallow');
 		assert.match(violations[0].message, /\/private/);
 	});
 
-	it('fails when a machine boundary loses its Disallow rule', () => {
-		const result = evaluate({
-			robotsMutate: (text) => text.replaceAll(/^Disallow: \/api\/v1.*$/gm, ''),
-		});
-		assert.ok(codes(result).includes('missing-disallow'));
+	it('does not demand a Disallow for the machine boundaries', () => {
+		// /api/v1 & co. answer 401/404 instead of serving a document;
+		// spending crawl budget on them is the SEO owner's call, so the
+		// contract must not fail the build over their absence.
+		const result = evaluate();
+		assert.deepEqual(result.violations, []);
+		assert.ok(EXTERNAL_BOUNDARY_PREFIXES.includes('/api/v1'));
+		assert.ok(FRAMEWORK_PREFIXES.includes('/_serverFn'));
 	});
 
 	it('fails when the Sitemap directive drifts off the canonical origin', () => {
@@ -403,7 +409,7 @@ describe('evaluateIndexBoundary — robots.txt is not access control, but is not
 	it('fails when the external-boundary prefix list drifts from src/server.ts', () => {
 		const result = evaluate({
 			serverSource:
-				"const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations', '/telemetry'];",
+				"const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations', '/robots.txt', '/sitemap.xml', '/telemetry'];",
 		});
 		const drift = result.violations.filter(
 			(violation) => violation.code === 'boundary-prefix-drift',
@@ -415,42 +421,22 @@ describe('evaluateIndexBoundary — robots.txt is not access control, but is not
 
 describe('evaluateIndexBoundary — sitemap ↔ noindex intent', () => {
 	it('fails on an extra sitemap entry (a URL no route serves)', () => {
-		const base = buildSitemapXml(
-			classifyRoutes(parseRouteTree(routeTreeSource()).routes).classified,
-			ORIGIN,
-		);
-		const result = evaluate({
-			sitemapXml: base.replace(
-				'</urlset>',
-				'  <url>\n    <loc>https://rebuildup.dev/nope</loc>\n  </url>\n</urlset>',
-			),
-		});
+		const result = evaluate({ sitemapPaths: [...SERVED_SITEMAP_PATHS, '/nope'] });
 		assert.ok(codes(result).includes('sitemap-unexpected-entry'));
 	});
 
 	it('fails when an indexable page drops out of the sitemap', () => {
-		const base = buildSitemapXml(
-			classifyRoutes(parseRouteTree(routeTreeSource()).routes).classified,
-			ORIGIN,
-		);
 		const result = evaluate({
-			sitemapXml: base
-				.replace('  <url>\n    <loc>https://rebuildup.dev/tools</loc>\n  </url>\n', '')
-				.replace('</urlset>', '</urlset>'),
+			sitemapPaths: SERVED_SITEMAP_PATHS.filter((path) => path !== '/tools'),
 		});
 		assert.ok(codes(result).includes('sitemap-missing-entry'));
 	});
 
-	it('fails when a sitemap entry is not on the canonical origin', () => {
-		const base = buildSitemapXml(
-			classifyRoutes(parseRouteTree(routeTreeSource()).routes).classified,
-			ORIGIN,
-		);
-		const result = evaluate({
-			sitemapXml: base.replace(`${ORIGIN}/about`, 'https://my-web-2026.example.workers.dev/about'),
-		});
+	it('fails when the sitemap document is rendered off the canonical origin', () => {
+		// ADR-0014: one production origin. A `workers.dev` sitemap would
+		// advertise the debug host to every crawler.
+		const result = evaluate({ sitemapOrigin: 'https://my-web-2026.example.workers.dev' });
 		assert.ok(codes(result).includes('sitemap-non-canonical-host'));
-		assert.ok(codes(result).includes('sitemap-unexpected-entry'));
 	});
 
 	it('fails when a page canonical disagrees with its sitemap URL', () => {
@@ -498,14 +484,17 @@ describe('evaluateIndexBoundary — route inventory is exhaustive', () => {
 });
 
 describe('the committed repository state', () => {
-	it('passes the real gate (public/robots.txt, public/sitemap.xml, src/routes/**)', () => {
-		// The same read the CLI performs, so a fixture-only green run can
-		// never hide a drift in the committed artefacts.
+	it('passes the real gate (served robots.txt / sitemap, src/routes/**)', async () => {
+		// The same read the CLI performs — the SEO owner's real output,
+		// not a fixture — so a fixture-only green run can never hide a
+		// violation in what the site actually serves.
+		const seo = await import(pathToFileURL(join(REPO_ROOT, 'src/http/seo/sitemap.ts')).href);
 		const result = evaluateIndexBoundary({
 			routeTreeSource: readFileSync(join(REPO_ROOT, 'src/routeTree.gen.ts'), 'utf8'),
 			serverSource: readFileSync(join(REPO_ROOT, 'src/server.ts'), 'utf8'),
-			robotsTxt: readFileSync(join(REPO_ROOT, 'public/robots.txt'), 'utf8'),
-			sitemapXml: readFileSync(join(REPO_ROOT, 'public/sitemap.xml'), 'utf8'),
+			robotsTxt: seo.renderRobotsTxt(),
+			sitemapPaths: seo.SITEMAP_ENTRIES.map((entry) => entry.path),
+			sitemapOrigin: seo.SITEMAP_ORIGIN,
 			readRouteFile: (specifier) => {
 				for (const candidate of routeModuleCandidates(specifier)) {
 					return readFileSync(join(REPO_ROOT, candidate), 'utf8');

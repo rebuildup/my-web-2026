@@ -43,6 +43,9 @@ export const Route = createFileRoute('/')({
 			{ property: 'og:title', content: 'my-web-2026' },
 			{ property: 'og:url', content: 'https://rebuildup.dev/' },
 		],
+		// Issue #420 — the sitemap contract is that every `<loc>` is the
+		// page's canonical URL; `scripts/check-sitemap-route-coverage.test.mjs`
+		// asserts that this literal and the sitemap inventory agree.
 		links: [{ rel: 'canonical', href: 'https://rebuildup.dev/' }],
 	}),
 	loader: async () => {

@@ -5,15 +5,22 @@
  * Verifies that the three surfaces which decide search-engine index
  * state agree with each other, and that each is individually sane:
  *
- *   1. `public/robots.txt`    — crawl instructions (Disallow) + the
- *                               canonical `Sitemap:` directive.
- *   2. `public/sitemap.xml`   — the set of URLs offered for indexing.
+ *   1. `GET /robots.txt`     — crawl instructions (Disallow) + the
+ *                              canonical `Sitemap:` directive. Served by
+ *                              `src/http/seo/router.ts` (Issue #420);
+ *                              this gate reads the exact body that route
+ *                              renders, so there is no second copy to
+ *                              drift.
+ *   2. `GET /sitemap.xml`    — the set of URLs offered for indexing
+ *                              (static inventory; the portfolio project's
+ *                              published rows are appended at request
+ *                              time and belong to `src/portfolio`).
  *   3. the route modules' own `<meta name="robots">` — per-page
- *                               noindex, which is the ONLY mechanism
- *                               that actually de-indexes a URL.
+ *      noindex, which is the ONLY mechanism that actually de-indexes a
+ *      URL.
  *
- * The contract lives in `scripts/_index-boundary.mjs`; this file is the
- * filesystem adapter and the CLI. Exit codes:
+ * The intent contract lives in `scripts/_index-boundary.mjs`; this file
+ * is the filesystem adapter and the CLI. Exit codes:
  *
  *   0  boundary consistent
  *   1  at least one violation (one line per violation, code + message)
@@ -21,11 +28,12 @@
  *
  * Usage:
  *   node scripts/check-index-boundary.mjs            # verify (gate mode)
- *   node scripts/check-index-boundary.mjs --write    # regenerate the artefacts
  *   node scripts/check-index-boundary.mjs --report   # print the intent table
  *
- * `--write` is a maintenance command, not a validation step: the gate
- * always runs in verify mode (`pnpm run index:boundary:check`).
+ * There is no `--write`: this gate never writes a crawler-facing
+ * document. `src/http/seo/` owns delivery (see the module header of
+ * `scripts/_index-boundary.mjs` for why a committed `public/robots.txt`
+ * would shadow that route instead of complementing it).
  *
  * Route inventory source: the COMMITTED `src/routeTree.gen.ts`. The
  * TanStack Vite plugin regenerates that file during `pnpm run build`,
@@ -36,26 +44,16 @@
  * output change surfaces as the normal `routeTree.gen.ts` diff.
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-import {
-	CANONICAL_ORIGIN,
-	buildRobotsTxt,
-	buildSitemapXml,
-	classifyRoutes,
-	evaluateIndexBoundary,
-	parseRouteTree,
-	routeModuleCandidates,
-} from './_index-boundary.mjs';
+import { fileURLToPath, pathToFileURL } from 'node:url';
+import { evaluateIndexBoundary, routeModuleCandidates } from './_index-boundary.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const PATHS = {
 	routeTree: join(REPO_ROOT, 'src/routeTree.gen.ts'),
 	server: join(REPO_ROOT, 'src/server.ts'),
-	robots: join(REPO_ROOT, 'public/robots.txt'),
-	sitemap: join(REPO_ROOT, 'public/sitemap.xml'),
 };
 
 function readOrExit(path) {
@@ -63,6 +61,34 @@ function readOrExit(path) {
 		return readFileSync(path, 'utf8');
 	} catch (error) {
 		process.stderr.write(`check-index-boundary: cannot read ${path}: ${error.message}\n`);
+		process.exit(2);
+	}
+}
+
+/**
+ * The crawler documents as the SEO router renders them.
+ *
+ * `src/http/seo/sitemap.ts` is deliberately import-free (it has to stay
+ * unit-testable without workerd, D1 or the Worker bundle), which is
+ * exactly what makes it safe to read from here: this is the owner's
+ * real output, not a transcription of it. Node's type stripping is what
+ * lets a plain script consume the TypeScript source — the same trick
+ * `scripts/check-sitemap-route-coverage.test.mjs` uses, and the reason
+ * the package.json script carries `--experimental-strip-types`.
+ */
+async function servedDocuments() {
+	const modulePath = join(REPO_ROOT, 'src/http/seo/sitemap.ts');
+	try {
+		const seo = await import(pathToFileURL(modulePath).href);
+		return {
+			robotsTxt: seo.renderRobotsTxt(),
+			sitemapPaths: seo.SITEMAP_ENTRIES.map((entry) => entry.path),
+			sitemapOrigin: seo.SITEMAP_ORIGIN,
+		};
+	} catch (error) {
+		process.stderr.write(
+			`check-index-boundary: cannot read the served crawler documents from ${modulePath}: ${error.message}\nRun this script with \`node --experimental-strip-types\` (see package.json#index:boundary:check).\n`,
+		);
 		process.exit(2);
 	}
 }
@@ -101,44 +127,27 @@ function report(classified) {
 	for (const row of rows) process.stdout.write(`${line(row)}\n`);
 }
 
-function main() {
+async function main() {
 	const args = process.argv.slice(2);
-	const write = args.includes('--write');
 	const showReport = args.includes('--report');
+	if (args.includes('--write')) {
+		process.stderr.write(
+			'check-index-boundary: --write was removed. The crawler documents are rendered by ' +
+				'`src/http/seo/router.ts`; edit that module, not a generated file.\n',
+		);
+		return 2;
+	}
 
 	const routeTreeSource = readOrExit(PATHS.routeTree);
 	const serverSource = readOrExit(PATHS.server);
-
-	if (write) {
-		const { routes } = parseRouteTree(routeTreeSource);
-		const { classified, violations } = classifyRoutes(routes);
-		if (violations.length > 0) {
-			for (const violation of violations) {
-				process.stderr.write(`[${violation.code}] ${violation.message}\n`);
-			}
-			process.stderr.write(
-				'check-index-boundary: refusing to generate artefacts from an incomplete contract.\n',
-			);
-			process.exit(1);
-		}
-		mkdirSync(dirname(PATHS.robots), { recursive: true });
-		writeFileSync(PATHS.robots, buildRobotsTxt(classified, CANONICAL_ORIGIN));
-		writeFileSync(PATHS.sitemap, buildSitemapXml(classified, CANONICAL_ORIGIN));
-		process.stdout.write(
-			`index boundary: regenerated public/robots.txt and public/sitemap.xml from ${classified.length} routes\n`,
-		);
-		if (showReport) report(classified);
-		return 0;
-	}
-
-	const robotsTxt = readOrExit(PATHS.robots);
-	const sitemapXml = readOrExit(PATHS.sitemap);
+	const documents = await servedDocuments();
 
 	const result = evaluateIndexBoundary({
 		routeTreeSource,
 		serverSource,
-		robotsTxt,
-		sitemapXml,
+		robotsTxt: documents.robotsTxt,
+		sitemapPaths: documents.sitemapPaths,
+		sitemapOrigin: documents.sitemapOrigin,
 		readRouteFile,
 	});
 
@@ -163,4 +172,4 @@ function main() {
 	return 0;
 }
 
-process.exit(main());
+process.exit(await main());

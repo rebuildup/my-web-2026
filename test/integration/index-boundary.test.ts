@@ -19,7 +19,14 @@ import { describe, expect, it } from 'vitest';
  *      must actually render it. A layout-only declaration that never
  *      reaches the HTML would leave the admin URLs indexable while every
  *      gate report still said "OK" — so the rendered markup, not the
- *      source, is what is asserted here. (`/robots.txt` itself is NOT
+ *      source, is what is asserted here.
+ *
+ *   3. the SERVED `/robots.txt` agrees with the HTML. `/robots.txt` is
+ *      an external-boundary route (`src/http/seo/router.ts`, Issue
+ *      #420), so the workerd pool can fetch it through `SELF` — and the
+ *      one document a crawler reads before every page. If it ever
+ *      carried a `Disallow` for the admin subtree, the `noindex` those
+ *      pages declare could never be read. (`/robots.txt` itself is NOT
  *      fetched here: the workerd test pool has no Static Assets binding,
  *      so that half is asserted as text by `check-index-boundary.mjs`
  *      against the committed `public/robots.txt`.)
@@ -74,6 +81,37 @@ describe('index boundary — rendered HTML (Issue #423)', () => {
 		const res = await SELF.fetch('https://example.com/design-system', { redirect: 'manual' });
 		expect(res.status).toBe(200);
 		expect(robotsMeta(await res.text())).toBeNull();
+	});
+});
+
+describe('the served robots.txt agrees with the per-page meta', () => {
+	it('serves a policy with no Disallow for the noindex admin subtree', async () => {
+		// The regression this whole boundary exists to prevent: a
+		// `Disallow: /admin` next to `robots: noindex` on the admin
+		// pages. A blocked crawler never fetches the document, so it
+		// never reads the noindex, and Google keeps the URL as
+		// "Indexed, though blocked by robots.txt".
+		const res = await SELF.fetch('https://example.com/robots.txt', { redirect: 'manual' });
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('User-agent: *');
+		expect(body).not.toMatch(/^Disallow:\s*\/admin/m);
+		expect(body).not.toMatch(/^Disallow:\s*\/tools/m);
+		// …and the sitemap pointer stays on the canonical origin.
+		expect(body).toContain('Sitemap: https://rebuildup.dev/sitemap.xml');
+		// A site-wide noindex would silently de-index every public page.
+		expect(body).not.toMatch(/^Disallow:\s*\/\s*$/m);
+	});
+
+	it('serves a sitemap that advertises only the indexable routes', async () => {
+		const res = await SELF.fetch('https://example.com/sitemap.xml', { redirect: 'manual' });
+		expect(res.status).toBe(200);
+		const body = await res.text();
+		expect(body).toContain('<loc>https://rebuildup.dev/</loc>');
+		expect(body).toContain('<loc>https://rebuildup.dev/tools</loc>');
+		// The gated / the noindex Tool shell must never be advertised.
+		expect(body).not.toContain('/admin');
+		expect(body).not.toContain('/tools/');
 	});
 });
 

@@ -29,6 +29,49 @@ External boundary handlers under `src/http/**` are not protected by
 the default CSRF middleware; they are responsible for their own
 authentication and origin checks per ADR-0002.
 
+## API key scope and revocation
+
+The API keys that guard `/api/v1/access/*` and `/api/v1/reactions/*`
+have two decision layers: the boundary middleware
+(`src/http/api-keys/middleware.ts`) owns the `Authorization` shape and
+the resource/action scope lookup, and `@better-auth/api-key` owns hash
+verification, revocation, and expiry. Every denial collapses to a single
+shape (`401 missing_authorization`, `401 invalid_api_key`, or
+`403 missing_scope`) so a refusal cannot become an oracle.
+
+The scope matrix, the fixtures that pin each refusal, and the
+secret-handling invariants live in
+[`docs/security/api-key-scope.md`](security/api-key-scope.md). Its
+measured artefact is
+[`docs/verification/security/api-key-scope-matrix.webp`](verification/security/api-key-scope-matrix.webp)
+(regenerate with `pnpm run verification:api-key-scope`). Verification is
+local-only: fixtures live in a throwaway Miniflare D1 database, and no
+production endpoint, secret, or operator account is read or written.
+
+## Cache isolation
+
+Responses whose body depends on who asked for them (per-principal
+counters, per-visitor reaction state, sessions, `/admin*`, and
+server-function payloads) are marked so that a **shared** cache — CDN
+edge, corporate proxy — cannot store them: `private, no-store` on the
+external boundary, `private, no-cache` on caller-specific SSR
+documents, `no-store` under `/admin*`. Public immutable payloads opt
+in explicitly with `public, max-age=…, immutable`.
+
+The full contract, the audit it came from, and the verification
+suites are documented in
+[`docs/security/cache-isolation.md`](security/cache-isolation.md).
+
+## Open redirect
+
+Every `returnTo`-shaped value that crosses the external boundary is
+untrusted. `src/http/security/**` refuses anything that is not an
+internal absolute path, and is mounted in front of the Better Auth
+handler at `/api/v1/auth/*`. `BETTER_AUTH_URL` is the trusted-origin
+allow-list; when it is unset the guard refuses every absolute URL
+(fail-closed). The shipped contract, operator duties and known limits:
+[`docs/security/open-redirect.md`](security/open-redirect.md).
+
 ## D1 parameter binding (Issue #452)
 
 ### Rule
@@ -178,27 +221,40 @@ binding API is reachable in the local workerd pool"**, not
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Redirect-target matrix (Issue #454) is regenerated from the shipped
+  guard by `pnpm run security:redirect:report`; the committed image and
+  its reading guide are in
+  [`docs/verification/security/`](verification/security/).
 
 ## Search index boundary (robots.txt is not access control)
 
-`public/robots.txt` and `public/sitemap.xml` are **generated
-artefacts** of the contract in `scripts/_index-boundary.mjs` and are
-verified by `pnpm run index:boundary:check` (part of
-`validate:fast`). Regenerate with
-`pnpm run index:boundary:write`; inspect the per-route intent with
-`pnpm run index:boundary:report`.
+`GET /robots.txt` and `GET /sitemap.xml` are served by
+`src/http/seo/` (Issue #420: TanStack Start 1.168 cannot answer a
+non-HTML document from a route file, so they are external-boundary
+routes). What is a **contract** is `scripts/_index-boundary.mjs`: it
+classifies every route in the generated route tree as crawlable /
+indexable / `noindex`, and `pnpm run index:boundary:check` (part of
+`validate:fast`) fails when the served documents contradict it.
+Inspect the per-route intent with `pnpm run index:boundary:report`.
+
+There is deliberately **no committed `public/robots.txt`**: Cloudflare
+Static Assets answers a matching asset BEFORE the Worker runs
+(`assets.run_worker_first` is unset), so a file in `public/` would
+silently shadow the route instead of documenting it.
 
 The boundary has exactly two halves, and they are not interchangeable:
 
 - **Crawl control** — `Disallow` in `robots.txt` keeps a URL out of
-  the crawl. It is applied to the machine boundaries (`/api/v1`,
-  `/webhooks`, `/oauth`, `/integrations`, `/_serverFn`) — surfaces
-  that cost crawl budget and have no document to index at all. It is
-  deliberately NOT applied to `/admin`: the admin subtree is
-  de-indexed by its own `noindex` meta, which is only readable at
-  fetch time, so blocking the crawl would leave the URLs "indexed,
-  though blocked by robots.txt". The gate rejects that combination
-  (`noindex-blocked`) rather than trusting this paragraph.
+  the crawl. The served policy declares none today, and in particular
+  none for `/admin`: the admin subtree is de-indexed by its own
+  `noindex` meta, which is only readable at fetch time, so blocking
+  the crawl would leave the URLs "indexed, though blocked by
+  robots.txt". The gate rejects that combination (`noindex-blocked`)
+  rather than trusting this paragraph. Crawl budget for the machine
+  boundaries (`/api/v1`, `/webhooks`, `/oauth`, `/integrations`,
+  `/_serverFn`) is the SEO owner's call — they answer 401/404 rather
+  than serving a document, so the contract neither demands nor forbids
+  a rule for them.
 - **Index control** — `<meta name="robots" content="noindex, nofollow">`
   is what actually removes a URL from the index. It is declared by the
   page itself (`src/routes/admin.tsx` for the whole admin subtree, and
@@ -216,15 +272,19 @@ are independent: a `Googlebot` User-Agent gets no privilege on
 `/admin` or `/admin/keys`, and the API boundary still answers `401`.
 
 The gate fails loudly rather than silently on: a site-wide
-`Disallow: /`, a `Disallow` rule that would shadow an indexable public
-route, a route de-indexed by its own `noindex` meta that is also kept
-out of the crawl (`noindex-blocked` — the combination this paragraph
-describes), a crawl-blocked route that lost its rule, a `noindex` meta
-on a public route, a sitemap entry whose route does not exist (or vice
-versa), a sitemap URL that disagrees with the page's own `canonical`,
-and any new route that has no declared index intent. The meta and
-canonical checks strip comments before matching, so a declaration that
-only survives in a comment does not count.
+`Disallow: /`, a raw-prefix `Disallow` that would shadow a sibling
+public route, an `indexable` route that a rule blocks, a route
+de-indexed by its own `noindex` meta that is also kept out of the
+crawl (`noindex-blocked` — the combination this paragraph describes),
+a crawl-blocked route that lost its rule, a `noindex` meta on a public
+route, a sitemap entry whose route does not exist (or vice versa), a
+sitemap URL that disagrees with the page's own `canonical`, a sitemap
+rendered off the canonical origin, a `Sitemap:` directive that is not
+the canonical one, and any new route that has no declared index intent.
+The meta and canonical checks strip comments before matching, so a
+declaration that only survives in a comment — or that splits
+`name: 'robots'` and `content: 'noindex'` across two entries — does
+not count.
 
 ## Browser binaries (Playwright)
 

@@ -113,9 +113,13 @@ the operator's local `.dev.vars` or documented somewhere safe):
    ```bash
    curl -X POST https://rebuildup.dev/api/v1/reactions \
        -H "X-API-Key: <new-plaintext>" \
+       -H "Origin: https://rebuildup.dev" \
        -H "Content-Type: application/json" \
        -d '{"slug":"rotation-smoke","action":"count"}'
    # expect 2xx with a non-error response body
+   # `Origin` is mandatory since Issue #440: every unsafe method under
+   # /api/v1/* is refused without a same-origin signal
+   # (`csrfGuard`, see docs/security.md#csrf).
    ```
 
 The old plaintext remains valid until step 4 lands; the consumer

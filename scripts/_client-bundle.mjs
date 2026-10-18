@@ -282,7 +282,7 @@ export function collectClientInventory(files) {
  * backbone (assets loaded by more than one route), and the Tool bytes
  * each route pulled in.
  *
- * @param {{ route: string, status?: number, assets: { path: string, bytes?: number, gzipBytes?: number }[] }[]} measurements
+ * @param {{ route: string, status?: number, assets: { path: string, kind?: string, bytes?: number | null, gzipBytes?: number | null }[] }[]} measurements
  */
 export function summarizeRouteLoads(measurements) {
 	const routes = measurements.map((measurement) => {
@@ -290,14 +290,21 @@ export function summarizeRouteLoads(measurements) {
 			(a, b) => (b.bytes ?? 0) - (a.bytes ?? 0) || a.path.localeCompare(b.path),
 		);
 		const toolAssets = assets.filter((asset) => classifyAssetPath(asset.path) === 'tool');
+		// A navigation response is the SSR'd HTML document, rendered by the
+		// Worker — it is not an emitted file, so it has no on-disk size and
+		// must never be counted as an emitted asset (nor as a missing one).
+		const documents = assets.filter((asset) => asset.kind === 'document');
+		const missing = assets.filter((asset) => asset.kind !== 'document' && asset.bytes === null);
 		return {
 			route: measurement.route,
 			status: measurement.status ?? null,
-			assetCount: assets.length,
-			// A response whose path is not in the emitted output (`/_serverFn/*`
-			// answers, `cdn-cgi/*`) has no on-disk size. It is counted, never
-			// guessed into the byte totals.
-			unknownAssetCount: assets.filter((asset) => asset.bytes === null).length,
+			assetCount: assets.length - documents.length,
+			documentCount: documents.length,
+			// A non-document response whose path is not in the emitted output is
+			// a real finding: the browser asked for a file the build never
+			// produced. It is counted and named, never guessed into the bytes.
+			unknownAssetCount: missing.length,
+			unknownAssetPaths: missing.map((asset) => asset.path),
 			bytes: assets.reduce((total, asset) => total + (asset.bytes ?? 0), 0),
 			gzipBytes: assets.reduce(
 				(total, asset) => total + (asset.gzipBytes ?? Math.round(asset.bytes ?? 0)),
@@ -388,8 +395,23 @@ export function evaluateBundleFindings({ inventory, graph, routeSummary, homeRou
 				'no-unreachable-chunks',
 				'Every host chunk is reachable from an entry chunk',
 				graph.unreachableChunks.length === 0 ? 'pass' : 'fail',
-				`${graph.entryChunks.length} entry chunk(s); ${graph.unreachableChunks.length} unreachable chunk(s).`,
+				`Reachable from ${graph.entryChunks.length} seed chunk(s) (the host chunks every measured route loads); ${graph.unreachableChunks.length} unreachable chunk(s).`,
 				{ entryChunks: graph.entryChunks, unreachableChunks: graph.unreachableChunks },
+			),
+		);
+	}
+
+	if (routeSummary) {
+		const missing = routeSummary.routes.flatMap((route) =>
+			route.unknownAssetPaths.map((path) => `${route.route} -> ${path}`),
+		);
+		findings.push(
+			finding(
+				'no-missing-assets',
+				'Every asset a measured route requests exists in the build output',
+				missing.length === 0 ? 'pass' : 'fail',
+				`${missing.length} requested path(s) resolved to no emitted file (SSR documents excluded — the Worker renders those, it does not serve them as assets).`,
+				{ missing: missing.slice(0, 10) },
 			),
 		);
 	}
@@ -549,6 +571,7 @@ export function renderMarkdownReport(report) {
 					'Route',
 					'Status',
 					'Assets',
+					'SSR docs',
 					'Total',
 					'gzip -9 (est.)',
 					'Of which Tool artifacts',
@@ -558,6 +581,7 @@ export function renderMarkdownReport(report) {
 					code(route.route),
 					route.status ?? 'n/a',
 					route.assetCount,
+					route.documentCount,
 					formatBytes(route.bytes),
 					formatBytes(route.gzipBytes),
 					`${formatBytes(route.toolBytes)} (${route.toolAssetCount} file(s))`,
@@ -651,12 +675,13 @@ export function renderHtmlReport(report) {
 				route.route,
 				String(route.status ?? 'n/a'),
 				String(route.assetCount),
+				String(route.documentCount),
 				formatBytes(route.bytes),
 				formatBytes(route.gzipBytes),
 				`${formatBytes(route.toolBytes)} (${route.toolAssetCount})`,
 				String(route.unknownAssetCount),
 			])
-		: [['—', 'not measured', '—', '—', '—', '—', '—']];
+		: [['—', 'not measured', '—', '—', '—', '—', '—', '—']];
 
 	const sharedRows = routeSummary
 		? routeSummary.shared
@@ -701,7 +726,7 @@ export function renderHtmlReport(report) {
 ${rows(findings.map((item) => [item.status === 'pass' ? 'PASS' : item.status === 'skipped' ? 'SKIPPED' : 'FAIL', item.title, item.detail]))}
 </table>
 <h2>Route dependency map</h2>
-<table><tr><th>Route</th><th>Status</th><th>Assets</th><th>Total</th><th>gzip -9 (est.)</th><th>Tool artifacts</th><th>Not in output</th></tr>
+<table><tr><th>Route</th><th>Status</th><th>Assets</th><th>SSR docs</th><th>Total</th><th>gzip -9 (est.)</th><th>Tool artifacts</th><th>Not in output</th></tr>
 ${rows(routeRows)}
 </table>
 <h2>Shared backbone (loaded by more than one route)</h2>
@@ -716,7 +741,7 @@ ${rows(inventory.hostJs.slice(0, 10).map((chunk) => [chunk.path, formatBytes(chu
 <table><tr><th>Condition</th><th>Value</th></tr>
 ${rows(conditionRows)}
 </table>
-<p class="lead">Entry chunks: ${escapeHtml(graph.entryChunks.join(', ') || 'not resolved')} · graph roots: ${escapeHtml(graph.graphRoots.join(', ') || '—')} · unreachable chunks: ${escapeHtml(String(graph.unreachableChunks.length))} · duplicated content groups: ${escapeHtml(String(inventory.duplicates.length))}</p>
+<p class="lead">Reachability seeds (host chunks every measured route loads): ${escapeHtml(graph.entryChunks.join(', ') || 'not resolved')} · graph roots: ${escapeHtml(graph.graphRoots.join(', ') || '—')} · unreachable chunks: ${escapeHtml(String(graph.unreachableChunks.length))} · duplicated content groups: ${escapeHtml(String(inventory.duplicates.length))}</p>
 </body>
 </html>
 `;

@@ -221,12 +221,17 @@ async function measureRoutes({ baseUrl, routes, inventoryByPath }) {
 				if (url.origin !== origin) return;
 				const path = decodeURIComponent(url.pathname).replace(/^\//, '');
 				if (path === '') return;
-				const known = inventoryByPath.get(path);
+				// The navigation response is the SSR document rendered by the
+				// Worker. It is not an emitted file, so it must not be counted
+				// as an asset — nor as a missing one.
+				const kind = response.request().resourceType() === 'document' ? 'document' : 'asset';
+				const known = kind === 'document' ? undefined : inventoryByPath.get(path);
 				seen.set(path, {
 					path,
+					kind,
 					bytes: known?.bytes ?? null,
 					gzipBytes: known?.gzipBytes ?? null,
-					known: Boolean(known),
+					known: kind === 'document' || Boolean(known),
 					status: response.status(),
 				});
 			});

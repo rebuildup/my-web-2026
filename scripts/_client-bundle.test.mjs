@@ -189,6 +189,49 @@ test('summarizeRouteLoads separates Tool bytes from host bytes per route', () =>
 	);
 });
 
+test('summarizeRouteLoads keeps SSR documents out of the asset totals', () => {
+	const summary = summarizeRouteLoads([
+		{
+			route: '/',
+			status: 200,
+			assets: [
+				{ path: '/', kind: 'document', bytes: null, gzipBytes: null },
+				{ path: entry, kind: 'asset', bytes: 1000, gzipBytes: 400 },
+				{ path: 'assets/not-emitted.js', kind: 'asset', bytes: null, gzipBytes: null },
+			],
+		},
+	]);
+	const [home] = summary.routes;
+	assert.equal(home.documentCount, 1);
+	assert.equal(home.assetCount, 2);
+	assert.deepEqual(home.unknownAssetPaths, ['assets/not-emitted.js']);
+	assert.equal(home.bytes, 1000);
+});
+
+test('evaluateBundleFindings fails when a route requests an unbuilt asset', () => {
+	const inventory = collectClientInventory(healthyBuild());
+	const graph = buildChunkGraph(
+		[{ path: entry, imports: { staticImports: [], dynamicImports: [] } }],
+		{ entryChunks: [entry] },
+	);
+	const routeSummary = summarizeRouteLoads([
+		{
+			route: '/',
+			status: 200,
+			assets: [
+				{ path: '/', kind: 'document', bytes: null, gzipBytes: null },
+				{ path: entry, kind: 'asset', bytes: 10, gzipBytes: 5 },
+				{ path: 'assets/ghost.js', kind: 'asset', bytes: null, gzipBytes: null },
+			],
+		},
+		{ route: '/about', status: 200, assets: [{ path: entry, kind: 'asset', bytes: 10 }] },
+	]);
+	const findings = evaluateBundleFindings({ inventory, graph, routeSummary, homeRoute: '/' });
+	const missing = findings.find((item) => item.id === 'no-missing-assets');
+	assert.equal(missing.status, 'fail');
+	assert.deepEqual(missing.evidence.missing, ['/ -> assets/ghost.js']);
+});
+
 test('evaluateBundleFindings passes a clean build and fails a leaking one', () => {
 	const inventory = collectClientInventory(healthyBuild());
 	const chunks = [

@@ -171,8 +171,12 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
 その SHA でビルドされている必要がある。
 マージで base（`31ea9d8`）を取り込んだ `abb9997` の clean ツリーで
 `pnpm run build:production` を実行し、そのまま測定した
-（記録された SHA とビルドは同一）。runtime ツリーを変更した場合は
-`pnpm run build:production` を再実行してから測り直す。
+（記録された SHA とビルドは同一）。その後の commit
+（`93b1c50` の本ドキュメントと画像、`179f723` の base 再マージ）が
+`src/` `public/` `cloudflare.config.ts` `vite.config.ts` `migrations/`
+触れていないことは `git diff abb9997 HEAD -- src/ public/ vite.config.ts cloudflare.config.ts migrations/`
+が空であることで確認できる（差分は `package.json` と `docs/` のみ）。
+runtime ツリーを変更した場合は `pnpm run build:production` を再実行してから測り直す。
 
 **指標（スコア）は出ない。** 速度・転送量・TTFB をこのツールは測らない。
 Lighthouse 導入は #384、release gate 化は #385、Web Vitals 予算は #386 の担当であり、

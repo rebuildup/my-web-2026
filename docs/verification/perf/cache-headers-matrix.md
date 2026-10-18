@@ -228,20 +228,25 @@ frame-ancestors` を追加したため）。ただし `Cache-Control` / `max-age
 - #446 / #596 のマージは `applyTransportSecurityPolicy` を dispatch の後段に足し、
   HSTS 定数を module-private にしただけで、`Cache-Control` の値には触れていない
   （HSTS は別ヘッダー）。
-- #448 のマージは dispatch に `applyFrameAncestorsPolicy` を
-  `applyTransportSecurityPolicy` の内側へ足した（= CSP のみ）。boundary 側の
-  `applyExternalCachePolicy` は従来どおり境界の直後に置かれている。
-  合成結果の dispatch は次のとおりで、両方の Issue の挙動が共存する:
+- #448 / #449 / #455 のマージはいずれも `Cache-Control` の値に触れていない。
+  #448 は dispatch に `applyFrameAncestorsPolicy` を、#449 は
+  `applySecurityHeaders` を（いずれも CSP / セキュリティヘッダのみ）、#455 は
+  CORS ヘッダを追加した。`public/_headers` は #448 以降差分があるが、
+  `Cache-Control` / `max-age` / `immutable` を含む行の移動はない。
 
-  ```ts
-  const response = matchesExternalBoundary(url.pathname)
-    ? applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx))
-    : applyHtmlCachePolicy(
-        request,
-        await settleSsrDocumentResponse(request, await handler.fetch(request)),
-      );
-  return applyTransportSecurityPolicy(request, applyFrameAncestorsPolicy(request, response));
-  ```
+- 合成後の dispatch は次のとおりで、両方の Issue の挙動が共存する:
+
+```ts
+const response = matchesExternalBoundary(url.pathname)
+  ? applyExternalCachePolicy(await externalBoundary.fetch(request, env, ctx))
+  : applyHtmlCachePolicy(
+      request,
+      await settleSsrDocumentResponse(request, await handler.fetch(request)),
+    );
+const secured = applySecurityHeaders(request, response, toolRouteSecurityPolicy(url.pathname));
+const framed = applyFrameAncestorsPolicy(request, secured);
+return applyTransportSecurityPolicy(request, framed);
+```
 
 `applyHtmlCachePolicy` の早期 return を含め、送出値が変わる変更を入れた場合は
 `pnpm run build:production` を再実行してから測り直す。

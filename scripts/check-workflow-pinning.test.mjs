@@ -108,7 +108,7 @@ describe('repository workflows', () => {
 		assert.deepEqual(audit.findings, []);
 		assert.equal(audit.summary.status, 'PASS');
 		assert.equal(audit.summary.workflows, 2);
-		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x3)
+		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x4)
 		// + prod-smoke.yml (checkout, setup-node, pnpm, cache, upload-artifact)
 		assert.equal(audit.summary.pins, 14);
 		assert.deepEqual([...new Set(audit.pins.map((pin) => pin.repo))].sort(), [

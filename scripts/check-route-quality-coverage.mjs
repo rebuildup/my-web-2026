@@ -173,8 +173,11 @@ export function deriveRoutesFromFiles({ root = REPO_ROOT } = {}) {
 export function parseRouteTreeIds(text) {
 	const start = text.indexOf('interface FileRoutesByPath {');
 	if (start === -1) return [];
-	const end = text.indexOf('\n}', start);
-	const block = text.slice(start, end === -1 ? text.length : end);
+	// The interface runs until the next top-level statement, so a later
+	// block that happens to use quoted keys cannot leak into the id list.
+	const rest = text.slice(start);
+	const tailIndex = rest.slice(1).search(/\n(?=(?:interface|declare|const|export|type)\s)/);
+	const block = tailIndex === -1 ? rest : rest.slice(0, tailIndex + 1);
 	return [...block.matchAll(/^\s*'([^']+)':\s*\{\s*$/gm)].map((match) => match[1]).sort();
 }
 

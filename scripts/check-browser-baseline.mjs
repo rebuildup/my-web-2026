@@ -314,7 +314,10 @@ export function loadManifest(manifestPath) {
 		}
 	}
 
-	for (const guarded of requireArray(manifest.guarded_features, 'guarded_features')) {
+	// A guarded list may legitimately be empty (nothing below the bar is
+	// tempting right now), but an empty *adoption* list would mean the gate
+	// watches nothing at all, so `features` stays non-empty by contract.
+	for (const guarded of requireArray(manifest.guarded_features, 'guarded_features', { min: 0 })) {
 		const label = `guarded_features[${guarded?.id ?? '?'}]`;
 		requireString(guarded.id, `${label}: id`);
 		if (ids.has(guarded.id)) throw new ManifestError(`duplicate feature id: ${guarded.id}`);
@@ -584,9 +587,14 @@ export function evaluate({ manifest, root, files, uncovered, detections }) {
 		};
 
 		if (live.length === 0) {
+			const suppressed = row.suppressed;
 			error(
 				'feature_not_detected',
-				`declared feature "${feature.id}" (${feature.label}) has no occurrence in any surface; the declaration or its detect patterns have drifted from the code`,
+				`declared feature "${feature.id}" (${feature.label}) has no unsuppressed occurrence in any surface${
+					suppressed > 0
+						? ` (${suppressed} occurrence(s) are covered by declared false-positive waivers, so the feature is not actually adopted)`
+						: '; the declaration or its detect patterns have drifted from the code'
+				}`,
 			);
 		}
 
@@ -699,7 +707,19 @@ export function evaluate({ manifest, root, files, uncovered, detections }) {
  * ------------------------------------------------------------------ */
 
 export function verifyDataset(manifest, datasetPath) {
-	const raw = JSON.parse(readFileSync(datasetPath, 'utf8'));
+	let raw;
+	try {
+		raw = JSON.parse(readFileSync(datasetPath, 'utf8'));
+	} catch (error) {
+		throw new ManifestError(
+			`cannot read the web-features dataset at ${datasetPath}: ${error.message}`,
+		);
+	}
+	if (!raw?.features || typeof raw.features !== 'object') {
+		throw new ManifestError(
+			`${datasetPath} does not look like a web-features data.json (no "features" map)`,
+		);
+	}
 	const drift = [];
 	for (const declaration of [...manifest.features, ...manifest.guarded_features]) {
 		const upstream = raw.features?.[declaration.dataset.feature_id];

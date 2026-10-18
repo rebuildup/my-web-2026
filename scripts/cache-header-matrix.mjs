@@ -226,12 +226,52 @@ export function resolveProbeUrl(baseUrl, path) {
 	return new URL(path, baseUrl).href;
 }
 
-async function probe(baseUrl, target) {
+/**
+ * A bounded Node probe.
+ *
+ * `fetch` has no default timeout: a preview that accepts the connection
+ * and never answers headers, or answers them and never closes the body,
+ * leaves the first fetch — and every revalidation and body read after it
+ * — pending forever. The run then hangs before it can write a single
+ * report, which is worse than a wrong one: a SKIPPED row with a reason is
+ * something the reader can judge, a stuck process is something they have
+ * to kill. The caller already turns a thrown probe into a SKIPPED row,
+ * so aborting here is what turns a hang into that.
+ *
+ * The budget matches Chromium's navigation timeout in `probeWithBrowser`
+ * so the two observers give up at the same point rather than the browser
+ * reporting a failure the HTTP observer is still waiting on.
+ */
+export const PROBE_TIMEOUT_MS = 20_000;
+
+/** A fresh abort signal per request — a consumed signal stays aborted. */
+function probeSignal(timeoutMs) {
+	return AbortSignal.timeout(timeoutMs);
+}
+
+/**
+ * Rows the browser pass requests. A skipped row has no response to
+ * observe, and a target without a path was never a URL.
+ *
+ * Redirect rows ARE candidates. `page.goto()` follows the 3xx, but
+ * Playwright emits `page.on('response')` for the redirect response itself
+ * before issuing the follow-up request, and the observation map is keyed
+ * by pathname — so the 307 lands under the requested path and the target
+ * under its own. Skipping them would leave a browser-side middleware or
+ * proxy free to change the redirect's `Cache-Control` / `Vary` / status
+ * with nothing checking it, which is the same silent pass the second
+ * observer exists to prevent.
+ */
+export function isBrowserProbeCandidate(row) {
+	return !row.skipped && Boolean(row.path);
+}
+
+export async function probe(baseUrl, target, timeoutMs = PROBE_TIMEOUT_MS) {
 	if (!target.path) {
 		return { ...target, status: null, skipped: true, note: target.note };
 	}
 	const url = resolveProbeUrl(baseUrl, target.path);
-	const response = await fetch(url, { redirect: 'manual' });
+	const response = await fetch(url, { redirect: 'manual', signal: probeSignal(timeoutMs) });
 	const row = {
 		id: target.id,
 		path: target.path,
@@ -251,6 +291,7 @@ async function probe(baseUrl, target) {
 		const conditional = await fetch(url, {
 			redirect: 'manual',
 			headers: { 'If-None-Match': row.etag },
+			signal: probeSignal(timeoutMs),
 		});
 		row.revalidation = conditional.status === 304 ? '304 Not Modified' : `${conditional.status}`;
 		await conditional.arrayBuffer().catch(() => undefined);
@@ -407,22 +448,15 @@ async function probeWithBrowser(baseUrl, rows) {
 	});
 
 	for (const row of rows) {
-		if (row.skipped || !row.path) continue;
-		// A redirect row cannot be observed in a browser: Chromium
-		// FOLLOWS the 3xx, so the response whose headers matter never
-		// reaches the page and `observed` only ever holds the redirect
-		// target's entry. Reporting the target under the requested path
-		// would be a measurement of a different request, so the row is
-		// skipped for the browser pass with the reason stated — its
-		// headers are still recorded by the Node observer above.
-		if (row.status >= 300 && row.status < 400) {
-			row.browserNote = `not probed in Chromium: it follows the ${row.status} redirect, so no response is observed at this URL`;
-			continue;
-		}
-		// Documents are navigated; assets are fetched directly, because a
-		// navigation is not a request a browser would make for a chunk.
-		// Both go through an absolute URL so the two are handled
-		// identically instead of depending on a configured baseURL.
+		if (!isBrowserProbeCandidate(row)) continue;
+		// Redirect rows ARE probed — see `isBrowserProbeCandidate`. Only
+		// the final resolved page is not awaited.
+		//
+		// Documents are navigated; assets are requested the same way,
+		// because a navigation still produces the response event whose
+		// headers are the measurement. Both go through an absolute URL so
+		// the two are handled identically instead of depending on a
+		// configured baseURL.
 		try {
 			await page.goto(new URL(row.path, baseUrl).href, {
 				waitUntil: 'domcontentloaded',
@@ -435,8 +469,20 @@ async function probeWithBrowser(baseUrl, rows) {
 	await browser.close();
 
 	for (const row of rows) {
-		if (row.skipped || !row.path) continue;
+		if (!isBrowserProbeCandidate(row)) continue;
 		row.browser = observed.get(row.path) ?? null;
+		if (row.browser === null) {
+			// Chromium was asked for this URL and answered with no
+			// response for it. Not a contradiction, but not evidence
+			// either: leaving it here would let the browser pass look
+			// complete for a row it never saw.
+			row.problems = [
+				...(row.problems ?? []),
+				'Chromium emitted no response for this URL, so the browser observer did not measure this row',
+			];
+			row.ok = false;
+			continue;
+		}
 		// Fold the second observer into the verdict, not just the report.
 		const verdict = assessBrowserObservation(row, row.browser);
 		if (verdict.problems.length > 0) {

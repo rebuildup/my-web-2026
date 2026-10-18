@@ -62,6 +62,7 @@ gates:
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).
       - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
+      - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
       - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
       # Issue #473: Tool submodule supply-chain provenance. Offline,
@@ -147,7 +148,7 @@ change_risk_mapping:
     note: 'src/server.ts, vite.config.ts, cloudflare.config.ts worker.entrypoint'
   ci_workflow_change:
     gate: integration
-    note: '.github/workflows/*.yml requires actionlint pass + cf-typegen:check'
+    note: '.github/workflows/*.yml requires actionlint pass + ci:pins:check + cf-typegen:check'
   dependency_or_supply_chain_change:
     gate: fast
     note: 'scripts/check-sbom.mjs rejects an SBOM whose npm inventory, digests or Tool pins drift from pnpm-lock.yaml / src/tools/manifest.json, and rejects secret-shaped content or a runtime-secret name from scripts/_cloudflare-contract.mjs'
@@ -389,6 +390,20 @@ security_gates:
     enabled: true
     tool: actionlint
     note: 'Biome does not cover .github/workflows/*.yml. Runs inside the `validate` job.'
+  workflow_action_pinning:
+    enabled: true
+    tool: scripts/check-workflow-pinning.mjs
+    manifest: quality/actions-pins.json
+    run_as: 'pnpm run ci:pins:check (part of validate:fast, so every CI run sees it)'
+    rules:
+      - 'every `uses:` pins a full 40-char commit SHA and records its upstream ref'
+      - 'every job resolves to explicit least-privilege GITHUB_TOKEN permissions'
+      - 'no workflow reads a secret value, deploys production, publishes a Release, or runs on an untrusted trigger'
+      - 'fails closed: a `jobs:` / `permissions:` / `on:` / `uses:` shape the scanner cannot resolve is a finding (`JOBS_UNPARSED`, `USES_UNPARSED`, `PERMISSIONS_UNPARSED`, `AUTHZ_TRIGGER_UNPARSED`), never an inherited default'
+    note: >-
+      Issue #472. Offline and read-only; waivers require a quality/actions-pins.json
+      `exceptions` entry and are printed in CI output. Update procedure:
+      docs/security/supply-chain-actions-pinning.md
   dependency_review:
     enabled: true
     issue: '#470'

@@ -17,14 +17,18 @@
  */
 
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
 import test from 'node:test';
 import { evaluateObservation, policyById } from './_cache-policy.mjs';
 import {
+	PROBE_TIMEOUT_MS,
 	assessBrowserObservation,
 	assessRow,
 	buildTargets,
 	environmentBlock,
 	escapeHtml,
+	isBrowserProbeCandidate,
+	probe,
 	resolveProbeUrl,
 	toHtml,
 	toMarkdown,
@@ -467,13 +471,13 @@ test('a validator that is never revalidated is a row problem, not a footnote', (
 	assert.deepEqual(carried.problems, ['no Cache-Control']);
 });
 
-test('the browser pass explains why a redirect row was not observed', () => {
-	// Chromium follows the 3xx, so a redirect response is never observed
-	// at the requested URL; the row must say so instead of rendering no
-	// note at all (which read as "nothing to report").
-	// Chromium follows the 3xx, so a redirect response is never observed
-	// at the requested URL; the row must say so instead of rendering no
-	// note at all (which read as "nothing to report").
+test('a redirect row is observed in Chromium, not skipped', () => {
+	// `page.goto()` follows the 3xx, but Playwright emits
+	// `page.on('response')` for the redirect response itself before
+	// issuing the follow-up request, and the observation map is keyed by
+	// pathname. Skipping the row would leave a browser-side middleware or
+	// proxy free to change the redirect's Cache-Control with nothing
+	// checking it.
 	const html = toHtml(
 		[
 			{
@@ -482,17 +486,65 @@ test('the browser pass explains why a redirect row was not observed', () => {
 				status: 307,
 				cacheControl: policyById('admin-page').cacheControl,
 				etag: null,
-				vary: null,
+				vary: 'Cookie, Authorization',
 				revalidation: 'no validator sent',
 				ok: true,
 				problems: [],
 				skipped: false,
-				browserNote: 'not probed in Chromium: it follows the 307 redirect',
+				browser: {
+					status: 307,
+					cacheControl: policyById('admin-page').cacheControl,
+					etag: null,
+					vary: 'Cookie, Authorization',
+				},
 			},
 		],
 		ENVIRONMENT,
 	);
-	assert.match(html, /not probed in Chromium: it follows the 307 redirect/);
+	assert.doesNotMatch(html, /not probed in Chromium/);
+	// The 307 observed by the browser is compared like any other row and
+	// rendered with its own status and headers.
+	assert.match(html, /<span class="ok">ok<\/span>/);
+	assert.match(html, /Chromium observed:/);
+});
+
+test('a redirect row whose browser observation disagrees fails the row', () => {
+	// The gap this close: a proxy that only affects the browser changes
+	// the redirect's policy, and nothing looks.
+	const row = {
+		id: 'admin-page',
+		path: '/admin',
+		status: 307,
+		cacheControl: policyById('admin-page').cacheControl,
+		etag: null,
+	};
+	const verdict = assessBrowserObservation(row, {
+		status: 307,
+		cacheControl: 'public, max-age=3600',
+		etag: null,
+		vary: 'Cookie, Authorization',
+	});
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /Chromium received Cache-Control/);
+});
+
+test('a matching 307 observation adds no problem', () => {
+	const verdict = assessBrowserObservation(
+		{
+			id: 'admin-page',
+			path: '/admin',
+			status: 307,
+			cacheControl: policyById('admin-page').cacheControl,
+			etag: null,
+		},
+		{
+			status: 307,
+			cacheControl: policyById('admin-page').cacheControl,
+			etag: null,
+			vary: 'Cookie, Authorization',
+		},
+	);
+	assert.deepEqual(verdict, { ok: true, problems: [] });
 });
 
 test('the environment block never reports a clean tree it did not check', () => {
@@ -751,4 +803,48 @@ test('the fixture image class is not required: no local probe can produce it', (
 		]),
 		[],
 	);
+});
+
+test('a server that never answers makes probe abort rather than hang', async () => {
+	// Pinned precisely: a server that never sends headers, a budget of
+	// 200ms, and no tolerance for a probe that is still pending.
+	const sockets = new Set();
+	const server = createServer((request, response) => sockets.add(response));
+	await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+	try {
+		const baseUrl = `http://127.0.0.1:${server.address().port}`;
+		const started = Date.now();
+		const outcome = await probe(
+			baseUrl,
+			{ id: 'immutable-build-asset', path: '/assets/app.js' },
+			200,
+		).then(
+			(row) => `resolved ${row.status}`,
+			(error) => error.name,
+		);
+		assert.equal(outcome, 'TimeoutError');
+		assert.ok(Date.now() - started < 5_000, `probe took ${Date.now() - started}ms to abort`);
+	} finally {
+		for (const socket of sockets) socket.destroy();
+		await new Promise((resolve) => server.close(resolve));
+	}
+});
+
+test('a redirect row is a browser-probe candidate', () => {
+	// The branch that used to skip 3xx rows: `page.goto()` follows the
+	// redirect, but Playwright emits `page.on('response')` for the 3xx
+	// itself, so skipping it would leave a browser-side proxy free to
+	// change the redirect's Cache-Control with nothing checking.
+	assert.equal(
+		isBrowserProbeCandidate({ id: 'admin-page', path: '/admin', status: 307, skipped: false }),
+		true,
+	);
+	assert.equal(
+		isBrowserProbeCandidate({ id: 'admin-page', path: '/admin', status: 200, skipped: false }),
+		true,
+	);
+	// A skipped row has no response to observe, and a target without a
+	// path was never a URL.
+	assert.equal(isBrowserProbeCandidate({ id: 'reaction-image', path: null, skipped: true }), false);
+	assert.equal(isBrowserProbeCandidate({ id: 'reaction-image', path: '', skipped: false }), false);
 });

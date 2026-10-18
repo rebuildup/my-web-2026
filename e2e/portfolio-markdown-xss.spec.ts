@@ -132,6 +132,24 @@ test.describe('portfolio article — XSS boundary (Issue #451)', () => {
 		for (const reason of ['scheme-not-allowed', 'encoded-scheme', 'control-character']) {
 			expect(reasons).toContain(reason);
 		}
+
+		// The refused target stays readable for the author, and the DOM
+		// reads it back as an inert attribute value — never as a link.
+		const recorded = await markers.evaluateAll((nodes) =>
+			nodes.map((node) => node.getAttribute('data-blocked-href') ?? ''),
+		);
+		for (const fixture of blockedLinkFixtures()) {
+			const raw = fixture.input.slice(fixture.input.indexOf('](') + 2);
+			// The lexer stops at the FIRST `)` (see `findLinkCloseParen`),
+			// so what the DOM records is a prefix of the raw href — with
+			// `vbscript:msgbox(1` as a concrete example. Asserting the
+			// prefix relation keeps this test honest about the rule
+			// instead of re-implementing it.
+			expect(
+				recorded.some((value) => value.length > 0 && raw.startsWith(value)),
+				`no marker recorded a prefix of ${raw}`,
+			).toBe(true);
+		}
 	});
 
 	test('raw-HTML payloads are visible as escaped text, not as markup', async ({ page }) => {

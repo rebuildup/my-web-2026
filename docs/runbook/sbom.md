@@ -248,8 +248,10 @@ policy question for a settled fact:
 
 This runbook covers generation, verification and release attachment. It
 does **not** add vulnerability scanning, dependency review or license
-*policy* enforcement (for example an allow/deny list of licenses) —
-`quality/profile.yaml#security_gates` still records
-`dependency_review` as deferred. Those are separate obligations with
-their own change authority; see `skills/security-maintenance/SKILL.md`
-for how a future ticket would scope them.
+*policy* enforcement (for example an allow/deny list of licenses).
+Those are separate obligations with their own change authority and
+their own runbooks: dependency review shipped as its own reviewed
+declaration-driven gate (`quality/profile.yaml#security_gates.dependency_review`,
+`docs/runbook/dependency-advisories.md`) and license policy has no
+implementation yet; see `skills/security-maintenance/SKILL.md` for how
+a future ticket would scope them.

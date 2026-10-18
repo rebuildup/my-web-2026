@@ -134,7 +134,9 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const POLICY_FILE = join('src', 'server.ts');
 
 /** The declaration that carries the single canonical directive. */
-const DECLARATION = /export const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
+// `export` is optional: the value lives in the Worker entry, and a
+// named export that is not a handler breaks workerd at boot.
+const DECLARATION = /(?:export\s+)?const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
 
 /**
  * A string literal: single-quoted, double-quoted, or a template literal.
@@ -518,7 +520,7 @@ export function readCanonicalDirective({ root = REPO_ROOT } = {}) {
 	const violations = [];
 	if (declared.length === 0) {
 		violations.push(
-			`${POLICY_FILE} declares no \`export const HSTS_DIRECTIVE = '…'\` — the HSTS policy lost its source of truth.`,
+			`${POLICY_FILE} declares no \`const HSTS_DIRECTIVE = '…'\` — the HSTS policy lost its source of truth.`,
 		);
 	}
 	if (declared.length > 1) {

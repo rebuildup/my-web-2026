@@ -241,7 +241,11 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  * `docs/security.md`; `scripts/check-hsts-policy.mjs` fails the build
  * if either directive is added while the audit is unrecorded.
  */
-export const HSTS_DIRECTIVE = 'max-age=31536000';
+// Not exported: a Worker module entry may only export the handler(s).
+// workerd rejects any other named export ("Incorrect type for map entry"),
+// which made `vite dev` / Playwright E2E fail to boot. The single
+// declaration still lives here; `scripts/check-hsts-policy.mjs` reads it.
+const HSTS_DIRECTIVE = 'max-age=31536000';
 
 const HSTS_HEADER = 'strict-transport-security';
 

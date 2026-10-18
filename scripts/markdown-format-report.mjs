@@ -14,26 +14,34 @@
  *   src/portfolio/fixtures/markdown/hostile.md
  *
  * Usage:
- *   node scripts/markdown-format-report.mjs [--out <dir>]
+ *   node scripts/markdown-format-report.mjs [--out <dir>] [--capture]
  *
  * `--out` defaults to `.tmp/markdown-format-report/`, which is gitignored.
- * The committed artefact is the screenshot the PR embeds, not this page.
+ * `--capture` additionally screenshots the generated page and rewrites the
+ * committed verification artefact.
  *
  * Why a Vite server: the renderer is a `.tsx` component whose class names
  * come from the generated Panda package, so Node cannot import it directly.
  * Vite already ships as the build tool and runs the same transform Storybook
  * runs, which keeps the report's styling identical to the preview's.
+ *
+ * Why WebP and not PNG: the Issue names a `.png` path, but Playwright can only
+ * write PNG and this artefact is a flat UI screenshot that bloats the repo in
+ * that format. The capture therefore screenshots into memory and re-encodes it
+ * with `sharp` (width <= 1440, WebP quality 72). No intermediate PNG is ever
+ * written to disk.
  */
 
 import { execFileSync } from 'node:child_process';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { buildReportHtml, evaluateContract, markupIsInert } from './_markdown-format-report.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const FIXTURE_DIR = join(REPO_ROOT, 'src/portfolio/fixtures/markdown');
 const DEFAULT_OUT_DIR = join(REPO_ROOT, '.tmp/markdown-format-report');
+const CAPTURE_PATH = join(REPO_ROOT, 'docs/verification/content/markdown-format-regression.webp');
 const SITE_ORIGIN = 'https://rebuildup.dev';
 
 const FIXTURES = [
@@ -54,8 +62,40 @@ const FIXTURES = [
 function parseArgs(argv) {
 	const outIndex = argv.indexOf('--out');
 	return {
+		capture: argv.includes('--capture'),
 		outDir: outIndex === -1 ? DEFAULT_OUT_DIR : resolve(REPO_ROOT, argv[outIndex + 1]),
 	};
+}
+
+/**
+ * Screenshot the report into the committed verification artefact.
+ *
+ * A FAIL verdict is captured on purpose: the artefact documents a
+ * measurement, so a future regression belongs in the diff rather than
+ * being hidden by the generator. The generator still exits non-zero when
+ * the rendered markup was not inert.
+ */
+async function captureReport(reportPath) {
+	const { chromium } = await import('@playwright/test');
+	const sharp = (await import('sharp')).default;
+	const browser = await chromium.launch();
+	try {
+		const page = await browser.newPage({
+			viewport: { height: 1000, width: 1440 },
+			deviceScaleFactor: 2,
+		});
+		await page.goto(pathToFileURL(reportPath).href, { waitUntil: 'load' });
+		const png = await page.screenshot({ fullPage: true });
+		const webp = await sharp(png)
+			.resize({ width: 1440, withoutEnlargement: true })
+			.webp({ quality: 72 })
+			.toBuffer();
+		mkdirSync(dirname(CAPTURE_PATH), { recursive: true });
+		writeFileSync(CAPTURE_PATH, webp);
+		process.stdout.write(`captured ${CAPTURE_PATH} (${Math.round(webp.length / 1024)} KB)\n`);
+	} finally {
+		await browser.close();
+	}
 }
 
 /**
@@ -111,7 +151,7 @@ async function renderFixtures() {
 }
 
 async function main() {
-	const { outDir } = parseArgs(process.argv.slice(2));
+	const { capture, outDir } = parseArgs(process.argv.slice(2));
 	mkdirSync(outDir, { recursive: true });
 
 	const fixtures = await renderFixtures();
@@ -136,6 +176,7 @@ async function main() {
 		}
 	}
 	const notInert = fixtures.filter((fixture) => !markupIsInert(fixture.html));
+	if (capture) await captureReport(reportPath);
 	process.stdout.write(`\nwrote ${reportPath}\n`);
 	if (notInert.length > 0) {
 		process.stderr.write(

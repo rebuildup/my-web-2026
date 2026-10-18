@@ -280,6 +280,17 @@ evidence が検証できた場合のみ warning、fallback 宣言が無い採用
 `quality/browser-baseline.json`、詳細は
 [`docs/verification/standards/browser-baseline.md`](verification/standards/browser-baseline.md)。
 
+`pnpm run css:check` は出荷 CSS（Panda が `panda cssgen` で生成するシートと
+`src/**/*.css`）を CSS Syntax parser とレビュー済み vocabulary で検証する
+gate（Issue #413）。構文エラー・未知 property / at-rule / value function・
+プロパティ文法外の keyword は fail し、vendor prefix は prefix 無し側が仕様定義済みの
+ときだけ、`engine 固有プロパティ` は名前・理由・basis URL・surface スコープを持つ
+allowlist エントリだけを受理する（何も抑止していないエントリも fail）。
+`compat:check` が「対象ブラウザで動くか」を答えるのに対し、こちらは
+「parsable か・名前が存在するか」を答える。定義は `quality/css-standards.json`、
+詳細は
+[`docs/verification/standards/css-validated.md`](verification/standards/css-validated.md)。
+
 CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 `validate` job on every PR and every push to `main` / `release-*`.
 The same job also installs the Playwright Chromium binary and runs

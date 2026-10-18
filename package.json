@@ -63,6 +63,7 @@
 		"test:client": "vitest --config vitest.client.config.ts run",
 		"test:watch": "vitest",
 		"tools:check": "node scripts/check-tools-manifest.mjs",
+		"tools:embed-policy:report": "node scripts/tools-embed-policy-report.mjs",
 		"typecheck": "tsc --noEmit",
 		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run structured-data:check && pnpm run tools:check && pnpm run install:scripts:check && pnpm run wrangler:independence:check && pnpm run cloudflare:contract:check && pnpm run test:wiring:check && node scripts/check-release-assets.mjs && node --test scripts/check-release-assets.test.mjs && pnpm run version:check && pnpm run typecheck && pnpm run infisical:check:coverage && pnpm run test",
 		"validate:integration": "pnpm run validate:fast && pnpm run build:production && pnpm run cloudflare:contract:check:build && pnpm run deploy:cf:prebuilt:selftest && pnpm run cf:mode-mismatch:check && pnpm run lint:ci && pnpm run build-storybook && pnpm run build:cf:production && pnpm run cloudflare:contract:check:build",

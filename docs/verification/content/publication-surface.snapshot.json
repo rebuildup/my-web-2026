@@ -794,6 +794,7 @@
 				"kind": "origin",
 				"identifier": false,
 				"files": [
+					"src/routes/tools.$slug.tsx",
 					"src/routes/tools.index.tsx"
 				]
 			},

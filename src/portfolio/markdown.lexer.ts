@@ -46,7 +46,7 @@
  *     of the foundation obligation.
  *   - `docs/security.md` §"Markdown / Notion-derived HTML input
  *     boundary" — the input contract this module implements.
- *   - `src/portfolio/markdown.xss-fixtures.ts` — the accepted /
+ *   - `test/fixtures/markdown-xss-fixtures.ts` — the accepted /
  *     rejected corpus both test layers assert against.
  *   - `src/portfolio/components/Markdown.tsx` — the React wrapper
  *     that walks this AST and renders to JSX.

@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 17 |
 | External hosts | 26 |
 | First-party hosts | 0 |
-| Approved transition | 2 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -90,9 +90,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (1)
+### Added external hosts (0)
 
-- `host.invalid`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -168,6 +168,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host host.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://host.invalid
+_No findings._
 

@@ -291,8 +291,6 @@
 			"361do.booth.pm",
 			"design.google",
 			"developers.google.com",
-			"example.com",
-			"example.invalid",
 			"fonts.googleapis.com",
 			"fonts.gstatic.com",
 			"github.com",
@@ -302,6 +300,7 @@
 			"samuido.booth.pm",
 			"schema.org",
 			"scripts.sil.org",
+			"use.typekit.net",
 			"www.apache.org",
 			"www.facebook.com",
 			"www.googletagmanager.com",
@@ -375,11 +374,22 @@
 				]
 			},
 			{
+				"url": "http://www.w3.org/1999/xlink",
+				"host": "www.w3.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"external/prototype/public/vite.svg"
+				]
+			},
+			{
 				"url": "http://www.w3.org/2000/svg",
 				"host": "www.w3.org",
 				"kind": "external",
 				"identifier": true,
 				"files": [
+					"external/prototype/public/vite.svg",
+					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
 					"src/home/mark.tsx"
 				]
@@ -421,30 +431,22 @@
 				]
 			},
 			{
-				"url": "https://example.com/docs",
-				"host": "example.com",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/markdown.xss-fixtures.ts"
-				]
-			},
-			{
-				"url": "https://example.invalid/frame",
-				"host": "example.invalid",
-				"kind": "external",
-				"identifier": false,
-				"files": [
-					"src/portfolio/markdown.xss-fixtures.ts"
-				]
-			},
-			{
 				"url": "https://fonts.googleapis.com",
 				"host": "fonts.googleapis.com",
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"external/prototype/index.html",
 					"src/routes/__root.tsx"
+				]
+			},
+			{
+				"url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap",
+				"host": "fonts.googleapis.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"external/prototype/index.html"
 				]
 			},
 			{
@@ -462,6 +464,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"external/prototype/index.html",
 					"src/routes/__root.tsx"
 				]
 			},
@@ -679,7 +682,6 @@
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
 					"src/portfolio/components/Markdown.tsx",
-					"src/portfolio/markdown.notion.ts",
 					"src/routes/index.tsx"
 				]
 			},
@@ -785,6 +787,15 @@
 				]
 			},
 			{
+				"url": "https://use.typekit.net",
+				"host": "use.typekit.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"external/prototype/index.html"
+				]
+			},
+			{
 				"url": "https://www.facebook.com/KosenProcon",
 				"host": "www.facebook.com",
 				"kind": "external",
@@ -880,21 +891,13 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://example.com/docs",
-			"https://example.invalid/frame"
+			"https://host.invalid"
 		],
-		"removedExternalUrls": [
-			"http://www.w3.org/1999/xlink",
-			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap",
-			"https://use.typekit.net"
-		],
+		"removedExternalUrls": [],
 		"addedExternalHosts": [
-			"example.com",
-			"example.invalid"
+			"host.invalid"
 		],
-		"removedExternalHosts": [
-			"use.typekit.net"
-		],
+		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
@@ -902,42 +905,12 @@
 			{
 				"code": "E004 external-host-added",
 				"severity": "error",
-				"message": "New external host example.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host example.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+				"message": "New external host host.invalid appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
 			},
 			{
 				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL added: https://example.com/docs"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://example.invalid/frame"
-			},
-			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: http://www.w3.org/1999/xlink"
-			},
-			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
-			},
-			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: https://use.typekit.net"
-			},
-			{
-				"code": "W001 external-host-removed",
-				"severity": "warn",
-				"message": "External host no longer referenced: use.typekit.net"
+				"message": "External URL added: https://host.invalid"
 			}
 		]
 	}

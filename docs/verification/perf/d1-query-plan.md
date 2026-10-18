@@ -6,7 +6,7 @@ fixture 環境で実測し、N+1 を検出できる境界値をコードとし�
 
 - 測定コード: `src/portfolio/load.query-budget.test.ts`（workerd pool / 実 D1 binding）
 - レポート生成: `scripts/d1-query-plan-report.mjs`（+ `scripts/d1-query-plan-report.test.mjs`）
-- スクリーンショット: [`d1-query-plan.png`](./d1-query-plan.png)
+- スクリーンショット: [`d1-query-plan.webp`](./d1-query-plan.webp)（Issue は PNG を要求するが、リポジトリ規約に従い **WebP** に差し替え。1280×1524 / 97 KB）
 - 対象 PR: #546 / Issue #491 / base `release-0-6-3`
 
 ## 1. 何が壊れていたか
@@ -48,12 +48,28 @@ const [linksByProject, mediaByProject] = await Promise.all([
 D1 は 1 query あたりの bound parameter を 100 個までに制限する
 （Cloudflare D1 platform limits）。バッチ query は id 1 個につき
 bind 1 個しか使わないため、chunk サイズは上限と同じ 100 になる。
-500 行ページでも 1 文で 500 bind は投げない。
+500 行ページでも 1 文で 500 bind は投げない。この主張は
+hand-built な文ではなく **実測**（捕捉した文の bind 数）で検証している
+（§4-6）。
 
 `ORDER BY project_id, ...` は先頭に `project_id` を足すことで
 プロジェクト単位の順序（`display_order ASC, created_at ASC` /
 `is_cover DESC, display_order ASC, created_at ASC`）を保存している。
 つまり `media[0]` が cover であること、link の並び順は従来と同一。
+この順序契約はページ内の **全作品**（チャンク境界をまたぐ作品を含む）
+に対して assert している。
+
+### 2.1 静的 D1 statement-shape gate との関係
+
+`IN (…)` の placeholder chain（`?1, ?2, …`）は `prepare()` に
+interpolation されるため、`release-0-6-3` で追加された静的 gate
+`scripts/check-d1-sql-binding.mjs`（Issue #452）の対象になる。この値は
+**構造であってデータではない**（長さは chunk 長のみから決まり、project id は
+全て `.bind()` で bound される）ため、`SQL_STRUCTURE_ALLOWLIST` に
+`linkPlaceholders` / `mediaPlaceholders` として理由付きで登録した
+（既存の `cursorPredicate` と同列）。gate は inline の `prepare()` を
+依然として読むので、根拠のない exemption にはならず、理由の記載と
+到達可能性チェックの両方を満たしている。詳細は `docs/security.md`。
 
 ## 3. 実測（fixture 環境）
 
@@ -61,7 +77,7 @@ bind 1 個しか使わないため、chunk サイズは上限と同じ 100 に�
 
 | 項目 | ローカル（記録した実行） | CI |
 | --- | --- | --- |
-| source SHA | `eef3359`（このブランチの測定時 HEAD） | PR の head commit |
+| source SHA | `ce19a43`（測定コードが確定した head。この後の差分は本ドキュメントと画像のみ） | §3.3 の run に明記 |
 | OS / CPU | macOS 27.0.1 (Darwin 27.0.0), arm64, Apple M5 ×10, 24 GiB | `ubuntu-latest`（`.github/workflows/ci.yml`、標準 4 vCPUランナー） |
 | Node / pnpm | v26.12.0 / 12.3.4 | 22.18 / 12.3.4（`quality/profile.yaml#ci.bootstrap`） |
 | D1 | `vitest.config.ts` の **local miniflare SQLite binding**（`d1Databases.DB`）。本番 D1 には一切接続しない | 同左（`validate:integration` 内の `pnpm run test`） |
@@ -83,10 +99,15 @@ node scripts/d1-query-plan-report.mjs \
   --out .tmp/perf/d1-query-plan.html \
   --source-sha "$(git rev-parse --short HEAD)"
 
-# 3) スクリーンショット（Issue が要求する PNG）
+# 3) スクリーンショット（リポジトリ規約に従い WebP で保存）
 pnpm exec playwright screenshot --full-page --viewport-size=1280,1000 \
   "file://$PWD/.tmp/perf/d1-query-plan.html" \
-  docs/verification/perf/d1-query-plan.png
+  .tmp/perf/d1-query-plan.png
+
+node -e "require('sharp')('.tmp/perf/d1-query-plan.png')
+  .resize({ width: 1600, withoutEnlargement: true })
+  .webp({ quality: 80 })
+  .toFile('docs/verification/perf/d1-query-plan.webp')"
 ```
 
 `d1-query-plan-report.mjs` は測定レコードが無い / 行が壊れている場合に
@@ -96,15 +117,15 @@ pnpm exec playwright screenshot --full-page --viewport-size=1280,1000 \
 
 | ページ内の作品数 | 修正前（N+1 形状） | 修正後 | 予算 | 所要時間（観測値） |
 | --- | --- | --- | --- | --- |
-| 1 | 3 | 3 | 3 | 6 ms |
-| 2 | 5 | 3 | 3 | 5 ms |
+| 1 | 3 | 3 | 3 | 5 ms |
+| 2 | 5 | 3 | 3 | 3 ms |
 | 5 | 11 | 3 | 3 | 2 ms |
-| 10 | 21 | 3 | 3 | 6 ms |
-| 25 | 51 | 3 | 3 | 5 ms |
-| 50 | 101 | 3 | 3 | 9 ms |
-| 100 | 201 | 3 | 3 | 12 ms |
-| 250 | 501 | 7 | 7 | 22 ms |
-| 500 | 1001 | 11 | 11 | 30 ms |
+| 10 | 21 | 3 | 3 | 3 ms |
+| 25 | 51 | 3 | 3 | 4 ms |
+| 50 | 101 | 3 | 3 | 6 ms |
+| 100 | 201 | 3 | 3 | 10 ms |
+| 250 | 501 | 7 | 7 | 27 ms |
+| 500 | 1001 | 11 | 11 | 25 ms |
 
 - 修正前の成長率 = **作品 1 あたり 2.000 statement**（線形 = N+1 の定義）。
 - 修正後の成長率 = **作品 1 あたり 0.016 statement**（= `2 / 100`）。
@@ -116,20 +137,26 @@ pnpm exec playwright screenshot --full-page --viewport-size=1280,1000 \
 ### 3.3 CI での実測（ubuntu-latest）
 
 CI（`.github/workflows/ci.yml` の `validate` job = `validate:integration`）でも
-同じ suite が走り、**statement 数・予算・query plan はローカルと完全に一致**した。
-時間は環境依存の観測値だけがずれる（500 作品ページでローカル 30 ms / CI 43 ms）——
-これが「時間を gate にしない」判断の根拠そのものを示す。
+同じ suite が走り、**statement 数・予算・query plan はローカルと完全に一致**する
+（下の表の数値は全 run で assert された実測値）。
+時間は環境依存の観測値だけが run ごとにずれる（500 作品ページで local 25 ms /
+CI は 20〜45 ms の範囲で動く）——これが「時間を gate にしない」判断の根拠そのもの
+を示す。
 
 | ページ内の作品数 | 1 | 2 | 5 | 10 | 25 | 50 | 100 | 250 | 500 |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | statement 数（local / CI） | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 3 / 3 | 7 / 7 | 11 / 11 |
 | 予算 | 3 | 3 | 3 | 3 | 3 | 3 | 3 | 7 | 11 |
-| 所要時間（local / CI） | 6 / 6 ms | 5 / 7 ms | 2 / 6 ms | 6 / 5 ms | 5 / 7 ms | 9 / 10 ms | 12 / 12 ms | 22 / 33 ms | 30 / 43 ms |
 
 CI の測定値はそのまま `pnpm run test` の stdout に出る
 （`page_size=… statements=… budget=… legacy=… elapsed_ms=…`）。CI ログから
 レポートを生成する必要があれば `gh run view <run> --log` の出力を
 `node scripts/d1-query-plan-report.mjs --input <capture>` を通せば同じ HTML が出る。
+
+**引用の追跡可能性**: §3.2 の local 値は source SHA `ce19a43` の実行から
+採取したもの。CI の値（時間を含む）は **run ID と head SHA を添えて** PR #546
+本文の「検証」節に記録する。run ID を本文に書かないまま数値だけを引用する
+ことはしない。
 
 ### 3.4 索引利用（EXPLAIN QUERY PLAN）
 
@@ -157,8 +184,16 @@ CI の測定値はそのまま `pnpm run test` の stdout に出る
 3. 成長率 `Δstatements / ΔpageSize <= 2 / D1_BATCH_ID_CHUNK = 0.02`。
 4. 詳細面は全 fixture で `<= 3` かつ一定。
 5. 3 つの statement が index search であること（`SCAN` が出ない）。
-6. 1 文の bind 数が D1 上限 100 を超えないこと。
-7. **検出器自体の検証**: 修正前の row-at-a-time 形状を同じハーネスで
+6. 1 文の bind 数が D1 上限 100 を超えないこと（実測：捕捉した
+   各文の `?` 数。かつ `D1_BATCH_ID_CHUNK` ちょうど / +1 作品的
+   境界で statement 数が 3 → 5 に増えることを assert）。
+7. `EXPLAIN QUERY PLAN` は **測定時に捕捉した実 SQL** に対して実行する
+   （手書きコピーは禁止。loader 側の SQL が変わっても plan assertion が
+   緑のままになる drift を防ぐ）。
+8. プロジェクト内順序（link の `display_order ASC` / `media[0]` = cover）は
+   ページ内の全作品で成立すること。加えてバッチ文が読んだ link / media 行数が
+   `作品数 × fixture 件数` と一致すること。
+9. **検出器自体の検証**: 修正前の row-at-a-time 形状を同じハーネスで
    再生し、`1 + 2N` であることと budget 超過であることを assert する。
    これがないと「budget を通してしまう検出器」になってしまう。
 
@@ -209,6 +244,6 @@ gate を **この Issue で** 足すと、flaky な赤が「何が壊れたの�
 | #384 | Lighthouse 測定を再現可能にする（計測基盤） | 時間・devtools 系の計測は **こちらではない**。本 Issue は statement 数 |
 | #385 | Lighthouse 95 点の release gate | gate の追加は **していない** |
 | #386 | Web Vitals / 転送量の budget | 同上。時間 budget の責務 |
-| #387 | PR に画像を必須化する仕組み | 本 PR の画像は `docs/verification/perf/d1-query-plan.png`（Issue #491 指定パス）。要求仕組み自体は別 Issue |
+| #387 | PR に画像を必須化する仕組み | 本 PR の画像は `docs/verification/perf/d1-query-plan.webp`（Issue #491 指定パスの拡張子を WebP に差し替え）。要求仕組み自体は別 Issue |
 
 `docs/release.md` のリリースフローは変更していない。

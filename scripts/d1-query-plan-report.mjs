@@ -10,7 +10,7 @@
  * binding, real migration). That test prints one machine-readable
  * record per run, prefixed with `D1_QUERY_PLAN_V1 `. This script is
  * the only piece that turns those numbers into something a reviewer
- * can look at: `docs/verification/perf/d1-query-plan.png` is a
+ * can look at: `docs/verification/perf/d1-query-plan.webp` is a
  * screenshot of the HTML this produces.
  *
  * It is deliberately dumb: it renders numbers it did not measure and

@@ -99,8 +99,18 @@ export interface SocialCardRouteCoverage {
 	readonly note: string;
 }
 
-/** The route coverage matrix — one entry per non-admin route. */
-export const ROUTE_COVERAGE: readonly SocialCardRouteCoverage[] = CONTRACT.routes;
+/**
+ * The route coverage matrix — one entry per non-admin route.
+ *
+ * The `as` is the same narrowing the structured-data contract makes
+ * (`src/editorial/structured-data/contract.ts`): TypeScript widens a
+ * JSON string to `string`, so the closed unions (`status`,
+ * `cardPolicy`) have to be reasserted here. The gate keeps them honest
+ * at runtime — an unknown value is a coverage error, not a silent
+ * `undefined`.
+ */
+export const ROUTE_COVERAGE: readonly SocialCardRouteCoverage[] =
+	CONTRACT.routes as SocialCardRouteCoverage[];
 
 /**
  * Surfaces Issue #421 names but the repository does not have yet.

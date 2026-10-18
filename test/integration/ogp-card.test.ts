@@ -8,13 +8,14 @@ import {
 } from '../../scripts/ogp-card-contract.mjs';
 import { parseHeadTags, routeIdsFromRouteTree } from '../../scripts/seo-head-contract.mjs';
 import {
+	CANONICAL_ORIGIN,
 	DEFERRED_SURFACES,
 	FALLBACK_CARD,
 	FALLBACK_CARD_URL,
 	ROUTE_COVERAGE,
 	SITE_LOCALE,
 	SITE_NAME,
-	socialCardUrl,
+	type SocialCardRouteCoverage,
 } from '../../src/editorial/social-card';
 import { routeTree } from '../../src/routeTree.gen';
 import SNAPSHOT from './fixtures/ogp-card-snapshot.json';
@@ -174,7 +175,7 @@ beforeAll(async () => {
 
 /** Policy view of the repository contract, for the shared engine. */
 const POLICY = {
-	canonicalOrigin: socialCardUrl('').replace(/\/$/, ''),
+	canonicalOrigin: CANONICAL_ORIGIN,
 	siteName: SITE_NAME,
 	siteLocale: SITE_LOCALE,
 	fallbackCardUrl: FALLBACK_CARD_URL,
@@ -186,12 +187,47 @@ const POLICY = {
 /** Surfaces this suite evaluates: every declared visitor-facing route. */
 const SURFACES = ROUTE_COVERAGE.filter((entry) => entry.public !== false);
 
-const observed = new Map<string, Promise<Awaited<ReturnType<typeof observeOnce>>>>();
+/**
+ * One parsed head tag. The parser is a plain `.mjs` module (shared with
+ * the Node front-ends), so its output type is restated here rather than
+ * inferred.
+ */
+interface HeadTag {
+	readonly title?: string;
+	readonly name?: string;
+	readonly property?: string;
+	readonly content?: string;
+}
 
-async function observeOnce(path: string) {
+/** One engine finding. Same reason as `HeadTag`. */
+interface CardFinding {
+	readonly rule: string;
+	readonly path: string;
+	readonly message: string;
+}
+
+/** The engine returns plain objects; this is its finding shape. */
+function findingsOf(findings: readonly object[]): CardFinding[] {
+	return findings as CardFinding[];
+}
+
+function rulesOf(findings: readonly object[]): string[] {
+	return findingsOf(findings).map((finding) => finding.rule);
+}
+
+/** A contract entry by route id, failing loudly rather than `undefined`. */
+function surfaceFor(path: string): SocialCardRouteCoverage {
+	const entry = ROUTE_COVERAGE.find((candidate) => candidate.path === path);
+	if (!entry) throw new Error(`contract.json has no entry for ${path}`);
+	return entry;
+}
+
+const observed = new Map<string, Promise<{ status: number; tags: HeadTag[] }>>();
+
+async function observeOnce(path: string): Promise<{ status: number; tags: HeadTag[] }> {
 	const response = await SELF.fetch(`https://rebuildup.dev${path}`, { redirect: 'manual' });
 	const html = await response.text();
-	return { status: response.status, tags: parseHeadTags(html) };
+	return { status: response.status, tags: parseHeadTags(html) as HeadTag[] };
 }
 
 function observe(path: string) {
@@ -202,8 +238,8 @@ function observe(path: string) {
 	return pending;
 }
 
-async function observeAll() {
-	const observations = [];
+async function observeAll(): Promise<{ path: string; status: number; tags: HeadTag[] }[]> {
+	const observations: { path: string; status: number; tags: HeadTag[] }[] = [];
 	for (const surface of SURFACES) {
 		const { status, tags } = await observe(surface.samplePath);
 		observations.push({ path: surface.samplePath, status, tags });
@@ -240,8 +276,8 @@ describe('Open Graph / Twitter card (Issue #421)', () => {
 		const result = evaluateSocialCards({ surfaces: SURFACES, observations, policy: POLICY });
 
 		expect(
-			result.findings,
-			`social card findings:\n${result.findings
+			findingsOf(result.findings),
+			`social card findings:\n${findingsOf(result.findings)
 				.map((item) => `  [${item.rule}] ${item.path}: ${item.message}`)
 				.join('\n')}`,
 		).toEqual([]);
@@ -264,7 +300,7 @@ describe('Open Graph / Twitter card (Issue #421)', () => {
 	});
 
 	it('falls back to the site card for a project with no composable media', async () => {
-		const surface = ROUTE_COVERAGE.find((entry) => entry.path === '/portfolio/$slug');
+		const surface = surfaceFor('/portfolio/$slug');
 		const { status, tags } = await observe(surface.samplePath);
 		expect(status).toBe(200);
 
@@ -282,7 +318,7 @@ describe('Open Graph / Twitter card (Issue #421)', () => {
 	});
 
 	it('falls back on the list route too, not only on the detail route', async () => {
-		const surface = ROUTE_COVERAGE.find((entry) => entry.path === '/portfolio/');
+		const surface = surfaceFor('/portfolio/');
 		const { status, tags } = await observe(surface.samplePath);
 		expect(status).toBe(200);
 		const { image, findings } = evaluateSocialCard({ surface, tags, policy: POLICY });
@@ -301,7 +337,7 @@ describe('Open Graph / Twitter card (Issue #421)', () => {
 	it('mirrors every og property into its twitter counterpart', async () => {
 		for (const samplePath of ['/portfolio/my-web-2026', '/about']) {
 			const { tags } = await observe(samplePath);
-			const read = (key) =>
+			const read = (key: string) =>
 				tags.find((tag) => tag.property === key || tag.name === key)?.content ?? null;
 			expect(read('twitter:card'), samplePath).toBe('summary_large_image');
 			expect(read('twitter:image'), samplePath).toBe(read('og:image'));
@@ -315,7 +351,7 @@ describe('Open Graph / Twitter card (Issue #421)', () => {
 			const { status, tags } = await observe(surface.samplePath);
 			expect(status, `${surface.samplePath} status`).toBe(200);
 			for (const tag of tags) {
-				const key = tag.property ?? tag.name;
+				const key: string | undefined = tag.property ?? tag.name;
 				expect(key, `${surface.samplePath} publishes ${key}`).not.toBe('og:image');
 				expect(key, `${surface.samplePath} publishes ${key}`).not.toBe('twitter:image');
 			}
@@ -370,9 +406,9 @@ describe('Open Graph / Twitter card: the gate can actually fail', () => {
 	// Negative controls. They are why the assertions above can be
 	// trusted: an engine that returned `[]` for everything would make
 	// them all pass vacuously.
-	const surface = ROUTE_COVERAGE.find((entry) => entry.path === '/portfolio/$slug');
+	const surface = surfaceFor('/portfolio/$slug');
 
-	function head(image) {
+	function head(image: string | null): HeadTag[] {
 		return [
 			{ property: 'og:type', content: 'article' },
 			{ property: 'og:site_name', content: SITE_NAME },
@@ -380,20 +416,20 @@ describe('Open Graph / Twitter card: the gate can actually fail', () => {
 			{ property: 'og:title', content: 'my-web-2026' },
 			{ property: 'og:description', content: 'A description long enough for the policy.' },
 			{ property: 'og:url', content: 'https://rebuildup.dev/portfolio/my-web-2026' },
-			{ property: 'og:image', content: image },
+			{ property: 'og:image', content: image ?? '' },
 			{ property: 'og:image:alt', content: 'fallback card' },
 			{ property: 'og:image:width', content: String(FALLBACK_CARD.width) },
 			{ property: 'og:image:height', content: String(FALLBACK_CARD.height) },
 			{ name: 'twitter:card', content: 'summary_large_image' },
 			{ name: 'twitter:title', content: 'my-web-2026' },
 			{ name: 'twitter:description', content: 'A description long enough for the policy.' },
-			{ name: 'twitter:image', content: image },
+			{ name: 'twitter:image', content: image ?? '' },
 		];
 	}
 
 	it('reports a document with no og:image at all', () => {
 		const { findings } = evaluateSocialCard({ surface, tags: [], policy: POLICY });
-		expect(findings.map((item) => item.rule)).toContain('card.image-missing');
+		expect(rulesOf(findings)).toContain('card.image-missing');
 	});
 
 	it('reports a document whose card is smaller than it claims', () => {
@@ -401,7 +437,7 @@ describe('Open Graph / Twitter card: the gate can actually fail', () => {
 			tag.property === 'og:image:width' ? { ...tag, content: '800' } : tag,
 		);
 		const { findings } = evaluateSocialCard({ surface, tags, policy: POLICY });
-		expect(findings.map((item) => item.rule)).toContain('card.image-width');
+		expect(rulesOf(findings)).toContain('card.image-width');
 	});
 
 	it('reports a declared surface nobody observed', () => {
@@ -410,7 +446,7 @@ describe('Open Graph / Twitter card: the gate can actually fail', () => {
 			observations: [],
 			policy: POLICY,
 		});
-		expect(result.findings.map((item) => item.rule)).toContain('inventory.unobserved');
+		expect(rulesOf(result.findings)).toContain('inventory.unobserved');
 		expect(result.findings.length).toBe(SURFACES.length);
 	});
 
@@ -428,6 +464,6 @@ describe('Open Graph / Twitter card: the gate can actually fail', () => {
 			],
 			policy: POLICY,
 		});
-		expect(result.findings.map((item) => item.rule)).toEqual(['observation.request-failed']);
+		expect(rulesOf(result.findings)).toEqual(['observation.request-failed']);
 	});
 });

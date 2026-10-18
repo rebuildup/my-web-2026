@@ -98,6 +98,7 @@
 		"csrf:contract:check": "node scripts/check-csrf-contract.mjs",
 		"lazy-media:report": "node scripts/render-lazy-media-report.mjs",
 		"verify:hsts-screenshot": "node scripts/make-hsts-verification-report.mjs",
+		"verification:input-matrix": "node scripts/capture-input-validation-matrix.mjs",
 		"webhook:fixture:report": "node scripts/webhook-signature-fixture-report.mjs",
 		"verification:login-rate-limit": "node scripts/capture-login-rate-limit-report.mjs",
 		"publication:write": "node scripts/check-publication-diff.mjs --write",

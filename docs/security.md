@@ -191,6 +191,75 @@ in `docs/release.md`), not the per-binding local SELF tests (#006
 binding API is reachable in the local workerd pool"**, not
 **"the production database is online"**.
 
+## Session lifecycle (sign-in / sign-out)
+
+Better Auth (`src/cloudflare/auth/better-auth.ts`, ADR-0009) owns the
+session; the admin gates that consume it live in
+`src/admin/auth/load.ts` and the `/admin/*` route loaders. The
+behavioural contract is pinned by
+`test/integration/session-logout.test.ts` (Issue #439):
+
+| Property                                                          | How it is proven                                                                 |
+| ----------------------------------------------------------------- | -------------------------------------------------------------------------------- |
+| A sign-in session authorizes `/admin` and `/api/v1/auth/get-session` | positive case: the issued cookie resolves the user (with role) and the dashboard renders 200 |
+| The same cookie is refused after sign-out                         | negative case: `get-session` resolves no user, `/admin` and `/admin/keys` 307 to `/admin/login`, and the D1 `session` row is deleted |
+| Sign-out clears the browser cookie jar                            | `Set-Cookie` re-issues `better-auth.session_token` **and** `better-auth.session_data` with `Max-Age=0` |
+| A client-supplied cookie is never promoted by sign-in            | fixation case: an attacker-planted value resolves to no session before *and* after login; the server issues its own token |
+| A rejected sign-out does not invalidate the session               | an `Origin` mismatch is refused (4xx) and the session row survives |
+| Replaying a dead cookie is a no-op                                | a second sign-out neither errors nor resurrects a session                          |
+
+Two notes on reading that table. The redirect is pinned as **307**
+(TanStack Start `redirect()`) and the **exact** path is asserted, so a
+role denial (bounced back to `/admin`) can never be mistaken for a
+session denial (`/admin/login`). And the cookie names are the test
+pool's un-prefixed form: under `https://` — production, where
+`BETTER_AUTH_URL=https://rebuildup.dev` is pinned by ADR-0014 — Better
+Auth prefixes both with `__Secure-`, so the production names are
+`__Secure-better-auth.session_token` / `__Secure-better-auth.session_data`.
+The local pool (no `baseURL`) exercises the un-prefixed form; the
+prefix is a transport attribute, not a contract change.
+
+Run it locally:
+
+```bash
+pnpm exec vitest run test/integration/session-logout.test.ts
+```
+
+Every request goes through the local workerd pool, because sign-in and
+sign-out write and delete D1 rows; running this against production
+would mutate the operator's database and could invalidate the live
+admin session. Fixture identities are local (`.test.local` addresses,
+throwaway password) and cookie values are never printed — they are
+never used as an operand of an assertion at all (vitest echoes both
+operands of a failed `expect`), only cookie names, attributes, and
+non-printing identity comparisons are asserted on.
+
+Known residual (open owner decision, Issue #439): `session.cookieCache`
+is enabled with `maxAge: 5 * 60`, so a party that captured BOTH
+`better-auth.session_token` and `better-auth.session_data` *before* the
+logout can replay the pair until the cache cookie expires — the cache
+answers without consulting D1. A real browser is not exposed (the
+sign-out response clears the pair), but the window is a real deviation
+from "logout invalidates the session immediately", and closing it means
+re-tuning the auth policy ADR-0009 owns. Until an owner decision is
+taken, the window is **documented, not closed**.
+
+The suite watches it as one `it.fails` case that asserts the *desired*
+outcome ("a pair captured before sign-out is refused afterwards") and
+therefore fails today. Because `/api/v1/auth/get-session` has no 401
+path — an unknown or deleted session answers 200 with a `null` body —
+"refused" is asserted as "resolves to no user" plus the `/admin`
+redirect, never as a status code. The case fires on either remedy:
+disabling the cache means no `session_data` cookie is issued at all, so
+there is no pair to replay; shrinking it means the pair expires instead
+of outliving the logout. Either way `it.fails` reports the unexpected
+pass and the case is converted to a plain `it`. (Disabling the cache
+also requires re-tuning the "sign-out clears the browser jar" case,
+which by construction requires a cache cookie to clear.)
+
+A redacted transcript of the observed responses is kept at
+[`docs/verification/security/session-logout-e2e.webp`](verification/security/session-logout-e2e.webp).
+
 ## Inventory at 0.1.0
 
 | Package                     | Pinned version | Notes                                 |

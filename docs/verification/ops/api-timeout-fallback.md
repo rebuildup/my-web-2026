@@ -13,7 +13,7 @@
 | capture 手段 | `node scripts/capture-api-timeout-fallback.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの（実際の `src/styles.css`） |
 | viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影） |
-| 生成物サイズ | 1440 x 1300 px、**98 kB** WebP（quality 80、budget 300 kB） |
+| 生成物サイズ | 1440 x 1300 px、**97 kB** WebP（quality 80、budget 300 kB） |
 | 撮影時の rendered card 数 | 6（script が `cardsRendered !== 6` で失敗する。空ページ撮影の黙認をしない） |
 | fixture | **定数**（`T0 = 2026-10-18T00:00:00Z` 基準）。`Date.now()` を使わないので、Storybook を開き直しても「何時間前」の意味が変わらない |
 | 外部通信 | **0 件（実測）**。gallery は fixture 描画のみで、upstream には何も要求しない。capture script が Playwright の request イベントを数え、loopback 以外が 1 件でもあれば artefact を書かずに失敗する |

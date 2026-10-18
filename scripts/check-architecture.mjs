@@ -28,6 +28,29 @@ const forbiddenOwnerDependencies = new Map([
 	// keeps `cloudflare:workers` virtual-module access out of the
 	// obligation), or `http` (external HTTP boundary).
 	['about', new Set(['home', 'routes', 'cloudflare', 'http'])],
+	// `logging` (Issue #467) is a LEAF obligation: it owns the runtime
+	// log-redaction contract (what may appear in a console record) and
+	// knows nothing about the obligations whose logs it redacts. Every
+	// other owner imports it; it imports none of them. Keeping it a leaf
+	// is what makes "no owner can log a raw payload" enforceable as a
+	// structural fact rather than a review convention.
+	[
+		'logging',
+		new Set([
+			'about',
+			'admin',
+			'cloudflare',
+			'contact',
+			'editorial',
+			'home',
+			'http',
+			'portfolio',
+			'reactions',
+			'routes',
+			'server.ts',
+			'tools',
+		]),
+	],
 	// `external-api` (Issue #499) owns the reliability contract for
 	// reads of a third-party API behind a display component. It is a
 	// peer obligation to `home` / `portfolio` / `about`, not a layer

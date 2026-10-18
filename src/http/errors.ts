@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import { createAuditLogger } from '../logging/logger';
 import { generateRequestId } from './middleware/request-id';
 
 /**
@@ -69,7 +70,18 @@ export interface PublicErrorBody {
 	request_id: string;
 }
 
-type ErrorContext = Context<{ Bindings: Env; Variables: { requestId?: string } }>;
+type ErrorContext = Context<{
+	Bindings: Env;
+	Variables: { requestId?: string; requestIdMinted?: boolean };
+}>;
+
+/**
+ * Boundary diagnostics. Same `[boundary]` scope the module used when
+ * it called `console.error` directly (Issue #457), so an operator's
+ * grep is unchanged; the record itself now passes through
+ * `src/logging` redaction (Issue #467).
+ */
+const boundaryLogger = createAuditLogger('boundary');
 
 export interface PublicErrorOptions {
 	/**
@@ -89,7 +101,8 @@ export interface PublicErrorOptions {
 }
 
 /**
- * Resolve the correlation id for a request.
+ * Resolve the correlation id for a request, and whether this Worker
+ * minted it.
  *
  * `/api/v1/*` requests already ran `requestIdMiddleware`, which set
  * the variable and the response header; reusing it keeps the log
@@ -97,31 +110,58 @@ export interface PublicErrorOptions {
  * boundary prefixes (`/webhooks`, `/oauth`, `/integrations`) do not
  * run that middleware, so an id is minted here and published as a
  * header for the same reason.
+ *
+ * `minted` is what `publicErrorResponse` needs for the log record
+ * (Issue #467): only a token this process generated may be written to
+ * the operator log verbatim, because a client-supplied `X-Request-Id`
+ * is accepted from a much wider alphabet and could therefore be a
+ * credential someone is trying to smuggle into an operator-visible
+ * stream. The response body and header still carry the id in both
+ * cases — a client that supplied it already knows it, and #457
+ * publishes it there on purpose.
  */
-export function resolveRequestId(c: ErrorContext): string {
+function resolveCorrelation(c: ErrorContext): { id: string; minted: boolean } {
 	const existing = c.get('requestId');
-	if (typeof existing === 'string' && existing.length > 0) return existing;
+	if (typeof existing === 'string' && existing.length > 0) {
+		return { id: existing, minted: c.get('requestIdMinted') === true };
+	}
 	const generated = generateRequestId();
 	c.set('requestId', generated);
 	c.header('X-Request-Id', generated);
-	return generated;
+	return { id: generated, minted: true };
+}
+
+/**
+ * Resolve the correlation id for a request (id only).
+ *
+ * Kept for callers that need the value without the record decision;
+ * `publicErrorResponse` uses `resolveCorrelation` directly.
+ */
+export function resolveRequestId(c: ErrorContext): string {
+	return resolveCorrelation(c).id;
 }
 
 /**
  * Log an internal failure and answer with a redacted public body.
  *
- * The `err` argument goes to `console.error` and nowhere else. The
- * response is built only from `PUBLIC_MESSAGES` plus the correlation
- * id, so no branch of this function can echo internal detail.
+ * The `err` argument goes to the internal log record and nowhere
+ * else, and it is written through `createAuditLogger('boundary')`
+ * (Issue #467) so an error message, a D1 string or a query echo is
+ * redacted before it reaches the stream. The correlation id is the
+ * single exception, and only when this Worker minted it — see
+ * `redactCorrelationId`. The response is built only from
+ * `PUBLIC_MESSAGES` plus the correlation id, so no branch of this
+ * function can echo internal detail.
  */
 export function publicErrorResponse(
 	c: ErrorContext,
 	err: unknown,
 	options: PublicErrorOptions,
 ): Response {
-	const requestId = resolveRequestId(c);
-	console.error(
-		`[boundary] ${options.logLabel} failed (request_id=${requestId}, status=${options.status})`,
+	const { id: requestId, minted } = resolveCorrelation(c);
+	boundaryLogger.errorCorrelated(
+		`${options.logLabel} failed (status=${options.status})`,
+		minted ? requestId : null,
 		err,
 	);
 	const body: PublicErrorBody = {

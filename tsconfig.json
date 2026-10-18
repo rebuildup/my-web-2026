@@ -8,6 +8,15 @@
 		"types": ["vite/client", "node"],
 		"allowJs": true,
 		"checkJs": false,
+		// Explicit `.ts` import specifiers (Issues #433 and #463). The package
+		// is `"type": "module"`, so Node's ESM resolver — and therefore any
+		// `.mjs` script that runs a `src/` module directly under Node's type
+		// stripping — requires the real extension. Without this flag
+		// TypeScript rejects those specifiers, which would force the i18n
+		// policy / capture scripts (Issue #433) and the webhook verification
+		// report script (Issue #463) to duplicate the shipped adapter instead
+		// of executing the same code the contract tests assert on. Every other
+		// `src/` import in the repository stays extensionless.
 		"allowImportingTsExtensions": true,
 		"resolveJsonModule": true,
 		"isolatedModules": true,

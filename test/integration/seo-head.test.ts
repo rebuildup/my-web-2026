@@ -13,6 +13,14 @@ import {
 	routeIdsFromRouteTree,
 	summarizeHead,
 } from '../../scripts/seo-head-contract.mjs';
+import type { HeadObservation, HeadSummary } from '../../scripts/seo-head-contract.mjs';
+
+/**
+ * An observation that has already been normalized. The engine accepts a
+ * raw `tags` list too, but every observation this suite builds parses a
+ * response first, so it always has a `head`.
+ */
+type Observed = HeadObservation & { head: HeadSummary };
 import { routeTree } from '../../src/routeTree.gen';
 
 /**
@@ -270,8 +278,8 @@ const inventory = buildInventory(
  * a discovery event, and their noindex policy is asserted through
  * the layout head every admin child inherits.
  */
-async function observeInventory() {
-	const observations: Parameters<typeof evaluateHeadInventory>[0]['observations'] = [];
+async function observeInventory(): Promise<Observed[]> {
+	const observations: Observed[] = [];
 
 	for (const entry of inventory) {
 		if (entry.kind === 'non-public' && entry.path !== NON_PUBLIC_SAMPLE_PATH) {
@@ -429,7 +437,8 @@ describe('public-route <head> metadata (Issue #418)', () => {
 		expect(dynamic.length).toBeGreaterThan(0);
 		for (const entry of dynamic) {
 			expect(entry.sample, `${entry.routeId} has no declared sample`).not.toBeNull();
-			expect(DYNAMIC_ROUTE_SAMPLES[entry.routeId].segment.length).toBeGreaterThan(0);
+			expect(entry.sample?.segment.length ?? 0).toBeGreaterThan(0);
+			expect(Object.keys(DYNAMIC_ROUTE_SAMPLES)).toContain(entry.routeId);
 		}
 	});
 
@@ -454,7 +463,7 @@ describe('public-route <head> metadata: the gate can actually fail', () => {
 	// be trusted: an engine that returned `[]` for everything would
 	// make every assertion above pass vacuously.
 
-	const cleanObservation = (path: string): HeadObservation => ({
+	const cleanObservation = (path: string): Observed => ({
 		routeId: path,
 		path,
 		surface: 'public',

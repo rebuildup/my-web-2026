@@ -182,6 +182,58 @@ export const INDEX_EXCLUSIONS = Object.freeze({
 });
 
 /* ------------------------------------------------------------------ *
+ * Types
+ * ------------------------------------------------------------------ */
+
+/**
+ * One discovered route, as the gate checks it.
+ *
+ * @typedef {Object} RouteInventoryEntry
+ * @property {string} routeId            route identity (framework route id / URL path)
+ * @property {string} file               module or generated file the route came from
+ * @property {'public' | 'non-public'} kind
+ * @property {boolean} dynamic           true when the id carries a `$param`
+ * @property {{ segment: string, source: string } | null} sample
+ * @property {string} path               canonical path (params substituted, no trailing slash)
+ * @property {string | null} expectedCanonical  null only when a dynamic sample is missing
+ */
+
+/**
+ * One observed document. Produced either by parsing an SSR response
+ * (`test/integration/seo-head.test.ts`, `scripts/check-seo-head.mjs`)
+ * or, in the engine's own unit tests, by hand.
+ *
+ * `head` is the normalized form; `tags` is the raw tag list. Supplying
+ * `head` explicitly lets a test describe a head without re-deriving it.
+ *
+ * @typedef {Object} HeadObservation
+ * @property {string} routeId
+ * @property {string} path
+ * @property {'public' | 'non-public' | 'not-found'} [surface]
+ * @property {number | null} [status]
+ * @property {Array<Record<string, unknown>>} [tags]
+ * @property {Record<string, string | null>} [head]
+ * @property {string | null} [expectedCanonical]
+ * @property {boolean} [skipped]
+ * @property {string} [note]
+ * @property {string} [query]
+ * @property {boolean} [queryProbe]
+ */
+
+/**
+ * The normalized `<head>` fields the policy reads.
+ *
+ * @typedef {Object} HeadSummary
+ * @property {string | null} title
+ * @property {string | null} description
+ * @property {string | null} robots
+ * @property {string | null} canonical
+ * @property {string | null} ogUrl
+ * @property {string | null} ogTitle
+ * @property {string | null} ogDescription
+ */
+
+/* ------------------------------------------------------------------ *
  * Route inventory
  * ------------------------------------------------------------------ */
 
@@ -193,6 +245,9 @@ export const INDEX_EXCLUSIONS = Object.freeze({
  * (`src/routes/design-system/**`) never call it, so they are not
  * collected — the same distinction the generated `routeTree.gen.ts`
  * draws, without depending on a generated artifact.
+ *
+ * @param {string} routesDir  absolute path of `src/routes`
+ * @returns {Array<{ file: string, routeId: string }>}
  */
 export function discoverRouteModules(routesDir) {
 	/** @type {Array<{ file: string, routeId: string }>} */
@@ -295,6 +350,10 @@ export function expectedCanonicalFor(routeId, sampleSegment = null) {
  * `kind` is `non-public` for the admin surface and `public` for
  * everything else — including `/design-system`, which is a
  * deliberately public showcase page.
+ *
+ * @param {Array<{ routeId: string, file?: string }>} routeModules
+ * @param {Record<string, { segment: string, source: string }>} [samples]
+ * @returns {RouteInventoryEntry[]}
  */
 export function buildInventory(routeModules, samples = DYNAMIC_ROUTE_SAMPLES) {
 	return routeModules.map(({ routeId, file = '' }) => {
@@ -342,6 +401,9 @@ function collapse(value) {
  * The first occurrence wins for every field, matching the head merge
  * (deepest matched route wins; the root's `my-web-2026` title is the
  * fallback a page without its own title inherits).
+ *
+ * @param {Array<Record<string, unknown>>} [tags]
+ * @returns {HeadSummary}
  */
 export function summarizeHead(tags) {
 	const out = {
@@ -474,6 +536,10 @@ function finding(rule, observation, message) {
  * Exported on its own so the unit tests can drive the exact rule set
  * with synthetic input (a duplicated title, a dropped canonical) and
  * prove the engine detects — a gate that cannot fail is not a gate.
+ *
+ * @param {HeadObservation} observation
+ * @param {RouteInventoryEntry | null} [inventoryEntry]
+ * @returns {Finding[]}
  */
 export function evaluateObservation(observation, inventoryEntry = null) {
 	/** @type {Finding[]} */
@@ -774,7 +840,12 @@ function verdictFor(row) {
 	return row.findings.length > 0 ? 'FAIL' : 'PASS';
 }
 
-/** Plain-text report — the CLI default. Stable column order, no colour codes. */
+/**
+ * Plain-text report — the CLI default. Stable column order, no colour codes.
+ *
+ * @param {{ findings: Finding[], rows: HeadObservation[], stats: Record<string, number> }} result
+ * @returns {string}
+ */
 export function renderTextReport(result) {
 	const lines = [];
 	lines.push('public-route <head> metadata gate (Issue #418)');
@@ -818,6 +889,10 @@ function escapeHtml(value) {
  * Self-contained HTML report — no external stylesheet, no script, no
  * network reference. That is what makes it screenshot-able from a
  * `file://` URL by a headless browser without serving anything.
+ *
+ * @param {{ findings: Finding[], rows: HeadObservation[], stats: Record<string, number> }} result
+ * @param {{ baseUrl?: string | null, capturedAt?: string | null }} [options]
+ * @returns {string}
  */
 export function renderHtmlReport(result, { baseUrl = null, capturedAt = null } = {}) {
 	const verdictColors = { PASS: '#0f7b3f', FAIL: '#b3261e', SKIP: '#8a6d00' };

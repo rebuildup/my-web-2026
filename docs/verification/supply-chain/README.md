@@ -19,8 +19,8 @@ The image is rendered from `scripts/check-workflow-pinning.mjs` — the
 same function `pnpm run ci:pins:check` runs inside `validate:fast` —
 so the picture cannot claim a pin the gate would reject.
 
-1. **Shipped workflows — normal observation.** All 14 `uses:` lines of
-   `.github/workflows/ci.yml` and `prod-smoke.yml` with their upstream
+1. **Shipped workflows — normal observation.** All 21 `uses:` lines of
+   `.github/workflows/ci.yml`, `compat.yml` and `prod-smoke.yml` with their upstream
    ref and full 40-char commit SHA, plus the effective
    `GITHUB_TOKEN` permissions each job resolves to
    (`contents=read`, inherited from the workflow-level block).
@@ -51,7 +51,7 @@ Actions never reads it. `audit.json` next to the images is the
 status-only summary of the same run.
 
 An image is not the proof: the gate's behaviour is asserted in
-`scripts/check-workflow-pinning.test.mjs` (45 tests, including the
+`scripts/check-workflow-pinning.test.mjs` (46 tests, including the
 exact rule set the fixture produces), and the interpretation of each
 rule is in
 [`docs/security/supply-chain-actions-pinning.md`](../../security/supply-chain-actions-pinning.md).

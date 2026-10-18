@@ -107,10 +107,11 @@ describe('repository workflows', () => {
 		});
 		assert.deepEqual(audit.findings, []);
 		assert.equal(audit.summary.status, 'PASS');
-		assert.equal(audit.summary.workflows, 2);
+		assert.equal(audit.summary.workflows, 3);
 		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x4)
+		// + compat.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
 		// + prod-smoke.yml (checkout, setup-node, pnpm, cache, upload-artifact)
-		assert.equal(audit.summary.pins, 14);
+		assert.equal(audit.summary.pins, 21);
 		assert.deepEqual([...new Set(audit.pins.map((pin) => pin.repo))].sort(), [
 			'actions/cache',
 			'actions/checkout',
@@ -133,6 +134,7 @@ describe('repository workflows', () => {
 			}),
 		);
 		assert.deepEqual(effective.sort(), [
+			'compat:map:contents=read',
 			'prod-smoke:map:contents=read',
 			'validate:map:contents=read',
 		]);
@@ -423,6 +425,23 @@ describe('authority and secret-exposure rules', () => {
 			const audit = auditTemp(makeRepo({ workflows: { 'ci.yml': withOn(`${on}\n`) } }));
 			assert.ok(rulesOf(audit).includes('AUTHZ_UNTRUSTED_TRIGGER'), on);
 		}
+	});
+
+	it('reads nested `on:` configuration as configuration, not as triggers', () => {
+		// `workflow_dispatch.inputs.*` nests arbitrary keys (and option
+		// lists) below the event name. Only the first level below `on:`
+		// declares events; a deeper `- ubuntu-latest` is not a trigger.
+		const audit = auditTemp(
+			makeRepo({
+				workflows: {
+					'ci.yml': CLEAN_WORKFLOW.replace(
+						'on:\n  pull_request:\n',
+						'on:\n  pull_request:\n  workflow_dispatch:\n    inputs:\n      runner:\n        type: choice\n        options:\n          - ubuntu-latest\n          - macos-latest\n',
+					),
+				},
+			}),
+		);
+		assert.deepEqual(audit.findings, []);
 	});
 
 	it('fails closed when the `on:` value is a shape it cannot resolve', () => {
@@ -840,7 +859,7 @@ describe('cli', () => {
 		assert.equal(result.code, 0);
 		const parsed = JSON.parse(result.stdout);
 		assert.equal(parsed.summary.status, 'PASS');
-		assert.equal(parsed.summary.pins, 14);
+		assert.equal(parsed.summary.pins, 21);
 		// A Set serialises to `{}`, which would make the machine-readable
 		// output look like it referenced nothing.
 		assert.deepEqual(parsed.referenced, [

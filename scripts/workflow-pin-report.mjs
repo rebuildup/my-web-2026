@@ -54,7 +54,7 @@ const OUT_DIR = resolve(root, 'docs/verification/supply-chain');
 const PORT = 4602;
 
 /** Committed-image budget: a verification screenshot must not bloat the repo. */
-const MAX_WIDTH = 1600;
+const MAX_WIDTH = 1480;
 const WEBP_QUALITY = 80;
 const MAX_BYTES = 300 * 1024;
 
@@ -225,7 +225,10 @@ try {
 	async function encode(buffer) {
 		const { data, info } = await sharp(buffer)
 			.resize({ width: MAX_WIDTH, withoutEnlargement: true })
-			.webp({ quality: WEBP_QUALITY })
+			// effort 6 + smart subsampling are encoder settings only; the
+			// quality target stays WEBP_QUALITY. Text-heavy reports gained a
+			// third workflow without gaining a larger byte budget.
+			.webp({ quality: WEBP_QUALITY, effort: 6, smartSubsample: true })
 			.toBuffer({ resolveWithObject: true });
 		return { data, info };
 	}

@@ -50,8 +50,10 @@ different questions, so both run.
 
 ## 2. The audit: before and after
 
-Both workflows were on floating tags before this Issue. 14 `uses:`
-lines, 6 distinct actions, 0 permissions findings.
+All three shipped workflows are pinned. The audit covers 21 `uses:`
+lines, 6 distinct actions, and 0 permissions findings (`compat.yml`
+arrived on the release trunk with floating tags and is pinned in the
+same reconciliation).
 
 | Workflow | Job | Action | Before | After (SHA) | Upstream |
 | --- | --- | --- | --- | --- | --- |
@@ -61,6 +63,12 @@ lines, 6 distinct actions, 0 permissions findings.
 | `ci.yml` | `validate` | `oven-sh/setup-bun` | `@v2` | `0c5077e51419…` | v2.2.0 |
 | `ci.yml` | `validate` | `actions/cache` | `@v4` | `0057852bfaa8…` | v4.3.0 |
 | `ci.yml` | `validate` | `actions/upload-artifact` ×4 | `@v4` | `ea165f8d65b6…` | v4.6.2 |
+| `compat.yml` | `compat` | `actions/checkout` | `@v4` | `11d5960a3267…` | v4.4.0 |
+| `compat.yml` | `compat` | `actions/setup-node` | `@v4` | `49933ea5288c…` | v4.4.0 |
+| `compat.yml` | `compat` | `pnpm/action-setup` | `@v4` | `fc06bc1257f3…` | v4.4.0 |
+| `compat.yml` | `compat` | `oven-sh/setup-bun` | `@v2` | `0c5077e51419…` | v2.2.0 |
+| `compat.yml` | `compat` | `actions/cache` | `@v4` | `0057852bfaa8…` | v4.3.0 |
+| `compat.yml` | `compat` | `actions/upload-artifact` ×2 | `@v4` | `ea165f8d65b6…` | v4.6.2 |
 | `prod-smoke.yml` | `prod-smoke` | `actions/checkout` | `@v4` | `11d5960a3267…` | v4.4.0 |
 | `prod-smoke.yml` | `prod-smoke` | `actions/setup-node` | `@v4` | `49933ea5288c…` | v4.4.0 |
 | `prod-smoke.yml` | `prod-smoke` | `pnpm/action-setup` | `@v4` | `fc06bc1257f3…` | v4.4.0 |
@@ -72,7 +80,7 @@ already used**, so the pin changes the mutability, not the behaviour.
 Moving to a new major (`actions/checkout@v5`, `upload-artifact@v5`)
 is a separate decision with its own review — see §5.
 
-Effective `GITHUB_TOKEN` permissions, both jobs: `contents=read`.
+Effective `GITHUB_TOKEN` permissions, all three jobs: `contents=read`.
 The audit found no permission defect, so this Issue changed no
 permission. The gate now keeps it that way.
 
@@ -188,7 +196,7 @@ $ pnpm run ci:pins:check
 …
 findings: 0
 
-status: PASS (workflows 2, jobs 2, pins 14, waivers 0)
+status: PASS (workflows 3, jobs 3, pins 21, waivers 0)
 ```
 
 Two things must be true at once: `findings: 0`, and every job row

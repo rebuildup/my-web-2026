@@ -313,9 +313,25 @@ export function parseTriggers(onKey) {
 			.map((name) => unquote(name.trim()))
 			.filter((name) => name !== '');
 	}
-	return blockLines(onKey.lines, onKey.index, 0)
-		.map((line) => unquote(stripComment(line).trim()))
-		.filter((name) => name !== '');
+	// The block form nests each event's own configuration under it
+	// (`workflow_dispatch.inputs.runner.options` is the common example),
+	// so only the first indentation level below `on:` declares events.
+	// Reading every deeper line once reported an input option such as
+	// `- ubuntu-latest` as an unreadable trigger.
+	const body = blockLines(onKey.lines, onKey.index, 0).filter((line) => !isSkippable(line));
+	if (body.length === 0) return [];
+	const childIndent = Math.min(...body.map((line) => indentOf(line)));
+	return body
+		.filter((line) => indentOf(line) === childIndent)
+		.map((line) => {
+			const name = unquote(stripComment(line).trim());
+			// A trigger declaration is a mapping key at this level. Anything
+			// else (a bare scalar, an alias) stays visible to the caller's
+			// fail-closed check instead of being read as an event name.
+			const key = /^([A-Za-z][A-Za-z0-9_-]*)\s*:/.exec(name);
+			return key ? key[1] : `?${name}`;
+		})
+		.filter((name) => name !== '?');
 }
 
 /**

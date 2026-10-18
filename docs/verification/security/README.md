@@ -18,12 +18,20 @@ matrix of 38 destinations — 3 fetched, 35 refused.
    `classifyOutboundUrl` (`src/http/outbound.ts`) and records what they
    return for each input. The "結果 / code" column is the adapter's
    `result.code`, and "理由" is its `result.reason`.
-2. **Nothing leaves the machine.** The transport is a local table keyed by
+2. **Every row declares the outcome it is evidence for.** Each case in
+   the matrix carries an `expectCode`, and the run fails before writing
+   anything when a measurement contradicts it. A label is prose; without
+   that check the two drift apart silently and the image reads as proof
+   of a rule nothing exercised. A second guard refuses the run when a
+   row that is evidence about a policy rule instead measured a *transport*
+   outcome (`fetch_failed`, `http_error`) — which means the matrix asked
+   for something the policy allowed, not that the policy refused it.
+3. **Nothing leaves the machine.** The transport is a local table keyed by
    URL. A refused URL is never requested, so it is never resolved or
    connected to; the script's own footer line reports how many transport
    calls happened. The only process that opens anything is the Playwright
    Chromium that renders the local HTML.
-3. **The artefact is WebP, not PNG.** The Issue names a `.png` path; the
+4. **The artefact is WebP, not PNG.** The Issue names a `.png` path; the
    committed file is the same report as `ssrf-url-adapter.webp`
    (1500 px wide, ~270 KiB) instead of a ~1.2 MiB full-page PNG. The
    generator writes `outFile` from its argument if a PNG is ever wanted.
@@ -35,10 +43,11 @@ node scripts/capture-ssrf-url-adapter-report.mjs
 ```
 
 Add `--html .tmp/report.html` to dump the markup the image renders. The
-run fails if a refusal code is not one the report knows how to render,
-if a row looks like it carries a credential, or if the rendered page
-overflows horizontally (a clipped column would make the image
-misleading).
+run fails if a measurement contradicts its row's declared outcome, if a
+refusal code is not one the report knows how to render, if a policy row
+measured a transport outcome, if a row looks like it carries a
+credential, or if the rendered page overflows horizontally (a clipped
+column would make the image misleading).
 
 The same rules are asserted against the Worker runtime in
 `src/http/outbound.test.ts` and `src/http/outbound-fetch.test.ts`; this

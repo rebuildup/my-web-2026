@@ -2,8 +2,11 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 
 import {
+	CASES,
 	KNOWN_CODES,
+	TRANSPORT_OUTCOME_CODES,
 	findSecretRow,
+	findUnprovenPolicyRow,
 	measure,
 	renderHtml,
 } from './capture-ssrf-url-adapter-report.mjs';
@@ -107,6 +110,78 @@ test('measure makes invisible characters visible', async () => {
 	);
 	assert.ok(rows[0].input.includes('<lf>'));
 	assert.equal(rows[0].code, 'invalid_url');
+});
+
+test('findUnprovenPolicyRow catches a policy row that measured a transport outcome', () => {
+	// This is the shape of the defect that shipped once: a row labelled
+	// with a policy rule whose URL the policy actually allowed, so the
+	// fixture transport — not the policy — produced the verdict.
+	const claimed = {
+		group: '形',
+		label: 'length limit',
+		input: 'https://api.github.com/aaa…',
+		outcome: 'refused',
+		code: 'fetch_failed',
+		reason: 'unexpected request to https://api.github.com/aaa…',
+		hops: '0',
+		policyRow: true,
+	};
+	assert.equal(findUnprovenPolicyRow([claimed]), claimed);
+
+	// The same code on a row that is about the adapter, not the policy,
+	// is legitimate evidence and must not be rejected.
+	const adapterRow = { ...claimed, group: '応答の上限', policyRow: false };
+	assert.equal(findUnprovenPolicyRow([adapterRow]), undefined);
+
+	// And a policy row that measured the rule it claims is fine.
+	const proven = { ...claimed, code: 'url_too_long' };
+	assert.equal(findUnprovenPolicyRow([proven]), undefined);
+	assert.deepEqual([...TRANSPORT_OUTCOME_CODES].sort(), ['fetch_failed', 'http_error']);
+});
+
+test('every matrix row declares the outcome it is evidence for', () => {
+	assert.ok(CASES.length > 0);
+	for (const entry of CASES) {
+		assert.ok(entry.expectCode, `row "${entry.label}" declares no expected code`);
+		assert.ok(
+			KNOWN_CODES.has(entry.expectCode) || entry.expectCode.startsWith('HTTP '),
+			entry.label,
+		);
+	}
+});
+
+/** Await a promise that must reject, and assert on its message. */
+async function rejects(promise, pattern) {
+	try {
+		await promise;
+	} catch (error) {
+		assert.match(error.message, pattern);
+		return;
+	}
+	assert.fail('the measurement should have been refused');
+}
+
+test('the length row measures the length rule rather than the fixture', async () => {
+	const entry = CASES.find((candidate) => candidate.expectCode === 'url_too_long');
+	assert.ok(entry, 'the matrix has a length row');
+	const { transport, calls } = okTransport('https://unused.example.org/');
+	const rows = await measure([entry], { transport });
+	assert.equal(rows[0].code, 'url_too_long');
+	// A refused URL is never requested, which is the whole claim of the
+	// row and of `docs/verification/security/README.md` §2.
+	assert.deepEqual(calls, []);
+});
+
+test('measure refuses a row whose measurement contradicts its label', async () => {
+	await rejects(
+		measure(
+			[{ group: '形', label: 'length row', url: 'http://127.0.0.1/', expectCode: 'url_too_long' }],
+			{
+				transport: okTransport('https://unused.example.org/').transport,
+			},
+		),
+		/measured "private_address" but is declared as evidence for "url_too_long"/,
+	);
 });
 
 test('renderHtml escapes markup in every cell', () => {

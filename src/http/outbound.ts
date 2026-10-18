@@ -49,6 +49,12 @@
  *    reaches DNS at all; the flag covers the DNS-rebinding residue the
  *    module cannot. See "Known limits" in
  *    `docs/security/outbound-fetch.md`.
+ * 3. **The caller allow-list is name-only.** `policy.allowedHosts` is
+ *    consulted after the address branch, so an IP literal listed there
+ *    is still refused as an address. One knob that silently outranks
+ *    the reserved-space rule would be the least auditable knob in the
+ *    policy; `policy.allowIpLiterals` is the separate opt-in, and it
+ *    does not reach the reserved space either.
  *
  * ## Redirects
  *
@@ -131,7 +137,16 @@ export type OutboundUrlVerdict =
  * the strictest policy, which is what the adapter uses by default.
  */
 export interface OutboundUrlPolicy {
-	/** Hostnames accepted even if a rule below would refuse them. Compared case-insensitively and without a trailing dot. */
+	/**
+	 * Host **names** accepted even if a rule below would refuse them.
+	 * Compared case-insensitively and without a trailing dot.
+	 *
+	 * It is deliberately name-only: an address literal passed here is
+	 * still judged as an address, so this list cannot re-open the
+	 * loopback / RFC1918 / link-local space (see
+	 * {@link classifyHost}). `allowIpLiterals` is the separate, and
+	 * equally visible, opt-in for addresses.
+	 */
 	readonly allowedHosts?: readonly string[];
 	/** Ports accepted in addition to {@link OUTBOUND_ALLOWED_PORTS}. */
 	readonly allowedPorts?: readonly number[];
@@ -385,13 +400,16 @@ function classifyHost(hostname: string, policy: OutboundUrlPolicy): HostVerdict 
 		return { ok: false, code: 'host_not_allowed', reason: 'empty host' };
 	}
 
-	if ((policy.allowedHosts ?? []).some((candidate) => matchesHostRule(host, candidate))) {
-		return { ok: true };
-	}
+	// The address branch runs **before** the caller allow-list. An
+	// allow-list entry is a name, and letting it match an address
+	// literal would turn the least auditable knob in the policy into an
+	// SSRF switch: `allowedHosts: ['169.254.169.254']` would otherwise
+	// reach the instance-metadata endpoint, and the deliberately narrow
+	// `allowIpLiterals` opt-in would mean less than it says.
 
 	// `URL` keeps an IPv6 literal in `hostname` wrapped in brackets, so
-	// the address branch runs before the ASCII-name check: `[::1]` is an
-	// address, not a malformed hostname.
+	// the address branch also runs before the ASCII-name check: `[::1]`
+	// is an address, not a malformed hostname.
 	const bracketed = host.startsWith('[') && host.endsWith(']');
 	const bare = bracketed ? host.slice(1, -1) : host;
 
@@ -437,6 +455,10 @@ function classifyHost(hostname: string, policy: OutboundUrlPolicy): HostVerdict 
 
 	const address = classifyIpv4(bare);
 	if (address) return judgeAddress(address);
+
+	if ((policy.allowedHosts ?? []).some((candidate) => matchesHostRule(host, candidate))) {
+		return { ok: true };
+	}
 
 	if (!host.includes('.')) {
 		return {

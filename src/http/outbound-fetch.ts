@@ -22,7 +22,11 @@ import {
  * 2. **Deadline.** One {@link AbortController} covers the whole
  *    operation, including every hop and the body read, so a slow
  *    upstream cannot hold a Worker request open past
- *    {@link DEFAULT_TIMEOUT_MS}.
+ *    {@link DEFAULT_TIMEOUT_MS}. The adapter also *races* its own
+ *    timer rather than only signalling it: aborting a request errors
+ *    the response body stream, and a transport that ignores
+ *    `init.signal` entirely would otherwise be able to hold the
+ *    Worker open past the budget.
  * 3. **Body size.** The response body is read through a byte counter and
  *    the stream is cancelled at {@link DEFAULT_MAX_BYTES}, so a
  *    "content-length: 12" response that streams 4 GiB is refused rather
@@ -149,9 +153,40 @@ function fail(
 }
 
 /**
+ * The value the whole-operation deadline resolves with. Distinct from
+ * every possible result so a race against it cannot be mistaken for a
+ * response, and it can never be thrown by a transport.
+ */
+const DEADLINE = 'deadline' as const;
+
+type Deadline = typeof DEADLINE;
+
+/**
+ * A transport's error message can quote the URL it was handed —
+ * `unexpected request to https://…` is exactly what a fixture says,
+ * and a real runtime may include the request line. `reason` is
+ * documented as safe to log and never carrying the URL, so the URL is
+ * redacted out here and the remaining text is bounded.
+ */
+function transportReason(error: unknown, redact: readonly string[]): string {
+	const raw = error instanceof Error ? error.message : 'the transport threw';
+	let message = raw;
+	for (const value of redact) {
+		if (value.length > 0) message = message.split(value).join('<redacted-url>');
+	}
+	return message.length > 200 ? `${message.slice(0, 200)}…` : message;
+}
+
+/**
  * Read at most `maxBytes`, cancelling the stream the moment the budget is
  * exceeded. `content-length` is consulted first because it is free, but
  * it is a hint: a response that under-declares is still stopped here.
+ *
+ * The loop can reject — aborting the operation *errors* the body
+ * stream, so a `read()` that is pending when the deadline fires comes
+ * back as an `AbortError`. That rejection is left to the caller, which
+ * owns the mapping from "the stream died" to "the request timed out";
+ * turning it into a refusal here would throw away which one it was.
  */
 async function readBounded(
 	response: Response,
@@ -176,7 +211,11 @@ async function readBounded(
 			if (!value) continue;
 			total += value.byteLength;
 			if (total > maxBytes) {
-				await reader.cancel();
+				// The budget has already decided the outcome. `cancel()`
+				// rejects on an already-errored stream, and losing the
+				// refusal to that rejection would turn a size refusal
+				// into a thrown error.
+				await reader.cancel().catch(() => undefined);
 				return 'too_large';
 			}
 			chunks.push(value);
@@ -218,7 +257,10 @@ function normalizeHeaders(
  * Never throws: every failure — refusal, timeout, transport error,
  * oversized body, non-2xx — comes back as `{ ok: false, code, reason }`
  * so a handler cannot accidentally turn a refused URL into a 500 that
- * leaks the upstream's error text.
+ * leaks the upstream's error text. That includes the rejection a
+ * body read raises when the deadline aborts the request mid-stream,
+ * which is why every `await` that touches the transport sits inside a
+ * `try`.
  *
  * @param input URL supplied by a visitor, a stored record, or an upstream
  *   integration. Anything not on the accept list is refused.
@@ -252,41 +294,63 @@ export async function fetchExternalUrl(
 
 	const controller = new AbortController();
 	let timedOut = false;
-	const timer = setTimeout(() => {
-		timedOut = true;
-		controller.abort();
-	}, timeoutMs);
+	// Two things happen at the deadline, on purpose: the transport is
+	// told to stop (the cooperative half, and what the runtime `fetch`
+	// honours), and the operation is *raced* against a promise that
+	// resolves here (the part that holds even when the transport does
+	// not listen).
+	let timer: ReturnType<typeof setTimeout> | undefined;
+	const deadline = new Promise<Deadline>((resolveDeadline) => {
+		timer = setTimeout(() => {
+			timedOut = true;
+			controller.abort();
+			resolveDeadline(DEADLINE);
+		}, timeoutMs);
+	});
 	const forwardAbort = () => controller.abort();
 	options.signal?.addEventListener('abort', forwardAbort, { once: true });
 
 	const chain: string[] = [];
 	let current = first.url;
 
+	/**
+	 * The one place a transport rejection becomes a result. The
+	 * deadline and the caller's signal are checked first, because
+	 * aborting a request *errors* its body stream: without this order
+	 * a slow upstream would be reported as `fetch_failed` and the
+	 * timeout that actually caused it would be invisible.
+	 */
+	const failureFor = (error: unknown, url: string): FetchExternalResult => {
+		if (timedOut) return fail('timeout', `no result within ${timeoutMs} ms`, chain, url);
+		if (controller.signal.aborted) {
+			return fail('aborted', 'the caller aborted the request', chain, url);
+		}
+		const redact = typeof input === 'string' ? [url, input] : [url];
+		return fail('fetch_failed', transportReason(error, redact), chain, url);
+	};
+
 	try {
 		// At most `maxRedirects + 1` connections are opened: the first
 		// plus one per followed redirect. `maxRedirects: 0` therefore
 		// means "issue exactly one request and report the 3xx".
 		for (let hop = 0; hop <= maxRedirects; hop += 1) {
+			const requested = current.toString();
 			let response: Response;
 			try {
-				response = await transport(current.toString(), {
-					redirect: 'manual',
-					signal: controller.signal,
-					headers: headers.value,
-				});
+				const settled = await Promise.race([
+					transport(requested, {
+						redirect: 'manual',
+						signal: controller.signal,
+						headers: headers.value,
+					}),
+					deadline,
+				]);
+				if (settled === DEADLINE) {
+					return fail('timeout', `no result within ${timeoutMs} ms`, chain, requested);
+				}
+				response = settled;
 			} catch (error) {
-				if (timedOut) {
-					return fail('timeout', `no result within ${timeoutMs} ms`, chain, current.toString());
-				}
-				if (controller.signal.aborted) {
-					return fail('aborted', 'the caller aborted the request', chain, current.toString());
-				}
-				return fail(
-					'fetch_failed',
-					error instanceof Error ? error.message : 'the transport threw',
-					chain,
-					current.toString(),
-				);
+				return failureFor(error, requested);
 			}
 
 			if (REDIRECT_STATUSES.has(response.status)) {
@@ -334,21 +398,34 @@ export async function fetchExternalUrl(
 				);
 			}
 
-			const bytes = await readBounded(response, maxBytes);
+			// The read is the second place a slow upstream can be
+			// caught: headers arrive quickly and the body dribbles. A
+			// deadline that fires here rejects the pending `read()` with
+			// an `AbortError`, so the read is raced *and* caught.
+			let bytes: Uint8Array | 'too_large';
+			try {
+				const settled = await Promise.race([readBounded(response, maxBytes), deadline]);
+				if (settled === DEADLINE) {
+					return fail('timeout', `no result within ${timeoutMs} ms`, chain, requested);
+				}
+				bytes = settled;
+			} catch (error) {
+				return failureFor(error, requested);
+			}
 			if (bytes === 'too_large') {
 				return fail(
 					'response_too_large',
 					`response body exceeds ${maxBytes} bytes`,
 					chain,
-					current.toString(),
+					requested,
 				);
 			}
 			if (timedOut) {
-				return fail('timeout', `no result within ${timeoutMs} ms`, chain, current.toString());
+				return fail('timeout', `no result within ${timeoutMs} ms`, chain, requested);
 			}
 			return {
 				ok: true,
-				url: current.toString(),
+				url: requested,
 				status: response.status,
 				contentType: response.headers.get('content-type') ?? '',
 				bytes,

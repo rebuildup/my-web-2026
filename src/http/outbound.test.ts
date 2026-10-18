@@ -138,6 +138,30 @@ describe('classifyOutboundUrl — address literals', () => {
 		expect(codeOf('http://127.0.0.1/', { allowIpLiterals: true })).toBe('private_address');
 	});
 
+	it('does not let the caller allow-list re-open the address space', () => {
+		// `allowedHosts` is a *name* list. If it were matched before the
+		// address branch, one string in one policy object would undo the
+		// rule this whole module exists to enforce.
+		for (const host of [
+			'127.0.0.1',
+			'10.0.0.5',
+			'169.254.169.254',
+			'[::1]',
+			'[::ffff:127.0.0.1]',
+		]) {
+			expect(codeOf(`http://${host}/`, { allowedHosts: [host] }), host).toBe('private_address');
+		}
+		// It still does what it is for: allowing a name the reserved-zone
+		// rules would otherwise refuse.
+		expect(
+			codeOf('https://build.internal/status', { allowedHosts: ['build.internal'] }),
+		).toBeNull();
+		// And the address opt-in still works for a public literal.
+		expect(
+			codeOf('https://8.8.8.8/resolve', { allowedHosts: ['8.8.8.8'], allowIpLiterals: true }),
+		).toBeNull();
+	});
+
 	it('refuses an ambiguous octal-style literal', () => {
 		// `0177.0.0.1` is decimal 177 to one resolver and octal to
 		// another; the URL parser normalises it to 127.0.0.1, which the

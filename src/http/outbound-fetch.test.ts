@@ -306,6 +306,24 @@ describe('fetchExternalUrl — response limits', () => {
 		expect(result.ok).toBe(false);
 		if (!result.ok) expect(result.code).toBe('fetch_failed');
 	});
+
+	it('keeps the submitted URL out of a transport error reason', async () => {
+		// A transport may quote the URL it was handed; `reason` is
+		// documented as safe to log and never carrying it.
+		const url = 'https://api.github.com/repos/rebuildup/my-web-2026?page=2';
+		const result = await fetchExternalUrl(url, {
+			transport: (requested) => {
+				throw new Error(`unexpected request to ${requested} ${'detail '.repeat(80)}`);
+			},
+		});
+
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.code).toBe('fetch_failed');
+		expect(result.reason).not.toContain(url);
+		expect(result.reason).toContain('<redacted-url>');
+		expect(result.reason.length).toBeLessThanOrEqual(201);
+	});
 });
 
 describe('fetchExternalUrl — deadline', () => {
@@ -324,6 +342,79 @@ describe('fetchExternalUrl — deadline', () => {
 		if (result.ok) return;
 		expect(result.code).toBe('timeout');
 		expect(result.url).toBe('https://example.org/slow');
+	});
+
+	it('bounds the operation even when the transport ignores the abort signal', async () => {
+		// Signalling is only cooperative. The adapter races its own
+		// timer, so a transport that never settles and never listens
+		// still comes back as `timeout` inside the budget.
+		const started = Date.now();
+		const result = await fetchExternalUrl('https://example.org/silent', {
+			timeoutMs: 25,
+			transport: () => new Promise<Response>(() => {}),
+		});
+
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.code).toBe('timeout');
+		expect(Date.now() - started).toBeLessThan(5_000);
+	});
+
+	it('reports a body that is still streaming at the deadline as a timeout, never a throw', async () => {
+		// Headers arrive, then the body dribbles. Aborting at the
+		// deadline *errors* the body stream per the fetch spec, so the
+		// pending `read()` rejects — the adapter has to own that
+		// rejection or a slow origin becomes a 500.
+		const encoder = new TextEncoder();
+		const result = await fetchExternalUrl('https://example.org/trickle', {
+			timeoutMs: 25,
+			transport: (_url, init) =>
+				Promise.resolve(
+					new Response(
+						new ReadableStream<Uint8Array>({
+							start(controller) {
+								controller.enqueue(encoder.encode('part'));
+								init.signal.addEventListener(
+									'abort',
+									() =>
+										controller.error(new DOMException('This operation was aborted', 'AbortError')),
+									{ once: true },
+								);
+							},
+						}),
+					),
+				),
+		});
+
+		expect(result.ok).toBe(false);
+		if (result.ok) return;
+		expect(result.code).toBe('timeout');
+		expect(result.url).toBe('https://example.org/trickle');
+	});
+
+	it('reports a caller-initiated abort during the body read as abort', async () => {
+		const controller = new AbortController();
+		const promise = fetchExternalUrl('https://example.org/trickle', {
+			timeoutMs: 10_000,
+			signal: controller.signal,
+			transport: (_url, init) =>
+				Promise.resolve(
+					new Response(
+						new ReadableStream<Uint8Array>({
+							start(stream) {
+								init.signal.addEventListener(
+									'abort',
+									() => stream.error(new DOMException('aborted', 'AbortError')),
+									{ once: true },
+								);
+							},
+						}),
+					),
+				),
+		});
+		controller.abort();
+		const result = await promise;
+		expect(result.ok).toBe(false);
+		if (!result.ok) expect(result.code).toBe('aborted');
 	});
 
 	it('bounds the whole operation, not each hop', async () => {

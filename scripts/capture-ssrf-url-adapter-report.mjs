@@ -29,10 +29,13 @@
  * artefacts in its history forever.
  *
  * `--html` additionally writes the markup the image renders, which is
- * what to review when a row is hard to read. The run fails if any row is
- * neither `fetched` nor a recognised refusal, if the page overflows
- * horizontally (a clipped column would make the image misleading), or if
- * a rendered row looks like it carries a credential.
+ * what to review when a row is hard to read. The run fails if a row's
+ * measured outcome contradicts the outcome its label claims, if any row
+ * is neither `fetched` nor a recognised refusal, if a row that is
+ * evidence about a policy rule instead measured a transport outcome,
+ * if the page overflows horizontally (a clipped column would make the
+ * image misleading), or if a rendered row looks like it carries a
+ * credential.
  */
 
 import { mkdir, writeFile } from 'node:fs/promises';
@@ -64,6 +67,7 @@ registerHooks({
 });
 
 const { fetchExternalUrl } = await import('../src/http/outbound-fetch.ts');
+const { MAX_OUTBOUND_URL_LENGTH } = await import('../src/http/outbound.ts');
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
@@ -122,6 +126,37 @@ export const KNOWN_CODES = new Set([
 	'fetch_failed',
 ]);
 
+/**
+ * Groups whose rows are evidence about `src/http/outbound.ts` rules.
+ * A refused URL is never requested, so a transport outcome in one of
+ * these rows means the matrix itself is wrong: it asked for something
+ * the policy allowed, and the fixture table had no answer.
+ */
+const POLICY_GROUPS = new Set([
+	'protocol',
+	'ループバック / private',
+	'internal ゾーン',
+	'authority / port',
+	'形',
+	'redirect hop',
+]);
+
+/**
+ * Codes that describe the transport rather than a policy rule.
+ * `fetch_failed` in particular means the fixture transport was asked
+ * for a URL its table does not contain — a defect in this file.
+ */
+export const TRANSPORT_OUTCOME_CODES = new Set(['fetch_failed', 'http_error']);
+
+/**
+ * The row that would present a harness outcome as policy evidence, if
+ * any. Exported so the guard is unit-tested rather than only observable
+ * by running the whole capture.
+ */
+export function findUnprovenPolicyRow(rows) {
+	return rows.find((row) => row.policyRow === true && TRANSPORT_OUTCOME_CODES.has(row.code));
+}
+
 const escapeHtml = (value) =>
 	String(value)
 		.replaceAll('&', '&amp;')
@@ -147,104 +182,226 @@ function showValue(value) {
 /* ------------------------------------------------------------------ */
 
 /**
- * `{ group, label, url, transport }`.
+ * `{ group, label, url, transport, expectCode }`.
  *
  * `transport` names the row in the local transport table below; a row
  * that is refused never consults it.
+ *
+ * `expectCode` is the outcome the row is evidence *for*, and
+ * {@link measure} refuses to produce a table when the measurement
+ * disagrees. A row's `label` is prose; without this the two drift
+ * apart silently — a row that reads "length limit" while measuring a
+ * fixture error renders, looks plausible, and is read as proof of a
+ * rule that nothing exercised.
  */
-const CASES = [
+export const CASES = [
 	// --- accepted ---------------------------------------------------------
 	{
 		group: '取得できた',
 		label: '公開 https origin（GitHub API）',
 		url: 'https://api.github.com/repos/rebuildup/my-web-2026',
 		transport: 'api.github.com/repos/rebuildup/my-web-2026',
+		expectCode: 'HTTP 200',
 	},
 	{
 		group: '取得できた',
 		label: '公開 origin へのリダイレクトを追跡（hop 1）',
 		url: 'https://example.org/download',
 		transport: 'example.org/download',
+		expectCode: 'HTTP 200',
 	},
 	{
 		group: '取得できた',
 		label: 'リダイレクトの連鎖（hop 2、budget 内）',
 		url: 'https://example.org/start',
 		transport: 'example.org/start',
+		expectCode: 'HTTP 200',
 	},
 
 	// --- protocol ---------------------------------------------------------
-	{ group: 'protocol', label: 'file スキーム', url: 'file:///etc/passwd' },
-	{ group: 'protocol', label: 'gopher スキーム', url: 'gopher://example.org/1' },
-	{ group: 'protocol', label: 'data スキーム', url: 'data:text/html,<h1>x</h1>' },
-	{ group: 'protocol', label: 'javascript スキーム', url: 'javascript:alert(1)' },
+	{
+		group: 'protocol',
+		label: 'file スキーム',
+		url: 'file:///etc/passwd',
+		expectCode: 'protocol_not_allowed',
+	},
+	{
+		group: 'protocol',
+		label: 'gopher スキーム',
+		url: 'gopher://example.org/1',
+		expectCode: 'protocol_not_allowed',
+	},
+	{
+		group: 'protocol',
+		label: 'data スキーム',
+		url: 'data:text/html,<h1>x</h1>',
+		expectCode: 'protocol_not_allowed',
+	},
+	{
+		group: 'protocol',
+		label: 'javascript スキーム',
+		url: 'javascript:alert(1)',
+		expectCode: 'protocol_not_allowed',
+	},
 
 	// --- loopback / private ----------------------------------------------
-	{ group: 'ループバック / private', label: 'IPv4 loopback', url: 'http://127.0.0.1:8787/' },
-	{ group: 'ループバック / private', label: 'loopback 範囲の上端', url: 'http://127.255.255.254/' },
-	{ group: 'ループバック / private', label: 'localhost 名前', url: 'http://localhost:8787/' },
-	{ group: 'ループバック / private', label: 'RFC1918 10/8', url: 'http://10.0.0.1/' },
-	{ group: 'ループバック / private', label: 'RFC1918 172.16/12', url: 'http://172.16.0.5/' },
-	{ group: 'ループバック / private', label: 'RFC1918 192.168/16', url: 'http://192.168.1.1/' },
-	{ group: 'ループバック / private', label: 'CGNAT 100.64/10', url: 'http://100.64.0.1/' },
+	{
+		group: 'ループバック / private',
+		label: 'IPv4 loopback',
+		url: 'http://127.0.0.1:8787/',
+		expectCode: 'private_address',
+	},
+	{
+		group: 'ループバック / private',
+		label: 'loopback 範囲の上端',
+		url: 'http://127.255.255.254/',
+		expectCode: 'private_address',
+	},
+	{
+		group: 'ループバック / private',
+		label: 'localhost 名前',
+		url: 'http://localhost:8787/',
+		// A name, not an address: the single-label rule refuses it
+		// before any address reasoning, which is the earlier refusal.
+		expectCode: 'host_not_allowed',
+	},
+	{
+		group: 'ループバック / private',
+		label: 'RFC1918 10/8',
+		url: 'http://10.0.0.1/',
+		expectCode: 'private_address',
+	},
+	{
+		group: 'ループバック / private',
+		label: 'RFC1918 172.16/12',
+		url: 'http://172.16.0.5/',
+		expectCode: 'private_address',
+	},
+	{
+		group: 'ループバック / private',
+		label: 'RFC1918 192.168/16',
+		url: 'http://192.168.1.1/',
+		expectCode: 'private_address',
+	},
+	{
+		group: 'ループバック / private',
+		label: 'CGNAT 100.64/10',
+		url: 'http://100.64.0.1/',
+		expectCode: 'private_address',
+	},
 	{
 		group: 'ループバック / private',
 		label: 'link-local（cloud metadata）',
 		url: 'http://169.254.169.254/latest/meta-data/',
+		expectCode: 'private_address',
 	},
-	{ group: 'ループバック / private', label: 'IPv6 loopback', url: 'http://[::1]/' },
+	{
+		group: 'ループバック / private',
+		label: 'IPv6 loopback',
+		url: 'http://[::1]/',
+		expectCode: 'private_address',
+	},
 	{
 		group: 'ループバック / private',
 		label: 'IPv4-mapped loopback',
 		url: 'http://[::ffff:127.0.0.1]/',
+		expectCode: 'private_address',
 	},
 	{
 		group: 'ループバック / private',
 		label: 'NAT64 で埋め込まれた loopback',
 		url: 'https://[64:ff9b::7f00:1]/',
+		expectCode: 'private_address',
 	},
 	{
 		group: 'ループバック / private',
 		label: '6to4 で埋め込まれた loopback',
 		url: 'https://[2002:7f00:1::]/',
+		expectCode: 'private_address',
 	},
-	{ group: 'ループバック / private', label: 'IPv6 unique local', url: 'http://[fd00::1]/' },
+	{
+		group: 'ループバック / private',
+		label: 'IPv6 unique local',
+		url: 'http://[fd00::1]/',
+		expectCode: 'private_address',
+	},
 	{
 		group: 'ループバック / private',
 		label: '公開 IP リテラル（方針はホスト名必須）',
 		url: 'https://8.8.8.8/resolve',
+		expectCode: 'ip_literal_not_allowed',
 	},
 
 	// --- internal names ---------------------------------------------------
-	{ group: 'internal ゾーン', label: '.internal', url: 'https://db.internal/secrets' },
-	{ group: 'internal ゾーン', label: '.local (mDNS)', url: 'http://printer.local/status' },
-	{ group: 'internal ゾーン', label: '.home.arpa', url: 'http://nas.home.arpa/' },
+	{
+		group: 'internal ゾーン',
+		label: '.internal',
+		url: 'https://db.internal/secrets',
+		expectCode: 'host_not_allowed',
+	},
+	{
+		group: 'internal ゾーン',
+		label: '.local (mDNS)',
+		url: 'http://printer.local/status',
+		expectCode: 'host_not_allowed',
+	},
+	{
+		group: 'internal ゾーン',
+		label: '.home.arpa',
+		url: 'http://nas.home.arpa/',
+		expectCode: 'host_not_allowed',
+	},
 	{
 		group: 'internal ゾーン',
 		label: 'GCP metadata ホスト名',
 		url: 'http://metadata.google.internal/computeMetadata/v1/',
+		expectCode: 'host_not_allowed',
 	},
-	{ group: 'internal ゾーン', label: '単一ラベル', url: 'http://intranet/admin' },
+	{
+		group: 'internal ゾーン',
+		label: '単一ラベル',
+		url: 'http://intranet/admin',
+		expectCode: 'host_not_allowed',
+	},
 
 	// --- authority / port -------------------------------------------------
 	{
 		group: 'authority / port',
 		label: 'userinfo による origin 取り違え',
 		url: 'https://api.github.com@169.254.169.254/latest/meta-data/',
+		expectCode: 'credentials_in_url',
 	},
-	{ group: 'authority / port', label: '非 default port', url: 'https://api.github.com:8443/x' },
-	{ group: 'authority / port', label: '絶対パスではなく相対パス', url: '/admin' },
+	{
+		group: 'authority / port',
+		label: '非 default port',
+		url: 'https://api.github.com:8443/x',
+		expectCode: 'port_not_allowed',
+	},
+	{
+		group: 'authority / port',
+		label: '絶対パスではなく相対パス',
+		url: '/admin',
+		expectCode: 'invalid_url',
+	},
 
 	// --- shape ------------------------------------------------------------
 	{
 		group: '形',
 		label: '制御文字（parser が除去するもの）',
 		url: 'https://api.github.com\n@169.254.169.254/',
+		expectCode: 'invalid_url',
 	},
 	{
 		group: '形',
-		label: '長さ上限超過（2048 文字）',
-		url: `https://api.github.com/${Array.from({ length: 210 }, () => 'segment').join('/')}`,
+		// The limit is imported, not written out, and the URL is built
+		// to be *over* it: an earlier version of this row was 346
+		// characters short of the cap, so it was accepted, requested,
+		// and reported as a fixture error rather than as the rule.
+		// The filler is `x` rather than `a`/`0`/`f` so the row is not
+		// itself refused by the secret-shaped-value guard below.
+		label: `長さ上限超過（${MAX_OUTBOUND_URL_LENGTH} 文字）`,
+		url: `https://api.github.com/${'x'.repeat(MAX_OUTBOUND_URL_LENGTH + 1)}`,
+		expectCode: 'url_too_long',
 	},
 
 	// --- redirect hops ----------------------------------------------------
@@ -253,24 +410,28 @@ const CASES = [
 		label: 'hop が loopback を指す',
 		url: 'https://example.org/redirect-loopback',
 		transport: 'example.org/redirect-loopback',
+		expectCode: 'private_address',
 	},
 	{
 		group: 'redirect hop',
 		label: 'hop が file スキームを指す',
 		url: 'https://example.org/redirect-file',
 		transport: 'example.org/redirect-file',
+		expectCode: 'protocol_not_allowed',
 	},
 	{
 		group: 'redirect hop',
 		label: 'hop が非 default port を指す',
 		url: 'https://example.org/redirect-port',
 		transport: 'example.org/redirect-port',
+		expectCode: 'port_not_allowed',
 	},
 	{
 		group: 'redirect hop',
 		label: 'hop budget 超過（3 段目）',
 		url: 'https://example.org/hop-0',
 		transport: 'example.org/hop-0',
+		expectCode: 'too_many_redirects',
 	},
 
 	// --- response limits --------------------------------------------------
@@ -280,6 +441,7 @@ const CASES = [
 		url: 'https://example.org/oversize',
 		transport: 'example.org/oversize',
 		maxBytes: 512,
+		expectCode: 'response_too_large',
 	},
 	{
 		group: '応答の上限',
@@ -287,12 +449,14 @@ const CASES = [
 		url: 'https://example.org/slow',
 		transport: 'example.org/slow',
 		timeoutMs: 25,
+		expectCode: 'timeout',
 	},
 	{
 		group: '応答の上限',
 		label: 'credential ヘッダの送出要求',
 		url: 'https://api.github.com/user',
 		headers: { Authorization: 'Bearer not-a-real-value' },
+		expectCode: 'credential_header_refused',
 	},
 ];
 
@@ -329,14 +493,18 @@ function localTransport() {
 			}),
 		'https://example.org/oversize': () =>
 			new Response('x'.repeat(4096), { headers: { 'content-length': '16' } }),
-		'https://example.org/slow': () => {
-			const error = new Error('the deadline fired');
+		'https://example.org/slow': (_url, init) =>
 			// Never settles on its own; the adapter's AbortController is
-			// the only thing that ends this request.
-			return new Promise((_resolve, reject) => {
-				setTimeout(() => reject(error), 5_000);
-			});
-		},
+			// the only thing that ends this request, exactly as the
+			// runtime `fetch` behaves. (The adapter also races its own
+			// timer, so the row would still be a `timeout` — but it
+			// would take the fixture's 5 s to get there, and the row
+			// would be measuring the fixture rather than the deadline.)
+			new Promise((_resolve, reject) => {
+				init.signal.addEventListener('abort', () => reject(new Error('the deadline fired')), {
+					once: true,
+				});
+			}),
 	};
 	for (let hop = 0; hop < 8; hop += 1) {
 		bodies[`https://example.org/hop-${hop}`] = () =>
@@ -345,11 +513,11 @@ function localTransport() {
 
 	return {
 		requested,
-		transport: async (url) => {
+		transport: async (url, init) => {
 			requested.push(url);
 			const factory = bodies[url];
 			if (!factory) throw new Error(`unexpected request to ${url}`);
-			return factory();
+			return factory(url, init);
 		},
 	};
 }
@@ -364,16 +532,23 @@ export async function measure(cases, { transport } = {}) {
 			...(entry.timeoutMs === undefined ? {} : { timeoutMs: entry.timeoutMs }),
 			...(entry.headers === undefined ? {} : { headers: entry.headers }),
 		});
+		const code = result.ok ? `HTTP ${result.status}` : result.code;
+		if (entry.expectCode !== undefined && code !== entry.expectCode) {
+			throw new Error(
+				`row "${entry.label}" measured "${code}" but is declared as evidence for "${entry.expectCode}"`,
+			);
+		}
 		rows.push({
 			group: entry.group,
 			label: entry.label,
 			input: showValue(entry.url.length > 56 ? `${entry.url.slice(0, 55)}…` : entry.url),
 			outcome: result.ok ? 'fetched' : 'refused',
-			code: result.ok ? `HTTP ${result.status}` : result.code,
+			code,
 			reason: result.ok
 				? `${result.redirectChain.length} hop / ${result.bytes.byteLength} B`
 				: result.reason,
 			hops: String(result.redirectChain.length),
+			policyRow: POLICY_GROUPS.has(entry.group),
 		});
 	}
 	return rows;
@@ -455,6 +630,10 @@ ${body}
     <ul>
       <li><strong>fetched</strong> — 許可された URL の取得に成功。hop 列は追従したリダイレクト数、
           理由列は応答サイズ。hop 先も毎回同じ判定を通っている。</li>
+      <li><strong>invalid_url</strong> — 絶対 URL として解析できない（相対パス）、または tab / CR / LF などの
+          制御文字・空白を含む。parser は tab / CR / LF を黙って除去するため、その値のまま拒否する。</li>
+      <li><strong>url_too_long</strong> — ${MAX_OUTBOUND_URL_LENGTH} 文字を超えている URL。
+          <code>fetch()</code> とログに届く文字列の上限であり、この report の行は実際にその長さを超えている。</li>
       <li><strong>protocol_not_allowed</strong> — <code>http:</code> / <code>https:</code> 以外
           （<code>file:</code> / <code>gopher:</code> / <code>data:</code> / <code>javascript:</code>）。</li>
       <li><strong>private_address</strong> — loopback / RFC1918 / link-local（<code>169.254.169.254</code> の
@@ -469,6 +648,10 @@ ${body}
           「安全なホストを userinfo に重ねて内側へ誘う」古典的な手口。接続前に拒否される。</li>
       <li><strong>redirect hop の行</strong> — 1 段目は通るが <code>Location</code> の先で拒否されたもの。
           hop は必ず同じ判定を通すので、転送先が方針の迂回手段にはならない。</li>
+      <li><strong>応答の上限の行</strong> — <code>response_too_large</code>（宣言 16 B に対して 4096 B を流す）/
+          <code>timeout</code>（25 ms の deadline 内に結果が返らない）/
+          <code>credential_header_refused</code>。いずれも拒否であり、その行の URL は
+          成功した取得ではない。</li>
       <li><strong>credential_header_refused</strong> — 第三 origin へ credential ヘッダを送ろうとした要求は
           <em>除去ではなく拒否</em>される。</li>
       <li>本レポートに credential・cookie・秘密値・本番識別子は含まれない（描画するのは入力文字列と結果 code のみ）。</li>
@@ -494,12 +677,30 @@ const WEBP_QUALITY = 72;
 
 async function main() {
 	const { transport, requested } = localTransport();
-	const rows = await measure(CASES, { transport });
+	let rows;
+	try {
+		rows = await measure(CASES, { transport });
+	} catch (error) {
+		// A row whose measurement contradicts its own label must not
+		// reach the artefact: the image would be read as proof of a
+		// rule that nothing exercised.
+		process.stderr.write(
+			`[ssrf-report] ${error instanceof Error ? error.message : String(error)}\n`,
+		);
+		return 1;
+	}
 
 	const unknown = rows.filter((row) => row.outcome === 'refused' && !KNOWN_CODES.has(row.code));
 	if (unknown.length > 0) {
 		process.stderr.write(
 			`[ssrf-report] unknown refusal code(s): ${unknown.map((row) => row.code).join(', ')}\n`,
+		);
+		return 1;
+	}
+	const unproven = findUnprovenPolicyRow(rows);
+	if (unproven) {
+		process.stderr.write(
+			`[ssrf-report] "${unproven.label}" is policy evidence but measured ${unproven.code}\n`,
 		);
 		return 1;
 	}

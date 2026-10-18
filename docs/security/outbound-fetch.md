@@ -28,6 +28,13 @@ transport error, oversized body, non-2xx — comes back as
 `{ ok: false, code, reason, url, redirectChain }` so a handler cannot
 turn a refused URL into a 500 that leaks an upstream's error text.
 
+That includes the failure modes a slow upstream produces rather than
+returns. Aborting a request *errors* its response body stream per the
+fetch spec, so a body that is still streaming when the deadline fires
+rejects the pending `read()`; that rejection is mapped to `timeout` (or
+to `aborted` when the caller's signal was the cause) instead of
+escaping.
+
 `url` on a failure is the URL *under examination*, and it is `null`
 whenever that URL failed classification. By then a credential-bearing URL
 has already been refused, so there is nothing to redact.
@@ -64,6 +71,19 @@ caller that genuinely needs a literal opts in with
 review; it does **not** widen what the runtime will actually connect to
 (see below).
 
+### Why `policy.allowedHosts` cannot name an address
+
+The caller allow-list is consulted **after** the address branch, so it
+is a list of *names* and nothing else. `allowedHosts: ['127.0.0.1']`
+still yields `private_address`, and `allowedHosts: ['169.254.169.254']`
+still cannot reach the instance-metadata endpoint.
+
+Had it been matched first, one string in one policy object would have
+undone the rule this module exists to enforce — through the least
+auditable knob in the policy, on a path no shipped caller exercises
+today. `policy.allowIpLiterals` is the separate opt-in for addresses,
+and it does not reach the reserved space either.
+
 ### Why the name rules refuse whole zones
 
 `OUTBOUND_DENIED_HOSTNAMES` covers `localhost`, `.invalid`, `.test`,
@@ -90,10 +110,19 @@ security control.
 | Property | Default | How |
 | --- | --- | --- |
 | redirect hops | 2 | `fetch(..., { redirect: 'manual' })`; every `Location` is resolved against the current URL and re-classified before the next connection |
-| deadline | 5,000 ms | one `AbortController` covering every hop **and** the body read |
+| deadline | 5,000 ms | one `AbortController` covering every hop **and** the body read, *and* a race against the adapter's own timer |
 | body size | 1 MiB | byte counter over the response stream; `content-length` is a cheap pre-filter, not the bound |
 | credentials | none | `Authorization` / `Cookie` / `Proxy-Authorization` are **refused**, not stripped |
 | inbound headers | not forwarded | `options.headers` is the complete set, never merged with the inbound `Headers` |
+
+### Why the deadline is a race and not only a signal
+
+Aborting is cooperative: the runtime `fetch` honours `init.signal`, but
+the adapter also races each transport and body-read await against its
+own timer, so a transport that ignores the signal entirely still comes
+back as `timeout` inside the budget. Without the race the deadline would
+be advisory — the Worker budget in operator contract #4 would hold only
+because the current runtime happens to cooperate.
 
 ### Refusing credential headers rather than stripping them
 
@@ -120,11 +149,18 @@ upstreams answer that way — and it surfaces as `http_error`.
 | `invalid_url`, `url_too_long`, `protocol_not_allowed`, `credentials_in_url`, `host_not_allowed`, `private_address`, `ip_literal_not_allowed`, `port_not_allowed` | refused before any connection | no (`url: null`) |
 | `credential_header_refused` | the caller asked to send a credential header | no (`url: null`) |
 | `too_many_redirects` | hop budget exhausted | yes |
-| `timeout` | the whole-operation deadline elapsed | yes |
+| `timeout` | the whole-operation deadline elapsed while the transport was pending **or the body was still streaming** | yes |
 | `aborted` | the caller's `signal` fired | yes (or `null` if it fired before the first request) |
 | `response_too_large` | body exceeded `maxBytes` | yes |
 | `http_error` | upstream answered non-2xx, or 3xx with no `Location` | yes |
-| `fetch_failed` | the transport threw | yes |
+| `fetch_failed` | the transport threw | yes (in `url`; see below) |
+
+`reason` on a `fetch_failed` is the transport's own message, and a
+transport may quote the URL back — so the submitted URL is redacted out
+of it and the text is bounded to 200 characters. `result.url` still
+carries the URL under examination, which is the point of the field; it
+is the free-text `reason` that must never become a log line carrying
+it.
 
 ## Where it is mounted
 
@@ -155,13 +191,16 @@ one enforcement point and that point is not it.
 2. **Do not widen the policy from a request handler.** `policy` exists for
    a documented fixed host or port (`allowedHosts`, `allowedPorts`,
    `deniedHostSuffixes`). If a handler needs it, the decision belongs in
-   review, not in a per-request branch.
+   review, not in a per-request branch. `allowedHosts` names hosts; it
+   cannot name addresses (see above).
 3. **Do not merge inbound headers into `options.headers`.** See "Inbound
    headers are not forwarded" above.
 4. **The timeout is a Worker budget, not a preference.** Cloudflare
    charges for the wall clock; 5 s × 2 hops is the ceiling the adapter
    can spend before the next request. A caller that needs longer should
-   move the work off the request path, not raise the default.
+   move the work off the request path, not raise the default. The budget
+   is enforced by the adapter's own timer, not only by the transport
+   cooperating with `AbortSignal`.
 
 ## Verification
 

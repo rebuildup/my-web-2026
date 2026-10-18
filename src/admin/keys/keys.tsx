@@ -11,12 +11,13 @@ import type { AdminApiKey } from './load';
 /**
  * Admin API keys UI.
  *
- * The create form lives in the route component (composition over a
- * generic UI primitive) so that the route can wire its own
- * `useServerFn` calls without leaking server-only modules here.
- * Plaintext key disclosure happens in the create form, shown
- * exactly once at creation time (the Better Auth plugin hashes before
- * persisting; we never see the plaintext again).
+ * The step-up panel and the create form are composed by the route and
+ * arrive here as one `createSection` node, so the route can share one
+ * step-up state between "confirm" and "create" without this view
+ * importing any server-only module. Plaintext key disclosure happens
+ * inside the create form, shown exactly once at creation time (the
+ * Better Auth plugin hashes before persisting; we never see the
+ * plaintext again).
  *
  * Permissions shape (resource/action) is project-owned:
  *   `{ access_counter: ["read","write"], reactions: ["read","write"] }`
@@ -24,10 +25,10 @@ import type { AdminApiKey } from './load';
  */
 export interface KeysViewProps {
 	keys: readonly AdminApiKey[];
-	createForm: ReactNode;
+	createSection: ReactNode;
 }
 
-export function KeysView({ keys, createForm }: KeysViewProps) {
+export function KeysView({ keys, createSection }: KeysViewProps) {
 	return (
 		<section
 			className={css({
@@ -48,7 +49,7 @@ export function KeysView({ keys, createForm }: KeysViewProps) {
 							gap: '10',
 						})}
 					>
-						{createForm}
+						{createSection}
 
 						<div
 							className={css({

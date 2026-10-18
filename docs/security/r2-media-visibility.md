@@ -73,6 +73,13 @@ well-formed `portfolio/…` key; what keeps it dark is the approval gate
 and the loader's `status='published' AND visibility='public'` filter,
 not the prefix.
 
+A prefix match additionally requires a **non-empty remainder**, so the
+bare namespace marker itself (`portfolio/`, `reactions/`) classifies as
+`unlisted_namespace`. R2 object keys are flat strings, so such a key is
+a directory marker rather than an object any producer writes, and the
+direction that can publish something is the one that gets the extra
+guard.
+
 ## Where the decision is enforced
 
 | Surface | Where | Enforced in production code? | Behaviour on refusal |

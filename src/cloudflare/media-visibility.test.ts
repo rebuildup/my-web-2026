@@ -57,6 +57,21 @@ describe('classifyMediaKey', () => {
 		expect(isPublicMediaKey('reactions/abc123.webp')).toBe(true);
 	});
 
+	it('refuses a bare namespace marker instead of treating it as public', () => {
+		// `portfolio/` is a directory marker, not an object any producer
+		// writes. The allowlist therefore requires a non-empty remainder,
+		// so a key equal to the prefix cannot resolve to public.
+		for (const prefix of PUBLIC_MEDIA_PREFIXES) {
+			expect(isPublicMediaKey(prefix)).toBe(false);
+			expect(classifyMediaKey(prefix).reason).toBe('unlisted_namespace');
+		}
+		expect(isPublicMediaKey('portfolio/')).toBe(false);
+		expect(isPublicMediaKey('reactions/')).toBe(false);
+		// The deny direction is unchanged: a bare private marker is still
+		// refused as a declared private namespace.
+		expect(classifyMediaKey('private/').reason).toBe('private_namespace');
+	});
+
 	it('declares a prefix only when a producer writes it', () => {
 		// No pre-declared namespaces (AGENTS.md §3): `public/` is the
 		// Vite static-asset directory, and a namespace nobody writes

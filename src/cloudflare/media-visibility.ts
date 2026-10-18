@@ -74,6 +74,10 @@
  * - `reactions/` — reaction images (`reactions/<sha256>.<ext>`),
  *   public reaction data by design (`src/http/reactions/images.ts`).
  *
+ * A prefix match also requires a non-empty remainder, so the bare
+ * namespace marker itself (`portfolio/`, `reactions/`) never resolves
+ * to "publicly servable" — see `matchesPublicPrefix`.
+ *
  * Only prefixes with a real producer belong here. A producer that
  * lands later adds its prefix **in the same review that introduces it**
  * (AGENTS.md §3: no pre-declared namespaces), because an entry added
@@ -164,6 +168,18 @@ function matchesPrefix(key: string, prefixes: readonly string[]): boolean {
 }
 
 /**
+ * Allowlist match: the prefix must be followed by at least one
+ * character. R2 object keys are flat strings, so a key equal to the
+ * prefix is a directory marker rather than an object any producer
+ * writes; treating it as public would publish a name that should not
+ * resolve at all. The deny direction needs no such guard because it
+ * already refuses — only the allow direction can publish something.
+ */
+function matchesPublicPrefix(key: string, prefixes: readonly string[]): boolean {
+	return prefixes.some((prefix) => key.startsWith(prefix) && key.length > prefix.length);
+}
+
+/**
  * Classify one key against the visibility boundary. Total function:
  * every string is either publicly servable or refused for exactly one
  * documented reason, so callers can branch without a catch-all.
@@ -180,7 +196,7 @@ export function classifyMediaKey(key: string): MediaKeyVerdict {
 			reason: 'private_namespace',
 		};
 	}
-	if (matchesPrefix(key, PUBLIC_MEDIA_PREFIXES)) {
+	if (matchesPublicPrefix(key, PUBLIC_MEDIA_PREFIXES)) {
 		return {
 			key,
 			namespace: mediaKeyNamespace(key),

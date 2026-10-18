@@ -115,15 +115,16 @@ test.describe('basic operations', () => {
 
 	test('skip-to-content link takes keyboard focus to main', async ({ page, browserName }) => {
 		// Environment limitation, recorded rather than hidden (Issue #415:
-		// 「OSごとの差異は別検証として記録」). Headless WebKit on this
-		// runner never moves sequential focus off `BODY` — not for the
-		// first Tab, not after clicking, not after 5 stops — on ANY page,
-		// while Chromium and Firefox reach the first link on the first
-		// Tab. That is a harness/OS property, not a my-web-2026 defect,
-		// so the traversal check is skipped there rather than weakened
-		// everywhere. The cell renders as SKIP in the matrix, never as a
-		// pass, and the skip-link CONTRACT (link present, `#main`
-		// resolves) is still asserted on WebKit by
+		// 「OSごとの差異は別検証として記録」). Headless WebKit never moves
+		// sequential focus off `BODY` — not for the first Tab, not after
+		// clicking, not after 5 stops — on ANY page, on both hosts this
+		// repository runs on (ubuntu-latest CI and local macOS), while
+		// Chromium and Firefox reach the first link on the first Tab.
+		// That is a property of the WebKit build under automation, not a
+		// my-web-2026 defect, so the traversal check is skipped there
+		// rather than weakened everywhere. The cell renders as SKIP in
+		// the matrix, never as a pass, and the skip-link CONTRACT (link
+		// present, `#main` resolves) is still asserted on WebKit by
 		// `assertRouteContract`.
 		test.skip(
 			browserName === 'webkit',

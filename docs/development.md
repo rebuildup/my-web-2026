@@ -355,13 +355,15 @@ Recorded OS / engine differential
 ---------------------------------
 
 The keyboard-reachability step of the skip-to-content link is skipped
-on WebKit: headless WebKit never moves sequential focus off `BODY` on
-this runner — not on the first Tab, not after a click, not after five
-stops — on any page, while Chromium and Firefox reach the first link
-on the first Tab. That is a harness property, not a defect in
-my-web-2026, so the traversal check is skipped there rather than
-weakened everywhere; the skip-link contract itself (the link exists
-and its `#main` target resolves) is still asserted on WebKit by
+on WebKit: headless WebKit never moves sequential focus off `BODY` —
+not on the first Tab, not after a click, not after five stops — on any
+page, while Chromium and Firefox reach the first link on the first Tab.
+It reproduces on both hosts this repository runs on (the
+`ubuntu-latest` CI runner and a local macOS runner), so it is a
+property of the WebKit build under automation rather than of
+my-web-2026. The traversal check is therefore skipped there instead of
+being weakened everywhere; the skip-link contract itself (the link
+exists and its `#main` target resolves) is still asserted on WebKit by
 `assertRouteContract`. The matrix shows the cell as `SKIP`.
 
 ## Format and lint

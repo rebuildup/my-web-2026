@@ -347,3 +347,83 @@ would also pass "nothing executes" while destroying the evidence.
 - `src/portfolio/markdown.notion.ts` — the HTML adapter.
 - `test/fixtures/markdown-xss-fixtures.ts` — the shared corpus.
 - `docs/security.md` §"Markdown / Notion-derived HTML input boundary".
+## Decision 7 — unsupported Markdown degrades to literal text, and locale stays opt-in
+
+**Status:** Accepted (Issue #435). No behaviour change ships with this
+Decision — it records the contract the safety suite pins.
+
+**Context.** Issue #77 shipped the minimal Markdown renderer with an
+explicit list of omissions (tables, images, footnotes, math, …). Two
+questions were left unanswered, and both are answerable from the
+repository rather than from preference:
+
+1. What does an operator SEE when a published body contains one of
+   those unsupported constructs?
+2. Who owns the line between "the renderer changed my text" and "the
+   renderer did not"?
+
+A writing-assistance tool such as [yomiyasu](https://github.com/nanaism/yomiyasu)
+was referenced in the Issue. It edits prose; it is not a quality gate,
+and adopting it must not turn a text-editing aid into a claim of
+automated quality assurance. Python is not added as a required
+runtime.
+
+**Decision.**
+
+- **Unsupported syntax degrades to literal text, with two recorded
+  exceptions.** Footnote markers, pipe tables, `$…$` / `$$…$$`,
+  `~~…~~`, heading levels past `###`, definition lists, setext
+  headings and reference links are NOT dropped and NOT silently
+  transformed: they stay in the rendered paragraph as the characters
+  the operator typed. Silent deletion would change the meaning of an
+  article without evidence; literal text is visible, reviewable and
+  reversible.
+- **The two exceptions are shape changes, never meaning or safety
+  changes.** `![alt](url)` splits into the character `!` plus the
+  SUPPORTED `[alt](url)` link syntax, so it renders as `!` followed by
+  an anchor — `![](url)` renders `!` plus a nameless anchor. No `<img>`
+  is created and the URL still goes through the link policy. External
+  targets get `rel="noopener noreferrer"`; a dangerous scheme does not
+  become an anchor at all — it renders the visible, inert blocked
+  marker from Decision 6 (`data-blocked-reason` / `data-blocked-href`).
+  Likewise a line-initial `- [ ] task` consumes the
+  supported `- ` list marker and renders `<ul><li>[ ] task</li></ul>`;
+  only the inline code-span form stays literal. Meaning survives in
+  all three cases, but the SHAPE does not, and an operator has to be
+  told that rather than discovering it in production. All three
+  behaviours are pinned by `src/portfolio/markdown.safety.test.tsx` and
+  stated per-construct in `docs/portfolio/markdown-format.md` § 3.
+- **Safety, typography and text quality are three separate claims.**
+  The renderer owns the first two and can be tested for them. It owns
+  neither the third nor publication: `src/portfolio/load.ts` decides
+  what is public (Decision 3), and a reviewer decides whether a claim
+  was verified. A renderer test can prove "the renderer did not alter
+  the words"; it can never prove "the words were correct".
+- **Locale is opt-in at the consuming surface, never inferred.** The
+  renderer takes `source` and `siteOrigin`, and nothing else. It emits
+  no `lang` / `dir`, performs no smart quotes, ellipsis folding, dash
+  substitution or CJK line-break rule, and switches no font by locale.
+  A future feature that genuinely needs locale (Japanese kinsoku, for
+  example) must be opted into explicitly by the surface that needs it
+  and must arrive under its own ticket — never as a global default.
+
+**Known limitation recorded, not fixed.** Intraword `_` becomes
+emphasis (CommonMark would not), so a bare `MAX_RETRY_COUNT` renders
+as `MAXRETRYCOUNT`; authors are told to write identifiers in a code
+span, which is byte-exact. It is pinned by a test so a future fix is a
+deliberate, visible change, and it changes how already-published
+bodies read, which is an owner decision rather than a test-suite
+decision. (The former "stripped-scheme link keeps `target=_blank`"
+limitation was removed by Decision 6 / Issue #451: a refused href is no
+longer rendered as an anchor with `href="#"`, so there is no dead
+anchor left to inherit the target.)
+
+**Cross-references.**
+
+- `docs/portfolio/markdown-format.md` — the full contract, the
+  unsupported-syntax matrix and the reproduction commands.
+- `src/portfolio/fixtures/markdown/` — the two fixtures the suite,
+  the Storybook stories and the report generator all read.
+- `src/portfolio/markdown.safety.test.tsx` — the fixture-level suite.
+- `scripts/markdown-format-report.mjs` — the verification report whose
+  screenshot the Issue asks for.

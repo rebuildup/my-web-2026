@@ -237,6 +237,45 @@ ci:
     cache_key: 'pnpm-${{ runner.os }}-${{ hashFiles(''pnpm-lock.yaml'') }}'
     install_args: '--frozen-lockfile'
 
+# Issue #415 - cross-engine compatibility gate.
+#
+# Deliberately NOT a `validate:*` entry point. It re-runs the ALREADY
+# BUILT Worker through three Playwright engines and publishes a matrix;
+# folding it into `validate:integration` would multiply the required
+# `validate` check by three and merge two different questions ("does the
+# build pass" / "does the public surface render everywhere"). AGENTS.md
+# 5 keeps the three deterministic entry points as they are.
+compat:
+  workflow: .github/workflows/compat.yml
+  local_command: 'pnpm run e2e:compat'
+  report_command: 'pnpm run verify:compat-screenshot'
+  config: playwright.compat.config.ts
+  specs: 'e2e/compat/**'
+  engines:
+    - chromium
+    - firefox
+    - webkit
+  preconditions:
+    - 'pnpm run build (vite preview serves the built Worker)'
+    - 'pnpm run e2e:compat:install (all three engine binaries)'
+  negative_control: 'e2e/compat/negative-control.spec.ts'
+  artefacts:
+    - path: '.tmp/compat-results.json'
+      source: 'Playwright JSON reporter'
+    - path: '.tmp/compat-matrix.html'
+      source: 'scripts/make-compat-matrix-report.mjs'
+    - path: 'playwright-report/'
+      source: 'Playwright html reporter (CI only)'
+    - path: 'docs/verification/compat/browsers-matrix.webp'
+      source: 'committed verification screenshot (Issue #415 PR evidence)'
+  os_differential:
+    note: >-
+      `workflow_dispatch` takes a `runner` input (ubuntu-latest /
+      macos-latest) so an engine behaviour that differs per host can be
+      measured on both instead of assumed. The current known
+      differential is recorded in docs/development.md.
+  cost_class: medium
+
 coverage_policy:
   enabled: false
   rationale: 'ADR-0007 — coverage thresholds are deferred to 0.2.0; coverage data is not collected at 0.1.0.'

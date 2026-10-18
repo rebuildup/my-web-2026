@@ -312,15 +312,17 @@ nothing to clickjack, and same-origin framing stays available.
 Coverage is checked rather than remembered. The static gate walks every
 `.html` file under `public/`, derives the URLs Static Assets serves it
 under (`/share/<slug>/` and `/share/<slug>/index.html`), and fails when
-no rule matches that URL with a `frame-ancestors` directive — so adding a
-public document cannot ship framable by any third party by omission.
+**either** served URL is not matched by a rule carrying a
+`frame-ancestors` directive — so adding a public document, or protecting
+only one of its two URLs, cannot ship framable by any third party by
+omission.
 
 ### Where it is enforced
 
 | Gate | What it proves | Where |
 | --- | --- | --- |
 | Runtime suite | Real headers through `SELF.fetch` for every Worker response: `/admin*` and `/api/v1/auth/*` are `'none'`, public surfaces are `'self'`, the anonymous `/admin` redirect carries the header with no content-type, lookalike paths do not inherit a denial, and `/tools/prototype` still mounts its same-origin artefact. | `test/integration/frame-ancestors.test.ts` (workerd pool) |
-| Static gate | The Static Assets half, which no runtime test can observe: every `_headers` rule under `/tools` carries `frame-ancestors 'self'`, every committed public HTML document under `public/` is covered by a rule that carries one, no shipped value is permissive (`*`, `https:`, absolute origins), no rule targets a Worker-owned path, and the Worker half still exists. | `scripts/check-frame-ancestors-policy.mjs`, wired via `scripts/check-frame-ancestors-policy.test.mjs` |
+| Static gate | The Static Assets half, which no runtime test can observe: every `_headers` rule under `/tools` carries `frame-ancestors 'self'`, every served URL of every committed public HTML document under `public/` (directory and explicit `index.html`) is matched by a rule that carries one, no shipped value is permissive (`*`, `https:`, absolute origins), no rule targets a Worker-owned path, and the Worker half still exists. | `scripts/check-frame-ancestors-policy.mjs`, wired via `scripts/check-frame-ancestors-policy.test.mjs` |
 
 Run the static gate on its own with `pnpm run security:embed:check`
 (`node scripts/check-frame-ancestors-policy.mjs`). Exit 1 means a
@@ -527,6 +529,141 @@ statement assembled in a variable is not scanned at all and must be
 caught by the runtime suite (or by review). The inventory above names
 the variable-built statements that exist today — keep it current when
 one is added.
+
+## HTTPS 強制と HSTS (Issue #446)
+
+### ルール
+
+**HTTPS で届いたリクエストに対する Worker のレスポンスだけが**、
+意図した `Strict-Transport-Security` を返す。値は **`max-age` 単独**で、
+`includeSubDomains` / `preload` は付けない。
+
+| 経路 | HSTS | 根拠 |
+| --- | --- | --- |
+| SSR ドキュメント（`/` `/contact` など） | 付与 | `src/server.ts` の `applyTransportSecurityPolicy`（dispatch の外側） |
+| 外部境界 `/api/v1/*` | 付与 | 同上（Hono パスにも同一ポリシーが乗る） |
+| リダイレクト（`/admin` の 307 → `/admin/login` など） | 付与 | body / content-type が無くても同じ分岐を通る |
+| `http://` で届いたリクエスト | **付与しない** | RFC 6797 §7.2 は非 secure 受信の HSTS を無視すると規定。付与しても無意味で、「HTTPS が設定済み」という誤解を生むだけ |
+| Cloudflare Static Assets（`/assets/*` など） | **付与しない** | asset server のレスポンスであり Worker は header を付けられない（`_headers` の責務。Issue #291 と同じ制約） |
+
+Static Assets .Named response が HSTS を持たないことは
+**到達経路の穴ではない**。HSTS は host 単位で、一度でも secure 応答で
+受け取るとその origin に対して固定され、ドキュメント応答がそれを
+設定する。origin 全体で普遍に効かせるコントロールは Cloudflare
+zone 設定（SSL/TLS → Edge Certificates → HSTS）であり、これは
+operator 所有で**リポジトリからは観測できない**（後述「観測していないもの」）。
+
+### 意図した値
+
+```
+Strict-Transport-Security: max-age=31536000
+```
+
+- 31536000 s = 365 日。ブラウザの preload 申請に必要な 2 年
+  （63072000 s）にせず、zone の全ホストに対する長期コミットメントを
+  避けるため 1 年で止める。
+- 値は `src/server.ts` の `HSTS_DIRECTIVE` 1 箇所だけが所有する。
+  他の場所（テスト・`_headers`・生成スクリプト）に書くと
+  `scripts/check-hsts-policy.mjs` が exit 1 になる。
+
+### 検証（4 層）
+
+| Layer | 何を証明するか | Where |
+| --- | --- | --- |
+| 実行時スイート | HTTPS での SSR / 外部境界 / リダイレクトが正確に意図した値を 1 つだけ持つこと、http では 0 個であること、値に `includeSubDomains` / `preload` が無いこと | `test/integration/hsts-transport-security.test.ts`（workerd pool） |
+| 静的 gate | 宣言が 1 箇所だけであること、`max-age` が許可域（1 日〜2 年）であること、未知 directive が無いこと、`includeSubDomains` / `preload` が無いこと、コード全体のリテラルが canonical と一致すること | `scripts/check-hsts-policy.mjs`（fixture は `scripts/check-hsts-policy.test.mjs`） |
+| E2E（local） | `pnpm preview`（`http://127.0.0.1:3000`）の応答に HSTS が無いこと。plaintext 配信を「HTTPS 化済み」に見せない | `e2e/smoke.spec.ts` |
+| E2E（production、read-only） | canonical origin の**各 surface**（`/` と `/api/v1/health`）がそれぞれ host-scoped な値であること | `e2e/prod-smoke.spec.ts`（手動 `workflow_dispatch` / `pnpm run e2e:prod`） |
+
+静的 gate 単体の実行:
+
+```bash
+node scripts/check-hsts-policy.mjs
+```
+
+gate は Cookie の `Max-Age` と Cache-Control の `max-age` を
+HSTS と見間違えないよう、token 名ではなく**文脈**（`_headers` の
+`Strict-Transport-Security:` 行、または `max-age` を含む文字列リテラル）で
+判定する。対象は単一引用符・二重引用符・**テンプレートリテラル**の
+3 種すべて（`` c.header(HSTS_HEADER, `max-age=…; includeSubDomains`) ``
+のような拡張も走査対象）。RFC 6797 の directive 名は大文字小文字を
+区別しないため、`MAX-AGE=…` も同じ候補として読み、canonical との比較も
+case-insensitive に行う（Set-Cookie の `Max-Age` は属性の正確な綴りで
+単独のときだけ Cookie として除外する）。`+` で連結されたリテラルは
+**1 つの式として畳み込む**ため、`'max-age=31536000' + '; includeSubDomains'`
+は拡張として落ちる。連結の相手がリテラルでない場合
+（`SUFFIX + 'max-age=…'`、`HSTS_DIRECTIVE + '; …'`）は実行値が
+静的には不明なので「composed at runtime」として報告する。
+コメントは走査前に空白で埋めるため、
+doc comment の markdown（`` `max-age=0` ``）を宣言と誤読しない。
+`max-age` の一部が Cache-Control / Set-Cookie の token を伴う文字列
+（`public, max-age=31536000, immutable` など）は他ヘッダーの値と
+みなして対象外にする。RFC 6797 が定義しない token を含むリテラル
+（`max-age=31536000; includeSubDomains; report-uri=x`）や、実行時に
+組み立てられるため比較できないリテラル（`max-age=${seconds}`）は
+「読み飛ばす」のではなく**違反として報告する**。fixture ファイル
+（`*.test.*` / `*.spec.*`）は違反を意図的に植えるため対象外で、
+実行時スイートと canonical 値の不一致は
+`test/integration/hsts-transport-security.test.ts` が落とす。
+
+production smoke は **deploy 後**の観測専用である。HSTS を返す Worker
+が本番に載る前に `pnpm run e2e:prod` を走らせると
+「Worker policy is not live」で失敗するのが正しい挙動であり、
+deploy 前のベースライン取得には
+[`docs/runbook/issue-139-rotation.md`](runbook/issue-139-rotation.md)
+の transition フェーズ
+（`pnpm run e2e:prod:transition`、この検査を skip する）を使う。
+
+### includeSubDomains / preload を付ける条件
+
+両方とも **コード変更ではなく owner 決定**であり、下列を先に満たすまで
+不可（gate が機械的に落とす）。
+
+1. **サブドメインごとの HTTPS 到達性の監査**が本ドキュメントに
+   記録されていること。zone には現在 `rebuildup.dev` 以外にも
+   `media.rebuildup.dev`（R2 custom domain。`wrangler.production.jsonc`
+   の `MEDIA_PUBLIC_BASE_URL`）が存在する。HTTPS 応答できない
+   サブドメインが 1 つでもあれば、そのホストは `max-age` の間だけ
+   到達不能になる。
+2. **zone 設定側で HSTS を有効化**していること。zone の
+   Edge Certificates → HSTS が Worker ヘッダーと二重にならないか
+   確認する（両方が付く場合、ブラウザはカンマ区切り directives として
+   解釈する。Worker は「既にヘッダーがある応答には付けない」ガードを
+   持つが、zone 側は Worker から制御できない）。
+3. `preload` はさらにブラウザ preload list への申請が prerequisite で、
+   取り下げに月単位を要する。申請しない。
+
+段階的な ramp（値を変更する場合は必ず gate とテストも同時に更新する）:
+
+| 段階 | 値 | 条件 |
+| --- | --- | --- |
+| 1（現状） | `max-age=31536000` | HTTPS 到達性を local workerd で確認済み |
+| 2 | `max-age=63072000` | 運用実績に基づいて長期化の可否を判断 |
+| 3 | + `includeSubDomains` | サブドメイン監査（上記 1）が記録されていること |
+| 4 | + `preload` | preload 申請の判断（上記 3） |
+
+### 観測していないもの / 捏造していないもの
+
+- **Cloudflare zone 設定**（Always Use HTTPS、Edge Certificates →
+  HSTS、Minimum TLS Version 等）は dashboard 側の状態であり、
+  Wrangler 設定ファイルには現れない。本 Issue はこれを変更せず、
+  本番を触って観測もしない。production で実測するのは
+  `e2e/prod-smoke.spec.ts` の read-only GET のみ。
+- **本番の TLS チェーン / リダイレクトの実測値**は本 PR の証跡に
+  含まれない（本番を破壊的操作に触れないという受け入れ条件のため）。
+- **サブドメインの HTTPS 対応状況**は未監査。したがって
+  `includeSubDomains` は付けない。
+- 新規の HTTPS 強制機構（リダイレクト Worker、redirect rule、
+  新しい endpoint）は追加していない。
+
+### 運用契約
+
+本 Issue で変更するのは**レスポンス header 1 つ**の付与のみ。
+認証（Better Auth / API key）、rate limit、Cloudflare binding
+（`DB` / `MEDIA` / `ASSETS`）、Tool Registry 依存、外部 HTTP 契約、
+キャッシュポリシー（Issue #291）はいずれも不変。`_headers` には
+一切変更を加えていない（Static Assets は本ポリシーの対象外という
+判断であり、意図的な据え置き）。
 
 ## Step-up re-authentication
 

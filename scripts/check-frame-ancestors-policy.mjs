@@ -234,27 +234,36 @@ export function frameAncestorsValues(cspValue) {
  * Every public HTML document the rules leave framable by any third
  * party. Returns the list of violations; empty means covered.
  *
- * A document counts as covered when at least one matching rule carries a
- * `Content-Security-Policy` with a `frame-ancestors` directive. The
- * VALUE is rule 2's business (`evaluateEmbedPolicy` rejects a permissive
- * one); this only asserts that the namespace states a policy at all,
- * because no Worker rule can reach a Static Assets response.
+ * A document counts as covered when every URL Static Assets serves it
+ * under is matched by a rule carrying a `Content-Security-Policy` with
+ * a `frame-ancestors` directive. Each served form is checked
+ * independently: a rule that covers `/share/<slug>/` but not
+ * `/share/<slug>/index.html` (or vice versa) leaves the other URL
+ * framable by a third party, so `document.paths.some(...)` is not
+ * enough. The VALUE is rule 2's business (`evaluateEmbedPolicy`
+ * rejects a permissive one); this only asserts that each served URL
+ * states a policy at all, because no Worker rule can reach a Static
+ * Assets response.
  */
 export function evaluateStaticHtmlCoverage(rules, documents) {
 	const errors = [];
 	for (const document of documents) {
-		const covered = rules.some((rule) => {
-			const matched = document.paths.some((path) => patternMatchesPath(rule.pattern, path));
-			if (!matched) return false;
-			return rule.headers.some(
-				(header) =>
-					header.name.toLowerCase() === CSP_HEADER && frameAncestorsValues(header.value).length > 0,
-			);
-		});
-		if (covered) continue;
+		const uncovered = document.paths.filter(
+			(path) =>
+				!rules.some(
+					(rule) =>
+						patternMatchesPath(rule.pattern, path) &&
+						rule.headers.some(
+							(header) =>
+								header.name.toLowerCase() === CSP_HEADER &&
+								frameAncestorsValues(header.value).length > 0,
+						),
+				),
+		);
+		if (uncovered.length === 0) continue;
 		const patterns = rules.map((rule) => rule.pattern).join(', ') || '(none)';
 		errors.push(
-			`${document.file} (public HTML document): no _headers rule matches it with a ${FRAME_ANCESTORS} directive. Static Assets answer before the Worker runs, so src/server.ts cannot cover this document and it currently carries no framing policy — any third-party site may iframe it. Add a rule (e.g. \`/share/*\` with \`${CSP_HEADER}: ${FRAME_ANCESTORS} 'self'\`); matching rules today: ${patterns}.`,
+			`${document.file} (public HTML document): served URL${uncovered.length === 1 ? '' : 's'} ${uncovered.join(', ')} ${uncovered.length === 1 ? 'is' : 'are'} not matched by any _headers rule that carries a ${FRAME_ANCESTORS} directive. Static Assets answer before the Worker runs, so src/server.ts cannot cover this document and it currently carries no framing policy — any third-party site may iframe it. Add a rule (e.g. \`/share/*\` with \`${CSP_HEADER}: ${FRAME_ANCESTORS} 'self'\`); matching rules today: ${patterns}.`,
 		);
 	}
 	return errors;

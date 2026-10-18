@@ -331,6 +331,79 @@ function applyFrameAncestorsPolicy(request: Request, response: Response): Respon
 }
 
 /**
+ * HSTS delivery policy (Issue #446).
+ *
+ * `Strict-Transport-Security` is the one transport guarantee the
+ * Worker can make by itself: every response it produces for an HTTPS
+ * request pins this host to HTTPS for `max-age` seconds, so a later
+ * plaintext request to the same host is upgraded by the browser
+ * instead of being answered in the clear.
+ *
+ * Applied to BOTH dispatch branches (SSR documents and the external
+ * Hono boundary), because the guarantee is a property of the origin,
+ * not of one handler. Applied only when the request itself arrived
+ * over HTTPS: RFC 6797 §7.2 requires a user agent to ignore an HSTS
+ * header received over insecure transport, so emitting one on a
+ * plaintext response would be inert noise that hides a real failure.
+ *
+ * Scope limit (mirrors Issue #291's `_headers` limit): this covers
+ * Worker-generated responses only. Cloudflare Static Assets responses
+ * are produced by the asset server, which a Worker cannot annotate
+ * (see `public/_headers`). HSTS is host-scoped and sticky — the
+ * document response above already pins the origin for the whole
+ * `max-age` — and the origin-wide control is the zone-level
+ * Cloudflare setting (SSL/TLS → Edge Certificates → HSTS), which is
+ * operator-owned and NOT observable from this repository. Nothing
+ * here claims to verify that setting.
+ *
+ * Why `max-age` alone — never `includeSubDomains` / `preload`
+ * -------------------------------------------------------------
+ *   - `includeSubDomains` extends this policy to every hostname
+ *     under the zone. The zone has more than one hostname today
+ *     (`media.rebuildup.dev`, the R2 custom domain declared in
+ *     `wrangler.production.jsonc`), and a subdomain that cannot
+ *     answer over HTTPS becomes unreachable for the entire `max-age`
+ *     window. This repository cannot observe each subdomain's HTTPS
+ *     posture, so turning it on would be an unverified claim about
+ *     infrastructure the Worker does not own.
+ *   - `preload` additionally submits the zone to the browser preload
+ *     list, where removal takes months. Same missing precondition,
+ *     far higher cost of being wrong.
+ *
+ * The ramp and the preconditions are documented in
+ * `docs/security.md`; `scripts/check-hsts-policy.mjs` fails the build
+ * if either directive is added while the audit is unrecorded.
+ */
+export const HSTS_DIRECTIVE = 'max-age=31536000';
+
+const HSTS_HEADER = 'strict-transport-security';
+
+/**
+ * Attach the HSTS policy to one response.
+ *
+ * An existing header always wins: something upstream already made a
+ * transport decision for this response, and a second directive would
+ * only add a duplicate header to combine. A sealed response (immutable
+ * headers) is left alone rather than failing a request over a header
+ * hint. That is a deliberate fail-open: refusing to serve a response
+ * because a hint could not be attached would trade a transport nicety
+ * for an outage. The cost is that the guarantee is then missing on that
+ * response, which is why the contract suite drives the three shipped
+ * surfaces and asserts they are mutable.
+ */
+function applyTransportSecurityPolicy(request: Request, response: Response): Response {
+	if (response.headers.has(HSTS_HEADER)) return response;
+	if (new URL(request.url).protocol !== 'https:') return response;
+
+	try {
+		response.headers.set(HSTS_HEADER, HSTS_DIRECTIVE);
+	} catch {
+		return response;
+	}
+	return response;
+}
+
+/**
  * Cloudflare Worker entry for my-web-2026.
  *
  * Default export shape matches the Cloudflare Workers `ExportedHandler`
@@ -344,12 +417,9 @@ function applyFrameAncestorsPolicy(request: Request, response: Response): Respon
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
-		if (matchesExternalBoundary(url.pathname)) {
-			return applyFrameAncestorsPolicy(request, await externalBoundary.fetch(request, env, ctx));
-		}
-		return applyHtmlCachePolicy(
-			request,
-			applyFrameAncestorsPolicy(request, await handler.fetch(request)),
-		);
+		const response = matchesExternalBoundary(url.pathname)
+			? await externalBoundary.fetch(request, env, ctx)
+			: applyHtmlCachePolicy(request, await handler.fetch(request));
+		return applyTransportSecurityPolicy(request, applyFrameAncestorsPolicy(request, response));
 	},
 } satisfies ExportedHandler<Env>;

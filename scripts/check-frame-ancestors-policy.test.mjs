@@ -192,7 +192,37 @@ describe('check-frame-ancestors-policy — public HTML coverage', () => {
 		const text = '/share/*\n  Cache-Control: public, max-age=0, must-revalidate\n';
 		const errors = evaluateStaticHtmlCoverage(parseHeadersFile(text).rules, SHARE_DOCUMENT);
 		assert.equal(errors.length, 1);
-		assert.match(errors[0], /no _headers rule matches it with a frame-ancestors directive/);
+		assert.match(
+			errors[0],
+			/not matched by any _headers rule that carries a frame-ancestors directive/,
+		);
+	});
+
+	it('fails when a rule covers only the directory form of an index document', () => {
+		// Static Assets answers both `/share/procon2026/` and
+		// `/share/procon2026/index.html`. Covering one leaves the other
+		// framable by a third party, so each served URL is checked.
+		const text = "/share/procon2026/\n  Content-Security-Policy: frame-ancestors 'self'\n";
+		const errors = evaluateStaticHtmlCoverage(parseHeadersFile(text).rules, SHARE_DOCUMENT);
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /\/share\/procon2026\/index\.html \(public HTML document\)/);
+		assert.match(errors[0], /\/share\/procon2026\/index\.html is not matched/);
+	});
+
+	it('fails when a rule covers only the explicit index.html URL', () => {
+		const text =
+			"/share/procon2026/index.html\n  Content-Security-Policy: frame-ancestors 'self'\n";
+		const errors = evaluateStaticHtmlCoverage(parseHeadersFile(text).rules, SHARE_DOCUMENT);
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /\/share\/procon2026\/ is not matched/);
+	});
+
+	it('accepts two rules that cover one served form each', () => {
+		const text = [
+			"/share/procon2026/\n  Content-Security-Policy: frame-ancestors 'self'\n",
+			"/share/procon2026/index.html\n  Content-Security-Policy: frame-ancestors 'self'\n",
+		].join('');
+		assert.deepEqual(evaluateStaticHtmlCoverage(parseHeadersFile(text).rules, SHARE_DOCUMENT), []);
 	});
 
 	it('accepts a :param rule that covers a generated Tool artefact document', () => {

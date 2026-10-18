@@ -268,7 +268,7 @@ canonical location for the flag is `.dev.vars` only.
 
 ```bash
 pnpm run validate:fast         # read-only gate chain (see quality/profile.yaml for the ordered component list)
-pnpm run validate:integration  # + build + wrangler:dry-run + lint:ci + build-storybook
+pnpm run validate:integration  # + build + bundle budget + wrangler:dry-run + lint:ci + build-storybook
 pnpm run validate:release      # + cf-typegen:check
 ```
 
@@ -299,6 +299,91 @@ CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 `validate` job on every PR and every push to `main` / `release-*`.
 The same job also installs the Playwright Chromium binary and runs
 the E2E suite against `pnpm dev`.
+
+## Route bundle budget (Issue #482)
+
+`pnpm run bundle:budget:check` measures the **initial JS and CSS bytes** of
+every route from the Vite build, and fails `validate:integration` when a route
+outgrows its cap.
+
+```bash
+pnpm run build               # vite build writes dist/client/bundle-graph.json
+pnpm run bundle:budget:check # per-route table + PASS/FAIL
+pnpm run bundle:budget:check -- --json --report=.tmp/bundle-budget.json
+pnpm run bundle:budget:check -- --html=.tmp/bundle-budget.html
+```
+
+It reads the chunk graph the `my-web-2026:client-bundle-graph` Vite plugin
+emits during the client build. For each route in `src/routeTree.gen.ts` it sums
+the client entry chunk, the transitive **static**-import closure of that
+route's chunk, and the chunks of its **layout ancestors** (`/admin/keys`
+renders inside `/admin`'s layout, which is a separate chunk the child's own
+closure does not import). Dynamic imports are never charged to first paint.
+When a route file owns more than one chunk — TanStack Start splits a route's
+component from its not-found component — the `component` split is the one
+measured, chosen by an explicit rank rather than by the order the bundler
+happened to emit the chunks in.
+
+`--json` writes exactly one JSON document to **stdout**; every human status
+line goes to stderr, so `pnpm run bundle:budget:check -- --json | jq` works.
+`--report=` and `--html=` create their parent directory, so the `.tmp/` paths
+above work on a fresh checkout where `.tmp/` does not exist yet.
+
+Sizes are **byte lengths of the emitted files**, read back from disk after
+Rollup flushed them — not JavaScript string lengths, and not the pre-finalize
+copy. That matters twice: a chunk carrying a Japanese literal is larger on disk
+than `code.length` suggests, and Vite's `build-import-analysis` rewrites
+`chunk.code` *after* an ordinary user plugin's `generateBundle` runs (it is
+what injects the preload marker and dependency map). A budget gate that
+undercounts its own artefacts could pass a real over-cap file, so the graph
+plugin runs in post order from `writeBundle`
+(`vite.config.ts` → `scripts/_client-bundle-graph.mjs`).
+
+An acknowledged `exception` keeps the run green while the bundle is still above
+its cap, so the HTML report lists every exception with its measurement, cap,
+overage and reason instead of only printing the violations.
+
+Numbers live in [`quality/bundle-budget.json`](../quality/bundle-budget.json);
+the gate records its reproduction conditions (no browser, no network, no CPU
+dependence, and the measured commit SHA) both in that file and in
+`quality/profile.yaml`.
+
+Three things this gate is **not**:
+
+- It is not a Lighthouse score gate (Issue #384 measures, #385 thresholds).
+- It is not a Core Web Vitals / LCP / CLS budget (Issue #386).
+- It is not a rendering-speed measurement of any kind. It counts shipped bytes.
+
+Tool bundles under `/tools/<slug>/app/**` are independent Vite builds loaded in
+a sandboxed iframe, so they are aggregated and capped separately — a heavy Tool
+cannot hide behind a host route's budget.
+
+Accepting an overage needs a reason:
+
+```json
+"/tools/": {
+  "initial_js_bytes": 1560000,
+  "initial_css_bytes": 40000,
+  "exception": {
+    "metric": "initial_js_bytes",
+    "reason": "Why this route knowingly ships more, and what will remove it."
+  }
+}
+```
+
+An exception without a reason of at least 20 characters is a configuration
+error and fails the gate. So is a new route with no budget entry: routes come
+from the generated tree, so forgetting the budget fails loudly instead of
+silently shipping an uncapped page. `tool_iframe` is required for the same
+reason — deleting the section would turn the Tool cap off without a word.
+
+Raising a cap is **not** machine-checked. The gate compares numbers; it does
+not compare a cap against the previous cap, so a PR that multiplies
+`initial_js_bytes` gets a green run. What holds the line is review: a cap
+change is a one-line diff in `quality/bundle-budget.json`, and the PR that
+makes it is expected to state the new measurement, the delta, and what caused
+it. An `exception` is the only mechanism that survives that review on its own
+merits, because the gate itself refuses an unreasoned one.
 
 Two workflow gates exist because they answer different questions:
 `lint:ci` (actionlint) owns YAML syntax, and

@@ -673,6 +673,10 @@ test.describe('production representative routes (Issue #500)', () => {
  * introduces the header (see `pnpm run e2e:prod:transition`).
  */
 test.describe('transport security (Issue #446)', () => {
+	test.skip(
+		!IS_CANONICAL_RUN,
+		'HSTS is only observable on the canonical HTTPS origin. A local rehearsal runs over http://127.0.0.1, where the Worker correctly does not attach the header.',
+	);
 	test('the canonical origin serves a host-scoped HSTS directive', async ({ request }) => {
 		test.skip(
 			PROD_SMOKE_PHASE === 'transition',

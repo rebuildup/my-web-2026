@@ -340,6 +340,17 @@ The operational contract — principal semantics, middleware ordering,
 the client mapping, the drift guard between the retry window and
 `RATE_LIMITS`, and what the local workerd suite does *not* prove —
 lives in [`security/write-rate-limit.md`](security/write-rate-limit.md).
+
+## Response security headers
+
+`X-Content-Type-Options: nosniff`, `Referrer-Policy` and
+`Permissions-Policy` are emitted on every response. The contract, the
+per-Tool permission grant, and how to verify both delivery surfaces
+(Worker responses and Cloudflare Static Assets) are documented in
+[`docs/security/security-headers.md`](security/security-headers.md).
+The gate is `node scripts/check-security-headers.mjs`
+(`pnpm run security:headers:check`, part of `validate:fast`).
+
 ## CSP frame-ancestors
 
 > The inbound embed policy: which ancestor may put one of our

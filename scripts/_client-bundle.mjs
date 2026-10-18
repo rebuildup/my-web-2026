@@ -298,6 +298,9 @@ export function summarizeRouteLoads(measurements) {
 		return {
 			route: measurement.route,
 			status: measurement.status ?? null,
+			// A route whose navigation failed is carried through, never
+			// dropped: an absent route must not read as a clean one.
+			error: measurement.error ?? null,
 			assetCount: assets.length - documents.length,
 			documentCount: documents.length,
 			// A non-document response whose path is not in the emitted output is
@@ -375,6 +378,19 @@ export function evaluateBundleFindings({ inventory, graph, routeSummary, homeRou
 				home.toolBytes === 0 ? 'pass' : 'fail',
 				`${home.toolBytes} byte(s) under tools/** were requested by ${homeRoute} out of ${home.bytes} total byte(s).`,
 				{ toolAssets: home.toolAssetCount, toolBytes: home.toolBytes },
+			),
+		);
+	}
+
+	if (routeSummary) {
+		const failed = routeSummary.routes.filter((route) => route.error);
+		findings.push(
+			finding(
+				'routes-loaded',
+				'Every measured route finished loading',
+				failed.length === 0 ? 'pass' : 'fail',
+				`${routeSummary.routes.length - failed.length}/${routeSummary.routes.length} measured route(s) loaded; a route that never loaded is reported, never dropped.`,
+				{ failed: failed.map((route) => `${route.route}: ${route.error}`) },
 			),
 		);
 	}
@@ -579,7 +595,7 @@ export function renderMarkdownReport(report) {
 				],
 				routeSummary.routes.map((route) => [
 					code(route.route),
-					route.status ?? 'n/a',
+					route.error ? `FAILED: ${route.error}` : (route.status ?? 'n/a'),
 					route.assetCount,
 					route.documentCount,
 					formatBytes(route.bytes),
@@ -673,7 +689,7 @@ export function renderHtmlReport(report) {
 	const routeRows = routeSummary
 		? routeSummary.routes.map((route) => [
 				route.route,
-				String(route.status ?? 'n/a'),
+				route.error ? `FAILED: ${route.error}` : String(route.status ?? 'n/a'),
 				String(route.assetCount),
 				String(route.documentCount),
 				formatBytes(route.bytes),

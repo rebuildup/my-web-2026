@@ -235,14 +235,24 @@ async function measureRoutes({ baseUrl, routes, inventoryByPath }) {
 					status: response.status(),
 				});
 			});
-			const response = await page.goto(`${baseUrl}${route}`, {
-				waitUntil: 'load',
-				timeout: 60_000,
-			});
-			await page.waitForLoadState('networkidle').catch(() => {});
+			let response = null;
+			let failure = null;
+			try {
+				response = await page.goto(`${baseUrl}${route}`, {
+					waitUntil: 'load',
+					timeout: 60_000,
+				});
+				await page.waitForLoadState('networkidle').catch(() => {});
+			} catch (error) {
+				// A route that never finishes loading is recorded, never
+				// dropped: a silently skipped route would read as a clean
+				// route in the report.
+				failure = error instanceof Error ? error.message.split('\n')[0] : String(error);
+			}
 			measurements.push({
 				route,
 				status: response?.status() ?? null,
+				error: failure,
 				assets: [...seen.values()].sort((a, b) => a.path.localeCompare(b.path)),
 			});
 			await context.close();

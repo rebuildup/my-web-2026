@@ -208,6 +208,28 @@ test('summarizeRouteLoads keeps SSR documents out of the asset totals', () => {
 	assert.equal(home.bytes, 1000);
 });
 
+test('a route whose navigation failed is reported, never dropped', () => {
+	const inventory = collectClientInventory(healthyBuild());
+	const graph = buildChunkGraph([{ path: entry, imports: {} }], { entryChunks: [entry] });
+	const findings = evaluateBundleFindings({
+		inventory,
+		graph,
+		routeSummary: summarizeRouteLoads([
+			{ route: '/', status: 200, assets: [{ path: entry, kind: 'asset', bytes: 10 }] },
+			{
+				route: '/about',
+				status: null,
+				error: 'page.goto: Timeout 60000ms exceeded',
+				assets: [],
+			},
+		]),
+		homeRoute: '/',
+	});
+	const loaded = findings.find((item) => item.id === 'routes-loaded');
+	assert.equal(loaded.status, 'fail');
+	assert.match(loaded.detail, /1\/2 measured route\(s\) loaded/);
+});
+
 test('evaluateBundleFindings fails when a route requests an unbuilt asset', () => {
 	const inventory = collectClientInventory(healthyBuild());
 	const graph = buildChunkGraph(

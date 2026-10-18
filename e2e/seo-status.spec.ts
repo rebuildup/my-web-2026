@@ -168,7 +168,9 @@ test.describe('seo status contract — browser rendering (#419)', () => {
 		await expect(page.locator('[data-error-state="not_found"]')).toBeVisible();
 	});
 
-	test('portfolio-invalid-query-input-failure renders the 404 state on a 500 response', async () => {
+	test('portfolio-invalid-query-input-failure renders the 404 state on a 500 response', async ({
+		page,
+	}) => {
 		// The browser half of the recorded gap: the SERVED STATUS is the
 		// framework's 500 while the document is the not_found surface with
 		// no retry control. Both halves are asserted, and the row's

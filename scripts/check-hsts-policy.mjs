@@ -133,10 +133,14 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 /** The Worker entry — owner of the HSTS delivery policy (Issue #446). */
 const POLICY_FILE = join('src', 'server.ts');
 
-/** The declaration that carries the single canonical directive. */
-// `export` is optional: the value lives in the Worker entry, and a
-// named export that is not a handler breaks workerd at boot.
-const DECLARATION = /(?:export\s+)?const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
+/**
+ * The declaration that carries the single canonical directive. The
+ * `export` prefix is captured rather than required: the Workers runtime
+ * treats named exports of the entry module as service entrypoints, so an
+ * exported constant makes workerd refuse to start. It is reported as a
+ * violation instead of silently matching.
+ */
+const DECLARATION = /^[ \t]*(export[ \t]+)?const HSTS_DIRECTIVE[ \t]*=[ \t]*'([^']*)'/gm;
 
 /**
  * A string literal: single-quoted, double-quoted, or a template literal.
@@ -516,11 +520,18 @@ export function readCanonicalDirective({ root = REPO_ROOT } = {}) {
 		};
 	}
 
-	const declared = [...source.matchAll(DECLARATION)].map((match) => match[1]);
+	const matches = [...source.matchAll(DECLARATION)];
+	const declared = matches.map((match) => match[2]);
 	const violations = [];
 	if (declared.length === 0) {
 		violations.push(
 			`${POLICY_FILE} declares no \`const HSTS_DIRECTIVE = '…'\` — the HSTS policy lost its source of truth.`,
+		);
+	}
+	const exported = matches.filter((match) => match[1]);
+	if (exported.length > 0) {
+		violations.push(
+			`${POLICY_FILE} exports HSTS_DIRECTIVE — named exports of the Worker entry become service entrypoints, so workerd rejects the non-handler value and the Worker cannot start. Keep it module-private (Issue #596).`,
 		);
 	}
 	if (declared.length > 1) {

@@ -181,7 +181,7 @@ describe('home loaders — an upstream that echoes the request cannot poison the
 		expectNoCanary(logged, 'home.access count console');
 	});
 
-	it('getHomeReactionsImpl returns the disabled-widget shape and logs nothing sensitive', async () => {
+	it('getHomeReactionsImpl returns the empty-aggregate shape and logs nothing sensitive', async () => {
 		const envLike = { MY_WEB_2026_CONSUMER_API_KEY: CANARY_TOKEN };
 		let result: Awaited<ReturnType<typeof getHomeReactionsImpl>> | undefined;
 		const logged = await captureConsole(async () => {

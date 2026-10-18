@@ -19,7 +19,6 @@ import {
 } from './cookie';
 import { MAX_EMOJI_SLUG_LEN, validateEmojiSlug } from './emoji-catalog';
 
-const accessLogger = createAuditLogger('home.access');
 const reactionsLogger = createAuditLogger('home.reactions');
 
 /**

@@ -31,21 +31,31 @@
  *   - `*.test.*` / `*.stories.*` are exempt on the `src/**` side:
  *     they assert *on* console output, so calling console is the
  *     point. Test fixtures are repo-controlled, never real values.
- *   - `src/logging/**` is exempt because it IS the logging surface.
+ *   - `src/logging/logger.ts` is exempt because it IS the logging
+ *     surface. The exemption is that one file, not the directory: a
+ *     new `src/logging/raw.ts` that logs unredacted must still fail,
+ *     or the "leaf obligation" would grow a second, ungated exit.
  *   - Third-party code (`external/**`, `node_modules/**`) is out of
  *     scope: the gate is about obligations this repository owns.
+ *
+ * Known limits (documented in `docs/security/log-redaction.md`):
+ * this is a static read of the text, so a computed call
+ * (`console['error'](x)`, `const c = console; c.error(x)`) does not
+ * match. Type checking and review remain the backstop for those.
  *
  * Exit codes: 0 = clean, 1 = at least one violation, 2 = bad input.
  */
 
 import { readFileSync, readdirSync, statSync } from 'node:fs';
-import { dirname, extname, join, relative, resolve, sep } from 'node:path';
+import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const SRC_ROOT = join(ROOT, 'src');
 const SCRIPTS_ROOT = join(ROOT, 'scripts');
 const LOGGING_OWNER = join(SRC_ROOT, 'logging');
+/** The one file allowed to touch `console` (AGENTS.md §3). */
+const LOGGING_LOGGER = join(LOGGING_OWNER, 'logger.ts');
 
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'];
 
@@ -338,7 +348,7 @@ function inspectOutputCalls({ file, source, pattern, rule, secretNameOnly }) {
 function checkRuntimeLogs() {
 	const violations = [];
 	for (const file of sourceFilesUnder(SRC_ROOT)) {
-		if (file === LOGGING_OWNER || file.startsWith(`${LOGGING_OWNER}${sep}`)) continue;
+		if (file === LOGGING_LOGGER) continue;
 		if (TEST_FILE_PATTERN.test(file)) continue;
 		const source = readFileSync(file, 'utf8');
 		CONSOLE_METHOD_PATTERN.lastIndex = 0;
@@ -376,7 +386,7 @@ function main(argv) {
 	if (argv.includes('--help') || argv.includes('-h')) {
 		process.stdout.write(
 			'Usage: check-log-redaction.mjs\n\n' +
-				'Issue #467 — fails when src/** calls console.* outside src/logging/, or when\n' +
+				'Issue #467 — fails when src/** calls console.* outside src/logging/logger.ts, or when\n' +
 				'scripts/** prints a secret-named value.\n',
 		);
 		return 0;
@@ -394,7 +404,7 @@ function main(argv) {
 
 	if (violations.length === 0) {
 		process.stdout.write(
-			'log redaction OK: src/** logs only through src/logging, scripts/** prints no secret value\n',
+			'log redaction OK: src/** logs only through src/logging/logger.ts, scripts/** prints no secret value\n',
 		);
 		return 0;
 	}

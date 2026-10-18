@@ -108,13 +108,23 @@ describe('check-log-redaction.mjs — runtime console gate', () => {
 		assert.equal(result.status, 0);
 	});
 
-	it('exempts src/logging itself (it IS the logging surface)', () => {
+	it('exempts src/logging/logger.ts (it IS the logging surface)', () => {
+		// BASELINE already carries a `console.log` there; a second
+		// logging entry point would defeat the single-redaction-
+		// contract the exemption exists to protect.
+		const result = runGate(BASELINE);
+		assert.equal(result.status, 0);
+	});
+
+	it('does NOT exempt a sibling module inside src/logging', () => {
 		const result = runGate({
 			...BASELINE,
-			'src/logging/audit.ts':
-				"export function audit(level, message, detail) {\n\tconsole[level]('[audit] ' + message, detail);\n}\n",
+			'src/logging/raw.ts':
+				"export function audit(message) {\n\tconsole.error('[raw] ' + message);\n}\n",
 		});
-		assert.equal(result.status, 0);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /src\/logging\/raw\.ts:2/);
+		assert.match(result.stderr, /runtime-console/);
 	});
 });
 

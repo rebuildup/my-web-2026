@@ -16,8 +16,16 @@
  *      RUNNING `src/logging/redact.ts` over the sample, not by a
  *      hand-written expectation, so the report cannot drift from the
  *      implementation.
- *   3. The self-check: the page is generated only when none of the
- *      samples survives redaction. A leak fails the command.
+ *   3. The self-check: the page is written only when none of the
+ *      samples survives redaction. A leak fails the command, and a
+ *      page left by an earlier clean run is deleted rather than
+ *      left for a reviewer to screenshot.
+ *
+ * Canaries are declared next to the sample they guard, never in a
+ * second hand-maintained list. `validateSamples` refuses to generate
+ * anything when a sample declares no canary, or when a declared
+ * canary is not a substring of that sample — which is exactly the
+ * typo that once disarmed the opaque-blob guard silently.
  *
  * Safety
  * ------
@@ -29,9 +37,12 @@
  *
  * Usage:
  *   node scripts/log-redaction-report.mjs [--out=<path>]
+ *
+ * Exit codes: 0 = no canary survived, 1 = a canary survived,
+ * 2 = the sample set is unguarded (nothing was written).
  */
 
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -83,21 +94,50 @@ const SURFACES = [
 		surface: 'Analytics',
 		entry: 'GA4 route tracker (`src/editorial/analytics/GoogleAnalytics.tsx`)',
 		injected: 'location key with `?token=…&email=…`',
-		asserted: '`page_path` / `page_location` carry the pathname only',
+		asserted:
+			'`page_path` / `page_location` carry the pathname only (SPA 遷移の page_view。初回 page_view の制約は Known limits)',
 		proves: 'src/editorial/analytics/GoogleAnalytics.test.tsx',
 	},
 ];
 
-/** Fabricated inputs — the "before" column. Nothing here is a real value. */
+/**
+ * Fabricated inputs — the "before" column. Nothing here is a real
+ * value.
+ *
+ * `canaries` are the exact substrings that must not survive
+ * redaction. They live HERE, next to the value they guard, because a
+ * guard list maintained separately from the samples is a guard list
+ * that silently rots: a renamed sample leaves an entry matching
+ * nothing, and the fail-closed check stops firing while still
+ * reporting PASS. `validateSamples` enforces the binding
+ * (see below), so the two cannot drift apart.
+ */
 const SAMPLES = [
-	{ label: 'Authorization header', value: 'Authorization: Bearer mk_sample_key_0000000000' },
-	{ label: 'Cookie header', value: 'cookie: mw_actor_id=550e8400-e29b-41d4-a716-446655440000' },
+	{
+		label: 'Authorization header',
+		value: 'Authorization: Bearer mk_sample_key_0000000000',
+		canaries: ['mk_sample_key_0000000000'],
+	},
+	{
+		label: 'Cookie header',
+		value: 'cookie: mw_actor_id=550e8400-e29b-41d4-a716-446655440000',
+		canaries: ['550e8400-e29b-41d4-a716-446655440000'],
+	},
 	{
 		label: 'Single-use link',
 		value: 'https://rebuildup.dev/admin/invitations/accept?token=sample-token-abcdef',
+		canaries: ['sample-token-abcdef'],
 	},
-	{ label: 'Email address', value: 'sample.person@example.invalid' },
-	{ label: 'Opaque credential', value: 'K7xQm2Zr9Tp4Lv6Nc8Bd1Ws5Yh0Ju3Ee' },
+	{
+		label: 'Email address',
+		value: 'sample.person@example.invalid',
+		canaries: ['sample.person@example.invalid'],
+	},
+	{
+		label: 'Opaque credential',
+		value: 'K7xQm2Zr9Tp4Lv6Nc8Bd1Ws5Yh0Ju3Ee',
+		canaries: ['K7xQm2Zr9Tp4Lv6Nc8Bd1Ws5Yh0Ju3Ee'],
+	},
 	{
 		label: 'Structured detail',
 		value: {
@@ -105,18 +145,72 @@ const SAMPLES = [
 			headers: { authorization: 'Bearer mk_sample_key_0000000000' },
 			email: 'a@b.example',
 		},
+		canaries: ['mk_sample_key_0000000000', 'a@b.example'],
 	},
 ];
 
-/** Canaries that must not appear anywhere in a rendered "after" value. */
-const FORBIDDEN = [
-	'mk_sample_key_0000000000',
-	'550e8400-e29b-41d4-a716-446655440000',
-	'sample-token-abcdef',
-	'sample.person@example.invalid',
-	'K7xQm2Zr9Tp4Lv6Nc8Bd1Ws5e0',
-	'a@b.example',
-];
+/** Every canary that must not appear in any rendered "after" value. */
+const FORBIDDEN = [...new Set(SAMPLES.flatMap((sample) => sample.canaries))];
+
+/**
+ * How one sample is rendered into the page.
+ *
+ * `redact` is the live implementation, injected by `main` from the
+ * dynamic import — the report must never carry its own copy of the
+ * rules it claims to have exercised.
+ */
+function renderSample(sample, redact) {
+	const input = typeof sample.value === 'string' ? sample.value : JSON.stringify(sample.value);
+	const after =
+		typeof sample.value === 'string'
+			? redact.text(sample.value)
+			: JSON.stringify(redact.value(sample.value));
+	return { label: sample.label, input, after, canaries: sample.canaries };
+}
+
+/**
+ * Reasons the sample set cannot be trusted to prove anything.
+ *
+ * Two failure modes, both of which used to be invisible:
+ *   - a sample with no canary is never checked, and the report still
+ *     says every surface is clean;
+ *   - a canary that is not a substring of its own sample guards
+ *     nothing (the list held `…Ws5e0` for a `…Ws5Yh0Ju3Ee` value).
+ *
+ * Returning them as data keeps `main` fail-closed: a report that
+ * cannot back its own claim is not written at all.
+ */
+function validateSamples(samples) {
+	const problems = [];
+	for (const sample of samples) {
+		const canaries = sample.canaries ?? [];
+		if (canaries.length === 0) {
+			problems.push(`${sample.label}: declares no canary, so nothing about it is checked`);
+			continue;
+		}
+		for (const canary of canaries) {
+			if (typeof canary !== 'string' || canary.length === 0) {
+				problems.push(`${sample.label}: declares an empty canary`);
+			} else if (!sample.input.includes(canary)) {
+				problems.push(
+					`${sample.label}: canary does not occur in the sample it guards (nothing to match)`,
+				);
+			}
+		}
+	}
+	return problems;
+}
+
+/** `{ label, canary }` for every canary that survived redaction. */
+function findLeaks(samples) {
+	const leaks = [];
+	for (const sample of samples) {
+		for (const canary of sample.canaries ?? []) {
+			if (sample.after.includes(canary)) leaks.push({ label: sample.label, canary });
+		}
+	}
+	return leaks;
+}
 
 function escapeHtml(value) {
 	return String(value)
@@ -231,7 +325,12 @@ ${renderRows(samples)}
 
 <h2>3. 失敗時の挙動</h2>
 <p class="lede">
-  canary が 1 件でも残り的情况下、このコマンドは非ゼロ終了し、スクリーンショットは生成されません。
+  各 sample は自分が守る canary を同じ定義の中で宣言します。canary が 1 件でも
+  残った場合、このコマンドは非ゼロ終了し、HTML は書きません（以前の正常実行が
+  残した HTML も削除するため、古い PASS を撮影できません）。
+  宣言した canary が 1 件も無い、または宣言した canary が sample の一部でない
+  (照合対象が存在しない) 場合は、レポートを書く前の自己検査が非ゼロ終了する
+  ため、証明できない PASS は出力されません。
   gate <code>scripts/check-log-redaction.mjs</code> は <code>src/**</code> の直接 <code>console.*</code> を
   ビルド失敗として扱い、<code>scripts/**</code> の secret 値出力も同様に拒否します。
   本 Issue の前提がない外部機能 (Infisical CLI) は独立した stub adapter として完成させ、
@@ -240,6 +339,7 @@ ${renderRows(samples)}
 
 <footer>
   Source of truth: <code>docs/security/log-redaction.md</code> · gate: <code>pnpm run log:redaction:check</code> ·
+  ${escapeHtml(`${SAMPLES.length}`)} サンプル / ${escapeHtml(`${FORBIDDEN.length}`)} canary を自己検査 ·
   すべての値は合成済みダミーであり、実 credential / 個人情報 / bucket・key 一覧を含みません。
 </footer>
 </body>
@@ -253,34 +353,39 @@ async function main(argv) {
 
 	// The real implementation, not a copy: the report must not drift.
 	const { redactLogText, redactLogValue } = await import(resolve(ROOT, 'src/logging/redact.ts'));
+	const redact = { text: redactLogText, value: redactLogValue };
 
-	const samples = SAMPLES.map((sample) => {
-		const input = typeof sample.value === 'string' ? sample.value : JSON.stringify(sample.value);
-		const after =
-			typeof sample.value === 'string'
-				? redactLogText(sample.value)
-				: JSON.stringify(redactLogValue(sample.value));
-		return { label: sample.label, input, after };
-	});
+	const samples = SAMPLES.map((sample) => renderSample(sample, redact));
 
-	const leaks = [];
-	for (const sample of samples) {
-		for (const canary of FORBIDDEN) {
-			if (sample.after.includes(canary)) leaks.push(`${sample.label}: ${canary}`);
-		}
+	// Fail closed BEFORE writing: a sample set whose guards do not
+	// match its own samples cannot prove the claim the page makes.
+	const problems = validateSamples(samples);
+	if (problems.length > 0) {
+		rmSync(outPath, { force: true });
+		process.stderr.write(
+			`[log-redaction-report] unguarded sample(s):\n- ${problems.join('\n- ')}\n`,
+		);
+		return 2;
 	}
+
+	const leaks = findLeaks(samples);
 	const verdict = leaks.length
 		? { ok: false, label: `FAIL — ${leaks.length} canary survived redaction` }
 		: { ok: true, label: 'PASS — no canary survived on any surface' };
 
+	// Fail closed. Nothing is written on a leak, and a page left by
+	// an earlier clean run is REMOVED: a stale PASS report is exactly
+	// the artefact a reviewer would screenshot.
+	if (!verdict.ok) {
+		rmSync(outPath, { force: true });
+		process.stderr.write(`[log-redaction-report] ${verdict.label}:\n`);
+		for (const leak of leaks) process.stderr.write(`- ${leak.label}: ${leak.canary}\n`);
+		return 1;
+	}
+
 	mkdirSync(dirname(outPath), { recursive: true });
 	writeFileSync(outPath, buildPage({ samples, verdict }), 'utf8');
 
-	if (!verdict.ok) {
-		process.stderr.write(`[log-redaction-report] ${verdict.label}:\n`);
-		for (const leak of leaks) process.stderr.write(`- ${leak}\n`);
-		return 1;
-	}
 	process.stdout.write(
 		`[log-redaction-report] ${verdict.label}\n[log-redaction-report] wrote ${outPath}\n`,
 	);

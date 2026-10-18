@@ -46,8 +46,10 @@ _call site_ がより多く-carry する必要がある場合は、生 payload �
 
 `scripts/check-log-redaction.mjs`。`validate:fast` に含まれる。
 
-1. **runtime console** — `src/**` が `src/logging/**` 以外で
-   `console.*` を呼ぶと失敗。redaction を迂回できない。
+1. **runtime console** — `src/**` が `src/logging/logger.ts` 以外で
+   `console.*` を呼ぶと失敗。redaction を迂回できない。除外は
+   directory ではなく `logger.ts` 1 ファイルだけで、`src/logging/` に
+   新しい module を足しても検査対象のまま。
    (`*.test.*` / `*.stories.*` は「console 出力を assert する」ことが
    目的なので除外)
 2. **operator output** — `scripts/**` の `console.*` /
@@ -61,6 +63,7 @@ _call site_ がより多く-carry する必要がある場合は、生 payload �
 ```bash
 pnpm run log:redaction:check                                  # 静的 gate
 node --test scripts/check-log-redaction.test.mjs              # gate 自体の fixture
+node --test scripts/log-redaction-report.test.mjs             # 検証レポートの自己検査
 pnpm exec vitest run src/logging src/cloudflare/auth/better-auth.test.ts \
   src/editorial/analytics/GoogleAnalytics.test.tsx \
   test/integration/log-redaction.test.ts                      # runtime 面
@@ -70,8 +73,16 @@ node scripts/log-redaction-report.mjs                         # 検証レポー�
 
 検証レポート (`node scripts/log-redaction-report.mjs`) は
 `docs/verification/security/log-redaction-test.webp` の元になる HTML で、
-「after」列は `src/logging/redact.ts` を**実行して**得た値。canary が 1 件
-でも残ればコマンドは非ゼロ終了し、スクリーンショットは作られない。
+「after」列は `src/logging/redact.ts` を**実行して**得た値。
+
+- canary が 1 件でも残れば非ゼロ終了し、HTML は書かない。さらに以前
+  の正常実行が残した HTML は**削除する**（古い PASS をそのまま撮影して
+  =redaction 済みと誤解する事故を避けるため）。
+- 各 sample は自分が守る canary を同じ定義の中で宣言する。canary を
+  1 件も宣言していない、または宣言した canary がその sample の一部で
+  ない場合は、レポートを書く前に非ゼロ終了する（exit 2）。(canary を
+  別リストに持つと、値と guard が静かにずれて PASS が出る — 別リストを
+  持たせないのはその回避のため)
 
 ## 検査対象 (カバレッジ matrix)
 
@@ -80,7 +91,7 @@ node scripts/log-redaction-report.mjs                         # 検証レポー�
 | API error | `src/http/hono.ts` / `src/home/{access,reactions}/load.ts` | canary Authorization / cookie / `?token=`、upstream 502 が request を echo | response body と console のどちらにも canary なし。loader は縮小結果を返す | `test/integration/log-redaction.test.ts` |
 | Auth | `src/cloudflare/auth/better-auth.ts` (`sendEmail`) | 宛先 address + `?token=` を含む本文 | `to: [redacted-email]` / `hasBody` / `bodyLength` のみ | `src/cloudflare/auth/better-auth.test.ts` |
 | Infisical | `scripts/infisical-verify.mjs` ほか | stdout と stderr に canary を吐く stub CLI | driver の出力は status 行のみ | `scripts/infisical-verify.test.mjs` |
-| Analytics | `src/editorial/analytics/GoogleAnalytics.tsx` | `?token=…&email=…` 付き location key | `page_path` / `page_location` は pathname のみ | `src/editorial/analytics/GoogleAnalytics.test.tsx` |
+| Analytics | `src/editorial/analytics/GoogleAnalytics.tsx` | `?token=…&email=…` 付き location key | `page_path` / `page_location` は pathname のみ (SPA 遷移の page_view。初回 page_view の制約は Known limits) | `src/editorial/analytics/GoogleAnalytics.test.tsx` |
 
 すべての test は**合成した canary** を使い、local fixture / workerd pool /
 stub adapter の外へ出ない。本番 D1 / R2 / Infisical / Cloudflare API を
@@ -111,10 +122,19 @@ stub adapter の外へ出ない。本番 D1 / R2 / Infisical / Cloudflare API �
   page_view をちょうど 1 回記録する」契約の再判断になるため本 Issue の
   範囲外。`/admin/invitations/accept?token=…` は pathname gate で
   admin 扱いになるため現状 GA には乗らない。
-- **gate の静的解析は限定**: operator script 側は「secret 名の値を読む
-  表現」を検出する静的ルールであり、値が別名 (`const v = secret`) に
-  入った場合は検出しない。実行時の保証は marker ベースの
-  `node --test` (stub / fake 入力) が担う。
+- **gate の静的解析は限定**: 2 つの half とも「テキストを読む」判定で
+  ある。operator script 側は「secret 名の値を読む表現」を検出する静的
+  ルールであり、値が別名 (`const v = secret`) に入った場合は検出しない。
+  runtime 側は `console.method(` の直接呼び出ししか一致しないので、
+  `console['error'](x)` / `const c = console; c.error(x)` のような
+  computed な呼び出しは検出しない (検出できたとしても
+  `src/logging/logger.ts` 1 ファイルのみ除外)。実行時の保証は marker
+  ベースの `node --test` (stub / fake 入力) が担う。
+- **`Error` の stack は落ちる**: `redactLogError` は `{ name, message }`
+  に畳むので、`src/http/hono.ts` の `onError` のような「例外を投げられた
+  境界」のログにも stack が出ない。fail-closed を debuggability より
+  優先した意図的な選択であり、意図しない運用 regression として扱う
+  場合はこの Known limits の再判断が要る。
 - **`src/logging/redact.ts` の over-redaction**: 24 文字以上の不透明な
   token 風文字列 (UUID を含む) は `[redacted-blob]` になる。debug 上の
   可読性より漏えいを優先した意図的な選択。

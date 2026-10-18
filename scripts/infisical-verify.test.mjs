@@ -412,8 +412,6 @@ describe('infisical-verify.mjs — stub-CLI value-handling invariant (Issue #467
 					INFISICAL_API_URL: 'https://this-host-does-not-exist.invalid',
 				},
 			});
-			if (result.status !== 0) {
-			}
 			assert.equal(result.status, 0, result.stderr);
 			// The driver still reports the contract it was asked to verify.
 			assert.match(result.stdout, /Fileless dev \(--env=dev\)/);

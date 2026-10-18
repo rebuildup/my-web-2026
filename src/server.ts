@@ -241,13 +241,11 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  * `docs/security.md`; `scripts/check-hsts-policy.mjs` fails the build
  * if either directive is added while the audit is unrecorded.
  *
- * Deliberately NOT exported: this is the Cloudflare Worker entry
- * module, and workerd only accepts functions / `ExportedHandler`
- * objects as module exports. An `export const` here made `vite
- * preview` (and therefore the E2E gate) fail with
- * `Incorrect type for map entry 'HSTS_DIRECTIVE'`. The single-source
- * guarantee is a static property of this file, not a runtime export;
- * the policy gate reads the declaration from the source text.
+ * This constant stays module-private on purpose. The Workers runtime
+ * treats every named export of the entry module as a service entrypoint
+ * and refuses to start when the value is not an ExportedHandler
+ * (`Incorrect type for map entry 'HSTS_DIRECTIVE'`). Exporting it broke
+ * release CI until Issue #596. The gate enforces the private form.
  */
 const HSTS_DIRECTIVE = 'max-age=31536000';
 

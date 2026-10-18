@@ -452,6 +452,86 @@ describe('home reactions — server-fn impls', () => {
 			enabled: true,
 		});
 	});
+	// Issue #457: `/` is the highest-traffic public screen. A storage
+	// or transport failure on either leg of the widget's read must
+	// degrade the widget, not throw the route loader (whose error
+	// message TanStack Start renders verbatim).
+	describe('degradation on a failed dependency (Issue #457)', () => {
+		it('getHomeReactionsImpl returns an empty catalog when the catalog table is missing', async () => {
+			const fetcher = vi.fn().mockResolvedValue(
+				new Response(JSON.stringify({ target_key: 'home-page', aggregates: [] }), {
+					status: 200,
+					headers: { 'content-type': 'application/json' },
+				}),
+			);
+			await env.DB.prepare('DROP TABLE reaction_emoji_catalog').run();
+			try {
+				const result = await getHomeReactionsImpl(
+					{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x', DB: env.DB },
+					{ proto: 'https', cookie: undefined },
+					'home-page',
+					'https://example.com',
+					fetcher as unknown as typeof fetch,
+				);
+				expect(result.catalog).toEqual([]);
+				expect(result.enabled).toBe(true);
+			} finally {
+				await ensureReactionsSchema();
+			}
+		});
+
+		it('addHomeReactionImpl reports invalid_body instead of throwing on a missing catalog table', async () => {
+			const fetcher = vi.fn();
+			await env.DB.prepare('DROP TABLE reaction_emoji_catalog').run();
+			try {
+				const result = await addHomeReactionImpl(
+					{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x', DB: env.DB },
+					{ proto: 'https', cookie: undefined },
+					{ target: 'home-page', kind: 'emoji', value: 'thumbs_up', codepoint: 'U+1F44D' },
+					TEST_ACTOR_ID,
+					'https://example.com',
+					fetcher as unknown as typeof fetch,
+				);
+				expect(result).toEqual({ ok: false, reason: 'invalid_body' });
+			} finally {
+				await ensureReactionsSchema();
+			}
+		});
+
+		it('getHomeReactionsImpl degrades when the upstream call rejects', async () => {
+			const fetcher = vi.fn().mockRejectedValue(new Error('D1_ERROR: upstream unreachable'));
+			const result = await getHomeReactionsImpl(
+				{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
+				{ proto: 'https', cookie: undefined },
+				'home-page',
+				'https://example.com',
+				fetcher as unknown as typeof fetch,
+			);
+			expect(result).toEqual({
+				target_key: 'home-page',
+				aggregates: [],
+				viewer_reactions: [],
+				catalog: [],
+				enabled: true,
+			});
+		});
+
+		it('removeHomeReactionImpl reports upstream_error instead of throwing on a rejected fetch', async () => {
+			const fetcher = vi.fn().mockRejectedValue(new Error('fetch failed'));
+			// `kind: 'image'` skips the catalog lookup, so the only
+			// dependency in this path is the upstream call.
+			const result = await removeHomeReactionImpl(
+				{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
+				{ proto: 'https', cookie: undefined },
+				{ target: 'home-page', kind: 'image', value: 'img' },
+				TEST_ACTOR_ID,
+				'https://example.com',
+				fetcher as unknown as typeof fetch,
+			);
+			expect(result).toEqual({ ok: false, reason: 'upstream_error' });
+			expect(fetcher).toHaveBeenCalledOnce();
+		});
+	});
 
 	it('addHomeReactionImpl rejects an unknown emoji slug with reason="invalid_body"', async () => {
 		const fetcher = vi.fn();

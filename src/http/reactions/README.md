@@ -88,12 +88,30 @@ content-addressed by SHA-256 hash, so safe to cache forever).
 
 | Status | Body | Cause |
 | --- | --- | --- |
-| 400 | `invalid_body` | malformed body |
+| 400 | `invalid_body` | malformed body (`reason` is a repo-authored validator message) |
 | 400 | `missing_target` / `invalid_target` | `?target=` missing or too long |
+| 400 | `invalid_actor_id` | `?actor_id=` fails the validator |
 | 401 | `missing_authorization` / `invalid_api_key` | auth failed |
 | 403 | `missing_scope` | key lacks the required scope |
 | 404 | `not_found` | image id not in the library |
+| 422 | `unknown_image_id` | `kind: "image"` referenced an id that is not in the library |
 | 429 | `rate_limited` | budget exhausted |
+| 500 | `internal_error` + `request_id` | unexpected failure; redacted (see `docs/security.md`) |
+
+Issue #457 changed two things in this table:
+
+- The 422 body is now `{ "error": "unknown_image_id" }`. It used to
+  carry `reason`, whose text named the backing table
+  (`reaction_images`) — internal schema detail on a public endpoint.
+  The detail now stays in the log; the code is self-describing. This
+  is a **breaking** change for any external consumer that read
+  `reason`; no in-repo consumer does, and the removal is recorded in
+  the release description.
+- A 500 is produced by the boundary-wide redaction contract
+  (`src/http/errors.ts`): `error`, `message`, and `request_id` only.
+  `request_id` is byte-identical to the `X-Request-Id` header and to
+  the id in the internal log line; a client-supplied `X-Request-Id` is
+  reused only when it matches `^[A-Za-z0-9._:-]{1,128}$`.
 
 A throttled response also carries `Retry-After` equal to the
 binding's fixed window (`RATE_LIMIT_RETRY_AFTER_SECONDS`).

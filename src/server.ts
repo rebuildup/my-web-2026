@@ -240,8 +240,14 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  * The ramp and the preconditions are documented in
  * `docs/security.md`; `scripts/check-hsts-policy.mjs` fails the build
  * if either directive is added while the audit is unrecorded.
+ *
+ * Intentionally module-private. This file is the Workers entry module,
+ * and workerd reads every named export as a service-binding entrypoint:
+ * `export const HSTS_DIRECTIVE` made the runtime reject the module with
+ * "the provided value is not of type 'function or ExportedHandler'" and
+ * prevented `vite preview` (and every E2E gate) from booting (Issue #596).
  */
-export const HSTS_DIRECTIVE = 'max-age=31536000';
+const HSTS_DIRECTIVE = 'max-age=31536000';
 
 const HSTS_HEADER = 'strict-transport-security';
 

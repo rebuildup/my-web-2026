@@ -31,7 +31,10 @@
  *      truth: the `HSTS_DIRECTIVE` string literal in the Worker entry
  *      (`src/server.ts`). Zero declarations or two declarations both
  *      fail — the first means the policy moved, the second means a
- *      second copy is drifting.
+ *      second copy is drifting. The declaration must stay module-private:
+ *      workerd treats a named export of the entry module as a
+ *      service-binding entrypoint, so `export const HSTS_DIRECTIVE`
+ *      stops the Worker from booting (Issue #596).
  *   2. **Grammar and band.** Exactly one `max-age` directive, with a
  *      decimal-seconds value inside the band this project allows
  *      (see `MIN_MAX_AGE_SECONDS` / `MAX_MAX_AGE_SECONDS`). An
@@ -134,7 +137,13 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const POLICY_FILE = join('src', 'server.ts');
 
 /** The declaration that carries the single canonical directive. */
-const DECLARATION = /export const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
+const DECLARATION = /const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
+
+/**
+ * The declaration must not be exported: the Worker entry's named exports
+ * become service-binding entrypoints in workerd (Issue #596).
+ */
+const EXPORTED_DECLARATION = /export\s+const\s+HSTS_DIRECTIVE\b/;
 
 /**
  * A string literal: single-quoted, double-quoted, or a template literal.
@@ -518,7 +527,12 @@ export function readCanonicalDirective({ root = REPO_ROOT } = {}) {
 	const violations = [];
 	if (declared.length === 0) {
 		violations.push(
-			`${POLICY_FILE} declares no \`export const HSTS_DIRECTIVE = '…'\` — the HSTS policy lost its source of truth.`,
+			`${POLICY_FILE} declares no \`const HSTS_DIRECTIVE = '…'\` — the HSTS policy lost its source of truth.`,
+		);
+	}
+	if (EXPORTED_DECLARATION.test(stripComments(source))) {
+		violations.push(
+			`${POLICY_FILE} exports HSTS_DIRECTIVE — workerd treats a named export of the Worker entry as a service-binding entrypoint and refuses to boot; declare it without \`export\` (Issue #596).`,
 		);
 	}
 	if (declared.length > 1) {

@@ -47,7 +47,7 @@ function withStaged(files, run) {
 	}
 }
 
-const ENTRY = { 'src/server.ts': "export const HSTS_DIRECTIVE = 'max-age=31536000';\n" };
+const ENTRY = { 'src/server.ts': "const HSTS_DIRECTIVE = 'max-age=31536000';\n" };
 
 describe('check-hsts-policy — source of truth', () => {
 	it('reads the canonical directive from the Worker entry', () => {
@@ -71,15 +71,30 @@ describe('check-hsts-policy — source of truth', () => {
 		// TypeScript would reject this file; the gate reads text, and the
 		// scenario it guards is a copy-pasted second "definition" of the
 		// policy in the same entry file.
-		const source = [
-			ENTRY['src/server.ts'],
-			"export const HSTS_DIRECTIVE = 'max-age=63072000';\n",
-		].join('\n');
+		const source = [ENTRY['src/server.ts'], "const HSTS_DIRECTIVE = 'max-age=63072000';\n"].join(
+			'\n',
+		);
 		withStaged({ 'src/server.ts': source }, (root) => {
 			const { violations } = readCanonicalDirective({ root });
 			assert.equal(violations.length, 1);
 			assert.match(violations[0], /declares HSTS_DIRECTIVE 2 times/);
 		});
+	});
+
+	it('fails when the declaration is exported from the Worker entry', () => {
+		// workerd reads every named export of the entry module as a
+		// service-binding entrypoint, so `export const` stops the Worker
+		// from booting (Issue #596).
+		withStaged(
+			{ 'src/server.ts': "export const HSTS_DIRECTIVE = 'max-age=31536000';\n" },
+			(root) => {
+				const { directive, violations } = readCanonicalDirective({ root });
+				assert.equal(directive, 'max-age=31536000');
+				assert.equal(violations.length, 1);
+				assert.match(violations[0], /exports HSTS_DIRECTIVE/);
+				assert.match(violations[0], /Issue #596/);
+			},
+		);
 	});
 });
 

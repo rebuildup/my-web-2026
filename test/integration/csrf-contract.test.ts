@@ -135,7 +135,7 @@ beforeEach(async () => {
 });
 
 describe('Hono boundary: cross-site writes are refused (negative case)', () => {
-	it('refuses a cross-site PUT and leaves no row behind', async () => {
+	it('refuses a cross-site PUT (CORS owns this origin refusal) and leaves no row behind', async () => {
 		const res = await SELF.fetch(`${ORIGIN}/api/v1/reactions`, {
 			method: 'PUT',
 			headers: {
@@ -149,9 +149,13 @@ describe('Hono boundary: cross-site writes are refused (negative case)', () => {
 		});
 
 		expect(res.status).toBe(403);
+		// The request carries an origin outside the CORS allow-list, and
+		// the CORS layer (Issue #455) is mounted ahead of this guard, so
+		// it owns the refusal. The outcome the CSRF contract requires —
+		// a write with a valid credential never reaches D1 — is the same.
 		expect(await res.json()).toEqual({
-			error: 'csrf_rejected',
-			reason: 'cross_site_fetch_metadata',
+			error: 'cors_origin_rejected',
+			class: 'credentialed',
 		});
 		// The credential was valid; the origin check is what stopped it.
 		expect(await countReactions()).toBe(0);
@@ -176,7 +180,11 @@ describe('Hono boundary: cross-site writes are refused (negative case)', () => {
 			headers: {
 				authorization: `Bearer ${apiKey}`,
 				'content-type': 'application/json',
-				origin: CROSS_SITE_ORIGIN,
+				// A CORS-allow-listed Origin, but browser fetch metadata
+				// says the request started cross-site: the CSRF guard,
+				// not the CORS layer, must refuse this one.
+				origin: ORIGIN,
+				'sec-fetch-site': 'cross-site',
 			},
 			body: REACTION_BODY,
 		});

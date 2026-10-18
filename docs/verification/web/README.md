@@ -14,7 +14,7 @@ Vite dev server (`@cloudflare/vite-plugin`), captured by
 - Issue: #423 — robots.txt / secret-route index boundary
 - Path: `docs/verification/web/robots-txt-browser.webp`
   (the Issue names `.png`; the committed file is WebP to keep the
-  repository light — same pixels, ~68 kB instead of ~250 kB)
+  repository light — same pixels, ~72 kB instead of ~250 kB)
 
 ### Reproduce
 
@@ -29,10 +29,13 @@ curl -i http://localhost:15923/robots.txt
 #   -> Sitemap: https://rebuildup.dev/sitemap.xml
 #   -> no "Disallow: /" anywhere (a site-wide noindex would silently
 #      de-index every public page)
+#   -> no "Disallow: /admin" either: /admin is de-indexed by its own
+#      noindex meta, which a blocked crawler could never read
 
 # 3. the browser capture (writes the committed WebP directly)
-node scripts/shoot-robots-screenshot.mjs \
-  http://localhost:15923/robots.txt docs/verification/web/robots-txt-browser.webp
+pnpm run capture:robots
+#   equivalent: node scripts/shoot-robots-screenshot.mjs \
+#     http://localhost:15923/robots.txt docs/verification/web/robots-txt-browser.webp
 ```
 
 The generator refuses to write a capture that would be worthless: it
@@ -53,7 +56,7 @@ node --test scripts/check-index-boundary.test.mjs
 Expected output of the gate:
 
 ```
-index boundary OK: 15 routes (7 indexable), 6 sitemap entries, 12 Disallow rules, noindex meta on /admin, … @ https://rebuildup.dev
+index boundary OK: 15 routes (7 indexable), 6 sitemap entries, 10 Disallow rules, noindex meta on /admin, … @ https://rebuildup.dev
 ```
 
 ### Related runtime evidence (no image needed)

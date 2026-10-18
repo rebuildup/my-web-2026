@@ -10,11 +10,15 @@
  *
  *   - an unintended SITE-WIDE noindex (`Disallow: /`) shipping unnoticed;
  *   - a `Disallow` rule that silently shadows an indexable public route;
- *   - a gated route (or machine boundary) losing its `Disallow` rule;
+ *   - the forbidden combination — a page de-indexed by its own `noindex`
+ *     meta that is ALSO kept out of the crawl, which can only ever end
+ *     as "Indexed, though blocked by robots.txt";
+ *   - a `Disallow` rule lost by a route or machine boundary that needs it;
  *   - a URL appearing in the sitemap that no route serves (an
  *     unimplemented route passing as "implemented"), or an indexable
  *     page that quietly dropped out of the sitemap;
- *   - a public route carrying a `noindex` meta;
+ *   - a public route carrying a `noindex` meta — in a COMMENTED-OUT or
+ *     half-declared entry, which is how a text check lies;
  *   - a page declaring a `canonical` that disagrees with its sitemap URL;
  *   - a NEW route shipping with no declared index intent at all, and a
  *     DELETED route leaving a stale intent entry behind.
@@ -32,16 +36,22 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
 	CANONICAL_ORIGIN,
+	EXTERNAL_BOUNDARY_PREFIXES,
+	FRAMEWORK_PREFIXES,
 	SITEMAP_PATH,
 	buildRobotsTxt,
 	buildSitemapXml,
 	classifyRoutes,
+	declaresNoindexMeta,
 	evaluateIndexBoundary,
+	missingDisallowViolations,
+	noindexBlockedViolations,
 	parseRobotsTxt,
 	parseRouteTree,
 	parseSitemapLocs,
 	robotsRuleCovers,
 	routeModuleCandidates,
+	stripComments,
 } from './_index-boundary.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -193,6 +203,22 @@ describe('the generated artefacts', () => {
 		assert.ok(robots.includes(`Sitemap: ${ORIGIN}${SITEMAP_PATH}`));
 	});
 
+	it('never blocks a route that is de-indexed by its own noindex meta', () => {
+		// The rule the module doc states and the generator must obey: a
+		// page the crawler may not fetch can never deliver its own
+		// noindex, so `/admin/**` and `/tools/$slug` must stay
+		// crawlable. Machine endpoints are the only Disallow sources.
+		const { classified } = classifyRoutes(parseRouteTree(routeTreeSource()).routes);
+		const blocked = noindexBlockedViolations(
+			classified,
+			parseRobotsTxt(buildRobotsTxt(classified, ORIGIN)).disallow,
+		);
+		assert.deepEqual(blocked, []);
+		for (const rule of parseRobotsTxt(buildRobotsTxt(classified, ORIGIN)).disallow) {
+			assert.equal(rule.includes('admin'), false, `${rule} blocks a noindex route`);
+		}
+	});
+
 	it('lists only indexable routes in the sitemap', () => {
 		const { classified } = classifyRoutes(parseRouteTree(routeTreeSource()).routes);
 		const locs = parseSitemapLocs(buildSitemapXml(classified, ORIGIN));
@@ -224,16 +250,23 @@ describe('evaluateIndexBoundary — unintended whole-site noindex', () => {
 		assert.ok(codes(result).includes('global-noindex'));
 	});
 
-	it('fails on Disallow: /* and on an empty Disallow value', () => {
-		for (const rule of ['/*', '   ']) {
-			const result = evaluate({
-				robotsMutate: (text) => text.replace('Allow: /', `Disallow: ${rule}`),
-			});
-			assert.ok(
-				codes(result).includes('global-noindex'),
-				`Disallow: ${rule} must be treated as a whole-site noindex`,
-			);
-		}
+	it('fails on Disallow: /*', () => {
+		const result = evaluate({
+			robotsMutate: (text) => text.replace('Allow: /', 'Disallow: /*'),
+		});
+		assert.ok(codes(result).includes('global-noindex'));
+	});
+
+	it('reports an empty Disallow value as a no-op rule, not as a site-wide noindex', () => {
+		// RFC 9309: an empty value means "allow everything", so it cannot
+		// de-index the site. It gets its own code because the failure is
+		// a silently botched edit, not a vanished index.
+		const result = evaluate({
+			robotsMutate: (text) => text.replace('Allow: /', 'Disallow:    '),
+		});
+		const found = codes(result);
+		assert.ok(found.includes('empty-disallow'));
+		assert.equal(found.includes('global-noindex'), false);
 	});
 
 	it('fails when a public route module declares a noindex meta', () => {
@@ -242,12 +275,90 @@ describe('evaluateIndexBoundary — unintended whole-site noindex', () => {
 	});
 });
 
-describe('evaluateIndexBoundary — robots.txt is not access control, but is not a substitute either', () => {
-	it('fails when the gated admin subtree loses its Disallow rule', () => {
+describe('a noindex declaration has to be a real one', () => {
+	it('does not accept a noindex that only exists in a comment', () => {
+		assert.equal(
+			declaresNoindexMeta(
+				"// meta: [{ name: 'robots', content: 'noindex, nofollow' }]\n/*\nhead: () => ({ meta: [{ name: 'robots', content: 'noindex' }] }),\n*/\n",
+			),
+			false,
+		);
+	});
+
+	it('does not accept the robots name and the noindex content from two entries', () => {
+		assert.equal(
+			declaresNoindexMeta("meta: [{ name: 'robots' }, { content: 'noindex, nofollow' }]"),
+			false,
+		);
+	});
+
+	it('still accepts the real declaration and keeps URL strings intact', () => {
+		assert.equal(
+			declaresNoindexMeta("head: () => ({ meta: [{ name: 'robots', content: 'noindex' }] }),"),
+			true,
+		);
+		const source = "const u = 'https://rebuildup.dev/contact'; // see https://example.com\n";
+		assert.ok(stripComments(source).includes('https://rebuildup.dev/contact'));
+		assert.equal(stripComments(source).includes('example.com'), false);
+	});
+
+	it('fails a gated route whose noindex survives only as a comment', () => {
 		const result = evaluate({
-			robotsMutate: (text) => text.replaceAll(/^Disallow: \/admin.*$/gm, ''),
+			fileOverrides: {
+				'./routes/admin':
+					"// head: () => ({ meta: [{ name: 'robots', content: 'noindex, nofollow' }] }),\nexport const Route = createFileRoute({});\n",
+			},
 		});
-		assert.ok(codes(result).includes('missing-disallow'));
+		const found = codes(result);
+		assert.ok(found.includes('missing-noindex-meta'));
+	});
+});
+
+describe('evaluateIndexBoundary — noindex must not be paired with a crawl block', () => {
+	it('rejects the combination declared in the contract itself', () => {
+		// The contract authoring error the module doc calls impossible:
+		// `index: 'no'` + `crawl: 'disallow'` on one route.
+		const violations = noindexBlockedViolations([
+			{ path: '/tools/$slug', intent: { crawl: 'disallow', index: 'no' } },
+		]);
+		assert.equal(violations.length, 1);
+		assert.equal(violations[0].code, 'noindex-blocked');
+		assert.match(violations[0].message, /\/tools\/\$slug/);
+	});
+
+	it('fails when robots.txt blocks a route that is de-indexed by its own noindex', () => {
+		// `Disallow: /tools/` blocks the noindex `/tools/$slug` without
+		// touching the public `/tools` index page, so no other code fires.
+		const result = evaluate({ robotsMutate: (text) => `${text}Disallow: /tools/\n` });
+		const found = codes(result);
+		assert.ok(found.includes('noindex-blocked'));
+		assert.equal(found.includes('indexable-blocked'), false);
+	});
+
+	it('fails when a robots.txt rule blocks a noindex admin page', () => {
+		const result = evaluate({ robotsMutate: (text) => `${text}Disallow: /admin/\n` });
+		const blocked = result.violations.filter((v) => v.code === 'noindex-blocked');
+		assert.equal(blocked.length, 6, 'every gated admin child is de-indexed by the layout meta');
+	});
+});
+
+describe('evaluateIndexBoundary — robots.txt is not access control, but is not a substitute either', () => {
+	it('fails when a crawl-blocked route loses its Disallow rule', () => {
+		// The shipped contract declares no crawl-blocked page (the admin
+		// subtree must stay crawlable so its own noindex can be read), so
+		// the rule is exercised against the extracted checker directly.
+		const classified = [{ path: '/private', intent: { crawl: 'disallow' } }];
+		const machineRules = [...EXTERNAL_BOUNDARY_PREFIXES, ...FRAMEWORK_PREFIXES].flatMap(
+			(prefix) => [`${prefix}$`, `${prefix}/`],
+		);
+		assert.deepEqual(
+			missingDisallowViolations(classified, [...machineRules, '/private$', '/private/']),
+			[],
+		);
+		const violations = missingDisallowViolations(classified, machineRules);
+		assert.equal(violations.length, 1);
+		assert.equal(violations[0].code, 'missing-disallow');
+		assert.match(violations[0].message, /\/private/);
 	});
 
 	it('fails when a machine boundary loses its Disallow rule', () => {

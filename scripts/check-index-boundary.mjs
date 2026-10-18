@@ -26,6 +26,14 @@
  *
  * `--write` is a maintenance command, not a validation step: the gate
  * always runs in verify mode (`pnpm run index:boundary:check`).
+ *
+ * Route inventory source: the COMMITTED `src/routeTree.gen.ts`. The
+ * TanStack Vite plugin regenerates that file during `pnpm run build`,
+ * and `validate:integration` runs this gate inside `validate:fast`,
+ * i.e. BEFORE the build. The gate therefore validates the inventory
+ * that is under version control, which is the point (a route added to
+ * `src/routes/**` but not committed has not shipped), and a plugin
+ * output change surfaces as the normal `routeTree.gen.ts` diff.
  */
 
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';

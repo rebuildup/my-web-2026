@@ -19,14 +19,21 @@ import { describe, expect, it } from 'vitest';
  *      must actually render it. A layout-only declaration that never
  *      reaches the HTML would leave the admin URLs indexable while every
  *      gate report still said "OK" — so the rendered markup, not the
- *      source, is what is asserted here.
+ *      source, is what is asserted here. (`/robots.txt` itself is NOT
+ *      fetched here: the workerd test pool has no Static Assets binding,
+ *      so that half is asserted as text by `check-index-boundary.mjs`
+ *      against the committed `public/robots.txt`.)
  *
  *   2. robots.txt is NOT access control. A crawler User-Agent gets no
  *      privilege: `/admin` and `/admin/keys` still refuse anonymous
- *      requests, exactly as they do for any other client. If a future
- *      change ever made the index boundary look like the gate — by
- *      letting a crawler UA through, or by serving admin HTML without a
- *      session — these assertions fail.
+ *      requests, exactly as they do for any other client. This matters
+ *      more since the admin subtree was made crawlable (a blocked page
+ *      can never deliver its own `noindex`): a well-behaved crawler now
+ *      really does fetch `/admin`, and the server-side gate — not
+ *      robots.txt — is the only thing between it and the page. If a
+ *      future change ever made the index boundary look like the gate —
+ *      by letting a crawler UA through, or by serving admin HTML
+ *      without a session — these assertions fail.
  *
  * Public pages are asserted to carry NO `robots` meta at all: the
  * "unintended whole-site noindex" failure is silent by nature (nothing
@@ -39,10 +46,13 @@ function robotsMeta(html: string): string | null {
 }
 
 describe('index boundary — rendered HTML (Issue #423)', () => {
-	it('every admin page carries the noindex meta from the layout route', async () => {
+	it('the admin layout noindex reaches the one anonymously renderable admin page', async () => {
 		// `/admin/login` is the only admin URL an anonymous client can
 		// render (the rest auth-gate), which makes it the observable
 		// proof that the layout's `head()` reaches the matched chain.
+		// The gated children's meta is therefore PROVEN here indirectly
+		// (same merge, one observable instance) and STATICALLY for all
+		// seven in `scripts/check-index-boundary.mjs`.
 		const res = await SELF.fetch('https://example.com/admin/login', { redirect: 'manual' });
 		expect(res.status).toBe(200);
 		const meta = robotsMeta(await res.text());

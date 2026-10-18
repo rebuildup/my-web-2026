@@ -12,16 +12,17 @@
 #
 # `Disallow` and `noindex` are used deliberately in different places:
 #   * noindex is carried by the page itself (src/routes/admin.tsx, Tool shells), so
-#     the page MUST stay crawlable - a blocked page cannot deliver its own noindex.
-   * Disallow is used only for crawl budget: the gated admin subtree and the
-#     machine endpoints that have no document to index.
+#     those pages MUST stay crawlable - a blocked page cannot deliver its own
+#     noindex, and Google then reports the URL as "Indexed, though blocked
+#     by robots.txt".
+#   * Disallow is crawl budget only: the machine endpoints below have no
+#     document to index at all. It is NOT access control, never a
+#     substitute for one.
 
 User-agent: *
 Allow: /
 Disallow: /_serverFn$
 Disallow: /_serverFn/
-Disallow: /admin$
-Disallow: /admin/
 Disallow: /api/v1$
 Disallow: /api/v1/
 Disallow: /integrations$

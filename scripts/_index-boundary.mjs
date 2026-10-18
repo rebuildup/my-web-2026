@@ -17,14 +17,20 @@
  *   - A `noindex` page that is ALSO `Disallow`ed can never be
  *     de-indexed, because the crawler is not allowed to fetch the page
  *     that carries the `noindex`. Google then reports the URL as
- *     "Indexed, though blocked by robots.txt".
+ *     "Indexed, though blocked by robots.txt". This is ENFORCED, not
+ *     merely documented: the `noindex-blocked` violation fires both on
+ *     a declared intent that pairs `index: 'no'` with
+ *     `crawl: 'disallow'` and on a robots.txt rule that covers such a
+ *     route, so the combination cannot be written by hand either.
  *   - `Disallow` is NOT access control. `robots.txt` is a public file
  *     served to anonymous clients; `curl`, a browser, or a scraper
  *     ignores it entirely. Only the server-side gate (the admin
  *     loaders' `requireAdmin()`, the API-key middleware) protects a
- *     secret surface. This module therefore never emits a rule that
- *     would make the admin subtree reachable — it only adds crawler
- *     hygiene on top of the existing server-side gate.
+ *     secret surface. Because the gate already refuses anonymous
+ *     reads, the admin subtree is left CRAWLABLE on purpose: the only
+ *     mechanism that de-indexes it is the `noindex` meta its own
+ *     documents carry, and a crawler that never fetches those documents
+ *     cannot read it.
  *
  * The contract is EXHAUSTIVE on purpose. `ROUTE_INTENT` below covers
  * every route in the generated route tree; a route that is added and
@@ -107,10 +113,14 @@ export const NOINDEX_META_OWNER_ROUTE = '/admin';
  *   zone   'public'  — a page for anonymous readers.
  *          'private' — a surface that must not be indexed at all
  *                      (admin gate, Tool shells marked noindex upstream).
- *   crawl  'allow'   — may be fetched. Required for any page whose
- *                      index intent is carried by HTML meta: a crawler
- *                      cannot read a `noindex` it is not allowed to fetch.
+ *   crawl  'allow'   — may be fetched. Required for ANY page whose index
+ *                      intent is carried by HTML meta (`index: 'no'`):
+ *                      a crawler cannot read a `noindex` it is not
+ *                      allowed to fetch, so pairing the two is a
+ *                      `noindex-blocked` violation.
  *          'disallow'— `Disallow` in robots.txt (crawl budget hygiene).
+ *                      Legal only for a page that is NOT de-indexed by
+ *                      its own meta (i.e. `index !== 'no'`).
  *   index  'sitemap' — indexable AND listed in `sitemap.xml`.
  *          'crawl'   — indexable but not listed; discovered by following
  *                      links from its index page (parameterised routes
@@ -183,11 +193,13 @@ const ROUTE_INTENT = [
 	{
 		paths: ['/admin'],
 		zone: 'private',
-		crawl: 'disallow',
+		crawl: 'allow',
 		index: 'no',
 		reason:
-			'Admin gate. Server-side requireAdmin() is the access control; robots.txt only keeps the ' +
-			'crawl out of a surface that no reader should ever reach.',
+			'Admin gate. De-indexing is carried by the `noindex` meta on the admin layout ' +
+			'(src/routes/admin.tsx), which is read at fetch time, so the subtree MUST stay crawlable: ' +
+			'a `Disallow` here would leave the URLs "indexed, though blocked by robots.txt". Access ' +
+			'control is requireAdmin() in the child loaders / server functions, not robots.txt.',
 	},
 ];
 
@@ -348,7 +360,7 @@ export function intentForRoute(path) {
 			return Object.freeze({
 				path,
 				zone: 'private',
-				crawl: 'disallow',
+				crawl: 'allow',
 				index: 'no',
 				reason: `Inherits the ${prefix} gate intent (prefix rule).`,
 			});
@@ -408,7 +420,9 @@ export function classifyRoutes(routes) {
 
 /**
  * robots.txt `Disallow` paths for every prefix that must stay out of
- * the crawl: private file routes plus the machine boundaries.
+ * the crawl: routes whose declared intent is `crawl: 'disallow'`
+ * (which, per the `noindex-blocked` rule below, may only be indexable
+ * routes) plus the machine boundaries.
  *
  * Each entry is emitted twice — `X$` for the exact path and `X/` for
  * the subtree — because robots.txt matching is a raw PREFIX match. A
@@ -420,9 +434,12 @@ export function robotsDisallowPaths(classified) {
 
 	for (const { intent, path } of classified) {
 		if (intent.crawl !== 'disallow') continue;
-		// Collapse the gated subtree onto its own root: every admin child
-		// contributes `/admin`, and `/admin$` + `/admin/` already covers
-		// the whole tree.
+		// Collapse a prefix-gated subtree onto its own root: every child
+		// contributes the same root, and `<root>$` + `<root>/` already
+		// covers the whole tree. (No shipped route is `crawl:
+		// 'disallow'` today — the admin subtree is deliberately crawlable
+		// so its own `noindex` can be read — but the rule stays generic
+		// for a future crawl-blocked INDEXABLE surface.)
 		const root = INTENT_PREFIXES.find((prefix) => path.startsWith(prefix)) ?? path;
 		exactPaths.add(root);
 	}
@@ -463,9 +480,12 @@ export function buildRobotsTxt(classified, origin = CANONICAL_ORIGIN) {
 		'#',
 		'# `Disallow` and `noindex` are used deliberately in different places:',
 		'#   * noindex is carried by the page itself (src/routes/admin.tsx, Tool shells), so',
-		'#     the page MUST stay crawlable - a blocked page cannot deliver its own noindex.',
-		'   * Disallow is used only for crawl budget: the gated admin subtree and the',
-		'#     machine endpoints that have no document to index.',
+		'#     those pages MUST stay crawlable - a blocked page cannot deliver its own',
+		'#     noindex, and Google then reports the URL as "Indexed, though blocked',
+		'#     by robots.txt".',
+		'#   * Disallow is crawl budget only: the machine endpoints below have no',
+		'#     document to index at all. It is NOT access control, never a',
+		'#     substitute for one.',
 		'',
 		'User-agent: *',
 		'Allow: /',
@@ -542,8 +562,204 @@ export function robotsRuleCovers(rule, path) {
 	return path.startsWith(rule);
 }
 
-const ROBOTS_META_RE = /name:\s*['"]robots['"]/;
-const NOINDEX_CONTENT_RE = /content:\s*['"][^'"]*noindex/;
+/**
+ * Blank out every comment in a TypeScript/JSX source, preserving the
+ * length of the code so offsets stay meaningful.
+ *
+ * The static checks below read route modules as TEXT, and a comment is
+ * the easiest way to make a text check lie: a commented-out
+ * `name: 'robots', content: 'noindex'` would satisfy a noindex
+ * requirement for a page that renders none, and a commented-out
+ * `rel: 'canonical'` would satisfy the sitemap cross-check.
+ *
+ * It is a scanner, not a parser, and it deliberately understands only
+ * what route modules actually contain: line comments, block comments,
+ * single- and double-quoted strings, and template literals (with
+ * `${…}` interpolation). String bodies are COPIED, never blanked —
+ * `'https://rebuildup.dev/contact'` is full of `//` and must survive.
+ * A regex literal or a template nested inside an interpolation is not
+ * tracked; both would only ever blank too much, which makes a static
+ * check fail loudly rather than pass silently.
+ */
+export function stripComments(source) {
+	const out = [];
+	// Stack of open template literals, so a `${}` expression that
+	// itself contains a backtick closes the right one.
+	const templates = [];
+	let i = 0;
+
+	while (i < source.length) {
+		const char = source[i];
+		const next = source[i + 1];
+
+		if (char === '/' && next === '/') {
+			while (i < source.length && source[i] !== '\n') {
+				out.push(' ');
+				i += 1;
+			}
+			continue;
+		}
+		if (char === '/' && next === '*') {
+			while (i < source.length && !(source[i] === '*' && source[i + 1] === '/')) {
+				out.push(source[i] === '\n' ? '\n' : ' ');
+				i += 1;
+			}
+			out.push('  ');
+			i += 2;
+			continue;
+		}
+		if (char === "'" || char === '"') {
+			const end = skipQuoted(source, i, char);
+			out.push(source.slice(i, end));
+			i = end;
+			continue;
+		}
+		if (char === '`') {
+			templates.push({ depth: 0 });
+			out.push('`');
+			i += 1;
+			continue;
+		}
+		if (templates.length > 0) {
+			const template = templates[templates.length - 1];
+			if (char === '\\') {
+				out.push(source.slice(i, i + 2));
+				i += 2;
+				continue;
+			}
+			if (char === '{') template.depth += 1;
+			else if (char === '}') {
+				if (template.depth === 0) {
+					templates.pop();
+					out.push('}');
+					i += 1;
+					continue;
+				}
+				template.depth -= 1;
+			} else if (char === '`') {
+				templates.pop();
+			}
+			out.push(char);
+			i += 1;
+			continue;
+		}
+		out.push(char);
+		i += 1;
+	}
+
+	return out.join('');
+}
+
+/** Index just past the closing quote of the quoted string starting at `start`. */
+function skipQuoted(source, start, quote) {
+	let i = start + 1;
+	while (i < source.length) {
+		if (source[i] === '\\') {
+			i += 2;
+			continue;
+		}
+		if (source[i] === quote) return i + 1;
+		if (source[i] === '\n') return i;
+		i += 1;
+	}
+	return i;
+}
+
+/**
+ * A `noindex` is only declared when ONE meta entry carries both the
+ * `robots` name and a `noindex` content.
+ *
+ * Two independent file-wide patterns were too loose: `name: 'robots'`
+ * on one entry plus `content: '…noindex'` on another (or in a comment)
+ * passed the check for a page that renders no noindex at all. The
+ * pattern below requires the pair inside a single `content:` value, and
+ * the caller matches it against `stripComments()` output.
+ */
+const NOINDEX_META_RE = /name:\s*['"]robots['"]\s*,\s*content:\s*['"][^'"]*\bnoindex\b/;
+
+/** Does a route module really declare a `robots` noindex meta? */
+export function declaresNoindexMeta(source) {
+	return NOINDEX_META_RE.test(stripComments(source));
+}
+
+/**
+ * Crawl-blocked routes (and the machine boundaries) that the parsed
+ * robots.txt does not actually block.
+ *
+ * `Disallow` is generated from the same intent, so this can only fire
+ * on a hand-edited or drifted artefact — which is exactly why it is
+ * checked rather than assumed.
+ *
+ * @param {Array<{path: string, intent: {crawl: string}}>} classified
+ * @param {string[]} disallowRules parsed `Disallow:` values
+ * @returns {Array<{code: string, message: string}>}
+ */
+export function missingDisallowViolations(classified, disallowRules) {
+	const violations = [];
+	for (const { intent, path } of classified) {
+		if (intent.crawl !== 'disallow') continue;
+		const root = INTENT_PREFIXES.find((prefix) => path.startsWith(prefix)) ?? path;
+		if (!disallowRules.some((rule) => robotsRuleCovers(rule, root))) {
+			violations.push({
+				code: 'missing-disallow',
+				message: `robots.txt has no Disallow rule covering the crawl-blocked route ${path}`,
+			});
+		}
+	}
+	for (const prefix of [...EXTERNAL_BOUNDARY_PREFIXES, ...FRAMEWORK_PREFIXES]) {
+		if (!disallowRules.some((rule) => robotsRuleCovers(rule, prefix))) {
+			violations.push({
+				code: 'missing-disallow',
+				message: `robots.txt has no Disallow rule covering the machine boundary ${prefix}`,
+			});
+		}
+	}
+	return violations;
+}
+
+/**
+ * The forbidden combination, from BOTH sides.
+ *
+ * A route that is de-indexed by its own `noindex` meta must stay
+ * crawlable; a route that is kept out of the crawl can never deliver
+ * that meta. Google then reports the URL as "Indexed, though blocked
+ * by robots.txt" — the exact silent failure this gate exists to make
+ * impossible to ship.
+ *
+ * Two inputs are checked because there are two ways to create it:
+ *
+ *   - the DECLARED intent pairs `index: 'no'` with `crawl: 'disallow'`
+ *     (a contract authoring error — the generator would then emit the
+ *     blocking rules itself);
+ *   - a `Disallow` rule in the parsed robots.txt covers a noindex route
+ *     (a hand-edited or drifted artefact).
+ *
+ * @param {Array<{path: string, intent: {crawl: string, index: string}}>} classified
+ * @param {string[]} [disallowRules] parsed `Disallow:` values
+ * @returns {Array<{code: string, message: string}>}
+ */
+export function noindexBlockedViolations(classified, disallowRules = []) {
+	const violations = [];
+	for (const { path, intent } of classified) {
+		if (intent.index !== 'no') continue;
+		if (intent.crawl === 'disallow') {
+			violations.push({
+				code: 'noindex-blocked',
+				message: `route ${path} is declared index:'no' AND crawl:'disallow'; a crawler that cannot fetch the page can never read its own noindex, so the URL stays "Indexed, though blocked by robots.txt". Keep it crawlable (crawl:'allow') and de-index it with its own noindex meta`,
+			});
+			continue;
+		}
+		for (const rule of disallowRules) {
+			if (robotsRuleCovers(rule, path)) {
+				violations.push({
+					code: 'noindex-blocked',
+					message: `Disallow: ${rule} blocks ${path}, which is de-indexed by its own noindex meta; a page the crawler may not fetch can never deliver that meta, so it can only end up "Indexed, though blocked by robots.txt"`,
+				});
+			}
+		}
+	}
+	return violations;
+}
 
 /**
  * Evaluate the whole index boundary.
@@ -601,12 +817,24 @@ export function evaluateIndexBoundary(input) {
 	// An unintended site-wide noindex: `Disallow: /`, `Disallow: /*` or
 	// `Disallow: /?` in ANY group. This is the exact shape of the
 	// "whole site quietly disappeared from search" incident.
+	//
+	// An EMPTY value is a different failure and gets its own code:
+	// per RFC 9309 `Disallow:` with no value means "allow everything",
+	// so it cannot de-index anything — it is a botched edit that fails
+	// silently rather than loudly.
 	for (const group of robots.groups) {
 		for (const rule of group.disallow) {
-			if (rule === '/' || rule === '/*' || rule === '/?' || rule === '') {
+			if (rule === '/' || rule === '/*' || rule === '/?') {
 				violations.push({
 					code: 'global-noindex',
-					message: `robots.txt disallows the whole site (Disallow: ${rule || '<empty>'}) — every public page would drop out of the index`,
+					message: `robots.txt disallows the whole site (Disallow: ${rule}) — every public page would drop out of the index`,
+				});
+			} else if (rule === '') {
+				violations.push({
+					code: 'empty-disallow',
+					message:
+						'robots.txt has an empty Disallow value; per RFC 9309 that allows everything, so the rule ' +
+						'does nothing at all — a no-op directive is almost always a botched edit',
 				});
 			}
 		}
@@ -623,27 +851,8 @@ export function evaluateIndexBoundary(input) {
 		}
 	}
 
-	// Every gated / machine prefix must actually be disallowed …
-	for (const { intent, path } of classified) {
-		if (intent.crawl !== 'disallow') continue;
-		const root = INTENT_PREFIXES.find((prefix) => path.startsWith(prefix)) ?? path;
-		const covered = robots.disallow.some((rule) => robotsRuleCovers(rule, root));
-		if (!covered) {
-			violations.push({
-				code: 'missing-disallow',
-				message: `robots.txt has no Disallow rule covering the gated route ${path}`,
-			});
-		}
-	}
-	for (const prefix of [...EXTERNAL_BOUNDARY_PREFIXES, ...FRAMEWORK_PREFIXES]) {
-		const covered = robots.disallow.some((rule) => robotsRuleCovers(rule, prefix));
-		if (!covered) {
-			violations.push({
-				code: 'missing-disallow',
-				message: `robots.txt has no Disallow rule covering the machine boundary ${prefix}`,
-			});
-		}
-	}
+	// Every crawl-blocked / machine prefix must actually be disallowed …
+	violations.push(...missingDisallowViolations(classified, robots.disallow));
 
 	// … and no Disallow rule may shadow an indexable public route.
 	const indexablePaths = classified
@@ -659,6 +868,12 @@ export function evaluateIndexBoundary(input) {
 			}
 		}
 	}
+
+	// A route de-indexed by its own noindex meta may never be kept out of
+	// the crawl — that combination can only end as "Indexed, though
+	// blocked by robots.txt". Checked against the declared intent AND
+	// the rules actually present in the file.
+	violations.push(...noindexBlockedViolations(classified, robots.disallow));
 
 	// The external-boundary prefix list must not drift from src/server.ts.
 	if (input.serverSource) {
@@ -740,7 +955,7 @@ export function evaluateIndexBoundary(input) {
 			});
 			continue;
 		}
-		const declaresNoindex = ROBOTS_META_RE.test(source) && NOINDEX_CONTENT_RE.test(source);
+		const declaresNoindex = declaresNoindexMeta(source);
 		if (intent.index === 'no' && !declaresNoindex) {
 			violations.push({
 				code: 'missing-noindex-meta',
@@ -755,15 +970,16 @@ export function evaluateIndexBoundary(input) {
 		}
 		if (intent.index === 'sitemap') {
 			const expectedUrl = `${origin}${path === '/' ? '/' : path}`;
-			if (!canonicalOf(source)) {
+			const canonical = canonicalOf(source);
+			if (!canonical) {
 				violations.push({
 					code: 'missing-canonical',
 					message: `${path} is listed in the sitemap at ${expectedUrl} but ${file} declares no rel="canonical"`,
 				});
-			} else if (canonicalOf(source) !== expectedUrl) {
+			} else if (canonical !== expectedUrl) {
 				violations.push({
 					code: 'canonical-sitemap-mismatch',
-					message: `${file} declares canonical ${canonicalOf(source)}, but the sitemap lists ${expectedUrl}`,
+					message: `${file} declares canonical ${canonical}, but the sitemap lists ${expectedUrl}`,
 				});
 			}
 		}
@@ -776,7 +992,7 @@ export function evaluateIndexBoundary(input) {
 	if (owner && input.readRouteFile) {
 		try {
 			const ownerSource = input.readRouteFile(owner.metaFile);
-			if (!(ROBOTS_META_RE.test(ownerSource) && NOINDEX_CONTENT_RE.test(ownerSource))) {
+			if (!declaresNoindexMeta(ownerSource)) {
 				violations.push({
 					code: 'missing-noindex-meta',
 					message: `${owner.metaFile} must declare the robots noindex meta for the whole ${NOINDEX_META_OWNER_ROUTE} subtree`,
@@ -814,8 +1030,17 @@ export function evaluateIndexBoundary(input) {
  * literal (a template string over loader data, as in
  * `src/routes/portfolio/$slug.tsx`) resolves to null — those routes
  * build their canonical at request time and are not sitemap-listed.
+ *
+ * Comments are stripped first, so a commented-out canonical cannot
+ * satisfy `missing-canonical`. The match is still whole-file: a
+ * canonical declared outside a `head()` (a JSON-LD `links` block, say)
+ * would be accepted here. That is recorded as known looseness rather
+ * than over-engineered — every sitemap page today declares its
+ * canonical in `head()`, and the rendered half is asserted by
+ * `test/integration/index-boundary.test.ts`.
  */
-export function canonicalOf(source) {
+export function canonicalOf(rawSource) {
+	const source = stripComments(rawSource);
 	const link = /rel:\s*['"]canonical['"]\s*,\s*href:\s*([^,}\]]+)/.exec(source);
 	if (!link) return null;
 	const expression = link[1].trim();

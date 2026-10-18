@@ -191,17 +191,21 @@ verified by `pnpm run index:boundary:check` (part of
 The boundary has exactly two halves, and they are not interchangeable:
 
 - **Crawl control** — `Disallow` in `robots.txt` keeps a URL out of
-  the crawl. It is applied only to the gated `/admin` subtree and to
-  the machine boundaries (`/api/v1`, `/webhooks`, `/oauth`,
-  `/integrations`, `/_serverFn`), i.e. surfaces that cost crawl budget
-  and have no document to index.
+  the crawl. It is applied to the machine boundaries (`/api/v1`,
+  `/webhooks`, `/oauth`, `/integrations`, `/_serverFn`) — surfaces
+  that cost crawl budget and have no document to index at all. It is
+  deliberately NOT applied to `/admin`: the admin subtree is
+  de-indexed by its own `noindex` meta, which is only readable at
+  fetch time, so blocking the crawl would leave the URLs "indexed,
+  though blocked by robots.txt". The gate rejects that combination
+  (`noindex-blocked`) rather than trusting this paragraph.
 - **Index control** — `<meta name="robots" content="noindex, nofollow">`
   is what actually removes a URL from the index. It is declared by the
   page itself (`src/routes/admin.tsx` for the whole admin subtree, and
-  the Tool shell routes), which is why those pages must stay
-  crawlable: a page a crawler cannot fetch cannot deliver its own
-  noindex, and Google then reports the URL as "Indexed, though blocked
-  by robots.txt".
+  the Tool shell routes), which is why those pages stay crawlable: a
+  page a crawler cannot fetch cannot deliver its own noindex, and
+  Google then reports the URL as "Indexed, though blocked by
+  robots.txt".
 
 Neither half is authentication. `robots.txt` is a public document
 served to anonymous clients — `curl`, a browser, or a scraper ignores
@@ -213,10 +217,14 @@ are independent: a `Googlebot` User-Agent gets no privilege on
 
 The gate fails loudly rather than silently on: a site-wide
 `Disallow: /`, a `Disallow` rule that would shadow an indexable public
-route, a gated route that lost its rule, an `noindex` meta on a public
-route, a sitemap entry whose route does not exist (or vice versa), a
-sitemap URL that disagrees with the page's own `canonical`, and any new
-route that has no declared index intent.
+route, a route de-indexed by its own `noindex` meta that is also kept
+out of the crawl (`noindex-blocked` — the combination this paragraph
+describes), a crawl-blocked route that lost its rule, a `noindex` meta
+on a public route, a sitemap entry whose route does not exist (or vice
+versa), a sitemap URL that disagrees with the page's own `canonical`,
+and any new route that has no declared index intent. The meta and
+canonical checks strip comments before matching, so a declaration that
+only survives in a comment does not count.
 
 ## Browser binaries (Playwright)
 

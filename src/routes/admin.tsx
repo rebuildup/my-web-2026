@@ -46,9 +46,13 @@ export const Route = createFileRoute('/admin')({
 	//
 	// This is NOT access control and does not replace one: the gate is
 	// still `requireAdmin()` in the child loaders / server functions
-	// (`src/admin/auth/require-admin.ts`). `public/robots.txt` marks the
-	// subtree as `Disallow` purely as crawl hygiene; deleting that file
-	// changes nothing about who can read what.
+	// (`src/admin/auth/require-admin.ts`). Keeping the subtree
+	// crawlable costs a crawl of `/admin/login` and the redirects in
+	// front of every gated child; the alternative — a `Disallow` — buys
+	// that budget at the price of never being able to de-index the URL,
+	// which is the whole failure `scripts/_index-boundary.mjs` exists to
+	// prevent. That trade is the contract's, and the `noindex-blocked`
+	// violation fails the build if the two are ever paired.
 	head: () => ({
 		meta: [{ name: 'robots', content: 'noindex, nofollow' }],
 	}),

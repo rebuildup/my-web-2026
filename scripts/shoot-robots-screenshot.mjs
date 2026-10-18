@@ -12,6 +12,7 @@
  * HTTP by the same pipeline that ships" is the point:
  *
  *   pnpm exec vite dev --port 15923 --strictPort
+ *   pnpm run capture:robots            # same as the `node …` line below
  *   node scripts/shoot-robots-screenshot.mjs \
  *     http://localhost:15923/robots.txt docs/verification/web/robots-txt-browser.webp
  *

@@ -48,6 +48,16 @@ resolves to a non-public address — both layers are load-bearing. The
 shipped contract, operator duties and known limits:
 [`docs/security/outbound-fetch.md`](security/outbound-fetch.md).
 
+## Open redirect
+
+Every `returnTo`-shaped value that crosses the external boundary is
+untrusted. `src/http/security/**` refuses anything that is not an
+internal absolute path, and is mounted in front of the Better Auth
+handler at `/api/v1/auth/*`. `BETTER_AUTH_URL` is the trusted-origin
+allow-list; when it is unset the guard refuses every absolute URL
+(fail-closed). The shipped contract, operator duties and known limits:
+[`docs/security/open-redirect.md`](security/open-redirect.md).
+
 ## D1 parameter binding (Issue #452)
 
 ### Rule
@@ -200,6 +210,11 @@ binding API is reachable in the local workerd pool"**, not
 - Outbound URL matrix (Issue #453) is regenerated from the shipped
   adapter by `pnpm run security:ssrf:report`; the committed artefact
   and its reading guide are in
+  [`docs/verification/security/`](verification/security/).
+
+- Redirect-target matrix (Issue #454) is regenerated from the shipped
+  guard by `pnpm run security:redirect:report`; the committed image and
+  its reading guide are in
   [`docs/verification/security/`](verification/security/).
 
 ## Browser binaries (Playwright)

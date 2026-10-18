@@ -14,6 +14,13 @@
  * binding is accidentally wired, because nothing here takes an
  * environment or a connection.
  *
+ * Both shipped schemes are represented, because the adapter's job is to
+ * accept a *real* delivery from each of them:
+ *   - {@link GITHUB_SCHEME} signs the raw body only (GitHub's actual
+ *     format — no timestamp header exists in a GitHub delivery);
+ *   - {@link TIMESTAMPED_SCHEME} signs `"<timestamp>.<body>"`, which
+ *     is what makes `stale_timestamp` / `future_timestamp` reachable.
+ *
  * The same builder feeds the Vitest contract test
  * (`src/http/webhooks/fixtures.test.ts`) and the verification report
  * (`scripts/webhook-signature-fixture-report.mjs`), so the screenshot
@@ -22,19 +29,19 @@
  */
 
 import {
+	GITHUB_WEBHOOK_SCHEME,
+	TIMESTAMPED_WEBHOOK_SCHEME,
 	type VerifyWebhookOptions,
 	type WebhookRejectionReason,
+	type WebhookSignatureScheme,
 	type WebhookVerificationResult,
 	createMemoryReplayGuard,
 	signWebhookPayload,
 	verifyWebhookDelivery,
 } from './signature.ts';
 
-export const SCHEME = {
-	signatureHeader: 'x-hub-signature-256',
-	timestampHeader: 'x-hub-request-timestamp',
-	deliveryHeader: 'x-github-delivery',
-} as const;
+export const GITHUB_SCHEME = GITHUB_WEBHOOK_SCHEME;
+export const TIMESTAMPED_SCHEME = TIMESTAMPED_WEBHOOK_SCHEME;
 
 /**
  * Fixture HMAC key. A literal that is intentionally not a credential:
@@ -80,23 +87,51 @@ export interface WebhookFixture {
 	 * expressed as data instead of as test ordering.
 	 */
 	primeReplay?: { deliveryId: string };
+	/**
+	 * Verify without the injected replay guard. Used by the fixtures
+	 * that pin the adapter's refusal to verify a `body-only` delivery
+	 * with no freshness bound at all.
+	 */
+	omitReplayGuard?: boolean;
 	expected: WebhookFixtureExpectation;
 }
 
 const seconds = (deltaSeconds: number): string => String(FIXTURE_NOW_SECONDS + deltaSeconds);
 
-/** Headers for a correctly signed, fresh delivery. */
-async function signedHeaders(
+/** GitHub-shaped headers: `sha256=` HMAC of the raw body, delivery id. */
+async function githubHeaders(deliveryId?: string): Promise<Record<string, string>> {
+	const signature = await signWebhookPayload({ secret: FIXTURE_SECRET, body: BODY });
+	const headers: Record<string, string> = { [GITHUB_SCHEME.signatureHeader]: signature };
+	if (deliveryId) headers[GITHUB_SCHEME.deliveryHeader] = deliveryId;
+	return headers;
+}
+
+/** Generic sender headers: `sha256=` HMAC of `"<timestamp>.<body>"`. */
+async function timestampedHeaders(
 	timestamp: string,
 	deliveryId?: string,
 ): Promise<Record<string, string>> {
-	const signature = await signWebhookPayload({ secret: FIXTURE_SECRET, timestamp, body: BODY });
+	const signature = await signWebhookPayload({
+		secret: FIXTURE_SECRET,
+		body: BODY,
+		timestamp,
+		scheme: TIMESTAMPED_SCHEME,
+	});
 	const headers: Record<string, string> = {
-		[SCHEME.signatureHeader]: signature,
-		[SCHEME.timestampHeader]: timestamp,
+		[TIMESTAMPED_SCHEME.signatureHeader]: signature,
+		[TIMESTAMPED_SCHEME.timestampHeader]: timestamp,
 	};
-	if (deliveryId) headers[SCHEME.deliveryHeader] = deliveryId;
+	if (deliveryId) headers[TIMESTAMPED_SCHEME.deliveryHeader] = deliveryId;
 	return headers;
+}
+
+/** Delivery options with the scheme every fixture of that kind shares. */
+function deliveryFor(
+	scheme: WebhookSignatureScheme,
+	headers: Record<string, string>,
+	overrides: Partial<VerifyWebhookOptions> = {},
+): VerifyWebhookOptions {
+	return { headers, body: BODY, secret: FIXTURE_SECRET, scheme, ...overrides };
 }
 
 /**
@@ -106,181 +141,170 @@ async function signedHeaders(
  */
 export async function buildWebhookFixtures(): Promise<WebhookFixture[]> {
 	const now = seconds(0);
-	const fresh = await signedHeaders(now, DELIVERY_ID);
+	const github = await githubHeaders(DELIVERY_ID);
+	const timestamped = await timestampedHeaders(now, DELIVERY_ID);
 
 	return [
 		{
 			id: 'signed',
-			label: 'correctly signed, fresh, first delivery',
+			label: 'GitHub-shaped delivery, first sighting',
+			input: 'valid sha256 HMAC over the raw body, delivery id present',
+			delivery: deliveryFor(GITHUB_SCHEME, github),
+			expected: { accepted: true },
+		},
+		{
+			id: 'signed_timestamped',
+			label: 'generic sender, correctly signed fresh delivery',
 			input: `valid sha256 HMAC over "${now}.<body>", delivery id present`,
-			delivery: { headers: fresh, body: BODY, secret: FIXTURE_SECRET },
+			delivery: deliveryFor(TIMESTAMPED_SCHEME, timestamped),
 			expected: { accepted: true },
 		},
 		{
 			id: 'unsigned',
 			label: 'no signature header at all',
-			input: 'signature header removed, timestamp + delivery id intact',
-			delivery: {
-				headers: { [SCHEME.timestampHeader]: now, [SCHEME.deliveryHeader]: DELIVERY_ID },
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			input: 'signature header removed, delivery id intact',
+			delivery: deliveryFor(GITHUB_SCHEME, {
+				[GITHUB_SCHEME.deliveryHeader]: DELIVERY_ID,
+			}),
 			expected: { accepted: false, reason: 'missing_signature', status: 401 },
 		},
 		{
 			id: 'blank_signature',
 			label: 'signature header present but empty',
 			input: 'signature header = "" (sender bug / proxy stripping)',
-			delivery: {
-				headers: {
-					...fresh,
-					[SCHEME.signatureHeader]: '   ',
-				},
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(GITHUB_SCHEME, {
+				...github,
+				[GITHUB_SCHEME.signatureHeader]: '   ',
+			}),
 			expected: { accepted: false, reason: 'missing_signature', status: 401 },
 		},
 		{
 			id: 'tampered_body',
 			label: 'body modified after signing',
 			input: 'valid signature, body byte changed (extra " " appended)',
-			delivery: { headers: fresh, body: `${BODY} `, secret: FIXTURE_SECRET },
+			delivery: deliveryFor(GITHUB_SCHEME, github, { body: `${BODY} ` }),
 			expected: { accepted: false, reason: 'signature_mismatch', status: 401 },
 		},
 		{
 			id: 'tampered_timestamp',
 			label: 'timestamp header re-stamped after signing',
 			input: 'signature computed over an older timestamp, header claims a fresh one',
-			delivery: {
-				headers: { ...fresh, [SCHEME.timestampHeader]: seconds(1) },
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(TIMESTAMPED_SCHEME, {
+				...timestamped,
+				[TIMESTAMPED_SCHEME.timestampHeader]: seconds(1),
+			}),
 			expected: { accepted: false, reason: 'signature_mismatch', status: 401 },
 		},
 		{
 			id: 'wrong_secret',
 			label: 'signed with a rotated / foreign key',
 			input: 'valid shape, HMAC computed under a different secret',
-			delivery: {
-				headers: {
-					...fresh,
-					[SCHEME.signatureHeader]: await signWebhookPayload({
-						secret: FIXTURE_ROTATED_SECRET,
-						timestamp: now,
-						body: BODY,
-					}),
-				},
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(GITHUB_SCHEME, {
+				...github,
+				[GITHUB_SCHEME.signatureHeader]: await signWebhookPayload({
+					secret: FIXTURE_ROTATED_SECRET,
+					body: BODY,
+				}),
+			}),
 			expected: { accepted: false, reason: 'signature_mismatch', status: 401 },
 		},
 		{
 			id: 'expired',
 			label: 'correctly signed but one hour old',
 			input: `timestamp = now - 3600s, tolerance = ${FIXTURE_TOLERANCE_SECONDS}s`,
-			delivery: {
-				headers: await signedHeaders(seconds(-3600)),
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(TIMESTAMPED_SCHEME, await timestampedHeaders(seconds(-3600))),
 			expected: { accepted: false, reason: 'stale_timestamp', status: 401 },
 		},
 		{
 			id: 'future_stamp',
 			label: 'timestamp one hour in the future',
 			input: 'timestamp = now + 3600s (clock skew or forged stamp)',
-			delivery: {
-				headers: await signedHeaders(seconds(3600)),
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(TIMESTAMPED_SCHEME, await timestampedHeaders(seconds(3600))),
 			expected: { accepted: false, reason: 'future_timestamp', status: 401 },
 		},
 		{
 			id: 'missing_timestamp',
 			label: 'signature without a timestamp header',
 			input: 'valid signature, timestamp header removed',
-			delivery: {
-				headers: { [SCHEME.signatureHeader]: fresh[SCHEME.signatureHeader] },
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(TIMESTAMPED_SCHEME, {
+				[TIMESTAMPED_SCHEME.signatureHeader]: timestamped[TIMESTAMPED_SCHEME.signatureHeader],
+			}),
 			expected: { accepted: false, reason: 'missing_timestamp', status: 401 },
 		},
 		{
 			id: 'malformed_timestamp',
 			label: 'non-numeric timestamp',
 			input: 'timestamp header = "not-a-number"',
-			delivery: {
-				headers: { ...fresh, [SCHEME.timestampHeader]: 'not-a-number' },
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(TIMESTAMPED_SCHEME, {
+				...timestamped,
+				[TIMESTAMPED_SCHEME.timestampHeader]: 'not-a-number',
+			}),
 			expected: { accepted: false, reason: 'malformed_timestamp', status: 401 },
 		},
 		{
 			id: 'weak_algorithm',
 			label: 'sha1 signature downgrade attempt',
 			input: 'sha1=<40 hex> instead of sha256=<64 hex>',
-			delivery: {
-				headers: { ...fresh, [SCHEME.signatureHeader]: `sha1=${'a'.repeat(40)}` },
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(GITHUB_SCHEME, {
+				...github,
+				[GITHUB_SCHEME.signatureHeader]: `sha1=${'a'.repeat(40)}`,
+			}),
 			expected: { accepted: false, reason: 'unsupported_algorithm', status: 401 },
 		},
 		{
 			id: 'truncated_signature',
 			label: 'truncated digest',
 			input: 'sha256=abcd (not 64 hex characters)',
-			delivery: {
-				headers: { ...fresh, [SCHEME.signatureHeader]: 'sha256=abcd' },
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(GITHUB_SCHEME, {
+				...github,
+				[GITHUB_SCHEME.signatureHeader]: 'sha256=abcd',
+			}),
 			expected: { accepted: false, reason: 'malformed_signature', status: 401 },
 		},
 		{
 			id: 'replayed',
 			label: 'byte-identical second copy of an accepted delivery',
 			input: 'same headers + body as `signed`, delivery id already claimed',
-			delivery: { headers: fresh, body: BODY, secret: FIXTURE_SECRET },
+			delivery: deliveryFor(GITHUB_SCHEME, github),
 			primeReplay: { deliveryId: DELIVERY_ID },
 			expected: { accepted: false, reason: 'replayed_delivery', status: 409 },
 		},
 		{
 			id: 'missing_delivery_id',
 			label: 'signed delivery without a delivery id',
-			input: 'valid signature + timestamp, delivery header removed',
-			delivery: {
-				headers: {
-					[SCHEME.signatureHeader]: fresh[SCHEME.signatureHeader],
-					[SCHEME.timestampHeader]: now,
-				},
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			input: 'valid GitHub-shaped signature, delivery header removed',
+			delivery: deliveryFor(GITHUB_SCHEME, {
+				[GITHUB_SCHEME.signatureHeader]: github[GITHUB_SCHEME.signatureHeader],
+			}),
 			expected: { accepted: false, reason: 'missing_delivery_id', status: 400 },
 		},
 		{
 			id: 'missing_secret',
 			label: 'no HMAC key configured on our side',
 			input: 'secret = "" (operator fault — must never be reachable in production)',
-			delivery: { headers: fresh, body: BODY, secret: '' },
+			delivery: deliveryFor(GITHUB_SCHEME, github, { secret: '' }),
 			expected: { accepted: false, reason: 'missing_secret', status: 500 },
+		},
+		{
+			id: 'replay_guard_required',
+			label: 'GitHub-shaped delivery verified with no replay guard',
+			input: 'valid signature, but nothing bounds how long a captured body stays valid',
+			delivery: deliveryFor(GITHUB_SCHEME, github),
+			omitReplayGuard: true,
+			expected: { accepted: false, reason: 'replay_guard_required', status: 500 },
+		},
+		{
+			id: 'invalid_replay_ttl',
+			label: 'claim window shorter than the freshness window',
+			input: 'tolerance = 300s but replayTtlMs = 60s (sender retry would look new)',
+			delivery: deliveryFor(GITHUB_SCHEME, github, { replayTtlMs: 60_000 }),
+			expected: { accepted: false, reason: 'invalid_replay_ttl', status: 500 },
 		},
 		{
 			id: 'replayed_other_delivery',
 			label: 'second delivery is not confused with the first one',
 			input: 'same body, different delivery id than the primed one',
-			delivery: {
-				headers: await signedHeaders(now, OTHER_DELIVERY_ID),
-				body: BODY,
-				secret: FIXTURE_SECRET,
-			},
+			delivery: deliveryFor(GITHUB_SCHEME, await githubHeaders(OTHER_DELIVERY_ID)),
 			primeReplay: { deliveryId: DELIVERY_ID },
 			expected: { accepted: true },
 		},
@@ -305,14 +329,16 @@ export async function runWebhookFixture(fixture: WebhookFixture): Promise<Webhoo
 	if (fixture.primeReplay) {
 		await guard.claim(fixture.primeReplay.deliveryId, {
 			nowMs: FIXTURE_NOW_MS,
-			ttlMs: fixture.delivery.replayTtlMs ?? 60_000,
+			// Prime with the same window the delivery itself would get, so
+			// the primed claim cannot expire before the fixture runs.
+			ttlMs: fixture.delivery.replayTtlMs ?? 60 * 60 * 1000,
 		});
 	}
 	const result = await verifyWebhookDelivery({
 		...fixture.delivery,
 		nowMs: FIXTURE_NOW_MS,
 		toleranceSeconds: fixture.delivery.toleranceSeconds ?? FIXTURE_TOLERANCE_SECONDS,
-		replayGuard: guard,
+		replayGuard: fixture.omitReplayGuard ? undefined : guard,
 	});
 	const expected = fixture.expected;
 	const matches =

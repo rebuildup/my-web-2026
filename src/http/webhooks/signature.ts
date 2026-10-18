@@ -11,7 +11,7 @@
  * all cheap to get wrong and expensive to discover in production:
  *
  *   1. Is this request actually from the sender (HMAC signature)?
- *   2. Is it recent (timestamp freshness window)?
+ *   2. Is it recent (freshness window)?
  *   3. Have we already processed this exact delivery (replay guard)?
  *
  * A signature check alone answers none of 2 and 3. A captured,
@@ -27,14 +27,30 @@
  * boundary, so publishing an entry point before the durability
  * questions below are answered would be a regression, not a feature.
  *
- * Why GitHub's scheme
- * -------------------
- * `sha256=<hex>` HMAC over `"<timestamp>.<raw body>"` is the scheme
- * GitHub documents, and it is the strictest of the common ones: the
- * timestamp is *inside* the signed material, so an attacker cannot
- * re-stamp a captured payload without invalidating the signature.
- * Header names are configurable so a CMS that uses a different header
- * set can reuse this adapter instead of forking it.
+ * Why there are two schemes
+ * -------------------------
+ * Senders disagree about *what is signed*, and conflating the two is
+ * how an adapter ends up rejecting every real delivery of its own
+ * sender:
+ *
+ *   - GitHub signs the **raw body alone** and puts the digest in
+ *     `X-Hub-Signature-256`. A GitHub delivery carries no timestamp
+ *     header at all (`X-Hub-Request-Timestamp` is not part of the
+ *     documented delivery headers), so a `"<timestamp>.<body>"`
+ *     check rejects 100 % of real GitHub traffic as
+ *     `missing_timestamp`, and re-stamping is not detectable because
+ *     there is nothing timestamped to re-stamp.
+ *   - Other senders sign `"<timestamp>.<raw body>"`, which puts the
+ *     timestamp inside the MAC and makes a re-stamped captured
+ *     payload fail on its own.
+ *
+ * So the scheme states which material the sender signs
+ * ({@link WebhookSignedMaterial}) instead of assuming one shape, and
+ * {@link GITHUB_WEBHOOK_SCHEME} is GitHub's, exactly. The freshness
+ * question is answered where the sender lets it be answered: from the
+ * signed timestamp when there is one, otherwise by the delivery-id
+ * claim window — which is why a `body-only` sender is refused unless a
+ * replay guard is configured (`replay_guard_required`).
  *
  * Runtime shape
  * -------------
@@ -44,27 +60,69 @@
  */
 
 /**
+ * What the sender puts inside the HMAC.
+ *
+ * - `body-only` — the raw body, nothing else. GitHub.
+ * - `timestamped-body` — `"<timestamp>.<raw body>"`.
+ */
+export type WebhookSignedMaterial = 'body-only' | 'timestamped-body';
+
+/**
  * Header names for the signature scheme.
  *
- * Defaults match GitHub's documented `X-Hub-Signature-256` /
- * `X-Hub-Request-Timestamp` / `X-GitHub-Delivery` set. Header lookup
- * is case-insensitive (`Headers` is; the record path lower-cases).
+ * Header lookup is case-insensitive (`Headers` is; the record path
+ * lower-cases). The two shapes are discriminated on `signedMaterial`
+ * so a `body-only` scheme cannot quietly ship a `timestampHeader`
+ * that nothing reads.
  */
-export interface WebhookSignatureScheme {
-	/** `sha256=<hex>` HMAC header. */
-	signatureHeader: string;
-	/** Unix **seconds** that is part of the signed material. */
-	timestampHeader: string;
-	/** Sender-assigned delivery id used for replay de-duplication. */
-	deliveryHeader: string;
-}
+export type WebhookSignatureScheme =
+	| {
+			/** `sha256=<hex>` HMAC header. */
+			signatureHeader: string;
+			/** Sender-assigned delivery id used for replay de-duplication. */
+			deliveryHeader: string;
+			/** HMAC over the raw body alone. */
+			signedMaterial: 'body-only';
+	  }
+	| {
+			signatureHeader: string;
+			deliveryHeader: string;
+			/** HMAC over `"<timestamp>.<raw body>"`. */
+			signedMaterial: 'timestamped-body';
+			/** Unix **seconds** that is part of the signed material. */
+			timestampHeader: string;
+	  };
 
-/** GitHub-compatible scheme — the default. */
-export const GITHUB_WEBHOOK_SCHEME: WebhookSignatureScheme = {
+/**
+ * GitHub's documented scheme — the default.
+ *
+ * `X-Hub-Signature-256` is `sha256=<hex>` HMAC-SHA256 of the raw
+ * request body. There is no timestamp header in a GitHub delivery, so
+ * freshness is bounded by the replay claim window instead.
+ */
+export const GITHUB_WEBHOOK_SCHEME = {
 	signatureHeader: 'x-hub-signature-256',
-	timestampHeader: 'x-hub-request-timestamp',
 	deliveryHeader: 'x-github-delivery',
-};
+	signedMaterial: 'body-only',
+} satisfies WebhookSignatureScheme;
+
+/**
+ * Generic `timestamped-body` scheme, for a sender that signs
+ * `"<timestamp>.<raw body>"` (a CMS, or any sender modelled on the
+ * Stripe-style scheme). Header names are placeholders — a promoted
+ * route names the sender's real headers.
+ */
+export const TIMESTAMPED_WEBHOOK_SCHEME = {
+	signatureHeader: 'x-webhook-signature',
+	timestampHeader: 'x-webhook-timestamp',
+	deliveryHeader: 'x-webhook-delivery',
+	signedMaterial: 'timestamped-body',
+} satisfies WebhookSignatureScheme;
+
+/** The timestamp header of a `timestamped-body` scheme, else `undefined`. */
+export function schemeTimestampHeader(scheme: WebhookSignatureScheme): string | undefined {
+	return scheme.signedMaterial === 'timestamped-body' ? scheme.timestampHeader : undefined;
+}
 
 /** The only algorithm this adapter accepts (`sha1=` is rejected). */
 export const SUPPORTED_ALGORITHM = 'sha256';
@@ -73,14 +131,21 @@ export const SUPPORTED_ALGORITHM = 'sha256';
 export const DEFAULT_TOLERANCE_SECONDS = 300;
 
 /**
- * How long a claimed delivery id stays de-duplicated.
+ * Claim TTL for a given freshness window.
  *
- * It must be at least as long as the freshness window, otherwise a
- * sender's legitimate retry of a payload that is still inside the
- * window would be re-accepted after the claim expired. One extra
- * window of headroom covers clock drift on both ends.
+ * It must be **derived from the window**, not fixed: a fixed TTL is
+ * only correct for the default window. Set the window to an hour and
+ * a 660 s claim dies at 11 minutes, so a byte-identical retry of a
+ * delivery that is still inside its freshness window is accepted as a
+ * new delivery and the replay guarantee is quietly gone. Two windows
+ * of headroom cover clock drift on both ends.
  */
-export const DEFAULT_REPLAY_TTL_MS = (DEFAULT_TOLERANCE_SECONDS * 2 + 60) * 1000;
+export function webhookReplayTtlMs(toleranceSeconds: number): number {
+	return (toleranceSeconds * 2 + 60) * 1000;
+}
+
+/** Claim TTL implied by {@link DEFAULT_TOLERANCE_SECONDS}. */
+export const DEFAULT_REPLAY_TTL_MS = webhookReplayTtlMs(DEFAULT_TOLERANCE_SECONDS);
 
 /**
  * Headers as seen by a Worker handler: either the platform `Headers`
@@ -160,13 +225,24 @@ export function createMemoryReplayGuard(): WebhookReplayGuard {
 export type WebhookRejectionReason =
 	/** No HMAC key configured — an operator fault, not a caller fault. */
 	| 'missing_secret'
+	/**
+	 * `replayTtlMs` shorter than the freshness window — an operator
+	 * fault. Refused instead of clamped, so the mistake is visible.
+	 */
+	| 'invalid_replay_ttl'
+	/**
+	 * A `body-only` sender (GitHub) with no replay guard. Its signature
+	 * covers no timestamp, so the claim window is the only freshness
+	 * bound; without it a captured body is replayable forever.
+	 */
+	| 'replay_guard_required'
 	/** Signature header absent or empty. */
 	| 'missing_signature'
 	/** `sha1=` / `md5=` — unsupported algorithm, never downgraded. */
 	| 'unsupported_algorithm'
 	/** Not `<alg>=<64 hex>` — cannot even be decoded. */
 	| 'malformed_signature'
-	/** Timestamp header absent or empty. */
+	/** Timestamp header absent or empty (`timestamped-body` only). */
 	| 'missing_timestamp'
 	/** Timestamp is not an integer number of seconds. */
 	| 'malformed_timestamp'
@@ -185,8 +261,14 @@ export interface WebhookAcceptance {
 	accepted: true;
 	/** Delivery id as sent (may be undefined when no guard is used). */
 	deliveryId: string | undefined;
-	/** Unix seconds the signature was computed over. */
-	timestamp: string;
+	/**
+	 * Unix seconds the signature was computed over.
+	 *
+	 * `undefined` for a `body-only` sender: it signs no timestamp, so
+	 * there is nothing to report. Do not substitute the arrival time —
+	 * that would read as if the delivery were fresh.
+	 */
+	timestamp: string | undefined;
 	/** True when a replay guard actually ran for this delivery. */
 	replayChecked: boolean;
 }
@@ -201,7 +283,9 @@ export interface WebhookRejection {
 	 * the response to tell "wrong secret" from "wrong body" — that
 	 * difference is an oracle. `missing_secret` is separated because it
 	 * is our own configuration fault and must page an operator instead
-	 * of looking like a rejected caller.
+	 * of looking like a rejected caller; so are `invalid_replay_ttl`
+	 * and `replay_guard_required`, which are configuration faults in
+	 * the same sense.
 	 */
 	status: 400 | 401 | 409 | 500;
 }
@@ -210,6 +294,8 @@ export type WebhookVerificationResult = WebhookAcceptance | WebhookRejection;
 
 const STATUS_BY_REASON: Record<WebhookRejectionReason, WebhookRejection['status']> = {
 	missing_secret: 500,
+	invalid_replay_ttl: 500,
+	replay_guard_required: 500,
 	missing_signature: 401,
 	unsupported_algorithm: 401,
 	malformed_signature: 401,
@@ -240,6 +326,12 @@ export interface VerifyWebhookOptions {
 	 * A re-serialized `JSON.stringify(await c.req.json())` is NOT
 	 * equivalent — key order and whitespace change the bytes and the
 	 * signature. Handlers must pass `await c.req.text()`.
+	 *
+	 * `string` is exact for UTF-8 payloads. A body that is not UTF-8
+	 * has already been mangled by `c.req.text()` (U+FFFD), which fails
+	 * closed rather than passing; a promoted route that must accept
+	 * binary payloads should pass an `ArrayBuffer` here instead — the
+	 * HMAC path is byte-oriented, only this convenience is not.
 	 */
 	body: string;
 	/** HMAC key from the secret store. Empty/undefined is a fault. */
@@ -248,11 +340,17 @@ export interface VerifyWebhookOptions {
 	nowMs?: number;
 	/** Freshness window in seconds (default {@link DEFAULT_TOLERANCE_SECONDS}). */
 	toleranceSeconds?: number;
-	/** Optional replay de-duplication. */
+	/** Optional replay de-duplication; required for a `body-only` scheme. */
 	replayGuard?: WebhookReplayGuard;
-	/** Override the delivery-id TTL (tests shrink it to prove expiry). */
+	/**
+	 * Override the delivery-id TTL (tests shrink it to prove expiry).
+	 *
+	 * Must not be shorter than `toleranceSeconds`; the adapter refuses
+	 * `invalid_replay_ttl` rather than silently accepting a claim
+	 * window that outlives nothing.
+	 */
 	replayTtlMs?: number;
-	/** Header names (default {@link GITHUB_WEBHOOK_SCHEME}). */
+	/** Header names and signed material (default {@link GITHUB_WEBHOOK_SCHEME}). */
 	scheme?: WebhookSignatureScheme;
 }
 
@@ -274,7 +372,23 @@ function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
 }
 
 /**
- * `sha256=<hex>` HMAC of `"<timestamp>.<body>"` under `secret`.
+ * The bytes a sender actually signed.
+ *
+ * `body-only` sends the raw body; `timestamped-body` prefixes it with
+ * `<timestamp>.`. Both sides of the contract — {@link signWebhookPayload}
+ * and {@link verifyWebhookDelivery} — go through this one function, so
+ * signing and verification cannot drift apart.
+ */
+export function webhookSignedMaterial(
+	scheme: WebhookSignatureScheme,
+	timestamp: string | undefined,
+	body: string,
+): string {
+	return scheme.signedMaterial === 'body-only' ? body : `${timestamp}.${body}`;
+}
+
+/**
+ * `sha256=<hex>` HMAC of {@link webhookSignedMaterial} under `secret`.
  *
  * Exported so a fixture (or a local sender in a fixture-driven test)
  * can produce the header value the adapter expects — the signing and
@@ -283,9 +397,18 @@ function hexToBytes(hex: string): Uint8Array<ArrayBuffer> {
  */
 export async function signWebhookPayload(input: {
 	secret: string;
-	timestamp: string;
 	body: string;
+	/** Unix seconds; required by — and part of — a `timestamped-body` scheme. */
+	timestamp?: string;
+	/** Defaults to {@link GITHUB_WEBHOOK_SCHEME} (body-only). */
+	scheme?: WebhookSignatureScheme;
 }): Promise<string> {
+	const scheme = input.scheme ?? GITHUB_WEBHOOK_SCHEME;
+	if (scheme.signedMaterial === 'timestamped-body' && input.timestamp === undefined) {
+		// A signing-side programmer fault, never reachable from a
+		// request: fail loudly instead of signing `undefined.<body>`.
+		throw new TypeError('signWebhookPayload: a timestamped-body scheme needs `timestamp`');
+	}
 	const key = await crypto.subtle.importKey(
 		'raw',
 		encoder.encode(input.secret),
@@ -296,7 +419,7 @@ export async function signWebhookPayload(input: {
 	const mac = await crypto.subtle.sign(
 		'HMAC',
 		key,
-		encoder.encode(`${input.timestamp}.${input.body}`),
+		encoder.encode(webhookSignedMaterial(scheme, input.timestamp, input.body)),
 	);
 	const hex = Array.from(new Uint8Array(mac))
 		.map((byte) => byte.toString(16).padStart(2, '0'))
@@ -311,13 +434,19 @@ export async function signWebhookPayload(input: {
  * Check order is part of the contract, because the *first* failing
  * check is the reported reason:
  *
- *   1. secret present            → `missing_secret` (500)
- *   2. signature header present  → `missing_signature`
- *   3. `sha256=` + 64 hex digits  → `unsupported_algorithm` / `malformed_signature`
- *   4. timestamp present + numeric→ `missing_timestamp` / `malformed_timestamp`
- *   5. inside freshness window    → `stale_timestamp` / `future_timestamp`
- *   6. HMAC matches               → `signature_mismatch`
- *   7. delivery claimed           → `missing_delivery_id` / `replayed_delivery`
+ *   1. secret present                       → `missing_secret` (500)
+ *   2. claim window covers the freshness window → `invalid_replay_ttl` (500)
+ *   3. `body-only` sender has a replay guard  → `replay_guard_required` (500)
+ *   4. signature header present             → `missing_signature`
+ *   5. `sha256=` + 64 hex digits             → `unsupported_algorithm` / `malformed_signature`
+ *   6. timestamp present + numeric           → `missing_timestamp` / `malformed_timestamp` (timestamped-body only)
+ *   7. inside freshness window               → `stale_timestamp` / `future_timestamp` (timestamped-body only)
+ *   8. HMAC matches                          → `signature_mismatch`
+ *   9. delivery claimed                      → `missing_delivery_id` / `replayed_delivery`
+ *
+ * Steps 1-3 are our own configuration, not the caller's fault, so
+ * they are checked before anything an unauthenticated caller controls
+ * and all three map to `500`.
  *
  * Replay comes **last** on purpose. Claiming the delivery id before
  * the HMAC matched would let anyone burn an id with a forged request
@@ -332,6 +461,21 @@ export async function verifyWebhookDelivery(
 
 	if (!options.secret) return reject('missing_secret');
 
+	const nowMs = options.nowMs ?? Date.now();
+	const toleranceSeconds = options.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
+	const toleranceMs = toleranceSeconds * 1000;
+	const replayTtlMs = options.replayTtlMs ?? webhookReplayTtlMs(toleranceSeconds);
+	// A claim that dies before the freshness window closes turns the
+	// sender's in-window retry into an accepted "new" delivery. Refuse
+	// the misconfiguration rather than silently widening the window.
+	if (replayTtlMs < toleranceMs) return reject('invalid_replay_ttl');
+	// GitHub signs no timestamp, so the claim window is the only thing
+	// bounding how long a captured body stays acceptable. No guard, no
+	// freshness — refuse instead of verifying the signature alone.
+	if (scheme.signedMaterial === 'body-only' && !options.replayGuard) {
+		return reject('replay_guard_required');
+	}
+
 	const rawSignature = readHeader(headers, scheme.signatureHeader)?.trim();
 	if (!rawSignature) return reject('missing_signature');
 
@@ -342,16 +486,17 @@ export async function verifyWebhookDelivery(
 	const digest = rawSignature.slice(separator + 1);
 	if (!HEX_SIGNATURE.test(digest)) return reject('malformed_signature');
 
-	const rawTimestamp = readHeader(headers, scheme.timestampHeader)?.trim();
-	if (!rawTimestamp) return reject('missing_timestamp');
-	if (!NUMERIC_TIMESTAMP.test(rawTimestamp)) return reject('malformed_timestamp');
+	const timestampHeader = schemeTimestampHeader(scheme);
+	let rawTimestamp: string | undefined;
+	if (timestampHeader) {
+		rawTimestamp = readHeader(headers, timestampHeader)?.trim();
+		if (!rawTimestamp) return reject('missing_timestamp');
+		if (!NUMERIC_TIMESTAMP.test(rawTimestamp)) return reject('malformed_timestamp');
 
-	const toleranceSeconds = options.toleranceSeconds ?? DEFAULT_TOLERANCE_SECONDS;
-	const nowMs = options.nowMs ?? Date.now();
-	const timestampMs = Number(rawTimestamp) * 1000;
-	const skewSeconds = (nowMs - timestampMs) / 1000;
-	if (skewSeconds > toleranceSeconds) return reject('stale_timestamp');
-	if (-skewSeconds > toleranceSeconds) return reject('future_timestamp');
+		const skewSeconds = (nowMs - Number(rawTimestamp) * 1000) / 1000;
+		if (skewSeconds > toleranceSeconds) return reject('stale_timestamp');
+		if (-skewSeconds > toleranceSeconds) return reject('future_timestamp');
+	}
 
 	// `crypto.subtle.verify` compares in constant time. A `!==` on the
 	// hex strings would leak how many leading characters an attacker
@@ -368,20 +513,22 @@ export async function verifyWebhookDelivery(
 		'HMAC',
 		key,
 		hexToBytes(digest),
-		encoder.encode(`${rawTimestamp}.${body}`),
+		encoder.encode(webhookSignedMaterial(scheme, rawTimestamp, body)),
 	);
 	if (!valid) return reject('signature_mismatch');
 
 	if (!options.replayGuard) {
-		return { accepted: true, deliveryId: undefined, timestamp: rawTimestamp, replayChecked: false };
+		return {
+			accepted: true,
+			deliveryId: undefined,
+			timestamp: rawTimestamp,
+			replayChecked: false,
+		};
 	}
 
 	const deliveryId = readHeader(headers, scheme.deliveryHeader)?.trim();
 	if (!deliveryId) return reject('missing_delivery_id');
-	const claimed = await options.replayGuard.claim(deliveryId, {
-		nowMs,
-		ttlMs: options.replayTtlMs ?? DEFAULT_REPLAY_TTL_MS,
-	});
+	const claimed = await options.replayGuard.claim(deliveryId, { nowMs, ttlMs: replayTtlMs });
 	if (!claimed) return reject('replayed_delivery');
 
 	return { accepted: true, deliveryId, timestamp: rawTimestamp, replayChecked: true };

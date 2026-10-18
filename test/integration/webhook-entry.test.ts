@@ -20,14 +20,13 @@ import { signWebhookPayload } from '../../src/http/webhooks/signature.ts';
  * fixture signature.
  */
 describe('inbound webhook entry point through the real Worker (Issue #463)', () => {
-	it('answers 404 for a correctly signed, fresh, never-seen delivery', async () => {
-		const timestamp = String(Math.floor(Date.now() / 1000));
+	it('answers 404 for a correctly signed, never-seen delivery', async () => {
 		const body = '{"entry":{"id":"entry-4711"},"action":"published"}';
 		const signature = await signWebhookPayload({
 			// Local fixture key. Not a credential: it exists only so this
-			// request is *shaped* like a genuine delivery.
+			// request is *shaped* like a genuine delivery — GitHub signs
+			// the raw body and sends no timestamp header.
 			secret: 'self-test-hmac-key-not-a-credential',
-			timestamp,
 			body,
 		});
 
@@ -36,7 +35,6 @@ describe('inbound webhook entry point through the real Worker (Issue #463)', () 
 			headers: {
 				'content-type': 'application/json',
 				'x-hub-signature-256': signature,
-				'x-hub-request-timestamp': timestamp,
 				'x-github-delivery': 'delivery-self-probe',
 			},
 			body,

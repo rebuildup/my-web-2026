@@ -8,9 +8,8 @@
 
 `docs/domain/integrations.md` records that no third-party integration
 has been promoted yet, and `src/server.ts` already dispatches
-`/webhooks/*` to the Hono external boundary. The first sender — GitHub
-today, a CMS later — will need three answers before any body is
-trusted:
+`/webhooks/*` to the Hono external boundary. The first sender will need
+three answers before any body is trusted:
 
 1. **Signature** — is this request from the sender?
 2. **Freshness** — is it recent?
@@ -26,43 +25,67 @@ sees an unverified body.
 | Piece | State |
 | --- | --- |
 | `src/http/webhooks/signature.ts` — verification adapter | implemented, binding-free |
-| `src/http/webhooks/fixtures.ts` — local fixtures | implemented, 16 inputs |
+| `src/http/webhooks/fixtures.ts` — local fixtures | implemented, 19 inputs |
 | Contract tests (`src/http/webhooks/*.test.ts`) | implemented |
+| Report generator + its own test (`scripts/webhook-signature-fixture-report*.{mjs,test.mjs}`) | implemented, wired into `pnpm run test` |
 | Entry-point absence tests (`boundary.test.ts`, `test/integration/webhook-entry.test.ts`) | implemented |
 | `POST /webhooks/*` handler | **not implemented — must stay 404** |
 
 `GET` / `POST /webhooks/**` answers `404 {"error":"not_found"}` even
-for a correctly signed, fresh, never-seen delivery. That is asserted at
-two layers (Hono app and real Worker via `SELF`) so the absence cannot
-be removed accidentally: promoting the route must change a test on
+for a correctly signed, never-seen delivery. That is asserted at two
+layers (Hono app and real Worker via `SELF`) so the absence cannot be
+removed accidentally: promoting the route must change a test on
 purpose.
 
 ## The contract
 
-Scheme: `sha256=<64 hex>` HMAC-SHA256 over `"<timestamp>.<raw body>"`,
-the scheme GitHub documents. The timestamp is **inside** the signed
-material, so a captured payload cannot be re-stamped without
-invalidating the signature. Header names are configurable, so a CMS
-with a different header set reuses the adapter instead of forking it.
+Two schemes, because senders disagree about **what is signed**, and an
+adapter that assumes one shape rejects every real delivery of its own
+sender:
 
-| Default header | Purpose |
-| --- | --- |
-| `x-hub-signature-256` | `sha256=<hex>` signature |
-| `x-hub-request-timestamp` | unix **seconds**, part of the signed material |
-| `x-github-delivery` | sender-assigned delivery id (replay de-duplication) |
+| scheme | signed material | headers | freshness bound |
+| --- | --- | --- | --- |
+| `GITHUB_WEBHOOK_SCHEME` (default) | the raw body alone | `x-hub-signature-256`, `x-github-delivery` | the replay claim window — GitHub signs no timestamp |
+| `TIMESTAMPED_WEBHOOK_SCHEME` | `"<timestamp>.<raw body>"` | `x-webhook-signature`, `x-webhook-timestamp`, `x-webhook-delivery` | the signed timestamp (±window) |
+
+Both are `sha256=<64 hex>` HMAC-SHA256 compared in constant time.
+
+Why the split matters:
+
+- **GitHub signs the raw body only.**
+  `X-Hub-Signature-256` is the HMAC of the request payload, and a
+  GitHub delivery carries **no timestamp header at all** —
+  `X-Hub-Request-Timestamp` is not part of the documented delivery
+  headers. Verifying `"<timestamp>.<body>"` for GitHub therefore
+  rejects 100 % of real deliveries (`missing_timestamp`), and adding
+  the header by hand only moves the failure to `signature_mismatch`.
+  ([verification spec](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries),
+  [delivery headers](https://docs.github.com/en/webhooks/webhook-events-and-payloads))
+- **Other senders sign `<timestamp>.<body>`.** There the timestamp is
+  inside the MAC, so a captured payload cannot be re-stamped without
+  invalidating the signature.
+- The scheme is a discriminated union (`signedMaterial:
+  'body-only' | 'timestamped-body'`), so a `body-only` scheme cannot
+  ship a `timestampHeader` that nothing reads, and the two materials
+  cannot be signed and verified against each other by accident.
+
+Header names are configurable, so a CMS with a different header set
+reuses the adapter instead of forking it.
 
 Check order is part of the contract — the *first* failing check is the
 reported reason:
 
-1. secret present → `missing_secret`
-2. signature header present → `missing_signature`
-3. `sha256=` + 64 hex digits → `unsupported_algorithm` / `malformed_signature`
-4. timestamp present and integer → `missing_timestamp` / `malformed_timestamp`
-5. inside the freshness window (±300 s) → `stale_timestamp` / `future_timestamp`
-6. HMAC matches → `signature_mismatch`
-7. delivery id claimed → `missing_delivery_id` / `replayed_delivery`
+1. secret present → `missing_secret` (500)
+2. claim window covers the freshness window → `invalid_replay_ttl` (500)
+3. `body-only` sender has a replay guard → `replay_guard_required` (500)
+4. signature header present → `missing_signature`
+5. `sha256=` + 64 hex digits → `unsupported_algorithm` / `malformed_signature`
+6. *timestamped-body only:* timestamp present and integer → `missing_timestamp` / `malformed_timestamp`
+7. *timestamped-body only:* inside the freshness window (±300 s) → `stale_timestamp` / `future_timestamp`
+8. HMAC matches → `signature_mismatch`
+9. delivery id claimed → `missing_delivery_id` / `replayed_delivery`
 
-Three properties are load-bearing:
+Four properties are load-bearing:
 
 - **Constant-time comparison.** Only `crypto.subtle.verify` decides the
   signature. A `!==` on the hex strings leaks how many leading
@@ -74,16 +97,29 @@ Three properties are load-bearing:
   (`signature.test.ts` asserts this).
 - **No algorithm downgrade.** `sha1=` is rejected, not accepted with a
   warning.
+- **The claim window is derived from the freshness window, not fixed.**
+  `webhookReplayTtlMs(toleranceSeconds)` is the only default, so a
+  one-hour window gets a claim TTL that outlives it. A fixed TTL would
+  be correct only for the default window: at ±1 h a 660 s claim dies at
+  11 minutes, and a byte-identical resend of a delivery that is still
+  inside its freshness window is accepted as a new delivery. An
+  explicit `replayTtlMs` shorter than the window is **refused**
+  (`invalid_replay_ttl`) rather than silently clamped, because a
+  misconfiguration must be visible. For a `body-only` sender the claim
+  window is the *only* freshness bound there is, which is why step 3
+  refuses a body-only delivery verified with no replay guard.
 
 ### Failure behaviour
 
 | reason | status | meaning |
 | --- | --- | --- |
 | `missing_secret` | `500` | operator fault — no HMAC key registered; must page, never look like a rejected caller |
+| `invalid_replay_ttl` | `500` | operator fault — `replayTtlMs` shorter than the freshness window |
+| `replay_guard_required` | `500` | operator fault — `body-only` sender verified with no replay guard, so nothing bounds a captured body |
 | `missing_signature` | `401` | no signature header (or empty) |
 | `unsupported_algorithm` | `401` | not `sha256=` |
 | `malformed_signature` | `401` | not `<alg>=<64 hex>` |
-| `missing_timestamp` | `401` | no timestamp header |
+| `missing_timestamp` | `401` | no timestamp header (`timestamped-body` only) |
 | `malformed_timestamp` | `401` | timestamp is not integer seconds |
 | `stale_timestamp` | `401` | older than the window |
 | `future_timestamp` | `401` | ahead of the window (clock skew or forged stamp) |
@@ -92,24 +128,38 @@ Three properties are load-bearing:
 | `replayed_delivery` | `409` | delivery already processed |
 
 Every authentication failure shares `401` so a caller cannot use the
-response to distinguish "wrong key" from "wrong body". `missing_secret`
-is separated because it is our own configuration fault, and
-`replayed_delivery` is separated because a sender can act on "you
-already got this one" differently from "that was forged".
+response to distinguish "wrong key" from "wrong body". `missing_secret`,
+`invalid_replay_ttl` and `replay_guard_required` are separated because
+they are our own configuration faults, and `replayed_delivery` is
+separated because a sender can act on "you already got this one"
+differently from "that was forged".
+
+**The status is not the only thing that must stay uniform.** The
+reason is for logs; a route must not echo it in the response body. The
+freshness window runs *before* the HMAC, so a body that returned
+`stale_timestamp` vs `signature_mismatch` would let an unauthenticated
+caller bisect our clock. See the promotion checklist.
 
 The body must be the **raw** request text (`await c.req.text()`).
 Re-serializing with `JSON.stringify(await c.req.json())` changes the
-bytes and therefore the signature.
+bytes and therefore the signature. `string` is exact for UTF-8; a
+non-UTF-8 body has already been mangled by `c.req.text()` (U+FFFD) and
+fails closed. A promoted route that must accept binary payloads should
+pass an `ArrayBuffer` instead — the HMAC path is byte-oriented, only
+this convenience is not.
 
 ## Test inputs (fixtures)
 
 All fixtures are local: frozen clock (`1767225600`), literal
 non-credential keys, a static CMS-shaped body, no binding, no network,
-no D1/R2. They cannot reach production even in principle.
+no D1/R2. They cannot reach production even in principle. `body-only`
+(GitHub) and `timestamped-body` fixtures are both present, because
+neither sender may be only half-pinned.
 
 | fixture | input | expected |
 | --- | --- | --- |
-| `signed` | valid HMAC, fresh, first delivery | accepted |
+| `signed` | GitHub-shaped: valid HMAC over the raw body, delivery id | accepted |
+| `signed_timestamped` | valid HMAC over `<ts>.<body>`, delivery id | accepted |
 | `unsigned` | signature header removed | `missing_signature` → 401 |
 | `blank_signature` | signature header is whitespace | `missing_signature` → 401 |
 | `tampered_body` | one byte appended after signing | `signature_mismatch` → 401 |
@@ -118,12 +168,14 @@ no D1/R2. They cannot reach production even in principle.
 | `expired` | correctly signed, one hour old | `stale_timestamp` → 401 |
 | `future_stamp` | timestamp one hour ahead | `future_timestamp` → 401 |
 | `missing_timestamp` | signature without a timestamp header | `missing_timestamp` → 401 |
-| `malformed_timestamp` | `x-hub-request-timestamp: not-a-number` | `malformed_timestamp` → 401 |
+| `malformed_timestamp` | timestamp header = `not-a-number` | `malformed_timestamp` → 401 |
 | `weak_algorithm` | `sha1=<40 hex>` | `unsupported_algorithm` → 401 |
 | `truncated_signature` | `sha256=abcd` | `malformed_signature` → 401 |
 | `replayed` | byte-identical second copy of an accepted delivery | `replayed_delivery` → 409 |
 | `missing_delivery_id` | signed delivery without a delivery id | `missing_delivery_id` → 400 |
 | `missing_secret` | no HMAC key on our side | `missing_secret` → 500 |
+| `replay_guard_required` | GitHub-shaped delivery, no replay guard | `replay_guard_required` → 500 |
+| `invalid_replay_ttl` | window 300 s, `replayTtlMs` 60 s | `invalid_replay_ttl` → 500 |
 | `replayed_other_delivery` | same body, different delivery id | accepted (no false positive) |
 
 The last row matters as much as the rejects: de-duplication that
@@ -142,6 +194,11 @@ pnpm exec vitest run test/integration/webhook-entry.test.ts
 # exits 1 if any fixture deviates from its declared verdict)
 pnpm run webhook:fixture:report
 ```
+
+The report generator is itself tested
+(`scripts/webhook-signature-fixture-report.test.mjs`, wired into
+`pnpm run test`), including the exit-1 path — otherwise the screenshot
+and the suite could drift apart with nothing noticing.
 
 The committed screenshot
 [`docs/verification/security/webhook-signature-fixture.webp`](../verification/security/webhook-signature-fixture.webp)
@@ -169,7 +226,9 @@ ticket:
 
 1. **Durable replay store** — implement `WebhookReplayGuard` on D1
    (`INSERT` on a unique delivery id, expire rows after the window).
-   Anything less than durable means the third guarantee is absent.
+   Anything less than durable means the third guarantee is absent, and
+   for a `body-only` sender (GitHub) it also means there is no
+   freshness bound at all.
 2. **HMAC key registration** — add the secret name to
    `wrangler.jsonc#secrets.required` **and** its
    `wrangler.production.jsonc` mirror, seed it in Infisical
@@ -181,14 +240,19 @@ ticket:
    anonymous request.
 3. **Raw body** — read `await c.req.text()` once and pass those exact
    bytes to the adapter.
-4. **Failure release** — call `release(deliveryId)` when downstream
+4. **Uniform failure response** — the status from the table above, and
+   a body that is identical across every reason (no `reason` field, no
+   timestamp echo). Log the reason instead; a body that distinguishes
+   `stale_timestamp` from `signature_mismatch` hands an
+   unauthenticated caller a clock oracle.
+5. **Failure release** — call `release(deliveryId)` when downstream
    processing fails, so our own error does not block the sender's retry.
-5. **Rate limit + size cap** — apply the read-side rate-limit binding
+6. **Rate limit + size cap** — apply the read-side rate-limit binding
    and reject oversized bodies before hashing (ADR-0010).
-6. **Audit without payload** — log delivery id, verdict, and reason.
+7. **Audit without payload** — log delivery id, verdict, and reason.
    Never log the body, the signature, or the key.
-7. **Update the absence tests** in the same PR.
-8. **ADR** — required only if promotion introduces a new Cloudflare
+8. **Update the absence tests** in the same PR.
+9. **ADR** — required only if promotion introduces a new Cloudflare
    service (e.g. KV for the replay store); ADR-0004 governs that.
 
 ## References
@@ -197,6 +261,9 @@ ticket:
   an outcome.
 - `docs/runbook/infisical-secrets.md` — secret inventory and rotation
   ownership.
-- [`docs/security.md`](security.md) — project security policy.
+- [`docs/security.md`](../security.md) — project security policy.
+- [GitHub: validating webhook deliveries](https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries)
+  and [webhook events and payloads](https://docs.github.com/en/webhooks/webhook-events-and-payloads)
+  — the header set and the body-only signature this adapter follows.
 - ADR-0002 (boundary policy), ADR-0004 (Cloudflare services policy),
   ADR-0010 (abuse protection).

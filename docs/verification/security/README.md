@@ -6,6 +6,20 @@ than hand-written.
 | Artefact | Issue | Regenerate |
 | --- | --- | --- |
 | [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
+| [`webhook-signature-fixture.webp`](webhook-signature-fixture.webp) | #463 | `pnpm run webhook:fixture:report` |
+
+## `webhook-signature-fixture.webp`
+
+The inbound-webhook verification contract table (Issue #463): every
+local fixture — signature, freshness window, replay claim — with its
+declared and observed verdict. The rows are produced by
+`scripts/webhook-signature-fixture-report.mjs` running the **same**
+`src/http/webhooks/fixtures.ts` builder the Vitest contract test
+asserts on, so the picture cannot disagree with the suite; the script
+exits non-zero if any fixture deviates. No key material is rendered.
+`/webhooks/*` still has no mounted handler — the report documents an
+adapter, not a published entry point. Reading guide:
+[`docs/security/webhook-signature-verification.md`](../../security/webhook-signature-verification.md).
 
 ## `redirect-validation.webp`
 

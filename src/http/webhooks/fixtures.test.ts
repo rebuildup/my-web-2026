@@ -46,25 +46,45 @@ describe('webhook delivery fixtures (Issue #463)', () => {
 		expect(reasons.has('replayed_delivery')).toBe(true);
 	});
 
-	it('accepts exactly the two fixtures that are meant to be accepted', async () => {
+	it('accepts exactly the fixtures that are meant to be accepted', async () => {
 		const outcomes = await runWebhookFixtures();
 		const accepted = outcomes
 			.filter((outcome) => outcome.result.accepted)
 			.map((outcome) => outcome.fixture.id);
-		expect(accepted.sort()).toEqual(['replayed_other_delivery', 'signed']);
+		// One per shipped scheme, plus the no-false-positive control.
+		expect(accepted.sort()).toEqual(['replayed_other_delivery', 'signed', 'signed_timestamped']);
 	});
 
 	it('keeps every defect-named fixture rejected', async () => {
 		// Defence against a fixture silently becoming vacuous: an entry
-		// named after a defect must actually be rejected.
+		// declared as a defect must actually be rejected. Driven by the
+		// declared expectation, so adding an accepted fixture cannot
+		// silently widen the set.
 		const outcomes = await runWebhookFixtures();
-		const mustReject = outcomes.filter(
-			(outcome) =>
-				outcome.fixture.id !== 'replayed_other_delivery' && !/^signed$/.test(outcome.fixture.id),
-		);
+		const mustReject = outcomes.filter((outcome) => outcome.fixture.expected.accepted === false);
 		expect(mustReject.length).toBeGreaterThan(10);
 		for (const outcome of mustReject) {
 			expect(outcome.result.accepted, `fixture ${outcome.fixture.id} must be rejected`).toBe(false);
+		}
+	});
+
+	it('covers both shipped schemes, so neither sender is only half-pinned', async () => {
+		// GitHub signs the body only; the generic scheme signs
+		// `<timestamp>.<body>`. A table that pinned one of them would
+		// leave the other's failure modes untested.
+		const fixtures = await buildWebhookFixtures();
+		const signedMaterials = new Set(
+			fixtures.map((fixture) => fixture.delivery.scheme?.signedMaterial),
+		);
+		expect(signedMaterials).toEqual(new Set(['body-only', 'timestamped-body']));
+		// The two freshness reasons can only come from a signed timestamp.
+		const outcomes = await runWebhookFixtures();
+		const stale = outcomes.filter(
+			(outcome) => !outcome.result.accepted && outcome.result.reason === 'stale_timestamp',
+		);
+		expect(stale.length).toBeGreaterThan(0);
+		for (const outcome of stale) {
+			expect(outcome.fixture.delivery.scheme?.signedMaterial).toBe('timestamped-body');
 		}
 	});
 
@@ -82,8 +102,17 @@ describe('webhook delivery fixtures (Issue #463)', () => {
 		// D1 handle, an R2 bucket, or an `env`, this assertion fails and
 		// the suite could no longer claim "no production mutation".
 		const fixtures = await buildWebhookFixtures();
+		// `scheme` declares the sender's headers / signed material,
+		// `replayTtlMs` is the misconfiguration under test. Anything
+		// else — an `env`, a D1 handle, a connection — is not a test
+		// input and must fail here.
+		const allowed = ['body', 'headers', 'replayTtlMs', 'scheme', 'secret', 'toleranceSeconds'];
 		for (const fixture of fixtures) {
-			expect(Object.keys(fixture.delivery).sort()).toEqual(['body', 'headers', 'secret']);
+			for (const key of Object.keys(fixture.delivery).sort()) {
+				expect(allowed, `fixture ${fixture.id} carries ${key}`).toContain(key);
+			}
+			expect(fixture.delivery).toHaveProperty('headers');
+			expect(fixture.delivery).toHaveProperty('body');
 			for (const value of Object.values(fixture.delivery.headers)) {
 				expect(typeof value).toBe('string');
 			}

@@ -20,11 +20,13 @@ import { signWebhookPayload } from './signature.ts';
  * decoration.
  */
 describe('inbound webhook entry point is not published (Issue #463)', () => {
-	const timestamp = '1767225600';
 	const secret = 'boundary-test-hmac-key-not-a-credential';
 
 	it('answers 404 for a POST to /webhooks/github', async () => {
-		const signature = await signWebhookPayload({ secret, timestamp, body: '{"zen":"x"}' });
+		// Shaped like a real GitHub delivery: `sha256=` over the raw body
+		// and a delivery id — and, deliberately, no timestamp header,
+		// because a GitHub delivery has none.
+		const signature = await signWebhookPayload({ secret, body: '{"zen":"x"}' });
 		const res = await externalBoundary.request(
 			'/webhooks/github',
 			{
@@ -33,7 +35,6 @@ describe('inbound webhook entry point is not published (Issue #463)', () => {
 				headers: {
 					'content-type': 'application/json',
 					'x-hub-signature-256': signature,
-					'x-hub-request-timestamp': timestamp,
 					'x-github-delivery': 'delivery-404-probe',
 				},
 			},

@@ -285,7 +285,7 @@ ${body}
     <h2>この表の読み方</h2>
     <ul>
       <li><strong>200（1 行目 / 最終行）</strong> — 正しい資格情報。否定ケースが「常に 401」でないことの担保であり、セッション cookie が発行される。</li>
-      <li><strong>401 <code>INVALID_EMAIL_OR_PASSWORD</code></strong> — 失敗。<strong>既存アカウントの誤パスワードと存在しないアカウントの尝试は完全に同一</strong>
+      <li><strong>401 <code>INVALID_EMAIL_OR_PASSWORD</code></strong> — 失敗。<strong>既存アカウントの誤パスワードと存在しないアカウントの試行は完全に同一</strong>
           （status・body・ヘッダー集合まで一致）なので、アカウントの存在を列挙できない。</li>
       <li><strong>401 → 429（バースト行）</strong> — 同一クライアント IP から 4 回目で上限に達し、
           <code>X-Retry-After</code>（秒）が付く。上限は資格情報の検証<strong>前</strong>に評価されるため、

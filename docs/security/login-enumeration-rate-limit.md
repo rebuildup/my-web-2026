@@ -39,8 +39,8 @@ in `src/cloudflare/auth/better-auth.test.ts` (config level) plus
 | Situation | Status | Body | Headers |
 | --- | --- | --- | --- |
 | Correct credentials | `200` | session payload | `set-cookie` carries `better-auth.session_token` |
-| Wrong password **or** non-existent account | `401` | `{"message":"Invalid email or password","code":"INVALID_EMAIL_OR_PASSWORD"}` | `content-type` from Better Auth, plus the boundary-wide `cache-control: private, no-store` and `vary: Cookie, Authorization` (Issue #460) — no `set-cookie`, no `www-authenticate`. The header **set** itself is pinned by the suite, so an upstream addition surfaces as a test failure; the two cache headers are constants that do not branch on the account, so they carry no existence signal |
-| Over budget (4th attempt in 10 s from one client IP) | `429` | `{"message":"Too many requests. Please try again later."}` — generic, no `code`, and identical whether or not the account exists | the same three headers as the `401`, plus `X-Retry-After` |
+| Wrong password **or** non-existent account | `401` | `{"message":"Invalid email or password","code":"INVALID_EMAIL_OR_PASSWORD"}` | `content-type` from Better Auth, plus the boundary-wide `cache-control: private, no-store` and `vary: Cookie, Authorization` (Issue #460) and, on an HTTPS request, `strict-transport-security` (Issue #446) — no `set-cookie`, no `www-authenticate`. The header **set** itself is pinned by the suite, so an upstream addition surfaces as a test failure; these boundary headers are constants that do not branch on the route or the account, so they carry no existence signal |
+| Over budget (4th attempt in 10 s from one client IP) | `429` | `{"message":"Too many requests. Please try again later."}` — generic, no `code`, and identical whether or not the account exists | the same headers as the `401`, plus `X-Retry-After` |
 
 Three properties the tests hold in place:
 

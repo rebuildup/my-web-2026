@@ -186,18 +186,21 @@ describe('login enumeration + brute-force throttle (Issue #443)', () => {
 		expect(unknownAccount.observed).toEqual(wrongPassword.observed);
 		expect(wrongPassword.observed.body).toContain('INVALID_EMAIL_OR_PASSWORD');
 		// Pinned header **set**, not just parity: the 401 carries only
-		// `content-type` from Better Auth plus the two headers the
-		// boundary adds to every `/api/v1/*` response
-		// (`src/http/middleware/cache-policy.ts`, Issue #460) — no
-		// `set-cookie`, no `www-authenticate`, no hint about which
-		// account was addressed. Those two are constants (the cache
-		// policy does not branch on the route), so they say nothing
-		// about existence; an upstream library change that adds a
-		// header therefore surfaces here instead of quietly widening
-		// the response contract.
+		// `content-type` from Better Auth plus the headers the boundary
+		// adds to every `/api/v1/*` response: `cache-control` + `vary`
+		// (`src/http/middleware/cache-policy.ts`, Issue #460) and, on an
+		// HTTPS request, `strict-transport-security` (`src/server.ts`,
+		// Issue #446; the suite fetches `https://…`) — no `set-cookie`,
+		// no `www-authenticate`, no hint about which account was
+		// addressed. Those three are constants (neither the cache policy
+		// nor the transport policy branches on the route or the
+		// account), so they say nothing about existence; an upstream
+		// library change that adds a header therefore surfaces here
+		// instead of quietly widening the response contract.
 		expect(wrongPassword.observed.headers.map(([name]) => name)).toEqual([
 			'cache-control',
 			'content-type',
+			'strict-transport-security',
 			'vary',
 		]);
 	}, 120_000);

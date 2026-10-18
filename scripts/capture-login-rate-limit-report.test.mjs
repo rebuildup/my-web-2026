@@ -77,6 +77,10 @@ test('rendered legend keeps the throttle prose intact', () => {
 		'the legend must read 「throttle が存在判定の lever にならないことの担保。」',
 	);
 	assert.equal(html.includes('agemんTrump'), false);
+	// The legend is Japanese prose: a simplified-Chinese token (`尝试`)
+	// shipped here once, so pin the intended wording too.
+	assert.ok(html.includes('存在しないアカウントの試行は完全に同一'));
+	assert.equal(html.includes('尝试'), false);
 });
 
 test('extractTable reads the block between the suite markers', () => {

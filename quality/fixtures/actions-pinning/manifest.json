@@ -1,0 +1,31 @@
+{
+	"schema_version": 1,
+	"purpose": "Fixture manifest for the abnormal-observation case of `scripts/check-workflow-pinning.mjs` (Issue #472). It pins only the one action the fixture workflow pins correctly, so every other row in `legacy-actions.yml` produces a finding.",
+	"review_procedure": "docs/security/supply-chain-actions-pinning.md",
+	"actions": {
+		"actions/checkout": {
+			"sha": "11d5960a326750d5838078e36cf38b85af677262",
+			"ref": "v4.4.0",
+			"repository": "https://github.com/actions/checkout",
+			"reviewed_on": "2026-10-18",
+			"review_issue": 472
+		},
+		"oven-sh/setup-bun": {
+			"sha": "0c5077e51419868618aeaa5fe8019c62421857d6",
+			"ref": "v2.2.0",
+			"repository": "https://github.com/oven-sh/setup-bun",
+			"reviewed_on": "2026-10-18",
+			"review_issue": 472
+		}
+	},
+	"permissions": {
+		"default": "contents: read",
+		"rationale": "Fixture. The fixture workflow asks for write scopes on purpose; the fixture manifest allow-lists nothing, so they must fail.",
+		"allow_writes": []
+	},
+	"secrets": {
+		"allow_references": [],
+		"rationale": "Fixture. No secret reference is approved."
+	},
+	"exceptions": []
+}

@@ -326,7 +326,12 @@
 			},
 			"delivery": {
 				"kind": "host_disabled",
-				"disabled_reason": "Tool is currently a Next.js component library. Mic capture via getUserMedia requires https + Permissions-Policy: microphone=(self). Once the Tool repo ships a standalone Vite build, mic-level can graduate to same_origin_static (the host already serves https via the canonical production origin rebuildup.dev)."
+				"disabled_reason": "Tool is currently a Next.js component library. Mic capture via getUserMedia requires https + a Permissions-Policy grant for `microphone`. Once the Tool repo ships a standalone Vite build, mic-level can graduate to same_origin_static (the host already serves https via the canonical production origin rebuildup.dev).",
+				"iframe": {
+					"sandbox": "allow-scripts",
+					"referrer_policy": "no-referrer",
+					"allow": "microphone"
+				}
 			},
 			"classification": "external_exception",
 			"license": "MIT"

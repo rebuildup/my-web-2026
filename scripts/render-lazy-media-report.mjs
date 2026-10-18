@@ -28,11 +28,13 @@
  * WebP; the PNG is disposable.
  */
 
-import { mkdir, readFile } from 'node:fs/promises';
+import { mkdir, readFile, rename, rm } from 'node:fs/promises';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { chromium } from '@playwright/test';
 import sharp from 'sharp';
+
+import { MAX_EVIDENCE_WIDTH, assertEvidenceSize } from './_lazy-media-image.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -132,12 +134,29 @@ function inlineShape(leg) {
 	return '桁 WebP は独立した asset リクエストとして配信されている。';
 }
 
+/**
+ * One honest sentence about which document was measured.
+ *
+ * Derived from the recorded `environment`, never asserted outright: the
+ * documented `LAZY_MEDIA_ENV='dev server (vite dev)'` run measures a
+ * dev SSR document, and printing "pnpm run build output, not the dev
+ * server" over it would caption a different document shape as
+ * production evidence.
+ */
+function surfaceDescription(leg) {
+	const environment = String(leg.environment ?? '');
+	if (/dev server|\bdev\b/i.test(environment)) {
+		return 'dev SSR document（<code>vite dev</code> の出力。桁が独立 asset になる環境）';
+	}
+	return '<code>pnpm run build</code> 出力（dev server ではない）';
+}
+
 function render({ before, after, tool }) {
 	const hasDigits = after.digitImageCount > 0;
 	const conditions = `
 		<h2>測定条件 / measurement conditions</h2>
 		<table class="kv">
-			<tr><th>surface</th><td><code>${escapeHtml(after.environment)}</code> — <code>pnpm run build</code> 出力（dev server ではない）</td></tr>
+			<tr><th>surface</th><td><code>${escapeHtml(after.environment)}</code> — ${surfaceDescription(after)}</td></tr>
 			<tr><th>browser</th><td>${escapeHtml(after.browser)}（Playwright 同梱）</td></tr>
 			<tr><th>network</th><td>${escapeHtml(after.profile)} / CDP <code>Network.emulateNetworkConditions</code></td></tr>
 			<tr><th>CPU</th><td>×${escapeHtml(after.cpuThrottlingRate)} / CDP <code>Emulation.setCPUThrottlingRate</code></td></tr>
@@ -348,10 +367,21 @@ const png = await page.screenshot({ fullPage: true });
 await browser.close();
 
 await mkdir(dirname(outFile), { recursive: true });
+// Encode to a staging path first: the README promises an over-budget
+// image is never committed, and the only way to keep that promise when
+// the check fails is to not have put the file at the committed path yet.
+const staging = `${outFile}.staging`;
 const info = await sharp(png)
-	.resize({ width: 1600, withoutEnlargement: true })
+	.resize({ width: MAX_EVIDENCE_WIDTH, withoutEnlargement: true })
 	.webp({ quality: 80 })
-	.toFile(outFile);
+	.toFile(staging);
+try {
+	assertEvidenceSize(info.size, outFile.replace(`${root}/`, ''));
+	await rename(staging, outFile);
+} catch (error) {
+	await rm(staging, { force: true });
+	throw error;
+}
 
 console.log(
 	[

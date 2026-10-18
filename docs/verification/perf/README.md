@@ -213,9 +213,12 @@ policy / fixture / component を触った changeset と同じ commit で更新�
 > **拡張子は Issue のチェックボックスが名指しした `.png` ではなく `.webp`。**
 > Chromium の full-page capture を PNG で持つと、生成のたびに数百 KB の
 > blob が repository に積み上がる。生成 script 側は 幅 ≤ 1600px /
-> quality 80 / 300KB 上限を assert しており、超過したら commit せず
-> 終了する（`scripts/render-lazy-media-report.mjs`）。同ディレクトリの
-> #486 レポートも同じ運用に従う。
+> quality 80 / **300KB 上限を実際のコードで検査**しており（`assertEvidenceSize`
+> in `scripts/_lazy-media-image.mjs`）、超過したら**成果物を書き出さずに**
+> 失敗する（staging ファイルに encode → 検査 → 合格後にだけ commit path へ
+> rename）。上限の検査は `scripts/_lazy-media-image.test.mjs` が
+> `pnpm run test` に参加して固定している。同ディレクトリの #486 レポートも
+> 同じ運用に従う。
 
 ### 何を保証しているか
 
@@ -257,10 +260,14 @@ markup」しか見ないので、hydration の後に client コードが挿入�
 - third-party: GA4 / Google Fonts は遮断（オフライン再現を保証するため）
 - 測定は `.tmp/lazy-media/*.json` に書き出され、画像はその JSON から
   レンダリングされる（数値だけを切り貼りした画像にしない）。
-- 画像の source SHA は **458f58f**（tracked tree clean）。その後に積まれた
+- 画像の source SHA は **MEASUREMENT_SHA**（tracked tree clean）。その後に積まれた
   コミットはこの README とこの画像ファイルだけで、測定対象のコード
   （`src/**` / `e2e/**` / ビルド出力）には差分が無い。ソース SHA を head に
   合わせる必要はありません。
+- 画像里の surface 行は固定文言ではなく**測定値から導出**する。
+  `LAZY_MEDIA_ENV='dev server (vite dev)'` で測った dev SSR document を
+  「`pnpm run build` 出力（dev server ではない）」と表示しない。別 document
+  shape の測定を本番ビルドの証跡に見せないための規則。
 - 画像は 3 leg（`home-before` / `home-after` / `tool-route`）の
   `sourceSha` / `environment` / `profile` / `cpuThrottlingRate` /
   viewport が一致しない場合、**生成せずに失敗する**。`.tmp/lazy-media/` は

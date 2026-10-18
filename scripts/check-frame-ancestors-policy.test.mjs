@@ -14,6 +14,7 @@ import {
 	normalizePattern,
 	parseHeadersFile,
 	patternMatchesPath,
+	toolDeliveryProbePaths,
 } from './check-frame-ancestors-policy.mjs';
 
 /**
@@ -116,6 +117,57 @@ describe('check-frame-ancestors-policy — the direction that keeps Tools workin
 		const errors = violations('/tools/:slug/app/*\n  Access-Control-Allow-Origin: *\n');
 		assert.equal(errors.length, 1);
 		assert.match(errors[0], /sets no content-security-policy/);
+	});
+});
+
+describe('check-frame-ancestors-policy — wide rules that reach a Tool artefact', () => {
+	// Cloudflare applies every matching rule to a response and
+	// comma-joins same-named headers, so a rule that is not written
+	// under /tools still lands on the artefact when its pattern covers
+	// the URL. `'none'` is legal elsewhere (the Worker half uses it for
+	// /admin), so only the served-URL overlap can catch it.
+	it('fails a wide rule that would deny the Tool iframe', () => {
+		const errors = violations(`${GOOD}\n/*\n  Content-Security-Policy: frame-ancestors 'none'\n`);
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /also matches the Tool artefact URL/);
+		assert.match(errors[0], /comma-joins/);
+	});
+
+	it('fails a rule that covers the Tool namespace with a trailing wildcard', () => {
+		const errors = violations(
+			"/tools/*\n  Content-Security-Policy: frame-ancestors 'self'\n\n/*\n  Content-Security-Policy: frame-ancestors 'none'\n",
+		);
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /also matches the Tool artefact URL/);
+	});
+
+	it('accepts a wide rule that says self', () => {
+		assert.deepEqual(
+			violations(`${GOOD}\n/*\n  Content-Security-Policy: frame-ancestors 'self'\n`),
+			[],
+		);
+	});
+
+	it('does not report a rule that cannot reach a Tool artefact', () => {
+		assert.deepEqual(
+			violations(`${GOOD}\n/share/*\n  Content-Security-Policy: frame-ancestors 'none'\n`),
+			[],
+		);
+	});
+
+	it('reports a wrong Tool rule once, not once per served form', () => {
+		const errors = violations(GOOD.replace("frame-ancestors 'self'", "frame-ancestors 'none'"));
+		assert.equal(errors.length, 1);
+		assert.match(errors[0], /breaks every integrated Tool/);
+	});
+
+	it('derives the probed URLs from the shipped Tool rules', () => {
+		const { rules } = parseHeadersFile(GOOD);
+		assert.deepEqual(toolDeliveryProbePaths(rules), [
+			'/tools/tool/app',
+			'/tools/tool/app/',
+			'/tools/tool/app/index.html',
+		]);
 	});
 });
 

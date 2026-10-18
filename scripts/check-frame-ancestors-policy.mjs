@@ -93,6 +93,18 @@ const WORKER_OWNED_PREFIXES = ['/admin', '/api/v1/auth'];
 /** Prefix whose responses are Static Assets (Tool build artefacts). */
 const TOOL_ARTEFACT_PREFIX = '/tools';
 
+/** Sample slug that turns a `:slug` rule pattern into a concrete URL. */
+const TOOL_SAMPLE_SLUG = 'tool';
+
+/**
+ * Concrete Tool artefact URLs the overlap check probes, for the case
+ * where no Tool rule spells the namespace out at all.
+ */
+const TOOL_PROBE_PATHS = [
+	`${TOOL_ARTEFACT_PREFIX}/${TOOL_SAMPLE_SLUG}/app/`,
+	`${TOOL_ARTEFACT_PREFIX}/${TOOL_SAMPLE_SLUG}/app/index.html`,
+];
+
 /**
  * Parse a `_headers` file into rules.
  *
@@ -180,6 +192,61 @@ function patternToRegExp(pattern) {
 /** True when a `_headers` rule pattern matches a concrete served path. */
 export function patternMatchesPath(pattern, requestPath) {
 	return patternToRegExp(pattern).test(requestPath);
+}
+
+/**
+ * The concrete Tool delivery URLs the overlap check probes.
+ *
+ * Cloudflare applies EVERY matching rule to a response and comma-joins
+ * same-named headers, so whether a rule reaches a Tool artefact is a
+ * question about the served URL, not about the rule's apparent
+ * namespace: a wide rule (`/*`, `/tools*`) is not "about" `/tools` as
+ * far as `isUnder()` is concerned, yet it still lands on the artefact.
+ * The probes are derived from the shipped Tool rules (`:slug` filled in
+ * with a sample slug, both the directory form and the explicit
+ * `index.html` form) plus the canonical paths, so no manifest input is
+ * needed and the set stays deterministic.
+ */
+export function toolDeliveryProbePaths(rules) {
+	const bases = new Set(TOOL_PROBE_PATHS);
+	for (const rule of rules) {
+		if (!isUnder(rule.pattern, TOOL_ARTEFACT_PREFIX)) continue;
+		bases.add(rule.pattern.replace(/:[^/]+/g, TOOL_SAMPLE_SLUG).replace(/\*+$/, ''));
+	}
+	const paths = new Set(bases);
+	for (const base of bases) {
+		if (base.endsWith('.html')) continue;
+		paths.add(base.endsWith('/') ? base : `${base}/`);
+		paths.add(`${base.replace(/\/$/, '')}/index.html`);
+	}
+	return [...paths].sort();
+}
+
+/**
+ * Reject a rule that reaches a Tool artefact without saying `'self'`.
+ *
+ * Only rules that are not themselves Tool rules are reported here; the
+ * ones under `/tools` are already held to `'self'` by the per-rule pass
+ * in {@link evaluateEmbedPolicy}, and reporting them twice would bury
+ * the finding that needs a decision.
+ */
+export function evaluateToolArtefactOverlap(rules, probePaths = toolDeliveryProbePaths(rules)) {
+	const errors = [];
+	for (const rule of rules) {
+		if (isUnder(rule.pattern, TOOL_ARTEFACT_PREFIX)) continue;
+		const reached = probePaths.find((path) => patternMatchesPath(rule.pattern, path));
+		if (reached === undefined) continue;
+		for (const header of rule.headers) {
+			if (header.name.toLowerCase() !== CSP_HEADER) continue;
+			for (const value of frameAncestorsValues(header.value)) {
+				if (value === "'self'") continue;
+				errors.push(
+					`${rule.pattern} (line ${header.line}): this rule also matches the Tool artefact URL ${reached}, so Static Assets applies it to the artefact and comma-joins it with the Tool rule's own directive. A browser honours the first ${FRAME_ANCESTORS} directive in the combined value, so ${FRAME_ANCESTORS} ${value} would deny the host shell's same-origin iframe and break every integrated Tool — even though the rule is not written under ${TOOL_ARTEFACT_PREFIX}. Narrow the pattern, or set ${FRAME_ANCESTORS} 'self' on any rule that reaches ${TOOL_ARTEFACT_PREFIX}/<slug>/app.`,
+				);
+			}
+		}
+	}
+	return errors;
 }
 
 /**
@@ -332,7 +399,11 @@ export function evaluateEmbedPolicy(rules, staticHtml = []) {
 		}
 	}
 
-	return [...errors, ...evaluateStaticHtmlCoverage(rules, staticHtml)];
+	return [
+		...errors,
+		...evaluateStaticHtmlCoverage(rules, staticHtml),
+		...evaluateToolArtefactOverlap(rules),
+	];
 }
 
 /**
@@ -388,7 +459,7 @@ function main(argv) {
 
 	if (errors.length === 0) {
 		process.stdout.write(
-			`embed policy OK: ${rules.length} _headers rule(s), ${staticHtml.length} public HTML document(s) covered, Tool artefacts framed by 'self' only, no rule targets a Worker-owned path\n`,
+			`embed policy OK: ${rules.length} _headers rule(s), ${staticHtml.length} public HTML document(s) covered, Tool artefacts framed by 'self' only (including rules that merely overlap their URLs), no rule targets a Worker-owned path\n`,
 		);
 		return 0;
 	}

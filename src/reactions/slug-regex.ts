@@ -10,7 +10,15 @@
  * use for the catalog. ADR-0008 §2 calls this out as the canonical
  * shape: a resource owned jointly by two obligations becomes its
  * own owner.
+ *
+ * Issue #433: the grammar is also published as a `SlugGrammar`
+ * descriptor so the Unicode policy in `src/i18n/slug-identity.ts` can
+ * classify a candidate without any caller re-deriving the pattern. The
+ * descriptor stays HERE — this file owns the grammar; `i18n` only owns
+ * the rule for applying it.
  */
+
+import type { SlugGrammar } from '../i18n/slug-identity';
 
 export const EMOJI_SLUG_REGEX = /^[a-z][a-z0-9_]*$/;
 
@@ -25,3 +33,15 @@ export const EMOJI_SLUG_REGEX = /^[a-z][a-z0-9_]*$/;
  * can register any slug the reaction flow can carry.
  */
 export const MAX_EMOJI_SLUG_LEN = 16;
+
+/**
+ * The reactions slug grammar as one value, for the Unicode policy
+ * (`src/i18n/slug-identity.ts`) and for anything else that needs the
+ * contract as data rather than as two constants it has to remember to
+ * pass together.
+ */
+export const EMOJI_SLUG_GRAMMAR: SlugGrammar = {
+	name: 'emoji-slug',
+	pattern: EMOJI_SLUG_REGEX,
+	maxLength: MAX_EMOJI_SLUG_LEN,
+};

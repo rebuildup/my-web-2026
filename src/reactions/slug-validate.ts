@@ -5,9 +5,18 @@
  * Lives at the top-level `reactions/` obligation; the home widget
  * loader, the admin loader, and any future automated import path all
  * depend on these pure helpers.
+ *
+ * Issue #433: `validateSlug` classifies through the shared Unicode
+ * policy in `src/i18n/slug-identity.ts` instead of testing the regex
+ * inline, so a non-ASCII candidate is refused as a POLICY decision with
+ * a reason (rather than as an accident of the pattern) and no caller
+ * grows its own normalisation step. The thrown messages below are
+ * unchanged apart from the new non-ASCII case, which says what was
+ * found and why it is not being folded into an ASCII URL.
  */
 
-import { EMOJI_SLUG_REGEX, MAX_EMOJI_SLUG_LEN } from './slug-regex';
+import { classifySlugCandidate, describeSlugRejection } from '../i18n/slug-identity';
+import { EMOJI_SLUG_GRAMMAR } from './slug-regex';
 
 /** Maximum codepoint length in code units (a single emoji can be 1–4 UTF-16 code units). */
 export const MAX_CODEPOINT_LEN = 16;
@@ -19,16 +28,9 @@ export const MAX_CODEPOINT_LEN = 16;
  * home loader, the admin loaders, and any future automated import.
  */
 export function validateSlug(value: unknown): string {
-	if (typeof value !== 'string') {
-		throw new Error('emoji slug must be a string');
-	}
-	if (value.length === 0 || value.length > MAX_EMOJI_SLUG_LEN) {
-		throw new Error(`emoji slug must be 1..${MAX_EMOJI_SLUG_LEN} chars`);
-	}
-	if (!EMOJI_SLUG_REGEX.test(value)) {
-		throw new Error('emoji slug must match ^[a-z][a-z0-9_]*$');
-	}
-	return value;
+	const verdict = classifySlugCandidate(value, EMOJI_SLUG_GRAMMAR);
+	if (verdict.ok) return verdict.slug;
+	throw new Error(`emoji slug ${describeSlugRejection(verdict, EMOJI_SLUG_GRAMMAR)}`);
 }
 
 /**

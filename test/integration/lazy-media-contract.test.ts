@@ -88,6 +88,16 @@ const TOOL_ARTIFACT_PATHS = listAllTools().flatMap((tool) =>
 
 const DISABLED_TOOL = listAllTools().find((tool) => tool.delivery.kind === 'host_disabled');
 
+/**
+ * Width of the counter digit strip (`DIGIT_SLOTS` in
+ * `src/home/access/tiles.tsx`). Mirrored rather than imported because
+ * the import would make this contract depend on a private constant of
+ * the component it is asserting on; the component's own unit test
+ * (`src/home/access/tiles.test.tsx`) pins the same number from the
+ * other side.
+ */
+const DIGIT_SLOTS = 7;
+
 /** Markup with hydration `<script>` bodies removed. */
 function markup(html: string): string {
 	return html.replace(/<script\b[\s\S]*?<\/script>/gi, '');
@@ -158,11 +168,13 @@ describe('lazy media / iframe contract (Issue #487)', () => {
 
 	it('every <img> on home declares an explicit loading mode', () => {
 		const tags = imgTags(home);
-		// The counter digit strip is 7 slots wide (DIGIT_SLOTS in
-		// src/home/access/tiles.tsx). Assert the count so a future
-		// component cannot satisfy the rule below by adding no
-		// images at all.
-		expect(tags).toHaveLength(7);
+		// Non-vacuous: the counter digit strip (DIGIT_SLOTS wide) is
+		// the only image on `/` today, so the strip has to be there for
+		// the rule below to mean anything. Asserted as a lower bound
+		// rather than an exact count on purpose — a future legitimate
+		// image on home (an OG asset, a decorative mark) must not turn
+		// this gate red for a change that breaks no rule here.
+		expect(tags.length).toBeGreaterThanOrEqual(DIGIT_SLOTS);
 		for (const tag of tags) {
 			expect(tag).toMatch(/\sloading="(lazy|eager)"/);
 		}

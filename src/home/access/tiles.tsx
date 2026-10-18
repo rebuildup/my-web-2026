@@ -15,10 +15,24 @@ import digit6Url from '../digits/6.webp?url';
 import digit7Url from '../digits/7.webp?url';
 import digit8Url from '../digits/8.webp?url';
 import digit9Url from '../digits/9.webp?url';
+import type { HomeFormat, HomeLocale } from '../format';
+import { createHomeFormat } from '../format';
 import type { HomeCounterData } from './load';
 
 export interface CounterTileProps {
 	data: HomeCounterData;
+	/**
+	 * Opt-in locale for the instant / count formatting (Issue #430).
+	 * Defaults to `'en'`, which is what this section shipped before
+	 * the adapter existed.
+	 */
+	locale?: HomeLocale;
+	/**
+	 * Injectable clock for the relative "last hit" label. Defaults to
+	 * `Date.now`; previews and tests pass a fixed clock so the
+	 * rendered instant is deterministic.
+	 */
+	now?: () => number;
 }
 
 /**
@@ -81,29 +95,51 @@ const DIGIT_SLOTS = 7;
  * for the rasteriser and `src/home/digits/` for the committed
  * output. Each digit slides up into place on mount with a per-digit
  * stagger, so the count "rolls up" to its value when the section
- * first appears.
+ * first appears — subject to the lazy-fetch caveat in "Loading mode"
+ * below.
  *
  * Loading mode (Issue #487): the strip is `loading="lazy"` +
  * `decoding="async"`. The tile is the FIFTH section of `/`, so the
  * strip sits far below the fold on every viewport this site ships,
- * while the markup already forces the browser to download all seven
- * WebPs the moment the HTML parses (no `loading` attribute means the
- * implicit `eager` default). Seven images is a small number, but the
- * contract it broke is the important one — "an image on this surface
- * is fetched before the visitor can see it" — and
- * `test/integration/lazy-media-contract.test.ts` now fails if any
- * `<img>` on home stops declaring its mode. The `role="img"` parent
- * carries the real number as an accessible label, so nothing
- * assistive-tech depends on the bitmaps arriving early.
+ * while the UA default for an `<img>` without `loading` is `eager` —
+ * i.e. "decode as soon as the HTML parses", with nothing to say when
+ * the visitor can actually see it. The production build inlines the
+ * digit WebPs (0.2–0.9 KB each, under Vite's `assetsInlineLimit`) as
+ * `data:` URIs, so on the shipped document the attribute governs
+ * *decode scheduling*, not the wire; on any build that keeps them as
+ * real assets — the dev SSR document, which
+ * `e2e/lazy-media.spec.ts` also measures — it defers seven requests.
+ * Seven images is a small number, but the contract it broke is the
+ * important one — "an image on this surface is decoded before the
+ * visitor can see it" — and `test/integration/lazy-media-contract.test.ts`
+ * now fails if any `<img>` on home stops declaring its mode. The
+ * `role="img"` parent carries the real number as an accessible label,
+ * so nothing assistive-tech depends on the bitmaps arriving early.
+ *
+ * One consequence worth knowing: the roll-up keyframe is a mount-time
+ * animation (delays 0–480 ms), so a strip that is still below the fold
+ * when it mounts finishes rolling before its (lazy) pixels exist, and
+ * the digits settle into place instead of rolling when the visitor
+ * scrolls down. Re-triggering the roll on intersection is product
+ * behaviour, not part of this ticket's "one element" fix — it is
+ * recorded as an open decision in
+ * `docs/verification/perf/README.md`.
  *
  * Disabled state (no consumer API key) renders the same rows with a
  * muted `—` placeholder (text, not images) so the section does not
  * disappear but the digit machinery stays out of the way.
+ *
+ * Locale (Issue #430): the period date, the relative "last hit"
+ * span, and the grouped count are rendered through the home format
+ * adapter, so the same instant reads per locale. The surrounding
+ * metadata copy ("page views", "last hit:", "since") stays English
+ * until an approved translation exists; only the value is localised.
  */
-export function CounterTile({ data }: CounterTileProps) {
-	const lastHitLabel = formatRelative(data.last_hit);
-	const periodLabel = formatPeriod(data.first_hit);
-	const deltaLabel = formatDelta(data);
+export function CounterTile({ data, locale, now }: CounterTileProps) {
+	const format = createHomeFormat({ locale, now });
+	const lastHitLabel = format.formatRelative(data.last_hit);
+	const periodLabel = formatPeriod(data.first_hit, format);
+	const deltaLabel = formatDelta(data, format);
 	const enabled = data.enabled;
 	return (
 		<div
@@ -156,7 +192,7 @@ export function CounterTile({ data }: CounterTileProps) {
 				})}
 			>
 				{enabled ? (
-					<DigitStrip count={data.count} />
+					<DigitStrip count={data.count} format={format} />
 				) : (
 					<span
 						aria-label="counter disabled"
@@ -258,12 +294,12 @@ function padCount(count: number): string {
  * `panda.config.ts`; the reduced-motion override sits in
  * `src/styles.css`.
  */
-function DigitStrip({ count }: { count: number }) {
+function DigitStrip({ count, format }: { count: number; format: HomeFormat }) {
 	const digits = padCount(count);
 	return (
 		<div
 			role="img"
-			aria-label={`${count.toLocaleString('en-US')} page views`}
+			aria-label={`${format.formatCount(count)} page views`}
 			className={css({
 				display: 'inline-flex',
 				alignItems: 'baseline',
@@ -313,30 +349,17 @@ function DigitStrip({ count }: { count: number }) {
 }
 
 /**
- * Format a Unix-ms timestamp as a relative time string ("just now",
- * "5 min ago", "3 h ago", "12 d ago"). Returns "—" when the input is
- * `null`. Used for the "last hit" tertiary metadata.
- */
-function formatRelative(lastHit: number | null): string {
-	if (lastHit === null) return '—';
-	const ms = Date.now() - lastHit;
-	if (ms < 60_000) return 'just now';
-	if (ms < 60 * 60_000) return `${Math.floor(ms / 60_000)} min ago`;
-	if (ms < 24 * 60 * 60_000) return `${Math.floor(ms / (60 * 60_000))} h ago`;
-	return `${Math.floor(ms / (24 * 60 * 60_000))} d ago`;
-}
-
-/**
  * Format the "since {first_hit}" period label. Returns an empty string
- * when `first_hit` is null (i.e. no hits have been recorded yet) so the
+ * when `firstHit` is null (i.e. no hits have been recorded yet) so the
  * parent can omit the span.
+ *
+ * The date itself is rendered by the format adapter, so the same
+ * instant reads as the locale's own date ("Jan 5, 2026" / "2026/01/05"
+ * / "2026. 1. 5.") instead of a machine ISO slice.
  */
-function formatPeriod(firstHit: number | null): string {
+function formatPeriod(firstHit: number | null, format: HomeFormat): string {
 	if (firstHit === null) return '';
-	const date = new Date(firstHit);
-	if (Number.isNaN(date.getTime())) return '';
-	const iso = date.toISOString().slice(0, 10);
-	return `since ${iso}`;
+	return `since ${format.formatDate(firstHit)}`;
 }
 
 /**
@@ -351,10 +374,13 @@ function formatPeriod(firstHit: number | null): string {
  *
  * Returns an empty string when no delta is meaningful so the parent
  * can omit the span.
+ *
+ * The count is grouped by the format adapter (presentation only — the
+ * stored value is untouched).
  */
-function formatDelta(data: HomeCounterData): string {
+function formatDelta(data: HomeCounterData, format: HomeFormat): string {
 	if (!data.enabled) return '';
 	if (data.count <= 0) return '';
 	if (data.count === 1) return '+1 since launch';
-	return `+${new Intl.NumberFormat('en-US').format(data.count)} since launch`;
+	return `+${format.formatCount(data.count)} since launch`;
 }

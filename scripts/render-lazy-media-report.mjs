@@ -98,6 +98,25 @@ function waterfallRows(leg) {
 		.join('\n');
 }
 
+/**
+ * The `image` / `media` claim, qualified by the document shape that was
+ * actually measured.
+ *
+ * On the production build the digit WebPs are inlined `data:` URIs, so
+ * zero image responses really does mean "no image left the wire for the
+ * first paint". On the dev SSR document they are ordinary asset
+ * requests, and the same sentence would be false — so the two shapes
+ * get different wording instead of one optimistic line.
+ */
+function mediaCountClaim(leg) {
+	const images = leg.resourceTypeCounts?.image ?? 0;
+	const media = leg.resourceTypeCounts?.media ?? 0;
+	if (leg.digitImagesInlined) {
+		return '<code>image</code> / <code>media</code> が 0 であること自体が「初回 Home で画像は 1 枚も wire に出ない」測定結果。';
+	}
+	return `桁が独立した asset として配信された document（<code>digitImagesInlined=false</code>）なので digit が <code>image</code> 応答として出るのは仕様どおり: image ${images} / media ${media}。`;
+}
+
 function render({ before, after, tool }) {
 	const hasDigits = after.digitImageCount > 0;
 	const conditions = `
@@ -141,7 +160,12 @@ function render({ before, after, tool }) {
 					String(after.toolArtifactResponses.length),
 					after.toolArtifactResponses.length === 0,
 				)}
-				${row('初回 Home の iframe / video / audio 数', '0', String(after.iframeSrcs.length), after.iframeSrcs.length === 0)}
+				${row(
+					'初回 Home の iframe / video / audio 数（hydration 後の live DOM）',
+					'0',
+					String(after.embeddedMediaCount ?? after.iframeSrcs.length),
+					(after.embeddedMediaCount ?? after.iframeSrcs.length) === 0,
+				)}
 				${row(
 					'&lt;img&gt; の loading 明示',
 					'全件',
@@ -174,13 +198,15 @@ function render({ before, after, tool }) {
 		<table class="grid">
 			<thead><tr><th>leg</th><th class="num">digit 取得（load 前）</th><th class="num">digit 取得（合計）</th><th class="num">応答数</th><th class="num">document bytes</th><th class="num">asset bytes</th></tr></thead>
 			<tbody>
-				<tr><td>before — #487 以前の markup（<code>loading</code> 属性を除去した同一 body）</td><td class="num">${before.digitImagesBeforeLoad}</td><td class="num">${before.digitImagesAfterScroll}</td><td class="num">${before.responseCount}</td><td class="num">${after.documentBytesWithoutLoading.toLocaleString('en-US')}</td><td class="num">${kb(before.totalBytes)}</td></tr>
+				<tr><td>before — #487 以前の markup（<code>loading</code> / <code>decoding</code> 属性を除去した同一 body）</td><td class="num">${before.digitImagesBeforeLoad}</td><td class="num">${before.digitImagesAfterScroll}</td><td class="num">${before.responseCount}</td><td class="num">${after.documentBytesPreTicket.toLocaleString('en-US')}</td><td class="num">${kb(before.totalBytes)}</td></tr>
 				<tr><td>after — <code>loading="lazy"</code> 宣言（main）</td><td class="num">${after.digitImagesBeforeLoad}</td><td class="num">${after.digitImagesAfterScroll}</td><td class="num">${after.responseCount}</td><td class="num">${after.documentBytes.toLocaleString('en-US')}</td><td class="num">${kb(after.totalBytes)}</td></tr>
 			</tbody>
 		</table>
-		<p class="note">${shape} 属性そのものが home HTML に載せるコストは ${(
-			after.documentBytes - after.documentBytesWithoutLoading
-		).toLocaleString('en-US')} bytes（7 枚 × <code> loading="lazy"</code>）。</p>`;
+		<p class="note">${shape} この 2 属性そのものが home HTML に載せるコストは ${(
+			after.documentBytes - after.documentBytesPreTicket
+		).toLocaleString(
+			'en-US',
+		)} bytes（7 枚 × （<code> loading="lazy"</code> + <code> decoding="async"</code>））。</p>`;
 
 	const waterfall = `
 		<h2>waterfall — home first paint（after leg, first-party responses）</h2>
@@ -192,7 +218,7 @@ function render({ before, after, tool }) {
 			Object.entries(after.resourceTypeCounts ?? {})
 				.map(([type, count]) => `${type} ${count}`)
 				.join(' / '),
-		)} — <code>image</code> / <code>media</code> が 0 であること自体が「初回 Home で画像は 1 枚も wire に出ない」測定結果。
+		)} — ${mediaCountClaim(after)}
 		/tool 側: <code>${escapeHtml(tool.path)}</code> で Tool artifact ${tool.toolArtifactResponses.length} 件、document ${kb(tool.documentBytes)}。</p>`;
 
 	return `<!doctype html>

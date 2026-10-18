@@ -1,7 +1,14 @@
 import { execFileSync } from 'node:child_process';
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { type Browser, type BrowserContext, type Page, expect, test } from '@playwright/test';
+import {
+	type Browser,
+	type BrowserContext,
+	type Page,
+	type TestInfo,
+	expect,
+	test,
+} from '@playwright/test';
 
 /**
  * Lazy media / iframe — browser waterfall measurement (Issue #487).
@@ -31,14 +38,25 @@ import { type Browser, type BrowserContext, type Page, expect, test } from '@pla
  *
  * The before/after A/B
  * --------------------
- * The "before" leg is the SAME document with the `loading` attribute
- * stripped from its `<img>` tags, served through a Playwright route
- * that rewrites the HTML. That is exactly the markup that shipped
- * before Issue #487 (the strip was the only `<img>` on `/`), so the
- * two legs differ by one attribute, on the same build, in the same
- * browser, under the same throttle — no rebuild, no second commit,
- * no guesswork. A `__vite__` dev-server document is never measured
- * here: `pnpm run build` output is what ships.
+ * The "before" leg is the SAME document with the media-mode attributes
+ * this ticket added (`loading` AND `decoding`) stripped from its
+ * `<img>` tags, served through a Playwright route that rewrites the
+ * HTML. That is exactly the markup that shipped before Issue #487 (the
+ * strip was the only `<img>` on `/`), so the two legs differ by those
+ * attributes only, on the same build, in the same browser, under the
+ * same throttle — no rebuild, no second commit, no guesswork. A
+ * `__vite__` dev-server document is never measured here: `pnpm run
+ * build` output is what ships.
+ *
+ * Embedded media
+ * --------------
+ * The contract is stated over `<iframe>` AND `<video>` AND `<audio>`
+ * (none of them on the home surface), so this spec collects all three
+ * from the live DOM after `load`. The SSR contract test
+ * (`test/integration/lazy-media-contract.test.ts`) reads server
+ * markup and therefore cannot see an element that hydration inserts
+ * afterwards; a browser leg that only counted iframes would report a
+ * green `0` for a page that had just started downloading a video.
  *
  * Two document shapes, reported separately
  * ----------------------------------------
@@ -99,6 +117,39 @@ const TOOL_ARTIFACT = /\/tools\/[^/]+\/app\//;
 /** The home counter section — the below-the-fold media this ticket is about. */
 const COUNTER_TILE = '[data-testid="home-access-counter-tile"]';
 
+/**
+ * The pre-#487 markup, as a rewrite rule.
+ *
+ * Issue #487 added BOTH `loading` and `decoding` to the digit strip, so
+ * the control leg has to remove both to be byte for byte the markup
+ * that shipped before the ticket. Stripping only `loading` would leave
+ * ` decoding="async"` in the "before" document and report only part of
+ * the markup cost as "the attributes' cost".
+ */
+const MEDIA_MODE_ATTRS = /\s(?:loading|decoding)="[^"]*"/g;
+
+/**
+ * The base URL Playwright resolved for this run.
+ *
+ * `playwright.config.ts` owns it (`PLAYWRIGHT_BASE_URL ?? PLAYWRIGHT_PORT`);
+ * re-deriving `http://127.0.0.1:3000` here would make the origin filter —
+ * and with it every leg of this measurement — quietly wrong on a
+ * non-default port, where every first-party response would be filtered
+ * out and the third-party abort route would kill the document itself.
+ * The resolved value is read back from the project instead of guessed a
+ * second time.
+ */
+function resolvedBaseURL(testInfo: TestInfo): string {
+	const base = testInfo.project.use.baseURL;
+	const first = Array.isArray(base) ? base[0] : base;
+	if (typeof first !== 'string' || first.length === 0) {
+		throw new Error(
+			'e2e/lazy-media.spec.ts needs playwright.config.ts#use.baseURL to resolve relative paths',
+		);
+	}
+	return first;
+}
+
 const REPORT_DIR = process.env.LAZY_MEDIA_REPORT_DIR ?? '.tmp/lazy-media';
 const PROFILE = process.env.LAZY_MEDIA_PROFILE ?? 'fast-4g';
 const THROTTLED = PROFILE !== 'off';
@@ -139,13 +190,14 @@ interface PageMeasurement {
 	/** Uncompressed document size, measured with an explicit API request. */
 	documentBytes: number;
 	/**
-	 * The same document with every `loading` attribute removed — i.e.
-	 * the pre-#487 markup, byte for byte. Derived from THIS leg's own
-	 * body rather than from a second request, because two SSR
-	 * documents are never byte-identical (timestamps, counters) and a
-	 * delta across two requests would be unattributable.
+	 * The same document with every `loading` / `decoding` attribute
+	 * removed — i.e. the pre-#487 markup, byte for byte. Derived from
+	 * THIS leg's own body rather than from a second request, because
+	 * two SSR documents are never byte-identical (timestamps,
+	 * counters) and a delta across two requests would be
+	 * unattributable.
 	 */
-	documentBytesWithoutLoading: number;
+	documentBytesPreTicket: number;
 	/** Largest first-party responses, for the DevTools-style waterfall. */
 	topResponses: RecordedResponse[];
 	/** Response count per Playwright resource type. */
@@ -156,6 +208,11 @@ interface PageMeasurement {
 	totalBytes: number;
 	imgTags: string[];
 	iframeSrcs: (string | null)[];
+	/** `<video>` / `<audio>` sources in the live DOM, post-hydration. */
+	videoSrcs: (string | null)[];
+	audioSrcs: (string | null)[];
+	/** iframe + video + audio. The number the contract is stated over. */
+	embeddedMediaCount: number;
 }
 
 function git(args: string[]): string {
@@ -183,8 +240,14 @@ function isDigitImage(response: RecordedResponse): boolean {
 	return /\/\d\.webp$/.test(response.path);
 }
 
-async function openContext(browser: Browser, origin: string, options: { stripLoading?: boolean }) {
+async function openContext(
+	browser: Browser,
+	baseURL: string,
+	options: { stripMediaMode?: boolean },
+) {
+	const origin = new URL(baseURL).origin;
 	const context: BrowserContext = await browser.newContext({
+		baseURL,
 		viewport: { width: 1280, height: 800 },
 		deviceScaleFactor: 1,
 	});
@@ -197,10 +260,10 @@ async function openContext(browser: Browser, origin: string, options: { stripLoa
 		return route.abort();
 	});
 
-	if (options.stripLoading) {
+	if (options.stripMediaMode) {
 		await context.route(`${origin}/`, async (route) => {
 			const response = await route.fetch();
-			const body = (await response.text()).replace(/\sloading="(lazy|eager)"/g, '');
+			const body = (await response.text()).replace(MEDIA_MODE_ATTRS, '');
 			await route.fulfill({ response, body });
 		});
 	}
@@ -220,15 +283,49 @@ async function openContext(browser: Browser, origin: string, options: { stripLoa
 	return { context, page };
 }
 
+/**
+ * `src` descriptors for every `<iframe>` / `<video>` / `<audio>` in
+ * the live DOM, `<source>` children included.
+ *
+ * The SSR contract in `test/integration/lazy-media-contract.test.ts`
+ * can only see what the server rendered, so anything that hydration
+ * or client-side code inserts afterwards is invisible to it. This leg
+ * reads the DOM after `load` (and after the scroll on the digit
+ * leg), which is the only place a post-hydration `<video>` can be
+ * caught — hence all three element types, not just `<iframe>`: the
+ * rule is stated over the three of them, so the measurement that
+ * backs the rule has to cover the three of them.
+ */
+async function embeddedMediaSrcs(
+	page: Page,
+	selector: 'iframe' | 'video' | 'audio',
+): Promise<(string | null)[]> {
+	return page.locator(selector).evaluateAll((nodes) =>
+		nodes.map((node) => {
+			const element = node as HTMLMediaElement;
+			const nested = [...element.querySelectorAll('source')]
+				.map((source) => source.getAttribute('src'))
+				.find((value): value is string => Boolean(value));
+			return element.getAttribute('src') ?? element.currentSrc ?? nested ?? null;
+		}),
+	);
+}
+
 async function measure(
 	browser: Browser,
 	label: string,
 	path: string,
-	options: { stripLoading?: boolean; scrollToSelector?: string; reportKey: string },
+	options: {
+		baseURL: string;
+		stripMediaMode?: boolean;
+		scrollToSelector?: string;
+		reportKey: string;
+	},
 ): Promise<PageMeasurement> {
-	const origin = new URL(path, process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:3000').origin;
-	const { context, page } = await openContext(browser, origin, {
-		stripLoading: options.stripLoading,
+	const { baseURL } = options;
+	const origin = new URL(baseURL).origin;
+	const { context, page } = await openContext(browser, baseURL, {
+		stripMediaMode: options.stripMediaMode,
 	});
 
 	const responses: RecordedResponse[] = [];
@@ -256,8 +353,8 @@ async function measure(
 	const documentProbe = await context.request.get(path);
 	const probeBody = await documentProbe.body();
 	const documentBytes = probeBody.byteLength;
-	const documentBytesWithoutLoading = Buffer.from(
-		probeBody.toString('utf8').replace(/\sloading="(lazy|eager)"/g, ''),
+	const documentBytesPreTicket = Buffer.from(
+		probeBody.toString('utf8').replace(MEDIA_MODE_ATTRS, ''),
 		'utf8',
 	).byteLength;
 
@@ -282,9 +379,10 @@ async function measure(
 	}
 
 	const imgTags = await page.locator('img').evaluateAll((nodes) => nodes.map((n) => n.outerHTML));
-	const iframeSrcs = await page
-		.locator('iframe')
-		.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('src')));
+	const iframeSrcs = await embeddedMediaSrcs(page, 'iframe');
+	const videoSrcs = await embeddedMediaSrcs(page, 'video');
+	const audioSrcs = await embeddedMediaSrcs(page, 'audio');
+	const embeddedMediaCount = iframeSrcs.length + videoSrcs.length + audioSrcs.length;
 	const digitImageCount = await page
 		.locator(`${COUNTER_TILE} img`)
 		.count()
@@ -311,7 +409,7 @@ async function measure(
 		viewport: page.viewportSize() ?? { width: 0, height: 0 },
 		responsesBeforeLoad,
 		documentBytes,
-		documentBytesWithoutLoading,
+		documentBytesPreTicket,
 		digitImagesBeforeLoad,
 		digitImagesAfterScroll: responses.filter(isDigitImage).length,
 		digitImagesInlined,
@@ -329,6 +427,9 @@ async function measure(
 		totalBytes: responses.reduce((sum, response) => sum + response.bytes, 0),
 		imgTags,
 		iframeSrcs,
+		videoSrcs,
+		audioSrcs,
+		embeddedMediaCount,
 	};
 
 	await context.close();
@@ -350,7 +451,9 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 	test('first paint of / pulls no Tool bundle and defers the below-the-fold digit strip', async ({
 		browser,
 	}, testInfo) => {
+		const baseURL = resolvedBaseURL(testInfo);
 		const home = await measure(browser, 'home first paint (loading="lazy")', '/', {
+			baseURL,
 			scrollToSelector: COUNTER_TILE,
 			reportKey: 'home-after',
 		});
@@ -358,8 +461,15 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 		// 1. No Tool artifact request — before or after the scroll.
 		expect(home.toolArtifactResponses.map((response) => response.url)).toEqual([]);
 
-		// 2. No embedded document on the home surface.
+		// 2. No embedded document on the home surface, in ANY of the
+		//    three element types, read from the live DOM after
+		//    hydration. An `<iframe>`-only check would let a
+		//    client-side `<video>` pass as a green measurement while
+		//    the reported number said "iframe / video / audio".
+		expect(home.embeddedMediaCount).toBe(0);
 		expect(home.iframeSrcs).toEqual([]);
+		expect(home.videoSrcs).toEqual([]);
+		expect(home.audioSrcs).toEqual([]);
 
 		// 3. Every image states its loading mode.
 		for (const tag of home.imgTags) {
@@ -404,8 +514,10 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 		// The control leg exists so the "after" number above is a
 		// measurement, not a claim. Same document, same build, same
 		// throttle — only the `loading` attribute differs.
+		const baseURL = resolvedBaseURL(testInfo);
 		const before = await measure(browser, 'home first paint (pre-#487 markup)', '/', {
-			stripLoading: true,
+			baseURL,
+			stripMediaMode: true,
 			reportKey: 'home-before',
 		});
 
@@ -421,8 +533,13 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 			return;
 		}
 
-		// The control markup really did lose the attribute.
-		expect(before.imgTags.every((tag) => !tag.includes('loading='))).toBe(true);
+		// The control markup really did lose both attributes #487
+		// added (`loading` AND `decoding`) — otherwise the "before"
+		// leg would still be partly the post-#487 document and the
+		// byte delta would understate the markup cost.
+		expect(
+			before.imgTags.every((tag) => !tag.includes('loading=') && !tag.includes('decoding=')),
+		).toBe(true);
 
 		if (before.digitImagesInlined) {
 			// Production build: the digits are `data:` URIs inside the
@@ -446,12 +563,19 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 	test('the Tool bundle is fetched only after an explicit navigation', async ({
 		browser,
 	}, testInfo) => {
+		const baseURL = resolvedBaseURL(testInfo);
 		const tool = await measure(browser, 'tool route', '/tools/prototype', {
+			baseURL,
 			reportKey: 'tool-route',
 		});
 
 		// The shell must still mount its sandboxed iframe …
 		expect(tool.iframeSrcs).toEqual(['/tools/prototype/app/index.html']);
+		// … and the Tool surface must not gain media elements the
+		// home-side rule was measured against.
+		expect(tool.videoSrcs).toEqual([]);
+		expect(tool.audioSrcs).toEqual([]);
+		expect(tool.embeddedMediaCount).toBe(1);
 		// … and once the visitor asked for that Tool, the artifact and
 		// its bundle MUST be requested. "Nothing loads at all" would
 		// satisfy every home-side rule while breaking the Tool.

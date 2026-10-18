@@ -80,6 +80,20 @@ describe('check-hsts-policy — source of truth', () => {
 			assert.match(violations[0], /declares HSTS_DIRECTIVE 2 times/);
 		});
 	});
+
+	it('fails when the declaration is exported from the Worker entry', () => {
+		// Named exports of the entry module are service entrypoints to the
+		// Workers runtime; an exported string aborts workerd at startup.
+		withStaged(
+			{ 'src/server.ts': "export const HSTS_DIRECTIVE = 'max-age=31536000';\n" },
+			(root) => {
+				const { directive, violations } = readCanonicalDirective({ root });
+				assert.equal(directive, 'max-age=31536000');
+				assert.equal(violations.length, 1);
+				assert.match(violations[0], /exports HSTS_DIRECTIVE/);
+			},
+		);
+	});
 });
 
 describe('check-hsts-policy — directive rules', () => {

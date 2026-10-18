@@ -240,12 +240,13 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  * The ramp and the preconditions are documented in
  * `docs/security.md`; `scripts/check-hsts-policy.mjs` fails the build
  * if either directive is added while the audit is unrecorded.
+ *
+ * This constant stays module-private on purpose. The Workers runtime
+ * treats every named export of the entry module as a service entrypoint
+ * and refuses to start when the value is not an ExportedHandler
+ * (`Incorrect type for map entry 'HSTS_DIRECTIVE'`). Exporting it broke
+ * release CI until Issue #596. The gate enforces the private form.
  */
-// Deliberately NOT exported. A Workers module treats every named export
-// as a handler, so workerd refuses to start with
-// "Incorrect type for map entry 'HSTS_DIRECTIVE'". The canonical-value
-// gate (`scripts/check-hsts-policy.mjs`) still requires exactly one
-// declaration here; nothing imports the constant.
 const HSTS_DIRECTIVE = 'max-age=31536000';
 
 const HSTS_HEADER = 'strict-transport-security';

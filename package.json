@@ -13,6 +13,7 @@
 		"architecture:check": "node scripts/check-architecture.mjs",
 		"bootstrap:home-api-key": "node scripts/bootstrap-home-api-key.mjs",
 		"build": "vite build && node scripts/build-tools.mjs && node scripts/check-client-bundle.mjs",
+		"capture:error-redaction-report": "node scripts/capture-error-redaction-report.mjs",
 		"build-storybook": "storybook build -o storybook-static",
 		"build:cf:production": "cf build && node scripts/sync-cf-build-output.mjs",
 		"build:cf:verify": "node scripts/verify-cf-build-output.mjs",

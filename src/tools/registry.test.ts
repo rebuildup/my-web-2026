@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'vitest';
+import { classifyToolFrameSrc, evaluateToolEmbedPolicy, toEmbedSubject } from './embed-policy';
 import { getPublicTool, getTool, listAllTools, listPublicTools, listTools } from './registry';
 
 /**
@@ -120,20 +121,48 @@ describe('Tool Registry — public surface', () => {
 });
 
 describe('Tool Registry — public surface invariants', () => {
-	it('every public Tool has a non-empty absolute entry_html', () => {
+	it('every public Tool has a non-empty, origin-safe entry_html', () => {
 		const publicTools = listPublicTools();
 		// The registry contract holds whether the manifest currently
 		// exposes any Tools or not (the #80 baseline exposes zero).
 		// The invariant is what the contract guarantees, not the
 		// current count.
+		//
+		// Issue #465 replaced the old "must start with '/'" assertion
+		// with the origin classification the embed policy uses: a
+		// `same_origin_static` Tool MUST be a root-relative path
+		// (host origin), an `external_exception` Tool may be an https
+		// URL, and a protocol-relative `//host/...` src is never
+		// acceptable — it reads like a path and is not one.
 		for (const tool of publicTools) {
 			assert.ok(
 				tool.entry_html.length > 0,
 				`public Tool ${tool.slug} has empty entry_html — would 404 the iframe`,
 			);
+			const origin = classifyToolFrameSrc(tool.entry_html);
 			assert.ok(
-				tool.entry_html.startsWith('/'),
-				`public Tool ${tool.slug} entry_html must be absolute (same-origin)`,
+				origin === 'same-origin' || origin === 'cross-origin',
+				`public Tool ${tool.slug} entry_html "${tool.entry_html}" is neither a root-relative path nor an http(s) URL`,
+			);
+			assert.ok(
+				!tool.entry_html.startsWith('//'),
+				`public Tool ${tool.slug} entry_html must not be protocol-relative`,
+			);
+		}
+	});
+
+	it('every public Tool satisfies the embed policy (Issue #465)', () => {
+		// The route fails closed on a policy violation, so a public
+		// Tool that violates it would render the "blocked" placeholder
+		// instead of the iframe the index page links to.
+		for (const tool of listPublicTools()) {
+			const entry = getTool(tool.slug);
+			assert.ok(entry, `public Tool ${tool.slug} must exist in the manifest`);
+			const violations = evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, entry?.delivery ?? {}));
+			assert.deepEqual(
+				violations.map((v) => v.code),
+				[],
+				`public Tool ${tool.slug} violates the embed policy`,
 			);
 		}
 	});

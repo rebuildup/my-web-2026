@@ -1,10 +1,18 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router';
+import { useCallback, useRef } from 'react';
 import type { HTMLAttributeReferrerPolicy } from 'react';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
-import { getPublicTool, getTool } from '../tools/registry';
+import { evaluateToolEmbedPolicy, toEmbedSubject } from '../tools/embed-policy';
+import type {
+	AcceptedToolMessage,
+	EmbedViolation,
+	ToolHostMessageDeclaration,
+} from '../tools/embed-policy';
+import { getPublicTool, getTool, resolveToolEntryHtml } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
+import { useToolHostMessage } from '../tools/use-tool-host-message';
 
 /**
  * TanStack Start route for any Tool iframe shell.
@@ -56,6 +64,28 @@ import type { ManifestTool } from '../tools/registry';
  * still resolve to the canonical lowercase slug. The canonical URL
  * itself remains lowercase (`/tools/prototype`) — this is URL
  * tolerance, not a canonicalisation contract.
+ *
+ * Fail-closed embed policy (Issue #465): the loader runs
+ * `evaluateToolEmbedPolicy()` (src/tools/embed-policy.ts) over the
+ * manifest entry BEFORE deciding to render a frame. Three states:
+ *
+ *   - `embeddable` — the entry satisfies every sandbox / referrer /
+ *     origin rule. The iframe renders with the DECLARED
+ *     `sandbox` + `referrerPolicy`; nothing is defaulted here.
+ *   - `blocked`   — the entry violates the policy. The route renders
+ *     a placeholder naming each violation code and NO iframe, so a
+ *     manifest edit cannot silently downgrade the sandbox of a
+ *     live Tool (e.g. adding `allow-same-origin`, or pointing
+ *     `entry_html` at a foreign origin).
+ *   - `disabled`  — the manifest marks the Tool `host_disabled`
+ *     (nothing to police; see the "Coming soon" copy below).
+ *
+ * The `embeddable` branch also carries the Tool's `host_message`
+ * declaration into `ToolEmbedShell`, which is the only place a
+ * `message` listener can be attached for a Tool frame — and it
+ * attaches one only when the manifest declares a contract. With no
+ * declaration (today: every Tool), an unexpected message from the
+ * frame reaches no host code at all.
  */
 export const Route = createFileRoute('/tools/$slug')({
 	loader: ({ params }) => {
@@ -65,8 +95,14 @@ export const Route = createFileRoute('/tools/$slug')({
 		const slug = params.slug.toLowerCase();
 		const tool = getTool(slug);
 		if (!tool) throw notFound();
+
+		// Issue #465: policy first. A blocked entry never reaches the
+		// public-surface lookup, so the iframe cannot be rendered even
+		// if the Tool is listed as embeddable.
+		const violations = evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery));
 		const publicTool = getPublicTool(slug);
-		if (publicTool) return { state: 'embeddable' as const, public: publicTool };
+		if (violations.length > 0) return { state: 'blocked' as const, tool, violations };
+		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool };
 		if (tool.delivery.kind === 'host_disabled') {
 			return { state: 'disabled' as const, tool };
 		}
@@ -102,6 +138,18 @@ export const Route = createFileRoute('/tools/$slug')({
 					{ name: 'robots', content: 'noindex' },
 				],
 				links: [{ rel: 'canonical', href: url }],
+			};
+		}
+		if (loaderData.state === 'blocked') {
+			return {
+				meta: [
+					{ title: `${loaderData.tool.display_name} — blocked — my-web-2026 Tools` },
+					{
+						name: 'description',
+						content: `${loaderData.tool.display_name} is not embedded because its registry entry violates the host embed policy (Issue #465).`,
+					},
+					{ name: 'robots', content: 'noindex' },
+				],
 			};
 		}
 		const tool = loaderData.public;
@@ -197,12 +245,79 @@ function ToolRoute() {
 	if (loaderData.state === 'disabled') {
 		return <DisabledPlaceholder tool={loaderData.tool} />;
 	}
-	const tool = loaderData.public;
+	if (loaderData.state === 'blocked') {
+		return <BlockedPlaceholder tool={loaderData.tool} violations={loaderData.violations} />;
+	}
+	const { tool, public: summary } = loaderData;
+	return (
+		<ToolEmbedShell
+			slug={tool.slug}
+			displayName={tool.display_name}
+			// Issue #465: `src` comes from `resolveToolEntryHtml`, the same
+			// function the embed-policy verifier uses, so the rendered
+			// frame can never point somewhere the policy did not see.
+			src={resolveToolEntryHtml(tool)}
+			sandbox={summary.iframe.sandbox}
+			referrerPolicy={summary.iframe.referrer_policy}
+			allow={summary.iframe.allow}
+			hostMessage={tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.host_message}
+		/>
+	);
+}
+
+/**
+ * The embeddable state (Issue #465).
+ *
+ * Three responsibilities:
+ *
+ *   1. Render the iframe with the manifest's DECLARED sandbox,
+ *      referrer policy and capability grant (`allow`) — no defaults,
+ *      no client-side "upgrade". `allow` is what makes a conditional
+ *      sandbox token usable at all: the policy REQUIRES the manifest
+ *      to declare it, so dropping it here would make every such
+ *      declaration inert while the gate reported it as valid.
+ *   2. Host the message channel. `useToolHostMessage` attaches a
+ *      `message` listener only when the manifest declares
+ *      `delivery.host_message`; otherwise there is no listener at all.
+ *      `onToolMessage` is the only host action a Tool can trigger, and
+ *      it is a no-op seam today: no Tool declares a contract, so the
+ *      effect body never runs. It exists so the contract is complete
+ *      (declaration → origin-exact, type-allowlisted channel) rather
+ *      than a stub that a future Tool has to re-invent.
+ */
+function ToolEmbedShell({
+	slug,
+	displayName,
+	src,
+	sandbox,
+	referrerPolicy,
+	allow,
+	hostMessage,
+}: {
+	slug: string;
+	displayName: string;
+	src: string;
+	sandbox: string;
+	referrerPolicy: string;
+	allow?: string | undefined;
+	hostMessage: ToolHostMessageDeclaration | undefined;
+}) {
+	const frameRef = useRef<HTMLIFrameElement | null>(null);
+	const getToolWindow = useCallback(() => frameRef.current?.contentWindow ?? null, []);
+	const onToolMessage = useCallback((_message: AcceptedToolMessage) => {
+		// No Tool declares a message contract yet (#465), so this branch
+		// is unreachable by construction. When the first Tool declares
+		// one, its host-side action belongs here — behind the origin /
+		// source / type checks the guard already performed.
+	}, []);
+
+	useToolHostMessage({ slug, declaration: hostMessage, getToolWindow, onMessage: onToolMessage });
+
 	return (
 		<>
 			<div
 				data-route="tools/$slug"
-				data-tool-slug={tool.slug}
+				data-tool-slug={slug}
 				style={{
 					width: '100%',
 					// Issue #288: no header chrome above the shell, so the
@@ -214,10 +329,20 @@ function ToolRoute() {
 				}}
 			>
 				<iframe
-					title={`${tool.display_name} Tool`}
-					src={tool.entry_html}
-					sandbox={tool.iframe.sandbox}
-					referrerPolicy={tool.iframe.referrer_policy as HTMLAttributeReferrerPolicy}
+					ref={frameRef}
+					title={`${displayName} Tool`}
+					src={src}
+					sandbox={sandbox}
+					referrerPolicy={referrerPolicy as HTMLAttributeReferrerPolicy}
+					// Issue #465: render the DECLARED capability grant.
+					// `allow` only intersects with the host's own
+					// `Permissions-Policy` response header — the host does
+					// not send one for Tool frames yet (ADR-0006's
+					// re-evaluation trigger covers the header; see
+					// `docs/tools/embed-policy.md` §2). Rendering it is
+					// still required: without the attribute the declared
+					// grant can never take effect when the header lands.
+					allow={allow}
 					style={{
 						width: '100%',
 						height: '100%',
@@ -226,6 +351,94 @@ function ToolRoute() {
 					}}
 				/>
 			</div>
+		</>
+	);
+}
+
+/**
+ * Blocked state (Issue #465) — the manifest entry violates the host
+ * embed policy, so the host renders NO iframe.
+ *
+ * This is the fail-closed surface: a bad sandbox token, a missing
+ * referrer policy, or a frame `src` whose origin contradicts the
+ * delivery kind stops at this page instead of at the browser. Each
+ * violation code is rendered so the fix is mechanical.
+ */
+function BlockedPlaceholder({
+	tool,
+	violations,
+}: {
+	tool: ManifestTool;
+	violations: readonly EmbedViolation[];
+}) {
+	return (
+		<>
+			<Container as="section">
+				<div
+					data-route="tools/$slug"
+					data-tool-slug={tool.slug}
+					data-tool-state="blocked"
+					data-testid="tools-embed-blocked"
+					className={css({
+						paddingBlock: { base: '16', lg: '32' },
+						maxWidth: '720px',
+					})}
+				>
+					<SectionHeading
+						eyebrow="Blocked by embed policy"
+						title={tool.display_name}
+						description={
+							<>
+								この Tool はホストの埋め込みポリシー（sandbox / referrerPolicy / origin 契約）に
+								違反するため、iframe は描画されません。
+								<br />
+								This Tool is not embedded: its registry entry violates the host embed policy, so the
+								host renders no iframe. The violations are listed below.
+							</>
+						}
+					/>
+					<ul
+						data-tool-policy-violations
+						className={css({
+							marginBlockStart: '12',
+							paddingInlineStart: '20',
+							fontFamily: 'mono',
+							fontSize: 'sm',
+							color: 'text.muted',
+							listStyleType: 'disc',
+						})}
+					>
+						{violations.map((v) => (
+							<li key={`${v.code}-${v.message}`} data-violation-code={v.code}>
+								<code>{v.code}</code> — {v.message}
+							</li>
+						))}
+					</ul>
+					<p
+						className={css({
+							marginBlockStart: '16',
+							fontFamily: 'sans',
+							fontSize: 'md',
+							color: 'text.default',
+						})}
+					>
+						<Link
+							to="/tools"
+							className={css({
+								color: 'text.accent',
+								textDecoration: 'underline',
+								_hover: { color: 'text.default' },
+								_focusVisible: {
+									outline: '2px solid {colors.border.focus}',
+									outlineOffset: '2px',
+								},
+							})}
+						>
+							ツール一覧に戻る / Back to the Tool list
+						</Link>
+					</p>
+				</div>
+			</Container>
 		</>
 	);
 }

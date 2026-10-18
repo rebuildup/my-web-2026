@@ -234,6 +234,24 @@ literal string `"mock"`. Any other value (unset, empty, `on`, `1`,
 `off`) routes through to the real production handlers — the mock
 layer is the surgical opt-in, never the default.
 
+**Calling the write endpoints directly in dev.** With the mock gate
+off, `/api/v1/*` writes go through `csrfGuard`
+(see [`docs/security.md`](security.md#csrf)), which requires a
+same-origin signal. A `curl` therefore has to declare the origin it
+is calling:
+
+```bash
+curl -s -X POST http://127.0.0.1:3000/api/v1/access/hit \
+  -H 'Authorization: Bearer …' \
+  -H 'Origin: http://127.0.0.1:3000' \
+  -H 'Content-Type: application/json' -d '{}'
+# without -H 'Origin: …' → 403 {"error":"csrf_rejected","reason":"origin_check_missing"}
+```
+
+Reads need no header. The first-party server functions are unaffected:
+they self-call the boundary with the origin they are calling (see
+`src/home/{access,reactions}/load.ts`).
+
 **Regression tests:**
 
 - `src/http/hono.test.ts` — the gate against the real

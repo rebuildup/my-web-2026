@@ -95,7 +95,35 @@ const DIGIT_SLOTS = 7;
  * for the rasteriser and `src/home/digits/` for the committed
  * output. Each digit slides up into place on mount with a per-digit
  * stagger, so the count "rolls up" to its value when the section
- * first appears.
+ * first appears — subject to the lazy-fetch caveat in "Loading mode"
+ * below.
+ *
+ * Loading mode (Issue #487): the strip is `loading="lazy"` +
+ * `decoding="async"`. The tile is the FIFTH section of `/`, so the
+ * strip sits far below the fold on every viewport this site ships,
+ * while the UA default for an `<img>` without `loading` is `eager` —
+ * i.e. "decode as soon as the HTML parses", with nothing to say when
+ * the visitor can actually see it. The production build inlines the
+ * digit WebPs (0.2–0.9 KB each, under Vite's `assetsInlineLimit`) as
+ * `data:` URIs, so on the shipped document the attribute governs
+ * *decode scheduling*, not the wire; on any build that keeps them as
+ * real assets — the dev SSR document, which
+ * `e2e/lazy-media.spec.ts` also measures — it defers seven requests.
+ * Seven images is a small number, but the contract it broke is the
+ * important one — "an image on this surface is decoded before the
+ * visitor can see it" — and `test/integration/lazy-media-contract.test.ts`
+ * now fails if any `<img>` on home stops declaring its mode. The
+ * `role="img"` parent carries the real number as an accessible label,
+ * so nothing assistive-tech depends on the bitmaps arriving early.
+ *
+ * One consequence worth knowing: the roll-up keyframe is a mount-time
+ * animation (delays 0–480 ms), so a strip that is still below the fold
+ * when it mounts finishes rolling before its (lazy) pixels exist, and
+ * the digits settle into place instead of rolling when the visitor
+ * scrolls down. Re-triggering the roll on intersection is product
+ * behaviour, not part of this ticket's "one element" fix — it is
+ * recorded as an open decision in
+ * `docs/verification/perf/README.md`.
  *
  * Disabled state (no consumer API key) renders the same rows with a
  * muted `—` placeholder (text, not images) so the section does not
@@ -284,6 +312,12 @@ function DigitStrip({ count, format }: { count: number; format: HomeFormat }) {
 					key={`${index}-${char}`}
 					src={DIGIT_URLS[char]}
 					alt=""
+					// Issue #487 — see "Loading mode" in the module
+					// docstring. `loading` is stated explicitly rather
+					// than left to the UA default so the lazy contract
+					// is assertable from the rendered markup.
+					loading="lazy"
+					decoding="async"
 					draggable="false"
 					className={css({
 						display: 'inline-block',

@@ -24,6 +24,17 @@
  *        required (the Tool is not yet integrated).
  *   8. `source.submodule_path` is unique across all tools.
  *   9. `source.canonical_repo` is unique across all tools.
+ *  10. Issue #465 — embed policy: every embeddable entry
+ *      (`same_origin_static` / `external_exception`) is evaluated by
+ *      `src/tools/embed-policy.ts#evaluateToolEmbedPolicy`, the SAME
+ *      pure function the `/tools/<slug>` route runs per request. The
+ *      iframe sandbox / referrer policy / frame origin /
+ *      `host_message` origin contract therefore has exactly one
+ *      definition. Node loads that `.ts` module through type
+ *      stripping (Node >= 22.18 per `package.json#engines`), so the
+ *      rules are never restated here: a divergence between this gate
+ *      and the route would be a manifest that builds but never
+ *      renders.
  *
  * Exit code 0 on success, 1 on any violation. Each violation is
  * printed as `<file>:<line>  <message>` so the failure points at
@@ -33,6 +44,7 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { evaluateToolEmbedPolicy, toEmbedSubject } from '../src/tools/embed-policy.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -167,15 +179,6 @@ for (let i = 0; i < manifest.tools.length; i++) {
 					`${prefix}  delivery.artifact_path: "${d.artifact_path}" must match ^/tools/<slug>(/...)?$`,
 				);
 			}
-			// iframe sandbox: warn on allow-same-origin + allow-scripts combo
-			if (d.iframe) {
-				const tokens = d.iframe.sandbox?.split(/\s+/) ?? [];
-				if (tokens.includes('allow-scripts') && tokens.includes('allow-same-origin')) {
-					errors.push(
-						`${prefix}  delivery.iframe.sandbox: 'allow-scripts allow-same-origin' is dangerous; document the reason explicitly`,
-					);
-				}
-			}
 			// mechanical SHA match against the actual gitlink
 			const gitlinkSha = readGitlinkSha(s.submodule_path);
 			if (gitlinkSha === null) {
@@ -193,6 +196,25 @@ for (let i = 0; i < manifest.tools.length; i++) {
 		}
 		if (d.kind === 'host_disabled' && typeof d.disabled_reason !== 'string') {
 			errors.push(`${prefix}  delivery.disabled_reason: required for host_disabled`);
+		}
+		// iframe sandbox / referrer policy / frame origin / host_message
+		// contract: Issue #465.
+		//
+		// Deliberately NOT nested inside a delivery-kind branch: BOTH
+		// embeddable kinds (`same_origin_static` and `external_exception`)
+		// are rendered through the same <iframe> element with the same
+		// declared policy, so both must be policed at commit time — an
+		// `external_exception` with a plaintext URL, a missing
+		// `delivery.iframe`, or `allow-scripts allow-same-origin` is a
+		// commit that would fail closed per request but still pass this
+		// gate, i.e. a manifest that builds and never renders.
+		// `host_disabled` / `not_integrable_yet` are framed by nobody,
+		// and `evaluateToolEmbedPolicy` returns `[]` for them.
+		//
+		// The per-rule messages come from the shared policy module (see
+		// the header), so this loop only attributes them to the entry.
+		for (const violation of evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery))) {
+			errors.push(`${prefix}  ${violation.code}: ${violation.message}`);
 		}
 	}
 

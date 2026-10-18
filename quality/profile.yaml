@@ -89,6 +89,9 @@ change_risk_mapping:
     gate: fast
   config_only:
     gate: fast
+  client_bundle_report_change:
+    gate: fast
+    note: 'Issue #483 — scripts/_client-bundle.mjs + scripts/report-client-bundle.mjs + its fixture test. The analyser has a unit test (`scripts/_client-bundle.test.mjs`) that `pnpm run test` runs inside validate:fast, so the analyser cannot silently stop detecting an orphaned chunk or a leaking Tool import. The REPORT it produces is not a gate and no byte budget is enforced here: budget thresholds are Issue #383 / #385.'
   src_unit:
     gate: fast
   architecture_boundary:
@@ -191,3 +194,39 @@ disallowed_patterns:
   - 'duplicate pnpm install across CI jobs (use cache + single shared bootstrap)'
   - 'tabs in YAML files (actionlint enforces spaces; .github/workflows/*.yml uses 2-space indent)'
   - 'cf workers types run as a generation step in CI without a subsequent git diff --exit-code check'
+  - 'a performance/visualisation report wired into validate:fast / validate:integration / validate:release (see diagnostic_entry_points; budgets are Issue #383 / #385)'
+
+# Deterministic entry points that produce EVIDENCE without gating.
+# They are deliberately outside `gates:` above: running them must never
+# turn a visualisation into a release condition. A finding from one of
+# them is an input to a human decision or to a follow-up Issue.
+#
+# `pnpm run verify:bundle-map` (Issue #483) reads an emitted client build
+# and reports, per route, which chunks load, how large they are, which
+# chunks are duplicated, and whether any host route pulls in the Tool
+# artifacts under `tools/**`. Reproduction conditions (source SHA, node,
+# vite, OS/arch, CPU, browser, network) are part of the report body,
+# because a bundle number without its conditions is not comparable.
+#
+# Local reproduction (production-equivalent preview):
+#   pnpm exec vite build && node scripts/build-tools.mjs
+#   node scripts/sync-cf-build-output.mjs
+#   node scripts/e2e-local-bootstrap.mjs --port=3000   # terminal 1
+#   pnpm run verify:bundle-map -- --base-url=http://127.0.0.1:3000
+#
+# CI reproduction: the same command against the same build step that
+# `validate:integration` runs, plus `--screenshot=` to refresh the
+# committed WebP. No workflow runs it today — it is opt-in, invoked by a
+# human, and a workflow that starts running it must keep it out of the
+# `gates:` above.
+diagnostic_entry_points:
+  - name: verify:bundle-map
+    command: 'pnpm run verify:bundle-map -- --base-url=<preview base url>'
+    scope: 'client build output only; no network, no Cloudflare API, no production read'
+    output: '.tmp/bundle-report/bundle-map.{json,md,html} (gitignored)'
+    committed_artefacts:
+      - 'docs/verification/perf/bundle-map.md'
+      - 'docs/verification/perf/bundle-map.webp'
+    gates: none
+    owner_issue: '#483'
+    prerequisites: 'a built client output (pnpm exec vite build; scripts/build-tools.mjs + scripts/sync-cf-build-output.mjs for Tool artefacts) and, for the route matrix, a preview server'

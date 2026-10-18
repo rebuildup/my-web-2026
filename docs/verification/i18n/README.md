@@ -1,4 +1,14 @@
-# Verification — Intl locale formatting (Issue #430)
+# Verification — Intl locale formatting and CJK line breaking
+
+This directory holds the committed screenshots for two verification
+tickets:
+
+| Artefact | Issue | What it proves |
+| --- | --- | --- |
+| `intl-date-number.webp` | #430 | one instant, one count and a set of relative spans rendered per locale by the shipped home format adapter |
+| `cjk-line-break.webp` | #431 | 72 measured CJK line-breaking rows (禁則 / `word-break` / wrap mode) from the shipped editorial recipes |
+
+## Intl locale formatting (Issue #430)
 
 `intl-date-number.webp` is the committed screenshot of the locale
 comparison report for the home format adapter. It shows **one
@@ -43,12 +53,53 @@ The same comparison is available as a Storybook preview
 `src/home/format.test.ts`, `src/home/access/tiles.test.tsx`, and
 `src/home/status/tiles.test.tsx`.
 
+## CJK line breaking (Issue #431)
+
+`cjk-line-break.webp` is the committed screenshot of the CJK
+禁則 / line-break measurement report. It shows the fixture rendered by
+the shipped editorial recipes at three viewports (320 / 375 / 768 px),
+four locales (`ja` / `zh-Hans` / `zh-Hant` / `ko`) and three opt-in
+levels (baseline, `lang`, `lang` + CJK typography), plus the full
+72-row measurement matrix and the list of failures (empty on a passing
+run).
+
+The rules it checks are the typography contract only: R1 行頭禁則,
+R2 行頭空白, R3 行末禁則, R4 Conditional Japanese starters, R5
+lossless reconstruction, R6 `word-break`, R7 wrap mode, R8 `lang`
+scoping, plus the opt-in declarations themselves — R9 `line-break`
+(`auto` for the baseline / `lang` modes, `strict` for the typography
+mode) and R10 `text-spacing-trim` (`normal` / `trim-start`). Text
+quality (translation, editing, tone) is explicitly out of scope, and no
+product copy is measured or changed by this artefact.
+
+### How to reproduce it
+
+```sh
+# 1. build the Worker the harness measures through `pnpm preview`
+pnpm run build
+
+# 2. measure + regenerate docs/verification/i18n/cjk-line-break.webp
+node scripts/cjk-line-break-measure.mjs --write-artefact
+```
+
+With no `--base-url`, the harness starts its own `pnpm preview` on
+`127.0.0.1:39217` through `scripts/e2e-local-bootstrap.mjs` (local D1
+only), refuses to adopt an unrelated listener on that port, and stops
+the process group on exit. Pass `--base-url <url>` to measure a preview
+you started yourself. The intermediate PNG is deleted after the WebP is
+written, and the capture fails if the WebP exceeds 300 KB.
+
+The browser half needs Playwright and a build, so it is not part of
+`pnpm test`; the pure rule/table half is
+`scripts/cjk-line-break-measure.test.mjs` and is wired into
+`package.json#scripts.test`.
+
 ## Why a committed binary
 
 The repository's usual convention is that verification screenshots stay
-outside the tree (`scripts/layout-audit-shoot.mjs`). Issue #430 asks
-for this comparison to be visible in the PR, so the artefact is
-committed — as WebP rather than the PNG the Issue names, because the
-PNG is several times larger for no gain at documentation scale. The
-capture script fails when the WebP exceeds 300 KB, so the artefact
+outside the tree (`scripts/layout-audit-shoot.mjs`). Issues #430 and
+#431 ask for their evidence to be visible in the PR, so the artefacts
+are committed — as WebP rather than the PNG the Issues name, because
+the PNG is several times larger for no gain at documentation scale.
+Both capture scripts fail when the WebP exceeds 300 KB, so an artefact
 cannot silently bloat the repository.

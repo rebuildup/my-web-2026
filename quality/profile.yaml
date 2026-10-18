@@ -199,8 +199,26 @@ security_gates:
     tool: actionlint
     note: 'Biome does not cover .github/workflows/*.yml. Runs inside the `validate` job.'
   dependency_review:
-    enabled: false
-    rationale: 'Deferred to a post-0.1.0 ticket.'
+    enabled: true
+    issue: '#470'
+    tool: pnpm-audit
+    check_command: 'pnpm run dep-audit:check'
+    report_command: 'pnpm run dep-audit:report'
+    declaration: 'quality/dependency-advisory-gate.json'
+    enforcement: audit
+    blocking_severities: ['critical', 'high']
+    open_owner_decision: '`enforcement: audit` with 18 outstanding blocking advisories (3 critical) is the shipped state. Remediation, narrowing blocking_severities and per-package exception approval are owner calls; no exception is written on the owner''s behalf. See docs/runbook/dependency-advisories.md section 6.'
+    ci_step: 'Dependency advisory audit (every pull_request / push the workflow triggers, and the HTML report is uploaded as dependency-advisory-report-<sha>)'
+    entry_points: 'CI only — the gate needs the npm registry advisory endpoint, so it is deliberately not part of the offline validate:fast / validate:integration / validate:release path. The decision lives in scripts/check-dependency-advisories.mjs (not in workflow YAML) and the same verdict is reproducible locally with `pnpm run dep-audit:check`.'
+    exit_codes:
+      0: 'pass, or blocking findings recorded under audit enforcement'
+      1: 'blocking advisories outstanding under block enforcement'
+      2: 'usage error, unreadable --input path, or gate-declaration error'
+      3: 'advisory data unavailable — fail closed, never reported as 0 findings'
+    inputs:
+      - pnpm-lock.yaml
+      - quality/dependency-advisory-gate.json
+    note: 'Severity policy, the exception ledger and every expiry live in the declaration, not in code, so a policy change is a reviewable one-line diff. The severity policy is enforced in both directions: a severity classified as neither blocking nor reported fails closed, and an exception is keyed by (advisoryId, package) because one advisory commonly spans several packages — a record that matches no finding suppresses nothing and is reported, never laundered into `data unavailable`. Advisory data comes from the npm registry advisory endpoint only — no environment credential, .dev.vars, Infisical export or Worker secret value (AGENTS.md section 4); an upstream response body is never echoed into stdout or the artifact. Unreadable data fails closed so a registry outage cannot read as a clean tree. See docs/runbook/dependency-advisories.md.'
   sast:
     enabled: false
     rationale: 'Deferred.'

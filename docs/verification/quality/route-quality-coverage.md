@@ -43,9 +43,11 @@ pnpm run routes:quality:report           # .tmp/route-quality-report.html を再
 pnpm run verify:route-quality-screenshot # 上記 HTML を WebP 化して docs/verification/quality/ へ
 ```
 
-CI では `validate:fast` の `architecture:check` の直後に同じコマンドが走る
+CI では `validate:fast` の静的チェック列（`architecture:check` と `tools:check` の間）で
+同じコマンドが走ります。並び順は release-0-6-3 側の管轄なので、この gate は
+「architecture:check と tools:check の間にある」という関係として記録しています
 （`.github/workflows/ci.yml` の `validate` ジョブ = `validate:integration`）。
-ブラウザ・ネットワーク・CPU 条件は上表のとおりで、CI と locals で結果が変わる要素は
+ブラウザ・ネットワーク・CPU 条件は上表のとおりで、CI と local で結果が変わる要素は
 存在しない。
 
 ## gate が fail する条件

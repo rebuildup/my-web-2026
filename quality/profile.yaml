@@ -124,7 +124,11 @@ route_quality_coverage:
   report_command: 'pnpm run routes:quality:report'
   tests: 'node --test scripts/check-route-quality-coverage.test.mjs'
   gate: fast
-  gate_placement: 'validate:fast, immediately after architecture:check'
+  gate_placement: >-
+    validate:fast, in the static check chain after `pnpm run
+    architecture:check` and before `pnpm run tools:check` (the chain
+    order belongs to release-0-6-3, so this records the neighbourhood
+    rather than an absolute index).
   documentation: 'docs/verification/quality/route-quality-coverage.md'
   gate_families:
     - 'e2e' # implemented — Playwright spec asserts the rendered surface

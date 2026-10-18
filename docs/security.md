@@ -92,6 +92,45 @@ binding API is reachable in the local workerd pool"**, not
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
 
+## Search index boundary (robots.txt is not access control)
+
+`public/robots.txt` and `public/sitemap.xml` are **generated
+artefacts** of the contract in `scripts/_index-boundary.mjs` and are
+verified by `pnpm run index:boundary:check` (part of
+`validate:fast`). Regenerate with
+`pnpm run index:boundary:write`; inspect the per-route intent with
+`pnpm run index:boundary:report`.
+
+The boundary has exactly two halves, and they are not interchangeable:
+
+- **Crawl control** — `Disallow` in `robots.txt` keeps a URL out of
+  the crawl. It is applied only to the gated `/admin` subtree and to
+  the machine boundaries (`/api/v1`, `/webhooks`, `/oauth`,
+  `/integrations`, `/_serverFn`), i.e. surfaces that cost crawl budget
+  and have no document to index.
+- **Index control** — `<meta name="robots" content="noindex, nofollow">`
+  is what actually removes a URL from the index. It is declared by the
+  page itself (`src/routes/admin.tsx` for the whole admin subtree, and
+  the Tool shell routes), which is why those pages must stay
+  crawlable: a page a crawler cannot fetch cannot deliver its own
+  noindex, and Google then reports the URL as "Indexed, though blocked
+  by robots.txt".
+
+Neither half is authentication. `robots.txt` is a public document
+served to anonymous clients — `curl`, a browser, or a scraper ignores
+it — so the admin surface stays protected by `requireAdmin()`
+(`src/admin/auth/require-admin.ts`) and `/api/v1/*` by the API-key
+middleware. `test/integration/index-boundary.test.ts` proves the two
+are independent: a `Googlebot` User-Agent gets no privilege on
+`/admin` or `/admin/keys`, and the API boundary still answers `401`.
+
+The gate fails loudly rather than silently on: a site-wide
+`Disallow: /`, a `Disallow` rule that would shadow an indexable public
+route, a gated route that lost its rule, an `noindex` meta on a public
+route, a sitemap entry whose route does not exist (or vice versa), a
+sitemap URL that disagrees with the page's own `canonical`, and any new
+route that has no declared index intent.
+
 ## Browser binaries (Playwright)
 
 `pnpm run e2e` runs against `pnpm dev` (locally) or a deployed Worker

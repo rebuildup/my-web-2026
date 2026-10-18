@@ -204,6 +204,24 @@ production domain to be wired (Issue #43 / ADR-0014):
    production smoke and verify `/`, `/admin/login`, `/api/v1/health`,
    reactions, and the access counter on the canonical origin.
 
+8. The dependency advisory gate (Issue #470) has run against the release
+   branch head — the `Dependency advisory audit` step of the `validate`
+   job, whose HTML report is retained as the
+   `dependency-advisory-report-<sha>` artifact.
+
+   - Unreadable advisory data is a release blocker: the gate fails
+     closed (exit `3`) rather than reporting a clean dependency tree.
+   - Every outstanding `critical` / `high` advisory is either
+     remediated, or covered by an **unexpired** record in
+     `quality/dependency-advisory-gate.json` for that exact
+     `(advisoryId, package)` — and the release notes name which, with
+     the expiry date.
+   - This is a dependency check only. It does not change the runtime
+     secret SoT (Infisical, ADR-0015), the Cloudflare Workers Builds
+     delivery path, or the release-merge human gate in step 5.
+
+   See [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
+
 ## 0.1.0 Foundation backlog
 
 | Issue | Title                                                       | Depends on | Priority |

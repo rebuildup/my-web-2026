@@ -119,3 +119,53 @@ export const Disconnected: Story = {
 		data: { key: 'home-page', count: 0, first_hit: null, last_hit: null, enabled: false },
 	},
 };
+
+/**
+ * Locale previews (Issue #430). The tile renders its period date and
+ * its relative "last hit" span through the home format adapter, so
+ * the same instant reads per locale. The clock is fixed so the
+ * relative span is deterministic in the preview.
+ */
+const NOW = Date.UTC(2026, 0, 5, 9, 0, 0);
+
+export const LocaleEn: Story = {
+	args: {
+		data: {
+			key: 'home-page',
+			count: 12_345,
+			first_hit: Date.UTC(2026, 0, 1, 0, 0, 0),
+			last_hit: NOW - 5 * 60_000,
+			enabled: true,
+		},
+		locale: 'en',
+		now: () => NOW,
+	},
+};
+
+export const LocaleJa: Story = {
+	args: {
+		data: {
+			key: 'home-page',
+			count: 12_345,
+			first_hit: Date.UTC(2026, 0, 1, 0, 0, 0),
+			last_hit: NOW - 5 * 60_000,
+			enabled: true,
+		},
+		locale: 'ja',
+		now: () => NOW,
+	},
+};
+
+export const LocaleKo: Story = {
+	args: {
+		data: {
+			key: 'home-page',
+			count: 12_345,
+			first_hit: Date.UTC(2026, 0, 1, 0, 0, 0),
+			last_hit: NOW - 5 * 60_000,
+			enabled: true,
+		},
+		locale: 'ko',
+		now: () => NOW,
+	},
+};

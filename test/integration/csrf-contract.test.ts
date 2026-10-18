@@ -302,16 +302,16 @@ describe('no write side effect is reachable through GET', () => {
 	});
 });
 
-describe('TanStack Start layer: server functions keep the framework default CSRF', () => {
-	// Behaviour and structure for this half are asserted elsewhere:
-	// `e2e/csrf.spec.ts` (built preview server) and
-	// `scripts/check-csrf-contract.mjs` (Node environment — the workerd
-	// pool sandboxes `node:fs`, so it cannot read the repository tree).
-	// This case keeps the pointer visible in the suite output.
-	it('is covered by e2e/csrf.spec.ts and scripts/check-csrf-contract.mjs', () => {
-		expect(typeof apiKey).toBe('string');
-	});
-});
+// TanStack Start layer
+// ---------------------
+// No `it()` here on purpose. Behaviour and structure for this half are
+// asserted elsewhere — `e2e/csrf.spec.ts` (built preview server) and
+// `scripts/check-csrf-contract.mjs` (Node environment; the workerd pool
+// sandboxes `node:fs`, so it cannot read the repository tree) — and an
+// `expect(typeof apiKey).toBe('string')` placeholder here would only
+// pad the SELF case count while proving nothing about CSRF. The reason
+// the Start half cannot be asserted from this pool is spelled out at
+// the bottom of this file.
 
 // Why the Start-layer BEHAVIOUR is not asserted here
 // --------------------------------------------------

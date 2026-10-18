@@ -29,6 +29,10 @@
  * warning) and Better Auth's `skipCSRFCheck` / `disableCSRFCheck` /
  * `disableOriginCheck`.
  *
+ * The mount rule is order-aware on purpose: Hono dispatches in
+ * registration order, so a `use()` line that survives the literal
+ * search but sits below `route()` protects nothing.
+ *
  * Behaviour (positive + negative cases, real D1 side-effect checks)
  * lives in `test/integration/csrf-contract.test.ts` and
  * `e2e/csrf.spec.ts`. This file only owns the structural half, because
@@ -54,6 +58,17 @@ const CSRF_MIDDLEWARE_FILE = 'src/http/middleware/csrf.ts';
 const HONO_FILE = 'src/http/hono.ts';
 const GUARD_IMPORT = "from './middleware/csrf'";
 const GUARD_MOUNT = "externalBoundary.use('/api/v1/*', csrfGuard)";
+
+/**
+ * Calls that register a **handler** on the boundary. `use()` only adds
+ * middleware and is deliberately excluded: the mock gate and the
+ * request-id middleware are both `use()` and must stay in front of the
+ * guard. Hono dispatches in registration order, so a handler matched
+ * before the guard's `use()` never reaches it — the literal would still
+ * be in the file (and the old substring rules still green) while the
+ * guard protects nothing.
+ */
+const ROUTE_REGISTRATION = /\bexternalBoundary\.(route|all|get|post|put|delete|patch)\s*\(/g;
 
 /**
  * Flags that disable an origin / CSRF check in either dependency.
@@ -110,14 +125,27 @@ export function collectViolations(repoRoot = REPO_ROOT) {
 	if (!existsSync(honoPath)) {
 		errors.push(`${HONO_FILE} is missing; the external boundary cannot be verified.`);
 	} else {
-		const hono = readFileSync(honoPath, 'utf8');
+		// Comment-stripped: a guard that is only *mentioned* in a comment
+		// does not protect anything.
+		const hono = stripComments(readFileSync(honoPath, 'utf8'));
 		if (!hono.includes(GUARD_IMPORT)) {
 			errors.push(`${HONO_FILE} does not import csrfGuard (${GUARD_IMPORT}).`);
 		}
-		if (!hono.includes(GUARD_MOUNT)) {
+		const mountIndex = hono.indexOf(GUARD_MOUNT);
+		if (mountIndex === -1) {
 			errors.push(
 				`${HONO_FILE} does not mount the guard (${GUARD_MOUNT}): a /api/v1/* write is unprotected.`,
 			);
+		} else {
+			// Rule 3b — registration order. Hono matches in registration
+			// order, so the mount must precede the first handler.
+			ROUTE_REGISTRATION.lastIndex = 0;
+			const firstHandler = hono.search(ROUTE_REGISTRATION);
+			if (firstHandler !== -1 && mountIndex > firstHandler) {
+				errors.push(
+					`${HONO_FILE} mounts the guard AFTER the first handler registration: Hono dispatches in registration order, so routes registered before it never run csrfGuard.`,
+				);
+			}
 		}
 	}
 
@@ -161,7 +189,7 @@ function main() {
 
 	process.stdout.write(
 		'csrf:contract:check OK: default Start CSRF middleware active (no src/start.ts, no opt-outs) ' +
-			'+ boundary csrfGuard mounted on /api/v1/*\n',
+			'+ boundary csrfGuard mounted before the routers on /api/v1/*\n',
 	);
 	return 0;
 }

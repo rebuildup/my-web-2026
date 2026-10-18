@@ -16,9 +16,14 @@ import { createMiddleware } from 'hono/factory';
  *   - Everything the Hono boundary answers (`/api/v1/*`,
  *     `/webhooks/*`, `/oauth/*`, `/integrations/*`) is OUTSIDE that
  *     middleware: the Worker entry dispatches to Hono **before** the
- *     Start handler runs. ADR-0002 assigns "their own authentication
- *     and origin checks" to those handlers, and this module is that
- *     check for the write methods.
+ *     Start handler runs. ADR-0002 §1/§2 establish that two-layer
+ *     split, so the boundary cannot inherit the framework's check and
+ *     this module supplies the origin check for its write methods.
+ *     That obligation is **inferred from the split, not quoted**: no
+ *     ADR states it verbatim, so §8 (security / external contracts)
+ *     applies and the owner still owes a decision on whether this
+ *     deserves its own ADR. Until then `docs/security.md` is the
+ *     durable record of the contract.
  *
  * Why the decision order is copied from the framework
  * ---------------------------------------------------

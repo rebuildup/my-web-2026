@@ -57,7 +57,8 @@ externalBoundary.use('/api/v1/*', requestIdMiddleware);
 // default CSRF middleware only ever sees requests the Worker entry
 // hands to the Start handler; everything answered here never reaches
 // it, so the boundary owes the write methods their own origin check
-// (ADR-0002 §2). Mounted after the request-id middleware so a refusal
+// (inferred from ADR-0002 §1/§2's two-layer split; recorded in
+// docs/security.md). Mounted after the request-id middleware so a refusal
 // still carries the correlation header, and before the routers so a
 // cross-site write is rejected before authentication, rate limiting,
 // or D1 are touched.

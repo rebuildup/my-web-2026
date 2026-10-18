@@ -12,6 +12,8 @@ import { defineConfig, devices } from '@playwright/test';
  *   3. `e2e/tools-index.spec.ts` — `/tools` index page contract.
  *   4. `e2e/tools-prototype.spec.ts` — `/tools/prototype` iframe
  *      contract against the **built** Tool artifact.
+ *   5. `e2e/csrf.spec.ts` — boundary CSRF contract over real HTTP
+ *      (same-origin write accepted, cross-site write refused).
  *
  * The webServer block below spins up `pnpm preview` (= `vite preview`
  * against `dist/client/`) automatically when `PLAYWRIGHT_BASE_URL`

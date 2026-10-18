@@ -127,6 +127,50 @@ test('a flag mentioned only in a comment is not a violation', () => {
 	}
 });
 
+test('moving the mount below the routers is reported (Hono dispatches in registration order)', () => {
+	const { root, cleanup } = makeFixture();
+	try {
+		writeFileSync(
+			join(root, 'src', 'http', 'hono.ts'),
+			[
+				"import { csrfGuard } from './middleware/csrf';",
+				'',
+				"externalBoundary.route('/api/v1/reactions', reactionsRouter);",
+				"externalBoundary.use('/api/v1/*', csrfGuard);",
+				'',
+			].join('\n'),
+		);
+		const { errors } = collectViolations(root);
+		assert.equal(errors.length, 1, JSON.stringify(errors));
+		assert.match(errors[0], /AFTER the first handler registration/);
+	} finally {
+		cleanup();
+	}
+});
+
+test('a guard mentioned only in a comment is reported', () => {
+	const { root, cleanup } = makeFixture();
+	try {
+		writeFileSync(
+			join(root, 'src', 'http', 'hono.ts'),
+			[
+				"import { requestIdMiddleware } from './middleware/request-id';",
+				'',
+				"// externalBoundary.use('/api/v1/*', csrfGuard);",
+				"externalBoundary.use('/api/v1/*', requestIdMiddleware);",
+				'',
+			].join('\n'),
+		);
+		const { errors } = collectViolations(root);
+		assert.ok(
+			errors.some((e) => e.includes('does not mount the guard')),
+			JSON.stringify(errors),
+		);
+	} finally {
+		cleanup();
+	}
+});
+
 test('stripComments removes block and line comments but keeps code', () => {
 	assert.equal(
 		stripComments('const a = 1; // trailing\nconst b = 2;'),

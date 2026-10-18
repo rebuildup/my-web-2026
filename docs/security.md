@@ -43,9 +43,12 @@ requires an ADR before that happens.
 
 ### Hono boundary layer (`csrfGuard`)
 
-ADR-0002 assigns the external boundary "its own authentication and
-origin checks". `csrfGuard` implements that for unsafe methods
-(`POST` / `PUT` / `PATCH` / `DELETE`) under `/api/v1/*`:
+ADR-0002 §1/§2 split the Worker into two layers, so the external
+boundary never reaches the framework middleware and therefore owes its
+write methods their own origin check (that obligation is inferred
+from the split, not quoted from the ADR; whether it deserves its own
+ADR is an open owner decision). `csrfGuard` implements it for unsafe
+methods (`POST` / `PUT` / `PATCH` / `DELETE`) under `/api/v1/*`:
 
 1. Safe methods are **never** checked — the boundary exposes no
    state-changing `GET`.
@@ -102,8 +105,9 @@ mock has no D1 / R2 side effects.
 | Adding `src/start.ts` / a custom `startInstance`      | `pnpm run csrf:contract:check` (`validate:fast`), integration test |
 | Turning on `skipCSRFCheck` / `disableCSRFCheck` / `disableOriginCheck` / `disableCsrfMiddlewareWarning` | `pnpm run csrf:contract:check` |
 | Removing or unmounting `csrfGuard`                    | `pnpm run csrf:contract:check`, workerd integration test       |
+| Moving the guard mount below `route()` (Hono dispatches in registration order) | `pnpm run csrf:contract:check` (order rule) |
 | Changing the rejection code / behaviour               | `src/http/middleware/csrf.test.ts`, `test/integration/csrf-contract.test.ts` |
-| A write endpoint answering on `GET`                   | `test/integration/csrf-contract.test.ts` (D1 before/after read) |
+| A write endpoint answering on `GET`                   | `test/integration/csrf-contract.test.ts` (D1 before/after read on `GET /api/v1/reactions`) |
 
 Where the assertions live:
 
@@ -112,6 +116,12 @@ Where the assertions live:
   real Worker in the local workerd pool: a cross-site write with a
   **valid** API key is refused and leaves no D1 row; a same-origin
   write is accepted; cross-site reads stay readable and write nothing.
+  The "GET writes nothing" evidence is a D1 before/after read on
+  `GET /api/v1/reactions` only — the boundary's other reads
+  (`/api/v1/access/count/:key`, `/api/v1/reaction-images/:id`,
+  `/api/v1/db/ping`, `/api/v1/media/ping`) are asserted reachable but
+  have no side-effect assertion, so widening that claim is future work
+  rather than something this record overstates.
 - `e2e/csrf.spec.ts` — the same positive/negative cases over HTTP
   against the built preview server, including the `/_serverFn/*`
   endpoint (the workerd pool does not wire that URL, see below).

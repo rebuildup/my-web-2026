@@ -1,7 +1,7 @@
 import { act, render } from '@testing-library/react';
 import { afterEach, describe, expect, it } from 'vitest';
-import { PortfolioMediaFigure } from './PortfolioMedia';
 import type { PortfolioMedia as PortfolioMediaData } from '../schema';
+import { PortfolioMediaFigure } from './PortfolioMedia';
 
 /**
  * `PortfolioMediaFigure` image-load-failure fallback (Issue #77).
@@ -128,5 +128,81 @@ describe('PortfolioMediaFigure — image load failure fallback', () => {
 		const { container } = render(<PortfolioMediaFigure media={mediaWithCaption} />);
 		const figcaption = container.querySelector('figcaption');
 		expect(figcaption?.textContent).toBe('Editor showing the lyric motion preview');
+	});
+});
+
+/**
+ * Reserved box contract (Issue #486).
+ *
+ * The CLS regression this pins: `portfolio_media` already carries the
+ * intrinsic size, so a `loading="lazy"` cover must occupy its final
+ * box from the first paint. The assertions here are the DOM half of
+ * the contract; `e2e/image-cls.spec.ts` measures the layout half in
+ * a real browser, and `scripts/image-cls-report.mjs` renders the
+ * evidence PNG.
+ */
+describe('PortfolioMediaFigure — intrinsic size reservation (#486)', () => {
+	afterEach(() => {
+		document.body.innerHTML = '';
+	});
+
+	it('emits width / height attributes and the matching aspect-ratio', () => {
+		const { container } = render(
+			<PortfolioMediaFigure media={baseMedia('https://media.example.com/cover.webp')} />,
+		);
+		const img = container.querySelector('img');
+		expect(img?.getAttribute('width')).toBe('1280');
+		expect(img?.getAttribute('height')).toBe('720');
+		expect(img?.style.aspectRatio).toBe('1280 / 720');
+	});
+
+	it('paints the placeholder frame with the same ratio so the error swap cannot shift', () => {
+		const media = baseMedia('https://media.example.com/cover.webp');
+		const { container } = render(<PortfolioMediaFigure media={media} />);
+		const imageRatio = container.querySelector('img')?.style.aspectRatio;
+		expect(imageRatio).toBe('1280 / 720');
+
+		return act(async () => {
+			container.querySelector('img')?.dispatchEvent(new Event('error', { bubbles: true }));
+		}).then(() => {
+			const frame = container.querySelector<HTMLElement>('figure[role="img"]');
+			expect(frame?.style.aspectRatio).toBe(imageRatio);
+		});
+	});
+
+	it('keeps the 16/9 frame contract when the row declares no intrinsic size', () => {
+		const noSize = {
+			...baseMedia('https://media.example.com/cover.webp'),
+			width: null,
+			height: null,
+		};
+		const { container } = render(<PortfolioMediaFigure media={noSize} />);
+		const img = container.querySelector('img');
+		// No `width="0"` / no forced ratio: an unknown size degrades to
+		// the pre-#486 rendering instead of collapsing the box.
+		expect(img?.hasAttribute('width')).toBe(false);
+		expect(img?.hasAttribute('height')).toBe(false);
+		expect(img?.style.aspectRatio).toBe('');
+	});
+
+	it('rejects non-positive and non-integer dimensions', () => {
+		const { container } = render(
+			<PortfolioMediaFigure
+				media={{ ...baseMedia('https://media.example.com/cover.webp'), width: 0, height: -720 }}
+			/>,
+		);
+		const img = container.querySelector('img');
+		expect(img?.hasAttribute('width')).toBe(false);
+		expect(img?.hasAttribute('height')).toBe(false);
+		expect(img?.style.aspectRatio).toBe('');
+	});
+
+	it('omits srcset / sizes — no variant pipeline backs them (#486 open decision)', () => {
+		const { container } = render(
+			<PortfolioMediaFigure media={baseMedia('https://media.example.com/cover.webp')} />,
+		);
+		const img = container.querySelector('img');
+		expect(img?.hasAttribute('srcset')).toBe(false);
+		expect(img?.hasAttribute('sizes')).toBe(false);
 	});
 });

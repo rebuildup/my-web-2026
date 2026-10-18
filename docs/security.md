@@ -48,6 +48,16 @@ measured artefact is
 local-only: fixtures live in a throwaway Miniflare D1 database, and no
 production endpoint, secret, or operator account is read or written.
 
+## Open redirect
+
+Every `returnTo`-shaped value that crosses the external boundary is
+untrusted. `src/http/security/**` refuses anything that is not an
+internal absolute path, and is mounted in front of the Better Auth
+handler at `/api/v1/auth/*`. `BETTER_AUTH_URL` is the trusted-origin
+allow-list; when it is unset the guard refuses every absolute URL
+(fail-closed). The shipped contract, operator duties and known limits:
+[`docs/security/open-redirect.md`](security/open-redirect.md).
+
 ## D1 parameter binding (Issue #452)
 
 ### Rule
@@ -197,6 +207,10 @@ binding API is reachable in the local workerd pool"**, not
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Redirect-target matrix (Issue #454) is regenerated from the shipped
+  guard by `pnpm run security:redirect:report`; the committed image and
+  its reading guide are in
+  [`docs/verification/security/`](verification/security/).
 
 ## Browser binaries (Playwright)
 

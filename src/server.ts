@@ -5,6 +5,7 @@
 // CSRF middleware active; do NOT define a custom `startInstance` here.
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
+import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
 import { externalBoundary } from './http/hono';
 import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
 
@@ -207,6 +208,14 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  * Real `env` and `ctx` flow through to Hono so external-boundary
  * handlers can talk to D1, R2, KV, and other bindings without
  * indirection.
+ *
+ * A route COMPONENT that throws during SSR is outside the reach of the
+ * router-level failure surfaces: React error boundaries do not catch
+ * server-render errors, and TanStack Start still answers 200 with a
+ * partial document. `settleSsrDocumentResponse` (owned by the failure
+ * contract in `src/editorial/error-states/`) replaces that document
+ * with the readable fallback. The entrypoint is the only layer outside
+ * React, which is why the check lives here.
  */
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
@@ -214,6 +223,7 @@ export default {
 		if (matchesExternalBoundary(url.pathname)) {
 			return externalBoundary.fetch(request, env, ctx);
 		}
-		return applyHtmlCachePolicy(request, await handler.fetch(request));
+		const response = await settleSsrDocumentResponse(request, await handler.fetch(request));
+		return applyHtmlCachePolicy(request, response);
 	},
 } satisfies ExportedHandler<Env>;

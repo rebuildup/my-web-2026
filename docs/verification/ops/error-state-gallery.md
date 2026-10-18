@@ -28,6 +28,7 @@ Issue は `.png` 経路を指定しているが、本リポジトリで **初め
    - 提示: 「戻る」+ **代替面 5 つすべて**（`/` `/portfolio` `/about` `/tools` `/contact`）。
    - **retry は無い**。存在が確定していない URL を再要求しても成功しないため。押しても効かない操作は訪問者に「ボタンは無視される」という習慣を养成するだけ、という判断。
 2. `service_unavailable` — loader か SSR render が throw したとき（プラットフォーム側が応答できない）。
+   - loader 失敗は router の `defaultErrorComponent` が返す。route component 自体が SSR 中に throw する場合は React の Error Boundary では捕まらないため、`src/server.ts` が document 全体を standalone の fallback document に差し替える（§5.1）。fallback も同じ `contract.ts` の文言・代替面を使う。
    - 提示: **再試行**（第一導線）+「戻る」+ **binding を読まない面のみ**（`/tools` `/contact`）。
    - 再試行は click handler を持たない anchor で、失敗 URL（pathname + query）への document 遷移。hydration 前後で挙動は同じ（理由は §6）。
    - 公開文言は binding 名を**名指ししない**。公開面はどちらの binding が壊れたか知らないので、断定すれば推測になるため。
@@ -66,6 +67,7 @@ Issue は `.png` 経路を指定しているが、本リポジトリで **初め
 - つまり **stack と `cause` は出ないが、message は page source に出る**。`D1_ERROR: no such table: portfolio_project` のような binding 詳細がこれに当たる。
 - component 側から除去する手段は無い。唯一の手段は custom `startInstance` だが、AGENTS.md §2 により ADR 無しでは導入不可。
 - `test/integration/error-states.test.ts` が両方を固定している。(a) 訪問者が読む document には一切含まれない / (b) payload は `new Error("<message>")` 1 個のみで stack を含まない。将来フレームワークが redaction を入れたら、または payload に情報を増やしたら、このテストが落ちる。
+- SSR render 失敗ではこの例外すら残らない。React が出す `data-msg` / `data-stck` 付き error template を含む document 全体を `src/server.ts` が fallback に置き換えるため、message も stack も served HTML に入らない（§5.1 で実測）。
 
 ## 4. 外部通信と依存の監査
 
@@ -76,6 +78,8 @@ Issue は `.png` 経路を指定しているが、本リポジトリで **初め
 | Google Fonts | stylesheet + font file | browser | **不要** | `src/routes/__root.tsx`（`media="print"` の非同期 CSS + inline flip） |
 | Google Analytics 4 | measurement script + page_view | browser | **不要** | `src/editorial/analytics/GoogleAnalytics.tsx`（ID は任意） |
 | 第三者 API | **無し** | — | — | `docs/domain/integrations.md`（Current state: promoted なし） |
+
+SSR render 失敗時の standalone fallback document（§5.1）は、外部 stylesheet も analytics script も読み込まない（inline CSS と素の anchor のみ）。したがって第三者をすべて block した環境でも同じ内容が読める。
 
 第三者をすべて block しても、failure メッセージはプラットフォームのフォントで読める。上表 3 行は `contract.ts#ERROR_STATE_EXTERNAL_COMMUNICATIONS` で宣言し、テストが「すべて `requiredForMessage: false`」「server 起点の行は 0 件」を固定する。
 
@@ -113,6 +117,23 @@ Issue は `.png` 経路を指定しているが、本リポジトリで **初め
 
 loader 失敗が 500 で返るのは TanStack Router の仕様であり、本 Issue のスコープ外。`service_unavailable` の `503` は「条件」のラベルであり、response status の対応は router レベルの設計判断が要るため §7 に送る。
 
+### 5.1 SSR render 失敗（route component の throw）
+
+React の Error Boundary は **server-side rendering 中の例外を捕捉しない**。route component が初回 SSR で throw すると、React は client-rendered boundary の marker (`<!--$!--><template …></template>`) を出し、TanStack Start の streaming handler は **200 のまま**部分的な document を返す。この場合 router の `defaultErrorComponent` は一度も描画されず、dev では例外 message と stack が served HTML に入る。
+
+`src/server.ts` は SSR handler の HTML response を読み、marker を検出したら `src/editorial/error-states/ssr-fallback.ts#renderSsrFailureDocument` の standalone document に差し替える（`settleSsrDocumentResponse`）。文言・代替面・`data-error-*` 属性は hydrated surface と同じ `contract.ts` から導出する。
+
+| 観測 | 実測 |
+| --- | --- |
+| throw する route component（実装中に一時 route を追加して測定。commit していない） | status **500**（元は 200）/ `data-error-state="service_unavailable"` / `data-error-fallback="ssr-render"` |
+| 元の 200 document に含まれていた例外 message / stack | **served document から消える**（fallback に置換されるため） |
+| retry anchor | 失敗 URL の pathname + query string（`?ref=newsletter` を保持） |
+| 外部通信 | 無し（inline CSS、`<script>` 無し） |
+| 非 HTML response / 正常 document | 変更しない（`settleSsrDocumentResponse` は `content-type` が `text/html` のときだけ読む。正常 document は同じ status / headers で再構築） |
+| 回帰テスト（CI） | `src/editorial/error-states/ssr-fallback.test.ts` が dev / production 両方の React marker、query 保持、全 href の escape、throwable 非公開、stream reject、非 HTML の pass-through を固定 |
+
+live の throw を commit した route で常時再現することはしない（壊れた route を出荷しないため）。代わりに response 層の変換を、React が実際に出す marker の形で固定している。
+
 ## 6. 残存リスク
 
 - 失敗 surface は root layout の中に載るだけで、画面全体を覆う UI は無い。`role="alert"` を付けていないため、route error としてスクリーンリーダーへ announce されることは無い（回復導線は視覚・キーボード操作の双方から到達できる）。
@@ -121,6 +142,10 @@ loader 失敗が 500 で返るのは TanStack Router の仕様であり、本 Is
 - **`validateSearch` / `validateParams` / `loaderDeps` の失敗は 404 surface に落ちる（今回対応）**。`/portfolio?facets=a&facets=b` や `/admin/invitations/accept?token=`（短い / 無し）は恒久的なクライアント入力エラーで、以前は `defaultErrorComponent` に着地して「システムの一部が応答していません」と表示され、再試行は**同じ不正 URL** を再要求していた（＝成功し得ない操作。404 で retry を置かない判断と同一の原則に反する）。`src/router.tsx#isPermanentInputFailure` が URL から route 自身の検証結果を引き直し、**既存の 404 surface** で返す。throwable は泄漏していない（実測済み）。判定は `props.error` ではなく URL から行う: hydration payload は framework の `SearchParamError` を素の `Error` として復元するため、`instanceof` だと hydration 前後で答えが変わる。
 - **loader 内で入力を検証する route は、まだ 503 surface に落ちる**。`/portfolio/$slug` は slug を loader の中で `SlugSchema.parse` しているため、入力の検証が loader 失敗に吸収される。route が自分の入力を `validateParams` / `validateSearch` に移せば同じ判定経路に乗るが、route 側の契約変更なので本 Issue の外（§7 #8）。
 - root loader（現状は `env.GOOGLE_ANALYTICS_MEASUREMENT_ID` を読むだけ）が失敗した場合、`@tanstack/react-router` は root route も `CatchBoundary` で包むため、`<html>` / `<head>` / `<body>` の shell を **`RootComponent` の代わりに 503 surface が描画**する（読めはするが document shell は無い）。現状この loader は失敗しないので到達しないが、root に binding 依存が増えた場合は fossilize させるべき挙動。
+- **SSR render fallback の検出は React の marker (`<!--$!--><template`) に依存する**。framework が marker を変えた場合、fallback は発動せず元の 200 + error template に戻る。`ssr-fallback.test.ts` は現在の dev / production の形を固定しているので、React 更新で marker が変われば test が落ちる（silent には壊れない）。ただし live の throw を常時再現する route は無いため、「実際に throw したときに必ず置換される」ことの CI 証明は response 層の変換に限られる。
+- **SSR render fallback は app shell / Panda CSS を使わない**。document を組み立てている React 自体が失敗しているため、router の CSS link や hydration script は取得できない。fallback は inline CSS の standalone document で、retry / back / alternatives は素の anchor。見た目は gallery の 503 surface と同一ではない（同じ公開契約・同じ copy）。また JS が無いため、fallback からの復帰は document 遷移だけになる（これは他の failure surface と同じ方針）。
+- **SSR render 失敗はすべて fallback に置き換わる（保守的）**。React が部分的に client-render で復帰できるケースでも、部分的な document を返さず 500 + 完全な fallback にする。hydrated な client が後から復帰できる可能性より、「読める完全な document を返す」ことを優先した判断。
+- **SSR document は entrypoint で一度 buffer する**。marker の有無は document 全体を見ないと判定できないため。TanStack Start は `progressiveChunkSize: Number.POSITIVE_INFINITY` で document を組み立ててから flush するので通常ページの TTFB への影響は小さいが、SSR 中に解決しない Suspense boundary を持つ route を将来追加した場合、その完了まで response が返らなくなる。現状 `/` の lazy picker は client 側の境界で、integration test の `/` 取得は完了している（`html-cache-policy.test.ts`）。streaming を維持したまま同じ保証をするには framework 側の error hook が必要で、本 Issue の範囲外。
 - 検証画像は Storybook ではなく生成 harness で撮っている（理由は §7 #5）。harness は `.tmp/` に生成されるため、repo には残らない。
 
 ## 7. 未決事項（owner 決定が要るもの / follow-up）

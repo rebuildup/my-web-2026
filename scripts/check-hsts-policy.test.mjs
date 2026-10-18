@@ -142,6 +142,39 @@ describe('check-hsts-policy — HSTS-shaped literals only', () => {
 		assert.deepEqual(hstsDirectivesIn('public/_headers', source), []);
 	});
 
+	it('does not mistake a quoted Cache-Control value for an HSTS policy', () => {
+		// Issue #460's cache policy spells its lifetime as a quoted string,
+		// so the drift scan sees `max-age` next to directives RFC 6797
+		// does not define. Sibling directives are what tell the two apart.
+		const source = "const IMMUTABLE = 'public, max-age=31536000, immutable';\n";
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/cache-policy.ts', source), []);
+	});
+
+	it('does not read a doc comment writing the cache rule as a policy', () => {
+		// Backticks in prose are markdown, not a header value.
+		const source = [
+			'/**',
+			' * `s-maxage` overrides `max-age` for a shared cache, so',
+			' * `max-age=0` means "do not serve from cache".',
+			' */',
+		].join('\n');
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/cache-policy.ts', source), []);
+	});
+
+	it('does not read a bare directive NAME as a policy', () => {
+		// Naming the directive states no lifetime, and this repository
+		// quotes the names to explain why they are withheld.
+		const source = ["const FORBIDDEN = ['includeSubDomains', 'preload', 'max-age'];", ''].join(
+			'\n',
+		);
+		assert.deepEqual(hstsDirectivesIn('src/server.ts', source), []);
+	});
+
+	it('still reads a widened HSTS directive written in a comment-free literal', () => {
+		const source = "const D = 'max-age=63072000; preload';\n";
+		assert.deepEqual(hstsDirectivesIn('src/server.ts', source), ['max-age=63072000; preload']);
+	});
+
 	it('reads a Strict-Transport-Security rule out of _headers', () => {
 		const source = [
 			'/assets/*',

@@ -91,7 +91,36 @@ const POLICY_FILE = join('src', 'server.ts');
 const DECLARATION = /export const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
 
 /** A quoted string, single / double / backtick, without escapes. */
-const QUOTED = /(?:'([^'\\\n]*)'|"([^"\\\n]*)"|`([^`\\$]*)`)/g;
+const QUOTED = /(?:'([^'\\\n]*)'|"([^"\\\n]*)")/g;
+
+/**
+ * A quoted literal is treated as an HSTS declaration only when it carries a
+ * `max-age=<value>` part AND every `;`-separated part is a directive RFC 6797
+ * §6.1.1 defines. The two halves answer different questions:
+ *
+ *   - the `max-age=<value>` part separates a policy from a bare directive
+ *     NAME. `src/http/middleware/cache-policy.ts` and this Issue's own
+ *     fixtures quote `'max-age'` and `'includeSubDomains'` as words, and
+ *     `'max-age'` on its own states no lifetime at all;
+ *   - the sibling-directive test separates a policy from a Cache-Control or
+ *     cookie value that happens to carry a `max-age`: `'public,
+ *     max-age=31536000, immutable'` and `'…; Max-Age=31536000; Path=/'` are
+ *     not HSTS policies because `public` / `immutable` / `Path` are not
+ *     directives RFC 6797 defines.
+ *
+ * The canonical value can never grow a part outside `KNOWN_DIRECTIVES` —
+ * `policyViolations` refuses unknown directives — so this test cannot hide a
+ * legitimate drift site.
+ */
+function isHstsLiteral(literal) {
+	const parts = literal
+		.split(';')
+		.map((part) => part.trim())
+		.filter((part) => part !== '');
+	if (parts.length === 0) return false;
+	if (!parts.some((part) => /^max-age=\d+$/i.test(part))) return false;
+	return parts.every((part) => KNOWN_DIRECTIVES.has(part.split('=')[0].trim().toLowerCase()));
+}
 
 /** A `Strict-Transport-Security:` header line inside `_headers`. */
 const HSTS_HEADER_LINE = /^\s*strict-transport-security\s*:\s*(.+)$/i;
@@ -260,13 +289,8 @@ export function hstsDirectivesIn(path, source) {
 		return directives;
 	}
 	for (const match of source.matchAll(QUOTED)) {
-		const literal = match[1] ?? match[2] ?? match[3] ?? '';
-		// Case-sensitive `max-age` on purpose: a cookie literal spells the
-		// attribute `Max-Age` and must not be read as an HSTS policy.
-		const isHsts = literal
-			.split(';')
-			.some((part) => part.trim().split('=')[0].trim() === 'max-age');
-		if (isHsts) directives.push(literal);
+		const literal = match[1] ?? match[2] ?? '';
+		if (isHstsLiteral(literal)) directives.push(literal);
 	}
 	return directives;
 }

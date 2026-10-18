@@ -1,0 +1,534 @@
+{
+	"$comment": "Single source for the published route roster and its quality-gate coverage (Issue #492). Read by scripts/check-route-quality-coverage.mjs, which fails when the roster derived from src/routes/** and this manifest drift apart. See docs/verification/quality/route-quality-coverage.md.",
+	"version": 1,
+	"derived_from": {
+		"route_root": "src/routes",
+		"route_tree": "src/routeTree.gen.ts",
+		"note": "A file under route_root is a route when it calls createFileRoute('<id>'). The generated route_tree must list exactly the same route ids; the `path` of an entry is the id with TanStack's nesting markers removed. Adding a route file without adding an entry here fails `pnpm run routes:quality:check`."
+	},
+	"gate_families": [
+		{
+			"id": "e2e",
+			"state": "implemented",
+			"evidence_kind": "spec",
+			"contract": "A Playwright spec under e2e/ opens the surface against a running Worker (local `pnpm dev`, or the deployed origin in the production smoke workflow) and asserts what it renders."
+		},
+		{
+			"id": "seo",
+			"state": "implemented",
+			"evidence_kind": "spec",
+			"contract": "A spec asserts the canonical link plus the Open Graph / Twitter metadata the surface publishes to link unfurlers. A 200 response is not this family; robots.txt and sitemap.xml are not generated at this release and are therefore outside the contract."
+		},
+		{
+			"id": "a11y",
+			"state": "planned",
+			"evidence_kind": "spec_or_doc",
+			"contract": "An automated axe-core scan runs over the rendered surface and its violations are gated. Hand-written landmark / heading assertions in the e2e specs do not satisfy this family — they are a weaker, different check."
+		},
+		{
+			"id": "performance",
+			"state": "planned",
+			"evidence_kind": "spec_or_doc",
+			"contract": "A Lighthouse (or equivalent) measurement of the surface exists at a recorded threshold. #384 makes the measurement reproducible, #385 makes it a release gate, #386 sets the Core Web Vitals budget; until then no surface is measured here."
+		},
+		{
+			"id": "cross_browser",
+			"state": "planned",
+			"evidence_kind": "spec",
+			"contract": "The surface is exercised in at least two browser engines in CI. Today CI installs Chromium only (`pnpm run e2e:install`), so no surface has a second engine."
+		},
+		{
+			"id": "security_headers",
+			"state": "planned",
+			"evidence_kind": "spec",
+			"contract": "A spec asserts the response security headers the Worker sends for the surface (CSP, HSTS, X-Content-Type-Options, Referrer-Policy). A cookie flag assertion is not this family."
+		}
+	],
+	"routes": [
+		{
+			"source": "src/routes/index.tsx",
+			"path": "/",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/smoke.spec.ts", "e2e/nav.spec.ts"] },
+				"seo": {
+					"status": "excluded",
+					"reason": "No spec pins the home canonical / Open Graph metadata; the surface is asserted for composition only."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/about.tsx",
+			"path": "/about",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/about.spec.ts", "e2e/nav.spec.ts"] },
+				"seo": { "status": "covered", "evidence": ["e2e/about.spec.ts"] },
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/contact.tsx",
+			"path": "/contact",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/contact.spec.ts", "e2e/nav.spec.ts"] },
+				"seo": {
+					"status": "excluded",
+					"reason": "No spec pins the contact canonical / Open Graph metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/portfolio/index.tsx",
+			"path": "/portfolio",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts", "e2e/nav.spec.ts"] },
+				"seo": {
+					"status": "excluded",
+					"reason": "Only the detail route's canonical / Open Graph metadata is asserted; the list route is not."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/portfolio/$slug.tsx",
+			"path": "/portfolio/$slug",
+			"audience": "public",
+			"addressable": true,
+			"sample_path": "/portfolio/my-web-2026",
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts"] },
+				"seo": { "status": "covered", "evidence": ["e2e/portfolio.spec.ts"] },
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets). The sample slug is the fixture the measurement would use."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/tools.index.tsx",
+			"path": "/tools",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/tools-index.spec.ts", "e2e/nav.spec.ts"] },
+				"seo": {
+					"status": "excluded",
+					"reason": "No spec pins the Tool index canonical / Open Graph metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/tools.$slug.tsx",
+			"path": "/tools/$slug",
+			"audience": "public",
+			"addressable": true,
+			"sample_path": "/tools/prototype",
+			"gates": {
+				"e2e": {
+					"status": "covered",
+					"evidence": ["e2e/tools-prototype.spec.ts", "e2e/tools-index.spec.ts", "e2e/nav.spec.ts"]
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Tool shells are same-origin iframe hosts and publish no canonical / Open Graph metadata that a spec could pin."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. The Tool bundle itself is third-party code and would need its own scope."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets); Tool payloads are measured as a separate budget question."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists; the iframe sandbox contract is asserted inside e2e/tools-prototype.spec.ts instead."
+				}
+			}
+		},
+		{
+			"source": "src/routes/design-system.tsx",
+			"path": "/design-system",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/nav.spec.ts"] },
+				"seo": {
+					"status": "excluded",
+					"reason": "Internal design-system showcase; no spec pins its canonical / Open Graph metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. Registered here so the surface cannot be silently unmeasured once the axe gate lands."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists. e2e/prod-smoke.spec.ts checks the Secure cookie flag, which is a different check."
+				}
+			}
+		},
+		{
+			"source": "src/routes/admin.tsx",
+			"path": "/admin",
+			"audience": "admin",
+			"addressable": false,
+			"addressable_reason": "Path-bearing layout (src/routes/admin.tsx) that only renders an Outlet; it has no component of its own, so nothing is served at this path outside its children.",
+			"gates": {
+				"e2e": {
+					"status": "excluded",
+					"reason": "Layout route with no rendered surface of its own; the child routes are measured individually."
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Layout route renders no document head of its own."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "Layout route renders no surface of its own to scan."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Layout route is not a measurable document; the child document is measured."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "Layout route is not addressable, so no engine reaches it."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "Response headers are a property of the child document, not of this layout."
+				}
+			}
+		},
+		{
+			"source": "src/routes/admin.index.tsx",
+			"path": "/admin",
+			"audience": "admin",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "excluded",
+					"reason": "Better Auth gates the dashboard and e2e/ has no fixture that signs a session in, so no spec can reach it yet."
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run (no sign-in fixture), and an admin document has no public metadata to pin."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				}
+			}
+		},
+		{
+			"source": "src/routes/admin.login.tsx",
+			"path": "/admin/login",
+			"audience": "public",
+			"addressable": true,
+			"gates": {
+				"e2e": { "status": "covered", "evidence": ["e2e/nav.spec.ts", "e2e/prod-smoke.spec.ts"] },
+				"seo": {
+					"status": "excluded",
+					"reason": "The sign-in document publishes no canonical / Open Graph metadata that a spec pins."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "No axe-core scan exists yet. A login form is the highest-value first target once one does."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Lighthouse is not implemented (#384 measures, #385 gates, #386 budgets)."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "CI installs Chromium only (`pnpm run e2e:install`); no second engine runs this surface."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "No response-security-header assertion exists for the sign-in document, which is where it would matter most."
+				}
+			}
+		},
+		{
+			"source": "src/routes/admin.invitations.tsx",
+			"path": "/admin/invitations",
+			"audience": "admin",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "excluded",
+					"reason": "Better Auth gates the surface and e2e/ has no fixture that signs a session in, so no spec can reach it yet."
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Admin surface: unreachable from an automated run and publishes no public metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				}
+			}
+		},
+		{
+			"source": "src/routes/admin.invitations_.accept.tsx",
+			"path": "/admin/invitations/accept",
+			"audience": "admin",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "excluded",
+					"reason": "Reached through an invitation link; e2e/ has no fixture that provisions an invitation and a session."
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Invitation acceptance publishes no canonical / Open Graph metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: no e2e fixture provisions an invitation."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: no e2e fixture provisions an invitation."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: no e2e fixture provisions an invitation."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: no e2e fixture provisions an invitation."
+				}
+			}
+		},
+		{
+			"source": "src/routes/admin.keys.tsx",
+			"path": "/admin/keys",
+			"audience": "admin",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "excluded",
+					"reason": "Better Auth gates the surface and e2e/ has no fixture that signs a session in, so no spec can reach it yet."
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Admin surface: unreachable from an automated run and publishes no public metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				}
+			}
+		},
+		{
+			"source": "src/routes/admin.images.tsx",
+			"path": "/admin/images",
+			"audience": "admin",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "excluded",
+					"reason": "Better Auth gates the surface and e2e/ has no fixture that signs a session in, so no spec can reach it yet."
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Admin surface: unreachable from an automated run and publishes no public metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				}
+			}
+		},
+		{
+			"source": "src/routes/admin.emoji-catalog.tsx",
+			"path": "/admin/emoji-catalog",
+			"audience": "admin",
+			"addressable": true,
+			"gates": {
+				"e2e": {
+					"status": "excluded",
+					"reason": "Better Auth gates the surface and e2e/ has no fixture that signs a session in, so no spec can reach it yet."
+				},
+				"seo": {
+					"status": "excluded",
+					"reason": "Admin surface: unreachable from an automated run and publishes no public metadata."
+				},
+				"a11y": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"performance": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"cross_browser": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				},
+				"security_headers": {
+					"status": "excluded",
+					"reason": "Unreachable from an automated run: Better Auth gates the surface and e2e/ has no sign-in fixture."
+				}
+			}
+		}
+	]
+}

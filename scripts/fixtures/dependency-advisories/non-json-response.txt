@@ -1,0 +1,2 @@
+ERR_PNPM_AUDIT_NON_JSON   Unexpected response from the advisory endpoint
+  registry: https://registry.npmjs.org

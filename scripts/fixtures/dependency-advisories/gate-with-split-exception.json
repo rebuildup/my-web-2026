@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"gate": "dependency-advisory",
+	"issue": "#470",
+	"enforcement": "block",
+	"blockingSeverities": ["critical", "high"],
+	"reportedSeverities": ["moderate", "low", "info"],
+	"dataUnavailable": "fail",
+	"advisorySource": {
+		"command": "pnpm audit --json",
+		"lockfile": "pnpm-lock.yaml",
+		"note": "Fixture gate. The exception below is fixture data, not a real approval."
+	},
+	"note": "Fixture gate: ONE approved exception for an advisory that the document reports against TWO packages. The second package is deliberately left unapproved, so the gate has to keep blocking it instead of stretching one record over a package nobody reviewed.",
+	"exceptions": [
+		{
+			"advisoryId": "GHSA-fixt-fxmp-fxmp",
+			"package": "fixture-runtime",
+			"severity": "critical",
+			"reason": "Fixture: only the fixture-runtime path is unreachable in the deployed Worker; fixture-server-core is still served and is NOT accepted.",
+			"approvedBy": "fixture: repository owner (not a real approval)",
+			"trackingIssue": 470,
+			"expiresOn": "2027-01-31"
+		}
+	]
+}

@@ -68,6 +68,43 @@ jobs:
       # is part of `validate:integration` via `pnpm run lint:ci` — see
       # scripts/lint-ci.mjs.
       - run: pnpm run validate:integration
+      # Dependency advisory gate (Issue #470). It reads the committed
+      # lockfile through `pnpm audit --json` and evaluates the result
+      # against the reviewed declaration in
+      # `quality/dependency-advisory-gate.json` (blocking severities,
+      # exception ledger, expiry).
+      #
+      # Two independent failure contracts:
+      #   - Blocking critical/high advisories are RECORDED while the
+      #     declaration says `enforcement: audit`. The current lockfile
+      #     carries 18 of them; remediating or approving them is an owner
+      #     decision tracked in docs/runbook/dependency-advisories.md §6,
+      #     and no exception is written here on the owner's behalf.
+      #   - Unreadable advisory data FAILS CLOSED (exit 3) in either
+      #     mode. A registry outage must never be reported as a clean
+      #     dependency tree, so this step is not `continue-on-error`.
+      # A usage mistake or a malformed declaration is exit 2, never a
+      # security verdict.
+      # This step is CI-only on purpose: it needs the registry advisory
+      # endpoint, which the offline `validate:fast` path must not reach.
+      # The decision is in scripts/check-dependency-advisories.mjs, not in
+      # this YAML, so `pnpm run dep-audit:check` produces the same
+      # verdict locally.
+      # Flipping the declaration to `enforcement: block` is the one-line
+      # escalation; `--enforce` previews the same verdict without
+      # editing the reviewed file.
+      - name: Dependency advisory audit
+        run: pnpm run dep-audit:check -- --report .tmp/dependency-audit-report.html
+      # The HTML report is derived from the lockfile's resolved package
+      # set and public advisory metadata only — no credential, so the
+      # artifact carries the same posture as the Cloudflare bundle below.
+      - name: Upload dependency advisory report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependency-advisory-report-${{ github.sha }}
+          path: .tmp/dependency-audit-report.html
+          retention-days: 90
       # On push, the worker-configuration.d.ts must match what
       # `wrangler types` produces. Local `pnpm run validate:release`
       # adds the same gate. GitHub Actions expression language does

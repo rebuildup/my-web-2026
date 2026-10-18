@@ -12,6 +12,7 @@
 		"exports scripts/_r2.mjs listObjects",
 		"exports scripts/admin-authz-fixture.mjs NEGATIVE_IDENTITIES",
 		"exports scripts/admin-authz-fixture.mjs bearerInit",
+		"exports scripts/publication-surface.mjs TOOL_SHIPPED_SUBPATHS",
 		"exports src/admin/auth/load.ts signOutCurrentSession",
 		"exports src/admin/public.ts STEP_UP_MAX_AGE_SECONDS",
 		"exports src/admin/public.ts confirmStepUp",

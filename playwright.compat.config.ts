@@ -35,6 +35,12 @@ const JSON_REPORT = '.tmp/compat-results.json';
 const config: PlaywrightTestConfig = {
 	...base,
 	testDir: './e2e/compat',
+	// `base.testIgnore` carries `**/compat/**` (Issue #415) so the
+	// default suite does not run these specs. That glob would also
+	// exclude them HERE, so it is replaced rather than inherited: the
+	// compat directory holds only `*.spec.ts`, none of which is a
+	// production-only or D1-mutating spec.
+	testIgnore: [],
 	reporter: process.env.CI
 		? [['github'], ['list'], ['json', { outputFile: JSON_REPORT }]]
 		: [['list'], ['json', { outputFile: JSON_REPORT }]],

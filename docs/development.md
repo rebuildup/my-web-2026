@@ -279,7 +279,7 @@ output is gitignored.
 
 ## Playwright E2E
 
-Playwright 1.63.x covers the deployed Worker smoke. Two surfaces
+Playwright 1.63.x covers the deployed Worker smoke. Three surfaces
 exist:
 
 - `pnpm run e2e` runs `e2e/smoke.spec.ts` against `pnpm dev`
@@ -287,6 +287,8 @@ exist:
 - `pnpm run e2e:prod` runs `e2e/prod-smoke.spec.ts` against the
   canonical production URL `https://rebuildup.dev` (Issue #43 /
   ADR-0014). Operator-initiated only — never gated by regular CI.
+- `pnpm run e2e:compat` runs `e2e/compat/**` on Chromium, Firefox and
+  WebKit — see [Cross-engine compat matrix](#cross-engine-compat-matrix).
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
@@ -302,6 +304,65 @@ The E2E suite asserts the four public surfaces documented in
 - `GET /api/v1/health` (200, `{status:'ok',...}`)
 - `GET /api/v1/db/ping` (200, `{one:1,...}` against the D1 binding)
 - `GET /api/v1/media/ping` (404, `key_not_found` against the R2 binding)
+
+## Cross-engine compat matrix
+
+Issue #415 added a second Playwright configuration that runs the
+public UI contract on Chromium, Firefox and WebKit at once. It is
+separate from the default `pnpm run e2e` config on purpose: the default
+config is the chromium-only required gate, and multiplying it by three
+engines would triple that gate while answering a different question.
+
+```bash
+pnpm run build                  # vite preview serves the built Worker
+pnpm run e2e:compat:install     # chromium + firefox + webkit binaries
+pnpm run e2e:compat             # run e2e/compat/** on all three engines
+pnpm run verify:compat-screenshot  # render the matrix + write the WebP
+```
+
+| Path                              | What it is                                        |
+| --------------------------------- | ------------------------------------------------- |
+| `playwright.compat.config.ts`     | 3 projects + JSON reporter; spreads the base config so `baseURL`, the local D1 `webServer` and `globalSetup` are inherited |
+| `e2e/compat/contract.ts`          | closed public route roster + observe/judge pair    |
+| `e2e/compat/public-ui.spec.ts`    | route display contract + basic operations         |
+| `e2e/compat/negative-control.spec.ts` | deliberate breakage, rejected by the same judge |
+| `.tmp/compat-results.json`        | Playwright JSON report (matrix source)            |
+| `.tmp/compat-screenshots/`        | per-engine, per-route captures (matrix source)     |
+| `.tmp/compat-matrix.html`         | rendered engine x test matrix                     |
+| `docs/verification/compat/browsers-matrix.webp` | committed verification screenshot       |
+
+CI runs the same command from `.github/workflows/compat.yml` (push to
+`main` / `release-*`, every PR into them, and `workflow_dispatch`) and
+uploads the matrix plus the raw report as artefacts. The workflow's
+`runner` input exists so a host-dependent engine behaviour can be
+measured on `macos-latest` as well as `ubuntu-latest`.
+
+How a failure is kept visible
+-----------------------------
+
+- **One engine, one red cell.** The matrix is engine x test, so a
+  WebKit-only regression never collapses into "the suite passed".
+- **SKIP is not PASS.** A skipped test renders as `SKIP`, and a retry
+  that only passed on the second attempt renders as `FLAKY`.
+- **Uncovered routes are reported.** A roster route with no executed
+  test is listed in its own band instead of being folded into a pass.
+- **The gate is shown to fail.** `negative-control.spec.ts` feeds the
+  same judge three broken fixtures, an unimplemented route, and one
+  real page, and asserts that each is rejected by the rule that owns
+  it while the real page still passes.
+
+Recorded OS / engine differential
+---------------------------------
+
+The keyboard-reachability step of the skip-to-content link is skipped
+on WebKit: headless WebKit never moves sequential focus off `BODY` on
+this runner — not on the first Tab, not after a click, not after five
+stops — on any page, while Chromium and Firefox reach the first link
+on the first Tab. That is a harness property, not a defect in
+my-web-2026, so the traversal check is skipped there rather than
+weakened everywhere; the skip-link contract itself (the link exists
+and its `#main` target resolves) is still asserted on WebKit by
+`assertRouteContract`. The matrix shows the cell as `SKIP`.
 
 ## Format and lint
 
@@ -355,6 +416,7 @@ pnpm test
 | `node_modules/`    | `pnpm install`                           | yes        |
 | `.biome/`          | `pnpm run format` (cache)                | yes        |
 | `.wrangler/`       | `wrangler dev`                           | yes        |
+| `.tmp/compat-*/`  | `pnpm run e2e:compat` (matrix artefacts)   | yes        |
 | `.tmp/`            | temporary research                       | yes        |
 | `.reference/`      | external clones                          | yes        |
 

@@ -43,8 +43,8 @@ interface BrokenFixture {
 	readonly id: string;
 	readonly label: string;
 	readonly html: string;
-	/** The rule identifier expected in the failure message. */
-	readonly rule: 'main#main' | 'exactly one <h1>' | 'public nav';
+	/** Substring of the failure message the responsible rule must produce. */
+	readonly rule: string;
 }
 
 const BROKEN_FIXTURES: ReadonlyArray<BrokenFixture> = [
@@ -52,19 +52,19 @@ const BROKEN_FIXTURES: ReadonlyArray<BrokenFixture> = [
 		id: 'no-main-landmark',
 		label: 'main#main が欠落（本文が空）',
 		html: '<!doctype html><html lang="ja"><head><title>fixture</title></head><body><h1>木村友亮</h1><p>本文だけ。</p></body></html>',
-		rule: 'main#main',
+		rule: 'must render exactly one <main>',
 	},
 	{
 		id: 'no-h1',
 		label: '正規の h1 が欠落（見出しゼロ）',
-		html: '<!doctype html><html lang="ja"><head><title>fixture</title></head><body><main id="main"><h2>プロフィール</h2></main></body></html>',
-		rule: 'exactly one <h1>',
+		html: '<!doctype html><html lang="ja"><head><title>fixture</title></head><body><main id="about-main"><h2>プロフィール</h2></main></body></html>',
+		rule: 'must render exactly one <h1>',
 	},
 	{
 		id: 'nav-not-mounted',
 		label: 'opt-in 契約違反（PublicNav 未マウント）',
-		html: '<!doctype html><html lang="ja"><head><title>fixture</title></head><body><main id="main"><h1>木村友亮</h1></main></body></html>',
-		rule: 'public nav',
+		html: '<!doctype html><html lang="ja"><head><title>fixture</title></head><body><main id="about-main"><h1>木村友亮</h1></main></body></html>',
+		rule: 'must mount <nav aria-label="Public">',
 	},
 ];
 

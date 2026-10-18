@@ -43,6 +43,25 @@ export interface CompatRoute {
 	 * absence here keeps a regression in either direction visible.
 	 */
 	readonly nav: 'present' | 'absent';
+	/**
+	 * Expected `<main id>` of the route's content landmark, or `'none'`
+	 * when the route deliberately has none.
+	 *
+	 * The ids are per-surface on purpose (`about-main`,
+	 * `design-system-main`) and `'none'` is a real, documented state:
+	 * `/tools` is a full-viewport iframe shell and renders no `<main>`
+	 * (Issue #288). Encoding the expectation instead of assuming one
+	 * shape means a page that gains or loses its landmark turns this
+	 * matrix red in the direction it actually moved.
+	 */
+	readonly main: 'main' | 'about-main' | 'design-system-main' | 'none';
+	/**
+	 * Whether the route renders the skip-to-content link
+	 * (`a[href="#main"]`). It exists on `/` and `/contact` only, and its
+	 * target must resolve — a skip link pointing at a missing id is a
+	 * keyboard dead end.
+	 */
+	readonly skipLink: boolean;
 }
 
 /**
@@ -50,23 +69,59 @@ export interface CompatRoute {
  * matrix report reads top-to-bottom like the site does.
  */
 export const COMPAT_ROUTES: ReadonlyArray<CompatRoute> = [
-	{ path: '/', slug: 'home', label: 'ホーム', h1: /^my-web-2026$/, nav: 'absent' },
+	{
+		path: '/',
+		slug: 'home',
+		label: 'ホーム',
+		h1: /^my-web-2026$/,
+		nav: 'absent',
+		main: 'main',
+		skipLink: true,
+	},
 	{
 		path: '/portfolio',
 		slug: 'portfolio',
 		label: 'ポートフォリオ',
 		h1: /主要な制作物/,
 		nav: 'present',
+		main: 'main',
+		skipLink: false,
 	},
-	{ path: '/tools', slug: 'tools', label: 'ツール', h1: /Tools/, nav: 'absent' },
-	{ path: '/about', slug: 'about', label: '自己紹介', h1: /木村友亮/, nav: 'present' },
-	{ path: '/contact', slug: 'contact', label: 'お問い合わせ', h1: /^Contact$/, nav: 'present' },
+	{
+		path: '/tools',
+		slug: 'tools',
+		label: 'ツール',
+		h1: /Tools/,
+		nav: 'absent',
+		main: 'none',
+		skipLink: false,
+	},
+	{
+		path: '/about',
+		slug: 'about',
+		label: '自己紹介',
+		h1: /木村友亮/,
+		nav: 'present',
+		main: 'about-main',
+		skipLink: false,
+	},
+	{
+		path: '/contact',
+		slug: 'contact',
+		label: 'お問い合わせ',
+		h1: /^Contact$/,
+		nav: 'present',
+		main: 'main',
+		skipLink: true,
+	},
 	{
 		path: '/design-system',
 		slug: 'design-system',
 		label: 'デザインシステム',
 		h1: /Design System/,
 		nav: 'present',
+		main: 'design-system-main',
+		skipLink: false,
 	},
 ];
 
@@ -79,11 +134,56 @@ export interface RouteObservation {
 	readonly h1Count: number;
 	readonly h1Text: string;
 	readonly h1Visible: boolean;
+	/** Every `<main>` in the document, whatever its id. */
 	readonly mainCount: number;
+	/** `<main>` ids in document order. */
+	readonly mainIds: ReadonlyArray<string>;
 	readonly mainVisible: boolean;
 	readonly navCount: number;
+	readonly skipLinkCount: number;
 	/** Uncaught JS exceptions (`pageerror`) seen while the page loaded. */
 	readonly pageErrors: ReadonlyArray<string>;
+}
+
+/**
+ * Read the landmark facts from the CURRENT document.
+ *
+ * Every count is taken BEFORE any text read, and a text read only
+ * happens when its element exists. `locator.textContent()` waits for
+ * the element, so a document that legitimately renders no `<h1>` (a
+ * 404 surface, a broken fixture) would otherwise burn the whole test
+ * timeout before the judge ever saw the fact it was about to assert.
+ */
+async function readLandmarks(page: Page): Promise<{
+	h1Count: number;
+	h1Text: string;
+	h1Visible: boolean;
+	mainCount: number;
+	mainIds: string[];
+	mainVisible: boolean;
+	navCount: number;
+	skipLinkCount: number;
+}> {
+	const h1 = page.locator('h1');
+	const h1Count = await h1.count();
+	const h1Visible = h1Count > 0 && (await h1.first().isVisible());
+	const main = page.locator('main');
+	const mainCount = await main.count();
+	const mainIds: string[] = [];
+	for (let i = 0; i < mainCount; i += 1) {
+		mainIds.push((await main.nth(i).getAttribute('id')) ?? '');
+	}
+
+	return {
+		h1Count,
+		h1Text: h1Count > 0 ? ((await h1.first().textContent())?.trim() ?? '') : '',
+		h1Visible,
+		mainCount,
+		mainIds,
+		mainVisible: mainCount > 0 && (await main.first().isVisible()),
+		navCount: await page.locator('nav[aria-label="Public"]').count(),
+		skipLinkCount: await page.locator('a[href="#main"]').count(),
+	};
 }
 
 /**
@@ -111,21 +211,12 @@ export async function observeRoute(page: Page, path: string): Promise<RouteObser
 		// purpose — no engine-differential timing is allowed into a gate.
 		await page.waitForTimeout(300);
 
-		const h1First = page.locator('h1').first();
-		const h1Visible = (await h1First.count()) > 0 && (await h1First.isVisible());
-		const main = page.locator('main#main');
-
 		return {
 			path,
 			status: response?.status() ?? null,
 			title: await page.title(),
 			lang: await page.evaluate(() => document.documentElement.lang),
-			h1Count: await page.locator('h1').count(),
-			h1Text: (await h1First.textContent())?.trim() ?? '',
-			h1Visible,
-			mainCount: await main.count(),
-			mainVisible: (await main.count()) > 0 && (await main.isVisible()),
-			navCount: await page.locator('nav[aria-label="Public"]').count(),
+			...(await readLandmarks(page)),
 			pageErrors,
 		};
 	} finally {
@@ -146,22 +237,12 @@ export async function observeCurrentDocument(
 	path: string,
 	status: number | null = 200,
 ): Promise<RouteObservation> {
-	const h1First = page.locator('h1').first();
-	const h1Visible = (await h1First.count()) > 0 && (await h1First.isVisible());
-	const main = page.locator('main#main');
-	const mainCount = await main.count();
-
 	return {
 		path,
 		status,
 		title: await page.title(),
 		lang: await page.evaluate(() => document.documentElement.lang),
-		h1Count: await page.locator('h1').count(),
-		h1Text: (await h1First.textContent())?.trim() ?? '',
-		h1Visible,
-		mainCount,
-		mainVisible: mainCount > 0 && (await main.isVisible()),
-		navCount: await page.locator('nav[aria-label="Public"]').count(),
+		...(await readLandmarks(page)),
 		pageErrors: [],
 	};
 }
@@ -188,10 +269,30 @@ export function assertRouteContract(route: CompatRoute, observation: RouteObserv
 	expect(observation.h1Visible, `${where} <h1> must be visible`).toBe(true);
 	expect(observation.h1Text, `${where} <h1> text must match ${String(route.h1)}`).toMatch(route.h1);
 
-	// 3. The `main#main` landmark every public surface renders — the
-	//    skip link's target. Without it, keyboard users land nowhere.
-	expect(observation.mainCount, `${where} must render main#main`).toBe(1);
-	expect(observation.mainVisible, `${where} main#main must be visible`).toBe(true);
+	// 3. The content landmark, in the shape this route actually
+	//    documents. `/tools` deliberately has none (full-viewport iframe
+	//    shell, Issue #288); the rest expose exactly one `<main>` with a
+	//    known id.
+	if (route.main === 'none') {
+		expect(observation.mainCount, `${where} must not grow a <main> landmark`).toBe(0);
+	} else {
+		expect(observation.mainCount, `${where} must render exactly one <main>`).toBe(1);
+		expect(observation.mainIds, `${where} <main> id must be "${route.main}"`).toEqual([route.main]);
+		expect(observation.mainVisible, `${where} <main> must be visible`).toBe(true);
+	}
+
+	// 3b. A skip link pointing nowhere is a keyboard dead end, so where
+	//     the link exists its target must exist too — and where it does
+	//     not exist, it must not appear.
+	if (route.skipLink) {
+		expect(observation.skipLinkCount, `${where} must render the skip-to-content link`).toBe(1);
+		expect(observation.mainIds, `${where} skip link target main#main must exist`).toContain('main');
+	} else {
+		expect(
+			observation.skipLinkCount,
+			`${where} must not render a link to a #main target it does not own`,
+		).toBe(0);
+	}
 
 	// 4. `PublicNav` presence follows the per-page opt-in contract
 	//    (Issue #199 / #288) in both directions.

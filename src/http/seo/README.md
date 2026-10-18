@@ -97,13 +97,15 @@ back into `src/routes/`.
 
 ## Regenerating the verification screenshot
 
-The committed screenshot is produced from the same builder, offline:
+The committed screenshot has a committed, reviewable source (same
+convention as Issue #452's D1 report):
 
 ```bash
-node --experimental-strip-types .tmp/sitemap-screenshot/render.mjs
-# serves .tmp/sitemap-screenshot/sitemap.xml and captures
-# docs/verification/seo/sitemap-browser.webp with Playwright chromium
+pnpm run verify:sitemap-screenshot
+# renders the REAL builder over the PORTFOLIO_SEED fixture, serves it
+# as application/xml, and writes docs/verification/seo/sitemap-browser.webp
 ```
 
-The command, the fixture it uses, and the expected output are recorded
-in the PR body for #420.
+It runs offline (no `pnpm run dev`, so no Infisical dependency), reads
+no secret, and touches no Cloudflare resource. Intermediate artefacts
+stay in `.tmp/sitemap-verification/`; only the WebP is committed.

@@ -289,7 +289,7 @@ async function probe(baseUrl, target) {
  * surface, so the disagreement fails the row.
  *
  * @param {object} row the Node-observed row
- * @param {{ cacheControl: string|null, etag: string|null, vary: string|null } | null | undefined} observation
+ * @param {{ status?: number, cacheControl: string|null, etag: string|null, vary: string|null } | null | undefined} observation
  * @returns {{ ok: boolean, problems: string[] }}
  */
 export function assessBrowserObservation(row, observation) {
@@ -298,6 +298,26 @@ export function assessBrowserObservation(row, observation) {
 	// No observation and no error: `--no-browser`, a skipped row, or a
 	// redirect the browser follows. Nothing was contradicted.
 	if (!observation) return { ok: problems.length === 0, problems };
+
+	// The STATUS decides whether the headers below describe the class at
+	// all. `page.goto()` does not reject on an HTTP error, so a Chromium
+	// 5xx reaches this function as an ordinary observation — and an error
+	// page carries the same `no-cache` / `private, no-store` the class
+	// declares, which would let `{status: 500, cacheControl: 'no-cache'}`
+	// pass and `--verify` exit 0 on a browser that never rendered the
+	// class. The Node observer already treats 5xx as "this environment
+	// could not render it" (`probe`); the same response arriving here for
+	// a row the Node observer scored is a disagreement, not an absence.
+	const browserStatus = Number(observation.status ?? 0);
+	if (browserStatus >= 500) {
+		problems.push(
+			`Chromium received server error ${browserStatus} where the HTTP observer received ${row.status} — the browser observer did not render this class`,
+		);
+	} else if (typeof row.status === 'number' && browserStatus !== row.status) {
+		problems.push(
+			`Chromium received status ${browserStatus} where the HTTP observer received ${row.status} — a disagreement between the two observers`,
+		);
+	}
 
 	const declared = policyById(row.id).cacheControl;
 	const seen = String(observation.cacheControl ?? '');

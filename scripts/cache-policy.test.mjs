@@ -40,6 +40,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	CACHE_POLICY_MATRIX,
 	IMMUTABLE_ASSET_MAX_AGE_SECONDS,
+	duplicateHeaderValues,
 	effectiveHeaders,
 	matchesPattern,
 	parseCacheControl,
@@ -144,4 +145,102 @@ test('acceptance criterion 1: immutable assets and personal pages differ', () =>
 	assert.ok(asset.cacheControl.includes('immutable'));
 	assert.ok(!page.cacheControl.includes('immutable'));
 	assert.ok(parseCacheControl(page.cacheControl).noCache);
+});
+
+test('matching rules COMBINE a header instead of the last one winning', () => {
+	// `public/_headers` records the measurement that settled this: with a
+	// `/*` rule and a `:slug` rule both setting the header, the response
+	// carried both values. Last-rule-wins would let this test read one
+	// rule and call the contract intact while the response a visitor
+	// receives carries a concatenation nobody asserted.
+	const overlapping = parseHeadersFile(
+		[
+			'/*',
+			'\tCache-Control: public, max-age=0, must-revalidate',
+			'/assets/*',
+			'\tCache-Control: public, max-age=31556952, immutable',
+		].join('\n'),
+	);
+	assert.equal(
+		effectiveHeaders(overlapping, '/assets/app.js').get('cache-control'),
+		'public, max-age=0, must-revalidate, public, max-age=31556952, immutable',
+	);
+	// A path only the broad rule matches is unaffected.
+	assert.equal(
+		effectiveHeaders(overlapping, '/share/procon2026/index.html').get('cache-control'),
+		'public, max-age=0, must-revalidate',
+	);
+});
+
+test('identical duplicate values are not concatenated twice', () => {
+	// Issue #448 states `frame-ancestors 'self'` on every Tool rule on
+	// purpose; repeating the same token changes nothing.
+	const repeated = parseHeadersFile(
+		[
+			'/tools/:slug/app/*',
+			"\tContent-Security-Policy: frame-ancestors 'self'",
+			'/tools/:slug/app',
+			"\tContent-Security-Policy: frame-ancestors 'self'",
+		].join('\n'),
+	);
+	assert.equal(
+		effectiveHeaders(repeated, '/tools/prototype/app').get('content-security-policy'),
+		"frame-ancestors 'self'",
+	);
+	assert.deepEqual(duplicateHeaderValues(repeated, '/tools/prototype/app'), []);
+});
+
+test('a differing duplicate is reported, so the collision is attributable', () => {
+	// A concatenated `Cache-Control` is ambiguous rather than obvious:
+	// `parseCacheControl` reads whichever `max-age` comes last and reports
+	// a number no rule declares. Naming the pair of rules keeps the
+	// failure attributable.
+	const overlapping = parseHeadersFile(
+		[
+			'/assets/*',
+			'\tCache-Control: public, max-age=31556952, immutable',
+			'/*',
+			'\tCache-Control: public, max-age=0, must-revalidate',
+		].join('\n'),
+	);
+	const duplicates = duplicateHeaderValues(overlapping, '/assets/app.js');
+	assert.equal(duplicates.length, 1);
+	assert.equal(duplicates[0].name, 'cache-control');
+	assert.equal(duplicates[0].patterns.length, 2);
+	// Order of the rules must not change the verdict.
+	const reversed = duplicateHeaderValues(
+		parseHeadersFile(
+			[
+				'/*',
+				'\tCache-Control: public, max-age=0, must-revalidate',
+				'/assets/*',
+				'\tCache-Control: public, max-age=31556952, immutable',
+			].join('\n'),
+		),
+		'/assets/app.js',
+	);
+	assert.equal(reversed.length, 1);
+	assert.deepEqual(reversed[0].values.slice().sort(), duplicates[0].values.slice().sort());
+});
+
+test('the shipped _headers never sets Cache-Control twice for one path', () => {
+	// The acceptance evidence reads `effectiveHeaders`; if two matching
+	// rules disagreed about the asset policy the value it compares against
+	// the matrix would be a concatenation. Checked over the paths the
+	// measurement tool actually probes.
+	for (const sample of [
+		'/assets/index-B5Hb0lCH.js',
+		'/favicon.svg',
+		'/share/procon2026/index.html',
+		'/tools/prototype/app/index.html',
+	]) {
+		const collisions = duplicateHeaderValues(rules, sample).filter(
+			(collision) => collision.name === 'cache-control',
+		);
+		assert.deepEqual(
+			collisions,
+			[],
+			`${sample} receives Cache-Control from ${collisions[0]?.patterns.join(' and ')}`,
+		);
+	}
 });

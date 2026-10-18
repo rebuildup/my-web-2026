@@ -632,6 +632,68 @@ test('an agreeing browser observation adds no problem', () => {
 	});
 });
 
+test('a browser HTTP error status fails the row even when the headers match', () => {
+	// `page.goto()` does not reject on an HTTP error, and an error page
+	// carries the same `no-cache` / `private, no-store` the class declares.
+	// Without the status check this observation is `ok: true` and
+	// `--verify` exits 0 on a browser that never rendered the class.
+	const verdict = assessBrowserObservation(
+		{
+			id: 'personal-page',
+			status: 200,
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+		},
+		{
+			status: 500,
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+			vary: 'Origin',
+		},
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /Chromium received server error 500/);
+});
+
+test('a browser status that differs from the HTTP observer without being 5xx fails the row', () => {
+	// Same disagreement as a header mismatch, on the status code: the two
+	// observers answered the same URL differently.
+	const verdict = assessBrowserObservation(
+		{
+			id: 'personal-page',
+			status: 200,
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+		},
+		{
+			status: 404,
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+			vary: 'Origin',
+		},
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /Chromium received status 404/);
+});
+
+test('a browser status matching the HTTP observer adds no problem', () => {
+	const verdict = assessBrowserObservation(
+		{
+			id: 'personal-page',
+			status: 200,
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+		},
+		{
+			status: 200,
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+			vary: 'Origin',
+		},
+	);
+	assert.deepEqual(verdict, { ok: true, problems: [] });
+});
+
 test('a run that skipped every Worker-owned class does not verify anything', () => {
 	// The subtler version of a dead `--base-url`: Static Assets still
 	// answer `/favicon.svg` while the Worker returns 5xx, so at least one

@@ -305,20 +305,78 @@ export function matchesPattern(pattern, pathname) {
 }
 
 /**
- * Every header a concrete path would receive from a `_headers` file,
- * last rule wins per header name (which is how Cloudflare merges
- * matching rules).
+ * Every header a concrete path would receive from a `_headers` file.
+ *
+ * Merging is COMBINING, not last-rule-wins. `public/_headers` records
+ * the measurement that settled this (its own comment block, measured
+ * against `pnpm preview`): with a `/*` rule and a `:slug` rule both
+ * setting `referrer-policy`, the response carried both values, not the
+ * narrower rule's. Keeping only the last value would let
+ * `cache-policy.test.mjs` read a single rule and call the contract
+ * intact while the response a visitor actually receives carries a
+ * concatenation nobody asserted.
+ *
+ * Identical values are not concatenated twice — repeating the same
+ * token changes nothing — so the CSP rules Issue #448 states per Tool
+ * path collapse to one.
  *
  * @param {ReturnType<typeof parseHeadersFile>} rules
  * @param {string} pathname
  */
 export function effectiveHeaders(rules, pathname) {
-	const merged = new Map();
+	const order = [];
+	const combined = new Map();
 	for (const rule of rules) {
 		if (!matchesPattern(rule.pattern, pathname)) continue;
-		for (const header of rule.headers) merged.set(header.name.toLowerCase(), header.value);
+		for (const header of rule.headers) {
+			const name = header.name.toLowerCase();
+			const existing = combined.get(name);
+			if (existing === undefined) {
+				order.push(name);
+				combined.set(name, header.value);
+			} else if (!existing.split(', ').includes(header.value)) {
+				combined.set(name, `${existing}, ${header.value}`);
+			}
+		}
 	}
-	return merged;
+	const out = new Map();
+	for (const name of order) out.set(name, combined.get(name));
+	return out;
+}
+
+/**
+ * Header names that more than one matching rule sets to DIFFERENT
+ * values for one path.
+ *
+ * Combining makes such a duplicate visible as a concatenated value, but
+ * a concatenated `Cache-Control` is ambiguous rather than self-evident:
+ * `parseCacheControl` would read whichever `max-age` comes last and
+ * report a number no rule actually declares. Naming the collision keeps
+ * the failure attributable to the pair of rules that caused it.
+ *
+ * Identical values are not reported: they are the deliberate exception
+ * Issue #448 documents for `Content-Security-Policy: frame-ancestors`.
+ *
+ * @param {ReturnType<typeof parseHeadersFile>} rules
+ * @param {string} pathname
+ * @returns {Array<{ name: string, values: string[], patterns: string[] }>}
+ */
+export function duplicateHeaderValues(rules, pathname) {
+	const seen = new Map();
+	for (const rule of rules) {
+		if (!matchesPattern(rule.pattern, pathname)) continue;
+		for (const header of rule.headers) {
+			const name = header.name.toLowerCase();
+			const entry = seen.get(name);
+			if (entry === undefined) {
+				seen.set(name, { name, values: [header.value], patterns: [rule.pattern] });
+			} else {
+				entry.values.push(header.value);
+				entry.patterns.push(rule.pattern);
+			}
+		}
+	}
+	return [...seen.values()].filter((entry) => new Set(entry.values).size > 1);
 }
 
 /**

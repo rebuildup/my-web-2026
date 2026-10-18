@@ -103,6 +103,17 @@ const REACTION_TARGET = 'home-page';
 const READ_PATH = `/api/v1/access/count/${COUNTER_KEY}`;
 const WRITE_PATH = '/api/v1/access/hit';
 const REACTIONS_READ_PATH = `/api/v1/reactions?target=${REACTION_TARGET}`;
+/**
+ * Origin the Worker entry answers on in this pool (`https://example.com`).
+ * `csrfGuard` (`src/http/middleware/csrf.ts`) refuses an unsafe method
+ * that carries no same-origin signal, so every row below declares this
+ * origin — the same thing a first-party caller such as
+ * `src/home/{access,reactions}/load.ts` sends. It keeps the refusal out
+ * of the way so each row still measures exactly the scope outcome it is
+ * about; the CSRF contract itself is asserted in
+ * `test/integration/csrf-contract.test.ts`.
+ */
+const WORKER_ORIGIN = 'https://example.com';
 /** Not a bot per `src/http/access-counter/filter.ts`. */
 const HUMAN_UA =
 	'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/140.0 Safari/537.36';
@@ -258,7 +269,7 @@ interface Observed {
  * carry key material into the printed matrix.
  */
 async function observe(call: Call): Promise<Observed> {
-	const headers: Record<string, string> = {};
+	const headers: Record<string, string> = { origin: WORKER_ORIGIN };
 	if (call.rawAuthorization !== undefined) {
 		headers.authorization = call.rawAuthorization;
 	} else if (call.authorization !== undefined) {
@@ -276,7 +287,7 @@ async function observe(call: Call): Promise<Observed> {
 		headers['cf-connecting-ip'] = `203.0.113.${hitSequence}`;
 	}
 
-	const res = await SELF.fetch(`https://example.com${call.path}`, {
+	const res = await SELF.fetch(`${WORKER_ORIGIN}${call.path}`, {
 		method: call.method,
 		headers,
 		...(call.body === undefined ? {} : { body: JSON.stringify(call.body) }),

@@ -61,7 +61,11 @@ import {
  * Auth / security boundary: unchanged. The API-key verifier is stubbed
  * through the existing `withVerifyApiKey` DI seam exactly like
  * `test/integration/reactions.test.ts`; no production auth path, no
- * Cloudflare binding, and no Tool Registry dependency is touched.
+ * Cloudflare binding, and no Tool Registry dependency is touched. The
+ * boundary CSRF guard (Issue #440) is satisfied by declaring the local
+ * request origin in the shared header helpers, which is the same
+ * signal a first-party caller sends — no guard is stubbed out and no
+ * request is weakened to get past it.
  *
  * Schema: inlined below because workerd cannot `fs.readFile`. The
  * `CREATE TABLE` / `DROP TABLE` statements are copied verbatim from
@@ -330,6 +334,21 @@ beforeAll(async () => {
 let requestSeq = 0;
 
 /**
+ * Origin every request below is served from.
+ *
+ * `externalBoundary.request('/api/v1/…', …)` resolves a relative path
+ * against `http://localhost` (Hono's `app.request`), so that is the
+ * request origin `csrfGuard` compares `Origin` against
+ * (`src/http/middleware/csrf.ts`). The boundary refuses an unsafe
+ * method with no same-origin signal (Issue #440), exactly like a
+ * first-party caller must declare itself: `Origin: <the origin it is
+ * calling>`. Declaring the local origin here keeps these cases about
+ * D1 parameter binding; the refusal behaviour itself is covered by
+ * `test/integration/csrf-contract.test.ts`.
+ */
+const BOUNDARY_ORIGIN = 'http://localhost';
+
+/**
  * Distinct `cf-connecting-ip` per request. The access-counter router
  * runs an in-memory LRU dedupe keyed on `ip|ua|path` (Issue #170);
  * reusing one IP would make the second hit return `reason: 'dedupe'`
@@ -341,11 +360,12 @@ function hitHeaders(): Record<string, string> {
 	return {
 		authorization: 'Bearer mk_home_fixture-not-a-real-key',
 		'cf-connecting-ip': `10.0.0.${requestSeq % 250}`,
+		origin: BOUNDARY_ORIGIN,
 	};
 }
 
 function authHeaders(): Record<string, string> {
-	return { authorization: 'Bearer mk_home_fixture-not-a-real-key' };
+	return { authorization: 'Bearer mk_home_fixture-not-a-real-key', origin: BOUNDARY_ORIGIN };
 }
 
 /**

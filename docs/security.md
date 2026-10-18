@@ -71,6 +71,14 @@ it:
 `referer_mismatch`, `origin_check_missing`. It names the header that
 failed, never its value.
 
+One precedence note: the CORS layer (Issue #455) is mounted ahead of
+this guard, so a write whose `Origin` is outside its allow-list is
+refused there first, with `{ "error": "cors_origin_rejected" }`. The
+CSRF contract is unaffected — both refusals are `403` before
+authentication or D1 — and a request whose `Origin` *is* allow-listed
+but whose `Sec-Fetch-Site` says `cross-site` still gets
+`csrf_rejected`.
+
 The guard is mounted in `src/http/hono.ts` after the local mock gate
 and the request-id middleware, and before every router — so a refused
 cross-site write never reaches authentication, rate limiting, or D1.
@@ -230,8 +238,11 @@ The external boundary splits its routes into three origin classes
   `/api/v1/reactions`. The response echoes **one** allow-listed origin
   plus `Access-Control-Allow-Credentials: true`, restricted to a fixed
   method and request-header allow-list. Any other origin — including the
-  opaque `null` origin a sandboxed Tool iframe sends — is refused with
-  `403` and no CORS header.
+  opaque `null` origin a sandboxed Tool iframe sends — gets `403` and no
+  CORS header for preflights and state-changing requests. A `GET`/`HEAD`
+  from a foreign origin still reaches the handler (Issue #440's CSRF
+  contract keeps safe reads unaffected) but carries no CORS echo, so the
+  browser cannot read the body.
 - `public-read` — `/api/v1/health` and `/api/v1/reaction-images/:id`.
   `Access-Control-Allow-Origin: *`, and never a credentials header.
 - `none` — everything else, including `/api/v1/db/ping`,

@@ -333,16 +333,36 @@ describe('corsMiddleware', () => {
 			expect(res.headers.get('access-control-allow-credentials')).toBe('true');
 		});
 
-		it('refuses a foreign origin on the same route', async () => {
+		it('refuses a foreign-origin write on the same route', async () => {
+			const { test, env } = rawResponseApp({ BETTER_AUTH_URL: CANONICAL });
+			const res = await test.request(
+				'/api/v1/auth/sign-in/email',
+				{
+					method: 'POST',
+					headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' },
+					body: '{}',
+				},
+				env,
+			);
+			expect(res.status).toBe(403);
+			expect(res.headers.get('access-control-allow-origin')).toBeNull();
+			expect(res.headers.get('access-control-allow-credentials')).toBeNull();
+		});
+
+		it('passes a foreign-origin safe read through without a CORS echo', async () => {
+			// Issue #440 keeps cross-site `GET`/`HEAD` reachable; the
+			// missing echo is what keeps the body unreadable to script.
 			const { test, env } = rawResponseApp({ BETTER_AUTH_URL: CANONICAL });
 			const res = await test.request(
 				'/api/v1/auth/get-session',
 				{ headers: { Origin: 'https://evil.example' } },
 				env,
 			);
-			expect(res.status).toBe(403);
+			expect(res.status).toBe(200);
+			expect(await res.json()).toEqual({ session: null });
 			expect(res.headers.get('access-control-allow-origin')).toBeNull();
 			expect(res.headers.get('access-control-allow-credentials')).toBeNull();
+			expect(res.headers.get('vary')).toBe('Origin');
 		});
 
 		it('gives the LOCAL_API_MODE=mock gate the same CORS surface', async () => {
@@ -357,13 +377,28 @@ describe('corsMiddleware', () => {
 			expect(res.headers.get('access-control-allow-origin')).toBe(CANONICAL);
 			expect(res.headers.get('access-control-allow-credentials')).toBe('true');
 
-			const refused = await mock.test.request(
+			const foreignRead = await mock.test.request(
 				'/api/v1/auth/session',
 				{ headers: { Origin: 'https://evil.example' } },
 				mock.env,
 			);
-			expect(refused.status).toBe(403);
-			expect(refused.headers.get('access-control-allow-origin')).toBeNull();
+			// The mock sees the same surface: a safe read reaches it, but
+			// with no allow-origin echo (and therefore no browser read).
+			expect(foreignRead.status).toBe(200);
+			expect(foreignRead.headers.get('access-control-allow-origin')).toBeNull();
+			expect(foreignRead.headers.get('access-control-allow-credentials')).toBeNull();
+
+			const refusedWrite = await mock.test.request(
+				'/api/v1/auth/sign-in/email',
+				{
+					method: 'POST',
+					headers: { Origin: 'https://evil.example', 'Content-Type': 'application/json' },
+					body: '{}',
+				},
+				mock.env,
+			);
+			expect(refusedWrite.status).toBe(403);
+			expect(refusedWrite.headers.get('access-control-allow-origin')).toBeNull();
 		});
 
 		it('falls back to Hono when the response headers are immutable', async () => {

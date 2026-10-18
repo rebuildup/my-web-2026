@@ -188,13 +188,14 @@ const PROBES: readonly Probe[] = [
 	},
 	{
 		label: 'mock-mode auth read from a foreign origin',
-		meaning: 'refused under the mock too: the gate sits before the short-circuit',
+		meaning:
+			'same surface under the mock: the safe read reaches the handler, but no CORS echo is added (Issue #440 keeps reads reachable)',
 		method: 'GET',
 		path: '/api/v1/auth/session',
 		origin: EVIL,
 		mockMode: true,
 		expectClass: 'credentialed',
-		expectStatus: 403,
+		expectStatus: 200,
 		expectAllowOrigin: ABSENT,
 		expectCredentials: ABSENT,
 	},
@@ -281,6 +282,18 @@ const PROBES: readonly Probe[] = [
 		expectStatus: 401,
 		expectAllowOrigin: ORIGIN,
 		expectCredentials: 'true',
+	},
+	{
+		label: 'foreign-origin safe read (GET)',
+		meaning:
+			'reaches the handler but carries no CORS echo: Issue #440 keeps cross-site GET/HEAD readable, while the browser still cannot read the body',
+		method: 'GET',
+		path: '/api/v1/access/count/home-page',
+		origin: EVIL,
+		expectClass: 'credentialed',
+		expectStatus: 401,
+		expectAllowOrigin: ABSENT,
+		expectCredentials: ABSENT,
 	},
 	{
 		label: 'operator diagnostic from a foreign origin',

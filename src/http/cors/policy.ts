@@ -25,14 +25,22 @@
  *     prefixes. No CORS header is emitted at all, so a browser treats
  *     the response as opaque to script.
  *
- * Every third behavior is **refusal**. A cross-origin preflight (or an
- * actual cross-origin request) that carries an origin outside the
+ * Everything else is **refusal**. A cross-origin preflight, or an
+ * actual cross-origin write, that carries an origin outside the
  * allow-list, asks for a method the route does not serve, or asks for a
  * request header outside the fixed allow-list, is answered `403` with a
  * stable error code and **no CORS header at all**. Failing closed is
  * observable (`403 cors_origin_rejected` in a log, a request id to
  * correlate) instead of the silent `204` a permissive preflight handler
  * would produce.
+ *
+ * The one exception is an actual (non-preflight) `GET`/`HEAD` from an
+ * origin outside the allow-list: it reaches the handler with no
+ * `Access-Control-Allow-Origin`, so a browser still cannot read the
+ * body, but a cross-site read stays non-destructive. Issue #440's CSRF
+ * contract records `GET`/`HEAD` as unaffected by the origin check, and
+ * refusing them here would turn a CORS concern into a server-side read
+ * outage for non-browser clients that set `Origin`.
  *
  * Origin allow-list sources (in resolution order, all of them runtime
  * inputs — this module holds no origin literal):
@@ -271,6 +279,17 @@ function servesRequestedMethod(route: CorsRoute, method: string): boolean {
 	return route.methods.includes(wanted);
 }
 
+/**
+ * Is this an actual (non-preflight) request whose method carries no
+ * state change? `GET`/`HEAD` are the only methods Issue #440 treats as
+ * unconditionally safe, and they are the only ones that may proceed
+ * without a CORS echo.
+ */
+function isSafeReadMethod(method: string): boolean {
+	const wanted = method.toUpperCase();
+	return wanted === 'GET' || wanted === 'HEAD';
+}
+
 function refuse(
 	route: CorsRoute,
 	code: CorsRefusalCode,
@@ -320,6 +339,15 @@ export function decideCors(input: CorsDecisionInput): CorsDecision {
 
 	if (route.klass === 'credentialed') {
 		if (!isAllowedOrigin(input.origin, [input.requestOrigin, ...input.extraAllowedOrigins])) {
+			// A safe read from a foreign origin still reaches the handler
+			// (`Vary: Origin`, no allow-origin pair), so the browser
+			// cannot read it but Issue #440's "cross-site reads stay
+			// readable" contract and non-browser clients that set an
+			// `Origin` header keep working. Preflights and every
+			// state-changing method still fail closed.
+			if (!input.preflight && isSafeReadMethod(input.method)) {
+				return { kind: 'passthrough', klass: route.klass, headers: base };
+			}
 			return refuse(route, 'cors_origin_rejected', base);
 		}
 		if (!allowed) {

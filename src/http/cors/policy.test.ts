@@ -155,6 +155,29 @@ describe('credentialed routes', () => {
 		expect(decision.headers['Access-Control-Allow-Credentials']).toBeUndefined();
 	});
 
+	it('lets a foreign-origin safe read reach the handler without a CORS echo', () => {
+		for (const method of ['GET', 'HEAD']) {
+			const decision = decide({ path: '/api/v1/reactions', method, origin: EVIL });
+			expect(decision.kind).toBe('passthrough');
+			if (decision.kind !== 'passthrough') throw new Error('unreachable');
+			expect(decision.headers['Access-Control-Allow-Origin']).toBeUndefined();
+			expect(decision.headers['Access-Control-Allow-Credentials']).toBeUndefined();
+			expect(decision.headers.Vary).toBe('Origin');
+		}
+	});
+
+	it('still refuses a foreign-origin preflight that asks for GET', () => {
+		const decision = decide({
+			path: '/api/v1/access/count/home-page',
+			method: 'GET',
+			origin: EVIL,
+			preflight: true,
+		});
+		expect(decision.kind).toBe('refuse');
+		if (decision.kind !== 'refuse') throw new Error('unreachable');
+		expect(decision.code).toBe('cors_origin_rejected');
+	});
+
 	it('refuses the opaque `null` origin', () => {
 		const decision = decide({ path: '/api/v1/auth/sign-in/email', method: 'POST', origin: 'null' });
 		expect(decision.kind).toBe('refuse');

@@ -76,8 +76,9 @@ origin リテラルはコードに持たない。実行時入力だけを使う�
 
 ## 4. 拒否の仕様（fail closed）
 
-許可されない cross-origin リクエストは **403 + CORS ヘッダなし**で
-返す。JSON body は安定した code のみ:
+許可されない cross-origin の preflight と state-changing な実
+リクエストは **403 + CORS ヘッダなし**で返す。JSON body は安定した
+code のみ:
 
 ```json
 { "error": "cors_origin_rejected", "class": "credentialed" }
@@ -87,14 +88,24 @@ code は 3 種:
 
 | code | 条件 |
 |------|------|
-| `cors_origin_rejected` | Origin が allow-list に無い（`null` 含む） |
+| `cors_origin_rejected` | Origin が allow-list に無い（`null` 含む）。preflight と `GET`/`HEAD` 以外の実リクエストが対象 |
 | `cors_method_rejected` | プレフライトの `Access-Control-Request-Method` がそのルートがサポートしないメソッド |
 | `cors_header_rejected` | プレフライトの `Access-Control-Request-Headers` が固定 allow-list（`authorization`, `content-type`）外 |
 
 許可されたプレフライトは `204` + policy ヘッダで返す。
 
 実リクエスト（preflight 以外）で credentialed に許可された場合は
-echo + credentials だけが載る。`Vary: Origin` は**origin で結果が変わる
+echo + credentials だけが載る。
+
+安全な読み取り（`GET`/`HEAD`）は、allow-list に無い origin からでも
+handler に到達する。ただし `Access-Control-Allow-Origin` も
+`-Credentials` も付けないので、ブラウザの script は body を読めない。
+Issue #440 の CSRF 契約が「cross-site の `GET`/`HEAD` は origin 検査の
+対象外」と定めており、ここで 403 にすると CORS の都合が読み取り
+API の可用性（`Origin` を付ける非ブラウザクライアントを含む）を
+壊すため、読み取りだけは「ヘッダを出さない」で fail closed とする。
+`Vary: Origin` はこの分岐にも付く（allow-list 内なら echo が付くので、
+応答は origin で変わる）。`Vary: Origin` は**origin で結果が変わる
 応答**にだけ付く。具体的には credentialed の echo と refusal
 （refusal は origin についての判定なので、shared cache が別 origin の
 refusal を再利用してよいから）。`public-read` は
@@ -142,15 +153,19 @@ cache-policy の値を上書きし、per-principal レスポンスのキャッ�
 `Content-Type: text/plain` の POST は CORS-safelisted で、ブラウザは
 プレフライトを送らない。preflight だけをゲートにすると、
 credentials 無しでも handler（＝D1 まで）は到達できてしまう。
-そのため `credentialed` ルートは**実リクエストも**拒否する。同一
-オリジンの実リクエストは Origin ヘッダが request origin と一致する
-ので、§3-(1) により必ず許可される。
+そのため `credentialed` ルートは**state-changing な実リクエストも**
+拒否する。同一オリジンの実リクエストは Origin ヘッダが request
+origin と一致するので、§3-(1) により必ず許可される。`GET`/`HEAD` は
+preflight なしで送られる cross-site read であり、#440 の契約どおり
+handler には到達させる（CORS ヘッダを出さないので browser は
+読めない）。
 
 **副作用の正確な範囲（owner 未決の論点。§7 と併せて読むこと）**:
 この判定は「このリクエストがブラウザから来たか」ではなく、`Origin`
 ヘッダの有無だけで行う。したがって `Origin` を勝手に付ける非ブラウザ
-クライアント（一部の SDK は付ける）は、同一オリジンからの呼び出し
-でも `403 cors_origin_rejected` を受ける。§3-(1) の根拠は「同一
+クライアント（一部の SDK は付ける）は、同一オリジンからの
+`GET`/`HEAD` 以外の呼び出しで `403 cors_origin_rejected` を受ける。
+`GET`/`HEAD` は CORS ヘッダなしで handler に届く。§3-(1) の根拠は「同一
 オリジンの実リクエストは `Origin` が request origin と一致するので
 必ず許可される」であり、**同一オリジンの呼び出しにしか当てはま
 ない**。CORS はブラウザの仕組みである以上、サーバ側ゲートは
@@ -158,11 +173,13 @@ credentials 無しでも handler（＝D1 まで）は到達できてしまう。
 根拠。したがって:
 
 - **同一オリジンの呼び出し**: 副作用なし（§3-(1) で必ず許可される）。
-- **別オリジンからの非ブラウザ呼び出し**: 従来は通っていたものが
-  落ちる可能性がある。許可リストに無い origin を拒否する形へ意図的
-  に変えた副作用として現れている。
-- 拒否を「ヘッダを出さない（ブラウザに読ませない）」だけに留めるか、
-  サーバ側 403 を残すかは **owner の判断事項**。本 Issue では
+- **別オリジンからの非ブラウザ write**: 従来は通っていたものが
+  落ちる可能性がある。許可リストに無い origin の state-changing
+  リクエストを拒否する形へ意図的に変えた副作用として現れている。
+- **別オリジンからの非ブラウザ read（`GET`/`HEAD`）**: handler に
+  到達し、CORS ヘッダだけが付かない（#440 の契約を維持）。
+- write の拒否を「ヘッダを出さない（ブラウザに読ませない）」だけに
+  留めるか、サーバ側 403 を残すかは **owner の判断事項**。本 Issue では
   fail-closed 側（403）を採っている。
 
 ## 5. 絶対条件（テストが機械的に検査する）
@@ -204,7 +221,7 @@ credentials 無しでも handler（＝D1 まで）は到達できてしまう。
 
 | 対象 | 変更 | 運用上の意味 |
 |------|------|--------------|
-| `/api/v1/auth/*`（Better Auth） | 許可 origin 以外の cross-origin リクエストは Better Auth handler に到達せず 403 | Better Auth 自身の `trustedOrigins` チェックより**前**で効く。origin を増やしたいときは `BETTER_AUTH_URL` を 1 つ直すだけで両方に効く（ずれない）。拒否は `Origin` ヘッダの有無だけで判定するため、`Origin` を付ける非ブラウザ client も 403 になる（§4「副作用の正確な範囲」） |
+| `/api/v1/auth/*`（Better Auth） | 許可 origin 以外の cross-origin **write / preflight** は Better Auth handler に到達せず 403。`GET`/`HEAD` は handler に到達するが CORS ヘッダは付かない | Better Auth 自身の `trustedOrigins` チェックより**前**で効く。origin を増やしたいときは `BETTER_AUTH_URL` を 1 つ直すだけで両方に効く（ずれない）。write の拒否は `Origin` ヘッダの有無だけで判定するため、`Origin` を付ける非ブラウザ client の write も 403 になる（§4「副作用の正確な範囲」） |
 | `/api/v1/access/*`, `/api/v1/reactions` | 同上。API key は header 経由なので、client 側は従来通り | 外部 integration が別 origin から叩く想定なら、それは明示的な owner 決定として別 ticket で扱う（§7） |
 | TanStack Start の CSRF middleware | **変更なし**。`src/start.ts` は引き続き不在で、default middleware が有効 | CORS は SSR 面（`/`, `/admin/*`, `/_serverFn/*`）には一切ヘッダを出さない。`test/integration/cors.test.ts` が `/`, `/contact`, `/admin/login` でそのことを検証する |
 | `LOCAL_API_MODE=mock` | middleware を全 router より前（かつ mock ゲートより前）に置いているので mock も同じ CORS 面を持つ | デザイナーが mock で別の CORS 面を見て、production と違う挙動を掴むことがない。ただしこの主張は「mount 順が正しい」だけでは成立せず、mock ゲートが生の `Response`（`mockApp.fetch(...)`）を返すため §4 の「確定後に載せる」が必須。`test/integration/cors.test.ts` に mock モードの許可行／拒否行がある |
@@ -297,9 +314,10 @@ Access-Control-Allow-Methods: GET,HEAD,PUT,PATCH,POST,DELETE
 生成: `pnpm run security:cors:report`（`node scripts/cors-preflight-report.mjs` と同じ）
 
 - 形式は **WebP**（`sharp` で幅 1600px 以下・quality 80 に再圧縮）。
-  Issue 本文のスクリーンショット要件にパス拡張子だけがiaccepted されて
-  いないため `.png` ではなく `.webp` を採用している。テキスト表の画像で
-  450KB 级的 PNG はリポジトリの重みに対して割に合わない。
+  Issue 本文のスクリーンショット要件はパス名だけを `.png` で指定して
+  いるが、リポジトリのスクリーンショット規約（圧縮 WebP）に合わせて
+  `.webp` を採用している。テキスト表を PNG にすると 450KB 級になり、
+  リポジトリの重みに対して割に合わない。
 - 上段: `test/integration/cors.test.ts` が `SELF.fetch` で実測した
   行（status / allow-origin / allow-credentials / allow-methods）。
   文字起こしではなく測定値。`mock` のラベルがある行だけは

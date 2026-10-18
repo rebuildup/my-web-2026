@@ -149,7 +149,7 @@ const negativeRows = negatives
 const maskingSection = maskingCase
 	? `<h2>3. Evidence masking — a raw header entering the report</h2>
 <table>
-<thead><tr><th scope="col">Set-Cookie handed to the evidence map</th><th scope="col">Stored in the emitted payload</th></tr></thead>
+<thead><tr><th scope="col">Case id</th><th scope="col">Set-Cookie stored in the emitted payload</th></tr></thead>
 <tbody>
 <tr>
 <td><code>${esc(maskingCase.id)}</code></td>

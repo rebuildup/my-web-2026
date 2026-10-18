@@ -8,7 +8,7 @@ import {
 	blockedRawHtmlFixtures,
 	executableMarkupFindings,
 	markdownXssFixtureRowValues,
-} from '../src/portfolio/markdown.xss-fixtures';
+} from '../test/fixtures/markdown-xss-fixtures';
 
 /**
  * Browser-level XSS boundary for the article renderer (Issue #451).
@@ -20,7 +20,7 @@ import {
  *   3. This file — the only layer that can answer "did a payload
  *      actually EXECUTE?", because it is a real browser.
  *
- * The corpus is the shared one (`src/portfolio/markdown.xss-fixtures.ts`),
+ * The corpus is the shared one (`test/fixtures/markdown-xss-fixtures.ts`),
  * so the three layers cannot drift. It is seeded into the LOCAL D1
  * binding through `scripts/_d1.mjs#runStatement`, which is the same
  * write path (and the same production-write gate) the rest of the E2E

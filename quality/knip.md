@@ -62,6 +62,7 @@ Absorbed so far (each line is an addition the diff shows, never a removal):
 | `exports src/portfolio/markdown.xss-fixtures.ts acceptedMarkdownFixtures` | #451 (portfolio markdown XSS boundary) landed on `release-0-6-3`; absorbed on arrival, then resolved by #451's own follow-up (the corpus moved to `test/fixtures/` and the accessor gained a consumer). Listed here so the removal in the baseline diff is not read as a silent shrink. |
 | `files scripts/render-session-cookie-report.mjs` | #438 (session cookie contract) landed on `release-0-6-3`; a one-off verification report script, so it is #438's debt, not this gate's. |
 | `files src/external-api/index.ts` | #499 (external-read obligation) landed on `release-0-6-3`; the barrel is the obligation's documented public surface, but no route/UI consumer imports it yet, so it is #499's debt, not this gate's. It is a real finding, not a legitimate dynamic reference, so it stays in the baseline instead of being suppressed through `knip.json`. |
+| 17 `exports` / `types` from `src/editorial/error-states/index.ts` | #501 (error-state surfaces) landed on `release-0-6-3`; `src/router.tsx` consumes `NotFoundState` / `ServiceUnavailableState` through the barrel, which makes the other re-exports (definitions, labels, dependency metadata, prop types) unconsumed. This is #501's public surface, not this gate's, so it is absorbed into the baseline rather than suppressed through `knip.json`. |
 
 ## Fixtures
 

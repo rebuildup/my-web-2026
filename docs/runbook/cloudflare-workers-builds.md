@@ -339,7 +339,7 @@ registered:
 | `/` | six default sections render, and the reactions widget is configured (never the "reactions disabled" placeholder) |
 | `/about` | the repo-controlled identity snapshot renders (identity heading + five narrative sections) |
 | `/portfolio` | exactly one of the two documented branches: `catalogue-empty` (empty state, no card) or `catalogue-published` (at least one card, no empty state) |
-| `/tools` | every manifest Tool renders as one row and is classified the way its manifest entry demands — a public delivery kind links to its OWN `/tools/<slug>` and carries no disabled state, a `host_disabled` Tool links nowhere and shows the Coming soon badge — and the row set equals `src/tools/manifest.json` |
+| `/tools` | every manifest Tool renders as one row and is classified the way its manifest entry demands — a public delivery kind links to its OWN `/tools/<slug>` and carries no disabled state, a `host_disabled` Tool renders no anchor at all and shows the Coming soon badge — and the row set equals `src/tools/manifest.json` |
 | `/api/v1/health` | `status=ok`, `service=my-web-2026`, `layer=external-boundary`, and a well-formed semantic `version` |
 
 Each route is also checked for its **short navigation path**: `/` offers a

@@ -233,7 +233,7 @@ export const REPRESENTATIVE_ROUTES = Object.freeze([
 			Object.freeze({
 				name: 'tools-registry',
 				description:
-					'every manifest Tool renders as one row classified the way its manifest delivery kind demands: a public Tool links to its own /tools/<slug>, a host_disabled Tool shows the Coming soon badge and links nowhere',
+					'every manifest Tool renders as one row classified the way its manifest delivery kind demands: a public Tool links to its own /tools/<slug>, a host_disabled Tool shows the Coming soon badge and renders no anchor at all',
 				probes: Object.freeze({ allManifestSlugsListed: true, everyRowClassified: true }),
 			}),
 		]),

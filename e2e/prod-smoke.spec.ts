@@ -416,7 +416,7 @@ async function computePageProbes(
 			// disabled row and still list exactly the right slugs:
 			//   - a public delivery kind links to its OWN `/tools/<slug>`
 			//     and carries no disabled state;
-			//   - a `host_disabled` Tool links nowhere, carries
+			//   - a `host_disabled` Tool renders NO anchor at all, carries
 			//     `data-tool-state="host_disabled"`, and shows the Coming
 			//     soon badge.
 			const everyRowClassified = await rows.evaluateAll(
@@ -429,9 +429,13 @@ async function computePageProbes(
 						const href = row.querySelector('a[href^="/tools/"]')?.getAttribute('href') ?? null;
 						const state = row.getAttribute('data-tool-state');
 						if (linked.has(kind)) return href === `/tools/${slug}` && state === null;
+						// "Coming soon" must not be clickable at all — a stray
+						// `/`, external, or `mailto:` anchor would keep this row
+						// looking classified while a visitor could still enter a
+						// Tool that has no embeddable surface.
 						return (
 							state === 'host_disabled' &&
-							href === null &&
+							row.querySelector('a') === null &&
 							row.querySelector('[data-tool-badge="coming-soon"]') !== null
 						);
 					});

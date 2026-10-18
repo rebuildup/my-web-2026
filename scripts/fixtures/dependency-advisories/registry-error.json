@@ -1,0 +1,6 @@
+{
+	"error": {
+		"code": "ERR_PNPM_AUDIT_NO_ADVISORY_DOCUMENT",
+		"message": "Registry returned an error for the audit request"
+	}
+}

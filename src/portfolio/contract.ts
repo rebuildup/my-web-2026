@@ -3,6 +3,7 @@ import type {
 	ListPortfolioProjectsOptions,
 	PortfolioListPage,
 	PortfolioAdjacent,
+	PortfolioProjectIndexEntry,
 } from './schema';
 
 /**
@@ -24,7 +25,10 @@ import type {
  *   draft / archived rows always resolve to `null`.
  *   `loadPortfolioAdjacent` honours the same boundary.
  *   `listPortfolioProjects` returns only public+published
- *   rows. Admin / preview surfaces that need unlisted rows
+ *   rows. `listPublishedProjectIndex` returns that same
+ *   public+published set reduced to the two columns a consumer
+ *   which only needs URL identity actually uses.
+ *   Admin / preview surfaces that need unlisted rows
  *   must build a separate loader / server-fn (not exposed by
  *   `src/portfolio/public.ts`).
  */
@@ -42,6 +46,21 @@ export interface PortfolioLoader {
 
 	/** Return a cursor-paged list of public+published projects. */
 	listPortfolioProjects(opts?: ListPortfolioProjectsOptions): Promise<PortfolioListPage>;
+
+	/**
+	 * Return the public+published projects reduced to
+	 * `{ slug, updatedAt }` — the identity a consumer needs to
+	 * address a project URL (Issue #420 sitemap).
+	 *
+	 * Same visibility boundary as `listPortfolioProjects`, but one
+	 * narrow query instead of `1 + 3N` (per-project link / media
+	 * reads), and no Markdown bodies on the wire. It exists so a
+	 * URL-enumerating consumer does not have to restate the
+	 * `status='published' AND visibility='public'` filter: the
+	 * filter stays here, in the obligation that owns it, and every
+	 * caller inherits it.
+	 */
+	listPublishedProjectIndex(): Promise<readonly PortfolioProjectIndexEntry[]>;
 }
 
 /**

@@ -128,6 +128,93 @@ See also: [`ADR-0002`](adr/ADR-0002-architecture-boundary.md) (the
 two-layer split), [`ADR-0010`](adr/ADR-0010-abuse-protection-rate-limit.md)
 (the write-path rate limit that still applies after the guard).
 
+## D1 parameter binding (Issue #452)
+
+### Rule
+
+Every D1 statement that user input reaches must bind that input with
+`?` / `?N` + `.bind(...)`. Splicing a value into the statement text is
+a defect even when the value is escaped today: the statement text is
+the part a reviewer reads as structure, and a bound value cannot change
+the parse tree.
+
+### Where it is enforced
+
+Two gates, both run by `pnpm run test` (and therefore by
+`pnpm run validate:fast` and CI):
+
+| Gate | What it proves | Where |
+| --- | --- | --- |
+| Runtime suite | Attack fixtures reach the real endpoints through `externalBoundary`; the recorded SQL text is byte-identical to the benign run, no payload appears in a statement, and the seeded rows survive. | `test/integration/d1-parameter-binding.test.ts` (workerd pool) |
+| Static gate | The **literal argument** of every `prepare()` / `exec()` / `batch()` call in `src/**` contains no `${…}` interpolation. A statement assembled into a variable before the call is out of scope by design — that is a dataflow judgement, not a scan. | `scripts/check-d1-sql-binding.mjs`, wired via `scripts/check-d1-sql-binding.test.mjs` |
+
+Run the static gate on its own with `node scripts/check-d1-sql-binding.mjs`.
+Exit 1 means one of two things: an interpolated statement, or an
+`SQL_STRUCTURE_ALLOWLIST` entry the scan never reached (dead
+configuration). Adding an entry is a reviewable decision: it must name
+the file, the interpolated identifier, and why the value cannot carry
+user input. The single current entry is `cursorPredicate` in
+`src/portfolio/load.ts` — a fixed chain of `?` placeholders whose
+components are all bound — and it is **live** only because that file
+passes its list statement to `prepare()` inline. Write the statement
+inline; a `const sql = …` in front of it hides the interpolation from
+the gate, and the gate then fails on the unreachable entry rather than
+letting it rot.
+
+### Known unscanned inventory
+
+The static gate reads literal arguments, so these D1 statements are
+**not** covered by it. None of them interpolates — each is a constant,
+or a choice between two literals — so what actually guards them is the
+combination of that reading and review:
+
+| Site | Shape | Other coverage |
+| --- | --- | --- |
+| `src/http/reactions/reactions.ts` (`REACTION_INSERT_SQL`, `REACTION_LOOKUP_SQL`) | module-level string constant | runtime suite (`PUT` / `DELETE` / `GET /api/v1/reactions`) |
+| `src/portfolio/load.ts` (`prevSql`, `nextSql` in `loadPortfolioAdjacent`) | local string constant | runtime suite (portfolio slug read) |
+| `src/reactions/emoji-catalog.ts` (`loadCatalog`) | `cond ? 'literal A' : 'literal B'` | `src/reactions/emoji-catalog.test.ts` (home widget read; no user input reaches either branch) |
+
+Two further limits are deliberate and documented in the gate's own
+docstring: string concatenation inside a call argument
+(`db.prepare('… WHERE k = ' + key)`) is not inspected, and `exec`
+also matches `RegExp.prototype.exec` — all five `.exec(` sites in
+`src/**` today are regexes, so D1 `exec()` / `batch()` have no shipped
+call site yet (the fixture test covers both).
+
+### Covered surfaces
+
+Only endpoints that exist today (Issue #452 forbids inventing one):
+
+- `POST /api/v1/access/hit`, `GET /api/v1/access/count/:key`
+- `PUT` / `DELETE` / `GET /api/v1/reactions` (`target_key`, `actor_id`, `value`)
+- `GET /api/v1/reaction-images/:id`
+- portfolio loader slug read (`loadPortfolioProject`, `loadPortfolioAdjacent`)
+- emoji catalog slug read (`getCatalogEntry`)
+
+Payload families: tautology, comment tail, UNION, stacked statement,
+backslash quote, LIKE wildcard, plus whitespace-free variants that
+survive the access-counter validators and inputs the validators reject
+(over-length, embedded space, control character).
+
+### Operational contract
+
+This gate changes no runtime contract: the auth / API-key boundary,
+the Cloudflare bindings (`DB`, `MEDIA`, `ASSETS`), and the Tool
+Registry dependency are all untouched. (One production statement was
+reshaped for the gate — `listPortfolioProjectsImpl` now passes its SQL
+to `prepare()` inline instead of through a `const sql` local. The
+statement text is byte-identical; only where it is written changed, so
+the allowlist entry above is enforced rather than dead.)
+
+A new D1 surface is covered by adding it to the runtime suite. An
+existing one is covered by the static gate **only if it is written as
+the literal argument of `prepare()` / `exec()` / `batch()`**: a
+statement written inline fails the gate on its own commit, while a
+statement assembled in a variable is not scanned at all and must be
+caught by the runtime suite (or by review). The inventory above names
+the variable-built statements that exist today — keep it current when
+one is added.
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd

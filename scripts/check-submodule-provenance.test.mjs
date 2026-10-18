@@ -7,14 +7,17 @@ import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
 	classifyRepoUrl,
+	collectUrlRewrites,
 	normalizeRepoUrl,
 	parseGitlinkStdout,
 	parseGitmodules,
+	parseScopedConfigStdout,
 	readArtifactStamp,
 	redactUrlCredentials,
 	renderHtmlReport,
 	renderJsonReport,
 	renderMarkdownReport,
+	splitConfigValues,
 	splitSubmoduleConfigKey,
 	verifySubmoduleProvenance,
 } from './check-submodule-provenance.mjs';
@@ -466,6 +469,205 @@ describe('provenance — checkout state', () => {
 	});
 });
 
+describe('provenance — every configured fetch URL, not just the last one', () => {
+	const TOKEN = 'ghp_EXAMPLE_TOKEN_MUST_NEVER_BE_PRINTED';
+	const FORK = 'https://github.com/example-org/example-widget-fork.git';
+
+	function checkoutFacts(overrides = {}) {
+		return {
+			checkouts: {
+				'external/example-widget': {
+					initialised: true,
+					head: PIN_A,
+					origin: CANONICAL,
+					origins: [CANONICAL],
+					dirty: false,
+					toplevelMatches: true,
+					...overrides,
+				},
+			},
+		};
+	}
+
+	const findingsText = (result) =>
+		result.findings.map((item) => `${item.message}\n${item.remedy}`).join('\n');
+
+	it('fails when a foreign remote.origin.url sits in front of the canonical one', () => {
+		// A fetch uses the FIRST remote.origin.url; `git config --get`
+		// returns the LAST value written. A checkout that lists a fork
+		// first and the canonical repository last must not pass.
+		const facts = healthyFacts(checkoutFacts({ origin: FORK, origins: [FORK, CANONICAL] }));
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.equal(result.ok, false);
+		assert.ok(codes(result).includes('CHECKOUT_ORIGIN_MISMATCH'));
+		assert.match(
+			result.findings.find((item) => item.code === 'CHECKOUT_ORIGIN_MISMATCH').message,
+			/2 remote\.origin\.url values are configured/,
+		);
+	});
+
+	it('passes when every configured remote.origin.url is the declared repository', () => {
+		const facts = healthyFacts(checkoutFacts({ origins: [CANONICAL, CANONICAL] }));
+		assert.equal(run([widgetTool()], GITMODULES, facts).ok, true);
+	});
+
+	it('fails when a remote.origin.url embeds a credential for the declared repository', () => {
+		// It normalises to the declared owner/repo, so an identity-only
+		// comparison accepts it — while it is still a fetch URL with a
+		// token in it, which the credential-free rule forbids.
+		const facts = healthyFacts(
+			checkoutFacts({
+				origin: `https://x-access-token:${TOKEN}@github.com/example-org/example-widget.git`,
+				origins: [`https://x-access-token:${TOKEN}@github.com/example-org/example-widget.git`],
+			}),
+		);
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.equal(result.ok, false);
+		assert.ok(codes(result).includes('URL_UNSAFE'));
+		assert.equal(codes(result).includes('CHECKOUT_ORIGIN_MISMATCH'), false);
+		assert.ok(!findingsText(result).includes(TOKEN));
+		assert.match(
+			result.findings.find((item) => item.code === 'URL_UNSAFE').message,
+			/https:\/\/\*\*\*@github\.com\/example-org\/example-widget\.git/,
+		);
+	});
+
+	it('fails when a local submodule url embeds a credential for the declared repository', () => {
+		// Same trap one level up: normalisation strips the userinfo, so the
+		// identity comparison sees the manifest's own repository and stays
+		// quiet while the fetch URL carries a credential.
+		const facts = healthyFacts({
+			localSubmoduleConfig: {
+				'external/example-widget': {
+					url: `https://x-access-token:${TOKEN}@github.com/example-org/example-widget.git`,
+				},
+			},
+		});
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.equal(result.ok, false);
+		assert.ok(codes(result).includes('URL_UNSAFE'));
+		assert.equal(codes(result).includes('LOCAL_URL_OVERRIDE'), false);
+		assert.ok(!findingsText(result).includes(TOKEN));
+	});
+
+	it('treats an untracked file in the checkout as a dirty checkout', () => {
+		// HEAD still equals the pin and no tracked file changed, so only
+		// the untracked-entry check can see the dropped-in bytes.
+		const facts = healthyFacts(checkoutFacts({ dirty: true }));
+		const result = run([widgetTool()], GITMODULES, facts);
+		assert.ok(codes(result).includes('CHECKOUT_DIRTY'));
+		assert.match(
+			result.findings.find((item) => item.code === 'CHECKOUT_DIRTY').message,
+			/uncommitted changes or untracked files/,
+		);
+	});
+});
+
+describe('provenance — the effective git config, not a guessed scope', () => {
+	const MIRROR = 'https://mirror.example.com/';
+
+	it('parses scoped `git config --list --show-scope` output', () => {
+		assert.deepEqual(
+			parseScopedConfigStdout(
+				[
+					'global\turl.https://mirror.example.com/.insteadof=https://github.com/',
+					'worktree\tcore.bare=false',
+					`local\tsubmodule.external/example-widget.url=${CANONICAL}`,
+				].join('\n'),
+			),
+			[
+				{
+					scope: 'global',
+					key: 'url.https://mirror.example.com/.insteadof',
+					value: 'https://github.com/',
+				},
+				{ scope: 'worktree', key: 'core.bare', value: 'false' },
+				{
+					scope: 'local',
+					key: 'submodule.external/example-widget.url',
+					value: CANONICAL,
+				},
+			],
+		);
+		assert.deepEqual(parseScopedConfigStdout(''), []);
+		assert.deepEqual(parseScopedConfigStdout('\n'), []);
+		// No scope column at all (a git without --show-scope) must be
+		// distinguishable from "this config has no entries".
+		assert.equal(parseScopedConfigStdout('core.bare=false\n'), null);
+	});
+
+	it('splits every value of a multi-valued config key', () => {
+		assert.deepEqual(
+			splitConfigValues(
+				'https://github.com/example-org/a.git\nhttps://github.com/example-org/b.git\n',
+			),
+			['https://github.com/example-org/a.git', 'https://github.com/example-org/b.git'],
+		);
+		assert.deepEqual(splitConfigValues(''), []);
+		assert.deepEqual(splitConfigValues(null), []);
+	});
+
+	it('sees rewrites hidden behind an include or a per-worktree config', () => {
+		const fixture = buildHostRepo('none');
+		// (a) The rewrite lives in a file the local config `include`s. A
+		//     per-scope `git config --get-regexp` does not expand includes,
+		//     so this rewrite used to be invisible to the gate.
+		const included = join(fixture.root, 'corporate-mirror.cfg');
+		writeFileSync(included, `[url "${MIRROR}"]\n\tinsteadOf = https://github.com/\n`);
+		gitIn(fixture.root, ['config', '--local', 'include.path', included]);
+		// (b) The rewrite lives in config.worktree, the level a checkout
+		//     using `extensions.worktreeConfig` reads and no `--local` /
+		//     `--global` / `--system` lookup ever touches.
+		gitIn(fixture.root, ['config', 'extensions.worktreeConfig', 'true']);
+		writeFileSync(
+			resolve(fixture.root, gitIn(fixture.root, ['rev-parse', '--git-path', 'config.worktree'])),
+			'[url "https://worktree.example.com/"]\n\tinsteadOf = https://github.com/\n',
+		);
+
+		const rewrites = collectUrlRewrites(fixture.root);
+		assert.ok(
+			rewrites.some(
+				(rewrite) =>
+					rewrite.key === 'url.https://mirror.example.com/.insteadof' &&
+					rewrite.scope === 'local' &&
+					rewrite.value === 'https://github.com/',
+			),
+			'a rewrite in an included file must be visible',
+		);
+		assert.ok(
+			rewrites.some(
+				(rewrite) =>
+					rewrite.key === 'url.https://worktree.example.com/.insteadof' &&
+					rewrite.scope === 'worktree',
+			),
+			'a rewrite in config.worktree must be visible',
+		);
+		// The blind lookup really does miss both, so the assertions above
+		// test the enumeration and not a tautology.
+		const blind = spawnSync(
+			'git',
+			['config', '--local', '--get-regexp', '^url\\..*\\.insteadof$'],
+			{ cwd: fixture.root, encoding: 'utf8', env: SANDBOX_ENV },
+		);
+		assert.equal(blind.status, 1);
+		assert.equal(blind.stdout.trim(), '');
+	});
+
+	it('reports no rewrite for a repository whose effective config has none', () => {
+		const fixture = buildHostRepo('none');
+		const rewrites = collectUrlRewrites(fixture.root).filter((rewrite) =>
+			/^url\..*\.insteadof$/i.test(rewrite.key),
+		);
+		// `buildHostRepo` writes no rewrite, so nothing of ours may show
+		// up; an entry could still come from the developer's own global
+		// config, which is why only *our* key shape is asserted absent.
+		assert.equal(
+			rewrites.some((rewrite) => rewrite.key.includes('example-org')),
+			false,
+		);
+	});
+});
+
 describe('provenance — status-only output never echoes credentials', () => {
 	const TOKEN = 'ghp_EXAMPLE_TOKEN_MUST_NEVER_BE_PRINTED';
 
@@ -815,6 +1017,56 @@ describe('provenance CLI — end-to-end over synthetic repositories', () => {
 		const result = runCli(fixture.root);
 		assert.equal(result.status, 1);
 		assert.match(result.stderr, /LOCAL_URL_OVERRIDE/);
+	});
+
+	it('warns when the checkout carries an untracked file', () => {
+		// A dropped-in `public/` asset or source file: HEAD still equals the
+		// pin and no tracked file changed, so only the untracked-entry
+		// check can see it. `--untracked-files=no` used to hide exactly this.
+		const fixture = buildHostRepo('none');
+		mkdirSync(join(fixture.submodulePath, 'public'), { recursive: true });
+		writeFileSync(join(fixture.submodulePath, 'public/dropped-in.js'), 'export default 1;\n');
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 0, result.stderr);
+		assert.match(result.stderr, /\[warn\] CHECKOUT_DIRTY/);
+		assert.match(result.stderr, /uncommitted changes or untracked files/);
+	});
+
+	it('fails when a foreign remote.origin.url sits in front of the canonical one', () => {
+		// `git config --get remote.origin.url` returns the LAST value
+		// (canonical), while a fetch uses the FIRST (the fork).
+		const fixture = buildHostRepo('none');
+		gitIn(fixture.submodulePath, ['config', '--unset-all', 'remote.origin.url']);
+		gitIn(fixture.submodulePath, [
+			'config',
+			'--add',
+			'remote.origin.url',
+			'https://github.com/example-org/example-widget-fork.git',
+		]);
+		gitIn(fixture.submodulePath, ['config', '--add', 'remote.origin.url', CANONICAL]);
+		assert.equal(
+			gitIn(fixture.submodulePath, ['config', '--get', 'remote.origin.url']),
+			CANONICAL,
+			'sanity: --get returns the canonical value the old check read',
+		);
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /CHECKOUT_ORIGIN_MISMATCH/);
+		assert.match(result.stderr, /example-widget-fork/);
+	});
+
+	it('fails when a url rewrite hides behind an include directive', () => {
+		const fixture = buildHostRepo('none');
+		const included = join(fixture.root, 'corporate-mirror.cfg');
+		writeFileSync(
+			included,
+			'[url "https://mirror.example.com/"]\n\tinsteadOf = https://github.com/\n',
+		);
+		gitIn(fixture.root, ['config', '--local', 'include.path', included]);
+		const result = runCli(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /URL_INSTEADOF_REWRITE/);
+		assert.match(result.stderr, /git config \(local\) url\.https:\/\/mirror\.example\.com\//);
 	});
 
 	it('warns when the submodule is not initialised, and fails under --require-checkout', () => {

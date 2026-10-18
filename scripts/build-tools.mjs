@@ -181,18 +181,24 @@ for (const tool of targetTools) {
 		continue;
 	}
 	// The HEAD comparison above cannot see an *in-place* edit: HEAD is
-	// still the pinned commit while the bytes on disk are not. The
+	// still the pinned commit while the bytes on disk are not. The same
+	// is true of a dropped-in untracked file (a `public/` asset, an
+	// auto-detected config file), which no tree comparison can see at
+	// all. `observeCheckout().dirty` covers tracked modifications *and*
+	// untracked files (porcelain's default mode still honours the Tool
+	// repository's `.gitignore`, so `node_modules/` and `dist/` — the
+	// directories this orchestrator itself fills — do not trip it). The
 	// provenance gate reports this as `CHECKOUT_DIRTY` (warn), which
 	// does not stop a build — and `pnpm run deploy:production` runs this
-	// orchestrator directly, so an unreviewed local edit would otherwise
-	// reach production behind a stamp that attests the pinned commit.
-	// Refuse instead (ADR-0006 §4: the pin is a verified commit).
+	// orchestrator directly, so an unreviewed local edit or file would
+	// otherwise reach production behind a stamp that attests the pinned
+	// commit. Refuse instead (ADR-0006 §4: the pin is a verified commit).
 	if (checkout.dirty) {
 		errors.push(
-			`${tool.slug}: ${tool.source.submodule_path} has local modifications to tracked files — the artefact would not be built from ${tool.source.pinned_sha}`,
+			`${tool.slug}: ${tool.source.submodule_path} has uncommitted changes or untracked files — the artefact would not be built from ${tool.source.pinned_sha}`,
 		);
 		console.error(
-			'[build-tools]   ✗ checkout is dirty — the artefact would be built from modified bytes, not from the pinned commit',
+			'[build-tools]   ✗ checkout is dirty — the artefact would be built from modified or untracked bytes, not from the pinned commit',
 		);
 		continue;
 	}

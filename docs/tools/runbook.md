@@ -74,9 +74,13 @@ The orchestrator:
 3. Verifies the **checked-out** commit equals the pin and refuses to
    build otherwise (Issue #473) — a `git -C external/<slug> checkout`
    leaves the gitlink untouched, so step 2 alone cannot see it.
-4. Refuses to build when the checkout has local modifications to
-   tracked files (Issue #473) — HEAD still equals the pin in that case,
-   so step 3 passes while the bytes on disk are not the pinned commit.
+4. Refuses to build when the checkout has uncommitted changes **or
+   untracked files** (Issue #473) — HEAD still equals the pin in that
+   case, so step 3 passes while the bytes on disk are not the pinned
+   commit's bytes. `git status --porcelain` is read in its default mode,
+   which still honours the Tool repository's own `.gitignore`, so the
+   `node_modules/` and `dist/` this orchestrator itself fills do not
+   trip the refusal.
 5. Runs `build.command` inside `external/<slug>/`.
 6. Mirrors the build output to `dist/client/tools/<slug>/`.
 7. Asserts the collected artefact contains `index.html`.
@@ -164,9 +168,9 @@ What it proves, per fetched submodule:
 | `source.pinned_sha`      | the gitlink in the committed tree        | `GITLINK_SHA_MISMATCH`           |
 | `source.pinned_sha`      | `git -C external/<slug> rev-parse HEAD`  | `CHECKOUT_SHA_MISMATCH`          |
 | `source.canonical_repo`  | `.gitmodules` `url`                     | `URL_MISMATCH` / `URL_UNSAFE`    |
-| `source.canonical_repo`  | the checkout's `remote.origin`          | `CHECKOUT_ORIGIN_MISMATCH`       |
+| `source.canonical_repo`  | **every** configured `remote.origin.url` | `CHECKOUT_ORIGIN_MISMATCH`     |
 | pinned commit (no ref)   | `.gitmodules` `branch` / `submodule.<name>.branch` | `BRANCH_TRACKED`      |
-| fetch source             | `submodule.<name>.url`, `url.*.insteadOf` | `LOCAL_URL_OVERRIDE` / `URL_INSTEADOF_REWRITE` |
+| fetch source             | `submodule.<name>.url`, `url.*.insteadOf` (whole effective config) | `LOCAL_URL_OVERRIDE` / `URL_INSTEADOF_REWRITE` |
 | `dist/tool-provenance/<slug>.json` | pin + live checkout    | `ARTIFACT_PIN_MISMATCH` / `ARTIFACT_SOURCE_MISMATCH` / `ARTIFACT_STAMP_INVALID` |
 
 The gate is **offline and status-only**: it runs `git ls-tree`,
@@ -182,6 +186,28 @@ than from the repository — `url.*.insteadOf`, a local
 carry an access token. Any URL in a finding or in a report row is
 therefore printed with its userinfo / query / fragment replaced by
 `***`; the checks still run on the full string.
+
+Every URL it reads is checked against the URL policy on its **raw**
+value, and identity is compared on the normalised value. The two
+checks are not redundant: `https://user:TOKEN@github.com/<owner>/<repo>.git`
+normalises to the declared `owner/repo`, so an identity-only
+comparison accepts it while it is still a fetch URL with a credential
+in it. For the same reason the gate reads **all** values of
+`remote.origin.url`, not just the one `git config --get` returns: a
+fetch uses the first value, and a checkout that lists a foreign URL
+first and the canonical URL last would otherwise pass.
+
+`url.*.insteadOf` is read from the whole **effective** config
+(`git config --list --show-scope --includes`), i.e. system, global,
+local, per-worktree (`config.worktree`, used by any checkout that
+enables `extensions.worktreeConfig`) and command scope, with
+`include` / `includeIf` expanded. Enumerating `--local` / `--global` /
+`--system` alone would miss a rewrite parked in an included file or in
+a per-worktree config, either of which can change what an HTTPS fetch
+actually resolves to. `git config --get-all remote.origin.url` and
+`git status --porcelain` (default `normal` mode, so a Tool's own
+`.gitignore` still applies) are read the same way — no `--no-includes`,
+no "last value only".
 
 An entry with no gitlink, no `.gitmodules` entry and no checkout is
 **inventory-only** (`delivery.kind` is `host_disabled` /
@@ -232,7 +258,10 @@ $ node scripts/make-provenance-fixture.mjs .tmp/supply-chain-fixture
 [check-submodule-provenance] 3 submodule(s) inspected: 1 pass, 0 warn, 2 fail (1 inventory-only). Result: FAIL
 ```
 
-The command exits 1. `external/other-gadget` is the headline case
+The command exits 1 — the fixture is drifted on purpose, and the
+wrapper propagates the gate's status in both modes (with a report
+argument too), so a `Result: FAIL` is never observed as a successful
+run. `external/other-gadget` is the headline case
 (§6 table row 2: the checkout moved past the pin), `external/third-tool`
 is the branch-tip case, and the two `ARTIFACT_PIN_MISSING` notes mean
 those two Tools have no build stamp yet — `info`, not a failure. The
@@ -252,14 +281,15 @@ Every finding the gate can raise, and what to do about it:
 | `GITLINK_MISSING`            | the path is declared as a submodule but the committed tree has no gitlink for it | `git submodule add` the path, then commit the gitlink together with the manifest entry |
 | `PINNED_SHA_INVALID`         | `source.pinned_sha` is not a 40-char lowercase hex commit SHA | record the exact SHA the Tool repo reported for the reviewed change |
 | `URL_MISMATCH`               | `.gitmodules` points at a fork / typo / re-host    | make `.gitmodules` and `source.canonical_repo` name the same reviewed repository |
-| `URL_UNSAFE`                 | ssh / http / credentialed / ref-qualified / non-github url | use `https://github.com/<owner>/<repo>.git`, no credentials, no `#ref`, no query |
+| `URL_UNSAFE`                 | a fetch url that is ssh / http / credentialed / ref-qualified / non-github — including a `remote.origin.url` or `submodule.<name>.url` that points at the declared repository but embeds a credential | use `https://github.com/<owner>/<repo>.git`, no credentials, no `#ref`, no query; for a checkout origin, `git -C external/<slug> config --unset-all remote.origin.url` then re-add it |
 | `BRANCH_TRACKED`             | `.gitmodules` `branch = …` or `submodule.<name>.branch`, so `git submodule update --remote` would resolve to a mutable tip (ADR-0006 §4) | delete the key (`git config --unset submodule.<name>.branch`) |
 | `LOCAL_URL_OVERRIDE`         | a local `submodule.<name>.url` redirect            | `git config --unset submodule.<name>.url`, then `git submodule sync` |
+| `URL_UNSAFE` (local url)     | `submodule.<name>.url` carries a credential, ssh transport, ref or query — the raw value is checked, not only its normalised owner/repo | `git config --unset submodule.<name>.url`, then `git submodule sync` |
 | `URL_INSTEADOF_REWRITE`      | a git `url.<x>.insteadOf` rewrite can redirect the fetch | remove the rewrite for this repository and re-run the gate (see the scope note below) |
-| `CHECKOUT_ORIGIN_MISMATCH`   | the checkout's `remote.origin` is not the declared repository | `git -C external/<slug> remote set-url origin <canonical_repo>`  |
+| `CHECKOUT_ORIGIN_MISMATCH`   | a configured `remote.origin.url` is not the declared repository. **Every** value is checked, because a fetch uses the first one and `git config --get` reports only the last | `git -C external/<slug> remote set-url origin <canonical_repo>`; drop the extra values first with `git -C external/<slug> config --unset-all remote.origin.url` |
 | `CHECKOUT_MISSING` (warn)    | `git submodule update --init` was not run           | `git submodule update --init --recursive`; `--require-checkout` turns the warning into an error |
 | `CHECKOUT_SHA_UNREADABLE`    | the checkout is initialised but HEAD is not a readable 40-char commit SHA (e.g. a fresh repository with no commit) | `git -C external/<slug> status`, then re-run `git submodule update --init` |
-| `CHECKOUT_DIRTY` (warn)      | tracked files were edited in place; HEAD still equals the pin, so the bytes are not the pinned commit (ADR-0006 §4: the pin is a *verified commit*) | discard the edit, fix the Tool in its own repo, re-checkout the pin. `scripts/build-tools.mjs` refuses to build in this state too (§3 step 4), so it cannot reach production |
+| `CHECKOUT_DIRTY` (warn)      | tracked files were edited in place **or** an untracked file was dropped into the checkout (a `public/` asset, an auto-detected config file); HEAD still equals the pin, so the bytes are not the pinned commit's bytes (ADR-0006 §4: the pin is a *verified commit*) | `git -C external/<slug> status --porcelain` lists it; discard the edit or delete the file, fix the Tool in its own repo, re-checkout the pin. `scripts/build-tools.mjs` refuses to build in this state too (§3 step 4), so it cannot reach production. Ignored paths (the Tool's `.gitignore`, e.g. `node_modules/`, `dist/`) do not count |
 | `ARTIFACT_PIN_MISMATCH`      | `dist/` still holds an artefact built from the previous pin | `pnpm run build` (the stamp is rewritten from the current pin)     |
 | `ARTIFACT_SOURCE_MISMATCH`   | the stamp names a different checkout commit or a different source repository than the manifest declares | `pnpm run build` (the stamp is rewritten from the current checkout) |
 | `ARTIFACT_STAMP_INVALID`     | a stamp exists but records no usable provenance: truncated JSON (an interrupted write), `{}`, an older `schema`, or a blank commit SHA | `pnpm run build` rewrites the stamp; delete `dist/tool-provenance/<slug>.json` if the Tool is no longer served |
@@ -269,9 +299,15 @@ Every finding the gate can raise, and what to do about it:
 | `INVENTORY_ONLY` (info, row marker) | an entry with no gitlink, no `.gitmodules` entry and no checkout — its recorded SHA is documentation, not a verified pin | nothing; flip `delivery.kind` when the Tool is actually integrated |
 | `GIT_UNAVAILABLE` (warn)     | the gate was run outside a git checkout, so no pin could be compared with a committed tree | run it from a git checkout of the repository |
 
-`URL_INSTEADOF_REWRITE` reads `--local`, `--global` **and** `--system`,
-and reports **any** rewrite it finds, whether or not its prefix can
-affect a URL this repository fetches. That is deliberate fail-closed
+`URL_INSTEADOF_REWRITE` reads the whole **effective** git config —
+`git config --list --show-scope --includes`, so system, global, local,
+per-worktree (`config.worktree`, behind `extensions.worktreeConfig`)
+and command scope, with `include` / `includeIf` expanded — and reports
+**any** rewrite it finds, whether or not its prefix can affect a URL
+this repository fetches. (A per-scope `git config --get-regexp` does
+*not* expand includes and never reads `config.worktree`, so a rewrite
+parked there would change where a fetch resolves while the gate
+stayed silent.) That is deliberate fail-closed
 behaviour, but it does mean a benign corporate mirror rewrite (say
 `url."git@github.com:".insteadOf = https://github.com/`) makes
 `validate:fast` fail on a host that never touches a Tool submodule.

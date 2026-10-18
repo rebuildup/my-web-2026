@@ -28,9 +28,16 @@
  *      commit — ADR-0006 §4 requires "Submodule floats /
  *      auto-updates are not used".
  *   4. The gitlink may match the manifest while the working copy at
- *      `external/<slug>/` sits at a different commit, or its
- *      `remote.origin` points somewhere else. The build then ships a
- *      Tool that no recorded SHA describes.
+ *      `external/<slug>/` sits at a different commit, or one of its
+ *      `remote.origin` URLs points somewhere else (a second
+ *      `remote.origin.url` can sit in front of the canonical one, and
+ *      a fetch uses the first). The build then ships a Tool that no
+ *      recorded SHA describes.
+ *   4b. The working copy can be dirty without any tracked file having
+ *      changed: a dropped-in source file, a `public/` asset or an
+ *      auto-detected config file is untracked, `HEAD` still equals
+ *      the pin, and the bytes the build collects are not the pinned
+ *      commit's bytes.
  *   5. The collected build artefact may predate the current pin, so
  *      what is served under `/tools/<slug>/app/` was built from a
  *      source the manifest no longer describes.
@@ -53,12 +60,18 @@
  *   - `.gitmodules` and `src/tools/manifest.json` must agree on every
  *     submodule: same path, same repository URL.
  *   - Every fetched repository is a credential-free
- *     `https://github.com/<owner>/<repo>.git` URL.
+ *     `https://github.com/<owner>/<repo>.git` URL. That is checked on
+ *     the *raw* configured value — a URL that only looks canonical
+ *     after userinfo is stripped (`https://user:TOKEN@github.com/o/r.git`)
+ *     is still a fetch URL that carries a credential.
  *   - Every submodule is pinned: no `.gitmodules` `branch =` key, no
  *     `submodule.<name>.branch` config, no local `url` override, no
- *     `url.<X>.insteadOf` rewrite.
+ *     `url.<X>.insteadOf` rewrite in **any** effective git config
+ *     (per-worktree config and `include` / `includeIf` expansion
+ *     included).
  *   - `pinned_sha` == gitlink SHA == checked-out HEAD.
- *   - The checked-out `remote.origin` equals `canonical_repo`.
+ *   - Every configured `remote.origin.url` equals `canonical_repo`.
+ *   - The checkout carries no uncommitted change and no untracked file.
  *   - When a build artefact stamp exists, it names the same pin.
  *
  * Exit codes: 0 = no error-severity finding, 1 = at least one error,
@@ -332,15 +345,23 @@ export function isSubmoduleInitialised(absolutePath) {
  */
 export function observeCheckout(root, path) {
 	const absolutePath = isAbsolute(path) ? path : join(root, path);
+	const unobserved = () => ({
+		initialised: false,
+		head: null,
+		origin: null,
+		origins: [],
+		dirty: false,
+		toplevelMatches: false,
+	});
 	if (!existsSync(absolutePath) || !statSync(absolutePath).isDirectory()) {
-		return { initialised: false, head: null, origin: null, dirty: false, toplevelMatches: false };
+		return unobserved();
 	}
 	if (!isSubmoduleInitialised(absolutePath)) {
-		return { initialised: false, head: null, origin: null, dirty: false, toplevelMatches: false };
+		return unobserved();
 	}
 	const toplevel = git(absolutePath, ['rev-parse', '--show-toplevel']);
 	if (!toplevel) {
-		return { initialised: false, head: null, origin: null, dirty: false, toplevelMatches: false };
+		return unobserved();
 	}
 	let toplevelMatches = false;
 	try {
@@ -349,15 +370,33 @@ export function observeCheckout(root, path) {
 		toplevelMatches = false;
 	}
 	if (!toplevelMatches) {
-		return { initialised: false, head: null, origin: null, dirty: false, toplevelMatches: false };
+		return unobserved();
 	}
 	const head = git(absolutePath, ['rev-parse', 'HEAD']);
-	const origin = git(absolutePath, ['config', '--get', 'remote.origin.url']);
-	const status = git(absolutePath, ['status', '--porcelain', '--untracked-files=no']);
+	// Every configured value, not just the last one: a fetch uses the
+	// *first* `remote.origin.url`, while `git config --get` returns only
+	// the last value written. A checkout that lists an attacker's URL
+	// first and the canonical URL last would otherwise pass an "the
+	// origin matches" check while fetching from somewhere else.
+	const origins = splitConfigValues(
+		git(absolutePath, ['config', '--get-all', 'remote.origin.url']),
+	);
+	// Untracked files count as dirty. The bytes a build collects come
+	// from the worktree, not from the tree, so a dropped-in source
+	// file, a `public/` asset or an auto-detected config file makes the
+	// build non-reproducible exactly like an in-place edit does — while
+	// `HEAD` still equals the pin. `--untracked-files=no` used to hide
+	// precisely that case. Porcelain's default mode (`normal`) still
+	// honours the Tool repository's own `.gitignore`, so the
+	// `node_modules/` and `dist/` the build itself creates do not trip it.
+	const status = git(absolutePath, ['status', '--porcelain']);
 	return {
 		initialised: true,
 		head: head && SHA_REGEX.test(head) ? head : null,
-		origin: origin ?? null,
+		// `origin` is the URL a fetch would use first; `origins` is every
+		// value that is configured.
+		origin: origins[0] ?? null,
+		origins,
 		dirty: Boolean(status),
 		toplevelMatches: true,
 	};
@@ -368,6 +407,78 @@ export function observeCheckout(root, path) {
  * touches the network and nothing here reads an environment variable
  * or a secret file.
  */
+/** Split multi-value `git config --get-all` output into its values. */
+export function splitConfigValues(stdout) {
+	return String(stdout ?? '')
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => line.length > 0);
+}
+
+/**
+ * Parse `git config --list --show-scope` output into
+ * `{ scope, key, value }` records.
+ *
+ * Each line is `<scope>\t<key>=<value>`. Returns `null` when the output
+ * carries no scope column, so the caller can tell "this git does not
+ * report scopes" apart from "this config has no entries".
+ */
+export function parseScopedConfigStdout(stdout) {
+	const text = String(stdout ?? '');
+	if (text.trim().length === 0) return [];
+	const entries = [];
+	for (const line of text.split('\n')) {
+		if (line.trim().length === 0) continue;
+		const tab = line.indexOf('\t');
+		// The key is the part before the first `=` after the scope column;
+		// git config names never contain `=` or a tab, but a *value* may.
+		const equals = tab === -1 ? -1 : line.indexOf('=', tab + 1);
+		if (tab === -1 || equals === -1) return null;
+		entries.push({
+			scope: line.slice(0, tab).trim(),
+			key: line.slice(tab + 1, equals).trim(),
+			value: line.slice(equals + 1),
+		});
+	}
+	return entries;
+}
+
+/**
+ * Every `url.<base>.insteadOf` rewrite that can affect a fetch made from
+ * `root`, with the scope it was read from.
+ *
+ * Enumerating `--local` / `--global` / `--system` with
+ * `--get-regexp` is not the same thing as reading the *effective*
+ * config, and the difference is load-bearing for this rule:
+ *
+ *   - `git config --global`/`--system`/`--local` do not expand
+ *     `include` / `includeIf` unless `--includes` is passed, so a
+ *     rewrite parked in an included file was invisible.
+ *   - `config.worktree` (used by any checkout that enables
+ *     `extensions.worktreeConfig`) is a level none of those flags reads,
+ *     and it can redirect an HTTPS fetch to another host.
+ *   - `command`-scope entries (`git -c`, `GIT_CONFIG_*`) can do the same.
+ *
+ * `git config --list` reads every level and expands includes by
+ * default, and `--show-scope` labels each entry, so one call covers the
+ * whole effective config. The per-scope fallback keeps the gate working
+ * on a git that does not know `--show-scope`.
+ */
+export function collectUrlRewrites(root) {
+	const listed = git(root, ['config', '--list', '--show-scope', '--includes']);
+	const scoped = listed === null ? null : parseScopedConfigStdout(listed);
+	const entries =
+		scoped ??
+		['--local', '--worktree', '--global', '--system'].flatMap((flag) =>
+			Object.entries(
+				parseConfigLines(
+					git(root, ['config', flag, '--includes', '--get-regexp', '^url\\..*\\.insteadof$']) ?? '',
+				),
+			).map(([key, value]) => ({ scope: flag.slice(2), key, value })),
+		);
+	return entries.filter((entry) => /^url\..*\.insteadof$/i.test(entry.key));
+}
+
 export function collectFacts(root, manifest, gitmodules) {
 	const head = git(root, ['rev-parse', 'HEAD']);
 	const gitAvailable = Boolean(head);
@@ -387,13 +498,8 @@ export function collectFacts(root, manifest, gitmodules) {
 			localSubmoduleConfig[split.name] ??= {};
 			localSubmoduleConfig[split.name][split.configKey] = value;
 		}
-		for (const scope of ['--local', '--global', '--system']) {
-			const scoped = parseConfigLines(
-				git(root, ['config', scope, '--get-regexp', '^url\\..*\\.insteadof$']) ?? '',
-			);
-			for (const [key, value] of Object.entries(scoped)) {
-				urlRewrites.push({ scope, key, value });
-			}
+		for (const rewrite of collectUrlRewrites(root)) {
+			urlRewrites.push(rewrite);
 		}
 	}
 
@@ -678,18 +784,32 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 					);
 				}
 			}
-			if (
-				config.url &&
-				canonicalRepo &&
-				normalizeRepoUrl(config.url) !== normalizeRepoUrl(canonicalRepo)
-			) {
-				push(
-					'LOCAL_URL_OVERRIDE',
-					'error',
-					subject,
-					`${tool.slug}: local git config submodule.${name}.url="${redactUrlCredentials(config.url)}" overrides the fetch source declared in the manifest (${redactUrlCredentials(canonicalRepo)})`,
-					`git config --unset submodule.${name}.url, or re-run \`git submodule sync\` after confirming the intended source`,
-				);
+			if (config.url) {
+				// Policy first, then identity: the raw configured value has
+				// to be a credential-free https GitHub repository on its
+				// own. Comparing normalised forms alone would accept
+				// `https://user:TOKEN@github.com/<owner>/<repo>.git`,
+				// which normalises to the same owner/repo as the manifest
+				// while still being a fetch URL that carries a credential.
+				const localUrl = classifyRepoUrl(config.url);
+				if (!localUrl.ok) {
+					push(
+						'URL_UNSAFE',
+						'error',
+						subject,
+						`${tool.slug}: local git config submodule.${name}.url is not a credential-free https://github.com repository — ${localUrl.message}`,
+						'git config --unset submodule.<name>.url, then re-run `git submodule sync` after confirming the intended source',
+					);
+				}
+				if (canonicalRepo && normalizeRepoUrl(config.url) !== normalizeRepoUrl(canonicalRepo)) {
+					push(
+						'LOCAL_URL_OVERRIDE',
+						'error',
+						subject,
+						`${tool.slug}: local git config submodule.${name}.url="${redactUrlCredentials(config.url)}" overrides the fetch source declared in the manifest (${redactUrlCredentials(canonicalRepo)})`,
+						'git config --unset submodule.<name>.url, or re-run `git submodule sync` after confirming the intended source',
+					);
+				}
 			}
 		}
 
@@ -750,24 +870,47 @@ export function verifySubmoduleProvenance({ manifest, gitmodules, facts, options
 					`git -C ${path} checkout ${pinnedSha} (or bump source.pinned_sha to the reviewed commit), then re-run the gate`,
 				);
 			}
-			const originNorm = normalizeRepoUrl(checkout.origin ?? '');
+			// Every configured `remote.origin.url`, not just the last one a
+			// `git config --get` returns: a fetch uses the *first*, so a
+			// checkout that lists an attacker's URL first and the canonical
+			// URL last must not pass as canonical.
+			const origins = checkout.origins ?? (checkout.origin ? [checkout.origin] : []);
 			const canonicalNorm = normalizeRepoUrl(canonicalRepo ?? '');
-			if (checkout.origin && canonicalNorm && originNorm !== canonicalNorm) {
-				push(
-					'CHECKOUT_ORIGIN_MISMATCH',
-					'error',
-					subject,
-					`${tool.slug}: the checkout's remote.origin is ${redactUrlCredentials(checkout.origin)}, not the declared ${redactUrlCredentials(canonicalRepo)}`,
-					`git -C ${path} remote set-url origin ${canonicalRepo}`,
-				);
+			for (const origin of origins) {
+				// Policy on the raw value, identity on the normalised one. A
+				// URL that embeds a credential (`https://user:TOKEN@…`)
+				// normalises to the same owner/repo, so it would pass an
+				// identity check while still being a fetch URL that carries a
+				// token — exactly what the credential-free rule forbids.
+				const classified = classifyRepoUrl(origin);
+				if (!classified.ok) {
+					push(
+						'URL_UNSAFE',
+						'error',
+						subject,
+						`${tool.slug}: the checkout's remote.origin ${redactUrlCredentials(origin)} is not a credential-free https://github.com repository — ${classified.message}`,
+						`git -C ${path} config --unset-all remote.origin.url, then git -C ${path} remote add origin ${canonicalRepo ?? 'https://github.com/<owner>/<repo>.git'} (a credential in a fetch URL becomes a credential in every CI log that prints it)`,
+					);
+					continue;
+				}
+				const originNorm = normalizeRepoUrl(origin);
+				if (canonicalNorm && originNorm !== canonicalNorm) {
+					push(
+						'CHECKOUT_ORIGIN_MISMATCH',
+						'error',
+						subject,
+						`${tool.slug}: the checkout's remote.origin is ${redactUrlCredentials(origin)}, not the declared ${redactUrlCredentials(canonicalRepo)}${origins.length > 1 ? ` (${origins.length} remote.origin.url values are configured and a fetch uses the first; every one of them must match)` : ''}`,
+						`git -C ${path} remote set-url origin ${canonicalRepo} (drop the extra values first with \`git -C ${path} config --unset-all remote.origin.url\`)`,
+					);
+				}
 			}
 			if (checkout.dirty) {
 				push(
 					'CHECKOUT_DIRTY',
 					'warn',
 					subject,
-					`${tool.slug}: ${path} has local modifications to tracked files, so its build is not reproducible from the pinned commit (ADR-0006 §4: the pin is a verified commit, and an in-place edit is not it)`,
-					'discard the local edit and fix the Tool in its own repository, then re-checkout the pinned commit',
+					`${tool.slug}: ${path} has uncommitted changes or untracked files, so its build is not reproducible from the pinned commit (ADR-0006 §4: the pin is a verified commit, and neither an in-place edit nor a dropped-in untracked file is it)`,
+					'discard the local edit (or delete the untracked file — `git status --porcelain` in the checkout lists it), fix the Tool in its own repository, then re-checkout the pinned commit',
 				);
 			}
 		}

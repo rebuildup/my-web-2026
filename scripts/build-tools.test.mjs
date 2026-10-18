@@ -86,6 +86,12 @@ function buildHostRepo(state) {
 			'<!doctype html><title>edited in place</title>',
 		);
 	}
+	if (state === 'untracked') {
+		// Nothing tracked changed and HEAD is still the pin, so only an
+		// untracked-entry check can see the dropped-in bytes.
+		mkdirSync(join(submodulePath, 'public'), { recursive: true });
+		writeFileSync(join(submodulePath, 'public/dropped-in.js'), 'export default 1;\n');
+	}
 
 	mkdirSync(join(root, 'src/tools'), { recursive: true });
 	writeFileSync(
@@ -388,6 +394,17 @@ describe('build orchestrator refuses an unprovenanced checkout (Issue #473)', ()
 		// alone passes and the artefact would be built from bytes the
 		// stamp (which attests the commit) does not describe.
 		const fixture = buildHostRepo('dirty');
+		const result = runBuildTools(fixture.root);
+		assert.equal(result.status, 1);
+		assert.match(result.stderr, /checkout is dirty/);
+		assert.equal(existsSync(join(fixture.root, 'dist/tool-provenance')), false);
+	});
+
+	it('refuses to build when the checkout carries an untracked file', () => {
+		// HEAD equals the pin and no tracked file changed, so the
+		// SHA comparison alone passes — yet the bytes the collector
+		// would mirror include the untracked asset.
+		const fixture = buildHostRepo('untracked');
 		const result = runBuildTools(fixture.root);
 		assert.equal(result.status, 1);
 		assert.match(result.stderr, /checkout is dirty/);

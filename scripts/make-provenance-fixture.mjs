@@ -14,6 +14,14 @@
  * `reportOut`, an HTML report of the same result is also written: the
  * material behind `docs/verification/supply-chain/submodule-provenance.webp`.
  *
+ * Exit code
+ * ---------
+ * The fixture is drifted on purpose, so the gate over it reports
+ * `Result: FAIL` and exits 1 — in both modes. This wrapper forwards the
+ * gate's status verbatim, after the output has been written, so a FAIL
+ * can never be observed as a successful run (which is what `docs/tools/runbook.md`
+ * §6.2 tells the reader to expect).
+ *
  * Why it exists
  * -------------
  * Two things in `docs/tools/runbook.md` §6 have to be *observations*,
@@ -258,5 +266,12 @@ process.stdout.write(report.stdout);
 process.stderr.write(report.stderr);
 if (reportOut && !existsSync(reportOut)) {
 	process.stderr.write(`[make-provenance-fixture] report was not written to ${reportOut}\n`);
-	process.exit(report.status === null ? 1 : report.status);
+	process.exit(1);
 }
+// Always propagate the gate's exit status, in both modes. This fixture
+// exists to *make* the gate fail, so a FAIL printed next to a zero exit
+// would contradict `docs/tools/runbook.md` §6.2 ("the command exits 1")
+// and would hide a failed re-generation of the committed report. A null
+// status means the gate was killed by a signal, which is not a pass
+// either.
+process.exit(report.status === null ? 1 : report.status);

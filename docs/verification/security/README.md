@@ -6,6 +6,8 @@ than hand-written.
 | Artefact | Issue | Regenerate |
 | --- | --- | --- |
 | [`ssrf-url-adapter.webp`](ssrf-url-adapter.webp) | #453 | `pnpm run security:ssrf:report` |
+| [`hsts-response.webp`](hsts-response.webp) | #446 | `pnpm run verify:hsts-screenshot` |
+| [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
 
 ## `ssrf-url-adapter.webp`
 
@@ -54,17 +56,6 @@ The same rules are asserted against the Worker runtime in
 report exists so the matrix can be *read*, not only trusted. The
 interpretation of each row is in
 [`docs/security/outbound-fetch.md`](../../security/outbound-fetch.md).
-
-# Security verification artefacts
-
-Screenshots the Issues require, regenerated from measurements rather
-than hand-written.
-
-| Artefact | Issue | Regenerate |
-| --- | --- | --- |
-
-| [`hsts-response.webp`](hsts-response.webp) | #446 | `pnpm run verify:hsts-screenshot` |
-| [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
 
 ## `hsts-response.webp`
 

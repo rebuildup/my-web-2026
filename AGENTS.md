@@ -268,7 +268,8 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `cloudflare:contract:check` + `test:wiring:check` +
   `ci:pins:check` (Issue #472, GitHub Actions pin / token audit) +
   `check-release-assets` + `version:check` + `typecheck` +
-  `infisical:check:coverage` + `csrf:contract:check` + `test`. The canonical list is
+  `infisical:check:coverage` + `sbom:check` (Issue #471) +
+  `csrf:contract:check` + `test`. The canonical list is
   `quality/profile.yaml#gates.fast.components`; add a step there, not
   only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.

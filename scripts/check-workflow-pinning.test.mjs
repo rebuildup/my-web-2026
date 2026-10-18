@@ -110,7 +110,7 @@ describe('repository workflows', () => {
 		assert.equal(audit.summary.workflows, 2);
 		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x3)
 		// + prod-smoke.yml (checkout, setup-node, pnpm, cache, upload-artifact)
-		assert.equal(audit.summary.pins, 13);
+		assert.equal(audit.summary.pins, 14);
 		assert.deepEqual([...new Set(audit.pins.map((pin) => pin.repo))].sort(), [
 			'actions/cache',
 			'actions/checkout',
@@ -840,7 +840,7 @@ describe('cli', () => {
 		assert.equal(result.code, 0);
 		const parsed = JSON.parse(result.stdout);
 		assert.equal(parsed.summary.status, 'PASS');
-		assert.equal(parsed.summary.pins, 13);
+		assert.equal(parsed.summary.pins, 14);
 		// A Set serialises to `{}`, which would make the machine-readable
 		// output look like it referenced nothing.
 		assert.deepEqual(parsed.referenced, [

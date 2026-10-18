@@ -122,7 +122,7 @@ const ROWS = [
 		vary: null,
 		revalidation: 'no validator sent',
 		ok: false,
-		problems: ['Cache-Control is "public, max-age=60", expected "no-store"'],
+		problems: ['Cache-Control is "public, max-age=60", expected "private, no-store"'],
 		skipped: false,
 	},
 	{
@@ -507,6 +507,56 @@ test('a user-specific Vary seen only by the browser fails the row', () => {
 	);
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.problems.join(' '), /Vary: cookie"?, which is user-specific/);
+});
+
+test('a user-specific Vary on a never-stored response is documentation, not a violation', () => {
+	// Issue #460 declares `Vary: Cookie, Authorization` together with
+	// `private, no-store` on the external boundary. The directive cannot
+	// make a stored body safe, but on a response that is never stored it
+	// is the legible signal for intermediaries that ignore `private`, so
+	// both observers must agree that it is not a violation.
+	const row = { id: 'api-json', cacheControl: policyById('api-json').cacheControl, etag: null };
+	const observation = {
+		cacheControl: policyById('api-json').cacheControl,
+		etag: null,
+		vary: 'Cookie, Authorization',
+	};
+	assert.deepEqual(assessBrowserObservation(row, observation), { ok: true, problems: [] });
+	assert.deepEqual(evaluateObservation({ ...observation, id: 'api-json', status: 200 }), {
+		ok: true,
+		problems: [],
+	});
+});
+
+test('a browser that received no Cache-Control at all fails the row', () => {
+	// The gap this closes: with an empty observation the two comparisons
+	// used to be skipped, so an environment where only Chromium loses the
+	// header stayed green and `--verify` exited 0.
+	const verdict = assessBrowserObservation(
+		{
+			id: 'personal-page',
+			cacheControl: policyById('personal-page').cacheControl,
+			etag: null,
+		},
+		{ cacheControl: null, etag: null, vary: null },
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.problems.join(' '), /Chromium received no Cache-Control, expected/);
+	assert.match(verdict.problems.join(' '), /disagreement between the two observers/);
+});
+
+test('a missing Cache-Control in both observers still fails, once', () => {
+	// Both observers agree that nothing arrived — there is no
+	// disagreement to report, but the class still owes a value, so the
+	// row must fail on the expected-value half alone.
+	const verdict = assessBrowserObservation(
+		{ id: 'personal-page', cacheControl: null, etag: null },
+		{ cacheControl: null, etag: null, vary: null },
+	);
+	assert.equal(verdict.ok, false);
+	assert.deepEqual(verdict.problems, [
+		`Chromium received no Cache-Control, expected "${policyById('personal-page').cacheControl}"`,
+	]);
 });
 
 test('a navigation error fails the row instead of being dropped', () => {

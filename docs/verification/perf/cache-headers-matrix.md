@@ -45,12 +45,23 @@ error envelope は要求パスを含む。いずれも per-user 応答である�
 | `immutable-build-asset` | fingerprinted ビルド資産 | `/assets/<name>-<hash>.js` | `public, max-age=31556952, immutable` | ETag（304） | `Accept-Encoding`（プラットフォーム付与・本リポジトリは宣言していない / §7-2） | Static Assets（`public/_headers`） | `scripts/cache-policy.test.mjs`（値の完全一致） |
 | `mutable-static-asset` | URL が内容より長い静的資産 | `/share/**`, `/favicon.svg` | `public, max-age=0, must-revalidate`（プラットフォーム既定＝`_headers` に書かない） | ETag（304） | `Accept-Encoding`（同上 / §7-2） | Static Assets 既定 | `scripts/cache-policy.test.mjs`（**immutable にしていないことのみ**）／正確な値は `cache:headers:measure` のみ |
 | `reaction-image` | R2 からストリームするリアクション画像 | `/api/v1/reaction-images/:id` | `public, max-age=31536000, immutable` | なし | なし | 外部 boundary の handler | `test/integration/reactions-images.test.ts`（**Worker entry 経由のランタイム実測**）／`test/integration/cache-policy-matrix.test.ts`（表 = ソース定数） |
-| `personal-page` | 個人ページ（リクエストごとに描画） | `/`, `/about`, `/contact`, `/portfolio` | `no-cache` | なし | なし | Worker entry（`src/server.ts`） | `test/integration/cache-policy-matrix.test.ts` |
-| `admin-page` | 管理画面（HTML / redirect） | `/admin*` | `no-store` | なし | なし | Worker entry（`src/server.ts`） | 同上 |
-| `api-json` | 外部 API JSON | `/api/v1/health`, `/api/v1/*` | `no-store` | なし | なし | Worker entry（`src/server.ts`） | 同上 |
+| `personal-page` | 個人ページ（リクエストごとに描画） | `/`, `/about`, `/contact`, `/portfolio` | `no-cache`（caller 付きリクエストは `private, no-cache` / #460） | なし | なし（caller 付きは `Cookie, Authorization` / #460） | Worker entry（`src/server.ts`） | `test/integration/cache-policy-matrix.test.ts` |
+| `admin-page` | 管理画面（HTML / redirect） | `/admin*` | `no-store` | なし | `Cookie, Authorization`（`no-store` と同じ呼び出しで宣言 / #460） | Worker entry（`src/server.ts`） | 同上 |
+| `api-json` | 外部 API JSON | `/api/v1/health`, `/api/v1/*` | `private, no-store` | なし | `Cookie, Authorization`（boundary isolation middleware が宣言 / #460） | 外部 boundary の isolation（`src/http/middleware/cache-policy.ts`）が `src/server.ts` の既定に上乗せ | `test/integration/cache-policy-matrix.test.ts` / `test/integration/cache-isolation.test.ts` |
 
-表の `Vary` 列は**観測されるべき値**であり、本リポジトリが宣言する値ではない。
-静的資産 2 行の `varyNote` に明記している。
+表の `Vary` 列のうち**静的資産 2 行**は**観測されるべき値**であって
+本リポジトリが宣言する値ではない（`varyNote` に明記）。
+一方 `admin-page` / `api-json` / `personal-page`（caller 付き）の `Vary` は
+本リポジトリが明示的に送出する宣言値である（#460 の契約）。
+probe は資格情報なしで実行されるため `personal-page` は無認証の行を測定する。
+
+`api-json` の行が `no-store` ではなく `private, no-store` である理由:
+#460 が外部 boundary の**手前**に isolation middleware を登録し、
+`public` かつ正の lifetime で明示 opt-in した応答
+（現状は `GET /api/v1/reaction-images/:id` のみ）以外は
+`private, no-store` に書き換えるからである。
+本Issueが `src/server.ts` に足した `no-store` 既定はその**部分集合**であり、
+両者は矛盾しない。「実際に送出される値」を SoT に書くのが本表の規則である。
 
 ### 2.1 受け入れ条件1（immutable 資産と個人ページは明示的に異なる）
 
@@ -81,16 +92,24 @@ Worker 実測側（`test/integration/cache-policy-matrix.test.ts`）の
 
 ### 2.3 `Vary` について
 
-現状 `Vary` を送出するクラスはない。`Vary: Cookie` / `Vary: Authorization`
-を含む応答が**共有キャッシュに保存可能**な場合、行列はそれを FAIL として扱う
-（`evaluateObservation`）。per-user な body を保存させないという方針を、
-`Vary` の宣言だけに依存させないためである。
+#460 以降、`admin-page` と `api-json` は `Vary: Cookie, Authorization` を
+**宣言して**送出する。保存させないことの中身は `no-store` / `private` であり、
+`Vary` は `private` を知らない中間者（企業プロキシ、モバイル SDK の HTTP スタック、
+「全部キャッシュ」する CDN ルール）に per-caller であることを見せるための信号である。
+
+行列が FAIL として扱うのは **保存可能な応答**が user-specific な `Vary` を持つ場合だけである。
+
+- `private` 付き、または `no-store` 付きの応答 → 共有キャッシュに保存されないので、
+  `Vary` は記録であって違反ではない（`evaluateObservation` と
+  `assessBrowserObservation` の**両方**が同じ規則を使う）。
+- `private` 無しで保存可能な応答 → `Vary` は「別の訪問者の body を再生させない」ことを
+  保証できないため FAIL。
 
 ## 3. 変更点（before / after）
 
 | 対象 | before | after | 判定 |
 | --- | --- | --- | --- |
-| `/api/v1/*`（JSON。401 / 404 / 500 の envelope を含む） | `Cache-Control` 無し | `no-store`（`src/server.ts` の `applyExternalCachePolicy`） | **修正**。per-principal 応答が保存対象になりうる状態だった |
+| `/api/v1/*`（JSON。401 / 404 / 500 の envelope を含む） | `Cache-Control` 無し | `private, no-store`（`src/server.ts` の `applyExternalCachePolicy` が `no-store` を既定にし、#460 の boundary isolation が `private` を上乗せする） | **修正**。per-principal 応答が保存対象になりうる状態だった |
 | `/api/v1/reaction-images/:id` | `public, max-age=31536000, immutable` | 同一（handler の宣言が既定に優先され、downgrade されない） | 維持。回帰テストを追加 |
 | `/assets/*` | `public, max-age=31556952, immutable` | 同一（`_headers`） | 維持。行列との突合テストを追加 |
 | `/share/**`, `/favicon.svg` | プラットフォーム既定（`max-age=0, must-revalidate`） | 同一（immutable にしないことを明示的に検査） | 維持。「immutable でない」ことが検査対象になった |
@@ -103,7 +122,9 @@ Worker 実測側（`test/integration/cache-policy-matrix.test.ts`）の
 2. `separationViolations()` が空である（= immutable 資産の policy を他クラスが使わない）。
 3. 表が `etag` と宣言したクラスは `If-None-Match` に **304** で答え、
    表が `none` と宣言したクラスは validator を持たない。
-4. 保存可能な（`no-store`/`no-cache` でなく `max-age>0`）応答が user-specific な `Vary` を持たない。
+4. 保存可能な（`private` / `no-store` でなく `max-age>0`）応答が user-specific な `Vary` を持たない。
+   `private` / `no-store` 付きの応答は共有キャッシュに保存されないため、
+   その `Vary` は記録であり違反ではない（2.3 節）。
 5. SKIPPED になった行は**その理由を必ず持っており**、無言で pass に数えられない。
 6. fixture を要しないクラス（`reaction-image` 以外）は**すべて実際に測定された**。
 
@@ -115,6 +136,9 @@ Worker 実測側（`test/integration/cache-policy-matrix.test.ts`）の
 読んでいる可能性があり、その食い違いこそ本ツールが報告すべき finding である。
 そのため行の verdict に `assessBrowserObservation()` として畳み込む
 （green 表示の横に矛盾する値を書くことはしない）。navigation error も同様。
+**Chromium が `Cache-Control` を一切受け取らなかった場合も不一致として扱う。**
+「比較する対象が無い」ことを「矛盾が無い」ことに読み替えると、
+Node 側だけ正しい環境で `--verify` が exit 0 になってしまうため。
 
 **1行も測定できなかった場合は 6 基準すべてが `NOT MEASURED`（`ok: false`）となり、
 `--verify` も exit 1 になる。** `--base-url` の typo や preview 停止時は

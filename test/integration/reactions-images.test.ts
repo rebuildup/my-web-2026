@@ -435,6 +435,14 @@ describe('deleteImage — reference policy', () => {
  * The direct router call is kept below as the narrower statement it
  * actually is: it pins WHERE the decision is taken, so a future
  * refactor that moved it up into the entry would be visible here.
+ *
+ * Note on the two sides of the same boundary: Issue #460 registered
+ * `sharedCacheIsolation` (`src/http/middleware/cache-policy.ts`) in
+ * front of every `/api/v1/*` response. It rewrites anything that is
+ * not an explicit `public` + positive-lifetime opt-in to
+ * `private, no-store`, so the error envelope below carries the
+ * isolation value while the image keeps its own `public, …,
+ * immutable` — the two halves of the boundary after #460.
  */
 describe('GET /api/v1/reaction-images/:id — cache policy through the Worker entry', () => {
 	it('serves stored bytes as immutable and is not downgraded by the boundary default', async () => {
@@ -470,7 +478,12 @@ describe('GET /api/v1/reaction-images/:id — cache policy through the Worker en
 		});
 		expect(res.status).toBe(404);
 		expect(res.headers.get('cache-control')).toBe(policyById('api-json').cacheControl);
-		expect(res.headers.get('cache-control')).toBe('no-store');
+		// Issue #460 put the boundary isolation middleware in front of the
+		// whole external boundary, so the value the entry's own `no-store`
+		// default declares is then rewritten to `private, no-store`. The
+		// class contract is what the boundary SERVES, and that is what the
+		// table records.
+		expect(res.headers.get('cache-control')).toBe('private, no-store');
 		expect(res.headers.get('cache-control')).not.toBe(REACTION_IMAGE_CACHE_CONTROL);
 		await res.arrayBuffer();
 	});

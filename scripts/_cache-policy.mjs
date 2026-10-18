@@ -26,6 +26,21 @@
  *     per-principal JSON was cacheable by default rather than by
  *     decision.
  *
+ * Reconciled with the boundary isolation policy (Issue #460)
+ * ----------------------------------------------------------
+ * #460 later put `src/http/middleware/cache-policy.ts` in front of the
+ * whole external boundary and rewrote every response that is not an
+ * explicit `public` + positive-lifetime opt-in to `private, no-store`
+ * with `Vary: Cookie, Authorization`. That is the SAME decision this
+ * table records for `api-json`, one layer closer to the data, so the
+ * two owners do not disagree: the row below states the value the
+ * boundary actually SERVES (`private, no-store`), and its `Vary`
+ * column states that the two request headers are declared there, not
+ * here. The only boundary response that opts out is
+ * `GET /api/v1/reaction-images/:id`, which keeps its
+ * `public, …, immutable` value because it is content-addressed and
+ * per-visitor-independent.
+ *
  * Four owners, four places, one requirement that they must disagree
  * with each other — and no artifact stating the disagreement. This
  * table is that artifact: the tests below it check each owner against
@@ -145,6 +160,8 @@ export const CACHE_POLICY_MATRIX = [
 		cacheControl: 'no-cache',
 		validator: 'none',
 		vary: 'none',
+		varyNote:
+			'the anonymous form. A request that carries Cookie / Authorization, or a response that issues Set-Cookie, is declared `private, no-cache` with `Vary: Cookie, Authorization` by src/server.ts (Issue #460); probes run without credentials, so they observe the anonymous value',
 		owner: 'Worker entry (src/server.ts)',
 		enforcedBy: 'test/integration/cache-policy-matrix.test.ts',
 	},
@@ -154,7 +171,9 @@ export const CACHE_POLICY_MATRIX = [
 		sample: '/admin/login',
 		cacheControl: 'no-store',
 		validator: 'none',
-		vary: 'none',
+		vary: 'cookie, authorization',
+		varyNote:
+			'declared by src/server.ts in the same call as `no-store` (Issue #460): the directive documents the per-caller request, and `no-store` is what forbids storing it',
 		owner: 'Worker entry (src/server.ts)',
 		enforcedBy: 'test/integration/cache-policy-matrix.test.ts',
 	},
@@ -162,11 +181,15 @@ export const CACHE_POLICY_MATRIX = [
 		id: 'api-json',
 		class: 'External API JSON',
 		sample: '/api/v1/health',
-		cacheControl: 'no-store',
+		cacheControl: 'private, no-store',
 		validator: 'none',
-		vary: 'none',
-		owner: 'Worker entry (src/server.ts)',
-		enforcedBy: 'test/integration/cache-policy-matrix.test.ts',
+		vary: 'cookie, authorization',
+		varyNote:
+			'declared by src/http/middleware/cache-policy.ts (Issue #460), which rewrites every boundary response that is not an explicit public + positive-lifetime opt-in. The `no-store` default in src/server.ts is the subset of this value; `private` is the part that additionally forbids a browser cache',
+		owner:
+			'external boundary isolation (src/http/middleware/cache-policy.ts) over the boundary default (src/server.ts)',
+		enforcedBy:
+			'test/integration/cache-policy-matrix.test.ts, test/integration/cache-isolation.test.ts',
 	},
 ];
 
@@ -184,7 +207,7 @@ export function policyById(id) {
  * while-revalidate` without the matrix having to enumerate them.
  *
  * @param {string | null | undefined} value
- * @returns {{ raw: string, immutable: boolean, noStore: boolean, noCache: boolean, mustRevalidate: boolean, maxAge: number | null }}
+ * @returns {{ raw: string, immutable: boolean, noStore: boolean, noCache: boolean, private: boolean, mustRevalidate: boolean, maxAge: number | null }}
  */
 export function parseCacheControl(value) {
 	const raw = typeof value === 'string' ? value : '';
@@ -194,6 +217,7 @@ export function parseCacheControl(value) {
 		raw,
 		immutable: lower.split(',').some((d) => d.trim() === 'immutable'),
 		noStore: lower.split(',').some((d) => d.trim() === 'no-store'),
+		private: lower.split(',').some((d) => d.trim() === 'private'),
 		noCache: lower.split(',').some((d) => d.trim() === 'no-cache'),
 		mustRevalidate: lower.split(',').some((d) => d.trim() === 'must-revalidate'),
 		maxAge: maxAgeMatch ? Number(maxAgeMatch[1]) : null,
@@ -348,15 +372,20 @@ export function evaluateObservation(observation) {
 		.filter((value) => value !== '');
 	for (const value of varyValues) {
 		if (!USER_SPECIFIC_VARY_HEADERS.includes(value)) continue;
-		if (parsed.noStore || parsed.noCache || parsed.maxAge === 0) {
-			problems.push(
-				`Vary: ${value} is user-specific; this response is revalidated or never stored, so the directive only hides the per-visitor nature of the body`,
-			);
-		} else {
-			problems.push(
-				`Vary: ${value} is user-specific but the response is storable by a shared cache`,
-			);
-		}
+		// A user-specific `Vary` is only a hole when the response can
+		// still be STORED by a shared cache. `private` forbids shared
+		// storage outright and `no-store` forbids any storage, so in
+		// both cases the directive is documentation for the
+		// intermediaries that do not implement those directives — which
+		// is exactly why src/server.ts and
+		// src/http/middleware/cache-policy.ts emit it there
+		// (Issue #460). Without `private`, a stored body can be
+		// replayed to the next caller whatever the `Vary` says, so that
+		// combination is the violation.
+		if (parsed.private || parsed.noStore) continue;
+		problems.push(
+			`Vary: ${value} is user-specific but the response is storable by a shared cache without \`private\``,
+		);
 	}
 
 	return { ok: problems.length === 0, problems };

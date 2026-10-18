@@ -32,7 +32,10 @@
  *            received, for the document and for the hashed chunks it
  *            actually requested.
  * They can disagree (a proxy, a browser-added `Vary`, a CDN rewrite),
- * and when they do, the disagreement is the finding.
+ * and when they do, the disagreement is the finding. A header the
+ * browser did not receive at all is the same finding in its strongest
+ * form, so it fails the row too rather than passing as "nothing to
+ * compare".
  *
  * Reproducibility is part of the output
  * -------------------------------------
@@ -285,7 +288,21 @@ export function assessBrowserObservation(row, observation) {
 
 	const declared = policyById(row.id).cacheControl;
 	const seen = String(observation.cacheControl ?? '');
-	if (seen !== '' && seen.toLowerCase() !== declared.toLowerCase()) {
+	// A MISSING `Cache-Control` in the browser is a mismatch, not an
+	// absence of evidence. Both observers were sent the same URL, the
+	// class declares a value, and Chromium received nothing — that is
+	// exactly the disagreement this function exists to surface. Skipping
+	// the comparison when `seen === ''` (as an earlier revision did)
+	// let the row stay green and `--verify` exit 0 on a run where the
+	// browser never received the policy at all.
+	if (seen === '') {
+		problems.push(`Chromium received no Cache-Control, expected "${declared}"`);
+		if (typeof row.cacheControl === 'string' && row.cacheControl !== '') {
+			problems.push(
+				`Chromium received no Cache-Control where the HTTP observer received "${row.cacheControl}" — a disagreement between the two observers`,
+			);
+		}
+	} else if (seen.toLowerCase() !== declared.toLowerCase()) {
 		problems.push(`Chromium received Cache-Control "${seen}", expected "${declared}"`);
 	}
 	if (
@@ -307,12 +324,13 @@ export function assessBrowserObservation(row, observation) {
 	}
 
 	const parsed = parseCacheControl(observation.cacheControl);
+	// Same rule as `evaluateObservation`: a user-specific `Vary` is only
+	// a violation when the response is still storable by a shared cache.
 	for (const value of varyValues({ vary: observation.vary })) {
 		if (!USER_SPECIFIC_VARY_HEADERS.includes(value)) continue;
+		if (parsed.private || parsed.noStore) continue;
 		problems.push(
-			parsed.noStore || parsed.noCache || parsed.maxAge === 0
-				? `Chromium received "Vary: ${value}", which is user-specific`
-				: `Chromium received "Vary: ${value}", which is user-specific on a response a shared cache may store`,
+			`Chromium received "Vary: ${value}", which is user-specific on a response a shared cache may store`,
 		);
 	}
 	return { ok: problems.length === 0, problems };

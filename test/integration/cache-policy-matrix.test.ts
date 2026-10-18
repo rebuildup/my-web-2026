@@ -26,8 +26,14 @@ import { REACTION_IMAGE_CACHE_CONTROL } from '../../src/http/reactions/images';
  *
  *   personal page   `/contact`      `no-cache`   no validator
  *   admin surface   `/admin/login`  `no-store`   no validator
- *   API JSON        `/api/v1/*`     `no-store`   no validator
+ *   API JSON        `/api/v1/*`     `private, no-store`   no validator
  *   reaction image  `/api/v1/reaction-images/:id`  immutable 1 year
+ *
+ * The API JSON value is the boundary isolation policy of Issue #460
+ * (`private, no-store`), which `src/http/middleware/cache-policy.ts`
+ * applies in front of every `/api/v1/*` response; the `no-store`
+ * default this Issue added in `src/server.ts` is the subset of it and
+ * is what an isolated response still satisfies.
  *
  * The `/` and `/portfolio` routes are deliberately NOT probed here:
  * their loaders need the reactions / portfolio tables, and the policy
@@ -99,14 +105,27 @@ describe('response cache-policy matrix (Issue #484)', () => {
 		// Issue #484 it carried no policy at all.
 		const observation = await observe('api-json', '/api/v1/reactions?target=home-page');
 		expect(observation.status).toBe(401);
-		expect(observation.cacheControl).toBe('no-store');
+		expect(observation.cacheControl).toBe(policyById('api-json').cacheControl);
+		expect(observation.cacheControl).toBe('private, no-store');
 		expect(observation.etag).toBeNull();
 	});
 
 	it('an unknown API path is never stored', async () => {
 		const observation = await observe('api-json', '/api/v1/definitely-not-a-route');
 		expect(observation.status).toBe(404);
-		expect(observation.cacheControl).toBe('no-store');
+		expect(observation.cacheControl).toBe('private, no-store');
+	});
+
+	it('the boundary states the per-caller request in Vary', async () => {
+		// Issue #460: `private, no-store` is the control; the `Vary` is
+		// the legible signal for intermediaries that do not implement
+		// `private`. The matrix row records it, so the header must be
+		// there — and it must not turn the row into a violation, because
+		// a never-stored response is not a cache-replay hole.
+		const observation = await observe('api-json', '/api/v1/health');
+		expect(observation.vary).toContain('Cookie');
+		expect(observation.vary).toContain('Authorization');
+		expect(evaluateObservation(observation)).toEqual({ ok: true, problems: [] });
 	});
 
 	it('the matrix policy for reaction images matches the source constant', async () => {

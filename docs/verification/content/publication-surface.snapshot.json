@@ -289,6 +289,7 @@
 		],
 		"externalHosts": [
 			"361do.booth.pm",
+			"api.github.com",
 			"design.google",
 			"developers.google.com",
 			"fonts.googleapis.com",
@@ -401,6 +402,15 @@
 				"identifier": false,
 				"files": [
 					"src/portfolio/seed.ts"
+				]
+			},
+			{
+				"url": "https://api.github.com/repos/rebuildup/my-web-2026",
+				"host": "api.github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/external-api/github.ts"
 				]
 			},
 			{

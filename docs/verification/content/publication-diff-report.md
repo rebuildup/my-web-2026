@@ -13,7 +13,7 @@
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 17 |
-| External hosts | 26 |
+| External hosts | 27 |
 | First-party hosts | 0 |
 | Approved transition | no delta (first record, or unchanged surface) |
 | Verdict of the approved transition | **pass** |
@@ -122,6 +122,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `http://www.w3.org/1999/xlink` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg` |
 | `http://www.w3.org/2000/svg` | `www.w3.org` | external / identifier | `external/prototype/public/vite.svg`, `external/readmark/public/favicon.svg`, `public/favicon.svg`, `src/home/mark.tsx` |
 | `https://361do.booth.pm` | `361do.booth.pm` | external | `src/portfolio/seed.ts` |
+| `https://api.github.com/repos/rebuildup/my-web-2026` | `api.github.com` | external | `src/external-api/github.ts` |
 | `https://design.google/library/expressive-material-design-google-research` | `design.google` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/fonts/docs/material_symbols` | `developers.google.com` | external | `public/share/procon2026/index.html` |
 | `https://developers.google.com/search/docs/appearance/structured-data/search-gallery` | `developers.google.com` | external | `src/editorial/structured-data/validate.ts` |

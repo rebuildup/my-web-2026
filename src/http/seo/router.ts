@@ -1,4 +1,5 @@
 import { Hono } from 'hono';
+import { createAuditLogger } from '../../logging/logger';
 import type { PortfolioEnv, PortfolioLoader } from '../../portfolio/contract';
 import { createD1PortfolioLoader } from '../../portfolio/load';
 import type { PortfolioProjectIndexEntry } from '../../portfolio/schema';
@@ -46,6 +47,8 @@ export type PublishedProjectSource = (env: Env) => Promise<readonly PortfolioPro
  */
 const SITEMAP_CACHE_CONTROL = 'public, max-age=300, must-revalidate';
 
+const seoLogger = createAuditLogger('http.seo');
+
 /**
  * Factory (DI seam). `loadProjects` defaults to the D1-backed
  * portfolio loader; tests hand it a fixture instead, which is the
@@ -59,7 +62,7 @@ export function createSeoRouter(loadProjects: PublishedProjectSource): Hono<{ Bi
 
 	router.get(SITEMAP_PATH, async (c) => {
 		const projects = await loadProjects(c.env).catch((error: unknown) => {
-			console.error('[seo] published project index failed', error);
+			seoLogger.error('published project index failed', error);
 			return [] as readonly PortfolioProjectIndexEntry[];
 		});
 		return c.body(renderSitemapXml(projects), 200, {

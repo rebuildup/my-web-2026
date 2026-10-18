@@ -28,6 +28,29 @@ const forbiddenOwnerDependencies = new Map([
 	// keeps `cloudflare:workers` virtual-module access out of the
 	// obligation), or `http` (external HTTP boundary).
 	['about', new Set(['home', 'routes', 'cloudflare', 'http'])],
+	// `logging` (Issue #467) is a LEAF obligation: it owns the runtime
+	// log-redaction contract (what may appear in a console record) and
+	// knows nothing about the obligations whose logs it redacts. Every
+	// other owner imports it; it imports none of them. Keeping it a leaf
+	// is what makes "no owner can log a raw payload" enforceable as a
+	// structural fact rather than a review convention.
+	[
+		'logging',
+		new Set([
+			'about',
+			'admin',
+			'cloudflare',
+			'contact',
+			'editorial',
+			'home',
+			'http',
+			'portfolio',
+			'reactions',
+			'routes',
+			'server.ts',
+			'tools',
+		]),
+	],
 	// `external-api` (Issue #499) owns the reliability contract for
 	// reads of a third-party API behind a display component. It is a
 	// peer obligation to `home` / `portfolio` / `about`, not a layer
@@ -51,6 +74,28 @@ const forbiddenOwnerDependencies = new Map([
  * matching `external/<slug>/src/**`.
  */
 const parentSourceRoots = ['src', 'scripts', 'e2e', 'migrations'];
+
+/**
+ * Leaf obligations (Issue #433): pure policy that owns a rule, not a
+ * surface, so it may not depend on any other obligation. Keeping the
+ * rule at the bottom of the graph is what lets `home/`, `portfolio/`,
+ * `reactions/`, `admin/` and `routes/` all obey the same Unicode /
+ * slug policy without any of them depending on each other.
+ *
+ * The exemption is for EVERY `*.test.*` / `*.spec.*` file under a
+ * leaf obligation, not just the one file that needs it today: a
+ * decision table's tests assert that the policy agrees with the
+ * owner-owned grammars it was written against
+ * (`src/i18n/fixtures.test.ts` imports `EMOJI_SLUG_GRAMMAR` and
+ * `PORTFOLIO_SLUG_GRAMMAR`), and that shape is not going to be
+ * special-cased per file. The RULE the leaf states — "policy depends
+ * on nothing" — is still enforced on every implementation module.
+ */
+const leafOwners = new Set(['i18n']);
+
+function isTestFile(path) {
+	return /\.(test|spec)\.tsx?$/.test(relative(srcRoot, path).split(sep).join('/'));
+}
 
 /**
  * Owner pairs where the dependency is allowed only through
@@ -139,6 +184,19 @@ for (const file of sourceFiles(srcRoot)) {
 	const source = readFileSync(file, 'utf8');
 	const staticImports = importStatements(source);
 	const runtimeImports = runtimeImportSpecifiers(source);
+
+	if (leafOwners.has(fromOwner) && !isTestFile(file)) {
+		const specifiers = [...staticImports.map((stmt) => stmt.specifier), ...runtimeImports];
+		for (const specifier of specifiers) {
+			const target = resolveInternalImport(file, specifier);
+			if (!target) continue;
+			const toOwner = ownerOf(target);
+			if (!toOwner || toOwner === fromOwner) continue;
+			errors.push(
+				`${relative(root, file)}: ${fromOwner} is a leaf obligation and must not depend on ${toOwner} (${specifier})`,
+			);
+		}
+	}
 
 	for (const stmt of staticImports) {
 		const target = resolveInternalImport(file, stmt.specifier);

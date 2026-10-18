@@ -12,6 +12,7 @@ import {
 import { reactionImageReferenced } from '../../http/reactions/reactions';
 import { ALLOWED_IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES } from '../../http/reactions/schema';
 import type { AllowedImageContentType, ReactionImageRow } from '../../http/reactions/schema';
+import { createAuditLogger } from '../../logging/logger';
 import { requireAdmin } from '../auth/require-admin';
 
 /**
@@ -33,6 +34,8 @@ import { requireAdmin } from '../auth/require-admin';
  *
  * Delete refuses when any reaction still references the image.
  */
+
+const imagesLogger = createAuditLogger('admin.images');
 
 /**
  * Exactly what `deleteReactionImage` rejects with when a reaction
@@ -145,7 +148,7 @@ export async function uploadReactionImageImpl(
 		if (err instanceof ImagePolicyError) {
 			// The message carries the guard's rationale for the
 			// server log; the code is what the UI is allowed to act on.
-			console.error('[admin.images] upload rejected:', err.code, err.message);
+			imagesLogger.error('upload rejected:', err.code, err.message);
 			throw policyError(err.code);
 		}
 		throw err;

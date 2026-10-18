@@ -120,15 +120,20 @@ viewport    320x640, deviceScaleFactor 1
 scrollbar   予約幅 0px → overlay scrollbar。gutter の実効性はこの環境では
             観測できないため gutter_not_observable の warning として記録される。
             content_shift / gutter_not_reserved は classic scrollbar の
-            環境（CI の ubuntu-latest が該当）で観測される。
+            環境でのみ観測される（例: CI runner ubuntu-latest で実行した場合）。
 ```
 
-**CI について**: browser を起動する `compat:stress:check` は `validate:fast` に
-入れていない。同 entry point は offline・read-only・安価が契約で、browser 起動は
-その契約を変えるため。代わりに**判定の pure 半**を
+**CI について**: browser を起動する `compat:stress:check` は `validate:fast` にも、
+`.github/workflows/compat.yml`（Issue #415）にも入れていない。前者は
+offline・read-only・安価が契約で browser 起動はその契約を変えるため、後者は
+「3 engine で出荷 UI が smoke する」という別 obligation への追加であり、
+本 fixture はどちらの surface も測っていない（route も起動もしない）。CI に入れる判断を避けている理由は 1 つで、**この fixture の折り返し結果は host の
+font metrics に依存する**ため。system font チェーンを使う fixture を、手元で再現
+できない ubuntu-latest runner へ「跨る条件」として縛るのは、検証していない主張を
+CI に持ち込むことになるため。代わりに**判定の pure 半**を
 `check-layout-stress.test.mjs` として `pnpm run test` に結線してあるので、
-CI では「検出器が必ず落ちること」が毎回検証される。実測は
-Chromium が入手済みなら任意の環境で再現できる（`pnpm run e2e:install`）。
+CI では「検出器が必ず落ちること」が毎回検証される。実測は Chromium が入手済みなら
+任意の環境で再現できる（`pnpm run e2e:install`）。
 
 ## スクリーンショット
 
@@ -151,15 +156,20 @@ Chromium が入手済みなら任意の環境で再現できる（`pnpm run e2e:
   token を変えたとき fixture は追随しない。追随させたい場合は token 値から
   CSS を生成する形に別 Issue で切り替える（本 Issue のスコープ外）。
 - `text-wrap` は語を割らない。したがって「72 文字の分割できない英単語の見出し」は
-  実測でoverflow する。出荷 surface がそのような見出しを描いていないため、
+  実測で overflow する。出荷 surface がそのような見出しを描いていないため、
   fixture ではそのケースを identifier story（`src/styles.css` が break-all を
   宣言している場所）に置いてある。見出し側で break を許す判断は別の決定。
 - overlay scrollbar の環境では gutter 系（`content_shift` / `gutter_not_reserved`）が
   原理的に観測できない。warning として残すのが正しいが、その環境では
   「gutter に関するこの gate は何も主張していない」ので、CI（classic scrollbar）と
   併読する必要がある。
-- 検出は Chromium 1 _engine での実測（E2E と同じ方針）。Firefox / WebKit は
-  0.1.0 では使わない。
+- 検出は Chromium 1 engine での実測（E2E と同じ方針）。多 engine の検証は
+  Issue #415（`.github/workflows/compat.yml`、3 engine の public UI smoke）が
+  所有し、CJK 禁則処理の実測は Issue #431（`scripts/cjk-line-break-measure.mjs`、
+  `/design-system` route）が所有する。本 Issue と重複しないのは、本 fixture が
+  「記法（どの文字が行頭に来るか）」ではなく「幅（はみ出すか・ずれるか）」を測るため。
+- fixture の CSS は token 値を手書きで写しているため、token を変えただけでは
+  追随しない（同上）。
 - viewport は fixture 内では `320px` を固定している。gate の `--width` は
   document の viewport 幅を変えるだけで、story 側の CSS は
   `src/editorial/tokens.ts#breakpoints`（md 768 / lg 1024）に追随する。

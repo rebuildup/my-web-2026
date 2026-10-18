@@ -7,7 +7,10 @@ import { createMiddleware } from 'hono/factory';
  * `ACCEPTED_REQUEST_ID` it is preserved so distributed traces remain
  * correlatable. Otherwise a 128-bit random hex id is generated. The
  * id is exposed to downstream handlers via `c.set('requestId', ...)`
- * and written back to the response headers.
+ * and written back to the response headers. `requestIdMinted` records
+ * whether this Worker generated the value, which the public error
+ * boundary needs before it may write the id to an operator-visible log
+ * line (Issue #467).
  *
  * The charset constraint is not cosmetic: since Issue #457 the id is
  * also published in the **body** of a public 5xx response
@@ -40,11 +43,16 @@ export function isAcceptedRequestId(value: string | undefined | null): value is 
 
 export const requestIdMiddleware = createMiddleware<{
 	Bindings: Env;
-	Variables: { requestId: string };
+	Variables: { requestId: string; requestIdMinted: boolean };
 }>(async (c, next) => {
 	const existing = c.req.header('X-Request-Id');
-	const requestId = isAcceptedRequestId(existing) ? existing : generateRequestId();
+	const accepted = isAcceptedRequestId(existing);
+	const requestId = accepted ? (existing as string) : generateRequestId();
 	c.set('requestId', requestId);
+	// Whether this Worker minted the id is what `publicErrorResponse`
+	// needs for its log record (Issue #467): a token a client chose is
+	// not proof of anything, so only a minted one may be printed.
+	c.set('requestIdMinted', !accepted);
 	c.header('X-Request-Id', requestId);
 	await next();
 });

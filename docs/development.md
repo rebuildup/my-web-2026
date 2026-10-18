@@ -296,6 +296,21 @@ CI (`.github/workflows/ci.yml`) runs `validate:integration` from the
 The same job also installs the Playwright Chromium binary and runs
 the E2E suite against `pnpm dev`.
 
+### Route × quality-gate coverage
+
+The published route roster and the quality gates that measure it are
+kept in sync by a cheap gate that runs inside `validate:fast`:
+
+```bash
+pnpm run routes:quality:check  # quality/route-coverage.json vs src/routes/**
+pnpm run routes:quality:report # .tmp/route-quality-report.html (no browser needed)
+```
+
+Adding a route file without a `quality/route-coverage.json` entry fails
+the gate on purpose: the PR must add the route as a gate target, or
+exclude it with a reason for every gate family. See
+[`docs/verification/quality/route-quality-coverage.md`](verification/quality/route-quality-coverage.md).
+
 `validate:fast` additionally runs `pnpm run install:scripts:check`,
 the dependency install lifecycle script audit (Issue #474). It fails
 when an installed dependency can execute code during `pnpm install`
@@ -326,7 +341,7 @@ output is gitignored.
 
 ## Playwright E2E
 
-Playwright 1.63.x covers the deployed Worker smoke. Two surfaces
+Playwright 1.63.x covers the deployed Worker smoke. Three surfaces
 exist:
 
 - `pnpm run e2e` runs `e2e/smoke.spec.ts` against `pnpm dev`
@@ -350,6 +365,8 @@ exist:
   the one deliberate write, the anonymous reaction mutation) skips itself
   in local mode, and subresource requests to any other origin are aborted
   before navigation.
+- `pnpm run e2e:compat` runs `e2e/compat/**` on Chromium, Firefox and
+  WebKit — see [Cross-engine compat matrix](#cross-engine-compat-matrix).
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
@@ -380,6 +397,77 @@ smoke logic is verified without a network, without workerd, and without a
 browser. Each observation carries the final (post-redirect) origin and
 pathname, and the classifier rejects either kind of drift, so a route that
 answered from another host cannot pass as a healthy canonical origin.
+
+## Cross-engine compat matrix
+
+Issue #415 added a second Playwright configuration that runs the
+public UI contract on Chromium, Firefox and WebKit at once. It is
+separate from the default `pnpm run e2e` config on purpose: the default
+config is the chromium-only required gate, and multiplying it by three
+engines would triple that gate while answering a different question.
+
+```bash
+pnpm run build                  # vite preview serves the built Worker
+pnpm run e2e:compat:install     # chromium + firefox + webkit binaries
+pnpm run e2e:compat             # run e2e/compat/** on all three engines
+pnpm run verify:compat-screenshot  # render the matrix + write the WebP
+```
+
+| Path                              | What it is                                        |
+| --------------------------------- | ------------------------------------------------- |
+| `playwright.compat.config.ts`     | 3 projects + JSON reporter; spreads the base config so `baseURL`, the local D1 `webServer` and `globalSetup` are inherited |
+| `e2e/compat/contract.ts`          | closed public landing-route roster + observe/judge pair |
+| `e2e/compat/public-ui.spec.ts`    | route display contract + basic operations         |
+| `e2e/compat/negative-control.spec.ts` | deliberate breakage, rejected by the same judge |
+| `.tmp/compat-results.json`        | Playwright JSON report (matrix source)            |
+| `.tmp/compat-screenshots/`        | per-engine, per-route captures (matrix source)     |
+| `.tmp/compat-matrix.html`         | rendered engine x test matrix                     |
+| `playwright-report/`              | Playwright HTML report (CI only, uploaded for failure inspection) |
+| `docs/verification/compat/browsers-matrix.webp` | committed verification screenshot       |
+
+CI runs the same command from `.github/workflows/compat.yml` (push to
+`main` / `release-*`, every PR into them, and `workflow_dispatch`) and
+uploads the matrix plus the raw report as artefacts. The workflow's
+`runner` input exists so a host-dependent engine behaviour can be
+measured on `macos-latest` as well as `ubuntu-latest`.
+
+How a failure is kept visible
+-----------------------------
+
+- **One engine, one red cell.** The matrix is engine x test, so a
+  WebKit-only regression never collapses into "the suite passed".
+- **SKIP is not PASS.** A skipped test renders as `SKIP`, and a retry
+  that only passed on the second attempt renders as `FLAKY`.
+- **Uncovered routes are reported.** A roster route with no executed
+  test is listed in its own band instead of being folded into a pass,
+  and the report script exits non-zero while that band is non-empty.
+- **A degraded run cannot replace the evidence.** If no engine binary
+  can be launched, the report script refuses to overwrite the
+  committed WebP instead of recording an all-`unavailable` matrix.
+
+- **The gate is shown to fail.** `negative-control.spec.ts` feeds the
+  same judge three broken fixtures, an unimplemented route, and one
+  real page, and asserts that each is rejected by the rule that owns
+  it while the real page still passes.
+
+The roster is specifically the public *landing* routes. Detail
+surfaces (`/portfolio/$slug`, `/tools/$slug`) are not part of the
+shell / display contract this gate holds.
+
+Recorded OS / engine differential
+---------------------------------
+
+The keyboard-reachability step of the skip-to-content link is skipped
+on WebKit: headless WebKit never moves sequential focus off `BODY` —
+not on the first Tab, not after a click, not after five stops — on any
+page, while Chromium and Firefox reach the first link on the first Tab.
+It reproduces on both hosts this repository runs on (the
+`ubuntu-latest` CI runner and a local macOS runner), so it is a
+property of the WebKit build under automation rather than of
+my-web-2026. The traversal check is therefore skipped there instead of
+being weakened everywhere; the skip-link contract itself (the link
+exists and its `#main` target resolves) is still asserted on WebKit by
+`assertRouteContract`. The matrix shows the cell as `SKIP`.
 
 ## Bundle map (Issue #483)
 
@@ -490,6 +578,7 @@ a pass. Details and the last report are in
 | `node_modules/`    | `pnpm install`                           | yes        |
 | `.biome/`          | `pnpm run format` (cache)                | yes        |
 | `.wrangler/`       | `wrangler dev`                           | yes        |
+| `.tmp/compat-*/`  | `pnpm run e2e:compat` (matrix artefacts)   | yes        |
 | `.tmp/`            | temporary research                       | yes        |
 | `.reference/`      | external clones                          | yes        |
 

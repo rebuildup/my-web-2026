@@ -18,6 +18,14 @@ import {
 const SQL_LEAK = 'D1_ERROR: no such table: portfolio_project: SQLITE_ERROR';
 const BUCKET_LEAK = 'The specified bucket does not exist. (my-web-2026-media)';
 
+/**
+ * Fabricated credential / personal data proving the server-function
+ * record is redacted before it reaches the log stream (Issue #467).
+ */
+const CANARY_KEY = 'mk_canary_c4e8a1f37b2d5099';
+const CANARY_EMAIL = 'canary.person@example.invalid';
+const CANARY_TEXT = `portfolio read failed for ${CANARY_KEY} (${CANARY_EMAIL})`;
+
 describe('withPublicErrorBoundary (Issue #457)', () => {
 	it('passes a successful read through untouched', async () => {
 		const value = await withPublicErrorBoundary('list', async () => ({ projects: [] }));
@@ -68,8 +76,28 @@ describe('withPublicErrorBoundary (Issue #457)', () => {
 			)?.[1];
 			expect(label).toContain(`ref=${reference}`);
 			expect(label).not.toContain(SQL_LEAK);
-			// The internal detail stays available to the operator.
-			expect((logged as Error).message).toBe(SQL_LEAK);
+			// The internal detail stays available to the operator, in
+			// the redacting logger's collapsed `{ name, message }`
+			// shape (Issue #467).
+			expect(logged).toEqual({ name: 'Error', message: SQL_LEAK });
+		} finally {
+			spy.mockRestore();
+		}
+	});
+
+	it('redacts a credential and an address out of the record (Issue #467)', async () => {
+		const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
+		try {
+			const thrown = await withPublicErrorBoundary('list', async () => {
+				throw new Error(CANARY_TEXT);
+			}).catch((err: unknown) => err as Error);
+			expect(thrown.message).not.toContain(CANARY_KEY);
+			expect(thrown.message).not.toContain(CANARY_EMAIL);
+			const [label, logged] = spy.mock.calls[0] as [string, unknown];
+			expect(label).toContain('[portfolio.public]');
+			const record = JSON.stringify(logged);
+			expect(record).not.toContain(CANARY_KEY);
+			expect(record).not.toContain(CANARY_EMAIL);
 		} finally {
 			spy.mockRestore();
 		}

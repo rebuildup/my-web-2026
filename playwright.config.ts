@@ -134,11 +134,19 @@ export default defineConfig({
 	// file-filtered invocation (`playwright test <file>`, which is how
 	// the production scripts name their spec) cannot seed a row against
 	// a deployed origin either.
-	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
-		? LOCAL_SMOKE
-			? '**/prod-portfolio.spec.ts'
-			: '**/prod-*.spec.ts'
-		: ['**/portfolio.spec.ts', '**/portfolio-markdown-xss.spec.ts'],
+	//
+	// Issue #415: `e2e/compat/**` is owned by
+	// `playwright.compat.config.ts` (Chromium / Firefox / WebKit) and is
+	// always ignored here, so the two suites never run each other and the
+	// default chromium-only gate keeps its current cost.
+	testIgnore: [
+		'**/compat/**',
+		...(BASE_URL.startsWith('http://127.0.0.1')
+			? LOCAL_SMOKE
+				? ['**/prod-portfolio.spec.ts']
+				: ['**/prod-*.spec.ts']
+			: ['**/portfolio.spec.ts', '**/portfolio-markdown-xss.spec.ts']),
+	],
 	// The local project spins up the preview server automatically.
 	// `pnpm preview` is required because the Tool iframe spec reaches
 	// into `dist/client/tools/<slug>/app/` (the collected Tool artifact)

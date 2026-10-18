@@ -200,8 +200,8 @@ export function probePathFor(pattern, manifest) {
 	const ungranted =
 		manifest.tools.find((tool) => declaredFeatures(tool.delivery?.iframe?.allow).length === 0)
 			?.slug ?? 'prototype';
-	if (pattern.endsWith('/*')) return `${pattern.slice(0, -1)}${ungranted}/probe-file.txt`;
-	return pattern.replace(':slug', ungranted);
+	const filled = pattern.replace(':slug', ungranted);
+	return filled.endsWith('/*') ? `${filled.slice(0, -1)}probe-file.txt` : filled;
 }
 
 /** Canonical artefact namespace for a Tool (see the registry). */

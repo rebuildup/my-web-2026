@@ -93,7 +93,10 @@ declared once, in the Tool manifest, and read by three consumers:
    answers `microphone=(self "http://127.0.0.1:4123")` locally and
    `microphone=(self "https://rebuildup.dev")` in production.
 3. **Container** — the shell route renders
-   `<iframe allow="microphone">` (`src/routes/tools.$slug.tsx`).
+   `<iframe allow="microphone">` (`src/routes/tools.$slug.tsx`) once the
+   Tool graduates. Today `mic-level` is `host_disabled`, so the route
+   renders `DisabledPlaceholder` and no iframe exists yet; the grant is
+   declared and resolved ahead of that graduation.
 
 The fourth half — the framed document — is `public/_headers`, and it is
 where the platform forces a design decision (measured, Chromium, fake

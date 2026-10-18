@@ -132,7 +132,7 @@ describe('applySecurityHeaders', () => {
 		).not.toThrow();
 	});
 
-	it('survives a header value the runtime refuses, and still sets the rest', () => {
+	it('survives a header value the runtime refuses and keeps the values already set', () => {
 		// `set()` throws for a malformed value as well as for a sealed
 		// list, and the retry on a rebuilt response can throw again.
 		// Either way the request must survive: an uncaught throw here

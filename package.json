@@ -95,7 +95,8 @@
 		"sbom:build": "node scripts/generate-sbom.mjs",
 		"csrf:contract:check": "node scripts/check-csrf-contract.mjs",
 		"lazy-media:report": "node scripts/render-lazy-media-report.mjs",
-		"verify:hsts-screenshot": "node scripts/make-hsts-verification-report.mjs"
+		"verify:hsts-screenshot": "node scripts/make-hsts-verification-report.mjs",
+		"storybook:ownership:check": "node scripts/check-storybook-ownership.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

@@ -11,6 +11,8 @@ import {
 	policyViolations,
 	readCanonicalDirective,
 	runGate,
+	stripComments,
+	undefinedParts,
 } from './check-hsts-policy.mjs';
 
 /**
@@ -151,14 +153,36 @@ describe('check-hsts-policy — HSTS-shaped literals only', () => {
 	});
 
 	it('does not read a doc comment writing the cache rule as a policy', () => {
-		// Backticks in prose are markdown, not a header value.
+		// Backticks in prose are markdown, not a header value. Comments are
+		// blanked before the scan, so neither the backtick nor the quoted
+		// spelling of a policy can be read out of a comment.
 		const source = [
 			'/**',
 			' * `s-maxage` overrides `max-age` for a shared cache, so',
 			' * `max-age=0` means "do not serve from cache".',
+			' * The cache policy itself is `public, max-age=31536000, immutable`,',
+			' * and `"max-age=63072000; preload"` only appears in this comment.',
 			' */',
 		].join('\n');
 		assert.deepEqual(hstsDirectivesIn('src/http/middleware/cache-policy.ts', source), []);
+	});
+
+	it('keeps a declaration that follows prose and string syntax the stripper must not eat', () => {
+		// The comment stripper has to track strings, template literals and
+		// regex literals: a `'https://…'` literal, a regex holding quotes and
+		// an escaped slash all look like comment syntax to a naive reader.
+		const source = [
+			'const QUOTE = /[\'"]x[\'"]/;',
+			'const ESCAPED = /a\\/\\/b/;',
+			"const ORIGIN = 'https://rebuildup.dev'; // not a comment start",
+			'/* a block comment with `max-age=31536000; preload` */',
+			"const D = 'max-age=31536000; includeSubDomains';",
+			'const RATIO = width / height / 2;',
+		].join('\n');
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/transport.ts', source), [
+			'max-age=31536000; includeSubDomains',
+		]);
+		assert.equal(stripComments('const a = 1; // gone').trim(), 'const a = 1;');
 	});
 
 	it('does not read a bare directive NAME as a policy', () => {
@@ -173,6 +197,51 @@ describe('check-hsts-policy — HSTS-shaped literals only', () => {
 	it('still reads a widened HSTS directive written in a comment-free literal', () => {
 		const source = "const D = 'max-age=63072000; preload';\n";
 		assert.deepEqual(hstsDirectivesIn('src/server.ts', source), ['max-age=63072000; preload']);
+	});
+
+	it('reads a widened directive written as a template literal', () => {
+		// The shape a Hono middleware naturally takes:
+		//   c.header(HSTS_HEADER, `max-age=31536000; includeSubDomains`)
+		// A scan that only reads quotes would miss it, which would make the
+		// gate decorative exactly where the widening happens.
+		const source = [
+			"const HSTS_HEADER = 'strict-transport-security';",
+			'export function transport(c) {',
+			'  c.header(HSTS_HEADER, `max-age=31536000; includeSubDomains`);',
+			'}',
+		].join('\n');
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/transport.ts', source), [
+			'max-age=31536000; includeSubDomains',
+		]);
+	});
+
+	it('reads a directive whose value is composed at runtime', () => {
+		// A source scan cannot know the interpolated value, so the literal is
+		// a candidate and is reported as unverifiable rather than skipped.
+		const source = ['const D = `max-age=${SECONDS}; includeSubDomains`;', ''].join('\n');
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/transport.ts', source), [
+			'max-age=${SECONDS}; includeSubDomains',
+		]);
+	});
+
+	it('keeps a literal that mixes a scope directive with a token RFC 6797 does not define', () => {
+		// Requiring every part to be a known directive would drop the whole
+		// string, taking `includeSubDomains` out of the scan with it.
+		const source = "const D = 'max-age=31536000; includeSubDomains; report-uri=x';\n";
+		assert.deepEqual(hstsDirectivesIn('src/http/middleware/transport.ts', source), [
+			'max-age=31536000; includeSubDomains; report-uri=x',
+		]);
+		assert.deepEqual(undefinedParts('max-age=31536000; includeSubDomains; report-uri=x'), [
+			'report-uri=x',
+		]);
+		assert.deepEqual(undefinedParts('max-age=31536000'), []);
+	});
+
+	it('does not mistake a Set-Cookie Max-Age attribute for a policy', () => {
+		// `src/home/reactions/cookie.ts` spells the cookie attribute
+		// `Max-Age`, the RFC 6265 casing; RFC 6797 spells HSTS `max-age`.
+		const source = 'const COOKIE = `Max-Age=${ACTOR_COOKIE_MAX_AGE_SECONDS}`;\n';
+		assert.deepEqual(hstsDirectivesIn('src/home/reactions/cookie.ts', source), []);
 	});
 
 	it('reads a Strict-Transport-Security rule out of _headers', () => {
@@ -242,6 +311,83 @@ describe('check-hsts-policy — drift scan', () => {
 				const violations = driftedDirectives({ root, canonical: 'max-age=31536000' });
 				assert.equal(violations.length, 1);
 				assert.match(violations[0], /public\/_headers/);
+			},
+		);
+	});
+
+	it('reports a policy widened in a template literal on a runtime path', () => {
+		// The regression this Issue's gate exists for: a Hono middleware or
+		// middleware constant that widens the directive in a template literal,
+		// on a surface the runtime suite does not exercise. `runGate` — not
+		// only the helper — has to fail on it.
+		withStaged(
+			{
+				...ENTRY,
+				'src/http/middleware/transport.ts':
+					'c.header(HSTS_HEADER, `max-age=31536000; includeSubDomains`);\n',
+			},
+			(root) => {
+				const violations = runGate({ root }).violations;
+				assert.ok(
+					violations.some(
+						(violation) =>
+							violation.includes('src/http/middleware/transport.ts') &&
+							violation.includes('includeSubDomains'),
+					),
+					`the gate missed a widened template literal: ${JSON.stringify(violations)}`,
+				);
+			},
+		);
+	});
+
+	it('names the token RFC 6797 does not define instead of dropping the literal', () => {
+		withStaged(
+			{
+				...ENTRY,
+				'scripts/make-hsts-report.mjs':
+					"const D = 'max-age=31536000; includeSubDomains; report-uri=x';\n",
+			},
+			(root) => {
+				const violations = driftedDirectives({ root, canonical: 'max-age=31536000' });
+				assert.ok(
+					violations.some((violation) => /report-uri=x.*RFC 6797/.test(violation)),
+					JSON.stringify(violations),
+				);
+			},
+		);
+	});
+
+	it('says a runtime-composed directive cannot be verified', () => {
+		withStaged(
+			{
+				...ENTRY,
+				'scripts/make-hsts-report.mjs': 'const D = `max-age=${SECONDS}`;\n',
+			},
+			(root) => {
+				const violations = driftedDirectives({ root, canonical: 'max-age=31536000' });
+				assert.ok(
+					violations.some((violation) => /composed at runtime/.test(violation)),
+					JSON.stringify(violations),
+				);
+			},
+		);
+	});
+
+	it('does not report prose that only explains the policy', () => {
+		withStaged(
+			{
+				...ENTRY,
+				'src/http/middleware/cache-policy.ts': [
+					'/**',
+					' * `max-age=0` means "do not serve from cache", and',
+					' * `public, max-age=31536000, immutable` is the cache policy.',
+					' */',
+					"const IMMUTABLE = 'public, max-age=31536000, immutable';",
+					'',
+				].join('\n'),
+			},
+			(root) => {
+				assert.deepEqual(driftedDirectives({ root, canonical: 'max-age=31536000' }), []);
 			},
 		);
 	});

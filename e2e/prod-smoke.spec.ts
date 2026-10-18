@@ -250,13 +250,17 @@ test.describe('transport security (Issue #446)', () => {
 			expect(res.status()).toBe(200);
 			// Cloudflare can add its own zone-level HSTS on top of the
 			// Worker's, so every value is inspected rather than the first.
-			observed.push(...(await res.headerValues('strict-transport-security')));
+			const values = await res.headerValues('strict-transport-security');
+			// Asserted PER SURFACE, not on the pooled count: a policy present
+			// on `/` and missing on `/api/v1/health` is exactly the dispatch
+			// inconsistency this smoke exists to catch, and a pooled `> 0`
+			// assertion would let it pass.
+			expect(
+				values.length,
+				`${path} has no Strict-Transport-Security header — the Worker policy is not live on this surface`,
+			).toBeGreaterThan(0);
+			observed.push(...values);
 		}
-
-		expect(
-			observed.length,
-			'no Strict-Transport-Security header on the canonical origin — the Worker policy is not live',
-		).toBeGreaterThan(0);
 
 		for (const value of observed) {
 			// Two layers of policy may arrive as comma-separated directives.

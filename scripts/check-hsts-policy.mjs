@@ -44,7 +44,8 @@
  *      generator — must carry the canonical directive. This is what
  *      keeps those from disagreeing with the runtime. Prose in
  *      `docs/` is out of scope on purpose: the ramp ladder documents
- *      values the site has not shipped yet.
+ *      values the site has not shipped yet, and prose inside a source
+ *      comment is blanked before the scan for the same reason.
  *
  * The drift scan has to tell an HSTS directive from a cookie's
  * `Max-Age` and from Cache-Control's `max-age`, which are different
@@ -53,9 +54,20 @@
  *
  *   - in a `_headers` file, a line whose header name is
  *     `Strict-Transport-Security:`;
- *   - anywhere else, a quoted string that contains a token named
- *     exactly `max-age` (lowercase — the cookie attribute is
- *     `Max-Age`, so a cookie literal is never mistaken for one).
+ *   - anywhere else, a string literal — single-quoted, double-quoted
+ *     OR a template literal — whose parts include a `max-age` part and
+ *     no token that belongs to another header's grammar (see
+ *     `OTHER_HEADER_TOKENS`). Template literals count because a
+ *     directive written as `` c.header(HSTS_HEADER, `…`) `` is the
+ *     natural way to widen the policy, and a gate that cannot read it
+ *     cannot refuse it.
+ *
+ * A literal that carries a `max-age` part together with a token RFC
+ * 6797 does not define is STILL a candidate: it is reported as drift,
+ * and the undefined token is reported on its own line. Dropping such a
+ * string (because "not every part is a known directive") is exactly
+ * how `max-age=31536000; includeSubDomains; report-uri=x` would slip
+ * through — the widest scope directive in the string, unreported.
  *
  * Test files are skipped, as in the D1 gate: they plant violations on
  * purpose as fixtures, and a fixture is not a declaration site. Drift
@@ -71,9 +83,20 @@
  *     enough to run it. A hand-written character match is used rather
  *     than an AST dependency for the same reason as
  *     `scripts/check-d1-sql-binding.mjs`.
- *   - The scan reports the FIRST `max-age=<n>` literal per file. A
- *     file that declares two different values is still reported, so
- *     the limit costs nothing in practice.
+ *   - The scan reports EVERY candidate literal in a file, not the first
+ *     one, and reports what it cannot verify: a template literal with
+ *     an interpolation (`max-age=${n}`) is a violation naming the
+ *     canonical constant to build the value from, because its runtime
+ *     value is invisible to a source scan.
+ *   - Comments are blanked (same length, so line numbers survive) by a
+ *     small hand-written scanner rather than an AST pass. It tracks
+ *     strings, template literals and regex literals, so `'https://…'`,
+ *     `/['"]/` and `/\/\//` are never mistaken for comment syntax.
+ *   - One documented blind spot: a literal that mixes a `max-age` part
+ *     with a token that belongs to another header's grammar
+ *     (`OTHER_HEADER_TOKENS`) is attributed to that other header. That
+ *     is what keeps `public, max-age=31536000, immutable` out of the
+ *     report, and the list is the price of that decision.
  *
  * Exit codes: 0 = policy holds, 1 = violation, 2 = bad input.
  */
@@ -90,43 +113,303 @@ const POLICY_FILE = join('src', 'server.ts');
 /** The declaration that carries the single canonical directive. */
 const DECLARATION = /export const HSTS_DIRECTIVE\s*=\s*'([^']*)'/g;
 
-/** A quoted string, single / double / backtick, without escapes. */
-const QUOTED = /(?:'([^'\\\n]*)'|"([^"\\\n]*)")/g;
-
 /**
- * A quoted literal is treated as an HSTS declaration only when it carries a
- * `max-age=<value>` part AND every `;`-separated part is a directive RFC 6797
- * §6.1.1 defines. The two halves answer different questions:
- *
- *   - the `max-age=<value>` part separates a policy from a bare directive
- *     NAME. `src/http/middleware/cache-policy.ts` and this Issue's own
- *     fixtures quote `'max-age'` and `'includeSubDomains'` as words, and
- *     `'max-age'` on its own states no lifetime at all;
- *   - the sibling-directive test separates a policy from a Cache-Control or
- *     cookie value that happens to carry a `max-age`: `'public,
- *     max-age=31536000, immutable'` and `'…; Max-Age=31536000; Path=/'` are
- *     not HSTS policies because `public` / `immutable` / `Path` are not
- *     directives RFC 6797 defines.
- *
- * The canonical value can never grow a part outside `KNOWN_DIRECTIVES` —
- * `policyViolations` refuses unknown directives — so this test cannot hide a
- * legitimate drift site.
+ * A string literal: single-quoted, double-quoted, or a template literal.
+ * The backtick alternative exists because a directive written as a template
+ * (`c.header(HSTS_HEADER, `max-age=31536000; includeSubDomains`)`) is a
+ * declaration site like any other. Interpolations are deliberately NOT
+ * excluded: `stripComments` already keeps template bodies intact, and a
+ * template whose value cannot be compared statically is reported rather than
+ * ignored.
  */
-function isHstsLiteral(literal) {
-	const parts = literal
-		.split(';')
-		.map((part) => part.trim())
-		.filter((part) => part !== '');
-	if (parts.length === 0) return false;
-	if (!parts.some((part) => /^max-age=\d+$/i.test(part))) return false;
-	return parts.every((part) => KNOWN_DIRECTIVES.has(part.split('=')[0].trim().toLowerCase()));
-}
+const QUOTED = /'([^'\\\n]*)'|"([^"\\\n]*)"|`([^`\\\n]*)`/g;
 
 /** A `Strict-Transport-Security:` header line inside `_headers`. */
 const HSTS_HEADER_LINE = /^\s*strict-transport-security\s*:\s*(.+)$/i;
 
 /** Directives RFC 6797 §6.1.1 defines, lower-cased. */
 const KNOWN_DIRECTIVES = new Set(['max-age', 'includesubdomains', 'preload']);
+
+/**
+ * Tokens that belong to another header's grammar, so a literal carrying one of
+ * them is that header's value and not an HSTS policy:
+ *
+ *   - Cache-Control directives (RFC 9111 §5.2), which is how this repository
+ *     spells its own cache lifetimes — `scripts/build-cache-isolation-report.mjs`
+ *     carries `'public, max-age=31536000, immutable'` in code;
+ *   - Set-Cookie attributes (RFC 6265 §4.1), which is why the cookie literal
+ *     `'Max-Age=31536000; Path=/; HttpOnly; Secure'` is not a policy.
+ *
+ * This list is the gate's only deliberate blind spot and it is documented as
+ * such in the module comment above.
+ */
+const OTHER_HEADER_TOKENS = new Set([
+	// Cache-Control (RFC 9111 §5.2)
+	'public',
+	'private',
+	'no-cache',
+	'no-store',
+	'no-transform',
+	'must-revalidate',
+	'proxy-revalidate',
+	'immutable',
+	'stale-while-revalidate',
+	's-maxage',
+	// Set-Cookie attributes (RFC 6265 §4.1)
+	'expires',
+	'path',
+	'domain',
+	'secure',
+	'httponly',
+	'samesite',
+	'priority',
+	'partitioned',
+]);
+
+/**
+ * The directive parts of a literal, split on both separators RFC 9111 and
+ * RFC 6797 use. HSTS is `;`-separated; splitting on `,` as well only makes
+ * the scan read `public, max-age=1` the way the cache header spells it.
+ */
+function directiveParts(literal) {
+	return literal
+		.split(/[;,]/)
+		.map((part) => part.trim())
+		.filter((part) => part !== '');
+}
+
+/**
+ * Is this part the policy's lifetime, spelled the way RFC 6797 §6.1.1 spells
+ * it? `Max-Age` is deliberately a different shape: that is the Set-Cookie
+ * attribute spelling, which `src/home/reactions/cookie.ts` uses for the actor
+ * cookie, so a cookie literal is never read as a policy.
+ */
+function isMaxAgePart(part) {
+	return /^max-age=/.test(part.replace(/\s*=\s*/, '='));
+}
+
+/**
+ * A string literal is treated as an HSTS declaration when it carries a
+ * `max-age` part AND no token that belongs to another header's grammar. The
+ * two halves answer different questions:
+ *
+ *   - the `max-age` part separates a policy from a bare directive NAME.
+ *     `src/http/middleware/cache-policy.ts` and this Issue's own fixtures
+ *     quote `'max-age'` and `'includeSubDomains'` as words, and `'max-age'`
+ *     on its own states no lifetime at all. The VALUE is not matched, so an
+ *     interpolated or non-numeric one still counts as a policy — the literal is
+ *     then reported as unverifiable rather than skipped;
+ *   - the `OTHER_HEADER_TOKENS` test separates a policy from a Cache-Control
+ *     or cookie value that happens to carry a `max-age`: `'public,
+ *     max-age=31536000, immutable'` and `'…; Max-Age=31536000; Path=/'` are
+ *     not HSTS policies.
+ *
+ * A part that is neither a known directive nor another header's token is NOT
+ * grounds for skipping the literal. `undefinedParts` reports it, and the drift
+ * check reports the string, so `max-age=31536000; includeSubDomains;
+ * report-uri=x` fails the gate instead of disappearing from the scan.
+ */
+function isHstsLiteral(literal) {
+	const parts = directiveParts(literal);
+	if (!parts.some(isMaxAgePart)) return false;
+	return !parts.some((part) => OTHER_HEADER_TOKENS.has(part.split('=')[0].trim().toLowerCase()));
+}
+
+/** Parts of a candidate literal that RFC 6797 §6.1.1 does not define. */
+export function undefinedParts(literal) {
+	return directiveParts(literal).filter(
+		(part) => !KNOWN_DIRECTIVES.has(part.split('=')[0].trim().toLowerCase()),
+	);
+}
+
+/** A template literal whose value is composed at runtime. */
+function hasInterpolation(literal) {
+	return literal.includes('${');
+}
+
+/** Keywords that can be followed by a regex literal. */
+const REGEX_KEYWORDS = new Set([
+	'await',
+	'case',
+	'delete',
+	'do',
+	'else',
+	'in',
+	'instanceof',
+	'new',
+	'of',
+	'return',
+	'typeof',
+	'void',
+	'yield',
+]);
+
+/**
+ * Blank out comment bodies, keeping every other character (and therefore every
+ * offset and line number) in place.
+ *
+ * Prose is not a declaration site. `src/http/middleware/cache-policy.ts`
+ * explains its cache rule with `` `max-age=0` `` in a doc comment, and once
+ * template literals are scanned that markdown would read as a header value.
+ * Comments are therefore removed before the literal scan, which also keeps a
+ * quoted policy quoted inside a comment from failing the gate.
+ *
+ * Strings, template literals (including `${…}` holes) and regex literals are
+ * tracked so their contents are never read as comment syntax: `'https://…'`,
+ * `` `https://…` ``, `/['"]/` and `/\/\//` all survive intact. A `/` between
+ * two operands is division, not a regex start; the usual "previous significant
+ * character" heuristic decides, which is the same hand-written trade-off the
+ * canonical-directive match makes.
+ */
+export function stripComments(source) {
+	const out = source.split('');
+	/** Last significant character seen in code, and the identifier before it. */
+	let previous = '';
+	let previousWord = '';
+
+	const blank = (from, to) => {
+		for (let at = from; at < to; at += 1) {
+			if (source[at] !== '\n' && source[at] !== '\r') out[at] = ' ';
+		}
+	};
+
+	const opensRegex = () => {
+		// A value on the left (`x`, `)`, `]`, a closing quote) means division,
+		// unless the value is a keyword that can precede a regex.
+		if (previous === '') return true;
+		if (/[A-Za-z0-9_$)\]}'"]/.test(previous)) return REGEX_KEYWORDS.has(previousWord);
+		return true;
+	};
+
+	let at = 0;
+	while (at < source.length) {
+		const char = source[at];
+		const next = source[at + 1];
+
+		if (char === '/' && next === '/') {
+			const lineEnd = source.indexOf('\n', at);
+			const stop = lineEnd === -1 ? source.length : lineEnd;
+			blank(at, stop);
+			at = stop;
+			continue;
+		}
+		if (char === '/' && next === '*') {
+			const blockEnd = source.indexOf('*/', at + 2);
+			const stop = blockEnd === -1 ? source.length : blockEnd + 2;
+			blank(at, stop);
+			at = stop;
+			continue;
+		}
+		if (char === "'" || char === '"') {
+			at = skipQuoted(source, at, char);
+			previous = char;
+			previousWord = '';
+			continue;
+		}
+		if (char === '`') {
+			at = skipTemplate(source, at);
+			previous = char;
+			previousWord = '';
+			continue;
+		}
+		if (char === '/' && opensRegex()) {
+			at = skipRegex(source, at);
+			previous = char;
+			previousWord = '';
+			continue;
+		}
+		if (/\s/.test(char)) {
+			at += 1;
+			continue;
+		}
+		if (/[A-Za-z0-9_$]/.test(char)) {
+			let end = at;
+			while (end < source.length && /[A-Za-z0-9_$]/.test(source[end])) end += 1;
+			previousWord = source.slice(at, end);
+			previous = source[end - 1];
+			at = end;
+			continue;
+		}
+		previous = char;
+		previousWord = '';
+		at += 1;
+	}
+	return out.join('');
+}
+
+/** Index just past a `'`/`"` string that starts at `start`. */
+function skipQuoted(source, start, quote) {
+	let at = start + 1;
+	while (at < source.length) {
+		const char = source[at];
+		if (char === '\\') {
+			at += 2;
+			continue;
+		}
+		if (char === quote) return at + 1;
+		// An unterminated literal must not swallow the rest of the file.
+		if (char === '\n') return at;
+		at += 1;
+	}
+	return source.length;
+}
+
+/** Index just past a template literal that starts at `start`, holes included. */
+function skipTemplate(source, start) {
+	let at = start + 1;
+	while (at < source.length) {
+		const char = source[at];
+		if (char === '\\') {
+			at += 2;
+			continue;
+		}
+		if (char === '`') return at + 1;
+		if (char === '$' && source[at + 1] === '{') {
+			at += 2;
+			let depth = 1;
+			while (at < source.length && depth > 0) {
+				const inner = source[at];
+				if (inner === '{') depth += 1;
+				else if (inner === '}') depth -= 1;
+				else if (inner === "'" || inner === '"') {
+					at = skipQuoted(source, at, inner);
+					continue;
+				} else if (inner === '`') {
+					at = skipTemplate(source, at);
+					continue;
+				}
+				at += 1;
+			}
+			continue;
+		}
+		at += 1;
+	}
+	return source.length;
+}
+
+/** Index just past a regex literal that starts at `start`. */
+function skipRegex(source, start) {
+	let at = start + 1;
+	let inCharacterClass = false;
+	while (at < source.length) {
+		const char = source[at];
+		if (char === '\\') {
+			at += 2;
+			continue;
+		}
+		if (char === '[') inCharacterClass = true;
+		else if (char === ']') inCharacterClass = false;
+		else if (char === '/' && !inCharacterClass) {
+			at += 1;
+			while (at < source.length && /[a-z]/.test(source[at])) at += 1;
+			return at;
+		} else if (char === '\n') {
+			return at;
+		}
+		at += 1;
+	}
+	return source.length;
+}
 
 /**
  * Directives that stay OFF until a per-subdomain HTTPS audit exists
@@ -288,8 +571,10 @@ export function hstsDirectivesIn(path, source) {
 		}
 		return directives;
 	}
-	for (const match of source.matchAll(QUOTED)) {
-		const literal = match[1] ?? match[2] ?? '';
+	// Comments are prose, not declaration sites — see `stripComments`.
+	const code = stripComments(source);
+	for (const match of code.matchAll(QUOTED)) {
+		const literal = match[1] ?? match[2] ?? match[3] ?? '';
 		if (isHstsLiteral(literal)) directives.push(literal);
 	}
 	return directives;
@@ -304,9 +589,17 @@ export function driftedDirectives({ root = REPO_ROOT, canonical }) {
 			const file = relative(root, path).split(sep).join('/');
 			if (file === SELF || TEST_FILE.test(file)) continue;
 			for (const literal of hstsDirectivesIn(file, readFileSync(path, 'utf8'))) {
-				if (normalizeDirective(literal) !== expected) {
+				const normalized = normalizeDirective(literal);
+				if (normalized === expected) continue;
+				violations.push(`${file}: "${normalized}" differs from the shipped directive ${expected}.`);
+				for (const part of undefinedParts(literal)) {
 					violations.push(
-						`${file}: "${normalizeDirective(literal)}" differs from the shipped directive ${expected}.`,
+						`${file}: "${part}" is not a directive RFC 6797 §6.1.1 defines — a browser ignores it, so the gate reports the whole literal rather than dropping it.`,
+					);
+				}
+				if (hasInterpolation(literal)) {
+					violations.push(
+						`${file}: "${normalized}" is composed at runtime, so the gate cannot compare it with ${expected}. Build the header value from HSTS_DIRECTIVE instead of assembling it.`,
 					);
 				}
 			}

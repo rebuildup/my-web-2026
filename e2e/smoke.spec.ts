@@ -53,6 +53,10 @@ test.describe('deployed Worker smoke', () => {
 		// "HTTPS is configured here" for a response that proves nothing.
 		const origin = baseURL ?? testInfo.project.use.baseURL ?? '';
 		test.skip(
+			!origin,
+			'no base URL is configured, so there is no origin to make a statement about',
+		);
+		test.skip(
 			new URL(origin).protocol !== 'http:',
 			'an HTTPS base URL was supplied; the positive case is covered by test/integration/hsts-transport-security.test.ts and the production smoke',
 		);

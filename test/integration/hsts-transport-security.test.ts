@@ -28,8 +28,13 @@ const HSTS_HEADER = 'strict-transport-security';
 /** Intended value — must equal `HSTS_DIRECTIVE` in `src/server.ts`. */
 const INTENDED_DIRECTIVE = 'max-age=31536000';
 
-/** Directives that must stay off until the per-subdomain audit lands. */
-const FORBIDDEN_DIRECTIVES = ['includesubdomains', 'preload'];
+/** The directive names a response value carries, lower-cased. */
+function directiveNames(value: string): string[] {
+	return value
+		.toLowerCase()
+		.split(';')
+		.map((part) => part.trim());
+}
 
 interface Observed {
 	status: number;
@@ -96,21 +101,27 @@ describe('HTTPS delivery — negative case (Issue #446)', () => {
 		expect(observed.values).toEqual([]);
 	});
 
-	it.each(SURFACES)('https %s carries neither includeSubDomains nor preload', async (url) => {
-		// The negative half of the Issue's constraint: the policy is
-		// deliberately host-scoped. `includeSubDomains` would extend it
-		// to hostnames this repository cannot verify
-		// (`media.rebuildup.dev`, and any subdomain added later), and
-		// `preload` is a months-long commitment.
-		for (const value of (await observe(url)).values) {
-			const directives = value
-				.toLowerCase()
-				.split(';')
-				.map((part) => part.trim());
-			for (const forbidden of FORBIDDEN_DIRECTIVES) {
-				expect(directives).not.toContain(forbidden);
-			}
-			expect(directives).toContain(INTENDED_DIRECTIVE);
+	// One test per scope directive rather than one combined test: the
+	// verification report renders a row per contract, and two rows reading
+	// the same assertion would over-count the evidence.
+	//
+	// The negative half of the Issue's constraint: the policy is
+	// deliberately host-scoped. `includeSubDomains` would extend it
+	// to hostnames this repository cannot verify
+	// (`media.rebuildup.dev`, and any subdomain added later), and
+	// `preload` is a months-long commitment.
+	it.each(SURFACES)('https %s carries no includeSubDomains directive', async (url) => {
+		for (const names of (await observe(url)).values.map(directiveNames)) {
+			expect(names).not.toContain('includesubdomains');
+			// Not vacuously green: the intended directive must still be there.
+			expect(names).toContain(INTENDED_DIRECTIVE);
+		}
+	});
+
+	it.each(SURFACES)('https %s carries no preload directive', async (url) => {
+		for (const names of (await observe(url)).values.map(directiveNames)) {
+			expect(names).not.toContain('preload');
+			expect(names).toContain(INTENDED_DIRECTIVE);
 		}
 	});
 });

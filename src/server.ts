@@ -250,8 +250,13 @@ const HSTS_HEADER = 'strict-transport-security';
  *
  * An existing header always wins: something upstream already made a
  * transport decision for this response, and a second directive would
- * only add a duplicate header to combine. Sealed/immutable headers
- * are left alone rather than failing a request over a header hint.
+ * only add a duplicate header to combine. A sealed response (immutable
+ * headers) is left alone rather than failing a request over a header
+ * hint. That is a deliberate fail-open: refusing to serve a response
+ * because a hint could not be attached would trade a transport nicety
+ * for an outage. The cost is that the guarantee is then missing on that
+ * response, which is why the contract suite drives the three shipped
+ * surfaces and asserts they are mutable.
  */
 function applyTransportSecurityPolicy(request: Request, response: Response): Response {
 	if (response.headers.has(HSTS_HEADER)) return response;

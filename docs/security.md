@@ -177,7 +177,7 @@ one is added.
 
 Static Assets .Named response が HSTS を持たないことは
 **到達経路の穴ではない**。HSTS は host 単位で、一度でも secure 応答で
-受け取るとその origin に対して固定され、ドキュメント応答が 그것 を
+受け取るとその origin に対して固定され、ドキュメント応答がそれを
 設定する。origin 全体で普遍に効かせるコントロールは Cloudflare
 zone 設定（SSL/TLS → Edge Certificates → HSTS）であり、これは
 operator 所有で**リポジトリからは観測できない**（後述「観測していないもの」）。
@@ -202,7 +202,7 @@ Strict-Transport-Security: max-age=31536000
 | 実行時スイート | HTTPS での SSR / 外部境界 / リダイレクトが正確に意図した値を 1 つだけ持つこと、http では 0 個であること、値に `includeSubDomains` / `preload` が無いこと | `test/integration/hsts-transport-security.test.ts`（workerd pool） |
 | 静的 gate | 宣言が 1 箇所だけであること、`max-age` が許可域（1 日〜2 年）であること、未知 directive が無いこと、`includeSubDomains` / `preload` が無いこと、コード全体のリテラルが canonical と一致すること | `scripts/check-hsts-policy.mjs`（fixture は `scripts/check-hsts-policy.test.mjs`） |
 | E2E（local） | `pnpm preview`（`http://127.0.0.1:3000`）の応答に HSTS が無いこと。plaintext 配信を「HTTPS 化済み」に見せない | `e2e/smoke.spec.ts` |
-| E2E（production、read-only） | canonical origin の実応答が host-scoped な値であること | `e2e/prod-smoke.spec.ts`（手動 `workflow_dispatch` / `pnpm run e2e:prod`） |
+| E2E（production、read-only） | canonical origin の**各 surface**（`/` と `/api/v1/health`）がそれぞれ host-scoped な値であること | `e2e/prod-smoke.spec.ts`（手動 `workflow_dispatch` / `pnpm run e2e:prod`） |
 
 静的 gate 単体の実行:
 
@@ -212,10 +212,28 @@ node scripts/check-hsts-policy.mjs
 
 gate は Cookie の `Max-Age` と Cache-Control の `max-age` を
 HSTS と見間違えないよう、token 名ではなく**文脈**（`_headers` の
-`Strict-Transport-Security:` 行、または `max-age` を含む引用文字列）で
-判定する。fixture ファイル（`*.test.*` / `*.spec.*`）は違反を意図的に
-植えるため対象外で、実行時スイートと canonical 値の不一致は
+`Strict-Transport-Security:` 行、または `max-age` を含む文字列リテラル）で
+判定する。対象は単一引用符・二重引用符・**テンプレートリテラル**の
+3 種すべて（`` c.header(HSTS_HEADER, `max-age=…; includeSubDomains`) ``
+のような拡張も走査対象）。コメントは走査前に空白で埋めるため、
+doc comment の markdown（`` `max-age=0` ``）を宣言と誤読しない。
+`max-age` の一部が Cache-Control / Set-Cookie の token を伴う文字列
+（`public, max-age=31536000, immutable` など）は他ヘッダーの値と
+みなして対象外にする。RFC 6797 が定義しない token を含むリテラル
+（`max-age=31536000; includeSubDomains; report-uri=x`）や、実行時に
+組み立てられるため比較できないリテラル（`max-age=${seconds}`）は
+「読み飛ばす」のではなく**違反として報告する**。fixture ファイル
+（`*.test.*` / `*.spec.*`）は違反を意図的に植えるため対象外で、
+実行時スイートと canonical 値の不一致は
 `test/integration/hsts-transport-security.test.ts` が落とす。
+
+production smoke は **deploy 後**の観測専用である。HSTS を返す Worker
+が本番に載る前に `pnpm run e2e:prod` を走らせると
+「Worker policy is not live」で失敗するのが正しい挙動であり、
+deploy 前のベースライン取得には
+[`docs/runbook/issue-139-rotation.md`](runbook/issue-139-rotation.md)
+の transition フェーズ
+（`pnpm run e2e:prod:transition`、この検査を skip する）を使う。
 
 ### includeSubDomains / preload を付ける条件
 

@@ -101,13 +101,13 @@ const CASES = [
 		'negative',
 		'HTTPS 応答（3 surface すべて）',
 		'includeSubDomains を含まない',
-		'carries neither includeSubDomains nor preload',
+		'carries no includeSubDomains directive',
 	],
 	[
 		'negative',
 		'HTTPS 応答（3 surface すべて）',
 		'preload を含まない',
-		'carries neither includeSubDomains nor preload',
+		'carries no preload directive',
 	],
 ];
 
@@ -148,10 +148,14 @@ const UNOBSERVED = [
 
 function run() {
 	mkdirSync(TMP, { recursive: true });
-	execFileSync('npx', ['vitest', 'run', SUITE, '--reporter=json', `--outputFile=${JSON_REPORT}`], {
-		cwd: ROOT,
-		stdio: 'inherit',
-	});
+	execFileSync(
+		'pnpm',
+		['exec', 'vitest', 'run', SUITE, '--reporter=json', `--outputFile=${JSON_REPORT}`],
+		{
+			cwd: ROOT,
+			stdio: 'inherit',
+		},
+	);
 	return JSON.parse(readFileSync(JSON_REPORT, 'utf8'));
 }
 

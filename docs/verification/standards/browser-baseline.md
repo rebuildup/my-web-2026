@@ -117,8 +117,7 @@ pnpm run verify:browser-baseline-screenshot            # report HTML + WebP を�
 surfaces  12 declared · 156 files scanned · 0 uncovered
 features  14 adopted (3 below the bar, each with a verified fallback) · 9 guarded
 warnings (3)   # word-break-auto-phrase / text-wrap-balance / text-wrap-pretty
-errors (0)
-exit 0
+exit 0         # `errors (n)` 行はエラーが 1 件以上あるときだけ出力される（0 件なら出ない）
 ```
 
 ## fixture — fail になる場合

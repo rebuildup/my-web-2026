@@ -107,12 +107,25 @@ document, not a navigation the user asked for.
 
 | delivery kind          | accepted `src`                                          | rejected                                             |
 | ---------------------- | ------------------------------------------------------- | ---------------------------------------------------- |
-| `same_origin_static`   | root-relative path (`/tools/<slug>/app/index.html`)       | `//host/...`, `https://host/...`, non-http schemes     |
+| `same_origin_static`   | root-relative path (`/tools/<slug>/app/index.html`)       | `//host/...`, `https://host/...`, non-http schemes, and any src URL resolution sends off-origin (`/\host/...`) |
 | `external_exception`   | `https://...` from `external_url`                         | `http://...`, protocol-relative, missing `external_url` |
 | `host_disabled`        | not framed, not policed                                    | —                                                     |
 
 `//host/...` is called out separately because it is the realistic
 form of this mistake: it reads like a path and is a foreign origin.
+
+**The origin comes from a parse, not from the first character.** A
+src that starts with `/` is only `same-origin` if resolving it
+actually lands on the host origin. The URL parser maps `\` to `/`
+inside an `http(s)` URL and strips raw tab / LF / CR, so
+`/\evil.example/tool` resolves to `https://evil.example/tool` — a
+prefix check calls it same-origin, and the browser loads a foreign
+frame. `classifyToolFrameSrc` therefore resolves every root-relative
+src against a stand-in host origin (`https://host.invalid`, never
+contacted) and compares origins; anything that lands elsewhere is
+`cross-origin` and fails the gate as `embed.frame-src.cross-origin`.
+The rules and their traps are pinned by
+`src/tools/embed-policy.test.ts` → `Tool embed policy — frame origin`.
 
 ### 5. The message channel is opt-in
 

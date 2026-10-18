@@ -202,6 +202,30 @@ describe('Tool manifest — embed policy gate (Issue #465)', () => {
 		);
 	});
 
+	it('fails the build for a src that only LOOKS root-relative', () => {
+		// Review of #569 (P2): `/\evil.example/app/index.html` starts
+		// with `/`, but the URL parser maps `\` to `/` for special
+		// schemes, so the browser loads `https://evil.example/...`. The
+		// gate must fail the commit rather than render a foreign frame.
+		for (const entry_html of [
+			'/\\evil.example/app/index.html',
+			'/\\\\evil.example/app/index.html',
+			'/\t/evil.example/app/index.html',
+			'/\r/evil.example/app/index.html',
+		]) {
+			assert.deepEqual(
+				violationCodes({
+					kind: 'same_origin_static',
+					artifact_path: '/tools/fixture/app',
+					entry_html,
+					iframe: okIframe,
+				}),
+				['embed.frame-src.cross-origin'],
+				entry_html,
+			);
+		}
+	});
+
 	it('fails the build for a wildcard host_message expected_origin', () => {
 		assert.deepEqual(
 			violationCodes({

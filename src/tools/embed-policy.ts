@@ -64,9 +64,12 @@
  *    `src` for `same_origin_static` must be root-relative (host
  *    origin). `//host/...` (protocol-relative) and absolute URLs are
  *    rejected — both are ways to smuggle a foreign origin into a field
- *    that reads like a path. `external_exception` Tools are framed
- *    from their declared `https` `external_url`, never from the
- *    artefact path.
+ *    that reads like a path — and so is a root-relative-looking src
+ *    that URL resolution sends elsewhere (`/\evil.example/…`, which
+ *    the parser reads as `//evil.example/…`). The origin comes from an
+ *    actual parse, never from a string comparison.
+ *    `external_exception` Tools are framed from their declared `https`
+ *    `external_url`, never from the artefact path.
  * 5. **The message channel is opt-in and origin-exact.**
  *    `delivery.host_message` is OPTIONAL. With no declaration the host
  *    attaches no `message` listener at all, so no message from a Tool
@@ -303,20 +306,56 @@ export function parseTokenList(value: string | undefined): string[] {
 }
 
 /**
- * Classify a frame `src`.
+ * A stand-in for the host origin, used ONLY to resolve a frame `src`
+ * with the parser the browser itself uses. It is never contacted —
+ * the resolved URL's origin is compared, not fetched.
+ *
+ * The probe has to be a special-scheme URL with an authority: for
+ * `http:`/`https:` references the WHATWG URL parser strips ASCII tab /
+ * CR / LF and maps `\` to `/`, and that normalisation is exactly what
+ * turns a string that *looks* root-relative into a foreign origin.
+ */
+const HOST_ORIGIN_PROBE = 'https://host.invalid';
+
+/**
+ * Classify a frame `src` the way the browser will resolve it.
  *
  *   - root-relative (`/tools/x/app/index.html`) → `same-origin`
+ *     **only when it resolves to the host origin**
  *   - protocol-relative (`//host/x`) → `cross-origin` (this is the
  *     trap: it looks like a path and is not)
  *   - absolute `http(s)` → `cross-origin`
  *   - anything else (`javascript:`, `data:`, `blob:`, garbage) →
  *     `unresolved`
+ *
+ * A prefix check is NOT enough, and the backslash is the reason. The
+ * URL parser treats `\` as `/` inside an `http(s)` URL, so the src
+ * `/\evil.example/tool` resolves to `https://evil.example/tool`, and a
+ * src with a raw tab, LF or CR inside it is normalised the same way
+ * (`/<TAB>/evil.example`, `/<CR>/evil.example`, …). Classifying those
+ * as `same-origin` from their first character would let a manifest ship
+ * a frame that the browser loads from a foreign origin — the precise
+ * smuggling this rule exists to refuse. So the origin comes from an
+ * actual parse, never from a string comparison.
  */
 export function classifyToolFrameSrc(src: string): ToolEmbedSubject['frame_origin'] {
 	if (typeof src !== 'string' || src.trim().length === 0) return 'unresolved';
 	const value = src.trim();
 	if (value.startsWith('//')) return 'cross-origin';
-	if (value.startsWith('/')) return 'same-origin';
+	if (value.startsWith('/')) {
+		// Root-relative candidate: resolve it the way the browser will
+		// and compare origins. Anything the parser sends elsewhere is
+		// `cross-origin` (fail closed), anything it cannot resolve at
+		// all is `unresolved` (also fail closed).
+		let resolved: URL;
+		try {
+			resolved = new URL(value, HOST_ORIGIN_PROBE);
+		} catch {
+			return 'unresolved';
+		}
+		if (resolved.protocol !== 'https:') return 'unresolved';
+		return resolved.origin === HOST_ORIGIN_PROBE ? 'same-origin' : 'cross-origin';
+	}
 	let parsed: URL;
 	try {
 		parsed = new URL(value);

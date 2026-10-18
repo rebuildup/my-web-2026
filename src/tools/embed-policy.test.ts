@@ -307,6 +307,36 @@ describe('Tool embed policy — frame origin', () => {
 		);
 	});
 
+	it('refuses a root-relative-looking src that URL resolution sends elsewhere', () => {
+		// Issue #465 review (P2). A prefix check classified these as
+		// `same-origin` and the policy passed them, but the browser's
+		// URL parser maps `\` to `/` for special schemes and strips raw
+		// tab / LF / CR, so the frame loads cross-origin. Each case is
+		// asserted against the parser itself first, so the test says why
+		// it is hostile rather than only that it is refused.
+		const base = 'https://host.invalid/tools/fixture/app/index.html';
+		const smuggled = [
+			'/\\evil.example/tool',
+			'/\\\\evil.example/tool',
+			'/\\/evil.example/tool',
+			'/\t/evil.example/tool',
+			'/\n/evil.example/tool',
+			'/\r/evil.example/tool',
+		];
+		for (const src of smuggled) {
+			expect(new URL(src, base).origin, src).not.toBe('https://host.invalid');
+			expect(classifyToolFrameSrc(src), src).toBe('cross-origin');
+			expect(codes(okDelivery({ entry_html: src })), src).toContain('embed.frame-src.cross-origin');
+		}
+	});
+
+	it('still accepts an ordinary root-relative src after the parser check', () => {
+		for (const src of ['/tools/fixture/app/index.html', '/', '/tools/a-b_c~d/e']) {
+			expect(classifyToolFrameSrc(src), src).toBe('same-origin');
+			expect(codes(okDelivery({ entry_html: src })), src).toEqual([]);
+		}
+	});
+
 	it('rejects an embeddable entry with no frame src at all', () => {
 		// Both halves are reported: no src to frame, and no sandbox to
 		// frame it with. Reporting them together is what lets one

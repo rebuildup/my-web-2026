@@ -848,7 +848,7 @@ export function resolveMessage(contract, featureId, locale, key) {
 }
 
 /** Coverage + preservation + publication checks for one feature. */
-export function checkFeature(contract, feature) {
+export function checkFeature(feature) {
 	const findings = [];
 	const id = feature?.id ?? null;
 	const declared = feature?.locales ?? {};
@@ -1098,7 +1098,7 @@ export function checkMessage({
 export function runChecks(contract, { repoRoot = REPO_ROOT } = {}) {
 	const findings = [
 		...validateContract(contract, { repoRoot }),
-		...(contract?.features ?? []).flatMap((feature) => checkFeature(contract, feature)),
+		...(contract?.features ?? []).flatMap((feature) => checkFeature(feature)),
 	];
 	const sorted = sortFindings(findings);
 	return {
@@ -1213,11 +1213,8 @@ export function renderJson(runs) {
 }
 
 /**
- * Self-contained HTML report.
- *
- * One file, no external asset, so a CI job can upload it as an
- * artefact and a reviewer can open it without a build step. This is
- * also the surface the Issue's verification screenshot captures.
+ * Opt-in matrix as HTML. Rendered above the findings so a reviewer can
+ * see the shape of the coverage before reading what failed.
  */
 function htmlCoverageMatrix(contract) {
 	const matrix = renderCoverageMatrix(contract);
@@ -1240,6 +1237,13 @@ function htmlCoverageMatrix(contract) {
 		</table>`;
 }
 
+/**
+ * Self-contained HTML report.
+ *
+ * One file, no external asset, so a CI job can upload it as an
+ * artefact and a reviewer can open it without a build step. This is
+ * also the surface the Issue's verification screenshot captures.
+ */
 export function renderHtml(runs) {
 	const sections = runs
 		.map((run) => {

@@ -104,6 +104,9 @@ fixture の finding が gate を赤くすることはない（`--include-fixture
 
 終了コード: `0` = gate 対象の run に error なし、`1` = error あり、`2` = 入力エラー。
 
+検証画像: [`docs/verification/i18n/missing-keys-report.webp`](../docs/verification/i18n/missing-keys-report.webp)
+（repository 契約の opt-in matrix と、fixture 契約の finding 一覧をまとめたレポート）。
+
 ## 2 番目の locale を opt-in する手順
 
 1. `knownLocales` に locale を追加する。

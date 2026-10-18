@@ -347,9 +347,13 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `wrangler:independence:check` + `cloudflare:contract:check` +
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
-  `csrf:contract:check` + `compat:check` + `publication:check` +
-  `i18n:policy:check` +
-  `test`)
+  `csrf:contract:check` + `compat:check` +
+  `tools:provenance:check` + `publication:check` +
+  `routes:quality:check` + `i18n:policy:check` +
+  `ci:pins:check` (Issue #472, GitHub
+  Actions pin / token audit) + `test`. The canonical list is
+  `quality/profile.yaml#gates.fast.components`; add a step there,
+  not only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +
   `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +

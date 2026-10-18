@@ -73,6 +73,8 @@ by Issue #531.
 Further cases drive the diff itself, which is the path that actually runs
 in CI: a finding recorded in the fixture's `quality/knip-baseline.json`
 does not fail the gate, an unbaselined one does, and a baseline entry whose
-finding disappeared is reported as resolved. A `--root` fixture with no
+finding disappeared is reported as resolved (as a `::warning::`
+annotation, so a shrinking baseline is visible in the GitHub Actions
+annotations instead of only in the raw log). A `--root` fixture with no
 baseline file at all means "no debt recorded yet" and is the only case in
 which the baseline is optional.

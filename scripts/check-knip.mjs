@@ -53,6 +53,8 @@ const GATED_KEYS = [
 	'dependencies',
 	'devDependencies',
 	'optionalPeerDependencies',
+	'catalog',
+	'catalogReferences',
 	'exports',
 	'types',
 	'namespaceMembers',
@@ -152,8 +154,12 @@ console.log(
 );
 
 if (resolved.length > 0) {
+	// `::warning::` so a shrinking baseline is visible in the GitHub Actions
+	// annotations instead of only in the raw log. It stays a warning: the
+	// gate contract is "new findings fail", and trunk routinely resolves
+	// findings in a different ticket (policy: quality/knip.md).
 	console.log(
-		`knip: ${resolved.length} baselined findings no longer appear. Run \`pnpm run knip:update\` so the baseline reflects the resolved debt.`,
+		`::warning::knip: ${resolved.length} baselined findings no longer appear. Run \`pnpm run knip:update\` so the baseline reflects the resolved debt.`,
 	);
 }
 

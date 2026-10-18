@@ -159,6 +159,25 @@ caught by the runtime suite (or by review). The inventory above names
 the variable-built statements that exist today — keep it current when
 one is added.
 
+## Step-up re-authentication
+
+A live admin session (30-day `session.expiresIn`, ADR-0009 §8) is the
+right precondition for *reading* the admin surface, but not for
+*granting standing authority*: an API key issued at `/admin/keys`
+outlives the session that created it. So that one operation asks the
+operator to re-confenticate their password first (step-up), with a
+five-minute window keyed on the server-resolved session id.
+
+Implementation, the states it distinguishes (`required` / `confirmed`
+/ `expired` / `rejected`), why the grant lives in D1 rather than in a
+signed cookie, and why the refusals the UI branches on travel as
+returned outcomes rather than thrown errors (TanStack Start's
+`ShallowErrorPlugin` drops an `Error` subclass's own properties on the
+wire) are recorded in
+[`security/step-up-authentication.md`](security/step-up-authentication.md).
+Verification runs in the local workerd pool; no production account or
+credential is used.
+
 ## Test scope: local workerd vs real Cloudflare
 
 `@cloudflare/vitest-plugin` runs SELF tests inside a local workerd
@@ -312,6 +331,41 @@ A redacted transcript of the observed responses is kept at
   guard by `pnpm run security:redirect:report`; the committed image and
   its reading guide are in
   [`docs/verification/security/`](verification/security/).
+
+## Dependency install lifecycle scripts
+
+`pnpm install` can execute third-party code before any repository
+test exists. pnpm 12 is default-deny for that: only the packages
+listed as `true` in `pnpm-workspace.yaml#allowBuilds` (or in
+`#permissions`, which supersedes it) run their `preinstall` /
+`install` / `postinstall` hooks.
+
+That list is audited, not remembered:
+
+- `quality/install-scripts.json` records, per package, whether the
+  build is actually needed and why. `default_decision` is `block`;
+  a record without a `justification` is rejected.
+- `pnpm run install:scripts:check` (part of `validate:fast`) fails
+  when an installed package can execute code at install time with no
+  reviewed record, when the policy decision and pnpm's execution
+  allow-list disagree in either direction, when a grant survives only
+  in the legacy `onlyBuiltDependencies` list, or when an installed
+  manifest grows an undocumented hook. "Can execute" includes an
+  implicit `node-gyp rebuild` for a package that ships `binding.gyp`
+  and the `prepare` of a git-hosted dependency. It warns when an
+  allow-list entry buys no build, and on stale records.
+- The audit is **status-only**: it reads package manifests plus those
+  two policy files and prints package names, versions, hook names and
+  policy text. No secret value (`.dev.vars`, Infisical, Worker
+  secret) is read or printed, and nothing in the runtime / deploy
+  path is touched.
+
+Operator procedure (what each failure means, how to remediate, and
+the recorded high-risk entry) lives in
+[`docs/runbook/install-script-audit.md`](runbook/install-script-audit.md).
+Tool-side / upstream changes are deliberately out of scope for the
+audit itself (Issue #474): the gate records the risk and names the
+removal condition instead of patching a dependency.
 
 ## Browser binaries (Playwright)
 

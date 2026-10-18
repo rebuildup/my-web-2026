@@ -28,6 +28,29 @@ import { Outlet, createFileRoute } from '@tanstack/react-router';
  * this route layout — that gate remains unchanged.
  */
 export const Route = createFileRoute('/admin')({
+	/**
+	 * Non-public surface policy (Issue #418).
+	 *
+	 * `/admin/login` is reachable by an anonymous visitor (it is the
+	 * sign-in form), so before this the admin surface rendered with the
+	 * root fallback title `my-web-2026`, no robots directive and no
+	 * canonical — i.e. the one admin URL a crawler can fetch was
+	 * indexable and looked like the site's home page to a search
+	 * engine.
+	 *
+	 * Declared on the LAYOUT route on purpose: TanStack merges head tags
+	 * across the whole match chain, so every admin child inherits this
+	 * directive and a future `/admin/*` route is covered without
+	 * remembering to add it.
+	 *
+	 * No canonical here, deliberately: naming a canonical on an admin
+	 * URL would tell a crawler that URL is the preferred version of
+	 * something. The public-route head gate asserts both halves of
+	 * this policy on `/admin/login`.
+	 */
+	head: () => ({
+		meta: [{ name: 'robots', content: 'noindex, nofollow' }],
+	}),
 	component: AdminLayout,
 });
 

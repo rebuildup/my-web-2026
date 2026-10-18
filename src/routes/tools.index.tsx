@@ -48,15 +48,27 @@ export const Route = createFileRoute('/tools/')({
 			disabled: [...disabled].sort(bySlug),
 		};
 	},
-	head: () => ({
-		meta: [
-			{ title: 'Tools — my-web-2026' },
-			{
-				name: 'description',
-				content: 'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.',
-			},
-		],
-	}),
+	head: () => {
+		const title = 'Tools — my-web-2026';
+		const description =
+			'Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.';
+		const url = 'https://rebuildup.dev/tools';
+		return {
+			meta: [
+				{ title },
+				{ name: 'description', content: description },
+				{ property: 'og:type', content: 'website' },
+				{ property: 'og:title', content: title },
+				{ property: 'og:description', content: description },
+				{ property: 'og:url', content: url },
+				{ name: 'twitter:card', content: 'summary' },
+			],
+			// Issue #418: the index declared a title and a
+			// description but no canonical, so the Tool registry had
+			// no preferred URL of its own.
+			links: [{ rel: 'canonical', href: url }],
+		};
+	},
 	component: ToolsIndexRoute,
 });
 

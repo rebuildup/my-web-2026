@@ -1,0 +1,26 @@
+{
+	"schemaVersion": 1,
+	"gate": "dependency-advisory",
+	"issue": "#470",
+	"enforcement": "block",
+	"blockingSeverities": ["critical", "high"],
+	"reportedSeverities": ["moderate", "low", "info"],
+	"dataUnavailable": "fail",
+	"advisorySource": {
+		"command": "pnpm audit --json",
+		"lockfile": "pnpm-lock.yaml",
+		"note": "Fixture gate. The exception below is fixture data, not a real approval."
+	},
+	"note": "Fixture gate: blocking enforcement with one approved exception, used to prove the recorded-pass path.",
+	"exceptions": [
+		{
+			"advisoryId": "GHSA-fixt-fixt-fixt",
+			"package": "fixture-runtime",
+			"severity": "critical",
+			"reason": "Fixture: remediation is blocked on an upstream release; the affected path is unreachable in the deployed Worker.",
+			"approvedBy": "fixture: repository owner (not a real approval)",
+			"trackingIssue": 470,
+			"expiresOn": "2027-01-31"
+		}
+	]
+}

@@ -1,3 +1,5 @@
+import { resolveToolFrameSrc } from './embed-policy';
+import type { ToolHostMessageDeclaration } from './embed-policy';
 import manifestJson from './manifest.json' with { type: 'json' };
 
 /**
@@ -57,6 +59,14 @@ import manifestJson from './manifest.json' with { type: 'json' };
  * `verbatimModuleSyntax: true` lets `import type { Tool }` from this
  * file erase to zero runtime cost at build time, so consumers that
  * only need the type do not bundle the manifest.
+ *
+ * Embed policy (Issue #465): this module does NOT decide whether a
+ * Tool may be framed. `src/tools/embed-policy.ts` owns that decision
+ * (sandbox tokens, referrer policy, frame origin, message origin) and
+ * both `scripts/check-tools-manifest.mjs` and the `/tools/<slug>`
+ * route consume it. What this module contributes is the resolved
+ * frame `src` (`resolveToolEntryHtml`), so the route never has to
+ * re-derive it from raw manifest strings.
  */
 
 /** Manifest version. Bumped on breaking schema changes. */
@@ -87,9 +97,25 @@ export interface ManifestTool {
 				readonly iframe?: {
 					readonly sandbox: string;
 					readonly referrer_policy: string;
+					readonly allow?: string;
+					readonly sandbox_rationale?: string;
 				};
+				readonly host_message?: ToolHostMessageDeclaration;
 		  }
-		| { readonly kind: 'external_exception'; readonly external_url: string }
+		| {
+				readonly kind: 'external_exception';
+				readonly external_url: string;
+				// An external frame needs the same declared iframe policy
+				// as a same-origin one (Issue #465): the host does not
+				// invent a sandbox for a foreign origin either.
+				readonly iframe?: {
+					readonly sandbox: string;
+					readonly referrer_policy: string;
+					readonly allow?: string;
+					readonly sandbox_rationale?: string;
+				};
+				readonly host_message?: ToolHostMessageDeclaration;
+		  }
 		| { readonly kind: 'host_disabled'; readonly disabled_reason: string };
 	readonly classification:
 		| 'same_origin_static'
@@ -121,6 +147,10 @@ export interface PublicToolSummary {
 	readonly iframe: {
 		readonly sandbox: string;
 		readonly referrer_policy: string;
+		// Issue #465: the declared capability grant. Rendered on the
+		// <iframe> as `allow` so the manifest declaration is not inert —
+		// see `docs/tools/embed-policy.md` §2.
+		readonly allow?: string;
 	};
 }
 
@@ -182,26 +212,41 @@ export function getPublicTool(slug: string): PublicToolSummary | undefined {
 }
 
 /**
+ * The frame `src` for a Tool entry (Issue #465).
+ *
+ * `same_origin_static` → the root-relative artefact entry HTML
+ * (ADR-0006 §1). `external_exception` → the declared external URL.
+ * Anything else → `''` (no frame is rendered).
+ *
+ * Single source of truth: `src/tools/embed-policy.ts#resolveToolFrameSrc`
+ * owns the rule, because the same rule decides which src the
+ * embed-policy verifier and the route are allowed to use.
+ */
+export function resolveToolEntryHtml(tool: ManifestTool): string {
+	return resolveToolFrameSrc(tool.delivery);
+}
+
+/**
  * Internal: flatten a ManifestTool into the iframe-ready summary.
- * `same_origin_static` is the only kind that exposes entry_html +
- * iframe; other kinds produce an empty entry_html so the route layer
- * can render an explicit "this Tool is not embeddable" placeholder
- * if it ever lists an `external_exception` Tool.
+ *
+ * Issue #465: `entry_html` is whatever `resolveToolFrameSrc` decides
+ * for the delivery kind — the root-relative artefact path for
+ * `same_origin_static`, the declared external URL for
+ * `external_exception`, `''` for anything else. The declared `iframe`
+ * policy (sandbox / referrer policy) is carried for every embeddable
+ * kind so the route never has to re-read the manifest; a Tool that
+ * declares no `iframe` block surfaces as empty strings, and
+ * `evaluateToolEmbedPolicy` refuses to frame it at all.
  */
 function toSummary(tool: ManifestTool): PublicToolSummary {
-	const isStatic = tool.delivery.kind === 'same_origin_static';
-	const entryHtml = isStatic
-		? (tool.delivery.entry_html ?? `${tool.delivery.artifact_path}/index.html`)
-		: '';
-	const iframe =
-		isStatic && tool.delivery.iframe ? tool.delivery.iframe : { sandbox: '', referrer_policy: '' };
+	const declared = tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.iframe;
 	return {
 		slug: tool.slug,
 		display_name: tool.display_name,
 		description: tool.description ?? tool.notes ?? '',
 		classification: tool.classification,
 		license: tool.license,
-		entry_html: entryHtml,
-		iframe,
+		entry_html: resolveToolEntryHtml(tool),
+		iframe: declared ?? { sandbox: '', referrer_policy: '' },
 	};
 }

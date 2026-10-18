@@ -128,13 +128,17 @@ pnpm run storybook    # portfolio/Markdown → SupportedSyntax / HostileInput
 node scripts/markdown-format-report.mjs
 # → .tmp/markdown-format-report/report.html
 
+# 検証画像を Issue 指定のパスへ取り直す
+node scripts/markdown-format-report.mjs --capture
+# → docs/verification/content/markdown-format-regression.webp
+
 # レポート builder の test
 node --test scripts/markdown-format-report.test.mjs
 ```
 
-レポートの HTML を Chromium で開きスクリーンショットを撮ると、Issue が求める
-検証画像になる。保存先は `docs/verification/content/markdown-format-regression.webp`
-（`.tmp/` は gitignored なので、リポジトリに残るのは WebP だけ）。
+レポートの HTML は `.tmp/` に出力され（gitignored）、リポジトリに残るのは
+WebP の検証画像だけである。`--capture` は Chromium で撮影し、メモリ上で sharp に
+渡して WebP にするので、中間 PNG はディスクに書かれない。
 
 fixture 3 ファイル（`technical-article.md` / `hostile.md` / `index.ts`）は CI
 fixture と Storybook とレポートが同じものを読む。表示だけが個別に発生しない。

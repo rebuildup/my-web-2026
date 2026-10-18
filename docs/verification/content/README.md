@@ -31,13 +31,15 @@ Issue は `.png` のパスで指定しているが、**リポジトリに残す�
 ```bash
 node scripts/markdown-format-report.mjs        # → .tmp/markdown-format-report/report.html
 pnpm run storybook                              # 実画面は portfolio/Markdown の 2 story
+
+# 検証画像を本のパスへ取り直す
+node scripts/markdown-format-report.mjs --capture
 ```
 
-`.tmp/markdown-format-report/report.html` を Chromium で開き、全ページ
-スクリーンショットを撮って WebP に変換し、本のパスへ戻す。
-判定表が FAIL のままでも取り込み可能（FAIL が記録されるのが、この成果物の
-目的だから）。`node scripts/markdown-format-report.mjs` は render が
-inert でなかった場合に非 0 で終了する。
+`--capture` は Chromium で全ページ撮影し、メモリ上で sharp に渡して WebP に
+変換する（中間 PNG は書かない）。FAIL が混ざった判定表でも撮影は行う — この
+成果物は測定の記録であり、将来の regression は diff に出るべきものだから。
+render が inert でなかった場合だけ、script は非 0 で終了する。
 
 ## 検証そのものの入口
 

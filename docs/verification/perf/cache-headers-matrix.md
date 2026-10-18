@@ -172,12 +172,13 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
 マージで base（`31ea9d8`）を取り込んだ `abb9997` の clean ツリーで
 `pnpm run build:production` を実行し、そのまま測定した
 （記録された SHA とビルドは同一）。その後の変更は 4 種類だけである:
-`93b1c50` の本ドキュメントと画像、以降の base 再マージ（#446 の HSTS を含む）、そして review follow-up での
+`93b1c50` の本ドキュメントと画像、以降の base 再マージ（#446 の HSTS、#471 の SBOM gate、
+#457 の error redaction、#596 の HSTS 定数私有化、webhook signature fixture を含む）、そして review follow-up での
 `src/server.ts#applyHtmlCachePolicy` への「既存 `Cache-Control` を上書きしない」
 早期 return の復元。この早期 return は**現在のどの SSR ルートも独自の
 `Cache-Control` を宣言していないため送出値を変えない**（docblock が約束していた
-不変条件の回復であり、挙動変更ではない）。#446 のマージは
-`applyTransportSecurityPolicy` を dispatch の後段に足しただけで、
+不変条件の回復であり、挙動変更ではない）。#446 / #596 のマージは
+`applyTransportSecurityPolicy` を dispatch の後段に足し、HSTS 定数を module-private にしただけで、
 `setCacheControl` / `applyExternalCachePolicy` / `applyHtmlCachePolicy` が書く
 `Cache-Control` の値には触れていない（HSTS は別ヘッダー）。
 

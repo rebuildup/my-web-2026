@@ -164,6 +164,30 @@ Cloudflare runtime によって変更理由が決まる仕事を所有する。
 - `hono.ts` — external REST / webhook / OAuth / integration boundary
 - `health.ts` — この boundary の stable health description
 
+### `logging/` (Issue #467)
+
+実行時ログの redaction contract を所有する leaf obligation。
+
+- `redact.ts` — 「この値を operator が読む stream に書いてよいか」の判定。key 名・値の形・構造の 3 層で redact する
+- `logger.ts` — `src/**` で `console` に触れてよい唯一の module
+
+`logging/` は「何のログを出すか」ではなく「その value を書いてよいか」だけを
+決定する。access counter / reactions / auth email が何を記録するかは、それぞれ
+`home/` / `cloudflare/` の判断であり、`logging/` はその記録を狭めるだけ。
+独立した contract を持つのは、AGENTS.md §4 の「secret 値を	value-listing しない」
+不変条件を operator tooling から runtime stream 全体へ一般化したもの。
+
+`scripts/**` は `logging/` を import しない。Node script は Worker bundle なしで
+動く必要があり、status-only 出力は marker ベースの `node --test` suite が担保する。
+
+境界評価の 5 問 (本章 "How boundaries are evaluated") への回答:
+
+1. **Obligation** — 実行時 stream (Worker log / browser console / GA4 payload) に出してよい値の判定と、その唯一の出力口。
+2. **Change reason** — redaction 規則自体が変わった時。secret の形式、personal data とみなす範囲、log の保持方針を変えた時。
+3. **Authority** — `docs/security/log-redaction.md` の契約と `scripts/check-log-redaction.mjs` の規則。gate の exemption を増やす判断は owner review が持つ。
+4. **Dependency direction** — 全 owner が `logging/` を知る。`logging/` は他の obligation を知らない。
+5. **Lifecycle** — runtime のログ面とともに出生・消滅する。同じ stream 契約を持つ別出力 (外部 APM など) が増えた場合も、この obligation の中に住む。
+
 ### `routes/` and runtime entries
 
 `routes/` は TanStack Start の file-based routing contract によって場所が決まる。
@@ -187,6 +211,7 @@ portfolio ───────────▶ cloudflare (DI seam)
 portfolio ───────────▶ editorial
 external-api ────────▶ editorial
 home ────────────────▶ editorial
+home/http/cloudflare ─▶ logging (leaf)
 server ──────────────▶ http
 server ──────────────▶ editorial (SSR render-failure fallback document)
 ```
@@ -196,6 +221,7 @@ server ──────────────▶ editorial (SSR render-failu
 - `cloudflare/` は `home/` も `portfolio/` も知らない。
 - `http/` は `home/` も `portfolio/` を知らない。
 - `editorial/` は特定 surface を知らない。
+- `logging/` は他のどの obligation も知らない (leaf)。
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
 - `i18n/` は他の obligation を import しない (leaf obligation)。policy の例外を足すなら、ここ、拡大ではなく ADR 改訂が先。
 - `external-api/` は `home/` / `routes/` / `portfolio/` / `cloudflare/` / `http/` を import しない (peer obligation)。outbound read と inbound boundary は別の obligation。

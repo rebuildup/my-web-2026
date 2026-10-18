@@ -148,6 +148,30 @@ export function evaluateStepUp(
 }
 
 /**
+ * The status a client should adopt once its own clock crosses the
+ * window, or `null` while the window is still open.
+ *
+ * The gate above is only reached when the session actually issues a
+ * key, but the UI has to stop claiming a window it no longer has: a tab
+ * left open across the boundary would otherwise keep the `confirmed`
+ * badge, keep the re-auth form hidden, and keep the create button
+ * enabled until someone happened to press it. Nothing here is trusted
+ * — `lapseStepUpStatus` re-evaluates through `evaluateStepUp`, so the
+ * status it returns is exactly the one the server would have returned
+ * for the same grant, and the gate still refuses the click that
+ * follows. It exists so the countdown and the badge cannot disagree
+ * about when the window ends.
+ *
+ * Only a status that is currently `confirmed` can lapse: `required`
+ * has no window, and `expired` is already the answer.
+ */
+export function lapseStepUpStatus(status: StepUpStatus, nowMs: number): StepUpStatus | null {
+	if (status.state !== 'confirmed' || status.expiresAtMs === null) return null;
+	const lapsed = evaluateStepUp(status.confirmedAtMs, nowMs);
+	return lapsed.state === 'expired' ? lapsed : null;
+}
+
+/**
  * The stored grant. `D1Database` is passed explicitly (not read from
  * `cloudflare:workers` inside these helpers) so the read / write halves
  * are callable against any binding — the workerd pool passes the real

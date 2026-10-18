@@ -48,7 +48,11 @@ function KeysRoute() {
 			keys={keys}
 			createSection={
 				<>
-					<StepUpPanel status={status} onConfirmed={setStatus} />
+					{/* Both handlers are `setStatus`: a fresh confirmation replaces the
+					    status, and the panel hands back the lapsed one when its own clock
+					    reaches `expiresAtMs` — the same transition, computed by the same
+					    `evaluateStepUp` rule, as the refused create below. */}
+					<StepUpPanel status={status} onConfirmed={setStatus} onExpired={setStatus} />
 					<CreateKeyForm
 						stepUpState={status.state}
 						onStepUpRequired={() =>

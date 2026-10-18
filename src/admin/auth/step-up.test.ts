@@ -6,6 +6,7 @@ import {
 	StepUpError,
 	assertStepUpGranted,
 	evaluateStepUp,
+	lapseStepUpStatus,
 	readStepUpGrant,
 	readStepUpStatus,
 	writeStepUpGrant,
@@ -81,6 +82,54 @@ describe('evaluateStepUp — the freshness decision', () => {
 	it('the window is five minutes and is not redefined by the UI', () => {
 		expect(STEP_UP_MAX_AGE_MS).toBe(300_000);
 		expect(STEP_UP_MAX_AGE_SECONDS).toBe(300);
+	});
+});
+
+/**
+ * The client-side lapse. A tab left open across the end of the window
+ * has no request to make, so this is what turns the panel's `confirmed`
+ * badge into `expired` without waiting for a refused create — the same
+ * thing the server would have said for that grant.
+ */
+describe('lapseStepUpStatus — what a client adopts when its clock passes the window', () => {
+	const confirmedAtMs = 10_000_000;
+	const confirmed = evaluateStepUp(confirmedAtMs, confirmedAtMs + 1_000);
+	const expiresAtMs = confirmedAtMs + STEP_UP_MAX_AGE_MS;
+
+	it('reports nothing while the window is still open', () => {
+		expect(lapseStepUpStatus(confirmed, confirmedAtMs)).toBeNull();
+		expect(lapseStepUpStatus(confirmed, expiresAtMs - 1)).toBeNull();
+	});
+
+	it('reports the lapsed status at the boundary, keeping both timestamps', () => {
+		expect(lapseStepUpStatus(confirmed, expiresAtMs)).toEqual({
+			state: 'expired',
+			confirmedAtMs,
+			expiresAtMs,
+		});
+		expect(lapseStepUpStatus(confirmed, expiresAtMs + 90_000)?.state).toBe('expired');
+	});
+
+	it('agrees with the server on the same grant and clock', () => {
+		// The client is not inventing a rule here: whatever it adopts is
+		// exactly what `readStepUpStatus` reports for the stored grant.
+		expect(lapseStepUpStatus(confirmed, expiresAtMs + 1)).toEqual(
+			evaluateStepUp(confirmedAtMs, expiresAtMs + 1),
+		);
+	});
+
+	it('has nothing to report for a status that has no open window', () => {
+		expect(
+			lapseStepUpStatus({ state: 'required', confirmedAtMs: null, expiresAtMs: null }, 1),
+		).toBeNull();
+		expect(
+			lapseStepUpStatus({ state: 'expired', confirmedAtMs, expiresAtMs }, expiresAtMs),
+		).toBeNull();
+		// Defensive: a `confirmed` status without an expiry cannot be
+		// compared against a clock, so it does not lapse on a guess.
+		expect(
+			lapseStepUpStatus({ state: 'confirmed', confirmedAtMs, expiresAtMs: null }, expiresAtMs),
+		).toBeNull();
 	});
 });
 

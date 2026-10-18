@@ -2,7 +2,12 @@ import { useServerFn } from '@tanstack/react-start';
 import { useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
-import { STEP_UP_MAX_AGE_SECONDS, type StepUpStatus, confirmStepUp } from '../auth/step-up';
+import {
+	STEP_UP_MAX_AGE_SECONDS,
+	type StepUpStatus,
+	confirmStepUp,
+	lapseStepUpStatus,
+} from '../auth/step-up';
 
 /**
  * Step-up panel for the admin API-key surface (Issue #445).
@@ -11,7 +16,9 @@ import { STEP_UP_MAX_AGE_SECONDS, type StepUpStatus, confirmStepUp } from '../au
  * anything the operator did not type:
  *
  *   confirmed  the session confirmed its password inside the window —
- *              the panel says how long the window lasts.
+ *              the panel says how long the window lasts, and hands
+ *              the lapsed status back to the caller the moment its own
+ *              clock passes the end of that window.
  *   required   no confirmation yet. The password form is here; the
  *              create form below is disabled until it succeeds.
  *   expired    a confirmation exists but has lapsed; same form, with
@@ -36,9 +43,20 @@ export interface StepUpPanelProps {
 	status: StepUpStatus;
 	/** Called with the fresh status after a successful confirmation. */
 	onConfirmed: (status: StepUpStatus) => void;
+	/**
+	 * Called with the lapsed status once this panel's own clock reaches
+	 * `expiresAtMs`. The caller owns the status, so it has to be told:
+	 * ticking a countdown is not the same as expiring a gate, and a
+	 * panel that only redrew itself would keep showing `confirmed`,
+	 * keep the re-auth form hidden and keep the create button enabled
+	 * after the window closed. The status handed back is the one the
+	 * server would compute for the same grant, so adopting it never
+	 * disagrees with what the gate will decide.
+	 */
+	onExpired: (status: StepUpStatus) => void;
 }
 
-export function StepUpPanel({ status, onConfirmed }: StepUpPanelProps) {
+export function StepUpPanel({ status, onConfirmed, onExpired }: StepUpPanelProps) {
 	const confirm = useServerFn(confirmStepUp);
 	const [password, setPassword] = useState('');
 	const [busy, setBusy] = useState(false);
@@ -48,20 +66,50 @@ export function StepUpPanel({ status, onConfirmed }: StepUpPanelProps) {
 	const [nowMs, setNowMs] = useState<number | null>(null);
 
 	const confirmed = status.state === 'confirmed';
+	const { state, confirmedAtMs, expiresAtMs } = status;
 
 	// The countdown runs off a client-only clock. `null` during SSR and
 	// during the first client render, so the SSR markup and the hydrated
 	// markup are the same sentence — see `remainingMinutes`.
+	//
+	// The same clock decides when the window has closed: crossing
+	// `expiresAtMs` hands the lapsed status to the caller and stops the
+	// countdown, because the caller owns the status from that point on.
+	// A second timer wakes exactly at the boundary so the badge and the
+	// create button flip when the window actually ends instead of up to
+	// one tick later.
 	useEffect(() => {
-		if (status.state !== 'confirmed') {
+		if (state !== 'confirmed') {
 			setNowMs(null);
 			return;
 		}
-		const tick = () => setNowMs(Date.now());
+		let lapsed = false;
+		let lapseTimer: ReturnType<typeof setTimeout> | null = null;
+		let timer: ReturnType<typeof setInterval> | null = null;
+		const tick = () => {
+			if (lapsed) return;
+			const now = Date.now();
+			setNowMs(now);
+			const next = lapseStepUpStatus({ state, confirmedAtMs, expiresAtMs }, now);
+			if (next !== null) {
+				lapsed = true;
+				onExpired(next);
+			}
+		};
 		tick();
-		const timer = setInterval(tick, STEP_UP_TICK_MS);
-		return () => clearInterval(timer);
-	}, [status.state]);
+		if (!lapsed) {
+			lapseTimer =
+				expiresAtMs === null ? null : setTimeout(tick, Math.max(0, expiresAtMs - Date.now()));
+			timer = setInterval(tick, STEP_UP_TICK_MS);
+		}
+		return () => {
+			if (timer !== null) clearInterval(timer);
+			if (lapseTimer !== null) clearTimeout(lapseTimer);
+		};
+		// Primitives rather than `status` itself: the effect must not
+		// re-arm on every render just because the caller handed over an
+		// equal-but-new object.
+	}, [state, confirmedAtMs, expiresAtMs, onExpired]);
 
 	const onSubmit = async (event: React.FormEvent) => {
 		event.preventDefault();
@@ -241,7 +289,8 @@ export function StepUpPanel({ status, onConfirmed }: StepUpPanelProps) {
  * How often the countdown re-reads the clock while the window is open.
  * The window is five minutes, so half of that is already too coarse to
  * be noticeable; it only has to be short enough that the number in the
- * copy never claims more time than is left.
+ * copy never claims more time than is left. Expiry does NOT wait for
+ * this tick — the lapse timer above fires at `expiresAtMs` itself.
  */
 const STEP_UP_TICK_MS = 30_000;
 

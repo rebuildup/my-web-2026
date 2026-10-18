@@ -69,6 +69,25 @@ TanStack Start は throw された `Error` を `ShallowErrorPlugin`
 同じ `step_up_required` として扱う**（緩める方向にも開ける位置に
 境界を置かない）。
 
+## 期限切れはクライアント時計でも起きる
+
+ゲートは実際に発行が呼ばれた時点でしか評価されない。そのため
+5 分窓を開いたまま放置したタブでは、確認バッジ・再入力フォーム・
+発行ボタンの有効状態が、**次の操作が拒まれるまで**古いまま残る。
+
+そこで UI はクライアント時計だけを持ち、`expiresAtMs` を越えた
+時点で `lapseStepUpStatus()`（`evaluateStepUp` と同じ規則）が
+`expired` の status を呼び出し側へ返し、呼び出し側（`KeysRoute`）が
+`setStatus` で採用する。返るのは**サーバが同じ grant に対して返す
+status と同一**のものであり、クライアントが独自の判定を作っている
+わけではない。採用後もサーバは `step_up_required` で拒否するため、
+これは UI の表示を正しくするための処理であって権限の緩和ではない。
+
+時計は 2 種類：残時間を再描画するための 30 秒 tick と、境界
+（`expiresAtMs` そのもの）で確実に起きるためのタイマ。SSR / 初回
+hydration では時計を持たず、定数由来の文言を描画する
+（`remainingMinutes` のコメントを参照）。
+
 ## 確認手段: `/verify-password` を使う理由
 
 Better Auth 1.7.5 は `/verify-password` を提供し、
@@ -115,6 +134,16 @@ confirmed_at)` に置く。
 
 - `src/admin/auth/step-up.test.ts` — 純粋関数の境界値（ちょうど
   5 分）と D1 grant の round-trip / 一意性 / 外部キー制約。
+  クライアント側の失効 `lapseStepUpStatus`（窓が開いている間 /
+  境界ちょうど / 境界後、`required`・`expired` では何もしない）も
+  ここで検証する。
+- `src/admin/keys/step-up-panel.client.test.tsx` — クライアント
+  時計が `expiresAtMs` を越えたとき `onExpired` が呼ばれ、呼び出し
+  側が採用するとバッジが `expired` に変わり再入力フォームが戻る
+  ことを、fake timers 付きの実 DOM で検証する（SSR と 1 回目の
+  hydration は時計を持たないため hydration mismatch も起きない）。
+  `*.client.test.tsx` は happy-dom 用 config（`pnpm run test:client`）
+  のため `pnpm test` には含まれない。
 - `test/integration/admin-step-up-auth.test.ts` — local workerd
   プール上の positive / negative ペア。実 entrypoint、実 D1、実
   Better Auth。gate と発行処理は**一つの関数

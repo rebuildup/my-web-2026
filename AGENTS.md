@@ -269,9 +269,9 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `ci:pins:check` (Issue #472, GitHub Actions pin / token audit) +
   `check-release-assets` + `version:check` + `typecheck` +
   `infisical:check:coverage` + `sbom:check` (Issue #471) +
-  `csrf:contract:check` + `test`. The canonical list is
-  `quality/profile.yaml#gates.fast.components`; add a step there, not
-  only in the script.)
+  `csrf:contract:check` + `publication:check` + `test`. The canonical
+  list is `quality/profile.yaml#gates.fast.components`; add a step
+  there, not only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build` + default/production Wrangler dry-runs +
   `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +

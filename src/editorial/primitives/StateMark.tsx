@@ -55,7 +55,11 @@ export interface StateMarkProps {
 	className?: string;
 }
 
-/** Silhouettes, in a 12×12 frame. `cross` / `chevron` / `bars` are stroked; the rest are filled. */
+/**
+ * Silhouettes, in a 12×12 frame. `cross` / `chevron` are stroked; the rest
+ * are filled, and EVERY kind is exactly one shape element so the per-card
+ * node cost does not vary with the category.
+ */
 function shape(kind: StateMarkKind) {
 	switch (kind) {
 		case 'ok':
@@ -79,12 +83,14 @@ function shape(kind: StateMarkKind) {
 		case 'code':
 			return <rect x="0.9" y="0.9" width="10.2" height="10.2" />;
 		case 'writing':
+			// ONE path, three sub-paths. Every kind must cost exactly
+			// two elements (the `<svg>` plus its shape) so the card
+			// node-cost invariant in `list-scale.test.tsx` keeps
+			// holding: three `<rect>`s here would make a `writing` row
+			// two nodes heavier than a `code` row, which is the shape
+			// difference that test exists to catch.
 			return (
-				<>
-					<rect x="0.9" y="1.4" width="10.2" height="1.9" rx="0.95" />
-					<rect x="0.9" y="5.05" width="10.2" height="1.9" rx="0.95" />
-					<rect x="0.9" y="8.7" width="6.4" height="1.9" rx="0.95" />
-				</>
+				<path d="M0.9 1.4 H11.1 V3.3 H0.9 Z M0.9 5.05 H11.1 V6.95 H0.9 Z M0.9 8.7 H7.3 V10.6 H0.9 Z" />
 			);
 		case 'tool':
 			return (

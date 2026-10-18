@@ -48,6 +48,14 @@ node scripts/perf-large-list.mjs                 # seed → measure → click Lo
 | アクセシビリティツリー全体 node 数 | 3241 | 3241 | 修正で node が増えていないことの証拠 |
 | JS heap | 10.7 MB → 11.6 MB | 10.0 MB → 11.6 MB | 記録のみ（gate 向きでない） |
 | navigation `load` | 12820 ms | 13023 ms | 4x CPU + Slow 4G 条件の記録値 |
+
+> **Issue #411 による上振れ（2026-10-19）**: この表の計測は #490 の時点の記録であり、
+> 上表の数値はそのまま残っている。#411 が各 card に `StateMark`
+> （`<svg>` + 形状 1 要素 = card あたり 2 要素）を追加したため、現在の
+> per-card node 数は 18.26 → 20.26、per-card 上限は 20 → 22
+> （`scripts/perf-large-list.mjs`）。cost は card あたり一定なので
+> 「card が 1 枚の card でなくなる」性質を検証している上限の性質は変わらない。
+> 再計測は #385 / #386 の perf 再計測で実施する。
 | Load more 追加レイテンシ | 774 ms | 534 ms | 記録のみ |
 | 一覧面の命名不可な `aria-label` | **100** | **0** | **0** |
 | ページ全体の命名不可な `aria-label` | 101 | 1（下記 follow-up） | 記録のみ（§4） |

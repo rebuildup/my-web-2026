@@ -55,8 +55,17 @@ import { ProjectCard } from './ProjectCard';
  * (happy-dom) and by the recorded browser measurement.
  */
 
-/** Per-card DOM node ceiling; mirrors `PER_CARD_NODE_CEILING` in the harness. */
-const PER_CARD_NODE_CEILING = 20;
+/**
+ * Per-card DOM node ceiling; mirrors `PER_CARD_NODE_CEILING` in the harness.
+ *
+ * Issue #411 moved it from 20 to 22 because every card now renders the
+ * `StateMark` (Issue #411): a `<svg>` plus exactly one shape element.
+ * Two nodes, constant per card — which is what the "cheapest and worst
+ * card differ by at most one node" invariant below now measures, since
+ * it can no longer tell a category whose mark is drawn with more
+ * elements than another.
+ */
+const PER_CARD_NODE_CEILING = 22;
 
 /** Count the elements in a markup string. Self-closing and paired tags both count once. */
 function countElements(html: string): number {
@@ -88,7 +97,9 @@ describe('project card — 100+ row pagination boundary', () => {
 		const worst = Math.max(...perCard);
 		// A pinned row carries one extra node (the `Pinned` badge); a
 		// shape difference larger than that is a card that stopped
-		// being one card.
+		// being one card. This is also what keeps the `StateMark`
+		// honest: a category drawn with three elements instead of one
+		// would show up here as a two-node spread.
 		expect(worst - cheapest).toBeLessThanOrEqual(1);
 		expect(worst).toBeLessThanOrEqual(PER_CARD_NODE_CEILING);
 	});

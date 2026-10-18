@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { SystemService, SystemServiceStatus } from './health';
+import type { SystemService, SystemServiceHealth, SystemServiceStatus } from './health';
+import { HEALTH_LABEL } from './health';
 import { StatusTiles } from './tiles';
 
 /**
@@ -17,6 +18,14 @@ import { StatusTiles } from './tiles';
  * The section body is unchanged by this ticket: the service rows,
  * their bindings, and the health badges are asserted here so a
  * locale change cannot quietly alter the operational readout.
+ *
+ * Issue #411 adds the last block: the health badge must stay
+ * separable when hue is removed. `ok` used to be the only accented
+ * pill and both failure states shared one neutral fill, so in
+ * greyscale the three states were three identical rounded
+ * rectangles. The tests assert the two channels that survive
+ * greyscale — a silhouette unique per health, and the existing word
+ * — and that the silhouette is decorative.
  */
 
 const OBSERVED_AT = '2026-01-05T09:00:00.000Z';
@@ -107,5 +116,62 @@ describe('StatusTiles', () => {
 		// 09:00 UTC is 18:00 in Tokyo — a different clock reading of
 		// the same instant.
 		expect(tokyo).toContain('6:00 PM');
+	});
+
+	describe('health is never encoded by fill alone (Issue #411)', () => {
+		const allHealths: readonly SystemServiceHealth[] = ['ok', 'degraded', 'unreachable'];
+		const oneService: readonly SystemService[] = [
+			{ id: 'd1', label: 'Internal data', binding: 'D1', description: 'Internal data.' },
+		];
+
+		it('gives every health its own silhouette', () => {
+			const rendered = allHealths.map((health) =>
+				renderToStaticMarkup(
+					<StatusTiles
+						services={oneService}
+						statuses={[{ id: 'd1', health }]}
+						observedAt={OBSERVED_AT}
+					/>,
+				),
+			);
+			// One silhouette per health, and no two share it: this is
+			// the property that survives greyscale / forced colours.
+			const marks = rendered.map((html) => html.match(/data-state-mark="([^"]+)"/)?.[1]);
+			expect(marks).toEqual([...allHealths]);
+			expect(new Set(marks).size).toBe(allHealths.length);
+		});
+
+		it('keeps the word beside the silhouette', () => {
+			for (const health of allHealths) {
+				const html = renderToStaticMarkup(
+					<StatusTiles
+						services={oneService}
+						statuses={[{ id: 'd1', health }]}
+						observedAt={OBSERVED_AT}
+					/>,
+				);
+				expect(html).toContain(`data-state-mark="${health}"`);
+				expect(html).toContain(HEALTH_LABEL[health]);
+			}
+		});
+
+		it('keeps the silhouette decorative so the word stays the accessible name', () => {
+			const html = renderToStaticMarkup(
+				<StatusTiles services={services} statuses={statuses} observedAt={OBSERVED_AT} />,
+			);
+			expect(html).toContain('<svg aria-hidden="true" data-state-mark="ok"');
+			expect(html).toContain('<svg aria-hidden="true" data-state-mark="degraded"');
+		});
+
+		it('falls back to the unreachable silhouette when a service has no read', () => {
+			// The empty snapshot is a real state: a service whose probe
+			// returned nothing must not look healthy, and it must say so
+			// in the same two channels as every other state.
+			const html = renderToStaticMarkup(
+				<StatusTiles services={services} statuses={[]} observedAt={OBSERVED_AT} />,
+			);
+			expect(html).toContain('data-state-mark="unreachable"');
+			expect(html).toContain(HEALTH_LABEL.unreachable);
+		});
 	});
 });

@@ -81,7 +81,20 @@ const STUB_KEY_ID = '00000000-0000-0000-0000-0000000000a1';
 const AUTH = { authorization: 'Bearer mk_home_matrix-fixture' };
 /** Not a bot per `src/http/access-counter/filter.ts` (no UA => rejected). */
 const HUMAN_UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) matrix-fixture';
-const JSON_HEADERS = { ...AUTH, 'content-type': 'application/json', 'user-agent': HUMAN_UA };
+/**
+ * `externalBoundary.request(<path>)` resolves relative paths against
+ * `http://localhost` (Hono's own default). Unsafe writes must declare a
+ * same-origin signal or the boundary's CSRF guard (Issue #440) answers
+ * `403 csrf_rejected` before routing, authentication, or validation
+ * runs — which would hide every row this matrix measures.
+ */
+const ORIGIN = 'http://localhost';
+const JSON_HEADERS = {
+	...AUTH,
+	origin: ORIGIN,
+	'content-type': 'application/json',
+	'user-agent': HUMAN_UA,
+};
 
 /**
  * Dimensions under test — the four input classes the issue names,
@@ -194,7 +207,12 @@ const CASES: readonly MatrixCase[] = [
 		request: {
 			method: 'POST',
 			path: '/api/v1/access/hit',
-			headers: { ...AUTH, 'content-type': 'text/plain', 'user-agent': HUMAN_UA },
+			headers: {
+				...AUTH,
+				origin: ORIGIN,
+				'content-type': 'text/plain',
+				'user-agent': HUMAN_UA,
+			},
 			body: JSON.stringify({ key: 'home-page', session_id: ACTOR }),
 		},
 		status: 415,
@@ -250,7 +268,11 @@ const CASES: readonly MatrixCase[] = [
 		request: {
 			method: 'PUT',
 			path: '/api/v1/reactions',
-			headers: { ...AUTH, 'content-type': 'application/x-www-form-urlencoded' },
+			headers: {
+				...AUTH,
+				origin: ORIGIN,
+				'content-type': 'application/x-www-form-urlencoded',
+			},
 			body: JSON.stringify(REACTION_BODY),
 		},
 		status: 415,
@@ -466,7 +488,11 @@ const CASES: readonly MatrixCase[] = [
 		endpoint: 'GET /api/v1/access/count/:key',
 		dimension: 'protocol',
 		label: 'POST on a GET-only path',
-		request: { method: 'POST', path: '/api/v1/access/count/home-page', headers: AUTH },
+		request: {
+			method: 'POST',
+			path: '/api/v1/access/count/home-page',
+			headers: { ...AUTH, origin: ORIGIN },
+		},
 		status: 405,
 		code: 'method_not_allowed',
 		header: ['allow', 'GET'],
@@ -476,7 +502,11 @@ const CASES: readonly MatrixCase[] = [
 		endpoint: 'GET /api/v1/reaction-images/:id',
 		dimension: 'protocol',
 		label: 'POST on the public image path',
-		request: { method: 'POST', path: '/api/v1/reaction-images/deadbeef', headers: {} },
+		request: {
+			method: 'POST',
+			path: '/api/v1/reaction-images/deadbeef',
+			headers: { origin: ORIGIN },
+		},
 		status: 405,
 		code: 'method_not_allowed',
 		header: ['allow', 'GET'],
@@ -490,7 +520,7 @@ const CASES: readonly MatrixCase[] = [
 		request: {
 			method: 'POST',
 			path: '/api/v1/access/hit',
-			headers: { 'content-type': 'application/json', 'user-agent': HUMAN_UA },
+			headers: { origin: ORIGIN, 'content-type': 'application/json', 'user-agent': HUMAN_UA },
 			body: JSON.stringify({ key: 'home-page', session_id: ACTOR }),
 		},
 		status: 401,
@@ -513,7 +543,7 @@ const CASES: readonly MatrixCase[] = [
 		request: {
 			method: 'POST',
 			path: '/api/v1/access/hit',
-			headers: { 'content-type': 'text/plain', 'user-agent': HUMAN_UA },
+			headers: { origin: ORIGIN, 'content-type': 'text/plain', 'user-agent': HUMAN_UA },
 			body: 'x'.repeat(MAX_JSON_BODY_BYTES + 1),
 		},
 		status: 401,

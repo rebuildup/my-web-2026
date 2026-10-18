@@ -102,10 +102,18 @@ ${cells.join('\n')}
 `;
 }
 
-/** Rasterise the card. PNG: the broadest OG/Twitter image support. */
+/**
+ * Rasterise the card. PNG: the broadest OG/Twitter image support.
+ *
+ * No `density` override: sharp/librsvg rasterises at 72 dpi by default,
+ * where 1 SVG px is 1 output px. Raising the density (96 is the
+ * tempting value — it is the CSS reference) would silently render a
+ * 1600px card from a 1200px drawing, and the contract would then
+ * promise a size the committed bytes do not have.
+ */
 export async function renderFallbackCard() {
-	return sharp(Buffer.from(fallbackCardSvg(FALLBACK_CARD)), { density: 96 })
-		.png({ compressionLevel: 9, palette: false })
+	return sharp(Buffer.from(fallbackCardSvg(FALLBACK_CARD)))
+		.png({ compressionLevel: 9, effort: 10, palette: false })
 		.toBuffer();
 }
 

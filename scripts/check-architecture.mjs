@@ -51,6 +51,21 @@ const forbiddenOwnerDependencies = new Map([
 			'tools',
 		]),
 	],
+	// `external-api` (Issue #499) owns the reliability contract for
+	// reads of a third-party API behind a display component. It is a
+	// peer obligation to `home` / `portfolio` / `about`, not a layer
+	// under them: it composes `editorial` primitives and performs its
+	// own outbound request, so it may not reach into a peer obligation,
+	// the route layer, the Cloudflare runtime or the inbound HTTP
+	// boundary.
+	//
+	// The rule below is ONE DIRECTION: `external-api` may not import
+	// those owners. The reverse edge (`home` / `portfolio` / `about` /
+	// `routes` importing `external-api`) is NOT registered here — today
+	// no file does, and whether that edge should be a hard guard or stay
+	// open for a promoting capability is an owner decision recorded in
+	// `docs/verification/ops/api-timeout-fallback.md` §7.
+	['external-api', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
 ]);
 
 /**

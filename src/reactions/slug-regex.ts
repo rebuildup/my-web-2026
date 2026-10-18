@@ -18,7 +18,7 @@
  * the rule for applying it.
  */
 
-import type { SlugGrammar } from '../i18n/slug-identity';
+import type { SlugGrammar } from '../i18n/slug-identity.ts';
 
 export const EMOJI_SLUG_REGEX = /^[a-z][a-z0-9_]*$/;
 

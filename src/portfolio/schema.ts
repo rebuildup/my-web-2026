@@ -3,8 +3,8 @@ import {
 	type SlugGrammar,
 	classifySlugCandidate,
 	describeSlugRejection,
-} from '../i18n/slug-identity';
-import { assertDisplayTextPreserved } from '../i18n/unicode';
+} from '../i18n/slug-identity.ts';
+import { assertDisplayTextPreserved } from '../i18n/unicode.ts';
 
 /**
  * Portfolio schema — TypeScript types + Zod validators.

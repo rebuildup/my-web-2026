@@ -15,7 +15,7 @@
  * found and why it is not being folded into an ASCII URL.
  */
 
-import { classifySlugCandidate, describeSlugRejection } from '../i18n/slug-identity';
+import { classifySlugCandidate, describeSlugRejection } from '../i18n/slug-identity.ts';
 import { EMOJI_SLUG_GRAMMAR } from './slug-regex';
 
 /** Maximum codepoint length in code units (a single emoji can be 1–4 UTF-16 code units). */

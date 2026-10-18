@@ -35,6 +35,10 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      # Issue #433: the Unicode / URL-slug policy is enforced on the
+      # shipped surface, and the gate prints the shared decision table
+      # classified with the real owner grammars.
+      - 'pnpm run i18n:policy:check' # no implicit normalization / locale
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap

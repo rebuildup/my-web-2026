@@ -51,3 +51,10 @@ render が inert でなかった場合だけ、script は非 0 で終了する�
 - `node --test scripts/markdown-format-report.test.mjs`
 
 契約の本文は [`docs/portfolio/markdown-format.md`](../../portfolio/markdown-format.md)。
+
+## 公開前リンク・画像検証（Issue #434）
+
+[`link-check.md`](./link-check.md) が `content:links:check` の契約と未対応範囲を、
+[`link-check-report.webp`](./link-check-report.webp) が error / warning の境界を
+fixture と実 repository の走査結果で示す。内部リンクの 404 は release fail、
+外部 timeout は warning であり、外部リンクは CI では dereference しない。

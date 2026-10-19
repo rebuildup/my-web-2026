@@ -81,7 +81,11 @@
  * `test/integration/r2-media-restore.test.ts` is that adapter.
  */
 
-import { classifyMediaKey } from './media-visibility';
+// `.ts` on purpose: the operator proof
+// (`scripts/r2-media-restore-proof.mjs`) imports this module directly
+// in Node, which resolves no extensionless specifier. See
+// `src/i18n/index.ts` for the same convention.
+import { classifyMediaKey } from './media-visibility.ts';
 
 /** Verdict vocabulary. Only two of the six are a pass. */
 export const RESTORE_VERDICT = Object.freeze({

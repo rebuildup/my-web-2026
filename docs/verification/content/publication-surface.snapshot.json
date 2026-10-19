@@ -7,6 +7,7 @@
 			"/.well-known",
 			"/api/v1",
 			"/integrations",
+			"/media",
 			"/oauth",
 			"/robots.txt",
 			"/sitemap.xml",
@@ -994,27 +995,20 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [
-			"/.well-known"
+			"/media"
 		],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md"
-			},
-			{
 				"code": "W005 external-boundary-prefix-added",
 				"severity": "warn",
-				"message": "External HTTP boundary prefix added: /.well-known"
+				"message": "External HTTP boundary prefix added: /media"
 			}
 		]
 	}

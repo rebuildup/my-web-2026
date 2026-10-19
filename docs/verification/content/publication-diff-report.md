@@ -8,14 +8,14 @@
 | --- | --- |
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
-| External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
+| External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
 | Declared surfaces | 17 |
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 17 |
 | External hosts | 31 |
 | First-party hosts | 0 |
-| Approved transition | 2 finding(s) |
+| Approved transition | 1 finding(s) |
 | Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
@@ -100,7 +100,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ### Added external HTTP boundary prefixes (1)
 
-- `/.well-known`
+- `/media`
 
 ### Removed external HTTP boundary prefixes (0)
 
@@ -178,6 +178,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md
-- **WARN** `W005 external-boundary-prefix-added` External HTTP boundary prefix added: /.well-known
+- **WARN** `W005 external-boundary-prefix-added` External HTTP boundary prefix added: /media
 

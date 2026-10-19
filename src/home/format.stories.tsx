@@ -117,8 +117,9 @@ function LocaleComparison() {
 			 * Issue #407: the comparison table renders through the
 			 * editorial `DataTable`, so it carries a visible caption, a
 			 * `scope="row"` header cell per row, and a focusable scroll
-			 * box instead of a raw `<table>` whose overflow could only be
-			 * scrolled with a pointer. The row DATA is unchanged — it
+			 * box instead of an ad-hoc table element whose overflow could
+			 * only be scrolled with a pointer (Issue #407). The row DATA
+			 * is unchanged — it
 			 * still comes from `LOCALE_COMPARISON_ROWS`, the single source
 			 * the Storybook preview and the static report share.
 			 */}

@@ -82,14 +82,25 @@ const TECHNOLOGY_CYCLE = ['TypeScript', 'React', 'Cloudflare Workers', 'Panda CS
 /**
  * Per-card DOM node ceiling.
  *
- * The measured card is 19 nodes without cover media, so a ceiling of
- * 20 leaves exactly one node of headroom for a legitimate single
- * addition while still failing loudly if a card starts rendering a
- * sub-tree per facet, per technology or per link. It is a REGRESSION
- * CEILING ("one card must stop being one card"), not a performance
- * budget: nothing here is expressed in milliseconds.
+ * The measured card is 20 nodes without cover media (21 with the
+ * `Pinned` badge), so a ceiling of 22 leaves exactly one node of
+ * headroom for a legitimate single addition while still failing
+ * loudly if a card starts rendering a sub-tree per facet, per
+ * technology or per link. It is a REGRESSION CEILING ("one card must
+ * stop being one card"), not a performance budget: nothing here is
+ * expressed in milliseconds.
+ *
+ * Issue #411 raised it from 20 to 22. The category card composes
+ * `StateMark` — the non-colour half of the category cue — and that is
+ * exactly ONE element per card: a single `<span>` whose silhouette is
+ * cut with `clip-path`. The cost is CONSTANT per card, so the property
+ * this ceiling protects — linear growth, no per-facet or per-technology
+ * sub-tree — is unchanged; only the base moves. The "cheapest vs worst
+ * card differ by at most one node" invariant in
+ * `src/portfolio/components/list-scale.test.tsx` is what proves the
+ * cost stayed constant.
  */
-export const PER_CARD_NODE_CEILING = 20;
+export const PER_CARD_NODE_CEILING = 22;
 
 /**
  * Committed captures are WebP: width cap, quality, and size budget.

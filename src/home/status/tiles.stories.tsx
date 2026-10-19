@@ -1,4 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
+import { MonochromeProof } from '../../../.storybook/MonochromeProof';
 import type { SystemService, SystemServiceStatus } from './health';
 import { StatusTiles } from './tiles';
 
@@ -59,6 +60,13 @@ const mixedHealth: readonly SystemServiceStatus[] = [
 	{ id: 'r2', health: 'unreachable' },
 ];
 
+/** One row per health — the greyscale / narrow-width frames need all three at once. */
+const allThreeHealths: readonly SystemServiceStatus[] = [
+	{ id: 'external-boundary', health: 'ok', detail: 'all probes returned within budget' },
+	{ id: 'd1', health: 'degraded', detail: 'empty result set' },
+	{ id: 'r2', health: 'unreachable' },
+];
+
 export const AllOk: Story = {
 	args: {
 		services,
@@ -115,4 +123,48 @@ export const LocaleTokyo: Story = {
 		observedAt: '2026-01-05T09:00:00.000Z',
 		timeZone: 'Asia/Tokyo',
 	},
+};
+
+/**
+ * Issue #411 — the greyscale proof.
+ *
+ * Every health in one frame, hue removed. Before this ticket the
+ * three states were three identical pills once colour was taken away
+ * (`ok` differed only by its accent fill). The frame is what makes
+ * that regression visible without a colour-vision simulator: if the
+ * rows read the same here, the badge is colour-only and WCAG 2.2 SC
+ * 1.4.1 (Level A) is violated. Capture it once per appearance — the
+ * semantic tokens switch on `prefers-color-scheme`, so the light and
+ * dark frames are two emulations of the SAME story, not two stories.
+ */
+export const Monochrome: Story = {
+	args: {
+		services,
+		statuses: allThreeHealths,
+		observedAt: '2026-01-05T09:00:00.000Z',
+	},
+	render: (args) => (
+		<MonochromeProof caption="greyscale — status shapes: disc = reachable, triangle = degraded, cross = unreachable">
+			<StatusTiles {...args} />
+		</MonochromeProof>
+	),
+};
+
+/**
+ * Issue #411 — the reduced-width layout. Below `md` the row collapses
+ * to a single column and the badge moves under the detail text, so
+ * the shape is the first thing still readable at 200% zoom on a
+ * phone-width viewport.
+ */
+export const NarrowViewport: Story = {
+	args: {
+		services,
+		statuses: allThreeHealths,
+		observedAt: '2026-01-05T09:00:00.000Z',
+	},
+	render: (args) => (
+		<div style={{ width: '360px', border: '1px solid #d0d0d0' }}>
+			<StatusTiles {...args} />
+		</div>
+	),
 };

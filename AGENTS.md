@@ -355,18 +355,23 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `console` through `src/logging/logger.ts`, and operator scripts may
   not print a secret value) +
   `structured-data:check` + `index:boundary:check` +
+  `seo:status:check` (Issue #419 — every shipped route must own a
+  status row (200 / 404 / 500 / redirect / noindex) whose proof file
+  cites it, so an unreviewed request class cannot pass silently) +
   `tools:check` + `security:headers:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +
-  `tools:provenance:check` + `publication:check` +
+  `tools:provenance:check` + `copy:i18n:check` + `publication:check` +
   `content:links:check` (Issue #434 — internal link 404 / unsafe
   target / missing image alt is an error; external timeouts are
   warnings) +
   `routes:quality:check` (Issue #492) + `i18n:policy:check` +
   `ci:pins:check` (Issue #472, GitHub
-  Actions pin / token audit) + `test`. The canonical list is
+  Actions pin / token audit) + `knip:check` (Issue #531,
+  diff gate vs `quality/knip-baseline.json`) + `test`.
+  The canonical list is
   `quality/profile.yaml#gates.fast.components`; add a step there,
   not only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.

@@ -61,6 +61,14 @@ gates:
       # still matches the working tree; an adoption without a fallback
       # fails.
       - 'pnpm run compat:check' # Baseline Web feature adoption gate (browser compatibility)
+      # Issue #413: the CSS syntax / vocabulary gate. It parses the sheet
+      # Panda generates (`panda cssgen` into `.tmp/`, gitignored) plus every
+      # stylesheet under `src/`, and fails an unknown property / at-rule /
+      # value function, a broken block or a keyword outside a property
+      # grammar. Vendor prefixes and specification-permitted extensions are
+      # accepted only through an explicit, in-use allowlist entry
+      # (quality/css-standards.json). Offline; no network, no secret.
+      - 'pnpm run css:check' # CSS syntax / unknown-property gate
       # Issue #433: the Unicode / URL-slug policy is enforced on the
       # shipped surface, and the gate prints the shared decision table
       # classified with the real owner grammars.
@@ -418,6 +426,57 @@ compat:
       measured on both instead of assumed. The current known
       differential is recorded in docs/development.md.
   cost_class: medium
+
+# Issue #413 — the shipped CSS is validated the way a specification
+# validator validates it, offline: a CSS-Syntax tokenizer + parser answers
+# "does this parse", and a reviewed vocabulary answers "does this name
+# exist". A syntax error in generated CSS is otherwise invisible — the
+# bundle builds, the declaration is dropped by the browser, and the page
+# renders with less styling than it reads. Compatibility (does it RUN in
+# the target browsers) stays with the Issue #414 gate above; this gate
+# answers a different question and never reads a Baseline snapshot.
+css_syntax:
+  manifest: 'quality/css-standards.json'
+  tool: 'scripts/check-css-syntax.mjs'
+  fixture_suite: 'node --test scripts/check-css-syntax.test.mjs'
+  command: 'pnpm run css:check'
+  report_command: 'pnpm run verify:css-screenshot'
+  documentation: 'docs/verification/standards/css-validated.md'
+  surfaces:
+    - id: panda-generated
+      kind: 'panda-cssgen → .tmp/css-syntax/panda-generated.css (gitignored)'
+      covers: 'preflight + tokens + recipes + utilities generated from panda.config.ts and src/**'
+    - id: src-css
+      kind: 'files (src/**/*.css)'
+      covers: 'hand-written sheets — src/styles.css @font-face descriptors, @layer order, reduced-motion override'
+  rules:
+    syntax:
+      - 'unclosed_block / stray_close_brace'
+      - 'missing_colon / missing_semicolon / empty_value'
+      - 'declaration_at_top_level / empty_selector / unclosed_rule'
+      - 'unterminated_comment / unterminated_string / bad_url'
+      - 'invalid_important / invalid_keyframe_selector'
+      - 'invalid_at_rule_prelude / nonempty_at_rule_prelude'
+    vocabulary:
+      - 'unknown_property / unknown_at_rule / unknown_function'
+      - 'invalid_enum_value (closed keyword grammars only; var() and CSS-wide keywords are excluded, as a validator must)'
+      - 'descriptor_outside_font_face / property_not_allowed_in_font_face'
+    allowlist:
+      - 'vendor prefixes are accepted only when the unprefixed property is in the vocabulary (require_known_unprefixed)'
+      - 'engine-specific and specification-permitted extensions are waived by name, with reason + basis URL + surface scope'
+      - 'every allowlist entry must still be in use (allow_unused)'
+    silent_pass_guards:
+      - 'a declared surface that yields no declarations fails (surface_empty)'
+      - 'a stylesheet under the coverage root owned by no surface fails (surface_uncovered)'
+      - 'a total declaration count below policy.min_declarations fails (vocabulary_underfloor)'
+      - 'an artifact that cannot be generated at all fails rather than reporting an empty sheet'
+      - 'a vendor prefix whose unprefixed counterpart is not in the vocabulary fails (vendor_prefix_unresolved)'
+      - 'a stylesheet the parser could not finish to eof fails instead of reporting the part it read as clean (parse_truncated)'
+    known_limits:
+      - 'value grammars are only checked for properties whose CSS grammar is a closed keyword list; a length, colour or url value is not parsed'
+      - 'selectors are tokenized (balanced parens/brackets, escapes) but their specificity and validity are not checked'
+      - 'the gate validates the CSS Panda generates, not a minified build artefact; point `--artifact <file>` at a built stylesheet to validate that instead'
+      - 'a declaration that is syntactically valid but overridden later is not reported — this gate answers validity, not effect'
 
 coverage_policy:
   enabled: false

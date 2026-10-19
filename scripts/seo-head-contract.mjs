@@ -548,6 +548,168 @@ export function parseHeadTags(html) {
 	return tags;
 }
 
+/**
+ * The INLINE `<script>` bodies a rendered `<head>` ships, decoded.
+ *
+ * `<script src>` elements are skipped: the Issue #488 contract is about
+ * the inline body, because that is the one the browser RE-EXECUTES on
+ * every client-side navigation (TanStack Router merges the root head
+ * into every route match). An external file is fetched once and cannot
+ * accumulate per-route state.
+ *
+ * @param {string} html
+ * @returns {string[]}
+ */
+export function parseInlineScriptSources(html) {
+	const headMatch = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(html);
+	const source = headMatch ? headMatch[1] : html;
+	const bodies = [];
+	for (const match of source.matchAll(/<script(\s[^>]*)?>([\s\S]*?)<\/script>/gi)) {
+		if (/\bsrc\s*=/i.test(match[1] ?? '')) continue;
+		bodies.push(decodeEntities(match[2]));
+	}
+	return bodies;
+}
+
+/**
+ * The argument text of the `name( ... )` call whose `(` sits at
+ * `openIndex`.
+ *
+ * Depth-aware and quote-aware on purpose: the inline flip script binds
+ * `addEventListener('load', function () { ... }, { once: true })`, so
+ * cutting at the first `)` would read the inner function's parameter
+ * list and miss the option object entirely.
+ *
+ * @param {string} source
+ * @param {number} openIndex
+ * @returns {string}
+ */
+function callArguments(source, openIndex) {
+	let depth = 0;
+	let quote = null;
+	for (let i = openIndex; i < source.length; i += 1) {
+		const char = source[i];
+		if (quote !== null) {
+			if (char === '\\') i += 1;
+			else if (char === quote) quote = null;
+			continue;
+		}
+		if (char === '"' || char === "'" || char === '`') {
+			quote = char;
+			continue;
+		}
+		if (char === '(') depth += 1;
+		else if (char === ')') {
+			depth -= 1;
+			if (depth === 0) return source.slice(openIndex + 1, i);
+		}
+	}
+	return source.slice(openIndex + 1);
+}
+
+/**
+ * The non-blocking webfont flip script contract (Issue #488).
+ *
+ * `src/routes/__root.tsx` emits one inline script that flips the
+ * `media="print"` webfont stylesheet to `media="all"`. The previous
+ * revision ended with
+ *
+ *     if (!f()) document.addEventListener('DOMContentLoaded', f)
+ *
+ * so every route change that found no *pending* print link left one
+ * more listener on `document` — and `DOMContentLoaded` cannot fire
+ * again after the first document load, so each one was permanently
+ * dead: +1 leaked `document` listener per route change, unbounded.
+ *
+ * The measurement is a browser run and is deliberately NOT a gate
+ * (`perf:interaction:memory` is wired into no `validate:*` chain), so
+ * the shape of the fix is pinned here instead: a deterministic
+ * assertion on the script the SSR document actually ships, which runs
+ * in `validate:fast` through
+ * `test/integration/seo-head.test.ts`.
+ *
+ * The rules are deliberately literal string shapes, not a JavaScript
+ * parse: the script is minified-by-hand on purpose (it is an inline
+ * body, so every byte ships on every page), and a rule that reads the
+ * shipped text cannot be satisfied by a comment or by a refactor that
+ * keeps the same accumulation.
+ *
+ * @param {string[]} sources inline script bodies, in document order
+ * @param {{ path?: string }} [options]
+ * @returns {Finding[]}
+ */
+export function evaluateFlipScriptContract(sources, { path = '' } = {}) {
+	/** @type {Finding[]} */
+	const findings = [];
+	const observation = { path, routeId: path };
+	const flipScripts = sources.filter((source) =>
+		/\[media\s*=\s*\\?["']print\\?["']\]/.test(source),
+	);
+
+	if (flipScripts.length === 0) {
+		findings.push(
+			finding(
+				'head.flip-script-missing',
+				observation,
+				'no inline script flips the media="print" stylesheet; the non-blocking webfont contract (Issue #291) is no longer implemented in <head>',
+			),
+		);
+		return findings;
+	}
+
+	const READY_STATE_GUARD = /document\.readyState\s*={2,3}\s*["']loading["']/;
+	const BOUNDED_POLL = /requestAnimationFrame/;
+	const POLL_BOUND = /(?:[<>]=?|=)\s*\d+\s*[)\]}]/;
+
+	for (const source of flipScripts) {
+		for (const match of source.matchAll(/addEventListener\(\s*["']DOMContentLoaded["']/g)) {
+			const before = source.slice(0, match.index);
+			if (!READY_STATE_GUARD.test(before)) {
+				findings.push(
+					finding(
+						'head.flip-script-unbounded-domcontentloaded',
+						observation,
+						'DOMContentLoaded is registered without a `document.readyState === "loading"` guard; after the first document load that event can never fire again, so every registration is a permanently dead `document` listener',
+					),
+				);
+			}
+			if (!/once\s*:\s*true/.test(callArguments(source, source.indexOf('(', match.index)))) {
+				findings.push(
+					finding(
+						'head.flip-script-domcontentloaded-not-once',
+						observation,
+						'DOMContentLoaded is registered without `{once:true}`; re-running the inline body stacks another registration',
+					),
+				);
+			}
+		}
+
+		if (BOUNDED_POLL.test(source) && !POLL_BOUND.test(source)) {
+			findings.push(
+				finding(
+					'head.flip-script-unbounded-raf',
+					observation,
+					'the script schedules requestAnimationFrame without a finite frame bound; a self-rescheduling poll that never stops accumulates on every client-side navigation',
+				),
+			);
+		}
+
+		for (const match of source.matchAll(/addEventListener\(\s*["']load["']/g)) {
+			if (!/once\s*:\s*true/.test(callArguments(source, source.indexOf('(', match.index)))) {
+				findings.push(
+					finding(
+						'head.flip-script-load-listener-not-once',
+						observation,
+						'a `load` listener is bound without `{once:true}`; re-running the inline body against the same <link> stacks listeners on the element',
+					),
+				);
+			}
+		}
+	}
+
+	return findings;
+}
+
 /* ------------------------------------------------------------------ *
  * Policy evaluation
  * ------------------------------------------------------------------ */

@@ -10,7 +10,7 @@ tickets:
 | `missing-keys-report.webp` | #428 | copy locale contract gate: opt-in matrix, fixture findings, legend (see [`copy/README.md`](../../../copy/README.md)) |
 | `unicode-slug-validation.webp` | #433 | the 17-row Unicode / URL-slug decision table classified by the shipped `EMOJI_SLUG_GRAMMAR` / `PORTFOLIO_SLUG_GRAMMAR`, plus the counterfactual lossy-slug results |
 | `diacritic-cyrillic-font.webp` | #432 | 16 fr / de / pt / ru heading fixtures rendered with the shipped font stack, plus 53 measured code points (missing glyph, webfont vs platform fallback) and a clipboard round trip |
-| `pseudo-locale-stress.webp` | #429 | 10 pseudo-localised stress rows at 1.5x expansion (long compounds, combining marks, digit systems, Arabic / Hebrew), each drawn in a 320 px UI surface before and after expansion, plus the audit verdict table and the list of things the fixture does not prove |
+| `pseudo-locale-stress.webp` | #429 | 11 pseudo-localised stress rows at 1.5x expansion (a long-form paragraph, long compounds, combining marks, digit systems, Arabic / Hebrew), five of them drawn in a 320 px UI surface before and after expansion, plus the audit verdict table and the list of things the fixture does not prove |
 
 ## Intl locale formatting (Issue #430)
 
@@ -156,12 +156,13 @@ code point — an artefact that measured nothing must not look complete.
 ## Pseudo-localisation stress — expansion, RTL tolerance (Issue #429)
 
 `pseudo-locale-stress.webp` is the committed screenshot of the
-pseudo-localisation stress report. It renders the 10 rows of
-`src/i18n/pseudo-locale.ts` — long text, an unbreakable German
-compound, decomposed spellings, fullwidth / Arabic-Indic / ASCII digits,
-and an Arabic and a Hebrew paragraph — at a mechanical, reversible 1.5x
-expansion, and draws four of them as real UI surfaces (badge, heading,
-call to action) in a **320 px** frame before and after the expansion.
+pseudo-localisation stress report. It renders the 11 rows of
+`src/i18n/pseudo-locale.ts` — a long-form paragraph, an unbreakable
+German compound, decomposed spellings, fullwidth / Arabic-Indic / ASCII
+digits, and an Arabic and a Hebrew paragraph — at a mechanical,
+reversible 1.5x expansion, and draws five of them as real UI surfaces
+(badge, heading, call to action) in a **320 px** frame before and after
+the expansion.
 The report, the measured numbers, the reproduction commands and the
 **out-of-scope list** are in
 [`pseudo-locale-stress.md`](pseudo-locale-stress.md).

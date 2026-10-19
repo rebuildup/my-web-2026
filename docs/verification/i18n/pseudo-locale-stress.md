@@ -1,6 +1,6 @@
 # 疑似ローカライズ stress — 検証レポート (#429)
 
-- 対象: `src/i18n/pseudo-locale.ts` の疑似ローカライズ fixture 10 行（長文 / 結合文字 / 数値 / Bidi）と、それを**出荷済み font stack** で 320 px の枠に描いたときの実測
+- 対象: `src/i18n/pseudo-locale.ts` の疑似ローカライズ fixture 11 行（長文 / 結合文字 / 数値 / Bidi）と、それを**出荷済み font stack** で 320 px の枠に描いたときの実測
 - Issue: #429（`test(i18n): 疑似ローカライズで文字膨張・RTL耐性を確認`）
 - 成果物: `docs/verification/i18n/pseudo-locale-stress.webp`
 - 関連: [`docs/domain/i18n.md`](../../domain/i18n.md) §5（文章品質とタイポグラフィの分離）・§6（locale は opt-in）、[`diacritic-cyrillic-font.md`](diacritic-cyrillic-font.md)
@@ -10,14 +10,14 @@
 
 | 項目 | 値 |
 | --- | --- |
-| 描画対象 | `src/i18n/pseudo-locale.ts` の stress 10 行。うち UI surface 描画は 4 行（`en-negation-permission` / `de-compound` / `ja-mixed` / `he-rtl-acronym`） |
+| 描画対象 | `src/i18n/pseudo-locale.ts` の stress 11 行。うち UI surface 描画は 5 行（`en-longform` / `en-negation-permission` / `de-compound` / `ja-mixed` / `he-rtl-acronym`） |
 | 膨張 | `expandPseudoText()` — 結合記号（U+0301 / U+0304）と幅を持つ U+00B7 のみを挿入する。書き換え・翻訳・機械的変換以外の編集は**しない** |
 | font stack | `src/editorial/tokens.ts` の `rawTokens.fonts.*` をそのまま CSS に展開。fixture 側は font を宣言しない |
 | webfont | `src/routes/__root.tsx` が読んでいる `fonts.googleapis.com/css2` の href を**抽出**して使う（script がリテラルを持たない）。実行時 `webfont loaded: true` |
 | capture 手段 | `node --experimental-strip-types scripts/capture-pseudo-locale-stress.mjs`（= `pnpm run capture:pseudo-locale`） |
 | 実測 | headless Chromium / frame 幅 320 px。判定は「横方向 overflow が無い」「宣言した meaning token が DOM に残っている」「isolate 数が balancing している」の 3 種 |
 | viewport / DPR | 1440 x 1000 / 1、`fullPage` 撮影 |
-| 生成物サイズ | 1440 x 2561 px、**207 kB** WebP（quality 74、budget 300 kB） |
+| 生成物サイズ | 1440 x 3303 px、**274 kB** WebP（quality 66、budget 300 kB） |
 | 外部通信 | webfont の取得のみ（`fonts.googleapis.com` / `fonts.gstatic.com`）。fixture・判定・font stack に外部依存はない |
 | 再現性 | 判定は決定的ながら **browser / platform に依存する実測**。CI の gate ではなく証跡である |
 
@@ -27,7 +27,7 @@ Issue は `docs/verification/i18n/pseudo-locale-stress.png` を指定してい�
 
 ## 2. 画面が示している条件
 
-### 2.1 10 行の実測値
+### 2.1 11 行の実測値
 
 `expansion cp` は **isolate を除いた**膨張後の長さで、ratio の判定も同じ基準（§3.3）。`protected` は
 装飾から除外した meaning token の code point 数、`word` は最長単語の膨張前後、LRI / PDI は
@@ -36,6 +36,7 @@ U+2066 / U+2069 の個数。
 | row | dir | lang | src cp | expansion cp | ratio | protected | word | LRI / PDI | verdict |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | `en-baseline` | ltr | en | 55 | 83 | 1.509 | 0 | 8 → 16 | 0 / 0 | ok |
+| `en-longform` | ltr | en | 365 | 548 | 1.501 | 41 | 12 → 24 | 0 / 0 | ok |
 | `en-negation-permission` | ltr | en | 88 | 132 | 1.500 | 35 | 10 → 12 | 0 / 0 | ok |
 | `en-numbers` | ltr | en | 79 | 119 | 1.506 | 46 | 18 → 40 | 0 / 0 | ok |
 | `de-compound` | ltr | de | 104 | 156 | 1.500 | 0 | 68 → 108 | 0 / 0 | ok |
@@ -56,6 +57,7 @@ U+2066 / U+2069 の個数。
 
 | frame | scrollWidth | clientWidth | 判定 |
 | --- | --- | --- | --- |
+| `en-longform` before / after | 318 / 318 | 318 / 318 | overflow なし |
 | `en-negation-permission` before / after | 318 / 318 | 318 / 318 | overflow なし |
 | `de-compound` before / after | 318 / 318 | 318 / 318 | overflow なし |
 | `ja-mixed` before / after | 318 / 318 | 318 / 318 | overflow なし |
@@ -72,6 +74,7 @@ U+2066 / U+2069 の個数。
 
 | row | token | 残る場所 |
 | --- | --- | --- |
+| `en-longform` | `never rewrites the source` / `documented limit` | 膨張後の DOM テキスト（before / after 両方） |
 | `en-negation-permission` | `read-only` / `do not publish` / `admin access` | 膨張後の DOM テキスト（before / after 両方） |
 | `en-numbers` | `1,234,567` / `12:30` / `2026-01-05` / `99.9%` / `/api/v1/reactions` | 数字 run は装飾対象外として byte-exact |
 | `ar-rtl-embedded` | `12` / `2026` / `admin` / `$12.50` | isolate の内側、順序そのまま |
@@ -126,7 +129,7 @@ ratio は **膨張のみ**で測る。RTL 行は膨張の後に isolate が付�
 
 | 対象 | コマンド | 何が緑になること |
 | --- | --- | --- |
-| fixture 契約 | `pnpm exec vitest run src/i18n/pseudo-locale.test.ts` | 32 テスト。膨張・可逆性・数値 run・空白・protected span・bidi 隔離・limit の扱い・意味 token |
+| fixture 契約 | `pnpm exec vitest run src/i18n/pseudo-locale.test.ts` | 33 テスト。膨張・可逆性・数値 run・空白・protected span・bidi 隔離・limit の扱い・意味 token・長文行 |
 | capture の純粋部分 | `node --test scripts/capture-pseudo-locale-stress.test.mjs` | 14 テスト。report の escape、limits の逐語表示、verdict ロジック（overflow / token 消失 / isolate 不整合 / webfont 未読込 / fixture 失敗） |
 | wiring | `pnpm run test:wiring:check` | 新しい `scripts/*.test.mjs` が `pnpm test` から到達可能 |
 | 実測 | `pnpm run capture:pseudo-locale` | Chromium で 320 px frame を実測し、違反があれば非ゼロ終了 |

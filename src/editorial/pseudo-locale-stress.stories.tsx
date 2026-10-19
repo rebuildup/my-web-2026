@@ -48,7 +48,13 @@ import {
  */
 
 /** Rows whose stress is worth a real surface, in the order shown. */
-const SURFACE_SAMPLE_IDS = ['en-negation-permission', 'de-compound', 'ja-mixed', 'he-rtl-acronym'];
+const SURFACE_SAMPLE_IDS = [
+	'en-longform',
+	'en-negation-permission',
+	'de-compound',
+	'ja-mixed',
+	'he-rtl-acronym',
+];
 
 /** The narrowest supported viewport (the 320 px pass the fixture claims). */
 const NARROW_FRAME = { width: '320px' };

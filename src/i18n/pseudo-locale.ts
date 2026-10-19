@@ -708,6 +708,15 @@ export const PSEUDO_STRESS_SAMPLES: readonly PseudoSample[] = [
 		note: 'Control row: 1.5x must not change which line the reader sees first.',
 	},
 	{
+		id: 'en-longform',
+		subject: 'long-form paragraph — many lines of expansion at 320 px',
+		lang: 'en',
+		direction: 'ltr',
+		text: 'The verification pass reads the fixture table, expands every row, and records what survived. It never rewrites the source, so a reviewer can compare the two renderings line by line. A row that misses the expansion target is reported as a finding rather than rounded away, and a row that cannot expand at all is marked as a documented limit instead of a silent pass.',
+		meaningTokens: ['never rewrites the source', 'documented limit'],
+		note: 'The long-form row the Issue asks for: one screen of prose, so the stress lands on line breaking across many lines rather than on a single heading. The wording describes this fixture, so it asserts nothing about the product.',
+	},
+	{
 		id: 'en-negation-permission',
 		subject: 'negation and permission vocabulary',
 		lang: 'en',

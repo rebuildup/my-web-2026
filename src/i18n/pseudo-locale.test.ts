@@ -269,6 +269,19 @@ describe('audit table', () => {
 		expect(german.expandedLongestWord).toBeGreaterThan(german.longestWord);
 	});
 
+	it('carries a long-form paragraph whose expansion spans many lines', () => {
+		// The Issue asks for 長文: one heading is not a wrapping stress, so
+		// the table keeps a full paragraph row and pins its claim words.
+		const row = auditPseudoText(pseudoSampleById('en-longform'));
+		expect(row.sourceCodePoints).toBeGreaterThan(200);
+		expect(row.ratio).toBeGreaterThanOrEqual(DEFAULT_EXPANSION_RATIO);
+		expect(row.meaningTokens.every((fact) => fact.preserved)).toBe(true);
+		expect(row.meaningTokens.map((fact) => fact.token)).toEqual([
+			'never rewrites the source',
+			'documented limit',
+		]);
+	});
+
 	it('marks the digits-only row as a documented limit, not a fake pass', () => {
 		const row = auditPseudoText(pseudoSampleById('digits-only'));
 		expect(row.expandable).toBe(false);

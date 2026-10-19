@@ -69,6 +69,7 @@ const VIEWPORT = { width: 1440, height: 1000 };
 
 /** Rows whose stress is worth a real surface, in report order. */
 export const SURFACE_SAMPLE_IDS = [
+	'en-longform',
 	'en-negation-permission',
 	'de-compound',
 	'ja-mixed',
@@ -500,10 +501,12 @@ async function main() {
 				: resolve(REPO_ROOT, 'docs/verification/i18n/pseudo-locale-stress.webp');
 			await mkdir(dirname(target), { recursive: true });
 			// Narrowed and compressed so the artefact stays under the
-			// repository's verification-image cap.
+			// repository's verification-image cap: the report grew a row
+			// per stress dimension, and a legible full-page shot of a
+			// 3000+ px document has to give up some quality to fit.
 			const info = await sharp(png)
 				.resize({ width: 1440, withoutEnlargement: true })
-				.webp({ quality: 74, effort: 6 })
+				.webp({ quality: 66, effort: 6 })
 				.toFile(target);
 			if (info.size > MAX_BYTES) {
 				process.stderr.write(

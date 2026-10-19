@@ -5,6 +5,7 @@ import {
 	LANGUAGE_PARTS,
 	LANGUAGE_PART_IDS,
 	LANGUAGE_WCAG_MAPPING,
+	type LanguagePart,
 	classifyLanguagePart,
 	expectedLanguageAttributes,
 	findLanguageDocument,
@@ -35,6 +36,13 @@ import { describeUnicode } from './unicode';
  * exists to catch, and a capture that cannot find a run is exactly the
  * failure the gate's coverage rule exists to catch.
  */
+
+/** A fixture part, failing loudly rather than returning undefined. */
+function part(id: string): LanguagePart {
+	const found = findLanguagePart(id);
+	if (!found) throw new Error(`fixture part "${id}" is missing`);
+	return found;
+}
 
 /** The verdict each fixture part must receive, authored here by hand. */
 const EXPECTED_VERDICTS: Record<string, string> = {
@@ -116,22 +124,18 @@ describe('classifyLanguagePart', () => {
 	});
 
 	it('refuses a tag that only differs from the document language by case', () => {
-		const part = { ...findLanguagePart('quote-english'), tag: 'EN' };
-		expect(classifyLanguagePart(part)).toBe('malformed-tag');
+		const quoted = { ...part('quote-english'), tag: 'EN' };
+		expect(classifyLanguagePart(quoted)).toBe('malformed-tag');
 	});
 
 	it('refuses a redundant tag even when the part could be tagged', () => {
 		// A Japanese quotation inside a Japanese document: the kind
 		// permits a tag, the language does not need one.
-		const part = {
-			...findLanguagePart('quote-english'),
-			tag: DOCUMENT_LANGUAGE.toUpperCase(),
-			id: 'japanese-quotation',
-		};
-		expect(classifyLanguagePart(part)).toBe('malformed-tag');
-		const lower = { ...part, tag: DOCUMENT_LANGUAGE };
-		expect(classifyLanguagePart(lower)).toBe('tag-redundant');
-		expect(languageAttributeFor(lower)).toBeNull();
+		const quoted = { ...part('quote-english'), tag: DOCUMENT_LANGUAGE.toUpperCase() };
+		expect(classifyLanguagePart(quoted)).toBe('malformed-tag');
+		const japanese = { ...part('quote-english'), tag: DOCUMENT_LANGUAGE };
+		expect(classifyLanguagePart(japanese)).toBe('tag-redundant');
+		expect(languageAttributeFor(japanese)).toBeNull();
 	});
 });
 

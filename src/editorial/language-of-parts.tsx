@@ -1,4 +1,4 @@
-import { css } from '../../styled-system/css';
+import { css, cx } from '../../styled-system/css';
 import {
 	DOCUMENT_LANGUAGE,
 	LANGUAGE_WCAG_MAPPING,
@@ -150,7 +150,7 @@ export function LanguageOfParts({
 				title={document.title}
 				description={document.note}
 			/>
-			<p className={css(bodyClassName, columnClassName)} data-language-body={document.id}>
+			<p className={cx(bodyClassName, columnClassName)} data-language-body={document.id}>
 				{runs.map((run, index) => (
 					// Runs are positional, not unique: the same prose can appear
 					// twice in one body, so the identity is the part id plus

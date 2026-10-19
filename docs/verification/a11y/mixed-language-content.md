@@ -13,7 +13,7 @@
 | capture 手段 | `pnpm run capture:a11y-language-of-parts`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの |
 | viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影） |
-| 生成物サイズ | 1440 x 2552 px、**203 kB** WebP（quality 80、budget 300 kB） |
+| 生成物サイズ | 1440 x 2996 px、**203 kB** WebP（quality 80、budget 300 kB） |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**。再生成は視覚的に同一であることを目標とする |
 | 本番非破壊 | 既定で外部通信なし。local harness build と loopback 配信のみ。deploy / remote binding / secret 値の読み出しは無い |
 

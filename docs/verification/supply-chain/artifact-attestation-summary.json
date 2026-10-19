@@ -14,33 +14,25 @@
 			"id": "tampered-artifact",
 			"expected_finding": "ARTIFACT_DIGEST_MISMATCH",
 			"status": "FAIL",
-			"findings": [
-				"ARTIFACT_DIGEST_MISMATCH"
-			]
+			"finding": "ARTIFACT_DIGEST_MISMATCH"
 		},
 		{
 			"id": "wrong-source-commit",
 			"expected_finding": "SOURCE_COMMIT_MISMATCH",
 			"status": "FAIL",
-			"findings": [
-				"SOURCE_COMMIT_MISMATCH"
-			]
+			"finding": "SOURCE_COMMIT_MISMATCH"
 		},
 		{
 			"id": "lockfile-drift",
 			"expected_finding": "LOCKFILE_DIGEST_MISMATCH",
 			"status": "FAIL",
-			"findings": [
-				"LOCKFILE_DIGEST_MISMATCH"
-			]
+			"finding": "LOCKFILE_DIGEST_MISMATCH"
 		},
 		{
 			"id": "fabricated-signature",
 			"expected_finding": "SIGNATURE_INCONSISTENT",
 			"status": "FAIL",
-			"findings": [
-				"SIGNATURE_INCONSISTENT"
-			]
+			"finding": "SIGNATURE_INCONSISTENT"
 		}
 	]
 }

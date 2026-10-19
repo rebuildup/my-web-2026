@@ -390,7 +390,7 @@ try {
 						id: scenario.id,
 						expected_finding: scenario.expected,
 						status: scenario.result.status,
-						findings: scenario.result.findings.map((item) => item.code),
+						finding: scenario.result.findings.map((item) => item.code).join(', '),
 					})),
 				},
 				null,

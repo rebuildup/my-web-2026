@@ -305,6 +305,7 @@
 			"redirect-guard.invalid",
 			"samuido.booth.pm",
 			"schema.org",
+			"script.google.com",
 			"scripts.sil.org",
 			"use.typekit.net",
 			"www.apache.org",
@@ -507,7 +508,9 @@
 				"files": [
 					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
-					"src/routes/__root.tsx"
+					"src/routes/__root.tsx",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -536,7 +539,9 @@
 				"files": [
 					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
-					"src/routes/__root.tsx"
+					"src/routes/__root.tsx",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -873,12 +878,33 @@
 				]
 			},
 			{
+				"url": "https://script.google.com",
+				"host": "script.google.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
+				]
+			},
+			{
 				"url": "https://use.typekit.net",
 				"host": "use.typekit.net",
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html"
+					"external/prototype/index.html",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://use.typekit.net/app",
+				"host": "use.typekit.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/embed-consent-notice.stories.tsx"
 				]
 			},
 			{
@@ -995,26 +1021,32 @@
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
 		"addedExternalUrls": [
-			"https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md"
+			"https://script.google.com",
+			"https://use.typekit.net/app"
 		],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [],
-		"removedExternalHosts": [],
-		"addedBoundaryPrefixes": [
-			"/.well-known"
+		"addedExternalHosts": [
+			"script.google.com"
 		],
+		"removedExternalHosts": [],
+		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md"
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host script.google.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
 			},
 			{
-				"code": "W005 external-boundary-prefix-added",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External HTTP boundary prefix added: /.well-known"
+				"message": "External URL added: https://script.google.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://use.typekit.net/app"
 			}
 		]
 	}

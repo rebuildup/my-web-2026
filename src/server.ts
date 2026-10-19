@@ -8,8 +8,10 @@ import handler from '@tanstack/react-start/server-entry';
 import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
 import { applyContentSecurityPolicyReportOnly } from './http/content-security-policy';
 import { externalBoundary } from './http/hono';
+import { classifySurface, createAnomalyMonitor } from './http/middleware/anomaly-monitor';
 import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
 import { applySecurityHeaders } from './http/security-headers';
+import { createAuditLogger } from './logging/logger';
 import { toolRouteSecurityPolicy } from './tools/registry';
 
 /**
@@ -489,6 +491,65 @@ function applyTransportSecurityPolicy(request: Request, response: Response): Res
 }
 
 /**
+ * Request anomaly observation (Issue #481).
+ *
+ * The entry is the only place where the two watched surfaces are both
+ * visible: `/admin*` is answered by the SSR pipeline and `/api/v1/*` by
+ * the Hono boundary, so a monitor mounted on either one alone would see
+ * half the picture. Counting happens here, right after the dispatch and
+ * after the SSR failure fallback — an SSR 500 that `settleSsrDocument`
+ * turned into a readable document must be counted as the failure it was,
+ * not as the 200 the visitor sees.
+ *
+ * The monitor's counts are per-isolate and approximate by construction
+ * (see `src/http/middleware/anomaly-monitor.ts`): this owns the
+ * DETECTION decision and its status-only record, not a durable global
+ * rate. Where the record is DELIVERED is an owner decision that this
+ * repository has not been given yet, so the shipped sink is the audit
+ * log and nothing else — no webhook, no e-mail, no third-party call. A
+ * destination that leaves the platform needs its own ticket and ADR
+ * (AGENTS.md §4); the seam is `createAnomalyMonitor({ onEvent })`.
+ *
+ * One instance per isolate, so the counts live exactly as long as the
+ * isolate does and never outlive a request.
+ *
+ * The scope stays `boundary`: this is the same boundary record stream
+ * as `src/http/errors.ts`, and the anomaly record is distinguishable
+ * by its event name rather than by a second scope.
+ */
+const anomalyAuditLogger = createAuditLogger('boundary');
+
+const requestAnomalyMonitor = createAnomalyMonitor({
+	onEvent: (event) => {
+		// Fields are listed rather than spread so the record cannot
+		// inherit a new property from the event type without an
+		// explicit decision here.
+		anomalyAuditLogger.audit(event.event, {
+			surface: event.surface,
+			signal: event.signal,
+			status: event.status,
+			windowStart: event.windowStart,
+			samples: event.samples,
+			hits: event.hits,
+			rate: event.rate,
+			threshold: event.threshold,
+			minSamples: event.minSamples,
+		});
+	},
+});
+
+/**
+ * Count one Worker-generated response, if it belongs to a watched
+ * surface. Returns nothing: the caller cannot tell an observed request
+ * from an unobserved one, so observation cannot change a response.
+ */
+function observeRequestAnomaly(pathname: string, status: number): void {
+	const surface = classifySurface(pathname);
+	if (surface === null) return;
+	requestAnomalyMonitor.record({ surface, status });
+}
+
+/**
  * Cloudflare Worker entry for my-web-2026.
  *
  * Default export shape matches the Cloudflare Workers `ExportedHandler`
@@ -516,6 +577,7 @@ export default {
 					request,
 					await settleSsrDocumentResponse(request, await handler.fetch(request)),
 				);
+		observeRequestAnomaly(url.pathname, response.status);
 		// Issue #449: security headers are applied AFTER the dispatch so
 		// one choke point covers every Worker-generated response — SSR
 		// HTML, redirects, server-function payloads and the Hono

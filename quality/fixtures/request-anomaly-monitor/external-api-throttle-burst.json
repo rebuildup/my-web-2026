@@ -1,0 +1,22 @@
+{
+	"case": "external-api-throttle-burst",
+	"note": "異常系: 429 が過半に達した時点で検知される。しきい値は 401/403 より高い 0.50",
+	"surface": "external-api",
+	"runs": [{ "status": 200, "count": 19 }, { "status": 429, "count": 19 }],
+	"expect": {
+		"eventCount": 1,
+		"events": [
+			{
+				"event": "anomaly.detected",
+				"surface": "external-api",
+				"signal": "rate-limited",
+				"status": "429",
+				"samples": 38,
+				"hits": 19,
+				"rate": 0.5,
+				"threshold": 0.5,
+				"minSamples": 20
+			}
+		]
+	}
+}

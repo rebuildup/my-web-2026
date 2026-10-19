@@ -1,0 +1,5 @@
+{
+	"note": "the Discord candidate disappears from the ledger while docs/domain/integrations.md still lists it — the domain document owns the roster, so the drift fails here",
+	"expect_error": "no reviewed row",
+	"ops": [{ "op": "remove", "path": "integrations.2.id" }]
+}

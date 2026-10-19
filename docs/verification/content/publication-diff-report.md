@@ -13,10 +13,10 @@
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 17 |
-| External hosts | 31 |
+| External hosts | 32 |
 | First-party hosts | 0 |
-| Approved transition | 2 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | 3 finding(s) |
+| Verdict of the approved transition | **fail** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -90,17 +90,17 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (0)
+### Added external hosts (1)
 
-- (none)
+- `script.google.com`
 
 ### Removed external hosts (0)
 
 - (none)
 
-### Added external HTTP boundary prefixes (1)
+### Added external HTTP boundary prefixes (0)
 
-- `/.well-known`
+- (none)
 
 ### Removed external HTTP boundary prefixes (0)
 
@@ -132,10 +132,10 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://example.com` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/frame` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
 | `https://example.com/safe` | `example.com` | external | `src/portfolio/fixtures/markdown/hostile.md` |
-| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx` |
+| `https://fonts.googleapis.com` | `fonts.googleapis.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
-| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx` |
+| `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
@@ -162,7 +162,9 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
-| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html` |
+| `https://script.google.com` | `script.google.com` | external | `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://use.typekit.net` | `use.typekit.net` | external | `external/prototype/index.html`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://use.typekit.net/app` | `use.typekit.net` | external | `src/tools/embed-consent-notice.stories.tsx` |
 | `https://www.facebook.com/KosenProcon` | `www.facebook.com` | external | `public/share/procon2026/index.html` |
 | `https://www.googletagmanager.com` | `www.googletagmanager.com` | external | `src/http/content-security-policy.ts` |
 | `https://www.googletagmanager.com/gtag/js?id=` | `www.googletagmanager.com` | external | `src/editorial/analytics/GoogleAnalytics.tsx` |
@@ -178,6 +180,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md
-- **WARN** `W005 external-boundary-prefix-added` External HTTP boundary prefix added: /.well-known
+- **ERROR** `E004 external-host-added` New external host script.google.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
+- **WARN** `W002 external-url-added` External URL added: https://script.google.com
+- **WARN** `W002 external-url-added` External URL added: https://use.typekit.net/app
 

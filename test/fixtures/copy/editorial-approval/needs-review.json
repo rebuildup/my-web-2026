@@ -1,0 +1,19 @@
+{
+	"$comment": "Fixture: the same public Japanese copy change with NO owner approval record. Expected verdict: not run (NEEDS REVIEW). This is the state a pull request that changed public copy and nobody reviewed it lands in — the gate must not read it as a pass.",
+	"name": "needs-review",
+	"expect": "not run",
+	"pr": 512,
+	"diff": [
+		"diff --git a/src/home/hero.tsx b/src/home/hero.tsx",
+		"index 1111111..2222222 100644",
+		"--- a/src/home/hero.tsx",
+		"+++ b/src/home/hero.tsx",
+		"@@ -12,1 +12,1 @@",
+		"-\t\t\tlede=\"開発・制作・活動をまとめる次の Personal Web Platform を構築しています。\"",
+		"+\t\t\tlede=\"開発・制作・活動をまとめる次の Personal Web Platform の移行を進めています。\""
+	],
+	"ledger": {
+		"version": 1,
+		"records": []
+	}
+}

@@ -1,0 +1,44 @@
+{
+	"$comment": "Fixture: a public Japanese copy change whose owner approval record says `rejected`. Expected verdict: fail. A recorded review that says no is a different sentence from a review that never happened, and the report keeps them apart.",
+	"name": "rejected",
+	"expect": "fail",
+	"pr": 512,
+	"diff": [
+		"diff --git a/src/home/hero.tsx b/src/home/hero.tsx",
+		"index 1111111..2222222 100644",
+		"--- a/src/home/hero.tsx",
+		"+++ b/src/home/hero.tsx",
+		"@@ -12,1 +12,1 @@",
+		"-\t\t\tlede=\"開発・制作・活動をまとめる次の Personal Web Platform を構築しています。\"",
+		"+\t\t\tlede=\"開発・制作・活動をまとめる次の Personal Web Platform の移行を進めています。\""
+	],
+	"ledger": {
+		"version": 1,
+		"records": [
+			{
+				"id": "pr-512",
+				"pr": 512,
+				"base": "release-0-7-0",
+				"reviewer": "rebuildup",
+				"reviewedAt": "2026-10-20",
+				"decision": "rejected",
+				"fingerprint": "sha256:a94069ca55b31d2cd80e79d9c2aeba1dbca8244d2f739add7932952e0b08ae9e",
+				"proposal": {
+					"tool": "yomiyasu",
+					"ran": true,
+					"summary": "推敲案 1 件: 「構築しています」を「移行を進めています」へ。",
+					"disposition": "不採用。原文の意味が変わるため。"
+				},
+				"comparisons": [
+					{
+						"path": "src/home/hero.tsx",
+						"before": "開発・制作・活動をまとめる次の Personal Web Platform を構築しています。",
+						"after": "開発・制作・活動をまとめる次の Personal Web Platform の移行を進めています。",
+						"verdict": "intentional",
+						"note": "言い換えの意味差を確認した結果、公開前の書き直しが必要と判断。"
+					}
+				]
+			}
+		]
+	}
+}

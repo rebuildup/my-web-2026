@@ -288,6 +288,14 @@ export const ALLOWLIST = Object.freeze([
 			'shapes must hold those shapes; they are the documented sample strings, not issued values.',
 	},
 	{
+		path: 'scripts/check-operator-mfa.test.mjs',
+		detector: 'private-key-block',
+		reason:
+			'The MFA anonymization guard own detector fixture (Issue #469). The suite asserts the guard ' +
+			'REJECTS a PEM header, so the header has to be present; it is the RFC 7468 label with no key ' +
+			'body, no modulus and no issued value.',
+	},
+	{
 		path: 'scripts/check-sbom.test.mjs',
 		detector: 'github-token',
 		reason:
@@ -307,6 +315,15 @@ export const ALLOWLIST = Object.freeze([
 		reason:
 			'The log-redaction masking test (Issue #467). Asserting that a JWT is masked REQUIRES an ' +
 			'unmasked JWT in the fixture; it is the header/payload/signature of the RFC 7519 example.',
+	},
+	{
+		path: 'quality/fixtures/threat-model/secret-literal.json',
+		detector: 'better-auth-versioned-secret',
+		reason:
+			'The threat-model ledger own rejection fixture (Issue #479). The gate asserts it REJECTS a ' +
+			'credential-shaped value written into an asset source, so this one file must CONTAIN one. The ' +
+			'test and the report read the value from this fixture instead of copying it, so no other file ' +
+			'in the repository carries the shape, and it is issued by no environment.',
 	},
 	{
 		path: 'scripts/scan-secrets.mjs',

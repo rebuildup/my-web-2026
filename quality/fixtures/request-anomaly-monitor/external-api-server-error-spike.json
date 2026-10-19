@@ -1,0 +1,22 @@
+{
+	"case": "external-api-server-error-spike",
+	"note": "異常系: 5xx が 5% に達した 1 件で検知される。小さな 5xx でも事故なので 401/403 より低い 0.05 で拾う",
+	"surface": "external-api",
+	"runs": [{ "status": 200, "count": 96 }, { "status": 500, "count": 5 }],
+	"expect": {
+		"eventCount": 1,
+		"events": [
+			{
+				"event": "anomaly.detected",
+				"surface": "external-api",
+				"signal": "server-error",
+				"status": "5xx",
+				"samples": 101,
+				"hits": 5,
+				"rate": 0.05,
+				"threshold": 0.05,
+				"minSamples": 20
+			}
+		]
+	}
+}

@@ -395,6 +395,46 @@ route_quality_coverage:
     a ticket PR must either add the route as a gate target or record an
     exclusion reason for every gate family.
 
+# Issue #493 - Release quality dashboard. ONE HTML page that aggregates the
+# valid outputs this checkout already has for every declared quality
+# signal, and says per signal whether that output exists.
+#
+# It is a VISUALISATION, not a gate and not a measurement: it runs no
+# quality check, invents no number, and adds no line to any `gates.*`
+# components list below. The verdict always comes from someone else's
+# exit code (recorded by `quality:dashboard:record`) or from the presence
+# of a report another script wrote, so the boundary between "gate",
+# "performance measurement" (#384-#387) and "visualisation" stays intact.
+release_quality_dashboard:
+  roster: 'quality/release-dashboard.json'
+  state_source: 'quality/route-coverage.json (gate_families[].state)'
+  run_record: '.tmp/release-quality-runs.json (gitignored; regenerated per capture)'
+  command: 'pnpm run quality:dashboard:check'
+  record_command: 'pnpm run quality:dashboard:record'
+  report_command: 'pnpm run quality:dashboard:report'
+  screenshot_command: 'pnpm run verify:quality-dashboard-screenshot'
+  tests:
+    - 'node --test scripts/release-quality-dashboard.test.mjs'
+    - 'node --test scripts/record-release-quality-runs.test.mjs'
+  gate: none
+  gate_decision: >-
+    Deliberately absent from gates.fast / gates.integration / gates.release.
+    A visualisation that could fail a build would make its own PASS column
+    self-referential, and the roster it reads is malformed only in a way
+    the report command already reports as exit 1. Nothing about the
+    shipped product depends on this page.
+  states:
+    - 'PASS — a run record exists for this source SHA, the command exited 0, and every declared artefact is on disk'
+    - 'FAIL — a run record exists for this source SHA and the command exited non-zero'
+    - 'NOT RUN — no record / another SHA / skipped (build, network, browser, Worker) / report missing'
+    - 'N/A — the family is `planned` in quality/route-coverage.json (no runner exists yet)'
+  false_pass_guard: >-
+    `classifySignal` is pure and every branch without a positive signal
+    returns NOT RUN, so a missing report cannot read as PASS. A run record
+    from a different source SHA invalidates every row it covers.
+  documentation: 'docs/verification/quality/release-quality-dashboard.md'
+  artefact: 'docs/verification/quality/release-quality-dashboard.webp'
+
 # Issue #412 - HTML standards gate. An offline, Nu-Validator-compatible
 # engine checks the SSR documents for the three defect classes the
 # Issue names: invalid markup, duplicate ids and attribute errors. The

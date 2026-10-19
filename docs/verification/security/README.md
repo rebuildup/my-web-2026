@@ -23,6 +23,7 @@ of trusting the image.
 | [`asvs-coverage-matrix.webp`](asvs-coverage-matrix.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
+| [`secrets-status-only.webp`](secrets-status-only.webp) | #477 | `pnpm run secrets:status:report` |
 
 ## `asvs-coverage-matrix.webp` (Issue #507)
 
@@ -493,3 +494,44 @@ script exits non-zero unless the gate really failed, and re-reads the
 rendered page to confirm the fixture's credential-shaped URL did not
 survive redaction, so the committed image cannot become the place where a
 credential-shaped string is published.
+
+## `secrets-status-only.webp` (Issue #477)
+
+The secret drift / rotation-deadline gate's own dashboard, rendered from
+`quality/fixtures/secret-rotation-status/*.json`: an inventory that
+matches, a name the recorded observation reports missing, a rotation past
+its cadence, an environment name the Worker does not bind, the state this
+repository is actually in today (no observation, no recorded rotation
+date) and the fail-closed case where a recorded listing carries
+something that is not a name. Section 4 additionally runs the *shipped*
+`quality/secret-rotation-ledger.json` so the page never shows a healthier
+picture than the repository has.
+
+Every number on the page comes from RUNNING the same pure seam the CLI
+uses, and the `expect` block each case declares is what
+`node --test scripts/check-secret-rotation-status.test.mjs` asserts — so
+the page cannot drift from the assertions behind it. No secret value is on
+the page: the fixtures hold names only, and the report is run through the
+same leak guard the CLI applies to its own output before a byte is
+written.
+
+The image is evidence, not the verdict. The verdict is
+`pnpm run secrets:status:check` and the test suite; the observation and
+remediation procedure is
+[`docs/runbook/secret-rotation-status.md`](../../runbook/secret-rotation-status.md).
+
+Regenerate:
+
+```bash
+pnpm run secrets:status:check    # the verdict (exit 0 / 1 / 2)
+pnpm run secrets:status:report   # .tmp/secrets-status-only-report.html
+```
+
+### Format note
+
+The Issue asked for `secrets-status-only.png`. The committed file is
+`secrets-status-only.webp` instead, like every other artefact in this
+directory: the PNG intermediate is written to `.tmp/` and re-encoded in
+memory with `sharp`, and is not committed. The page is text-dense, so the
+capture uses `nearLossless` (232 KB); lossy q80 of the same page is
+roughly three times the bytes for no gain on glyphs.

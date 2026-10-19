@@ -141,10 +141,11 @@ function renderCase(entry) {
 </tr>`;
 }
 
-function renderRows(entry) {
-	return entry.report.rows
-		.map(
+function renderRows(entries) {
+	const rows = entries.flatMap((entry) =>
+		entry.report.rows.map(
 			(row) => `<tr>
+  <td><code>${escapeHtml(entry.fileName.replace('.json', ''))}</code></td>
   <th scope="row"><code>${escapeHtml(row.name)}</code></th>
   <td>${escapeHtml(row.tier)}</td>
   <td>${escapeHtml(row.drift)}</td>
@@ -153,8 +154,9 @@ function renderRows(entry) {
   <td><code>${escapeHtml(row.due ?? '-')}</code></td>
   <td>${escapeHtml(row.remainingDays ?? '-')}</td>
 </tr>`,
-		)
-		.join('\n');
+		),
+	);
+	return rows.join('\n');
 }
 
 function renderOutput(entry) {
@@ -164,9 +166,8 @@ function renderOutput(entry) {
 		contract: 'scripts/_cloudflare-contract.mjs',
 	});
 	return `<figure>
-  <figcaption>${escapeHtml(entry.fixture.case)} — CLI 出力（status-only）</figcaption>
+  <figcaption><code>${escapeHtml(entry.fileName)}</code> — CLI 出力（status-only）</figcaption>
   <pre>${escapeHtml(text.trim())}</pre>
-  <p class="note">${escapeHtml(entry.fixture.note ?? '')}</p>
 </figure>`;
 }
 
@@ -211,30 +212,30 @@ function buildPage({ entries, outPath, generatedAt }) {
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 40px 44px 56px; background: var(--canvas); color: var(--ink);
-    font: 15px/1.65 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    margin: 0; padding: 30px 34px 40px; background: var(--canvas); color: var(--ink);
+    font: 14px/1.55 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   }
-  header { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 26px; }
-  h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: 0.01em; }
-  h2 { font-size: 16px; margin: 32px 0 10px; letter-spacing: 0.02em; }
-  h3 { font-size: 13px; margin: 22px 0 8px; letter-spacing: 0.04em; color: var(--muted); }
-  .meta { color: var(--muted); font-size: 13px; margin: 0; }
-  p.lede { margin: 0 0 10px; color: var(--muted); max-width: 78ch; }
-  table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13px; margin-bottom: 14px; }
-  th, td { border: 1px solid var(--line); padding: 8px 11px; text-align: left; vertical-align: top; }
-  thead th { background: #eef0f2; font-size: 12px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
+  header { border-bottom: 2px solid var(--ink); padding-bottom: 14px; margin-bottom: 18px; }
+  h1 { font-size: 21px; margin: 0 0 5px; letter-spacing: 0.01em; }
+  h2 { font-size: 15px; margin: 24px 0 8px; letter-spacing: 0.02em; }
+  .meta { color: var(--muted); font-size: 12px; margin: 0; }
+  p.lede { margin: 0 0 8px; color: var(--muted); max-width: 90ch; }
+  table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 12px; margin-bottom: 12px; }
+  th, td { border: 1px solid var(--line); padding: 6px 9px; text-align: left; vertical-align: top; }
+  thead th { background: #eef0f2; font-size: 11px; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); }
   tbody th { font-weight: 600; }
   .verdict { font-weight: 700; }
   .verdict.ok { color: var(--ok); background: var(--ok-bg); }
   .verdict.fail { color: var(--fail); background: var(--fail-bg); }
   .verdict.unknown { color: var(--warn); background: var(--warn-bg); }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-  code { background: #eef0f2; padding: 1px 5px; border-radius: 4px; word-break: break-all; }
-  pre { background: var(--surface); border: 1px solid var(--line); padding: 12px 14px; overflow-x: auto; }
-  figure { margin: 0 0 22px; }
-  figcaption { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
-  p.note { color: var(--muted); font-size: 12px; margin: 6px 0 0; max-width: 78ch; }
-  footer { margin-top: 30px; padding-top: 14px; border-top: 1px solid var(--line); color: var(--muted); font-size: 12px; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+  code { background: #eef0f2; padding: 1px 4px; border-radius: 4px; word-break: break-all; }
+  pre { background: var(--surface); border: 1px solid var(--line); padding: 10px 12px; line-height: 1.45; white-space: pre-wrap; word-break: break-all; }
+  .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; min-width: 0; }
+  .grid > figure { min-width: 0; }
+  figure { margin: 0; }
+  figcaption { color: var(--muted); font-size: 11px; margin-bottom: 4px; }
+  footer { margin-top: 22px; padding-top: 12px; border-top: 1px solid var(--line); color: var(--muted); font-size: 11px; }
 </style>
 </head>
 <body>
@@ -258,21 +259,19 @@ ${entries.map(renderCase).join('\n')}
   </tbody>
 </table>
 
-<h2>2. 名前ごとの判定</h2>
-${entries
-	.map(
-		(entry) => `<h3>${escapeHtml(entry.fixture.case)} — ${escapeHtml(entry.fileName)}</h3>
+<h2>2. 名前ごとの判定（全ケース）</h2>
 <table>
-  <thead><tr><th>name</th><th>tier</th><th>drift</th><th>deadline</th><th>cadence</th><th>due</th><th>remaining_days</th></tr></thead>
+  <thead><tr><th>case</th><th>name</th><th>tier</th><th>drift</th><th>deadline</th><th>cadence</th><th>due</th><th>remaining_days</th></tr></thead>
   <tbody>
-${renderRows(entry)}
+${renderRows(entries)}
   </tbody>
-</table>`,
-	)
-	.join('\n')}
+</table>
+<p class="lede">各ケースの意味は 1 の「ケース」列と <code>quality/fixtures/secret-rotation-status/*.json</code> の <code>note</code> を参照。</p>
 
 <h2>3. CLI 出力（status-only）</h2>
+<div class="grid">
 ${entries.map(renderOutput).join('\n')}
+</div>
 
 <h2>4. このリポジトリが今日持つ状態</h2>
 <p class="lede">

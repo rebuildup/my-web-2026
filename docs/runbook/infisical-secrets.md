@@ -89,6 +89,11 @@ and pinned by `wrangler*.jsonc#secrets.required` and
 | `MY_WEB_2026_CONSUMER_API_KEY` | Infisical `prod` | Infisical `dev` (random seed, no D1 row depends on it) | Home self-consumption consumer API key (ADR-0011). Bound to Worker `env.MY_WEB_2026_CONSUMER_API_KEY`. Pairs with D1 `apikey` row `name='home-self-consumption'` (`UNIQUE(apikey.key)` enforces SHA-256 hash uniqueness). | Repository owner (operator gate) | On suspected compromise or as needed | **Tier 1 (runtime)** — required Phase 1+ |
 | `GOOGLE_ANALYTICS_MEASUREMENT_ID` | Infisical `prod` (placeholder `G-PLACEHOLDER000` seeded at #187 merge; operator replaces with real `G-XXXXXXX` BEFORE cutting traffic) | Infisical `dev` (placeholder seeded; operator may replace if dev GA property exists) | GA4 measurement ID (Issue #171, Issue #187). Bound to Worker `env.GOOGLE_ANALYTICS_MEASUREMENT_ID`. Public identifier; the var→secret move in Issue #187 is operator-ergonomic (Infisical dashboard editability), NOT a security containment change. Operator gate: replace prod placeholder with real `G-XXXXXXX` before production traffic — see `docs/runbook/analytics.md` and the canonical sequence step in `docs/runbook/cloudflare-workers-builds.md`. | Repository owner (operator gate) | Rare (property migration / leak-driven) | **Tier 1 (runtime)** — required Issue #187+ |
 
+The **Cadence** column is the source of the machine-readable rotation
+policy in [`quality/secret-rotation-ledger.json`](../../quality/secret-rotation-ledger.json)
+(Issue #477). Edit one or the other in the same PR: two copies of a
+cadence are two answers to "is this overdue?".
+
 ### 2.2 Deploy-time credentials (NOT in Infisical)
 
 These are managed in Cloudflare Workers Builds env vars (build
@@ -250,6 +255,7 @@ For each name, the canonical driver is pinned:
 | What | Script | When |
 | --- | --- | --- |
 | Static contract (Infisical name / wrangler config / deploy script alignment) | `pnpm run infisical:check:coverage` | Every `validate:fast` (CI) and before every release |
+| Rotation ledger vs. the contract roster + rotation deadlines (status-only, no value) | `pnpm run secrets:status:check` | Every `validate:fast` (CI); procedure in [`secret-rotation-status.md`](secret-rotation-status.md) |
 | Tier 1 Infisical ↔ Tier 2 wrangler ↔ Tier 3 live Worker binding (name parity only) | `pnpm run infisical:check:cf -- --execute --environment=prod --worker-contract=transition\|final` | Pre-deploy preflight + post-deploy drift check |
 | Dev env presence (Boolean markers only) | `pnpm run infisical:verify` | After every dev secret seed / change |
 | Value drift | **NOT done by design** | Cloudflare secret VALUES cannot be re-read (Cloudflare API has no value-read endpoint) |
@@ -281,6 +287,8 @@ to confirm Tier 1 / Tier 3 name parity after any deploy.
 - `scripts/run-deploy-inner.mjs` — `REQUIRED_RUNTIME_SECRETS` / `AUDIT_ONLY_SECRETS` separation
 - `scripts/check-cf-secrets.mjs` — Tier 1 / Tier 2 / Tier 3 drift logic
 - `scripts/check-infisical-coverage.mjs` — static 3-source agreement
+- `docs/runbook/secret-rotation-status.md` — cadence projection (`quality/secret-rotation-ledger.json`) + drift / deadline status gate (Issue #477)
+- `scripts/check-secret-rotation-status.mjs` — `pnpm run secrets:status:check`; status-only, reads no value
 - `scripts/infisical-seed.mjs` — dev-env 3-name seed (prod hard-rejected)
 - `scripts/rotate-better-auth-secret.mjs` — Issue #155 driver
 - `scripts/rotate-home-api-key.mjs` — Issue #74 driver (rotation follow-up)

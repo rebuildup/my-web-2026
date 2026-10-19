@@ -186,6 +186,14 @@ gates:
       - 'pnpm run a11y:language-of-parts:check' # partial `lang` contract (Issue #409)
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run infisical:check:coverage'
+      # Issue #477: the secret drift / rotation-deadline status gate.
+      # Offline, read-only and credential-free by construction — the
+      # environment half arrives as a status-only recording, and no
+      # value is read, so it belongs in the fast chain next to the
+      # static secret contract check above. The DASHBOARD is not here:
+      # a visualisation is never a release condition (see
+      # disallowed_patterns / diagnostic_entry_points).
+      - 'pnpm run secrets:status:check' # drift + rotation deadline from status-only inputs (#477)
       - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
       # `pnpm run test` also carries the Issue #491 D1 statement-count
       # budget (src/portfolio/load.query-budget.test.ts): the portfolio
@@ -658,6 +666,38 @@ compatibility:
       - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
+  secret_rotation_status:
+    enabled: true
+    issue: '#477'
+    command: 'pnpm run secrets:status:check'
+    report_command: 'pnpm run secrets:status:report'
+    gate: fast
+    implementation: 'scripts/check-secret-rotation-status.mjs (gate) + scripts/_secret-rotation-status.mjs (pure policy seam)'
+    tests: 'node --test scripts/check-secret-rotation-status.test.mjs'
+    fixtures: 'quality/fixtures/secret-rotation-status/*.json'
+    policy_source_of_truth: 'scripts/_cloudflare-contract.mjs REQUIRED_RUNTIME_SECRETS / AUDIT_ONLY_SECRETS (injected, never re-declared in a script) + docs/runbook/infisical-secrets.md section 2.1 cadence column, projected into quality/secret-rotation-ledger.json'
+    operator_input: 'a recorded status-only observation (a check-cf-secrets transcript or a {environment, captured_at, missing, extra} record) passed with --observation; the gate never reads Infisical itself'
+    output_contract: >-
+      status-only (AGENTS.md section 4): names, verdicts, statuses, counts and
+      dates. No secret value is read, fetched, stored or printed. Enforced three
+      ways rather than promised: an observation entry must match the
+      runbook section 3.2 name grammar, the ledger schema rejects unknown
+      keys, and every emitted line passes the leak guard.
+    failure_policy:
+      - 'MISSING / MISSING_ROW / EXTRA_ROW is DRIFT (exit 1)'
+      - 'a rotation past its cadence is OVERDUE (exit 1)'
+      - 'an unreadable or malformed ledger / observation, an unusable clock and a usage error are UNDECIDABLE (exit 2) — "could not read" is never a pass'
+      - 'UNEXPECTED / UNRECORDED / DUE_SOON / NOT_OBSERVED are advisories (exit 0): operational approval is a separate step (AGENTS.md section 6 human gate)'
+      - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+      - '--now is refused without --case, so the gate cannot be green-washed with a pinned clock'
+    open_owner_decision: >-
+      Every ledger row ships last_rotated_at: null, because this repository
+      cannot know when an operator rotated a production secret. UNRECORDED is
+      therefore an advisory today; whether it becomes blocking after the owner
+      records the dates, and whether the DUE_SOON window stays a gate default,
+      are owner calls recorded in docs/runbook/secret-rotation-status.md section 10.
+    runbook: 'docs/runbook/secret-rotation-status.md'
+    verification_artifact: 'docs/verification/security/secrets-status-only.webp'
   log_redaction:
     enabled: true
     command: 'pnpm run log:redaction:check'

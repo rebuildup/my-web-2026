@@ -391,7 +391,14 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   diff gate vs `quality/knip-baseline.json`) + `test`.
   The canonical list is
   `quality/profile.yaml#gates.fast.components`; add a step there,
-  not only in the script.)
+  not only in the script. Issue #566 made that list executable:
+  each `validate:*` npm script is one line
+  (`node scripts/run-quality-gates.mjs <gate>`) that runs the
+  declared components in order, one command per line, and stops at
+  the first failure with that failure's exit code. `pnpm run test`
+  likewise delegates to `scripts/run-script-tests.mjs`, which
+  discovers every `scripts/*.test.mjs` by convention — so adding a
+  gate or a script test never edits a shared one-line chain.)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build:production` + per-route bundle budget
   (`bundle:budget:check`, Issue #482) + default/production Wrangler
@@ -440,6 +447,26 @@ cannot decide exits non-zero. Decision:
 [`quality/profile.yaml`](quality/profile.yaml#r2_media_key_set_audit).
 Operator reference:
 [`docs/runbook/r2-media-key-set-audit.md`](docs/runbook/r2-media-key-set-audit.md).
+
+A third gate is deliberately **not** in the three entry points, and is
+not a CI step either: the operator MFA confirmation audit (Issue #469,
+`pnpm run check:operator-mfa`). It reads one local JSON ledger
+(`quality/operator-mfa-ledger.json`) in which the operator records the
+date they last verified 2FA / Passkey on the GitHub, Cloudflare,
+Infisical and registrar accounts, and classifies each service as
+`confirmed` / `unconfirmed` / `stale` / `missing` (ledger verdict
+`OK` / `OUTSTANDING` / `UNDECIDABLE`, exit 0 / 1 / 2). It holds no
+credential, calls no provider and touches no binding — the four account
+states are not observable from a Worker, so what the gate audits is the
+**record**, not the account. The ledger schema has no field for an
+account identifier, an identifier-shaped key is `UNDECIDABLE`, and both
+the ledger and the rendered report go through a status-only anonymization
+guard. It stays out of `validate:*` because the shipped ledger is
+unconfirmed until the owner fills it in (a CI step would be permanently
+red for a condition only the owner can resolve). Decision:
+[`quality/profile.yaml`](quality/profile.yaml#operator_mfa_audit).
+Operator reference:
+[`docs/runbook/operator-mfa-verification.md`](docs/runbook/operator-mfa-verification.md).
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are

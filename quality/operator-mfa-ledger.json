@@ -1,0 +1,15 @@
+{
+	"version": 1,
+	"policy": {
+		"status": "proposed",
+		"min_factors": 2,
+		"require_phishing_resistant": true,
+		"max_confirmation_age_days": 180
+	},
+	"services": [
+		{ "service": "github", "confirmed_at": null, "factors": [] },
+		{ "service": "cloudflare", "confirmed_at": null, "factors": [] },
+		{ "service": "infisical", "confirmed_at": null, "factors": [] },
+		{ "service": "registrar", "confirmed_at": null, "factors": [] }
+	]
+}

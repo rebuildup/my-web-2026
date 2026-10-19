@@ -85,7 +85,9 @@ graph stays reciprocal by construction.
 The last one runs in `pnpm run test` (therefore `validate:fast` and CI)
 and is what makes "a new public page silently missing from the sitemap"
 a build failure instead of a crawl-time surprise.
-`scripts/check-test-wiring.mjs` fails if it is ever unwired.
+`scripts/check-test-wiring.mjs` fails if it is ever unwired. Reachability is the
+convention `scripts/run-script-tests.mjs` discovers with
+(`scripts/*.test.mjs`), not a name an npm script has to spell out.
 
 ## Why Hono serves these
 

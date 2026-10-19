@@ -264,6 +264,7 @@ export function renderAudit(audit) {
 const USAGE = `Usage:
   node scripts/check-cloudflare-config-drift.mjs [--json]
   node scripts/check-cloudflare-config-drift.mjs --case=<fixture name>
+  pnpm run cf:config:drift:check -- --case=<fixture name>
 
 --case   replay a recorded single-item mutation from ${FIXTURE_DIR}
          against the live surface. A demonstration and a test input,
@@ -274,6 +275,11 @@ const USAGE = `Usage:
 function parseArgs(argv) {
 	const options = { caseName: null, json: false, help: false };
 	for (const arg of argv) {
+		// A bare `--` is pnpm's argument separator and carries no meaning
+		// here; rejecting it would make the documented
+		// `pnpm run cf:config:drift:check -- --case=<name>` fail on a
+		// separator rather than on the argument.
+		if (arg === '--') continue;
 		if (arg === '--help' || arg === '-h') options.help = true;
 		else if (arg === '--json') options.json = true;
 		else if (arg.startsWith('--case=')) options.caseName = arg.slice('--case='.length);

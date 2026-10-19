@@ -1,9 +1,11 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
-import { applyD1Migrations, env } from 'cloudflare:test';
+import { SELF, applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, beforeEach, describe, expect, it } from 'vitest';
+import { policyById } from '../../scripts/_cache-policy.mjs';
 import {
 	ImagePolicyError,
 	ImageReferencedError,
+	REACTION_IMAGE_CACHE_CONTROL,
 	deleteImage,
 	listImages,
 	uploadImage,
@@ -13,6 +15,7 @@ import {
 	putReaction,
 	reactionImageReferenced,
 } from '../../src/http/reactions/reactions';
+import { reactionImagesRouter } from '../../src/http/reactions/router';
 import {
 	GIF_BYTES,
 	JPEG_BYTES,
@@ -287,5 +290,97 @@ describe('deleteImage — reference policy', () => {
 			.bind(imageId)
 			.first<{ id: string }>();
 		expect(dangling).toBeNull();
+	});
+});
+
+/**
+ * The public image read is the only boundary response that IS meant to
+ * be stored, so its policy is asserted through the REAL WORKER ENTRY
+ * (`SELF.fetch`), not through `reactionImagesRouter.request(...)`.
+ *
+ * Why the entry and not the router: `applyExternalCachePolicy` in
+ * `src/server.ts` puts an explicit `no-store` default on every
+ * external-boundary response, and the load-bearing part of that rule is
+ * "never overwrite a header a handler already declared". Calling the
+ * router object directly never traverses `src/server.ts`, so a change
+ * that turns the default into an unconditional `set` — the exact
+ * regression that would ship `no-store` for content-addressed R2 bytes
+ * — would leave every such test green. Only `SELF.fetch` exercises
+ * the dispatch, the router and the default together (Issue #484).
+ *
+ * The direct router call is kept below as the narrower statement it
+ * actually is: it pins WHERE the decision is taken, so a future
+ * refactor that moved it up into the entry would be visible here.
+ *
+ * Note on the two sides of the same boundary: Issue #460 registered
+ * `sharedCacheIsolation` (`src/http/middleware/cache-policy.ts`) in
+ * front of every `/api/v1/*` response. It rewrites anything that is
+ * not an explicit `public` + positive-lifetime opt-in to
+ * `private, no-store`, so the error envelope below carries the
+ * isolation value while the image keeps its own `public, …,
+ * immutable` — the two halves of the boundary after #460.
+ */
+describe('GET /api/v1/reaction-images/:id — cache policy through the Worker entry', () => {
+	it('serves stored bytes as immutable and is not downgraded by the boundary default', async () => {
+		const upload = await uploadImage(D1(), R2(), {
+			contentType: 'image/png',
+			bytes: PNG_BYTES.buffer.slice(
+				PNG_BYTES.byteOffset,
+				PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
+			) as ArrayBuffer,
+			uploadedBy: 'tester',
+		});
+
+		const res = await SELF.fetch(`https://example.com/api/v1/reaction-images/${upload.image.id}`, {
+			redirect: 'manual',
+		});
+		expect(res.status).toBe(200);
+		expect(res.headers.get('content-type')).toBe('image/png');
+		expect(res.headers.get('cache-control')).toBe(REACTION_IMAGE_CACHE_CONTROL);
+		expect(res.headers.get('cache-control')).toBe(policyById('reaction-image').cacheControl);
+		// Stored bytes are content-addressed, so no conditional request is
+		// ever needed — the reason `immutable` is safe here.
+		expect(res.headers.get('etag')).toBeNull();
+		await res.arrayBuffer();
+	});
+
+	it('the boundary default still covers a missing image (no cacheable 404)', async () => {
+		// The sibling of the case above, and the reason the default
+		// exists at all: an error envelope is per-caller like any other
+		// boundary response, so the entry's `no-store` must apply when
+		// the handler declared nothing.
+		const res = await SELF.fetch('https://example.com/api/v1/reaction-images/definitely-missing', {
+			redirect: 'manual',
+		});
+		expect(res.status).toBe(404);
+		expect(res.headers.get('cache-control')).toBe(policyById('api-json').cacheControl);
+		// Issue #460 put the boundary isolation middleware in front of the
+		// whole external boundary, so the value the entry's own `no-store`
+		// default declares is then rewritten to `private, no-store`. The
+		// class contract is what the boundary SERVES, and that is what the
+		// table records.
+		expect(res.headers.get('cache-control')).toBe('private, no-store');
+		expect(res.headers.get('cache-control')).not.toBe(REACTION_IMAGE_CACHE_CONTROL);
+		await res.arrayBuffer();
+	});
+
+	it('the handler itself declares the value the entry must not overwrite', async () => {
+		const upload = await uploadImage(D1(), R2(), {
+			contentType: 'image/png',
+			bytes: PNG_BYTES.buffer.slice(
+				PNG_BYTES.byteOffset,
+				PNG_BYTES.byteOffset + PNG_BYTES.byteLength,
+			) as ArrayBuffer,
+			uploadedBy: 'tester',
+		});
+
+		// Narrows "the entry does not downgrade it" to "the router is
+		// where the declaration is made": if a future change moved the
+		// header into the entry instead, the `SELF.fetch` test above would
+		// still pass and this one would not.
+		const res = await reactionImagesRouter.request(`/${upload.image.id}`, {}, env);
+		expect(res.status).toBe(200);
+		expect(res.headers.get('cache-control')).toBe(REACTION_IMAGE_CACHE_CONTROL);
+		await res.arrayBuffer();
 	});
 });

@@ -4,7 +4,12 @@
  *
  * Usage:
  *   node scripts/run-script-tests.mjs           # run the suite, in order
- *   node scripts/run-script-tests.mjs --list    # print the discovered files, run nothing
+ *   node scripts/run-script-tests.mjs --list    # diagnostic only, run nothing
+ *
+ * `--list` is refused when this file is invoked from the `test` npm
+ * lifecycle. `test` must execute the suite; a leftover `--list` in
+ * `package.json#scripts.test` would otherwise print the file list and
+ * exit 0 with every script test skipped.
  *
  * `package.json#scripts.test` is now:
  *
@@ -59,10 +64,17 @@ export function runScriptTests(files, { cwd = repoRoot, stream = process.stdout 
 	return 0;
 }
 
-function main(argv) {
+export function main(argv, { lifecycleEvent = process.env.npm_lifecycle_event } = {}) {
 	const unknownFlags = argv.filter((argument) => argument !== '--list');
 	if (unknownFlags.length > 0) {
 		process.stderr.write(`unknown option(s): ${unknownFlags.join(', ')}\n`);
+		return 2;
+	}
+	if (argv.includes('--list') && lifecycleEvent === 'test') {
+		process.stderr.write(
+			'--list is a read-only diagnostic and must not be the body of the `test` script. ' +
+				'Run the suite instead.\n',
+		);
 		return 2;
 	}
 
@@ -88,6 +100,6 @@ function main(argv) {
 	return status;
 }
 
-if (process.argv[1] && import.meta.url === `file://${resolve(process.argv[1])}`) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
 	process.exit(main(process.argv.slice(2)));
 }

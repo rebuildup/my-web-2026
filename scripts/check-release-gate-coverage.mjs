@@ -337,9 +337,14 @@ export function parseWorkflowJobRunCommands(text, jobName = CI_JOB) {
  * Issue #566 moved the ordered chain out of `package.json` and into
  * `quality/profile.yaml#gates.<level>.components`, so a component that
  * is declared is run by `scripts/run-quality-gates.mjs` even though the
- * npm script body is a single line. This keeps rules 6 and 10 answering
- * "does the entry point really run this check" from the declaration that
- * is executed, instead of from a chain that no longer spells it out.
+ * npm script body is a single line.
+ *
+ * This expansion is only applied when the entry point really is the
+ * runner in run mode (`runsGateEntryPoint`). Adding the declaration
+ * unconditionally would make rule 6 and rule 10 tautological: a
+ * `validate:fast` body that no longer invokes the runner (a
+ * merge-resolution leftover such as `… --list`) would still be
+ * reported as reaching every declared component.
  *
  * A bare `fast` / `integration` / `release` item expands that gate, the
  * same way the runner does, and an entry that is not exactly
@@ -365,26 +370,59 @@ export function profileSurfaceScripts(scripts, profileComponents, surface, seen 
 }
 
 /**
+ * True only when one npm script body is EXACTLY the one-line runner for
+ * `surface` in run mode.
+ *
+ * The equality is the independent reachability fact rule 6 and rule 10
+ * need: `node scripts/run-quality-gates.mjs fast` runs the declared
+ * plan, while `… fast --list`, `… fast && …`, or a chain of the old form
+ * does not. Without this check the profile declaration would be treated
+ * as executed no matter what the entry point actually does.
+ */
+export function runsGateEntryPoint(scriptBody, surface) {
+	if (typeof scriptBody !== 'string') return false;
+	return scriptBody.trim() === `node scripts/run-quality-gates.mjs ${surface}`;
+}
+
+/**
  * Resolve the four release surfaces of a checkout.
  *
  * `profileComponents` (the `gates.<level>.components` lists) joins the
- * npm-script closure: from Issue #566 the two describe the same run.
+ * npm-script closure only when the matching entry point is exactly the
+ * one-line runner in run mode. Otherwise the closure is what
+ * `package.json` actually invokes, and rule 10 reports the declared
+ * components the entry point no longer reaches.
  *
  * @returns {{ fast: Set<string>, integration: Set<string>, release: Set<string>, ci: Set<string> }}
  */
 export function collectSurfaces({ scripts = {}, workflowText = '', profileComponents = {} } = {}) {
 	const surfaces = {};
 	for (const surface of ['fast', 'integration', 'release']) {
-		surfaces[surface] = new Set([
-			...expandScriptNames(scripts, SURFACE_ENTRIES[surface]),
-			...profileSurfaceScripts(scripts, profileComponents, surface),
-		]);
+		const entry = SURFACE_ENTRIES[surface];
+		const names = new Set(expandScriptNames(scripts, entry));
+		if (runsGateEntryPoint(scripts?.[entry], surface)) {
+			for (const name of profileSurfaceScripts(scripts, profileComponents, surface)) {
+				names.add(name);
+			}
+		}
+		surfaces[surface] = names;
 	}
 	const ci = new Set();
 	for (const command of parseWorkflowJobRunCommands(workflowText, CI_JOB)) {
 		for (const name of referencedScriptNames(command)) {
 			for (const expanded of expandScriptNames(scripts, name)) ci.add(expanded);
 			ci.add(name);
+			// A CI step that invokes `pnpm run validate:<gate>` runs that
+			// gate's declared plan. Expand it the same way the level
+			// surfaces do, so a `ci` row for a profile-only component is not
+			// reported `not_run` merely because the workflow calls the entry
+			// point by name.
+			const gate = /^validate:(fast|integration|release)$/.exec(name)?.[1];
+			if (gate && runsGateEntryPoint(scripts?.[name], gate)) {
+				for (const script of profileSurfaceScripts(scripts, profileComponents, gate)) {
+					ci.add(script);
+				}
+			}
 		}
 	}
 	surfaces.ci = ci;
@@ -1003,6 +1041,6 @@ function main(argv) {
 	return 1;
 }
 
-if (process.argv[1] && import.meta.url === `file://${resolve(process.argv[1])}`) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
 	process.exit(main(process.argv.slice(2)));
 }

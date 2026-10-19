@@ -13,6 +13,7 @@ import {
 	testFileArgv,
 } from './_script-tests.mjs';
 import { evaluateTestWiring } from './check-test-wiring.mjs';
+import { main as runScriptTestsMain } from './run-script-tests.mjs';
 
 /**
  * Fixture coverage for the test-wiring contract (Issue #566).
@@ -115,7 +116,14 @@ describe('this repository', () => {
 	});
 
 	it('runs `pnpm run test` through the discovery runner', () => {
-		assert.match(String(pkg.scripts.test), /vitest run && node scripts\/run-script-tests\.mjs$/);
+		// Exact body, not a substring: appending `--list` (or a `&&`
+		// branch) would stop the suite from running while still matching
+		// an `includes(...)` assertion.
+		assert.equal(String(pkg.scripts.test), 'vitest run && node scripts/run-script-tests.mjs');
+	});
+
+	it('refuses `--list` from the `test` lifecycle', () => {
+		assert.equal(runScriptTestsMain(['--list'], { lifecycleEvent: 'test' }), 2);
 	});
 
 	it('lists exactly the files the runner would execute', () => {
@@ -125,6 +133,9 @@ describe('this repository', () => {
 			{
 				cwd: REPO_ROOT,
 				encoding: 'utf8',
+				// A direct diagnostic invocation, outside the `test`
+				// lifecycle the runner deliberately refuses.
+				env: { ...process.env, npm_lifecycle_event: '' },
 			},
 		)
 			.trim()

@@ -25,8 +25,10 @@
  * Contract notes
  * --------------
  * - `gates.<name>.components` is a list of single commands, in
- *   execution order. A shell operator (`&&`, `|`, `;`) inside one entry
- *   is rejected, so one line stays one reviewable step.
+ *   execution order. A shell operator (`&&`, `&`, `|`, `;`), a command
+ *   substitution (`` ` `` or `$(`) or a newline inside one entry is
+ *   rejected, so one line stays one reviewable step and a component
+ *   cannot be backgrounded or silently rewritten by the shell.
  * - A bare `fast` / `integration` / `release` entry expands that gate's
  *   own components in place (composition, not reference-by-name
  *   indirection), which is what keeps `validate:release` a strict
@@ -223,7 +225,7 @@ export function validateGateComponents(components, scriptNames) {
 	const known = new Set(scriptNames);
 	const problems = [];
 	for (const component of components) {
-		if (/(&&|\|\||;|\||\n|\r)/.test(component)) {
+		if (/(&&|&|\|\||;|\||\n|\r|`|\$\()/.test(component)) {
 			problems.push(`one line must be one command: ${component}`);
 			continue;
 		}

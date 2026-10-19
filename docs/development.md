@@ -282,7 +282,7 @@ pnpm run validate:release      # + cf-typegen:check
 `gates.<name>.components`（1 行 1 コマンド）が正:
 
 ```bash
-node scripts/run-quality-gates.mjs fast --list  # plan を表示するだけで実行しない
+node scripts/run-quality-gates.mjs fast --list  # 直接実行のみ。npm script の body では拒否される
 ```
 
 - **gate を追加する**: 適切な gate の `components` に 1 行足す（gate 固有の説明コメントを

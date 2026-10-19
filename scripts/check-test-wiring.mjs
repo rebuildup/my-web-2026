@@ -168,6 +168,6 @@ export function main() {
 	return 1;
 }
 
-if (process.argv[1] && import.meta.url === `file://${resolve(process.argv[1])}`) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
 	process.exit(main());
 }

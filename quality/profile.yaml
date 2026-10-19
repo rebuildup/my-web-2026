@@ -463,11 +463,11 @@ release_gate_coverage:
   screenshot_command: 'pnpm run verify:release-gate-screenshot'
   tests: 'node --test scripts/check-release-gate-coverage.test.mjs'
   gate: fast
-  gate_placement: 'validate:fast, immediately after `pnpm run routes:quality:check`'
+  gate_placement: 'validate:fast, last component (after `pnpm run app:icons:check`)'
   documentation: 'docs/verification/security/release-gate-coverage.md'
   surfaces:
-    - 'fast / integration / release — the transitive `pnpm run` closure of package.json#scripts["validate:*"]'
-    - 'ci — the transitive closure of the `run:` steps of .github/workflows/ci.yml jobs.validate'
+    - 'fast / integration / release — the `gates.<level>.components` plan executed by `scripts/run-quality-gates.mjs`, counted only when the entry point is exactly `node scripts/run-quality-gates.mjs <gate>` (run mode)'
+    - 'ci — the `run:` steps of .github/workflows/ci.yml jobs.validate, with the declared plan of a referenced `validate:<gate>` expanded'
   statuses:
     - 'pass — the command is reachable on every surface the row declares and its runner file exists'
     - 'fail — the claim is contradicted (unregistered command, missing runner) or a required check is not run'
@@ -477,12 +477,12 @@ release_gate_coverage:
     - 'a required row whose declared surface no longer reaches it is an error, not a warning'
     - 'deleting a `protected_checks` row, or flipping its `required` flag, fails (the intentional-omission guard)'
     - 'an empty `protected_checks` list fails closed, so the guard cannot be disabled by emptying it'
-    - 'a `quality/profile.yaml` component with no `package.json` script (phantom step) or unreachable from its own entry point is an error'
+    - 'a `quality/profile.yaml` component with no `package.json` script (phantom step), or unreachable from its own entry point, is an error; the profile is treated as executed only when the entry point is exactly the one-line runner in run mode (a `--list` or chained body is not)'
     - 'a security-family command on the release surface with no ledger row is reported as unaccounted'
   known_limits:
     - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
     - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
-    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 27 `validate:fast` components'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 38 `validate:fast` components'
 
 html_standards:
   manifest: 'quality/html-standards.json'

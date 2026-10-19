@@ -18,6 +18,7 @@ import {
 	parseProfileComponents,
 	parseWorkflowJobRunCommands,
 	renderReport,
+	runsGateEntryPoint,
 	scriptNameOfCommand,
 } from './check-release-gate-coverage.mjs';
 
@@ -120,7 +121,7 @@ function evaluate({
 	protectedIds = null,
 	profileEquivalences = [],
 } = {}) {
-	const surfaces = collectSurfaces({ scripts });
+	const surfaces = collectSurfaces({ scripts, profileComponents });
 	if (omit !== null) {
 		for (const surface of SURFACES) {
 			surfaces[surface] = new Set([...surfaces[surface]].filter((name) => name !== omit));
@@ -229,6 +230,97 @@ describe('surface closure over the declared profile (Issue #566)', () => {
 		// The miniature release list names no lower gate, so it adds none:
 		// the closure follows the declaration, it does not assume.
 		assert.ok(!fromPlan.release.has('lint:check'));
+	});
+
+	it('accepts only the exact one-line runner as run mode', () => {
+		assert.equal(runsGateEntryPoint(RUNNER_ENTRIES['validate:fast'], 'fast'), true);
+		assert.equal(
+			runsGateEntryPoint('node scripts/run-quality-gates.mjs fast --list', 'fast'),
+			false,
+		);
+		assert.equal(
+			runsGateEntryPoint('pnpm run lint:check && node scripts/run-quality-gates.mjs fast', 'fast'),
+			false,
+		);
+		assert.equal(runsGateEntryPoint(RUNNER_ENTRIES['validate:fast'], 'integration'), false);
+		assert.equal(runsGateEntryPoint(undefined, 'fast'), false);
+	});
+
+	it('does not treat a --list entry point as having run the declared plan', () => {
+		const listEntries = {
+			...RUNNER_ENTRIES,
+			'secret:scan': 'node scripts/scan-secrets.mjs',
+			'validate:fast': 'node scripts/run-quality-gates.mjs fast --list',
+		};
+		const surfaces = collectSurfaces({
+			scripts: listEntries,
+			profileComponents: PROFILE,
+		});
+		assert.ok(!surfaces.fast.has('secret:scan'));
+
+		const result = evaluateReleaseGate({
+			manifest: {
+				version: 1,
+				protected_checks: ['secret-scan-source'],
+				checks: [check({ surfaces: ['fast'] })],
+			},
+			scripts: listEntries,
+			surfaces,
+			profileComponents: PROFILE,
+			fileExists: (path) => FILES.includes(path),
+		});
+		assert.equal(rowOf(result, 'secret-scan-source').status, 'not_run');
+		assert.ok(result.errors.some((error) => error.includes('never reaches it')));
+	});
+
+	it('does not add a profile component the entry point never invokes', () => {
+		// The reviewer's minimal reproduction: the profile declares a
+		// security check, but `validate:fast` is a chain that no longer
+		// calls the runner. Reachability must come from the entry point,
+		// not from the declaration.
+		const scripts = {
+			'validate:fast': 'pnpm run lint:check',
+			'lint:check': 'biome lint .',
+			'secret:scan': 'node scripts/scan-secrets.mjs',
+		};
+		const profileComponents = {
+			fast: ['pnpm run lint:check', 'pnpm run secret:scan'],
+			integration: [],
+			release: [],
+		};
+		const surfaces = collectSurfaces({ scripts, profileComponents });
+		assert.ok(!surfaces.fast.has('secret:scan'));
+
+		const result = evaluateReleaseGate({
+			manifest: {
+				version: 1,
+				protected_checks: ['secret-scan-source'],
+				checks: [check({ surfaces: ['fast'] })],
+			},
+			scripts,
+			surfaces,
+			profileComponents,
+			fileExists: (path) => FILES.includes(path),
+		});
+		assert.equal(rowOf(result, 'secret-scan-source').status, 'not_run');
+		assert.ok(result.errors.some((error) => error.includes('never reaches it')));
+		assert.equal(result.summary.pass, 0);
+	});
+
+	it('expands a `validate:<gate>` command in the CI surface too', () => {
+		const workflowText = [
+			'jobs:',
+			'  validate:',
+			'    steps:',
+			'      - run: pnpm run validate:integration',
+		].join('\n');
+		const surfaces = collectSurfaces({
+			scripts: RUNNER_ENTRIES,
+			workflowText,
+			profileComponents: PROFILE,
+		});
+		assert.ok(surfaces.ci.has('secret:scan'));
+		assert.ok(surfaces.ci.has('secret:scan:bundle'));
 	});
 
 	it('terminates on a profile that references itself', () => {

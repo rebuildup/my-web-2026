@@ -6,7 +6,13 @@
  *   node scripts/run-quality-gates.mjs fast
  *   node scripts/run-quality-gates.mjs integration
  *   node scripts/run-quality-gates.mjs release
- *   node scripts/run-quality-gates.mjs fast --list   # print the plan, run nothing
+ *   node scripts/run-quality-gates.mjs fast --list   # diagnostic only, run nothing
+ *
+ * `--list` is deliberately refused when this file is invoked from the
+ * `validate:fast` / `validate:integration` / `validate:release` npm
+ * lifecycle. Those entry points must RUN the plan; a merge-resolution
+ * leftover that appends `--list` would otherwise print a plan and exit
+ * 0 while every gate (typecheck, vitest, secret scan) was skipped.
  *
  * What changed
  * ------------
@@ -52,6 +58,9 @@ import {
 } from './_quality-gate-plan.mjs';
 
 const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/** npm lifecycle events that must execute the plan, never list it. */
+const RUN_LIFECYCLE_EVENTS = new Set(GATE_NAMES.map((gate) => `validate:${gate}`));
 
 function readRepoFile(relativePath) {
 	return readFileSync(join(repoRoot, relativePath), 'utf8');
@@ -114,8 +123,12 @@ export function successLine(gateName, steps) {
  *
  * Returns the process exit code: 0 when the plan ran green, 2 for a
  * usage / plan error, otherwise the failing step's own code.
+ *
+ * `lifecycleEvent` defaults to `process.env.npm_lifecycle_event`, which
+ * pnpm sets to the script name while it runs an npm script. Tests pass
+ * it explicitly so the refusal is asserted without spawning npm.
  */
-export function main(argv) {
+export function main(argv, { lifecycleEvent = process.env.npm_lifecycle_event } = {}) {
 	const flags = argv.filter((argument) => argument.startsWith('-'));
 	const names = argv.filter((argument) => !argument.startsWith('-'));
 	const listOnly = flags.includes('--list');
@@ -123,6 +136,12 @@ export function main(argv) {
 
 	if (unknownFlags.length > 0) {
 		process.stderr.write(`unknown option(s): ${unknownFlags.join(', ')}\n`);
+		return 2;
+	}
+	if (listOnly && RUN_LIFECYCLE_EVENTS.has(lifecycleEvent)) {
+		process.stderr.write(
+			`--list is a read-only diagnostic and must not be the body of an npm validate script (npm_lifecycle_event=${lifecycleEvent}). Run the gate instead.\n`,
+		);
 		return 2;
 	}
 	if (names.length !== 1 || !GATE_NAMES.includes(names[0])) {
@@ -162,6 +181,6 @@ export function main(argv) {
 	return status;
 }
 
-if (process.argv[1] && import.meta.url === `file://${resolve(process.argv[1])}`) {
+if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
 	process.exit(main(process.argv.slice(2)));
 }

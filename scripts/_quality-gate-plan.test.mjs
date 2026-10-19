@@ -62,6 +62,57 @@ change_risk_mapping:
     gate: fast
 `;
 
+/**
+ * The fast plan pinned as of Issue #566, one command per line.
+ *
+ * It is the historical `validate:fast` `&&` chain (40 steps) with the two
+ * explicit `node --test scripts/check-{release-assets,app-icons}.test.mjs`
+ * steps folded into `pnpm run test`, and the two raw node calls replaced
+ * by their existing npm-script aliases. The whole list is compared, so a
+ * dropped or reordered component fails instead of only breaking one of
+ * five spot-checked orderings.
+ */
+const EXPECTED_FAST_PLAN = [
+	'pnpm run format:check',
+	'pnpm run lint:check',
+	'pnpm run architecture:check',
+	'pnpm run log:redaction:check',
+	'pnpm run structured-data:check',
+	'pnpm run ogp:card:check',
+	'pnpm run index:boundary:check',
+	'pnpm run tools:check',
+	'pnpm run install:scripts:check',
+	'pnpm run wrangler:independence:check',
+	'pnpm run cloudflare:contract:check',
+	'pnpm run test:wiring:check',
+	'pnpm run release:assets:check',
+	'pnpm run version:check',
+	'pnpm run typecheck',
+	'pnpm run infisical:check:coverage',
+	'pnpm run sbom:check',
+	'pnpm run csrf:contract:check',
+	'pnpm run compat:check',
+	'pnpm run tools:provenance:check',
+	'pnpm run storybook:ownership:check',
+	'pnpm run copy:i18n:check',
+	'pnpm run publication:check',
+	'pnpm run content:links:check',
+	'pnpm run routes:quality:check',
+	'pnpm run security:headers:check',
+	'pnpm run html:standards:check',
+	'pnpm run i18n:policy:check',
+	'pnpm run test',
+	'pnpm run seo:status:check',
+	'pnpm run ci:pins:check',
+	'pnpm run knip:check',
+	'pnpm run secret:scan',
+	'pnpm run a11y:reduced-motion:check',
+	'pnpm run a11y:language-of-parts:check',
+	'pnpm run css:check',
+	'pnpm run app:icons:check',
+	'pnpm run release:gate:check',
+];
+
 describe('parseGateProfile', () => {
 	it('reads the gates block, ignoring the rest of the document', () => {
 		const { gates } = parseGateProfile(FIXTURE_PROFILE);
@@ -186,6 +237,19 @@ describe('validateGateComponents', () => {
 			'one line must be one command: pnpm run test && pnpm run typecheck',
 		]);
 	});
+
+	it('rejects a backgrounded command and command substitution', () => {
+		for (const component of [
+			'pnpm run secret:scan & pnpm run knip:check',
+			'pnpm run secret:scan; pnpm run knip:check',
+			'node scripts/report.mjs `git rev-parse HEAD`',
+			'node scripts/report.mjs $(git rev-parse HEAD)',
+		]) {
+			assert.deepEqual(validateGateComponents([component], []), [
+				`one line must be one command: ${component}`,
+			]);
+		}
+	});
 });
 
 describe('the repository plan', () => {
@@ -202,15 +266,14 @@ describe('the repository plan', () => {
 		}
 	});
 
-	it('runs each gate through the one-line runner script, not a chain', () => {
+	it('runs each gate through the exact one-line runner script, not a chain', () => {
 		for (const gate of GATE_NAMES) {
 			assert.equal(gates[gate].command, `pnpm run validate:${gate}`);
-			const value = String(pkg.scripts[`validate:${gate}`]);
-			assert.ok(
-				value.includes(`${RUNNER_RELATIVE_PATH} ${gate}`),
-				`validate:${gate} must delegate to the runner: ${value}`,
+			assert.equal(
+				pkg.scripts[`validate:${gate}`],
+				`node scripts/run-quality-gates.mjs ${gate}`,
+				`validate:${gate} must be exactly the runner in run mode`,
 			);
-			assert.equal(value.split('&&').length, 1, 'the entry point must be a single command');
 		}
 		assert.equal(successLine('fast', 3), '\nvalidate:fast OK — 3 declared step(s)\n');
 	});
@@ -241,25 +304,11 @@ describe('the repository plan', () => {
 		}
 	});
 
-	it('re-declares every script the validate:fast chain used to name', () => {
-		// The historical one-line chain, read from the released profile,
-		// is the order criterion 5 protects: the plan must still run
-		// these commands in this order.
-		const released = planForGate({
-			profileText,
-			packageJsonText,
-			gateName: 'fast',
-		}).plan;
-		const indexOf = (component) => {
-			const index = released.indexOf(component);
-			assert.notEqual(index, -1, `${component} is missing from gates.fast`);
-			return index;
-		};
-		assert.ok(indexOf('pnpm run format:check') < indexOf('pnpm run lint:check'));
-		assert.ok(indexOf('pnpm run lint:check') < indexOf('pnpm run architecture:check'));
-		assert.ok(indexOf('pnpm run architecture:check') < indexOf('pnpm run typecheck'));
-		assert.ok(indexOf('pnpm run typecheck') < indexOf('pnpm run test'));
-		assert.ok(indexOf('pnpm run test') < indexOf('pnpm run secret:scan'));
+	it('runs the historical validate:fast chain, gate for gate, in order', () => {
+		// The historical one-line chain is the order criterion 5 protects.
+		// Compare the WHOLE list: five relative orderings would not notice a
+		// dropped publication / release-asset / app-icons component.
+		assert.deepEqual(plan('fast'), EXPECTED_FAST_PLAN);
 	});
 
 	it('lists the same plan the runner would execute', () => {
@@ -280,9 +329,20 @@ describe('the repository plan', () => {
 		assert.deepEqual(scriptNamesOf({}), []);
 	});
 
-	it('refuses usage errors and prints the plan for --list', () => {
+	it('refuses usage errors and never lets --list replace a gate run', () => {
 		assert.equal(main(['smoke']), 2, 'an unknown gate is a usage error');
 		assert.equal(main(['fast', '--nope']), 2, 'an unknown option is a usage error');
-		assert.equal(main(['fast', '--list']), 0, 'listing runs nothing and succeeds');
+		assert.equal(
+			main(['fast', '--list'], { lifecycleEvent: undefined }),
+			0,
+			'a direct diagnostic listing succeeds',
+		);
+		for (const lifecycleEvent of ['validate:fast', 'validate:integration', 'validate:release']) {
+			assert.equal(
+				main(['fast', '--list'], { lifecycleEvent }),
+				2,
+				`${lifecycleEvent} must run the plan, never print it`,
+			);
+		}
 	});
 });

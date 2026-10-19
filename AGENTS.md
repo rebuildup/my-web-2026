@@ -553,6 +553,32 @@ external contracts.
 
 Read a Skill only when the task actually requires it.
 
+### Vendoring — do not sync mechanically (Issue #647)
+
+`skills/` holds **manual vendored copies**. There is no
+`skills-lock.json` and no hash gate. Upstream is
+`rebuildup/project-init`; these files were last reconciled against
+**0.1.1**, and upstream has since moved to `release-0-6-0`.
+
+**Running `npx skills update` (or `bunx skills update`) over the whole
+directory is forbidden.** The following are **intentionally forked**,
+and a blanket sync would silently reverse a project decision or break a
+canonical link:
+
+| Skill | Why it is forked |
+| --- | --- |
+| `github-delivery` | Owns the **all-merges-need-explicit-authorization** rule (§6) and the `Release PR merge human gate (canonical rule)` heading. `docs/release.md` and `docs/runbook/sbom.md` anchor to that heading — upstream deleted it, and `scripts/check-content-links.mjs` excludes `skills/**`, so a broken anchor would not be caught. Upstream also grants *autonomous ticket-PR landing*, which would widen agent merge authority, and routes planning through Linear rather than the GitHub Projects SoT that §7 declares. |
+| `worktree-workflow` | Pinned to this repo's `.config/wt.toml` (Issue #284); upstream's additions assume a Rust/Cargo build this repository does not have. |
+| `engineering-decisions` | Encodes the 6-level precedence list in §8 verbatim; upstream's 8-level variant introduces Constitution concepts this repository does not have, so §8 would have to change in the same commit. |
+| `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
+| `form-design`, `motion-system`, `interaction-states` | `interaction-states` is a **local rename** of upstream's `interaction-state` (different Skill, not the deleted one); the two upstream files were edited in this repository specifically to stop cross-referencing the old name. |
+
+To take an upstream change, diff it first, land it as its own ticket,
+and re-check the §3 / §6 / §7 invariants it touches. The update command
+is `npx skills add rebuildup/project-init --skill <name> --copy` —
+**not** `bunx` (§2 forbids Bun here) and **never without `--copy`**
+(a symlinked install is not what §10 promises readers).
+
 ### Sprint / delivery
 - `skills/github-delivery/SKILL.md` — Issue / PR / release sprint
 - `skills/parallel-orchestration/SKILL.md` — multi-agent / stacked PR

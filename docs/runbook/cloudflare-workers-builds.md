@@ -108,6 +108,19 @@ path, D1, and the secrets/preflight are all cf-native.** Until then
 the build command stays `pnpm run build` and the deploy command keeps
 its current form.
 
+### The two commands above are gated (Issue #480)
+
+The table above is the only place the Workers Builds commands are written
+down outside the Cloudflare Dashboard, so renaming `build` or
+`deploy:production:prepared` in `package.json` would leave production
+running a command that no longer exists — silently, because CI never reads
+the dashboard. `pnpm run cf:config:drift:check` closes that: it asserts the
+commands recorded in `quality/cloudflare-config-drift.json` still name a
+real `package.json` script AND still match the rows in the table above. A
+script rename therefore fails `validate:fast` and forces the dashboard
+change and this table to move together. Full procedure:
+[`docs/runbook/cloudflare-config-drift.md`](cloudflare-config-drift.md).
+
 ### Artifact attestation (Issue #476)
 
 `pnpm run artifact:attestation:check` hashes the production-mode Build

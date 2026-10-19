@@ -24,6 +24,7 @@ of trusting the image.
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
+| [`cloudflare-config-drift.webp`](cloudflare-config-drift.webp) | #480 | `pnpm run cf:config:drift:report` |
 
 ## `r2-restore-proof.webp` (Issue #462)
 

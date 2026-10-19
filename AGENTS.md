@@ -360,6 +360,14 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   cites it, so an unreviewed request class cannot pass silently) +
   `tools:check` + `security:headers:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
+  `cf:config:drift:check` (Issue #480 — the production Worker
+  surface, the development surface, the Workers Builds build / deploy
+  commands and the static-asset `_headers` coverage are compared against
+  the recorded contract in `quality/cloudflare-config-drift.json`; one
+  differing item is one red gate. Offline, credential-free, status-only —
+  a `secret` binding is compared as a name and an unexpected text value is
+  printed as `<redacted len=N>`; see
+  `docs/runbook/cloudflare-config-drift.md`) +
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +

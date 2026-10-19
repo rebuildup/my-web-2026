@@ -10,6 +10,7 @@
 	},
 	"packageManager": "pnpm@12.3.4",
 	"scripts": {
+		"app:icons:check": "node scripts/check-app-icons.mjs",
 		"architecture:check": "node scripts/check-architecture.mjs",
 		"bootstrap:home-api-key": "node scripts/bootstrap-home-api-key.mjs",
 		"build": "vite build && node scripts/build-tools.mjs && node scripts/check-client-bundle.mjs",
@@ -57,6 +58,7 @@
 		"phase-3-plus:flip:production": "node scripts/phase-3-plus-prod-flip.mjs",
 		"prepare": "panda codegen",
 		"preview": "vite preview",
+		"release:assets:check": "node scripts/check-release-assets.mjs",
 		"rotate:better-auth-secret": "node scripts/rotate-better-auth-secret.mjs",
 		"rotate:dev-better-auth-secret": "node scripts/rotate-dev-better-auth-secret.mjs",
 		"rotate:home-api-key": "node scripts/rotate-home-api-key.mjs",

@@ -266,11 +266,19 @@ export function parseProfileComponents(text) {
 		if (!inComponents) continue;
 		if (/^ {6}- /.test(line)) {
 			// A quoted entry is a command (`- 'pnpm run x'`). An unquoted
-			// entry is a level reference (`- fast`), which names no command of
-			// its own: the three surfaces already include the lower levels
-			// transitively, so it is skipped rather than treated as a step.
+			// entry is a level reference (`- fast`), which names no command
+			// of its own: rule 10 skips it as a step, and the surface
+			// closure expands it instead. It is kept in the list (as
+			// `- fast`, dash included) because from Issue #566 this file IS
+			// the chain the entry points execute, so dropping a reference
+			// here would drop it from the run.
 			const item = /^ {6}-\s+'(.+?)'\s*(?:#.*)?$/.exec(line);
-			if (item) out[level].push(item[1]);
+			if (item) {
+				out[level].push(item[1]);
+				continue;
+			}
+			const reference = /^ {6}-\s+([A-Za-z0-9_-]+)\s*$/.exec(line);
+			if (reference) out[level].push(`- ${reference[1]}`);
 			continue;
 		}
 		if (line.trim().length > 0 && !/^ {6}#/.test(line)) inComponents = false;
@@ -324,14 +332,53 @@ export function parseWorkflowJobRunCommands(text, jobName = CI_JOB) {
 }
 
 /**
+ * Script names a declared gate runs, expanded transitively.
+ *
+ * Issue #566 moved the ordered chain out of `package.json` and into
+ * `quality/profile.yaml#gates.<level>.components`, so a component that
+ * is declared is run by `scripts/run-quality-gates.mjs` even though the
+ * npm script body is a single line. This keeps rules 6 and 10 answering
+ * "does the entry point really run this check" from the declaration that
+ * is executed, instead of from a chain that no longer spells it out.
+ *
+ * A bare `fast` / `integration` / `release` item expands that gate, the
+ * same way the runner does, and an entry that is not exactly
+ * `pnpm run <script>` has no script name to expand — rule 10 reports
+ * that separately, so nothing is silently skipped here.
+ */
+export function profileSurfaceScripts(scripts, profileComponents, surface, seen = new Set()) {
+	if (seen.has(surface)) return [];
+	seen.add(surface);
+	const names = [];
+	const components = Array.isArray(profileComponents?.[surface]) ? profileComponents[surface] : [];
+	for (const raw of components) {
+		const component = String(raw).replace(/^-\s*/, '');
+		if (SURFACES.includes(component)) {
+			names.push(...profileSurfaceScripts(scripts, profileComponents, component, seen));
+			continue;
+		}
+		const script = scriptNameOfCommand(component);
+		if (script === null) continue;
+		names.push(script, ...expandScriptNames(scripts, script));
+	}
+	return names;
+}
+
+/**
  * Resolve the four release surfaces of a checkout.
+ *
+ * `profileComponents` (the `gates.<level>.components` lists) joins the
+ * npm-script closure: from Issue #566 the two describe the same run.
  *
  * @returns {{ fast: Set<string>, integration: Set<string>, release: Set<string>, ci: Set<string> }}
  */
-export function collectSurfaces({ scripts = {}, workflowText = '' } = {}) {
+export function collectSurfaces({ scripts = {}, workflowText = '', profileComponents = {} } = {}) {
 	const surfaces = {};
 	for (const surface of ['fast', 'integration', 'release']) {
-		surfaces[surface] = new Set(expandScriptNames(scripts, SURFACE_ENTRIES[surface]));
+		surfaces[surface] = new Set([
+			...expandScriptNames(scripts, SURFACE_ENTRIES[surface]),
+			...profileSurfaceScripts(scripts, profileComponents, surface),
+		]);
 	}
 	const ci = new Set();
 	for (const command of parseWorkflowJobRunCommands(workflowText, CI_JOB)) {
@@ -679,7 +726,7 @@ export function checkReleaseGateCoverage({
 
 	const scripts = JSON.parse(packageText).scripts ?? {};
 	const profileComponents = parseProfileComponents(profileText);
-	const surfaces = collectSurfaces({ scripts, workflowText });
+	const surfaces = collectSurfaces({ scripts, workflowText, profileComponents });
 	const result = evaluateReleaseGate({
 		manifest,
 		scripts,

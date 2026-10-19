@@ -7,8 +7,8 @@
  * `package.json#scripts["validate:fast"]` used to be ONE line of
  * `&&`-joined commands. Adding a gate meant rewriting that entire
  * line, so every ticket PR that added a gate collided with every other
- * ticket PR that added a gate: 17 of 20 parallel 0.6.3 tickets
- * conflicted on that one line during a trial merge.
+ * ticket PR that added a gate: in a trial merge of 20 parallel ticket
+ * PRs, 17 of them conflicted on that one line.
  *
  * A gate roster is therefore declared ONE COMMAND PER LINE in
  * `quality/profile.yaml#gates.<name>.components` and executed by

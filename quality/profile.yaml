@@ -29,8 +29,8 @@
 # the entries in the order written, one command per line, stopping at
 # the first failure with that failure's exit code. The component lists
 # used to be one `&&`-joined line inside package.json, which every
-# ticket PR that added a gate had to rewrite (17 of 20 concurrent
-# 0.6.3 tickets conflicted on it in a trial merge); here a new gate is
+# ticket PR that added a gate had to rewrite (in a trial merge of 20
+# concurrent tickets, 17 conflicted on it); here a new gate is
 # one appended line, so concurrent tickets stop colliding.
 #
 # Rules the runner enforces (scripts/_quality-gate-plan.mjs):
@@ -113,12 +113,7 @@ gates:
       # Issue #308: release-asset staging runs BEFORE `version:check` so
       # the absent staged path prints first, instead of surfacing as a
       # cascade of downstream test failures.
-      - 'node scripts/check-release-assets.mjs'
-      # The release-asset gate's own test, beside the gate it proves.
-      # `pnpm run test` runs it too (discovery covers every
-      # `scripts/*.test.mjs`); this step is the adjacency proof, not the
-      # only execution.
-      - 'node --test scripts/check-release-assets.test.mjs'
+      - 'pnpm run release:assets:check'
       - 'pnpm run version:check' # package.json#version vs the release branch (AGENTS.md section 6)
       - 'pnpm run typecheck' # tsc --noEmit
       # ADR-0015 tier 1 / tier 2: the Infisical inventory and the Worker
@@ -233,10 +228,12 @@ gates:
       # accepted only through an explicit, in-use allowlist entry
       # (quality/css-standards.json). Offline; no network, no secret.
       - 'pnpm run css:check' # CSS syntax / unknown-property gate
-      # Issue #504: the published app-icon contract, with its own test
-      # beside the gate. `pnpm run test` runs that test too (discovery).
-      - 'node --test scripts/check-app-icons.test.mjs'
-      - 'node scripts/check-app-icons.mjs'
+      # Issue #504: the published app-icon contract. Its own test
+      # (scripts/check-app-icons.test.mjs) runs inside `pnpm run test`
+      # above, by the same discovery rule as every other script test —
+      # Issue #566 removed the hand-written `node --test` step that used
+      # to sit beside this gate.
+      - 'pnpm run app:icons:check'
       # Issue #508: the release-gate check ledger. Every inspection the
       # release report claims is resolved against the commands this
       # chain really runs, so a required check that stopped running is

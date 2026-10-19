@@ -12,8 +12,8 @@
  * ------------
  * `package.json#scripts["validate:fast"]` was a single `&&`-joined
  * line. Every ticket that added a gate had to rewrite the whole line,
- * so parallel ticket PRs collided on it mechanically (17 of 20
- * concurrent 0.6.3 tickets conflicted during a trial merge). The
+ * so parallel ticket PRs collided on it mechanically (in a trial merge
+ * of 20 concurrent tickets, 17 conflicted on it). The
  * ordered roster now lives one command per line in
  * `quality/profile.yaml#gates.<name>.components`, and these npm scripts
  * are one line each:

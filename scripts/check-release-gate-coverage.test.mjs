@@ -200,8 +200,42 @@ describe('quality profile reader', () => {
 		].join('\n');
 		const parsed = parseProfileComponents(text);
 		assert.deepEqual(parsed.fast, ['pnpm run format:check', 'pnpm run lint:check']);
-		assert.deepEqual(parsed.integration, ['pnpm run build']);
+		// Issue #566: an unquoted level reference is kept (`- fast`, dash
+		// included) because this file is the chain the entry points
+		// execute. Rule 10 still reads it as a reference rather than a
+		// step; the surface closure is what expands it.
+		assert.deepEqual(parsed.integration, ['- fast', 'pnpm run build']);
 		assert.deepEqual(parsed.release, ['pnpm run cf-typegen:check']);
+	});
+});
+
+describe('surface closure over the declared profile (Issue #566)', () => {
+	/** The three entry points after #566: one line each, no chain. */
+	const RUNNER_ENTRIES = {
+		'validate:fast': 'node scripts/run-quality-gates.mjs fast',
+		'validate:integration': 'node scripts/run-quality-gates.mjs integration',
+		'validate:release': 'node scripts/run-quality-gates.mjs release',
+	};
+
+	it('reaches a check through the declared component that runs it', () => {
+		const fromPlan = collectSurfaces({
+			scripts: RUNNER_ENTRIES,
+			profileComponents: PROFILE,
+		});
+		assert.ok(fromPlan.fast.has('secret:scan'));
+		assert.ok(fromPlan.integration.has('secret:scan'), 'the `- fast` reference expands');
+		assert.ok(fromPlan.integration.has('secret:scan:bundle'));
+		assert.ok(fromPlan.release.has('secret:scan:bundle'));
+		// The miniature release list names no lower gate, so it adds none:
+		// the closure follows the declaration, it does not assume.
+		assert.ok(!fromPlan.release.has('lint:check'));
+	});
+
+	it('terminates on a profile that references itself', () => {
+		const cyclic = { fast: ['- integration'], integration: ['- fast'], release: [] };
+		const surfaces = collectSurfaces({ scripts: RUNNER_ENTRIES, profileComponents: cyclic });
+		assert.deepEqual([...surfaces.fast].sort(), ['validate:fast']);
+		assert.deepEqual([...surfaces.integration].sort(), ['validate:integration']);
 	});
 });
 

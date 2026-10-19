@@ -198,6 +198,9 @@ CI で走らせた場合も同じフィールドが出るので、ローカル�
   #448 の CSP `frame-ancestors`（`src/server.ts` の `applyFrameAncestorsPolicy` と
   `public/_headers` の Static Assets 側）、
   および画像アップロード guard（`src/http/reactions/images.ts` の `uploadImage` / policy 領域）。
+- さらに後の base 再マージ: #571（bundle budget）、#591（route quality）、
+  #564（R2 media visibility / `src/http/reactions/images.ts` の読み取り境界）、
+  #601 / #611（a11y state mark と viewport grid）。
 - review follow-up: `src/server.ts#applyHtmlCachePolicy` への「既存 `Cache-Control` を
   上書きしない」早期 return の復元、計測ツールの合格基準 3〜6 の行からの導出、
   `reactions-images.test.ts` の Worker entry 経由化。
@@ -228,11 +231,12 @@ frame-ancestors` を追加したため）。ただし `Cache-Control` / `max-age
 - #446 / #596 のマージは `applyTransportSecurityPolicy` を dispatch の後段に足し、
   HSTS 定数を module-private にしただけで、`Cache-Control` の値には触れていない
   （HSTS は別ヘッダー）。
-- #448 / #449 / #455 のマージはいずれも `Cache-Control` の値に触れていない。
+- #448 / #449 / #455 / #564 のマージはいずれも `Cache-Control` の値に触れていない。
   #448 は dispatch に `applyFrameAncestorsPolicy` を、#449 は
   `applySecurityHeaders` を（いずれも CSP / セキュリティヘッダのみ）、#455 は
-  CORS ヘッダを追加した。`public/_headers` は #448 以降差分があるが、
-  `Cache-Control` / `max-age` / `immutable` を含む行の移動はない。
+  CORS ヘッダを追加した。#564 は R2 の公開 namespace 判定を読み取り経路に足したが、
+  `REACTION_IMAGE_CACHE_CONTROL` の値は変えていない。`public/_headers` は #448 以降
+  差分があるが、`Cache-Control` / `max-age` / `immutable` を含む行の移動はない。
 
 - 合成後の dispatch は次のとおりで、両方の Issue の挙動が共存する:
 

@@ -70,7 +70,7 @@
 		"tools:check": "node scripts/check-tools-manifest.mjs",
 		"tools:embed-policy:report": "node scripts/tools-embed-policy-report.mjs",
 		"typecheck": "tsc --noEmit",
-		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run log:redaction:check && pnpm run structured-data:check && pnpm run ogp:card:check && pnpm run index:boundary:check && pnpm run tools:check && pnpm run install:scripts:check && pnpm run wrangler:independence:check && pnpm run cloudflare:contract:check && pnpm run test:wiring:check && node scripts/check-release-assets.mjs && node --test scripts/check-release-assets.test.mjs && pnpm run version:check && pnpm run typecheck && pnpm run infisical:check:coverage && pnpm run sbom:check && pnpm run csrf:contract:check && pnpm run compat:check && pnpm run tools:provenance:check && pnpm run storybook:ownership:check && pnpm run copy:i18n:check && pnpm run publication:check && pnpm run content:links:check && pnpm run routes:quality:check && pnpm run security:headers:check && pnpm run html:standards:check && pnpm run i18n:policy:check && pnpm run test && pnpm run seo:status:check && pnpm run ci:pins:check && pnpm run knip:check && pnpm run secret:scan && pnpm run a11y:reduced-motion:check && pnpm run a11y:language-of-parts:check && pnpm run css:check",
+		"validate:fast": "pnpm run format:check && pnpm run lint:check && pnpm run architecture:check && pnpm run log:redaction:check && pnpm run structured-data:check && pnpm run ogp:card:check && pnpm run index:boundary:check && pnpm run tools:check && pnpm run install:scripts:check && pnpm run wrangler:independence:check && pnpm run cloudflare:contract:check && pnpm run test:wiring:check && node scripts/check-release-assets.mjs && node --test scripts/check-release-assets.test.mjs && pnpm run version:check && pnpm run typecheck && pnpm run infisical:check:coverage && pnpm run sbom:check && pnpm run csrf:contract:check && pnpm run compat:check && pnpm run tools:provenance:check && pnpm run storybook:ownership:check && pnpm run copy:i18n:check && pnpm run publication:check && pnpm run content:links:check && pnpm run routes:quality:check && pnpm run security:headers:check && pnpm run html:standards:check && pnpm run i18n:policy:check && pnpm run test && pnpm run seo:status:check && pnpm run ci:pins:check && pnpm run knip:check && pnpm run secret:scan && pnpm run a11y:reduced-motion:check && pnpm run a11y:language-of-parts:check && pnpm run css:check && node --test scripts/check-app-icons.test.mjs && node scripts/check-app-icons.mjs",
 		"validate:integration": "pnpm run validate:fast && pnpm run build:production && pnpm run secret:scan:bundle && pnpm run bundle:budget:check && pnpm run cloudflare:contract:check:build && pnpm run deploy:cf:prebuilt:selftest && pnpm run cf:mode-mismatch:check && pnpm run lint:ci && pnpm run build-storybook && pnpm run build:cf:production && pnpm run cloudflare:contract:check:build",
 		"validate:release": "pnpm run validate:integration && pnpm run cf-typegen:check",
 		"version:check": "node scripts/check-release-version.mjs",
@@ -161,9 +161,12 @@
 		"capture:a11y-language-of-parts": "node scripts/capture-language-of-parts.mjs",
 		"css:check": "node scripts/check-css-syntax.mjs",
 		"verify:css-screenshot": "node scripts/make-css-standards-report.mjs",
-		"r2:media:audit:local": "node scripts/check-r2-media-key-set.mjs --target=local",
+		"check:app-icons": "node scripts/check-app-icons.mjs",
+		"generate:app-icons": "node scripts/generate-app-icons.mjs",
+		"capture:app-icons-preview": "node scripts/capture-app-icons-preview.mjs",
+		"r2:media:audit": "node scripts/check-r2-media-key-set.mjs --target=production",
 		"r2:media:audit:report": "node scripts/make-r2-media-key-set-report.mjs",
-		"r2:media:audit": "node scripts/check-r2-media-key-set.mjs --target=production"
+		"r2:media:audit:local": "node scripts/check-r2-media-key-set.mjs --target=local"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

@@ -1,0 +1,313 @@
+{
+	"version": 1,
+	"owner": "repository owner (GitHub account rebuildup)",
+	"reviewed_at": "2026-10-19",
+	"as_of": "2026-10-19T00:00:00.000Z",
+	"policy": "Every third-party connection candidate declares, before it may be requested or stored: the least-privilege scope set this platform needs, the authority it must never hold, a token retention ceiling, a revocation procedure with a deadline, and the re-authorization reasons a caller must be able to surface. No candidate is published automatically: `allowlist.entries` is empty, `src/http/integrations/boundary.test.ts` asserts `/integrations/*` answers 404, and a promotion ticket must record the owner's allowlist entry in the same PR. Authority: Issue #464.",
+	"why_not_a_secret_store": "No token value appears in this ledger. The ledger declares scope NAMES, retention and procedure; values live in Infisical (ADR-0015 §1) and are never written into a tracked file, a report row, or a screenshot.",
+	"allowlist": {
+		"rule": "A candidate may be published — a mounted `/integrations/*` route, a token requested from the provider, or any automated acceptance of a grant — only after the repository owner records an entry here. The default is an empty list, and an empty list with a mounted route is an error, not a warning.",
+		"entries": []
+	},
+	"integrations": [
+		{
+			"id": "github",
+			"service": "GitHub",
+			"status": "not integrated",
+			"grant": "oauth_app_token",
+			"grant_note": "GitHub OAuth app token. It carries no expiry by default, so the retention ceiling below is ours, not the provider's.",
+			"least_privilege": {
+				"required_scopes": ["read:user"],
+				"optional_scopes": [],
+				"denied_scopes": [
+					"repo",
+					"public_repo",
+					"workflow",
+					"admin:org",
+					"admin:repo_hook",
+					"delete_repo",
+					"write:packages",
+					"delete_package",
+					"gist",
+					"notifications",
+					"user:email"
+				],
+				"justification": "The only GitHub read this platform has ever needed is the authenticated owner's public identity and public events, which `read:user` covers. Repository content, workflow files, packages and organisation administration are capabilities no current obligation owns (`docs/domain/integrations.md` promotes nothing), so requesting them would grant authority that cannot be justified in review and cannot be un-seen by the user."
+			},
+			"token_retention": {
+				"storage": "Infisical (ADR-0015 §1 is the source of truth). Never `wrangler.jsonc`, never D1, never a repo file.",
+				"max_age_days": 90,
+				"provider_expiry": "none by default for an OAuth app token; a fine-grained token's expiry is an alternative, not a substitute for the ceiling below",
+				"refresh": "interactive re-authorization; an OAuth app token has no refresh token, so there is no unattended renewal path to abuse"
+			},
+			"revocation": {
+				"owner": "repository owner",
+				"triggers": [
+					"the integration stops being needed (demotion per `docs/domain/integrations.md`)",
+					"a credential-shaped string is ever found in the tracked tree",
+					"the least-privilege review reports any refusal for a stored grant",
+					"the owner is no longer the only person with access to the repository"
+				],
+				"procedure": [
+					"revoke the grant in GitHub (Settings → Developer settings → OAuth Apps → the app → Revoke)",
+					"delete the token value in Infisical and re-check the coverage gate",
+					"update `status` here and in `docs/domain/integrations.md` to match"
+				],
+				"deadline_hours": 24
+			},
+			"reauth": {
+				"triggers": [
+					"the grant is revoked",
+					"the provider answers 401 / invalid_grant",
+					"the token is older than the retention ceiling",
+					"the issue date was never recorded or cannot be parsed"
+				],
+				"error_codes": [
+					"grant_revoked",
+					"token_expired",
+					"token_age_exceeds_retention",
+					"issued_at_missing",
+					"connection_metadata_unreadable",
+					"provider_requires_reauth"
+				],
+				"surface": "the review verdict `reauth_required`; a future handler maps it to `403` plus the reason code"
+			},
+			"grant_constraints": {
+				"note": "GitHub expresses authority as scope strings, so there is no second constraint block. A GitHub App installation token is NOT an equivalent grant: it carries repository permissions instead, and needs its own reviewed requirement before it may be accepted."
+			},
+			"source": {
+				"url": "https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/scopes-for-oauth-apps",
+				"verified_on": "2026-10-19",
+				"note": "Scope names and their meanings are taken from the vendor's published scope reference; re-verify before any promotion."
+			},
+			"evidence": ["docs/domain/integrations.md", "docs/runbook/infisical-secrets.md"],
+			"published_surface": "none"
+		},
+		{
+			"id": "notion",
+			"service": "Notion",
+			"status": "uncommitted",
+			"grant": "public_integration_oauth_token",
+			"grant_note": "Notion's public-integration OAuth flow returns no scope string. Authority is expressed as per-workspace page/database capabilities the user ticks in the Notion UI, so this ledger reviews the capability list with the same vocabulary it reviews OAuth scopes.",
+			"least_privilege": {
+				"required_scopes": ["read_content"],
+				"optional_scopes": ["read_user_information"],
+				"denied_scopes": ["insert_content"],
+				"justification": "A read-only capability needs exactly `read_content`; `read_user_information` only matters for attributing content to a person, which no current obligation does. `insert_content` is the write capability, and no Notion obligation in `docs/domain/integrations.md` owns a write, so accepting a token that carries it would grant authority nobody reviewed."
+			},
+			"token_retention": {
+				"storage": "Infisical (ADR-0015 §1 is the source of truth). Never `wrangler.jsonc`, never D1, never a repo file.",
+				"max_age_days": 90,
+				"provider_expiry": "none — a Notion OAuth token stays valid until it is revoked or the connection is removed from the workspace",
+				"refresh": "interactive re-authorization; Notion issues no refresh token"
+			},
+			"revocation": {
+				"owner": "repository owner, acting in the Notion workspace that granted the connection",
+				"triggers": [
+					"the portfolio/activity capability that needed Notion is dropped",
+					"a credential-shaped string is ever found in the tracked tree",
+					"the least-privilege review reports any refusal for a stored grant",
+					"the workspace owner leaves the team"
+				],
+				"procedure": [
+					"remove the connection in the workspace settings (Settings → Connections → the integration → Remove)",
+					"delete the token value in Infisical and re-check the coverage gate",
+					"update `status` here and in `docs/domain/integrations.md` to match"
+				],
+				"deadline_hours": 24
+			},
+			"reauth": {
+				"triggers": [
+					"the connection was removed or revoked in the workspace",
+					"the granted page/database no longer includes the shared page",
+					"the token is older than the retention ceiling",
+					"the issue date was never recorded or cannot be parsed"
+				],
+				"error_codes": [
+					"grant_revoked",
+					"token_age_exceeds_retention",
+					"issued_at_missing",
+					"connection_metadata_unreadable",
+					"provider_requires_reauth"
+				],
+				"surface": "the review verdict `reauth_required`; a future handler maps it to `403` plus the reason code"
+			},
+			"grant_constraints": {
+				"note": "Because the capability list is per-connection rather than per-app, a grant may also carry capability names this ledger has never reviewed. Those are refused as `scope_outside_review` rather than accepted, which is the behaviour that keeps a Notion workspace's tick-boxes from becoming our policy."
+			},
+			"source": {
+				"url": "https://developers.notion.com/docs/authorization",
+				"verified_on": "2026-10-19",
+				"note": "Capability names come from the vendor's authorization documentation; re-verify before any promotion."
+			},
+			"evidence": ["docs/domain/integrations.md", "docs/runbook/infisical-secrets.md"],
+			"published_surface": "none"
+		},
+		{
+			"id": "discord",
+			"service": "Discord",
+			"status": "uncommitted",
+			"grant": "oauth2_user_or_bot_token",
+			"grant_note": "Discord expresses authority twice: OAuth2 scopes on the grant, and a permission integer on a bot invite. Both are reviewed here; the integer is not derivable from the scope list.",
+			"least_privilege": {
+				"required_scopes": ["identify"],
+				"optional_scopes": [],
+				"denied_scopes": [
+					"email",
+					"connections",
+					"guilds",
+					"guilds.join",
+					"messages",
+					"message_content.read",
+					"rpc",
+					"widget",
+					"applications.commands"
+				],
+				"justification": "`identify` is the smallest scope that can answer \"who authorized this connection\". Guild membership, message content, RPC and widget scopes each open a surface no current obligation owns, and `email` would collect an address this platform has no reason to hold."
+			},
+			"token_retention": {
+				"storage": "Infisical (ADR-0015 §1 is the source of truth). Never `wrangler.jsonc`, never D1, never a repo file.",
+				"max_age_days": 30,
+				"provider_expiry": "none — a Discord access token stays valid until it is revoked or the authorization is removed",
+				"refresh": "Discord issues a refresh token; it is stored with the same ceiling and expires the connection with the access token rather than renewing it forever"
+			},
+			"revocation": {
+				"owner": "repository owner, acting as the Discord user or application that granted the authorization",
+				"triggers": [
+					"the capability that needed Discord is dropped",
+					"a credential-shaped string is ever found in the tracked tree",
+					"the least-privilege review reports any refusal for a stored grant",
+					"the bot is removed from the guild"
+				],
+				"procedure": [
+					"revoke the authorization in Discord (User Settings → Connections → the app → Remove, or the OAuth2 app's authorization list)",
+					"remove the bot from the guild with the permission integer reset to the allowlist below",
+					"delete the token value in Infisical and re-check the coverage gate",
+					"update `status` here and in `docs/domain/integrations.md` to match"
+				],
+				"deadline_hours": 24
+			},
+			"reauth": {
+				"triggers": [
+					"the authorization was revoked",
+					"the provider answers 401",
+					"the token is older than the retention ceiling (Discord tokens are short-lived in practice, so this fires first)",
+					"the issue date was never recorded or cannot be parsed"
+				],
+				"error_codes": [
+					"grant_revoked",
+					"token_expired",
+					"token_age_exceeds_retention",
+					"issued_at_missing",
+					"connection_metadata_unreadable",
+					"provider_requires_reauth"
+				],
+				"surface": "the review verdict `reauth_required`; a future handler maps it to `403` plus the reason code"
+			},
+			"grant_constraints": {
+				"bot_permission_allowlist": [1024],
+				"bot_permission_denylist": [8, 32, 268435456, 536870912],
+				"note": "Discord permission bits, not scopes: 1024 = ViewChannel (the only bit a read-only surface may hold), 8 = Administrator, 32 = ManageGuild, 268435456 = ManageRoles, 536870912 = ManageWebhooks. Any other bit in an invite integer is refused as unreviewed authority; adding a bit to the allowlist is an owner decision recorded here, not a code change."
+			},
+			"source": {
+				"url": "https://discord.com/developers/docs/topics/oauth2",
+				"verified_on": "2026-10-19",
+				"note": "Scope names come from the vendor's OAuth2 documentation and the permission bits from its permissions reference; re-verify before any promotion."
+			},
+			"evidence": ["docs/domain/integrations.md", "docs/runbook/infisical-secrets.md"],
+			"published_surface": "none"
+		},
+		{
+			"id": "stripe",
+			"service": "Stripe",
+			"status": "uncommitted",
+			"review": "deferred",
+			"deferred_reason": "No billing / checkout obligation exists in the current product scope (AGENTS.md §11 keeps product feature work out of scope, and `docs/domain/integrations.md` makes \"billing enters product scope\" the promotion condition). With no capability to scope, the only honest row is one that says no Stripe token may exist yet: a grant naming `stripe` has no reviewed requirement, so the adapter answers `unknown_integration`. Review this row before any billing ticket requests a token.",
+			"evidence": ["docs/domain/integrations.md"],
+			"published_surface": "none"
+		}
+	],
+	"reviewed_connections": [
+		{
+			"id": "github-read-user-approved",
+			"integration": "github",
+			"scenario": "the one connection this Issue validates end to end: exactly the reviewed scope, inside the retention ceiling",
+			"granted_scopes": ["read:user"],
+			"issued_at": "2026-08-20T00:00:00.000Z",
+			"expected": { "verdict": "approved", "code": "approved" }
+		},
+		{
+			"id": "github-over-scoped",
+			"integration": "github",
+			"scenario": "a consent screen that asked for repository write too — the unapproved scope has to be visible",
+			"granted_scopes": ["read:user", "repo"],
+			"issued_at": "2026-10-01T00:00:00.000Z",
+			"expected": { "verdict": "unapproved_scope", "code": "denied_scope_granted" }
+		},
+		{
+			"id": "github-aged-past-retention",
+			"integration": "github",
+			"scenario": "a long-lived token that drifted past the 90-day ceiling",
+			"granted_scopes": ["read:user"],
+			"issued_at": "2026-05-01T00:00:00.000Z",
+			"expected": { "verdict": "reauth_required", "code": "token_age_exceeds_retention" }
+		},
+		{
+			"id": "notion-read-content-approved",
+			"integration": "notion",
+			"scenario": "a read-only Notion connection",
+			"granted_scopes": ["read_content"],
+			"issued_at": "2026-09-25T00:00:00.000Z",
+			"expected": { "verdict": "approved", "code": "approved" }
+		},
+		{
+			"id": "notion-write-capability",
+			"integration": "notion",
+			"scenario": "the workspace ticked the write capability as well",
+			"granted_scopes": ["read_content", "insert_content"],
+			"issued_at": "2026-09-25T00:00:00.000Z",
+			"expected": { "verdict": "unapproved_scope", "code": "denied_scope_granted" }
+		},
+		{
+			"id": "notion-unknown-capability",
+			"integration": "notion",
+			"scenario": "a capability this ledger has never reviewed is refused rather than assumed harmless",
+			"granted_scopes": ["read_content", "read_comments"],
+			"issued_at": "2026-09-25T00:00:00.000Z",
+			"expected": { "verdict": "unapproved_scope", "code": "scope_outside_review" }
+		},
+		{
+			"id": "discord-identify-approved",
+			"integration": "discord",
+			"scenario": "the smallest Discord grant that answers who authorized the connection",
+			"granted_scopes": ["identify"],
+			"issued_at": "2026-10-10T00:00:00.000Z",
+			"expected": { "verdict": "approved", "code": "approved" }
+		},
+		{
+			"id": "discord-guild-and-email",
+			"integration": "discord",
+			"scenario": "a grant that also reads guild membership and an e-mail address",
+			"granted_scopes": ["identify", "guilds", "email"],
+			"issued_at": "2026-10-10T00:00:00.000Z",
+			"expected": { "verdict": "unapproved_scope", "code": "denied_scope_granted" }
+		},
+		{
+			"id": "discord-revoked",
+			"integration": "discord",
+			"scenario": "a well-scoped grant that was revoked — re-authorization, not a scope refusal",
+			"granted_scopes": ["identify"],
+			"issued_at": "2026-10-12T00:00:00.000Z",
+			"revoked_at": "2026-10-18T00:00:00.000Z",
+			"expected": { "verdict": "reauth_required", "code": "grant_revoked" }
+		},
+		{
+			"id": "discord-aged-past-retention",
+			"integration": "discord",
+			"scenario": "a Discord token older than its 30-day ceiling",
+			"granted_scopes": ["identify"],
+			"issued_at": "2026-08-01T00:00:00.000Z",
+			"expected": { "verdict": "reauth_required", "code": "token_age_exceeds_retention" }
+		}
+	]
+}

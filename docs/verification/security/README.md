@@ -22,6 +22,7 @@ of trusting the image.
 | [`release-gate-missing-check.webp`](release-gate-missing-check.webp) | #508 | `pnpm run verify:release-gate-screenshot` |
 | [`asvs-coverage-matrix.webp`](asvs-coverage-matrix.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
+| [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 
 ## `asvs-coverage-matrix.webp` (Issue #507)
 

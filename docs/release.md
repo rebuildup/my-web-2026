@@ -65,7 +65,12 @@ below remain literal records.
    - Independent ticket: PR merge into `release-x-y-z`.
    - Stacked ticket: stack landing from the bottom of the stack.
 7. Reconcile Issue / Project state after landing.
-8. Run `pnpm run validate:release` on `release-x-y-z`.
+8. Run `pnpm run validate:release` on `release-x-y-z`. Its `fast`
+   half includes the Cloudflare configuration drift gate (Issue #480,
+   `pnpm run cf:config:drift:check`), which fails the release on one
+   differing binding / route / header-coverage / build-command item
+   against `quality/cloudflare-config-drift.json`; see
+   [`docs/runbook/cloudflare-config-drift.md`](runbook/cloudflare-config-drift.md).
 9. Run the operator-side release gate that CI cannot run:
    `CLOUDFLARE_R2_API_TOKEN=… pnpm run r2:media:audit` (Issue #577,
    read-only R2 key-set audit — it fails when a key outside

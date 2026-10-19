@@ -1385,6 +1385,20 @@ only the diff that introduced it.
 
 ## Automated checks
 
+- Cloudflare configuration drift gate (Issue #480):
+  `pnpm run cf:config:drift:check` compares the production Worker
+  surface, the development surface, the Workers Builds build / deploy
+  commands and the static-asset `_headers` coverage against the recorded
+  contract in `quality/cloudflare-config-drift.json`, and fails on a
+  single differing item. It reads no credential, calls no Cloudflare API
+  and mutates nothing, so it is part of `validate:fast` and therefore of
+  every release. A `secret` binding is compared as a NAME, and a text var
+  value that differs from the record is printed as `<redacted len=N>`
+  rather than as text. It does not claim the built artifact
+  (`cloudflare:contract:check:build`), the live Worker binding state, or
+  the Cloudflare Dashboard settings. Runbook:
+  [`docs/runbook/cloudflare-config-drift.md`](runbook/cloudflare-config-drift.md);
+  verification report `docs/verification/security/cloudflare-config-drift.webp`.
 - Log redaction gate (Issue #467): `pnpm run log:redaction:check`
   fails when `src/**` writes to `console.*` outside `src/logging/`, or
   when an operator script prints a secret-named value. The contract,

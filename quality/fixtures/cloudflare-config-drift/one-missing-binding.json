@@ -1,0 +1,14 @@
+{
+	"case": "one-production-binding-missing",
+	"note": "MEDIA_PUBLIC_BASE_URL の 1 項目の欠落だけで red になることの証明（受け入れ条件 1）。",
+	"expect": {
+		"verdict": "DRIFT",
+		"exitCode": 1,
+		"findings": 1,
+		"paths": ["bindings.MEDIA_PUBLIC_BASE_URL"],
+		"kind": "missing"
+	},
+	"apply": {
+		"remove_binding": "MEDIA_PUBLIC_BASE_URL"
+	}
+}

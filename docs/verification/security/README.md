@@ -28,6 +28,7 @@ of trusting the image.
 | [`disclosure-runbook.webp`](disclosure-runbook.webp) | #478 | `pnpm run verify:security-disclosure-screenshot` |
 | [`operator-mfa-checklist.webp`](operator-mfa-checklist.webp) | #469 | `pnpm run verify:operator-mfa-checklist-screenshot` |
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
+| [`cloudflare-config-drift.webp`](cloudflare-config-drift.webp) | #480 | `pnpm run cf:config:drift:report` |
 | [`anomaly-monitor-fixture.webp`](anomaly-monitor-fixture.webp) | #481 | `pnpm run verify:anomaly-monitor-screenshot` |
 
 ## `anomaly-monitor-fixture.webp` (Issue #481)

@@ -22,6 +22,7 @@
 			"wrangler-independence": "wrangler-independence",
 			"cloudflare-binding-contract": "cloudflare-contract",
 			"cloudflare-build-contract": "cloudflare-build-contract",
+			"cloudflare-config-drift": "cloudflare-config-drift",
 			"infisical-secret-coverage": "infisical-secret-coverage",
 			"secret-rotation-status": "secret-rotation-status",
 			"route-quality-coverage": "route-quality-coverage",
@@ -373,6 +374,20 @@
 				"note": "build 済み出力が無いと測定対象を持たないので NOT RUN。"
 			},
 			"owner": "quality/profile.yaml#gates.integration"
+		},
+		{
+			"id": "cloudflare-config-drift",
+			"group": "gate",
+			"label": "Cloudflare configuration drift (Issue #480)",
+			"state": "implemented",
+			"contract": "production Worker surface / development surface / Workers Builds の build・deploy command / static asset の header coverage が、記録された production contract と一致しているか検査する。1 項目の不一致が 1 finding。",
+			"command": "pnpm run cf:config:drift:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "status-only。MATCH=0 / DRIFT=1 / UNDECIDABLE(fail-closed)=2。secret binding は名前のみを比較し、記録と一致しない text 値は長さだけを出力する。"
+			},
+			"owner": "quality/profile.yaml#gates.fast"
 		},
 		{
 			"id": "release-gate-ledger",

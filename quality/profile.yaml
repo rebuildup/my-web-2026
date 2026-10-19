@@ -110,6 +110,15 @@ gates:
       # static half (no build); the `--build` half runs in
       # `gates.integration` against a freshly built artifact.
       - 'pnpm run cloudflare:contract:check'
+      # Issue #480: Cloudflare configuration drift. The production Worker
+      # surface (bindings, routes), the development surface, the Workers
+      # Builds build / deploy commands and the static-asset `_headers`
+      # coverage are compared against the recorded contract in
+      # `quality/cloudflare-config-drift.json`. ONE differing item is ONE
+      # red gate. Offline and read-only: it evaluates
+      # `cloudflare.config.ts` for two modes and reads repository files, so
+      # it needs no credential and issues no Cloudflare API call.
+      - 'pnpm run cf:config:drift:check'
       # Issue #566: every `scripts/*.test.mjs` must be reachable from a
       # test entry point. `pnpm run test` below reaches them by
       # convention (scripts/run-script-tests.mjs discovers the
@@ -1181,6 +1190,50 @@ diagnostic_entry_points:
 # therefore a release step run by an operator holding the R2-scoped
 # credential, documented in docs/runbook/r2-media-key-set-audit.md and
 # listed in docs/release.md's sprint cycle.
+# Issue #480 - the Cloudflare configuration drift gate. Unlike the two
+# operator-run gates above (Issue #470 dependency advisories, Issue #577
+# the R2 key set) this one reads NOTHING remote: it evaluates
+# `cloudflare.config.ts` in development and production mode, compares the
+# result with the recorded contract, and checks the build / deploy
+# commands the Cloudflare dashboard runs against the `package.json`
+# scripts they name. That is why it belongs in `validate:fast` and
+# therefore in every release, and why it needs no credential at all: the
+# separation that keeps credentials out of CI costs this gate nothing.
+#
+# What it deliberately does NOT claim is written down in
+# `docs/runbook/cloudflare-config-drift.md`: the built artifact
+# (`cloudflare:contract:check:build`), the live Worker binding state, and
+# the Cloudflare Dashboard settings no local tool can read.
+cloudflare_config_drift:
+  command: 'pnpm run cf:config:drift:check'
+  report_command: 'pnpm run cf:config:drift:report'
+  implementation: 'scripts/check-cloudflare-config-drift.mjs (gate) + scripts/_cloudflare-drift.mjs (pure policy seam)'
+  tests: 'node --test scripts/check-cloudflare-config-drift.test.mjs'
+  fixtures: 'quality/fixtures/cloudflare-config-drift/*.json (single-item mutation recipes, replayed against the live surface)'
+  contract_record: 'quality/cloudflare-config-drift.json (the recorded production surface; names and non-secret identifiers only)'
+  dimensions: 'bindings, routes, headers, build_commands, mode'
+  gate: 'validate:fast (and therefore validate:integration, validate:release and the CI validate job)'
+  trigger: 'local + every CI run'
+  credential: 'none. No Cloudflare API call, no token, no network, no mutation.'
+  output_contract: >-
+    status-only (AGENTS.md section 4): verdict, per-dimension finding
+    counts and reason codes. A secret binding is reduced to its NAME
+    during normalization, and a text var value that differs from the
+    record is printed as `<redacted len=N>` because an unexpected value is
+    where a credential would hide. The rendered report is checked by the
+    repository's own credential-shape detector before it is written.
+  failure_policy:
+    - 'one differing item FAILS the release gate (exit 1) - there is no tolerance band and no percentage threshold'
+    - 'an unreadable record / surface / `_headers` file, a record that cannot state the contract, or a report that would not be status-only are UNDECIDABLE (exit 2); an undecidable run is never a pass'
+    - 'a record whose SECTION exists but whose INNER contract is broken (a missing `static_asset_headers.required_paths`, an empty `build_commands`, a missing `development.routes`, ...) is UNDECIDABLE (exit 2) as well: the matching dimension would otherwise inspect NOTHING while the gate still reported MATCH'
+    - 'a record whose binding omits the comparison field its TYPE needs (`text` -> `value`, `d1` -> `name` + `id`, `r2` -> `name`, `rate-limit` -> `namespace` + `simple`) is UNDECIDABLE (exit 2) as well: that binding comparison would otherwise be skipped while the gate still reported MATCH'
+    - 'the recorded `static_asset_headers.required_paths` set is compared with the `public/_headers` rule paths in BOTH directions, and `baseline_rule` must be one of the declared paths: a rule the record does not declare, and a baseline no rule carries, are findings rather than a skipped comparison'
+    - 'a record that stores a value under a `secret` binding is refused as UNDECIDABLE instead of being compared, so a credential cannot enter the record'
+    - 'a `--case` run is a demonstration: its output says source=fixture and it is never a release verdict'
+  mutation: 'none - the gate reads repository files and evaluates the configuration in-process'
+  documentation: 'docs/runbook/cloudflare-config-drift.md'
+  verification_artifact: 'docs/verification/security/cloudflare-config-drift.webp'
+  owner_issue: '#480'
 r2_media_key_set_audit:
   command: 'pnpm run r2:media:audit'
   report_command: 'pnpm run r2:media:audit:report'

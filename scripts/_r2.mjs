@@ -365,6 +365,46 @@ export function listObjects({
 	return parseCfJson(cf(args, { env, local: resolved === 'local' }));
 }
 
+/**
+ * One page of object keys (Issue #577).
+ *
+ * `listObjects` returns whatever the CLI printed, which is fine for a
+ * caller that only wants to look. A key-set AUDIT is not fine with that:
+ * it has to know whether it read the WHOLE bucket, so the page size is
+ * explicit (`--per-page`) and the caller applies the completeness rule
+ * to the response instead of to a CLI default it cannot see.
+ *
+ * There is deliberately no continuation flag here. `cf r2 objects list`
+ * prints the objects and no pagination cursor, and `--start-after` is
+ * ignored by the local resource simulation, so a continuation this
+ * repository cannot exercise must not be part of a gate that claims to
+ * have enumerated a production bucket.
+ *
+ * Still read-only: no `assertProductionWriteAllowed`, no `execute`
+ * flag, no credential beyond the R2-scoped read token.
+ */
+export function listObjectKeysPage({
+	target = 'local',
+	perPage = 1000,
+	bucketName = R2_BUCKET_NAME,
+	accountId = ACCOUNT_ID,
+	env = process.env,
+} = {}) {
+	const resolved = resolveTarget(target);
+	assertCanonicalIdentity({ bucketName, accountId, target: resolved, kind: 'list' });
+	const args = [
+		'r2',
+		'objects',
+		'list',
+		'--bucket-name',
+		bucketName,
+		'--per-page',
+		String(perPage),
+		...(resolved === 'local' ? localArgs() : []),
+	];
+	return parseCfJson(cf(args, { env, local: resolved === 'local' }));
+}
+
 function parseCfJson(stdout) {
 	const trimmed = String(stdout ?? '').trim();
 	if (trimmed.length === 0) return null;

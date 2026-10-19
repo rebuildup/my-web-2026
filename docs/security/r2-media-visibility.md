@@ -6,7 +6,8 @@
 
 Authoritative implementation:
 [`src/cloudflare/media-visibility.ts`](../../src/cloudflare/media-visibility.ts).
-Introduced by Issue #459.
+Introduced by Issue #459; the read-only bucket key-set audit was added
+by Issue #577 (see [What the key-set audit does](#what-the-key-set-audit-does-issue-577-owner-option-a)).
 
 ## Read this first — what is enforced where
 
@@ -22,6 +23,7 @@ page:
 | Reaction-image read over HTTP | **yes** | `getImageStream` → router 404 |
 | Delivery adapter / listing walk | modelled, **no production caller** | `createPublicMediaDelivery`, `listPublicMediaKeys` |
 | Anonymous GET of `https://media.rebuildup.dev/<key>` | **no — no repository code runs on that path** | Cloudflare edge |
+| Bucket key set (read-only audit) | **yes — release gate, operator-run** | `pnpm run r2:media:audit` (`scripts/check-r2-media-key-set.mjs`) |
 
 Attaching a public custom domain to the `MEDIA` bucket is Decision 5
 ([`docs/portfolio/decisions.md`](../portfolio/decisions.md)); the
@@ -29,7 +31,11 @@ attachment itself is a Cloudflare account setting and a release
 prerequisite this repository cannot verify. Conditional on that
 attachment, the edge serves every key that exists in the bucket, with
 no session, no API key, no signed URL, and no line of our code
-involved. The concrete failure case is written out under
+involved. What the repository *can* observe is the bucket's key set,
+and Issue #577 turns that observation into a release gate — which stops
+an out-of-namespace object from existing at all, but cannot stop an
+in-namespace object from being served while it is unpublished. The
+concrete failure case is written out under
 [What the code does not do](#what-the-code-does-not-do).
 
 ## The threat
@@ -198,13 +204,63 @@ Consequently:
    repository can only record the expectation (Decision 5's release
    prerequisite already tracks the attachment itself).
 
-Closing this gap is an **owner decision** — an enforced read-only
-key-set audit plus a release gate, a bucket split, or moving delivery
-behind the Worker / signed URLs. Security, cost, and the public
-delivery contract are all in play, so it is not decided inside a PR
-(AGENTS.md §8); it is tracked as its own Issue
-([#577](https://github.com/rebuildup/my-web-2026/issues/577)) and
-**Issue #459 must not be closed on this repository's gates alone.**
+## What the key-set audit does (Issue #577, owner option (a))
+
+The repository can observe one more thing than its own code: **which
+keys the bucket actually holds**. Issue #577 chose that as the
+enforcement mechanism, and `pnpm run r2:media:audit` implements it.
+
+```text
+[r2-key-set] source=production target=production bucket=my-web-2026
+[r2-key-set] verdict=OK
+[r2-key-set] reason=-
+[r2-key-set] keys_total=… keys_inside_allowlist=… keys_outside_allowlist=0
+[r2-key-set] allowlist_prefixes=2 prefix_source=src/cloudflare/media-visibility.ts
+[r2-key-set] pages_walked=1 enumeration=complete
+[r2-key-set] diff=none
+```
+
+The audit classifies the bucket's key set with
+`isPublicMediaKey` — the same predicate the two code gates above call,
+read from the same module, never re-declared in the script — and fails
+when a single key is outside `PUBLIC_MEDIA_PREFIXES`.
+
+**Enforced:** a key outside a declared public namespace may not exist in
+the `MEDIA` bucket at all. It is a read-only assertion about the real
+production bucket, so it is the half the code paths could never cover.
+
+**Not enforced, deliberately:**
+
+| Not enforced | Why |
+| --- | --- |
+| An *unpublished* object that lives **inside** `portfolio/` | The namespace says a key may be public at all; the D1 row says whether it is published now. The audit reads no D1 row, so a draft project's cover is still fetchable through the custom domain until the bucket is split. |
+| Whether the custom domain is attached at all | A Cloudflare account setting; the repository cannot read or change it (Decision 5's release prerequisite). |
+| The object *contents*, and the approval workflow | Owned by `src/portfolio/` (`status='published' AND visibility='public'`). |
+| Buckets of 1000 keys or more | The driver cannot page: `cf r2 objects list` prints no pagination cursor and its `--start-after` continuation flag is ignored by the local resource simulation. A full page is reported as `listing_incomplete` (undecidable → failed) rather than being read as a whole bucket. |
+
+Everything the audit cannot decide — a missing R2 credential, an API
+error, an unrecognised response shape, an empty production key set, a
+full page — exits non-zero. `OK` is the only pass, and there is no
+`--allow-unknown` flag.
+
+The output is **status-only**: verdict, counts, and a reason code. No
+object key, no key fragment, no credential, and no raw CLI error text,
+because the report is meant to be pasted into a PR or an Issue without
+turning into a second enumeration surface for the bucket
+(`docs/runbook/infisical-secrets.md` is the precedent). The formatter is
+checked against the keys it audited before a byte is written.
+
+The gate is **operator-run, not a CI step**: no workflow in
+`.github/workflows/` holds a Cloudflare credential, so there is nothing
+for CI to authenticate with. Procedure and credential policy:
+[`docs/runbook/r2-media-key-set-audit.md`](../runbook/r2-media-key-set-audit.md);
+recorded decision: `quality/profile.yaml#r2_media_key_set_audit`.
+The committed status-only artefact is
+[`docs/verification/security/r2-media-key-set-audit.webp`](../verification/security/r2-media-key-set-audit.webp).
+
+This closes the *key-set* half of the gap. It does not replace the
+requirement to keep unpublished objects out of the bucket, and
+**Issue #459 must still not be closed on repository gates alone.**
 
 ## How to re-verify
 
@@ -215,7 +271,18 @@ pnpm exec vitest run src/cloudflare/media-visibility.test.ts
 
 # regenerate the review artefact from that run
 pnpm run r2:visibility:report
+
+# the key-set audit itself (Issue #577): policy, fail-closed states,
+# and the status-only output contract, with no bucket and no network
+node --test scripts/check-r2-media-key-set.test.mjs
+pnpm run r2:media:audit -- --fixture=quality/fixtures/r2-media-key-set/out-of-allowlist.json
+pnpm run r2:media:audit:report   # -> .tmp/r2-media-key-set-report.html
 ```
+
+The production verdict comes from `pnpm run r2:media:audit`, which is
+run by an operator holding the R2-scoped credential; see
+[`docs/runbook/r2-media-key-set-audit.md`](../runbook/r2-media-key-set-audit.md).
+It is never taken from CI, because CI holds no Cloudflare credential.
 
 The committed screenshot
 [`docs/verification/security/r2-public-private.webp`](../verification/security/r2-public-private.webp)
@@ -240,6 +307,9 @@ produces the Issue's literal path if that decision is ever reversed.
   in test support.
 - `src/portfolio/media.ts` — URL composition gate.
 - `src/http/reactions/images.ts` — reaction-image read gate.
+- `scripts/check-r2-media-key-set.mjs` — the read-only key-set audit
+  (Issue #577); procedure in
+  [`docs/runbook/r2-media-key-set-audit.md`](../runbook/r2-media-key-set-audit.md).
 - `docs/portfolio/decisions.md` Decision 5 — why delivery is a public
   custom domain at all.
 - [`docs/security.md`](../security.md) — policy index.

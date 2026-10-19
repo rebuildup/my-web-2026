@@ -267,9 +267,13 @@ CI では「検出器が必ず落ちること」が毎回検証される。実�
   1. 判定の pure 半は classic scrollbar を**模した snapshot**
      （`scripts/check-layout-stress.test.mjs`）で `gutter_not_reserved` /
      `content_shift` / `gutter_probe_missing` が落ちることが検証されている。
-  2. 実 browser で classic scrollbar を 1 度でも観測する条件を CI（Linux runner）
-     へ追加するか、受け入れ条件の「visible scrollbar」をこのプラットフォーム
-     現実に合わせて再定義するかは **owner の判断**であり、本 PR では決めていない。
+  2. 実 browser で classic scrollbar を 1 度でも観測する条件は CI に追加しない
+     （2026-10-19 の owner 決定）。Issue #416 の受け入れ条件 1 は「320px 幅・長文で
+     overflow / clip / 誤配置が検出されないこと。gutter が観測できる環境では
+     reserved gutter と content shift も検証すること。gutter を観測できない環境では
+     `gutter_not_observable` を明示的な警告として出力し、合格の主張に含めないこと」
+     に再定義された。**classic scrollbar での gutter 観測は未実施のまま**であり、
+     この fixture はその範囲について何も主張しない（residual）。
 - 検出は Chromium 1 engine での実測（E2E と同じ方針）。多 engine の検証は
   Issue #415（`.github/workflows/compat.yml`、3 engine の public UI smoke）が
   所有し、CJK 禁則処理の実測は Issue #431（`scripts/cjk-line-break-measure.mjs`、

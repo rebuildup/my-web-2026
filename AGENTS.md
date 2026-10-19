@@ -348,7 +348,7 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +
-  `tools:provenance:check` + `publication:check` +
+  `tools:provenance:check` + `copy:i18n:check` + `publication:check` +
   `routes:quality:check` (Issue #492) + `i18n:policy:check` +
   `ci:pins:check` (Issue #472, GitHub
   Actions pin / token audit) + `knip:check` (Issue #531,

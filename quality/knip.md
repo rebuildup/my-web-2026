@@ -69,6 +69,7 @@ Absorbed so far (each line is an addition the diff shows, never a removal):
 | `files scripts/log-redaction-report.mjs` | #467 (log redaction) landed on `release-0-6-3`; a one-off verification report script, so it is #467's debt, not this gate's. |
 | `files scripts/make-provenance-fixture.mjs` | #473 (submodule provenance) landed on `release-0-6-3`; a fixture generator for the provenance check, so it is #473's debt, not this gate's. |
 | `files scripts/markdown-format-report.mjs` | #435 (Markdown format contract) landed on `release-0-6-3`; a one-off verification report script, so it is #435's debt, not this gate's. |
+| `types src/cloudflare/media-visibility.ts MediaKeyReason` | #459 (R2 visibility boundary) landed on `release-0-6-3`; the union documents the reasons a media key is refused, and no caller/narrowing consumer reads it back yet, so it is #459's debt, not this gate's. |
 
 ## Fixtures
 

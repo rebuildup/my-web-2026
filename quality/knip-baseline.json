@@ -79,6 +79,7 @@
 		"types src/admin/public.ts AdminSessionUser",
 		"types src/admin/public.ts StepUpState",
 		"types src/cloudflare/auth/better-auth.ts Auth",
+		"types src/cloudflare/media-visibility.ts MediaKeyReason",
 		"types src/contact/schema.ts ChannelsFile",
 		"types src/editorial/error-states/index.ts ErrorStateAlternative",
 		"types src/editorial/error-states/index.ts ErrorStateDefinition",

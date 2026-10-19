@@ -240,10 +240,14 @@ production domain to be wired (Issue #43 / ADR-0014):
 9. The artifact attestation manifest (Issue #476) has been produced for
    the release branch head. `pnpm run artifact:attestation:check` runs at
    the end of `validate:integration`, hashes the exact
-   `.cloudflare/output/v0` Build Output, and records its source commit,
+   `.cloudflare/output/v0` Build Output produced by the GitHub Actions
+   `validate` job in production mode, and records its source commit,
    `package.json` version, declared dependency ranges, `pnpm-lock.yaml`
    digest and resolved package count. CI retains it as the
-   `artifact-attestation-<sha>` workflow artifact (90 days).
+   `artifact-attestation-<sha>` workflow artifact (90 days). The manifest
+   does **not** attest the artifact Cloudflare Workers Builds deploys;
+   that comparison remains an open decision
+   ([attestation §8](security/supply-chain-artifact-attestation.md#8-既知の制約と未決事項)).
 
    - The manifest is an integrity record, not a signature: no signing
      key exists, so `signature.status` is `unsigned` and every signature
@@ -254,9 +258,13 @@ production domain to be wired (Issue #43 / ADR-0014):
      and is not authenticated by this tool.
    - Attaching the manifest to the GitHub Release is a release-owner
      action under the same human gate as the release merge / tag /
-     Release publish (step 10-11).
-   - Verify a published manifest with
+     Release publish (these are the sprint-cycle steps 10-11 in
+     `AGENTS.md` §6, not steps of this pre-merge checklist).
+   - Verify a published manifest against the artifact you hold and the
+     release tag commit with
      `pnpm run artifact:attestation:check -- --manifest=<path> --source-sha=<release commit>`.
+     Generation never accepts `--source-sha`: it always attests the
+     checked-out HEAD.
 
    See [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md).
 
@@ -324,6 +332,13 @@ updated directly.
   the file, then stop. The document is derived from tracked files only
   and carries no credential — see
   [`docs/runbook/sbom.md`](runbook/sbom.md) §3.
+- Attach the matching
+  `release-assets/supply-chain/<version>/artifact-attestation.json`
+  (download it from the `artifact-attestation-<sha>` workflow artifact)
+  to the same GitHub Release under the same human gate. It records the
+  CI production-mode Build Output, is `unsigned`, and carries no
+  credential; see
+  [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md) §7.
 - Update any downstream consumers (Tools submodules, RSS feeds,
   integration endpoints) according to their own release cadence.
 - Archive the release branch once the next sprint starts (the

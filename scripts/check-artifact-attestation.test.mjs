@@ -7,12 +7,14 @@
  */
 
 import assert from 'node:assert/strict';
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
 	AttestationError,
+	REPO_ROOT,
 	SCHEMA,
 	artifactDigest,
 	buildManifest,
@@ -21,6 +23,8 @@ import {
 	sha256Text,
 	verifyManifest,
 } from './_artifact-attestation.mjs';
+
+const CLI_PATH = join(REPO_ROOT, 'scripts', 'check-artifact-attestation.mjs');
 
 const SOURCE = '0123456789abcdef0123456789abcdef01234567';
 const OTHER_SOURCE = 'fedcba9876543210fedcba9876543210fedcba98';
@@ -120,6 +124,14 @@ describe('artifact digest', () => {
 		const root = makeRoot();
 		t.after(() => rmSync(root, { recursive: true, force: true }));
 		assert.throws(() => artifactDigest({ dir: join(root, 'absent') }), AttestationError);
+	});
+
+	it('rejects a symlink instead of recording a target whose bytes are not hashed', (t) => {
+		const root = makeRoot();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+		const dir = makeArtifact(root);
+		symlinkSync('config.json', join(dir, 'config-link.json'));
+		assert.throws(() => artifactDigest({ dir }), /symlink/);
 	});
 });
 
@@ -281,6 +293,21 @@ describe('manifest verification', () => {
 		assert.ok(codes(result).includes('DECLARED_DEPENDENCIES_MISMATCH'));
 	});
 
+	it('fails closed with MANIFEST_FILES_INVALID for a malformed per-file entry', (t) => {
+		const { root, artifactDir, manifest } = setup();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+
+		manifest.subject.files = [null];
+		const result = verifyManifest({
+			manifest,
+			artifactDir,
+			root,
+			expectedSourceCommit: SOURCE,
+		});
+		assert.equal(result.status, 'FAIL');
+		assert.ok(codes(result).includes('MANIFEST_FILES_INVALID'));
+	});
+
 	it('fails when the manifest file list was edited without regenerating', (t) => {
 		const { root, artifactDir, manifest } = setup();
 		t.after(() => rmSync(root, { recursive: true, force: true }));
@@ -366,6 +393,69 @@ describe('manifest verification', () => {
 		const { root, artifactDir, manifest } = setup();
 		t.after(() => rmSync(root, { recursive: true, force: true }));
 		assert.throws(() => verifyManifest({ manifest, artifactDir, root }), AttestationError);
+	});
+});
+
+describe('CLI', () => {
+	function runCli(args, env = {}) {
+		return spawnSync(process.execPath, [CLI_PATH, ...args], {
+			cwd: REPO_ROOT,
+			encoding: 'utf8',
+			env: { ...process.env, ...env },
+		});
+	}
+
+	it('accepts the documented pnpm/npm `--` separator for manifest verification', (t) => {
+		const root = makeRoot();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+		const artifactDir = makeArtifact(root);
+		const head = execFileSync('git', ['rev-parse', 'HEAD'], {
+			cwd: REPO_ROOT,
+			encoding: 'utf8',
+		}).trim();
+		const manifest = buildManifest({ artifactDir, root: REPO_ROOT, sourceCommit: head });
+		const manifestPath = join(root, 'artifact-attestation.json');
+		writeFileSync(manifestPath, serializeManifest(manifest));
+
+		const result = runCli([
+			'--',
+			`--manifest=${manifestPath}`,
+			`--artifact-dir=${artifactDir}`,
+			`--source-sha=${head}`,
+			'--allow-dirty',
+		]);
+		assert.equal(result.status, 0, result.stderr);
+		assert.match(result.stdout, /status: PASS/);
+	});
+
+	it('rejects --source-sha when generating a manifest', (t) => {
+		const root = makeRoot();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+		const artifactDir = makeArtifact(root);
+		const outPath = join(root, 'generated.json');
+
+		const result = runCli([
+			`--artifact-dir=${artifactDir}`,
+			`--out=${outPath}`,
+			`--source-sha=${OTHER_SOURCE}`,
+		]);
+		assert.equal(result.status, 2);
+		assert.match(result.stderr, /only valid with --manifest/);
+		assert.equal(existsSync(outPath), false);
+	});
+
+	it('fails closed when WORKERS_CI_COMMIT_SHA is not the checked-out HEAD', (t) => {
+		const root = makeRoot();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+		const artifactDir = makeArtifact(root);
+		const outPath = join(root, 'generated.json');
+
+		const result = runCli([`--artifact-dir=${artifactDir}`, `--out=${outPath}`], {
+			WORKERS_CI_COMMIT_SHA: OTHER_SOURCE,
+		});
+		assert.equal(result.status, 2);
+		assert.match(result.stderr, /does not match the checked-out HEAD/);
+		assert.equal(existsSync(outPath), false);
 	});
 });
 

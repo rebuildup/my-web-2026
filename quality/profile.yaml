@@ -436,20 +436,23 @@ security_gates:
     ci_artifact: 'artifact-attestation-<sha> (actions/upload-artifact@v4, 90 day retention)'
     inputs:
       - '.cloudflare/output/v0 (the final production-mode Build Output)'
-      - 'git HEAD / WORKERS_CI_COMMIT_SHA'
+      - 'git HEAD (generation) / --source-sha or WORKERS_CI_COMMIT_SHA (verification)'
       - 'package.json'
       - 'pnpm-lock.yaml'
     note: >-
-      Issue #476. Hashes every file in the deploy artifact (sha-256
-      aggregate) and records the source commit, package version,
+      Issue #476. Hashes every file in the GitHub Actions production-mode
+      Build Output (sha-256 aggregate) and records the source commit, package version,
       declared dependency ranges, lockfile digest and resolved package
       count. Fails closed on artifact drift, a source-commit mismatch, a
       dirty tree, lockfile / dependency drift and an empty artifact. It
       is an integrity manifest, not a signature: the document states
       `unsigned` and every signature field is null, and a manifest that
-      claims an unverifiable signature fails. A Cloudflare build UUID /
-      deploy id is recorded only when supplied, and is never fetched or
-      authenticated with a production credential. See
+      claims an unverifiable signature fails. Generation refuses a
+      caller-supplied --source-sha and attests only the checked-out HEAD.
+      The artifact Cloudflare Workers Builds actually deploys is not
+      attested (open decision). A Cloudflare build UUID / deploy id is
+      recorded only when supplied, and is never fetched or authenticated
+      with a production credential. See
       docs/security/supply-chain-artifact-attestation.md.
   submodule_provenance:
     enabled: true

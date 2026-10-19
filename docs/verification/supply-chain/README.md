@@ -20,8 +20,9 @@ same function `pnpm run ci:pins:check` runs inside `validate:fast` —
 so the picture cannot claim a pin the gate would reject.
 
 1. **Shipped workflows — normal observation.** All 29 `uses:` lines of
-   `.github/workflows/ci.yml`, `compat.yml` and `prod-smoke.yml` with their upstream
-   ref and full 40-char commit SHA, plus the effective
+   `.github/workflows/ci.yml`, `compat.yml`, `viewport.yml` and
+   `prod-smoke.yml` with their upstream ref and full 40-char commit SHA,
+   plus the effective
    `GITHUB_TOKEN` permissions each job resolves to
    (`contents=read`, inherited from the workflow-level block).
    `findings: 0` / `status: PASS`.
@@ -73,8 +74,10 @@ gate-rule edit. It is a documentation tool and never runs inside
 
 # Artifact attestation verification (Issue #476)
 
-`artifact-sha-attestation.webp` は deploy artifact の attestation gate を
-**実際に動作させた状態**で撮影したものである。fixture の Build Output
+`artifact-sha-attestation.webp` は GitHub Actions が production mode で
+build した Build Output に対する attestation gate を**実際に動作させた
+状態**で撮影したものである（Cloudflare Workers Builds が deploy する
+artifact は対象外）。fixture の Build Output
 に対する正常系（artifact digest / source commit / lockfile / version が
 一致し、署名は `unsigned`）と、4 つの異常系（artifact 改ざん、source
 commit 不一致、lockfile drift、存在しない署名の表示）を同じ画像に収める。

@@ -11,9 +11,10 @@
  *   node scripts/check-artifact-attestation.mjs --manifest=<path>
  *       verify an existing manifest against the artifact on disk
  *
- *   node scripts/check-artifact-attestation.mjs --source-sha=<sha>
- *       name the commit the artifact is expected to describe. Defaults
- *       to WORKERS_CI_COMMIT_SHA, then `git rev-parse HEAD`.
+ *   node scripts/check-artifact-attestation.mjs --manifest=<path> --source-sha=<sha>
+ *       name the commit the artifact is expected to describe. This is
+ *       a verification-only option: generation always attests the
+ *       checked-out HEAD and refuses a caller-supplied commit.
  *
  * Why this exists
  * ---------------
@@ -66,6 +67,9 @@ function parseArgs(argv) {
 		help: false,
 	};
 	for (const arg of argv) {
+		// `pnpm run <script> -- <args>` forwards the literal separator.
+		// Accept it so the documented form works with pnpm and npm alike.
+		if (arg === '--') continue;
 		if (arg === '--help' || arg === '-h') options.help = true;
 		else if (arg === '--allow-dirty') options.allowDirty = true;
 		else if (arg === '--json') options.json = true;
@@ -89,7 +93,8 @@ Options:
   --artifact-dir=<dir>   artifact to hash (default: ${DEFAULT_ARTIFACT_DIR})
   --manifest=<path>      verify an existing manifest instead of generating one
   --out=<path>           where to write a generated manifest
-  --source-sha=<sha>     expected source commit (default: WORKERS_CI_COMMIT_SHA, then git HEAD)
+  --source-sha=<sha>     expected source commit for --manifest verification only
+                         (generation always attests the checked-out HEAD)
   --branch=<name>        branch recorded in a generated manifest
   --build-uuid=<id>      Cloudflare Workers Builds UUID, when obtained
   --deploy-id=<id>       Cloudflare deploy id, when obtained
@@ -104,11 +109,12 @@ function git(args) {
 }
 
 function readGitFacts() {
-	const head = process.env.WORKERS_CI_COMMIT_SHA || git(['rev-parse', 'HEAD']);
+	const head = git(['rev-parse', 'HEAD']);
+	const ciHead = process.env.WORKERS_CI_COMMIT_SHA || null;
 	const branchRef = process.env.WORKERS_CI_BRANCH || git(['rev-parse', '--abbrev-ref', 'HEAD']);
 	const branch = branchRef === 'HEAD' ? null : branchRef;
 	const dirty = git(['status', '--porcelain=v1', '--untracked-files=no']).length > 0;
-	return { head, branch, dirty };
+	return { head, ciHead, branch, dirty };
 }
 
 function printResult(result, { manifestPath = null, json = false } = {}) {
@@ -135,9 +141,9 @@ function main() {
 	}
 
 	const gitFacts = readGitFacts();
-	const expectedSourceCommit = options.sourceSha ?? gitFacts.head;
 
 	if (options.manifest) {
+		const expectedSourceCommit = options.sourceSha ?? gitFacts.ciHead ?? gitFacts.head;
 		const manifestPath = resolve(REPO_ROOT, options.manifest);
 		let manifest;
 		try {
@@ -160,6 +166,24 @@ function main() {
 		return result.status === 'PASS' ? 0 : 1;
 	}
 
+	// Generation must describe the checked-out commit. A caller-supplied
+	// SHA would let a manifest claim source the artifact was never built
+	// from, so accept it only when verifying an existing document.
+	if (options.sourceSha) {
+		console.error(
+			'[artifact-attestation] FAIL: --source-sha is only valid with --manifest. ' +
+				'Generation always attests the checked-out HEAD.',
+		);
+		return 2;
+	}
+	if (gitFacts.ciHead && gitFacts.ciHead !== gitFacts.head) {
+		console.error(
+			`[artifact-attestation] FAIL: WORKERS_CI_COMMIT_SHA ${gitFacts.ciHead} does not match ` +
+				`the checked-out HEAD ${gitFacts.head}. Check out the commit being attested and retry.`,
+		);
+		return 2;
+	}
+
 	if (gitFacts.dirty && !options.allowDirty) {
 		console.error(
 			'[artifact-attestation] FAIL: tracked files are modified. An attestation from a dirty ' +
@@ -172,7 +196,7 @@ function main() {
 	const manifest = buildManifest({
 		artifactDir,
 		root: REPO_ROOT,
-		sourceCommit: expectedSourceCommit,
+		sourceCommit: gitFacts.head,
 		sourceBranch: options.branch ?? gitFacts.branch,
 		treeState: gitFacts.dirty ? 'dirty' : 'clean',
 		buildUuid: options.buildUuid ?? process.env.WORKERS_CI_BUILD_UUID ?? null,
@@ -187,7 +211,7 @@ function main() {
 		manifest,
 		artifactDir,
 		root: REPO_ROOT,
-		expectedSourceCommit,
+		expectedSourceCommit: gitFacts.head,
 		requireClean: !options.allowDirty,
 		treeState: gitFacts.dirty ? 'dirty' : 'clean',
 	});

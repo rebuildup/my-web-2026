@@ -115,10 +115,7 @@ try {
 	// Abnormal 1: one byte changed in the shipped bundle.
 	const bundlePath = join(fixtureDir, 'workers', 'default', 'bundle', 'worker.js');
 	const pristineBundle = readFileSync(bundlePath);
-	writeFileSync(
-		bundlePath,
-		'// fixture worker bundle — MUTATED after the manifest was produced\nexport default { fetch() { return new Response("ok"); } };\n',
-	);
+	writeFileSync(bundlePath, Buffer.concat([pristineBundle, Buffer.from('!')]));
 	const tampered = verifyManifest({
 		manifest,
 		artifactDir: fixtureDir,

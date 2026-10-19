@@ -29,7 +29,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, readlinkSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WORKER_NAME } from './_cloudflare-identity.mjs';
@@ -83,12 +83,14 @@ function sortedObject(value) {
 }
 
 /**
- * Walk the artifact once, recording every regular file and symlink.
+ * Walk the artifact once, recording every regular file.
  *
  * Paths are relative and `/`-separated, so a manifest generated on CI
  * (Linux) and verified on a laptop (macOS) describes the same bytes.
- * A symlink records its target instead of following it: following
- * would hash a file outside the artifact and claim it was shipped.
+ * A symlink is rejected: recording only its target would leave the
+ * bytes reachable through the link unhashed, and following it could
+ * hash a file outside the artifact and claim it was shipped. A Build
+ * Output is expected to contain regular files only.
  */
 export function collectArtifactFiles(dir) {
 	if (!existsSync(dir)) {
@@ -109,14 +111,9 @@ export function collectArtifactFiles(dir) {
 			if (entry.isDirectory()) {
 				walk(full);
 			} else if (entry.isSymbolicLink()) {
-				const target = readlinkSync(full);
-				files.push({
-					path: rel,
-					kind: 'symlink',
-					bytes: Buffer.byteLength(target),
-					sha256: sha256Text(`symlink:${target}`),
-					target,
-				});
+				throw new AttestationError(
+					`artifact contains a symlink (${rel}); record a regular file so the reachable bytes are hashed`,
+				);
 			} else if (entry.isFile()) {
 				const bytes = readFileSync(full);
 				files.push({
@@ -134,8 +131,28 @@ export function collectArtifactFiles(dir) {
 	return files.sort((a, b) => compareCodeUnits(a.path, b.path));
 }
 
+const SHA256_RE = /^[0-9a-f]{64}$/;
+
+/** A manifest per-file entry must have the shape the generator emits. */
+export function isArtifactFileRecord(file) {
+	return (
+		Boolean(file) &&
+		typeof file === 'object' &&
+		typeof file.path === 'string' &&
+		file.path.length > 0 &&
+		(file.kind === 'file' || file.kind === 'symlink') &&
+		Number.isInteger(file.bytes) &&
+		file.bytes >= 0 &&
+		typeof file.sha256 === 'string' &&
+		SHA256_RE.test(file.sha256)
+	);
+}
+
 /** Aggregate digest over the canonical per-file record. */
 export function digestFromFiles(files) {
+	if (!Array.isArray(files) || !files.every(isArtifactFileRecord)) {
+		throw new AttestationError('per-file record contains an invalid entry');
+	}
 	const canonical = files
 		.map((file) => `${file.kind}\t${file.path}\t${file.bytes}\t${file.sha256}`)
 		.join('\n');
@@ -380,7 +397,8 @@ export function verifyManifest({
 	}
 
 	const manifestFiles = manifest.subject?.files;
-	if (!Array.isArray(manifestFiles) || manifestFiles.length !== artifact.file_count) {
+	const filesShapeValid = Array.isArray(manifestFiles) && manifestFiles.every(isArtifactFileRecord);
+	if (!filesShapeValid || manifestFiles.length !== artifact.file_count) {
 		fail(
 			'Manifest file list',
 			`manifest carries ${Array.isArray(manifestFiles) ? manifestFiles.length : 'no'} file record(s), artifact has ${artifact.file_count}`,

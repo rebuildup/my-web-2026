@@ -1,13 +1,14 @@
 # デプロイ artifact の attestation (#476)
 
-> 監査対象: release の source SHA と実際に build した deploy artifact の対応
+> 監査対象: release commit と GitHub Actions が production mode で build した Build Output の対応
 > 実装: `scripts/_artifact-attestation.mjs` / `scripts/check-artifact-attestation.mjs`
 > gate: `pnpm run artifact:attestation:check`（`validate:integration` の末尾）
 > 証跡: [`../verification/supply-chain/artifact-sha-attestation.webp`](../verification/supply-chain/artifact-sha-attestation.webp)
 
 ## 1. 何を保証するか
 
-1 つの manifest が、deploy artifact の **byte**・**source commit**・
+1 つの manifest が、CI が production mode で build した deploy artifact
+（GitHub Actions の Build Output）の **byte**・**source commit**・
 **依存解決**を同じ時点の事実として記録する。画像ではなく、次の
 不変条件を gate が検査する。
 
@@ -15,7 +16,7 @@
 | --- | --- | --- |
 | artifact の byte | 全 file の sha-256 と canonical aggregate digest | 再計算した digest と一致するか |
 | artifact の形 | file 数 / 合計 byte 数 | 記録と一致するか。空 artifact は FAIL |
-| source | `git rev-parse HEAD` または `WORKERS_CI_COMMIT_SHA`、branch、tree 状態 | 期待 commit と一致するか。dirty tree は FAIL |
+| source | 生成時は `git rev-parse HEAD`。検証時は `--source-sha` / `WORKERS_CI_COMMIT_SHA` / HEAD の順で期待 commit を決める。branch、tree 状態も記録する | 期待 commit と一致するか。生成時の `--source-sha` は拒否する。dirty tree は FAIL |
 | release version | `package.json#version` | 記録と一致するか |
 | 依存範囲 | `package.json` の dependencies / devDependencies / optionalDependencies | 記録と一致するか |
 | 依存解決 | `pnpm-lock.yaml` の sha-256 と解決 package 数 | 記録と一致するか |
@@ -37,9 +38,12 @@ artifact を比べる」が build の揺らぎの diff にならない。
 - **deploy id の真正性は検証しない。** `--deploy-id` で渡された値を
   そのまま記録するだけであり、Cloudflare API は呼ばない。値を取得
   できないときは `null` のままにする（推測値を作らない）。
-- **production artifact を取得しない。** CI manifest は CI が build した
-  Build Output を記述する。GitHub Release への添付は human-gated な
-  release 操作であり、この tool は publish しない。
+- **Cloudflare が deploy した artifact は照合しない。** CI manifest は
+  GitHub Actions の `validate` job が production mode で build した
+  `.cloudflare/output/v0` を記述する。Cloudflare Workers Builds が
+  別に build / deploy する artifact の byte や deploy id を取得・照合
+  する経路は未配線である（§8-3）。GitHub Release への添付は
+  human-gated な release 操作であり、この tool は publish しない。
 - **secret を読まない。** Infisical / Worker secret / `.dev.vars` /
   Cloudflare token のいずれにも触れない。入力は build output と
   tracked file（`package.json` / `pnpm-lock.yaml`）だけである。
@@ -96,8 +100,8 @@ artifact を比べる」が build の揺らぎの diff にならない。
 
 `subject.files` は path 順に並び、aggregate digest は
 `kind \t path \t bytes \t sha256` の行を改行で連結した文字列の
-sha-256 である。symlink は target を記録し、artifact の外を follow
-しない。
+sha-256 である。Build Output に symlink が現れた場合は FAIL し、
+target 文字列だけを記録して link 先の byte を未 hash のまま残さない。
 
 ## 4. コマンド
 
@@ -123,7 +127,7 @@ pnpm run artifact:attestation:report
 | `--artifact-dir=<dir>` | hash する artifact（既定 `.cloudflare/output/v0`） |
 | `--manifest=<path>` | 生成せず既存 manifest を検証する |
 | `--out=<path>` | 生成物の出力先（既定 `release-assets/supply-chain/<version>/artifact-attestation.json`） |
-| `--source-sha=<sha>` | 期待する source commit。未指定時は `WORKERS_CI_COMMIT_SHA`、次に `git rev-parse HEAD` |
+| `--source-sha=<sha>` | `--manifest` 検証時の期待 source commit。未指定時は `WORKERS_CI_COMMIT_SHA`、次に `git rev-parse HEAD`。生成時は checked-out HEAD のみを使い、この option を指定すると exit 2 |
 | `--branch=<name>` | manifest に記録する branch |
 | `--build-uuid=<id>` | 取得済みの Cloudflare Workers Builds UUID |
 | `--deploy-id=<id>` | 取得済みの Cloudflare deploy id。無い場合は指定しない |
@@ -178,8 +182,9 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 
 - `validate:integration` の最後（最終 `build:cf:production` の後）に
   `pnpm run artifact:attestation:check` を置く。CI の `validate` job は
-  この中で manifest を生成し、`.cloudflare/output/v0` に対して直ちに
-  検証する。
+  この中で manifest を生成し、GitHub Actions が build した
+  `.cloudflare/output/v0` に対して直ちに検証する。Cloudflare Workers
+  Builds の production artifact はこの gate の対象外である（§8-3）。
 - workflow は `artifact-attestation-<sha>` として 90 日保持する
   （`.github/workflows/ci.yml`）。
 - release では GitHub Release への添付を release owner の判断で行う。
@@ -200,10 +205,12 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
    id は deploy 後にしか確定しない。`--deploy-id` で渡された値は
    status record であり、Cloudflare API で照合しない。`WORKERS_CI_BUILD_UUID`
    が環境にある場合は build UUID として記録する。
-3. **Cloudflare build 環境での生成は未配線。** 現在の CI 生成は
-   GitHub Actions の Build Output を対象とする。Cloudflare Workers
-   Builds の build / deploy phase で同じ manifest を生成し、production
-   artifact の `WORKERS_CI_COMMIT_SHA` と直接照合するかは、deploy 経路の
-   変更を伴うため open decision とする。
+3. **Cloudflare build 環境での生成は未配線（open decision）。** 現在の
+   CI 生成は GitHub Actions の Build Output を対象とする。したがって
+   Issue #476 の「公開 release と実 artifact の source SHA 一致」は、
+   CI が build した production-mode Build Output の範囲で満たす。
+   Cloudflare Workers Builds が実際に deploy した artifact を hash し、
+   release tag の commit と自動照合するには deploy 経路の変更が必要で
+   あり、範囲を狭めるか follow-up で実装するかは owner 判断とする。
 4. **GitHub Release への添付は自動化しない。** release PR merge / tag /
    Release publish と同じ human gate の下に置く。

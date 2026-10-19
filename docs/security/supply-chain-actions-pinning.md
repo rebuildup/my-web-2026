@@ -62,7 +62,7 @@ same reconciliation; `viewport.yml` arrived with the same contract).
 | `ci.yml` | `validate` | `pnpm/action-setup` | `@v4` | `fc06bc1257f3…` | v4.4.0 |
 | `ci.yml` | `validate` | `oven-sh/setup-bun` | `@v2` | `0c5077e51419…` | v2.2.0 |
 | `ci.yml` | `validate` | `actions/cache` | `@v4` | `0057852bfaa8…` | v4.3.0 |
-| `ci.yml` | `validate` | `actions/upload-artifact` ×4 | `@v4` | `ea165f8d65b6…` | v4.6.2 |
+| `ci.yml` | `validate` | `actions/upload-artifact` ×5 | `@v4` | `ea165f8d65b6…` | v4.6.2 |
 | `compat.yml` | `compat` | `actions/checkout` | `@v4` | `11d5960a3267…` | v4.4.0 |
 | `compat.yml` | `compat` | `actions/setup-node` | `@v4` | `49933ea5288c…` | v4.4.0 |
 | `compat.yml` | `compat` | `pnpm/action-setup` | `@v4` | `fc06bc1257f3…` | v4.4.0 |
@@ -74,13 +74,19 @@ same reconciliation; `viewport.yml` arrived with the same contract).
 | `prod-smoke.yml` | `prod-smoke` | `pnpm/action-setup` | `@v4` | `fc06bc1257f3…` | v4.4.0 |
 | `prod-smoke.yml` | `prod-smoke` | `actions/cache` | `@v4` | `0057852bfaa8…` | v4.3.0 |
 | `prod-smoke.yml` | `prod-smoke` | `actions/upload-artifact` | `@v4` | `ea165f8d65b6…` | v4.6.2 |
+| `viewport.yml` | `viewport` | `actions/checkout` | `@v4` | `11d5960a3267…` | v4.4.0 |
+| `viewport.yml` | `viewport` | `actions/setup-node` | `@v4` | `49933ea5288c…` | v4.4.0 |
+| `viewport.yml` | `viewport` | `pnpm/action-setup` | `@v4` | `fc06bc1257f3…` | v4.4.0 |
+| `viewport.yml` | `viewport` | `oven-sh/setup-bun` | `@v2` | `0c5077e51419…` | v2.2.0 |
+| `viewport.yml` | `viewport` | `actions/cache` | `@v4` | `0057852bfaa8…` | v4.3.0 |
+| `viewport.yml` | `viewport` | `actions/upload-artifact` ×2 | `@v4` | `ea165f8d65b6…` | v4.6.2 |
 
 Each SHA is the **latest release inside the major the workflow
 already used**, so the pin changes the mutability, not the behaviour.
 Moving to a new major (`actions/checkout@v5`, `upload-artifact@v5`)
 is a separate decision with its own review — see §5.
 
-Effective `GITHUB_TOKEN` permissions, all three jobs: `contents=read`.
+Effective `GITHUB_TOKEN` permissions, all four jobs: `contents=read`.
 The audit found no permission defect, so this Issue changed no
 permission. The gate now keeps it that way.
 

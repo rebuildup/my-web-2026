@@ -77,6 +77,12 @@ routes -> portfolio
 routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
+editorial -> i18n (Issue #432 — the fr / de / pt / ru heading-glyph
+                 fixture is policy data: which code points a heading
+                 must render and which claims (number / negation /
+                 permission) it must keep. `editorial` still owns the
+                 font stack; the fixture declares a type TIER, not a
+                 `font-family`)
 
 server -> editorial (Issue #501 — SSR render-failure fallback document;
                      `src/server.ts` replaces a document React could not
@@ -139,6 +145,12 @@ home -> editorial
   owns only the rule for applying them. See
   `docs/adr/ADR-0017-unicode-normalization-and-url-slug-separation.md`
   and `docs/domain/i18n.md`.
+  Issue #432 adds the glyph half of the same policy:
+  `src/i18n/glyphs.fixture.ts` is the shared fr / de / pt / ru
+  heading fixture whose code points, guards and authored forms
+  `src/i18n/glyphs.test.ts` (CI),
+  `src/editorial/glyph-headings.stories.tsx` (preview) and
+  `scripts/capture-glyph-coverage.mjs` (measured artefact) all read.
 
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
@@ -349,6 +361,9 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +
   `tools:provenance:check` + `copy:i18n:check` + `publication:check` +
+  `content:links:check` (Issue #434 — internal link 404 / unsafe
+  target / missing image alt is an error; external timeouts are
+  warnings) +
   `routes:quality:check` (Issue #492) + `i18n:policy:check` +
   `ci:pins:check` (Issue #472, GitHub
   Actions pin / token audit) + `knip:check` (Issue #531,

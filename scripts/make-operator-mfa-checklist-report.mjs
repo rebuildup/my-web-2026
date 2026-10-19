@@ -283,7 +283,7 @@ function buildPage({ entries, outPath }) {
 <div id="operator-mfa">
 <header>
   <h1>運用者 MFA / Passkey 確認チェックリスト — 監査レポート</h1>
-  <p class="meta">Issue #469 · my-web-2026 ${escapeHtml(projectVersion())} · head ${escapeHtml(headSha())} · 生成 ${escapeHtml(new Date().toISOString())} · ${escapeHtml(outPath)}</p>
+  <p class="meta">Issue #469 · my-web-2026 ${escapeHtml(projectVersion())} · head ${escapeHtml(headSha())} · 生成 ${escapeHtml(new Date().toISOString())} · ${escapeHtml(outPath.replace(`${ROOT}/`, ''))}</p>
 </header>
 
 <p class="lede">

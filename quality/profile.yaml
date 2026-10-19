@@ -885,3 +885,43 @@ r2_media_key_set_audit:
   documentation: 'docs/runbook/r2-media-key-set-audit.md + docs/security/r2-media-visibility.md'
   verification_artifact: 'docs/verification/security/r2-media-key-set-audit.webp'
   owner_issue: '#577'
+
+operator_mfa_audit:
+  command: 'pnpm run check:operator-mfa'
+  report_command: 'pnpm run verify:operator-mfa-checklist-screenshot'
+  implementation: 'scripts/check-operator-mfa.mjs (gate) + scripts/_operator-mfa-audit.mjs (pure policy seam)'
+  tests: 'node --test scripts/check-operator-mfa.test.mjs && node --test scripts/make-operator-mfa-checklist-report.test.mjs'
+  fixtures: 'quality/fixtures/operator-mfa/*.json'
+  ledger: 'quality/operator-mfa-ledger.json (operator-declared; the repository holds no provider state)'
+  driver: 'none — no adapter, no network call, no binding. The four account states are not observable from a Worker, so the gate audits the operator-declared record instead.'
+  policy_source_of_truth: 'the ledger policy block (status / min_factors / require_phishing_resistant / max_confirmation_age_days) plus the SERVICE / FACTOR_KIND vocabularies in scripts/_operator-mfa-audit.mjs'
+  gate: none
+  gate_placement: >-
+    deliberately outside validate:fast / validate:integration /
+    validate:release, for the same two reasons as r2_media_key_set_audit
+    plus one more: the shipped ledger is unconfirmed by design (no agent
+    can read a provider console, so no date this repository cannot verify
+    may be recorded), which means a CI step would be permanently red for a
+    condition only the owner can resolve. It is an operator-run gate over a
+    local file, with no credential and no remote read at all.
+  trigger: 'operator-run on the MFA review cadence, and before a release PR is opened'
+  credential: 'none — the gate reads one local JSON file and cannot reach a provider, a binding or a credential store'
+  output_contract: >-
+    status-only (AGENTS.md §4): service id, state, ISO confirmation date,
+    factor kind and reason code. No account identifier, enrolment list,
+    recovery code, credential or raw error text. The ledger schema has no
+    field in which an identifier can be written, identifier-shaped keys are
+    rejected with ledger_forbidden_field, and both the ledger file and the
+    rendered report go through the anonymization guard — a finding fails
+    the command instead of producing output or a page.
+  failure_policy:
+    - 'one unconfirmed / stale / missing service is OUTSTANDING (exit 1); a green tick is only reachable when all four rows are confirmed'
+    - 'an unreadable, unreconcilable, undatable or identifier-bearing ledger is UNDECIDABLE (exit 2) with no rows — an unread checklist is never a pass, and a partial reading is never rendered as a result'
+    - 'a confirmation date in the future, or older than a factor the same row lists, is UNDECIDABLE rather than confirmed'
+    - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+    - 'the report refuses to be written when a fixture drifted from its declared verdict, so the page cannot disagree with the assertions in scripts/check-operator-mfa.test.mjs'
+  mutation: 'none — the gate reads one local file and has no write path'
+  documentation: 'docs/runbook/operator-mfa-verification.md'
+  verification_artifact: 'docs/verification/security/operator-mfa-checklist.webp'
+  open_owner_decision: 'policy.status is "proposed": min_factors=2, require_phishing_resistant=true and max_confirmation_age_days=180 are Issue #469 defaults awaiting owner ratification. A pass while the status is proposed prints a note saying so.'
+  owner_issue: '#469'

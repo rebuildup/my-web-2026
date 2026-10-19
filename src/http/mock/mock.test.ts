@@ -1,7 +1,7 @@
 import { Hono } from 'hono';
 import { beforeEach, describe, expect, it } from 'vitest';
-import { resetMockState } from './fixtures';
 import { createMockApp } from './index';
+import { resetMockState } from './fixtures';
 
 /**
  * Acceptance tests for the LOCAL_API_MODE=mock design-verification

@@ -63,6 +63,16 @@ test('a table with a caption but no scope still fails, naming what is missing', 
 	assert.doesNotMatch(violations[0].message, /<caption>/);
 });
 
+test('every header cell needs scope, not just the first one', () => {
+	const violations = scanViolationsInFile({
+		relativePath: 'src/home/example.tsx',
+		source: '<table><caption>C</caption><tr><th scope="col">H</th><th>R</th></tr></table>\n',
+	});
+
+	assert.equal(violations.length, 1);
+	assert.match(violations[0].message, /1 <th> without it/);
+});
+
 test('a table element named in a comment is documentation, not a violation', () => {
 	const violations = scanViolationsInFile({
 		relativePath: 'src/home/example.tsx',

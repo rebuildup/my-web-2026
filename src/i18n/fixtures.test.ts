@@ -7,7 +7,7 @@ import {
 	unicodeFixtureById,
 	unicodeFixtureIds,
 } from './fixtures';
-import { type SlugGrammar, type SlugRejectionReason, classifySlugCandidate } from './slug-identity';
+import { classifySlugCandidate, type SlugGrammar, type SlugRejectionReason } from './slug-identity';
 import { describeUnicode, foldForComparison } from './unicode';
 
 /**

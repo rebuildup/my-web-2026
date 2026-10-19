@@ -481,7 +481,7 @@ export function TableCodeFixture() {
 					data-table-code-case=""
 					className={css(CASE_STYLE)}
 				>
-					<h4 className={css(CASE_TITLE_STYLE)}>{`${entry.title} / ${entry.id}`}</h4>
+					<h3 className={css(CASE_TITLE_STYLE)}>{`${entry.title} / ${entry.id}`}</h3>
 					<DataTable
 						caption={`WCAG 2.2 success criteria — ${entry.title.toLowerCase()} state`}
 						columns={TABLE_CODE_COLUMNS}

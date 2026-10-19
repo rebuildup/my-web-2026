@@ -15,7 +15,7 @@
  *   - table-without-structure
  *     A table that is not rendered by the primitive still has to carry
  *     the STRUCTURE the primitive makes structural: a `<caption>` that
- *     names it, and `scope` on its header cells. The rule checks the
+ *     names it, and `scope` on every header cell. The rule checks the
  *     property rather than the implementation, so a surface that
  *     already meets the contract by hand is left alone — a table that
  *     cannot name itself or relate its cells is the failure.
@@ -146,7 +146,13 @@ export function tableBody(code, index) {
 export function missingTableStructure(body) {
 	const missing = [];
 	if (!/<caption[\s>]/.test(body)) missing.push('a <caption>');
-	if (!/scope="(col|row)"/.test(body)) missing.push('scope on its header cells');
+	const headerCells = [...body.matchAll(/<th(?=[\s>])[^>]*>/g)];
+	const unscoped = headerCells.filter(
+		(match) => !/\bscope="(?:col|row|colgroup|rowgroup)"/.test(match[0]),
+	);
+	if (unscoped.length > 0) {
+		missing.push(`scope on its header cells (${unscoped.length} <th> without it)`);
+	}
 	return missing;
 }
 

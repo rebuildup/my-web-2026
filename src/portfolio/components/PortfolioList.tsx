@@ -1,9 +1,9 @@
-import { css } from '../../../styled-system/css';
-import { Container } from '../../editorial/primitives/Container';
 import type { PortfolioListPage, PortfolioProject } from '../schema';
 import type { PortfolioFacet } from '../schema';
-import { PortfolioEmptyState } from './EmptyState';
+import { css } from '../../../styled-system/css';
+import { Container } from '../../editorial/primitives/Container';
 import { FacetFilter } from './FacetFilter';
+import { PortfolioEmptyState } from './EmptyState';
 import { ProjectCard } from './ProjectCard';
 
 /**

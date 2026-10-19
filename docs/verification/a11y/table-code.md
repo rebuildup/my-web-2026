@@ -40,7 +40,7 @@
 
 | 検査 | 内容 | 判定方法 |
 | --- | --- | --- |
-| `table-outside-primitive` | `src/**` に素の `<table>` が 1 つも無い | コメント除去後のソース走査（`scripts/check-table-code-a11y.mjs`） |
+| `table-outside-primitive` | `src/**` に、`<caption>` または全ヘッダセルの `scope` を欠く `<table>` が 1 つも無い | コメント除去後のソース走査（`scripts/check-table-code-a11y.mjs`） |
 | `scroll-container-outside-primitive` | `src/**` に手書きの `overflowX: 'auto'` が 1 つも無い | 同上 |
 | `primitive-contract-missing` | primitive が `caption` / `scope` / `tabIndex` / `aria-labelledby` / `overflowX` を持ち続けている | 同上 |
 | `fixture-state-missing` | fixture の 4 状態がちょうど揃っている | 同上 |
@@ -61,7 +61,7 @@
 
 ## 4 状態の再現（Issue 完了条件 2）
 
-`src/editorial/table-code.tsx` の `TABLE_CODE_CASE_IDS` は
+`src/editorial/table-code.fixture.ts` の `TABLE_CODE_CASE_IDS` は
 `01-normal` / `02-empty` / `03-failure` / `04-compact` の 4 つで、
 **この集合そのものを** 機械検査と capture が assert する（fewer states だと落ちる）。
 

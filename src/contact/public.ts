@@ -1,8 +1,8 @@
 import channelsJson from './channels.json' with { type: 'json' };
 import {
-	type Channel,
 	ChannelsFileSchema,
 	FRESHNESS_WINDOW_MS,
+	type Channel,
 	filterActiveVerified,
 } from './schema';
 

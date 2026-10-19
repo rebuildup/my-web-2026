@@ -1,8 +1,8 @@
+import type { PortfolioProject, PortfolioLink, PortfolioAdjacent } from '../schema';
 import { css } from '../../../styled-system/css';
-import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
+import { Badge } from '../../editorial/primitives/Badge';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
-import type { PortfolioAdjacent, PortfolioLink, PortfolioProject } from '../schema';
 import { PortfolioMarkdown } from './Markdown';
 import { PortfolioMediaFigure } from './PortfolioMedia';
 

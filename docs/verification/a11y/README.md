@@ -148,9 +148,11 @@ declaration) and, for every region that emits an animation declaration
    contract cannot resolve is `motion-without-contract-hook`);
 2. a **call** to the preference contract in that region — or the
    decision received under the contract's published prop name
-   (`REDUCED_MOTION_PROP`). Importing the module is not a read: a
-   component can import its hook constant and still animate in both
-   modes;
+   (`REDUCED_MOTION_PROP`) **and branched on** there. Naming the prop
+   is not enough either: a component that destructures `reducedMotion`
+   and animates regardless of it is exactly the surface the rule
+   refuses. Importing the module is not a read: a component can import
+   its hook constant and still animate in both modes;
 3. a selector inside a reduced-motion block in `src/styles.css` that
    names that hook.
 

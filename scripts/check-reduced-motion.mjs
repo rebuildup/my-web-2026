@@ -34,14 +34,16 @@
  *                              `usePrefersReducedMotion()` (or an
  *                              equivalent read), or receive the decision
  *                              under the contract's published prop name
- *                              so the animation is not emitted at all
- *                              under reduced motion — the resting markup
- *                              IS the reduced markup, which is the only
- *                              version a unit test can assert. Importing
- *                              a hook NAME is not a read: a component
- *                              that imports `COUNTER_ROLL_MOTION` for
- *                              its `data-motion` attribute and never
- *                              asks for the preference fails this rule.
+ *                              AND branch on it, so the animation is not
+ *                              emitted at all under reduced motion —
+ *                              the resting markup IS the reduced
+ *                              markup, which is the only version a unit
+ *                              test can assert. Importing a hook NAME is
+ *                              not a read (a component imports
+ *                              `COUNTER_ROLL_MOTION` for its
+ *                              `data-motion` attribute), and naming the
+ *                              prop without branching on it is not a
+ *                              read either.
  *   motion-without-contract-hook
  *                              a `data-motion` value the gate cannot
  *                              resolve through the contract (a literal
@@ -403,12 +405,24 @@ export function readsPreferenceContract(scanPath, code) {
 
 /**
  * Whether a region RECEIVES the decision under the contract's
- * published prop name, which is how a child of a component that reads
- * the hook stays inside the contract without reading the media query
- * twice.
+ * published prop name, in a place where the decision actually CHANGES
+ * what is emitted.
+ *
+ * Destructuring the prop is not enough. `function Broken({ reducedMotion })
+ * { return <div style={{ animationName: 'spin' }} /> }` names the
+ * contract prop and then animates identically in both preference
+ * modes, which is exactly the surface this gate exists to refuse — so
+ * the name has to appear in a conditional (`reducedMotion ? …`,
+ * `!reducedMotion && …`, `reducedMotion || …`). A component that hands
+ * the decision further down (`<Child reducedMotion={…} />`) still
+ * passes: the attribute is itself a conditional use.
  */
 export function declaresPreferenceProp(code, propName) {
-	return new RegExp(`\\b${propName}\\b`).test(stripComments(code));
+	const source = stripComments(code);
+	const name = `\\b${propName}\\b`;
+	return new RegExp(
+		`${name}\\s*(?:\\?|&&|\\|\\|)|(?:\\?|&&|\\|\\|)\\s*!?\\s*${name}|=\\s*\\{[^}]*${name}`,
+	).test(source);
 }
 
 /** A violation record. `wcag` is quoted so the CLI line is self-contained. */
@@ -463,7 +477,7 @@ export function analyzeRegion({ scanPath, code, region, constants, preferencePro
 				scanPath,
 				motionLines[0].line,
 				motionLines[0].snippet,
-				`the component ${region.name} animates but never calls the preference contract, and does not receive the decision as the contract's "${preferenceProp}" prop, so reduced motion still emits the animation declaration`,
+				`the component ${region.name} animates but never calls the preference contract, and does not branch on the contract's "${preferenceProp}" prop, so reduced motion still emits the animation declaration`,
 				'1.4.13 Content on Hover or Focus (AA)',
 			),
 		);

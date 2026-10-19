@@ -180,8 +180,44 @@ test('readsPreferenceContract requires a CALL, not an import of the module', () 
 });
 
 test('declaresPreferenceProp recognises the contract prop name only', () => {
-	assert.equal(declaresPreferenceProp('function S({ reducedMotion }) {}', 'reducedMotion'), true);
 	assert.equal(declaresPreferenceProp('function S({ quiet }) {}', 'reducedMotion'), false);
+});
+
+test('declaresPreferenceProp needs a BRANCH, not just the name', () => {
+	// The follow-up finding: destructuring the prop and then animating
+	// regardless is the exact surface the rule exists to refuse.
+	assert.equal(
+		declaresPreferenceProp(
+			'function Broken({ reducedMotion }) { return <div />; }',
+			'reducedMotion',
+		),
+		false,
+	);
+	assert.equal(
+		declaresPreferenceProp(
+			'function S({ reducedMotion }) { return <div style={{ ...(reducedMotion ? {} : { animationName: "x" }) }} />; }',
+			'reducedMotion',
+		),
+		true,
+	);
+	// Handing the decision to a child is itself a conditional use.
+	assert.equal(
+		declaresPreferenceProp(
+			'function S({ reducedMotion }) { return <Child reducedMotion={reducedMotion} />; }',
+			'reducedMotion',
+		),
+		true,
+	);
+	// The shipped digit strip branches on it.
+	assert.equal(
+		declaresPreferenceProp(
+			readFileSync(new URL('../src/home/access/tiles.tsx', import.meta.url), 'utf8').split(
+				'function DigitStrip',
+			)[1] ?? '',
+			'reducedMotion',
+		),
+		true,
+	);
 });
 
 test('motionRegions gives each top-level declaration its own region', () => {
@@ -382,7 +418,9 @@ test('a data-motion value the contract cannot resolve is a violation', () => {
 	const literal = rulesFor(
 		[
 			'export function Spinner({ reducedMotion }) {',
-			'\treturn <div data-motion="spinner" className={css({ animationName: \'spin\' })} />;',
+			'\treturn <div data-motion="spinner" className={css({',
+			"\t\t...(reducedMotion ? {} : { animationName: 'spin' }),",
+			'\t})} />;',
 			'}',
 		].join('\n'),
 	);
@@ -391,7 +429,9 @@ test('a data-motion value the contract cannot resolve is a violation', () => {
 	const dynamic = rulesFor(
 		[
 			'export function Spinner({ reducedMotion, hook }) {',
-			"\treturn <div data-motion={hook} className={css({ animationName: 'spin' })} />;",
+			'\treturn <div data-motion={hook} className={css({',
+			"...(reducedMotion ? {} : { animationName: 'spin' }),",
+			'})} />;',
 			'}',
 		].join('\n'),
 	);
@@ -402,7 +442,9 @@ test('a contract hook with no reduced-motion selector is a dead opt-out', () => 
 	const rules = rulesFor(
 		[
 			'export function Spinner({ reducedMotion }) {',
-			"\treturn <div data-motion={SPINNER_MOTION} className={css({ animationName: 'spin' })} />;",
+			'\treturn <div data-motion={SPINNER_MOTION} className={css({',
+			"\t\t...(reducedMotion ? {} : { animationName: 'spin' }),",
+			'\t})} />;',
 			'}',
 		].join('\n'),
 		{ constants: [{ constant: 'SPINNER_MOTION', name: 'spinner' }] },

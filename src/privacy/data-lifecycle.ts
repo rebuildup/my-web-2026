@@ -319,8 +319,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			// happen. See `docs/security/log-redaction.md`
 			// ("Known limits") and `src/editorial/analytics/
 			// GoogleAnalytics.tsx`.
-			ja: '送信するのは測定 ID と、ページ遷移ごとのパス情報（`page_path` / `page_location` / `page_title`）。アプリ内の画面遷移で記録する `page_view` だけはクエリ文字列を除去してパスだけを送ります。ただし最初の読み込みで記録される `page_view` は GA 自身が `document.location` を読むため、このプラットフォームのコードではクエリ文字列を除去できていません。`/admin/**` は送信対象外です。`mw_actor_id` のようなサイト発行の識別子を明示的に送ることはありませんが、URL に書かれたクエリ文字列はそのまま届きます。',
-			en: 'What leaves the deployment: the measurement id and, per route change, the path (`page_path` / `page_location` / `page_title`). The `page_view` recorded on an in-app route change has its query string stripped, so only the path is sent. The `page_view` recorded on the first page load is different: GA reads `document.location` itself, so this platform’s code cannot strip the query string there. `/admin/**` is excluded, and no site-issued identifier such as `mw_actor_id` is sent explicitly — but a query string written into the URL reaches GA unchanged.',
+			ja: '送信するのは測定 ID と、パス情報（`page_path` / `page_location` / `page_title`）です。アプリ内の画面遷移で記録する `page_view` だけはクエリ文字列を除去してパスだけを送ります。ただし最初の読み込みで記録される `page_view` は GA 自身が `document.location` を読むため、このプラットフォームのコードではクエリ文字列を除去できていません。`/admin/**` は送信対象外です。`mw_actor_id` のようなサイト発行の識別子を明示的に送ることはありませんが、URL に書かれたクエリ文字列はそのまま届きます。',
+			en: 'What leaves the deployment: the measurement id and the path information (`page_path` / `page_location` / `page_title`). The `page_view` recorded on an in-app route change has its query string stripped, so only the path is sent. The `page_view` recorded on the first page load is different: GA reads `document.location` itself, so this platform’s code cannot strip the query string there. `/admin/**` is excluded, and no site-issued identifier such as `mw_actor_id` is sent explicitly — but a query string written into the URL reaches GA unchanged.',
 		},
 		retention: {
 			kind: 'third-party',

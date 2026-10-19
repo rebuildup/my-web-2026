@@ -95,7 +95,7 @@ node scripts/perf-large-list.mjs                 # seed → measure → click Lo
 | `scripts/perf-large-list.test.mjs` | fixture の決定性・列挙値の閉じた範囲・cleanup のスコープ、a11y 不変条件の純関数（暗黙ロール解決込み）、上限判定が実際に fail すること、CLI が 100+ を拒否すること |
 
 `pnpm run test` は上記のうち `list-scale.test.tsx` と `scripts/perf-large-list.test.mjs` を含む
-（`scripts/check-test-wiring.mjs` の契約に従い package.json から到達可能）。
+（`scripts/check-test-wiring.mjs` の契約に従い、`pnpm run test` の test entry point から到達可能）。
 `PortfolioList.pagination.client.test.tsx` は happy-dom 用の `pnpm run test:client` 専用（既存方針、§5）。
 
 ## 4. follow-up 候補（今回の scope 外）

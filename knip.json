@@ -6,6 +6,7 @@
 		"scripts/_no-wrangler-resolver.mjs",
 		"scripts/check-knip.mjs",
 		"scripts/run-deploy-inner.mjs",
+		"scripts/*.test.mjs",
 		"src/cloudflare/workers-stub.ts"
 	],
 	"ignoreDependencies": ["cloudflare", "postcss", "@storybook/react"],

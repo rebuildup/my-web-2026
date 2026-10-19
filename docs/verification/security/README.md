@@ -24,33 +24,51 @@ of trusting the image.
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 | [`disclosure-runbook.webp`](disclosure-runbook.webp) | #478 | `pnpm run verify:security-disclosure-screenshot` |
+| [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
 
 ## `disclosure-runbook.webp` (Issue #478)
-
 脆弱性報告 → priority 判定 → 修正 → release gate → 公開判断の **模擬フロー**。
 `quality/security-disclosure.json`（ledger）と
 `docs/runbook/security-disclosure.md`（runbook）を同じ純関数が評価し、
 `quality/fixtures/security-disclosure/` の合成 fixture 5 本を通した結果
 （`COMPLETE` / `INCOMPLETE` / `LEAK_REFUSED`）を 1 枚に写したものである。
-
 画像に写っているのは fixture によるシミュレーションであり、実在の報告・
 実在の攻撃者・本番の実測ではない。credential-shaped な値は fixture に
 保存せず（レシピだけ保存する）、出力は reason code までで止まる。
-
 判定の権威は exit code と
 `node --test scripts/check-security-disclosure.test.mjs` であり、画像は証拠で
 あって判定の代用ではない。
-
 ```bash
 pnpm run security:disclosure:check             # 判定（exit 0 / 1 / 2）
 pnpm run security:disclosure:report            # .tmp/security-disclosure-report.html
 pnpm run verify:security-disclosure-screenshot # WebP at the path above
 ```
-
 Issue は `disclosure-runbook.png` と書いているが、同ディレクトリの他 artefact
 と同じく WebP で納める（Playwright は WebP を書けないため、メモリ上の capture
 を `sharp` で再エンコードし、途中 PNG は作らない）。手順・異常時の code 一覧・
 scope の外は [`docs/runbook/security-disclosure.md`](../../runbook/security-disclosure.md) に正本がある。
+
+## `r2-restore-proof.webp` (Issue #462)
+公開画像が `MEDIA` から 1 件消えたときの復旧手順を、**credential 不要・本番非接触**
+の fixture proof で実行した結果。`quality/fixtures/r2-media-restore/` の 7 記録ケース
+（復旧成功 / 冪等 / private namespace 拒否 / source 不在 / manifest 不一致 /
+write 欠損 / 判別不能）を `src/cloudflare/media-restore.ts` に通し、
+宣言どおりに振る舞ったかを判定する。実行先は process 内の Map で、
+Cloudflare への read / write コードパスは存在しない。
+判定を左右するのは「成功したか」だけでなく **「write しなかったか」** である。
+`bucketAfter=absent` を宣言した 3 ケース（private 拒否 / source 不在 /
+manifest 不一致）は、書いた瞬間に逸脱として落ちる。
+status-only 契約どおり、画像には object key・key 断片・namespace・
+source path・credential を写していない（生成側が実行前に同じ leak guard を通し、
+1 件でも検出すると非ゼロ終了する）。手順と失敗時挙動は
+[`docs/runbook/r2-media-restore.md`](../../runbook/r2-media-restore.md)、
+実 R2 binding での検証は
+`pnpm exec vitest run test/integration/r2-media-restore.test.ts`。
+Regenerate:
+```bash
+pnpm run r2:restore:proof          # fixture proof（status-only）
+pnpm run r2:restore:proof:report   # -> .tmp/r2-restore-proof.html（この画像の生成元）
+```
 
 ## `asvs-coverage-matrix.webp` (Issue #507)
 

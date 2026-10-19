@@ -109,11 +109,18 @@ reactions -> i18n (Issue #433)
 portfolio -> i18n (Issue #433)
 external-api -> editorial (Issue #499 — display primitives only)
 server -> http
+http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
+  `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
 http -> logging (Issue #467 — boundary diagnostics)
 http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)
 cloudflare -> logging (Issue #467 — auth email stub + binding probes)
 editorial -> logging (Issue #467 — SSR fallback failure record)
+server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
+             `delivery.iframe.allow` / `referrer_policy` from the Tool
+             manifest; the policy object is passed into the HTTP
+             boundary, so the Tool Registry still imports nothing
+             from `src/http/**`)
 home -> editorial
 ```
 
@@ -348,17 +355,22 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `console` through `src/logging/logger.ts`, and operator scripts may
   not print a secret value) +
   `structured-data:check` + `index:boundary:check` +
-  `tools:check` + `install:scripts:check` +
+  `tools:check` + `security:headers:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
-  `csrf:contract:check` + `compat:check` + `publication:check` +
-  `i18n:policy:check` +
-  `test`)
+  `csrf:contract:check` + `compat:check` +
+  `tools:provenance:check` + `publication:check` +
+  `routes:quality:check` (Issue #492) + `i18n:policy:check` +
+  `ci:pins:check` (Issue #472, GitHub
+  Actions pin / token audit) + `test`. The canonical list is
+  `quality/profile.yaml#gates.fast.components`; add a step there,
+  not only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.
-  (`validate:fast` + `build` + default/production Wrangler dry-runs +
-  `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
-  `build-storybook`)
+  (`validate:fast` + `build:production` + per-route bundle budget
+  (`bundle:budget:check`, Issue #482) + default/production Wrangler
+  dry-runs + `lint:ci` (actionlint 1.7.12, downloaded by
+  `scripts/lint-ci.mjs`) + `build-storybook`)
 - `pnpm run validate:release` — pre-`main` verification.
   (`validate:integration` + `cf-typegen:check`)
 

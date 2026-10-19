@@ -82,10 +82,24 @@ verbatim as the `<iframe allow=…>` attribute
 (`src/routes/tools.$slug.tsx`), because a conditional token whose grant
 is dropped on the floor would be a declaration the gate reports as
 valid and the browser ignores. It only takes effect in combination with
-a matching host-side `Permissions-Policy` **response header**, which the
-host does not send for Tool frames yet — the header is part of
-ADR-0006's re-evaluation trigger and is listed under
-["Not decided here"](#not-decided-here).
+a matching host-side `Permissions-Policy` **response header**, and since
+Issue #449 that header **is** sent for Tool surfaces: the shell route
+resolves the manifest declaration through `toolRouteSecurityPolicy()`
+(`src/tools/registry.ts`) and `src/server.ts` applies it to the
+response, while `public/_headers` carries the same grant for
+`/tools/<slug>/app/**`. The values and their origin scoping are specified
+in [`docs/security/security-headers.md`](../security/security-headers.md)
+§3, and `pnpm run security:headers:check` fails the build when the Worker
+half and `_headers` disagree.
+
+What is still undecided is the **sandbox** half, not the header: a Tool
+whose grant is inert today is one that is still `host_disabled`
+(`mic-level`, Issue #81 follow-up), because `allow-scripts` alone gives
+the frame an opaque origin and Chromium rejects `getUserMedia` with
+`SecurityError: Invalid security origin` before Permissions-Policy is
+consulted. Graduating that Tool to `allow-same-origin` is the open owner
+decision (ADR-0006, `docs/tools/embed-policy.md` §"Not decided here",
+tracked as Issue #598).
 
 **The `sandbox` pattern in `manifest.schema.json` is advisory.** It
 requires `allow-scripts` first and single-space separators, while this
@@ -339,9 +353,12 @@ must refuse it too.
 `host_message` is undeclared for every Tool today. The first Tool that
 declares one also needs:
 
-- a `Permissions-Policy` review for the header (ADR-0006 trigger) —
-  until the host sends that response header, a declared
-  `iframe.allow` grant has no effect even though it is rendered,
+- a `Permissions-Policy` review for the frame the channel would use
+  (ADR-0006 trigger) — the host-side header half already shipped in
+  Issue #449 for `/tools/<slug>` and `/tools/<slug>/app/**`
+  ([`docs/security/security-headers.md`](../security/security-headers.md)
+  §3), so the remaining question is only which origin may host the
+  channel, not whether a header is ever sent,
 - an ADR revision if the channel is cross-origin,
 - an answer to §5a: how a framed Tool — opaque origin by construction,
   under both delivery kinds — is identified at all. The two candidate

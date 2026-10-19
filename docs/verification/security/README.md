@@ -11,10 +11,12 @@ of trusting the image.
 | [`ssrf-url-adapter.webp`](ssrf-url-adapter.webp) | #453 | `pnpm run security:ssrf:report` |
 | [`hsts-response.webp`](hsts-response.webp) | #446 | `pnpm run verify:hsts-screenshot` |
 | [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
+| [`headers-browser.webp`](headers-browser.webp) | #449 | `node scripts/security-header-report.mjs` |
 | [`markdown-xss-fixture.webp`](markdown-xss-fixture.webp) | #451 | capture generator is **not** in the repository — see [`## markdown-xss-fixture.webp`](#markdown-xss-fixturewebp); the same properties are asserted on every push by `pnpm exec vitest run test/integration/markdown-xss-ssr.test.ts` and by `pnpm run e2e` |
 | [`webhook-signature-fixture.webp`](webhook-signature-fixture.webp) | #463 | `pnpm run webhook:fixture:report` |
 | [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
 | [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
+| [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
 
 ## `webhook-signature-fixture.webp`
 
@@ -28,7 +30,6 @@ exits non-zero if any fixture deviates. No key material is rendered.
 `/webhooks/*` still has no mounted handler — the report documents an
 adapter, not a published entry point. Reading guide:
 [`docs/security/webhook-signature-verification.md`](../../security/webhook-signature-verification.md).
-
 
 ## `error-redaction-page.webp` (Issue #457)
 
@@ -258,6 +259,60 @@ report exists so the matrix can be *read*, not only trusted. The
 interpretation of each row is in
 [`docs/security/open-redirect.md`](../../security/open-redirect.md).
 
+## `headers-browser.webp`
+
+The screenshot Issue #449 asks for: the
+`nosniff` / `Referrer-Policy` / `Permissions-Policy` policy as it is
+actually observed, not as it is described. It is stored as a
+moderately compressed WebP (width ≤ 1600, quality 80) rather than a
+PNG so the verification artefact stays small; the content is
+unchanged.
+
+### What is in the image
+
+1. **Worker responses** — measured by
+   `test/integration/security-headers.test.ts` running the real Worker in
+   the local workerd pool (`SELF.fetch`), over the host page, a 404, the
+   external boundary (success + `notFound`), the admin redirect, the admin
+   login, and the three Tool shell routes.
+2. **Static Assets responses** — measured against the local `pnpm
+   preview` Worker (a `curl -D -` dump captured into
+   `.tmp/security-headers/static-headers.json`), or, when that capture
+   is not supplied, resolved from the shipped `public/_headers` rules by
+   `scripts/check-security-headers.mjs` — the same parser the CI gate
+   uses. The report labels which of the two it used.
+3. **Browser enforcement** — Chromium with a fake capture device asking
+   `getUserMedia()` for the microphone on: a host-baseline document, the
+   Tool document that carries the `mic-level` grant, and the same grant
+   document inside a Tool iframe under both sandbox shapes. This is what
+   separates "the header says so" from "the browser agrees".
+
+Nothing secret is involved: the probe server binds `127.0.0.1`, the
+policy values are public constants in
+`src/http/security-headers.json`, and the capture device is Chromium's
+fake one.
+
+### Regenerating
+
+```bash
+node scripts/security-header-report.mjs            # Worker + rules + browser
+node scripts/security-header-report.mjs \
+  --static-measurements=.tmp/security-headers/static-headers.json
+```
+
+The second form additionally reports the Static Assets rows as measured
+from a running preview (see `docs/security/security-headers.md` §4 for
+how to start one and capture the dump). The script re-runs the workerd
+measurement, re-resolves the `_headers` rules, re-runs the browser
+probes and overwrites the WebP. Commit the regenerated image in the same
+change as any policy or manifest-grant edit.
+
+The browser section separates the two gates Chromium actually applies:
+the container document's own `Permissions-Policy` is the ceiling for its
+frame, and a frame sandboxed without `allow-same-origin` has an opaque
+origin that no header can give a capture device back. Both readings, and
+the residual they leave, are in
+[`docs/security/security-headers.md`](../../security/security-headers.md).
 ## `markdown-xss-fixture.webp`
 
 Evidence for the Portfolio article input boundary (Issue #451), captured

@@ -71,6 +71,16 @@ it:
 `referer_mismatch`, `origin_check_missing`. It names the header that
 failed, never its value.
 
+One precedence note: the CORS layer (Issue #455) is mounted ahead of
+this guard, so on a non-auth route a write whose `Origin` is outside
+its allow-list is refused there first, with
+`{ "error": "cors_origin_rejected" }` (`/api/v1/auth/*` is CSRF-exempt
+and delegates to Better Auth). The
+CSRF contract is unaffected — both refusals are `403` before
+authentication or D1 — and a request whose `Origin` *is* allow-listed
+but whose `Sec-Fetch-Site` says `cross-site` still gets
+`csrf_rejected`.
+
 The guard is mounted in `src/http/hono.ts` after the local mock gate
 and the request-id middleware, and before every router — so a refused
 cross-site write never reaches authentication, rate limiting, or D1.
@@ -326,6 +336,74 @@ asserted, and no test contacts a real IdP. Response capture from the
 local run:
 [`verification/security/oauth-negative-tests.webp`](verification/security/oauth-negative-tests.webp).
 
+## Write rate limit (Issue #456)
+
+`/api/v1/reactions` (PUT / DELETE) and `/api/v1/access/hit` share one
+`RATE_LIMIT_WRITE` budget per API key id; the read paths use the
+independent `RATE_LIMIT_READ` binding (ADR-0010). The budgets
+themselves are declared once, in `RATE_LIMITS`
+(`scripts/_cloudflare-contract.mjs`). A throttled request answers
+`429 { error: 'rate_limited' }` plus a `Retry-After` equal to the
+binding's fixed window, and never reaches D1.
+
+The operational contract — principal semantics, middleware ordering,
+the client mapping, the drift guard between the retry window and
+`RATE_LIMITS`, and what the local workerd suite does *not* prove —
+lives in [`security/write-rate-limit.md`](security/write-rate-limit.md).
+
+## CORS
+
+The external boundary splits its routes into three origin classes
+(Issue #455):
+
+- `credentialed` — `/api/v1/auth/*`, `/api/v1/access/*`,
+  `/api/v1/reactions`. The response echoes **one** allow-listed origin
+  plus `Access-Control-Allow-Credentials: true`, restricted to a fixed
+  method and request-header allow-list. Any other origin — including the
+  opaque `null` origin a sandboxed Tool iframe sends — gets `403` and no
+  CORS header for preflights and state-changing requests. A `GET`/`HEAD`
+  from a foreign origin still reaches the handler (Issue #440's CSRF
+  contract keeps safe reads unaffected) but carries no CORS echo, so the
+  browser cannot read the body. On `/api/v1/auth/*` the actual-request
+  refusal is Better Auth's (`INVALID_ORIGIN`, Issue #444); CORS only
+  withholds the echo and owns the preflight refusal.
+- `public-read` — `/api/v1/health` and `/api/v1/reaction-images/:id`.
+  `Access-Control-Allow-Origin: *`, and never a credentials header.
+- `none` — everything else, including `/api/v1/db/ping`,
+  `/api/v1/media/ping` and the unimplemented `/webhooks/*`, `/oauth/*`,
+  `/integrations/*` prefixes. No CORS header at all.
+
+The allow-list is derived from runtime input only: the origin the
+request arrived on, plus `env.BETTER_AUTH_URL` — the same value that
+feeds Better Auth's `trustedOrigins`. A wildcard never reaches a
+credentialed route, and that invariant is asserted over the whole
+route × origin × method matrix in `src/http/cors/policy.test.ts` and
+again against the real response bytes in
+`test/integration/cors.test.ts`.
+
+The echo is rendered onto the **finalized** response, after
+`await next()`. Hono only merges `c.header()` calls made before
+`next()` into a response the context itself produced, so a handler
+returning a raw `Response` — `auth.handler(c.req.raw)` and the
+`LOCAL_API_MODE=mock` gate's `mockApp.fetch(...)` — would otherwise
+drop the whole allow branch. Both shapes are asserted in
+`src/http/cors/middleware.test.ts` and on the wire in
+`test/integration/cors.test.ts`.
+
+Full contract, the measured matrix and the known local-dev deviation
+(`vite dev` answers preflights itself, so the Worker is never consulted):
+[`docs/security/api-cors.md`](security/api-cors.md).
+
+## Response security headers
+
+`X-Content-Type-Options: nosniff`, `Referrer-Policy` and
+`Permissions-Policy` are emitted on every response. The contract, the
+per-Tool permission grant, and how to verify both delivery surfaces
+(Worker responses and Cloudflare Static Assets) are documented in
+[`docs/security/security-headers.md`](security/security-headers.md).
+The gate is `node scripts/check-security-headers.mjs`
+(`pnpm run security:headers:check`, part of `validate:fast`).
+
 ## CSP frame-ancestors
 
 > The inbound embed policy: which ancestor may put one of our
@@ -504,7 +582,6 @@ This change adds no service, no binding, and no secret. Specifically:
   the static gate locally, renders the report, and encodes it as WebP.
   The Issue names a `.png`; the `.webp` extension is a deliberate
   substitution (the same one Issue #452 made for its report).
-
 ## Outbound fetch (SSRF)
 
 A URL that did not come from this repository — a visitor-supplied
@@ -798,7 +875,11 @@ Strict-Transport-Security: max-age=31536000
   避けるため 1 年で止める。
 - 値は `src/server.ts` の `HSTS_DIRECTIVE` 1 箇所だけが所有する。
   他の場所（テスト・`_headers`・生成スクリプト）に書くと
-  `scripts/check-hsts-policy.mjs` が exit 1 になる。
+  `scripts/check-hsts-policy.mjs` が exit 1 になる。この定数は
+  **export しない**: Cloudflare Worker の entry module は handler 以外を
+  export できず、`export const` にすると workerd が
+  `Incorrect type for map entry 'HSTS_DIRECTIVE'` で起動に失敗する。
+  gate は module の namespace ではなく `src/server.ts` のソース文を読む。
 
 ### 検証（4 層）
 
@@ -950,6 +1031,42 @@ in `docs/release.md`), not the per-binding local SELF tests (#006
 binding API is reachable in the local workerd pool"**, not
 **"the production database is online"**.
 
+## R2 object visibility (public keys vs private objects)
+
+Portfolio media is delivered by **a public R2 custom domain**
+(`https://media.rebuildup.dev/<key>`) — a Cloudflare account setting
+this repository cannot verify, recorded as Decision 5's release
+prerequisite. If that custom domain is attached, it bypasses the
+Worker: any key that exists in the `MEDIA` bucket can be fetched by
+anyone who can guess it, and no code of ours runs on that path.
+`src/cloudflare/media-visibility.ts` (Issue #459) therefore owns one
+rule for the repository — a key is publicly servable only when it is
+well-formed and lives under an explicitly declared **public prefix**
+(`portfolio/`, `reactions/`); private and undeclared namespaces fail
+closed.
+
+The rule is **enforced in production code on the two key-handling
+paths that exist today**: `composeMediaUrl` (returns `null`) and
+`getImageStream` / `GET /api/v1/reaction-images/:id` (404). Refusals
+are 404, never 403, and carry no reason code, so the boundary is not
+an existence oracle. The module's delivery adapter
+(`createPublicMediaDelivery`) and listing walk (`listPublicMediaKeys`)
+model the same boundary for a Worker-side delivery path and for a
+listing surface; **neither has a production caller today**, and they
+are not evidence about the custom-domain path.
+
+Verified against the local workerd R2 fixture only — object enumeration
+and a `cover-<n>` sequential sweep over the published key layout — by
+`test/integration/r2-media-visibility.test.ts`. The bucket-level half
+(unpublished objects must not sit in a custom-domain-served bucket)
+is operator-side, is **not** closed by the repository, and is recorded
+as an open residual with its concrete failure case in
+[`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md)
+and tracked as Issue
+[#577](https://github.com/rebuildup/my-web-2026/issues/577) (owner
+decision: enforced key-set audit / bucket split / Worker-side
+delivery).
+
 ## Session lifecycle (sign-in / sign-out)
 
 Better Auth (`src/cloudflare/auth/better-auth.ts`, ADR-0009) owns the
@@ -1094,6 +1211,16 @@ only the diff that introduced it.
 - Workflow YAML lint runs through `pnpm run lint:ci` inside the
   `validate` job (actionlint 1.7.12, downloaded by
   `scripts/lint-ci.mjs`). Biome does not lint `.yml`.
+- Workflow supply-chain audit runs through `pnpm run ci:pins:check`
+  inside `validate:fast` (`scripts/check-workflow-pinning.mjs`, Issue
+  #472). It fails on a `uses:` that is not a full commit SHA, a job
+  token that is not least privilege, a workflow that can reach a
+  secret value, or a production deploy / Release publish from CI. It
+  fails closed: a `jobs:` / `permissions:` / `on:` / `uses:` shape it
+  cannot read is a finding, not an inherited default. Contract, pin manifest and update
+  procedure:
+  [`docs/security/supply-chain-actions-pinning.md`](security/supply-chain-actions-pinning.md).
+
 - Outbound URL matrix (Issue #453) is regenerated from the shipped
   adapter by `pnpm run security:ssrf:report`; the committed artefact
   and its reading guide are in

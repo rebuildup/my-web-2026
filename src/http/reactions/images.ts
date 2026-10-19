@@ -1,3 +1,4 @@
+import { isPublicMediaKey } from '../../cloudflare/media-visibility';
 import { createAuditLogger } from '../../logging/logger';
 import {
 	ALLOWED_IMAGE_CONTENT_TYPES,
@@ -46,6 +47,10 @@ const imagesLogger = createAuditLogger('reactions.images');
  *   - `getImageStream(db, media, id)` — public read by image id,
  *     used by `GET /api/v1/reaction-images/:id`. Streams from R2
  *     with `Cache-Control: public, max-age=31536000, immutable`.
+ *     The read is gated by the R2 visibility boundary (#459): a row
+ *     whose `r2_key` is outside a declared public namespace resolves
+ *     to `null` (HTTP 404), so an object left behind in a private
+ *     namespace is not served just because a row still names it.
  */
 
 const EXT_BY_CONTENT_TYPE: Record<AllowedImageContentType, string> = {
@@ -361,6 +366,12 @@ export async function getImageStream(
 		.bind(id)
 		.first<{ r2_key: string; content_type: string }>();
 	if (!row) return null;
+	// Visibility boundary (#459): a row may only ever point at a key
+	// inside a declared public namespace. Anything else is treated as
+	// absent — the router maps `null` to 404, and a 403 here would
+	// confirm to a caller that the object exists, which is exactly the
+	// oracle an enumeration sweep wants.
+	if (!isPublicMediaKey(row.r2_key)) return null;
 	const object = await media.get(row.r2_key);
 	if (!object) return null;
 	return {

@@ -1,12 +1,13 @@
-# Verification — Intl locale formatting, CJK line breaking and glyph display
+# Verification — i18n artifacts
 
-This directory holds the committed screenshots for four verification
+This directory holds the committed screenshots for five verification
 tickets:
 
 | Artefact | Issue | What it proves |
 | --- | --- | --- |
 | `intl-date-number.webp` | #430 | one instant, one count and a set of relative spans rendered per locale by the shipped home format adapter |
 | `cjk-line-break.webp` | #431 | 72 measured CJK line-breaking rows (禁則 / `word-break` / wrap mode) from the shipped editorial recipes |
+| `missing-keys-report.webp` | #428 | copy locale contract gate: opt-in matrix, fixture findings, legend (see [`copy/README.md`](../../../copy/README.md)) |
 | `unicode-slug-validation.webp` | #433 | the 17-row Unicode / URL-slug decision table classified by the shipped `EMOJI_SLUG_GRAMMAR` / `PORTFOLIO_SLUG_GRAMMAR`, plus the counterfactual lossy-slug results |
 | `diacritic-cyrillic-font.webp` | #432 | 16 fr / de / pt / ru heading fixtures rendered with the shipped font stack, plus 53 measured code points (missing glyph, webfont vs platform fallback) and a clipboard round trip |
 

@@ -88,6 +88,11 @@ gates:
       - 'pnpm run seo:status:check' # 404 / 500 / redirect / noindex status contract
       - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
       - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
+      # Issue #475: credential-shaped strings / forbidden secret-file paths
+      # in the tracked tree (and in untracked-but-not-ignored files, filtered
+      # by .gitignore itself). Status-only findings; a matched value is never
+      # rendered (AGENTS.md section 4).
+      - 'pnpm run secret:scan'
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
       # Issue #473: Tool submodule supply-chain provenance. Offline,
       # status-only: proves manifest pin == gitlink == checked-out commit
@@ -147,6 +152,10 @@ gates:
       - 'pnpm run bundle:budget:check' # per-route initial JS/CSS budget
       - 'pnpm run build:cf:production' # cf build -> .cloudflare/output/v0/
       - 'pnpm run build:cf:verify' # Build Output completeness (Worker bundle + Tool artifacts + mode)
+      # Issue #475: a credential can reach the deploy artifact through
+      # build-time inlining even when no source file matches, so the freshly
+      # built bundle is a second scan surface.
+      - 'pnpm run secret:scan:bundle'
       - 'pnpm run deploy:cf:prebuilt:dry-run' # cf deploy --prebuilt --mode production --dry-run
       - 'pnpm run cf:mode-mismatch:check' # a production Build Output must be rejected under --mode development
       - 'pnpm run lint:ci' # actionlint via scripts/lint-ci.mjs (default target: .github/workflows/*.yml)
@@ -454,6 +463,19 @@ security_gates:
     enabled: true
     mode: asynchronous
     note: 'Enabled via GitHub Push Protection + cloud bot.'
+  repository_static_secret_scan:
+    # Issue #475: the deterministic, pre-merge counterpart to the
+    # asynchronous host-side scan above. Same obligation (a credential must
+    # not be committed), earlier boundary (before merge, inside `validate`).
+    enabled: true
+    command: 'pnpm run secret:scan'
+    bundle_command: 'pnpm run secret:scan:bundle'
+    self_test_command: 'pnpm run secret:scan:self-test'
+    implementation: 'scripts/scan-secrets.mjs'
+    scope: 'tracked files + untracked-not-ignored files (source mode), build artifacts when present (bundle mode)'
+    output: 'status-only findings (path, line, detector, length, SHA-256 prefix); never a matched value (AGENTS.md section 4)'
+    runbook: 'docs/security/supply-chain-secret-scan.md'
+    note: 'Shape-based detection; complements, and does not replace, the asynchronous host-side scan.'
   sbom:
     enabled: true
     issue: '#471'

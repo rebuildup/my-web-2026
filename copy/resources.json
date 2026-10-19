@@ -1,0 +1,61 @@
+{
+	"schemaVersion": 1,
+	"knownLocales": ["ja"],
+	"features": [
+		{
+			"id": "home",
+			"owner": "home",
+			"surface": "/ — canonical top page",
+			"sourceLocale": "ja",
+			"locales": {
+				"ja": { "state": "source" }
+			},
+			"keys": [],
+			"messages": {}
+		},
+		{
+			"id": "portfolio",
+			"owner": "portfolio",
+			"surface": "/portfolio, /portfolio/<slug>",
+			"sourceLocale": "ja",
+			"locales": {
+				"ja": { "state": "source" }
+			},
+			"keys": [],
+			"messages": {}
+		},
+		{
+			"id": "about",
+			"owner": "about",
+			"surface": "/about",
+			"sourceLocale": "ja",
+			"locales": {
+				"ja": { "state": "source" }
+			},
+			"keys": [],
+			"messages": {}
+		},
+		{
+			"id": "contact",
+			"owner": "contact",
+			"surface": "/contact",
+			"sourceLocale": "ja",
+			"locales": {
+				"ja": { "state": "source" }
+			},
+			"keys": [],
+			"messages": {}
+		},
+		{
+			"id": "tools",
+			"owner": "tools",
+			"surface": "/tools, /tools/<slug>",
+			"sourceLocale": "ja",
+			"locales": {
+				"ja": { "state": "source" }
+			},
+			"keys": [],
+			"messages": {}
+		}
+	]
+}

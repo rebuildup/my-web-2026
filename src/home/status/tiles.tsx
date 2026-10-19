@@ -2,6 +2,7 @@ import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
+import { StateMark } from '../../editorial/primitives/StateMark';
 import type { HomeLocale } from '../format';
 import { createHomeFormat } from '../format';
 import type { SystemService, SystemServiceHealth, SystemServiceStatus } from './health';
@@ -58,6 +59,16 @@ function statusFor(
  * format adapter (Issue #430): the same instant reads per locale and
  * names the time zone it was read in. The zone defaults to UTC so
  * the server HTML and the hydrated HTML stay identical.
+ *
+ * Issue #411 — the health badge is no longer distinguished by fill
+ * alone. `ok` painted an accent-filled pill and BOTH failure states
+ * painted the same neutral pill, so with hue removed the three
+ * states were three identical rounded rectangles. Each badge now
+ * carries a `StateMark` whose silhouette is unique per health
+ * (disc / triangle / cross) next to the existing word. Shape + text
+ * satisfies WCAG 2.2 SC 1.4.1 (Level A): the mark is `aria-hidden`
+ * and never the accessible name, and it paints in the badge's own
+ * foreground so it adds no contrast obligation (1.4.11) of its own.
  */
 export function StatusTiles({
 	services,
@@ -159,7 +170,18 @@ export function StatusTiles({
 											justifyContent: { base: 'flex-start', md: 'flex-end' },
 										})}
 									>
-										<Badge tone={HEALTH_TONE[health]}>{HEALTH_LABEL[health]}</Badge>
+										<Badge tone={HEALTH_TONE[health]}>
+											<span
+												className={css({
+													display: 'inline-flex',
+													alignItems: 'center',
+													gap: '1',
+												})}
+											>
+												<StateMark kind={health} size="sm" />
+												{HEALTH_LABEL[health]}
+											</span>
+										</Badge>
 									</div>
 								</div>
 							);

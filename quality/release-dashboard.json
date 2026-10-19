@@ -1,0 +1,567 @@
+{
+	"$comment": "Release quality dashboard roster (Issue #493). One row per quality signal the repository claims, with the command that produces its only valid output and the artefact a reviewer can open. This file declares WHICH signals exist and HOW each is decided; it never stores a verdict. The verdict comes from a run record (.tmp/release-quality-runs.json) produced by `pnpm run quality:dashboard:record`, and a signal with no valid output is reported NOT RUN / N/A — never PASS. Rows whose `family` is set inherit their state (implemented | planned) from quality/route-coverage.json so the ledger has one source of truth and is not duplicated here.",
+	"version": 1,
+	"run_record": ".tmp/release-quality-runs.json",
+	"families_source": "quality/route-coverage.json",
+	"release_gate_ledger": "quality/release-gate.json",
+	"ledger_alignment": {
+		"$comment": "Issue #508 が同じ status vocabulary（pass / fail / not run / N/A）で「release がその検査を実行するか」を判定する ledger を公開した。両者は別の問いに答えるため ledger を 2 本に増やさないが、暗黙の二重定義は禁止する：release-gate ledger の全 id について、この roster が「どの signal として表示するか」または「表示しない理由」を宣言し、`scripts/release-quality-dashboard.test.mjs` が未宣言 id を fail にする。",
+		"as_signal": {
+			"architecture-boundary": "architecture-boundary",
+			"secret-scan-source": "secret-scan",
+			"secret-scan-bundle": "secret-scan-bundle",
+			"log-redaction": "log-redaction",
+			"security-headers": "security-headers",
+			"csrf-contract": "csrf-contract",
+			"dependency-advisory": "dependency-advisory",
+			"install-script-audit": "install-scripts",
+			"tools-provenance": "tools-provenance",
+			"workflow-pinning": "workflow-pinning",
+			"sbom-inventory": "sbom",
+			"wrangler-independence": "wrangler-independence",
+			"cloudflare-binding-contract": "cloudflare-contract",
+			"cloudflare-build-contract": "cloudflare-build-contract",
+			"infisical-secret-coverage": "infisical-secret-coverage",
+			"route-quality-coverage": "route-quality-coverage",
+			"index-boundary": "index-boundary",
+			"test-wiring": "test-wiring",
+			"knip-unused-code": "knip",
+			"browser-baseline": "compat-baseline",
+			"html-standards": "html-standards",
+			"reduced-motion": "reduced-motion",
+			"seo-status": "seo-status",
+			"release-gate-ledger": "release-gate-ledger",
+			"asvs-coverage": "asvs-coverage",
+			"playwright-e2e": "e2e-playwright"
+		},
+		"not_listed": {
+			"release-version": {
+				"signal": null,
+				"reason": "`pnpm run version:check` は release branch 名から期待 version を導出するため、ticket branch 上では必然的に FAIL する。このダッシュボードを ticket branch 上で恒久的な false FAIL として書き込む根拠にはならない。"
+			},
+			"cf-typegen": {
+				"signal": null,
+				"reason": "`pnpm run cf-typegen` は .cloudflare/types/index.d.ts を書き換える。ダッシュボードは作業ツリーを mutate しないので、この行は記録に載せない（gate は cf-typegen:check）。"
+			},
+			"production-smoke": {
+				"signal": null,
+				"reason": "deploy 後の手動 window で走る production smoke（docs/runbook/cloudflare-workers-builds.md）。ダッシュボードの recorder は production に触れないため、定常的に NOT RUN になる行である。"
+			},
+			"ssrf-url-adapter-evidence": {
+				"signal": null,
+				"reason": "`pnpm run security:ssrf:report` は commit 済み証跡 docs/verification/security/ssrf-url-adapter.webp を書き換えるため、recorder が実行する command には入れない。"
+			},
+			"dynamic-security-scanning": {
+				"signal": null,
+				"reason": "#508 が reason 付きで not applicable として公開している行。1 つの事実を 2 か所で定義しないため here では再掲しない。"
+			},
+			"static-security-scanning": {
+				"signal": null,
+				"reason": "#508 が reason 付きで not applicable として公開している行。1 つの事実を 2 か所で定義しないため here では再掲しない。"
+			},
+			"runtime-waf-policy": {
+				"signal": null,
+				"reason": "#508 が reason 付きで not applicable として公開している行。1 つの事実を 2 か所で定義しないため here では再掲しない。"
+			},
+			"signed-provenance": {
+				"signal": null,
+				"reason": "#508 が reason 付きで not applicable として公開している行。1 つの事実を 2 か所で定義しないため here では再掲しない。"
+			},
+			"independent-penetration-test": {
+				"signal": null,
+				"reason": "#508 が reason 付きで not applicable として公開している行。1 つの事実を 2 か所で定義しないため here では再掲しない。"
+			}
+		}
+	},
+	"groups": [
+		{
+			"id": "gate",
+			"label": "ゲート (validate:fast / validate:integration の静的チェック)"
+		},
+		{
+			"id": "security",
+			"label": "セキュリティ"
+		},
+		{
+			"id": "performance",
+			"label": "パフォーマンス"
+		},
+		{
+			"id": "browser",
+			"label": "ブラウザ実行"
+		},
+		{
+			"id": "accessibility",
+			"label": "アクセシビリティ自動計測"
+		}
+	],
+	"signals": [
+		{
+			"id": "architecture-boundary",
+			"group": "gate",
+			"label": "architecture boundary (AGENTS.md §3)",
+			"state": "implemented",
+			"contract": "obligation 間の依存方向と type-only edge を強制する。",
+			"command": "pnpm run architecture:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "AGENTS.md §3"
+		},
+		{
+			"id": "log-redaction",
+			"group": "gate",
+			"label": "log redaction surface",
+			"state": "implemented",
+			"contract": "src/** は logger.ts 経由でしかログを出せず、scripts/** は secret 値を出さない。",
+			"command": "pnpm run log:redaction:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "AGENTS.md §4 / Issue #467"
+		},
+		{
+			"id": "test-wiring",
+			"group": "gate",
+			"label": "test wiring",
+			"state": "implemented",
+			"contract": "scripts/*.test.mjs はすべて test entry point から到達できる。",
+			"command": "pnpm run test:wiring:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #247"
+		},
+		{
+			"id": "copy-i18n",
+			"group": "gate",
+			"label": "UI copy locale contract",
+			"state": "implemented",
+			"contract": "翻訳漏れのキーと fallback の整合を検査する。",
+			"command": "pnpm run copy:i18n:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #428"
+		},
+		{
+			"id": "i18n-policy",
+			"group": "gate",
+			"label": "Unicode / URL slug policy",
+			"state": "implemented",
+			"contract": "暗黙の Unicode 正規化と未許可 locale を検査する。",
+			"command": "pnpm run i18n:policy:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #433 / ADR-0017"
+		},
+		{
+			"id": "compat-baseline",
+			"group": "gate",
+			"label": "Web feature Baseline adoption",
+			"state": "implemented",
+			"contract": "Baseline を下回る採用に fallback 宣言と証跡があるか検査する（vendored snapshot、オフライン）。",
+			"command": "pnpm run compat:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #414"
+		},
+		{
+			"id": "html-standards",
+			"group": "gate",
+			"label": "HTML standards",
+			"state": "implemented",
+			"contract": "生成済み HTML の規格違反を検査する。",
+			"command": "pnpm run html:standards:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "quality/profile.yaml#gates.fast"
+		},
+		{
+			"id": "css-standards",
+			"group": "gate",
+			"label": "CSS syntax / unknown property",
+			"state": "implemented",
+			"contract": "Panda が生成した stylesheet の未知プロパティ・at-rule を検査する。",
+			"command": "pnpm run css:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #413"
+		},
+		{
+			"id": "seo-status",
+			"group": "gate",
+			"label": "route status row coverage",
+			"state": "implemented",
+			"contract": "公開 route が 200/404/500/redirect/noindex のどれに属するかを宣言し、証跡がそれを引用する。",
+			"command": "pnpm run seo:status:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #419"
+		},
+		{
+			"id": "index-boundary",
+			"group": "gate",
+			"label": "robots / sitemap / meta robots",
+			"state": "implemented",
+			"contract": "index 境界と生成された route inventory が一致するか検査する。",
+			"command": "pnpm run index:boundary:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #423"
+		},
+		{
+			"id": "structured-data",
+			"group": "gate",
+			"label": "structured data coverage",
+			"state": "implemented",
+			"contract": "JSON-LD の対象 route と実装のずれを検査する。",
+			"command": "pnpm run structured-data:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "quality/profile.yaml#gates.fast"
+		},
+		{
+			"id": "install-scripts",
+			"group": "gate",
+			"label": "dependency install-lifecycle audit",
+			"state": "implemented",
+			"contract": "allowBuilds と quality/install-scripts.json が pnpm install tree と一致するか検査する。",
+			"command": "pnpm run install:scripts:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #474"
+		},
+		{
+			"id": "secret-scan",
+			"group": "gate",
+			"label": "repository secret scan",
+			"state": "implemented",
+			"contract": "tracked / untracked file に credential らしき値が無いか検査する。",
+			"command": "pnpm run secret:scan",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "AGENTS.md §4"
+		},
+		{
+			"id": "reduced-motion",
+			"group": "gate",
+			"label": "reduced-motion opt-out pairing",
+			"state": "implemented",
+			"contract": "すべての motion surface が data-motion hook と共有 preference を持つ。",
+			"command": "pnpm run a11y:reduced-motion:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #403"
+		},
+		{
+			"id": "knip",
+			"group": "gate",
+			"label": "unused code diff gate",
+			"state": "implemented",
+			"contract": "knip の指摘が quality/knip-baseline.json を超えて増えない。",
+			"command": "pnpm run knip:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #531"
+		},
+		{
+			"id": "tools-provenance",
+			"group": "gate",
+			"label": "tools submodule provenance",
+			"state": "implemented",
+			"contract": "Tool submodule の provenance を検査する。",
+			"command": "pnpm run tools:provenance:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "quality/profile.yaml#gates.fast"
+		},
+		{
+			"id": "workflow-pinning",
+			"group": "gate",
+			"label": "GitHub Actions pin / token audit",
+			"state": "implemented",
+			"contract": "workflow の uses: が commit SHA 固定で、job token が最小権限か検査する。",
+			"command": "pnpm run ci:pins:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #472"
+		},
+		{
+			"id": "sbom",
+			"group": "gate",
+			"label": "SBOM inventory",
+			"state": "implemented",
+			"contract": "依存 inventory (SBOM) が再現可能に生成されているか検査する。",
+			"command": "pnpm run sbom:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "quality/profile.yaml#gates.fast"
+		},
+		{
+			"id": "wrangler-independence",
+			"group": "gate",
+			"label": "wrangler independence",
+			"state": "implemented",
+			"contract": "wrangler 設定が他の binding 定義から独立しているか検査する。",
+			"command": "pnpm run wrangler:independence:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "quality/profile.yaml#gates.fast"
+		},
+		{
+			"id": "cloudflare-contract",
+			"group": "gate",
+			"label": "Cloudflare binding contract",
+			"state": "implemented",
+			"contract": "宣言済み binding のみが Worker から参照されるか検査する。",
+			"command": "pnpm run cloudflare:contract:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "quality/profile.yaml#gates.fast"
+		},
+		{
+			"id": "cloudflare-build-contract",
+			"group": "gate",
+			"label": "Cloudflare build output contract",
+			"state": "implemented",
+			"contract": "`build:cf:production` の生成物が Wrangler の期待と一致するか検査する。",
+			"command": "pnpm run cloudflare:contract:check:build",
+			"requirements": ["build"],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "build 済み出力が無いと測定対象を持たないので NOT RUN。"
+			},
+			"owner": "quality/profile.yaml#gates.integration"
+		},
+		{
+			"id": "release-gate-ledger",
+			"group": "gate",
+			"label": "release gate ledger (Issue #508)",
+			"state": "implemented",
+			"contract": "release が実行する検査の ledger が実チェーンと乖離しない。",
+			"command": "pnpm run release:gate:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #508"
+		},
+		{
+			"id": "route-quality-coverage",
+			"group": "gate",
+			"label": "route × quality gate coverage",
+			"state": "implemented",
+			"contract": "公開 route roster と gate coverage ledger が乖離しない。",
+			"command": "pnpm run routes:quality:report",
+			"requirements": [],
+			"evidence": {
+				"kind": "artefact",
+				"paths": [".tmp/route-quality-report.html"],
+				"note": "coverage ledger の HTML。gate の有効な出力はこの report であり、終了コードだけではない。"
+			},
+			"owner": "Issue #492"
+		},
+		{
+			"id": "security-headers",
+			"group": "security",
+			"label": "response security headers",
+			"state": "implemented",
+			"contract": "Worker が返す nosniff / Referrer-Policy / Permissions-Policy を検査する。",
+			"command": "pnpm run security:headers:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #449"
+		},
+		{
+			"id": "asvs-coverage",
+			"group": "security",
+			"label": "ASVS 5.0 evidence coverage",
+			"state": "implemented",
+			"contract": "選択した ASVS 5.0 要件が、適用行すべてをリポジトリ内の証拠へ解決できる。",
+			"command": "pnpm run asvs:check",
+			"requirements": [],
+			"evidence": { "kind": "exit_code" },
+			"owner": "docs/verification/security/asvs-coverage.md"
+		},
+		{
+			"id": "frame-ancestors",
+			"group": "security",
+			"label": "frame-ancestors / embed policy",
+			"state": "implemented",
+			"contract": "Tool manifest の delivery.iframe.allow と frame-ancestors の一致を検査する。",
+			"command": "pnpm run security:embed:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #449"
+		},
+		{
+			"id": "csrf-contract",
+			"group": "security",
+			"label": "CSRF contract",
+			"state": "implemented",
+			"contract": "TanStack Start 既定 CSRF middleware を迂回していないことを検査する。",
+			"command": "pnpm run csrf:contract:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "AGENTS.md §2"
+		},
+		{
+			"id": "infisical-secret-coverage",
+			"group": "security",
+			"label": "Infisical secret name coverage",
+			"state": "implemented",
+			"contract": "Wrangler が宣言する secret 名が Infisical の宣言と一致するか検査する（name のみ、値には触れない）。",
+			"command": "pnpm run infisical:check:coverage",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "AGENTS.md §4: 名前だけを比較し、値は一切読まない。"
+			},
+			"owner": "Issue #167"
+		},
+		{
+			"id": "secret-scan-bundle",
+			"group": "security",
+			"label": "bundle secret scan",
+			"state": "implemented",
+			"contract": "ビルド済み Worker / client bundle に credential らしき値が無いか検査する。",
+			"command": "pnpm run secret:scan:bundle",
+			"requirements": ["build"],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "bundle が無いと走らせようがないので NOT RUN。"
+			},
+			"owner": "AGENTS.md §4"
+		},
+		{
+			"id": "bundle-budget",
+			"group": "performance",
+			"label": "client bundle budget",
+			"state": "implemented",
+			"contract": "route ごとの client bundle が quality/bundle-budget.json の上限内に収まる。",
+			"command": "pnpm run bundle:budget:check -- --report=.tmp/bundle-budget.json --html=.tmp/bundle-budget.html",
+			"requirements": ["build"],
+			"evidence": {
+				"kind": "artefact",
+				"paths": [".tmp/bundle-budget.json", ".tmp/bundle-budget.html"],
+				"note": "ビルド済み bundle map が無ければこの gate は測定対象を持たないので NOT RUN。"
+			},
+			"owner": "Issue #482"
+		},
+		{
+			"id": "dependency-advisory",
+			"group": "performance",
+			"label": "dependency advisory audit",
+			"state": "implemented",
+			"contract": "npm advisory endpoint の verdict を quality/dependency-advisory-gate.json と突き合わせる。",
+			"command": "pnpm run dep-audit:check -- --report .tmp/dependency-advisory-report.html",
+			"requirements": ["network"],
+			"evidence": {
+				"kind": "artefact",
+				"paths": [".tmp/dependency-advisory-report.html"],
+				"note": "validate:fast には含まれず、CI の validate ジョブが advisory endpoint を呼ぶ。オフラインでは NOT RUN。"
+			},
+			"owner": "Issue #470"
+		},
+		{
+			"id": "e2e-playwright",
+			"group": "browser",
+			"label": "Playwright E2E (Chromium)",
+			"state": "implemented",
+			"contract": "稼働中 Worker に対して spec が rendered surface を検証する。",
+			"command": "CI=1 pnpm run e2e -- --reporter=html",
+			"requirements": ["build", "browser", "worker"],
+			"evidence": {
+				"kind": "artefact",
+				"paths": ["playwright-report/index.html"],
+				"output_dir": "playwright-report",
+				"output_dir_note": "playwright の html reporter は出力先を指定しない限り `playwright-report/` へ書き出す。playwright.config.ts は CI で github/list reporter を使うため、HTML を明示しないと report は作られない。",
+				"note": "CI 専用ステップ（validate ジョブ）。ローカル実行には dev server が必要。CI=1 を前置するのは失敗時に html reporter がサーバーを起動してプロセスを止めないため。"
+			},
+			"owner": "AGENTS.md §5"
+		},
+		{
+			"id": "lighthouse-performance",
+			"group": "performance",
+			"family": "performance",
+			"label": "Lighthouse 実測 (Core Web Vitals)",
+			"contract": "",
+			"requirements": [],
+			"evidence": null,
+			"owner": "Issue #384–#386"
+		},
+		{
+			"id": "a11y-axe",
+			"group": "accessibility",
+			"family": "a11y",
+			"label": "axe-core 自動スキャン",
+			"contract": "",
+			"requirements": [],
+			"evidence": null,
+			"owner": "quality/route-coverage.json#gate_families.a11y"
+		},
+		{
+			"id": "cross-browser",
+			"group": "browser",
+			"family": "cross_browser",
+			"label": "2 ブラウザエンジン実行",
+			"contract": "",
+			"requirements": [],
+			"evidence": null,
+			"owner": "quality/route-coverage.json#gate_families.cross_browser"
+		},
+		{
+			"id": "security-headers-spec",
+			"group": "security",
+			"family": "security_headers",
+			"label": "route ごとの security header spec",
+			"contract": "",
+			"requirements": [],
+			"evidence": null,
+			"owner": "quality/route-coverage.json#gate_families.security_headers"
+		}
+	]
+}

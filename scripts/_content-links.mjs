@@ -174,7 +174,10 @@ export function parseAttributes(tag) {
  * report uses; they are not a DOM.
  */
 function elementTags(html, tagName) {
-	const pattern = new RegExp(`<${tagName}\\b[^>]*>`, 'gi');
+	// `>` inside a quoted attribute value is data, not the end of the tag.
+	// A plain `[^>]*` scan would truncate `href="/about?x=>"` and turn a
+	// valid link into a false 404.
+	const pattern = new RegExp(`<${tagName}\\b(?:[^>"']|"[^"]*"|'[^']*')*>`, 'gi');
 	const tags = [];
 	let match = pattern.exec(html);
 	while (match !== null) {
@@ -409,6 +412,18 @@ export function classifyReference(raw, { documentPath, origin = 'https://rebuild
 		return { kind: 'invalid', target: value };
 	}
 
+	/** Decode a URL fragment the way a browser compares it to an element id. */
+	function decodeFragment(hash) {
+		const raw = hash.startsWith('#') ? hash.slice(1) : hash;
+		try {
+			return decodeURIComponent(raw);
+		} catch {
+			// A malformed escape is compared literally; it must not throw out of
+			// the validator and abort the whole scan.
+			return raw;
+		}
+	}
+
 	const sameOrigin = url.origin === new URL(origin).origin;
 	if (!sameOrigin) {
 		return {
@@ -428,7 +443,7 @@ export function classifyReference(raw, { documentPath, origin = 'https://rebuild
 		target: value,
 		url,
 		path: url.pathname,
-		fragment: url.hash.startsWith('#') ? url.hash.slice(1) : '',
+		fragment: decodeFragment(url.hash),
 	};
 }
 
@@ -724,8 +739,46 @@ export function validateDocuments({
 				continue;
 			}
 
+			if (image.raw.trim() === '') {
+				findings.push(
+					finding({
+						...where,
+						severity: SEVERITY.WARNING,
+						code: 'W109 image-src-empty',
+						message:
+							'an empty src resolves to the document itself, so the browser renders a broken image',
+					}),
+				);
+				continue;
+			}
+
 			const classified = classifyReference(image.raw, { documentPath, origin });
 			if (classified.kind === 'external') {
+				// Credentials and private addresses are content defects for an
+				// image for the same reason they are for an anchor: the
+				// browser would replay / dereference them. Keep the policy
+				// identical to the link branch instead of downgrading it to
+				// info just because the element is an image.
+				if (classified.hasCredentials) {
+					findings.push(
+						finding({
+							...where,
+							severity: SEVERITY.ERROR,
+							code: 'E104 credential-url',
+							message: 'a published URL must not carry a username or password',
+						}),
+					);
+				}
+				if (classified.privateHost) {
+					findings.push(
+						finding({
+							...where,
+							severity: SEVERITY.ERROR,
+							code: 'E110 private-host',
+							message: 'a published image must not point at a loopback / private address',
+						}),
+					);
+				}
 				findings.push(
 					finding({
 						...where,
@@ -841,16 +894,20 @@ export async function checkExternalTargets(
  */
 export function redactTarget(value) {
 	const text = String(value ?? '');
+	// A protocol-relative URL carries userinfo without a scheme
+	// (`//user:pass@example.com/x`). Parse it against https and remove the
+	// temporary scheme again so the report keeps the authored shape.
+	const protocolRelative = text.startsWith('//');
 	let url;
 	try {
-		url = new URL(text);
+		url = new URL(protocolRelative ? `https:${text}` : text);
 	} catch {
 		return text;
 	}
 	if (url.username === '' && url.password === '') return text;
 	url.username = url.username ? '***' : '';
 	url.password = url.password ? '***' : '';
-	return url.href;
+	return protocolRelative ? url.href.replace(/^https:/, '') : url.href;
 }
 
 /**

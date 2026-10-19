@@ -129,6 +129,49 @@ describe('validation severity', () => {
 		assert.equal(findings[0].code, 'E106 missing-fragment');
 	});
 
+	it('decodes a non-ASCII or percent-encoded fragment before comparing ids', () => {
+		const target = {
+			...parseHtmlDocument({
+				path: 'public/share/example/index.html',
+				html: '<h2 id="セクション">section</h2><h2 id="my section">spaced</h2>',
+			}),
+			urlPath: '/share/example/',
+		};
+		const document = {
+			...parseHtmlDocument({
+				path: 'public/share/example/index.html',
+				html: '<a href="#セクション">unicode</a><a href="#my%20section">encoded space</a>',
+			}),
+			urlPath: '/share/example/',
+		};
+		const findings = validateDocuments({
+			documents: [document],
+			surface: fixtureSurface(),
+			origin: ORIGIN,
+			documentsById: new Map([
+				['/share/example/', target],
+				['/share/example/index.html', target],
+			]),
+		});
+		assert.deepEqual(findings, []);
+	});
+
+	it('reads a quoted > as attribute data rather than the end of the tag', () => {
+		const document = parseHtmlDocument({
+			path: 'public/share/example/index.html',
+			html: '<a href="/about?x=>">query</a><img alt="a > b" src="assets/image.webp">',
+		});
+		assert.deepEqual(
+			document.references.map((item) => item.raw),
+			['/about?x=>'],
+		);
+		assert.deepEqual(
+			document.images.map((item) => item.raw),
+			['assets/image.webp'],
+		);
+		assert.deepEqual(findingsOf({ html: '<a href="/about?x=>">query</a>' }), []);
+	});
+
 	it('records an external http target as a warning and never as an error', () => {
 		const findings = findingsOf({ html: '<a href="http://example.com/x">x</a>' });
 		const summary = summarize(findings);
@@ -208,6 +251,27 @@ describe('image validation', () => {
 		assert.ok(codes.includes('E108 image-404'));
 		assert.ok(codes.includes('W103 image-alt-empty'));
 		assert.ok(codes.includes('W104 image-src-missing'));
+	});
+
+	it('warns on an empty src instead of silently accepting it', () => {
+		const findings = findingsOf({ html: '<img alt="broken" src="">' });
+		assert.equal(findings.length, 1);
+		assert.equal(findings[0].code, 'W109 image-src-empty');
+		assert.equal(findings[0].severity, SEVERITY.WARNING);
+		assert.equal(summarize(findings).verdict, 'pass');
+	});
+
+	it('applies the credential and private-host rules to image sources', () => {
+		const findings = findingsOf({
+			html: [
+				'<img alt="credential" src="https://user:pass@example.com/a.png">',
+				'<img alt="loopback" src="http://127.0.0.1/a.png">',
+			].join(''),
+		});
+		const codes = findings.map((item) => item.code);
+		assert.ok(codes.includes('E104 credential-url'));
+		assert.ok(codes.includes('E110 private-host'));
+		assert.equal(summarize(findings).verdict, 'fail');
 	});
 
 	it('treats an explicitly decorative empty alt as valid', () => {
@@ -318,7 +382,11 @@ describe('external dereference (opt-in)', () => {
 		const findings = await checkExternalTargets(
 			[
 				'http://127.0.0.1:8080/admin',
+				'http://127.0.0.1./admin',
 				'http://169.254.169.254/latest/meta-data/',
+				'http://[::ffff:169.254.169.254]/latest/meta-data/',
+				'http://[::ffff:a9fe:a9fe]/latest/meta-data/',
+				'http://localhost./x',
 				'https://user:pass@example.com/x',
 			],
 			{
@@ -331,6 +399,27 @@ describe('external dereference (opt-in)', () => {
 		);
 		assert.deepEqual(calls, []);
 		assert.deepEqual(findings, []);
+	});
+
+	it('aborts the request at the deadline and reports a timeout', async () => {
+		let signal;
+		const findings = await checkExternalTargets(['https://example.com/x'], {
+			fetchImpl: (_url, init) => {
+				signal = init.signal;
+				return new Promise((_resolve, reject) => {
+					signal.addEventListener(
+						'abort',
+						() => reject(Object.assign(new Error('aborted'), { name: 'AbortError' })),
+						{ once: true },
+					);
+				});
+			},
+			timeoutMs: 20,
+			origin: ORIGIN,
+		});
+		assert.equal(signal.aborted, true);
+		assert.equal(findings.length, 1);
+		assert.equal(findings[0].code, 'W106 external-timeout');
 	});
 
 	it('does not follow a redirect automatically', async () => {
@@ -353,6 +442,7 @@ describe('credential redaction', () => {
 		assert.equal(redactTarget('https://user:pass@example.com/x'), 'https://***:***@example.com/x');
 		assert.equal(redactTarget('https://user@example.com/x?a=1'), 'https://***@example.com/x?a=1');
 		assert.equal(redactTarget('https://example.com/x'), 'https://example.com/x');
+		assert.equal(redactTarget('//user:pass@example.com/x'), '//***:***@example.com/x');
 		assert.equal(redactTarget('javascript:alert(1)'), 'javascript:alert(1)');
 		assert.equal(redactTarget(''), '');
 
@@ -376,6 +466,36 @@ describe('credential redaction', () => {
 		});
 		assert.ok(!html.includes('pass@'));
 		assert.ok(html.includes('***:***@example.com'));
+
+		const protocolRelative = {
+			...finding,
+			target: '//user:pass@example.com/x',
+		};
+		for (const rendered of [
+			buildReportHtml({
+				scan: {
+					sources: 1,
+					references: 1,
+					externalMode: false,
+					findings: [protocolRelative],
+					summary: summarize([protocolRelative]),
+				},
+				fixtures: [],
+			}),
+			renderMarkdownSummary({
+				scan: {
+					sources: 1,
+					references: 1,
+					externalMode: false,
+					findings: [protocolRelative],
+					summary: summarize([protocolRelative]),
+				},
+				fixtures: [],
+			}),
+		]) {
+			assert.ok(!rendered.includes('pass@'));
+			assert.ok(rendered.includes('***:***@example.com'));
+		}
 	});
 });
 

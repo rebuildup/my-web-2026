@@ -43,7 +43,7 @@ content を所有し、境界は `publication-surface.mjs` が監査する）。
 | 判定 | 例 | release |
 | --- | --- | --- |
 | **error** | 内部リンク / 画像 src の 404、`javascript:` などの禁止 scheme、TAB / LF / CR などの制御文字で難読化された scheme（`java&#9;script:`）、資格情報入り URL、private / loopback host、alt 属性の欠落 | **fail** |
-| **warning** | 外部ホストの timeout / 到達不能 / 5xx、`http:` の外部リンク、`href="#"`、空 alt、runtime が src を供給する画像 | 止めない |
+| **warning** | 外部ホストの timeout / 到達不能 / 5xx、`http:` の外部リンク、`href="#"`、空 alt、空の画像 src、runtime が src を供給する画像 | 止めない |
 | **info** | 外部リンク・非 HTTP target の記録 | 影響なし |
 
 外部リンクは CI（`validate:fast`）では **dereference しない**。
@@ -56,6 +56,12 @@ warning に区分する」「内部 404 と外部 timeout を区別する」を�
 資格情報入り URL は dereference しない。これらは既に error であり、検査器自身を
 SSRF の踏み台にしないための防御でもある。redirect は自動追従せず（`redirect: 'manual'`）、
 3xx は `W105 external-http-status` の warning として reviewer に返す。
+
+host の判定はブラウザが同じ宛先として扱う綴りを正規化してから行う。末尾のドット
+（`localhost.` / `127.0.0.1.`）を除き、IPv6 の bracket / zone / port を外し、
+IPv4-mapped IPv6（`::ffff:0:0/96`、例 `[::ffff:a9fe:a9fe]` = `169.254.169.254`）は
+埋め込み IPv4 として判定する。これにより metadata endpoint を別表記で書いた
+リンクも error / 非 dereference になる。
 
 ```
 pnpm run content:links:check
@@ -71,6 +77,9 @@ pnpm run content:links:check -- --external --external-timeout 5000
   実在する slug（Portfolio seed / Tools manifest）だけを展開する。
   `/portfolio/<任意の文字列>` は通らない。
 - static HTML 間の `#fragment` は target 文書の `id` / `name` と照合する。
+  比較の前に `decodeURIComponent` で percent-encoding を戻す（失敗時は authored の
+  文字列のまま）ため、`#セクション` と `id="セクション"`、`#my%20section` と
+  `id="my section"` は一致する。表示文字列の正規化は行わない。
   React route の fragment は照合しない（id の所有は React 側にあり、ここで推測すると
   false positive になる）。
 - percent-encoded な `/`（`%2F`）は path separator として扱わない。static hosting も
@@ -85,7 +94,11 @@ pnpm run content:links:check -- --external --external-timeout 5000
 - HTML は `alt` 属性の**欠落**を error、`alt=""` を warning とする。
   `role="presentation"` / `aria-hidden="true"` を明示した空 alt は装飾として通す。
 - `src` / `srcset` は内部なら実在を確認し、外部なら info として記録する。
+  外部画像にもリンクと同じ安全性の規則を適用する: 資格情報入り URL は `E104`、
+  private / loopback host は `E110` の error であり、`--external` でも dereference しない。
 - `src` を持たない `<img>` は「script が後から設定する」ものとして warning。
+  `src=""` は存在するが空の参照であり、browser が文書自身を指す壊れた画像として
+  扱うため `W109 image-src-empty` の warning にする。
 - Markdown の `![alt](url)` は現行 lexer では link に degrade する
   （[`docs/portfolio/markdown-format.md`](../../portfolio/markdown-format.md)）。
   それでも alt と URL を検証する: authored reference は将来の renderer が
@@ -94,12 +107,18 @@ pnpm run content:links:check -- --external --external-timeout 5000
   inline SVG data URI を許可するかは content owner の未決事項であり、このゲートは
   黙って許可しない側に倒している。
 - alt の**内容の質**（説明的か、重複していないか）は自動判定しない。
+- Markdown のリンク抽出は lexer と同じく最初の `)` を閉じ括弧とする
+  （`src/portfolio/markdown.lexer.ts#findLinkCloseParen`）。CommonMark の
+   balanced parentheses（`[x](/a_(b).pdf)`）には対応しない。lexer が公開する href と
+  検査対象を一致させ、renderer が切り詰める URL を検査器だけが通す状態を避ける。
 
 ## 5. 検証と再現
 
-CI fixture は 31 件で、内部 404 / 外部 timeout / 画像 alt / 画像 404 /
-禁止 scheme / 制御文字で難読化された scheme / private host / fragment /
-Markdown code fence / report escaping / credential redaction を固定している。
+CI は 36 tests / 6 report fixtures で構成される。36 tests は内部 404 / 外部 timeout /
+画像 alt / 画像 404 / 禁止 scheme / 制御文字で難読化された scheme / private host /
+IPv4-mapped IPv6 の正規化 / fragment の percent-decoding / Markdown code fence /
+report escaping / credential redaction を固定し、6 report fixtures は report の
+counterfactual 表示を固定する。
 real repository の走査も同じ test file の中で error 0 を assertion している。
 
 ```bash

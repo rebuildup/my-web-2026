@@ -43,6 +43,13 @@ use the operator channel in [`docs/security.md`](../security.md) for
 anything urgent (live exploitation, credential disclosure). A leaked
 credential is assumed compromised: revoke and rotate immediately.
 
+Once a report is accepted, the intake, triage, fix and publication
+procedure is [`docs/runbook/security-disclosure.md`](../runbook/security-disclosure.md)
+(Issue #478). Its simulation gate
+(`pnpm run security:disclosure:check`) reads only the working tree and
+the committed fixtures, and it is the reason this flow can be rehearsed
+without publishing a mailbox or touching a secret.
+
 ## What approving it changes
 
 One data file, plus the normal release path. There is no

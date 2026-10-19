@@ -32,6 +32,7 @@
 			"seo-status": "seo-status",
 			"release-gate-ledger": "release-gate-ledger",
 			"asvs-coverage": "asvs-coverage",
+			"security-disclosure": "security-disclosure",
 			"playwright-e2e": "e2e-playwright"
 		},
 		"not_listed": {
@@ -421,6 +422,17 @@
 			"requirements": [],
 			"evidence": { "kind": "exit_code" },
 			"owner": "docs/verification/security/asvs-coverage.md"
+		},
+		{
+			"id": "security-disclosure",
+			"group": "security",
+			"label": "脆弱性報告 flow (Issue #478)",
+			"state": "implemented",
+			"contract": "脆弱性報告から公開判断までの flow が runbook と ledger の両方で記録され、合成 fixture が duty 欠落と修正前の公開詳細を INCOMPLETE として返す。",
+			"command": "pnpm run security:disclosure:check",
+			"requirements": [],
+			"evidence": { "kind": "exit_code" },
+			"owner": "docs/runbook/security-disclosure.md"
 		},
 		{
 			"id": "frame-ancestors",

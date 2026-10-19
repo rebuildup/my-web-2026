@@ -1,0 +1,66 @@
+{
+	"normal": {
+		"status": "PASS",
+		"source_commit": "0123456789abcdef0123456789abcdef01234567",
+		"artifact_digest": "637b41e25babd595183603c1279d736f349d6f554fe8d93721a24a92e48d3ed1",
+		"artifact_files": 4,
+		"artifact_bytes": 262,
+		"lockfile_packages": 759,
+		"signature_status": "unsigned",
+		"deploy_id": null,
+		"artifact_origin": "github-actions-production-build-output",
+		"deployed_bytes_attested": false,
+		"release_tag": "v0.7.0",
+		"release_tag_commit": "0123456789abcdef0123456789abcdef01234567"
+	},
+	"abnormal": [
+		{
+			"id": "tampered-artifact",
+			"expected_finding": "ARTIFACT_DIGEST_MISMATCH",
+			"status": "FAIL",
+			"finding": "ARTIFACT_DIGEST_MISMATCH"
+		},
+		{
+			"id": "wrong-source-commit",
+			"expected_finding": "SOURCE_COMMIT_MISMATCH",
+			"status": "FAIL",
+			"finding": "SOURCE_COMMIT_MISMATCH"
+		},
+		{
+			"id": "release-tag-commit-drift",
+			"expected_finding": "RELEASE_TAG_COMMIT_MISMATCH",
+			"status": "FAIL",
+			"finding": "RELEASE_TAG_COMMIT_MISMATCH"
+		},
+		{
+			"id": "release-tag-version-drift",
+			"expected_finding": "RELEASE_TAG_VERSION_MISMATCH",
+			"status": "FAIL",
+			"finding": "RELEASE_TAG_VERSION_MISMATCH"
+		},
+		{
+			"id": "lockfile-drift",
+			"expected_finding": "LOCKFILE_DIGEST_MISMATCH",
+			"status": "FAIL",
+			"finding": "LOCKFILE_DIGEST_MISMATCH"
+		},
+		{
+			"id": "fabricated-signature",
+			"expected_finding": "SIGNATURE_INCONSISTENT",
+			"status": "FAIL",
+			"finding": "SIGNATURE_INCONSISTENT"
+		},
+		{
+			"id": "fabricated-coverage",
+			"expected_finding": "COVERAGE_UNSUPPORTED",
+			"status": "FAIL",
+			"finding": "COVERAGE_UNSUPPORTED"
+		},
+		{
+			"id": "undeclared-coverage",
+			"expected_finding": "COVERAGE_UNDECLARED",
+			"status": "FAIL",
+			"finding": "COVERAGE_UNDECLARED"
+		}
+	]
+}

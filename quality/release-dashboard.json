@@ -13,6 +13,7 @@
 			"log-redaction": "log-redaction",
 			"security-headers": "security-headers",
 			"csrf-contract": "csrf-contract",
+			"integration-scope-ledger": "integration-scope",
 			"dependency-advisory": "dependency-advisory",
 			"install-script-audit": "install-scripts",
 			"tools-provenance": "tools-provenance",
@@ -33,6 +34,7 @@
 			"seo-status": "seo-status",
 			"release-gate-ledger": "release-gate-ledger",
 			"asvs-coverage": "asvs-coverage",
+			"security-disclosure": "security-disclosure",
 			"playwright-e2e": "e2e-playwright"
 		},
 		"not_listed": {
@@ -424,6 +426,17 @@
 			"owner": "docs/verification/security/asvs-coverage.md"
 		},
 		{
+			"id": "security-disclosure",
+			"group": "security",
+			"label": "脆弱性報告 flow (Issue #478)",
+			"state": "implemented",
+			"contract": "脆弱性報告から公開判断までの flow が runbook と ledger の両方で記録され、合成 fixture が duty 欠落と修正前の公開詳細を INCOMPLETE として返す。",
+			"command": "pnpm run security:disclosure:check",
+			"requirements": [],
+			"evidence": { "kind": "exit_code" },
+			"owner": "docs/runbook/security-disclosure.md"
+		},
+		{
 			"id": "frame-ancestors",
 			"group": "security",
 			"label": "frame-ancestors / embed policy",
@@ -448,6 +461,19 @@
 				"kind": "exit_code"
 			},
 			"owner": "AGENTS.md §2"
+		},
+		{
+			"id": "integration-scope",
+			"group": "security",
+			"label": "integration connection scope / retention ledger",
+			"state": "implemented",
+			"contract": "外部連携の接続候補ごとに最小権限 scope・token 保管期限・失効手順が宣言され、reviewed な接続を実 adapter に通した測定値が宣言と一致する。未公開候補の allowlist 無し公開・route mount・secret 宣言は不可。",
+			"command": "pnpm run integration:scope:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "docs/security/integration-token-scope.md (Issue #464)"
 		},
 		{
 			"id": "infisical-secret-coverage",

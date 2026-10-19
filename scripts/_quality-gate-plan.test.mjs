@@ -74,7 +74,11 @@ change_risk_mapping:
  *
  * Issue #477 adds one line here with its gate: `secrets:status:check`,
  * declared in `quality/profile.yaml` right after
- * `infisical:check:coverage`. The pin keeps its job (a dropped or moved
+ * `infisical:check:coverage`; Issue #478 (`security:disclosure:check`)
+ * and Issue #464 (`integration:scope:check`) add theirs on the release
+ * trunk, so the reconciled pin holds 44 components — one per declared
+ * `gates.fast.components` entry, in the same order. The pin keeps its
+ * job (a dropped or moved
  * component still fails); a new gate is still one line in the profile
  * plus one line here.
  */
@@ -106,6 +110,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run content:links:check',
 	'pnpm run routes:quality:check',
 	'pnpm run security:headers:check',
+	'pnpm run security:disclosure:check',
 	'pnpm run asvs:check',
 	'pnpm run html:standards:check',
 	'pnpm run i18n:policy:check',
@@ -120,6 +125,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run css:check',
 	'pnpm run app:icons:check',
 	'pnpm run release:gate:check',
+	'pnpm run integration:scope:check',
 	'pnpm run tools:artifact:check',
 ];
 
@@ -329,13 +335,13 @@ describe('the repository plan', () => {
 		// dropped publication / release-asset / app-icons component or a
 		// component moved away from its merge-base position.
 		assert.deepEqual(plan('fast'), EXPECTED_FAST_PLAN);
-		// Pin the tail explicitly: `tools:artifact:check` landed at the END of
-		// the merge-base chain (after `release:gate:check`), so the failure
-		// path stops after every other fast gate exactly as it used to.
-		assert.deepEqual(plan('fast').slice(-2), [
-			'pnpm run release:gate:check',
-			'pnpm run tools:artifact:check',
-		]);
+		// Pin the tail explicitly: `tools:artifact:check` is the LAST fast
+		// step. It landed at the end of the merge-base chain (after
+		// `release:gate:check`), so a gate added later is appended BEFORE
+		// it — the failure path still stops after every other fast gate
+		// exactly as it used to. Issue #464 adds `integration:scope:check`
+		// in that slot, one line before it.
+		assert.equal(plan('fast').at(-1), 'pnpm run tools:artifact:check');
 	});
 
 	it('lists the same plan the runner would execute', () => {

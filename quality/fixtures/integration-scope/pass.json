@@ -1,0 +1,4 @@
+{
+	"note": "the shipped ledger itself: no patch, and it must produce no error at all",
+	"ops": []
+}

@@ -21,11 +21,12 @@
  * Status-only output (AGENTS.md §4)
  * ---------------------------------
  * Names, verdicts, statuses, counts and dates. No secret value is read,
- * fetched, stored or printed. Three mechanisms enforce that, described in
- * `scripts/_secret-rotation-status.mjs`: the §3.2 name grammar refuses a
- * recorded listing that carries a value instead of a name, the ledger
- * schema rejects unknown keys, and every line this script writes is run
- * through the leak guard first.
+ * fetched, stored or printed. The §3.2 name grammar is the enforcing gate
+ * (it refuses a recorded listing that carries a value instead of a name,
+ * so no value can reach a rendered line), the ledger schema rejects
+ * unknown keys, and every line this script writes is additionally run
+ * through the leak guard — defence in depth, described in
+ * `scripts/_secret-rotation-status.mjs`.
  *
  * Exit codes
  * ----------

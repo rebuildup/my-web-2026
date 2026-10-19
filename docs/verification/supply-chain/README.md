@@ -79,11 +79,12 @@ build した Build Output に対する attestation gate を**実際に動作さ�
 状態**で撮影したものである（Cloudflare Workers Builds が deploy する
 artifact は対象外）。fixture の Build Output
 に対する正常系（artifact digest / source commit / lockfile / version が
-一致し、署名は `unsigned`）と、4 つの異常系（artifact 改ざん、source
-commit 不一致、lockfile drift、存在しない署名の表示）を同じ画像に収める。
+一致し、署名は `unsigned`）と、6 つの異常系（artifact 改ざん、source
+commit 不一致、release tag の commit 不一致、release tag の version
+不一致、lockfile drift、存在しない署名の表示）を同じ画像に収める。
 
 > **Format note.** Issue #476 は `artifact-sha-attestation.png` を指定する。
-> commit するのは同じ画像の **WebP**（幅 ≤1480 px、quality 80、<300 KB）で、
+> commit するのは同じ画像の **WebP**（幅 ≤1440 px、quality 80、<300 KB）で、
 > PNG はメモリ上にしか作らず commit しない。
 
 `artifact-attestation-summary.json` は同じ実行の status-only 要約である。
@@ -93,7 +94,9 @@ assertion し、schema・正常/異常の観測・修復手順は
 に記録している。
 
 fixture は `.tmp/` に生成され、production credential・Cloudflare API・
-secret 値のいずれも読まない。再生成:
+secret 値のいずれも読まない。release tag の 2 観測は、`--release-tag`
+が tag の commit と tag 名の version の両方を manifest と照合して
+初めて FAIL になることの証跡である。再生成:
 
 ```bash
 pnpm run artifact:attestation:report

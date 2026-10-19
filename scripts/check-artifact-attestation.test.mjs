@@ -19,6 +19,7 @@ import {
 	artifactDigest,
 	buildManifest,
 	readDependencyFacts,
+	releaseTagVersion,
 	serializeManifest,
 	sha256Text,
 	verifyManifest,
@@ -413,6 +414,57 @@ describe('manifest verification', () => {
 		t.after(() => rmSync(root, { recursive: true, force: true }));
 		assert.throws(() => verifyManifest({ manifest, artifactDir, root }), AttestationError);
 	});
+
+	it('compares a published manifest with the release tag that names it', (t) => {
+		const { root, artifactDir, manifest } = setup();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+		const releaseTag = { name: 'v1.2.3', commit: SOURCE, version: '1.2.3' };
+
+		const ok = verifyManifest({
+			manifest,
+			artifactDir,
+			root,
+			expectedSourceCommit: SOURCE,
+			releaseTag,
+		});
+		assert.equal(ok.status, 'PASS');
+		assert.ok(
+			ok.checks.some((c) => c.id === 'Release tag' && c.detail.includes(releaseTag.commit)),
+		);
+		assert.equal(ok.summary.release_tag, 'v1.2.3');
+
+		const otherCommit = verifyManifest({
+			manifest,
+			artifactDir,
+			root,
+			expectedSourceCommit: SOURCE,
+			releaseTag: { ...releaseTag, commit: OTHER_SOURCE },
+		});
+		assert.equal(otherCommit.status, 'FAIL');
+		assert.ok(codes(otherCommit).includes('RELEASE_TAG_COMMIT_MISMATCH'));
+
+		const otherVersion = verifyManifest({
+			manifest,
+			artifactDir,
+			root,
+			expectedSourceCommit: SOURCE,
+			releaseTag: { ...releaseTag, version: '9.9.9' },
+		});
+		assert.equal(otherVersion.status, 'FAIL');
+		assert.ok(codes(otherVersion).includes('RELEASE_TAG_VERSION_MISMATCH'));
+	});
+});
+
+describe('release tag names', () => {
+	it('reads the version out of a v<version> release tag only', () => {
+		assert.equal(releaseTagVersion('v1.2.3'), '1.2.3');
+		assert.equal(releaseTagVersion('v1.2.3-rc.1'), '1.2.3-rc.1');
+		assert.equal(releaseTagVersion('1.2.3'), null);
+		assert.equal(releaseTagVersion('release-1-2-3'), null);
+		assert.equal(releaseTagVersion('v1.2'), null);
+		assert.equal(releaseTagVersion(''), null);
+		assert.equal(releaseTagVersion(null), null);
+	});
 });
 
 describe('CLI', () => {
@@ -475,6 +527,168 @@ describe('CLI', () => {
 		assert.equal(result.status, 2);
 		assert.match(result.stderr, /does not match the checked-out HEAD/);
 		assert.equal(existsSync(outPath), false);
+	});
+
+	it('rejects --release-tag when generating a manifest', (t) => {
+		const root = makeRoot();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+		const artifactDir = makeArtifact(root);
+		const outPath = join(root, 'generated.json');
+
+		const result = runCli([
+			`--artifact-dir=${artifactDir}`,
+			`--out=${outPath}`,
+			'--release-tag=v1.2.3',
+		]);
+		assert.equal(result.status, 2);
+		assert.match(result.stderr, /only valid with --manifest/);
+		assert.equal(existsSync(outPath), false);
+	});
+});
+
+describe('CLI release tag verification', () => {
+	const version = readDependencyFacts({ root: REPO_ROOT }).project.version;
+
+	/**
+	 * A throwaway git repository with a real tag, addressed through the
+	 * git-native GIT_DIR / GIT_WORK_TREE seam instead of the checkout the
+	 * test runner happens to sit in. Nothing in the real repository is
+	 * tagged or moved.
+	 */
+	function makeTaggedRepo({ tagName = `v${version}`, commits = 1 } = {}) {
+		const dir = mkdtempSync(join(tmpdir(), 'artifact-attestation-tags-'));
+		const run = (args) =>
+			execFileSync('git', args, {
+				cwd: dir,
+				encoding: 'utf8',
+				env: {
+					...process.env,
+					GIT_AUTHOR_NAME: 'Attestation Fixture',
+					GIT_AUTHOR_EMAIL: 'fixture@example.invalid',
+					GIT_COMMITTER_NAME: 'Attestation Fixture',
+					GIT_COMMITTER_EMAIL: 'fixture@example.invalid',
+				},
+			});
+		run(['init', '--quiet']);
+		for (let index = 0; index < commits; index += 1) {
+			writeFileSync(join(dir, `file-${index}.txt`), `fixture ${index}\n`);
+			run(['add', '.']);
+			run(['commit', '--quiet', '-m', `fixture ${index}`]);
+			// The tag names the FIRST commit, so a caller can describe a
+			// later head and observe the mismatch.
+			if (index === 0) run(['tag', tagName]);
+		}
+		const head = run(['rev-parse', 'HEAD']).trim();
+		const tagged = run(['rev-list', '-n', '1', tagName]).trim();
+		return {
+			dir,
+			head,
+			tagged,
+			env: { GIT_DIR: join(dir, '.git'), GIT_WORK_TREE: dir },
+		};
+	}
+
+	function runCli(args, env = {}) {
+		return spawnSync(process.execPath, [CLI_PATH, ...args], {
+			cwd: REPO_ROOT,
+			encoding: 'utf8',
+			env: { ...process.env, ...env },
+		});
+	}
+
+	function writeManifest(artifactDir, sourceCommit) {
+		const manifest = buildManifest({ artifactDir, root: REPO_ROOT, sourceCommit });
+		const manifestPath = join(artifactDir, '..', 'artifact-attestation.json');
+		writeFileSync(manifestPath, serializeManifest(manifest));
+		return manifestPath;
+	}
+
+	it('verifies a manifest against the release tag that names it', (t) => {
+		const root = makeRoot();
+		const repo = makeTaggedRepo();
+		t.after(() => {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(repo.dir, { recursive: true, force: true });
+		});
+		const artifactDir = makeArtifact(root);
+		const manifestPath = writeManifest(artifactDir, repo.tagged);
+
+		const result = runCli(
+			[`--manifest=${manifestPath}`, `--artifact-dir=${artifactDir}`, `--release-tag=v${version}`],
+			repo.env,
+		);
+		assert.equal(result.status, 0, result.stderr);
+		assert.match(result.stdout, /PASS {2}Release tag: /);
+		assert.match(result.stdout, /status: PASS/);
+	});
+
+	it('fails when the release tag points at another commit', (t) => {
+		const root = makeRoot();
+		// Two commits, but the tag names the first one: the manifest
+		// describes the release head, not the tagged commit.
+		const repo = makeTaggedRepo({ commits: 2 });
+		t.after(() => {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(repo.dir, { recursive: true, force: true });
+		});
+		const artifactDir = makeArtifact(root);
+		const manifestPath = writeManifest(artifactDir, repo.head);
+		assert.notEqual(repo.head, repo.tagged);
+
+		const result = runCli(
+			[`--manifest=${manifestPath}`, `--artifact-dir=${artifactDir}`, `--release-tag=v${version}`],
+			repo.env,
+		);
+		assert.equal(result.status, 1);
+		assert.match(result.stdout, /RELEASE_TAG_COMMIT_MISMATCH/);
+		assert.match(result.stdout, /status: FAIL/);
+	});
+
+	it('fails when the release tag names another version', (t) => {
+		const root = makeRoot();
+		const repo = makeTaggedRepo({ tagName: 'v99.99.99' });
+		t.after(() => {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(repo.dir, { recursive: true, force: true });
+		});
+		const artifactDir = makeArtifact(root);
+		const manifestPath = writeManifest(artifactDir, repo.tagged);
+
+		const result = runCli(
+			[`--manifest=${manifestPath}`, `--artifact-dir=${artifactDir}`, '--release-tag=v99.99.99'],
+			repo.env,
+		);
+		assert.equal(result.status, 1);
+		assert.match(result.stdout, /RELEASE_TAG_VERSION_MISMATCH/);
+	});
+
+	it('refuses an unresolvable tag, a non-version tag and a conflicting --source-sha', (t) => {
+		const root = makeRoot();
+		const repo = makeTaggedRepo({ tagName: 'nightly' });
+		t.after(() => {
+			rmSync(root, { recursive: true, force: true });
+			rmSync(repo.dir, { recursive: true, force: true });
+		});
+		const artifactDir = makeArtifact(root);
+		const manifestPath = writeManifest(artifactDir, repo.head);
+		const args = [`--manifest=${manifestPath}`, `--artifact-dir=${artifactDir}`];
+
+		const missing = runCli([...args, `--release-tag=v${version}-absent`], repo.env);
+		assert.equal(missing.status, 2);
+		assert.match(missing.stderr, /cannot resolve release tag/);
+
+		const notATag = runCli([...args, '--release-tag=nightly'], repo.env);
+		assert.equal(notATag.status, 2);
+		assert.match(notATag.stderr, /is not a v<version> release tag/);
+
+		const tagged = makeTaggedRepo({ tagName: `v${version}` });
+		t.after(() => rmSync(tagged.dir, { recursive: true, force: true }));
+		const conflict = runCli(
+			[...args, `--release-tag=v${version}`, `--source-sha=${OTHER_SOURCE}`],
+			tagged.env,
+		);
+		assert.equal(conflict.status, 2);
+		assert.match(conflict.stderr, /State one expectation, not two/);
 	});
 });
 

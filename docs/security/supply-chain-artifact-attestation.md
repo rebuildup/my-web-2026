@@ -17,6 +17,7 @@
 | artifact の byte | 全 file の sha-256 と canonical aggregate digest | 再計算した digest と一致するか |
 | artifact の形 | file 数 / 合計 byte 数 | 記録と一致するか。空 artifact は FAIL |
 | source | 生成時は `git rev-parse HEAD`。検証時は `--source-sha` / `WORKERS_CI_COMMIT_SHA` / HEAD の順で期待 commit を決める。branch、tree 状態も記録する | 期待 commit と一致するか。生成時の `--source-sha` は拒否する。dirty tree は FAIL |
+| release tag | `--release-tag=v<version>`（検証時のみ）。tag が解決する commit と、tag 名が宣言する version | manifest の `source.commit` と tag の commit、manifest の `project.version` と tag の version がそれぞれ一致するか。tag が解決できない / `v<version>` 形式でない場合は exit 2 |
 | release version | `package.json#version` | 記録と一致するか |
 | 依存範囲 | `package.json` の dependencies / devDependencies / optionalDependencies | 記録と一致するか |
 | 依存解決 | `pnpm-lock.yaml` の sha-256 と解決 package 数 | 記録と一致するか |
@@ -38,12 +39,14 @@ artifact を比べる」が build の揺らぎの diff にならない。
 - **deploy id の真正性は検証しない。** `--deploy-id` で渡された値を
   そのまま記録するだけであり、Cloudflare API は呼ばない。値を取得
   できないときは `null` のままにする（推測値を作らない）。
-- **Cloudflare が deploy した artifact は照合しない。** CI manifest は
+- **Cloudflare が deploy した artifact の byte は照合しない。** CI manifest は
   GitHub Actions の `validate` job が production mode で build した
   `.cloudflare/output/v0` を記述する。Cloudflare Workers Builds が
-  別に build / deploy する artifact の byte や deploy id を取得・照合
-  する経路は未配線である（§8-3）。GitHub Release への添付は
-  human-gated な release 操作であり、この tool は publish しない。
+  別に build / deploy する artifact の byte を hash し、その digest を
+  manifest と比べる経路は未配線である（§8-3）。一方、「公開 release が
+  tag で名指しする commit が manifest の source commit である」ことは
+  `--release-tag` で fail-closed に検査できる（§4）。GitHub Release への
+  添付は human-gated な release 操作であり、この tool は publish しない。
 - **secret を読まない。** Infisical / Worker secret / `.dev.vars` /
   Cloudflare token のいずれにも触れない。入力は build output と
   tracked file（`package.json` / `pnpm-lock.yaml`）だけである。
@@ -117,9 +120,9 @@ pnpm run artifact:attestation:check -- \
   --manifest=release-assets/supply-chain/<version>/artifact-attestation.json
 
 # release tag の commit と照合する（tag は release owner の操作で作られる）
-node scripts/check-artifact-attestation.mjs \
+pnpm run artifact:attestation:check -- \
   --manifest=release-assets/supply-chain/<version>/artifact-attestation.json \
-  --source-sha="$(git rev-list -n 1 "v$(node -p "require('./package.json').version")")"
+  --release-tag="v$(node -p "require('./package.json').version")"
 
 # 検証画像を再生成する（documentation tool。validate:* では走らない）
 pnpm run artifact:attestation:report
@@ -131,6 +134,7 @@ pnpm run artifact:attestation:report
 | `--manifest=<path>` | 生成せず既存 manifest を検証する |
 | `--out=<path>` | 生成物の出力先（既定 `release-assets/supply-chain/<version>/artifact-attestation.json`） |
 | `--source-sha=<sha>` | `--manifest` 検証時の期待 source commit。未指定時は `WORKERS_CI_COMMIT_SHA`、次に `git rev-parse HEAD`。生成時は checked-out HEAD のみを使い、この option を指定すると exit 2 |
+| `--release-tag=<name>` | `--manifest` 検証時に release tag を名指しする。tag が解決する commit が manifest の `source.commit`、tag 名の version が manifest の `project.version` と一致することを要求する。tag が無い / `v<version>` 形式でない / `--source-sha` と矛盾する場合は exit 2。生成時は exit 2 |
 | `--branch=<name>` | manifest に記録する branch |
 | `--build-uuid=<id>` | 取得済みの Cloudflare Workers Builds UUID |
 | `--deploy-id=<id>` | 取得済みの Cloudflare deploy id。無い場合は指定しない |
@@ -158,6 +162,8 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 | --- | --- | --- |
 | tampered artifact | `workers/default/bundle/worker.js` に 1 byte 追加 | `ARTIFACT_DIGEST_MISMATCH` |
 | wrong source | 期待 commit を別 SHA にする | `SOURCE_COMMIT_MISMATCH` |
+| release tag drift | release tag が manifest の `source.commit` 以外の commit を指す | `RELEASE_TAG_COMMIT_MISMATCH` |
+| release tag version drift | tag 名が manifest の `project.version` 以外の version を宣言する | `RELEASE_TAG_VERSION_MISMATCH` |
 | lockfile drift | manifest 生成後に `pnpm-lock.yaml` を変更 | `LOCKFILE_DIGEST_MISMATCH` |
 | fabricated signature | `status: "unsigned"` のまま signature field を埋める | `SIGNATURE_INCONSISTENT` |
 
@@ -168,6 +174,8 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 | `ARTIFACT_DIGEST_MISMATCH` / `ARTIFACT_SHAPE_MISMATCH` | 手元の byte が記録した build と違う | 記録された commit から rebuild する。drift した artifact を deploy / publish しない |
 | `ARTIFACT_EMPTY` | hash 対象が空 | Build Output を生成してから再実行する |
 | `SOURCE_COMMIT_MISMATCH` | release / workflow の commit と artifact の source が違う | release を止め、記録された commit を checkout して rebuild する |
+| `RELEASE_TAG_COMMIT_MISMATCH` | 公開する release tag が manifest の source commit を指していない | manifest を release に添付しない。tag が指す commit で checkout して rebuild し、manifest を再生成する |
+| `RELEASE_TAG_VERSION_MISMATCH` | tag 名が別の release version を宣言している | 正しい release の tag を使う。別 version の manifest を添付しない |
 | `SOURCE_TREE_DIRTY` / `WORKTREE_DIRTY` | dirty tree は commit を記述しない | commit / stash して rebuild し、manifest を再生成する |
 | `LOCKFILE_DIGEST_MISMATCH` / `LOCKFILE_INVENTORY_MISMATCH` | 依存解決が記録と違う | lockfile を戻すか、再生成して差分を review する |
 | `DECLARED_DEPENDENCIES_MISMATCH` | `package.json` の範囲が記録と違う | release commit から再生成する |
@@ -191,8 +199,13 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 - workflow は `artifact-attestation-<sha>` として 90 日保持する
   （`.github/workflows/ci.yml`）。
 - release では GitHub Release への添付を release owner の判断で行う。
+  添付の前に `docs/release.md` step 9 / §8 の手順どおり
+  `--release-tag="v<version>"` で manifest を tag と照合する。CI
+  (`ci.yml`) は tag push を trigger しないので、この照合は
+  release owner が tag を fetch した checkout で実行する。tag push を
+  CI trigger にして gate を自動化するか（含意する runner 時間の
+  増分）は owner 判断として未決のまま扱う。
   `AGENTS.md §6` の release PR merge human gate は変更しない。
-  `docs/release.md` の release gate を参照。
 - CI の pull_request run は `actions/checkout` の merge commit を
   build するため、manifest の `source.commit` もその merge commit に
   なる。release branch への push では release commit そのものになる。
@@ -208,12 +221,17 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
    id は deploy 後にしか確定しない。`--deploy-id` で渡された値は
    status record であり、Cloudflare API で照合しない。`WORKERS_CI_BUILD_UUID`
    が環境にある場合は build UUID として記録する。
-3. **Cloudflare build 環境での生成は未配線（open decision）。** 現在の
-   CI 生成は GitHub Actions の Build Output を対象とする。したがって
-   Issue #476 の「公開 release と実 artifact の source SHA 一致」は、
-   CI が build した production-mode Build Output の範囲で満たす。
-   Cloudflare Workers Builds が実際に deploy した artifact を hash し、
-   release tag の commit と自動照合するには deploy 経路の変更が必要で
-   あり、範囲を狭めるか follow-up で実装するかは owner 判断とする。
+3. **Cloudflare が実際に deploy した byte は照合しない（open decision）。**
+   現在の CI 生成は GitHub Actions の Build Output を対象とする。
+   release tag との照合（tag の commit と tag 名が宣言する version が
+   manifest の `source.commit` / `project.version` と一致すること）は
+   `--release-tag` として実装済みで fail-closed だが、Cloudflare Workers
+   Builds が build / deploy した artifact の digest 自体を照合する経路は
+   無い。Cloudflare の production build が GitHub Actions の build と
+   異なる場合（toolchain / cache / build input の drift）、CI gate は
+   PASS のまま deploy 済み byte は未 attestation のまま残る。この半分の
+   実装（build/deploy phase での manifest 生成、または deployed
+   artifact の hash と release tag の自動照合）は deploy 経路の変更を
+   要するため owner 判断とし、この Issue では実装しない。
 4. **GitHub Release への添付は自動化しない。** release PR merge / tag /
    Release publish と同じ human gate の下に置く。

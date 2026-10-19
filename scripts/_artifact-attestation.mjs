@@ -60,6 +60,24 @@ export const UNSIGNED_SIGNATURE = Object.freeze({
 
 const COMMIT_RE = /^[0-9a-f]{40}$/;
 
+/**
+ * Release tags are `v<package.json#version>` (`gh release create
+ * v<version>`, skills/github-delivery/SKILL.md). The version is read
+ * out of the tag name rather than guessed, so a tag that names another
+ * release can never be used to vouch for this manifest.
+ */
+const RELEASE_TAG_RE = /^v(\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?)$/;
+
+/**
+ * The release version a tag name declares, or null when the name is not
+ * a `v<version>` release tag. Null is a hard input error at the CLI: an
+ * unrecognised tag must not silently skip the comparison.
+ */
+export function releaseTagVersion(name) {
+	const match = RELEASE_TAG_RE.exec(String(name ?? ''));
+	return match ? match[1] : null;
+}
+
 export class AttestationError extends Error {}
 
 export function sha256Bytes(bytes) {
@@ -320,6 +338,7 @@ export function verifyManifest({
 	expectedSourceCommit,
 	requireClean = true,
 	treeState = 'clean',
+	releaseTag = null,
 } = {}) {
 	const findings = [];
 	const checks = [];
@@ -436,6 +455,34 @@ export function verifyManifest({
 		);
 	} else {
 		pass('Source commit', expectedSourceCommit);
+	}
+
+	// The release tag is the second half of "this artifact is the one
+	// the release names": `source.commit` alone only proves the manifest
+	// describes *some* commit. Both facts are checked, and a tag that
+	// disagrees fails the gate instead of downgrading the claim.
+	if (releaseTag) {
+		const { name, commit, version } = releaseTag;
+		if (manifest.source?.commit !== commit) {
+			fail(
+				'Release tag',
+				`release tag ${name} points at ${commit}, manifest records ${manifest.source?.commit}`,
+				'RELEASE_TAG_COMMIT_MISMATCH',
+				'The published release names a different commit than the manifest was built from. Do not attach this manifest to that release; rebuild at the tagged commit.',
+			);
+		} else {
+			pass('Release tag', `${name} -> ${commit}`);
+		}
+		if (manifest.project?.version !== version) {
+			fail(
+				'Release tag version',
+				`release tag ${name} names version ${version}, manifest records ${manifest.project?.version}`,
+				'RELEASE_TAG_VERSION_MISMATCH',
+				'The manifest belongs to another release version. Regenerate it from the tagged commit.',
+			);
+		} else {
+			pass('Release tag version', `${name} declares ${version}`);
+		}
 	}
 
 	if (requireClean && manifest.source?.tree !== 'clean') {
@@ -587,6 +634,8 @@ export function verifyManifest({
 		summary: {
 			source_commit: manifest.source?.commit ?? null,
 			project_version: manifest.project?.version ?? null,
+			release_tag: releaseTag?.name ?? null,
+			release_tag_commit: releaseTag?.commit ?? null,
 			artifact_digest: artifact.digest,
 			artifact_files: artifact.file_count,
 			artifact_bytes: artifact.total_bytes,

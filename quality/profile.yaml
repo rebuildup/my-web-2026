@@ -474,7 +474,7 @@ security_gates:
     ci_artifact: 'artifact-attestation-<sha> (actions/upload-artifact@v4, 90 day retention)'
     inputs:
       - '.cloudflare/output/v0 (the final production-mode Build Output)'
-      - 'git HEAD (generation) / --source-sha or WORKERS_CI_COMMIT_SHA (verification)'
+      - 'git HEAD (generation) / --source-sha, --release-tag or WORKERS_CI_COMMIT_SHA (verification)'
       - 'package.json'
       - 'pnpm-lock.yaml'
     note: >-
@@ -486,9 +486,13 @@ security_gates:
       is an integrity manifest, not a signature: the document states
       `unsigned` and every signature field is null, and a manifest that
       claims an unverifiable signature fails. Generation refuses a
-      caller-supplied --source-sha and attests only the checked-out HEAD.
-      The artifact Cloudflare Workers Builds actually deploys is not
-      attested (open decision). A Cloudflare build UUID / deploy id is
+      caller-supplied --source-sha / --release-tag and attests only the
+      checked-out HEAD. Verification can name the release tag instead of
+      a commit (`--release-tag=v<version>`): the tag must resolve to the
+      manifest's source commit and name its version, so a published
+      manifest can be gated on the release it claims. The artifact
+      Cloudflare Workers Builds actually deploys is still not attested
+      (open owner decision). A Cloudflare build UUID / deploy id is
       recorded only when supplied, and is never fetched or authenticated
       with a production credential. See
       docs/security/supply-chain-artifact-attestation.md.

@@ -124,7 +124,14 @@ with `--build-uuid` / `--deploy-id`. The value is recorded verbatim and
 is not authenticated against the Cloudflare API. A build run inside the
 Cloudflare environment may pass `WORKERS_CI_COMMIT_SHA` as the expected
 source commit; wiring that into the Workers Builds command is an open
-decision, not part of this runbook step. See
+decision, not part of this runbook step. Before attaching a manifest to
+a GitHub Release, verify it against the release tag itself with
+`pnpm run artifact:attestation:check -- --manifest=<path>
+--release-tag="v<version>"`: the tag must resolve to the manifest's
+source commit and name its version. Hashing the artifact Cloudflare
+Workers Builds actually deploys, and comparing it to that manifest, is
+still an open owner decision (attestation §8-3) — this step does not
+change the deploy authority, and no credential is read by the tool. See
 [`docs/security/supply-chain-artifact-attestation.md`](../security/supply-chain-artifact-attestation.md).
 
 ## Runtime secrets — source of truth

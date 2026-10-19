@@ -261,10 +261,13 @@ production domain to be wired (Issue #43 / ADR-0014):
      Release publish (these are the sprint-cycle steps 10-11 in
      `AGENTS.md` §6, not steps of this pre-merge checklist).
    - Verify a published manifest against the artifact you hold and the
-     release tag commit with
-     `pnpm run artifact:attestation:check -- --manifest=<path> --source-sha=<release commit>`.
-     Generation never accepts `--source-sha`: it always attests the
-     checked-out HEAD.
+     release tag itself with
+     `pnpm run artifact:attestation:check -- --manifest=<path> --release-tag="v$(node -p "require('./package.json').version")"`.
+     The tag must resolve to the manifest's `source.commit` and name the
+     manifest's package version, otherwise the check fails
+     (`RELEASE_TAG_COMMIT_MISMATCH` / `RELEASE_TAG_VERSION_MISMATCH`).
+     Generation never accepts `--source-sha` or `--release-tag`: it
+     always attests the checked-out HEAD.
 
    See [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md).
 
@@ -335,9 +338,10 @@ updated directly.
 - Attach the matching
   `release-assets/supply-chain/<version>/artifact-attestation.json`
   (download it from the `artifact-attestation-<sha>` workflow artifact)
-  to the same GitHub Release under the same human gate. It records the
-  CI production-mode Build Output, is `unsigned`, and carries no
-  credential; see
+  to the same GitHub Release under the same human gate. Verify it first
+  with `--release-tag="v<version>"`, so the published manifest names the
+  commit the tag points at. It records the CI production-mode Build
+  Output, is `unsigned`, and carries no credential; see
   [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md) §7.
 - Update any downstream consumers (Tools submodules, RSS feeds,
   integration endpoints) according to their own release cadence.

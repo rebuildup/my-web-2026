@@ -16,6 +16,12 @@
  *       a verification-only option: generation always attests the
  *       checked-out HEAD and refuses a caller-supplied commit.
  *
+ *   node scripts/check-artifact-attestation.mjs --manifest=<path> --release-tag=v<version>
+ *       verify a published manifest against the release tag itself:
+ *       the tag must resolve to the manifest's source commit and name
+ *       the manifest's package version. Verification-only, like
+ *       `--source-sha`.
+ *
  * Why this exists
  * ---------------
  * A release must be able to answer three questions without reading a
@@ -49,6 +55,7 @@ import {
 	formatVerification,
 	manifestPathFor,
 	readDependencyFacts,
+	releaseTagVersion,
 	serializeManifest,
 	verifyManifest,
 } from './_artifact-attestation.mjs';
@@ -59,6 +66,7 @@ function parseArgs(argv) {
 		manifest: null,
 		out: null,
 		sourceSha: null,
+		releaseTag: null,
 		branch: null,
 		buildUuid: null,
 		deployId: null,
@@ -77,6 +85,7 @@ function parseArgs(argv) {
 		else if (arg.startsWith('--manifest=')) options.manifest = arg.slice(11);
 		else if (arg.startsWith('--out=')) options.out = arg.slice(6);
 		else if (arg.startsWith('--source-sha=')) options.sourceSha = arg.slice(13);
+		else if (arg.startsWith('--release-tag=')) options.releaseTag = arg.slice(14);
 		else if (arg.startsWith('--branch=')) options.branch = arg.slice(9);
 		else if (arg.startsWith('--build-uuid=')) options.buildUuid = arg.slice(13);
 		else if (arg.startsWith('--deploy-id=')) options.deployId = arg.slice(12);
@@ -95,6 +104,9 @@ Options:
   --out=<path>           where to write a generated manifest
   --source-sha=<sha>     expected source commit for --manifest verification only
                          (generation always attests the checked-out HEAD)
+  --release-tag=<name>   verify a --manifest against a local release tag: the tag
+                         must resolve to the manifest's source commit and name its
+                         version (v<package.json#version>)
   --branch=<name>        branch recorded in a generated manifest
   --build-uuid=<id>      Cloudflare Workers Builds UUID, when obtained
   --deploy-id=<id>       Cloudflare deploy id, when obtained
@@ -106,6 +118,33 @@ Exit codes: 0 = pass, 1 = mismatch / finding, 2 = bad input.`;
 
 function git(args) {
 	return execFileSync('git', args, { cwd: REPO_ROOT, encoding: 'utf8' }).trim();
+}
+
+/**
+ * Resolve a release tag to the commit it names.
+ *
+ * Only local git state is read — no remote query, no credential — so
+ * the check is reproducible offline. An unresolvable tag is an input
+ * error (exit 2), never a silent pass.
+ */
+function resolveReleaseTag(name) {
+	let commit;
+	try {
+		commit = git(['rev-list', '-n', '1', `${name}^{commit}`]);
+	} catch {
+		console.error(
+			`[artifact-attestation] cannot resolve release tag ${name} in this checkout. Fetch the tags (\`git fetch --tags\`) and retry.`,
+		);
+		return null;
+	}
+	const version = releaseTagVersion(name);
+	if (version === null) {
+		console.error(
+			`[artifact-attestation] FAIL: ${name} is not a v<version> release tag, so it names no version to compare. Use the tag created for this release.`,
+		);
+		return null;
+	}
+	return { name, commit, version };
 }
 
 function readGitFacts() {
@@ -143,7 +182,23 @@ function main() {
 	const gitFacts = readGitFacts();
 
 	if (options.manifest) {
-		const expectedSourceCommit = options.sourceSha ?? gitFacts.ciHead ?? gitFacts.head;
+		let releaseTag = null;
+		if (options.releaseTag) {
+			releaseTag = resolveReleaseTag(options.releaseTag);
+			if (!releaseTag) return 2;
+			if (options.sourceSha && options.sourceSha !== releaseTag.commit) {
+				console.error(
+					`[artifact-attestation] FAIL: --source-sha ${options.sourceSha} disagrees with release tag ${releaseTag.name} (${releaseTag.commit}). State one expectation, not two.`,
+				);
+				return 2;
+			}
+		}
+		// The release tag names the commit the release actually shipped,
+		// so it is the expectation to verify against when it is given;
+		// WORKERS_CI_COMMIT_SHA and the local HEAD are the weaker
+		// fallbacks.
+		const expectedSourceCommit =
+			releaseTag?.commit ?? options.sourceSha ?? gitFacts.ciHead ?? gitFacts.head;
 		const manifestPath = resolve(REPO_ROOT, options.manifest);
 		let manifest;
 		try {
@@ -161,6 +216,7 @@ function main() {
 			expectedSourceCommit,
 			requireClean: !options.allowDirty,
 			treeState: gitFacts.dirty ? 'dirty' : 'clean',
+			releaseTag,
 		});
 		printResult(result, { manifestPath, json: options.json });
 		return result.status === 'PASS' ? 0 : 1;
@@ -169,9 +225,9 @@ function main() {
 	// Generation must describe the checked-out commit. A caller-supplied
 	// SHA would let a manifest claim source the artifact was never built
 	// from, so accept it only when verifying an existing document.
-	if (options.sourceSha) {
+	if (options.sourceSha || options.releaseTag) {
 		console.error(
-			'[artifact-attestation] FAIL: --source-sha is only valid with --manifest. ' +
+			'[artifact-attestation] FAIL: --source-sha / --release-tag are only valid with --manifest. ' +
 				'Generation always attests the checked-out HEAD.',
 		);
 		return 2;

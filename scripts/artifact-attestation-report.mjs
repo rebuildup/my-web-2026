@@ -16,13 +16,15 @@
  *   1. normal observation — a fixture artifact whose digest, source
  *      commit, lockfile and version all agree; signature is stated as
  *      `unsigned`, and the deploy id is `not provided`;
- *   2. abnormal observation — four real mutations (tampered artifact,
- *      wrong source commit, changed lockfile, unsigned document that
- *      carries signature fields), each failing with its own code;
+ *   2. abnormal observation — six real mutations (tampered artifact,
+ *      wrong source commit, release tag pointing at another commit,
+ *      release tag naming another version, changed lockfile, unsigned
+ *      document that carries signature fields), each failing with its
+ *      own code;
  *   3. the repair procedure, so the image is not the proof.
  *
  * The Issue names `artifact-sha-attestation.png`; the committed
- * artefact is the same image as **WebP** (≤1480 px wide, quality 80,
+ * artefact is the same image as **WebP** (≤1440 px wide, quality 80,
  * <300 KB) because a full-resolution PNG of a text report is roughly
  * an order of magnitude larger and is never read as anything but an
  * image. No PNG is written or committed.
@@ -50,7 +52,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = resolve(root, 'docs/verification/supply-chain');
 const PORT = 4603;
 
-const MAX_WIDTH = 1480;
+const MAX_WIDTH = 1440;
 const WEBP_QUALITY = 80;
 const MAX_BYTES = 300 * 1024;
 
@@ -94,6 +96,12 @@ const fixtureDir = writeFixtureArtifact(join(workDir, 'build-output'));
 
 try {
 	const packageJson = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
+	// The release tag under which this project ships, read from
+	// package.json — the fixture never invents a release number.
+	const FIXTURE_TAG = `v${packageJson.version}`;
+	const FIXTURE_TAG_VERSION = packageJson.version;
+	/** Deliberately not a version-shaped string: no release is invented. */
+	const OTHER_TAG_VERSION = 'not-the-release-version';
 	const manifest = buildManifest({
 		artifactDir: fixtureDir,
 		artifactRoot: 'fixture/build-output',
@@ -103,13 +111,19 @@ try {
 		treeState: 'clean',
 	});
 
-	// Normal observation.
+	// Normal observation: the manifest, the artifact, the expected
+	// commit and the release tag that names it all agree.
 	const normal = verifyManifest({
 		manifest,
 		artifactDir: fixtureDir,
 		root,
 		expectedSourceCommit: FIXTURE_COMMIT,
 		requireClean: false,
+		releaseTag: {
+			name: FIXTURE_TAG,
+			commit: FIXTURE_COMMIT,
+			version: FIXTURE_TAG_VERSION,
+		},
 	});
 
 	// Abnormal 1: one byte changed in the shipped bundle.
@@ -135,7 +149,33 @@ try {
 		requireClean: false,
 	});
 
-	// Abnormal 3: the lockfile changed after the manifest was produced.
+	// Abnormal 3: the release tag names a commit the manifest was not
+	// built from.
+	const tagCommitDrift = verifyManifest({
+		manifest,
+		artifactDir: fixtureDir,
+		root,
+		expectedSourceCommit: FIXTURE_COMMIT,
+		requireClean: false,
+		releaseTag: { name: FIXTURE_TAG, commit: OTHER_COMMIT, version: FIXTURE_TAG_VERSION },
+	});
+
+	// Abnormal 4: the release tag names a version the manifest does not
+	// belong to.
+	const tagVersionDrift = verifyManifest({
+		manifest,
+		artifactDir: fixtureDir,
+		root,
+		expectedSourceCommit: FIXTURE_COMMIT,
+		requireClean: false,
+		releaseTag: {
+			name: `${FIXTURE_TAG}-other`,
+			commit: FIXTURE_COMMIT,
+			version: OTHER_TAG_VERSION,
+		},
+	});
+
+	// Abnormal 5: the lockfile changed after the manifest was produced.
 	const shadowRoot = join(workDir, 'shadow-root');
 	mkdirSync(shadowRoot, { recursive: true });
 	cpSync(join(root, 'package.json'), join(shadowRoot, 'package.json'));
@@ -151,7 +191,7 @@ try {
 		requireClean: false,
 	});
 
-	// Abnormal 4: an "unsigned" document that carries signature fields.
+	// Abnormal 6: an "unsigned" document that carries signature fields.
 	const fakeSignature = structuredClone(manifest);
 	fakeSignature.signature.value = 'deadbeef'.repeat(8);
 	fakeSignature.signature.algorithm = 'ed25519';
@@ -175,6 +215,18 @@ try {
 			mutation: `expected commit ${OTHER_COMMIT.slice(0, 12)}… instead of the recorded one`,
 			result: wrongSource,
 			expected: 'SOURCE_COMMIT_MISMATCH',
+		},
+		{
+			id: 'release-tag-commit-drift',
+			mutation: `release tag ${FIXTURE_TAG} points at ${OTHER_COMMIT.slice(0, 12)}… instead of the recorded commit`,
+			result: tagCommitDrift,
+			expected: 'RELEASE_TAG_COMMIT_MISMATCH',
+		},
+		{
+			id: 'release-tag-version-drift',
+			mutation: `release tag names ${OTHER_TAG_VERSION}, manifest declares ${FIXTURE_TAG_VERSION}`,
+			result: tagVersionDrift,
+			expected: 'RELEASE_TAG_VERSION_MISMATCH',
 		},
 		{
 			id: 'lockfile-drift',
@@ -249,6 +301,10 @@ try {
 		['artifact files / bytes', `${artifact.file_count} / ${artifact.total_bytes}`],
 		['source commit', `<code>${escapeHtml(FIXTURE_COMMIT)}</code> (fixture)`],
 		['source tree', 'clean (fixture)'],
+		[
+			'release tag',
+			`<code>${escapeHtml(FIXTURE_TAG)}</code> → the recorded commit, version ${escapeHtml(FIXTURE_TAG_VERSION)}`,
+		],
 		['project', `${escapeHtml(facts.project.name)}@${escapeHtml(facts.project.version)}`],
 		['package manager', escapeHtml(facts.package_manager ?? '(not declared)')],
 		[
@@ -295,7 +351,7 @@ try {
 
 	<section id="normal">
 		<h2>Normal observation — fixture Build Output <span class="badge pass">PASS</span></h2>
-		<p class="muted">The same <code>verifyManifest()</code> the gate calls. Artifact digest, expected source commit, lockfile digest and project version agree; the document is explicitly unsigned and the absent deploy id stays null.</p>
+		<p class="muted">The same <code>verifyManifest()</code> the gate calls. Artifact digest, expected source commit, release tag, lockfile digest and project version agree; the document is explicitly unsigned and the absent deploy id stays null.</p>
 		<table>${metadataRows}</table>
 		<h3>Verification checks</h3>
 		<table>
@@ -324,7 +380,7 @@ try {
 			<tr><th>claimed</th><td>The listed bytes are the artifact that was hashed; the recorded commit, lockfile and dependency ranges are the inputs that produced them; a mismatched release commit or drifted artifact fails the gate.</td></tr>
 			<tr><th>not claimed</th><td>No signature. No signing key exists in this repository, so <code>signature.status</code> is <code>unsigned</code> and every signature field is <code>null</code>. A document claiming a signature this tool cannot verify fails with <code>SIGNATURE_UNSUPPORTED</code>.</td></tr>
 			<tr><th>deploy id</th><td>Recorded only when the caller supplied one. It is a status record, not an authenticated Cloudflare fact: obtaining or checking it never uses a production credential in this tool.</td></tr>
-			<tr><th>production artifact</th><td>The CI manifest describes the exact Build Output CI built at the workflow commit. Attaching the manifest to the GitHub Release is a human-gated release step; see <code>docs/release.md</code>.</td></tr>
+			<tr><th>production artifact</th><td>The CI manifest describes the exact Build Output CI built at the workflow commit. A published manifest is gated on the release it claims: <code>--release-tag</code> fails unless the tag resolves to the manifest's source commit and names its version. Attaching it to the GitHub Release is a human-gated step; see <code>docs/release.md</code>. The bytes Cloudflare Workers Builds itself deploys are still not attested (open owner decision).</td></tr>
 		</table>
 	</section>
 
@@ -382,6 +438,8 @@ try {
 						lockfile_packages: facts.lockfile.packages,
 						signature_status: manifest.signature.status,
 						deploy_id: manifest.cloudflare.deploy_id,
+						release_tag: normal.summary.release_tag,
+						release_tag_commit: normal.summary.release_tag_commit,
 					},
 					abnormal: scenarios.map((scenario) => ({
 						id: scenario.id,

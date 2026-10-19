@@ -3,8 +3,8 @@ import { css } from '../../styled-system/css';
 import { DataTable } from '../editorial/table-code';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
-import { HOME_LOCALES, createHomeFormat } from './format';
-import { LOCALE_COMPARISON_ROWS } from './format.compare';
+import { HOME_LOCALES } from './format';
+import { localeComparisonTable } from './format.compare';
 
 /**
  * Locale comparison — the preview surface for Issue #430.
@@ -62,6 +62,11 @@ const COUNTER: HomeCounterData = {
 };
 
 function LocaleComparison() {
+	// Issue #407: the table-shaped projection is built once, by the data
+	// module, because an object literal written in a module that imports
+	// `css` is read by Panda as a style candidate and would ship a rule
+	// the browser drops (`pnpm run css:check` fails on it).
+	const table = localeComparisonTable(() => NOW);
 	return (
 		<div
 			className={css({
@@ -125,20 +130,8 @@ function LocaleComparison() {
 			 */}
 			<DataTable
 				caption="The same instant, one count and the relative spans — read in every locale home publishes"
-				columns={[
-					{ id: 'value', header: 'Value' },
-					...HOME_LOCALES.map((locale) => ({ id: locale, header: locale })),
-				]}
-				rows={LOCALE_COMPARISON_ROWS.map((row) => ({
-					id: row.label,
-					header: row.note ? `${row.label} (${row.note})` : row.label,
-					cells: Object.fromEntries(
-						HOME_LOCALES.map((locale) => [
-							locale,
-							row.render(createHomeFormat({ locale, timeZone: row.timeZone, now: () => NOW })),
-						]),
-					),
-				}))}
+				columns={table.columns}
+				rows={table.rows}
 			/>
 
 			<section className={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>

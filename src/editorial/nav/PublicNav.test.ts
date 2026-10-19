@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isActiveRoute, PUBLIC_NAV_ITEMS } from './PublicNav';
+import { PUBLIC_NAV_ITEMS, isActiveRoute } from './PublicNav';
 
 /**
  * `isActiveRoute` — pure predicate powering the nav's `aria-current`

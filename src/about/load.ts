@@ -1,5 +1,5 @@
-import { createD1PortfolioLoader } from '../portfolio/load';
 import type { PortfolioEnv, PortfolioLoader } from '../portfolio/contract';
+import { createD1PortfolioLoader } from '../portfolio/load';
 import type { PortfolioProject } from '../portfolio/schema';
 import { ABOUT_DATA } from './data';
 import type { AboutData, AboutPageData } from './types';

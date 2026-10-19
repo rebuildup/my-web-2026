@@ -1,8 +1,6 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { PortfolioMarkdown } from './components/Markdown';
-import { BLOCKED_LINK_CLASS, classifyHref, decodeHtmlEntities, safeHref } from './markdown.lexer';
 import {
 	BLOCKED_FIXTURE_IDS,
 	MARKDOWN_XSS_FIXTURES,
@@ -11,6 +9,8 @@ import {
 	composeMarkdownFixtureBody,
 	executableMarkupFindings,
 } from '../../test/fixtures/markdown-xss-fixtures';
+import { PortfolioMarkdown } from './components/Markdown';
+import { BLOCKED_LINK_CLASS, classifyHref, decodeHtmlEntities, safeHref } from './markdown.lexer';
 
 /**
  * XSS boundary of the article renderer (Issue #451).

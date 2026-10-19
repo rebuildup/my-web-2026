@@ -63,6 +63,16 @@ import {
 /** The obligation that owns the contract. */
 export const PRIMITIVE = 'src/editorial/table-code.tsx';
 
+/**
+ * Where the fixture DATA lives.
+ *
+ * A separate module on purpose: Panda reads an object literal in a
+ * module that imports `css` as a style candidate, so the words live
+ * here (`src/editorial/table-code.fixture.ts`) while `table-code.tsx`
+ * keeps the components and the style vocabulary.
+ */
+export const FIXTURE_DATA = 'src/editorial/table-code.fixture.ts';
+
 /** The fixture states Issue #407 names, in render order. */
 export const EXPECTED_CASE_IDS = ['01-normal', '02-empty', '03-failure', '04-compact'];
 
@@ -200,7 +210,7 @@ export function collectEvidence(directory = join(REPO_ROOT, 'src')) {
 
 	let cases = { expected: [...EXPECTED_CASE_IDS], found: [], missing: [...EXPECTED_CASE_IDS] };
 	try {
-		const source = stripComments(readFileSync(join(REPO_ROOT, PRIMITIVE), 'utf8'));
+		const source = stripComments(readFileSync(join(REPO_ROOT, FIXTURE_DATA), 'utf8'));
 		const found = EXPECTED_CASE_IDS.filter((id) => source.includes(`'${id}'`));
 		cases = {
 			expected: [...EXPECTED_CASE_IDS],
@@ -210,14 +220,20 @@ export function collectEvidence(directory = join(REPO_ROOT, 'src')) {
 		for (const id of cases.missing) {
 			violations.push({
 				rule: 'fixture-state-missing',
-				file: PRIMITIVE,
+				file: FIXTURE_DATA,
 				line: null,
 				wcag: null,
 				message: `fixture state ${id} is not part of TABLE_CODE_CASE_IDS; every state the Issue names has to stay reproducible`,
 			});
 		}
 	} catch {
-		// Already reported as primitive-contract-missing above.
+		violations.push({
+			rule: 'fixture-state-missing',
+			file: FIXTURE_DATA,
+			line: null,
+			wcag: null,
+			message: `the fixture data module ${FIXTURE_DATA} is missing; the four states have no source`,
+		});
 	}
 
 	return {

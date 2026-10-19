@@ -1,5 +1,11 @@
 import { useId } from 'react';
 import { css } from '../../styled-system/css';
+import {
+	TABLE_CODE_CASES,
+	TABLE_CODE_COLUMNS,
+	TABLE_CODE_ROWS,
+	TABLE_CODE_SAMPLE_CODE,
+} from './table-code.fixture';
 
 /**
  * table-code — the readability contract for a table and a code block
@@ -58,30 +64,35 @@ import { css } from '../../styled-system/css';
  *   `data-code-scroll`   the keyboard-reachable scroll container
  */
 
-/** Column alignment, kept to the two values the design language uses. */
-export type TableAlign = 'start' | 'end';
-
 /** The non-empty presentation states a table surface has to render. */
 export type DataTableState = 'ok' | 'empty' | 'error';
 
 export interface TableColumn {
-	/** Stable key; also rendered as `data-column` on every cell. */
-	id: string;
-	header: string;
-	align?: TableAlign;
-	/** Right-aligns and sets `font-variant-numeric: tabular-nums`. */
+	/**
+	 * Stable key; also rendered as `data-column` on every cell.
+	 *
+	 * Named `key` rather than `id`, and the header text `label` rather
+	 * than `header`, because Panda's scanner reads an object literal
+	 * whose keys look like HTML attributes as a style candidate: a
+	 * `{ id, header }` row would ship a rule the browser drops
+	 * (`#id_level { id: level }`) and `pnpm run css:check` would fail on
+	 * it. See `table-code.fixture.ts` for the full note.
+	 */
+	key: string;
+	label: string;
+	/** Right-aligned, monospaced, tabular numerals (levels, counts, ids). */
 	numeric?: boolean;
 }
 
 export interface TableRow {
-	id: string;
+	key: string;
 	/**
 	 * The row's own header. It is rendered as the first cell with
 	 * `scope="row"` so a screen reader announces "row header, cell"
 	 * while moving across a row.
 	 */
-	header: string;
-	/** Cell values keyed by {@link TableColumn.id}. */
+	label: string;
+	/** Cell values keyed by {@link TableColumn.key}. */
 	cells: Readonly<Record<string, string>>;
 }
 
@@ -262,16 +273,16 @@ export function DataTable({
 						<tr>
 							{columns.map((column) => (
 								<th
-									key={column.id}
+									key={column.key}
 									scope="col"
-									data-column={column.id}
+									data-column={column.key}
 									className={css({
 										...HEADER_CELL_STYLE,
-										textAlign: column.align ?? 'start',
+										textAlign: column.numeric ? 'end' : 'start',
 										fontFamily: column.numeric ? 'mono' : 'sans',
 									})}
 								>
-									{column.header}
+									{column.label}
 								</th>
 							))}
 						</tr>
@@ -279,29 +290,29 @@ export function DataTable({
 					<tbody>
 						{hasRows ? (
 							rows.map((row) => (
-								<tr key={row.id} data-row={row.id}>
+								<tr key={row.key} data-row={row.key}>
 									<th
 										scope="row"
-										data-column={columns[0]?.id ?? 'row-header'}
+										data-column={columns[0]?.key ?? 'row-header'}
 										className={css({
 											...ROW_HEADER_STYLE,
 											padding: compact ? '2' : '3',
 										})}
 									>
-										{row.header}
+										{row.label}
 									</th>
 									{columns.slice(1).map((column) => (
 										<td
-											key={column.id}
-											data-column={column.id}
+											key={column.key}
+											data-column={column.key}
 											className={css({
 												...CELL_STYLE,
-												textAlign: column.align ?? 'start',
+												textAlign: column.numeric ? 'end' : 'start',
 												fontFamily: column.numeric ? 'mono' : 'sans',
 												padding: compact ? '2' : '3',
 											})}
 										>
-											{cellText(row, column.id)}
+											{cellText(row, column.key)}
 										</td>
 									))}
 								</tr>
@@ -433,116 +444,6 @@ export function CodeBlock({ label, code, language, compact = false }: CodeBlockP
 	);
 }
 
-/**
- * The four states the Issue names, in render order: `正常` / `空` /
- * `失敗` / `縮小表示`.
- *
- * The ids are asserted (by the tests, by `scripts/check-table-code-a11y.mjs`
- * and by the capture) as an exact set, so a fixture that quietly stopped
- * rendering one of them fails instead of "verifying" three of four.
- */
-export const TABLE_CODE_CASE_IDS = ['01-normal', '02-empty', '03-failure', '04-compact'] as const;
-
-export type TableCodeCaseId = (typeof TABLE_CODE_CASE_IDS)[number];
-
-interface TableCodeCase {
-	id: TableCodeCaseId;
-	title: string;
-	note: string;
-	state: DataTableState;
-	compact: boolean;
-}
-
-/**
- * The columns are the WCAG 2.2 success criteria this component is
- * measured against, and the rows are what the component provides for
- * each of them. The copy is verification copy: it describes public
- * specification text, not a product fact.
- */
-const COLUMNS: readonly TableColumn[] = [
-	{ id: 'sc', header: 'Success criterion', numeric: false },
-	{ id: 'level', header: 'Level', align: 'start', numeric: false },
-	{ id: 'provided', header: 'What the component provides', align: 'start' },
-];
-
-const ROWS: readonly TableRow[] = [
-	{
-		id: 'reflow',
-		header: '1.4.10 Reflow',
-		cells: {
-			level: 'AA',
-			provided: 'The scroll box is the widest element; the document stays viewport-wide.',
-		},
-	},
-	{
-		id: 'info-relationships',
-		header: '1.3.1 Info and Relationships',
-		cells: {
-			level: 'A',
-			provided: 'A visible <caption> plus scope="col" and scope="row" on every header cell.',
-		},
-	},
-	{
-		id: 'keyboard',
-		header: '2.1.1 Keyboard',
-		cells: {
-			level: 'A',
-			provided: 'Each scroll box is a focusable region, so arrow keys move it.',
-		},
-	},
-	{
-		id: 'headings-labels',
-		header: '2.4.6 Headings and Labels',
-		cells: {
-			level: 'AA',
-			provided: 'The caption and the code label name their own regions.',
-		},
-	},
-];
-
-const CASES: readonly TableCodeCase[] = [
-	{
-		id: '01-normal',
-		title: 'Normal',
-		note: 'Four criteria rows, one row header column, four columns.',
-		state: 'ok',
-		compact: false,
-	},
-	{
-		id: '02-empty',
-		title: 'Empty',
-		note: 'No rows: the header row and the caption stay, so the structure is still announced.',
-		state: 'empty',
-		compact: false,
-	},
-	{
-		id: '03-failure',
-		title: 'Failure',
-		note: 'The read failed: one full-width message row replaces the data rows.',
-		state: 'error',
-		compact: false,
-	},
-	{
-		id: '04-compact',
-		title: 'Compact',
-		note: 'Same data at the reduced density used at narrow widths.',
-		state: 'ok',
-		compact: true,
-	},
-];
-
-/**
- * A single sample line that is wider than any phone viewport, so the
- * scroll confinement is observable at 375 px instead of being a claim.
- */
-const SAMPLE_CODE = [
-	'const table = <DataTable',
-	'\tcaption="WCAG 2.2 success criteria"',
-	'\tcolumns={columns}',
-	'\trows={rows}          // four criteria, one row header column',
-	'/>;                    // scroll lives inside the component',
-].join('\n');
-
 const CASE_STYLE = {
 	display: 'flex',
 	flexDirection: 'column',
@@ -573,7 +474,7 @@ export function TableCodeFixture() {
 			data-table-code-fixture=""
 			className={css({ display: 'flex', flexDirection: 'column', gap: '8' })}
 		>
-			{CASES.map((entry) => (
+			{TABLE_CODE_CASES.map((entry) => (
 				<section
 					key={entry.id}
 					data-case={entry.id}
@@ -583,15 +484,15 @@ export function TableCodeFixture() {
 					<h4 className={css(CASE_TITLE_STYLE)}>{`${entry.title} / ${entry.id}`}</h4>
 					<DataTable
 						caption={`WCAG 2.2 success criteria — ${entry.title.toLowerCase()} state`}
-						columns={COLUMNS}
-						rows={ROWS}
+						columns={TABLE_CODE_COLUMNS}
+						rows={TABLE_CODE_ROWS}
 						state={entry.state}
 						compact={entry.compact}
 						note={entry.note}
 					/>
 					<CodeBlock
 						label={`Sample markup — ${entry.title.toLowerCase()} state`}
-						code={SAMPLE_CODE}
+						code={TABLE_CODE_SAMPLE_CODE}
 						language="tsx"
 						compact={entry.compact}
 					/>

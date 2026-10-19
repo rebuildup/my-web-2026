@@ -1,12 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { CodeBlock, DataTable, TableCodeFixture, cellText } from './table-code';
 import {
-	CodeBlock,
-	DataTable,
 	TABLE_CODE_CASE_IDS,
-	TableCodeFixture,
-	cellText,
-} from './table-code';
+	TABLE_CODE_TEST_COLUMNS,
+	TABLE_CODE_TEST_ROWS,
+	rowWithoutCells,
+} from './table-code.fixture';
 
 /**
  * table-code contract tests (Issue #407).
@@ -30,25 +30,6 @@ import {
  *     `docs/verification/a11y/table-code.md`.
  */
 
-const COLUMNS = [
-	{ id: 'sc', header: 'Success criterion' },
-	{ id: 'level', header: 'Level' },
-	{ id: 'provided', header: 'What it provides' },
-] as const;
-
-const ROWS = [
-	{
-		id: 'reflow',
-		header: '1.4.10 Reflow',
-		cells: { level: 'AA', provided: 'The scroll box is the widest element.' },
-	},
-	{
-		id: 'keyboard',
-		header: '2.1.1 Keyboard',
-		cells: { level: 'A', provided: 'Each scroll box is a focusable region.' },
-	},
-] as const;
-
 function attrsOf(html: string, attribute: string): string[] {
 	return [...html.matchAll(new RegExp(`${attribute}="([^"]*)"`, 'g'))].map((match) => match[1]);
 }
@@ -56,7 +37,11 @@ function attrsOf(html: string, attribute: string): string[] {
 describe('DataTable — structure a screen reader can use', () => {
 	it('names the scroll region with the table caption (SC 1.3.1, SC 2.4.6)', () => {
 		const html = renderToStaticMarkup(
-			<DataTable caption="Success criteria" columns={COLUMNS} rows={ROWS} />,
+			<DataTable
+				caption="Success criteria"
+				columns={TABLE_CODE_TEST_COLUMNS}
+				rows={TABLE_CODE_TEST_ROWS}
+			/>,
 		);
 
 		const captionId = /<caption id="([^"]*)"/.exec(html)?.[1];
@@ -67,7 +52,11 @@ describe('DataTable — structure a screen reader can use', () => {
 
 	it('scopes every header cell so row and column relations are announced', () => {
 		const html = renderToStaticMarkup(
-			<DataTable caption="Success criteria" columns={COLUMNS} rows={ROWS} />,
+			<DataTable
+				caption="Success criteria"
+				columns={TABLE_CODE_TEST_COLUMNS}
+				rows={TABLE_CODE_TEST_ROWS}
+			/>,
 		);
 
 		expect(attrsOf(html, 'scope')).toEqual(['col', 'col', 'col', 'row', 'row']);
@@ -75,7 +64,11 @@ describe('DataTable — structure a screen reader can use', () => {
 
 	it('renders the row header column before the data cells', () => {
 		const html = renderToStaticMarkup(
-			<DataTable caption="Success criteria" columns={COLUMNS} rows={ROWS} />,
+			<DataTable
+				caption="Success criteria"
+				columns={TABLE_CODE_TEST_COLUMNS}
+				rows={TABLE_CODE_TEST_ROWS}
+			/>,
 		);
 
 		expect(html).toContain('<th scope="row" data-column="sc"');
@@ -84,7 +77,11 @@ describe('DataTable — structure a screen reader can use', () => {
 
 	it('exposes the scroll box as a focusable region (SC 2.1.1)', () => {
 		const html = renderToStaticMarkup(
-			<DataTable caption="Success criteria" columns={COLUMNS} rows={ROWS} />,
+			<DataTable
+				caption="Success criteria"
+				columns={TABLE_CODE_TEST_COLUMNS}
+				rows={TABLE_CODE_TEST_ROWS}
+			/>,
 		);
 
 		// A named `<section>` is exposed as a `region` landmark
@@ -96,7 +93,12 @@ describe('DataTable — structure a screen reader can use', () => {
 
 	it('keeps the header row in the empty state so the structure is still announced', () => {
 		const html = renderToStaticMarkup(
-			<DataTable caption="Success criteria" columns={COLUMNS} rows={[]} state="empty" />,
+			<DataTable
+				caption="Success criteria"
+				columns={TABLE_CODE_TEST_COLUMNS}
+				rows={TABLE_CODE_TEST_ROWS}
+				state="empty"
+			/>,
 		);
 
 		expect(html).toContain('data-table-state="empty"');
@@ -110,8 +112,8 @@ describe('DataTable — structure a screen reader can use', () => {
 		const html = renderToStaticMarkup(
 			<DataTable
 				caption="Success criteria"
-				columns={COLUMNS}
-				rows={ROWS}
+				columns={TABLE_CODE_TEST_COLUMNS}
+				rows={TABLE_CODE_TEST_ROWS}
 				state="error"
 				errorMessage="The read failed."
 			/>,
@@ -125,7 +127,12 @@ describe('DataTable — structure a screen reader can use', () => {
 
 	it('marks the compact variant so the narrow-width state is observable', () => {
 		const html = renderToStaticMarkup(
-			<DataTable caption="Success criteria" columns={COLUMNS} rows={ROWS} compact />,
+			<DataTable
+				caption="Success criteria"
+				columns={TABLE_CODE_TEST_COLUMNS}
+				rows={TABLE_CODE_TEST_ROWS}
+				compact
+			/>,
 		);
 
 		expect(html).toContain('data-table-compact="true"');
@@ -133,9 +140,9 @@ describe('DataTable — structure a screen reader can use', () => {
 	});
 
 	it('renders a missing cell value as an em dash, not an empty cell', () => {
-		expect(cellText({ id: 'r', header: 'h', cells: {} }, 'level')).toBe('—');
-		expect(cellText({ id: 'r', header: 'h', cells: { level: '' } }, 'level')).toBe('—');
-		expect(cellText({ id: 'r', header: 'h', cells: { level: 'AA' } }, 'level')).toBe('AA');
+		expect(cellText(rowWithoutCells({}), 'level')).toBe('—');
+		expect(cellText(rowWithoutCells({ level: '' }), 'level')).toBe('—');
+		expect(cellText(rowWithoutCells({ level: 'AA' }), 'level')).toBe('AA');
 	});
 });
 

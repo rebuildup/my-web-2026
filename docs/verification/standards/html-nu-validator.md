@@ -87,6 +87,10 @@ engine の誤検知（false positive）に対する canary として意図的に
 
 つまり「invalid fixture が通るよう書き換えた」時点で gate は落ちます。
 
+manifest 自身が壊れている場合（`fixtures.valid` / `fixtures.invalid` が無い、
+`rules` の片方向が欠ける等）は **exit 2** です。gate ではなく「使えない宣言」
+として扱い、`runOfflineCheck` の途中から `TypeError` を投げ抜くことはしません。
+
 ## この gate が最初に見つけた既存 defect（waiver ledger）
 
 SSR half を実 Worker に対して走らせた結果、**この gate が新規に検出した既存の
@@ -108,17 +112,28 @@ waiver ledger の性質:
 - **使わなければ fail**。修正されて該当しなくなった waiver は `waiver.unused` で
   落ちるので、放置された waiver が緑を維持することはありません。
 - **suppress しても finding は report に出続けます**（`WAIVED` 表示）。
+  exit code には**入りません**。`evaluateRoutes().stats.errors` と
+  `effectiveFindings()` は同じ定義（`severity === 'error' && !waived`）です。
+  両者がずれると「ledger が全部 covering している codebase で `--live` が
+  exit 1 になる」という中途半端な状態が生まれるため、その一致を
+  `scripts/check-html-standards.test.mjs` が loopback 起点の `--live`
+  実行で回帰テストにしています。
 
-これらは **#412 で直していない既知の debt** であり、follow-up ticket の
-対象です（新規 route / 新規 component では同じ形が blocking になります）。
+これらは **#412 で直していない既知の debt** です。app markup の修正は
+editorial / home の obligation であり、既存 e2e selector の更新を伴う
+owner 判断（follow-up ticket の起票も owner 判断）のため、**現時点で
+follow-up ticket は未起票**です。新規 route / 新規 component では同じ形が
+blocking になります。
 
 ## engine と Nu Validator の意図的な差分
 
-- **body 直下の hoisted `<style>`** は finding にしません。React 19 は
-  streaming SSR で `<div hidden><style>…</style></div>` を出すため、判定すると
-  本リポジトリが出せる全ての document が落ちます（Nu は error 扱い）。
-  phrasing な親（`<ul>` / `<p>` / `<button>` など）の中の `<style>` は
-  従来どおり報告します。
+- **`<body>` 配下の flow content 要素に hoisted された `<style>`** は finding に
+  しません。React 19 は streaming SSR で `<div hidden><style>…</style></div>`
+  を出すため、判定すると本リポジトリが出せる全ての document が落ちます
+  （Nu は error 扱い）。豁免されるのは「直接の親が flow content で、
+  かつ `<body>` 以下の祖先がいる」`<style>` なので、`<section><style>` や
+  `<div><section><style>` も同じ扱いになります。**flow content でない親
+  （`<ul>` / `<p>` / `<button>` など）の中の `<style>` は従来どおり報告します。**
 - **element ごとの属性表が最頻の誤検知源**です。`autocomplete` は HTML が
   「listed attribute」と定める 4 要素（`form` / `input` / `select` /
   `textarea`）すべてに許されますが、表が 2 要素しかないと、
@@ -173,6 +188,19 @@ exit 2 は manifest が読めない/使えない場合です。
 - **HTML5 の部分集合**。rule table がモデル化した element のみが対象で、
   表に無い element 名は「finding にならない」。custom element を
   誤検知しない代わりに、未知の element の属性も検査しません。
+- **`<` の扱いは literal text**。tag を開かない `<`（`<p>a < b</p>` の `<`、
+  `<<<`、末尾の `<`）は HTML5 の text として保持され、以降の markup は
+  通常どおり parse されます。
+- **EOF で省略可能な end tag は `unclosed-element` にしません**。`<p>` / `<li>` /
+  `<dt>` / `<td>` など end tag を省略できる element、および `<html>` / `<head>` /
+  `<body>` が input 末尾まで開いていても HTML5 準拠です（ブラウザが暗黙に
+  閉じます）。`<div>` のように必須の end tag が欠けた場合は従来どおり報告します。
+- **SSR half が検証する document の範囲**。workerd 上では API key を持たないため
+  `/api/v1/access/count` と reactions 系が 401 で、home document は「失敗時
+  fallback」状態で評価されます（shell / nav / editorial primitive / picker の
+  SSR markup / portfolio / design-system は対象。counter と reaction list の
+  成功時 markup は対象外）。成功時をCover するのは `--live <baseUrl>` です。
+  詳細は `test/integration/html-standards.test.ts` の冒頭。
 - **foreign content**（`<svg>` / `<math>`）は属性・nesting を検査しません。
   SVG の属性名は大文字小文字が意味を持つ（`viewBox`）ため、naive に検査すると
   誤検知しか出ません。`id` の重複検査だけは foreign をまたいで効きます。

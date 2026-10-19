@@ -889,7 +889,16 @@ const OPTIONAL_END_TAGS = new Set([
 	'tr',
 	'td',
 	'th',
+	'colgroup',
+	'col',
 ]);
+
+/**
+ * The document skeleton. HTML5 lets every one of these end tags be omitted
+ * at the end of the document, so an EOF stack that still holds them is not
+ * a defect either.
+ */
+const DOCUMENT_STRUCTURE_TAGS = new Set(['html', 'head', 'body']);
 
 const IMPLIED_END = {
 	p: new Set([
@@ -1071,7 +1080,10 @@ export function parseDocument(html) {
 		// describe the tag itself from here on.
 		advance(lt);
 
-		// A `<` that does not open a tag is literal text.
+		// A `<` that does not open a tag is literal text. `advance` moves the
+		// cursor ABSOLUTELY (`i = to`), so this branch must move past the `<`
+		// itself — `advance(1)` would rewind to offset 1, re-find the same
+		// `<` and loop forever on `<p>a < b</p>`.
 		if (next === undefined || next === '<' || !/[a-zA-Z!/?]/.test(next)) {
 			top().children.push({
 				type: 'text',
@@ -1081,9 +1093,9 @@ export function parseDocument(html) {
 				children: [],
 				parent: top(),
 				line,
-				col: 1,
+				col: lt - lineStart + 1,
 			});
-			advance(1);
+			advance(lt + 1);
 			continue;
 		}
 
@@ -1333,6 +1345,14 @@ export function parseDocument(html) {
 
 	for (let k = stack.length - 1; k >= 1; k -= 1) {
 		const node = stack[k];
+		// HTML5 makes some end tags optional, and the document ending is
+		// exactly where HTML5 closes them for you. `<p>text` with no `</p>`
+		// and a document with no `</body></html>` are conforming, so
+		// reporting them would be a false positive — the same optional-end
+		// rule the tree builder already applies when a real end tag arrives
+		// (see `OPTIONAL_END_TAGS` above). A `<div>` left open at EOF is
+		// still a defect and is still reported.
+		if (OPTIONAL_END_TAGS.has(node.tag) || DOCUMENT_STRUCTURE_TAGS.has(node.tag)) continue;
 		emit('unclosed-element', `Unclosed element: <${node.tag}>.`, {
 			line: node.line,
 			col: node.col,
@@ -2075,9 +2095,17 @@ function applyWaivers({ manifest, findings }) {
 	}
 }
 
-/** Findings that count against the exit code (waived findings never do). */
+/**
+ * Findings that count against the exit code (waived findings never do).
+ *
+ * This must stay identical to the `errors` count `evaluateRoutes()`
+ * reports in `stats`, because `scripts/check-html-standards.mjs` builds the
+ * live exit code from this function: a projection that counted a waived
+ * finding would fail a codebase whose defects are all covered by the
+ * manifest's ledger.
+ */
 export function effectiveFindings(findings) {
-	return findings.filter((finding) => finding.severity === 'error');
+	return findings.filter((finding) => finding.severity === 'error' && !finding.waived);
 }
 
 /* ------------------------------------------------------------------ *

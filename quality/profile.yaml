@@ -371,7 +371,10 @@ html_standards:
       source: 'scripts/make-html-nu-validator-report.mjs (Playwright chromium + sharp)'
   known_limits:
     - 'subset of HTML5: the rule table covers the elements this repository renders, and an element name outside the table is not a finding'
+    - 'a `<` that does not open a tag is literal text (HTML5 text), and parsing continues after it'
+    - 'end tags HTML5 makes optional (p, li, dt, dd, td, th, ...) plus html/head/body are not unclosed-element at EOF, because HTML5 closes them for you; a required end tag at EOF is still reported'
     - 'foreign content (<svg>/<math>) is not checked for attributes or nesting; id uniqueness still is'
+    - 'the SSR half validates the workerd documents as they render without HOME_API_KEY, so the home counter and reaction blocks are in their failure-fallback state there; the success state is what `--live <baseUrl>` covers'
     - 'no external schema, no CSS, no ARIA role/attribute value vocabulary beyond the referenced-id graph'
     - 'a hoisted <style> inside a flow element of <body> is a documented divergence from the Nu validator: React 19 streams suspense styles as `<div hidden><style>…</style></div>` through every route, so flagging it would mean flagging every document this project can ship. A <style> inside a phrasing-only parent (<ul>, <p>, <button>, …) is still reported.'
 

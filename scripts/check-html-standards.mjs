@@ -153,6 +153,21 @@ export function loadManifest(path) {
 		}
 	}
 
+	for (const kind of ['valid', 'invalid']) {
+		// A manifest that dropped a fixture path must be "unusable"
+		// (exit 2), not a raw `TypeError` out of `runOfflineCheck`.
+		if (typeof manifest.fixtures?.[kind] !== 'string' || manifest.fixtures[kind].trim() === '') {
+			errors.push(`fixtures.${kind}: must name a fixture file relative to the repository root`);
+		}
+	}
+	for (const key of ['expect', 'forbidden']) {
+		const list = manifest.fixtures?.[key];
+		if (list === undefined) continue;
+		if (!Array.isArray(list) || list.some((rule) => typeof rule !== 'string')) {
+			errors.push(`fixtures.${key}: must be a list of rule ids`);
+		}
+	}
+
 	for (const waiver of manifest.waivers ?? []) {
 		if (!isRealReason(waiver.reason)) {
 			errors.push(`waivers: the waiver for ${waiver.rule} has no reason`);
@@ -319,10 +334,7 @@ export function runOfflineCheck({ root = REPO_ROOT, manifest }) {
 				);
 			}
 			for (const rule of manifest.fixtures.expect ?? []) {
-				const produced =
-					result.messages.some((message) => message.rule === rule) ||
-					(severities[rule] === 'warning' &&
-						result.messages.some((message) => message.rule === rule));
+				const produced = result.messages.some((message) => message.rule === rule);
 				if (!produced) {
 					errors.push(
 						`fixtures.invalid: expected rule "${rule}" did not fire on the invalid fixture`,

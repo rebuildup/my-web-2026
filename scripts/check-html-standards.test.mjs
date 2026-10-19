@@ -12,8 +12,9 @@
  */
 
 import assert from 'node:assert/strict';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { createServer } from 'node:http';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import test from 'node:test';
@@ -27,7 +28,13 @@ import {
 	publishedPathForId,
 	runOfflineCheck,
 } from './check-html-standards.mjs';
-import { evaluateRoutes, severitiesFrom, validateHtml } from './html-standards-contract.mjs';
+import {
+	effectiveFindings,
+	evaluateRoutes,
+	parseDocument,
+	severitiesFrom,
+	validateHtml,
+} from './html-standards-contract.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const CHECKER = join(REPO_ROOT, 'scripts/check-html-standards.mjs');
@@ -43,6 +50,29 @@ function errorRules(body, options) {
 	return validateHtml(document(body, options))
 		.messages.filter((message) => message.severity === 'error')
 		.map((message) => message.rule);
+}
+
+/**
+ * Rules emitted at error severity for a WHOLE document, so the cases
+ * that can only be expressed at the end of the input (an optional end
+ * tag, a trailing `<`) are reachable instead of being closed for the
+ * test by the wrapper above.
+ */
+function rawErrorRules(html) {
+	return validateHtml(html)
+		.messages.filter((message) => message.severity === 'error')
+		.map((message) => message.rule);
+}
+
+/** The document skeleton, left open on purpose (EOF is the case under test). */
+function openDocument(body) {
+	return `<!doctype html><html lang="en"><head><meta charset="utf-8"><title>fixture</title></head><body>${body}`;
+}
+
+/** Every text node in the parsed tree, concatenated — proves a literal survived. */
+function textContent(node) {
+	if (node.type === 'text') return node.text;
+	return node.children.map(textContent).join('');
 }
 
 test('invalid markup — the three defect classes the Issue names', async (t) => {
@@ -200,6 +230,48 @@ test('valid markup is not reported — false positives are the failure mode', as
 		assert.deepEqual(errorRules('<ul><li>a<li>b</ul>'), []);
 		assert.deepEqual(errorRules('<p>a<p>b'), []);
 		assert.deepEqual(errorRules('<table><tr><td>a<td>b</table>'), []);
+	});
+
+	await t.test('an optional end tag left open at EOF is not unclosed-element', () => {
+		// HTML5 closes an optional end tag for you, including at the end of
+		// the document. Reporting it would make conforming documents fail.
+		assert.deepEqual(rawErrorRules(openDocument('<p>text')), []);
+		assert.deepEqual(rawErrorRules(openDocument('<ul><li>a<li>b</ul>')), []);
+		assert.deepEqual(rawErrorRules(openDocument('<dl><dt>a<dd>b</dl>')), []);
+		// The document skeleton's own end tags are optional too, so a
+		// document that simply stops is still conforming.
+		assert.deepEqual(
+			rawErrorRules('<!doctype html><html lang="en"><head><title>t</title></head><body><p>text'),
+			[],
+		);
+		// A REQUIRED end tag at EOF is still a real defect, or this
+		// exception would hide a truncated document.
+		assert.ok(
+			rawErrorRules(openDocument('<div>text')).includes('unclosed-element'),
+			'a <div> left open at EOF is still reported',
+		);
+	});
+
+	await t.test('a literal < in text is text, and the tokenizer still terminates', () => {
+		// Regression: the literal-`<` branch advanced the cursor to offset 1
+		// instead of past the `<`, so any document holding a `<` that does
+		// not open a tag looped until the heap died instead of reporting.
+		assert.deepEqual(errorRules('<p>a < b</p>'), []);
+		assert.deepEqual(errorRules('<p>1<2</p>'), []);
+		assert.deepEqual(errorRules('<p>a << b</p>'), []);
+		// EOF and a run of `<` are only expressible on a whole document.
+		assert.deepEqual(rawErrorRules(openDocument('<p>trailing <')), []);
+		assert.deepEqual(rawErrorRules(openDocument('<<<')), []);
+
+		// Termination alone is not enough: the `<` must survive as text and
+		// the markup after it must still be parsed.
+		const html = document('<p>a < b</p><h2>after</h2>');
+		assert.ok(textContent(parseDocument(html).root).includes('a < b'), 'the literal < stays text');
+		assert.equal(
+			validateHtml(html).stats.elements,
+			7,
+			'html, head, meta, title, body, p and h2 — parsing continued past the literal <',
+		);
 	});
 
 	await t.test('inline SVG is not checked as HTML', () => {
@@ -492,10 +564,106 @@ test('a waiver is scoped to the message shape it names', () => {
 	// from the shipped manifest because the fixture only exercises waivers.
 	const blanket = {
 		version: loadManifest(MANIFEST_PATH).version,
+		fixtures: loadManifest(MANIFEST_PATH).fixtures,
 		...base,
 		waivers: [{ rule: 'html.duplicate-id', reason: 'fixture blanket waiver for this suite' }],
 	};
 	assert.throws(() => loadManifestFixture(blanket), /route_id or message_pattern/);
+});
+
+test('the exit code and the statistics must count the same errors', async (t) => {
+	const manifest = loadManifest(MANIFEST_PATH);
+
+	/** The three defects the shipped ledger waives, as one document. */
+	const waivedDocument = document(
+		'<main><h1>x</h1><nav><ul><a href="/">home</a></ul></nav><section><h2>y</h2>' +
+			'<button type="button"><div class="icon"></div></button>' +
+			'<input type="search" aria-controls="epr-search-id" aria-label="q"></section></main>',
+	);
+	// One renderable route (the ledger covers `/`), everything else declared
+	// `excluded` so the offline half's roster check still matches
+	// `src/routes/**` and contributes no errors of its own.
+	const singleRoute = {
+		...manifest,
+		routes: manifest.routes.map((route) =>
+			route.route_id === '/'
+				? route
+				: { ...route, mode: 'excluded', reason: 'not served by the loopback fixture origin' },
+		),
+	};
+
+	await t.test('a waived finding never counts against the exit code', () => {
+		const findings = [
+			{ rule: 'html.duplicate-id', severity: 'error', waived: true },
+			{ rule: 'html.bad-idref', severity: 'error' },
+			{ rule: 'html.heading-level-skip', severity: 'warning', waived: true },
+			{ rule: 'html.heading-level-skip', severity: 'warning' },
+		];
+		assert.deepEqual(
+			effectiveFindings(findings).map((finding) => finding.rule),
+			['html.bad-idref'],
+		);
+	});
+
+	await t.test('effectiveFindings agrees with stats.errors', () => {
+		const result = evaluateRoutes({
+			manifest: singleRoute,
+			observations: [
+				{
+					routeId: '/',
+					path: '/',
+					status: 200,
+					html: waivedDocument,
+					contentType: 'text/html',
+					requestFailed: false,
+				},
+			],
+			severities: severitiesFrom(singleRoute),
+		});
+		assert.equal(result.findings.filter((finding) => finding.waived).length, 3);
+		assert.equal(result.stats.errors, 0);
+		assert.equal(
+			effectiveFindings(result.findings).length,
+			result.stats.errors,
+			'the exit-code view and the statistics must not disagree',
+		);
+	});
+
+	await t.test('the live CLI exits 0 while the waivers are in force', async () => {
+		// The reproduction command the verification note documents
+		// (`--live <baseUrl>`) must exit 0 on a codebase whose defects are
+		// all covered by the ledger. It used to count the waived findings
+		// and print three PRE-EXISTING defects as FAIL.
+		await withServer(waivedDocument, async (baseUrl) => {
+			const covered = await runChecker([
+				'--live',
+				baseUrl,
+				'--json',
+				'--manifest',
+				writeManifestFixture(singleRoute),
+			]);
+			assert.equal(covered.code, 0, covered.stdout + covered.stderr);
+			const parsed = JSON.parse(covered.stdout);
+			assert.equal(parsed.ok, true, covered.stdout);
+			assert.equal(parsed.live.stats.errors, 0);
+			assert.equal(parsed.live.findings.length, 3);
+			assert.ok(parsed.live.findings.every((finding) => finding.waived === true));
+
+			// The same document with no ledger at all must still fail, or the
+			// assertion above would prove nothing.
+			const uncovered = await runChecker([
+				'--live',
+				baseUrl,
+				'--json',
+				'--manifest',
+				writeManifestFixture({ ...singleRoute, waivers: [] }),
+			]);
+			assert.equal(uncovered.code, 1);
+			const parsedUncovered = JSON.parse(uncovered.stdout);
+			assert.equal(parsedUncovered.ok, false);
+			assert.equal(parsedUncovered.live.stats.errors, 3);
+		});
+	});
 });
 
 test('the offline CLI half — exit codes and fail-closed behaviour', async (t) => {
@@ -554,12 +722,60 @@ test('the manifest loader rejects placeholder policies', () => {
 		/unsupported manifest version/,
 	);
 	assert.throws(() => loadManifest({}), ManifestError);
+
+	// A manifest that dropped its fixture paths must be UNUSABLE (exit 2),
+	// not a raw `TypeError` out of `runOfflineCheck`.
+	const { fixtures: _dropped, ...withoutFixtures } = manifest;
+	assert.throws(() => loadManifestFixture(withoutFixtures), /fixtures\.valid/);
+	assert.throws(
+		() =>
+			loadManifestFixture({
+				...manifest,
+				fixtures: { ...manifest.fixtures, invalid: '   ' },
+			}),
+		/fixtures\.invalid/,
+	);
 });
 
 /** Write a candidate manifest to a temp file and load it through the real loader. */
 function loadManifestFixture(value) {
+	return loadManifest(writeManifestFixture(value));
+}
+
+/** The same, but returns the path so the CLI can be pointed at it. */
+function writeManifestFixture(value) {
 	const dir = mkdtempSync(join(tmpdir(), 'html-standards-manifest-'));
 	const path = join(dir, 'manifest.json');
 	writeFileSync(path, JSON.stringify(value));
-	return loadManifest(path);
+	return path;
+}
+
+/** Run the checker CLI asynchronously, so a loopback server can answer it. */
+function runChecker(args) {
+	return new Promise((settle) => {
+		const child = spawn(process.execPath, [CHECKER, ...args], { cwd: REPO_ROOT });
+		let stdout = '';
+		let stderr = '';
+		child.stdout.on('data', (chunk) => {
+			stdout += chunk;
+		});
+		child.stderr.on('data', (chunk) => {
+			stderr += chunk;
+		});
+		child.on('close', (code) => settle({ code, stdout, stderr }));
+	});
+}
+
+/** Serve one document on loopback and run `body` against its origin. */
+async function withServer(html, body) {
+	const server = createServer((_request, response) => {
+		response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' });
+		response.end(html);
+	});
+	await new Promise((listening) => server.listen(0, '127.0.0.1', listening));
+	try {
+		return await body(`http://127.0.0.1:${server.address().port}`);
+	} finally {
+		await new Promise((closed) => server.close(closed));
+	}
 }

@@ -194,7 +194,7 @@
 		"unclosed-element": {
 			"severity": "error",
 			"nu_type": "unclosed-element",
-			"reason": "an element left open at EOF swallows the rest of the document into itself."
+			"reason": "an element left open at EOF swallows the rest of the document into itself. End tags HTML5 makes optional (p, li, dt, dd, td, th, ...) and the document skeleton's own (html, head, body) are not reported, because HTML5 closes them for you at the end of input."
 		},
 		"empty-title": {
 			"severity": "error",

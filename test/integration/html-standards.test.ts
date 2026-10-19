@@ -63,6 +63,21 @@ import { seedPortfolioRow } from './fixtures/portfolio-d1';
  * `/portfolio` read the portfolio tables), so the suite applies the real
  * migration files through `?raw` imports and seeds one public portfolio
  * row. Nothing is fetched from production and no secret is read.
+ *
+ * Which SSR state this covers — and which it does not
+ * ----------------------------------------------------
+ * The Worker runs here without `HOME_API_KEY`, so `/api/v1/access/count`
+ * and the reactions endpoints answer 401 and the home document renders
+ * their FAILURE fallbacks rather than the live numbers and the live emoji
+ * list. What is validated is therefore the failure-state document: the
+ * shell, the nav, the editorial primitives, the picker's SSR markup (the
+ * three shipped waivers match it, or this suite would fail with
+ * `waiver.unused`), the portfolio documents and the design-system route.
+ * The success-state markup of the counter and the reaction list is NOT
+ * covered here; it is what `--live <baseUrl>` against a running server
+ * covers. Seeding a valid API key into workerd is not done here on
+ * purpose: a test that depends on a credential is a test that silently
+ * stops covering the document.
  */
 
 type Severity = 'error' | 'warning';
@@ -252,15 +267,23 @@ describe('SSR HTML conformance (Issue #412)', () => {
 		);
 		// The gate fails on error-level findings only; warnings and waived
 		// findings are asserted separately below, so this assertion stays the
-		// one thing a reader scans in CI output.
+		// one thing a reader scans in CI output. `summary` is the failure
+		// message, so a red run prints the waived findings too — a waiver is
+		// a reviewable statement, not a hidden one.
 		expect(
 			blocking
 				.map((finding) => `${finding.rule} ${finding.path ?? ''}: ${finding.message}`)
 				.join('\n'),
+			summary,
 		).toBe('');
 		expect(result.stats.errors).toBe(0);
-		expect(warned.length).toBe(1);
-		expect(summary).toContain('warning html.heading-level-skip');
+		// The count of warnings is deliberately NOT pinned: `heading-level-skip`
+		// is a warning by policy, so a future route that skips a level must
+		// not redden `validate`. WHICH rules may appear as a non-blocking
+		// finding is pinned instead, so a new non-blocking rule fails here.
+		expect([...new Set(warned.map((finding) => finding.rule))]).toEqual([
+			'html.heading-level-skip',
+		]);
 	}, 60_000);
 
 	it('reports every non-waived finding a reader has to look at', async () => {

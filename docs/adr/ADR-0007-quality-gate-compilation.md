@@ -1,6 +1,6 @@
 # ADR-0007: Quality gate compilation
 
-- Status: Accepted (revised 2026-09-11)
+- Status: Accepted (revised 2026-09-11; amended 2026-10-19 by Issue #566)
 - Date: 2026-09-11
 - Extends: project-init ADR-0005, ADR-0006
 - Superseded by: None
@@ -44,6 +44,30 @@ by `playwright.config.ts`. The Playwright report is uploaded as a
 
 These are wired in `package.json#scripts` and referenced by the
 project-local `quality/profile.yaml`.
+
+### 1a. Where the ordered chain lives (amendment, Issue #566)
+
+The three gates above were originally `&&`-joined command chains
+inside `package.json`. A trial merge of 20 concurrent 0.6.3 ticket
+PRs conflicted on those lines in 17 of them: a ticket that added one
+gate had to rewrite a line every other ticket was also rewriting.
+
+`quality/profile.yaml#gates.<name>.components` is therefore the
+**execution order**, not only its record. Each `validate:*` npm script
+is one line — `node scripts/run-quality-gates.mjs <gate>` — and that
+runner reads the declared components and runs them in order, one
+command per line, stopping at the first failure and propagating that
+step's exit code (the semantics of the chain it replaces). The same
+reasoning applies to `pnpm run test`: it delegates to
+`scripts/run-script-tests.mjs`, which discovers `scripts/*.test.mjs`
+by convention instead of enumerating them, and
+`scripts/check-test-wiring.mjs` proves reachability against that same
+rule.
+
+Adding a gate or a script test is an appended line or a new file, not
+a rewrite of a shared chain. Nothing else in this ADR changes: the
+three entry points, the read-only format/lint rule, the single CI job
+and the change-risk mapping are untouched.
 
 ### 2. Format and lint are read-only inside gates
 

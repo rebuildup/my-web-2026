@@ -28,6 +28,7 @@ import {
 	TEXT_BYTES,
 	WEBP_BYTES,
 	ZIP_BYTES,
+	oversizeGif,
 	repeatTo,
 	toArrayBuffer,
 } from '../helpers/image-fixtures';
@@ -355,7 +356,11 @@ describe('upload guards — size and emptiness', () => {
 		const row = await measure({
 			label: '256KiB+1',
 			declared: 'image/gif',
-			bytes: new Uint8Array(repeatTo(GIF_BYTES, MAX_IMAGE_BYTES + 1)),
+			// `oversizeGif()` is the same bytes as
+			// `repeatTo(GIF_BYTES, MAX_IMAGE_BYTES + 1)`; the named
+			// fixture states the intent ("a valid GIF past the cap") and
+			// keeps that derivation in one place.
+			bytes: new Uint8Array(oversizeGif()),
 			filename: 'huge.gif',
 		});
 		expect(row.verdict).toBe('rejected');

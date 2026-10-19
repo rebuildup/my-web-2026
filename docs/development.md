@@ -275,6 +275,27 @@ pnpm run validate:release      # + cf-typegen:check
 `validate:fast` には UI copy の locale 契約検査 `pnpm run copy:i18n:check` も含まれる
 (下記「UI copy の locale 契約」参照)。
 
+### gate と test の配線先（Issue #566）
+
+`validate:fast` / `:integration` / `:release` の npm script はそれぞれ 1 行で、
+実行順序は [`quality/profile.yaml`](../quality/profile.yaml) の
+`gates.<name>.components`（1 行 1 コマンド）が正:
+
+```bash
+node scripts/run-quality-gates.mjs fast --list  # 直接実行のみ。npm script の body では拒否される
+```
+
+- **gate を追加する**: 適切な gate の `components` に 1 行足す（gate 固有の説明コメントを
+  同行に置く）。`package.json` も workflow YAML も触らない。1 行 1 コマンドのみ受理され、
+  読めない構造・存在しない `pnpm run <script>`・合成サイクルは exit 2 で fail closed。
+- **実行順と exit code**: 宣言順に実行し、最初の失敗で停止してその子プロセスの exit code を
+  そのまま返す（従来の `&&` 連結と同じ意味）。
+- **scripts の test**: `pnpm run test` は `scripts/run-script-tests.mjs` に委譲し、
+  `scripts/*.test.mjs` を規約で発見する。test を追加しても `package.json` は変更しない。
+  到達可能性は `pnpm run test:wiring:check`（`scripts/check-test-wiring.mjs`）が
+  「発見規則がファイルを拾うこと」と「いずれの npm script からも runner が
+  参照されていること」を含めて証明する。
+
 `pnpm run compat:check` は Web API / CSS の採用可否を Baseline（web-features）で
 判定する gate（Issue #414）。走査面は `src/**` に加えて生成 CSS の入力である
 `panda.config.ts`（`app-shell` surface の `files`）で、`src/` 以外のファイルは

@@ -87,6 +87,27 @@ control が生き残れば `detector_unproven` として **exit 2**（= exit 1 �
 | `control-gutter` | `scrollbar-gutter: auto` — 予約が解けて全幅が動く | `content_shift`（overlay scrollbar 環境では `gutter_policy_missing`） |
 | `control-overflow` | 固定幅 1200px のブロック | `viewport_overflow` + `target_overflow` |
 
+## fixture の gutter policy は fixture 固有の宣言
+
+この fixture は `html { scrollbar-gutter: stable; overflow-y: scroll }` を宣言するが、
+**出荷 CSS（`src/styles.css`）には同じ宣言が無い**（`src/**` のいずれにも
+`scrollbar-gutter` の宣言は無い）。つまり baseline の PASS は
+「この policy を宣言した document は 320px で破綻しない」ことの証拠であり、
+「出荷面が gutter を予約している」ことの証拠ではない。実際の出荷面は
+`auto` のままで、`control-gutter` が測っている状況と等価である。
+
+この隔たりを隠さないために 3 つの手当てをしている。
+
+1. fixture の `gutter` story の `purpose`（= fixture document に描かれ、WebP に写る文言）に
+   「この宣言は fixture 固有」であることを明記する。
+2. report は `src/styles.css` を**読んで**その事実を文章にする（「出荷 CSS が宣言していれば
+   対応する文になる」）。手で書いた主張は drift するため。
+3. `scripts/check-layout-stress.test.mjs` が (1)(2) の両方を検証する。
+
+**出荷 CSS に `scrollbar-gutter: stable` を採用するかどうかは owner の判断**で、本 PR では
+決めていない。採用すれば全スクロール可能 page のReserved幅が変わる製品上の変更であり、
+採用しないなら「gutter 予約」は，出荷面には未適用の policy として扱われるべきである。
+
 ## 実行方法
 
 ```bash
@@ -136,7 +157,7 @@ errors (0)
 
 | 対象 | どこで走る | 結果 |
 | --- | --- | --- |
-| `evaluateStressRun` の全 rule（37 cases） | `pnpm run test` → CI `validate` job | pass |
+| `evaluateStressRun` の全 rule（38 cases） | `pnpm run test` → CI `validate` job | pass |
 | browser 半の gate（3 variant の実測） | `pnpm run compat:stress:check`（Chromium 必要） | baseline PASS / control 2 件捕捉 / exit 0 |
 | report と WebP | `pnpm run verify:compat-stress-screenshot` | `docs/verification/compat/stress-story.webp` 生成 |
 
@@ -191,12 +212,14 @@ CI では「検出器が必ず落ちること」が毎回検証される。実�
   足りない場合は report を書かずに失敗する。キャプションは画像の主张なので、
   画素を伴わないまま「意図的 defect」を名乗ることを構造的に防ぐ。
 - 符号化: 1500px / quality 45（`scripts/_lazy-media-image.mjs` の 300 KB budget 内、
-  実測 264,482 B）。他の verification report が quality 80 を使うのに下回るのは、
+  実測 271,536 B）。他の verification report が quality 80 を使うのに下回るのは、
   11 枚の 320px viewport capture を含むため。page の幅を縮めたのであって、
   文字サイズを縮めたわけではない。
 
 ## 既知の制約
 
+- **fixture の `scrollbar-gutter: stable` は出荷 CSS に無い**（前の節参照）。出荷 CSS に
+  採用するかは owner 判断。
 - fixture は静的 HTML であり、出荷 route を実際にレンダリングしたものではない。
   出荷 CSS（`styled-system/` の生成物）は fixture に embed していないので、
   token を変えたとき fixture の CSS 自体は追随しない。**コピーのずれは gate で

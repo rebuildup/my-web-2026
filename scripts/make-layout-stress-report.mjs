@@ -54,7 +54,7 @@
  * reads no secret, touches no network, no D1 and no R2.
  */
 
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -286,6 +286,19 @@ function render(result, captures, sizes) {
 	const gutterNote = baseline?.stats.gutterObservable
 		? 'platform scrollbar の予約幅が実測できたので、gutter 系 2 rule も実測済み。'
 		: 'この host は overlay scrollbar（予約幅 0px）で <code>gutter_not_reserved</code> / <code>content_shift</code> が<b>実測できていない</b>。warning のまま残し、PASS の証拠には数えていない。';
+	/**
+	 * Whether the shipped CSS reserves the gutter. Read from the
+	 * source rather than asserted here: a baseline PASS is evidence
+	 * that the fixture holds under the policy it declares, and this
+	 * fixture declares the policy itself. Saying so in the report is
+	 * what keeps a green run from reading as "the shipped surface
+	 * reserves the gutter" when it does not.
+	 */
+	const shippedCss = readFileSync(join(ROOT, 'src/styles.css'), 'utf8');
+	const shippedGutter = /scrollbar-gutter\s*:\s*([a-z-]+)/.exec(shippedCss);
+	const policyNote = shippedGutter
+		? `出荷 CSS も <code>scrollbar-gutter: ${escapeHtml(shippedGutter[1])}</code> を宣言しています（fixture はそれを写す）。`
+		: '<b><code>scrollbar-gutter: stable</code> はこの fixture 固有の宣言で、出荷 CSS（<code>src/styles.css</code>）には同じ宣言がありません。</b>baseline の PASS は「この policy の下では 320px で破綻しない」ことの証拠であり、「出荷 CSS が gutter を予約している」ことの証拠ではありません。';
 
 	const verdictRows = result.runs
 		.map((run) => {
@@ -393,6 +406,7 @@ ${verdictRows}
     許差は ${TOLERANCE_PX}px（sub-pixel）。platform scrollbar が 0px（overlay scrollbar）なら
     gutter の実効性は観測できないため <code>gutter_not_observable</code> として warning に残す（無言では合格にしない）。
     ${gutterNote}
+    ${policyNote}
     control の期待ルール: ${controls
 			.map(
 				(run) =>

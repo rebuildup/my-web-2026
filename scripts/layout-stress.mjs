@@ -463,7 +463,7 @@ export const STRESS_SECTIONS = [
 		eyebrow: '10 / gutter',
 		title: 'スクロールバー gutter',
 		purpose:
-			'全幅の帯とコンテナが、スクロールバーの表示 / 非表示で幅が変わらないこと（`scrollbar-gutter: stable` の実効性）。',
+			'全幅の帯とコンテナが、スクロールバーの表示 / 非表示で幅が変わらないこと（`scrollbar-gutter: stable` の実効性。**この宣言は fixture 固有で、出荷 CSS にはまだ無い**ので、ここでの PASS は policy 下の健全性であって、出荷面の予約の証拠ではない）。',
 		targets: [
 			{ id: 'gutter-band', label: '全幅の帯（gutter probe）' },
 			{ id: 'gutter-container', label: '全幅コンテナ（gutter probe）' },

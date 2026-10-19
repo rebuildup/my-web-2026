@@ -700,4 +700,21 @@ describe('verification report capture list', () => {
 			'a caption claims what the image shows, so the defect colour must be counted',
 		);
 	});
+
+	it("states the gutter policy is the fixture's own, read from the shipped CSS", () => {
+		const source = reportSource();
+		assert.ok(
+			source.includes("readFileSync(join(ROOT, 'src/styles.css')"),
+			'the report must read whether the shipped CSS reserves the gutter',
+		);
+		assert.ok(
+			source.includes('scrollbar-gutter'),
+			'the report must name the policy a baseline PASS is about',
+		);
+		const gutterStory = STRESS_SECTIONS.find((section) => section.id === 'gutter');
+		assert.ok(
+			gutterStory.purpose.includes('fixture 固有'),
+			'the fixture says out loud that the policy is its own — it is screenshotted',
+		);
+	});
 });

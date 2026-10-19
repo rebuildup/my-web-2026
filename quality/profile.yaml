@@ -53,6 +53,12 @@ gates:
       # log call site silently opts out of redaction.
       - 'pnpm run log:redaction:check'
       - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
+      # Issue #507: the ASVS 5.0 coverage ledger. It does not claim
+      # certification. Every selected applicable requirement resolves to
+      # a test/doc/gate, or is printed as `not run` (unverified) with the
+      # future manual work; an evidence path or gate that does not exist
+      # is `fail`. Offline text scan, so it belongs in the fast chain.
+      - 'pnpm run asvs:check' # selected ASVS 5.0 requirements vs. repository evidence
       # Issue #414: the Web feature adoption gate. Offline and vendored
       # (quality/browser-baseline.json pins the web-features Baseline
       # snapshot), so it costs a directory walk and never a network call.

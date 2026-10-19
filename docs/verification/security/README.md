@@ -19,6 +19,37 @@ of trusting the image.
 | [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 | [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
 | [`release-gate-missing-check.webp`](release-gate-missing-check.webp) | #508 | `pnpm run verify:release-gate-screenshot` |
+| [`asvs-coverage-matrix.webp`](asvs-coverage-matrix.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
+
+## `asvs-coverage-matrix.webp` (Issue #507)
+
+OWASP ASVS 5.0.0 からこの platform が実際に公開している surface に該当する
+項目だけを選んだ coverage ledger。ASVS certification ではない（manifest の
+`standard.certification` は `false` 固定で、`true` にすると gate が error になる）。
+
+4 状態（`pass` / `fail` / `not run`（未検証）/ `N/A`）を区別して表示し、
+`not run` と `N/A` は pass 件数に入れない。適用対象なのに証跡が無い項目は
+「未検証」として、未来の手作業（`follow_up`）ごと一覧される。宣言した
+test / doc / gate が repository に無ければ `not run` ではなく `fail` になる。
+
+下半分は false-green probe。`quality/fixtures/asvs-coverage/` の 4 fixture
+（`pass` / `missing-evidence` / `missing-follow-up` / `unregistered-gate`）を
+同じ評価関数で走らせ、不正な主張が fail に落ちることを見せる。画像は証拠であって
+テストの代用ではない。判定は `pnpm run asvs:check` の終了コードと
+`node --test scripts/check-asvs-coverage.test.mjs` が担保する。
+
+Regenerate:
+
+```bash
+pnpm run asvs:check             # 判定（exit 0 / 1）
+pnpm run asvs:report            # .tmp/asvs-coverage-report.html
+pnpm run verify:asvs-coverage-screenshot # WebP at the path above
+```
+
+Issue は `asvs-coverage-matrix.png` と書いているが、同ディレクトリの他 artefact と同じく
+WebP で納める（Playwright は WebP を書けないため、`sharp` でメモリ上の capture を
+再エンコードし、途中 PNG は作らない）。読む手順と「対象外 / 将来の手作業」の
+一覧は [`docs/verification/security/asvs-coverage.md`](asvs-coverage.md)。
 
 ## `release-gate-missing-check.webp` (Issue #508)
 

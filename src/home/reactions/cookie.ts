@@ -1,28 +1,25 @@
 /**
  * Visitor identity cookie for the home surface — `mw_actor_id`.
  *
- * One anonymous, opaque, HttpOnly visitor identifier per browser. Used
- * by the home reactions widget (`src/home/reactions/widget.tsx`) and
- * the home access counter (`src/home/access/load.ts`) as the
- * `actor_id` / `session_id` field on external-boundary PUT/DELETE
- * calls so per-visitor dedup at the API is possible without leaking
- * the visitor's identity.
+ * One opaque, HttpOnly, `SameSite=Lax` identifier per browser. Used
+ * by the home reactions widget (`src/home/reactions/widget.tsx`) as the
+ * `actor_id` field on the boundary PUT/DELETE calls, so per-visitor
+ * dedup at the API is possible without storing anything about the
+ * visitor beyond the random value itself. (`Secure` is added when the
+ * request arrived over HTTPS; `Path=/` so every page can read it.)
  *
- * Privacy:
- *   - 32 hex characters (no dashes, no version bits). The value is
- *     purely random — it carries no information about the visitor,
- *     the browser, or the network.
- *   - `HttpOnly` so client-side scripts cannot read it.
- *   - `SameSite=Lax` so cross-site GETs do not include it.
- *   - `Secure` is conditional on the request scheme (HTTPS in
- *     production; HTTP in local dev so `wrangler dev` still works).
- *   - `Path=/` so every page on the deployment can read it.
+ * What the value actually is (Issue #496): a random opaque id that
+ * carries no information about the visitor, the browser or the network
+ * — and, because it is also written to `reactions.actor_id` in D1, a
+ * **pseudonymous persistent identifier**, not an anonymous one. The
+ * public wording says exactly that and lives in
+ * `src/privacy/data-lifecycle.ts`; this comment no longer claims a
+ * cookie-law exemption, which is a legal judgement this repository
+ * cannot make and the published wording no longer needs to make.
  *
  * Out of scope: consent-management, cross-domain sharing,
- * fingerprinting. Per the privacy notice in
- * `src/home/footer.tsx`, this cookie is anonymous and falls under
- * the JP Cookie Policy "minimal impact" / EU ePrivacy "anonymous"
- * exemptions.
+ * fingerprinting. No consent gate ships today, and the public notice
+ * says so rather than implying one exists.
  */
 
 export const ACTOR_COOKIE_NAME = 'mw_actor_id';
@@ -30,7 +27,7 @@ export const ACTOR_COOKIE_NAME = 'mw_actor_id';
 /** Length of the random actor id, in hex chars (16 random bytes). */
 export const ACTOR_COOKIE_VALUE_LEN = 32;
 
-/** Cookie lifetime — one year, matching JP "anonymous cookie" guidance. */
+/** Cookie lifetime — one year. The public notice publishes this number. */
 export const ACTOR_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24 * 365;
 
 /**

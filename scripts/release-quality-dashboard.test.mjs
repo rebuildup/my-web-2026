@@ -14,6 +14,7 @@ import {
 	renderDashboardHtml,
 	resolveSignals,
 	summarize,
+	validateLedgerAlignment,
 	validateRoster,
 } from './release-quality-dashboard.mjs';
 
@@ -328,6 +329,60 @@ describe('renderDashboardHtml', () => {
 	});
 });
 
+describe('validateLedgerAlignment', () => {
+	const roster = (alignment) => ({
+		version: 1,
+		release_gate_ledger: 'quality/release-gate.json',
+		groups: [{ id: 'gate', label: 'ゲート' }],
+		signals: [IMPLEMENTED_EXIT_CODE],
+		ledger_alignment: alignment,
+	});
+	const releaseGate = { checks: [{ id: 'architecture-boundary' }, { id: 'release-version' }] };
+
+	it('accepts a roster that decides every release-gate row', () => {
+		assert.deepEqual(
+			validateLedgerAlignment(
+				roster({
+					as_signal: { 'architecture-boundary': 'architecture-boundary' },
+					not_listed: { 'release-version': { signal: null, reason: 'branch 依存' } },
+				}),
+				releaseGate,
+			),
+			[],
+		);
+	});
+
+	it('fails when a release-gate row has no decision at all', () => {
+		const errors = validateLedgerAlignment(
+			roster({ as_signal: { 'architecture-boundary': 'architecture-boundary' } }),
+			releaseGate,
+		);
+		assert.match(errors.join('\n'), /no decision for release-gate check "release-version"/);
+	});
+
+	it('fails when a mapping points at a signal that does not exist', () => {
+		const errors = validateLedgerAlignment(
+			roster({
+				as_signal: { 'architecture-boundary': 'architecture-boundary', 'release-version': 'nope' },
+				not_listed: {},
+			}),
+			releaseGate,
+		);
+		assert.match(errors.join('\n'), /maps "release-version" to unknown signal "nope"/);
+	});
+
+	it('fails when a not_listed row has no reason', () => {
+		const errors = validateLedgerAlignment(
+			roster({
+				as_signal: { 'architecture-boundary': 'architecture-boundary' },
+				not_listed: { 'release-version': { signal: null, reason: '' } },
+			}),
+			releaseGate,
+		);
+		assert.match(errors.join('\n'), /not_listed\["release-version"\] has no reason/);
+	});
+});
+
 describe('describeEnvironment', () => {
 	it('takes the source SHA and the capture time from the record root', () => {
 		const environment = describeEnvironment({
@@ -365,6 +420,18 @@ describe('the real roster', () => {
 		for (const { signal, result } of dashboard.rows) {
 			assert.ok(Object.values(STATUS).includes(result.status), `${signal.id}: unknown status`);
 			assert.ok(result.label && result.reason, `${signal.id}: missing label/reason`);
+		}
+	});
+
+	it('decides every row of the Issue #508 release-gate ledger', () => {
+		const { errors, releaseGate, roster } = loadRoster({ root: REPO_ROOT });
+		assert.deepEqual(errors, []);
+		const decided = new Set([
+			...Object.keys(roster.ledger_alignment.as_signal),
+			...Object.keys(roster.ledger_alignment.not_listed),
+		]);
+		for (const check of releaseGate.checks) {
+			assert.ok(decided.has(check.id), `release-gate check ${check.id} has no dashboard decision`);
 		}
 	});
 

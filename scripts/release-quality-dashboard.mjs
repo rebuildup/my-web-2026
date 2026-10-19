@@ -56,6 +56,7 @@
  * secret is read):
  *   - `quality/release-dashboard.json`      — the signal roster
  *   - `quality/route-coverage.json`         — implemented / planned state
+ *   - `quality/release-gate.json`           — the release-gate ledger (#508)
  *   - `.tmp/release-quality-runs.json`      — the run record
  *                                             (`pnpm run quality:dashboard:record`)
  *
@@ -79,6 +80,7 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const DEFAULT_ROSTER_PATH = 'quality/release-dashboard.json';
 export const DEFAULT_FAMILIES_PATH = 'quality/route-coverage.json';
 export const DEFAULT_RUN_RECORD_PATH = '.tmp/release-quality-runs.json';
+export const DEFAULT_RELEASE_GATE_PATH = 'quality/release-gate.json';
 
 /** Status vocabulary. Nothing outside this set may reach the renderer. */
 export const STATUS = {
@@ -110,12 +112,16 @@ export function loadRoster({
 	root = REPO_ROOT,
 	rosterPath = DEFAULT_ROSTER_PATH,
 	familiesPath = DEFAULT_FAMILIES_PATH,
+	releaseGatePath = DEFAULT_RELEASE_GATE_PATH,
 } = {}) {
 	const errors = [];
 	const roster = readJson(resolve(root, rosterPath), rosterPath, errors);
 	const families = readJson(resolve(root, familiesPath), familiesPath, errors);
-	if (roster) errors.push(...validateRoster(roster, families));
-	return { errors, roster, families };
+	const releaseGate = roster?.release_gate_ledger
+		? readJson(resolve(root, roster.release_gate_ledger), roster.release_gate_ledger, errors)
+		: null;
+	if (roster) errors.push(...validateRoster(roster, families, releaseGate));
+	return { errors, roster, families, releaseGate };
 }
 
 function readJson(path, label, errors) {
@@ -140,8 +146,9 @@ function readJson(path, label, errors) {
  * command, an evidence kind it does not know, a family that disagrees
  * with the ledger).
  */
-export function validateRoster(roster, families) {
+export function validateRoster(roster, families, releaseGate = null) {
 	const errors = [];
+	errors.push(...validateLedgerAlignment(roster, releaseGate));
 	if (roster?.version !== 1) errors.push(`roster: version must be 1, got ${roster?.version}`);
 	if (!Array.isArray(roster?.signals) || roster.signals.length === 0) {
 		errors.push('roster: signals must be a non-empty array');
@@ -216,6 +223,56 @@ export function validateRoster(roster, families) {
 			}
 		} else if (signal.command || signal.evidence) {
 			errors.push(`roster: planned signal "${id}" must not declare a command or evidence`);
+		}
+	}
+	return errors;
+}
+
+/**
+ * Two ledgers must not drift apart silently.
+ *
+ * Issue #508's `quality/release-gate.json` answers "does the release
+ * chain execute this check"; this roster answers "does this checkout
+ * have a valid output for it". They legitimately overlap, so the roster
+ * has to name, for every release-gate row, either the signal that shows
+ * it here or the reason it is not shown. A new #508 row with no decision
+ * fails this validator, so the overlap stays a reviewable statement
+ * instead of two drifting lists.
+ */
+export function validateLedgerAlignment(roster, releaseGate) {
+	const alignment = roster?.ledger_alignment;
+	if (!releaseGate) return [];
+	if (!alignment)
+		return ['roster: ledger_alignment is missing while a release_gate_ledger is declared'];
+	const errors = [];
+	const signalIds = new Set((roster.signals ?? []).map((signal) => signal?.id));
+	const ledgerIds = (releaseGate.checks ?? []).map((check) => check?.id);
+	const declared = new Set([
+		...Object.keys(alignment.as_signal ?? {}),
+		...Object.keys(alignment.not_listed ?? {}),
+	]);
+
+	for (const id of ledgerIds) {
+		if (declared.has(id)) continue;
+		errors.push(`roster: ledger_alignment has no decision for release-gate check "${id}"`);
+	}
+	for (const id of declared) {
+		if (!ledgerIds.includes(id)) {
+			errors.push(`roster: ledger_alignment mentions "${id}", which is not a release-gate check`);
+		}
+	}
+	for (const [id, signalId] of Object.entries(alignment.as_signal ?? {})) {
+		if (!signalIds.has(signalId)) {
+			errors.push(`roster: ledger_alignment maps "${id}" to unknown signal "${signalId}"`);
+		}
+	}
+	for (const [id, entry] of Object.entries(alignment.not_listed ?? {})) {
+		if (entry?.signal) {
+			errors.push(`roster: ledger_alignment.not_listed["${id}"] must have a null signal`);
+			continue;
+		}
+		if (typeof entry?.reason !== 'string' || entry.reason.length === 0) {
+			errors.push(`roster: ledger_alignment.not_listed["${id}"] has no reason`);
 		}
 	}
 	return errors;
@@ -410,6 +467,53 @@ export function summarize(rows) {
 	return summary;
 }
 
+/**
+ * The relationship with Issue #508's release-gate ledger, rendered as the
+ * decision list it is: every release-gate row either has a signal here or
+ * a recorded reason why it does not.
+ */
+function renderLedgerAlignment(roster) {
+	const alignment = roster?.ledger_alignment;
+	if (!alignment) return '';
+	const asSignal = Object.entries(alignment.as_signal ?? {});
+	const notListed = Object.entries(alignment.not_listed ?? {});
+	const mapped = asSignal
+		.map(
+			([id, signalId]) =>
+				`<tr><td><code>${escapeHtml(id)}</code></td><td><code>${escapeHtml(signalId)}</code></td></tr>`,
+		)
+		.join('\n');
+	const omitted = notListed
+		.map(
+			([id, entry]) =>
+				`<tr><td><code>${escapeHtml(id)}</code></td><td>${escapeHtml(entry?.reason ?? '')}</td></tr>`,
+		)
+		.join('\n');
+	return `  <h2>release-gate ledger（Issue #508）との対応</h2>
+  <p class="sub">
+    #508 の ledger は「release がその検査を実行するか」を判定し、この dashboard は
+    「このチェックアウトに有効な出力が有るか」を判定します。問いが違うので ledger は
+    2 本に増やしませんが、<code>quality/release-gate.json</code> の全 id について
+    「どの signal として表示する / 表示しない理由」を roster が宣言しており、
+    未宣言の id が出たら <code>quality:dashboard:check</code> が fail します。
+  </p>
+  <details>
+    <summary><strong>${asSignal.length}</strong> 件を signal として表示 / <strong>${notListed.length}</strong> 件を表示しない（理由つき）</summary>
+    <table>
+      <thead><tr><th style="width:260px">release-gate check</th><th style="width:220px">この dashboard の signal</th></tr></thead>
+      <tbody>
+${mapped}
+      </tbody>
+    </table>
+    <table>
+      <thead><tr><th style="width:260px">release-gate check</th><th>表示しない理由</th></tr></thead>
+      <tbody>
+${omitted}
+      </tbody>
+    </table>
+  </details>`;
+}
+
 function escapeHtml(value) {
 	return String(value ?? '').replace(
 		/[&<>"']/g,
@@ -447,6 +551,7 @@ export function renderDashboardHtml({ dashboard, root = REPO_ROOT }) {
 		...group,
 		rows: rows.filter((row) => row.signal.group === group.id),
 	}));
+	const alignmentHtml = renderLedgerAlignment(dashboard.roster);
 
 	const cards = [
 		{ k: 'PASS', v: summary.pass, cls: 'ok' },
@@ -537,6 +642,9 @@ ${body}
   .dim { color: #77776a; font-size: 11.5px; }
   ul.legend { margin: 6px 0 0; padding-left: 18px; color: #3d3d33; }
   ul.legend li { margin-bottom: 3px; }
+  details { background: #fff; border: 1px solid #dedcd2; padding: 10px 14px; }
+  details summary { cursor: pointer; color: #3d3d33; }
+  details table { margin-top: 10px; }
   footer { margin-top: 22px; color: #77776a; font-size: 12px; }
 </style>
 </head>
@@ -564,6 +672,7 @@ ${cards.join('\n')}
   </ul>
 
 ${groupSections}
+${alignmentHtml}
 
   <h2>再現条件 (environment)</h2>
   <table>

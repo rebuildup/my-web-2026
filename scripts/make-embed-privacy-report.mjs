@@ -20,14 +20,17 @@
  *   2. the browser rows come from Chromium loading the REAL
  *      pre-activation document the Worker served (carried inside the
  *      marker, not re-authored here) on a loopback origin, with every
- *      off-loopback request counted and aborted. The count is what the
- *      browser would have sent before the visitor pressed anything.
+ *      off-loopback request counted AND aborted at the Playwright
+ *      interception layer (`context.route`), so nothing leaves the
+ *      operator's machine. The count is what the browser would have
+ *      sent before the visitor pressed anything.
  *
  * Scope, stated in the report itself: this measures what the HOST does
  * before activation. What the framed artefact does after activation is
  * declared in `src/tools/manifest.json` and reviewed at submodule bump
- * time (`docs/tools/embed-privacy.md` §4); the host cannot observe a
- * framed document's network behaviour.
+ * time (the "Re-measuring after a submodule bump" section of
+ * `docs/tools/embed-privacy.md`); the host cannot observe a framed
+ * document's network behaviour.
  *
  * Nothing here reads a secret, contacts production, contacts a real
  * third party, or writes remote D1 / R2 state. Re-run it whenever the
@@ -99,12 +102,19 @@ function originOf(url) {
 
 /**
  * Chromium probe: load the real pre-activation document on loopback and
- * count what it tries to reach. Off-loopback requests are aborted, so
- * the run contacts nothing — the count is the measurement, not the
- * traffic.
+ * count what it tries to reach.
+ *
+ * Every off-loopback request is ABORTED at the interception layer
+ * (`context.route`), before it can leave this machine, and the count is
+ * taken in the same handler — so "counted" and "aborted" are the same
+ * set by construction, not by promise. The probe then asserts that no
+ * off-loopback response was ever received: a single one would mean the
+ * run was not network-isolated, and the script fails instead of
+ * publishing a report whose claim would be false.
  */
 async function probeBrowser(document, gatedSlug) {
 	const attempted = new Map();
+	let offLoopbackResponses = 0;
 	const server = createServer((req, res) => {
 		const path = new URL(req.url ?? '/', ORIGIN).pathname;
 		if (req.headers.accept?.includes('text/html')) {
@@ -128,11 +138,21 @@ async function probeBrowser(document, gatedSlug) {
 
 	const browser = await chromium.launch();
 	const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
-	const page = await context.newPage();
-	page.on('request', (request) => {
-		const origin = originOf(request.url());
-		if (origin === ORIGIN) return;
+	// The interception is the whole point of the browser leg: the
+	// document under test really does point at third-party origins, and
+	// the measurement must not cost the operator one request to them.
+	await context.route('**/*', (route) => {
+		const origin = originOf(route.request().url());
+		if (origin === ORIGIN) {
+			void route.continue();
+			return;
+		}
 		attempted.set(origin, (attempted.get(origin) ?? 0) + 1);
+		void route.abort();
+	});
+	const page = await context.newPage();
+	page.on('response', (response) => {
+		if (originOf(response.url()) !== ORIGIN) offLoopbackResponses += 1;
 	});
 
 	try {
@@ -140,16 +160,23 @@ async function probeBrowser(document, gatedSlug) {
 		await page.waitForTimeout(1_500);
 		const frames = await page.locator('iframe').count();
 		const noticeVisible = await page.locator('[data-testid="tool-embed-consent"]').count();
+		if (offLoopbackResponses > 0) {
+			throw new Error(
+				`the browser leg received ${offLoopbackResponses} off-loopback response(s) — the run was not network-isolated, refusing to publish the report`,
+			);
+		}
+		const aborted = [...attempted.values()].reduce((sum, count) => sum + count, 0);
 		const rows = [...attempted.entries()]
 			.map(([origin, count]) => ({
 				origin,
 				count,
+				aborted: count,
 				class: CHROME_ORIGIN_HINTS.some((hint) => origin.includes(hint))
 					? 'host chrome (Issue #171 / #447)'
 					: 'embed contact — UNEXPECTED before activation',
 			}))
 			.sort((a, b) => b.count - a.count || a.origin.localeCompare(b.origin));
-		return { rows, frames, noticeVisible };
+		return { rows, frames, noticeVisible, aborted, offLoopbackResponses };
 	} finally {
 		await browser.close();
 		await new Promise((resolveClosed) => server.close(resolveClosed));
@@ -183,10 +210,11 @@ function renderReport(rows, browserRows, browserSummary) {
 		? browserRows
 				.map(
 					(row) => `<tr><td class="wrap">${escapeHtml(row.origin)}</td><td>${row.count}</td>
+<td>${row.aborted}</td>
 <td class="${row.class.startsWith('host chrome') ? 'chrome' : 'no'}">${escapeHtml(row.class)}</td></tr>`,
 				)
 				.join('')
-		: '<tr><td colspan="3">(no off-loopback request was attempted)</td></tr>';
+		: '<tr><td colspan="4">(no off-loopback request was attempted)</td></tr>';
 	const gated = rows.find((row) => row.consent === 'click_to_load');
 
 	return `<!doctype html>
@@ -231,29 +259,35 @@ the number the embed costs before anyone acts.</p>
 
 <h2>3. Browser observation — Chromium on loopback, real pre-activation document</h2>
 <p>The document measured in row 2 for <code>${escapeHtml(gated ? gated.path : '(none)')}</code> was replayed
-on a loopback origin; every off-loopback request was <b>counted and aborted</b>, so this run contacts
+on a loopback origin. Every off-loopback request was <b>counted and aborted</b> at the browser's
+interception layer: <b>${browserSummary.aborted}</b> request(s) attempted, <b>${browserSummary.aborted}</b>
+aborted, <b>${browserSummary.offLoopbackResponses}</b> off-loopback response(s) received — so this run contacts
 nothing. Frames in the live DOM: <b>${browserSummary.frames}</b>. Consent notice present:
 <b>${browserSummary.noticeVisible > 0 ? 'yes' : 'no'}</b>.</p>
-<table><tr><th>origin requested before activation</th><th>requests</th><th>class</th></tr>${browserTable}</table>
-<p>Reading the rows: the remaining off-loopback requests are the <b>host chrome</b> (GA4 loader / beacons
-and Google Fonts) that every page on this site loads by owner decision — Issue #171 mounted GA4 and
-Issue #447 measured the origin inventory. They are not embed contacts and this Issue does not change
-them. The origins the embed <em>would</em> have pulled before activation — Adobe Typekit and the Google
-Apps Script endpoint in the ProtoType artefact — are absent.</p>
+<table><tr><th>origin requested before activation</th><th>requests attempted</th><th>requests aborted</th>
+<th>class</th></tr>${browserTable}</table>
+<p>Reading the rows: the remaining off-loopback requests are the <b>host chrome</b> (the GA4 loader and
+the Google Fonts stylesheet) that every page on this site loads by owner decision — Issue #171 mounted GA4
+and Issue #447 measured the origin inventory. They are not embed contacts and this Issue does not change
+them; here they were aborted, so this run sent no request to any of them. The origins the embed
+<em>would</em> have pulled before activation — Adobe Typekit and the Google Apps Script endpoint in the
+ProtoType artefact — are absent.</p>
 
 <h2>4. Residual risk (not closed by this report)</h2>
 <p>
 (1) What the framed artefact does <b>after</b> activation is declared, not observed: the host cannot see a
 framed document's network behaviour. Re-measure the declaration whenever a Tool submodule is bumped
-(<code>docs/tools/embed-privacy.md</code> §4).
+(<code>docs/tools/embed-privacy.md</code>, "Re-measuring after a submodule bump").
 (2) The consent gate is per visit — no cookie or storage record is written, so the question is re-asked
 on every navigation. A consent store would be a new published data surface and is an owner decision.
 (3) Host-document analytics (GA4) and Google Fonts are unchanged by this Issue and remain the largest
 third-party surface of <code>/tools/&lt;slug&gt;</code>.
 </p>
 <p class="meta">Generated ${new Date().toISOString().replace('T', ' ').slice(0, 19)}Z · local workerd +
-loopback Chromium · no production request, no credential, no third-party traffic, no D1/R2 mutation ·
-committed as docs/verification/legal/embed-privacy-consent.webp (width ≤ ${WEBP_WIDTH}, quality
+loopback Chromium · no production request, no credential, no D1/R2 mutation · every off-loopback request
+was aborted at the interception layer and ${browserSummary.offLoopbackResponses} off-loopback response(s)
+were received, so no third-party traffic left this machine · committed as
+docs/verification/legal/embed-privacy-consent.webp (width ≤ ${WEBP_WIDTH}, quality
 ${WEBP_QUALITY}). Re-run: <code>pnpm run verify:embed-privacy-screenshot</code>.</p>
 </main></body></html>`;
 }

@@ -58,12 +58,19 @@
  *     Tool whose own frame origin is undeclared. It cannot observe a
  *     framed document's network behaviour, and this module does not
  *     pretend otherwise: re-declaring after a submodule bump is the
- *     documented duty (`docs/tools/embed-privacy.md` §4).
+ *     documented duty (the "Re-measuring after a submodule bump"
+ *     section of `docs/tools/embed-privacy.md`).
  *
  * Dependency-free like `embed-policy.ts` (no manifest import, no React,
  * no DOM), so `scripts/check-tools-manifest.mjs` imports it directly
  * under Node type stripping and the route imports the same function.
+ * The ONE thing it reads from `embed-policy.ts` is
+ * `resolveToolFrameSrc()` — the frame-src resolution, imported rather
+ * than re-derived, so the privacy contract and the embed policy can
+ * never disagree about which document the host mounts.
  */
+
+import { resolveToolFrameSrc } from './embed-policy.ts';
 
 /* ------------------------------------------------------------------ *
  * 1. consent modes
@@ -107,6 +114,7 @@ export interface ToolPrivacyDeclaration {
 /** The `delivery` fields the privacy contract reads. */
 export interface ToolPrivacyDeliveryLike {
 	readonly kind: string;
+	readonly artifact_path?: string;
 	readonly entry_html?: string;
 	readonly external_url?: string;
 	readonly privacy?: ToolPrivacyDeclaration | undefined;
@@ -195,12 +203,13 @@ export function toPrivacySubject(
 	slug: string,
 	delivery: ToolPrivacyDeliveryLike,
 ): EmbedPrivacySubject {
-	const frame_src =
-		delivery.kind === 'external_exception'
-			? (delivery.external_url ?? '')
-			: typeof delivery.entry_html === 'string' && delivery.entry_html.length > 0
-				? delivery.entry_html
-				: '';
+	// The SAME resolution the embed policy uses, so the privacy subject
+	// names the document the host will actually mount: `entry_html`
+	// first, then `artifact_path`/index.html for a `same_origin_static`
+	// entry that declares no entry HTML, then the external URL. A
+	// re-derived rule here would let the two contracts disagree about
+	// which document is framed.
+	const frame_src = resolveToolFrameSrc(delivery);
 	return {
 		slug,
 		kind: delivery.kind,
@@ -217,8 +226,13 @@ export function toPrivacySubject(
  * function distinguishes "the URL parser sends this elsewhere" (a
  * smuggling attempt) from "the author meant a foreign origin", and this
  * one only needs to know whether the frame document is third-party.
- * Anything it cannot parse is treated as third-party, so an unparseable
- * src can never lower the gate.
+ *
+ * An `src` this cannot parse stays `unresolved`, and the gate reads an
+ * unresolved frame as requiring consent (fail closed) — an unparseable
+ * `src` can never lower the gate. The frame-src rules in
+ * `embed-policy.ts` refuse such a `src` outright
+ * (`embed.frame-src.invalid-scheme`), so nothing unresolved is ever
+ * mounted; the fail-closed reading here is the second line of defence.
  */
 function classifyFrameOrigin(src: string): EmbedPrivacySubject['frame_origin'] {
 	if (typeof src !== 'string' || src.trim().length === 0) return 'unresolved';
@@ -362,8 +376,12 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 
 	contacts.sort();
 
+	// Consent fails closed: a cross-origin frame, a frame whose `src`
+	// could not be resolved at all, or a non-empty declaration all
+	// require the visitor to activate the load. Only a same-origin
+	// frame that declares no contact may mount without asking.
 	const consent: EmbedConsentMode =
-		frame_is_third_party || contacts.length > 0
+		frame_is_third_party || subject.frame_origin === 'unresolved' || contacts.length > 0
 			? CONSENT_MODE_CLICK_TO_LOAD
 			: CONSENT_MODE_NOT_REQUIRED;
 

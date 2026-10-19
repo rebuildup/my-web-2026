@@ -17,7 +17,10 @@
    embed-free page (`/contact`) does not.
 3. **A Chromium replay** of the real pre-activation document on a
    loopback origin, counting the requests it attempts while every
-   off-loopback request is aborted.
+   off-loopback request is aborted at the browser's interception
+   layer. The probe also asserts that **no** off-loopback response was
+   received — a run that was not network-isolated fails instead of
+   publishing a report.
 4. The residual risks this record does **not** close.
 
 The contract these columns are measuring is described in
@@ -29,7 +32,7 @@ The contract these columns are measuring is described in
 | --- | --- |
 | Policy rows | `test/integration/embed-privacy.test.ts` driving the real Worker in the local `workerd` pool (`vitest.config.ts` bindings) |
 | Browser rows | Chromium (Playwright, the project's pinned build) on `http://127.0.0.1:<port>` |
-| Network | every off-loopback request **counted and aborted** — this run contacts no third party, no production origin, and holds no credential |
+| Network | every off-loopback request **counted and aborted** at the interception layer (`context.route`); the run measured 2 attempted / 2 aborted / **0** off-loopback responses received — this run contacts no third party, no production origin, and holds no credential |
 | D1 / R2 | untouched; no migration, no write |
 | Document under test | the SSR document the Worker itself returned for the gated route, carried into the report by the suite (not re-authored) |
 | Re-run | `pnpm run verify:embed-privacy-screenshot` |
@@ -40,11 +43,12 @@ The contract these columns are measuring is described in
 - `/tools/prototype` — `click_to_load`. The served HTML contains
   **zero `<iframe>` elements** and the notice is present. Its four
   declared origins are named **as text** inside the notice; none of
-  them is fetched. The off-loopback requests the replay counted are
-  the host chrome every page loads (`googletagmanager.com`,
-  `google-analytics.com`, `fonts.googleapis.com`) — a separate owner
-  decision (Issue #171 mounted GA4, Issue #447 measured the inventory),
-  not an embed contact, and unchanged by this Issue.
+  them is fetched. The two off-loopback requests the replay counted
+  (`fonts.googleapis.com`, `www.googletagmanager.com`) are the host
+  chrome every page loads — a separate owner decision (Issue #171
+  mounted GA4, Issue #447 measured the inventory), not an embed
+  contact, and unchanged by this Issue. Both were aborted here, so
+  this run sent no request to them.
 - `/tools/readmark` — `not_required`. It declares an empty contact
   list, so it mounts its frame immediately and the pre-existing
   host-side contract is untouched.

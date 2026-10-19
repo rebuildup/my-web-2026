@@ -79,7 +79,7 @@ There is deliberately **no** `consent_mode` field. The host computes
 it:
 
 ```text
-click_to_load  ⇔  the frame is cross-origin  OR  third_party_origins is non-empty
+click_to_load  ⇔  the frame is cross-origin  OR  the frame src could not be resolved  OR  third_party_origins is non-empty
 not_required   ⇔  otherwise
 ```
 
@@ -87,6 +87,19 @@ So there is nothing to switch off. An operator cannot write
 `"consent_mode": "not_required"` and ship a Tool that phones home; the
 only way to `not_required` is to prove the Tool is same-origin **and**
 declares no contact.
+
+A frame `src` the contract cannot resolve at all (`javascript:`,
+`data:`, garbage) is read as **third-party**, so it fails closed: the
+gate asks before it mounts. `embed-policy.ts` refuses such an `src`
+outright (`embed.frame-src.invalid-scheme`), so nothing unresolved is
+ever framed — the fail-closed reading here is the second line of
+defence.
+
+The frame `src` itself is resolved by `resolveToolFrameSrc()` in
+`embed-policy.ts` — the SAME function the policy uses — so the privacy
+contract and the embed policy can never disagree about which document
+the host mounts (a `same_origin_static` entry that declares no
+`entry_html` is mounted from `artifact_path`/index.html).
 
 ### 3. A foreign frame must name itself
 

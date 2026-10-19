@@ -109,12 +109,27 @@ async function openWithFrame(page: Page): Promise<void> {
 		// acts. Asserting it here means a regression that re-mounted the
 		// iframe eagerly fails at its own cause, not downstream.
 		await expect(page.locator('iframe')).toHaveCount(0);
-		// The notice is server-rendered, so it is clickable before
-		// hydration has attached the handler. Waiting for the network to
-		// go idle first is what makes the click land on a hydrated button
-		// instead of a race with React.
+		// The notice is server-rendered, so the button exists before
+		// React attaches the handler: a click that lands before
+		// hydration is swallowed and the frame never mounts. Re-click
+		// until it does — the same bounded pattern the production smoke
+		// spec uses for the reaction picker (Issue #238) — so the race
+		// widens the failure window instead of causing a flake. The
+		// loop is bounded, so a genuine regression still fails.
 		await page.waitForLoadState('networkidle');
-		await activate.click();
+		const frame = page.locator('iframe[title="ProtoType Tool"]');
+		let mounted = false;
+		for (let attempt = 0; attempt < 5 && !mounted; attempt++) {
+			await activate.click({ timeout: 2_000 }).catch(() => undefined);
+			mounted = await frame
+				.waitFor({ state: 'attached', timeout: 2_000 })
+				.then(() => true)
+				.catch(() => false);
+		}
+		expect(
+			mounted,
+			'the consent gate never mounted the frame after repeated clicks — hydration or the gate is broken',
+		).toBe(true);
 	}
 	await page.waitForSelector('iframe[title="ProtoType Tool"]', {
 		state: 'attached',

@@ -292,14 +292,32 @@ describe('embed privacy — origin normalisation and subject flattening', () => 
 		});
 	});
 
+	it('resolves the frame src exactly the way the embed policy resolves it', () => {
+		// A `same_origin_static` entry that declares no entry HTML is
+		// mounted from `artifact_path`/index.html. The privacy subject
+		// has to name the SAME document the policy resolved — otherwise
+		// the two contracts disagree about what is framed.
+		expect(
+			toPrivacySubject('c', {
+				kind: 'same_origin_static',
+				artifact_path: '/tools/fixture/app',
+				privacy: { third_party_origins: [] },
+			}),
+		).toMatchObject({
+			frame_src: '/tools/fixture/app/index.html',
+			frame_origin: 'same-origin',
+		});
+	});
+
 	it('treats an unresolvable frame src as third-party, never as an exemption', () => {
 		const verdict = evaluateEmbedPrivacy(
 			subject({ frame_src: 'javascript:alert(1)', frame_origin: 'unresolved' }),
 		);
-		// `unresolved` is not `cross-origin`, so the gate is derived from
-		// the declared contacts; the separate frame-src rules in
-		// embed-policy.ts are what refuse this src outright.
-		expect(verdict.consent).toBe(CONSENT_MODE_NOT_REQUIRED);
+		// `unresolved` fails closed: the gate asks before it mounts. The
+		// separate frame-src rules in embed-policy.ts refuse such a src
+		// outright (`embed.frame-src.invalid-scheme`), so this is the
+		// second line of defence, not the first.
+		expect(verdict.consent).toBe(CONSENT_MODE_CLICK_TO_LOAD);
 		const subject2 = evaluateEmbedPrivacy(
 			subject({ frame_src: 'data:text/html,x', frame_origin: 'unresolved' }),
 		);

@@ -49,6 +49,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SCOPE_REFUSAL_CODE, reviewConnection } from '../src/http/integrations/scope-review.ts';
+import { REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
 import { collectSourceFiles, stripComments } from './_source-scan.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -159,23 +160,20 @@ export function findIntegrationMounts(root) {
 }
 
 /**
- * Secret NAMES provisioned for a candidate integration while the
- * candidate is unpublished. Names only, never values: this reads two
- * source-controlled Wrangler files.
+ * Worker secret NAMES that belong to an unpublished candidate.
  *
- * @returns {string[]} `file: name` findings.
+ * The required-secret set is read from `scripts/_cloudflare-contract.mjs`
+ * — the repository's own adapter for the Cloudflare secret contract —
+ * rather than by parsing the Wrangler configuration here. `wrangler
+ * independence` (Issue #247) exists precisely so runtime code reaches
+ * Cloudflare through those adapters, and this gate is runtime code. Only
+ * NAMES are compared: no value, no file read, no credential.
+ *
+ * @returns {string[]} offending secret names.
  */
-export function findProvisionedIntegrationSecrets(root) {
+export function findProvisionedIntegrationSecrets() {
 	const pattern = /(NOTION|DISCORD|GITHUB|INTEGRATION)[A-Z0-9_]*_(TOKEN|SECRET|KEY)\b/;
-	const findings = [];
-	for (const file of ['wrangler.jsonc', 'wrangler.production.jsonc']) {
-		const path = join(root, file);
-		if (!existsSync(path)) continue;
-		for (const match of readFileSync(path, 'utf8').matchAll(/"([A-Z][A-Z0-9_]{3,})"\s*:/g)) {
-			if (pattern.test(match[1])) findings.push(`${file}: ${match[1]}`);
-		}
-	}
-	return findings;
+	return REQUIRED_RUNTIME_SECRETS.filter((name) => pattern.test(name));
 }
 
 /** Project one ledger row into the adapter's requirement shape. */
@@ -531,10 +529,10 @@ export function checkIntegrationScope({ root = ROOT, manifestPath = MANIFEST, op
 		);
 	}
 
-	for (const finding of findProvisionedIntegrationSecrets(root)) {
+	for (const finding of findProvisionedIntegrationSecrets()) {
 		if (entries.length === 0) {
 			errors.push(
-				`${finding}: a secret name for an unpublished candidate — no integration token may be provisioned before the owner allowlists it`,
+				`${finding}: a required Worker secret name belongs to an unpublished candidate — no integration token may be declared before the owner allowlists it`,
 			);
 		}
 	}

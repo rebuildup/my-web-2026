@@ -224,7 +224,11 @@ test('parseIntegrationRoster reads the domain document, not the ledger', () => {
 
 test('no /integrations route is mounted and no integration token is provisioned', () => {
 	assert.deepEqual(findIntegrationMounts(ROOT), []);
-	assert.deepEqual(findProvisionedIntegrationSecrets(ROOT), []);
+	assert.deepEqual(
+		findProvisionedIntegrationSecrets(),
+		[],
+		'no Worker secret name belongs to a candidate integration',
+	);
 });
 
 test('the mount detector reports a route and ignores the boundary’s own documentation', () => {

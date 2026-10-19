@@ -381,11 +381,22 @@
 				]
 			},
 			{
+				"url": "http://www.w3.org/1999/xlink",
+				"host": "www.w3.org",
+				"kind": "external",
+				"identifier": true,
+				"files": [
+					"external/prototype/public/vite.svg"
+				]
+			},
+			{
 				"url": "http://www.w3.org/2000/svg",
 				"host": "www.w3.org",
 				"kind": "external",
 				"identifier": true,
 				"files": [
+					"external/prototype/public/vite.svg",
+					"external/readmark/public/favicon.svg",
 					"public/favicon.svg",
 					"src/home/mark.tsx"
 				]
@@ -495,10 +506,20 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
 					"src/routes/__root.tsx",
 					"src/tools/embed-consent-notice.stories.tsx",
 					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap",
+				"host": "fonts.googleapis.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"external/prototype/index.html"
 				]
 			},
 			{
@@ -516,6 +537,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
 					"src/routes/__root.tsx",
 					"src/tools/embed-consent-notice.stories.tsx",
@@ -871,6 +893,7 @@
 				"kind": "external",
 				"identifier": false,
 				"files": [
+					"external/prototype/index.html",
 					"src/tools/embed-consent-notice.stories.tsx",
 					"src/tools/manifest.json"
 				]
@@ -997,26 +1020,33 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
-		"removedExternalUrls": [
-			"http://www.w3.org/1999/xlink",
-			"https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+		"addedExternalUrls": [
+			"https://script.google.com",
+			"https://use.typekit.net/app"
 		],
-		"addedExternalHosts": [],
+		"removedExternalUrls": [],
+		"addedExternalHosts": [
+			"script.google.com"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W003 external-url-removed",
-				"severity": "warn",
-				"message": "External URL removed: http://www.w3.org/1999/xlink"
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host script.google.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
 			},
 			{
-				"code": "W003 external-url-removed",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External URL removed: https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap"
+				"message": "External URL added: https://script.google.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://use.typekit.net/app"
 			}
 		]
 	}

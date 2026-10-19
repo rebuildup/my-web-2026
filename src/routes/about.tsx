@@ -5,6 +5,7 @@ import { personFactsFromAbout } from '../about/structured-data';
 import { PublicNav } from '../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../editorial/nav/Breadcrumbs.styles';
+import { composeSocialCard } from '../editorial/social-card';
 import { PersonJsonLd } from '../editorial/structured-data';
 
 /**
@@ -27,11 +28,13 @@ import { PersonJsonLd } from '../editorial/structured-data';
  * owns its own chrome decisions and references the primitives
  * directly, preserving per-page design freedom.
  *
- * OGP / metadata contract mirrors `/portfolio`: title, description,
- * `og:type=profile` (the page IS a person), canonical URL, og:image
- * sourced from the FIRST experience project's cover (only when one
- * is present; the page falls back to `null` and the head renders
- * without an `og:image`).
+ * OGP / metadata contract mirrors `/portfolio` (Issue #421): title,
+ * description, `og:type=profile` (the page IS a person), canonical
+ * URL, and a card composed by `src/editorial/social-card/card.ts`.
+ * The card image is the first experience project's cover that
+ * resolves a public URL; when none does (no experience row yet, or an
+ * unbound media domain) the composer publishes the site fallback card
+ * so the unfurl is never image-less.
  *
  * Structured data (Issue #422): `<PersonJsonLd />` renders the
  * machine-readable projection of the SAME approved snapshot the page
@@ -57,31 +60,29 @@ export const Route = createFileRoute('/about')({
 		const role = identity?.role ?? '';
 		const title = `${name} — About`;
 		const description = identity?.lead ?? 'developer / creator の自己紹介と公開作品。';
+		// The canonical stays a literal here: `scripts/check-index-boundary.mjs`
+		// cross-checks this string against the sitemap entry for /about
+		// textually (Issue #423), so the declared URL has to be readable
+		// in this file, not derived.
 		const url = 'https://rebuildup.dev/about';
-		const ogImage = deriveOgImage(data?.experience ?? []);
+		const card = composeSocialCard({
+			title,
+			description,
+			url,
+			ogType: 'profile',
+			image: firstExperienceCover(data?.experience ?? []),
+		});
 		const meta: Array<Record<string, string>> = [
 			{ charSet: 'utf-8' },
 			{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
 			{ title },
 			{ name: 'description', content: description },
-			{ property: 'og:type', content: 'profile' },
-			{ property: 'og:title', content: title },
-			{ property: 'og:description', content: description },
-			{ property: 'og:url', content: url },
+			...card.meta,
 			{ property: 'profile:first_name', content: 'Yusuke' },
 			{ property: 'profile:last_name', content: 'Kimura' },
 			{ property: 'profile:username', content: identity?.handle ?? 'samuido' },
 		];
 		if (role) meta.push({ property: 'profile:role', content: role });
-		if (ogImage) {
-			meta.push({ property: 'og:image', content: ogImage });
-			meta.push({ name: 'twitter:card', content: 'summary_large_image' });
-			meta.push({ name: 'twitter:title', content: title });
-			meta.push({ name: 'twitter:description', content: description });
-			meta.push({ name: 'twitter:image', content: ogImage });
-		} else {
-			meta.push({ name: 'twitter:card', content: 'summary' });
-		}
 		return {
 			meta,
 			links: [{ rel: 'canonical', href: url }],
@@ -104,18 +105,34 @@ function AboutRoute() {
 }
 
 /**
- * First project cover URL, or undefined. The visitor is not
- * promised a specific project as the "hero image" — we use the
- * first one that is actually published + public + has media, and
- * fall back to no `og:image` rather than fabricating one.
+ * First project cover that resolves a public URL, or `null`.
+ *
+ * The visitor is not promised a specific project as the "hero image"
+ * — we take the first one that is actually published + public + has a
+ * media row **whose composed URL is usable**, and hand `null` back when
+ * there is none so the composer can publish the site fallback card
+ * rather than fabricating an image for a project the page does not
+ * show. A media row whose `composeMediaUrl` returned `null` (unbound
+ * R2 custom domain, invalid key) is skipped rather than stopping the
+ * walk: a later experience project with a usable cover is a better
+ * answer than the fallback, and the fallback still remains available
+ * when no project resolves one.
  */
-function deriveOgImage(
-	projects: ReadonlyArray<{ media: ReadonlyArray<{ isCover: boolean; url: string | null }> }>,
-): string | undefined {
+function firstExperienceCover(
+	projects: ReadonlyArray<{
+		media: ReadonlyArray<{
+			isCover: boolean;
+			url: string | null;
+			alt: string;
+			width: number | null;
+			height: number | null;
+		}>;
+	}>,
+) {
 	for (const project of projects) {
-		const cover = project.media.find((m) => m.isCover) ?? project.media[0];
-		const url = cover?.url;
-		if (url) return url;
+		const media = project.media.find((m) => m.isCover) ?? project.media[0];
+		if (!media?.url) continue;
+		return { url: media.url, alt: media.alt, width: media.width, height: media.height };
 	}
-	return undefined;
+	return null;
 }

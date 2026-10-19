@@ -6,10 +6,12 @@ import {
 	buildSurfaceSets,
 	checkExternalTargets,
 	classifyReference,
+	decodeHtmlEntities,
 	groupFindings,
 	parseHtmlDocument,
 	parseMarkdownDocument,
 	publicUrlPath,
+	redactTarget,
 	resolveInternalTarget,
 	summarize,
 	validateDocuments,
@@ -158,6 +160,37 @@ describe('validation severity', () => {
 		assert.ok(codes.includes('E110 private-host'));
 		assert.equal(summarize(findings).verdict, 'fail');
 	});
+
+	it('rejects a scheme obfuscated with a control character', () => {
+		// A browser strips TAB / LF / CR before the scheme parser runs, so
+		// each of these navigates as `javascript:`. Entity and named-entity
+		// spellings must not fall through to the external branch.
+		const findings = findingsOf({
+			html: [
+				'<a href="java&#9;script:alert(1)">numeric tab</a>',
+				'<a href="java&Tab;script:alert(1)">named tab</a>',
+				'<a href="java\nscript:alert(1)">literal newline</a>',
+				'<a href="javascript&colon;alert(1)">encoded colon</a>',
+				'<img alt="x" src="java&#9;script:alert(1)">',
+			].join(''),
+		});
+		const codes = findings.map((item) => item.code);
+		assert.equal(codes.filter((code) => code === 'E111 control-character').length, 3);
+		assert.ok(codes.includes('E102 forbidden-scheme'));
+		assert.ok(codes.includes('E109 image-scheme'));
+		assert.equal(summarize(findings).verdict, 'fail');
+	});
+
+	it('leaves an out-of-range numeric reference literal instead of throwing', () => {
+		assert.equal(decodeHtmlEntities('&#x110000;'), '&#x110000;');
+		assert.equal(decodeHtmlEntities('&#99999999;'), '&#99999999;');
+		assert.doesNotThrow(() => findingsOf({ html: '<a href="&#x110000;">x</a>' }));
+	});
+
+	it('does not let %2F act as a path separator', () => {
+		assert.equal(resolveInternalTarget('/share%2Fexample', fixtureSurface()).exists, false);
+		assert.equal(resolveInternalTarget('/share/example', fixtureSurface()).exists, true);
+	});
 });
 
 describe('image validation', () => {
@@ -278,6 +311,71 @@ describe('external dereference (opt-in)', () => {
 
 	it('does not dereference anything when no fetch implementation is injected', async () => {
 		assert.deepEqual(await checkExternalTargets(['https://example.com/x'], {}), []);
+	});
+
+	it('never dereferences a private host or a credential-bearing URL', async () => {
+		const calls = [];
+		const findings = await checkExternalTargets(
+			[
+				'http://127.0.0.1:8080/admin',
+				'http://169.254.169.254/latest/meta-data/',
+				'https://user:pass@example.com/x',
+			],
+			{
+				fetchImpl: async (url, init) => {
+					calls.push({ url, init });
+					return { ok: true, status: 200 };
+				},
+				origin: ORIGIN,
+			},
+		);
+		assert.deepEqual(calls, []);
+		assert.deepEqual(findings, []);
+	});
+
+	it('does not follow a redirect automatically', async () => {
+		let seen;
+		const findings = await checkExternalTargets(['https://example.com/x'], {
+			fetchImpl: async (_url, init) => {
+				seen = init;
+				return { ok: false, status: 302 };
+			},
+			origin: ORIGIN,
+		});
+		assert.equal(seen.redirect, 'manual');
+		assert.equal(findings[0].code, 'W105 external-http-status');
+		assert.equal(findings[0].severity, SEVERITY.WARNING);
+	});
+});
+
+describe('credential redaction', () => {
+	it('removes userinfo before a target is printed or rendered', () => {
+		assert.equal(redactTarget('https://user:pass@example.com/x'), 'https://***:***@example.com/x');
+		assert.equal(redactTarget('https://user@example.com/x?a=1'), 'https://***@example.com/x?a=1');
+		assert.equal(redactTarget('https://example.com/x'), 'https://example.com/x');
+		assert.equal(redactTarget('javascript:alert(1)'), 'javascript:alert(1)');
+		assert.equal(redactTarget(''), '');
+
+		const finding = {
+			severity: SEVERITY.ERROR,
+			code: 'E104 credential-url',
+			sourcePath: 'public/share/example/index.html',
+			line: 1,
+			target: 'https://user:pass@example.com/x',
+			message: 'a published URL must not carry a username or password',
+		};
+		const html = buildReportHtml({
+			scan: {
+				sources: 1,
+				references: 1,
+				externalMode: false,
+				findings: [finding],
+				summary: summarize([finding]),
+			},
+			fixtures: [],
+		});
+		assert.ok(!html.includes('pass@'));
+		assert.ok(html.includes('***:***@example.com'));
 	});
 });
 

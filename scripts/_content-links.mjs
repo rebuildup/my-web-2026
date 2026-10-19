@@ -64,13 +64,37 @@ const FORBIDDEN_SCHEMES = new Set(['javascript:', 'vbscript:', 'file:']);
 /** Schemes that carry no dereferenceable address. */
 const NON_HTTP_SCHEMES = new Set(['mailto:', 'tel:', 'sms:', 'urn:']);
 
+/**
+ * ASCII C0 controls + DEL + the Unicode line / paragraph separators.
+ *
+ * A browser strips TAB / LF / CR from a URL before the scheme parser
+ * runs, so `java&#9;script:alert(1)` navigates as `javascript:`.
+ * `src/portfolio/markdown.lexer.ts` (`CONTROL_CHARACTERS`) is the
+ * renderer's oracle; this gate must reject the same set on the raw
+ * AND the entity-decoded value, otherwise the link is classified as
+ * an ordinary external target and the forbidden scheme is lost.
+ */
+// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point — the pattern is the deny-list.
+const CONTROL_CHARACTERS = /[\u0000-\u001F\u007F-\u009F\u2028\u2029]/;
+
+/**
+ * Named references that can spell a scheme or a control character.
+ * Kept in step with `NAMED_ENTITIES` in `markdown.lexer.ts`; the two
+ * names an author can use to hide a colon or a TAB must be decoded by
+ * both the renderer and this gate.
+ */
 const HTML_ENTITY_MAP = {
 	amp: '&',
 	apos: "'",
+	colon: ':',
 	gt: '>',
 	lt: '<',
 	nbsp: '\u00a0',
+	NewLine: '\n',
 	quot: '"',
+	semi: ';',
+	sol: '/',
+	Tab: '\t',
 };
 
 /** Decode the small entity set that can appear inside an attribute. */
@@ -79,13 +103,23 @@ export function decodeHtmlEntities(value) {
 		const lower = body.toLowerCase();
 		if (lower.startsWith('#x')) {
 			const code = Number.parseInt(lower.slice(2), 16);
-			return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+			if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff) return match;
+			try {
+				return String.fromCodePoint(code);
+			} catch {
+				return match;
+			}
 		}
 		if (lower.startsWith('#')) {
 			const code = Number.parseInt(lower.slice(1), 10);
-			return Number.isFinite(code) ? String.fromCodePoint(code) : match;
+			if (!Number.isFinite(code) || code <= 0 || code > 0x10ffff) return match;
+			try {
+				return String.fromCodePoint(code);
+			} catch {
+				return match;
+			}
 		}
-		return HTML_ENTITY_MAP[lower] ?? match;
+		return HTML_ENTITY_MAP[body] ?? HTML_ENTITY_MAP[lower] ?? match;
 	});
 }
 
@@ -347,7 +381,17 @@ export function classifyReference(raw, { documentPath, origin = 'https://rebuild
 	const value = String(raw ?? '').trim();
 	if (value === '') return { kind: 'empty', target: '' };
 
-	const scheme = schemeOf(value);
+	// Reject an obfuscated scheme before either the regex or `new URL()`
+	// sees it. `java\tscript:` and `java&#9;script:` are the same URL to
+	// a browser; the raw / decoded pair is also the pair the renderer's
+	// `classifyHref` checks. The authored string stays the reported
+	// target so the author can find the character that must go.
+	const decoded = decodeHtmlEntities(value);
+	if (CONTROL_CHARACTERS.test(value) || CONTROL_CHARACTERS.test(decoded)) {
+		return { kind: 'control-character', target: value };
+	}
+
+	const scheme = schemeOf(decoded);
 	if (scheme && FORBIDDEN_SCHEMES.has(scheme)) {
 		return { kind: 'forbidden', target: value, scheme };
 	}
@@ -360,7 +404,7 @@ export function classifyReference(raw, { documentPath, origin = 'https://rebuild
 
 	let url;
 	try {
-		url = new URL(value, new URL(documentPath, origin));
+		url = new URL(decoded, new URL(documentPath, origin));
 	} catch {
 		return { kind: 'invalid', target: value };
 	}
@@ -398,7 +442,12 @@ export function internalPathCandidates(path) {
 			return null;
 		}
 	})();
-	const bases = decoded === null ? [path] : [path, decoded];
+	// A percent-decoded value is a useful candidate for an encoded space or
+	// a Unicode filename, but `%2F` must NOT become a path separator: static
+	// hosting does not treat it as one, so accepting it would hide a 404.
+	const decodedAddsSeparator =
+		decoded !== null && decoded.split('/').length !== path.split('/').length;
+	const bases = decoded === null || decodedAddsSeparator ? [path] : [path, decoded];
 	for (const base of bases) {
 		candidates.add(base);
 		if (base.endsWith('/')) {
@@ -433,8 +482,6 @@ export function resolveInternalTarget(
 			return {
 				exists: true,
 				candidate,
-				document:
-					candidate.endsWith('.html') || candidate.endsWith('/') || !candidate.includes('.'),
 			};
 		}
 	}
@@ -519,6 +566,17 @@ export function validateDocuments({
 							severity: SEVERITY.ERROR,
 							code: 'E102 forbidden-scheme',
 							message: `the "${classified.scheme}" scheme is refused by the content policy`,
+						}),
+					);
+					break;
+				case 'control-character':
+					findings.push(
+						finding({
+							...where,
+							severity: SEVERITY.ERROR,
+							code: 'E111 control-character',
+							message:
+								'the target contains TAB / LF / CR or another control character; a browser removes it before resolving the scheme',
 						}),
 					);
 					break;
@@ -687,7 +745,11 @@ export function validateDocuments({
 						}),
 					);
 				}
-			} else if (classified.kind === 'forbidden' || classified.kind === 'invalid') {
+			} else if (
+				classified.kind === 'forbidden' ||
+				classified.kind === 'invalid' ||
+				classified.kind === 'control-character'
+			) {
 				findings.push(
 					finding({
 						...where,
@@ -720,13 +782,21 @@ export async function checkExternalTargets(
 	for (const raw of unique) {
 		const classified = classifyReference(raw, { documentPath: '/', origin });
 		if (classified.kind !== 'external') continue;
+		// Defence in depth: the caller filters too, but this function is
+		// exported and must never send a request to a loopback / private
+		// address (cloud metadata included) or replay a credential. A
+		// `--external` run is operator-initiated, not a licence to SSRF.
+		if (classified.privateHost || classified.hasCredentials) continue;
 
 		const controller = new AbortController();
 		const timer = setTimeout(() => controller.abort(), timeoutMs);
 		try {
 			const response = await fetchImpl(classified.url, {
 				method: 'HEAD',
-				redirect: 'follow',
+				// Do not follow a redirect automatically: a public URL can
+				// redirect into private space. A 3xx is reported as a
+				// warning for a reviewer instead of being dereferenced.
+				redirect: 'manual',
 				signal: controller.signal,
 			});
 			if (!response.ok) {
@@ -762,6 +832,25 @@ export async function checkExternalTargets(
 		}
 	}
 	return findings;
+}
+
+/**
+ * Replace the `userinfo` of an absolute URL before it is printed or
+ * rendered. The gate reports a credential-bearing target as an error;
+ * the report must not become the place the credential leaks.
+ */
+export function redactTarget(value) {
+	const text = String(value ?? '');
+	let url;
+	try {
+		url = new URL(text);
+	} catch {
+		return text;
+	}
+	if (url.username === '' && url.password === '') return text;
+	url.username = url.username ? '***' : '';
+	url.password = url.password ? '***' : '';
+	return url.href;
 }
 
 /**

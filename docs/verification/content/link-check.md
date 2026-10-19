@@ -42,7 +42,7 @@ content を所有し、境界は `publication-surface.mjs` が監査する）。
 
 | 判定 | 例 | release |
 | --- | --- | --- |
-| **error** | 内部リンク / 画像 src の 404、`javascript:` などの禁止 scheme、資格情報入り URL、private / loopback host、alt 属性の欠落 | **fail** |
+| **error** | 内部リンク / 画像 src の 404、`javascript:` などの禁止 scheme、TAB / LF / CR などの制御文字で難読化された scheme（`java&#9;script:`）、資格情報入り URL、private / loopback host、alt 属性の欠落 | **fail** |
 | **warning** | 外部ホストの timeout / 到達不能 / 5xx、`http:` の外部リンク、`href="#"`、空 alt、runtime が src を供給する画像 | 止めない |
 | **info** | 外部リンク・非 HTTP target の記録 | 影響なし |
 
@@ -51,6 +51,11 @@ content を所有し、境界は `publication-surface.mjs` が監査する）。
 release を止めてはいけない。明示的に `--external` を渡したときだけ live 検査を行い、
 その結果はすべて warning になる。これは Issue の「外部サービスが落ちた場合は
 warning に区分する」「内部 404 と外部 timeout を区別する」をそのまま満たす。
+
+`--external` でも、private / loopback host（cloud metadata の `169.254.169.254` を含む）と
+資格情報入り URL は dereference しない。これらは既に error であり、検査器自身を
+SSRF の踏み台にしないための防御でもある。redirect は自動追従せず（`redirect: 'manual'`）、
+3xx は `W105 external-http-status` の warning として reviewer に返す。
 
 ```
 pnpm run content:links:check
@@ -68,6 +73,10 @@ pnpm run content:links:check -- --external --external-timeout 5000
 - static HTML 間の `#fragment` は target 文書の `id` / `name` と照合する。
   React route の fragment は照合しない（id の所有は React 側にあり、ここで推測すると
   false positive になる）。
+- percent-encoded な `/`（`%2F`）は path separator として扱わない。static hosting も
+  そうしないため、`/share%2Fexample` を `/share/example` に読み替えると 404 を隠す。
+- `<template>` の中身は DOM に clone されるまで参照ではないため走査せず、`<base href>` も
+  解釈しない。現行の `public/**` はどちらも使っていない。
 - 表示文字列・パスに対して `normalize()` を呼ばない。Issue #433 の Unicode 方針
   （表示本文は authored のまま）を検査器が巻き戻さないため。
 
@@ -81,14 +90,17 @@ pnpm run content:links:check -- --external --external-timeout 5000
   （[`docs/portfolio/markdown-format.md`](../../portfolio/markdown-format.md)）。
   それでも alt と URL を検証する: authored reference は将来の renderer が
   そのまま公開するため、壊れた参照を残さない。
+- `data:` を含む http(s) 以外の画像 src は error とする（`E109 image-scheme`）。
+  inline SVG data URI を許可するかは content owner の未決事項であり、このゲートは
+  黙って許可しない側に倒している。
 - alt の**内容の質**（説明的か、重複していないか）は自動判定しない。
 
 ## 5. 検証と再現
 
-CI fixture は 25 件で、内部 404 / 外部 timeout / 画像 alt / 画像 404 /
-禁止 scheme / private host / fragment / Markdown code fence / report escaping を
-固定している。real repository の走査も同じ test file の中で error 0 を assertion
-している。
+CI fixture は 31 件で、内部 404 / 外部 timeout / 画像 alt / 画像 404 /
+禁止 scheme / 制御文字で難読化された scheme / private host / fragment /
+Markdown code fence / report escaping / credential redaction を固定している。
+real repository の走査も同じ test file の中で error 0 を assertion している。
 
 ```bash
 node --experimental-strip-types --test scripts/check-content-links.test.mjs
@@ -115,4 +127,7 @@ repository には WebP（幅 1440、quality 80）を置く。Playwright は PNG 
 - R2 media の実在。`media[].r2Key` は公開 URL ではなく、media base URL は
   environment 値なので、offline では alt だけを検証する。
 - Tool submodule 内のリンク。所有はそれぞれの repository にある。
+- `<template>` 内の参照と `<base href>` の解決。script が clone する参照は静的には
+  確定できず、`<base href>` を持つ文書は現行の公開 surface に無い。
+- 外部 URL の redirect 先。`--external` は 3xx を warning として記録し、追従しない。
 - Python は追加しない。検査は Node だけで完結する。

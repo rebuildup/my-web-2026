@@ -12,6 +12,8 @@
  * it as markup would be a second bug, not evidence about the first.
  */
 
+import { redactTarget } from './_content-links.mjs';
+
 /** Escape the five characters that can start markup in HTML text and attributes. */
 export function escapeHtml(value) {
 	return String(value ?? '').replace(
@@ -33,7 +35,7 @@ function findingRow(item) {
 		<td>${severityBadge(item.severity)}</td>
 		<td class="mono">${escapeHtml(item.code)}</td>
 		<td class="mono">${escapeHtml(location)}</td>
-		<td class="target">${escapeHtml(item.target || '(none)')}${count}</td>
+		<td class="target">${escapeHtml(redactTarget(item.target) || '(none)')}${count}</td>
 		<td>${escapeHtml(item.message)}</td>
 	</tr>`;
 }
@@ -183,7 +185,7 @@ export function renderMarkdownSummary({ scan, fixtures }) {
 		);
 		for (const item of scan.findings) {
 			lines.push(
-				`| ${item.severity} | ${item.code} | ${item.sourcePath}:${item.line} | ${item.target}${item.count > 1 ? ` (×${item.count})` : ''} | ${item.message} |`,
+				`| ${item.severity} | ${item.code} | ${item.sourcePath}:${item.line} | ${redactTarget(item.target)}${item.count > 1 ? ` (×${item.count})` : ''} | ${item.message} |`,
 			);
 		}
 	}

@@ -54,6 +54,7 @@ import {
 	parseHtmlDocument,
 	parseMarkdownDocument,
 	publicUrlPath,
+	redactTarget,
 	summarize,
 	validateDocuments,
 	validateMediaAlt,
@@ -100,7 +101,7 @@ export function collectPublicContent() {
  * dynamic route is expanded with the real slug roster rather than
  * accepting any `/portfolio/<anything>` string.
  */
-export function buildRoutePaths({ portfolioSlugs, toolSlugs, toolPaths = [] }) {
+export function buildRoutePaths({ portfolioSlugs, toolSlugs }) {
 	const paths = [];
 	for (const declaration of SURFACE_DECLARATIONS) {
 		if (typeof declaration.path === 'string') paths.push(declaration.path);
@@ -111,7 +112,6 @@ export function buildRoutePaths({ portfolioSlugs, toolSlugs, toolPaths = [] }) {
 			for (const slug of toolSlugs) paths.push(`/tools/${slug}`);
 		}
 	}
-	for (const path of toolPaths) paths.push(path);
 	return [...new Set(paths)].sort();
 }
 
@@ -236,10 +236,15 @@ async function scan(options) {
 			...document.references.map((reference) => reference.raw),
 			...document.images.filter((image) => image.hasSrc).map((image) => image.raw),
 		]);
-		const externalTargets = targets.filter(
-			(target) =>
-				classifyReference(target, { documentPath: '/', origin: ORIGIN }).kind === 'external',
-		);
+		const externalTargets = targets.filter((target) => {
+			const classified = classifyReference(target, { documentPath: '/', origin: ORIGIN });
+			// A private host or a credential-bearing URL is already an error;
+			// dereferencing it would turn the gate itself into an SSRF probe
+			// (or replay a secret). `checkExternalTargets` repeats this check.
+			return (
+				classified.kind === 'external' && !classified.privateHost && !classified.hasCredentials
+			);
+		});
 		findings = findings.concat(
 			await checkExternalTargets(externalTargets, {
 				fetchImpl: globalThis.fetch,
@@ -295,7 +300,7 @@ async function main() {
 		const location = item.line > 0 ? `${item.sourcePath}:${item.line}` : item.sourcePath;
 		const count = item.count > 1 ? ` (x${item.count})` : '';
 		process.stdout.write(
-			`${item.severity.toUpperCase().padEnd(7)} ${item.code} ${location} ${item.target || '-'}${count} — ${item.message}\n`,
+			`${item.severity.toUpperCase().padEnd(7)} ${item.code} ${location} ${redactTarget(item.target) || '-'}${count} — ${item.message}\n`,
 		);
 	}
 	process.stdout.write(`verdict: ${report.summary.verdict.toUpperCase()}\n`);

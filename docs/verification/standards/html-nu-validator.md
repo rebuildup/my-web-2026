@@ -119,6 +119,17 @@ waiver ledger の性質:
   本リポジトリが出せる全ての document が落ちます（Nu は error 扱い）。
   phrasing な親（`<ul>` / `<p>` / `<button>` など）の中の `<style>` は
   従来どおり報告します。
+- **element ごとの属性表が最頻の誤検知源**です。`autocomplete` は HTML が
+  「listed attribute」と定める 4 要素（`form` / `input` / `select` /
+  `textarea`）すべてに許されますが、表が 2 要素しかないと、
+  `autoComplete` を書く正しい login form（`/admin/login`）が
+  `html.unknown-attribute` として落ちます。app markup 側を直すのではなく
+  表を直すのが正解で、`scripts/check-html-standards.test.mjs` に
+  「4 要素すべてで許され、別要素の属性は依然報告される」回帰テストを
+  置いてあります（表の穴は fixture suite で塞ぎます）。
+- **`autocomplete` の値は検査しません**。値は
+  `section-login username` のような free-form の autofill token list で、
+  有限の enum に入れると正しい値を誤検知します。
 - foreign content、任意 custom element、ARIA の role/token 辞書も同様に
   対象外です（上記「既知の制約」参照）。
 

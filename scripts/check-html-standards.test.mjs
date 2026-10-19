@@ -79,6 +79,29 @@ test('invalid markup — the three defect classes the Issue names', async (t) =>
 		assert.ok(!errorRules('<a href="/yes">x</a>').includes('unknown-attribute'));
 	});
 
+	await t.test('the autofill attribute is allowed on every element HTML lists it for', () => {
+		// Regression: `autocomplete` is a LISTED attribute of form / input /
+		// select / textarea. When the per-element tables carried it on only
+		// `select` and `textarea`, the SSR half failed on /admin/login,
+		// which renders `autocomplete="username"` / `current-password` on
+		// its TextFields (Issue #404) — a conformant document reported as
+		// html.unknown-attribute.
+		for (const fragment of [
+			'<form autocomplete="on"></form>',
+			'<input autocomplete="username">',
+			'<select autocomplete="email"><option>a</option></select>',
+			'<textarea autocomplete="street-address"></textarea>',
+		]) {
+			assert.ok(!errorRules(fragment).includes('unknown-attribute'), fragment);
+		}
+		// The allowlist stays PER ELEMENT: an attribute that belongs to a
+		// different element is still reported, so the fix above cannot be
+		// generalised into "input accepts anything".
+		assert.ok(
+			errorRules('<select rows="2"><option>a</option></select>').includes('unknown-attribute'),
+		);
+	});
+
 	await t.test('a duplicate attribute keeps the first value silently — report it', () => {
 		assert.ok(errorRules('<span class="a" class="b">x</span>').includes('duplicate-attribute'));
 	});

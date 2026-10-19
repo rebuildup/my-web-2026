@@ -498,6 +498,16 @@ const ELEMENT_ATTRIBUTES = {
 		'name',
 		'value',
 		'placeholder',
+		/**
+		 * `autocomplete` is a LISTED attribute of `input` / `select` /
+		 * `textarea` / `form` in HTML, so the per-element tables must all
+		 * carry it: a login form that ships `autocomplete="username"`
+		 * (Issue #404) is conformant, and reporting it would make the
+		 * gate fail a correct document. Its VALUE is a free-form autofill
+		 * token list (`section-login username`), so no value check is
+		 * modelled here — see docs/verification/standards/html-nu-validator.md.
+		 */
+		'autocomplete',
 		'checked',
 		'disabled',
 		'readonly',
@@ -520,7 +530,18 @@ const ELEMENT_ATTRIBUTES = {
 		'height',
 	],
 	button: ['type', 'name', 'value', 'disabled'],
-	form: ['action', 'method', 'enctype', 'name', 'novalidate', 'accept-charset', 'target', 'rel'],
+	form: [
+		'action',
+		'method',
+		'enctype',
+		'name',
+		'novalidate',
+		'accept-charset',
+		'target',
+		'rel',
+		/** Listed on `form` alongside the three form controls; see `input`. */
+		'autocomplete',
+	],
 	label: ['for'],
 	fieldset: ['disabled', 'name', 'form'],
 	legend: [],

@@ -1272,7 +1272,13 @@ only the diff that introduced it.
   verification report it produces is committed at
   `docs/verification/security/log-redaction-test.webp`.
 - Secret scanning: enabled as an asynchronous CI job (see
-  `quality/profile.yaml#security_gates.secret_scanning`).
+  `quality/profile.yaml#security_gates.secret_scanning`), plus a
+  deterministic pre-merge gate in this repository — `pnpm run secret:scan`
+  over tracked and untracked-not-ignored files, and `pnpm run
+  secret:scan:bundle` over the built bundle, both inside `validate`.
+  Findings are status-only (path, line, detector, length, SHA-256 prefix)
+  and never render the matched value. Runbook:
+  [`docs/security/supply-chain-secret-scan.md`](security/supply-chain-secret-scan.md).
 - Supply-chain SBOM: CycloneDX 1.6, generated from `pnpm-lock.yaml`,
   `package.json`, `pnpm-workspace.yaml` and `src/tools/manifest.json`
   by `pnpm run sbom:build`, verified against the live lockfile by

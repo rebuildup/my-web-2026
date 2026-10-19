@@ -16,6 +16,11 @@
 # entry points: `routes:quality:check` keeps the published route
 # roster and its quality-gate coverage in sync. See the
 # `route_quality_coverage` block below.
+#
+# Issue #403 adds `a11y:reduced-motion:check` to `gates.fast`: the
+# reduced-motion opt-out pairing is a property of the shipped source,
+# so it is decided on every `validate:fast` run rather than only when
+# someone remembers to capture the verification artefact.
 
 schema_version: 1
 
@@ -32,6 +37,7 @@ stack:
   worker_test: '@cloudflare/vitest-plugin@1.1.x'
   language: typescript@5.9.x
   package_manager: pnpm@12.3.4
+  unused_code: knip@6.42.x
 
 gates:
   fast:
@@ -82,6 +88,11 @@ gates:
       - 'pnpm run seo:status:check' # 404 / 500 / redirect / noindex status contract
       - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
       - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
+      # Issue #475: credential-shaped strings / forbidden secret-file paths
+      # in the tracked tree (and in untracked-but-not-ignored files, filtered
+      # by .gitignore itself). Status-only findings; a matched value is never
+      # rendered (AGENTS.md section 4).
+      - 'pnpm run secret:scan'
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
       # Issue #473: Tool submodule supply-chain provenance. Offline,
       # status-only: proves manifest pin == gitlink == checked-out commit
@@ -103,7 +114,18 @@ gates:
       - 'pnpm run content:links:check'
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
+      # Issue #403: the shipped reduced-motion contract. Every motion
+      # surface in `src/**` must carry the `data-motion` hook, must read
+      # (or receive and branch on) the shared preference, and must be
+      # nameable by a reduced-motion selector in `src/styles.css`; the
+      # universal reduced-motion floor has to exist. Pure Node text
+      # analysis, so it costs a source walk. The browser half of the
+      # same evidence is `pnpm run capture:a11y-reduced-motion`, which
+      # is an artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:reduced-motion:check' # reduced-motion opt-out pairing (Issue #403)
       - 'pnpm run typecheck' # tsc --noEmit
+      - 'pnpm run infisical:check:coverage'
+      - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
       # `pnpm run test` also carries the Issue #491 D1 statement-count
       # budget (src/portfolio/load.query-budget.test.ts): the portfolio
       # list surface must stay at or below 1 + 2 * ceil(pageSize / 100)
@@ -130,6 +152,10 @@ gates:
       - 'pnpm run bundle:budget:check' # per-route initial JS/CSS budget
       - 'pnpm run build:cf:production' # cf build -> .cloudflare/output/v0/
       - 'pnpm run build:cf:verify' # Build Output completeness (Worker bundle + Tool artifacts + mode)
+      # Issue #475: a credential can reach the deploy artifact through
+      # build-time inlining even when no source file matches, so the freshly
+      # built bundle is a second scan surface.
+      - 'pnpm run secret:scan:bundle'
       - 'pnpm run deploy:cf:prebuilt:dry-run' # cf deploy --prebuilt --mode production --dry-run
       - 'pnpm run cf:mode-mismatch:check' # a production Build Output must be rejected under --mode development
       - 'pnpm run lint:ci' # actionlint via scripts/lint-ci.mjs (default target: .github/workflows/*.yml)
@@ -442,6 +468,19 @@ security_gates:
     enabled: true
     mode: asynchronous
     note: 'Enabled via GitHub Push Protection + cloud bot.'
+  repository_static_secret_scan:
+    # Issue #475: the deterministic, pre-merge counterpart to the
+    # asynchronous host-side scan above. Same obligation (a credential must
+    # not be committed), earlier boundary (before merge, inside `validate`).
+    enabled: true
+    command: 'pnpm run secret:scan'
+    bundle_command: 'pnpm run secret:scan:bundle'
+    self_test_command: 'pnpm run secret:scan:self-test'
+    implementation: 'scripts/scan-secrets.mjs'
+    scope: 'tracked files + untracked-not-ignored files (source mode), build artifacts when present (bundle mode)'
+    output: 'status-only findings (path, line, detector, length, SHA-256 prefix); never a matched value (AGENTS.md section 4)'
+    runbook: 'docs/security/supply-chain-secret-scan.md'
+    note: 'Shape-based detection; complements, and does not replace, the asynchronous host-side scan.'
   sbom:
     enabled: true
     issue: '#471'
@@ -564,6 +603,7 @@ disallowed_patterns:
   - 'duplicate pnpm install across CI jobs (use cache + single shared bootstrap)'
   - 'tabs in YAML files (actionlint enforces spaces; .github/workflows/*.yml uses 2-space indent)'
   - 'cf workers types run as a generation step in CI without a subsequent git diff --exit-code check'
+  - 'knip baseline (quality/knip-baseline.json) hand-edited to silence findings instead of fixing the cause via pnpm run knip:update'
   - 'a performance/visualisation report wired into validate:fast / validate:integration / validate:release (see diagnostic_entry_points; budgets are Issue #383 / #385)'
 
 # Deterministic entry points that produce EVIDENCE without gating.

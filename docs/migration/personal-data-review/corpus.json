@@ -1,0 +1,112 @@
+{
+	"schema": "personal-data-review.v1",
+	"fixture_notice": "全レコードは synthetic fixture である。氏名・住所・電話番号・識別番号はいずれも実在しない架空値（予約ドメイン .example、未割当の 090-0000-0000 ブロック、実在しない地名）で構成しており、docs/personal/knowledge-model.md の「my-web-2026 の public repository には private data 自体を置かない」invariant を守るために、実際の移行データを持ち込まない。owner decision も fixture 上の模擬であり、実データの公開判断ではない。",
+	"records": [
+		{
+			"id": "miro-board-cleanup",
+			"source": "miro",
+			"source_ref": "miro://fixture-board/columns (fixture)",
+			"title": "Miro ボードの列整理メモ (fixture)",
+			"text": "カードの移動ルールと列の命名だけを確認したメモ。移行対象は列定義とリンクだけ。本文に連絡先・住所・他者への言及は含まれない。",
+			"images": [
+				{
+					"path": "assets/board-columns.webp",
+					"alt": "ボードの列定義",
+					"caption": "整理後の列構成",
+					"exif": {}
+				}
+			],
+			"publication": {
+				"decision": "approved",
+				"decided_by": "owner",
+				"basis": "fixture: 検出候補ゼロのレコードが owner 承認つきで公開される対照例。承認の無い記録は公開されない、という対比のための模擬。"
+			}
+		},
+		{
+			"id": "legacy-blog-migration-note",
+			"source": "legacy-site",
+			"source_ref": "my-web-2025://blog-index (fixture)",
+			"title": "旧サイト blog の移行メモ (fixture)",
+			"text": "移行対象は 2024-11-03 公開分と 2025-02-18 更新分。旧 URL は /blog/0001 形式。日付精度は日まで確定しており、時刻は捏造しない。バージョン表記は v0.7.0。",
+			"images": [],
+			"publication": {
+				"decision": "approved",
+				"decided_by": "owner",
+				"basis": "fixture: 日付・版数のような数字列が D002 / D009 に一致しないことの対照例。誤検出が 0 であることを示すための模擬。"
+			}
+		},
+		{
+			"id": "notion-tastile-launch-note",
+			"source": "notion",
+			"source_ref": "notion://fixture-notion/tastile-launch (fixture)",
+			"title": "Tastile ローンチノート (fixture)",
+			"text": "案内用の連絡先は hello@tastile.example（予約ドメイン / 実在しない）。ストアは sample-store.example/items/example-0001。対応ブラウザは Baseline 2026。",
+			"images": [
+				{
+					"path": "assets/tastile-hero.webp",
+					"alt": "ダッシュボードの起動画面",
+					"caption": "初回起動",
+					"exif": {}
+				}
+			],
+			"publication": {
+				"decision": "approved",
+				"decided_by": "owner",
+				"basis": "fixture: 検出 (D001) と判定 (approved) が独立であることの対照例。owner が project domain の案内メールアドレスを公開可と判断した場合に限り公開される、という形の模擬であり、実メールアドレスの公開許可ではない。"
+			}
+		},
+		{
+			"id": "notion-personal-notes",
+			"source": "notion",
+			"source_ref": "notion://fixture-notion/private-notes (fixture)",
+			"title": "自分用メモ / 未公開 (fixture)",
+			"text": "現住所は山口県宇部市在住、南区東2丁目12-3、郵便番号は〒740-0000。配送先のメモは 東京都渋谷区神南1丁目22-10（fixture）。携帯は 090-0000-0000（未割当ブロック / 発信不可）。連絡先は personal@fixture-note.example。家族は井川 二郎さん。マイナンバー 0001 2345 6789、生年月日は 1998-04-12。移行のたびにこれを貼ると公開面上に載るため、公開しない。",
+			"images": [
+				{
+					"path": "assets/IMG_4821.jpg",
+					"alt": "机の上の書類",
+					"caption": "整理前の書類",
+					"exif": {}
+				}
+			],
+			"publication": {
+				"decision": "review_required"
+			}
+		},
+		{
+			"id": "miro-offsite-photos",
+			"source": "miro",
+			"source_ref": "miro://fixture-board/offsite (fixture)",
+			"title": "オフサイト写真ボード (fixture)",
+			"text": "オフサイトの写真とメモ。第三者を含む画像や位置情報は共有しない。スライドのまとめは Dr. Fixture Person が担当している。",
+			"images": [
+				{
+					"path": "assets/20260315-自撮り-集合写真.jpg",
+					"alt": "集合写真 (新井 沙耶さん / fixture)",
+					"caption": "撮影：新井 沙耶さん (fixture)",
+					"exif": {
+						"Artist": "Fixture Person",
+						"GPSLatitude": "34.1234",
+						"GPSLongitude": "135.5678",
+						"Make": "FixtureCam",
+						"Model": "FX-1",
+						"DateTimeOriginal": "2026:03:15 09:12:03"
+					}
+				},
+				{
+					"path": "assets/IMG_4821.jpg",
+					"alt": "ホワイトボード",
+					"caption": "ふ。白板",
+					"exif": {
+						"DateTimeOriginal": "2026:03:15 10:02:11"
+					}
+				}
+			],
+			"publication": {
+				"decision": "rejected",
+				"decided_by": "owner",
+				"basis": "fixture: 画像メタデータ (D010)、個人撮影を前提としたファイル名 (D011)、他者名の候補 (D006 / D007) を持つレコードを owner が公開しないと判断した例。他者の肖像と位置情報を含むため公開しない、という判断の模擬。"
+			}
+		}
+	]
+}

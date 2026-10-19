@@ -136,7 +136,7 @@ gates:
       # `scripts/build-tools.mjs` refuses to publish it.
       - 'pnpm run tools:artifact:check'
       # Issue #509: a Storybook story is feature-local UI, so its runtime
-      # import closure must stay inside the owning obligation — routes,
+      # import closure must stay inside the owning obligation - routes,
       # server.ts, http/, cloudflare/ and the cloudflare:workers virtual
       # module are foreign boundaries for a browser preview. Kept separate
       # from check-architecture.mjs because that gate judges the OWNERS'
@@ -148,6 +148,17 @@ gates:
       # links are not dereferenced in CI, and their live failures are
       # warnings in the explicit `--external` mode.
       - 'pnpm run content:links:check'
+      # Issue #494: migrated text / images (Miro boards, the
+      # my-web-2025 site, Notion pages) are reviewed for personal data
+      # BEFORE they can become public content. The detector extracts
+      # candidates (address, contact channel, third-party name, image
+      # metadata / personal camera filename); only an owner decision
+      # with a stated basis may publish a record, and a withheld
+      # record's own content must not appear in a published file. Cheap
+      # by construction: a corpus read plus a text scan of the declared
+      # published-content roots. No network, no Worker, no secret, no
+      # OCR, no third-party validator.
+      - 'pnpm run publication:redaction:check' # personal-data candidates + owner publication decision (Issue #494)
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       # Issue #508: the release-gate check ledger. Every inspection the
@@ -207,7 +218,7 @@ gates:
       # `vite build` writes (dist/client/bundle-graph.json). `pnpm run
       # validate:integration` actually invokes it after `pnpm run
       # build:production` (build + build:cf:production + build:cf:verify), so
-      # the Tool build output it aggregates separately is already on disk —
+      # the Tool build output it aggregates separately is already on disk -
       # and before `pnpm run build-storybook` merges vite.config.ts and
       # rewrites the same graph path. See the `bundle_budget` section below.
       - 'pnpm run bundle:budget:check' # per-route initial JS/CSS budget
@@ -266,7 +277,7 @@ change_risk_mapping:
     gate: fast
   client_bundle_report_change:
     gate: fast
-    note: 'Issue #483 — scripts/_client-bundle.mjs + scripts/report-client-bundle.mjs + its fixture test. The analyser has a unit test (`scripts/_client-bundle.test.mjs`) that `pnpm run test` runs inside validate:fast, so the analyser cannot silently stop detecting an orphaned chunk or a leaking Tool import. The REPORT it produces is not a gate and no byte budget is enforced here: budget thresholds are Issue #383 / #385.'
+    note: 'Issue #483 - scripts/_client-bundle.mjs + scripts/report-client-bundle.mjs + its fixture test. The analyser has a unit test (`scripts/_client-bundle.test.mjs`) that `pnpm run test` runs inside validate:fast, so the analyser cannot silently stop detecting an orphaned chunk or a leaking Tool import. The REPORT it produces is not a gate and no byte budget is enforced here: budget thresholds are Issue #383 / #385.'
   src_unit:
     gate: fast
   architecture_boundary:
@@ -296,7 +307,7 @@ change_risk_mapping:
   release_branch:
     gate: release
 
-# Issue #484 — cache-header contract: NO new gate component.
+# Issue #484 - cache-header contract: NO new gate component.
 #
 # The response cache-header contract (Cache-Control / ETag / Vary across
 # Static Assets, SSR HTML and the external API) is enforced by tests
@@ -313,14 +324,14 @@ change_risk_mapping:
 # #385 / #386 own. The declared table lives in
 # `scripts/_cache-policy.mjs`; the operator-facing documentation is
 # `docs/verification/perf/cache-headers-matrix.md`.
-# Issue #482 — per-route initial JS/CSS byte budget.
+# Issue #482 - per-route initial JS/CSS byte budget.
 #
 # This is a SHIPPED-BYTES gate, not a performance gate. It is deliberately
 # kept separate from the three adjacent works so they are never confused:
 #   #384 Lighthouse measurement infrastructure (browser, page loads)
 #   #385 Lighthouse score thresholds (browser, release gate)
 #   #386 Core Web Vitals / LCP / CLS budgets (browser, runtime metrics)
-#   #482 this section — raw bundle bytes per route (no browser at all)
+#   #482 this section - raw bundle bytes per route (no browser at all)
 # A Lighthouse score can drop without any byte changing (a slow runner, a
 # cold cache), and bytes can grow without the score noticing until it
 # matters. Both are true; only one of them is decided here.
@@ -332,13 +343,13 @@ bundle_budget:
   gate: integration
   cost_class: cheap
   trigger: every `validate:integration` run (pull_request, push_to_main, push_to_release_branch)
-  input: 'dist/client/bundle-graph.json — written by the Vite client build from `writeBundle`, measuring the files emitted into the Cloudflare plugin asset output (.cloudflare/output/v0/workers/default/assets); it only READS that deploy artifact, it never modifies it'
+  input: 'dist/client/bundle-graph.json - written by the Vite client build from `writeBundle`, measuring the files emitted into the Cloudflare plugin asset output (.cloudflare/output/v0/workers/default/assets); it only READS that deploy artifact, it never modifies it'
   tool_iframe: 'aggregated and capped separately (each Tool is an independent Vite build served from /tools/<slug>/app/ inside a sandboxed iframe)'
   reproduction:
-    measurement: 'static chunk-graph arithmetic — entry chunk + each route chunk transitive STATIC-import closure + the chunks of the route layout ancestors it renders with; dynamic imports are never charged to first paint'
-    browser: 'not applicable — no browser is launched'
-    network: 'not applicable — RAW on-disk bytes are budgeted; gzip -9 is reported for reference only and is never budgeted (CDN compression is a separate concern)'
-    cpu: 'not time-based — deterministic byte arithmetic on any machine; only the `pnpm run build` that produces the input is runner-dependent'
+    measurement: 'static chunk-graph arithmetic - entry chunk + each route chunk transitive STATIC-import closure + the chunks of the route layout ancestors it renders with; dynamic imports are never charged to first paint'
+    browser: 'not applicable - no browser is launched'
+    network: 'not applicable - RAW on-disk bytes are budgeted; gzip -9 is reported for reference only and is never budgeted (CDN compression is a separate concern)'
+    cpu: 'not time-based - deterministic byte arithmetic on any machine; only the `pnpm run build` that produces the input is runner-dependent'
     source_sha: 'printed as `git rev-parse HEAD` on every run, so a red CI log always names the exact tree that was measured (CI builds and measures in one job at one SHA)'
     stale_input: 'dist/client/bundle-graph.json is gitignored build output and its path is also written by the Storybook builder; the gate WARNs when the recorded out_dir no longer holds the graph chunks, and exits 2 when the graph is missing entirely'
     runner: 'GitHub Actions `validate` job (ubuntu-latest) and any local `pnpm run build`'
@@ -346,13 +357,59 @@ bundle_budget:
   failure_policy:
     - 'a route above its cap FAILS the validate job'
     - 'a route present in src/routeTree.gen.ts with no budget entry FAILS (a new route is never implicitly free)'
-    - 'a route that produced no client chunk FAILS — an unmeasured route must not pass at 0 bytes'
+    - 'a route that produced no client chunk FAILS - an unmeasured route must not pass at 0 bytes'
     - 'an overage is allowed only via an `exception` carrying a reason of at least 20 characters; a shorter or missing reason is a configuration error and FAILS'
-    - 'a missing `tool_iframe` section FAILS — deleting it would silently switch the Tool cap off'
+    - 'a missing `tool_iframe` section FAILS - deleting it would silently switch the Tool cap off'
     - 'a missing Tool build output is a WARNING naming the absent directory, not a silent zero-byte pass'
     - 'raising a cap is not machine-checked (only an `exception` is); a cap change is reviewed in the PR diff with its measurement and rationale'
     - 'a missing build graph exits 2 (input error), never 0'
-# Issue #492 — the published route roster and its quality-gate
+# Issue #494 - personal-data review of the migrated corpus. Two axes,
+# in this order: MECHANICAL DETECTION (scripts/personal-data-review.mjs
+# extracts every personal-data candidate from a record's text and from
+# its image descriptors) and OWNER DECISION (only `decided_by: "owner"`
+# plus a stated `basis` may publish a record; everything else stays
+# `review_required` and is withheld whole).
+#
+# This is a GATE, not a report: the committed markdown review is
+# byte-compared against a fresh run, so a corpus or published-content
+# change that nobody re-reviewed fails.
+personal_data_review:
+  corpus: 'docs/migration/personal-data-review/corpus.json (synthetic fixtures only)'
+  library: 'scripts/personal-data-review.mjs (pure, zero npm dependency)'
+  command: 'pnpm run publication:redaction:check'
+  write_command: 'pnpm run publication:redaction:write'
+  report_command: 'pnpm run publication:redaction:report'
+  screenshot_command: 'pnpm run verify:publication-redaction-screenshot'
+  tests: 'node --test scripts/check-publication-redaction.test.mjs'
+  gate: fast
+  gate_placement: >-
+    validate:fast, immediately after `pnpm run publication:check` and
+    before `pnpm run content:links:check`.
+  documentation: 'docs/security/personal-data-redaction.md'
+  artefact: 'docs/verification/privacy/publication-redaction-review.{md,webp}'
+  published_content_roots:
+    - 'copy'
+    - 'public'
+    - 'src/about'
+    - 'src/portfolio'
+  published_content_exclusions:
+    - 'public/share/ — the `/share/<slug>/` static document surface is a separate delivery obligation with its own publication decision; this gate reviews migrated content, so it does not re-decide what is already published there.'
+  statuses:
+    - 'pass — no error finding (a corpus with no pending record)'
+    - 'review — warnings only: records still awaiting the owner decision (W001) or withheld by owner decision (W002)'
+    - 'fail — a withheld record reached published content (E001), an approval lacks owner authority or a basis (E002 / E003), a decision value is unknown (E004), published content carries an uncovered candidate (E005), the corpus is malformed or duplicated (E006 / E007), or the detector found nothing at all (E008)'
+  false_pass_guards:
+    - '`review_required` is the default for a missing or unknown decision value; the gate never infers an approval'
+    - 'a record without candidates is still published only through an owner decision, so the clean path and the private path share one gate'
+    - 'E008: a corpus that yields zero candidates fails, because a detector that never fires proves nothing'
+    - 'check mode byte-compares `docs/verification/privacy/publication-redaction-review.md`, so the evidence cannot drift from the corpus'
+    - 'reports and CI output carry only rule id / field / offset / masked shape; a raw candidate value never leaves the gate'
+  known_limits:
+    - 'no OCR: image PIXELS are not inspected, so a face, a photographed document or a handwritten address stays an owner judgement'
+    - 'D006 / D007 match courtesy-suffixed names only; an unsuffixed name in public copy is an owner decision, not a detection'
+    - 'the corpus is synthetic; real Miro / legacy-site / Notion imports arrive through the same shape but are not committed here (docs/personal/knowledge-model.md: no private data in the public repository)'
+
+# Issue #492 - the published route roster and its quality-gate
 # coverage are one reviewable artefact, and a cheap gate keeps the two
 # in sync. This is a **coverage ledger**: it proves every published
 # route has a decision (covered with evidence, or excluded with a
@@ -371,12 +428,12 @@ route_quality_coverage:
     this records the neighbouring steps rather than an absolute index).
   documentation: 'docs/verification/quality/route-quality-coverage.md'
   gate_families:
-    - 'e2e' # implemented — Playwright spec asserts the rendered surface
-    - 'seo' # implemented — canonical / Open Graph metadata assertion
-    - 'a11y' # planned — axe-core scan (not yet ticketed)
-    - 'performance' # planned — Lighthouse (#384 measures, #385 gates, #386 budgets)
-    - 'cross_browser' # planned — a second browser engine (CI is Chromium-only)
-    - 'security_headers' # planned — response security-header assertion
+    - 'e2e' # implemented - Playwright spec asserts the rendered surface
+    - 'seo' # implemented - canonical / Open Graph metadata assertion
+    - 'a11y' # planned - axe-core scan (not yet ticketed)
+    - 'performance' # planned - Lighthouse (#384 measures, #385 gates, #386 budgets)
+    - 'cross_browser' # planned - a second browser engine (CI is Chromium-only)
+    - 'security_headers' # planned - response security-header assertion
   scope_note: >-
     Measurement of a11y / performance / cross_browser / security_headers
     is explicitly out of scope here and belongs to #384-#387. Adding a
@@ -416,10 +473,10 @@ release_quality_dashboard:
     the report command already reports as exit 1. Nothing about the
     shipped product depends on this page.
   states:
-    - 'PASS — a run record exists for this source SHA, the command exited 0, and every declared artefact is on disk'
-    - 'FAIL — a run record exists for this source SHA and the command exited non-zero'
-    - 'NOT RUN — no record / another SHA / skipped (build, network, browser, Worker) / report missing'
-    - 'N/A — the family is `planned` in quality/route-coverage.json (no runner exists yet)'
+    - 'PASS - a run record exists for this source SHA, the command exited 0, and every declared artefact is on disk'
+    - 'FAIL - a run record exists for this source SHA and the command exited non-zero'
+    - 'NOT RUN - no record / another SHA / skipped (build, network, browser, Worker) / report missing'
+    - 'N/A - the family is `planned` in quality/route-coverage.json (no runner exists yet)'
   false_pass_guard: >-
     `classifySignal` is pure and every branch without a positive signal
     returns NOT RUN, so a missing report cannot read as PASS. A run record
@@ -453,13 +510,13 @@ release_gate_coverage:
   gate_placement: 'validate:fast, immediately after `pnpm run routes:quality:check`'
   documentation: 'docs/verification/security/release-gate-coverage.md'
   surfaces:
-    - 'fast / integration / release — the transitive `pnpm run` closure of package.json#scripts["validate:*"]'
-    - 'ci — the transitive closure of the `run:` steps of .github/workflows/ci.yml jobs.validate'
+    - 'fast / integration / release - the transitive `pnpm run` closure of package.json#scripts["validate:*"]'
+    - 'ci - the transitive closure of the `run:` steps of .github/workflows/ci.yml jobs.validate'
   statuses:
-    - 'pass — the command is reachable on every surface the row declares and its runner file exists'
-    - 'fail — the claim is contradicted (unregistered command, missing runner) or a required check is not run'
-    - 'not_run — the command exists but no declared release surface runs it; never counted as a pass'
-    - 'not_applicable — the inspection is not introduced, with a recorded reason; never counted as a pass'
+    - 'pass - the command is reachable on every surface the row declares and its runner file exists'
+    - 'fail - the claim is contradicted (unregistered command, missing runner) or a required check is not run'
+    - 'not_run - the command exists but no declared release surface runs it; never counted as a pass'
+    - 'not_applicable - the inspection is not introduced, with a recorded reason; never counted as a pass'
   silent_pass_guards:
     - 'a required row whose declared surface no longer reaches it is an error, not a warning'
     - 'deleting a `protected_checks` row, or flipping its `required` flag, fails (the intentional-omission guard)'
@@ -511,7 +568,7 @@ html_standards:
     - 'foreign content (<svg>/<math>) is not checked for attributes or nesting; id uniqueness still is'
     - 'the SSR half validates the workerd documents as they render without HOME_API_KEY, so the home counter and reaction blocks are in their failure-fallback state there; the success state is what `--live <baseUrl>` covers'
     - 'no external schema, no CSS, no ARIA role/attribute value vocabulary beyond the referenced-id graph'
-    - 'a hoisted <style> inside a flow element of <body> is a documented divergence from the Nu validator: React 19 streams suspense styles as `<div hidden><style>…</style></div>` through every route, so flagging it would mean flagging every document this project can ship. A <style> inside a phrasing-only parent (<ul>, <p>, <button>, …) is still reported.'
+    - 'a hoisted <style> inside a flow element of <body> is a documented divergence from the Nu validator: React 19 streams suspense styles as `<div hidden><style>...</style></div>` through every route, so flagging it would mean flagging every document this project can ship. A <style> inside a phrasing-only parent (<ul>, <p>, <button>, ...) is still reported.'
 
 ci:
   workflow: .github/workflows/ci.yml
@@ -519,11 +576,11 @@ ci:
   # push to main / release-*. The cf-typegen:check step and the
   # Playwright E2E step run only on push to main / release-* plus on
   # pull requests that opt in via the `ui-change` label (Playwright
-  # E2E only — cf-typegen:check is not meaningful on a draft PR).
+  # E2E only - cf-typegen:check is not meaningful on a draft PR).
   #
   # Issue #486: the image CLS regression spec
   # (`e2e/image-cls.spec.ts`) rides this same Playwright step. No new
-  # job, trigger, script or budget entry was added for it — a CLS
+  # job, trigger, script or budget entry was added for it - a CLS
   # budget is #386's axis, and re-running the E2E step on another
   # trigger is a `disallowed_patterns` violation. The recorded impact
   # is in `docs/verification/perf/README.md`.
@@ -541,7 +598,7 @@ ci:
       # explicitly so no step can appear in workflow YAML without an
       # entry here (profile header: "Do not add hidden steps inside
       # workflow YAML"). `pnpm run sbom:check` is NOT a step of its
-      # own — it runs inside `validate:fast`, which the first command
+      # own - it runs inside `validate:fast`, which the first command
       # above already covers; the two SBOM steps below only materialise
       # and retain the document after the gate has passed. The two
       # dependency advisory steps come from the release trunk (Issue
@@ -611,10 +668,10 @@ compat:
       differential is recorded in docs/development.md.
   cost_class: medium
 
-# Issue #413 — the shipped CSS is validated the way a specification
+# Issue #413 - the shipped CSS is validated the way a specification
 # validator validates it, offline: a CSS-Syntax tokenizer + parser answers
 # "does this parse", and a reviewed vocabulary answers "does this name
-# exist". A syntax error in generated CSS is otherwise invisible — the
+# exist". A syntax error in generated CSS is otherwise invisible - the
 # bundle builds, the declaration is dropped by the browser, and the page
 # renders with less styling than it reads. Compatibility (does it RUN in
 # the target browsers) stays with the Issue #414 gate above; this gate
@@ -632,7 +689,7 @@ css_syntax:
       covers: 'preflight + tokens + recipes + utilities generated from panda.config.ts and src/**'
     - id: src-css
       kind: 'files (src/**/*.css)'
-      covers: 'hand-written sheets — src/styles.css @font-face descriptors, @layer order, reduced-motion override'
+      covers: 'hand-written sheets - src/styles.css @font-face descriptors, @layer order, reduced-motion override'
   rules:
     syntax:
       - 'unclosed_block / stray_close_brace'
@@ -660,14 +717,14 @@ css_syntax:
       - 'value grammars are only checked for properties whose CSS grammar is a closed keyword list; a length, colour or url value is not parsed'
       - 'selectors are tokenized (balanced parens/brackets, escapes) but their specificity and validity are not checked'
       - 'the gate validates the CSS Panda generates, not a minified build artefact; point `--artifact <file>` at a built stylesheet to validate that instead'
-      - 'a declaration that is syntactically valid but overridden later is not reported — this gate answers validity, not effect'
+      - 'a declaration that is syntactically valid but overridden later is not reported - this gate answers validity, not effect'
 
 coverage_policy:
   enabled: false
-  rationale: 'ADR-0007 — coverage thresholds are deferred to 0.2.0; coverage data is not collected at 0.1.0.'
+  rationale: 'ADR-0007 - coverage thresholds are deferred to 0.2.0; coverage data is not collected at 0.1.0.'
 
 compatibility:
-  # Issue #414 — browser compatibility is a first-class gate, not a
+  # Issue #414 - browser compatibility is a first-class gate, not a
   # bundler side effect. Panda emits plain CSS and Vite emits plain JS,
   # so nothing else in the toolchain would ever ask whether a Web API or
   # CSS feature runs on the browsers we support.
@@ -684,7 +741,7 @@ compatibility:
     guarded_feature_adopted: 'fail (must be registered with a Baseline status and a fallback first)'
     warning_only:
       - 'below_baseline_with_fallback'
-      - 'target_floor_unverifiable — no adopted feature is Baseline Widely available, so the declared floor cannot be compared with the bar-implied floor (the comparison is reported as not run rather than skipped silently)'
+      - 'target_floor_unverifiable - no adopted feature is Baseline Widely available, so the declared floor cannot be compared with the bar-implied floor (the comparison is reported as not run rather than skipped silently)'
     silent_pass_guards:
       - 'a declared surface that matches no file fails'
       - 'a scanned source file owned by no declared surface fails'
@@ -701,7 +758,7 @@ security_gates:
   log_redaction:
     enabled: true
     command: 'pnpm run log:redaction:check'
-    note: 'Issue #467 — src/** logs only through the src/logging redacting logger; operator scripts print status only. See docs/security/log-redaction.md.'
+    note: 'Issue #467 - src/** logs only through the src/logging redacting logger; operator scripts print status only. See docs/security/log-redaction.md.'
   secret_scanning:
     enabled: true
     mode: asynchronous
@@ -732,7 +789,7 @@ security_gates:
       - package.json
       - pnpm-workspace.yaml
       - src/tools/manifest.json
-    note: 'Fail-closed on inventory drift, digest mismatch (SHA-512 per component and SHA-256 provenance per tracked input), dangling graph edges, components carrying properties CycloneDX 1.6 does not define, and secret-shaped content or a runtime-secret name from scripts/_cloudflare-contract.mjs. The generator reads only the listed tracked files — no environment credential, .dev.vars, Infisical export or Worker secret value (AGENTS.md section 4). See docs/runbook/sbom.md.'
+    note: 'Fail-closed on inventory drift, digest mismatch (SHA-512 per component and SHA-256 provenance per tracked input), dangling graph edges, components carrying properties CycloneDX 1.6 does not define, and secret-shaped content or a runtime-secret name from scripts/_cloudflare-contract.mjs. The generator reads only the listed tracked files - no environment credential, .dev.vars, Infisical export or Worker secret value (AGENTS.md section 4). See docs/runbook/sbom.md.'
   install_script_audit:
     enabled: true
     tool: scripts/check-install-scripts.mjs
@@ -788,7 +845,7 @@ security_gates:
     tool: 'scripts/check-submodule-provenance.mjs'
     gate: fast
     mode: offline_status_only
-    note: 'Issue #473 — manifest pin / gitlink / checked-out commit / build-artefact stamp agreement, plus fetch-source identity and branch-tip rejection. No network fetch, no environment variable and no secret file is read, every finding is status-only, and a URL that came from the ambient git config is printed with its userinfo / query / fragment redacted.'
+    note: 'Issue #473 - manifest pin / gitlink / checked-out commit / build-artefact stamp agreement, plus fetch-source identity and branch-tip rejection. No network fetch, no environment variable and no secret file is read, every finding is status-only, and a URL that came from the ambient git config is printed with its userinfo / query / fragment redacted.'
   workflow_yaml_lint:
     enabled: true
     tool: actionlint
@@ -818,16 +875,16 @@ security_gates:
     blocking_severities: ['critical', 'high']
     open_owner_decision: '`enforcement: audit` with 18 outstanding blocking advisories (3 critical) is the shipped state. Remediation, narrowing blocking_severities and per-package exception approval are owner calls; no exception is written on the owner''s behalf. See docs/runbook/dependency-advisories.md section 6.'
     ci_step: 'Dependency advisory audit (every pull_request / push the workflow triggers, and the HTML report is uploaded as dependency-advisory-report-<sha>)'
-    entry_points: 'CI only — the gate needs the npm registry advisory endpoint, so it is deliberately not part of the offline validate:fast / validate:integration / validate:release path. The decision lives in scripts/check-dependency-advisories.mjs (not in workflow YAML) and the same verdict is reproducible locally with `pnpm run dep-audit:check`.'
+    entry_points: 'CI only - the gate needs the npm registry advisory endpoint, so it is deliberately not part of the offline validate:fast / validate:integration / validate:release path. The decision lives in scripts/check-dependency-advisories.mjs (not in workflow YAML) and the same verdict is reproducible locally with `pnpm run dep-audit:check`.'
     exit_codes:
       0: 'pass, or blocking findings recorded under audit enforcement'
       1: 'blocking advisories outstanding under block enforcement'
       2: 'usage error, unreadable --input path, or gate-declaration error'
-      3: 'advisory data unavailable — fail closed, never reported as 0 findings'
+      3: 'advisory data unavailable - fail closed, never reported as 0 findings'
     inputs:
       - pnpm-lock.yaml
       - quality/dependency-advisory-gate.json
-    note: 'Severity policy, the exception ledger and every expiry live in the declaration, not in code, so a policy change is a reviewable one-line diff. The severity policy is enforced in both directions: a severity classified as neither blocking nor reported fails closed, and an exception is keyed by (advisoryId, package) because one advisory commonly spans several packages — a record that matches no finding suppresses nothing and is reported, never laundered into `data unavailable`. Advisory data comes from the npm registry advisory endpoint only — no environment credential, .dev.vars, Infisical export or Worker secret value (AGENTS.md section 4); an upstream response body is never echoed into stdout or the artifact. Unreadable data fails closed so a registry outage cannot read as a clean tree. See docs/runbook/dependency-advisories.md.'
+    note: 'Severity policy, the exception ledger and every expiry live in the declaration, not in code, so a policy change is a reviewable one-line diff. The severity policy is enforced in both directions: a severity classified as neither blocking nor reported fails closed, and an exception is keyed by (advisoryId, package) because one advisory commonly spans several packages - a record that matches no finding suppresses nothing and is reported, never laundered into `data unavailable`. Advisory data comes from the npm registry advisory endpoint only - no environment credential, .dev.vars, Infisical export or Worker secret value (AGENTS.md section 4); an upstream response body is never echoed into stdout or the artifact. Unreadable data fails closed so a registry outage cannot read as a clean tree. See docs/runbook/dependency-advisories.md.'
   sast:
     enabled: false
     rationale: 'Deferred.'
@@ -864,7 +921,7 @@ disallowed_patterns:
 #
 # CI reproduction: the same command against the same build step that
 # `validate:integration` runs, plus `--screenshot=` to refresh the
-# committed WebP. No workflow runs it today — it is opt-in, invoked by a
+# committed WebP. No workflow runs it today - it is opt-in, invoked by a
 # human, and a workflow that starts running it must keep it out of the
 # `gates:` above.
 diagnostic_entry_points:
@@ -879,7 +936,7 @@ diagnostic_entry_points:
     owner_issue: '#483'
     prerequisites: 'a built client output (pnpm exec vite build; scripts/build-tools.mjs + scripts/sync-cf-build-output.mjs for Tool artefacts) and, for the route matrix, a preview server'
 
-# Issue #577 — the R2 key-set audit. A gate that is deliberately in
+# Issue #577 - the R2 key-set audit. A gate that is deliberately in
 # NEITHER of the three entry points, and is operator-run rather than
 # CI-run.
 #
@@ -912,16 +969,16 @@ r2_media_key_set_audit:
   credential: 'CLOUDFLARE_R2_API_TOKEN only (R2-scoped read). CLOUDFLARE_API_TOKEN (Worker deploy) and CLOUDFLARE_D1_API_TOKEN are never accepted as a fallback.'
   output_contract: >-
     status-only (AGENTS.md §4): verdict, counts and reason codes. No
-    object key, no key fragment, no credential, no raw CLI error text —
+    object key, no key fragment, no credential, no raw CLI error text -
     the rendered report is checked against the keys it audited before it
     is written.
   failure_policy:
     - 'one key outside PUBLIC_MEDIA_PREFIXES FAILS the release gate (exit 1)'
-    - 'a missing credential, an API failure, an unrecognised listing shape, an empty production key set and a full page are UNDECIDABLE (exit 2) — an unread bucket is never a pass'
+    - 'a missing credential, an API failure, an unrecognised listing shape, an empty production key set and a full page are UNDECIDABLE (exit 2) - an unread bucket is never a pass'
     - 'a usage error also exits 2 and prints no verdict'
     - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
     - 'a bucket of 1000 keys or more cannot be enumerated by this driver (no pagination cursor is exposed by the CLI), so a full page is reported as listing_incomplete rather than read as a whole bucket'
-  mutation: 'none — the gate issues one read (`cf r2 objects list`) and cannot reach a production write path'
+  mutation: 'none - the gate issues one read (`cf r2 objects list`) and cannot reach a production write path'
   documentation: 'docs/runbook/r2-media-key-set-audit.md + docs/security/r2-media-visibility.md'
   verification_artifact: 'docs/verification/security/r2-media-key-set-audit.webp'
   owner_issue: '#577'

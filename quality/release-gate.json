@@ -182,6 +182,15 @@
 			"documentation": "docs/verification/quality/route-quality-coverage.md"
 		},
 		{
+			"id": "personal-data-review",
+			"contract": "Personal-data candidates (addresses, contact channels, third-party names, image metadata) in the migrated corpus are extracted mechanically and only an owner decision can publish a record, so a release cannot ship a migration record nobody approved.",
+			"command": "pnpm run publication:redaction:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/personal-data-redaction.md"
+		},
+		{
 			"id": "index-boundary",
 			"contract": "The server index boundary still re-exports only the allowed application operations, so a release cannot widen the server-function surface by accident.",
 			"command": "pnpm run index:boundary:check",

@@ -163,7 +163,13 @@
 		"verify:css-screenshot": "node scripts/make-css-standards-report.mjs",
 		"check:app-icons": "node scripts/check-app-icons.mjs",
 		"generate:app-icons": "node scripts/generate-app-icons.mjs",
-		"capture:app-icons-preview": "node scripts/capture-app-icons-preview.mjs"
+		"capture:app-icons-preview": "node scripts/capture-app-icons-preview.mjs",
+		"release:gate:check": "node scripts/check-release-gate-coverage.mjs",
+		"release:gate:report": "node scripts/check-release-gate-coverage.mjs --report=.tmp/release-gate-report.html",
+		"verify:release-gate-screenshot": "node scripts/make-release-gate-report.mjs",
+		"r2:media:audit:local": "node scripts/check-r2-media-key-set.mjs --target=local",
+		"r2:media:audit:report": "node scripts/make-r2-media-key-set-report.mjs",
+		"r2:media:audit": "node scripts/check-r2-media-key-set.mjs --target=production"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

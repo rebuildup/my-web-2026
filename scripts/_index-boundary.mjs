@@ -87,6 +87,13 @@ export const ROBOTS_PATH = '/robots.txt';
  * two SEO documents joined the list in Issue #420 — they are routes on
  * the same boundary, and a contract that had never heard of them
  * would call a correct `src/server.ts` drifted.
+ *
+ * `/.well-known` joined it in Issue #468 for the same reason plus one:
+ * RFC 9116's `security.txt` is a `text/plain` document (so Hono owns
+ * delivery, not a route file), AND the whole well-known namespace is
+ * machine-readable by definition — a crawler has no business indexing
+ * any of it, so the namespace is declared once here rather than being
+ * re-classified path by path if a future well-known document lands.
  */
 export const EXTERNAL_BOUNDARY_PREFIXES = Object.freeze([
 	'/api/v1',
@@ -95,6 +102,7 @@ export const EXTERNAL_BOUNDARY_PREFIXES = Object.freeze([
 	'/integrations',
 	ROBOTS_PATH,
 	SITEMAP_PATH,
+	'/.well-known',
 ]);
 
 /**

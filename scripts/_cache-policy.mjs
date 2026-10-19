@@ -19,6 +19,11 @@
  *     `src/http/seo/router.ts` (`public, max-age=300,
  *     must-revalidate`). That is a crawler-freshness decision, not the
  *     asset/personal-page split this Issue reconciles.
+ *   - `/.well-known/security.txt` is owned by
+ *     `src/http/security-txt/router.ts` (same value, same reason):
+ *     a document whose publication is an approval decision must be
+ *     revalidated quickly, so an approval reaches scanners within the
+ *     freshness window instead of after a deploy.
  *   - `/_serverFn/*` is owned by `src/server.ts` (`private, no-store`,
  *     Issue #460). It is an internal application transport, not an
  *     external HTTP response class.

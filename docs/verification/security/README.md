@@ -20,6 +20,7 @@ of trusting the image.
 | [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
 | [`tool-artifact-inventory.webp`](tool-artifact-inventory.webp) | #466 | `pnpm run verify:tool-artifact-inventory-screenshot` |
 | [`release-gate-missing-check.webp`](release-gate-missing-check.webp) | #508 | `pnpm run verify:release-gate-screenshot` |
+| [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 
 ## `release-gate-missing-check.webp` (Issue #508)
 

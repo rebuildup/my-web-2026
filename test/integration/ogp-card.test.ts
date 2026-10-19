@@ -341,6 +341,11 @@ describe('Open Graph / Twitter card (Issue #421)', () => {
 				tags.find((tag) => tag.property === key || tag.name === key)?.content ?? null;
 			expect(read('twitter:card'), samplePath).toBe('summary_large_image');
 			expect(read('twitter:image'), samplePath).toBe(read('og:image'));
+			// Twitter reads its own namespace: an unmirrored alt would
+			// publish the same image nameless to the consumer the
+			// fallback rule exists for.
+			expect(read('twitter:image:alt'), samplePath).toBe(read('og:image:alt'));
+			expect(read('og:image:alt'), samplePath).toBeTruthy();
 			expect(read('twitter:title'), samplePath).toBe(read('og:title'));
 			expect(read('twitter:description'), samplePath).toBe(read('og:description'));
 		}

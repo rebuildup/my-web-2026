@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
 	CANONICAL_ORIGIN,
+	DEFERRED_SURFACES,
 	FALLBACK_CARD,
 	FALLBACK_CARD_URL,
 	OG_TYPES,
@@ -103,8 +104,12 @@ describe('social card contract (contract.json)', () => {
 		// Issue #421 names 記事. The repository has no article route, so
 		// the contract must say so explicitly rather than let the gap
 		// read as "nothing to check".
+		expect(DEFERRED_SURFACES.map((surface) => surface.id)).toEqual(['articles']);
 		const articles = ROUTE_COVERAGE.filter((entry) => entry.path.includes('article'));
 		expect(articles).toEqual([]);
+		const [deferred] = DEFERRED_SURFACES;
+		expect(deferred.reason.trim().length).toBeGreaterThan(40);
+		expect(deferred.reason).toContain('route tree');
 	});
 });
 
@@ -174,6 +179,7 @@ describe('composeSocialCard', () => {
 		expect(map.get('og:image:width')).toBe('1600');
 		expect(map.get('og:image:height')).toBe('900');
 		expect(map.get('twitter:image')).toBe(CONTENT_IMAGE.url);
+		expect(map.get('twitter:image:alt')).toBe(CONTENT_IMAGE.alt);
 		expect(map.get('twitter:card')).toBe('summary_large_image');
 		expect(map.get('og:type')).toBe('article');
 		expect(map.get('og:site_name')).toBe(SITE_NAME);
@@ -192,6 +198,7 @@ describe('composeSocialCard', () => {
 		expect(map.get('og:image:width')).toBe(String(FALLBACK_CARD.width));
 		expect(map.get('og:image:height')).toBe(String(FALLBACK_CARD.height));
 		expect(map.get('twitter:image')).toBe(FALLBACK_CARD_URL);
+		expect(map.get('twitter:image:alt')).toBe(FALLBACK_CARD.alt);
 		expect(map.get('twitter:card')).toBe('summary_large_image');
 	});
 
@@ -213,7 +220,9 @@ describe('composeSocialCard', () => {
 		const map = toMap(card.meta);
 		expect(card.image).toBeNull();
 		expect(map.get('og:image')).toBeUndefined();
+		expect(map.get('og:image:alt')).toBeUndefined();
 		expect(map.get('twitter:image')).toBeUndefined();
+		expect(map.get('twitter:image:alt')).toBeUndefined();
 		expect(map.get('twitter:card')).toBe('summary');
 	});
 

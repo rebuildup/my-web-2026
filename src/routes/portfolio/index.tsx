@@ -140,15 +140,17 @@ function parseFacets(raw: string | undefined): PortfolioFacet[] {
 
 /**
  * The first published cover on the list, or `null` when the page has
- * no project or no project resolves a public image URL. Returning
- * null (rather than a partially-built image) is what keeps the
- * fallback branch honest: the list cannot publish a card that names a
- * project it did not render.
+ * no project or no project resolves a public image URL. A media row
+ * whose `composeMediaUrl` returned `null` is skipped so the walk
+ * continues to the next project rather than stopping the list on an
+ * unusable row. Returning null (rather than a partially-built image)
+ * is what keeps the fallback branch honest: the list cannot publish a
+ * card that names a project it did not render.
  */
 function firstProjectCover(projects: readonly PortfolioProject[]) {
 	for (const project of projects) {
 		const media = project.media.find((m) => m.isCover) ?? project.media[0];
-		if (!media) continue;
+		if (!media?.url) continue;
 		return { url: media.url, alt: media.alt, width: media.width, height: media.height };
 	}
 	return null;

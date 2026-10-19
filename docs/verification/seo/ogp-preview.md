@@ -18,12 +18,17 @@ commit している（PNG は WebP の約2倍サイズで、証拠としての�
 | `/`, `/contact`, `/tools/`, `/tools/$slug` | `not-implemented` / `none` | card 画像を**出さない**（出た瞬間に finding） |
 | `/design-system` | `not-implemented` / `none`（`public: false`） | 同上 |
 
+宣言は 8 route、**観測する代表 URL は 7**（`/design-system` は `public: false`
+なので宣言だけートの route tree 網羅性を保つための entry で、実 SSR 応答は
+観測しない）。レポートの card 行数・fallback 行数はこの 7 に一致する。
+
 `content-first` の document が必ず満たすもの:
 
 - `og:type` / `og:site_name` / `og:locale` / `og:title` / `og:description` / `og:url`（後者は origin 付き絶対 URL）
 - `og:image` は「その surface 自身の media URL」か「`contract.json#fallbackCard` の URL」の**どちらか**
 - `og:image:alt` は空でない、fallback card なら `og:image:width` / `og:image:height` が宣言値と一致
 - `twitter:card=summary_large_image`、`twitter:image = og:image`、`twitter:title` / `twitter:description` が og 側と一致
+- `twitter:image:alt = og:image:alt`（Twitter は `og:` 名前空間を読まないため、代替テキストも mirror する）
 
 ### missing media の fallback（この Issue の主眼）
 
@@ -108,7 +113,7 @@ negative control つき）と、本番 shaped の media URL を固定してい�
 
 ## 画像が描写していないもの
 
-- どの crawler が何を渲染するか。`og:*` に validation service は無く、
+- どの crawler が何を描画するか。`og:*` に validation service は無く、
   Rich Results 式の verdict も無い。gate が判定するのは「我々が出した tag が
   宣言と一致しているか」まで。
 - 本番の media 実体がその URL で到達可能であること。fallback については

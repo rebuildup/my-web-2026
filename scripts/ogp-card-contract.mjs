@@ -74,6 +74,7 @@ export const IMAGE_TAG_KEYS = Object.freeze([
 	'og:image:url',
 	'twitter:image',
 	'twitter:image:src',
+	'twitter:image:alt',
 ]);
 
 /** Collapse whitespace the way the HTML parser leaves it. */
@@ -313,6 +314,19 @@ export function evaluateSocialCard({ surface, tags, policy }) {
 		if (head.twitterImage !== image.url) {
 			findings.push(
 				finding('card.twitter-image', surface, 'twitter:image does not match og:image'),
+			);
+		}
+		// A Twitter consumer reads `twitter:image:alt` and ignores the
+		// `og:` namespace, so an unmirrored alt would publish the same
+		// image nameless to half the consumers the card exists for.
+		const twitterImageAlt = firstContent(tags, 'twitter:image:alt');
+		if (twitterImageAlt !== head.ogImageAlt) {
+			findings.push(
+				finding(
+					'card.twitter-image-alt',
+					surface,
+					`twitter:image:alt is "${twitterImageAlt ?? '(absent)'}" (og:image:alt is "${head.ogImageAlt ?? '(absent)'}")`,
+				),
 			);
 		}
 		if (head.twitterTitle !== head.ogTitle) {

@@ -11,7 +11,7 @@
 		"height": 630,
 		"alt": "rebuildup.dev — 自分のメディアを持たない surface の既定カード。",
 		"generator": "scripts/generate-og-fallback-card.mjs",
-		"reason": "media row の無い project、行虽有但是 R2 custom domain が未設定で composeMediaUrl が null を返す project では公開画像 URL が構成されない。fallback が無いと unfurler は画像の無い card を描画し、その劣化は検証レポート上でも不可視になる。fallback を置けば preview が完成し、同時に劣化が名前を持てる — 出力される URL がこのファイルのものであるため、gate は document だけで content と fallback を区別できる。"
+		"reason": "media row の無い project、media row はあるが R2 custom domain が未設定で composeMediaUrl が null を返す project では公開画像 URL が構成されない。fallback が無いと unfurler は画像の無い card を描画し、その劣化は検証レポート上でも不可視になる。fallback を置けば preview が完成し、同時に劣化が名前を持てる — 出力される URL がこのファイルのものであるため、gate は document だけで content と fallback を区別できる。"
 	},
 	"routes": [
 		{

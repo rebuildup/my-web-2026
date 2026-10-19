@@ -41,13 +41,25 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import sharp from 'sharp';
 
-/** Keep in sync with `src/editorial/social-card/contract.json`. */
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * The card's identity comes from the contract, not from a second copy
+ * of it: `contract.json#fallbackCard` is the declaration the engine and
+ * the report compare documents against, so the generator reads it here
+ * instead of asking a comment to keep two literals in step. Only the
+ * rendering decisions — file name and palette — are local.
+ */
+const CONTRACT = JSON.parse(
+	readFileSync(join(REPO_ROOT, 'src', 'editorial', 'social-card', 'contract.json'), 'utf8'),
+);
+
 export const FALLBACK_CARD = {
 	file: 'default-card.png',
 	/** Origin-relative path served from the static-assets binding. */
-	path: '/og/default-card.png',
-	width: 1200,
-	height: 630,
+	path: CONTRACT.fallbackCard.path,
+	width: CONTRACT.fallbackCard.width,
+	height: CONTRACT.fallbackCard.height,
 	/** Palette roles, named after `src/editorial/tokens.ts`. */
 	colors: {
 		canvas: '#0a0b0e', // charcoal 950 — the page background
@@ -57,7 +69,6 @@ export const FALLBACK_CARD = {
 	},
 };
 
-const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TARGET = join(REPO_ROOT, 'public', 'og', FALLBACK_CARD.file);
 
 /**

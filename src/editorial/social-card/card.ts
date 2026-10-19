@@ -136,8 +136,16 @@ export function fallbackCardImage(): ResolvedCardImage {
  * Always emits: `og:type`, `og:site_name`, `og:locale`, `og:title`,
  * `og:description`, `og:url` and `twitter:card`. Emits the image block
  * (`og:image` + `og:image:alt` + `og:image:width` / `og:image:height`
- * when the intrinsic size is known, and the mirrored `twitter:image`)
- * whenever an image resolves — which, under `content-first`, is always.
+ * when the intrinsic size is known, and the mirrored `twitter:image` +
+ * `twitter:image:alt`) whenever an image resolves — which, under
+ * `content-first`, is always.
+ *
+ * The alt text is mirrored into the twitter namespace because a
+ * Twitter consumer reads `twitter:image:alt` and ignores
+ * `og:image:alt`: without the mirror the same image would be
+ * published nameless to exactly the consumer the fallback rule exists
+ * for, so the `never publish an image without alt text` contract would
+ * hold for half the tag families only.
  */
 export function composeSocialCard(input: SocialCardInput): SocialCard {
 	const socialTitle = input.socialTitle?.trim() || input.title;
@@ -169,7 +177,10 @@ export function composeSocialCard(input: SocialCardInput): SocialCard {
 	meta.push({ name: 'twitter:card', content: image ? 'summary_large_image' : 'summary' });
 	meta.push({ name: 'twitter:title', content: socialTitle });
 	meta.push({ name: 'twitter:description', content: input.description });
-	if (image) meta.push({ name: 'twitter:image', content: image.url });
+	if (image) {
+		meta.push({ name: 'twitter:image', content: image.url });
+		meta.push({ name: 'twitter:image:alt', content: image.alt });
+	}
 
 	return { meta, image };
 }

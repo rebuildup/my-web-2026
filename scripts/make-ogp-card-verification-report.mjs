@@ -83,6 +83,10 @@ const RULES = [
 		'twitter:card=summary_large_image、twitter:image = og:image、title / description も og 側と一致',
 	],
 	[
+		'cardPolicy content-first',
+		'twitter:image:alt = og:image:alt（Twitter は og 名前空間を読まないため、代替テキストも mirror する）',
+	],
+	[
 		'cardPolicy none',
 		'og:image / twitter:image を出さない（出した瞬間に card.undeclared-image finding）',
 	],
@@ -216,7 +220,6 @@ export function renderReport({ report, contract, snapshot, fallbackImageDataUri 
 		(file.assertionResults ?? []).map((test) => ({
 			title: test.fullName ?? test.title,
 			status: test.status,
-			ms: test.duration ?? 0,
 		})),
 	);
 	const passed = assertions.filter((item) => item.status === 'passed').length;
@@ -230,7 +233,6 @@ export function renderReport({ report, contract, snapshot, fallbackImageDataUri 
 			(test) => `<tr class="${escapeHtml(test.status)}">
     <td class="status">${test.status === 'passed' ? 'PASS' : escapeHtml(test.status.toUpperCase())}</td>
     <td>${escapeHtml(test.title)}</td>
-    <td class="ms">${Math.round(test.ms)} ms</td>
   </tr>`,
 		)
 		.join('\n');
@@ -284,7 +286,7 @@ export function renderReport({ report, contract, snapshot, fallbackImageDataUri 
   tr.passed .status { color: #1c6b3a; }
   tr.failed .status, tr.failed td { color: #a12020; }
   .status { font-weight: 700; width: 64px; }
-  .ms { text-align: right; color: #77776a; width: 80px; }
+  
   .note { color: #4a4a40; font-size: 12.5px; }
   tr.deferred td { background: #fbf7f0; }
   footer.page { margin-top: 22px; color: #77776a; font-size: 12px; }
@@ -340,7 +342,7 @@ ${ruleRows}
 
   <h2>実行結果</h2>
   <table>
-    <thead><tr><th style="width:64px">result</th><th>test</th><th style="width:80px">time</th></tr></thead>
+    <thead><tr><th style="width:64px">result</th><th>test</th></tr></thead>
     <tbody>
 ${testRows}
     </tbody>
@@ -354,10 +356,14 @@ ${testRows}
 
 function runSuite() {
 	mkdirSync(TMP, { recursive: true });
-	execFileSync('npx', ['vitest', 'run', SUITE, '--reporter=json', `--outputFile=${JSON_REPORT}`], {
-		cwd: ROOT,
-		stdio: 'inherit',
-	});
+	execFileSync(
+		'pnpm',
+		['exec', 'vitest', 'run', SUITE, '--reporter=json', `--outputFile=${JSON_REPORT}`],
+		{
+			cwd: ROOT,
+			stdio: 'inherit',
+		},
+	);
 	return JSON.parse(readFileSync(JSON_REPORT, 'utf8'));
 }
 

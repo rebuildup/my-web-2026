@@ -109,9 +109,14 @@ function AboutRoute() {
  *
  * The visitor is not promised a specific project as the "hero image"
  * — we take the first one that is actually published + public + has a
- * media row, and hand `null` back when there is none so the composer
- * can publish the site fallback card rather than fabricating an image
- * for a project the page does not show.
+ * media row **whose composed URL is usable**, and hand `null` back when
+ * there is none so the composer can publish the site fallback card
+ * rather than fabricating an image for a project the page does not
+ * show. A media row whose `composeMediaUrl` returned `null` (unbound
+ * R2 custom domain, invalid key) is skipped rather than stopping the
+ * walk: a later experience project with a usable cover is a better
+ * answer than the fallback, and the fallback still remains available
+ * when no project resolves one.
  */
 function firstExperienceCover(
 	projects: ReadonlyArray<{
@@ -126,7 +131,7 @@ function firstExperienceCover(
 ) {
 	for (const project of projects) {
 		const media = project.media.find((m) => m.isCover) ?? project.media[0];
-		if (!media) continue;
+		if (!media?.url) continue;
 		return { url: media.url, alt: media.alt, width: media.width, height: media.height };
 	}
 	return null;

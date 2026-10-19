@@ -66,6 +66,14 @@ function goodCard(surface, overrides = {}) {
 				overrides.twitterDescription ?? 'A description that clears any reasonable lower bound.',
 		},
 		...(image === null ? [] : [{ name: 'twitter:image', content: image }]),
+		...(image === null
+			? []
+			: [
+					{
+						name: 'twitter:image:alt',
+						content: overrides.twitterImageAlt ?? overrides.alt ?? 'カバー画像',
+					},
+				]),
 	];
 	return tags;
 }
@@ -148,6 +156,25 @@ describe('ogp card engine — every rule can fail', () => {
 			tag.name === 'twitter:image' ? { ...tag, content: 'https://example.invalid/other.png' } : tag,
 		);
 		assert.deepEqual(rules(evaluate(PROJECT, tags).findings), ['card.twitter-image']);
+	});
+
+	it('reports a twitter:image:alt that does not mirror og:image:alt', () => {
+		// Twitter reads its own namespace and ignores `og:image:alt`, so
+		// an unmirrored alt publishes the image nameless to the consumer
+		// the fallback rule exists for.
+		const dropped = goodCard(PROJECT).filter((tag) => tag.name !== 'twitter:image:alt');
+		assert.deepEqual(rules(evaluate(PROJECT, dropped).findings), ['card.twitter-image-alt']);
+		const renamed = goodCard(PROJECT, { twitterImageAlt: '別の代替テキスト' });
+		assert.deepEqual(rules(evaluate(PROJECT, renamed).findings), ['card.twitter-image-alt']);
+	});
+
+	it('reports a twitter:image:alt on a surface that declares no card', () => {
+		const tags = [
+			{ property: 'og:title', content: 'my-web-2026' },
+			{ name: 'twitter:card', content: 'summary' },
+			{ name: 'twitter:image:alt', content: 'カード画像' },
+		];
+		assert.deepEqual(rules(evaluate(HOME, tags).findings), ['card.undeclared-image']);
 	});
 
 	it('reports a summary card that claims a large image', () => {

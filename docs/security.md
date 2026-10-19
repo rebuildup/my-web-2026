@@ -359,6 +359,35 @@ the client mapping, the drift guard between the retry window and
 `RATE_LIMITS`, and what the local workerd suite does *not* prove —
 lives in [`security/write-rate-limit.md`](security/write-rate-limit.md).
 
+## Request anomaly monitor (Issue #481)
+
+Two request surfaces are watched for **rates**, not for callers:
+`/admin*` (`admin`) and `/api/v1/*` (`external-api`). The 401 / 403 /
+429 / 5xx share of a five-minute fixed window is compared against a
+per-signal threshold, and a crossing produces one status-only detection
+event — latched to one announcement per window per signal.
+
+Three properties are the contract:
+
+- **no identity dimension.** The aggregation key is `(surface, window)`
+  and the observation type has no slot for an IP, key id, cookie, path
+  or user agent, so the counter cannot become a tracking surface by
+  accident; the event's field list is closed and asserted.
+- **no delivery.** The shipped sink writes one audit record through
+  `src/logging`. No e-mail, webhook, alert or third-party call exists,
+  because a destination outside the platform needs an owner decision and
+  its own ADR (AGENTS.md §4).
+- **per-isolate counts.** A Workers isolate sees only what it served, so
+  this is a detection decision and a reproducible proof, not a durable
+  global rate.
+
+The contract, the thresholds, and the observation / remediation
+procedure live in
+[`security/request-anomaly-monitor.md`](security/request-anomaly-monitor.md).
+The threshold crossings are reproduced from recorded fixtures
+(`quality/fixtures/request-anomaly-monitor/`, no credential and no
+production binding involved) by `pnpm run anomaly:fixture:proof`.
+
 ## CORS
 
 The external boundary splits its routes into three origin classes

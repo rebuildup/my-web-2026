@@ -24,6 +24,29 @@ of trusting the image.
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
+| [`anomaly-monitor-fixture.webp`](anomaly-monitor-fixture.webp) | #481 | `pnpm run verify:anomaly-monitor-screenshot` |
+
+## `anomaly-monitor-fixture.webp` (Issue #481)
+
+Admin と外部 API の 401 / 403 / 429 / 5xx 発生率がしきい値を超えたとき、
+**秘密・IP などの個人情報を含まない**検知イベントが生成されることを、
+記録済み fixture で確認した結果。7 ケース（正常 2 / 異常 4 / 持続 1）を
+`src/http/middleware/anomaly-monitor.ts` に通し、宣言どおりのイベント数か
+を判定する。イベント 0 のケースが pass である点がこの proof の主張で、
+「鳴らないこと」まで検証している。
+
+- status-only 契約どおり、address / e-mail / credential 形状は出力・HTML
+  ともに走査し、1 件でも検出すると非ゼロ終了する（拒否は行番号のみ）。
+- fixture は status と件数だけで、リクエストも credential も発行しない。
+- 画像だけでは proof にならない。しきい値の根拠・正常時の観測・
+  異常時の修復手順は [`docs/security/request-anomaly-monitor.md`](../../security/request-anomaly-monitor.md)。
+
+Regenerate:
+
+```bash
+pnpm run anomaly:fixture:proof             # fixture proof（status-only）
+pnpm run verify:anomaly-monitor-screenshot # -> この画像（WebP）
+```
 
 ## `r2-restore-proof.webp` (Issue #462)
 

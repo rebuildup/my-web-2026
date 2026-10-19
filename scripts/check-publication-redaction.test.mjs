@@ -1,5 +1,10 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
 	CORPUS_RELATIVE_PATH,
 	PUBLISHED_CONTENT_EXCLUDE_PREFIXES,
@@ -98,6 +103,51 @@ const PRIVATE_RECORD = {
 const corpusOf = (...records) => ({ schema: REVIEW_SCHEMA, records });
 const codesOf = (candidates) => candidates.map((candidate) => candidate.code);
 const publishedFiles = (entries) => entries.map(([path, text]) => ({ path, text }));
+
+/** The repository this suite lives in — the source of the gate under test. */
+const repoRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * A throwaway copy of the gate, in a directory that acts as its own
+ * repository root.
+ *
+ * The gate derives its repository root from the location of its own
+ * file, so a copy in `<tmp>/scripts/` treats `<tmp>` as the
+ * repository root: the real collector, the real corpus loader and the
+ * real exit codes all run against a temporary published root. That is
+ * what makes a CLI-level test possible without a configuration seam —
+ * an env var that moved the scanned root would be a fail-open lever
+ * on the gate itself, and a privacy gate must not grow one.
+ */
+function gateTree({ publishedFiles = {}, corpus = corpusOf(CLEAN_RECORD, PRIVATE_RECORD) } = {}) {
+	const root = mkdtempSync(join(tmpdir(), 'publication-redaction-'));
+	mkdirSync(join(root, 'scripts'), { recursive: true });
+	for (const file of ['check-publication-redaction.mjs', 'personal-data-review.mjs']) {
+		cpSync(join(repoRoot, 'scripts', file), join(root, 'scripts', file));
+	}
+	mkdirSync(join(root, 'docs/migration/personal-data-review'), { recursive: true });
+	mkdirSync(join(root, 'docs/verification/privacy'), { recursive: true });
+	writeFileSync(
+		join(root, 'docs/migration/personal-data-review/corpus.json'),
+		`${JSON.stringify(corpus, null, 2)}\n`,
+	);
+	for (const [path, content] of Object.entries(publishedFiles)) {
+		const full = join(root, path);
+		mkdirSync(dirname(full), { recursive: true });
+		writeFileSync(full, content);
+	}
+	return root;
+}
+
+/** Run the copied gate and report what it decided. */
+function runGate(root, args = []) {
+	const result = spawnSync(
+		process.execPath,
+		[join(root, 'scripts/check-publication-redaction.mjs'), ...args],
+		{ encoding: 'utf8' },
+	);
+	return { status: result.status, output: `${result.stdout ?? ''}${result.stderr ?? ''}` };
+}
 
 describe('detection — the private sample fires every personal-data class', () => {
 	it('extracts a candidate for every rule the Issue names', () => {
@@ -638,6 +688,123 @@ describe('report artefacts', () => {
 		assert.equal(/<link\b/i.test(html), false);
 		assert.equal(/<img\b/i.test(html), false);
 		assert.equal(/https?:\/\//.test(html), false);
+	});
+});
+
+describe('the published-content declaration is checked against the walk', () => {
+	it('refuses a scanned root that sits inside a declared not-scanned surface', () => {
+		// The trailing slash is the point: a declared surface is
+		// written `src/about/` and a scanned root `src/about`, so a
+		// bare `startsWith` would never match and the guard would be a
+		// no-op.
+		const conflicts = rootDeclarationConflicts({
+			roots: ['src/about'],
+			notScanned: [{ surface: 'src/about/', reason: 'fixture: a contradictory declaration.' }],
+		});
+		assert.equal(conflicts.length, 1);
+		assert.ok(conflicts[0].includes('src/about'));
+	});
+
+	it('does not read a sibling directory as inside the declared surface', () => {
+		assert.deepEqual(
+			rootDeclarationConflicts({
+				roots: ['src/about-legacy'],
+				notScanned: [{ surface: 'src/about/', reason: 'fixture: an unrelated surface.' }],
+			}),
+			[],
+			'the comparison is on a path boundary, not a string prefix',
+		);
+	});
+
+	it('refuses a declared not-scanned surface inside a scanned root with no exclude prefix', () => {
+		const conflicts = rootDeclarationConflicts({
+			roots: ['public'],
+			notScanned: [
+				{ surface: 'public/docs/', reason: 'fixture: an exclusion the walk does not make.' },
+			],
+		});
+		assert.equal(conflicts.length, 1);
+		assert.ok(conflicts[0].includes('public/docs/'));
+	});
+
+	it('accepts a declared not-scanned surface an exclude prefix really covers', () => {
+		assert.deepEqual(
+			rootDeclarationConflicts({
+				roots: ['public'],
+				notScanned: [
+					{ surface: 'public/share/', reason: 'fixture: covered by the exclude prefix.' },
+				],
+			}),
+			[],
+			'`public/share/` is excluded by an exclude prefix, so the declaration is honest',
+		);
+	});
+});
+
+describe('the CLI over a temporary published root', () => {
+	it('fails when a personal-camera file name lands in a published root', () => {
+		const root = gateTree({
+			publishedFiles: {
+				'public/20260315-自撮り-集合写真.jpg': Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
+				'public/IMG_4821.jpg': Buffer.from([0xff, 0xd8, 0xff, 0xe0, 0x00, 0x10]),
+			},
+		});
+		try {
+			const { status, output } = runGate(root, ['--write']);
+			assert.equal(status, 1, `the gate must fail, got ${status}\n${output}`);
+			assert.match(
+				output,
+				/published content 2 file\(s\)/,
+				'a file the text scan cannot read is still a published file',
+			);
+			assert.match(output, /E001/, 'the withheld record own file name must be found');
+			assert.match(output, /E005/, 'the personal-camera file name must be found');
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('passes on a temporary published root that carries no candidate', () => {
+		const root = gateTree({
+			publishedFiles: { 'public/og/default-card.png': Buffer.from([0x89, 0x50, 0x4e, 0x47]) },
+		});
+		try {
+			const { status, output } = runGate(root, ['--write']);
+			assert.equal(status, 0, `the gate must pass, got ${status}\n${output}`);
+			assert.match(output, /published content 1 file\(s\)/);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('refuses to run when the declaration contradicts the scanned roots (exit 2)', () => {
+		const root = gateTree({
+			publishedFiles: { 'public/og/default-card.png': Buffer.from([0x89, 0x50, 0x4e, 0x47]) },
+		});
+		try {
+			// A contradictory declaration written into the throwaway
+			// copy: `src/contact/` is declared not-scanned while
+			// `src/contact` is a scanned root. The shipped script is not
+			// modified — the copy simulates exactly the mistake the
+			// guard has to catch.
+			const scriptPath = join(root, 'scripts/check-publication-redaction.mjs');
+			const source = readFileSync(scriptPath, 'utf8');
+			const marker = 'export const PUBLISHED_CONTENT_NOT_SCANNED = [';
+			assert.ok(source.includes(marker), 'the declaration marker must exist');
+			writeFileSync(
+				scriptPath,
+				source.replace(
+					marker,
+					`${marker}\n\t{\n\t\tsurface: 'src/contact/',\n\t\treason: 'fixture: a declaration that contradicts the scanned roots.',\n\t},`,
+				),
+			);
+			const { status, output } = runGate(root);
+			assert.equal(status, 2, `the gate must refuse to run, got ${status}\n${output}`);
+			assert.match(output, /contradicts itself/);
+			assert.match(output, /src\/contact/);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 });
 

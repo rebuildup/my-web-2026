@@ -490,7 +490,9 @@ personal_data_review:
     - 'E008: a corpus that yields zero candidates fails, and so does a corpus with no record at all, because a detector that never fires proves nothing and an empty corpus is the same failure with the records gone'
     - 'check mode byte-compares `docs/verification/privacy/publication-redaction-review.md`, so the evidence cannot drift from the corpus. The published side of the digest is scoped to the files that carry a candidate, so a copy edit that carries none does not redden the gate'
     - 'reports and CI output carry only rule id / field / offset / masked shape; a raw candidate value never leaves the gate'
-    - 'the published-content declaration is complete: every surface is either a scanned root or a declared exclusion with a reason, and the gate refuses to run when a scanned root sits inside a declared not-scanned surface'
+    - 'the published-content declaration is complete: every surface is either a scanned root or a declared exclusion with a reason, and the gate refuses to run (exit 2) when the declaration contradicts the walk — a scanned root inside a declared not-scanned surface, or a declared not-scanned surface inside a scanned root that no exclude prefix covers. The comparison is on a path boundary, so `src/about-legacy` is not inside `src/about/`'
+    - 'every published file is collected, image included: a file the text scan cannot read is collected by its NAME alone, so a migrated photo that lands in a published root is still scanned by the rule table (`D011`) and by the withheld record own file name (`E001`); the pixels stay an owner judgement (no OCR)'
+    - 'the gate runs only as the process entry point, and the comparison resolves both sides to their real path: a gate started through a symlinked path would otherwise run nothing and exit 0, which is a fail-open'
   known_limits:
     - 'no OCR: image PIXELS are not inspected, so a face, a photographed document or a handwritten address stays an owner judgement'
     - 'D006 / D007 match courtesy-suffixed names only; an unsuffixed name in public copy is an owner decision, not a detection'

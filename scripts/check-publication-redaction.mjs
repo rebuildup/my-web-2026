@@ -40,6 +40,20 @@
  * "review required" is the expected state of a real migration, not a
  * failure. What fails is a private record reaching a published file.
  *
+ * The published-content surface is collected in full. A file the text
+ * scan cannot read — an image — is collected by its NAME alone, so
+ * the file-name rules (`D011`, a personal-camera file name) and the
+ * withheld record's own file name (`E001`) can still see a migrated
+ * photo that landed in a published root. The pixels are not inspected
+ * (no OCR): that stays an owner judgement.
+ *
+ * The published-content declaration is checked before anything else.
+ * If it contradicts the walk — a scanned root inside a declared
+ * not-scanned surface, or a declared not-scanned surface inside a
+ * scanned root that no exclude prefix covers — the gate refuses to
+ * run and exits 2, rather than scanning a surface it declared out of
+ * scope.
+ *
  * Modes:
  *   node scripts/check-publication-redaction.mjs           # check (CI)
  *   node scripts/check-publication-redaction.mjs --write   # re-record
@@ -52,7 +66,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -199,6 +213,15 @@ function walk(dir, onFile) {
  * Published content files, test files excluded: a fixture value in a
  * test is not a published value, and including it would make every new
  * test a finding.
+ *
+ * A file the text scan cannot read is **still a published file** and
+ * is collected by its NAME alone (empty text). Dropping it would make
+ * the file-name rules (`D011` — a personal-camera file name) and the
+ * withheld-record file-name needle (`E001`) unreachable for exactly
+ * the files they exist for: a migrated photo that lands in
+ * `public/` keeps its own name, and that name is the only part of it
+ * this gate can judge without reading pixels (the pixels stay an
+ * owner judgement — no OCR).
  */
 export function collectPublishedContent() {
 	const files = [];
@@ -208,8 +231,11 @@ export function collectPublishedContent() {
 		walk(full, (file) => {
 			const name = rel(file);
 			if (PUBLISHED_CONTENT_EXCLUDE_PREFIXES.some((prefix) => name.startsWith(prefix))) return;
-			if (!isScannablePublishedFile(name)) return;
 			if (name.includes('.test.') || name.includes('.stories.')) return;
+			if (!isScannablePublishedFile(name)) {
+				files.push({ path: name, text: '' });
+				return;
+			}
 			files.push({ path: name, text: readFileSync(file, 'utf8') });
 		});
 	}
@@ -223,20 +249,56 @@ export function isScannablePublishedFile(name) {
 }
 
 /**
- * A scanned root inside a declared not-scanned surface is a
- * contradiction: the declaration would say the surface is out of
- * scope while the walk reads it anyway. The gate refuses to run
- * rather than scanning a surface it declared out of scope.
+ * Is `path` the surface itself, or inside it?
+ *
+ * Both sides are normalised first: a declared surface is written with
+ * a trailing slash (`src/about/`) while a scanned root is written
+ * without one (`src/about`), so a bare `startsWith` would never match
+ * and the guard would be a no-op. The comparison is on a path
+ * boundary, so `src/about-legacy` is NOT inside `src/about/`.
  */
-export function rootDeclarationConflicts() {
+function isWithinSurface(path, surface) {
+	const normalisedPath = path.replace(/\/+$/, '');
+	const normalisedSurface = surface.replace(/\/+$/, '');
+	return normalisedPath === normalisedSurface || normalisedPath.startsWith(`${normalisedSurface}/`);
+}
+
+/**
+ * A declaration that contradicts the walk is a contradiction, in both
+ * directions:
+ *
+ *   1. a scanned root inside a declared not-scanned surface — the
+ *      declaration says the surface is out of scope while the walk
+ *      reads it anyway;
+ *   2. a declared not-scanned surface inside a scanned root that no
+ *      exclude prefix covers — the declaration claims an exclusion the
+ *      collector does not make, so the surface is read anyway.
+ *
+ * The gate refuses to run rather than scanning a surface it declared
+ * out of scope (exit 2). The roots and the declaration can be
+ * injected so the guard itself is provable on fixtures.
+ */
+export function rootDeclarationConflicts({
+	roots = PUBLISHED_CONTENT_ROOTS,
+	notScanned = PUBLISHED_CONTENT_NOT_SCANNED,
+} = {}) {
 	const conflicts = [];
-	for (const root of PUBLISHED_CONTENT_ROOTS) {
-		for (const entry of PUBLISHED_CONTENT_NOT_SCANNED) {
-			if (root.startsWith(entry.surface)) {
+	for (const root of roots) {
+		for (const entry of notScanned) {
+			if (isWithinSurface(root, entry.surface)) {
 				conflicts.push(
 					`scanned root \`${root}\` sits inside the declared not-scanned surface \`${entry.surface}\``,
 				);
+				continue;
 			}
+			if (!isWithinSurface(entry.surface, root)) continue;
+			const covered = PUBLISHED_CONTENT_EXCLUDE_PREFIXES.some((prefix) =>
+				isWithinSurface(entry.surface, prefix),
+			);
+			if (covered) continue;
+			conflicts.push(
+				`declared not-scanned surface \`${entry.surface}\` sits inside the scanned root \`${root}\` and no exclude prefix covers it, so the walk would read it anyway`,
+			);
 		}
 	}
 	return conflicts;
@@ -378,6 +440,25 @@ function main(argv) {
 	return review.verdict === 'fail' ? 1 : 0;
 }
 
-if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+/**
+ * Is this module the process entry point?
+ *
+ * Both sides are resolved to their real path. A script started
+ * through a symlinked path (`node /tmp/link-to-the-gate.mjs`) would
+ * otherwise compare unequal, the gate would run **nothing** and exit
+ * 0 — a fail-open in a privacy gate, and the reason the CLI-level
+ * test drives the gate from a temporary directory.
+ */
+function isEntryPoint() {
+	const entry = process.argv[1];
+	if (!entry) return false;
+	try {
+		return realpathSync(entry) === realpathSync(fileURLToPath(import.meta.url));
+	} catch {
+		return false;
+	}
+}
+
+if (isEntryPoint()) {
 	process.exitCode = main(process.argv.slice(2));
 }

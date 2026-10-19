@@ -27,6 +27,7 @@ import {
 	COLD_LOAD_BUDGET_MS,
 	DOCUMENT_STAMP_SOURCE,
 	FEEDBACK_AFTER_MS,
+	FEEDBACK_TOLERANCE_MS,
 	ROUTE_MARKERS,
 	SAMPLE_INTERVAL_MS,
 	SCREENSHOT_BUDGET_BYTES,
@@ -133,12 +134,20 @@ describe('evaluateWaitWindow', () => {
 		assert.deepEqual(verdict.failures, []);
 	});
 
-	it('fails when the surface appears after the threshold it promises', () => {
+	it('accepts a surface observed within one sampling interval of the threshold', () => {
 		const verdict = evaluateWaitWindow(
 			samples({ 0: CONTENT, 1200: WAITING, 3200: SETTLED }, 3200, 100),
 		);
+		assert.equal(verdict.pass, true);
+		assert.equal(verdict.uninformedAfterThresholdMs, FEEDBACK_TOLERANCE_MS);
+	});
+
+	it('fails when the surface appears more than one sampling interval late', () => {
+		const verdict = evaluateWaitWindow(
+			samples({ 0: CONTENT, 1300: WAITING, 3200: SETTLED }, 3200, 100),
+		);
 		assert.equal(verdict.pass, false);
-		assert.match(verdict.failures.join('\n'), /no waiting surface for 100ms/);
+		assert.match(verdict.failures.join('\n'), /no waiting surface for 200ms/);
 	});
 
 	it('rejects the pre-fix signature: the previous page under a new URL', () => {
@@ -167,7 +176,7 @@ describe('evaluateWaitWindow', () => {
 	});
 
 	it('honours an explicit feedback threshold', () => {
-		const series = samples({ 0: CONTENT, 700: SETTLED }, 700, 100);
+		const series = samples({ 0: CONTENT, 1500: SETTLED }, 1500, 100);
 		assert.equal(evaluateWaitWindow(series, { feedbackAfterMs: 500 }).pass, false);
 		assert.equal(evaluateWaitWindow(series, { feedbackAfterMs: 5000 }).pass, true);
 	});

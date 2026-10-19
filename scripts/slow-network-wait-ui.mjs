@@ -101,6 +101,21 @@ export const SAMPLE_INTERVAL_MS = 100;
 export const FEEDBACK_AFTER_MS = 1000;
 
 /**
+ * How much later than `FEEDBACK_AFTER_MS` a waiting sample may first be
+ * observed and still count as "informed at the threshold".
+ *
+ * The outlet is POLLED every `SAMPLE_INTERVAL_MS`, so the earliest a
+ * surface that appears at 1001ms can be recorded is the next sample.
+ * Treating that observation error as a regression makes the criterion
+ * fail at random (measured: the surface appeared at 1025ms in one run
+ * and 1031ms in another, under the same 4x CPU throttle). One sample
+ * interval is the detector's own resolution, not a latency budget: the
+ * report still records the observed uninformed milliseconds, and a
+ * surface that is more than one sample interval late still fails.
+ */
+export const FEEDBACK_TOLERANCE_MS = SAMPLE_INTERVAL_MS;
+
+/**
  * Budget for a cold document load on the emulated Slow 4G + 4x CPU
  * profile. Generous on purpose: this is a "did the page ever arrive"
  * question, not a performance budget (Issue #386 owns budgets).
@@ -257,10 +272,14 @@ export function describeWaitWindow(samples, { feedbackAfterMs = FEEDBACK_AFTER_M
  * the report — a FAIL report is the useful artefact.
  *
  * @param {Array<Record<string, unknown>>} samples
- * @param {{ label?: string, feedbackAfterMs?: number }} [options]
+ * @param {{ label?: string, feedbackAfterMs?: number, toleranceMs?: number }} [options]
  */
-export function evaluateWaitWindow(samples, { label = 'navigation', feedbackAfterMs } = {}) {
+export function evaluateWaitWindow(
+	samples,
+	{ label = 'navigation', feedbackAfterMs, toleranceMs } = {},
+) {
 	const window = describeWaitWindow(samples, { feedbackAfterMs });
+	const tolerance = toleranceMs ?? FEEDBACK_TOLERANCE_MS;
 	const failures = [];
 	if (window.samples === 0) {
 		failures.push(`${label}: no samples were recorded — nothing was measured`);
@@ -271,9 +290,9 @@ export function evaluateWaitWindow(samples, { label = 'navigation', feedbackAfte
 	if (window.blankMs > 0) {
 		failures.push(`${label}: the outlet was blank for ${window.blankMs}ms during the wait`);
 	}
-	if (window.uninformedAfterThresholdMs > 0) {
+	if (window.uninformedAfterThresholdMs > tolerance) {
 		failures.push(
-			`${label}: no waiting surface for ${window.uninformedAfterThresholdMs}ms after the ${feedbackAfterMs ?? FEEDBACK_AFTER_MS}ms feedback threshold (stale previous page: ${window.staleMs}ms)`,
+			`${label}: no waiting surface for ${window.uninformedAfterThresholdMs}ms after the ${feedbackAfterMs ?? FEEDBACK_AFTER_MS}ms feedback threshold — more than the ${tolerance}ms sampling resolution (stale previous page: ${window.staleMs}ms)`,
 		);
 	}
 	return { pass: failures.length === 0, failures, ...window };

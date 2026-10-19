@@ -374,16 +374,12 @@ function DigitStrip({
 						height: { base: '48px', lg: '56px' },
 						width: 'auto',
 						verticalAlign: 'baseline',
-						// The whole "movement" contract, and the only place
-						// this component can animate. With motion reduced the
-						// spread contributes nothing, so the resting frame IS
-						// the reduced-motion frame and no `animation-name` is
-						// emitted at all.
-						// The whole "movement" contract, in one place. With motion
-						// reduced the spread contributes NOTHING, so the document
-						// carries no `animation-name` at all rather than an
-						// animation the stylesheet has to neutralise — the resting
-						// frame IS the reduced-motion frame.
+						// The whole "movement" contract, and the only place this
+						// component can animate. With motion reduced the spread
+						// contributes NOTHING, so the document carries no
+						// `animation-name` at all rather than an animation the
+						// stylesheet has to neutralise — the resting frame IS the
+						// reduced-motion frame.
 						//
 						// The declarations stay LITERAL here on purpose. Panda
 						// extracts the utility classes by reading this object at

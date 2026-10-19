@@ -71,7 +71,17 @@ const CASE_IDS = {
 /** Digit slots `CounterTile` renders (`DIGIT_SLOTS` in `tiles.tsx`). */
 const DIGIT_SLOTS = 7;
 
-/** Per-digit stagger of the roll-up, mirroring `tiles.tsx`. */
+/**
+ * Per-digit stagger of the roll-up, mirroring `tiles.tsx`.
+ *
+ * INTENDED motion, not shipped motion: Panda evaluates
+ * `animationDelay: calc(var(--counter-stagger, 0ms) + ${index * 80}ms)`
+ * statically per `css()` call, so the generated stylesheet today carries
+ * only the `index === 0` rule and every digit shares one delay. The
+ * fixture re-arms the intended stagger so the motion design is visible
+ * in the forced preview, and this comment is what keeps the preview from
+ * being read as evidence of the shipped frame.
+ */
 const STAGGER_MS = 80;
 
 /**
@@ -91,6 +101,10 @@ const STAGGER_MS = 80;
  * `tiles.tsx`; they cannot be imported from there because Panda reads
  * that object literal at build time (see the comment in that file, and
  * "Two implementation traps" in `docs/verification/a11y/README.md`).
+ * The per-digit `animation-delay` half is the one exception — it is the
+ * intended stagger the shipped stylesheet does not yet emit (see
+ * `STAGGER_MS`), so the preview is a design view, not a capture of
+ * production motion.
  */
 const MOTION_EMULATION_CSS = [
 	'[data-motion-emulation="no-preference"] :where([data-motion="counter-roll"]) img {',

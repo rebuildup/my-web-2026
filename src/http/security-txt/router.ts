@@ -26,10 +26,11 @@ import { loadSecurityTxtPolicy } from './policy';
  *                                          policy (RFC 9116 §3)
  *   404  `text/plain; charset=utf-8`   — no policy is published, or
  *                                          the published one has
- *                                          expired (RFC 9116 §3.2:
- *                                          "a site that does not
- *                                          publish the file … MUST
- *                                          return 404")
+ *                                          expired. A site that does
+ *                                          not publish the file
+ *                                          answers 404, which is
+ *                                          what this endpoint does
+ *                                          today (RFC 9116 §3.2).
  *
  * Both statuses carry the same cache policy. That is deliberate: the
  * document is a deploy-time artefact that can be APPROVED without a

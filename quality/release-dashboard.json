@@ -24,6 +24,7 @@
 			"cloudflare-build-contract": "cloudflare-build-contract",
 			"cloudflare-config-drift": "cloudflare-config-drift",
 			"infisical-secret-coverage": "infisical-secret-coverage",
+			"secret-rotation-status": "secret-rotation-status",
 			"route-quality-coverage": "route-quality-coverage",
 			"index-boundary": "index-boundary",
 			"test-wiring": "test-wiring",
@@ -502,6 +503,20 @@
 				"note": "AGENTS.md §4: 名前だけを比較し、値は一切読まない。"
 			},
 			"owner": "Issue #167"
+		},
+		{
+			"id": "secret-rotation-status",
+			"group": "security",
+			"label": "Secret drift / rotation deadline status",
+			"state": "implemented",
+			"contract": "runtime secret 名ごとの drift（記録された status-only 観測）と rotation 期限を判定する。値は一切読まない。",
+			"command": "pnpm run secrets:status:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "AGENTS.md §4: name / verdict / 件数 / 日付のみ。観測の entry は runbook §3.2 の name grammar を通らなければ parse 失敗（fail closed）し、値も出力しない。"
+			},
+			"owner": "Issue #477"
 		},
 		{
 			"id": "secret-scan-bundle",

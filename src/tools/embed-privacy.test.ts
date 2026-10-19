@@ -147,7 +147,11 @@ describe('embed privacy — hostile fixtures are refused', () => {
 	// an empty contact list, no violation and `consent: not_required`, so a
 	// manifest could silently mount a frame eagerly by leaving the list out.
 	it('a declaration without an origin list is refused and still asks for consent', () => {
-		for (const privacy of [{}, { third_party_origins: null }, { third_party_origins: 'https://a.example.invalid' }]) {
+		for (const privacy of [
+			{},
+			{ third_party_origins: null },
+			{ third_party_origins: 'https://a.example.invalid' },
+		]) {
 			const verdict = evaluate(okDelivery({ privacy }));
 			expect(verdict.violations.map((violation) => violation.code)).toContain(
 				'privacy.origins.missing',

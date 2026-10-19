@@ -35,6 +35,11 @@ exist, no retention number nobody can read off a table.
 
   実画面の代わりに検証レポート（registry 全エントリ + 拒否リスト + suite 実行結果）を
   Chromium 1440px で撮影し、WebP（width 1200 / quality 80）に変換した。
+  実行結果の節は suite ファイルごとのサマリー（passed / failed 件数）で、
+  失敗した assertion だけが全文で出る。レポート全体は 300 KB の証拠予算
+  （`scripts/_lazy-media-image.mjs` の `MAX_EVIDENCE_BYTES`）以内、
+  幅は 1600 px 上限、画質は quality 80。生成器は書き込む前に予算を確認し、
+  超過したら何も書かずに失敗する。
   dev サーバーは Infisical の secret に依存するため、この作業環境からは実画面を
   起動できない（Issue #511 と同じ制約）。生成器
   `scripts/make-data-lifecycle-report.mjs` は commit 済みで、fixture による契約テスト

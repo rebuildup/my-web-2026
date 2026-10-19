@@ -40,7 +40,16 @@ const SUMMARY = summariseReport({
 					status: 'passed',
 					duration: 12.4,
 				},
-				{ fullName: 'retention is observed', status: 'failed', duration: 3.1 },
+			],
+		},
+		{
+			name: '/repo/src/privacy/data-lifecycle.test.ts',
+			assertionResults: [
+				{
+					fullName: 'retention is observed',
+					status: 'failed',
+					duration: 3.1,
+				},
 			],
 		},
 	],
@@ -62,6 +71,18 @@ test('summariseReport counts assertions and separates failures', () => {
 	assert.equal(SUMMARY.passed, 1);
 	assert.equal(SUMMARY.failed, 1);
 	assert.equal(SUMMARY.assertions[0].file.split('/').slice(-1)[0], 'data-lifecycle.test.ts');
+});
+
+test('summariseReport groups the assertions per suite file', () => {
+	// The report renders one row per suite file (plus every failure in
+	// full), so the grouping is part of the contract: a suite that
+	// fails must not be summarised as a pass.
+	assert.equal(SUMMARY.files.length, 2);
+	assert.equal(SUMMARY.files[0].file.split('/').slice(-1)[0], 'data-lifecycle.test.ts');
+	assert.equal(SUMMARY.files[0].passed, 1);
+	assert.equal(SUMMARY.files[0].failed, 0);
+	assert.equal(SUMMARY.files[1].failed, 1);
+	assert.equal(SUMMARY.files[1].failures[0].title, 'retention is observed');
 });
 
 test('every registry entry, both locales and the deletion window reach the page', () => {
@@ -104,6 +125,10 @@ test('a failed assertion is rendered as FAIL', () => {
 	assert.ok(html.includes('>PASS<'));
 	assert.ok(html.includes('>FAILED<'));
 	assert.ok(html.includes('tr class="failed"'));
+	// The failing assertion itself is printed in full — the summary
+	// row says "1 failed", the detail row says which one.
+	assert.ok(html.includes('失敗した assertion'));
+	assert.ok(html.includes('retention is observed'));
 });
 
 test('text is escaped, so a registry sentence cannot inject markup', () => {

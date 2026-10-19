@@ -51,6 +51,11 @@ import {
 	getPublishedDataLifecycle,
 	publishedClaimSurface,
 } from '../src/privacy/data-lifecycle.ts';
+import {
+	MAX_EVIDENCE_BYTES,
+	MAX_EVIDENCE_WIDTH,
+	assertEvidenceSize,
+} from './_lazy-media-image.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const TMP = join(ROOT, '.tmp');
@@ -112,7 +117,17 @@ export function readSourceTree(root) {
 	return files;
 }
 
-/** Flatten a Vitest JSON report into assertion rows. */
+/**
+ * Flatten a Vitest JSON report into assertion rows.
+ *
+ * `files` is the per-suite summary the report renders: one row per
+ * suite file, with the counts and the failing assertions. The
+ * per-assertion list is kept in `assertions` (and in
+ * `files[].failures`) so nothing is lost — the report shows every
+ * failure in full and only summarises the passes, which is what keeps
+ * the committed artefact legible and inside the 300 KB evidence
+ * budget (`scripts/_lazy-media-image.mjs`).
+ */
 export function summariseReport(report) {
 	const assertions = (report.testResults ?? []).flatMap((file) =>
 		(file.assertionResults ?? []).map((test) => ({
@@ -124,7 +139,22 @@ export function summariseReport(report) {
 	);
 	const passed = assertions.filter((a) => a.status === 'passed').length;
 	const failed = assertions.filter((a) => a.status !== 'passed').length;
-	return { assertions, passed, failed, total: assertions.length };
+	const files = [];
+	for (const assertion of assertions) {
+		let row = files.find((candidate) => candidate.file === assertion.file);
+		if (!row) {
+			row = { file: assertion.file, passed: 0, failed: 0, total: 0, failures: [] };
+			files.push(row);
+		}
+		row.total += 1;
+		if (assertion.status === 'passed') {
+			row.passed += 1;
+		} else {
+			row.failed += 1;
+			row.failures.push(assertion);
+		}
+	}
+	return { assertions, files, passed, failed, total: assertions.length };
 }
 
 /** Run the suites and return the parsed Vitest JSON report. */
@@ -183,13 +213,25 @@ export function renderReport({ summary, entries, refusals, deletionWindow, purge
 		)
 		.join('\n');
 
-	const testRows = summary.assertions
+	const fileRows = summary.files
 		.map(
-			(assertion) => `<tr class="${escapeHtml(assertion.status)}">
-    <td class="status">${assertion.status === 'passed' ? 'PASS' : escapeHtml(assertion.status.toUpperCase())}</td>
-    <td><code>${escapeHtml(assertion.file.split('/').slice(-1)[0])}</code></td>
-    <td>${escapeHtml(assertion.title)}</td>
-    <td class="ms">${assertion.ms} ms</td>
+			(file) => `<tr class="${file.failed > 0 ? 'failed' : 'passed'}">
+    <td class="status">${file.failed > 0 ? 'FAILED' : 'PASS'}</td>
+    <td><code>${escapeHtml(file.file.split('/').slice(-1)[0])}</code></td>
+    <td class="ms">${file.passed} passed</td>
+    <td class="ms">${file.failed} failed</td>
+  </tr>`,
+		)
+		.join('\n');
+
+	const failureRows = summary.files
+		.flatMap((file) => file.failures)
+		.map(
+			(failure) => `<tr class="failed">
+    <td class="status">FAIL</td>
+    <td><code>${escapeHtml(failure.file.split('/').slice(-1)[0])}</code></td>
+    <td>${escapeHtml(failure.title)}</td>
+    <td class="ms">${failure.ms} ms</td>
   </tr>`,
 		)
 		.join('\n');
@@ -206,33 +248,33 @@ export function renderReport({ summary, entries, refusals, deletionWindow, purge
 <style>
   :root { color-scheme: light; }
   body { margin: 0; padding: 32px; background: #fbfbf9; color: #14140f;
-         font: 13px/1.55 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; }
-  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.01em; }
-  h2 { font-size: 15px; margin: 28px 0 8px; letter-spacing: 0.02em; text-transform: uppercase; color: #5a5a4e; }
-  .sub { color: #5a5a4e; margin: 0 0 20px; max-width: 1100px; }
+         font: 15px/1.6 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; }
+  h1 { font-size: 24px; margin: 0 0 4px; letter-spacing: 0.01em; }
+  h2 { font-size: 17px; margin: 22px 0 6px; letter-spacing: 0.02em; text-transform: uppercase; color: #5a5a4e; }
+  .sub { color: #5a5a4e; margin: 0 0 16px; max-width: 1100px; }
   .cards { display: flex; gap: 12px; margin-bottom: 8px; }
-  .card { border: 1px solid #dedcd2; background: #fff; padding: 12px 16px; min-width: 130px; }
-  .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #77776a; }
+  .card { border: 1px solid #dedcd2; background: #fff; padding: 10px 16px; min-width: 130px; }
+  .card .k { font-size: 12px; text-transform: uppercase; letter-spacing: 0.08em; color: #77776a; }
   .card .v { font-size: 24px; font-weight: 600; }
   .ok { color: #1c6b3a; }
   .bad { color: #a12020; }
   table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #dedcd2; }
-  th, td { text-align: left; padding: 7px 10px; border-bottom: 1px solid #eceadf; vertical-align: top; }
-  th { background: #f3f1e8; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  th, td { text-align: left; padding: 6px 9px; border-bottom: 1px solid #eceadf; vertical-align: top; }
+  th { background: #f3f1e8; font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13px; }
   tr:last-child td { border-bottom: none; }
-  .en { color: #5a5a4e; font-size: 12px; }
-  .status { font-weight: 700; width: 96px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; }
-  td.status { width: 64px; }
+  .en { color: #5a5a4e; font-size: 13px; }
+  .status { font-weight: 700; width: 96px; font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; }
+  td.status { width: 74px; }
   tr.passed td.status { color: #1c6b3a; }
   tr.failed td.status { color: #a12020; }
   tr.pending .status { color: #77776a; }
-  .ms { text-align: right; color: #77776a; width: 72px; }
+  .ms { text-align: right; color: #77776a; width: 96px; }
   .callout { border: 1px solid #dedcd2; border-left: 4px solid #1c6b3a; background: #fff;
-             padding: 12px 16px; margin: 12px 0 4px; max-width: 1100px; }
+             padding: 10px 16px; margin: 10px 0 4px; max-width: 1100px; }
   .legend { margin-top: 8px; color: #3d3d33; max-width: 1100px; }
   .legend b { color: #14140f; }
-  footer { margin-top: 22px; color: #77776a; font-size: 12px; }
+  footer { margin-top: 18px; color: #77776a; font-size: 13px; }
 </style>
 </head>
 <body>
@@ -279,11 +321,24 @@ ${refusalRows}
 
   <h2>実行結果（workerd pool / SSR markup）</h2>
   <table>
-    <thead><tr><th style="width:64px">result</th><th style="width:150px">file</th><th>test</th><th style="width:72px">time</th></tr></thead>
+    <thead><tr><th style="width:84px">result</th><th style="width:220px">file</th><th style="width:110px">passed</th><th style="width:110px">failed</th></tr></thead>
     <tbody>
-${testRows}
+${fileRows}
     </tbody>
   </table>
+${
+	failureRows
+		? `
+  <h2>失敗した assertion</h2>
+  <table>
+    <thead><tr><th style="width:84px">result</th><th style="width:220px">file</th><th>test</th><th style="width:96px">time</th></tr></thead>
+    <tbody>
+${failureRows}
+    </tbody>
+  </table>
+`
+		: ''
+}
 
   <p class="legend">
     <b>PASS の意味:</b> 配信された <code>/</code> の HTML に registry の published エントリ（JA/EN 両方）が実際に含まれ、
@@ -298,7 +353,7 @@ ${testRows}
 
   <footer>my-web-2026 · Issue #496 · generated locally by scripts/make-data-lifecycle-report.mjs from the workerd test pool
   (no CI token, no production D1/R2, no secret) · committed as docs/verification/privacy/data-lifecycle-page.webp
-  (width ≤ ${WEBP_WIDTH}, quality ${WEBP_QUALITY}).</footer>
+  (width ≤ ${WEBP_WIDTH}, quality ${WEBP_QUALITY}, ≤ ${Math.round(MAX_EVIDENCE_BYTES / 1024)} KB evidence budget).</footer>
 </body>
 </html>
 `;
@@ -321,10 +376,24 @@ async function shoot(htmlPath, target) {
 		// Playwright cannot emit WebP, so capture into a Buffer (never a
 		// file) and re-encode with sharp. PNG bytes stay in memory.
 		const capture = await page.screenshot({ fullPage: true });
-		return await sharp(capture)
+		const encoded = await sharp(capture)
 			.resize({ width: WEBP_WIDTH, withoutEnlargement: true })
 			.webp({ quality: WEBP_QUALITY })
-			.toFile(target);
+			.toBuffer();
+		// The evidence budget is a hard ceiling and it is checked BEFORE
+		// the file is written: an over-budget artefact must never reach
+		// the repository, and the error says how to fix it (shorten
+		// the report, or widen the render deliberately).
+		assertEvidenceSize(encoded.byteLength, target, MAX_EVIDENCE_BYTES);
+		const info = await sharp(encoded).metadata();
+		const width = info.width ?? 0;
+		if (width > MAX_EVIDENCE_WIDTH) {
+			throw new Error(
+				`evidence image ${target}: width ${width} px is over the ${MAX_EVIDENCE_WIDTH} px cap — nothing was written.`,
+			);
+		}
+		writeFileSync(target, encoded);
+		return { ...info, size: encoded.byteLength };
 	} finally {
 		await browser.close();
 	}

@@ -1,0 +1,62 @@
+{
+	"note": "正常 fixture: 証跡が解決する 1 行、適用対象だが証跡がなく将来作業を記録した 1 行、対象外理由を持つ 1 行。3 状態が混ざっても pass と not run と N/A が別 bucket のままであることを固定する。",
+	"expect": {
+		"errors": 0,
+		"summary": { "pass": 1, "fail": 0, "not_run": 1, "not_applicable": 1 }
+	},
+	"scripts": {
+		"validate:fast": "pnpm run demo:check",
+		"demo:check": "node scripts/demo-check.mjs"
+	},
+	"files": ["scripts/check-asvs-coverage.test.mjs"],
+	"manifest": {
+		"version": 1,
+		"standard": {
+			"name": "OWASP Application Security Verification Standard",
+			"version": "5.0.0",
+			"url": "https://owasp.org/www-project-application-security-verification-standard/",
+			"requirements_url": "https://example.invalid/asvs-requirements.json",
+			"certification": false,
+			"note": "A fixture ledger. It is not an ASVS certification or an audit."
+		},
+		"target_levels": ["L1", "L2"],
+		"policy": "Every selected applicable requirement names a control and evidence; missing evidence is not run with follow_up and is never a pass.",
+		"items": [
+			{
+				"id": "V1.2.1",
+				"chapter": "V1 Encoding and Sanitization",
+				"section": "V1.2 Injection Prevention",
+				"level": "L1",
+				"requirement": "Verify that output encoding is relevant for the context.",
+				"applicability": "applicable",
+				"control": "fixture output encoder",
+				"issues": [507],
+				"evidence": [{ "kind": "test", "path": "scripts/check-asvs-coverage.test.mjs" }]
+			},
+			{
+				"id": "V3.4.3",
+				"chapter": "V3 Web Frontend Security",
+				"section": "V3.4 Browser Security Mechanism Headers",
+				"level": "L2",
+				"requirement": "Verify that responses include an enforcing Content-Security-Policy header field.",
+				"applicability": "applicable",
+				"control": "fixture CSP",
+				"issues": [],
+				"evidence": [],
+				"follow_up": "Ship an enforcing CSP and a test that proves the header is enforced."
+			},
+			{
+				"id": "V17.1.1",
+				"chapter": "V17 WebRTC",
+				"section": "V17.1 TURN Server",
+				"level": "L2",
+				"requirement": "Verify that TURN servers are configured securely.",
+				"applicability": "not_applicable",
+				"control": "none — no WebRTC surface",
+				"issues": [],
+				"evidence": [],
+				"reason": "The fixture platform has no WebRTC, TURN, or media signaling surface."
+			}
+		]
+	}
+}

@@ -13,6 +13,7 @@
 		"secret-scan-bundle",
 		"log-redaction",
 		"security-headers",
+		"asvs-coverage",
 		"csrf-contract",
 		"dependency-advisory",
 		"install-script-audit",
@@ -260,6 +261,15 @@
 			"required": true,
 			"surfaces": ["release", "ci"],
 			"documentation": "docs/development.md"
+		},
+		{
+			"id": "asvs-coverage",
+			"contract": "The selected ASVS 5.0 requirements still resolve every applicable row to repository evidence, and an applicable row with no evidence is reported as not run rather than as a pass.",
+			"command": "pnpm run asvs:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/security/asvs-coverage.md"
 		},
 		{
 			"id": "release-gate-ledger",

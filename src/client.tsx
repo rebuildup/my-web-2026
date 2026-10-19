@@ -1,3 +1,8 @@
+// Issue #447: zod's JIT compiler uses `new Function`, which the
+// CSP Report-Only policy correctly reports as a `script-src` violation.
+// Importing this side-effect module first disables that path before the
+// router or any route schema is evaluated.
+import './client-zod-config';
 import { RouterProvider } from '@tanstack/react-router';
 import { hydrateStart } from '@tanstack/react-start/client';
 import { StrictMode } from 'react';

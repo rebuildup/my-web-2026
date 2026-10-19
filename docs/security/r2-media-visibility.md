@@ -22,6 +22,7 @@ page:
 | Portfolio media URL composition | **yes** | `composeMediaUrl` → `null` |
 | Reaction-image read over HTTP | **yes** | `getImageStream` → router 404 |
 | Delivery adapter / listing walk | modelled, **no production caller** | `createPublicMediaDelivery`, `listPublicMediaKeys` |
+| Publication approval audit | modelled, **no production caller** | `auditPublicMediaPublication` |
 | Anonymous GET of `https://media.rebuildup.dev/<key>` | **no — no repository code runs on that path** | Cloudflare edge |
 | Bucket key set (read-only audit) | **yes — release gate, operator-run** | `pnpm run r2:media:audit` (`scripts/check-r2-media-key-set.mjs`) |
 
@@ -146,6 +147,12 @@ Two attack legs run against those objects:
   objects. Every probe answers 404, and the one published cover in the
   same namespace still answers 200 (the control, so a broken delivery
   path cannot pass for a boundary).
+- **Publication approval audit** — `auditPublicMediaPublication` walks
+  the same bucket against the same approval predicate and returns
+  `{ verdict: 'violation', publicKeys: 3, approvedKeys: 1,
+  unapprovedKeys: 2 }` with no key name in the result. A second leg
+  approves everything and expects `ok`; the counts are the evidence,
+  and the key names are what the audit must not become.
 
 The probe itself is **test data, not policy**: it lives in
 [`test/helpers/r2-sequential-probe.ts`](../../test/helpers/r2-sequential-probe.ts)
@@ -261,6 +268,42 @@ The committed status-only artefact is
 This closes the *key-set* half of the gap. It does not replace the
 requirement to keep unpublished objects out of the bucket, and
 **Issue #459 must still not be closed on repository gates alone.**
+
+## Publication approval audit (Issue #459, modelled only)
+
+The key-set audit answers "does an out-of-namespace key exist?". The
+other half of Issue #459's first acceptance item is "does an
+**in-namespace** key exist that no publication row approves?". That
+question needs two sources the delivery path never holds together: the
+bucket listing and the D1 publication rows. `auditPublicMediaPublication`
+models the reconciliation between them:
+
+```ts
+const audit = await auditPublicMediaPublication(source, isApproved, {
+  prefix: 'portfolio/',
+});
+// { verdict, publicKeys, approvedKeys, unapprovedKeys, enumeration }
+```
+
+The result carries **counts only** — no key, no key fragment, no
+per-key verdict. That is safe for an operator tool walking a prefix it
+controls, and it is why the function has no production caller: a
+request handler that forwarded a visitor-supplied prefix would turn
+the counts into the existence oracle the delivery adapter avoids.
+
+The fail-closed states mirror the key-set audit: an empty public key
+set is `undecidable`, a truncated page without a cursor is
+`undecidable`, and any unapproved key is `violation`. The approval
+predicate is required, so the audit cannot pass by forgetting the
+decision it exists to verify. Out-of-namespace keys are not counted
+here — Issue #577's audit is the single owner of that rule.
+
+**Not wired.** Turning this into a production release gate requires a
+read-only D1 credential and a decision about release scope and
+credential supply — the same owner boundary Issue #577 crossed for the
+key-set audit. Until that decision exists, the model is exercised only
+against the local fixture, and the custom-domain failure case below
+remains the operational rule.
 
 ## How to re-verify
 

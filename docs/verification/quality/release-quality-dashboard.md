@@ -26,7 +26,7 @@
 
 | | before（#493 の前） | after |
 | --- | --- | --- |
-| 品質 signal の所在 | `quality/profile.yaml`、`quality/route-coverage.json`、`docs/verification/**` の .md / .webp、CI log に分散。「何が実装済みで何が未実装か」は読む人ごとに違う | `quality/release-dashboard.json` が 1 ファイルで signal を宣言し、HTML 1 枚で状態を一覧する |
+| 品質 signal の所在 | `quality/profile.yaml`、`quality/route-coverage.json`、`quality/release-gate.json`、`docs/verification/**` の .md / .webp、CI log に分散。「何が実装済みで何が未実装か」は読む人ごとに違う | `quality/release-dashboard.json` が 1 ファイルで signal を宣言し、HTML 1 枚で状態を一覧する |
 | 未実装の測定器（Lighthouse / axe / 2 ブラウザエンジン / route ごとの security header spec） | 「存在しない」のか「動いているのに記録が無い」のか区別できない | `planned` family を継承して **N/A（未実装）** として明示し、PASS 集計には入れない |
 | 測定していない signal | 「報告が無い」ので自然に PASS と読める | **NOT RUN**。run record 無し / 別 source SHA / 未実行（要 build・network・browser）/ report missing の 4 理由を出力 |
 | 再現条件 | 記載なし | environment ブロックに browser / network / CPU / Node / platform / runner（local か CI か）/ source SHA を出力 |
@@ -34,17 +34,39 @@
 
 合格基準は「`pnpm run quality:dashboard:report` が、未計測を PASS として表示しないこと」。
 
-2026-10-19 のローカル実測値は **signal 26 件 / PASS 19 / FAIL 0 / NOT RUN 3 / N/A 4**。
+2026-10-19 のローカル実測値は **signal 35 件 / PASS 26 / FAIL 0 / NOT RUN 5 / N/A 4**。
 
-- NOT RUN 3 件は `bundle-budget`（要 production build）、`dependency-advisory`（要 registry network）、
-  `e2e-playwright`（要 build + browser + Worker）。いずれも**この実行では意図的に走らせていない**ため
-  run record 側も `skipped` であり、推測値は 1 つも載せていません。
+- NOT RUN 5 件は `bundle-budget` / `cloudflare-build-contract` / `secret-scan-bundle`（要 production build）、
+  `dependency-advisory`（要 registry network）、`e2e-playwright`（要 build + browser + Worker）。
+  いずれも**この実行では意図的に走らせていない**ためrun record 側も `skipped` であり、
+  推測値は 1 つも載せていません。
 - N/A 4 件は `quality/route-coverage.json` の `performance` / `a11y` / `cross_browser` /
   `security_headers` family（いずれも `planned`）。**Issue #384–#387 の担当**であり、本 Issue は
   「まだ無いもの」を 1 箇所に明示することだけを担当します。
-- PASS 19 件の 1 つに `route-quality-coverage`（#492）があり、その有効な出力は
+- PASS 26 件の 1 つに `route-quality-coverage`（#492）があり、その有効な出力は
   `.tmp/route-quality-report.html` です。**この report が消えると PASS から NOT RUN に落ちます**
   （次の節）。
+
+## Issue #508（release gate ledger）との重複整理
+
+#508 が `quality/release-gate.json` を `release-0-7-0` に追加し、**同じ status 語彙**
+（pass / fail / not run / N/A）で「release がその検査を実行するか」を判定する gate を公開しました。
+本 Issue と並びbital かつ参照関係にあるため、次の通り整理しています。
+
+| | #508 の ledger | 本 Issue の roster |
+| --- | --- | --- |
+| 答える問い | その検査は release chain に含まれるか（カバレッジ） | このチェックアウトに有効な出力が有るか（verdict） |
+| verdict の出所 | 宣言と `validate:*` / CI `validate` ジョブの transitive closure | 実行されたコマンドの終了コードと report の存在 |
+| artifact / 実行環境 | 扱わない | report の存在・source SHA・browser / network / CPU を記録 |
+
+**ledger を 2 本増やさない**代わりに、`quality/release-dashboard.json` の
+`ledger_alignment` が `quality/release-gate.json` の**全 id** について
+「どの signal として表示するか」または「表示しない理由」を宣言し、
+未宣言 id が出たら `quality:dashboard:check` が exit 1 になります（fixture テスト済み）。
+現状は 25 件を signal として表示、9 件を表示しない（理由つき）。
+例：`release-version` は release branch 名から期待 version を導出するため ticket branch で
+構造的に FAIL する、`cf-typegen` は `.cloudflare/types/index.d.ts` を書き換える（dashboard は
+ツリーを mutate しない）、`production-smoke` は deploy 後手動 window の row である。
 
 ## 4 状態の定義（missing report が誤 PASS しない構造）
 
@@ -99,6 +121,8 @@ run record の `source_sha` はスクリーンショットを commit する**直
   （AGENTS.md §5「gate は 3 つの deterministic entry point」）。
 - 代わりに `release_quality_dashboard` block を追加し、roster / command / 証跡 path /
   「gate ではない」宣言を記録しました。`route_quality_coverage` block と同種です。
+- roster は `quality/release-gate.json`（#508）との対応を `ledger_alignment` で宣言しており、
+  `release_gate_coverage` 相当の gate は**追加していません**（#508 が所有）。
 - roster の構造検証（`quality:dashboard:check`）も既定では gate に入りません。壊れた roster は
   レポート生成時に exit 1 で判明するため、gate に入れる価値がコストに見合いません。
 

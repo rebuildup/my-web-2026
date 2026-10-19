@@ -363,7 +363,7 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +
-  `tools:provenance:check` + `publication:check` +
+  `tools:provenance:check` + `copy:i18n:check` + `publication:check` +
   `content:links:check` (Issue #434 — internal link 404 / unsafe
   target / missing image alt is an error; external timeouts are
   warnings) +
@@ -372,7 +372,9 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   must carry the `data-motion` hook, read or receive the shared
   preference, and be nameable by a reduced-motion selector) +
   `ci:pins:check` (Issue #472, GitHub
-  Actions pin / token audit) + `test`. The canonical list is
+  Actions pin / token audit) + `knip:check` (Issue #531,
+  diff gate vs `quality/knip-baseline.json`) + `test`.
+  The canonical list is
   `quality/profile.yaml#gates.fast.components`; add a step there,
   not only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.

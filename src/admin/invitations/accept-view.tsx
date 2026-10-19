@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { css } from '../../../styled-system/css';
+import { ErrorSummary, TextField } from '../../editorial/forms';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
 import type { AcceptInvitationResult, InvitationProbe } from './accept';
@@ -31,6 +32,15 @@ import type { AcceptInvitationResult, InvitationProbe } from './accept';
  * Better Auth's built-in CSRF middleware (`formCsrfMiddleware`)
  * enforces origin checks; both RPC and Better Auth share the same
  * worker origin, so the sign-in POST is on the same origin.
+ *
+ * Field association (Issue #404): both controls are editorial
+ * `TextField`s, so each carries its label, its requirement and — when
+ * the submission is refused — `aria-invalid` plus a sentence reached
+ * through `aria-describedby`. The refusal is ALSO summarised at the
+ * top of the form: `weak_password` is about the password control, the
+ * other failures are about the invitation itself and therefore appear
+ * in the summary only. Both copies carry the same words; only the
+ * summary is a live region, so the sentence is announced once.
  */
 export interface AcceptInvitationViewProps {
 	probe: InvitationProbe;
@@ -121,7 +131,23 @@ function AcceptForm({
 	const [name, setName] = useState('');
 	const [password, setPassword] = useState('');
 	const [busy, setBusy] = useState(false);
-	const [failure, setFailure] = useState<string | null>(null);
+	const [failure, setFailure] = useState<FormRefusal | null>(null);
+
+	/**
+	 * Which control a refusal sentence belongs to, if any.
+	 *
+	 * `weak_password` is the one failure whose correction is a value in
+	 * a named field; everything else describes the invitation token or
+	 * the account as a whole, and pointing a link at the password field
+	 * for those would send the person to edit a value that was never
+	 * the problem.
+	 */
+	function refusalFor(reason: string | undefined, message: string): FormRefusal {
+		if (reason === 'weak_password') {
+			return { field: 'password', label: 'Password', message };
+		}
+		return { label: 'Account creation', message };
+	}
 
 	return (
 		<form
@@ -132,14 +158,19 @@ function AcceptForm({
 				const result = await submit({ name, password });
 				if (!result.ok) {
 					setBusy(false);
-					setFailure(FAILURE_COPY[result.failure ?? 'token_invalid'] ?? FAILURE_COPY.token_invalid);
+					setFailure(
+						refusalFor(
+							result.failure,
+							FAILURE_COPY[result.failure ?? 'token_invalid'] ?? FAILURE_COPY.token_invalid,
+						),
+					);
 					void token;
 					return;
 				}
 				const signedIn = await signInAfterAccept(email, password);
 				if (!signedIn) {
 					setBusy(false);
-					setFailure(FAILURE_COPY.sign_in_failed);
+					setFailure(refusalFor('sign_in_failed', FAILURE_COPY.sign_in_failed));
 					void token;
 					return;
 				}
@@ -154,6 +185,7 @@ function AcceptForm({
 				maxWidth: '480px',
 			})}
 		>
+			<ErrorSummary heading="アカウントを作成できませんでした" errors={failure ? [failure] : []} />
 			<p
 				className={css({
 					margin: '0',
@@ -164,69 +196,35 @@ function AcceptForm({
 			>
 				{email}
 			</p>
-			<label className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-				<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-					Name
-				</span>
-				<input
-					type="text"
-					name="name"
-					value={name}
-					onChange={(e) => setName(e.target.value)}
-					required
-					minLength={1}
-					maxLength={120}
-					className={css({
-						fontFamily: 'sans',
-						fontSize: 'md',
-						paddingInline: '3',
-						paddingBlock: '2',
-						border: '1px solid {colors.border.subtle}',
-						borderRadius: '4',
-						background: 'bg.surface',
-						color: 'text.default',
-					})}
-				/>
-			</label>
-			<label className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-				<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-					Password
-				</span>
-				<input
-					type="password"
-					name="password"
-					value={password}
-					onChange={(e) => setPassword(e.target.value)}
-					required
-					minLength={8}
-					maxLength={256}
-					className={css({
-						fontFamily: 'sans',
-						fontSize: 'md',
-						paddingInline: '3',
-						paddingBlock: '2',
-						border: '1px solid {colors.border.subtle}',
-						borderRadius: '4',
-						background: 'bg.surface',
-						color: 'text.default',
-					})}
-				/>
-			</label>
-			{failure && (
-				<p
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					{failure}
-				</p>
-			)}
+			<TextField
+				name="name"
+				label="Name"
+				type="text"
+				autoComplete="name"
+				description="アカウントに設定する表示名。"
+				value={name}
+				onChange={(e) => setName(e.target.value)}
+				required
+				minLength={1}
+				maxLength={120}
+			/>
+			<TextField
+				name="password"
+				label="Password"
+				type="password"
+				autoComplete="new-password"
+				description="8 文字以上。16 文字以上のパスフレーズを推奨します。"
+				value={password}
+				onChange={(e) => setPassword(e.target.value)}
+				required
+				minLength={8}
+				maxLength={256}
+				error={failure?.field === 'password' ? failure.message : null}
+			/>
 			<button
 				type="submit"
 				disabled={busy || name.length === 0 || password.length < 8}
+				aria-busy={busy}
 				className={css({
 					fontFamily: 'sans',
 					fontSize: 'md',
@@ -246,3 +244,10 @@ function AcceptForm({
 		</form>
 	);
 }
+
+/** A refused submission, in the shape the editorial summary consumes. */
+type FormRefusal = {
+	field?: string;
+	label: string;
+	message: string;
+};

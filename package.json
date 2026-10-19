@@ -1,6 +1,6 @@
 {
 	"name": "my-web-2026",
-	"version": "0.6.3",
+	"version": "0.7.0",
 	"private": true,
 	"type": "module",
 	"description": "my-web-2026 — Personal Web Platform on Cloudflare Workers with TanStack Start, Hono and Panda CSS.",
@@ -139,8 +139,8 @@
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",
-		"@tanstack/react-router": "^1.168.52",
-		"@tanstack/react-start": "^1.168.52",
+		"@tanstack/react-router": "1.170.42",
+		"@tanstack/react-start": "1.168.61",
 		"better-auth": "^1.7.5",
 		"emoji-picker-react": "^4.22.2",
 		"hono": "^4.13.7",

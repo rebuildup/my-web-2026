@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { z } from 'zod';
 import { css } from '../../styled-system/css';
 import { getCurrentSession } from '../admin/public';
+import { ErrorSummary, TextField } from '../editorial/forms';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
 import { classifyRedirectTarget } from '../http/security/redirect';
@@ -36,6 +37,18 @@ import { classifyRedirectTarget } from '../http/security/redirect';
  *
  * Client-side navigation re-runs the loader through the server
  * function, so the check is not an SSR-only artifact.
+ *
+ * Field association (Issue #404): the two controls are editorial
+ * `TextField`s, so each carries a visible label, an `autoComplete`
+ * token (WCAG 2.2 1.3.5 Identify Input Purpose) and a description. A
+ * refused `?returnTo=` is rendered as the form's error SUMMARY rather
+ * than as a quiet caption: it is a form-level refusal the person has
+ * to notice before typing a password into a form that will not go
+ * where they asked, and `role="alert"` is what announces it.
+ *
+ * The sign-in POST itself is Better Auth's and its failure response
+ * (HTTP 401 JSON) is outside this file; this page therefore states no
+ * password error of its own rather than inventing one.
  */
 const DEFAULT_RETURN_TO = '/admin';
 
@@ -90,26 +103,6 @@ function LoginRoute() {
 					description="招待された管理者のみ。Sign-up は無効。"
 					variant="spread"
 				>
-					{rejectedReason ? (
-						<output
-							data-testid="return-to-rejected"
-							data-reject-reason={rejectedReason}
-							className={css({
-								display: 'block',
-								margin: '0',
-								paddingBlock: '3',
-								paddingInline: '4',
-								maxWidth: '480px',
-								fontFamily: 'sans',
-								fontSize: 'sm',
-								color: 'text.muted',
-								border: '1px solid {colors.border.subtle}',
-								borderRadius: '4',
-							})}
-						>
-							{`returnTo が安全ではないため、${DEFAULT_RETURN_TO} に移動します。`}
-						</output>
-					) : null}
 					<form
 						method="post"
 						action="/api/v1/auth/sign-in/email"
@@ -122,49 +115,43 @@ function LoginRoute() {
 						})}
 					>
 						<input type="hidden" name="callbackURL" value={returnTo} />
-						<label className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-							<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-								Email
-							</span>
-							<input
-								type="email"
-								name="email"
-								required
-								className={css({
-									fontFamily: 'sans',
-									fontSize: 'md',
-									paddingInline: '3',
-									paddingBlock: '2',
-									border: '1px solid {colors.border.subtle}',
-									borderRadius: '4',
-									background: 'bg.surface',
-									color: 'text.default',
-								})}
+						{/* The summary lives INSIDE the form: it is a statement about
+						    this submission, so it must be reachable in form
+						    navigation rather than sitting beside the form as a
+						    separate caption. */}
+						{rejectedReason ? (
+							<ErrorSummary
+								heading="移動先を確認できませんでした"
+								testId="return-to-rejected"
+								dataAttributes={{ 'data-reject-reason': rejectedReason }}
+								errors={[
+									{
+										label: '移動先',
+										message: `returnTo が安全ではないため、${DEFAULT_RETURN_TO} に移動します。`,
+									},
+								]}
 							/>
-						</label>
-						<label className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-							<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-								Password
-							</span>
-							<input
-								type="password"
-								name="password"
-								required
-								className={css({
-									fontFamily: 'sans',
-									fontSize: 'md',
-									paddingInline: '3',
-									paddingBlock: '2',
-									border: '1px solid {colors.border.subtle}',
-									borderRadius: '4',
-									background: 'bg.surface',
-									color: 'text.default',
-								})}
-							/>
-						</label>
+						) : null}
+						<TextField
+							name="email"
+							label="Email"
+							type="email"
+							autoComplete="username"
+							description="招待された管理者のメールアドレス。"
+							required
+						/>
+						<TextField
+							name="password"
+							label="Password"
+							type="password"
+							autoComplete="current-password"
+							description="このアカウントのパスワード。"
+							required
+						/>
 						<button
 							type="submit"
 							disabled={busy}
+							aria-busy={busy}
 							className={css({
 								fontFamily: 'sans',
 								fontSize: 'md',

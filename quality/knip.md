@@ -85,6 +85,7 @@ Absorbed so far (each line is an addition the diff shows, never a removal):
 | `files scripts/make-provenance-fixture.mjs` | #473 (submodule provenance) landed on `release-0-6-3`; a fixture generator for the provenance check, so it is #473's debt, not this gate's. |
 | `files scripts/markdown-format-report.mjs` | #435 (Markdown format contract) landed on `release-0-6-3`; a one-off verification report script, so it is #435's debt, not this gate's. |
 | `types src/cloudflare/media-visibility.ts MediaKeyReason` | #459 (R2 visibility boundary) landed on `release-0-6-3`; the union documents the reasons a media key is refused, and no caller/narrowing consumer reads it back yet, so it is #459's debt, not this gate's. |
+| 15 `exports` / `types` from `src/editorial/forms/index.ts` | #404 (accessible form-field contract) landed on `release-0-7-0`; the barrel publishes the field-id / description / error-summary vocabulary that `src/admin/**` forms consume through the route tree, and knip sees no importer of the barrel itself, so the re-exports (and their prop types) read as unconsumed. This is #404's public surface, not this gate's, so it is absorbed into the baseline rather than suppressed through `knip.json`. |
 
 ## Fixtures
 

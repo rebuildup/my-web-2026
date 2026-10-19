@@ -308,6 +308,25 @@ describe('manifest verification', () => {
 		assert.ok(codes(result).includes('MANIFEST_FILES_INVALID'));
 	});
 
+	it('fails closed with MANIFEST_FILES_INVALID for a per-file entry the generator can never emit', (t) => {
+		const { root, artifactDir, manifest } = setup();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+
+		// The generator rejects symlinks in the Build Output, so a
+		// `symlink` entry in a manifest is a claim about bytes no
+		// generation run ever hashed.
+		const entry = manifest.subject.files[0];
+		entry.kind = 'symlink';
+		const result = verifyManifest({
+			manifest,
+			artifactDir,
+			root,
+			expectedSourceCommit: SOURCE,
+		});
+		assert.equal(result.status, 'FAIL');
+		assert.ok(codes(result).includes('MANIFEST_FILES_INVALID'));
+	});
+
 	it('fails when the manifest file list was edited without regenerating', (t) => {
 		const { root, artifactDir, manifest } = setup();
 		t.after(() => rmSync(root, { recursive: true, force: true }));

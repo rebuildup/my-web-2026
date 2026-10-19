@@ -140,7 +140,10 @@ export function isArtifactFileRecord(file) {
 		typeof file === 'object' &&
 		typeof file.path === 'string' &&
 		file.path.length > 0 &&
-		(file.kind === 'file' || file.kind === 'symlink') &&
+		// Only regular files are accepted, because only regular files are
+		// generated: a manifest entry the generator can never emit is an
+		// unverifiable claim about bytes it never hashed.
+		file.kind === 'file' &&
 		Number.isInteger(file.bytes) &&
 		file.bytes >= 0 &&
 		typeof file.sha256 === 'string' &&

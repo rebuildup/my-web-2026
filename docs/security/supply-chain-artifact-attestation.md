@@ -102,6 +102,9 @@ artifact を比べる」が build の揺らぎの diff にならない。
 `kind \t path \t bytes \t sha256` の行を改行で連結した文字列の
 sha-256 である。Build Output に symlink が現れた場合は FAIL し、
 target 文字列だけを記録して link 先の byte を未 hash のまま残さない。
+検証側も `kind` は `"file"` だけを受け付ける（生成器が出さない
+entry 形を manifest が主張しないため、`"symlink"` を含む entry は
+`MANIFEST_FILES_INVALID` になる）。
 
 ## 4. コマンド
 

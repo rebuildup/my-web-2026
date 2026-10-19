@@ -107,11 +107,12 @@ describe('repository workflows', () => {
 		});
 		assert.deepEqual(audit.findings, []);
 		assert.equal(audit.summary.status, 'PASS');
-		assert.equal(audit.summary.workflows, 3);
+		assert.equal(audit.summary.workflows, 4);
 		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x5)
 		// + compat.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
 		// + prod-smoke.yml (checkout, setup-node, pnpm, cache, upload-artifact)
-		assert.equal(audit.summary.pins, 22);
+		// + viewport.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
+		assert.equal(audit.summary.pins, 29);
 		assert.deepEqual([...new Set(audit.pins.map((pin) => pin.repo))].sort(), [
 			'actions/cache',
 			'actions/checkout',
@@ -137,6 +138,7 @@ describe('repository workflows', () => {
 			'compat:map:contents=read',
 			'prod-smoke:map:contents=read',
 			'validate:map:contents=read',
+			'viewport:map:contents=read',
 		]);
 	});
 
@@ -951,7 +953,7 @@ describe('cli', () => {
 		assert.equal(result.code, 0);
 		const parsed = JSON.parse(result.stdout);
 		assert.equal(parsed.summary.status, 'PASS');
-		assert.equal(parsed.summary.pins, 22);
+		assert.equal(parsed.summary.pins, 29);
 		// A Set serialises to `{}`, which would make the machine-readable
 		// output look like it referenced nothing.
 		assert.deepEqual(parsed.referenced, [

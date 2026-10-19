@@ -54,7 +54,7 @@ const OUT_DIR = resolve(root, 'docs/verification/supply-chain');
 const PORT = 4602;
 
 /** Committed-image budget: a verification screenshot must not bloat the repo. */
-const MAX_WIDTH = 1400;
+const MAX_WIDTH = 1240;
 const WEBP_QUALITY = 80;
 const MAX_BYTES = 300 * 1024;
 

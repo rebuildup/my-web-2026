@@ -19,7 +19,7 @@ The image is rendered from `scripts/check-workflow-pinning.mjs` — the
 same function `pnpm run ci:pins:check` runs inside `validate:fast` —
 so the picture cannot claim a pin the gate would reject.
 
-1. **Shipped workflows — normal observation.** All 22 `uses:` lines of
+1. **Shipped workflows — normal observation.** All 29 `uses:` lines of
    `.github/workflows/ci.yml`, `compat.yml` and `prod-smoke.yml` with their upstream
    ref and full 40-char commit SHA, plus the effective
    `GITHUB_TOKEN` permissions each job resolves to
@@ -63,10 +63,10 @@ pnpm run ci:pins:report
 ```
 
 The script re-runs both audits, re-renders the report and overwrites
-the WebP files (Chromium PNG in memory → `sharp` resize to 1400 px →
+the WebP files (Chromium PNG in memory → `sharp` resize to 1240 px →
 WebP quality 80). It self-checks that the rendered page contains both
 verdict lines, so a blank screenshot cannot be committed, and fails if
-either image exceeds the 1400 px / 300 KB budget. Commit the
+either image exceeds the 1240 px / 300 KB budget. Commit the
 regenerated images in the same change as any workflow, pin-manifest or
 gate-rule edit. It is a documentation tool and never runs inside
 `validate:*`.

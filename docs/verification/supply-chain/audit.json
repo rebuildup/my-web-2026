@@ -1,9 +1,9 @@
 {
 	"real": {
 		"status": "PASS",
-		"workflows": 3,
-		"jobs": 3,
-		"pins": 22,
+		"workflows": 4,
+		"jobs": 4,
+		"pins": 29,
 		"local_actions": 0,
 		"findings": 0,
 		"waivers": 0

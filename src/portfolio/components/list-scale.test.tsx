@@ -55,8 +55,16 @@ import { ProjectCard } from './ProjectCard';
  * (happy-dom) and by the recorded browser measurement.
  */
 
-/** Per-card DOM node ceiling; mirrors `PER_CARD_NODE_CEILING` in the harness. */
-const PER_CARD_NODE_CEILING = 20;
+/**
+ * Per-card DOM node ceiling; mirrors `PER_CARD_NODE_CEILING` in the harness.
+ *
+ * Issue #411 moved it from 20 to 22 because every card now renders the
+ * `StateMark` (Issue #411): ONE `<span>` per card, no children. The
+ * measured card is 20 nodes (21 when pinned), so the ceiling still
+ * leaves exactly one node of headroom — the property this gate protects
+ * is that the per-card cost stays CONSTANT, not that it stays at 19.
+ */
+const PER_CARD_NODE_CEILING = 22;
 
 /** Count the elements in a markup string. Self-closing and paired tags both count once. */
 function countElements(html: string): number {
@@ -88,7 +96,9 @@ describe('project card — 100+ row pagination boundary', () => {
 		const worst = Math.max(...perCard);
 		// A pinned row carries one extra node (the `Pinned` badge); a
 		// shape difference larger than that is a card that stopped
-		// being one card.
+		// being one card. It also keeps the `StateMark` honest: a
+		// category whose silhouette needed a second element would
+		// show up here as a two-node spread.
 		expect(worst - cheapest).toBeLessThanOrEqual(1);
 		expect(worst).toBeLessThanOrEqual(PER_CARD_NODE_CEILING);
 	});

@@ -979,7 +979,6 @@ export function renderDiagram(capability, { width = 1360 } = {}) {
 		}" rx="6" class="zone-box"/>`;
 	}).join('');
 
-	const anchors = new Map();
 	const edges = [];
 	for (const boundary of capability.boundaries) {
 		const from = capability.nodes.find((node) => node.id === boundary.from);
@@ -997,8 +996,8 @@ export function renderDiagram(capability, { width = 1360 } = {}) {
 		edges.push(
 			`<path d="M ${x1} ${y1} C ${mid} ${y1}, ${mid} ${y2}, ${x2} ${y2}" class="edge" marker-end="url(#arrow)"/>` +
 				`<text x="${mid}" y="${labelY}" class="edge-label" text-anchor="middle">${escapeHtml(
-					label,
-				).slice(0, 58)}</text>`,
+					label.slice(0, 58),
+				)}</text>`,
 		);
 	}
 
@@ -1006,9 +1005,8 @@ export function renderDiagram(capability, { width = 1360 } = {}) {
 		const index = byZone.get(node.zone).indexOf(node);
 		const x = zoneX[node.zone];
 		const y = top + index * (nodeHeight + nodeGap);
-		anchors.set(node.id, { x, y });
 		const assets = (node.assets ?? []).join(', ');
-		return `<g><rect x="${x}" y="${y}" width="${nodeWidth}" height="${nodeHeight}" rx="6" class="node node-${node.zone}"/>
+		return `<g><rect x="${x}" y="${y}" width="${nodeWidth}" height="${nodeHeight}" rx="6" class="node node-${escapeHtml(node.zone)}"/>
       <text x="${x + 12}" y="${y + 22}" class="node-title">${escapeHtml(node.label).slice(0, 34)}</text>
       <text x="${x + 12}" y="${y + 40}" class="node-id">${escapeHtml(node.id)}</text>
       <text x="${x + 12}" y="${y + 58}" class="node-assets">assets: ${escapeHtml(assets).slice(0, 40) || '—'}</text>

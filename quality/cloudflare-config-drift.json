@@ -21,7 +21,7 @@
 			},
 			"GOOGLE_ANALYTICS_MEASUREMENT_ID": { "type": "secret" },
 			"MEDIA": { "type": "r2", "name": "my-web-2026" },
-			"MEDIA_PUBLIC_BASE_URL": { "type": "text", "value": "https://media.rebuildup.dev" },
+			"MEDIA_PUBLIC_BASE_URL": { "type": "text", "value": "https://rebuildup.dev/media" },
 			"MY_WEB_2026_CONSUMER_API_KEY": { "type": "secret" },
 			"MY_WEB_2026_COUNTER_KEY": { "type": "text", "value": "home-page" },
 			"MY_WEB_2026_REACTIONS_TARGET": { "type": "text", "value": "home-page" },

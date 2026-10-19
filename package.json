@@ -173,7 +173,8 @@
 		"r2:media:audit:report": "node scripts/make-r2-media-key-set-report.mjs",
 		"r2:media:audit": "node scripts/check-r2-media-key-set.mjs --target=production",
 		"artifact:attestation:report": "node scripts/artifact-attestation-report.mjs",
-		"artifact:attestation:check": "node scripts/check-artifact-attestation.mjs"
+		"artifact:attestation:check": "node scripts/check-artifact-attestation.mjs",
+		"capture:pseudo-locale": "node --experimental-strip-types scripts/capture-pseudo-locale-stress.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

@@ -305,6 +305,51 @@ key-set audit. Until that decision exists, the model is exercised only
 against the local fixture, and the custom-domain failure case below
 remains the operational rule.
 
+## Media restore (Issue #462)
+
+Visibility decides what may be *served*; it says nothing about what
+happens when an object is **gone**. Nothing in this repository
+re-creates a portfolio image — `portfolio_media` points at an R2 key
+and the bucket holds the bytes — so a deleted public image is only
+recoverable from a **retained source captured before the deletion**.
+`src/cloudflare/media-restore.ts` owns that procedure, and it
+re-reads this module's rule instead of trusting a caller's list:
+
+1. `classifyMediaKey` runs **before any write**, so a restore can
+   never republish a private or undeclared namespace — a restore is
+   the one operation that publishes on purpose;
+2. the retained bytes are compared with the manifest (sha256, byte
+   length, content type) **before** the upload;
+3. the object is **read back** and compared again, so a truncated or
+   mislabelled write is a failed restore rather than a silent success.
+
+```ts
+const result = await restoreMediaObject(store, retainedSource, manifestEntry);
+// { verdict, reason, checks } — no key, no key fragment, no namespace
+```
+
+The result is status-only **by construction**: the store and the
+source receive the key, the result never holds one. `restored` and
+`already_intact` are the only passes; `refused_key`,
+`missing_source`, `metadata_drift` and `undecidable` are exits 1 or 2,
+so "could not check" never shares a signal with "checked and fine".
+
+Proven against the local workerd R2 fixture by an object that is
+really deleted and then really restored
+(`test/integration/r2-media-restore.test.ts`), and by a
+credential-free fixture proof over seven recorded cases
+(`pnpm run r2:restore:proof`). **No production write is performed by
+the repository** — a real restore needs an R2-scoped credential that
+no workflow here holds, so it stays an operator step. Procedure,
+deletion handling and the metadata contract:
+[`docs/runbook/r2-media-restore.md`](../runbook/r2-media-restore.md).
+
+Known residual: `portfolio_media` records `r2_key` and `content_type`
+but no digest and no byte length (`migrations/0007_portfolio.sql`), so
+the manifest a restore is verified against is an operator-side
+artefact today. Adding the columns is a separate schema decision and
+is deliberately not taken here.
+
 ## How to re-verify
 
 ```bash
@@ -320,6 +365,13 @@ pnpm run r2:visibility:report
 node --test scripts/check-r2-media-key-set.test.mjs
 pnpm run r2:media:audit -- --fixture=quality/fixtures/r2-media-key-set/out-of-allowlist.json
 pnpm run r2:media:audit:report   # -> .tmp/r2-media-key-set-report.html
+
+# the restore procedure (Issue #462): a deleted public image, its
+# refusal and fail-closed states, and the status-only output contract
+node --test scripts/r2-media-restore-proof.test.mjs
+pnpm exec vitest run test/integration/r2-media-restore.test.ts
+pnpm run r2:restore:proof          # seven recorded cases, no credential
+pnpm run r2:restore:proof:report   # -> .tmp/r2-restore-proof.html
 ```
 
 The production verdict comes from `pnpm run r2:media:audit`, which is
@@ -355,4 +407,8 @@ produces the Issue's literal path if that decision is ever reversed.
   [`docs/runbook/r2-media-key-set-audit.md`](../runbook/r2-media-key-set-audit.md).
 - `docs/portfolio/decisions.md` Decision 5 — why delivery is a public
   custom domain at all.
+- `src/cloudflare/media-restore.ts` — the restore contract: gate
+  first, manifest before the upload, read-back before the claim.
+- `docs/runbook/r2-media-restore.md` — operator procedure for a
+  deleted public image (Issue #462).
 - [`docs/security.md`](../security.md) — policy index.

@@ -110,11 +110,13 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { parseGateProfile, resolveGatePlan } from './_quality-gate-plan.mjs';
 import { looksLikeCredentialValue } from './_secret-scan.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 export const DEFAULT_MANIFEST_PATH = 'quality/threat-model.json';
+export const PROFILE_PATH = 'quality/profile.yaml';
 export const FIXTURE_DIR = 'quality/fixtures/threat-model';
 
 /** Closed vocabularies. A value outside one is an error, not a new word. */
@@ -245,6 +247,11 @@ export function expandScriptNames(scripts, entry, seen = new Set()) {
 	return [...new Set(out)];
 }
 
+/** Every `pnpm run <name>` a command body names, in order. */
+export function referencedScriptNames(command) {
+	return [...String(command).matchAll(PNPM_RUN_PATTERN)].map((match) => match[1]);
+}
+
 /** Every `scripts/**` file one script runs. */
 export function scriptRunnerFiles(scripts, entry) {
 	const body = scripts?.[entry];
@@ -261,7 +268,42 @@ export function scriptRunnerFiles(scripts, entry) {
  *
  * @returns {{ errors: string[], warnings: string[], capabilities: object[], summary: object, unaccounted: string[] }}
  */
-export function evaluateThreatModel({ manifest, scripts = {}, fileExists = () => true }) {
+/**
+ * Every `pnpm run` command the release surface executes.
+ *
+ * Two sources, because the repository changed shape while this gate
+ * existed (Issue #566): the ordered roster is now
+ * `quality/profile.yaml#gates.<level>.components` and the npm entry
+ * points are one-line calls into a runner, so expanding
+ * `package.json#scripts["validate:release"]` alone would find no command
+ * at all and rule 14 would become dead code. The profile closure is
+ * authoritative; the script chain stays as the fallback for a tree whose
+ * profile cannot be read.
+ */
+export function releaseSurfaceScripts({ profileText = '', scripts = {} } = {}) {
+	const out = new Set(expandScriptNames(scripts, 'validate:release'));
+	let components = [];
+	if (typeof profileText === 'string' && profileText.length > 0) {
+		try {
+			components = resolveGatePlan(parseGateProfile(profileText).gates, 'release');
+		} catch {
+			components = [];
+		}
+	}
+	for (const component of components) {
+		for (const name of referencedScriptNames(component)) {
+			for (const expanded of expandScriptNames(scripts, name)) out.add(expanded);
+		}
+	}
+	return out;
+}
+
+export function evaluateThreatModel({
+	manifest,
+	scripts = {},
+	profileText = '',
+	fileExists = () => true,
+}) {
 	const errors = [];
 	const warnings = [];
 	const capabilities = [];
@@ -726,8 +768,8 @@ export function evaluateThreatModel({ manifest, scripts = {}, fileExists = () =>
 	// drift rather than fail a release over the next gate's name. The
 	// comparison is by runner file, so `secret:scan` and its bundle
 	// variant count as one claim rather than as a missing row.
-	const releaseScripts = expandScriptNames(scripts, 'validate:release');
-	for (const script of releaseScripts.sort()) {
+	const releaseScripts = releaseSurfaceScripts({ profileText, scripts });
+	for (const script of [...releaseScripts].sort()) {
 		if (!prefixes.some((prefix) => script.startsWith(prefix))) continue;
 		const claimed =
 			registry.some((entry) => entry?.command === script) ||
@@ -827,6 +869,7 @@ export function checkThreatModel({ root = REPO_ROOT, manifestPath = DEFAULT_MANI
 	const result = evaluateThreatModel({
 		manifest,
 		scripts: JSON.parse(packageText).scripts ?? {},
+		profileText: read(PROFILE_PATH) ?? '',
 		fileExists: (path) => existsSync(join(root, path)),
 	});
 	return { ...result, manifest };

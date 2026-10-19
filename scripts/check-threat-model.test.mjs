@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -12,6 +13,8 @@ import {
 	evaluateFixture,
 	evaluateThreatModel,
 	loadFixture,
+	referencedScriptNames,
+	releaseSurfaceScripts,
 	renderReport,
 	scriptRunnerFiles,
 	unknownKeys,
@@ -338,6 +341,32 @@ describe('the control registry agrees with the model', () => {
 	it('reads the runner files of a command so a variant is not a missing row', () => {
 		assert.deepEqual(scriptRunnerFiles(SCRIPTS, 'fixture:check'), ['scripts/fixture-gate.mjs']);
 		assert.deepEqual(scriptRunnerFiles(SCRIPTS, 'lint:check'), []);
+	});
+
+	it('reads the release surface from the profile roster, not from a one-line entry point', () => {
+		// Issue #566 turned `validate:*` into a single call into a gate
+		// runner, so a surface resolved from package.json alone would be
+		// empty and rule 14 would never fire.
+		const profileText = readFileSync(join(REPO_ROOT, 'quality/profile.yaml'), 'utf8');
+		const surface = releaseSurfaceScripts({
+			profileText,
+			scripts: {
+				'validate:release': 'node scripts/run-quality-gates.mjs release',
+				'csrf:contract:check': 'node scripts/check-csrf-contract.mjs',
+				'threat:model:check': 'node scripts/check-threat-model.mjs',
+			},
+		});
+		assert.ok(surface.has('csrf:contract:check'), 'the profile roster names the command');
+		assert.ok(surface.has('threat:model:check'), 'and this gate is on the roster too');
+	});
+
+	it('falls back to the script chain when the profile cannot be read', () => {
+		const surface = releaseSurfaceScripts({
+			profileText: '',
+			scripts: { 'validate:release': 'pnpm run fixture:check', 'fixture:check': 'node x.mjs' },
+		});
+		assert.ok(surface.has('fixture:check'));
+		assert.deepEqual(referencedScriptNames('pnpm run a && pnpm run b'), ['a', 'b']);
 	});
 });
 

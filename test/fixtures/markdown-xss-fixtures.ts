@@ -218,10 +218,11 @@ export const BLOCKED_FIXTURE_IDS = [
 	'vbscript-url',
 ] as const;
 
-export function acceptedMarkdownFixtures(): readonly MarkdownFixture[] {
-	return MARKDOWN_XSS_FIXTURES.filter((fixture) => fixture.expectation === 'accepted');
-}
-
+// `acceptedMarkdownFixtures()` was removed in Issue #566: the corpus is
+// iterated whole (`MARKDOWN_XSS_FIXTURES`) by every consumer, so a
+// filtered accessor had no caller and the knip diff gate reported it.
+// `blockedMarkdownFixtures()` below is still the entry point for the
+// blocked-only slices.
 export function blockedMarkdownFixtures(): readonly MarkdownFixture[] {
 	return MARKDOWN_XSS_FIXTURES.filter((fixture) => fixture.expectation === 'blocked');
 }

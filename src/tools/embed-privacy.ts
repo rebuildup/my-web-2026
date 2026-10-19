@@ -316,12 +316,17 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 		contacts.push(normalized);
 	}
 
-	if (frame_is_third_party && declaration && !seen.has(normalizeFrameOrigin(subject.frame_src))) {
+	// The frame's own origin is a contact like any other: an external
+	// document cannot be embedded without publishing which origin serves
+	// it. `classifyFrameOrigin` already parsed this src, so the origin
+	// resolves; `null` is still handled rather than assumed away.
+	const frameOrigin = frame_is_third_party ? normalizeFrameOrigin(subject.frame_src) : null;
+	if (frameOrigin !== null && !seen.has(frameOrigin)) {
 		violations.push(
 			violation(
 				slug,
 				'privacy.origin.frame-origin-undeclared',
-				`${slug}: the frame is served by ${normalizeFrameOrigin(subject.frame_src)}, which is not listed in delivery.privacy.third_party_origins; an external document cannot be embedded without publishing which origin serves it (Issue #498)`,
+				`${slug}: the frame is served by ${frameOrigin}, which is not listed in delivery.privacy.third_party_origins; an external document cannot be embedded without publishing which origin serves it (Issue #498)`,
 			),
 		);
 	}

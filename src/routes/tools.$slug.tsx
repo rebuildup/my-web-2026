@@ -1,15 +1,22 @@
 import { Link, createFileRoute, notFound } from '@tanstack/react-router';
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import type { HTMLAttributeReferrerPolicy } from 'react';
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
 import { SectionHeading } from '../editorial/primitives/SectionHeading';
+import { ToolConsentNotice } from '../tools/embed-consent-notice';
 import { evaluateToolEmbedPolicy, toEmbedSubject } from '../tools/embed-policy';
 import type {
 	AcceptedToolMessage,
 	EmbedViolation,
 	ToolHostMessageDeclaration,
 } from '../tools/embed-policy';
+import {
+	CONSENT_MODE_CLICK_TO_LOAD,
+	evaluateEmbedPrivacy,
+	toPrivacySubject,
+} from '../tools/embed-privacy';
+import type { EmbedPrivacyVerdict, EmbedPrivacyViolation } from '../tools/embed-privacy';
 import { getPublicTool, getTool, resolveToolEntryHtml } from '../tools/registry';
 import type { ManifestTool } from '../tools/registry';
 import { useToolHostMessage } from '../tools/use-tool-host-message';
@@ -94,6 +101,15 @@ import { useToolHostMessage } from '../tools/use-tool-host-message';
  *   - `disabled`  — the manifest marks the Tool `host_disabled`
  *     (nothing to police; see the "Coming soon" copy below).
  *
+ * Third-party contact + consent gate (Issue #498): the loader ALSO
+ * runs `evaluateEmbedPrivacy()` (`src/tools/embed-privacy.ts`) over
+ * the same entry. A violation blocks the frame exactly like an embed
+ * violation, and a clean verdict whose `consent` is `click_to_load`
+ * renders `ToolConsentNotice` instead of the frame — no iframe, and no
+ * third-party origin anywhere in the document, until the visitor
+ * activates the load. The consent mode is derived from the manifest
+ * declaration, never declared by it (see the policy module header).
+ *
  * The `embeddable` branch also carries the Tool's `host_message`
  * declaration into `ToolEmbedShell`, which is the only place a
  * `message` listener can be attached for a Tool frame — and it
@@ -116,9 +132,16 @@ export const Route = createFileRoute('/tools/$slug')({
 		// public-surface lookup, so the iframe cannot be rendered even
 		// if the Tool is listed as embeddable.
 		const violations = evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery));
+		// Issue #498: the third-party contact contract runs over the same
+		// entry and fails closed the same way. An embeddable Tool with no
+		// `delivery.privacy`, an undeclared external frame origin, or a
+		// declared origin with no purpose gets no iframe at all.
+		const privacy = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery));
 		const publicTool = getPublicTool(slug);
-		if (violations.length > 0) return { state: 'blocked' as const, tool, violations };
-		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool };
+		if (violations.length > 0 || privacy.violations.length > 0) {
+			return { state: 'blocked' as const, tool, violations, privacy };
+		}
+		if (publicTool) return { state: 'embeddable' as const, tool, public: publicTool, privacy };
 		if (tool.delivery.kind === 'host_disabled') {
 			return { state: 'disabled' as const, tool };
 		}
@@ -162,7 +185,7 @@ export const Route = createFileRoute('/tools/$slug')({
 					{ title: `${loaderData.tool.display_name} — blocked — my-web-2026 Tools` },
 					{
 						name: 'description',
-						content: `${loaderData.tool.display_name} is not embedded because its registry entry violates the host embed policy (Issue #465).`,
+						content: `${loaderData.tool.display_name} is not embedded because its registry entry violates the host embed policy (Issue #465) or the third-party contact contract (Issue #498).`,
 					},
 					{ name: 'robots', content: 'noindex' },
 				],
@@ -262,13 +285,20 @@ function ToolRoute() {
 		return <DisabledPlaceholder tool={loaderData.tool} />;
 	}
 	if (loaderData.state === 'blocked') {
-		return <BlockedPlaceholder tool={loaderData.tool} violations={loaderData.violations} />;
+		return (
+			<BlockedPlaceholder
+				tool={loaderData.tool}
+				violations={loaderData.violations}
+				privacyViolations={loaderData.privacy.violations}
+			/>
+		);
 	}
-	const { tool, public: summary } = loaderData;
+	const { tool, public: summary, privacy } = loaderData;
 	return (
-		<ToolEmbedShell
+		<ToolEmbedGate
 			slug={tool.slug}
 			displayName={tool.display_name}
+			privacy={privacy}
 			// Issue #465: `src` comes from `resolveToolEntryHtml`, the same
 			// function the embed-policy verifier uses, so the rendered
 			// frame can never point somewhere the policy did not see.
@@ -279,6 +309,81 @@ function ToolRoute() {
 			hostMessage={tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.host_message}
 		/>
 	);
+}
+
+/**
+ * Consent gate in front of the frame (Issue #498).
+ *
+ * The gate owns exactly one piece of state: whether the visitor has
+ * activated the load. Until then the document carries the notice and
+ * no frame — which is what makes "no third-party request before
+ * activation" a structural property of the route rather than a promise
+ * in the copy (asserted in `test/integration/embed-privacy.test.ts`).
+ *
+ * The state is deliberately NOT persisted: no cookie, no
+ * `localStorage`, no server-side record. A consent store would be a new
+ * published data surface with its own retention story, and this Issue
+ * does not need one — see `docs/tools/embed-privacy.md` §5.
+ */
+function ToolEmbedGate({
+	slug,
+	displayName,
+	privacy,
+	src,
+	sandbox,
+	referrerPolicy,
+	allow,
+	hostMessage,
+}: {
+	slug: string;
+	displayName: string;
+	privacy: EmbedPrivacyVerdict;
+	src: string;
+	sandbox: string;
+	referrerPolicy: string;
+	allow?: string | undefined;
+	hostMessage: ToolHostMessageDeclaration | undefined;
+}) {
+	const [activated, setActivated] = useState(false);
+
+	if (privacy.consent === CONSENT_MODE_CLICK_TO_LOAD && !activated) {
+		return (
+			<ToolConsentNotice
+				displayName={displayName}
+				contacts={privacy.contacts_after_activation}
+				purpose={declaredPurpose(slug)}
+				frameIsThirdParty={privacy.frame_is_third_party}
+				onActivate={() => setActivated(true)}
+			/>
+		);
+	}
+
+	return (
+		<ToolEmbedShell
+			slug={slug}
+			displayName={displayName}
+			src={src}
+			sandbox={sandbox}
+			referrerPolicy={referrerPolicy}
+			allow={allow}
+			hostMessage={hostMessage}
+			consentState={activated ? 'granted' : 'not-required'}
+		/>
+	);
+}
+
+/**
+ * The declared purpose for a Tool, read from the manifest entry the
+ * verdict was derived from. `evaluateEmbedPrivacy` already refuses a
+ * Tool that declares contacts without a purpose in both locales, so a
+ * blocked entry never reaches the gate and this cannot render an empty
+ * purpose under a list of origins.
+ */
+function declaredPurpose(slug: string): { ja: string; en: string } | undefined {
+	const tool = getTool(slug);
+	if (!tool || tool.delivery.kind === 'host_disabled') return undefined;
+	const purpose = tool.delivery.privacy?.purpose;
+	return purpose ? { ja: purpose.ja, en: purpose.en } : undefined;
 }
 
 /**
@@ -309,6 +414,7 @@ function ToolEmbedShell({
 	referrerPolicy,
 	allow,
 	hostMessage,
+	consentState,
 }: {
 	slug: string;
 	displayName: string;
@@ -317,6 +423,7 @@ function ToolEmbedShell({
 	referrerPolicy: string;
 	allow?: string | undefined;
 	hostMessage: ToolHostMessageDeclaration | undefined;
+	consentState?: 'granted' | 'not-required' | undefined;
 }) {
 	const frameRef = useRef<HTMLIFrameElement | null>(null);
 	const getToolWindow = useCallback(() => frameRef.current?.contentWindow ?? null, []);
@@ -334,6 +441,7 @@ function ToolEmbedShell({
 			<div
 				data-route="tools/$slug"
 				data-tool-slug={slug}
+				data-tool-consent={consentState ?? 'not-required'}
 				style={{
 					width: '100%',
 					// Issue #288: no header chrome above the shell, so the
@@ -387,10 +495,20 @@ function ToolEmbedShell({
 function BlockedPlaceholder({
 	tool,
 	violations,
+	privacyViolations,
 }: {
 	tool: ManifestTool;
 	violations: readonly EmbedViolation[];
+	privacyViolations: readonly EmbedPrivacyViolation[];
 }) {
+	// Issue #498: embed violations and third-party-contact violations
+	// share one list. They are different contracts with different
+	// authors, but a blocked frame has exactly one fix path, and two
+	// lists would only make that path slower to read.
+	const allViolations = [
+		...violations.map((entry) => ({ code: entry.code, message: entry.message })),
+		...privacyViolations.map((entry) => ({ code: entry.code, message: entry.message })),
+	];
 	return (
 		<>
 			<Container as="section">
@@ -409,11 +527,12 @@ function BlockedPlaceholder({
 						title={tool.display_name}
 						description={
 							<>
-								この Tool はホストの埋め込みポリシー（sandbox / referrerPolicy / origin 契約）に
-								違反するため、iframe は描画されません。
+								この Tool はホストの埋め込みポリシー（sandbox / referrerPolicy / origin 契約）または
+								第三者通信の契約に違反するため、iframe は描画されません。
 								<br />
-								This Tool is not embedded: its registry entry violates the host embed policy, so the
-								host renders no iframe. The violations are listed below.
+								This Tool is not embedded: its registry entry violates the host embed policy or the
+								third-party contact contract, so the host renders no iframe. The violations are
+								listed below.
 							</>
 						}
 					/>
@@ -428,7 +547,7 @@ function BlockedPlaceholder({
 							listStyleType: 'disc',
 						})}
 					>
-						{violations.map((v) => (
+						{allViolations.map((v) => (
 							<li key={`${v.code}-${v.message}`} data-violation-code={v.code}>
 								<code>{v.code}</code> — {v.message}
 							</li>

@@ -210,6 +210,11 @@ interface PageMeasurement {
 	totalBytes: number;
 	imgTags: string[];
 	iframeSrcs: (string | null)[];
+	/**
+	 * `<iframe>` count before an explicit activation click (Issue
+	 * #498). `null` on a leg with no consent gate.
+	 */
+	preActivationIframeCount: number | null;
 	/** `<video>` / `<audio>` sources in the live DOM, post-hydration. */
 	videoSrcs: (string | null)[];
 	audioSrcs: (string | null)[];
@@ -321,6 +326,13 @@ async function measure(
 		baseURL: string;
 		stripMediaMode?: boolean;
 		scrollToSelector?: string;
+		/**
+		 * Selector for an explicit activation control (Issue #498). When
+		 * present the document is measured BEFORE the click as well, so
+		 * the "what did the visitor cost before acting" leg stays a
+		 * measurement instead of an assumption.
+		 */
+		activateSelector?: string;
 		reportKey: string;
 	},
 ): Promise<PageMeasurement> {
@@ -363,6 +375,22 @@ async function measure(
 	await page.goto(path, { waitUntil: 'load' });
 	const responsesBeforeLoad = responses.length;
 	const digitImagesBeforeLoad = responses.filter(isDigitImage).length;
+
+	// Issue #498: a Tool whose declared third-party contacts require
+	// consent renders no frame until the visitor starts the load. The
+	// counts below that describe the live DOM are taken AFTER that
+	// activation, so the Tool leg measures the surface the visitor
+	// actually asked for; `preActivationIframeCount` records what the
+	// document contained before the click.
+	let preActivationIframeCount: number | null = null;
+	if (options.activateSelector) {
+		preActivationIframeCount = await page.locator('iframe').count();
+		await page.locator(options.activateSelector).click();
+		await page.waitForFunction(() => document.querySelector('iframe') !== null, undefined, {
+			timeout: 10_000,
+		});
+		await page.waitForLoadState('networkidle');
+	}
 
 	let loadedImageCount: number | null = null;
 	if (options.scrollToSelector) {
@@ -442,6 +470,7 @@ async function measure(
 		totalBytes: responses.reduce((sum, response) => sum + response.bytes, 0),
 		imgTags,
 		iframeSrcs,
+		preActivationIframeCount,
 		videoSrcs,
 		audioSrcs,
 		embeddedMediaCount,
@@ -581,9 +610,15 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 		const baseURL = resolvedBaseURL(testInfo);
 		const tool = await measure(browser, 'tool route', '/tools/prototype', {
 			baseURL,
+			activateSelector: '[data-testid="tool-embed-consent-activate"]',
 			reportKey: 'tool-route',
 		});
 
+		// Issue #498: before the visitor starts the load there is no
+		// frame at all — the Tool's declared third-party contacts
+		// (Google Fonts / Typekit / Apps Script) must not be paid for by
+		// someone who only looked at the page.
+		expect(tool.preActivationIframeCount).toBe(0);
 		// The shell must still mount its sandboxed iframe …
 		expect(tool.iframeSrcs).toEqual(['/tools/prototype/app/index.html']);
 		// … and the Tool surface must not gain media elements the

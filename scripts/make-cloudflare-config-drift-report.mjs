@@ -54,8 +54,21 @@ const DEFAULT_OUT = resolve(ROOT, '.tmp', 'cloudflare-config-drift-report.html')
  */
 const WEBP_TARGET = join(ROOT, 'docs/verification/security/cloudflare-config-drift.webp');
 const WEBP_WIDTH = 1600;
-const WEBP_QUALITY = 58;
+/**
+ * The repository ships verification artefacts at quality 80, so this
+ * artefact uses the same setting.
+ *
+ * The page is a long status-only report (six rendered CLI outputs), so a
+ * 1280-wide capture at a 15px type scale lands over the artefact budget
+ * below (322 KB at quality 80). The artefact therefore uses a narrower
+ * viewport and a slightly tighter type scale: it stays inside the
+ * `width <= 1600` rule, it is rendered at its own size rather than
+ * downscaled (so the text stays sharp), and the budget is checked below
+ * rather than assumed.
+ */
+const WEBP_QUALITY = 80;
 const WEBP_MAX_BYTES = 300 * 1024;
+const CAPTURE_WIDTH = 1120;
 
 /** Rendered in this order: the live surface first, then the demonstrations. */
 const CASES = [
@@ -180,12 +193,12 @@ function buildPage({ entries, live, outPath }) {
   }
   * { box-sizing: border-box; }
   body {
-    margin: 0; padding: 40px 44px 56px; background: var(--canvas); color: var(--ink);
-    font: 15px/1.65 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    margin: 0; padding: 28px 32px 36px; background: var(--canvas); color: var(--ink);
+    font: 14px/1.55 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   }
   header { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 26px; }
   h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: 0.01em; }
-  h2 { font-size: 16px; margin: 32px 0 10px; letter-spacing: 0.02em; }
+  h2 { font-size: 15px; margin: 24px 0 8px; letter-spacing: 0.02em; }
   .meta { color: var(--muted); font-size: 13px; margin: 0; }
   p.lede { margin: 0 0 10px; color: var(--muted); max-width: 78ch; }
   table { width: 100%; border-collapse: collapse; background: var(--surface); font-size: 13px; }
@@ -196,9 +209,9 @@ function buildPage({ entries, live, outPath }) {
   .verdict.ok { color: var(--ok); background: var(--ok-bg); }
   .verdict.fail { color: var(--fail); background: var(--fail-bg); }
   .verdict.unknown { color: var(--warn); background: var(--warn-bg); }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
   code { background: #eef0f2; padding: 1px 5px; border-radius: 4px; word-break: break-all; }
-  pre { background: var(--surface); border: 1px solid var(--line); padding: 12px 14px; overflow-x: auto; }
+  pre { background: var(--surface); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; }
   figure { margin: 0 0 18px; }
   figcaption { color: var(--muted); font-size: 12px; margin-bottom: 6px; }
   ul { max-width: 78ch; }
@@ -234,11 +247,11 @@ ${[live, ...entries].map(renderOutput).join('\n')}
 
 <h2>3. 異常時の観測と修復手順</h2>
 <ul>
-  <li><code>verdict=DRIFT</code>（exit 1）: <code>finding=&lt;path&gt; kind=&lt;kind&gt;</code> を 1 行ずつ読む。<code>kind=missing</code> は binding / route の欠落、<code>kind=mismatch</code> は値の不一致、<code>kind=undeclared_mode_difference</code> は記録にない dev/prod 差分。</li>
+  <li><code>verdict=DRIFT</code>（exit 1）: <code>finding=&lt;path&gt; kind=&lt;kind&gt;</code> を 1 行ずつ読む。<code>kind=missing</code> は binding / route の欠落、<code>kind=mismatch</code> は値の不一致、<code>kind=undeclared_mode_difference</code> は記録にない dev/prod 差分、<code>kind=undeclared_mode_scalar_difference</code> は dev/prod で scalar（<code>compatibilityDate</code> など）が違う。</li>
   <li>意図的な変更なら<strong>同じ PR で</strong> <code>quality/cloudflare-config-drift.json</code> を更新する。記録は期待値そのものなので、実装だけ変えて記録を残すと次の誰かが同じ差分を踏む。</li>
   <li>production binding の差分は <code>cloudflare.config.ts</code> と <code>scripts/_cloudflare-contract.mjs</code> / <code>scripts/_cloudflare-identity.mjs</code> の 3 者を揃える（SoT は 1 つに保つ）。</li>
   <li>build / deploy command の差分は Cloudflare Dashboard（Workers Builds）側が実体。<code>pnpm run cf:mode-mismatch:check</code> と <code>pnpm run cloudflare:contract:check:build</code> で artifact 側も確認する。</li>
-  <li><code>verdict=UNDECIDABLE</code>（exit 2）は「読めなかった」であって「clean」ではない。記録・surface・<code>public/_headers</code> のいずれかが読めない、または記録が契約として成立していない。</li>
+  <li><code>verdict=UNDECIDABLE</code>（exit 2）は「読めなかった」であって「clean」ではない。記録・surface・<code>public/_headers</code> のいずれかが読めない、または記録が契約として成立していない（<strong>section の中身の欠落も含む</strong>:<code>static_asset_headers.required_paths</code> や <code>build_commands</code> が空になると、その dimension は何も検査しないまま緑になる）。</li>
 </ul>
 <p class="lede">
   詳細は <code>docs/runbook/cloudflare-config-drift.md</code>。
@@ -273,7 +286,7 @@ async function shoot(htmlPath, target) {
 	mkdirSync(dirname(target), { recursive: true });
 	const browser = await chromium.launch();
 	const page = await browser.newPage({
-		viewport: { width: 1280, height: 1200 },
+		viewport: { width: CAPTURE_WIDTH, height: 1200 },
 		deviceScaleFactor: 1,
 	});
 	try {

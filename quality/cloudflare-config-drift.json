@@ -38,12 +38,13 @@
 		}
 	},
 	"development": {
-		"$comment": "Development must never inherit the production origin (ADR-0014), so the route list is empty here. `LOCAL_API_MODE` is opt-in through `.dev.vars` (Issue #186): its ABSENCE in development is normal, its PRESENCE in production is drift. Any other difference between the two modes is drift too, which is what the gate checks.",
+		"$comment": "Development must never inherit the production origin (ADR-0014), so the route list is empty here. `LOCAL_API_MODE` is opt-in through `.dev.vars` (Issue #186): its ABSENCE in development is normal, its PRESENCE in production is drift. Any other difference between the two modes is drift too, which is what the gate checks. `mode_only_fields` lists the SCALAR fields (`accountId` / `name` / `compatibilityDate` / `compatibilityFlags` / `entrypoint` / `observability`) that are declared to differ between the two modes; it is empty, so every scalar must be identical in both modes.",
 		"routes": [],
 		"mode_only_bindings": {
 			"production_only": ["BETTER_AUTH_URL", "MEDIA_PUBLIC_BASE_URL"],
 			"development_only": ["LOCAL_API_MODE"]
-		}
+		},
+		"mode_only_fields": []
 	},
 	"build_commands": {
 		"$comment": "The commands Cloudflare Workers Builds runs on a `main` push (docs/runbook/cloudflare-workers-builds.md). No local tool can read that dashboard, so this gate asserts the half the repository owns: the script each command names still exists, and the runbook table still says what this record says.",

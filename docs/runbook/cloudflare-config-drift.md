@@ -47,10 +47,16 @@ Cloudflare Workers Builds は `main` への push で production を deploy す�
 | `routes` | route / hostname（`domains`）。production は正規 origin、development は空 | `route_mismatch` |
 | `headers` | Cloudflare Static Assets の `public/_headers` の coverage と nosniff baseline | `header_rule_uncovered` / `header_value_mismatch` / `header_rule_missing` |
 | `build_commands` | Workers Builds が実行する command が `package.json` script を指し、runbook の表と一致しているか | `script_missing` / `runbook_mismatch` |
-| `mode` | dev と prod の差分が、記録に宣言された差分だけか | `undeclared_mode_difference` / `undeclared_mode_field_difference` |
+| `mode` | dev と prod の差分が、記録に宣言された差分だけか。比較対象は binding 集合・route 集合・**scalar**（`accountId` / `name` / `compatibilityDate` / `compatibilityFlags` / `entrypoint` / `observability`） | `undeclared_mode_difference` / `undeclared_mode_field_difference` / `undeclared_mode_scalar_difference` |
 
 **1 項目の不一致が 1 finding、1 finding が 1 つの赤**である。tolerance 帯も
 閾値も「ほぼ一致」に落とす判定も存在しない。
+
+同じ項目を 2 つの dimension が重複して数えることはしない。production binding
+の欠落は `bindings` dimension が所有し、`mode` dimension はそれを繰り返さない
+（件数が repair のチェックリストとして使えるため）。一方で、1 件の変更が
+**別の 2 つの事実**を露呈することはある（例: production の text 値が記録と
+違う＝`bindings`、かつ dev と prod の値が違う＝`mode`）。その場合は 2 finding になる。
 
 ### なぜ「期待値」をデータとして持つのか
 
@@ -58,6 +64,32 @@ config 同士を比べただけでは何も証明できない。`cloudflare.conf
 すれば期待値と実測が同じ PR の中で一緒に動き、drift はその PR で再び緑に
 なる。期待値はしたがって**レビュー可能な設定判断としてデータに置く**
 （`quality/cloudflare-config-drift.json`）。差分は git diff として読める。
+
+### 記録の「内側の契約」
+
+**section が存在するだけでは記録は成立していない。** gate が期待値として読む
+field が 1 つでも欠けていれば、その dimension は**何も検査しないまま緑**に
+なる（`static_asset_headers.required_paths` を落とすと header coverage は
+検査されないまま `MATCH`、`build_commands` を空にすると build / deploy
+command は 1 本も検査されないまま `MATCH`）。これは「読めなかった」を
+「clean」に落とすのと同じ種類の fail-open なので、記録の**内側**も検査する。
+
+| 記録の部位 | 成立条件 |
+| --- | --- |
+| `production.bindings` | 1 件以上。`type` が文字列。`type: "secret"` は**名前だけ**（値があれば credential なので拒否） |
+| `production.routes` | 1 件以上の非空 string（canonical origin の宣言。空は「何も宣言していない」ので不可） |
+| `production.accountId` / `name` / `compatibilityDate` / `entrypoint` | いずれも非空 string |
+| `production.observability` | boolean |
+| `production.compatibilityFlags` | string の配列 |
+| `development.routes` | 配列（**空でよい**: development は production origin を継承しないのが正しい状態） |
+| `development.mode_only_bindings.production_only` / `.development_only` | string の配列 |
+| `development.mode_only_fields` | string の配列（scalar の mode 差分を宣言する場所。空 = どの scalar も両 mode で同じ） |
+| `build_commands` | `$` 始まりの documentation key を除いて **1 件以上**、かつ各 value が `pnpm run <script>` 形式 |
+| `static_asset_headers.file` / `policy_file` / `baseline_rule` / `baseline_header` / `baseline_policy_key` | いずれも非空 string |
+| `static_asset_headers.required_paths` | 1 件以上の非空 string |
+
+1 つでも欠けたら `verdict=UNDECIDABLE`（exit 2、reason は
+`record_incomplete:<field>`）になる。**空の記録を「該当なし」に読み替えない。**
 
 ## 2. 実行方法
 
@@ -79,7 +111,7 @@ Exit codes:
 | --- | --- | --- |
 | `0` | `MATCH` | 記録された contract と一致 |
 | `1` | `DRIFT` | 1 項目以上の差分 |
-| `2` | `UNDECIDABLE` | **判定不能**（fail-closed）。記録 / surface / `public/_headers` / policy ファイルが読めない、記録が契約として成立していない（secret binding に値がある、等）、usage error、または status-only を出力できない |
+| `2` | `UNDECIDABLE` | **判定不能**（fail-closed）。記録 / surface / `public/_headers` / policy ファイルが読めない、記録が契約として成立していない（**section の欠落**と**内側の field の欠落**の両方。secret binding に値がある、等）、usage error、または status-only を出力できない |
 
 `2` が pass と同じ信号にならないことがこの gate の要件である。「読めなかった」
 を「clean」に落とす実装は、この gate の存在意義を消す。
@@ -96,8 +128,8 @@ Exit codes:
 | fixture | 示すもの | expect |
 | --- | --- | --- |
 | `one-missing-binding` | production binding を 1 件外すと 1 finding・赤（受け入れ条件 1） | `DRIFT` / 1 |
-| `secret-binding-dropped` | runtime secret の **名前** 1 件の欠落と、その結果生じる未宣言の dev/prod 差分。値は出ない | `DRIFT` / 2 |
-| `text-value-drift` | text var の値が記録と違う 1 項目。実際の値は出さず長さだけ（redaction 契約） | `DRIFT` / 2 |
+| `secret-binding-dropped` | runtime secret の **名前** 1 件の欠落。値は出ない。production binding の欠落は `bindings` dimension が 1 件の finding として所有する | `DRIFT` / 1 |
+| `text-value-drift` | text var の値が記録と違う 1 項目と、その結果生じる未宣言の dev/prod 値差分（別々の 2 事実）。実際の値は出さず長さだけ（redaction 契約） | `DRIFT` / 2 |
 | `undeclared-development-binding` | 記録に宣言していない development 専用 binding | `DRIFT` / 1 |
 | `match` | 何も変えないので緑（ハーネス由来で赤にならないことの証明） | `MATCH` / 0 |
 
@@ -118,7 +150,7 @@ Exit codes:
 [cf-config-drift] reason=-
 [cf-config-drift] dimensions=bindings,routes,headers,build_commands,mode
 [cf-config-drift] findings=0 dim(bindings=0 routes=0 headers=0 build_commands=0 mode=0)
-[cf-config-drift] observed=bindings=12 secrets=3 (names only) routes=1 build_commands=3 header_rules=8
+[cf-config-drift] observed=bindings=12 secrets=3 (names only) routes=1 build_commands=2 header_rules=8
 [cf-config-drift] diff=none
 ```
 
@@ -150,17 +182,23 @@ secret binding 数・route 数である。
 | `kind=route_mismatch`（`production.routes`） | canonical origin の付け忘れ・外れ | `PRODUCTION_CUSTOM_DOMAIN`（ADR-0014）を基準に直す。`development.routes` が赤なら、dev が本番 origin を引き継いでいる（ADR-0014 §development が禁じている状態） |
 | `kind=undeclared_mode_difference`（`mode.*`） | 記録にない mode 専用 binding が 1 つ増えた | 意図的な差分なら記録の `development.mode_only_bindings` へ**名前だけ**を追加する。意図しない差分ならその binding を消す |
 | `kind=undeclared_mode_field_difference` | 同じ binding の**値**が mode ごとに違う | 値の mode 分岐は deployment ごとの挙動差になるため、原則そのままにする。やむなく維持するなら記録へ宣言し、レビューで 1 回だけ議論する |
+| `kind=undeclared_mode_scalar_difference`（`mode.undeclared_field.*`） | dev と prod の **scalar**（`compatibilityDate` / `name` / `entrypoint` / `observability` / `accountId` / `compatibilityFlags`）が違う | mode 分岐はファイル差分に出ないので、差分は記録でしか表せない。意図的な差分なら記録の `development.mode_only_fields` へ field 名を追加する |
 | `kind=header_rule_uncovered` / `header_value_mismatch`（`headers.*`） | `public/_headers` の rule 欠落、nosniff baseline の改変 | header の**値**と合成セマンティクスは `pnpm run security:headers:check`（Issue #449）の責務で、まずそちらを通すこと |
 | `kind=script_missing` / `runbook_mismatch`（`build_commands.*`） | `package.json` script の改名・削除、または runbook 表の陳腐化 | script 名を変えたなら **Cloudflare Dashboard（Workers Builds）の build / deploy command も同時に変更**する。ここを直さないと production は存在しない command を実行し続ける。runbook の表も同時に直す（本 gate が両者の一致を検証する） |
 
 `finding` 1 件が「その 1 項目だけ直せばよい」 corresponding な単位になっている
-ので、件数がそのまま repairs のチェックリストとして使える。
+ので、件数がそのまま repairs のチェックリストとして使える。同じ項目を 2 つの
+dimension が重複して数えることはない（production binding の欠落は
+`bindings` dimension が所有する）。1 件の変更が別の 2 つの事実を露呈する
+場合は 2 finding になる（§1 の dimension 表の直後の注記を参照）。
 
 ### 4.2 `verdict=UNDECIDABLE`（exit 2）
 
 | reason | 意味 | 対処 |
 | --- | --- | --- |
-| `record_unreadable` / `record_incomplete` | 記録が読めない、または契約として成立していない（`production.routes` / `bindings` / `build_commands` / `static_asset_headers` / `development.mode_only_bindings` の欠落） | 記録を修復する。**空の記録を「該当なし」に読み替えない** |
+| `record_unreadable` | 記録ファイルが読めない / JSON として壊れている | `quality/cloudflare-config-drift.json` を読む |
+| `record_incomplete` | 記録の **section** が欠けている（`production` / `production.bindings` / `production.routes` / `build_commands` / `static_asset_headers` / `development.mode_only_bindings`） | 記録を修復する。**空の記録を「該当なし」に読み替えない** |
+| `record_incomplete:<field>` | 記録の **内側**が欠けている（例: `record_incomplete:static_asset_headers.required_paths` / `record_incomplete:build_commands` / `record_incomplete:development.routes` / `record_incomplete:production.routes` / `record_incomplete:development.mode_only_bindings.production_only`） | 該当 field を §1「記録の「内側の契約」」の表に従って修復する。この状態では該当 dimension が**何も検査していない**ので、`MATCH` は出ていない（出ていたら fail-open） |
 | `record_incomplete:bindings.<NAME>` | `type: "secret"` の binding に別のフィールドがある | その値は credential である。記録から値を削除し、runtime secret の値は Infisical（ADR-0015）に置くこと |
 | `surface_unreadable` | `cloudflare.config.ts` が解決できない、または `worker` が surface として解釈できない | ローカルで `node -e "import('./cloudflare.config.ts').then(m => console.log(Object.keys(m.default)))"` を確認する。`cf` devDependency の導入漏れ也在此处に出る |
 | `scripts_unreadable` / `runbook_unreadable` | `package.json` / runbook が読めない | ファイル自体の欠落・改名を疑う |

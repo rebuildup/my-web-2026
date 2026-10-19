@@ -95,6 +95,7 @@ export const FINDING_KIND = Object.freeze({
 	type_mismatch: 'type_mismatch',
 	undeclared_mode_difference: 'undeclared_mode_difference',
 	undeclared_mode_field_difference: 'undeclared_mode_field_difference',
+	undeclared_mode_scalar_difference: 'undeclared_mode_scalar_difference',
 	route_mismatch: 'route_mismatch',
 	header_rule_missing: 'header_rule_missing',
 	header_value_mismatch: 'header_value_mismatch',
@@ -128,6 +129,25 @@ const SURFACE_FIELDS = Object.freeze([
 	'accountId',
 	'name',
 	'compatibilityDate',
+	'entrypoint',
+	'observability',
+]);
+
+/**
+ * Scalar surface fields whose per-mode difference must be DECLARED.
+ *
+ * The mode dimension does not only compare the two binding sets: a
+ * `compatibilityDate` that differs between development and production
+ * (or a worker `name` that does) is just as much an undeclared mode
+ * difference as a binding that exists on one side only, and it is
+ * invisible in a file diff. A difference is allowed only when the record
+ * names the field in `development.mode_only_fields`.
+ */
+const MODE_SCALAR_FIELDS = Object.freeze([
+	'accountId',
+	'name',
+	'compatibilityDate',
+	'compatibilityFlags',
 	'entrypoint',
 	'observability',
 ]);
@@ -409,6 +429,7 @@ export function diffModeSurfaces(record, production, development) {
 	const productionOnly = [...(record?.development?.mode_only_bindings?.production_only ?? [])];
 	const developmentOnly = [...(record?.development?.mode_only_bindings?.development_only ?? [])];
 	const declared = new Set([...productionOnly, ...developmentOnly]);
+	const modeOnlyFields = new Set([...(record?.development?.mode_only_fields ?? [])]);
 
 	if (!sameList([...(record?.development?.routes ?? [])], development?.routes)) {
 		findings.push(
@@ -418,6 +439,29 @@ export function diffModeSurfaces(record, production, development) {
 				FINDING_KIND.route_mismatch,
 				record?.development?.routes ?? [],
 				development?.routes,
+			),
+		);
+	}
+
+	// The SCALAR surface of the two modes, not only their bindings. A
+	// development worker that runs a different `compatibilityDate` or a
+	// different `name` is an undeclared mode difference in exactly the
+	// same sense as a binding that exists on one side only — and it is
+	// invisible in a file diff, because the mode branch does not show up
+	// there.
+	for (const field of MODE_SCALAR_FIELDS) {
+		if (modeOnlyFields.has(field)) continue;
+		const want = production?.[field];
+		const have = development?.[field];
+		const same = Array.isArray(want) ? sameList(want, have) : sameScalar(want, have);
+		if (same) continue;
+		findings.push(
+			finding(
+				'mode',
+				`mode.undeclared_field.${field}`,
+				FINDING_KIND.undeclared_mode_scalar_difference,
+				want,
+				have,
 			),
 		);
 	}
@@ -484,6 +528,13 @@ export function diffModeSurfaces(record, production, development) {
 	for (const name of Object.keys(development?.bindings ?? {}).sort()) {
 		if (declared.has(name)) continue;
 		if (!production?.bindings?.[name]) {
+			// A binding the RECORD declares for production but that the
+			// production surface does not carry is already reported by the
+			// bindings dimension as `missing`. Reporting it here as well
+			// would turn one missing item into two findings and make the
+			// count useless as a repair checklist: fixing the one item
+			// would clear both.
+			if (record?.production?.bindings?.[name]) continue;
 			findings.push(
 				finding(
 					'mode',
@@ -700,6 +751,20 @@ export function exitCodeFor(result) {
  * A record that cannot state the contract is not a passing record: it is
  * UNDECIDABLE. The alternative — treating a malformed record as "no
  * findings" — is the silent-pass this gate exists to remove.
+ *
+ * The check has two halves, and BOTH are needed:
+ *
+ *   1. the SECTIONS exist (`production`, `build_commands`,
+ *      `static_asset_headers`, `development.mode_only_bindings`), and
+ *   2. the INNER contract of each section exists too — the fields the
+ *      diff functions read as an expectation.
+ *
+ * The second half is not optional. `diffStaticAssetHeaders` reads
+ * `required_paths` with a `?? []` fallback and `build_commands` with a
+ * `?? {}` fallback, so a record that lost one of those fields would make
+ * the corresponding dimension inspect NOTHING while the gate still
+ * reported MATCH. A section that is present but empty is a record that
+ * cannot state the contract, exactly like a missing section.
  */
 export function readRecord(record) {
 	if (!record || typeof record !== 'object')
@@ -725,7 +790,122 @@ export function readRecord(record) {
 	if (!record.development?.mode_only_bindings) {
 		return undecidable(UNDECIDABLE_REASON.recordIncomplete);
 	}
+	const inner = innerContractProblem(record);
+	if (inner !== null) return undecidable(inner);
 	return null;
+}
+
+/** A non-empty string, or null. */
+function nonEmptyString(value) {
+	return typeof value === 'string' && value.trim().length > 0;
+}
+
+/** An array whose every member is a non-empty string, or null. */
+function stringList(value) {
+	if (!Array.isArray(value)) return null;
+	return value.every((item) => nonEmptyString(item)) ? value : null;
+}
+
+/**
+ * The record's INNER contract: every field the diff functions read as an
+ * expectation has to be present and of the right shape.
+ *
+ * The reason code names the offending field, so the operator is told
+ * WHICH part of the record has to be repaired instead of being told
+ * only that the record is incomplete.
+ */
+function innerContractProblem(record) {
+	const production = record.production ?? {};
+
+	// The production surface: at least one binding and at least one
+	// route (the canonical production origin is a fact of this platform,
+	// ADR-0014, so an EMPTY route list states no contract at all), and
+	// the scalars that decide what Cloudflare runs.
+	if (Object.keys(production.bindings ?? {}).length === 0) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:production.bindings`;
+	}
+	if (!Array.isArray(production.routes) || production.routes.length === 0) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:production.routes`;
+	}
+	if (stringList(production.routes) === null) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:production.routes`;
+	}
+	for (const field of ['accountId', 'name', 'compatibilityDate', 'entrypoint']) {
+		if (!nonEmptyString(production[field])) {
+			return `${UNDECIDABLE_REASON.recordIncomplete}:production.${field}`;
+		}
+	}
+	if (typeof production.observability !== 'boolean') {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:production.observability`;
+	}
+	if (stringList(production.compatibilityFlags) === null) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:production.compatibilityFlags`;
+	}
+
+	// The development surface: the route list is declared (and empty on
+	// purpose — development must never inherit the production origin),
+	// and the mode-only sets are declared.
+	if (stringList(record.development?.routes) === null) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:development.routes`;
+	}
+	const modeOnly = record.development?.mode_only_bindings ?? {};
+	if (stringList(modeOnly.production_only) === null) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:development.mode_only_bindings.production_only`;
+	}
+	if (stringList(modeOnly.development_only) === null) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:development.mode_only_bindings.development_only`;
+	}
+	if (stringList(record.development?.mode_only_fields) === null) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:development.mode_only_fields`;
+	}
+
+	// The Workers Builds commands: at least one REAL command, and each
+	// of them a `pnpm run <script>` invocation. A record that lost them
+	// would leave the build/deploy dimension inspecting nothing.
+	const commands = record.build_commands ?? {};
+	const commandKeys = Object.keys(commands).filter((key) => !key.startsWith('$'));
+	if (commandKeys.length === 0) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:build_commands`;
+	}
+	for (const key of commandKeys) {
+		if (scriptNameOf(commands[key]) === null) {
+			return `${UNDECIDABLE_REASON.recordIncomplete}:build_commands.${key}`;
+		}
+	}
+
+	// The static-asset header contract: the file, the policy file, the
+	// baseline triple, and the namespaces production serves. A missing
+	// `required_paths` would silently disable the coverage check.
+	const headers = record.static_asset_headers ?? {};
+	for (const field of [
+		'file',
+		'policy_file',
+		'baseline_rule',
+		'baseline_header',
+		'baseline_policy_key',
+	]) {
+		if (!nonEmptyString(headers[field])) {
+			return `${UNDECIDABLE_REASON.recordIncomplete}:static_asset_headers.${field}`;
+		}
+	}
+	if (!Array.isArray(headers.required_paths) || headers.required_paths.length === 0) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:static_asset_headers.required_paths`;
+	}
+	if (stringList(headers.required_paths) === null) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:static_asset_headers.required_paths`;
+	}
+	return null;
+}
+
+/**
+ * The number of REAL build commands the record declares.
+ *
+ * `$`-prefixed keys are documentation (`diffBuildCommands` skips them),
+ * so a count that included them would report more commands than the
+ * gate actually inspects.
+ */
+export function countBuildCommands(record) {
+	return Object.keys(record?.build_commands ?? {}).filter((key) => !key.startsWith('$')).length;
 }
 
 function undecidable(reason) {

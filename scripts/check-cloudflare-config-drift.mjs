@@ -73,6 +73,7 @@ import {
 	UNDECIDABLE_REASON,
 	applyDriftCase,
 	assertStatusOnly,
+	countBuildCommands,
 	decide,
 	diffBuildCommands,
 	diffModeSurfaces,
@@ -214,7 +215,7 @@ export async function runDriftAudit({ root = REPO_ROOT, caseName = null } = {}) 
 	const meta = {
 		source: caseName === null ? 'repository' : 'fixture',
 		target: 'production',
-		summary: `${summarize(production)} build_commands=${Object.keys(record.build_commands).length} header_rules=${headersRules.length}`,
+		summary: `${summarize(production)} build_commands=${countBuildCommands(record)} header_rules=${headersRules.length}`,
 		notes,
 	};
 	return {
@@ -303,6 +304,18 @@ async function main() {
 	}
 
 	const audit = await runDriftAudit({ root: REPO_ROOT, caseName: options.caseName });
+
+	// The leak guard runs on BOTH output paths. The text report and the
+	// machine-readable one carry the same finding objects, so a future
+	// comparison site must not be able to leak a credential through
+	// `--json` alone: the guard refuses the run (exit 2) before a byte
+	// is written.
+	try {
+		assertStatusOnly(audit.result, { isCredential: looksLikeCredentialValue });
+	} catch (error) {
+		process.stderr.write(`${REPORT_PREFIX} ${error.message}\n`);
+		return 2;
+	}
 
 	if (options.json) {
 		// Findings carry redacted values only (see `assertStatusOnly`), so

@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -8,6 +10,7 @@ import {
 	UNDECIDABLE_REASON,
 	applyDriftCase,
 	assertStatusOnly,
+	countBuildCommands,
 	decide,
 	diffBuildCommands,
 	diffModeSurfaces,
@@ -55,6 +58,51 @@ function surface(bindings, overrides = {}) {
 		bindings,
 		...overrides,
 	};
+}
+
+/**
+ * The development surface.
+ *
+ * The same shape as the production one, with the production origin
+ * removed: development must never inherit it (ADR-0014). The scalar
+ * fields are present because the mode dimension compares them too — a
+ * mode difference in `compatibilityDate` is as undeclared as a mode
+ * difference in a binding.
+ */
+function developmentSurface(bindings, overrides = {}) {
+	return {
+		mode: 'development',
+		accountId: 'c6ab6651a5d4d6d0d07686bbd3c3d56f',
+		name: 'my-web-2026',
+		compatibilityDate: '2026-09-07',
+		compatibilityFlags: ['global_fetch_strictly_public', 'nodejs_compat'],
+		entrypoint: './src/server.ts',
+		observability: true,
+		routes: [],
+		bindings,
+		...overrides,
+	};
+}
+
+/**
+ * A repository root whose RECORD is the committed one with one field
+ * changed.
+ *
+ * The audit reads the record from `root`, so a temporary root proves the
+ * GATE refuses the record — not only that a helper does. Everything the
+ * audit would read afterwards is symlinked, so the refusal can never be
+ * an accident of a missing file.
+ */
+function rootWithMutatedRecord(mutate) {
+	const root = mkdtempSync(join(tmpdir(), 'cf-config-drift-'));
+	mkdirSync(join(root, 'quality'), { recursive: true });
+	const mutated = record();
+	mutate(mutated);
+	writeFileSync(join(root, RECORD_PATH), `${JSON.stringify(mutated, null, '\t')}\n`);
+	for (const entry of ['cloudflare.config.ts', 'package.json', 'public', 'src', 'docs']) {
+		symlinkSync(join(ROOT, entry), join(root, entry));
+	}
+	return root;
 }
 
 describe('the recorded production contract matches the repository', () => {
@@ -236,20 +284,22 @@ describe('the dev / prod question', () => {
 
 	it('accepts the differences the record declares', () => {
 		const shared = sharedBindings();
-		const findings = diffModeSurfaces(record(), surface(shared, { routes: ['rebuildup.dev'] }), {
-			bindings: structuredClone(shared),
-			routes: [],
-		});
+		const findings = diffModeSurfaces(
+			record(),
+			surface(shared, { routes: ['rebuildup.dev'] }),
+			developmentSurface(shared),
+		);
 		assert.deepEqual(findings, []);
 	});
 
 	it('treats a development-only binding as opt-in, not as drift', () => {
 		// `LOCAL_API_MODE` comes from `.dev.vars`, so its absence in a clean
 		// checkout is normal; its presence in production is not.
-		const findings = diffModeSurfaces(record(), surface(record().production.bindings), {
-			bindings: sharedBindings(),
-			routes: [],
-		});
+		const findings = diffModeSurfaces(
+			record(),
+			surface(record().production.bindings),
+			developmentSurface(sharedBindings()),
+		);
 		assert.deepEqual(findings, []);
 	});
 
@@ -258,33 +308,36 @@ describe('the dev / prod question', () => {
 			...record().production.bindings,
 			LOCAL_API_MODE: { type: 'text', value: 'mock' },
 		};
-		const findings = diffModeSurfaces(record(), surface(bindings), {
-			bindings: sharedBindings(),
-			routes: [],
-		});
+		const findings = diffModeSurfaces(
+			record(),
+			surface(bindings),
+			developmentSurface(sharedBindings()),
+		);
 		assert.equal(findings.length, 1);
 		assert.equal(findings[0].path, 'mode.production_only.LOCAL_API_MODE');
 		assert.equal(findings[0].kind, 'unexpected');
 	});
 
 	it('rejects a route attached in development', () => {
-		const findings = diffModeSurfaces(record(), surface(record().production.bindings), {
-			bindings: sharedBindings(),
-			routes: ['rebuildup.dev'],
-		});
+		const findings = diffModeSurfaces(
+			record(),
+			surface(record().production.bindings),
+			developmentSurface(sharedBindings(), { routes: ['rebuildup.dev'] }),
+		);
 		assert.equal(findings.length, 1);
 		assert.equal(findings[0].dimension, 'routes');
 		assert.equal(findings[0].path, 'development.routes');
 	});
 
 	it('rejects a production-only binding that reached development', () => {
-		const findings = diffModeSurfaces(record(), surface(record().production.bindings), {
-			bindings: {
+		const findings = diffModeSurfaces(
+			record(),
+			surface(record().production.bindings),
+			developmentSurface({
 				...sharedBindings(),
 				BETTER_AUTH_URL: { type: 'text', value: 'https://rebuildup.dev' },
-			},
-			routes: [],
-		});
+			}),
+		);
 		assert.equal(findings[0].path, 'mode.development_only_absent.BETTER_AUTH_URL');
 	});
 
@@ -293,15 +346,62 @@ describe('the dev / prod question', () => {
 			...record().production.bindings,
 			MY_WEB_2026_COUNTER_KEY: { type: 'text', value: 'home-page' },
 		};
-		const findings = diffModeSurfaces(record(), surface(prod), {
-			bindings: {
+		const findings = diffModeSurfaces(
+			record(),
+			surface(prod),
+			developmentSurface({
 				...sharedBindings(),
 				MY_WEB_2026_COUNTER_KEY: { type: 'text', value: 'staging-page' },
-			},
-			routes: [],
-		});
+			}),
+		);
 		assert.equal(findings.length, 1);
 		assert.equal(findings[0].kind, 'undeclared_mode_field_difference');
+	});
+
+	it('rejects an undeclared SCALAR difference between the two modes', () => {
+		// A `compatibilityDate` that differs between development and
+		// production is just as undeclared as a binding that exists on one
+		// side only, and it is invisible in a file diff.
+		const findings = diffModeSurfaces(
+			record(),
+			surface(record().production.bindings),
+			developmentSurface(sharedBindings(), { compatibilityDate: '2026-01-01' }),
+		);
+		const item = findings.find((entry) => entry.path === 'mode.undeclared_field.compatibilityDate');
+		assert.equal(item.kind, 'undeclared_mode_scalar_difference');
+		assert.equal(item.dimension, 'mode');
+	});
+
+	it('accepts a scalar difference the record declares', () => {
+		const declared = record();
+		declared.development.mode_only_fields = ['compatibilityDate'];
+		const findings = diffModeSurfaces(
+			declared,
+			surface(record().production.bindings),
+			developmentSurface(sharedBindings(), { compatibilityDate: '2026-01-01' }),
+		);
+		assert.deepEqual(findings, []);
+	});
+
+	it('reports a missing production binding once, not once per dimension', () => {
+		// The bindings dimension owns "a production binding the record
+		// declares is missing"; the mode dimension must not repeat it, or
+		// the count stops being a repair checklist.
+		const productionBindings = { ...record().production.bindings };
+		// The key must be GONE, not set to `undefined`: a present key with
+		// an undefined value is a different surface.
+		Reflect.deleteProperty(productionBindings, 'BETTER_AUTH_SECRETS');
+		const { BETTER_AUTH_URL, MEDIA_PUBLIC_BASE_URL, ...shared } = productionBindings;
+		const developmentBindings = {
+			...shared,
+			BETTER_AUTH_SECRETS: { type: 'secret' },
+		};
+		const findings = diffModeSurfaces(
+			record(),
+			surface(productionBindings),
+			developmentSurface(developmentBindings),
+		);
+		assert.deepEqual(findings, []);
 	});
 });
 
@@ -466,6 +566,151 @@ describe('fail closed', () => {
 		assert.match(readRecord(poisoned).error, /record_incomplete:bindings\.BETTER_AUTH_SECRETS/);
 	});
 
+	it('refuses a record whose INNER contract is broken', () => {
+		// A section that is present but empty states no contract, so the
+		// dimension that reads it would inspect NOTHING while the gate
+		// still reported MATCH. That is the silent pass this gate exists
+		// to remove, so every one of these is UNDECIDABLE.
+		const broken = [
+			[
+				'static_asset_headers.required_paths',
+				(r) => {
+					r.static_asset_headers.required_paths = undefined;
+				},
+			],
+			[
+				'static_asset_headers.baseline_rule',
+				(r) => {
+					r.static_asset_headers.baseline_rule = undefined;
+				},
+			],
+			[
+				'static_asset_headers.baseline_header',
+				(r) => {
+					r.static_asset_headers.baseline_header = undefined;
+				},
+			],
+			[
+				'static_asset_headers.policy_file',
+				(r) => {
+					r.static_asset_headers.policy_file = undefined;
+				},
+			],
+			[
+				'build_commands',
+				(r) => {
+					r.build_commands = {};
+				},
+			],
+			[
+				'build_commands.deploy',
+				(r) => {
+					r.build_commands.deploy = 'npm run deploy';
+				},
+			],
+			[
+				'development.routes',
+				(r) => {
+					r.development.routes = undefined;
+				},
+			],
+			[
+				'development.mode_only_bindings.production_only',
+				(r) => {
+					r.development.mode_only_bindings.production_only = undefined;
+				},
+			],
+			[
+				'development.mode_only_bindings.development_only',
+				(r) => {
+					r.development.mode_only_bindings.development_only = undefined;
+				},
+			],
+			[
+				'development.mode_only_fields',
+				(r) => {
+					r.development.mode_only_fields = undefined;
+				},
+			],
+			[
+				'production.routes',
+				(r) => {
+					r.production.routes = [];
+				},
+			],
+			[
+				'production.bindings',
+				(r) => {
+					r.production.bindings = {};
+				},
+			],
+			[
+				'production.compatibilityDate',
+				(r) => {
+					r.production.compatibilityDate = undefined;
+				},
+			],
+		];
+		for (const [field, mutate] of broken) {
+			const mutated = record();
+			mutate(mutated);
+			const problem = readRecord(mutated);
+			assert.ok(problem, field);
+			assert.match(problem.error, /^record_incomplete/, field);
+		}
+	});
+
+	it('refuses a record whose inner contract is broken, end to end', async () => {
+		// The unit test above proves the helper refuses; this one proves
+		// the GATE refuses, with the exit code a CI job would see.
+		const broken = [
+			[
+				'static_asset_headers.required_paths',
+				(r) => {
+					r.static_asset_headers.required_paths = undefined;
+				},
+			],
+			[
+				'static_asset_headers.baseline_rule',
+				(r) => {
+					r.static_asset_headers.baseline_rule = undefined;
+				},
+			],
+			[
+				'build_commands',
+				(r) => {
+					r.build_commands = {};
+				},
+			],
+			[
+				'development.routes',
+				(r) => {
+					r.development.routes = undefined;
+				},
+			],
+		];
+		for (const [field, mutate] of broken) {
+			const root = rootWithMutatedRecord(mutate);
+			try {
+				const audit = await runDriftAudit({ root });
+				assert.equal(audit.result.verdict, DRIFT_VERDICT.undecidable, field);
+				assert.equal(exitCodeFor(audit.result), 2, field);
+				assert.match(audit.result.reason, /^record_incomplete/, field);
+				assert.equal(audit.result.findings.length, 0, field);
+			} finally {
+				rmSync(root, { recursive: true, force: true });
+			}
+		}
+	});
+
+	it('counts the REAL build commands, not the documentation keys', () => {
+		assert.equal(countBuildCommands(record()), 2);
+		assert.equal(
+			countBuildCommands({ build_commands: { $comment: 'prose', build: 'pnpm run build' } }),
+			1,
+		);
+	});
+
 	it('maps a reason to a non-zero exit that is NOT the pass code', () => {
 		const undecidable = decide([], UNDECIDABLE_REASON.recordUnreadable);
 		assert.equal(undecidable.verdict, DRIFT_VERDICT.undecidable);
@@ -483,6 +728,38 @@ describe('fail closed', () => {
 			normalizeWorkerSurface({ mode: 'production', config: { worker: {} } }).error,
 			'worker_not_object',
 		);
+	});
+});
+
+describe('the machine-readable output is status-only too', () => {
+	const script = join(ROOT, 'scripts/check-cloudflare-config-drift.mjs');
+
+	it('applies the same redaction to the JSON stream', () => {
+		// The leak guard runs on BOTH output paths, so a future comparison
+		// site cannot leak a credential through `--json` alone.
+		const run = spawnSync(process.execPath, [script, '--case=text-value-drift', '--json'], {
+			encoding: 'utf8',
+		});
+		assert.equal(run.status, 1);
+		const parsed = JSON.parse(run.stdout);
+		assert.equal(parsed.verdict, DRIFT_VERDICT.drift);
+		const item = parsed.findings.find(
+			(entry) => entry.path === 'bindings.MY_WEB_2026_COUNTER_KEY.value',
+		);
+		assert.equal(item.actual, '<redacted len=12>');
+		// The un-redacted value must not exist anywhere in the JSON stream.
+		assert.ok(!run.stdout.includes('staging-page'), run.stdout);
+	});
+
+	it('never prints a binding value in the JSON stream', () => {
+		const run = spawnSync(process.execPath, [script, '--json'], { encoding: 'utf8' });
+		assert.equal(run.status, 0);
+		const parsed = JSON.parse(run.stdout);
+		assert.equal(parsed.verdict, DRIFT_VERDICT.match);
+		for (const binding of Object.values(record().production.bindings)) {
+			if (typeof binding.value !== 'string') continue;
+			assert.ok(!run.stdout.includes(binding.value), binding.value);
+		}
 	});
 });
 

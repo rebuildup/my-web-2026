@@ -64,7 +64,9 @@ const WEBP_WIDTH = 1600;
  * viewport and a slightly tighter type scale: it stays inside the
  * `width <= 1600` rule, it is rendered at its own size rather than
  * downscaled (so the text stays sharp), and the budget is checked below
- * rather than assumed.
+ * rather than assumed. The type scale is tightened one step further
+ * (13px body / 10.5px code) because the report grew a section: the
+ * artefact has to stay well inside the budget, not just under it.
  */
 const WEBP_QUALITY = 80;
 const WEBP_MAX_BYTES = 300 * 1024;
@@ -194,7 +196,7 @@ function buildPage({ entries, live, outPath }) {
   * { box-sizing: border-box; }
   body {
     margin: 0; padding: 28px 32px 36px; background: var(--canvas); color: var(--ink);
-    font: 14px/1.55 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
+    font: 13px/1.5 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif;
   }
   header { border-bottom: 2px solid var(--ink); padding-bottom: 18px; margin-bottom: 26px; }
   h1 { font-size: 24px; margin: 0 0 6px; letter-spacing: 0.01em; }
@@ -209,7 +211,7 @@ function buildPage({ entries, live, outPath }) {
   .verdict.ok { color: var(--ok); background: var(--ok-bg); }
   .verdict.fail { color: var(--fail); background: var(--fail-bg); }
   .verdict.unknown { color: var(--warn); background: var(--warn-bg); }
-  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+  code, pre { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 10.5px; }
   code { background: #eef0f2; padding: 1px 5px; border-radius: 4px; word-break: break-all; }
   pre { background: var(--surface); border: 1px solid var(--line); padding: 10px 12px; overflow-x: auto; }
   figure { margin: 0 0 18px; }

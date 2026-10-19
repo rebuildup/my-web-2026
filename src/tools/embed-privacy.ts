@@ -166,6 +166,12 @@ export interface EmbedPrivacyVerdict {
  *     tracking endpoint takes.
  *   - `http:` — the canonical production origin is https (ADR-0014).
  *   - credentials in the authority (`https://user:pw@x.test`).
+ *
+ * The messages below stay short on purpose: this module ships in the
+ * client entry chunk (the loader runs on client-side navigation), so
+ * every byte of developer prose here is paid for by every route. The
+ * reasons live in this comment and in `docs/tools/embed-privacy.md`;
+ * the message itself carries slug + code + the one fact to fix.
  */
 export function normalizeThirdPartyOrigin(value: unknown): string | null {
 	if (typeof value !== 'string') return null;
@@ -281,7 +287,7 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 			violation(
 				slug,
 				'privacy.declaration-missing',
-				`${slug}: delivery.privacy is required for ${kind}; "this Tool contacts no third party" has to be written down (Issue #498)`,
+				`${slug}: delivery.privacy is required for ${kind} (Issue #498)`,
 			),
 		);
 	}
@@ -297,7 +303,7 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 				violation(
 					slug,
 					'privacy.origin.invalid',
-					`${slug}: third_party_origins entry ${JSON.stringify(entry)} must be a bare https origin (no wildcard, path, query, fragment or credentials)`,
+					`${slug}: third_party_origins entry ${JSON.stringify(entry)} is not a bare https origin`,
 				),
 			);
 			continue;
@@ -307,7 +313,7 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 				violation(
 					slug,
 					'privacy.origin.duplicate',
-					`${slug}: third_party_origins entry "${normalized}" is repeated`,
+					`${slug}: third_party_origins repeats ${normalized}`,
 				),
 			);
 			continue;
@@ -326,7 +332,7 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 			violation(
 				slug,
 				'privacy.origin.frame-origin-undeclared',
-				`${slug}: the frame is served by ${frameOrigin}, which is not listed in delivery.privacy.third_party_origins; an external document cannot be embedded without publishing which origin serves it (Issue #498)`,
+				`${slug}: frame origin ${frameOrigin} is not declared in third_party_origins (Issue #498)`,
 			),
 		);
 	}
@@ -340,7 +346,7 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 				violation(
 					slug,
 					'privacy.purpose.missing',
-					`${slug}: delivery.privacy.purpose is required once third_party_origins is non-empty (both ja and en)`,
+					`${slug}: delivery.privacy.purpose is required once third_party_origins is non-empty`,
 				),
 			);
 		} else if (ja.length === 0 || en.length === 0) {
@@ -348,7 +354,7 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 				violation(
 					slug,
 					'privacy.purpose.locale-missing',
-					`${slug}: delivery.privacy.purpose needs a non-empty ja AND en value`,
+					`${slug}: delivery.privacy.purpose needs a non-empty ja AND en`,
 				),
 			);
 		}

@@ -9,17 +9,20 @@ import {
 	PSEUDO_LOCALE_ID,
 	PSEUDO_LOCALE_LIMITS,
 	PSEUDO_STRESS_SAMPLES,
+	PSEUDO_SURFACE_SAMPLE_IDS,
 	type PseudoSample,
 	assertExpandableText,
 	auditBidiIsolation,
 	auditPseudoSamples,
 	auditPseudoText,
+	codePointLength,
 	collapsePseudoText,
 	digitRuns,
 	expandPseudoText,
 	expandableSlots,
 	isolateEmbeddedRuns,
 	protectedCodePointCount,
+	pseudoExpandedText,
 	pseudoLocalize,
 	pseudoSampleById,
 	stripIsolates,
@@ -360,6 +363,46 @@ describe('audit table', () => {
 			'1024',
 			'768',
 		]);
+	});
+});
+
+describe('one expansion string for every presentation surface', () => {
+	it('expands a row exactly as the audit expanded it', () => {
+		// The Storybook preview and the browser capture both render
+		// `pseudoExpandedText()`. If one of them built its own options,
+		// the picture would certify a decorated `read-only` while the
+		// audit certified the protected one.
+		for (const sample of samples) {
+			expect(pseudoExpandedText(sample)).toBe(
+				pseudoLocalize(sample.text, sample.direction, {
+					ratio: DEFAULT_EXPANSION_RATIO,
+					protectedTokens: sample.meaningTokens ?? [],
+				}),
+			);
+		}
+	});
+
+	it('keeps every declared token readable in the string a surface renders', () => {
+		const sample = pseudoSampleById('en-negation-permission');
+		const rendered = pseudoExpandedText(sample);
+		expect(rendered).toContain('read-only');
+		expect(rendered).toContain('do not publish');
+		expect(rendered).toContain('admin access');
+		// …and the expansion really did grow around them.
+		expect(codePointLength(rendered)).toBeGreaterThan(codePointLength(sample.text));
+	});
+
+	it('renders the RTL isolates an isolate-only surface would lose', () => {
+		const rendered = pseudoExpandedText(pseudoSampleById('he-rtl-acronym'));
+		expect(auditBidiIsolation(rendered).isolates).toEqual({ lri: 4, pdi: 4 });
+	});
+
+	it('names surface rows that exist in the table, once each', () => {
+		expect(PSEUDO_SURFACE_SAMPLE_IDS.length).toBeGreaterThanOrEqual(3);
+		expect(new Set(PSEUDO_SURFACE_SAMPLE_IDS).size).toBe(PSEUDO_SURFACE_SAMPLE_IDS.length);
+		for (const id of PSEUDO_SURFACE_SAMPLE_IDS) {
+			expect(() => pseudoSampleById(id)).not.toThrow();
+		}
 	});
 });
 

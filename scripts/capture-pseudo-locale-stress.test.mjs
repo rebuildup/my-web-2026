@@ -13,11 +13,15 @@
  *      prove the fixture, and the report prints the limits verbatim so
  *      a green screenshot cannot be read as more than it is.
  *   2. **The verdict logic.** `evaluateMeasurement` decides what the
- *      browser's facts mean. That decision is the only part of the
- *      capture that can produce a false green, so it is asserted
- *      against hand-built facts — an overflowing frame, a missing
- *      meaning token, unbalanced isolates, a missing webfont — instead
- *      of being trusted to a Chromium run nobody re-reads.
+ *      browser's facts mean, and `evaluateRun` decides what a pair of
+ *      measurements (shipped breaking rules, and the same frames with a
+ *      fixture-local mitigation) means together. Those decisions are the
+ *      only part of the capture that can produce a false green, so they
+ *      are asserted against hand-built facts — an overflowing frame, a
+ *      missing meaning token, an isolate the renderer dropped, an
+ *      unbalanced declaration, a missing webfont, a frame that overflows
+ *      only without the mitigation — instead of being trusted to a
+ *      Chromium run nobody re-reads.
  *
  * The screenshot itself is not asserted here; it is a committed
  * artefact with a human-readable report next to it.
@@ -29,10 +33,11 @@ import { dirname, join, relative, resolve } from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
 
+import { PSEUDO_SURFACE_SAMPLE_IDS } from '../src/i18n/pseudo-locale.ts';
 import {
-	SURFACE_SAMPLE_IDS,
 	buildReportModel,
 	evaluateMeasurement,
+	evaluateRun,
 	renderReportHtml,
 } from './capture-pseudo-locale-stress.mjs';
 
@@ -90,6 +95,7 @@ function modelWith(rows = [auditRow()], samples = [sample()], limits = ['Not a t
 			ok: rows.every((row) => row.ok),
 		},
 		samples,
+		surfaceIds: PSEUDO_SURFACE_SAMPLE_IDS,
 		fonts: {
 			heading: '"Zen Kaku Gothic New", sans-serif',
 			sans: '"Noto Sans JP", sans-serif',
@@ -110,7 +116,7 @@ test('the report prints the shipped font stacks, not a restated font', () => {
 test('the report escapes fixture data so a row cannot rewrite the artefact', () => {
 	// The injected subject rides on a surface row, because that is where
 	// a fixture string is rendered OUTSIDE the escaped verdict table.
-	const id = SURFACE_SAMPLE_IDS[0];
+	const id = PSEUDO_SURFACE_SAMPLE_IDS[0];
 	const model = modelWith(
 		[auditRow({ id })],
 		[sample({ id, subject: '<script>alert(1)</script>', text: 'a < b & c' })],
@@ -141,19 +147,49 @@ test('the report prints the limits verbatim, so a green picture is not read as R
 });
 
 test('the report draws only the surface rows, before and after', () => {
-	const rows = SURFACE_SAMPLE_IDS.map((id, index) => auditRow({ id }));
-	const samples = SURFACE_SAMPLE_IDS.map((id, index) => sample({ id, text: `source ${index}` }));
+	const rows = PSEUDO_SURFACE_SAMPLE_IDS.map((id) => auditRow({ id }));
+	const samples = PSEUDO_SURFACE_SAMPLE_IDS.map((id, index) =>
+		sample({ id, text: `source ${index}` }),
+	);
 	const html = renderReportHtml(modelWith(rows, samples));
-	for (const id of SURFACE_SAMPLE_IDS) {
+	for (const id of PSEUDO_SURFACE_SAMPLE_IDS) {
 		assert.equal(html.match(new RegExp(`data-pseudo-surface="${id}"`, 'g'))?.length, 1);
 	}
 	// Two frames per surface row: source and expansion.
-	assert.equal(html.match(/data-pseudo-frame="before"/g)?.length, SURFACE_SAMPLE_IDS.length);
-	assert.equal(html.match(/data-pseudo-frame="after"/g)?.length, SURFACE_SAMPLE_IDS.length);
+	assert.equal(html.match(/data-pseudo-frame="before"/g)?.length, PSEUDO_SURFACE_SAMPLE_IDS.length);
+	assert.equal(html.match(/data-pseudo-frame="after"/g)?.length, PSEUDO_SURFACE_SAMPLE_IDS.length);
 	// Every audited row still appears in the verdict table.
-	for (const id of SURFACE_SAMPLE_IDS) {
+	for (const id of PSEUDO_SURFACE_SAMPLE_IDS) {
 		assert.ok(html.includes(`data-pseudo-audit="${id}"`));
 	}
+});
+
+test('the `before` frame carries the source string, not the expansion', () => {
+	// Two frames under a `source` caption that both render the expansion
+	// would be one measurement wearing two labels.
+	const ids = PSEUDO_SURFACE_SAMPLE_IDS;
+	const html = renderReportHtml(
+		modelWith(
+			ids.map((id) => auditRow({ id, expandedText: `expanded ${id}` })),
+			ids.map((id) => sample({ id, text: `source words of ${id}` })),
+		),
+	);
+	const before = /data-pseudo-frame="before"[\s\S]*?<\/div>/.exec(html)?.[0] ?? '';
+	assert.match(before, /source words of /);
+	assert.ok(!before.includes('expanded '), 'the before frame renders the expansion');
+});
+
+test('the report separates the shipped rules from the fixture-local mitigation', () => {
+	const html = renderReportHtml(modelWith());
+	// The shipped rule is restated, so the measurement is never made
+	// against CSS the product does not declare.
+	assert.match(html, /word-break: auto-phrase;/);
+	assert.match(html, /h3 \{ font-size: 18px; line-height: 1\.3; margin: 0; text-wrap: balance; \}/);
+	// And the extra declaration is labelled as this report's, not the
+	// editorial language's.
+	assert.match(html, /html\.breaks-anywhere h3 \{ overflow-wrap: anywhere; \}/);
+	assert.match(html, /NOT an editorial recipe/);
+	assert.match(html, /data-role="shipped-overflow"/);
 });
 
 test('a failing audit row is printed as a failure, not hidden', () => {
@@ -166,14 +202,24 @@ test('a failing audit row is printed as a failure, not hidden', () => {
 	assert.match(html, /class="bad"/);
 });
 
-/** A passing measurement: nothing overflows, every token reached the DOM. */
+/** A rendered frame fact, as the browser pass reports one. */
+function frame(overrides = {}) {
+	return {
+		id: 'row-1',
+		phase: 'before',
+		scrollWidth: 320,
+		clientWidth: 320,
+		headingText: 'source row 1',
+		isolates: { lri: 0, pdi: 0 },
+		...overrides,
+	};
+}
+
+/** A passing measurement: nothing overflows, every token reached the heading. */
 function passingMeasurement(overrides = {}) {
 	return evaluateMeasurement({
 		page: { viewportWidth: 1440, documentScrollWidth: 1440 },
-		frames: [
-			{ id: 'row-1', phase: 'before', scrollWidth: 320, clientWidth: 320, text: 'source row 1' },
-			{ id: 'row-1', phase: 'after', scrollWidth: 320, clientWidth: 320, text: 'read-only stays' },
-		],
+		frames: [frame(), frame({ phase: 'after', headingText: 'read-only stays' })],
 		meaningTokens: [{ id: 'row-1', token: 'read-only' }],
 		isolates: [{ id: 'rtl-1', lri: 2, pdi: 2 }],
 		webfontLoaded: true,
@@ -183,18 +229,25 @@ function passingMeasurement(overrides = {}) {
 }
 
 test('a measurement that broke nothing is accepted', () => {
-	assert.deepEqual(passingMeasurement(), { ok: true, findings: [] });
+	assert.deepEqual(passingMeasurement(), { ok: true, findings: [], layoutFindings: [] });
 });
 
 test('a frame that overflows horizontally fails the run', () => {
 	const verdict = passingMeasurement({
-		frames: [
-			{ id: 'row-1', phase: 'before', scrollWidth: 320, clientWidth: 320, text: '' },
-			{ id: 'row-1', phase: 'after', scrollWidth: 361, clientWidth: 320, text: '' },
-		],
+		frames: [frame(), frame({ phase: 'after', scrollWidth: 361 })],
 	});
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.findings.join(' '), /frame row-1 \(after\) overflows: 361 > 320/);
+});
+
+test('a frame overflow is separated from the string-level findings', () => {
+	// The one class of finding a CSS change can resolve, so the run-level
+	// verdict has to be able to tell it apart from a lost token.
+	const verdict = passingMeasurement({
+		frames: [frame(), frame({ phase: 'after', scrollWidth: 361, headingText: 'read-only broke' })],
+	});
+	assert.deepEqual(verdict.layoutFindings, ['frame row-1 (after) overflows: 361 > 320']);
+	assert.equal(verdict.ok, false);
 });
 
 test('the page overflowing fails the run even when every frame held', () => {
@@ -205,24 +258,25 @@ test('the page overflowing fails the run even when every frame held', () => {
 	assert.match(verdict.findings.join(' '), /the page overflows horizontally: 1600 > 1440/);
 });
 
-test('a meaning token that did not reach the DOM fails the run', () => {
+test('a meaning token that did not reach the heading fails the run', () => {
 	const verdict = passingMeasurement({
-		frames: [
-			{ id: 'row-1', phase: 'before', scrollWidth: 320, clientWidth: 320, text: '' },
-			{
-				id: 'row-1',
-				phase: 'after',
-				scrollWidth: 320,
-				clientWidth: 320,
-				text: 'read\u00B7\u0301-only',
-			},
-		],
+		frames: [frame(), frame({ phase: 'after', headingText: 'read\u00B7\u0301-only' })],
 	});
 	assert.equal(verdict.ok, false);
 	assert.match(
 		verdict.findings.join(' '),
-		/meaning token "read-only" did not reach the DOM of row row-1/,
+		/meaning token "read-only" did not reach the rendered heading of row row-1/,
 	);
+});
+
+test('a call-to-action chip cannot vouch for the heading it is checked against', () => {
+	// The frame also renders a chip built from the same token list, so a
+	// frame-wide search would pass a heading whose expansion had broken
+	// the token. Only the heading node counts.
+	const verdict = passingMeasurement({
+		frames: [frame(), frame({ phase: 'after', headingText: 'read\u00B7\u0301-only' })],
+	});
+	assert.equal(verdict.ok, false);
 });
 
 test('a token with no rendered frame is a finding, not a silent pass', () => {
@@ -237,6 +291,29 @@ test('unbalanced isolates fail the run', () => {
 	assert.match(verdict.findings.join(' '), /rtl-1 declares unbalanced isolates \(2\/1\)/);
 });
 
+test('an isolate the renderer dropped is a finding, not a check that cannot fail', () => {
+	// The declared counts are balanced here; what differs is the TEXT
+	// the browser laid out. Counting U+2066/U+2069 in the rendered
+	// heading is what makes this assertion able to fail at all.
+	const verdict = passingMeasurement({
+		frames: [
+			frame(),
+			frame({
+				id: 'rtl-1',
+				phase: 'after',
+				headingText: 'a run with no isolate in it',
+				isolates: { lri: 0, pdi: 0 },
+			}),
+		],
+		isolates: [{ id: 'rtl-1', lri: 2, pdi: 2 }],
+	});
+	assert.equal(verdict.ok, false);
+	assert.match(
+		verdict.findings.join(' '),
+		/rtl-1: the rendered heading carries 0\/0 U\+2066\/U\+2069, but the row declares 2\/2/,
+	);
+});
+
 test('an unloaded webfont fails the run, so a fallback-only run cannot read as coverage', () => {
 	const verdict = passingMeasurement({ webfontLoaded: false });
 	assert.equal(verdict.ok, false);
@@ -247,6 +324,37 @@ test('a failing fixture row fails the capture even when the browser is happy', (
 	const verdict = passingMeasurement({ audit: { ok: false } });
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.findings.join(' '), /the fixture audit itself reported a failing row/);
+});
+
+test('a frame that overflows only under the shipped rules is recorded, not failed', () => {
+	// The shipped language has no freer break rule for a heading, so a
+	// long compound overflows until `src/editorial/` decides otherwise.
+	// That is a product observation; the run still passes, and says so.
+	const shipped = passingMeasurement({
+		frames: [frame(), frame({ phase: 'after', scrollWidth: 361, headingText: 'read-only stays' })],
+	});
+	const run = evaluateRun({ shipped, mitigated: passingMeasurement() });
+	assert.equal(run.ok, true);
+	assert.deepEqual(run.shippedOverflow, ['frame row-1 (after) overflows: 361 > 320']);
+	assert.match(run.notes.join(' '), /overflow under the SHIPPED breaking rules/);
+});
+
+test('a frame that overflows even with the mitigation fails the run', () => {
+	const broken = passingMeasurement({
+		frames: [frame(), frame({ phase: 'after', scrollWidth: 361 })],
+	});
+	const run = evaluateRun({ shipped: broken, mitigated: broken });
+	assert.equal(run.ok, false);
+	assert.match(run.notes.join(' '), /even with the fixture-local overflow-wrap: anywhere/);
+});
+
+test('a lost token under the shipped rules fails the run even when the mitigation is green', () => {
+	const shipped = passingMeasurement({
+		frames: [frame(), frame({ phase: 'after', headingText: 'read\u00B7\u0301-only' })],
+	});
+	const run = evaluateRun({ shipped, mitigated: passingMeasurement() });
+	assert.equal(run.ok, false);
+	assert.match(run.findings.join(' '), /did not reach the rendered heading/);
 });
 
 /** Every `.ts` / `.tsx` under `src/`, depth first. */

@@ -4,10 +4,11 @@ import {
 	DEFAULT_EXPANSION_RATIO,
 	PSEUDO_LOCALE_ID,
 	PSEUDO_LOCALE_LIMITS,
-	PSEUDO_STRESS_SAMPLES,
+	PSEUDO_SURFACE_SAMPLE_IDS,
 	type PseudoSample,
 	auditPseudoSamples,
-	pseudoLocalize,
+	pseudoExpandedText,
+	pseudoSampleById,
 } from '../i18n/pseudo-locale';
 
 /**
@@ -29,6 +30,13 @@ import {
  *      the same functions `src/i18n/pseudo-locale.test.ts` asserts on,
  *      so the preview cannot drift from the CI verdict.
  *
+ * The frames are drawn with the shipped BREAKING rules too, not with a
+ * preview-only one: this Storybook loads `src/styles.css`, and the
+ * heading carries only `text-wrap: balance`. A row that overflows here
+ * overflows in the product, which is the point — a preview that added
+ * `overflow-wrap: anywhere` would have certified a rule the product
+ * does not ship.
+ *
  * The fixture lives in `src/i18n/` because it is text POLICY data (which
  * strings, which expansion, which claims); the rendering lives here
  * because `editorial` owns the visual language. Neither half owns the
@@ -47,15 +55,6 @@ import {
  * captured by `scripts/capture-pseudo-locale-stress.mjs`.
  */
 
-/** Rows whose stress is worth a real surface, in the order shown. */
-const SURFACE_SAMPLE_IDS = [
-	'en-longform',
-	'en-negation-permission',
-	'de-compound',
-	'ja-mixed',
-	'he-rtl-acronym',
-];
-
 /** The narrowest supported viewport (the 320 px pass the fixture claims). */
 const NARROW_FRAME = { width: '320px' };
 
@@ -72,7 +71,7 @@ function Frame({
 	expanded: boolean;
 	label: string;
 }) {
-	const text = pseudoLocalize(sample.text, sample.direction);
+	const text = expanded ? pseudoExpandedText(sample) : sample.text;
 	return (
 		<div
 			data-pseudo-frame={label}
@@ -133,10 +132,20 @@ function Frame({
 					lineHeight: '1.3',
 					fontWeight: '700',
 					color: 'text.default',
-					// The long-compound row is the one that has to be
-					// allowed to break: `overflow-wrap: anywhere` is the
-					// editorial recipe under test, not a per-sample hack.
-					overflowWrap: 'anywhere',
+					// Only what the shipped language actually declares for
+					// a heading: `text-wrap: balance` from
+					// `src/editorial/primitives/SectionHeading.tsx`, on
+					// top of the site-wide base rule in `src/styles.css`
+					// (`word-break: normal` → `auto-phrase`). Nothing here
+					// grants a break opportunity the product does not
+					// have — a surface that needs freer breaking adds its
+					// own local rule, which is the contract
+					// `src/editorial/layout-system.md` §3.4 documents.
+					// `de-compound` therefore overflows here, exactly as it
+					// does in the product; whether a long heading should
+					// break anywhere is an open `src/editorial/` decision
+					// (see §6 of the verification report).
+					textWrap: 'balance',
 				})}
 			>
 				{text}
@@ -340,9 +349,7 @@ function AuditTable() {
 }
 
 function PseudoLocaleStress() {
-	const surfaces = SURFACE_SAMPLE_IDS.map((id) =>
-		PSEUDO_STRESS_SAMPLES.find((sample) => sample.id === id),
-	).filter((sample): sample is PseudoSample => sample !== undefined);
+	const surfaces = PSEUDO_SURFACE_SAMPLE_IDS.map((id) => pseudoSampleById(id));
 
 	return (
 		<div
@@ -424,6 +431,26 @@ function PseudoLocaleStress() {
 						<SurfaceRow key={sample.id} sample={sample} />
 					))}
 				</ul>
+				<p
+					className={css({
+						margin: '0',
+						fontFamily: 'sans',
+						fontSize: 'xs',
+						lineHeight: '1.7',
+						color: 'text.muted',
+						maxWidth: '90ch',
+					})}
+				>
+					These frames carry only what the shipped language declares: the base breaking rule of
+					<code> src/styles.css</code> (<code>word-break: normal</code> then{' '}
+					<code>auto-phrase</code>, <code>text-wrap: pretty</code>) and the heading rule of{' '}
+					<code>src/editorial/primitives/SectionHeading.tsx</code> (<code>text-wrap: balance</code>
+					). No preview-only break rule is applied, so <code>de-compound</code> — 68 code points
+					with no break opportunity, 108 after the expansion — overflows its 320 px frame here
+					exactly as it does in the product. Measured numbers live in the committed capture (
+					<code>docs/verification/i18n/pseudo-locale-stress.webp</code>); whether a long heading
+					should be allowed to break anywhere is an open <code>src/editorial/</code> decision.
+				</p>
 			</section>
 
 			<section className={css({ display: 'flex', flexDirection: 'column', gap: '4' })}>

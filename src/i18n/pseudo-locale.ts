@@ -503,6 +503,23 @@ export function pseudoLocalize(
 	return direction === 'rtl' ? isolateEmbeddedRuns(expanded) : expanded;
 }
 
+/**
+ * The one expansion string every presentation surface renders.
+ *
+ * {@link auditPseudoText} expands a row with that row's own declared
+ * `meaningTokens` as protected spans, so a surface that renders the
+ * expansion must expand it the same way — otherwise the Storybook
+ * preview would show a decorated `read-only` / `SLA` while the audit
+ * and the captured artefact certify the protected one. Call this
+ * instead of calling {@link pseudoLocalize} with hand-built options.
+ */
+export function pseudoExpandedText(sample: PseudoSample, ratio = DEFAULT_EXPANSION_RATIO): string {
+	return pseudoLocalize(sample.text, sample.direction, {
+		ratio,
+		protectedTokens: sample.meaningTokens ?? [],
+	});
+}
+
 /** Maximal digit runs, separators included, in order. */
 export function digitRuns(text: string): readonly string[] {
 	return text.match(DIGIT_RUN_PATTERN) ?? [];
@@ -675,7 +692,7 @@ export const PSEUDO_LOCALE_LIMITS: readonly string[] = [
 	'Not a translation. The wording is a stress string, not approved copy: no sentence here has been translated, reviewed or proofread, and no word of it may be published.',
 	'Not RTL support. Direction handling is verified only as far as "digit and Latin runs stay internally LTR and the layout does not break". Mirroring (`dir`, logical properties, icon flip), an RTL locale entry and RTL copy remain undecided owner decisions.',
 	"Not text quality. Nothing here scores prose. Proofreading stays an editor's job (ADR-0017 records that no automatic gate is a translation-quality guarantee).",
-	'Not a layout guarantee. A browser pass at 320 px shows this build does not break; it is not a proof for fonts, viewports or surfaces nobody measured.',
+	'Not a layout guarantee. A browser pass at 320 px measures this build at that width under the shipped breaking rules and prints what overflowed; it is not a proof for fonts, viewports or surfaces nobody measured.',
 	'Not a plural / unit / number-format contract. Those belong to the home format adapter (Issue #430) and to the locale data itself.',
 	'Not a performance budget. A 1.5x expansion is a worst-case guess, not a measurement of any real locale.',
 ];
@@ -794,6 +811,25 @@ export const PSEUDO_STRESS_SAMPLES: readonly PseudoSample[] = [
 		documentsLimit: true,
 		note: 'Documented limit: nothing here may be decorated, so this row cannot reach the 1.5x target and reports expandable: false rather than a fake pass.',
 	},
+];
+
+/**
+ * The rows a presentation surface is worth drawing, in order.
+ *
+ * One owner for the row selection, because a private copy in the
+ * capture and another in the Storybook story are two lists that can
+ * silently diverge: the capture then measures rows the preview never
+ * shows, or the preview shows rows no capture ever measured, and the
+ * difference between the two surfaces is invisible until someone reads
+ * both. This is data about which strings matter, so it lives with the
+ * strings.
+ */
+export const PSEUDO_SURFACE_SAMPLE_IDS: readonly string[] = [
+	'en-longform',
+	'en-negation-permission',
+	'de-compound',
+	'ja-mixed',
+	'he-rtl-acronym',
 ];
 
 /** Look a sample up by id; throws rather than returning `undefined`. */

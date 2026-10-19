@@ -170,7 +170,7 @@ The report, the measured numbers, the reproduction commands and the
 ```sh
 # the CI half (no browser, no network)
 pnpm exec vitest run src/i18n/pseudo-locale.test.ts
-node --test scripts/capture-pseudo-locale-stress.test.mjs
+node --experimental-strip-types --test scripts/capture-pseudo-locale-stress.test.mjs
 
 # the browser half: regenerate the artefact
 pnpm run capture:pseudo-locale
@@ -183,10 +183,20 @@ whitespace, protected meaning tokens, bidi isolate balance and the
 documented limits — is `src/i18n/pseudo-locale.test.ts` and runs in CI.
 Storybook shows the same fixture as `editorial/Pseudo locale stress`.
 
-The capture exits non-zero when a frame overflows horizontally, when a
-declared meaning token did not reach the DOM, when an isolate count is
-unbalanced, when the webfont did not load, or when the fixture audit
-itself reports a failing row.
+The capture exits non-zero when a frame overflows horizontally even with
+the fixture-local `overflow-wrap: anywhere`, when a declared meaning
+token did not reach the rendered heading, when the isolate count the
+browser rendered differs from the one the row declares, when the shipped
+webfont did not load, or when the fixture audit itself reports a failing
+row.
+
+Layout is measured twice, and the difference is reported rather than
+hidden: the frames carry only the breaking rules the product declares
+(`src/styles.css` base rule + `SectionHeading`), and the German compound
+row overflows its 320 px frame under them. Adding `overflow-wrap:
+anywhere` — a **fixture-local mitigation, not an editorial recipe** —
+makes every frame hold. Whether a long heading should be allowed to
+break anywhere is an open `src/editorial/` decision.
 
 This artefact is **not** an RTL preview. It shows that an RTL paragraph
 keeps its embedded Latin and digit runs internally LTR and does not

@@ -159,6 +159,12 @@ gates:
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
+      # Issue #507: the ASVS 5.0 coverage ledger. It does not claim
+      # certification. Every selected applicable requirement resolves to
+      # a test/doc/gate, or is printed as `not run` (unverified) with the
+      # future manual work; an evidence path or gate that does not exist
+      # is `fail`. Offline text scan, so it belongs in the fast chain.
+      - 'pnpm run asvs:check' # selected ASVS 5.0 requirements vs. repository evidence
       # Issue #412: the SSR documents every published route renders are
       # validated by an offline, Nu-Validator-compatible engine
       # (scripts/html-standards-contract.mjs). The fast half re-runs the
@@ -493,7 +499,7 @@ release_gate_coverage:
   known_limits:
     - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
     - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
-    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 39 `validate:fast` components'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 40 `validate:fast` components'
 
 html_standards:
   manifest: 'quality/html-standards.json'

@@ -127,7 +127,7 @@ pass には数えていない。
 - `pnpm run` の 1 段展開を前提にしており、shell 変数で組み立てた script 名は追えない。
 - `ci` surface は `ci.yml` の `validate` job のみ。他の job と手動 workflow は surface ではない。
 - 台帳は security / supply-chain / release-integrity に絞った curated inventory であり、
-  `validate:fast` の全 39 component の写しではない（route 統合や多言語の完成を前提にしない）。
+  `validate:fast` の全 40 component の写しではない（route 統合や多言語の完成を前提にしない）。
 
 参照: OWASP ASVS（Issue の根拠リンク）。本 gate は ASVS の章立てを実装するものではなく、
 「その検査を release が実行したか」を問うにすぎない。

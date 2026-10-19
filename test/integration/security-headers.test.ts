@@ -150,6 +150,62 @@ describe('security headers — Tool surfaces (Issue #449)', () => {
 	});
 });
 
+describe('Content-Type on every response that carries a body (ASVS V4.1.1, #507)', () => {
+	// The other describes in this file read `content-type` only to feed
+	// the PR report; these read it to FAIL, so a body that changed media
+	// type or lost its charset cannot leave the run green. The
+	// requirement is that the declared type matches the body, so each
+	// assertion names the body it is about rather than "a header
+	// exists".
+	const HTML_WITH_CHARSET = /^text\/html\s*;\s*charset=utf-8\b/i;
+	const JSON_BODY = /^application\/json\b/;
+
+	it('declares text/html with a charset on an SSR document', async () => {
+		const { status, type } = await headersOf('/contact');
+		expect(status).toBe(200);
+		expect(type).toMatch(HTML_WITH_CHARSET);
+	});
+
+	it('declares text/html with a charset on the admin login document', async () => {
+		const { status, type } = await headersOf('/admin/login');
+		expect(status).toBe(200);
+		expect(type).toMatch(HTML_WITH_CHARSET);
+	});
+
+	it('declares text/html with a charset on the host 404 document', async () => {
+		// A not-found document is still a document: serving the HTML
+		// page without its media type is the failure this row records.
+		const { status, type } = await headersOf('/no-such-page-449');
+		expect(status).toBe(404);
+		expect(type).toMatch(HTML_WITH_CHARSET);
+	});
+
+	it('declares application/json on the boundary success body', async () => {
+		// RFC 8259 defines `application/json` as UTF-8 only, so the
+		// media type carries the character encoding and no `charset`
+		// parameter is defined for it — asserting one here would pin a
+		// header the media type does not have.
+		const { status, type } = await headersOf('/api/v1/health');
+		expect(status).toBe(200);
+		expect(type).toMatch(JSON_BODY);
+	});
+
+	it('declares application/json on the boundary 404 error body', async () => {
+		const { status, type } = await headersOf('/api/v1/does-not-exist');
+		expect(status).toBe(404);
+		expect(type).toMatch(JSON_BODY);
+	});
+
+	it('keeps the bodiless admin redirect free of a content-type', async () => {
+		// The negative direction: a response with no body must not claim
+		// a media type, or the type stops describing anything.
+		const { status, type } = await headersOf('/admin');
+		expect(status).toBeGreaterThanOrEqual(300);
+		expect(status).toBeLessThan(400);
+		expect(type).toBeNull();
+	});
+});
+
 describe('security header measurements for the PR report (Issue #449)', () => {
 	// `docs/verification/security/headers-browser.webp` is a rendered
 	// report, not a hand-written summary: it embeds the values measured

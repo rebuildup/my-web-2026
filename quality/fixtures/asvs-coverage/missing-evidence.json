@@ -1,0 +1,38 @@
+{
+	"note": "不正常 fixture: 適用対象の行が存在しない test path を証跡として主張する。欠落は not run ではなく fail でなければならない（存在しないファイルを『未検証』とも『pass』とも読ませない）。",
+	"expect": {
+		"errors": 1,
+		"summary": { "pass": 0, "fail": 1, "not_run": 0, "not_applicable": 0 }
+	},
+	"scripts": {
+		"validate:fast": "pnpm run demo:check",
+		"demo:check": "node scripts/demo-check.mjs"
+	},
+	"files": [],
+	"manifest": {
+		"version": 1,
+		"standard": {
+			"name": "OWASP Application Security Verification Standard",
+			"version": "5.0.0",
+			"url": "https://owasp.org/www-project-application-security-verification-standard/",
+			"requirements_url": "https://example.invalid/asvs-requirements.json",
+			"certification": false,
+			"note": "A fixture ledger. It is not an ASVS certification or an audit."
+		},
+		"target_levels": ["L1", "L2"],
+		"policy": "Every selected applicable requirement names a control and evidence; missing evidence is not run with follow_up and is never a pass.",
+		"items": [
+			{
+				"id": "V1.2.1",
+				"chapter": "V1 Encoding and Sanitization",
+				"section": "V1.2 Injection Prevention",
+				"level": "L1",
+				"requirement": "Verify that output encoding is relevant for the context.",
+				"applicability": "applicable",
+				"control": "fixture output encoder",
+				"issues": [507],
+				"evidence": [{ "kind": "test", "path": "scripts/does-not-exist.test.mjs" }]
+			}
+		]
+	}
+}

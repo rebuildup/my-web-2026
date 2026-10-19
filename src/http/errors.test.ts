@@ -85,6 +85,18 @@ describe('publicErrorResponse (Issue #457)', () => {
 		expect(res.headers.get('x-request-id')).toBe(body.request_id);
 	});
 
+	it('declares application/json on the body it returns (ASVS V4.1.1, #507)', async () => {
+		// The 5xx body is the one an unexpected error produces, so a
+		// media type that stopped matching it would be exactly the
+		// failure this requirement is about. `application/json` carries
+		// no charset parameter by design (RFC 8259 defines the media
+		// type as UTF-8 only), so the media type is the assertion.
+		const res = await probeApp().request('/api/v1/probe');
+		expect(res.status).toBe(500);
+		expect(res.headers.get('content-type')).toMatch(/^application\/json\b/);
+		expect(JSON.parse(await bodyText(res))).toBeTypeOf('object');
+	});
+
 	it('keeps a client-supplied X-Request-Id so the reporter can be correlated', async () => {
 		const res = await probeApp().request('/api/v1/probe', {
 			headers: { 'X-Request-Id': 'client-correlation-1234' },

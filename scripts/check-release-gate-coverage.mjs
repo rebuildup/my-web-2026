@@ -161,6 +161,7 @@ const PLACEHOLDER_REASONS = new Set(['tbd', 'todo', 'n/a', 'na', 'none', 'later'
  */
 const SECURITY_COMMAND_PREFIXES = [
 	'architecture:',
+	'asvs:',
 	'ci:pins:',
 	'cloudflare:contract:',
 	'compat:',

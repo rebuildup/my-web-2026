@@ -61,6 +61,15 @@ describe('expansion — mechanics', () => {
 		expect(ratio).toBeLessThan(DEFAULT_EXPANSION_RATIO + 1 / [...sample.text].length);
 	});
 
+	it('measures an RTL row on the expansion, not on its isolate markers', () => {
+		// An isolate is 1 code point per LTR run, so counting them would
+		// let a short RTL paragraph clear a 1.5x target it never reached.
+		const row = auditPseudoText(pseudoSampleById('he-rtl-acronym'));
+		expect(row.bidi.isolates.lri).toBeGreaterThan(0);
+		expect(row.expandedTextCodePoints).toBeLessThan(row.expandedCodePoints);
+		expect(row.ratio).toBeGreaterThanOrEqual(DEFAULT_EXPANSION_RATIO);
+	});
+
 	it('only ever inserts the declared decoration characters', () => {
 		const source = 'Layout review';
 		const inserted = [...expandPseudoText(source)].filter((char) => ![...source].includes(char));

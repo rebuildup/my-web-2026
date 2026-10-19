@@ -560,6 +560,10 @@ function whitespaceRuns(text: string): readonly string[] {
  *
  * Every finding is a string, so the verification artefact and the
  * PR can print the same verdict the test asserts.
+ *
+ * `ratio` is measured on the expansion only (see the note at its
+ * computation); `expandedCodePoints` includes the bidi isolate markers
+ * an RTL row additionally carries.
  */
 export function auditPseudoText(
 	sample: PseudoSample,
@@ -572,7 +576,11 @@ export function auditPseudoText(
 	const collapsed = collapsePseudoText(stripIsolates(expanded));
 	const sourceLength = codePointLength(sample.text);
 	const expandedLength = codePointLength(expanded);
-	const achieved = sourceLength === 0 ? 0 : expandedLength / sourceLength;
+	// The ratio is measured on the EXPANSION alone. An RTL row also gains
+	// U+2066 / U+2069 isolate markers, which are not expansion, so counting
+	// them would let a row pass a 1.5x target it never reached.
+	const expandedLengthOnly = codePointLength(stripIsolates(expanded));
+	const achieved = sourceLength === 0 ? 0 : expandedLengthOnly / sourceLength;
 	const slots = expandableSlots(sample.text, expansion);
 	const expandable = slots > 0;
 	const protectedCodePoints = protectedCodePointCount(sample.text, expansion);
@@ -625,6 +633,8 @@ export function auditPseudoText(
 		direction: sample.direction,
 		sourceCodePoints: sourceLength,
 		expandedCodePoints: expandedLength,
+		/** Code points the expansion itself added (isolates excluded). */
+		expandedTextCodePoints: expandedLengthOnly,
 		ratio: achieved,
 		ratioTarget: ratio,
 		expandable,

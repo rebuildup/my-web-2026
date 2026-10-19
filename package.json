@@ -198,7 +198,10 @@
 		"quality:dashboard:report": "node scripts/release-quality-dashboard.mjs --report=.tmp/release-quality-dashboard.html",
 		"verify:quality-dashboard-screenshot": "node scripts/make-release-quality-dashboard.mjs",
 		"verify:operator-mfa-checklist-screenshot": "node scripts/make-operator-mfa-checklist-report.mjs",
-		"check:operator-mfa": "node scripts/check-operator-mfa.mjs"
+		"check:operator-mfa": "node scripts/check-operator-mfa.mjs",
+		"anomaly:fixture:proof": "node scripts/request-anomaly-monitor-fixture.mjs",
+		"verify:anomaly-monitor-screenshot": "node scripts/capture-anomaly-monitor-fixture.mjs",
+		"anomaly:fixture:report": "node scripts/request-anomaly-monitor-fixture.mjs --html=.tmp/anomaly-monitor-fixture.html"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

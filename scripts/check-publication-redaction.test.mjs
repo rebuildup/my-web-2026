@@ -142,7 +142,7 @@ describe('detection — the private sample fires every personal-data class', () 
 
 describe('detection — precision over recall', () => {
 	it('does not read a version, a date or a ratio as a phone number', () => {
-		assert.deepEqual(codesOf(findTextCandidates('2026-09-19 公開、v0.7.0、ratio 0.75')), []);
+		assert.deepEqual(codesOf(findTextCandidates('2026-09-19 公開、v2.1.0、ratio 0.75')), []);
 	});
 
 	it('does not read an ordinary prefecture mention as an address', () => {

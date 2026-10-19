@@ -27,7 +27,7 @@
 			"source": "legacy-site",
 			"source_ref": "my-web-2025://blog-index (fixture)",
 			"title": "旧サイト blog の移行メモ (fixture)",
-			"text": "移行対象は 2024-11-03 公開分と 2025-02-18 更新分。旧 URL は /blog/0001 形式。日付精度は日まで確定しており、時刻は捏造しない。バージョン表記は v0.7.0。",
+			"text": "移行対象は 2024-11-03 公開分と 2025-02-18 更新分。旧 URL は /blog/0001 形式。日付精度は日まで確定しており、時刻は捏造しない。バージョン表記は v2.1.0。",
 			"images": [],
 			"publication": {
 				"decision": "approved",

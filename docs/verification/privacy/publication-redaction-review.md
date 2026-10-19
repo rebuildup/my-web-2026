@@ -8,7 +8,7 @@
 | Item | Value |
 | --- | --- |
 | Corpus | `docs/migration/personal-data-review/corpus.json` (schema `personal-data-review.v1`) |
-| Corpus digest (sha-256, 12) | `7e9e1ea5bbe0` |
+| Corpus digest (sha-256, 12) | `6a58c8f66e4a` |
 | Published content digest (sha-256, 12) | `3e8e99a88f81` |
 | Records | 5 |
 | Candidates found | 19 |
@@ -62,7 +62,7 @@
 | Code | Class | 検出対象 | 意図的に一致させないもの |
 | --- | --- | --- | --- |
 | `D001` | contact | メールアドレス | shape のみ。`.example` / example.test を含むリザーブドドメインも検出する (公開可否は判定 axis が持つ)。 |
-| `D002` | contact | 電話番号 (JP 携帯 / PHS / 固定電話 / +81) | ハイフン区切りの数字列だけを電話番号とみなす。`2026-09-19` のような日付と版数 `0.7.0` には一致しない。 |
+| `D002` | contact | 電話番号 (JP 携帯 / PHS / 固定電話 / +81) | ハイフン区切りの数字列だけを電話番号とみなす。`2026-09-19` のような日付と版数 `v2.1.0` には一致しない。 |
 | `D003` | address | 郵便番号 (〒) | `〒NNN-NNNN` 表記のみ。数値だけの郵便番号は検出しない。 |
 | `D004` | address | 住所 (都道府県 + 市区町村 + 丁目 / 番地 / 号) | 番地レベルまで書かれた住所のみ。県名・市名だけの言及 (例: 出身校の市名) は検出しない。 |
 | `D005` | address | 居住の主張 (〇〇県△△市在住 / 出身 / お住まい) | 地域と居住の主張が同じ文に現れる場合のみ。場所名だけの記述は検出しない。 |

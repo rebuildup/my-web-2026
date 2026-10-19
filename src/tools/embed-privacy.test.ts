@@ -60,6 +60,18 @@ function codes(delivery: ToolPrivacyDeliveryLike | Record<string, unknown>): str
 	return evaluate(delivery).violations.map((violation) => violation.code);
 }
 
+/**
+ * A manifest entry by slug, or a thrown assertion naming the slug —
+ * `expect(x).toBeDefined()` followed by `x!` is exactly the shape the
+ * lint rule forbids, and a non-null assertion here would only paper
+ * over a manifest rename.
+ */
+function tool(slug: string) {
+	const found = listAllTools().find((entry) => entry.slug === slug);
+	if (!found) throw new Error(`manifest has no Tool named "${slug}"`);
+	return found;
+}
+
 function subject(overrides: Partial<EmbedPrivacySubject> = {}): EmbedPrivacySubject {
 	return {
 		slug: 'fixture',
@@ -102,9 +114,8 @@ describe('embed privacy — the live manifest', () => {
 	});
 
 	it('derives click_to_load for a same-origin Tool that declares contacts', () => {
-		const prototype = listAllTools().find((tool) => tool.slug === 'prototype');
-		expect(prototype).toBeDefined();
-		const verdict = evaluateEmbedPrivacy(toPrivacySubject('prototype', prototype!.delivery));
+		const prototype = tool('prototype');
+		const verdict = evaluateEmbedPrivacy(toPrivacySubject('prototype', prototype.delivery));
 		expect(verdict.consent).toBe(CONSENT_MODE_CLICK_TO_LOAD);
 		expect(verdict.contacts_after_activation).toEqual([
 			'https://fonts.googleapis.com',
@@ -119,9 +130,8 @@ describe('embed privacy — the live manifest', () => {
 	});
 
 	it('derives not_required for a same-origin Tool that declares no contact', () => {
-		const readmark = listAllTools().find((tool) => tool.slug === 'readmark');
-		expect(readmark).toBeDefined();
-		const verdict = evaluateEmbedPrivacy(toPrivacySubject('readmark', readmark!.delivery));
+		const readmark = tool('readmark');
+		const verdict = evaluateEmbedPrivacy(toPrivacySubject('readmark', readmark.delivery));
 		expect(verdict.consent).toBe(CONSENT_MODE_NOT_REQUIRED);
 		expect(verdict.contacts_after_activation).toEqual([]);
 		expect(verdict.violations).toEqual([]);

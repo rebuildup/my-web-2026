@@ -104,7 +104,7 @@ export const VARIANTS = {
 };
 
 /** Full-width elements whose width must not depend on the scrollbar. */
-export const GUTTER_PROBE_IDS = ['gutter-band', 'gutter-container'];
+const GUTTER_PROBE_IDS = ['gutter-band', 'gutter-container'];
 
 /* ------------------------------------------------------------------ *
  * the fixture
@@ -521,7 +521,15 @@ export const DECLARED_OPTIONAL_TARGETS = [
 	},
 ];
 
-/** Declared targets that also carry a gutter-stability probe. */
+/**
+ * Declared targets that also carry a gutter-stability probe.
+ *
+ * `GUTTER_PROBE_IDS` stays module-local and the declared list is a plain
+ * `const` alias of it, so the probe list has exactly one source of truth
+ * without exporting two names for the same binding (`knip:check` reports
+ * both `export { … as … }` and `export const X = <exported binding>` as a
+ * duplicate export).
+ */
 export const DECLARED_GUTTER_PROBES = GUTTER_PROBE_IDS;
 
 const ALL_DECLARED_TARGETS = [...DECLARED_TARGETS, ...DECLARED_OPTIONAL_TARGETS];

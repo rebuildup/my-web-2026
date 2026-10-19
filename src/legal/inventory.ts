@@ -135,6 +135,7 @@ function readRecord(
 		'title',
 		'summary',
 		'covers',
+		'excludes',
 		'publicPaths',
 		'origin',
 		'rightsHolder',
@@ -155,6 +156,9 @@ function readRecord(
 	if (!nonEmptyString(value.title)) problems.push(`${at('title')} must be a non-empty string`);
 	if (!nonEmptyString(value.summary)) problems.push(`${at('summary')} must be a non-empty string`);
 	if (!stringArray(value.covers)) problems.push(`${at('covers')} must be an array of glob strings`);
+	if (value.excludes !== undefined && !stringArray(value.excludes)) {
+		problems.push(`${at('excludes')} must be an array of glob strings`);
+	}
 	if (value.publicPaths !== undefined && !stringArray(value.publicPaths)) {
 		problems.push(`${at('publicPaths')} must be an array of strings`);
 	}
@@ -247,6 +251,7 @@ function readRecord(
 			title: value.title as string,
 			summary: value.summary as string,
 			covers: value.covers as string[],
+			...(value.excludes === undefined ? {} : { excludes: value.excludes as string[] }),
 			...(value.publicPaths === undefined ? {} : { publicPaths: value.publicPaths as string[] }),
 			origin: value.origin as AssetOrigin,
 			rightsHolder: value.rightsHolder as string | null,
@@ -391,7 +396,18 @@ export function faceValueObservations(
 	const declared = new Map<string, string | undefined>();
 	for (const record of records) {
 		for (const item of record.evidence) {
-			if (item.kind === 'repository-file') declared.set(item.path, item.sha256);
+			if (item.kind !== 'repository-file') continue;
+			// A digest claim, once made, is not erased by a later record
+			// that mentions the same file without one. The digest is a
+			// property of the FILE, and the last writer must not decide
+			// whether an earlier record's pin still holds: the guide's
+			// page is evidence for four records, and only two of them
+			// pin its bytes.
+			if (item.sha256 === undefined) {
+				if (!declared.has(item.path)) declared.set(item.path, undefined);
+				continue;
+			}
+			if (declared.get(item.path) === undefined) declared.set(item.path, item.sha256);
 		}
 	}
 	return {

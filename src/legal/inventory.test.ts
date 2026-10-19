@@ -90,6 +90,20 @@ describe('parseAssetInventoryValue', () => {
 		expect(result.records[0].verification.method).toBe('none');
 	});
 
+	it('accepts a carve-out that hands a file to another record', () => {
+		const carved = { ...VALID_ASSET, excludes: ['public/fixture/one.png'] };
+		const result = parseAssetInventoryValue(inventory([carved]));
+		expect(result.ok).toBe(true);
+		expect(result.records[0].excludes).toEqual(['public/fixture/one.png']);
+	});
+
+	it('refuses a carve-out that is not a list of patterns', () => {
+		const bad = { ...VALID_ASSET, excludes: 'public/fixture/one.png' };
+		const result = parseAssetInventoryValue(inventory([bad]));
+		expect(result.ok).toBe(false);
+		expect(result.findings.some((item) => item.message.includes('excludes'))).toBe(true);
+	});
+
 	it('refuses a value that is not an object', () => {
 		const result = parseAssetInventoryValue(['not', 'an', 'object']);
 		expect(result.ok).toBe(false);

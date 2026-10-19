@@ -231,13 +231,65 @@ describe('the gate', () => {
 		assert.doesNotMatch(output, /user:/);
 	});
 
-	it('reports the committed repository as WARN, never as FAIL', () => {
+	it('never fails the committed repository, whatever the owner decides about the held assets', () => {
 		const run = spawnSync(process.execPath, [join(repoRoot, 'scripts/check-asset-licenses.mjs')], {
 			encoding: 'utf8',
 		});
+		// The verdict word itself is an owner decision (an asset may be
+		// held or cleared), so this asserts the SHAPE instead: no
+		// contradiction, every audited file claimed exactly once, and
+		// every record decided from its evidence.
 		assert.equal(run.status, 0, run.stdout + run.stderr);
-		assert.match(run.stdout, /asset license review — WARN/);
-		assert.match(run.stdout, /hold +share-procon2026-fonts/);
+		assert.doesNotMatch(run.stdout, /L001/);
+		assert.doesNotMatch(run.stdout, /L002/);
+		const audited = Number(/audited files: (\d+)/.exec(run.stdout)?.[1]);
+		const claimed = [...run.stdout.matchAll(/(\d+) files/g)].reduce(
+			(total, match) => total + Number(match[1]),
+			0,
+		);
+		assert.equal(claimed, audited);
+		// The fonts ship their licence text with the page, so they are
+		// cleared from the embedded declaration; the assets whose rights
+		// this repository cannot account for stay held.
+		assert.match(
+			run.stdout,
+			/publishable\s+share-procon2026-fonts-noto-sans-jp\s+font\s+49 files\s+OFL-1\.1/,
+		);
+		assert.match(
+			run.stdout,
+			/publishable\s+share-procon2026-fonts-material-symbols\s+font\s+1 files\s+Apache-2\.0/,
+		);
+		assert.match(run.stdout, /hold\s+share-procon2026-pdfs/);
+		assert.match(run.stdout, /hold\s+share-procon2026-images/);
+	});
+
+	it('lets one record hand a file to another without a double claim', () => {
+		const base = recordFor().assets[0];
+		const root = makeFixture({
+			'public/fonts/a.woff2': 'bytes',
+			'public/fonts/b.woff2': 'bytes',
+			LICENSE: 'MIT fixture\n',
+			'quality/asset-license-inventory.json': JSON.stringify({
+				...recordFor(),
+				assets: [
+					{
+						...base,
+						id: 'fixture-fonts',
+						covers: ['public/fonts/**'],
+						excludes: ['public/fonts/b.woff2'],
+					},
+					{ ...base, id: 'fixture-one-font', covers: ['public/fonts/b.woff2'] },
+				],
+			}),
+		});
+		const run = spawnSync(
+			process.execPath,
+			[join(repoRoot, 'scripts/check-asset-licenses.mjs'), `--root=${root}`],
+			{ encoding: 'utf8' },
+		);
+		assert.equal(run.status, 0, run.stdout + run.stderr);
+		assert.doesNotMatch(run.stdout, /L001/);
+		assert.doesNotMatch(run.stdout, /L002/);
 	});
 
 	it('writes a Markdown report when asked, into the given path', () => {

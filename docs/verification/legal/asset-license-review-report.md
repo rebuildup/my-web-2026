@@ -1,8 +1,8 @@
 # 資産の権利 / 出典 / ライセンス検証 — 記録
 
 - 判定: **WARN** / 記録: `quality/asset-license-inventory.json` / 監査対象ファイル: 107
-- 資産記録 12 件（公開可 7 / 保留 3 / 提供者条件 2）
-- 記録済みファイル 107 / 未記録 0 / findings 11（error 0 / warn 3 / info 8）
+- 資産記録 13 件（公開可 9 / 保留 2 / 提供者条件 2）
+- 記録済みファイル 107 / 未記録 0 / findings 8（error 0 / warn 2 / info 6）
 
 | 判定 | 記録 id | 種別 | 対象ファイル | 由来 | 公開状態 |
 | --- | --- | --- | --- | --- | --- |
@@ -13,7 +13,8 @@
 | publishable | `image-cls-fixtures` | image | 2 | repository-generated | published |
 | publishable | `og-fallback-card` | image | 1 | repository-generated | published |
 | publishable | `share-procon2026-guide` | artwork | 1 | repository-authored | published |
-| hold | `share-procon2026-fonts` | font | 50 | unknown-provenance | published |
+| publishable | `share-procon2026-fonts-noto-sans-jp` | font | 49 | third-party-bundled | published |
+| publishable | `share-procon2026-fonts-material-symbols` | font | 1 | third-party-bundled | published |
 | hold | `share-procon2026-pdfs` | document | 6 | unknown-provenance | published |
 | hold | `share-procon2026-images` | image | 35 | unknown-provenance | published |
 | provider-terms | `web-fonts-google` | font | 0 | third-party-referenced | published |
@@ -21,12 +22,6 @@
 
 ## findings
 
-- **L017** (info) `share-procon2026-fonts` — 検証方法が未検証です。権利・出典・ライセンスの証拠はこのリポジトリにありません。
-  - remedy: 証拠が揃うまで公開を保留するか、非公開にする。
-- **L018** (info) `share-procon2026-fonts` — 第三者を同梱しているのにライセンスが記録されていません（NOASSERTION）。
-  - remedy: ライセンス表記を同梱するか、公開を保留する。
-- **L010** (warn) `share-procon2026-fonts` — 証拠が不足している（保留）にもかかわらず、このリポジトリでは公開中と宣言されています。
-  - remedy: 公開の継続は owner の公開判断としてレビューする。取り下げ・ライセンス同梱のどちらかを記録する。
 - **L017** (info) `share-procon2026-pdfs` — 検証方法が未検証です。権利・出典・ライセンスの証拠はこのリポジトリにありません。
   - remedy: 証拠が揃うまで公開を保留するか、非公開にする。
 - **L018** (info) `share-procon2026-pdfs` — 第三者を同梱しているのにライセンスが記録されていません（NOASSERTION）。

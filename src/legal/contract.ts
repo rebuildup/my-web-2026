@@ -38,6 +38,11 @@
  *   publication  WHAT THE REPOSITORY DECLARES today. It is an input, so
  *                that "we hold this asset" and "this asset is still
  *                reachable" can disagree in public — see L010.
+ *   covers /     WHICH FILES the record owns. `covers` are glob patterns
+ *   excludes     over the audited scope; `excludes` carve files out of
+ *                that claim, so one directory can ship bytes under two
+ *                licences without either record claiming the other's
+ *                bytes.
  *
  * The decision is DERIVED, never declared
  * --------------------------------------
@@ -142,6 +147,20 @@ export interface AssetLicenseRecord {
 	 * "required to be non-empty".
 	 */
 	readonly covers: readonly string[];
+	/**
+	 * Patterns that carve files OUT of this record's claim.
+	 *
+	 * One record carries one licence, but one directory can ship bytes
+	 * under two: the guide's `assets/fonts/` holds 49 Noto Sans JP files
+	 * (OFL-1.1) and one Material Symbols file (Apache-2.0). The record
+	 * that owns the directory therefore hands that one file over to the
+	 * record that owns it, instead of enumerating the other 49 by hand
+	 * (which would put a 49-line path list in a record a human reads).
+	 *
+	 * Fail-closed: a file every record excludes is claimed by nobody,
+	 * and the coverage rule (L001) says exactly that.
+	 */
+	readonly excludes?: readonly string[];
 	/** Public URL paths the asset is delivered at, when it has any. */
 	readonly publicPaths?: readonly string[];
 	readonly origin: AssetOrigin;
@@ -376,17 +395,33 @@ export function coverPatternToRegExp(pattern: string): RegExp {
 	return new RegExp(`^${source}$`);
 }
 
-/** Every audited file a record's patterns claim (pure). */
+/**
+ * Every audited file a record's patterns claim (pure).
+ *
+ * `excludes` are applied after `covers`: a file is claimed when a cover
+ * matches it and no exclude does. The two lists are separate on
+ * purpose — `covers` says what the record owns, `excludes` says which
+ * part of that it hands to another record.
+ */
 export function filesClaimedBy(
 	covers: readonly string[],
 	auditedFiles: readonly string[],
+	excludes: readonly string[] = [],
 ): string[] {
-	return auditedFiles.filter((file) =>
-		covers.some((pattern) => coverPatternToRegExp(pattern).test(file)),
+	return auditedFiles.filter(
+		(file) =>
+			covers.some((pattern) => coverPatternToRegExp(pattern).test(file)) &&
+			!excludes.some((pattern) => coverPatternToRegExp(pattern).test(file)),
 	);
 }
 
-/** A provider reference is usable only if it is an https URL, read-only. */
+/**
+ * A provider reference is usable only if it is an https URL that
+ * carries no credentials.
+ *
+ * A path or a port is accepted: the reference is a place to read the
+ * upstream terms from, and the report only ever prints the hostname.
+ */
 export function isUsableProviderReference(url: string): boolean {
 	let parsed: URL;
 	try {
@@ -469,8 +504,8 @@ export function evaluateAssetLicense(
 					'L016',
 					'error',
 					record.id,
-					'提供者側の根拠 URL が https ではない、または資格情報・パス・ポートを含みます。',
-					'参照可能な https URL のみを記録する。',
+					'提供者側の根拠 URL が https ではない、または資格情報（ユーザー名とパスワード）を含みます。',
+					'資格情報を含まない https URL のみを記録する。',
 				),
 			);
 		}
@@ -648,7 +683,7 @@ export function evaluateAssetInventory(input: AssetInventoryInput): AssetInvento
 			continue;
 		}
 		seenIds.add(record.id);
-		for (const file of filesClaimedBy(record.covers, input.auditedFiles)) {
+		for (const file of filesClaimedBy(record.covers, input.auditedFiles, record.excludes)) {
 			const owners = claimedBy.get(file) ?? [];
 			owners.push(record.id);
 			claimedBy.set(file, owners);
@@ -656,7 +691,9 @@ export function evaluateAssetInventory(input: AssetInventoryInput): AssetInvento
 	}
 
 	const reviews = input.records.map((record) => {
-		const files = seenIds.has(record.id) ? filesClaimedBy(record.covers, input.auditedFiles) : [];
+		const files = seenIds.has(record.id)
+			? filesClaimedBy(record.covers, input.auditedFiles, record.excludes)
+			: [];
 		const own = evaluateAssetLicense(record, input.observations);
 		const recordFindings = [...own.findings];
 		if (record.covers.length > 0 && files.length === 0) {

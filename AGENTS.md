@@ -237,7 +237,10 @@ home -> editorial
   `quality/asset-license-inventory.json`, composes `editorial`
   primitives and touches no binding. The gate that runs it offline is
   `scripts/check-asset-licenses.mjs` (`pnpm run assets:license:check`);
-  the report is `docs/verification/legal/asset-license-review.md`.
+  the verification report is
+  `docs/verification/legal/asset-license-review.md` and its
+  machine-generated run record is
+  `docs/verification/legal/asset-license-review-report.md`.
   Byte-level licence evidence for a Tool's own checkout belongs to
   Issue #466 (`src/tools/artifact-inventory.ts`), so the two owners
   never claim the same files.

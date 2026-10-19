@@ -3,7 +3,7 @@
 - 対象: `src/legal/**`（公開する資産の権利レビュー契約 + 表示 component）と `quality/asset-license-inventory.json`（レビュー済み記録）
 - Issue: #497（`legal(content): 作品・フォント・画像素材のライセンス検証`）
 - 成果物: `docs/verification/legal/asset-license-review.webp`（検証画面）、`asset-license-review-report.md`（機械生成の実行記録）
-- 状態: **契約・記録・gate・表示 component・検証画面まで実装済み**。`/share/procon2026/` の同梱資産 91 ファイルは保留判定のままで、公開の継続は §6 の owner 判断事項として未決
+- 状態: **契約・記録・gate・表示 component・検証画面まで実装済み**。`/share/procon2026/` の同梱フォント 50 ファイルは公開ページが同梱するライセンス本文（Noto Sans JP = SIL OFL 1.1 / Material Symbols = Apache-2.0）で検証済み。PDF 6 / 画像 35 = **41 ファイルは保留判定のままで、公開の継続は §6 の owner 判断事項として未決**
 
 ## 1. 何を撮ったか（条件・対象範囲）
 
@@ -14,9 +14,9 @@
 | capture 手段 | `node scripts/capture-asset-license-review.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの（実際の `src/styles.css`） |
 | viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影） |
-| 生成物サイズ | 1440 x 3192 px、**188 kB** WebP（quality 80、budget 300 kB） |
-| 撮影時の review card 数 | 2（script が `cardsRendered !== 2` で失敗する。空ページ撮影の黙認をしない） |
-| 撮影時の判定 | `[publishable, hold]`（DOM の `data-decision` を実測） |
+| 生成物サイズ | 1440 x 4242 px、**253 kB** WebP（quality 80、budget 300 kB） |
+| 撮影時の review card 数 | 3（script が `cardsRendered !== 3` で失敗する。空ページ撮影の黙認をしない） |
+| 撮影時の判定 | `[publishable, publishable, hold]`（DOM の `data-decision` を実測） |
 | 外部通信 | **0 件（実測）**。gallery は記録の描画のみで、どこにも要求しない。capture script が Playwright の request イベントを数え、loopback 以外が 1 件でもあれば artefact を書かずに失敗する |
 | 成果物の書き込み | **検証通過後にだけ** 確定置き換わる。候補は `.tmp/asset-license-review/staging/` に encode され、budget / card 数 / 外部通信の検証を全部通ってから committed 経路へ move する |
 | 再現性 | **encode 段は決定的、ブラウザ撮影は byte 再現ではない**（プロセス間でも差が出る）。再生成は視覚的に同一であることを目標とする |
@@ -32,9 +32,21 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 
 **badge が嘘をつかない理由**: badge は `record.publication`（「公開中である」という**宣言**）ではなく `review.decision`（証拠から**導出**した判定）を表示する。記録は「公開中である」とは書けるが「レビュー済みである」とは書けず、画面も導出した値しか出さない。
 
-### 2.2 判断の分かれ目 — 同梱されているが由来未記録の資産
+### 2.2 判断の分かれ目 — 同梱された第三者の資産と、由来未記録の資産
 
-2 枚目は同じ component が `share-procon2026-fonts`（`public/share/procon2026/assets/fonts/**` の woff2 50 個）を描画する。判定は `hold` で、画面は 3 つの指摘を理由付きで出す。
+2 枚目は同じ component が `share-procon2026-fonts-noto-sans-jp`（`public/share/procon2026/assets/fonts/**` の woff2 49 個）を描画する。**同梱された第三者の資産でも、配布物自身がライセンス本文を宣言していれば `publishable` になる**。この case の根拠は記録そのもので、`verification.method` は `embedded-declaration`（配布物自身が宣言）である。
+
+| 項目 | 値 |
+| --- | --- |
+| 由来 | `third-party-bundled`（第三者を同梱して配布） |
+| 権利者 / ライセンス | `Google Inc.` / `OFL-1.1` |
+| 根拠 | `public/share/procon2026/index.html`（sha256 を記録。ページが変われば `L005` で再レビューになる） |
+| 証拠の中身 | 同ページの `<!-- FONT LICENSES ... -->` コメントが `Noto Sans JP` / `Google Inc.` / 「This Font Software is licensed under the SIL Open Font License, Version 1.1.」と OFL 1.1 の全文を同梱している |
+| 表示義務 | あり。表示文言（著作権表示とライセンスの特定行）は記録に残し、表示先は `/share/procon2026/` |
+
+同ディレクトリの `40e17b72f9f8.woff2` 1 個は `Material Symbols Rounded`（`Apache-2.0`）で、**別の記録** `share-procon2026-fonts-material-symbols` が持つ。1 つのディレクトリに 2 つのライセンスがあるとき、記録どうしがファイルを取り違えないように、Noto 側の記録は `covers` から 1 個だけ `excludes` で除外している（除外したファイルを全記録が除外すると `L001` = error になる）。
+
+3 枚目は **保留のまま残っている資産** `share-procon2026-pdfs`（大会資料の PDF 6 個）を描画する。判定は `hold` で、画面は 3 つの指摘を理由付きで出す。
 
 | code | severity | 画面の条件 |
 | --- | --- | --- |
@@ -42,11 +54,11 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 | `L018` | info | 第三者を同梱しているのにライセンスが記録されていない（`NOASSERTION`） |
 | `L010` | warn | 証拠が不足している（保留）にもかかわらず、このリポジトリでは「公開中」と宣言されている |
 
-**この 1 枚が本 Issue の発見そのもの**である。`@font-face` が `Material Symbols Rounded` と `Noto Sans JP` の family 名を宣言していることはリポジトリ内で確認できるが、**ライセンス本文・NOTICE・取得元はどこにもない**。family 名からライセンスは確定できないので、記録は `NOASSERTION`（= 条件を記録していない）であり `publishable` ではない。
+**この 1 枚が本 Issue の発見そのもの**である。フォントは同梱のライセンス本文で解決したが、**PDF と画像 35 個には、このリポジトリのどこにも転載条件の記載がない**。@font-face の family 名やファイル名からライセンスは確定できないのと同じ理由で、記録は `NOASSERTION`（= 条件を記録していない）であり `publishable` ではない。
 
 ### 2.3 記録一覧と監査範囲
 
-画面下段は記録 12 件の判定一覧（判定 / id / 種別 / ライセンス / 対象 / 名称）と、§3 の監査範囲 3 項目（監査対象・公開する情報・外部通信）を並べる。
+画面下段は記録 13 件の判定一覧（判定 / id / 種別 / ライセンス / 対象 / 名称）と、§3 の監査範囲 3 項目（監査対象・公開する情報・外部通信）を並べる。
 
 ### 2.4 根拠行が「未確認」と書かれる理由
 
@@ -62,6 +74,8 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 | 実行時に取得される参照資産（フォント） | `src/routes/__root.tsx`、`external/*/index.html` の `use.typekit.net` 参照 | 記録に「コピーを配布しない」ことを宣言させる。判定は `provider-terms` |
 | ライセンス証拠のバイト | `LICENSE` ほか | sha256 を記録し、レビュー後に変われば `L005`（error）で再レビューを強制する |
 
+**1 ディレクトリに複数のライセンスがあるとき**（`assets/fonts/` の OFL-1.1 と Apache-2.0）、記録は 1 ライセンス 1 記録で分割し、`covers`（主張するパターン）と `excludes`（他の記録へ渡すパターン）でファイルの取り合いを解決する。**除外は fail-closed**: 全記録が除外したファイルは誰にも主張されず `L001`（error）になる。
+
 ### 3.2 監査対象外（out of scope）とその理由
 
 - **`external/**`（Tool のソースと build 成果物）** — 同じバイトに 2 つの所有者が居ると記録の意味が失われる。Tool のライセンスファイル・lockfile・outbound host は Issue #466 の `quality/tool-artifact-inventory.json` と `pnpm run tools:artifact:check` が所有する。本 gate は audit に `public/**` だけを宣言している（`AUDITED_ROOTS`）。
@@ -72,15 +86,15 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 
 ### 3.3 公開する情報（記録が持つもの）
 
-`quality/asset-license-inventory.json` が持つのは **資産の権利属性だけ**である: id / 種別 / 名称 / 要約 / `covers`（リポジトリ相対 glob）/ `publicPaths` / 由来 / 権利者 / SPDX 識別子 / 再配布モード / attribution 要否・文言・表示先 / 再配布条件 / 検証方法 / 確認日 / 検証メモ / 根拠 / 公開状態 / 外部ホスト。
+`quality/asset-license-inventory.json` が持つのは **資産の権利属性だけ**である: id / 種別 / 名称 / 要約 / `covers`（リポジトリ相対 glob）/ `excludes`（他の記録へ渡すパターン）/ `publicPaths` / 由来 / 権利者 / SPDX 識別子 / 再配布モード / attribution 要否・文言・表示先 / 再配布条件 / 検証方法 / 確認日 / 検証メモ / 根拠 / 公開状態 / 外部ホスト。
 
-**持たないもの**: 氏名・連絡先・位置情報・利用実態・契約番号など個人データ。`rightsHolder` は文字列であり、本 Issue の記録は `rebuildup`（LICENSE の著作権者表記）と `null`（未記録）しか使わない。
+**持たないもの**: 氏名・連絡先・位置情報・利用実態・契約番号など個人データ。`rightsHolder` は文字列で、本 Issue の記録が使う値は `rebuildup`（LICENSE の著作権者表記）、`Google Inc.`（同梱フォントの著作権者）、`Google（Noto プロジェクト / Zen Fonts）`（参照フォントの権利者）、`null`（未記録）である。いずれも個人データではない。
 
 ### 3.4 外部通信
 
 - **gate**: ネットワークを一切使わない。URL は `new URL(...).hostname` 相当の**ホスト名だけ**を出力し、パス・ポート・資格情報は出力しない。
 - **検証画面**: 0 件（実測。§1）。参照資産のホスト名は記録から読むだけで取得しない。
-- **网站側の外部通信**（本 gate の対象外だが記録が宣言しているもの）: `fonts.googleapis.com` / `fonts.gstatic.com`（本文フォント）、`use.typekit.net`（`/tools/prototype` が参照する Typekit フォント）。いずれも**コピーを配布していない**ため判定は `provider-terms`。
+- **サイト側の外部通信**（本 gate の対象外だが記録が宣言しているもの）: `fonts.googleapis.com` / `fonts.gstatic.com`（本文フォント）、`use.typekit.net`（`/tools/prototype` が参照する Typekit フォント）。いずれも**コピーを配布していない**ため判定は `provider-terms`。
 
 ## 4. 判定コード
 
@@ -102,13 +116,13 @@ Issue は `.png` 経路を指定しているが、**同名の圧縮 WebP**（幅
 | `L012` | warn | 参照資産なのに取得ホストが記録されていない |
 | `L013` | warn | 検証方法が記録されているのに確認日がない |
 | `L014` | error | 資産記録の id が重複している |
-| `L016` | error | 提供者側の根拠 URL が https でない、または資格情報・パス・ポートを含む |
+| `L016` | error | 提供者側の根拠 URL が https でない、または資格情報（ユーザー名とパスワード）を含む |
 | `L017` | info | 検証方法が未検証（= 保留の理由） |
 | `L018` | info | 第三者を同梱しているのにライセンスが記録されていない（= 保留の理由） |
 
 ### 4.2 記録の shape（`src/legal/inventory.ts`）
 
-`J001`〜`J005` は記録ファイルが読めない場合の error で、**部分的に読めた記録をレビューしない**（fail-closed）。未知キーは拒否するため、`attributionDeliverdAt` のようなタイプミスが「表示义务なし」に化けることはない。
+`J001`〜`J005` は記録ファイルが読めない場合の error で、**部分的に読めた記録をレビューしない**（fail-closed）。未知キーは拒否するため、`attributionDeliverdAt` のようなタイプミスが「表示義務なし」に化けることはない。
 
 ## 5. 実行方法
 
@@ -125,10 +139,11 @@ pnpm exec vitest run src/legal
 
 ## 6. 既知の制約（残るリスク）
 
-1. **`/share/procon2026/assets/**` の 91 ファイルが保留のまま公開されている**（`L010` × 3）。本 gate が意図的に **warn** にしているのは、公開の継続／取り下げが **owner の公開判断**であり、gate が公開面そのものを変える権限を持たないためである。gate の責務は「保留なのに公開中」という矛盾を毎回可視化することまで。owner が次のどちらかを決めるまで `L010` は残る。
-   - (a) 各フォントのライセンス表記・取得元を同梱し、PDF／画像の転載条件を `quality/asset-license-inventory.json` に記録する（`hold` → `publishable` になり `L010` は消える）。
+1. **`/share/procon2026/assets/` の PDF 6 / 画像 35 = 41 ファイルが保留のまま公開されている**（`L010` × 2）。同梱フォント 50 ファイルは公開ページのライセンス本文で解決済みなので、この残りの 41 ファイルだけが未決である。本 gate が意図的に **warn** にしているのは、公開の継続／取り下げが **owner の公開判断**であり、gate が公開面そのものを変える権限を持たないためである。gate の責務は「保留なのに公開中」という矛盾を毎回可視化することまで。owner が次のどちらかを決めるまで `L010` は残る。
+   - (a) 大会資料の転載条件・出典を `quality/asset-license-inventory.json` に記録する（`hold` → `publishable` になり `L010` は消える）。
    - (b) `/share/procon2026/` を取り下げる（`publication-surface` の snapshot 更新を伴う別 PR）。
-2. **検証画面は根拠ファイルを確認できない**（§2.4）。画面は導出値と「未確認」を表示し、file に対する権限は gate だけが持つ。両者の判定が食い違う場合は gate の記録が正である。
-3. **確認日は「存在する」ことしか検査しない**（`L013` は null のみ）。記録が古くなっても日数は数えない。鮮度を測る規則を追加することは owner 決定。
-4. **Tool の同梱資産は本 gate の対象外**（§3.2）。`/tools/<slug>/app/**` のライセンス証拠は Issue #466 が所有しており、本記録は `delegatedTo` で参照だけ行う。
-5. **`NOASSERTION` の判定そのものは法的な評価ではない**。この gate が問うのは「記録に証拠があるか」だけであり、条文の解釈や利用可否の判断は行わない。
+2. **フォントのライセンス本文は HTML コメントとして同梱されている**。`/share/procon2026/` のソース（`<!-- FONT LICENSES ... -->`）から閲覧できるが、レンダリングされた画面には表示されない。OFL-1.1 が求める「コピーに著作権表示とライセンスを含める」は、この形で満たされている（`attributionDeliveredAt` は `/share/procon2026/`）。
+3. **検証画面は根拠ファイルを確認できない**（§2.4）。画面は導出値と「未確認」を表示し、file に対する権限は gate だけが持つ。両者の判定が食い違う場合は gate の記録が正である。
+4. **確認日は「存在する」ことしか検査しない**（`L013` は null のみ）。記録が古くなっても日数は数えない。鮮度を測る規則を追加することは owner 決定。
+5. **Tool の同梱資産は本 gate の対象外**（§3.2）。`/tools/<slug>/app/**` のライセンス証拠は Issue #466 が所有しており、本記録は `delegatedTo` で参照だけ行う。
+6. **`NOASSERTION` の判定そのものは法的な評価ではない**。この gate が問うのは「記録に証拠があるか」だけであり、条文の解釈や利用可否の判断は行わない。

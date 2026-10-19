@@ -65,8 +65,14 @@ function recordFor(id: string): AssetLicenseRecord {
 
 /** The artwork a visitor can already fetch, reviewed on its own. */
 const FEATURED_RECORD_ID = 'share-procon2026-guide';
-/** The bundled web fonts whose provenance this repository does not record. */
-const HELD_RECORD_ID = 'share-procon2026-fonts';
+/**
+ * Bundled third-party bytes whose licence text is embedded in the page
+ * that ships them — the case the `embedded-declaration` method exists
+ * for.
+ */
+const LICENSED_RECORD_ID = 'share-procon2026-fonts-noto-sans-jp';
+/** The bytes this repository still cannot account for. */
+const HELD_RECORD_ID = 'share-procon2026-pdfs';
 
 const pageClassName = css({
 	fontFamily: 'sans',
@@ -186,7 +192,8 @@ const SCOPE_ITEMS: readonly { label: string; body: string }[] = [
 
 /**
  * The verification screen the capture script photographs: the featured
- * asset's review, the held asset's review, every record's decision, and
+ * asset's review, a bundled third-party asset whose licence travels
+ * with the bytes, the held asset's review, every record's decision, and
  * the scope the audit covers.
  */
 export function AssetLicenseReviewGallery() {
@@ -224,6 +231,16 @@ export function AssetLicenseReviewGallery() {
 				<AssetLicenseReview
 					record={recordFor(FEATURED_RECORD_ID)}
 					review={reviewFor(FEATURED_RECORD_ID)}
+				/>
+			</section>
+
+			<section aria-labelledby="licensed">
+				<p className={sectionTitleClassName} id="licensed">
+					同梱された第三者の資産 — 配布物自身がライセンス本文を宣言している（embedded-declaration）
+				</p>
+				<AssetLicenseReview
+					record={recordFor(LICENSED_RECORD_ID)}
+					review={reviewFor(LICENSED_RECORD_ID)}
 				/>
 			</section>
 
@@ -265,6 +282,11 @@ type Story = StoryObj<typeof AssetLicenseReview>;
 
 export const FeaturedAsset: Story = {
 	args: { record: recordFor(FEATURED_RECORD_ID), review: reviewFor(FEATURED_RECORD_ID) },
+};
+
+/** The bundled-font case: the licence text travels with the bytes. */
+export const BundledFont: Story = {
+	args: { record: recordFor(LICENSED_RECORD_ID), review: reviewFor(LICENSED_RECORD_ID) },
 };
 
 /** The held case: the page ships bytes this repository cannot account for. */

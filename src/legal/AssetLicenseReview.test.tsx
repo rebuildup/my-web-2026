@@ -187,6 +187,16 @@ describe('AssetLicenseReview', () => {
 		expect(render(record())).toContain('public/fixture/**');
 	});
 
+	it('shows the files a record hands over to another record', () => {
+		const html = render(record({ excludes: ['public/fixture/one.png'] }));
+		expect(html).toContain('対象から除く');
+		expect(html).toContain('public/fixture/one.png');
+	});
+
+	it('omits the carve-out row when the record hands nothing over', () => {
+		expect(render(record())).not.toContain('対象から除く');
+	});
+
 	it('says so when the asset is not served at a public path', () => {
 		const html = render(record({ publicPaths: [] }), {
 			evidenceExists: () => true,

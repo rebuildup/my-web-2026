@@ -279,6 +279,9 @@ export function AssetLicenseReview({ record, review, evidenceStates }: AssetLice
 				{fact('検証 / verification', VERIFICATION_LABEL[record.verification.method])}
 				{fact('確認日 / reviewed on', record.verification.checkedOn ?? CHECKED_ON_UNRECORDED)}
 				{fact('対象 / covers', record.covers.join(' , ') || '—')}
+				{record.excludes && record.excludes.length > 0
+					? fact('対象から除く / excludes', record.excludes.join(' , '))
+					: null}
 				{fact(
 					'公開パス / public paths',
 					record.publicPaths && record.publicPaths.length > 0

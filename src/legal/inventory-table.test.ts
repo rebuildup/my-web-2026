@@ -53,6 +53,20 @@ describe('faceValueObservations', () => {
 		expect(observations.evidenceExists('LICENSE.txt')).toBe(false);
 		expect(observations.sha256Of('LICENSE.txt')).toBeNull();
 	});
+
+	it('keeps a digest a record pinned when another record cites the same file without one', () => {
+		const observations = faceValueObservations([
+			baseRecord(),
+			baseRecord({
+				id: 'other',
+				evidence: [{ kind: 'repository-file', path: 'LICENSE' }],
+			}),
+		]);
+
+		// The digest is a property of the file, not of the last record
+		// that happens to mention it.
+		expect(observations.sha256Of('LICENSE')).toBe('a'.repeat(64));
+	});
 });
 
 describe('assetInventoryTable', () => {

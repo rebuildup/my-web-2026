@@ -9,10 +9,12 @@
  * `AssetLicenseReviewGallery` from
  * `src/legal/AssetLicenseReview.stories.tsx`: the rights, provenance,
  * licence, conditions and evidence of ONE content item (the
- * `procon2026` guide, already public), the same card for the case that
- * decides the contract (bundled fonts whose provenance this repository
- * does not record), every record's derived decision, and the audit's
- * declared scope.
+ * `procon2026` guide, already public), the same card for a bundled
+ * third-party asset whose licence text the shipped page declares
+ * (`embedded-declaration`), the same card for the case that decides the
+ * contract (bundled documents whose provenance this repository does not
+ * record), every record's derived decision, and the audit's declared
+ * scope.
  *
  * The fixtures are the COMMITTED RECORD
  * (`quality/asset-license-inventory.json`), so the committed image cannot
@@ -94,8 +96,8 @@ export const GALLERY_TEST_ID = 'asset-license-gallery';
 /** Per-card marker, counted so an empty page cannot pass. */
 export const REVIEW_TEST_ID = 'asset-license-review';
 
-/** How many review cards the gallery renders (featured + held). */
-export const EXPECTED_REVIEW_CARDS = 2;
+/** How many review cards the gallery renders (featured + licensed + held). */
+export const EXPECTED_REVIEW_CARDS = 3;
 
 /** The record the gallery renders: proof the screen has one real source. */
 export const RECORD_RELATIVE_PATH = 'quality/asset-license-inventory.json';

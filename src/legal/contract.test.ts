@@ -94,6 +94,15 @@ describe('cover patterns', () => {
 		);
 		expect(claimed).toEqual(['public/icons/a.png', 'public/og/one.png', 'public/og/two.png']);
 	});
+
+	it('hands a file over when the record excludes it', () => {
+		const claimed = filesClaimedBy(
+			['public/fonts/**'],
+			['public/fonts/a.woff2', 'public/fonts/b.woff2'],
+			['public/fonts/b.woff2'],
+		);
+		expect(claimed).toEqual(['public/fonts/a.woff2']);
+	});
 });
 
 describe('vocabulary guards', () => {
@@ -340,6 +349,42 @@ describe('evaluateAssetInventory', () => {
 		);
 		expect(result.verdict).toBe('FAIL');
 		expect(result.findings.filter((item) => item.code === 'L002')).toHaveLength(1);
+	});
+
+	it('lets one record hand a file to another without claiming it twice', () => {
+		const result = evaluateAssetInventory(
+			inventory({
+				records: [
+					record({ id: 'fonts-directory', excludes: ['public/fixture/one.png'] }),
+					record({ id: 'one-font', covers: ['public/fixture/one.png'] }),
+				],
+				auditedFiles: ['public/fixture/one.png', 'public/fixture/two.png'],
+			}),
+		);
+		expect(result.verdict).toBe('PASS');
+		expect(result.findings.filter((item) => item.code === 'L002')).toEqual([]);
+		expect(result.findings.filter((item) => item.code === 'L001')).toEqual([]);
+		expect(result.reviews.find((item) => item.id === 'fonts-directory')?.files).toEqual([
+			'public/fixture/two.png',
+		]);
+		expect(result.reviews.find((item) => item.id === 'one-font')?.files).toEqual([
+			'public/fixture/one.png',
+		]);
+	});
+
+	it('fails when every record excludes the same file', () => {
+		const result = evaluateAssetInventory(
+			inventory({
+				records: [
+					record({ id: 'fonts-directory', excludes: ['public/fixture/one.png'] }),
+					record({ id: 'one-font', excludes: ['public/fixture/one.png'] }),
+				],
+			}),
+		);
+		expect(result.verdict).toBe('FAIL');
+		expect(result.findings.find((item) => item.code === 'L001')?.subject).toBe(
+			'public/fixture/one.png',
+		);
 	});
 
 	it('fails on a duplicated record id', () => {

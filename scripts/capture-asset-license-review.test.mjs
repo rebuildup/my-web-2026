@@ -125,7 +125,7 @@ describe('harness generation', () => {
 	it('keeps the readiness markers the capture waits for', () => {
 		assert.equal(GALLERY_TEST_ID, 'asset-license-gallery');
 		assert.equal(REVIEW_TEST_ID, 'asset-license-review');
-		assert.equal(EXPECTED_REVIEW_CARDS, 2);
+		assert.equal(EXPECTED_REVIEW_CARDS, 3);
 	});
 
 	it('renders the committed record, not a hand-written sample', () => {

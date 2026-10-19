@@ -15,6 +15,7 @@ of trusting the image.
 | [`headers-browser.webp`](headers-browser.webp) | #449 | `node scripts/security-header-report.mjs` |
 | [`markdown-xss-fixture.webp`](markdown-xss-fixture.webp) | #451 | capture generator is **not** in the repository — see [`## markdown-xss-fixture.webp`](#markdown-xss-fixturewebp); the same properties are asserted on every push by `pnpm exec vitest run test/integration/markdown-xss-ssr.test.ts` and by `pnpm run e2e` |
 | [`webhook-signature-fixture.webp`](webhook-signature-fixture.webp) | #463 | `pnpm run webhook:fixture:report` |
+| [`integration-scope-review.webp`](integration-scope-review.webp) | #464 | `pnpm run verify:integration-scope-screenshot` |
 | [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
 | [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 | [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
@@ -160,6 +161,32 @@ Playwright cannot write WebP, so the generator re-encodes the in-memory
 capture with `sharp` (width ≤ 1600 px, quality 74) and never writes an
 intermediate PNG. Reading guide:
 [`docs/verification/security/release-gate-coverage.md`](release-gate-coverage.md).
+
+## `integration-scope-review.webp` (Issue #464)
+
+OAuth / 外部連携 token の最小権限レビュー（Issue #464）。3 段構成:
+
+1. **候補表** — `quality/integration-scope.json` の宣言（required /
+   optional / never accepted、保管期限、revoke 期限）。roster の SoT は
+   `docs/domain/integrations.md` で、gate は両者の drift を落とす。
+2. **測定表** — ledger の `reviewed_connections` を
+   `src/http/integrations/scope-review.ts` の `reviewConnection()` に
+   通した結果。`approved` だけでなく `unapproved_scope` と
+   `reauth_required` が同じ表に並ぶことが、この report の存在理由。
+   `review: "deferred"` の候補（Stripe）は `unknown_integration` として
+   並ぶ——scope review が存在しないことを「主張」ではなく測定結果として
+   見せるため。宣言と測定が食い違えば gate が fail する。
+3. **false-green probe** — `quality/fixtures/integration-scope/` の 6 件。
+   ledger への patch 形式なので repository から乖離しない。
+
+scope **名**と frozen な時刻だけを描画し、token 値・アカウント email・
+bucket / key 一覧は一切読まない・描かない・保存しない。`/integrations/*` は
+handler 未 mount（完全 consent 済み grant でも 404）で、この report は
+adapter を記録したものであり、公開済み接続を記録したものではない。
+契約の本文は
+[`docs/security/integration-token-scope.md`](../../security/integration-token-scope.md)。
+判定は `pnpm run integration:scope:check`、画像は
+`pnpm run verify:integration-scope-screenshot` が生成する。
 
 ## `webhook-signature-fixture.webp`
 

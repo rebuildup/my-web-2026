@@ -19,6 +19,28 @@ integration は「外部サービス名が登場すること」ではなく、my
 | discord | Discord API | **uncommitted** | none | webhook / OAuth / bot event を capability が実際に必要としたとき | current code evidence なし |
 | stripe | Stripe API | **uncommitted** | none | billing / checkout obligation が current product scope に入り、price / payment lifecycle を所有するとき | old commission surface があっても Stripe 採用の evidence にはならない |
 
+## Scope / retention ledger (Issue #464)
+
+候補ごとに「何を保持してよいか・どれくらい持てばよいか・誰が失効させるか」は
+[`docs/security/integration-token-scope.md`](../security/integration-token-scope.md)、
+その宣言は [`quality/integration-scope.json`](../quality/integration-scope.json) にあり、
+`pnpm run integration:scope:check` が 3 層（構造 / `docs/domain/integrations.md` との
+整合 / adapter を実行した測定）で照合する。
+
+上の Current state 表が **候補 roster の SoT** である。ここに無い service を
+`quality/integration-scope.json` に追加するのは drift として gate が落とす。逆に、
+表に候補を追加する場合は scope review を同時に書かなければならない。
+
+Stripe は `review: "deferred"` である。billing が product scope に入るまで review
+できる scope 自体が存在しないため、「Stripe の token は存在しえない」という行にして
+あり、billing ticket はその行を書き換える義務を持つ。
+
+`/integrations/*` は `src/server.ts` が dispatch するが handler は未 mount で、
+完全な consent 済み grant でも `404` を返す
+（`src/http/integrations/boundary.test.ts` が固定）。token の取得と接続の公開には
+owner の allowlist entry（`quality/integration-scope.json#allowlist.entries`）が
+必要で、現時点では空である。
+
 ### Unwired reference adapters are not integrations
 
 `src/external-api/`（Issue #499）は、外部 read の一貫した信頼性契約（timeout / stale

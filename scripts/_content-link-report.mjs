@@ -183,7 +183,7 @@ export function renderMarkdownSummary({ scan, fixtures }) {
 		);
 		for (const item of scan.findings) {
 			lines.push(
-				`| ${item.severity} | ${item.code} | ${item.sourcePath}:${item.line} | ${item.target} | ${item.message} |`,
+				`| ${item.severity} | ${item.code} | ${item.sourcePath}:${item.line} | ${item.target}${item.count > 1 ? ` (×${item.count})` : ''} | ${item.message} |`,
 			);
 		}
 	}

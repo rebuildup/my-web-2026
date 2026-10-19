@@ -47,7 +47,6 @@ import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildReportHtml, renderMarkdownSummary } from './_content-link-report.mjs';
 import {
-	SEVERITY,
 	buildSurfaceSets,
 	checkExternalTargets,
 	classifyReference,
@@ -101,7 +100,7 @@ export function collectPublicContent() {
  * dynamic route is expanded with the real slug roster rather than
  * accepting any `/portfolio/<anything>` string.
  */
-export function buildRoutePaths({ portfolioSlugs, toolSlugs }) {
+export function buildRoutePaths({ portfolioSlugs, toolSlugs, toolPaths = [] }) {
 	const paths = [];
 	for (const declaration of SURFACE_DECLARATIONS) {
 		if (typeof declaration.path === 'string') paths.push(declaration.path);
@@ -112,6 +111,7 @@ export function buildRoutePaths({ portfolioSlugs, toolSlugs }) {
 			for (const slug of toolSlugs) paths.push(`/tools/${slug}`);
 		}
 	}
+	for (const path of toolPaths) paths.push(path);
 	return [...new Set(paths)].sort();
 }
 
@@ -320,4 +320,4 @@ if (process.argv[1] && resolve(process.argv[1]) === fileURLToPath(import.meta.ur
 	process.exitCode = await main();
 }
 
-export { SEVERITY, main, scan };
+export { main, scan };

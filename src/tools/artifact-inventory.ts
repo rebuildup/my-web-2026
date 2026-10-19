@@ -276,11 +276,62 @@ const NON_LICENSE_MARKERS: readonly string[] = [
 ];
 
 /**
+ * The first few non-empty lines, which is where a license text carries
+ * its title and version. Canonical texts put both in the heading; body
+ * references to another license (e.g. GPL-3.0 §13 naming the AGPL) do
+ * not appear there, so the window stays tight enough to exclude §13.
+ */
+function titleRegion(normalized: string): string {
+	return normalized
+		.split('\n')
+		.map((line) => line.trim())
+		.filter((line) => line !== '')
+		.slice(0, 3)
+		.join('\n');
+}
+
+/**
+ * Resolve license families whose texts contain one another.
+ *
+ * Canonical texts cross-reference their siblings: AGPL-3.0 §13 names
+ * "version 3 of the GNU General Public License", GPL-3.0 §13 names
+ * "version 3 of the GNU Affero General Public License", and the
+ * BSD-3-Clause grant contains the whole BSD-2-Clause grant. Returning
+ * every matching signature would let `detected.includes(declared)`
+ * accept a claim for the license the text does *not* grant, so the
+ * family is resolved by its title line before the caller compares it.
+ */
+function applyLicensePrecedence(normalized: string, matched: readonly string[]): string[] {
+	const ids = new Set(matched);
+	// BSD-3-Clause is BSD-2-Clause plus the "neither the name" clause;
+	// when that clause is present the text grants BSD-3, not BSD-2.
+	if (ids.has('BSD-3-Clause')) ids.delete('BSD-2-Clause');
+	const title = titleRegion(normalized);
+	const agplTitle = title.includes('gnu affero general public license');
+	const gplTitle = title.includes('gnu general public license');
+	if (agplTitle) {
+		// The AGPL title is present: §13's reference to the GPL is not a
+		// GPL grant.
+		ids.delete('GPL-3.0-only');
+		ids.delete('GPL-2.0-only');
+	} else if (gplTitle) {
+		// GPL §13's reference to the AGPL is not an AGPL grant. The
+		// heading's version selects the GPL variant, so a v3 text that
+		// mentions v2 elsewhere does not report both.
+		ids.delete('AGPL-3.0-only');
+		if (/version\s+3/.test(title)) ids.delete('GPL-2.0-only');
+		if (/version\s+2/.test(title)) ids.delete('GPL-3.0-only');
+	}
+	return [...ids].sort();
+}
+
+/**
  * Classify license text into the SPDX identifiers it grants.
  *
  * Returns every identifier whose full phrase set is present, sorted and
- * de-duplicated. An empty array means "no recognisable grant" — the
- * caller treats that as `unverified`, never as a pass.
+ * de-duplicated, after resolving the families that embed one another.
+ * An empty array means "no recognisable grant" — the caller treats that
+ * as `unverified`, never as a pass.
  */
 export function detectSpdxLicenses(text: string | null | undefined): string[] {
 	const normalized = String(text ?? '')
@@ -290,7 +341,7 @@ export function detectSpdxLicenses(text: string | null | undefined): string[] {
 	const matched = SPDX_SIGNATURES.filter((entry) =>
 		entry.phrases.every((phrase) => normalized.includes(phrase)),
 	).map((entry) => entry.id);
-	return [...new Set(matched)].sort();
+	return applyLicensePrecedence(normalized, [...new Set(matched)]);
 }
 
 /**
@@ -502,6 +553,22 @@ export function evaluateToolArtifactInventory(input: ToolInventoryInput): ToolIn
 	}
 
 	// --- 3. reviewed record drift -----------------------------------------
+	// The pin comparison is independent of the checkout: an
+	// inventory-only entry has no bytes to read, but its manifest pin can
+	// still move away from the commit the record reviewed. Reporting it
+	// at the entry's own severity (info when nothing is published) keeps
+	// `reviewed_pin` from being written and never compared.
+	if (input.reviewed !== null && input.reviewed.pinned_sha !== input.pinnedSha) {
+		findings.push(
+			finding(
+				'REVIEWED_PIN_MISMATCH',
+				severity,
+				input.slug,
+				`the reviewed entry records pin ${input.reviewed.pinned_sha} but the manifest pins ${input.pinnedSha}; the recorded license and dependency evidence describes different bytes`,
+				'run `pnpm run tools:artifact:update` and review the regenerated record in the same PR as the bump',
+			),
+		);
+	}
 	if (input.checkoutPresent) {
 		if (input.reviewed === null) {
 			findings.push(
@@ -514,17 +581,6 @@ export function evaluateToolArtifactInventory(input: ToolInventoryInput): ToolIn
 				),
 			);
 		} else {
-			if (input.reviewed.pinned_sha !== input.pinnedSha) {
-				findings.push(
-					finding(
-						'REVIEWED_PIN_MISMATCH',
-						severity,
-						input.slug,
-						`the reviewed entry records pin ${input.reviewed.pinned_sha} but the manifest pins ${input.pinnedSha}; the recorded license and dependency evidence describes different bytes`,
-						'run `pnpm run tools:artifact:update` and review the regenerated record in the same PR as the bump',
-					),
-				);
-			}
 			if (
 				input.license.evidenceFile !== null &&
 				(input.reviewed.license.evidence_sha256 !== input.license.evidenceSha256 ||
@@ -540,11 +596,17 @@ export function evaluateToolArtifactInventory(input: ToolInventoryInput): ToolIn
 					),
 				);
 			}
-			if (input.reviewed.dependencies.lockfile_sha256 !== input.dependencies.lockfileSha256) {
-				const before = new Set(input.reviewed.dependencies.runtime);
-				const after = new Set(input.dependencies.runtimeDependencies);
-				const added = [...after].filter((name) => !before.has(name)).sort();
-				const removed = [...before].filter((name) => !after.has(name)).sort();
+			// Compare the runtime set even when the lockfile digest is
+			// unchanged: editing `package.json#dependencies` does not move
+			// the lockfile bytes in every package manager, and the reviewed
+			// record stores the set precisely so that change is visible.
+			const before = new Set(input.reviewed.dependencies.runtime);
+			const after = new Set(input.dependencies.runtimeDependencies);
+			const added = [...after].filter((name) => !before.has(name)).sort();
+			const removed = [...before].filter((name) => !after.has(name)).sort();
+			const lockfileChanged =
+				input.reviewed.dependencies.lockfile_sha256 !== input.dependencies.lockfileSha256;
+			if (lockfileChanged || added.length > 0 || removed.length > 0) {
 				const detail =
 					added.length > 0 || removed.length > 0
 						? ` (runtime dependencies added: ${added.join(', ') || 'none'}; removed: ${removed.join(', ') || 'none'})`
@@ -554,7 +616,7 @@ export function evaluateToolArtifactInventory(input: ToolInventoryInput): ToolIn
 						'DEPENDENCY_DRIFT',
 						severity,
 						input.slug,
-						`${input.dependencies.lockfile ?? 'the lockfile'} no longer matches the reviewed digest${detail}`,
+						`${input.dependencies.lockfile ?? 'the lockfile'} no longer matches the reviewed record${detail}`,
 						're-run `pnpm run tools:artifact:update` and review the dependency change in the PR that changed it',
 					),
 				);
@@ -644,7 +706,10 @@ export function verdictFor(
  *
  * `inventoryOnly` is the population the gate deliberately does not
  * enumerate finding-by-finding: entries with no checkout in this tree,
- * which publish no bytes here. They are reported once, by count, so an
+ * which publish no bytes here. A shipped entry without a checkout is a
+ * FAIL, not inventory-only — it is counted in `failed` so the info line
+ * never claims "nothing is published" about a Tool this repository is
+ * supposed to publish. They are reported once, by count, so an
  * unreviewed inventory can never look like a reviewed one and can
  * never bury the findings that do matter.
  */
@@ -662,7 +727,7 @@ export function summarizeToolInventory(rows: readonly ToolInventoryRow[]): {
 		passed: rows.filter((row) => row.verdict === 'PASS').length,
 		warned: rows.filter((row) => row.verdict === 'WARN').length,
 		failed: rows.filter((row) => row.verdict === 'FAIL').length,
-		inventoryOnly: rows.filter((row) => !row.checkout_present).length,
+		inventoryOnly: rows.filter((row) => !row.checkout_present && !row.shipped).length,
 	};
 }
 

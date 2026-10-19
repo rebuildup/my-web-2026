@@ -73,6 +73,16 @@ const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
 const MALFORMED = 'malformed-reviewed-record';
 
 /**
+ * Issue #466 — findings that can only be observed after collection.
+ * `evaluateToolForBuild` is called before the build (step 1c) to refuse
+ * unreviewed license/dependency evidence, and again after collection
+ * (step 6) for the bytes just mirrored into `dist/client`. The first
+ * call cannot see a clean checkout's artefact, so its outbound findings
+ * are not printed twice.
+ */
+const OUTBOUND_FINDING_CODES = new Set(['OUTBOUND_UNDECLARED', 'OUTBOUND_RECORD_STALE']);
+
+/**
  * Issue #233 — minimum toolchain versions.
  *
  * `external/readmark` ships a Bun text lockfile (`bun.lock`) at
@@ -252,6 +262,7 @@ for (const tool of targetTools) {
 	const inventoryFindings = evaluateToolForBuild({ root, tool, record }).findings;
 	const blocking = inventoryFindings.filter((item) => item.severity === 'error');
 	for (const item of inventoryFindings) {
+		if (OUTBOUND_FINDING_CODES.has(item.code)) continue;
 		console.error(`[build-tools]   [${item.severity}] ${item.code}: ${item.message}`);
 	}
 	if (blocking.length > 0) {
@@ -397,6 +408,24 @@ for (const tool of targetTools) {
 					`[build-tools]   ✓ rewrote root-absolute asset paths to prefix /${destArtifactPath.replace(/^\/+/, '').replace(/\/+$/, '')}`,
 				);
 			}
+		}
+	}
+
+	// 6. Issue #466 — re-read the outbound hosts from the bytes just
+	// collected. Step 1c runs before the build, so on a clean checkout
+	// there is no `dist/client/tools/<slug>/app` yet and the scan reports
+	// "not collected". Evaluating only the outbound rule here (the
+	// license/dependency verdict cannot change during collection) makes
+	// the reviewed host set compare against what is actually served.
+	if (!dryRun) {
+		const outboundFindings = evaluateToolForBuild({ root, tool, record }).findings.filter((item) =>
+			OUTBOUND_FINDING_CODES.has(item.code),
+		);
+		for (const item of outboundFindings) {
+			console.error(`[build-tools]   [${item.severity}] ${item.code}: ${item.message}`);
+		}
+		if (outboundFindings.length === 0) {
+			console.error('[build-tools]   ✓ outbound hosts match the reviewed set');
 		}
 	}
 }

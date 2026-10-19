@@ -440,11 +440,29 @@ Severity is the contract, and it is the reason the gate exists:
 - `same_origin_static` — this repository builds and serves the bytes —
   is an **error**. `scripts/build-tools.mjs` step 1c evaluates the same
   `src/tools/artifact-inventory.ts` rules this gate reports, so a Tool the
-  gate blocks is never published: `pnpm run build` refuses it.
+  gate blocks is never published: `pnpm run build` refuses it. Step 6
+  evaluates the outbound rule again after collection, because a clean
+  checkout has no `dist/client/tools/<slug>/app` for step 1c to scan.
 - any other delivery kind is a **warn** (a hold) when bytes exist to
   inspect, and **info** when the entry is inventory-only. The 13 entries
   with no submodule are reported once, by count, so an unreviewed
-  inventory never renders like a reviewed one.
+  inventory never renders like a reviewed one. A shipped entry without a
+  checkout is counted as a failure, never as inventory-only.
+
+Two comparisons are deliberately independent of the digest they ship
+with. The runtime dependency set is compared even when the lockfile
+sha256 is unchanged (editing `package.json#dependencies` does not move
+the lockfile in every package manager), and `reviewed.pinned_sha` is
+compared for inventory-only entries too (their pin is still a reviewed
+claim, reported at `info` severity).
+
+License detection resolves families whose canonical texts embed one
+another: BSD-3-Clause contains the BSD-2-Clause grant, AGPL-3.0 §13
+names the GNU GPL, and GPL-3.0 §13 names the AGPL. The title line picks
+the family, so a `GPL-3.0-only` claim is not verified by AGPL text and a
+`BSD-2-Clause` claim is not verified by BSD-3 text. The outbound scan
+covers `ws:` / `wss:` and protocol-relative `//host/path` references in
+addition to `http(s):`.
 
 Like §6 the gate is **offline and status-only**: no network fetch, no
 environment variable, no secret file, no binding. Licence evidence is

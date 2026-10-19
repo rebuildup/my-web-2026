@@ -42,6 +42,67 @@ This program is free software: you can redistribute it and/or modify it under
 the terms of the GNU Affero General Public License.
 `;
 
+/**
+ * Canonical GPL-3.0 shape: the title names the GPL, and §13 cross-
+ * references "version 3 of the GNU Affero General Public License".
+ * Those are the two phrases that used to make one text report both
+ * identifiers.
+ */
+const GPL_3_TEXT = `                    GNU GENERAL PUBLIC LICENSE
+                       Version 3, 29 June 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+
+  "This License" refers to version 3 of the GNU General Public License.
+
+  13. Use with the GNU Affero General Public License.
+
+  Notwithstanding any other provision of this License, you have
+permission to link or combine any covered work with a work licensed
+under version 3 of the GNU Affero General Public License into a single
+combined work, and to convey the resulting work.
+`;
+
+/**
+ * Canonical AGPL-3.0 shape: the title names the AGPL, and §13 cross-
+ * references "version 3 of the GNU General Public License".
+ */
+const AGPL_3_FULL_TEXT = `                    GNU AFFERO GENERAL PUBLIC LICENSE
+                       Version 3, 19 November 2007
+
+ Copyright (C) 2007 Free Software Foundation, Inc. <https://fsf.org/>
+
+  13. Remote Network Interaction; Use with the GNU General Public License.
+
+  Notwithstanding any other provision of this License, you have
+permission to link or combine any covered work with a work licensed
+under version 3 of the GNU General Public License into a single
+combined work, and to convey the resulting work.
+`;
+
+/** Canonical BSD-2-Clause grant: no "neither the name" clause. */
+const BSD_2_TEXT = `Copyright (c) 2026 example
+
+Redistribution and use in source and binary forms, with or without
+modification, are permitted provided that the following conditions are met:
+
+1. Redistributions of source code must retain the above copyright notice,
+   this list of conditions and the following disclaimer.
+
+2. Redistributions in binary form must reproduce the above copyright notice,
+   this list of conditions and the following disclaimer in the documentation
+   and/or other materials provided with the distribution.
+
+THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS".
+`;
+
+/** Canonical BSD-3-Clause grant: BSD-2 plus "neither the name". */
+const BSD_3_TEXT = `${BSD_2_TEXT}
+3. Neither the name of the copyright holder nor the names of its
+   contributors may be used to endorse or promote products derived from
+   this software without specific prior written permission.
+`;
+
 /** A fully verified observation, used as the baseline every rule edits. */
 function baseInput(overrides: Partial<ToolInventoryInput> = {}): ToolInventoryInput {
 	return {
@@ -97,6 +158,22 @@ describe('detectSpdxLicenses', () => {
 
 	it('recognises AGPL-3.0 text', () => {
 		expect(detectSpdxLicenses(AGPL_TEXT)).toEqual(['AGPL-3.0-only']);
+	});
+
+	it('does not read the GPL reference inside AGPL §13 as a second grant', () => {
+		expect(detectSpdxLicenses(AGPL_3_FULL_TEXT)).toEqual(['AGPL-3.0-only']);
+	});
+
+	it('does not read the AGPL reference inside GPL §13 as a second grant', () => {
+		expect(detectSpdxLicenses(GPL_3_TEXT)).toEqual(['GPL-3.0-only']);
+	});
+
+	it('reports BSD-3-Clause alone when the "neither the name" clause is present', () => {
+		expect(detectSpdxLicenses(BSD_3_TEXT)).toEqual(['BSD-3-Clause']);
+	});
+
+	it('reports BSD-2-Clause alone when that clause is absent', () => {
+		expect(detectSpdxLicenses(BSD_2_TEXT)).toEqual(['BSD-2-Clause']);
 	});
 
 	it('is case-insensitive and tolerates smart quotes', () => {
@@ -197,6 +274,40 @@ describe('evaluateToolArtifactInventory — license evidence', () => {
 		expect(result.findings[0].severity).toBe('error');
 		expect(result.findings[0].message).toContain('AGPL-3.0-only');
 		expect(result.rows[0].verdict).toBe('FAIL');
+	});
+
+	it('does not verify a GPL-3.0 claim against AGPL-3.0 text', () => {
+		const result = evaluateToolArtifactInventory(
+			baseInput({
+				reviewed: reviewedRecord(),
+				license: {
+					declared: 'GPL-3.0-only',
+					evidenceFile: 'LICENSE',
+					evidenceSha256: 'lic-digest',
+					evidenceText: AGPL_3_FULL_TEXT,
+					packageLicenseField: null,
+				},
+			}),
+		);
+		expect(codes(result.findings)).toEqual(['LICENSE_MISMATCH']);
+		expect(result.rows[0].license_status).toBe('mismatch');
+	});
+
+	it('does not verify a BSD-2-Clause claim against BSD-3-Clause text', () => {
+		const result = evaluateToolArtifactInventory(
+			baseInput({
+				reviewed: reviewedRecord(),
+				license: {
+					declared: 'BSD-2-Clause',
+					evidenceFile: 'LICENSE',
+					evidenceSha256: 'lic-digest',
+					evidenceText: BSD_3_TEXT,
+					packageLicenseField: null,
+				},
+			}),
+		);
+		expect(codes(result.findings)).toEqual(['LICENSE_MISMATCH']);
+		expect(result.rows[0].license_status).toBe('mismatch');
 	});
 
 	it('holds (does not fail) the same mismatch for a Tool nothing publishes', () => {
@@ -354,6 +465,22 @@ describe('evaluateToolArtifactInventory — dependency evidence', () => {
 		expect(result.findings[0].message).toContain('added: right-pad');
 		expect(result.findings[0].message).toContain('removed: none');
 	});
+
+	it('compares the runtime set even when the lockfile digest is unchanged', () => {
+		const result = evaluateToolArtifactInventory(
+			baseInput({
+				reviewed: reviewedRecord(),
+				dependencies: {
+					lockfile: 'pnpm-lock.yaml',
+					lockfileSha256: 'lock-digest',
+					runtimeDependencies: ['left-pad', 'right-pad'],
+					devDependencyCount: 3,
+				},
+			}),
+		);
+		expect(codes(result.findings)).toEqual(['DEPENDENCY_DRIFT']);
+		expect(result.findings[0].message).toContain('added: right-pad');
+	});
 });
 
 describe('evaluateToolArtifactInventory — reviewed record', () => {
@@ -365,6 +492,32 @@ describe('evaluateToolArtifactInventory — reviewed record', () => {
 		);
 		expect(codes(result.findings)).toEqual(['REVIEWED_PIN_MISMATCH']);
 		expect(result.rows[0].reviewed_pin).toBe('b'.repeat(40));
+	});
+
+	it('compares the reviewed pin for an inventory-only entry too', () => {
+		const result = evaluateToolArtifactInventory(
+			baseInput({
+				deliveryKind: 'host_disabled',
+				checkoutPresent: false,
+				reviewed: reviewedRecord({ pinned_sha: 'b'.repeat(40) }),
+				license: {
+					declared: 'MIT',
+					evidenceFile: null,
+					evidenceSha256: null,
+					evidenceText: null,
+					packageLicenseField: null,
+				},
+				dependencies: {
+					lockfile: null,
+					lockfileSha256: null,
+					runtimeDependencies: [],
+					devDependencyCount: 0,
+				},
+			}),
+		);
+		expect(codes(result.findings)).toEqual(['REVIEWED_PIN_MISMATCH']);
+		expect(result.findings[0].severity).toBe('info');
+		expect(result.rows[0].verdict).toBe('INFO');
 	});
 
 	it('fails when the license file changed since the review', () => {

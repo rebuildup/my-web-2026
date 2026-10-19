@@ -11,6 +11,7 @@ import {
 	findLicenseFile,
 	findLockfile,
 	main,
+	observeTool,
 	renderHtmlReport,
 	renderMarkdownReport,
 	scanArtifactHosts,
@@ -145,6 +146,32 @@ describe('inventory helpers — artefact scan', () => {
 		writeFileSync(join(dir, 'a.html'), '<a href="https://b.example/x">');
 		writeFileSync(join(dir, 'b.js'), 'const u = "https://a.example/y";');
 		assert.deepEqual(scanArtifactHosts(dir).hosts, ['a.example', 'b.example']);
+	});
+
+	it('records wss and protocol-relative references too', () => {
+		const dir = makeTempDir();
+		writeFileSync(
+			join(dir, 'bundle.js'),
+			'new WebSocket("wss://socket.example/ws"); const cdn = "//cdn.example/lib.js"; const file = "file:///tmp/x";\n',
+		);
+		assert.deepEqual(scanArtifactHosts(dir).hosts, ['cdn.example', 'socket.example']);
+	});
+
+	it('observes nothing before collection and the just-collected bytes after it', () => {
+		const root = makeToolArtifactFixture(makeTempDir(), { quiet: true });
+		const manifest = JSON.parse(readFileSync(join(root, 'src/tools/manifest.json'), 'utf8'));
+		const tool = manifest.tools.find((entry) => entry.slug === 'verified-widget');
+		const artifactDir = join(root, 'dist/client/tools/verified-widget/app');
+
+		rmSync(artifactDir, { recursive: true, force: true });
+		assert.deepEqual(observeTool(root, tool).outbound, { present: false, hosts: [] });
+
+		mkdirSync(artifactDir, { recursive: true });
+		writeFileSync(join(artifactDir, 'index.js'), 'fetch("https://collected.example/x");\n');
+		assert.deepEqual(observeTool(root, tool).outbound, {
+			present: true,
+			hosts: ['collected.example'],
+		});
 	});
 });
 

@@ -33,12 +33,12 @@
  *   | drifted-widget      | lockfile rewritten since the record was reviewed  | FAIL    |
  *   | shelved-widget      | `host_disabled`, no checkout — inventory-only     | INFO    |
  *
- * `unlicensed-widget` and `drifted-widget` also ship a collected
+ * `verified-widget` and `drifted-widget` also ship a collected
  * artefact under `dist/client/tools/<slug>/app/` so the outbound rule is
- * observable: `drifted-widget`'s bundle references a host that is not in
- * the reviewed set (a `warn` hold), and the reference is written with a
- * credential-shaped userinfo to prove the report reduces it to a bare
- * hostname.
+ * observable: `verified-widget`'s reference is in its reviewed host
+ * set, while `drifted-widget`'s bundle references a host that is not (a
+ * `warn` hold), and that reference is written with a credential-shaped
+ * userinfo to prove the report reduces it to a bare hostname.
  */
 
 import { spawnSync } from 'node:child_process';

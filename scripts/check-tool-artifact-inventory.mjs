@@ -57,8 +57,8 @@
  * 2 = unusable input (unreadable root / manifest / record).
  */
 
-import { createHash } from 'node:crypto';
 import { spawnSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -96,8 +96,18 @@ const SCAN_MAX_FILES = 2000;
 const SCAN_MAX_FILE_BYTES = 4 * 1024 * 1024;
 const SCAN_MAX_TOTAL_BYTES = 64 * 1024 * 1024;
 
-/** Absolute-URL reference inside an artefact, e.g. `https://host/path`. */
-const ABSOLUTE_URL_PATTERN = /https?:\/\/[^\s"'`\\)<>]+/gi;
+/**
+ * One outbound reference inside an artefact: an absolute URL (`https:`,
+ * `http:`, `ws:`, `wss:`) or a protocol-relative `//host/path`. The
+ * protocol-relative branch requires a host-looking first character and
+ * is not preceded by `:` or a word character, so the `//` inside
+ * `https://` and `file:///` is not read as a network reference. The
+ * preceding-character class also excludes base64 punctuation
+ * (`+`, `/`, `=`, `-`, `.`): a payload can contain `//` followed by
+ * alphanumerics, which is not a reference.
+ */
+const ABSOLUTE_URL_PATTERN =
+	/(?:https?|wss?):\/\/[^\s"'`\\)<>]+|(?<![\w:/+=-])\/\/[a-z0-9][^\s"'`\\)<>]*/gi;
 
 const SEVERITY_ORDER = { error: 0, warn: 1, info: 2 };
 
@@ -173,7 +183,20 @@ export function scanArtifactHosts(artifactDir) {
 			if (text.includes('\u0000')) continue; // binary (NUL byte): not a text reference
 			for (const match of text.matchAll(ABSOLUTE_URL_PATTERN)) {
 				try {
-					hosts.add(new URL(match[0]).hostname.toLowerCase());
+					const protocolRelative = match[0].startsWith('//');
+					// A protocol-relative reference has no scheme of its own;
+					// prepending one lets `URL` extract the hostname without
+					// treating the path as part of it.
+					const raw = protocolRelative ? `https:${match[0]}` : match[0];
+					const hostname = new URL(raw).hostname.toLowerCase();
+					if (hostname === '') continue;
+					// A real protocol-relative host carries a dot (or is the
+					// loopback name); a base64 fragment does not. Without
+					// this check a bundle's inline payload invents hosts.
+					if (protocolRelative && !hostname.includes('.') && hostname !== 'localhost') {
+						continue;
+					}
+					hosts.add(hostname);
 				} catch {
 					// A truncated or malformed reference is not a host;
 					// skipping it keeps the scan status-only.

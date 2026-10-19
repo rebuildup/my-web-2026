@@ -7,6 +7,7 @@ import {
 	__resetCapturedMeasurementIdForTests,
 	captureMeasurementId,
 } from './GoogleAnalytics';
+import { __resetDocumentAnalyticsConsentForTests, setDocumentAnalyticsConsent } from './consent';
 
 /**
  * Effect-wiring integration test for the SPA route-change tracker
@@ -43,12 +44,17 @@ describe('GoogleAnalyticsRouteTracker — effect wiring (Issue #286)', () => {
 		// it must be cleared or the previous test's ID leaks into the
 		// "no ID captured" case.
 		__resetCapturedMeasurementIdForTests();
+		// Issue #495: the tracker stays inert until this document has
+		// resolved an affirmative decision. These cases are about the
+		// effect wiring, so they start from the granted state.
+		setDocumentAnalyticsConsent('granted');
 		resetAnalyticsGlobals();
 	});
 
 	afterEach(() => {
 		cleanup();
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
 		resetAnalyticsGlobals();
 	});
 
@@ -117,6 +123,7 @@ describe('GoogleAnalytics — SSR-script ID seeding (Issue #286)', () => {
 
 	beforeEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		setDocumentAnalyticsConsent('granted');
 		resetAnalyticsGlobals();
 		bootstrapScript = undefined;
 	});
@@ -125,6 +132,7 @@ describe('GoogleAnalytics — SSR-script ID seeding (Issue #286)', () => {
 		cleanup();
 		bootstrapScript?.remove();
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
 		resetAnalyticsGlobals();
 	});
 

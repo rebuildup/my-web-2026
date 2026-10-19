@@ -45,7 +45,7 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { css } from '../../styled-system/css';
+import { css } from '../../../styled-system/css';
 import { GoogleAnalytics, GoogleAnalyticsRouteTracker } from './GoogleAnalytics';
 import {
 	ANALYTICS_CONSENT_CHANGE_EVENT,
@@ -76,7 +76,7 @@ export const ANALYTICS_CONSENT_COPY = {
 	offSwitchDescription:
 		'このブラウザは「追跡しない」を指定しています。サイト側の設定より優先して、解析用のスクリプトを読み込みません。',
 	storageBlockedDescription:
-		'ブラウザが保存 영역を無効にしているため、設定を保存できませんでした。このセッションは解析を読み込みません。',
+		'ブラウザが保存領域を無効にしているため、設定を保存できませんでした。このセッションは解析を読み込みません。',
 	grantLabel: '許可する',
 	denyLabel: '拒否する',
 	toggleLabel: '解析の設定',
@@ -367,6 +367,11 @@ export function AnalyticsConsentControl() {
 	const { state, offSwitch, storageUnavailable } = useAnalyticsConsentDecision();
 	const [expanded, setExpanded] = useState(true);
 	const [writeFailed, setWriteFailed] = useState(false);
+	// Nothing is rendered before hydration: the stored decision is only
+	// readable in the browser, so a server render could only show the
+	// `unset` panel and would flash it at a visitor who already answered.
+	const [mounted, setMounted] = useState(false);
+	useEffect(() => setMounted(true), []);
 
 	const decide = useCallback((decision: AnalyticsConsentDecision) => {
 		const written = writeAnalyticsConsent(decision);
@@ -387,6 +392,8 @@ export function AnalyticsConsentControl() {
 			: state === 'granted'
 				? ANALYTICS_CONSENT_COPY.grantedStatus
 				: ANALYTICS_CONSENT_COPY.unsetStatus;
+
+	if (!mounted) return null;
 
 	if (expanded) {
 		return (

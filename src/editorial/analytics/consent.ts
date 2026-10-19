@@ -115,16 +115,18 @@ export function parseAnalyticsConsent(raw: string | null | undefined): Analytics
 /**
  * Returns `localStorage` when it is usable, `null` otherwise.
  *
- * Accessing `localStorage` throws in some privacy configurations, so
- * the read itself is inside the try. A caller that passes `null`
- * treats the document as having no stored decision.
+ * The global is read through `globalThis` and touched inside the try,
+ * because reading or using `localStorage` throws in some privacy
+ * configurations and is simply absent on the server and in workerd. A
+ * caller that receives `null` treats the document as having no stored
+ * decision.
  */
 export function analyticsConsentStorage(): AnalyticsConsentStorage | null {
 	try {
-		if (typeof localStorage === 'undefined') return null;
-		// Touching the object is what throws when storage is blocked.
-		localStorage.getItem(ANALYTICS_CONSENT_STORAGE_KEY);
-		return localStorage;
+		const candidate = (globalThis as { localStorage?: AnalyticsConsentStorage }).localStorage;
+		if (!candidate || typeof candidate.getItem !== 'function') return null;
+		candidate.getItem(ANALYTICS_CONSENT_STORAGE_KEY);
+		return candidate;
 	} catch {
 		return null;
 	}
@@ -183,9 +185,16 @@ export function effectiveAnalyticsConsentState(
 
 /** The browser signal to honour, or `null` when neither is set. */
 export function analyticsOffSwitch(): AnalyticsConsentOffSwitch | null {
-	if (typeof navigator === 'undefined') return null;
-	if (navigator.globalPrivacyControl === true) return 'global-privacy-control';
-	if (navigator.doNotTrack === '1') return 'do-not-track';
+	// The privacy signals are not in the DOM lib's `Navigator`, and both
+	// are absent on the server, so the shape is stated here.
+	const nav = (
+		globalThis as {
+			navigator?: { globalPrivacyControl?: boolean; doNotTrack?: string | null };
+		}
+	).navigator;
+	if (!nav) return null;
+	if (nav.globalPrivacyControl === true) return 'global-privacy-control';
+	if (nav.doNotTrack === '1') return 'do-not-track';
 	return null;
 }
 

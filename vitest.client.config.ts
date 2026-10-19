@@ -29,5 +29,19 @@ export default defineConfig({
 		include: ['src/**/*.client.test.ts', 'src/**/*.client.test.tsx'],
 		exclude: ['node_modules', 'dist', 'dist-cloudflare', '.vinxi', '.output', '.wrangler'],
 		environment: 'happy-dom',
+		environmentOptions: {
+			happyDOM: {
+				settings: {
+					// A `<script src>` in the rendered tree must stay inert: the
+					// consent test mounts the real GA4 tag, and happy-dom would
+					// otherwise fetch googletagmanager.com — a third-party
+					// request from a unit test, and a teardown race with the
+					// next test.
+					disableJavaScriptFileLoading: true,
+					disableJavaScriptEvaluation: true,
+					disableCSSFileLoading: true,
+				},
+			},
+		},
 	},
 });

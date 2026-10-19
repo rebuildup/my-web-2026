@@ -1,0 +1,46 @@
+{
+	"case": "unexpected-name — 環境に契約が持たない name が観測された（advisory）",
+	"note": "Infisical の環境には Worker が bind しない name（deploy-time credential や運用用）が存在してよい（ADR-0015 §1.4）。そのため extra は削除も失敗もせず、operator が判断する advisory として出す。",
+	"now": "2026-10-19",
+	"expect": { "verdict": "OK", "exit_code": 0, "advisory": 1, "drift_failures": 0, "overdue": 0 },
+	"ledger": {
+		"version": 1,
+		"policy": "fixture ledger (Issue #477)",
+		"secrets": [
+			{
+				"name": "BETTER_AUTH_SECRETS",
+				"cadence": { "kind": "calendar", "days": 90, "label": "quarterly review" },
+				"last_rotated_at": "2026-08-20",
+				"driver": "scripts/rotate-better-auth-secret.mjs",
+				"runbook": "docs/runbook/issue-139-rotation.md"
+			},
+			{
+				"name": "BETTER_AUTH_SECRET",
+				"cadence": { "kind": "event_driven", "label": "envelope rotation only" },
+				"last_rotated_at": "2026-08-20",
+				"driver": "scripts/rotate-better-auth-secret.mjs",
+				"runbook": "docs/runbook/issue-139-rotation.md"
+			},
+			{
+				"name": "MY_WEB_2026_CONSUMER_API_KEY",
+				"cadence": { "kind": "event_driven", "label": "on suspected compromise or as needed" },
+				"last_rotated_at": "2026-06-01",
+				"driver": "scripts/rotate-home-api-key.mjs",
+				"runbook": "docs/runbook/consumer-api-key-rotation.md"
+			},
+			{
+				"name": "GOOGLE_ANALYTICS_MEASUREMENT_ID",
+				"cadence": { "kind": "event_driven", "label": "rare (property migration or leak-driven)" },
+				"last_rotated_at": null,
+				"driver": "operator edit in the Infisical dashboard (docs/runbook/analytics.md)",
+				"runbook": "docs/runbook/analytics.md"
+			}
+		]
+	},
+	"observation": {
+		"environment": "prod",
+		"captured_at": "2026-10-18",
+		"missing": [],
+		"extra": ["EXAMPLE_DEPLOY_CREDENTIAL_NAME"]
+	}
+}

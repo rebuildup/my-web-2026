@@ -4,6 +4,7 @@
 		"origin": "https://rebuildup.dev",
 		"firstPartyDomain": "rebuildup.dev",
 		"externalBoundaryPrefixes": [
+			"/.well-known",
 			"/api/v1",
 			"/integrations",
 			"/oauth",
@@ -579,6 +580,16 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/security-txt/README.md",
+					"src/http/security-txt/policy.json"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md",
 				"host": "github.com",
 				"kind": "external",
@@ -751,6 +762,7 @@
 					"src/editorial/social-card/contract.json",
 					"src/editorial/structured-data/contract.json",
 					"src/http/outbound-fetch.ts",
+					"src/http/security-txt/document.ts",
 					"src/http/seo/README.md",
 					"src/http/seo/sitemap.ts",
 					"src/portfolio/components/Markdown.tsx",
@@ -982,13 +994,28 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md"
+		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
-		"addedBoundaryPrefixes": [],
+		"addedBoundaryPrefixes": [
+			"/.well-known"
+		],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md"
+			},
+			{
+				"code": "W005 external-boundary-prefix-added",
+				"severity": "warn",
+				"message": "External HTTP boundary prefix added: /.well-known"
+			}
+		]
 	}
 }

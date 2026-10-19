@@ -83,6 +83,7 @@
 		"r2:local:proof": "node scripts/r2-local-sharing-proof.mjs",
 		"r2:local:proof:check": "node scripts/r2-local-sharing-proof.mjs",
 		"verify:admin-authz-screenshot": "node scripts/admin-authz-shoot.mjs",
+		"verify:embed-privacy-screenshot": "node scripts/make-embed-privacy-report.mjs",
 		"verify:d1-binding-screenshot": "node scripts/make-d1-verification-report.mjs",
 		"install:scripts:check": "node scripts/check-install-scripts.mjs",
 		"install:scripts:html": "node scripts/check-install-scripts.mjs --html=.tmp/install-script-audit.html",

@@ -12,19 +12,23 @@ import { evaluateEmbedPrivacy, toPrivacySubject } from './embed-privacy';
  * hand-written markup, so a preview can never show a notice the policy
  * module would not produce.
  *
- *   - `clickToLoad` — a same-origin Tool that declares third-party
+ *   - `ClickToLoad` — a same-origin Tool that declares third-party
  *     contacts (the ProtoType shape).
- *   - `externalFrame` — an `external_exception` Tool: the frame
+ *   - `ExternalFrame` — an `external_exception` Tool: the frame
  *     document itself is third-party.
- *   - `noPurpose` — a declaration with contacts and no purpose, i.e. the
- *     shape `privacy.purpose.missing` refuses. Kept visible so the copy
- *     gap is reviewable; the live route would render the blocked
+ *   - `MissingPurpose` — a declaration with contacts and no purpose, i.e.
+ *     the shape `privacy.purpose.missing` refuses. Kept visible so the
+ *     copy gap is reviewable; the live route would render the blocked
  *     placeholder instead.
+ *   - `Activated` — the other half of the contract: activation swaps the
+ *     notice for the frame.
  *
- * `Activated` in the play area shows the other half of the contract:
- * the visitor's activation swaps the notice for the frame. The frame src
- * is `about:blank` on purpose — a preview must not contact a real Tool
- * artefact (or anything else) to show a layout.
+ * The fixture origins are the REAL ones declared for ProtoType. A
+ * preview is shipped source (`src/**` is scanned by
+ * `scripts/publication-surface.mjs`), and inventing `*.example.invalid`
+ * hosts here would add documentation hosts to the published outbound
+ * inventory. The unit suite, whose files the scanner excludes, is where
+ * hostile fixtures live.
  */
 const PROTOTYPE_FIXTURE = {
 	kind: 'same_origin_static',
@@ -45,9 +49,9 @@ const PROTOTYPE_FIXTURE = {
 
 const EXTERNAL_FIXTURE = {
 	kind: 'external_exception',
-	external_url: 'https://embed.example.invalid/app',
+	external_url: 'https://use.typekit.net/app',
 	privacy: {
-		third_party_origins: ['https://embed.example.invalid'],
+		third_party_origins: ['https://use.typekit.net'],
 		purpose: {
 			ja: '埋め込み先の文書が、それ自身のオリジンから配信されます。',
 			en: 'The embedded document is served from its own origin.',
@@ -59,7 +63,7 @@ const NO_PURPOSE_FIXTURE = {
 	kind: 'same_origin_static',
 	entry_html: '/tools/fixture/app/index.html',
 	privacy: {
-		third_party_origins: ['https://analytics.example.invalid'],
+		third_party_origins: ['https://use.typekit.net'],
 	},
 } as const;
 

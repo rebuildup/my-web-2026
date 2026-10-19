@@ -149,15 +149,15 @@ describe('embed privacy — the documents visitors receive (Issue #498)', () => 
 
 describe('embed privacy measurements for the verification report (Issue #498)', () => {
 	it('prints the measured matrix for the verification report', async () => {
+		const control = await htmlOf(CONTROL_PATH);
+		const chrome = thirdPartyUrls(control.html);
 		const rows: Array<Record<string, string | number>> = [];
 		for (const tool of embeddableTools()) {
 			const verdict = evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery));
 			const { status, html } = await htmlOf(`/tools/${tool.slug}`);
 			const frames = html.match(/<iframe[^>]*>/gi) ?? [];
 			const urls = thirdPartyUrls(html);
-			const control = await htmlOf(CONTROL_PATH);
-			const chrome = thirdPartyUrls(control.html);
-			rows.push({
+			const row: Record<string, string | number> = {
 				slug: tool.slug,
 				path: `/tools/${tool.slug}`,
 				delivery: tool.delivery.kind,
@@ -170,12 +170,23 @@ describe('embed privacy measurements for the verification report (Issue #498)', 
 				ssr_third_party_total: urls.length,
 				notice: html.includes('data-testid="tool-embed-consent"') ? 'yes' : 'no',
 				violations: verdict.violations.length,
-			});
+			};
+			// The pre-activation document of a gated Tool is carried into
+			// the report so the browser leg can measure the REAL served
+			// document instead of a hand-written facsimile. One row is
+			// enough, and a size guard keeps the marker line readable.
+			if (verdict.consent === 'click_to_load' && row.document === undefined) {
+				expect(html.length).toBeLessThan(600_000);
+				row.document = html;
+			}
+			rows.push(row);
 		}
 		console.log(`EMBED_PRIVACY_MEASUREMENT ${JSON.stringify(rows)}`);
 		expect(rows.length).toBe(embeddableTools().length);
 		// The report would be meaningless if every row were ungated: at
-		// least one shipped Tool must exercise the consent path.
+		// least one shipped Tool must exercise the consent path, and the
+		// report needs its document to measure.
 		expect(rows.some((row) => row.consent === 'click_to_load')).toBe(true);
+		expect(rows.some((row) => typeof row.document === 'string')).toBe(true);
 	});
 });

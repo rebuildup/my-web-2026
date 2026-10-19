@@ -1,0 +1,41 @@
+{
+	"case": "unrecorded — 観測も rotation 日付も無い（リポジトリが今日持つ状態）",
+	"note": "このリポジトリが実際に持つ状態。観測ファイルは無く、ledger の last_rotated_at は null。gate はこれを「一致」と読まない — 各行が NOT_OBSERVED と UNRECORDED を advisory として出す。運用承認は別問題（known decision）。",
+	"now": "2026-10-19",
+	"expect": { "verdict": "OK", "exit_code": 0, "advisory": 4, "drift_failures": 0, "overdue": 0 },
+	"ledger": {
+		"version": 1,
+		"policy": "fixture ledger (Issue #477)",
+		"secrets": [
+			{
+				"name": "BETTER_AUTH_SECRETS",
+				"cadence": { "kind": "calendar", "days": 90, "label": "quarterly review" },
+				"last_rotated_at": null,
+				"driver": "scripts/rotate-better-auth-secret.mjs",
+				"runbook": "docs/runbook/issue-139-rotation.md"
+			},
+			{
+				"name": "BETTER_AUTH_SECRET",
+				"cadence": { "kind": "event_driven", "label": "envelope rotation only" },
+				"last_rotated_at": null,
+				"driver": "scripts/rotate-better-auth-secret.mjs",
+				"runbook": "docs/runbook/issue-139-rotation.md"
+			},
+			{
+				"name": "MY_WEB_2026_CONSUMER_API_KEY",
+				"cadence": { "kind": "event_driven", "label": "on suspected compromise or as needed" },
+				"last_rotated_at": null,
+				"driver": "scripts/rotate-home-api-key.mjs",
+				"runbook": "docs/runbook/consumer-api-key-rotation.md"
+			},
+			{
+				"name": "GOOGLE_ANALYTICS_MEASUREMENT_ID",
+				"cadence": { "kind": "event_driven", "label": "rare (property migration or leak-driven)" },
+				"last_rotated_at": null,
+				"driver": "operator edit in the Infisical dashboard (docs/runbook/analytics.md)",
+				"runbook": "docs/runbook/analytics.md"
+			}
+		]
+	},
+	"observation": null
+}

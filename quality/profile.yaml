@@ -125,6 +125,14 @@ gates:
       # binding list are two tiers of one secret contract, declared in one
       # module. Never prints a secret value (AGENTS.md section 4).
       - 'pnpm run infisical:check:coverage'
+      # Issue #477: the secret drift / rotation-deadline status gate.
+      # Offline, read-only and credential-free by construction — the
+      # environment half arrives as a status-only recording, and no
+      # value is read, so it belongs in the fast chain next to the
+      # static secret contract check above. The DASHBOARD is not here:
+      # a visualisation is never a release condition (see
+      # disallowed_patterns / diagnostic_entry_points).
+      - 'pnpm run secrets:status:check' # drift + rotation deadline from status-only inputs (#477)
       - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       # Issue #414: the Web feature adoption gate. Offline and vendored
@@ -577,7 +585,7 @@ release_gate_coverage:
   known_limits:
     - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
     - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
-    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 42 `validate:fast` components'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 44 `validate:fast` components'
 
 # Issue #464 - the connection scope / retention ledger. `docs/domain/
 # integrations.md` lists the candidate services and promotes none of
@@ -845,6 +853,39 @@ compatibility:
       - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
+  secret_rotation_status:
+    enabled: true
+    issue: '#477'
+    command: 'pnpm run secrets:status:check'
+    report_command: 'pnpm run secrets:status:report'
+    gate: fast
+    implementation: 'scripts/check-secret-rotation-status.mjs (gate) + scripts/_secret-rotation-status.mjs (pure policy seam)'
+    tests: 'scripts/check-secret-rotation-status.test.mjs (discovered by scripts/run-script-tests.mjs, Issue #566)'
+    fixtures: 'quality/fixtures/secret-rotation-status/*.json'
+    policy_source_of_truth: 'scripts/_cloudflare-contract.mjs REQUIRED_RUNTIME_SECRETS / AUDIT_ONLY_SECRETS (injected, never re-declared in a script) + docs/runbook/infisical-secrets.md section 2.1 cadence column, projected into quality/secret-rotation-ledger.json'
+    operator_input: 'a recorded status-only observation (a check-cf-secrets transcript or a {environment, captured_at, missing, extra} record) passed with --observation; the gate never reads Infisical itself'
+    output_contract: >-
+      status-only (AGENTS.md section 4): names, verdicts, statuses, counts and
+      dates. No secret value is read, fetched, stored or printed. Enforced
+      rather than promised: an observation entry that is not a runbook section
+      3.2 name is refused before anything is rendered (the name grammar is the
+      enforcing gate), the ledger schema rejects unknown keys, and the rendered
+      text passes the leak guard before a byte is written.
+    failure_policy:
+      - 'MISSING / MISSING_ROW / EXTRA_ROW is DRIFT (exit 1)'
+      - 'a rotation past its cadence is OVERDUE (exit 1)'
+      - 'an unreadable or malformed ledger / observation, an unusable clock and a usage error are UNDECIDABLE (exit 2) — "could not read" is never a pass'
+      - 'UNEXPECTED / UNRECORDED / DUE_SOON / NOT_OBSERVED are advisories (exit 0): operational approval is a separate step (AGENTS.md section 6 human gate)'
+      - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+      - '--now is refused without --case, so the gate cannot be green-washed with a pinned clock'
+    open_owner_decision: >-
+      Every ledger row ships last_rotated_at: null, because this repository
+      cannot know when an operator rotated a production secret. UNRECORDED is
+      therefore an advisory today; whether it becomes blocking after the owner
+      records the dates, and whether the DUE_SOON window stays a gate default,
+      are owner calls recorded in docs/runbook/secret-rotation-status.md section 10.
+    runbook: 'docs/runbook/secret-rotation-status.md'
+    verification_artifact: 'docs/verification/security/secrets-status-only.webp'
   security_disclosure:
     enabled: true
     issue: '#478'

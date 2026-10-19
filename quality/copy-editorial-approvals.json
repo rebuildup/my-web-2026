@@ -10,7 +10,7 @@
 		"reviewedAt": "YYYY-MM-DD, when the decision was taken",
 		"decision": "approved | rejected",
 		"fingerprint": "sha256:… — the change set fingerprint printed by `pnpm run copy:approval:check -- --print-fingerprint`",
-		"proposal": "what the editing aid proposed and how its suggestions were adjudicated (`ran`, `summary`, `disposition`)",
+		"proposal": "what the editing aid proposed and how its suggestions were adjudicated (`ran`, `summary`, `disposition`). `ran` records that the tool was run, not how many suggestions it produced: a change with no suggestions is still `ran: true`.",
 		"comparisons": "one entry per changed segment (`path`, `before`, `after`, `verdict` = equivalent | intentional, `note`)"
 	},
 	"records": []

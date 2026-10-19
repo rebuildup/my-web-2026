@@ -83,6 +83,10 @@ record でも `approval` が無ければ verdict は `not run` のまま。
 `decision: "rejected"` は `approval` dimension が `fail` になる。
 `fingerprint` が一致しない record は **別文面の承認** なので `fail` (stale) になる。
 
+**推敲案が 0 件でも `ran: true` として記録する。** `ran` は「工具を実行したか」の
+記録であり、提案の多さではない。工具を **実行しなかった** 場合は `not run` のまま
+止まる（それが review 未確認の正しい状態である）。
+
 ## 4. 実行手順
 
 ### 4.1 PR 作者（変更者）

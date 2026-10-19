@@ -1,0 +1,275 @@
+{
+	"version": 1,
+	"authority": "Issue #478 — vulnerability report intake, triage, fix and publication-decision runbook. This ledger is the machine-readable half of docs/runbook/security-disclosure.md: the prose may explain, but the flow, the priority derivation, the required operator duties and the status-only output contract live here so a change to one is a reviewable diff. It is a simulation ledger, not an incident record, and it claims nothing about any real report.",
+	"runbook": "docs/runbook/security-disclosure.md",
+	"policy": "A vulnerability report is triaged into P0-P3 from reachability and impact (never from CVSS alone), every priority carries an explicit set of required operator duties, and the public decision (advisory / withheld / no-detail) is recorded after the fix — never inferred from severity. A missing duty is INCOMPLETE, not a pass: this ledger fails closed, so an unrecorded step cannot be read as a completed one.",
+	"status_only": "Every value this ledger produces is an id, a count, a boolean or a reason CODE. No reporter-supplied string, no credential, no request/response body, no reproduction payload and no production URL may appear in the CLI output, the HTML report or the verification screenshot (AGENTS.md section 4; docs/runbook/infisical-secrets.md is the precedent).",
+	"prohibited_operations": [
+		{
+			"id": "secret_value_listing",
+			"rule": "A value-listing command against a real environment (infisical secrets, wrangler secret list, printenv, cat .dev.vars) is forbidden. The flow records secret NAMES, verdicts and reason codes only; a comparison runs in a dedicated status-only script."
+		},
+		{
+			"id": "production_probe",
+			"rule": "Reproduction never touches production as the first step. A reproduction is a fixture, the local workerd pool or an explicitly authorised operator smoke; the endpoint under report is not probed by this repository's tooling."
+		},
+		{
+			"id": "remote_mutation",
+			"rule": "No D1 / R2 / Worker mutation against production happens in any step of this flow. Rotation and revocation are operator actions recorded as a result (credential_containment), never executed by an agent."
+		},
+		{
+			"id": "release_merge",
+			"rule": "No step merges a release PR, pushes a release tag or publishes a GitHub Release. The merge is an owner decision (AGENTS.md section 6); this flow can only report readiness."
+		},
+		{
+			"id": "premature_detail",
+			"rule": "Reproduction detail, exploit material and any credential observed in the report stay out of a public Issue, a commit message, a log line and the report until the fix is released. detail_public_before_fix is therefore a hard failure, not a warning."
+		}
+	],
+	"stages": [
+		{
+			"id": "intake",
+			"heading": "## 2. 受付 / intake",
+			"outcome": "The report has one record: channel, class, date, and whether the reporter was asked to keep exploit detail private. The record is a link, not a copy of the report.",
+			"status_only_evidence": true
+		},
+		{
+			"id": "triage",
+			"heading": "## 3. 優先度判定 / triage",
+			"outcome": "P0-P3 is derived from the recorded facts (reachability, pre-auth reachability, credential involvement, observed exploitation), with the rule that produced it written next to the verdict.",
+			"status_only_evidence": true
+		},
+		{
+			"id": "reproduce",
+			"heading": "## 4. 再現の固定 / reproduce",
+			"outcome": "The reproduction is a committed fixture or a local-pool test. Facts are reduced to booleans and class names; no payload, no request body, no production URL.",
+			"status_only_evidence": true
+		},
+		{
+			"id": "fix",
+			"heading": "## 5. 修正と回帰 / fix",
+			"outcome": "The fix lands on the ticket branch and the regression test is wired into the suite that runs (pnpm run test), so the vulnerable path cannot silently reopen.",
+			"status_only_evidence": false
+		},
+		{
+			"id": "gate",
+			"heading": "## 6. release gate / gate",
+			"outcome": "validate:release and the CI validate job are green on the fix commit. A green build that skipped an inspection is not a gate result: the release-gate ledger decides what was asked to run.",
+			"status_only_evidence": false
+		},
+		{
+			"id": "disclose",
+			"heading": "## 7. 公開判断 / disclose",
+			"outcome": "Advisory, release note or a recorded no-publication decision — after the fix, with owner approval for the merge and for anything public.",
+			"status_only_evidence": true
+		},
+		{
+			"id": "follow_up",
+			"heading": "## 8. 事後処理 / follow-up",
+			"outcome": "Rotation / revocation results, the dependency or configuration change that would have prevented it, and the gate change that keeps the next report from being re-classified by hand.",
+			"status_only_evidence": true
+		}
+	],
+	"actions": {
+		"intake_recorded": {
+			"duty": "The report has one intake record (channel, class, date) and no public copy of exploit detail.",
+			"enforced_by": ["docs/security.md", "docs/security/security-txt.md"]
+		},
+		"triage_priority_recorded": {
+			"duty": "P0-P3 and the rule that produced it are written down next to the report record.",
+			"enforced_by": ["skills/security-maintenance/SKILL.md"]
+		},
+		"status_only_evidence": {
+			"duty": "Reproduction information is recorded status-only: ids, booleans, counts and reason codes.",
+			"enforced_by": ["docs/runbook/infisical-secrets.md", "docs/security/log-redaction.md"]
+		},
+		"fixture_reproduction": {
+			"duty": "The reproduction is a fixture or a local workerd-pool test; production is not the first step and is not mutated.",
+			"enforced_by": ["docs/development.md"]
+		},
+		"regression_test": {
+			"duty": "A regression test asserts the vulnerable path is closed, and it is wired into a suite that runs.",
+			"enforced_by": ["scripts/check-test-wiring.mjs"]
+		},
+		"release_gate_green": {
+			"duty": "validate:release and the CI validate job are green on the fix commit, and the release-gate ledger says the inspections were actually asked to run.",
+			"enforced_by": ["docs/release.md", "quality/release-gate.json"]
+		},
+		"owner_release_approval": {
+			"duty": "The release PR merge, the tag and the GitHub Release wait for an explicit owner approval; readiness is reported, never merged.",
+			"enforced_by": ["AGENTS.md", "skills/github-delivery/SKILL.md"]
+		},
+		"advisory_recorded": {
+			"duty": "The public decision is recorded: publish an advisory / release note, or record why nothing is published.",
+			"enforced_by": ["docs/runbook/security-disclosure.md", "docs/security.md"]
+		},
+		"credential_containment": {
+			"duty": "Any credential the report involved is treated as compromised: revoke and rotate first, and record the result as a status, not as a value.",
+			"enforced_by": [
+				"docs/runbook/infisical-secrets.md",
+				"docs/runbook/cloudflare-workers-builds.md"
+			]
+		},
+		"detail_withheld_until_fix": {
+			"duty": "No reproduction detail, exploit material or observed credential is public before the fix is released.",
+			"enforced_by": ["docs/runbook/security-disclosure.md"]
+		},
+		"tracked_ticket": {
+			"duty": "The remaining work is a ticket on a target release, not an intention.",
+			"enforced_by": ["skills/github-delivery/SKILL.md"]
+		}
+	},
+	"priority_rules": [
+		{
+			"priority": "P0",
+			"when": { "credential_disclosed": true },
+			"why": "A disclosed credential is assumed compromised regardless of reachability: containment runs before the fix."
+		},
+		{
+			"priority": "P0",
+			"when": { "exploit_observed": true },
+			"why": "Observed exploitation in the wild ends the sprint-plan argument; a patch release is cut."
+		},
+		{
+			"priority": "P1",
+			"when": { "internet_reachable": true, "pre_auth": true },
+			"why": "Reachable from the internet before authentication is a blocking candidate for the current release."
+		},
+		{
+			"priority": "P2",
+			"when": { "internet_reachable": true },
+			"why": "Internet-reachable but gated (post-auth, or a limited path) is a planned ticket for a near release."
+		},
+		{
+			"priority": "P3",
+			"when": {},
+			"why": "Not reachable from this deployment's exposed surface: dependency hygiene / defence in depth."
+		}
+	],
+	"priorities": {
+		"P0": {
+			"release_policy": "Interrupt the sprint if needed and cut a patch release of the current release-x-y-z line. The release PR merge is an owner approval.",
+			"required_actions": [
+				"intake_recorded",
+				"triage_priority_recorded",
+				"status_only_evidence",
+				"fixture_reproduction",
+				"regression_test",
+				"release_gate_green",
+				"owner_release_approval",
+				"credential_containment",
+				"detail_withheld_until_fix",
+				"advisory_recorded"
+			]
+		},
+		"P1": {
+			"release_policy": "Blocking candidate for the current release; land on the ticket branch of the target release-x-y-z.",
+			"required_actions": [
+				"intake_recorded",
+				"triage_priority_recorded",
+				"status_only_evidence",
+				"fixture_reproduction",
+				"regression_test",
+				"release_gate_green",
+				"owner_release_approval",
+				"detail_withheld_until_fix",
+				"advisory_recorded"
+			]
+		},
+		"P2": {
+			"release_policy": "Planned ticket for a near release; no sprint interruption, no patch release.",
+			"required_actions": [
+				"intake_recorded",
+				"triage_priority_recorded",
+				"status_only_evidence",
+				"regression_test",
+				"tracked_ticket",
+				"advisory_recorded"
+			]
+		},
+		"P3": {
+			"release_policy": "Dependency hygiene or defence-in-depth; handled as normal ticket work.",
+			"required_actions": [
+				"intake_recorded",
+				"triage_priority_recorded",
+				"tracked_ticket",
+				"advisory_recorded"
+			]
+		}
+	},
+	"publication": {
+		"detail_public_before_fix": false,
+		"owner_approval_required": true,
+		"note": "The publication decision is made after the fix is released and is an owner call (merge approval, GHSA, release note, or a recorded decision to publish nothing). This ledger records the DECISION's existence; it does not make it, and it never carries the detail itself."
+	},
+	"hostile_field": "pasted_value",
+	"hostile_field_note": "The one report field a fixture may carry beyond the declared facts: the field the leak probe writes a credential-SHAPED value into. It is declared here so the guard has something to refuse without the fact vocabulary being loosened — the value itself is assembled in memory at run time and never committed (pnpm run secret:scan).",
+	"commands": [
+		"security:disclosure:check",
+		"security:disclosure:report",
+		"verify:security-disclosure-screenshot",
+		"validate:release",
+		"secret:scan",
+		"release:gate:check",
+		"test:wiring:check",
+		"dep-audit:check"
+	],
+	"references": [
+		{
+			"path": "docs/runbook/security-disclosure.md",
+			"purpose": "The operator procedure this ledger describes."
+		},
+		{
+			"path": "docs/security.md",
+			"purpose": "The published policy a reporter reads (reporting channels, urgent path)."
+		},
+		{
+			"path": "docs/security/security-txt.md",
+			"purpose": "Issue #468 — the RFC 9116 document that is still unpublished, and the channel question this flow must not answer by guessing."
+		},
+		{
+			"path": "docs/runbook/infisical-secrets.md",
+			"purpose": "Status-only output precedent and the secret-handling boundary (AGENTS.md section 4)."
+		},
+		{
+			"path": "docs/runbook/cloudflare-workers-builds.md",
+			"purpose": "Release sequence, rollback and the 'GitHub Actions never deploys production' separation."
+		},
+		{
+			"path": "docs/runbook/dependency-advisories.md",
+			"purpose": "The dependency-side flow this report flow hands over to."
+		},
+		{
+			"path": "docs/runbook/r2-media-key-set-audit.md",
+			"purpose": "The operator-run / not-in-CI gate precedent."
+		},
+		{
+			"path": "docs/release.md",
+			"purpose": "Sprint cycle, release PR merge as an owner approval."
+		},
+		{
+			"path": "docs/development.md",
+			"purpose": "Local fixture / workerd-pool reproduction commands."
+		},
+		{
+			"path": "docs/security/log-redaction.md",
+			"purpose": "What may be written to an operator-visible stream."
+		},
+		{
+			"path": "skills/security-maintenance/SKILL.md",
+			"purpose": "Source priority, inventory and the P0-P3 prioritisation this flow reuses."
+		},
+		{
+			"path": "skills/github-delivery/SKILL.md",
+			"purpose": "Issue / branch / Draft PR / release rules."
+		},
+		{
+			"path": "AGENTS.md",
+			"purpose": "Section 4 (no value-listing) and section 6 (release merge is an owner gate)."
+		},
+		{
+			"path": "quality/release-gate.json",
+			"purpose": "Which inspections the release actually executes."
+		}
+	]
+}

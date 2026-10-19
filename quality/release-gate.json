@@ -14,6 +14,7 @@
 		"log-redaction",
 		"security-headers",
 		"asvs-coverage",
+		"security-disclosure",
 		"csrf-contract",
 		"dependency-advisory",
 		"install-script-audit",
@@ -26,7 +27,8 @@
 		"infisical-secret-coverage",
 		"cf-typegen",
 		"playwright-e2e",
-		"release-gate-ledger"
+		"release-gate-ledger",
+		"integration-scope-ledger"
 	],
 	"profile_equivalences": [
 		{
@@ -272,6 +274,15 @@
 			"documentation": "docs/verification/security/asvs-coverage.md"
 		},
 		{
+			"id": "security-disclosure",
+			"contract": "The vulnerability-report to publication-decision flow still has one record on both sides — the runbook and the ledger — and the committed probes still report a missing duty and a premature public detail as INCOMPLETE rather than as a pass.",
+			"command": "pnpm run security:disclosure:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/security-disclosure.md"
+		},
+		{
 			"id": "release-gate-ledger",
 			"contract": "This ledger itself is executed on every release, so the report that says which inspections ran cannot itself stop running unnoticed.",
 			"command": "pnpm run release:gate:check",
@@ -279,6 +290,15 @@
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
 			"documentation": "docs/verification/security/release-gate-coverage.md"
+		},
+		{
+			"id": "integration-scope-ledger",
+			"contract": "Every third-party connection candidate still declares its least-privilege scope set, token retention ceiling and revocation procedure, every reviewed connection still reaches the verdict the ledger claims when the real adapter runs it, and no candidate is published while the owner allowlist is empty.",
+			"command": "pnpm run integration:scope:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/integration-token-scope.md"
 		},
 		{
 			"id": "playwright-e2e",

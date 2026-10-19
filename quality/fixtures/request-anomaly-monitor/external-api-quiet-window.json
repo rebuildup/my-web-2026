@@ -1,0 +1,7 @@
+{
+	"case": "external-api-quiet-window",
+	"note": "正常系: 404 は監視対象外。件数が多くても検知にならない（分母を汚さない）",
+	"surface": "external-api",
+	"runs": [{ "status": 200, "count": 100 }, { "status": 404, "count": 20 }],
+	"expect": { "eventCount": 0, "events": [] }
+}

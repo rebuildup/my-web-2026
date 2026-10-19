@@ -1,0 +1,7 @@
+{
+	"case": "admin-normal-session",
+	"note": "正常系: 運用者の通常セッション。/admin は 2xx/3xx のみを返すので 4 クラスは 0 件のままになる",
+	"surface": "admin",
+	"runs": [{ "status": 200, "count": 30 }],
+	"expect": { "eventCount": 0, "events": [] }
+}

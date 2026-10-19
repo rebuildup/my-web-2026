@@ -1,0 +1,11 @@
+{
+	"note": "the ledger claims the over-scoped GitHub connection is approved; the adapter measures otherwise, so the gate fails on the measurement rather than on the prose",
+	"expect_error": "the adapter returns",
+	"ops": [
+		{
+			"op": "set",
+			"path": "reviewed_connections.1.expected",
+			"value": { "verdict": "approved", "code": "approved" }
+		}
+	]
+}

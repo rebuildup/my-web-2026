@@ -1,0 +1,22 @@
+{
+	"case": "external-api-forbidden-sweep",
+	"note": "異常系: 403 が 4 分の 1 を超える。1 件少ない 9/39 = 0.23 では沈黙し、10 件目で検知される",
+	"surface": "external-api",
+	"runs": [{ "status": 200, "count": 30 }, { "status": 403, "count": 10 }],
+	"expect": {
+		"eventCount": 1,
+		"events": [
+			{
+				"event": "anomaly.detected",
+				"surface": "external-api",
+				"signal": "forbidden",
+				"status": "403",
+				"samples": 40,
+				"hits": 10,
+				"rate": 0.25,
+				"threshold": 0.25,
+				"minSamples": 20
+			}
+		]
+	}
+}

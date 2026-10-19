@@ -1,0 +1,26 @@
+{
+	"case": "retained-source-does-not-match-manifest",
+	"note": "retained source の bytes が manifest と別物（別画像）の場合。upload 前に metadata_drift で停止",
+	"entry": {
+		"key": "portfolio/restore-fixture/cover.png",
+		"sha256": "eeb5c1e598c97b522f1fcf31d12c7a1852f5426d6d0879fa8bf341a94bcfef8f",
+		"sizeBytes": 90,
+		"contentType": "image/png"
+	},
+	"bucket": {
+		"state": "absent"
+	},
+	"source": {
+		"state": "retained",
+		"contentType": "image/png",
+		"bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWM4oaEBAALUARlQTaISAAAAAElFTkSuQmCC",
+		"matchesManifest": false
+	},
+	"faults": [],
+	"expect": {
+		"verdict": "metadata_drift",
+		"reason": "source_digest_mismatch",
+		"exitCode": 1,
+		"bucketAfter": "absent"
+	}
+}

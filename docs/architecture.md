@@ -399,6 +399,8 @@ manifest 駆動の生成 precedent がある。ただし shared namespace につ
 | `migrations/` | D1 schema の逐次履歴 | `pnpm run db:migrate:*` / integration dry-run |
 | `quality/profile.yaml` | `validate:fast` / `:integration` / `:release` の構成 | 自身がレビュー対象（hidden step を workflow YAML に置かない） |
 | `copy/resources.json` | visitor-facing copy の capability ごとの公開 locale 宣言 | `pnpm run copy:i18n:check` |
+| `quality/copy-editorial-surfaces.json` | 公開日本語 copy を持つファイル（opt-in glob 宣言） | `pnpm run copy:approval:check`（CI の `validate` ジョブ） |
+| `quality/copy-editorial-approvals.json` | 公開日本語 copy の変更に対する owner の承認記録 | `pnpm run copy:approval:check`（CI の `validate` ジョブ） |
 
 `copy/` は src obligation ではない。copy の実体は各 obligation のコンポーネントが
 持ち、`copy/resources.json` は「どの文言を翻訳対象として登録し、どの locale に

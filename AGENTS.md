@@ -508,6 +508,24 @@ red for a condition only the owner can resolve). Decision:
 Operator reference:
 [`docs/runbook/operator-mfa-verification.md`](docs/runbook/operator-mfa-verification.md).
 
+A fourth gate is deliberately **not** in the three entry points, but is
+a CI step: the public Japanese copy editorial approval gate (Issue
+#506, `pnpm run copy:approval:check`). It judges a **diff** — the
+Japanese text a pull request changed in a public copy surface
+(`quality/copy-editorial-surfaces.json`) — against the owner approval
+records in `quality/copy-editorial-approvals.json`, and it runs as the
+`Copy editorial approval gate` step of the `validate` job on
+`pull_request` events. `validate:fast` is an offline, repository-state
+gate by contract, and a diff only exists against a base branch, so the
+gate is a pull-request gate rather than a release gate. Its verdicts
+are `pass` / `fail` (a review was recorded and it says no) / `not run`
+(NEEDS REVIEW — no owner decision is recorded) / `not applicable` (no
+public Japanese copy changed); the editing aid's output is evidence and
+never approves anything on its own. Decision:
+[`quality/profile.yaml`](quality/profile.yaml#copy_editorial_approval).
+Operator reference:
+[`docs/runbook/copy-editorial-approval.md`](docs/runbook/copy-editorial-approval.md).
+
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are
 **not** enforced at 0.1.0; that decision is in ADR-0007.

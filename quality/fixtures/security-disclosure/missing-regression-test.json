@@ -1,0 +1,28 @@
+{
+  "note": "false-green probe: internet 到達かつ未認証なので P1。すべての gate が green でも regression_test の記録が無い状態は INCOMPLETE（pass に落とさない）。",
+  "expect": {
+    "verdict": "INCOMPLETE",
+    "priority": "P1",
+    "reasons": ["regression_test"]
+  },
+  "report": {
+    "class": "input_validation",
+    "internet_reachable": true,
+    "pre_auth": true,
+    "credential_disclosed": false,
+    "exploit_observed": false,
+    "detail_public_before_fix": false,
+    "summary": "未認証で到達できる入力検証の欠陥。修正は入っているが、閉じたことを示す回帰テストの記録が無い。"
+  },
+  "handled": {
+    "intake_recorded": true,
+    "triage_priority_recorded": true,
+    "status_only_evidence": true,
+    "fixture_reproduction": true,
+    "release_gate_green": true,
+    "owner_release_approval": true,
+    "detail_withheld_until_fix": true,
+    "advisory_recorded": true,
+    "tracked_ticket": true
+  }
+}

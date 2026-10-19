@@ -1,0 +1,30 @@
+{
+  "note": "正常 fixture: 健康的でない唯一の兆候（credential を含む報告）を status-only で扱い、P0 の必須 duty がすべて記録されている状態。summary は secret を含まない要約だけを持ち、値は一切運ばない。",
+  "expect": {
+    "verdict": "COMPLETE",
+    "priority": "P0",
+    "reasons": []
+  },
+  "report": {
+    "class": "credential_disclosure",
+    "internet_reachable": true,
+    "pre_auth": true,
+    "credential_disclosed": true,
+    "exploit_observed": false,
+    "detail_public_before_fix": false,
+    "summary": "運用者が pasted した credential を含むという報告。値の形状は伏せ、本 fixture は要約だけを保持する。"
+  },
+  "handled": {
+    "intake_recorded": true,
+    "triage_priority_recorded": true,
+    "status_only_evidence": true,
+    "fixture_reproduction": true,
+    "regression_test": true,
+    "release_gate_green": true,
+    "owner_release_approval": true,
+    "credential_containment": true,
+    "detail_withheld_until_fix": true,
+    "advisory_recorded": true,
+    "tracked_ticket": true
+  }
+}

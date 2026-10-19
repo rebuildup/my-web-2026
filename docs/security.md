@@ -10,6 +10,17 @@
 - Run `pnpm run validate:release`.
 - Land via the canonical release PR flow.
 
+The full procedure — intake, P0-P3 triage, fixture-only reproduction,
+regression test, release gate, and the publication decision — is
+[`docs/runbook/security-disclosure.md`](runbook/security-disclosure.md),
+and its machine-readable half (stages, priority rules, required operator
+duties, forbidden operations) is
+[`quality/security-disclosure.json`](../quality/security-disclosure.json).
+That gate (`pnpm run security:disclosure:check`) simulates the flow over
+committed fixtures and proves the runbook and the ledger still describe
+each other; it decides nothing about a real report, and it prints
+verdicts and reason codes only, never a reported value.
+
 For urgent / out-of-band reports (live site exploitation, credential
 leaks), contact the maintainer directly via the channel listed in
 `CODEOWNERS` / repository Settings → Code security before opening a

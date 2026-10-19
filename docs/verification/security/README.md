@@ -23,6 +23,34 @@ of trusting the image.
 | [`asvs-coverage-matrix.webp`](asvs-coverage-matrix.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
+| [`disclosure-runbook.webp`](disclosure-runbook.webp) | #478 | `pnpm run verify:security-disclosure-screenshot` |
+
+## `disclosure-runbook.webp` (Issue #478)
+
+脆弱性報告 → priority 判定 → 修正 → release gate → 公開判断の **模擬フロー**。
+`quality/security-disclosure.json`（ledger）と
+`docs/runbook/security-disclosure.md`（runbook）を同じ純関数が評価し、
+`quality/fixtures/security-disclosure/` の合成 fixture 5 本を通した結果
+（`COMPLETE` / `INCOMPLETE` / `LEAK_REFUSED`）を 1 枚に写したものである。
+
+画像に写っているのは fixture によるシミュレーションであり、実在の報告・
+実在の攻撃者・本番の実測ではない。credential-shaped な値は fixture に
+保存せず（レシピだけ保存する）、出力は reason code までで止まる。
+
+判定の権威は exit code と
+`node --test scripts/check-security-disclosure.test.mjs` であり、画像は証拠で
+あって判定の代用ではない。
+
+```bash
+pnpm run security:disclosure:check             # 判定（exit 0 / 1 / 2）
+pnpm run security:disclosure:report            # .tmp/security-disclosure-report.html
+pnpm run verify:security-disclosure-screenshot # WebP at the path above
+```
+
+Issue は `disclosure-runbook.png` と書いているが、同ディレクトリの他 artefact
+と同じく WebP で納める（Playwright は WebP を書けないため、メモリ上の capture
+を `sharp` で再エンコードし、途中 PNG は作らない）。手順・異常時の code 一覧・
+scope の外は [`docs/runbook/security-disclosure.md`](../../runbook/security-disclosure.md) に正本がある。
 
 ## `asvs-coverage-matrix.webp` (Issue #507)
 

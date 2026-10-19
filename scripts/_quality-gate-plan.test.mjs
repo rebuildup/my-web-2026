@@ -84,6 +84,10 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run install:scripts:check',
 	'pnpm run wrangler:independence:check',
 	'pnpm run cloudflare:contract:check',
+	// Issue #480: the drift gate runs immediately after the binding
+	// contract it extends, so a drift finding is read next to the contract
+	// finding rather than at the end of the chain.
+	'pnpm run cf:config:drift:check',
 	'pnpm run test:wiring:check',
 	'pnpm run release:assets:check',
 	'pnpm run version:check',

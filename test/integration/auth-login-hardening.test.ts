@@ -194,18 +194,21 @@ describe('login enumeration + brute-force throttle (Issue #443)', () => {
 		// (`src/http/security-headers.ts`, Issue #449 — the deny list
 		// does not depend on the route or the account), the framing
 		// policy `content-security-policy` carrying `frame-ancestors`
-		// (`src/server.ts`, Issue #448) and, on an HTTPS request,
+		// (`src/server.ts`, Issue #448), the observation policy
+		// `content-security-policy-report-only` (`src/http/content-security-policy.ts`,
+		// Issue #447) and, on an HTTPS request,
 		// `strict-transport-security` (`src/server.ts`, Issue #446; the
 		// suite fetches `https://…`) — no `set-cookie`, no
 		// `www-authenticate`, no hint about which account was
-		// addressed. Those seven are constants (the cache, security,
-		// framing and transport policies do not branch on the account),
-		// so they say nothing about existence; an upstream library
+		// addressed. Those eight are constants (the cache, security,
+		// framing, observation and transport policies do not branch on the
+		// account), so they say nothing about existence; an upstream library
 		// change that adds a header therefore surfaces here instead of
 		// quietly widening the response contract.
 		expect(wrongPassword.observed.headers.map(([name]) => name)).toEqual([
 			'cache-control',
 			'content-security-policy',
+			'content-security-policy-report-only',
 			'content-type',
 			'permissions-policy',
 			'referrer-policy',

@@ -80,7 +80,6 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 export const DEFAULT_ROSTER_PATH = 'quality/release-dashboard.json';
 export const DEFAULT_FAMILIES_PATH = 'quality/route-coverage.json';
 export const DEFAULT_RUN_RECORD_PATH = '.tmp/release-quality-runs.json';
-export const DEFAULT_RELEASE_GATE_PATH = 'quality/release-gate.json';
 
 /** Status vocabulary. Nothing outside this set may reach the renderer. */
 export const STATUS = {
@@ -112,7 +111,7 @@ export function loadRoster({
 	root = REPO_ROOT,
 	rosterPath = DEFAULT_ROSTER_PATH,
 	familiesPath = DEFAULT_FAMILIES_PATH,
-	releaseGatePath = DEFAULT_RELEASE_GATE_PATH,
+	scripts = null,
 } = {}) {
 	const errors = [];
 	const roster = readJson(resolve(root, rosterPath), rosterPath, errors);
@@ -120,7 +119,12 @@ export function loadRoster({
 	const releaseGate = roster?.release_gate_ledger
 		? readJson(resolve(root, roster.release_gate_ledger), roster.release_gate_ledger, errors)
 		: null;
-	if (roster) errors.push(...validateRoster(roster, families, releaseGate));
+	if (roster)
+		errors.push(
+			...validateRoster(roster, families, releaseGate, {
+				scripts: scripts ?? readPackageScripts(root),
+			}),
+		);
 	return { errors, roster, families, releaseGate };
 }
 
@@ -138,6 +142,31 @@ function readJson(path, label, errors) {
 }
 
 /**
+ * The `scripts` block of `package.json`, used to expand
+ * `pnpm run <name>` when checking what a declared command writes.
+ */
+export function readPackageScripts(root = REPO_ROOT) {
+	const errors = [];
+	const pkg = readJson(resolve(root, 'package.json'), 'package.json', errors);
+	return pkg?.scripts ?? {};
+}
+
+/**
+ * A declared command plus the package scripts it invokes.
+ *
+ * `pnpm run routes:quality:report` carries no `--report` flag itself —
+ * the flag lives in the script it calls. Expanding one level keeps the
+ * evidence check honest instead of forcing every roster command to
+ * inline flags it does not own.
+ */
+export function expandCommand(command, scripts) {
+	return command.replace(
+		/\bpnpm run ([A-Za-z0-9:_-]+)/g,
+		(match, name) => scripts?.[name] ?? match,
+	);
+}
+
+/**
  * Structural rules for `quality/release-dashboard.json`.
  *
  * Kept small on purpose: the dashboard reads declarations, it does not
@@ -146,8 +175,9 @@ function readJson(path, label, errors) {
  * command, an evidence kind it does not know, a family that disagrees
  * with the ledger).
  */
-export function validateRoster(roster, families, releaseGate = null) {
+export function validateRoster(roster, families, releaseGate = null, { scripts = null } = {}) {
 	const errors = [];
+	const packageScripts = scripts ?? readPackageScripts();
 	errors.push(...validateLedgerAlignment(roster, releaseGate));
 	if (roster?.version !== 1) errors.push(`roster: version must be 1, got ${roster?.version}`);
 	if (!Array.isArray(roster?.signals) || roster.signals.length === 0) {
@@ -220,10 +250,61 @@ export function validateRoster(roster, families, releaseGate = null) {
 						errors.push(`roster: signal "${id}" evidence path must be repo-relative: ${path}`);
 					}
 				}
+				errors.push(
+					...validateArtefactReachable(signal, evidence, {
+						command: expandCommand(signal.command ?? '', packageScripts),
+					}),
+				);
 			}
 		} else if (signal.command || signal.evidence) {
 			errors.push(`roster: planned signal "${id}" must not declare a command or evidence`);
 		}
+	}
+	return errors;
+}
+
+/** Repo-relative directory of a declared evidence path (`a/b/c.html` -> `a/b`). */
+function evidenceDir(path) {
+	const slash = path.lastIndexOf('/');
+	return slash === -1 ? '' : path.slice(0, slash);
+}
+
+/**
+ * A declared report only counts as evidence if the declared command
+ * can actually produce it.
+ *
+ * A row whose `command` writes nothing to the declared path can never
+ * reach PASS — it falls to NOT RUN forever — which is a silently dead
+ * row, not a safety property. The contract keeps that visible: the
+ * command must name the report (or its directory), or the roster must
+ * declare `evidence.output_dir` plus the reason the tool writes there
+ * by default.
+ */
+export function validateArtefactReachable(
+	signal,
+	evidence,
+	{ command = signal.command ?? '' } = {},
+) {
+	const id = signal.id;
+	const errors = [];
+	const outputDir = evidence.output_dir ?? null;
+	if (outputDir !== null && typeof evidence.output_dir_note !== 'string') {
+		errors.push(`roster: signal "${id}" declares evidence.output_dir without output_dir_note`);
+	}
+	for (const path of evidence.paths ?? []) {
+		if (typeof path !== 'string' || path.length === 0) continue;
+		const dir = evidenceDir(path);
+		if (outputDir !== null && dir !== outputDir) {
+			errors.push(
+				`roster: signal "${id}" evidence path ${path} is not under evidence.output_dir ${outputDir}`,
+			);
+			continue;
+		}
+		const named = command.includes(path) || (dir !== '' && command.includes(dir));
+		if (named || outputDir === dir) continue;
+		errors.push(
+			`roster: signal "${id}" declares report ${path} but its command never writes there (name the path or its directory in the command, or declare evidence.output_dir)`,
+		);
 	}
 	return errors;
 }
@@ -304,7 +385,13 @@ export function resolveSignals({ roster, families }) {
  * Every branch that has no positive evidence returns `not_run`; there
  * is no path from a missing report to `pass`.
  */
-export function classifySignal({ signal, runRecord, currentSha, artefactExists }) {
+export function classifySignal({
+	signal,
+	runRecord,
+	currentSha,
+	artefactExists,
+	recordProblem = null,
+}) {
 	const evidence = signal.evidence ?? null;
 
 	if (signal.state !== 'implemented') {
@@ -314,11 +401,35 @@ export function classifySignal({ signal, runRecord, currentSha, artefactExists }
 	}
 
 	if (!runRecord) {
-		return verdict(STATUS.NOT_RUN, 'run record なし（この signal の有効な出力が存在しない）', {
-			decidedBy: signal.command,
-		});
+		return verdict(
+			STATUS.NOT_RUN,
+			recordProblem ?? 'run record なし（この signal の有効な出力が存在しない）',
+			{ decidedBy: signal.command },
+		);
 	}
-	if (runRecord.source_sha && currentSha && runRecord.source_sha !== currentSha) {
+	// Fail closed on attribution: a record that cannot name the checkout
+	// it was produced from is not evidence about this one. Skipping this
+	// branch when either side is missing is how a stale or hand-written
+	// record reads as a green run.
+	if (typeof runRecord.source_sha !== 'string' || runRecord.source_sha.length === 0) {
+		return verdict(
+			STATUS.NOT_RUN,
+			'run record が source SHA を記録していない（この checkout の出力ではない）',
+			{
+				decidedBy: signal.command,
+			},
+		);
+	}
+	if (!currentSha) {
+		return verdict(
+			STATUS.NOT_RUN,
+			'このチェックアウトの source SHA が取得できない（比較できないので NOT RUN）',
+			{
+				decidedBy: signal.command,
+			},
+		);
+	}
+	if (runRecord.source_sha !== currentSha) {
 		return verdict(
 			STATUS.NOT_RUN,
 			`run record は別の source SHA (${runRecord.source_sha}) のもの`,
@@ -326,7 +437,7 @@ export function classifySignal({ signal, runRecord, currentSha, artefactExists }
 		);
 	}
 
-	const run = (runRecord.runs ?? []).find((entry) => entry.id === signal.id);
+	const run = (runRecord.runs ?? []).find((entry) => entry?.id === signal.id);
 	if (!run) {
 		return verdict(STATUS.NOT_RUN, 'この run record に信号の記録が無い', {
 			decidedBy: signal.command,
@@ -345,11 +456,27 @@ export function classifySignal({ signal, runRecord, currentSha, artefactExists }
 	}
 
 	if (evidence?.kind === 'artefact') {
-		const missing = evidence.paths.filter((path) => !artefactExists(path));
-		if (missing.length > 0) {
-			return verdict(STATUS.NOT_RUN, `report missing: ${missing.join(', ')}`, {
+		// Both halves matter: the report has to exist now, and the run
+		// that claims this exit code has to have inventoried it. A report
+		// left behind by an earlier run cannot satisfy today's verdict.
+		const inventoried = new Set(
+			(Array.isArray(run.artifacts) ? run.artifacts : [])
+				.map((artifact) => artifact?.path)
+				.filter((path) => typeof path === 'string'),
+		);
+		const absent = evidence.paths.filter((path) => !artefactExists(path));
+		if (absent.length > 0) {
+			return verdict(STATUS.NOT_RUN, `report missing: ${absent.join(', ')}`, {
 				decidedBy: signal.command,
 			});
+		}
+		const unrecorded = evidence.paths.filter((path) => !inventoried.has(path));
+		if (unrecorded.length > 0) {
+			return verdict(
+				STATUS.NOT_RUN,
+				`この実行では report を書き出していない（run record に無い）: ${unrecorded.join(', ')}`,
+				{ decidedBy: signal.command },
+			);
 		}
 	}
 
@@ -403,7 +530,9 @@ export function describeEnvironment({ root = REPO_ROOT, runRecord = null, sha = 
 		runner: recorded?.runner ?? (process.env.CI ? 'ci' : 'local'),
 		capturedAt: runRecord?.captured_at ?? null,
 		node: recorded?.node ?? process.version,
-		platform: `${os.platform()} ${os.arch()} (${os.release()})`,
+		// The capture machine, not the rendering machine: a record made
+		// on CI must not be re-described with the local OS.
+		platform: recorded?.platform ?? `${os.platform()} ${os.arch()} (${os.release()})`,
 		cpu: recorded?.cpu ?? {
 			model: cpus[0]?.model ?? 'unknown',
 			cores: cpus.length,
@@ -411,6 +540,38 @@ export function describeEnvironment({ root = REPO_ROOT, runRecord = null, sha = 
 		browser: recorded?.browser ?? describeBrowser(root),
 		network: recorded?.network ?? 'unknown (run record なし)',
 	};
+}
+
+/**
+ * Read the run record without ever throwing.
+ *
+ * "No usable record" is one of the states the page exists to report, so
+ * an absent, unreadable or malformed record is NOT a dashboard error —
+ * but it must not be silently reported as the plain "no record" case
+ * either. Returns `{ record: null, problem }` where `problem` is the
+ * human-readable reason a record was rejected.
+ */
+export function readRunRecord({ root = REPO_ROOT, runRecordPath = DEFAULT_RUN_RECORD_PATH } = {}) {
+	const absolute = resolve(root, runRecordPath);
+	if (!existsSync(absolute)) return { record: null, problem: null };
+	const errors = [];
+	const parsed = readJson(absolute, runRecordPath, errors);
+	if (errors.length > 0) {
+		return { record: null, problem: `${runRecordPath} を読み込めません（${errors.join(' / ')}）` };
+	}
+	if (parsed === null || typeof parsed !== 'object' || Array.isArray(parsed)) {
+		return { record: null, problem: `${runRecordPath} の形が不正です（JSON object が必要）` };
+	}
+	if (parsed.version !== 1) {
+		return {
+			record: null,
+			problem: `${runRecordPath} の version が不正です（1 が必要、got ${parsed.version}）`,
+		};
+	}
+	if (!Array.isArray(parsed.runs)) {
+		return { record: null, problem: `${runRecordPath} の runs が配列ではありません` };
+	}
+	return { record: parsed, problem: null };
 }
 
 /**
@@ -425,9 +586,7 @@ export function buildDashboard({ root = REPO_ROOT, runRecordPath = DEFAULT_RUN_R
 		return { errors, rows: [], summary: emptySummary(), environment: null, sourceSha: null };
 	}
 	const sha = headSha(root);
-	const recordAbsolute = resolve(root, runRecordPath);
-	const recordErrors = [];
-	const runRecord = readJson(recordAbsolute, runRecordPath, recordErrors);
+	const { record: runRecord, problem: recordProblem } = readRunRecord({ root, runRecordPath });
 	const signals = resolveSignals({ roster, families });
 	const rows = signals.map((signal) => ({
 		signal,
@@ -435,6 +594,7 @@ export function buildDashboard({ root = REPO_ROOT, runRecordPath = DEFAULT_RUN_R
 			signal,
 			runRecord,
 			currentSha: sha,
+			recordProblem,
 			artefactExists: (path) => existsSync(resolve(root, path)),
 		}),
 	}));
@@ -701,10 +861,26 @@ function parseArg(argv, name) {
 	return null;
 }
 
+/** Value of a space-separated flag, or null when the next token is another flag. */
+function flagValue(argv, name) {
+	const index = argv.indexOf(name);
+	if (index === -1) return { present: false, value: null };
+	const next = argv[index + 1];
+	if (next === undefined || next.startsWith('-')) return { present: true, value: null };
+	return { present: true, value: next };
+}
+
 function main(argv) {
-	const root = resolve(argv.includes('--root') ? argv[argv.indexOf('--root') + 1] : REPO_ROOT);
-	if (!root) {
+	const rootFlag = flagValue(argv, '--root');
+	if (rootFlag.present && !rootFlag.value) {
 		process.stderr.write('--root requires a directory argument\n');
+		return 2;
+	}
+	const root = resolve(rootFlag.present ? rootFlag.value : REPO_ROOT);
+	// `--report out.html` is silently ignored by parseArg, so a report
+	// the operator asked for would never be written. Say so instead.
+	if (argv.includes('--report') && parseArg(argv, '--report') === null) {
+		process.stderr.write('--report requires the --report=<path> form\n');
 		return 2;
 	}
 	const reportPath = parseArg(argv, '--report');

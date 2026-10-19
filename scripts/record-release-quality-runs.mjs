@@ -10,7 +10,12 @@
  * machine-readable record describing *what ran and how it ended*:
  *
  *   .tmp/release-quality-runs.json
- *     { version, source_sha, captured_at, environment, runs[], skipped[] }
+ *     { version, source_sha, captured_at, environment, runs[] }
+ *
+ * `runs[]` holds every planned signal, executed (`exit_code`,
+ * `duration_ms`, `artifacts`) or not (`skipped: true` + the unmet
+ * requirement), sorted by signal id. There is no separate top-level
+ * `skipped` array: the dashboard reads one list.
  *
  * Why the record is so small
  * --------------------------
@@ -71,6 +76,10 @@ export function planRuns({ signals, allowed = [], only = [], skip = [] }) {
 			id: signal.id,
 			command: signal.command,
 			requirements: signal.requirements ?? [],
+			// The declared evidence travels with the plan: without it the
+			// record cannot say which reports this command was supposed to
+			// write, and `inventoryArtefacts()` stays empty forever.
+			evidence: signal.evidence ?? null,
 		};
 		if (only.length > 0 && !only.includes(signal.id)) continue;
 		if (skip.includes(signal.id)) continue;
@@ -120,6 +129,25 @@ export function inventoryArtefacts({ paths = [], cwd }) {
 	return artefacts;
 }
 
+/**
+ * One executed signal as the record stores it: what it decided, how
+ * long it took, and which declared reports it actually wrote.
+ *
+ * Pure apart from the `inventoryArtefacts` stat, and exported so the
+ * plan -> record path can be pinned without running a real command.
+ */
+export function buildRunEntry({ entry, exitCode, durationMs, cwd }) {
+	return {
+		id: entry.id,
+		exit_code: exitCode,
+		duration_ms: durationMs,
+		artifacts: inventoryArtefacts({
+			paths: entry.evidence?.kind === 'artefact' ? entry.evidence.paths : [],
+			cwd,
+		}),
+	};
+}
+
 /** Assemble the record. Pure, so tests can pin its shape. */
 export function buildRunRecord({ sourceSha, capturedAt, environment, runs, skipped }) {
 	return {
@@ -146,10 +174,22 @@ function parseArg(argv, name) {
 	return null;
 }
 
+/** Value of a space-separated flag, or null when the next token is another flag. */
+function flagValue(argv, name) {
+	const index = argv.indexOf(name);
+	if (index === -1) return { present: false, value: null };
+	const next = argv[index + 1];
+	if (next === undefined || next.startsWith('-')) return { present: true, value: null };
+	return { present: true, value: next };
+}
+
 function main(argv) {
-	const root = resolve(
-		argv.includes('--root') ? (argv[argv.indexOf('--root') + 1] ?? REPO_ROOT) : REPO_ROOT,
-	);
+	const rootFlag = flagValue(argv, '--root');
+	if (rootFlag.present && !rootFlag.value) {
+		process.stderr.write('--root requires a directory argument\n');
+		return 2;
+	}
+	const root = resolve(rootFlag.present ? rootFlag.value : REPO_ROOT);
 	const outPath = resolve(root, parseArg(argv, '--out') ?? DEFAULT_RUN_RECORD_PATH);
 	const rosterPath = parseArg(argv, '--roster') ?? DEFAULT_ROSTER_PATH;
 	const allowed = parseList(parseArg(argv, '--allow'));
@@ -209,15 +249,7 @@ function main(argv) {
 			cwd: root,
 			env: process.env,
 		});
-		runs.push({
-			id: entry.id,
-			exit_code: exitCode,
-			duration_ms: durationMs,
-			artifacts: inventoryArtefacts({
-				paths: entry.evidence?.kind === 'artefact' ? entry.evidence.paths : [],
-				cwd: root,
-			}),
-		});
+		runs.push(buildRunEntry({ entry, exitCode, durationMs, cwd: root }));
 	}
 
 	const record = buildRunRecord({
@@ -226,6 +258,9 @@ function main(argv) {
 		environment: {
 			runner: process.env.CI ? 'ci' : 'local',
 			node: process.version,
+			// Recorded here, not at render time: the renderer may well be a
+			// different machine than the one that produced the verdicts.
+			platform: `${os.platform()} ${os.arch()} (${os.release()})`,
 			cpu: describeCpu(),
 			browser: describeBrowser(root),
 			network: usedNetwork ? 'allowed (registry / origin reachable)' : 'not used',

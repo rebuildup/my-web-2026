@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+	buildRunEntry,
 	buildRunRecord,
 	inventoryArtefacts,
 	planRuns,
@@ -45,6 +46,59 @@ describe('planRuns', () => {
 			['offline-gate', 'network-gate', 'build-gate'],
 		);
 		assert.equal(plan[0].skipped, undefined);
+	});
+
+	it('carries the declared evidence into the plan so the record can inventory it', () => {
+		const plan = planRuns({
+			signals: [
+				{
+					id: 'route-quality-coverage',
+					state: 'implemented',
+					command: 'pnpm run routes:quality:report',
+					requirements: [],
+					evidence: { kind: 'artefact', paths: ['.tmp/route-quality-report.html'] },
+				},
+				{
+					id: 'offline-gate',
+					state: 'implemented',
+					command: 'pnpm run x',
+					requirements: [],
+					evidence: { kind: 'exit_code' },
+				},
+			],
+		});
+		const artefact = plan.find((entry) => entry.id === 'route-quality-coverage');
+		assert.deepEqual(artefact.evidence, {
+			kind: 'artefact',
+			paths: ['.tmp/route-quality-report.html'],
+		});
+		assert.equal(plan.find((entry) => entry.id === 'offline-gate').evidence.kind, 'exit_code');
+	});
+
+	it('lists the declared report in the record entry the dashboard reads', () => {
+		const root = mkdtempSync(join(tmpdir(), 'release-quality-runs-'));
+		try {
+			mkdirSync(join(root, '.tmp'), { recursive: true });
+			writeFileSync(join(root, '.tmp/route-quality-report.html'), '<html></html>');
+			const [entry] = planRuns({
+				signals: [
+					{
+						id: 'route-quality-coverage',
+						state: 'implemented',
+						command: 'pnpm run routes:quality:report',
+						requirements: [],
+						evidence: { kind: 'artefact', paths: ['.tmp/route-quality-report.html'] },
+					},
+				],
+			});
+			const runEntry = buildRunEntry({ entry, exitCode: 0, durationMs: 12, cwd: root });
+			assert.deepEqual(
+				runEntry.artifacts.map((artifact) => artifact.path),
+				['.tmp/route-quality-report.html'],
+			);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
 	});
 
 	it('records unmet requirements as a skip instead of running them', () => {
@@ -160,7 +214,7 @@ describe('the real roster', () => {
 		for (const entry of plan) {
 			assert.ok(entry.id && entry.command, `${entry.id} must name the command it decides about`);
 			assert.ok(
-				!/stdout|stderr|output|exit_code/i.test(JSON.stringify(entry)),
+				!/stdout|stderr|"exit_code":\s*-?\d|"duration_ms":\s*\d/i.test(JSON.stringify(entry)),
 				`${entry.id} must be planned without any command output`,
 			);
 			if (entry.skipped) assert.match(entry.reason, /requires /);

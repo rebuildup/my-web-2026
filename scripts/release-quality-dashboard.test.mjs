@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
-import { describe, it } from 'node:test';
+import { after, describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
 	DEFAULT_ROSTER_PATH,
@@ -10,7 +11,9 @@ import {
 	buildDashboard,
 	classifySignal,
 	describeEnvironment,
+	expandCommand,
 	loadRoster,
+	readRunRecord,
 	renderDashboardHtml,
 	resolveSignals,
 	summarize,
@@ -79,8 +82,11 @@ function record(overrides = {}) {
 	};
 }
 
-function classify(signal, { runRecord = null, artefactExists = () => true } = {}) {
-	return classifySignal({ signal, runRecord, currentSha: SHA, artefactExists });
+function classify(
+	signal,
+	{ runRecord = null, artefactExists = () => true, currentSha = SHA } = {},
+) {
+	return classifySignal({ signal, runRecord, currentSha, artefactExists });
 }
 
 describe('classifySignal — no output can never become PASS', () => {
@@ -90,12 +96,31 @@ describe('classifySignal — no output can never become PASS', () => {
 		assert.match(result.reason, /run record/);
 	});
 
-	it('reports NOT RUN when the record belongs to another source SHA', () => {
+	it('reports NOT RUN when the record is another source SHA', () => {
 		const result = classify(IMPLEMENTED_EXIT_CODE, {
 			runRecord: record({ source_sha: 'ffffffffffff' }),
 		});
 		assert.equal(result.status, STATUS.NOT_RUN);
 		assert.match(result.reason, /別の source SHA/);
+	});
+
+	it('reports NOT RUN when the record cannot name the checkout it came from', () => {
+		for (const sourceSha of [undefined, '', null, 42]) {
+			const result = classify(IMPLEMENTED_EXIT_CODE, {
+				runRecord: record({ source_sha: sourceSha }),
+			});
+			assert.equal(result.status, STATUS.NOT_RUN, `source_sha ${String(sourceSha)}`);
+			assert.match(result.reason, /source SHA を記録していない/);
+		}
+	});
+
+	it('reports NOT RUN when this checkout has no SHA to compare against', () => {
+		const result = classify(IMPLEMENTED_EXIT_CODE, {
+			runRecord: record(),
+			currentSha: null,
+		});
+		assert.equal(result.status, STATUS.NOT_RUN);
+		assert.match(result.reason, /source SHA が取得できない/);
 	});
 
 	it('reports NOT RUN when the record has no entry for this signal', () => {
@@ -129,6 +154,18 @@ describe('classifySignal — no output can never become PASS', () => {
 		});
 		assert.equal(result.status, STATUS.NOT_RUN);
 		assert.match(result.reason, /report missing/);
+		assert.match(result.reason, /\.tmp\/route-quality-report\.html/);
+	});
+
+	it('reports NOT RUN when the report exists but this run never wrote it', () => {
+		const result = classify(IMPLEMENTED_ARTEFACT, {
+			runRecord: record({
+				runs: [{ id: 'route-quality-coverage', exit_code: 0, duration_ms: 90, artifacts: [] }],
+			}),
+			artefactExists: () => true,
+		});
+		assert.equal(result.status, STATUS.NOT_RUN);
+		assert.match(result.reason, /report を書き出していない/);
 		assert.match(result.reason, /\.tmp\/route-quality-report\.html/);
 	});
 
@@ -245,6 +282,169 @@ describe('validateRoster', () => {
 		);
 		assert.match(errors.join('\n'), /duplicate signal id/);
 		assert.match(errors.join('\n'), /unknown requirement "telepathy"/);
+	});
+});
+
+describe('artefact evidence must be reachable from its command', () => {
+	const families = { gate_families: [] };
+	const roster = (signal) => ({
+		version: 1,
+		groups: [{ id: 'gate', label: 'ゲート' }],
+		signals: [signal],
+	});
+	const signal = (overrides = {}) => ({
+		id: 'bundle-budget',
+		group: 'gate',
+		label: 'client bundle budget',
+		state: 'implemented',
+		command: 'pnpm run bundle:budget:check -- --report=.tmp/bundle-budget.json',
+		requirements: ['build'],
+		evidence: { kind: 'artefact', paths: ['.tmp/bundle-budget.json'] },
+		...overrides,
+	});
+
+	it('rejects a command that never writes the declared report', () => {
+		const errors = validateRoster(
+			roster(signal({ command: 'pnpm run bundle:budget:check' })),
+			families,
+		);
+		assert.match(errors.join('\n'), /its command never writes there/);
+	});
+
+	it('accepts a report path that only appears in the package script it runs', () => {
+		const errors = validateRoster(
+			roster(
+				signal({
+					id: 'route-quality-coverage',
+					command: 'pnpm run routes:quality:report',
+					requirements: [],
+					evidence: { kind: 'artefact', paths: ['.tmp/route-quality-report.html'] },
+				}),
+			),
+			families,
+			null,
+			{
+				scripts: {
+					'routes:quality:report':
+						'node scripts/check-route-quality-coverage.mjs --report=.tmp/route-quality-report.html',
+				},
+			},
+		);
+		assert.deepEqual(errors, []);
+	});
+
+	it('accepts a tool default output directory when the roster explains it', () => {
+		const errors = validateRoster(
+			roster(
+				signal({
+					command: 'CI=1 pnpm run e2e -- --reporter=html',
+					requirements: ['build', 'browser'],
+					evidence: {
+						kind: 'artefact',
+						paths: ['playwright-report/index.html'],
+						output_dir: 'playwright-report',
+						output_dir_note: 'playwright html reporter default',
+					},
+				}),
+			),
+			families,
+			null,
+			{ scripts: {} },
+		);
+		assert.deepEqual(errors, []);
+	});
+
+	it('rejects an output_dir without a note, and a path outside it', () => {
+		const missingNote = validateRoster(
+			roster(
+				signal({
+					command: 'CI=1 pnpm run e2e -- --reporter=html',
+					evidence: {
+						kind: 'artefact',
+						paths: ['playwright-report/index.html'],
+						output_dir: 'playwright-report',
+					},
+				}),
+			),
+			families,
+			null,
+			{ scripts: {} },
+		);
+		assert.match(missingNote.join('\n'), /output_dir without output_dir_note/);
+
+		const outside = validateRoster(
+			roster(
+				signal({
+					command: 'CI=1 pnpm run e2e -- --reporter=html',
+					evidence: {
+						kind: 'artefact',
+						paths: ['other-dir/index.html'],
+						output_dir: 'playwright-report',
+						output_dir_note: 'playwright html reporter default',
+					},
+				}),
+			),
+			families,
+			null,
+			{ scripts: {} },
+		);
+		assert.match(outside.join('\n'), /is not under evidence\.output_dir/);
+	});
+
+	it('expands one level of pnpm run when checking reachability', () => {
+		const scripts = { 'routes:quality:report': 'node scripts/check.mjs --report=x.html' };
+		assert.equal(
+			expandCommand('pnpm run routes:quality:report', scripts),
+			'node scripts/check.mjs --report=x.html',
+		);
+		assert.equal(
+			expandCommand('pnpm run not-a-script', scripts),
+			'pnpm run not-a-script',
+			'an unknown script must stay visible instead of vanishing',
+		);
+	});
+});
+
+describe('readRunRecord', () => {
+	const root = mkdtempSync(join(tmpdir(), 'release-quality-record-'));
+	const path = '.tmp/release-quality-runs.json';
+	const write = (contents) => {
+		mkdirSync(join(root, '.tmp'), { recursive: true });
+		writeFileSync(join(root, path), contents);
+	};
+
+	after(() => rmSync(root, { recursive: true, force: true }));
+
+	it('treats a missing record as no record, not as an error', () => {
+		const result = readRunRecord({ root, runRecordPath: 'not-there.json' });
+		assert.equal(result.record, null);
+		assert.equal(result.problem, null);
+	});
+
+	it('rejects unreadable, mistyped and version-less records with a reason', () => {
+		write('{ not json');
+		assert.match(readRunRecord({ root, runRecordPath: path }).problem, /読み込めません/);
+		write(JSON.stringify({ version: 1, runs: 'oops' }));
+		assert.match(readRunRecord({ root, runRecordPath: path }).problem, /runs が配列ではありません/);
+		write(JSON.stringify({ version: 2, runs: [] }));
+		assert.match(readRunRecord({ root, runRecordPath: path }).problem, /version が不正/);
+		write(JSON.stringify([{ id: 'x' }]));
+		assert.match(readRunRecord({ root, runRecordPath: path }).problem, /形が不正/);
+	});
+
+	it('surfaces the rejection reason on the row instead of crashing', () => {
+		write(JSON.stringify({ version: 1, runs: 'oops' }));
+		const { record: runRecord, problem } = readRunRecord({ root, runRecordPath: path });
+		assert.equal(runRecord, null);
+		const result = classifySignal({
+			signal: IMPLEMENTED_EXIT_CODE,
+			runRecord,
+			recordProblem: problem,
+			currentSha: SHA,
+			artefactExists: () => true,
+		});
+		assert.equal(result.status, STATUS.NOT_RUN);
+		assert.match(result.reason, /runs が配列ではありません/);
 	});
 });
 

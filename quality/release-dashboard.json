@@ -31,12 +31,13 @@
 			"reduced-motion": "reduced-motion",
 			"seo-status": "seo-status",
 			"release-gate-ledger": "release-gate-ledger",
+			"asvs-coverage": "asvs-coverage",
 			"playwright-e2e": "e2e-playwright"
 		},
 		"not_listed": {
 			"release-version": {
 				"signal": null,
-				"reason": "`pnpm run version:check` は release branch 名から期待 version を導出するため、ticket branch 上では必然的に FAIL する。このダッシュボードを ticket branch で写到 Permanent false FAIL にする根拠にならない。"
+				"reason": "`pnpm run version:check` は release branch 名から期待 version を導出するため、ticket branch 上では必然的に FAIL する。このダッシュボードを ticket branch 上で恒久的な false FAIL として書き込む根拠にはならない。"
 			},
 			"cf-typegen": {
 				"signal": null,
@@ -411,6 +412,17 @@
 			"owner": "Issue #449"
 		},
 		{
+			"id": "asvs-coverage",
+			"group": "security",
+			"label": "ASVS 5.0 evidence coverage",
+			"state": "implemented",
+			"contract": "選択した ASVS 5.0 要件が、適用行すべてをリポジトリ内の証拠へ解決できる。",
+			"command": "pnpm run asvs:check",
+			"requirements": [],
+			"evidence": { "kind": "exit_code" },
+			"owner": "docs/verification/security/asvs-coverage.md"
+		},
+		{
 			"id": "frame-ancestors",
 			"group": "security",
 			"label": "frame-ancestors / embed policy",
@@ -470,7 +482,7 @@
 			"label": "client bundle budget",
 			"state": "implemented",
 			"contract": "route ごとの client bundle が quality/bundle-budget.json の上限内に収まる。",
-			"command": "pnpm run bundle:budget:check",
+			"command": "pnpm run bundle:budget:check -- --report=.tmp/bundle-budget.json --html=.tmp/bundle-budget.html",
 			"requirements": ["build"],
 			"evidence": {
 				"kind": "artefact",
@@ -500,12 +512,14 @@
 			"label": "Playwright E2E (Chromium)",
 			"state": "implemented",
 			"contract": "稼働中 Worker に対して spec が rendered surface を検証する。",
-			"command": "pnpm run e2e",
+			"command": "CI=1 pnpm run e2e -- --reporter=html",
 			"requirements": ["build", "browser", "worker"],
 			"evidence": {
 				"kind": "artefact",
 				"paths": ["playwright-report/index.html"],
-				"note": "CI 専用ステップ（validate ジョブ）。ローカル実行には dev server が必要。"
+				"output_dir": "playwright-report",
+				"output_dir_note": "playwright の html reporter は出力先を指定しない限り `playwright-report/` へ書き出す。playwright.config.ts は CI で github/list reporter を使うため、HTML を明示しないと report は作られない。",
+				"note": "CI 専用ステップ（validate ジョブ）。ローカル実行には dev server が必要。CI=1 を前置するのは失敗時に html reporter がサーバーを起動してプロセスを止めないため。"
 			},
 			"owner": "AGENTS.md §5"
 		},

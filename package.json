@@ -164,6 +164,8 @@
 		"verify:secret-scan-screenshot": "node scripts/shoot-secret-scan-report.mjs",
 		"secret:scan": "node scripts/scan-secrets.mjs",
 		"secret:scan:bundle": "node scripts/scan-secrets.mjs --bundle",
+		"secrets:status:check": "node scripts/check-secret-rotation-status.mjs",
+		"secrets:status:report": "node scripts/make-secret-rotation-status-report.mjs",
 		"verify:html-nu-validator-screenshot": "node scripts/make-html-nu-validator-report.mjs",
 		"html:standards:check": "node scripts/check-html-standards.mjs",
 		"capture:a11y-reduced-motion": "node scripts/capture-a11y-reduced-motion.mjs",

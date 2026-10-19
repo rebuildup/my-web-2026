@@ -176,6 +176,15 @@
 			"documentation": "docs/runbook/infisical-secrets.md"
 		},
 		{
+			"id": "secret-rotation-status",
+			"contract": "The rotation policy the repository ships is decidable offline: every runtime secret name has a cadence, a ledger row that cannot hold a value, and a status that separates a matching inventory, a name the environment is reported to lack, and a rotation past its deadline, without reading a secret value.",
+			"command": "pnpm run secrets:status:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/secret-rotation-status.md"
+		},
+		{
 			"id": "route-quality-coverage",
 			"contract": "Every published route still has a quality-gate decision (covered with evidence, or excluded with a reason), so a new page cannot reach a release ungated.",
 			"command": "pnpm run routes:quality:check",

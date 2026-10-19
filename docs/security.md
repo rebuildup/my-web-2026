@@ -17,6 +17,14 @@ public Issue. If you find a leaked credential, assume it is
 compromised: revoke and rotate immediately. Do not wait for the
 patch release.
 
+`/.well-known/security.txt` is **not published yet** (Issue #468): the
+endpoint answers `404` until an owner approves a reporting channel this
+project actually monitors, and the repository publishes no address to
+put in it. The delivery mechanism, the RFC 9116 validation and the
+expiry gate are complete — see
+[`docs/security/security-txt.md`](security/security-txt.md) for the
+approval procedure and the rules a published document must satisfy.
+
 ## CSRF
 
 The Worker serves two mutation layers, and **each layer owns a

@@ -85,6 +85,7 @@
 		"install:scripts:check": "node scripts/check-install-scripts.mjs",
 		"install:scripts:html": "node scripts/check-install-scripts.mjs --html=.tmp/install-script-audit.html",
 		"verify:sitemap-screenshot": "node --experimental-strip-types scripts/make-sitemap-verification-report.mjs",
+		"verify:security-txt-screenshot": "node --experimental-strip-types scripts/make-security-txt-verification-report.mjs",
 		"verification:api-key-scope": "node scripts/capture-api-key-scope-matrix.mjs",
 		"structured-data:check": "node scripts/check-structured-data-coverage.mjs",
 		"verify:structured-data-screenshot": "node scripts/make-seo-structured-data-report.mjs",

@@ -19,6 +19,7 @@ of trusting the image.
 | [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 | [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
 | [`release-gate-missing-check.webp`](release-gate-missing-check.webp) | #508 | `pnpm run verify:release-gate-screenshot` |
+| [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 
 ## `release-gate-missing-check.webp` (Issue #508)
 

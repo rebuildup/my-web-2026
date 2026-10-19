@@ -10,6 +10,7 @@ import { csrfGuard } from './middleware/csrf';
 import { requestIdMiddleware } from './middleware/request-id';
 import { createMockApp } from './mock';
 import { reactionImagesRouter, reactionsRouter } from './reactions/router';
+import { securityTxtRouter } from './security-txt/router';
 import { seoRouter } from './seo/router';
 
 /**
@@ -30,6 +31,11 @@ import { seoRouter } from './seo/router';
  *                        served here and registered in the
  *                        `EXTERNAL_BOUNDARY_PREFIXES` list in
  *                        `src/server.ts`.
+ *   - `/.well-known/*`  RFC 9116 `security.txt` (Issue #468). Same
+ *                        reason — a `text/plain` document, served as
+ *                        part of the RFC 9116 §3.1 well-known
+ *                        namespace, published only once an owner
+ *                        approves the reporting channel.
  *
  * Internal application operations invoked from the UI are TanStack
  * Start server functions and **must not** be exposed through Hono.
@@ -113,6 +119,7 @@ externalBoundary.use('/api/v1/*', requestIdMiddleware);
 externalBoundary.use('/api/v1/*', csrfGuard);
 externalBoundary.route('/', authRouter);
 externalBoundary.route('/', seoRouter);
+externalBoundary.route('/', securityTxtRouter);
 externalBoundary.route('/api/v1/access', accessCounterRouter);
 externalBoundary.route('/api/v1/reactions', reactionsRouter);
 externalBoundary.route('/api/v1/reaction-images', reactionImagesRouter);

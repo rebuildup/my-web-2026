@@ -32,6 +32,7 @@ stack:
   worker_test: '@cloudflare/vitest-plugin@1.1.x'
   language: typescript@5.9.x
   package_manager: pnpm@12.3.4
+  unused_code: knip@6.42.x
 
 gates:
   fast:
@@ -109,6 +110,8 @@ gates:
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       - 'pnpm run typecheck' # tsc --noEmit
+      - 'pnpm run infisical:check:coverage'
+      - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
       # `pnpm run test` also carries the Issue #491 D1 statement-count
       # budget (src/portfolio/load.query-budget.test.ts): the portfolio
       # list surface must stay at or below 1 + 2 * ceil(pageSize / 100)
@@ -548,6 +551,7 @@ disallowed_patterns:
   - 'duplicate pnpm install across CI jobs (use cache + single shared bootstrap)'
   - 'tabs in YAML files (actionlint enforces spaces; .github/workflows/*.yml uses 2-space indent)'
   - 'cf workers types run as a generation step in CI without a subsequent git diff --exit-code check'
+  - 'knip baseline (quality/knip-baseline.json) hand-edited to silence findings instead of fixing the cause via pnpm run knip:update'
   - 'a performance/visualisation report wired into validate:fast / validate:integration / validate:release (see diagnostic_entry_points; budgets are Issue #383 / #385)'
 
 # Deterministic entry points that produce EVIDENCE without gating.

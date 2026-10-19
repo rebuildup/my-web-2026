@@ -291,6 +291,66 @@ the code paths it is enforced on, and the bucket-level obligation that
 follows from it are now written down in
 [`docs/security/r2-media-visibility.md`](../security/r2-media-visibility.md).
 
+**Amendment (Issue #577) — owner chose (a): an enforced read-only
+key-set audit.**
+
+*Owner decision, 2026-10-19 (recorded on Issue #577):* of the three
+candidates — (a) a read-only key-set audit plus a release gate,
+(b) splitting the bucket, (c) moving delivery behind the Worker or
+signed URLs — **(a) is adopted.** The decision is not made inside a PR
+(AGENTS.md §8) because it trades security, cost, and the public
+delivery contract against each other.
+
+**Decision.** The public delivery mechanism is unchanged — the custom
+domain still serves published portfolio media with zero Worker
+invocations. What changes is the **enforcement** of the namespace
+contract on the thing the repository can actually observe: the bucket's
+key set.
+
+- `pnpm run r2:media:audit` (implementation:
+  `scripts/check-r2-media-key-set.mjs`, policy seam:
+  `scripts/_r2-media-key-set.mjs`) reads the `MEDIA` bucket's key set
+  **read-only** and classifies every key with `isPublicMediaKey` — the
+  same predicate `composeMediaUrl` and `getImageStream` call, read from
+  `src/cloudflare/media-visibility.ts` and never re-declared in the
+  script.
+- One key outside `PUBLIC_MEDIA_PREFIXES` fails the release gate.
+- **Fail-closed:** a missing R2 credential, an API failure, an
+  unrecognised listing shape, an empty production key set and a full
+  page are all `UNDECIDABLE` with a non-zero exit. `OK` is the only
+  pass and there is no `--allow-unknown` flag.
+- **Status-only output:** verdict, counts and reason codes only — no
+  object key, no key fragment, no credential, no raw CLI error text
+  (`docs/runbook/infisical-secrets.md` is the precedent). The rendered
+  report is checked against the keys it audited before it is written.
+- **Operator-run, not a CI step:** no workflow under
+  `.github/workflows/` holds a Cloudflare credential, so CI cannot
+  authenticate the read at all. The gate is therefore absent from
+  `validate:fast` / `validate:integration` / `validate:release` and runs
+  as a release step with the R2-scoped credential; the decision is
+  recorded in `quality/profile.yaml#r2_media_key_set_audit`.
+- **No mutation:** the gate issues one `cf r2 objects list` and calls
+  no write path. Fixing a violation is an operator action.
+
+**Enforcement scope.** What this now holds: no object outside a
+declared public namespace may exist in the `MEDIA` bucket. What it
+deliberately does not hold: an *unpublished* object inside `portfolio/`
+is still fetchable through the custom domain, because publication
+state is a D1 row this gate does not read; whether the custom domain is
+attached at all; and buckets of 1000 keys or more, which the driver
+cannot page (a full page is reported as `listing_incomplete` rather than
+read as a whole bucket). The full scope table, the procedure and the
+failure playbook are in
+[`docs/security/r2-media-visibility.md`](../security/r2-media-visibility.md)
+and
+[`docs/runbook/r2-media-key-set-audit.md`](../runbook/r2-media-key-set-audit.md).
+
+**Effect on Issue #459.** Its acceptance item 1 — an executable
+enforcement of the public delivery surface, not a documentation
+expectation — now has one: the key-set half. Issue #459 still must not
+be closed on repository gates alone, because the approval half (an
+unpublished in-namespace object) is unchanged.
+
 ## Decision 6 — untrusted article bodies: one href oracle, one visible refusal
 
 **Status:** Accepted (Issue #451).

@@ -1,0 +1,5 @@
+{
+	"case": "one-key-outside-every-declared-prefix",
+	"expect": { "verdict": "VIOLATION", "exitCode": 1 },
+	"listing": "[\n  {\"key\": \"portfolio/example-project/cover.webp\"},\n  {\"key\": \"reactions/0123456789abcdef.png\"},\n  {\"key\": \"backup/example-project/cover-9.webp\"}\n]"
+}

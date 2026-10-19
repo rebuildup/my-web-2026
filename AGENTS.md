@@ -417,6 +417,22 @@ point is an open decision recorded in
 [`quality/profile.yaml`](quality/profile.yaml). Operator reference:
 [`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 
+A second gate is deliberately **not** in the three entry points, and is
+not a CI step either: the R2 key-set audit (Issue #577,
+`pnpm run r2:media:audit`). It reads the **production** `MEDIA` bucket's
+key set read-only and fails when a key exists outside
+`PUBLIC_MEDIA_PREFIXES` — the enforcement owner chose for the public R2
+custom domain. It needs an R2-scoped credential, and no workflow under
+`.github/workflows/` holds a Cloudflare credential, so it runs as a
+release step performed by an operator (step 9 of
+[`docs/release.md`](docs/release.md)'s sprint cycle). It is
+status-only (verdict, counts, reason codes — never an object key, a key
+fragment, a credential or a raw CLI error) and fail-closed: anything it
+cannot decide exits non-zero. Decision:
+[`quality/profile.yaml`](quality/profile.yaml#r2_media_key_set_audit).
+Operator reference:
+[`docs/runbook/r2-media-key-set-audit.md`](docs/runbook/r2-media-key-set-audit.md).
+
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are
 **not** enforced at 0.1.0; that decision is in ADR-0007.

@@ -1,0 +1,5 @@
+{
+	"case": "empty-listing-fails-closed",
+	"expect": { "verdict": "UNDECIDABLE", "exitCode": 2 },
+	"listing": "[]"
+}

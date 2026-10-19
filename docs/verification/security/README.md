@@ -19,6 +19,41 @@ of trusting the image.
 | [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 | [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
 | [`tool-artifact-inventory.webp`](tool-artifact-inventory.webp) | #466 | `pnpm run verify:tool-artifact-inventory-screenshot` |
+| [`release-gate-missing-check.webp`](release-gate-missing-check.webp) | #508 | `pnpm run verify:release-gate-screenshot` |
+
+## `release-gate-missing-check.webp` (Issue #508)
+
+The release report and the commands the release really runs, as one
+reviewable page: every inspection the project ships gets one row, and the
+row is resolved against the transitive `pnpm run` closure of
+`validate:fast` / `validate:integration` / `validate:release` plus the CI
+`validate` job. The page carries four distinct statuses — `pass` /
+`fail` / `not run` / `N/A` — and the last two are never counted as a
+pass: an inspection that did not run is reported as an inspection that
+did not run.
+
+The lower half is the false-green probe: the same pure evaluator runs on
+`quality/fixtures/release-gate/pass.json` (a complete release) and on
+`missing-required-check.json`, the same world with one required
+inspection removed from the chain. The second verdict is FAIL, which is
+the Issue's first acceptance condition. The image is evidence, not the
+test — `node --test scripts/check-release-gate-coverage.test.mjs` asserts
+the verdicts and reads the same fixtures.
+
+Regenerate:
+
+```bash
+pnpm run release:gate:check             # the verdict (exit 0 / 1)
+pnpm run release:gate:report            # .tmp/release-gate-report.html
+pnpm run verify:release-gate-screenshot # WebP at the path above
+```
+
+The Issue names `release-gate-missing-check.png`; the artefact ships as
+WebP for the same reason as `redirect-validation.webp` below —
+Playwright cannot write WebP, so the generator re-encodes the in-memory
+capture with `sharp` (width ≤ 1600 px, quality 74) and never writes an
+intermediate PNG. Reading guide:
+[`docs/verification/security/release-gate-coverage.md`](release-gate-coverage.md).
 
 ## `webhook-signature-fixture.webp`
 

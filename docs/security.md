@@ -1154,14 +1154,18 @@ are not evidence about the custom-domain path.
 Verified against the local workerd R2 fixture only — object enumeration
 and a `cover-<n>` sequential sweep over the published key layout — by
 `test/integration/r2-media-visibility.test.ts`. The bucket-level half
-(unpublished objects must not sit in a custom-domain-served bucket)
-is operator-side, is **not** closed by the repository, and is recorded
-as an open residual with its concrete failure case in
+(unpublished objects must not sit in a custom-domain-served bucket) is
+operator-side; the **key-set** half of it is closed since Issue #577 by
+a read-only audit that classifies every key in the `MEDIA` bucket with
+the same `isPublicMediaKey` predicate the code gates use and fails the
+release gate on one key outside `PUBLIC_MEDIA_PREFIXES`
+(`pnpm run r2:media:audit`, operator-run because CI holds no Cloudflare
+credential; fail-closed and status-only). The residual — an
+**unpublished** object that lives inside `portfolio/` — is not closed,
+and Issue #459 still must not be closed on repository gates alone. Full
+scope and procedure:
 [`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md)
-and tracked as Issue
-[#577](https://github.com/rebuildup/my-web-2026/issues/577) (owner
-decision: enforced key-set audit / bucket split / Worker-side
-delivery).
+and [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).
 
 ## Session lifecycle (sign-in / sign-out)
 

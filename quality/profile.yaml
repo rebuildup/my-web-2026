@@ -810,3 +810,50 @@ diagnostic_entry_points:
     gates: none
     owner_issue: '#483'
     prerequisites: 'a built client output (pnpm exec vite build; scripts/build-tools.mjs + scripts/sync-cf-build-output.mjs for Tool artefacts) and, for the route matrix, a preview server'
+
+# Issue #577 — the R2 key-set audit. A gate that is deliberately in
+# NEITHER of the three entry points, and is operator-run rather than
+# CI-run.
+#
+# Unlike the dependency-advisory gate (#470), which is a CI step because
+# it only needs a public advisory endpoint, this gate reads a
+# PRODUCTION bucket. No workflow under .github/workflows/ holds a
+# Cloudflare credential (`grep 'secrets\.' .github/workflows/` is empty),
+# so CI has nothing to authenticate the read with; adding the production
+# R2 token to the Actions secret store would duplicate the Infisical SoT
+# that docs/runbook/cloudflare-workers-builds.md defines. The gate is
+# therefore a release step run by an operator holding the R2-scoped
+# credential, documented in docs/runbook/r2-media-key-set-audit.md and
+# listed in docs/release.md's sprint cycle.
+r2_media_key_set_audit:
+  command: 'pnpm run r2:media:audit'
+  report_command: 'pnpm run r2:media:audit:report'
+  local_command: 'pnpm run r2:media:audit:local'
+  implementation: 'scripts/check-r2-media-key-set.mjs (gate) + scripts/_r2-media-key-set.mjs (pure policy seam)'
+  tests: 'node --test scripts/check-r2-media-key-set.test.mjs'
+  fixtures: 'quality/fixtures/r2-media-key-set/*.json'
+  driver: 'scripts/_r2.mjs#listObjectKeysPage (read-only; no write path is reachable from the gate)'
+  policy_source_of_truth: 'src/cloudflare/media-visibility.ts PUBLIC_MEDIA_PREFIXES (injected, never re-declared in a script)'
+  gate: none
+  gate_placement: >-
+    deliberately outside validate:fast / validate:integration /
+    validate:release: it needs a remote read and an R2-scoped credential
+    that CI does not have, and validate:fast is offline and read-only by
+    contract. It runs as step 9 of the docs/release.md sprint cycle.
+  trigger: 'operator-run before a release PR is opened or merged'
+  credential: 'CLOUDFLARE_R2_API_TOKEN only (R2-scoped read). CLOUDFLARE_API_TOKEN (Worker deploy) and CLOUDFLARE_D1_API_TOKEN are never accepted as a fallback.'
+  output_contract: >-
+    status-only (AGENTS.md §4): verdict, counts and reason codes. No
+    object key, no key fragment, no credential, no raw CLI error text —
+    the rendered report is checked against the keys it audited before it
+    is written.
+  failure_policy:
+    - 'one key outside PUBLIC_MEDIA_PREFIXES FAILS the release gate (exit 1)'
+    - 'a missing credential, an API failure, an unrecognised listing shape, an empty production key set and a full page are UNDECIDABLE (exit 2) — an unread bucket is never a pass'
+    - 'a usage error also exits 2 and prints no verdict'
+    - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+    - 'a bucket of 1000 keys or more cannot be enumerated by this driver (no pagination cursor is exposed by the CLI), so a full page is reported as listing_incomplete rather than read as a whole bucket'
+  mutation: 'none — the gate issues one read (`cf r2 objects list`) and cannot reach a production write path'
+  documentation: 'docs/runbook/r2-media-key-set-audit.md + docs/security/r2-media-visibility.md'
+  verification_artifact: 'docs/verification/security/r2-media-key-set-audit.webp'
+  owner_issue: '#577'

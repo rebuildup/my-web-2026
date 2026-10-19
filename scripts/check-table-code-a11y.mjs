@@ -12,12 +12,13 @@
  * corresponds to a claim the verification artefact
  * (`docs/verification/a11y/table-code-mobile.webp`) makes:
  *
- *   - table-outside-primitive
- *     A raw `<table>` outside the editorial primitive is a table whose
- *     caption and header scopes are somebody's memory. The primitive
- *     makes them structural (a `<caption>` the region is named by,
- *     `scope="col"` / `scope="row"` on every header cell), so an
- *     ad-hoc table has to justify re-implementing that by hand.
+ *   - table-without-structure
+ *     A table that is not rendered by the primitive still has to carry
+ *     the STRUCTURE the primitive makes structural: a `<caption>` that
+ *     names it, and `scope` on its header cells. The rule checks the
+ *     property rather than the implementation, so a surface that
+ *     already meets the contract by hand is left alone — a table that
+ *     cannot name itself or relate its cells is the failure.
  *     WCAG 2.2 SC 1.3.1 Info and Relationships (A).
  *   - scroll-container-outside-primitive
  *     `overflow-x: auto` is not free: the box it creates cannot be
@@ -128,6 +129,27 @@ export const HUMAN_EVALUATION = [
 	'reading comfort and density judgement at 320 px and at 400% zoom',
 ];
 
+/**
+ * The source of one `<table>` element, up to its closing tag.
+ *
+ * Nested tables do not exist in `src/**` (a table is a leaf surface),
+ * so the next `</table>` is this element's own; the bound is documented
+ * rather than counted, because a nested table would have to make this
+ * gate fail loudly rather than silently pass.
+ */
+export function tableBody(code, index) {
+	const end = code.indexOf('</table>', index);
+	return end === -1 ? code.slice(index) : code.slice(index, end);
+}
+
+/** What a hand-rolled table is missing to satisfy SC 1.3.1 (pure). */
+export function missingTableStructure(body) {
+	const missing = [];
+	if (!/<caption[\s>]/.test(body)) missing.push('a <caption>');
+	if (!/scope="(col|row)"/.test(body)) missing.push('scope on its header cells');
+	return missing;
+}
+
 export function scanViolationsInFile({ relativePath, source }) {
 	const violations = [];
 	const code = stripComments(source);
@@ -143,10 +165,12 @@ export function scanViolationsInFile({ relativePath, source }) {
 
 	if (relativePath !== PRIMITIVE) {
 		for (const match of code.matchAll(/<table[\s>]/g)) {
-			record('table-outside-primitive', match, {
+			const body = tableBody(code, match.index ?? 0);
+			const missing = missingTableStructure(body);
+			if (missing.length === 0) continue;
+			record('table-without-structure', match, {
 				wcag: '1.3.1',
-				message:
-					'a raw <table> renders no caption and no header scope by construction; render `DataTable` from src/editorial/table-code.tsx instead',
+				message: `this table is missing ${missing.join(' and ')}; render \`DataTable\` from ${PRIMITIVE}, which makes ${missing.length === 2 ? 'both' : 'them'} structural`,
 			});
 		}
 		for (const match of code.matchAll(/overflowX: '(auto|scroll)'/g)) {
@@ -261,8 +285,12 @@ export function renderGateSummary(evidence) {
 		`  ${evidence.cases.missing.length === 0 ? 'ok  ' : 'FAIL'} ${'fixture-states'.padEnd(16)} ${evidence.cases.found.length}/${evidence.cases.expected.length} — ${evidence.cases.found.join(', ') || 'none'}`,
 	);
 	const adHoc = evidence.violations.filter((entry) => entry.rule.endsWith('outside-primitive'));
+	const unnamed = evidence.violations.filter((entry) => entry.rule === 'table-without-structure');
 	lines.push(
-		`  ${adHoc.length === 0 ? 'ok  ' : 'FAIL'} ${'no-ad-hoc-boxes'.padEnd(16)} every table and every horizontal scroll box comes from the primitive (${adHoc.length} ad-hoc)`,
+		`  ${unnamed.length === 0 ? 'ok  ' : 'FAIL'} ${'table-structure'.padEnd(16)} every table carries a <caption> and scoped header cells, hand-rolled or not`,
+	);
+	lines.push(
+		`  ${adHoc.length === 0 ? 'ok  ' : 'FAIL'} ${'scroll-boxes'.padEnd(16)} every horizontal scroll box is a focusable named region (${adHoc.length} hand-rolled)`,
 	);
 	lines.push('');
 	lines.push('not machine-checked (human evaluation):');

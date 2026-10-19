@@ -15,20 +15,52 @@ import {
 	HUMAN_EVALUATION,
 	PRIMITIVE,
 	collectEvidence,
+	missingTableStructure,
 	renderGateSummary,
 	scanViolationsInFile,
+	tableBody,
 } from './check-table-code-a11y.mjs';
 
-test('an ad-hoc table element outside the primitive is a violation', () => {
+test('a table with neither caption nor scope is a violation', () => {
 	const violations = scanViolationsInFile({
 		relativePath: 'src/home/example.tsx',
 		source: 'export const A = () => (\n\t<table>\n\t\t<tr />\n\t</table>\n);\n',
 	});
 
 	assert.equal(violations.length, 1);
-	assert.equal(violations[0].rule, 'table-outside-primitive');
+	assert.equal(violations[0].rule, 'table-without-structure');
 	assert.equal(violations[0].wcag, '1.3.1');
 	assert.equal(violations[0].line, 2);
+	assert.match(violations[0].message, /<caption>/);
+});
+
+test('a hand-rolled table that already meets the contract is left alone', () => {
+	// The rule checks the PROPERTY, not the implementation: a surface
+	// that wrote the caption and the scopes by hand has nothing to fix.
+	const violations = scanViolationsInFile({
+		relativePath: 'src/editorial/example.tsx',
+		source: [
+			'export const A = () => (',
+			'\t<table>',
+			'\t\t<caption>C</caption>',
+			'\t\t<tr><th scope="col">H</th><th scope="row">R</th></tr>',
+			'\t</table>',
+			');',
+		].join('\n'),
+	});
+
+	assert.deepEqual(violations, []);
+});
+
+test('a table with a caption but no scope still fails, naming what is missing', () => {
+	const violations = scanViolationsInFile({
+		relativePath: 'src/home/example.tsx',
+		source: '<table><caption>C</caption><tr><th>H</th></tr></table>\n',
+	});
+
+	assert.equal(violations.length, 1);
+	assert.match(violations[0].message, /scope on its header cells/);
+	assert.doesNotMatch(violations[0].message, /<caption>/);
 });
 
 test('a table element named in a comment is documentation, not a violation', () => {
@@ -64,6 +96,16 @@ test('the primitive itself may declare the scroll box it owns', () => {
 	].join('\n');
 
 	assert.deepEqual(scanViolationsInFile({ relativePath: PRIMITIVE, source }), []);
+});
+
+test('the table body is bounded by its own closing tag', () => {
+	const code = '<table><caption>a</caption></table><table><caption>b</caption></table>';
+
+	assert.match(tableBody(code, 0), /<caption>a<\/caption>/);
+	assert.doesNotMatch(tableBody(code, 0), /<caption>b/);
+	assert.equal(missingTableStructure('<table><caption>a</caption><th scope="row"></th>').length, 0);
+	// The slice stops BEFORE the closing tag, so the next table is out.
+	assert.equal(tableBody(code, 0).includes('</table>'), false);
 });
 
 test('every contract marker maps to a success criterion and a claim', () => {

@@ -154,6 +154,17 @@ gates:
       # `pnpm run capture:a11y:table-code`, an artefact capture and
       # therefore not a fast gate.
       - 'pnpm run a11y:table:code:check' # table / code readability contract (Issue #407)
+      # Issue #409: the shipped language-of-parts contract (WCAG 2.2
+      # 3.1.2 Language of Parts, level A). A `lang` may be written only
+      # on a passage whose language differs from the document language:
+      # no tag on a code identifier, a loanword or a document-language
+      # run, no tag this policy cannot canonicalise outside the failure
+      # fixture, and the document language the policy compares against
+      # has to be the one `src/routes/__root.tsx` declares. Pure Node
+      # over the shipped fixture plus two source reads. The browser half
+      # of the same evidence is `pnpm run capture:a11y-language-of-parts`,
+      # which is an artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:language-of-parts:check' # partial `lang` contract (Issue #409)
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run infisical:check:coverage'
       - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)

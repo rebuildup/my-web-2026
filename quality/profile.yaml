@@ -121,6 +121,14 @@ gates:
       # == build-artefact stamp, and that the fetch source is the declared
       # credential-free https repository with no branch-tip tracking.
       - 'pnpm run tools:provenance:check'
+      # Issue #466: Tool artefact license + dependency inventory. Offline,
+      # status-only: the manifest's `license` claim is checked against the
+      # license file in the pinned checkout, the dependency evidence against
+      # the reviewed record in quality/tool-artifact-inventory.json, and the
+      # collected artefact's outbound hosts against the reviewed set. A
+      # shipped Tool with unverified evidence is an error, and
+      # `scripts/build-tools.mjs` refuses to publish it.
+      - 'pnpm run tools:artifact:check'
       # Issue #509: a Storybook story is feature-local UI, so its runtime
       # import closure must stay inside the owning obligation — routes,
       # server.ts, http/, cloudflare/ and the cloudflare:workers virtual

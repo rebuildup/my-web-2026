@@ -1,0 +1,11 @@
+{
+	"note": "a candidate marked published while allowlist.entries is still empty — the acceptance criterion \"require an owner allowlist before automatic publication\", in mechanical form",
+	"expect_error": "without an allowlist entry",
+	"ops": [
+		{
+			"op": "set",
+			"path": "integrations.0.published_surface",
+			"value": "/integrations/github/callback"
+		}
+	]
+}

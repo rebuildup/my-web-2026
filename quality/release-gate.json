@@ -14,6 +14,7 @@
 		"log-redaction",
 		"security-headers",
 		"asvs-coverage",
+		"security-disclosure",
 		"csrf-contract",
 		"dependency-advisory",
 		"install-script-audit",
@@ -26,7 +27,8 @@
 		"infisical-secret-coverage",
 		"cf-typegen",
 		"playwright-e2e",
-		"release-gate-ledger"
+		"release-gate-ledger",
+		"integration-scope-ledger"
 	],
 	"profile_equivalences": [
 		{
@@ -173,6 +175,15 @@
 			"documentation": "docs/runbook/infisical-secrets.md"
 		},
 		{
+			"id": "secret-rotation-status",
+			"contract": "The rotation policy the repository ships is decidable offline: every runtime secret name has a cadence, a ledger row that cannot hold a value, and a status that separates a matching inventory, a name the environment is reported to lack, and a rotation past its deadline, without reading a secret value.",
+			"command": "pnpm run secrets:status:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/secret-rotation-status.md"
+		},
+		{
 			"id": "route-quality-coverage",
 			"contract": "Every published route still has a quality-gate decision (covered with evidence, or excluded with a reason), so a new page cannot reach a release ungated.",
 			"command": "pnpm run routes:quality:check",
@@ -180,6 +191,15 @@
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
 			"documentation": "docs/verification/quality/route-quality-coverage.md"
+		},
+		{
+			"id": "personal-data-review",
+			"contract": "Personal-data candidates (addresses, contact channels, third-party names, image metadata) in the migrated corpus are extracted mechanically and only an owner decision can publish a record, so a release cannot ship a migration record nobody approved.",
+			"command": "pnpm run publication:redaction:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/personal-data-redaction.md"
 		},
 		{
 			"id": "index-boundary",
@@ -272,6 +292,15 @@
 			"documentation": "docs/verification/security/asvs-coverage.md"
 		},
 		{
+			"id": "security-disclosure",
+			"contract": "The vulnerability-report to publication-decision flow still has one record on both sides — the runbook and the ledger — and the committed probes still report a missing duty and a premature public detail as INCOMPLETE rather than as a pass.",
+			"command": "pnpm run security:disclosure:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/security-disclosure.md"
+		},
+		{
 			"id": "release-gate-ledger",
 			"contract": "This ledger itself is executed on every release, so the report that says which inspections ran cannot itself stop running unnoticed.",
 			"command": "pnpm run release:gate:check",
@@ -279,6 +308,15 @@
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
 			"documentation": "docs/verification/security/release-gate-coverage.md"
+		},
+		{
+			"id": "integration-scope-ledger",
+			"contract": "Every third-party connection candidate still declares its least-privilege scope set, token retention ceiling and revocation procedure, every reviewed connection still reaches the verdict the ledger claims when the real adapter runs it, and no candidate is published while the owner allowlist is empty.",
+			"command": "pnpm run integration:scope:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/integration-token-scope.md"
 		},
 		{
 			"id": "playwright-e2e",

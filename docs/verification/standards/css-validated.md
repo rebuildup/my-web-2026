@@ -52,7 +52,9 @@ gitignored 一時領域）にのみ書き出し、追跡ファイルを一切変
    media、`@supports` に条件が無い、`@property` にカスタムプロパティ名が無い、
    `@font-face "Foo" { … }` など）
 4. **無言の合格の防止** — `surface_empty` / `surface_uncovered` /
-   `vocabulary_underfloor` / `allow_unused` / `vendor_prefix_unresolved`
+   `vocabulary_underfloor` / `allow_unused` / `vendor_prefix_unresolved` /
+   `parse_truncated`（parser が eof に達する前に style sheet を使い切った場合。
+   「未被覆の可能性があるのに clean」と出るのを防ぐ）
 
 ## manifest の構造
 
@@ -151,14 +153,23 @@ fixture が「通る」ことは、fixture 用の緩い語彙を別途用意し�
   文法外 keyword / `@font-face` 外の descriptor / `@font-face` 内の非 descriptor /
   宣言書き `@media` / prelude 付き `@font-face` / 条件無 `@supports` /
   名前無し `@property`
-- 受理 12 ケース: vendor prefix（prefix 無し側が仕様定義済み）/ engine 固有の
+- 受理 18 ケース: vendor prefix（prefix 無し側が仕様定義済み）/ engine 固有の
   allowlist エントリ / カスタムプロパティ（`--blur: ;` の空値を含む）/
   CSS-wide keyword と `var()` / 複数 keyword / `@layer` の statement と block /
   `@keyframes` の from|to|%|カンマ区切り / Panda のエスケープ済みクラス名 /
-  末尾 `;` 欠落 / CSS nesting / `@font-face` descriptor / コメント
-- 無言の合格の防止 5 ケース: `surface_empty` / `surface_uncovered` /
-  `vocabulary_underfloor` / `allow_unused` / `vendor_prefix_unresolved`
-  （+ 他 surface にスコープされた免除が効かないこと）
+  末尾 `;` 欠落 / CSS nesting / `content` の文字列エスケープ（hex code point と
+  エスケープ済み引用符）/ `@import`・`@namespace` の `url()` body /
+  `@supports selector(:has(a))` / prefix 付き at-rule（`-webkit-keyframes`）/
+  `@page`・`@property`・`@counter-style` の仕様定義 descriptor /
+  `@font-face` descriptor（`url()` / `local()` を含む）/ コメント
+- 無言の合格の防止 10 ケース: `surface_empty` / `surface_uncovered` /
+  `vocabulary_underfloor` / `allow_unused` / `vendor_prefix_unresolved` /
+  他 surface にスコープされた免除が効かないこと / `;` 欠落の宣言の**後ろ**の
+  スタイルシートも検証されること / parser が終端まで読めなかった stylesheet を
+  `parse_truncated` で報告すること / `--artifact` が検証先のファイルを
+  書き換えないこと / 生成が `.tmp/` 外への書き込みを拒否すること
+- manifest 整合性 4 ケース / tokenizer・parser 3 ケース / repository 2 ケース /
+  CLI 1 ケース — 合計 60 cases
 
 PR 添付の report [`css-validated.webp`](./css-validated.webp) にも同じ checker の
 実行結果として fixture A（意図的な誤り → exit 1）と fixture B（仕様どおりに書いた

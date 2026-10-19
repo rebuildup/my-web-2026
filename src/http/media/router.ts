@@ -4,7 +4,7 @@ import {
 	createPublicMediaDelivery,
 } from '../../cloudflare/media-visibility';
 import { isPublishedPortfolioMediaKey } from '../../portfolio/media-approval';
-import { isPublicReactionImageKey } from '../reactions/images';
+import { REACTION_IMAGE_CACHE_CONTROL, isPublicReactionImageKey } from '../reactions/images';
 
 /**
  * Public media delivery, key-addressed (Issue #634).
@@ -44,10 +44,11 @@ import { isPublicReactionImageKey } from '../reactions/images';
  * Cache behaviour
  * ---------------
  * An object's stored `cacheControl` wins. When the producer did not
- * set one, portfolio media gets a short, revalidating lifetime (its
- * key is not content-addressed and unpublishing must take effect
- * quickly), while `reactions/` keys are content-addressed (SHA-256) and
- * get the immutable policy `REACTION_IMAGE_CACHE_CONTROL` declares.
+ * set one, portfolio media gets a one-hour freshness window: its key
+ * is not content-addressed, so unpublishing takes effect at the next
+ * cache miss and never later than that hour. `reactions/` keys are
+ * content-addressed (SHA-256) and get the immutable policy
+ * `REACTION_IMAGE_CACHE_CONTROL` declares.
  * The external boundary's blanket `no-store` never applies because the
  * handler always sets the header.
  */
@@ -63,11 +64,15 @@ const DELIVERABLE_CONTENT_TYPES: ReadonlySet<string> = new Set([
 	'video/webm',
 ]);
 
-/** Short, revalidating default for non-content-addressed portfolio keys. */
+/** Short default freshness for non-content-addressed portfolio keys. */
 export const PORTFOLIO_MEDIA_CACHE_CONTROL = 'public, max-age=3600';
 
-/** Reaction keys are SHA-256 addressed; the bytes never change. */
-export const REACTION_MEDIA_CACHE_CONTROL = 'public, max-age=31536000, immutable';
+/**
+ * Reaction keys are SHA-256 addressed; the bytes never change. The
+ * value is the reactions owner's constant, not a second literal: two
+ * literals that must agree are a drift risk (Issue #484).
+ */
+export const REACTION_MEDIA_CACHE_CONTROL = REACTION_IMAGE_CACHE_CONTROL;
 
 export function isDeliverableMediaContentType(contentType: string): boolean {
 	return DELIVERABLE_CONTENT_TYPES.has(contentType.toLowerCase().split(';')[0]?.trim() ?? '');
@@ -115,14 +120,21 @@ export function createMediaRouter(): Hono<{ Bindings: Env }> {
 	// follow on this boundary).
 	router.on(['GET', 'HEAD'], '/media/:key{.+}', async (c) => {
 		const key = c.req.param('key');
+		const method = c.req.method === 'HEAD' ? 'HEAD' : 'GET';
 		const delivery = createPublicMediaDelivery(c.env.MEDIA as MediaObjectSource, {
 			isApproved: (candidate) => isApprovedMediaKey(c.env.DB, candidate),
+			method,
 		});
 		const result = await delivery.fetch(key);
 		if (result.status !== 200) return notFound();
 
 		const contentType = result.contentType ?? '';
-		if (!isDeliverableMediaContentType(contentType)) return notFound();
+		if (!isDeliverableMediaContentType(contentType)) {
+			// The object exists but is not servable, so its body must
+			// not be left half-read: cancel rather than drop it.
+			await result.body?.cancel();
+			return notFound();
+		}
 
 		const headers = new Headers();
 		headers.set('content-type', contentType);
@@ -130,10 +142,11 @@ export function createMediaRouter(): Hono<{ Bindings: Env }> {
 		headers.set('x-content-type-options', 'nosniff');
 		if (result.etag) headers.set('etag', result.etag);
 
-		return new Response(c.req.method === 'HEAD' ? null : result.body, {
-			status: 200,
-			headers,
-		});
+		if (method === 'HEAD') {
+			await result.body?.cancel();
+			return new Response(null, { status: 200, headers });
+		}
+		return new Response(result.body, { status: 200, headers });
 	});
 
 	return router;

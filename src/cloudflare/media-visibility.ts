@@ -3,17 +3,20 @@
  *
  * Why this obligation
  * -------------------
- * Portfolio media is delivered by **a public R2 custom domain** on
- * the `MEDIA` bucket (`https://media.rebuildup.dev/<key>`) — the
- * accepted mechanism recorded in `docs/portfolio/decisions.md`
- * Decision 5. That attachment is a **release prerequisite owned by
- * the Cloudflare account, and this repository cannot confirm its
- * production state**. Conditional on it being attached, the custom
- * domain bypasses the Worker entirely: the Cloudflare edge serves the
- * object at its key, so *every* key that exists in the bucket is
- * anonymously fetchable by anyone who can guess or enumerate the key.
- * There is no session, no API key, no signed URL, and no Worker code
- * in that path.
+ * Portfolio media reaches the public on two surfaces. The primary one
+ * is the Worker route `GET|HEAD /media/<key>` (Issue #634), which runs
+ * the gates in this module on the request path. The other is **a
+ * public R2 custom domain** on the `MEDIA` bucket
+ * (`https://media.rebuildup.dev/<key>`), the mechanism Decision 5 in
+ * `docs/portfolio/decisions.md` originally accepted. That attachment
+ * is **owned by the Cloudflare account, and this repository cannot
+ * confirm its production state**. Where it exists, the custom domain
+ * bypasses the Worker entirely: the Cloudflare edge serves the object
+ * at its key, so *every* key that exists in the bucket is anonymously
+ * fetchable by anyone who can guess or enumerate the key. There is no
+ * session, no API key, no signed URL, and no Worker code in that path.
+ * Retiring the attachment is an operator step recorded in
+ * `docs/security/r2-media-visibility.md`.
  *
  * That is what makes the key namespace the security boundary. This
  * module owns the one rule the rest of the codebase may consult:
@@ -39,23 +42,23 @@
  *
  * What is enforced where — read this before trusting the boundary
  * --------------------------------------------------------------
- * Production code enforces the rule on the two key-handling paths
- * that exist today: `composeMediaUrl` (portfolio URL composition) and
- * `getImageStream` (the reaction-image HTTP read). Those gates stop
- * the repository from *emitting* a URL for a non-public key and from
- * *reading* a non-public key back.
+ * Production code enforces the rule on every key-handling path that
+ * exists today:
  *
- * The delivery adapter (`createPublicMediaDelivery`) and the listing
- * walk (`listPublicMediaKeys`) below are the **same boundary, modelled
- * for a caller that has to serve objects itself** (Issue #459's third
- * acceptance item asks for exactly that adapter/stub/test). They have
- * **no production caller today**, and this module does **not** claim
- * otherwise: the custom-domain edge serves bucket keys without running
- * any of this code. Closing the bucket-level half — split the bucket,
- * or move delivery behind the Worker / signed URLs — is an owner
- * decision that is deliberately *not* taken here; it is tracked as an
- * open residual in `docs/security/r2-media-visibility.md` and as
- * Issue #577.
+ *   - `composeMediaUrl` (portfolio URL composition) and
+ *     `getImageStream` (the reaction-image HTTP read) stop the
+ *     repository from *emitting* a URL for a non-public key and from
+ *     *reading* a non-public key back;
+ *   - `createPublicMediaDelivery` is the delivery path behind
+ *     `GET|HEAD /media/<key>` (`src/http/media/router.ts`, Issue
+ *     #634), so namespace and the owner's approval both run before a
+ *     byte leaves the bucket.
+ *
+ * `listPublicMediaKeys` remains the listing walk modelled for Issue
+ * #459's third acceptance item and has no production caller. The
+ * custom-domain surface above is the residual this module cannot
+ * close: split the bucket, or retire the attachment, is an owner
+ * decision tracked as Issue #577.
  *
  * This module is pure: no `cloudflare:workers` import, no binding
  * access. `portfolio/` and `http/reactions/` consume the rule; none of
@@ -242,15 +245,26 @@ export function filterPublicMediaKeys(keys: Iterable<string>): string[] {
  * ------------------------------------------------------------------ */
 
 /** The subset of `R2ObjectBody` the delivery path needs. */
-export interface MediaObjectBody {
+export interface MediaObjectBody extends MediaObjectMetadata {
 	body: ReadableStream | null;
+}
+
+/** The metadata half of an object, without a body (`R2Object`). */
+export interface MediaObjectMetadata {
 	httpEtag?: string;
 	httpMetadata?: { contentType?: string; cacheControl?: string };
 }
 
-/** The subset of `R2Bucket` the delivery path needs. `R2Bucket` satisfies it. */
+/**
+ * The subset of `R2Bucket` the delivery path needs. `R2Bucket`
+ * satisfies it.
+ *
+ * `head` is optional so the existing fakes keep working; when it is
+ * absent a HEAD request falls back to `get`.
+ */
 export interface MediaObjectSource {
 	get(key: string): Promise<MediaObjectBody | null>;
+	head?(key: string): Promise<MediaObjectMetadata | null>;
 }
 
 /** The subset of `R2Bucket.list` the listing helper needs. */
@@ -301,13 +315,21 @@ export interface PublicMediaDelivery {
 	fetch(key: string): Promise<PublicMediaDeliveryResult>;
 }
 
+export interface PublicMediaDeliveryOptions {
+	/** Owner-supplied publication decision for one key. */
+	isApproved?: MediaApprovalCheck;
+	/** `HEAD` asks for metadata only; the served result carries no body. */
+	method?: 'GET' | 'HEAD';
+}
+
 /**
  * Build the gated delivery adapter.
  *
- * **No production caller today** (see the module header): the public
- * custom domain serves bucket keys without running Worker code, so
- * this adapter is the boundary *as modelled* for a caller that serves
- * objects itself, not a claim about the current delivery path.
+ * This is the production delivery path since Issue #634: the Worker
+ * route `GET|HEAD /media/<key>` (`src/http/media/router.ts`) calls it
+ * before a byte leaves the bucket. The custom domain described in the
+ * module header bypasses this adapter entirely, which is why retiring
+ * it is tracked separately.
  *
  * Order of checks (each one short-circuits, so a refused private key
  * never reaches the bucket and never differs observably from a
@@ -324,22 +346,28 @@ export interface PublicMediaDelivery {
  * reason code: a 403 — or a distinguishable 404 — would confirm that
  * the object exists, which is exactly the oracle an enumeration sweep
  * wants.
+ *
+ * `method: 'HEAD'` asks the source for metadata only, so a HEAD does
+ * not download the object. The served result then carries no body.
+ * A source without `head` falls back to `get`.
  */
 export function createPublicMediaDelivery(
 	source: MediaObjectSource,
-	opts?: { isApproved?: MediaApprovalCheck },
+	opts?: PublicMediaDeliveryOptions,
 ): PublicMediaDelivery {
 	return {
 		fetch: async (key: string): Promise<PublicMediaDeliveryResult> => {
 			const verdict = classifyMediaKey(key);
 			if (!verdict.publiclyServable) return { status: 404, key };
 			if (opts?.isApproved && !(await opts.isApproved(key))) return { status: 404, key };
-			const object = await source.get(key);
+			const object =
+				opts?.method === 'HEAD' && source.head ? await source.head(key) : await source.get(key);
 			if (!object) return { status: 404, key };
+			const body = 'body' in object ? (object as MediaObjectBody).body : null;
 			return {
 				status: 200,
 				key,
-				body: object.body,
+				body,
 				contentType: object.httpMetadata?.contentType ?? null,
 				cacheControl: object.httpMetadata?.cacheControl ?? null,
 				etag: object.httpEtag ?? null,

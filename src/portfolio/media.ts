@@ -1,32 +1,35 @@
 /**
  * R2 media URL composition for portfolio assets.
  *
- * Decision 5 (#77): portfolio media is delivered via a **public R2
- * custom domain** (e.g. `https://media.rebuildup.dev/<r2_key>`) so
- * the Cloudflare edge — not the Worker — serves every image.
+ * Decision 5 (#77) originally delivered portfolio media through a
+ * **public R2 custom domain** (`https://media.rebuildup.dev/<r2_key>`).
+ * Issue #634 moved public delivery into the Worker
+ * (`GET|HEAD /media/<key>`, `src/http/media/router.ts`): the composed
+ * base URL is now `https://rebuildup.dev/media`, so every URL passes
+ * the namespace and publication gates before a byte is served.
  *
  * Implications:
  *
- * - No Worker request is paid per image render. The image is fetched
- *   directly from the custom-domain origin.
+ * - Each image request reaches the Worker once, then the edge/HTTP
+ *   cache serves it for the object's freshness window.
  * - OGP crawlers (Facebook / Twitter) see the canonical URL once and
  *   cache it; no signing round-trip.
- * - `srcset` can list multiple sizes of the same custom-domain URL.
+ * - `srcset` can list multiple sizes of the same URL.
  *
- * That same fact is the risk: **if** the custom domain is attached
- * (an R2 bucket setting in the Cloudflare account, which this
- * repository cannot verify), the edge serves **every** key in the
- * bucket, so composing a URL *is* publishing. Since #459 the
- * composition therefore goes through the R2 visibility boundary
+ * The R2 custom domain is a residual: while that attachment exists
+ * (a Cloudflare account setting this repository cannot verify), the
+ * edge serves **every** key in the bucket at its key, so composing a
+ * URL there *is* publishing. Retiring the attachment is an operator
+ * step recorded in `docs/security/r2-media-visibility.md`; pointing
+ * `MEDIA_PUBLIC_BASE_URL` back at it is the documented break-glass
+ * rollback.
+ *
+ * Since #459 the composition goes through the R2 visibility boundary
  * (`src/cloudflare/media-visibility.ts`): only a well-formed key under
  * a declared public prefix (`portfolio/`, `reactions/`) can become a
  * URL. A WIP upload or an undeclared prefix resolves to `null` and
  * renders the placeholder, so an unpublished asset is never handed to
  * a browser and never becomes a URL an attacker could enumerate.
- * - The custom domain itself is **not** a code change — it is an R2
- *   bucket setting in the Cloudflare dashboard. Until the operator
- *   wires it, `composeMediaUrl` returns `null` and the UI renders a
- *   placeholder.
  *
  * This module is the single entry point that materialises the URL.
  * Routes and UI must never recompose the URL themselves.
@@ -47,10 +50,10 @@ export type R2Key = string;
 export interface PortfolioMediaEnv {
 	MEDIA?: R2Bucket;
 	/**
-	 * Public base URL for the R2 custom domain (no trailing slash).
-	 * E.g. `https://media.rebuildup.dev`. When absent, every
-	 * `composeMediaUrl` call returns `null` and the UI renders the
-	 * placeholder branch.
+	 * Public base URL for media delivery (no trailing slash). In
+	 * production this is `https://rebuildup.dev/media`. When absent,
+	 * every `composeMediaUrl` call returns `null` and the UI renders
+	 * the placeholder branch.
 	 */
 	MEDIA_PUBLIC_BASE_URL?: string;
 }
@@ -59,8 +62,7 @@ export interface PortfolioMediaEnv {
  * Compose the public URL for an R2 object. Returns `null` when:
  *
  *   - the `MEDIA` binding is not configured,
- *   - `MEDIA_PUBLIC_BASE_URL` is not configured (operator hasn't
- *     wired the R2 custom domain yet),
+ *   - `MEDIA_PUBLIC_BASE_URL` is not configured,
  *   - the supplied key fails conservative validation
  *     (defence-in-depth against accidental `..` traversal),
  *   - the key is not publicly servable under the R2 visibility
@@ -68,9 +70,9 @@ export interface PortfolioMediaEnv {
  *     becomes a public URL.
  *
  * When configured, the returned URL is
- * `${MEDIA_PUBLIC_BASE_URL}/${r2Key}` — the R2 custom domain serves
- * the object directly with whatever cache headers R2 emits. The UI
- * therefore needs no Worker proxy hop.
+ * `${MEDIA_PUBLIC_BASE_URL}/${r2Key}` — the Worker media route serves
+ * the object after the namespace and publication gates, with the
+ * cache policy `src/http/media/router.ts` declares.
  */
 export function composeMediaUrl(env: PortfolioMediaEnv, r2Key: R2Key): string | null {
 	if (!env.MEDIA) return null;

@@ -54,7 +54,8 @@ XSS primitive になる。producer が書くメディア型だけを返し、
 | 秘密 | 扱わない。fixture に credential は無い |
 
 fixture の bucket には**拒否ケースごとに object を置いてある**。
-draft project の object、連番の隣、private namespace、未宣言
+draft project の object、archived かつ `visibility = 'public'` の
+project の object、連番の隣、private namespace、未宣言
 namespace、行の無い reaction object、`text/html` の承認済み
 object — どれも実在する。したがって 404 は「object が無かった」
 偶然ではなく、ゲートが拒否した結果である。
@@ -66,20 +67,26 @@ object — どれも実在する。したがって 404 は「object が無かっ
 | `portfolio/published/cover.webp` | published project | 200 + stored metadata | PASS |
 | `reactions/<sha256>.webp` | `reaction_images` の行あり | 200 immutable | PASS |
 | `portfolio/draft/cover.webp` | draft project（object は実在） | 404 | PASS |
+| `portfolio/archived/cover.webp` | archived project かつ `visibility = 'public'`（object は実在） | 404 | PASS |
 | `portfolio/published/cover-2.webp` | 連番の推測（object は実在） | 404 | PASS |
 | `private/secret.webp` | 宣言済み private namespace | 404 | PASS |
 | `unlisted/thing.webp` | 未宣言 namespace | 404 | PASS |
 | `reactions/<sha256>.webp` | 行の無い reaction object | 404 | PASS |
 | `portfolio/published/page.html` | 承認済みだが `text/html` | 404 | PASS |
 | `GET`/`HEAD` の差 | 承認済み key | HEAD は空 body | PASS |
-| `GET /media/`（key 無し） | prefix のみ | 404 | PASS |
 
-すべての拒否は**空 body + `cache-control: no-store` の同一 404**
-である。403 も reason code も返さない — 区別できる拒否は
+すべての**key 付き**拒否は**空 body + `cache-control: no-store` の同一
+404** である。403 も reason code も返さない — 区別できる拒否は
 「その object は存在する」ことを伝える oracle になる。
 
-2026-10-20 の実行で `src/http/media/router.test.ts`（15 件）と
-`test/integration/media-delivery.test.ts`（10 件）の計 25 件が
+key の無い prefix（`/media/`）は `:key{.+}` に一致しないため
+この route には到達せず、外部 HTTP 境界の not-found
+（`src/http/hono.ts` の JSON 404 + boundary の `no-store`）が
+答える。この行は「route が空 key を受理しない」ことの確認であり、
+上の「同一 404」契約の対象外である。
+
+2026-10-20 の実行で `src/http/media/router.test.ts`（17 件）と
+`test/integration/media-delivery.test.ts`（11 件）の計 28 件が
 すべて成功した。画像の件数と時間はこの実行の JSON reporter 出力
 そのものである。
 

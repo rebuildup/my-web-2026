@@ -53,12 +53,23 @@ const REQUESTS = [
 	['portfolio/published/cover.webp', 'published project', '200 + stored metadata', 'Worker が配信'],
 	['reactions/&lt;sha256&gt;.webp', 'reaction_images の行あり', '200 immutable', 'Worker が配信'],
 	['portfolio/draft/cover.webp', 'draft project（object は実在）', '404', 'approval gate'],
+	[
+		'portfolio/archived/cover.webp',
+		'archived project + visibility=public（object は実在）',
+		'404',
+		'approval gate',
+	],
 	['portfolio/published/cover-2.webp', '連番の推測（object は実在）', '404', 'approval gate'],
 	['private/secret.webp', '宣言済み private namespace', '404', 'namespace gate'],
 	['unlisted/thing.webp', '未宣言 namespace', '404', 'namespace gate'],
 	['reactions/&lt;sha256&gt;.webp', '行の無い reaction object', '404', 'approval gate'],
 	['portfolio/published/page.html', '承認済みだが text/html', '404', 'content-type gate'],
-	['GET /media/（key 無し）', 'prefix のみ', '404', 'listing 面を作らない'],
+	[
+		'GET /media/（key 無し）',
+		'prefix のみ（:key{.+} に一致しない）',
+		'404（boundary の JSON。空 body の同一 404 は key 付きのみ）',
+		'route 外',
+	],
 ];
 
 const GATES = [

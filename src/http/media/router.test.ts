@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { MediaObjectBody, MediaObjectSource } from '../../cloudflare/media-visibility';
+import { REACTION_IMAGE_CACHE_CONTROL } from '../reactions/images';
 import {
 	PORTFOLIO_MEDIA_CACHE_CONTROL,
 	REACTION_MEDIA_CACHE_CONTROL,
@@ -162,6 +163,31 @@ describe('GET /media/<key>', () => {
 		expect(response.headers.get('content-type')).toBe('image/webp');
 		expect(await response.text()).toBe('');
 	});
+
+	it('asks the bucket for metadata only on HEAD', async () => {
+		let heads = 0;
+		let gets = 0;
+		const source: MediaObjectSource = {
+			async get() {
+				gets += 1;
+				return { body: new Response('never-downloaded').body };
+			},
+			async head() {
+				heads += 1;
+				return { httpEtag: '"head-etag"', httpMetadata: { contentType: 'image/webp' } };
+			},
+		};
+		const response = await request(
+			`/media/${APPROVED_KEY}`,
+			{ DB: fakeDb([APPROVED_KEY]), MEDIA: source },
+			'HEAD',
+		);
+		expect(response.status).toBe(200);
+		expect(response.headers.get('etag')).toBe('"head-etag"');
+		expect(await response.text()).toBe('');
+		expect(heads).toBe(1);
+		expect(gets).toBe(0);
+	});
 });
 
 describe('approval composition', () => {
@@ -185,6 +211,12 @@ describe('approval composition', () => {
 });
 
 describe('content type and cache defaults', () => {
+	it('reuses the reactions owner’s immutable policy', () => {
+		// One literal, owned by the module that writes and reads the
+		// header elsewhere; this delivery path must not diverge.
+		expect(REACTION_MEDIA_CACHE_CONTROL).toBe(REACTION_IMAGE_CACHE_CONTROL);
+	});
+
 	it('accepts only the media types the producers write', () => {
 		for (const type of ['image/webp', 'image/png', 'image/jpeg', 'image/gif', 'video/mp4']) {
 			expect(isDeliverableMediaContentType(type)).toBe(true);

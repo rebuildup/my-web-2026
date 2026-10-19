@@ -660,7 +660,7 @@ mode, so it is not repeated there.
 | `https://fonts.googleapis.com` | `style-src` | Font stylesheet linked from `src/routes/__root.tsx` |
 | `https://fonts.gstatic.com` | `font-src` | The `@font-face` binaries that stylesheet references |
 | `https://*.google-analytics.com`, `https://*.analytics.google.com`, `https://*.googletagmanager.com` | `img-src`, `connect-src` | GA4 beacons; the runtime subdomain is chosen by Google, so the first-party source only pins the loader host |
-| `MEDIA_PUBLIC_BASE_URL` origin (when configured) | `img-src` | Portfolio media served from the R2 custom domain; the value is read from `env`, never hard-coded |
+| `MEDIA_PUBLIC_BASE_URL` origin (when configured) | `img-src` | Portfolio media served from the Worker media route (`/media/<key>`); the value is read from `env`, never hard-coded |
 
 The first observation run also reported `script-src` violations with
 `blockedURI: eval` from zod's client-side JIT compiler. The response was

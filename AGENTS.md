@@ -457,6 +457,26 @@ cannot decide exits non-zero. Decision:
 Operator reference:
 [`docs/runbook/r2-media-key-set-audit.md`](docs/runbook/r2-media-key-set-audit.md).
 
+A third gate is deliberately **not** in the three entry points, and is
+not a CI step either: the operator MFA confirmation audit (Issue #469,
+`pnpm run check:operator-mfa`). It reads one local JSON ledger
+(`quality/operator-mfa-ledger.json`) in which the operator records the
+date they last verified 2FA / Passkey on the GitHub, Cloudflare,
+Infisical and registrar accounts, and classifies each service as
+`confirmed` / `unconfirmed` / `stale` / `missing` (ledger verdict
+`OK` / `OUTSTANDING` / `UNDECIDABLE`, exit 0 / 1 / 2). It holds no
+credential, calls no provider and touches no binding — the four account
+states are not observable from a Worker, so what the gate audits is the
+**record**, not the account. The ledger schema has no field for an
+account identifier, an identifier-shaped key is `UNDECIDABLE`, and both
+the ledger and the rendered report go through a status-only anonymization
+guard. It stays out of `validate:*` because the shipped ledger is
+unconfirmed until the owner fills it in (a CI step would be permanently
+red for a condition only the owner can resolve). Decision:
+[`quality/profile.yaml`](quality/profile.yaml#operator_mfa_audit).
+Operator reference:
+[`docs/runbook/operator-mfa-verification.md`](docs/runbook/operator-mfa-verification.md).
+
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are
 **not** enforced at 0.1.0; that decision is in ADR-0007.

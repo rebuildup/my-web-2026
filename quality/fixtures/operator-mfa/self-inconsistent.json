@@ -1,0 +1,54 @@
+{
+	"case": "行の確認日が、自分が 列挙した factor より古い（自己矛盾）",
+	"note": "帳票同士が食い違う記録は confirmed にはできない。ledger 全体を UNDECIDABLE（exit 2）にする。",
+	"now": "2026-10-19",
+	"ledger": {
+		"version": 1,
+		"policy": {
+			"status": "ratified",
+			"min_factors": 2,
+			"require_phishing_resistant": true,
+			"max_confirmation_age_days": 180
+		},
+		"services": [
+			{
+				"service": "github",
+				"confirmed_at": "2026-09-30",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "cloudflare",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "infisical",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-13" }
+				]
+			},
+			{
+				"service": "registrar",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "security_key", "confirmed_at": "2026-10-13" }
+				]
+			}
+		]
+	},
+	"expect": {
+		"verdict": "UNDECIDABLE",
+		"exitCode": 2,
+		"reason": "confirmation_date_inconsistent",
+		"counts": { "confirmed": 0, "unconfirmed": 0, "stale": 0, "missing": 0 }
+	}
+}

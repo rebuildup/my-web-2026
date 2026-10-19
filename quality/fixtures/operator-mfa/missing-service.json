@@ -1,0 +1,45 @@
+{
+	"case": "ドメイン管理（registrar）の行そのものが無い",
+	"note": "記録の無いアカウントは「問題なし」ではなく missing。行の欠落を沈黙にしない。",
+	"now": "2026-10-19",
+	"ledger": {
+		"version": 1,
+		"policy": {
+			"status": "ratified",
+			"min_factors": 2,
+			"require_phishing_resistant": true,
+			"max_confirmation_age_days": 180
+		},
+		"services": [
+			{
+				"service": "github",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "cloudflare",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "infisical",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-13" }
+				]
+			}
+		]
+	},
+	"expect": {
+		"verdict": "OUTSTANDING",
+		"exitCode": 1,
+		"counts": { "confirmed": 3, "unconfirmed": 0, "stale": 0, "missing": 1 }
+	}
+}

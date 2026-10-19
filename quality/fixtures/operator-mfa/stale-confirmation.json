@@ -1,0 +1,53 @@
+{
+	"case": "GitHub の確認日が 180 日より古い",
+	"note": "確認は期限付き。一度きりの記録は 180 日を超えると stale になり、confirmed とは別の bucket に入る。",
+	"now": "2026-10-19",
+	"ledger": {
+		"version": 1,
+		"policy": {
+			"status": "ratified",
+			"min_factors": 2,
+			"require_phishing_resistant": true,
+			"max_confirmation_age_days": 180
+		},
+		"services": [
+			{
+				"service": "github",
+				"confirmed_at": "2025-01-10",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2025-01-10" },
+					{ "kind": "totp_app", "confirmed_at": "2025-01-10" }
+				]
+			},
+			{
+				"service": "cloudflare",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "infisical",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-13" }
+				]
+			},
+			{
+				"service": "registrar",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "security_key", "confirmed_at": "2026-10-13" }
+				]
+			}
+		]
+	},
+	"expect": {
+		"verdict": "OUTSTANDING",
+		"exitCode": 1,
+		"counts": { "confirmed": 3, "unconfirmed": 0, "stale": 1, "missing": 0 }
+	}
+}

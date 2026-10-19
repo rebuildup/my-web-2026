@@ -131,6 +131,11 @@ gates:
       - 'pnpm run content:links:check'
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
+      # Issue #508: the release-gate check ledger. Every inspection the
+      # release report claims is resolved against the commands this
+      # chain really runs, so a required check that stopped running is
+      # a release failure instead of a silent green.
+      - 'pnpm run release:gate:check'
       # Issue #403: the shipped reduced-motion contract. Every motion
       # surface in `src/**` must carry the `data-motion` hook, must read
       # (or receive and branch on) the shared preference, and must be
@@ -355,6 +360,44 @@ route_quality_coverage:
 # engine is deliberately NOT the public validator.nu endpoint: that
 # would upload every rendered document (including /admin pages and
 # their copy) to a third party, which the repository never does.
+# Issue #508 - the release gate must not turn an inspection that did not
+# run into a pass. `quality/release-gate.json` is the inventory of the
+# checks a release is expected to execute; the gate resolves every row
+# against the three `package.json` entry points and the CI `validate`
+# job and classifies it as pass / fail / not run / not applicable. It is
+# cheap by construction (a text scan of package.json, this profile and
+# the workflow), so it belongs in `validate:fast` and therefore in every
+# release. Paired with #492, which owns the same "the report may not
+# drift from reality" concern one level down, on routes.
+release_gate_coverage:
+  manifest: 'quality/release-gate.json'
+  fixtures: 'quality/fixtures/release-gate/{pass,missing-required-check,unregistered-command}.json'
+  command: 'pnpm run release:gate:check'
+  report_command: 'pnpm run release:gate:report'
+  screenshot_command: 'pnpm run verify:release-gate-screenshot'
+  tests: 'node --test scripts/check-release-gate-coverage.test.mjs'
+  gate: fast
+  gate_placement: 'validate:fast, immediately after `pnpm run routes:quality:check`'
+  documentation: 'docs/verification/security/release-gate-coverage.md'
+  surfaces:
+    - 'fast / integration / release — the transitive `pnpm run` closure of package.json#scripts["validate:*"]'
+    - 'ci — the transitive closure of the `run:` steps of .github/workflows/ci.yml jobs.validate'
+  statuses:
+    - 'pass — the command is reachable on every surface the row declares and its runner file exists'
+    - 'fail — the claim is contradicted (unregistered command, missing runner) or a required check is not run'
+    - 'not_run — the command exists but no declared release surface runs it; never counted as a pass'
+    - 'not_applicable — the inspection is not introduced, with a recorded reason; never counted as a pass'
+  silent_pass_guards:
+    - 'a required row whose declared surface no longer reaches it is an error, not a warning'
+    - 'deleting a `protected_checks` row, or flipping its `required` flag, fails (the intentional-omission guard)'
+    - 'an empty `protected_checks` list fails closed, so the guard cannot be disabled by emptying it'
+    - 'a `quality/profile.yaml` component with no `package.json` script (phantom step) or unreachable from its own entry point is an error'
+    - 'a security-family command on the release surface with no ledger row is reported as unaccounted'
+  known_limits:
+    - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
+    - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 27 `validate:fast` components'
+
 html_standards:
   manifest: 'quality/html-standards.json'
   engine: 'scripts/html-standards-contract.mjs'

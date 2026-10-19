@@ -232,6 +232,7 @@
 				"padding-inline-start"
 			],
 			"https://www.w3.org/TR/css-masking-1/": [
+				"clip",
 				"mask",
 				"mask-clip",
 				"mask-composite",
@@ -333,6 +334,7 @@
 			"https://www.w3.org/TR/css-ui-4/": [
 				"accent-color",
 				"appearance",
+				"cursor",
 				"outline",
 				"outline-color",
 				"outline-offset",
@@ -345,6 +347,22 @@
 				"user-select"
 			],
 			"https://www.w3.org/TR/css-will-change-1/": ["will-change"],
+			"https://www.w3.org/TR/css-page-3/": ["bleed", "marks", "page", "size"],
+			"https://www.w3.org/TR/css-properties-values-api-1/": ["inherits", "initial-value", "syntax"],
+			"https://www.w3.org/TR/css-counter-styles-3/": [
+				"additive-symbols",
+				"fallback",
+				"negative",
+				"pad",
+				"prefix",
+				"range",
+				"speak-as",
+				"suffix",
+				"symbols",
+				"system"
+			],
+			"https://www.w3.org/TR/css-generated-content-3/": ["content"],
+			"https://www.w3.org/TR/css-font-palette-values-1/": ["basepalette", "override-colors"],
 			"https://www.w3.org/TR/css-writing-modes-3/": ["direction", "unicode-bidi"],
 			"https://www.w3.org/TR/filter-effects-2/": ["backdrop-filter"],
 			"https://www.w3.org/TR/filter-effects/": ["filter"]
@@ -399,6 +417,7 @@
 			"perspective",
 			"pow",
 			"radial-gradient",
+			"rect",
 			"repeat",
 			"repeating-conic-gradient",
 			"repeating-linear-gradient",

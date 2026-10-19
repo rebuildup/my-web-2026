@@ -64,7 +64,7 @@ const REPRODUCTION = [
 	'node --test scripts/check-css-syntax.test.mjs      # the fixture suite behind this report',
 	'pnpm run verify:css-screenshot                     # regenerate this report + WebP',
 	'node scripts/check-css-syntax.mjs --json           # machine-readable result',
-	'node scripts/check-css-syntax.mjs --artifact dist/client/assets/*.css  # validate a built stylesheet',
+	'node scripts/check-css-syntax.mjs --artifact dist/client/assets/*.css  # validate a built stylesheet (read-only)',
 ];
 
 /* ------------------------------------------------------------------ *

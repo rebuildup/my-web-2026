@@ -109,19 +109,28 @@ gitignored 一時領域）にのみ書き出し、追跡ファイルを一切変
 ```bash
 pnpm run css:check                                          # gate 本体（validate:fast に含まれる）
 node scripts/check-css-syntax.mjs --json                    # 機械可読な結果
-node scripts/check-css-syntax.mjs --artifact <path>.css     # ビルド済みスタイルシートを指定
+node scripts/check-css-syntax.mjs --artifact <path>.css     # ビルド済みスタイルシートを検証する（読み取り専用）
 node scripts/check-css-syntax.mjs --no-generate             # 直近の生成物を再検証する
-node --test scripts/check-css-syntax.test.mjs               # fixture suite（50 cases）
+node --test scripts/check-css-syntax.test.mjs               # fixture suite（60 cases）
 pnpm run verify:css-screenshot                              # report HTML + WebP を再生成
 ```
+
+> `--artifact <path>` は**書き込まない**。指定されたスタイルシートをその場で
+> 読んで検証するだけで、`panda cssgen` は走らない。生成されるのは
+> `--artifact` を付けなかった場合の既定 `.tmp/css-syntax/panda-generated.css`
+> だけで、`generatePandaCss` は `.tmp/` 外への書き込みを拒否する（build 出力の
+> 上書き事故を防ぐため）。また `--artifact` は「宣言済み surface 集合全体」に
+> 関する scope guard（`surface_empty` / `vocabulary_underfloor` / `allow_unused`）を
+> スキップし、その旨を `note:` として出力する。ファイル単 contents の検査
+> （構文・未知プロパティ・未知 at-rule・値の文法）はすべて実行される。
 
 期待結果（`src/**` の増加に合わせて宣言数は増える。下の行はこの report を最後に
 再生成した時点の値）:
 
 ```
-surfaces    2 declared · 2 stylesheet(s) · 676 declarations · 52 rules · 20 at-rules
-vocabulary  279 properties from 32 spec module(s) · 16 at-rules · 78 functions · 26 enumerated value sets
-allowlist   4 declared entries covering 7 occurrence(s)
+surfaces    2 declared · 2 stylesheet(s) · 1091 declarations · 456 rules · 24 at-rules
+vocabulary  301 properties from 37 spec module(s) · 16 at-rules · 79 functions · 26 enumerated value sets
+allowlist   4 declared entries covering 10 occurrence(s)
 exit 0      # `errors (n)` 行はエラーが 1 件以上あるときだけ出力される（0 件なら出ない）
 ```
 
@@ -175,7 +184,8 @@ PR 添付の report [`css-validated.webp`](./css-validated.webp) にも同じ ch
 - **生成物**: gate が検証するのは `panda cssgen` の出力であり、minify 済みの
   build artifact ではない。実ビルドのスタイルシートを検証するには
   `--artifact <path>` を指定する（`validate:integration` の `pnpm run build` 後に
-  `dist/client/assets/*.css` を渡せる）。
+  `dist/client/assets/*.css` を渡せる。この指定は読み取り専用で、渡された
+  ファイルを書き換えることはない）。
 - **有効だが後勝ちされる宣言**は指摘しない。本 gate は「妥当か」を答えるもので、
   「効いているか」ではない。
 - Issue #414 の Baseline gate（互換性。「対象ブラウザで動くか」）とは別の問いを

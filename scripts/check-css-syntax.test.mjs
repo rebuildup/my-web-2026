@@ -28,6 +28,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	ManifestError,
 	formatReport,
+	generatePandaCss,
 	loadManifest,
 	parseStylesheet,
 	runCheck,
@@ -345,10 +346,52 @@ const ACCEPTED_FIXTURES = [
 	{
 		title: 'a last declaration without its semicolon, and a nested rule',
 		css: '.a {\n  color: red\n}\n.b {\n  color: blue;\n  &:hover { color: green; }\n}\n',
+		// Without the stats the fixture proves nothing: a parser that stops
+		// at `.a` reports `errors: []` just as happily as one that reads
+		// the whole sheet. Both rules and the nested block must be counted.
+		stats: { rules: 3, declarations: 3 },
 	},
 	{
 		title: 'CSS nesting inside @media and an empty rule',
 		css: '@media (min-width: 40rem) {\n  .a { color: red; }\n}\n.b {}\n',
+	},
+	{
+		title: 'a string escape (hex code point) inside a content value',
+		css: '.a::after { content: "\\2014"; color: red; }\n.icon::before { content: "\\e900"; }\n',
+	},
+	{
+		title: 'an escaped quote inside a string',
+		css: '.a::before { content: "\\""; color: red; }\n',
+	},
+	{
+		title: '@import / @namespace with a url() body',
+		css: [
+			'@import url("theme.css");',
+			'@import url(theme.css) layer(base);',
+			'@namespace url(http://www.w3.org/1999/xhtml);',
+			'.a { color: red; }',
+			'',
+		].join('\n'),
+	},
+	{
+		title: '@supports whose condition is a selector() function',
+		css: '@supports selector(:has(a)) {\n  .a { color: red; }\n}\n',
+	},
+	{
+		title: 'a prefixed at-rule is read through the prefix rule as its unprefixed form',
+		css: '@-webkit-keyframes roll {\n  from { opacity: 0; }\n  to { opacity: 1; }\n}\n',
+		allowlist: { vendor_prefixes: [PREFIX_RULE] },
+		stats: { rules: 2, declarations: 2 },
+	},
+	{
+		title: '@page / @property / @counter-style with their spec-defined descriptors',
+		css: [
+			'@page { size: A4; marks: crop cross; }',
+			'@property --accent { syntax: "<color>"; inherits: true; initial-value: red; }',
+			'@counter-style thumbs { system: cyclic; symbols: "x"; suffix: " "; }',
+			'.a { content: "x"; }',
+			'',
+		].join('\n'),
 	},
 	{
 		title: '@font-face descriptors, including url() and local()',
@@ -382,6 +425,16 @@ for (const fixtureCase of ACCEPTED_FIXTURES) {
 			`expected no findings, got:\n${result.errors.map((entry) => `  ${entry.rule}: ${entry.message}`).join('\n')}`,
 		);
 		assert.equal(result.ok, true);
+		// A fixture that only asserts `errors: []` also passes vacuously on
+		// a parser that stopped reading the sheet early, so every fixture
+		// that declares its shape proves the sheet was actually parsed.
+		for (const [key, value] of Object.entries(fixtureCase.stats ?? {})) {
+			assert.equal(
+				result.stats[key],
+				value,
+				`expected ${key} = ${value} (the whole fixture sheet must be parsed); got ${result.stats[key]}`,
+			);
+		}
 	});
 }
 
@@ -489,6 +542,62 @@ test('no silent pass: an allowlist entry scoped to another surface does not waiv
 	const result = run();
 	assert.equal(result.ok, false);
 	assert.ok(hasRule(result, 'unknown_property'));
+});
+
+test('no silent pass: the sheet after a semicolon-less declaration is still validated', (t) => {
+	// A qualified rule whose last declaration omits its `;` used to hand
+	// its own closing `}` back to the enclosing block, which ended the
+	// whole parse: everything after it validated nothing and the gate still
+	// exited 0. Two declarations (one of them bogus) is above every floor,
+	// so only a real finding proves the tail was read.
+	const { run } = fixture('.a {\n  color: red\n}\n.b { colr: blue; }\n', t);
+	const result = run();
+	assert.equal(result.ok, false);
+	assert.ok(
+		hasRule(result, 'unknown_property'),
+		'the rule after the semicolon-less rule must be validated',
+	);
+});
+
+test('no silent pass: a stylesheet the parser could not finish is reported', () => {
+	const unterminated = parseStylesheet('@media print {\n  .a { color: red; }\n');
+	assert.ok(
+		unterminated.diagnostics.some((entry) => entry.rule === 'unclosed_block'),
+		'an unterminated block must be diagnosed',
+	);
+	const whole = parseStylesheet('.a {\n  color: red\n}\n.b { colr: blue; }\n');
+	assert.deepEqual(whole.diagnostics, []);
+	assert.equal(whole.stats.rules, 2, 'both rules must be parsed');
+});
+
+test('no silent pass: --artifact validates a stylesheet without writing over it', (t) => {
+	const dir = mkdtempSync(join(tmpdir(), 'my-web-css-artifact-'));
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
+	const built = join(dir, 'index-abc123.css');
+	// A minified build output, standing in for `dist/client/assets/*.css`.
+	writeFileSync(built, '/* MINIFIED BUILD OUTPUT */.a{color:red}');
+	const before = readFileSync(built, 'utf8');
+
+	const run = spawnSync(process.execPath, [CHECKER, '--artifact', built, '--json'], {
+		cwd: REPO_ROOT,
+		encoding: 'utf8',
+	});
+	assert.equal(run.status, 0, run.stderr);
+	assert.equal(
+		readFileSync(built, 'utf8'),
+		before,
+		'--artifact must read the stylesheet it was pointed at, never regenerate into it',
+	);
+	const payload = JSON.parse(run.stdout);
+	assert.equal(payload.ok, true);
+	assert.ok(payload.stats.declarations > 0);
+});
+
+test('no silent pass: generation refuses to write outside .tmp/', () => {
+	assert.throws(
+		() => generatePandaCss(REPO_ROOT, 'dist/client/assets/index-abc123.css'),
+		/only be written inside \.tmp\//,
+	);
 });
 
 /* ------------------------------------------------------------------ *
@@ -660,10 +769,26 @@ test('repository: the gate passes against the real surfaces', () => {
 	assert.doesNotMatch(report, /FAIL/);
 });
 
-test('cli: the gate exits 0 on the repository and 1 with --json findings', () => {
+test('cli: the gate exits 0 on the repository and 1 when a stylesheet has a finding', (t) => {
 	const ok = spawnSync(process.execPath, [CHECKER, '--json'], { cwd: REPO_ROOT, encoding: 'utf8' });
 	assert.equal(ok.status, 0, ok.stderr);
 	const payload = JSON.parse(ok.stdout);
 	assert.equal(payload.ok, true);
 	assert.equal(payload.errors.length, 0);
+
+	// The exit-1 half, against a synthetic stylesheet with a real finding.
+	// `--artifact` is read-only, so this points the gate at a file nobody
+	// else reads and still exercises the same decision path.
+	const dir = mkdtempSync(join(tmpdir(), 'my-web-css-cli-'));
+	t.after(() => rmSync(dir, { recursive: true, force: true }));
+	const sheet = join(dir, 'broken.css');
+	writeFileSync(sheet, '.a { colr: blue; }\n');
+	const failed = spawnSync(process.execPath, [CHECKER, '--artifact', sheet, '--json'], {
+		cwd: REPO_ROOT,
+		encoding: 'utf8',
+	});
+	assert.equal(failed.status, 1, failed.stdout);
+	const findings = JSON.parse(failed.stdout);
+	assert.equal(findings.ok, false);
+	assert.ok(findings.errors.some((entry) => entry.rule === 'unknown_property'));
 });

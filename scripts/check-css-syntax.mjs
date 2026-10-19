@@ -257,10 +257,14 @@ export function tokenize(css) {
 						i += 2;
 						break;
 					}
+					// `nameEscape.length` covers the backslash and the escaped
+					// code point (plus one trailing whitespace for a hex
+					// escape). Advancing any further steps over the character
+					// after the escape, which is how `content: "\2014"` used
+					// to read as an unterminated string.
 					const nameEscape = consumeEscape(css, i);
 					value += nameEscape.value;
 					i += nameEscape.length;
-					i += escape.length;
 					continue;
 				}
 				if (css[i] === quote) {
@@ -498,11 +502,15 @@ export function parseStylesheet(css) {
 				index += 1;
 				return { tokens: collected, stop: token };
 			}
-			// `function` / `url(` tokens carry their own opening paren, so
-			// they raise the nesting depth too; without this a selector such
-			// as `:where(:not([hidden]))` leaves the depth negative and the
-			// following `{` is read as part of the prelude.
-			if (token.type === 'function' || token.type === 'url' || token.type === 'bad-url') depth += 1;
+			// A `function` token carries its own opening paren and is closed
+			// by a later `)`, so it raises the nesting depth too; without
+			// this a selector such as `:where(:not([hidden]))` leaves the
+			// depth negative and the following `{` is read as part of the
+			// prelude. A `url` / `bad-url` token is self-contained — it
+			// already includes its own closing paren — so raising the depth
+			// for it would leave the depth permanently positive and the
+			// next `;` / `{` / `}` would be swallowed as prelude.
+			if (token.type === 'function') depth += 1;
 			else if (token.type === 'delim' && (token.value === '(' || token.value === '[')) depth += 1;
 			else if (token.type === 'delim' && (token.value === ')' || token.value === ']')) depth -= 1;
 			token.depth = depth;
@@ -783,8 +791,16 @@ export function parseStylesheet(css) {
 			if (significantRun.length === 0) continue;
 			if (stop.type === 'delim' && stop.value === '}') {
 				// The last declaration in a block may omit its `;`; anything
-				// else at this point is a run the parser cannot read. Either
-				// way the `}` belongs to this block, so hand it back.
+				// else at this point is a run the parser cannot read.
+				//
+				// `collect()` has already consumed this `}`, and it is THIS
+				// block's own terminator: a `declarations` block is only ever
+				// entered after its `{` was consumed (a qualified rule, a
+				// declaration at-rule, a keyframe block or a nested rule).
+				// Handing it back made the enclosing `rules` / `declarations`
+				// block read the rule's closing brace as its own terminator,
+				// so one rule's missing `;` silently ended the parse of the
+				// whole stylesheet — everything after it was never validated.
 				const declaration = toDeclaration(significantRun, css);
 				if (declaration) {
 					stats.declarations += 1;
@@ -796,7 +812,6 @@ export function parseStylesheet(css) {
 						`\`${sourceText(run.tokens)}\` is neither a declaration (\`property: value\`) nor a nested rule`,
 					);
 				}
-				index -= 1;
 				return nodes;
 			}
 			// `;`
@@ -820,7 +835,19 @@ export function parseStylesheet(css) {
 	// Stylesheet top level: qualified rules and at-rules only. A
 	// declaration here is reported by the `rules`-mode branch above, which
 	// can name the offending text.
-	return { nodes: parseBlock('rules'), diagnostics, stats };
+	const nodes = parseBlock('rules');
+	if (!atEnd()) {
+		// Fail closed: a top-level parse that returns before the end of the
+		// token stream means the rest of the sheet was never validated, and
+		// a report that counted only the prefix of the sheet would read as a
+		// green run over CSS nobody checked.
+		fail(
+			'parse_truncated',
+			peek(),
+			'the top-level parse stopped before the end of the stylesheet; the remaining rules were never validated',
+		);
+	}
+	return { nodes, diagnostics, stats };
 }
 
 /* ------------------------------------------------------------------ *
@@ -1151,6 +1178,14 @@ const toPosix = (path) => path.split(sep).join('/');
  * that later reads as "nothing to validate".
  */
 export function generatePandaCss(root, artifactPath = DEFAULT_ARTIFACT) {
+	// `panda cssgen --outfile <target>` OVERWRITES the target. The gate may
+	// only ever write inside `.tmp/` (AGENTS.md §9, ephemeral artefacts), so
+	// a typo in `--artifact` can never clobber a build output.
+	if (!artifactPath.startsWith('.tmp/')) {
+		throw new ManifestError(
+			`refusing to generate into ${artifactPath}: the generated artifact may only be written inside .tmp/ (the default is ${DEFAULT_ARTIFACT}); pass \`--no-generate\` to validate an existing stylesheet instead`,
+		);
+	}
 	const bin = ['node_modules/.bin/panda', 'node_modules/.bin/panda.cmd'].map((path) =>
 		join(root, path),
 	);
@@ -1195,15 +1230,30 @@ export function collectSources({
 		const entry = { id: surface.id, declarations: 0, files: 0 };
 		surfaceStats.set(surface.id, entry);
 		if (surface.kind === 'panda-cssgen') {
-			const css = generate
-				? generatePandaCss(root, artifactPath ?? DEFAULT_ARTIFACT)
-				: readFileSync(join(root, artifactPath ?? DEFAULT_ARTIFACT), 'utf8');
+			// `--artifact <path>` means "validate this stylesheet", so it is
+			// always read. Generation happens only into the default `.tmp/`
+			// artifact, and only when the caller asked for it — a gate that
+			// regenerates the file it was asked to inspect both destroys the
+			// build output and reports a verdict on something it just wrote.
+			const explicitArtifact = artifactPath !== null && artifactPath !== undefined;
+			const target = explicitArtifact ? artifactPath : DEFAULT_ARTIFACT;
+			// `resolve`, not `join`: an operator who follows the documented
+			// `--artifact dist/client/assets/*.css` from another directory
+			// passes an absolute path, and `join` would treat it as relative
+			// to the repository root.
+			const absoluteTarget = resolve(root, target);
+			const css =
+				generate && !explicitArtifact
+					? generatePandaCss(root, DEFAULT_ARTIFACT)
+					: readFileSync(absoluteTarget, 'utf8');
 			sources.push({
 				surface: surface.id,
-				path: artifactPath ?? DEFAULT_ARTIFACT,
-				label: `Panda generated CSS (\`panda cssgen\` → ${artifactPath ?? DEFAULT_ARTIFACT})`,
+				path: target,
+				label: explicitArtifact
+					? `stylesheet read from ${target}`
+					: `Panda generated CSS (\`panda cssgen\` → ${target})`,
 				css,
-				generated: true,
+				generated: !explicitArtifact,
 			});
 			entry.files = 1;
 			continue;
@@ -1320,16 +1370,26 @@ function checkPrelude(manifest, node, error) {
 			}
 			return;
 		case 'string':
-			if (tokens.length === 0 || tokens[0].type !== 'bad-string') {
+			// `@import "a.css"` tokenizes as a string, but `@import url(a.css)`
+			// and `@import url("a.css")` are equally valid and tokenize as a
+			// url-token and a `url(` function respectively.
+			if (tokens.length === 0 || !['bad-string', 'url', 'function'].includes(tokens[0].type)) {
 				error(
 					'invalid_at_rule_prelude',
 					node,
-					`\`@${node.name}\` must start with a string; got \`${node.prelude}\``,
+					`\`@${node.name}\` must start with a string or a \`url()\`; got \`${node.prelude}\``,
 				);
 			}
 			return;
 		case 'condition': {
-			const hasParens = tokens.some((token) => token.type === 'delim' && token.value === '(');
+			// `@supports selector(:has(a))` states its condition as a
+			// function, so the `(` never appears as a bare delim.
+			const hasParens = tokens.some(
+				(token) =>
+					(token.type === 'delim' && token.value === '(') ||
+					token.type === 'function' ||
+					token.type === 'url',
+			);
 			if (!hasParens) {
 				error(
 					'invalid_at_rule_prelude',
@@ -1347,8 +1407,7 @@ function checkPrelude(manifest, node, error) {
 			// common way a media query is written wrong.
 			let depth = 0;
 			for (const token of tokens) {
-				if (token.type === 'function' || token.type === 'url' || token.type === 'bad-url')
-					depth += 1;
+				if (token.type === 'function') depth += 1;
 				else if (token.type === 'delim' && token.value === '(') depth += 1;
 				else if (token.type === 'delim' && token.value === ')') depth -= 1;
 				else if (depth === 0 && token.type === 'delim' && token.value === ':') {
@@ -1532,8 +1591,36 @@ export function validateCss({ manifest, surfaceId, path, label, css, generated =
 				const waiver = [...manifest.__index.allowAtRules.values()].find(
 					(entry) => entry.name === node.name && entry.surfaces.includes(surfaceId),
 				);
+				// The vendor-prefix rule covers at-rules exactly as it covers
+				// properties: a prefixed spelling is accepted only when the
+				// unprefixed at-rule is declared, so `-webkit-keyframes` is
+				// read as `@keyframes` rather than as an at-rule no
+				// specification defines.
+				const prefixRule = manifest.__index.vendorPrefixes.find(
+					(rule) =>
+						rule.surfaces.includes(surfaceId) &&
+						rule.prefixes.some((prefix) => node.name.startsWith(prefix)),
+				);
+				const stripped = prefixRule
+					? node.name.slice(
+							prefixRule.prefixes.find((prefix) => node.name.startsWith(prefix)).length,
+						)
+					: null;
 				if (waiver) {
 					state.allowUses.push({ waiver, node });
+				} else if (prefixRule && stripped && manifest.__index.atRules.has(stripped)) {
+					state.prefixUses.push({
+						property: `@${node.name}`,
+						base: `@${stripped}`,
+						rule: prefixRule.id,
+						node,
+					});
+				} else if (prefixRule) {
+					error(
+						'vendor_prefix_unresolved',
+						node,
+						`\`@${node.name}\` is waived by the \`${prefixRule.id}\` prefix rule, but \`@${stripped}\` is not in the vocabulary — a prefix may not introduce an at-rule no specification defines`,
+					);
 				} else {
 					error(
 						'unknown_at_rule',
@@ -1616,12 +1703,26 @@ export function runCheck({
 	const error = (rule, message) => errors.push({ rule, message });
 	const warn = (rule, message) => warnings.push({ rule, message });
 
+	// `--artifact <path>` narrows the run to one stylesheet the operator
+	// named. The scope guards below assert things about the declared surface
+	// *set* (how many declarations the whole surface yields, whether a waiver
+	// is still in use anywhere), which a single file cannot satisfy — and
+	// failing them would make the documented "validate a built stylesheet"
+	// command unusable while proving nothing about that stylesheet. Every
+	// per-stylesheet check still runs.
+	const scoped = artifactPath !== null && artifactPath !== undefined;
+	const notes = scoped
+		? [
+				`--artifact ${artifactPath}: scope guards (surface_empty / vocabulary_underfloor / allow_unused) describe the declared surface set and are skipped for a single named stylesheet; every content check still ran`,
+			]
+		: [];
+
 	// --- no silent pass -------------------------------------------------
 	const surfaceRows = manifest.surfaces.map((surface) => {
 		const own = results.filter((result) => result.surface === surface.id);
 		const declarations = own.reduce((sum, result) => sum + result.stats.declarations, 0);
 		const files = own.length;
-		if (declarations < surface.min_declarations) {
+		if (!scoped && declarations < surface.min_declarations) {
 			error(
 				'surface_empty',
 				`surface "${surface.id}" yielded ${declarations} declaration(s) from ${files} file(s) but declares min_declarations ${surface.min_declarations}; a surface that validates nothing must never pass`,
@@ -1646,7 +1747,7 @@ export function runCheck({
 	}
 
 	const totalDeclarations = results.reduce((sum, result) => sum + result.stats.declarations, 0);
-	if (totalDeclarations < manifest.policy.min_declarations) {
+	if (!scoped && totalDeclarations < manifest.policy.min_declarations) {
 		error(
 			'vocabulary_underfloor',
 			`the surfaces yielded ${totalDeclarations} declaration(s) but policy.min_declarations is ${manifest.policy.min_declarations}; a parser that stops seeing declarations must fail, not pass quietly`,
@@ -1699,6 +1800,7 @@ export function runCheck({
 		entry.uses = uses;
 		entry.name = entry.name ?? entry.prefixes.join(' ');
 		if (uses.length === 0) {
+			if (scoped) continue;
 			error(
 				'allow_unused',
 				`allowlist.${entry.category} "${entry.id}" waives nothing in the current CSS; a stale waiver is a hole nobody re-reviews, not a false-positive allowance`,
@@ -1720,6 +1822,7 @@ export function runCheck({
 		ok: errors.length === 0,
 		errors,
 		warnings,
+		notes,
 		results,
 		surfaceRows,
 		allowRows,
@@ -1792,6 +1895,11 @@ export function formatReport(result) {
 		lines.push('');
 	}
 
+	if ((result.notes ?? []).length > 0) {
+		for (const note of result.notes) lines.push(`note: ${note}`);
+		lines.push('');
+	}
+
 	if (result.errors.length > 0) {
 		lines.push(`errors (${result.errors.length})`);
 		for (const entry of result.errors) {
@@ -1812,6 +1920,13 @@ function main(argv) {
 	if (artifactIndex !== -1 && !artifactPath) {
 		process.stderr.write('--artifact requires a path to a CSS artifact\n');
 		return 2;
+	}
+	if (artifactIndex !== -1 && noGenerate) {
+		// `--no-generate` is already the behaviour of `--artifact`; saying
+		// both usually means the reader expected `--artifact` to write.
+		process.stderr.write(
+			'note: --artifact never writes; --no-generate is implied by --artifact and is ignored\n',
+		);
 	}
 
 	let result;
@@ -1840,6 +1955,7 @@ function main(argv) {
 					})),
 					errors: result.errors,
 					warnings: result.warnings,
+					notes: result.notes ?? [],
 				},
 				null,
 				2,

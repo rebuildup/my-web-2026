@@ -74,3 +74,23 @@ route ごとの期待値:
   `test/integration/fixtures/structured-data-snapshot.json` から読む。
   同ファイルは integration suite が実 SSR HTML と `toEqual` で照合して
   いるため、画像は CI が検証していない document を描写し得ない。
+
+## HTTP status 契約（#419）
+
+このディレクトリの別系統として、**response status** の契約検証を置いて
+います（[`http-status-contract.md`](./http-status-contract.md)）。
+
+| 成果物 | 内容 |
+| --- | --- |
+| `scripts/_seo-status-contract.mjs` | 宣言された契約（26 case / 15 route） |
+| `pnpm run seo:status:check` | route 網羅性と proof の紐付けを検査する `validate:fast` gate |
+| `test/integration/seo-status-contract.test.ts` | workerd で実 SSR 応答を実測 |
+| `e2e/seo-status.spec.ts` | 実ブラウザで document の描画と `robots` meta を実測 |
+| `404-and-500-state.webp` | Issue #419 指定の `.png` の `.webp` 版（実応答 2 枚の撮影 + 契約表 + 実行結果） |
+
+- `head-metadata-check.webp` / `structured-data-report.webp` は `<head>` と
+  構造化データ（宣言内容）の検証、`404-and-500-state.webp` は
+  **status / robots / 描画される surface** の検証。対象が重ならない。
+- sitemap / robots.txt の**内容**そのものは #423 の `index:boundary:check`
+  と `check-structured-data-coverage.mjs` が持ち、本 Issue は
+  「未公開コンテンツが indexable な応答にならないこと」を応答側で固定する。

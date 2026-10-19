@@ -23,9 +23,11 @@ import {
 	GROWTH_METRICS,
 	LISTENER_GROWTH_TOLERANCE,
 	LISTENER_PROBE_SOURCE,
+	compareMeasurementConditions,
 	describeGrowth,
 	evaluateListenerGrowth,
 	evaluateProfile,
+	isLoopbackOrigin,
 	parseArgs,
 	screenshotBudgetVerdict,
 	topEntries,
@@ -148,16 +150,56 @@ describe('evaluateListenerGrowth', () => {
 });
 
 describe('evaluateProfile', () => {
-	it('keeps a skipped leg out of the verdict instead of counting it as a pass', () => {
+	it('marks the profile INCOMPLETE when a leg was skipped, never a pass', () => {
 		const profile = evaluateProfile({
 			react: { skipped: true, skippedReason: 'widget disabled', series: [] },
 			navigate: { skipped: false, series: series({}, 4) },
 		});
-		assert.equal(profile.pass, true, 'the measured leg is the one that decides');
+		assert.equal(profile.pass, false, 'a journey that never ran cannot be called green');
+		assert.equal(profile.status, 'INCOMPLETE');
+		assert.equal(profile.complete, false);
+		assert.deepEqual(profile.skipped, ['react']);
 		assert.equal(profile.verdicts.react.pass, null);
 		assert.equal(profile.verdicts.react.skipped, true);
 		assert.match(profile.verdicts.react.reason, /widget disabled/);
 		assert.equal(profile.verdicts.navigate.pass, true);
+	});
+
+	it('reports PASS only when every leg ran and stayed flat', () => {
+		const profile = evaluateProfile({
+			react: { skipped: false, series: series({}, 4) },
+			navigate: { skipped: false, series: series({}, 4) },
+		});
+		assert.equal(profile.pass, true);
+		assert.equal(profile.status, 'PASS');
+		assert.equal(profile.complete, true);
+	});
+
+	it('fails a leg that recorded its own journey failure', () => {
+		const profile = evaluateProfile({
+			react: {
+				skipped: false,
+				series: series({}, 4),
+				failures: ['cycle 2: no picker emoji could be clicked'],
+			},
+			navigate: { skipped: false, series: series({}, 4) },
+		});
+		assert.equal(profile.pass, false);
+		assert.equal(profile.status, 'FAIL');
+		assert.match(profile.failures.join('\n'), /no picker emoji could be clicked/);
+	});
+
+	it('fails the profile on a page error even when the series is flat', () => {
+		const profile = evaluateProfile(
+			{
+				react: { skipped: false, series: series({}, 4) },
+				navigate: { skipped: false, series: series({}, 4) },
+			},
+			{ pageErrors: ['Error: Maximum update depth exceeded'] },
+		);
+		assert.equal(profile.pass, false);
+		assert.equal(profile.status, 'FAIL');
+		assert.match(profile.failures.join('\n'), /page error during measurement/);
 	});
 
 	it('collects the failures of every measured leg', () => {
@@ -206,6 +248,73 @@ describe('parseArgs', () => {
 
 	it('rejects an unknown option instead of ignoring it', () => {
 		assert.throws(() => parseArgs(['--nope=1']), /unknown option: --nope=1/);
+	});
+
+	it('rejects a non-loopback --base-url unless --allow-remote is explicit', () => {
+		assert.throws(
+			() => parseArgs(['--base-url=https://rebuildup.dev']),
+			/--base-url must be a loopback origin/,
+		);
+		assert.throws(() => parseArgs(['--base-url=ftp://127.0.0.1']), /must be an http\(s\) URL/);
+		const allowed = parseArgs(['--base-url=https://rebuildup.dev', '--allow-remote']);
+		assert.equal(allowed.baseUrl, 'https://rebuildup.dev');
+		assert.equal(allowed.allowRemote, true);
+	});
+});
+
+describe('isLoopbackOrigin', () => {
+	it('accepts localhost, 127.0.0.0/8 and IPv6 loopback only', () => {
+		for (const url of [
+			'http://127.0.0.1:15951',
+			'http://localhost:3000',
+			'http://app.localhost:3000',
+			'http://[::1]:3000',
+			'https://127.9.1.2',
+		]) {
+			assert.equal(isLoopbackOrigin(url), true, url);
+		}
+		for (const url of [
+			'https://rebuildup.dev',
+			'http://192.168.1.10:3000',
+			'http://128.0.0.1',
+			'http://127.0.0.1.evil.example',
+			'not-a-url',
+		]) {
+			assert.equal(isLoopbackOrigin(url), false, url);
+		}
+	});
+});
+
+describe('compareMeasurementConditions', () => {
+	const current = {
+		options: { cycles: 5 },
+		environment: {
+			browser: 'Chromium 1',
+			cpuThrottlingRate: 4,
+			networkProfile: { label: 'Slow 4G' },
+			viewport: '1280x900',
+			deviceScaleFactor: 1,
+			surface: 'vite preview',
+		},
+	};
+
+	it('accepts a before report measured under the same conditions', () => {
+		const result = compareMeasurementConditions(current, JSON.parse(JSON.stringify(current)));
+		assert.equal(result.comparable, true);
+		assert.deepEqual(result.mismatches, []);
+	});
+
+	it('reports every differing condition instead of silently comparing', () => {
+		const before = JSON.parse(JSON.stringify(current));
+		before.environment.browser = 'Chromium 0';
+		before.environment.cpuThrottlingRate = 1;
+		before.options.cycles = 3;
+		const result = compareMeasurementConditions(current, before);
+		assert.equal(result.comparable, false);
+		assert.deepEqual(
+			result.mismatches.map((m) => m.field),
+			['browser', 'cpuThrottlingRate', 'cycles'],
+		);
 	});
 });
 
@@ -269,5 +378,36 @@ describe('LISTENER_PROBE_SOURCE', () => {
 	it('exposes the snapshot under the name the driver calls', () => {
 		assert.match(LISTENER_PROBE_SOURCE, /window\.__interactionMemoryProbe/);
 		assert.match(LISTENER_PROBE_SOURCE, /snapshot\(\)/);
+	});
+
+	it('holds targets weakly so the probe cannot create the leak it measures', () => {
+		assert.match(LISTENER_PROBE_SOURCE, /new WeakRef\(/);
+		assert.match(LISTENER_PROBE_SOURCE, /target: weakRef\(this\)/);
+		assert.doesNotMatch(LISTENER_PROBE_SOURCE, /target: this,/);
+	});
+
+	it('collapses duplicate registrations onto one ledger token', () => {
+		assert.match(LISTENER_PROBE_SOURCE, /entry\.target\.deref\(\) === this/);
+		assert.match(LISTENER_PROBE_SOURCE, /entry\.capture === capture/);
+		assert.match(
+			LISTENER_PROBE_SOURCE,
+			/if \(\s*!entry\.released &&[\s\S]*?\) \{\s*return;/,
+			'the duplicate branch must return without adding a token',
+		);
+	});
+
+	it('releases once listeners and signal-aborted listeners from the ledger', () => {
+		assert.match(
+			LISTENER_PROBE_SOURCE,
+			/const once = !!\(options && typeof options === 'object' && options\.once\)/,
+		);
+		assert.match(
+			LISTENER_PROBE_SOURCE,
+			/originalAdd\.call\(signal, 'abort', \(\) => forget\(entry\)/,
+		);
+		assert.match(
+			LISTENER_PROBE_SOURCE,
+			/forget\(entry\);\n {6}if \(typeof listener === 'function'\)/,
+		);
 	});
 });

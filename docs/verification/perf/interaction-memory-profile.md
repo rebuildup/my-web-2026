@@ -51,6 +51,30 @@ Chromium には「今 listener が何個付いているか」を取得的 API �
    集計する。破棄されたノードの listener はノードと一緒に GC される
    ので、通常の unmount を leak と呼ぶとこのレポートは毎回鳴る。
 
+台帳自身が測定対象を歪めないための追加の 3 点。
+
+- **target は強い参照で持たない**。台帳の各 entry は `WeakRef` で
+  target を指す。`removeEventListener` を呼ばない通常の unmount では
+  ノードが回収可能なまま残り、snapshot 時に deref できなくなった entry は
+  `collected` として台帳から落とす。台帳がノードを掴んでしまうと、
+  「切り離したノードはノードと一緒に回収される」という判定前提そのものが
+  壊れる。
+- **重複登録は 1 token に畳む**。ブラウザは同じ
+  `(target, type, callback, capture)` の追加登録を無視するので、台帳も
+  既存 token があるときは新しい token を作らない。呼び出しごとに token を
+  足すと、1 回の `removeEventListener` で実体は消えても台帳には
+  「実在しない listener」が残り、偽の増加になる。
+- **自動解除も反映する**。`{once:true}` は発火時に wrapper が token を
+  解放し、`AbortSignal` は `abort` で解放する。どちらも browser 内部で
+  登録が消える経路なので、明示的な `removeEventListener` だけを見ていると
+  `liveGlobal` が偽って増え続ける。
+
+判定は `evaluateProfile` が全体の `status` を返す。両 leg が実測されて
+初めて `PASS` で、どちらかが `skipped` なら **`INCOMPLETE`**（非 pass、
+終了コードも 0 ではない）。計測中の `pageerror`、および「emoji を 1 回も
+クリックできなかった反復」も FAIL として扱う。レンダー例外で listener が
+平坦になっただけの run を成功証跡にしないためである。
+
 判定に使うのは 2 クラスだけで、**両方が要る**。
 
 | 指標 | 意味 | growth 判定 |
@@ -91,7 +115,17 @@ Back も client-side 遷移であり JavaScript 文脈・React tree・`document`
 
 条件は**計測のたびに JSON へ記録され**、数字だけの画像にはしない。
 `--compare` で before を渡すと **before 側の条件と invocation も** 比較対象
-に含まれ、両者が食い違う場合は warning が出る。
+に含まれ、browser / CPU throttle / network profile / viewport / DPR /
+surface / repetitions のいずれかが食い違う場合は warning を出し、
+レポートと画像パネルにも `COMPARE WARNING` として残す。条件が違う
+before/after を同条件の証跡として描画しないためである。
+
+`--base-url` は既定で **loopback origin（`localhost` / `127.0.0.0/8` /
+`[::1]`）だけ**を受け付ける。このコマンドは実際に emoji をクリックし
+route 遷移を行うので、`https://rebuildup.dev` のような共有・本番 origin を
+渡せてしまうと計測がデータを変更し得る。非 loopback を測る場合は
+`--allow-remote` を明示し、その場合 `report.json` の
+`productionTouched` は `false` ではなく `null`（不明）になる。
 
 | 条件 | 値 |
 | --- | --- |
@@ -262,7 +296,7 @@ release の Builds を赤くすることになる。しかも #386 が budget �
 #487 が守ってきた分割**だから、本 Issue もそれに従う。
 
 `validate:fast` に入るのは **判定ロジックの純関数テスト**
-（`scripts/interaction-memory-profile.test.mjs`、22 tests）のみで、
+（`scripts/interaction-memory-profile.test.mjs`、32 tests）のみで、
 browser を起動しない。これは gate ではなく、「将来 gate にしたときにこの判定が壊れない」
 ことを固定するための契約である。
 
@@ -274,9 +308,9 @@ browser を起動しない。これは gate ではなく、「将来 gate にし
 
 1. `pnpm run e2e` は `main` / `release-*` push と `ui-change` label 付き
    PR だけで走る。`ui-change` の付け忘れで無言で測定されない。
-2. CI runner は `.dev.vars` が無く、**`react` leg は SKIPPED になる**
-   （`scripts/interaction-memory-profile.mjs` はこれを「PASS でも FAIL
-   でもなく SKIPPED」として記録し、理由も書く。緑に見せかけない）。
+2. CI runner は `.dev.vars` が無く、**`react` leg は SKIPPED になり、
+   全体 verdict は `INCOMPLETE`（非 pass）になる**
+   （`scripts/interaction-memory-profile.mjs` は理由も書く。緑に見せかけない）。
    CI で回すなら `.dev.vars` を通す job 側の準備が必要になる。
 3. この Issue の gate 化は **#385（release gate）の owner decision**。
    本 Issue は threshold を「提高到了一个数」であって、

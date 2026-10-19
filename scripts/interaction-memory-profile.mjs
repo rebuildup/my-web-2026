@@ -57,7 +57,10 @@
  *
  *   --cycles=<n>         repetitions per leg (default 5)
  *   --port=<n>           preview server port (default 15951)
- *   --base-url=<url>     measure an ALREADY RUNNING server
+ *   --base-url=<url>     measure an ALREADY RUNNING server; must be a
+ *                        loopback origin unless --allow-remote is given
+ *   --allow-remote       accept a non-loopback --base-url (never a
+ *                        production target by default)
  *   --json-out=<path>    report destination
  *                        (default .tmp/interaction-memory-profile/report.json)
  *   --screenshot=<path>  committed capture destination
@@ -204,25 +207,111 @@ export function evaluateListenerGrowth(
  * Listener-growth verdict over BOTH legs (pure).
  *
  * A leg that could not run (`skipped`, with a recorded reason) is not a
- * pass and not a failure: it is reported so the reader can see that the
- * measurement did not happen rather than reading a green row.
+ * pass: the profile is `INCOMPLETE`, because one of the two journeys the
+ * Issue names was never measured. A measured leg can also carry its own
+ * `failures` (for example a repetition that could not click the emoji),
+ * and a `pageerror` during the run is a failure too — a render crash that
+ * flattens the listener series must not read as a green report.
  */
-export function evaluateProfile(legs) {
+export function evaluateProfile(legs, { pageErrors = [] } = {}) {
 	const verdicts = {};
 	const failures = [];
+	const skipped = [];
 	for (const [name, leg] of Object.entries(legs ?? {})) {
 		if (leg.skipped) {
 			verdicts[name] = { pass: null, skipped: true, reason: leg.skippedReason };
+			skipped.push(name);
 			continue;
 		}
 		const verdict = evaluateListenerGrowth(leg.series, {
 			label: name,
 			warmupCycles: leg.warmupCycles ?? DEFAULT_WARMUP_CYCLES,
 		});
-		verdicts[name] = { pass: verdict.pass, failures: verdict.failures, metrics: verdict.metrics };
-		failures.push(...verdict.failures);
+		const legFailures = Array.isArray(leg.failures) ? leg.failures : [];
+		verdicts[name] = {
+			pass: verdict.pass && legFailures.length === 0,
+			failures: [...verdict.failures, ...legFailures],
+			metrics: verdict.metrics,
+		};
+		failures.push(...verdicts[name].failures);
 	}
-	return { pass: failures.length === 0, failures, verdicts };
+	for (const error of pageErrors ?? []) {
+		failures.push(`page error during measurement: ${error}`);
+	}
+	const status = failures.length > 0 ? 'FAIL' : skipped.length > 0 ? 'INCOMPLETE' : 'PASS';
+	return {
+		pass: status === 'PASS',
+		status,
+		complete: skipped.length === 0,
+		failures,
+		verdicts,
+		skipped,
+	};
+}
+
+/**
+ * Whether an origin is a loopback target (pure).
+ *
+ * The harness clicks real emoji and performs real route changes, so a
+ * non-loopback `--base-url` can mutate a shared or production database
+ * while the report still records `productionTouched: false`. A remote
+ * target is therefore an explicit opt-in, never the default.
+ */
+export function isLoopbackOrigin(value) {
+	let url;
+	try {
+		url = new URL(value);
+	} catch {
+		return false;
+	}
+	if (url.protocol !== 'http:' && url.protocol !== 'https:') return false;
+	const hostname = url.hostname.replace(/^\[|\]$/g, '').toLowerCase();
+	if (hostname === 'localhost' || hostname.endsWith('.localhost')) return true;
+	if (hostname === '::1' || hostname === '0:0:0:0:0:0:0:1') return true;
+	const ipv4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(hostname);
+	if (!ipv4) return false;
+	const octets = ipv4.slice(1).map(Number);
+	if (octets.some((octet) => octet > 255)) return false;
+	return octets[0] === 127;
+}
+
+/**
+ * Compare the measurement conditions of the current run with a BEFORE
+ * report (pure). Different browser / CPU throttle / network / viewport /
+ * repetitions make a before/after pair non-comparable, so the report must
+ * say so instead of drawing the two rows as if they shared a baseline.
+ */
+export function compareMeasurementConditions(current, before) {
+	const mismatches = [];
+	const check = (field, currentValue, beforeValue) => {
+		if (currentValue !== beforeValue) {
+			mismatches.push({
+				field,
+				current: currentValue ?? null,
+				before: beforeValue ?? null,
+			});
+		}
+	};
+	check('browser', current?.environment?.browser, before?.environment?.browser);
+	check(
+		'cpuThrottlingRate',
+		current?.environment?.cpuThrottlingRate,
+		before?.environment?.cpuThrottlingRate,
+	);
+	check(
+		'networkProfile',
+		current?.environment?.networkProfile?.label,
+		before?.environment?.networkProfile?.label,
+	);
+	check('viewport', current?.environment?.viewport, before?.environment?.viewport);
+	check(
+		'deviceScaleFactor',
+		current?.environment?.deviceScaleFactor,
+		before?.environment?.deviceScaleFactor,
+	);
+	check('surface', current?.environment?.surface, before?.environment?.surface);
+	check('cycles', current?.options?.cycles, before?.options?.cycles);
+	return { comparable: mismatches.length === 0, mismatches };
 }
 
 /** Parse the documented CLI surface. Exported for unit tests. */
@@ -235,6 +324,7 @@ export function parseArgs(argv) {
 		jsonOut: '.tmp/interaction-memory-profile/report.json',
 		screenshot: 'docs/verification/perf/interaction-memory-profile.webp',
 		compare: null,
+		allowRemote: false,
 		noScreenshot: false,
 	};
 	for (const arg of argv) {
@@ -265,6 +355,9 @@ export function parseArgs(argv) {
 			case 'compare':
 				options.compare = value;
 				break;
+			case 'allow-remote':
+				options.allowRemote = true;
+				break;
 			case 'no-screenshot':
 				options.noScreenshot = true;
 				break;
@@ -274,6 +367,16 @@ export function parseArgs(argv) {
 	}
 	if (!Number.isInteger(options.cycles) || options.cycles < 2) {
 		throw new Error('--cycles must be an integer >= 2 (one repetition measures nothing)');
+	}
+	if (options.baseUrl) {
+		if (!/^https?:\/\//i.test(options.baseUrl)) {
+			throw new Error('--base-url must be an http(s) URL');
+		}
+		if (!options.allowRemote && !isLoopbackOrigin(options.baseUrl)) {
+			throw new Error(
+				'--base-url must be a loopback origin (localhost / 127.0.0.0/8 / [::1]); pass --allow-remote to measure a non-loopback target explicitly',
+			);
+		}
 	}
 	return options;
 }
@@ -288,55 +391,139 @@ export function parseArgs(argv) {
  */
 export const LISTENER_PROBE_SOURCE = `(() => {
   const live = new Map();
-  const tokensFor = new WeakMap();
+  const byListener = new WeakMap();
   let added = 0;
   let released = 0;
+  let collected = 0;
+  let tokenSeq = 0;
   const originalAdd = EventTarget.prototype.addEventListener;
   const originalRemove = EventTarget.prototype.removeEventListener;
+  const weakRef = (value) =>
+    typeof WeakRef === 'function' ? new WeakRef(value) : { deref: () => value };
+  const captureOf = (options) =>
+    typeof options === 'boolean' ? options : !!(options && options.capture);
+  const forget = (entry) => {
+    if (entry.released) return;
+    entry.released = true;
+    live.delete(entry.token);
+    const list = entry.owner;
+    if (list) {
+      const index = list.indexOf(entry);
+      if (index >= 0) list.splice(index, 1);
+    }
+    released += 1;
+  };
   EventTarget.prototype.addEventListener = function (type, listener, options) {
     added += 1;
-    const capture = typeof options === 'boolean' ? options : !!(options && options.capture);
-    const token = String(added);
-    live.set(token, { target: this, type, capture });
-    let tokens = tokensFor.get(listener);
-    if (!tokens) { tokens = new Set(); tokensFor.set(listener, tokens); }
-    tokens.add(token);
-    return originalAdd.call(this, type, listener, options);
+    if (listener === null || listener === undefined) {
+      return originalAdd.call(this, type, listener, options);
+    }
+    const capture = captureOf(options);
+    const once = !!(options && typeof options === 'object' && options.once);
+    const signal = options && typeof options === 'object' ? options.signal : undefined;
+    let list = byListener.get(listener);
+    if (!list) { list = []; byListener.set(listener, list); }
+    // The browser ignores a duplicate (same target/type/callback/capture)
+    // registration, so the ledger must not create a second token for it.
+    for (const entry of list) {
+      if (
+        !entry.released &&
+        entry.target.deref() === this &&
+        entry.type === type &&
+        entry.capture === capture
+      ) {
+        return;
+      }
+    }
+    const entry = {
+      token: String(++tokenSeq),
+      target: weakRef(this),
+      type,
+      capture,
+      owner: list,
+      released: false,
+      wrapped: null,
+    };
+    live.set(entry.token, entry);
+    list.push(entry);
+    if (signal) {
+      if (signal.aborted) {
+        forget(entry);
+        return originalAdd.call(this, type, listener, options);
+      }
+      try {
+        originalAdd.call(signal, 'abort', () => forget(entry), { once: true });
+      } catch (error) {
+        /* a non-standard signal must not break the ledger */
+      }
+    }
+    if (!once) {
+      return originalAdd.call(this, type, listener, options);
+    }
+    // A once listener is removed by the browser itself after it fires, so
+    // the ledger releases the token from the wrapper. The wrapper is kept
+    // by the browser through the target, not strongly by the ledger.
+    const wrapped = function (...args) {
+      forget(entry);
+      if (typeof listener === 'function') return listener.apply(this, args);
+      return listener.handleEvent.apply(listener, args);
+    };
+    entry.wrapped = weakRef(wrapped);
+    return originalAdd.call(this, type, wrapped, options);
   };
   EventTarget.prototype.removeEventListener = function (type, listener, options) {
-    const capture = typeof options === 'boolean' ? options : !!(options && options.capture);
-    const tokens = tokensFor.get(listener);
-    if (tokens) {
-      for (const token of [...tokens]) {
-        const entry = live.get(token);
-        if (entry && entry.target === this && entry.type === type && entry.capture === capture) {
-          live.delete(token);
-          tokens.delete(token);
-          released += 1;
-          break;
+    const capture = captureOf(options);
+    if (listener === null || listener === undefined) {
+      return originalRemove.call(this, type, listener, options);
+    }
+    const list = byListener.get(listener);
+    if (list) {
+      for (const entry of [...list]) {
+        if (
+          !entry.released &&
+          entry.target.deref() === this &&
+          entry.type === type &&
+          entry.capture === capture
+        ) {
+          const wrapped = entry.wrapped ? entry.wrapped.deref() : undefined;
+          forget(entry);
+          return originalRemove.call(this, type, wrapped || listener, options);
         }
       }
     }
     return originalRemove.call(this, type, listener, options);
   };
   window.__interactionMemoryProbe = {
-    version: 1,
+    version: 2,
     snapshot() {
       const byTarget = {};
       const byType = {};
       let liveGlobal = 0;
       let liveConnected = 0;
       let detached = 0;
-      for (const entry of live.values()) {
-        const isGlobal = entry.target === window || entry.target === document;
+      for (const entry of [...live.values()]) {
+        const target = entry.target.deref();
+        if (target === null || target === undefined) {
+          // The target was collected together with its listeners: it is not
+          // a leak, and holding it strongly here would create one.
+          live.delete(entry.token);
+          const owner = entry.owner;
+          if (owner) {
+            const index = owner.indexOf(entry);
+            if (index >= 0) owner.splice(index, 1);
+          }
+          collected += 1;
+          continue;
+        }
+        const isGlobal = target === window || target === document;
         const isConnected =
-          isGlobal || (entry.target !== null && typeof entry.target === 'object' && entry.target.isConnected === true);
+          isGlobal || (target !== null && typeof target === 'object' && target.isConnected === true);
         if (!isConnected) { detached += 1; continue; }
         if (isGlobal) liveGlobal += 1;
         else liveConnected += 1;
         const targetLabel = isGlobal
-          ? (entry.target === window ? 'window' : 'document')
-          : String(entry.target.tagName || entry.target.constructor?.name || 'node').toLowerCase();
+          ? (target === window ? 'window' : 'document')
+          : String(target.tagName || target.constructor?.name || 'node').toLowerCase();
         const key = targetLabel + '::' + entry.type;
         byTarget[key] = (byTarget[key] || 0) + 1;
         byType[entry.type] = (byType[entry.type] || 0) + 1;
@@ -345,6 +532,7 @@ export const LISTENER_PROBE_SOURCE = `(() => {
       return {
         added,
         released,
+        collected,
         liveGlobal,
         liveConnected,
         liveTotal: liveGlobal + liveConnected,
@@ -462,6 +650,7 @@ async function runReactionLeg(page, cycles) {
 	const sample = async () => page.evaluate(() => window.__interactionMemoryProbe.snapshot());
 	const series = [{ cycle: 0, ...(await sample()) }];
 	const picked = [];
+	const failures = [];
 
 	for (let cycle = 1; cycle <= cycles; cycle += 1) {
 		await trigger.click();
@@ -472,7 +661,16 @@ async function runReactionLeg(page, cycles) {
 			await search.fill('thumbs');
 			await page.waitForTimeout(400);
 		}
-		picked.push((await clickPickerEmoji(page, dialog))?.label ?? null);
+		const target = await clickPickerEmoji(page, dialog);
+		if (!target) {
+			// A repetition that never clicked the emoji measured nothing of
+			// the journey the Issue names, so it must not yield a PASS.
+			failures.push(
+				`cycle ${cycle}: no picker emoji could be clicked (selector, render, or hit-test failure)`,
+			);
+			break;
+		}
+		picked.push(target.label ?? null);
 		await page.waitForTimeout(600);
 		await page.keyboard.press('Escape');
 		await page.waitForTimeout(400);
@@ -485,7 +683,7 @@ async function runReactionLeg(page, cycles) {
 			...snapshot,
 		});
 	}
-	return { skipped: false, series, picked };
+	return { skipped: false, series, picked, failures };
 }
 
 /**
@@ -600,8 +798,18 @@ async function renderMeasurementPanel(page, report) {
 					'BEFORE (compare)',
 					`${payload.before.sourceShaShort} · navigate liveGlobal ${payload.before.navigate} · react liveGlobal ${payload.before.react}`,
 				),
-				'',
 			);
+			if (payload.before.conditions?.comparable === false) {
+				rows.unshift(
+					line(
+						'COMPARE WARNING',
+						`conditions differ: ${payload.before.conditions.mismatches
+							.map((m) => `${m.field} ${m.before} -> ${m.current}`)
+							.join(' · ')}`,
+					),
+				);
+			}
+			rows.unshift('');
 		}
 		if (payload.verdict.pass === false) {
 			rows.push('', line('failures', payload.verdict.failures.join(' | ')));
@@ -626,13 +834,14 @@ async function renderMeasurementPanel(page, report) {
 			...rows,
 		].join('\n');
 		document.body.prepend(panel);
-		panel.dataset.verdict = payload.verdict.pass ? 'PASS' : 'FAIL';
+		panel.dataset.verdict = payload.verdict.status ?? (payload.verdict.pass ? 'PASS' : 'FAIL');
 	}, report);
 }
 
 async function main() {
 	const options = parseArgs(process.argv.slice(2));
 	const baseUrl = options.baseUrl ?? `http://127.0.0.1:${options.port}`;
+	const baseUrlIsLoopback = isLoopbackOrigin(baseUrl);
 	const preview = options.baseUrl ? null : startPreview(options.port);
 	let browser = null;
 	try {
@@ -704,14 +913,25 @@ async function main() {
 					uploadKbps: Math.round((networkCondition.uploadThroughput * 8) / 1024),
 				},
 				surface: 'vite preview of `pnpm run build` (not a dev server)',
-				productionTouched: false,
+				baseUrlIsLoopback,
+				remoteTarget: !baseUrlIsLoopback,
+				// A loopback run cannot mutate a shared environment. With
+				// --allow-remote the report cannot claim that, so it records
+				// `null` (unknown) rather than a misleading `false`.
+				productionTouched: baseUrlIsLoopback ? false : null,
 			},
 			legs: { react, navigate },
 			pageErrors,
 			topListeners: topEntries(lastNavigate?.byTarget ?? {}),
 			topListenerTypes: topEntries(lastNavigate?.byType ?? {}, 6),
 		};
-		report.verdict = evaluateProfile({ react, navigate });
+		report.verdict = evaluateProfile({ react, navigate }, { pageErrors });
+
+		if (!baseUrlIsLoopback) {
+			process.stderr.write(
+				`interaction-memory-profile: WARNING — measuring ${baseUrl} is not a loopback target; the report records productionTouched=null\n`,
+			);
+		}
 
 		if (options.compare) {
 			try {
@@ -732,7 +952,24 @@ async function main() {
 					react: pick('react', 'liveGlobal'),
 					browser: before?.environment?.browser ?? 'unknown',
 					verdict: before?.verdict?.pass ?? null,
+					invocation: {
+						browser: before?.environment?.browser ?? null,
+						cpuThrottlingRate: before?.environment?.cpuThrottlingRate ?? null,
+						networkProfile: before?.environment?.networkProfile?.label ?? null,
+						viewport: before?.environment?.viewport ?? null,
+						deviceScaleFactor: before?.environment?.deviceScaleFactor ?? null,
+						surface: before?.environment?.surface ?? null,
+						cycles: before?.options?.cycles ?? null,
+					},
+					conditions: compareMeasurementConditions(report, before),
 				};
+				if (!report.before.conditions.comparable) {
+					process.stderr.write(
+						`interaction-memory-profile: WARNING — --compare conditions differ: ${report.before.conditions.mismatches
+							.map((m) => `${m.field} before=${m.before} now=${m.current}`)
+							.join(', ')}\n`,
+					);
+				}
 			} catch (error) {
 				report.before = { path: options.compare, error: String(error?.message ?? error) };
 			}
@@ -819,7 +1056,7 @@ async function main() {
 				`  react     DOM ${lastReact?.domNodes} nodes · heap ${lastReact?.heapMb} MB\n`,
 			);
 		}
-		process.stdout.write(`  verdict   ${report.verdict.pass ? 'PASS' : 'FAIL'}\n`);
+		process.stdout.write(`  verdict   ${report.verdict.status}\n`);
 		for (const failure of report.verdict.failures) process.stdout.write(`    - ${failure}\n`);
 		process.stdout.write(`  report    ${options.jsonOut}\n`);
 

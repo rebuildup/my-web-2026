@@ -540,7 +540,7 @@ ${body}
 <body>
   <h1>release quality dashboard</h1>
   <p class="sub">
-    この工作是「<strong>有効な出力がこのチェックアウトに存在するか</strong>」だけを打量します。
+    この作業は「<strong>有効な出力がこのチェックアウトに存在するか</strong>」だけを判定します。
     品質チェックは一切実行せず、数値も作りません。verdict は
     <code>quality/release-dashboard.json</code> が宣言する各コマンドの終了コード、または
     同 manifest が宣言する report の存在から判定します。実装が無く runner が無い signal は

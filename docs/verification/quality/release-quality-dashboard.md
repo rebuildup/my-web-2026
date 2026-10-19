@@ -1,0 +1,118 @@
+# Release quality dashboard（Issue #493）
+
+> `quality/release-dashboard.json` が「どの品質 signal が存在し、それぞれどう判定されるか」を
+> 宣言し、`scripts/release-quality-dashboard.mjs` が
+> **そのチェックアウトに有効な出力があるかどうかだけ**を 1 枚の HTML に集約します。
+> この document はそのダッシュボードの**検証記録**であり、ゲートや測定の仕様書では
+> ありません。
+
+![release quality dashboard](release-quality-dashboard.webp)
+
+## 何をしないか（線引き）
+
+本 Issue は「既存の有効出力の集約」だけを担当し、次の 3 つを混同しません。
+
+| 区分 | 誰の担当か | 本 Issue の扱い |
+| --- | --- | --- |
+| **ゲート**（失敗を CI で止める判定） | `quality/profile.yaml#gates.*` の既存コマンド | **実行も追加もしない**。終了コードを読むだけ |
+| **性能測定**（実測値の取得） | Issue #384（再現性）/ #385（gate 化）/ #386（予算） | N/A 行として「未実装」と表示する |
+| **可視化**（読むための 1 枚） | 本 Issue | これが今回の成果物 |
+
+ダッシュボードが「PASS」を表示しても、`validate:fast` / `validate:integration` /
+`validate:release` のどこにも 1 行も追加していません。理由は
+「`quality/profile.yaml` への影響」節に記載します。
+
+## before / after と合格基準
+
+| | before（#493 の前） | after |
+| --- | --- | --- |
+| 品質 signal の所在 | `quality/profile.yaml`、`quality/route-coverage.json`、`docs/verification/**` の .md / .webp、CI log に分散。「何が実装済みで何が未実装か」は読む人ごとに違う | `quality/release-dashboard.json` が 1 ファイルで signal を宣言し、HTML 1 枚で状態を一覧する |
+| 未実装の測定器（Lighthouse / axe / 2 ブラウザエンジン / route ごとの security header spec） | 「存在しない」のか「動いているのに記録が無い」のか区別できない | `planned` family を継承して **N/A（未実装）** として明示し、PASS 集計には入れない |
+| 測定していない signal | 「報告が無い」ので自然に PASS と読める | **NOT RUN**。run record 無し / 別 source SHA / 未実行（要 build・network・browser）/ report missing の 4 理由を出力 |
+| 再現条件 | 記載なし | environment ブロックに browser / network / CPU / Node / platform / runner（local か CI か）/ source SHA を出力 |
+| verdict の出所 | 追えない | 既存 command の終了コード、または既存 report の存在。ダッシュボードは何も測定しない |
+
+合格基準は「`pnpm run quality:dashboard:report` が、未計測を PASS として表示しないこと」。
+
+2026-10-19 のローカル実測値は **signal 26 件 / PASS 19 / FAIL 0 / NOT RUN 3 / N/A 4**。
+
+- NOT RUN 3 件は `bundle-budget`（要 production build）、`dependency-advisory`（要 registry network）、
+  `e2e-playwright`（要 build + browser + Worker）。いずれも**この実行では意図的に走らせていない**ため
+  run record 側も `skipped` であり、推測値は 1 つも載せていません。
+- N/A 4 件は `quality/route-coverage.json` の `performance` / `a11y` / `cross_browser` /
+  `security_headers` family（いずれも `planned`）。**Issue #384–#387 の担当**であり、本 Issue は
+  「まだ無いもの」を 1 箇所に明示することだけを担当します。
+- PASS 19 件の 1 つに `route-quality-coverage`（#492）があり、その有効な出力は
+  `.tmp/route-quality-report.html` です。**この report が消えると PASS から NOT RUN に落ちます**
+  （次の節）。
+
+## 4 状態の定義（missing report が誤 PASS しない構造）
+
+`classifySignal()`（`scripts/release-quality-dashboard.mjs`）は純粋関数で、「出力が無い」
+分岐は一律 `not_run` を返します。`pass` に到達する経路は 1 つしかありません。
+
+| 状態 | 条件 |
+| --- | --- |
+| `PASS` | 現 source SHA の run record が存在し、command が exit 0、かつ roster が `evidence.kind: artefact` と宣言した report が**すべて**ディスクに存在する |
+| `FAIL` | 現 source SHA の run record が存在し、command が非 0 で終了（終了コードのみ表示し、stdout は記録しない） |
+| `NOT RUN` | run record 無し / 別 source SHA の record / signal が `skipped`（要 build・network・browser・Worker）/ **report missing** |
+| `N/A（未実装）` | `quality/route-coverage.json` で `planned` の family。測定器が無いので合格でも不合格でもない |
+
+この 4 分岐は `scripts/release-quality-dashboard.test.mjs` で fixture 固定しています。
+特に「exit code 0 だが report が無い → NOT RUN」という分岐を明示的にテストしています。
+
+## 再現条件（local / CI）
+
+| 項目 | 条件 |
+| --- | --- |
+| ブラウザ | **ダッシュボード生成には不要**。静的 HTML を書き出すだけなので Chromium が無くても同じ結果になる。スクリーンショット撮影時のみ `pnpm run e2e:install` 済みの Playwright Chromium を使う |
+| ネットワーク | **不要**。既定の `quality:dashboard:record` は `requirements` に network を含む signal を実行せず `skipped` として記録する。`--allow=network` を明示した実行でのみ registry に接続する |
+| CPU / 負荷 | 既定 19 command の合計は Apple M5 ローカル実測で**約 4.6 秒**。並列実行による flaky 化はない |
+| Runner | `process.env.CI` から `local` / `ci` を記録する。CI では同じ command が CI ランナー上で同じ形式（CPU モデルと Node patch が local と異なる）で走る |
+| Runtime | Node.js `>=22.18`（`package.json#engines`、CI は 22.18 固定）。本次実測は `v26.12.0` |
+| Source SHA | run record は `git rev-parse --short=12 HEAD` を持つ。**別 SHA の record は全 signal を NOT RUN にする**（古い verdict を PASS にしない） |
+
+再現手順:
+
+```bash
+pnpm run quality:dashboard:record          # 既存 command を実行し .tmp/release-quality-runs.json を書く
+pnpm run quality:dashboard:report          # .tmp/release-quality-dashboard.html を再生成（読み取り専用）
+pnpm run verify:quality-dashboard-screenshot  # 上記 HTML を WebP 化して docs/verification/quality/ へ
+```
+
+`quality:dashboard:check` は roster の構造を検証し、集計 1 行を標準出力に出します。
+**NOT RUN は失敗ではありません**（出力が無いという事実を報告するのがこの command の仕事）。
+roster が壊れているとき（未宣言 group / command 無し / family と state の矛盾 / evidence kind 不明）
+だけ exit 1 です。
+
+### artefact provenance
+
+run record の `source_sha` はスクリーンショットを commit する**直前の tree** を指します。
+スクリーンショット commit 自身は evidence（`.webp`）の追加だけなので commit 後の SHA は 1 つ進みます。
+その状態で HTML を再生成すると全 signal が NOT RUN（stale）になるのが仕様です。
+比較したい commit で `quality:dashboard:record` を再実行してから再生成してください。
+
+## `quality/profile.yaml` への影響
+
+- **`gates.fast` / `gates.integration` / `gates.release` の components には追加していません。**
+  ダッシュボードは出力を読む可視化であり、判定を増やすと可視化とゲートの境界が曖昧になります
+  （AGENTS.md §5「gate は 3 つの deterministic entry point」）。
+- 代わりに `release_quality_dashboard` block を追加し、roster / command / 証跡 path /
+  「gate ではない」宣言を記録しました。`route_quality_coverage` block と同種です。
+- roster の構造検証（`quality:dashboard:check`）も既定では gate に入りません。壊れた roster は
+  レポート生成時に exit 1 で判明するため、gate に入れる価値がコストに見合いません。
+
+## 未実装の signal を誤って PASS にしない仕組み
+
+`quality/route-coverage.json` が `planned` とする 4 family を roster が `family` で参照し、
+その `state` をそのまま継承します（SoT を二重化しないため roster 側に state を手で書いていません）。
+継承値が `planned` の行は `command` / `evidence` を宣言できず、構造 validator が矛盾を拒否します。
+よって「将来 runner を足し忘れた signal」が静かに PASS になることはありません。
+
+## スクリーンショット
+
+Issue は `docs/verification/quality/release-quality-dashboard.png` を要求していますが、
+**同パスの stem を `.webp` にしたもの** で commit しています（PNG はテキスト主体のページに対して約 2 倍サイズで、
+証跡としての価値は変わりません）。変換は既存の `sharp` devDependency で width 1600 /
+quality 78 に行い、中間 PNG はディスクに書き出しません。script が 300 KB を超えた場合は
+エラーになります。

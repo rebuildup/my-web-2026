@@ -137,7 +137,7 @@
 			"group": "gate",
 			"label": "dependency install-lifecycle audit",
 			"state": "implemented",
-			"contract": "allowBuilds と quality/install-scripts.json がpnpm install tree と一致するか検査する。",
+			"contract": "allowBuilds と quality/install-scripts.json が pnpm install tree と一致するか検査する。",
 			"command": "pnpm run install:scripts:check",
 			"requirements": [],
 			"evidence": { "kind": "exit_code" },

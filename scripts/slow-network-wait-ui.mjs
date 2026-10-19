@@ -304,12 +304,12 @@ export function evaluateRetryOutcome(outcome) {
 		);
 	}
 	if (outcome?.present && outcome.href && !outcome.navigated) {
-		failures.push('following the retry control did not navigate');
+		failures.push('following the retry control did not produce a new document');
 	}
 	if (outcome?.navigated && !outcome.markerAfter) {
 		failures.push('the retry navigation completed but the destination content never rendered');
 	}
-	return { pass: failures.length === 0, failures };
+	return { ...outcome, pass: failures.length === 0, failures };
 }
 
 /**
@@ -751,6 +751,7 @@ async function runStallLeg(page, { delayMs, expectedPath, chunkDelay }) {
  */
 async function verifyRetryRecovery(page, { stallMs, expectedPath, baseUrl, chunkDelay }) {
 	chunkDelay.set({ delayMs: stallMs });
+	await page.goto(`${baseUrl}/tools`, { waitUntil: 'load' });
 	const control = page.locator('[data-waiting-action="retry"]').first();
 	let outcome = {
 		present: false,
@@ -760,20 +761,26 @@ async function verifyRetryRecovery(page, { stallMs, expectedPath, baseUrl, chunk
 		markerAfter: false,
 	};
 	try {
-		await page.goto(`${baseUrl}/tools`, { waitUntil: 'load' });
 		const card = page.locator(`a[href="${expectedPath}"]`).first();
 		await card.click({ timeout: 30_000 });
 		await control.waitFor({ state: 'visible', timeout: Math.min(stallMs, 30_000) });
 		const href = await control.getAttribute('href');
 		outcome = { ...outcome, present: true, href };
-		// The stall is released by the handler's own timer; the retry
-		// click is a document navigation, so it does not race the
-		// delayed chunk of the abandoned client-side navigation.
-		await Promise.all([
-			page.waitForURL(`**${expectedPath}`, { timeout: 30_000 }).catch(() => {}),
-			control.click({ timeout: 30_000 }),
-		]);
-		outcome.navigated = new URL(page.url()).pathname === expectedPath;
+		// A document identity, not the URL. The router has ALREADY
+		// committed the destination location — that is exactly why the
+		// waiting surface is up — so `page.url()` cannot tell "the retry
+		// navigated" from "the URL was already this". The counter lives
+		// in sessionStorage, which survives a client-side transition and
+		// dies with the document, so a value above the stamp can only
+		// come from a REAL document request.
+		const stamp = await stampDocument(page);
+		// Remove the injected delay before the click: the retry
+		// re-requests the page as a document, and holding the chunk
+		// would test the harness rather than the control.
+		chunkDelay.set({ delayMs: 0 });
+		await control.click({ timeout: 30_000 });
+		await page.waitForLoadState('domcontentloaded', { timeout: 60_000 }).catch(() => {});
+		outcome.navigated = (await readDocumentStamp(page)) > stamp;
 		outcome.markerAfter = await page
 			.locator(ROUTE_MARKERS[expectedPath].selector)
 			.first()
@@ -783,6 +790,23 @@ async function verifyRetryRecovery(page, { stallMs, expectedPath, baseUrl, chunk
 		outcome = { ...outcome, error: String(error?.message ?? error) };
 	}
 	return outcome;
+}
+
+/** Stamp the current document (see `verifyRetryRecovery`). */
+async function stampDocument(page) {
+	return page.evaluate(() => {
+		const key = '__slowNetworkWaitUiDocument';
+		const next = Number.parseInt(sessionStorage.getItem(key) || '0', 10) + 1;
+		sessionStorage.setItem(key, String(next));
+		return next;
+	});
+}
+
+/** Read the document stamp without creating a new one. */
+async function readDocumentStamp(page) {
+	return page.evaluate(() =>
+		Number.parseInt(sessionStorage.getItem('__slowNetworkWaitUiDocument') || '0', 10),
+	);
 }
 
 /**

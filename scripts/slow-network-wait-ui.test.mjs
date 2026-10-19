@@ -181,7 +181,12 @@ describe('evaluateRetryOutcome', () => {
 	};
 
 	it('passes a control that delivered the destination', () => {
-		assert.deepEqual(evaluateRetryOutcome(good), { pass: true, failures: [] });
+		assert.equal(evaluateRetryOutcome(good).pass, true);
+		assert.deepEqual(evaluateRetryOutcome(good).failures, []);
+		// The outcome is spread into the verdict so the report and the
+		// capture panel can print what was actually observed instead of
+		// only "pass".
+		assert.equal(evaluateRetryOutcome(good).href, '/tools/prototype');
 	});
 
 	it('fails when the surface published no control', () => {
@@ -197,7 +202,7 @@ describe('evaluateRetryOutcome', () => {
 
 	it('fails when following the control did not navigate', () => {
 		const verdict = evaluateRetryOutcome({ ...good, navigated: false });
-		assert.match(verdict.failures.join('\n'), /did not navigate/);
+		assert.match(verdict.failures.join('\n'), /did not produce a new document/);
 	});
 
 	it('fails when the retry landed but never rendered the destination', () => {

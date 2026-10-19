@@ -30,9 +30,24 @@ in a versioned baseline, and only *new* findings fail `validate:fast`.
 | `scripts/run-deploy-inner.mjs` (entry) | Spawned as a child process by `scripts/deploy-with-secrets.mjs`. |
 | `src/cloudflare/workers-stub.ts` (entry) | Client-bundle alias target resolved by string in `vite.config.ts`. |
 | `ignoreDependencies: cloudflare` | Ambient virtual module emitted by `cf workers types`; not an npm package. |
-| `ignoreDependencies: postcss` | Consumed by the Panda PostCSS plugin chain; provided transitively. |
-| `ignoreDependencies: @storybook/react` | Provided via `@storybook/react-vite` / Storybook 8 addons; imported by stories. |
+| `ignoreDependencies: postcss` | knip attributes the Panda plugin's implicit `postcss` external to `panda.config.ts` as an `unlisted` finding. No first-party source imports the package — `'@pandacss/dev/postcss'` in `postcss.config.mjs` is a plugin *name*, not an import — so the entry records a toolchain-internal resolution, not a missing dependency declaration. |
+| `ignoreDependencies: @storybook/react` | Imported by `.storybook/preview.ts` and by every `src/**/*.stories.tsx`, but it is **not** a declared dependency (only `@storybook/react-vite` is). The entry records a real packaging gap, not a structural false reference; declaring it belongs to a dependency-decision ticket, not to this gate. |
 | `ignoreExportsUsedInFile: true` | Exports referenced within their own module are not "unused". |
+
+## What the gate reads
+
+`GATED_KEYS` in `scripts/check-knip.mjs` is every category of knip's
+`ISSUE_TYPES` except `cycles`. The namespace categories (`nsExports`,
+`nsTypes`) are included so an unconsumed `export * as ns from './x'` fails
+the gate instead of being dropped on the floor. `cycles` is deliberately
+excluded: it is an opt-in dependency-graph analysis, so enabling it would
+change the gate from "is anything unused" to "is anything cyclical", which
+is a different contract with a different owner.
+
+The gate also fails closed when knip itself does not complete: a non-zero
+exit status (bad config, unreadable workspace) or unparsable JSON is an
+error even when the output would otherwise be a well-formed, smaller issue
+list.
 
 ## Baseline
 

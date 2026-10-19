@@ -45,9 +45,13 @@ const ROOT = ROOT_ARG ?? join(SCRIPT_DIR, '..');
 const BASELINE_PATH = join(ROOT, 'quality', 'knip-baseline.json');
 const KNIP_BIN = join(SCRIPT_DIR, '..', 'node_modules', 'knip', 'bin', 'knip.js');
 
-// Issue categories we gate on. `files`, `dependencies`/`devDependencies`,
-// `exports`/`types` and `unlisted` are the categories knip reports; each
-// entry is normalized to "category file[:symbol]" for diffing.
+// Issue categories we gate on. This is every key of knip's `ISSUE_TYPES`
+// except `cycles`, which is an opt-in dependency-graph analysis rather
+// than an unused-code finding: enabling it would turn "unused" into
+// "cyclical", which is a different contract with a different owner (see
+// quality/knip.md). Keeping the list complete matters: a category that
+// knip reports but this gate does not read would be a silently green
+// finding rather than a red one.
 const GATED_KEYS = [
 	'files',
 	'dependencies',
@@ -56,7 +60,9 @@ const GATED_KEYS = [
 	'catalog',
 	'catalogReferences',
 	'exports',
+	'nsExports',
 	'types',
+	'nsTypes',
 	'namespaceMembers',
 	'enumMembers',
 	'unlisted',
@@ -72,8 +78,12 @@ function runKnip() {
 		[KNIP_BIN, '--reporter', 'json', '--no-progress', '--no-exit-code'],
 		{ cwd: ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
 	);
-	if (result.error || !result.stdout) {
-		const err = result.stderr || result.error?.message || 'no output';
+	// `--no-exit-code` keeps the exit status at 0 while findings exist, so a
+	// non-zero status can only mean knip itself did not complete (bad config,
+	// unreadable workspace). Fail closed on it rather than parsing whatever
+	// partial output happened to be on stdout.
+	if (result.error || result.status !== 0 || !result.stdout) {
+		const err = result.stderr?.trim() || result.error?.message || 'no output';
 		console.error(`::error::knip failed to run: ${err}`);
 		process.exit(1);
 	}
@@ -98,7 +108,11 @@ function normalizeEntry(issue) {
 		for (const item of issue[key] ?? []) {
 			// Files have {name}; symbols have {name, line, col}; deps have {name, filePath}.
 			const label = item.name ?? item.namePath ?? '<unknown>';
-			entries.push(`${key} ${file} ${label}`);
+			// For `files` the reported name IS the path, so repeating it would
+			// make the baseline read `files <path> <path>`. Emit the two-token
+			// form there and keep the three-token form where the label adds
+			// information (symbol, dependency, member).
+			entries.push(label === file ? `${key} ${file}` : `${key} ${file} ${label}`);
 		}
 	}
 	return entries;

@@ -20,8 +20,11 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const SCRIPT = new URL('./check-knip.mjs', import.meta.url).pathname;
+// `URL#pathname` percent-encodes; `fileURLToPath` does not, and a checkout
+// path containing a space would otherwise spawn a script that does not exist.
+const SCRIPT = fileURLToPath(new URL('./check-knip.mjs', import.meta.url));
 
 function makeFixture() {
 	const root = mkdtempSync(join(tmpdir(), 'knip-fixture-'));

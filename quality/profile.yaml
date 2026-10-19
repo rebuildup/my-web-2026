@@ -32,7 +32,7 @@ stack:
   worker_test: '@cloudflare/vitest-plugin@1.1.x'
   language: typescript@5.9.x
   package_manager: pnpm@12.3.4
-  unused_code: knip@6.41.x
+  unused_code: knip@6.42.x
 
 gates:
   fast:

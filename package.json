@@ -174,6 +174,8 @@
 		"r2:media:audit": "node scripts/check-r2-media-key-set.mjs --target=production",
 		"artifact:attestation:report": "node scripts/artifact-attestation-report.mjs",
 		"artifact:attestation:check": "node scripts/check-artifact-attestation.mjs",
+		"compat:stress:check": "node scripts/check-layout-stress.mjs",
+		"verify:compat-stress-screenshot": "node scripts/make-layout-stress-report.mjs",
 		"capture:pseudo-locale": "node --experimental-strip-types scripts/capture-pseudo-locale-stress.mjs"
 	},
 	"dependencies": {

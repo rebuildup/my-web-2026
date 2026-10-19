@@ -1186,6 +1186,34 @@ scope and procedure:
 [`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md)
 and [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).
 
+## Operator account MFA (operational record)
+
+The four control-plane accounts this project depends on — GitHub,
+Cloudflare, Infisical (the runtime-secret SoT, ADR-0015) and the
+registrar — have no MFA state a Worker can read, and reading one would
+mean holding a provider credential this repository refuses to hold
+(AGENTS.md §4). What *is* auditable is the operator's own record of
+having checked them, so Issue #469 makes that record the subject:
+
+- **SoT**: `quality/operator-mfa-ledger.json` — a schema with no field in
+  which an account identifier, a recovery code or a TOTP seed can be
+  written. A row is `{ service, confirmed_at, factors[{ kind,
+  confirmed_at }] }` and nothing else.
+- **Gate**: `pnpm run check:operator-mfa` classifies every required
+  service as `confirmed` / `unconfirmed` / `stale` / `missing`, and the
+  ledger as a whole as `OK` / `OUTSTANDING` / `UNDECIDABLE`
+  (exit 0 / 1 / 2). It is fail-closed, status-only, and deliberately not
+  wired into `validate:*`: the four account states are not observable from
+  CI, and the shipped ledger is unconfirmed until the owner fills it in.
+- **What it does not prove**: that an account actually has two factors
+  enrolled. Only the record is verified; the console is human-side.
+- Policy defaults (`min_factors: 2`, `require_phishing_resistant: true`,
+  `max_confirmation_age_days: 180`) ship as `policy.status: "proposed"`
+  and await owner ratification.
+
+Scope and procedure:
+[`docs/runbook/operator-mfa-verification.md`](runbook/operator-mfa-verification.md).
+
 ## R2 media restore (deleted public image)
 
 The other half of the storage story is what happens when an object is

@@ -196,7 +196,9 @@
 		"quality:dashboard:check": "node scripts/release-quality-dashboard.mjs",
 		"quality:dashboard:record": "node scripts/record-release-quality-runs.mjs",
 		"quality:dashboard:report": "node scripts/release-quality-dashboard.mjs --report=.tmp/release-quality-dashboard.html",
-		"verify:quality-dashboard-screenshot": "node scripts/make-release-quality-dashboard.mjs"
+		"verify:quality-dashboard-screenshot": "node scripts/make-release-quality-dashboard.mjs",
+		"verify:operator-mfa-checklist-screenshot": "node scripts/make-operator-mfa-checklist-report.mjs",
+		"check:operator-mfa": "node scripts/check-operator-mfa.mjs"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

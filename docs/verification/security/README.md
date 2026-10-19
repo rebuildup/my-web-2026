@@ -15,6 +15,7 @@ of trusting the image.
 | [`headers-browser.webp`](headers-browser.webp) | #449 | `node scripts/security-header-report.mjs` |
 | [`markdown-xss-fixture.webp`](markdown-xss-fixture.webp) | #451 | capture generator is **not** in the repository — see [`## markdown-xss-fixture.webp`](#markdown-xss-fixturewebp); the same properties are asserted on every push by `pnpm exec vitest run test/integration/markdown-xss-ssr.test.ts` and by `pnpm run e2e` |
 | [`webhook-signature-fixture.webp`](webhook-signature-fixture.webp) | #463 | `pnpm run webhook:fixture:report` |
+| [`integration-scope-review.webp`](integration-scope-review.webp) | #464 | `pnpm run verify:integration-scope-screenshot` |
 | [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
 | [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 | [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
@@ -23,30 +24,73 @@ of trusting the image.
 | [`asvs-coverage-matrix.webp`](asvs-coverage-matrix.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
+| [`disclosure-runbook.webp`](disclosure-runbook.webp) | #478 | `pnpm run verify:security-disclosure-screenshot` |
+
+| [`operator-mfa-checklist.webp`](operator-mfa-checklist.webp) | #469 | `pnpm run verify:operator-mfa-checklist-screenshot` |
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
+| [`anomaly-monitor-fixture.webp`](anomaly-monitor-fixture.webp) | #481 | `pnpm run verify:anomaly-monitor-screenshot` |
+
+## `anomaly-monitor-fixture.webp` (Issue #481)
+
+Admin と外部 API の 401 / 403 / 429 / 5xx 発生率がしきい値を超えたとき、
+**秘密・IP などの個人情報を含まない**検知イベントが生成されることを、
+記録済み fixture で確認した結果。7 ケース（正常 2 / 異常 4 / 持続 1）を
+`src/http/middleware/anomaly-monitor.ts` に通し、宣言どおりのイベント数か
+を判定する。イベント 0 のケースが pass である点がこの proof の主張で、
+「鳴らないこと」まで検証している。
+
+- status-only 契約どおり、address / e-mail / credential 形状は出力・HTML
+  ともに走査し、1 件でも検出すると非ゼロ終了する（拒否は行番号のみ）。
+- fixture は status と件数だけで、リクエストも credential も発行しない。
+- 画像だけでは proof にならない。しきい値の根拠・正常時の観測・
+  異常時の修復手順は [`docs/security/request-anomaly-monitor.md`](../../security/request-anomaly-monitor.md)。
+
+Regenerate:
+
+```bash
+pnpm run anomaly:fixture:proof             # fixture proof（status-only）
+pnpm run verify:anomaly-monitor-screenshot # -> この画像（WebP）
+```
+
+## `disclosure-runbook.webp` (Issue #478)
+脆弱性報告 → priority 判定 → 修正 → release gate → 公開判断の **模擬フロー**。
+`quality/security-disclosure.json`（ledger）と
+`docs/runbook/security-disclosure.md`（runbook）を同じ純関数が評価し、
+`quality/fixtures/security-disclosure/` の合成 fixture 5 本を通した結果
+（`COMPLETE` / `INCOMPLETE` / `LEAK_REFUSED`）を 1 枚に写したものである。
+画像に写っているのは fixture によるシミュレーションであり、実在の報告・
+実在の攻撃者・本番の実測ではない。credential-shaped な値は fixture に
+保存せず（レシピだけ保存する）、出力は reason code までで止まる。
+判定の権威は exit code と
+`node --test scripts/check-security-disclosure.test.mjs` であり、画像は証拠で
+あって判定の代用ではない。
+```bash
+pnpm run security:disclosure:check             # 判定（exit 0 / 1 / 2）
+pnpm run security:disclosure:report            # .tmp/security-disclosure-report.html
+pnpm run verify:security-disclosure-screenshot # WebP at the path above
+```
+Issue は `disclosure-runbook.png` と書いているが、同ディレクトリの他 artefact
+と同じく WebP で納める（Playwright は WebP を書けないため、メモリ上の capture
+を `sharp` で再エンコードし、途中 PNG は作らない）。手順・異常時の code 一覧・
+scope の外は [`docs/runbook/security-disclosure.md`](../../runbook/security-disclosure.md) に正本がある。
 
 ## `r2-restore-proof.webp` (Issue #462)
-
 公開画像が `MEDIA` から 1 件消えたときの復旧手順を、**credential 不要・本番非接触**
 の fixture proof で実行した結果。`quality/fixtures/r2-media-restore/` の 7 記録ケース
 （復旧成功 / 冪等 / private namespace 拒否 / source 不在 / manifest 不一致 /
 write 欠損 / 判別不能）を `src/cloudflare/media-restore.ts` に通し、
 宣言どおりに振る舞ったかを判定する。実行先は process 内の Map で、
 Cloudflare への read / write コードパスは存在しない。
-
 判定を左右するのは「成功したか」だけでなく **「write しなかったか」** である。
 `bucketAfter=absent` を宣言した 3 ケース（private 拒否 / source 不在 /
 manifest 不一致）は、書いた瞬間に逸脱として落ちる。
-
 status-only 契約どおり、画像には object key・key 断片・namespace・
 source path・credential を写していない（生成側が実行前に同じ leak guard を通し、
 1 件でも検出すると非ゼロ終了する）。手順と失敗時挙動は
 [`docs/runbook/r2-media-restore.md`](../../runbook/r2-media-restore.md)、
 実 R2 binding での検証は
 `pnpm exec vitest run test/integration/r2-media-restore.test.ts`。
-
 Regenerate:
-
 ```bash
 pnpm run r2:restore:proof          # fixture proof（status-only）
 pnpm run r2:restore:proof:report   # -> .tmp/r2-restore-proof.html（この画像の生成元）
@@ -164,6 +208,32 @@ Playwright cannot write WebP, so the generator re-encodes the in-memory
 capture with `sharp` (width ≤ 1600 px, quality 74) and never writes an
 intermediate PNG. Reading guide:
 [`docs/verification/security/release-gate-coverage.md`](release-gate-coverage.md).
+
+## `integration-scope-review.webp` (Issue #464)
+
+OAuth / 外部連携 token の最小権限レビュー（Issue #464）。3 段構成:
+
+1. **候補表** — `quality/integration-scope.json` の宣言（required /
+   optional / never accepted、保管期限、revoke 期限）。roster の SoT は
+   `docs/domain/integrations.md` で、gate は両者の drift を落とす。
+2. **測定表** — ledger の `reviewed_connections` を
+   `src/http/integrations/scope-review.ts` の `reviewConnection()` に
+   通した結果。`approved` だけでなく `unapproved_scope` と
+   `reauth_required` が同じ表に並ぶことが、この report の存在理由。
+   `review: "deferred"` の候補（Stripe）は `unknown_integration` として
+   並ぶ——scope review が存在しないことを「主張」ではなく測定結果として
+   見せるため。宣言と測定が食い違えば gate が fail する。
+3. **false-green probe** — `quality/fixtures/integration-scope/` の 6 件。
+   ledger への patch 形式なので repository から乖離しない。
+
+scope **名**と frozen な時刻だけを描画し、token 値・アカウント email・
+bucket / key 一覧は一切読まない・描かない・保存しない。`/integrations/*` は
+handler 未 mount（完全 consent 済み grant でも 404）で、この report は
+adapter を記録したものであり、公開済み接続を記録したものではない。
+契約の本文は
+[`docs/security/integration-token-scope.md`](../../security/integration-token-scope.md)。
+判定は `pnpm run integration:scope:check`、画像は
+`pnpm run verify:integration-scope-screenshot` が生成する。
 
 ## `webhook-signature-fixture.webp`
 
@@ -568,3 +638,45 @@ script exits non-zero unless the gate really failed, and re-reads the
 rendered page to confirm the fixture's credential-shaped URL did not
 survive redaction, so the committed image cannot become the place where a
 credential-shaped string is published.
+
+## `operator-mfa-checklist.webp` (Issue #469)
+
+The operator MFA / Passkey confirmation gate's own report, rendered in a
+browser. The top table runs the shipped operator ledger
+(`quality/operator-mfa-ledger.json`) and seven recorded fixtures through the
+same seam the CLI uses: one `confirmed`, one 未確認 row, a missing service, a
+stale confirmation, a record that contradicts itself, a ledger carrying an
+account identifier, and a factor kind taken off `Object.prototype`. Each row
+shows the verdict, the exit code and the four state counts, so 未確認 can never
+be read as a green tick — and a prototype key cannot be counted as a second
+enrolled factor.
+
+The shipped ledger is shown **unconfirmed on purpose**: no agent can read a
+GitHub / Cloudflare / Infisical / registrar console, and a confirmation date
+this repository cannot verify is not one it may write down. The gate therefore
+exits `1` (`OUTSTANDING`) until the owner fills it in, which is the honest
+reading rather than a green the repository has not earned.
+
+What the page cannot show: the actual MFA state of the four accounts. That is
+operator-side; the gate audits the *record*, not the account, and says so in
+its own output.
+
+Anonymity is asserted, not promised. The ledger schema has no field for an
+account identifier (an identifier-shaped key is `UNDECIDABLE`), and the page
+plus every CLI transcript it embeds pass `assertNoSensitiveInText` before a
+byte is written — an address, an `otpauth://` URI, a base32 seed, a
+recovery-code-shaped digit run or a bearer token fails the command instead of
+producing the artefact.
+
+Regenerate:
+
+```bash
+pnpm run check:operator-mfa                              # verdict (exit 0 / 1 / 2)
+pnpm run verify:operator-mfa-checklist-screenshot       # HTML + WebP at the path above
+node --test scripts/check-operator-mfa.test.mjs         # the assertions behind both
+```
+
+Procedure: [`docs/runbook/operator-mfa-verification.md`](../../runbook/operator-mfa-verification.md).
+Issue asked for `operator-mfa-checklist.png`; like every artefact in this
+directory it is committed as WebP (Playwright writes the capture to memory and
+`sharp` re-encodes it, so no PNG intermediate is written).

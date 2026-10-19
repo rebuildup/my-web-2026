@@ -1,0 +1,22 @@
+{
+	"case": "admin-sustained-forbidden",
+	"note": "異常系が継続しても 1 ウィンドウ 1 信号 1 回だけ検知される（ラッチ）。事象は増えない",
+	"surface": "admin",
+	"runs": [{ "status": 200, "count": 20 }, { "status": 403, "count": 40 }],
+	"expect": {
+		"eventCount": 1,
+		"events": [
+			{
+				"event": "anomaly.detected",
+				"surface": "admin",
+				"signal": "forbidden",
+				"status": "403",
+				"samples": 27,
+				"hits": 7,
+				"rate": 0.26,
+				"threshold": 0.25,
+				"minSamples": 20
+			}
+		]
+	}
+}

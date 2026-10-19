@@ -10,6 +10,17 @@
 - Run `pnpm run validate:release`.
 - Land via the canonical release PR flow.
 
+The full procedure — intake, P0-P3 triage, fixture-only reproduction,
+regression test, release gate, and the publication decision — is
+[`docs/runbook/security-disclosure.md`](runbook/security-disclosure.md),
+and its machine-readable half (stages, priority rules, required operator
+duties, forbidden operations) is
+[`quality/security-disclosure.json`](../quality/security-disclosure.json).
+That gate (`pnpm run security:disclosure:check`) simulates the flow over
+committed fixtures and proves the runbook and the ledger still describe
+each other; it decides nothing about a real report, and it prints
+verdicts and reason codes only, never a reported value.
+
 For urgent / out-of-band reports (live site exploitation, credential
 leaks), contact the maintainer directly via the channel listed in
 `CODEOWNERS` / repository Settings → Code security before opening a
@@ -358,6 +369,35 @@ The operational contract — principal semantics, middleware ordering,
 the client mapping, the drift guard between the retry window and
 `RATE_LIMITS`, and what the local workerd suite does *not* prove —
 lives in [`security/write-rate-limit.md`](security/write-rate-limit.md).
+
+## Request anomaly monitor (Issue #481)
+
+Two request surfaces are watched for **rates**, not for callers:
+`/admin*` (`admin`) and `/api/v1/*` (`external-api`). The 401 / 403 /
+429 / 5xx share of a five-minute fixed window is compared against a
+per-signal threshold, and a crossing produces one status-only detection
+event — latched to one announcement per window per signal.
+
+Three properties are the contract:
+
+- **no identity dimension.** The aggregation key is `(surface, window)`
+  and the observation type has no slot for an IP, key id, cookie, path
+  or user agent, so the counter cannot become a tracking surface by
+  accident; the event's field list is closed and asserted.
+- **no delivery.** The shipped sink writes one audit record through
+  `src/logging`. No e-mail, webhook, alert or third-party call exists,
+  because a destination outside the platform needs an owner decision and
+  its own ADR (AGENTS.md §4).
+- **per-isolate counts.** A Workers isolate sees only what it served, so
+  this is a detection decision and a reproducible proof, not a durable
+  global rate.
+
+The contract, the thresholds, and the observation / remediation
+procedure live in
+[`security/request-anomaly-monitor.md`](security/request-anomaly-monitor.md).
+The threshold crossings are reproduced from recorded fixtures
+(`quality/fixtures/request-anomaly-monitor/`, no credential and no
+production binding involved) by `pnpm run anomaly:fixture:proof`.
 
 ## CORS
 
@@ -1174,6 +1214,34 @@ and Issue #459 still must not be closed on repository gates alone. Full
 scope and procedure:
 [`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md)
 and [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).
+
+## Operator account MFA (operational record)
+
+The four control-plane accounts this project depends on — GitHub,
+Cloudflare, Infisical (the runtime-secret SoT, ADR-0015) and the
+registrar — have no MFA state a Worker can read, and reading one would
+mean holding a provider credential this repository refuses to hold
+(AGENTS.md §4). What *is* auditable is the operator's own record of
+having checked them, so Issue #469 makes that record the subject:
+
+- **SoT**: `quality/operator-mfa-ledger.json` — a schema with no field in
+  which an account identifier, a recovery code or a TOTP seed can be
+  written. A row is `{ service, confirmed_at, factors[{ kind,
+  confirmed_at }] }` and nothing else.
+- **Gate**: `pnpm run check:operator-mfa` classifies every required
+  service as `confirmed` / `unconfirmed` / `stale` / `missing`, and the
+  ledger as a whole as `OK` / `OUTSTANDING` / `UNDECIDABLE`
+  (exit 0 / 1 / 2). It is fail-closed, status-only, and deliberately not
+  wired into `validate:*`: the four account states are not observable from
+  CI, and the shipped ledger is unconfirmed until the owner fills it in.
+- **What it does not prove**: that an account actually has two factors
+  enrolled. Only the record is verified; the console is human-side.
+- Policy defaults (`min_factors: 2`, `require_phishing_resistant: true`,
+  `max_confirmation_age_days: 180`) ship as `policy.status: "proposed"`
+  and await owner ratification.
+
+Scope and procedure:
+[`docs/runbook/operator-mfa-verification.md`](runbook/operator-mfa-verification.md).
 
 ## R2 media restore (deleted public image)
 

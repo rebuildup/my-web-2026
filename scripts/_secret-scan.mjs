@@ -288,6 +288,14 @@ export const ALLOWLIST = Object.freeze([
 			'shapes must hold those shapes; they are the documented sample strings, not issued values.',
 	},
 	{
+		path: 'scripts/check-operator-mfa.test.mjs',
+		detector: 'private-key-block',
+		reason:
+			'The MFA anonymization guard own detector fixture (Issue #469). The suite asserts the guard ' +
+			'REJECTS a PEM header, so the header has to be present; it is the RFC 7468 label with no key ' +
+			'body, no modulus and no issued value.',
+	},
+	{
 		path: 'scripts/check-sbom.test.mjs',
 		detector: 'github-token',
 		reason:

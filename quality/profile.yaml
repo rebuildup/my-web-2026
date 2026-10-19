@@ -164,6 +164,17 @@ gates:
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
+      # Issue #478: the vulnerability-report -> fix -> publication-decision
+      # flow. Offline and read-only: it reads docs/runbook/security-disclosure.md,
+      # quality/security-disclosure.json, the committed fixtures and
+      # package.json#scripts, and runs the committed fixtures through the
+      # same pure evaluator. A stage heading that left the runbook, an
+      # unregistered `pnpm run` command, an unresolvable reference, a duty
+      # without evidence, a probe that does not reproduce its expectation,
+      # or a fixture carrying a credential-shaped value all fail here. It
+      # reads no secret, contacts no production origin and merges nothing,
+      # so it costs a directory walk and belongs in the fast chain.
+      - 'pnpm run security:disclosure:check' # disclosure flow: runbook/ledger agreement + simulated reports
       # Issue #507: the ASVS 5.0 coverage ledger. It does not claim
       # certification. Every selected applicable requirement resolves to
       # a test/doc/gate, or is printed as `not run` (unverified) with the
@@ -269,6 +280,19 @@ gates:
       # chain really runs, so a required check that stopped running is
       # a release failure instead of a silent green.
       - 'pnpm run release:gate:check'
+      # Issue #464: the third-party connection scope / retention ledger.
+      # Every candidate in `docs/domain/integrations.md` declares the
+      # least-privilege scope set it may hold, the token retention
+      # ceiling, and the revocation procedure; the gate then RUNS each
+      # reviewed connection through the real adapter
+      # (`src/http/integrations/scope-review.ts`) and fails when the
+      # measurement disagrees with the claim. It also fails when a
+      # candidate is published, or an integration secret is provisioned,
+      # while the owner allowlist is empty — the entry point stays
+      # unmounted until the owner records a decision. Offline text
+      # analysis plus pure function calls: no Worker, no network, no
+      # clock read, no secret.
+      - 'pnpm run integration:scope:check' # least-privilege connection ledger (Issue #464)
       # Issue #466: Tool artefact license + dependency inventory. Offline,
       # status-only: the manifest's `license` claim is checked against the
       # license file in the pinned checkout, the dependency evidence against
@@ -563,7 +587,46 @@ release_gate_coverage:
   known_limits:
     - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
     - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
-    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 41 `validate:fast` components'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 42 `validate:fast` components'
+
+# Issue #464 - the connection scope / retention ledger. `docs/domain/
+# integrations.md` lists the candidate services and promotes none of
+# them, so nothing in the repository says what a connection would be
+# allowed to hold. The first ticket that asks for a token inherits that
+# gap, so the least-privilege set, the retention ceiling and the
+# revocation procedure are written down BEFORE any token exists, and a
+# cheap gate keeps the declaration honest three ways: structure (no
+# placeholder, no contradiction), consistency (the roster and the
+# status come from the domain document, not from this ledger), and
+# measurement (every reviewed connection is executed through the real
+# adapter and compared with what the ledger claims).
+integration_scope_ledger:
+  manifest: 'quality/integration-scope.json'
+  candidate_roster_source_of_truth: 'docs/domain/integrations.md (Current state table)'
+  adapter: 'src/http/integrations/scope-review.ts (reviewConnection — pure; no binding, network, storage or clock read)'
+  fixtures: 'src/http/integrations/fixtures.ts (local, synthetic requirements; frozen clock)'
+  probe_fixtures: 'quality/fixtures/integration-scope/{pass,published-without-allowlist,missing-revocation,false-green-approval,roster-drift,deferred-with-requirement}.json'
+  command: 'pnpm run integration:scope:check'
+  screenshot_command: 'pnpm run verify:integration-scope-screenshot'
+  tests: 'node --test scripts/check-integration-scope.test.mjs && node --test scripts/make-integration-scope-report.test.mjs'
+  gate: fast
+  gate_placement: 'validate:fast, immediately after `pnpm run release:gate:check`'
+  documentation: 'docs/security/integration-token-scope.md'
+  verification_artifact: 'docs/verification/security/integration-scope-review.webp'
+  surfaces:
+    - 'fast / integration / release — the `gates.<level>.components` plan executed by `scripts/run-quality-gates.mjs`, counted only when the entry point is exactly `node scripts/run-quality-gates.mjs <gate>` (run mode)'
+  statuses:
+    - 'pass — the ledger is structurally complete, agrees with the domain roster, and every measured verdict equals the declared one'
+    - 'fail — a required field is missing, a reason is a placeholder, a candidate drifts from `docs/domain/integrations.md`, or a measurement contradicts the declaration'
+    - 'fail — a candidate declares a published surface, or an integration secret name is provisioned, while `allowlist.entries` is empty'
+  silent_pass_guards:
+    - 'a reviewed connection whose measured verdict differs from its `expected` verdict is an error, not a warning (false-green probe `false-green-approval.json`)'
+    - 'a probe fixture that no longer fails the gate fails the gate (the probes are re-run by the same command that prints the ledger)'
+    - '`/integrations/*` mounted with an empty owner allowlist is an error; the runtime side of the same claim is `src/http/integrations/boundary.test.ts`'
+    - 'a rendered cell that matches credential-shaped material is refused before a row is written; the ledger stores scope NAMES, never values'
+  known_limits:
+    - 'the ledger states what a vendor scope MEANS as of `source.verified_on`; a vendor-side change is not tracked automatically and must be re-verified in the promoting ticket'
+    - 'a candidate with no capability to scope yet is recorded as `review: deferred` with a reason; the adapter knows no requirement for it, so a grant naming it answers `unknown_integration`, and the gate errors when such a row grows a requirement'
 
 # Issue #479 - assets and threat model per feature unit. `docs/security/*.md`
 # describes the shipped controls one page at a time; nothing compared a
@@ -843,6 +906,42 @@ compatibility:
       - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
+  security_disclosure:
+    enabled: true
+    issue: '#478'
+    tool: scripts/check-security-disclosure.mjs
+    ledger: quality/security-disclosure.json
+    runbook: docs/runbook/security-disclosure.md
+    fixtures: quality/fixtures/security-disclosure
+    gate: fast
+    check_command: 'pnpm run security:disclosure:check'
+    report_command: 'pnpm run security:disclosure:report'
+    verification_command: 'pnpm run verify:security-disclosure-screenshot'
+    mode: offline_status_only_simulation
+    output: 'verdict / priority / duty id / count / reason code only; never a reported value, payload, production URL or credential (AGENTS.md section 4)'
+    exit_codes:
+      0: 'the runbook, the ledger and every committed probe agree'
+      1: 'drift, a missing duty, an unregistered command, an unresolvable reference, or a probe that does not reproduce its expectation'
+      2: 'usage error (unreadable manifest / fixture)'
+    note: >-
+      Issue #478. The flow from a vulnerability report to the publication
+      decision, in two halves: docs/runbook/security-disclosure.md is the
+      operator procedure and quality/security-disclosure.json is its
+      machine-readable half (stages, ordered P0-P3 derivation, required
+      operator duties, forbidden operations). The gate proves the two
+      halves still describe each other and that the simulated flow
+      discriminates: the committed fixtures are run through the same pure
+      evaluator, so a missing duty and a public detail published before
+      the fix are INCOMPLETE rather than a pass, and a report carrying a
+      credential-shaped value is LEAK_REFUSED with a reason code instead
+      of the value. Hostile fixtures store a recipe, never a literal,
+      because a committed credential shape would fail pnpm run secret:scan.
+      It reads the working tree only — no Worker, no network, no D1/R2, no
+      environment credential, no .dev.vars, no Infisical call, and it
+      merges nothing. This gate does NOT decide the publication: the
+      reporting channel (Issue #468) and the release merge remain owner
+      decisions (AGENTS.md section 6). Open owner decision recorded in the
+      runbook section 11.
   log_redaction:
     enabled: true
     command: 'pnpm run log:redaction:check'
@@ -1070,3 +1169,49 @@ r2_media_key_set_audit:
   documentation: 'docs/runbook/r2-media-key-set-audit.md + docs/security/r2-media-visibility.md'
   verification_artifact: 'docs/verification/security/r2-media-key-set-audit.webp'
   owner_issue: '#577'
+
+operator_mfa_audit:
+  command: 'pnpm run check:operator-mfa'
+  report_command: 'pnpm run verify:operator-mfa-checklist-screenshot'
+  implementation: 'scripts/check-operator-mfa.mjs (gate) + scripts/_operator-mfa-audit.mjs (pure policy seam)'
+  tests: 'node --test scripts/check-operator-mfa.test.mjs && node --test scripts/make-operator-mfa-checklist-report.test.mjs'
+  fixtures: 'quality/fixtures/operator-mfa/*.json'
+  ledger: 'quality/operator-mfa-ledger.json (operator-declared; the repository holds no provider state)'
+  driver: 'none — no adapter, no network call, no binding. The four account states are not observable from a Worker, so the gate audits the operator-declared record instead.'
+  policy_source_of_truth: 'the ledger policy block (status / min_factors / require_phishing_resistant / max_confirmation_age_days) plus the SERVICE / FACTOR_KIND vocabularies in scripts/_operator-mfa-audit.mjs. Both vocabularies are null-prototype objects and membership is tested with Object.hasOwn, so a prototype key such as "toString" or "constructor" is an unknown member rather than an inherited one.'
+  gate: none
+  gate_placement: >-
+    deliberately outside validate:fast / validate:integration /
+    validate:release, for the same two reasons as r2_media_key_set_audit
+    plus one more: the shipped ledger is unconfirmed by design (no agent
+    can read a provider console, so no date this repository cannot verify
+    may be recorded), which means a CI step would be permanently red for a
+    condition only the owner can resolve. It is an operator-run gate over a
+    local file, with no credential and no remote read at all.
+  trigger: 'operator-run on the MFA review cadence, and before a release PR is opened'
+  credential: 'none — the gate reads one local JSON file and cannot reach a provider, a binding or a credential store'
+  output_contract: >-
+    status-only (AGENTS.md §4): service id, state, ISO confirmation date,
+    factor kind and reason code. No account identifier, enrolment list,
+    recovery code, credential or raw error text. The ledger schema has no
+    field in which an identifier can be written, identifier-shaped keys are
+    rejected with ledger_forbidden_field, and both the ledger file and the
+    rendered report go through the anonymization guard — a finding fails
+    the command instead of producing output or a page.
+  failure_policy:
+    - 'one unconfirmed / stale / missing service is OUTSTANDING (exit 1); a green tick is only reachable when all four rows are confirmed'
+    - 'an unreadable, unreconcilable, undatable or identifier-bearing ledger is UNDECIDABLE (exit 2) with no rows — an unread checklist is never a pass, and a partial reading is never rendered as a result'
+    - 'a confirmation date in the future, or older than a factor the same row lists, is UNDECIDABLE rather than confirmed'
+    - 'a service id or factor kind outside the enum — including an Object.prototype key such as "toString" or "constructor" — is UNDECIDABLE rather than counted toward min_factors'
+    - 'a recorded fixture must declare `now`; without it the fixture is rejected (fixture_clock_missing) instead of ageing against the wall clock'
+    - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+    - 'the report refuses to be written when a fixture drifted from its declared verdict, so the page cannot disagree with the assertions in scripts/check-operator-mfa.test.mjs'
+  mutation: 'none — the gate reads one local file and has no write path'
+  documentation: 'docs/runbook/operator-mfa-verification.md'
+  verification_artifact: 'docs/verification/security/operator-mfa-checklist.webp'
+  open_owner_decision: 'policy.status is "proposed": min_factors=2, require_phishing_resistant=true and max_confirmation_age_days=180 are Issue #469 defaults awaiting owner ratification. A pass while the status is proposed prints a note saying so.'
+  open_owner_decisions:
+    - 'factor counting: two entries of the same kind currently count as two factors (the schema cannot express factor identity). Counting distinct kinds, rejecting a duplicated kind, or adding an identity-free ordinal is a policy change, recorded in docs/runbook/operator-mfa-verification.md §5.1 and left undecided.'
+    - 'freshness window: ageing is computed on the row confirmed_at only, so a row written today is confirmed even when its factor dates are older than max_confirmation_age_days. Ageing on the older of the two, or declaring that only the row date expires, is a policy change recorded in the same section.'
+    - 'release checklist: docs/release.md step 9 still lists only r2:media:audit, so this gate has no durable enforcement point in the repository. Adding it beside the R2 audit is an owner decision; until then the trigger above is operational guidance, not an enforced step.'
+  owner_issue: '#469'

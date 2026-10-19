@@ -116,6 +116,11 @@ http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)
 cloudflare -> logging (Issue #467 — auth email stub + binding probes)
 editorial -> logging (Issue #467 — SSR fallback failure record)
+server -> logging (Issue #481 — the Worker entry feeds every
+             Worker-generated response to the request anomaly monitor,
+             and the detection event's only shipped sink is the
+             status-only `boundary` audit record; no delivery is
+             configured before owner approval)
 server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
              `delivery.iframe.allow` / `referrer_policy` from the Tool
              manifest; the policy object is passed into the HTTP
@@ -155,7 +160,19 @@ home -> editorial
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
 - `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
-- `src/http/**` owns the external HTTP boundary.
+- `src/http/**` owns the external HTTP boundary. It also owns the
+  request anomaly contract (Issue #481):
+  `src/http/middleware/anomaly-monitor.ts` decides whether the
+  401 / 403 / 429 / 5xx rate of the two watched surfaces crossed a
+  threshold and what the status-only detection event looks like. The
+  aggregation key is `(surface, window)` and the event's field list is
+  closed, so no identity dimension (IP, key id, cookie, path, user
+  agent) can be added — that rule is a type, not a convention. The
+  Worker entry (`src/server.ts`) is the only observation point, because
+  `/admin*` and `/api/v1/*` are served by different layers. Delivery
+  (e-mail, webhook, alert) is **not** implemented: it leaves the
+  platform and needs an owner decision plus an ADR (AGENTS.md §4). See
+  `docs/security/request-anomaly-monitor.md`.
 - `src/logging/**` (Issue #467) is a **leaf** obligation owning
   the runtime log-redaction contract: `redact.ts` decides what may
   appear in a log record, `logger.ts` is the only module allowed
@@ -439,6 +456,26 @@ cannot decide exits non-zero. Decision:
 [`quality/profile.yaml`](quality/profile.yaml#r2_media_key_set_audit).
 Operator reference:
 [`docs/runbook/r2-media-key-set-audit.md`](docs/runbook/r2-media-key-set-audit.md).
+
+A third gate is deliberately **not** in the three entry points, and is
+not a CI step either: the operator MFA confirmation audit (Issue #469,
+`pnpm run check:operator-mfa`). It reads one local JSON ledger
+(`quality/operator-mfa-ledger.json`) in which the operator records the
+date they last verified 2FA / Passkey on the GitHub, Cloudflare,
+Infisical and registrar accounts, and classifies each service as
+`confirmed` / `unconfirmed` / `stale` / `missing` (ledger verdict
+`OK` / `OUTSTANDING` / `UNDECIDABLE`, exit 0 / 1 / 2). It holds no
+credential, calls no provider and touches no binding — the four account
+states are not observable from a Worker, so what the gate audits is the
+**record**, not the account. The ledger schema has no field for an
+account identifier, an identifier-shaped key is `UNDECIDABLE`, and both
+the ledger and the rendered report go through a status-only anonymization
+guard. It stays out of `validate:*` because the shipped ledger is
+unconfirmed until the owner fills it in (a CI step would be permanently
+red for a condition only the owner can resolve). Decision:
+[`quality/profile.yaml`](quality/profile.yaml#operator_mfa_audit).
+Operator reference:
+[`docs/runbook/operator-mfa-verification.md`](docs/runbook/operator-mfa-verification.md).
 
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are

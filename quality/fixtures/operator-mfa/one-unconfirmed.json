@@ -1,0 +1,46 @@
+{
+	"case": "Infisical は未確認（確認日が記録されていない）",
+	"note": "未確認を pass に落とさないこと。1 行でも未確認があれば OUTSTANDING。",
+	"now": "2026-10-19",
+	"ledger": {
+		"version": 1,
+		"policy": {
+			"status": "ratified",
+			"min_factors": 2,
+			"require_phishing_resistant": true,
+			"max_confirmation_age_days": 180
+		},
+		"services": [
+			{
+				"service": "github",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "cloudflare",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{ "service": "infisical", "confirmed_at": null, "factors": [] },
+			{
+				"service": "registrar",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "security_key", "confirmed_at": "2026-10-13" }
+				]
+			}
+		]
+	},
+	"expect": {
+		"verdict": "OUTSTANDING",
+		"exitCode": 1,
+		"counts": { "confirmed": 3, "unconfirmed": 1, "stale": 0, "missing": 0 }
+	}
+}

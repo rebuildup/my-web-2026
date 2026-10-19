@@ -24,7 +24,7 @@ than in `wrangler.jsonc#vars`. Issue #187 performed this migration.
 | Type augmentation | `src/cloudflare/auth/env.d.ts` (`GOOGLE_ANALYTICS_MEASUREMENT_ID: string`) | committed; tracks `wrangler.jsonc` |
 | Render gate | `src/routes/__root.tsx#loader` (server-side read) → `AnalyticsGate` in `src/editorial/analytics/AnalyticsConsent.tsx` (public paths only, and only after a stored consent decision) → `src/editorial/analytics/GoogleAnalytics.tsx` | committed |
 | Consent gate (Issue #495) | `src/editorial/analytics/consent.ts` (decision rules, document-scoped state) + `AnalyticsConsentControl` (the only place a decision is recorded); the default state is **no measurement** | committed |
-| Exclusion gate | `useLocation()` selector `pathname.startsWith('/admin')` in `__root.tsx#RootComponent` (gate mount) + the same rule inside `trackRoutePageView` (page_view emission, Issue #286) | committed |
+| Exclusion gate | `isAnalyticsMountPath(pathname)` in `src/editorial/analytics/consent.ts`, called once by `__root.tsx#RootComponent` (gate mount) + the same rule inside `trackRoutePageView` (page_view emission, Issue #286). The predicate is unit-tested (`consent.test.ts`) because an SSR assertion cannot distinguish a working gate from a missing one | committed |
 | SPA route-change tracking | `GoogleAnalyticsRouteTracker` in `GoogleAnalytics.tsx`, mounted together with the loader inside `AnalyticsGate` (Issue #286; consent-gated since Issue #495) | committed |
 
 The placeholder is the **default state**. The Worker reads the
@@ -128,12 +128,14 @@ To wire GA4 into production for the first time:
 
    `/admin/*` has no consent surface and mounts no gate, so
    `https://rebuildup.dev/admin/login` must not request
-   `googletagmanager` even with a stored grant. The exclusion is in
-   `src/routes/__root.tsx#RootComponent` — verify with a read-only
-   `git grep` if the exclusion is ever suspected to have regressed:
+   `googletagmanager` even with a stored grant. The rule is
+   `isAnalyticsMountPath` in `src/editorial/analytics/consent.ts`,
+   called once by `__root.tsx#RootComponent`. Verify it with the
+   committed unit table rather than a grep — an SSR page proves
+   nothing here, because no route renders the tag on the server:
 
    ```bash
-   git grep -n "startsWith('/admin')" src/routes/__root.tsx
+   pnpm exec vitest run src/editorial/analytics/consent.test.ts -t isAnalyticsMountPath
    ```
 
 ## Per-environment behaviour
@@ -214,8 +216,10 @@ It runs:
   nothing before hydration, a stored grant mounts the loader, a
   withdrawal stops an already-loaded tag (`ga-disable-<ID>` plus a
   Consent Mode update), a refused write stops measurement, and a
-  re-grant clears the opt-out flag. Not part of `validate:fast`; run
-  it alongside the gate for analytics changes.
+  re-grant clears the opt-out flag **and** issues the matching
+  `consent update` that restores analytics storage on the already-loaded
+  tag. Not part of `validate:fast`; run it alongside the gate for
+  analytics changes.
 - `infisical:check:coverage` — verifies the three
   deploy-time sources (`wrangler.jsonc#secrets.required`,
   `wrangler.production.jsonc#secrets.required`,

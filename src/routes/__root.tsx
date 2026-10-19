@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import { AnalyticsConsentControl, AnalyticsGate } from '../editorial/analytics/AnalyticsConsent';
+import { isAnalyticsMountPath } from '../editorial/analytics/consent';
 import '../styles.css';
 
 /**
@@ -260,7 +261,9 @@ export const Route = createRootRoute({
 function RootComponent() {
 	const { gaMeasurementId } = Route.useLoaderData();
 	const { pathname, searchStr } = useLocation();
-	const isAdminPath = pathname.startsWith('/admin');
+	// The `/admin/*` exclusion rule lives in `editorial/analytics/consent.ts`
+	// so it can be tested without a router — see `isAnalyticsMountPath`.
+	const isAdminPath = !isAnalyticsMountPath(pathname);
 	return (
 		<html lang="ja">
 			<head>

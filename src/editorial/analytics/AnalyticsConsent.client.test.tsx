@@ -337,6 +337,7 @@ const WITHDRAWAL_IDS = {
 	stop: 'G-TEST0011',
 	regrant: 'G-TEST0012',
 	refused: 'G-TEST0013',
+	regrantSignal: 'G-TEST0014',
 } as const;
 
 describe('AnalyticsConsentControl — withdrawal after a grant', () => {
@@ -429,6 +430,35 @@ describe('AnalyticsConsentControl — withdrawal after a grant', () => {
 		});
 		// The withdrawal flag is document-scoped, so a re-grant has to
 		// clear it before the re-mounted inline `config` runs.
+		expect((globalThis as unknown as Record<string, unknown>)[`ga-disable-${id}`]).toBe(false);
+		expect(analyticsMeasurementAllowed()).toBe(true);
+	});
+
+	it('re-grants analytics storage on a tag that is already running', async () => {
+		const id = WITHDRAWAL_IDS.regrantSignal;
+		await grant(id);
+		// The library is already loaded by the time the visitor changes
+		// their mind. `consent default` in the re-mounted inline script
+		// is consumed at initialization and cannot undo the withdrawal,
+		// so the re-grant has to issue `consent update` itself.
+		const calls = installFakeGtag();
+		await withdraw();
+		await waitFor(() => {
+			expect(storageFixture.values.get(ANALYTICS_CONSENT_STORAGE_KEY)).toBe('denied');
+		});
+		calls.length = 0;
+
+		(await screen.findByTestId('analytics-consent-toggle')).click();
+		(await screen.findByTestId('analytics-consent-grant')).click();
+
+		await waitFor(() => {
+			expect(storageFixture.values.get(ANALYTICS_CONSENT_STORAGE_KEY)).toBe('granted');
+		});
+		expect(calls).toContainEqual([
+			'consent',
+			'update',
+			expect.objectContaining({ analytics_storage: 'granted', ad_storage: 'denied' }),
+		]);
 		expect((globalThis as unknown as Record<string, unknown>)[`ga-disable-${id}`]).toBe(false);
 		expect(analyticsMeasurementAllowed()).toBe(true);
 	});

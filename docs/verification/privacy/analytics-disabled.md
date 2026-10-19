@@ -50,10 +50,11 @@ Issue は `docs/verification/privacy/analytics-disabled.png` を指定してい�
 
 | 対象 | 基準 | 固定している test |
 | --- | --- | --- |
-| 同意判定 | `granted` は保存値 `granted` かつ off-switch 無しのときだけ。それ以外（未保存・不明値・空文字・空白・`setItem` throw）は `unset` = 非計測 | `src/editorial/analytics/consent.test.ts`（19） |
+| 同意判定 | `granted` は保存値 `granted` かつ off-switch 無しのときだけ。それ以外（未保存・不明値・空文字・空白・`setItem` throw）は `unset` = 非計測 | `src/editorial/analytics/consent.test.ts`（31） |
 | GA4 bootstrap | 許可が解決するまで `GoogleAnalytics` は描画されない。描画後も `analyticsMeasurementAllowed()` が偽なら page_view を送らない | `GoogleAnalytics.test.tsx`（26） |
-| 拒否の実効性 | withdraw で `window['ga-disable-<ID>'] = true` と `gtag('consent','update',{…denied})` の両方が発行される。再許可でフラグが false に戻る。保存拒否時は記録も計測も残らない | `AnalyticsConsent.client.test.tsx`（12） |
-| 公開 SSR HTML | `/` `/about` `/contact` の document に `googletagmanager.com` / `gtag(` / consent test id が一切含まれない。query / cookie では武装できない。`/admin/login` は同意 UI もタグも出さない | `test/integration/analytics-consent.test.ts`（5）、`test/integration/privacy-projection.test.ts`（26） |
+| 拒否の実効性 | withdraw で `window['ga-disable-<ID>'] = true` と `gtag('consent','update',{…denied})` の両方が発行される。再許可ではフラグを false に戻し、**既に動いているタグに対して** `consent update {analytics_storage:'granted'}` を発行する。保存拒否時は記録も計測も残らない | `AnalyticsConsent.client.test.tsx`（13） |
+| `/admin/*` 除外 | `isAnalyticsMountPath` が `/admin`・`/admin/`・`/admin/**` を偽、`/administration` のような単なる前方一致を真と答える。mount 側はこの 1 関数を呼ぶだけである | `src/editorial/analytics/consent.test.ts` の `isAnalyticsMountPath` case |
+| 公開 SSR HTML | `/` `/about` `/contact` の document に `googletagmanager.com` / `gtag(` / consent test id が一切含まれない。query / cookie では武装できない（SSR はどの route でもタグを出さないため、これは「描画されない」ことの確認であって admin 除外の証明ではない。除外の証明は上の行） | `test/integration/analytics-consent.test.ts`（5）、`test/integration/privacy-projection.test.ts`（26） |
 | 公開する情報 | 生きた `page_view` の param は `page_path` / `page_location` / `page_title` のみ。query は strip され、owner 未承認データの検出器に掛からない | `privacy-projection.test.ts` の granted case |
 
 ## 4. 実行手順
@@ -71,8 +72,8 @@ pnpm run test:client
 pnpm run capture:analytics-consent
 ```
 
-2026-10-20 時点の実測: 上記 workerd 側 4 files / 76 tests passed、
-client 側 7 files / 50 tests passed。`validate:fast` は `pnpm run test`
+2026-10-20 時点の実測: 上記 workerd 側 4 files / 88 tests passed、
+client 側 7 files / 51 tests passed。`validate:fast` は `pnpm run test`
 （workerd pool）を含む。`test:client` は gate には載っていない
 （§8 #3）。
 
@@ -85,10 +86,10 @@ client 側 7 files / 50 tests passed。`validate:fast` は `pnpm run test`
 | 保存値の扱い | 不明値はすべて `unset`（非計測）へ縮退する。`granted` へは決して縮退しない |
 | Consent Mode `default` | タグを載せる時点で `analytics_storage: 'granted'`、`ad_storage` / `ad_user_data` / `ad_personalization` / `functionality_storage` / `personalization_storage` / `security_storage` は `denied`。許可の対象は解析ストレージだけである |
 | 拒否（withdraw） | `gtag('consent','update', { …全 storage: 'denied' })` に加えて `window['ga-disable-<measurementId>'] = true`。**この 2 つは片方だけでは足りない**: 前者は保存・送信を止めるが、後者は以降の collect 自体を止める |
-| 再許可 | `window['ga-disable-<ID>'] = false`。次の `page_view` から通常どおり記録される |
+| 再許可 | `window['ga-disable-<ID>'] = false` に加えて `gtag('consent','update', { analytics_storage: 'granted', …他は denied })`。既に読み込まれたタグに対しては `consent default` を再実行しても効かない（default は初期化時に消費される）ため、update が必須である。両方を再 mount 前の `config` より先に発行する |
 | 保存拒否 | `setItem` が throw した場合、document 内の状態を `unset` に戻し、計測も停止し、パネルに「設定を保存できませんでした / このセッションでは計測しません」を表示する |
 | DNT / GPC | `navigator.doNotTrack === '1'` と `navigator.globalPrivacyControl === true` は hard off-switch。保存値 `granted` でも上書きしない |
-| `/admin/**` | `AnalyticsGate` も `AnalyticsConsentControl` も描画しない。運用面に訪問者向けの同意質問を出さない |
+| `/admin/**` | `isAnalyticsMountPath`（`consent.ts`）が偽を返し、`AnalyticsGate` も `AnalyticsConsentControl` も描画しない。運用面に訪問者向けの同意質問を出さず、`/admin/invitations/accept?token=…` の URL が `config` の page_view で送られることもない |
 | SSR | 同意判定は storage を読めないため、SSR document にはタグ・inline gtag・同意 UI のいずれも含まれない。判定は mount effect 以降にだけ行われる |
 
 `analytics_storage: 'granted'` を `default` に置くのは、この時点で

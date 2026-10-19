@@ -266,6 +266,27 @@ export function analyticsMeasurementAllowed(
 }
 
 /**
+ * Whether measurement may mount for a pathname (Issue #495).
+ *
+ * `/admin/*` is the operator's own UI, and a page_view recorded there
+ * pollutes the public funnel — worse, the initial `gtag('config', …)`
+ * hit reads the document URL itself, so an admin URL carrying an
+ * invitation token would be sent even though every later event is
+ * query-stripped. The exclusion therefore has to be decided at the
+ * mount site, before the tag exists.
+ *
+ * It lives here rather than inline in `src/routes/__root.tsx` so the
+ * rule can be exercised without a router: the mount site is a
+ * one-line call, and the table in `consent.test.ts` is the evidence.
+ * The match is `/admin` or `/admin/…` exactly, not a bare prefix, so
+ * a future public route such as `/administration` is not silently
+ * excluded from measurement.
+ */
+export function isAnalyticsMountPath(pathname: string): boolean {
+	return pathname !== '/admin' && !pathname.startsWith('/admin/');
+}
+
+/**
  * Test seam. Resets the document-scoped decision; production code
  * never calls this.
  */

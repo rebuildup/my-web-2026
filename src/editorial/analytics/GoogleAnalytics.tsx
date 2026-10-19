@@ -50,9 +50,11 @@
  * stops measurement in place: it sets the documented
  * `ga-disable-<ID>` opt-out for the property and issues a
  * `gtag('consent', 'update', …)` that denies every store. A later
- * re-grant calls `allowAnalyticsMeasurement` first, so the opt-out
- * flag the previous withdrawal set cannot silently swallow the
- * page_view the re-granted `config` records.
+ * re-grant calls `allowAnalyticsMeasurement` first, which clears the
+ * opt-out flag the previous withdrawal set **and** issues the matching
+ * `consent update` that grants analytics storage again, so neither the
+ * flag nor the still-running tag can silently swallow the page_view
+ * the re-granted `config` records.
  *
  * Admin gating. `/admin/*` is the operator's own UI; GA tracking
  * would record every admin action into the same GA property as the
@@ -92,7 +94,7 @@
  */
 
 import { useEffect, useRef } from 'react';
-import { analyticsMeasurementAllowed } from './consent';
+import { analyticsMeasurementAllowed, isAnalyticsMountPath } from './consent';
 
 let capturedMeasurementId: string | undefined;
 
@@ -259,23 +261,60 @@ export function revokeAnalyticsMeasurement(measurementId?: string): void {
 }
 
 /**
- * Clears the per-property opt-out flag before measurement restarts
- * (Issue #495).
+ * The Consent Mode signals a re-grant restores (Issue #495).
  *
- * A visitor may grant, withdraw, and grant again. The flag set by
- * `revokeAnalyticsMeasurement` survives in the window for the life of
- * the document, so it has to be cleared BEFORE the freshly mounted
- * inline `config` runs — otherwise the re-grant would silently drop
- * the page_view it just loaded for.
+ * Identical to the inline default: the one thing the visitor agreed to
+ * is restored, and every advertising / personalization store stays
+ * denied.
+ */
+const ANALYTICS_CONSENT_GRANTED_PARAMS = {
+	analytics_storage: 'granted',
+	ad_storage: 'denied',
+	ad_user_data: 'denied',
+	ad_personalization: 'denied',
+	functionality_storage: 'denied',
+	personalization_storage: 'denied',
+	security_storage: 'denied',
+} as const;
+
+/**
+ * Restores measurement in this document (Issue #495).
+ *
+ * A visitor may grant, withdraw, and grant again. Two things stop a
+ * re-grant from measuring, and this function undoes both **before**
+ * the freshly mounted inline `config` runs:
+ *
+ *   1. the per-property `ga-disable-<ID>` flag that
+ *      `revokeAnalyticsMeasurement` set lives for the life of the
+ *      document, so it has to be cleared; and
+ *   2. the already-loaded `gtag.js` is still running with
+ *      `analytics_storage: 'denied'` from the withdrawal. Re-issuing
+ *      `consent default` in the new inline script does not undo that —
+ *      a default is consumed at initialization. The documented
+ *      mechanism for changing consent on a running tag is
+ *      `consent update`, so that is what this issues.
+ *
+ * On a first grant `gtag` does not exist yet and the second half is a
+ * no-op; the inline `consent default` is the whole declaration in that
+ * case. Idempotent, and a no-op without a `window`.
  */
 export function allowAnalyticsMeasurement(measurementId?: string): void {
 	if (typeof window === 'undefined') return;
 	const id = measurementId?.trim() || capturedMeasurementId || readMeasurementIdFromDocument();
-	if (!id) return;
+	if (id) {
+		try {
+			(window as unknown as Record<string, unknown>)[analyticsDisableKey(id)] = false;
+		} catch {
+			// Nothing to do: the flag was never set.
+		}
+	}
+	const gtag = (window as unknown as AnalyticsGlobals).gtag;
+	if (typeof gtag !== 'function') return;
 	try {
-		(window as unknown as Record<string, unknown>)[analyticsDisableKey(id)] = false;
+		(gtag as GtagFn)('consent', 'update', { ...ANALYTICS_CONSENT_GRANTED_PARAMS });
 	} catch {
-		// Nothing to do: the flag was never set.
+		// A throwing gtag was never a measurement path we control; the
+		// inline `config` below still runs with the restored grant.
 	}
 }
 
@@ -335,8 +374,11 @@ function analyticsGlobals(): AnalyticsGlobals {
 	return globalThis as unknown as AnalyticsGlobals;
 }
 
-/** The `/admin/*` prefix must stay in sync with the script-mount gate in `src/routes/__root.tsx`. */
-const ADMIN_PATH_PREFIX = '/admin';
+/**
+ * The `/admin/*` rule is `isAnalyticsMountPath` from `./consent` — the
+ * same predicate the script-mount gate in `src/routes/__root.tsx`
+ * calls, so the two can never disagree about what "admin" means.
+ */
 
 /**
  * Returns the page_view params for a route change.
@@ -404,7 +446,7 @@ export function trackRoutePageView(state: PageViewRouteState, locationKey: strin
 	if (!analyticsMeasurementAllowed()) return;
 
 	// Admin is never tracked; the key above is still recorded.
-	if (locationKey.startsWith(ADMIN_PATH_PREFIX)) return;
+	if (!isAnalyticsMountPath(stripAnalyticsQuery(locationKey))) return;
 
 	const globals = analyticsGlobals();
 	if (typeof globals.gtag !== 'function') {

@@ -6,6 +6,7 @@ import {
 	analyticsMeasurementAllowed,
 	effectiveAnalyticsConsentState,
 	getDocumentAnalyticsConsent,
+	isAnalyticsMountPath,
 	parseAnalyticsConsent,
 	readAnalyticsConsent,
 	resolveAnalyticsConsent,
@@ -208,6 +209,32 @@ describe('document-scoped decision', () => {
 		setDocumentAnalyticsConsent('denied');
 		expect(analyticsMeasurementAllowed()).toBe(false);
 		__resetDocumentAnalyticsConsentForTests();
+	});
+});
+
+describe('isAnalyticsMountPath', () => {
+	// The mount gate `src/routes/__root.tsx` applies to both
+	// `AnalyticsGate` and `AnalyticsConsentControl`. The suite exists
+	// because an SSR render never contains the tag on any route, so an
+	// assertion against rendered HTML cannot tell a working gate from a
+	// missing one — this table can.
+	it.each([
+		['/', true],
+		['/portfolio', true],
+		['/portfolio/aulymo', true],
+		['/about', true],
+		['/status', true],
+		['/design-system', true],
+		['/admin', false],
+		['/admin/', false],
+		['/admin/login', false],
+		['/admin/invitations/accept', false],
+		// A bare prefix match would swallow this future route; the
+		// rule is `/admin` or `/admin/…` exactly.
+		['/administration', true],
+		['/administrator-guide', true],
+	])('answers %s -> %s', (pathname, expected) => {
+		expect(isAnalyticsMountPath(pathname)).toBe(expected);
 	});
 });
 

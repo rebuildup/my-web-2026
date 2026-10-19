@@ -370,6 +370,28 @@ manifest 駆動の生成 precedent がある。ただし shared namespace につ
 将来利用されるかもしれないという理由だけで abstraction を先に作らない
 （AGENTS.md §3 / ADR-0008）。
 
+## Repository-level contracts outside `src/`
+
+`src/` 以外の top-level directory も、耐久的な契約を持つものは存在する。
+以下は **resource 契約**として観測されたものの表で、全体像ではない。
+（`wrangler.jsonc` / `wrangler.production.jsonc` のような Cloudflare 構成契約も
+`src/` 外にある。AGENTS.md §4「Wrangler 構成に宣言されたものしか存在しない」の
+相手であり、この表の対象外。）
+
+| Path | 所有する契約 | gate |
+| --- | --- | --- |
+| `migrations/` | D1 schema の逐次履歴 | `pnpm run db:migrate:*` / integration dry-run |
+| `quality/profile.yaml` | `validate:fast` / `:integration` / `:release` の構成 | 自身がレビュー対象（hidden step を workflow YAML に置かない） |
+| `copy/resources.json` | visitor-facing copy の capability ごとの公開 locale 宣言 | `pnpm run copy:i18n:check` |
+
+`copy/` は src obligation ではない。copy の実体は各 obligation のコンポーネントが
+持ち、`copy/resources.json` は「どの文言を翻訳対象として登録し、どの locale に
+出荷済みか」だけを宣言する。未翻訳キー・未登録キー・fallback 連鎖の終端・
+数値/否定/権限の保持・禁則は `scripts/check-copy-i18n.mjs` が判定する。
+locale は capability ごとに opt-in であり、全機能に全言語を要求しない
+（`docs/personal/owner.md`「Working languages」）。
+詳しくは [`copy/README.md`](../copy/README.md)。
+
 ## Verification
 
 Architecture boundary の変更は path の見た目だけで承認しない。

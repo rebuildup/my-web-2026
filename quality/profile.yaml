@@ -40,6 +40,7 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
+      - 'pnpm run copy:i18n:check' # UI copy locale contract (Issue #428): untranslated keys, fallback integrity, preservation + typography
       # Issue #467: log surface gate. `src/**` may only reach `console`
       # through the `src/logging/` redacting logger, and an operator
       # script may not print a secret-named value. Without this, a new
@@ -160,6 +161,9 @@ change_risk_mapping:
   storybook_story_change:
     gate: fast
     note: 'scripts/check-storybook-ownership.mjs walks every story the .storybook/main.ts stories globs match; a runtime import of routes / server.ts / http / cloudflare / cloudflare:workers anywhere in the closure fails the gate, an unresolvable in-src specifier or an unreadable subject set exits 2 (not run) instead of passing, and comments/strings are masked so a documented import example is not read as an edge'
+  copy_locale_contract:
+    gate: fast
+    note: 'copy/resources.json declares which locale each capability is published in; scripts/check-copy-i18n.mjs rejects untranslated keys, keys a resource names but the feature never registered, fallback chains that cannot reach the source locale, and drift in numbers / placeholders / negation / permissions / typography. Locale coverage is opt-in per feature, so an unopted locale is information, not a failure.'
   binding_change:
     gate: integration
     note: 'cloudflare.config.ts + .cloudflare/types/index.d.ts must be in the same PR'

@@ -272,6 +272,9 @@ pnpm run validate:integration  # + build + bundle budget + wrangler:dry-run + li
 pnpm run validate:release      # + cf-typegen:check
 ```
 
+`validate:fast` には UI copy の locale 契約検査 `pnpm run copy:i18n:check` も含まれる
+(下記「UI copy の locale 契約」参照)。
+
 `pnpm run compat:check` は Web API / CSS の採用可否を Baseline（web-features）で
 判定する gate（Issue #414）。走査面は `src/**` に加えて生成 CSS の入力である
 `panda.config.ts`（`app-shell` surface の `files`）で、`src/` 以外のファイルは
@@ -540,6 +543,8 @@ exist:
   before navigation.
 - `pnpm run e2e:compat` runs `e2e/compat/**` on Chromium, Firefox and
   WebKit — see [Cross-engine compat matrix](#cross-engine-compat-matrix).
+- `pnpm run e2e:viewport` runs `e2e/viewport/**` on Chromium at four
+  viewport widths — see [Viewport regression grid](#viewport-regression-grid).
 
 ```bash
 pnpm run e2e:install     # one-time: chromium browser + system deps
@@ -570,6 +575,35 @@ smoke logic is verified without a network, without workerd, and without a
 browser. Each observation carries the final (post-redirect) origin and
 pathname, and the classifier rejects either kind of drift, so a route that
 answered from another host cannot pass as a healthy canonical origin.
+
+## UI copy の locale 契約
+
+visitor-facing copy がどの言語で公開されているかは
+[`copy/resources.json`](../copy/resources.json) が宣言し、
+`pnpm run copy:i18n:check` (`scripts/check-copy-i18n.mjs`) が検査する。
+`validate:fast` の一部として CI でも走る。
+
+検査するのは「その locale で未翻訳のキー」「feature が登録していないキーを名指ししている
+リソース」「source locale に到達できない fallback 連鎖」、そして原文の意味を守るための
+機械判定 (数値 / `{placeholder}` / 否定 / 権限マーカー / 禁則・full-width 残留) である。
+locale は機能ごとに opt-in なので、全機能に全言語を要求しない — 未 opt-in の locale は
+情報として記録されるだけで失敗にしない。
+
+文の語調・敬称・語順 (prose quality) は gate が判定しない。`prose: "verified"` は
+原文と突き合わせた人が記録する主張であり、`published` locale では未検証の状態で
+公開できない。推敲途中のリソース (`status: "draft"`) は解決時に fallback され、
+`served` されない。
+
+```bash
+pnpm run copy:i18n:check                       # gate (exit 1 で失敗)
+node scripts/check-copy-i18n.mjs --format=html --out=.tmp/copy-i18n.html
+node scripts/check-copy-i18n.mjs --include-fixture --format=html \
+  --out=.tmp/missing-keys-report.html          # fixture 込みのレポート (fixture は gate しない)
+node --test scripts/check-copy-i18n.test.mjs   # fixture で finding class を検証
+```
+
+契約の意味、schema、2 番目の locale を opt-in する手順は
+[`copy/README.md`](../copy/README.md) を参照。
 
 ## Cross-engine compat matrix
 
@@ -641,6 +675,79 @@ my-web-2026. The traversal check is therefore skipped there instead of
 being weakened everywhere; the skip-link contract itself (the link
 exists and its `#main` target resolves) is still asserted on WebKit by
 `assertRouteContract`. The matrix shows the cell as `SKIP`.
+
+## Viewport regression grid
+
+Issue #417 added a third Playwright configuration that answers the
+layout question the other two do not: the same surface still lays out
+correctly at **390 / 768 / 1024 / 1440** (phone, tablet portrait,
+tablet landscape, laptop). The engine axis belongs to the compat suite
+and the "does it render at all" axis belongs to the default suite, so
+this one is separate from both and excluded from both via `testIgnore`.
+
+```bash
+pnpm run build                  # vite preview serves the built Worker
+pnpm run e2e:install            # chromium binary
+pnpm run e2e:viewport           # run e2e/viewport/**
+pnpm run verify:viewport-diff-grid  # render the grid + write the WebP
+```
+
+| Path                                    | What it is                                        |
+| --------------------------------------- | ------------------------------------------------- |
+| `playwright.viewport.config.ts`          | chromium project, `deviceScaleFactor: 1`, JSON reporter; spreads the base config so `baseURL`, the local D1 `webServer` and `globalSetup` are inherited |
+| `e2e/viewport/contract.ts`               | closed route × viewport roster + observe/judge pair |
+| `e2e/viewport/layout.spec.ts`            | the gate: 4 routes × 4 widths, capture + judge      |
+| `e2e/viewport/visual-diff.spec.ts`       | stability / breakage / viewport-shift pixel controls |
+| `e2e/viewport/negative-control.spec.ts`  | deliberate breakage, rejected by the same judge     |
+| `scripts/_viewport-diff.mjs`             | the shared pixel-diff contract (thresholds + overlay) |
+| `.tmp/viewport-results.json`             | Playwright JSON report (grid source)                |
+| `.tmp/viewport-cells/`                   | per-cell layout fingerprints (numbers shown in the grid) |
+| `.tmp/viewport-controls/`                | the three visual-diff control records               |
+| `.tmp/viewport-screenshots/`             | per-cell and per-control captures                   |
+| `docs/verification/compat/viewport-diff-grid.webp` | committed verification screenshot       |
+
+CI runs the same command from `.github/workflows/viewport.yml` (push to
+`main` / `release-*`, every PR into them, and `workflow_dispatch`) and
+uploads the grid plus the raw report as artefacts. The workflow's
+`runner` input exists so a host-dependent layout measurement can be
+re-measured on `macos-latest` as well as `ubuntu-latest`.
+
+How a failure is kept visible
+-----------------------------
+
+- **One cell, one state.** The grid is route × viewport, so a single
+  narrow-width regression is a single red cell rather than a collapsed
+  total.
+- **SKIP is not PASS**, and a retry that only passed on the second
+  attempt renders as `FLAKY`.
+- **The measured numbers travel with the badge.** Every cell prints
+  the overflow, the body font size and the nav mode the judge asserted,
+  so the badge is auditable without opening logs.
+- **Uncovered cells are reported.** A roster cell with no executed test
+  is listed in its own band, and the report script exits non-zero while
+  that band is non-empty.
+- **Rows outside the grid are listed too**, so a failing negative
+  control cannot hide behind a green grid.
+- **The gate is shown to fail twice.** `visual-diff.spec.ts` proves the
+  pixel layer goes red on an injected layout break (and that the
+  geometry judge rejects the same page), and `negative-control.spec.ts`
+  proves the judge rejects four broken fixtures, an unimplemented
+  route, and nothing on the real page.
+- **The diff harness is shown to be quiet.** Re-capturing an unchanged
+  page must produce a 0-pixel difference; a harness that reports a
+  change for an unchanged page is a harness nobody can read.
+
+Why no committed pixel baseline
+-------------------------------
+
+Both sides of every comparison are produced by the same browser build
+in the same run, so a non-zero diff is attributable to the page.
+Committing a baseline captured on one host and comparing it against
+another host's capture would measure font rasterisation instead of
+layout — the false-positive failure mode this Issue forbids. Pinning a
+single capture environment (a container image plus one Playwright build)
+so committed baselines become possible is recorded as an open decision
+on Issue #417 rather than half-implemented here.
 
 ## Bundle map (Issue #483)
 
@@ -752,6 +859,7 @@ a pass. Details and the last report are in
 | `.biome/`          | `pnpm run format` (cache)                | yes        |
 | `.wrangler/`       | `wrangler dev`                           | yes        |
 | `.tmp/compat-*/`  | `pnpm run e2e:compat` (matrix artefacts)   | yes        |
+| `.tmp/viewport-*/` | `pnpm run e2e:viewport` (grid artefacts) | yes        |
 | `.tmp/`            | temporary research                       | yes        |
 | `.reference/`      | external clones                          | yes        |
 

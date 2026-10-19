@@ -33,6 +33,7 @@
  * committed.
  */
 
+import { execFileSync } from 'node:child_process';
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -106,6 +107,17 @@ if (result.errors.length > 0) {
 	process.exit(1);
 }
 
+function headSha() {
+	try {
+		return execFileSync('git', ['rev-parse', '--short=12', 'HEAD'], {
+			cwd: ROOT,
+			encoding: 'utf8',
+		}).trim();
+	} catch {
+		return 'unknown';
+	}
+}
+
 mkdirSync(dirname(HTML_REPORT), { recursive: true });
 writeFileSync(
 	HTML_REPORT,
@@ -113,7 +125,7 @@ writeFileSync(
 		manifest: result.manifest,
 		result,
 		probes: result.probes,
-		sourceSha: process.env.SOURCE_SHA ?? 'working-tree',
+		sourceSha: headSha(),
 	}),
 );
 process.stdout.write(`[disclosure] wrote ${HTML_REPORT.replace(`${ROOT}/`, '')}\n`);

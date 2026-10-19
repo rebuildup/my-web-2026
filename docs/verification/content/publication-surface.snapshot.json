@@ -288,6 +288,9 @@
 			"/tools/readmark"
 		],
 		"externalHosts": [
+			"*.analytics.google.com",
+			"*.google-analytics.com",
+			"*.googletagmanager.com",
 			"361do.booth.pm",
 			"api.github.com",
 			"design.google",
@@ -397,6 +400,33 @@
 				]
 			},
 			{
+				"url": "https://*.analytics.google.com",
+				"host": "*.analytics.google.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/content-security-policy.ts"
+				]
+			},
+			{
+				"url": "https://*.google-analytics.com",
+				"host": "*.google-analytics.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/content-security-policy.ts"
+				]
+			},
+			{
+				"url": "https://*.googletagmanager.com",
+				"host": "*.googletagmanager.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/content-security-policy.ts"
+				]
+			},
+			{
 				"url": "https://361do.booth.pm",
 				"host": "361do.booth.pm",
 				"kind": "external",
@@ -475,6 +505,7 @@
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
+					"src/http/content-security-policy.ts",
 					"src/routes/__root.tsx"
 				]
 			},
@@ -503,6 +534,7 @@
 				"identifier": false,
 				"files": [
 					"external/prototype/index.html",
+					"src/http/content-security-policy.ts",
 					"src/routes/__root.tsx"
 				]
 			},
@@ -716,7 +748,6 @@
 				"files": [
 					"src/contact/channels.json",
 					"src/editorial/nav/route-labels.ts",
-					"src/editorial/social-card/contract.json",
 					"src/editorial/structured-data/contract.json",
 					"src/http/outbound-fetch.ts",
 					"src/http/seo/README.md",
@@ -847,6 +878,15 @@
 				]
 			},
 			{
+				"url": "https://www.googletagmanager.com",
+				"host": "www.googletagmanager.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/http/content-security-policy.ts"
+				]
+			},
+			{
 				"url": "https://www.googletagmanager.com/gtag/js?id=",
 				"host": "www.googletagmanager.com",
 				"kind": "external",
@@ -941,13 +981,58 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://*.analytics.google.com",
+			"https://*.google-analytics.com",
+			"https://*.googletagmanager.com",
+			"https://www.googletagmanager.com"
+		],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [],
+		"addedExternalHosts": [
+			"*.analytics.google.com",
+			"*.google-analytics.com",
+			"*.googletagmanager.com"
+		],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": []
+		"findings": [
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host *.analytics.google.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host *.google-analytics.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "E004 external-host-added",
+				"severity": "error",
+				"message": "New external host *.googletagmanager.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://*.analytics.google.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://*.google-analytics.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://*.googletagmanager.com"
+			},
+			{
+				"code": "W002 external-url-added",
+				"severity": "warn",
+				"message": "External URL added: https://www.googletagmanager.com"
+			}
+		]
 	}
 }

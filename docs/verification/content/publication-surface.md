@@ -76,7 +76,11 @@ gate され、sitemap にも外部 host 集合にも現れません。
 用途ごとに分けたものです。**新しい host の追加は `E004`（error）になります。**
 
 - **フォント**: `fonts.googleapis.com`（stylesheet）、`fonts.gstatic.com`（font files）
-- **計測**: `www.googletagmanager.com`（GA4 loader, `src/editorial/analytics/GoogleAnalytics.tsx`）
+- **計測**: `www.googletagmanager.com`（GA4 loader, `src/editorial/analytics/GoogleAnalytics.tsx`）。加えて
+  CSP Report-Only の origin inventory（`src/http/content-security-policy.ts`, Issue #447）が
+  `*.google-analytics.com` / `*.analytics.google.com` / `*.googletagmanager.com` を
+  beacon 先として宣言します。実測 host は Google が実行時に選ぶため、source では
+  subdomain wildcard としてのみ表現できます。
 - **作者プロフィールと配布先**: `github.com`, `x.com`, `samuido.booth.pm`,
   `361do.booth.pm`, `yusuke-kim.com`（`src/contact/channels.json` は 30 日の
   freshness gate を通った channel だけを描画します）

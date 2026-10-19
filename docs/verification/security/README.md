@@ -8,6 +8,7 @@ of trusting the image.
 | Artefact | Issue | Regenerate |
 | --- | --- | --- |
 | [`frame-ancestors-test.webp`](frame-ancestors-test.webp) | #448 | `pnpm run verify:frame-ancestors-screenshot` |
+| [`csp-report.webp`](csp-report.webp) | #447 | `pnpm run verify:csp-report-only-screenshot` |
 | [`ssrf-url-adapter.webp`](ssrf-url-adapter.webp) | #453 | `pnpm run security:ssrf:report` |
 | [`hsts-response.webp`](hsts-response.webp) | #446 | `pnpm run verify:hsts-screenshot` |
 | [`redirect-validation.webp`](redirect-validation.webp) | #454 | `pnpm run security:redirect:report` |
@@ -108,6 +109,32 @@ was added). Each is rejected by
 "denied" means without reading the source. Nothing secret is in the
 picture: the suite runs against the local workerd pool's dummy bindings
 and the gate reads two static files and the `public/` tree.
+
+## `csp-report.webp` (Issue #447)
+
+The CSP Report-Only observation (Issue #447) as two measured layers:
+the `Content-Security-Policy-Report-Only` value on real Worker
+responses in the local workerd pool, and a Chromium probe against a
+loopback document carrying that exact header. The browser table shows
+the positive case (same-origin image, no event) and the negative case
+(unlisted origin, one `img-src` event with `disposition: report`, not a
+block).
+
+The Issue names `csp-report.png`; the artefact ships as WebP in the same
+directory, following the repository screenshot rule (width ≤ 1600,
+quality 80). `scripts/make-csp-report-only-report.mjs` runs the
+integration suite with Vitest's console output enabled, reads its
+`CSP_REPORT_ONLY_MEASUREMENT` marker, starts a loopback-only HTTP server,
+probes it with the Playwright Chromium already installed for the E2E
+suite, and re-encodes the screenshot in memory with `sharp`. No
+production request, credential, or D1/R2 mutation is involved. The
+matching browser contract is `e2e/csp-report-only.spec.ts`.
+
+Regenerate with:
+
+```bash
+pnpm run verify:csp-report-only-screenshot
+```
 
 ## `log-redaction-test.webp`
 

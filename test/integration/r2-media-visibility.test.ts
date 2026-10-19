@@ -2,6 +2,7 @@
 import { SELF, applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
+	auditPublicMediaPublication,
 	createPublicMediaDelivery,
 	isPublicMediaKey,
 	listPublicMediaKeys,
@@ -189,6 +190,39 @@ describe('enumeration — bucket listing leaks nothing', () => {
 		const rawKeys = raw.objects.map((object) => object.key);
 		expect(rawKeys).toContain(PRIVATE_KEYS[0]);
 		expect(rawKeys).toContain(UNPUBLISHED_KEYS[0]);
+	});
+});
+
+describe('publication approval audit — counts, not keys', () => {
+	it('reports the two in-namespace objects that no D1 row approves', async () => {
+		// This is the approval half of the Issue's first acceptance
+		// item, run against the real local bucket: the three
+		// `portfolio/aulymo/` objects exist, but only one is published.
+		// The audit must say "violation" without naming any key.
+		const audit = await auditPublicMediaPublication(R2(), isPublished);
+		expect(audit).toEqual({
+			verdict: 'violation',
+			publicKeys: 3,
+			approvedKeys: 1,
+			unapprovedKeys: 2,
+			enumeration: 'complete',
+		});
+		const serialised = JSON.stringify(audit);
+		for (const key of UNPUBLISHED_KEYS) expect(serialised).not.toContain(key);
+		expect(serialised).not.toContain('secret.webp');
+	});
+
+	it('reports ok once every in-namespace object is approved', async () => {
+		const audit = await auditPublicMediaPublication(R2(), () => true, {
+			prefix: 'portfolio/aulymo/',
+		});
+		expect(audit).toEqual({
+			verdict: 'ok',
+			publicKeys: 3,
+			approvedKeys: 3,
+			unapprovedKeys: 0,
+			enumeration: 'complete',
+		});
 	});
 });
 

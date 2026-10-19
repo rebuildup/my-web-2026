@@ -108,6 +108,11 @@ portfolio -> editorial
 reactions -> i18n (Issue #433)
 portfolio -> i18n (Issue #433)
 external-api -> editorial (Issue #499 — display primitives only)
+legal -> editorial (Issue #497 — the asset rights-review obligation owns
+            the rights / attribution / licence decision for every byte it
+            publishes and references; it reads a committed record and
+            renders the review with editorial primitives, and imports no
+            peer obligation, route, binding or HTTP boundary)
 server -> http
 http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
   `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
@@ -127,8 +132,31 @@ server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
              boundary, so the Tool Registry still imports nothing
              from `src/http/**`)
 home -> editorial
+home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
+             published data / retention notice from
+             `src/privacy/data-lifecycle.ts`; the sentences live with the
+             obligation that owns them so the public claim cannot drift
+             from the implementation)
 ```
 
+- `src/privacy/**` (Issue #496) owns the **published** data
+  lifecycle: for every stored store, what is actually
+  written, how long it stays, how it is deleted, which
+  third party receives it, and which of those sentences
+  the public surface may render
+  (`src/privacy/data-lifecycle.ts` +
+  `src/home/privacy-notice.tsx`). It is a **leaf** obligation —
+  `leafOwners` in `scripts/check-architecture.mjs` enforces it — so the
+  registry can restate a retention number as prose without importing the
+  module that owns the constant; `src/privacy/data-lifecycle.test.ts`
+  cross-checks the prose against `ACTOR_COOKIE_MAX_AGE_SECONDS` and
+  `DEDUP_WINDOW_MS`, which is what keeps the restatement honest. Entries
+  are `approved` (published) or `pending` (documented, rendered
+  nowhere); the filter is fail-closed. The obligation also owns the
+  refusal list — claims the wording must never make (「匿名」, a deletion
+  request channel, unqualified "nothing leaves", "deleted
+  automatically") — because a privacy notice that overstates is the
+  defect, not one that understates.
 - `src/i18n/**` owns the platform's Unicode text
   policy (Issue #433): display text is preserved
   byte-exact and a URL slug is authored rather than
@@ -219,6 +247,26 @@ home -> editorial
   is wired to a route, so the repository makes **no outbound
   third-party request at runtime**; promotion follows
   `docs/domain/integrations.md` (capability-scoped first).
+- `src/legal/**` (Issue #497) owns the publication-rights review of the
+  bytes this platform publishes and references: the vocabulary that
+  separates "written here", "derived here", "fetched from a provider",
+  "bundled from a third party" and "provenance unrecorded"
+  (`contract.ts`), the fail-closed reader of the reviewed record
+  (`inventory.ts`), and the surface that shows one asset's rights,
+  provenance, licence, conditions and evidence to a reader
+  (`AssetLicenseReview.tsx`). The publication decision is **derived**
+  from evidence, never declared by a record, so an asset whose rights
+  are unrecorded cannot present itself as cleared. It reads
+  `quality/asset-license-inventory.json`, composes `editorial`
+  primitives and touches no binding. The gate that runs it offline is
+  `scripts/check-asset-licenses.mjs` (`pnpm run assets:license:check`);
+  the verification report is
+  `docs/verification/legal/asset-license-review.md` and its
+  machine-generated run record is
+  `docs/verification/legal/asset-license-review-report.md`.
+  Byte-level licence evidence for a Tool's own checkout belongs to
+  Issue #466 (`src/tools/artifact-inventory.ts`), so the two owners
+  never claim the same files.
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - An external third-party read is not an `src/http/**` concern: `http/`
   owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),
@@ -377,6 +425,14 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   cites it, so an unreviewed request class cannot pass silently) +
   `tools:check` + `security:headers:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
+  `cf:config:drift:check` (Issue #480 — the production Worker
+  surface, the development surface, the Workers Builds build / deploy
+  commands and the static-asset `_headers` coverage are compared against
+  the recorded contract in `quality/cloudflare-config-drift.json`; one
+  differing item is one red gate. Offline, credential-free, status-only —
+  a `secret` binding is compared as a name and an unexpected text value is
+  printed as `<redacted len=N>`; see
+  `docs/runbook/cloudflare-config-drift.md`) +
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +
@@ -477,6 +533,24 @@ red for a condition only the owner can resolve). Decision:
 Operator reference:
 [`docs/runbook/operator-mfa-verification.md`](docs/runbook/operator-mfa-verification.md).
 
+A fourth gate is deliberately **not** in the three entry points, but is
+a CI step: the public Japanese copy editorial approval gate (Issue
+#506, `pnpm run copy:approval:check`). It judges a **diff** — the
+Japanese text a pull request changed in a public copy surface
+(`quality/copy-editorial-surfaces.json`) — against the owner approval
+records in `quality/copy-editorial-approvals.json`, and it runs as the
+`Copy editorial approval gate` step of the `validate` job on
+`pull_request` events. `validate:fast` is an offline, repository-state
+gate by contract, and a diff only exists against a base branch, so the
+gate is a pull-request gate rather than a release gate. Its verdicts
+are `pass` / `fail` (a review was recorded and it says no) / `not run`
+(NEEDS REVIEW — no owner decision is recorded) / `not applicable` (no
+public Japanese copy changed); the editing aid's output is evidence and
+never approves anything on its own. Decision:
+[`quality/profile.yaml`](quality/profile.yaml#copy_editorial_approval).
+Operator reference:
+[`docs/runbook/copy-editorial-approval.md`](docs/runbook/copy-editorial-approval.md).
+
 Local agent and GitHub Actions invoke the same entry points. Do not
 hide validation logic inside workflow YAML. Coverage thresholds are
 **not** enforced at 0.1.0; that decision is in ADR-0007.
@@ -569,6 +643,53 @@ external contracts.
 ## 10. Available skills (progressive disclosure)
 
 Read a Skill only when the task actually requires it.
+
+### Vendoring — do not sync mechanically (Issue #647)
+
+`skills/` holds **manual vendored copies**. There is no
+`skills-lock.json` and no hash gate, and each vendored skill is a
+single `SKILL.md` — upstream `references/` directories were never
+imported. The vendored set has two upstreams:
+
+- `rebuildup/project-init` — delivery / quality / runtime skills.
+  Last reconciled against **0.1.1**; upstream has since moved to
+  `release-0-6-0` (`52d3e64`). (`writing-discipline` is itself vendored
+  by project-init from the writing-skills upstream.)
+- `rebuildup/design-skills` — design skills. Last reconciled against
+  **0.3.0** (`release-0-3-0`).
+
+**Running `npx skills update` (or `bunx skills update`) over the whole
+directory is forbidden.** The following are **intentionally forked**,
+and a blanket sync would silently reverse a project decision or break a
+canonical link:
+
+| Skill | Why it is forked |
+| --- | --- |
+| `github-delivery` | Owns the **all-merges-need-explicit-authorization** rule (§6) and the `Release PR merge human gate (canonical rule)` heading. `docs/release.md` and `docs/runbook/sbom.md` anchor to that heading — upstream deleted it, and `scripts/check-content-links.mjs` excludes `skills/**`, so a broken anchor would not be caught. Upstream also grants *autonomous ticket-PR landing*, which would widen agent merge authority, and routes planning through Linear rather than the GitHub Projects SoT that §7 declares. |
+| `worktree-workflow` | Pinned to this repo's `.config/wt.toml` (Issue #284); upstream's additions assume a Rust/Cargo build this repository does not have. |
+| `engineering-decisions` | Encodes the same 6-level precedence list as §8 (the wording differs); upstream's 9-level variant introduces Constitution / Operating Model / Practice concepts this repository does not have, so §8 would have to change in the same commit. |
+| `quality-gate` | The local file is upstream project-init 0.1.1 **minus** `## 7.1 Delivery-estimation integration` and **plus** four local-only sections that exist in no upstream release or branch tip: `## 17. Dependency / static-analysis goals`, `## 18. UI information architecture gate`, `## 19. Rendered UI verification`, `## 20. Build / container / deliverable verification`. Those local sections are the rules this repository's own `quality/profile.yaml` fast gate implements (`knip:check` ↔ §17, rendered-UI verification ↔ §19, build / deliverable verification ↔ §20), so a blanket sync would delete live local gates and re-add a section this repository does not use. **Owner decision: OPEN** — keep the local variant, or re-sync to upstream. |
+| `parallel-orchestration`, `policy-evaluation` | Content sync deferred to a later release — see Issue #647. |
+| `form-design`, `motion-system` | Edited in this repository to stop cross-referencing upstream's `interaction-state`: `form-design` drops the single line that points at it, `motion-system` drops its whole `### Interaction-state boundary` section. Both files are otherwise byte-identical to design-skills `v0.3.0`. |
+| `interaction-states` | The local file is upstream design-skills' `interaction-states` **as it existed before upstream deleted it** in `6c2acf5` (2026-09-17, "remove duplicate interaction-states skill"); it was imported verbatim (commit `2a7460a6`) and is byte-identical to that revision. It is **not** a rename of upstream's current `interaction-state` — that is a different, later, "experimental" state-graph document (344 lines), while the local file is the 234-line component-state document (hover / focus / pressed / selected / disabled semantics) that `skills/touch-interface/SKILL.md:24`, `skills/dark-mode-design/SKILL.md:158` and `skills/keyboard-interface/SKILL.md:91,179` still point at. Copying upstream's current `interaction-state` over it would silently replace a different scope under the same name. **Owner decision: OPEN** — keep the deleted upstream variant, or re-import upstream's current `interaction-state` and re-point those references. |
+
+Upstream skills this repository **does not vendor**: `linear-release-control`
+(explicitly declined — it conflicts with §7's GitHub-Projects SoT),
+`herdr-runtime`, `orca-frontend` (both explicitly declined),
+`secrets-management`, `skill-selection`, `security-audit`,
+`agent-delivery-estimation`, `correctness-assurance`, `idea-discovery`.
+Re-evaluation candidates from Issue #647: `skill-selection`,
+`secrets-management`, and the `interaction-discipline` YAML quoting fix.
+
+To take an upstream change, diff it first, land it as its own ticket,
+and re-check the §3 / §6 / §7 invariants it touches. The update command
+is `npx skills add rebuildup/project-init --skill <name> --copy` —
+**not** `bunx` (§2 forbids Bun here) and **never without `--copy``
+(a symlinked install is not what §10 promises readers). The CLI installs
+into an **agent** skills directory (`.claude/skills/`, `.agents/skills/`,
+…), not into this repository's `skills/`: treat its output as a staging
+copy and diff it into `skills/<name>/` by hand. Clone the upstream into
+`.reference/<name>` (§9) to diff against.
 
 ### Sprint / delivery
 - `skills/github-delivery/SKILL.md` — Issue / PR / release sprint

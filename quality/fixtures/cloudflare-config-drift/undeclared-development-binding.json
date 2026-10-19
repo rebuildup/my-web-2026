@@ -1,0 +1,20 @@
+{
+	"case": "undeclared-development-only-binding",
+	"note": "development だけが持つ binding が記録に宣言されていない dev/prod 差分。",
+	"expect": {
+		"verdict": "DRIFT",
+		"exitCode": 1,
+		"findings": 1,
+		"paths": ["mode.undeclared.STAGING_FEATURE_FLAG"],
+		"kind": "undeclared_mode_difference"
+	},
+	"apply": {
+		"add_development_binding": {
+			"name": "STAGING_FEATURE_FLAG",
+			"binding": {
+				"type": "text",
+				"value": "staging"
+			}
+		}
+	}
+}

@@ -25,6 +25,7 @@
 		"wrangler-independence",
 		"cloudflare-binding-contract",
 		"cloudflare-build-contract",
+		"cloudflare-config-drift",
 		"infisical-secret-coverage",
 		"cf-typegen",
 		"playwright-e2e",
@@ -158,6 +159,15 @@
 			"documentation": "docs/architecture.md"
 		},
 		{
+			"id": "cloudflare-config-drift",
+			"contract": "The production Worker surface, the development surface, the Workers Builds build / deploy commands and the static-asset header surface still match the recorded production contract, so a single unintended configuration difference cannot ship inside a green release.",
+			"command": "pnpm run cf:config:drift:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/cloudflare-config-drift.md"
+		},
+		{
 			"id": "cloudflare-build-contract",
 			"contract": "The same binding contract is re-checked against the built Cloudflare bundle, so a binding that only exists in source configuration cannot pass as deployed.",
 			"command": "pnpm run cloudflare:contract:check:build",
@@ -192,6 +202,15 @@
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
 			"documentation": "docs/verification/quality/route-quality-coverage.md"
+		},
+		{
+			"id": "personal-data-review",
+			"contract": "Personal-data candidates (addresses, contact channels, third-party names, image metadata) in the migrated corpus are extracted mechanically and only an owner decision can publish a record, so a release cannot ship a migration record nobody approved.",
+			"command": "pnpm run publication:redaction:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/personal-data-redaction.md"
 		},
 		{
 			"id": "index-boundary",

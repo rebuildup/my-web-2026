@@ -47,6 +47,12 @@ src/
 │  ├─ ExternalReadCard.tsx
 │  ├─ ExternalReadCard.stories.tsx
 │  └─ index.ts
+├─ legal/
+│  ├─ contract.ts
+│  ├─ inventory.ts
+│  ├─ inventory-table.ts
+│  ├─ AssetLicenseReview.tsx
+│  └─ AssetLicenseReview.stories.tsx
 ├─ editorial/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
@@ -127,6 +133,17 @@ slug grammar の所有は各 obligation のまま（`reactions/slug-regex.ts` �
 - `ExternalReadCard.tsx` — 6 状態を同じ component が描画する（fresh / stale / timeout fallback / 遮断中 / 初回失敗 / 読み込み中）。badge は画面上の状態だけを名指しし、近傍の状態の文言を借りない。再試行ボタンの可否は snapshot の `retryAt` と現在時刻から `retryAffordanceOf` で**導出**する（押しても reader が拒否する上有効なボタンを描かない）。その deadline 到来時だけ 1 回の再描画を自身で予約する（poll ではなく、試行も発行しない）
 
 `home/` / `portfolio/` / `about` とは **peer obligation**。`editorial` primitive だけを消費し、`http/`（inbound boundary）や `cloudflare` binding とは結線しない。route には結線されていないため、現時点で**実行時に外部通信は発生しない**。promotion は `docs/domain/integrations.md`（capability-scoped first）に従う。
+
+### `legal/` (Issue #497)
+
+**このプラットフォームが出荷する / 参照するバイトの権利レビュー**を所有する。
+
+- `contract.ts` — 権利レビューの純粋な契約。由来（このリポジトリで書いた / 生成した / 第三者を参照 / 第三者を同梱 / 由来未記録）、ライセンス識別子、検証方法、公開状態の語彙と、判定を**導出**する関数。記録は「公開中である」とは書けるが「レビュー済みである」とは書けず、画面が出すのは導出値だけ。`covers` / `excludes` は 1 ディレクトリに複数のライセンスがあるとき記録どうしがファイルを取り違えないようにする仕組み（除外は fail-closed）
+- `inventory.ts` — レビュー済み記録（`quality/asset-license-inventory.json`）の fail-closed reader。未知キーは拒否し、壊れた記録を部分採用しない
+- `inventory-table.ts` — 記録一覧を `DataTable` 用の投影にする style-free モジュール
+- `AssetLicenseReview.tsx` — 1 資産の権利 / 出典 / ライセンス / 再配布条件 / 根拠を表示する面。提供側 URL はホスト名だけ、ブラウザで観測できない根拠は「未確認」と書く
+
+`external-api/` とは **peer obligation**。`editorial` primitive だけを消費し、route には結線されていない。gate（`scripts/check-asset-licenses.mjs`）は利用側であって例外ではなく、規則は `src/legal/` にある（`scripts/check-architecture.mjs` の obligation table が強制する）。
 
 ### `editorial/`
 
@@ -226,6 +243,7 @@ home/status ─────────▶ http
 portfolio ───────────▶ cloudflare (DI seam)
 portfolio ───────────▶ editorial
 external-api ────────▶ editorial
+legal ──────────────▶ editorial
 home ────────────────▶ editorial
 home/http/cloudflare ─▶ logging (leaf)
 server ──────────────▶ http
@@ -241,6 +259,7 @@ server ──────────────▶ editorial (SSR render-failu
 - `portfolio/` は `home/` / `routes/` / `http/` を import しない (peer obligation)。
 - `i18n/` は他の obligation を import しない (leaf obligation)。policy の例外を足すなら、ここ、拡大ではなく ADR 改訂が先。
 - `external-api/` は `home/` / `routes/` / `portfolio/` / `cloudflare/` / `http/` を import しない (peer obligation)。outbound read と inbound boundary は別の obligation。
+- `legal/` は `home/` / `routes/` / `portfolio/` / `cloudflare/` / `http/` を import しない (peer obligation)。権利レビューは route に結線されず、規則は `src/legal/` にだけある。
 - framework route は Home / Portfolio を bind するが、Home / Portfolio は route file を知らない。
 
 ## TanStack Start / Hono boundary
@@ -399,6 +418,8 @@ manifest 駆動の生成 precedent がある。ただし shared namespace につ
 | `migrations/` | D1 schema の逐次履歴 | `pnpm run db:migrate:*` / integration dry-run |
 | `quality/profile.yaml` | `validate:fast` / `:integration` / `:release` の構成 | 自身がレビュー対象（hidden step を workflow YAML に置かない） |
 | `copy/resources.json` | visitor-facing copy の capability ごとの公開 locale 宣言 | `pnpm run copy:i18n:check` |
+| `quality/copy-editorial-surfaces.json` | 公開日本語 copy を持つファイル（opt-in glob 宣言） | `pnpm run copy:approval:check`（CI の `validate` ジョブ） |
+| `quality/copy-editorial-approvals.json` | 公開日本語 copy の変更に対する owner の承認記録 | `pnpm run copy:approval:check`（CI の `validate` ジョブ） |
 
 `copy/` は src obligation ではない。copy の実体は各 obligation のコンポーネントが
 持ち、`copy/resources.json` は「どの文言を翻訳対象として登録し、どの locale に

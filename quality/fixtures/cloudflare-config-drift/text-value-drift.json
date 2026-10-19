@@ -1,0 +1,21 @@
+{
+	"case": "one-text-var-value-differs",
+	"note": "text var の値が記録と違う 1 項目。実際の値は出力せず長さだけを示す（redaction 契約）。",
+	"expect": {
+		"verdict": "DRIFT",
+		"exitCode": 1,
+		"findings": 2,
+		"paths": [
+			"bindings.MY_WEB_2026_COUNTER_KEY.value",
+			"mode.field_difference.MY_WEB_2026_COUNTER_KEY"
+		],
+		"actual": "<redacted len=12>"
+	},
+	"apply": {
+		"set_binding_field": {
+			"name": "MY_WEB_2026_COUNTER_KEY",
+			"field": "value",
+			"value": "staging-page"
+		}
+	}
+}

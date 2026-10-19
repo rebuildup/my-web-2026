@@ -1,5 +1,6 @@
 import { css } from '../../styled-system/css';
 import { Container } from '../editorial/primitives/Container';
+import { PrivacyNotice } from './privacy-notice';
 import { PACKAGE_VERSION } from './version';
 
 /**
@@ -8,6 +9,15 @@ import { PACKAGE_VERSION } from './version';
  * Hosts the platform metadata (Issue #287 — the Identity column
  * identifies the platform, not a person), the canonical source
  * link, and the in-site index entry points.
+ *
+ * Issue #496 — the privacy note is no longer written here. This
+ * component used to assert 「匿名の Cookie」 / 「個人を特定しません」,
+ * which the code contradicts: the cookie value is written to
+ * `reactions.actor_id` in D1 and public page loads send a page_view to
+ * a Google Analytics 4 property. The wording now renders from
+ * `src/privacy/data-lifecycle.ts` through `<PrivacyNotice />`, so the
+ * public claim and the implementation have one source and a test that
+ * fails when they diverge.
  *
  * Issue #31 — editorial spread (fourth pass). The footer sits on
  * the same 12-column grid as the rest of the page, divided into
@@ -178,28 +188,7 @@ export function Footer() {
 						</ul>
 					</div>
 				</div>
-				<p
-					lang="ja"
-					className={css({
-						margin: '0',
-						marginBlockStart: '10',
-						paddingBlockStart: '6',
-						borderBlockStartWidth: '1px',
-						borderBlockStartColor: 'border.subtle',
-						borderBlockStartStyle: 'solid',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						lineHeight: '1.6',
-						color: 'text.muted',
-					})}
-				>
-					このサイトは閲覧解析のため <code>mw_actor_id</code> という匿名の Cookie
-					を使用します（個人を特定しません）。
-					<span lang="en">
-						{' '}
-						This site uses an anonymous <code>mw_actor_id</code> cookie for visitor analytics.
-					</span>
-				</p>
+				<PrivacyNotice />
 			</Container>
 		</footer>
 	);

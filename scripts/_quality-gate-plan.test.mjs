@@ -94,6 +94,10 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run install:scripts:check',
 	'pnpm run wrangler:independence:check',
 	'pnpm run cloudflare:contract:check',
+	// Issue #480: the drift gate runs immediately after the binding
+	// contract it extends, so a drift finding is read next to the contract
+	// finding rather than at the end of the chain.
+	'pnpm run cf:config:drift:check',
 	'pnpm run test:wiring:check',
 	'pnpm run release:assets:check',
 	'pnpm run version:check',
@@ -108,6 +112,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run copy:i18n:check',
 	'pnpm run publication:check',
 	'pnpm run content:links:check',
+	'pnpm run publication:redaction:check',
 	'pnpm run routes:quality:check',
 	'pnpm run security:headers:check',
 	'pnpm run security:disclosure:check',
@@ -128,6 +133,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run release:gate:check',
 	'pnpm run integration:scope:check',
 	'pnpm run tools:artifact:check',
+	'pnpm run assets:license:check',
 ];
 
 describe('runPlan', () => {
@@ -336,13 +342,20 @@ describe('the repository plan', () => {
 		// dropped publication / release-asset / app-icons component or a
 		// component moved away from its merge-base position.
 		assert.deepEqual(plan('fast'), EXPECTED_FAST_PLAN);
-		// Pin the tail explicitly: `tools:artifact:check` is the LAST fast
-		// step. It landed at the end of the merge-base chain (after
-		// `release:gate:check`), so a gate added later is appended BEFORE
-		// it — the failure path still stops after every other fast gate
-		// exactly as it used to. Issue #464 adds `integration:scope:check`
-		// in that slot, one line before it.
-		assert.equal(plan('fast').at(-1), 'pnpm run tools:artifact:check');
+		// Pin the tail explicitly: `tools:artifact:check` landed at the END of
+		// the merge-base chain (after `release:gate:check`), so the failure
+		// path stops after every other fast gate exactly as it used to. A
+		// gate added later keeps that merge-base step in place and lands
+		// beside it, so every historical step keeps the position — and
+		// therefore the failure path — it already had: Issue #464 added
+		// `integration:scope:check` BEFORE that merge-base tail, Issue #497
+		// added `assets:license:check` AFTER it.
+		assert.deepEqual(plan('fast').slice(-4), [
+			'pnpm run release:gate:check',
+			'pnpm run integration:scope:check',
+			'pnpm run tools:artifact:check',
+			'pnpm run assets:license:check',
+		]);
 	});
 
 	it('lists the same plan the runner would execute', () => {

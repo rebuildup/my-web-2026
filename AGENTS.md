@@ -103,6 +103,8 @@ reactions -> i18n (Issue #433)
 portfolio -> i18n (Issue #433)
 external-api -> editorial (Issue #499 — display primitives only)
 server -> http
+http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
+  `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
 http -> logging (Issue #467 — boundary diagnostics)
 http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)

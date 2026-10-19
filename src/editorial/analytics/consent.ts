@@ -281,9 +281,17 @@ export function analyticsMeasurementAllowed(
  * The match is `/admin` or `/admin/…` exactly, not a bare prefix, so
  * a future public route such as `/administration` is not silently
  * excluded from measurement.
+ *
+ * The comparison is case-insensitive because the router is: TanStack
+ * Router matches static segments after `toLowerCase()`
+ * (`caseSensitive: false` is the default, and `src/router.tsx` does
+ * not override it). `/ADMIN/INVITATIONS/ACCEPT` therefore renders the
+ * admin screen, and a case-sensitive check here would let its
+ * invitation token reach GA4 through the document URL.
  */
 export function isAnalyticsMountPath(pathname: string): boolean {
-	return pathname !== '/admin' && !pathname.startsWith('/admin/');
+	const normalised = pathname.toLowerCase();
+	return normalised !== '/admin' && !normalised.startsWith('/admin/');
 }
 
 /**

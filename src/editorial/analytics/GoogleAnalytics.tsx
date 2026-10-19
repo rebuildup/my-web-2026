@@ -82,15 +82,17 @@
  * navigations (where the same import resolves to the frozen empty
  * stub documented in `src/cloudflare/workers-stub.ts`). The capture
  * is write-once: a falsy client-side value never overwrites the
- * captured value. Because the client bootstrap (`src/client.tsx`)
- * re-runs loaders instead of hydrating dehydrated loader state, the
- * loader prop is `undefined` on every client render (the Issue #286
- * diagnosis), so the capture is additionally seeded from the
- * bootstrap script this component rendered into the current document
- * — see `readMeasurementIdFromDocument`. Since Issue #495 that script
- * is client-only (the tag renders after a stored grant), so the
- * document read is the path that keeps the ID known across
- * client-side navigations, including a navigation out of `/admin/*`.
+ * captured value. Since Issue #291 the client bootstrap hydrates the
+ * SSR loader data, so the first client render does receive the prop;
+ * a later client-side navigation re-runs the root loader in the
+ * browser, where the same import resolves to the frozen stub, so the
+ * prop can be absent then. The capture is therefore additionally
+ * seeded from the bootstrap script this component rendered into the
+ * current document — see `readMeasurementIdFromDocument`. Since Issue
+ * #495 that script is client-only (the tag renders after a stored
+ * grant), so the document read is the path that keeps the ID known
+ * across client-side navigations, including a navigation out of
+ * `/admin/*`.
  */
 
 import { useEffect, useRef } from 'react';
@@ -109,19 +111,19 @@ export function __resetCapturedMeasurementIdForTests(): void {
 /**
  * Reads the measurement ID from the bootstrap script in the document.
  *
- * Why this exists (Issue #286 diagnosis). The root loader value only
- * reaches components during SSR: on the client the `cloudflare:workers`
- * stub returns `undefined`, and the client bootstrap in
- * `src/client.tsx` re-runs loaders (the app does not hydrate
- * dehydrated loader state), so the `measurementId` prop is `undefined`
- * on every client-side render — the module-level write-once capture
- * never received a value, and the tracker was inert. The DOM does
- * carry the ID once this component has rendered its
- * `<script async src="…gtag/js?id=G-…">` node (Issue #495 moved that
- * node from SSR to a post-consent client mount), so the capture is
- * seeded from it. The node only exists where measurement was allowed,
- * and reading the rendered ID keeps the write-once contract — the ID
- * the loaded tag actually uses is the ID the tracker keeps.
+ * Why this exists (Issue #286 diagnosis). The root loader value reaches
+ * components during SSR and, since Issue #291, on the first client
+ * render (the bootstrap hydrates the SSR loader data). It can still be
+ * absent on a client-side navigation, where the root loader re-runs in
+ * the browser and the `cloudflare:workers` stub returns `undefined`,
+ * so the module-level write-once capture may never receive a value and
+ * the tracker would be inert. The DOM does carry the ID once this
+ * component has rendered its `<script async src="…gtag/js?id=G-…">`
+ * node (Issue #495 moved that node from SSR to a post-consent client
+ * mount), so the capture is seeded from it. The node only exists where
+ * measurement was allowed, and reading the rendered ID keeps the
+ * write-once contract — the ID the loaded tag actually uses is the ID
+ * the tracker keeps.
  */
 function readMeasurementIdFromDocument(): string | undefined {
 	if (typeof document === 'undefined') return undefined;

@@ -229,6 +229,12 @@ describe('isAnalyticsMountPath', () => {
 		['/admin/', false],
 		['/admin/login', false],
 		['/admin/invitations/accept', false],
+		// TanStack Router matches static segments case-insensitively,
+		// so these render the admin surface and must be excluded too —
+		// a case-sensitive check would send an invitation token.
+		['/ADMIN', false],
+		['/Admin/Login', false],
+		['/ADMIN/INVITATIONS/ACCEPT', false],
 		// A bare prefix match would swallow this future route; the
 		// rule is `/admin` or `/admin/…` exactly.
 		['/administration', true],

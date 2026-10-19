@@ -146,9 +146,9 @@ describe('GoogleAnalytics — SSR-script ID seeding (Issue #286)', () => {
 	}
 
 	it('seeds the write-once capture from the SSR-rendered script when the loader prop is undefined', () => {
-		// The real client condition (Issue #286 diagnosis): the loader
-		// prop is always `undefined` client-side — only the SSR script
-		// in the document carries the ID.
+		// A client-side navigation re-runs the root loader in the
+		// browser, where the `cloudflare:workers` stub answers
+		// `undefined`; the document script is then the only carrier.
 		appendSsrBootstrap('G-DOCTEST');
 
 		expect(captureMeasurementId(undefined)).toBe('G-DOCTEST');

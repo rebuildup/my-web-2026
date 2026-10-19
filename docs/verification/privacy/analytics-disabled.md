@@ -50,10 +50,10 @@ Issue は `docs/verification/privacy/analytics-disabled.png` を指定してい�
 
 | 対象 | 基準 | 固定している test |
 | --- | --- | --- |
-| 同意判定 | `granted` は保存値 `granted` かつ off-switch 無しのときだけ。それ以外（未保存・不明値・空文字・空白・`setItem` throw）は `unset` = 非計測 | `src/editorial/analytics/consent.test.ts`（31） |
+| 同意判定 | `granted` は保存値 `granted` かつ off-switch 無しのときだけ。それ以外（未保存・不明値・空文字・空白・`setItem` throw）は `unset` = 非計測 | `src/editorial/analytics/consent.test.ts`（34） |
 | GA4 bootstrap | 許可が解決するまで `GoogleAnalytics` は描画されない。描画後も `analyticsMeasurementAllowed()` が偽なら page_view を送らない | `GoogleAnalytics.test.tsx`（26） |
 | 拒否の実効性 | withdraw で `window['ga-disable-<ID>'] = true` と `gtag('consent','update',{…denied})` の両方が発行される。再許可ではフラグを false に戻し、**既に動いているタグに対して** `consent update {analytics_storage:'granted'}` を発行する。保存拒否時は記録も計測も残らない | `AnalyticsConsent.client.test.tsx`（13） |
-| `/admin/*` 除外 | `isAnalyticsMountPath` が `/admin`・`/admin/`・`/admin/**` を偽、`/administration` のような単なる前方一致を真と答える。mount 側はこの 1 関数を呼ぶだけである | `src/editorial/analytics/consent.test.ts` の `isAnalyticsMountPath` case |
+| `/admin/*` 除外 | `isAnalyticsMountPath` が `/admin`・`/admin/`・`/admin/**` を偽、`/administration` のような単なる前方一致を真と答える。router は static segment を小文字化して照合するため、`/ADMIN/INVITATIONS/ACCEPT` のような case variant も偽になる。mount 側はこの 1 関数を呼ぶだけである | `src/editorial/analytics/consent.test.ts` の `isAnalyticsMountPath` case |
 | 公開 SSR HTML | `/` `/about` `/contact` の document に `googletagmanager.com` / `gtag(` / consent test id が一切含まれない。query / cookie では武装できない（SSR はどの route でもタグを出さないため、これは「描画されない」ことの確認であって admin 除外の証明ではない。除外の証明は上の行） | `test/integration/analytics-consent.test.ts`（5）、`test/integration/privacy-projection.test.ts`（26） |
 | 公開する情報 | 生きた `page_view` の param は `page_path` / `page_location` / `page_title` のみ。query は strip され、owner 未承認データの検出器に掛からない | `privacy-projection.test.ts` の granted case |
 
@@ -72,7 +72,7 @@ pnpm run test:client
 pnpm run capture:analytics-consent
 ```
 
-2026-10-20 時点の実測: 上記 workerd 側 4 files / 88 tests passed、
+2026-10-20 時点の実測: 上記 workerd 側 4 files / 91 tests passed、
 client 側 7 files / 51 tests passed。`validate:fast` は `pnpm run test`
 （workerd pool）を含む。`test:client` は gate には載っていない
 （§8 #3）。

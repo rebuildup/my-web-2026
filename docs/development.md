@@ -659,6 +659,33 @@ node --test scripts/check-copy-i18n.test.mjs   # fixture で finding class を�
 契約の意味、schema、2 番目の locale を opt-in する手順は
 [`copy/README.md`](../copy/README.md) を参照。
 
+## 公開日本語 copy の編集レビュー承認 (Issue #506)
+
+訪問者が読む日本語の文言を PR で書き換えたとき、その変更に **owner の判断** が
+記録されていることを要求する gate。対象は「公開日本語 copy の surface」
+（`quality/copy-editorial-surfaces.json` の opt-in glob 宣言）と、判断記録
+（`quality/copy-editorial-approvals.json`）の 2 ファイル。gate 自体は
+`src/**` を import せず、差分と 2 つの JSON だけを読む。
+
+```bash
+pnpm run copy:approval:check -- --base=release-0-7-0   # gate（base 必須）
+pnpm run copy:approval:check -- --base=release-0-7-0 --print-fingerprint
+node scripts/check-copy-editorial-approval.mjs --base=release-0-7-0 \
+  --format=html --out=.tmp/copy-editorial-approval.html
+node --test scripts/check-copy-editorial-approval.test.mjs  # 4 状態の fixture
+```
+
+判定は 4 状態: `pass` / `fail`（レビューがあり否定） / `not run`
+（NEEDS REVIEW。レビューが未記録） / `not applicable`（公開日本語の変更なし）。
+編集補助ツールの出力は **evidence** であり approval ではない。
+
+この gate は **差分** を対象にするため、`validate:fast` ではなく CI の
+`validate` ジョブの `Copy editorial approval gate` ステップ（`pull_request`
+イベントのみ）で走る。運用手順は
+[`docs/runbook/copy-editorial-approval.md`](../runbook/copy-editorial-approval.md)、
+検証記録は
+[`docs/verification/copy/editorial-approval-gate.md`](../verification/copy/editorial-approval-gate.md)。
+
 ## Cross-engine compat matrix
 
 Issue #415 added a second Playwright configuration that runs the

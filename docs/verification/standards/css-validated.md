@@ -130,8 +130,8 @@ pnpm run verify:css-screenshot                              # report HTML + WebP
 再生成した時点の値）:
 
 ```
-surfaces    2 declared · 2 stylesheet(s) · 1100 declarations · 465 rules · 24 at-rules
-vocabulary  303 properties from 37 spec module(s) · 16 at-rules · 79 functions · 26 enumerated value sets
+surfaces    2 declared · 2 stylesheet(s) · 1107 declarations · 467 rules · 25 at-rules
+vocabulary  304 properties from 38 spec module(s) · 16 at-rules · 79 functions · 26 enumerated value sets
 allowlist   4 declared entries covering 10 occurrence(s)
 exit 0      # `errors (n)` 行はエラーが 1 件以上あるときだけ出力される（0 件なら出ない）
 ```

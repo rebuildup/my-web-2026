@@ -471,6 +471,7 @@ css_syntax:
       - 'a total declaration count below policy.min_declarations fails (vocabulary_underfloor)'
       - 'an artifact that cannot be generated at all fails rather than reporting an empty sheet'
       - 'a vendor prefix whose unprefixed counterpart is not in the vocabulary fails (vendor_prefix_unresolved)'
+      - 'a stylesheet the parser could not finish to eof fails instead of reporting the part it read as clean (parse_truncated)'
     known_limits:
       - 'value grammars are only checked for properties whose CSS grammar is a closed keyword list; a length, colour or url value is not parsed'
       - 'selectors are tokenized (balanced parens/brackets, escapes) but their specificity and validity are not checked'

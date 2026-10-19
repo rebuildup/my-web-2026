@@ -256,6 +256,7 @@
 				"column-width"
 			],
 			"https://www.w3.org/TR/css-overflow-3/": ["text-overflow"],
+			"https://drafts.csswg.org/cssom-view/": ["scroll-behavior"],
 			"https://www.w3.org/TR/css-position-3/": [
 				"bottom",
 				"clear",

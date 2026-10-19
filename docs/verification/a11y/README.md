@@ -131,6 +131,14 @@ artefact.
 and is wired into `validate:fast` (and registered in
 `quality/profile.yaml#gates.fast.components`).
 
+Which layer the evidence belongs to: the browser capture measures the
+**rendered result** under `reduce` ("no digit slot moves"), and layer 2
+would produce that value even if layer 1 were missing — so the
+capture is evidence for the rendered contract, while layer 1 itself is
+proven by recomputing the `css()` classes in
+`src/home/access/tiles.test.tsx` ("emits the animation utility class
+only when motion is allowed").
+
 ### What "per motion surface" means in the gate
 
 The pairing is decided per **component**, not per file. A file is a

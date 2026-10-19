@@ -1175,6 +1175,47 @@ scope and procedure:
 [`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md)
 and [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).
 
+## R2 media restore (deleted public image)
+
+The other half of the storage story is what happens when an object is
+**gone**, not when it is visible. Nothing in this repository
+re-creates a portfolio image: `portfolio_media` points at an R2 key,
+the bucket holds the bytes, and the only thing that can put a deleted
+object back is a **retained source captured before the deletion**.
+`src/cloudflare/media-restore.ts` (Issue #462) owns that procedure as
+a fail-closed model with three invariants:
+
+1. the visibility gate runs **before any write**, so a restore can
+   never republish a private or undeclared namespace;
+2. the retained bytes must match the manifest (sha256 / byte length /
+   content type) **before** the upload, so the wrong image is never
+   written under a published key;
+3. the object is **read back** and re-compared, so a truncated or
+   mislabelled upload is reported as a failure rather than as a
+   restore.
+
+The states that are *not* a restore are part of the contract:
+`refused_key`, `missing_source` (nothing was retained, and guessing
+would substitute content silently), `metadata_drift`, and
+`undecidable` (exit 2, so "could not check" never shares a signal with
+"checked and fine"). The result object is **status-only by
+construction** — it holds a verdict, a reason code, and the checks
+that ran, and no object key, key fragment, namespace, or source path.
+
+Verified against the local workerd R2 fixture — an object is really
+deleted and then really restored, and delivery returns to 200 — by
+`test/integration/r2-media-restore.test.ts`, plus a credential-free
+fixture proof (`pnpm run r2:restore:proof`, seven recorded cases
+under `quality/fixtures/r2-media-restore/`). **No production write is
+performed by the repository**: a real restore needs an R2-scoped
+credential that no workflow here holds, so it is an operator step.
+Procedure, deletion handling, metadata contract and failure
+behaviour: [`docs/runbook/r2-media-restore.md`](runbook/r2-media-restore.md).
+Residual: `portfolio_media` records `r2_key` and `content_type` but
+**no digest and no byte length** (`migrations/0007_portfolio.sql`), so
+the manifest is an operator-side artefact today; adding those columns
+is a separate schema decision.
+
 ## Session lifecycle (sign-in / sign-out)
 
 Better Auth (`src/cloudflare/auth/better-auth.ts`, ADR-0009) owns the

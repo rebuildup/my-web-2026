@@ -22,9 +22,10 @@ than in `wrangler.jsonc#vars`. Issue #187 performed this migration.
 | `secrets.required` declaration | `wrangler.jsonc#secrets.required` and `wrangler.production.jsonc#secrets.required` | committed; tracks the runtime secret name |
 | Seed placeholder `G-PLACEHOLDER000` | `scripts/infisical-seed.mjs` (dev only; prod placeholder is operator-seeded) | seeded once at merge time; replaced with the real `G-XXXXXXX` BEFORE traffic is cut |
 | Type augmentation | `src/cloudflare/auth/env.d.ts` (`GOOGLE_ANALYTICS_MEASUREMENT_ID: string`) | committed; tracks `wrangler.jsonc` |
-| Render gate | `src/routes/__root.tsx#loader` (server-side read) + `src/editorial/analytics/GoogleAnalytics.tsx` (component, public paths only) | committed |
-| Exclusion gate | `useLocation()` selector `pathname.startsWith('/admin')` in `__root.tsx#RootComponent` (script mount) + the same rule inside `trackRoutePageView` (page_view emission, Issue #286) | committed |
-| SPA route-change tracking | `GoogleAnalyticsRouteTracker` in `GoogleAnalytics.tsx`, mounted unconditionally in `__root.tsx#RootComponent` (Issue #286) | committed |
+| Render gate | `src/routes/__root.tsx#loader` (server-side read) → `AnalyticsGate` in `src/editorial/analytics/AnalyticsConsent.tsx` (public paths only, and only after a stored consent decision) → `src/editorial/analytics/GoogleAnalytics.tsx` | committed |
+| Consent gate (Issue #495) | `src/editorial/analytics/consent.ts` (decision rules, document-scoped state) + `AnalyticsConsentControl` (the only place a decision is recorded); the default state is **no measurement** | committed |
+| Exclusion gate | `useLocation()` selector `pathname.startsWith('/admin')` in `__root.tsx#RootComponent` (gate mount) + the same rule inside `trackRoutePageView` (page_view emission, Issue #286) | committed |
+| SPA route-change tracking | `GoogleAnalyticsRouteTracker` in `GoogleAnalytics.tsx`, mounted together with the loader inside `AnalyticsGate` (Issue #286; consent-gated since Issue #495) | committed |
 
 The placeholder is the **default state**. The Worker reads the
 runtime secret at SSR time; if the operator has not yet replaced
@@ -76,64 +77,60 @@ To wire GA4 into production for the first time:
 
 4. **Land on the release trunk** via the standard PR review +
    merge. Cloudflare Workers Builds deploys the new config to
-   production; the next request to `/`, `/about`, `/contact`,
-   `/portfolio`, or `/tools` returns HTML that contains the GA
-   `<script async>` tag in `<head>`. The script always references
-   the current `GOOGLE_ANALYTICS_MEASUREMENT_ID` value — placeholder
-   or real.
+   production. Since Issue #495 the SSR HTML does **not** contain
+   the GA tag on any route: the measurement gate renders the
+   `<script async>` node in the browser, only after a visitor has
+   recorded a `granted` decision. The value is still read from the
+   runtime secret at SSR time and carried to the client in the
+   loader data, so a deploy that changes the secret does change the
+   ID the next granted visitor's browser requests.
 
-5. **Verify in production** (operator session, no agent transcript):
+5. **Verify in production** (operator session, no agent transcript).
+   There is no `curl` verdict any more: the tag is client-only and
+   consent-gated, so an HTTP request to `/` can never show it. Use a
+   browser instead:
 
-   ```bash
-   curl -sS https://rebuildup.dev/ | grep googletagmanager
-   ```
+   1. Open `https://rebuildup.dev/` with DevTools → Network open and
+      filter for `googletagmanager`.
+   2. Confirm **no** `gtag/js` request is made while the consent
+      panel is showing 未選択 (this is the pre-consent guarantee).
+   3. In the console, record a grant for this origin only:
 
-   Expect one `<script async src="https://www.googletagmanager.com/gtag/js?id=…">`
-   line, plus the inline `gtag('config', '…')` script. The id
-   segment reflects the current Infisical `prod` value. **Do not
-   paste the id into chat or logs.**
+      ```js
+      localStorage.setItem('my-web-2026:analytics-consent', 'granted');
+      ```
 
-   Status-only placeholder check (Issue #286, hardened) — decides
-   whether the real GA4 id is deployed WITHOUT ever printing the id
-   itself (AGENTS.md §4: status-only output). As long as the
-   placeholder is deployed, GA4 silently discards every hit.
+   4. Reload and confirm exactly one
+      `https://www.googletagmanager.com/gtag/js?id=G-…` request,
+      followed by one `page_view`. The id segment reflects the
+      current Infisical `prod` value — **do not paste the id into
+      chat or logs** (AGENTS.md §4: status-only output).
+   5. Withdraw from the panel (拒否する) and confirm the control
+      reports 無効. In the console,
+      `window['ga-disable-G-…']` (same id) is now `true`; no further
+      `page_view` is sent on navigation.
+   6. Remove the test decision so the origin returns to its default
+      state:
 
-   Do NOT use a bare `grep -c PLACEHOLDER000` as the verdict: an HTTP
-   error page also yields 0 matches, which would read as "real id
-   deployed". The check below is the only valid decision procedure —
-   it fails on any non-200 status, and declares "real ID deployed"
-   ONLY when the status is 200 AND the placeholder is absent AND the
-   gtag loader is present:
+      ```js
+      localStorage.removeItem('my-web-2026:analytics-consent');
+      location.reload();
+      ```
 
-   ```bash
-   code=$(curl -sS -o /tmp/prod.html -w '%{http_code}' https://rebuildup.dev/)
-   placeholder=$(grep -c PLACEHOLDER000 /tmp/prod.html || true)
-   gtag=$(grep -c 'gtag/js?id=G-' /tmp/prod.html || true)
+   Placeholder detection is now an Infisical question, not an HTTP
+   one: if the deployed value is still `G-PLACEHOLDER000`, GA4
+   silently discards every hit and the Network panel shows
+   `?id=G-PLACEHOLDER000`. Decide that from the request URL in the
+   browser (boolean: placeholder / not placeholder) and never by
+   printing the secret from the environment (
+   `pnpm run infisical:check:cf -- --execute --environment=prod`
+   prints presence only).
 
-   if [ "$code" != "200" ]; then
-     echo "FAIL: status $code (not 200) — inconclusive, re-run; decide nothing"
-     exit 1
-   elif [ "$placeholder" -gt 0 ]; then
-     echo "status 200, placeholder still deployed → step 2 above still pending (pageviews discarded)"
-   elif [ "$gtag" -gt 0 ]; then
-     echo "status 200, placeholder absent, gtag loader present → real ID deployed (value not printed)"
-   else
-     echo "FAIL: status 200 but neither placeholder nor gtag loader found — investigate, decide nothing"
-     exit 1
-   fi
-   ```
-
-   The echo lines print counts and status only — never the
-   measurement id.
-
-   ```bash
-   curl -sS https://rebuildup.dev/admin/login | grep googletagmanager
-   ```
-
-   Expect zero matches. The `/admin/*` exclusion is in
-   `src/routes/__root.tsx#RootComponent` — verify with a
-   read-only `git grep` if the exclusion is ever suspected to
-   have regressed:
+   `/admin/*` has no consent surface and mounts no gate, so
+   `https://rebuildup.dev/admin/login` must not request
+   `googletagmanager` even with a stored grant. The exclusion is in
+   `src/routes/__root.tsx#RootComponent` — verify with a read-only
+   `git grep` if the exclusion is ever suspected to have regressed:
 
    ```bash
    git grep -n "startsWith('/admin')" src/routes/__root.tsx
@@ -202,19 +199,23 @@ It runs:
 - `typecheck` — `src/cloudflare/auth/env.d.ts` augmentation keeps
   `worker-configuration.d.ts` in sync (`pnpm run cf-typegen:check`
   is the `validate:release`-only check for that).
-- `test` — `src/editorial/analytics/GoogleAnalytics.test.tsx`
-  exercises the capture helper and the rendered markup, including
-  the empty / undefined / whitespace-only / capture-once branches
-  and the URL-encoding + inline-script escaping rules, plus the
+- `test` — `src/editorial/analytics/GoogleAnalytics.test.tsx` and
+  `consent.test.ts` exercise the capture helper, the rendered
+  markup, the consent decision rules (unset / denied / granted,
+  storage refusal, Do Not Track / Global Privacy Control), and the
   Issue #286 SPA contract: one inline `gtag('config', …)` per
   document, one `page_view` per route change (deduped against the
   initial location), `/admin/*` never tracked, no captured ID →
-  no tracking, and the queue-`config` fallback for documents whose
-  init snippet never ran.
-- `pnpm run test:client` — `GoogleAnalytics.client.test.tsx`
-  mounts `GoogleAnalyticsRouteTracker` under happy-dom and asserts
-  the effect wiring end to end (Issue #286). Not part of
-  `validate:fast`; run it alongside the gate for analytics changes.
+  no tracking, no consent decision → no tracking, and the
+  queue-`config` fallback for documents whose init snippet never ran.
+- `pnpm run test:client` — `AnalyticsConsent.client.test.tsx` and
+  `GoogleAnalytics.client.test.tsx` mount the gate and tracker under
+  happy-dom and assert the browser-only contract (Issue #495):
+  nothing before hydration, a stored grant mounts the loader, a
+  withdrawal stops an already-loaded tag (`ga-disable-<ID>` plus a
+  Consent Mode update), a refused write stops measurement, and a
+  re-grant clears the opt-out flag. Not part of `validate:fast`; run
+  it alongside the gate for analytics changes.
 - `infisical:check:coverage` — verifies the three
   deploy-time sources (`wrangler.jsonc#secrets.required`,
   `wrangler.production.jsonc#secrets.required`,
@@ -236,8 +237,8 @@ section. The contract today:
 
 - `gtag('config', …)` in the inline init script records the
   **initial document load** — exactly once per document.
-- `GoogleAnalyticsRouteTracker` (mounted unconditionally in
-  `__root.tsx#RootComponent`) pushes
+- `GoogleAnalyticsRouteTracker` (mounted with the loader inside
+  `AnalyticsGate`, so only after a stored grant) pushes
   `gtag('event', 'page_view', …)` **once per client-side location
   change** (`pathname + searchStr`), deduped against the initial
   location so the initial load is never counted twice.
@@ -245,11 +246,13 @@ section. The contract today:
   survives admin navigations so the first public page after
   leaving `/admin/*` is tracked.
 - No captured measurement ID → the tracker is inert (same off
-  switch as the script mount).
+  switch as the script mount), and no consent decision → the
+  tracker is not mounted at all.
 - If the document's init snippet never ran (visit landed on
-  `/admin/*`, where the GA scripts are excluded) the tracker
-  bootstraps the official `dataLayer`/`gtag` queue and queues
-  `js` + `config`; `config` records that page's page_view.
+  `/admin/*`, where the GA scripts are excluded, then moved to a
+  public route after a grant) the tracker bootstraps the official
+  `dataLayer`/`gtag` queue and queues `js` + `config`; `config`
+  records that page's page_view.
 
 ### ID supply on the client (Issue #286 diagnosis)
 
@@ -260,13 +263,13 @@ through the dehydrated loader state that `hydrateStart()` now
 consumes (Issue #291 wired this in `src/client.tsx` — before that
 fix the client re-ran loaders against the empty stub and the prop
 stayed `undefined`). The write-once capture is **additionally seeded
-from the SSR-rendered bootstrap script** in the current document
-(`<script src="…gtag/js?id=G-…">` — see
+from the bootstrap script the gate rendered** into the current
+document (`<script src="…gtag/js?id=G-…">` — see
 `readMeasurementIdFromDocument` in `GoogleAnalytics.tsx`) as a
-belt-and-braces path for documents without dehydrated state. The
-DOM node exists exactly where SSR mounted GA (never on `/admin/*`
-full loads), so the off switch and the admin exclusion are
-unchanged.
+belt-and-braces path for documents without dehydrated state. Since
+Issue #495 that DOM node is client-only and exists exactly where a
+stored grant allowed measurement (never on `/admin/*`, which has no
+gate), so the off switch and the admin exclusion are unchanged.
 
 Verified in the merged state (Issues #286 + #291 together): a
 session that starts on `/admin/*` and reaches a public page via
@@ -286,9 +289,12 @@ and no `/_serverFn/*` loader re-runs on initial load.
 The Issue #171 body lists these as not part of the wire-up and they are
 also not part of this runbook:
 
-- **Cookie consent banner.** Out of scope per Issue #171 body. If a
-  visitor jurisdiction requires consent in the future, the
-  acceptance gate moves to a separate ticket.
+- **Cookie consent banner.** No longer out of scope: Issue #495
+  shipped the consent surface (`AnalyticsConsentControl`) and the
+  non-tracking default. This runbook's verification step above is
+  the operator procedure for it. A jurisdiction-specific legal
+  reading is a separate owner decision — see
+  `docs/verification/privacy/analytics-disabled.md`.
 - **Custom events / conversions.** Out of scope. Future tickets
   can extend `src/editorial/analytics/` with sibling components
   that emit typed events.

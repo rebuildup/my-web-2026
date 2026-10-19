@@ -35,7 +35,18 @@ import {
  * the workerd pool has no DOM).
  */
 
+/**
+ * Distinct IDs per grant scenario.
+ *
+ * React hoists `<script async src>` as a document resource and does not
+ * re-insert a resource the document already rendered, while this file
+ * removes the nodes between tests (`removeAnalyticsScripts`). A unique
+ * `src` per scenario keeps both properties: the "no googletagmanager"
+ * assertions still start from an empty head, and a scenario that must
+ * observe the loader really observes its own insertion.
+ */
 const MEASUREMENT_ID = 'G-TEST0000';
+const RETURNING_MEASUREMENT_ID = 'G-TEST0002';
 
 /**
  * Replaces `globalThis.localStorage` with an in-memory store for one
@@ -213,22 +224,37 @@ describe('AnalyticsConsentControl — first visit', () => {
 		expect(toggle.textContent).toContain('有効');
 	});
 
-	it('remembers a recorded decision on the next document', async () => {
+	it('remembers a recorded decision and mounts the tag on the next document', async () => {
 		storageFixture.values.set(ANALYTICS_CONSENT_STORAGE_KEY, 'granted');
-		render(<AnalyticsGate measurementId={MEASUREMENT_ID} locationKey="/" />);
+		render(<AnalyticsGate measurementId={RETURNING_MEASUREMENT_ID} locationKey="/" />);
 		// The gate publishes the stored answer as this document's decision
-		// in its mount effect, which is what the GA4 modules gate on.
-		// (Asserting the `<script>` again would test React's resources
-		// cache, not the decision: React inserts a hoisted async script
-		// once per document and does not re-insert one this file already
-		// rendered.)
+		// in its mount effect, which is what the GA4 modules gate on — and
+		// the stored-grant render path really mounts the loader, rather
+		// than only flipping the decision.
 		await waitFor(() => {
 			expect(analyticsMeasurementAllowed()).toBe(true);
+		});
+		await waitFor(() => {
+			const script = document.head.querySelector(
+				'script[src*="googletagmanager.com/gtag/js"]',
+			) as HTMLScriptElement | null;
+			expect(script?.getAttribute('src')).toContain(encodeURIComponent(RETURNING_MEASUREMENT_ID));
 		});
 	});
 });
 
 describe('AnalyticsConsentControl — browser off-switch', () => {
+	/** Restores `navigator.globalPrivacyControl`, which only the GPC test sets. */
+	const originalGpc = Object.getOwnPropertyDescriptor(globalThis.navigator, 'globalPrivacyControl');
+
+	afterEach(() => {
+		if (originalGpc) {
+			Object.defineProperty(globalThis.navigator, 'globalPrivacyControl', originalGpc);
+		} else {
+			Reflect.deleteProperty(globalThis.navigator, 'globalPrivacyControl');
+		}
+	});
+
 	it('honours Do Not Track over a stored grant and offers no override', async () => {
 		storageFixture.values.set(ANALYTICS_CONSENT_STORAGE_KEY, 'granted');
 		setDoNotTrack('1');
@@ -240,10 +266,38 @@ describe('AnalyticsConsentControl — browser off-switch', () => {
 			</>,
 		);
 
+		// A stored decision collapses the panel to the status control, so
+		// the explanation is one click away — the control reports 無効.
+		const toggle = await screen.findByTestId('analytics-consent-toggle');
+		expect(toggle.textContent).toContain('無効');
+		toggle.click();
 		const panel = await screen.findByTestId('analytics-consent');
 		expect(panel.getAttribute('data-analytics-off-switch')).toBe('do-not-track');
 		expect(screen.queryByTestId('analytics-consent-grant')).toBeNull();
 		// The stored grant does not load the tag under the signal.
+		expect(document.head.innerHTML).not.toContain('googletagmanager');
+	});
+
+	it('honours Global Privacy Control over a stored grant', async () => {
+		storageFixture.values.set(ANALYTICS_CONSENT_STORAGE_KEY, 'granted');
+		Object.defineProperty(globalThis.navigator, 'globalPrivacyControl', {
+			value: true,
+			configurable: true,
+			enumerable: true,
+		});
+
+		render(
+			<>
+				<AnalyticsGate measurementId={MEASUREMENT_ID} locationKey="/" />
+				<AnalyticsConsentControl />
+			</>,
+		);
+
+		const toggle = await screen.findByTestId('analytics-consent-toggle');
+		toggle.click();
+		const panel = await screen.findByTestId('analytics-consent');
+		expect(panel.getAttribute('data-analytics-off-switch')).toBe('global-privacy-control');
+		expect(screen.queryByTestId('analytics-consent-grant')).toBeNull();
 		expect(document.head.innerHTML).not.toContain('googletagmanager');
 	});
 });
@@ -260,12 +314,144 @@ describe('AnalyticsConsentControl — storage the browser refuses', () => {
 
 		screen.getByTestId('analytics-consent-grant').click();
 
-		const status = await screen.findByTestId('analytics-consent-status');
+		// The headline reports the failure, not the state the store did
+		// not accept, and the live region says what this session does.
+		const panel = await screen.findByTestId('analytics-consent');
 		await waitFor(() => {
-			expect(status.textContent).toContain('保存できませんでした');
+			expect(panel.textContent).toContain('設定を保存できませんでした');
 		});
+		expect(screen.getByTestId('analytics-consent-status').textContent).toContain(
+			'このセッションでは計測しません',
+		);
 		expect(setItem).toHaveBeenCalled();
+		expect(analyticsMeasurementAllowed()).toBe(false);
 		expect(document.head.innerHTML).not.toContain('googletagmanager');
+	});
+});
+
+/**
+ * One ID per withdrawal scenario, for the React resource-cache reason
+ * stated above `MEASUREMENT_ID`.
+ */
+const WITHDRAWAL_IDS = {
+	stop: 'G-TEST0011',
+	regrant: 'G-TEST0012',
+	refused: 'G-TEST0013',
+} as const;
+
+describe('AnalyticsConsentControl — withdrawal after a grant', () => {
+	/** Renders the gate and control and grants measurement. */
+	async function grant(measurementId: string): Promise<void> {
+		render(
+			<>
+				<AnalyticsGate measurementId={measurementId} locationKey="/" />
+				<AnalyticsConsentControl />
+			</>,
+		);
+		screen.getByTestId('analytics-consent-grant').click();
+		await waitFor(() => {
+			expect(storageFixture.values.get(ANALYTICS_CONSENT_STORAGE_KEY)).toBe('granted');
+		});
+		await waitFor(() => {
+			expect(
+				document.head.querySelector('script[src*="googletagmanager.com/gtag/js"]'),
+			).not.toBeNull();
+		});
+	}
+
+	/** Reopens the collapsed control and clicks 拒否する. */
+	async function withdraw(): Promise<void> {
+		(await screen.findByTestId('analytics-consent-toggle')).click();
+		(await screen.findByTestId('analytics-consent-deny')).click();
+	}
+
+	/**
+	 * Stands in for the `gtag` function the real library installs (the
+	 * happy-dom config disables script evaluation, so the inline init
+	 * never ran) and records every call.
+	 */
+	function installFakeGtag(): unknown[][] {
+		const calls: unknown[][] = [];
+		const globals = globalThis as unknown as {
+			gtag?: (command: string, ...params: unknown[]) => void;
+			dataLayer?: unknown[];
+		};
+		globals.dataLayer = [];
+		globals.gtag = (command: string, ...params: unknown[]) => {
+			calls.push([command, ...params]);
+		};
+		return calls;
+	}
+
+	afterEach(() => {
+		const globals = globalThis as unknown as { gtag?: unknown; dataLayer?: unknown };
+		globals.gtag = undefined;
+		globals.dataLayer = undefined;
+		for (const id of Object.values(WITHDRAWAL_IDS)) {
+			delete (globalThis as unknown as Record<string, unknown>)[`ga-disable-${id}`];
+		}
+	});
+
+	it('stops a running tag and withdraws storage on refusal', async () => {
+		const id = WITHDRAWAL_IDS.stop;
+		await grant(id);
+		const calls = installFakeGtag();
+
+		await withdraw();
+
+		await waitFor(() => {
+			expect(storageFixture.values.get(ANALYTICS_CONSENT_STORAGE_KEY)).toBe('denied');
+		});
+		// The already-loaded library is stopped in place: both the
+		// per-property opt-out and the Consent Mode update were applied.
+		expect((globalThis as unknown as Record<string, unknown>)[`ga-disable-${id}`]).toBe(true);
+		expect(calls).toContainEqual([
+			'consent',
+			'update',
+			expect.objectContaining({ analytics_storage: 'denied', ad_storage: 'denied' }),
+		]);
+		expect(analyticsMeasurementAllowed()).toBe(false);
+	});
+
+	it('clears the opt-out flag when the visitor grants again', async () => {
+		const id = WITHDRAWAL_IDS.regrant;
+		await grant(id);
+		await withdraw();
+		await waitFor(() => {
+			expect(storageFixture.values.get(ANALYTICS_CONSENT_STORAGE_KEY)).toBe('denied');
+		});
+
+		(await screen.findByTestId('analytics-consent-toggle')).click();
+		(await screen.findByTestId('analytics-consent-grant')).click();
+
+		await waitFor(() => {
+			expect(storageFixture.values.get(ANALYTICS_CONSENT_STORAGE_KEY)).toBe('granted');
+		});
+		// The withdrawal flag is document-scoped, so a re-grant has to
+		// clear it before the re-mounted inline `config` runs.
+		expect((globalThis as unknown as Record<string, unknown>)[`ga-disable-${id}`]).toBe(false);
+		expect(analyticsMeasurementAllowed()).toBe(true);
+	});
+
+	it('stops measurement when the store refuses the refusal', async () => {
+		const id = WITHDRAWAL_IDS.refused;
+		await grant(id);
+		const calls = installFakeGtag();
+		breakStorageWrites();
+
+		await withdraw();
+
+		const panel = await screen.findByTestId('analytics-consent');
+		await waitFor(() => {
+			expect(panel.textContent).toContain('設定を保存できませんでした');
+		});
+		// Nothing new was recorded (the old grant is still stored), so the
+		// stored value alone cannot be trusted to describe this session —
+		// the document stops measuring regardless.
+		expect(storageFixture.values.get(ANALYTICS_CONSENT_STORAGE_KEY)).toBe('granted');
+		expect(analyticsMeasurementAllowed()).toBe(false);
+		expect((globalThis as unknown as Record<string, unknown>)[`ga-disable-${id}`]).toBe(true);
+		expect(calls.some((call) => call[0] === 'consent' && call[1] === 'update')).toBe(true);
 	});
 });
 
@@ -276,8 +462,8 @@ describe('the GA4 modules behind the gate', () => {
 		// resolved in this document.
 		const { container } = render(
 			<>
-				<GoogleAnalytics measurementId={MEASUREMENT_ID} />
-				<GoogleAnalyticsRouteTracker measurementId={MEASUREMENT_ID} locationKey="/" />
+				<GoogleAnalytics measurementId={RETURNING_MEASUREMENT_ID} />
+				<GoogleAnalyticsRouteTracker measurementId={RETURNING_MEASUREMENT_ID} locationKey="/" />
 			</>,
 		);
 		await Promise.resolve();

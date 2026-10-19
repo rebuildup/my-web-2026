@@ -44,6 +44,16 @@
  * than in a comment: the payload Google may store is written down in
  * the only file that loads the tag.
  *
+ * Withdrawal (Issue #495). A visitor can change their mind without a
+ * reload, and unmounting this component does not unload an
+ * already-executed `gtag.js`. `revokeAnalyticsMeasurement` therefore
+ * stops measurement in place: it sets the documented
+ * `ga-disable-<ID>` opt-out for the property and issues a
+ * `gtag('consent', 'update', …)` that denies every store. A later
+ * re-grant calls `allowAnalyticsMeasurement` first, so the opt-out
+ * flag the previous withdrawal set cannot silently swallow the
+ * page_view the re-granted `config` records.
+ *
  * Admin gating. `/admin/*` is the operator's own UI; GA tracking
  * would record every admin action into the same GA property as the
  * public traffic and pollute the funnel. Pathname gating lives in
@@ -74,10 +84,11 @@
  * re-runs loaders instead of hydrating dehydrated loader state, the
  * loader prop is `undefined` on every client render (the Issue #286
  * diagnosis), so the capture is additionally seeded from the
- * SSR-rendered bootstrap script in the current document — see
- * `readMeasurementIdFromDocument`. Together the two sources
- * preserve the ID across the client-side lifecycle so the script
- * tag and the tracker survive a navigation out of `/admin/*`.
+ * bootstrap script this component rendered into the current document
+ * — see `readMeasurementIdFromDocument`. Since Issue #495 that script
+ * is client-only (the tag renders after a stored grant), so the
+ * document read is the path that keeps the ID known across
+ * client-side navigations, including a navigation out of `/admin/*`.
  */
 
 import { useEffect, useRef } from 'react';
@@ -94,7 +105,7 @@ export function __resetCapturedMeasurementIdForTests(): void {
 }
 
 /**
- * Reads the measurement ID from the SSR-rendered bootstrap script.
+ * Reads the measurement ID from the bootstrap script in the document.
  *
  * Why this exists (Issue #286 diagnosis). The root loader value only
  * reaches components during SSR: on the client the `cloudflare:workers`
@@ -102,13 +113,13 @@ export function __resetCapturedMeasurementIdForTests(): void {
  * `src/client.tsx` re-runs loaders (the app does not hydrate
  * dehydrated loader state), so the `measurementId` prop is `undefined`
  * on every client-side render — the module-level write-once capture
- * never received a value, and the tracker was inert. The SSR HTML
- * itself does carry the ID (the `<script async src="…gtag/js?id=G-…">`
- * tag rendered above), so the capture is seeded from that DOM node:
- * it is SSR output, it only exists where GA is allowed to mount
- * (never on `/admin/*` full loads), and reading it preserves the
- * write-once contract — the ID that SSR rendered is exactly the ID
- * that survives the client-side lifecycle.
+ * never received a value, and the tracker was inert. The DOM does
+ * carry the ID once this component has rendered its
+ * `<script async src="…gtag/js?id=G-…">` node (Issue #495 moved that
+ * node from SSR to a post-consent client mount), so the capture is
+ * seeded from it. The node only exists where measurement was allowed,
+ * and reading the rendered ID keeps the write-once contract — the ID
+ * the loaded tag actually uses is the ID the tracker keeps.
  */
 function readMeasurementIdFromDocument(): string | undefined {
 	if (typeof document === 'undefined') return undefined;
@@ -130,9 +141,9 @@ function readMeasurementIdFromDocument(): string | undefined {
  * client-side stub never wipes the SSR value.
  *
  * Two sources feed the write-once capture, first non-empty wins:
- * the `value` argument (the SSR loader prop during SSR) and the
- * SSR-rendered bootstrap script in the current document (the
- * client-side path — see `readMeasurementIdFromDocument`).
+ * the `value` argument (the loader prop when it is present) and the
+ * bootstrap script this component rendered into the current document
+ * (see `readMeasurementIdFromDocument`).
  */
 export function captureMeasurementId(value: string | undefined): string | undefined {
 	if (!capturedMeasurementId) {
@@ -165,8 +176,9 @@ export interface GoogleAnalyticsProps {
  * `analytics_storage: 'granted'` is the one thing the visitor agreed
  * to; every advertising and personalization store stays `denied`, so
  * GA4 cannot widen the grant this site asked for. `wait_for_update`
- * is not set: there is no later consent update in this document, and a
- * wait would only delay the tag.
+ * is not set: the tag only ever loads after the visitor granted, so
+ * there is nothing to wait for. A later `consent`/`update` to denied
+ * is issued on withdrawal (`revokeAnalyticsMeasurement`).
  */
 export const ANALYTICS_CONSENT_DEFAULT_SNIPPET =
 	"gtag('consent','default',{analytics_storage:'granted',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',functionality_storage:'denied',personalization_storage:'denied',security_storage:'denied'});";
@@ -188,6 +200,83 @@ export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
 			<script dangerouslySetInnerHTML={{ __html: initScript }} />
 		</>
 	);
+}
+
+/**
+ * The Consent Mode update every withdrawal issues (Issue #495).
+ *
+ * Withdrawal happens in a document where `gtag.js` may already be
+ * running, so unmounting the React tree is not enough: the loaded
+ * library stays in the realm. Two mechanisms stop it, and this
+ * function applies both — `window['ga-disable-<ID>'] = true` is the
+ * documented opt-out that makes gtag drop every hit for that
+ * property, and the `consent`/`update` below withdraws the storage
+ * the visitor had granted. Either alone would leave a claim the copy
+ * could not make; together they are why the denied copy says the
+ * measurement stops rather than that nothing ever happened.
+ */
+const ANALYTICS_CONSENT_DENIED_PARAMS = {
+	analytics_storage: 'denied',
+	ad_storage: 'denied',
+	ad_user_data: 'denied',
+	ad_personalization: 'denied',
+	functionality_storage: 'denied',
+	personalization_storage: 'denied',
+	security_storage: 'denied',
+} as const;
+
+/** Record under which gtag.js checks the per-property opt-out flag. */
+function analyticsDisableKey(id: string): string {
+	return `ga-disable-${id}`;
+}
+
+/**
+ * Stops measurement in this document (Issue #495).
+ *
+ * Called when a visitor withdraws consent, and when a store refuses a
+ * decision (nothing is recorded, so nothing is measured). Idempotent
+ * and a no-op without a measurement ID or a `window`.
+ */
+export function revokeAnalyticsMeasurement(measurementId?: string): void {
+	if (typeof window === 'undefined') return;
+	const id = measurementId?.trim() || capturedMeasurementId || readMeasurementIdFromDocument();
+	if (id) {
+		try {
+			(window as unknown as Record<string, unknown>)[analyticsDisableKey(id)] = true;
+		} catch {
+			// A frozen window only costs the opt-out flag; the consent
+			// update below still withdraws storage.
+		}
+	}
+	const gtag = (window as unknown as AnalyticsGlobals).gtag;
+	if (typeof gtag !== 'function') return;
+	try {
+		(gtag as GtagFn)('consent', 'update', { ...ANALYTICS_CONSENT_DENIED_PARAMS });
+	} catch {
+		// A throwing gtag was never a measurement path we control; the
+		// React gate already unmounted the loader.
+	}
+}
+
+/**
+ * Clears the per-property opt-out flag before measurement restarts
+ * (Issue #495).
+ *
+ * A visitor may grant, withdraw, and grant again. The flag set by
+ * `revokeAnalyticsMeasurement` survives in the window for the life of
+ * the document, so it has to be cleared BEFORE the freshly mounted
+ * inline `config` runs — otherwise the re-grant would silently drop
+ * the page_view it just loaded for.
+ */
+export function allowAnalyticsMeasurement(measurementId?: string): void {
+	if (typeof window === 'undefined') return;
+	const id = measurementId?.trim() || capturedMeasurementId || readMeasurementIdFromDocument();
+	if (!id) return;
+	try {
+		(window as unknown as Record<string, unknown>)[analyticsDisableKey(id)] = false;
+	} catch {
+		// Nothing to do: the flag was never set.
+	}
 }
 
 /* ------------------------------------------------------------------------- *

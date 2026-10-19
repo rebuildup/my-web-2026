@@ -35,6 +35,14 @@
  * (`test/integration/analytics-consent.test.ts`) proves the no-script
  * half at the request level.
  *
+ * A refusal is also enforced against a tag that is already running.
+ * The decision path calls `revokeAnalyticsMeasurement()` before it
+ * announces the change, so the copy can say the measurement stops
+ * instead of only that nothing new is loaded. A store that refuses
+ * the write is treated the same way: nothing was recorded, so
+ * nothing is measured, and the panel reports the failure rather than
+ * the state it could not persist.
+ *
  * The browser signal is reported, not hidden
  * -------------------------------------------
  * When Do Not Track / Global Privacy Control is on, the panel says the
@@ -46,7 +54,12 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { css } from '../../../styled-system/css';
-import { GoogleAnalytics, GoogleAnalyticsRouteTracker } from './GoogleAnalytics';
+import {
+	GoogleAnalytics,
+	GoogleAnalyticsRouteTracker,
+	allowAnalyticsMeasurement,
+	revokeAnalyticsMeasurement,
+} from './GoogleAnalytics';
 import {
 	ANALYTICS_CONSENT_CHANGE_EVENT,
 	type AnalyticsConsentDecision,
@@ -71,12 +84,15 @@ export const ANALYTICS_CONSENT_COPY = {
 		'許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。広告用途の保存は有効にしていません。',
 	deniedHeadline: 'アクセス解析は拒否されています',
 	deniedDescription:
-		'このブラウザには解析用の設定が保存されていないか、拒否されています。Google の解析サービス（GA4）へは何も送信されません。このサイトの表示と操作はこれまでどおりです。',
+		'このブラウザでは、以降の計測を停止します。このサイトの表示と操作はこれまでどおりです。',
 	offSwitchHeadline: 'ブラウザの設定により解析は停止しています',
 	offSwitchDescription:
 		'このブラウザは「追跡しない」を指定しています。サイト側の設定より優先して、解析用のスクリプトを読み込みません。',
-	storageBlockedDescription:
-		'ブラウザが保存領域を無効にしているため、設定を保存できませんでした。このセッションは解析を読み込みません。',
+	storageBlockedHeadline: '設定を保存できませんでした',
+	storageBlockedDescription: 'ブラウザが保存領域を無効にしているため、設定を保存できませんでした。',
+	storageBlockedStatus: 'このセッションでは計測しません。',
+	storageUnavailableDescription:
+		'ブラウザの保存領域を利用できないため、設定を読み取れませんでした。設定を選ぶまで計測しません。',
 	grantLabel: '許可する',
 	denyLabel: '拒否する',
 	toggleLabel: '解析の設定',
@@ -120,22 +136,32 @@ export function AnalyticsConsentPanel({
 }: AnalyticsConsentPanelProps) {
 	const headingId = 'analytics-consent-heading';
 	const descriptionId = 'analytics-consent-description';
-	const description =
-		offSwitch !== null
+	// A refused write outranks the recorded state: the browser does not
+	// hold the decision, so reporting "許可されています" here would be a
+	// claim about a state the visitor no longer has.
+	const description = writeFailed
+		? ANALYTICS_CONSENT_COPY.storageBlockedDescription
+		: offSwitch !== null
 			? ANALYTICS_CONSENT_COPY.offSwitchDescription
 			: state === 'granted'
 				? ANALYTICS_CONSENT_COPY.grantedDescription
 				: state === 'denied'
 					? ANALYTICS_CONSENT_COPY.deniedDescription
 					: ANALYTICS_CONSENT_COPY.unsetDescription;
-	const headline =
-		offSwitch !== null
+	const headline = writeFailed
+		? ANALYTICS_CONSENT_COPY.storageBlockedHeadline
+		: offSwitch !== null
 			? ANALYTICS_CONSENT_COPY.offSwitchHeadline
 			: state === 'granted'
 				? ANALYTICS_CONSENT_COPY.grantedHeadline
 				: state === 'denied'
 					? ANALYTICS_CONSENT_COPY.deniedHeadline
 					: ANALYTICS_CONSENT_COPY.unsetHeadline;
+	const statusMessage = writeFailed
+		? ANALYTICS_CONSENT_COPY.storageBlockedStatus
+		: storageUnavailable && state === 'unset'
+			? ANALYTICS_CONSENT_COPY.storageUnavailableDescription
+			: '';
 	const statusLabel =
 		offSwitch !== null || state === 'denied'
 			? ANALYTICS_CONSENT_COPY.deniedStatus
@@ -220,11 +246,7 @@ export function AnalyticsConsentPanel({
 					color: writeFailed ? 'accent.negative' : 'text.muted',
 				})}
 			>
-				{writeFailed
-					? ANALYTICS_CONSENT_COPY.storageBlockedDescription
-					: storageUnavailable && state === 'unset'
-						? ANALYTICS_CONSENT_COPY.storageBlockedDescription
-						: ''}
+				{statusMessage}
 			</p>
 			<div
 				className={css({
@@ -367,6 +389,14 @@ export function AnalyticsConsentControl() {
 	const { state, offSwitch, storageUnavailable } = useAnalyticsConsentDecision();
 	const [expanded, setExpanded] = useState(true);
 	const [writeFailed, setWriteFailed] = useState(false);
+	// A returning visitor who already answered sees the status control,
+	// not the full panel. The effect decides rather than the initial
+	// state, because the stored answer is unreadable until the mount
+	// effect resolves it — starting collapsed would be a guess.
+	const decided = state !== 'unset';
+	useEffect(() => {
+		if (decided) setExpanded(false);
+	}, [decided]);
 	// Nothing is rendered before hydration: the stored decision is only
 	// readable in the browser, so a server render could only show the
 	// `unset` panel and would flash it at a visitor who already answered.
@@ -377,10 +407,24 @@ export function AnalyticsConsentControl() {
 		const written = writeAnalyticsConsent(decision);
 		setWriteFailed(!written);
 		if (!written) {
-			// The store refused the value, so nothing changed. Say so
-			// instead of rendering a state the browser does not hold.
+			// The store refused the value, so nothing was recorded — and
+			// that is a non-measuring document. A previous grant may have
+			// loaded the tag already, so stop it here rather than waiting
+			// for a decision that will never be stored. The panel then
+			// says the write failed instead of reporting the old state.
 			setDocumentAnalyticsConsent('unset');
+			revokeAnalyticsMeasurement();
 			return;
+		}
+		if (decision === 'denied') {
+			// The visitor withdrew after the tag may have loaded. Unmounting
+			// the React tree does not unload gtag.js, so stop it in place
+			// (see `revokeAnalyticsMeasurement`).
+			revokeAnalyticsMeasurement();
+		} else {
+			// A re-grant after a withdrawal has to clear the opt-out flag
+			// before the freshly mounted inline `config` runs.
+			allowAnalyticsMeasurement();
 		}
 		setExpanded(false);
 		window.dispatchEvent(new CustomEvent(ANALYTICS_CONSENT_CHANGE_EVENT));

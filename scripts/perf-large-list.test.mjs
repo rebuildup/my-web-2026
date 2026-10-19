@@ -183,8 +183,8 @@ describe('perf-large-list — thresholds', () => {
 
 	it('fails when one card stops being one card', () => {
 		const report = healthyReport();
-		// 100 cards at 21 nodes each — one node over the ceiling.
-		report.domNodes.list = 2100;
+		// 100 cards at 23 nodes each — one node over the ceiling.
+		report.domNodes.list = 2300;
 		const verdict = evaluateThresholds(report);
 		assert.equal(verdict.pass, false);
 		assert.ok(verdict.failures.some((f) => f.includes('DOM nodes per card')));

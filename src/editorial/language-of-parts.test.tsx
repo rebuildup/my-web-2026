@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import {
@@ -137,7 +138,7 @@ describe('LanguageOfParts — refused parts', () => {
 });
 
 describe('the Storybook gallery', () => {
-	const html = renderToStaticMarkup(<Gallery />);
+	const html = renderToStaticMarkup((Gallery.render as unknown as () => ReactNode)());
 
 	it('renders every state the Issue names', () => {
 		expect(html).toContain('data-testid="a11y-mixed-language-gallery"');

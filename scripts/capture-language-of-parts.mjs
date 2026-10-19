@@ -402,11 +402,14 @@ async function main() {
 		const fixture = policy.findLanguageDocument(id);
 		if (!fixture) throw new Error(`fixture document "${id}" is missing`);
 		const runs = policy.resolveLanguageRuns(fixture, policy.DOCUMENT_LANGUAGE);
+		const partRuns = runs.filter((run) => run.part !== null);
 		return {
 			id,
 			compact,
-			tags: runs.map((run) => run.lang),
-			ids: runs.filter((run) => run.part !== null).map((run) => run.part?.id),
+			// Only authored parts are compared: prose runs carry no
+			// element, so they have nothing in the DOM to read back.
+			tags: partRuns.map((run) => run.lang),
+			ids: partRuns.map((run) => run.part?.id),
 		};
 	});
 	const expectedRuns = { documentLanguage: policy.DOCUMENT_LANGUAGE, bodies: expectedBodies };

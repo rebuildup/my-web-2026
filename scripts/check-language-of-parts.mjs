@@ -298,7 +298,11 @@ export function readExportedString(source, name) {
 export function auditCaptureDrift({ storySource, captureSource }) {
 	const errors = [];
 	const fail = (rule, message) => errors.push({ rule, message });
-	if (!new RegExp(`export function ${STORY_EXPORT}\\b`).test(storySource)) {
+	// A story may export the gallery as a component (`export function`) or
+	// as a Storybook story object (`export const … = { render }`); the
+	// capture reads `.render?.()`, so both shapes have to be recognised
+	// here rather than only the one this repository happens to use.
+	if (!new RegExp(`export (?:function|const) ${STORY_EXPORT}\\b`).test(storySource)) {
 		fail('capture-drift', `${STORY_MODULE} does not export ${STORY_EXPORT}.`);
 	}
 	if (!storySource.includes(`data-testid="${STORY_TEST_ID}"`)) {

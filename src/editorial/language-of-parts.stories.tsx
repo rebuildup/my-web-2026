@@ -81,11 +81,11 @@ function Panel({
 }
 
 /**
- * `Gallery` — the state stack `scripts/capture-language-of-parts.mjs`
+ * `GalleryStory` — the state stack `scripts/capture-language-of-parts.mjs`
  * renders. A missing fixture document fails the capture rather than
  * producing a shorter image that still looks plausible.
  */
-export function Gallery() {
+function GalleryStory() {
 	const normal = findLanguageDocument('article');
 	const empty = findLanguageDocument('plain');
 	const failure = findLanguageDocument('refusals');
@@ -128,6 +128,4 @@ export function Gallery() {
 	);
 }
 
-export const MixedLanguage = {
-	render: () => <Gallery />,
-} satisfies Story;
+export const Gallery: Story = { render: () => <GalleryStory /> };

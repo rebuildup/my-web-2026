@@ -223,7 +223,7 @@ describe('auditCaptureDrift', () => {
 
 	it('fails when the story stops exporting the gallery', () => {
 		const errors = auditCaptureDrift({
-			storySource: storySource.replace(`export function ${STORY_EXPORT}`, 'function Gallery'),
+			storySource: storySource.replace(`export const ${STORY_EXPORT}`, `function ${STORY_EXPORT}`),
 			captureSource,
 		});
 		assert.ok(errors.some((error) => /does not export Gallery/.test(error.message)));

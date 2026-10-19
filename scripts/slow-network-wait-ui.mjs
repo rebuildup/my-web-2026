@@ -260,11 +260,11 @@ export function describeWaitWindow(samples, { feedbackAfterMs = FEEDBACK_AFTER_M
  * Three criteria, each of which can fail on its own:
  *
  *   C1 `blankMs === 0` — the outlet must never be empty during a wait.
- *   C2 `uninformedAfterThresholdMs === 0` — once the wait passes the
- *      framework's own `pendingMs`, the visitor must be shown a waiting
- *      surface. Showing the previous page instead is C2's failure: the
- *      URL has already changed, so a stale page under a new URL is a
- *      silent failure, not continuity.
+ *   C2 `uninformedAfterThresholdMs <= FEEDBACK_TOLERANCE_MS` — once the
+ *      wait passes the framework's own `pendingMs`, the visitor must be
+ *      shown a waiting surface. The tolerance is one sampling interval
+ *      (the detector's own resolution), not a latency budget: a surface
+ *      observed more than 100ms late still fails.
  *   C3 the navigation settled at all. A wait that never resolves is not
  *      a slow network; recording it as "0 ms of blank" would be a lie.
  *

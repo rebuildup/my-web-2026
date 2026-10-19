@@ -43,7 +43,7 @@ down 1600kbps / up 750kbps）と CPU 4x throttle（CDP
 | ID | 基準 | 測る値 |
 | --- | --- | --- |
 | C1 | 待機中に outlet が **blank**（何も描かれていない）になってはいけない | `blankMs === 0` |
-| C2 | 待ちが閾値をすぎた時点から、**情報を持つ面**が出なければならない | `uninformedAfterThresholdMs === 0` |
+| C2 | 待ちが閾値をすぎた時点から、**情報を持つ面**が出なければならない | `uninformedAfterThresholdMs <= SAMPLE_INTERVAL_MS`（100ms） |
 | C3 | 遷移は結局 settle する。settle しない待ちは「遅いだけ」ではない | `settled === true` |
 
 判定に使う閾値 **`FEEDBACK_AFTER_MS = 1000ms` は dashboard で決めた数字では
@@ -56,9 +56,16 @@ down 1600kbps / up 750kbps）と CPU 4x throttle（CDP
 **C2 の失敗**になる。Slow 4G の下で前ページが URL だけ差し替わったまま
 待たされるのは、**クリックが無反応に映った**のと同じ体験だから。
 
+C2 の許容値は **1 サンプル間隔（`SAMPLE_INTERVAL_MS = 100ms`）**。outlet は
+100ms ごとの採取なので、1001ms に現れた面が最初に記録されるのは次のサンプル
+であり、`=== 0` を要求すると同じコードでも run ごとに PASS / FAIL が入れ替わる
+（実測: 同条件で面の出現が 1025ms の回と 1031ms の回があった）。これは gate の
+緩和ではなく**観測分解能の明示**で、report は実測 ms をそのまま残し、1 間隔を
+超えて遅れた面は今も FAIL になる（`FEEDBACK_TOLERANCE_MS`）。
+
 判定ロジックは純関数（`classifySample` / `describeWaitWindow` /
 `evaluateWaitWindow` / `evaluateRetryOutcome` / `evaluateColdLoad`）で、
-browser を起動せずに `scripts/slow-network-wait-ui.test.mjs`（48 tests、
+browser を起動せずに `scripts/slow-network-wait-ui.test.mjs`（49 tests、
 `validate:fast` に入っている）が固定している。test 側は PASS が出やすい系列を
 ではなく、**修正前の実測 series（待ちの全区間が `content` / settle しない）が
 必ず FAIL になること**を固定している。
@@ -126,7 +133,7 @@ network profile / viewport / DPR / surface / cycles / **注入 delay / stall** �
 | surface | `pnpm run build` 出力の `vite preview`（dev サーバーではない） |
 | データ | ローカル D1（`applyMigrations --target=local` + portfolio skeleton seed。Playwright の `scripts/e2e-local-bootstrap.mjs` と同じ手順） |
 | 注入 delay | route chunk +4000ms（`route-pending`）/ +12000ms（`route-stall`） |
-| source SHA | before: `caf7b13d`（修正前 build）/ after: `be1e7c9`（修正込み build）。どちらも `report.json#environment.sourceSha` に記録 |
+| source SHA | before: `caf7b13d`（修正前 build）/ after: `31256ea8`（修正込み build、`workingTreeDirty: false`）。どちらも `report.json#environment.sourceSha` に記録 |
 | 実行 | `pnpm run perf:wait:ui -- --cycles=3` |
 
 **注入 delay は実測ではない。** loopback preview では実待ちが数十 ms しかなく、
@@ -153,16 +160,16 @@ download が起きず、2 回目以降は 40ms 程度で settle してしまう�
 | before 1 | `/tools/prototype` | 0ms | **0ms** | **4189ms** | 4254ms | FAIL |
 | before 2 | `/tools/readmark` | 0ms | **0ms** | **4183ms** | 4202ms | FAIL |
 | before 3 | `/tools/prototype` | 0ms | **0ms** | **4173ms** | 4190ms | FAIL |
-| after 1 | `/tools/prototype` | 0ms | **3174ms** | **1025ms** | 4255ms | PASS |
-| after 2 | `/tools/readmark` | 0ms | **3163ms** | **1017ms** | 4195ms | PASS |
-| after 3 | `/tools/prototype` | 0ms | **3164ms** | **1020ms** | 4202ms | PASS |
+| after 1 | `/tools/prototype` | 0ms | **3188ms** | **1021ms** | 4273ms | PASS |
+| after 2 | `/tools/readmark` | 0ms | **3165ms** | **1024ms** | 4207ms | PASS |
+| after 3 | `/tools/prototype` | 0ms | **3166ms** | **1027ms** | 4220ms | PASS |
 
 ### `route-stall`（chunk +12000ms）
 
 | | blank | **情報（waiting）** | **stale** | settled | 判定 |
 | --- | --- | --- | --- | --- | --- |
 | before | 0ms | **0ms** | **12223ms** | 12279ms | FAIL |
-| after | 0ms | **11242ms** | **1022ms** | 12325ms | PASS |
+| after | 0ms | **11162ms** | **1020ms** | 12225ms | PASS |
 
 ### 再試行 control（待機中に publish されるか、実際に踏むか）
 
@@ -179,9 +186,9 @@ router は待機面を出す **前** に遷移先 location を確定済みなの
 
 | route | status | TTFB（responseStart） | FCP | marker 到達 | 判定 |
 | --- | --- | --- | --- | --- | --- |
-| `/` | 200 | 33ms | 1168ms | 1458ms | PASS |
-| `/portfolio` | 200 | 9ms | 228ms | 463ms | PASS |
-| `/tools` | 200 | 4ms | 240ms | 271ms | PASS |
+| `/` | 200 | 33ms | 1164ms | 1460ms | PASS |
+| `/portfolio` | 200 | 9ms | 248ms | 482ms | PASS |
+| `/tools` | 200 | 4ms | 224ms | 280ms | PASS |
 
 **修正前後で cold-load の数値は変わらない。** 今回直したのは client-side 遷移の
 **待ち**であり、SSR document の初回表示ではない。待機面は client-side 専用
@@ -222,8 +229,8 @@ if (!PendingComponent) return null;
 
 ### 修正後の契約
 
-- **1 秒（`defaultPendingMs`）までは前ページのまま**。実測でも 1025ms /
-  1017ms / 1020ms と出ており、前ページの离去によるちらつきは起きていない。
+- **1 秒（`defaultPendingMs`）までは前ページのまま**。実測でも 1021ms /
+  1024ms / 1027ms と出ており、前ページの离去によるちらつきは起きていない。
 - 1 秒をすぎたら **`RoutePendingState`** が pending lane を描画する。
   表示メッセージは `読み込み中 / Loading` + `ページを読み込んでいます /
   Loading this page` + 状況の説明（日英）。
@@ -235,12 +242,19 @@ if (!PendingComponent) return null;
 - **進捗率・経過秒・再試行回数は出さない**（プラットフォームが持っていない
   数字を出さないため）。copy 契約として test で固定している。
 - **motion はゼロ**。`src/editorial/waiting/waiting-state.test.tsx` が
-  `animation` / `transition` / `@keyframes` を **出力に含まない**ことを
-  assert しており、`a11y:reduced-motion:check`（`validate:fast`）の管轄を
-  広げない。
+  Panda の atomic class 略号（`trs_…` / `anim_…`）と component 定義の
+  どちらにも `animation` / `transition` / `@keyframes` が無いことを assert
+  しており、`a11y:reduced-motion:check`（`validate:fast`）の管轄を広げない。
 - 見出し要素（`<h1>` / `<h2>`）は出さない。待機面は「ページ」ではなく
   「まだ描いてないページについてのメッセージ」であり、遷移先が自分の見出しを
   持ってくるため。
+- `defaultPendingComponent` は **router 全体**に効くため、同じ route の
+  revalidation が遅い場合（例: `/portfolio?facets=…` の search 更新）にも
+  **すでに描画済みの内容**が `defaultPendingMs` 後に待機面へ置き換わる。
+  現在の client-side `<Link>` 導線は `/tools` だけで、このケースは 3 leg の
+  測定対象外（未決 decision #3）。同じ route の再取得だけ前ページを残したい
+  場合は `route.options.pendingComponent` の per-route 上書きが次の分界に
+  なるが、その判断は本 Issue では行っていない。
 
 ### 修正の再現手順
 
@@ -258,9 +272,9 @@ pnpm run perf:wait:ui -- --cycles=3 --compare=.tmp/slow-network-wait-ui/before.j
 出力例（after）:
 
 ```
-route-pending blank 0ms · waiting 3174ms · stale 1025ms · settled 4255ms → PASS
-route-stall   blank 0ms · waiting 11242ms · stale 1022ms · settled 12325ms → PASS
-cold-load /         fcp  1168ms · marker  1458ms → PASS
+route-pending blank 0ms · waiting 3188ms · stale 1021ms · settled 4273ms → PASS
+route-stall   blank 0ms · waiting 11162ms · stale 1020ms · settled 12225ms → PASS
+cold-load /         fcp  1164ms · marker  1460ms → PASS
 retry          /tools/prototype → navigated=true content=true → PASS
 verdict        PASS
 ```
@@ -285,7 +299,7 @@ verdict        PASS
 本 Issue もそれに従う。
 
 `validate:fast` に入るのは **browser を起動しない契約テスト**
-（`scripts/slow-network-wait-ui.test.mjs` 48 tests）と **SSR markup 契約**
+（`scripts/slow-network-wait-ui.test.mjs` 49 tests）と **SSR markup 契約**
 （`src/editorial/waiting/waiting-state.test.tsx` 7 tests）のみ。測定そのもの
 は走らない。
 

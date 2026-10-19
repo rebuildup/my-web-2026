@@ -9,6 +9,7 @@ import {
 	stripAnalyticsQuery,
 	trackRoutePageView,
 } from './GoogleAnalytics';
+import { __resetDocumentAnalyticsConsentForTests, setDocumentAnalyticsConsent } from './consent';
 
 /**
  * GoogleAnalytics component contract (Issue #171, Issue #286).
@@ -55,6 +56,11 @@ function resetAnalyticsGlobals(): void {
 describe('GoogleAnalytics — captureMeasurementId', () => {
 	beforeEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
+		// Issue #495: every measurement assertion below runs in a
+		// document that has recorded an affirmative decision. The
+		// consent gate itself is asserted in its own describe block.
+		setDocumentAnalyticsConsent('granted');
 	});
 
 	it('captures the first non-empty value', () => {
@@ -87,10 +93,16 @@ describe('GoogleAnalytics — captureMeasurementId', () => {
 describe('GoogleAnalytics — render output', () => {
 	beforeEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
+		// Issue #495: every measurement assertion below runs in a
+		// document that has recorded an affirmative decision. The
+		// consent gate itself is asserted in its own describe block.
+		setDocumentAnalyticsConsent('granted');
 	});
 
 	afterEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
 	});
 
 	it('renders nothing when measurementId is undefined', () => {
@@ -111,6 +123,22 @@ describe('GoogleAnalytics — render output', () => {
 		expect(html).toContain('function gtag(){dataLayer.push(arguments);}');
 		expect(html).toContain("gtag('js', new Date());");
 		expect(html).toContain("gtag('config', 'G-ABCDEFG');");
+	});
+
+	it('declares the Consent Mode default the grant is limited to (Issue #495)', () => {
+		const html = renderToStaticMarkup(<GoogleAnalytics measurementId="G-ABCDEFG" />);
+		// The grant the visitor gave is analytics storage. Everything
+		// advertising / personalization related stays denied, and the
+		// declaration is in the document rather than in a comment.
+		expect(html).toContain("gtag('consent','default',{analytics_storage:'granted'");
+		expect(html).toContain("ad_storage:'denied'");
+		expect(html).toContain("ad_user_data:'denied'");
+		expect(html).toContain("ad_personalization:'denied'");
+		expect(html).toContain("personalization_storage:'denied'");
+		expect(html).toContain("functionality_storage:'denied'");
+		// Consent Mode must be declared before `config`, or the first
+		// page_view is recorded against the default state.
+		expect(html.indexOf("gtag('consent'")).toBeLessThan(html.indexOf("gtag('config'"));
 	});
 
 	it('preserves the SSR-captured value across re-renders with no measurementId', () => {
@@ -141,10 +169,16 @@ describe('GoogleAnalytics — render output', () => {
 describe('GoogleAnalytics — initial-load config (Issue #286)', () => {
 	beforeEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
+		// Issue #495: every measurement assertion below runs in a
+		// document that has recorded an affirmative decision. The
+		// consent gate itself is asserted in its own describe block.
+		setDocumentAnalyticsConsent('granted');
 	});
 
 	afterEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
 	});
 
 	it('emits exactly one gtag("config") call in the rendered markup', () => {
@@ -160,11 +194,14 @@ describe('GoogleAnalytics — initial-load config (Issue #286)', () => {
 describe('GoogleAnalytics — SPA route-change page_view (Issue #286)', () => {
 	beforeEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
+		setDocumentAnalyticsConsent('granted');
 		resetAnalyticsGlobals();
 	});
 
 	afterEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
 		resetAnalyticsGlobals();
 	});
 
@@ -272,10 +309,16 @@ describe('GoogleAnalytics — SPA route-change page_view (Issue #286)', () => {
 		const globals = analyticsGlobals();
 		expect(typeof globals.gtag).toBe('function');
 		const queue = globals.dataLayer as unknown[];
-		expect(queue).toHaveLength(2);
-		expect((queue[0] as unknown[])[0]).toBe('js');
-		expect((queue[1] as unknown[])[0]).toBe('config');
-		expect((queue[1] as unknown[])[1]).toBe('G-TEST000');
+		// Same queue shape the inline init script produces: the Consent
+		// Mode default (Issue #495), then `js`, then `config`.
+		expect(queue).toHaveLength(3);
+		expect((queue[0] as unknown[])[0]).toBe('consent');
+		expect((queue[0] as unknown[])[2]).toEqual(
+			expect.objectContaining({ analytics_storage: 'granted', ad_storage: 'denied' }),
+		);
+		expect((queue[1] as unknown[])[0]).toBe('js');
+		expect((queue[2] as unknown[])[0]).toBe('config');
+		expect((queue[2] as unknown[])[1]).toBe('G-TEST000');
 		// `config` records this page's page_view — no separate event
 		// on top of it.
 		expect(queue.some((entry) => (entry as unknown[])[0] === 'event')).toBe(false);
@@ -283,10 +326,79 @@ describe('GoogleAnalytics — SPA route-change page_view (Issue #286)', () => {
 		// Subsequent route changes use the now-available `gtag` and
 		// push a normal page_view event.
 		trackRoutePageView(state, '/about');
-		expect(queue).toHaveLength(3);
-		expect((queue[2] as unknown[])[0]).toBe('event');
-		expect((queue[2] as unknown[])[1]).toBe('page_view');
-		expect((queue[2] as unknown[])[2]).toEqual(expect.objectContaining({ page_path: '/about' }));
+		expect(queue).toHaveLength(4);
+		expect((queue[3] as unknown[])[0]).toBe('event');
+		expect((queue[3] as unknown[])[1]).toBe('page_view');
+		expect((queue[3] as unknown[])[2]).toEqual(expect.objectContaining({ page_path: '/about' }));
+	});
+});
+
+/**
+ * The consent gate (Issue #495).
+ *
+ * The contract under audit is the default: a measurement ID alone
+ * measures NOTHING. `unset` (no decision recorded — every first visit,
+ * and every SSR render) and `denied` both suppress the script tag and
+ * every event, so the GA4 code path is unreachable until a visitor
+ * records a grant.
+ */
+describe('GoogleAnalytics — consent gate (Issue #495)', () => {
+	beforeEach(() => {
+		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
+		resetAnalyticsGlobals();
+	});
+
+	afterEach(() => {
+		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
+		resetAnalyticsGlobals();
+	});
+
+	it('renders no markup with a captured ID while the decision is unset', () => {
+		captureMeasurementId('G-TEST000');
+		expect(renderToStaticMarkup(<GoogleAnalytics measurementId="G-TEST000" />)).toBe('');
+	});
+
+	it('renders no markup with a captured ID after an explicit denial', () => {
+		captureMeasurementId('G-TEST000');
+		setDocumentAnalyticsConsent('denied');
+		expect(renderToStaticMarkup(<GoogleAnalytics measurementId="G-TEST000" />)).toBe('');
+	});
+
+	it('emits no event while the decision is unset or denied', () => {
+		const gtag = vi.fn();
+		analyticsGlobals().gtag = gtag;
+		captureMeasurementId('G-TEST000');
+
+		// `unset`: no decision recorded yet.
+		const unsetState = createPageViewRouteState('/');
+		trackRoutePageView(unsetState, '/about');
+		expect(gtag).not.toHaveBeenCalled();
+
+		// `denied`: a decision recorded, and it is a refusal.
+		setDocumentAnalyticsConsent('denied');
+		const deniedState = createPageViewRouteState('/');
+		trackRoutePageView(deniedState, '/contact');
+		expect(gtag).not.toHaveBeenCalled();
+	});
+
+	it('stops emitting as soon as the decision is withdrawn mid-document', () => {
+		const gtag = vi.fn();
+		analyticsGlobals().gtag = gtag;
+		captureMeasurementId('G-TEST000');
+		setDocumentAnalyticsConsent('granted');
+
+		const state = createPageViewRouteState('/');
+		trackRoutePageView(state, '/about');
+		expect(gtag).toHaveBeenCalledTimes(1);
+
+		// The visitor revokes. The tag may still be in the document
+		// (it was loaded under the earlier grant), so the emission
+		// gate has to hold on its own.
+		setDocumentAnalyticsConsent('denied');
+		trackRoutePageView(state, '/contact');
+		expect(gtag).toHaveBeenCalledTimes(1);
 	});
 });
 
@@ -306,11 +418,14 @@ describe('GoogleAnalytics — SPA route-change page_view (Issue #286)', () => {
 describe('GoogleAnalytics — analytics log redaction', () => {
 	beforeEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
+		setDocumentAnalyticsConsent('granted');
 		resetAnalyticsGlobals();
 	});
 
 	afterEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
 	});
 
 	it('strips the query string and hash from a location key', () => {

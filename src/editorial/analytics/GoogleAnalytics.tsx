@@ -3,16 +3,17 @@
  *
  * Renders the GA4 `<script async>` bootstrap and the inline init
  * script that pushes the `gtag('config', …)` call. Mounted inside
- * the document `<head>` by `src/routes/__root.tsx` so the tag
- * loads on first paint and the pageview is recorded before the
- * visitor can navigate away.
+ * the document `<head>` by `AnalyticsGate` (`./AnalyticsConsent.tsx`),
+ * which `src/routes/__root.tsx` mounts on public routes, so the tag
+ * loads once a consent decision allows it and the pageview is
+ * recorded before the visitor can navigate away.
  *
  * SPA route changes (Issue #286). The inline `gtag('config', …)`
  * records exactly one page_view: the initial document load. TanStack
  * Router navigations replace the URL without loading a new document,
  * so nothing after the first paint would be measured without the
  * companion `GoogleAnalyticsRouteTracker` below — a render-null
- * component that `__root.tsx` always mounts and that pushes
+ * component that mounts with the script and pushes
  * `gtag('event', 'page_view', …)` on each location change. The
  * tracker dedupes against its initial location key, so the initial
  * load is counted once (by `config`) and never again (by the
@@ -24,6 +25,24 @@
  * the value is the empty string or `undefined`, the component
  * renders `null`. Operators therefore do not need to remove a
  * script tag — leaving the secret unset is the off switch.
+ *
+ * Consent gate (Issue #495). A measurement ID is necessary but not
+ * sufficient: nothing here renders, and no event is emitted, unless
+ * `./consent` has resolved an affirmative decision for this document.
+ * The check lives at the two emission points rather than only in the
+ * caller, so a mount site added later (or an SSR render) cannot skip
+ * it by forgetting a prop. `AnalyticsGate` in `./AnalyticsConsent.tsx`
+ * is the caller that resolves the decision; this module only enforces
+ * it.
+ *
+ * Consent Mode (Issue #495). The inline init script now opens with a
+ * `gtag('consent', 'default', …)` call that grants analytics storage
+ * — the thing the visitor just agreed to — and keeps ad storage, ad
+ * user data, ad personalization, personalization and functionality
+ * storage denied, which is what GA4 would otherwise default to. The
+ * declaration is therefore in the same document as the grant, rather
+ * than in a comment: the payload Google may store is written down in
+ * the only file that loads the tag.
  *
  * Admin gating. `/admin/*` is the operator's own UI; GA tracking
  * would record every admin action into the same GA property as the
@@ -62,6 +81,7 @@
  */
 
 import { useEffect, useRef } from 'react';
+import { analyticsMeasurementAllowed } from './consent';
 
 let capturedMeasurementId: string | undefined;
 
@@ -131,18 +151,35 @@ export interface GoogleAnalyticsProps {
 	/**
 	 * GA4 measurement ID (the `G-XXXXXXX` string). When the empty
 	 * string or `undefined` is passed, the component renders nothing.
+	 *
+	 * A measurement ID alone is not enough to render: the document must
+	 * also carry a granted consent decision (Issue #495). See
+	 * `./consent` and `AnalyticsGate`.
 	 */
 	measurementId?: string | undefined;
 }
 
+/**
+ * The Consent Mode default this site runs with (Issue #495).
+ *
+ * `analytics_storage: 'granted'` is the one thing the visitor agreed
+ * to; every advertising and personalization store stays `denied`, so
+ * GA4 cannot widen the grant this site asked for. `wait_for_update`
+ * is not set: there is no later consent update in this document, and a
+ * wait would only delay the tag.
+ */
+export const ANALYTICS_CONSENT_DEFAULT_SNIPPET =
+	"gtag('consent','default',{analytics_storage:'granted',ad_storage:'denied',ad_user_data:'denied',ad_personalization:'denied',functionality_storage:'denied',personalization_storage:'denied',security_storage:'denied'});";
+
 export function GoogleAnalytics({ measurementId }: GoogleAnalyticsProps) {
 	const captured = captureMeasurementId(measurementId);
 	if (!captured) return null;
+	if (!analyticsMeasurementAllowed()) return null;
 
 	const id = captured;
 	const encodedSrc = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(id)}`;
 	const escapedId = id.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
-	const initScript = `window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}gtag('js', new Date());gtag('config', '${escapedId}');`;
+	const initScript = `window.dataLayer = window.dataLayer || [];function gtag(){dataLayer.push(arguments);}${ANALYTICS_CONSENT_DEFAULT_SNIPPET}gtag('js', new Date());gtag('config', '${escapedId}');`;
 
 	return (
 		<>
@@ -249,6 +286,10 @@ function buildPageViewParams(locationKey: string): Record<string, string> {
  *   the first public page after leaving `/admin/*` is tracked.
  * - No captured measurement ID → never tracks (the render-gate
  *   contract: unset secret = off switch).
+ * - No granted consent decision → never tracks (Issue #495). The
+ *   render gate and the emission gate are checked independently, so a
+ *   document whose consent was withdrawn mid-session stops emitting
+ *   events as well as stopping the tag.
  *
  * Fallback when `window.gtag` does not exist yet: the official init
  * snippet never executed in this document — the visit landed on
@@ -269,6 +310,10 @@ export function trackRoutePageView(state: PageViewRouteState, locationKey: strin
 	// Off switch: no SSR-captured ID means the whole tracker is inert.
 	if (!capturedMeasurementId) return;
 
+	// Consent gate (Issue #495): an unmeasured document never emits,
+	// even if the script tag is somehow present.
+	if (!analyticsMeasurementAllowed()) return;
+
 	// Admin is never tracked; the key above is still recorded.
 	if (locationKey.startsWith(ADMIN_PATH_PREFIX)) return;
 
@@ -288,6 +333,15 @@ export function trackRoutePageView(state: PageViewRouteState, locationKey: strin
 			dataLayer.push(arguments);
 		};
 		globals.gtag = stub;
+		stub('consent', 'default', {
+			analytics_storage: 'granted',
+			ad_storage: 'denied',
+			ad_user_data: 'denied',
+			ad_personalization: 'denied',
+			functionality_storage: 'denied',
+			personalization_storage: 'denied',
+			security_storage: 'denied',
+		});
 		stub('js', new Date());
 		stub('config', capturedMeasurementId);
 		return;
@@ -315,11 +369,16 @@ export interface GoogleAnalyticsRouteTrackerProps {
 /**
  * Route-change page_view emitter (Issue #286).
  *
- * Renders `null` — it emits no markup and is mounted unconditionally
- * in the root `<head>` (including on `/admin/*`, where it stays
- * silent per the contract above; keeping the instance alive across
- * admin navigations is what lets the tracker resume with correct
- * dedupe when the visitor returns to a public page).
+ * Renders `null` — it emits no markup. Since Issue #495 it is mounted
+ * only alongside the GA4 script, inside `AnalyticsGate`, so an
+ * unmeasured document has no tracker at all. It stays silent on
+ * `/admin/*` per the contract above.
+ *
+ * Mounting it fresh with the current location (rather than keeping one
+ * instance alive across an admin round trip) is what makes the
+ * one-page_view invariant hold when consent arrives mid-session: the
+ * inline `config` in the freshly mounted `GoogleAnalytics` records the
+ * page, and this instance seeds its dedupe state with the same key.
  *
  * Module dependencies: none beyond React. The router dependency
  * lives in `__root.tsx`, which passes the location key as a prop, so

@@ -236,9 +236,8 @@ test('the harness renders the SHIPPED story, not a copy of it', () => {
 test('the observation reads every state, not the first strip on the page', () => {
 	// `querySelector` was the reason a defect in the empty / compact
 	// states could not fail this capture.
-	const reader = READ_FIXTURE.toString();
-	assert.match(reader, /querySelectorAll\(`\[\$\{caseAttribute\}\]`\)/);
-	assert.doesNotMatch(reader, /document\.querySelector\(hook\)/);
+	assert.match(READ_FIXTURE, /querySelectorAll\(`\[\$\{caseAttribute\}\]`\)/);
+	assert.doesNotMatch(READ_FIXTURE, /document\.querySelector\(hook\)/);
 	for (const field of [
 		'animationName',
 		'animatedSlots',
@@ -247,7 +246,7 @@ test('the observation reads every state, not the first strip on the page', () =>
 		'label',
 		'text',
 	]) {
-		assert.match(reader, new RegExp(`${field}:`), `${field} must be read per state`);
+		assert.match(READ_FIXTURE, new RegExp(`${field}:`), `${field} must be read per state`);
 	}
 });
 

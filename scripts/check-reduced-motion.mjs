@@ -24,19 +24,36 @@
  *                              `data-motion="<name>"` hook, so the
  *                              opt-out can name it without depending on
  *                              a `data-testid` or a generated utility
- *                              class.
+ *                              class. The pairing is PER COMPONENT,
+ *                              not per file: an unrelated component
+ *                              that happens to share the file does not
+ *                              protect a new animation.
  *   motion-without-preference-check
  *                              that component must read the shared
- *                              preference contract, so the animation is
- *                              not emitted at all under reduced motion
- *                              — the resting markup IS the reduced
- *                              markup, which is the only version a unit
- *                              test can assert.
+ *                              preference contract — call
+ *                              `usePrefersReducedMotion()` (or an
+ *                              equivalent read), or receive the decision
+ *                              under the contract's published prop name
+ *                              so the animation is not emitted at all
+ *                              under reduced motion — the resting markup
+ *                              IS the reduced markup, which is the only
+ *                              version a unit test can assert. Importing
+ *                              a hook NAME is not a read: a component
+ *                              that imports `COUNTER_ROLL_MOTION` for
+ *                              its `data-motion` attribute and never
+ *                              asks for the preference fails this rule.
+ *   motion-without-contract-hook
+ *                              a `data-motion` value the gate cannot
+ *                              resolve through the contract (a literal
+ *                              that no `*_MOTION` constant publishes, or
+ *                              a computed expression) is a hook nobody
+ *                              can verify, so it is a violation rather
+ *                              than a silently unchecked claim.
  *   motion-without-stylesheet-opt-out
- *                              every `MOTION_*` hook the contract
- *                              publishes must be named by a selector
- *                              inside a reduced-motion block in the
- *                              shipped stylesheet — i.e. the opt-out is
+ *                              every hook the contract publishes must
+ *                              be named by a selector inside a
+ *                              reduced-motion block in the shipped
+ *                              stylesheet — i.e. the opt-out is
  *                              reachable by the CSS layer too, not only
  *                              by the render-time branch.
  *   no-unconditional-smooth-scroll
@@ -67,6 +84,9 @@
  *     without motion — 1.4.13 / 4.1.2 — and the 2.2.2 floor) need human
  *     evaluation with a screen reader. `docs/verification/a11y/README.md`
  *     records which claim is machine-checked and which is not.
+ *   - The animation pattern is a TEXT pattern over TS/TSX sources, so
+ *     it reads `animation:` shorthand as well as the longhands; it
+ *     cannot see motion produced by a dependency's own CSS.
  *   - `scripts/**` is out of scope, for the same reason
  *     `check-i18n-policy.mjs` excludes itself: the capture script has
  *     to be able to NAME the forbidden forms in order to render its
@@ -96,6 +116,18 @@ export const SHIPPED_STYLESHEET = 'src/styles.css';
 /** The contract components read their preference from. */
 export const PREFERENCE_CONTRACT = 'src/editorial/reduced-motion';
 
+/**
+ * The contract constant that publishes the PROP NAME a component may
+ * use to receive the preference decision from its parent. Reading the
+ * hook is always allowed; a child component that is handed the answer
+ * instead has to spell it the way the contract says, or the gate
+ * cannot tell "receives the decision" from "has an unrelated prop".
+ */
+export const PREFERENCE_PROP_CONSTANT = 'REDUCED_MOTION_PROP';
+
+/** What the contract module's `*_MOTION` constants are for. */
+const HOOK_CONSTANT_SUFFIX = '_MOTION';
+
 /** The media query both layers are written against. */
 export const REDUCED_MOTION_MEDIA = 'prefers-reduced-motion: reduce';
 
@@ -115,9 +147,27 @@ const EXEMPT_SUFFIXES = [
 	'.stories.tsx',
 ];
 
-/** The source pattern that means "this component creates motion". */
+/**
+ * The source pattern that means "this component creates motion".
+ *
+ * Both the longhand (`animationName:`, `animationDuration:`, …) and
+ * the `animation:` shorthand, because Panda accepts either in the
+ * object literal it extracts classes from, and a gate that only
+ * recognised the longhand would pass a surface that animates through
+ * the shorthand. `transition` is deliberately absent (see the scope
+ * note in the module docstring).
+ */
 export const MOTION_DECLARATION =
-	/\banimation(?:Name|Duration|TimingFunction|FillMode|Delay|IterationCount)\s*:/g;
+	/\banimation\s*:|\banimation(?:Name|Duration|TimingFunction|FillMode|Delay|IterationCount)\s*:/g;
+
+/**
+ * A top-level declaration opens a region. Region scope is what stops
+ * "component A in this file is protected, therefore component B in the
+ * same file is protected" — the file is a container, not a protection
+ * boundary.
+ */
+const REGION_BOUNDARY =
+	/^(?:export\s+)?(?:default\s+)?(?:async\s+)?(?:function|const|let|var|class)\s+([A-Za-z0-9_$]+)/gm;
 
 /** The source pattern that means "smooth scrolling nobody opted into". */
 export const SMOOTH_SCROLL_DECLARATION = /\bscroll-?behavior\s*:\s*['"]?smooth\b/gi;
@@ -257,9 +307,14 @@ export function readStylesheetContract(scanPath = SHIPPED_STYLESHEET) {
 }
 
 /**
- * Every `MOTION_*` constant the contract module publishes, with the
+ * Every `*_MOTION` constant the contract module publishes, with the
  * hook name it carries, so the gate knows the names the shipped
  * components use instead of hard-coding a second copy of them.
+ *
+ * The `_MOTION` suffix is the contract's naming convention for a hook:
+ * `MOTION_HOOK_ATTRIBUTE` (the attribute name), `REDUCED_MOTION_QUERY`
+ * and `REDUCED_MOTION_PROP` are published by the same module and are
+ * deliberately not hook names.
  */
 export function readContractConstants(contractPath = `${PREFERENCE_CONTRACT}.ts`) {
 	const source = readFileSync(join(REPO_ROOT, contractPath), 'utf8');
@@ -267,17 +322,67 @@ export function readContractConstants(contractPath = `${PREFERENCE_CONTRACT}.ts`
 	const pattern = /export const ([A-Z0-9_]+)\s*=\s*'([^']*)';/g;
 	let match = pattern.exec(source);
 	while (match !== null) {
-		constants.push({ constant: match[1], name: match[2] });
+		if (match[1].endsWith(HOOK_CONSTANT_SUFFIX)) {
+			constants.push({ constant: match[1], name: match[2] });
+		}
 		match = pattern.exec(source);
 	}
 	return constants;
 }
 
+/** The prop name the contract publishes for receiving the decision. */
+export function readPreferencePropName(contractPath = `${PREFERENCE_CONTRACT}.ts`) {
+	const source = readFileSync(join(REPO_ROOT, contractPath), 'utf8');
+	const pattern = new RegExp(`export const ${PREFERENCE_PROP_CONSTANT}\\s*=\\s*'([^']*)';`);
+	const match = pattern.exec(source);
+	if (!match) {
+		throw new Error(
+			`${contractPath} must publish ${PREFERENCE_PROP_CONSTANT}; the gate cannot verify a preference decision it has no name for`,
+		);
+	}
+	return match[1];
+}
+
 /**
- * Whether a file reads the shared preference contract. Comments are
+ * Split a source file into the regions a protection claim is allowed
+ * to cover: one per top-level declaration, plus the module scope in
+ * front of the first one.
+ *
+ * This is the fix for the "one protected component launders the next
+ * one" hole: pairing is decided inside a region, so a component that
+ * declares no `data-motion` and reads no preference is reported even
+ * when a sibling in the same file does both.
+ */
+export function motionRegions(code) {
+	const boundaries = [];
+	REGION_BOUNDARY.lastIndex = 0;
+	let match = REGION_BOUNDARY.exec(code);
+	while (match !== null) {
+		boundaries.push({ name: match[1], start: match.index });
+		match = REGION_BOUNDARY.exec(code);
+	}
+	const regions = [];
+	const push = (name, start, end) => {
+		if (end > start) regions.push({ name, start, end, text: code.slice(start, end) });
+	};
+	push('<module>', 0, boundaries[0]?.start ?? code.length);
+	for (const [index, boundary] of boundaries.entries()) {
+		push(boundary.name, boundary.start, boundaries[index + 1]?.start ?? code.length);
+	}
+	return regions;
+}
+
+/**
+ * Whether a region reads the shared preference contract. Comments are
  * stripped first: prose that NAMES the contract is documentation, and
  * a rule that let a comment satisfy it would stay green on a component
  * that imports nothing.
+ *
+ * A CALL is required. Importing the module — which a component does
+ * anyway to get its `data-motion` constant — is not a read: without a
+ * call the component has no idea what the visitor asked for, and
+ * would animate identically in both modes while still importing
+ * something from `src/editorial/reduced-motion.ts`.
  */
 export function readsPreferenceContract(scanPath, code) {
 	if (
@@ -289,9 +394,21 @@ export function readsPreferenceContract(scanPath, code) {
 	}
 	const source = stripComments(code);
 	return (
-		/from\s*['"][^'"]*reduced-motion['"]/.test(source) ||
-		/\busePrefersReducedMotion\s*\(/.test(source)
+		/\busePrefersReducedMotion\s*\(/.test(source) ||
+		/\bprefersReducedMotion\s*\(/.test(source) ||
+		/\bresolveReducedMotion\s*\(/.test(source) ||
+		/\bmatchMedia\s*\(/.test(source)
 	);
+}
+
+/**
+ * Whether a region RECEIVES the decision under the contract's
+ * published prop name, which is how a child of a component that reads
+ * the hook stays inside the contract without reading the media query
+ * twice.
+ */
+export function declaresPreferenceProp(code, propName) {
+	return new RegExp(`\\b${propName}\\b`).test(stripComments(code));
 }
 
 /** A violation record. `wcag` is quoted so the CLI line is self-contained. */
@@ -305,6 +422,127 @@ export function formatViolation(entry) {
 }
 
 /**
+ * Pair ONE region's animation declarations with the protection found
+ * beside them, and report what is missing.
+ *
+ * Region scope is the whole point: the pairing evidence a surface may
+ * use is the hook, the preference read / prop and the stylesheet
+ * selector written in the same top-level declaration. A sibling
+ * component in the same file is not evidence — otherwise adding an
+ * animation to an already-protected file would be enough to ship it
+ * unguarded.
+ */
+export function analyzeRegion({ scanPath, code, region, constants, preferenceProp, stylesheet }) {
+	const contractHookNames = new Set(constants.map((entry) => entry.name));
+	const motionLines = matchLinesInRegion(code, region, MOTION_DECLARATION);
+	if (motionLines.length === 0) return { surfaces: [], violations: [] };
+
+	const hooks = motionHookAttributes(code, region, constants);
+	const resolvedHooks = hooks.filter((entry) => entry.source !== 'dynamic');
+	const renderTimeOptOut =
+		readsPreferenceContract(scanPath, region.text) ||
+		declaresPreferenceProp(region.text, preferenceProp);
+	const violations = [];
+
+	if (resolvedHooks.length === 0) {
+		violations.push(
+			violation(
+				'motion-without-hook',
+				scanPath,
+				motionLines[0].line,
+				motionLines[0].snippet,
+				`the component ${region.name} animates but tags no element with data-motion="<name>" (the hook name comes from a *_MOTION constant in ${PREFERENCE_CONTRACT}.ts), so nothing can opt this surface out`,
+				'1.4.13 Content on Hover or Focus (AA)',
+			),
+		);
+	}
+	if (!renderTimeOptOut) {
+		violations.push(
+			violation(
+				'motion-without-preference-check',
+				scanPath,
+				motionLines[0].line,
+				motionLines[0].snippet,
+				`the component ${region.name} animates but never calls the preference contract, and does not receive the decision as the contract's "${preferenceProp}" prop, so reduced motion still emits the animation declaration`,
+				'1.4.13 Content on Hover or Focus (AA)',
+			),
+		);
+	}
+
+	for (const hook of hooks) {
+		if (hook.source === 'dynamic') {
+			violations.push(
+				violation(
+					'motion-without-contract-hook',
+					scanPath,
+					hook.line,
+					`data-motion={${hook.expression}}`,
+					`the hook value in ${region.name} cannot be resolved to a contract constant, so the gate cannot tell which reduced-motion selector has to name it; publish it as a *_MOTION constant in ${PREFERENCE_CONTRACT}.ts and reference that`,
+					'1.4.13 Content on Hover or Focus (AA)',
+				),
+			);
+			continue;
+		}
+		if (!contractHookNames.has(hook.name)) {
+			violations.push(
+				violation(
+					'motion-without-contract-hook',
+					scanPath,
+					hook.line,
+					`data-motion="${hook.name}"`,
+					`"${hook.name}" is written as a literal, so the hook is not published by the contract (${PREFERENCE_CONTRACT}.ts); a hook the contract does not own cannot be paired with the stylesheet by name`,
+					'1.4.13 Content on Hover or Focus (AA)',
+				),
+			);
+		}
+	}
+
+	// A hook the stylesheet cannot reach is a dead opt-out: the
+	// render-time branch would honour the preference, but motion applied
+	// later by CSS (a hover rule, a re-render without the branch) would
+	// still animate.
+	for (const hook of resolvedHooks) {
+		const line = stylesheet.optedOutHooks.get(hook.name);
+		if (line) continue;
+		violations.push(
+			violation(
+				'motion-without-stylesheet-opt-out',
+				stylesheet.file,
+				1,
+				`data-motion="${hook.name}"`,
+				`${scanPath}:${hook.line} (${region.name}) uses ${hook.constant ? `${hook.constant} ` : ''}("${hook.name}") but no selector inside @media (${REDUCED_MOTION_MEDIA}) names it, so the CSS layer would still animate that element`,
+				'1.4.13 Content on Hover or Focus (AA)',
+			),
+		);
+	}
+
+	const styled = resolvedHooks
+		.map((hook) => stylesheet.optedOutHooks.get(hook.name))
+		.find((line) => line !== undefined);
+
+	return {
+		violations,
+		surfaces: [
+			{
+				file: scanPath,
+				region: region.name,
+				kind: 'keyframe animation',
+				declarationLines: motionLines.map((entry) => entry.line),
+				renderTimeOptOut,
+				hooks: resolvedHooks.map((entry) => ({
+					constant: entry.constant,
+					name: entry.name,
+					file: scanPath,
+					line: entry.line,
+				})),
+				stylesheetOptOut: styled ? `${stylesheet.file}:${styled}` : null,
+				wcag: '2.3.3 Animation from Interactions (AAA); 1.4.13 Content on Hover or Focus (AA)',
+			},
+		],
+	};
+}
+
+/**
  * Everything the gate (and the capture artefact) need: the stylesheet
  * contract, the contract's hook constants, the per-file findings, and
  * the motion inventory.
@@ -312,6 +550,7 @@ export function formatViolation(entry) {
 export function collectEvidence(directory = SRC_ROOT) {
 	const stylesheet = readStylesheetContract();
 	const constants = readContractConstants();
+	const preferenceProp = readPreferencePropName();
 	const files = collectSourceFiles(directory, (scanPath) => !isScanned(scanPath));
 	const sources = new Map(
 		files.map((file) => [toRepoPath(file), stripComments(readFileSync(file, 'utf8'))]),
@@ -344,51 +583,22 @@ export function collectEvidence(directory = SRC_ROOT) {
 	}
 
 	const surfaces = [];
+	const contractHookNames = new Set(constants.map((entry) => entry.name));
 	for (const [scanPath, code] of sources) {
-		const motionLines = matchLines(code, MOTION_DECLARATION);
 		const smoothLines = matchLines(code, SMOOTH_SCROLL_DECLARATION);
 		const autoplayLines = matchLines(code, AUTOPLAY_MEDIA);
 
-		if (motionLines.length > 0) {
-			const declaresHook = /data-motion\s*=/.test(code);
-			const readsContract = readsPreferenceContract(scanPath, code);
-			if (!declaresHook) {
-				violations.push(
-					violation(
-						'motion-without-hook',
-						scanPath,
-						motionLines[0].line,
-						motionLines[0].snippet,
-						'a component that animates must tag its element with data-motion="<name>" (the hook name comes from a MOTION_* constant in src/editorial/reduced-motion.ts) so the stylesheet can opt it out',
-						'1.4.13 Content on Hover or Focus (AA)',
-					),
-				);
-			}
-			if (!readsContract) {
-				violations.push(
-					violation(
-						'motion-without-preference-check',
-						scanPath,
-						motionLines[0].line,
-						motionLines[0].snippet,
-						'a component that animates must read the shared preference contract, so reduced motion emits no animation declaration at all',
-						'1.4.13 Content on Hover or Focus (AA)',
-					),
-				);
-			}
-			const hook = declaresHook ? hookUsage(scanPath, code, constants) : [];
-			surfaces.push({
-				file: scanPath,
-				kind: 'keyframe animation',
-				declarationLines: motionLines.map((entry) => entry.line),
-				renderTimeOptOut: readsContract,
-				hooks: hook.map((entry) => entry),
-				stylesheetOptOut:
-					hook.length === 0
-						? null
-						: `${stylesheet.file}:${stylesheet.optedOutHooks.get(hook[0].name) ?? 'missing'}`,
-				wcag: '2.3.3 Animation from Interactions (AAA); 1.4.13 Content on Hover or Focus (AA)',
+		for (const region of motionRegions(code)) {
+			const analysis = analyzeRegion({
+				scanPath,
+				code,
+				region,
+				constants,
+				preferenceProp,
+				stylesheet,
 			});
+			violations.push(...analysis.violations);
+			surfaces.push(...analysis.surfaces);
 		}
 
 		for (const entry of smoothLines) {
@@ -418,27 +628,6 @@ export function collectEvidence(directory = SRC_ROOT) {
 		}
 	}
 
-	// A hook a component references but no stylesheet selector can reach
-	// is a dead opt-out: the render-time branch would honour the
-	// preference, but any motion applied later by CSS (a hover rule, a
-	// re-render without the branch) would still animate.
-	for (const surface of surfaces) {
-		for (const hook of surface.hooks) {
-			const line = stylesheet.optedOutHooks.get(hook.name);
-			if (line) continue;
-			violations.push(
-				violation(
-					'motion-without-stylesheet-opt-out',
-					stylesheet.file,
-					1,
-					`data-motion="${hook.name}"`,
-					`${hook.file}:${hook.line} uses ${hook.constant} ("${hook.name}") but no selector inside @media (${REDUCED_MOTION_MEDIA}) names it, so the CSS layer would still animate that element`,
-					'1.4.13 Content on Hover or Focus (AA)',
-				),
-			);
-		}
-	}
-
 	violations.sort(
 		(a, b) => a.file.localeCompare(b.file) || a.line - b.line || a.rule.localeCompare(b.rule),
 	);
@@ -452,6 +641,7 @@ export function matchLines(code, pattern) {
 	let match = compiled.exec(code);
 	while (match !== null) {
 		found.push({
+			index: match.index,
 			line: lineAt(code, match.index),
 			snippet: code
 				.slice(match.index, match.index + 60)
@@ -463,18 +653,65 @@ export function matchLines(code, pattern) {
 	return found;
 }
 
+/** `matchLines` against one region, reported at its line in the file. */
+export function matchLinesInRegion(code, region, pattern) {
+	return matchLines(region.text, pattern).map((entry) => ({
+		...entry,
+		index: entry.index + region.start,
+		line: lineAt(code, region.start + entry.index),
+	}));
+}
+
+/**
+ * Every `data-motion` attribute a region writes, resolved as far as
+ * the contract allows.
+ *
+ *   { source: 'constant', name, constant }  `data-motion={COUNTER_ROLL_MOTION}`
+ *   { source: 'literal',  name, constant: null }  `data-motion="counter-roll"`
+ *   { source: 'dynamic',  name: null, constant: null, expression }
+ *
+ * The third shape is the one that used to slip through: an attribute
+ * whose value the gate cannot resolve matches a naive "does this file
+ * declare a hook?" test, so the surface was reported as paired while
+ * no stylesheet selector was ever checked against it.
+ */
+export function motionHookAttributes(code, region, constants) {
+	const known = new Map(constants.map((entry) => [entry.constant, entry.name]));
+	const found = [];
+	const pattern = /data-motion\s*=\s*(\{([^}]*)\}|"([^"]*)"|'([^']*)')/g;
+	let match = pattern.exec(region.text);
+	while (match !== null) {
+		const expression = (match[2] ?? match[3] ?? match[4] ?? '').trim();
+		const resolved = known.get(expression);
+		found.push({
+			file: undefined,
+			index: region.start + match.index,
+			line: lineAt(code, region.start + match.index),
+			constant: resolved === undefined ? null : expression,
+			name: resolved ?? match[3] ?? match[4] ?? null,
+			source: resolved !== undefined ? 'constant' : match[2] ? 'dynamic' : 'literal',
+			expression,
+		});
+		match = pattern.exec(region.text);
+	}
+	return found;
+}
+
 /**
  * Which contract hook constants a component file actually references,
- * with the line of each reference.
+ * with the line of each reference. Kept for callers that ask about a
+ * whole file; the gate itself uses `motionHookAttributes` per region.
  */
 export function hookUsage(scanPath, code, constants) {
-	const usages = [];
-	for (const entry of constants) {
-		const pattern = new RegExp(`data-motion\\s*=\\s*\\{\\s*${entry.constant}\\s*\\}`, 'g');
-		const matches = matchLines(code, pattern);
-		if (matches.length > 0) usages.push({ ...entry, file: scanPath, line: matches[0].line });
-	}
-	return usages;
+	const region = { name: scanPath, start: 0, end: code.length, text: code };
+	return motionHookAttributes(code, region, constants)
+		.filter((entry) => entry.source === 'constant')
+		.map((entry) => ({
+			constant: entry.constant,
+			name: entry.name,
+			file: scanPath,
+			line: entry.line,
+		}));
 }
 
 /** Formatted violations across the whole `src/` tree (empty when clean). */
@@ -492,7 +729,7 @@ export function renderGateSummary() {
 	const lines = [`[a11y:reduced-motion:check] motion inventory (${fileCount} scanned src file(s))`];
 	for (const surface of surfaces) {
 		lines.push(
-			`  ${surface.file} — ${surface.kind} at line(s) ${surface.declarationLines.join(', ')}; ` +
+			`  ${surface.file}#${surface.region} — ${surface.kind} at line(s) ${surface.declarationLines.join(', ')}; ` +
 				`hook=${surface.hooks[0]?.name ?? 'none'}; ` +
 				`render-time opt-out=${surface.renderTimeOptOut ? 'yes' : 'no'}; ` +
 				`stylesheet opt-out=${surface.stylesheetOptOut ?? 'missing'}`,
@@ -509,7 +746,7 @@ export function renderGateSummary() {
 	);
 	lines.push('');
 	lines.push(
-		'[a11y:reduced-motion:check] machine-checked: opt-out pairing, universal floor presence, no autoplaying media, no unnamed smooth scroll',
+		'[a11y:reduced-motion:check] machine-checked: per-component opt-out pairing (hook + preference read + stylesheet selector), universal floor presence, no autoplaying media, no unnamed smooth scroll',
 	);
 	lines.push(
 		'[a11y:reduced-motion:check] NOT machine-checked: whether the resting state is readable (human evaluation: screen reader, contrast, focus order)',

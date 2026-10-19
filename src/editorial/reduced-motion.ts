@@ -70,6 +70,20 @@ export const REDUCED_MOTION_QUERY = '(prefers-reduced-motion: reduce)';
  */
 export const MOTION_HOOK_ATTRIBUTE = 'data-motion';
 
+/**
+ * The name a component uses when the preference decision is passed
+ * DOWN to it rather than read again.
+ *
+ * `CounterTile` reads the hook itself; the digit strip it renders is
+ * handed the answer as `reducedMotion` and therefore never asks the
+ * media query twice. A component may only spell that parameter this
+ * way: `scripts/check-reduced-motion.mjs` verifies a motion surface
+ * against `usePrefersReducedMotion()` **or** against this name, so a
+ * prop called `quiet` (or no prop at all) is reported as a surface
+ * that animates regardless of the visitor's preference.
+ */
+export const REDUCED_MOTION_PROP = 'reducedMotion';
+
 /** The `data-motion` value the access counter's digit roll-up uses. */
 export const COUNTER_ROLL_MOTION = 'counter-roll';
 

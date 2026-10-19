@@ -28,6 +28,32 @@ motion off removes movement and **nothing else**. The capture script
 fails (exit 1, no artefact written) if any of those pairs disagree, so
 the image cannot be "regenerated until it looks right".
 
+### Every state is compared, not the first strip on the page
+
+Each row of the fixture is identified by the `data-case` it renders
+(`01-normal`, `02-empty`, `03-failure`, `04-compact`) and the capture
+reads all four in BOTH contexts. For each state it compares, per mode:
+
+| Field | Compared as |
+| --- | --- |
+| `animationName` of the first slot, and how many slots still animate | the animation must exist in the no-preference context and must be `none` / `0` of `0` in the reduce context |
+| `data-motion-state` | must agree with the context the browser was launched with |
+| `aria-label` | the value has to be byte-identical across the two modes |
+| slot count | 7 slots in both modes, per state |
+| rendered text | the labels around the value have to be identical across the two modes |
+| strip presence | the failure state has no strip in either mode |
+
+The expected set of four state ids is asserted in both contexts, so a
+fixture that stopped rendering one of them fails the capture instead of
+quietly reducing the coverage it claims. Reading only the first strip
+(which is what `querySelector` returns) would have let a defect that
+only affects the zero-count or the compact state pass.
+
+If the fixture never reaches the mode the context was launched with,
+the capture gives up after `MODE_WAIT_ATTEMPTS` bounded waits and fails
+with the mode it actually saw. It does not retry indefinitely: a
+capture that hangs reports nothing, and CI has to be able to fail.
+
 The states reproduced in each panel:
 
 | Row | State | What it shows under reduced motion |
@@ -44,9 +70,9 @@ conformance claim, and a screenshot is not an accessibility audit.
 
 | SC (WCAG 2.2) | Level | Claim | How it is checked |
 | --- | --- | --- | --- |
-| 2.2.2 Pause, Stop, Hide | A | nothing that moves starts by itself and runs longer than five seconds | **machine**: `check-reduced-motion.mjs` `no-autoplay-motion-media` refuses an autoplaying `<video>` / `<audio>`; the capture reads `animation-name: none` in the reduced context |
-| 4.1.2 Name, Role, Value | A | the counter value is carried by an accessible name, not by the animation | **machine**: `src/home/access/tiles.test.tsx` asserts the label is identical in both modes; the capture reads it from both contexts |
-| 1.4.13 Content on Hover or Focus | AA | the state a visitor triggers is conveyed by something other than movement | **machine** for the pairing (a motion surface must have a render-time opt-out and a stylesheet opt-out); **human** for focus order, visible ring and contrast — not checked here |
+| 2.2.2 Pause, Stop, Hide | A | nothing that moves starts by itself and runs longer than five seconds | **machine**: `check-reduced-motion.mjs` `no-autoplay-motion-media` refuses an autoplaying `<video>` / `<audio>`; the capture reads `animation-name: none` in the reduced context for every state |
+| 4.1.2 Name, Role, Value | A | the counter value is carried by an accessible name, not by the animation | **machine**: `src/home/access/tiles.test.tsx` asserts the label is identical in both modes; the capture reads it from both contexts, per state |
+| 1.4.13 Content on Hover or Focus | AA | the state a visitor triggers is conveyed by something other than movement | **machine** for the pairing (each motion surface, per component, must have a render-time opt-out and a stylesheet opt-out); **human** for focus order, visible ring and contrast — not checked here |
 | 2.3.3 Animation from Interactions | AAA | interaction-triggered motion can be turned off | **machine**: the preference contract + the universal floor. Recorded as AAA so the A/AA claim above is not inflated by citing the most-quoted criterion |
 
 Still human, and NOT claimed by this artefact:
@@ -102,7 +128,50 @@ artefact.
    asked for less motion.
 
 `scripts/check-reduced-motion.mjs` requires both, per motion surface,
-and is wired into `validate:fast`.
+and is wired into `validate:fast` (and registered in
+`quality/profile.yaml#gates.fast.components`).
+
+### What "per motion surface" means in the gate
+
+The pairing is decided per **component**, not per file. A file is a
+container, not a protection boundary: if the check were file-level, a
+component that already declares `data-motion` and reads the preference
+would launder any animation added next to it, and adding an
+unguarded animation to an already-protected file would pass. So the
+gate splits each source file into regions (one per top-level
+declaration) and, for every region that emits an animation declaration
+— longhand or the `animation:` shorthand Panda also accepts — requires:
+
+1. a `data-motion` attribute in that region, whose value resolves
+   through the contract (`src/editorial/reduced-motion.ts` publishes
+   each hook as a `*_MOTION` constant; a literal or a computed value the
+   contract cannot resolve is `motion-without-contract-hook`);
+2. a **call** to the preference contract in that region — or the
+   decision received under the contract's published prop name
+   (`REDUCED_MOTION_PROP`). Importing the module is not a read: a
+   component can import its hook constant and still animate in both
+   modes;
+3. a selector inside a reduced-motion block in `src/styles.css` that
+   names that hook.
+
+## Forced stories and the stylesheet layer
+
+`home/ReducedMotion` has three stories. `Fixture` is the one the
+capture renders, in two browser contexts with the OS preference
+emulated — that is the only way to observe the real media query.
+`MotionOn` / `MotionOff` pin the answer so a human can look at both
+modes on one machine, where the OS setting cannot be changed per
+window.
+
+Forcing the React branch alone is not enough for `MotionOn`: on a
+machine whose OS asks for reduced motion, `src/styles.css` reduces
+every animation duration to `0.01ms !important` and neutralises the
+hook's selector with `animation: none !important`, and both beat the
+inline style the component emits. The fixture therefore re-arms the
+stylesheet layer with a scoped, higher-specificity rule
+(`MOTION_EMULATION_CSS`, including the per-digit stagger) and the
+banner says which layer is being shown, so a forced fixture that does
+not move cannot claim a comparison it never performed.
 
 ## Two implementation traps this capture caught
 

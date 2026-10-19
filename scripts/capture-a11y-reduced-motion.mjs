@@ -14,19 +14,30 @@
  * the two panels is the preference, not the fixture.
  *
  * It is also an ASSERTION, not only a screenshot. In both contexts the
- * script reads, from the live DOM:
+ * script reads, from the live DOM, EVERY fixture state the ticket
+ * lists — normal, empty, failure, compact — and for each one:
  *
- *   - `getComputedStyle(img).animationName` for the first digit slot,
+ *   - `getComputedStyle(img).animationName` of its digit slots and how
+ *     many slots still animate,
  *   - the digit strip's `data-motion-state`,
  *   - the strip's accessible name (`aria-label`), and
- *   - the mode banner the fixture renders from the live media query.
+ *   - the case's rendered text.
  *
- * and fails (exit 1) unless: the no-preference context animates with
- * `counterDigitRoll`, the reduce context animates with `none`, both
- * banners report the mode they were launched with, and BOTH contexts
- * report the SAME accessible label and the same digit-slot count. That
- * last pair is the Issue's completion condition as an executable
- * statement: turning motion off must remove movement and nothing else.
+ * Reading only the first strip would let a defect in one state pass:
+ * a zero-count branch that kept animating, or a compact branch that
+ * dropped a slot, would never be looked at. The states are identified
+ * by the `data-case` the fixture renders, and the expected set is
+ * asserted, so a fixture that quietly stopped rendering one state
+ * fails instead of "verifying" two of four.
+ *
+ * The capture fails (exit 1) unless: every state is present in both
+ * contexts, the no-preference context animates every strip it renders
+ * with `counterDigitRoll`, the reduce context animates none of them,
+ * both banners report the mode they were launched with, and PER STATE
+ * the accessible label, the slot count and the rendered text are
+ * identical. That last pair is the Issue's completion condition as an
+ * executable statement: turning motion off must remove movement and
+ * nothing else.
  *
  * The artefact also carries the machine gate's own verdict, so the
  * image is not a pretty screenshot with the evidence living somewhere
@@ -91,7 +102,25 @@ export const STORY_EXPORT = 'Fixture';
 /** Readiness markers the capture waits for before reading anything. */
 export const FIXTURE_TEST_ID = 'reduced-motion-fixture';
 export const MODE_TEST_ID = 'reduced-motion-mode';
+export const CASE_ATTRIBUTE = 'data-case';
 export const MOTION_HOOK = '[data-motion="counter-roll"]';
+
+/**
+ * The fixture states this Issue names, in render order. The capture
+ * asserts this exact set in BOTH contexts, so "all four states were
+ * compared" is a checked statement rather than a claim about whatever
+ * the fixture happened to render.
+ */
+export const EXPECTED_CASE_IDS = ['01-normal', '02-empty', '03-failure', '04-compact'];
+
+/**
+ * How long to wait for the fixture's mode banner to settle, and how
+ * many times to look. An unbounded retry turns a broken media query
+ * (or a broken hydration) into a capture that hangs forever instead of
+ * one that reports the cause.
+ */
+export const MODE_WAIT_ATTEMPTS = 3;
+export const MODE_WAIT_TIMEOUT_MS = 10_000;
 
 /** The keyframe the counter animates with, as the browser must report it. */
 export const EXPECTED_ANIMATION_NAME = 'counterDigitRoll';
@@ -138,45 +167,106 @@ export function escapeXml(value) {
 }
 
 /**
+ * The failure a settled-but-wrong mode banner produces (pure, so the
+ * retry bound is assertable without a browser).
+ */
+export function modeWaitFailure({ expectedMode, observedMode, attempts }) {
+	return new Error(
+		`the fixture reported prefers-reduced-motion: ${observedMode ?? 'no mode at all'} after ${attempts} wait(s), but the context was launched with ${expectedMode}. Either the emulated preference is not reaching the page or the fixture never hydrated. Waiting again would hang the capture instead of reporting the cause.`,
+	);
+}
+
+/**
  * Decide whether a browser observation proves the contract (pure).
  *
  * Kept pure and exported so the assertion is unit-testable without a
  * browser: a capture that can only fail inside Chromium is a capture
  * nobody re-runs when it breaks.
+ *
+ * Both sides are compared PER FIXTURE STATE, never only for the first
+ * strip on the page.
  */
 export function evaluateObservation(observation) {
 	const failures = [];
 	const { animated, reduced } = observation;
-	if (animated.animationName !== EXPECTED_ANIMATION_NAME) {
-		failures.push(
-			`no-preference context animates with "${animated.animationName}", expected "${EXPECTED_ANIMATION_NAME}"`,
-		);
-	}
-	if (reduced.animationName !== 'none') {
-		failures.push(
-			`reduce context still animates with "${reduced.animationName}"; the opt-out must emit no animation declaration at all`,
-		);
-	}
 	if (animated.mode !== 'no-preference') {
 		failures.push(`no-preference context rendered mode "${animated.mode}"`);
 	}
 	if (reduced.mode !== 'reduce') {
 		failures.push(`reduce context rendered mode "${reduced.mode}"`);
 	}
-	if (animated.motionState !== 'animated' || reduced.motionState !== 'reduced') {
+
+	const animatedCases = animated.cases ?? [];
+	const reducedCases = reduced.cases ?? [];
+	const ids = (list) => list.map((entry) => entry.caseId);
+	for (const side of [
+		['no-preference', animatedCases],
+		['reduce', reducedCases],
+	]) {
+		const missing = EXPECTED_CASE_IDS.filter((id) => !ids(side[1]).includes(id));
+		if (missing.length > 0) {
+			failures.push(
+				`${side[0]} context did not render fixture state(s) ${missing.join(', ')}; every state the Issue names has to be compared, not the first one that happens to animate`,
+			);
+		}
+	}
+	if (ids(animatedCases).join('|') !== ids(reducedCases).join('|')) {
 		failures.push(
-			`data-motion-state disagrees with the preference (animated=${animated.motionState}, reduced=${reduced.motionState})`,
+			`the two contexts rendered different fixture states (${ids(animatedCases).join(', ')} vs ${ids(reducedCases).join(', ')})`,
 		);
 	}
-	if (animated.label !== reduced.label) {
-		failures.push(
-			`the accessible value changed with motion: "${animated.label}" vs "${reduced.label}"`,
-		);
-	}
-	if (animated.digitSlots !== reduced.digitSlots || animated.digitSlots === 0) {
-		failures.push(
-			`digit slots differ between modes (${animated.digitSlots} vs ${reduced.digitSlots})`,
-		);
+
+	for (const entry of animatedCases) {
+		const other = reducedCases.find((candidate) => candidate.caseId === entry.caseId);
+		if (!other) continue;
+		const where = `fixture state ${entry.caseId}`;
+		if (entry.hasStrip !== other.hasStrip) {
+			failures.push(
+				`${where} rendered a digit strip in one mode and not the other (${entry.hasStrip} vs ${other.hasStrip})`,
+			);
+			continue;
+		}
+		if (!entry.hasStrip) {
+			// The failure state has nothing to animate; what matters is
+			// that both modes render the same text.
+			if (entry.text !== other.text) {
+				failures.push(`${where} rendered different text with motion off`);
+			}
+			continue;
+		}
+		if (entry.animationName !== EXPECTED_ANIMATION_NAME) {
+			failures.push(
+				`${where}: no-preference context animates with "${entry.animationName}", expected "${EXPECTED_ANIMATION_NAME}"`,
+			);
+		}
+		if (other.animationName !== 'none' || other.animatedSlots !== 0) {
+			failures.push(
+				`${where}: reduce context still animates ${other.animatedSlots} slot(s) with "${other.animationName}"; the opt-out must emit no animation declaration at all`,
+			);
+		}
+		if (entry.motionState !== 'animated' || other.motionState !== 'reduced') {
+			failures.push(
+				`${where}: data-motion-state disagrees with the preference (animated=${entry.motionState}, reduced=${other.motionState})`,
+			);
+		}
+		if (entry.label !== other.label) {
+			failures.push(
+				`${where}: the accessible value changed with motion: "${entry.label}" vs "${other.label}"`,
+			);
+		}
+		if (entry.slotCount !== other.slotCount || entry.slotCount === 0) {
+			failures.push(
+				`${where}: digit slots differ between modes (${entry.slotCount} vs ${other.slotCount})`,
+			);
+		}
+		if (entry.text !== other.text) {
+			failures.push(`${where}: the rendered text changed with motion`);
+		}
+		if (entry.animatedSlots !== entry.slotCount) {
+			failures.push(
+				`${where}: only ${entry.animatedSlots} of ${entry.slotCount} slots animate in the no-preference context`,
+			);
+		}
 	}
 	return { ok: failures.length === 0, failures };
 }
@@ -311,11 +401,30 @@ export function serveDirectory(root) {
 export function headerSvg({ animated, reduced, gate, panelWidth, width = SCREENSHOT_MAX_WIDTH }) {
 	const title = 'prefers-reduced-motion: on / off — Issue #403';
 	const surface = gate.surfaces[0];
+	/** One compact clause per fixture state, so the header says what was compared. */
+	const describe = (side) =>
+		(side.cases ?? [])
+			.map(
+				(entry) =>
+					`${entry.caseId}=${entry.hasStrip ? `${entry.animationName} ${entry.animatedSlots}/${entry.slotCount} slots` : 'no strip'}`,
+			)
+			.join(' · ');
+	const parity = (animated.cases ?? []).every((entry) => {
+		const other = (reduced.cases ?? []).find((candidate) => candidate.caseId === entry.caseId);
+		return (
+			other &&
+			entry.hasStrip === other.hasStrip &&
+			entry.label === other.label &&
+			entry.slotCount === other.slotCount &&
+			entry.text === other.text
+		);
+	});
 	const rows = [
-		`left  ${animated.mode}: animation-name=${animated.animationName}, label "${animated.label}", ${animated.digitSlots} digit slots`,
-		`right ${reduced.mode}: animation-name=${reduced.animationName}, label "${reduced.label}", ${reduced.digitSlots} digit slots`,
+		`left  ${animated.mode}: ${describe(animated)}`,
+		`right ${reduced.mode}: ${describe(reduced)}`,
+		`machine-checked: ${(animated.cases ?? []).length} fixture state(s) compared per mode; identical label, slot count and text in both modes: ${parity ? 'yes' : 'NO'}`,
 		`machine-checked: gate ${gate.violations.length} violation(s) · floor ${gate.stylesheet.floor.missing.length === 0 ? 'present' : 'MISSING'} (${gate.stylesheet.floor.declarations.filter((name) => ['animation-duration', 'transition-duration', 'scroll-behavior'].includes(name)).join(', ')}) · ${gate.violations.length === 0 ? 'no autoplaying media' : 'see report'}`,
-		`machine-checked: ${surface ? `${surface.file} hook=${surface.hooks[0]?.name ?? 'none'}, render-time opt-out=${surface.renderTimeOptOut ? 'yes' : 'no'}, stylesheet opt-out=${surface.stylesheetOptOut}` : 'no motion surface found'}`,
+		`machine-checked: ${surface ? `${surface.file}#${surface.region} hook=${surface.hooks[0]?.name ?? 'none'}, render-time opt-out=${surface.renderTimeOptOut ? 'yes' : 'no'}, stylesheet opt-out=${surface.stylesheetOptOut}` : 'no motion surface found'}`,
 		'not machine-checked: reading comfort, focus order, contrast, screen-reader pass (human evaluation)',
 		`WCAG 2.2: ${WCAG_MAPPING.map((entry) => `${entry.sc} ${entry.level}`).join(' · ')}`,
 	];
@@ -399,40 +508,65 @@ export function writeHarness(repoRoot = REPO_ROOT) {
 	return dir;
 }
 
+/**
+ * Read every fixture state out of the rendered page.
+ *
+ * `querySelector` would return the FIRST digit strip and the rest of
+ * the document would go unread, so the four states are collected with
+ * `querySelectorAll` and identified by the `data-case` the fixture
+ * renders.
+ */
+export const READ_FIXTURE = `({ hook, modeTestId, caseAttribute }) => {
+	const banner = document.querySelector(\`[data-testid="\${modeTestId}"]\`);
+	const cases = [...document.querySelectorAll(\`[\${caseAttribute}]\`)].map((element) => {
+		const strip = element.querySelector(hook);
+		const images = strip ? [...strip.querySelectorAll('img')] : [];
+		return {
+			caseId: element.getAttribute(caseAttribute),
+			hasStrip: Boolean(strip),
+			animationName: images[0] ? getComputedStyle(images[0]).animationName : null,
+			animatedSlots: images.filter(
+				(image) => getComputedStyle(image).animationName !== 'none',
+			).length,
+			slotCount: images.length,
+			motionState: strip?.getAttribute('data-motion-state') ?? null,
+			label: strip?.getAttribute('aria-label') ?? null,
+			text: (element.textContent ?? '').replace(/\\s+/g, ' ').trim(),
+		};
+	});
+	return { mode: banner?.getAttribute('data-mode') ?? null, cases };
+}`;
+
 /** Read the contract-relevant facts out of a rendered fixture page. */
 async function observeFixture(page, expectedMode) {
 	await page.waitForSelector(`[data-testid="${FIXTURE_TEST_ID}"]`, { timeout: 30_000 });
-	const observation = await page.evaluate(
-		({ hook, modeTestId }) => {
-			const strip = document.querySelector(hook);
-			const image = strip?.querySelector('img');
-			const banner = document.querySelector(`[data-testid="${modeTestId}"]`);
-			return {
-				mode: banner?.getAttribute('data-mode') ?? null,
-				animationName: image ? getComputedStyle(image).animationName : null,
-				motionState: strip?.getAttribute('data-motion-state') ?? null,
-				label: strip?.getAttribute('aria-label') ?? null,
-				digitSlots: strip ? strip.querySelectorAll('img').length : 0,
-			};
-		},
-		{ hook: MOTION_HOOK, modeTestId: MODE_TEST_ID },
-	);
-	if (observation.mode !== expectedMode) {
+	let attempt = 0;
+	let observedMode = null;
+	for (;;) {
+		const observation = await page.evaluate(READ_FIXTURE, {
+			hook: MOTION_HOOK,
+			modeTestId: MODE_TEST_ID,
+			caseAttribute: CASE_ATTRIBUTE,
+		});
+		observedMode = observation.mode;
+		if (observation.mode === expectedMode) return observation;
+		attempt += 1;
+		if (attempt >= MODE_WAIT_ATTEMPTS) {
+			throw modeWaitFailure({ expectedMode, observedMode, attempts: attempt });
+		}
 		process.stdout.write(
-			`[capture] waiting for the fixture to settle on mode=${expectedMode} (saw ${observation.mode})\n`,
+			`[capture] attempt ${attempt}/${MODE_WAIT_ATTEMPTS}: the fixture still reports ${observation.mode}, waiting for ${expectedMode}\n`,
 		);
 		await page
 			.waitForFunction(
 				({ modeTestId, mode }) =>
 					document.querySelector(`[data-testid="${modeTestId}"]`)?.getAttribute('data-mode') ===
 					mode,
-				{ hook: MOTION_HOOK, modeTestId: MODE_TEST_ID, mode: expectedMode },
-				{ timeout: 30_000 },
+				{ modeTestId: MODE_TEST_ID, mode: expectedMode },
+				{ timeout: MODE_WAIT_TIMEOUT_MS },
 			)
 			.catch(() => {});
-		return observeFixture(page, expectedMode);
 	}
-	return observation;
 }
 
 async function captureContext(browser, baseUrl, reducedMotion, width, pngPath) {
@@ -577,20 +711,8 @@ async function main() {
 				await browser.close();
 			}
 			observations = {
-				noPreference: {
-					mode: animated.mode,
-					animationName: animated.animationName,
-					motionState: animated.motionState,
-					label: animated.label,
-					digitSlots: animated.digitSlots,
-				},
-				reduce: {
-					mode: reduced.mode,
-					animationName: reduced.animationName,
-					motionState: reduced.motionState,
-					label: reduced.label,
-					digitSlots: reduced.digitSlots,
-				},
+				noPreference: animated,
+				reduce: reduced,
 			};
 
 			verdict = evaluateObservation({ animated, reduced });

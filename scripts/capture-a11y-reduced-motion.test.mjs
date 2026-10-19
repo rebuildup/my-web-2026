@@ -2,10 +2,14 @@ import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { test } from 'node:test';
 import {
+	CASE_ATTRIBUTE,
 	EXPECTED_ANIMATION_NAME,
+	EXPECTED_CASE_IDS,
 	FIXTURE_TEST_ID,
 	MODE_TEST_ID,
+	MODE_WAIT_ATTEMPTS,
 	MOTION_HOOK,
+	READ_FIXTURE,
 	SCREENSHOT_BUDGET_BYTES,
 	STORY_EXPORT,
 	STORY_MODULE,
@@ -16,12 +20,13 @@ import {
 	harnessIndexHtml,
 	harnessMainTsx,
 	headerSvg,
+	modeWaitFailure,
 	resolveStaticTarget,
 	screenshotBudgetVerdict,
 } from './capture-a11y-reduced-motion.mjs';
 
 const require = createRequire(import.meta.url);
-const { mkdtempSync, writeFileSync, mkdirSync } = require('node:fs');
+const { mkdtempSync, writeFileSync, mkdirSync, readFileSync } = require('node:fs');
 const { tmpdir } = require('node:os');
 const { join } = require('node:path');
 
@@ -35,68 +40,171 @@ const { join } = require('node:path');
  * artefact the assertions described.
  */
 
-/** A healthy pair of observations, with overrides per case. */
+/** One fixture state as the browser reports it. */
+function caseOf(caseId, overrides = {}) {
+	const hasStrip = overrides.hasStrip ?? true;
+	return {
+		caseId,
+		hasStrip,
+		animationName: hasStrip ? EXPECTED_ANIMATION_NAME : null,
+		animatedSlots: hasStrip ? 7 : 0,
+		slotCount: hasStrip ? 7 : 0,
+		motionState: hasStrip ? 'animated' : null,
+		label: hasStrip ? '1,234 page views' : null,
+		...overrides,
+	};
+}
+
+/** The four states the Issue names, in the order the fixture renders them. */
+function allCases(overrides = {}) {
+	return EXPECTED_CASE_IDS.map((caseId) => {
+		const defaults =
+			caseId === '02-empty'
+				? { label: '0 page views', text: '02 empty text' }
+				: caseId === '03-failure'
+					? { hasStrip: false, label: null, text: '03 failure text' }
+					: { label: '1,234 page views', text: `${caseId} text` };
+		return caseOf(caseId, { ...defaults, ...overrides[caseId] });
+	});
+}
+
+/** A healthy pair of observations, with per-case overrides. */
 function observations(overrides = {}) {
 	return {
 		animated: {
 			mode: 'no-preference',
-			animationName: EXPECTED_ANIMATION_NAME,
-			motionState: 'animated',
-			label: '1,234 page views',
-			digitSlots: 7,
-			...overrides.animated,
+			cases: allCases(overrides.animated),
 		},
 		reduced: {
 			mode: 'reduce',
-			animationName: 'none',
-			motionState: 'reduced',
-			label: '1,234 page views',
-			digitSlots: 7,
-			...overrides.reduced,
+			// What the reduce context is supposed to report, with the
+			// test's own override applied last so a fixture can describe
+			// the defect it is about.
+			cases: EXPECTED_CASE_IDS.map((caseId) => {
+				const reduced = allCases(overrides.reduced).find((entry) => entry.caseId === caseId);
+				return reduced.hasStrip
+					? {
+							...reduced,
+							animationName: 'none',
+							animatedSlots: 0,
+							motionState: 'reduced',
+							...overrides.reduced?.[caseId],
+						}
+					: reduced;
+			}),
 		},
 	};
 }
 
-test('a healthy pair of observations passes', () => {
+test('a healthy pair of observations passes, with every fixture state compared', () => {
 	assert.deepEqual(evaluateObservation(observations()), { ok: true, failures: [] });
 });
 
-test('a reduce context that still animates fails, and names what it saw', () => {
+test('a reduce context that still animates fails, and names the state and what it saw', () => {
 	const verdict = evaluateObservation(
-		observations({ reduced: { animationName: 'counterDigitRoll' } }),
+		observations({
+			reduced: { '02-empty': { animationName: 'counterDigitRoll', animatedSlots: 7 } },
+		}),
 	);
 	assert.equal(verdict.ok, false);
-	assert.match(verdict.failures[0], /reduce context still animates with "counterDigitRoll"/);
+	assert.match(
+		verdict.failures[0],
+		/fixture state 02-empty: reduce context still animates 7 slot\(s\)/,
+	);
+});
+
+test('a defect that only affects the SECOND state is caught, not just the first strip', () => {
+	// The regression this shape exists for: with `querySelector` the
+	// compact state was never read, so a zero-count or compact branch
+	// could lose its value or keep animating and the capture would still
+	// report success.
+	const verdict = evaluateObservation(
+		observations({ reduced: { '04-compact': { label: '1,200 page views' } } }),
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(
+		verdict.failures.join('\n'),
+		/fixture state 04-compact: the accessible value changed/,
+	);
 });
 
 test('a no-preference context that does NOT animate fails', () => {
-	const verdict = evaluateObservation(observations({ animated: { animationName: 'none' } }));
+	const verdict = evaluateObservation(
+		observations({ animated: { '01-normal': { animationName: 'none', animatedSlots: 0 } } }),
+	);
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.failures[0], /no-preference context animates with "none"/);
 });
 
 test('losing the value under reduced motion fails, even when nothing animates', () => {
-	const verdict = evaluateObservation(observations({ reduced: { label: '1,200 page views' } }));
+	const verdict = evaluateObservation(
+		observations({ reduced: { '01-normal': { label: '1,200 page views' } } }),
+	);
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.failures.join('\n'), /accessible value changed with motion/);
 });
 
 test('dropping a digit slot under reduced motion fails', () => {
-	const verdict = evaluateObservation(observations({ reduced: { digitSlots: 0 } }));
+	const verdict = evaluateObservation(
+		observations({ reduced: { '01-normal': { slotCount: 0, animatedSlots: 0 } } }),
+	);
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.failures.join('\n'), /digit slots differ/);
 });
 
+test('a state that renders in one mode and not the other fails', () => {
+	const verdict = evaluateObservation(
+		observations({ reduced: { '02-empty': { hasStrip: false } } }),
+	);
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.failures.join('\n'), /02-empty rendered a digit strip in one mode/);
+});
+
+test('a fixture state that stopped rendering fails instead of silently shrinking coverage', () => {
+	const verdict = evaluateObservation({
+		animated: { mode: 'no-preference', cases: [caseOf('01-normal')] },
+		reduced: {
+			mode: 'reduce',
+			cases: [
+				caseOf('01-normal', { animationName: 'none', motionState: 'reduced', animatedSlots: 0 }),
+			],
+		},
+	});
+	assert.equal(verdict.ok, false);
+	assert.match(verdict.failures.join('\n'), /did not render fixture state\(s\) 02-empty/);
+});
+
 test('a banner that disagrees with the emulated preference fails', () => {
-	const verdict = evaluateObservation(observations({ reduced: { mode: 'no-preference' } }));
+	const base = observations();
+	const verdict = evaluateObservation({
+		...base,
+		reduced: { ...base.reduced, mode: 'no-preference' },
+	});
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.failures.join('\n'), /reduce context rendered mode "no-preference"/);
 });
 
 test('data-motion-state that disagrees with the preference fails', () => {
-	const verdict = evaluateObservation(observations({ animated: { motionState: 'reduced' } }));
+	const verdict = evaluateObservation(
+		observations({ animated: { '01-normal': { motionState: 'reduced' } } }),
+	);
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.failures.join('\n'), /data-motion-state disagrees/);
+});
+
+test('the mode wait is bounded, and says what it saw', () => {
+	// The capture used to swallow the timeout and call itself again, so
+	// a fixture that never reached the expected mode hung forever
+	// instead of reporting the cause.
+	const error = modeWaitFailure({
+		expectedMode: 'reduce',
+		observedMode: 'no-preference',
+		attempts: MODE_WAIT_ATTEMPTS,
+	});
+	assert.match(error.message, /no-preference/);
+	assert.match(error.message, /reduce/);
+	assert.match(error.message, new RegExp(`after ${MODE_WAIT_ATTEMPTS} wait\\(s\\)`));
+	assert.ok(MODE_WAIT_ATTEMPTS <= 5, 'the bound has to be small enough to fail a CI run');
 });
 
 test('the screenshot budget is a stated number, not a vibe', () => {
@@ -121,7 +229,38 @@ test('the harness renders the SHIPPED story, not a copy of it', () => {
 	assert.match(harnessIndexHtml(), /id="root"/);
 	assert.equal(FIXTURE_TEST_ID, 'reduced-motion-fixture');
 	assert.equal(MODE_TEST_ID, 'reduced-motion-mode');
+	assert.equal(CASE_ATTRIBUTE, 'data-case');
 	assert.equal(MOTION_HOOK, '[data-motion="counter-roll"]');
+});
+
+test('the observation reads every state, not the first strip on the page', () => {
+	// `querySelector` was the reason a defect in the empty / compact
+	// states could not fail this capture.
+	assert.match(READ_FIXTURE, /querySelectorAll\(`\[\$\{caseAttribute\}\]`\)/);
+	assert.doesNotMatch(READ_FIXTURE, /document\.querySelector\(hook\)/);
+	for (const field of [
+		'animationName',
+		'animatedSlots',
+		'slotCount',
+		'motionState',
+		'label',
+		'text',
+	]) {
+		assert.match(READ_FIXTURE, new RegExp(`${field}:`), `${field} must be read per state`);
+	}
+});
+
+test('the shipped fixture declares exactly the states the capture asserts', () => {
+	const story = readFileSync(new URL(`../${STORY_MODULE}`, import.meta.url), 'utf8');
+	for (const caseId of EXPECTED_CASE_IDS) {
+		const key = caseId.slice(3);
+		assert.match(
+			story,
+			new RegExp(`${key}: '${caseId}'`),
+			`${caseId} must be published by the fixture`,
+		);
+	}
+	assert.match(story, /data-case=\{caseId\}/, 'each case must render its identity');
 });
 
 test('the static server refuses to serve outside its root', () => {
@@ -141,14 +280,16 @@ test('escapeXml neutralises gate text before it reaches the header', () => {
 });
 
 test('the header states both modes, the machine split and the WCAG levels', () => {
+	const base = observations();
 	const header = headerSvg({
-		animated: observations().animated,
-		reduced: observations().reduced,
+		animated: base.animated,
+		reduced: base.reduced,
 		gate: {
 			violations: [],
 			surfaces: [
 				{
 					file: 'src/home/access/tiles.tsx',
+					region: 'DigitStrip',
 					hooks: [{ name: 'counter-roll' }],
 					renderTimeOptOut: true,
 					stylesheetOptOut: 'src/styles.css:271',
@@ -164,13 +305,22 @@ test('the header states both modes, the machine split and the WCAG levels', () =
 		panelWidth: 795,
 	});
 	assert.match(header.svg, /prefers-reduced-motion: on \/ off/);
-	assert.match(header.svg, /animation-name=counterDigitRoll/);
-	assert.match(header.svg, /animation-name=none/);
+	for (const caseId of EXPECTED_CASE_IDS) {
+		assert.ok(header.svg.includes(caseId), `${caseId} must be named in the header`);
+	}
+	assert.match(header.svg, /01-normal=counterDigitRoll 7\/7 slots/);
+	assert.match(header.svg, /01-normal=none 0\/7 slots/);
+	assert.match(header.svg, /03-failure=no strip/);
+	assert.match(
+		header.svg,
+		/4 fixture state\(s\) compared per mode; identical label, slot count and text in both modes: yes/,
+	);
+	assert.match(header.svg, /tiles\.tsx#DigitStrip hook=counter-roll/);
 	assert.match(header.svg, /machine-checked: gate 0 violation\(s\)/);
 	assert.match(header.svg, /not machine-checked: reading comfort/);
 	assert.match(header.svg, /2\.3\.3 Animation from Interactions AAA/);
 	// The header must be tall enough for its own last row.
-	assert.ok(header.height > 34 + 34 + 6 * 22, `header height ${header.height} is too short`);
+	assert.ok(header.height > 34 + 34 + 7 * 22, `header height ${header.height} is too short`);
 });
 
 test('composeArtefact stacks the header ABOVE the panels instead of over them', async () => {
@@ -186,9 +336,10 @@ test('composeArtefact stacks the header ABOVE the panels instead of over them', 
 	await sharp({ create: { width: 800, height: 300, channels: 3, background: '#eeeeee' } })
 		.png()
 		.toFile(reducedPng);
+	const base = observations();
 	const header = headerSvg({
-		animated: observations().animated,
-		reduced: observations().reduced,
+		animated: base.animated,
+		reduced: base.reduced,
 		gate: {
 			violations: [],
 			surfaces: [],

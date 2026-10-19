@@ -350,6 +350,9 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `csrf:contract:check` + `compat:check` +
   `tools:provenance:check` + `publication:check` +
   `routes:quality:check` (Issue #492) + `i18n:policy:check` +
+  `a11y:reduced-motion:check` (Issue #403 — every motion surface
+  must carry the `data-motion` hook, read or receive the shared
+  preference, and be nameable by a reduced-motion selector) +
   `ci:pins:check` (Issue #472, GitHub
   Actions pin / token audit) + `test`. The canonical list is
   `quality/profile.yaml#gates.fast.components`; add a step there,

@@ -1,4 +1,3 @@
-import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import {
@@ -9,7 +8,6 @@ import {
 	setCatalogEntryEnabled,
 } from '../../reactions/emoji-catalog';
 import { validateCodepoint, validateSlug } from '../../reactions/slug-validate';
-import { requireAdmin } from '../auth/require-admin';
 
 /**
  * Admin emoji-catalog CRUD — Ticket G (branch 39).
@@ -29,6 +27,15 @@ import { requireAdmin } from '../auth/require-admin';
  * is preserved by the admin UI: disabling is non-destructive,
  * removing is destructive (existing reactions with that slug still
  * survive in D1 but no chip renders).
+ *
+ * Issue #509: `cloudflare:workers` and `../auth/require-admin` are
+ * resolved with `await import(…)` **inside** each `.handler()` body
+ * rather than at module level. A module-level import is evaluated when
+ * the module loads, so it stays in the graph of every client that
+ * imports this file, and the Storybook preview has no start compiler
+ * plugin to strip the handler bodies that make the rest of this module
+ * server-only. Inside `.handler()` is the one position the plugin —
+ * and `scripts/check-storybook-ownership.mjs` — treat as Worker-only.
  */
 
 export interface AdminCatalogEntry {
@@ -57,21 +64,25 @@ const SetEnabledInput = z.object({
 
 const RemoveInput = z.object({ slug: z.string().min(1).max(16) });
 
-async function listImpl(): Promise<readonly AdminCatalogEntry[]> {
-	const rows = await listAllCatalogEntriesForAdmin(env.DB);
+async function listImpl(db: D1Database): Promise<readonly AdminCatalogEntry[]> {
+	const rows = await listAllCatalogEntriesForAdmin(db);
 	return rows.map(toAdminEntry);
 }
 
 export const listCatalog = createServerFn({ method: 'GET' })
 	.validator(z.object({}).strict())
 	.handler(async (): Promise<readonly AdminCatalogEntry[]> => {
+		const { requireAdmin } = await import('../auth/require-admin');
 		await requireAdmin();
-		return listImpl();
+		const { env } = await import('cloudflare:workers');
+		return listImpl(env.DB);
 	});
 
 export const insertCatalogEntryFn = createServerFn({ method: 'POST' })
 	.validator(InsertInput)
 	.handler(async ({ data }): Promise<{ created: boolean }> => {
+		const { requireAdmin } = await import('../auth/require-admin');
+		const { env } = await import('cloudflare:workers');
 		const session = await requireAdmin();
 		const slug = validateSlug(data.slug);
 		const codepoint = validateCodepoint(data.codepoint);
@@ -95,7 +106,9 @@ export const insertCatalogEntryFn = createServerFn({ method: 'POST' })
 export const rebindCatalogEntryFn = createServerFn({ method: 'POST' })
 	.validator(RebindInput)
 	.handler(async ({ data }): Promise<{ updated: boolean }> => {
+		const { requireAdmin } = await import('../auth/require-admin');
 		await requireAdmin();
+		const { env } = await import('cloudflare:workers');
 		const slug = validateSlug(data.slug);
 		const codepoint = validateCodepoint(data.codepoint);
 		const result = await rebindCatalogEntry(env.DB, { slug, codepoint }, Date.now());
@@ -105,7 +118,9 @@ export const rebindCatalogEntryFn = createServerFn({ method: 'POST' })
 export const setCatalogEntryEnabledFn = createServerFn({ method: 'POST' })
 	.validator(SetEnabledInput)
 	.handler(async ({ data }): Promise<{ updated: boolean }> => {
+		const { requireAdmin } = await import('../auth/require-admin');
 		await requireAdmin();
+		const { env } = await import('cloudflare:workers');
 		const slug = validateSlug(data.slug);
 		const result = await setCatalogEntryEnabled(
 			env.DB,
@@ -118,7 +133,9 @@ export const setCatalogEntryEnabledFn = createServerFn({ method: 'POST' })
 export const removeCatalogEntryFn = createServerFn({ method: 'POST' })
 	.validator(RemoveInput)
 	.handler(async ({ data }): Promise<{ removed: boolean }> => {
+		const { requireAdmin } = await import('../auth/require-admin');
 		await requireAdmin();
+		const { env } = await import('cloudflare:workers');
 		const slug = validateSlug(data.slug);
 		const result = await removeCatalogEntry(env.DB, slug);
 		return { removed: result.removed };

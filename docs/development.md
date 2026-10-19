@@ -438,6 +438,104 @@ pnpm run build-storybook # static build to ./storybook-static
 `build-storybook` is part of `validate:integration`. The static
 output is gitignored.
 
+### Story ownership gate (#509)
+
+A story is feature-local UI: it renders a component with props, so its
+runtime import closure must stay inside the obligation that owns it.
+`pnpm run storybook:ownership:check` walks every story the `stories`
+globs in `.storybook/main.ts` actually match — the walk starts from
+each glob's non-glob prefix, so a story declared outside `src/` is a
+subject too — and fails when the closure reaches a foreign boundary:
+
+| Boundary | Why it is foreign for a preview |
+| --- | --- |
+| `src/routes/**` | route contract — pulling it in drags the whole app graph |
+| `src/server.ts` | Worker entrypoint |
+| `src/http/**` | external HTTP boundary (Hono) |
+| `src/cloudflare/**` | owns the bindings; a preview has none |
+| `cloudflare:workers` | Workers virtual module — does not resolve in a browser |
+
+Excluded on purpose, and reported as `not applicable` in the output:
+the four boundary *paths* above (they are the rule's targets, not its
+subjects — a story living inside one is listed there too, not counted),
+`import type` and `import { type A } from` edges (both erased by
+`verbatimModuleSyntax`, AGENTS.md §3; a clause that still binds one
+runtime name stays a runtime edge), npm packages, the generated
+`styled-system/` layer and static assets. A *source* file outside
+`src/` is not a leaf — it is walked like any other module, so an
+external story cannot reach a boundary through a sibling helper; an
+unresolvable path outside `src/` is printed as `external`).
+`cloudflare:workers` is not a path, so it appears as a violation and
+under known limitations instead.
+
+The walk reads imports off a masked copy of each module — comments,
+string literals and template text are blanked first — so a story that
+*shows* an import example is not read as an edge, and an import-shaped
+comment is not read as a **server-function seam** that would stop the
+walk. The same mask reads the `stories` globs, so a commented-out
+`stories: [...]` above the real config cannot become the subject set. A
+template literal without an interpolation stays readable as a
+placeholder, because `import(`../x`)` names a real specifier, and a `/`
+that follows a keyword (`return /['"]/.test(x)`) is read as a regular
+expression rather than a division. Inside a server-function seam (a
+module that value-imports `createServerFn`) the walk stops **inside a
+`.handler(…)` body and nowhere else**, because that body is what the
+start compiler plugin removes from the client build. Every other edge
+of the module — a module-level `import { env } from
+'cloudflare:workers'`, a side-effect import, an `export … from`
+re-export — is evaluated when the module loads, so it is walked
+whichever export the story asked for. Narrowing a module-level edge by
+the bindings a story imports is unsound: a module can bind `env` at
+module level, read it only inside the handler, and still be pulled
+into the preview by a story that imports nothing but its export types.
+So server-only bindings are resolved with `await import(…)` **inside**
+the handler body (`src/home/reactions/load.ts`,
+`src/admin/emoji-catalog/load.ts`), and a dynamic `import()` outside
+every handler body is walked even when no export reaches the
+declaration that holds it. The seam edge itself is printed as `seam`,
+not hidden. The factory is found under whatever local name the module
+imports it as (`import { createServerFn as serverFn }`), a
+regular-expression literal is consumed whole including its terminating
+slash and flags, a space or comment between `import` and `(` is
+allowed, and an import shape — an alias, a namespace import, a default
+import, a barrel re-export — is only another hop in the chain the
+report prints.
+
+```bash
+pnpm run storybook:ownership:check
+pnpm run storybook:ownership:check -- --json=.tmp/storybook-ownership.json
+```
+
+`--json=<path>` creates the parent directory, so the documented
+`.tmp/…` path works on a fresh checkout.
+
+Exit codes: `0` every subject passed, `1` at least one foreign-boundary
+reach, `2` a subject could not be fully resolved or the subject set
+could not be read (`not run` — reported as NOT a pass, so an incomplete
+walk, a glob outside the repository and a non-literal `stories` entry
+can never be mistaken for green). When the subject set is empty the
+message says whether no story matched the globs or every match was
+excluded as living inside a foreign boundary. The gate is wired into
+`validate:fast`, and `scripts/check-storybook-ownership.test.mjs` covers
+it with pass / fail / not-run / not-applicable fixtures.
+
+Known limitations are printed with the report. The one to remember
+when adding code: only the `~/` alias is resolved, so an alias-shaped
+specifier (`@/…`) reads as an external package and would hide a
+boundary behind it — add the alias to the checker when it is added to
+the bundler config.
+
+The `docs/verification/platform/storybook-ownership-check.webp`
+screenshot in #576 is a rendering of this gate's text report; re-create
+it from `--json` output, the gate itself needs nothing but the command
+above. Issue #509 names a `.png` for this screenshot; the repository
+ships it as `.webp` at the same path stem under the WebP policy / #452
+precedent, and the intermediate PNG is not committed. Whether the
+Issue path should be amended to `.webp` or a `.png` should also be
+added is an owner decision, recorded as an open item in the PR body
+(the same substitution is already stated for
+`docs/verification/perf/bundle-map.webp` above).
+
 ## Playwright E2E
 
 Playwright 1.63.x covers the deployed Worker smoke. Three surfaces

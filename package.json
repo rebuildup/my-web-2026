@@ -86,6 +86,7 @@
 		"r2:local:proof:check": "node scripts/r2-local-sharing-proof.mjs",
 		"verify:admin-authz-screenshot": "node scripts/admin-authz-shoot.mjs",
 		"verify:d1-binding-screenshot": "node scripts/make-d1-verification-report.mjs",
+		"verify:data-lifecycle-screenshot": "node --experimental-strip-types scripts/make-data-lifecycle-report.mjs",
 		"install:scripts:check": "node scripts/check-install-scripts.mjs",
 		"install:scripts:html": "node scripts/check-install-scripts.mjs --html=.tmp/install-script-audit.html",
 		"verify:sitemap-screenshot": "node --experimental-strip-types scripts/make-sitemap-verification-report.mjs",

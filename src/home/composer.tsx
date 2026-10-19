@@ -103,7 +103,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 							id="reactions-heading"
 							eyebrow="03 — Reactions"
 							title="みんなの反応 / Reactions"
-							description="このページへのリアクションを送ることができます (匿名・1 ブラウザ 1 票)。"
+							description="リアクションは mw_actor_id Cookie で同じブラウザを区別します (Cookie を消すと別の訪問者として数えられます)。保存される項目と保持期間はページ下部の「データと保持期間」に記載しています。"
 							variant="spread"
 						>
 							<ReactionsWidget data={data.reactions} />

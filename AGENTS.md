@@ -127,8 +127,31 @@ server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
              boundary, so the Tool Registry still imports nothing
              from `src/http/**`)
 home -> editorial
+home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
+             published data / retention notice from
+             `src/privacy/data-lifecycle.ts`; the sentences live with the
+             obligation that owns them so the public claim cannot drift
+             from the implementation)
 ```
 
+- `src/privacy/**` (Issue #496) owns the **published** data
+  lifecycle: for every stored store, what is actually
+  written, how long it stays, how it is deleted, which
+  third party receives it, and which of those sentences
+  the public surface may render
+  (`src/privacy/data-lifecycle.ts` +
+  `src/home/privacy-notice.tsx`). It is a **leaf** obligation —
+  `leafOwners` in `scripts/check-architecture.mjs` enforces it — so the
+  registry can restate a retention number as prose without importing the
+  module that owns the constant; `src/privacy/data-lifecycle.test.ts`
+  cross-checks the prose against `ACTOR_COOKIE_MAX_AGE_SECONDS` and
+  `DEDUP_WINDOW_MS`, which is what keeps the restatement honest. Entries
+  are `approved` (published) or `pending` (documented, rendered
+  nowhere); the filter is fail-closed. The obligation also owns the
+  refusal list — claims the wording must never make (「匿名」, a deletion
+  request channel, unqualified "nothing leaves", "deleted
+  automatically") — because a privacy notice that overstates is the
+  defect, not one that understates.
 - `src/i18n/**` owns the platform's Unicode text
   policy (Issue #433): display text is preserved
   byte-exact and a URL slug is authored rather than

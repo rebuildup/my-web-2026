@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { readFileSync, readdirSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -12,15 +13,19 @@ import {
 	VERDICTS,
 	buildChangeSet,
 	classifyFile,
+	commitParents,
 	evaluateApproval,
 	extractSegments,
 	fingerprintUnits,
+	gitDiff,
 	globToRegExp,
 	matchesGlob,
+	mergeBaseOf,
 	parseDiff,
 	renderHtml,
 	renderJson,
 	renderText,
+	resolveDiffBase,
 } from './check-copy-editorial-approval.mjs';
 
 const REPO_ROOT = join(dirname(fileURLToPath(import.meta.url)), '..');
@@ -346,5 +351,147 @@ describe('check-copy-editorial-approval — the report helpers', () => {
 		assert.match(html, /Public Japanese copy — editorial approval gate/);
 		assert.match(html, /Out of scope/);
 		assert.match(html, /not applicable/);
+	});
+});
+
+/* ------------------------------------------------------------------ *
+ * The change set is the pull request's own change set (Issue #506)
+ * ------------------------------------------------------------------ */
+
+const GIT_IDENTITY = [
+	'-c',
+	'user.name=copy gate',
+	'-c',
+	'user.email=copy-gate@example.invalid',
+	'-c',
+	'commit.gpgsign=false',
+];
+
+function gitIn(cwd, args) {
+	return execFileSync('git', [...GIT_IDENTITY, ...args], {
+		cwd,
+		encoding: 'utf8',
+		stdio: ['ignore', 'pipe', 'pipe'],
+	}).trim();
+}
+
+function newRepo() {
+	const dir = mkdtempSync(join(tmpdir(), 'copy-approval-'));
+	gitIn(dir, ['init', '-q', '-b', 'main']);
+	return dir;
+}
+
+function writeFileIn(dir, path, text) {
+	mkdirSync(dirname(join(dir, path)), { recursive: true });
+	writeFileSync(join(dir, path), text);
+}
+
+function commitIn(dir, path, text, message) {
+	writeFileIn(dir, path, text);
+	gitIn(dir, ['add', '-A']);
+	gitIn(dir, ['commit', '-q', '-m', message]);
+	return gitIn(dir, ['rev-parse', 'HEAD']);
+}
+
+describe("check-copy-editorial-approval — the change set is the pull request's own", () => {
+	it('diffs the merge base, not a base branch that moved on', () => {
+		const dir = newRepo();
+		try {
+			commitIn(dir, 'src/home/hero.tsx', '\t\t\tlede="構築しています。"\n', 'base');
+			gitIn(dir, ['checkout', '-q', '-b', 'pr']);
+			commitIn(dir, 'src/home/hero.tsx', '\t\t\tlede="移行を進めています。"\n', 'pr');
+			const head = gitIn(dir, ['rev-parse', 'HEAD']);
+			gitIn(dir, ['checkout', '-q', 'main']);
+			// The base branch publishes its own copy after the fork.
+			commitIn(
+				dir,
+				'src/portfolio/note.tsx',
+				'\t\t\t<p>公開本文を追加しました。</p>\n',
+				'base moves on',
+			);
+
+			const diffBase = resolveDiffBase('main', head, { cwd: dir });
+			assert.equal(diffBase.mode, 'merge-base');
+			assert.equal(diffBase.ref, gitIn(dir, ['rev-parse', 'main~1']));
+
+			const own = buildChangeSet(gitDiff(diffBase.ref, head, { cwd: dir }), surfaces).units;
+			assert.equal(own.length, 1);
+			assert.equal(own[0].path, 'src/home/hero.tsx');
+			assert.equal(own[0].after, '移行を進めています。');
+
+			// The two-dot diff this gate used to take reports the base
+			// branch's own new text as if the pull request had removed it.
+			const twoDot = buildChangeSet(gitDiff('main', head, { cwd: dir }), surfaces).units;
+			assert.equal(twoDot.length, 2);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('refuses a change set it cannot compute instead of judging the last commit', () => {
+		const dir = newRepo();
+		try {
+			commitIn(dir, 'src/home/hero.tsx', '\t\t\tlede="構築しています。"\n', 'root');
+			gitIn(dir, ['checkout', '-q', '--orphan', 'other']);
+			commitIn(dir, 'src/home/other.tsx', '\t\t\t<p>別の履歴です。</p>\n', 'unrelated root');
+			const head = gitIn(dir, ['rev-parse', 'HEAD']);
+
+			assert.equal(mergeBaseOf('main', head, { cwd: dir }), null);
+			// A root commit has no parent, and it is not a merge commit:
+			// there is nothing to diff against that would be the change set.
+			assert.equal(commitParents(head, { cwd: dir }).length, 0);
+			assert.equal(resolveDiffBase('main', head, { cwd: dir }), null);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+
+	it('falls back to the first parent of the merge commit CI checks out', () => {
+		const dir = newRepo();
+		try {
+			const root = commitIn(dir, 'src/home/hero.tsx', '\t\t\tlede="構築しています。"\n', 'root');
+			gitIn(dir, ['checkout', '-q', '--orphan', 'side']);
+			commitIn(dir, 'src/home/side.tsx', '\t\t\t<p>別の履歴です。</p>\n', 'side root');
+			gitIn(dir, ['checkout', '-q', 'main']);
+			gitIn(dir, [
+				'merge',
+				'-q',
+				'--no-ff',
+				'--allow-unrelated-histories',
+				'-m',
+				'merge side',
+				'side',
+			]);
+			const mergeSha = gitIn(dir, ['rev-parse', 'HEAD']);
+			assert.equal(commitParents(mergeSha, { cwd: dir }).length, 2);
+
+			// A third root has no common ancestor with the merge commit,
+			// so the merge base cannot be computed.
+			gitIn(dir, ['checkout', '-q', '--orphan', 'third']);
+			commitIn(dir, 'src/home/third.tsx', '\t\t\t<p>三つ目の履歴です。</p>\n', 'third root');
+
+			const diffBase = resolveDiffBase('third', mergeSha, { cwd: dir });
+			assert.equal(diffBase.mode, 'merge-commit');
+			assert.equal(diffBase.ref, root);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
+	});
+});
+
+describe('check-copy-editorial-approval — a hunk line that looks like a file header', () => {
+	it('keeps the file path when the content itself starts with --- / +++', () => {
+		const files = parseDiff(
+			[
+				'diff --git a/src/home/hero.tsx b/src/home/hero.tsx',
+				'--- a/src/home/hero.tsx',
+				'+++ b/src/home/hero.tsx',
+				'@@ -1,1 +1,1 @@',
+				'--- 旧い行です。',
+				'+++ 新しい行です。',
+			].join('\n'),
+		);
+		assert.equal(files.length, 1);
+		assert.equal(files[0].path, 'src/home/hero.tsx');
 	});
 });

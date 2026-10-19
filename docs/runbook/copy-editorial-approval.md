@@ -158,7 +158,21 @@ pnpm run copy:approval:check -- --base=release-0-7-0   # verdict: PASS
 
 `fingerprint` は **変更後の文面** から計算した sha256 である
 (`path` / `kind` / `after` を sort して連結)。承認は **文面** に結び付いており、
-別の文面へ流用できない。base ブランチが動いても、公開される文面が同じなら
+別の文面へ流用できない。
+
+gate が diff するのは **PR 自身の変更集合** である。base ref と head を
+そのまま二点 diff (`git diff base head`) すると、fork 後に動いた base
+ブランチが公開した文面まで「この PR が変更した文面」として現れ、報告も
+fingerprint も環境によって変わる。そのため gate は次の順で diff base を決める。
+
+1. `git merge-base <base> <head>` — 履歴が揃っているローカルではこれ。
+2. 見つからなければ、head が **merge commit（parent 2 つ以上）** のときだけ
+   その first parent。CI の `refs/pull/<n>/merge` はこれに当たる。
+3. どちらも無ければ **exit 2**。判断できない変更集合を pass にはしない
+   （単一 parent の head を親と diff すると最後の commit だけを審査して
+   しまうため、これは採らない）。
+
+したがって base ブランチが動いても、この PR が公開する文面が同じなら
 fingerprint は変わらない。
 
 `fingerprint` が食い違う record 只有一个が found されたとき、gate は
@@ -200,6 +214,9 @@ fingerprint は変わらない。
   追加分を含めて owner に再承認を仰ぐ。
 - **shallow clone を前提にする。** CI は `actions/checkout` の depth-1 clone であり、
   base commit は含まれない。CI ステップは base ref を明示的に fetch する。
+  depth-1 では merge base を計算できないため、その場合は PR の merge commit
+  の first parent を使う。どちらも取れない checkout（単一 parent の head など）
+  では gate は exit 2 で止まる — 履歴を fetch してから実行する。
 
 ## 8. 検証と再現
 

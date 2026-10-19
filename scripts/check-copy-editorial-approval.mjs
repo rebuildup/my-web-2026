@@ -61,6 +61,24 @@
  * contract's per-capability locale opt-in
  * (`copy/resources.json`) is untouched by this gate.
  *
+ * The change set is the pull request's OWN change set
+ * ----------------------------------------------------
+ * The gate diffs the **merge base** of the base ref and the head ref
+ * (`git diff base...head`), never the two refs directly. A base branch
+ * that moved on publishes its own text, and a two-dot diff reports that
+ * text as if the pull request had changed it: the fingerprint of the
+ * change set then differs between a local run and the CI run, the
+ * owner cannot record an approval that CI accepts, and the report
+ * describes files the pull request never touched.
+ *
+ * When the history is too shallow to compute a merge base — the
+ * depth-1 clone `actions/checkout` makes — the head is the merge
+ * commit GitHub builds for the pull request, and diffing it against
+ * its first parent is the same change set: what the pull request
+ * publishes on top of the base it was merged into. When neither can be
+ * established, the gate does not guess: it exits 2 rather than judge a
+ * change set it cannot see.
+ *
  * Offline, read-only, no secret: the gate reads the git diff of two
  * refs plus two JSON files. It never writes to the tree, never contacts
  * a network, and never reads a credential.
@@ -94,8 +112,8 @@
 
 import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -106,6 +124,9 @@ export const SURFACES_PATH = 'quality/copy-editorial-surfaces.json';
 
 /** Owner approval ledger (the review evidence). */
 export const LEDGER_PATH = 'quality/copy-editorial-approvals.json';
+
+/** The committed fixtures (the gate's own test corpus). */
+export const FIXTURE_DIR = 'test/fixtures/copy/editorial-approval';
 
 /** The four verdicts, in report order. */
 export const VERDICTS = ['pass', 'fail', 'not run', 'not applicable'];
@@ -308,12 +329,17 @@ export function parseDiff(diffText) {
 			current.path = line.slice('rename to '.length).trim();
 			continue;
 		}
-		if (line.startsWith('--- ')) {
+		// `--- ` / `+++ ` are file headers only outside a hunk. Inside a
+		// hunk they are content: a removed line whose text starts with
+		// `-- ` is printed as `--- …`, and taking it for a header would
+		// point the whole file at the wrong path and drop its Japanese
+		// change from the change set.
+		if (hunk === null && line.startsWith('--- ')) {
 			const value = line.slice(4).trim();
 			if (value !== '/dev/null') current.path = value.replace(/^a\//, '');
 			continue;
 		}
-		if (line.startsWith('+++ ')) {
+		if (hunk === null && line.startsWith('+++ ')) {
 			const value = line.slice(4).trim();
 			if (value !== '/dev/null') current.path = value.replace(/^b\//, '');
 			continue;
@@ -431,7 +457,7 @@ function finding(code, severity, message) {
  * different fingerprint is reported as stale: the approved text is no
  * longer the text this pull request publishes.
  */
-export function evaluateApproval({ units, ledger, pr = null }) {
+export function evaluateApproval({ units, ledger, pr = null, diffBase = null }) {
 	const fingerprint = fingerprintUnits(units);
 	const records = Array.isArray(ledger?.records) ? ledger.records : [];
 	const findings = [];
@@ -449,6 +475,7 @@ export function evaluateApproval({ units, ledger, pr = null }) {
 			findings: [],
 			record: null,
 			pr,
+			diffBase,
 		};
 	}
 
@@ -473,6 +500,7 @@ export function evaluateApproval({ units, ledger, pr = null }) {
 				findings,
 				record: null,
 				pr,
+				diffBase,
 			};
 		}
 		findings.push(
@@ -490,6 +518,7 @@ export function evaluateApproval({ units, ledger, pr = null }) {
 			findings,
 			record: null,
 			pr,
+			diffBase,
 		};
 	}
 
@@ -608,7 +637,7 @@ export function evaluateApproval({ units, ledger, pr = null }) {
 	const notRun = Object.values(dimensions).includes('not run');
 	const verdict = failed ? 'fail' : notRun ? 'not run' : 'pass';
 
-	return { verdict, fingerprint, units, dimensions, findings, record, pr };
+	return { verdict, fingerprint, units, dimensions, findings, record, pr, diffBase };
 }
 
 /** Verdict label used in the report (the human wording of `not run`). */
@@ -634,6 +663,9 @@ export function renderText(result) {
 	lines.push('public Japanese copy — editorial approval gate (Issue #506)');
 	lines.push(`  verdict: ${verdictLabel(result.verdict)}`);
 	lines.push(`  fingerprint: ${result.fingerprint}`);
+	if (result.diffBase) {
+		lines.push(`  change set: ${result.diffBase.ref} (${describeDiffBase(result.diffBase)})`);
+	}
 	lines.push(
 		`  changed public segments: ${result.units.length}  (review dimensions: ${DIMENSIONS.map(
 			(dimension) => `${dimension}=${result.dimensions[dimension]}`,
@@ -680,6 +712,7 @@ export function renderJson(result) {
 			units: result.units,
 			findings: result.findings,
 			pr: result.pr,
+			diffBase: result.diffBase ?? null,
 		},
 		null,
 		2,
@@ -812,8 +845,13 @@ export function renderHtml(result, { fixtures = [], sourceSha = null, changeSet 
 		verdictLabel(result.verdict),
 	)}</span></p>
 	<p class="meta">fingerprint <code>${escapeHtml(result.fingerprint)}</code>${
-		sourceSha ? ` · source <code>${escapeHtml(sourceSha)}</code>` : ''
-	}</p>
+		result.diffBase
+			? ` · change set <code>${escapeHtml(result.diffBase.ref)}</code> (${escapeHtml(
+					describeDiffBase(result.diffBase),
+				)})`
+			: ''
+	}${sourceSha ? ` · source <code>${escapeHtml(sourceSha)}</code>` : ''}
+	</p>
 	<table>
 		<thead><tr><th>review dimension</th><th>status</th></tr></thead>
 		<tbody>${dimensionRows}</tbody>
@@ -896,6 +934,9 @@ function parseArgs(argv) {
 		printFingerprint: false,
 	};
 	for (const arg of argv) {
+		// `pnpm run <script> -- <args>` forwards the separator; the runbook
+		// documents that form, so it is not an unknown option.
+		if (arg === '--') continue;
 		if (arg.startsWith('--base=')) options.base = arg.slice('--base='.length);
 		else if (arg.startsWith('--head=')) options.head = arg.slice('--head='.length);
 		else if (arg.startsWith('--pr=')) options.pr = arg.slice('--pr='.length);
@@ -909,25 +950,118 @@ function parseArgs(argv) {
 	return options;
 }
 
-/** Does this ref exist in the repository? */
-export function refExists(ref) {
+/** The commit id a ref points at, or null when the ref is unknown. */
+export function commitSha(ref, { cwd = REPO_ROOT } = {}) {
 	try {
-		execFileSync('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], {
-			cwd: REPO_ROOT,
-			stdio: 'ignore',
-		});
-		return true;
+		const sha = execFileSync('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], {
+			cwd,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		}).trim();
+		return sha.length > 0 ? sha : null;
 	} catch {
-		return false;
+		return null;
 	}
 }
 
-/** The diff between two refs, as `git diff --unified=0` prints it. */
-export function gitDiff(base, head) {
+/** Does this ref exist in the repository? */
+export function refExists(ref, options = {}) {
+	return commitSha(ref, options) !== null;
+}
+
+/**
+ * The parents of a commit, read from the commit object itself.
+ *
+ * `git cat-file -p` prints the commit as it is stored, so the parents
+ * stay readable in a shallow clone — where the revision walk cannot
+ * reach them.
+ */
+export function commitParents(ref, { cwd = REPO_ROOT } = {}) {
+	try {
+		const text = execFileSync('git', ['cat-file', '-p', `${ref}^{commit}`], {
+			cwd,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		});
+		return text
+			.split('\n')
+			.filter((line) => line.startsWith('parent '))
+			.map((line) => line.slice('parent '.length).trim());
+	} catch {
+		return [];
+	}
+}
+
+/** The merge base of two refs, or null when the history cannot say. */
+export function mergeBaseOf(base, head, { cwd = REPO_ROOT } = {}) {
+	try {
+		const sha = execFileSync('git', ['merge-base', base, head], {
+			cwd,
+			encoding: 'utf8',
+			stdio: ['ignore', 'pipe', 'ignore'],
+		}).trim();
+		return sha.length > 0 ? sha : null;
+	} catch {
+		return null;
+	}
+}
+
+/**
+ * The commit the gate diffs against — the pull request's own change set.
+ *
+ * Two ways to reach it, and the gate uses the first one that works:
+ *
+ *   - `merge-base` — the commit the branch forked from. `git diff
+ *     base...head` is the pull request's own change set, whatever the
+ *     base branch published in the meantime. This is the local case
+ *     (a clone that carries the history).
+ *   - `merge-commit` — the first parent of a merge commit. A pull
+ *     request checkout in CI is the merge commit GitHub builds
+ *     (`refs/pull/<n>/merge`), and a depth-1 clone cannot compute a
+ *     merge base. Only a commit with two or more parents qualifies: a
+ *     single-parent head is not the merge GitHub builds, and diffing it
+ *     against its parent would judge the last commit only — silently
+ *     narrowing the review instead of asking for history.
+ *
+ * When neither can be established the change set is unknown, and the
+ * gate says so instead of judging a diff it did not compute.
+ */
+export function resolveDiffBase(base, head, { cwd = REPO_ROOT } = {}) {
+	const fork = mergeBaseOf(base, head, { cwd });
+	if (fork) {
+		return { ref: fork, mode: 'merge-base', base, head };
+	}
+	// Only a real merge commit (two or more parents) is the CI head.
+	// A single-parent head means the change set cannot be computed, and
+	// diffing it against its parent would judge the LAST commit only —
+	// silently narrowing the review instead of asking for history.
+	const parents = commitParents(head, { cwd });
+	if (parents.length >= 2) {
+		return { ref: parents[0], mode: 'merge-commit', base, head };
+	}
+	return null;
+}
+
+/** How the diff base was reached, in the words the report prints. */
+export function describeDiffBase(diffBase) {
+	if (!diffBase) return 'unknown';
+	if (diffBase.mode === 'merge-base') {
+		return `merge base of ${diffBase.base} and ${diffBase.head}`;
+	}
+	return `first parent of the merge commit ${diffBase.head}`;
+}
+
+/**
+ * The diff between two refs, as `git diff --unified=0` prints it.
+ *
+ * The first argument is the **diff base** (see `resolveDiffBase`), not
+ * the base branch: the gate judges the pull request's own change set.
+ */
+export function gitDiff(base, head, { cwd = REPO_ROOT } = {}) {
 	return execFileSync(
 		'git',
 		['diff', '--no-color', '--no-ext-diff', '--unified=0', '--find-renames', base, head],
-		{ cwd: REPO_ROOT, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
+		{ cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
 	);
 }
 
@@ -945,9 +1079,25 @@ export function resolveBaseRef(explicit, env = process.env) {
 	if (env.COPY_APPROVAL_BASE) candidates.push(env.COPY_APPROVAL_BASE);
 	if (env.GITHUB_BASE_REF) candidates.push(`origin/${env.GITHUB_BASE_REF}`);
 	for (const candidate of candidates) {
-		if (refExists(candidate)) return candidate;
+		for (const variant of refVariants(candidate)) {
+			if (refExists(variant)) return variant;
+		}
 	}
 	return null;
+}
+
+/**
+ * The refs a candidate base name may resolve to, in order.
+ *
+ * The name is taken as given first — `--base=HEAD` means HEAD, not
+ * `origin/HEAD` — and a bare branch name falls back to its remote
+ * tracking ref, which is how a fresh clone reaches the base branch. A
+ * name that already carries a path (`origin/…`, `refs/heads/…`) is
+ * taken as it is.
+ */
+function refVariants(candidate) {
+	if (candidate.includes('/')) return [candidate];
+	return [candidate, `origin/${candidate}`];
 }
 
 export function main(argv, { env = process.env } = {}) {
@@ -985,11 +1135,26 @@ export function main(argv, { env = process.env } = {}) {
 		return 2;
 	}
 
+	// Judge the pull request's OWN change set, never the two refs
+	// directly: a base branch that moved on would otherwise publish its
+	// own text into the report and the fingerprint. No merge base and no
+	// merge commit means the change set is unknown — exit 2, do not
+	// guess.
+	const diffBase = resolveDiffBase(base, options.head);
+	if (!diffBase) {
+		process.stderr.write(
+			`[check-copy-editorial-approval] no change set: neither the merge base of ${base} and ${options.head} nor the first parent of the head commit is reachable (shallow clone?). Fetch more history; the gate will not judge a diff it cannot compute.\n`,
+		);
+		return 2;
+	}
+
 	let diffText;
 	try {
-		diffText = gitDiff(base, options.head);
+		diffText = gitDiff(diffBase.ref, options.head);
 	} catch (error) {
-		process.stderr.write(`[check-copy-editorial-approval] cannot diff ${base}..${options.head}\n`);
+		process.stderr.write(
+			`[check-copy-editorial-approval] cannot diff ${diffBase.ref}..${options.head}\n`,
+		);
 		return 2;
 	}
 
@@ -998,6 +1163,7 @@ export function main(argv, { env = process.env } = {}) {
 		units: changeSet.units,
 		ledger,
 		pr: options.pr ? Number(options.pr) : null,
+		diffBase,
 	});
 
 	if (options.printFingerprint) {

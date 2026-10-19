@@ -61,6 +61,7 @@ import {
 	gitDiff,
 	renderHtml,
 	resolveBaseRef,
+	resolveDiffBase,
 } from './check-copy-editorial-approval.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -97,14 +98,25 @@ function baseRefFrom(argv) {
 	return explicit ? explicit.slice('--base='.length) : null;
 }
 
-/** The live change set of the current checkout, or an empty one. */
+/**
+ * The live change set of the current checkout, or an empty one.
+ *
+ * The report mirrors the gate: it diffs the merge base of the base ref
+ * and HEAD, so a base branch that moved on does not publish its own
+ * text into the report (Issue #506).
+ */
 function liveChangeSet(surfaces) {
+	const empty = { units: [], publicFiles: [], otherFiles: [] };
 	const base = resolveBaseRef(baseRefFrom(process.argv.slice(2)));
 	if (!base) {
-		return { base: null, changeSet: { units: [], publicFiles: [], otherFiles: [] } };
+		return { base: null, diffBase: null, changeSet: empty };
 	}
-	const diff = gitDiff(base, 'HEAD');
-	return { base, changeSet: buildChangeSet(diff, surfaces) };
+	const diffBase = resolveDiffBase(base, 'HEAD');
+	if (!diffBase) {
+		return { base, diffBase: null, changeSet: empty };
+	}
+	const diff = gitDiff(diffBase.ref, 'HEAD');
+	return { base, diffBase, changeSet: buildChangeSet(diff, surfaces) };
 }
 
 /** Every committed fixture, evaluated through the same pure evaluator. */
@@ -158,11 +170,12 @@ async function shoot(htmlPath, target) {
 const surfaces = JSON.parse(readFileSync(join(ROOT, SURFACES_PATH), 'utf8'));
 const ledger = JSON.parse(readFileSync(join(ROOT, LEDGER_PATH), 'utf8'));
 
-const { base, changeSet } = liveChangeSet(surfaces);
+const { base, diffBase, changeSet } = liveChangeSet(surfaces);
 const result = evaluateApproval({
 	units: changeSet.units,
 	ledger,
 	pr: process.env.COPY_APPROVAL_PR ? Number(process.env.COPY_APPROVAL_PR) : null,
+	diffBase,
 });
 
 mkdirSync(dirname(HTML_REPORT), { recursive: true });
@@ -175,9 +188,13 @@ writeFileSync(
 	}),
 );
 process.stdout.write(`wrote ${HTML_REPORT}\n`);
-if (base) {
+if (base && diffBase) {
 	process.stdout.write(
-		`live change set: ${base}..HEAD (${changeSet.units.length} public segment(s))\n`,
+		`live change set: ${diffBase.ref}..HEAD (${changeSet.units.length} public segment(s))\n`,
+	);
+} else if (base) {
+	process.stdout.write(
+		`live change set: unknown (no merge base of ${base} and HEAD, and HEAD is not a merge commit)\n`,
 	);
 } else {
 	process.stdout.write(

@@ -9,9 +9,7 @@
 				"status": "verified",
 				"evidence_file": "LICENSE",
 				"evidence_sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d",
-				"detected": [
-					"MIT"
-				]
+				"detected": ["MIT"]
 			},
 			"dependencies": {
 				"status": "verified",
@@ -59,22 +57,13 @@
 				"status": "verified",
 				"evidence_file": "LICENSE",
 				"evidence_sha256": "26921cd13dfe05016080bc262827a6bb5bcd253f1523bee5ea0715e578cf017e",
-				"detected": [
-					"MIT"
-				]
+				"detected": ["MIT"]
 			},
 			"dependencies": {
 				"status": "verified",
 				"lockfile": "bun.lock",
 				"lockfile_sha256": "695c41bbf1f06c5b0452cbbd9939e44eb27f1716f9a2ea29fc6fae618bee2546",
-				"runtime": [
-					"dexie",
-					"pdfjs-dist",
-					"react",
-					"react-dom",
-					"react-router-dom",
-					"zustand"
-				]
+				"runtime": ["dexie", "pdfjs-dist", "react", "react-dom", "react-router-dom", "zustand"]
 			},
 			"outbound": {
 				"observed": true,

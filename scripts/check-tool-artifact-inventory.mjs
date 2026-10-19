@@ -58,6 +58,7 @@
  */
 
 import { createHash } from 'node:crypto';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -335,6 +336,29 @@ function writeRecord(root, record, outPath) {
 	const target = outPath === null ? join(root, RECORD_RELATIVE_PATH) : resolve(root, outPath);
 	mkdirSync(dirname(target), { recursive: true });
 	writeFileSync(target, `${JSON.stringify(record, null, '\t')}\n`);
+	// Biome owns JSON layout in this repository (ADR: Biome replaces
+	// Prettier/ESLint), and `JSON.stringify`'s own layout is not it. A
+	// generated file that `pnpm run format:check` rejects would make
+	// `--update` a command that always leaves the tree dirty, so the
+	// generator formats with the same tool the gate runs. When the
+	// binary is absent (a stripped checkout) the write still happens and
+	// the format gate reports it on the next `pnpm run format`.
+	const biome = join(repoRoot, 'node_modules', '.bin', 'biome');
+	if (existsSync(biome)) {
+		const formatted = spawnSync(biome, ['format', '--write', target], {
+			cwd: repoRoot,
+			encoding: 'utf8',
+		});
+		if (formatted.status !== 0) {
+			process.stderr.write(
+				`[check-tool-artifact-inventory] biome could not format ${target}: ${formatted.stderr}\n`,
+			);
+		}
+	} else {
+		process.stderr.write(
+			'[check-tool-artifact-inventory] biome is not installed; run `pnpm exec biome format --write` on the record before committing\n',
+		);
+	}
 	return target;
 }
 

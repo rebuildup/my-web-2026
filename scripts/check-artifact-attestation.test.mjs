@@ -13,6 +13,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+	ARTIFACT_ORIGIN,
 	AttestationError,
 	REPO_ROOT,
 	SCHEMA,
@@ -151,6 +152,10 @@ describe('manifest generation', () => {
 		assert.equal(manifest.cloudflare.worker, 'my-web-2026');
 		assert.equal(manifest.cloudflare.build_uuid, null);
 		assert.equal(manifest.cloudflare.deploy_id, null);
+		assert.deepEqual(manifest.coverage, {
+			artifact_origin: ARTIFACT_ORIGIN,
+			deployed_bytes_attested: false,
+		});
 		assert.deepEqual(manifest.signature, {
 			status: 'unsigned',
 			algorithm: null,
@@ -224,9 +229,61 @@ describe('manifest verification', () => {
 		assert.ok(result.checks.some((check) => check.id === 'Lockfile digest'));
 		assert.ok(
 			result.checks.some(
+				(check) =>
+					check.id === 'Attested scope' &&
+					check.detail === `${ARTIFACT_ORIGIN} hashed; Cloudflare-deployed bytes NOT attested`,
+			),
+		);
+		assert.equal(result.summary.deployed_bytes_attested, false);
+		assert.equal(result.summary.artifact_origin, ARTIFACT_ORIGIN);
+		assert.ok(
+			result.checks.some(
 				(check) => check.id === 'Signature' && check.detail === 'unsigned (no signature claimed)',
 			),
 		);
+	});
+
+	it('fails a manifest that claims coverage this tool cannot back', (t) => {
+		const { root, artifactDir, manifest } = setup();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+
+		const claimsDeployedBytes = structuredClone(manifest);
+		claimsDeployedBytes.coverage.deployed_bytes_attested = true;
+		const claimed = verifyManifest({
+			manifest: claimsDeployedBytes,
+			artifactDir,
+			root,
+			expectedSourceCommit: SOURCE,
+		});
+		assert.equal(claimed.status, 'FAIL');
+		assert.ok(codes(claimed).includes('COVERAGE_UNSUPPORTED'));
+
+		const foreignOrigin = structuredClone(manifest);
+		foreignOrigin.coverage.artifact_origin = 'cloudflare-workers-builds';
+		const foreign = verifyManifest({
+			manifest: foreignOrigin,
+			artifactDir,
+			root,
+			expectedSourceCommit: SOURCE,
+		});
+		assert.equal(foreign.status, 'FAIL');
+		assert.ok(codes(foreign).includes('COVERAGE_UNSUPPORTED'));
+	});
+
+	it('fails a manifest that does not state which bytes it attests', (t) => {
+		const { root, artifactDir, manifest } = setup();
+		t.after(() => rmSync(root, { recursive: true, force: true }));
+
+		const undeclared = structuredClone(manifest);
+		Reflect.deleteProperty(undeclared, 'coverage');
+		const result = verifyManifest({
+			manifest: undeclared,
+			artifactDir,
+			root,
+			expectedSourceCommit: SOURCE,
+		});
+		assert.equal(result.status, 'FAIL');
+		assert.ok(codes(result).includes('COVERAGE_UNDECLARED'));
 	});
 
 	it('fails when the artifact bytes drift', (t) => {

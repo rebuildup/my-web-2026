@@ -20,6 +20,14 @@
  * credential, and never contacts a production host: a status-only
  * record must stay reproducible in CI and safe to paste into a PR.
  *
+ * The manifest also states which bytes it covers. It hashes the
+ * artifact directory it is given — in CI the GitHub Actions
+ * production-mode Build Output — and records
+ * `coverage.deployed_bytes_attested: false` because the bytes
+ * Cloudflare Workers Builds deploys are not compared here. That
+ * limitation is an open owner decision; until it is resolved, it is a
+ * field of the document rather than a paragraph someone may skip.
+ *
  * Determinism
  * -----------
  * The manifest carries no timestamp. The same artifact bytes, source
@@ -56,6 +64,23 @@ export const UNSIGNED_SIGNATURE = Object.freeze({
 	algorithm: null,
 	key_id: null,
 	value: null,
+});
+
+/**
+ * Which bytes a manifest produced by this tool covers.
+ *
+ * The generator can only hash the artifact directory it is pointed at —
+ * in CI, the GitHub Actions production-mode Build Output. It cannot hash
+ * what Cloudflare Workers Builds builds and deploys, so the manifest
+ * says so itself: the coverage travels with the published document, and
+ * a `PASS` line can never be read as "the deployed bytes are attested".
+ * Verification fails closed on a manifest claiming coverage this tool
+ * cannot back, exactly as it does for an unverifiable signature.
+ */
+export const ARTIFACT_ORIGIN = 'github-actions-production-build-output';
+export const UNATTESTED_DEPLOYED_BYTES = Object.freeze({
+	artifact_origin: ARTIFACT_ORIGIN,
+	deployed_bytes_attested: false,
 });
 
 const COMMIT_RE = /^[0-9a-f]{40}$/;
@@ -307,6 +332,7 @@ export function buildManifest({
 			// unless the caller obtained it through an authorized path.
 			deploy_id: deployId,
 		},
+		coverage: { ...UNATTESTED_DEPLOYED_BYTES },
 		signature: { ...UNSIGNED_SIGNATURE },
 	};
 }
@@ -580,6 +606,30 @@ export function verifyManifest({
 		pass('Worker identity', WORKER_NAME);
 	}
 
+	// The manifest states its own scope, so the published document
+	// carries the limitation instead of leaving it to a reader's memory.
+	const coverage = manifest.coverage;
+	if (coverage == null || typeof coverage !== 'object') {
+		fail(
+			'Attested scope',
+			'manifest does not state which bytes it attests',
+			'COVERAGE_UNDECLARED',
+			'Regenerate the manifest with the current tool. A document that does not state its own scope cannot be read as an attestation of anything in particular.',
+		);
+	} else if (
+		coverage.artifact_origin !== ARTIFACT_ORIGIN ||
+		coverage.deployed_bytes_attested !== false
+	) {
+		fail(
+			'Attested scope',
+			`manifest claims artifact_origin ${JSON.stringify(coverage.artifact_origin)} with deployed_bytes_attested ${JSON.stringify(coverage.deployed_bytes_attested)}`,
+			'COVERAGE_UNSUPPORTED',
+			'This tool hashes the artifact it is given (the GitHub Actions production-mode Build Output) and cannot attest the bytes Cloudflare Workers Builds deploys. Accept such a manifest only from a tool that can back the claim.',
+		);
+	} else {
+		pass('Attested scope', `${ARTIFACT_ORIGIN} hashed; Cloudflare-deployed bytes NOT attested`);
+	}
+
 	const signature = manifest.signature;
 	if (signature?.status !== 'unsigned') {
 		fail(
@@ -643,6 +693,8 @@ export function verifyManifest({
 			lockfile_packages: facts.lockfile.packages,
 			signature_status: signature?.status ?? null,
 			deploy_id: manifest.cloudflare?.deploy_id ?? null,
+			artifact_origin: manifest.coverage?.artifact_origin ?? null,
+			deployed_bytes_attested: manifest.coverage?.deployed_bytes_attested ?? null,
 		},
 	};
 }

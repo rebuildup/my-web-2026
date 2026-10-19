@@ -253,6 +253,12 @@ production domain to be wired (Issue #43 / ADR-0014):
      key exists, so `signature.status` is `unsigned` and every signature
      field is `null`. A document claiming an unverifiable signature
      fails closed.
+   - The manifest states its own attested scope: `coverage.artifact_origin`
+     names the hashed GitHub Actions production-mode Build Output and
+     `coverage.deployed_bytes_attested` is `false`. A manifest claiming
+     coverage this tool cannot back fails closed
+     (`COVERAGE_UNSUPPORTED` / `COVERAGE_UNDECLARED`), so a `PASS`
+     never reads as "the deployed bytes were hashed".
    - A Cloudflare deploy id is recorded only when an operator supplies
      one (`--deploy-id`). It is not fetched with a production credential
      and is not authenticated by this tool.

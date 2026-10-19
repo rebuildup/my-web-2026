@@ -24,6 +24,7 @@
 | toolchain | `package.json#packageManager` | 記録と一致するか |
 | Worker | canonical な `my-web-2026` | 記録と一致するか |
 | Cloudflare identity | build UUID / deploy id（取得できた場合のみ） | 型だけ検査。値の真正性は検証しない |
+| attested scope | `coverage.artifact_origin` / `coverage.deployed_bytes_attested` | manifest が attest する byte の範囲が宣言されているか。この tool が back できない coverage（Cloudflare deploy 済み byte の attestation）を名乗る場合は FAIL |
 | 署名 | **unsigned** であること | 存在しない署名を表示しない |
 
 manifest は timestamp を持たない。同じ artifact bytes・commit・依存入力
@@ -43,10 +44,15 @@ artifact を比べる」が build の揺らぎの diff にならない。
   GitHub Actions の `validate` job が production mode で build した
   `.cloudflare/output/v0` を記述する。Cloudflare Workers Builds が
   別に build / deploy する artifact の byte を hash し、その digest を
-  manifest と比べる経路は未配線である（§8-3）。一方、「公開 release が
-  tag で名指しする commit が manifest の source commit である」ことは
-  `--release-tag` で fail-closed に検査できる（§4）。GitHub Release への
-  添付は human-gated な release 操作であり、この tool は publish しない。
+  manifest と比べる経路は未配線である（§8-3）。この制限は manifest
+  自身にも書き、`coverage.artifact_origin` と
+  `coverage.deployed_bytes_attested: false` として公開 document に
+  持たせる。`COVERAGE_UNSUPPORTED` / `COVERAGE_UNDECLARED` で
+  fail closed するので、PASS 行を「deploy 済み byte の attestation」と
+  読み違える余地はない。一方、「公開 release が tag で名指しする
+  commit が manifest の source commit である」ことは `--release-tag` で
+  fail-closed に検査できる（§4）。GitHub Release への添付は
+  human-gated な release 操作であり、この tool は publish しない。
 - **secret を読まない。** Infisical / Worker secret / `.dev.vars` /
   Cloudflare token のいずれにも触れない。入力は build output と
   tracked file（`package.json` / `pnpm-lock.yaml`）だけである。
@@ -92,6 +98,10 @@ artifact を比べる」が build の揺らぎの diff にならない。
     "build_uuid": null,
     "deploy_id": null
   },
+  "coverage": {
+    "artifact_origin": "github-actions-production-build-output",
+    "deployed_bytes_attested": false
+  },
   "signature": {
     "status": "unsigned",
     "algorithm": null,
@@ -108,6 +118,17 @@ target 文字列だけを記録して link 先の byte を未 hash のまま残�
 検証側も `kind` は `"file"` だけを受け付ける（生成器が出さない
 entry 形を manifest が主張しないため、`"symlink"` を含む entry は
 `MANIFEST_FILES_INVALID` になる）。
+
+`coverage` は manifest が attest する byte の範囲そのものである。
+`artifact_origin` は hash した Build Output の出所、
+`deployed_bytes_attested` は「Cloudflare Workers Builds が deploy する
+byte を hash したか」。この tool が生成するのは前者だけなので
+後者は常に `false` であり、`true` を名乗る manifest は
+`COVERAGE_UNSUPPORTED`、`coverage` を持たない manifest は
+`COVERAGE_UNDECLARED` として FAIL する（署名を名乗るのと同じ
+fail-closed）。この schema は #476 で導入され、まだ公開
+document として出过ことが無いため、初回 release 前に追加した field は
+v1 のまま扱う。
 
 ## 4. コマンド
 
@@ -166,6 +187,8 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 | release tag version drift | tag 名が manifest の `project.version` 以外の version を宣言する | `RELEASE_TAG_VERSION_MISMATCH` |
 | lockfile drift | manifest 生成後に `pnpm-lock.yaml` を変更 | `LOCKFILE_DIGEST_MISMATCH` |
 | fabricated signature | `status: "unsigned"` のまま signature field を埋める | `SIGNATURE_INCONSISTENT` |
+| fabricated coverage | `coverage.deployed_bytes_attested` を `true` にする | `COVERAGE_UNSUPPORTED` |
+| undeclared coverage | `coverage` を削除する | `COVERAGE_UNDECLARED` |
 
 ## 6. 修復手順
 
@@ -183,6 +206,8 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 | `PROJECT_VERSION_MISMATCH` / `PROJECT_IDENTITY_MISMATCH` | 別 release の manifest | release commit で再生成する |
 | `WORKER_IDENTITY_MISMATCH` | 別 Worker の manifest | この repository で再生成する |
 | `SIGNATURE_UNSUPPORTED` / `SIGNATURE_INCONSISTENT` | この repo が検証できない署名を名乗っている | 署名 field を消して unsigned にする。本物の署名 authority を追加するまで署名を表示しない |
+| `COVERAGE_UNSUPPORTED` | この tool が back できない attestation 範囲（例: Cloudflare deploy 済み byte）を名乗っている | 現行 tool で再生成する。deploy 済み byte の attestation は owner 判断（§8-3）であり、実現するまで公開 manifest にその claim を書かない |
+| `COVERAGE_UNDECLARED` | manifest が attest する byte の範囲を宣言していない | 現行 tool で再生成する。範囲を書かない manifest は何を attest したか読み取れない |
 | `SCHEMA_UNSUPPORTED` | 未知の schema | 現行 tool で再生成する |
 | `DIGEST_ALGORITHM_UNSUPPORTED` | sha-256 以外の digest | 現行 tool で再生成する |
 | `MANIFEST_FILES_INVALID` / `MANIFEST_FILE_DIGEST_MISMATCH` | per-file 記録が aggregate と一致しない（手編集を含む） | 手で編集せず再生成する |
@@ -196,6 +221,8 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
   この中で manifest を生成し、GitHub Actions が build した
   `.cloudflare/output/v0` に対して直ちに検証する。Cloudflare Workers
   Builds の production artifact はこの gate の対象外である（§8-3）。
+  そのため CI log の `PASS  Attested scope: ...` 行と manifest の
+  `coverage` が、attest 済みの範囲を毎回明示する。
 - workflow は `artifact-attestation-<sha>` として 90 日保持する
   （`.github/workflows/ci.yml`）。
 - release では GitHub Release への添付を release owner の判断で行う。
@@ -232,6 +259,12 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
    PASS のまま deploy 済み byte は未 attestation のまま残る。この半分の
    実装（build/deploy phase での manifest 生成、または deployed
    artifact の hash と release tag の自動照合）は deploy 経路の変更を
-   要するため owner 判断とし、この Issue では実装しない。
+   要するため owner 判断とし、この Issue では実装しない。agent 側が
+   閉じられる範囲として、制約は manifest の `coverage` field として
+   公開 document 自身に埋め込み、検証側で fail closed に検査する
+   ようにした（真正性の裏付けであって、欠けた確認の代用ではない）。
+   owner には Issue #476 のコメントで (A) 範囲を CI production-mode
+   Build Output へ狭める承認 / (B) deploy phase での生成と自動照合の
+   2 選択肢を依頼している。
 4. **GitHub Release への添付は自動化しない。** release PR merge / tag /
    Release publish と同じ human gate の下に置く。

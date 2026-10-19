@@ -8,6 +8,8 @@
 		"lockfile_packages": 759,
 		"signature_status": "unsigned",
 		"deploy_id": null,
+		"artifact_origin": "github-actions-production-build-output",
+		"deployed_bytes_attested": false,
 		"release_tag": "v0.7.0",
 		"release_tag_commit": "0123456789abcdef0123456789abcdef01234567"
 	},
@@ -47,6 +49,18 @@
 			"expected_finding": "SIGNATURE_INCONSISTENT",
 			"status": "FAIL",
 			"finding": "SIGNATURE_INCONSISTENT"
+		},
+		{
+			"id": "fabricated-coverage",
+			"expected_finding": "COVERAGE_UNSUPPORTED",
+			"status": "FAIL",
+			"finding": "COVERAGE_UNSUPPORTED"
+		},
+		{
+			"id": "undeclared-coverage",
+			"expected_finding": "COVERAGE_UNDECLARED",
+			"status": "FAIL",
+			"finding": "COVERAGE_UNDECLARED"
 		}
 	]
 }

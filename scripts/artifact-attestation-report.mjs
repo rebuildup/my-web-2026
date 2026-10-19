@@ -15,16 +15,18 @@
  *
  *   1. normal observation — a fixture artifact whose digest, source
  *      commit, lockfile and version all agree; signature is stated as
- *      `unsigned`, and the deploy id is `not provided`;
- *   2. abnormal observation — six real mutations (tampered artifact,
+ *      `unsigned`, the attested byte scope is stated in the manifest
+ *      itself (`coverage`), and the deploy id is `not provided`;
+ *   2. abnormal observation — eight real mutations (tampered artifact,
  *      wrong source commit, release tag pointing at another commit,
  *      release tag naming another version, changed lockfile, unsigned
- *      document that carries signature fields), each failing with its
- *      own code;
+ *      document that carries signature fields, a manifest claiming
+ *      Cloudflare-deployed bytes are attested, a manifest that states
+ *      no scope at all), each failing with its own code;
  *   3. the repair procedure, so the image is not the proof.
  *
  * The Issue names `artifact-sha-attestation.png`; the committed
- * artefact is the same image as **WebP** (≤1440 px wide, quality 80,
+ * artefact is the same image as **WebP** (≤1240 px wide, quality 80,
  * <300 KB) because a full-resolution PNG of a text report is roughly
  * an order of magnitude larger and is never read as anything but an
  * image. No PNG is written or committed.
@@ -52,7 +54,7 @@ const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT_DIR = resolve(root, 'docs/verification/supply-chain');
 const PORT = 4603;
 
-const MAX_WIDTH = 1440;
+const MAX_WIDTH = 1240;
 const WEBP_QUALITY = 80;
 const MAX_BYTES = 300 * 1024;
 
@@ -203,6 +205,33 @@ try {
 		requireClean: false,
 	});
 
+	// Abnormal 7: a document that claims the Cloudflare-deployed bytes
+	// are attested. This tool never hashes them, so the claim must not
+	// pass as a verdict.
+	const fakeCoverage = structuredClone(manifest);
+	fakeCoverage.coverage.deployed_bytes_attested = true;
+	const coverageClaim = verifyManifest({
+		manifest: fakeCoverage,
+		artifactDir: fixtureDir,
+		root,
+		expectedSourceCommit: FIXTURE_COMMIT,
+		requireClean: false,
+	});
+
+	// Abnormal 8: a document that never says which bytes it attests.
+	const undeclaredCoverage = structuredClone(manifest);
+	// A JSON document cannot carry `undefined`, so remove the block
+	// outright rather than assigning it: the manifest must state no
+	// scope at all.
+	Reflect.deleteProperty(undeclaredCoverage, 'coverage');
+	const undeclaredScope = verifyManifest({
+		manifest: undeclaredCoverage,
+		artifactDir: fixtureDir,
+		root,
+		expectedSourceCommit: FIXTURE_COMMIT,
+		requireClean: false,
+	});
+
 	const scenarios = [
 		{
 			id: 'tampered-artifact',
@@ -239,6 +268,19 @@ try {
 			mutation: 'signature.status="unsigned" but algorithm/value are populated',
 			result: signatureClaim,
 			expected: 'SIGNATURE_INCONSISTENT',
+		},
+		{
+			id: 'fabricated-coverage',
+			mutation:
+				'coverage.deployed_bytes_attested=true (the Cloudflare-deployed bytes are never hashed here)',
+			result: coverageClaim,
+			expected: 'COVERAGE_UNSUPPORTED',
+		},
+		{
+			id: 'undeclared-coverage',
+			mutation: 'the coverage block is removed, so the manifest names no attested bytes',
+			result: undeclaredScope,
+			expected: 'COVERAGE_UNDECLARED',
 		},
 	];
 
@@ -312,6 +354,10 @@ try {
 			`<code>${escapeHtml(facts.lockfile.sha256)}</code> · ${facts.lockfile.packages} resolved package version(s)`,
 		],
 		['signature', '<strong>unsigned</strong> — no signature is claimed'],
+		[
+			'attested scope',
+			`<code>${escapeHtml(manifest.coverage.artifact_origin)}</code> hashed · <code>coverage.deployed_bytes_attested = false</code>`,
+		],
 		['Cloudflare deploy id', 'not provided — no id is invented'],
 		['Cloudflare build uuid', 'not provided'],
 	]
@@ -351,7 +397,7 @@ try {
 
 	<section id="normal">
 		<h2>Normal observation — fixture Build Output <span class="badge pass">PASS</span></h2>
-		<p class="muted">The same <code>verifyManifest()</code> the gate calls. Artifact digest, expected source commit, release tag, lockfile digest and project version agree; the document is explicitly unsigned and the absent deploy id stays null.</p>
+		<p class="muted">The same <code>verifyManifest()</code> the gate calls. Artifact digest, expected source commit, release tag, lockfile digest and project version agree; the document is explicitly unsigned, states that the Cloudflare-deployed bytes are <em>not</em> attested, and the absent deploy id stays null.</p>
 		<table>${metadataRows}</table>
 		<h3>Verification checks</h3>
 		<table>
@@ -380,7 +426,7 @@ try {
 			<tr><th>claimed</th><td>The listed bytes are the artifact that was hashed; the recorded commit, lockfile and dependency ranges are the inputs that produced them; a mismatched release commit or drifted artifact fails the gate.</td></tr>
 			<tr><th>not claimed</th><td>No signature. No signing key exists in this repository, so <code>signature.status</code> is <code>unsigned</code> and every signature field is <code>null</code>. A document claiming a signature this tool cannot verify fails with <code>SIGNATURE_UNSUPPORTED</code>.</td></tr>
 			<tr><th>deploy id</th><td>Recorded only when the caller supplied one. It is a status record, not an authenticated Cloudflare fact: obtaining or checking it never uses a production credential in this tool.</td></tr>
-			<tr><th>production artifact</th><td>The CI manifest describes the exact Build Output CI built at the workflow commit. A published manifest is gated on the release it claims: <code>--release-tag</code> fails unless the tag resolves to the manifest's source commit and names its version. Attaching it to the GitHub Release is a human-gated step; see <code>docs/release.md</code>. The bytes Cloudflare Workers Builds itself deploys are still not attested (open owner decision).</td></tr>
+			<tr><th>production artifact</th><td>The CI manifest describes the exact Build Output CI built at the workflow commit, and states that scope itself: <code>coverage.artifact_origin</code> names the hashed Build Output and <code>coverage.deployed_bytes_attested</code> is <code>false</code>. A published manifest is gated on the release it claims: <code>--release-tag</code> fails unless the tag resolves to the manifest's source commit and names its version. Attaching it to the GitHub Release is a human-gated step; see <code>docs/release.md</code>. The bytes Cloudflare Workers Builds itself deploys are still not attested (open owner decision), so a <code>PASS</code> never means the deployed bytes were hashed.</td></tr>
 		</table>
 	</section>
 
@@ -438,6 +484,8 @@ try {
 						lockfile_packages: facts.lockfile.packages,
 						signature_status: manifest.signature.status,
 						deploy_id: manifest.cloudflare.deploy_id,
+						artifact_origin: manifest.coverage.artifact_origin,
+						deployed_bytes_attested: manifest.coverage.deployed_bytes_attested,
 						release_tag: normal.summary.release_tag,
 						release_tag_commit: normal.summary.release_tag_commit,
 					},

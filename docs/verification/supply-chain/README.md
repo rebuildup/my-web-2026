@@ -79,12 +79,15 @@ build した Build Output に対する attestation gate を**実際に動作さ�
 状態**で撮影したものである（Cloudflare Workers Builds が deploy する
 artifact は対象外）。fixture の Build Output
 に対する正常系（artifact digest / source commit / lockfile / version が
-一致し、署名は `unsigned`）と、6 つの異常系（artifact 改ざん、source
+一致し、署名は `unsigned`）と、8 つの異常系（artifact 改ざん、source
 commit 不一致、release tag の commit 不一致、release tag の version
-不一致、lockfile drift、存在しない署名の表示）を同じ画像に収める。
+不一致、lockfile drift、存在しない署名の表示、存在しない
+attestation 範囲の主張、範囲宣言の欠落）を同じ画像に収める。
+manifest は attest する byte の範囲を `coverage` field で自ら宣言し、
+その主張が gate で fail closed になることも画像に含む。
 
 > **Format note.** Issue #476 は `artifact-sha-attestation.png` を指定する。
-> commit するのは同じ画像の **WebP**（幅 ≤1440 px、quality 80、<300 KB）で、
+> commit するのは同じ画像の **WebP**（幅 ≤1240 px、quality 80、<300 KB）で、
 > PNG はメモリ上にしか作らず commit しない。
 
 `artifact-attestation-summary.json` は同じ実行の status-only 要約である。

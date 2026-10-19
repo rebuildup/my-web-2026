@@ -147,21 +147,21 @@ export async function runDriftAudit({ root = REPO_ROOT, caseName = null } = {}) 
 	try {
 		record = readJson(root, RECORD_PATH);
 	} catch {
-		return undecidableRun(UNDECIDABLE_REASON.recordUnreadable, { root, notes });
+		return undecidableRun(UNDECIDABLE_REASON.recordUnreadable, { notes });
 	}
 	const recordProblem = readRecord(record);
 	if (recordProblem) {
-		return undecidableRun(recordProblem.error, { root, notes, record });
+		return undecidableRun(recordProblem.error, { notes, record });
 	}
 
 	let surfaces;
 	try {
 		surfaces = await loadSurfaces(root);
 	} catch {
-		return undecidableRun(UNDECIDABLE_REASON.surfaceUnreadable, { root, notes, record });
+		return undecidableRun(UNDECIDABLE_REASON.surfaceUnreadable, { notes, record });
 	}
 	if (surfaces.error) {
-		return undecidableRun(surfaces.error, { root, notes, record });
+		return undecidableRun(surfaces.error, { notes, record });
 	}
 
 	let { production, development } = surfaces;
@@ -175,7 +175,7 @@ export async function runDriftAudit({ root = REPO_ROOT, caseName = null } = {}) 
 				`case=${caseLabel} recipe applied to the live surface; this is NOT a release verdict`,
 			);
 		} catch {
-			return undecidableRun(UNDECIDABLE_REASON.inputUnreadable, { root, notes, record });
+			return undecidableRun(UNDECIDABLE_REASON.inputUnreadable, { notes, record });
 		}
 	}
 
@@ -183,25 +183,25 @@ export async function runDriftAudit({ root = REPO_ROOT, caseName = null } = {}) 
 	try {
 		scripts = readJson(root, 'package.json').scripts ?? {};
 	} catch {
-		return undecidableRun(UNDECIDABLE_REASON.scriptsUnreadable, { root, notes, record });
+		return undecidableRun(UNDECIDABLE_REASON.scriptsUnreadable, { notes, record });
 	}
 	let runbookText;
 	try {
 		runbookText = readText(root, RUNBOOK_PATH);
 	} catch {
-		return undecidableRun(UNDECIDABLE_REASON.runbookUnreadable, { root, notes, record });
+		return undecidableRun(UNDECIDABLE_REASON.runbookUnreadable, { notes, record });
 	}
 	let headersRules;
 	try {
 		headersRules = parseHeadersFile(readText(root, record.static_asset_headers.file));
 	} catch {
-		return undecidableRun(UNDECIDABLE_REASON.headersUnreadable, { root, notes, record });
+		return undecidableRun(UNDECIDABLE_REASON.headersUnreadable, { notes, record });
 	}
 	let policy;
 	try {
 		policy = readJson(root, record.static_asset_headers.policy_file);
 	} catch {
-		return undecidableRun(UNDECIDABLE_REASON.policyUnreadable, { root, notes, record });
+		return undecidableRun(UNDECIDABLE_REASON.policyUnreadable, { notes, record });
 	}
 
 	const findings = [
@@ -230,16 +230,20 @@ export async function runDriftAudit({ root = REPO_ROOT, caseName = null } = {}) 
 	};
 }
 
-function undecidableRun(reason, { root, notes, record = null }) {
-	const result = decide([], reason);
+/**
+ * The UNDECIDABLE shape.
+ *
+ * The same object keys as a decided run, so a caller never has to ask
+ * whether it is holding a verdict or a refusal — only what `verdict` says.
+ */
+function undecidableRun(reason, { notes, record = null }) {
 	return {
-		result,
+		result: decide([], reason),
 		meta: { source: 'repository', target: 'production', summary: null, notes },
 		record,
 		production: null,
 		development: null,
 		caseLabel: null,
-		root,
 	};
 }
 

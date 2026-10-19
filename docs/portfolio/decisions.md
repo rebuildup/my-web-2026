@@ -276,6 +276,21 @@ metadata (alt / caption / displayOrder) is reachable.
 - `migrations/0007_portfolio.sql` — `portfolio_media` shape
   unchanged.
 
+**Amendment (Issue #459) — a custom domain serves every key.**
+
+Decision 5 fixes *how* a published image is delivered, not *which
+images may be*. Once the custom domain is attached (a Cloudflare
+account setting; this repository cannot confirm the production
+attachment), any key that exists in the bucket is readable by anyone
+who can guess it, so `composeMediaUrl` now consults the R2 visibility
+boundary (`src/cloudflare/media-visibility.ts`) and returns `null` for
+any key outside a declared public namespace. The decision itself is
+unchanged — public delivery via a custom domain is still the right
+mechanism for published portfolio media — but the namespace contract,
+the code paths it is enforced on, and the bucket-level obligation that
+follows from it are now written down in
+[`docs/security/r2-media-visibility.md`](../security/r2-media-visibility.md).
+
 ## Decision 6 — untrusted article bodies: one href oracle, one visible refusal
 
 **Status:** Accepted (Issue #451).

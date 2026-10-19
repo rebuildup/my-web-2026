@@ -114,6 +114,7 @@
 		"verify:route-quality-screenshot": "node scripts/make-route-quality-report.mjs",
 		"routes:quality:check": "node scripts/check-route-quality-coverage.mjs",
 		"routes:quality:report": "node scripts/check-route-quality-coverage.mjs --report=.tmp/route-quality-report.html",
+		"r2:visibility:report": "node scripts/make-r2-visibility-verification-report.mjs",
 		"security:headers:report": "node scripts/security-header-report.mjs",
 		"security:headers:check": "node scripts/check-security-headers.mjs",
 		"i18n:policy:check": "node scripts/check-i18n-policy.mjs",

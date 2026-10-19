@@ -147,6 +147,7 @@
 		"ogp:card:check": "node scripts/check-ogp-card.mjs",
 		"verify:ogp-card-screenshot": "node scripts/make-ogp-card-verification-report.mjs",
 		"perf:interaction:memory": "node scripts/interaction-memory-profile.mjs",
+		"perf:wait:ui": "node scripts/slow-network-wait-ui.mjs",
 		"knip:check": "node scripts/check-knip.mjs",
 		"knip:update": "node scripts/check-knip.mjs --update",
 		"secret:scan:self-test": "node scripts/scan-secrets.mjs --self-test",

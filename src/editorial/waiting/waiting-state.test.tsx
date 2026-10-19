@@ -1,6 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { WAITING_STATE_COPY, WaitingSurface } from './WaitingState';
+import waitingSurfaceSource from './WaitingState.tsx?raw';
 
 /**
  * SSR markup contract for the waiting surface (Issue #489).
@@ -57,9 +58,13 @@ describe('WaitingSurface', () => {
 	});
 
 	it('emits no motion', () => {
-		expect(markup).not.toMatch(/animation/i);
-		expect(markup).not.toMatch(/transition/i);
-		expect(markup).not.toMatch(/@keyframes/i);
+		// Panda CSS emits ABBREVIATED atomic class names, not property
+		// names: a `transition` or `animation` declaration would render as
+		// `trs_…` / `anim_…`, so asserting on the full words in the markup
+		// alone would pass for a surface that animates. Assert both the
+		// emitted utilities and the declaration that produces them.
+		expect(markup).not.toMatch(/\b(?:trs|anim)_/);
+		expect(waitingSurfaceSource).not.toMatch(/\b(?:transition|animation|@keyframes)\b/);
 	});
 
 	it('emits no heading element — the waiting surface is not the page', () => {

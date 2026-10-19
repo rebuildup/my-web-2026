@@ -670,6 +670,7 @@ async function runPendingLeg(page, { cycles, delayMs, chunkDelay, baseUrl }) {
 			};
 		}
 		chunkDelay.set({ delayMs });
+		const matchedBefore = chunkDelay.matchedCount();
 		const startedAt = performance.now();
 		await card.click({ timeout: 30_000 });
 		const samples = await sampleNavigation(page, {
@@ -677,12 +678,14 @@ async function runPendingLeg(page, { cycles, delayMs, chunkDelay, baseUrl }) {
 			startedAt,
 			timeoutMs: delayMs + 20_000,
 		});
+		const delayApplied = chunkDelay.matchedCount() > matchedBefore;
 		pending.push({
 			cycle,
 			target,
 			delayMs,
 			samples,
 			verdict: evaluateWaitWindow(samples, { label: `route-pending cycle ${cycle}` }),
+			delayApplied,
 		});
 		// Each cycle starts from a FRESH document on purpose. Within one
 		// SPA session the route module is already in the JavaScript
@@ -696,6 +699,13 @@ async function runPendingLeg(page, { cycles, delayMs, chunkDelay, baseUrl }) {
 	}
 	const series = pending.flatMap((entry) => entry.samples);
 	const failures = pending.flatMap((entry) => entry.verdict.failures);
+	for (const entry of pending) {
+		if (!entry.delayApplied) {
+			failures.push(
+				`route-pending cycle ${entry.cycle}: the injected route-chunk delay never matched; the wait was not measured`,
+			);
+		}
+	}
 	return {
 		skipped: false,
 		series,
@@ -708,6 +718,7 @@ async function runPendingLeg(page, { cycles, delayMs, chunkDelay, baseUrl }) {
 /** Leg `route-stall` — one navigation that cannot answer for `stallMs`. */
 async function runStallLeg(page, { delayMs, expectedPath, chunkDelay }) {
 	chunkDelay.set({ delayMs });
+	const matchedBefore = chunkDelay.matchedCount();
 	const startedAt = performance.now();
 	const card = page.locator(`a[href="${expectedPath}"]`).first();
 	if ((await card.count()) === 0) {
@@ -730,6 +741,12 @@ async function runStallLeg(page, { delayMs, expectedPath, chunkDelay }) {
 		},
 	});
 	const verdict = evaluateWaitWindow(samples, { label: 'route-stall' });
+	const failures = [...verdict.failures];
+	if (chunkDelay.matchedCount() <= matchedBefore) {
+		failures.push(
+			'route-stall: the injected route-chunk delay never matched; the wait was not measured',
+		);
+	}
 	return {
 		skipped: false,
 		delayMs,
@@ -737,7 +754,7 @@ async function runStallLeg(page, { delayMs, expectedPath, chunkDelay }) {
 		samples,
 		retryHref,
 		verdict,
-		failures: verdict.failures,
+		failures,
 	};
 }
 
@@ -823,8 +840,9 @@ async function readDocumentStamp(page) {
  * would still make the measured wait depend on registration order.
  */
 function installChunkDelay(page) {
-	const state = { delayMs: 0, gate: null };
+	const state = { delayMs: 0, gate: null, matched: 0 };
 	page.route('**/assets/tools._slug-*.js', async (route) => {
+		state.matched += 1;
 		if (state.gate) await state.gate;
 		if (state.delayMs > 0) await new Promise((r) => setTimeout(r, state.delayMs));
 		await route.continue();
@@ -836,6 +854,10 @@ function installChunkDelay(page) {
 		},
 		release() {
 			state.gate = null;
+		},
+		/** How many requests the delayed route handler actually matched. */
+		matchedCount() {
+			return state.matched;
 		},
 	};
 }

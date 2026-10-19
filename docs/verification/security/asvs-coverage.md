@@ -49,7 +49,7 @@ gate が error になる。manifest の `standard.note` とレポートの
 推移的 `pnpm run` 閉包と、`.github/workflows/ci.yml` の **`validate` job の
 `run:` 行だけ**（YAML のコメントや別 job は数えない）から計算する
 （Issue #508 の release gate ledger と同じ surface 定義）。
-評価関数自体は `docs` だけの行を `pass` にもする（历史的な判断文書は
+評価関数自体は `docs` だけの行を `pass` にもする（歴史的な判断文書は
 documentation 要件に対する正直な証跡になりうるため）。そのため「pass 行には
 実行可能な証跡（`test` か `gate`）が少なくとも 1 件あること」を
 `scripts/check-asvs-coverage.test.mjs` の実 checkout テストが強制する。
@@ -145,7 +145,7 @@ manifest の `follow_up` に将来の手作業として残してある。
   行を 1 つ増やすレビュー負荷があるため、本 gate はそれを隠さず
   「registry である」こと（本 gate は適用範囲の可視化であり、適合の判定ではない）を
   manifest とレポートの両方に書いている。
-- `docs` のみの行を `pass` にするのは、历史的な判断文書が documentation 要件に対する
+- `docs` のみの行を `pass` にするのは、歴史的な判断文書が documentation 要件に対する
   正直な証跡になりうるため。実行可能な証跡（`test` / `gate`）との対は、実 checkout
   を評価する `scripts/check-asvs-coverage.test.mjs` の
   "gives every pass row an executable evidence item" が担保する。

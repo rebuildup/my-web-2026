@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { PublicNav } from '../../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
+import { composeSocialCard } from '../../editorial/social-card';
+import { PortfolioList } from '../../portfolio/components';
 import { listPortfolioProjects } from '../../portfolio/public';
 import {
 	FacetSchema,
@@ -12,7 +14,6 @@ import {
 	type PortfolioListPage,
 	type PortfolioProject,
 } from '../../portfolio/schema';
-import { PortfolioList } from '../../portfolio/components';
 
 /**
  * `/portfolio` — list route (Issue #77, Issue #199).
@@ -55,25 +56,29 @@ export const Route = createFileRoute('/portfolio/')({
 		const title = 'Portfolio — rebuildup.dev';
 		const description =
 			'主要な制作物、技術選定、設計、成果、振り返り。facet で絞り込み、各 project の詳細ページから repository / release / 解説へ。';
-		const ogImage = loaderData ? deriveOgImage(loaderData.initialPage.projects) : undefined;
+		// Literal for the same reason as /about: the index-boundary gate
+		// matches this canonical against the sitemap entry (Issue #423).
+		const url = 'https://rebuildup.dev/portfolio';
+		// The list card is the first public project that actually
+		// publishes a cover; with no project on this page yet it is
+		// null and `composeSocialCard` publishes the site fallback card
+		// instead of dropping `og:image` (Issue #421).
+		const card = composeSocialCard({
+			title,
+			description,
+			url,
+			ogType: 'website',
+			image: loaderData ? firstProjectCover(loaderData.initialPage.projects) : null,
+		});
 		return {
 			meta: [
 				{ charSet: 'utf-8' },
 				{ name: 'viewport', content: 'width=device-width, initial-scale=1' },
 				{ title },
 				{ name: 'description', content: description },
-				{ property: 'og:type', content: 'website' },
-				{ property: 'og:title', content: title },
-				{ property: 'og:description', content: description },
-				{ property: 'og:url', content: 'https://rebuildup.dev/portfolio' },
-				...(ogImage
-					? [
-							{ property: 'og:image', content: ogImage },
-							{ name: 'twitter:card', content: 'summary_large_image' },
-						]
-					: []),
+				...card.meta,
 			],
-			links: [{ rel: 'canonical', href: 'https://rebuildup.dev/portfolio' }],
+			links: [{ rel: 'canonical', href: url }],
 		};
 	},
 	component: PortfolioRoute,
@@ -133,9 +138,20 @@ function parseFacets(raw: string | undefined): PortfolioFacet[] {
 		.filter((s): s is PortfolioFacet => FacetSchema.options.some((o) => o === s));
 }
 
-function deriveOgImage(projects: readonly PortfolioProject[]): string | undefined {
-	const cover = projects.find((p) => p.media.some((m) => m.isCover));
-	if (!cover) return undefined;
-	const media = cover.media.find((m) => m.isCover) ?? cover.media[0];
-	return media?.url ?? undefined;
+/**
+ * The first published cover on the list, or `null` when the page has
+ * no project or no project resolves a public image URL. A media row
+ * whose `composeMediaUrl` returned `null` is skipped so the walk
+ * continues to the next project rather than stopping the list on an
+ * unusable row. Returning null (rather than a partially-built image)
+ * is what keeps the fallback branch honest: the list cannot publish a
+ * card that names a project it did not render.
+ */
+function firstProjectCover(projects: readonly PortfolioProject[]) {
+	for (const project of projects) {
+		const media = project.media.find((m) => m.isCover) ?? project.media[0];
+		if (!media?.url) continue;
+		return { url: media.url, alt: media.alt, width: media.width, height: media.height };
+	}
+	return null;
 }

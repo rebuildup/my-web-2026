@@ -15,8 +15,8 @@
 | Publicly reachable URLs (surface + Static Assets) | 17 |
 | External hosts | 31 |
 | First-party hosts | 0 |
-| Approved transition | 7 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -90,11 +90,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (3)
+### Added external hosts (0)
 
-- `*.analytics.google.com`
-- `*.google-analytics.com`
-- `*.googletagmanager.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -179,11 +177,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host *.analytics.google.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host *.google-analytics.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **ERROR** `E004 external-host-added` New external host *.googletagmanager.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://*.analytics.google.com
-- **WARN** `W002 external-url-added` External URL added: https://*.google-analytics.com
-- **WARN** `W002 external-url-added` External URL added: https://*.googletagmanager.com
-- **WARN** `W002 external-url-added` External URL added: https://www.googletagmanager.com
+_No findings._
 

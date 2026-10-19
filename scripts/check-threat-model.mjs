@@ -846,6 +846,35 @@ export function loadFixture(root, name) {
 	return JSON.parse(readFileSync(join(root, FIXTURE_DIR, `${name}.json`), 'utf8'));
 }
 
+/**
+ * The report's false-green probe: every fixture, evaluated by the same
+ * pure evaluator the gate uses. Shared with the screenshot generator so
+ * the page and the verdict cannot come from different code.
+ */
+export function collectProbes(root) {
+	return PROBE_FIXTURES.map((name) => {
+		try {
+			const fixture = loadFixture(root, name);
+			return { name, note: fixture.note, ...evaluateFixture(fixture) };
+		} catch (error) {
+			return {
+				name,
+				note: `fixture unreadable: ${error.message}`,
+				errors: [],
+				capabilities: [],
+				summary: {
+					capabilities: 0,
+					covered: 0,
+					uncovered: 0,
+					assets: 0,
+					boundaries: 0,
+					threats: 0,
+				},
+			};
+		}
+	});
+}
+
 /** The fixtures the report renders as the false-green probe, in order. */
 export const PROBE_FIXTURES = ['pass', 'missing-evidence', 'unowned-threat', 'secret-literal'];
 
@@ -874,28 +903,7 @@ function main(argv) {
 	const result = checkThreatModel({ root, manifestPath });
 
 	if (reportPath) {
-		const probes = [];
-		for (const name of PROBE_FIXTURES) {
-			try {
-				const fixture = loadFixture(root, name);
-				probes.push({ name, note: fixture.note, ...evaluateFixture(fixture) });
-			} catch (error) {
-				probes.push({
-					name,
-					note: `fixture unreadable: ${error.message}`,
-					errors: [],
-					capabilities: [],
-					summary: {
-						capabilities: 0,
-						covered: 0,
-						uncovered: 0,
-						assets: 0,
-						boundaries: 0,
-						threats: 0,
-					},
-				});
-			}
-		}
+		const probes = collectProbes(root);
 		const html = renderReport({ manifest: result.manifest, result, probes });
 		const target = resolve(root, reportPath);
 		mkdirSync(dirname(target), { recursive: true });
@@ -1054,48 +1062,57 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
     </div>`
 		: '<h2>trust boundary diagram</h2><p class="sub">manifest.diagram_capability が解決できなかったため描いていない。</p>';
 
-	const ledgerRows = result.capabilities
-		.map((capability) => {
-			const mark = capability.threats.some((threat) => threat.status === 'uncovered')
-				? 'uncovered'
-				: 'covered';
-			const review = capability.review_items.map((item) => `<li>${escapeHtml(item)}</li>`).join('');
-			return `<div class="cap">
-      <div class="cap-head"><span class="mark ${mark}">${STATUS_LABEL[mark]}</span>
-        <code>${escapeHtml(capability.id)}</code>
-        <span class="title">${escapeHtml(capability.title)}</span>
-        <span class="chip">${escapeHtml(capability.status)}</span></div>
-      <div class="counts">${capability.assets.length} assets · ${capability.nodes.length} nodes · ${
+	// The diagram capability gets the full threat table and its review
+	// questions — that is the one feature unit Issue #479 asks to be
+	// expressed as a diagram and review items. Every other capability is
+	// carried as a compact roster row: the complete per-threat record is
+	// the committed manifest itself, and the page stays a review page
+	// rather than a dump of all 28 scenarios.
+	const detailRows = (diagramCapability?.threats ?? []).map(
+		(threat) => `<tr>
+      <td class="id"><code>${escapeHtml(threat.id)}</code><div class="muted">${escapeHtml(
+				threat.stride,
+			)}</div></td>
+      <td>${escapeHtml(threat.scenario)}${
+				threat.follow_up
+					? `<div class="muted">follow-up: ${escapeHtml(threat.follow_up)}</div>`
+					: ''
+			}</td>
+      <td class="asset"><code>${escapeHtml(threat.asset)}</code></td>
+      <td class="mit"><ul>${threat.mitigations
+				.map(
+					(mitigation) =>
+						`<li><code>${escapeHtml(basename(mitigation.ref))}</code> <span class="chip ${escapeHtml(
+							mitigation.state,
+						)}">${escapeHtml(mitigation.state)}</span></li>`,
+				)
+				.join('')}</ul></td>
+      <td><span class="mark ${escapeHtml(threat.status)}">${STATUS_LABEL[threat.status]}</span></td>
+    </tr>`,
+	);
+
+	const rosterRows = result.capabilities
+		.filter((capability) => capability.id !== diagramCapability?.id)
+		.map(
+			(capability) => `<tr>
+      <td class="id"><code>${escapeHtml(capability.id)}</code><div class="muted">${escapeHtml(
+				capability.title,
+			)}</div></td>
+      <td><span class="chip">${escapeHtml(capability.status)}</span></td>
+      <td class="counts-cell">${capability.assets.length} / ${capability.nodes.length} / ${
 				capability.boundaries.length
-			} boundaries · ${capability.threats.length} threats</div>
-      <table>
-        <thead><tr><th>threat · STRIDE</th><th>scenario</th><th>asset</th><th>mitigation</th><th>state</th></tr></thead>
-        <tbody>
-        ${capability.threats
-					.map(
-						(threat) => `<tr>
-            <td class="id"><code>${escapeHtml(threat.id)}</code><div class="muted">${escapeHtml(
-							threat.stride,
-						)}</div></td>
-            <td>${escapeHtml(threat.scenario)}${threat.follow_up ? `<div class="muted">follow-up: ${escapeHtml(threat.follow_up)}</div>` : ''}</td>
-            <td class="asset"><code>${escapeHtml(threat.asset)}</code></td>
-            <td class="mit"><ul>${threat.mitigations
-							.map(
-								(mitigation) =>
-									`<li><code>${escapeHtml(basename(mitigation.ref))}</code> <span class="chip ${mitigation.state}">${escapeHtml(
-										mitigation.state,
-									)}</span></li>`,
-							)
-							.join('')}</ul></td>
-            <td><span class="mark ${threat.status}">${STATUS_LABEL[threat.status]}</span></td>
-          </tr>`,
-					)
-					.join('\n        ')}
-        </tbody>
-      </table>
-      <div class="review"><b>review items</b><ol>${review}</ol></div>
-    </div>`;
-		})
+			} / ${capability.threats.length}</td>
+      <td class="mit"><ul>${capability.threats
+				.map(
+					(threat) =>
+						`<li><code>${escapeHtml(threat.stride)}</code> → <code>${escapeHtml(
+							threat.asset,
+						)}</code> <span class="mark ${escapeHtml(threat.status)}">${STATUS_LABEL[threat.status]}</span></li>`,
+				)
+				.join('')}</ul></td>
+      <td class="mit">${capability.review_items.length}</td>
+    </tr>`,
+		)
 		.join('\n');
 
 	const probeBlocks = probes
@@ -1179,6 +1196,8 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
   th, td { text-align: left; padding: 2px 6px; border-bottom: 1px solid #eceadf; vertical-align: top; }
   th { background: #f3f1e8; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
   td.id { width: 150px; } td.asset { width: 130px; } td.mit { width: 210px; } td:last-child { width: 78px; }
+  td.counts-cell { width: 90px; }
+  tr:last-child td:last-child { width: auto; }
   td.mit ul { margin: 0; padding-left: 14px; }
   .review { margin-top: 4px; font-size: 11px; }
   .review ol { margin: 2px 0 0; padding-left: 18px; }
@@ -1213,12 +1232,40 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
 
   ${diagramBlock}
 
-  <h2>ledger — ${result.capabilities.length} feature units</h2>
-  ${ledgerRows}
+  <h2>feature unit in full — <code>${escapeHtml(diagramCapability?.id ?? '—')}</code></h2>
+  <p class="sub">Issue #479 の「独立した 1 機能」。threat / STRIDE / 対象 asset / mitigation とその状態 / 判定の順。状態は <code>implemented</code> が「その file が repository に実在し、既に效力がある」ことを、<code>planned</code> が「まだ無い」ことを表す。</p>
+  <table>
+    <thead><tr><th>threat · STRIDE</th><th>scenario</th><th>asset</th><th>mitigation</th><th>state</th></tr></thead>
+    <tbody>${detailRows.join('\n')}</tbody>
+  </table>
+  <div class="review"><b>review items — reviewer がこの capability に対して問うこと</b>
+    <ol>${(diagramCapability?.review_items ?? []).map((item) => `<li>${escapeHtml(item)}</li>`).join('')}</ol>
+  </div>
+
+  <h2>roster — remaining ${result.capabilities.length - 1} feature units</h2>
+  <p class="sub">数値は assets / nodes / boundaries / threats。threat 列は STRIDE → 対象 asset → 判定。threat ごとの scenario と mitigation の全文は committed manifest（<code>quality/threat-model.json</code>）が正であり、この page は review 用。</p>
+  <table>
+    <thead><tr><th>capability</th><th>status</th><th>a / n / b / t</th><th>threats</th><th>review</th></tr></thead>
+    <tbody>${rosterRows}</tbody>
+  </table>
 
   <h2>false-green probe — 4 fixture を同じ評価関数に通した結果</h2>
-  <p class="sub">「実在しない file を mitigation に書いた」「live capability に未対応 threat」「credential 形の値を wrote した」fixture はすべて FAIL になる。error 文面に値そのものは出ない。</p>
+  <p class="sub">「実在しない file を mitigation に書いた」「live capability に未対応 threat」「credential 形の値を書いた」fixture はすべて FAIL になる。error 文面に値そのものは出ない。</p>
   ${probeBlocks}
+
+  <h2>観測と修復手順</h2>
+  <table>
+    <thead><tr><th>観測</th><th>意味</th><th>修復</th></tr></thead>
+    <tbody>
+      <tr><td>verdict PASS / uncovered 0</td><td>全 feature unit の threat に実在する mitigation がある。図は manifest から描かれている。</td><td>—（更新時は同じ手順）</td></tr>
+      <tr><td><code>does not exist on disk</code></td><td>mitigation / control が実在しない file を ref にしている（未実装の対策）。</td><td>その file を実装する。対策を書かないまま threat を消すのではなく、まず <code>implemented</code> を作る。</td></tr>
+      <tr><td><code>source_of_truth: must be a path …</code></td><td>資産の source が無い、または値されている。</td><td>実在する path か <code>SCREAMING_SNAKE</code> の binding <em>名前</em> に書き換える。値を台帳に書いてはならない。</td></tr>
+      <tr><td><code>credential-shaped string</code></td><td>台帳に credential 形の値が混入した。error には JSON pointer だけが出る。</td><td>その pointer の値を削除する。値の置換・ローテーションは release runbook の担当であり、この gate は値に触れない。ファイル全体の secret 診断は <code>pnpm run secret:scan</code> の担当。</td></tr>
+      <tr><td><code>a live capability may not carry an uncovered threat</code></td><td>出荷済 capability に対策が無い threat がある。</td><td>対策を <code>implemented</code> にする。実装がまだなら capability を <code>planned</code> / <code>deferred</code> に降ろす（protected capability の降ろしは owner decision）。</td></tr>
+      <tr><td><code>unaccounted security-family command</code>（warning）</td><td>release が実行する検査のうち、threat が引用していない gate がある。</td><td>その gate を registry に追加して引用するか、security-family ではないと明記する。</td></tr>
+    </tbody>
+  </table>
+  <p class="sub">gate 自身を弱めて緑にする方法（guard を空にする・<code>protected_capabilities</code> を消す・<code>planned</code> を <code>implemented</code> に書き換える）は、いずれも別の fixture が FAIL になる。</p>
 
   ${errorBlock}
   ${warningBlock}

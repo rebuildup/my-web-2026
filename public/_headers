@@ -248,3 +248,33 @@
 
 /assets/*
   Cache-Control: public, max-age=31556952, immutable
+
+# ---------------------------------------------------------------------------
+# Web App Manifest + icon family (Issue #504)
+# ---------------------------------------------------------------------------
+#
+# `/site.webmanifest` is referenced from every document head by
+# `APP_ICON_LINKS` in `src/routes/__root.tsx`. The browser fetches it
+# with a manifest request, and the Web App Manifest specification
+# defines its media type as `application/manifest+json`; declaring it
+# here removes the dependency on the `.webmanifest` extension mapping of
+# whichever edge serves the file.
+#
+# Not declared `immutable`: the URL is stable and unhashed, so a future
+# icon change must be visible to a client that already cached the
+# manifest. `max-age=0, must-revalidate` is the Static Assets default
+# and the correct policy for that shape.
+#
+# `/icons/*` keeps that same default. Spelled out rather than inherited
+# only because these files are the ones an iOS home screen and an
+# Android launcher cache on their own, often for weeks: a stale icon
+# outlives the deployment that replaced it, so the policy must stay
+# revalidating, never immutable.
+# ---------------------------------------------------------------------------
+
+/site.webmanifest
+  Content-Type: application/manifest+json
+  Cache-Control: public, max-age=0, must-revalidate
+
+/icons/*
+  Cache-Control: public, max-age=0, must-revalidate

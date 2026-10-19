@@ -1,0 +1,113 @@
+{
+	"schemaVersion": 1,
+	"knownLocales": ["ja", "en", "de"],
+	"features": [
+		{
+			"id": "contact",
+			"owner": "contact",
+			"surface": "FIXTURE — /contact with one planted violation per finding class",
+			"sourceLocale": "ja",
+			"locales": {
+				"ja": { "state": "source" },
+				"en": { "state": "published", "fallback": "ja" }
+			},
+			"keys": [
+				{ "key": "contact.reply.window", "source": "7 日以内に返信します" },
+				{ "key": "contact.access.label", "source": "管理者のみ閲覧できます", "guarded": true },
+				{ "key": "contact.archive.count", "source": "公開済み 12 件" },
+				{ "key": "contact.greeting", "source": "{name} さんへ" },
+				{ "key": "contact.export.note", "source": "エクスポートは利用できません" },
+				{ "key": "contact.publish.cap", "source": "公開できるプロジェクトは上限 3 つまでです" },
+				{ "key": "contact.status.note", "source": "公開の準備を進めています" }
+			],
+			"messages": {
+				"en": {
+					"contact.access.label": {
+						"text": "Open to everyone",
+						"status": "reviewed",
+						"prose": "verified"
+					},
+					"contact.archive.count": {
+						"text": "Archived (twelve) entries",
+						"status": "reviewed",
+						"prose": "verified"
+					},
+					"contact.greeting": {
+						"text": "Hello {user}",
+						"status": "reviewed",
+						"prose": "verified"
+					},
+					"contact.export.note": {
+						"text": "Export is available to every member",
+						"status": "reviewed",
+						"prose": "verified"
+					},
+					"contact.publish.cap": {
+						"text": "Up to three projects can be published",
+						"status": "draft",
+						"prose": "unverified"
+					},
+					"contact.status.note": {
+						"text": "準備中  (in progress) , please wait",
+						"status": "reviewed",
+						"prose": "verified"
+					},
+					"contact.retired.note": {
+						"text": "This key is not registered by the feature",
+						"status": "reviewed",
+						"prose": "verified"
+					}
+				}
+			}
+		},
+		{
+			"id": "tools.manifest",
+			"owner": "tools",
+			"surface": "FIXTURE — an English-authored surface shipping Japanese, to exercise the CJK typography rules",
+			"sourceLocale": "en",
+			"locales": {
+				"en": { "state": "source" },
+				"ja": { "state": "translating", "fallback": "en" },
+				"de": { "state": "translating", "fallback": "en" }
+			},
+			"keys": [
+				{ "key": "tools.delete.hint", "source": "Delete this tool from the registry?" },
+				{ "key": "tools.public.note", "source": "Tools are public." },
+				{ "key": "tools.registry.state", "source": "The registry is public." }
+			],
+			"messages": {
+				"de": {
+					"tools.registry.state": {
+						"text": "Das Verzeichnis ist öffentlich.",
+						"status": "reviewed",
+						"prose": "verified"
+					}
+				},
+				"ja": {
+					"tools.delete.hint": {
+						"text": "削除するには「",
+						"status": "reviewed",
+						"prose": "unverified"
+					},
+					"tools.public.note": {
+						"text": "）公開されています ",
+						"status": "reviewed",
+						"prose": "unverified"
+					}
+				}
+			}
+		},
+		{
+			"id": "legacy.notes",
+			"owner": "archive",
+			"surface": "FIXTURE — a retired surface: unknown owner, unknown locale, broken fallback",
+			"sourceLocale": "ja",
+			"locales": {
+				"ja": { "state": "source" },
+				"fr": { "state": "translating", "fallback": "de" }
+			},
+			"keys": [{ "key": "legacy.notes.body", "source": "古いメモ" }],
+			"messages": {}
+		}
+	]
+}

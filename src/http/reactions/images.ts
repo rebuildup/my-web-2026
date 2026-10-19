@@ -46,12 +46,23 @@ const imagesLogger = createAuditLogger('reactions.images');
  * Read:
  *   - `getImageStream(db, media, id)` — public read by image id,
  *     used by `GET /api/v1/reaction-images/:id`. Streams from R2
- *     with `Cache-Control: public, max-age=31536000, immutable`.
- *     The read is gated by the R2 visibility boundary (#459): a row
- *     whose `r2_key` is outside a declared public namespace resolves
- *     to `null` (HTTP 404), so an object left behind in a private
- *     namespace is not served just because a row still names it.
+ *     with `Cache-Control: public, max-age=31536000, immutable`
+ *     (`REACTION_IMAGE_CACHE_CONTROL`). The read is gated by the R2
+ *     visibility boundary (#459): a row whose `r2_key` is outside a
+ *     declared public namespace resolves to `null` (HTTP 404), so an
+ *     object left behind in a private namespace is not served just
+ *     because a row still names it. */
+
+/**
+ * The one cache policy for reaction images (Issue #484).
+ *
+ * Declared once because it is written in two places — the R2 object
+ * metadata at upload time and the response header at read time — and
+ * the matrix in `scripts/_cache-policy.mjs` is checked against this
+ * constant. Two literals that must agree are a drift risk; one
+ * constant plus a test is a contract.
  */
+export const REACTION_IMAGE_CACHE_CONTROL = 'public, max-age=31536000, immutable';
 
 const EXT_BY_CONTENT_TYPE: Record<AllowedImageContentType, string> = {
 	'image/png': 'png',
@@ -280,7 +291,7 @@ export async function uploadImage(
 	const id = crypto.randomUUID();
 	const r2Key = buildR2Key(hash, contentType);
 	await media.put(r2Key, input.bytes, {
-		httpMetadata: { contentType, cacheControl: 'public, max-age=31536000, immutable' },
+		httpMetadata: { contentType, cacheControl: REACTION_IMAGE_CACHE_CONTROL },
 	});
 	const now = input.now ?? Date.now();
 	await db
@@ -377,6 +388,6 @@ export async function getImageStream(
 	return {
 		body: object.body,
 		contentType: row.content_type,
-		cacheControl: 'public, max-age=31536000, immutable',
+		cacheControl: REACTION_IMAGE_CACHE_CONTROL,
 	};
 }

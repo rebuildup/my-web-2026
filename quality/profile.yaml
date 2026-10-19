@@ -21,6 +21,30 @@
 # reduced-motion opt-out pairing is a property of the shipped source,
 # so it is decided on every `validate:fast` run rather than only when
 # someone remembers to capture the verification artefact.
+#
+# Issue #566 makes this file the EXECUTION order, not only its record.
+# `pnpm run validate:fast` is one line —
+#   "validate:fast": "node scripts/run-quality-gates.mjs fast"
+# — and that runner reads `gates.<name>.components` from HERE and runs
+# the entries in the order written, one command per line, stopping at
+# the first failure with that failure's exit code. The component lists
+# used to be one `&&`-joined line inside package.json, which every
+# ticket PR that added a gate had to rewrite (17 of 20 concurrent
+# 0.6.3 tickets conflicted on it in a trial merge); here a new gate is
+# one appended line, so concurrent tickets stop colliding.
+#
+# Rules the runner enforces (scripts/_quality-gate-plan.mjs):
+#   - one list entry is exactly one command (no `&&`, `|`, `;`), so a
+#     line stays one reviewable step;
+#   - a bare `fast` / `integration` / `release` entry expands that
+#     gate's own components in place;
+#   - a repeated component stays repeated on purpose;
+#   - every `pnpm run <script>` must name a script that exists, so a
+#     renamed script fails the plan instead of failing later;
+#   - anything the reader does not understand is an error (exit 2),
+#     never a silently shorter gate list.
+# Adding a gate therefore means: append a line under the right gate,
+# keep the comment that explains it, and add nothing to workflow YAML.
 
 schema_version: 1
 
@@ -46,46 +70,14 @@ gates:
       - 'pnpm run format:check' # biome format (read-only)
       - 'pnpm run lint:check' # biome lint (read-only)
       - 'pnpm run architecture:check' # obligation dependency direction
-      - 'pnpm run copy:i18n:check' # UI copy locale contract (Issue #428): untranslated keys, fallback integrity, preservation + typography
       # Issue #467: log surface gate. `src/**` may only reach `console`
       # through the `src/logging/` redacting logger, and an operator
       # script may not print a secret-named value. Without this, a new
       # log call site silently opts out of redaction.
       - 'pnpm run log:redaction:check'
-      - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
-      # Issue #414: the Web feature adoption gate. Offline and vendored
-      # (quality/browser-baseline.json pins the web-features Baseline
-      # snapshot), so it costs a directory walk and never a network call.
-      # Below the Baseline Widely available bar an adoption is a warning
-      # only when its fallback requirement is declared AND its evidence
-      # still matches the working tree; an adoption without a fallback
-      # fails.
-      - 'pnpm run compat:check' # Baseline Web feature adoption gate (browser compatibility)
-      # Issue #413: the CSS syntax / vocabulary gate. It parses the sheet
-      # Panda generates (`panda cssgen` into `.tmp/`, gitignored) plus every
-      # stylesheet under `src/`, and fails an unknown property / at-rule /
-      # value function, a broken block or a keyword outside a property
-      # grammar. Vendor prefixes and specification-permitted extensions are
-      # accepted only through an explicit, in-use allowlist entry
-      # (quality/css-standards.json). Offline; no network, no secret.
-      - 'pnpm run css:check' # CSS syntax / unknown-property gate
-      # Issue #433: the Unicode / URL-slug policy is enforced on the
-      # shipped surface, and the gate prints the shared decision table
-      # classified with the real owner grammars.
-      - 'pnpm run i18n:policy:check' # no implicit normalization / locale
-      # Issue #423: robots.txt / sitemap.xml / per-route noindex meta must
-      # agree with the generated route inventory. Runs as a fast gate
-      # because it is a pure Node script (no worker, no build).
-      - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
-      # Issue #412: the SSR documents every published route renders are
-      # validated by an offline, Nu-Validator-compatible engine
-      # (scripts/html-standards-contract.mjs). The fast half re-runs the
-      # committed invalid/valid fixtures, the route roster and the rule
-      # ledger; the live half runs in the workerd pool
-      # (test/integration/html-standards.test.ts) over the real SSR
-      # output, inside `pnpm run test`. Nothing is sent to an external
-      # validator.
-      - 'pnpm run html:standards:check' # HTML conformance of the rendered documents (Issue #412)
+      # Issue #422: structured-data route coverage — every
+      # visitor-facing route declares which schema.org types it emits.
+      - 'pnpm run structured-data:check'
       # Issue #421: the Open Graph / Twitter card contract. Cheap by
       # design (pure Node): it proves every route the router serves has
       # a declared card state, that the declared fallback card is a real
@@ -94,23 +86,55 @@ gates:
       # rather than a silent gap. The document side of the same engine is
       # `test/integration/ogp-card.test.ts`, inside the `test` component.
       - 'pnpm run ogp:card:check'
-      # Issue #419: the SEO HTTP STATUS contract. Offline and
-      # read-only like the index boundary above, but it answers a
-      # different question: what STATUS the Worker must answer with for
-      # each request class (404 for an unpublished / unmatched URL, a
-      # redirect for an anonymous admin request, 500 for a dependency
-      # failure), and that every shipped route owns a row whose proof
-      # file actually cites it. A route with no row fails here instead of
-      # being nobody's job.
-      - 'pnpm run seo:status:check' # 404 / 500 / redirect / noindex status contract
-      - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
-      - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
-      # Issue #475: credential-shaped strings / forbidden secret-file paths
-      # in the tracked tree (and in untracked-but-not-ignored files, filtered
-      # by .gitignore itself). Status-only findings; a matched value is never
-      # rendered (AGENTS.md section 4).
-      - 'pnpm run secret:scan'
+      # Issue #423: robots.txt / sitemap.xml / per-route noindex meta must
+      # agree with the generated route inventory. Runs as a fast gate
+      # because it is a pure Node script (no worker, no build).
+      - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
+      # Issue #80: the Tool Registry manifest — manifest pin == gitlink
+      # == checked-out commit, read from `src/tools/manifest.json`.
+      - 'pnpm run tools:check'
+      # Issue #474: the dependency install-lifecycle audit. The reviewed
+      # policy is `quality/install-scripts.json`; the runbook is
+      # docs/runbook/install-script-audit.md.
       - 'pnpm run install:scripts:check' # dependency install lifecycle script audit (Issue #474)
+      # Issue #247: the converted production scripts must load with
+      # `wrangler` genuinely unresolvable, so no operator path depends
+      # on a CLI that the Worker does not ship.
+      - 'pnpm run wrangler:independence:check'
+      # Issue #247: the non-secret Cloudflare contract check. This is the
+      # static half (no build); the `--build` half runs in
+      # `gates.integration` against a freshly built artifact.
+      - 'pnpm run cloudflare:contract:check'
+      # Issue #566: every `scripts/*.test.mjs` must be reachable from a
+      # test entry point. `pnpm run test` below reaches them by
+      # convention (scripts/run-script-tests.mjs discovers the
+      # directory), so adding a test no longer edits this list.
+      - 'pnpm run test:wiring:check'
+      # Issue #308: release-asset staging runs BEFORE `version:check` so
+      # the absent staged path prints first, instead of surfacing as a
+      # cascade of downstream test failures.
+      - 'node scripts/check-release-assets.mjs'
+      # The release-asset gate's own test, beside the gate it proves.
+      # `pnpm run test` runs it too (discovery covers every
+      # `scripts/*.test.mjs`); this step is the adjacency proof, not the
+      # only execution.
+      - 'node --test scripts/check-release-assets.test.mjs'
+      - 'pnpm run version:check' # package.json#version vs the release branch (AGENTS.md section 6)
+      - 'pnpm run typecheck' # tsc --noEmit
+      # ADR-0015 tier 1 / tier 2: the Infisical inventory and the Worker
+      # binding list are two tiers of one secret contract, declared in one
+      # module. Never prints a secret value (AGENTS.md section 4).
+      - 'pnpm run infisical:check:coverage'
+      - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
+      - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
+      # Issue #414: the Web feature adoption gate. Offline and vendored
+      # (quality/browser-baseline.json pins the web-features Baseline
+      # snapshot), so it costs a directory walk and never a network call.
+      # Below the Baseline Widely available bar an adoption is a warning
+      # only when its fallback requirement is declared AND its evidence
+      # still matches the working tree; an adoption without a fallback
+      # fails.
+      - 'pnpm run compat:check' # Baseline Web feature adoption gate (browser compatibility)
       # Issue #473: Tool submodule supply-chain provenance. Offline,
       # status-only: proves manifest pin == gitlink == checked-out commit
       # == build-artefact stamp, and that the fetch source is the declared
@@ -123,7 +147,15 @@ gates:
       # from check-architecture.mjs because that gate judges the OWNERS'
       # dependency direction, while this one judges what a preview may load.
       - 'pnpm run storybook:ownership:check' # story -> foreign boundary walk
-      - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
+      # Issue #428: the UI copy locale contract — untranslated keys,
+      # fallback integrity, preservation + typography. Locale coverage is
+      # opt-in per feature, so an unopted locale is information, not a
+      # failure.
+      - 'pnpm run copy:i18n:check' # UI copy locale contract (Issue #428)
+      # Issue #505: the committed publication snapshot must match the
+      # surface the repository actually ships; a publicly reachable URL
+      # may not disappear without a recorded transition.
+      - 'pnpm run publication:check'
       # Issue #434: pre-publication link and image gate. Internal 404,
       # unsafe schemes and missing image alt stop the release; external
       # links are not dereferenced in CI, and their live failures are
@@ -131,6 +163,48 @@ gates:
       - 'pnpm run content:links:check'
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
+      - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
+      # Issue #412: the SSR documents every published route renders are
+      # validated by an offline, Nu-Validator-compatible engine
+      # (scripts/html-standards-contract.mjs). The fast half re-runs the
+      # committed invalid/valid fixtures, the route roster and the rule
+      # ledger; the live half runs in the workerd pool
+      # (test/integration/html-standards.test.ts) over the real SSR
+      # output, inside `pnpm run test`. Nothing is sent to an external
+      # validator.
+      - 'pnpm run html:standards:check' # HTML conformance of the rendered documents (Issue #412)
+      # Issue #433: the Unicode / URL-slug policy is enforced on the
+      # shipped surface, and the gate prints the shared decision table
+      # classified with the real owner grammars.
+      - 'pnpm run i18n:policy:check' # no implicit normalization / locale
+      # `pnpm run test` also carries the Issue #491 D1 statement-count
+      # budget (src/portfolio/load.query-budget.test.ts): the portfolio
+      # list surface must stay at or below 1 + 2 * ceil(pageSize / 100)
+      # D1 statements. It is deliberately an assertion inside the EXISTING
+      # `test` component, not a new gate: statement counts are
+      # deterministic, whereas wall-clock time is reported as an
+      # observation only (Lighthouse / Web Vitals budgets are #384-#386).
+      #
+      # Issue #566: this one step is now `vitest run` plus the discovered
+      # `scripts/*.test.mjs` suite (scripts/run-script-tests.mjs), so a new
+      # script test needs no edit to this list.
+      - 'pnpm run test' # vitest run (unit + integration SELF) + scripts/*.test.mjs
+      # Issue #419: the SEO HTTP STATUS contract. Offline and
+      # read-only like the index boundary above, but it answers a
+      # different question: what STATUS the Worker must answer with for
+      # each request class (404 for an unpublished / unmatched URL, a
+      # redirect for an anonymous admin request, 500 for a dependency
+      # failure), and that every shipped route owns a row whose proof
+      # file actually cites it. A route with no row fails here instead of
+      # being nobody's job.
+      - 'pnpm run seo:status:check' # 404 / 500 / redirect / noindex status contract
+      - 'pnpm run ci:pins:check' # GitHub Actions SHA pin + least-privilege token gate (#472)
+      - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
+      # Issue #475: credential-shaped strings / forbidden secret-file paths
+      # in the tracked tree (and in untracked-but-not-ignored files, filtered
+      # by .gitignore itself). Status-only findings; a matched value is never
+      # rendered (AGENTS.md section 4).
+      - 'pnpm run secret:scan'
       # Issue #403: the shipped reduced-motion contract. Every motion
       # surface in `src/**` must carry the `data-motion` hook, must read
       # (or receive and branch on) the shared preference, and must be
@@ -151,17 +225,18 @@ gates:
       # of the same evidence is `pnpm run capture:a11y-language-of-parts`,
       # which is an artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:language-of-parts:check' # partial `lang` contract (Issue #409)
-      - 'pnpm run typecheck' # tsc --noEmit
-      - 'pnpm run infisical:check:coverage'
-      - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
-      # `pnpm run test` also carries the Issue #491 D1 statement-count
-      # budget (src/portfolio/load.query-budget.test.ts): the portfolio
-      # list surface must stay at or below 1 + 2 * ceil(pageSize / 100)
-      # D1 statements. It is deliberately an assertion inside the EXISTING
-      # `test` component, not a new gate: statement counts are
-      # deterministic, whereas wall-clock time is reported as an
-      # observation only (Lighthouse / Web Vitals budgets are #384-#386).
-      - 'pnpm run test' # vitest run (unit + integration SELF)
+      # Issue #413: the CSS syntax / vocabulary gate. It parses the sheet
+      # Panda generates (`panda cssgen` into `.tmp/`, gitignored) plus every
+      # stylesheet under `src/`, and fails an unknown property / at-rule /
+      # value function, a broken block or a keyword outside a property
+      # grammar. Vendor prefixes and specification-permitted extensions are
+      # accepted only through an explicit, in-use allowlist entry
+      # (quality/css-standards.json). Offline; no network, no secret.
+      - 'pnpm run css:check' # CSS syntax / unknown-property gate
+      # Issue #504: the published app-icon contract, with its own test
+      # beside the gate. `pnpm run test` runs that test too (discovery).
+      - 'node --test scripts/check-app-icons.test.mjs'
+      - 'node scripts/check-app-icons.mjs'
     cost_class: cheap
     trigger: local + every CI run
 
@@ -169,22 +244,30 @@ gates:
     command: 'pnpm run validate:integration'
     components:
       - fast
-      - 'pnpm run build' # vite build -> dist/, Tool artifacts, Build Output sync
-      # Issue #482. The budget reads the client bundle graph that
-      # `vite build` writes (dist/client/bundle-graph.json). `pnpm run
-      # validate:integration` actually invokes it after `pnpm run
-      # build:production` (build + build:cf:production + build:cf:verify), so
-      # the Tool build output it aggregates separately is already on disk —
-      # and before `pnpm run build-storybook` merges vite.config.ts and
-      # rewrites the same graph path. See the `bundle_budget` section below.
-      - 'pnpm run bundle:budget:check' # per-route initial JS/CSS budget
-      - 'pnpm run build:cf:production' # cf build -> .cloudflare/output/v0/
-      - 'pnpm run build:cf:verify' # Build Output completeness (Worker bundle + Tool artifacts + mode)
+      # `build:production` is the three build steps this gate needs in
+      # order: `build` (vite build -> dist/, Tool artifacts, Build Output
+      # sync) + `build:cf:production` (cf build -> .cloudflare/output/v0/)
+      # + `build:cf:verify` (Build Output completeness: Worker bundle +
+      # Tool artifacts + mode).
+      - 'pnpm run build:production'
       # Issue #475: a credential can reach the deploy artifact through
       # build-time inlining even when no source file matches, so the freshly
       # built bundle is a second scan surface.
       - 'pnpm run secret:scan:bundle'
-      - 'pnpm run deploy:cf:prebuilt:dry-run' # cf deploy --prebuilt --mode production --dry-run
+      # Issue #482. The budget reads the client bundle graph that
+      # `vite build` writes (dist/client/bundle-graph.json). It runs after
+      # `build:production` above — so the Tool build output it aggregates
+      # separately is already on disk — and before `pnpm run
+      # build-storybook` merges vite.config.ts and rewrites the same graph
+      # path. See the `bundle_budget` section below.
+      - 'pnpm run bundle:budget:check' # per-route initial JS/CSS budget
+      # Issue #247: the same non-secret Cloudflare contract, re-proved
+      # against the artifact `build:production` just wrote.
+      - 'pnpm run cloudflare:contract:check:build'
+      # cf deploy --prebuilt --mode production --dry-run, preceded by the
+      # Build Output verification it depends on
+      # (scripts/cf-prebuilt-dry-run.mjs runs after verify-cf-build-output).
+      - 'pnpm run deploy:cf:prebuilt:selftest'
       - 'pnpm run cf:mode-mismatch:check' # a production Build Output must be rejected under --mode development
       - 'pnpm run lint:ci' # actionlint via scripts/lint-ci.mjs (default target: .github/workflows/*.yml)
       - 'pnpm run build-storybook' # static storybook build -> storybook-static/

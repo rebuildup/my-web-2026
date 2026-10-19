@@ -25,6 +25,7 @@ of trusting the image.
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 | [`disclosure-runbook.webp`](disclosure-runbook.webp) | #478 | `pnpm run verify:security-disclosure-screenshot` |
+| [`threat-model-diagram.webp`](threat-model-diagram.webp) | #479 | `pnpm run verify:threat-model-screenshot` |
 
 | [`operator-mfa-checklist.webp`](operator-mfa-checklist.webp) | #469 | `pnpm run verify:operator-mfa-checklist-screenshot` |
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
@@ -95,7 +96,6 @@ Regenerate:
 pnpm run r2:restore:proof          # fixture proof（status-only）
 pnpm run r2:restore:proof:report   # -> .tmp/r2-restore-proof.html（この画像の生成元）
 ```
-| [`threat-model-diagram.webp`](threat-model-diagram.webp) | #479 | `pnpm run verify:threat-model-screenshot` |
 
 ## `asvs-coverage-matrix.webp` (Issue #507)
 

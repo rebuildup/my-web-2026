@@ -7,9 +7,10 @@
  * The gate's own output is status-only by contract, so a CI log holds
  * three verdict words and a table of service ids. This page renders the
  * same verdicts as something a reviewer can read: the shipped operator
- * ledger (the real checklist, still 未確認) next to six recorded cases
+ * ledger (the real checklist, still 未確認) next to seven recorded cases
  * covering pass / 未確認 / missing / stale / self-contradictory /
- * identifier-bearing, and the status-only CLI text for each of them.
+ * identifier-bearing / prototype-key, and the status-only CLI text for
+ * each of them.
  *
  * Every row is produced by RUNNING the audit over
  * `quality/fixtures/operator-mfa/` through the same seam the CLI uses, and
@@ -99,6 +100,7 @@ const FIXTURES = [
 	'stale-confirmation.json',
 	'self-inconsistent.json',
 	'account-identifier.json',
+	'prototype-key.json',
 ];
 
 function projectVersion() {

@@ -527,11 +527,13 @@ credential-shaped string is published.
 
 The operator MFA / Passkey confirmation gate's own report, rendered in a
 browser. The top table runs the shipped operator ledger
-(`quality/operator-mfa-ledger.json`) and six recorded fixtures through the
+(`quality/operator-mfa-ledger.json`) and seven recorded fixtures through the
 same seam the CLI uses: one `confirmed`, one 未確認 row, a missing service, a
-stale confirmation, a record that contradicts itself and a ledger carrying an
-account identifier. Each row shows the verdict, the exit code and the four
-state counts, so 未確認 can never be read as a green tick.
+stale confirmation, a record that contradicts itself, a ledger carrying an
+account identifier, and a factor kind taken off `Object.prototype`. Each row
+shows the verdict, the exit code and the four state counts, so 未確認 can never
+be read as a green tick — and a prototype key cannot be counted as a second
+enrolled factor.
 
 The shipped ledger is shown **unconfirmed on purpose**: no agent can read a
 GitHub / Cloudflare / Infisical / registrar console, and a confirmation date

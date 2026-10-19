@@ -143,7 +143,15 @@ function main(argv) {
 		// which can carry an absolute path the transcript does not need.
 		const clock = new Date().toISOString().slice(0, 10);
 		const audit = undecidableAudit(UNDECIDABLE_REASON.ledgerUnreadable, { clock });
-		process.stdout.write(formatAuditReport(audit, { source: `ledger ${label}` }));
+		// Rendering is guarded here too: an unreadable ledger must still
+		// refuse with a value-free message and exit 2, never a stack trace
+		// that quotes the path.
+		try {
+			process.stdout.write(formatAuditReport(audit, { source: `ledger ${label}` }));
+		} catch (error) {
+			process.stderr.write(`[operator-mfa] ${error.message}\n`);
+			return 2;
+		}
 		return exitCodeFor(audit);
 	}
 

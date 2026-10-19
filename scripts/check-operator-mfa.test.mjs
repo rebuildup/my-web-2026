@@ -35,8 +35,10 @@ import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
+	FACTOR_KIND,
 	FORBIDDEN_LEDGER_KEYS,
 	REQUIRED_SERVICES,
+	SERVICE,
 	SERVICE_ROW_KEYS,
 	UNDECIDABLE_REASON,
 	VERDICT,
@@ -61,6 +63,7 @@ const FIXTURE_NAMES = [
 	'stale-confirmation.json',
 	'self-inconsistent.json',
 	'account-identifier.json',
+	'prototype-key.json',
 ];
 
 const POLICY = Object.freeze({
@@ -171,6 +174,8 @@ describe('operator MFA audit — fail-closed matrix', () => {
 		['a duplicated service', {}, UNDECIDABLE_REASON.serviceDuplicated],
 		['an unknown service', {}, UNDECIDABLE_REASON.serviceUnknown],
 		['an unknown factor kind', {}, UNDECIDABLE_REASON.factorKindUnknown],
+		['a factor kind on Object.prototype', {}, UNDECIDABLE_REASON.factorKindUnknown],
+		['a service id on Object.prototype', {}, UNDECIDABLE_REASON.serviceUnknown],
 		['a forbidden account identifier', {}, UNDECIDABLE_REASON.forbiddenField],
 		['an unknown top-level field', {}, UNDECIDABLE_REASON.unknownField],
 		['a missing policy block', { policy: undefined }, UNDECIDABLE_REASON.policyInvalid],
@@ -216,6 +221,20 @@ describe('operator MFA audit — fail-closed matrix', () => {
 			mutated((ledger) => {
 				ledger.services[0].factors[0].kind = 'yubikey_hardware_token';
 			}),
+		// `{"kind": "toString"}` is a string an operator can type and a
+		// plain `FACTOR_KIND[kind]` test answers from `Object.prototype`,
+		// which would let a one-factor row reach `min_factors: 2`.
+		'a factor kind on Object.prototype': () =>
+			mutated((ledger) => {
+				ledger.services[0].factors = [
+					{ kind: 'passkey', confirmed_at: '2026-10-12' },
+					{ kind: 'toString', confirmed_at: '2026-10-12' },
+				];
+			}),
+		'a service id on Object.prototype': () =>
+			mutated((ledger) => {
+				ledger.services[1].service = 'constructor';
+			}),
 		'a forbidden account identifier': () =>
 			mutated((ledger) => {
 				ledger.services[0].email = 'someone@example.invalid';
@@ -251,6 +270,43 @@ describe('operator MFA audit — fail-closed matrix', () => {
 		const audit = auditLedger(ledgerWith(), { now: 'not-a-date' });
 		assert.equal(audit.verdict, VERDICT.undecidable);
 		assert.equal(audit.reason, UNDECIDABLE_REASON.clockInvalid);
+	});
+
+	it('a vocabulary cannot be extended by Object.prototype', () => {
+		// Both halves of the guard: the vocabularies carry no inherited
+		// key, and membership is an own-property test rather than a
+		// plain lookup that would answer "toString" / "constructor".
+		for (const dict of [SERVICE, FACTOR_KIND]) {
+			assert.equal(Object.getPrototypeOf(dict), null, 'the vocabulary has no prototype');
+			for (const inherited of ['toString', 'constructor', '__proto__', 'hasOwnProperty']) {
+				assert.equal(Object.hasOwn(dict, inherited), false, `${inherited} is not a member`);
+				assert.equal(inherited in dict, false, `${inherited} must not be inherited`);
+			}
+		}
+		// And the whole ledger is refused, rather than counted as a pass.
+		for (const [key, value] of [
+			['kind', 'toString'],
+			['kind', '__proto__'],
+			['service', 'constructor'],
+			['service', 'toString'],
+		]) {
+			const ledger = ledgerWith();
+			if (key === 'kind')
+				ledger.services[0].factors[1] = { kind: value, confirmed_at: '2026-10-12' };
+			else ledger.services[1].service = value;
+			const audit = auditLedger(ledger, { now: '2026-10-19' });
+			assert.equal(audit.verdict, VERDICT.undecidable, `${key}=${value}`);
+			assert.equal(audit.counts.confirmed, 0, `${key}=${value} confirms nothing`);
+			assert.equal(audit.rows.length, 0, `${key}=${value} renders no row`);
+		}
+	});
+
+	it('a recorded fixture must declare the clock its verdict was recorded with', () => {
+		const path = join(FIXTURE_DIR, 'all-confirmed.json');
+		const raw = JSON.parse(readFileSync(path, 'utf8'));
+		const withoutNow = { case: raw.case, note: raw.note, ledger: raw.ledger, expect: raw.expect };
+		const read = readFixture(JSON.stringify(withoutNow));
+		assert.equal(read.reason, UNDECIDABLE_REASON.fixtureClockMissing);
 	});
 });
 
@@ -348,6 +404,25 @@ describe('operator MFA audit — CLI', () => {
 		const usage = runCli(['--print-secrets']);
 		assert.equal(usage.status, 2);
 		assert.match(usage.stderr, /unknown argument/);
+	});
+
+	it('refuses an unreadable ledger with a verdict, never a stack trace', () => {
+		// A home directory or a path holding `@` is plausible for an
+		// operator, and the guard that protects the two sibling branches
+		// has to cover this one too: exit 2, a value-free reason, and no
+		// Node stack frame on either stream.
+		const dir = mkdtempSync(join(tmpdir(), 'operator-mfa-unreadable@'));
+		try {
+			const result = runCli([`--ledger=${join(dir, 'absent.json')}`]);
+			const output = `${result.stdout}${result.stderr}`;
+			assert.equal(result.status, 2);
+			assert.match(result.stdout, /reason=ledger_unreadable/);
+			assert.equal(/at .*\(.*:\d+:\d+\)/.test(result.stderr), false, 'no stack frame');
+			assert.equal(/\n\s+at /.test(result.stderr), false, 'no stack frame');
+			assertNoSensitiveInText(output);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 
 	it('prints status only — no address, no bearer token, no enrolment list', () => {

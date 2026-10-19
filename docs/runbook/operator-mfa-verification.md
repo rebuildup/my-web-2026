@@ -101,6 +101,18 @@ provider console を開いて確認し、**リポジトリの working tree** で
 > ratify されていない。`policy.status` を `ratified` に変えるのは
 > owner の明示的な決定としてのみ行う。
 
+### 5.1 この gate が「数えている」ことの限界（owner 待ち）
+
+以下 2 つは**コードの現状**であり、正しさの合意には owner の決定が要る。
+この PR では決めずに、現状をそのまま記録する。
+
+| 論点 | 現状の挙動 | なぜ決めないか |
+| --- | --- | --- |
+| 同じ `kind` を 2 回復記した行 | エントリ数で数えるので、`passkey` × 2 で `min_factors: 2` を満たす | 「片方の factor だけを再確認した」可能性と「別々の 2 本登録」を schema では区別できない。distinct 化 / 重複拒否 / identity-free ordinal のどれを採るかは policy 変更 |
+| 鮮度窓の起点 | 行の `confirmed_at` だけを age させる（factor の日付が古いままでも、行が今日なら `confirmed`） | 「行の日付 = その日に運用者が再確認した日」という記録モデルと、`max_confirmation_age_days` のどちらを主張するかが policy 論点 |
+
+決定したら、この節を実装と fixture の両方に反映する。
+
 ## 6. 実行と exit code
 
 ```bash
@@ -139,21 +151,28 @@ ledger **全体**が `UNDECIDABLE` になる状態（行を一切出さない）
 | `ledger_forbidden_field` | 識別子キーが混入（値を出さない） |
 | `unknown_field` | schema に無いキーがある |
 | `policy_invalid` | policy ブロックが不正 |
-| `service_unknown` / `service_duplicated` | 4 サービス以外 / 重複 |
-| `factor_kind_unknown` | factor kind が enum 外 |
-| `confirmation_date_invalid` | ISO 暦日でない（`2026-02-30` など） |
+| `service_unknown` / `service_duplicated` | 4 サービス以外 / 重複。`"constructor"` / `"toString"` / `"__proto__"` などの `Object.prototype` 上のキーも **ここに来る**（列挙値は own property のみが構成要素） |
+| `factor_kind_unknown` | factor kind が enum 外。同様に `Object.prototype` 上のキーもここに来る（factor が 1 つしかない行を 2 つ目と数えて `confirmed` にしない） |
+| `confirmation_date_invalid` | ISO 暦日でない（`2026-02-30` など）。**キーを丸ごと落とした**行もここに来る |
 | `confirmation_date_in_future` | 未来日 |
 | `confirmation_date_inconsistent` | 行の日付が自分の factor より古い |
 | `clock_invalid` | 時計が読めない |
+| `fixture_clock_missing` | 記録済み fixture が `now` を宣言していない（比較用に使う時計が無いので、その verdict は暦とともに流れる） |
 
 行単位（`OUTSTANDING`）:
 
 | state | reason | 意味 |
 | --- | --- | --- |
-| `unconfirmed` | `confirmation_date_missing` | 確認日が書かれていない（**出荷時がこれ**） |
+| `unconfirmed` | `confirmation_date_missing` | 確認日が書かれていない（**出荷時がこれ**）。キーは存在して値が `null` のとき |
 | `unconfirmed` | `factors_missing` / `factors_below_minimum` / `phishing_resistant_missing` / `factor_kind_missing` / `factor_date_missing` | policy を満たさない登録 |
 | `stale` | `confirmation_stale` | policy の鮮度窓を超過 |
 | `missing` | `service_missing` | 4 サービスのどれかの行が無い |
+
+> **キーの省略は「未記入」とは別**。行単位の `confirmation_date_missing` /
+> `factors_missing` は**キーを書いて値が `null` / `[]`** のときに現れる。
+> キーごと落とした行は schema 違反として ledger 全体が `UNDECIDABLE`
+> （`confirmation_date_invalid` / `ledger_shape_invalid`、exit 2）になる。
+> どちらも緑にはならないが、運用者の入力ミスの見え方が違う。
 
 ## 8. CI 上の位置づけ
 
@@ -167,6 +186,13 @@ ledger **全体**が `UNDECIDABLE` になる状態（行を一切出さない）
   GitHub Actions が provider console を読むべきではない）。
 - fail-closed な operator gate として、`docs/release.md` の sprint cycle
   で人が実行する運用に置くのが妥当。
+
+> **owner 待ちの判断**: 現時点で `docs/release.md` の step 9 には
+> `r2:media:audit` しか書かれておらず、本 gate はまだ release checklist に
+> 載っていない（`quality/profile.yaml#operator_mfa_audit.trigger` は「MFA 確認の
+> サイクル、および release PR を開く前」と宣言しているが、これは運用上の推奨
+> であり repository 側の強制点ではない）。step 9 の R2 audit の隣に追加する
+> かは owner の決定。決定までは、本 gate に**強制点は無い**と読むこと。
 
 Decision は `quality/profile.yaml`、証跡画像は
 [`docs/verification/security/operator-mfa-checklist.webp`](../verification/security/operator-mfa-checklist.webp)

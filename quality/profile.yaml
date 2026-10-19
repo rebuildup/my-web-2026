@@ -934,7 +934,7 @@ operator_mfa_audit:
   fixtures: 'quality/fixtures/operator-mfa/*.json'
   ledger: 'quality/operator-mfa-ledger.json (operator-declared; the repository holds no provider state)'
   driver: 'none — no adapter, no network call, no binding. The four account states are not observable from a Worker, so the gate audits the operator-declared record instead.'
-  policy_source_of_truth: 'the ledger policy block (status / min_factors / require_phishing_resistant / max_confirmation_age_days) plus the SERVICE / FACTOR_KIND vocabularies in scripts/_operator-mfa-audit.mjs'
+  policy_source_of_truth: 'the ledger policy block (status / min_factors / require_phishing_resistant / max_confirmation_age_days) plus the SERVICE / FACTOR_KIND vocabularies in scripts/_operator-mfa-audit.mjs. Both vocabularies are null-prototype objects and membership is tested with Object.hasOwn, so a prototype key such as "toString" or "constructor" is an unknown member rather than an inherited one.'
   gate: none
   gate_placement: >-
     deliberately outside validate:fast / validate:integration /
@@ -958,10 +958,16 @@ operator_mfa_audit:
     - 'one unconfirmed / stale / missing service is OUTSTANDING (exit 1); a green tick is only reachable when all four rows are confirmed'
     - 'an unreadable, unreconcilable, undatable or identifier-bearing ledger is UNDECIDABLE (exit 2) with no rows — an unread checklist is never a pass, and a partial reading is never rendered as a result'
     - 'a confirmation date in the future, or older than a factor the same row lists, is UNDECIDABLE rather than confirmed'
+    - 'a service id or factor kind outside the enum — including an Object.prototype key such as "toString" or "constructor" — is UNDECIDABLE rather than counted toward min_factors'
+    - 'a recorded fixture must declare `now`; without it the fixture is rejected (fixture_clock_missing) instead of ageing against the wall clock'
     - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
     - 'the report refuses to be written when a fixture drifted from its declared verdict, so the page cannot disagree with the assertions in scripts/check-operator-mfa.test.mjs'
   mutation: 'none — the gate reads one local file and has no write path'
   documentation: 'docs/runbook/operator-mfa-verification.md'
   verification_artifact: 'docs/verification/security/operator-mfa-checklist.webp'
   open_owner_decision: 'policy.status is "proposed": min_factors=2, require_phishing_resistant=true and max_confirmation_age_days=180 are Issue #469 defaults awaiting owner ratification. A pass while the status is proposed prints a note saying so.'
+  open_owner_decisions:
+    - 'factor counting: two entries of the same kind currently count as two factors (the schema cannot express factor identity). Counting distinct kinds, rejecting a duplicated kind, or adding an identity-free ordinal is a policy change, recorded in docs/runbook/operator-mfa-verification.md §5.1 and left undecided.'
+    - 'freshness window: ageing is computed on the row confirmed_at only, so a row written today is confirmed even when its factor dates are older than max_confirmation_age_days. Ageing on the older of the two, or declaring that only the row date expires, is a policy change recorded in the same section.'
+    - 'release checklist: docs/release.md step 9 still lists only r2:media:audit, so this gate has no durable enforcement point in the repository. Adding it beside the R2 audit is an owner decision; until then the trigger above is operational guidance, not an enforced step.'
   owner_issue: '#469'

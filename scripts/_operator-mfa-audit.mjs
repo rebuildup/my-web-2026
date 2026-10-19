@@ -53,7 +53,30 @@
  */
 
 /** The control-plane accounts whose MFA state the runbook tracks. */
-export const SERVICE = Object.freeze({
+/**
+ * A vocabulary is a **null-prototype** object and membership is always
+ * tested with `Object.hasOwn`. Both halves matter: a ledger is
+ * operator-supplied JSON, so `{"kind": "toString"}` and
+ * `{"service": "constructor"}` are strings this seam must refuse, and a
+ * plain `VOCAB[key]` test would answer them from `Object.prototype` and
+ * call a one-factor row `confirmed`. The enum holds exactly the keys
+ * written below, and nothing else can reach it.
+ *
+ * @template {Record<string, unknown>} T
+ * @param {Record<string, T>} entries
+ * @returns {Readonly<Record<string, T>>}
+ */
+function vocabulary(entries) {
+	return Object.freeze(Object.assign(Object.create(null), entries));
+}
+
+/** Own-property membership: never `key in dict`, never `dict[key]` as a test. */
+function isEnumMember(dict, key) {
+	return typeof key === 'string' && Object.hasOwn(dict, key);
+}
+
+/** The control-plane accounts whose MFA state the runbook tracks. */
+export const SERVICE = vocabulary({
 	github: { id: 'github', label: 'GitHub', labelJa: 'GitHub' },
 	cloudflare: { id: 'cloudflare', label: 'Cloudflare', labelJa: 'Cloudflare' },
 	infisical: { id: 'infisical', label: 'Infisical', labelJa: 'Infisical' },
@@ -68,7 +91,7 @@ export const SERVICE = Object.freeze({
 export const REQUIRED_SERVICES = Object.freeze(Object.keys(SERVICE));
 
 /** Enrolled factor kinds. `sms` is listed so a ledger that says "SMS only" is decidable. */
-export const FACTOR_KIND = Object.freeze({
+export const FACTOR_KIND = vocabulary({
 	passkey: 'passkey',
 	security_key: 'security_key',
 	totp_app: 'totp_app',
@@ -130,6 +153,8 @@ export const UNDECIDABLE_REASON = Object.freeze({
 	confirmationDateInFuture: 'confirmation_date_in_future',
 	confirmationDateInconsistent: 'confirmation_date_inconsistent',
 	clockInvalid: 'clock_invalid',
+	/** A recorded fixture must declare the clock its run was recorded with. */
+	fixtureClockMissing: 'fixture_clock_missing',
 });
 
 /**
@@ -165,7 +190,7 @@ export const POLICY_KEYS = Object.freeze([
 	'require_phishing_resistant',
 	'max_confirmation_age_days',
 ]);
-export const POLICY_STATUS = Object.freeze({ proposed: 'proposed', ratified: 'ratified' });
+export const POLICY_STATUS = vocabulary({ proposed: 'proposed', ratified: 'ratified' });
 export const SERVICE_ROW_KEYS = Object.freeze(['service', 'confirmed_at', 'factors']);
 export const FACTOR_KEYS = Object.freeze(['kind', 'confirmed_at']);
 export const LEDGER_VERSION = 1;
@@ -368,7 +393,9 @@ function classifyRow(service, entry, policy, nowMs) {
 
 	const kinds = [];
 	for (const factor of entry.factors) {
-		if (!FACTOR_KIND[factor.kind]) return { fatal: UNDECIDABLE_REASON.factorKindUnknown };
+		if (!isEnumMember(FACTOR_KIND, factor.kind)) {
+			return { fatal: UNDECIDABLE_REASON.factorKindUnknown };
+		}
 		if (factor.confirmed_at === null) return row(STATE.unconfirmed, REASON.factorDateMissing);
 		const factorMs = parseIsoDate(factor.confirmed_at);
 		if (factorMs === null) return { fatal: UNDECIDABLE_REASON.confirmationDateInvalid };
@@ -407,7 +434,7 @@ function readServiceRow(entry, seen) {
 			? UNDECIDABLE_REASON.forbiddenField
 			: UNDECIDABLE_REASON.unknownField;
 	}
-	if (typeof entry.service !== 'string' || !SERVICE[entry.service]) {
+	if (!isEnumMember(SERVICE, entry.service)) {
 		return UNDECIDABLE_REASON.serviceUnknown;
 	}
 	if (seen.has(entry.service)) return UNDECIDABLE_REASON.serviceDuplicated;
@@ -454,6 +481,8 @@ const READ_REASON_NOTE = Object.freeze({
 	[UNDECIDABLE_REASON.confirmationDateInconsistent]:
 		'a row is dated older than one of its own factors, so the record contradicts itself',
 	[UNDECIDABLE_REASON.clockInvalid]: 'the clock could not be read, so no ageing was computed',
+	[UNDECIDABLE_REASON.fixtureClockMissing]:
+		'a recorded fixture did not declare `now`, so its verdict would drift with the wall clock',
 });
 
 /**
@@ -576,6 +605,11 @@ export function readFixture(input) {
 	if (!isPlainObject(raw.expect) || typeof raw.expect.verdict !== 'string') {
 		return { reason: UNDECIDABLE_REASON.ledgerShapeInvalid };
 	}
+	// `now` is required, not optional: a fixture without it would fall
+	// back to the wall clock, so the verdict it asserts would silently
+	// drift with the day it runs on — the opposite of what a recorded
+	// fixture exists for.
+	if (typeof raw.now !== 'string') return { reason: UNDECIDABLE_REASON.fixtureClockMissing };
 	const ledgerRead = readLedger(raw.ledger);
 	if ('reason' in ledgerRead) return ledgerRead;
 	return {

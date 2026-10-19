@@ -1,0 +1,854 @@
+{
+	"version": 1,
+	"standard": {
+		"name": "OWASP Application Security Verification Standard",
+		"version": "5.0.0",
+		"url": "https://owasp.org/www-project-application-security-verification-standard/",
+		"requirements_url": "https://raw.githubusercontent.com/OWASP/ASVS/v5.0.0/5.0/docs_en/OWASP_Application_Security_Verification_Standard_5.0.0_en.flat.json",
+		"certification": false,
+		"note": "This is a repository coverage ledger for selected ASVS 5.0.0 requirements. It is not an ASVS certification, an audit, or a claim that the platform satisfies the whole standard."
+	},
+	"target_levels": ["L1", "L2"],
+	"policy": "Every selected applicable requirement names the control that would satisfy it and repository evidence. An applicable requirement with no evidence is reported as not run (unverified), never as a pass. An evidence path or registered gate that does not exist is fail, not not run. A requirement outside the shipped surface is not applicable with a reason. The ledger is a visibility artefact, not a certification.",
+	"items": [
+		{
+			"id": "V1.2.1",
+			"chapter": "V1 Encoding and Sanitization",
+			"section": "V1.2 Injection Prevention",
+			"level": "L1",
+			"requirement": "Verify that output encoding for an HTTP response, HTML document, or XML document is relevant for the context required, such as encoding the relevant characters for HTML elements, HTML attributes, HTML comments, CSS, or HTTP header fields, to avoid changing the message or document structure.",
+			"applicability": "applicable",
+			"control": "portfolio Markdown rendering — sanitizeNotionHtml before storage and React text nodes on output (src/portfolio/markdown.*)",
+			"issues": [451],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/markdown-xss-ssr.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/portfolio/markdown.safety.test.tsx"
+				}
+			],
+			"note": "The public project page is rendered from stored Markdown; the SSR suite and the safety matrix assert that raw HTML/script payloads do not become executable markup."
+		},
+		{
+			"id": "V1.2.4",
+			"chapter": "V1 Encoding and Sanitization",
+			"section": "V1.2 Injection Prevention",
+			"level": "L1",
+			"requirement": "Verify that data selection or database queries (e.g., SQL, HQL, NoSQL, Cypher) use parameterized queries, ORMs, entity frameworks, or are otherwise protected from SQL Injection and other database injection attacks. This is also relevant when writing stored procedures.",
+			"applicability": "applicable",
+			"control": "D1 access through prepared statements / bound parameters in src/{portfolio,reactions,http}/**",
+			"issues": [452],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/d1-parameter-binding.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V1.3.1",
+			"chapter": "V1 Encoding and Sanitization",
+			"section": "V1.3 Sanitization",
+			"level": "L1",
+			"requirement": "Verify that all untrusted HTML input from WYSIWYG editors or similar is sanitized using a well-known and secure HTML sanitization library or framework feature.",
+			"applicability": "applicable",
+			"control": "sanitizeNotionHtml (src/portfolio/markdown.notion.ts) for imported HTML",
+			"issues": [451],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "src/portfolio/markdown.notion.test.tsx"
+				},
+				{
+					"kind": "test",
+					"path": "src/portfolio/markdown.security.test.tsx"
+				}
+			]
+		},
+		{
+			"id": "V1.3.6",
+			"chapter": "V1 Encoding and Sanitization",
+			"section": "V1.3 Sanitization",
+			"level": "L2",
+			"requirement": "Verify that the application protects against Server-side Request Forgery (SSRF) attacks, by validating untrusted data against an allowlist of protocols, domains, paths and ports and sanitizing potentially dangerous characters before using the data to call another service.",
+			"applicability": "applicable",
+			"control": "fetchExternalUrl / classifyOutboundUrl (src/http/outbound-fetch.ts)",
+			"issues": [453],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "src/http/outbound-fetch.test.ts"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/outbound-fetch.md"
+				}
+			]
+		},
+		{
+			"id": "V2.1.1",
+			"chapter": "V2 Validation and Business Logic",
+			"section": "V2.1 Validation and Business Logic Documentation",
+			"level": "L1",
+			"requirement": "Verify that the application's documentation defines input validation rules for how to check the validity of data items against an expected structure. This could be common data formats such as credit card numbers, email addresses, telephone numbers, or it could be an internal data format.",
+			"applicability": "applicable",
+			"control": "documented boundary validation contract (docs/security/input-validation.md, src/http/validation.ts)",
+			"issues": [450],
+			"evidence": [
+				{
+					"kind": "doc",
+					"path": "docs/security/input-validation.md"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/input-validation.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V2.2.1",
+			"chapter": "V2 Validation and Business Logic",
+			"section": "V2.2 Input Validation",
+			"level": "L1",
+			"requirement": "Verify that input is validated to enforce business or functional expectations for that input. This should either use positive validation against an allow list of values, patterns, and ranges, or be based on comparing the input to an expected structure and logical limits according to predefined rules. For L1, this can focus on input which is used to make specific business or security decisions. For L2 and up, this should apply to all input.",
+			"applicability": "applicable",
+			"control": "positive boundary validation at /api/v1/* (src/http/validation.ts)",
+			"issues": [450],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/input-validation.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/validation.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V2.2.2",
+			"chapter": "V2 Validation and Business Logic",
+			"section": "V2.2 Input Validation",
+			"level": "L1",
+			"requirement": "Verify that the application is designed to enforce input validation at a trusted service layer. While client-side validation improves usability and should be encouraged, it must not be relied upon as a security control.",
+			"applicability": "applicable",
+			"control": "server-side validation middleware before every Hono handler",
+			"issues": [450],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/input-validation.test.ts"
+				},
+				{
+					"kind": "gate",
+					"command": "pnpm run architecture:check",
+					"surfaces": ["fast", "integration", "release"]
+				}
+			]
+		},
+		{
+			"id": "V2.4.1",
+			"chapter": "V2 Validation and Business Logic",
+			"section": "V2.4 Anti-automation",
+			"level": "L2",
+			"requirement": "Verify that anti-automation controls are in place to protect against excessive calls to application functions that could lead to data exfiltration, garbage-data creation, quota exhaustion, rate-limit breaches, denial-of-service, or overuse of costly resources.",
+			"applicability": "applicable",
+			"control": "rateLimit* middleware (src/http/middleware/rate-limit.ts), login hardening and write limits",
+			"issues": [443, 456],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/auth-login-hardening.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/write-rate-limit.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/middleware/rate-limit.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V3.2.2",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.2 Unintended Content Interpretation",
+			"level": "L1",
+			"requirement": "Verify that content intended to be displayed as text, rather than rendered as HTML, is handled using safe rendering functions (such as createTextNode or textContent) to prevent unintended execution of content such as HTML or JavaScript.",
+			"applicability": "applicable",
+			"control": "text-only rendering of portfolio content (React text nodes, no dangerouslySetInnerHTML for untrusted data)",
+			"issues": [451],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/markdown-xss-ssr.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "e2e/portfolio-markdown-xss.spec.ts"
+				}
+			]
+		},
+		{
+			"id": "V3.3.1",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.3 Cookie Setup",
+			"level": "L1",
+			"requirement": "Verify that cookies have the 'Secure' attribute set, and if the '\\__Host-' prefix is not used for the cookie name, the '__Secure-' prefix must be used for the cookie name.",
+			"applicability": "applicable",
+			"control": "session cookie attribute contract (src/cloudflare/auth/session-cookie-contract.ts)",
+			"issues": [438],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "src/cloudflare/auth/session-cookie-contract.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V3.3.2",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.3 Cookie Setup",
+			"level": "L2",
+			"requirement": "Verify that each cookie's 'SameSite' attribute value is set according to the purpose of the cookie, to limit exposure to user interface redress attacks and browser-based request forgery attacks, commonly known as cross-site request forgery (CSRF).",
+			"applicability": "applicable",
+			"control": "SameSite policy in the session cookie contract",
+			"issues": [438],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "src/cloudflare/auth/session-cookie-contract.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V3.4.1",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.4 Browser Security Mechanism Headers",
+			"level": "L1",
+			"requirement": "Verify that a Strict-Transport-Security header field is included on all responses to enforce an HTTP Strict Transport Security (HSTS) policy. A maximum age of at least 1 year must be defined, and for L2 and up, the policy must apply to all subdomains as well.",
+			"applicability": "applicable",
+			"control": "HSTS policy at the boundary (src/http/security-headers.ts)",
+			"issues": [446],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/hsts-transport-security.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "scripts/check-hsts-policy.test.mjs"
+				}
+			]
+		},
+		{
+			"id": "V3.4.2",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.4 Browser Security Mechanism Headers",
+			"level": "L1",
+			"requirement": "Verify that the Cross-Origin Resource Sharing (CORS) Access-Control-Allow-Origin header field is a fixed value by the application, or if the Origin HTTP request header field value is used, it is validated against an allowlist of trusted origins. When 'Access-Control-Allow-Origin: *' needs to be used, verify that the response does not include any sensitive information.",
+			"applicability": "applicable",
+			"control": "CORS allowlist (src/http/cors/policy.ts)",
+			"issues": [455],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/cors.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/cors/policy.test.ts"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/api-cors.md"
+				}
+			]
+		},
+		{
+			"id": "V3.4.3",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.4 Browser Security Mechanism Headers",
+			"level": "L2",
+			"requirement": "Verify that HTTP responses include a Content-Security-Policy response header field which defines directives to ensure the browser only loads and executes trusted content or resources, in order to limit execution of malicious JavaScript. As a minimum, a global policy must be used which includes the directives object-src 'none' and base-uri 'none' and defines either an allowlist or uses nonces or hashes. For an L3 application, a per-response policy with nonces or hashes must be defined.",
+			"applicability": "applicable",
+			"control": "Content-Security-Policy (src/http/content-security-policy.ts)",
+			"issues": [447],
+			"evidence": [],
+			"follow_up": "The shipped policy is Content-Security-Policy-Report-Only (#447). Record an owner decision and ship an enforcing policy with a test that proves enforcement; until then this requirement is unverified, not a pass."
+		},
+		{
+			"id": "V3.4.4",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.4 Browser Security Mechanism Headers",
+			"level": "L2",
+			"requirement": "Verify that all HTTP responses contain an 'X-Content-Type-Options: nosniff' header field. This instructs browsers not to use content sniffing and MIME type guessing for the given response, and to require the response's Content-Type header field value to match the destination resource. For example, the response to a request for a style is only accepted if the response's Content-Type is 'text/css'. This also enables the use of the Cross-Origin Read Blocking (CORB) functionality by the browser.",
+			"applicability": "applicable",
+			"control": "sealed security headers (src/http/security-headers.ts, src/http/security-headers.json)",
+			"issues": [449],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/security-headers.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/security-headers.test.ts"
+				},
+				{
+					"kind": "gate",
+					"command": "pnpm run security:headers:check",
+					"surfaces": ["fast", "integration", "release"]
+				}
+			]
+		},
+		{
+			"id": "V3.5.1",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.5 Browser Origin Separation",
+			"level": "L1",
+			"requirement": "Verify that, if the application does not rely on the CORS preflight mechanism to prevent disallowed cross-origin requests to use sensitive functionality, these requests are validated to ensure they originate from the application itself. This may be done by using and validating anti-forgery tokens or requiring extra HTTP header fields that are not CORS-safelisted request-header fields. This is to defend against browser-based request forgery attacks, commonly known as cross-site request forgery (CSRF).",
+			"applicability": "applicable",
+			"control": "csrfGuard and Better Auth trustedOrigins",
+			"issues": [440, 455],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/csrf-contract.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/middleware/csrf.test.ts"
+				},
+				{
+					"kind": "gate",
+					"command": "pnpm run csrf:contract:check",
+					"surfaces": ["fast", "integration", "release"]
+				}
+			]
+		},
+		{
+			"id": "V3.5.3",
+			"chapter": "V3 Web Frontend Security",
+			"section": "V3.5 Browser Origin Separation",
+			"level": "L1",
+			"requirement": "Verify that HTTP requests to sensitive functionality use appropriate HTTP methods such as POST, PUT, PATCH, or DELETE, and not methods defined by the HTTP specification as \"safe\" such as HEAD, OPTIONS, or GET. Alternatively, strict validation of the Sec-Fetch-* request header fields can be used to ensure that the request did not originate from an inappropriate cross-origin call, a navigation request, or a resource load (such as an image source) where this is not expected.",
+			"applicability": "applicable",
+			"control": "write-method matrix and csrfGuard (src/http/middleware/csrf.ts)",
+			"issues": [440],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/csrf-contract.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "e2e/csrf.spec.ts"
+				}
+			]
+		},
+		{
+			"id": "V4.1.1",
+			"chapter": "V4 API and Web Service",
+			"section": "V4.1 Generic Web Service Security",
+			"level": "L1",
+			"requirement": "Verify that every HTTP response with a message body contains a Content-Type header field that matches the actual content of the response, including the charset parameter to specify safe character encoding (e.g., UTF-8, ISO-8859-1) according to IANA Media Types, such as \"text/\", \"/+xml\" and \"/xml\".",
+			"applicability": "applicable",
+			"control": "every response that carries a body declares a media type that matches that body — SSR documents (text/html plus charset) and the external boundary including its 404 and 5xx bodies (application/json), built in src/http/errors.ts for the boundary and by the SSR document path for the pages",
+			"issues": [449, 457],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/security-headers.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/errors.test.ts"
+				}
+			],
+			"note": "The integration suite reads content-type off the real Worker response (SELF.fetch) for the HTML document, the host 404, the JSON boundary success and the JSON boundary 404, and asserts the charset parameter; src/http/errors.test.ts asserts the media type of the 5xx body the boundary builds. Both suites read the header for an assertion, not only for the report."
+		},
+		{
+			"id": "V5.2.1",
+			"chapter": "V5 File Handling",
+			"section": "V5.2 File Upload and Content",
+			"level": "L1",
+			"requirement": "Verify that the application will only accept files of a size which it can process without causing a loss of performance or a denial of service attack.",
+			"applicability": "applicable",
+			"control": "assertImageUploadPolicy size cap (src/http/reactions/images.ts)",
+			"issues": [458],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/upload-guards.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/admin/images/upload-errors.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V5.2.2",
+			"chapter": "V5 File Handling",
+			"section": "V5.2 File Upload and Content",
+			"level": "L1",
+			"requirement": "Verify that when the application accepts a file, either on its own or within an archive such as a zip file, it checks if the file extension matches an expected file extension and validates that the contents correspond to the type represented by the extension. This includes, but is not limited to, checking the initial 'magic bytes', performing image re-writing, and using specialized libraries for file content validation. For L1, this can focus just on files which are used to make specific business or security decisions. For L2 and up, this must apply to all files being accepted.",
+			"applicability": "applicable",
+			"control": "content-type / magic-byte agreement in assertImageUploadPolicy",
+			"issues": [458],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/upload-guards.test.ts"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/image-upload-guards.md"
+				}
+			]
+		},
+		{
+			"id": "V5.3.1",
+			"chapter": "V5 File Handling",
+			"section": "V5.3 File Storage",
+			"level": "L1",
+			"requirement": "Verify that files uploaded or generated by untrusted input and stored in a public folder, are not executed as server-side program code when accessed directly with an HTTP request.",
+			"applicability": "applicable",
+			"control": "content-addressed R2 keys and media visibility (src/cloudflare/media-visibility.ts)",
+			"issues": [459],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/r2-media-visibility.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/cloudflare/media-visibility.test.ts"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/r2-media-visibility.md"
+				}
+			]
+		},
+		{
+			"id": "V6.3.1",
+			"chapter": "V6 Authentication",
+			"section": "V6.3 General Authentication Security",
+			"level": "L1",
+			"requirement": "Verify that controls to prevent attacks such as credential stuffing and password brute force are implemented according to the application's security documentation.",
+			"applicability": "applicable",
+			"control": "login enumeration / brute-force controls and write rate limits",
+			"issues": [443, 456],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/auth-login-hardening.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/middleware/rate-limit.test.ts"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/login-enumeration-rate-limit.md"
+				}
+			]
+		},
+		{
+			"id": "V6.3.3",
+			"chapter": "V6 Authentication",
+			"section": "V6.3 General Authentication Security",
+			"level": "L2",
+			"requirement": "Verify that either a multi-factor authentication mechanism or a combination of single-factor authentication mechanisms, must be used in order to access the application. For L3, one of the factors must be a hardware-based authentication mechanism which provides compromise and impersonation resistance against phishing attacks while verifying the intent to authenticate by requiring a user-initiated action (such as a button press on a FIDO hardware key or a mobile phone). Relaxing any of the considerations in this requirement requires a fully documented rationale and a comprehensive set of mitigating controls.",
+			"applicability": "applicable",
+			"control": "Better Auth email/password + invitation flow (src/cloudflare/auth/better-auth.ts)",
+			"issues": [],
+			"evidence": [],
+			"follow_up": "MFA is not implemented. The owner must decide whether the admin surface requires a second factor (or record a risk acceptance) and add the corresponding test before this row can pass."
+		},
+		{
+			"id": "V7.2.1",
+			"chapter": "V7 Session Management",
+			"section": "V7.2 Fundamental Session Management Security",
+			"level": "L1",
+			"requirement": "Verify that the application performs all session token verification using a trusted, backend service.",
+			"applicability": "applicable",
+			"control": "Better Auth session verification at the boundary",
+			"issues": [439],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "src/cloudflare/auth/better-auth.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/session-logout.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V7.4.1",
+			"chapter": "V7 Session Management",
+			"section": "V7.4 Session Termination",
+			"level": "L1",
+			"requirement": "Verify that when session termination is triggered (such as logout or expiration), the application disallows any further use of the session. For reference tokens or stateful sessions, this means invalidating the session data at the application backend. Applications using self-contained tokens will need a solution such as maintaining a list of terminated tokens, disallowing tokens produced before a per-user date and time or rotating a per-user signing key.",
+			"applicability": "applicable",
+			"control": "sign-out invalidates the session at the backend (src/cloudflare/auth/better-auth.ts)",
+			"issues": [439],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/session-logout.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V7.4.3",
+			"chapter": "V7 Session Management",
+			"section": "V7.4 Session Termination",
+			"level": "L2",
+			"requirement": "Verify that the application gives the option to terminate all other active sessions after a successful change or removal of any authentication factor (including password change via reset or recovery and, if present, an MFA settings update).",
+			"applicability": "applicable",
+			"control": "session lifecycle (src/cloudflare/auth/better-auth.ts)",
+			"issues": [],
+			"evidence": [],
+			"follow_up": "No repository evidence for terminating all other active sessions after a password/factor change. Add the control and a test, or record an owner risk acceptance."
+		},
+		{
+			"id": "V8.2.1",
+			"chapter": "V8 Authorization",
+			"section": "V8.2 General Authorization Design",
+			"level": "L1",
+			"requirement": "Verify that the application ensures that function-level access is restricted to consumers with explicit permissions.",
+			"applicability": "applicable",
+			"control": "admin route loaders + requireAdmin (src/admin/auth/require-admin.ts) and API-key scope middleware",
+			"issues": [441],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/admin-authorization.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/api-key-scope.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "e2e/admin-authorization.spec.ts"
+				}
+			]
+		},
+		{
+			"id": "V8.2.2",
+			"chapter": "V8 Authorization",
+			"section": "V8.2 General Authorization Design",
+			"level": "L1",
+			"requirement": "Verify that the application ensures that data-specific access is restricted to consumers with explicit permissions to specific data items to mitigate insecure direct object reference (IDOR) and broken object level authorization (BOLA).",
+			"applicability": "applicable",
+			"control": "data-specific authorization in the admin/API surfaces",
+			"issues": [441],
+			"evidence": [],
+			"follow_up": "The current admin matrix proves function-level access; no data-specific IDOR/BOLA suite exists. Add an object-level authorization test (or record why the surface has no object-level data) before this row can pass."
+		},
+		{
+			"id": "V8.3.1",
+			"chapter": "V8 Authorization",
+			"section": "V8.3 Operation Level Authorization",
+			"level": "L1",
+			"requirement": "Verify that the application enforces authorization rules at a trusted service layer and doesn't rely on controls that an untrusted consumer could manipulate, such as client-side JavaScript.",
+			"applicability": "applicable",
+			"control": "authorization enforced at the trusted service layer (route loaders, requireAdmin, requireResourceAction)",
+			"issues": [441, 442],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/admin-authorization.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/api-keys/middleware.test.ts"
+				}
+			]
+		},
+		{
+			"id": "V13.3.1",
+			"chapter": "V13 Configuration",
+			"section": "V13.3 Secret Management",
+			"level": "L2",
+			"requirement": "Verify that a secrets management solution, such as a key vault, is used to securely create, store, control access to, and destroy backend secrets. These could include passwords, key material, integrations with databases and third-party systems, keys and seeds for time-based tokens, other internal secrets, and API keys. Secrets must not be included in application source code or included in build artifacts. For an L3 application, this must involve a hardware-backed solution such as an HSM.",
+			"applicability": "applicable",
+			"control": "runtime secret inventory and Infisical coverage (quality/profile.yaml#security_gates, scripts/check-infisical-coverage.mjs), plus source and bundle secret scans so no secret ships in the tree or in the build artifact",
+			"issues": [167, 475],
+			"evidence": [
+				{
+					"kind": "gate",
+					"command": "pnpm run infisical:check:coverage",
+					"surfaces": ["fast", "integration", "release"]
+				},
+				{
+					"kind": "gate",
+					"command": "pnpm run secret:scan",
+					"surfaces": ["fast", "integration", "release"]
+				},
+				{
+					"kind": "gate",
+					"command": "pnpm run secret:scan:bundle",
+					"surfaces": ["integration", "release"]
+				},
+				{
+					"kind": "test",
+					"path": "scripts/scan-secrets.test.mjs"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/runbook/infisical-secrets.md"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/supply-chain-secret-scan.md"
+				}
+			]
+		},
+		{
+			"id": "V13.3.2",
+			"chapter": "V13 Configuration",
+			"section": "V13.3 Secret Management",
+			"level": "L2",
+			"requirement": "Verify that access to secret assets adheres to the principle of least privilege.",
+			"applicability": "applicable",
+			"control": "least privilege over secret assets: the consumer credential is scoped per resource/action with no wildcard (ADR-0009 section 5), and the Worker is bound to the required secret set only because the required and audit-only sets are asserted disjoint",
+			"issues": [167, 442],
+			"evidence": [
+				{
+					"kind": "gate",
+					"command": "pnpm run infisical:check:coverage",
+					"surfaces": ["fast", "integration", "release"]
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/api-key-scope.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/api-keys/middleware.test.ts"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/api-key-scope.md"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/runbook/infisical-secrets.md"
+				}
+			],
+			"note": "This row is about WHO may read WHICH secret, not about whether a secret was committed to the tree (that is V13.3.1). scripts/check-infisical-coverage.mjs fails when the required and audit-only name sets stop being disjoint, which is what keeps the audit-only recovery name off the deployed Worker, and api-key-scope.test.ts asserts that a key holding one resource cannot reach the other."
+		},
+		{
+			"id": "V13.4.1",
+			"chapter": "V13 Configuration",
+			"section": "V13.4 Unintended Information Leakage",
+			"level": "L1",
+			"requirement": "Verify that the application is deployed either without any source control metadata, including the .git or .svn folders, or in a way that these folders are inaccessible both externally and to the application itself.",
+			"applicability": "not_applicable",
+			"control": "the deployed artifact is the generated Cloudflare Build Output, never a repository checkout",
+			"issues": [247],
+			"evidence": [],
+			"reason": "A Cloudflare Workers deployment uploads the generated Build Output (the bundled Worker script plus the dist/client asset tree, whose completeness is asserted by scripts/verify-cf-build-output.mjs before every release deploy). No checkout is uploaded, the Worker has no filesystem it could read a .git or .svn directory from, and there is no origin server that could serve one, so source-control metadata is not a surface this release can leak. The error-redaction suites that used to be cited here are evidence for V16.5.1 only."
+		},
+		{
+			"id": "V14.3.1",
+			"chapter": "V14 Data Protection",
+			"section": "V14.3 Client-side Data Protection",
+			"level": "L1",
+			"requirement": "Verify that authenticated data is cleared from client storage, such as the browser DOM, after the client or session is terminated. The 'Clear-Site-Data' HTTP response header field may be able to help with this but the client-side should also be able to clear up if the server connection is not available when the session is terminated.",
+			"applicability": "not_applicable",
+			"control": "no authenticated data is written to client storage: the admin session is an HttpOnly cookie whose server-side row is deleted on sign-out",
+			"issues": [439],
+			"evidence": [],
+			"reason": "No module under src/ reads or writes localStorage, sessionStorage or IndexedDB, so there is no authenticated data in client storage for a client to clear. The session itself is an HttpOnly cookie (pinned by src/cloudflare/auth/session-cookie-contract.test.ts, whose forged fixtures must fail when HttpOnly is dropped) backed by a D1 row that sign-out deletes (test/integration/session-logout.test.ts); no Clear-Site-Data header is sent, and none is needed while no credential is readable from script."
+		},
+		{
+			"id": "V15.2.1",
+			"chapter": "V15 Secure Coding and Architecture",
+			"section": "V15.2 Security Architecture and Dependencies",
+			"level": "L1",
+			"requirement": "Verify that the application only contains components which have not breached the documented update and remediation time frames.",
+			"applicability": "applicable",
+			"control": "dependency advisory gate declaration (quality/dependency-advisory-gate.json, Issue #470) — recorded as unverified for this requirement, see follow_up",
+			"issues": [470],
+			"evidence": [],
+			"follow_up": "Write the update and remediation time frames (per severity) into docs/runbook/dependency-advisories.md, then flip enforcement from audit to block in quality/dependency-advisory-gate.json once the outstanding critical/high advisories are remediated or covered by an approved exception. pnpm run dep-audit:check cannot evidence this requirement as shipped: it reports blocking findings without failing while enforcement is audit, it is CI-only rather than a release gate, the lockfile still carries outstanding blocking advisories, and no remediation deadline is written down anywhere in the repository. Choosing between remediation, exceptions and the escalation itself is an owner decision (#470)."
+		},
+		{
+			"id": "V15.2.2",
+			"chapter": "V15 Secure Coding and Architecture",
+			"section": "V15.2 Security Architecture and Dependencies",
+			"level": "L2",
+			"requirement": "Verify that the application has implemented defenses against loss of availability due to functionality which is time-consuming or resource-demanding, based on the documented security decisions and strategies for this.",
+			"applicability": "applicable",
+			"control": "request and payload budgets that bound per-caller work: rateLimit* on the external boundary and login endpoints (src/http/middleware/rate-limit.ts) and the image upload size and format policy (src/http/reactions/images.ts)",
+			"issues": [443, 456, 458],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "src/http/middleware/rate-limit.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/write-rate-limit.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/auth-login-hardening.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/upload-guards.test.ts"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/write-rate-limit.md"
+				}
+			],
+			"note": "The requirement is about defending availability from expensive or long-running functionality, so the evidence is the request budget and the upload cap. The SBOM inventory (sbom:check, #471) and the Actions pinning gate (ci:pins:check, #472) are component-provenance controls, not availability defences: they say nothing about resource exhaustion, so they are not claimed here and remain inventoried in quality/release-gate.json."
+		},
+		{
+			"id": "V16.1.1",
+			"chapter": "V16 Security Logging and Error Handling",
+			"section": "V16.1 Security Logging Documentation",
+			"level": "L2",
+			"requirement": "Verify that an inventory exists documenting the logging performed at each layer of the application's technology stack, what events are being logged, log formats, where that logging is stored, how it is used, how access to it is controlled, and for how long logs are kept.",
+			"applicability": "applicable",
+			"control": "log redaction contract (src/logging/redact.ts, src/logging/logger.ts) — recorded as unverified for the inventory half of this requirement, see follow_up",
+			"issues": [467],
+			"evidence": [],
+			"follow_up": "Write the logging inventory: per layer (external HTTP boundary, public server functions, Cloudflare auth, operator scripts), which events are logged, the log format, where each stream is stored, who may read it and for how long it is kept. docs/security/log-redaction.md documents what may be written into a record (#467) but says nothing about storage, access control or retention, so it cannot answer this requirement. Where records are stored, who can read them and how long they live are owner decisions; until the document exists this row stays not run rather than passing on a redaction contract."
+		},
+		{
+			"id": "V16.5.1",
+			"chapter": "V16 Security Logging and Error Handling",
+			"section": "V16.5 Error Handling",
+			"level": "L2",
+			"requirement": "Verify that a generic message is returned to the consumer when an unexpected or security-sensitive error occurs, ensuring no exposure of sensitive internal system data such as stack traces, queries, secret keys, and tokens.",
+			"applicability": "applicable",
+			"control": "error responses carry stable codes and a correlation id, not internals",
+			"issues": [457],
+			"evidence": [
+				{
+					"kind": "test",
+					"path": "test/integration/error-redaction.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/errors.test.ts"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security.md"
+				}
+			]
+		},
+		{
+			"id": "V1.2.5",
+			"chapter": "V1 Encoding and Sanitization",
+			"section": "V1.2 Injection Prevention",
+			"level": "L1",
+			"requirement": "Verify that the application protects against OS command injection and that operating system calls use parameterized OS queries or use contextual command line output encoding.",
+			"applicability": "not_applicable",
+			"control": "none — the Worker runtime executes no OS commands",
+			"issues": [],
+			"evidence": [],
+			"reason": "The HTTP/SSR runtime has no OS command execution path; scripts/** run in CI or operator Node and are not an HTTP-reachable surface, so there is no runtime control to verify."
+		},
+		{
+			"id": "V1.5.1",
+			"chapter": "V1 Encoding and Sanitization",
+			"section": "V1.5 Safe Deserialization",
+			"level": "L1",
+			"requirement": "Verify that the application configures XML parsers to use a restrictive configuration and that unsafe features such as resolving external entities are disabled to prevent XML eXternal Entity (XXE) attacks.",
+			"applicability": "not_applicable",
+			"control": "none — no XML parser in the runtime",
+			"issues": [],
+			"evidence": [],
+			"reason": "No XML parsing is shipped in the Worker or SSR path. If an XML integration is added, this row must be reopened with a restrictive parser test."
+		},
+		{
+			"id": "V2.4.2",
+			"chapter": "V2 Validation and Business Logic",
+			"section": "V2.4 Anti-automation",
+			"level": "L3",
+			"requirement": "Verify that business logic flows require realistic human timing, preventing excessively rapid transaction submissions.",
+			"applicability": "not_applicable",
+			"control": "rate limits instead of human-timing checks",
+			"issues": [],
+			"evidence": [],
+			"reason": "This is an L3-only human-timing requirement. The release target is L1/L2; the applicable anti-automation control is V2.4.1 (rate limits), and L3 is explicitly out of scope for this ledger."
+		},
+		{
+			"id": "V4.3.1",
+			"chapter": "V4 API and Web Service",
+			"section": "V4.3 GraphQL",
+			"level": "L2",
+			"requirement": "Verify that a query allowlist, depth limiting, amount limiting, or query cost analysis is used to prevent GraphQL or data layer expression Denial of Service (DoS) as a result of expensive, nested queries.",
+			"applicability": "not_applicable",
+			"control": "none — no GraphQL endpoint",
+			"issues": [],
+			"evidence": [],
+			"reason": "The external boundary exposes Hono REST routes only; no GraphQL endpoint is implemented or planned in this release."
+		},
+		{
+			"id": "V4.4.1",
+			"chapter": "V4 API and Web Service",
+			"section": "V4.4 WebSocket",
+			"level": "L1",
+			"requirement": "Verify that WebSocket over TLS (WSS) is used for all WebSocket connections.",
+			"applicability": "not_applicable",
+			"control": "none — no WebSocket endpoint",
+			"issues": [],
+			"evidence": [],
+			"reason": "No WebSocket or realtime endpoint is implemented in the Worker; the surface is HTTP request/response and SSR."
+		},
+		{
+			"id": "V9.1.1",
+			"chapter": "V9 Self-contained Tokens",
+			"section": "V9.1 Token source and integrity",
+			"level": "L1",
+			"requirement": "Verify that self-contained tokens are validated using their digital signature or MAC to protect against tampering before accepting the token's contents.",
+			"applicability": "not_applicable",
+			"control": "none — no self-contained tokens",
+			"issues": [],
+			"evidence": [],
+			"reason": "Sessions are Better Auth reference tokens backed by D1, and API keys are opaque bearer credentials. No self-contained token (JWT or similar) is issued or accepted."
+		},
+		{
+			"id": "V10.1.1",
+			"chapter": "V10 OAuth and OIDC",
+			"section": "V10.1 Generic OAuth and OIDC Security",
+			"level": "L2",
+			"requirement": "Verify that tokens are only sent to components that strictly need them. For example, when using a backend-for-frontend pattern for browser-based JavaScript applications, access and refresh tokens shall only be accessible for the backend.",
+			"applicability": "not_applicable",
+			"control": "none — no OAuth/OIDC provider is configured",
+			"issues": [],
+			"evidence": [],
+			"reason": "No social or OIDC provider is configured; the OAuth callback surface stops at oauth_provider_not_found (#444) and carries no access/refresh token, so there is no token-forwarding path to verify."
+		},
+		{
+			"id": "V17.1.1",
+			"chapter": "V17 WebRTC",
+			"section": "V17.1 TURN Server",
+			"level": "L2",
+			"requirement": "Verify that the Traversal Using Relays around NAT (TURN) service only allows access to IP addresses that are not reserved for special purposes (e.g., internal networks, broadcast, loopback). Note that this applies to both IPv4 and IPv6 addresses.",
+			"applicability": "not_applicable",
+			"control": "none — no WebRTC surface",
+			"issues": [],
+			"evidence": [],
+			"reason": "No WebRTC, TURN, or media signaling surface exists in the platform."
+		}
+	]
+}

@@ -236,6 +236,26 @@ function AuditTable() {
 				fontSize: 'xs',
 			})}
 		>
+			{/*
+			 * Issue #407: the caption names the table (SC 1.3.1 /
+			 * SC 2.4.6). The a11y table gate checks the property, so a
+			 * hand-rolled table that already carries one is left alone —
+			 * this one was the only table in `src/**` that did not.
+			 */}
+			<caption
+				className={css({
+					captionSide: 'top',
+					textAlign: 'start',
+					fontFamily: 'mono',
+					fontSize: 'xs',
+					letterSpacing: '0.06em',
+					textTransform: 'uppercase',
+					color: 'text.muted',
+					paddingBlockEnd: '2',
+				})}
+			>
+				pseudo-locale sample audit
+			</caption>
 			<thead>
 				<tr>
 					{[

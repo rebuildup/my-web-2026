@@ -12,6 +12,7 @@ rather than merged into one narrative.
 | Client bundle map | #483 | `bundle-map.webp` (see `bundle-map.md`) |
 | Large-list pagination measurement | #490 | `large-list-pagination.webp` (see `large-list-pagination.md`) |
 | 反復操作時の listener / memory プロファイル | #488 | `interaction-memory-profile.webp` (see `interaction-memory-profile.md`) |
+| 低速回線・CPU 制限で待機 UI が成立するかの測定 | #489 | `slow-network-state.webp` (see `slow-network-state.md`) |
 
 ---
 

@@ -8,15 +8,15 @@
 | --- | --- |
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
-| External HTTP boundary | `/api/v1`, `/integrations`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
+| External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
 | Declared surfaces | 17 |
 | Publicly reachable surfaces | 10 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 17 |
 | External hosts | 31 |
 | First-party hosts | 0 |
-| Approved transition | no delta (first record, or unchanged surface) |
-| Verdict of the approved transition | **pass** |
+| Approved transition | 2 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -98,9 +98,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external HTTP boundary prefixes (0)
+### Added external HTTP boundary prefixes (1)
 
-- (none)
+- `/.well-known`
 
 ### Removed external HTTP boundary prefixes (0)
 
@@ -140,6 +140,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/contact/channels.json`, `src/home/footer.tsx`, `src/home/hero.tsx`, `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/releases` | `github.com` | external | `src/portfolio/components/EmptyState.tsx` |
 | `https://github.com/rebuildup/project-init` | `github.com` | external | `src/portfolio/seed.ts` |
@@ -177,5 +178,6 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-_No findings._
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md
+- **WARN** `W005 external-boundary-prefix-added` External HTTP boundary prefix added: /.well-known
 

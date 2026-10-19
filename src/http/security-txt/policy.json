@@ -1,0 +1,13 @@
+{
+	"$comment": "Issue #468 — the owner-controlled RFC 9116 policy behind GET /.well-known/security.txt. The document is rendered from THIS file only (src/http/security-txt/), validated by SecurityTxtManifestSchema, and served ONLY while approval.status is 'approved'. It is 'pending' today: this repository publishes no vulnerability-reporting address (src/contact/channels.json deliberately lists no address, and docs/security.md routes urgent reports through an operator channel that is not public), so there is nothing to publish that is not a guess. To approve: (1) add at least one Contact the operator actually monitors — RFC 9116 §2.5.3 says the field MUST always be present, so an approved manifest carrying only a policy or acknowledgments URL is refused by the schema and by the gate; (2) set approval.status to 'approved' with approval.approved_at / approval.approved_by; (3) land the change through the normal release path (a PR, then the Cloudflare Workers Builds deploy). There is no edit-and-it-appears step: policy.json is imported at build time, so the new bytes exist only after a build and a deploy, and the shipped-state assertions in policy.test.ts / router.test.ts derive their expectation from approval.status so the suite stays green across the flip. DO NOT add an address the operator has not published and stands behind: a security.txt is read by strangers and by scanners, and a dead or unmonitored mailbox is a worse outcome than the 404 this file currently produces.",
+	"approval": {
+		"status": "pending",
+		"approved_at": null,
+		"approved_by": null,
+		"note": "Awaiting an owner decision on the reporting channel (Issue #468: 連絡可能な脆弱性報告窓口、対象、expiresをowner承認後にsecurity.txtとして配信). Nothing about the delivery mechanism is blocked — the renderer, the RFC 9116 §6 field grammar, the expiry gate, the HTTP contract and the browser screenshot are all complete and proven over a local fixture; only the human answer is missing."
+	},
+	"contacts": [],
+	"expires": "2027-04-01T00:00:00.000Z",
+	"preferred_languages": ["ja", "en"],
+	"policy": "https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md"
+}

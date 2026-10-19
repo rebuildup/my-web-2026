@@ -1,0 +1,108 @@
+name: viewport regression
+
+# Issue #417 — viewport layout gate for the representative public
+# surfaces at 390 / 768 / 1024 / 1440.
+#
+# This is a SEPARATE workflow from `ci.yml` for the same reason
+# `compat.yml` is (Issue #415): `ci.yml`'s `validate` job is the
+# required check and already runs the full build + Vitest suite, and a
+# second Playwright suite belongs in a workflow that answers a single
+# question — "does the same surface still lay out correctly at a phone
+# and a tablet width". Folding it into `validate` would slow the
+# required gate and mix two different questions.
+#
+# Chromium only, deliberately: `compat.yml` already covers the engine
+# axis, and a pixel diff is only meaningful against a fixed engine
+# build. The grid report below is the evidence this Issue asks for;
+# it is written to `.tmp/` so a CI run can never touch the committed
+# artefact.
+#
+# Nothing here deploys, touches production, or reads a secret: the
+# suite runs against the local preview server (`vite preview`) with
+# the local D1 state prepared by `scripts/e2e-local-bootstrap.mjs`.
+
+on:
+  pull_request:
+    branches: [main, 'release-*']
+  push:
+    branches: [main, 'release-*']
+  workflow_dispatch:
+    inputs:
+      runner:
+        description: 'Runner OS for this comparison run'
+        required: false
+        default: ubuntu-latest
+        type: choice
+        options:
+          - ubuntu-latest
+          - macos-latest
+
+concurrency:
+  group: viewport-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  viewport:
+    name: viewport (${{ github.event.inputs.runner || 'ubuntu-latest' }})
+    runs-on: ${{ github.event.inputs.runner || 'ubuntu-latest' }}
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+        with: { submodules: recursive }
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: { node-version: 22.18 }
+      # corepack is forbidden in this repository (see ADR-0003).
+      # pnpm/action-setup@v4 downloads the pnpm 12.3.4 standalone binary
+      # directly from pnpm's release CDN; it does not use corepack.
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+        with: { version: 12.3.4 }
+      # Same reason as `ci.yml`: `pnpm run build` → `scripts/build-tools.mjs`
+      # builds the collected Tool artifacts with Bun.
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
+        with: { bun-version: 1.4.2 }
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.local/share/pnpm/store
+          key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: pnpm-${{ runner.os }}-
+      - run: pnpm install --frozen-lockfile
+      # `vite preview` (the webServer the viewport config inherits from
+      # `playwright.config.ts`) serves the built Worker, so the build has
+      # to exist before Playwright boots the server.
+      - run: pnpm run build
+      - name: Install Playwright Chromium
+        run: pnpm run e2e:install
+      - name: Playwright viewport grid (390 / 768 / 1024 / 1440)
+        run: pnpm run e2e:viewport
+      # Renders the route × viewport grid and the visual-diff controls
+      # into a single HTML report, uploaded below.
+      - name: Build the viewport diff grid
+        if: always()
+        run: |
+          pnpm run verify:viewport-diff-grid -- \
+            --out .tmp/viewport-diff-grid.webp \
+            --html .tmp/viewport-diff-grid.html
+      - name: Upload viewport diff grid
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: viewport-diff-grid-${{ github.run_id }}
+          path: |
+            .tmp/viewport-diff-grid.html
+            .tmp/viewport-diff-grid.webp
+            .tmp/viewport-results.json
+            .tmp/viewport-roster.json
+            .tmp/viewport-cells/
+            .tmp/viewport-controls/
+            .tmp/viewport-screenshots/
+          retention-days: 14
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: viewport-playwright-report-${{ github.run_id }}
+          path: playwright-report/
+          retention-days: 7

@@ -176,6 +176,31 @@ describe('home access counter — server-fn impls', () => {
 		expect(result).toEqual({ ok: false, reason: 'api_key_unconfigured' });
 	});
 
+	it('recordHomeHitImpl: maps an upstream 429 to reason=rate_limited (Issue #456)', async () => {
+		// The write budget is shared with the reactions endpoint, so a
+		// burst on either surface can throttle the other. The consumer
+		// must distinguish "wait and retry" from a generic upstream
+		// failure: the value is a contract in its own right (it is what
+		// the widget's alert text keys on), even though the access path
+		// itself renders nothing for it today — `recordHomeHit`'s reason
+		// is discarded by `src/routes/index.tsx`.
+		const fetcher = vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ error: 'rate_limited' }), {
+				status: 429,
+				headers: { 'content-type': 'application/json', 'Retry-After': '60' },
+			}),
+		);
+		const result = await recordHomeHitImpl(
+			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
+			{},
+			{ session_id: 's1' },
+			'https://example.com',
+			fetcher as unknown as typeof fetch,
+		);
+		expect(result).toEqual({ ok: false, reason: 'rate_limited' });
+		expect(fetcher).toHaveBeenCalledOnce();
+	});
+
 	it('getHomeCounterImpl: uses an injected fetcher (no SELF.fetch)', async () => {
 		const fetcher = vi.fn().mockResolvedValue(
 			new Response(JSON.stringify({ count: 42, first_hit: 1, last_hit: 2 }), {

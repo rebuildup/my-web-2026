@@ -393,6 +393,65 @@ describe('home reactions — server-fn impls', () => {
 		expect(fetcher).toHaveBeenCalledOnce();
 	});
 
+	// Issue #456 — consumer side of the write rate limit. The upstream
+	// answers 429 `{ error: 'rate_limited' }` plus `Retry-After`; the
+	// widget surfaces the reason, so the mapping has to survive every
+	// burst. A generic `upstream_error` here would hide the one error
+	// the visitor can actually act on (wait, then retry).
+	const throttled = () =>
+		vi.fn().mockResolvedValue(
+			new Response(JSON.stringify({ error: 'rate_limited' }), {
+				status: 429,
+				headers: { 'content-type': 'application/json', 'Retry-After': '60' },
+			}),
+		);
+
+	it('addHomeReactionImpl maps an upstream 429 to reason="rate_limited"', async () => {
+		const fetcher = throttled();
+		const result = await addHomeReactionImpl(
+			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x', DB: env.DB },
+			{ proto: 'https', cookie: undefined },
+			{ target: 'home-page', kind: 'emoji', value: 'thumbs_up' },
+			TEST_ACTOR_ID,
+			'https://example.com',
+			fetcher as unknown as typeof fetch,
+		);
+		expect(result).toEqual({ ok: false, reason: 'rate_limited' });
+		expect(fetcher).toHaveBeenCalledOnce();
+	});
+
+	it('removeHomeReactionImpl maps an upstream 429 to reason="rate_limited"', async () => {
+		const fetcher = throttled();
+		const result = await removeHomeReactionImpl(
+			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x', DB: env.DB },
+			{ proto: 'https', cookie: undefined },
+			{ target: 'home-page', kind: 'emoji', value: 'thumbs_up' },
+			TEST_ACTOR_ID,
+			'https://example.com',
+			fetcher as unknown as typeof fetch,
+		);
+		expect(result).toEqual({ ok: false, reason: 'rate_limited' });
+	});
+
+	it('getHomeReactionsImpl degrades to an empty aggregate on a 429 read', async () => {
+		const result = await getHomeReactionsImpl(
+			{ MY_WEB_2026_CONSUMER_API_KEY: 'mk_home_x' },
+			{ proto: 'https', cookie: undefined },
+			'home-page',
+			'https://example.com',
+			throttled() as unknown as typeof fetch,
+			null,
+		);
+		// Reads degrade instead of throwing: the widget renders zero
+		// chips rather than an error page.
+		expect(result).toEqual({
+			target_key: 'home-page',
+			aggregates: [],
+			viewer_reactions: [],
+			catalog: [],
+			enabled: true,
+		});
+	});
 	// Issue #457: `/` is the highest-traffic public screen. A storage
 	// or transport failure on either leg of the widget's read must
 	// degrade the widget, not throw the route loader (whose error

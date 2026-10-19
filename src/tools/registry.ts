@@ -1,3 +1,5 @@
+import { resolveToolFrameSrc } from './embed-policy';
+import type { ToolHostMessageDeclaration, ToolIframeDeclaration } from './embed-policy';
 import manifestJson from './manifest.json' with { type: 'json' };
 
 /**
@@ -57,6 +59,14 @@ import manifestJson from './manifest.json' with { type: 'json' };
  * `verbatimModuleSyntax: true` lets `import type { Tool }` from this
  * file erase to zero runtime cost at build time, so consumers that
  * only need the type do not bundle the manifest.
+ *
+ * Embed policy (Issue #465): this module does NOT decide whether a
+ * Tool may be framed. `src/tools/embed-policy.ts` owns that decision
+ * (sandbox tokens, referrer policy, frame origin, message origin) and
+ * both `scripts/check-tools-manifest.mjs` and the `/tools/<slug>`
+ * route consume it. What this module contributes is the resolved
+ * frame `src` (`resolveToolEntryHtml`), so the route never has to
+ * re-derive it from raw manifest strings.
  */
 
 /** Manifest version. Bumped on breaking schema changes. */
@@ -87,10 +97,37 @@ export interface ManifestTool {
 				readonly iframe?: {
 					readonly sandbox: string;
 					readonly referrer_policy: string;
+					readonly allow?: string;
+					readonly sandbox_rationale?: string;
 				};
+				readonly host_message?: ToolHostMessageDeclaration;
 		  }
-		| { readonly kind: 'external_exception'; readonly external_url: string }
-		| { readonly kind: 'host_disabled'; readonly disabled_reason: string };
+		| {
+				readonly kind: 'external_exception';
+				readonly external_url: string;
+				// An external frame needs the same declared iframe policy
+				// as a same-origin one (Issue #465): the host does not
+				// invent a sandbox for a foreign origin either.
+				readonly iframe?: {
+					readonly sandbox: string;
+					readonly referrer_policy: string;
+					readonly allow?: string;
+					readonly sandbox_rationale?: string;
+				};
+				readonly host_message?: ToolHostMessageDeclaration;
+		  }
+		| {
+				readonly kind: 'host_disabled';
+				readonly disabled_reason: string;
+				/**
+				 * Issue #449: a not-yet-served Tool may still declare the
+				 * delivery contract it will need once it graduates. The grant
+				 * is reviewable and testable before the build exists, and
+				 * `toolRouteSecurityPolicy()` resolves it to the same answer
+				 * before and after graduation.
+				 */
+				readonly iframe?: ToolIframeDeclaration;
+		  };
 	readonly classification:
 		| 'same_origin_static'
 		| 'needs_tool_side_fix'
@@ -121,7 +158,29 @@ export interface PublicToolSummary {
 	readonly iframe: {
 		readonly sandbox: string;
 		readonly referrer_policy: string;
+		// Issue #465: the declared capability grant. Rendered on the
+		// <iframe> as `allow` so the manifest declaration is not inert —
+		// see `docs/tools/embed-policy.md` §2. Issue #449 additionally
+		// turns the same declaration into a host-side response header.
+		readonly allow?: string;
 	};
+}
+
+/**
+ * Per-path security policy a Tool URL asks the host for (Issue #449).
+ *
+ * The Tool Registry owns this data because the manifest is where a
+ * Tool's delivery contract lives (`delivery.iframe.allow` and
+ * `.referrer_policy`). `src/server.ts` resolves it per request and
+ * hands the result to `src/http/security-headers.ts`, which owns the
+ * header rendering. Nothing here imports the security-header module,
+ * so the direction stays registry → (entry) → boundary.
+ */
+export interface ToolRouteSecurityPolicy {
+	/** `Referrer-Policy` for the response; absent = keep the host default. */
+	readonly referrerPolicy?: string;
+	/** Feature NAMES to grant on this response. */
+	readonly grantedPermissions?: readonly string[];
 }
 
 const manifest = manifestJson as Manifest;
@@ -182,26 +241,133 @@ export function getPublicTool(slug: string): PublicToolSummary | undefined {
 }
 
 /**
+ * The frame `src` for a Tool entry (Issue #465).
+ *
+ * `same_origin_static` → the root-relative artefact entry HTML
+ * (ADR-0006 §1). `external_exception` → the declared external URL.
+ * Anything else → `''` (no frame is rendered).
+ *
+ * Single source of truth: `src/tools/embed-policy.ts#resolveToolFrameSrc`
+ * owns the rule, because the same rule decides which src the
+ * embed-policy verifier and the route are allowed to use.
+ */
+export function resolveToolEntryHtml(tool: ManifestTool): string {
+	return resolveToolFrameSrc(tool.delivery);
+}
+
+/**
  * Internal: flatten a ManifestTool into the iframe-ready summary.
- * `same_origin_static` is the only kind that exposes entry_html +
- * iframe; other kinds produce an empty entry_html so the route layer
- * can render an explicit "this Tool is not embeddable" placeholder
- * if it ever lists an `external_exception` Tool.
+ *
+ * Issue #465: `entry_html` is whatever `resolveToolFrameSrc` decides
+ * for the delivery kind — the root-relative artefact path for
+ * `same_origin_static`, the declared external URL for
+ * `external_exception`, `''` for anything else. The declared `iframe`
+ * policy (sandbox / referrer policy) is carried for every embeddable
+ * kind so the route never has to re-read the manifest; a Tool that
+ * declares no `iframe` block surfaces as empty strings, and
+ * `evaluateToolEmbedPolicy` refuses to frame it at all.
  */
 function toSummary(tool: ManifestTool): PublicToolSummary {
-	const isStatic = tool.delivery.kind === 'same_origin_static';
-	const entryHtml = isStatic
-		? (tool.delivery.entry_html ?? `${tool.delivery.artifact_path}/index.html`)
-		: '';
-	const iframe =
-		isStatic && tool.delivery.iframe ? tool.delivery.iframe : { sandbox: '', referrer_policy: '' };
+	const declared = tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.iframe;
 	return {
 		slug: tool.slug,
 		display_name: tool.display_name,
 		description: tool.description ?? tool.notes ?? '',
 		classification: tool.classification,
 		license: tool.license,
-		entry_html: entryHtml,
-		iframe,
+		entry_html: resolveToolEntryHtml(tool),
+		iframe: declared ?? { sandbox: '', referrer_policy: '' },
 	};
+}
+
+/**
+ * Split a manifest `delivery.iframe.allow` string into feature names.
+ *
+ * The manifest convention is deliberately narrow (Issue #449): FEATURE
+ * NAMES only, space separated. The origin part of a Permissions-Policy
+ * allowlist is the HOST's decision — it is derived from the origin
+ * that actually served the response, so the same manifest entry works
+ * on `http://127.0.0.1` in local workerd and on the canonical
+ * production origin. An entry that smuggles an origin in
+ * (`microphone=(self)`) therefore parses to the single token
+ * `microphone=(self)`, which matches no denied feature and is
+ * rejected by `scripts/check-security-headers.mjs` rather than
+ * silently granting nothing.
+ */
+export function parseGrantedPermissions(allow: string | undefined): readonly string[] {
+	if (!allow) return [];
+	return allow
+		.split(/\s+/)
+		.map((token) => token.trim())
+		.filter((token) => token.length > 0);
+}
+
+/**
+ * Resolve the security policy that applies to a URL path (Issue #449).
+ *
+ * Two shapes matter, and they are deliberately different:
+ *
+ *   - the Tool ARTIFACT path (`delivery.artifact_path`, i.e.
+ *     `/tools/<slug>/app` and everything under it). This is Tool-owned
+ *     content: it gets the manifest's `referrer_policy` (`no-referrer`
+ *     today) plus whatever features the Tool declared. Those responses
+ *     are Cloudflare Static Assets, so `public/_headers` has to carry
+ *     the same grant — `scripts/check-security-headers.mjs` keeps the
+ *     two in step.
+ *   - the Tool SHELL path (`/tools/<slug>`, served by the SSR
+ *     pipeline). It is a host document, so it keeps the host
+ *     `Referrer-Policy`, but it must not deny the features it is
+ *     about to delegate to its own iframe.
+ *
+ * Anything else — every host page, `/admin*`, `/api/v1/*` — returns
+ * `undefined` and therefore gets the plain baseline.
+ */
+export function toolRouteSecurityPolicy(pathname: string): ToolRouteSecurityPolicy | undefined {
+	const tool = manifest.tools.find((candidate) => matchesToolPath(candidate, pathname));
+	if (!tool) return undefined;
+
+	const grantedPermissions = parseGrantedPermissions(tool.delivery.iframe?.allow);
+	const isArtifactPath = matchesPath(artifactPathFor(tool), pathname);
+	if (!isArtifactPath) {
+		return grantedPermissions.length > 0 ? { grantedPermissions } : undefined;
+	}
+	return {
+		referrerPolicy: tool.delivery.iframe?.referrer_policy,
+		grantedPermissions,
+	};
+}
+
+/** Exact-prefix-or-/ match, the same guard the Worker entry uses. */
+function matchesPath(prefix: string, pathname: string): boolean {
+	return pathname === prefix || pathname.startsWith(`${prefix}/`);
+}
+
+/**
+ * Where a Tool's artefact is served, or would be served.
+ *
+ * A served Tool records the real path in `delivery.artifact_path`. A
+ * Tool that is not served yet has no artefact, but it still owns a
+ * canonical namespace — the one `public/_headers` and
+ * `scripts/build-tools.mjs` use — so a declared grant resolves to the
+ * SAME answer before and after the Tool graduates. That stability is
+ * what lets `mic-level`'s grant be reviewed and tested while the Tool
+ * is still `host_disabled`.
+ */
+function artifactPathFor(tool: ManifestTool): string {
+	return tool.delivery.kind === 'same_origin_static'
+		? tool.delivery.artifact_path
+		: `/tools/${tool.slug}/app`;
+}
+
+/**
+ * Does this pathname belong to the Tool?
+ *
+ * `/tools/<slug>` is the whole namespace: the iframe shell for a served
+ * Tool, the "Coming soon" placeholder for a `host_disabled` one, and
+ * the parent of the artefact directory. Matching the namespace (rather
+ * than only the artefact) is what lets a declared grant be verified
+ * before the Tool has a build.
+ */
+function matchesToolPath(tool: ManifestTool, pathname: string): boolean {
+	return matchesPath(`/tools/${tool.slug}`, pathname);
 }

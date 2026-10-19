@@ -1,7 +1,16 @@
 import { Hono } from 'hono';
+import { createAuditLogger } from '../../logging/logger';
 import type { ApiKeyContext } from '../api-keys/middleware';
 import { requireApiKey, requireResourceAction } from '../api-keys/middleware';
 import { rateLimitRead, rateLimitWrite } from '../middleware/rate-limit';
+import {
+	jsonBody,
+	methodNotAllowed,
+	parseBoundaryInput,
+	parsePathInput,
+	parseQueryInput,
+	rejection,
+} from '../validation';
 import { getImageStream } from './images';
 import {
 	ReactionReferenceError,
@@ -10,11 +19,11 @@ import {
 	listReactionsForActor,
 	putReaction,
 } from './reactions';
+import type { ReactionInputValue } from './schema';
 import {
-	MAX_TARGET_KEY_LEN,
+	parseReactionInput,
 	validateActorId,
-	validateReactionKind,
-	validateReactionValue,
+	validateReactionImageId,
 	validateTargetKey,
 } from './schema';
 
@@ -40,80 +49,64 @@ export const reactionsRouter = new Hono<{
 	Variables: { apiKey: ApiKeyContext };
 }>();
 
-interface ReactionBody {
-	target_key?: unknown;
-	actor_id?: unknown;
-	kind?: unknown;
-	value?: unknown;
-}
+/**
+ * Router diagnostics. Every argument is redacted before it reaches
+ * the log stream (Issue #467): a rejected reaction-image reference
+ * carries the submitted id, so the raw `err` must not be written
+ * verbatim.
+ */
+const reactionsLogger = createAuditLogger('http.reactions');
 
-function parseReactionBody(body: unknown): {
-	target_key: string;
-	actor_id: string;
-	kind: 'emoji' | 'image';
-	value: string;
-} {
-	if (!body || typeof body !== 'object') {
-		throw new Error('body must be an object');
-	}
-	const b = body as ReactionBody;
-	const kind = validateReactionKind(b.kind);
-	return {
-		target_key: validateTargetKey(b.target_key),
-		actor_id: validateActorId(b.actor_id),
-		kind,
-		value: validateReactionValue(kind, b.value),
-	};
-}
-
-reactionsRouter.put('/', requireApiKey, rateLimitWrite, async (c) => {
+reactionsRouter.put('/', requireApiKey, rateLimitWrite, jsonBody(parseReactionInput), async (c) => {
 	const apiKey = requireResourceAction(c, 'reactions', 'write');
-	const raw = (await c.req.json().catch(() => null)) as unknown;
-	let input: ReturnType<typeof parseReactionBody>;
-	try {
-		input = parseReactionBody(raw);
-	} catch (err) {
-		const message = err instanceof Error ? err.message : String(err);
-		return c.json({ error: 'invalid_body', reason: message }, 400);
-	}
+	const input = c.get('boundaryBody') as ReactionInputValue;
 	try {
 		const result = await putReaction(c.env.DB, { ...input, principal: apiKey.id });
 		return c.json({ created: result.created, id: result.id });
 	} catch (err) {
 		if (err instanceof ReactionReferenceError) {
-			return c.json({ error: err.code, reason: err.message }, 422);
+			// Issue #457: `err.message` names the backing table
+			// (`reaction_images`) and echoes the submitted id, so it
+			// is internal schema detail, not a client-facing reason.
+			// The stable code is self-describing and is the whole
+			// public contract; the message stays in the log.
+			reactionsLogger.warn('image reference rejected', err);
+			return c.json({ error: err.code }, 422);
 		}
 		throw err;
 	}
 });
 
-reactionsRouter.delete('/', requireApiKey, rateLimitWrite, async (c) => {
-	const apiKey = requireResourceAction(c, 'reactions', 'write');
-	const raw = (await c.req.json().catch(() => null)) as unknown;
-	let input: ReturnType<typeof parseReactionBody>;
-	try {
-		input = parseReactionBody(raw);
-	} catch (err) {
-		const message = err instanceof Error ? err.message : String(err);
-		return c.json({ error: 'invalid_body', reason: message }, 400);
-	}
-	const result = await deleteReaction(c.env.DB, { ...input, principal: apiKey.id });
-	return c.json({ deleted: result.deleted });
-});
+reactionsRouter.delete(
+	'/',
+	requireApiKey,
+	rateLimitWrite,
+	jsonBody(parseReactionInput),
+	async (c) => {
+		const apiKey = requireResourceAction(c, 'reactions', 'write');
+		const input = c.get('boundaryBody') as ReactionInputValue;
+		const result = await deleteReaction(c.env.DB, { ...input, principal: apiKey.id });
+		return c.json({ deleted: result.deleted });
+	},
+);
 
 reactionsRouter.get('/', requireApiKey, rateLimitRead, async (c) => {
 	const apiKey = requireResourceAction(c, 'reactions', 'read');
-	const targetKeyRaw = c.req.query('target');
-	if (!targetKeyRaw) {
+	// Repeated query keys are rejected before the first value is read
+	// (HTTP parameter pollution — Issue #450).
+	const query = parseQueryInput(c, ['target', 'actor_id']);
+	if (!query.ok) return rejection(c, query.failure);
+	const { target: targetKeyRaw, actor_id: actorIdRaw } = query.value;
+	if (targetKeyRaw === undefined) {
 		return c.json({ error: 'missing_target' }, 400);
 	}
-	if (targetKeyRaw.length > MAX_TARGET_KEY_LEN) {
-		return c.json({ error: 'invalid_target' }, 400);
-	}
+	const targetResult = parseBoundaryInput('invalid_target', validateTargetKey, targetKeyRaw);
+	if (!targetResult.ok) return rejection(c, targetResult.failure);
+	const targetKey = targetResult.value;
 	// Aggregate scoped to the calling principal (API key id) —
 	// see reactions.aggregateByTarget. Cross-principal rolls up
 	// are explicitly out of scope.
-	const aggregates = await aggregateByTarget(c.env.DB, targetKeyRaw, apiKey.id);
+	const aggregates = await aggregateByTarget(c.env.DB, targetKey, apiKey.id);
 	// Optional viewer-state channel. When the caller supplies an
 	// `actor_id` (the home loader reads it from the `mw_actor_id`
 	// cookie and forwards it here), we also return that visitor's
@@ -121,41 +114,39 @@ reactionsRouter.get('/', requireApiKey, rateLimitRead, async (c) => {
 	// review finding: widget previously conflated "everyone's
 	// count" with "this visitor's selection"). Backward-compatible:
 	// omit `actor_id` and the response shape is unchanged.
-	const actorIdRaw = c.req.query('actor_id');
-	if (actorIdRaw) {
+	if (actorIdRaw !== undefined) {
 		// External input — a malformed `actor_id` query param must
 		// surface as 400, not 500. P2 review #10: the bare call to
 		// `validateActorId` would throw and bubble to the default
-		// error handler. Mirror the PUT/DELETE body-validation shape
-		// (`invalid_body` + reason) so callers can distinguish
-		// client errors from server errors.
-		let actorId: string;
-		try {
-			actorId = validateActorId(actorIdRaw);
-		} catch (err) {
-			const message = err instanceof Error ? err.message : String(err);
-			return c.json({ error: 'invalid_actor_id', reason: message }, 400);
-		}
+		// error handler. `parseBoundaryInput` owns that conversion so
+		// the shape stays `invalid_actor_id` + reason.
+		const actorResult = parseBoundaryInput('invalid_actor_id', validateActorId, actorIdRaw);
+		if (!actorResult.ok) return rejection(c, actorResult.failure);
 		const viewer_reactions = await listReactionsForActor(
 			c.env.DB,
-			targetKeyRaw,
+			targetKey,
 			apiKey.id,
-			actorId,
+			actorResult.value,
 		);
-		return c.json({ target_key: targetKeyRaw, aggregates, viewer_reactions });
+		return c.json({ target_key: targetKey, aggregates, viewer_reactions });
 	}
-	return c.json({ target_key: targetKeyRaw, aggregates });
+	return c.json({ target_key: targetKey, aggregates });
 });
+
+/**
+ * Protocol guard (Issue #450): these paths accept exactly the three
+ * verbs above. Anything else answers `405` with an `Allow` header
+ * instead of falling through to the boundary `notFound` (`404`).
+ */
+reactionsRouter.all('/', methodNotAllowed(['GET', 'PUT', 'DELETE']));
 
 // Public image read — no API key required (images are public data).
 // Rate-limited by request IP via the read-side binding.
 export const reactionImagesRouter = new Hono<{ Bindings: Env }>();
 reactionImagesRouter.get('/:id', rateLimitRead, async (c) => {
-	const id = c.req.param('id');
-	if (!/^[A-Za-z0-9_-]{1,64}$/.test(id)) {
-		return c.json({ error: 'invalid_id' }, 400);
-	}
-	const stream = await getImageStream(c.env.DB, c.env.MEDIA, id);
+	const idResult = parsePathInput(c, 'id', validateReactionImageId, 'invalid_id');
+	if (!idResult.ok) return rejection(c, idResult.failure);
+	const stream = await getImageStream(c.env.DB, c.env.MEDIA, idResult.value);
 	if (!stream) {
 		return c.json({ error: 'not_found' }, 404);
 	}
@@ -163,3 +154,9 @@ reactionImagesRouter.get('/:id', rateLimitRead, async (c) => {
 	c.header('Cache-Control', stream.cacheControl);
 	return c.body(stream.body, 200);
 });
+
+/**
+ * Protocol guard (Issue #450) — reaction images are a read-only
+ * public resource, so every other verb is a `405`.
+ */
+reactionImagesRouter.all('/:id', methodNotAllowed(['GET']));

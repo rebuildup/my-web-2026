@@ -2,6 +2,7 @@ import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { z } from 'zod';
 import {
+	type ImagePolicyCode,
 	ImagePolicyError,
 	ImageReferencedError,
 	deleteImage,
@@ -9,7 +10,9 @@ import {
 	uploadImage,
 } from '../../http/reactions/images';
 import { reactionImageReferenced } from '../../http/reactions/reactions';
-import type { ReactionImageRow } from '../../http/reactions/schema';
+import { ALLOWED_IMAGE_CONTENT_TYPES, MAX_IMAGE_BYTES } from '../../http/reactions/schema';
+import type { AllowedImageContentType, ReactionImageRow } from '../../http/reactions/schema';
+import { createAuditLogger } from '../../logging/logger';
 import { requireAdmin } from '../auth/require-admin';
 
 /**
@@ -20,21 +23,50 @@ import { requireAdmin } from '../auth/require-admin';
  * `cloudflare:workers` `env` import gives us the project's real D1 +
  * R2 bindings (the same ones `src/server.ts` exposes through Hono).
  *
- * Image content-type and size are validated on the server; the
- * admin UI also validates client-side for nicer UX. SVG is rejected
- * at the server. The delete path refuses when any reaction still
- * references the image (returns 409 Conflict-equivalent via thrown
- * error).
+ * Every rejection is a stable wire string (Issue #458): the upload
+ * path sends `image_policy:<code>` and the delete path sends
+ * `DELETE_REFERENCED_FAILURE`. The UI maps the CODE half of each to a
+ * fixed Japanese sentence and shows a generic message for anything
+ * else, so a failure never renders a raw server message. The
+ * authoritative limits live in `src/http/reactions/schema.ts` — this
+ * module imports them instead of restating them, so the client-side
+ * form and the server cannot drift.
+ *
+ * Delete refuses when any reaction still references the image.
  */
 
-const ALLOWED_CONTENT_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'] as const;
+const imagesLogger = createAuditLogger('admin.images');
 
-const MAX_BYTES = 256 * 1024;
+/**
+ * Exactly what `deleteReactionImage` rejects with when a reaction
+ * still references the image.
+ *
+ * Exported so the failure-display contract can be asserted against
+ * the value the server really sends instead of a hand-written copy of
+ * it (#458 review: the UI matched a bare `image_referenced`, so this
+ * string fell through to the generic upload sentence). The code is
+ * what the UI acts on; the rationale after `:` is for the log.
+ */
+export const DELETE_REFERENCED_FAILURE = 'image_referenced: delete referencing reactions first';
 
 const UploadInput = z.object({
-	contentType: z.enum(ALLOWED_CONTENT_TYPES),
+	contentType: z.enum(ALLOWED_IMAGE_CONTENT_TYPES),
+	/** Advisory only: validated, never stored, never part of the R2 key. */
+	filename: z.string().max(512).optional(),
 	bytes: z.string(), // base64 (standard encoding)
 });
+
+/**
+ * Longest base64 payload that could still decode to ≤ `MAX_IMAGE_BYTES`.
+ * Checked BEFORE decoding so an oversized body is refused without
+ * allocating the decoded buffer.
+ */
+const MAX_BASE64_CHARS = Math.ceil(MAX_IMAGE_BYTES / 3) * 4;
+
+/** The only upload/delete failure shape the UI knows how to render. */
+function policyError(code: ImagePolicyCode): Error {
+	return new Error(`image_policy:${code}`);
+}
 
 export interface AdminImage {
 	id: string;
@@ -64,21 +96,66 @@ export const uploadReactionImage = createServerFn({ method: 'POST' })
 	.validator(UploadInput)
 	.handler(async ({ data }): Promise<AdminImage> => {
 		const session = await requireAdmin();
-		const bytes = base64ToBytes(data.bytes);
-		if (bytes.byteLength > MAX_BYTES) {
-			throw new Error(`bytes must be ≤${MAX_BYTES}`);
-		}
-		const result = await uploadImage(env.DB, env.MEDIA, {
+		return uploadReactionImageImpl({
 			contentType: data.contentType,
-			bytes,
+			filename: data.filename,
+			bytes: data.bytes,
 			// P1 review: previously hardcoded to 'admin', which
 			// erased per-admin attribution. Use the authenticated
 			// user id from the session shape (ADR-0009 §7).
 			uploadedBy: session.user.id,
 		});
-		const referenced = await reactionImageReferenced(env.DB, result.image.id);
-		return toAdminImage(result.image, referenced);
 	});
+
+export interface UploadReactionImageInput {
+	contentType: AllowedImageContentType;
+	filename?: string;
+	/** base64 (standard encoding) of the raw file bytes. */
+	bytes: string;
+	uploadedBy: string;
+}
+
+/**
+ * The admin upload path without the `createServerFn` wrapper.
+ *
+ * The wrapper needs TanStack Start's AsyncLocalStorage context, which
+ * workerd tests do not provide — same split as
+ * `src/admin/keys/load.ts`. Everything that decides whether bytes are
+ * stored lives HERE, so the upload guard can be verified against the
+ * real D1 / R2 bindings without a session.
+ */
+export async function uploadReactionImageImpl(
+	input: UploadReactionImageInput,
+): Promise<AdminImage> {
+	// Pre-decode size guard: `base64ToBytes` would otherwise allocate
+	// a buffer for an arbitrary client-supplied string.
+	if (input.bytes.length > MAX_BASE64_CHARS) {
+		throw policyError('oversize');
+	}
+	const bytes = base64ToBytes(input.bytes);
+	if (bytes.byteLength > MAX_IMAGE_BYTES) {
+		throw policyError('oversize');
+	}
+	let result: Awaited<ReturnType<typeof uploadImage>>;
+	try {
+		result = await uploadImage(env.DB, env.MEDIA, {
+			contentType: input.contentType,
+			bytes,
+			filename: input.filename,
+			uploadedBy: input.uploadedBy,
+		});
+	} catch (err) {
+		if (err instanceof ImagePolicyError) {
+			// The message carries the guard's rationale for the
+			// server log; the code is what the UI is allowed to act on.
+			imagesLogger.error('upload rejected:', err.code, err.message);
+			throw policyError(err.code);
+		}
+		throw err;
+	}
+	const referenced = await reactionImageReferenced(env.DB, result.image.id);
+	return toAdminImage(result.image, referenced);
+}
 
 const DeleteImageInput = z.object({ id: z.string().min(1).max(64) });
 
@@ -91,10 +168,10 @@ export const deleteReactionImage = createServerFn({ method: 'POST' })
 			return { deleted: true };
 		} catch (err) {
 			if (err instanceof ImageReferencedError) {
-				throw new Error('image_referenced: delete referencing reactions first');
+				throw new Error(DELETE_REFERENCED_FAILURE);
 			}
 			if (err instanceof ImagePolicyError) {
-				throw new Error(`image_policy: ${err.message}`);
+				throw policyError(err.code);
 			}
 			throw err;
 		}

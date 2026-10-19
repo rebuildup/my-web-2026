@@ -8,10 +8,18 @@ import { defineConfig, devices } from '@playwright/test';
  *   2. `e2e/prod-smoke.spec.ts` — production-only smoke, runs via
  *      `pnpm run e2e:prod` (= `PLAYWRIGHT_BASE_URL=https://rebuildup.dev
  *      playwright test e2e/prod-smoke.spec.ts`). Triggers the GH
- *      Actions `production smoke` workflow on `workflow_dispatch`.
+ *      Actions `production smoke` workflow on `workflow_dispatch`. The
+ *      Issue #500 representative-route group in that file also runs
+ *      offline via `pnpm run e2e:prod:local`, which keeps
+ *      `PLAYWRIGHT_BASE_URL` on localhost so nothing resolves the
+ *      production hostname.
  *   3. `e2e/tools-index.spec.ts` — `/tools` index page contract.
  *   4. `e2e/tools-prototype.spec.ts` — `/tools/prototype` iframe
  *      contract against the **built** Tool artifact.
+ *   5. `e2e/csrf.spec.ts` — boundary CSRF contract over real HTTP
+ *      (same-origin write accepted, cross-site write refused).
+ *   6. `e2e/admin-authorization.spec.ts` — admin route / API-key scope
+ *      matrix in a real browser (Issue #441).
  *
  * The webServer block below spins up `pnpm preview` (= `vite preview`
  * against `dist/client/`) automatically when `PLAYWRIGHT_BASE_URL`
@@ -37,7 +45,14 @@ import { defineConfig, devices } from '@playwright/test';
  * as canonical.
  */
 const PORT = Number(process.env.PLAYWRIGHT_PORT ?? 3000);
-const BASE_URL = process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`;
+const LOCAL_SMOKE = process.env.E2E_LOCAL_PROD_SMOKE === '1';
+// `e2e:prod:local` is a deliberately local-only rehearsal: force the
+// localhost origin even if a parent shell/CI job still exports a production
+// `PLAYWRIGHT_BASE_URL`. The wrapper script also overwrites it; this is the
+// config-side fail-safe for anyone invoking Playwright directly.
+const BASE_URL = LOCAL_SMOKE
+	? `http://127.0.0.1:${PORT}`
+	: (process.env.PLAYWRIGHT_BASE_URL ?? `http://127.0.0.1:${PORT}`);
 
 // The local D1 state (`.tmp/d1state`) must be migrated and seeded
 // BEFORE the preview server starts serving from it. That work runs in
@@ -89,14 +104,55 @@ export default defineConfig({
 	// so the regular `pnpm run e2e` (CI on push, local dev) does not
 	// DNS-fail against a domain that may not be deployed yet.
 	//
-	// `portfolio.spec.ts` likewise targets a local D1 binding: it
-	// seeds draft / unlisted / archived rows into the local D1 and
-	// asserts the public-visibility boundary. The local D1 file is
-	// not addressable from a remote Worker deployment, so the spec
-	// is filtered out of the production-only path.
-	testIgnore: BASE_URL.startsWith('http://127.0.0.1')
-		? '**/prod-*.spec.ts'
-		: '**/portfolio.spec.ts',
+	// ONE documented exception: `pnpm run e2e:prod:local`, which sets
+	// `E2E_LOCAL_PROD_SMOKE=1` and runs the production spec file
+	// against the LOCAL preview build. It is safe precisely because
+	// `e2e/prod-smoke.spec.ts` navigates to the `baseURL` this config
+	// resolves (here: `http://127.0.0.1:3000`) instead of a hardcoded
+	// production origin, and because its Issue #43 group — which does
+	// hardcode the canonical origin, including the one deliberate write
+	// in the file, the anonymous reaction mutation — disarms itself
+	// unless the run is explicitly canonical, and local mode never is. It
+	// exists so the Issue #500 representative-route contract is
+	// reproducible offline and its verification screenshot can be
+	// captured without reading production.
+	// `e2e/prod-portfolio.spec.ts` stays ignored either way: it is the
+	// separate G15 post-publication contract and needs published entries
+	// plus production media.
+	//
+	// `portfolio.spec.ts` and `portfolio-markdown-xss.spec.ts` likewise
+	// target a local D1 binding: they seed rows into the local D1
+	// (`draft` / `unlisted` / `archived` visibility rows, and the
+	// Issue #451 XSS corpus) and assert against them. The local D1 file
+	// is not addressable from a remote Worker deployment, so a full
+	// `PLAYWRIGHT_BASE_URL=https://rebuildup.dev pnpm exec playwright
+	// test` (no file filter) would seed the local file, read the
+	// deployed page, and fail every assertion on a 404 — a failure
+	// signature that reads as "production portfolio is broken" when
+	// nothing is. Both files are therefore filtered out of the
+	// non-local path. Each also skips itself in-file, so a
+	// file-filtered invocation (`playwright test <file>`, which is how
+	// the production scripts name their spec) cannot seed a row against
+	// a deployed origin either.
+	//
+	// Issue #415: `e2e/compat/**` is owned by
+	// `playwright.compat.config.ts` (Chromium / Firefox / WebKit) and is
+	// always ignored here, so the two suites never run each other and the
+	// default chromium-only gate keeps its current cost.
+	//
+	// Issue #417: `e2e/viewport/**` is owned by
+	// `playwright.viewport.config.ts` (one engine, four viewport
+	// widths). Same reason — the viewport grid is its own question, and
+	// running it here would multiply the required gate by 16 cells.
+	testIgnore: [
+		'**/compat/**',
+		'**/viewport/**',
+		...(BASE_URL.startsWith('http://127.0.0.1')
+			? LOCAL_SMOKE
+				? ['**/prod-portfolio.spec.ts']
+				: ['**/prod-*.spec.ts']
+			: ['**/portfolio.spec.ts', '**/portfolio-markdown-xss.spec.ts']),
+	],
 	// The local project spins up the preview server automatically.
 	// `pnpm preview` is required because the Tool iframe spec reaches
 	// into `dist/client/tools/<slug>/app/` (the collected Tool artifact)

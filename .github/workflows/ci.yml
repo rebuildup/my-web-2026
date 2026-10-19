@@ -22,6 +22,12 @@ concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+# Issue #472 — every `uses:` is pinned to a full commit SHA and the
+# upstream tag it was reviewed against is recorded in the comment and in
+# `quality/actions-pins.json`. `pnpm run ci:pins:check` fails on a
+# floating ref, on a job token that is not least privilege, and on any
+# secret value or production deploy reached from CI. Update procedure:
+# docs/security/supply-chain-actions-pinning.md
 permissions:
   contents: read
 
@@ -31,18 +37,18 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 25
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with: { submodules: recursive }
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: { node-version: 22.18 }
       # corepack is forbidden in this repository (see ADR-0003).
       # pnpm/action-setup@v4 downloads the pnpm 12.3.4 standalone binary
       # directly from pnpm's release CDN; it does not use corepack.
-      - uses: pnpm/action-setup@v4
+      - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
         with: { version: 12.3.4 }
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with: { bun-version: 1.4.2 }
-      - uses: actions/cache@v4
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: ~/.local/share/pnpm/store
           key: pnpm-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
@@ -68,6 +74,60 @@ jobs:
       # is part of `validate:integration` via `pnpm run lint:ci` — see
       # scripts/lint-ci.mjs.
       - run: pnpm run validate:integration
+      # Dependency advisory gate (Issue #470). It reads the committed
+      # lockfile through `pnpm audit --json` and evaluates the result
+      # against the reviewed declaration in
+      # `quality/dependency-advisory-gate.json` (blocking severities,
+      # exception ledger, expiry).
+      #
+      # Two independent failure contracts:
+      #   - Blocking critical/high advisories are RECORDED while the
+      #     declaration says `enforcement: audit`. The current lockfile
+      #     carries 18 of them; remediating or approving them is an owner
+      #     decision tracked in docs/runbook/dependency-advisories.md §6,
+      #     and no exception is written here on the owner's behalf.
+      #   - Unreadable advisory data FAILS CLOSED (exit 3) in either
+      #     mode. A registry outage must never be reported as a clean
+      #     dependency tree, so this step is not `continue-on-error`.
+      # A usage mistake or a malformed declaration is exit 2, never a
+      # security verdict.
+      # This step is CI-only on purpose: it needs the registry advisory
+      # endpoint, which the offline `validate:fast` path must not reach.
+      # The decision is in scripts/check-dependency-advisories.mjs, not in
+      # this YAML, so `pnpm run dep-audit:check` produces the same
+      # verdict locally.
+      # Flipping the declaration to `enforcement: block` is the one-line
+      # escalation; `--enforce` previews the same verdict without
+      # editing the reviewed file.
+      - name: Dependency advisory audit
+        run: pnpm run dep-audit:check -- --report .tmp/dependency-audit-report.html
+      # The HTML report is derived from the lockfile's resolved package
+      # set and public advisory metadata only — no credential, so the
+      # artifact carries the same posture as the Cloudflare bundle below.
+      - name: Upload dependency advisory report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: dependency-advisory-report-${{ github.sha }}
+          path: .tmp/dependency-audit-report.html
+          retention-days: 90
+      # Supply-chain SBOM (Issue #471). `pnpm run sbom:check` already
+      # runs inside `validate:fast` (and therefore inside
+      # `validate:integration` above); this step materialises the
+      # CycloneDX document so the exact inventory CI resolved is
+      # retained as a workflow artifact. The document is derived from
+      # tracked files only and carries no credential, so uploading it
+      # is the same posture as the Cloudflare bundle step below.
+      # Attaching it to the GitHub Release stays a human-gated release
+      # step — see docs/release.md and docs/runbook/sbom.md.
+      - name: Build SBOM
+        run: pnpm run sbom:build
+      - name: Upload SBOM
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: sbom-${{ github.sha }}
+          path: release-assets/supply-chain/
+          retention-days: 90
       # On push, the worker-configuration.d.ts must match what
       # `wrangler types` produces. Local `pnpm run validate:release`
       # adds the same gate. GitHub Actions expression language does
@@ -93,14 +153,14 @@ jobs:
         run: pnpm run e2e
       - name: Upload Playwright report
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: playwright-report-${{ github.sha }}
           path: playwright-report/
           retention-days: 7
       - name: Upload Cloudflare bundle
         if: github.event_name == 'push'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: dist-cloudflare-${{ github.sha }}
           path: dist-cloudflare/

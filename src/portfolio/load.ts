@@ -1,4 +1,5 @@
-import type { PortfolioLoader, PortfolioEnv } from './contract';
+import type { PortfolioEnv, PortfolioLoader } from './contract';
+import { composeMediaUrl } from './media';
 import {
 	type ListPortfolioProjectsOptions,
 	type PortfolioAdjacent,
@@ -10,15 +11,15 @@ import {
 	type PortfolioMedia,
 	type PortfolioMediaRow,
 	type PortfolioProject,
+	type PortfolioProjectIndexEntry,
 	type PortfolioProjectRow,
+	VisibilitySchema,
 	decodeCursor,
 	encodeCursor,
 	rowToLink,
 	rowToMedia,
 	rowToProject,
-	VisibilitySchema,
 } from './schema';
-import { composeMediaUrl } from './media';
 
 /**
  * D1-backed PortfolioLoader implementation.
@@ -44,13 +45,72 @@ import { composeMediaUrl } from './media';
  *   caller passes a slug directly. Admin / preview surfaces that
  *   need broader visibility must build their own loader (NOT
  *   here — this module owns the public contract only).
+ *
+ * Round-trip contract (Issue #491):
+ *   Every public read has a D1 statement BUDGET exported below
+ *   (`PORTFOLIO_DETAIL_QUERY_BUDGET`,
+ *   `portfolioListQueryBudget`). Links and media are read for a
+ *   whole page in two batched statements, never per row, so the
+ *   statement count does not grow linearly with the number of
+ *   projects on the page. The budgets are asserted against real
+ *   fixture sizes in `load.query-budget.test.ts`.
  */
+
+/**
+ * Issue #491 — D1 round-trip budget for the public read surfaces.
+ *
+ * These are BOUNDARY VALUES, not measurements: the N+1 detector
+ * (`src/portfolio/load.query-budget.test.ts`) asserts that the
+ * loader stays at or under them for every fixture size, so a
+ * future change that reintroduces a per-row query fails the
+ * suite instead of shipping silently.
+ *
+ *   detail surface (`/portfolio/<slug>`): 1 target query + 1
+ *   link query + 1 media query = 3, independent of how many
+ *   links / media the project owns.
+ *
+ *   list surface (`/portfolio`): 1 page query + one batched
+ *   link query and one batched media query per id chunk, i.e.
+ *   `1 + 2 * ceil(pageSize / D1_BATCH_ID_CHUNK)`.
+ *
+ * The list budget is sub-linear, never linear: the growth per
+ * extra project on a page is `2 / D1_BATCH_ID_CHUNK` statements
+ * (0.02 at the current chunk size), and exactly 0 for every page
+ * that fits in one chunk.
+ */
+export const PORTFOLIO_DETAIL_QUERY_BUDGET = 3;
+
+/**
+ * Maximum number of bound parameters in one D1 statement.
+ *
+ * Cloudflare D1 documents a hard cap of 100 bound parameters per
+ * query (D1 platform limits). The batched child queries below
+ * bind exactly one parameter per project id and nothing else, so
+ * the number of ids a single statement may carry is that cap.
+ *
+ * This is deliberately NOT the SQLite engine limit (32766 host
+ * parameters) and not the 999 figure older SQLite builds shipped:
+ * D1 rejects the statement before SQLite sees it.
+ */
+export const D1_BATCH_ID_CHUNK = 100;
+
+/**
+ * Maximum D1 statements `listPortfolioProjects` may issue for a
+ * page of `pageSize` projects. See `PORTFOLIO_DETAIL_QUERY_BUDGET`
+ * for the reasoning behind the shape.
+ */
+export function portfolioListQueryBudget(pageSize: number): number {
+	const size = Number.isFinite(pageSize) ? Math.max(0, Math.floor(pageSize)) : 0;
+	if (size === 0) return 1; // empty page: the page query alone
+	return 1 + 2 * Math.ceil(size / D1_BATCH_ID_CHUNK);
+}
 
 export function createD1PortfolioLoader(env: PortfolioEnv): PortfolioLoader {
 	return {
 		loadPortfolioProject: (slug) => loadPortfolioProjectImpl(env, slug),
 		loadPortfolioAdjacent: (slug) => loadPortfolioAdjacentImpl(env, slug),
 		listPortfolioProjects: (opts) => listPortfolioProjectsImpl(env, opts),
+		listPublishedProjectIndex: () => listPublishedProjectIndexImpl(env),
 	};
 }
 
@@ -190,17 +250,21 @@ async function listPortfolioProjectsImpl(
 			(pinned = ? AND display_order = ? AND updated_at = ? AND id > ?)
 		)`
 		: '';
-	const sql = `
+	// Fetch limit+1 so we can detect "has next page" without a
+	// separate COUNT query.
+	const fetchLimit = limit + 1;
+	// The statement text is passed inline on purpose. `scripts/check-d1-sql-binding.mjs`
+	// only reads the literal argument of `prepare()`, so assembling this into a
+	// `const sql` first would hide the `${cursorPredicate}` interpolation from the gate
+	// and make its `SQL_STRUCTURE_ALLOWLIST` entry dead configuration. Inline, the gate
+	// sees the interpolation and holds it to the reason recorded there.
+	// See `docs/security.md#d1-parameter-binding-issue-452`.
+	const stmt = db.prepare(`
 		SELECT * FROM portfolio_project
 		WHERE status = 'published' AND visibility = 'public'${cursorPredicate}
 		ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC
 		LIMIT ?
-	`;
-
-	// Fetch limit+1 so we can detect "has next page" without a
-	// separate COUNT query.
-	const fetchLimit = limit + 1;
-	const stmt = db.prepare(sql);
+	`);
 	const binds: Array<string | number> = [];
 	if (cursor) binds.push(...cursorBinds(cursor));
 	binds.push(fetchLimit);
@@ -215,15 +279,33 @@ async function listPortfolioProjectsImpl(
 		? pageRows.filter((row) => intersectsAny(row.facets, facetFilter))
 		: pageRows;
 
-	const projects: PortfolioProject[] = [];
-	for (const row of filteredRows) {
-		const [links, media] = await Promise.all([fetchLinks(db, row.id), fetchMedia(db, row.id)]);
-		const mediaWithUrls = media.map((m) => ({
-			...m,
-			url: composeMediaUrl(env, m.r2Key),
-		}));
-		projects.push(rowToProject(row, links, mediaWithUrls));
-	}
+	// N+1 BOUNDARY (Issue #491). Links and media are fetched for the
+	// WHOLE page in two batched statements, then grouped in memory.
+	// The previous shape issued `fetchLinks` + `fetchMedia` per row,
+	// so a page of N projects cost `1 + 2N` statements — a textbook
+	// N+1 that grew linearly with data the caller never asked to
+	// make more expensive. Both batches are independent, so they run
+	// concurrently: 3 statements for any page up to
+	// `D1_BATCH_ID_CHUNK` projects.
+	const [linksByProject, mediaByProject] = await Promise.all([
+		fetchLinksForProjects(
+			db,
+			filteredRows.map((row) => row.id),
+		),
+		fetchMediaForProjects(
+			db,
+			filteredRows.map((row) => row.id),
+		),
+	]);
+
+	const projects: PortfolioProject[] = filteredRows.map((row) => {
+		const media = mediaByProject.get(row.id) ?? [];
+		return rowToProject(
+			row,
+			linksByProject.get(row.id) ?? [],
+			media.map((m) => ({ ...m, url: composeMediaUrl(env, m.r2Key) })),
+		);
+	});
 
 	// Build nextCursor from the LAST returned row (post-filter)
 	// because facet filtering can change which row is "last" —
@@ -244,6 +326,45 @@ async function listPortfolioProjectsImpl(
 
 function emptyPage(): PortfolioListPage {
 	return { projects: [], nextCursor: null };
+}
+
+/**
+ * Public project index (Issue #420) — the URL identity of every
+ * public+published project.
+ *
+ * One narrow query: `slug` + `updated_at` + the two visibility
+ * columns. Unlike `listPortfolioProjectsImpl` it does not fan out to
+ * the per-project link / media tables, because a URL enumerator has
+ * no use for them, and it does not carry a `LIMIT`: a silent cap
+ * would drop real published projects from a consumer's output without
+ * any signal, which is exactly the failure mode this method exists to
+ * prevent. If the project count ever approaches the sitemap protocol
+ * ceiling (50 000 URLs), the right fix is an explicit, logged cap —
+ * not a quiet one.
+ *
+ * `isVisible` re-checks each row in JavaScript for the same defence in
+ * depth the rest of this module applies: the SQL predicate is the fast
+ * path, not the guarantee.
+ */
+async function listPublishedProjectIndexImpl(
+	env: PortfolioEnv,
+): Promise<readonly PortfolioProjectIndexEntry[]> {
+	const db = env.DB;
+	if (!db) return [];
+	const result = await db
+		.prepare(
+			`SELECT slug, updated_at, visibility, status FROM portfolio_project
+			 WHERE status = 'published' AND visibility = 'public'
+			 ORDER BY pinned DESC, display_order ASC, updated_at DESC, id ASC`,
+		)
+		.all<Pick<PortfolioProjectRow, 'slug' | 'updated_at' | 'visibility' | 'status'>>();
+	const rows = result.results ?? [];
+	const entries: PortfolioProjectIndexEntry[] = [];
+	for (const row of rows) {
+		if (!isVisible(row)) continue;
+		entries.push({ slug: row.slug, updatedAt: row.updated_at });
+	}
+	return entries;
 }
 
 function clampLimit(input: number | undefined): number {
@@ -304,9 +425,12 @@ function cursorBinds(c: PortfolioCursor): ReadonlyArray<string | number> {
  * rows always resolve to invisible.
  *
  * Defence in depth: even if a future query path drops the SQL
- * filter, `isVisible` still refuses non-public rows.
+ * filter, `isVisible` still refuses non-public rows. The parameter
+ * is the two-column projection it actually reads, so narrow queries
+ * (the public project index) can reuse it without widening their
+ * result type to the full row.
  */
-function isVisible(row: PortfolioProjectRow): boolean {
+function isVisible(row: Pick<PortfolioProjectRow, 'visibility' | 'status'>): boolean {
 	const visibility = VisibilitySchema.safeParse(row.visibility);
 	if (!visibility.success) return false;
 	if (row.status !== 'published') return false;
@@ -314,25 +438,92 @@ function isVisible(row: PortfolioProjectRow): boolean {
 }
 
 async function fetchLinks(db: D1Database, projectId: string): Promise<readonly PortfolioLink[]> {
-	const result = await db
-		.prepare(
-			'SELECT * FROM portfolio_link WHERE project_id = ?1 ORDER BY display_order ASC, created_at ASC',
-		)
-		.bind(projectId)
-		.all<PortfolioLinkRow>();
-	const rows = result.results ?? [];
-	return rows.map(rowToLink);
+	return (await fetchLinksForProjects(db, [projectId])).get(projectId) ?? [];
 }
 
 async function fetchMedia(db: D1Database, projectId: string): Promise<readonly PortfolioMedia[]> {
-	const result = await db
-		.prepare(
-			'SELECT * FROM portfolio_media WHERE project_id = ?1 ORDER BY is_cover DESC, display_order ASC, created_at ASC',
-		)
-		.bind(projectId)
-		.all<PortfolioMediaRow>();
-	const rows = result.results ?? [];
-	return rows.map(rowToMedia);
+	return (await fetchMediaForProjects(db, [projectId])).get(projectId) ?? [];
+}
+
+/**
+ * Fetch the links of every project on the page with ONE statement
+ * per id chunk (Issue #491).
+ *
+ * Ordering contract: `project_id` is the leading sort key and the
+ * per-project ordering (`display_order ASC, created_at ASC`) is
+ * unchanged, so grouping by id in memory reproduces exactly what the
+ * per-project query returned. A project with no links is simply
+ * absent from the map; callers treat "absent" as "no links".
+ */
+async function fetchLinksForProjects(
+	db: D1Database,
+	projectIds: readonly string[],
+): Promise<Map<string, PortfolioLink[]>> {
+	const grouped = new Map<string, PortfolioLink[]>();
+	for (const chunk of chunkProjectIds(projectIds)) {
+		// `linkPlaceholders` is STRUCTURE, never data: it is a chain of
+		// `?N` placeholders derived from the chunk's own length. Every
+		// project id is bound with `.bind(...chunk)`. The static D1
+		// statement-shape gate (Issue #452) sees this interpolation, so
+		// the identifier is named in `SQL_STRUCTURE_ALLOWLIST`
+		// (`scripts/check-d1-sql-binding.mjs`) together with that reason.
+		const linkPlaceholders = chunk.map((_, i) => `?${i + 1}`).join(', ');
+		const result = await db
+			.prepare(
+				`SELECT * FROM portfolio_link WHERE project_id IN (${linkPlaceholders}) ORDER BY project_id ASC, display_order ASC, created_at ASC`,
+			)
+			.bind(...chunk)
+			.all<PortfolioLinkRow>();
+		for (const row of result.results ?? []) {
+			const bucket = grouped.get(row.project_id);
+			const link = rowToLink(row);
+			if (bucket) bucket.push(link);
+			else grouped.set(row.project_id, [link]);
+		}
+	}
+	return grouped;
+}
+
+/**
+ * Fetch the media of every project on the page with ONE statement
+ * per id chunk (Issue #491). Same ordering contract as
+ * `fetchLinksForProjects`: `project_id` leads the sort, the
+ * per-project order (`is_cover DESC, display_order ASC,
+ * created_at ASC`) is preserved, so `media[0]` is still the cover.
+ */
+async function fetchMediaForProjects(
+	db: D1Database,
+	projectIds: readonly string[],
+): Promise<Map<string, PortfolioMedia[]>> {
+	const grouped = new Map<string, PortfolioMedia[]>();
+	for (const chunk of chunkProjectIds(projectIds)) {
+		// `mediaPlaceholders` carries the same STRUCTURE-NOT-DATA argument
+		// as `linkPlaceholders` above, and is allowlisted under the same
+		// Issue #452 gate.
+		const mediaPlaceholders = chunk.map((_, i) => `?${i + 1}`).join(', ');
+		const result = await db
+			.prepare(
+				`SELECT * FROM portfolio_media WHERE project_id IN (${mediaPlaceholders}) ORDER BY project_id ASC, is_cover DESC, display_order ASC, created_at ASC`,
+			)
+			.bind(...chunk)
+			.all<PortfolioMediaRow>();
+		for (const row of result.results ?? []) {
+			const bucket = grouped.get(row.project_id);
+			const media = rowToMedia(row);
+			if (bucket) bucket.push(media);
+			else grouped.set(row.project_id, [media]);
+		}
+	}
+	return grouped;
+}
+
+/** Split ids into statement-sized batches (`D1_BATCH_ID_CHUNK` ids each). */
+function chunkProjectIds(projectIds: readonly string[]): string[][] {
+	const chunks: string[][] = [];
+	for (let i = 0; i < projectIds.length; i += D1_BATCH_ID_CHUNK) {
+		chunks.push(projectIds.slice(i, i + D1_BATCH_ID_CHUNK));
+	}
+	return chunks;
 }
 
 /**

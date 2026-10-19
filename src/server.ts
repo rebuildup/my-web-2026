@@ -5,7 +5,11 @@
 // CSRF middleware active; do NOT define a custom `startInstance` here.
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
+import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
 import { externalBoundary } from './http/hono';
+import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
+import { applySecurityHeaders } from './http/security-headers';
+import { toolRouteSecurityPolicy } from './tools/registry';
 
 /**
  * Path prefixes that must be served by the Hono external boundary
@@ -15,14 +19,34 @@ import { externalBoundary } from './http/hono';
  *   /webhooks/*      inbound webhooks from external services
  *   /oauth/*         OAuth callback handlers
  *   /integrations/*  third-party integration adapters
+ *   /sitemap.xml     crawler-facing sitemap (Issue #420)
+ *   /robots.txt      crawler-facing crawler policy (Issue #420)
+ *
+ * The two SEO documents are the only non-API entries. They are
+ * documents Hono can answer and the SSR pipeline cannot: TanStack
+ * Start 1.168 has no raw-response route primitive, so a route file
+ * always renders through the document shell. This is exactly the
+ * "TanStack Start ships a first-class HTTP-route primitive" case ADR-0002
+ * lists as a re-evaluation trigger — when that primitive lands, these
+ * two paths move back into `src/routes/` and leave this list.
  *
  * Internal application operations invoked from the UI use TanStack
  * Start server functions and never appear under these prefixes.
  *
  * Matching is exact-prefix-or-/ to avoid collisions like /api/v10 or
- * /api/v1evil accidentally entering the external boundary.
+ * /api/v1evil accidentally entering the external boundary. The SEO
+ * entries are exact-match in practice: `/sitemap.xml` and
+ * `/robots.txt` have no children, and neither prefix below them can
+ * collide with a page route.
  */
-const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations'] as const;
+const EXTERNAL_BOUNDARY_PREFIXES = [
+	'/api/v1',
+	'/webhooks',
+	'/oauth',
+	'/integrations',
+	'/sitemap.xml',
+	'/robots.txt',
+] as const;
 
 function matchesExternalBoundary(pathname: string): boolean {
 	return EXTERNAL_BOUNDARY_PREFIXES.some(
@@ -70,12 +94,76 @@ function matchesExternalBoundary(pathname: string): boolean {
  *
  * The `no-cache` branch for the rest of the site still requires
  * `text/html`: `/_serverFn/*` payloads and streamed data are not
- * documents and must not inherit a document cache policy.
+ * documents and must not inherit a document cache policy — the
+ * server-function branch below handles those separately.
+ *
+ * Cache isolation (Issue #460) adds two rules on top of #291:
+ *
+ *   `/_serverFn/*` -> `private, no-store`. Server-function payloads
+ *                are per-caller by construction and are JSON, not
+ *                documents, so the content-type branch below would
+ *                have skipped them entirely.
+ *   caller-specific documents -> `private, no-cache`. A response
+ *                that carries `Cookie` / `Authorization` on the way in
+ *                (or a `Set-Cookie` on the way out) is tied to one
+ *                identity, and `private` is the directive that forbids
+ *                a shared cache from storing it (RFC 9111 §5.2.2.7).
+ *                Both rules add `Vary: Cookie, Authorization` as the
+ *                signal a non-conforming intermediary understands.
+ *                The home page is the case that matters: the reactions
+ *                widget renders the visitor's own selection
+ *                (`viewer_reactions`) out of the `mw_actor_id` cookie,
+ *                so a shared cache replaying one visitor's document to
+ *                the next is a privacy leak, not a stale-pixel bug.
  *
  * An existing `cache-control` is never overwritten, so anything the
  * framework already decided wins, and Hono never reaches this function
  * — the external boundary returns before it.
+ *
+ * The directive vocabulary (`private, no-store`, `Vary` merging) is
+ * owned by `src/http/middleware/cache-policy.ts` and imported, so the
+ * SSR half and the external-boundary half of Issue #460 cannot drift.
  */
+
+/**
+ * Base path the framework mounts server functions on. Matches the
+ * `tanstackStart()` default (`serverFns.base`), which this project
+ * does not override; a start config that changed it would need to
+ * change this constant with it.
+ */
+const SERVER_FN_BASE = '/_serverFn';
+
+/**
+ * Does this request/response pair belong to a specific caller?
+ *
+ * The signal is the request's own `Cookie` / `Authorization` header,
+ * plus any `Set-Cookie` the response issues. It is deliberately
+ * derived from what the request actually carries rather than from a
+ * list of "private pages": a page is per-caller precisely when
+ * something in the exchange ties the body to one identity, and a
+ * route list would be wrong the moment a new cookie-reading route
+ * ships.
+ */
+function isCallerSpecific(request: Request, response: Response): boolean {
+	if (response.headers.has('set-cookie')) return true;
+	return AUTH_REQUEST_HEADERS.some((name) => request.headers.has(name));
+}
+
+/** Attach a cache policy without ever failing the response. */
+function setCacheHeaders(response: Response, cacheControl: string, vary: boolean): Response {
+	try {
+		response.headers.set('cache-control', cacheControl);
+		if (vary) {
+			response.headers.set('vary', mergeVary(response.headers.get('vary')));
+		}
+	} catch {
+		// Sealed headers (immutable guard) — leave the response as-is
+		// rather than fail a page render over a cache hint.
+		return response;
+	}
+	return response;
+}
+
 function applyHtmlCachePolicy(request: Request, response: Response): Response {
 	if (response.headers.has('cache-control')) return response;
 
@@ -83,18 +171,242 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
 	// Exact-prefix-or-/ so `/administrator` cannot inherit the admin rule,
 	// mirroring how `matchesExternalBoundary` guards `/api/v10`.
 	const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
-	const value = isAdmin
-		? 'no-store'
-		: response.headers.get('content-type')?.includes('text/html')
-			? 'no-cache'
-			: null;
-	if (value === null) return response;
+	if (isAdmin) return setCacheHeaders(response, 'no-store', true);
 
+	// Server-function payloads (`/_serverFn/*`, Issue #460). These are
+	// per-caller by construction — the handlers read the session
+	// cookie and the `mw_actor_id` cookie — and they are NOT documents,
+	// so the content-type branch below would have skipped them
+	// entirely. Decided by path alone, for the same reason the admin
+	// rule is: a JSON payload with a sealed or unexpected content-type
+	// must not escape the policy.
+	if (pathname === SERVER_FN_BASE || pathname.startsWith(`${SERVER_FN_BASE}/`)) {
+		return setCacheHeaders(response, PRIVATE_NO_STORE, true);
+	}
+
+	if (!response.headers.get('content-type')?.includes('text/html')) return response;
+
+	// A document that varies by caller must never be stored by a
+	// shared cache. `private` says exactly that while keeping the
+	// `no-cache` revalidation contract Issue #291 chose — the hit
+	// counter and the reaction aggregates are rendered on every
+	// request, so the browser cache must revalidate, but a CDN must not
+	// hold the body at all.
+	const callerSpecific = isCallerSpecific(request, response);
+	return setCacheHeaders(
+		response,
+		callerSpecific ? 'private, no-cache' : 'no-cache',
+		callerSpecific,
+	);
+}
+
+/**
+ * CSP `frame-ancestors` — the INBOUND embed policy (Issue #448).
+ *
+ * Two embed policies exist on this site and they are NOT the same
+ * thing. Keeping them apart is the point of this module:
+ *
+ *   1. INBOUND (`frame-ancestors`, this file): "which ancestors may
+ *      put THIS response inside a `<frame>` / `<iframe>`". It is a
+ *      property of the response being framed, decided per path.
+ *   2. OUTBOUND (the Tool iframe shell, `src/routes/tools.$slug.tsx`
+ *      + `src/tools/registry.ts`): "which Tools may this host embed,
+ *      and under what sandbox / referrer policy". It is a property of
+ *      the EMBEDDING document, decided per Tool from the manifest.
+ *
+ * The confusion the separation prevents: because `/tools/<slug>`
+ * renders an `<iframe>`, it looks like the Tool surface needs to be
+ * framable — and by extension everything else. It does not. A document
+ * may embed an iframe without being framable itself, and the Tool
+ * artefact that the shell frames (`/tools/<slug>/app/*`) is a
+ * STATIC ASSET whose header this Worker never touches — it is owned
+ * by `public/_headers` (Issue #448 added the matching rule there).
+ *
+ * Policy table (every response the Worker returns, both layers):
+ *
+ *   /admin, /admin/*        -> frame-ancestors 'none'
+ *   /api/v1/auth, ...       -> frame-ancestors 'none'   (Account)
+ *   everything else         -> frame-ancestors 'self'
+ *
+ *   The table above is about RESPONSES THIS WORKER GENERATES, and only
+ *   those. Static Assets answer before the Worker runs, so a document
+ *   served out of `public/` (`/share/<slug>/`, the committed public
+ *   HTML namespace) never reaches this file and gets no value from
+ *   that default branch; its framing policy is a `_headers` rule in
+ *   `public/_headers`, which `scripts/check-frame-ancestors-policy.mjs`
+ *   keeps in step with this one (Issue #448).
+ *
+ *   - Public surfaces keep `'self'` rather than `'none'`: same-origin
+ *     framing is a legitimate authoring/debugging tool, and a public
+ *     marketing surface has no secret to clickjack.
+ *   - Admin and Account are denied outright. `'none'` also covers the
+ *     case of a compromised or hostile path being embedded to
+ *     clickjack the signed-in operator, which is the OWASP ASVS
+ *     "framing policy" requirement cited by Issue #448.
+ *
+ * Decided from the PATH ALONE, before any content-type or status
+ * check, for the same reason the cache policy above is: anonymous
+ * `GET /admin` answers 307 -> `/admin/login` with no `content-type`,
+ * so a content-type-gated rule would silently skip the response most
+ * worth protecting. Security headers fail closed on every response
+ * under the path.
+ *
+ * Why the Hono responses are included: `applyHtmlCachePolicy` returns
+ * before the external boundary is reached, but that boundary serves
+ * the Account surface (`/api/v1/auth/*`, Better Auth). Decided here,
+ * in the single place that already owns "what response does this path
+ * get", the two layers cannot drift apart. No Hono middleware is
+ * added and no handler is touched.
+ *
+ * `_headers` cannot own any of this: Cloudflare documents that
+ * "Custom headers defined in the `_headers` file are not applied to
+ * responses generated by your Worker code".
+ */
+const FRAME_ANCESTORS_HEADER = 'content-security-policy';
+
+/** `frame-ancestors 'none'` — no ancestor may frame the response. */
+const FRAME_ANCESTORS_NONE = "'none'";
+
+/** `frame-ancestors 'self'` — only a same-origin ancestor may. */
+const FRAME_ANCESTORS_SELF = "'self'";
+
+/**
+ * Path prefixes (no trailing slash) whose responses may never be
+ * framed, by a third party or by us. Exact-prefix-or-`/` matching, so
+ * a lookalike route (`/administrator`, `/api/v1/authentication`)
+ * does not inherit the denial.
+ */
+const FRAME_ANCESTORS_DENY_PREFIXES = ['/admin', '/api/v1/auth'] as const;
+
+/**
+ * Matches an already-present `frame-ancestors` directive in a CSP
+ * header value. Directive positions are the start of the value or a
+ * `;` separator, so `frame-ancestors-report` in a report URL (an
+ * unquoted token, not a directive) cannot mask a real one.
+ */
+const FRAME_ANCESTORS_DIRECTIVE = /(?:^|;)\s*frame-ancestors\b/i;
+
+/** The `frame-ancestors` value for a request path. */
+function frameAncestorsFor(
+	pathname: string,
+): typeof FRAME_ANCESTORS_NONE | typeof FRAME_ANCESTORS_SELF {
+	const denied = FRAME_ANCESTORS_DENY_PREFIXES.some(
+		(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+	);
+	return denied ? FRAME_ANCESTORS_NONE : FRAME_ANCESTORS_SELF;
+}
+
+/**
+ * Fold `frame-ancestors <value>` into an existing CSP value.
+ *
+ * A response that already carries `frame-ancestors` is left byte-for-byte
+ * alone: whatever produced it decided the framing policy, and silently
+ * rewriting a security header another layer owns is how the two halves
+ * start disagreeing. A response carrying other directives (a future
+ * `default-src`, say) keeps them and gains ours as an additional
+ * directive — CSP directives are additive, so this widens nothing.
+ */
+function withFrameAncestors(
+	existing: string | null,
+	value: typeof FRAME_ANCESTORS_NONE | typeof FRAME_ANCESTORS_SELF,
+): string {
+	const base = existing?.trim() ?? '';
+	if (base === '') return `frame-ancestors ${value}`;
+	if (FRAME_ANCESTORS_DIRECTIVE.test(base)) return base;
+	return `${base}; frame-ancestors ${value}`;
+}
+
+/** Attach the inbound embed policy to a Worker response. */
+function applyFrameAncestorsPolicy(request: Request, response: Response): Response {
+	const existing = response.headers.get(FRAME_ANCESTORS_HEADER);
+	if (existing !== null && FRAME_ANCESTORS_DIRECTIVE.test(existing)) return response;
+
+	const value = frameAncestorsFor(new URL(request.url).pathname);
 	try {
-		response.headers.set('cache-control', value);
+		response.headers.set(FRAME_ANCESTORS_HEADER, withFrameAncestors(existing, value));
 	} catch {
 		// Sealed headers (immutable guard) — leave the response as-is
-		// rather than fail a page render over a cache hint.
+		// rather than fail a request over a response header. Same
+		// trade-off, and the same rationale, as the cache policy above.
+		return response;
+	}
+	return response;
+}
+
+/**
+ * HSTS delivery policy (Issue #446).
+ *
+ * `Strict-Transport-Security` is the one transport guarantee the
+ * Worker can make by itself: every response it produces for an HTTPS
+ * request pins this host to HTTPS for `max-age` seconds, so a later
+ * plaintext request to the same host is upgraded by the browser
+ * instead of being answered in the clear.
+ *
+ * Applied to BOTH dispatch branches (SSR documents and the external
+ * Hono boundary), because the guarantee is a property of the origin,
+ * not of one handler. Applied only when the request itself arrived
+ * over HTTPS: RFC 6797 §7.2 requires a user agent to ignore an HSTS
+ * header received over insecure transport, so emitting one on a
+ * plaintext response would be inert noise that hides a real failure.
+ *
+ * Scope limit (mirrors Issue #291's `_headers` limit): this covers
+ * Worker-generated responses only. Cloudflare Static Assets responses
+ * are produced by the asset server, which a Worker cannot annotate
+ * (see `public/_headers`). HSTS is host-scoped and sticky — the
+ * document response above already pins the origin for the whole
+ * `max-age` — and the origin-wide control is the zone-level
+ * Cloudflare setting (SSL/TLS → Edge Certificates → HSTS), which is
+ * operator-owned and NOT observable from this repository. Nothing
+ * here claims to verify that setting.
+ *
+ * Why `max-age` alone — never `includeSubDomains` / `preload`
+ * -------------------------------------------------------------
+ *   - `includeSubDomains` extends this policy to every hostname
+ *     under the zone. The zone has more than one hostname today
+ *     (`media.rebuildup.dev`, the R2 custom domain declared in
+ *     `wrangler.production.jsonc`), and a subdomain that cannot
+ *     answer over HTTPS becomes unreachable for the entire `max-age`
+ *     window. This repository cannot observe each subdomain's HTTPS
+ *     posture, so turning it on would be an unverified claim about
+ *     infrastructure the Worker does not own.
+ *   - `preload` additionally submits the zone to the browser preload
+ *     list, where removal takes months. Same missing precondition,
+ *     far higher cost of being wrong.
+ *
+ * The ramp and the preconditions are documented in
+ * `docs/security.md`; `scripts/check-hsts-policy.mjs` fails the build
+ * if either directive is added while the audit is unrecorded.
+ *
+ * This constant stays module-private on purpose. The Workers runtime
+ * treats every named export of the entry module as a service entrypoint
+ * and refuses to start when the value is not an ExportedHandler
+ * (`Incorrect type for map entry 'HSTS_DIRECTIVE'`). Exporting it broke
+ * release CI until Issue #596. The gate enforces the private form.
+ */
+const HSTS_DIRECTIVE = 'max-age=31536000';
+
+const HSTS_HEADER = 'strict-transport-security';
+
+/**
+ * Attach the HSTS policy to one response.
+ *
+ * An existing header always wins: something upstream already made a
+ * transport decision for this response, and a second directive would
+ * only add a duplicate header to combine. A sealed response (immutable
+ * headers) is left alone rather than failing a request over a header
+ * hint. That is a deliberate fail-open: refusing to serve a response
+ * because a hint could not be attached would trade a transport nicety
+ * for an outage. The cost is that the guarantee is then missing on that
+ * response, which is why the contract suite drives the three shipped
+ * surfaces and asserts they are mutable.
+ */
+function applyTransportSecurityPolicy(request: Request, response: Response): Response {
+	if (response.headers.has(HSTS_HEADER)) return response;
+	if (new URL(request.url).protocol !== 'https:') return response;
+
+	try {
+		response.headers.set(HSTS_HEADER, HSTS_DIRECTIVE);
+	} catch {
 		return response;
 	}
 	return response;
@@ -110,13 +422,35 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
  * Real `env` and `ctx` flow through to Hono so external-boundary
  * handlers can talk to D1, R2, KV, and other bindings without
  * indirection.
+ *
+ * A route COMPONENT that throws during SSR is outside the reach of the
+ * router-level failure surfaces: React error boundaries do not catch
+ * server-render errors, and TanStack Start still answers 200 with a
+ * partial document. `settleSsrDocumentResponse` (owned by the failure
+ * contract in `src/editorial/error-states/`) replaces that document
+ * with the readable fallback. The entrypoint is the only layer outside
+ * React, which is why the check lives here.
  */
 export default {
 	async fetch(request, env, ctx): Promise<Response> {
 		const url = new URL(request.url);
-		if (matchesExternalBoundary(url.pathname)) {
-			return externalBoundary.fetch(request, env, ctx);
-		}
-		return applyHtmlCachePolicy(request, await handler.fetch(request));
+		const response = matchesExternalBoundary(url.pathname)
+			? await externalBoundary.fetch(request, env, ctx)
+			: applyHtmlCachePolicy(
+					request,
+					await settleSsrDocumentResponse(request, await handler.fetch(request)),
+				);
+		// Issue #449: security headers are applied AFTER the dispatch so
+		// one choke point covers every Worker-generated response — SSR
+		// HTML, redirects, server-function payloads and the Hono
+		// boundary alike. `public/_headers` cannot do this job for the
+		// SSR path (Cloudflare does not apply `_headers` to Worker-
+		// generated responses). HSTS (#446) keeps the same choke point.
+		const secured = applySecurityHeaders(request, response, toolRouteSecurityPolicy(url.pathname));
+		// Issue #448: the inbound embed policy is applied to the same
+		// choke point, after the #449 baseline, so every Worker response
+		// also carries `frame-ancestors`. HSTS (#446) stays outermost.
+		const framed = applyFrameAncestorsPolicy(request, secured);
+		return applyTransportSecurityPolicy(request, framed);
 	},
 } satisfies ExportedHandler<Env>;

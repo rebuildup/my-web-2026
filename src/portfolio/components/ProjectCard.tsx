@@ -1,6 +1,7 @@
-import type { PortfolioProject } from '../schema';
 import { css } from '../../../styled-system/css';
 import { Badge } from '../../editorial/primitives/Badge';
+import { StateMark } from '../../editorial/primitives/StateMark';
+import type { PortfolioProject } from '../schema';
 import { PortfolioMediaFigure } from './PortfolioMedia';
 
 /**
@@ -29,6 +30,39 @@ import { PortfolioMediaFigure } from './PortfolioMedia';
  * visual hint on each list item without changing the existing
  * reading order. Facet → category mapping:
  *   develop → code, video → tool, design → design, other → writing.
+ *
+ * Issue #490 — the facet group carries `role="group"`. The
+ * `aria-label` on this container was attached to a bare `<div>`,
+ * whose implicit ARIA role is `generic`. `aria-label` is a
+ * PROHIBITED attribute there: the name is dropped before it reaches
+ * any accessibility API, so the pills were announced as an
+ * unlabelled run of badges. On a list surface that is one defect per
+ * card — 100 on the loader's default page size, 120 on the measured
+ * fixture — rather than one mistake. `role="group"` gives the
+ * container a role that supports naming, adds no DOM node, changes
+ * nothing visually, and is what makes Chromium's accessibility tree
+ * expose the pills as a named group (measured: 0 such nodes
+ * before, 100 after).
+ *
+ * The same bare-`<div>` shape exists in `FacetFilter` and
+ * `PortfolioDetail`. Neither scales with the catalogue — one page
+ * filter and one detail page — so they are outside the surface this
+ * Issue measured and are left for a follow-up instead of being fixed
+ * silently here.
+ *
+ * Issue #411 — the category rule is no longer the ONLY
+ * non-textual cue, and it is no longer the only cue at all. Before
+ * this ticket the 4px rule was four hues of one identical bar: a
+ * visitor who cannot separate `accent.category.writing` from
+ * `accent.category.code` had nothing left to read the category from,
+ * because the coloured rule was the only element that carried it
+ * (the facet pills name the FACET, which is a different word for the
+ * same fact). The card now pairs the rule with a `StateMark` whose
+ * silhouette is unique per category (diamond / square / bars /
+ * chevron) and with the existing upper-case category word, so
+ * shape + text carry the category when hue is removed — WCAG 2.2
+ * SC 1.4.1 (Level A). The rule itself stays `aria-hidden` and keeps
+ * its category colour as reinforcement only.
  */
 export interface ProjectCardProps {
 	project: PortfolioProject;
@@ -56,6 +90,13 @@ export function ProjectCard({ project }: ProjectCardProps) {
 	const category = project.facets[0] ? (FACET_CATEGORY[project.facets[0]] ?? null) : null;
 	return (
 		<article
+			// Issue #411: the category is a published fact of the card,
+			// not a private styling detail, so it is exposed as a
+			// stable hook for the regression tests and for the
+			// monochrome verification fixture. The accessible name
+			// still comes from the facet pills below — see the Issue
+			// note above.
+			data-category={category ?? undefined}
 			className={css({
 				position: 'relative',
 				display: 'grid',
@@ -107,6 +148,9 @@ export function ProjectCard({ project }: ProjectCardProps) {
 						<span
 							aria-hidden="true"
 							className={css({
+								display: 'inline-flex',
+								alignItems: 'center',
+								gap: '1',
 								fontFamily: 'mono',
 								fontSize: 'xs',
 								letterSpacing: '0.06em',
@@ -114,6 +158,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
 								color: 'text.muted',
 							})}
 						>
+							{category ? <StateMark kind={category} size="sm" /> : null}
 							{type}
 						</span>
 						{project.pinned ? <Badge tone="accent">Pinned</Badge> : null}
@@ -194,7 +239,12 @@ export function ProjectCard({ project }: ProjectCardProps) {
 					</dt>
 					<dd className={css({ margin: '0' })}>{project.periodLabel}</dd>
 				</dl>
+				{/* biome-ignore lint/a11y/useSemanticElements: `role="group"` is the right grouping for a set of static facet badges. A `<fieldset>` would claim a form-control grouping these badges are not, and the card's role / period pairs already use a `<dl>`. */}
 				<div
+					// Issue #490: `role="group"` is what makes the
+					// `aria-label` below reachable — a generic-role
+					// <div> silently drops it.
+					role="group"
 					aria-label="facets"
 					className={css({
 						display: 'flex',

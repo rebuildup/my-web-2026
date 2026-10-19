@@ -43,7 +43,7 @@
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { expect, test } from '@playwright/test';
+import { type Page, expect, test } from '@playwright/test';
 import { MIN_BREAKAGE_RATIO, STABLE_MAX_RATIO, comparePng } from '../../scripts/_viewport-diff.mjs';
 import {
 	VIEWPORTS,
@@ -85,15 +85,37 @@ const CAPTURE = {
 	caret: 'hide' as const,
 };
 
+/**
+ * The analytics consent surface (Issue #495) is a fixed overlay that
+ * mounts on every page after hydration. It is identical in both sides
+ * of a comparison, so it cancels out pixel-for-pixel — but it also
+ * enlarges the total raster, and on a 390px viewport its panel covers
+ * enough of the page to dilute the deliberate `main` break below the
+ * 1% floor (0.55% in CI run 39307989172, both retries). These controls
+ * measure the roster layout, not the consent surface (that surface has
+ * its own tests), so both captures are taken with it hidden. The style
+ * has to be re-injected after every navigation; it is not persisted by
+ * the browser.
+ */
+const HIDE_CONSENT_CSS =
+	'[data-testid="analytics-consent"], [data-testid="analytics-consent-toggle"] { display: none !important; }';
+
+/** Navigate to the control surface and establish the shared capture state. */
+async function openControlSurface(page: Page): Promise<void> {
+	await page.goto(HOME.path, { waitUntil: 'load' });
+	await page.addStyleTag({ content: HIDE_CONSENT_CSS });
+	await page.waitForTimeout(300);
+}
+
 test.describe('visual-diff controls', () => {
 	test.use({ viewport: { width: PHONE.width, height: PHONE.height } });
 
 	test('an unchanged page compares equal to its own re-capture', async ({ page }) => {
-		await page.goto(HOME.path, { waitUntil: 'load' });
-		await page.waitForTimeout(300);
+		await openControlSurface(page);
 		const baseline = await page.screenshot(CAPTURE);
 
 		await page.reload({ waitUntil: 'load' });
+		await page.addStyleTag({ content: HIDE_CONSENT_CSS });
 		await page.waitForTimeout(300);
 		const current = await page.screenshot(CAPTURE);
 
@@ -118,8 +140,7 @@ test.describe('visual-diff controls', () => {
 	test('a deliberately broken layout produces a red diff the judge also rejects', async ({
 		page,
 	}) => {
-		await page.goto(HOME.path, { waitUntil: 'load' });
-		await page.waitForTimeout(300);
+		await openControlSurface(page);
 		const baseline = await page.screenshot(CAPTURE);
 		writeFileSync(join(SHOT_DIR, 'control-baseline-390.png'), baseline);
 
@@ -171,7 +192,7 @@ test.describe('visual-diff controls', () => {
 	});
 
 	test('the two ends of the roster do not look the same', async ({ page }) => {
-		await page.goto(HOME.path, { waitUntil: 'load' });
+		await openControlSurface(page);
 		await page.setViewportSize({ width: PHONE.width, height: PHONE.height });
 		await page.waitForTimeout(300);
 		const phone = await page.screenshot(CAPTURE);

@@ -97,7 +97,25 @@ export function runPlan(plan, { cwd = repoRoot, stream = process.stdout } = {}) 
 	return 0;
 }
 
-function main(argv) {
+/**
+ * The final line a green gate prints.
+ *
+ * Exported (and asserted by `scripts/_quality-gate-plan.test.mjs`)
+ * because it runs only after a whole plan has passed, which no unit
+ * test can reach cheaply — an unimported helper here would otherwise
+ * only surface on the slowest possible CI run.
+ */
+export function successLine(gateName, steps) {
+	return `\nvalidate:${gateName} OK — ${steps} declared step(s)\n`;
+}
+
+/**
+ * CLI entry point.
+ *
+ * Returns the process exit code: 0 when the plan ran green, 2 for a
+ * usage / plan error, otherwise the failing step's own code.
+ */
+export function main(argv) {
 	const flags = argv.filter((argument) => argument.startsWith('-'));
 	const names = argv.filter((argument) => !argument.startsWith('-'));
 	const listOnly = flags.includes('--list');
@@ -140,9 +158,7 @@ function main(argv) {
 	}
 
 	const status = runPlan(plan);
-	if (status === 0) {
-		process.stdout.write(`\n${gateCommandName(gateName)} OK — ${plan.length} declared step(s)\n`);
-	}
+	if (status === 0) process.stdout.write(successLine(gateName, plan.length));
 	return status;
 }
 

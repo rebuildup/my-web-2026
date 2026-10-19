@@ -45,11 +45,6 @@ export const GATE_NAMES = ['fast', 'integration', 'release'];
 /** Repository-relative path of the declaration this module reads. */
 export const PROFILE_RELATIVE_PATH = 'quality/profile.yaml';
 
-/** npm script name that runs a gate (`<gate>` -> `validate:<gate>`). */
-export function gateCommandName(gateName) {
-	return `validate:${gateName}`;
-}
-
 /** Scalar keys allowed next to `components:` inside one gate. */
 const GATE_META_KEYS = new Set(['command', 'cost_class', 'trigger']);
 

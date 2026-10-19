@@ -7,14 +7,13 @@ import { fileURLToPath } from 'node:url';
 import {
 	GATE_NAMES,
 	PROFILE_RELATIVE_PATH,
-	gateCommandName,
 	parseGateProfile,
 	planForGate,
 	resolveGatePlan,
 	scriptNamesOf,
 	validateGateComponents,
 } from './_quality-gate-plan.mjs';
-import { buildPlan } from './run-quality-gates.mjs';
+import { buildPlan, main, successLine } from './run-quality-gates.mjs';
 
 /**
  * Fixture coverage for the declared quality-gate plan (Issue #566).
@@ -205,15 +204,15 @@ describe('the repository plan', () => {
 
 	it('runs each gate through the one-line runner script, not a chain', () => {
 		for (const gate of GATE_NAMES) {
-			assert.equal(gateCommandName(gate), `validate:${gate}`);
-			assert.equal(gates[gate].command, `pnpm run ${gateCommandName(gate)}`);
-			const value = String(pkg.scripts[gateCommandName(gate)]);
+			assert.equal(gates[gate].command, `pnpm run validate:${gate}`);
+			const value = String(pkg.scripts[`validate:${gate}`]);
 			assert.ok(
 				value.includes(`${RUNNER_RELATIVE_PATH} ${gate}`),
-				`${gateCommandName(gate)} must delegate to the runner: ${value}`,
+				`validate:${gate} must delegate to the runner: ${value}`,
 			);
 			assert.equal(value.split('&&').length, 1, 'the entry point must be a single command');
 		}
+		assert.equal(successLine('fast', 3), '\nvalidate:fast OK — 3 declared step(s)\n');
 	});
 
 	it('keeps the integration gate a superset of the fast gate, in order', () => {
@@ -279,5 +278,11 @@ describe('the repository plan', () => {
 	it('exposes the npm scripts of the manifest it validates', () => {
 		assert.ok(scriptNamesOf(pkg).includes('validate:fast'));
 		assert.deepEqual(scriptNamesOf({}), []);
+	});
+
+	it('refuses usage errors and prints the plan for --list', () => {
+		assert.equal(main(['smoke']), 2, 'an unknown gate is a usage error');
+		assert.equal(main(['fast', '--nope']), 2, 'an unknown option is a usage error');
+		assert.equal(main(['fast', '--list']), 0, 'listing runs nothing and succeeds');
 	});
 });

@@ -12,7 +12,7 @@ SSR が返す HTML には、これまで「機械的に検証されるもの」�
 
 公開されている選択肢は 2 つある。
 
-1. `validator.nu` に document を POST する — **採用しない**。/`admin/*`
+1. `validator.nu` に document を POST する — **採用しない**。`/admin/*`
    の描画済み document と personal copy を含めて third-party host に送信することになり、
    本リポジトリが「route の HTML を外部へ送る」ことを常態化することになる。
 2. ローカルの engine — **本 gate がこれ**。依存追加ゼロ・ネットワークゼロ・
@@ -60,7 +60,7 @@ engine は「その rule が存在するか」だけを所有する。両者の 
 宣言します。両方向とも不一致で fail:
 
 - `inventory.unlisted` — 公開されている route が manifest に無い
-- `inventory.missing` — manifest に 있는 route が存在しない
+- `inventory.missing` — manifest にある route が存在しない
 - `route.unobserved` — `mode: render` と宣言された route に observation が無い
 - `route.request-failed` / `route.not-rendered` / `route.not-html` —
   取得失敗・非 2xx・`text/html` 以外。いずれも **skip ではなく fail**
@@ -90,7 +90,7 @@ engine の誤検知（false positive）に対する canary として意図的に
 ## この gate が最初に見つけた既存 defect（waiver ledger）
 
 SSR half を実 Worker に対して走らせた結果、**この gate が新規に検出した既存の
-defect が 3 件**ありました。いずれも app markup 側の所有（TIssue #412 の範囲外）で、
+defect が 3 件**ありました。いずれも app markup 側の所有（Issue #412 の範囲外）で、
 横断的な markup 修正＋既存 e2e selector の更新を伴う owner 判断なので、
 gate は検出した上で `quality/html-standards.json#waivers` に **message 形状で**
 記録しています。
@@ -148,7 +148,7 @@ exit 2 は manifest が読めない/使えない場合です。
 ## スクリーンショット
 
 `docs/verification/standards/html-nu-validator.webp`（Issue が要求する
-`html-nu-validator.png` のstem をそのまま使い、拡張子だけ `.webp` に
+`html-nu-validator.png` の stem をそのまま使い、拡張子だけ `.webp` に
 置き換えています。PNG を commit しない規約のため）。
 
 - 生成コマンド: `pnpm run verify:html-nu-validator-screenshot`
@@ -170,7 +170,7 @@ exit 2 は manifest が読めない/使えない場合です。
   実在する `id` を指しているか）だけが対象で、role と token の妥当性は
   対象外です。axe-core 相当の a11y gate は別系統の作業です。
 - **waiver ledger**（`quality/html-standards.json#waivers`）には、この gate が
-  検出した既存 defect 3 件が記録されています（上一个 section参照）。
+  検出した既存 defect 3 件が記録されています（前節参照）。
   entry を足すのは owner review 側の判断で、**何も suppress しない waiver は
   fail** するので、放置された waiver が緑を維持することはありません。
 - live mode は local/dev 相当の origin を想定しており、production origin への

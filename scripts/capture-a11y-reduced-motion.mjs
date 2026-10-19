@@ -516,26 +516,25 @@ export function writeHarness(repoRoot = REPO_ROOT) {
  * `querySelectorAll` and identified by the `data-case` the fixture
  * renders.
  */
-export const READ_FIXTURE = `({ hook, modeTestId, caseAttribute }) => {
-	const banner = document.querySelector(\`[data-testid="\${modeTestId}"]\`);
-	const cases = [...document.querySelectorAll(\`[\${caseAttribute}]\`)].map((element) => {
+export const READ_FIXTURE = ({ hook, modeTestId, caseAttribute }) => {
+	const banner = document.querySelector(`[data-testid="${modeTestId}"]`);
+	const cases = [...document.querySelectorAll(`[${caseAttribute}]`)].map((element) => {
 		const strip = element.querySelector(hook);
 		const images = strip ? [...strip.querySelectorAll('img')] : [];
 		return {
 			caseId: element.getAttribute(caseAttribute),
 			hasStrip: Boolean(strip),
 			animationName: images[0] ? getComputedStyle(images[0]).animationName : null,
-			animatedSlots: images.filter(
-				(image) => getComputedStyle(image).animationName !== 'none',
-			).length,
+			animatedSlots: images.filter((image) => getComputedStyle(image).animationName !== 'none')
+				.length,
 			slotCount: images.length,
 			motionState: strip?.getAttribute('data-motion-state') ?? null,
 			label: strip?.getAttribute('aria-label') ?? null,
-			text: (element.textContent ?? '').replace(/\\s+/g, ' ').trim(),
+			text: (element.textContent ?? '').replace(/\s+/g, ' ').trim(),
 		};
 	});
 	return { mode: banner?.getAttribute('data-mode') ?? null, cases };
-}`;
+};
 
 /** Read the contract-relevant facts out of a rendered fixture page. */
 async function observeFixture(page, expectedMode) {

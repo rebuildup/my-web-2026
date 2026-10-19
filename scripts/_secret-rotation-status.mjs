@@ -213,6 +213,24 @@ function daysBetween(from, to) {
 	return Math.round((to - from) / DAY_MS);
 }
 
+/**
+ * How many days old a recorded observation is, or `null` when it
+ * carries no readable capture date. Printed rather than judged: the
+ * owner decides when a recording stops being evidence, so this tool
+ * only refuses to let a stale recording LOOK like a statement about
+ * now.
+ *
+ * @param {string | null} capturedAt
+ * @param {number} nowMillis
+ * @returns {number | null}
+ */
+function ageInDays(capturedAt, nowMillis) {
+	if (typeof capturedAt !== 'string') return null;
+	const captured = utcMidnight(capturedAt);
+	if (captured === null) return null;
+	return daysBetween(captured, nowMillis);
+}
+
 /** `YYYY-MM-DD` for a UTC-midnight millisecond value. */
 function isoDate(millis) {
 	return new Date(millis).toISOString().slice(0, 10);
@@ -418,7 +436,10 @@ export function collectNonNameTokens(input) {
  *      (what an operator records by hand from a status-only run), and
  *   2. a recorded transcript of `scripts/check-cf-secrets.mjs
  *      --execute`, whose `missing:` / `extra:` lines are the same facts
- *      in the form the script already prints them.
+ *      in the form the script already prints them. That transcript holds
+ *      one block per comparison; only the Infisical (tier 1) block is
+ *      read, because it is the only one that describes the
+ *      environment's inventory.
  *
  * @param {unknown} input
  * @returns {{ ok: true, observation: object } | { ok: false, reason: string, errors: string[] }}
@@ -502,36 +523,57 @@ export function parseObservation(input) {
  * names, verdicts and reason codes — never a value), so accepting it
  * directly is what lets this tool visualise the output operators
  * already produce without asking them to re-type anything.
+ *
+ * One `check-cf-secrets --execute` run prints SEVERAL comparisons,
+ * each as its own `[OK] / [FAIL] <label>` block followed by that
+ * block's own `missing:` / `extra:` lines (tier 1 the Infisical
+ * inventory, tier 2 the Build Output bindings, tier 3 the live Worker
+ * bindings). Only the tier 1 block is an observation OF THE
+ * ENVIRONMENT'S INVENTORY: tier 2 and tier 3 answer a different
+ * question against a different name set, so their lines are not
+ * flattened into this observation (a Worker-side name reported missing
+ * would otherwise be re-injected into Infisical, where it already
+ * exists). A transcript with no Infisical block is UNDECIDABLE rather
+ * than attributed to the wrong comparison.
  */
 function parseTranscript(text) {
 	const errors = [];
-	const readNames = (field) => {
-		const names = [];
-		for (const line of text.split('\n')) {
-			const match = new RegExp(`^\\s*${field}:\\s*(.*)$`).exec(line);
-			if (!match) continue;
-			for (const token of match[1].split(',')) {
-				const name = token.trim();
-				if (name.length === 0) continue;
-				if (!isContractName(name)) {
-					errors.push(
-						`recorded transcript carries a ${field} entry that is not a §3.2 secret name`,
-					);
-					continue;
-				}
-				names.push(name);
-			}
+	const blocks = [];
+	let current = null;
+	for (const line of text.split('\n')) {
+		const verdict = /^\[(?:OK|FAIL)\]\s+(.*)$/.exec(line);
+		if (verdict) {
+			current = { label: verdict[1].trim(), missing: [], extra: [] };
+			blocks.push(current);
+			continue;
 		}
-		return names;
-	};
+		const list = /^\s*(missing|extra):\s*(.*)$/.exec(line);
+		if (!list || current === null) continue;
+		for (const token of list[2].split(',')) {
+			const name = token.trim();
+			if (name.length === 0) continue;
+			if (!isContractName(name)) {
+				errors.push(
+					`recorded transcript carries a ${list[1]} entry that is not a §3.2 secret name`,
+				);
+				continue;
+			}
+			current[list[1]].push(name);
+		}
+	}
 
-	const missing = readNames('missing');
-	const extra = readNames('extra');
+	const inventoryBlocks = blocks.filter((block) => /infisical/i.test(block.label));
+	if (blocks.length > 0 && inventoryBlocks.length === 0) {
+		errors.push(
+			'recorded transcript has no Infisical inventory check line; only that comparison describes the environment inventory',
+		);
+	}
+	const missing = inventoryBlocks.flatMap((block) => block.missing);
+	const extra = inventoryBlocks.flatMap((block) => block.extra);
 	const environment = /^\[check-cf-secrets\]\s+environment=(\w+)/m.exec(text)?.[1] ?? null;
 	const capturedAt = /^\[check-cf-secrets\]\s+captured_at=(\S+)/m.exec(text)?.[1] ?? null;
-	const hasVerdictLine = /^\[(?:OK|FAIL)\]/m.test(text);
 
-	if (!hasVerdictLine && missing.length === 0 && extra.length === 0) {
+	if (blocks.length === 0 && missing.length === 0 && extra.length === 0) {
 		errors.push('recorded transcript has no verdict line and no missing/extra list');
 	}
 	if (environment !== null && !OBSERVATION_ENVIRONMENTS.has(environment)) {
@@ -700,6 +742,9 @@ export function evaluateSecretStatus({ ledger, contract, observation = null, now
 			? {
 					environment: observation.environment,
 					capturedAt: observation.capturedAt ?? '-',
+					// How old the recording is, so a stale observation is
+					// visibly a recording and not a statement about now.
+					ageDays: ageInDays(observation.capturedAt, nowMillis),
 				}
 			: null,
 		counts: {
@@ -809,7 +854,7 @@ export function formatStatusReport(report, meta) {
 		`[secret-status] now=${report.now}`,
 		`[secret-status] observation=${
 			report.observed
-				? `observed environment=${observed.environment} captured_at=${observed.capturedAt}`
+				? `observed environment=${observed.environment} captured_at=${observed.capturedAt} age_days=${report.observation?.ageDays ?? '-'}`
 				: 'not_observed (the environment half is undecided; rows say NOT_OBSERVED)'
 		}`,
 		`[secret-status] counts rows=${report.counts.rows} required=${report.counts.required} audit_only=${report.counts.auditOnly} drift_failures=${report.counts.driftFailures} overdue=${report.counts.overdue} advisory=${report.counts.advisory}`,

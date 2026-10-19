@@ -47,17 +47,20 @@ runtime secret 名簿には 2 つの事実がある。
 「大丈夫だった」と同じ signal にしないため。** release pipeline に
 渡る数字が 0 なのは「読んで OK」のときだけ。
 
-### drift の 4 状態
+### drift の 6 状態
 
 | 状態 | 意味 | severity |
 | --- | --- | --- |
 | `MATCH` | 観測がその name を期待された場所に持つ | — |
+| `MISSING` | 観測がその name を「環境に無い」と報告 | **fail** |
 | `UNEXPECTED` | 観測が契約に無い name を報告 | advisory（ADR-0015 §1.4 上、環境は Worker が bind しない name を保持してよい） |
-| `UNEXPECTED` | 観測が契約に無い name を報告 | advisory（ADR-0015 §1.4 上、环境は Worker が bind しない name を，申请してよい） |
 | `NOT_OBSERVED` | 観測が渡されていない | advisory。**「一致」とは書かない** |
 | `MISSING_ROW` / `EXTRA_ROW` | ledger が契約の inventory を正確に覆っていない | **fail** |
 
-### deadline の 4 状態
+観測 4 状態（`MATCH` / `MISSING` / `UNEXPECTED` / `NOT_OBSERVED`）に、
+ledger 側の 2 状態（`MISSING_ROW` / `EXTRA_ROW`）を加えた 6 である。
+
+### deadline の 5 状態
 
 | 状態 | 意味 |
 | --- | --- |
@@ -103,7 +106,14 @@ pnpm run secrets:status:check -- --observation=.tmp/cf-secrets-prod.txt
 受け付ける観測は 2 形。どちらも **name だけ**を持つ。
 
 - `check-cf-secrets.mjs` の transcript。`[OK]` / `[FAIL]` 行と
-  `missing:` / `extra:` 行を読む。
+  `missing:` / `extra:` 行を読む。**読むのは Infisical（tier 1）の
+  比較だけ。** `--execute` の出力には Build Output（tier 2）と
+  live Worker（tier 3）の比較もあり、各々が自分の `missing:` /
+  `extra:` を持つ。Worker 側の drift を Infisical の inventory として
+  扱うと「既に Infisical に存在する name を再投入する」という誤った
+  修復に誘導されるため、gate は Infisical 行の block だけを観測として
+  読む。Infisical の block が transcript に無い場合は
+  `UNDECIDABLE`（exit 2）になる。
 - 構造化された record `{ "environment": "prod", "captured_at": "YYYY-MM-DD",
   "missing": ["NAME"], "extra": ["NAME"] }`。
 
@@ -151,8 +161,9 @@ pnpm run secrets:status:report                      # ダッシュボードの�
 
 - `infisical secrets …` / `wrangler secret list --format pretty` による値の listing。
 - 観測ファイルや Issue / PR に値を貼り付けること。
-- `--now` による時計の固定（`--case` 同時に与えられないので、gate 自身は
-  時計を固定できない）。
+- `--now` による時計の固定を **gate の判定に使わない**こと。`--now` は fixture 実行
+  （`--case` と同時）にだけ受け付けられ、gate 単体では exit 2 で拒否されるので、
+  時計を固定した green wash はできない。
 - 本 gate で rotation / deploy を行うこと（operator flow の領域）。
 
 ## 10. 未決の owner decision

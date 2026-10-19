@@ -555,11 +555,21 @@ pnpm run secrets:status:check    # the verdict (exit 0 / 1 / 2)
 pnpm run secrets:status:report   # .tmp/secrets-status-only-report.html
 ```
 
+No capture script is committed for this artefact (the same disclosure
+this directory already makes for `markdown-xss-fixture.webp`): the page
+above was screenshotted from the report HTML during Issue #477 and
+committed directly. `pnpm run secrets:status:report` reproduces the page;
+turning it back into this exact file is a manual capture.
+
 ### Format note
 
 The Issue asked for `secrets-status-only.png`. The committed file is
 `secrets-status-only.webp` instead, like every other artefact in this
-directory: the PNG intermediate is written to `.tmp/` and re-encoded in
-memory with `sharp`, and is not committed. The page is text-dense, so the
-capture uses `nearLossless` (232 KB); lossy q80 of the same page is
-roughly three times the bytes for no gain on glyphs.
+directory: the PNG intermediate was written to `.tmp/` and re-encoded in
+memory with `sharp`, and is not committed.
+
+The committed file is **1280 x 3643, VP8 (lossy), 490,070 bytes (~479
+KB)** — a long text-dense page, so it is the largest artefact in this
+directory. Re-encoding that file at `quality: 80` (483,706 bytes) or at
+`quality: 80, nearLossless: true` (488,260 bytes) changes nothing, so
+lossy is what is committed and no further compression is claimed.

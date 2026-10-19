@@ -345,15 +345,20 @@ describe('verdicts from recorded (status-only) data', () => {
 });
 
 describe('recorded check-cf-secrets transcript', () => {
+	// The real shape of `check-cf-secrets --execute`: one block per
+	// comparison, each with its own missing/extra lines (tier 1 the
+	// Infisical inventory, tier 2 the Build Output bindings, tier 3 the
+	// live Worker bindings).
 	const TRANSCRIPT = [
 		'[check-cf-secrets] environment=prod',
 		'[check-cf-secrets] captured_at=2026-10-18',
 		'[check-cf-secrets] mode=execute',
-		'[OK] Infisical prod vs required runtime contract',
-		'[FAIL] Infisical prod vs audit-only retention',
+		'[FAIL] Infisical runtime contract (4-name)',
 		'  missing: MY_WEB_2026_CONSUMER_API_KEY',
 		'  extra:   EXAMPLE_DEPLOY_CREDENTIAL_NAME',
-		'[execute] all checks OK',
+		'[OK] Build Output binding contract (shared runtime, exact 3-name)',
+		'[OK] Cloudflare Worker (live) final contract',
+		'[execute] done',
 	].join('\n');
 
 	it('reads the name lists the existing script already prints', () => {
@@ -363,6 +368,35 @@ describe('recorded check-cf-secrets transcript', () => {
 		assert.equal(parsed.observation.capturedAt, '2026-10-18');
 		assert.deepEqual(parsed.observation.missing, ['MY_WEB_2026_CONSUMER_API_KEY']);
 		assert.deepEqual(parsed.observation.extra, ['EXAMPLE_DEPLOY_CREDENTIAL_NAME']);
+	});
+
+	it('does not attribute a Worker-side drift to the Infisical inventory', () => {
+		// Only the Worker block disagrees; the environment inventory is
+		// in sync, so the observation must read as in-sync rather than
+		// sending the operator to re-inject a name that already exists.
+		const parsed = parseObservation(
+			[
+				'[check-cf-secrets] environment=prod',
+				'[OK] Infisical runtime contract (4-name)',
+				'[FAIL] Cloudflare Worker (live) final contract',
+				'  missing: MY_WEB_2026_CONSUMER_API_KEY',
+			].join('\n'),
+		);
+		assert.equal(parsed.ok, true);
+		assert.deepEqual(parsed.observation.missing, []);
+		assert.deepEqual(parsed.observation.extra, []);
+	});
+
+	it('is undecidable when no Infisical comparison was recorded', () => {
+		const parsed = parseObservation(
+			[
+				'[check-cf-secrets] environment=prod',
+				'[FAIL] Cloudflare Worker (live) final contract',
+				'  missing: MY_WEB_2026_CONSUMER_API_KEY',
+			].join('\n'),
+		);
+		assert.equal(parsed.ok, false);
+		assert.equal(parsed.reason, UNDECIDABLE_REASON.observationMalformed);
 	});
 
 	it('is malformed when it carries no verdict and no name list', () => {
@@ -440,6 +474,15 @@ describe('CLI', () => {
 		const result = runCli(['--now=2020-01-01']);
 		assert.equal(result.status, 2);
 		assert.match(result.stderr, /--now is accepted only with --case/);
+	});
+
+	it('says so when --case ignores an explicit --ledger', () => {
+		const result = runCli([
+			'--case=quality/fixtures/secret-rotation-status/in-sync.json',
+			'--ledger=quality/secret-rotation-ledger.json',
+		]);
+		assert.equal(result.status, 0);
+		assert.match(result.stdout, /note=--ledger=.* was ignored/);
 	});
 
 	it('rejects an unreadable observation instead of reporting a match', () => {

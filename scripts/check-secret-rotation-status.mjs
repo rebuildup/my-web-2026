@@ -77,7 +77,9 @@ const USAGE = `Usage:
                transcript of \`pnpm run infisical:check:cf -- --execute\`
                kept on the operator side. Only names are read.
 --case         a fixture case (demonstration and test input). Never a
-               release verdict: the output says source=fixture.
+               release verdict: the output says source=fixture. A case
+               carries its own ledger, so --ledger is ignored (and the
+               run says so).
 --now          pin the clock for a --case run. Refused without --case.`;
 
 function parseArgs(argv) {
@@ -211,6 +213,14 @@ function main() {
 
 	if (options.fixture) {
 		process.stdout.write('[secret-status] note=fixture input; this is NOT a release verdict\n');
+	}
+	// A fixture carries its own ledger, so an explicit --ledger would
+	// silently change nothing. Say so rather than leave the operator
+	// believing the path they passed was the one that ran.
+	if (options.fixture && options.ledger) {
+		process.stdout.write(
+			`[secret-status] note=--ledger=${options.ledger} was ignored; a --case run reads the ledger inside the fixture\n`,
+		);
 	}
 	return exitCodeForReport(report);
 }

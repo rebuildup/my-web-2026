@@ -566,7 +566,7 @@ release_gate_coverage:
   known_limits:
     - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
     - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
-    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 41 `validate:fast` components'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 42 `validate:fast` components'
 
 # Issue #464 - the connection scope / retention ledger. `docs/domain/
 # integrations.md` lists the candidate services and promotes none of

@@ -66,6 +66,15 @@ const forbiddenOwnerDependencies = new Map([
 	// open for a promoting capability is an owner decision recorded in
 	// `docs/verification/ops/api-timeout-fallback.md` §7.
 	['external-api', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
+	// `legal` (Issue #497) owns the publication-rights review contract for
+	// the assets this repository ships and references: which rights
+	// holder, which licence and which evidence back a shipped byte, and
+	// what a reader is shown. It is a peer obligation, not a layer: it
+	// reads a committed record, composes `editorial` primitives, and
+	// touches no binding, no peer obligation, no route and no boundary.
+	// The gate (`scripts/check-asset-licenses.mjs`) is a consumer, not
+	// an exception: it imports the same rules, so the rules stay in `src/`.
+	['legal', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http', 'logging'])],
 ]);
 
 /**

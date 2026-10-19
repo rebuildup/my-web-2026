@@ -270,6 +270,16 @@ gates:
       # `release:gate:check`) so Issue #566 does not change the failure
       # path of the historical chain.
       - 'pnpm run tools:artifact:check'
+      # Issue #497: asset rights / attribution / licence review for every
+      # byte this repository publishes. Offline, status-only: each file in
+      # the audited scope (`public/**`) must be claimed by exactly one
+      # record in quality/asset-license-inventory.json, licence evidence is
+      # verified by digest rather than trusted, and the publication
+      # decision is derived from the evidence so an unrecorded asset
+      # cannot read as cleared. An asset the contract holds but that is
+      # still published is a warning, because unpublishing it is an owner
+      # publication decision this gate records rather than takes.
+      - 'pnpm run assets:license:check'
     cost_class: cheap
     trigger: local + every CI run
 

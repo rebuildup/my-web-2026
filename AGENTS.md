@@ -108,6 +108,11 @@ portfolio -> editorial
 reactions -> i18n (Issue #433)
 portfolio -> i18n (Issue #433)
 external-api -> editorial (Issue #499 — display primitives only)
+legal -> editorial (Issue #497 — the asset rights-review obligation owns
+            the rights / attribution / licence decision for every byte it
+            publishes and references; it reads a committed record and
+            renders the review with editorial primitives, and imports no
+            peer obligation, route, binding or HTTP boundary)
 server -> http
 http -> cloudflare (env.DB / env.MEDIA at request time; pure rules such as
   `isPublicMediaKey` may be imported as values, since `cloudflare/**` stays binding-free)
@@ -202,6 +207,23 @@ home -> editorial
   is wired to a route, so the repository makes **no outbound
   third-party request at runtime**; promotion follows
   `docs/domain/integrations.md` (capability-scoped first).
+- `src/legal/**` (Issue #497) owns the publication-rights review of the
+  bytes this platform publishes and references: the vocabulary that
+  separates "written here", "derived here", "fetched from a provider",
+  "bundled from a third party" and "provenance unrecorded"
+  (`contract.ts`), the fail-closed reader of the reviewed record
+  (`inventory.ts`), and the surface that shows one asset's rights,
+  provenance, licence, conditions and evidence to a reader
+  (`AssetLicenseReview.tsx`). The publication decision is **derived**
+  from evidence, never declared by a record, so an asset whose rights
+  are unrecorded cannot present itself as cleared. It reads
+  `quality/asset-license-inventory.json`, composes `editorial`
+  primitives and touches no binding. The gate that runs it offline is
+  `scripts/check-asset-licenses.mjs` (`pnpm run assets:license:check`);
+  the report is `docs/verification/legal/asset-license-review.md`.
+  Byte-level licence evidence for a Tool's own checkout belongs to
+  Issue #466 (`src/tools/artifact-inventory.ts`), so the two owners
+  never claim the same files.
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - An external third-party read is not an `src/http/**` concern: `http/`
   owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),

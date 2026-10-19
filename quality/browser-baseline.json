@@ -744,6 +744,12 @@
 			"role": "Runtime log-redaction contract: what may appear in a console record, and the only module allowed to reach `console`"
 		},
 		{
+			"id": "privacy",
+			"root": "src/privacy",
+			"min_files": 1,
+			"role": "Published data lifecycle leaf obligation: the registry (stored items, retention, deletion path, external transfer) the public wording renders from"
+		},
+		{
 			"id": "app-shell",
 			"files": [
 				"src/client.tsx",

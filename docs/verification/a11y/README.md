@@ -1,8 +1,13 @@
-# Verification — reduced motion (Issue #403)
+# Verification — accessibility
 
 | Artefact | Issue | What it proves |
 | --- | --- | --- |
+| `mixed-language-content.webp` | #409 | the shipped language-of-parts gallery in four states (mixed-language body / document-language-only body / refused parts / the same body at 320 px), with the WCAG 2.2 mapping table that separates the machine-checked rows from the human ones. `mixed-language-content.md` is the write-up |
+| `form-error-story.webp` | #404 | the shipped form gallery in five states, with the failure panel's Chromium accessibility snapshot. `form-error-story.md` is the write-up |
+| `category-appearance.webp`, `category-monochrome*.webp`, `status-*.webp` | earlier issues | monochrome / appearance proofs kept alongside the a11y artefacts |
 | `reduced-motion-on-off.webp` | #403 | the shipped counter fixture rendered twice in one Chromium — `no-preference` and `reduce` — with the browser-reported `animation-name`, the accessible label, the machine gate's verdict and the WCAG mapping printed above the two panels |
+
+## Reduced motion (Issue #403)
 
 `reduced-motion-on-off.webp` is the committed screenshot of
 `docs/verification/a11y/reduced-motion-on-off.png` with the `.webp`

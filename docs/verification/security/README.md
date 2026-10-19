@@ -24,6 +24,34 @@ of trusting the image.
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 | [`secrets-status-only.webp`](secrets-status-only.webp) | #477 | `pnpm run secrets:status:report` |
+| [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
+
+## `r2-restore-proof.webp` (Issue #462)
+
+公開画像が `MEDIA` から 1 件消えたときの復旧手順を、**credential 不要・本番非接触**
+の fixture proof で実行した結果。`quality/fixtures/r2-media-restore/` の 7 記録ケース
+（復旧成功 / 冪等 / private namespace 拒否 / source 不在 / manifest 不一致 /
+write 欠損 / 判別不能）を `src/cloudflare/media-restore.ts` に通し、
+宣言どおりに振る舞ったかを判定する。実行先は process 内の Map で、
+Cloudflare への read / write コードパスは存在しない。
+
+判定を左右するのは「成功したか」だけでなく **「write しなかったか」** である。
+`bucketAfter=absent` を宣言した 3 ケース（private 拒否 / source 不在 /
+manifest 不一致）は、書いた瞬間に逸脱として落ちる。
+
+status-only 契約どおり、画像には object key・key 断片・namespace・
+source path・credential を写していない（生成側が実行前に同じ leak guard を通し、
+1 件でも検出すると非ゼロ終了する）。手順と失敗時挙動は
+[`docs/runbook/r2-media-restore.md`](../../runbook/r2-media-restore.md)、
+実 R2 binding での検証は
+`pnpm exec vitest run test/integration/r2-media-restore.test.ts`。
+
+Regenerate:
+
+```bash
+pnpm run r2:restore:proof          # fixture proof（status-only）
+pnpm run r2:restore:proof:report   # -> .tmp/r2-restore-proof.html（この画像の生成元）
+```
 
 ## `asvs-coverage-matrix.webp` (Issue #507)
 

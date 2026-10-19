@@ -26,7 +26,6 @@ export {
 	ROUTE_COVERAGE,
 	SITE_LOCALE,
 	SITE_NAME,
-	socialCardUrl,
 } from './contract';
 export type {
 	DeferredSocialCardSurface,

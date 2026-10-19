@@ -4,7 +4,7 @@ import { personFactsFromAbout } from '../../about/structured-data';
 import { PublicNav } from '../../editorial/nav';
 import { BreadcrumbJsonLd, Breadcrumbs } from '../../editorial/nav/Breadcrumbs';
 import { breadcrumbsChrome } from '../../editorial/nav/Breadcrumbs.styles';
-import { composeSocialCard, socialCardUrl } from '../../editorial/social-card';
+import { composeSocialCard } from '../../editorial/social-card';
 import { CreativeWorkJsonLd } from '../../editorial/structured-data';
 import { PortfolioDetail } from '../../portfolio/components';
 import { loadPortfolioAdjacent, loadPortfolioProject } from '../../portfolio/public';
@@ -65,7 +65,10 @@ export const Route = createFileRoute('/portfolio/$slug')({
 		const { project } = loaderData;
 		const title = `${project.title} — Portfolio`;
 		const description = project.summary;
-		const url = socialCardUrl(`/portfolio/${project.slug}`);
+		// Literal, like /about and /portfolio: the publication-surface
+		// snapshot and the index-boundary gate both read the canonical
+		// origin out of this file textually, so it stays readable here.
+		const url = `https://rebuildup.dev/portfolio/${project.slug}`;
 		const card = composeSocialCard({
 			title,
 			socialTitle: project.title,

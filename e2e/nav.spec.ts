@@ -157,6 +157,13 @@ test.describe('public nav — Tools exclusion (Issue #288)', () => {
 		expect(res?.status()).toBe(200);
 		await expect(page.locator('nav[aria-label="Public"]')).toHaveCount(0);
 		await expect(page.locator('nav[aria-label="パンくず"]')).toHaveCount(0);
+		// Issue #498: ProtoType declares third-party contacts, so the shell
+		// opens on the consent notice. This assertion is about the NAV — the
+		// Tool frame must not drag the public nav back — and the frame is what
+		// the visitor asked for by activating the load.
+		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
+		await page.waitForLoadState('networkidle');
+		await page.getByTestId('tool-embed-consent-activate').click();
 		await expect(page.locator('iframe[title="ProtoType Tool"]')).toBeVisible();
 	});
 

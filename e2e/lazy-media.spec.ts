@@ -333,6 +333,14 @@ async function measure(
 		 * measurement instead of an assumption.
 		 */
 		activateSelector?: string;
+		/**
+		 * Set together with `activateSelector` on a Tool route: the frame's
+		 * own document request is awaited on the wire. React inserts the
+		 * `<iframe>` one tick before the browser issues its request, so a
+		 * `networkidle` check can resolve in the gap and report "the Tool
+		 * loaded nothing" for a Tool that loaded fine.
+		 */
+		awaitToolArtifactResponse?: boolean;
 		reportKey: string;
 	},
 ): Promise<PageMeasurement> {
@@ -388,10 +396,17 @@ async function measure(
 		// The notice is server-rendered; the click handler is not attached
 		// until hydration finishes, so settle the network first.
 		await page.waitForLoadState('networkidle');
+		const artifactResponse = options.awaitToolArtifactResponse
+			? page.waitForResponse(
+					(res) => res.url().startsWith(origin) && isToolArtifact(new URL(res.url()).pathname),
+					{ timeout: 20_000 },
+				)
+			: null;
 		await page.locator(options.activateSelector).click();
 		await page.waitForFunction(() => document.querySelector('iframe') !== null, undefined, {
 			timeout: 10_000,
 		});
+		if (artifactResponse) await artifactResponse;
 		await page.waitForLoadState('networkidle');
 	}
 
@@ -614,6 +629,7 @@ test.describe('lazy media / iframe waterfall (Issue #487)', () => {
 		const tool = await measure(browser, 'tool route', '/tools/prototype', {
 			baseURL,
 			activateSelector: '[data-testid="tool-embed-consent-activate"]',
+			awaitToolArtifactResponse: true,
 			reportKey: 'tool-route',
 		});
 

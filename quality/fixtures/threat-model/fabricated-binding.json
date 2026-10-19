@@ -1,0 +1,118 @@
+{
+	"note": "The same world, but the two asset sources are binding names the Worker does not bind: one that was never a binding at all and one that is audit-only and never reaches the Worker. Both must FAIL, because a source that names a binding nobody binds sends an auditor after a binding that is not there.",
+	"files": [
+		"src/http/hono.ts",
+		"src/logging/redact.ts",
+		"test/integration/csrf-contract.test.ts",
+		"docs/security/api-cors.md",
+		"scripts/fixture-gate.mjs"
+	],
+	"scripts": {
+		"fixture:check": "node scripts/fixture-gate.mjs"
+	},
+	"secrets": {
+		"runtime": ["BETTER_AUTH_SECRETS", "MY_WEB_2026_CONSUMER_API_KEY"],
+		"auditOnly": ["BETTER_AUTH_SECRET"]
+	},
+	"manifest": {
+		"version": 1,
+		"policy": "Fixture policy: this world declares the files above and the one command above, and the evaluator must accept every claim because each one points at something the fixture actually contains.",
+		"security_gate_prefixes": ["fixture:"],
+		"diagram_capability": "fixture-boundary",
+		"protected_capabilities": ["fixture-boundary"],
+		"control_registry": [
+			{
+				"command": "fixture:check",
+				"ref": "scripts/fixture-gate.mjs",
+				"capabilities": ["fixture-boundary"],
+				"contract": "The fixture gate is the command a release would run for this world, and it is what makes the one control on this boundary reviewable."
+			}
+		],
+		"capabilities": [
+			{
+				"id": "fixture-boundary",
+				"title": "Fixture inbound boundary",
+				"status": "live",
+				"owner": "the fixture obligation that owns the inbound boundary of the synthetic world",
+				"authority": "The fixture's own rule: a boundary is only a boundary when it crosses the boundary zone and carries at least one control",
+				"summary": "A synthetic caller crosses one declared boundary into a synthetic handler, and the model says so with artefacts that exist.",
+				"documentation": "docs/security/api-cors.md",
+				"assets": [
+					{
+						"id": "fixture-key",
+						"classification": "confidential",
+						"description": "A synthetic key the caller presents; the ledger names the binding it would come from, and the name is one the Worker never binds.",
+						"source_of_truth": "HOME_API_KEY"
+					},
+					{
+						"id": "fixture-log",
+						"classification": "internal",
+						"description": "A synthetic operator-visible record the fixture writes through a redacting logger; the ledger points it at an audit-only name, which is never bound to the Worker.",
+						"source_of_truth": "BETTER_AUTH_SECRET"
+					}
+				],
+				"nodes": [
+					{
+						"id": "fixture-caller",
+						"label": "synthetic caller",
+						"zone": "untrusted",
+						"assets": ["fixture-key"]
+					},
+					{
+						"id": "fixture-boundary",
+						"label": "synthetic handler",
+						"zone": "boundary",
+						"assets": ["fixture-key"],
+						"source": "src/http/hono.ts"
+					},
+					{
+						"id": "fixture-log",
+						"label": "synthetic logger",
+						"zone": "trusted",
+						"assets": ["fixture-log"],
+						"source": "src/logging/redact.ts"
+					}
+				],
+				"boundaries": [
+					{
+						"id": "fixture-inbound",
+						"from": "fixture-caller",
+						"to": "fixture-boundary",
+						"crosses": "The synthetic inbound boundary an unverified request crosses before any handler runs.",
+						"controls": [
+							{ "kind": "gate", "ref": "scripts/fixture-gate.mjs" },
+							{ "kind": "test", "ref": "test/integration/csrf-contract.test.ts" }
+						]
+					},
+					{
+						"id": "fixture-logging",
+						"from": "fixture-boundary",
+						"to": "fixture-log",
+						"crosses": "The synthetic logging boundary an internal failure crosses on its way to an operator-visible record.",
+						"controls": [{ "kind": "code", "ref": "src/logging/redact.ts" }]
+					}
+				],
+				"threats": [
+					{
+						"id": "fixture-forgery",
+						"stride": "spoofing",
+						"asset": "fixture-key",
+						"scenario": "A synthetic caller presents a key it does not own, and the handler cannot tell the forgery from the genuine request.",
+						"mitigations": [
+							{
+								"ref": "test/integration/csrf-contract.test.ts",
+								"kind": "test",
+								"state": "implemented",
+								"note": "The fixture suite refuses the unknown key before any handler runs."
+							}
+						]
+					}
+				],
+				"review_items": [
+					"Does the synthetic handler still refuse an unknown key before it reads any state?",
+					"Can the synthetic log record carry a value the caller supplied?"
+				]
+			}
+		]
+	}
+}

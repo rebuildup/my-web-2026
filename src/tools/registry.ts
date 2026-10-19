@@ -1,5 +1,6 @@
 import { resolveToolFrameSrc } from './embed-policy';
 import type { ToolHostMessageDeclaration, ToolIframeDeclaration } from './embed-policy';
+import type { ToolPrivacyDeclaration } from './embed-privacy';
 import manifestJson from './manifest.json' with { type: 'json' };
 
 /**
@@ -60,6 +61,13 @@ import manifestJson from './manifest.json' with { type: 'json' };
  * file erase to zero runtime cost at build time, so consumers that
  * only need the type do not bundle the manifest.
  *
+ * Embed privacy (Issue #498): `delivery.privacy` is carried through the
+ * same way. This module does not decide the consent mode either —
+ * `src/tools/embed-privacy.ts` derives it from the declaration and the
+ * frame origin, and the `/tools/<slug>` route renders the notice from
+ * that verdict. What the registry contributes is the declared data, so
+ * a route never re-reads raw manifest JSON.
+ *
  * Embed policy (Issue #465): this module does NOT decide whether a
  * Tool may be framed. `src/tools/embed-policy.ts` owns that decision
  * (sandbox tokens, referrer policy, frame origin, message origin) and
@@ -101,6 +109,7 @@ export interface ManifestTool {
 					readonly sandbox_rationale?: string;
 				};
 				readonly host_message?: ToolHostMessageDeclaration;
+				readonly privacy?: ToolPrivacyDeclaration;
 		  }
 		| {
 				readonly kind: 'external_exception';
@@ -115,6 +124,7 @@ export interface ManifestTool {
 					readonly sandbox_rationale?: string;
 				};
 				readonly host_message?: ToolHostMessageDeclaration;
+				readonly privacy?: ToolPrivacyDeclaration;
 		  }
 		| {
 				readonly kind: 'host_disabled';
@@ -164,6 +174,13 @@ export interface PublicToolSummary {
 		// turns the same declaration into a host-side response header.
 		readonly allow?: string;
 	};
+	/**
+	 * Issue #498: the declared third-party contacts. Absent means "no
+	 * declaration", which `evaluateEmbedPrivacy` treats as a violation
+	 * for an embeddable Tool — the route blocks the frame rather than
+	 * rendering one behind a notice that would be empty.
+	 */
+	readonly privacy?: ToolPrivacyDeclaration;
 }
 
 /**
@@ -277,6 +294,7 @@ function toSummary(tool: ManifestTool): PublicToolSummary {
 		license: tool.license,
 		entry_html: resolveToolEntryHtml(tool),
 		iframe: declared ?? { sandbox: '', referrer_policy: '' },
+		privacy: tool.delivery.kind === 'host_disabled' ? undefined : tool.delivery.privacy,
 	};
 }
 

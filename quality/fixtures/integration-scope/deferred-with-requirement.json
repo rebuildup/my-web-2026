@@ -1,0 +1,24 @@
+{
+	"note": "a `review: deferred` candidate that grows a least-privilege scope set and a retention ceiling: the row now reads as reviewed, so the gate must refuse the mix instead of letting the deferred marker and the requirement coexist (the ledger claims \"no Stripe token may exist yet\")",
+	"expect_error": "a deferred candidate must not declare least_privilege / token_retention",
+	"ops": [
+		{
+			"op": "set",
+			"path": "integrations.3.least_privilege",
+			"value": {
+				"required_scopes": ["billing_read"],
+				"denied_scopes": ["billing_write"],
+				"justification": "reading invoices only; this platform must never move money"
+			}
+		},
+		{
+			"op": "set",
+			"path": "integrations.3.token_retention",
+			"value": {
+				"max_age_days": 90,
+				"storage": "Infisical prod path /integrations/stripe",
+				"provider_expiry": "restricted keys can be revoked but do not self-expire"
+			}
+		}
+	]
+}

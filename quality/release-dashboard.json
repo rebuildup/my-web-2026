@@ -13,6 +13,7 @@
 			"log-redaction": "log-redaction",
 			"security-headers": "security-headers",
 			"csrf-contract": "csrf-contract",
+			"integration-scope-ledger": "integration-scope",
 			"dependency-advisory": "dependency-advisory",
 			"install-script-audit": "install-scripts",
 			"tools-provenance": "tools-provenance",
@@ -21,8 +22,11 @@
 			"wrangler-independence": "wrangler-independence",
 			"cloudflare-binding-contract": "cloudflare-contract",
 			"cloudflare-build-contract": "cloudflare-build-contract",
+			"cloudflare-config-drift": "cloudflare-config-drift",
 			"infisical-secret-coverage": "infisical-secret-coverage",
+			"secret-rotation-status": "secret-rotation-status",
 			"route-quality-coverage": "route-quality-coverage",
+			"personal-data-review": "personal-data-review",
 			"index-boundary": "index-boundary",
 			"test-wiring": "test-wiring",
 			"knip-unused-code": "knip",
@@ -31,7 +35,9 @@
 			"reduced-motion": "reduced-motion",
 			"seo-status": "seo-status",
 			"release-gate-ledger": "release-gate-ledger",
+			"threat-model-ledger": "threat-model-ledger",
 			"asvs-coverage": "asvs-coverage",
+			"security-disclosure": "security-disclosure",
 			"playwright-e2e": "e2e-playwright"
 		},
 		"not_listed": {
@@ -371,6 +377,20 @@
 			"owner": "quality/profile.yaml#gates.integration"
 		},
 		{
+			"id": "cloudflare-config-drift",
+			"group": "gate",
+			"label": "Cloudflare configuration drift (Issue #480)",
+			"state": "implemented",
+			"contract": "production Worker surface / development surface / Workers Builds の build・deploy command / static asset の header coverage が、記録された production contract と一致しているか検査する。1 項目の不一致が 1 finding。",
+			"command": "pnpm run cf:config:drift:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "status-only。MATCH=0 / DRIFT=1 / UNDECIDABLE(fail-closed)=2。secret binding は名前のみを比較し、記録と一致しない text 値は長さだけを出力する。"
+			},
+			"owner": "quality/profile.yaml#gates.fast"
+		},
+		{
 			"id": "release-gate-ledger",
 			"group": "gate",
 			"label": "release gate ledger (Issue #508)",
@@ -382,6 +402,17 @@
 				"kind": "exit_code"
 			},
 			"owner": "Issue #508"
+		},
+		{
+			"id": "threat-model-ledger",
+			"group": "security",
+			"label": "per-capability threat model ledger",
+			"state": "implemented",
+			"contract": "機能単位ごとの資産・trust boundary・threat が、repository に実在する artefact を指し、台帳に secret 値を持たない。",
+			"command": "pnpm run threat:model:check",
+			"requirements": [],
+			"evidence": { "kind": "exit_code" },
+			"owner": "Issue #479"
 		},
 		{
 			"id": "route-quality-coverage",
@@ -397,6 +428,19 @@
 				"note": "coverage ledger の HTML。gate の有効な出力はこの report であり、終了コードだけではない。"
 			},
 			"owner": "Issue #492"
+		},
+		{
+			"id": "personal-data-review",
+			"group": "gate",
+			"label": "移行コーバスの個人情報検出 / 計載承認ゲート",
+			"state": "implemented",
+			"contract": "移行した文字と画像の個人情報キャンダを機械的に提取し、公開可否は owner の判断とその依存先を要する。保留レコードは public bundle に現れない。",
+			"command": "pnpm run publication:redaction:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #494"
 		},
 		{
 			"id": "security-headers",
@@ -421,6 +465,17 @@
 			"requirements": [],
 			"evidence": { "kind": "exit_code" },
 			"owner": "docs/verification/security/asvs-coverage.md"
+		},
+		{
+			"id": "security-disclosure",
+			"group": "security",
+			"label": "脆弱性報告 flow (Issue #478)",
+			"state": "implemented",
+			"contract": "脆弱性報告から公開判断までの flow が runbook と ledger の両方で記録され、合成 fixture が duty 欠落と修正前の公開詳細を INCOMPLETE として返す。",
+			"command": "pnpm run security:disclosure:check",
+			"requirements": [],
+			"evidence": { "kind": "exit_code" },
+			"owner": "docs/runbook/security-disclosure.md"
 		},
 		{
 			"id": "frame-ancestors",
@@ -449,6 +504,19 @@
 			"owner": "AGENTS.md §2"
 		},
 		{
+			"id": "integration-scope",
+			"group": "security",
+			"label": "integration connection scope / retention ledger",
+			"state": "implemented",
+			"contract": "外部連携の接続候補ごとに最小権限 scope・token 保管期限・失効手順が宣言され、reviewed な接続を実 adapter に通した測定値が宣言と一致する。未公開候補の allowlist 無し公開・route mount・secret 宣言は不可。",
+			"command": "pnpm run integration:scope:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "docs/security/integration-token-scope.md (Issue #464)"
+		},
+		{
 			"id": "infisical-secret-coverage",
 			"group": "security",
 			"label": "Infisical secret name coverage",
@@ -461,6 +529,20 @@
 				"note": "AGENTS.md §4: 名前だけを比較し、値は一切読まない。"
 			},
 			"owner": "Issue #167"
+		},
+		{
+			"id": "secret-rotation-status",
+			"group": "security",
+			"label": "Secret drift / rotation deadline status",
+			"state": "implemented",
+			"contract": "runtime secret 名ごとの drift（記録された status-only 観測）と rotation 期限を判定する。値は一切読まない。",
+			"command": "pnpm run secrets:status:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "AGENTS.md §4: name / verdict / 件数 / 日付のみ。観測の entry は runbook §3.2 の name grammar を通らなければ parse 失敗（fail closed）し、値も出力しない。"
+			},
+			"owner": "Issue #477"
 		},
 		{
 			"id": "secret-scan-bundle",

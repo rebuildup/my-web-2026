@@ -65,7 +65,12 @@ below remain literal records.
    - Independent ticket: PR merge into `release-x-y-z`.
    - Stacked ticket: stack landing from the bottom of the stack.
 7. Reconcile Issue / Project state after landing.
-8. Run `pnpm run validate:release` on `release-x-y-z`.
+8. Run `pnpm run validate:release` on `release-x-y-z`. Its `fast`
+   half includes the Cloudflare configuration drift gate (Issue #480,
+   `pnpm run cf:config:drift:check`), which fails the release on one
+   differing binding / route / header-coverage / build-command item
+   against `quality/cloudflare-config-drift.json`; see
+   [`docs/runbook/cloudflare-config-drift.md`](runbook/cloudflare-config-drift.md).
 9. Run the operator-side release gate that CI cannot run:
    `CLOUDFLARE_R2_API_TOKEN=… pnpm run r2:media:audit` (Issue #577,
    read-only R2 key-set audit — it fails when a key outside
@@ -74,6 +79,14 @@ below remain literal records.
    Cloudflare credential, so this step is deliberately outside the
    three `validate:*` entry points; procedure in
    [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).
+   The same reasoning applies to the environment half of the secret
+   status gate (Issue #477): `pnpm run infisical:check:cf -- --execute
+   --environment=prod | tee .tmp/cf-secrets-prod.txt` followed by
+   `pnpm run secrets:status:check -- --observation=.tmp/cf-secrets-prod.txt`
+   records and classifies the Infisical name parity from its status-only
+   output. The repository half of that gate is offline and runs inside
+   `validate:fast`; procedure in
+   [`docs/runbook/secret-rotation-status.md`](runbook/secret-rotation-status.md).
 10. Open / update the Draft release PR (`release-x-y-z -> main`) once
     the branch has any meaningful integrated difference.
 11. Merge the release PR (only after `main` protection / ruleset

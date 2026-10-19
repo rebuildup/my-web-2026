@@ -116,6 +116,11 @@ http/reactions -> logging (Issue #467 — image-reference rejection record)
 portfolio -> logging (Issue #467 — server-function public error boundary)
 cloudflare -> logging (Issue #467 — auth email stub + binding probes)
 editorial -> logging (Issue #467 — SSR fallback failure record)
+server -> logging (Issue #481 — the Worker entry feeds every
+             Worker-generated response to the request anomaly monitor,
+             and the detection event's only shipped sink is the
+             status-only `boundary` audit record; no delivery is
+             configured before owner approval)
 server -> tools (Issue #449 — `toolRouteSecurityPolicy()` reads
              `delivery.iframe.allow` / `referrer_policy` from the Tool
              manifest; the policy object is passed into the HTTP
@@ -155,7 +160,19 @@ home -> editorial
 - `src/home/**` owns the canonical Home surface and its presentation decisions.
 - `src/editorial/**` owns the shipped editorial visual language.
 - `src/cloudflare/**` owns Cloudflare-specific runtime behavior.
-- `src/http/**` owns the external HTTP boundary.
+- `src/http/**` owns the external HTTP boundary. It also owns the
+  request anomaly contract (Issue #481):
+  `src/http/middleware/anomaly-monitor.ts` decides whether the
+  401 / 403 / 429 / 5xx rate of the two watched surfaces crossed a
+  threshold and what the status-only detection event looks like. The
+  aggregation key is `(surface, window)` and the event's field list is
+  closed, so no identity dimension (IP, key id, cookie, path, user
+  agent) can be added — that rule is a type, not a convention. The
+  Worker entry (`src/server.ts`) is the only observation point, because
+  `/admin*` and `/api/v1/*` are served by different layers. Delivery
+  (e-mail, webhook, alert) is **not** implemented: it leaves the
+  platform and needs an owner decision plus an ADR (AGENTS.md §4). See
+  `docs/security/request-anomaly-monitor.md`.
 - `src/logging/**` (Issue #467) is a **leaf** obligation owning
   the runtime log-redaction contract: `redact.ts` decides what may
   appear in a log record, `logger.ts` is the only module allowed

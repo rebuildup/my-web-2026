@@ -173,6 +173,17 @@ gates:
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
+      # Issue #478: the vulnerability-report -> fix -> publication-decision
+      # flow. Offline and read-only: it reads docs/runbook/security-disclosure.md,
+      # quality/security-disclosure.json, the committed fixtures and
+      # package.json#scripts, and runs the committed fixtures through the
+      # same pure evaluator. A stage heading that left the runbook, an
+      # unregistered `pnpm run` command, an unresolvable reference, a duty
+      # without evidence, a probe that does not reproduce its expectation,
+      # or a fixture carrying a credential-shaped value all fail here. It
+      # reads no secret, contacts no production origin and merges nothing,
+      # so it costs a directory walk and belongs in the fast chain.
+      - 'pnpm run security:disclosure:check' # disclosure flow: runbook/ledger agreement + simulated reports
       # Issue #507: the ASVS 5.0 coverage ledger. It does not claim
       # certification. Every selected applicable requirement resolves to
       # a test/doc/gate, or is printed as `not run` (unverified) with the
@@ -791,6 +802,42 @@ compatibility:
       - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
+  security_disclosure:
+    enabled: true
+    issue: '#478'
+    tool: scripts/check-security-disclosure.mjs
+    ledger: quality/security-disclosure.json
+    runbook: docs/runbook/security-disclosure.md
+    fixtures: quality/fixtures/security-disclosure
+    gate: fast
+    check_command: 'pnpm run security:disclosure:check'
+    report_command: 'pnpm run security:disclosure:report'
+    verification_command: 'pnpm run verify:security-disclosure-screenshot'
+    mode: offline_status_only_simulation
+    output: 'verdict / priority / duty id / count / reason code only; never a reported value, payload, production URL or credential (AGENTS.md section 4)'
+    exit_codes:
+      0: 'the runbook, the ledger and every committed probe agree'
+      1: 'drift, a missing duty, an unregistered command, an unresolvable reference, or a probe that does not reproduce its expectation'
+      2: 'usage error (unreadable manifest / fixture)'
+    note: >-
+      Issue #478. The flow from a vulnerability report to the publication
+      decision, in two halves: docs/runbook/security-disclosure.md is the
+      operator procedure and quality/security-disclosure.json is its
+      machine-readable half (stages, ordered P0-P3 derivation, required
+      operator duties, forbidden operations). The gate proves the two
+      halves still describe each other and that the simulated flow
+      discriminates: the committed fixtures are run through the same pure
+      evaluator, so a missing duty and a public detail published before
+      the fix are INCOMPLETE rather than a pass, and a report carrying a
+      credential-shaped value is LEAK_REFUSED with a reason code instead
+      of the value. Hostile fixtures store a recipe, never a literal,
+      because a committed credential shape would fail pnpm run secret:scan.
+      It reads the working tree only — no Worker, no network, no D1/R2, no
+      environment credential, no .dev.vars, no Infisical call, and it
+      merges nothing. This gate does NOT decide the publication: the
+      reporting channel (Issue #468) and the release merge remain owner
+      decisions (AGENTS.md section 6). Open owner decision recorded in the
+      runbook section 11.
   log_redaction:
     enabled: true
     command: 'pnpm run log:redaction:check'

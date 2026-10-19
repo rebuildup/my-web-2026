@@ -103,6 +103,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run content:links:check',
 	'pnpm run routes:quality:check',
 	'pnpm run security:headers:check',
+	'pnpm run security:disclosure:check',
 	'pnpm run asvs:check',
 	'pnpm run html:standards:check',
 	'pnpm run i18n:policy:check',

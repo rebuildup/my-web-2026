@@ -14,6 +14,7 @@
 		"log-redaction",
 		"security-headers",
 		"asvs-coverage",
+		"security-disclosure",
 		"csrf-contract",
 		"dependency-advisory",
 		"install-script-audit",
@@ -280,6 +281,15 @@
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
 			"documentation": "docs/verification/security/asvs-coverage.md"
+		},
+		{
+			"id": "security-disclosure",
+			"contract": "The vulnerability-report to publication-decision flow still has one record on both sides — the runbook and the ledger — and the committed probes still report a missing duty and a premature public detail as INCOMPLETE rather than as a pass.",
+			"command": "pnpm run security:disclosure:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/security-disclosure.md"
 		},
 		{
 			"id": "release-gate-ledger",

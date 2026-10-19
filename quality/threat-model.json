@@ -1,0 +1,1499 @@
+{
+	"version": 1,
+	"policy": "Every capability records its assets, its trust zones, the boundaries between them, the STRIDE threats on those boundaries and the repository artefacts that mitigate them. A claim is only accepted when it points at something real: an asset names a source (a path in this repository, or the name of a runtime secret the Worker really binds), a node names a file that exists, and every control and mitigation is a path that exists or a command a release actually runs. The ledger describes assets by name and never by value — no credential, no binding value and no production secret is recorded here or printed by the gate that reads this file.",
+	"security_gate_prefixes": [
+		"csrf:",
+		"infisical:",
+		"r2:media:",
+		"secret:",
+		"security:embed:",
+		"tools:artifact:",
+		"tools:provenance:"
+	],
+	"diagram_capability": "external-http-boundary",
+	"protected_capabilities": [
+		"external-http-boundary",
+		"auth-session",
+		"portfolio-publication",
+		"media-storage",
+		"tool-embed",
+		"secret-delivery"
+	],
+	"control_registry": [
+		{
+			"command": "csrf:contract:check",
+			"ref": "scripts/check-csrf-contract.mjs",
+			"capabilities": ["external-http-boundary", "auth-session"],
+			"contract": "Proves the two CSRF layers stay separate: the framework default guards `/_serverFn/*` and `csrfGuard` guards `/api/v1/*`, with no path that reaches neither."
+		},
+		{
+			"command": "cloudflare:contract:check",
+			"ref": "scripts/check-cloudflare-contract.mjs",
+			"capabilities": ["external-http-boundary", "auth-session"],
+			"contract": "Proves the declared Cloudflare surface the code depends on still matches the configuration, including the rate-limit bindings that bound abuse on the boundary and the login path."
+		},
+		{
+			"command": "security:embed:check",
+			"ref": "scripts/check-frame-ancestors-policy.mjs",
+			"capabilities": ["tool-embed"],
+			"contract": "Proves the framing policy of the shipped documents: which surfaces may be framed, which may never be, and that no `public/` document is left without a rule."
+		},
+		{
+			"command": "tools:artifact:check",
+			"ref": "scripts/check-tool-artifact-inventory.mjs",
+			"capabilities": ["tool-embed"],
+			"contract": "Proves each Tool's declared license and dependency set match the reviewed inventory record, so a Tool artefact cannot drift from what was reviewed."
+		},
+		{
+			"command": "tools:provenance:check",
+			"ref": "scripts/check-submodule-provenance.mjs",
+			"capabilities": ["tool-embed", "supply-chain"],
+			"contract": "Proves a vendored build input comes from the reviewed checkout at the recorded revision, so a build cannot consume an unreviewed source."
+		},
+		{
+			"command": "publication:check",
+			"ref": "scripts/check-publication-diff.mjs",
+			"capabilities": ["portfolio-publication"],
+			"contract": "Proves the published state of the portfolio content matches the owner's decision surface, so a content change cannot reach the public surface unreviewed."
+		},
+		{
+			"command": "security:ssrf:report",
+			"ref": "scripts/capture-ssrf-url-adapter-report.mjs",
+			"capabilities": ["outbound-url-policy"],
+			"contract": "Runs the outbound URL policy over its destination matrix and exits non-zero when a measurement contradicts the outcome its row claims, which is the machine half of the egress policy."
+		},
+		{
+			"command": "architecture:check",
+			"ref": "scripts/check-architecture.mjs",
+			"capabilities": ["outbound-read"],
+			"contract": "Proves the outbound read obligation keeps its own dependency direction: `src/external-api/**` may not import `src/http/**`, so the reader never reaches the inbound boundary or the URL policy that belongs to it."
+		},
+		{
+			"command": "r2:media:audit",
+			"ref": "scripts/check-r2-media-key-set.mjs",
+			"capabilities": ["media-storage"],
+			"contract": "Reads the media bucket key set status-only and fails when a key exists outside the public prefixes, which is the enforcement half of the media visibility policy."
+		},
+		{
+			"command": "secret:scan",
+			"ref": "scripts/scan-secrets.mjs",
+			"capabilities": ["secret-delivery", "supply-chain"],
+			"contract": "Scans the tracked tree and the build output for credential shapes so a value cannot be committed or bundled, which is the machine half of the secret source-of-truth rule."
+		},
+		{
+			"command": "infisical:check:coverage",
+			"ref": "scripts/check-infisical-coverage.mjs",
+			"capabilities": ["secret-delivery"],
+			"contract": "Proves every secret name the Wrangler configuration declares is covered by the Infisical inventory and by its environment separation, without reading any value."
+		}
+	],
+	"capabilities": [
+		{
+			"id": "external-http-boundary",
+			"title": "External HTTP boundary (/api/v1/*)",
+			"status": "live",
+			"owner": "the external HTTP boundary obligation in `src/http/**`, mounted by the Worker entry `src/server.ts`",
+			"authority": "AGENTS.md §2/§3 — `http` owns the inbound external boundary and its own CSRF layer; the split from TanStack Start is enforced in `src/server.ts`",
+			"summary": "Every request that did not come from the TanStack Start UI is answered here, so the caller is untrusted until a key, an origin and a rate budget say otherwise.",
+			"documentation": "docs/security/api-cors.md",
+			"assets": [
+				{
+					"id": "consumer-api-key",
+					"classification": "confidential",
+					"description": "The consumer API key a self-consuming client presents on the boundary; it is bound as the runtime secret `MY_WEB_2026_CONSUMER_API_KEY`, only its hash is stored, and the plaintext never enters the repository.",
+					"source_of_truth": "MY_WEB_2026_CONSUMER_API_KEY"
+				},
+				{
+					"id": "counter-state",
+					"classification": "internal",
+					"description": "The D1 rows behind the access counter and its increment path, readable through the boundary and writable through the access router.",
+					"source_of_truth": "src/http/access-counter/schema.ts"
+				},
+				{
+					"id": "reaction-catalog",
+					"classification": "internal",
+					"description": "The DB-backed emoji catalog and its slug grammar, which the reactions and reaction-image routes read and the boundary scopes per action.",
+					"source_of_truth": "src/reactions/slug-regex.ts"
+				},
+				{
+					"id": "public-boundary-documents",
+					"classification": "public",
+					"description": "The unauthenticated documents this boundary serves — health, db/r2 pings, the security-txt and crawler documents — including the release version they publish.",
+					"source_of_truth": "src/http/hono.ts"
+				},
+				{
+					"id": "boundary-log-records",
+					"classification": "confidential",
+					"description": "Operator-visible log records the boundary writes through the redacting logger, carrying a correlation id and the values redacted before they are written.",
+					"source_of_truth": "src/logging/logger.ts"
+				}
+			],
+			"nodes": [
+				{
+					"id": "caller",
+					"label": "unauthenticated caller",
+					"zone": "untrusted",
+					"assets": ["consumer-api-key", "counter-state", "reaction-catalog"]
+				},
+				{
+					"id": "boundary",
+					"label": "Hono external boundary",
+					"zone": "boundary",
+					"assets": ["public-boundary-documents"],
+					"source": "src/http/hono.ts"
+				},
+				{
+					"id": "datastore",
+					"label": "D1 binding DB",
+					"zone": "trusted",
+					"assets": ["counter-state", "reaction-catalog"],
+					"source": "src/cloudflare/health.ts"
+				},
+				{
+					"id": "log-stream",
+					"label": "redacting logger",
+					"zone": "trusted",
+					"assets": ["boundary-log-records"],
+					"source": "src/logging/logger.ts"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "inbound-request",
+					"from": "caller",
+					"to": "boundary",
+					"crosses": "The inbound external boundary: an arbitrary request with its own headers enters the Worker and must be authenticated, origin-checked and rate-bounded before any handler runs.",
+					"controls": [
+						{ "kind": "gate", "ref": "scripts/check-csrf-contract.mjs" },
+						{ "kind": "test", "ref": "test/integration/csrf-contract.test.ts" },
+						{ "kind": "test", "ref": "test/integration/api-key-scope.test.ts" },
+						{ "kind": "code", "ref": "src/http/api-keys/middleware.ts" }
+					]
+				},
+				{
+					"id": "bound-to-datastore",
+					"from": "boundary",
+					"to": "datastore",
+					"crosses": "The D1 trust boundary: a value validated at the edge becomes a parameter-bound statement against the database binding.",
+					"controls": [
+						{ "kind": "test", "ref": "test/integration/d1-parameter-binding.test.ts" },
+						{ "kind": "code", "ref": "src/http/validation.ts" },
+						{ "kind": "doc", "ref": "docs/security/input-validation.md" }
+					]
+				},
+				{
+					"id": "bound-to-log",
+					"from": "boundary",
+					"to": "log-stream",
+					"crosses": "The operator-visibility boundary: an internal failure becomes a redacted log record plus a correlation id, never a value in the response.",
+					"controls": [
+						{ "kind": "gate", "ref": "scripts/check-log-redaction.mjs" },
+						{ "kind": "code", "ref": "src/http/errors.ts" },
+						{ "kind": "test", "ref": "test/integration/error-redaction.test.ts" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "key-forgery",
+					"stride": "spoofing",
+					"asset": "consumer-api-key",
+					"scenario": "A caller presents a guessed or replayed consumer key to act with the authority of the self-consuming client, and the boundary cannot tell the forgery from the real key.",
+					"mitigations": [
+						{
+							"ref": "src/http/api-keys/middleware.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The middleware compares the presented key against the stored hash and refuses an unknown key with a stable code before any handler runs."
+						},
+						{
+							"ref": "test/integration/api-key-scope.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The suite asserts the accepted key, the missing header, the unknown key and the wrong-shape key cases."
+						}
+					]
+				},
+				{
+					"id": "scope-escalation",
+					"stride": "elevation-of-privilege",
+					"asset": "consumer-api-key",
+					"scenario": "A key issued for the read scope calls a write action and is allowed through because authentication is treated as authorisation.",
+					"mitigations": [
+						{
+							"ref": "src/http/api-keys/middleware.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "Resource and action scopes are checked separately from key validity and a missing scope is a 403, not a 500."
+						},
+						{
+							"ref": "docs/security/api-key-scope.md",
+							"kind": "doc",
+							"state": "implemented",
+							"note": "The resource/action matrix is documented per route so a new route states its scope."
+						}
+					]
+				},
+				{
+					"id": "cross-site-write",
+					"stride": "tampering",
+					"asset": "counter-state",
+					"scenario": "A third-party page makes the browser issue a credentialed write to `/api/v1/*`, changing public state from an origin the user never visited for that purpose.",
+					"mitigations": [
+						{
+							"ref": "src/http/middleware/csrf.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "Unsafe methods are origin-checked with fetch-metadata, Origin and Referer, and a request with none of them is refused."
+						},
+						{
+							"ref": "scripts/check-csrf-contract.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The gate proves the boundary layer and the framework layer each keep their own check."
+						}
+					]
+				},
+				{
+					"id": "shared-cache-leak",
+					"stride": "information-disclosure",
+					"asset": "counter-state",
+					"scenario": "A shared cache serves one caller's response to another because the boundary answers with credentials and did not vary on them.",
+					"mitigations": [
+						{
+							"ref": "src/http/middleware/cache-policy.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "Every boundary response is a function of the caller's identity unless a handler explicitly opts into public caching with a positive freshness lifetime."
+						},
+						{
+							"ref": "test/integration/cache-isolation.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The suite asserts the isolation headers across the credentialed and public-read routes."
+						}
+					]
+				},
+				{
+					"id": "failure-disclosure",
+					"stride": "information-disclosure",
+					"asset": "boundary-log-records",
+					"scenario": "An internal failure is answered with the exception, the SQL or the binding name, so a caller learns the shape of the datastore from an error message.",
+					"mitigations": [
+						{
+							"ref": "src/http/errors.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "Failures answer with a stable code, a repo-authored message and the correlation id only."
+						},
+						{
+							"ref": "scripts/check-log-redaction.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The gate keeps `console.*` behind the redacting logger, so the record is written through one policy."
+						}
+					]
+				},
+				{
+					"id": "write-flood",
+					"stride": "denial-of-service",
+					"asset": "counter-state",
+					"scenario": "A caller floods a write endpoint until the database binding is the only thing standing between the flood and the rest of the site.",
+					"mitigations": [
+						{
+							"ref": "src/http/middleware/rate-limit.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "Write and read budgets are enforced per principal with a Retry-After on refusal."
+						},
+						{
+							"ref": "scripts/check-cloudflare-contract.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The gate keeps the rate-limit bindings the code reads declared in the Cloudflare configuration."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Does every route added under `/api/v1/*` appear in the resource/action scope matrix, or is a new action shipping with an inherited scope?",
+				"Is any response on this boundary still cacheable by a shared cache without `Vary: Origin` and the caller-identity headers?",
+				"Can a failure on this boundary still name a binding, a table or a secret in the body it returns?"
+			]
+		},
+		{
+			"id": "auth-session",
+			"title": "Authentication and Admin session boundary",
+			"status": "live",
+			"owner": "the auth route obligation `src/http/auth/**` with the Admin loaders in `src/admin/**`",
+			"authority": "AGENTS.md §3 — `/api/v1/auth/*` is Better Auth behind the boundary; the Admin surface reads it through server functions and its own redirect policy",
+			"summary": "A browser holds a session cookie that becomes an Admin capability, so the crossing is judged by origin, by redirect target and by step-up freshness rather than by the cookie alone.",
+			"documentation": "docs/security/step-up-authentication.md",
+			"assets": [
+				{
+					"id": "session-cookie",
+					"classification": "confidential",
+					"description": "The Better Auth session cookie that stands for an authenticated identity on every Admin request; the signing material is the runtime secret `BETTER_AUTH_SECRETS`, and the legacy single-form `BETTER_AUTH_SECRET` is only a fallback reading path in `src/cloudflare/auth/better-auth.ts` that is never bound.",
+					"source_of_truth": "BETTER_AUTH_SECRETS"
+				},
+				{
+					"id": "admin-capability",
+					"classification": "confidential",
+					"description": "What the session unlocks: emoji catalog edits, image management, key and invitation administration.",
+					"source_of_truth": "src/admin/public.ts"
+				},
+				{
+					"id": "return-target",
+					"classification": "internal",
+					"description": "The post-login destination the login loader accepts from the query string and the boundary classifies before following it.",
+					"source_of_truth": "src/http/security/redirect-guard.ts"
+				}
+			],
+			"nodes": [
+				{
+					"id": "browser",
+					"label": "browser with session",
+					"zone": "untrusted",
+					"assets": ["session-cookie", "return-target"]
+				},
+				{
+					"id": "auth-boundary",
+					"label": "Better Auth boundary",
+					"zone": "boundary",
+					"assets": ["admin-capability"],
+					"source": "src/http/auth/router.ts"
+				},
+				{
+					"id": "admin-loaders",
+					"label": "Admin server functions",
+					"zone": "boundary",
+					"assets": ["admin-capability"],
+					"source": "src/admin/auth/load.ts"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "login-origin",
+					"from": "browser",
+					"to": "auth-boundary",
+					"crosses": "The authentication crossing: a cookie-carrying write from a browser must be same-origin and must reach only trusted origins.",
+					"controls": [
+						{ "kind": "gate", "ref": "scripts/check-csrf-contract.mjs" },
+						{ "kind": "test", "ref": "test/integration/auth-login-hardening.test.ts" },
+						{ "kind": "code", "ref": "src/http/auth/router.ts" }
+					]
+				},
+				{
+					"id": "admin-authorization",
+					"from": "browser",
+					"to": "admin-loaders",
+					"crosses": "The authorisation crossing: an authenticated browser becomes an Admin capability, and the step-up state decides how much of it is available.",
+					"controls": [
+						{ "kind": "test", "ref": "test/integration/admin-authorization.test.ts" },
+						{ "kind": "test", "ref": "test/integration/admin-step-up-auth.test.ts" },
+						{ "kind": "code", "ref": "src/admin/public.ts" }
+					]
+				},
+				{
+					"id": "return-to-classifier",
+					"from": "browser",
+					"to": "admin-loaders",
+					"crosses": "The navigation crossing: a caller-supplied return target must be classified before any redirect is emitted.",
+					"controls": [
+						{ "kind": "test", "ref": "src/http/security/redirect-guard.test.ts" },
+						{ "kind": "doc", "ref": "docs/security/open-redirect.md" },
+						{ "kind": "code", "ref": "src/http/security/redirect-guard.ts" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "open-redirect",
+					"stride": "tampering",
+					"asset": "return-target",
+					"scenario": "A login link carries an absolute or protocol-relative return target, so the site hands the browser to an origin the attacker chose with the user's session in the URL bar.",
+					"mitigations": [
+						{
+							"ref": "src/http/security/redirect-guard.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The boundary classifier refuses anything that is not a same-origin path, and the login route additionally restricts the accepted prefixes."
+						},
+						{
+							"ref": "e2e/admin-login-return-to.spec.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The browser test walks the accepted and refused return targets through the real login screen."
+						}
+					]
+				},
+				{
+					"id": "credential-stuffing",
+					"stride": "denial-of-service",
+					"asset": "session-cookie",
+					"scenario": "An attacker replays leaked credentials at the login endpoint until a human account is locked out or the endpoint is saturated.",
+					"mitigations": [
+						{
+							"ref": "src/http/middleware/rate-limit.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The login path is inside the read budget and refuses with a Retry-After."
+						},
+						{
+							"ref": "scripts/check-cloudflare-contract.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The gate keeps the rate-limit bindings this path reads declared in the Cloudflare configuration."
+						},
+						{
+							"ref": "docs/security/login-enumeration-rate-limit.md",
+							"kind": "doc",
+							"state": "implemented",
+							"note": "The enumeration contract records that a refusal never distinguishes an unknown account from a wrong password."
+						}
+					]
+				},
+				{
+					"id": "step-up-bypass",
+					"stride": "elevation-of-privilege",
+					"asset": "admin-capability",
+					"scenario": "An authenticated but not recently verified session reaches a destructive Admin action, so possession of an old cookie is enough to change published state.",
+					"mitigations": [
+						{
+							"ref": "src/admin/public.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The sensitive actions read the step-up state and refuse a session that is not fresh enough."
+						},
+						{
+							"ref": "test/integration/admin-step-up-auth.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The suite asserts both the stale and the fresh session for each guarded action."
+						}
+					]
+				},
+				{
+					"id": "session-survival",
+					"stride": "repudiation",
+					"asset": "session-cookie",
+					"scenario": "A logout leaves the session usable, so an action taken afterwards cannot be attributed to a session the user believes they ended.",
+					"mitigations": [
+						{
+							"ref": "test/integration/session-logout.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The suite asserts that the cookie is invalidated server-side, not only cleared in the browser."
+						},
+						{
+							"ref": "src/cloudflare/auth/session-cookie-contract.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The cookie contract is a single declaration both the runtime and the tests read."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Does every new Admin action declare whether it needs step-up, and is that decision visible in the route rather than inside the loader?",
+				"Is any new query parameter able to influence where the browser is sent after login without passing the redirect classifier?",
+				"Can a refusal on this surface be used to distinguish an unknown account from a wrong password?"
+			]
+		},
+		{
+			"id": "portfolio-publication",
+			"title": "Portfolio publication surface (authored content)",
+			"status": "live",
+			"owner": "the portfolio obligation in `src/portfolio/**`, including the publication loader and the Markdown input boundary",
+			"authority": "AGENTS.md §3 — `portfolio` owns the employment-facing data model and publication contract; the owner approves what is published",
+			"summary": "Authored Markdown and owner-selected rows become a public document, so the crossing is the loader and the input boundary that decides what is stored and what is rendered.",
+			"documentation": "docs/portfolio/markdown-format.md",
+			"assets": [
+				{
+					"id": "project-rows",
+					"classification": "internal",
+					"description": "The D1 rows behind each project entry, including the owner-selected ordering and the publication flag that decides visibility.",
+					"source_of_truth": "migrations/0007_portfolio.sql"
+				},
+				{
+					"id": "authored-markdown",
+					"classification": "internal",
+					"description": "Authored article bodies derived from an external editor and stored as Markdown or HTML, sanitised on the way in and lexed on the way out.",
+					"source_of_truth": "src/portfolio/markdown.lexer.ts"
+				},
+				{
+					"id": "public-project-index",
+					"classification": "public",
+					"description": "The public project list and article pages, including the structured data projected from the same rows.",
+					"source_of_truth": "src/portfolio/public.ts"
+				}
+			],
+			"nodes": [
+				{
+					"id": "curator",
+					"label": "owner publication input",
+					"zone": "untrusted",
+					"assets": ["authored-markdown"]
+				},
+				{
+					"id": "publication-loader",
+					"label": "publication loader",
+					"zone": "boundary",
+					"assets": ["public-project-index"],
+					"source": "src/portfolio/public.ts"
+				},
+				{
+					"id": "project-store",
+					"label": "D1 portfolio tables",
+					"zone": "trusted",
+					"assets": ["project-rows"],
+					"source": "src/portfolio/load.ts"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "input-boundary",
+					"from": "curator",
+					"to": "publication-loader",
+					"crosses": "The authored-content input boundary: text copied from an external editor becomes stored content, so raw HTML and link targets must be decided before storage.",
+					"controls": [
+						{ "kind": "test", "ref": "src/portfolio/markdown.safety.test.tsx" },
+						{ "kind": "test", "ref": "test/integration/markdown-xss-ssr.test.ts" },
+						{ "kind": "code", "ref": "src/portfolio/markdown.lexer.ts" }
+					]
+				},
+				{
+					"id": "visibility-boundary",
+					"from": "publication-loader",
+					"to": "project-store",
+					"crosses": "The visibility boundary: a row becomes public only because the owner selected it, and the filter that enforces that lives with the portfolio obligation.",
+					"controls": [
+						{ "kind": "test", "ref": "test/integration/privacy-projection.test.ts" },
+						{ "kind": "code", "ref": "src/portfolio/schema.ts" },
+						{ "kind": "doc", "ref": "docs/portfolio/decisions.md" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "stored-markup-execution",
+					"stride": "tampering",
+					"asset": "authored-markdown",
+					"scenario": "A payload carried in imported article content survives into the rendered document and executes for every visitor of the public article page.",
+					"mitigations": [
+						{
+							"ref": "src/portfolio/markdown.lexer.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "Raw HTML is rendered as escaped text and a refused link keeps its reason without becoming an anchor."
+						},
+						{
+							"ref": "e2e/portfolio-markdown-xss.spec.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The browser test asserts the payload never fires on the real page."
+						}
+					]
+				},
+				{
+					"id": "unapproved-publication",
+					"stride": "information-disclosure",
+					"asset": "project-rows",
+					"scenario": "A row that the owner never selected reaches the public index because the loader forgot the visibility filter on one code path.",
+					"mitigations": [
+						{
+							"ref": "src/portfolio/public.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The public loader returns only published rows and nothing else is exported for the public surface."
+						},
+						{
+							"ref": "test/integration/privacy-projection.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The suite asserts that an unpublished row is absent from the list, the article and the structured data."
+						},
+						{
+							"ref": "scripts/check-publication-diff.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The publication diff is what the owner reads to decide what changes state, so an unintended publication is a visible diff."
+						}
+					]
+				},
+				{
+					"id": "query-amplification",
+					"stride": "denial-of-service",
+					"asset": "project-rows",
+					"scenario": "The public loader is changed into a per-row query, so a page that used to cost one statement now costs one per project on every visit.",
+					"mitigations": [
+						{
+							"ref": "src/portfolio/load.query-budget.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The query-budget test fails when the loader's statement count grows past the recorded budget."
+						},
+						{
+							"ref": "src/portfolio/load.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The loader is a DI seam, so the statement count is asserted against a fake and not only against D1."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Is every field that reaches a public project page still passing through the lexer, or has a new field been rendered as text directly?",
+				"Does any new publication path read the portfolio tables without the owner-selection filter?",
+				"Has the query budget for the public loader been re-checked since the last content-shape change?"
+			]
+		},
+		{
+			"id": "media-storage",
+			"title": "Media storage visibility (R2 MEDIA bucket)",
+			"status": "live",
+			"owner": "the Cloudflare runtime obligation `src/cloudflare/media-visibility.ts`, applied by the upload paths that use it",
+			"authority": "AGENTS.md §4 — the `MEDIA` binding is declared in the Wrangler configuration; the public-prefix policy is the enforcement owner's decision",
+			"summary": "One bucket holds both published images and unpublished uploads, so the crossing is the visibility classifier every read and every upload has to pass.",
+			"documentation": "docs/security/r2-media-visibility.md",
+			"assets": [
+				{
+					"id": "public-media-objects",
+					"classification": "public",
+					"description": "Objects under the published prefixes, served from the public custom domain without a signature.",
+					"source_of_truth": "src/cloudflare/media-visibility.ts"
+				},
+				{
+					"id": "private-uploads",
+					"classification": "confidential",
+					"description": "Reaction images and Admin uploads that are not published yet and must never resolve through the public domain.",
+					"source_of_truth": "src/cloudflare/media-visibility.ts"
+				},
+				{
+					"id": "media-key-set",
+					"classification": "internal",
+					"description": "The key set of the production bucket, read status-only by the release-time audit that decides whether a key exists outside the public prefixes.",
+					"source_of_truth": "docs/runbook/r2-media-key-set-audit.md"
+				}
+			],
+			"nodes": [
+				{
+					"id": "uploader",
+					"label": "image upload caller",
+					"zone": "untrusted",
+					"assets": ["private-uploads"]
+				},
+				{
+					"id": "visibility-classifier",
+					"label": "media visibility policy",
+					"zone": "boundary",
+					"assets": ["public-media-objects", "private-uploads"],
+					"source": "src/cloudflare/media-visibility.ts"
+				},
+				{
+					"id": "media-bucket",
+					"label": "R2 MEDIA binding",
+					"zone": "trusted",
+					"assets": ["media-key-set"],
+					"source": "src/http/reactions/images.ts"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "upload-crossing",
+					"from": "uploader",
+					"to": "visibility-classifier",
+					"crosses": "The upload crossing: a caller-supplied image reference becomes an object in a bucket that also serves published media.",
+					"controls": [
+						{ "kind": "test", "ref": "test/integration/upload-guards.test.ts" },
+						{ "kind": "code", "ref": "src/http/reactions/images.ts" },
+						{ "kind": "doc", "ref": "docs/security/image-upload-guards.md" }
+					]
+				},
+				{
+					"id": "read-crossing",
+					"from": "visibility-classifier",
+					"to": "media-bucket",
+					"crosses": "The public read crossing: an object resolves through the public custom domain only when its key is inside the published prefixes.",
+					"controls": [
+						{ "kind": "test", "ref": "test/integration/r2-media-visibility.test.ts" },
+						{ "kind": "code", "ref": "src/portfolio/media.ts" },
+						{ "kind": "gate", "ref": "scripts/check-r2-media-key-set.mjs" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "prefix-drift",
+					"stride": "information-disclosure",
+					"asset": "private-uploads",
+					"scenario": "An upload lands in a key namespace the public domain serves, so an unpublished Admin or reaction image becomes readable by anyone holding the URL.",
+					"mitigations": [
+						{
+							"ref": "src/cloudflare/media-visibility.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The classifier runs its deny list before the allow list, so a key in both lists resolves to private."
+						},
+						{
+							"ref": "scripts/check-r2-media-key-set.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The audit reads the production key set status-only and fails when a key exists outside the public prefixes."
+						}
+					]
+				},
+				{
+					"id": "reference-forgery",
+					"stride": "tampering",
+					"asset": "private-uploads",
+					"scenario": "A caller submits an image reference that points at an existing object under a published prefix, so a write path adopts or re-publishes someone else's object.",
+					"mitigations": [
+						{
+							"ref": "test/integration/upload-guards.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The suite rejects references whose shape, prefix or namespace is not the one the caller owns."
+						},
+						{
+							"ref": "src/portfolio/media.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The portfolio media module applies the same policy for its own composition."
+						}
+					]
+				},
+				{
+					"id": "media-denial",
+					"stride": "denial-of-service",
+					"asset": "media-key-set",
+					"scenario": "Uploads accumulate in the bucket with no owner, so the key set grows without bound and the release-time audit stops being a decision anyone can act on.",
+					"mitigations": [
+						{
+							"ref": "docs/runbook/r2-media-key-set-audit.md",
+							"kind": "doc",
+							"state": "implemented",
+							"note": "The runbook records the audit as a release step with its own verdict vocabulary."
+						},
+						{
+							"ref": "scripts/check-r2-media-key-set.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The gate fails closed on anything it cannot decide, so an unreadable key set is not a pass."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Does any new upload path write a key outside the published prefixes without recording it as a deliberate exception?",
+				"Is the public read path still the only one that can resolve an object without a signature?",
+				"Has a key been added to the published prefixes since the last release-time audit run?"
+			]
+		},
+		{
+			"id": "tool-embed",
+			"title": "Tool shell and third-party artefact embed",
+			"status": "live",
+			"owner": "the Tool Registry obligation in `src/tools/**` with the framing policy in `src/http/security-headers.ts`",
+			"authority": "ADR-0006 — a Tool is a reviewed manifest plus a separate artefact repository; the embed policy is the Tool Registry's own contract",
+			"summary": "A Tool artefact is third-party code the site frames, so the crossing is the shell route and the iframe sandbox that decides what the framed document may reach.",
+			"documentation": "docs/tools/runbook.md",
+			"assets": [
+				{
+					"id": "tool-manifest",
+					"classification": "public",
+					"description": "The Tool manifest that declares a Tool's version, licence, outbound targets and embed delivery policy.",
+					"source_of_truth": "src/tools/manifest.json"
+				},
+				{
+					"id": "tool-artefact",
+					"classification": "internal",
+					"description": "The artefact a Tool serves, built from a reviewed checkout of the Tools repository and checked against the recorded inventory.",
+					"source_of_truth": "src/tools/artifact-inventory.ts"
+				},
+				{
+					"id": "host-page-capability",
+					"classification": "confidential",
+					"description": "What the shell document can reach — the session cookie, the Admin routes and the API boundary — which a framed document must not inherit.",
+					"source_of_truth": "src/http/security-headers.json"
+				}
+			],
+			"nodes": [
+				{
+					"id": "artefact-origin",
+					"label": "Tool artefact document",
+					"zone": "untrusted",
+					"assets": ["tool-artefact"]
+				},
+				{
+					"id": "embed-policy",
+					"label": "Tool embed policy",
+					"zone": "boundary",
+					"assets": ["tool-manifest"],
+					"source": "src/tools/embed-policy.ts"
+				},
+				{
+					"id": "shell-route",
+					"label": "Tool shell route",
+					"zone": "trusted",
+					"assets": ["host-page-capability"],
+					"source": "src/routes/tools.$slug.tsx"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "frame-crossing",
+					"from": "artefact-origin",
+					"to": "embed-policy",
+					"crosses": "The framing crossing: a third-party document may only be rendered by a policy that decided the sandbox tokens and the capability grants first.",
+					"controls": [
+						{ "kind": "gate", "ref": "scripts/check-frame-ancestors-policy.mjs" },
+						{ "kind": "test", "ref": "test/integration/frame-ancestors.test.ts" },
+						{ "kind": "code", "ref": "src/tools/embed-policy.ts" }
+					]
+				},
+				{
+					"id": "shell-crossing",
+					"from": "embed-policy",
+					"to": "shell-route",
+					"crosses": "The shell crossing: what the manifest decided is what the route renders, so the artefact's reach over the host page is the policy's answer and nothing else.",
+					"controls": [
+						{ "kind": "test", "ref": "src/tools/embed-policy.test.ts" },
+						{ "kind": "code", "ref": "src/tools/registry.ts" },
+						{ "kind": "test", "ref": "e2e/tools-prototype.spec.ts" },
+						{ "kind": "gate", "ref": "scripts/check-submodule-provenance.mjs" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "clickjacking",
+					"stride": "tampering",
+					"asset": "host-page-capability",
+					"scenario": "A third-party page frames an Admin or Tool document and induces a click the user believes they made elsewhere.",
+					"mitigations": [
+						{
+							"ref": "src/http/security-headers.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The framing policy is bound per path in the Worker entry and in the static rules, and the gate refuses a rule opened to `*`."
+						},
+						{
+							"ref": "scripts/check-frame-ancestors-policy.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The gate reads the shipped rules and four deliberately broken fixtures, so a widened rule fails."
+						}
+					]
+				},
+				{
+					"id": "sandbox-origin-escape",
+					"stride": "elevation-of-privilege",
+					"asset": "host-page-capability",
+					"scenario": "A framed Tool artefact is granted `allow-same-origin`, so its document runs on the site's own origin and reads whatever the shell exposes.",
+					"mitigations": [
+						{
+							"ref": "src/tools/embed-policy.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "`allow-same-origin` is rejected for every framed Tool, and a capability grant needs an explicit allow-list plus a written rationale."
+						},
+						{
+							"ref": "src/tools/embed-policy.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The policy test asserts the rejected token set and the missing-rationale cases."
+						}
+					]
+				},
+				{
+					"id": "artefact-drift",
+					"stride": "tampering",
+					"asset": "tool-artefact",
+					"scenario": "The artefact served for a reviewed Tool changes after review, so the site ships code whose licence, dependency set and outbound targets nobody approved.",
+					"mitigations": [
+						{
+							"ref": "scripts/check-tool-artifact-inventory.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The declared licence is checked against the pinned checkout and the dependency set against the reviewed record; missing evidence is an error."
+						},
+						{
+							"ref": "scripts/check-submodule-provenance.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The Tools repository provenance is checked so a Tool cannot come from an unreviewed checkout."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Does a new Tool declare `delivery.iframe` explicitly, or is it inheriting an implicit default the policy forbids?",
+				"Can any Tool artefact reach the Admin routes or the API boundary with the shell's own origin?",
+				"Has the reviewed inventory record been updated in the same change as the Tool manifest?"
+			]
+		},
+		{
+			"id": "outbound-url-policy",
+			"title": "Outbound URL policy (SSRF boundary for server-initiated fetches)",
+			"status": "planned",
+			"owner": "the external HTTP boundary obligation `src/http/**`, whose URL policy is `src/http/outbound.ts` and whose adapter is `src/http/outbound-fetch.ts`",
+			"authority": "AGENTS.md §3 — `http` owns the inbound external boundary and the URL policy for every URL the Worker fetches; the policy is the one place a destination may be classified",
+			"summary": "A destination that did not come from this repository's own code is attacker influenceable, so the policy decides whether a URL may be connected to at all — before any connection is opened; no caller routes through it yet.",
+			"documentation": "docs/security/outbound-fetch.md",
+			"assets": [
+				{
+					"id": "caller-supplied-destination",
+					"classification": "confidential",
+					"description": "The URL a visitor or a stored record supplies for a server-initiated fetch; the policy decides whether it may be requested at all.",
+					"source_of_truth": "src/http/outbound.ts"
+				},
+				{
+					"id": "egress-decision",
+					"classification": "internal",
+					"description": "The verdict the classifier returns for one URL — a stable reason code or an accepted destination — which the adapter turns into a request or a refusal.",
+					"source_of_truth": "src/http/outbound-fetch.ts"
+				}
+			],
+			"nodes": [
+				{
+					"id": "stored-url",
+					"label": "stored or visitor URL",
+					"zone": "untrusted",
+					"assets": ["caller-supplied-destination"]
+				},
+				{
+					"id": "url-policy",
+					"label": "outbound URL policy",
+					"zone": "boundary",
+					"assets": ["caller-supplied-destination", "egress-decision"],
+					"source": "src/http/outbound.ts"
+				},
+				{
+					"id": "egress",
+					"label": "Worker egress",
+					"zone": "trusted",
+					"assets": ["egress-decision"],
+					"source": "src/http/outbound-fetch.ts"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "classification-crossing",
+					"from": "stored-url",
+					"to": "url-policy",
+					"crosses": "The egress crossing: a URL that did not come from this repository's own code is classified before a connection is opened, and anything not positively recognised as an ordinary public web URL is refused.",
+					"controls": [
+						{ "kind": "code", "ref": "src/http/outbound.ts" },
+						{ "kind": "test", "ref": "src/http/outbound.test.ts" }
+					]
+				},
+				{
+					"id": "hop-crossing",
+					"from": "url-policy",
+					"to": "egress",
+					"crosses": "The connection crossing: an accepted destination is fetched through the single adapter, and every redirect hop is classified again before it is followed.",
+					"controls": [
+						{ "kind": "code", "ref": "src/http/outbound-fetch.ts" },
+						{ "kind": "test", "ref": "src/http/outbound-fetch.test.ts" },
+						{ "kind": "gate", "ref": "scripts/capture-ssrf-url-adapter-report.mjs" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "internal-reach",
+					"stride": "information-disclosure",
+					"asset": "caller-supplied-destination",
+					"scenario": "A URL that resolves to an internal address or a link-local metadata endpoint is fetched from the Worker, so a server-initiated fetch becomes an internal probe.",
+					"mitigations": [
+						{
+							"ref": "src/http/outbound.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The classifier refuses private, loopback, link-local and non-HTTP(S) targets before a connection is opened."
+						},
+						{
+							"ref": "src/http/outbound.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The policy test walks the refused matrix: scheme, credentials, private ranges and encoded forms."
+						},
+						{
+							"ref": "scripts/capture-ssrf-url-adapter-report.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The destination matrix fails the run when a measurement contradicts the outcome its row claims, so the refusals stay live."
+						}
+					]
+				},
+				{
+					"id": "redirect-escape",
+					"stride": "tampering",
+					"asset": "caller-supplied-destination",
+					"scenario": "An accepted destination answers with a redirect to an internal address, so the policy is bypassed on the second hop of the same request.",
+					"mitigations": [
+						{
+							"ref": "src/http/outbound-fetch.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The adapter follows redirects itself with a bounded hop budget and classifies every hop before it is followed."
+						},
+						{
+							"ref": "src/http/outbound-fetch.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The adapter test walks the redirect chain, including a hop that points back inside the network and is refused."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Is every server-initiated fetch in the repository routed through the single adapter, or has a second `fetch()` call appeared next to it?",
+				"Does any destination reach the network without passing the classifier first?",
+				"Does the policy still refuse the address classes it refused when the contract was written?"
+			]
+		},
+		{
+			"id": "outbound-read",
+			"title": "Outbound third-party read (external-api)",
+			"status": "deferred",
+			"owner": "the outbound read obligation `src/external-api/**`, whose single request seam is `src/external-api/timeout.ts`",
+			"authority": "AGENTS.md §3 and `docs/domain/integrations.md` — an outbound read is not an `http/**` concern and does not cross the URL policy that belongs to the inbound boundary; capability-scoped first, and nothing is mounted on a route yet",
+			"summary": "A display component may read a third-party API, so the crossing is the reader's own seam — a constant destination, one request site and a bounded attempt — and no route mounts it yet.",
+			"documentation": "docs/domain/integrations.md",
+			"assets": [
+				{
+					"id": "outbound-destination",
+					"classification": "internal",
+					"description": "The third-party endpoint a snapshot is read from; the adapter declares it as a constant, so no caller supplies a URL.",
+					"source_of_truth": "src/external-api/github.ts"
+				},
+				{
+					"id": "stale-snapshot",
+					"classification": "public",
+					"description": "The last successful snapshot a card renders while the reader is failing, including how old it may be before it stops being shown.",
+					"source_of_truth": "src/external-api/contract.ts"
+				}
+			],
+			"nodes": [
+				{
+					"id": "third-party",
+					"label": "third-party API",
+					"zone": "untrusted",
+					"assets": ["outbound-destination"]
+				},
+				{
+					"id": "read-seam",
+					"label": "outbound read seam",
+					"zone": "boundary",
+					"assets": ["outbound-destination"],
+					"source": "src/external-api/timeout.ts"
+				},
+				{
+					"id": "read-card",
+					"label": "external read card",
+					"zone": "trusted",
+					"assets": ["stale-snapshot"],
+					"source": "src/external-api/ExternalReadCard.tsx"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "fetch-crossing",
+					"from": "third-party",
+					"to": "read-seam",
+					"crosses": "The egress crossing: the reader connects to the one destination its adapter declares, through the single seam that issues every outbound request.",
+					"controls": [
+						{ "kind": "code", "ref": "src/external-api/timeout.ts" },
+						{ "kind": "code", "ref": "src/external-api/github.ts" },
+						{ "kind": "test", "ref": "src/external-api/contract.test.ts" }
+					]
+				},
+				{
+					"id": "snapshot-crossing",
+					"from": "read-seam",
+					"to": "read-card",
+					"crosses": "The presentation crossing: a bounded, stale-aware snapshot becomes a rendered card, and a failure degrades without destroying the last good value.",
+					"controls": [
+						{ "kind": "test", "ref": "src/external-api/contract.test.ts" },
+						{ "kind": "code", "ref": "src/external-api/reader.ts" },
+						{ "kind": "doc", "ref": "docs/domain/integrations.md" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "internal-reach",
+					"stride": "information-disclosure",
+					"asset": "outbound-destination",
+					"scenario": "A destination that resolves to an internal address or a link-local metadata endpoint is fetched from the Worker, so a third-party read becomes an internal probe.",
+					"mitigations": [
+						{
+							"ref": "src/external-api/github.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The destination is the constant the adapter declares, so there is no request target a caller could point at an internal address."
+						},
+						{
+							"ref": "src/external-api/timeout.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "One place issues the request, and it is bounded by an attempt budget and a per-attempt timeout."
+						},
+						{
+							"ref": "scripts/check-architecture.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The architecture gate keeps `src/external-api/**` from importing `src/http/**`, so the reader cannot reach the inbound boundary or the URL policy that belongs to it."
+						},
+						{
+							"ref": "src/http/outbound.ts",
+							"kind": "code",
+							"state": "planned",
+							"note": "The shared outbound URL policy is not on this path today; routing the reader through it is the outstanding work before any route mounts the reader."
+						}
+					],
+					"follow_up": "Route the external-api reader through the shared outbound URL policy (`src/http/outbound.ts`) before any route mounts it, so a future destination change cannot bypass the egress policy."
+				},
+				{
+					"id": "unbounded-attempt",
+					"stride": "denial-of-service",
+					"asset": "stale-snapshot",
+					"scenario": "A third party that stops answering holds the render open, so the page depends on someone else's uptime instead of degrading to the last snapshot.",
+					"mitigations": [
+						{
+							"ref": "src/external-api/timeout.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "One place issues the request and it is bounded by an attempt budget and a per-attempt timeout."
+						},
+						{
+							"ref": "src/external-api/contract.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The contract test asserts the breaker opens and that the fallback is non-destructive."
+						},
+						{
+							"ref": "src/external-api/reader.ts",
+							"kind": "code",
+							"state": "planned",
+							"note": "Wiring the reader to a route is the remaining hand-work; nothing is mounted on a route today."
+						}
+					],
+					"follow_up": "Decide whether any route mounts the reader, and record the decision before a snapshot can become reachable at runtime."
+				}
+			],
+			"review_items": [
+				"Is any route able to reach the outbound reader today, and if not, does the UI still render as if a live snapshot exists?",
+				"Does a new outbound call go through the single fetch seam, or has a second one appeared next to it?",
+				"Before the reader is promoted, does its destination pass the shared outbound URL policy?",
+				"Does the stale snapshot carry an age the reader can see, rather than presenting an old value as current?"
+			]
+		},
+		{
+			"id": "secret-delivery",
+			"title": "Runtime secret delivery (Infisical to the Worker)",
+			"status": "live",
+			"owner": "the Cloudflare runtime obligation `src/cloudflare/auth/**` with the Infisical source-of-truth contract in ADR-0015",
+			"authority": "AGENTS.md §4 and ADR-0015 — Infisical holds the values, the Wrangler configuration declares only the names, and Cloudflare Workers Builds performs the deploy",
+			"summary": "A value never enters the repository; the pipeline reads it at release time and binds it to the Worker, so the crossing is the release job rather than a request.",
+			"documentation": "docs/runbook/infisical-secrets.md",
+			"assets": [
+				{
+					"id": "runtime-secret-values",
+					"classification": "confidential",
+					"description": "The runtime secret values held in Infisical and bound to the Worker; this ledger names the bindings and never their contents.",
+					"source_of_truth": "docs/runbook/infisical-secrets.md"
+				},
+				{
+					"id": "declared-secret-names",
+					"classification": "internal",
+					"description": "The names the Wrangler configuration declares as required, which is the source-controlled half of the contract.",
+					"source_of_truth": "wrangler.jsonc"
+				},
+				{
+					"id": "deployment-credentials",
+					"classification": "confidential",
+					"description": "The deploy-time Universal Auth credentials the release pipeline uses to reach Infisical (`INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET`); they live in the Cloudflare Workers Builds environment, never in Infisical and never in the Worker runtime.",
+					"source_of_truth": "docs/runbook/infisical-secrets.md"
+				}
+			],
+			"nodes": [
+				{
+					"id": "operator-change",
+					"label": "change reaching the release",
+					"zone": "untrusted",
+					"assets": ["declared-secret-names"]
+				},
+				{
+					"id": "release-pipeline",
+					"label": "Cloudflare Workers Builds",
+					"zone": "boundary",
+					"assets": ["deployment-credentials"],
+					"source": ".github/workflows/ci.yml"
+				},
+				{
+					"id": "worker-secret-store",
+					"label": "Worker secret bindings",
+					"zone": "trusted",
+					"assets": ["runtime-secret-values"],
+					"source": "wrangler.production.jsonc"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "source-to-release",
+					"from": "operator-change",
+					"to": "release-pipeline",
+					"crosses": "The release boundary: an unreviewed change must not be able to make the pipeline read or publish a value on its way to production.",
+					"controls": [
+						{ "kind": "gate", "ref": "scripts/scan-secrets.mjs" },
+						{ "kind": "doc", "ref": "docs/release.md" },
+						{ "kind": "doc", "ref": "docs/runbook/cloudflare-workers-builds.md" }
+					]
+				},
+				{
+					"id": "release-to-binding",
+					"from": "release-pipeline",
+					"to": "worker-secret-store",
+					"crosses": "The binding boundary: names declared in the configuration must match the names Infisical covers, in the right environment, before the deploy.",
+					"controls": [
+						{ "kind": "gate", "ref": "scripts/check-infisical-coverage.mjs" },
+						{ "kind": "gate", "ref": "scripts/check-cf-secrets.mjs" },
+						{ "kind": "doc", "ref": "docs/runbook/infisical-secrets.md" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "value-in-repository",
+					"stride": "information-disclosure",
+					"asset": "runtime-secret-values",
+					"scenario": "A credential shape is committed or lands in a build artefact, so the repository or its published output becomes the leak instead of Infisical.",
+					"mitigations": [
+						{
+							"ref": "scripts/scan-secrets.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The tree and the build output are scanned for credential shapes, and a finding fails the run."
+						},
+						{
+							"ref": "src/logging/redact.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "Runtime logging masks values before they reach a record, so a log line cannot become the second copy."
+						}
+					]
+				},
+				{
+					"id": "undeclared-binding",
+					"stride": "tampering",
+					"asset": "declared-secret-names",
+					"scenario": "The configuration declares a binding nobody provisions, or one Infisical covers that the Worker no longer declares, so the release looks complete while the runtime binding is missing.",
+					"mitigations": [
+						{
+							"ref": "scripts/check-infisical-coverage.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The coverage check compares declared names with the inventory status-only and fails on a mismatch."
+						},
+						{
+							"ref": "scripts/check-cf-secrets.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The comparison script emits MATCH / DIFFER / MISSING and never prints the value it compared."
+						}
+					]
+				},
+				{
+					"id": "release-approval-bypass",
+					"stride": "elevation-of-privilege",
+					"asset": "deployment-credentials",
+					"scenario": "An automation path merges the release PR or publishes the tag without the owner's approval, so a deploy happens outside the approval the runbook makes mandatory.",
+					"mitigations": [
+						{
+							"ref": "docs/release.md",
+							"kind": "doc",
+							"state": "implemented",
+							"note": "The release sequence records the human approval gate and the order the steps must run in."
+						},
+						{
+							"ref": "scripts/check-workflow-pinning.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "Workflow actions are pinned, so a deploy step cannot be redirected by an upstream tag moving."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Is every binding a new Worker route reads already declared in the configuration and covered by the inventory?",
+				"Does any new script, report or screenshot risk printing a value where only a name is needed?",
+				"Has a rotation changed a name rather than a value, and does the release sequence still match the runbook?"
+			]
+		},
+		{
+			"id": "supply-chain",
+			"title": "Build and dependency supply chain",
+			"status": "live",
+			"owner": "the repository's release-integrity obligation: the workflow pins, the SBOM, the advisory gate and the artefact attestation",
+			"authority": "AGENTS.md §5 and `docs/security/supply-chain-*.md` — validation is owned by GitHub Actions; production delivery is owned by Cloudflare Workers Builds",
+			"summary": "The build reads third-party code and third-party actions, so the crossing is the pinned reference plus the record of what was built and reviewed.",
+			"documentation": "docs/security/supply-chain-actions-pinning.md",
+			"assets": [
+				{
+					"id": "dependency-tree",
+					"classification": "internal",
+					"description": "The pinned dependency tree and the SBOM generated from it, which is what an advisory verdict and a provenance claim are made against.",
+					"source_of_truth": "pnpm-lock.yaml"
+				},
+				{
+					"id": "workflow-actions",
+					"classification": "internal",
+					"description": "The third-party actions every workflow runs, pinned to an immutable reference so a moved tag cannot change a release step.",
+					"source_of_truth": "quality/actions-pins.json"
+				},
+				{
+					"id": "artifact-provenance",
+					"classification": "internal",
+					"description": "The attestation manifest linking a built artefact to the inputs that produced it.",
+					"source_of_truth": "quality/tool-artifact-inventory.json"
+				}
+			],
+			"nodes": [
+				{
+					"id": "dependency-source",
+					"label": "registry and submodule",
+					"zone": "untrusted",
+					"assets": ["dependency-tree"]
+				},
+				{
+					"id": "ci-validation",
+					"label": "GitHub Actions validate",
+					"zone": "boundary",
+					"assets": ["workflow-actions"],
+					"source": ".github/workflows/ci.yml"
+				},
+				{
+					"id": "release-record",
+					"label": "SBOM and attestation",
+					"zone": "trusted",
+					"assets": ["artifact-provenance"],
+					"source": "quality/tool-artifact-inventory.json"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "install-crossing",
+					"from": "dependency-source",
+					"to": "ci-validation",
+					"crosses": "The install boundary: a dependency's install lifecycle scripts run before any code this repository writes, so which of them may run is a declared contract.",
+					"controls": [
+						{ "kind": "gate", "ref": "scripts/check-install-scripts.mjs" },
+						{ "kind": "doc", "ref": "docs/runbook/install-script-audit.md" },
+						{ "kind": "test", "ref": "scripts/check-install-scripts.test.mjs" }
+					]
+				},
+				{
+					"id": "advisory-crossing",
+					"from": "ci-validation",
+					"to": "release-record",
+					"crosses": "The record boundary: an advisory verdict and the built artefact are recorded as evidence a reviewer can read, not as a status line in a log.",
+					"controls": [
+						{ "kind": "gate", "ref": "scripts/check-dependency-advisories.mjs" },
+						{ "kind": "gate", "ref": "scripts/check-sbom.mjs" },
+						{ "kind": "doc", "ref": "docs/runbook/dependency-advisories.md" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "action-tag-drift",
+					"stride": "tampering",
+					"asset": "workflow-actions",
+					"scenario": "A workflow action is referenced by a moving tag, so a release step's code can change without any change in this repository.",
+					"mitigations": [
+						{
+							"ref": "scripts/check-workflow-pinning.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "Every third-party action must be pinned to an immutable reference and audited for token scope."
+						},
+						{
+							"ref": "quality/actions-pins.json",
+							"kind": "doc",
+							"state": "implemented",
+							"note": "The reviewed pin record is the artefact the gate compares against."
+						}
+					]
+				},
+				{
+					"id": "advisory-blindness",
+					"stride": "information-disclosure",
+					"asset": "dependency-tree",
+					"scenario": "A known advisory affects a shipped dependency and nothing in the validation chain surfaces it, so the release report claims a verified build.",
+					"mitigations": [
+						{
+							"ref": "scripts/check-dependency-advisories.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The advisory gate runs as a step of the validate job, deliberately outside the offline fast gate."
+						},
+						{
+							"ref": "scripts/check-sbom.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The SBOM records what was actually built, so the advisory verdict can be checked against a real tree."
+						}
+					]
+				},
+				{
+					"id": "unreviewed-build-input",
+					"stride": "tampering",
+					"asset": "artifact-provenance",
+					"scenario": "A build consumes a vendored or generated input from a checkout that was never reviewed, so the shipped artefact cannot be traced to an approved source.",
+					"mitigations": [
+						{
+							"ref": "scripts/check-submodule-provenance.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The provenance check compares each vendored input against the reviewed revision record and fails on a mismatch."
+						},
+						{
+							"ref": "scripts/scan-secrets.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The same scan that keeps values out of the tree also runs over the build output, so a vendored input cannot smuggle one in."
+						}
+					]
+				},
+				{
+					"id": "install-script-execution",
+					"stride": "elevation-of-privilege",
+					"asset": "dependency-tree",
+					"scenario": "A newly published dependency version adds an install lifecycle script, so installing the tree runs code that was never reviewed.",
+					"mitigations": [
+						{
+							"ref": "scripts/check-install-scripts.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The audit compares installed manifests with the allowlist and the workspace build permission, and fails closed when the tree is not a pnpm install."
+						},
+						{
+							"ref": "docs/runbook/install-script-audit.md",
+							"kind": "doc",
+							"state": "implemented",
+							"note": "The runbook records what a new allowance means before anyone adds one."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Has a dependency been added or bumped without re-running the advisory gate against the new tree?",
+				"Does a new workflow step run an action that is not in the reviewed pin record?",
+				"Can the SBOM still be generated offline, and does a failing generation stop the release rather than warn?"
+			]
+		}
+	]
+}

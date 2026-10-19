@@ -15,6 +15,7 @@
 		"security-headers",
 		"asvs-coverage",
 		"security-disclosure",
+		"threat-model-ledger",
 		"csrf-contract",
 		"dependency-advisory",
 		"install-script-audit",
@@ -327,6 +328,15 @@
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
 			"documentation": "docs/security/integration-token-scope.md"
+		},
+		{
+			"id": "threat-model-ledger",
+			"contract": "Every feature unit's assets, trust boundaries, threats and review questions resolve to repository artefacts that exist, and no secret value is recorded in the model, so a release cannot ship a security model describing a platform this repository does not contain.",
+			"command": "pnpm run threat:model:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/verification/security/threat-model.md"
 		},
 		{
 			"id": "playwright-e2e",

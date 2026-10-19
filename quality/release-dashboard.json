@@ -35,6 +35,7 @@
 			"reduced-motion": "reduced-motion",
 			"seo-status": "seo-status",
 			"release-gate-ledger": "release-gate-ledger",
+			"threat-model-ledger": "threat-model-ledger",
 			"asvs-coverage": "asvs-coverage",
 			"security-disclosure": "security-disclosure",
 			"playwright-e2e": "e2e-playwright"
@@ -401,6 +402,17 @@
 				"kind": "exit_code"
 			},
 			"owner": "Issue #508"
+		},
+		{
+			"id": "threat-model-ledger",
+			"group": "security",
+			"label": "per-capability threat model ledger",
+			"state": "implemented",
+			"contract": "機能単位ごとの資産・trust boundary・threat が、repository に実在する artefact を指し、台帳に secret 値を持たない。",
+			"command": "pnpm run threat:model:check",
+			"requirements": [],
+			"evidence": { "kind": "exit_code" },
+			"owner": "Issue #479"
 		},
 		{
 			"id": "route-quality-coverage",

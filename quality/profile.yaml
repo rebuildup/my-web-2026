@@ -293,6 +293,16 @@ gates:
       # Issue #566 removed the hand-written `node --test` step that used
       # to sit beside this gate.
       - 'pnpm run app:icons:check'
+      # Issue #479: the per-capability threat model ledger. Every feature
+      # unit records its assets, trust zones, boundaries, STRIDE threats
+      # and review questions, and the gate refuses any claim that does
+      # not point at something real — a path that exists on disk, a
+      # binding NAME, or a `pnpm run` command a release executes. It is
+      # also the machine half of "a threat model never carries a value":
+      # every string is shape-scanned and the refusal never prints what
+      # it refused. Pure text scan (no Worker, no binding, no network,
+      # no secret), so it belongs in the fast chain like #507 and #508.
+      - 'pnpm run threat:model:check'
       # Issue #508: the release-gate check ledger. Every inspection the
       # release report claims is resolved against the commands this
       # chain really runs, so a required check that stopped running is
@@ -708,6 +718,57 @@ integration_scope_ledger:
   known_limits:
     - 'the ledger states what a vendor scope MEANS as of `source.verified_on`; a vendor-side change is not tracked automatically and must be re-verified in the promoting ticket'
     - 'a candidate with no capability to scope yet is recorded as `review: deferred` with a reason; the adapter knows no requirement for it, so a grant naming it answers `unknown_integration`, and the gate errors when such a row grows a requirement'
+
+# Issue #479 - assets and threat model per feature unit. `docs/security/*.md`
+# describes the shipped controls one page at a time; nothing compared a
+# control with the asset it protects or the boundary it sits on, so the model
+# of the platform could drift away from the platform while every control
+# stayed green. `quality/threat-model.json` records the assets, trust zones,
+# boundaries, STRIDE threats, mitigations and review questions of each
+# feature unit, and the gate refuses any row that does not point at something
+# the repository contains. Fabricated attack surface is therefore a gate
+# failure, not a documentation style: an asset must name a real path or a
+# binding NAME, a node must name the file it claims to be, and every control
+# and mitigation must be a file on disk or a command a release runs.
+threat_model_coverage:
+  manifest: 'quality/threat-model.json'
+  fixtures: 'quality/fixtures/threat-model/{pass,missing-evidence,unowned-threat,secret-literal,fabricated-binding}.json'
+  command: 'pnpm run threat:model:check'
+  report_command: 'pnpm run threat:model:report'
+  screenshot_command: 'pnpm run verify:threat-model-screenshot'
+  tests: 'node --test scripts/check-threat-model.test.mjs'
+  gate: fast
+  gate_placement: 'validate:fast, before `pnpm run release:gate:check`'
+  documentation: 'docs/verification/security/threat-model.md'
+  diagram_capability: 'external-http-boundary (Issue #479 names "one independent feature unit")'
+  statuses:
+    - 'covered — the threat has at least one `implemented` mitigation and every mitigation `ref` exists on disk'
+    - 'uncovered — every mitigation is still `planned`; an error on a `live` capability, reported (never hidden) on a `planned` / `deferred` one'
+  silent_pass_guards:
+    - 'a threat whose mitigation or control cites a file that does not exist is `fail` — an unbuilt mitigation is not a mitigation'
+    - 'a node that names a `source` which does not exist is `fail`, so a diagram can never be drawn of a place the repository does not contain'
+    - 'an asset whose `source_of_truth` is neither an existing path nor the NAME of a runtime secret the Worker really binds is `fail`; a name nobody binds — an invented one or an audit-only one — is `fail` too, because it points a reviewer at a binding that is not there'
+    - 'a `live` capability may not carry an `uncovered` threat'
+    - 'a `planned` mitigation without the threat''s `follow_up` sentence is `fail` — unwritten hand-work is not tracked work'
+    - 'a review item that is not a question (`?`) is `fail`, so the model always carries something a reviewer can ask out loud'
+    - 'a control registry row whose claimant set disagrees with the capabilities that cite it, in either direction, is `fail`'
+    - 'deleting a `protected_capabilities` row, or demoting it to `planned` / `deferred`, is `fail`; an empty list fails closed'
+    - 'every manifest string is shape-scanned by `scripts/_secret-scan.mjs`; a credential-shaped value is `fail` and the error prints the JSON pointer only, never the value'
+    - 'an unknown key on any manifest object is `fail`, so an asset cannot quietly grow a `value` field'
+  secret_handling: >-
+    The ledger names assets and their source. It records a binding NAME (for
+    example `MY_WEB_2026_CONSUMER_API_KEY`, a name the Worker really binds)
+    and a path, never a value: no credential, no `.dev.vars` line and no
+    production secret may appear in `quality/threat-model.json`, in the
+    report, or in the committed artefact. The gate's own rejection fixture
+    is the single waiver added to `scripts/_secret-scan.mjs#ALLOWLIST`, and
+    it is a fixture the gate needs in order to prove it refuses.
+  known_limits:
+    - 'the gate proves a claim points at a real artefact; it does not re-run a control, and it cannot decide whether a mitigation is sufficient — that stays with the control''s own script and with review'
+    - 'a control file that exists but is disabled (a commented-out gate, a fixture-only test) is a review item, not something a text scan can decide'
+    - 'trust zones and node labels are declared, not derived; the diagram places a node by its declared zone and never invents one'
+    - 'a security-family command the release executes with no threat claiming it is a warning (`unaccounted`), not a release failure'
+    - 'the registry is a curated set of gates this model claims; it is not a copy of every `validate:fast` component'
 
 html_standards:
   manifest: 'quality/html-standards.json'

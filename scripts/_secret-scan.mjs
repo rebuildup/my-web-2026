@@ -317,6 +317,15 @@ export const ALLOWLIST = Object.freeze([
 			'unmasked JWT in the fixture; it is the header/payload/signature of the RFC 7519 example.',
 	},
 	{
+		path: 'quality/fixtures/threat-model/secret-literal.json',
+		detector: 'better-auth-versioned-secret',
+		reason:
+			'The threat-model ledger own rejection fixture (Issue #479). The gate asserts it REJECTS a ' +
+			'credential-shaped value written into an asset source, so this one file must CONTAIN one. The ' +
+			'test and the report read the value from this fixture instead of copying it, so no other file ' +
+			'in the repository carries the shape, and it is issued by no environment.',
+	},
+	{
 		path: 'scripts/scan-secrets.mjs',
 		detector: 'home-consumer-api-key',
 		reason:

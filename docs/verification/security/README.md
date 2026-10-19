@@ -26,6 +26,7 @@ of trusting the image.
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 | [`secrets-status-only.webp`](secrets-status-only.webp) | #477 | `pnpm run secrets:status:report` |
 | [`disclosure-runbook.webp`](disclosure-runbook.webp) | #478 | `pnpm run verify:security-disclosure-screenshot` |
+| [`threat-model-diagram.webp`](threat-model-diagram.webp) | #479 | `pnpm run verify:threat-model-screenshot` |
 | [`operator-mfa-checklist.webp`](operator-mfa-checklist.webp) | #469 | `pnpm run verify:operator-mfa-checklist-screenshot` |
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
 | [`cloudflare-config-drift.webp`](cloudflare-config-drift.webp) | #480 | `pnpm run cf:config:drift:report` |
@@ -128,6 +129,54 @@ WebP で納める（Playwright は WebP を書けないため、`sharp` でメ�
 再エンコードし、途中 PNG は作らない）。テキストが対象なので `nearLossless` を優先し、
 300 KB 予算に収まる最高 quality を選ぶ。読む手順と「対象外 / 将来の手作業」の
 一覧は [`docs/verification/security/asvs-coverage.md`](asvs-coverage.md)。
+
+## `threat-model-diagram.webp` (Issue #479)
+
+The per-capability threat model ledger
+([`docs/verification/security/threat-model.md`](threat-model.md))
+as one reviewable page: the SVG trust boundary diagram of the capability
+the Issue asks for (the external HTTP boundary — columns are the trust
+zones, boxes are nodes, arrows are declared boundaries labelled with the
+controls on them), that feature unit's threats in full (STRIDE, scenario,
+asset, mitigation and its state) with its review questions, a compact
+roster of the other eight feature units, the false-green probe, and the
+observation / repair table for each way the gate can fail.
+
+The rows are the shipped code's own verdicts: the diagram geometry, the
+threat statuses and the five probe verdicts are all produced by
+`scripts/check-threat-model.mjs`, the same module
+`node --test scripts/check-threat-model.test.mjs` asserts on. Every
+claim is resolved against the working tree — an asset names a path that
+exists or the name of a runtime secret the Worker really binds, a
+mitigation names a file that exists — so a
+picture of an attack surface the repository does not contain cannot be
+produced. The run refuses to render at all while the ledger has an error,
+so the page can never show a green verdict over a failing tree.
+
+The committed manifest `quality/threat-model.json` stays the complete
+record: the page is the review view of it, not a copy. The per-threat
+scenarios of the eight roster capabilities live in the manifest, and the
+roster carries their STRIDE category, asset and verdict.
+
+The Issue names `threat-model-diagram.png`; the artefact ships as WebP
+for the same reason as the files above — Playwright cannot write WebP, so
+the generator re-encodes the in-memory capture with `sharp` (width ≤
+1600 px), writes no intermediate PNG, and refuses any non-`.webp` target.
+
+Nothing secret is in the picture: the ledger records assets by name and
+source, the gate shape-scans every manifest string and never prints the
+value it refused, and the generator re-reads its own markup to confirm the
+probe credential did not reach the page. The ledger render is a text scan —
+no Worker, no binding, no network call; the capture afterwards drives the
+chromium the E2E suite already installs, locally and offline.
+
+Regenerate:
+
+```bash
+pnpm run threat:model:check             # the verdict (exit 0 / 1)
+pnpm run threat:model:report            # .tmp/threat-model-report.html
+pnpm run verify:threat-model-screenshot # WebP at the path above
+```
 
 ## `release-gate-missing-check.webp` (Issue #508)
 

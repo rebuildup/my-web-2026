@@ -66,15 +66,23 @@ below remain literal records.
    - Stacked ticket: stack landing from the bottom of the stack.
 7. Reconcile Issue / Project state after landing.
 8. Run `pnpm run validate:release` on `release-x-y-z`.
-9. Open / update the Draft release PR (`release-x-y-z -> main`) once
-   the branch has any meaningful integrated difference.
-10. Merge the release PR (only after `main` protection / ruleset
+9. Run the operator-side release gate that CI cannot run:
+   `CLOUDFLARE_R2_API_TOKEN=… pnpm run r2:media:audit` (Issue #577,
+   read-only R2 key-set audit — it fails when a key outside
+   `PUBLIC_MEDIA_PREFIXES` exists in the `MEDIA` bucket, and fails
+   closed when the bucket cannot be read). GitHub Actions holds no
+   Cloudflare credential, so this step is deliberately outside the
+   three `validate:*` entry points; procedure in
+   [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).
+10. Open / update the Draft release PR (`release-x-y-z -> main`) once
+    the branch has any meaningful integrated difference.
+11. Merge the release PR (only after `main` protection / ruleset
     allows it AND the repository owner has given explicit human
     approval in the current interaction — see the Release PR
     merge human gate above).
-11. Tag the merged commit with `v<version>` (also gated by the
+12. Tag the merged commit with `v<version>` (also gated by the
     human approval rule above).
-12. Re-plan any unfinished tickets for the next sprint.
+13. Re-plan any unfinished tickets for the next sprint.
 
 ## Repository visibility
 

@@ -347,6 +347,9 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +
   `tools:provenance:check` + `publication:check` +
+  `content:links:check` (Issue #434 — internal link 404 / unsafe
+  target / missing image alt is an error; external timeouts are
+  warnings) +
   `routes:quality:check` (Issue #492) + `i18n:policy:check` +
   `ci:pins:check` (Issue #472, GitHub
   Actions pin / token audit) + `test`. The canonical list is

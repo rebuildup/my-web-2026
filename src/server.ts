@@ -512,8 +512,12 @@ function applyTransportSecurityPolicy(request: Request, response: Response): Res
  *
  * One instance per isolate, so the counts live exactly as long as the
  * isolate does and never outlive a request.
+ *
+ * The scope stays `boundary`: this is the same boundary record stream
+ * as `src/http/errors.ts`, and the anomaly record is distinguishable
+ * by its event name rather than by a second scope.
  */
-const anomalyAuditLogger = createAuditLogger('boundary.anomaly');
+const anomalyAuditLogger = createAuditLogger('boundary');
 
 const requestAnomalyMonitor = createAnomalyMonitor({
 	onEvent: (event) => {

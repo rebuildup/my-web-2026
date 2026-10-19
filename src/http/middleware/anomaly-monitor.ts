@@ -158,6 +158,25 @@ export const DEFAULT_ANOMALY_POLICY: Readonly<Record<AnomalySignal, AnomalyThres
 export const ANOMALY_WINDOW_MS = 300_000;
 
 /**
+ * The event name a detection record carries.
+ *
+ * Declared here rather than inlined at the sink because it is a
+ * CONTRACT with the redaction layer, not just a label. Every runtime
+ * record passes through `redactLogText` (Issue #467), whose
+ * opaque-blob rule replaces any run of 24+ token characters with
+ * `[redacted-blob]` to catch credential-shaped values — and `.` / `_`
+ * are inside that run's character class, so the name has to be SHORT,
+ * not merely non-credential-shaped. The first spelling of this event
+ * was `request_anomaly_detected` (24 characters); the second,
+ * `request.anomaly.detected`, was also 24. Both shipped as
+ * `{"event":"[redacted-blob]"}`, which costs the record the one field
+ * that makes it greppable. Keep this name short, and keep the
+ * assertion in `anomaly-monitor.test.ts` that redaction leaves it
+ * intact.
+ */
+export const ANOMALY_EVENT_NAME = 'anomaly.detected';
+
+/**
  * The complete field list of a detection event.
  *
  * Exported so the shape can be asserted closed: `scripts/` checks and
@@ -189,7 +208,7 @@ export const ANOMALY_EVENT_FIELDS = Object.freeze([
  * it.
  */
 export interface AnomalyEvent {
-	readonly event: 'request_anomaly_detected';
+	readonly event: typeof ANOMALY_EVENT_NAME;
 	readonly surface: AnomalySurface;
 	readonly signal: AnomalySignal;
 	readonly status: string;
@@ -366,7 +385,7 @@ export function createAnomalyMonitor(options: AnomalyMonitorOptions = {}): Anoma
 				if (rate < row.rate) continue;
 				current.latched.add(candidate);
 				const event: AnomalyEvent = Object.freeze({
-					event: 'request_anomaly_detected',
+					event: ANOMALY_EVENT_NAME,
 					surface: observation.surface,
 					signal: candidate,
 					status: row.status,

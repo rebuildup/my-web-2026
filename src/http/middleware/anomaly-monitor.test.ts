@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
+import { redactLogText } from '../../logging/redact';
 import {
 	ANOMALY_EVENT_FIELDS,
+	ANOMALY_EVENT_NAME,
 	ANOMALY_SIGNALS,
 	ANOMALY_SURFACES,
 	ANOMALY_WINDOW_MS,
@@ -144,7 +146,7 @@ describe('detection', () => {
 		const emitted = feed(monitor, 'admin', 401, 1);
 		expect(emitted).toHaveLength(1);
 		expect(emitted[0]).toMatchObject({
-			event: 'request_anomaly_detected',
+			event: ANOMALY_EVENT_NAME,
 			surface: 'admin',
 			signal: 'unauthorized',
 			status: '401',
@@ -225,6 +227,18 @@ describe('latch', () => {
 });
 
 describe('event shape', () => {
+	it('keeps its own name out of the redactor’s reach', () => {
+		// `redactLogText` masks any run of 24+ token characters as a
+		// credential, and `.` / `_` are inside that run’s character
+		// class. Two spellings of this event were exactly 24
+		// characters, so the shipped audit line read
+		// `{"event":"[redacted-blob]"}` — a record with no greppable
+		// identity. This assertion is what stops a rename (or a
+		// “more descriptive” expansion) from reintroducing that.
+		expect(ANOMALY_EVENT_NAME.length).toBeLessThan(24);
+		expect(redactLogText(ANOMALY_EVENT_NAME)).toBe(ANOMALY_EVENT_NAME);
+	});
+
 	it('carries no field beyond the declared allowlist', () => {
 		const monitor = createAnomalyMonitor();
 		feed(monitor, 'admin', 200, 25);

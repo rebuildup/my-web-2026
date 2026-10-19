@@ -6,6 +6,7 @@
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
 import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
+import { applyContentSecurityPolicyReportOnly } from './http/content-security-policy';
 import { externalBoundary } from './http/hono';
 import { AUTH_REQUEST_HEADERS, PRIVATE_NO_STORE, mergeVary } from './http/middleware/cache-policy';
 import { applySecurityHeaders } from './http/security-headers';
@@ -451,6 +452,15 @@ export default {
 		// choke point, after the #449 baseline, so every Worker response
 		// also carries `frame-ancestors`. HSTS (#446) stays outermost.
 		const framed = applyFrameAncestorsPolicy(request, secured);
-		return applyTransportSecurityPolicy(request, framed);
+		// Issue #447: CSP is added in REPORT-ONLY mode at the same choke
+		// point. It observes script/style/font/image/frame/connect origins
+		// without blocking them, so the shipped UI keeps behaving exactly
+		// as before while the origin inventory is measured. Moving a
+		// directive to enforcement is a separate decision. HSTS (#446)
+		// stays outermost.
+		const observed = applyContentSecurityPolicyReportOnly(framed, {
+			mediaBaseUrl: env.MEDIA_PUBLIC_BASE_URL,
+		});
+		return applyTransportSecurityPolicy(request, observed);
 	},
 } satisfies ExportedHandler<Env>;

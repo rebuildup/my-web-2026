@@ -24,6 +24,8 @@ of trusting the image.
 | [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp) | #507 | `pnpm run verify:asvs-coverage-screenshot` |
 | [`security-txt-browser.webp`](security-txt-browser.webp) | #468 | `pnpm run verify:security-txt-screenshot` |
 | [`secrets-status-only.webp`](secrets-status-only.webp) | #477 | `pnpm run secrets:status:report` |
+
+| [`operator-mfa-checklist.webp`](operator-mfa-checklist.webp) | #469 | `pnpm run verify:operator-mfa-checklist-screenshot` |
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
 
 ## `r2-restore-proof.webp` (Issue #462)
@@ -573,3 +575,45 @@ KB)** — a long text-dense page, so it is the largest artefact in this
 directory. Re-encoding that file at `quality: 80` (483,706 bytes) or at
 `quality: 80, nearLossless: true` (488,260 bytes) changes nothing, so
 lossy is what is committed and no further compression is claimed.
+
+## `operator-mfa-checklist.webp` (Issue #469)
+
+The operator MFA / Passkey confirmation gate's own report, rendered in a
+browser. The top table runs the shipped operator ledger
+(`quality/operator-mfa-ledger.json`) and seven recorded fixtures through the
+same seam the CLI uses: one `confirmed`, one 未確認 row, a missing service, a
+stale confirmation, a record that contradicts itself, a ledger carrying an
+account identifier, and a factor kind taken off `Object.prototype`. Each row
+shows the verdict, the exit code and the four state counts, so 未確認 can never
+be read as a green tick — and a prototype key cannot be counted as a second
+enrolled factor.
+
+The shipped ledger is shown **unconfirmed on purpose**: no agent can read a
+GitHub / Cloudflare / Infisical / registrar console, and a confirmation date
+this repository cannot verify is not one it may write down. The gate therefore
+exits `1` (`OUTSTANDING`) until the owner fills it in, which is the honest
+reading rather than a green the repository has not earned.
+
+What the page cannot show: the actual MFA state of the four accounts. That is
+operator-side; the gate audits the *record*, not the account, and says so in
+its own output.
+
+Anonymity is asserted, not promised. The ledger schema has no field for an
+account identifier (an identifier-shaped key is `UNDECIDABLE`), and the page
+plus every CLI transcript it embeds pass `assertNoSensitiveInText` before a
+byte is written — an address, an `otpauth://` URI, a base32 seed, a
+recovery-code-shaped digit run or a bearer token fails the command instead of
+producing the artefact.
+
+Regenerate:
+
+```bash
+pnpm run check:operator-mfa                              # verdict (exit 0 / 1 / 2)
+pnpm run verify:operator-mfa-checklist-screenshot       # HTML + WebP at the path above
+node --test scripts/check-operator-mfa.test.mjs         # the assertions behind both
+```
+
+Procedure: [`docs/runbook/operator-mfa-verification.md`](../../runbook/operator-mfa-verification.md).
+Issue asked for `operator-mfa-checklist.png`; like every artefact in this
+directory it is committed as WebP (Playwright writes the capture to memory and
+`sharp` re-encodes it, so no PNG intermediate is written).

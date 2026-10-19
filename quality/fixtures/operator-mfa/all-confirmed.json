@@ -1,0 +1,53 @@
+{
+	"case": "all four accounts confirmed, factors fresh",
+	"note": "4 サービスすべてが policy を満たす記録の例。pass の唯一の形。",
+	"now": "2026-10-19",
+	"ledger": {
+		"version": 1,
+		"policy": {
+			"status": "ratified",
+			"min_factors": 2,
+			"require_phishing_resistant": true,
+			"max_confirmation_age_days": 180
+		},
+		"services": [
+			{
+				"service": "github",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "cloudflare",
+				"confirmed_at": "2026-10-12",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-12" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-12" }
+				]
+			},
+			{
+				"service": "infisical",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "totp_app", "confirmed_at": "2026-10-13" }
+				]
+			},
+			{
+				"service": "registrar",
+				"confirmed_at": "2026-10-13",
+				"factors": [
+					{ "kind": "passkey", "confirmed_at": "2026-10-13" },
+					{ "kind": "security_key", "confirmed_at": "2026-10-13" }
+				]
+			}
+		]
+	},
+	"expect": {
+		"verdict": "OK",
+		"exitCode": 0,
+		"counts": { "confirmed": 4, "unconfirmed": 0, "stale": 0, "missing": 0 }
+	}
+}

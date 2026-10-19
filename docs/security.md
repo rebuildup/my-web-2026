@@ -582,6 +582,102 @@ This change adds no service, no binding, and no secret. Specifically:
   the static gate locally, renders the report, and encodes it as WebP.
   The Issue names a `.png`; the `.webp` extension is a deliberate
   substitution (the same one Issue #452 made for its report).
+## CSP Report-Only
+
+> The observation policy for subresource origins. Issue #447. It is
+> deliberately **not** an enforcing CSP: a violation is reported to the
+> browser, and the page behaves exactly as before. Moving a directive to
+> enforcement is a separate decision.
+
+### What is emitted
+
+`src/http/content-security-policy.ts` builds one
+`Content-Security-Policy-Report-Only` value and
+`src/server.ts` attaches it at the same choke point as the enforcing
+security headers — after the Hono / TanStack Start dispatch, so SSR
+documents, redirects, server-function payloads and `/api/v1/*` responses
+all carry it. An existing Report-Only header is left untouched.
+
+The enforcing `Content-Security-Policy: frame-ancestors` header from
+Issue #448 remains separate. `frame-ancestors` is ignored in Report-Only
+mode, so it is not repeated there.
+
+### Measured origins
+
+| Origin | Directive | Source of the measurement |
+| --- | --- | --- |
+| `'self'` | `default-src`, `script-src`, `style-src`, `img-src`, `font-src`, `connect-src`, `frame-src` | TanStack Start SSR document and hydration bundle, Panda CSS, favicon, server functions, and the same-origin Tool iframe |
+| `'unsafe-inline'` | `script-src`, `style-src` | Two inline document scripts (GA4 bootstrap, async font-stylesheet flip) and React inline `style` attributes |
+| `https://www.googletagmanager.com` | `script-src` | GA4 loader in `src/editorial/analytics/GoogleAnalytics.tsx` |
+| `https://fonts.googleapis.com` | `style-src` | Font stylesheet linked from `src/routes/__root.tsx` |
+| `https://fonts.gstatic.com` | `font-src` | The `@font-face` binaries that stylesheet references |
+| `https://*.google-analytics.com`, `https://*.analytics.google.com`, `https://*.googletagmanager.com` | `img-src`, `connect-src` | GA4 beacons; the runtime subdomain is chosen by Google, so the first-party source only pins the loader host |
+| `MEDIA_PUBLIC_BASE_URL` origin (when configured) | `img-src` | Portfolio media served from the R2 custom domain; the value is read from `env`, never hard-coded |
+
+The first observation run also reported `script-src` violations with
+`blockedURI: eval` from zod's client-side JIT compiler. The response was
+to remove the source rather than widen the policy: `src/client-zod-config.ts`
+is imported first by `src/client.tsx` and calls
+`z.config({ jitless: true })`, so validation keeps its semantics but no
+longer generates code with `new Function`. `'unsafe-eval'` is therefore
+deliberately absent, and the E2E positive case now observes no event.
+
+The policy also carries `object-src 'none'`, `base-uri 'self'` and
+`form-action 'self'`. It carries no `report-uri` / `report-to`: the
+repository has no collector endpoint, and inventing one would send
+visitor data to a destination with no owner or retention contract.
+Detection is the browser's native report surface
+(`securitypolicyviolation`), which the E2E contract observes locally.
+
+### Scope and non-scope
+
+- **In scope:** every response the Worker generates. This is the
+  TanStack UI, its fonts, its analytics, and the Tool iframe element it
+  embeds.
+- **Out of scope:** Static Assets. `/tools/<slug>/app/**` is a
+  Tool-owned document inside a sandboxed frame, and `/share/**` is a
+  self-contained static document. CSP is a per-document policy, and
+  neither document is rendered by this Worker; a host-wide Report-Only
+  rule in `public/_headers` would claim a policy this repository has not
+  measured for those documents.
+- **Not done here:** enforcement. No directive is switched to blocking,
+  and no production origin is used as a breakage test. The local workerd
+  pool, loopback Chromium fixture and static source inventory are the
+  whole verification surface.
+- **No new resource:** no KV, queue, binding, secret, or production
+  request is added. The media origin comes from the existing
+  `MEDIA_PUBLIC_BASE_URL` var.
+
+### Where it is verified
+
+| Gate | What it proves | Where |
+| --- | --- | --- |
+| Unit contract | The emitted value has the measured origins, no unobserved origin, no `'unsafe-eval'`, no blanket `*`, and no invented reporting endpoint; an existing header is not overwritten. | `src/http/content-security-policy.test.ts` |
+| Runtime contract | Real `SELF.fetch` responses carry the header on public, Tool, Admin and API surfaces while the enforcing `frame-ancestors` value is unchanged; the negative case checks that the policy is report-only and does not claim an unmeasured origin. | `test/integration/csp-report-only.test.ts` (workerd pool) |
+| Browser contract | A normal page load emits no violation; an unlisted image origin emits exactly one `img-src` event with `disposition: report` and is not blocked. | `e2e/csp-report-only.spec.ts` |
+| Verification artefact | The measured Worker rows and the loopback browser probe rendered as one report. | `docs/verification/security/csp-report.webp`, generated by `pnpm run verify:csp-report-only-screenshot` |
+
+### Known limitations
+
+- **zod runs in non-JIT mode on the client.** This is a deliberate
+  trade (a small validation-cost increase) made so the policy does not
+  need `'unsafe-eval'`. The server path is unaffected; Workerd already
+  skips the eval probe for Cloudflare user agents.
+- **`'unsafe-inline'` is measured debt, not a permanent grant.** A
+  nonce or hash migration is the condition for removing it. Until then
+  the Report-Only policy would only report the inline scripts the
+  document intentionally emits.
+- **The GA4 origin family is a wildcard.** The exact beacon subdomain is
+  selected by Google at runtime, so pinning one host would produce
+  false reports. The loader itself is pinned to its exact host.
+- **Static Assets and the Tool artefact are not observed.** The workerd
+  pool declares no `assets` binding, and the framed Tool document has
+  its own origin and policy. Their CSP is a Tool / Static Assets
+  decision, not a Worker response header.
+- **Report-Only is not enforcement.** A report is evidence, not a
+  guarantee. The separate enforcement issue must re-measure after the
+  observation window and decide per directive.
+
 ## Outbound fetch (SSRF)
 
 A URL that did not come from this repository — a visitor-supplied

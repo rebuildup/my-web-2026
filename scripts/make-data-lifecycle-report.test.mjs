@@ -10,17 +10,24 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import {
 	DATA_LIFECYCLE_ENTRIES,
 	DELETION_REQUEST_CHANNEL,
 	UNSUPPORTED_PUBLIC_CLAIMS,
 } from '../src/privacy/data-lifecycle.ts';
 import {
-	detectScheduledPurge,
+	findScheduledHandlers,
+	readSourceTree,
 	renderReport,
+	stripComments,
 	summariseReport,
 } from './make-data-lifecycle-report.mjs';
+
+const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 const SUMMARY = summariseReport({
 	testResults: [
@@ -118,13 +125,48 @@ test('text is escaped, so a registry sentence cannot inject markup', () => {
 	assert.ok(html.includes('a &amp; b'));
 });
 
-test('detectScheduledPurge only fires on a declared cron trigger', () => {
-	assert.equal(detectScheduledPurge('{"name": "my-web-2026"}'), false);
-	assert.equal(detectScheduledPurge('// "crons": ["0 3 * * *"]\n{\n  "name": "x"\n}'), true);
-	assert.equal(
-		detectScheduledPurge('{\n  "triggers": {\n    "crons": ["0 3 * * *"]\n  }\n}'),
-		true,
+test('the purge-job claim is checked against the Worker source', () => {
+	// Non-vacuity on the current tree: this is the assertion that keeps
+	// the registry's "no purge job ships" sentence true.
+	const hits = findScheduledHandlers(readSourceTree(ROOT));
+	assert.deepEqual(hits, [], `unexpected scheduled handler in ${hits.join(', ')}`);
+});
+
+test('a scheduled handler is detected when one is declared', () => {
+	assert.deepEqual(
+		findScheduledHandlers([
+			{ file: 'src/server.ts', source: 'export default { async scheduled() {} };' },
+		]),
+		['src/server.ts'],
 	);
-	// A JSONC comment naming crons is not a trigger.
-	assert.equal(detectScheduledPurge('{\n  // no "crons" here\n  "name": "x"\n}'), false);
+	assert.deepEqual(
+		findScheduledHandlers([
+			{ file: 'src/server.ts', source: 'const handler = { scheduled: purge };' },
+		]),
+		['src/server.ts'],
+	);
+});
+
+test('prose about a missing purge job is not read as a handler', () => {
+	// Comments are stripped first: `src/**` discusses scheduled work in
+	// prose, and a naive grep would report a purge job that is not there.
+	const prose = `
+/**
+ * No scheduled handler ships: this platform has no purge job.
+ */
+// it is scheduled from retryWakeupMs
+export const retry = { retryWakeupMs: 5 };
+`;
+	assert.deepEqual(findScheduledHandlers([{ file: 'src/x.ts', source: prose }]), []);
+	assert.ok(!stripComments(prose).includes('scheduled'));
+});
+
+test('the deployment configuration declares no Cron trigger', () => {
+	// The configuration half of the same claim. Naming `wrangler.jsonc`
+	// is allowed HERE and not in the report script: the static half of
+	// `pnpm run wrangler:independence:check` scans `scripts/**` but
+	// exempts `*.test.mjs`.
+	const config = readFileSync(join(ROOT, 'wrangler.jsonc'), 'utf8');
+	const code = config.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
+	assert.equal(/"crons"\s*:/.test(code), false);
 });

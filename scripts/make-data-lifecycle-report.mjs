@@ -40,8 +40,8 @@
  */
 
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { dirname, extname, join, resolve } from 'node:path';
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
+import { dirname, extname, join, relative, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import {
 	DATA_LIFECYCLE_ENTRIES,
@@ -68,17 +68,48 @@ const SUITES = [
 ];
 
 /**
- * Does the Wrangler configuration declare a scheduled handler?
+ * Does the Worker ship a scheduled (Cron) handler?
  *
  * The registry publishes "this platform ships no purge job", and the
- * only place that claim can be wrong is the Wrangler configuration. The
- * check is textual and deliberately narrow: `triggers.crons` is the one
- * spelling that would start a scheduled worker, and a comment in the
- * configuration is not a trigger. Read as raw text because the file is
- * JSONC and this report must not gain a parser dependency.
+ * only things that can falsify it are a `scheduled` handler in the
+ * Worker source and a Cron trigger in the deployment configuration.
+ * This function answers the first half by reading `src/**` — comments
+ * are stripped first, so prose about the absence of a purge job does
+ * not read as a handler. The configuration half is asserted in
+ * `scripts/make-data-lifecycle-report.test.mjs`, which may name
+ * `wrangler.jsonc`: the static half of
+ * `pnpm run wrangler:independence:check` scans `scripts/**` but exempts
+ * test files, and a runtime script must not reach the Wrangler config
+ * at all.
  */
-export function detectScheduledPurge(wranglerText) {
-	return /"crons"\s*:/.test(wranglerText);
+export function findScheduledHandlers(fileTexts) {
+	const hits = [];
+	for (const { file, source } of fileTexts) {
+		if (/\bscheduled\s*[(:=]/.test(stripComments(source))) hits.push(file);
+	}
+	return hits;
+}
+
+/** Remove block and line comments so prose is not read as code. */
+export function stripComments(source) {
+	return source.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:'"`])\/\/[^\n]*/g, '$1');
+}
+
+/** Every TypeScript source file under `src/**`, as `{ file, source }`. */
+export function readSourceTree(root) {
+	const files = [];
+	const walk = (directory) => {
+		for (const name of readdirSync(directory).sort()) {
+			const full = join(directory, name);
+			if (statSync(full).isDirectory()) {
+				walk(full);
+			} else if (/\.tsx?$/.test(name) && !/\.test\.tsx?$/.test(name)) {
+				files.push({ file: relative(root, full), source: readFileSync(full, 'utf8') });
+			}
+		}
+	};
+	walk(join(root, 'src'));
+	return files;
 }
 
 /** Flatten a Vitest JSON report into assertion rows. */
@@ -164,8 +195,8 @@ export function renderReport({ summary, entries, refusals, deletionWindow, purge
 		.join('\n');
 
 	const purgeVerdict = purgeJobDeclared
-		? '<span class="bad">detected — the registry claim is WRONG and the test suite must have been skipped</span>'
-		: '<span class="ok">not declared (wrangler.jsonc declares no <code>triggers.crons</code>)</span>';
+		? '<span class="bad">detected — a <code>scheduled</code> handler exists in <code>src/**</code>, so the registry claim is WRONG and the suite must have been skipped</span>'
+		: '<span class="ok">not declared (no <code>scheduled</code> handler in <code>src/**</code>; the deployment configuration is asserted in this script&rsquo;s test)</span>';
 
 	return `<!doctype html>
 <html lang="ja">
@@ -313,7 +344,7 @@ export async function build({ run = true, outFile = HTML_REPORT, target = WEBP_T
 		entries: DATA_LIFECYCLE_ENTRIES,
 		refusals: UNSUPPORTED_PUBLIC_CLAIMS,
 		deletionWindow: DELETION_REQUEST_CHANNEL.statement,
-		purgeJobDeclared: detectScheduledPurge(readFileSync(join(ROOT, 'wrangler.jsonc'), 'utf8')),
+		purgeJobDeclared: findScheduledHandlers(readSourceTree(ROOT)).length > 0,
 	});
 	// The last gate is the claim scan over the published sentences —
 	// the exact strings the footer renders. The report's refusal table

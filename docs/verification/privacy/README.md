@@ -17,7 +17,7 @@ exist, no retention number nobody can read off a table.
   | --- | --- |
   | 公開文面（配信された `/` の HTML） | `src/privacy/data-lifecycle.ts` の `approved` エントリが保存項目 / 保持期間 / 削除 / 外部送信 / 公開範囲の 5 項目を JA・EN 両方を含む形でレンダリングする。`pending` は現れない |
   | 拒否リスト | `UNSUPPORTED_PUBLIC_CLAIMS` の禁止パターン（匿名性・削除受付窓口・無条件の「送信なし」・自動削除）が配信 HTML に 1 つも含まれない。旧文言の「匿名」「個人を特定しません」「This site uses an anonymous」「anonymously」を個別に assert する |
-  | 保持期間（実テーブル） | `access_dedup.expires_at` = 記録時刻 + `DEDUP_WINDOW_MS`。同一リクエスト識別子の再訪時に失効行が削除され、同じセッションの 25 連打は 1 加算、25 個の別セッションは 25 行を残す。定期削除ジョブは無い（`wrangler.jsonc` に `triggers.crons` 宣言なし） |
+  | 保持期間（実テーブル） | `access_dedup.expires_at` = 記録時刻 + `DEDUP_WINDOW_MS`。同一リクエスト識別子の再訪時に失効行が削除され、同じセッションの 25 連打は 1 加算、25 個の別セッションは 25 行を残す。定期削除ジョブは無い（`src/**` に `scheduled` ハンドラが無く、宣言設定にも Cron が無い） |
   | 非公開データ | D1 に書いた訪問者識別子・行 id・値が `/` `/about` `/contact` `/api/v1/health`、未認証の 401 応答、公開集計（`kind`/`value`/`count` のみ）のいずれにも現れない |
   | 削除経路 | 訪問者本人の DELETE のみが自分の行を削除し、他者の識別子では削除できない |
 
@@ -46,9 +46,9 @@ exist, no retention number nobody can read off a table.
   2. 削除依頼窓口を owner が公開することにしたとき、`DELETION_REQUEST_CHANNEL` を
      「未公開」から公開側へ移し、`security.txt`（Issue #468）の contact 承認と
      同時に行う。片方だけの変更は、窓口の無いことを将进一步に公開することになる。
-  3. 定期削除ジョブ（`wrangler.jsonc` の `triggers.crons`）を採用したら、
-     `access-counter` の保持期間文言と `detectScheduledPurge()` の verdict を同時に
-     変える。レポートの verdict は設定を読み取るので、片方だけの変更は崩れる。
+  3. 定期削除ジョブを採用したら、`access-counter` の保持期間文言と
+     `findScheduledHandlers()` の verdict（`src/**` 走査）とCron 宣言の assertion を
+     同時に変える。片方だけの変更は verdict の表示と registry が矛盾する。
 
 ## `location-private-fallback.webp`
 

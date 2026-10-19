@@ -245,6 +245,53 @@ production domain to be wired (Issue #43 / ADR-0014):
 
    See [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 
+9. The artifact attestation manifest (Issue #476) has been produced for
+   the release branch head. `pnpm run artifact:attestation:check` runs at
+   the end of `validate:integration`, hashes the exact
+   `.cloudflare/output/v0` Build Output produced by the GitHub Actions
+   `validate` job in production mode, and records its source commit,
+   `package.json` version, declared dependency ranges, `pnpm-lock.yaml`
+   digest and resolved package count. CI retains it as the
+   `artifact-attestation-<sha>` workflow artifact (90 days). The manifest
+   does **not** attest the artifact Cloudflare Workers Builds deploys.
+   That comparison is out of scope by owner decision (2026-10-19): the
+   attested scope of this Issue is the GitHub Actions production-mode
+   Build Output, the manifest declares it through
+   `coverage.artifact_origin` / `coverage.deployed_bytes_attested`, and a
+   separate Issue owns any change to the deploy path
+   ([attestation §8](security/supply-chain-artifact-attestation.md#8-既知の制約と-owner-決定)).
+
+   - The manifest is an integrity record, not a signature: no signing
+     key exists, so `signature.status` is `unsigned` and every signature
+     field is `null`. A document claiming an unverifiable signature
+     fails closed.
+   - The manifest states its own attested scope: `coverage.artifact_origin`
+     names the hashed GitHub Actions production-mode Build Output and
+     `coverage.deployed_bytes_attested` is `false`. A manifest claiming
+     coverage this tool cannot back fails closed
+     (`COVERAGE_UNSUPPORTED` / `COVERAGE_UNDECLARED`), so a `PASS`
+     never reads as "the deployed bytes were hashed".
+   - A Cloudflare deploy id is recorded only when an operator supplies
+     one (`--deploy-id`). It is not fetched with a production credential
+     and is not authenticated by this tool.
+   - Attaching the manifest to the GitHub Release is a release-owner
+     action under the same human gate as the release merge / tag /
+     Release publish (the `Release PR merge human gate` rule in
+     `AGENTS.md` §6, not a step of this pre-merge checklist). The
+     release-tag comparison is that owner's command too, and an
+     unexecuted comparison is reported as "not executed" in the release
+     report — never as a PASS.
+   - Verify a published manifest against the artifact you hold and the
+     release tag itself with
+     `pnpm run artifact:attestation:check -- --manifest=<path> --release-tag="v$(node -p "require('./package.json').version")"`.
+     The tag must resolve to the manifest's `source.commit` and name the
+     manifest's package version, otherwise the check fails
+     (`RELEASE_TAG_COMMIT_MISMATCH` / `RELEASE_TAG_VERSION_MISMATCH`).
+     Generation never accepts `--source-sha` or `--release-tag`: it
+     always attests the checked-out HEAD.
+
+   See [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md).
+
 ## 0.1.0 Foundation backlog
 
 | Issue | Title                                                       | Depends on | Priority |
@@ -309,6 +356,16 @@ updated directly.
   the file, then stop. The document is derived from tracked files only
   and carries no credential — see
   [`docs/runbook/sbom.md`](runbook/sbom.md) §3.
+- Attach the matching
+  `release-assets/supply-chain/<version>/artifact-attestation.json`
+  (download it from the `artifact-attestation-<sha>` workflow artifact)
+  to the same GitHub Release under the same human gate. Verify it first
+  with `--release-tag="v<version>"`, so the published manifest names the
+  commit the tag points at. It records the CI production-mode Build
+  Output, is `unsigned`, and carries no credential; the Cloudflare-deployed
+  bytes stay outside the attested scope by owner decision (2026-10-19,
+  [attestation §8](security/supply-chain-artifact-attestation.md#8-既知の制約と-owner-決定)); see
+  [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md) §7.
 - Update any downstream consumers (Tools submodules, RSS feeds,
   integration endpoints) according to their own release cadence.
 - Archive the release branch once the next sprint starts (the

@@ -100,7 +100,7 @@ const parentSourceRoots = ['src', 'scripts', 'e2e', 'migrations'];
  * special-cased per file. The RULE the leaf states — "policy depends
  * on nothing" — is still enforced on every implementation module.
  */
-const leafOwners = new Set(['i18n']);
+const leafOwners = new Set(['i18n', 'privacy']);
 
 function isTestFile(path) {
 	return /\.(test|spec)\.tsx?$/.test(relative(srcRoot, path).split(sep).join('/'));

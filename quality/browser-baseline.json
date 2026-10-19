@@ -750,6 +750,12 @@
 			"role": "Publication-rights review contract for the assets this platform ships and references, plus the surface that shows one asset's rights"
 		},
 		{
+			"id": "privacy",
+			"root": "src/privacy",
+			"min_files": 1,
+			"role": "Published data lifecycle leaf obligation: the registry (stored items, retention, deletion path, external transfer) the public wording renders from"
+		},
+		{
 			"id": "app-shell",
 			"files": [
 				"src/client.tsx",

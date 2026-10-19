@@ -125,6 +125,14 @@ gates:
       # binding list are two tiers of one secret contract, declared in one
       # module. Never prints a secret value (AGENTS.md section 4).
       - 'pnpm run infisical:check:coverage'
+      # Issue #477: the secret drift / rotation-deadline status gate.
+      # Offline, read-only and credential-free by construction — the
+      # environment half arrives as a status-only recording, and no
+      # value is read, so it belongs in the fast chain next to the
+      # static secret contract check above. The DASHBOARD is not here:
+      # a visualisation is never a release condition (see
+      # disallowed_patterns / diagnostic_entry_points).
+      - 'pnpm run secrets:status:check' # drift + rotation deadline from status-only inputs (#477)
       - 'pnpm run sbom:check' # CycloneDX inventory vs. the real lockfile (Issue #471)
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       # Issue #414: the Web feature adoption gate. Offline and vendored
@@ -161,6 +169,17 @@ gates:
       # links are not dereferenced in CI, and their live failures are
       # warnings in the explicit `--external` mode.
       - 'pnpm run content:links:check'
+      # Issue #494: migrated text / images (Miro boards, the
+      # my-web-2025 site, Notion pages) are reviewed for personal data
+      # BEFORE they can become public content. The detector extracts
+      # candidates (address, contact channel, third-party name, image
+      # metadata / personal camera filename); only an owner decision
+      # with a stated basis may publish a record, and a withheld
+      # record's own content must not appear in a published file. Cheap
+      # by construction: a corpus read plus a text scan of the declared
+      # published-content roots. No network, no Worker, no secret, no
+      # OCR, no third-party validator.
+      - 'pnpm run publication:redaction:check' # personal-data candidates + owner publication decision (Issue #494)
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       - 'pnpm run security:headers:check' # nosniff / Referrer-Policy / Permissions-Policy (Issue #449)
@@ -469,6 +488,59 @@ bundle_budget:
     - 'a missing Tool build output is a WARNING naming the absent directory, not a silent zero-byte pass'
     - 'raising a cap is not machine-checked (only an `exception` is); a cap change is reviewed in the PR diff with its measurement and rationale'
     - 'a missing build graph exits 2 (input error), never 0'
+# Issue #494 - personal-data review of the migrated corpus. Two axes,
+# in this order: MECHANICAL DETECTION (scripts/personal-data-review.mjs
+# extracts every personal-data candidate from a record's text and from
+# its image descriptors) and OWNER DECISION (only `decided_by: "owner"`
+# plus a stated `basis` may publish a record; everything else stays
+# `review_required` and is withheld whole).
+#
+# This is a GATE, not a report: the committed markdown review is
+# byte-compared against a fresh run, so a corpus or published-content
+# change that nobody re-reviewed fails.
+personal_data_review:
+  corpus: 'docs/migration/personal-data-review/corpus.json (synthetic fixtures only)'
+  library: 'scripts/personal-data-review.mjs (pure, zero npm dependency)'
+  command: 'pnpm run publication:redaction:check'
+  write_command: 'pnpm run publication:redaction:write'
+  report_command: 'pnpm run verify:publication-redaction-screenshot'
+  tests: 'node --test scripts/check-publication-redaction.test.mjs'
+  gate: fast
+  gate_placement: >-
+    gates.fast, after `pnpm run content:links:check` and before
+    `pnpm run routes:quality:check` (the neighbouring steps are named
+    rather than an absolute index, so inserting another gate does not
+    invalidate this note).
+  documentation: 'docs/security/personal-data-redaction.md'
+  artefact: 'docs/verification/privacy/publication-redaction-review.{md,webp}'
+  published_content_roots:
+    - 'copy'
+    - 'public'
+    - 'src/about'
+    - 'src/contact'
+    - 'src/portfolio'
+  published_content_exclusions:
+    - 'public/share/ - the `/share/<slug>/` static document surface is a separate delivery obligation with its own publication decision; this gate reviews migrated content, so it does not re-decide what is already published there.'
+    - 'src/home/, src/editorial/, src/routes/, src/admin/, src/i18n/ - component / route code whose copy is authored in this repository and reviewed in the pull request that added it, not migrated content. The scanned roots are the surfaces that carry migrated or declared identity data, the platform copy resources and the static assets a visitor can fetch. Extending the reverse scan to component copy needs a stated policy for placeholder contact values (a `user@example.com` form placeholder is shaped like a personal address), and that policy is an owner decision, not this gate''s to invent.'
+  statuses:
+    - 'pass - no error finding (a corpus with no pending record)'
+    - 'review - warnings only: records still awaiting the owner decision (W001) or withheld by owner decision (W002)'
+    - 'fail - a withheld record reached published content (E001), an approval lacks owner authority or a basis (E002 / E003), a DECLARED decision value is unknown (E004), published content carries an uncovered candidate (E005), the corpus is malformed or duplicated (E006 / E007), or the detector found nothing at all (E008)'
+  false_pass_guards:
+    - '`review_required` is the default for a missing or unknown decision value; the gate never infers an approval. A missing decision is the pending state (W001); only a DECLARED unknown value is an error (E004)'
+    - 'a record without candidates is still published only through an owner decision, so the clean path and the private path share one gate'
+    - 'E008: a corpus that yields zero candidates fails, and so does a corpus with no record at all, because a detector that never fires proves nothing and an empty corpus is the same failure with the records gone'
+    - 'check mode byte-compares `docs/verification/privacy/publication-redaction-review.md`, so the evidence cannot drift from the corpus. The published side of the digest is scoped to the files that carry a candidate, so a copy edit that carries none does not redden the gate'
+    - 'reports and CI output carry only rule id / field / offset / masked shape; a raw candidate value never leaves the gate'
+    - 'the published-content declaration is complete: every surface is either a scanned root or a declared exclusion with a reason, and the gate refuses to run (exit 2) when the declaration contradicts the walk — a scanned root inside a declared not-scanned surface, or a declared not-scanned surface inside a scanned root that no exclude prefix covers. The comparison is on a path boundary, so `src/about-legacy` is not inside `src/about/`'
+    - 'every published file is collected, image included: a file the text scan cannot read is collected by its NAME alone, so a migrated photo that lands in a published root is still scanned by the rule table (`D011`) and by the withheld record own file name (`E001`); the pixels stay an owner judgement (no OCR)'
+    - 'the gate runs only as the process entry point, and the comparison resolves both sides to their real path: a gate started through a symlinked path would otherwise run nothing and exit 0, which is a fail-open'
+  known_limits:
+    - 'no OCR: image PIXELS are not inspected, so a face, a photographed document or a handwritten address stays an owner judgement'
+    - 'D006 / D007 match courtesy-suffixed names only; an unsuffixed name in public copy is an owner decision, not a detection'
+    - 'the corpus is synthetic; real Miro / legacy-site / Notion imports arrive through the same shape but are not committed here (docs/personal/knowledge-model.md: no private data in the public repository)'
+    - 'the corpus may hold synthetic fixtures only, so E005 has no sanctioned way to pass for a real published contact value: the only coverage is an owner-approved corpus record, and the corpus may not carry private data. The site publishes no e-mail today, so nothing is broken; the tension is an owner decision'
+
 # Issue #492 — the published route roster and its quality-gate
 # coverage are one reviewable artefact, and a cheap gate keeps the two
 # in sync. This is a **coverage ledger**: it proves every published
@@ -587,7 +659,7 @@ release_gate_coverage:
   known_limits:
     - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
     - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
-    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 42 `validate:fast` components'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 44 `validate:fast` components'
 
 # Issue #464 - the connection scope / retention ledger. `docs/domain/
 # integrations.md` lists the candidate services and promotes none of
@@ -855,6 +927,39 @@ compatibility:
       - 'registry model: an adoption that nobody declares in features[] / guarded_features[] is not detected at all'
 
 security_gates:
+  secret_rotation_status:
+    enabled: true
+    issue: '#477'
+    command: 'pnpm run secrets:status:check'
+    report_command: 'pnpm run secrets:status:report'
+    gate: fast
+    implementation: 'scripts/check-secret-rotation-status.mjs (gate) + scripts/_secret-rotation-status.mjs (pure policy seam)'
+    tests: 'scripts/check-secret-rotation-status.test.mjs (discovered by scripts/run-script-tests.mjs, Issue #566)'
+    fixtures: 'quality/fixtures/secret-rotation-status/*.json'
+    policy_source_of_truth: 'scripts/_cloudflare-contract.mjs REQUIRED_RUNTIME_SECRETS / AUDIT_ONLY_SECRETS (injected, never re-declared in a script) + docs/runbook/infisical-secrets.md section 2.1 cadence column, projected into quality/secret-rotation-ledger.json'
+    operator_input: 'a recorded status-only observation (a check-cf-secrets transcript or a {environment, captured_at, missing, extra} record) passed with --observation; the gate never reads Infisical itself'
+    output_contract: >-
+      status-only (AGENTS.md section 4): names, verdicts, statuses, counts and
+      dates. No secret value is read, fetched, stored or printed. Enforced
+      rather than promised: an observation entry that is not a runbook section
+      3.2 name is refused before anything is rendered (the name grammar is the
+      enforcing gate), the ledger schema rejects unknown keys, and the rendered
+      text passes the leak guard before a byte is written.
+    failure_policy:
+      - 'MISSING / MISSING_ROW / EXTRA_ROW is DRIFT (exit 1)'
+      - 'a rotation past its cadence is OVERDUE (exit 1)'
+      - 'an unreadable or malformed ledger / observation, an unusable clock and a usage error are UNDECIDABLE (exit 2) — "could not read" is never a pass'
+      - 'UNEXPECTED / UNRECORDED / DUE_SOON / NOT_OBSERVED are advisories (exit 0): operational approval is a separate step (AGENTS.md section 6 human gate)'
+      - 'a fixture run is a demonstration: its output says source=fixture and it is never a release verdict'
+      - '--now is refused without --case, so the gate cannot be green-washed with a pinned clock'
+    open_owner_decision: >-
+      Every ledger row ships last_rotated_at: null, because this repository
+      cannot know when an operator rotated a production secret. UNRECORDED is
+      therefore an advisory today; whether it becomes blocking after the owner
+      records the dates, and whether the DUE_SOON window stays a gate default,
+      are owner calls recorded in docs/runbook/secret-rotation-status.md section 10.
+    runbook: 'docs/runbook/secret-rotation-status.md'
+    verification_artifact: 'docs/verification/security/secrets-status-only.webp'
   security_disclosure:
     enabled: true
     issue: '#478'

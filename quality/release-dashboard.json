@@ -23,7 +23,9 @@
 			"cloudflare-binding-contract": "cloudflare-contract",
 			"cloudflare-build-contract": "cloudflare-build-contract",
 			"infisical-secret-coverage": "infisical-secret-coverage",
+			"secret-rotation-status": "secret-rotation-status",
 			"route-quality-coverage": "route-quality-coverage",
+			"personal-data-review": "personal-data-review",
 			"index-boundary": "index-boundary",
 			"test-wiring": "test-wiring",
 			"knip-unused-code": "knip",
@@ -401,6 +403,19 @@
 			"owner": "Issue #492"
 		},
 		{
+			"id": "personal-data-review",
+			"group": "gate",
+			"label": "移行コーバスの個人情報検出 / 計載承認ゲート",
+			"state": "implemented",
+			"contract": "移行した文字と画像の個人情報キャンダを機械的に提取し、公開可否は owner の判断とその依存先を要する。保留レコードは public bundle に現れない。",
+			"command": "pnpm run publication:redaction:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #494"
+		},
+		{
 			"id": "security-headers",
 			"group": "security",
 			"label": "response security headers",
@@ -487,6 +502,20 @@
 				"note": "AGENTS.md §4: 名前だけを比較し、値は一切読まない。"
 			},
 			"owner": "Issue #167"
+		},
+		{
+			"id": "secret-rotation-status",
+			"group": "security",
+			"label": "Secret drift / rotation deadline status",
+			"state": "implemented",
+			"contract": "runtime secret 名ごとの drift（記録された status-only 観測）と rotation 期限を判定する。値は一切読まない。",
+			"command": "pnpm run secrets:status:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code",
+				"note": "AGENTS.md §4: name / verdict / 件数 / 日付のみ。観測の entry は runbook §3.2 の name grammar を通らなければ parse 失敗（fail closed）し、値も出力しない。"
+			},
+			"owner": "Issue #477"
 		},
 		{
 			"id": "secret-scan-bundle",

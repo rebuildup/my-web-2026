@@ -1,0 +1,91 @@
+{
+	"$comment": "Open Graph / Twitter card contract (Issue #421). The single source of truth for what a public surface publishes to link unfurlers. `src/editorial/social-card/card.ts` composes heads from it (Worker side, JSON module import) and the gates read the same file (scripts/*.mjs, fs) so a screenshot can never describe a different document than CI validates. Precedent: src/editorial/structured-data/contract.json.",
+	"canonicalOrigin": "https://rebuildup.dev",
+	"siteName": "rebuildup.dev",
+	"siteLocale": "ja_JP",
+	"ogTypes": ["website", "article", "profile"],
+	"cardTypes": ["summary", "summary_large_image"],
+	"fallbackCard": {
+		"path": "/og/default-card.png",
+		"width": 1200,
+		"height": 630,
+		"alt": "rebuildup.dev — 自分のメディアを持たない surface の既定カード。",
+		"generator": "scripts/generate-og-fallback-card.mjs",
+		"reason": "media row の無い project、media row はあるが R2 custom domain が未設定で composeMediaUrl が null を返す project では公開画像 URL が構成されない。fallback が無いと unfurler は画像の無い card を描画し、その劣化は検証レポート上でも不可視になる。fallback を置けば preview が完成し、同時に劣化が名前を持てる — 出力される URL がこのファイルのものであるため、gate は document だけで content と fallback を区別できる。"
+	},
+	"routes": [
+		{
+			"path": "/portfolio/$slug",
+			"public": true,
+			"status": "implemented",
+			"ogType": "article",
+			"cardPolicy": "content-first",
+			"samplePath": "/portfolio/my-web-2026",
+			"note": "Issue #421 の主題。作品詳細の card は loader が解決した cover が正で、無ければ fallbackCard に落ちる（missing media の可視化）。og:image:alt / width / height は cover の media row から取るので media の無い project では alt が無い — そのため fallbackCard は自前の alt / width / height を宣言する。"
+		},
+		{
+			"path": "/portfolio/",
+			"public": true,
+			"status": "implemented",
+			"ogType": "website",
+			"cardPolicy": "content-first",
+			"samplePath": "/portfolio",
+			"note": "一覧 surface の card は先頭の公開 project の cover。無ければ fallbackCard。代表作品の card を一覧でも出さないという decision は採らない（unfurl される representative URL があるため）。"
+		},
+		{
+			"path": "/about",
+			"public": true,
+			"status": "implemented",
+			"ogType": "profile",
+			"cardPolicy": "content-first",
+			"samplePath": "/about",
+			"note": "人物 identity の surface。profile:first_name / last_name / username は route が所有する（person facts の owner は about obligation）。card の合成だけこの module に委譲している。"
+		},
+		{
+			"path": "/",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/",
+			"note": "Home はこの release で declare した card 画像を持たない。og:title / description / url と twitter:card=summary は出ており、card 画像だけが無い — cardPolicy 'none' はその状態を宣言したもので、og:image が後から増えた時点で drift finding になる。fallbackCard をそのまま出すか別の decision にするかは Home の card design 問題であり、この Issue の範囲外。"
+		},
+		{
+			"path": "/contact",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/contact",
+			"note": "Contact は og:title / description / url を出すが card 画像を declare していない（personal な文面を代表画像にしない）。"
+		},
+		{
+			"path": "/tools/",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/tools",
+			"note": "Tool Registry の一覧。shell のイラストを使わず、Tool manifest 側の card 宣言を待つ（別 ticket）。"
+		},
+		{
+			"path": "/tools/$slug",
+			"public": true,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/tools/prototype",
+			"note": "Tool の shell は same-origin iframe host で、外からの unfurl に画像を出す契約を持たない。"
+		},
+		{
+			"path": "/design-system",
+			"public": false,
+			"status": "not-implemented",
+			"cardPolicy": "none",
+			"samplePath": "/design-system",
+			"note": "社内 design-system showcase。public=false なので sitemap にも載らないが、route tree には存在するため entry を置き gate の網羅性を保つ。"
+		}
+	],
+	"deferredSurfaces": [
+		{
+			"id": "articles",
+			"reason": "Issue #421 は「公開作品と記事」を主題に挙げているが、この release の route tree に記事 surface は存在しない（src/routeTree.gen.ts に articles / journal / blog / notes の route が無い）。記事 route をこの Issue で新設すると、未完成の別 feature（記事の content model・公開性境界・一覧/詳細の loader）に依存することになり、受け入れ条件「未完成の他featureに依存させない」に反する。したがって記事 card の契約は『未宣言』として明示し、記事 route が追加された時点でこの entry の削除と route entry の追加を同時に gate が要求する（silent pass させない）。"
+		}
+	]
+}

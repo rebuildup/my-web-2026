@@ -118,6 +118,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run css:check',
 	'pnpm run app:icons:check',
 	'pnpm run release:gate:check',
+	'pnpm run integration:scope:check',
 	'pnpm run tools:artifact:check',
 ];
 
@@ -327,13 +328,13 @@ describe('the repository plan', () => {
 		// dropped publication / release-asset / app-icons component or a
 		// component moved away from its merge-base position.
 		assert.deepEqual(plan('fast'), EXPECTED_FAST_PLAN);
-		// Pin the tail explicitly: `tools:artifact:check` landed at the END of
-		// the merge-base chain (after `release:gate:check`), so the failure
-		// path stops after every other fast gate exactly as it used to.
-		assert.deepEqual(plan('fast').slice(-2), [
-			'pnpm run release:gate:check',
-			'pnpm run tools:artifact:check',
-		]);
+		// Pin the tail explicitly: `tools:artifact:check` is the LAST fast
+		// step. It landed at the end of the merge-base chain (after
+		// `release:gate:check`), so a gate added later is appended BEFORE
+		// it — the failure path still stops after every other fast gate
+		// exactly as it used to. Issue #464 adds `integration:scope:check`
+		// in that slot, one line before it.
+		assert.equal(plan('fast').at(-1), 'pnpm run tools:artifact:check');
 	});
 
 	it('lists the same plan the runner would execute', () => {

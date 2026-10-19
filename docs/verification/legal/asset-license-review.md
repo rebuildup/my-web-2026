@@ -14,7 +14,7 @@
 | capture 手段 | `node scripts/capture-asset-license-review.mjs`（`.tmp/` に Vite harness を生成 → loopback 配信 → Playwright Chromium → `sharp` で WebP 化） |
 | 描画 CSS | リポジトリの Panda 設定（`postcss.config.mjs` → `panda.config.ts`）を harness の Vite build に渡したもの（実際の `src/styles.css`） |
 | viewport / DPR | 1440 x 900 / 1（`fullPage` 撮影） |
-| 生成物サイズ | 1440 x 3074 px、**199 kB** WebP（quality 80、budget 300 kB） |
+| 生成物サイズ | 1440 x 3192 px、**188 kB** WebP（quality 80、budget 300 kB） |
 | 撮影時の review card 数 | 2（script が `cardsRendered !== 2` で失敗する。空ページ撮影の黙認をしない） |
 | 撮影時の判定 | `[publishable, hold]`（DOM の `data-decision` を実測） |
 | 外部通信 | **0 件（実測）**。gallery は記録の描画のみで、どこにも要求しない。capture script が Playwright の request イベントを数え、loopback 以外が 1 件でもあれば artefact を書かずに失敗する |

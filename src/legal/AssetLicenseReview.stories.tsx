@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import inventoryJson from '../../quality/asset-license-inventory.json';
 import { css, cx } from '../../styled-system/css';
+import { DataTable, type TableColumn, type TableRow } from '../editorial/table-code';
 import { AssetLicenseReview } from './AssetLicenseReview';
 import {
 	type AssetLicenseRecord,
@@ -135,40 +136,6 @@ const sectionTitleClassName = css({
 	color: 'text.muted',
 });
 
-const tableClassName = css({
-	width: '100%',
-	borderCollapse: 'collapse',
-	fontFamily: 'sans',
-	fontSize: 'sm',
-});
-
-const cellClassName = css({
-	borderBottomWidth: '1px',
-	borderBottomStyle: 'solid',
-	borderBottomColor: 'border.subtle',
-	padding: '3',
-	textAlign: 'left',
-	verticalAlign: 'top',
-	color: 'text.default',
-});
-
-const headCellClassName = css({
-	borderBottomWidth: '1px',
-	borderBottomStyle: 'solid',
-	borderBottomColor: 'border.strong',
-	padding: '3',
-	textAlign: 'left',
-	fontSize: 'xs',
-	letterSpacing: '0.04em',
-	color: 'text.muted',
-});
-
-const decisionCellClassName = css({
-	fontFamily: 'mono',
-	whiteSpace: 'nowrap',
-	color: 'text.default',
-});
-
 const scopeClassName = css({
 	display: 'grid',
 	gridTemplateColumns: { base: '1fr', md: 'repeat(3, minmax(0, 1fr))' },
@@ -205,34 +172,46 @@ function claimedFileCount(record: AssetLicenseRecord): string {
 	return record.covers.length === 0 ? '—' : record.covers.join(' , ');
 }
 
+/**
+ * The record roster.
+ *
+ * `DataTable` is the shipped table primitive, so the caption and the
+ * scoped header cells are structural rather than remembered
+ * (`pnpm run a11y:table:code:check` fails a hand-rolled table that is
+ * missing either).
+ */
+const INVENTORY_COLUMNS: readonly TableColumn[] = [
+	// The first column's key names the row header cell the primitive
+	// renders (`columns.slice(1)` supplies the `<td>`s), so the record id
+	// goes first and the derived decision is an ordinary cell after it.
+	{ key: 'record', label: '記録 id' },
+	{ key: 'decision', label: '判定' },
+	{ key: 'kind', label: '種別' },
+	{ key: 'spdx', label: 'ライセンス' },
+	{ key: 'covers', label: '対象' },
+	{ key: 'title', label: '名称' },
+];
+
 function InventoryTable() {
+	const rows: readonly TableRow[] = read.records.map((record) => ({
+		key: record.id,
+		label: record.id,
+		cells: {
+			record: record.id,
+			decision: DECISION_LABEL[reviewFor(record.id).decision],
+			kind: KIND_LABEL[record.kind],
+			spdx: record.license.spdx,
+			covers: claimedFileCount(record),
+			title: record.title,
+		},
+	}));
 	return (
-		<table className={tableClassName}>
-			<thead>
-				<tr>
-					<th className={headCellClassName}>判定</th>
-					<th className={headCellClassName}>記録 id</th>
-					<th className={headCellClassName}>種別</th>
-					<th className={headCellClassName}>ライセンス</th>
-					<th className={headCellClassName}>対象</th>
-					<th className={headCellClassName}>名称</th>
-				</tr>
-			</thead>
-			<tbody>
-				{read.records.map((record) => (
-					<tr key={record.id}>
-						<td className={cx(cellClassName, decisionCellClassName)}>
-							{DECISION_LABEL[reviewFor(record.id).decision]}
-						</td>
-						<td className={cx(cellClassName, decisionCellClassName)}>{record.id}</td>
-						<td className={cellClassName}>{KIND_LABEL[record.kind]}</td>
-						<td className={cx(cellClassName, decisionCellClassName)}>{record.license.spdx}</td>
-						<td className={cellClassName}>{claimedFileCount(record)}</td>
-						<td className={cellClassName}>{record.title}</td>
-					</tr>
-				))}
-			</tbody>
-		</table>
+		<DataTable
+			caption={`資産記録 ${read.records.length} 件（記録 id / 導出判定 / 種別 / ライセンス / 対象 / 名称）`}
+			columns={INVENTORY_COLUMNS}
+			rows={rows}
+			note="対象は記録が主张する covers のパターン。監査対象ファイルの実数は gate が数える（pnpm run assets:license:check）。"
+		/>
 	);
 }
 

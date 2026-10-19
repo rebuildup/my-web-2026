@@ -744,6 +744,12 @@
 			"role": "Runtime log-redaction contract: what may appear in a console record, and the only module allowed to reach `console`"
 		},
 		{
+			"id": "legal",
+			"root": "src/legal",
+			"min_files": 1,
+			"role": "Publication-rights review contract for the assets this platform ships and references, plus the surface that shows one asset's rights"
+		},
+		{
 			"id": "app-shell",
 			"files": [
 				"src/client.tsx",

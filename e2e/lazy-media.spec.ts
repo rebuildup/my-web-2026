@@ -385,6 +385,9 @@ async function measure(
 	let preActivationIframeCount: number | null = null;
 	if (options.activateSelector) {
 		preActivationIframeCount = await page.locator('iframe').count();
+		// The notice is server-rendered; the click handler is not attached
+		// until hydration finishes, so settle the network first.
+		await page.waitForLoadState('networkidle');
 		await page.locator(options.activateSelector).click();
 		await page.waitForFunction(() => document.querySelector('iframe') !== null, undefined, {
 			timeout: 10_000,

@@ -109,6 +109,11 @@ async function openWithFrame(page: Page): Promise<void> {
 		// acts. Asserting it here means a regression that re-mounted the
 		// iframe eagerly fails at its own cause, not downstream.
 		await expect(page.locator('iframe')).toHaveCount(0);
+		// The notice is server-rendered, so it is clickable before
+		// hydration has attached the handler. Waiting for the network to
+		// go idle first is what makes the click land on a hydrated button
+		// instead of a race with React.
+		await page.waitForLoadState('networkidle');
 		await activate.click();
 	}
 	await page.waitForSelector('iframe[title="ProtoType Tool"]', {

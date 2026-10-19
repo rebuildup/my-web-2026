@@ -240,7 +240,12 @@ describe('the vocabulary is closed', () => {
 describe('the secret guard', () => {
 	it('fails on a credential-shaped value and never prints it', () => {
 		const world = passWorld();
-		const value = '1:Rml4dHVyZUxpdGVyYWxWYWx1ZUZpeHR1cmVWYWx1ZUZpeHR1cmU';
+		// The refused value is read from the fixture rather than written
+		// here: a test file that copies it would itself become a
+		// credential-shaped string for `pnpm run secret:scan`, and the
+		// repository's secret scanner must never need a waiver for a test.
+		const value = loadFixture(REPO_ROOT, 'secret-literal').manifest.capabilities[0].assets[0]
+			.source_of_truth;
 		world.manifest.capabilities[0].assets[0].source_of_truth = value;
 		const result = evaluate(world);
 		assert.ok(

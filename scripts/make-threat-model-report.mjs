@@ -35,7 +35,14 @@ import { execFileSync } from 'node:child_process';
 import { mkdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { checkThreatModel, collectProbes, renderReport } from './check-threat-model.mjs';
+import { looksLikeCredentialValue } from './_secret-scan.mjs';
+import {
+	checkThreatModel,
+	collectProbes,
+	collectStrings,
+	loadFixture,
+	renderReport,
+} from './check-threat-model.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const HTML_REPORT = join(ROOT, '.tmp/threat-model-report.html');
@@ -115,11 +122,21 @@ const probes = collectProbes(ROOT);
 const html = renderReport({ manifest: result.manifest, result, probes, sourceSha: headSha() });
 
 // The page is a review artefact, so it must not be the place a value is
-// published: re-read the markup and refuse to write it if the fixture
-// credential leaked into the rendered page.
-const probeLiteral = '1:Rml4dHVyZUxpdGVyYWxWYWx1ZUZpeHR1cmVWYWx1ZUZpeHR1cmU';
-if (html.includes(probeLiteral)) {
-	throw new Error('refusing to render: the probe credential reached the report markup');
+// published: re-read the markup and refuse to write it if any string the
+// rejection fixture carries survived into the page. The strings are read
+// from the fixture, never copied here, so this script holds no
+// credential-shaped literal of its own (`pnpm run secret:scan` needs no
+// waiver for it).
+const refusedStrings = collectStrings(loadFixture(ROOT, 'secret-literal'))
+	.map((entry) => entry.value)
+	.filter((value) => looksLikeCredentialValue(value));
+if (refusedStrings.length === 0) {
+	throw new Error(
+		'the rejection fixture carries no refused string — the probe would prove nothing',
+	);
+}
+if (refusedStrings.some((value) => html.includes(value))) {
+	throw new Error('refusing to render: a value the ledger rejected reached the report markup');
 }
 
 mkdirSync(dirname(HTML_REPORT), { recursive: true });

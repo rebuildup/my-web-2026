@@ -313,8 +313,9 @@ export const ALLOWLIST = Object.freeze([
 		detector: 'better-auth-versioned-secret',
 		reason:
 			'The threat-model ledger own rejection fixture (Issue #479). The gate asserts it REJECTS a ' +
-			'credential-shaped value written into an asset source, so the fixture must CONTAIN one; the ' +
-			'value is the fixed alphabet the test and the report quote, issued by no environment.',
+			'credential-shaped value written into an asset source, so this one file must CONTAIN one. The ' +
+			'test and the report read the value from this fixture instead of copying it, so no other file ' +
+			'in the repository carries the shape, and it is issued by no environment.',
 	},
 	{
 		path: 'scripts/scan-secrets.mjs',

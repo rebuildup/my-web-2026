@@ -36,11 +36,15 @@ test.beforeAll(() => {
 	mkdirSync(SHOT_DIR, { recursive: true });
 	mkdirSync(CELL_DIR, { recursive: true });
 	const roster = join('.tmp', 'viewport-roster.json');
+	// A per-process temp name: `beforeAll` runs once per worker PROCESS,
+	// and a shared `roster.tmp` lets worker A rename the file before
+	// worker B does, failing B with ENOENT.
+	const temp = `${roster}.${process.pid}.tmp`;
 	writeFileSync(
-		`${roster}.tmp`,
+		temp,
 		`${JSON.stringify({ routes: VIEWPORT_ROUTES, viewports: VIEWPORTS }, null, 2)}\n`,
 	);
-	renameSync(`${roster}.tmp`, roster);
+	renameSync(temp, roster);
 });
 
 for (const viewport of VIEWPORTS) {

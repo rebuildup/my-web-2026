@@ -201,7 +201,11 @@ async function measureCurrentDocument(
 			overflowPx: scrollWidth - clientWidth,
 			mainCount: mains.length,
 			mainIds: mains.map((main) => main.id),
-			mainVisible: mains.length > 0 && mainRect !== undefined,
+			// Reuse the rendered-element test rather than `mainRect !== undefined`:
+			// `getBoundingClientRect()` always returns a DOMRect, so the old
+			// expression was true whenever a `<main>` existed — a
+			// `display:none` or 0x0 landmark would have passed every rule.
+			mainVisible: isRendered('main'),
 			mainLeft: mainRect?.left ?? Number.NaN,
 			mainRight: mainRect?.right ?? Number.NaN,
 			bodyFontSize: Number.parseFloat(window.getComputedStyle(document.body).fontSize),

@@ -81,6 +81,25 @@ const BROKEN_FIXTURES: ReadonlyArray<BrokenFixture> = [
 		route: TARGET,
 	},
 	{
+		id: 'hidden-main-landmark',
+		label: '本文ランドマーク非表示（display:none）',
+		// `getBoundingClientRect()` still returns a DOMRect for a hidden
+		// element, so the old `mainRect !== undefined` check called this a
+		// visible main. It must be rejected as unrendered, not as missing.
+		html: '<!doctype html><html lang="ja"><head><title>fixture</title><style>body{margin:0}main{display:none}</style></head><body><main id="about-main"><h1>木村友亮</h1></main></body></html>',
+		rule: 'must be visible',
+		viewportIndex: 0,
+		route: TARGET,
+	},
+	{
+		id: 'zero-size-main-landmark',
+		label: '本文ランドマークが 0x0（可視だが描画されない）',
+		html: '<!doctype html><html lang="ja"><head><title>fixture</title><style>body{margin:0}main{width:0;height:0;overflow:hidden}</style></head><body><main id="about-main"><h1>木村友亮</h1></main></body></html>',
+		rule: 'must be visible',
+		viewportIndex: 0,
+		route: TARGET,
+	},
+	{
 		id: 'illegible-body-copy',
 		label: '可読性下限割れ（body が 10px）',
 		// Measured at the phone width with a rendered nav, so the nav

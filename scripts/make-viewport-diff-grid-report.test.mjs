@@ -173,6 +173,32 @@ describe('make-viewport-diff-grid-report — roster coverage', () => {
 	it('reports nothing when the roster snapshot is missing rather than guessing one', () => {
 		assert.deepEqual(findUncoveredCells(null, new Map()), []);
 	});
+
+	it('treats a skipped roster cell as uncovered, never as covered', () => {
+		const { cells, totals } = collectCells(
+			report([cellSpec('/', 390, 'expected'), cellSpec('/', 1440, 'skipped')]),
+		);
+
+		assert.equal(totals.skip, 1);
+		assert.deepEqual(findUncoveredCells(ROSTER, cells), [
+			'/ @ 1440px',
+			'/about @ 390px',
+			'/about @ 1440px',
+		]);
+	});
+
+	it('treats a flaky or failing roster cell as uncovered too', () => {
+		const { cells } = collectCells(
+			report([cellSpec('/', 390, 'unexpected'), cellSpec('/about', 390, 'flaky')]),
+		);
+
+		assert.deepEqual(findUncoveredCells(ROSTER, cells), [
+			'/ @ 390px',
+			'/ @ 1440px',
+			'/about @ 390px',
+			'/about @ 1440px',
+		]);
+	});
 });
 
 describe('make-viewport-diff-grid-report — rendering', () => {

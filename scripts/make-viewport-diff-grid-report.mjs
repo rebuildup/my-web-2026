@@ -20,9 +20,10 @@
  *   1. Every cell shows the LAYOUT NUMBERS the judge asserted
  *      (overflow px, body font size, nav mode), not just a tick, so a
  *      reader can see what was measured without trusting the badge.
- *   2. A roster cell with no executed test is reported as
- *      「未実行（no silent pass）」 in its own band, and the script
- *      exits non-zero while that band is non-empty — the Issue's
+ *   2. A roster cell that did not PASS (skipped, flaky, failing, or
+ *      never executed) is reported as 「未実行（no silent pass）」 in
+ *      its own band, and the script exits non-zero while that band is
+ *      non-empty — the Issue's
  *      「未実装routeを無言の合格にしない」 requirement.
  *   3. The visual-diff controls are rendered WITH their measured
  *      ratios, including the deliberate break and its red overlay, so
@@ -193,19 +194,25 @@ function countStates(cells) {
 }
 
 /**
- * Roster cells no executed test covered.
+ * Roster cells that did not PASS (never executed, skipped, flaky, or
+ * failing).
  *
  * The roster is the closed list of route × viewport cells the gate
  * claims to hold; the executed rows are what the run actually
- * asserted. The difference is the 「未実行セル（無言の合格にしない）」
- * band.
+ * asserted. Only a `pass` counts as covered: a SKIP is a cell that ran
+ * nothing, and it must never turn the coverage band green — Playwright
+ * itself exits 0 for skipped tests, so this is the only layer that
+ * catches a silently unexecuted cell. Failures and flakes are already
+ * visible in the grid, but counting them here also keeps a standalone
+ * `verify:viewport-diff-grid` run from exiting 0 on a stale report.
  */
 export function findUncoveredCells(roster, cells) {
 	if (!roster) return [];
 	const uncovered = [];
 	for (const route of roster.routes ?? []) {
 		for (const viewport of roster.viewports ?? []) {
-			if (!cells.has(`${route.path}@${viewport.width}`)) {
+			const cell = cells.get(`${route.path}@${viewport.width}`);
+			if (cell?.state !== 'pass') {
 				uncovered.push(`${route.path} @ ${viewport.width}px`);
 			}
 		}
@@ -602,6 +609,17 @@ async function main() {
 		capturedAt: new Date().toISOString(),
 	};
 
+	if (cells.size === 0) {
+		throw new Error(`The Playwright report contains no executed cell: ${resultsPath}`);
+	}
+	if (!roster) {
+		throw new Error(
+			`Roster snapshot missing (.tmp/viewport-roster.json). The gate did not run, so the grid has no contract to render against: ${resultsPath}`,
+		);
+	}
+
+	// Validate before writing: CI uploads the HTML with `if: always()`,
+	// so a rejected run must not leave a fresh partial artifact behind.
 	writeFileSync(
 		htmlPath,
 		renderGridHtml({
@@ -619,20 +637,12 @@ async function main() {
 	);
 	process.stdout.write(`wrote ${htmlPath}\n`);
 
-	if (cells.size === 0) {
-		throw new Error(`The Playwright report contains no executed cell: ${resultsPath}`);
-	}
-	if (!roster) {
-		throw new Error(
-			`Roster snapshot missing (.tmp/viewport-roster.json). The gate did not run, so the grid has no contract to render against: ${resultsPath}`,
-		);
-	}
 	if (uncovered.length > 0) {
 		process.stderr.write(
-			`[viewport grid] ${uncovered.length} roster cell(s) were NOT executed: ${uncovered.join(', ')}\n`,
+			`[viewport grid] ${uncovered.length} roster cell(s) did NOT pass: ${uncovered.join(', ')}\n`,
 		);
 		// The report is not a green signal while a roster cell is
-		// unaccounted for.
+		// skipped, flaky, failing, or never executed.
 		process.exitCode = 1;
 	}
 

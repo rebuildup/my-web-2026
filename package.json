@@ -120,6 +120,7 @@
 		"security:headers:check": "node scripts/check-security-headers.mjs",
 		"i18n:policy:check": "node scripts/check-i18n-policy.mjs",
 		"capture:i18n-verification": "node scripts/capture-i18n-unicode-slug.mjs",
+		"capture:glyph-coverage": "node --experimental-strip-types scripts/capture-glyph-coverage.mjs",
 		"security:ssrf:report": "node scripts/capture-ssrf-url-adapter-report.mjs",
 		"e2e:compat": "playwright test --config playwright.compat.config.ts",
 		"e2e:compat:install": "playwright install --with-deps chromium firefox webkit",

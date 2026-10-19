@@ -105,8 +105,8 @@ control が生き残れば `detector_unproven` として **exit 2**（= exit 1 �
 3. `scripts/check-layout-stress.test.mjs` が (1)(2) の両方を検証する。
 
 **出荷 CSS に `scrollbar-gutter: stable` を採用するかどうかは owner の判断**で、本 PR では
-決めていない。採用すれば全スクロール可能 page のReserved幅が変わる製品上の変更であり、
-採用しないなら「gutter 予約」は，出荷面には未適用の policy として扱われるべきである。
+決めていない。採用すれば全スクロール可能 page の予約幅が変わる製品上の変更であり、
+採用しないなら「gutter 予約」は出荷面には未適用の policy として扱われるべきである。
 
 ## 実行方法
 

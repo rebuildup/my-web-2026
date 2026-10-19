@@ -8,7 +8,7 @@ repository に存在しない場合は `fail` であり、「未検証」では�
 - manifest: [`quality/asvs-coverage.json`](../../../quality/asvs-coverage.json)（schema v1）
 - gate: `pnpm run asvs:check`（`validate:fast` に結線されるので `validate:integration` / `validate:release` にも載る）
 - report: `pnpm run asvs:report` → `.tmp/asvs-coverage-report.html`
-- screenshot: `pnpm run verify:asvs-coverage-screenshot` → [`asvs-coverage-matrix.webp`](asvs-coverage-matrix.webp)
+- screenshot: `pnpm run verify:asvs-coverage-screenshot` → [`asvs-coverage-matrix.webp`](asvs-coverage-matrix.webp)（coverage matrix）と [`asvs-coverage-probes.webp`](asvs-coverage-probes.webp)（false-green probe）
 - fixtures: `quality/fixtures/asvs-coverage/{pass,missing-evidence,missing-follow-up,unregistered-gate}.json`
 - tests: `node --test scripts/check-asvs-coverage.test.mjs`
 - profile: [`quality/profile.yaml`](../../../quality/profile.yaml) の `gates.fast.components`
@@ -76,6 +76,14 @@ node --test scripts/check-asvs-coverage.test.mjs
 画像は検算の補助であり、判定そのものではない。判定は gate の終了コードと、
 上の fixture を固定した unit test が担保する。レポートと画像は **working tree だけ** を読む
 （Worker 起動も network も D1/R2 も secret も使わない）。
+
+画像は 2 枚に分ける。coverage matrix（総数・未検証一覧・対象外一覧・45 行）を
+`asvs-coverage-matrix.webp`、その下の false-green probe と実行手順を
+`asvs-coverage-probes.webp` に撮る。1 枚の full-page では 300 KB の証跡予算に
+収まらず、可読性を下げる quality しか選べない（列が読めない画像は証跡にならない）。
+どちらも Chromium のメモリ上の PNG を `sharp` で WebP に再エンコードしたもので、
+途中 PNG は作らない。テキストが対象なので lossy では読みにくくなるため、
+`nearLossless` を優先し、予算に収まる最高 quality を選ぶ。
 
 ## 対象外の項目と理由
 

@@ -12,6 +12,14 @@
  * WebP, so the capture is re-encoded from memory with the existing
  * `sharp` devDependency and no intermediate PNG is committed).
  *
+ * The page is captured in two elements rather than as one full-page
+ * screenshot: the coverage matrix (summary, the unverified list, the
+ * not-applicable list, and the 45 selected rows) is the artefact the
+ * Issue names, and the false-green probes below it are a second image
+ * (`asvs-coverage-probes.webp`). One full-page capture of both does not
+ * fit the 300 KB evidence budget as legible WebP at any quality, and a
+ * reviewer who cannot read the rows cannot use the image.
+ *
  * The page carries the same false-green probes the test suite reads:
  * `quality/fixtures/asvs-coverage/pass.json`,
  * `missing-evidence.json`, `missing-follow-up.json` and
@@ -43,9 +51,34 @@ import {
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const HTML_REPORT = join(ROOT, '.tmp/asvs-coverage-report.html');
-const WEBP_TARGET = join(ROOT, 'docs/verification/security/asvs-coverage-matrix.webp');
+const TARGETS = [
+	{
+		selector: '#asvs-coverage',
+		target: join(ROOT, 'docs/verification/security/asvs-coverage-matrix.webp'),
+	},
+	{
+		selector: '#asvs-probes',
+		target: join(ROOT, 'docs/verification/security/asvs-coverage-probes.webp'),
+	},
+];
 const WEBP_WIDTH = 1600;
-const WEBP_QUALITY = 52; // text-dense page; tuned below the 300 KB evidence budget
+/**
+ * The page is text-dense, so it is encoded near-lossless: lossy WebP keeps
+ * the byte count down only by smearing the text, which would make the rows
+ * unreadable. The ladder starts at the sharpest step that fits the budget
+ * and steps down; the grayscale entries are the last resort, not the plan.
+ */
+const WEBP_QUALITY_LADDER = [
+	{ quality: 80, nearLossless: true, grayscale: false },
+	{ quality: 70, nearLossless: true, grayscale: false },
+	{ quality: 60, nearLossless: true, grayscale: false },
+	{ quality: 50, nearLossless: true, grayscale: false },
+	{ quality: 40, nearLossless: true, grayscale: false },
+	{ quality: 30, nearLossless: true, grayscale: false },
+	{ quality: 48, nearLossless: false, grayscale: true },
+	{ quality: 40, nearLossless: false, grayscale: true },
+	{ quality: 32, nearLossless: false, grayscale: true },
+];
 const WEBP_MAX_BYTES = 300 * 1024;
 
 function headSha() {
@@ -55,13 +88,45 @@ function headSha() {
 	}).trim();
 }
 
-async function shoot(htmlPath, target) {
+async function shoot(page, { selector, target }) {
 	if (extname(target) !== '.webp') {
 		throw new Error(`refusing to write a non-WebP verification artefact: ${target}`);
 	}
-	const { chromium } = await import('@playwright/test');
 	const { default: sharp } = await import('sharp');
 	mkdirSync(dirname(target), { recursive: true });
+	const capture = await page.locator(selector).screenshot();
+
+	// Playwright cannot encode WebP, so the PNG bytes stay in memory and
+	// are re-encoded with sharp; nothing but the final WebP is written.
+	for (const step of WEBP_QUALITY_LADDER) {
+		let pipeline = sharp(capture).resize({ width: WEBP_WIDTH, withoutEnlargement: true });
+		if (step.grayscale) pipeline = pipeline.grayscale();
+		const buffer = await pipeline
+			.webp({ quality: step.quality, nearLossless: step.nearLossless, effort: 6 })
+			.toBuffer();
+		if (buffer.length <= WEBP_MAX_BYTES) {
+			const info = await sharp(buffer).metadata();
+			writeFileSync(target, buffer);
+			return {
+				target,
+				width: info.width,
+				height: info.height,
+				bytes: buffer.length,
+				quality: step.quality,
+				nearLossless: step.nearLossless,
+				grayscale: step.grayscale,
+			};
+		}
+	}
+	throw new Error(
+		`${target} does not fit in ${Math.round(WEBP_MAX_BYTES / 1024)} KB of WebP at width ${WEBP_WIDTH} even at ${JSON.stringify(
+			WEBP_QUALITY_LADDER.at(-1),
+		)} — narrow the report instead of committing a heavier image`,
+	);
+}
+
+async function captureAll(htmlPath) {
+	const { chromium } = await import('@playwright/test');
 	const browser = await chromium.launch();
 	const page = await browser.newPage({
 		viewport: { width: 1280, height: 1400 },
@@ -69,12 +134,9 @@ async function shoot(htmlPath, target) {
 	});
 	try {
 		await page.goto(pathToFileURL(htmlPath).href, { waitUntil: 'load' });
-		const capture = await page.screenshot({ fullPage: true });
-		const info = await sharp(capture)
-			.resize({ width: WEBP_WIDTH, withoutEnlargement: true })
-			.webp({ quality: WEBP_QUALITY })
-			.toFile(target);
-		return info;
+		const shots = [];
+		for (const entry of TARGETS) shots.push(await shoot(page, entry));
+		return shots;
 	} finally {
 		await browser.close();
 	}
@@ -101,15 +163,12 @@ writeFileSync(
 );
 process.stdout.write(`wrote ${HTML_REPORT}\n`);
 
-const info = await shoot(HTML_REPORT, WEBP_TARGET);
-const sizeOnDisk = statSync(WEBP_TARGET).size;
-if (sizeOnDisk > WEBP_MAX_BYTES) {
-	throw new Error(
-		`${WEBP_TARGET} is ${Math.round(sizeOnDisk / 1024)} KB — over the ${Math.round(
-			WEBP_MAX_BYTES / 1024,
-		)} KB verification budget; lower WEBP_QUALITY or narrow the report`,
+for (const shot of await captureAll(HTML_REPORT)) {
+	process.stdout.write(
+		`wrote ${shot.target.replace(`${ROOT}/`, '')} (webp ${shot.width}x${shot.height}, ${
+			statSync(shot.target).size
+		} B, quality ${shot.quality}${
+			shot.nearLossless ? ' nearLossless' : ' lossy'
+		}${shot.grayscale ? ' grayscale' : ''})\n`,
 	);
 }
-process.stdout.write(
-	`wrote ${WEBP_TARGET} (webp ${info.width}x${info.height}, ${sizeOnDisk} B, quality ${WEBP_QUALITY})\n`,
-);

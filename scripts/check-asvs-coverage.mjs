@@ -515,19 +515,19 @@ h3 { margin: 0 0 4px; font-size: 14px; }
 .badge-not_run { background: #fef3c7; color: #92400e; }
 .badge-not_applicable { background: #e2e8f0; color: #475569; }
 table { width: 100%; border-collapse: collapse; background: #fff; border: 1px solid #cbd5e1; }
-th, td { padding: 7px 8px; border-bottom: 1px solid #e2e8f0; vertical-align: top; text-align: left; }
-th { position: sticky; top: 0; background: #f1f5f9; font-size: 10px; text-transform: uppercase; letter-spacing: 0.04em; color: #475569; }
-td { font-size: 10.5px; line-height: 1.4; }
+th, td { padding: 2px 5px; border-bottom: 1px solid #e2e8f0; vertical-align: top; text-align: left; }
+th { position: sticky; top: 0; background: #f1f5f9; font-size: 9px; text-transform: uppercase; letter-spacing: 0.04em; color: #475569; }
+td { font-size: 9px; line-height: 1.22; }
 td.id { font-weight: 700; white-space: nowrap; }
 td.level { white-space: nowrap; }
-td.req { width: 34%; }
-td.control { width: 22%; color: #334155; }
-td.evidence-cell { width: 22%; }
+td.req { width: 48%; }
+td.control { width: 16%; color: #334155; }
+td.evidence-cell { width: 18%; }
 td.status { width: 8%; white-space: nowrap; }
 .row-fail { background: #fff1f2; }
 .row-not_run { background: #fffbeb; }
 .row-not_applicable { background: #f8fafc; }
-.evidence { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 9.5px; }
+.evidence { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 8.5px; }
 .evidence.ok { color: #166534; }
 .evidence.bad { color: #991b1b; }
 .issues { color: #0369a1; font-size: 10px; }
@@ -560,6 +560,7 @@ footer { margin-top: 28px; padding-top: 12px; border-top: 1px solid #cbd5e1; col
 		(manifest?.target_levels ?? []).join(' / '),
 	)} · <a href="${escapeHtml(standard.requirements_url ?? '#')}">requirement source</a></p>
 
+<section id="asvs-coverage">
 <div class="cards">
 	<div class="card"><strong>${result.rows.length}</strong><span>selected requirements</span></div>
 	<div class="card"><strong>${result.summary.pass}</strong><span>pass</span></div>
@@ -599,6 +600,9 @@ ${
 <tbody>${rows.map(renderRow).join('')}</tbody>
 </table>
 
+</section>
+
+<section id="asvs-probes">
 <h2>False-green probes</h2>
 <p class="sub">The same pure evaluator runs on the on-disk fixtures. A ledger that cannot fail is not evidence.</p>
 <div class="probes">${probes.map(renderProbe).join('')}</div>
@@ -609,6 +613,8 @@ pnpm run asvs:report
 pnpm run verify:asvs-coverage-screenshot
 node --test scripts/check-asvs-coverage.test.mjs</pre>
 <p class="sub">The image is evidence of the ledger; the test and the gate exit code are the authority. This ledger reads the working tree only — no Worker, no network, no D1/R2, no secret.</p>
+
+</section>
 
 <footer>Issue #507 · manifest <code>quality/asvs-coverage.json</code> · ${escapeHtml(
 		standard.certification === false ? 'certification: false' : 'certification flag missing',

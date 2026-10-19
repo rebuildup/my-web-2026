@@ -306,6 +306,7 @@
 			"redirect-guard.invalid",
 			"samuido.booth.pm",
 			"schema.org",
+			"script.google.com",
 			"scripts.sil.org",
 			"use.typekit.net",
 			"www.apache.org",
@@ -508,7 +509,9 @@
 				"files": [
 					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
-					"src/routes/__root.tsx"
+					"src/routes/__root.tsx",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -537,7 +540,9 @@
 				"files": [
 					"external/prototype/index.html",
 					"src/http/content-security-policy.ts",
-					"src/routes/__root.tsx"
+					"src/routes/__root.tsx",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
 				]
 			},
 			{
@@ -874,12 +879,33 @@
 				]
 			},
 			{
+				"url": "https://script.google.com",
+				"host": "script.google.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
+				]
+			},
+			{
 				"url": "https://use.typekit.net",
 				"host": "use.typekit.net",
 				"kind": "external",
 				"identifier": false,
 				"files": [
-					"external/prototype/index.html"
+					"external/prototype/index.html",
+					"src/tools/embed-consent-notice.stories.tsx",
+					"src/tools/manifest.json"
+				]
+			},
+			{
+				"url": "https://use.typekit.net/app",
+				"host": "use.typekit.net",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/tools/embed-consent-notice.stories.tsx"
 				]
 			},
 			{

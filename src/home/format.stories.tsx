@@ -1,5 +1,6 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { css } from '../../styled-system/css';
+import { DataTable } from '../editorial/table-code';
 import type { HomeCounterData } from './access/load';
 import { CounterTile } from './access/tiles';
 import { HOME_LOCALES, createHomeFormat } from './format';
@@ -112,87 +113,32 @@ function LocaleComparison() {
 				</p>
 			</header>
 
-			<table
-				className={css({
-					width: '100%',
-					borderCollapse: 'collapse',
-					fontFamily: 'mono',
-					fontSize: 'sm',
-				})}
-			>
-				<thead>
-					<tr>
-						<th
-							className={css({
-								textAlign: 'left',
-								padding: '2',
-								color: 'text.muted',
-								fontWeight: '400',
-								verticalAlign: 'top',
-							})}
-						>
-							Value
-						</th>
-						{HOME_LOCALES.map((locale) => (
-							<th
-								key={locale}
-								className={css({
-									textAlign: 'left',
-									padding: '2',
-									color: 'text.muted',
-									fontWeight: '400',
-									verticalAlign: 'top',
-								})}
-							>
-								{locale}
-							</th>
-						))}
-					</tr>
-				</thead>
-				<tbody>
-					{LOCALE_COMPARISON_ROWS.map((row) => (
-						<tr key={row.label}>
-							<th
-								scope="row"
-								className={css({
-									textAlign: 'left',
-									padding: '2',
-									fontWeight: '400',
-									color: 'text.default',
-									verticalAlign: 'top',
-									whiteSpace: 'nowrap',
-								})}
-							>
-								{row.label}
-								{row.note ? (
-									<span
-										className={css({
-											display: 'block',
-											color: 'text.muted',
-											fontSize: 'xs',
-										})}
-									>
-										{row.note}
-									</span>
-								) : null}
-							</th>
-							{HOME_LOCALES.map((locale) => (
-								<td
-									key={locale}
-									className={css({
-										padding: '2',
-										color: 'text.default',
-										verticalAlign: 'top',
-										whiteSpace: 'nowrap',
-									})}
-								>
-									{row.render(createHomeFormat({ locale, timeZone: row.timeZone, now: () => NOW }))}
-								</td>
-							))}
-						</tr>
-					))}
-				</tbody>
-			</table>
+			{/*
+			 * Issue #407: the comparison table renders through the
+			 * editorial `DataTable`, so it carries a visible caption, a
+			 * `scope="row"` header cell per row, and a focusable scroll
+			 * box instead of a raw `<table>` whose overflow could only be
+			 * scrolled with a pointer. The row DATA is unchanged — it
+			 * still comes from `LOCALE_COMPARISON_ROWS`, the single source
+			 * the Storybook preview and the static report share.
+			 */}
+			<DataTable
+				caption="The same instant, one count and the relative spans — read in every locale home publishes"
+				columns={[
+					{ id: 'value', header: 'Value' },
+					...HOME_LOCALES.map((locale) => ({ id: locale, header: locale })),
+				]}
+				rows={LOCALE_COMPARISON_ROWS.map((row) => ({
+					id: row.label,
+					header: row.note ? `${row.label} (${row.note})` : row.label,
+					cells: Object.fromEntries(
+						HOME_LOCALES.map((locale) => [
+							locale,
+							row.render(createHomeFormat({ locale, timeZone: row.timeZone, now: () => NOW })),
+						]),
+					),
+				}))}
+			/>
 
 			<section className={css({ display: 'flex', flexDirection: 'column', gap: '6' })}>
 				<h3

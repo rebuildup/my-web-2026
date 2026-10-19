@@ -226,6 +226,11 @@ gates:
       # build order here should not depend on it.
       - 'pnpm run build:cf:production' # rebuild Build Output after Storybook
       - 'pnpm run cloudflare:contract:check:build' # re-prove the contract against the fresh artifact
+      # Issue #476: hash the FINAL Build Output and record its source
+      # commit, package version, declared dependency ranges and lockfile
+      # digest. Runs last so the manifest describes the artifact that
+      # would ship, not an intermediate build.
+      - 'pnpm run artifact:attestation:check' # artifact sha-256 / source / dependency manifest
     cost_class: medium
     trigger: pull_request, push_to_main_and_release
 
@@ -691,6 +696,39 @@ security_gates:
       moved to a version the record never reviewed. It warns when an
       allow-list entry buys no build. Status-only output; no secret value
       is read or printed. Runbook: docs/runbook/install-script-audit.md
+  artifact_attestation:
+    enabled: true
+    issue: '#476'
+    tool: 'scripts/check-artifact-attestation.mjs'
+    gate: integration
+    command: 'pnpm run artifact:attestation:check'
+    report_command: 'pnpm run artifact:attestation:report'
+    manifest: 'release-assets/supply-chain/<version>/artifact-attestation.json (generated, gitignored)'
+    ci_artifact: 'artifact-attestation-<sha> (actions/upload-artifact@v4, 90 day retention)'
+    inputs:
+      - '.cloudflare/output/v0 (the final production-mode Build Output)'
+      - 'git HEAD (generation) / --source-sha, --release-tag or WORKERS_CI_COMMIT_SHA (verification)'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+    note: >-
+      Issue #476. Hashes every file in the GitHub Actions production-mode
+      Build Output (sha-256 aggregate) and records the source commit, package version,
+      declared dependency ranges, lockfile digest and resolved package
+      count. Fails closed on artifact drift, a source-commit mismatch, a
+      dirty tree, lockfile / dependency drift and an empty artifact. It
+      is an integrity manifest, not a signature: the document states
+      `unsigned` and every signature field is null, and a manifest that
+      claims an unverifiable signature fails. Generation refuses a
+      caller-supplied --source-sha / --release-tag and attests only the
+      checked-out HEAD. Verification can name the release tag instead of
+      a commit (`--release-tag=v<version>`): the tag must resolve to the
+      manifest's source commit and name its version, so a published
+      manifest can be gated on the release it claims. The artifact
+      Cloudflare Workers Builds actually deploys is still not attested
+      (open owner decision). A Cloudflare build UUID / deploy id is
+      recorded only when supplied, and is never fetched or authenticated
+      with a production credential. See
+      docs/security/supply-chain-artifact-attestation.md.
   submodule_provenance:
     enabled: true
     tool: 'scripts/check-submodule-provenance.mjs'

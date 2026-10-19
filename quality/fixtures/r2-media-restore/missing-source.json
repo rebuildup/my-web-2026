@@ -1,0 +1,24 @@
+{
+	"case": "deletion-without-retained-source",
+	"note": "source 保全が無いまま削除された場合。推測アップロードはせず missing_source で停止し、bucket は空のまま",
+	"entry": {
+		"key": "portfolio/restore-fixture/cover.png",
+		"sha256": "eeb5c1e598c97b522f1fcf31d12c7a1852f5426d6d0879fa8bf341a94bcfef8f",
+		"sizeBytes": 90,
+		"contentType": "image/png"
+	},
+	"bucket": {
+		"state": "absent"
+	},
+	"source": {
+		"state": "missing",
+		"contentType": null
+	},
+	"faults": [],
+	"expect": {
+		"verdict": "missing_source",
+		"reason": "source_unavailable",
+		"exitCode": 1,
+		"bucketAfter": "absent"
+	}
+}

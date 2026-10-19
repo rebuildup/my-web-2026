@@ -1,0 +1,24 @@
+{
+	"case": "retained-source-unreadable",
+	"note": "source の read が例外で失敗した場合。判別不能（exit 2）であり「復旧成功」とも「未検証だが問題なし」とも読ませない",
+	"entry": {
+		"key": "portfolio/restore-fixture/cover.png",
+		"sha256": "eeb5c1e598c97b522f1fcf31d12c7a1852f5426d6d0879fa8bf341a94bcfef8f",
+		"sizeBytes": 90,
+		"contentType": "image/png"
+	},
+	"bucket": {
+		"state": "absent"
+	},
+	"source": {
+		"state": "unreadable",
+		"contentType": null
+	},
+	"faults": [],
+	"expect": {
+		"verdict": "undecidable",
+		"reason": "source_read_failed",
+		"exitCode": 2,
+		"bucketAfter": "absent"
+	}
+}

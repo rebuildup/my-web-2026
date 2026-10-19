@@ -1,0 +1,25 @@
+{
+	"case": "write-lands-truncated",
+	"note": "write が途中で欠けた場合。read-back 照合が digest 不一致を検出するため restored（復旧成功）にはしない",
+	"entry": {
+		"key": "portfolio/restore-fixture/cover.png",
+		"sha256": "eeb5c1e598c97b522f1fcf31d12c7a1852f5426d6d0879fa8bf341a94bcfef8f",
+		"sizeBytes": 90,
+		"contentType": "image/png"
+	},
+	"bucket": {
+		"state": "absent"
+	},
+	"source": {
+		"state": "retained",
+		"contentType": "image/png",
+		"bytesBase64": "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAIAAACQd1PeAAAACXBIWXMAAAPoAAAD6AG1e1JrAAAADElEQVQImWNQcEgAAAFEAMFekLv0AAAAAElFTkSuQmCC"
+	},
+	"faults": ["truncate_write"],
+	"expect": {
+		"verdict": "metadata_drift",
+		"reason": "readback_digest_mismatch",
+		"exitCode": 1,
+		"bucketAfter": "mismatched"
+	}
+}

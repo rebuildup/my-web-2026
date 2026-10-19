@@ -50,18 +50,16 @@ import {
  */
 
 /**
- * Field values are restricted to printable, line-safe text.
- *
- * RFC 9116 §7 restricts the file to a small ASCII subset, and the
- * reason that matters mechanically is INJECTION: the grammar has no
- * comment and no escaping, so a value containing `\n` would end its
- * line and start a new field. A manifest is repo-controlled data today,
- * but "controlled by a file" is not a security boundary — the check
- * lives in the schema so a future editor, script or API writer cannot
- * publish a second `Expires:` by accident.
- */
-/**
  * C0 / DEL controls, plus the two Unicode line separators.
+ *
+ * Field values are restricted to printable, line-safe text because
+ * RFC 9116 §7 limits the file to a small ASCII subset, and the reason
+ * that matters mechanically is INJECTION: the grammar has no comment
+ * and no escaping, so a value containing `\n` would end its line and
+ * start a new field. A manifest is repo-controlled data today, but
+ * "controlled by a file" is not a security boundary — the check lives
+ * in the schema so a future editor, script or API writer cannot
+ * publish a second `Expires:` by accident.
  *
  * U+2028 / U+2029 are included because several parsers treat them as
  * line terminators even though the ABNF does not: a value carrying one

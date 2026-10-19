@@ -94,6 +94,12 @@ const ATTACKS = [
 		'全 404。同一 namespace の公開 1 枚だけが 200（対照）',
 	],
 	[
+		'publication approval audit',
+		'同じ bucket を承認述語付きで全ページ走査',
+		'portfolio/ 内に未承認 object が 2 件',
+		'verdict=violation / public=3 approved=1 unapproved=2（key 名は返さない）',
+	],
+	[
 		'HTTP route',
 		'GET /api/v1/reaction-images/:id',
 		'行が private namespace を指す',
@@ -182,7 +188,7 @@ function render(report) {
 </head>
 <body>
   <h1>R2 media key の公開可否契約 — namespace / approval gate (Issue #459)</h1>
-  <p class="sub">local worker (Miniflare / workerd pool) + <code>${escapeHtml(SUITE)}</code> の実行結果。MEDIA bucket に public R2 custom domain が接続されると edge が key 存在=status で配信するため（その接続は Cloudflare アカウント側の release 前提であり本 repo は確認できない）、namespace 契約をコード側で固定する。secret は含まれない（fixture は 1x1 の合成 PNG、binding は test 用の dummy）。本 report が証明するのは repository 内のゲートであり、custom domain 経路そのものは Worker を経由しない。</p>
+  <p class="sub">local worker (Miniflare / workerd pool) + <code>${escapeHtml(SUITE)}</code> の実行結果。MEDIA bucket に public R2 custom domain が接続されると edge が key 存在=status で配信するため（その接続は Cloudflare アカウント側の release 前提であり本 repo は確認できない）、namespace 契約と承認契約をコード側で固定する。secret は含まれない（fixture は 1x1 の合成 PNG、binding は test 用の dummy）。本 report が証明するのは repository 内のゲートであり、custom domain 経路そのものは Worker を経由しない。approval audit は operator 側のモデルで、production gate には接続していない。</p>
 
   <div class="cards">
     <div class="card"><div class="k">tests</div><div class="v">${assertions.length}</div></div>
@@ -217,7 +223,8 @@ ${testRows}
 
   <p class="legend">
     <b>200 の意味:</b> 公開 namespace にあり、公開承認済みで、bucket に実在する object だけが 200。<br/>
-    <b>404 の意味:</b> private / 未宣言 namespace、未承認、不在のいずれも<b>同一の 404 値</b>で返す（403 も reason code も返さないのは、存在 oracle を作らないため）。
+    <b>404 の意味:</b> private / 未宣言 namespace、未承認、不在のいずれも<b>同一の 404 値</b>で返す（403 も reason code も返さないのは、存在 oracle を作らないため）。<br/>
+    <b>approval audit:</b> allowlist 内の未承認 object は件数だけで報告し、key 名は返さない。公開 key 0 件 / cursor 無しの打ち切りは <code>undecidable</code>（fail-closed）。
   </p>
 
   <footer>my-web-2026 · Issue #459 · report generated locally from the workerd test pool by scripts/make-r2-visibility-verification-report.mjs (no CI token, no production D1/R2, no deploy) · committed artefact: ${escapeHtml(relative(ROOT, TARGET))} (width ≤ ${WEBP_WIDTH}, ${escapeHtml(extname(TARGET).slice(1))} quality ${WEBP_QUALITY}).</footer>

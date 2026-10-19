@@ -77,6 +77,11 @@ gates:
       # credential-free https repository with no branch-tip tracking.
       - 'pnpm run tools:provenance:check'
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
+      # Issue #434: pre-publication link and image gate. Internal 404,
+      # unsafe schemes and missing image alt stop the release; external
+      # links are not dereferenced in CI, and their live failures are
+      # warnings in the explicit `--external` mode.
+      - 'pnpm run content:links:check'
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       - 'pnpm run typecheck' # tsc --noEmit

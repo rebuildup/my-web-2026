@@ -394,3 +394,119 @@ export async function listPublicMediaKeys(
 
 	return { keys, truncated };
 }
+
+/* ------------------------------------------------------------------ *
+ * Publication audit (operator-side)
+ *
+ * `listPublicMediaKeys` is a *filter*: it receives a page of candidate
+ * keys and returns the ones a delivery caller may serve. It answers
+ * "what may I serve?" and therefore drops everything else silently.
+ *
+ * The remaining half of Issue #459's first acceptance item is the
+ * opposite question: **does the bucket contain a publicly servable key
+ * that the publication contract has not approved?** That is a
+ * reconciliation between two sources the delivery path never holds at
+ * the same time — the bucket listing and the D1 publication rows — so
+ * it is modelled here as an operator-side adapter, exactly as Issue
+ * #459's third acceptance item allows ("complete an external
+ * capability as an independent adapter/stub/test").
+ *
+ * It is deliberately **not** wired to a request path or to a release
+ * gate. Adopting it as a production gate would need a read-only D1
+ * credential and an owner decision about release scope (the same
+ * boundary Issue #577 had to cross for the key-set audit); this module
+ * only supplies the executable model and its local-fixture test.
+ * ------------------------------------------------------------------ */
+
+/**
+ * Why an audit could not reach a verdict. The operator reports the
+ * code; it is never a public response.
+ */
+export type MediaPublicationAuditVerdict = 'ok' | 'violation' | 'undecidable';
+
+/**
+ * Counts only. No key, no key fragment, and no per-key verdict leaves
+ * this result — an audit that named the unapproved key would itself
+ * become the enumeration surface it exists to close. Counts are safe
+ * **only** because the caller is an operator tool walking a prefix the
+ * operator controls (the reasoning that shapes
+ * `scripts/check-r2-media-key-set.mjs`); a request handler that
+ * forwards a visitor-supplied prefix would turn them into an existence
+ * oracle, which is why this function has no production caller.
+ */
+export interface MediaPublicationAuditResult {
+	verdict: MediaPublicationAuditVerdict;
+	/** In-namespace keys the walk saw (approved + unapproved). */
+	publicKeys: number;
+	approvedKeys: number;
+	unapprovedKeys: number;
+	/** `incomplete` when the source reported more pages but no cursor. */
+	enumeration: 'complete' | 'incomplete';
+}
+
+/**
+ * Reconcile a bucket listing against the owner's publication decision.
+ *
+ * - Every key that passes the namespace gate is counted.
+ * - A key the approval check rejects is counted as unapproved.
+ * - Out-of-namespace keys are **not** counted here: Issue #577's
+ *   key-set audit (`scripts/check-r2-media-key-set.mjs`) owns that
+ *   half, and duplicating it would create a second definition of the
+ *   same rule.
+ *
+ * Fail-closed states mirror the key-set audit:
+ *
+ *   - an empty public key set is `undecidable` (a bucket that holds
+ *     nothing in a public namespace is not evidence that publication
+ *     is correct),
+ *   - a truncated page without a cursor is `undecidable` (a partial
+ *     walk cannot prove the absence of an unapproved key),
+ *   - any unapproved key is `violation`.
+ *
+ * The approval check is required, not optional. Defaulting to
+ * "everything is approved" would make the audit pass by forgetting to
+ * pass the very decision it exists to verify.
+ */
+export async function auditPublicMediaPublication(
+	source: MediaObjectLister,
+	isApproved: MediaApprovalCheck,
+	opts?: { prefix?: string; limit?: number },
+): Promise<MediaPublicationAuditResult> {
+	const limit = opts?.limit ?? 1000;
+	let cursor: string | undefined;
+	let publicKeys = 0;
+	let approvedKeys = 0;
+
+	for (;;) {
+		const page = await source.list({ prefix: opts?.prefix, cursor, limit });
+		for (const object of page.objects ?? []) {
+			if (!isPublicMediaKey(object.key)) continue;
+			publicKeys += 1;
+			if (await isApproved(object.key)) approvedKeys += 1;
+		}
+
+		if (page.truncated !== true) break;
+		cursor = page.cursor;
+		if (!cursor) {
+			return {
+				verdict: 'undecidable',
+				publicKeys,
+				approvedKeys,
+				unapprovedKeys: publicKeys - approvedKeys,
+				enumeration: 'incomplete',
+			};
+		}
+	}
+
+	const unapprovedKeys = publicKeys - approvedKeys;
+	const verdict: MediaPublicationAuditVerdict =
+		publicKeys === 0 ? 'undecidable' : unapprovedKeys > 0 ? 'violation' : 'ok';
+
+	return {
+		verdict,
+		publicKeys,
+		approvedKeys,
+		unapprovedKeys,
+		enumeration: 'complete',
+	};
+}

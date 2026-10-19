@@ -135,6 +135,14 @@ gates:
       # == build-artefact stamp, and that the fetch source is the declared
       # credential-free https repository with no branch-tip tracking.
       - 'pnpm run tools:provenance:check'
+      # Issue #466: Tool artefact license + dependency inventory. Offline,
+      # status-only: the manifest's `license` claim is checked against the
+      # license file in the pinned checkout, the dependency evidence against
+      # the reviewed record in quality/tool-artifact-inventory.json, and the
+      # collected artefact's outbound hosts against the reviewed set. A
+      # shipped Tool with unverified evidence is an error, and
+      # `scripts/build-tools.mjs` refuses to publish it.
+      - 'pnpm run tools:artifact:check'
       # Issue #509: a Storybook story is feature-local UI, so its runtime
       # import closure must stay inside the owning obligation — routes,
       # server.ts, http/, cloudflare/ and the cloudflare:workers virtual
@@ -482,7 +490,7 @@ release_gate_coverage:
   known_limits:
     - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
     - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
-    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 38 `validate:fast` components'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 39 `validate:fast` components'
 
 html_standards:
   manifest: 'quality/html-standards.json'

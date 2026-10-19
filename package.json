@@ -87,6 +87,7 @@
 		"install:scripts:check": "node scripts/check-install-scripts.mjs",
 		"install:scripts:html": "node scripts/check-install-scripts.mjs --html=.tmp/install-script-audit.html",
 		"verify:sitemap-screenshot": "node --experimental-strip-types scripts/make-sitemap-verification-report.mjs",
+		"verify:security-txt-screenshot": "node --experimental-strip-types scripts/make-security-txt-verification-report.mjs",
 		"verification:api-key-scope": "node scripts/capture-api-key-scope-matrix.mjs",
 		"structured-data:check": "node scripts/check-structured-data-coverage.mjs",
 		"verify:structured-data-screenshot": "node scripts/make-seo-structured-data-report.mjs",
@@ -176,7 +177,11 @@
 		"artifact:attestation:check": "node scripts/check-artifact-attestation.mjs",
 		"compat:stress:check": "node scripts/check-layout-stress.mjs",
 		"verify:compat-stress-screenshot": "node scripts/make-layout-stress-report.mjs",
-		"capture:pseudo-locale": "node --experimental-strip-types scripts/capture-pseudo-locale-stress.mjs"
+		"capture:pseudo-locale": "node --experimental-strip-types scripts/capture-pseudo-locale-stress.mjs",
+		"verify:tool-artifact-inventory-screenshot": "node scripts/shoot-tool-artifact-inventory-report.mjs",
+		"tools:artifact:report": "node scripts/check-tool-artifact-inventory.mjs --report=html --report-out=.tmp/tool-artifact-inventory.html",
+		"tools:artifact:check": "node scripts/check-tool-artifact-inventory.mjs",
+		"tools:artifact:update": "node scripts/check-tool-artifact-inventory.mjs --update"
 	},
 	"dependencies": {
 		"@better-auth/api-key": "^1.7.5",

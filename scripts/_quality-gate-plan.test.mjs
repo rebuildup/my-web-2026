@@ -93,6 +93,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run csrf:contract:check',
 	'pnpm run compat:check',
 	'pnpm run tools:provenance:check',
+	'pnpm run tools:artifact:check',
 	'pnpm run storybook:ownership:check',
 	'pnpm run copy:i18n:check',
 	'pnpm run publication:check',

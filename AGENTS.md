@@ -363,7 +363,14 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `test:wiring:check` + release-asset checks + `version:check` +
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +
-  `tools:provenance:check` + `copy:i18n:check` + `publication:check` +
+  `tools:provenance:check` +
+  `tools:artifact:check` (Issue #466 — a Tool's declared license is
+  checked against the license file in the pinned checkout and its
+  dependency set against the reviewed record in
+  `quality/tool-artifact-inventory.json`; a shipped Tool whose evidence
+  is missing or contradicts the record is an error, and
+  `scripts/build-tools.mjs` refuses to publish it) +
+  `copy:i18n:check` + `publication:check` +
   `content:links:check` (Issue #434 — internal link 404 / unsafe
   target / missing image alt is an error; external timeouts are
   warnings) +

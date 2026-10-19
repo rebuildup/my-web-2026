@@ -101,8 +101,33 @@ describe('Tool Registry — public surface', () => {
 			'entry_html',
 			'iframe',
 			'license',
+			// Issue #498: the declared third-party contacts are part of
+			// the public summary on purpose — the consent notice renders
+			// them, and the visitor has to be able to read what the page
+			// will contact. `basis` stays inside the manifest: it is
+			// review metadata, not visitor copy.
+			'privacy',
 			'slug',
 		]);
+	});
+
+	it('ProtoType summary carries the declared third-party contacts', () => {
+		const summary = getPublicTool('prototype');
+		assert.ok(summary);
+		// The declaration, not a derived guess: the route renders exactly
+		// what the manifest says the Tool may contact.
+		assert.deepEqual(summary?.privacy?.third_party_origins, [
+			'https://fonts.googleapis.com',
+			'https://fonts.gstatic.com',
+			'https://script.google.com',
+			'https://use.typekit.net',
+		]);
+	});
+
+	it('a Tool that declares no contact carries the declaration, not its absence', () => {
+		const summary = getPublicTool('readmark');
+		assert.ok(summary);
+		assert.deepEqual(summary?.privacy?.third_party_origins, []);
 	});
 
 	it('ProtoType summary flattens delivery.iframe', () => {

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { Page } from '@playwright/test';
 
 /**
  * Tool Registry pilot — ProtoType end-to-end contract (Issue #81).
@@ -19,6 +20,14 @@ import { expect, test } from '@playwright/test';
  *   pnpm build      # vite build + scripts/build-tools.mjs + check-client-bundle
  *   pnpm preview    # serves dist/client/ via vite preview
  *   pnpm e2e        # picks up this spec
+ *
+ * Issue #498 changed the entry contract: `/tools/prototype` now
+ * declares its third-party contacts (Google Fonts / Adobe Typekit /
+ * Google Apps Script) in the Tool Registry and the host renders a
+ * consent notice instead of the frame until the visitor starts the
+ * load. Every host-side assertion below therefore runs through
+ * `openWithFrame`, which performs that activation — and the two new
+ * tests assert the gate itself.
  *
  * The iframe is sandboxed at `allow-scripts` only (no `allow-same-origin`).
  * The spec verifies the HOST-side contract:
@@ -66,15 +75,113 @@ import { expect, test } from '@playwright/test';
 const PROTOTYPE_ENTRY = '/tools/prototype/app/index.html';
 const ROUTE = '/tools/prototype';
 
+/**
+ * Origin set `/tools/prototype` declares in the Tool Registry
+ * (`delivery.privacy.third_party_origins`, Issue #498). The notice has
+ * to name exactly these; the values are literals here on purpose — a
+ * test that imported the manifest would pass silently when a declared
+ * origin was added, which is the drift this assertion exists to catch.
+ */
+const DECLARED_CONTACTS = [
+	'https://fonts.googleapis.com',
+	'https://fonts.gstatic.com',
+	'https://script.google.com',
+	'https://use.typekit.net',
+];
+
+/**
+ * Navigate to the Tool route and start the load (Issue #498).
+ *
+ * ProtoType declares third-party contacts, so the host renders the
+ * consent notice and NO iframe until the visitor activates it. Every
+ * host-side contract below is asserted on the DOM the visitor actually
+ * ends up with, so each test starts from here rather than from a bare
+ * `goto` that would now stop at the notice.
+ *
+ * The helper is idempotent per navigation: call it again after a
+ * `page.reload()` to re-activate.
+ */
+async function openWithFrame(page: Page): Promise<void> {
+	await page.goto(ROUTE);
+	const activate = page.getByTestId('tool-embed-consent-activate');
+	if ((await activate.count()) > 0) {
+		// The gate is the contract: nothing is framed until the visitor
+		// acts. Asserting it here means a regression that re-mounted the
+		// iframe eagerly fails at its own cause, not downstream.
+		await expect(page.locator('iframe')).toHaveCount(0);
+		// The notice is server-rendered, so the button exists before
+		// React attaches the handler: a click that lands before
+		// hydration is swallowed and the frame never mounts. Re-click
+		// until it does — the same bounded pattern the production smoke
+		// spec uses for the reaction picker (Issue #238) — so the race
+		// widens the failure window instead of causing a flake. The
+		// loop is bounded, so a genuine regression still fails.
+		await page.waitForLoadState('networkidle');
+		const frame = page.locator('iframe[title="ProtoType Tool"]');
+		let mounted = false;
+		for (let attempt = 0; attempt < 5 && !mounted; attempt++) {
+			await activate.click({ timeout: 2_000 }).catch(() => undefined);
+			mounted = await frame
+				.waitFor({ state: 'attached', timeout: 2_000 })
+				.then(() => true)
+				.catch(() => false);
+		}
+		expect(
+			mounted,
+			'the consent gate never mounted the frame after repeated clicks — hydration or the gate is broken',
+		).toBe(true);
+	}
+	await page.waitForSelector('iframe[title="ProtoType Tool"]', {
+		state: 'attached',
+		timeout: 10_000,
+	});
+}
+
 test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
-	test('host route returns 200 HTML and contains the iframe', async ({ page }) => {
+	test('host route returns 200 HTML and gates the embed behind consent (Issue #498)', async ({
+		page,
+	}) => {
 		const res = await page.goto(ROUTE);
 		expect(res?.status()).toBe(200);
+
+		// Before activation: the notice is up and NOTHING is framed.
+		const notice = page.getByTestId('tool-embed-consent');
+		await expect(notice).toBeVisible();
+		await expect(page.locator('iframe')).toHaveCount(0);
+
+		// The notice names every declared contact, and nothing else.
+		await expect(notice.locator('[data-contact-origin]')).toHaveCount(DECLARED_CONTACTS.length);
+		for (const origin of DECLARED_CONTACTS) {
+			await expect(notice.locator(`[data-contact-origin="${origin}"]`)).toHaveCount(1);
+		}
+
+		// After activation the frame is there.
+		await notice.getByTestId('tool-embed-consent-activate').click();
 		await expect(page.locator('iframe[title="ProtoType Tool"]')).toBeVisible();
 	});
 
-	test('iframe src is the same-origin Tool artifact', async ({ page }) => {
+	test('activation is what mounts the frame — nothing loads before it', async ({ page }) => {
+		const thirdParty: string[] = [];
+		page.on('request', (request) => {
+			const url = request.url();
+			if (url.startsWith('http://127.0.0.1') || url.startsWith('http://localhost')) return;
+			thirdParty.push(url);
+		});
 		await page.goto(ROUTE);
+		await page.waitForLoadState('networkidle');
+		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
+
+		// The declared origins that the host chrome does NOT load on its
+		// own (Google Fonts is site chrome — Issue #171 / #447; Typekit and
+		// Apps Script are not) must not have been requested at all.
+		const beforeActivation = thirdParty.filter(
+			(url) => url.includes('use.typekit.net') || url.includes('script.google.com'),
+		);
+		expect(beforeActivation).toEqual([]);
+	});
+
+	test('iframe src is the same-origin Tool artifact', async ({ page }) => {
+		await openWithFrame(page);
 		const src = await page.locator('iframe[title="ProtoType Tool"]').getAttribute('src');
 		expect(src).toBe(PROTOTYPE_ENTRY);
 	});
@@ -86,7 +193,7 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 				failed.push(`${res.status()} ${res.url()}`);
 			}
 		});
-		await page.goto(ROUTE);
+		await openWithFrame(page);
 		// Wait for the iframe's contentDocument to be reachable.
 		await page.waitForLoadState('networkidle');
 		expect(failed).toEqual([]);
@@ -193,11 +300,7 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		// selectors that prove the bundle reached the iframe; the
 		// React tree mounting children is a Tool-side concern
 		// (documented at the top of this file).
-		await page.goto(ROUTE);
-		await page.waitForSelector('iframe[title="ProtoType Tool"]', {
-			state: 'attached',
-			timeout: 10_000,
-		});
+		await openWithFrame(page);
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
 		await expect(frame.locator('body')).toHaveCount(1, { timeout: 15_000 });
 		await expect(frame.locator('#root')).toHaveCount(1, { timeout: 15_000 });
@@ -210,7 +313,7 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 
 	test('responsive: iframe fills container at desktop viewport', async ({ page }) => {
 		await page.setViewportSize({ width: 1280, height: 800 });
-		await page.goto(ROUTE);
+		await openWithFrame(page);
 		const box = await page.locator('iframe[title="ProtoType Tool"]').boundingBox();
 		expect(box).not.toBeNull();
 		// Width fills the viewport (within a small tolerance for any
@@ -221,14 +324,15 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 	});
 
 	test('refresh re-loads the iframe document', async ({ page }) => {
-		await page.goto(ROUTE);
-		await page.waitForSelector('iframe[title="ProtoType Tool"]', {
-			state: 'attached',
-			timeout: 10_000,
-		});
+		await openWithFrame(page);
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
 		await expect(frame.locator('#root')).toHaveCount(1, { timeout: 15_000 });
+		// The consent state is per-visit by design (#498: no stored
+		// record), so a reload shows the notice again and needs a second
+		// activation.
 		await page.reload();
+		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
+		await openWithFrame(page);
 		await expect(frame.locator('#root')).toHaveCount(1, { timeout: 15_000 });
 	});
 
@@ -240,7 +344,7 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 				cspViolations.push(text);
 			}
 		});
-		await page.goto(ROUTE);
+		await openWithFrame(page);
 		await page.waitForLoadState('networkidle');
 		expect(cspViolations).toEqual([]);
 	});
@@ -253,11 +357,7 @@ test.describe('Tool Registry — ProtoType pilot (Issue #81)', () => {
 		// iframe without throwing on `localStorage`. Assert the mount
 		// contract and a representative interaction (click the Ranking
 		// tab, observe the heading appear).
-		await page.goto(ROUTE);
-		await page.waitForSelector('iframe[title="ProtoType Tool"]', {
-			state: 'attached',
-			timeout: 10_000,
-		});
+		await openWithFrame(page);
 		const frame = page.frameLocator('iframe[title="ProtoType Tool"]');
 
 		// React tree mounts at least one child inside #root.

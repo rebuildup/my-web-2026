@@ -35,6 +35,15 @@
  *      rules are never restated here: a divergence between this gate
  *      and the route would be a manifest that builds but never
  *      renders.
+ * 11. Issue #498 — third-party contact contract: every embeddable entry
+ *      is evaluated by `src/tools/embed-privacy.ts#evaluateEmbedPrivacy`,
+ *      the SAME pure function the `/tools/<slug>` loader runs per
+ *      request. The entry must declare `delivery.privacy`, every
+ *      declared origin must be a bare https origin, a cross-origin
+ *      frame must name its own origin, and a non-empty contact list
+ *      needs a purpose in both locales. The consent mode itself is
+ *      DERIVED from those facts, so there is nothing to bypass here:
+ *      a Tool that contacts a third party cannot ship without the gate.
  *
  * Exit code 0 on success, 1 on any violation. Each violation is
  * printed as `<file>:<line>  <message>` so the failure points at
@@ -45,6 +54,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { evaluateToolEmbedPolicy, toEmbedSubject } from '../src/tools/embed-policy.ts';
+import { evaluateEmbedPrivacy, toPrivacySubject } from '../src/tools/embed-privacy.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
@@ -214,6 +224,13 @@ for (let i = 0; i < manifest.tools.length; i++) {
 		// The per-rule messages come from the shared policy module (see
 		// the header), so this loop only attributes them to the entry.
 		for (const violation of evaluateToolEmbedPolicy(toEmbedSubject(tool.slug, tool.delivery))) {
+			errors.push(`${prefix}  ${violation.code}: ${violation.message}`);
+		}
+		// Issue #498: the third-party contact contract. Same posture —
+		// evaluated for every entry, the same function the route runs, and
+		// the violations attributed to the entry like the embed ones.
+		for (const violation of evaluateEmbedPrivacy(toPrivacySubject(tool.slug, tool.delivery))
+			.violations) {
 			errors.push(`${prefix}  ${violation.code}: ${violation.message}`);
 		}
 	}

@@ -348,6 +348,17 @@ must refuse it too.
    `manifest.schema.json`'s `pattern` too — it is an advisory subset of
    the policy, not the authority (§2).
 
+## What this document does not decide
+
+Whether the framed document **contacts anyone**. That is Issue #498's
+contract: [`embed-privacy.md`](./embed-privacy.md) —
+[`src/tools/embed-privacy.ts`](../../src/tools/embed-privacy.ts)
+requires every embeddable Tool to declare the third-party origins its
+artefact may contact, derives the consent mode from that declaration,
+and gates the frame behind an explicit activation. Read this document
+for *may it be framed*; read that one for *what does it cost the
+visitor*.
+
 ## Not decided here
 
 `host_message` is undeclared for every Tool today. The first Tool that

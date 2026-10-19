@@ -51,6 +51,11 @@ src/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
 │  ├─ primitives/
+│  ├─ social-card/
+│  │  ├─ contract.json
+│  │  ├─ contract.ts
+│  │  ├─ card.ts
+│  │  └─ index.ts
 │  └─ error-states/
 │     ├─ contract.ts
 │     ├─ ErrorState.tsx
@@ -130,6 +135,17 @@ slug grammar の所有は各 obligation のまま（`reactions/slug-regex.ts` �
 raw / semantic tokens と、その visual language の primitive をまとめる。
 これは「全 UI component の共有置き場」ではない。別の visual language が必要に
 なった場合、観測された同一 obligation がない限り自動的には統合しない。
+
+`social-card/`（Issue #421）は link unfurler へ公開する Open Graph /
+Twitter card の**公開契約**を所有する。`contract.json` が canonical origin・
+site name / locale・既定 fallback card・route ごとの宣言（og:type と
+`cardPolicy`）を持つ SoT で、`card.ts` がその宣言から head の meta だけを
+組み立てる。fact source は `about/` と `portfolio/` のまま（この module は
+どちらにも import しない）。「media が無いとき」の分岐を無言にしないことが
+契約の主眼で、fallback card の URL が `og:image` に出ることが劣化の可視化に
+なる。検証は `scripts/check-ogp-card.mjs`（宣言 vs route tree）と
+`test/integration/ogp-card.test.ts`（宣言 vs 実 SSR HTML）が同じ engine を
+使い分ける。
 
 `error-states/`（Issue #501）は failure surface の**公開契約**を所有する。
 1 kind につき 1 component（404 / 503 / 依存取得失敗）、共有 shell、そして

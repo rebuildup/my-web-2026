@@ -52,7 +52,7 @@
 		"deploy": "pnpm run deploy:production:prepared"
 	},
 	"static_asset_headers": {
-		"$comment": "`public/_headers` is applied by Cloudflare Static Assets and is inert under `vite dev`, so a dropped rule cannot be observed from the development surface. This record pins COVERAGE and the nosniff baseline only; `scripts/check-security-headers.mjs` (Issue #449) owns header values, combination semantics and the Tool grants.",
+		"$comment": "`public/_headers` is applied by Cloudflare Static Assets and is inert under `vite dev`, so a dropped rule cannot be observed from the development surface. This record pins the RULE PATH SET of that file (compared in BOTH directions: every declared path must have a rule, and every rule must be declared here) and the nosniff baseline on it; `scripts/check-security-headers.mjs` (Issue #449) owns header values, combination semantics and the Tool grants. A rule added to or removed from `public/_headers` is therefore a record change too: the record is the SoT for this surface, so a rule it does not know about is drift.",
 		"file": "public/_headers",
 		"policy_file": "src/http/security-headers.json",
 		"baseline_rule": "/*",
@@ -62,6 +62,8 @@
 			"/*",
 			"/share/*",
 			"/tools/:slug/app/*",
+			"/tools/:slug/app",
+			"/tools/mic-level/app/*",
 			"/assets/*",
 			"/icons/*",
 			"/site.webmanifest"

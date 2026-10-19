@@ -45,7 +45,7 @@ Cloudflare Workers Builds は `main` への push で production を deploy す�
 | --- | --- | --- |
 | `bindings` | production binding 集合（型・text 値・D1/R2 の対象・rate limit の namespace と予算）。secret binding は**名前**のみ | `missing` / `unexpected` / `mismatch` / `type_mismatch` |
 | `routes` | route / hostname（`domains`）。production は正規 origin、development は空 | `route_mismatch` |
-| `headers` | Cloudflare Static Assets の `public/_headers` の coverage と nosniff baseline | `header_rule_uncovered` / `header_value_mismatch` / `header_rule_missing` |
+| `headers` | Cloudflare Static Assets の `public/_headers` の **rule path 集合**（記録と**双方向**に比較する: 記録した path には rule が要る / rule があれば記録に宣言が要る）と nosniff baseline | `header_rule_uncovered` / `header_rule_undeclared` / `header_value_mismatch` / `header_rule_missing` |
 | `build_commands` | Workers Builds が実行する command が `package.json` script を指し、runbook の表と一致しているか | `script_missing` / `runbook_mismatch` |
 | `mode` | dev と prod の差分が、記録に宣言された差分だけか。比較対象は binding 集合・route 集合・**scalar**（`accountId` / `name` / `compatibilityDate` / `compatibilityFlags` / `entrypoint` / `observability`） | `undeclared_mode_difference` / `undeclared_mode_field_difference` / `undeclared_mode_scalar_difference` |
 
@@ -71,12 +71,14 @@ config 同士を比べただけでは何も証明できない。`cloudflare.conf
 field が 1 つでも欠けていれば、その dimension は**何も検査しないまま緑**に
 なる（`static_asset_headers.required_paths` を落とすと header coverage は
 検査されないまま `MATCH`、`build_commands` を空にすると build / deploy
-command は 1 本も検査されないまま `MATCH`）。これは「読めなかった」を
+command は 1 本も検査されないまま `MATCH`、text binding の `value` を落とすと
+その binding の値比較は飛ばされたまま `MATCH`）。これは「読めなかった」を
 「clean」に落とすのと同じ種類の fail-open なので、記録の**内側**も検査する。
 
 | 記録の部位 | 成立条件 |
 | --- | --- |
 | `production.bindings` | 1 件以上。`type` が文字列。`type: "secret"` は**名前だけ**（値があれば credential なので拒否） |
+| `production.bindings.<NAME>`（型ごとの比較 field） | `type` が**比較する field** を持つ: `text` → `value` / `d1` → `name` + `id` / `r2` → `name` / `rate-limit` → `namespace` + `simple.limit`・`simple.period`（数値）/ `secret`・`assets` → `type` のみ。**型だけ書いて値を落とすと、その binding の比較は丸ごと飛ばされる**（= 検査しないまま緑） |
 | `production.routes` | 1 件以上の非空 string（canonical origin の宣言。空は「何も宣言していない」ので不可） |
 | `production.accountId` / `name` / `compatibilityDate` / `entrypoint` | いずれも非空 string |
 | `production.observability` | boolean |
@@ -85,11 +87,28 @@ command は 1 本も検査されないまま `MATCH`）。これは「読めな�
 | `development.mode_only_bindings.production_only` / `.development_only` | string の配列 |
 | `development.mode_only_fields` | string の配列（scalar の mode 差分を宣言する場所。空 = どの scalar も両 mode で同じ） |
 | `build_commands` | `$` 始まりの documentation key を除いて **1 件以上**、かつ各 value が `pnpm run <script>` 形式 |
-| `static_asset_headers.file` / `policy_file` / `baseline_rule` / `baseline_header` / `baseline_policy_key` | いずれも非空 string |
-| `static_asset_headers.required_paths` | 1 件以上の非空 string |
+| `static_asset_headers.file` / `policy_file` / `baseline_header` / `baseline_policy_key` | いずれも非空 string |
+| `static_asset_headers.baseline_rule` | 非空 string かつ **`required_paths` のいずれか 1 つ**（どこにもない rule を baseline にすると nosniff 値の比較ごと飛ばされる） |
+| `static_asset_headers.required_paths` | 1 件以上の非空 string。**`public/_headers` の rule path 集合と双方向に一致する**（記録に無い path / record に無い rule の両方が赤） |
 
 1 つでも欠けたら `verdict=UNDECIDABLE`（exit 2、reason は
 `record_incomplete:<field>`）になる。**空の記録を「該当なし」に読み替えない。**
+
+#### `required_paths` を双方向に比較する理由
+
+`required_paths` は「production が配信する namespace の宣言」であり、**この
+gate の header 面の SoT** である。片方向（記録 → rule）だけだと、記録から
+`/share/*` を 1 行削っただけで coverage 検査が 1 namespace 分だけ減り、
+`public/_headers` 側は元のままでも `MATCH` になる —— 検査項目が減ったのに
+緑になる。逆方向（rule → 記録）を足すことで、
+
+- 記録が宣言した path に rule が無い → `headers.coverage.<path>`
+  （`header_rule_uncovered`）
+- `public/_headers` に record が宣言していない rule がある →
+  `headers.undeclared.<path>`（`header_rule_undeclared`）
+
+の両方が赤になる。`public/_headers` に rule を足す / 削るのは **記録を
+更新する PR** である（gate が緑になるまで PR は出せない）。
 
 ## 2. 実行方法
 
@@ -184,6 +203,7 @@ secret binding 数・route 数である。
 | `kind=undeclared_mode_field_difference` | 同じ binding の**値**が mode ごとに違う | 値の mode 分岐は deployment ごとの挙動差になるため、原則そのままにする。やむなく維持するなら記録へ宣言し、レビューで 1 回だけ議論する |
 | `kind=undeclared_mode_scalar_difference`（`mode.undeclared_field.*`） | dev と prod の **scalar**（`compatibilityDate` / `name` / `entrypoint` / `observability` / `accountId` / `compatibilityFlags`）が違う | mode 分岐はファイル差分に出ないので、差分は記録でしか表せない。意図的な差分なら記録の `development.mode_only_fields` へ field 名を追加する |
 | `kind=header_rule_uncovered` / `header_value_mismatch`（`headers.*`） | `public/_headers` の rule 欠落、nosniff baseline の改変 | header の**値**と合成セマンティクスは `pnpm run security:headers:check`（Issue #449）の責務で、まずそちらを通すこと |
+| `kind=header_rule_undeclared`（`headers.undeclared.<path>`） | `public/_headers` に**記録が宣言していない rule** がある（記録を縮めた or `_headers` を増やした） | 意図的な変更なら**同じ PR で**記録の `static_asset_headers.required_paths` にその path を追加する。`_headers` 側の rule を消すのが正しいなら、**両方を同じ PR で**直す（片方だけの変更は赤になる） |
 | `kind=script_missing` / `runbook_mismatch`（`build_commands.*`） | `package.json` script の改名・削除、または runbook 表の陳腐化 | script 名を変えたなら **Cloudflare Dashboard（Workers Builds）の build / deploy command も同時に変更**する。ここを直さないと production は存在しない command を実行し続ける。runbook の表も同時に直す（本 gate が両者の一致を検証する） |
 
 `finding` 1 件が「その 1 項目だけ直せばよい」 corresponding な単位になっている
@@ -199,6 +219,8 @@ dimension が重複して数えることはない（production binding の欠落
 | `record_unreadable` | 記録ファイルが読めない / JSON として壊れている | `quality/cloudflare-config-drift.json` を読む |
 | `record_incomplete` | 記録の **section** が欠けている（`production` / `production.bindings` / `production.routes` / `build_commands` / `static_asset_headers` / `development.mode_only_bindings`） | 記録を修復する。**空の記録を「該当なし」に読み替えない** |
 | `record_incomplete:<field>` | 記録の **内側**が欠けている（例: `record_incomplete:static_asset_headers.required_paths` / `record_incomplete:build_commands` / `record_incomplete:development.routes` / `record_incomplete:production.routes` / `record_incomplete:development.mode_only_bindings.production_only`） | 該当 field を §1「記録の「内側の契約」」の表に従って修復する。この状態では該当 dimension が**何も検査していない**ので、`MATCH` は出ていない（出ていたら fail-open） |
+| `record_incomplete:bindings.<NAME>.<field>` | 記録の binding が**比較される field** を持たない（`text` の `value` / `d1` の `name`・`id` / `r2` の `name` / `rate-limit` の `namespace`・`simple`）。`record_incomplete:bindings.<NAME>.type` は**未知の binding 型**（この gate が比較方法を知らない型） | 該当 field を §1 の表に従って記録へ足す。値を足すのは `text` binding だけでよく、**`secret` には値を足さない**（値があれば credential なので拒否される） |
+| `record_incomplete:static_asset_headers.baseline_rule` | `baseline_rule` が `required_paths` のどの path でもない | baseline を実在する rule path に直す（`required_paths` と双方向一致が条件）。実在しない path をbaseline にすると nosniff 値の比較が丸ごと飛ばされる |
 | `record_incomplete:bindings.<NAME>` | `type: "secret"` の binding に別のフィールドがある | その値は credential である。記録から値を削除し、runtime secret の値は Infisical（ADR-0015）に置くこと |
 | `surface_unreadable` | `cloudflare.config.ts` が解決できない、または `worker` が surface として解釈できない | ローカルで `node -e "import('./cloudflare.config.ts').then(m => console.log(Object.keys(m.default)))"` を確認する。`cf` devDependency の導入漏れ也在此处に出る |
 | `scripts_unreadable` / `runbook_unreadable` | `package.json` / runbook が読めない | ファイル自体の欠落・改名を疑う |
@@ -217,10 +239,12 @@ hatch は存在しない（意図的）。
 | 対象 | なぜこの gate では閉じないか |
 | --- | --- |
 | Build Output（実際に deploy される artifact） | `pnpm run cloudflare:contract:check:build`（`validate:integration`）の責務。本 gate は source 側だけを見る |
+| `wrangler.production.jsonc`（production surface の**もう 1 枚のコピー**） | Issue #247 で Worker 設定の SoT は `cloudflare.config.ts` に 1 枚へ寄ったが、このファイルは残っており、operator tooling（`scripts/rotate-better-auth-secret.mjs` / `scripts/rotate-home-api-key.mjs` / `scripts/check-cf-secrets.mjs`）が読んでいる。**本 gate はこのファイルを比較しない**ので、ここと記録の drift は本 gate から見えない。production surface の実体として gate が比較するのは `cloudflare.config.ts` 側だけ |
 | Cloudflare Dashboard 実体（Workers Builds の build 変数、API token 権限、production branch 設定） | local tool から読めない。gate が検証できるのは「記録された command が `package.json` の実 script を指すこと」と「runbook が同じことを言っていること」まで |
 | live Worker の binding 状態（deploy 済み secret 名の一致） | remote read であり credential が必要。Infisical / Workers Builds の責務（ADR-0015 §9） |
 | header の値・合成セマンティクス・Tool grant | `pnpm run security:headers:check`（Issue #449）の責務。本 gate は coverage と nosniff baseline のみ |
 | runtime secret の**値**そのもの | SoT は Infisical（ADR-0015 §6）。本 gate は名前集合のみを比較する |
+| `.dev.vars` の**値** | development surface の解決は `cloudflare.config.ts` を通り、そこが `.dev.vars` を読む（`scripts/_dev-vars-reader.mjs`）。読まれるのは `LOCAL_API_MODE` **だけ**で、これは `development_only` として宣言済み。**binding の値は finding に到達しない**（mode finding が出すのは binding の**名前**だけ）ので判定は machine 非依存、leak 経路も無い。即便として、gate プロセスは credential を含む可能性のあるローカルファイルを読む |
 | D1 の実データ・schema の migration 状態 | `scripts/d1.mjs` と release runbook の責務 |
 
 ## 参照

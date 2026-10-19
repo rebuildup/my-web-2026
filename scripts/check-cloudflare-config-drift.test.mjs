@@ -32,6 +32,7 @@ import {
 	renderAudit,
 	runDriftAudit,
 } from './check-cloudflare-config-drift.mjs';
+import { parseHeadersFile } from './check-security-headers.mjs';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -338,7 +339,7 @@ describe('the dev / prod question', () => {
 				BETTER_AUTH_URL: { type: 'text', value: 'https://rebuildup.dev' },
 			}),
 		);
-		assert.equal(findings[0].path, 'mode.development_only_absent.BETTER_AUTH_URL');
+		assert.equal(findings[0].path, 'mode.production_only_reached_development.BETTER_AUTH_URL');
 	});
 
 	it('rejects an undeclared per-mode VALUE difference', () => {
@@ -540,6 +541,60 @@ describe('the static-asset header surface', () => {
 			'header_rule_missing',
 		);
 	});
+
+	it('reports a rule the record does not declare', () => {
+		// The record is the SoT for this surface, so a rule it does not
+		// know about is drift: a record that dropped one path would make
+		// the coverage check inspect one namespace fewer while the gate
+		// still reported MATCH.
+		const rules = [
+			{ path: '/*', headers: { 'x-content-type-options': 'nosniff' } },
+			{ path: '/share/*', headers: {} },
+			{ path: '/tools/mic-level/app/*', headers: {} },
+		];
+		const findings = diffStaticAssetHeaders({ static_asset_headers: config }, rules, policy);
+		assert.equal(findings.length, 1);
+		assert.equal(findings[0].path, 'headers.undeclared./tools/mic-level/app/*');
+		assert.equal(findings[0].kind, 'header_rule_undeclared');
+	});
+
+	it('reports a missing baseline rule instead of skipping the comparison', () => {
+		// A baseline that names a path no rule has would skip the nosniff
+		// value comparison entirely — a silent skip, which is the
+		// fail-open this gate exists to remove.
+		const retargeted = {
+			static_asset_headers: { ...config, baseline_rule: '/no-such-path' },
+		};
+		const rules = [
+			{ path: '/*', headers: { 'x-content-type-options': 'nosniff' } },
+			{ path: '/share/*', headers: {} },
+		];
+		const findings = diffStaticAssetHeaders(retargeted, rules, policy);
+		assert.equal(findings.length, 1);
+		assert.equal(findings[0].path, 'headers.baseline./no-such-path');
+		assert.equal(findings[0].kind, 'header_rule_uncovered');
+	});
+
+	it('reports a missing declared baseline rule once, not twice', () => {
+		// The baseline is one of the declared paths, so the coverage
+		// direction owns the finding; the baseline branch must not repeat
+		// it (one item, one finding).
+		const rules = [{ path: '/share/*', headers: {} }];
+		const findings = diffStaticAssetHeaders({ static_asset_headers: config }, rules, policy);
+		assert.equal(findings.length, 1);
+		assert.equal(findings[0].path, 'headers.coverage./*');
+		assert.equal(findings[0].kind, 'header_rule_uncovered');
+	});
+
+	it('declares every rule path the committed `_headers` file carries', () => {
+		// The record is compared with the header file in BOTH directions,
+		// so the committed record has to name every rule the file
+		// carries — and the file has to carry every rule the record
+		// names.
+		const rules = parseHeadersFile(readFileSync(join(ROOT, 'public/_headers'), 'utf8'));
+		const declared = [...record().static_asset_headers.required_paths].sort();
+		assert.deepEqual(declared, rules.map((rule) => rule.path).sort());
+	});
 });
 
 describe('fail closed', () => {
@@ -700,6 +755,135 @@ describe('fail closed', () => {
 			} finally {
 				rmSync(root, { recursive: true, force: true });
 			}
+		}
+	});
+
+	it('refuses a record that omits the comparison field its binding type needs', () => {
+		// A record that names the type but not the value compares NOTHING
+		// for that binding: `diffProductionSurface` skips every field the
+		// record does not mention, so the dimension would inspect nothing
+		// while the gate still reported MATCH. The type therefore decides
+		// which fields are mandatory.
+		const broken = [
+			['text', 'MY_WEB_2026_COUNTER_KEY', 'value'],
+			['d1', 'DB', 'name'],
+			['d1', 'DB', 'id'],
+			['r2', 'MEDIA', 'name'],
+			['rate-limit', 'RATE_LIMIT_WRITE', 'namespace'],
+			['rate-limit', 'RATE_LIMIT_WRITE', 'simple'],
+		];
+		for (const [type, name, field] of broken) {
+			const mutated = record();
+			assert.equal(mutated.production.bindings[name].type, type);
+			Reflect.deleteProperty(mutated.production.bindings[name], field);
+			const problem = readRecord(mutated);
+			assert.ok(problem, `${name}.${field}`);
+			assert.equal(problem.error, `record_incomplete:bindings.${name}.${field}`);
+		}
+	});
+
+	it('refuses a record whose rate-limit budget is not a number', () => {
+		const mutated = record();
+		mutated.production.bindings.RATE_LIMIT_WRITE.simple = { limit: '60', period: 60 };
+		const problem = readRecord(mutated);
+		assert.equal(problem.error, 'record_incomplete:bindings.RATE_LIMIT_WRITE.simple');
+	});
+
+	it('refuses a record whose binding type it does not know how to compare', () => {
+		const mutated = record();
+		mutated.production.bindings.DB.type = 'vectorize';
+		const problem = readRecord(mutated);
+		assert.equal(problem.error, 'record_incomplete:bindings.DB.type');
+	});
+
+	it('refuses a record whose baseline rule is not one of the declared paths', () => {
+		// A baseline that names a path no rule has would skip the nosniff
+		// value comparison entirely, so the baseline has to be one of the
+		// paths the record declares.
+		const mutated = record();
+		mutated.static_asset_headers.baseline_rule = '/no-such-path';
+		const problem = readRecord(mutated);
+		assert.equal(problem.error, 'record_incomplete:static_asset_headers.baseline_rule');
+	});
+
+	it('refuses a record whose comparison field was dropped, end to end', async () => {
+		// The unit test above proves the helper refuses; this one proves
+		// the GATE refuses, with the exit code a CI job would see.
+		const broken = [
+			[
+				'MY_WEB_2026_COUNTER_KEY.value',
+				(r) => {
+					Reflect.deleteProperty(r.production.bindings.MY_WEB_2026_COUNTER_KEY, 'value');
+				},
+			],
+			[
+				'DB.id',
+				(r) => {
+					Reflect.deleteProperty(r.production.bindings.DB, 'id');
+				},
+			],
+			[
+				'MEDIA.name',
+				(r) => {
+					Reflect.deleteProperty(r.production.bindings.MEDIA, 'name');
+				},
+			],
+			[
+				'RATE_LIMIT_WRITE.simple',
+				(r) => {
+					Reflect.deleteProperty(r.production.bindings.RATE_LIMIT_WRITE, 'simple');
+				},
+			],
+		];
+		for (const [field, mutate] of broken) {
+			const root = rootWithMutatedRecord(mutate);
+			try {
+				const audit = await runDriftAudit({ root });
+				assert.equal(audit.result.verdict, DRIFT_VERDICT.undecidable, field);
+				assert.equal(exitCodeFor(audit.result), 2, field);
+				assert.equal(audit.result.reason, `record_incomplete:bindings.${field}`, field);
+				assert.equal(audit.result.findings.length, 0, field);
+			} finally {
+				rmSync(root, { recursive: true, force: true });
+			}
+		}
+	});
+
+	it('refuses a record whose baseline rule was retargeted, end to end', async () => {
+		const root = rootWithMutatedRecord((r) => {
+			r.static_asset_headers.baseline_rule = '/no-such-path';
+		});
+		try {
+			const audit = await runDriftAudit({ root });
+			assert.equal(audit.result.verdict, DRIFT_VERDICT.undecidable);
+			assert.equal(exitCodeFor(audit.result), 2);
+			assert.equal(audit.result.reason, 'record_incomplete:static_asset_headers.baseline_rule');
+			assert.equal(audit.result.findings.length, 0);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it('is red when a declared header path is dropped from the record, end to end', async () => {
+		// The other direction of the same comparison. A record that lost
+		// one path would make the coverage check inspect one namespace
+		// fewer, so the gate has to be RED instead of MATCH.
+		const root = rootWithMutatedRecord((r) => {
+			r.static_asset_headers.required_paths = r.static_asset_headers.required_paths.filter(
+				(path) => path !== '/share/*',
+			);
+		});
+		try {
+			const audit = await runDriftAudit({ root });
+			assert.equal(audit.result.verdict, DRIFT_VERDICT.drift);
+			assert.equal(exitCodeFor(audit.result), 1);
+			assert.deepEqual(
+				audit.result.findings.map((item) => item.path),
+				['headers.undeclared./share/*'],
+			);
+			assert.equal(audit.result.findings[0].kind, 'header_rule_undeclared');
+		} finally {
+			rmSync(root, { recursive: true, force: true });
 		}
 	});
 

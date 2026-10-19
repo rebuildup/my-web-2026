@@ -1,6 +1,6 @@
 {
 	"case": "surface-matches-the-recorded-contract",
 	"note": "実際の surface に何も加えない。記録された production contract と一致する状態。",
-	"expect": { "verdict": "MATCH", "exitCode": 0, "findings": 0, "path": null },
+	"expect": { "verdict": "MATCH", "exitCode": 0, "findings": 0, "paths": [] },
 	"apply": {}
 }

@@ -100,6 +100,7 @@ export const FINDING_KIND = Object.freeze({
 	header_rule_missing: 'header_rule_missing',
 	header_value_mismatch: 'header_value_mismatch',
 	header_rule_uncovered: 'header_rule_uncovered',
+	header_rule_undeclared: 'header_rule_undeclared',
 	script_missing: 'script_missing',
 	runbook_mismatch: 'runbook_mismatch',
 });
@@ -123,6 +124,37 @@ export const UNDECIDABLE_REASON = Object.freeze({
  * reviewed here before the gate can print it.
  */
 const BINDING_FIELDS = Object.freeze(['value', 'name', 'id', 'namespace', 'simple']);
+
+/**
+ * The comparison fields each binding TYPE needs in the record.
+ *
+ * A record that names the type but not the value of a binding states no
+ * expectation for it: `diffProductionSurface` skips every field the
+ * record does not mention, so the comparison would inspect NOTHING while
+ * the gate still reported MATCH. The type therefore decides which fields
+ * are mandatory.
+ *
+ *   text       `value` (the text var's content)
+ *   d1         `name` and `id` (the database it points at)
+ *   r2         `name` (the bucket it points at)
+ *   rate-limit `namespace` and `simple.limit` / `simple.period` (the
+ *              namespace and the budget)
+ *   secret     the type alone — a secret is compared as a NAME, and a
+ *              value under it is refused (`readRecord`)
+ *   assets     the type alone (there is nothing to compare)
+ *
+ * A type this table does not know cannot be stated as a contract, so a
+ * record that uses one is refused instead of being compared field by
+ * field: a new binding type has to be reviewed here first.
+ */
+const BINDING_COMPARISON_FIELDS = Object.freeze({
+	text: Object.freeze(['value']),
+	d1: Object.freeze(['name', 'id']),
+	r2: Object.freeze(['name']),
+	'rate-limit': Object.freeze(['namespace', 'simple']),
+	secret: Object.freeze([]),
+	assets: Object.freeze([]),
+});
 
 /** Production-surface scalar fields compared against the record. */
 const SURFACE_FIELDS = Object.freeze([
@@ -477,10 +509,13 @@ export function diffModeSurfaces(record, production, development) {
 			);
 		}
 		if (development?.bindings?.[name]) {
+			// The path says what happened: a binding the record declares
+			// as production-only REACHED development. A path that read
+			// "development_only_absent" said the opposite of the finding.
 			findings.push(
 				finding(
 					'mode',
-					`mode.development_only_absent.${name}`,
+					`mode.production_only_reached_development.${name}`,
 					FINDING_KIND.unexpected,
 					null,
 					name,
@@ -676,22 +711,63 @@ export function diffStaticAssetHeaders(record, rules, policy) {
 		];
 	}
 
+	const rulePaths = new Set(rules.map((rule) => rule.path));
+	const declared = new Set(config.required_paths ?? []);
+
+	// Direction 1 — every declared namespace has a rule.
+	const uncovered = [];
 	for (const required of config.required_paths ?? []) {
-		const covered = rules.some((rule) => rule.path === required);
-		if (!covered) {
-			findings.push(
-				finding(
-					'headers',
-					`headers.coverage.${required}`,
-					FINDING_KIND.header_rule_uncovered,
-					required,
-					null,
-				),
-			);
-		}
+		if (rulePaths.has(required)) continue;
+		uncovered.push(required);
+		findings.push(
+			finding(
+				'headers',
+				`headers.coverage.${required}`,
+				FINDING_KIND.header_rule_uncovered,
+				required,
+				null,
+			),
+		);
+	}
+
+	// Direction 2 — every rule is declared. Without this direction a
+	// record that dropped one path would make the coverage check inspect
+	// one namespace fewer and the gate would report MATCH while the
+	// surface kept the rule: the record is the SoT, so a rule it does
+	// not know about is drift, not a detail.
+	for (const path of [...rulePaths].sort()) {
+		if (declared.has(path)) continue;
+		findings.push(
+			finding(
+				'headers',
+				`headers.undeclared.${path}`,
+				FINDING_KIND.header_rule_undeclared,
+				path,
+				null,
+			),
+		);
 	}
 
 	const baselineRule = rules.find((rule) => rule.path === config.baseline_rule);
+	// A baseline rule that no rule carries would skip the nosniff value
+	// comparison entirely — a silent skip, which is the fail-open this
+	// gate exists to remove. The missing rule is therefore a finding of
+	// its own. The record's inner contract requires the baseline to be
+	// one of the declared paths, so the coverage direction above
+	// normally reports it; the branch below covers a record that says
+	// otherwise, and it never reports the same item twice.
+	if (!baselineRule && !uncovered.includes(config.baseline_rule)) {
+		findings.push(
+			finding(
+				'headers',
+				`headers.baseline.${config.baseline_rule}`,
+				FINDING_KIND.header_rule_uncovered,
+				config.baseline_rule,
+				null,
+			),
+		);
+	}
+
 	const baselineHeader = config.baseline_header;
 	// The header NAME (`x-content-type-options`, as `_headers` spells it)
 	// and the policy KEY (`x_content_type_options`, as the JSON SoT spells
@@ -757,14 +833,18 @@ export function exitCodeFor(result) {
  *   1. the SECTIONS exist (`production`, `build_commands`,
  *      `static_asset_headers`, `development.mode_only_bindings`), and
  *   2. the INNER contract of each section exists too — the fields the
- *      diff functions read as an expectation.
+ *      diff functions read as an expectation, down to the fields of a
+ *      single binding.
  *
  * The second half is not optional. `diffStaticAssetHeaders` reads
- * `required_paths` with a `?? []` fallback and `build_commands` with a
- * `?? {}` fallback, so a record that lost one of those fields would make
- * the corresponding dimension inspect NOTHING while the gate still
- * reported MATCH. A section that is present but empty is a record that
- * cannot state the contract, exactly like a missing section.
+ * `required_paths` with a `?? []` fallback, `diffProductionSurface`
+ * skips every binding field the record does not mention, and
+ * `diffBuildCommands` reads `build_commands` with a `?? {}` fallback, so
+ * a record that lost one of those fields would make the corresponding
+ * dimension inspect NOTHING while the gate still reported MATCH. A
+ * section that is present but empty is a record that cannot state the
+ * contract, exactly like a missing section — and so is a binding that
+ * states its type but not the value its type is compared by.
  */
 export function readRecord(record) {
 	if (!record || typeof record !== 'object')
@@ -842,6 +922,41 @@ function innerContractProblem(record) {
 		return `${UNDECIDABLE_REASON.recordIncomplete}:production.compatibilityFlags`;
 	}
 
+	// Every binding states the fields its TYPE is compared by. A record
+	// that names the type but omits the value compares NOTHING for that
+	// binding, because `diffProductionSurface` skips every field the
+	// record does not mention — the dimension would inspect nothing
+	// while the gate still reported MATCH. The type therefore decides
+	// which fields are mandatory.
+	for (const [name, binding] of Object.entries(production.bindings ?? {})) {
+		const required = BINDING_COMPARISON_FIELDS[binding?.type];
+		if (required === undefined) {
+			// A type this gate does not know how to compare cannot be
+			// stated as a contract, so the record is refused instead of
+			// being compared field by field.
+			return `${UNDECIDABLE_REASON.recordIncomplete}:bindings.${name}.type`;
+		}
+		for (const field of required) {
+			if (field === 'simple') {
+				const simple = binding.simple;
+				if (
+					!simple ||
+					typeof simple !== 'object' ||
+					typeof simple.limit !== 'number' ||
+					!Number.isFinite(simple.limit) ||
+					typeof simple.period !== 'number' ||
+					!Number.isFinite(simple.period)
+				) {
+					return `${UNDECIDABLE_REASON.recordIncomplete}:bindings.${name}.simple`;
+				}
+				continue;
+			}
+			if (!nonEmptyString(binding[field])) {
+				return `${UNDECIDABLE_REASON.recordIncomplete}:bindings.${name}.${field}`;
+			}
+		}
+	}
+
 	// The development surface: the route list is declared (and empty on
 	// purpose — development must never inherit the production origin),
 	// and the mode-only sets are declared.
@@ -893,6 +1008,13 @@ function innerContractProblem(record) {
 	}
 	if (stringList(headers.required_paths) === null) {
 		return `${UNDECIDABLE_REASON.recordIncomplete}:static_asset_headers.required_paths`;
+	}
+	// The baseline has to be one of the declared paths. A baseline that
+	// names a path no rule has would skip the nosniff value comparison
+	// entirely, and a baseline outside the declared set is a record that
+	// cannot state which rule owns the baseline.
+	if (!headers.required_paths.includes(headers.baseline_rule)) {
+		return `${UNDECIDABLE_REASON.recordIncomplete}:static_asset_headers.baseline_rule`;
 	}
 	return null;
 }

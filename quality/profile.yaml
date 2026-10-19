@@ -1162,6 +1162,8 @@ cloudflare_config_drift:
     - 'one differing item FAILS the release gate (exit 1) - there is no tolerance band and no percentage threshold'
     - 'an unreadable record / surface / `_headers` file, a record that cannot state the contract, or a report that would not be status-only are UNDECIDABLE (exit 2); an undecidable run is never a pass'
     - 'a record whose SECTION exists but whose INNER contract is broken (a missing `static_asset_headers.required_paths`, an empty `build_commands`, a missing `development.routes`, ...) is UNDECIDABLE (exit 2) as well: the matching dimension would otherwise inspect NOTHING while the gate still reported MATCH'
+    - 'a record whose binding omits the comparison field its TYPE needs (`text` -> `value`, `d1` -> `name` + `id`, `r2` -> `name`, `rate-limit` -> `namespace` + `simple`) is UNDECIDABLE (exit 2) as well: that binding comparison would otherwise be skipped while the gate still reported MATCH'
+    - 'the recorded `static_asset_headers.required_paths` set is compared with the `public/_headers` rule paths in BOTH directions, and `baseline_rule` must be one of the declared paths: a rule the record does not declare, and a baseline no rule carries, are findings rather than a skipped comparison'
     - 'a record that stores a value under a `secret` binding is refused as UNDECIDABLE instead of being compared, so a credential cannot enter the record'
     - 'a `--case` run is a demonstration: its output says source=fixture and it is never a release verdict'
   mutation: 'none - the gate reads repository files and evaluates the configuration in-process'

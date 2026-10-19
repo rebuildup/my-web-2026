@@ -251,7 +251,7 @@ ${[live, ...entries].map(renderOutput).join('\n')}
   <li>意図的な変更なら<strong>同じ PR で</strong> <code>quality/cloudflare-config-drift.json</code> を更新する。記録は期待値そのものなので、実装だけ変えて記録を残すと次の誰かが同じ差分を踏む。</li>
   <li>production binding の差分は <code>cloudflare.config.ts</code> と <code>scripts/_cloudflare-contract.mjs</code> / <code>scripts/_cloudflare-identity.mjs</code> の 3 者を揃える（SoT は 1 つに保つ）。</li>
   <li>build / deploy command の差分は Cloudflare Dashboard（Workers Builds）側が実体。<code>pnpm run cf:mode-mismatch:check</code> と <code>pnpm run cloudflare:contract:check:build</code> で artifact 側も確認する。</li>
-  <li><code>verdict=UNDECIDABLE</code>（exit 2）は「読めなかった」であって「clean」ではない。記録・surface・<code>public/_headers</code> のいずれかが読めない、または記録が契約として成立していない（<strong>section の中身の欠落も含む</strong>:<code>static_asset_headers.required_paths</code> や <code>build_commands</code> が空になると、その dimension は何も検査しないまま緑になる）。</li>
+  <li><code>verdict=UNDECIDABLE</code>（exit 2）は「読めなかった」であって「clean」ではない。記録・surface・<code>public/_headers</code> のいずれかが読めない、または記録が契約として成立していない（<strong>section の中身の欠落も含む</strong>:<code>static_asset_headers.required_paths</code> や <code>build_commands</code> が空になると、その dimension は何も検査しないまま緑になる。binding の<strong>型ごとの比較 field</strong> — <code>text</code> の <code>value</code>、<code>d1</code> の <code>name</code>/<code>id</code>、<code>r2</code> の <code>name</code>、<code>rate-limit</code> の <code>namespace</code>/<code>simple</code> — が欠けてもその binding の比較は丸ごと飛ばされる）。</li>
 </ul>
 <p class="lede">
   詳細は <code>docs/runbook/cloudflare-config-drift.md</code>。
@@ -262,7 +262,8 @@ ${[live, ...entries].map(renderOutput).join('\n')}
 <ul>
   <li><strong>Build Output</strong>（実際に deploy される artifact）: <code>pnpm run cloudflare:contract:check:build</code> の責務。</li>
   <li><strong>Cloudflare Dashboard 実体</strong>（Workers Builds の build 変数、API token 権限）: local tool から読めないため、command が <code>package.json</code> script を指し続けることのみを gate する。</li>
-  <li><strong>header の値と合成セマンティクス</strong>: <code>pnpm run security:headers:check</code>（Issue #449）の責務。本 gate は production が配信する static asset の namespace が <code>public/_headers</code> で覆われているか（coverage）と nosniff baseline のみを見る。</li>
+  <li><strong>header の値と合成セマンティクス</strong>: <code>pnpm run security:headers:check</code>（Issue #449）の責務。本 gate は <code>public/_headers</code> の <strong>rule path 集合</strong>（記録と双方向に比較する: 記録の path には rule が要る / rule には記録の宣言が要る）と nosniff baseline のみを見る。</li>
+  <li><strong><code>wrangler.production.jsonc</code></strong>（production surface のもう 1 枚のコピー）: 本 gate は比較しない。実体として比較するのは <code>cloudflare.config.ts</code> 側だけ。</li>
   <li><strong>runtime secret の値</strong>: Infisical が SoT（ADR-0015）。本 gate は名前集合だけを比較する。</li>
 </ul>
 

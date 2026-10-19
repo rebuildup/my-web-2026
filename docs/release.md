@@ -245,9 +245,13 @@ production domain to be wired (Issue #43 / ADR-0014):
    `package.json` version, declared dependency ranges, `pnpm-lock.yaml`
    digest and resolved package count. CI retains it as the
    `artifact-attestation-<sha>` workflow artifact (90 days). The manifest
-   does **not** attest the artifact Cloudflare Workers Builds deploys;
-   that comparison remains an open decision
-   ([attestation §8](security/supply-chain-artifact-attestation.md#8-既知の制約と未決事項)).
+   does **not** attest the artifact Cloudflare Workers Builds deploys.
+   That comparison is out of scope by owner decision (2026-10-19): the
+   attested scope of this Issue is the GitHub Actions production-mode
+   Build Output, the manifest declares it through
+   `coverage.artifact_origin` / `coverage.deployed_bytes_attested`, and a
+   separate Issue owns any change to the deploy path
+   ([attestation §8](security/supply-chain-artifact-attestation.md#8-既知の制約と-owner-決定)).
 
    - The manifest is an integrity record, not a signature: no signing
      key exists, so `signature.status` is `unsigned` and every signature
@@ -264,8 +268,11 @@ production domain to be wired (Issue #43 / ADR-0014):
      and is not authenticated by this tool.
    - Attaching the manifest to the GitHub Release is a release-owner
      action under the same human gate as the release merge / tag /
-     Release publish (these are the sprint-cycle steps 10-11 in
-     `AGENTS.md` §6, not steps of this pre-merge checklist).
+     Release publish (the `Release PR merge human gate` rule in
+     `AGENTS.md` §6, not a step of this pre-merge checklist). The
+     release-tag comparison is that owner's command too, and an
+     unexecuted comparison is reported as "not executed" in the release
+     report — never as a PASS.
    - Verify a published manifest against the artifact you hold and the
      release tag itself with
      `pnpm run artifact:attestation:check -- --manifest=<path> --release-tag="v$(node -p "require('./package.json').version")"`.
@@ -347,7 +354,9 @@ updated directly.
   to the same GitHub Release under the same human gate. Verify it first
   with `--release-tag="v<version>"`, so the published manifest names the
   commit the tag points at. It records the CI production-mode Build
-  Output, is `unsigned`, and carries no credential; see
+  Output, is `unsigned`, and carries no credential; the Cloudflare-deployed
+  bytes stay outside the attested scope by owner decision (2026-10-19,
+  [attestation §8](security/supply-chain-artifact-attestation.md#8-既知の制約と-owner-決定)); see
   [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md) §7.
 - Update any downstream consumers (Tools submodules, RSS feeds,
   integration endpoints) according to their own release cadence.

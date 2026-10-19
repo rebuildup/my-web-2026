@@ -44,7 +44,8 @@ artifact を比べる」が build の揺らぎの diff にならない。
   GitHub Actions の `validate` job が production mode で build した
   `.cloudflare/output/v0` を記述する。Cloudflare Workers Builds が
   別に build / deploy する artifact の byte を hash し、その digest を
-  manifest と比べる経路は未配線である（§8-3）。この制限は manifest
+  manifest と比べる経路は無い（§8-3）。owner 決定（2026-10-19）で、この
+  範囲は本 Issue の外と確定している。この制限は manifest
   自身にも書き、`coverage.artifact_origin` と
   `coverage.deployed_bytes_attested: false` として公開 document に
   持たせる。`COVERAGE_UNSUPPORTED` / `COVERAGE_UNDECLARED` で
@@ -231,7 +232,9 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
   (`ci.yml`) は tag push を trigger しないので、この照合は
   release owner が tag を fetch した checkout で実行する。tag push を
   CI trigger にして gate を自動化するか（含意する runner 時間の
-  増分）は owner 判断として未決のまま扱う。
+  増分）は owner 決定（2026-10-19）で **自動化しない**。照合は
+  release owner が §8-3 の human gate 下で実行するコマンドであり、
+  未実行を PASS 扱いしない（release 報告に「未実行」と書く）。
   `AGENTS.md §6` の release PR merge human gate は変更しない。
 - CI の pull_request run は `actions/checkout` の merge commit を
   build するため、manifest の `source.commit` もその merge commit に
@@ -239,32 +242,45 @@ exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
 - secret SoT（Infisical）・Cloudflare Workers Builds の deploy 権限・
   release 承認のいずれも変更しない。
 
-## 8. 既知の制約と未決事項
+## 8. 既知の制約と owner 決定
 
-1. **署名は無い。** signing key / attestation service の導入は owner
-   判断であり、この Issue では実装しない。導入するまで manifest は
-   `unsigned` を明示する。
+owner 決定（2026-10-19、Issue #476 コメント
+[#476](https://github.com/rebuildup/my-web-2026/issues/476#issuecomment-6262116147) /
+PR #615 コメント
+[#615](https://github.com/rebuildup/my-web-2026/pull/615#issuecomment-6262115790)）で、
+attestation の対象範囲を **GitHub Actions の production-mode Build Output**
+に限定した。決定の要点は (a) 「実 artifact」の語を CI Build Output に
+限定し、Cloudflare deploy 済み byte の照合を本 Issue の外とする、
+(b) release-tag 照合は CI の必須 gate にせず release owner が human gate
+下で実行する（未実行は PASS 扱いしない）、(c) 署名 authority を導入せず
+`unsigned` を維持する、の 3 点である。この決定により、下列 1 / 3 は
+「未決」ではなく「決定済み」であり、決定記録としてここに残す。
+
+1. **署名は無い（owner 決定 2026-10-19）。** signing key /
+   attestation service は導入しない。manifest は `unsigned` を明示し、
+   署名を名乗る文書は `SIGNATURE_UNSUPPORTED` で FAIL する。署名の
+   真正性を必要とする導入は、別の Issue として owner が判断する。
 2. **deploy id の取得は呼び出し側の責任。** Workers Builds の deploy
    id は deploy 後にしか確定しない。`--deploy-id` で渡された値は
    status record であり、Cloudflare API で照合しない。`WORKERS_CI_BUILD_UUID`
    が環境にある場合は build UUID として記録する。
-3. **Cloudflare が実際に deploy した byte は照合しない（open decision）。**
-   現在の CI 生成は GitHub Actions の Build Output を対象とする。
-   release tag との照合（tag の commit と tag 名が宣言する version が
-   manifest の `source.commit` / `project.version` と一致すること）は
-   `--release-tag` として実装済みで fail-closed だが、Cloudflare Workers
-   Builds が build / deploy した artifact の digest 自体を照合する経路は
-   無い。Cloudflare の production build が GitHub Actions の build と
-   異なる場合（toolchain / cache / build input の drift）、CI gate は
-   PASS のまま deploy 済み byte は未 attestation のまま残る。この半分の
-   実装（build/deploy phase での manifest 生成、または deployed
-   artifact の hash と release tag の自動照合）は deploy 経路の変更を
-   要するため owner 判断とし、この Issue では実装しない。agent 側が
-   閉じられる範囲として、制約は manifest の `coverage` field として
-   公開 document 自身に埋め込み、検証側で fail closed に検査する
-   ようにした（真正性の裏付けであって、欠けた確認の代用ではない）。
-   owner には Issue #476 のコメントで (A) 範囲を CI production-mode
-   Build Output へ狭める承認 / (B) deploy phase での生成と自動照合の
-   2 選択肢を依頼している。
+3. **Cloudflare が実際に deploy した byte は照合しない（owner 決定
+   2026-10-19、範囲を CI Build Output に限定）。**
+   CI 生成が対象とするのは GitHub Actions の Build Output であり、それが
+   本 Issue で「実 artifact」と称するものである。release tag との照合
+   （tag の commit と tag 名が宣言する version が manifest の
+   `source.commit` / `project.version` と一致すること）は `--release-tag`
+   として実装済みで fail-closed である。Cloudflare Workers Builds が
+   build / deploy した artifact の digest 自体を照合する経路は無く、
+   owner 決定 (a) によりその実装（build/deploy phase での manifest
+   生成、または deployed artifact の hash）は本 Issue の範囲外とする。
+   残るリスクは明示しておく: Cloudflare の production build が GitHub
+   Actions の build と異なる場合（toolchain / cache / build input の
+   drift）、CI gate は PASS のまま deploy 済み byte は未 attestation で
+   残る。agent 側が閉じられる範囲として、この制約は manifest の
+   `coverage` field として公開 document 自身に埋め込み、検証側で
+   fail closed に検査している（真正性の裏付けであって、欠けた確認の
+   代用ではない）。deploy 済み byte の attestation が必要になった
+   時点で、別 Issue として deploy 経路の変更を owner が判断する。
 4. **GitHub Release への添付は自動化しない。** release PR merge / tag /
    Release publish と同じ human gate の下に置く。

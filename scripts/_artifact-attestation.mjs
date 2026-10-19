@@ -25,8 +25,10 @@
  * production-mode Build Output — and records
  * `coverage.deployed_bytes_attested: false` because the bytes
  * Cloudflare Workers Builds deploys are not compared here. That
- * limitation is an open owner decision; until it is resolved, it is a
- * field of the document rather than a paragraph someone may skip.
+ * limitation is a recorded owner decision (2026-10-19): the attested
+ * scope of Issue #476 is this CI production-mode Build Output, so the
+ * limitation is a field of the document rather than a paragraph
+ * someone may skip.
  *
  * Determinism
  * -----------

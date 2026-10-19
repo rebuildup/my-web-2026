@@ -37,6 +37,10 @@
  *                                (renamed / orphaned fixture element)
  *   scroll_anchor_missing        a scroll-contained target has no scroll
  *                                container to hide behind
+ *   scroll_anchor_clipped        the nearest ancestor that touches the
+ *                                inline axis *clips* (hidden / clip)
+ *                                instead of scrolling, so a wide target
+ *                                is cut off with no way to reach it
  *   viewport_overflow            the document scrolls horizontally
  *   target_overflow              a declared target crosses the content box
  *   gutter_policy_missing        `scrollbar-gutter: stable` is not applied
@@ -54,7 +58,7 @@
  *   gutter_not_observable        reserved gutter is 0px (overlay
  *                                scrollbars) — the shift rule cannot run
  *
- * The controls (`control-gutter`, `control-overflow`) are the same
+ * The controls (`control-gutter`, `control-overflow`, `control-clip`) are the same
  * document with one deliberate defect each. The CLI refuses to report a
  * pass unless every control is caught by the expected rule, so the
  * detector proves itself in the same run that uses it.
@@ -90,6 +94,12 @@ export const VARIANTS = {
 		id: 'control-overflow',
 		mustPass: false,
 		defect: 'a fixed 1200px block — the classic long-unbreakable-content overflow',
+	},
+	'control-clip': {
+		id: 'control-clip',
+		mustPass: false,
+		defect:
+			"the wide table's scroll container turned into a clip — the content is cut off with no way to scroll to it",
 	},
 };
 
@@ -284,6 +294,12 @@ html[data-stress-variant='control-gutter'] { scrollbar-gutter: auto; }
   height: 8px;
   background: #0ea5e9;
 }
+
+/* control-clip: keep the scroll container, take the scrolling away.
+   \`overflow-x: hidden\` clips the 480px table instead of offering a
+   scrollbar, and \`hidden\` is not user-scrollable — the content is
+   unreachable rather than contained. */
+html[data-stress-variant='control-clip'] .scroll-x { overflow-x: hidden; }
 `;
 
 /* ------------------------------------------------------------------ *
@@ -607,20 +623,31 @@ export function collectLayoutSnapshot(options) {
 
 	const targets = Array.from(document.querySelectorAll('[data-stress-target]')).map((element) => {
 		const rect = rectOf(element);
-		// Nearest ancestor that actually clips / scrolls on the inline
-		// axis. A target that declares itself scroll-contained is measured
-		// against the document content box only when it has no such
-		// ancestor, so the marker cannot be used to hide a real overflow.
+		/*
+		 * Nearest ancestor that touches the inline axis, and *how* it
+		 * touches it. A target that declares itself scroll-contained is
+		 * measured against the document content box only when a real
+		 * scroll container takes the overflow, so the marker cannot be
+		 * used to hide a real overflow.
+		 *
+		 * `hidden` / `clip` are deliberately NOT an anchor: they cut
+		 * the overflow off instead of letting the user reach it, so a
+		 * 480px table behind one is unreachable, not contained. The walk
+		 * stops at the nearest ancestor either way — a clipping box
+		 * nearer than a scrolling one already removes the content from
+		 * view, and a scrolling box farther out cannot bring it back.
+		 */
 		let scrollAnchor = null;
+		let clippingAnchor = null;
 		for (let parent = element.parentElement; parent; parent = parent.parentElement) {
 			const overflowX = getComputedStyle(parent).overflowX;
-			if (
-				overflowX === 'auto' ||
-				overflowX === 'scroll' ||
-				overflowX === 'hidden' ||
-				overflowX === 'clip'
-			) {
-				scrollAnchor = parent.getAttribute('data-stress-target') ?? parent.className ?? 'anonymous';
+			const name = parent.getAttribute('data-stress-target') || parent.className || 'anonymous';
+			if (overflowX === 'auto' || overflowX === 'scroll') {
+				scrollAnchor = name;
+				break;
+			}
+			if (overflowX === 'hidden' || overflowX === 'clip') {
+				clippingAnchor = name;
 				break;
 			}
 		}
@@ -628,6 +655,7 @@ export function collectLayoutSnapshot(options) {
 			id: element.getAttribute('data-stress-target'),
 			scrollContained: element.hasAttribute('data-stress-scroll-contained'),
 			scrollAnchor,
+			clippingAnchor,
 			...rect,
 		};
 	});
@@ -796,16 +824,33 @@ export function evaluateStressRun(run, policy = {}) {
 		const measured = measuredTargets.get(target.id);
 		if (!measured) continue;
 		if (measured.scrollContained) {
-			// Fail closed: a target may opt out of the content-box check
-			// only when it really does live inside a scroll container.
-			if (!measured.scrollAnchor) {
+			/*
+			 * Fail closed: a target may opt out of the content-box check
+			 * only when it really does live inside a scroll container.
+			 * A `hidden` / `clip` ancestor is not one — it hides the
+			 * overflow from the user instead of offering them a
+			 * scrollbar, so the opt-out is a layout break in its own
+			 * right and is reported as such.
+			 */
+			if (measured.scrollAnchor) {
+				continue;
+			}
+			if (measured.clippingAnchor) {
 				errors.push(
 					issue(
-						'scroll_anchor_missing',
-						`target "${target.id}" is declared scroll-contained but has no scroll container ancestor`,
+						'scroll_anchor_clipped',
+						`target "${target.id}" (${target.label}) is declared scroll-contained but its nearest inline-axis ancestor "${measured.clippingAnchor}" clips instead of scrolling, so the overflow is unreachable`,
+						{ clippingAnchor: measured.clippingAnchor },
 					),
 				);
+				continue;
 			}
+			errors.push(
+				issue(
+					'scroll_anchor_missing',
+					`target "${target.id}" is declared scroll-contained but has no scroll container ancestor`,
+				),
+			);
 			continue;
 		}
 		const overRight = measured.right - contentWidth;
@@ -941,5 +986,6 @@ export function requiredControlRules(controlId, environment = {}) {
 		return environment.gutterObservable === false ? ['gutter_policy_missing'] : ['content_shift'];
 	}
 	if (controlId === 'control-overflow') return ['viewport_overflow', 'target_overflow'];
+	if (controlId === 'control-clip') return ['scroll_anchor_clipped'];
 	throw new Error(`unknown control variant: ${controlId}`);
 }

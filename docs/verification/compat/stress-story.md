@@ -64,6 +64,7 @@ generation した CSS は 出荷済みの visual language（`src/styles.css` の
 | `stress_target_missing` | 宣言した target が計測されていない |
 | `stress_target_undeclared` | 計測された target が宣言に無い |
 | `scroll_anchor_missing` | scroll-contained を宣言した target にスクロールコンテナが無い |
+| `scroll_anchor_clipped` | scroll-contained を宣言した target の最も近いインライン軸の祖先が `overflow-x: hidden` / `clip` で、スクロールではなく**切り取る**。`hidden` はユーザーがスクロールできないので、480px の表は切り取られて到達不能になる（scroll anchor として受理しない） |
 | `viewport_overflow` | document が横スクロールする |
 | `target_overflow` | target がコンテンツボックスをはみ出す |
 | `gutter_policy_missing` | `scrollbar-gutter: stable` が適用されていない |
@@ -75,10 +76,23 @@ generation した CSS は 出荷済みの visual language（`src/styles.css` の
 gutter の実効性を観測できない環境では、shift 系は「測っていない」ので
 `gutter_not_observable` として残す（無言の合格にしない）。
 
+### scroll anchor は「スクロールするもの」だけを数える
+
+`data-stress-scroll-contained` は「この target はコンテンツボックスの検査から
+外してよい」という宣言なので、その opt-out を証明するのは**ユーザーが到達できる**
+スクロールコンテナだけである。祖先走査は最も近いインライン軸の祖先で打ち切り、
+`overflow-x: auto` / `scroll` だけを `scrollAnchor` として記録する。
+`hidden` / `clip` はスクロールを許さないので切り取りに過ぎず、
+`clippingAnchor` として別立ての `scroll_anchor_clipped` で落とす。
+これを anchor として受理していた前は、480px の表が `hidden` の裏に隠れたまま
+境界検査だけを飛ばし、document 側もはみ出さないので、baseline は**到達不能な表を
+綠のまま承認する**無言の合格になっていた。より外側のスクロールコンテナは
+救済にならない（内側で既に切れている）ので、その場合も `clipped` として落とす。
+
 ### control — 検出器が必ず落ちることを同じ実行で示す
 
 healthy な fixture とは別に、同じ document に意図的 defect を 1 つずつ注入した
-2 つの control を同じ実測経路に通し、**想定した rule で捕捉されること**を要求する。
+3 つの control を同じ実測経路に通し、**想定した rule で捕捉されること**を要求する。
 control が生き残れば `detector_unproven` として **exit 2**（= exit 1 の
 「fixture が壊れている」とは別の結果）。
 
@@ -86,6 +100,7 @@ control が生き残れば `detector_unproven` として **exit 2**（= exit 1 �
 | --- | --- | --- |
 | `control-gutter` | `scrollbar-gutter: auto` — 予約が解けて全幅が動く | `content_shift`（overlay scrollbar 環境では `gutter_policy_missing`） |
 | `control-overflow` | 固定幅 1200px のブロック | `viewport_overflow` + `target_overflow` |
+| `control-clip` | 表のスクロールコンテナを `overflow-x: hidden` に差し替える（スクロールを取り除く） | `scroll_anchor_clipped` |
 
 ## fixture の gutter policy は fixture 固有の宣言
 
@@ -150,6 +165,13 @@ CONTROL  control-overflow  (deliberate defect: a fixed 1200px block — the clas
   ERROR target_overflow: target "control-overflow-block" (control-overflow の固定幅ブロック) leaves the content box by 880.00px
   WARN  gutter_not_observable: this platform paints overlay scrollbars (reserved gutter 0px) — gutter reservation and shift cannot be measured here
 
+CONTROL  control-clip  (deliberate defect: the wide table's scroll container turned into a clip — the content is cut off with no way to scroll to it)
+  sections 10 · targets 21 · scrollWidth 320 / clientWidth 320 · scrollbar 0px · gutter declared "stable" (overlay scrollbars: shift not observable)
+  gutter probe gutter-band: 288.00px with scrollbar / 288.00px without (Δ 0.00px)
+  gutter probe gutter-container: 288.00px with scrollbar / 288.00px without (Δ 0.00px)
+  ERROR scroll_anchor_clipped: target "table" (最小幅を持つ表（scroll-contained）) is declared scroll-contained but its nearest inline-axis ancestor "table-scroller" clips instead of scrolling, so the overflow is unreachable
+  WARN  gutter_not_observable: this platform paints overlay scrollbars (reserved gutter 0px) — gutter reservation and shift cannot be measured here
+
 errors (0)
 ```
 
@@ -157,8 +179,8 @@ errors (0)
 
 | 対象 | どこで走る | 結果 |
 | --- | --- | --- |
-| `evaluateStressRun` の全 rule（38 cases） | `pnpm run test` → CI `validate` job | pass |
-| browser 半の gate（3 variant の実測） | `pnpm run compat:stress:check`（Chromium 必要） | baseline PASS / control 2 件捕捉 / exit 0 |
+| `evaluateStressRun` の全 rule（40 cases） | `pnpm run test` → CI `validate` job | pass |
+| browser 半の gate（4 variant の実測） | `pnpm run compat:stress:check`（Chromium 必要） | baseline PASS / control 3 件捕捉 / exit 0 |
 | report と WebP | `pnpm run verify:compat-stress-screenshot` | `docs/verification/compat/stress-story.webp` 生成 |
 
 この PR の記録した実行環境:
@@ -212,7 +234,7 @@ CI では「検出器が必ず落ちること」が毎回検証される。実�
   足りない場合は report を書かずに失敗する。キャプションは画像の主张なので、
   画素を伴わないまま「意図的 defect」を名乗ることを構造的に防ぐ。
 - 符号化: 1500px / quality 45（`scripts/_lazy-media-image.mjs` の 300 KB budget 内、
-  実測 271,536 B）。他の verification report が quality 80 を使うのに下回るのは、
+  実測 293,296 B）。他の verification report が quality 80 を使うのに下回るのは、
   11 枚の 320px viewport capture を含むため。page の幅を縮めたのであって、
   文字サイズを縮めたわけではない。
 

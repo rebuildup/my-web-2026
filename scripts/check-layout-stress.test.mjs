@@ -55,6 +55,7 @@ function defaultTargets(overrides = {}) {
 		height: 48,
 		scrollContained: target.scrollContained === true,
 		scrollAnchor: target.scrollContained === true ? 'table-scroller' : null,
+		clippingAnchor: null,
 		...overrides,
 	}));
 }
@@ -261,6 +262,48 @@ describe('evaluateStressRun — fail-closed rules', () => {
 		assert.ok(rules(result).includes('scroll_anchor_missing'));
 	});
 
+	/*
+	 * `overflow-x: hidden` / `clip` used to count as a scroll anchor,
+	 * which made the marker a way to *hide* a real break: the 480px
+	 * table would be cut off with no scrollbar for the user, the
+	 * content-box check would be skipped, and because nothing spilled
+	 * out of the document there would be no `viewport_overflow` either —
+	 * a green baseline for a table nobody can scroll to.
+	 */
+	it('fails when a scroll-contained target sits behind a clipping ancestor', () => {
+		for (const clippingAnchor of ['story', 'clip-box']) {
+			const result = evaluateStressRun(
+				healthyRun({
+					withScrollbar: {
+						targets: defaultTargets().map((target) =>
+							target.id === 'table' ? { ...target, scrollAnchor: null, clippingAnchor } : target,
+						),
+					},
+				}),
+			);
+			const clipped = result.errors.filter((error) => error.rule === 'scroll_anchor_clipped');
+			assert.equal(clipped.length, 1, clippingAnchor);
+			assert.match(clipped[0].message, /clips instead of scrolling/);
+			assert.deepEqual(clipped[0].detail, { clippingAnchor });
+			assert.ok(
+				!rules(result).includes('target_overflow'),
+				'the unreachable table is one defect, not a content-box error as well',
+			);
+		}
+	});
+
+	it('accepts a real scroll container and never one that only clips', () => {
+		const result = evaluateStressRun(healthyRun());
+		const table = result.errors.filter((error) => error.rule.startsWith('scroll_anchor'));
+		assert.deepEqual(table, []);
+		const source = collectLayoutSnapshot.toString();
+		// The browser half is the only place that can tell the two apart,
+		// so the split has to be visible there and nowhere else.
+		assert.match(source, /scrollAnchor = name/);
+		assert.match(source, /clippingAnchor = name/);
+		assert.match(source, /overflowX === 'hidden' \|\| overflowX === 'clip'/);
+	});
+
 	it('fails when the gutter declaration is not applied', () => {
 		const result = evaluateStressRun(
 			healthyRun({
@@ -317,10 +360,40 @@ describe('requiredControlRules', () => {
 			'viewport_overflow',
 			'target_overflow',
 		]);
+		assert.deepEqual(requiredControlRules('control-clip'), ['scroll_anchor_clipped']);
 	});
 
 	it('rejects an unknown control instead of defaulting to "nothing to prove"', () => {
 		assert.throws(() => requiredControlRules('control-nope'), /unknown control variant/);
+		assert.equal(
+			Object.keys(VARIANTS).filter((id) => VARIANTS[id].mustPass === false).length,
+			Object.keys(VARIANTS).length - 1,
+			'every variant but the baseline is a control, so none can escape its required rule',
+		);
+		for (const id of Object.keys(VARIANTS)) {
+			if (VARIANTS[id].mustPass) continue;
+			assert.doesNotThrow(() => requiredControlRules(id), id);
+			assert.ok(requiredControlRules(id).length > 0, `${id} must name the rule it exists for`);
+		}
+	});
+
+	it('declares the clip control as the only variant that removes the scroll', () => {
+		// The browser half is what proved `hidden` was accepted as an
+		// anchor, so the control that breaks it has to live in the CSS
+		// the browser loads — a synthetic snapshot cannot see this.
+		assert.match(
+			FIXTURE_CSS,
+			/html\[data-stress-variant='control-clip'\] \.scroll-x \{ overflow-x: hidden; \}/,
+		);
+		const baseline = renderStressFixture({ variant: 'baseline' });
+		const clip = renderStressFixture({ variant: 'control-clip' });
+		assert.match(baseline, /<html lang="ja" data-stress-variant="baseline">/);
+		assert.match(clip, /<html lang="ja" data-stress-variant="control-clip">/);
+		// The defect is CSS, not markup: the same table, the same
+		// scroll-container element, only what the ancestor does to it.
+		for (const html of [baseline, clip]) {
+			assert.match(html, /class="scroll-x" data-stress-target="table-scroller"/);
+		}
 	});
 
 	it('proves both controls are catchable by the same evaluator', () => {

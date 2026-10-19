@@ -15,9 +15,10 @@
  * Why the controls are not optional
  * ---------------------------------
  * A layout check that cannot fail is a screenshot with a green tint. So
- * every run also measures two deliberately broken variants of the same
- * document (`control-gutter`, `control-overflow`) and requires each to
- * be caught by a specific rule. A control that survives is reported as
+ * every run also measures the deliberately broken control variants of
+ * the same document (`control-gutter`, `control-overflow`,
+ * `control-clip`) and requires each to be caught by the rule it exists
+ * for. A control that survives is reported as
  * `detector_unproven` with exit code 2 — deliberately different from the
  * exit 1 that means "the fixture is broken", so a reviewer can tell the
  * two apart.

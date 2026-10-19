@@ -97,7 +97,7 @@ const MIN_CONTROL_DEFECT_PIXELS = 100;
 const CONTROL_CONTEXT_PX = 150;
 
 const REPRODUCTION = [
-	'pnpm run compat:stress:check                                # the gate (exit 0, two controls caught)',
+	'pnpm run compat:stress:check                                # the gate (exit 0, every control caught)',
 	'node scripts/check-layout-stress.mjs --json                 # machine-readable result',
 	'node --test scripts/check-layout-stress.test.mjs            # fixture suite for the fail-closed rules',
 	'pnpm run verify:compat-stress-screenshot                    # regenerate this report + WebP',
@@ -377,7 +377,7 @@ function render(result, captures, sizes) {
     独立した静的 fixture（Worker / route / dev server に依存しない）を
     <b>${result.viewport.width}px 幅・スクロールバー常時表示</b> で実測し、
     <b>${escapeHtml(result.chromium ?? 'unknown')}</b> で layout が壊れていないかを判定します。
-    同じ fixture に意図的 defect を 1 つずつ注入した 2 つの control を同じ実測経路に通し、
+    同じ fixture に意図的 defect を 1 つずつ注入した ${controls.length} つの control を同じ実測経路に通し、
     <b>検出器が必ず失敗すること</b>を同じ実行で証明しています（control が生き残れば
     <code>detector_unproven</code> で exit 2）。
     判定は純関数（<code>evaluateStressRun</code>）なので、fixture suite でも全ルールが
@@ -424,7 +424,7 @@ ${figure(captures.control, 'control-overflow — 末尾に注入した固定幅 
   <h2>再現コマンド / URL</h2>
   <pre>${REPRODUCTION.map((line) => escapeHtml(line)).join('\n')}</pre>
   <p class="sub">
-    期待結果: <code>pnpm run compat:stress:check</code> が exit 0（baseline = PASS、control 2 件はいずれも想定ルールで捕捉）。
+    期待結果: <code>pnpm run compat:stress:check</code> が exit 0（baseline = PASS、control ${controls.length} 件はいずれも想定ルールで捕捉）。
     fixture の URL は <code>file://$PWD/.tmp/layout-stress/baseline.html</code>（<code>--width 375</code> 等で幅を変えても同じ判定経路を通る）。
     生成物: ${escapeHtml(sizes.join(' · '))}
   </p>

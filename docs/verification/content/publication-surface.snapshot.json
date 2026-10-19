@@ -748,6 +748,7 @@
 				"files": [
 					"src/contact/channels.json",
 					"src/editorial/nav/route-labels.ts",
+					"src/editorial/social-card/contract.json",
 					"src/editorial/structured-data/contract.json",
 					"src/http/outbound-fetch.ts",
 					"src/http/seo/README.md",
@@ -981,58 +982,13 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [
-			"https://*.analytics.google.com",
-			"https://*.google-analytics.com",
-			"https://*.googletagmanager.com",
-			"https://www.googletagmanager.com"
-		],
+		"addedExternalUrls": [],
 		"removedExternalUrls": [],
-		"addedExternalHosts": [
-			"*.analytics.google.com",
-			"*.google-analytics.com",
-			"*.googletagmanager.com"
-		],
+		"addedExternalHosts": [],
 		"removedExternalHosts": [],
 		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
-		"findings": [
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host *.analytics.google.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host *.google-analytics.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "E004 external-host-added",
-				"severity": "error",
-				"message": "New external host *.googletagmanager.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`."
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://*.analytics.google.com"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://*.google-analytics.com"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://*.googletagmanager.com"
-			},
-			{
-				"code": "W002 external-url-added",
-				"severity": "warn",
-				"message": "External URL added: https://www.googletagmanager.com"
-			}
-		]
+		"findings": []
 	}
 }

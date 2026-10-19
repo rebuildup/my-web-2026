@@ -64,6 +64,14 @@ gates:
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).
       - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
+      # Issue #421: the Open Graph / Twitter card contract. Cheap by
+      # design (pure Node): it proves every route the router serves has
+      # a declared card state, that the declared fallback card is a real
+      # committed asset, and that a surface Issue #421 names but the
+      # repository does not have (記事) stays an explicit declaration
+      # rather than a silent gap. The document side of the same engine is
+      # `test/integration/ogp-card.test.ts`, inside the `test` component.
+      - 'pnpm run ogp:card:check'
       # Issue #419: the SEO HTTP STATUS contract. Offline and
       # read-only like the index boundary above, but it answers a
       # different question: what STATUS the Worker must answer with for

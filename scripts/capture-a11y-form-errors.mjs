@@ -79,6 +79,13 @@ export const STORY_EXPORT = 'Gallery';
 /** Readiness marker the capture waits for before taking the screenshot. */
 export const GALLERY_TEST_ID = 'a11y-form-error-gallery';
 
+/**
+ * The failure panel, snapshotted as an accessibility tree so the
+ * report records what the browser resolved (label, description, link
+ * targets) instead of only what the markup intended.
+ */
+export const FAILURE_PANEL_TEST_ID = 'a11y-form-error-failure';
+
 export const HARNESS_DIR = '.tmp/a11y-form-errors/harness';
 export const HARNESS_DIST = '.tmp/a11y-form-errors/harness-dist';
 
@@ -341,6 +348,9 @@ async function main() {
 				// the capture would photograph an empty page and still write a
 				// plausible-looking artefact.
 				await page.waitForSelector(`[data-testid="${GALLERY_TEST_ID}"]`, { timeout: 30_000 });
+				const accessibilitySnapshot = await page
+					.locator(`[data-testid="${FAILURE_PANEL_TEST_ID}"]`)
+					.ariaSnapshot();
 				const png = await page.screenshot({ fullPage: true, type: 'png' });
 				const outPath = resolve(REPO_ROOT, options.screenshot);
 				ensureDir(options.screenshot);
@@ -360,6 +370,7 @@ async function main() {
 					width: meta.width ?? null,
 					height: meta.height ?? null,
 					quality: SCREENSHOT_QUALITY,
+					accessibilitySnapshot,
 					...verdict,
 				};
 				// The intermediate PNG never reaches the repository.
@@ -394,6 +405,8 @@ async function main() {
 			maxWidth: SCREENSHOT_MAX_WIDTH,
 			quality: SCREENSHOT_QUALITY,
 			budgetBytes: SCREENSHOT_BUDGET_BYTES,
+			accessibilitySnapshot:
+				'`.tmp/a11y-form-errors/report.json#capture.accessibilitySnapshot` (Chromium ariaSnapshot of the failure panel)',
 			issuePathSubstituted: 'docs/verification/a11y/form-error-story.png -> .webp',
 			reproducible:
 				'the encode step is deterministic; the browser capture is not byte-reproducible',

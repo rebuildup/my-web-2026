@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, it } from 'node:test';
 import {
+	FAILURE_PANEL_TEST_ID,
 	GALLERY_TEST_ID,
 	HARNESS_DIR,
 	HARNESS_DIST,
@@ -120,6 +121,9 @@ describe('capture-a11y-form-errors — harness', () => {
 		// A readiness signal is what stops the capture from writing a blank
 		// page that still looks like evidence.
 		assert.equal(GALLERY_TEST_ID, 'a11y-form-error-gallery');
+		// The failure panel is the accessibility snapshot source, so its
+		// marker is part of the contract, not an incidental attribute.
+		assert.equal(FAILURE_PANEL_TEST_ID, 'a11y-form-error-failure');
 		assert.match(STORY_MODULE, /^src\/editorial\/forms\//);
 	});
 });

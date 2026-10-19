@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { css } from '../../../styled-system/css';
 
 /**
@@ -53,7 +53,10 @@ export interface ErrorSummaryProps {
 	errors: readonly FormErrorEntry[];
 	/** Heading level, so the summary sits correctly in the page outline. */
 	headingLevel?: 2 | 3 | 4;
-	/** Id for the heading; the summary is labelled by it. */
+	/**
+	 * Id for the heading; the summary is labelled by it. Omit to derive
+	 * a unique id, so two summaries in one document never collide.
+	 */
 	headingId?: string;
 	/**
 	 * Test hook. A caller that adopts the summary for a screen it
@@ -84,23 +87,25 @@ export function ErrorSummary({
 	heading,
 	errors,
 	headingLevel = 3,
-	headingId = 'form-error-summary-heading',
+	headingId,
 	testId = 'form-error-summary',
 	dataAttributes,
 	children,
 }: ErrorSummaryProps) {
+	const generatedHeadingId = useId();
 	if (errors.length === 0) return null;
+	const resolvedHeadingId = headingId ?? `form-error-summary-${generatedHeadingId}`;
 	const Heading = `h${headingLevel}` as 'h2' | 'h3' | 'h4';
 	return (
 		<div
 			role="alert"
 			tabIndex={-1}
-			aria-labelledby={headingId}
+			aria-labelledby={resolvedHeadingId}
 			data-testid={testId}
 			{...dataAttributes}
 			className={summaryClassName}
 		>
-			<Heading id={headingId} className={headingClassName}>
+			<Heading id={resolvedHeadingId} className={headingClassName}>
 				{heading}
 			</Heading>
 			<ul className={listClassName}>

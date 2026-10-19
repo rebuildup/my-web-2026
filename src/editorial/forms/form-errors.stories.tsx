@@ -180,17 +180,21 @@ function GalleryStory() {
 				state="失敗 — form-level summary plus per-field sentences"
 				criterion="WCAG 2.2 3.3.1 + 4.1.3 (Status Messages): the refusal is announced ONCE, by a role=「alert」 summary at the top of the form, and each entry links to the control it is about. The same sentence is repeated next to the field for anyone who navigates straight there; only the summary is a live region, so nothing is read twice."
 			>
-				<form className={formClassName} action="#">
+				{/* Every panel shares one document, so a name is global: the
+				    failure panel must not reuse 正常's `email` / `password`
+				    ids, or its label and summary link would resolve to the
+				    first panel's controls. */}
+				<form className={formClassName} action="#" data-testid="a11y-form-error-failure">
 					<ErrorSummary
 						heading="招待を作成できませんでした"
 						errors={[
 							{
-								field: 'email',
+								field: 'failure-email',
 								label: 'Email',
 								message: 'この email は既に登録されています。',
 							},
 							{
-								field: 'password',
+								field: 'failure-password',
 								label: 'Password',
 								message: 'パスワードが短すぎます (8 文字以上)。',
 							},
@@ -198,7 +202,7 @@ function GalleryStory() {
 						]}
 					/>
 					<TextField
-						name="email"
+						name="failure-email"
 						label="Email"
 						type="email"
 						autoComplete="email"
@@ -207,7 +211,7 @@ function GalleryStory() {
 						error="この email は既に登録されています。"
 					/>
 					<TextField
-						name="password"
+						name="failure-password"
 						label="Password"
 						type="password"
 						autoComplete="new-password"

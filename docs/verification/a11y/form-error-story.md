@@ -23,9 +23,9 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
 を commit した。`scripts/capture-a11y-form-errors.mjs` は `.webp` 以外の出力先を拒否し、
 中間 PNG は削除する。
 
-この画像は**実表示**の記録である。§4 の機械検査（markup / 属性）と §5 の人間の評価（実際に
-支援Chlorium で読み上げた結果と文言の判断）は別のレイヤであり、どちらか片方だけで
-「満たしている」と主张してはいない。
+この画像は**実表示**の記録である。§4 の機械検査（markup / 属性 / Chromium の
+accessibility snapshot）と §5 の人間の評価（実スクリーンリーダーでの読み上げと文言の
+判断）は別のレイヤであり、どちらか片方だけで「満たしている」と主張してはいない。
 
 ## 2. 画面が示している状態（5 つ）
 
@@ -51,9 +51,9 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
 | フォーム | 直前の欠陥 | 適用後 |
 | --- | --- | --- |
 | `/admin/login` | 説明なし、`autoComplete` なし、refused `?returnTo=` は無地の `<output>` | `TextField` x2（`username` / `current-password`）、refusal は `<form>` **内**の form-level 要約（form navigation から届く必要があり、form の外側の字幕だと届かない） |
-| `/admin/invitations`（作成） | **label が無く placeholder のみ**、サーバー refusal は form 外の無地 `<p>` | `TextField`（`email`）+ 要約。`email_already_registered` は field  refined、それ以外は form  refined |
+| `/admin/invitations`（作成） | **label が無く placeholder のみ**、サーバー refusal は form 外の無地 `<p>` | `TextField`（`email`）+ 要約。`email_already_registered` は該当 field に紐付け、それ以外は form-level の refusal |
 | `/admin/invitations/accept` | refusal が form 末尾の無地 `<p>`。どの control が悪いか不明 | 要約 + `weak_password` のみ password control に `aria-invalid` |
-| `/admin/images`（upload） | `role="alert"` が field error と二重、label はあったが説明なし | `FileField` + 要約（client 3 gate と server policy code を全て field refined に集約） |
+| `/admin/images`（upload） | `role="alert"` が field error と二重、label はあったが説明なし | `FileField` + 要約（client 3 gate と server policy code を全て該当 field に集約） |
 
 
 エラーメッセージの**文言は変更していない**（`describeUploadFailure` / `FAILURE_COPY` / 分類器が
@@ -66,11 +66,17 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
 | 検査 | 場所 | 内容 |
 | --- | --- | --- |
 | 契約の純関数 | `src/editorial/forms/contract.test.tsx` | id 派生、空文字 message の扱い、`aria-describedby` の順序、`aria-invalid` の出し分け |
-| SSR markup | `src/editorial/forms/forms.test.tsx` | `react-dom/server` の出力に「宣言された id だけ」を参照する `<label for>` / `aria-describedby` が書かれているか、`role="alert"` が 1 つだけか |
-| 招待受諾フォーム | `src/admin/invitations/accept-view.client.test.tsx` | 実 DOM 上で submit → 要約・`aria-invalid`・再提出時に reflace が消えること、refusal でない field が invalid にならないこと |
+| SSR markup | `src/editorial/forms/forms.test.tsx` | `react-dom/server` の出力に「宣言された id だけ」を参照する `<label for>` / `aria-describedby` が書かれているか、`role="alert"` が 1 つだけか、複数の summary が heading id を共有しないか |
+| 招待受諾フォーム | `src/admin/invitations/accept-view.client.test.tsx` | 実 DOM 上で submit → 要約・`aria-invalid`・再提出時に refusal 表示が消えること、refusal でない field が invalid にならないこと |
 | 画像アップロード | `src/admin/images/images.client.test.tsx` | 実 DOM + 実 File で空・size・形式・server policy code の 4 refusal、および成功時に state が解除されること |
 | capture harness | `scripts/capture-a11y-form-errors.test.mjs` | WebP 拒否・サイズ budget・story を直接 import すること・静的配信の traversal 拒否 |
 | 静的解析 | `pnpm run lint:check`（Biome `a11y/*` ルール） | label / role に関する機械が決められる違反 |
+| Gallery の同一性 | `src/editorial/forms/forms.test.tsx` | 5 パネルを 1 文書として SSR し、id が全て一意であること、要約の各リンク先が同じ `<form>` 内の control であることを固定 |
+
+`src/admin/invitations/accept-view.client.test.tsx` と `src/admin/images/images.client.test.tsx` は
+`pnpm run test:client`（happy-dom）で 10 tests pass するが、`pnpm test` は `*.client.test.*` を
+除外し、CI にも `test:client` の step は無い。したがってこの 2 suite は現時点では**手動実行のみ**で、
+CI の回帰ゲートには入っていない（CI へ組み込むかは別 Issue の判断）。
 
 検証用に実 Chromium で採取した値（`Gallery` の 4 段目、1440px）:
 
@@ -78,18 +84,33 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
 - alert "招待を作成できませんでした":
   - heading "招待を作成できませんでした" [level=3]
   - list:
-    - listitem: link "Email" → /url: "#email"  / text: ": この email は既に登録されています。"
-    - listitem: link "Password" → /url: "#password" / text: ": パスワードが短すぎます (8 文字以上)。"
+    - listitem:
+      - link "Email":
+        - /url: "#failure-email"
+      - text: ": この email は既に登録されています。"
+    - listitem:
+      - link "Password":
+        - /url: "#failure-password"
+      - text: ": パスワードが短すぎます (8 文字以上)。"
     - listitem: "招待の作成: 作成に失敗しました。"
 - text: Email
 - paragraph: 招待するアカウントのメールアドレス。
-- textbox [invalid]
+- textbox "Email" [invalid]
 - paragraph: この email は既に登録されています。
+- text: Password
+- paragraph: 8 文字以上。
+- textbox "Password" [invalid]
+- paragraph: パスワードが短すぎます (8 文字以上)。
+- button "Create invitation"
 ```
+
+（`pnpm run capture:a11y:form-errors` が `.tmp/a11y-form-errors/report.json` の
+`capture.accessibilitySnapshot` に同じ tree を書き出す。手で転記したものではない。）
 
 - 読み上げられる label は `Email` であり `Email必須` ではない（「必須」マーカーは `aria-hidden`）。
 - invalid な control だけが `[invalid]` として出る。
-- 360px 幅でも `document.scrollWidth - innerWidth = 0`、overflow による切り詰め要素 0 個。
+- 要約のリンクは `#failure-email` / `#failure-password` を指し、どちらも同じ form 内の control に解決する。
+- この capture は 1440px のみ。360px / 200% ズームでの reflow は未採取（§5）。
 
 ## 5. 人間の評価が必要な部分（機械では判定できない）
 
@@ -99,7 +120,7 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
 | 実ブラウザの constraint validation（required 空欄） | `noValidate` を付けておらず、ブラウザ標準の検証はそのまま残した | 実ブラウザでの空欄 submit 挙動の確認（Playwright の `input.checkValidity` 相当） |
 | 色だけに依存していないか（1.4.1） | error は文字マーカー + 太字 + 太い border + 文言の 4 経路で表現 | グレースケール表示・高コントラスト環境での目視確認 |
 | 要約へフォーカスを移すべきか | `role="alert"` で 1 回だけ読み上げ、要約内 link は tab 到達可能、という設計にした（focus を動かさない） | 実利用者が「Tab で要約に到達する」体験として十分か |
-| 縮小表示の実機挙動 | 360px / 1440px の 2 点で overflow 0 を確認 | 200% ズーム・`prefers-reduced-motion` 併用時の目視 |
+| 縮小表示の実機挙動 | 1440px の capture で dense row を確認 | 360px / 200% ズーム・`prefers-reduced-motion` 併用時の実測（未採取） |
 
 ## 6. 適用していないフォームと理由
 
@@ -124,7 +145,10 @@ Issue は `.png` 経路を指定しているが、Playwright は WebP を書け�
    `.tmp/` の harness 経由。`build-storybook` 自体は `validate:integration` で走る。
 5. E2E（`e2e/admin-form-a11y.spec.ts`）は `ui-change` label 付きで CI が実行する。local では
    preview server が dev secret を要求するため実行できない（secret は値ごと取得しない）。
-6. `/admin/images` の成功パスに **既存の latent bug を 1 件修正**した: submit handler が
+6. **client test は CI に入っていない**: `accept-view.client.test.tsx` / `images.client.test.tsx` は
+   `pnpm run test:client` でしか実行されず、CI の `validate` は `pnpm test`（workerd pool）のみ。
+   CI への組み込みは本 PR の範囲外とした。
+7. `/admin/images` の成功パスに **既存の latent bug を 1 件修正**した: submit handler が
    `await` の後に `e.currentTarget` を読んでいたため（React は dispatch 後に
    `currentTarget` を null にする）、アップロード成功時に必ず例外になり「アップロードに
    失敗しました。」が出ていた。form 要素を `await` 前に捕捉する形に変更。

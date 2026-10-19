@@ -1,7 +1,9 @@
+import type { ReactNode } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import { ErrorSummary } from './ErrorSummary';
 import { FileField, TextField } from './Field';
+import { Gallery } from './form-errors.stories';
 
 /**
  * SSR markup contract for the form primitives (Issue #404).
@@ -175,8 +177,9 @@ describe('ErrorSummary (Issue #404)', () => {
 			/>,
 		);
 		expect(html.match(/role="alert"/g)).toHaveLength(1);
-		expect(html).toContain('aria-labelledby="form-error-summary-heading"');
-		expect(html).toContain('<h2 id="form-error-summary-heading"');
+		const labelledBy = attributeOf(html, /<div[^>]*role="alert"[^>]*>/, 'aria-labelledby');
+		expect(labelledBy).not.toBeNull();
+		expect(html).toContain(`<h2 id="${labelledBy}"`);
 		expect(html).toContain('href="#email"');
 		expect(html).toContain('href="#password"');
 		// The link text is the visible label, never a bare field name a
@@ -195,6 +198,24 @@ describe('ErrorSummary (Issue #404)', () => {
 		expect(html).not.toContain('<a ');
 	});
 
+	it('gives each summary its own heading id when two share a document', () => {
+		const html = renderToStaticMarkup(
+			<>
+				<ErrorSummary
+					heading="送信できません"
+					errors={[{ label: '送信', message: '失敗しました。' }]}
+				/>
+				<ErrorSummary
+					heading="保存できません"
+					errors={[{ label: '保存', message: '失敗しました。' }]}
+				/>
+			</>,
+		);
+		const labelledBy = [...html.matchAll(/aria-labelledby="([^"]+)"/g)].map((match) => match[1]);
+		expect(labelledBy).toHaveLength(2);
+		expect(new Set(labelledBy).size).toBe(2);
+	});
+
 	it('keeps a caller-owned test hook and machine-readable facts', () => {
 		const html = renderToStaticMarkup(
 			<ErrorSummary
@@ -206,5 +227,40 @@ describe('ErrorSummary (Issue #404)', () => {
 		);
 		expect(html).toContain('data-testid="return-to-rejected"');
 		expect(html).toContain('data-reject-reason="external_origin"');
+	});
+});
+
+/**
+ * The Gallery is one document with five panels, so its ids are global.
+ *
+ * This fixture is what the committed verification screenshot renders;
+ * a duplicated `name` here silently rebinds the second panel's label,
+ * description and summary link to the first panel's control, which is
+ * exactly the defect the gallery exists to demonstrate is absent. The
+ * shipped routes have unique names per form, so the gallery must model
+ * that rather than hide the collision.
+ */
+describe('form-error Gallery — one document, unique identities (Issue #404)', () => {
+	const html = renderToStaticMarkup((Gallery.render as unknown as () => ReactNode)());
+
+	it('keeps every id unique across all five panels', () => {
+		const ids = [...html.matchAll(/\sid="([^"]*)"/g)].map((match) => match[1]);
+		expect(ids.length).toBeGreaterThan(0);
+		expect(new Set(ids).size).toBe(ids.length);
+	});
+
+	it('points every summary entry at a control inside the same form', () => {
+		const forms = [...html.matchAll(/<form[\s\S]*?<\/form>/g)].map((match) => match[0]);
+		const summaryForms = forms.filter((form) => form.includes('role="alert"'));
+		expect(summaryForms).toHaveLength(1);
+		const summaryForm = summaryForms[0];
+		const links = [...summaryForm.matchAll(/href="#([^"]+)"/g)].map((match) => match[1]);
+		expect(links.length).toBeGreaterThan(0);
+		const ids = declaredIds(summaryForm);
+		for (const target of links) {
+			expect(ids.has(target)).toBe(true);
+			expect(summaryForm).toContain(`id="${target}"`);
+			expect(summaryForm).toMatch(new RegExp(`<input[^>]*id="${target}"`));
+		}
 	});
 });

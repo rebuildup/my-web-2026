@@ -27,9 +27,18 @@ import { REACTIONS_MIGRATIONS } from '../helpers/reactions-schema';
  *     the fifth section, far below the fold.
  *
  * The positive control matters as much as the negative assertions:
- * `/tools/<slug>` MUST still mount its iframe immediately. A "lazy"
- * contract that also removed the Tool shell would satisfy every
- * assertion above while breaking the product.
+ * `/tools/<slug>` MUST still mount its iframe as soon as the visitor
+ * asks for the Tool. A "lazy" contract that also removed the Tool
+ * shell would satisfy every assertion above while breaking the product.
+ *
+ * Issue #498 refines what "asks for the Tool" means, without weakening
+ * this contract: a Tool that DECLARES third-party contacts renders a
+ * consent notice and no frame until the visitor activates the load,
+ * because mounting it would spend the visitor's network on Google /
+ * Adobe / Apps Script before anyone touched anything. A Tool that
+ * declares no contact still mounts eagerly, and that is the positive
+ * control below. Activation itself is a browser question and lives in
+ * `e2e/tools-prototype.spec.ts` / `e2e/lazy-media.spec.ts`.
  *
  * Element scope, not document scope
  * ---------------------------------
@@ -89,6 +98,18 @@ const TOOL_ARTIFACT_PATHS = listAllTools().flatMap((tool) =>
 const DISABLED_TOOL = listAllTools().find((tool) => tool.delivery.kind === 'host_disabled');
 
 /**
+ * An embeddable Tool whose manifest entry declares NO third-party
+ * origin (Issue #498), i.e. the one whose shell still mounts its
+ * iframe on the server. Read from the manifest rather than hard-coded
+ * so the positive control follows the declaration instead of a slug.
+ */
+const UNGATED_TOOL = listAllTools().find(
+	(tool) =>
+		tool.delivery.kind === 'same_origin_static' &&
+		(tool.delivery.privacy?.third_party_origins?.length ?? 0) === 0,
+);
+
+/**
  * Width of the counter digit strip (`DIGIT_SLOTS` in
  * `src/home/access/tiles.tsx`). Mirrored rather than imported because
  * the import would make this contract depend on a private constant of
@@ -117,15 +138,21 @@ async function fetchDocument(path: string): Promise<string> {
 let home: string;
 let toolsIndex: string;
 let toolRoute: string;
+let ungatedToolRoute: string;
 let disabledRoute: string;
 
 beforeAll(async () => {
 	await applyD1Migrations(D1(), REACTIONS_MIGRATIONS);
 	expect(DISABLED_TOOL, 'manifest must keep at least one host_disabled Tool').toBeDefined();
-	[home, toolsIndex, toolRoute, disabledRoute] = await Promise.all([
+	expect(
+		UNGATED_TOOL,
+		'the manifest must keep at least one embeddable Tool that declares no third-party contact',
+	).toBeDefined();
+	[home, toolsIndex, toolRoute, ungatedToolRoute, disabledRoute] = await Promise.all([
 		fetchDocument('/'),
 		fetchDocument('/tools'),
 		fetchDocument('/tools/prototype'),
+		fetchDocument(`/tools/${UNGATED_TOOL?.slug}`),
 		fetchDocument(`/tools/${DISABLED_TOOL?.slug}`),
 	]);
 });
@@ -180,14 +207,29 @@ describe('lazy media / iframe contract (Issue #487)', () => {
 		}
 	});
 
-	it('the Tool iframe still mounts eagerly on /tools/<slug> (positive control)', () => {
-		const html = markup(toolRoute);
+	it('a Tool that declares no third-party contact mounts its iframe eagerly (positive control)', () => {
+		// `readmark` declares an empty contact list (Issue #498), so
+		// nothing about it needs a gate: the eager shell is still the
+		// contract, and a regression that gated EVERY Tool would fail
+		// here rather than pass silently.
+		const html = markup(ungatedToolRoute);
 		const iframes = [...html.matchAll(/<iframe\b[^>]*>/gi)].map((match) => match[0]);
 		expect(iframes).toHaveLength(1);
-		expect(iframes[0]).toContain('src="/tools/prototype/app/index.html"');
+		expect(iframes[0]).toContain('src="/tools/readmark/app/index.html"');
 		// The shell keeps its sandbox; making the shell lazy is not a
 		// licence to relax the Tool isolation contract.
 		expect(iframes[0]).toContain('sandbox="allow-scripts"');
+	});
+
+	it('a Tool that declares third-party contacts mounts no frame before activation (#498)', () => {
+		// ProtoType's artefact pulls Google Fonts / Typekit / Apps Script
+		// on load, so the SSR document is the consent notice and nothing
+		// else. This is the media contract's own rule applied to the
+		// third-party dimension: no subresource fetch starts on load.
+		const html = markup(toolRoute);
+		expect(html).not.toMatch(EMBEDDED_MEDIA);
+		expect(html).not.toContain('/app/index.html');
+		expect(html).toContain('data-testid="tool-embed-consent"');
 	});
 
 	it('a host_disabled Tool mounts no iframe and no artifact', () => {

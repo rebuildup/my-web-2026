@@ -60,6 +60,12 @@ test.describe('Tool Registry — /tools index (Issue #80, #195)', () => {
 		await page.goto('/tools');
 		await page.locator('[data-tool-slug="prototype"] a').click();
 		await page.waitForURL('/tools/prototype');
+		// Issue #498: ProtoType declares third-party contacts, so the
+		// shell opens with the consent notice and no frame. Reaching the
+		// Tool is two steps now — the notice, then the load — and the
+		// gate itself is asserted in e2e/tools-prototype.spec.ts.
+		await expect(page.getByTestId('tool-embed-consent')).toBeVisible();
+		await page.getByTestId('tool-embed-consent-activate').click();
 		await expect(page.locator('iframe[title="ProtoType Tool"]')).toBeVisible();
 	});
 });

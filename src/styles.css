@@ -224,19 +224,52 @@
 }
 
 /*
- * Reduced-motion override for the access-counter digit roll-up
- * animation (`animationName: counterDigitRoll` in
- * `src/home/access/tiles.tsx`). Visitors who opt out of motion see
- * the digits already in place — no transform, no fade.
+ * Reduced-motion policy (Issue #403) — two layers, and both matter.
  *
- * This sits outside the Panda `@layer base` block because the
- * animation is emitted by Panda into the `utilities` layer; the
- * later specificity wins regardless, but we keep it at root scope
- * so the override applies to every Panda-emitted `animation-name`
- * rule on the page.
+ * Layer 1 (this block, first rule) is the FLOOR for every surface:
+ * under `prefers-reduced-motion: reduce` no box on the page animates
+ * or transitions for a perceptible length of time, and `scroll-behavior`
+ * returns to `auto`. `0.01ms` rather than `none` is deliberate: a
+ * `none` animation never fires `animationend`, so any future JS that
+ * waits for that event to advance a state machine would hang forever
+ * on exactly the visitors who asked for less motion.
+ *
+ * `:where()` keeps the selector at zero specificity so the rule cannot
+ * start competing with component styling; the `!important`s are what
+ * make it win, because Panda emits its utilities into the `utilities`
+ * @layer while this block is unlayered — an unlayered declaration
+ * beats a layered one regardless of specificity. That is also why the
+ * block stays at root scope instead of moving into a layer.
+ *
+ * Layer 2 is per-component: the component that creates motion asks
+ * `usePrefersReducedMotion()` (`src/editorial/reduced-motion.ts`) and
+ * emits no `animation-name` at all, so the reduced-motion document is
+ * the resting markup. This block cannot express that — a stylesheet
+ * cannot un-emit a property — and the component opt-out cannot be
+ * asserted in a unit test. `scripts/check-reduced-motion.mjs` requires
+ * both layers to exist for every motion surface.
  */
 @media (prefers-reduced-motion: reduce) {
-	:where([data-testid="home-access-counter-tile"] img) {
+	:where(*, *::before, *::after) {
+		animation-duration: 0.01ms !important;
+		animation-delay: 0ms !important;
+		animation-iteration-count: 1 !important;
+		transition-duration: 0.01ms !important;
+		transition-delay: 0ms !important;
+		scroll-behavior: auto !important;
+	}
+}
+
+/*
+ * Layer 2, the access-counter digit roll-up (`animationName:
+ * counterDigitRoll` in `src/home/access/tiles.tsx`). The selector
+ * names the component's `data-motion` hook rather than its
+ * `data-testid`, so the presentation rule cannot break when a test
+ * renames a hook, and it survives the `css()` call being refactored
+ * into a `.styles.ts` module.
+ */
+@media (prefers-reduced-motion: reduce) {
+	:where([data-motion="counter-roll"]) img {
 		animation: none !important;
 	}
 }

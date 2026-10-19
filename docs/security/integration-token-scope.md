@@ -99,6 +99,13 @@ verdict は 5 状態で、`approved` だけが許可される。
 | `reauth_required` | `grant_revoked` / `token_expired` / `token_age_exceeds_retention` / `issued_at_missing` / `connection_metadata_unreadable` / `provider_requires_reauth` | grant が dead / 古い / 読めない | 再認証 |
 | `unknown_integration` | `unknown_integration` | reviewed requirement がない service | review するか失効させる（**既定は拒否**） |
 
+`connection_metadata_unreadable` は「読めない」ための code であり、field が無い
+ための code ではない。`issued_at` / `revoked_at` / `expires_at` のどれかが「値は
+あるが instant として解釈できない」場合、adapter は再認証を要求する。row が
+truncate された・column の移行が壊れた、等々，即便 `revoked_at` を「revoke
+されていない」と読むことはないので、revoke 済み token が黙って復活することは
+ない。
+
 優先順位は `unknown_integration` → `unapproved_scope` → `insufficient_scope`
 → `reauth_required`。**最小権限は liveness より強い**——revoke 済みでも scope が
 広ければ scope 拒否が先に出る。ただし理由リストは捨てないので `review.reauth`
@@ -136,7 +143,7 @@ gate の判定は 3 層に分かれる。
   evidence path の実在、vendor reference の URL と日付
 - **測定** … adapter を実行した verdict と ledger の宣言の一致
 
-false-green probe は `quality/fixtures/integration-scope/` の 5 件。ledger への
+false-green probe は `quality/fixtures/integration-scope/` の 6 件。ledger への
 patch 形式なので、repository から乖離しない。「壊した ledger は必ず gate で落ちる」
 ことを同じ評価関数で示す。
 
@@ -149,6 +156,11 @@ patch 形式なので、repository から乖離しない。「壊した ledger �
   る ticket は allowlist に bit を足すかどうかの判断が要る。
 - Stripe は `review: "deferred"`。billing が product scope に入るまで scope review
   が書ける対象が存在しないため、「Stripe の token は存在しえない」という行にして
-  ある。billing ticket はその行を書き換える義務を持つ。
+  ある。この主張は **測定** されている: `toRequirement()` は deferred 行に
+  requirement を渡さないので、`stripe-deferred-no-requirement` connection は
+  `unknown_integration` として拒否される。同時に deferred 行が
+  `least_privilege` / `token_retention` を持ったら gate が error になる
+  （probe `deferred-with-requirement.json`）。billing ticket はその行を書き換える
+  義務を持つ——marker を残したまま scope を足すことは許されない。
 - 本 Issue は **接続の実行・token の取得・外部 API 呼び出しを行わない**。本番に
   対する破壊的操作は一切含まない（実行経路そのものが存在しない）。

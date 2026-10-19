@@ -195,6 +195,61 @@ describe('reviewConnection — retention and liveness', () => {
 		expect(unreadable.reauth).toEqual(['connection_metadata_unreadable']);
 	});
 
+	it('fails closed on an unreadable revocation stamp instead of reading it as live', () => {
+		// The direction that matters: a connection row whose `revoked_at`
+		// is corrupted must NOT review as approved. Before this guard, a
+		// truncated row silently re-enabled a revoked token.
+		const corrupted = reviewConnection(
+			READ_ONLY,
+			grant({ revokedAt: 'corrupted-row' }),
+			FIXTURE_NOW_DATE,
+		);
+		expect(corrupted.verdict).toBe('reauth_required');
+		expect(corrupted.code).toBe(SCOPE_REFUSAL_CODE.metadataUnreadable);
+		expect(corrupted.reauth).toContain('connection_metadata_unreadable');
+
+		// The readable form of the same row is still `grant_revoked`, so
+		// the reason an operator sees does not change with the failure.
+		const revoked = reviewConnection(
+			READ_ONLY,
+			grant({ revokedAt: '2026-10-18T00:00:00.000Z' }),
+			FIXTURE_NOW_DATE,
+		);
+		expect(revoked.verdict).toBe('reauth_required');
+		expect(revoked.reauth).toContain('grant_revoked');
+
+		// An absent field is still absent, so the happy path is unaffected.
+		expect(reviewConnection(READ_ONLY, grant(), FIXTURE_NOW_DATE).verdict).toBe('approved');
+	});
+
+	it('fails closed on an unreadable provider expiry instead of reading it as none', () => {
+		const corrupted = reviewConnection(
+			READ_ONLY,
+			grant({ expiresAt: 'not-a-timestamp' }),
+			FIXTURE_NOW_DATE,
+		);
+		expect(corrupted.verdict).toBe('reauth_required');
+		expect(corrupted.code).toBe(SCOPE_REFUSAL_CODE.metadataUnreadable);
+
+		const future = reviewConnection(
+			READ_ONLY,
+			grant({ expiresAt: '2026-11-18T00:00:00.000Z' }),
+			FIXTURE_NOW_DATE,
+		);
+		expect(future.verdict).toBe('approved');
+	});
+
+	it('reports one reason per failure, never a duplicate row', () => {
+		const review = reviewConnection(
+			READ_ONLY,
+			grant({ revokedAt: 'corrupted-row', expiresAt: 'also-corrupted' }),
+			FIXTURE_NOW_DATE,
+		);
+		expect(review.verdict).toBe('reauth_required');
+		expect(review.reauth).toEqual(['connection_metadata_unreadable']);
+		expect(new Set(review.reauth).size).toBe(review.reauth.length);
+	});
+
 	it('cannot approve a requirement that declares no retention ceiling', () => {
 		for (const maxAgeDays of [0, -1, Number.NaN]) {
 			const review = reviewConnection({ ...READ_ONLY, maxAgeDays }, grant(), FIXTURE_NOW_DATE);

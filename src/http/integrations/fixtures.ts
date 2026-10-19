@@ -233,6 +233,33 @@ export const SCOPE_FIXTURES: readonly ScopeFixture[] = [
 		expected: { verdict: 'reauth_required', code: SCOPE_REFUSAL_CODE.metadataUnreadable },
 	},
 	{
+		id: 'revoked-at-unreadable',
+		title: 'a revocation stamp this platform can no longer read is not "not revoked"',
+		requirement: readOnlyRequirement('local/read-only'),
+		grant: {
+			integration: 'local/read-only',
+			scopes: ['read:user'],
+			issuedAt: daysBefore(5),
+			// A truncated or mis-migrated connection row. Reading this as
+			// an absent revocation would re-enable the token the row says
+			// was revoked, so the only safe reading is `reconnect`.
+			revokedAt: 'corrupted-row',
+		},
+		expected: { verdict: 'reauth_required', code: SCOPE_REFUSAL_CODE.metadataUnreadable },
+	},
+	{
+		id: 'expires-at-unreadable',
+		title: 'an unparseable provider expiry is not "no expiry declared"',
+		requirement: readOnlyRequirement('local/read-only'),
+		grant: {
+			integration: 'local/read-only',
+			scopes: ['read:user'],
+			issuedAt: daysBefore(5),
+			expiresAt: 'not-a-timestamp',
+		},
+		expected: { verdict: 'reauth_required', code: SCOPE_REFUSAL_CODE.metadataUnreadable },
+	},
+	{
 		id: 'over-scoped-and-revoked',
 		title:
 			'least privilege outranks liveness: the scope refusal is reported, the revoke reason is kept',

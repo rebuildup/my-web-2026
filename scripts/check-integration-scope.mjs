@@ -176,8 +176,23 @@ export function findProvisionedIntegrationSecrets() {
 	return REQUIRED_RUNTIME_SECRETS.filter((name) => pattern.test(name));
 }
 
-/** Project one ledger row into the adapter's requirement shape. */
+/**
+ * Project one ledger row into the adapter's requirement shape.
+ *
+ * A **deferred** row projects `null`: nobody has reviewed that service's
+ * scopes, so there is no requirement, and `reviewConnection()` answers
+ * `unknown_integration`. Projecting a placeholder requirement instead
+ * made the documented refusal unreachable — an empty `required` set with
+ * `maxAgeDays: 0` answers `unapproved_scope` / `scope_outside_review`
+ * for any scope a grant carries, and `insufficient_scope` /
+ * `retention_undeclared` for a scope-less one, so a deferred candidate
+ * read as "refused for the wrong reason" instead of "nobody reviewed
+ * it".
+ *
+ * @returns {object|null} the requirement, or `null` for a deferred row.
+ */
 function toRequirement(row) {
+	if (row?.review === 'deferred') return null;
 	return {
 		id: row.id,
 		required: row.least_privilege?.required_scopes ?? [],
@@ -212,13 +227,27 @@ function checkRow(row, index, root, errors) {
 
 	// A candidate whose capability does not exist yet is recorded as
 	// deferred rather than reviewed. That is a decision, so it must say
-	// why — and it can never be used: a grant naming a deferred
-	// candidate has no requirement to review against, so the adapter
-	// answers `unknown_integration`.
+	// why — and it can never be used: a deferred row projects **no**
+	// requirement (see `toRequirement`), so a grant naming a deferred
+	// candidate has nothing to review against and the adapter answers
+	// `unknown_integration`.
+	//
+	// The projection is what makes that sentence true, so the row shape
+	// is pinned here too: a deferred row that starts carrying a scope
+	// set or a retention ceiling is a *reviewed* row with the deferred
+	// marker left behind, and it would quietly be approved. Promoting a
+	// candidate therefore means clearing `review: deferred` in the same
+	// edit that adds the requirement — and the owner decision that
+	// justifies it.
 	if (row.review === 'deferred') {
 		if (!isRealReason(row.deferred_reason, 30)) {
 			errors.push(
 				`${label}.deferred_reason: why no scope review is possible yet (the capability does not exist)`,
+			);
+		}
+		if (row.least_privilege !== undefined || row.token_retention !== undefined) {
+			errors.push(
+				`${label}: a deferred candidate must not declare least_privilege / token_retention — clearing \`review: deferred\` is what turns this row into a reviewed one, and the review must be done`,
 			);
 		}
 		if (row.published_surface !== 'none') {
@@ -340,7 +369,7 @@ function checkRow(row, index, root, errors) {
  *
  * @returns {{ rows: object[], errors: string[] }}
  */
-function checkConnections(manifest, root, errors) {
+function checkConnections(manifest, errors) {
 	const rows = [];
 	const requirements = new Map(
 		(manifest.integrations ?? []).map((row) => [row.id, toRequirement(row)]),
@@ -537,7 +566,7 @@ export function checkIntegrationScope({ root = ROOT, manifestPath = MANIFEST, op
 		}
 	}
 
-	const { rows: connections } = checkConnections(manifest, root, errors);
+	const { rows: connections } = checkConnections(manifest, errors);
 
 	const summary = {
 		candidates: rows.length,
@@ -597,6 +626,7 @@ export const PROBE_FIXTURES = [
 	'missing-revocation.json',
 	'false-green-approval.json',
 	'roster-drift.json',
+	'deferred-with-requirement.json',
 ];
 
 /**

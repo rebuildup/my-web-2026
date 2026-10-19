@@ -54,10 +54,15 @@
  *   - a requirement that declares no retention ceiling cannot be
  *     satisfied by an unbounded token — the review reports the missing
  *     ceiling as `insufficient_scope`;
- *   - a grant with no issue date, or with a date that does not parse, is
- *     `reauth_required` (`issued_at_missing` /
- *     `connection_metadata_unreadable`): the only safe reading of an
- *     unreadable connection record is "reconnect".
+ *   - a grant with no issue date is `reauth_required`
+ *     (`issued_at_missing`);
+ *   - a connection record whose issue, revocation or expiry field is
+ *     **present but unreadable** is `reauth_required`
+ *     (`connection_metadata_unreadable`): an absent field and a
+ *     corrupted field are different answers, and only the safe reading
+ *     of a corrupted record is "reconnect". A `revoked_at` that no
+ *     longer parses is NOT a live grant — it is a grant whose
+ *     revocation evidence this platform can no longer read.
  */
 
 /**
@@ -141,9 +146,17 @@ export interface ConnectionGrant {
 	readonly scopes: readonly string[];
 	/** ISO-8601 issue timestamp. `null`/absent means "not recorded". */
 	readonly issuedAt?: string | null;
-	/** ISO-8601 provider expiry, when the provider has one. */
+	/**
+	 * ISO-8601 provider expiry, when the provider has one. Absent means
+	 * "the provider declares no expiry"; a value that does not parse is a
+	 * refusal, not an absent field.
+	 */
 	readonly expiresAt?: string | null;
-	/** ISO-8601 revocation timestamp, once revoked. */
+	/**
+	 * ISO-8601 revocation timestamp, once revoked. A stored value that
+	 * does not parse is `connection_metadata_unreadable`, never
+	 * "not revoked".
+	 */
 	readonly revokedAt?: string | null;
 	/** Provider told us the grant needs interactive re-authorization. */
 	readonly providerRequiresReauth?: boolean;
@@ -218,11 +231,31 @@ function ageInDays(issuedAtMs: number, nowMs: number): number {
 	return Math.ceil((nowMs - issuedAtMs) / MS_PER_DAY);
 }
 
-/** Parse an ISO-8601 timestamp, or `null` when absent/unreadable. */
-function parseInstant(value: string | null | undefined): number | null {
-	if (typeof value !== 'string' || value.trim().length === 0) return null;
+/**
+ * One timestamp field, read as three-valued evidence.
+ *
+ * `present` is the whole point. `ms: null` alone cannot tell "the
+ * column is empty" from "the column holds something that is not an
+ * instant", and collapsing the two is how a corrupted `revoked_at`
+ * silently re-enables a revoked token: the adapter sees "no
+ * revocation" and answers `approved`. Every liveness field is read
+ * through this type so an unreadable value becomes
+ * `connection_metadata_unreadable` instead of silence.
+ */
+interface InstantEvidence {
+	/** The field carried a non-empty value, whatever that value is. */
+	readonly present: boolean;
+	/** The parsed epoch milliseconds, or `null` when unreadable. */
+	readonly ms: number | null;
+}
+
+/** Read one timestamp field as presence plus a parsed instant. */
+function readInstant(value: string | null | undefined): InstantEvidence {
+	if (typeof value !== 'string' || value.trim().length === 0) {
+		return { present: false, ms: null };
+	}
 	const parsed = Date.parse(value);
-	return Number.isNaN(parsed) ? null : parsed;
+	return { present: true, ms: Number.isNaN(parsed) ? null : parsed };
 }
 
 /**
@@ -299,31 +332,48 @@ export function reviewConnection(
 	const missing = required.filter((scope) => !granted.includes(scope));
 	const usable = granted.filter((scope) => allowed.has(scope) && !denied.has(scope));
 
-	// Retention / liveness evidence.
+	// Retention / liveness evidence. Every field is read through
+	// `readInstant`, so "absent" and "unreadable" never collapse into the
+	// same silent pass (see the Fail-closed section of this header).
 	const reauth: ReauthReason[] = [];
+	const addReauth = (reason: ReauthReason): void => {
+		if (!reauth.includes(reason)) reauth.push(reason);
+	};
 	let ageDays: number | null = null;
-	const issuedRaw = typeof grant.issuedAt === 'string' ? grant.issuedAt.trim() : '';
-	const hasIssuedField = issuedRaw.length > 0;
-	const issuedMs = parseInstant(issuedRaw);
+	const issued = readInstant(grant.issuedAt);
 
-	if (hasIssuedField && issuedMs === null) {
-		reauth.push('connection_metadata_unreadable');
-	} else if (issuedMs !== null) {
-		ageDays = ageInDays(issuedMs, nowMs);
+	if (issued.present && issued.ms === null) {
+		addReauth('connection_metadata_unreadable');
+	} else if (issued.ms !== null) {
+		ageDays = ageInDays(issued.ms, nowMs);
 		// A non-positive ceiling is not a re-authorization reason: the
 		// retention contract was never reviewed at all, which is an
 		// `insufficient_scope` refusal below, not a dead grant.
 		if (Number.isFinite(retentionDays) && retentionDays > 0 && ageDays > retentionDays) {
-			reauth.push('token_age_exceeds_retention');
+			addReauth('token_age_exceeds_retention');
 		}
 	} else {
-		reauth.push('issued_at_missing');
+		addReauth('issued_at_missing');
 	}
 
-	if (parseInstant(grant.revokedAt) !== null) reauth.push('grant_revoked');
-	const expiresMs = parseInstant(grant.expiresAt);
-	if (expiresMs !== null && expiresMs <= nowMs) reauth.push('token_expired');
-	if (grant.providerRequiresReauth === true) reauth.push('provider_requires_reauth');
+	const revoked = readInstant(grant.revokedAt);
+	if (revoked.present) {
+		// An unreadable revocation stamp is not an absent one. Reading it
+		// as "not revoked" would let a truncated or mis-migrated
+		// connection row re-enable exactly the token this module exists to
+		// keep disabled.
+		addReauth(revoked.ms === null ? 'connection_metadata_unreadable' : 'grant_revoked');
+	}
+
+	const expires = readInstant(grant.expiresAt);
+	if (expires.present) {
+		// Same rule for provider expiry: unreadable is `reconnect`, not
+		// "no expiry declared, so the token is fine".
+		if (expires.ms === null) addReauth('connection_metadata_unreadable');
+		else if (expires.ms <= nowMs) addReauth('token_expired');
+	}
+
+	if (grant.providerRequiresReauth === true) addReauth('provider_requires_reauth');
 
 	const retentionUndeclared = !Number.isFinite(retentionDays) || retentionDays <= 0;
 

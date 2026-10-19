@@ -584,7 +584,7 @@ integration_scope_ledger:
   candidate_roster_source_of_truth: 'docs/domain/integrations.md (Current state table)'
   adapter: 'src/http/integrations/scope-review.ts (reviewConnection — pure; no binding, network, storage or clock read)'
   fixtures: 'src/http/integrations/fixtures.ts (local, synthetic requirements; frozen clock)'
-  probe_fixtures: 'quality/fixtures/integration-scope/{pass,published-without-allowlist,missing-revocation,false-green-approval,roster-drift}.json'
+  probe_fixtures: 'quality/fixtures/integration-scope/{pass,published-without-allowlist,missing-revocation,false-green-approval,roster-drift,deferred-with-requirement}.json'
   command: 'pnpm run integration:scope:check'
   screenshot_command: 'pnpm run verify:integration-scope-screenshot'
   tests: 'node --test scripts/check-integration-scope.test.mjs && node --test scripts/make-integration-scope-report.test.mjs'

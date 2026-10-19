@@ -222,7 +222,7 @@
 			"service": "Stripe",
 			"status": "uncommitted",
 			"review": "deferred",
-			"deferred_reason": "No billing / checkout obligation exists in the current product scope (AGENTS.md §11 keeps product feature work out of scope, and `docs/domain/integrations.md` makes \"billing enters product scope\" the promotion condition). With no capability to scope, the only honest row is one that says no Stripe token may exist yet: a grant naming `stripe` has no reviewed requirement, so the adapter answers `unknown_integration`. Review this row before any billing ticket requests a token.",
+			"deferred_reason": "No billing / checkout obligation exists in the current product scope (AGENTS.md §11 keeps product feature work out of scope, and `docs/domain/integrations.md` makes \"billing enters product scope\" the promotion condition). With no capability to scope, the only honest row is one that says no Stripe token may exist yet, and the row itself is what makes that true: a `review: deferred` candidate projects NO requirement into the adapter (`toRequirement()` returns `null`), so a grant naming `stripe` answers `unknown_integration`, and the gate errors if this row grows a `least_privilege` or `token_retention` block while the marker stays (probe `deferred-with-requirement.json`). The `stripe-deferred-no-requirement` connection below measures that claim instead of asserting it. Review this row before any billing ticket requests a token.",
 			"evidence": ["docs/domain/integrations.md"],
 			"published_surface": "none"
 		}
@@ -308,6 +308,14 @@
 			"granted_scopes": ["identify"],
 			"issued_at": "2026-08-01T00:00:00.000Z",
 			"expected": { "verdict": "reauth_required", "code": "token_age_exceeds_retention" }
+		},
+		{
+			"id": "stripe-deferred-no-requirement",
+			"integration": "stripe",
+			"scenario": "the deferred candidate, executed rather than described: a grant naming it has no reviewed requirement, so it is refused as unknown — not as over-scoped, and not as missing a retention ceiling",
+			"granted_scopes": ["billing_read"],
+			"issued_at": "2026-10-10T00:00:00.000Z",
+			"expected": { "verdict": "unknown_integration", "code": "unknown_integration" }
 		}
 	]
 }

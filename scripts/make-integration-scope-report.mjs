@@ -121,14 +121,20 @@ function renderConnections(rows) {
 				row.ageDays === null || row.ageDays === undefined
 					? '<span class="muted">—</span>'
 					: `${row.ageDays}d / ${row.retentionDays}d`;
+			// `unknown_integration` has no requirement, so the granted
+			// scopes are not "unapproved" — nothing reviewed them. Calling
+			// them unapproved would put a scope verdict on a row whose whole
+			// point is that no scope review exists.
 			const detail =
-				row.unapproved.length > 0
-					? `unapproved: ${row.unapproved.join(', ')}`
-					: row.missing.length > 0
-						? `missing: ${row.missing.join(', ')}`
-						: row.reauth.length > 0
-							? `re-authorize: ${row.reauth.join(', ')}`
-							: 'least privilege satisfied';
+				row.verdict === 'unknown_integration'
+					? 'no reviewed requirement for this candidate'
+					: row.unapproved.length > 0
+						? `unapproved: ${row.unapproved.join(', ')}`
+						: row.missing.length > 0
+							? `missing: ${row.missing.join(', ')}`
+							: row.reauth.length > 0
+								? `re-authorize: ${row.reauth.join(', ')}`
+								: 'least privilege satisfied';
 			return `<tr class="${toneFor(row.verdict)}">
 				<td><code>${escapeHtml(row.id)}</code></td>
 				<td>${escapeHtml(row.integration)}</td>

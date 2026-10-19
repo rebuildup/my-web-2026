@@ -35,8 +35,14 @@ somebody reviewed. The verdict is one of `approved`,
 privilege outranks liveness: an over-scoped *and* revoked grant reports
 the scope refusal while keeping the revoke reason in `review.reauth`.
 Nothing is fail-open — an unreadable issue date, a missing retention
-ceiling, or an unreviewed service are all refusals, not warnings. The
-reviewed requirements, their sources and the revocation procedure live in
+ceiling, or an unreviewed service are all refusals, not warnings. An
+**absent** liveness field and an **unreadable** one are different
+answers: a `revoked_at` that does not parse is
+`connection_metadata_unreadable` (re-authorize), never "not revoked", so
+a truncated or mis-migrated connection row cannot re-enable a token.
+
+The reviewed requirements, their sources and the revocation procedure
+live in
 [`quality/integration-scope.json`](../../../quality/integration-scope.json)
 and are checked by `pnpm run integration:scope:check`; the operator
 contract is [`docs/security/integration-token-scope.md`](../../../docs/security/integration-token-scope.md).
@@ -47,7 +53,9 @@ contract is [`docs/security/integration-token-scope.md`](../../../docs/security/
   grant whose verdict is not `approved`. A stored over-scoped token is a
   token you cannot un-hold.
 - Persist `issuedAt`. Without it the retention ceiling is unverifiable
-  and the review refuses the connection forever.
+  and the review refuses the connection forever. Persist `revokedAt`
+  and `expiresAt` as real instants too: a value that does not parse is
+  refused, never skipped.
 - Do not mount this before the owner allowlist in
   `quality/integration-scope.json` has an entry for the candidate, and
   do not change the absence tests to get a green build.

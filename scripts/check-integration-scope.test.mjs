@@ -62,7 +62,93 @@ test('the ledger refuses every unapproved scope and every dead grant it claims t
 	);
 	for (const row of refusals) {
 		const detail = row.unapproved.concat(row.missing, row.reauth);
+		// `unknown_integration` names no scope, so its evidence is the
+		// integration itself; every other refusal must name what was wrong.
+		if (row.verdict === 'unknown_integration') {
+			assert.ok(row.integration.length > 0, `${row.id}: an unknown service must be named`);
+			continue;
+		}
 		assert.ok(detail.length > 0, `${row.id}: a refusal must name what was wrong`);
+	}
+});
+
+test('a deferred candidate is measured as unknown, not as a scope or retention failure', () => {
+	const { rows, connections } = checkIntegrationScope({ root: ROOT });
+	const deferred = rows.filter((row) => row.review === 'deferred');
+	assert.ok(deferred.length > 0, 'the ledger records at least one deferred candidate');
+	for (const row of deferred) {
+		const measured = connections.filter((connection) => connection.integration === row.id);
+		assert.ok(
+			measured.length > 0,
+			`${row.id}: a deferred candidate needs a measured connection, or its unavailability is only asserted`,
+		);
+		for (const connection of measured) {
+			assert.equal(
+				connection.verdict,
+				'unknown_integration',
+				`${connection.id}: a deferred candidate has no reviewed requirement, so it can only answer unknown_integration`,
+			);
+		}
+	}
+});
+
+test('a deferred candidate that grows a scope set or a retention ceiling fails', () => {
+	// Both halves matter: the row shape is refused, and the adapter keeps
+	// answering `unknown_integration` for the candidate while it is still
+	// marked deferred.
+	for (const field of ['least_privilege', 'token_retention']) {
+		const result = checkIntegrationScope({
+			root: ROOT,
+			ops: [
+				{
+					op: 'set',
+					path: `integrations.3.${field}`,
+					value:
+						field === 'least_privilege'
+							? {
+									required_scopes: ['billing_read'],
+									denied_scopes: ['billing_write'],
+									justification: 'reading invoices only, never moving money',
+								}
+							: {
+									max_age_days: 90,
+									storage: 'Infisical prod path /integrations/stripe',
+									provider_expiry: 'restricted keys can be revoked but do not self-expire',
+								},
+				},
+			],
+		});
+		assert.match(
+			result.errors.join('\n'),
+			/a deferred candidate must not declare least_privilege \/ token_retention/,
+			`a deferred row with ${field} must fail`,
+		);
+	}
+});
+
+test('a reviewed connection whose stored dates cannot be parsed fails closed', () => {
+	// A truncated or mis-migrated connection row must not read as a live
+	// grant: the ledger has to measure that, not assume it.
+	for (const [field, value] of [
+		['revoked_at', 'corrupted-row'],
+		['expires_at', 'not-a-timestamp'],
+	]) {
+		const result = checkIntegrationScope({
+			root: ROOT,
+			ops: [
+				{
+					op: 'set',
+					path: 'reviewed_connections.0.issued_at',
+					value: '2026-10-01T00:00:00.000Z',
+				},
+				{ op: 'set', path: `reviewed_connections.0.${field}`, value },
+			],
+		});
+		assert.match(
+			result.errors.join('\n'),
+			/connection_metadata_unreadable/,
+			`an unreadable ${field} must not be read as absent`,
+		);
 	}
 });
 

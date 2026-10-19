@@ -130,8 +130,10 @@ OAuth / 外部連携 token の最小権限レビュー（Issue #464）。3 段�
    `src/http/integrations/scope-review.ts` の `reviewConnection()` に
    通した結果。`approved` だけでなく `unapproved_scope` と
    `reauth_required` が同じ表に並ぶことが、この report の存在理由。
-   宣言と測定が食い違えば gate が fail する。
-3. **false-green probe** — `quality/fixtures/integration-scope/` の 5 件。
+   `review: "deferred"` の候補（Stripe）は `unknown_integration` として
+   並ぶ——scope review が存在しないことを「主張」ではなく測定結果として
+   見せるため。宣言と測定が食い違えば gate が fail する。
+3. **false-green probe** — `quality/fixtures/integration-scope/` の 6 件。
    ledger への patch 形式なので repository から乖離しない。
 
 scope **名**と frozen な時刻だけを描画し、token 値・アカウント email・

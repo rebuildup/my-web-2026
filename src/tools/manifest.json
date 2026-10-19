@@ -24,6 +24,19 @@
 				"iframe": {
 					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [
+						"https://fonts.googleapis.com",
+						"https://fonts.gstatic.com",
+						"https://script.google.com",
+						"https://use.typekit.net"
+					],
+					"purpose": {
+						"ja": "読み込みを開始すると、埋め込み中の ProtoType が Google Fonts / Adobe Typekit から web フォントを取得し、ログイン用 gameset が Google Apps Script のエンドポイントへ通信します（その実装は id / password をクエリ文字列に載せます）。",
+						"en": "Once the load starts, the embedded ProtoType document fetches web fonts from Google Fonts and Adobe Typekit, and its login gameset calls a Google Apps Script endpoint (that implementation puts id / password in the query string)."
+					},
+					"basis": "measured against the pinned ProtoType source at 335e0e8 (index.html, plus src/gamesets/022_Login.ts which src/components/002_Header.tsx reaches); re-measure after a submodule bump (docs/tools/embed-privacy.md section 4)"
 				}
 			},
 			"classification": "same_origin_static",
@@ -52,6 +65,10 @@
 				"iframe": {
 					"sandbox": "allow-scripts",
 					"referrer_policy": "no-referrer"
+				},
+				"privacy": {
+					"third_party_origins": [],
+					"basis": "measured against the pinned readmark source at 906c90e (index.html and src/** reference no external origin); re-measure after a submodule bump (docs/tools/embed-privacy.md section 4)"
 				}
 			},
 			"classification": "same_origin_static",

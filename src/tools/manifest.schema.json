@@ -146,6 +146,37 @@
 								},
 								"additionalProperties": false
 							},
+							"privacy": {
+								"type": "object",
+								"description": "Third-party contact + consent contract for this Tool (Issue #498). REQUIRED for every embeddable Tool (same_origin_static / external_exception): the host has no implicit default and fails closed (renders no iframe) when this block is missing or violates src/tools/embed-privacy.ts. Consent is DERIVED from these facts (a cross-origin frame, or a non-empty third_party_origins list, means click_to_load), so there is deliberately no consent_mode field that could switch the gate off. Omit the block only for host_disabled / not_integrable_yet entries, which nobody frames.",
+								"required": ["third_party_origins"],
+								"properties": {
+									"third_party_origins": {
+										"description": "Every origin the framed document may contact, as bare https origins. An empty array IS the declaration that this Tool contacts no third party. A cross-origin (external_exception) frame MUST list its own origin here. src/tools/embed-privacy.ts is the authority and additionally rejects wildcards, credentials, and any path / query / fragment.",
+										"type": "array",
+										"uniqueItems": true,
+										"items": {
+											"type": "string",
+											"pattern": "^https://[^/?#*]+$"
+										}
+									},
+									"purpose": {
+										"type": "object",
+										"description": "Why the Tool contacts those origins, in both locales. REQUIRED (non-empty) whenever third_party_origins is non-empty; the consent notice renders it verbatim.",
+										"required": ["ja", "en"],
+										"properties": {
+											"ja": { "type": "string", "minLength": 1 },
+											"en": { "type": "string", "minLength": 1 }
+										},
+										"additionalProperties": false
+									},
+									"basis": {
+										"description": "How the declaration was established (which artefact / commit was measured, when). Free text, kept short; re-declare after a submodule bump (docs/tools/embed-privacy.md section 4).",
+										"type": "string"
+									}
+								},
+								"additionalProperties": false
+							},
 							"disabled_reason": {
 								"description": "Required when kind = host_disabled. Explains why the Tool is not surfaced.",
 								"type": "string"

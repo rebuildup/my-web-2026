@@ -47,6 +47,34 @@ The four category hues are deliberately separable at a glance —
 they sit at comparable saturation and distinct hue angles
 (pink ≈ 330°, cyan ≈ 190°, yellow ≈ 50°, indigo ≈ 240°).
 
+### These hues are reinforcement, never the message (Issue #411)
+
+WCAG 2.2 SC 1.4.1 Use of Color (Level A) forbids conveying information
+by colour alone, and that is now a rule of this layer rather than a
+property of individual components: **no consumer may ship a status or
+a category whose only cue is a hue.** A status / category surface
+composes [`StateMark`](primitives/StateMark.tsx) — a silhouette unique
+per state — next to a text label, and the `accent.*` token above paints
+the reinforcement. The mark paints in `currentColor`, so it inherits the
+label's contrast instead of adding an obligation of its own (SC 1.4.11).
+
+The proof (greyscale captures in both appearances, the machine checks
+and the human review that are explicitly separated) lives in
+[`docs/verification/a11y/status-monochrome.md`](../../../docs/verification/a11y/status-monochrome.md).
+
+**Scope of the rule, and the one surface that does not satisfy it yet.**
+The rule binds any consumer that paints an `accent.*` status or
+`accent.category.*` hue as a state cue. This ticket wired two of them:
+the home status badges and the portfolio card category rules. One
+consumer is **not** wired: the external-read card badges
+(`src/external-api/ExternalReadCard.tsx` — fresh / stale / failed /
+blocked / loading) still render `Badge tone={accent | neutral}` with no
+`StateMark`. That surface is **not** a violation today — every badge
+carries a text label, so 1.4.1 is met by text and no hue is its only
+cue — but it does not yet follow the shape vocabulary. Whether it
+should is an owner decision (open); the rule is stated here so the gap
+is visible rather than implied.
+
 ## Dark appearance
 
 Every semantic token is declared as `{ value: { base, _dark } }`.
@@ -292,6 +320,17 @@ Two independent checks accompany the table:
 
 ## Change history
 
+- **2026-10-19** (Issue #411) — Added the rule that `accent.*` status
+  and `accent.category.*` hues may never be the ONLY cue: surfaces now
+  compose `StateMark` (a silhouette unique per state) beside the text
+  label, and the hue is reinforcement. `StateMark` paints in
+  `currentColor`, so it inherits the label's contrast instead of
+  adding a non-text contrast obligation of its own. Home status badges
+  and portfolio category rules are the two surfaces this ticket wired;
+  `accent.{positive,negative,warning}` token values are unchanged. The
+  `src/external-api` badge states are a named exception, documented in
+  the rule section above: they carry a text label but do not compose
+  `StateMark` yet, and that assignment is an open owner decision.
 - **2026-10-09** (Issue #290, rework round) — Dark palette re-anchored
   on the new near-neutral `charcoal` ladder (`950/900/800/600/400`)
   after the owner's 「ダークテーマがダサい」 review; slate's blue

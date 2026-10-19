@@ -149,6 +149,13 @@ export interface AssetLicenseRecord {
 	readonly rightsHolder: string | null;
 	readonly license: {
 		readonly spdx: AssetLicenseId;
+		/**
+		 * Whether this repository ships a copy of the asset's bytes.
+		 * `bundled` with no recorded licence is what makes an asset a
+		 * hold, so it lives next to the licence rather than beside the
+		 * origin: the obligation is stated by the licence, not by taste.
+		 */
+		readonly redistribution: AssetRedistribution;
 		readonly attributionRequired: boolean;
 		/** The attribution text a licence demands, verbatim, or `null`. */
 		readonly attributionText: string | null;
@@ -231,14 +238,15 @@ export const PUBLICATION_LABEL: Readonly<Record<AssetPublicationState, string>> 
 };
 
 export const DECISION_LABEL: Readonly<Record<AssetPublicationDecision, string>> = {
-	publishable: '公開可（証拠あり）',
-	hold: '保留（証拠が不足）',
-	'provider-terms': '提供者条件（再配布なし）',
+	publishable: '公開可 / publishable',
+	hold: '保留 / hold',
+	'provider-terms': '提供者条件 / provider-terms',
 };
 
 /** What each decision means, in the words the gate justifies it with. */
 export const DECISION_MEANING: Readonly<Record<AssetPublicationDecision, string>> = {
-	publishable: 'このリポジトリのファイルが権利・出典・ライセンスを示している。',
+	publishable:
+		'このリポジトリのファイルが権利・出典・ライセンスを示している。根拠ファイルの存在と一致は gate が確認する。',
 	hold: '権利記録がリポジトリに無いため、レビュー済みとしては公開できない。',
 	'provider-terms': 'コピーを配布しておらず、条件は提供側にある。',
 };

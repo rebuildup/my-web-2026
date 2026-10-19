@@ -217,7 +217,7 @@
 			"id": "share-procon2026-guide",
 			"kind": "artwork",
 			"title": "ヘキサうどん 競技仕様ガイド（静的ページ）",
-			"summary": "第37回高崎最适合 Faces の競技仕様をまとめた自作のガイド。ページの文章は repository が執筆したが、同梱のフォント・PDF・画像の権利記録は別 record が持つ。",
+			"summary": "第37回 高専プロコン競技部門の仕様をまとめた自作のガイド。ページの文章は repository が執筆したが、同梱のフォント・PDF・画像の権利記録は別 record が持つ。",
 			"covers": ["public/share/procon2026/index.html"],
 			"publicPaths": ["/share/procon2026/"],
 			"origin": "repository-authored",

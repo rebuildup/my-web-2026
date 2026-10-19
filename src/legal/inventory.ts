@@ -239,10 +239,12 @@ function readRecord(
 	return {
 		problems,
 		record: {
-			id: value.id,
+			// Every field below passed the checks above; the casts state
+			// that once instead of re-narrowing `unknown` at each site.
+			id: value.id as string,
 			kind: value.kind as AssetKind,
-			title: value.title,
-			summary: value.summary,
+			title: value.title as string,
+			summary: value.summary as string,
 			covers: value.covers as string[],
 			...(value.publicPaths === undefined ? {} : { publicPaths: value.publicPaths as string[] }),
 			origin: value.origin as AssetOrigin,
@@ -265,7 +267,7 @@ function readRecord(
 			...(value.externalHosts === undefined
 				? {}
 				: { externalHosts: value.externalHosts as string[] }),
-			...(value.delegatedTo === undefined ? {} : { delegatedTo: value.delegatedTo }),
+			...(value.delegatedTo === undefined ? {} : { delegatedTo: value.delegatedTo as string }),
 		},
 	};
 }

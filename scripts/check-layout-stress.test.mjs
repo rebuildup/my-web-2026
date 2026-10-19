@@ -8,6 +8,7 @@ import {
 	DECLARED_GUTTER_PROBES,
 	DECLARED_OPTIONAL_TARGETS,
 	DECLARED_TARGETS,
+	FIXTURE_CSS,
 	STRESS_SECTIONS,
 	STRESS_STORY_IDS,
 	STRESS_VIEWPORT,
@@ -438,6 +439,198 @@ describe('renderStressFixture', () => {
 		}
 		assert.equal(new Set(STRESS_SECTIONS.map((s) => s.id)).size, STRESS_SECTIONS.length);
 		assert.equal(new Set(DECLARED_TARGETS.map((t) => t.id)).size, DECLARED_TARGETS.length);
+	});
+});
+
+/* ------------------------------------------------------------------ *
+ * a claim about a language is only allowed where the language is
+ *
+ * The `purpose` string is rendered into the fixture document and
+ * screenshotted into the committed evidence, so "Thai is covered"
+ * written in prose while the fixture contains no Thai character is a
+ * false statement in an image, not a stale comment: the report would
+ * claim a measurement nobody made. Thai is also the strongest case at
+ * 320px — it has no inter-word spaces, so the line may only break
+ * where the browser's dictionary says — which makes it exactly the
+ * coverage an over-claim hides. Every language the multilingual
+ * story names is therefore matched against a script range the story
+ * has to actually render.
+ * ------------------------------------------------------------------ */
+
+/**
+ * The scripts the `multilingual` story declares, in the spelling its
+ * `purpose` uses. Adding a language to the claim without adding a
+ * matching entry here would go unchecked, so a claim word with no
+ * probe fails the test below instead of silently going unverified.
+ */
+const DECLARED_LANGUAGE_SCRIPTS = [
+	{ claim: '日本語', script: 'japanese', pattern: /[\u3040-\u30ff]/ },
+	{ claim: '英語', script: 'latin', pattern: /[A-Za-z]/ },
+	{ claim: 'ドイツ語', script: 'latin', pattern: /[A-Za-z]/ },
+	{ claim: 'フランス語', script: 'latin', pattern: /[A-Za-zÀ-ɏ]/ },
+	{ claim: 'ロシア語', script: 'cyrillic', pattern: /[\u0400-\u04ff]/ },
+	{ claim: '韓国語', script: 'hangul', pattern: /[\uac00-\ud7af]/ },
+	{ claim: 'アラビア語', script: 'arabic', pattern: /[\u0600-\u06ff]/ },
+	{ claim: 'タイ語', script: 'thai', pattern: /[\u0e00-\u0e7f]/ },
+	{ claim: '絵文字', script: 'emoji', pattern: /\p{Extended_Pictographic}/u },
+];
+
+describe('the multilingual story declares only the scripts it renders', () => {
+	const story = STRESS_SECTIONS.find((section) => section.id === 'multilingual');
+	const rendered = (() => {
+		const html = renderStressFixture();
+		const start = html.indexOf('data-stress-section="multilingual"');
+		const end = html.indexOf('</section>', start);
+		assert.ok(start > 0 && end > start, 'the multilingual story must render');
+		return html.slice(start, end);
+	})();
+
+	it('renders every script its purpose names', () => {
+		for (const { claim, script, pattern } of DECLARED_LANGUAGE_SCRIPTS) {
+			if (!story.purpose.includes(claim)) continue;
+			assert.match(
+				rendered,
+				pattern,
+				`the purpose claims ${claim} (${script}) but the story renders no such characters`,
+			);
+		}
+	});
+
+	it('renders Thai, which has no inter-word spaces to break on', () => {
+		const runs = rendered.match(/[\u0e00-\u0e7f]+/g) ?? [];
+		assert.ok(runs.length > 0, 'the story must contain Thai characters');
+		assert.ok(
+			runs.reduce((total, run) => total + run.length, 0) >= 8,
+			'the Thai run must be a sentence, not a stray glyph',
+		);
+	});
+
+	it('keeps the RTL paragraph right-to-left and declared as such', () => {
+		assert.match(rendered, /data-stress-target="multilingual-rtl"[^>]*dir="rtl"/);
+		assert.match(rendered, /lang="ar"/);
+	});
+
+	it('never lets a claim word exist without a probe', () => {
+		const claimed = [...story.purpose.matchAll(/[ァ-ヶ一-龠]{2,5}語|絵文字/g)].map(
+			(match) => match[0],
+		);
+		assert.ok(claimed.length > 0, 'the story must still claim languages');
+		for (const word of new Set(claimed)) {
+			assert.ok(
+				DECLARED_LANGUAGE_SCRIPTS.some((entry) => entry.claim === word),
+				`"${word}" is claimed by the story but has no script probe`,
+			);
+		}
+	});
+});
+
+/* ------------------------------------------------------------------ *
+ * the fixture copies the shipped visual language, so the copy has to
+ * be checked against it
+ *
+ * `FIXTURE_CSS` is a hand copy of the values it claims to mirror, and
+ * nothing used to notice when the shipped token moved: a green gate on
+ * a fixture that no longer resembles the product is the failure mode
+ * this block exists to close. The parsed sources are the ones named
+ * in the provenance comment above `FIXTURE_CSS`.
+ * ------------------------------------------------------------------ */
+
+describe('the fixture still mirrors the shipped tokens', () => {
+	const tokenSource = readFileSync(join(ROOT, 'src/editorial/tokens.ts'), 'utf8');
+	const containerSource = readFileSync(
+		join(ROOT, 'src/editorial/primitives/Container.tsx'),
+		'utf8',
+	);
+	/**
+	 * The literal source block for a token section. Slicing to the
+	 * matching brace is what keeps one section's numbers out of the
+	 * next one's — a plain `slice(indexOf(...))` happily reads the
+	 * shadow scale as if it were the spacing scale.
+	 */
+	const block = (name) => {
+		const start = tokenSource.indexOf(`${name}: {`);
+		assert.ok(start > 0, `tokens.ts must declare ${name}`);
+		let depth = 0;
+		for (let index = tokenSource.indexOf('{', start); index < tokenSource.length; index += 1) {
+			if (tokenSource[index] === '{') depth += 1;
+			else if (tokenSource[index] === '}' && --depth === 0) {
+				return tokenSource.slice(start, index + 1);
+			}
+		}
+		throw new Error(`unbalanced token block: ${name}`);
+	};
+	/** `{ key: value }` or `{ key: { value } }` — both token shapes. */
+	const entries = (section) =>
+		new Map(
+			[...block(section).matchAll(/([\w-]+):\s*(?:\{ value:\s*)?'([^']+)'/g)].map((match) => [
+				match[1],
+				match[2].toLowerCase(),
+			]),
+		);
+	const palette = new Set(
+		[...tokenSource.matchAll(/value:\s*'(#[0-9a-fA-F]{6})'/g)].map((match) =>
+			match[1].toLowerCase(),
+		),
+	);
+	const fixtureHexes = [...new Set(FIXTURE_CSS.match(/#[0-9a-fA-F]{3,8}/g) ?? [])].map((hex) =>
+		hex.toLowerCase(),
+	);
+
+	it('uses no colour the shipped palette does not declare', () => {
+		for (const hex of fixtureHexes) {
+			assert.ok(palette.has(hex), `${hex} is painted by the fixture but is not a shipped token`);
+		}
+		assert.ok(fixtureHexes.length > 0);
+	});
+
+	it('still paints the five neutral roles its provenance comment names', () => {
+		const neutral = entries('neutral');
+		assert.match(FIXTURE_CSS, new RegExp(`background:\\s*${neutral.get('0')}\\b`));
+		assert.match(FIXTURE_CSS, new RegExp(`color:\\s*${neutral.get('900')}\\b`));
+		for (const step of ['0', '50', '100', '500', '900']) {
+			assert.ok(fixtureHexes.includes(neutral.get(step)), `neutral.${step}`);
+		}
+	});
+
+	it('still breaks at the shipped breakpoints', () => {
+		const breakpoints = entries('breakpoints');
+		for (const step of ['md', 'lg']) {
+			const width = breakpoints.get(step);
+			assert.ok(width, `breakpoint ${step}`);
+			assert.ok(
+				FIXTURE_CSS.includes(`@media (min-width: ${width})`),
+				`the fixture must carry the ${step} (${width}) breakpoint`,
+			);
+		}
+	});
+
+	it('still mirrors the Container width and its page margins', () => {
+		const spacing = entries('spacing');
+		/*
+		 * Panda resolves a numeric spacing key against the scale when
+		 * the scale declares it, and otherwise against its 4px base —
+		 * which is why `paddingInline: '8'` is 32px and not a missing
+		 * token. The scale's own `4 → 16px` entry pins that base, so a
+		 * base change fails here instead of silently re-scaling the
+		 * fixture.
+		 */
+		assert.equal(spacing.get('4'), '16px', 'the spacing base is 4px');
+		const base = Number.parseInt(spacing.get('4'), 10) / 4;
+		const spacingPx = (step) => spacing.get(step) ?? `${Number(step) * base}px`;
+		const maxWidth = containerSource.match(/maxWidth:\s*'(\d+px)'/)?.[1];
+		assert.ok(maxWidth, 'Container must declare a maxWidth');
+		assert.ok(FIXTURE_CSS.includes(`max-width: ${maxWidth}`));
+		const margins = containerSource.match(
+			/paddingInline:\s*\{\s*base:\s*'(\d+)',\s*md:\s*'(\d+)',\s*lg:\s*'(\d+)'\s*\}/,
+		);
+		assert.ok(margins, 'Container must declare responsive paddingInline');
+		for (const step of margins.slice(1)) {
+			const pixels = spacingPx(step);
+			assert.ok(
+				FIXTURE_CSS.includes(`padding-inline: ${pixels}`),
+				`the fixture must paint the Container ${step} margin (${pixels})`,
+			);
+		}
 	});
 });
 

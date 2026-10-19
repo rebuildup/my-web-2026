@@ -117,10 +117,13 @@ export const GUTTER_PROBE_IDS = ['gutter-band', 'gutter-container'];
  *                         base/md/lg = 16/24/32px against the spacing scale)
  *   breakpoints          src/editorial/tokens.ts#breakpoints (md 768 / lg 1024)
  *   line breaking        src/styles.css @layer base
- *                         (`word-break: normal` → `auto-phrase`,
- *                         `text-wrap: pretty`, `text-wrap: balance` on
- *                         headings, local `word-break: break-all` for
- *                         mono token names / long identifiers / URLs)
+ *                         (`:where(body)` declares `word-break: normal` →
+ *                         `auto-phrase` and `text-wrap: pretty`),
+ *                         `text-wrap: balance` where
+ *                         src/editorial/primitives/SectionHeading.tsx
+ *                         declares it locally, and the local
+ *                         `word-break: break-all` components use for
+ *                         mono token names / long identifiers / URLs
  *   box model            Panda preflight (`box-sizing: border-box`,
  *                         `img { max-width: 100% }`)
  *
@@ -358,14 +361,14 @@ export const STRESS_SECTIONS = [
 		eyebrow: '04 / multilingual',
 		title: '多言語テキスト',
 		purpose:
-			'日本語・英語・ドイツ語・フランス語・ロシア語・韓国語・アラビア語・タイ語・絵文字が同じ段落で破綻しないか。',
+			'日本語・英語・ドイツ語・フランス語・ロシア語・韓国語・アラビア語・タイ語・絵文字が同じ段落で破綻しないか。タイ語は語間に空白がないため、辞書による行分割でしか折り返せないので 320px では最も厳しい。',
 		targets: [
 			{ id: 'multilingual-body', label: '多言語本文' },
 			{ id: 'multilingual-rtl', label: 'RTL 段落' },
 			{ id: 'multilingual-emoji', label: '絵文字と結合文字' },
 		],
 		body: `
-      <p class="paragraph" data-stress-target="multilingual-body" lang="ja">日本語の文章と English prose and a German sentence with a long compound (Grundlagenverschiebungsprüfung) and français avec ses accents, plus русский текст для проверки переноса и 한국어 문장. 日本語の文中に識別子 <code class="mono">createD1PortfolioLoader</code> を含めると、ベース規則とローカルの break-all の両方が同じ段落で効きます。</p>
+      <p class="paragraph" data-stress-target="multilingual-body" lang="ja">日本語の文章と English prose and a German sentence with a long compound (Grundlagenverschiebungsprüfung) and français avec ses accents, plus русский текст для проверки переноса и 한국어 문장. 加上 ภาษาไทยไม่มีช่องว่างระหว่างคำ จึงต้องอาศัยพจนานุกรมในการตัดบรรทัด. 日本語の文中に識別子 <code class="mono">createD1PortfolioLoader</code> を含めると、ベース規則とローカルの break-all の両方が同じ段落で効きます。</p>
       <p class="paragraph rtl" data-stress-target="multilingual-rtl" lang="ar" dir="rtl">نص عربي طويل لاختبار الفواصل مع نص لاتيني مختلط في نفس الفقرة.</p>
       <p class="paragraph" data-stress-target="multilingual-emoji" lang="ja">絵文字 👨‍👩‍👧‍👦 👩🏽‍💻 🇯🇵 と結合文字 é à ö の並び。 viel Grüße aus München.</p>`,
 	},
@@ -844,6 +847,18 @@ export function evaluateStressRun(run, policy = {}) {
 		);
 	} else {
 		const reserved = withScrollbar.documentGutter;
+		/*
+		 * Reachability note: this rule can only fire when the host paints a
+		 * classic scrollbar AND the fixture lets the root scrollbar be the
+		 * thing that owns the gutter. The fixture forces
+		 * `html { overflow-y: scroll }`, so on a classic-scrollbar host
+		 * `documentGutter === scrollbarWidth` holds whatever
+		 * `scrollbar-gutter` says — the browser path therefore exercises
+		 * `content_shift`, not this rule. Only the synthetic snapshots in
+		 * `scripts/check-layout-stress.test.mjs` can trip
+		 * `gutter_not_reserved`. See the rule table in
+		 * `docs/verification/compat/stress-story.md`.
+		 */
 		if (Math.abs(reserved - scrollbarWidth) > tolerance) {
 			errors.push(
 				issue(
@@ -854,7 +869,12 @@ export function evaluateStressRun(run, policy = {}) {
 			);
 		}
 		const withWidths = new Map(withScrollbar.probes.map((entry) => [entry.id, entry.width]));
-		const withoutWidths = new Map(withoutScrollbar.probes.map((entry) => [entry.id, entry.width]));
+		// `withScrollbar.probes` is validated above; `withoutScrollbar` is not,
+		// so a snapshot that lost its probe list must fail closed with
+		// `gutter_probe_missing` instead of throwing a TypeError.
+		const withoutWidths = new Map(
+			(withoutScrollbar.probes ?? []).map((entry) => [entry.id, entry.width]),
+		);
 		for (const probeId of DECLARED_GUTTER_PROBES) {
 			const a = withWidths.get(probeId);
 			const b = withoutWidths.get(probeId);
@@ -879,7 +899,7 @@ export function evaluateStressRun(run, policy = {}) {
 
 	const shifts = DECLARED_GUTTER_PROBES.map((probeId) => {
 		const a = withScrollbar.probes.find((entry) => entry.id === probeId);
-		const b = withoutScrollbar.probes.find((entry) => entry.id === probeId);
+		const b = (withoutScrollbar.probes ?? []).find((entry) => entry.id === probeId);
 		return { id: probeId, withScrollbar: a?.width ?? null, withoutScrollbar: b?.width ?? null };
 	});
 

@@ -45,6 +45,12 @@ generation した CSS は 出荷済みの visual language（`src/styles.css` の
 同じ pure function（`evaluateStressRun`）に渡して行う。許差は sub-pixel の
 **1px**（`TOLERANCE_PX`）。
 
+`purpose` は fixture document に描かれ、report の画像にもそのまま写る文言である。
+そのため「宣言した言語」を名指ししている story については、**宣言された言語が
+実際にレンダリングされていること**を suite（`DECLARED_LANGUAGE_SCRIPTS`）が検証する。
+タイ語は語間に空白がなく辞書の行分割でしか折り返せないため、320px では最も厳しい
+ケースであり、宣言だけの言語にするとちょうどそこだけ検証されないまま報告される。
+
 ## 無言の合格にならないための fail 条件
 
 誤検知も「検査が走っていない」ことも、そのまま合格にしないため、以下はすべて **error**：
@@ -61,7 +67,7 @@ generation した CSS は 出荷済みの visual language（`src/styles.css` の
 | `viewport_overflow` | document が横スクロールする |
 | `target_overflow` | target がコンテンツボックスをはみ出す |
 | `gutter_policy_missing` | `scrollbar-gutter: stable` が適用されていない |
-| `gutter_not_reserved` | classic scrollbar の環境で gutter の予約幅が実測と合わない |
+| `gutter_not_reserved` | classic scrollbar の環境で gutter の予約幅が実測と合わない（**ブラウザ経路では到達不可能**：fixture が `html { overflow-y: scroll }` を強制するので root scrollbar は常に描画され、`scrollbar-gutter` の値によらず `documentGutter === scrollbarWidth` になる。ブラウザ経路で予約を証明するのは `content_shift`。この rule を落とすのは test 側の模した snapshot だけ） |
 | `gutter_probe_missing` | 宣言した gutter probe が「スクロールバーあり / なし」の両方で測定されていない（shift 比較が無言で空振りするのを防ぐ） |
 | `content_shift` | 全幅 probe の幅が、スクロールバーの有無で変わる |
 
@@ -130,7 +136,7 @@ errors (0)
 
 | 対象 | どこで走る | 結果 |
 | --- | --- | --- |
-| `evaluateStressRun` の全 rule（29 cases） | `pnpm run test` → CI `validate` job | pass |
+| `evaluateStressRun` の全 rule（37 cases） | `pnpm run test` → CI `validate` job | pass |
 | browser 半の gate（3 variant の実測） | `pnpm run compat:stress:check`（Chromium 必要） | baseline PASS / control 2 件捕捉 / exit 0 |
 | report と WebP | `pnpm run verify:compat-stress-screenshot` | `docs/verification/compat/stress-story.webp` 生成 |
 
@@ -185,16 +191,20 @@ CI では「検出器が必ず落ちること」が毎回検証される。実�
   足りない場合は report を書かずに失敗する。キャプションは画像の主张なので、
   画素を伴わないまま「意図的 defect」を名乗ることを構造的に防ぐ。
 - 符号化: 1500px / quality 45（`scripts/_lazy-media-image.mjs` の 300 KB budget 内、
-  実測 261,298 B）。他の verification report が quality 80 を使うのに下回るのは、
-  下回るのは、11 枚の 320px viewport capture を含むため。page の幅を縮めたのであって、
+  実測 264,482 B）。他の verification report が quality 80 を使うのに下回るのは、
+  11 枚の 320px viewport capture を含むため。page の幅を縮めたのであって、
   文字サイズを縮めたわけではない。
 
 ## 既知の制約
 
 - fixture は静的 HTML であり、出荷 route を実際にレンダリングしたものではない。
   出荷 CSS（`styled-system/` の生成物）は fixture に embed していないので、
-  token を変えたとき fixture は追随しない。追随させたい場合は token 値から
-  CSS を生成する形に別 Issue で切り替える（本 Issue のスコープ外）。
+  token を変えたとき fixture の CSS 自体は追随しない。**コピーのずれは gate で
+  検出する**：`scripts/check-layout-stress.test.mjs` が `src/editorial/tokens.ts` /
+  `src/editorial/primitives/Container.tsx` を読み、fixture が使う色・ breakpoint・
+  Container の max-width / page margin が今も出荷側と一致することを検証する
+  （一致しなければ赤になる）。fixture を token から**生成**する形は別 Issue
+  （本 Issue のスコープ外）。
 - `text-wrap` は語を割らない。したがって「72 文字の分割できない英単語の見出し」は
   実測で overflow する。出荷 surface がそのような見出しを描いていないため、
   fixture ではそのケースを identifier story（`src/styles.css` が break-all を
@@ -220,8 +230,8 @@ CI では「検出器が必ず落ちること」が毎回検証される。実�
   所有し、CJK 禁則処理の実測は Issue #431（`scripts/cjk-line-break-measure.mjs`、
   `/design-system` route）が所有する。本 Issue と重複しないのは、本 fixture が
   「記法（どの文字が行頭に来るか）」ではなく「幅（はみ出すか・ずれるか）」を測るため。
-- fixture の CSS は token 値を手書きで写しているため、token を変えただけでは
-  追随しない（同上）。
+- fixture の CSS は token 値を手書きで写しているため、生成物ではない
+  （上の drift test がずれだけを検出する）。
 - viewport は fixture 内では `320px` を固定している。gate の `--width` は
   document の viewport 幅を変えるだけで、story 側の CSS は
   `src/editorial/tokens.ts#breakpoints`（md 768 / lg 1024）に追随する。

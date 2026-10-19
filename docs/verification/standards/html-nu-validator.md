@@ -1,0 +1,216 @@
+# HTML standards ゲート（Nu Validator 互換サブセット）
+
+Issue #412 / gate: `pnpm run html:standards:check` / 宣言:
+`quality/html-standards.json` / engine: `scripts/html-standards-contract.mjs`
+
+## なぜ必要か
+
+SSR が返す HTML には、これまで「機械的に検証されるもの」が存在しなかった。
+ブラウザは回復力が高く、閉じていないタグ・重複した `id`・壊れた
+`aria-labelledby` をすべて黙って修復するため、ページは表示されたまま
+スクリーンリーダー向け名前だけ壊れた状態で本番に出る。
+
+公開されている選択肢は 2 つある。
+
+1. `validator.nu` に document を POST する — **採用しない**。`/admin/*`
+   の描画済み document と personal copy を含めて third-party host に送信することになり、
+   本リポジトリが「route の HTML を外部へ送る」ことを常態化することになる。
+2. ローカルの engine — **本 gate がこれ**。依存追加ゼロ・ネットワークゼロ・
+   CI で決定的に再現できる。
+
+対象にしたのは Issue が名指した 3 分類。
+
+| 分類 | rule |
+| --- | --- |
+| 不正な markup | `invalid-nesting` / `misnested-tag` / `stray-end-tag` / `unclosed-element` / `missing-doctype` / `missing-element` |
+| 重複 ID | `duplicate-id` / `bad-id` |
+| attribute の誤り | `unknown-attribute` / `duplicate-attribute` / `bad-value` / `missing-attribute` / `bad-idref` |
+
+## 1 engine、3 front-end
+
+`scripts/html-standards-contract.mjs` が tokenizer・tree builder・rule engine を
+1 つ持ち、3 つの入口が同じ engine を呼ぶ。片側だけ通る rule は存在しえない。
+
+| front-end | 入力 | どこで走るか |
+| --- | --- | --- |
+| `test/integration/html-standards.test.ts` | 実 Worker の SSR document（`SELF.fetch`） | `pnpm run test` の中（= CI `validate`） |
+| `scripts/check-html-standards.mjs`（offline） | commit 済み fixture + route roster + rule ledger | `validate:fast` |
+| `scripts/check-html-standards.mjs --live <baseUrl>` | dev server / `vite preview` / 任意の origin の SSR document | 手動（report 用） |
+
+engine は Node / workerd のどちらでも動くよう dependency ゼロで書いてある
+（`node:fs` などの import を持たない）。
+
+## rule の severity と根拠は manifest が所有する
+
+`quality/html-standards.json#rules` が severity と reason を所有し、
+engine は「その rule が存在するか」だけを所有する。両者の list は
+**双方向**に一致していなければ fail する。
+
+- manifest が engine にない rule を宣言 → fail
+- engine が出しうる rule を manifest が書いていない → fail
+- severity が `error` / `warning` 以外、または reason が placeholder → fail
+
+現状 `heading-level-skip` と `obsolete-doctype` だけが warning で、
+残りは error です。
+
+## route roster — 未実装 route を無言の合格にしない
+
+`quality/html-standards.json#routes` は `src/routes/**`（`createFileRoute` を
+呼ぶファイル）と `src/routeTree.gen.ts` から導出した全 route id を
+宣言します。両方向とも不一致で fail:
+
+- `inventory.unlisted` — 公開されている route が manifest に無い
+- `inventory.missing` — manifest にある route が存在しない
+- `route.unobserved` — `mode: render` と宣言された route に observation が無い
+- `route.request-failed` / `route.not-rendered` / `route.not-html` —
+  取得失敗・非 2xx・`text/html` 以外。いずれも **skip ではなく fail**
+
+`mode: excluded` は理由つきの宣言であり、理由なしは manifest を load した
+時点で落ちます。admin の auth-gated route は全てここに入ります
+（匿名で document が返らないため。admin の描画 document は
+`/admin/login` で検証しています）。
+
+代表 route の選び方と根拠は manifest の `why` に書いてあります。
+`/design-system` はSVG と definition list が最も多い surface なので、
+engine の誤検知（false positive）に対する canary として意図的に入れています。
+
+## fixture — fail になる場合
+
+`validate:fast` が毎回行うこと:
+
+- `test/fixtures/html-standards/invalid-page.html` は **必ず error を出す**
+- `test/fixtures/html-standards/valid-page.html` は **必ず 0 error**
+- `fixtures.expect` に挙げた rule が invalid fixture で **全部発火する**
+  （発火しなくなった rule = 検出漏れ）
+- `fixtures.forbidden` に挙げた rule が invalid fixture で **発火しない**
+  （engine の誤検知）
+
+つまり「invalid fixture が通るよう書き換えた」時点で gate は落ちます。
+
+manifest 自身が壊れている場合（`fixtures.valid` / `fixtures.invalid` が無い、
+`rules` の片方向が欠ける等）は **exit 2** です。gate ではなく「使えない宣言」
+として扱い、`runOfflineCheck` の途中から `TypeError` を投げ抜くことはしません。
+
+## この gate が最初に見つけた既存 defect（waiver ledger）
+
+SSR half を実 Worker に対して走らせた結果、**この gate が新規に検出した既存の
+defect が 3 件**ありました。いずれも app markup 側の所有（Issue #412 の範囲外）で、
+横断的な markup 修正＋既存 e2e selector の更新を伴う owner 判断なので、
+gate は検出した上で `quality/html-standards.json#waivers` に **message 形状で**
+記録しています。
+
+| rule | 形状 | 場所 / 理由 |
+| --- | --- | --- |
+| `invalid-nesting` | `Element "a" not allowed as child of element "ul"` | `src/editorial/nav/PublicNav.tsx` の desktop nav。同一ファイルの mobile list は `<li>` で囲んでいるのに対し desktop は `<a>` を直接置いている。`e2e/nav.spec.ts` が `> a` の直接子セレクタを前提にしているため、修正は editorial と e2e の同時変更 |
+| `invalid-nesting` | `Element "div" not allowed as child of element "button"` | home の絵文字 picker の clear-search ボタン（`src/home/reactions/` が描画）。`<button>` は phrasing content のみ。icon wrapper の `div` → `span` 化は primitive の layout に影響する |
+| `bad-idref` | `for attribute "aria-controls"` | picker の検索 input が `aria-controls="epr-search-id"` を宣言するが、その listbox は client 側のみで mount されるため SSR document に id が存在しない |
+
+waiver ledger の性質:
+
+- **shape 必須**。`route_id` と `message_pattern` の少なくとも一方を宣言しないと
+  manifest が読み込まれません（rule 全体を黙らせる blanket は書けない）。
+- **使わなければ fail**。修正されて該当しなくなった waiver は `waiver.unused` で
+  落ちるので、放置された waiver が緑を維持することはありません。
+- **suppress しても finding は report に出続けます**（`WAIVED` 表示）。
+  exit code には**入りません**。`evaluateRoutes().stats.errors` と
+  `effectiveFindings()` は同じ定義（`severity === 'error' && !waived`）です。
+  両者がずれると「ledger が全部 covering している codebase で `--live` が
+  exit 1 になる」という中途半端な状態が生まれるため、その一致を
+  `scripts/check-html-standards.test.mjs` が loopback 起点の `--live`
+  実行で回帰テストにしています。
+
+これらは **#412 で直していない既知の debt** です。app markup の修正は
+editorial / home の obligation であり、既存 e2e selector の更新を伴う
+owner 判断（follow-up ticket の起票も owner 判断）のため、**現時点で
+follow-up ticket は未起票**です。新規 route / 新規 component では同じ形が
+blocking になります。
+
+## engine と Nu Validator の意図的な差分
+
+- **`<body>` 配下の flow content 要素に hoisted された `<style>`** は finding に
+  しません。React 19 は streaming SSR で `<div hidden><style>…</style></div>`
+  を出すため、判定すると本リポジトリが出せる全ての document が落ちます
+  （Nu は error 扱い）。豁免されるのは「直接の親が flow content で、
+  かつ `<body>` 以下の祖先がいる」`<style>` なので、`<section><style>` や
+  `<div><section><style>` も同じ扱いになります。**flow content でない親
+  （`<ul>` / `<p>` / `<button>` など）の中の `<style>` は従来どおり報告します。**
+- **element ごとの属性表が最頻の誤検知源**です。`autocomplete` は HTML が
+  「listed attribute」と定める 4 要素（`form` / `input` / `select` /
+  `textarea`）すべてに許されますが、表が 2 要素しかないと、
+  `autoComplete` を書く正しい login form（`/admin/login`）が
+  `html.unknown-attribute` として落ちます。app markup 側を直すのではなく
+  表を直すのが正解で、`scripts/check-html-standards.test.mjs` に
+  「4 要素すべてで許され、別要素の属性は依然報告される」回帰テストを
+  置いてあります（表の穴は fixture suite で塞ぎます）。
+- **`autocomplete` の値は検査しません**。値は
+  `section-login username` のような free-form の autofill token list で、
+  有限の enum に入れると正しい値を誤検知します。
+- foreign content、任意 custom element、ARIA の role/token 辞書も同様に
+  対象外です（上記「既知の制約」参照）。
+
+## 実行方法
+
+```sh
+# offline gate（validate:fast に入る。server も network も不要）
+pnpm run html:standards:check
+
+# fixture suite
+node --test scripts/check-html-standards.test.mjs
+
+# SSR half（実 Worker / workerd）
+pnpm exec vitest run test/integration/html-standards.test.ts
+
+# 実サーバーに対して同じ engine（dev server / vite preview / 任意の origin）
+pnpm run dev                       # terminal 1
+node scripts/check-html-standards.mjs --live http://127.0.0.1:5173
+
+# report + スクリーンショット再生成
+pnpm run verify:html-nu-validator-screenshot
+```
+
+期待結果: offline / live / vitest はいずれも **exit 0**。exit 1 は finding、
+exit 2 は manifest が読めない/使えない場合です。
+
+## スクリーンショット
+
+`docs/verification/standards/html-nu-validator.webp`（Issue が要求する
+`html-nu-validator.png` の stem をそのまま使い、拡張子だけ `.webp` に
+置き換えています。PNG を commit しない規約のため）。
+
+- 生成コマンド: `pnpm run verify:html-nu-validator-screenshot`
+- 含まれるもの: offline gate の verdict、valid / invalid fixture の実結果、
+  invalid fixture の Nu message リスト、route roster、rule ledger、再現コマンド
+- 環境: 完全オフライン（network なし / secret なし / D1・R2 なし）、
+  Playwright chromium + sharp（devDependency のみ、Worker には入らない）
+
+## 既知の制約
+
+- **HTML5 の部分集合**。rule table がモデル化した element のみが対象で、
+  表に無い element 名は「finding にならない」。custom element を
+  誤検知しない代わりに、未知の element の属性も検査しません。
+- **`<` の扱いは literal text**。tag を開かない `<`（`<p>a < b</p>` の `<`、
+  `<<<`、末尾の `<`）は HTML5 の text として保持され、以降の markup は
+  通常どおり parse されます。
+- **EOF で省略可能な end tag は `unclosed-element` にしません**。`<p>` / `<li>` /
+  `<dt>` / `<td>` など end tag を省略できる element、および `<html>` / `<head>` /
+  `<body>` が input 末尾まで開いていても HTML5 準拠です（ブラウザが暗黙に
+  閉じます）。`<div>` のように必須の end tag が欠けた場合は従来どおり報告します。
+- **SSR half が検証する document の範囲**。workerd 上では API key を持たないため
+  `/api/v1/access/count` と reactions 系が 401 で、home document は「失敗時
+  fallback」状態で評価されます（shell / nav / editorial primitive / picker の
+  SSR markup / portfolio / design-system は対象。counter と reaction list の
+  成功時 markup は対象外）。成功時をCover するのは `--live <baseUrl>` です。
+  詳細は `test/integration/html-standards.test.ts` の冒頭。
+- **foreign content**（`<svg>` / `<math>`）は属性・nesting を検査しません。
+  SVG の属性名は大文字小文字が意味を持つ（`viewBox`）ため、naive に検査すると
+  誤検知しか出ません。`id` の重複検査だけは foreign をまたいで効きます。
+- **外部 schema / CSS / ARIA role 辞書は見ません**。参照グラフ
+  （`aria-labelledby` / `aria-describedby` / `label[for]` / `td[headers]` が
+  実在する `id` を指しているか）だけが対象で、role と token の妥当性は
+  対象外です。axe-core 相当の a11y gate は別系統の作業です。
+- **waiver ledger**（`quality/html-standards.json#waivers`）には、この gate が
+  検出した既存 defect 3 件が記録されています（前節参照）。
+  entry を足すのは owner review 側の判断で、**何も suppress しない waiver は
+  fail** するので、放置された waiver が緑を維持することはありません。
+- live mode は local/dev 相当の origin を想定しており、production origin への
+  実行は行っていません（canonical origin への送信は本 gate の外）。

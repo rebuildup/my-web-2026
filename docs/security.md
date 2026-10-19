@@ -614,6 +614,14 @@ mode, so it is not repeated there.
 | `https://*.google-analytics.com`, `https://*.analytics.google.com`, `https://*.googletagmanager.com` | `img-src`, `connect-src` | GA4 beacons; the runtime subdomain is chosen by Google, so the first-party source only pins the loader host |
 | `MEDIA_PUBLIC_BASE_URL` origin (when configured) | `img-src` | Portfolio media served from the R2 custom domain; the value is read from `env`, never hard-coded |
 
+The first observation run also reported `script-src` violations with
+`blockedURI: eval` from zod's client-side JIT compiler. The response was
+to remove the source rather than widen the policy: `src/client-zod-config.ts`
+is imported first by `src/client.tsx` and calls
+`z.config({ jitless: true })`, so validation keeps its semantics but no
+longer generates code with `new Function`. `'unsafe-eval'` is therefore
+deliberately absent, and the E2E positive case now observes no event.
+
 The policy also carries `object-src 'none'`, `base-uri 'self'` and
 `form-action 'self'`. It carries no `report-uri` / `report-to`: the
 repository has no collector endpoint, and inventing one would send
@@ -651,6 +659,10 @@ Detection is the browser's native report surface
 
 ### Known limitations
 
+- **zod runs in non-JIT mode on the client.** This is a deliberate
+  trade (a small validation-cost increase) made so the policy does not
+  need `'unsafe-eval'`. The server path is unaffected; Workerd already
+  skips the eval probe for Cloudflare user agents.
 - **`'unsafe-inline'` is measured debt, not a permanent grant.** A
   nonce or hash migration is the condition for removing it. Until then
   the Report-Only policy would only report the inline scripts the

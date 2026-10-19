@@ -272,6 +272,9 @@ pnpm run validate:integration  # + build + bundle budget + wrangler:dry-run + li
 pnpm run validate:release      # + cf-typegen:check
 ```
 
+`validate:fast` には UI copy の locale 契約検査 `pnpm run copy:i18n:check` も含まれる
+(下記「UI copy の locale 契約」参照)。
+
 `pnpm run compat:check` は Web API / CSS の採用可否を Baseline（web-features）で
 判定する gate（Issue #414）。走査面は `src/**` に加えて生成 CSS の入力である
 `panda.config.ts`（`app-shell` surface の `files`）で、`src/` 以外のファイルは
@@ -480,6 +483,35 @@ smoke logic is verified without a network, without workerd, and without a
 browser. Each observation carries the final (post-redirect) origin and
 pathname, and the classifier rejects either kind of drift, so a route that
 answered from another host cannot pass as a healthy canonical origin.
+
+## UI copy の locale 契約
+
+visitor-facing copy がどの言語で公開されているかは
+[`copy/resources.json`](../copy/resources.json) が宣言し、
+`pnpm run copy:i18n:check` (`scripts/check-copy-i18n.mjs`) が検査する。
+`validate:fast` の一部として CI でも走る。
+
+検査するのは「その locale で未翻訳のキー」「feature が登録していないキーを名指ししている
+リソース」「source locale に到達できない fallback 連鎖」、そして原文の意味を守るための
+機械判定 (数値 / `{placeholder}` / 否定 / 権限マーカー / 禁則・full-width 残留) である。
+locale は機能ごとに opt-in なので、全機能に全言語を要求しない — 未 opt-in の locale は
+情報として記録されるだけで失敗にしない。
+
+文の語調・敬称・語順 (prose quality) は gate が判定しない。`prose: "verified"` は
+原文と突き合わせた人が記録する主張であり、`published` locale では未検証の状態で
+公開できない。推敲途中のリソース (`status: "draft"`) は解決時に fallback され、
+`served` されない。
+
+```bash
+pnpm run copy:i18n:check                       # gate (exit 1 で失敗)
+node scripts/check-copy-i18n.mjs --format=html --out=.tmp/copy-i18n.html
+node scripts/check-copy-i18n.mjs --include-fixture --format=html \
+  --out=.tmp/missing-keys-report.html          # fixture 込みのレポート (fixture は gate しない)
+node --test scripts/check-copy-i18n.test.mjs   # fixture で finding class を検証
+```
+
+契約の意味、schema、2 番目の locale を opt-in する手順は
+[`copy/README.md`](../copy/README.md) を参照。
 
 ## Cross-engine compat matrix
 

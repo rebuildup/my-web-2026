@@ -16,9 +16,9 @@ import { parseSecurityTxtManifest, resolvePublication } from './schema';
  *      rather than something that would hide a broken file,
  *   3. an approved manifest with a live deadline publishes, and
  *      normalises `Expires` to UTC,
- *   4. every rejection path the schema owns fails closed: no channel,
- *      an unattributed approval, a newline that would inject a second
- *      field, a scheme a client would follow.
+ *   4. every rejection path the schema owns fails closed: no
+ *      contact, an unattributed approval, a newline that would inject
+ *      a second field, a scheme a client would follow.
  *
  * A `SecurityTxtDocument` assembled here is a FIXTURE. Nothing in this
  * file — and nothing in `policy.json` — is an operator-approved
@@ -52,18 +52,32 @@ describe('the shipped manifest (src/http/security-txt/policy.json)', () => {
 		expect(SECURITY_TXT_MANIFEST.expires).toMatch(/^\d{4}-\d{2}-\d{2}T/);
 	});
 
-	it('is not published, and says why', () => {
-		expect(resolveSecurityTxt(NOW)).toEqual({ state: 'unpublished', reason: 'not-approved' });
-		expect(loadSecurityTxtPolicy(NOW)).toBeNull();
+	it('publishes exactly when the shipped manifest says so', () => {
+		// Derived, not hard-coded: `policy.json` is bundled into the
+		// Worker at build time, so approving a channel is a DATA change
+		// that must not require editing this test (or breaking it). The
+		// gate's own behaviour is asserted with the fixtures below; this
+		// row only states that the shipped manifest and the endpoint can
+		// never disagree. The manifest is `pending` today.
+		const decision = resolveSecurityTxt(NOW);
+		const approved = SECURITY_TXT_MANIFEST.approval.status === 'approved';
+		const live = Date.parse(SECURITY_TXT_MANIFEST.expires) > NOW;
+		expect(decision.state === 'published').toBe(approved && live);
+		expect(loadSecurityTxtPolicy(NOW) !== null).toBe(approved && live);
+		if (!approved) {
+			expect(decision).toEqual({ state: 'unpublished', reason: 'not-approved' });
+		}
 	});
 
-	it('still expires inside RFC 9116 §2.5.1 guidance of a year (sanity, not a gate)', () => {
+	it('keeps the authored deadline inside RFC 9116 §2.5.5 guidance of a year', () => {
 		// The deadline is authored data, so this cannot drift silently
-		// past the RFC's "SHOULD be within a year" advice for long: it
-		// is re-read here rather than trusted.
+		// past the RFC's "less than a year into the future" advice for
+		// long: it is re-read here rather than trusted. It is a test,
+		// not a runtime gate — §2.5.5 states it as RECOMMENDED.
 		const expires = Date.parse(SECURITY_TXT_MANIFEST.expires);
 		expect(Number.isFinite(expires)).toBe(true);
 		expect(expires).toBeGreaterThan(NOW);
+		expect(expires - NOW).toBeLessThanOrEqual(365 * 24 * 60 * 60 * 1000);
 	});
 });
 
@@ -102,12 +116,18 @@ describe('resolvePublication', () => {
 		});
 	});
 
-	it('publishes an approved manifest whose only channel is Policy (RFC 9116 §2)', () => {
-		const decision = resolvePublication(
+	it('refuses an approved manifest that names a Policy but no Contact', () => {
+		// RFC 9116 §2.5.3: `Contact` MUST always be present. A
+		// disclosure-policy URL is not a reporting channel, so such a
+		// manifest is refused twice over: the schema refuses to parse
+		// it, and the gate refuses it independently of the schema.
+		expect(() =>
 			approvedManifest({ contacts: [], policy: 'https://example.invalid/policy' }),
-			NOW,
-		);
-		expect(decision.state).toBe('published');
+		).toThrow();
+		expect(resolvePublication({ ...approvedManifest(), contacts: [] }, NOW)).toEqual({
+			state: 'unpublished',
+			reason: 'no-contact',
+		});
 	});
 
 	it('refuses a rejected manifest the same way it refuses a pending one', () => {
@@ -122,8 +142,8 @@ describe('resolvePublication', () => {
 });
 
 describe('the schema refuses a manifest that must not be published', () => {
-	it('rejects an approved manifest that names no way to report anything', () => {
-		expect(() => approvedManifest({ contacts: [], policy: undefined })).toThrow();
+	it('rejects an approved manifest that names no Contact (RFC 9116 §2.5.3)', () => {
+		expect(() => approvedManifest({ contacts: [] })).toThrow();
 	});
 
 	it('rejects an approval nobody can attribute', () => {
@@ -162,6 +182,28 @@ describe('the schema refuses a manifest that must not be published', () => {
 		expect(() => approvedManifest({ expires: 'soon' })).toThrow();
 		expect(() => approvedManifest({ preferred_languages: ['not a tag'] })).toThrow();
 		expect(() => approvedManifest({ preferred_languages: [] })).toThrow();
+		// Shapes RFC 5646 rejects: an `extlang` after a four-letter
+		// language, and a variant subtag longer than eight characters.
+		expect(() => approvedManifest({ preferred_languages: ['abcd-abc'] })).toThrow();
+		expect(() => approvedManifest({ preferred_languages: ['en-abcdefghi'] })).toThrow();
+	});
+
+	it('accepts the RFC 5646 shapes a naive tag regex refuses', () => {
+		// Script, region, variant, extension and trailing private-use
+		// subtags are all valid and are validated by
+		// `Intl.getCanonicalLocales`, not by a regex.
+		for (const tag of ['ja', 'en-US', 'zh-Hans-CN', 'de-CH-1901', 'en-x-priv']) {
+			expect(() => approvedManifest({ preferred_languages: [tag] })).not.toThrow();
+		}
+	});
+
+	it('refuses the privateuse / grandfathered productions (narrowed grammar)', () => {
+		// RFC 5646 §2.1 defines them; this field deliberately does not
+		// accept them (see `schema.ts`), so the refusal is asserted
+		// rather than left to whichever way the runtime leans.
+		for (const tag of ['x-private', 'i-klingon', 'zh-min-nan']) {
+			expect(() => approvedManifest({ preferred_languages: [tag] })).toThrow();
+		}
 	});
 
 	it('accepts the pending manifest even with no contacts yet', () => {

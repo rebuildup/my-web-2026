@@ -27,17 +27,18 @@ import { loadSecurityTxtPolicy } from './policy';
  *   404  `text/plain; charset=utf-8`   — no policy is published, or
  *                                          the published one has
  *                                          expired. A site that does
- *                                          not publish the file
- *                                          answers 404, which is
+ *                                          not publish the file has no
+ *                                          such resource, which is
  *                                          what this endpoint does
- *                                          today (RFC 9116 §3.2).
+ *                                          today (RFC 9116 §3 places
+ *                                          the file for a site that
+ *                                          publishes one).
  *
  * Both statuses carry the same cache policy. That is deliberate: the
- * document is a deploy-time artefact that can be APPROVED without a
- * code change, and a shared cache that kept a `404` for an hour would
- * hide the approval. Five minutes is the same freshness window the
- * sitemap uses for the same class of decision
- * (`src/http/seo/router.ts`).
+ * document is a deploy-time artefact, and a shared cache that kept a
+ * `404` for an hour would hide a freshly deployed approval. Five
+ * minutes is the same freshness window the sitemap uses for the same
+ * class of decision (`src/http/seo/router.ts`).
  *
  * The body of the `404` states only that nothing is published. It
  * never names a contact, a mailbox or an internal note: a reader of a
@@ -49,8 +50,8 @@ import { loadSecurityTxtPolicy } from './policy';
  * The seam below is injectable, so the router does not trust it to
  * have applied the expiry gate: an injected source that returned a
  * stale document would publish a reporting channel that may no longer
- * be monitored, which is the exact failure RFC 9116 §2.5.1 warns
- * about. The production source (`./policy.ts`) applies the same gate,
+ * be monitored, which is the exact failure RFC 9116 §2.5.5 and §5.3
+ * warn about. The production source (`./policy.ts`) applies the same gate,
  * so the check is redundant in production and load-bearing for every
  * future source.
  */

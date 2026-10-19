@@ -41,7 +41,7 @@ import { toolRouteSecurityPolicy } from './tools/registry';
  * `/robots.txt` have no children, and neither prefix below them can
  * collide with a page route.
  */
-// Issue #468 adds `/.well-known` for RFC 9116 §3.1's security.txt. The
+// Issue #468 adds `/.well-known` for RFC 9116 §3's security.txt. The
 // whole well-known namespace is boundary-owned: a `.well-known` document
 // is by definition a machine-readable file rather than a rendered page,
 // so it must never be answered by the SSR shell with a 200 HTML

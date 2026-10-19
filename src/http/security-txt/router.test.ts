@@ -2,6 +2,7 @@ import { SELF } from 'cloudflare:test';
 import { describe, expect, it } from 'vitest';
 import type { SecurityTxtDocument } from './document';
 import { SECURITY_TXT_PATH } from './document';
+import { loadSecurityTxtPolicy } from './policy';
 import { createSecurityTxtRouter } from './router';
 
 /**
@@ -21,7 +22,8 @@ import { createSecurityTxtRouter } from './router';
  * The injected policy is a FIXTURE built from RFC 2606 reserved names.
  * It is not, and must never become, a published reporting channel: the
  * repository has no operator-approved address to publish, which is why
- * level 3 asserts a `404`.
+ * the DEPLOYED assertions below derive their expectation from
+ * `policy.json` instead of hard-coding a `404`.
  */
 
 const FUTURE = '2099-01-01T00:00:00.000Z';
@@ -36,6 +38,16 @@ const APPROVED: SecurityTxtDocument = {
 
 const router = () => createSecurityTxtRouter(() => APPROVED);
 
+/**
+ * The status the SHIPPED manifest produces, derived rather than
+ * hard-coded: `policy.json` is bundled into the Worker at build time,
+ * so approving a channel is a data change that must not require
+ * editing this file. Today the manifest is `pending` and this is
+ * `404`; the gate's own behaviour is exercised above with fixtures and
+ * in `policy.test.ts`.
+ */
+const DEPLOYED_STATUS = loadSecurityTxtPolicy(Date.now()) === null ? 404 : 200;
+
 describe('GET /.well-known/security.txt — approved policy', () => {
 	it('answers 200 with the RFC 9116 §3 media type', async () => {
 		const res = await router().request(SECURITY_TXT_PATH, undefined, {} as Env);
@@ -44,7 +56,7 @@ describe('GET /.well-known/security.txt — approved policy', () => {
 		expect(res.headers.get('cache-control')).toBe('public, max-age=300, must-revalidate');
 	});
 
-	it('serves a document a browser can read, with Contact first and Expires last', async () => {
+	it('serves a document a browser can read, in the RFC 9116 §4 order', async () => {
 		const res = await router().request(SECURITY_TXT_PATH, undefined, {} as Env);
 		const body = await res.text();
 		// No `Canonical:` line here because the injected fixture is a
@@ -52,8 +64,13 @@ describe('GET /.well-known/security.txt — approved policy', () => {
 		// `resolvePublication` (`policy.test.ts` asserts it) rather than
 		// guessed by the router, so a caller that injects a document
 		// without one gets exactly the bytes it asked for.
+		//
+		// `Preferred-Languages` is ONE comma-separated line after the
+		// deadline, which is what §4's grammar requires and what
+		// §2.5.8 ("MUST NOT appear more than once") allows. Two lines
+		// here would be the regression this assertion exists to catch.
 		expect(body).toBe(
-			`Contact: mailto:security@example.invalid\nPreferred-Languages: ja\nPreferred-Languages: en\nExpires: ${FUTURE}\n`,
+			`Contact: mailto:security@example.invalid\nExpires: ${FUTURE}\nPreferred-Languages: ja, en\n`,
 		);
 	});
 });
@@ -82,7 +99,7 @@ describe('GET /.well-known/security.txt — nothing publishable', () => {
 
 	it('refuses an expired document even when the injected source returns one', async () => {
 		// Defence in depth: the seam is injectable, so the router does
-		// not trust it to have applied the deadline (RFC 9116 §2.5.1).
+		// not trust it to have applied the deadline (RFC 9116 §2.5.5).
 		const stale = createSecurityTxtRouter(() => ({ ...APPROVED, expires: PAST }));
 		const res = await stale.request(SECURITY_TXT_PATH, undefined, {} as Env);
 		expect(res.status).toBe(404);
@@ -109,14 +126,13 @@ describe('the surface as deployed', () => {
 	it('is mounted on the external boundary', async () => {
 		const { externalBoundary } = await import('../hono');
 		const res = await externalBoundary.request(SECURITY_TXT_PATH, undefined, {} as Env);
-		// 404, because no owner-approved reporting channel exists yet.
-		expect(res.status).toBe(404);
+		expect(res.status).toBe(DEPLOYED_STATUS);
 		expect(res.headers.get('content-type')).toBe('text/plain; charset=utf-8');
 	});
 
 	it('reaches the Worker, which routes the namespace instead of rendering a page', async () => {
 		const res = await SELF.fetch(`${ORIGIN}${SECURITY_TXT_PATH}`);
-		expect(res.status).toBe(404);
+		expect(res.status).toBe(DEPLOYED_STATUS);
 		expect(res.headers.get('content-type')).toBe('text/plain; charset=utf-8');
 	});
 

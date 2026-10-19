@@ -22,11 +22,25 @@
  * So this script renders an APPROVED fixture the repository does NOT
  * ship, built from RFC 2606 reserved names (`example.invalid`), through
  * the shipped renderer. What it proves is the rendering and the browser
- * view; the deployed `404`, the expiry gate and the cache policy are
- * asserted in `src/http/security-txt/router.test.ts`, which drives the
- * same router through workerd, through `externalBoundary` and through
- * `SELF.fetch`. This is the same split
+ * view; the deployed `404`, the publication gate, the expiry gate and
+ * the cache policy are asserted in
+ * `src/http/security-txt/policy.test.ts` and
+ * `src/http/security-txt/router.test.ts`, which drive the real router
+ * through workerd, through `externalBoundary` and through `SELF.fetch`.
+ * This is the same split
  * `scripts/make-sitemap-verification-report.mjs` makes for Issue #420.
+ *
+ * What the capture cannot show
+ * ----------------------------
+ *   - HTTPS. The document is served from a loopback HTTP server bound
+ *     to `127.0.0.1`, because a local capture needs no certificate.
+ *     RFC 9116 §5.7 anticipates exactly this case ("such as localhost")
+ *     and asks for extra human validation instead, and TLS itself is a
+ *     Cloudflare deployment property — `https://rebuildup.dev` is the
+ *     only origin this repository publishes (§3 + ADR-0014).
+ *   - the router, the gate and the derived `Canonical:` field. The
+ *     shipped `renderSecurityTxt` is the rendering path, but the HTTP
+ *     contract lives in `router.test.ts`.
  *
  * Why only the renderer is imported
  * ---------------------------------
@@ -75,10 +89,11 @@ const WEBP_QUALITY = 80;
 /**
  * Viewport-bound capture: a plain-text document has no growing box, so
  * `fullPage: true` never settles. The height is sized to the fixture's
- * eight rendered lines (measured: content ends around row 116) plus a
- * margin, so the committed WebP is the document and not mostly margin.
+ * six rendered lines — measured: the last inked row of the capture is
+ * row 102 at Chromium's default monospace metrics — plus a margin, so
+ * the committed WebP is the document and not mostly empty background.
  */
-const VIEWPORT = { width: WEBP_WIDTH, height: 180 };
+const VIEWPORT = { width: WEBP_WIDTH, height: 140 };
 
 /**
  * Mirrors `SECURITY_TXT_CACHE_CONTROL` in
@@ -92,15 +107,18 @@ const CACHE_CONTROL = 'public, max-age=300, must-revalidate';
 /**
  * The APPROVED fixture.
  *
- * A far-future instant, so the deadline is live whenever the capture
- * runs; reserved-domain contacts, so nothing here can be read as a real
- * reporting channel (RFC 2606 reserves `.invalid` so it can never
- * resolve). The field set is the one RFC 9116 §2 defines, so the
- * screenshot shows what an owner-approved manifest renders.
+ * A deadline derived from the CLOCK rather than a hard-coded year, so
+ * the document on screen is always live — RFC 9116 §2.5.5 asks for an
+ * `Expires` in the future, and its "less than a year" advice is a
+ * RECOMMENDED practice that a fixture can follow without pretending to
+ * be a ten-year promise. Reserved-domain contacts, so nothing here can
+ * be read as a real reporting channel (RFC 2606 reserves `.invalid` so
+ * it can never resolve). The field set is the one RFC 9116 §2 defines,
+ * so the screenshot shows what an owner-approved manifest renders.
  */
 const APPROVED_FIXTURE = Object.freeze({
 	contacts: ['mailto:security@example.invalid', 'https://example.invalid/advisories/new'],
-	expires: '2099-01-01T00:00:00.000Z',
+	expires: new Date(Date.now() + 90 * 24 * 60 * 60 * 1000).toISOString(),
 	preferredLanguages: ['ja', 'en'],
 	encryption: ['https://example.invalid/pgp-key.txt'],
 	acknowledgments: ['https://example.invalid/security/acknowledgments'],
@@ -114,15 +132,24 @@ const { SECURITY_TXT_CONTENT_TYPE, SECURITY_TXT_PATH, renderSecurityTxt } = rend
 /** Render the fixture with the shipped renderer, not with a copy of it. */
 function renderFixture() {
 	const body = renderSecurityTxt(APPROVED_FIXTURE);
-	// A renderer that ever stopped emitting the start line or the last
-	// line would still produce a screenshot; these two checks make the
+	// A renderer that ever stopped emitting the ordering the §4 ABNF
+	// requires would still produce a screenshot; these checks make the
 	// capture fail instead of quietly documenting a broken document.
 	const lines = body.replace(/\n$/, '').split('\n');
-	if (!lines[0]?.startsWith('Contact: ')) {
-		throw new Error(`RFC 9116 §6 violated: Contact is not on the start line (${lines[0]})`);
+	const indexOfField = (field) => lines.findIndex((line) => line.startsWith(`${field}: `));
+	if (indexOfField('Contact') !== 0) {
+		throw new Error(`RFC 9116 §4 violated: Contact is not the first line (${lines[0]})`);
 	}
-	if (!lines.at(-1)?.startsWith('Expires: ')) {
-		throw new Error(`RFC 9116 §6 violated: Expires is not on the last line (${lines.at(-1)})`);
+	const expires = indexOfField('Expires');
+	if (expires < 1 || lines.length - 1 < expires + 1) {
+		throw new Error(`RFC 9116 §4 violated: Expires is missing or misplaced (${lines.at(-1)})`);
+	}
+	// §2.5.8: one comma-separated field, never one line per language.
+	const languages = lines.filter((line) => line.startsWith('Preferred-Languages: '));
+	if (languages.length !== 1 || languages[0]?.includes('\n')) {
+		throw new Error(
+			`RFC 9116 §2.5.8 violated: Preferred-Languages must appear exactly once (${languages.length} lines)`,
+		);
 	}
 	return body;
 }

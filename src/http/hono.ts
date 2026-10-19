@@ -33,7 +33,7 @@ import { seoRouter } from './seo/router';
  *                        `src/server.ts`.
  *   - `/.well-known/*`  RFC 9116 `security.txt` (Issue #468). Same
  *                        reason — a `text/plain` document, served as
- *                        part of the RFC 9116 §3.1 well-known
+ *                        part of the RFC 9116 §3 well-known
  *                        namespace, published only once an owner
  *                        approves the reporting channel.
  *

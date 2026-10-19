@@ -11,14 +11,15 @@ import {
 } from './document';
 
 /**
- * The RFC 9116 §6 grammar, asserted on the rendered bytes (Issue #468).
+ * The RFC 9116 §4 grammar, asserted on the rendered bytes (Issue #468).
  *
  * Why this file exists separately from the schema test
  * ---------------------------------------------------
  * `policy.test.ts` proves WHICH documents may be published; this file
  * proves the shape of the bytes when one is. A renderer that emitted a
- * valid document in the wrong order — `Expires:` first, or a `Contact:`
- * after it — would still satisfy every schema rule and would be
+ * valid document in the wrong order — `Expires:` before `Contact:`, or
+ * the single-valued `Preferred-Languages` field repeated once per
+ * language — would still satisfy every schema rule and would be
  * rejected by the parsers that read this file, which is why the
  * ordering assertions below are the load-bearing ones.
  *
@@ -46,37 +47,47 @@ function lines(document: SecurityTxtDocument): string[] {
 }
 
 describe('renderSecurityTxt', () => {
-	it('puts Contact on the start line and Expires on the last line (RFC 9116 §6)', () => {
+	it('orders the fields the way the RFC 9116 §4 ABNF requires', () => {
 		const rendered = lines(FULL);
-		expect(rendered[0]?.startsWith('Contact: ')).toBe(true);
-		expect(rendered.at(-1)).toBe(`Expires: ${EXPIRES}`);
+		const contact = rendered.findIndex((line) => line.startsWith('Contact: '));
+		const expires = rendered.findIndex((line) => line.startsWith('Expires: '));
+		const languages = rendered.findIndex((line) => line.startsWith('Preferred-Languages: '));
+		// `unsigned = *line (contact-field eol) *line (expires-field eol)
+		//          *line [lang-field eol] *line`
+		expect(contact).toBeGreaterThanOrEqual(0);
+		expect(contact).toBeLessThan(expires);
+		expect(expires).toBeLessThan(languages);
 	});
 
-	it('repeats a field once per value, in order', () => {
+	it('repeats Contact once per value, but emits Preferred-Languages once', () => {
+		// §2.5.8: the language field "MUST NOT appear more than once";
+		// multiple values are comma-separated on the one line.
 		expect(lines(FULL)).toEqual([
 			'Contact: mailto:security@example.invalid',
 			'Contact: https://example.invalid/security/advisories/new',
 			'Encryption: https://example.invalid/pgp-key.txt',
 			'Acknowledgments: https://example.invalid/security/acknowledgments',
-			'Preferred-Languages: ja',
-			'Preferred-Languages: en',
 			`Canonical: ${SECURITY_TXT_CANONICAL_URL}`,
 			'Policy: https://example.invalid/security-policy',
 			'Hiring: https://example.invalid/careers',
 			'CSAF: https://example.invalid/security/data/csaf.json',
 			`Expires: ${EXPIRES}`,
+			'Preferred-Languages: ja, en',
 		]);
+		const fieldNames = lines(FULL).map((line) => line.split(':')[0]);
+		expect(fieldNames.filter((name) => name === 'Preferred-Languages')).toHaveLength(1);
 	});
 
-	it('emits only the fields the RFC 9116 §6 grammar knows', () => {
+	it('emits only the fields the RFC 9116 §4 grammar knows', () => {
 		const fields = new Set(lines(FULL).map((line) => line.split(':')[0]));
 		for (const field of fields) {
 			expect(SECURITY_TXT_ALLOWED_FIELDS).toContain(
 				field as (typeof SECURITY_TXT_ALLOWED_FIELDS)[number],
 			);
 		}
-		// No comment production exists in RFC 9116 §6, so a `#` line
-		// would make the whole file unparseable.
+		// The RFC DOES have a comment production (§2.1, and `comment` in
+		// the §4 ABNF); emitting none is this renderer's choice, so the
+		// assertion below pins the choice rather than a requirement.
 		expect(renderSecurityTxt(FULL)).not.toMatch(/^#/m);
 	});
 
@@ -94,7 +105,7 @@ describe('renderSecurityTxt', () => {
 		expect(minimal).toBe(`Contact: mailto:security@example.invalid\nExpires: ${EXPIRES}\n`);
 	});
 
-	it('declares the path, media type and canonical URL RFC 9116 §3.1 requires', () => {
+	it('declares the path, media type and canonical URL RFC 9116 §3 requires', () => {
 		expect(SECURITY_TXT_PATH).toBe('/.well-known/security.txt');
 		expect(SECURITY_TXT_CONTENT_TYPE).toBe('text/plain; charset=utf-8');
 		expect(SECURITY_TXT_ORIGIN).toBe('https://rebuildup.dev');
@@ -109,7 +120,7 @@ describe('isSecurityTxtLive', () => {
 		expect(isSecurityTxtLive(FULL, now - 1)).toBe(true);
 	});
 
-	it('is not live at or after the deadline (RFC 9116 §2.5.1)', () => {
+	it('is not live at or after the deadline (RFC 9116 §2.5.5)', () => {
 		expect(isSecurityTxtLive(FULL, now)).toBe(false);
 		expect(isSecurityTxtLive(FULL, now + 1)).toBe(false);
 	});

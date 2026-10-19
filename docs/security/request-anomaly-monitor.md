@@ -125,7 +125,7 @@ scope `boundary` の監査レコード 1 行として出る（`src/logging` の 
 
 | 検証 | 内容 | 再生成 |
 | --- | --- | --- |
-| 単体 | 判定・ラッチ・形・redaction 耐性（25 件） | `pnpm exec vitest run src/http/middleware/anomaly-monitor.test.ts` |
+| 単体 | 判定・ラッチ・形・redaction 耐性（23 件） | `pnpm exec vitest run src/http/middleware/anomaly-monitor.test.ts` |
 | entry 結線 | 実 HTTP で 401 突発を流して、レコードが 1 行だけ出ることをフィールド単位で検証 | `pnpm exec vitest run test/integration/request-anomaly-monitor.test.ts` |
 | fixture proof | 記録済み 7 ケースを**実装そのもの**に通して、宣言どおりのイベント数か判定（423 リクエスト再生） | `pnpm run anomaly:fixture:proof` |
 | 画像 | proof の出力表を HTML 化して撮影 | `pnpm run verify:anomaly-monitor-screenshot` |

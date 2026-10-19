@@ -404,10 +404,19 @@ async function main() {
 	const fixtureDir = argValue(argv, '--fixtures=') ?? FIXTURE_DIR;
 	const ledgerPath = argValue(argv, '--ledger=') ?? SHIPPED_LEDGER;
 
-	const entries = [
-		auditShippedLedger(ledgerPath),
-		...FIXTURES.map((name) => auditFixture(name, fixtureDir)),
-	];
+	let entries;
+	try {
+		entries = [
+			auditShippedLedger(ledgerPath),
+			...FIXTURES.map((name) => auditFixture(name, fixtureDir)),
+		];
+	} catch (error) {
+		// `formatAuditReport` runs the anonymization guard on the transcript
+		// it is about to embed, so a leak in a case label or a note stops
+		// the command here instead of reaching the page.
+		process.stderr.write(`${error.message}\n`);
+		return 2;
+	}
 	for (const entry of entries) {
 		if (!entry.expect) continue;
 		const { audit, expect } = entry;

@@ -161,7 +161,16 @@ function main(argv) {
 		kind === 'fixture' ? auditFixtureInput(raw, label) : auditLedger(raw, { now: new Date() });
 	const source =
 		kind === 'fixture' ? `fixture ${label} (recorded run clock ${audit.clock})` : `ledger ${label}`;
-	const text = formatAuditReport(audit, { source });
+	// The rendered transcript is guarded too: the file passed the guard
+	// above, but the report is what a human pastes into a PR, so it gets
+	// its own check and a value-free refusal instead of a stack trace.
+	let text;
+	try {
+		text = formatAuditReport(audit, { source });
+	} catch (error) {
+		process.stderr.write(`[operator-mfa] ${error.message} (${label})\n`);
+		return 2;
+	}
 	process.stdout.write(text);
 	return exitCodeFor(audit);
 }

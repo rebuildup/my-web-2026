@@ -747,14 +747,15 @@
 			"id": "app-shell",
 			"files": [
 				"src/client.tsx",
+				"src/client-zod-config.ts",
 				"src/router.tsx",
 				"src/server.ts",
 				"src/routeTree.gen.ts",
 				"src/styles.css",
 				"panda.config.ts"
 			],
-			"min_files": 6,
-			"role": "App shell: client entry, router, the generated route tree (the route contract itself), Worker entry, the global Panda layer stylesheet, and `panda.config.ts` — the other input of the generated CSS, whose conditions / globalCss / utilities / theme tokens ship to every browser exactly like `src/**` does"
+			"min_files": 7,
+			"role": "App shell: client entry, its zod non-JIT CSP configuration, router, the generated route tree (the route contract itself), Worker entry, the global Panda layer stylesheet, and `panda.config.ts` — the other input of the generated CSS, whose conditions / globalCss / utilities / theme tokens ship to every browser exactly like `src/**` does"
 		}
 	],
 	"features": [

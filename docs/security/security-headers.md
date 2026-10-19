@@ -295,7 +295,11 @@ result of that pass; the image is the same run rendered.
   of this contract and need their own ticket.
 - **`Content-Security-Policy` is out of scope for #449.** Adding a CSP
   to a TanStack Start app with a Tool iframe is a separate decision with
-  its own breakage surface.
+  its own breakage surface. Issue #447 adds an observation-only
+  `Content-Security-Policy-Report-Only` at the Worker choke point; it
+  does not change any enforcing value and does not apply to the Static
+  Assets half described here. See
+  [`docs/security.md`](../security.md#csp-report-only).
 
 ## 6. Related
 

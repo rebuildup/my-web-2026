@@ -179,7 +179,7 @@ errors (0)
 
 | 対象 | どこで走る | 結果 |
 | --- | --- | --- |
-| `evaluateStressRun` の全 rule（40 cases） | `pnpm run test` → CI `validate` job | pass |
+| `evaluateStressRun` の全 rule（41 cases） | `pnpm run test` → CI `validate` job | pass |
 | browser 半の gate（4 variant の実測） | `pnpm run compat:stress:check`（Chromium 必要） | baseline PASS / control 3 件捕捉 / exit 0 |
 | report と WebP | `pnpm run verify:compat-stress-screenshot` | `docs/verification/compat/stress-story.webp` 生成 |
 
@@ -231,7 +231,7 @@ CI では「検出器が必ず落ちること」が毎回検証される。実�
   いた。
 - caption と画素の対応: `control-overflow` の capture には fixture が
   描画する defect 色 `#0ea5e9` が実際に含まれていることを生成時に数え、
-  足りない場合は report を書かずに失敗する。キャプションは画像の主张なので、
+  足りない場合は report を書かずに失敗する。キャプションは画像の主張なので、
   画素を伴わないまま「意図的 defect」を名乗ることを構造的に防ぐ。
 - 符号化: 1500px / quality 45（`scripts/_lazy-media-image.mjs` の 300 KB budget 内、
   実測 293,296 B）。他の verification report が quality 80 を使うのに下回るのは、

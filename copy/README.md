@@ -151,6 +151,7 @@ fixture の finding が gate を赤くすることはない（`--include-fixture
   gate はこれを「未翻訳 0 件」と表示する。coverage を無いまま green にするのは
   「公開言語が 1 つ」という観測であり、10 言語対応 progress ではない。
 - 実行時 locale 選択（visitor ごとに言語を選ぶ経路）は本 ticket の scope 外。
+
 ## 公開日本語の編集レビュー承認 (Issue #506)
 
 `copy:i18n:check` が **機械で決められること**（未翻訳キー・fallback 連鎖・

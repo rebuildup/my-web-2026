@@ -285,4 +285,14 @@ describe('the CLI', () => {
 		assert.equal(verdictOf(run.stdout), undefined);
 		assert.match(run.stderr, /no "remote" target/);
 	});
+
+	it('refuses a recorded listing dressed up as the production target', () => {
+		const run = runCli([
+			'--target=production',
+			'--fixture=quality/fixtures/r2-media-key-set/clean.json',
+		]);
+		assert.equal(run.status, 2);
+		assert.equal(verdictOf(run.stdout), undefined);
+		assert.match(run.stderr, /cannot be combined/);
+	});
 });

@@ -81,10 +81,13 @@ const USAGE = `Usage:
 --target       local (default) or production. Only "production" audits
                the real delivery surface; "local" proves the wiring
                against the ephemeral store and says nothing about it.
---per-page     page size for the keyset walk (default ${DEFAULT_PER_PAGE}).
+--per-page     page size for the read (default ${DEFAULT_PER_PAGE}, which is
+               also the R2 maximum). A page that comes back full is
+               reported as listing_incomplete, never as a whole bucket.
 --fixture      audit a recorded listing instead of a live bucket. This
                is a demonstration and a test input, never a release
-               verdict: the output says source=fixture.`;
+               verdict: the output says source=fixture, and combining
+               it with --target=production is a usage error.`;
 
 function parseArgs(argv) {
 	const options = { target: 'local', perPage: DEFAULT_PER_PAGE, fixture: null, help: false };
@@ -108,6 +111,12 @@ function parseArgs(argv) {
 		options.perPage > DEFAULT_PER_PAGE
 	) {
 		return { ...options, error: `--per-page must be an integer between 1 and ${DEFAULT_PER_PAGE}` };
+	}
+	// A recorded listing must never be mistakable for the production
+	// surface, so the combination is refused rather than silently
+	// resolved in favour of the fixture.
+	if (options.fixture && options.target === 'production') {
+		return { ...options, error: '--fixture cannot be combined with --target=production' };
 	}
 	return options;
 }
@@ -170,10 +179,8 @@ async function auditBucket({ target, perPage }) {
 /**
  * Run the audit against a recorded listing (tests and demonstrations).
  *
- * A fixture is ONE CLI response, so it is read as one page. A
- * multi-page walk is exercised by the unit test with an injected
- * paginator instead — a fixture that pretended to paginate would only
- * be testing its own fiction.
+ * A fixture is one CLI response and is read as one page, so the
+ * completeness rule applies to it exactly as it does to a live read.
  */
 function auditFixture(path) {
 	let listing;

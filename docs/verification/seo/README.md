@@ -74,6 +74,7 @@ route ごとの期待値:
   `test/integration/fixtures/structured-data-snapshot.json` から読む。
   同ファイルは integration suite が実 SSR HTML と `toEqual` で照合して
   いるため、画像は CI が検証していない document を描写し得ない。
+
 ## HTTP status 契約（#419）
 
 このディレクトリの別系統として、**response status** の契約検証を置いて

@@ -1,6 +1,7 @@
 /// <reference path="../../node_modules/@cloudflare/vitest-plugin/types/cloudflare-test.d.ts" />
 import { SELF, applyD1Migrations, env } from 'cloudflare:test';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { CANONICAL_ORIGIN } from '../../scripts/_index-boundary.mjs';
 import {
 	HTTP_STATUS_EXPECTATIONS,
 	evaluateObservation,
@@ -177,7 +178,7 @@ describe('unpublished portfolio content is not served and not indexable (#419)',
 		expect(evaluateObservation(row, observeResponse(res, '')), 'sitemap status').toEqual([]);
 		expect(res.headers.get('content-type')).toContain('application/xml');
 		// The one row that may be advertised.
-		expect(xml).toContain(`<loc>${'https://rebuildup.dev'}/portfolio/${PUBLISHED_SLUG}</loc>`);
+		expect(xml).toContain(`<loc>${CANONICAL_ORIGIN}/portfolio/${PUBLISHED_SLUG}</loc>`);
 		for (const slug of [DRAFT_SLUG, UNLISTED_SLUG, ARCHIVED_SLUG, UNKNOWN_SLUG]) {
 			expect(xml, `${slug} must not appear in sitemap.xml`).not.toContain(slug);
 		}

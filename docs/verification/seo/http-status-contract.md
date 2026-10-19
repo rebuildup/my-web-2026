@@ -56,7 +56,7 @@ suite 側で期待値を書き直す余地がない（`status-mismatch` /
 | --- | --- |
 | `unclassified-route` | route tree にある route に対応する case がない |
 | `stale-case` | case が指す route がもう存在しない |
-| `unproven-case` | case が名 proof ファイルが無い、または case id を引用していない |
+| `unproven-case` | case が名指す proof ファイルが無い、または case id を引用していない |
 
 つまり **「書かれたが誰も実行していない行」** と
 **「レビューされていない新しい route」** はどちらも build failure になる。
@@ -137,7 +137,7 @@ pnpm run capture:seo-status
   中間 PNG はディスクに書かず、メモリ上の Buffer を `sharp` で
   WebP に再エンコードしている（`scripts/capture-seo-status-report.mjs`）。
 - 画像には 2 枚の**実応答のスクリーンショット**（404 / 500）と、
-  宣言された 26 case の表、suite の実行結果并不能される。
+  宣言された 26 case の表、suite の実行結果が表示される。
   status / `robots` / surface の表示値はすべて実応答から読み取って
   おり、`evaluateObservation` の判定（MATCH / MISMATCH）と一致する。
   スクリーンショットだけで合格を主張しないため、再現コマンド・URL・

@@ -342,8 +342,8 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   not print a secret value) +
   `structured-data:check` + `index:boundary:check` +
   `seo:status:check` (Issue #419 — every shipped route must own a
-  404 / 500 / redirect / noindex status row whose proof file cites
-  it, so an unreviewed request class cannot pass silently) +
+  status row (200 / 404 / 500 / redirect / noindex) whose proof file
+  cites it, so an unreviewed request class cannot pass silently) +
   `tools:check` + `security:headers:check` + `install:scripts:check` +
   `wrangler:independence:check` + `cloudflare:contract:check` +
   `test:wiring:check` + release-asset checks + `version:check` +

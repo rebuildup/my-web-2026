@@ -25,8 +25,12 @@ import {
  *
  * Scope: LOCAL origin only. The rows proved here need a seeded D1
  * (`portfolio_project`), which exists in `.tmp/d1state` and not on a
- * deployed Worker, so `playwright.config.ts` ignores this spec for any
- * non-local `PLAYWRIGHT_BASE_URL`. Nothing here touches production.
+ * deployed Worker, so two mechanisms keep this spec local:
+ * `playwright.config.ts` ignores it for any non-local
+ * `PLAYWRIGHT_BASE_URL`, and the describe-level `test.skip` below
+ * repeats the check in-file, because an explicitly named file
+ * (`playwright test <file>`, the form the production scripts use) is
+ * not protected by `testIgnore`. Nothing here touches production.
  *
  * What a screenshot cannot prove
  * ------------------------------
@@ -60,6 +64,10 @@ const PUBLISHED_SLUG = 'seo-status-browser-published';
 const DRAFT_SLUG = 'seo-status-browser-draft';
 const UNLISTED_SLUG = 'seo-status-browser-unlisted';
 
+// Same condition as `playwright.config.ts`: the local preview server.
+// `PLAYWRIGHT_BASE_URL` defaults to `http://127.0.0.1:<port>`.
+const LOCAL_BASE_URL = process.env.PLAYWRIGHT_BASE_URL?.startsWith('http://127.0.0.1') ?? true;
+
 /** Repeated `facets` — rejected by the route's own search schema. */
 const INVALID_QUERY_PATH = '/portfolio?facets=a&facets=b';
 
@@ -90,6 +98,19 @@ function expectServed(id: string, status: number, html: string) {
 }
 
 test.describe('seo status contract — browser rendering (#419)', () => {
+	// Serial on purpose. The probe rows are seeded into the SAME local
+	// D1 file, and `afterAll` deletes them. Under `fullyParallel` each
+	// worker runs its own `beforeAll` / `afterAll`, so the first worker
+	// to finish deletes the rows the others are still asserting on — a
+	// 404 on `portfolio-published` that has nothing to do with the
+	// contract. Serial keeps the seed and the cleanup exactly once.
+	test.describe.configure({ mode: 'serial' });
+
+	test.skip(
+		!LOCAL_BASE_URL,
+		'local-only spec: the fixture rows are seeded into the local D1 file, which a deployed origin cannot read',
+	);
+
 	test.beforeAll(() => {
 		for (const row of ORIGIN_ROWS) {
 			seedVisibilityRow(row.slug, row.insert.visibility, row.insert.status);

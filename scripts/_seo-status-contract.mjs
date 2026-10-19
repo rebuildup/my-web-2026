@@ -80,13 +80,21 @@
  *     result.
  */
 
-/** `<meta name="robots">` states the contract distinguishes. */
-export const ROBOTS_STATES = Object.freeze(['absent', 'noindex', 'declared']);
+/**
+ * `<meta name="robots">` states the contract distinguishes.
+ * `not-applicable` is used by rows whose response is a redirect or a
+ * non-HTML document, where no robots meta can exist.
+ */
+export const ROBOTS_STATES = Object.freeze(['absent', 'noindex', 'declared', 'not-applicable']);
 
-/** Failure surfaces a visitor can land on. `page` is "a real document". */
+/**
+ * Surfaces an observation can land on. `page` is "a real rendered
+ * document"; `machine` is a non-HTML crawler document (`/sitemap.xml`).
+ */
 export const SURFACES = Object.freeze([
 	'page',
 	'document',
+	'machine',
 	'not_found',
 	'service_unavailable',
 	'tools_not_found',
@@ -200,7 +208,7 @@ export const HTTP_STATUS_EXPECTATIONS = Object.freeze([
 		route: '/portfolio/$slug',
 		request: 'GET /portfolio/<published + public row> (anonymous)',
 		expect: { status: 200, robots: 'absent', surface: 'page' },
-		sitemap: 'crawl-discovered',
+		sitemap: 'listed',
 		proves: [WORKERD_PROOF],
 		why: 'The positive control: if this row 404s, the visibility filter has become "de-index everything", which no other assertion would notice.',
 		openDecision: null,

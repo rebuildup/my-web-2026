@@ -1,0 +1,73 @@
+{
+	"/portfolio/my-web-2026": {
+		"ogType": "article",
+		"ogSiteName": "rebuildup.dev",
+		"ogLocale": "ja_JP",
+		"ogTitle": "my-web-2026",
+		"ogDescription": "OGP card gate fixture project. Not real portfolio copy.",
+		"ogUrl": "https://rebuildup.dev/portfolio/my-web-2026",
+		"ogImage": "https://rebuildup.dev/og/default-card.png",
+		"ogImageAlt": "rebuildup.dev — 自分のメディアを持たない surface の既定カード。",
+		"ogImageWidth": "1200",
+		"ogImageHeight": "630",
+		"twitterCard": "summary_large_image",
+		"twitterTitle": "my-web-2026",
+		"twitterDescription": "OGP card gate fixture project. Not real portfolio copy.",
+		"twitterImage": "https://rebuildup.dev/og/default-card.png"
+	},
+	"/portfolio": {
+		"ogType": "website",
+		"ogSiteName": "rebuildup.dev",
+		"ogLocale": "ja_JP",
+		"ogTitle": "Portfolio — rebuildup.dev",
+		"ogDescription": "主要な制作物、技術選定、設計、成果、振り返り。facet で絞り込み、各 project の詳細ページから repository / release / 解説へ。",
+		"ogUrl": "https://rebuildup.dev/portfolio",
+		"ogImage": "https://rebuildup.dev/og/default-card.png",
+		"ogImageAlt": "rebuildup.dev — 自分のメディアを持たない surface の既定カード。",
+		"ogImageWidth": "1200",
+		"ogImageHeight": "630",
+		"twitterCard": "summary_large_image",
+		"twitterTitle": "Portfolio — rebuildup.dev",
+		"twitterDescription": "主要な制作物、技術選定、設計、成果、振り返り。facet で絞り込み、各 project の詳細ページから repository / release / 解説へ。",
+		"twitterImage": "https://rebuildup.dev/og/default-card.png"
+	},
+	"/about": {
+		"ogType": "profile",
+		"ogSiteName": "rebuildup.dev",
+		"ogLocale": "ja_JP",
+		"ogTitle": "木村友亮 / Yusuke Kimura — About",
+		"ogDescription": "ソフトウェアと映像・デザインを行き来しながら、作ったものを公開・運用まで持っていく developer / creator。",
+		"ogUrl": "https://rebuildup.dev/about",
+		"ogImage": "https://rebuildup.dev/og/default-card.png",
+		"ogImageAlt": "rebuildup.dev — 自分のメディアを持たない surface の既定カード。",
+		"ogImageWidth": "1200",
+		"ogImageHeight": "630",
+		"twitterCard": "summary_large_image",
+		"twitterTitle": "木村友亮 / Yusuke Kimura — About",
+		"twitterDescription": "ソフトウェアと映像・デザインを行き来しながら、作ったものを公開・運用まで持っていく developer / creator。",
+		"twitterImage": "https://rebuildup.dev/og/default-card.png"
+	},
+	"/": {
+		"ogType": "website",
+		"ogTitle": "my-web-2026 — rebuildup.dev",
+		"ogDescription": "開発・制作・活動をまとめる次の Personal Web Platform を構築しています。Portfolio / content / activity を段階的に移行中です。この 2026 edition は移行途中の public preview です。",
+		"ogUrl": "https://rebuildup.dev/",
+		"twitterCard": "summary"
+	},
+	"/contact": {
+		"ogType": "website",
+		"ogTitle": "Contact — rebuildup.dev",
+		"ogDescription": "現在 re-verified されている contact channel だけを掲載しています。Channel は用途 (採用 / 技術的な議論 / 配布) 別に明示しています。",
+		"ogUrl": "https://rebuildup.dev/contact"
+	},
+	"/tools": {
+		"ogType": "website",
+		"ogTitle": "Tools — my-web-2026",
+		"ogDescription": "Standalone Web Tools integrated into my-web-2026 via the Tool Registry contract.",
+		"ogUrl": "https://rebuildup.dev/tools",
+		"twitterCard": "summary"
+	},
+	"/tools/prototype": {
+		"ogUrl": "https://rebuildup.dev/tools/prototype"
+	}
+}

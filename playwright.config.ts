@@ -120,16 +120,17 @@ export default defineConfig({
 	// separate G15 post-publication contract and needs published entries
 	// plus production media.
 	//
-	// `portfolio.spec.ts` and `portfolio-markdown-xss.spec.ts` likewise
-	// target a local D1 binding: they seed rows into the local D1
-	// (`draft` / `unlisted` / `archived` visibility rows, and the
-	// Issue #451 XSS corpus) and assert against them. The local D1 file
-	// is not addressable from a remote Worker deployment, so a full
+	// `portfolio.spec.ts`, `portfolio-markdown-xss.spec.ts` and
+	// `seo-status.spec.ts` likewise target a local D1 binding: they seed
+	// rows into the local D1 (`draft` / `unlisted` / `archived`
+	// visibility rows, the Issue #451 XSS corpus, and the Issue #419
+	// status probes) and assert against them. The local D1 file is not
+	// addressable from a remote Worker deployment, so a full
 	// `PLAYWRIGHT_BASE_URL=https://rebuildup.dev pnpm exec playwright
 	// test` (no file filter) would seed the local file, read the
 	// deployed page, and fail every assertion on a 404 — a failure
 	// signature that reads as "production portfolio is broken" when
-	// nothing is. Both files are therefore filtered out of the
+	// nothing is. All three files are therefore filtered out of the
 	// non-local path. Each also skips itself in-file, so a
 	// file-filtered invocation (`playwright test <file>`, which is how
 	// the production scripts name their spec) cannot seed a row against
@@ -151,7 +152,7 @@ export default defineConfig({
 			? LOCAL_SMOKE
 				? ['**/prod-portfolio.spec.ts']
 				: ['**/prod-*.spec.ts']
-			: ['**/portfolio.spec.ts', '**/portfolio-markdown-xss.spec.ts']),
+			: ['**/portfolio.spec.ts', '**/portfolio-markdown-xss.spec.ts', '**/seo-status.spec.ts']),
 	],
 	// The local project spins up the preview server automatically.
 	// `pnpm preview` is required because the Tool iframe spec reaches

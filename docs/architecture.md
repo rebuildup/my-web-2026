@@ -51,6 +51,11 @@ src/
 │  ├─ tokens.ts
 │  ├─ semantic-tokens.ts
 │  ├─ primitives/
+│  ├─ social-card/
+│  │  ├─ contract.json
+│  │  ├─ contract.ts
+│  │  ├─ card.ts
+│  │  └─ index.ts
 │  └─ error-states/
 │     ├─ contract.ts
 │     ├─ ErrorState.tsx
@@ -130,6 +135,17 @@ slug grammar の所有は各 obligation のまま（`reactions/slug-regex.ts` �
 raw / semantic tokens と、その visual language の primitive をまとめる。
 これは「全 UI component の共有置き場」ではない。別の visual language が必要に
 なった場合、観測された同一 obligation がない限り自動的には統合しない。
+
+`social-card/`（Issue #421）は link unfurler へ公開する Open Graph /
+Twitter card の**公開契約**を所有する。`contract.json` が canonical origin・
+site name / locale・既定 fallback card・route ごとの宣言（og:type と
+`cardPolicy`）を持つ SoT で、`card.ts` がその宣言から head の meta だけを
+組み立てる。fact source は `about/` と `portfolio/` のまま（この module は
+どちらにも import しない）。「media が無いとき」の分岐を無言にしないことが
+契約の主眼で、fallback card の URL が `og:image` に出ることが劣化の可視化に
+なる。検証は `scripts/check-ogp-card.mjs`（宣言 vs route tree）と
+`test/integration/ogp-card.test.ts`（宣言 vs 実 SSR HTML）が同じ engine を
+使い分ける。
 
 `error-states/`（Issue #501）は failure surface の**公開契約**を所有する。
 1 kind につき 1 component（404 / 503 / 依存取得失敗）、共有 shell、そして
@@ -403,3 +419,88 @@ Architecture boundary の変更は path の見た目だけで承認しない。
 - routing convention を変更する → `routes/` / runtime entry が変更を所有し、Home の意味を変えない。
 
 詳細は ADR-0008 を参照する。
+
+### Storybook story の ownership（Issue #509）
+
+Storybook story は feature-local UI の preview 対象である。preview は browser で
+走るため、binding も Worker runtime も存在しない。よって story の **実行時
+import closure** は、その obligation の中に収まっていなければならない。
+
+`scripts/check-storybook-ownership.mjs`（`pnpm run storybook:ownership:check`、
+`validate:fast` に配線済み）がこれを機械的に検証する。主語（subject）は
+`.storybook/main.ts` の `stories` glob が実際に宣言した story だけであり、glob の
+非 glob 部分を walk の起点にするため `src/` 外に宣言された story も対象になる。
+`stories` 配列に文字列リテラル以外（spread、テンプレートリテラル等）がある、
+glob が repository 外を解決する場合は「主語集合が読めない」ものとして exit 2 に
+する（黙って狭い集合を pass にしない）。foreign boundary は次の
+5 種で、いずれも browser preview では解決・実行できない。
+
+- `src/routes/**` — file-route contract。import すると route tree 一式が入る。
+- `src/server.ts` — Worker runtime entrypoint。
+- `src/http/**` — 外部 HTTP boundary (Hono)。
+- `src/cloudflare/**` — binding を所有する obligation。
+- `cloudflare:workers` — Workers virtual module。
+
+**除外（理由つき）**
+
+- 上記のうち **path の 4 種**（`src/routes/**` / `src/server.ts` / `src/http/**` /
+  `src/cloudflare/**`）は本規則の *対象* であり *主語* ではない。owner 間の依存
+  方向は `scripts/check-architecture.mjs` が所有しており、本 checker は preview が
+  何をロードできるかだけを判定する（出力の `not applicable` 欄）。boundary 配下に
+  置かれた story も主語にせず、`not applicable` として列挙する。
+  `cloudflare:workers` は path ではないため、この欄には現れず、違反と
+  known limitations（出力の最終段）に現れる。
+- `import type` と `import { type A } from` は `verbatimModuleSyntax: true` で
+  build 時に消えるため到達とみなさない（AGENTS.md §3 の type-only edge、
+  `home → http` が登録済み）。`import { type A, b }` のように runtime binding が
+  1 つでも残る clause は runtime edge として扱う。
+- npm package / 生成物 `styled-system/` / 静的 asset は終端 leaf。`src/` 外の
+  **source file** は leaf ではなく walk する（外部 story の helper 経由の境界到達を
+  取りこぼさないため）。`src/` 外の specifier が解決できない場合は `external` として
+  表示する（生成物の codegen 未実行を CI の失敗にしないため）。
+- **server-function seam**: `createServerFn` を value import する module は、
+  `.handler(…)` body **の中だけ**が Worker 側とみなされ、walk はそこで止まる
+  （client build から body を落とすのは start compiler plugin だけだから）。
+  それ以外の edge は **module-level edge** で、module の読み込み時に評価される
+  ので、story がどの export を要求したかに関わらずすべて walk する。
+  `import { env } from 'cloudflare:workers'` が module-level にあるかぎり、
+  その module を import する preview は virtual module をロードすることになり、
+  export の到達性で絞り込んではならない（Issue #509 の review で判明した穴）。
+  したがって server 専用 binding は **handler body の中で**
+  `await import(…)` で解決する（`src/home/reactions/load.ts` /
+  `src/admin/emoji-catalog/load.ts` がその形）。factory は import 句の
+  ローカル名（`import { createServerFn as serverFn }` なら `serverFn`）でも検出
+  する。dynamic `import()` は binding を持たないため要求では絞れないので、
+  handler range の内側にあれば walk せず、外側にあれば walk する
+  （`const unused = () => import(…)` も handler 外なので walk する）。
+  edge 自体は隠さず `seam` として報告する。
+  `src/home/reactions/widget.stories.tsx` のコメントが、preview では画面上の
+  mutation が inert であることを宣言している。
+
+**ソースの読み方** — import の照合は、コメント・文字列リテラル・テンプレート
+リテラルを伏せた上に対して行う。補間なしテンプレートは placeholder として残し、
+`import(`../x`)` も edge として読む。`return` などキーワード直後の `/` は正規表現
+リテラルとしてマスクする）。
+`.storybook/main.ts` の `stories` も同じマスクの上から読むため、コメントアウト
+された古い `stories` 配列が subject set になることはない。
+`import` と `(` の間の空白・コメント（マスク後は空白になる）も許す。
+ドキュメントとして import 例を表示する story
+が誤って違反になり、逆に import 形のコメントが server-function seam と読まれて
+本物の違反が隠れることを防ぐ。
+
+**判定の4状態** — `pass` / `fail` / `not run` / `not applicable`。`not run`
+（`src/` 内で解決できない specifier がある、主語集合が読めない）は「green ではない」
+として exit 2 にする。walk が不完全なまま pass を主張しないため。
+fixture による検証は `scripts/check-storybook-ownership.test.mjs`。
+
+**既知の制約（manual work）** — alias は `~/` のみ解決する。`vite.config.ts` が
+宣言している唯一の alias なので現状の誤検出はないが、新しい alias（`@/` 等）が
+入ると checker 側が unknown alias を leaf 扱いして黙る。 Checker 側の
+`known limitations` にも同じ内容を出す。主語集合が 0 になった場合は「glob に
+story が無い」のか「全 story が foreign boundary 配下で除外された」のかを
+stderr で区別する。
+
+**この checker が所有しないもの** — 「shared UI layer」の新設。違反を直す正しい
+方法は、render できる部分を owner obligation へ移し loader の結果を prop として
+渡すこと（`src/home/status/tiles.stories.tsx` がその形の参照実装）。route 層や
+共通 UI を新設して境界を薄めることは本 checker の目的ではない。

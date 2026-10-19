@@ -130,7 +130,7 @@ ratio は **膨張のみ**で測る。RTL 行は膨張の後に isolate が付�
 | 対象 | コマンド | 何が緑になること |
 | --- | --- | --- |
 | fixture 契約 | `pnpm exec vitest run src/i18n/pseudo-locale.test.ts` | 33 テスト。膨張・可逆性・数値 run・空白・protected span・bidi 隔離・limit の扱い・意味 token・長文行 |
-| capture の純粋部分 | `node --test scripts/capture-pseudo-locale-stress.test.mjs` | 14 テスト。report の escape、limits の逐語表示、verdict ロジック（overflow / token 消失 / isolate 不整合 / webfont 未読込 / fixture 失敗） |
+| capture の純粋部分 | `node --test scripts/capture-pseudo-locale-stress.test.mjs` | 15 テスト。report の escape、limits の逐語表示、verdict ロジック（overflow / token 消失 / isolate 不整合 / webfont 未読込 / fixture 失敗）、そして「出荷モジュールが fixture を import しない」こと |
 | wiring | `pnpm run test:wiring:check` | 新しい `scripts/*.test.mjs` が `pnpm test` から到達可能 |
 | 実測 | `pnpm run capture:pseudo-locale` | Chromium で 320 px frame を実測し、違反があれば非ゼロ終了 |
 

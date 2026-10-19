@@ -24,7 +24,10 @@
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync, readdirSync } from 'node:fs';
+import { dirname, join, relative, resolve } from 'node:path';
 import test from 'node:test';
+import { fileURLToPath } from 'node:url';
 
 import {
 	SURFACE_SAMPLE_IDS,
@@ -32,6 +35,8 @@ import {
 	evaluateMeasurement,
 	renderReportHtml,
 } from './capture-pseudo-locale-stress.mjs';
+
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
 /** A report row shaped like the one `auditPseudoSamples()` produces. */
 function auditRow(overrides = {}) {
@@ -242,4 +247,33 @@ test('a failing fixture row fails the capture even when the browser is happy', (
 	const verdict = passingMeasurement({ audit: { ok: false } });
 	assert.equal(verdict.ok, false);
 	assert.match(verdict.findings.join(' '), /the fixture audit itself reported a failing row/);
+});
+
+/** Every `.ts` / `.tsx` under `src/`, depth first. */
+function sourceFiles(dir) {
+	return readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+		const path = join(dir, entry.name);
+		if (entry.isDirectory()) return sourceFiles(path);
+		return entry.isFile() && /\.tsx?$/.test(entry.name) ? [path] : [];
+	});
+}
+
+test('no shipped runtime module imports the pseudo fixture', () => {
+	// The fixture's strings are unapproved stress copy. Only the tests,
+	// the capture and the Storybook preview may read them; if a route,
+	// a server function or a component imported this module, the strings
+	// would be one refactor away from shipping.
+	const offenders = sourceFiles(join(REPO_ROOT, 'src'))
+		.filter((path) => {
+			const repoPath = relative(REPO_ROOT, path).split('\\').join('/');
+			if (repoPath.startsWith('src/i18n/')) return false;
+			if (/\.(test|spec|stories)\.tsx?$/.test(repoPath)) return false;
+			return /from\s+['"][^'"]*i18n\/pseudo-locale(\.ts)?['"]/.test(readFileSync(path, 'utf8'));
+		})
+		.map((path) => relative(REPO_ROOT, path));
+	assert.deepEqual(
+		offenders,
+		[],
+		`shipped modules import the pseudo fixture: ${offenders.join(', ')}`,
+	);
 });

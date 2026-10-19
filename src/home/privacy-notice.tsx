@@ -1,5 +1,10 @@
 import { css } from '../../styled-system/css';
-import { DELETION_REQUEST_CHANNEL, getPublishedDataLifecycle } from '../privacy/data-lifecycle';
+import type { DataLifecycleEntry } from '../privacy/data-lifecycle';
+import {
+	DELETION_REQUEST_CHANNEL,
+	filterPublishedEntries,
+	getPublishedDataLifecycle,
+} from '../privacy/data-lifecycle';
 
 /**
  * The public data / retention notice (Issue #496).
@@ -24,9 +29,10 @@ import { DELETION_REQUEST_CHANNEL, getPublishedDataLifecycle } from '../privacy/
  * Fail-closed publication
  * -----------------------
  * Only entries with `publication.status === 'approved'` render
- * (`getPublishedDataLifecycle`). A `pending` entry is documented in the
+ * (`filterPublishedEntries`). A `pending` entry is documented in the
  * registry and appears nowhere, so an unapproved fact cannot leak into
- * the document by being "harmless".
+ * the document by being "harmless". The filter runs inside the
+ * component, so the rule holds for whatever set it is handed.
  *
  * Language of parts
  * -----------------
@@ -36,8 +42,24 @@ import { DELETION_REQUEST_CHANNEL, getPublishedDataLifecycle } from '../privacy/
  * `src/i18n/language-of-parts.ts` owns, applied the same way the
  * previous footer note applied it.
  */
-export function PrivacyNotice() {
-	const entries = getPublishedDataLifecycle();
+export interface PrivacyNoticeProps {
+	/**
+	 * The entries to consider. Defaults to the registry's published set
+	 * (`getPublishedDataLifecycle()`).
+	 *
+	 * Why the seam exists: "a `pending` entry renders nowhere" can
+	 * only be proven against a set that actually contains one. The
+	 * shipped registry publishes everything it declares, so the test
+	 * passes a fixture with a `pending` entry and asserts it is
+	 * absent from the markup.
+	 */
+	readonly entries?: readonly DataLifecycleEntry[];
+}
+
+export function PrivacyNotice({ entries = getPublishedDataLifecycle() }: PrivacyNoticeProps) {
+	// The component filters, not just the registry: the fail-closed
+	// rule then holds for whatever set it is handed.
+	const published = filterPublishedEntries(entries);
 	return (
 		<details
 			className={css({
@@ -82,7 +104,7 @@ export function PrivacyNotice() {
 					marginBlockStart: '4',
 				})}
 			>
-				{entries.map((entry) => (
+				{published.map((entry) => (
 					<div key={entry.id} data-lifecycle-id={entry.id}>
 						<dt
 							className={css({

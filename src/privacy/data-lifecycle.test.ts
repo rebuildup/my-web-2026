@@ -2,10 +2,12 @@
 import { describe, expect, it } from 'vitest';
 import { ACTOR_COOKIE_MAX_AGE_SECONDS } from '../home/reactions/cookie';
 import { DEDUP_WINDOW_MS } from '../http/access-counter/schema';
+import type { DataLifecycleEntry } from './data-lifecycle';
 import {
 	DATA_LIFECYCLE_ENTRIES,
 	DELETION_REQUEST_CHANNEL,
 	UNSUPPORTED_PUBLIC_CLAIMS,
+	filterPublishedEntries,
 	findUnsupportedClaims,
 	getPublishedDataLifecycle,
 	publishedClaimSurface,
@@ -31,13 +33,34 @@ import {
  * `test/integration/data-lifecycle.test.ts`, because only the Worker
  * can render a real document.
  */
-describe('retention prose is tied to the constants the code owns', () => {
-	const entry = (id: string) => {
-		const found = DATA_LIFECYCLE_ENTRIES.find((candidate) => candidate.id === id);
-		if (!found) throw new Error(`[privacy] no entry named ${id}`);
-		return found;
-	};
 
+/** The registry entry with this id. Throws when the id is unknown. */
+const entry = (id: string) => {
+	const found = DATA_LIFECYCLE_ENTRIES.find((candidate) => candidate.id === id);
+	if (!found) throw new Error(`[privacy] no entry named ${id}`);
+	return found;
+};
+
+/**
+ * A registry entry built from the shape, for the fixtures the shipped
+ * registry does not contain (a `pending` entry, an entry with a
+ * different id).
+ */
+function fixtureEntry(id: string, status: 'approved' | 'pending'): DataLifecycleEntry {
+	return {
+		id,
+		label: { ja: `ラベル ${id}`, en: `Label ${id}` },
+		stores: { ja: `保存項目 ${id}`, en: `Stores ${id}` },
+		retention: { kind: 'not-applicable', statement: { ja: `保持 ${id}`, en: `Retention ${id}` } },
+		deletion: { channel: 'not-applicable', statement: { ja: `削除 ${id}`, en: `Deletion ${id}` } },
+		transfer: { target: 'none', statement: { ja: `送信 ${id}`, en: `Transfer ${id}` } },
+		visibility: { ja: `公開 ${id}`, en: `Visibility ${id}` },
+		evidence: ['src/privacy/data-lifecycle.ts'],
+		publication: { status, note: { ja: `備考 ${id}`, en: `Note ${id}` } },
+	};
+}
+
+describe('retention prose is tied to the constants the code owns', () => {
 	it('the cookie lifetime sentence is the shipped cookie Max-Age', () => {
 		// 60*60*24*365 seconds == one year == `Max-Age=31536000`.
 		expect(ACTOR_COOKIE_MAX_AGE_SECONDS).toBe(31_536_000);
@@ -93,6 +116,18 @@ describe('publication is fail-closed', () => {
 		}
 	});
 
+	it('a pending entry is filtered out of a set that really contains one', () => {
+		// The shipped registry publishes everything it declares, so
+		// the fail-closed rule is proved against a fixture that holds
+		// a `pending` entry. Without this, "a pending entry renders
+		// nowhere" could not fail.
+		const approved = fixtureEntry('approved-entry', 'approved');
+		const pending = fixtureEntry('pending-entry', 'pending');
+		expect(filterPublishedEntries([approved, pending]).map((entry) => entry.id)).toEqual([
+			'approved-entry',
+		]);
+	});
+
 	it('an approved entry always carries repository evidence', () => {
 		for (const item of getPublishedDataLifecycle()) {
 			expect(item.evidence.length).toBeGreaterThan(0);
@@ -129,6 +164,71 @@ describe('publication is fail-closed', () => {
 				expect(text.en.trim().length).toBeGreaterThan(0);
 			}
 		}
+	});
+});
+
+describe('the wording is scoped to what the code does', () => {
+	it('the analytics sentence names the page_view the query strip reaches', () => {
+		// `stripAnalyticsQuery` only reaches the SPA route-change
+		// page_view. The first page_view is recorded by
+		// `gtag('config', …)`, where GA reads `document.location`
+		// itself — the limit this repository documents in
+		// `docs/security/log-redaction.md` ("Known limits"). The
+		// published sentence must carry that limit, because the
+		// platform's own threat model puts `?token=`, `?email=` and
+		// `?q=` in a URL.
+		const stores = entry('analytics-events').stores;
+		expect(stores.ja).toContain('アプリ内の画面遷移');
+		expect(stores.en).toMatch(/in-app route change/);
+		expect(stores.ja).toContain('最初の読み込み');
+		expect(stores.en).toMatch(/first page load/);
+		// The unqualified claim the previous wording made is gone.
+		expect(stores.ja).not.toContain('クエリ文字列は送信前に除去され');
+		expect(stores.en).not.toContain('Query strings are stripped before sending');
+	});
+
+	it('the analytics sentence names the off switch', () => {
+		// The measurement-id secret is the only off switch: with it
+		// unset, `GoogleAnalytics` renders no tag at all.
+		const transfer = entry('analytics-events').transfer;
+		expect(transfer.statement.ja).toContain('測定 ID');
+		expect(transfer.statement.en).toMatch(/measurement-id secret/);
+	});
+
+	it('the cookie transfer sentence is scoped to the identifier', () => {
+		// The subject must be the identifier, not "a page load": a
+		// page load also sends a page_view to GA4, so a load-scoped
+		// sentence reads as a claim about the whole request.
+		const transfer = entry('actor-cookie').transfer;
+		expect(transfer.statement.ja).toContain('この識別子');
+		expect(transfer.statement.en).toMatch(/^This identifier/);
+		expect(transfer.statement.ja).not.toContain('ホームの読み込みは');
+		expect(transfer.statement.en).not.toContain('The home loader');
+	});
+
+	it('the admin-auth visibility names the surface the invited email reaches', () => {
+		// `/admin/invitations/accept?token=…` is unauthenticated: its
+		// loader only probes the token, and the view prints the probed
+		// email. "Never reaches a public surface" is therefore not a
+		// fact about the stored email address.
+		const visibility = entry('admin-auth').visibility;
+		expect(visibility.ja).toContain('/admin/invitations/accept');
+		expect(visibility.en).toContain('/admin/invitations/accept');
+		expect(visibility.ja).not.toContain('認証境界の内側なので公開面には現れません');
+		expect(visibility.en).not.toContain(
+			'It sits behind the authentication boundary and never reaches a public surface',
+		);
+	});
+
+	it('the session row names the IP address and the user agent it stores', () => {
+		// `migrations/0001_better_auth.sql` declares
+		// `session.ipAddress` and `session.userAgent`, and Better Auth
+		// writes both when it creates a session.
+		const stores = entry('admin-auth').stores;
+		expect(stores.ja).toContain('IP アドレス');
+		expect(stores.ja).toContain('ユーザーエージェント');
+		expect(stores.en).toContain('client IP address');
+		expect(stores.en).toContain('user-agent');
 	});
 });
 

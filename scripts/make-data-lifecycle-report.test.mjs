@@ -10,7 +10,7 @@
  */
 
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -18,6 +18,7 @@ import {
 	DATA_LIFECYCLE_ENTRIES,
 	DELETION_REQUEST_CHANNEL,
 	UNSUPPORTED_PUBLIC_CLAIMS,
+	parseEvidencePath,
 } from '../src/privacy/data-lifecycle.ts';
 import {
 	findScheduledHandlers,
@@ -169,4 +170,27 @@ test('the deployment configuration declares no Cron trigger', () => {
 	const config = readFileSync(join(ROOT, 'wrangler.jsonc'), 'utf8');
 	const code = config.replace(/\/\*[\s\S]*?\*\//g, ' ').replace(/(^|[^:])\/\/[^\n]*/g, '$1');
 	assert.equal(/"crons"\s*:/.test(code), false);
+});
+
+test('every evidence pointer names a file that exists', () => {
+	// The registry's evidence pointers are the only way a reviewer
+	// re-derives a published claim, so a pointer that names a file
+	// nobody can open is not evidence. The runtime guard only checks
+	// that a pointer *looks like* a path; this is the half that
+	// resolves it. It runs here (Node) because the workerd pool has
+	// no filesystem — the leaf rule exempts test files, and this file
+	// is a `*.test.mjs` under `scripts/`.
+	for (const entry of DATA_LIFECYCLE_ENTRIES) {
+		for (const pointer of entry.evidence) {
+			const file = parseEvidencePath(pointer);
+			assert.ok(
+				file.includes('/') || /\.[a-z]+$/i.test(file),
+				`evidence pointer names no path: ${pointer}`,
+			);
+			assert.ok(
+				existsSync(join(ROOT, file)),
+				`evidence pointer names a missing file: ${pointer} (${file})`,
+			);
+		}
+	}
 });

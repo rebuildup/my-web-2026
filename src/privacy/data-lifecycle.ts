@@ -178,8 +178,13 @@ export const DATA_LIFECYCLE_ENTRIES = [
 		transfer: {
 			target: 'none',
 			statement: {
-				ja: 'ホームの読み込みは自オリジンへの内部呼び出しだけで、第三者へは送信しません。',
-				en: 'The home loader only self-calls its own origin; nothing is sent to a third party.',
+				// The subject is the identifier, not "a page load": a
+				// page load also sends a page_view to GA4 (see the
+				// `analytics-events` entry), so a sentence whose
+				// subject was the load would read as a claim about
+				// the whole request.
+				ja: 'この識別子の送信先は、このプラットフォーム自身（自オリジン）だけです。',
+				en: 'This identifier travels only to this deployment’s own origin.',
 			},
 		},
 		visibility: {
@@ -303,8 +308,19 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			en: 'Web analytics (Google Analytics 4)',
 		},
 		stores: {
-			ja: '送信するのは測定 ID と、ページ遷移ごとのパス情報（`page_path` / `page_location` / `page_title`）。クエリ文字列は送信前に除去され、`/admin/**` は送信対象外です。`mw_actor_id` も他の識別子も送信しません。',
-			en: 'What leaves the deployment: the measurement id and, per route change, the path (`page_path` / `page_location` / `page_title`). Query strings are stripped before sending, `/admin/**` is excluded, and neither `mw_actor_id` nor any other identifier is sent.',
+			// Scoped to what the code does. `stripAnalyticsQuery` only
+			// reaches the SPA route-change page_view; the first
+			// page_view is recorded by `gtag('config', …)`, where GA
+			// reads `document.location` itself, so this repository
+			// cannot strip the query string there. The repository's
+			// own threat model names `?token=`, `?email=`, `?q=` as
+			// the payloads to keep out of GA — which is exactly why
+			// the wording must not claim a strip that does not
+			// happen. See `docs/security/log-redaction.md`
+			// ("Known limits") and `src/editorial/analytics/
+			// GoogleAnalytics.tsx`.
+			ja: '送信するのは測定 ID と、ページ遷移ごとのパス情報（`page_path` / `page_location` / `page_title`）。アプリ内の画面遷移で記録する `page_view` だけはクエリ文字列を除去してパスだけを送ります。ただし最初の読み込みで記録される `page_view` は GA 自身が `document.location` を読むため、このプラットフォームのコードではクエリ文字列を除去できていません。`/admin/**` は送信対象外です。`mw_actor_id` のようなサイト発行の識別子を明示的に送ることはありませんが、URL に書かれたクエリ文字列はそのまま届きます。',
+			en: 'What leaves the deployment: the measurement id and, per route change, the path (`page_path` / `page_location` / `page_title`). The `page_view` recorded on an in-app route change has its query string stripped, so only the path is sent. The `page_view` recorded on the first page load is different: GA reads `document.location` itself, so this platform’s code cannot strip the query string there. `/admin/**` is excluded, and no site-issued identifier such as `mw_actor_id` is sent explicitly — but a query string written into the URL reaches GA unchanged.',
 		},
 		retention: {
 			kind: 'third-party',
@@ -323,8 +339,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 		transfer: {
 			target: 'google-analytics-4',
 			statement: {
-				ja: '公開ページを読み込んだときのみ、ブラウザから Google の解析プロパティへ送信されます。',
-				en: 'Sent from the visitor’s browser to the Google analytics property only when a public page is loaded.',
+				ja: '公開ページを読み込んだときのみ、ブラウザから Google の解析プロパティへ送信されます。測定 ID の secret が未設定なら解析タグは描画されないので、その secret を外すことが唯一の停止手段です。',
+				en: 'Sent from the visitor’s browser to the Google analytics property only when a public page is loaded. If the measurement-id secret is unset, no analytics tag is rendered at all, so unsetting that secret is the only off switch.',
 			},
 		},
 		visibility: {
@@ -332,8 +348,9 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			en: 'The measurement id itself is present in the HTML; the collected browsing data is not stored anywhere in this platform.',
 		},
 		evidence: [
-			'src/editorial/analytics/GoogleAnalytics.tsx (送信する値・クエリ除去・/admin 除外)',
-			'src/routes/__root.tsx (測定 ID の注入位置)',
+			'src/editorial/analytics/GoogleAnalytics.tsx (送信する値・SPA 遷移のクエリ除去・初回 config の制約)',
+			'docs/security/log-redaction.md (Known limits: 初回 page_view は GA が document.location を読む)',
+			'src/routes/__root.tsx (測定 ID の注入位置・/admin 除外)',
 			'wrangler.jsonc (GOOGLE_ANALYTICS_MEASUREMENT_ID は実行時 secret)',
 		],
 		publication: {
@@ -351,8 +368,8 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			en: 'Administrator credentials (`/admin/**`) — the operator’s own data',
 		},
 		stores: {
-			ja: '運営者自身のメールアドレスとパスワードハッシュ、セッション（有効期間 30 日 / 24 時間ごとに更新）、招待行（メールアドレス・トークンハッシュ・有効期限・受理時刻）。',
-			en: 'The operator’s own email address and password hash, sessions (30-day expiry, refreshed every 24 hours), and invitation rows (email, token hash, expiry, consumed-at).',
+			ja: '運営者自身のメールアドレスとパスワードハッシュ、セッション（有効期間 30 日 / 24 時間ごとに更新。セッション行には接続元 IP アドレスとユーザーエージェント文字列も保存されます）、招待行（メールアドレス・トークンハッシュ・有効期限・受理時刻）。',
+			en: 'The operator’s own email address and password hash, sessions (30-day expiry, refreshed every 24 hours; a session row also stores the client IP address and the user-agent string), and invitation rows (email, token hash, expiry, consumed-at).',
 		},
 		retention: {
 			kind: 'windowed',
@@ -376,12 +393,20 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			},
 		},
 		visibility: {
-			ja: '認証境界の内側なので公開面には現れません。',
-			en: 'It sits behind the authentication boundary and never reaches a public surface.',
+			// Not "never public". The password hash and the session
+			// token stay behind the auth boundary, but the invited
+			// email address is printed on the token-gated accept page
+			// — an unauthenticated route whose loader only probes the
+			// token (`src/routes/admin.invitations_.accept.tsx`).
+			ja: 'パスワードハッシュとセッショントークンは公開面には現れません。招待したメールアドレスだけは、招待トークンを 가진人が開く `/admin/invitations/accept?token=…` のページで、招待が有効なあいだだけ表示されます。',
+			en: 'The password hash and the session token never reach a public surface. The invited email address does: it is shown on `/admin/invitations/accept?token=…`, the page a holder of the invitation token opens, and only while the invitation is still valid.',
 		},
 		evidence: [
 			'src/cloudflare/auth/better-auth.ts (emailAndPassword / session.expiresIn / updateAge)',
 			'src/admin/invitations/load.ts (招待行の列・削除操作)',
+			'src/routes/admin.invitations_.accept.tsx (トークンだけを検証する公開ルート)',
+			'src/admin/invitations/accept-view.tsx (宛先メールアドレスの表示)',
+			'migrations/0001_better_auth.sql (session.ipAddress / session.userAgent 列)',
 			'migrations/0008_admin_step_up.sql',
 		],
 		publication: {
@@ -511,6 +536,20 @@ export function findUnsupportedClaims(text: string): { id: string; pattern: stri
 }
 
 /**
+ * The repository path an evidence pointer names.
+ *
+ * A pointer is a path optionally followed by a parenthesised gloss
+ * (`src/x.ts (what it proves)`). The gloss is prose, so only the
+ * leading path is extracted — and it is extracted the same way in the
+ * integrity guard and in the test that checks the file exists, so the
+ * two cannot drift.
+ */
+export function parseEvidencePath(pointer: string): string {
+	const path = (pointer.split('（')[0] ?? pointer).split(' ')[0] ?? '';
+	return path.replace(/[:(]$/, '');
+}
+
+/**
  * Cross-field invariants, enforced at module evaluation so a malformed
  * registry fails the Worker boot instead of shipping a notice that
  * quietly omits a store.
@@ -540,8 +579,7 @@ function assertDataLifecycleIntegrity(entries: readonly DataLifecycleEntry[]): v
 			// Every pointer starts with the repository path it proves,
 			// optionally followed by a parenthesised gloss. A pointer
 			// that names no file is not evidence.
-			const path = (pointer.split('（')[0] ?? pointer).split(' ')[0] ?? '';
-			const file = path.replace(/[:(]$/, '');
+			const file = parseEvidencePath(pointer);
 			const namesAFile = file.includes('/') || /\.[a-z]+$/i.test(file);
 			if (!namesAFile) {
 				throw new Error(`[privacy] ${entry.id} evidence must name a repository path: ${pointer}`);
@@ -553,6 +591,23 @@ function assertDataLifecycleIntegrity(entries: readonly DataLifecycleEntry[]): v
 assertDataLifecycleIntegrity(DATA_LIFECYCLE_ENTRIES);
 
 /**
+ * The entries a publication set may render.
+ *
+ * Fail-closed: an entry is published only when its status is exactly
+ * `approved`. A `pending` entry stays in this file (so the fact is not
+ * lost) but renders nowhere and is excluded from the public wording.
+ *
+ * The filter takes the set as an argument so the fail-closed rule can
+ * be exercised against a fixture that actually contains a `pending`
+ * entry — asserting it over the shipped registry would be vacuous.
+ */
+export function filterPublishedEntries(
+	entries: readonly DataLifecycleEntry[],
+): readonly DataLifecycleEntry[] {
+	return entries.filter((entry) => entry.publication.status === 'approved');
+}
+
+/**
  * The entries the public surface may render.
  *
  * Fail-closed: an entry is published only when its status is exactly
@@ -560,7 +615,7 @@ assertDataLifecycleIntegrity(DATA_LIFECYCLE_ENTRIES);
  * lost) but renders nowhere and is excluded from the public wording.
  */
 export function getPublishedDataLifecycle(): readonly DataLifecycleEntry[] {
-	return DATA_LIFECYCLE_ENTRIES.filter((entry) => entry.publication.status === 'approved');
+	return filterPublishedEntries(DATA_LIFECYCLE_ENTRIES);
 }
 
 /**

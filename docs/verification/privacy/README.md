@@ -16,7 +16,9 @@ exist, no retention number nobody can read off a table.
   | 対象 | 基準 |
   | --- | --- |
   | 公開文面（配信された `/` の HTML） | `src/privacy/data-lifecycle.ts` の `approved` エントリが保存項目 / 保持期間 / 削除 / 外部送信 / 公開範囲の 5 項目を JA・EN 両方を含む形でレンダリングする。`pending` は現れない |
-  | 拒否リスト | `UNSUPPORTED_PUBLIC_CLAIMS` の禁止パターン（匿名性・削除受付窓口・無条件の「送信なし」・自動削除）が配信 HTML に 1 つも含まれない。旧文言の「匿名」「個人を特定しません」「This site uses an anonymous」「anonymously」を個別に assert する |
+  | 拒否リスト | `UNSUPPORTED_PUBLIC_CLAIMS` の禁止パターン（匿名性・削除受付窓口・無条件の「送信なし」・自動削除）が配信 HTML に 1 つも含まれない。旧文言の「匿名」「個人を特定しません」「This site uses an anonymous」「anonymously」を個別に assert する。`/` に加えて `/about` `/contact` も同じスキャン対象（=`/about` `/contact` に拒否主張が混入しても検出される） |
+  | 解析の文面 | クエリ文字列の除去は「アプリ内の画面遷移で記録する `page_view`」に限定して記載する。初回 `page_view`（GA 自身が `document.location` を読む）は除去できないことを明記し、旧文言「クエリ文字列は送信前に除去され」を配信 HTML に残さない |
+  | 管理者認証の公開範囲 | パスワードハッシュとセッショントークンは公開面に出ない一方、招待メールアドレスは `/admin/invitations/accept?token=…`（トークンで検証する公開ルート）に限って出ると記載する。旧文言「認証境界の内側なので公開面には現れません」を残さない |
   | 保持期間（実テーブル） | `access_dedup.expires_at` = 記録時刻 + `DEDUP_WINDOW_MS`。同一リクエスト識別子の再訪時に失効行が削除され、同じセッションの 25 連打は 1 加算、25 個の別セッションは 25 行を残す。定期削除ジョブは無い（`src/**` に `scheduled` ハンドラが無く、宣言設定にも Cron が無い） |
   | 非公開データ | D1 に書いた訪問者識別子・行 id・値が `/` `/about` `/contact` `/api/v1/health`、未認証の 401 応答、公開集計（`kind`/`value`/`count` のみ）のいずれにも現れない |
   | 削除経路 | 訪問者本人の DELETE のみが自分の行を削除し、他者の識別子では削除できない |
@@ -32,7 +34,7 @@ exist, no retention number nobody can read off a table.
 - **画像について**
 
   実画面の代わりに検証レポート（registry 全エントリ + 拒否リスト + suite 実行結果）を
-  Chromium 1440px で撮影し、WebP（width 1200 / quality 72）に変換した。
+  Chromium 1440px で撮影し、WebP（width 1200 / quality 80）に変換した。
   dev サーバーは Infisical の secret に依存するため、この作業環境からは実画面を
   起動できない（Issue #511 と同じ制約）。生成器
   `scripts/make-data-lifecycle-report.mjs` は commit 済みで、fixture による契約テスト

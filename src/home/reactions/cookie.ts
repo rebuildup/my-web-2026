@@ -18,8 +18,9 @@
  * cannot make and the published wording no longer needs to make.
  *
  * Out of scope: consent-management, cross-domain sharing,
- * fingerprinting. No consent gate ships today, and the public notice
- * says so rather than implying one exists.
+ * fingerprinting. No consent gate ships today, and the published
+ * notice does not claim one: it states what the cookie is, where it
+ * is stored, how long it stays and how a visitor deletes it.
  */
 
 export const ACTOR_COOKIE_NAME = 'mw_actor_id';

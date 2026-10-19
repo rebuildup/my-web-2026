@@ -164,6 +164,39 @@ describe('the served document publishes the registry and claims nothing more', (
 		expect(html).not.toContain('anonymously');
 	}, 30_000);
 
+	it('no public page carries a refused claim', async () => {
+		// The notice itself is rendered by the home footer, but a
+		// refused claim is a claim wherever it appears: the other
+		// public pages carry their own copy, and a wording change
+		// there would fail no test unless it is scanned too.
+		for (const path of ['/', '/about', '/contact']) {
+			const html = await (await SELF.fetch(`https://example.com${path}`)).text();
+			expect(findUnsupportedClaims(html), path).toEqual([]);
+		}
+	}, 60_000);
+
+	it('the served document scopes the analytics claim to the strip the code performs', async () => {
+		const html = await (await SELF.fetch('https://example.com/')).text();
+		// The scoped sentence is in the document…
+		expect(html).toContain('アプリ内の画面遷移');
+		expect(html).toContain('最初の読み込み');
+		// …and the unqualified claim the previous wording made is not.
+		expect(html).not.toContain('クエリ文字列は送信前に除去され');
+		expect(html).not.toContain('Query strings are stripped before sending');
+	}, 30_000);
+
+	it('the served document names the surface the invited email address reaches', async () => {
+		// `/admin/invitations/accept?token=…` prints the probed email
+		// address, so "never reaches a public surface" would be a
+		// false claim about the stored address.
+		const html = await (await SELF.fetch('https://example.com/')).text();
+		expect(html).toContain('/admin/invitations/accept');
+		expect(html).not.toContain('認証境界の内側なので公開面には現れません');
+		expect(html).not.toContain(
+			'It sits behind the authentication boundary and never reaches a public surface',
+		);
+	}, 30_000);
+
 	it('the reactions section points at the notice instead of claiming anonymity', async () => {
 		const html = await (await SELF.fetch('https://example.com/')).text();
 		expect(html).toContain('データと保持期間');

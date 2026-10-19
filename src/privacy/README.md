@@ -28,8 +28,8 @@ real constants. A changed constant that is not republished here fails
 | `actor-cookie` | random 32-hex id, browser cookie | 1 year (`Max-Age`) + server-side copy in `reactions.actor_id` | visitor action (toggle) | none |
 | `reaction-rows` | target / actor / principal / kind / value / created_at | none — no expiry column, no purge job | visitor action | none |
 | `access-counter` | aggregate counts + per-request dedup UUID | dedup expires after 60 min, purged only on the same id's next hit | operator action | none |
-| `analytics-events` | measurement id + `page_path` / `page_location` / `page_title` | Google's property setting — not verifiable here | third party | Google Analytics 4 |
-| `admin-auth` | operator email / password hash / sessions / invitations | 30-day session, invitation expiry | operator action | none |
+| `analytics-events` | measurement id + `page_path` / `page_location` / `page_title`; the query string is stripped on SPA route-change page_views only | Google's property setting — not verifiable here | third party | Google Analytics 4 |
+| `admin-auth` | operator email / password hash / sessions (incl. the client IP address and the user-agent string) / invitations | 30-day session, invitation expiry | operator action | none |
 | `contact-surface` | nothing — the page has no form | not applicable | not applicable | none |
 
 Each entry carries `evidence` pointers into `src/**`, `migrations/*.sql`
@@ -39,7 +39,28 @@ and `wrangler.jsonc`, and `publication.status`:
 - `pending` — kept here so the fact is not lost, rendered nowhere.
 
 `getPublishedDataLifecycle()` is fail-closed: an unknown status is not
-published.
+published. The same filter (`filterPublishedEntries`) runs inside
+`<PrivacyNotice />`, so the rule holds for whatever set the component
+is handed.
+
+## Two sentences that are scoped, not absolute
+
+Both limits below are repository facts, and the published wording names
+them instead of claiming more than the code supports.
+
+- **Analytics query strings.** `stripAnalyticsQuery` reaches the SPA
+  route-change `page_view` only. The first `page_view` is recorded by
+  `gtag('config', …)`, where GA reads `document.location` itself, so
+  this repository cannot strip the query string there — the limit
+  `docs/security/log-redaction.md` ("Known limits") records. Overriding
+  `page_path` in the config call would re-decide the Issue #286 contract
+  ("`config` records the first page_view exactly once"), so it belongs
+  to that Issue and not to this registry.
+- **The invited email address.** `/admin/invitations/accept?token=…` is
+  an unauthenticated route: its loader only probes the token, and the
+  view prints the probed address while the invitation is still valid.
+  The password hash and the session token stay behind the auth
+  boundary; the address does not.
 
 ## Refusals
 

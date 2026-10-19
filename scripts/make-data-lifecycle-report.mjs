@@ -58,7 +58,7 @@ const JSON_REPORT = join(TMP, 'data-lifecycle-results.json');
 const HTML_REPORT = join(TMP, 'data-lifecycle-report.html');
 const WEBP_TARGET = join(ROOT, 'docs/verification/privacy/data-lifecycle-page.webp');
 const WEBP_WIDTH = 1200;
-const WEBP_QUALITY = 72;
+const WEBP_QUALITY = 80;
 
 /** The suites that hold the public wording to the registry. */
 const SUITES = [

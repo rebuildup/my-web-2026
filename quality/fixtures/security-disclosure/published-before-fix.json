@@ -1,29 +1,29 @@
 {
-  "note": "false-green probe: duty は全部揃っているが、修正前に公開詳細（PoC / 再現手順）が既に公開されている。prohibited_operations.premature_detail の違反なので、duty の数 optimisation で COMPLETE にはできない。",
-  "expect": {
-    "verdict": "INCOMPLETE",
-    "priority": "P1",
-    "reasons": ["detail_withheld_until_fix", "public_detail_before_fix"]
-  },
-  "report": {
-    "class": "information_disclosure",
-    "internet_reachable": true,
-    "pre_auth": true,
-    "credential_disclosed": false,
-    "exploit_observed": false,
-    "detail_public_before_fix": true,
-    "summary": "修正公開前の段階で Issue へ再現手順が貼られた報告。公開判断が修正より先に行われている。"
-  },
-  "handled": {
-    "intake_recorded": true,
-    "triage_priority_recorded": true,
-    "status_only_evidence": true,
-    "fixture_reproduction": true,
-    "regression_test": true,
-    "release_gate_green": true,
-    "owner_release_approval": true,
-    "detail_withheld_until_fix": false,
-    "advisory_recorded": true,
-    "tracked_ticket": true
-  }
+	"note": "false-green probe: duty は全部揃っているが、修正前に公開詳細（PoC / 再現手順）が既に公開されている。prohibited_operations.premature_detail の違反なので、duty の数 optimisation で COMPLETE にはできない。",
+	"expect": {
+		"verdict": "INCOMPLETE",
+		"priority": "P1",
+		"reasons": ["detail_withheld_until_fix", "public_detail_before_fix"]
+	},
+	"report": {
+		"class": "information_disclosure",
+		"internet_reachable": true,
+		"pre_auth": true,
+		"credential_disclosed": false,
+		"exploit_observed": false,
+		"detail_public_before_fix": true,
+		"summary": "修正公開前の段階で Issue へ再現手順が貼られた報告。公開判断が修正より先に行われている。"
+	},
+	"handled": {
+		"intake_recorded": true,
+		"triage_priority_recorded": true,
+		"status_only_evidence": true,
+		"fixture_reproduction": true,
+		"regression_test": true,
+		"release_gate_green": true,
+		"owner_release_approval": true,
+		"detail_withheld_until_fix": false,
+		"advisory_recorded": true,
+		"tracked_ticket": true
+	}
 }

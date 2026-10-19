@@ -1,25 +1,25 @@
 {
-  "note": "正常 fixture: internet 到達だが認証後・限定された経路なので P2。P2 の必須 duty だけを記録すれば COMPLETE になる（上位の duty を書かなくても良い）。",
-  "expect": {
-    "verdict": "COMPLETE",
-    "priority": "P2",
-    "reasons": []
-  },
-  "report": {
-    "class": "authorisation",
-    "internet_reachable": true,
-    "pre_auth": false,
-    "credential_disclosed": false,
-    "exploit_observed": false,
-    "detail_public_before_fix": false,
-    "summary": "認証後の管理操作における認可漏えい。外部から到達できるが認証が必要で、報告者は有限の権限で観測。"
-  },
-  "handled": {
-    "intake_recorded": true,
-    "triage_priority_recorded": true,
-    "status_only_evidence": true,
-    "regression_test": true,
-    "tracked_ticket": true,
-    "advisory_recorded": true
-  }
+	"note": "正常 fixture: internet 到達だが認証後・限定された経路なので P2。P2 の必須 duty だけを記録すれば COMPLETE になる（上位の duty を書かなくても良い）。",
+	"expect": {
+		"verdict": "COMPLETE",
+		"priority": "P2",
+		"reasons": []
+	},
+	"report": {
+		"class": "authorisation",
+		"internet_reachable": true,
+		"pre_auth": false,
+		"credential_disclosed": false,
+		"exploit_observed": false,
+		"detail_public_before_fix": false,
+		"summary": "認証後の管理操作における認可漏えい。外部から到達できるが認証が必要で、報告者は有限の権限で観測。"
+	},
+	"handled": {
+		"intake_recorded": true,
+		"triage_priority_recorded": true,
+		"status_only_evidence": true,
+		"regression_test": true,
+		"tracked_ticket": true,
+		"advisory_recorded": true
+	}
 }

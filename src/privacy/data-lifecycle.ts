@@ -398,7 +398,7 @@ export const DATA_LIFECYCLE_ENTRIES = [
 			// email address is printed on the token-gated accept page
 			// — an unauthenticated route whose loader only probes the
 			// token (`src/routes/admin.invitations_.accept.tsx`).
-			ja: 'パスワードハッシュとセッショントークンは公開面には現れません。招待したメールアドレスだけは、招待トークンを 가진人が開く `/admin/invitations/accept?token=…` のページで、招待が有効なあいだだけ表示されます。',
+			ja: 'パスワードハッシュとセッショントークンは公開面には現れません。招待したメールアドレスだけは、招待トークンを保持している人が開く `/admin/invitations/accept?token=…` のページで、招待が有効なあいだだけ表示されます。',
 			en: 'The password hash and the session token never reach a public surface. The invited email address does: it is shown on `/admin/invitations/accept?token=…`, the page a holder of the invitation token opens, and only while the invitation is still valid.',
 		},
 		evidence: [
@@ -412,7 +412,7 @@ export const DATA_LIFECYCLE_ENTRIES = [
 		publication: {
 			status: 'approved',
 			note: {
-				ja: '「フォーム」を確認した結論がこれ。入力して保存されるフォームは運営者自身の認証表单だけ。',
+				ja: '「フォーム」を確認した結論がこれ。入力して保存されるフォームは運営者自身の認証フォームだけ。',
 				en: 'This is the answer to the “forms” question: the only form that persists data is the operator’s own authentication form.',
 			},
 		},

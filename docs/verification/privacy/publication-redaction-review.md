@@ -9,7 +9,7 @@
 | --- | --- |
 | Corpus | `docs/migration/personal-data-review/corpus.json` (schema `personal-data-review.v1`) |
 | Corpus digest (sha-256, 12) | `7e9e1ea5bbe0` |
-| Published content digest (sha-256, 12) | `6ab730b9afd5` |
+| Published content digest (sha-256, 12) | `3e8e99a88f81` |
 | Records | 5 |
 | Candidates found | 19 |
 | Published (owner-approved) | 3 |

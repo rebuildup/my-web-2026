@@ -54,7 +54,7 @@ const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const DEFAULT_HTML = join(ROOT, '.tmp/publication-redaction-review.html');
 const WEBP_TARGET = join(ROOT, 'docs/verification/privacy/publication-redaction-review.webp');
 const WEBP_WIDTH = 1600;
-const WEBP_QUALITY = 78; // see the module docstring: text-dense page, 80 leaves no headroom
+const WEBP_QUALITY = 74; // see the module docstring: text-dense Japanese page, 78 left too little headroom
 const WEBP_MAX_BYTES = 300 * 1024;
 
 const htmlFlag = process.argv.find((arg) => arg.startsWith('--html='));

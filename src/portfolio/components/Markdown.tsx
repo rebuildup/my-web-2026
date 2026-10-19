@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import { css } from '../../../styled-system/css';
+import { CodeBlock } from '../../editorial/table-code';
 import {
 	BLOCKED_LINK_CLASS,
 	type MarkdownInline,
@@ -217,24 +218,19 @@ function renderBlock(
 			);
 		}
 		case 'code':
-			return (
-				<pre
-					key={key}
-					className={css({
-						margin: '0',
-						padding: '4',
-						backgroundColor: 'bg.subtle',
-						borderRadius: '6px',
-						overflowX: 'auto',
-						fontFamily: 'mono',
-						fontSize: 'sm',
-						color: 'text.default',
-						maxWidth: '640px',
-					})}
-				>
-					<code>{block.value}</code>
-				</pre>
-			);
+			// Issue #407: the fenced block renders through the editorial
+			// `CodeBlock`, which keeps the horizontal scroll inside the
+			// component (WCAG 2.2 SC 1.4.10 Reflow) and exposes it as a
+			// focusable region so arrow keys can scroll it (SC 2.1.1
+			// Keyboard). A raw `<pre>` here could only be scrolled with a
+			// pointer.
+			//
+			// No `label`: this renderer must publish no text the article
+			// did not contain (`markdown.safety.test.tsx`), so the region
+			// is named by the author's own fence token when they declared
+			// one. A per-block author-supplied caption is a schema
+			// decision, recorded as an open item on the Issue #407 PR.
+			return <CodeBlock key={key} language={block.lang || undefined} code={block.value} />;
 		case 'blockquote':
 			return (
 				<blockquote

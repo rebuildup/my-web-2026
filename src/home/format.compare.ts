@@ -1,4 +1,4 @@
-import type { HomeFormat } from './format';
+import { HOME_LOCALES, type HomeFormat, createHomeFormat } from './format';
 
 /**
  * Locale comparison fixture (Issue #430).
@@ -85,3 +85,50 @@ export const LOCALE_COMPARISON_ROWS: readonly LocaleComparisonRow[] = [
 			new Intl.NumberFormat(format.locale, { style: 'unit', unit: 'hour' }).format(12),
 	},
 ];
+
+/** One column of the locale comparison table (Issue #430 / #407). */
+export interface LocaleComparisonColumn {
+	key: string;
+	label: string;
+}
+
+/** One row of the locale comparison table. `cells` is keyed by column. */
+export interface LocaleComparisonTableRow {
+	key: string;
+	label: string;
+	cells: Record<string, string>;
+}
+
+export interface LocaleComparisonTable {
+	columns: readonly LocaleComparisonColumn[];
+	rows: readonly LocaleComparisonTableRow[];
+}
+
+/**
+ * The comparison rows as the table-shaped projection `DataTable` takes.
+ *
+ * It lives HERE rather than in `format.stories.tsx` for one mechanical
+ * reason: Panda reads an object literal in a module that imports `css`
+ * as a style candidate, so `{ id: 'value', header: 'Value' }` written
+ * inside the story would ship `#id_value { id: value }` and fail
+ * `pnpm run css:check` (Issue #407). This module imports no style
+ * function, so the row data stays data.
+ */
+export function localeComparisonTable(now: () => number): LocaleComparisonTable {
+	return {
+		columns: [
+			{ key: 'value', label: 'Value' },
+			...HOME_LOCALES.map((locale) => ({ key: locale, label: locale })),
+		],
+		rows: LOCALE_COMPARISON_ROWS.map((row) => ({
+			key: row.label,
+			label: row.note ? `${row.label} (${row.note})` : row.label,
+			cells: Object.fromEntries(
+				HOME_LOCALES.map((locale) => [
+					locale,
+					row.render(createHomeFormat({ locale, timeZone: row.timeZone, now })),
+				]),
+			),
+		})),
+	};
+}

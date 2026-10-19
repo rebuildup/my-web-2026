@@ -65,10 +65,10 @@ change_risk_mapping:
 /**
  * The fast plan pinned as of Issue #566, one command per line.
  *
- * It is the merge-base `validate:fast` `&&` chain (42 steps) with the two
+ * It is the merge-base `validate:fast` `&&` chain (43 steps) with the two
  * explicit `node --test scripts/check-{release-assets,app-icons}.test.mjs`
  * steps folded into `pnpm run test`, and the two raw node calls replaced
- * by their existing npm-script aliases (40 steps). The whole list is
+ * by their existing npm-script aliases (41 steps). The whole list is
  * compared, so a dropped or reordered component fails instead of only
  * breaking one of five spot-checked orderings.
  */
@@ -108,6 +108,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run knip:check',
 	'pnpm run secret:scan',
 	'pnpm run a11y:reduced-motion:check',
+	'pnpm run a11y:table:code:check',
 	'pnpm run a11y:language-of-parts:check',
 	'pnpm run css:check',
 	'pnpm run app:icons:check',

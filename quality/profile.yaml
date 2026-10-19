@@ -22,6 +22,11 @@
 # so it is decided on every `validate:fast` run rather than only when
 # someone remembers to capture the verification artefact.
 #
+# Issue #407 adds `a11y:table:code:check` to `gates.fast` for the same
+# reason: whether a shipped table keeps its caption and a scoped header,
+# and whether a shipped code block keeps a keyboard-reachable scroll
+# box, is a property of the source that every fast run should see.
+#
 # Issue #566 makes this file the EXECUTION order, not only its record.
 # `pnpm run validate:fast` is one line —
 #   "validate:fast": "node scripts/run-quality-gates.mjs fast"
@@ -215,6 +220,15 @@ gates:
       # same evidence is `pnpm run capture:a11y-reduced-motion`, which
       # is an artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:reduced-motion:check' # reduced-motion opt-out pairing (Issue #403)
+      # Issue #407: the shipped table / code-block readability contract.
+      # Every table in `src/**` carries a caption and a scoped header
+      # cell, every horizontal scroll box is a focusable named region,
+      # and both come from `src/editorial/table-code.tsx` rather than an
+      # ad-hoc element. Pure Node text analysis, so it costs a source
+      # walk. The browser half of the same evidence is
+      # `pnpm run capture:a11y:table-code`, an artefact capture and
+      # therefore not a fast gate.
+      - 'pnpm run a11y:table:code:check' # table / code readability contract (Issue #407)
       # Issue #409: the shipped language-of-parts contract (WCAG 2.2
       # 3.1.2 Language of Parts, level A). A `lang` may be written only
       # on a passage whose language differs from the document language:
@@ -499,7 +513,7 @@ release_gate_coverage:
   known_limits:
     - 'reachability is a text fact about the command chain: it proves the release asked the check to run, not what the check decided. Each check script stays the authority for its own verdict'
     - 'only the `validate` job of ci.yml is a surface; the manual prod-smoke workflow is an operator step after deploy and is modelled as a `not_run` row'
-    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 40 `validate:fast` components'
+    - 'the ledger is a curated security / supply-chain / release-integrity inventory, not a copy of all 41 `validate:fast` components'
 
 html_standards:
   manifest: 'quality/html-standards.json'

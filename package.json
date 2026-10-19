@@ -163,6 +163,8 @@
 		"a11y:reduced-motion:check": "node scripts/check-reduced-motion.mjs",
 		"a11y:language-of-parts:check": "node --experimental-strip-types scripts/check-language-of-parts.mjs",
 		"capture:a11y-language-of-parts": "node scripts/capture-language-of-parts.mjs",
+		"a11y:table:code:check": "node scripts/check-table-code-a11y.mjs",
+		"capture:a11y:table-code": "node scripts/capture-a11y-table-code.mjs",
 		"css:check": "node scripts/check-css-syntax.mjs",
 		"verify:css-screenshot": "node scripts/make-css-standards-report.mjs",
 		"check:app-icons": "node scripts/check-app-icons.mjs",

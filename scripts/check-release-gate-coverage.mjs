@@ -476,7 +476,8 @@ export function evaluateReleaseGate({
 		const missingFiles = runnerFiles.filter((file) => !fileExists(file));
 
 		let status = 'pass';
-		let note = present.map((surface) => SURFACE_SOURCES[surface]).join(' · ');
+		let note =
+			present.length > 0 ? `ran on ${present.join(', ')}` : 'reachable on every declared surface';
 		if (typeof scripts?.[script] !== 'string') {
 			status = 'fail';
 			note = `"${script}" is not registered in package.json#scripts`;
@@ -743,26 +744,34 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
 			`<div class="card"><div class="k">${escapeHtml(STATUS_LABEL[status])}</div><div class="v ${status === 'pass' ? 'ok' : status === 'fail' ? 'ng' : 'warn'}">${result.summary[status]}</div></div>`,
 	).join('');
 
-	const ledgerRows = result.rows
-		.map((row) => {
-			const surfaces =
-				row.declared_surfaces.length === 0
-					? '<span class="muted">none</span>'
-					: row.declared_surfaces
-							.map((surface) => {
-								const hit = row.present_surfaces.includes(surface);
-								return `<span class="surface ${hit ? 'hit' : 'miss'}">${escapeHtml(surface)}</span>`;
-							})
-							.join(' ');
-			return `<tr>
-      <td class="id"><code>${escapeHtml(row.id)}</code>${row.required ? '<div class="req">required</div>' : '<div class="muted req">optional</div>'}</td>
+	const ledgerRows = result.rows.map((row) => {
+		const surfaces =
+			row.declared_surfaces.length === 0
+				? '<span class="muted">no surface</span>'
+				: row.declared_surfaces
+						.map((surface) => {
+							const hit = row.present_surfaces.includes(surface);
+							return `<span class="surface ${hit ? 'hit' : 'miss'}">${escapeHtml(surface)}</span>`;
+						})
+						.join(' ');
+		return `<tr>
+      <td class="id"><code>${escapeHtml(row.id)}</code><div class="muted">${row.required ? 'required' : 'optional'} · <code>${escapeHtml(row.command ?? '—')}</code></div></td>
       <td class="contract">${escapeHtml(row.contract)}</td>
-      <td class="cmd">${row.command ? `<code>${escapeHtml(row.command)}</code>` : '<span class="muted">—</span>'}<div class="muted">${escapeHtml(row.documentation ?? '')}</div></td>
-      <td class="surfaces">${surfaces}</td>
-      <td class="status"><span class="mark ${row.status}">${escapeHtml(STATUS_LABEL[row.status])}</span><div class="note">${escapeHtml(row.note)}</div></td>
+      <td class="verdict">${surfaces}<span class="mark ${row.status}">${escapeHtml(STATUS_LABEL[row.status])}</span>${row.status === 'pass' ? '' : `<div class="note">${escapeHtml(row.note)}</div>`}</td>
     </tr>`;
-		})
-		.join('\n');
+	});
+
+	// Two tables side by side rather than one long one: the ledger is the
+	// tallest block, and halving its height halves the screenshot pixels
+	// (WebP of a text-dense full-page capture is the size budget here).
+	const ledgerTable = (rows) => `<table>
+    <thead><tr><th>check · command</th><th>contract</th><th>status</th></tr></thead>
+    <tbody>
+${rows.join('\n')}
+    </tbody>
+  </table>`;
+	const half = Math.ceil(ledgerRows.length / 2);
+	const ledgerTables = `${ledgerTable(ledgerRows.slice(0, half))}${ledgerTable(ledgerRows.slice(half))}`;
 
 	const probeBlocks = probes
 		.map((probe) => {
@@ -775,23 +784,6 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
       <div class="probe-head"><span class="mark ${probeVerdict === 'PASS' ? 'pass' : 'fail'}">${probeVerdict}</span> <code>quality/fixtures/release-gate/${escapeHtml(probe.name)}.json</code><span class="muted"> — ${escapeHtml(probe.note ?? '')}</span></div>
       ${errorList}
     </div>`;
-		})
-		.join('\n');
-
-	const naRows = result.rows
-		.filter((row) => row.status === 'not_applicable' || row.status === 'not_run')
-		.map(
-			(row) =>
-				`<tr><td class="id"><code>${escapeHtml(row.id)}</code></td><td><span class="mark ${row.status}">${escapeHtml(STATUS_LABEL[row.status])}</span></td><td>${escapeHtml(row.note)}</td></tr>`,
-		)
-		.join('\n');
-
-	const profileRows = ['fast', 'integration', 'release']
-		.map((surface) => {
-			const components = result.profileComponents?.[surface] ?? [];
-			return `<tr><td class="id"><code>${escapeHtml(surface)}</code></td><td class="count">${components.length}</td><td class="contract">${components
-				.map((component) => `<code>${escapeHtml(component)}</code>`)
-				.join(' ')}</td></tr>`;
 		})
 		.join('\n');
 
@@ -815,49 +807,46 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
 <title>release gate check ledger — Issue #508</title>
 <style>
   :root { color-scheme: light; }
-  body { margin: 0; padding: 24px; background: #fbfbf9; color: #14140f;
-         font: 13px/1.5 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; }
-  h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: 0.01em; }
-  h2 { font-size: 13px; margin: 20px 0 6px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
-  .sub { margin: 0 0 16px; font-size: 12.5px; color: #3d3d33; max-width: 1150px; }
-  .cards { display: flex; gap: 12px; margin-bottom: 6px; }
-  .card { border: 1px solid #dedcd2; background: #fff; padding: 10px 16px; min-width: 120px; }
-  .card .k { font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #77776a; }
-  .card .v { font-size: 24px; font-weight: 600; }
+  body { margin: 0; padding: 18px; background: #fbfbf9; color: #14140f;
+         font: 11.5px/1.4 -apple-system, "Hiragino Sans", "Noto Sans JP", system-ui, sans-serif; }
+  h1 { font-size: 20px; margin: 0 0 4px; letter-spacing: 0.01em; }
+  h2 { font-size: 12px; margin: 10px 0 3px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
+  .sub { margin: 0 0 10px; font-size: 11.5px; color: #3d3d33; max-width: 1150px; }
+  .cards { display: flex; gap: 10px; margin-bottom: 4px; }
+  .card { border: 1px solid #dedcd2; background: #fff; padding: 6px 14px; min-width: 110px; }
+  .card .k { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.08em; color: #77776a; }
+  .card .v { font-size: 21px; font-weight: 600; }
   .ok { color: #1c6b3a; } .ng { color: #a12020; } .warn { color: #8a6d1f; }
   table { border-collapse: collapse; width: 100%; background: #fff; border: 1px solid #dedcd2; }
-  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid #eceadf; vertical-align: top; }
-  th { background: #f3f1e8; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
-  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 12px; }
-  td.id { width: 150px; } td.cmd { width: 220px; } td.surfaces { width: 150px; } td.status { width: 300px; }
-  td.count { width: 40px; }
-  .req { font-size: 11px; color: #77776a; }
-  .muted { color: #77776a; font-size: 11px; }
-  .surface { font-size: 11px; border: 1px solid #dedcd2; padding: 0 4px; margin-right: 3px; }
+  .pair { display: flex; gap: 10px; align-items: flex-start; }
+  th, td { text-align: left; padding: 2px 6px; border-bottom: 1px solid #eceadf; vertical-align: top; }
+  th { background: #f3f1e8; font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; color: #5a5a4e; }
+  code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; }
+  td.id { width: 145px; } td.verdict { width: 145px; } td.count { width: 40px; }
+  .muted { color: #77776a; font-size: 10.5px; }
+  .surface { font-size: 10.5px; border: 1px solid #dedcd2; padding: 0 4px; margin-right: 3px; }
   .surface.hit { background: #e8f3ec; border-color: #b8d8c4; }
   .surface.miss { background: #f7e6e6; border-color: #ddb4b4; }
-  .mark { font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
+  .mark { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; }
   .mark.pass { color: #1c6b3a; } .mark.fail { color: #a12020; }
   .mark.not_run { color: #8a6d1f; } .mark.not_applicable { color: #55554a; }
-  .note { font-size: 11px; color: #3d3d33; margin-top: 2px; }
-  .probe { border: 1px solid #dedcd2; background: #fff; padding: 8px 12px; margin-bottom: 8px; }
-  .probe-head { font-size: 12px; }
-  ul { margin: 6px 0 0; padding-left: 18px; }
-  ul.errors li { color: #a12020; margin-bottom: 3px; }
-  ul.warnings li { color: #8a6d1f; margin-bottom: 3px; }
-  p.none { color: #1c6b3a; margin: 4px 0 0; }
-  footer { margin-top: 22px; color: #77776a; font-size: 12px; max-width: 1150px; }
+  .note { color: #3d3d33; }
+  .probe { border: 1px solid #dedcd2; background: #fff; padding: 5px 10px; margin-bottom: 6px; }
+  .probe-head { font-size: 11.5px; }
+  ul { margin: 4px 0 0; padding-left: 16px; }
+  ul.errors li { color: #a12020; margin-bottom: 2px; }
+  ul.warnings li { color: #8a6d1f; margin-bottom: 2px; }
+  p.none { color: #1c6b3a; margin: 3px 0 0; }
+  footer { margin-top: 14px; color: #77776a; font-size: 11px; max-width: 1150px; }
 </style>
 </head>
 <body>
   <h1>release gate check ledger</h1>
   <p class="sub">
-    リリースゲートは「コマンドの列」である。必須検査の 1 本を外しても release は緑のまま PASS と書かれてしまう。
+    リリースゲートは「コマンドの列」であり、必須検査の 1 本を外しても緑のまま「検証済み」と書ける。
     この ledger (<code>${escapeHtml(DEFAULT_MANIFEST_PATH)}</code>, schema v${escapeHtml(manifest?.version ?? '?')}) は
-    導入済み検査を 1 枚ごとに <code>pass</code> / <code>fail</code> / <code>not run</code> / <code>N/A</code> で記録し、
-    「実行していない」を PASS に変換しない。判定は
-    <code>${SURFACES.map((surface) => `${escapeHtml(surface)} (${escapeHtml(SURFACE_SOURCES[surface])})`).join('、')}</code>
-    の到達性から導出する。
+    導入済み検査を <code>pass</code> / <code>fail</code> / <code>not run</code> / <code>N/A</code> で記録し、実行していないものを PASS に変換しない。
+    判定は <code>${SURFACES.join(' / ')}</code> の <code>pnpm run</code> 推移閉包（${escapeHtml(SURFACE_SOURCES.ci)} を含む）からの到達性で導出する。
   </p>
 
   <div class="cards">
@@ -867,33 +856,18 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
     <div class="card"><div class="k">source sha</div><div class="v" style="font-size:15px">${escapeHtml(sourceSha)}</div></div>
   </div>
 
-  <h2>ledger</h2>
-  <table>
-    <thead><tr><th>check</th><th>contract</th><th>command / document</th><th>surfaces</th><th>status</th></tr></thead>
-    <tbody>
-${ledgerRows}
-    </tbody>
-  </table>
+  <h2>ledger — ${result.rows.length} rows</h2>
+  <div class="pair">${ledgerTables}</div>
 
   <h2>false-green probe — 正常 fixture と 必須検査を 1 本外した不正常 fixture</h2>
-  <p class="sub">同じ評価関数を 2 つの fixture に通した結果。必須検査を外した側は FAIL になることが検算の本体であり、画像はテストの代用ではない。</p>
+  <p class="sub">同じ評価関数を fixture に通した結果。必須検査を外した側は FAIL になる。</p>
 ${probeBlocks}
 
-  <h2>対象外 (N/A) と not run — 理由つき</h2>
-  <table>
-    <thead><tr><th>check</th><th>status</th><th>reason</th></tr></thead>
-    <tbody>
-${naRows}
-    </tbody>
-  </table>
+  <h2>対象外 (N/A) と not run</h2>
+  <p class="sub">上の ledger の N/A ${result.summary.not_applicable} 行と not run ${result.summary.not_run} 行が理由つきで全件載っている。導入していない検査の理由と将来の手作業は docs/verification/security/release-gate-coverage.md の「対象外と将来の手作業」に列挙した。</p>
 
   <h2>quality profile components</h2>
-  <table>
-    <thead><tr><th>level</th><th>count</th><th>components declared in quality/profile.yaml#gates</th></tr></thead>
-    <tbody>
-${profileRows}
-    </tbody>
-  </table>
+  <p class="sub">gates.fast ${(result.profileComponents?.fast ?? []).length} / integration ${(result.profileComponents?.integration ?? []).length} / release ${(result.profileComponents?.release ?? []).length} component: すべて package.json に登録済みの script で、それぞれの entry point から到達できる（唯一の差異は台帳の <code>profile_equivalences</code> に記録）</p>
 
   ${errorBlock}
   ${warningBlock}

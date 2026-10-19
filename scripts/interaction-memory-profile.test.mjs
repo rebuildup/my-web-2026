@@ -17,6 +17,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { getEventListeners } from 'node:events';
 import { describe, it } from 'node:test';
 import {
 	DEFAULT_WARMUP_CYCLES,
@@ -25,12 +26,15 @@ import {
 	LISTENER_PROBE_SOURCE,
 	compareMeasurementConditions,
 	describeGrowth,
+	documentReloadCycles,
+	documentReloadFailures,
 	evaluateListenerGrowth,
 	evaluateProfile,
 	isLoopbackOrigin,
 	parseArgs,
 	screenshotBudgetVerdict,
 	topEntries,
+	withCompareFailure,
 } from './interaction-memory-profile.mjs';
 
 /**
@@ -407,7 +411,7 @@ describe('LISTENER_PROBE_SOURCE', () => {
 		);
 		assert.match(
 			LISTENER_PROBE_SOURCE,
-			/originalAdd\.call\(signal, 'abort', \(\) => forget\(entry\)/,
+			/originalAdd\.call\(signal, 'abort', entry\.onAbort, \{ once: true \}\)/,
 		);
 		assert.match(
 			LISTENER_PROBE_SOURCE,
@@ -426,6 +430,26 @@ describe('LISTENER_PROBE_SOURCE', () => {
  * its own source text. A regex cannot tell whether a duplicate really
  * collapses to one token; the fake EventTarget can.
  */
+/**
+ * The stubbed `sessionStorage`, shared by every `loadProbe()` call.
+ *
+ * A real one survives a client-side route change and dies with the
+ * browser session, which is exactly the lifetime the probe's document
+ * identity needs: the same store across "documents" is what lets a
+ * reload read the previous value and increment it.
+ */
+const sessionStorageStore = new Map();
+const sessionStorageStubRef = {
+	getItem: (key) => (sessionStorageStore.has(key) ? sessionStorageStore.get(key) : null),
+	setItem: (key, value) => sessionStorageStore.set(key, String(value)),
+	removeItem: (key) => sessionStorageStore.delete(key),
+};
+
+/** Start a new browser session (what closing the tab does). */
+function resetSessionStorage() {
+	sessionStorageStore.clear();
+}
+
 function loadProbe() {
 	class FakeEventTarget {
 		constructor() {
@@ -445,6 +469,13 @@ function loadProbe() {
 			this.handlers.push({ type, listener, options });
 		}
 		removeEventListener(type, listener) {
+			// Symmetric with addEventListener: the probe also UNBINDS its
+			// own `abort` handler from the caller's AbortSignal, and a stub
+			// that swallowed that would make the unbinding case vacuous.
+			if (!(this instanceof FakeEventTarget)) {
+				EventTarget.prototype.removeEventListener.call(this, type, listener);
+				return;
+			}
 			this.handlers = this.handlers.filter((entry) => entry.listener !== listener);
 		}
 		dispatch(type, ...args) {
@@ -470,15 +501,25 @@ function loadProbe() {
 	documentStub.head = { querySelectorAll: () => [] };
 	documentStub.querySelectorAll = () => [];
 
+	const sessionStorageStub = sessionStorageStubRef;
+
 	const run = new Function(
 		'EventTarget',
 		'window',
 		'document',
 		'performance',
 		'location',
+		'sessionStorage',
 		LISTENER_PROBE_SOURCE,
 	);
-	run(FakeEventTarget, windowStub, documentStub, { memory: undefined }, { pathname: '/stub' });
+	run(
+		FakeEventTarget,
+		windowStub,
+		documentStub,
+		{ memory: undefined },
+		{ pathname: '/stub' },
+		sessionStorageStub,
+	);
 	const probe = windowStub.__interactionMemoryProbe;
 	assert.ok(probe, 'the probe must publish itself on window');
 	return { probe, windowStub, documentStub, ConnectedNode };
@@ -582,6 +623,45 @@ describe('LISTENER_PROBE_SOURCE: ledger behaviour against a stub DOM', () => {
 		assert.equal(detached.detached, 1, 'an unmounted node is not a leak');
 	});
 
+	it('stamps a document identity that a reload increments and a client-side route change keeps', () => {
+		resetSessionStorage();
+		const first = loadProbe();
+		const second = loadProbe();
+		const third = loadProbe();
+		assert.deepEqual(
+			[first.probe, second.probe, third.probe].map((probe) => probe.snapshot().documentId),
+			[1, 2, 3],
+			'each fresh document increments the identity, so a reload is visible',
+		);
+		// The very same instance keeps its id across the samples one leg
+		// takes on a single page, which is the case that must NOT fail.
+		assert.equal(first.probe.snapshot().documentId, 1);
+	});
+
+	it('unbinds its own abort handler when the application removes the listener', () => {
+		// A long-lived signal whose listeners the application removes one
+		// by one would otherwise collect the probe handlers, which is
+		// exactly the heap noise the probe exists to avoid. The count is
+		// read as a DELTA because AbortSignal keeps its own internal
+		// abort bookkeeping of its own.
+		const { probe, windowStub } = loadProbe();
+		const controller = new AbortController();
+		const abortHandlers = () => getEventListeners(controller.signal, 'abort').length;
+		const baseline = abortHandlers();
+		for (let i = 0; i < 3; i += 1) {
+			const listener = () => {};
+			windowStub.addEventListener('click', listener, { signal: controller.signal });
+			assert.equal(abortHandlers(), baseline + 1, 'one probe binding while it is live');
+			windowStub.removeEventListener('click', listener);
+			assert.equal(
+				abortHandlers(),
+				baseline,
+				'the probe must not keep a handler on a signal it no longer accounts for',
+			);
+		}
+		assert.equal(probe.snapshot().liveGlobal, 0);
+	});
+
 	it('replays a simulated client-side navigation without growth', () => {
 		// The signature #488 measured: one extra `document` listener per
 		// route change. The application here removes nothing, exactly
@@ -597,5 +677,145 @@ describe('LISTENER_PROBE_SOURCE: ledger behaviour against a stub DOM', () => {
 			reExecute();
 			assert.equal(probe.snapshot().liveGlobal, cycle);
 		}
+	});
+});
+
+describe('document reload detection (a hard navigation must not read as PASS)', () => {
+	it('reports every cycle whose sample came from a new document', () => {
+		const reloads = documentReloadCycles([
+			{ cycle: 0, documentId: 1, liveGlobal: 10 },
+			{ cycle: 1, documentId: 1, liveGlobal: 12 },
+			{ cycle: 2, documentId: 2, liveGlobal: 3 },
+			{ cycle: 3, documentId: 2, liveGlobal: 5 },
+		]);
+		assert.deepEqual(reloads, [{ cycle: 2, from: 1, to: 2 }]);
+		assert.deepEqual(documentReloadFailures('navigate', reloads), [
+			'navigate cycle 2: the document was reloaded (documentId 1 -> 2); the ledger restarted, so this cycle measures a fresh page load and not a client-side transition',
+		]);
+	});
+
+	it('reports nothing for a series that stayed in one document', () => {
+		const series = [
+			{ cycle: 0, documentId: 3, liveGlobal: 100 },
+			{ cycle: 1, documentId: 3, liveGlobal: 102 },
+			{ cycle: 2, documentId: 3, liveGlobal: 102 },
+		];
+		assert.deepEqual(documentReloadCycles(series), []);
+		assert.deepEqual(documentReloadFailures('navigate', documentReloadCycles(series)), []);
+	});
+
+	it('treats a missing documentId as unknown, not as a reload', () => {
+		assert.deepEqual(
+			documentReloadCycles([
+				{ cycle: 0, liveGlobal: 1 },
+				{ cycle: 1, liveGlobal: 2 },
+			]),
+			[],
+		);
+	});
+
+	it('turns a reload into a leg failure, so the verdict cannot be PASS', () => {
+		const leg = {
+			skipped: false,
+			// Flat because every cycle started a NEW document — the exact
+			// false green this case exists to reject.
+			series: [
+				{ cycle: 0, documentId: 1, liveGlobal: 10, liveConnected: 1 },
+				{ cycle: 1, documentId: 2, liveGlobal: 10, liveConnected: 1 },
+				{ cycle: 2, documentId: 3, liveGlobal: 10, liveConnected: 1 },
+			],
+			failures: documentReloadFailures(
+				'navigate',
+				documentReloadCycles([
+					{ cycle: 0, documentId: 1, liveGlobal: 10, liveConnected: 1 },
+					{ cycle: 1, documentId: 2, liveGlobal: 10, liveConnected: 1 },
+					{ cycle: 2, documentId: 3, liveGlobal: 10, liveConnected: 1 },
+				]),
+			),
+		};
+		const verdict = evaluateProfile({ navigate: leg });
+		assert.equal(verdict.status, 'FAIL');
+		assert.equal(verdict.pass, false);
+		assert.equal(verdict.failures.length, 2);
+	});
+
+	it('leaves a client-side series PASS (the control for the case above)', () => {
+		const series = [
+			{ cycle: 0, documentId: 1, liveGlobal: 10, liveConnected: 1 },
+			{ cycle: 1, documentId: 1, liveGlobal: 12, liveConnected: 1 },
+			{ cycle: 2, documentId: 1, liveGlobal: 12, liveConnected: 1 },
+		];
+		const verdict = evaluateProfile({ navigate: { skipped: false, series } });
+		assert.equal(verdict.status, 'PASS');
+	});
+});
+
+describe('an unreadable --compare input fails the run', () => {
+	it('folds the read error into the verdict and the exit code path', () => {
+		const verdict = withCompareFailure(
+			{ pass: true, status: 'PASS', failures: [] },
+			'.tmp/interaction-memory-profile/before.json',
+			'ENOENT: no such file or directory',
+		);
+		assert.equal(verdict.pass, false);
+		assert.equal(verdict.status, 'FAIL');
+		assert.deepEqual(verdict.failures, [
+			'--compare input could not be read: .tmp/interaction-memory-profile/before.json (ENOENT: no such file or directory)',
+		]);
+	});
+
+	it('keeps the growth failures it already had', () => {
+		const verdict = withCompareFailure(
+			{ pass: false, status: 'FAIL', failures: ['navigate: liveGlobal grew'] },
+			'x.json',
+			'Unexpected token',
+		);
+		assert.deepEqual(verdict.failures, [
+			'navigate: liveGlobal grew',
+			'--compare input could not be read: x.json (Unexpected token)',
+		]);
+	});
+});
+
+describe('compareMeasurementConditions: the surface must be the real one', () => {
+	const report = (overrides) => ({
+		environment: {
+			browser: 'Chromium 153.0.8010.12',
+			cpuThrottlingRate: 4,
+			networkProfile: { label: 'Slow 4G (CDP Network.emulateNetworkConditions)' },
+			viewport: '1280x900',
+			deviceScaleFactor: 1,
+			surface: 'vite preview of `pnpm run build` (not a dev server)',
+			...overrides,
+		},
+		options: { cycles: 5 },
+	});
+
+	it('passes for two runs of the same surface', () => {
+		const result = compareMeasurementConditions(report(), report());
+		assert.equal(result.comparable, true);
+		assert.deepEqual(result.mismatches, []);
+	});
+
+	it('reports a caller-supplied --base-url surface as different', () => {
+		// The same build served by a dev server is a different measurement;
+		// recording `vite preview` for both used to make them comparable.
+		const result = compareMeasurementConditions(
+			report({ surface: 'caller-supplied --base-url (not booted by this harness)' }),
+			report(),
+		);
+		assert.equal(result.comparable, false);
+		assert.deepEqual(
+			result.mismatches.map((mismatch) => mismatch.field),
+			['surface'],
+		);
+	});
+
+	it('keeps reporting the other condition mismatches', () => {
+		const result = compareMeasurementConditions(report({ viewport: '390x844' }), report());
+		assert.deepEqual(
+			result.mismatches.map((mismatch) => mismatch.field),
+			['viewport'],
+		);
 	});
 });

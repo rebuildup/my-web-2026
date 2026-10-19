@@ -333,6 +333,32 @@ script）には別の決定的な契約がある。`scripts/seo-head-contract.mj
 
 ---
 
+## 測定の前提（hard navigation は FAIL として記録する）
+
+この計測が意味を持つのは、`/tools` のリンクと browser Back が
+**client-side 遷移**であるときだけである。hard navigation になると
+`page.addInitScript` が新しい document で再実行され、台帳の counter は
+初期値に戻る。その結果、growth が平坦になり、client-side 遷移を一度も
+測っていないのに PASS に見えてしまう。
+
+そこで probe は snapshot ごとに `documentId`（`sessionStorage` 経由で
+document ごとに 1 ずつ増える識別子）を返す。client-side 遷移では
+`documentId` は変わらず、document だけが作り直されたときだけ増える。
+driver はこれを `documentReloadCycles` で検出し、`documentReloadFailures`
+で leg の failure にするので、測っていない回は PASS にならない。
+
+これは純粋関数なので browser を起動せずに検証できる。
+`scripts/interaction-memory-profile.test.mjs` では、
+「document ごとに ID が増えること」「client-side の系列では ID が変わらないこと」
+「平坦でも document が変わった系列は FAIL になること」を control として
+固定している。
+
+また `--compare` の入力が読めない、または JSON として壊れている場合は、
+比較が成立していないので verdict に failure として畳み込み、終了コードを
+非 0 にする（黙って PASS にしない）。
+
+---
+
 ## CI での再現
 
 **配線していない、意図的**。理由は 3 つ。

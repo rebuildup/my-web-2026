@@ -250,6 +250,69 @@ export function evaluateProfile(legs, { pageErrors = [] } = {}) {
 }
 
 /**
+ * Add a failure to an already-computed verdict (pure).
+ *
+ * `evaluateProfile` runs before the comparison is read, so a broken
+ * `--compare` input has to be folded into the verdict afterwards without
+ * recomputing the growth rules.
+ *
+ * @param {{ pass: boolean, status: string, failures: string[] }} verdict
+ * @param {string} comparePath
+ * @param {string} error
+ */
+export function withCompareFailure(verdict, comparePath, error) {
+	const failures = [
+		...verdict.failures,
+		`--compare input could not be read: ${comparePath} (${error})`,
+	];
+	return { ...verdict, pass: false, status: 'FAIL', failures };
+}
+
+/**
+ * Cycles whose sample came from a DIFFERENT document than the previous
+ * one (pure).
+ *
+ * The ledger is installed by `page.addInitScript`, so a hard navigation
+ * gives a fresh ledger with counters back at their initial values and the
+ * growth series reads flat. A flat line then proves nothing about
+ * client-side transitions, so the driver turns every such cycle into a leg
+ * failure instead of reporting the run as PASS. `documentId` comes from
+ * the probe (see `LISTENER_PROBE_SOURCE`) and is only absent when a
+ * snapshot predates that field, which is treated as "unknown", not as a
+ * reload.
+ *
+ * @param {Array<Record<string, unknown>>} series
+ * @returns {Array<{ cycle: number, from: number | null, to: number | null }>}
+ */
+export function documentReloadCycles(series) {
+	const reloads = [];
+	let previous = null;
+	for (const sample of series ?? []) {
+		const id = typeof sample?.documentId === 'number' ? sample.documentId : null;
+		if (id !== null && previous !== null && id !== previous) {
+			reloads.push({ cycle: sample.cycle ?? null, from: previous, to: id });
+		}
+		if (id !== null) previous = id;
+	}
+	return reloads;
+}
+
+/**
+ * The leg failure line for a document reload (pure, so it can be asserted
+ * without a browser).
+ *
+ * @param {string} leg
+ * @param {Array<{ cycle: number | null, from: number | null, to: number | null }>} reloads
+ * @returns {string[]}
+ */
+export function documentReloadFailures(leg, reloads) {
+	return (reloads ?? []).map(
+		(reload) =>
+			`${leg} cycle ${reload.cycle ?? '?'}: the document was reloaded (documentId ${reload.from} -> ${reload.to}); the ledger restarted, so this cycle measures a fresh page load and not a client-side transition`,
+	);
+}
+
+/**
  * Whether an origin is a loopback target (pure).
  *
  * The harness clicks real emoji and performs real route changes, so a
@@ -390,6 +453,26 @@ export function parseArgs(argv) {
  * never call ordinary unmounting a leak.
  */
 export const LISTENER_PROBE_SOURCE = `(() => {
+  // A DOCUMENT identity, not a page identity. The ledger is re-installed by
+  // page.addInitScript on every document load, so a counter kept in this
+  // scope resets to 1 and every sample of a fresh document reads the same
+  // value. It is written through sessionStorage, which SURVIVES a
+  // client-side route change and dies with the document, so a sample whose
+  // documentId is not 1 (or differs from the previous sample) means the
+  // navigation was a real reload: the ledger was reset and the growth series
+  // says nothing about client-side transitions. The driver fails the leg on
+  // that instead of reporting a flattering flat line.
+  const DOCUMENT_KEY = '__interactionMemoryProbeDocument';
+  const previousDocumentId = (() => {
+    try {
+      const stored = Number.parseInt(sessionStorage.getItem(DOCUMENT_KEY) || '0', 10);
+      const next = Number.isFinite(stored) && stored > 0 ? stored + 1 : 1;
+      sessionStorage.setItem(DOCUMENT_KEY, String(next));
+      return next;
+    } catch (error) {
+      return 1;
+    }
+  })();
   const live = new Map();
   const byListener = new WeakMap();
   let added = 0;
@@ -406,6 +489,20 @@ export const LISTENER_PROBE_SOURCE = `(() => {
     if (entry.released) return;
     entry.released = true;
     live.delete(entry.token);
+    // The abort binding the probe adds belongs to this token. Without
+    // unbinding it here, an application that removes a listener from a
+    // long-lived AbortSignal leaves the handler behind, and the probe
+    // accumulates the very callbacks it is supposed to keep out of the
+    // heap measurement.
+    if (entry.abortSignal && entry.onAbort) {
+      try {
+        originalRemove.call(entry.abortSignal, 'abort', entry.onAbort);
+      } catch (error) {
+        /* a non-standard signal must not break the ledger */
+      }
+      entry.abortSignal = null;
+      entry.onAbort = null;
+    }
     const list = entry.owner;
     if (list) {
       const index = list.indexOf(entry);
@@ -443,6 +540,8 @@ export const LISTENER_PROBE_SOURCE = `(() => {
       owner: list,
       released: false,
       wrapped: null,
+      abortSignal: null,
+      onAbort: null,
     };
     live.set(entry.token, entry);
     list.push(entry);
@@ -451,10 +550,14 @@ export const LISTENER_PROBE_SOURCE = `(() => {
         forget(entry);
         return originalAdd.call(this, type, listener, options);
       }
+      entry.abortSignal = signal;
+      entry.onAbort = () => forget(entry);
       try {
-        originalAdd.call(signal, 'abort', () => forget(entry), { once: true });
+        originalAdd.call(signal, 'abort', entry.onAbort, { once: true });
       } catch (error) {
         /* a non-standard signal must not break the ledger */
+        entry.abortSignal = null;
+        entry.onAbort = null;
       }
     }
     if (!once) {
@@ -530,6 +633,7 @@ export const LISTENER_PROBE_SOURCE = `(() => {
       }
       const memory = performance.memory;
       return {
+        documentId: previousDocumentId,
         added,
         released,
         collected,
@@ -683,14 +787,19 @@ async function runReactionLeg(page, cycles) {
 			...snapshot,
 		});
 	}
+	failures.push(...documentReloadFailures('react', documentReloadCycles(series)));
 	return { skipped: false, series, picked, failures };
 }
 
 /**
  * Leg `navigate` — one real route round trip: click the Tool link on
- * `/tools`, then browser Back. Both are client-side transitions, so the
- * ledger keeps its identity across them; `listenersAdded` in the snapshot
- * proves it (it resets on a real document load).
+ * `/tools`, then browser Back. Both MUST be client-side transitions, or
+ * the ledger restarts and the series measures nothing: a real document
+ * load re-runs the init script, so `added` returns to its initial value
+ * and the growth line reads flat for the wrong reason. `documentId`
+ * (per document, written through `sessionStorage`) is what proves the
+ * transition was client-side, and a cycle whose document id changed is
+ * recorded as a leg failure rather than as a clean sample.
  */
 async function runNavigateLeg(page, cycles, baseUrl) {
 	const sample = async () => page.evaluate(() => window.__interactionMemoryProbe.snapshot());
@@ -729,7 +838,12 @@ async function runNavigateLeg(page, cycles, baseUrl) {
 			},
 		});
 	}
-	return { skipped: false, series, baseUrl };
+	return {
+		skipped: false,
+		series,
+		baseUrl,
+		failures: documentReloadFailures('navigate', documentReloadCycles(series)),
+	};
 }
 
 /**
@@ -912,7 +1026,16 @@ async function main() {
 					downloadKbps: Math.round((networkCondition.downloadThroughput * 8) / 1024),
 					uploadKbps: Math.round((networkCondition.uploadThroughput * 8) / 1024),
 				},
-				surface: 'vite preview of `pnpm run build` (not a dev server)',
+				// The surface that was REALLY measured. `--base-url`
+				// points the run at a server this harness did not boot
+				// (a dev server, another preview, a deployment), and
+				// recording `vite preview` for it would make two
+				// incomparable runs look comparable — which is exactly
+				// what `--compare` is supposed to prevent.
+				surface: options.baseUrl
+					? 'caller-supplied --base-url (not booted by this harness)'
+					: 'vite preview of `pnpm run build` (not a dev server)',
+				baseUrl,
 				baseUrlIsLoopback,
 				remoteTarget: !baseUrlIsLoopback,
 				// A loopback run cannot mutate a shared environment. With
@@ -971,7 +1094,17 @@ async function main() {
 					);
 				}
 			} catch (error) {
+				// An unreadable or malformed BEFORE is not a cosmetic
+				// problem: the comparison was explicitly asked for, and
+				// silently dropping it would let the command report PASS
+				// on a run that never compared anything while the panel
+				// still prints a `BEFORE (compare)` row. Record it as a
+				// verdict failure so the exit code is non-zero.
 				report.before = { path: options.compare, error: String(error?.message ?? error) };
+				report.verdict = withCompareFailure(report.verdict, options.compare, report.before.error);
+				process.stderr.write(
+					`interaction-memory-profile: FAILURE — --compare input could not be read: ${options.compare} (${report.before.error})\n`,
+				);
 			}
 		}
 

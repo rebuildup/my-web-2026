@@ -140,8 +140,14 @@ export default defineConfig({
 	// `playwright.compat.config.ts` (Chromium / Firefox / WebKit) and is
 	// always ignored here, so the two suites never run each other and the
 	// default chromium-only gate keeps its current cost.
+	//
+	// Issue #417: `e2e/viewport/**` is owned by
+	// `playwright.viewport.config.ts` (one engine, four viewport
+	// widths). Same reason — the viewport grid is its own question, and
+	// running it here would multiply the required gate by 16 cells.
 	testIgnore: [
 		'**/compat/**',
+		'**/viewport/**',
 		...(BASE_URL.startsWith('http://127.0.0.1')
 			? LOCAL_SMOKE
 				? ['**/prod-portfolio.spec.ts']

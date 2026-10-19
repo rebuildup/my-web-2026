@@ -33,7 +33,13 @@
  *   node scripts/scan-secrets.mjs --report=<path> # write the HTML report
  *   node scripts/scan-secrets.mjs --json          # machine-readable findings
  *
- * Exit codes: 0 = clean, 1 = findings, 2 = the scan could not run.
+ * Exit codes: 0 = clean, 1 = findings, 2 = the scan could not run
+ * (unknown argument, or `--bundle` with no build artifact on disk).
+ *
+ * The `BUNDLE_DIRS` list is a literal, so it is the one thing a future
+ * change of build-output path can silently invalidate. `--bundle` fails
+ * closed (exit 2) when none of those directories exists rather than
+ * reporting a clean scan of nothing.
  *
  * The disclosure invariant (AGENTS.md §4)
  * --------------------------------------
@@ -63,6 +69,7 @@ import {
 	partition,
 	renderHtmlReport,
 	scanContent,
+	selfTestVerdict,
 } from './_secret-scan.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
@@ -87,6 +94,13 @@ function parseArgs(argv) {
 		quiet: false,
 	};
 	for (const arg of argv) {
+		// A bare `--` is the package-manager argument separator. pnpm 12
+		// forwards it literally (`pnpm run secret:scan -- --report=x` reaches
+		// this loop as `['--', '--report=x']`), so ignoring it keeps the
+		// documented `pnpm run … -- …` form working instead of exiting 2
+		// with "unknown argument".
+		if (arg === '--') continue;
+
 		if (arg === '--bundle') options.bundleOnly = true;
 		else if (arg === '--self-test') options.selfTest = true;
 		else if (arg === '--json') options.json = true;
@@ -345,6 +359,10 @@ function printReport(report, options) {
 		console.log(`      waived: ${waiver.allowlistReason}`);
 	}
 	for (const skip of report.skipped) console.log(`  [skipped] ${skip}`);
+	// A bundle scan that inspected nothing must say so loudly: `missing`
+	// is the difference between "the build output is clean" and "there
+	// was no build output to inspect".
+	for (const dir of report.missing) console.log(`  [missing] ${dir} (build output not found)`);
 	if (report.waived.length > 0) {
 		console.log(
 			`[scan-secrets] ${report.waived.length} waiver(s) in _secret-scan.mjs ALLOWLIST (${ALLOWLIST.length} entries, each with a reason)`,
@@ -366,7 +384,7 @@ async function main() {
 				'Usage: node scripts/scan-secrets.mjs [--bundle] [--self-test] [--json] [--report=<path>]',
 				'',
 				'  (no flag)     scan tracked + untracked-not-ignored files, plus build artifacts when present',
-				'  --bundle      scan build artifacts only (used after `pnpm run build:production`)',
+				'  --bundle      scan build artifacts only (used after `pnpm run build:production`; exit 2 if absent)',
 				'  --self-test   prove the gate on synthetic dummy credentials (never touches the repo)',
 				'  --json        machine-readable findings (same status-only fields)',
 				'  --report=<p>  write the self-contained HTML report to <p>',
@@ -378,9 +396,7 @@ async function main() {
 	if (options.selfTest) {
 		const result = await runSelfTest();
 		printSelfTest(result);
-		const proven =
-			result.dummyFailures.length >= result.allFixtures.dirty.length &&
-			result.cleanFailures.length === 0;
+		const verdict = selfTestVerdict(result.perFixture);
 		if (options.report) {
 			mkdirSync(dirname(options.report), { recursive: true });
 			writeFileSync(
@@ -402,9 +418,15 @@ async function main() {
 			);
 			console.log(`[scan-secrets] report written to ${options.report}`);
 		}
-		if (!proven) {
+		if (!verdict.proven) {
 			process.stderr.write(
-				'[scan-secrets] self-test FAILED: every dummy fixture must be detected and every clean fixture must stay silent\n',
+				`[scan-secrets] self-test FAILED: every dummy fixture must be detected and every clean fixture must stay silent${
+					verdict.missed.length > 0 ? `; undetected: ${verdict.missed.join(', ')}` : ''
+				}${
+					verdict.falsePositives.length > 0
+						? `; false positives: ${verdict.falsePositives.join(', ')}`
+						: ''
+				}\n`,
 			);
 			return 1;
 		}
@@ -454,6 +476,17 @@ async function main() {
 		writeFileSync(options.report, renderHtmlReport(report));
 		// stderr, so `--json` stdout stays parseable as one JSON document.
 		process.stderr.write(`[scan-secrets] report written to ${options.report}\n`);
+	}
+	// Fail closed on an empty scan surface. `--bundle` exists to inspect
+	// the built artifact; with no artifact on disk it would report "0
+	// findings" while looking at nothing, which is the same overstatement
+	// the 8 MiB skip already refuses to make (that one prints `[skipped]`).
+	// Exit 2 is the documented "the scan could not run" code.
+	if (options.bundleOnly && scanned === 0) {
+		process.stderr.write(
+			`[scan-secrets] bundle scan surface is empty: none of ${BUNDLE_DIRS.join(', ')} exists. Run \`pnpm run build:production\` first.\n`,
+		);
+		return 2;
 	}
 	return failures.length === 0 ? 0 : 1;
 }

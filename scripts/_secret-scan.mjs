@@ -232,12 +232,13 @@ export const DETECTORS = Object.freeze([
 		id: 'secret-assignment',
 		mode: 'source',
 		regex:
-			/(?:^|\n)[ \t]*[A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIALS?)[A-Z0-9_]*[ \t]*[:=][ \t]*["']?([^\s"'#,;)\]}<>()$]{12,})/,
+			/(?:^|\n)[ \t]*"?[A-Z][A-Z0-9_]*(?:SECRET|TOKEN|PASSWORD|PASSWD|API_?KEY|ACCESS_KEY|PRIVATE_KEY|CREDENTIALS?)[A-Z0-9_]*"?[ \t]*[:=][ \t]*["']?([^\s"'#,;)\]}<>()$]{12,})/,
 		group: 1,
 		description:
 			'Secret-sounding NAME bound to a credential-shaped VALUE (e.g. a committed `.dev.vars` line). ' +
 			'Anchored at the start of a line on purpose: in JavaScript `NAME: value` is a property far more ' +
-			'often than it is an env assignment.',
+			'often than it is an env assignment. The double quotes around NAME are optional so the ' +
+			'line-anchored JSON form `"NAME": "value"` is covered too.',
 	},
 ]);
 
@@ -248,6 +249,13 @@ export const DETECTORS = Object.freeze([
  * like code. It never suppresses a whole class of detector silently:
  * `detector` narrows the waiver to one detector id when a file needs
  * only that one. Anything not listed here is a failure.
+ *
+ * A blanket entry (no `detector`) waives EVERY detector plus
+ * `forbidden-path` for that file, so it is only defensible for a file
+ * that must hold shapes for several detectors at once — a gate's own
+ * rejection fixtures. A file that currently matches nothing gets no
+ * blanket entry: re-check it with `skipAllowlist: true` and, if it does
+ * match, write one scoped entry per detector naming the fixture.
  */
 export const ALLOWLIST = Object.freeze([
 	{
@@ -301,19 +309,20 @@ export const ALLOWLIST = Object.freeze([
 			'unmasked JWT in the fixture; it is the header/payload/signature of the RFC 7519 example.',
 	},
 	{
-		path: 'scripts/_secret-scan.mjs',
-		reason: 'The detector table itself: regex sources are shapes, not values.',
+		path: 'scripts/scan-secrets.mjs',
+		detector: 'home-consumer-api-key',
+		reason:
+			'The CLI wrapper self-test fixture `src/example/leaked-key.ts`: a fixture must CONTAIN the ' +
+			'credential shape for the detector to be provable. The value is 32 repeated `D`s minted in ' +
+			'`selfTestFixtures()`; it grants nothing and is not issued by bootstrap-home-api-key.mjs.',
 	},
 	{
 		path: 'scripts/scan-secrets.mjs',
+		detector: 'r2-s3-credential-assignment',
 		reason:
-			'The CLI wrapper: its self-test fixtures must contain credential shapes to be a fixture.',
-	},
-	{
-		path: 'scripts/shoot-secret-scan-report.mjs',
-		reason:
-			'The verification-artefact generator. It runs the self-test and screenshots its report; it ' +
-			'holds no value of its own.',
+			'The CLI wrapper self-test fixture `scripts/r2-key.mjs`: the Issue #475 R2 case has to exist as ' +
+			'a fixture or the detector is untested. The value is synthetic filler minted in ' +
+			'`selfTestFixtures()`.',
 	},
 ]);
 
@@ -530,6 +539,33 @@ export function partition(violations) {
 		else failures.push(violation);
 	}
 	return { failures, waived };
+}
+
+/**
+ * Self-test pass condition.
+ *
+ * Per fixture, never as an aggregate. `findings >= dirtyFixtureCount`
+ * lets one fixture that fires twice mask another fixture that fires
+ * zero times, and a self-test that reports green with a dead detector is
+ * worse than no self-test: it is a false proof of the one property the
+ * Issue asks for. A dirty fixture must produce at least one finding; a
+ * clean fixture must produce none.
+ *
+ * @param {Array<{path: string, expect: 'clean'|'red', failures: number}>} perFixture
+ * @returns {{proven: boolean, missed: string[], falsePositives: string[]}}
+ */
+export function selfTestVerdict(perFixture) {
+	const missed = [];
+	const falsePositives = [];
+	for (const row of perFixture) {
+		if (row.expect === 'red' && row.failures === 0) missed.push(row.path);
+		if (row.expect !== 'red' && row.failures > 0) falsePositives.push(row.path);
+	}
+	return {
+		proven: missed.length === 0 && falsePositives.length === 0,
+		missed,
+		falsePositives,
+	};
 }
 
 /**

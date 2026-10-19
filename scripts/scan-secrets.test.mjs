@@ -14,6 +14,7 @@ import {
 	partition,
 	renderHtmlReport,
 	scanContent,
+	selfTestVerdict,
 } from './_secret-scan.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -170,6 +171,18 @@ describe('scanContent — shape detectors', () => {
 		assert.deepEqual(failures, [], 'a mid-line object property is not an env assignment');
 	});
 
+	it('still catches the line-anchored JSON form `"NAME": "value"`', async () => {
+		// A JSON credential file puts the NAME in quotes, and a quoted key is
+		// not the mid-line JavaScript property noise the anchor exists to
+		// exclude, so the quotes are optional on both sides of the colon.
+		const json = ['{', `\t"BETTER_AUTH_SECRET": "${DUMMY.hexAssignment}"`, '}'].join('\n');
+		const failures = await failuresFor(json, 'source');
+		assert.ok(
+			failures.some((failure) => failure.detector === 'secret-assignment'),
+			`expected secret-assignment, got ${failures.map((f) => f.detector).join(',') || 'nothing'}`,
+		);
+	});
+
 	it('reports the line number of the finding', async () => {
 		const content = `// line 1\n// line 2\nconst key = '${DUMMY.homeKey}';\n`;
 		const [failure] = await failuresFor(content, 'source');
@@ -224,6 +237,40 @@ describe('allowlist', () => {
 			readFileSync(resolve(HERE, '_secret-scan.mjs'), 'utf8'),
 		);
 		assert.deepEqual(partition(own).failures, [], 'the detector table must not flag itself');
+	});
+
+	it('waives only the two fixture detectors in the CLI wrapper', async () => {
+		const wrapper = await scanContent(
+			'scripts/scan-secrets.mjs',
+			readFileSync(resolve(HERE, 'scan-secrets.mjs'), 'utf8'),
+		);
+		const { failures, waived } = partition(wrapper);
+		assert.deepEqual(failures, [], 'the self-test fixtures must be waived, not blocking');
+		assert.deepEqual(
+			[...new Set(waived.map((row) => row.detector))].sort(),
+			['home-consumer-api-key', 'r2-s3-credential-assignment'],
+			'a waiver must name the detectors it covers, never every detector',
+		);
+		// The waiver is per path AND per detector: the same file with another
+		// credential shape still fails, and so does a sibling script.
+		const other = await scanContent(
+			'scripts/shoot-secret-scan-report.mjs',
+			`const t = '${DUMMY.githubToken}';\n`,
+		);
+		assert.equal(partition(other).failures.length, 1, 'a sibling script has no waiver at all');
+	});
+
+	it('keeps no blanket waiver that is not still needed', () => {
+		// A blanket entry (no `detector`) waives every detector plus
+		// `forbidden-path` for that file, so each one has to earn its place.
+		const blanket = ALLOWLIST.filter((entry) => entry.detector === undefined);
+		for (const entry of blanket) {
+			assert.match(
+				entry.reason,
+				/fixture|test|shape/i,
+				`${entry.path} waives every detector; the reason must say which shapes it holds`,
+			);
+		}
 	});
 });
 
@@ -365,6 +412,89 @@ describe('CLI — self-test', () => {
 	});
 });
 
+describe('selfTestVerdict', () => {
+	it('judges every fixture, so one fixture cannot mask another', () => {
+		// The aggregate form (`findings >= dirtyCount`) would call this
+		// proven: two findings in one fixture, none in another.
+		const masked = selfTestVerdict([
+			{ path: 'dirty-a', expect: 'red', failures: 2 },
+			{ path: 'dirty-b', expect: 'red', failures: 0 },
+			{ path: 'clean', expect: 'clean', failures: 0 },
+		]);
+		assert.equal(masked.proven, false);
+		assert.deepEqual(masked.missed, ['dirty-b']);
+	});
+
+	it('is proven only when every dirty fixture fires and every clean one is silent', () => {
+		assert.equal(
+			selfTestVerdict([
+				{ path: 'dirty-a', expect: 'red', failures: 1 },
+				{ path: 'dirty-b', expect: 'red', failures: 3 },
+				{ path: 'clean', expect: 'clean', failures: 0 },
+			]).proven,
+			true,
+		);
+		const falsePositive = selfTestVerdict([
+			{ path: 'dirty-a', expect: 'red', failures: 1 },
+			{ path: 'clean', expect: 'clean', failures: 1 },
+		]);
+		assert.equal(falsePositive.proven, false);
+		assert.deepEqual(falsePositive.falsePositives, ['clean']);
+	});
+});
+
+describe('CLI — bundle scan', () => {
+	function bundleRepo(files) {
+		const repo = mkdtempSync(join(tmpdir(), 'scan-secrets-bundle-'));
+		mkdirSync(join(repo, 'scripts'), { recursive: true });
+		cpSync(SCRIPT, join(repo, 'scripts', 'scan-secrets.mjs'));
+		cpSync(resolve(HERE, '_secret-scan.mjs'), join(repo, 'scripts', '_secret-scan.mjs'));
+		for (const [path, content] of Object.entries(files)) {
+			const absolute = join(repo, path);
+			mkdirSync(dirname(absolute), { recursive: true });
+			writeFileSync(absolute, content);
+		}
+		execFileSync('git', ['init', '-q'], { cwd: repo });
+		execFileSync('git', ['add', '-A'], { cwd: repo });
+		return repo;
+	}
+
+	it('fails closed when no build artifact exists instead of reporting a clean scan', () => {
+		// `BUNDLE_DIRS` is a literal, so a future change of build-output path
+		// would otherwise turn this gate green while inspecting nothing.
+		const repo = bundleRepo({ 'src/clean.ts': 'export const a = 1;\n' });
+		try {
+			const result = runCli(['--bundle'], repo);
+			assert.equal(result.status, 2, 'an empty scan surface must not be a pass');
+			assert.match(result.stdout, /0 file\(s\) scanned/);
+			assert.match(result.stdout, /\[missing\] dist\b/);
+			assert.match(result.stdout, /\[missing\] \.cloudflare\/output\b/);
+			assert.match(result.stdout, /\[missing\] dist-cloudflare\b/);
+			assert.match(result.stderr, /bundle scan surface is empty/);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+
+	it('detects a credential-shaped string inside the built artifact', () => {
+		const repo = bundleRepo({
+			'src/clean.ts': 'export const a = 1;\n',
+			'dist/assets/app.js': `export const k="${DUMMY.homeKey}";\n`,
+		});
+		try {
+			const result = runCli(['--bundle'], repo);
+			assert.equal(result.status, 1, 'a credential in the deploy artifact must fail the gate');
+			assert.match(result.stdout, /dist\/assets\/app\.js:1 \[home-consumer-api-key\]/);
+			assert.ok(
+				!result.stdout.includes(DUMMY.homeKey),
+				'the bundle report must not echo the value',
+			);
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
+	});
+});
+
 describe('CLI — repository scan', () => {
 	function isolatedRepo(files) {
 		const repo = mkdtempSync(join(tmpdir(), 'scan-secrets-repo-'));
@@ -474,5 +604,16 @@ describe('CLI — repository scan', () => {
 		const result = runCli(['--not-a-flag']);
 		assert.equal(result.status, 2);
 		assert.match(result.stderr, /unknown argument/);
+	});
+
+	it('accepts the pnpm argument separator, so `pnpm run … -- …` works', () => {
+		const repo = isolatedRepo({ 'src/clean.ts': 'export const a = 1;\n' });
+		try {
+			const result = runCli(['--', '--json'], repo);
+			assert.equal(result.status, 0, result.stdout + result.stderr);
+			assert.doesNotThrow(() => JSON.parse(result.stdout.slice(result.stdout.indexOf('{'))));
+		} finally {
+			rmSync(repo, { recursive: true, force: true });
+		}
 	});
 });

@@ -16,7 +16,7 @@
 # entry points: `routes:quality:check` keeps the published route
 # roster and its quality-gate coverage in sync. See the
 # `route_quality_coverage` block below.
-
+#
 # Issue #403 adds `a11y:reduced-motion:check` to `gates.fast`: the
 # reduced-motion opt-out pairing is a property of the shipped source,
 # so it is decided on every `validate:fast` run rather than only when
@@ -68,6 +68,14 @@ gates:
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).
       - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
+      # Issue #421: the Open Graph / Twitter card contract. Cheap by
+      # design (pure Node): it proves every route the router serves has
+      # a declared card state, that the declared fallback card is a real
+      # committed asset, and that a surface Issue #421 names but the
+      # repository does not have (記事) stays an explicit declaration
+      # rather than a silent gap. The document side of the same engine is
+      # `test/integration/ogp-card.test.ts`, inside the `test` component.
+      - 'pnpm run ogp:card:check'
       # Issue #419: the SEO HTTP STATUS contract. Offline and
       # read-only like the index boundary above, but it answers a
       # different question: what STATUS the Worker must answer with for
@@ -95,12 +103,12 @@ gates:
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
       # Issue #403: the shipped reduced-motion contract. Every motion
       # surface in `src/**` must carry the `data-motion` hook, must read
-      # (or receive) the shared preference, and must be nameable by a
-      # reduced-motion selector in `src/styles.css`; the universal
-      # reduced-motion floor has to exist. Pure Node text analysis, so it
-      # costs a source walk. The browser half of the same evidence is
-      # `pnpm run capture:a11y-reduced-motion`, which is an artefact
-      # capture and therefore not a fast gate.
+      # (or receive and branch on) the shared preference, and must be
+      # nameable by a reduced-motion selector in `src/styles.css`; the
+      # universal reduced-motion floor has to exist. Pure Node text
+      # analysis, so it costs a source walk. The browser half of the
+      # same evidence is `pnpm run capture:a11y-reduced-motion`, which
+      # is an artefact capture and therefore not a fast gate.
       - 'pnpm run a11y:reduced-motion:check' # reduced-motion opt-out pairing (Issue #403)
       - 'pnpm run typecheck' # tsc --noEmit
       # `pnpm run test` also carries the Issue #491 D1 statement-count

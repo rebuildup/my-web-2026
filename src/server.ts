@@ -22,8 +22,9 @@ import { toolRouteSecurityPolicy } from './tools/registry';
  *   /integrations/*  third-party integration adapters
  *   /sitemap.xml     crawler-facing sitemap (Issue #420)
  *   /robots.txt      crawler-facing crawler policy (Issue #420)
+ *   /.well-known     RFC 9116 security.txt (Issue #468)
  *
- * The two SEO documents are the only non-API entries. They are
+ * The three documents above are the only non-API entries. They are
  * documents Hono can answer and the SSR pipeline cannot: TanStack
  * Start 1.168 has no raw-response route primitive, so a route file
  * always renders through the document shell. This is exactly the
@@ -40,6 +41,12 @@ import { toolRouteSecurityPolicy } from './tools/registry';
  * `/robots.txt` have no children, and neither prefix below them can
  * collide with a page route.
  */
+// Issue #468 adds `/.well-known` for RFC 9116 §3's security.txt. The
+// whole well-known namespace is boundary-owned: a `.well-known` document
+// is by definition a machine-readable file rather than a rendered page,
+// so it must never be answered by the SSR shell with a 200 HTML
+// document. The comment lives out here because the boundary contract in
+// `scripts/_index-boundary.mjs` reads this list textually.
 const EXTERNAL_BOUNDARY_PREFIXES = [
 	'/api/v1',
 	'/webhooks',
@@ -47,6 +54,7 @@ const EXTERNAL_BOUNDARY_PREFIXES = [
 	'/integrations',
 	'/sitemap.xml',
 	'/robots.txt',
+	'/.well-known',
 ] as const;
 
 function matchesExternalBoundary(pathname: string): boolean {

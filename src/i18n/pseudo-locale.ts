@@ -198,6 +198,8 @@ export interface PseudoSampleAudit {
 	readonly direction: PseudoDirection;
 	readonly sourceCodePoints: number;
 	readonly expandedCodePoints: number;
+	/** Code points the expansion itself added (bidi isolates excluded). */
+	readonly expandedTextCodePoints: number;
 	readonly ratio: number;
 	readonly ratioTarget: number;
 	/** False when the source has no decorable base character. */

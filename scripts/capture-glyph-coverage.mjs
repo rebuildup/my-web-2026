@@ -36,7 +36,9 @@
  * 3. Round-trips the rendered headings through the DOM selection and the
  *    system clipboard, and compares the code points that come back with the
  *    bytes the fixture stores. Copy/paste preserving the original Unicode is
- *    a property of the pipeline, so it is measured, not assumed.
+ *    a property of the pipeline, so it is measured, not assumed. A run in
+ *    which the clipboard is unavailable measures nothing for that property,
+ *    so it fails instead of writing an artefact that reads `not available`.
  * 4. Writes the probe result as JSON and screenshots the report as WebP.
  *
  * What it deliberately does NOT do
@@ -722,10 +724,10 @@ console.log(
  * Exit codes
  * ----------
  * 0  the measurement completed and the rendered text kept its code points
- * 1  the artefact would be misleading: the webfont did not load, a code
- *    point rendered as `.notdef` in ANY tier that draws it, or the
- *    copy/paste round trip lost a code point. The screenshot is still
- *    written so a human can look at it.
+ * 1  the artefact would be misleading: the webfont did not load, the system
+ *    clipboard was unavailable, a code point rendered as `.notdef` in ANY
+ *    tier that draws it, or the copy/paste round trip lost a code point.
+ *    The screenshot is still written so a human can look at it.
  */
 if (injected.unfilled > 0 || injected.rows !== probe.rows.length) {
 	process.stderr.write(
@@ -754,7 +756,12 @@ if (!selectionMatchesFixture || !domMatchesFixture) {
 	);
 	process.exitCode = 1;
 }
-if (clipboardAvailable && !clipboardMatchesSelection) {
+if (!clipboardAvailable) {
+	process.stderr.write(
+		'capture-glyph-coverage: the system clipboard was unavailable, so the copy/paste round trip was not measured.\n',
+	);
+	process.exitCode = 1;
+} else if (!clipboardMatchesSelection) {
 	process.stderr.write(
 		'capture-glyph-coverage: the system clipboard changed the code points on the way through.\n',
 	);

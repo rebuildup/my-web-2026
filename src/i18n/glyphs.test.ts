@@ -38,20 +38,23 @@ const GROUP_SEPARATORS = {
 /**
  * Guards whose token a compatibility fold WOULD change.
  *
- * Five of them are a non-breaking space: U+202F and U+00A0 both fold
+ * Four of them are a non-breaking space: U+202F and U+00A0 both fold
  * to U+0020 under NFKC. That is the §5 split in miniature — folding
  * changes no letter, so the fold "looks safe", while it changes where
- * the line may break. The sixth is the presentation ligature U+FB01,
+ * the line may break. The fifth is the presentation ligature U+FB01,
  * which folds to two ASCII letters. The list is pinned so a new
  * foldable guard has to be added here on purpose, with the reason,
  * instead of arriving by accident.
+ *
+ * `ru-guillemets` is deliberately NOT here: Russian sets guillemets
+ * tight against the word, so that guard holds no space code point for
+ * a compatibility fold to rewrite.
  */
 const FOLD_AFFECTED_GUARDS = [
 	'fr-fi-ligature',
 	'fr-guillemets',
 	'fr-number',
 	'fr-permission',
-	'ru-guillemets',
 	'ru-number',
 ];
 
@@ -108,7 +111,7 @@ const EXPECTED_GUARD_TOKENS: Record<string, string> = {
 	// ru
 	'ru-breve': '\u0418\u0306',
 	'ru-cyrillic-i': '\u0419',
-	'ru-guillemets': '\u00AB\u00A0\u0419\u043E\u0433\u0438\u00A0\u00BB',
+	'ru-guillemets': '\u00AB\u0419\u043E\u0433\u0438\u00BB',
 	'ru-negation': '\u043D\u0435 \u043F\u0435\u0440\u0435\u0432\u043E\u0434\u0438\u0442\u044C',
 	'ru-number': '1\u00A0234,56',
 	'ru-permission':

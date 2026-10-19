@@ -650,9 +650,9 @@ export const GLYPH_HEADING_FIXTURES: readonly GlyphLocaleFixture[] = [
 					'that grouping is locale data.',
 			},
 			{
-				id: 'ru-guillemets-nbsp',
-				claim: 'Russian guillemets take a no-break space inside them.',
-				note: 'U+00AB + U+00A0 … U+00A0 + U+00BB — visually close to the French row, a different code point.',
+				id: 'ru-guillemets-tight',
+				claim: 'Russian guillemets sit tight against the enclosed word.',
+				note: 'U+00AB + the word + U+00BB, with no space on the inner edges; the French row above uses U+202F.',
 			},
 			{
 				id: 'ru-webfont',
@@ -735,18 +735,18 @@ export const GLYPH_HEADING_FIXTURES: readonly GlyphLocaleFixture[] = [
 				focus: 'typography',
 				tier: 'body',
 				heading:
-					'\u00AB\u00A0\u0419\u043E\u0433\u0438\u00A0\u00BB \u2014 \u0440\u0430\u0437\u0434\u0435\u043B\u0438\u0442\u044C \u043D\u0430 \u0434\u0432\u0430 \u0441\u043B\u043E\u0432\u0430',
-				// « Йоги » — разделить на два слова
+					'\u00AB\u0419\u043E\u0433\u0438\u00BB \u2014 \u0440\u0430\u0437\u0434\u0435\u043B\u0438\u0442\u044C \u043D\u0430 \u0434\u0432\u0430 \u0441\u043B\u043E\u0432\u0430',
+				// «Йоги» — разделить на два слова
 				form: 'NFC',
-				probe: ['U+00AB', 'U+00BB', 'U+00A0', 'U+2014'],
+				probe: ['U+00AB', 'U+00BB', 'U+2014'],
 				guards: [
 					{
 						id: 'ru-guillemets',
 						kind: 'character',
-						token: '\u00AB\u00A0\u0419\u043E\u0433\u0438\u00A0\u00BB',
+						token: '\u00AB\u0419\u043E\u0433\u0438\u00BB',
 						note:
-							'Guillemets plus the no-break spaces on their inner edges. The Russian ' +
-							'space is U+00A0, the French one in the row above is U+202F.',
+							'Guillemets with no space on their inner edges. The French row above ' +
+							'puts U+202F there; that is French typography, not Russian.',
 					},
 				],
 				note:

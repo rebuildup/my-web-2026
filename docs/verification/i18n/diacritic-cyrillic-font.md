@@ -16,7 +16,7 @@
 | capture 手段 | `node --experimental-strip-types scripts/capture-glyph-coverage.mjs`（= `pnpm run capture:glyph-coverage`） |
 | 実測 | headless Chromium / 48px canvas 描画。`.notdef` 判定は **tier ごと**、webfont / fallback 判定は §2.2 |
 | viewport / DPR | 1600 x 1000 / 1、`fullPage` 撮影 |
-| 生成物サイズ | 1440 x 4018 px、**281 kB** WebP（quality 76、budget 300 kB） |
+| 生成物サイズ | 1440 x 4018 px、**280 kB** WebP（quality 76、budget 300 kB） |
 | 外部通信 | webfont の取得のみ（`fonts.googleapis.com` / `fonts.gstatic.com`）。判定・fixture・font stack に外部依存はない |
 | 再現性 | 判定は決定的ながら **browser / platform に依存する実測**。CI の gate ではなく証跡である |
 
@@ -56,12 +56,12 @@ Issue は `docs/verification/i18n/diacritic-cyrillic-font.png` を指定して�
 U+2013 / U+201C / U+201D / U+201E）は「豆腐が 0」のまま exit 0 になり、**測っていない stack を測ったと
 いう証跡**になってしまう。どちらの tier でも欠字は 0 だった。
 
-| 判定 | 見出し tier（46 code point がこの tier で描かれる） | 本文 tier（27） |
+| 判定 | 見出し tier（46 code point がこの tier で描かれる） | 本文 tier（26） |
 | --- | --- | --- |
-| `.notdef`（欠字 / tofu） | **0 / 46** | **0 / 27** |
+| `.notdef`（欠字 / tofu） | **0 / 46** | **0 / 26** |
 | 出荷 webfont が供給 | 43 | 25 |
-| platform fallback が応答 | 3（**U+00A0 / U+0327 / U+202F**） | 2（**U+00A0 / U+202F**） |
-| 該当行なし（`no row`、判定対象外） | 7 | 26 |
+| platform fallback が応答 | 3（**U+00A0 / U+0327 / U+202F**） | 1（**U+202F**） |
+| 該当行なし（`no row`、判定対象外） | 7 | 27 |
 
 **fixture が持つ 53 code point のどれも、描く stack では豆腐にならなかった。** 一方で
 「どちらの stack で supply されたか」は列ごとに別の質問で、表では列ごとに出ている
@@ -71,9 +71,10 @@ U+2013 / U+201C / U+201D / U+201E）は「豆腐が 0」のまま exit 0 にな�
 
 fallback が応答した内訳:
 
-- **U+00A0 / U+202F（両 tier）** — 空白。ink 0 の文字で、sentinel（`monospace`）も webfont も**何も描かない**ため、
+- **U+00A0（見出し tier のみ）/ U+202F（両 tier）** — 空白。ink 0 の文字で、sentinel（`monospace`）も webfont も**何も描かない**ため、
   差分判定は「どちらの供給元も同じ絵になる」から fallback 側になる。**coverage の失敗ではなく判定不能**であり、
-  実際の advance（13.44px / 6.72px）は webfont の metrics が決めている。
+  実際の advance（13.44px / 6.72px）は webfont の metrics が決めている。`ru-typography` のギュメ内側に
+  空白は無いため、U+00A0 を本文 tier で描く行は無い（ロシア語の数字区切りは見出し tier にある）。
 - **U+0327 COMBINING CEDILLA（見出し tier のみ）** — 結合記号。webfont は供給しておらず、fallback face が mark を描く。
   `pt-coracao-nfd` は base letter と mark が別 face になる行であり、mark が cap の下に着く位置に
   おいてベース字形と fallback face が食い違う可能性は、この実測記録に残っている。
@@ -94,7 +95,8 @@ fallback が応答した内訳:
 
 改行はどの行も持たない code point なので、これは platform のテキスト直列化であって Unicode の書き換えではない。
 比較は改行を除いており、その旨を artifact にも併記している。この 3 段のいずれかが崩れても
-`capture-glyph-coverage.mjs` は exit 1 で止まる。
+`capture-glyph-coverage.mjs` は exit 1 で止まる。clipboard 自体が利用不能な環境（headless の権限拒否など）も
+「往復を測っていない」ので同じく exit 1 であり、`not available` のまま正常終了する経路は無い。
 
 ### 2.4 タイポグラフィの差（§5 の分離の実例）
 
@@ -103,7 +105,7 @@ fallback が応答した内訳:
 | fr | `«` `»`（内側に U+202F） | U+202F narrow no-break space | é は precomposed（NFC 行）と分解行が対になる |
 | de | `„` `“` | `.` U+002E | ü は分解行、ß は常に 1 code point |
 | pt | `“` `”` | `.` U+002E | ç / ã は precomposed、分解行は U+0327 + U+0303 |
-| ru | `«` `»`（内側に U+00A0） | U+00A0 no-break space | й は分解行、ё は常に 1 code point |
+| ru | `«` `»`（内側に空白なし） | U+00A0 no-break space | й は分解行、ё は常に 1 code point |
 
 **この fixture は文章を推敲していない。** `docs/domain/i18n.md` §5 に沿って、
 yomiyasu などの校正ツールをこの capture / fixture / test のいずれにも入れておらず、
@@ -156,12 +158,14 @@ node --experimental-strip-types scripts/capture-glyph-coverage.mjs --probe-only
 - **縦の metrics**。combining mark と行高の干渉、fallback face の ascent / descent の差は測っていない。
 - **viewport / テーマ**。1600px light のみ。狭い画面・dark・forced-colors は対象外。
 - **clipboard は plain-text のみ**。`text/html` flavor を通した場合の往復は未検証。
+- **clipboard の利用不能**。利用できない環境では round trip を測れないため、capture は exit 1 で終わる
+  （`not available` を正常な証跡として出さない）。
 - **webfont 取得失敗時**。その場合 script は exit 1 で、platform fallback の実測を coverage の証拠として出さない。
 
 ## 6. 未確定事項（owner の判断が必要）
 
 1. **heading stack に Cyrillic 専用 fallback を足すか。** 現状の結論は「不要」（両 tier で欠字 0、
-   見出し tier の webfont 供給が 43/46、本文 tier が 25/27）だが、これは *この macOS の platform fallback* についての話である。
+   見出し tier の webfont 供給が 43/46、本文 tier が 25/26）だが、これは *この macOS の platform fallback* についての話である。
    Windows の fallback で 3 つを供給できるかは、このリポジトリからは判定できない。
 2. **U+0327（分解された ç）を本文に使うか。** 現状は fixture 内のみ。本文で NFD を許すなら、
    base と mark が別 face になる件を含めて fallback face 指定の要否を検討する。

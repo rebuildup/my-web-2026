@@ -88,6 +88,13 @@ gates:
       # == build-artefact stamp, and that the fetch source is the declared
       # credential-free https repository with no branch-tip tracking.
       - 'pnpm run tools:provenance:check'
+      # Issue #509: a Storybook story is feature-local UI, so its runtime
+      # import closure must stay inside the owning obligation — routes,
+      # server.ts, http/, cloudflare/ and the cloudflare:workers virtual
+      # module are foreign boundaries for a browser preview. Kept separate
+      # from check-architecture.mjs because that gate judges the OWNERS'
+      # dependency direction, while this one judges what a preview may load.
+      - 'pnpm run storybook:ownership:check' # story -> foreign boundary walk
       - 'pnpm run csrf:contract:check' # CSRF rejection contract (Issue #440)
       # Issue #434: pre-publication link and image gate. Internal 404,
       # unsafe schemes and missing image alt stop the release; external
@@ -173,6 +180,9 @@ change_risk_mapping:
   architecture_boundary:
     gate: fast
     note: 'scripts/check-architecture.mjs rejects reverse owner dependencies; src/home/status/** may use the documented runtime health edges and registered home→http schema edges must be import type only'
+  storybook_story_change:
+    gate: fast
+    note: 'scripts/check-storybook-ownership.mjs walks every story the .storybook/main.ts stories globs match; a runtime import of routes / server.ts / http / cloudflare / cloudflare:workers anywhere in the closure fails the gate, an unresolvable in-src specifier or an unreadable subject set exits 2 (not run) instead of passing, and comments/strings are masked so a documented import example is not read as an edge'
   copy_locale_contract:
     gate: fast
     note: 'copy/resources.json declares which locale each capability is published in; scripts/check-copy-i18n.mjs rejects untranslated keys, keys a resource names but the feature never registered, fallback chains that cannot reach the source locale, and drift in numbers / placeholders / negation / permissions / typography. Locale coverage is opt-in per feature, so an unopted locale is information, not a failure.'

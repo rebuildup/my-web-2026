@@ -1,17 +1,17 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import inventoryJson from '../../quality/asset-license-inventory.json';
 import { css, cx } from '../../styled-system/css';
-import { DataTable, type TableColumn, type TableRow } from '../editorial/table-code';
+import { DataTable } from '../editorial/table-code';
 import { AssetLicenseReview } from './AssetLicenseReview';
 import {
 	type AssetLicenseRecord,
 	type AssetReview,
-	type AssetReviewObservations,
 	DECISION_LABEL,
 	KIND_LABEL,
 	evaluateAssetLicense,
 } from './contract.ts';
-import { parseAssetInventoryValue } from './inventory.ts';
+import { assetInventoryTable } from './inventory-table.ts';
+import { faceValueObservations, parseAssetInventoryValue } from './inventory.ts';
 
 /**
  * AssetLicenseReview stories — the rights of the assets this repository
@@ -39,27 +39,6 @@ import { parseAssetInventoryValue } from './inventory.ts';
 const read = parseAssetInventoryValue(inventoryJson);
 
 /**
- * Face-value observations, scoped to THIS record's own claims.
- *
- * `sha256Of` answers with the digest the record declares, so the browser
- * evaluation asks the question the gate asks ("is the record internally
- * coherent?") without pretending to answer the gate's question ("do
- * those bytes still hash to that?").
- */
-function observationsFor(records: readonly AssetLicenseRecord[]): AssetReviewObservations {
-	const declared = new Map<string, string | undefined>();
-	for (const record of records) {
-		for (const item of record.evidence) {
-			if (item.kind === 'repository-file') declared.set(item.path, item.sha256);
-		}
-	}
-	return {
-		evidenceExists: (path) => declared.has(path),
-		sha256Of: (path) => declared.get(path) ?? null,
-	};
-}
-
-/**
  * One review per record.
  *
  * Per-record evaluation only: coverage is a filesystem question, and a
@@ -68,7 +47,8 @@ function observationsFor(records: readonly AssetLicenseRecord[]): AssetReviewObs
  * surface that counts them.
  */
 const reviews = read.records.map(
-	(record) => [record.id, evaluateAssetLicense(record, observationsFor(read.records))] as const,
+	(record) =>
+		[record.id, evaluateAssetLicense(record, faceValueObservations(read.records))] as const,
 );
 
 function reviewFor(id: string): AssetReview {
@@ -167,50 +147,24 @@ const scopeBodyClassName = css({
 	color: 'text.default',
 });
 
-/** File count as the record states it: the gate owns the audited count. */
-function claimedFileCount(record: AssetLicenseRecord): string {
-	return record.covers.length === 0 ? '—' : record.covers.join(' , ');
-}
-
 /**
  * The record roster.
  *
  * `DataTable` is the shipped table primitive, so the caption and the
  * scoped header cells are structural rather than remembered
  * (`pnpm run a11y:table:code:check` fails a hand-rolled table that is
- * missing either).
+ * missing either). Its row data comes from `./inventory-table.ts`
+ * because Panda would read a `{ key, label }` literal written HERE as a
+ * style candidate.
  */
-const INVENTORY_COLUMNS: readonly TableColumn[] = [
-	// The first column's key names the row header cell the primitive
-	// renders (`columns.slice(1)` supplies the `<td>`s), so the record id
-	// goes first and the derived decision is an ordinary cell after it.
-	{ key: 'record', label: '記録 id' },
-	{ key: 'decision', label: '判定' },
-	{ key: 'kind', label: '種別' },
-	{ key: 'spdx', label: 'ライセンス' },
-	{ key: 'covers', label: '対象' },
-	{ key: 'title', label: '名称' },
-];
-
 function InventoryTable() {
-	const rows: readonly TableRow[] = read.records.map((record) => ({
-		key: record.id,
-		label: record.id,
-		cells: {
-			record: record.id,
-			decision: DECISION_LABEL[reviewFor(record.id).decision],
-			kind: KIND_LABEL[record.kind],
-			spdx: record.license.spdx,
-			covers: claimedFileCount(record),
-			title: record.title,
-		},
-	}));
+	const table = assetInventoryTable(read.records);
 	return (
 		<DataTable
-			caption={`資産記録 ${read.records.length} 件（記録 id / 導出判定 / 種別 / ライセンス / 対象 / 名称）`}
-			columns={INVENTORY_COLUMNS}
-			rows={rows}
-			note="対象は記録が主张する covers のパターン。監査対象ファイルの実数は gate が数える（pnpm run assets:license:check）。"
+			caption={table.caption}
+			columns={table.columns}
+			rows={table.rows}
+			note={table.note}
 		/>
 	);
 }

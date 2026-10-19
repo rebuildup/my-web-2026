@@ -34,6 +34,7 @@ import type {
 	AssetPublicationState,
 	AssetRedistribution,
 	AssetReviewFinding,
+	AssetReviewObservations,
 	AssetVerificationMethod,
 } from './contract.ts'; // `.ts` on purpose: `scripts/check-asset-licenses.mjs` imports this module directly, and Node's ESM resolver does not add extensions
 import { REVIEWED_SPDX_IDS, isBareHostname } from './contract.ts';
@@ -369,4 +370,32 @@ export function parseAssetInventory(text: string): AssetInventoryReadResult {
 		};
 	}
 	return parseAssetInventoryValue(value);
+}
+
+/**
+ * Face-value observations for a reader that has no filesystem.
+ *
+ * A browser cannot `stat()` a repository file, so the only honest
+ * observation it can make is the record's own: "this path is claimed, and
+ * this is the digest it claims". That answers the coherence question
+ * (`does the record describe itself consistently?`) and never the gate's
+ * question (`do those bytes still hash to that?`), which stays
+ * `pnpm run assets:license:check`'s alone.
+ *
+ * Lives here rather than in a story because it is a property of the READ
+ * record, not of any one surface that renders it.
+ */
+export function faceValueObservations(
+	records: readonly AssetLicenseRecord[],
+): AssetReviewObservations {
+	const declared = new Map<string, string | undefined>();
+	for (const record of records) {
+		for (const item of record.evidence) {
+			if (item.kind === 'repository-file') declared.set(item.path, item.sha256);
+		}
+	}
+	return {
+		evidenceExists: (path) => declared.has(path),
+		sha256Of: (path) => declared.get(path) ?? null,
+	};
 }

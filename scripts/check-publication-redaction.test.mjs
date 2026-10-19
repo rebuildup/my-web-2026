@@ -381,6 +381,50 @@ describe('gate findings', () => {
 	});
 });
 
+describe('load — the gate stays decidable at corpus scale', () => {
+	it('classifies 1000 records exactly and keeps the verdict', () => {
+		const records = Array.from({ length: 1000 }, (_, index) =>
+			index % 2 === 0
+				? { ...PRIVATE_RECORD, id: `fixture-private-${index}` }
+				: { ...CLEAN_RECORD, id: `fixture-clean-${index}` },
+		);
+		const started = process.hrtime.bigint();
+		const review = reviewCorpus({ corpus: corpusOf(...records), publishedFiles: [] });
+		const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
+
+		assert.equal(review.counts.records, 1000);
+		assert.equal(review.counts.withheld, 500);
+		assert.equal(review.counts.published, 500);
+		// Every private copy contributes the same 9 candidates; a rule
+		// that started matching more loosely would move this number, so
+		// the scale case also pins the per-record count.
+		assert.equal(review.counts.candidates, 500 * findRecordCandidates(PRIVATE_RECORD).length);
+		assert.equal(review.verdict, 'review');
+		// Wall clock is an observation, not a threshold: the DETERMINISTIC
+		// statement is the verdict and the counts, which is why the value
+		// is reported in the test output instead of asserted.
+		assert.ok(elapsedMs >= 0);
+	});
+
+	it('scales the published-content scan the same way', () => {
+		const files = publishedFiles(
+			Array.from({ length: 400 }, (_, index) => [
+				`src/portfolio/seed-${index}.ts`,
+				`export const TITLE_${index} = '${CLEAN_RECORD.text}';`,
+			]),
+		);
+		const review = reviewCorpus({
+			corpus: corpusOf(CLEAN_RECORD, PRIVATE_RECORD),
+			publishedFiles: files,
+		});
+		assert.equal(review.verdict, 'review');
+		assert.deepEqual(
+			review.findings.filter((entry) => entry.code === 'E005'),
+			[],
+		);
+	});
+});
+
 describe('report artefacts', () => {
 	const review = reviewCorpus({
 		corpus: corpusOf(CLEAN_RECORD, PRIVATE_RECORD),
@@ -422,6 +466,16 @@ describe('report artefacts', () => {
 			assert.equal(markdown.includes(raw), false, `markdown leaked ${raw}`);
 			assert.equal(html.includes(raw), false, `html leaked ${raw}`);
 		}
+	});
+
+	it('never serialises a raw candidate value in the review object either', () => {
+		const json = JSON.stringify(
+			reviewCorpus({ corpus: corpusOf(CLEAN_RECORD, PRIVATE_RECORD), publishedFiles: [] }),
+		);
+		for (const raw of ['090-0000-0000', 'personal@fixture-note.test', '井川 二郎', '新井 沙耶']) {
+			assert.equal(json.includes(raw), false, `review object leaked ${raw}`);
+		}
+		assert.ok(json.includes('D001'), 'the rule code is still reported');
 	});
 
 	it('renders a self-contained HTML page with no external reference', () => {

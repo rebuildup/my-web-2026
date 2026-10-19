@@ -26,7 +26,8 @@
 		"infisical-secret-coverage",
 		"cf-typegen",
 		"playwright-e2e",
-		"release-gate-ledger"
+		"release-gate-ledger",
+		"integration-scope-ledger"
 	],
 	"profile_equivalences": [
 		{
@@ -279,6 +280,15 @@
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
 			"documentation": "docs/verification/security/release-gate-coverage.md"
+		},
+		{
+			"id": "integration-scope-ledger",
+			"contract": "Every third-party connection candidate still declares its least-privilege scope set, token retention ceiling and revocation procedure, every reviewed connection still reaches the verdict the ledger claims when the real adapter runs it, and no candidate is published while the owner allowlist is empty.",
+			"command": "pnpm run integration:scope:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/security/integration-token-scope.md"
 		},
 		{
 			"id": "playwright-e2e",

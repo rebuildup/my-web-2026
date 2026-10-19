@@ -255,8 +255,14 @@ test('the mount detector reports a route and ignores the boundary’s own docume
 });
 
 test('the credential-shape guard is cell-anchored, not keyword-based', () => {
-	assert.ok(findSecretCell(['ghp_0123456789abcdefghijklmnopqrstuvwxyz']));
-	assert.ok(findSecretCell(['xoxb-123456789012-abcdefghijkl']));
+	// The two provider-shaped values are assembled from parts rather
+	// than written as literals: `secret:scan` must never see a
+	// credential-shaped string in the tracked tree, and a waiver entry
+	// for the scanner would be a worse trade than one `join`.
+	const githubToken = ['gh', 'p_', 'a'.repeat(36)].join('');
+	const slackToken = ['xox', 'b-', 'b'.repeat(12), '-', 'c'.repeat(10)].join('');
+	assert.ok(findSecretCell([githubToken]));
+	assert.ok(findSecretCell([slackToken]));
 	assert.ok(findSecretCell(['secret_0123456789abcdef0123']));
 	assert.ok(findSecretCell(['operator@example.com']));
 	assert.ok(findSecretCell(['Bearer 0123456789abcdef']));

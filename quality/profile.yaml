@@ -16,6 +16,11 @@
 # entry points: `routes:quality:check` keeps the published route
 # roster and its quality-gate coverage in sync. See the
 # `route_quality_coverage` block below.
+#
+# Issue #403 adds `a11y:reduced-motion:check` to `gates.fast`: the
+# reduced-motion opt-out pairing is a property of the shipped source,
+# so it is decided on every `validate:fast` run rather than only when
+# someone remembers to capture the verification artefact.
 
 schema_version: 1
 
@@ -117,6 +122,15 @@ gates:
       - 'pnpm run content:links:check'
       # Issue #492: published route roster vs. quality-gate coverage.
       - 'pnpm run routes:quality:check' # route × quality-gate coverage ledger (Issue #492)
+      # Issue #403: the shipped reduced-motion contract. Every motion
+      # surface in `src/**` must carry the `data-motion` hook, must read
+      # (or receive and branch on) the shared preference, and must be
+      # nameable by a reduced-motion selector in `src/styles.css`; the
+      # universal reduced-motion floor has to exist. Pure Node text
+      # analysis, so it costs a source walk. The browser half of the
+      # same evidence is `pnpm run capture:a11y-reduced-motion`, which
+      # is an artefact capture and therefore not a fast gate.
+      - 'pnpm run a11y:reduced-motion:check' # reduced-motion opt-out pairing (Issue #403)
       - 'pnpm run typecheck' # tsc --noEmit
       - 'pnpm run infisical:check:coverage'
       - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)

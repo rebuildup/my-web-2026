@@ -368,6 +368,9 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   target / missing image alt is an error; external timeouts are
   warnings) +
   `routes:quality:check` (Issue #492) + `i18n:policy:check` +
+  `a11y:reduced-motion:check` (Issue #403 — every motion surface
+  must carry the `data-motion` hook, read or receive the shared
+  preference, and be nameable by a reduced-motion selector) +
   `ci:pins:check` (Issue #472, GitHub
   Actions pin / token audit) + `knip:check` (Issue #531,
   diff gate vs `quality/knip-baseline.json`) + `test`.

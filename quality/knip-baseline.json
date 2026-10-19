@@ -40,6 +40,7 @@
 		"exports src/editorial/forms/index.ts presentMessage",
 		"exports src/editorial/nav/index.ts PUBLIC_NAV_ITEMS",
 		"exports src/editorial/nav/index.ts isActiveRoute",
+		"exports src/editorial/reduced-motion.ts REDUCED_MOTION_PROP",
 		"exports src/editorial/social-card/card.ts CANONICAL_ORIGIN",
 		"exports src/editorial/social-card/contract.ts CARD_TYPES",
 		"exports src/editorial/social-card/index.ts CARD_TYPES",

@@ -77,6 +77,15 @@ gates:
       # agree with the generated route inventory. Runs as a fast gate
       # because it is a pure Node script (no worker, no build).
       - 'pnpm run index:boundary:check' # index boundary (robots / sitemap / meta robots)
+      # Issue #412: the SSR documents every published route renders are
+      # validated by an offline, Nu-Validator-compatible engine
+      # (scripts/html-standards-contract.mjs). The fast half re-runs the
+      # committed invalid/valid fixtures, the route roster and the rule
+      # ledger; the live half runs in the workerd pool
+      # (test/integration/html-standards.test.ts) over the real SSR
+      # output, inside `pnpm run test`. Nothing is sent to an external
+      # validator.
+      - 'pnpm run html:standards:check' # HTML conformance of the rendered documents (Issue #412)
       # Issue #421: the Open Graph / Twitter card contract. Cheap by
       # design (pure Node): it proves every route the router serves has
       # a declared card state, that the declared fallback card is a real
@@ -333,6 +342,54 @@ route_quality_coverage:
     A new route file with no manifest entry fails the gate on purpose, so
     a ticket PR must either add the route as a gate target or record an
     exclusion reason for every gate family.
+
+# Issue #412 - HTML standards gate. An offline, Nu-Validator-compatible
+# engine checks the SSR documents for the three defect classes the
+# Issue names: invalid markup, duplicate ids and attribute errors. The
+# engine is deliberately NOT the public validator.nu endpoint: that
+# would upload every rendered document (including /admin pages and
+# their copy) to a third party, which the repository never does.
+html_standards:
+  manifest: 'quality/html-standards.json'
+  engine: 'scripts/html-standards-contract.mjs'
+  gate: 'scripts/check-html-standards.mjs'
+  command: 'pnpm run html:standards:check'
+  report_command: 'pnpm run verify:html-nu-validator-screenshot'
+  live_command: 'node scripts/check-html-standards.mjs --live <baseUrl>'
+  tests:
+    - 'node --test scripts/check-html-standards.test.mjs'
+    - 'test/integration/html-standards.test.ts (workerd SELF, SSR half)'
+  gate_placement: 'validate:fast, beside the other pure-Node policy gates'
+  fixture_suite:
+    valid: 'test/fixtures/html-standards/valid-page.html'
+    invalid: 'test/fixtures/html-standards/invalid-page.html'
+    note: >-
+      The Issue's first acceptance condition is enforced structurally:
+      the invalid fixture MUST fail and the valid fixture MUST pass on
+      every run, and the invalid fixture must produce every rule listed
+      in `fixtures.expect` (a rule that stops firing fails) while
+      producing none of `fixtures.forbidden` (an engine false positive
+      fails).
+  silent_pass_guards:
+    - 'a published route id (src/routes/** + src/routeTree.gen.ts) with no manifest entry fails'
+    - 'a manifest route id no route publishes fails'
+    - 'a declared renderable route with no observation fails (route.unobserved)'
+    - 'a request that failed, a non-2xx, or a non-text/html response fails'
+    - 'a manifest rule the engine does not implement fails, and an engine rule the manifest omits fails'
+    - 'a waiver that suppresses no finding fails'
+  artefacts:
+    - path: 'docs/verification/standards/html-nu-validator.md'
+      source: 'the gate contract and its reproduction commands'
+    - path: 'docs/verification/standards/html-nu-validator.webp'
+      source: 'scripts/make-html-nu-validator-report.mjs (Playwright chromium + sharp)'
+  known_limits:
+    - 'subset of HTML5: the rule table covers the elements this repository renders, and an element name outside the table is not a finding'
+    - 'a `<` that does not open a tag is literal text (HTML5 text), and parsing continues after it'
+    - 'end tags HTML5 makes optional (p, li, dt, dd, td, th, ...) plus html/head/body are not unclosed-element at EOF, because HTML5 closes them for you; a required end tag at EOF is still reported'
+    - 'foreign content (<svg>/<math>) is not checked for attributes or nesting; id uniqueness still is'
+    - 'the SSR half validates the workerd documents as they render without HOME_API_KEY, so the home counter and reaction blocks are in their failure-fallback state there; the success state is what `--live <baseUrl>` covers'
+    - 'no external schema, no CSS, no ARIA role/attribute value vocabulary beyond the referenced-id graph'
+    - 'a hoisted <style> inside a flow element of <body> is a documented divergence from the Nu validator: React 19 streams suspense styles as `<div hidden><style>…</style></div>` through every route, so flagging it would mean flagging every document this project can ship. A <style> inside a phrasing-only parent (<ul>, <p>, <button>, …) is still reported.'
 
 ci:
   workflow: .github/workflows/ci.yml

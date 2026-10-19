@@ -181,8 +181,8 @@ block).
 
 ```console
 $ pnpm run secret:scan          # no build present — the validate:fast case
-[scan-secrets] tracked files + build artifacts — 1030 file(s) scanned, 0 blocking finding(s), 11 waived
-[scan-secrets] source surface: 1030 tracked + 0 untracked-not-ignored
+[scan-secrets] tracked files + build artifacts — 1057 file(s) scanned, 0 blocking finding(s), 11 waived
+[scan-secrets] source surface: 1057 tracked + 0 untracked-not-ignored
   scripts/check-sbom.test.mjs:73 [private-key-block] len=31 sha256:8bcac790 — PEM private key block. …
       waived: The SBOM gate own detector fixtures (Issue #471). …
   …
@@ -255,8 +255,8 @@ worktree (never a pushed branch) and read the finding:
 ```console
 $ printf 'export const k = "%s";\n' "mk_home_$(printf 'D%.0s' {1..32})" > src/home/scan-probe.ts
 $ pnpm run secret:scan
-[scan-secrets] tracked files + build artifacts — 1031 file(s) scanned, 1 blocking finding(s), 11 waived
-[scan-secrets] source surface: 1030 tracked + 1 untracked-not-ignored
+[scan-secrets] tracked files + build artifacts — 1058 file(s) scanned, 1 blocking finding(s), 11 waived
+[scan-secrets] source surface: 1057 tracked + 1 untracked-not-ignored
   src/home/scan-probe.ts:1 [home-consumer-api-key] len=40 sha256:bfc13aba — Home consumer API key PLAINTEXT …
 $ echo $?
 1

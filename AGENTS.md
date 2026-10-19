@@ -400,7 +400,14 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   diff gate vs `quality/knip-baseline.json`) + `test`.
   The canonical list is
   `quality/profile.yaml#gates.fast.components`; add a step there,
-  not only in the script.)
+  not only in the script. Issue #566 made that list executable:
+  each `validate:*` npm script is one line
+  (`node scripts/run-quality-gates.mjs <gate>`) that runs the
+  declared components in order, one command per line, and stops at
+  the first failure with that failure's exit code. `pnpm run test`
+  likewise delegates to `scripts/run-script-tests.mjs`, which
+  discovers every `scripts/*.test.mjs` by convention — so adding a
+  gate or a script test never edits a shared one-line chain.)
 - `pnpm run validate:integration` — ticket PR verification.
   (`validate:fast` + `build:production` + per-route bundle budget
   (`bundle:budget:check`, Issue #482) + default/production Wrangler

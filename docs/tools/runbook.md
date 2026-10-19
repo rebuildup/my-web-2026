@@ -2,7 +2,7 @@
 
 This runbook covers day-to-day operator work for the Tool Registry
 contract. Issue #80 ships the contract; Issue #81 ships the first
-pilot (ProtoType). Anything that has to wait for #81 lives in §7.
+pilot (ProtoType). Anything that has to wait for #81 lives in §8.
 
 ## 1. Read the registry
 
@@ -408,7 +408,117 @@ A compact visual of both observations is committed at
 The image is a rendering of the same status-only report the gate prints;
 the repair procedure above is the authoritative part.
 
-## 7. Open Issue #81
+## 7. Artefact license & dependency inventory (Issue #466)
+
+§6 proves *where the bytes came from*. It says nothing about *whether
+those bytes may be published*: `license` is a string an operator typed,
+so a Tool whose pinned commit ships AGPL-3.0 — or no license file at all
+— passed every gate carrying the same MIT claim as one that ships the
+MIT text; and because the Tools build from their own lockfile inside
+`external/<slug>/`, no file in this repository recorded which dependency
+set produced `/tools/<slug>/app/`. Issue #466 makes both visible and
+gates them.
+
+```bash
+pnpm run tools:artifact:check                     # the gate (validate:fast, and the build)
+pnpm run tools:artifact:update                    # regenerate the reviewed record, then re-run
+node scripts/check-tool-artifact-inventory.mjs --report=markdown
+node scripts/check-tool-artifact-inventory.mjs --report=html --report-out=.tmp/tool-artifact-inventory.html
+```
+
+What it proves, per Tool:
+
+| fact                | compared against                                                         | finding on drift                                              |
+| ------------------- | ------------------------------------------------------------------------ | ------------------------------------------------------------- |
+| `license`           | the SPDX identifier in the pinned checkout's license file (`LICENSE*`, `LICENCE*`, `COPYING*`) and `package.json#license` | `LICENSE_EVIDENCE_MISSING` / `LICENSE_UNDECLARED` / `LICENSE_UNRECOGNISED` / `LICENSE_MISMATCH` / `LICENSE_FIELD_MISMATCH` |
+| dependency set      | the sha256 of the lockfile the declared package manager consumes, plus the `package.json#dependencies` names | `LOCKFILE_MISSING` / `DEPENDENCY_DRIFT`                        |
+| the review itself  | the commit `quality/tool-artifact-inventory.json` was written for        | `REVIEW_RECORD_MISSING` / `REVIEWED_PIN_MISMATCH` / `LICENSE_EVIDENCE_CHANGED` |
+| outbound references | the host set observed in the collected artefact                          | `OUTBOUND_UNDECLARED` / `OUTBOUND_RECORD_STALE`                |
+
+Severity is the contract, and it is the reason the gate exists:
+
+- `same_origin_static` — this repository builds and serves the bytes —
+  is an **error**. `scripts/build-tools.mjs` step 1c evaluates the same
+  `src/tools/artifact-inventory.ts` rules this gate reports, so a Tool the
+  gate blocks is never published: `pnpm run build` refuses it.
+- any other delivery kind is a **warn** (a hold) when bytes exist to
+  inspect, and **info** when the entry is inventory-only. The 13 entries
+  with no submodule are reported once, by count, so an unreviewed
+  inventory never renders like a reviewed one.
+
+Like §6 the gate is **offline and status-only**: no network fetch, no
+environment variable, no secret file, no binding. Licence evidence is
+read from the pinned checkout and digested; artefact URLs are reduced
+with `new URL()` and printed as `hostname`, so a userinfo or port inside a
+bundled URL can never reach a report that gets pasted into a PR.
+
+### 7.1 Bumping a submodule: the reviewed record
+
+Evidence is only evidence *about a commit*. A pin bump that changes the
+license file or rewrites the lockfile is a new, unreviewed claim, so it
+is a finding until the record is regenerated and the regenerated diff is
+reviewed **in the same PR as the bump**:
+
+```bash
+git submodule update --init --recursive
+pnpm run tools:artifact:update
+git diff quality/tool-artifact-inventory.json   # this diff IS the review
+```
+
+Regenerate once more after a build (`pnpm run build`) so `outbound.hosts`
+describes the bytes that actually ship.
+
+Regeneration is **not** a bypass: the record absorbs drift, not a false
+claim. A Tool whose license file contradicts the manifest keeps failing
+`LICENSE_MISMATCH` however many times the record is rewritten —
+`scripts/check-tool-artifact-inventory.test.mjs` asserts exactly that.
+
+### 7.2 Abnormal observation and repair
+
+This repository is (correctly) never in a drifted state, so the failure
+modes have to be produced somewhere. `scripts/make-tool-artifact-fixture.mjs`
+builds a synthetic host repository from git plumbing and hand-written
+files — five Tools, one per rule, no network, no real Tool repository, no
+credential, fixed commit dates — and the real gate runs over it with
+`--root=`. The block below is a verbatim capture of that command:
+
+```console
+$ node scripts/make-tool-artifact-fixture.mjs .tmp/tool-artifact-fixture
+$ node scripts/check-tool-artifact-inventory.mjs --root=.tmp/tool-artifact-fixture
+[check-tool-artifact-inventory] 3 error(s), 1 warning(s), 0 note(s):
+  [error] DEPENDENCY_DRIFT drifted-widget: pnpm-lock.yaml no longer matches the reviewed digest (runtime dependencies added: right-pad; removed: none)
+      remedy: re-run `pnpm run tools:artifact:update` and review the dependency change in the PR that changed it
+  [error] LICENSE_MISMATCH relicensed-widget: the manifest declares "MIT" but LICENSE grants AGPL-3.0-only
+      remedy: correct `license` in src/tools/manifest.json, or re-license the Tool repository before the next pin
+  [error] LICENSE_EVIDENCE_MISSING unlicensed-widget: the manifest declares license "MIT" but the pinned checkout carries none of LICENSE, LICENSE.md, LICENSE.txt, LICENCE, LICENCE.md, LICENCE.txt, COPYING, COPYING.md, COPYING.txt
+      remedy: add the license file to the Tool repository, or correct `license` in src/tools/manifest.json if the claim is wrong
+  [warn] OUTBOUND_UNDECLARED drifted-widget: the collected artefact references host(s) absent from the reviewed set: example.com, metrics.example.org
+      remedy: review the references (a live request and a bundled library documentation link are indistinguishable to a static scan), then re-run `pnpm run tools:artifact:update`
+  [info] INVENTORY_ONLY 1 manifest entr(y/ies) have no checked-out source in this tree; their `license` field is unreviewed documentation, not evidence, and nothing is published from them
+[check-tool-artifact-inventory] 5 tool(s) inspected: 4 shipped, 1 pass, 0 warn, 3 fail, 1 inventory-only. Result: FAIL
+```
+
+Repair order, cheapest first:
+
+1. `LICENSE_MISMATCH` / `LICENSE_EVIDENCE_MISSING` — correct the claim or
+   the Tool repository. A Tool whose license is not MIT cannot be
+   embedded under ADR-0006 §3; fix the claim before the next pin.
+2. `DEPENDENCY_DRIFT` / `REVIEWED_PIN_MISMATCH` — run
+   `pnpm run tools:artifact:update` and read the diff. If the lockfile
+   changed for a reason you did not expect, stop there.
+3. `OUTBOUND_UNDECLARED` — open the artefact and look at what the new
+   host is. A static scan cannot tell a live request from a bundled
+   library's documentation link, which is why this one is a hold and not
+   a build failure; the committed record is what makes it reviewable.
+
+The same report rendered in a browser is committed at
+[`docs/verification/security/tool-artifact-inventory.webp`](../verification/security/tool-artifact-inventory.webp),
+regenerated by `pnpm run verify:tool-artifact-inventory-screenshot`. The
+script exits non-zero unless the gate actually failed, so the image can
+never drift into a picture of a green run, and it refuses to commit a
+page whose credential-shaped fixture URL survived redaction.
+
+## 8. Open Issue #81
 
 Issue #81 brings the first Tool — ProtoType — through the contract
 into production. The work #81 owns that #80 cannot:
@@ -432,7 +542,7 @@ into production. The work #81 owns that #80 cannot:
 #81 must NOT change the contract established by #80 — if a contract
 change is required, that is a separate ADR-0006 revision ticket.
 
-## 8. Troubleshooting
+## 9. Troubleshooting
 
 | symptom                                              | likely cause                                                         | fix                                                                                                  |
 | ---------------------------------------------------- | -------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------- |
@@ -442,8 +552,10 @@ change is required, that is a separate ADR-0006 revision ticket.
 | `build-tools` reports "no index.html in artifact"    | the Tool's `build.output_dir` is not the directory containing `index.html` | fix the manifest's `build.output_dir` to point at the actual output root                            |
 | `check-architecture` reports "parent must not import Tool source" | a parent source file imports `external/<slug>/src/...`     | remove the import; route through the collected artefact under `dist/client/tools/<slug>/`            |
 | `check-submodule-provenance` reports `CHECKOUT_SHA_MISMATCH`   | `external/<slug>/` is checked out at a commit other than the pin   | `git -C external/<slug> checkout <pinned_sha>`, or bump the pin and commit both files together (§6.2) |
+| `build-tools` reports "license / dependency evidence unverified" | the Tool's license was never read, or the reviewed record is stale (§7) | `pnpm run tools:artifact:update`, review the record diff, and fix any `LICENSE_*` finding before building (§7.1) |
+| `tools:artifact:check` reports `DEPENDENCY_DRIFT` | the Tool's lockfile changed since the record was written | review the lockfile diff in the Tool repository, then regenerate the record in the same PR (§7.2) |
 
-## 9. Related artefacts
+## 10. Related artefacts
 
 - [`docs/tools/embed-policy.md`](embed-policy.md) — the iframe sandbox /
   referrer policy / `postMessage` origin contract (Issue #465).
@@ -457,6 +569,15 @@ change is required, that is a separate ADR-0006 revision ticket.
 - `scripts/check-tools-manifest.mjs` + `.test.mjs` — verifier.
 - `scripts/check-submodule-provenance.mjs` + `.test.mjs` —
   supply-chain provenance gate (§6).
+- `scripts/check-tool-artifact-inventory.mjs` + `.test.mjs` —
+  licence / dependency / outbound inventory gate (§7).
+- `src/tools/artifact-inventory.ts` + `.test.ts` — the policy the gate,
+  the build refusal and the fixture all evaluate.
+- `scripts/make-tool-artifact-fixture.mjs` — synthetic host repository
+  behind the §7.2 abnormal observation and the report image.
+- `quality/tool-artifact-inventory.json` — the reviewed record (§7.1).
+- `docs/verification/security/tool-artifact-inventory.webp` —
+  rendered inventory report (failure modes), §7.2.
 - `scripts/make-provenance-fixture.mjs` — synthetic host repository
   behind the §6.2 abnormal observation and the report image.
 - `docs/verification/supply-chain/submodule-provenance.webp` —

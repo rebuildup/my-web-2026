@@ -1,0 +1,339 @@
+{
+	"schema": 1,
+	"generated_by": "scripts/check-tool-artifact-inventory.mjs --update",
+	"note": "Reviewed record for Issue #466. Evidence is per commit: regenerate with `pnpm run tools:artifact:update` and review the diff in the PR that changed the pin, the license file or the lockfile. Regenerate after `scripts/build-tools.mjs` has collected an artefact so `outbound.hosts` reflects the shipped bytes.",
+	"tools": {
+		"prototype": {
+			"pinned_sha": "335e0e861009049336e581dc266dc4e2f019e5c7",
+			"license": {
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "5b250fafdf2626580f8669360151dd1ab0f7712398452393751e684da3978e6d",
+				"detected": [
+					"MIT"
+				]
+			},
+			"dependencies": {
+				"status": "verified",
+				"lockfile": "pnpm-lock.yaml",
+				"lockfile_sha256": "0c65ca3e5e918440fb848f105dcaf29a5d88cb6f5584d77532999ecce4bbab75",
+				"runtime": [
+					"@emotion/react",
+					"@emotion/styled",
+					"@mui/material",
+					"@tanstack/react-table",
+					"axios",
+					"google-spreadsheet",
+					"gsap",
+					"pixi-filters",
+					"pixi.js",
+					"react",
+					"react-dom",
+					"react-table",
+					"recharts",
+					"styled-components",
+					"three"
+				]
+			},
+			"outbound": {
+				"observed": true,
+				"hosts": [
+					"cdn.jsdelivr.net",
+					"fonts.googleapis.com",
+					"fonts.gstatic.com",
+					"github.com",
+					"gsap.com",
+					"reactjs.org",
+					"script.google.com",
+					"use.typekit.net",
+					"www.pixijs.com",
+					"www.w3.org",
+					"x.com",
+					"yusuke-kim.com"
+				]
+			}
+		},
+		"readmark": {
+			"pinned_sha": "906c90e57e51f1d7b3fe739f085cf9978445c0fb",
+			"license": {
+				"status": "verified",
+				"evidence_file": "LICENSE",
+				"evidence_sha256": "26921cd13dfe05016080bc262827a6bb5bcd253f1523bee5ea0715e578cf017e",
+				"detected": [
+					"MIT"
+				]
+			},
+			"dependencies": {
+				"status": "verified",
+				"lockfile": "bun.lock",
+				"lockfile_sha256": "695c41bbf1f06c5b0452cbbd9939e44eb27f1716f9a2ea29fc6fae618bee2546",
+				"runtime": [
+					"dexie",
+					"pdfjs-dist",
+					"react",
+					"react-dom",
+					"react-router-dom",
+					"zustand"
+				]
+			},
+			"outbound": {
+				"observed": true,
+				"hosts": [
+					"bit.ly",
+					"localhost",
+					"react.dev",
+					"reactrouter.com",
+					"tinyurl.com",
+					"www.w3.org"
+				]
+			}
+		},
+		"text-counter": {
+			"pinned_sha": "5371479f6b49e2139424ebb9388287cc5e1a6e03",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"color-palette": {
+			"pinned_sha": "0eb51503ba39712827497281ca489a379c8c912b",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"sequential-png-preview": {
+			"pinned_sha": "2bcad8a121f0b058d3f17ac900c76bcc4d47a34e",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"svg2tsx": {
+			"pinned_sha": "4e85e922d87bfd75c62d4e0b6cfe595b8289368a",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"business-mail-block": {
+			"pinned_sha": "d1ea054adc87315ed6555751b21109366b16710f",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"code-type-p5": {
+			"pinned_sha": "509c2873a434673befeee08c3bf6d4b2c8473b94",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"fillgen": {
+			"pinned_sha": "01d53b84e9884352aa2bc44a6b917708de5f5199",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"qr-generator": {
+			"pinned_sha": "19fd50bb32d4cc1fd1e6129de32a6771c2e6667f",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"pomodoro": {
+			"pinned_sha": "954cfd898dba6f46c8ef250d69b1b64245c0eecf",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"history-quiz": {
+			"pinned_sha": "72328139de1ac5ceee84babbf76cd82899fde8c3",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"pi-game": {
+			"pinned_sha": "9e19ec5d63c84fad9be625b33b0455e922ba3570",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"ae-expression": {
+			"pinned_sha": "cd136e251ae7372143a0ee4af4c727324df47655",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		},
+		"mic-level": {
+			"pinned_sha": "5df7ac64539ec82fe4a7f4d7de1f2bb9d0b808c3",
+			"license": {
+				"status": "unverified",
+				"evidence_file": null,
+				"evidence_sha256": null,
+				"detected": []
+			},
+			"dependencies": {
+				"status": "unverified",
+				"lockfile": null,
+				"lockfile_sha256": null,
+				"runtime": []
+			},
+			"outbound": {
+				"observed": false,
+				"hosts": []
+			}
+		}
+	}
+}

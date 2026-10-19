@@ -15,6 +15,9 @@
  *   1b. Verifies the *checked-out* commit equals the pinned SHA, that
  *       its tracked files are unmodified, and records the stamp that
  *       ties the collected artefact back to that commit (Issue #473).
+ *   1c. Verifies the license and dependency evidence against the
+ *       reviewed record (Issue #466) and refuses to build when the
+ *       Tool's license was never read or its lockfile drifted.
  *   2. cd's into the submodule path.
  *   3. Runs the manifest's `build.command` (deterministic, fail-fast).
  *   4. Cleans `dist/client/tools/<slug>/` then mirrors
@@ -42,6 +45,7 @@ import {
 import { dirname, join, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { PROVENANCE_STAMP_DIR, observeCheckout } from './check-submodule-provenance.mjs';
+import { RECORD_RELATIVE_PATH, evaluateToolForBuild } from './check-tool-artifact-inventory.mjs';
 import { rewriteAssetPaths } from './rewrite-asset-paths.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -60,6 +64,13 @@ if (!existsSync(manifestPath)) {
 	process.exit(1);
 }
 const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+
+/**
+ * Issue #466 — sentinel for an unreadable reviewed record, see
+ * `readReviewedRecord()` below. A string rather than a symbol keeps the
+ * value printable in an error message without leaking anything.
+ */
+const MALFORMED = 'malformed-reviewed-record';
 
 /**
  * Issue #233 — minimum toolchain versions.
@@ -215,6 +226,48 @@ for (const tool of targetTools) {
 		continue;
 	}
 	console.error(`[build-tools]   ✓ checkout SHA ${checkout.head} matches the pin`);
+
+	// 1c. Issue #466 — license + dependency evidence.
+	//
+	// Steps 1/1b prove the bytes come from the pinned commit. They say
+	// nothing about whether those bytes may be PUBLISHED: the manifest's
+	// `license` field is a claim an operator typed, and the dependency
+	// set that produced the artefact is recorded nowhere in this
+	// repository. The rules are `src/tools/artifact-inventory.ts`, and
+	// this call is the same function `pnpm run tools:artifact:check`
+	// reports from, so a Tool cannot pass the commit-time gate and be
+	// refused here (or the reverse) for the same checkout. Any
+	// error-severity finding refuses the build: an unreviewed license is
+	// a reason not to ship, not a warning to ship with.
+	const record = readReviewedRecord();
+	if (record === MALFORMED) {
+		errors.push(
+			`${tool.slug}: ${RECORD_RELATIVE_PATH} is not valid JSON — the reviewed license/dependency record is unreadable`,
+		);
+		console.error(
+			`[build-tools]   ✗ ${RECORD_RELATIVE_PATH} is not valid JSON — refusing to build against an unreadable reviewed record`,
+		);
+		continue;
+	}
+	const inventoryFindings = evaluateToolForBuild({ root, tool, record }).findings;
+	const blocking = inventoryFindings.filter((item) => item.severity === 'error');
+	for (const item of inventoryFindings) {
+		console.error(`[build-tools]   [${item.severity}] ${item.code}: ${item.message}`);
+	}
+	if (blocking.length > 0) {
+		errors.push(
+			`${tool.slug}: license/dependency evidence is not verified (${blocking
+				.map((item) => item.code)
+				.join(', ')}) — the artefact would be published from unreviewed bytes`,
+		);
+		console.error(
+			'[build-tools]   ✗ license / dependency evidence unverified — refusing to publish the artefact',
+		);
+		continue;
+	}
+	console.error(
+		'[build-tools]   ✓ license + dependency evidence verified against the reviewed record',
+	);
 
 	const submodulePath = join(root, tool.source.submodule_path);
 	if (!existsSync(submodulePath)) {
@@ -408,6 +461,25 @@ function mirrorDir(src, dest) {
 
 export function isSubmoduleInitialised(submodulePath) {
 	return existsSync(join(submodulePath, '.git')) && existsSync(join(submodulePath, 'package.json'));
+}
+
+/**
+ * The reviewed license/dependency record (Issue #466), read from the
+ * root being built so a synthetic fixture root resolves its own record.
+ *
+ * `MALFORMED` is a distinct sentinel rather than `null`: an unreadable
+ * record must not be indistinguishable from a missing one, because
+ * "no record yet" is a finding the gate reports with a regenerate
+ * remedy, while "the record does not parse" is a broken repository.
+ */
+function readReviewedRecord() {
+	const path = join(root, RECORD_RELATIVE_PATH);
+	if (!existsSync(path)) return null;
+	try {
+		return JSON.parse(readFileSync(path, 'utf8'));
+	} catch {
+		return MALFORMED;
+	}
 }
 
 function readGitlinkSha(submodulePath) {

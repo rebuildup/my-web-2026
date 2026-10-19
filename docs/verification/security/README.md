@@ -18,6 +18,7 @@ of trusting the image.
 | [`error-redaction-page.webp`](error-redaction-page.webp) | #457 | `pnpm run capture:error-redaction-report` |
 | [`log-redaction-test.webp`](log-redaction-test.webp) | #467 | HTML: `node scripts/log-redaction-report.mjs` — see [`## log-redaction-test.webp`](#log-redaction-testwebp) |
 | [`reactions-rate-limit.webp`](reactions-rate-limit.webp) | #456 | `pnpm run verification:write-rate-limit` |
+| [`tool-artifact-inventory.webp`](tool-artifact-inventory.webp) | #466 | `pnpm run verify:tool-artifact-inventory-screenshot` |
 
 ## `webhook-signature-fixture.webp`
 
@@ -405,3 +406,20 @@ The Issue asked for `markdown-xss-fixture.png`. The committed file is
 `markdown-xss-fixture.webp` instead: same pixels, ~10x smaller, so the
 repository does not carry a large binary. The PNG intermediate is
 written to `.tmp/` and is not committed.
+
+## `tool-artifact-inventory.webp` (Issue #466)
+
+The Tool artefact license / dependency / outbound inventory gate's own
+HTML report, rendered in a browser, for the synthetic host repository
+`scripts/make-tool-artifact-fixture.mjs` builds: one Tool whose license
+file contradicts the manifest, one with no license file at all, one whose
+lockfile drifted since it was reviewed, and one whose collected artefact
+references a host outside the reviewed set — next to the healthy entry
+that passes. The picture has to come from a fixture because this
+repository is (correctly) never in a drifted state.
+
+Reading guide: [`docs/tools/runbook.md` §7](../../tools/runbook.md). The
+script exits non-zero unless the gate really failed, and re-reads the
+rendered page to confirm the fixture's credential-shaped URL did not
+survive redaction, so the committed image cannot become the place where a
+credential-shaped string is published.

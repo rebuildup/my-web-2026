@@ -1,6 +1,7 @@
 import { useServerFn } from '@tanstack/react-start';
 import { useState } from 'react';
 import { css } from '../../../styled-system/css';
+import { ErrorSummary, FileField } from '../../editorial/forms';
 import { Badge } from '../../editorial/primitives/Badge';
 import { Container } from '../../editorial/primitives/Container';
 import { SectionHeading } from '../../editorial/primitives/SectionHeading';
@@ -26,6 +27,16 @@ const imagesLogger = createAuditLogger('admin.images');
  * Delete is disabled with a tooltip when any reaction still
  * references the image. The server rejects the call in that case
  * with `image_referenced`.
+ *
+ * Field association (Issue #404): the upload control is a
+ * `FileField` from the editorial form contract, so its label,
+ * accepted-format description, `aria-invalid` and per-field error are
+ * wired by the same rule every other form in the repository uses, and
+ * the refusal is ALSO summarised at the top of the form with a link
+ * back to the control. Every rejection path here — the three
+ * client-side pre-checks and every server policy code — concerns the
+ * chosen file, which is why all of them land on the field rather than
+ * on a form-level-only message.
  */
 
 /*
@@ -129,11 +140,16 @@ function UploadForm() {
 
 	const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
 		e.preventDefault();
+		// React nulls `currentTarget` once the dispatch returns, so the
+		// form element is captured before the first `await`. Reading it
+		// after the upload would throw and be rendered as a bogus upload
+		// failure — the success path could never actually complete.
+		const form = e.currentTarget;
 		setBusy(true);
 		setError(null);
 		setSuccess(null);
 		try {
-			const formData = new FormData(e.currentTarget);
+			const formData = new FormData(form);
 			const file = formData.get('image');
 			if (!(file instanceof File) || file.size === 0) {
 				setError('ファイルを選択してください。');
@@ -160,7 +176,7 @@ function UploadForm() {
 				},
 			});
 			setSuccess(`uploaded: ${result.id}`);
-			e.currentTarget.reset();
+			form.reset();
 		} catch (err) {
 			// Raw text stays in the console (redacted); the page shows
 			// only the mapped sentence for a known policy code.
@@ -176,30 +192,25 @@ function UploadForm() {
 			onSubmit={onSubmit}
 			className={css({ display: 'flex', flexDirection: 'column', gap: '3' })}
 		>
-			<label className={css({ display: 'flex', flexDirection: 'column', gap: '1' })}>
-				<span className={css({ fontFamily: 'sans', fontSize: 'sm', color: 'text.muted' })}>
-					Image (PNG / JPEG / WebP / GIF, ≤256 KiB)
-				</span>
-				<input
-					type="file"
-					name="image"
-					accept={ALLOWED.join(',')}
-					required
-					className={css({
-						fontFamily: 'sans',
-						fontSize: 'md',
-						paddingInline: '3',
-						paddingBlock: '2',
-						border: '1px solid {colors.border.subtle}',
-						borderRadius: '4',
-						background: 'bg.surface',
-						color: 'text.default',
-					})}
-				/>
-			</label>
+			{/* One live region per form: the summary announces the refusal
+			    and links to the control, so the per-field sentence is not a
+			    second announcement of the same fact. */}
+			<ErrorSummary
+				heading="画像をアップロードできませんでした"
+				errors={error === null ? [] : [{ field: 'image', label: 'Image', message: error }]}
+			/>
+			<FileField
+				name="image"
+				label="Image"
+				description="PNG / JPEG / WebP / GIF の 1 つを、256 KiB 以下で選択してください。"
+				accept={ALLOWED.join(',')}
+				required
+				error={error}
+			/>
 			<button
 				type="submit"
 				disabled={busy}
+				aria-busy={busy}
 				className={css({
 					alignSelf: 'flex-start',
 					fontFamily: 'sans',
@@ -217,21 +228,8 @@ function UploadForm() {
 			>
 				{busy ? 'Uploading…' : 'Upload image'}
 			</button>
-			{error && (
-				<p
-					role="alert"
-					className={css({
-						margin: '0',
-						fontFamily: 'sans',
-						fontSize: 'sm',
-						color: 'text.muted',
-					})}
-				>
-					{error}
-				</p>
-			)}
 			{success && (
-				<p
+				<output
 					className={css({
 						margin: '0',
 						fontFamily: 'mono',
@@ -240,7 +238,7 @@ function UploadForm() {
 					})}
 				>
 					{success}
-				</p>
+				</output>
 			)}
 		</form>
 	);

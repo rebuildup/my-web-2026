@@ -140,8 +140,9 @@ function main(argv) {
 	}
 
 	const status = runPlan(plan);
-	if (status === 0)
-		process.stdout.write(`\nvalidate:${gateName} OK — ${plan.length} declared step(s)\n`);
+	if (status === 0) {
+		process.stdout.write(`\n${gateCommandName(gateName)} OK — ${plan.length} declared step(s)\n`);
+	}
 	return status;
 }
 

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import {
 	GATE_NAMES,
 	PROFILE_RELATIVE_PATH,
+	gateCommandName,
 	parseGateProfile,
 	planForGate,
 	resolveGatePlan,
@@ -204,12 +205,14 @@ describe('the repository plan', () => {
 
 	it('runs each gate through the one-line runner script, not a chain', () => {
 		for (const gate of GATE_NAMES) {
-			assert.equal(gates[gate].command, `pnpm run validate:${gate}`);
-			const value = String(pkg.scripts[`validate:${gate}`]);
+			assert.equal(gateCommandName(gate), `validate:${gate}`);
+			assert.equal(gates[gate].command, `pnpm run ${gateCommandName(gate)}`);
+			const value = String(pkg.scripts[gateCommandName(gate)]);
 			assert.ok(
 				value.includes(`${RUNNER_RELATIVE_PATH} ${gate}`),
-				`validate:${gate} must delegate to the runner: ${value}`,
+				`${gateCommandName(gate)} must delegate to the runner: ${value}`,
 			);
+			assert.equal(value.split('&&').length, 1, 'the entry point must be a single command');
 		}
 	});
 

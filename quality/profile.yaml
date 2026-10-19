@@ -411,9 +411,10 @@ route_quality_coverage:
   tests: 'node --test scripts/check-route-quality-coverage.test.mjs'
   gate: fast
   gate_placement: >-
-    validate:fast, immediately before `pnpm run test` and after `pnpm run
-    publication:check` (the chain order belongs to release-0-6-3, so
-    this records the neighbouring steps rather than an absolute index).
+    gates.fast, after `pnpm run publication:check` and before `pnpm run
+    test` (the neighbouring steps are named rather than an absolute
+    index, so inserting another gate does not invalidate this note;
+    Issue #566 moved the chain out of package.json into this file).
   documentation: 'docs/verification/quality/route-quality-coverage.md'
   gate_families:
     - 'e2e' # implemented — Playwright spec asserts the rendered surface

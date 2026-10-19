@@ -283,6 +283,22 @@ evidence が検証できた場合のみ warning、fallback 宣言が無い採用
 `quality/browser-baseline.json`、詳細は
 [`docs/verification/standards/browser-baseline.md`](verification/standards/browser-baseline.md)。
 
+`pnpm run compat:stress:check` measures a static fixture that mirrors the
+shipped layout language at the narrowest supported viewport (320px) with a
+scrollbar forced into play (Issue #416).
+On a host that paints overlay scrollbars (macOS Chromium, reserved gutter
+0px) the gutter half of the gate degrades to a recorded
+`gutter_not_observable` warning rather than a pass — see
+[`docs/verification/compat/stress-story.md`](verification/compat/stress-story.md).
+It is a standalone static fixture — no Worker, no route, no dev server — and
+every run also measures three deliberately broken variants of the same document
+so the detector has to catch them by name; a surviving control exits 2 rather
+than passing. Chromium is required (`pnpm run e2e:install`), so this gate is
+NOT part of `validate:fast` (offline / read-only / cheap by contract); its pure
+half runs in CI through `scripts/check-layout-stress.test.mjs`, which is wired
+into `pnpm run test`. Details and the last report are in
+[`docs/verification/compat/stress-story.md`](verification/compat/stress-story.md).
+
 `pnpm run css:check` は出荷 CSS（Panda が `panda cssgen` で生成するシートと
 `src/**/*.css`）を CSS Syntax parser とレビュー済み vocabulary で検証する
 gate（Issue #413）。構文エラー・未知 property / at-rule / value function・

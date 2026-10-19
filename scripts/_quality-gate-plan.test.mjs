@@ -112,6 +112,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run a11y:language-of-parts:check',
 	'pnpm run css:check',
 	'pnpm run app:icons:check',
+	'pnpm run threat:model:check',
 	'pnpm run release:gate:check',
 	'pnpm run tools:artifact:check',
 ];

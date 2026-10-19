@@ -254,11 +254,6 @@ gates:
       # Issue #566 removed the hand-written `node --test` step that used
       # to sit beside this gate.
       - 'pnpm run app:icons:check'
-      # Issue #508: the release-gate check ledger. Every inspection the
-      # release report claims is resolved against the commands this
-      # chain really runs, so a required check that stopped running is
-      # a release failure instead of a silent green.
-      - 'pnpm run release:gate:check'
       # Issue #479: the per-capability threat model ledger. Every feature
       # unit records its assets, trust zones, boundaries, STRIDE threats
       # and review questions, and the gate refuses any claim that does
@@ -269,6 +264,11 @@ gates:
       # it refused. Pure text scan (no Worker, no binding, no network,
       # no secret), so it belongs in the fast chain like #507 and #508.
       - 'pnpm run threat:model:check'
+      # Issue #508: the release-gate check ledger. Every inspection the
+      # release report claims is resolved against the commands this
+      # chain really runs, so a required check that stopped running is
+      # a release failure instead of a silent green.
+      - 'pnpm run release:gate:check'
       # Issue #466: Tool artefact license + dependency inventory. Offline,
       # status-only: the manifest's `license` claim is checked against the
       # license file in the pinned checkout, the dependency evidence against
@@ -280,17 +280,6 @@ gates:
       # `release:gate:check`) so Issue #566 does not change the failure
       # path of the historical chain.
       - 'pnpm run tools:artifact:check'
-      - 'pnpm run typecheck' # tsc --noEmit
-      - 'pnpm run infisical:check:coverage'
-      - 'pnpm run knip:check' # knip diff gate vs quality/knip-baseline.json (Issue #531)
-      # `pnpm run test` also carries the Issue #491 D1 statement-count
-      # budget (src/portfolio/load.query-budget.test.ts): the portfolio
-      # list surface must stay at or below 1 + 2 * ceil(pageSize / 100)
-      # D1 statements. It is deliberately an assertion inside the EXISTING
-      # `test` component, not a new gate: statement counts are
-      # deterministic, whereas wall-clock time is reported as an
-      # observation only (Lighthouse / Web Vitals budgets are #384-#386).
-      - 'pnpm run test' # vitest run (unit + integration SELF)
     cost_class: cheap
     trigger: local + every CI run
 

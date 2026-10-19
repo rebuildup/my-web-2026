@@ -389,9 +389,13 @@ describe('LISTENER_PROBE_SOURCE', () => {
 	it('collapses duplicate registrations onto one ledger token', () => {
 		assert.match(LISTENER_PROBE_SOURCE, /entry\.target\.deref\(\) === this/);
 		assert.match(LISTENER_PROBE_SOURCE, /entry\.capture === capture/);
+		// Anchored on the whole condition list, in order, with no
+		// `[\s\S]*?` in between: a lazy wildcard here would match any
+		// file at all, so the assertion would name a behaviour it did
+		// not check. `\s*` still absorbs the source's own line breaks.
 		assert.match(
 			LISTENER_PROBE_SOURCE,
-			/if \(\s*!entry\.released &&[\s\S]*?\) \{\s*return;/,
+			/!entry\.released &&\s*entry\.target\.deref\(\) === this &&\s*entry\.type === type &&\s*entry\.capture === capture\s*\)\s*\{\s*return;/,
 			'the duplicate branch must return without adding a token',
 		);
 	});
@@ -409,5 +413,189 @@ describe('LISTENER_PROBE_SOURCE', () => {
 			LISTENER_PROBE_SOURCE,
 			/forget\(entry\);\n {6}if \(typeof listener === 'function'\)/,
 		);
+	});
+});
+
+/**
+ * The ledger itself, run for real against a stub DOM.
+ *
+ * The probe is a browser init script, but everything it touches —
+ * `EventTarget.prototype`, `window`, `document.head`, `performance`,
+ * `location`, `WeakRef` — is stubbable here, so the decisions it makes
+ * are exercised behaviourally instead of being pattern-matched against
+ * its own source text. A regex cannot tell whether a duplicate really
+ * collapses to one token; the fake EventTarget can.
+ */
+function loadProbe() {
+	class FakeEventTarget {
+		constructor() {
+			this.handlers = [];
+			this.isConnected = false;
+			this.tagName = 'DIV';
+		}
+		addEventListener(type, listener, options) {
+			// The ledger also binds an `abort` listener on the caller's
+			// `AbortSignal`, which is a REAL EventTarget. Delegating it
+			// keeps `controller.abort()` observable; a stub that swallowed
+			// it would make this file's abort case vacuous.
+			if (!(this instanceof FakeEventTarget)) {
+				EventTarget.prototype.addEventListener.call(this, type, listener, options);
+				return;
+			}
+			this.handlers.push({ type, listener, options });
+		}
+		removeEventListener(type, listener) {
+			this.handlers = this.handlers.filter((entry) => entry.listener !== listener);
+		}
+		dispatch(type, ...args) {
+			for (const entry of [...this.handlers]) {
+				if (entry.type !== type) continue;
+				if (entry.options?.once) this.removeEventListener(type, entry.listener);
+				entry.listener.apply(this, args);
+			}
+		}
+	}
+	class ConnectedNode extends FakeEventTarget {
+		constructor() {
+			super();
+			this.isConnected = true;
+			this.tagName = 'BUTTON';
+		}
+	}
+	// `window` and `document` are targets in their own right for the
+	// ledger, so they are instances of the same fake: the probe counts a
+	// listener as global only by identity with these two objects.
+	const windowStub = new FakeEventTarget();
+	const documentStub = new FakeEventTarget();
+	documentStub.head = { querySelectorAll: () => [] };
+	documentStub.querySelectorAll = () => [];
+
+	const run = new Function(
+		'EventTarget',
+		'window',
+		'document',
+		'performance',
+		'location',
+		LISTENER_PROBE_SOURCE,
+	);
+	run(FakeEventTarget, windowStub, documentStub, { memory: undefined }, { pathname: '/stub' });
+	const probe = windowStub.__interactionMemoryProbe;
+	assert.ok(probe, 'the probe must publish itself on window');
+	return { probe, windowStub, documentStub, ConnectedNode };
+}
+
+describe('LISTENER_PROBE_SOURCE: ledger behaviour against a stub DOM', () => {
+	it('folds a duplicate registration onto one token', () => {
+		const { probe, windowStub } = loadProbe();
+		const listener = () => {};
+		windowStub.addEventListener('click', listener);
+		windowStub.addEventListener('click', listener);
+		windowStub.addEventListener('click', listener);
+
+		const snapshot = probe.snapshot();
+		assert.equal(snapshot.liveGlobal, 1, 'three identical registrations are one listener');
+		assert.equal(snapshot.liveTotal, 1);
+		assert.equal(snapshot.added, 3, 'the calls were seen');
+		assert.equal(snapshot.byTarget['window::click'], 1);
+		// The browser ignores duplicates too: the stub received one.
+		assert.equal(windowStub.handlers.length, 1);
+	});
+
+	it('keeps a different capture phase as a different listener', () => {
+		const { probe, windowStub } = loadProbe();
+		const listener = () => {};
+		windowStub.addEventListener('click', listener, false);
+		windowStub.addEventListener('click', listener, true);
+
+		const snapshot = probe.snapshot();
+		assert.equal(snapshot.liveGlobal, 2);
+		assert.equal(windowStub.handlers.length, 2);
+	});
+
+	it('releases the token when the application removes the listener', () => {
+		const { probe, windowStub } = loadProbe();
+		const listener = () => {};
+		windowStub.addEventListener('click', listener);
+		assert.equal(probe.snapshot().liveGlobal, 1);
+
+		windowStub.removeEventListener('click', listener);
+		const snapshot = probe.snapshot();
+		assert.equal(snapshot.liveGlobal, 0);
+		assert.equal(snapshot.released, 1);
+		assert.equal(windowStub.handlers.length, 0, 'the underlying listener went too');
+	});
+
+	it('releases the token when a `once` listener fires', () => {
+		const { probe, windowStub } = loadProbe();
+		let calls = 0;
+		windowStub.addEventListener(
+			'click',
+			() => {
+				calls += 1;
+			},
+			{ once: true },
+		);
+		assert.equal(probe.snapshot().liveGlobal, 1);
+
+		windowStub.dispatch('click');
+		assert.equal(calls, 1, 'the application listener still ran');
+		const snapshot = probe.snapshot();
+		assert.equal(snapshot.liveGlobal, 0, 'the browser removes it, so the ledger must too');
+		assert.equal(snapshot.released, 1);
+	});
+
+	it('releases the token when the AbortSignal aborts', () => {
+		const { probe, windowStub } = loadProbe();
+		const controller = new AbortController();
+		windowStub.addEventListener('click', () => {}, { signal: controller.signal });
+		assert.equal(probe.snapshot().liveGlobal, 1);
+
+		controller.abort();
+		const snapshot = probe.snapshot();
+		assert.equal(snapshot.liveGlobal, 0);
+		assert.equal(snapshot.released, 1);
+	});
+
+	it('never counts an aborted-signal registration as live', () => {
+		const { probe, windowStub } = loadProbe();
+		const controller = new AbortController();
+		controller.abort();
+		windowStub.addEventListener('click', () => {}, { signal: controller.signal });
+
+		const snapshot = probe.snapshot();
+		assert.equal(snapshot.liveGlobal, 0);
+		assert.equal(snapshot.released, 1);
+	});
+
+	it('counts a detached node separately from a connected one', () => {
+		const { probe, ConnectedNode } = loadProbe();
+		const node = new ConnectedNode();
+		node.addEventListener('click', () => {});
+		const connected = probe.snapshot();
+		assert.equal(connected.liveConnected, 1);
+		assert.equal(connected.detached, 0);
+
+		node.isConnected = false;
+		const detached = probe.snapshot();
+		assert.equal(detached.liveConnected, 0);
+		assert.equal(detached.liveGlobal, 0);
+		assert.equal(detached.detached, 1, 'an unmounted node is not a leak');
+	});
+
+	it('replays a simulated client-side navigation without growth', () => {
+		// The signature #488 measured: one extra `document` listener per
+		// route change. The application here removes nothing, exactly
+		// like the leaking flip script did, and the ledger must report
+		// the growth so the driver can call it FAIL.
+		const { probe, documentStub } = loadProbe();
+		const reExecute = () => {
+			const listener = () => {};
+			documentStub.addEventListener('DOMContentLoaded', listener, { once: true });
+		};
+		assert.equal(probe.snapshot().liveGlobal, 0);
+		for (let cycle = 1; cycle <= 3; cycle += 1) {
+			reExecute();
+			assert.equal(probe.snapshot().liveGlobal, cycle);
+		}
 	});
 });

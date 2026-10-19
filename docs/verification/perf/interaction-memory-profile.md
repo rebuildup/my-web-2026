@@ -102,7 +102,7 @@ delegation を確保する処理であり、その後は再実行されない。
 
 **page 遷移が要るのは client-side だけ**。document 全体を再読み込みする
 と listener も document もすべて破棄されるので、`page.goto` のループでは
-絶対に入 cumululate にならない。`/tools` のリンクは
+絶対に listener の蓄積を測れない。`/tools` のリンクは
 `src/routes/tools.index.tsx` の TanStack `<Link>` なので、クリックも
 Back も client-side 遷移であり JavaScript 文脈・React tree・`document`
 が生き残る。これは**仮定ではなく**、スナップショットの `added` が証言して
@@ -141,9 +141,9 @@ route 遷移を行うので、`https://rebuildup.dev` のような共有・本�
 | repetitions | 5 per leg |
 
 **before capture が dirty なのは「修正前の build を測る」という行為そのもの**。
-`src/routes/__root.tsx` の旧 content を復元して build した状态下であり、
+`src/routes/__root.tsx` の旧 content を復元して build した状態であり、
 その復元手順は下「修正の再現手順」に書いている。after capture は clean な
-commit で撮，所以你はこのスナップショットが名指しする SHA を検証できる。
+commit で撮っているので、このスナップショットが名指しする SHA を検証できる。
 
 ---
 
@@ -152,6 +152,14 @@ commit で撮，所以你はこのスナップショットが名指しする SHA
 判定基準（**この Issue の Informational なもので gate ではない**）:
 各 leg の warm-up を超える区間で `liveGlobal` と `liveConnected` の
 増加が **0**。
+
+> **取得 commit に関する留保**: 下の数値と画像は台帳の安全性修正
+> （`WeakRef` 化 / 重複畳み込み / `once` と `AbortSignal` の解放 =
+> `239ff6c8`）の**前**に撮った commit `91009a0` のものです。その修正は
+> 偽陽性除去と failure 条件の追加に限られ、実 leak を隠す方向には作用
+> しません。ただし「listener 台帳の作り方」節が説明しているのは**修正後**
+> の台帳である点については、下の表を読むときに区別する必要がある、という
+> 留保をここで明記しておく。
 
 ### `navigate`（`/tools` ⇄ `/tools/<slug>` を 5 往復）
 
@@ -164,7 +172,7 @@ commit で撮，所以你はこのスナップショットが名指しする SHA
 
 1 往復は client-side 遷移を **2 回**（Tools 索引 → Tool route → Back）、
 したがって before の +2/往復 は **route 遷移 1 回あたり +1** の
-単調増加，而且是一次も終わらない。判定は
+単調増加で、次の往復でも止まらない。判定は
 `navigate: liveGlobal grew by 8 across 4 settled repetition(s)
 (147 -> 155, 2/repetition)` と出た。
 
@@ -179,7 +187,7 @@ document::auxclick           2
 ```
 
 after では **`DOMContentLoaded` という key 自体が台帳に存在しない**
-（0 件、其他はすべて同一）。
+（0 件、その他はすべて同一）。
 
 ### `react`（`/` の picker 操作を 5 回）
 
@@ -211,7 +219,7 @@ DOM node 数・head `<link>` 数は before / after で完全に一致してい�
 一切触れていない。heap は GC の鋸波（sawtooth）で**傾向がない**
 （before の最終 round trip は 114.4 MB、after は 113.2 MB。5 往復して
 倍増も発散もしていない）— before と after が違うのは台帳の
-`liveGlobal` だけであり、memory そのものには leak の兆候がない。
+`liveGlobal` だけであり、memory そのものには leak の兆しがない。
 
 ---
 
@@ -245,7 +253,7 @@ document はとっくに load 済みで **`DOMContentLoaded` は二度と発火�
 ### 修正後の契約
 
 「いま document にある print-media stylesheet を flip する」は変えて
-いない。変えたのは**際限 없는 側**だけ:
+いない。変えたのは**際限のない側**だけ:
 
 1. `DOMContentLoaded` fallback は `document.readyState === "loading"` の
    とき**だけ**登録する（待っているイベントが発火しうる状態だけ）。
@@ -258,6 +266,12 @@ document はとっくに load 済みで **`DOMContentLoaded` は二度と発火�
 ### 修正の再現手順
 
 ```sh
+# 前提: local D1 の migration が未適用だと `/` が 500 で preview が
+# ready にならない。preview が `.tmp/d1state` を bind したあとに
+# migrate すると設定上で読めなくなる（`scripts/e2e-local-bootstrap.mjs`
+# の docstring と同じ順序）ので、初回は先に適用する。
+pnpm run db:migrate:apply:local
+
 git show 637e446:src/routes/__root.tsx > src/routes/__root.tsx
 pnpm run build
 pnpm run perf:interaction:memory -- --cycles=5 \
@@ -273,7 +287,7 @@ pnpm run perf:interaction:memory -- --cycles=5 \
 
 before capture を撮る間は `src/routes/__root.tsx` が dirty になるため、
 `report.json` は `workingTreeDirty: true` を記録する（= 修正前の build を
-測ったということ）。after capture は clean な commit で撮，所以你はこの
+測ったということ）。after capture は clean な commit で撮っているので、この
 スナップショットが名指しする SHA を検証できる。
 
 ---
@@ -295,10 +309,27 @@ release の Builds を赤くすることになる。しかも #386 が budget �
 段階で threshold 決定を先取りすることになり、**その順序こそが #486 /
 #487 が守ってきた分割**だから、本 Issue もそれに従う。
 
-`validate:fast` に入るのは **判定ロジックの純関数テスト**
-（`scripts/interaction-memory-profile.test.mjs`、32 tests）のみで、
-browser を起動しない。これは gate ではなく、「将来 gate にしたときにこの判定が壊れない」
-ことを固定するための契約である。
+`validate:fast` に入るのは **browser を起動しない契約テスト**
+（`scripts/interaction-memory-profile.test.mjs`、40 tests）のみで、
+測定そのものは走らない。これは gate ではなく、「将来 gate にしたときに
+この判定が壊れない」ことを固定するための契約である。内訳は 2 層で、
+
+1. 判定ロジックの純関数（`evaluateProfile` / `describeGrowth` /
+   `parseArgs` / loopback 制限など）。
+2. **注入スクリプト（台帳）そのものを stub DOM 上で実行する振る舞い
+   テスト**。重複登録の畳み込み / `removeEventListener` / `once` /
+   `AbortSignal` / detached 判定を、源の文字列への正規表現ではなく
+   実行結果で確かめる。
+
+この 2 層目があるため、台帳の判定を「ソースの一部の文字列」に依存していない。
+
+また、本 Issue の **修正対象そのもの**（`src/routes/__root.tsx` の inline
+script）には別の決定的な契約がある。`scripts/seo-head-contract.mjs` の
+`evaluateFlipScriptContract` が SSR が出す `<head>` の inline script を評価し、
+`test/integration/seo-head.test.ts` が REAL Worker を通して `/` と `/about` に
+対して検証する（readyState ガード / `once` / 有界な rAF。修正前の形状は
+同じチェックで必ず検出される）。Inline script は route 遷移ごとに作り直されて
+再実行されるため、測定とは独立に修正の形状を固定する契約がもう 1 層ある。
 
 ---
 
@@ -313,8 +344,8 @@ browser を起動しない。これは gate ではなく、「将来 gate にし
    （`scripts/interaction-memory-profile.mjs` は理由も書く。緑に見せかけない）。
    CI で回すなら `.dev.vars` を通す job 側の準備が必要になる。
 3. この Issue の gate 化は **#385（release gate）の owner decision**。
-   本 Issue は threshold を「提高到了一个数」であって、
-   「その数が赤になる CI step が未曾有には要る」とは言っていない。
+   本 Issue は threshold を「ある数値を提示した」だけであり、
+   「その数値が赤くなる CI step を新設すべきだ」とは主張していない。
 
 CI で**同じ判定を再現したい**場合の条件は上の表のとおり（browser /
 viewport / network / CPU / surface / source SHA すべて JSON に入る）。
@@ -332,7 +363,7 @@ headless Chromium は同一 build、CPU throttle と network profile は CDP で
   そのノードは document から外れるので**ノードと一緒に回収される**。
   「破棄済みノードへの listener」を leak と数えると通常の unmount でも
   レポートが鳴るため、別の枠で報告するだけにしている。ただし
-  「**ノードが回収されずに保持される**」类型的 regression（ノードを
+  「**ノードが回収されずに保持される**」型の regression（ノードを
   クロージャで掴んだままにする等）は、この指標では検出できず heap の
   trend としてしか出ない。**今回の heap は両 capture とも trend 無し。**
 - 1 run であり、分布ではない。listener count は決定的な量（同じ build で
@@ -364,7 +395,7 @@ headless Chromium は同一 build、CPU throttle と network profile は CDP で
    が、これは `headLinks` の 1 回の観測であり、累積の主張ではない。
    TanStack Router の head merge 方針（ADR ではなくフレームワーク側の
    挙動）に踏み込む判断は別 ticket 領域。
-3. **DOM node 数の記録**。本次は before / after 同一で増減なしだったため
+3. **DOM node 数の記録**。今回は before / after 同一で増減なしだったため
    上限を置いていない。#490 の per-card node ceiling のような
-   「増えたら，那就是 defect」という閾値を持つべきかどうかは、測定の
+   「増えたら，それは defect」という閾値を持つべきかどうかは、測定の
    分散を見たうえでの別判断。

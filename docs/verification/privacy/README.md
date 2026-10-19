@@ -184,3 +184,52 @@ the surface must still show something when the data is private.
      黙って外さない。
   4. 「`docs/verification/**` の生成器を commit するか」を owner が決定したら、
      本レポートの生成器を `scripts/` へ移す。
+
+---
+
+## `publication-redaction-review.webp` / `.md`
+
+Issue #494 — 移行（Miro / 旧サイト / Notion）した文章と画像について、
+個人情報（住所・連絡先・第三者の人物名・画像メタデータ）の候補を機械的に
+抽出し、公開可否は owner だけが決められるようにする review。
+
+- **判定基準**
+
+  | 対象 | 基準 |
+  | --- | --- |
+  | private サンプル | 候補を持つ record は `decision` が `approved` / `review_required` / `rejected` のいずれかでなければ公開 bundle に出ない。承認には `decided_by: "owner"` と空でない `basis` が必要 |
+  | public bundle | owner 承認済みの record だけが `title` / `text` / `images` を**まるごと**提供する。字段単位の redact は提供しない（部分書き換えは残った参照が壊れるため） |
+  | 公開 content root | `copy` / `public` / `src/about` / `src/contact` / `src/portfolio`。保留 record の内容が現れれば `E001`、承認済み record がカバーしない候補が現れれば `E005`（file 名も同じ規則表で走査する。**読めない file（画像）も名前だけで収集する**ので、移行した写真が `public/` に落ちたとき `D011` が発火する） |
+  | 走査しない面 | `public/share/**`（別 delivery obligation）と component / route コード（`src/home` / `src/editorial` / `src/routes` / `src/admin` / `src/i18n`）。理由つきで宣言し、宣言と走査 root の矛盾は gate が拒否する（exit 2） |
+  | 検出規則 | `D001`-`D011`。各規則は「意図的に一致させないもの」を持つ（precision over recall） |
+  | 非空虚性 | 検出器が 1 つも候補を作らない corpus は `E008` で fail。**record が 1 件も無い corpus も同じく fail**（private sample を失った corpus が警告なく pass してはならない）。正の fixture（private サンプル）と負の fixture（clean record）の両方が発火 / 非発火であることを test が固定する |
+  | 非公開 | レポートと CI 出力に出るのは規則 id・フィールド・オフセット・masked 形状のみ。生の候補値はプロセス外に出ない |
+
+- **実行手順**
+
+  ```bash
+  pnpm run publication:redaction:check   # gate（validate:fast の一部）
+  pnpm run publication:redaction:write   # レポートの再生成
+  pnpm run verify:publication-redaction-screenshot
+  node --test scripts/check-publication-redaction.test.mjs
+  ```
+
+- **スクリーンショットの意味**
+
+  `publication-redaction-review.webp` は上記 gate の HTML レポートを
+  chromium で撮影した検証画像である。表示しているのは
+  (1) 公開する情報、(2) 外部通信（なし）、(3) 依存（`node:fs` のみ）、
+  (4) 監査対象、(5) 検出規則表、(6) レコード別 review 結果、
+  (7) findings。**Private sample の生値は写っていない**（masked 形状のみ）。
+
+- **残存リスク（画像の範囲）**
+
+  OCR は行わない。顔・撮影された書類・手書きの住所は画像の中に残り、
+  owner の目視判断が必要になる。`public/share/**`（`/share/<slug>/` の
+  static document surface）と component / route コードは対象外で、その理由は
+  `scripts/check-publication-redaction.mjs` と
+  `quality/profile.yaml#personal_data_review` に明記している。
+
+- **詳細**
+
+  [`docs/security/personal-data-redaction.md`](../../security/personal-data-redaction.md)

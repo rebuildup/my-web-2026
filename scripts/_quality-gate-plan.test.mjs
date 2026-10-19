@@ -108,6 +108,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run copy:i18n:check',
 	'pnpm run publication:check',
 	'pnpm run content:links:check',
+	'pnpm run publication:redaction:check',
 	'pnpm run routes:quality:check',
 	'pnpm run security:headers:check',
 	'pnpm run security:disclosure:check',

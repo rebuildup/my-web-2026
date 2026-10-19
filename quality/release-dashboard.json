@@ -25,6 +25,7 @@
 			"infisical-secret-coverage": "infisical-secret-coverage",
 			"secret-rotation-status": "secret-rotation-status",
 			"route-quality-coverage": "route-quality-coverage",
+			"personal-data-review": "personal-data-review",
 			"index-boundary": "index-boundary",
 			"test-wiring": "test-wiring",
 			"knip-unused-code": "knip",
@@ -400,6 +401,19 @@
 				"note": "coverage ledger の HTML。gate の有効な出力はこの report であり、終了コードだけではない。"
 			},
 			"owner": "Issue #492"
+		},
+		{
+			"id": "personal-data-review",
+			"group": "gate",
+			"label": "移行コーバスの個人情報検出 / 計載承認ゲート",
+			"state": "implemented",
+			"contract": "移行した文字と画像の個人情報キャンダを機械的に提取し、公開可否は owner の判断とその依存先を要する。保留レコードは public bundle に現れない。",
+			"command": "pnpm run publication:redaction:check",
+			"requirements": [],
+			"evidence": {
+				"kind": "exit_code"
+			},
+			"owner": "Issue #494"
 		},
 		{
 			"id": "security-headers",

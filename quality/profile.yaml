@@ -641,13 +641,13 @@ integration_scope_ledger:
 # and mitigation must be a file on disk or a command a release runs.
 threat_model_coverage:
   manifest: 'quality/threat-model.json'
-  fixtures: 'quality/fixtures/threat-model/{pass,missing-evidence,unowned-threat,secret-literal}.json'
+  fixtures: 'quality/fixtures/threat-model/{pass,missing-evidence,unowned-threat,secret-literal,fabricated-binding}.json'
   command: 'pnpm run threat:model:check'
   report_command: 'pnpm run threat:model:report'
   screenshot_command: 'pnpm run verify:threat-model-screenshot'
   tests: 'node --test scripts/check-threat-model.test.mjs'
   gate: fast
-  gate_placement: 'validate:fast, after `pnpm run release:gate:check`'
+  gate_placement: 'validate:fast, before `pnpm run release:gate:check`'
   documentation: 'docs/verification/security/threat-model.md'
   diagram_capability: 'external-http-boundary (Issue #479 names "one independent feature unit")'
   statuses:
@@ -656,7 +656,7 @@ threat_model_coverage:
   silent_pass_guards:
     - 'a threat whose mitigation or control cites a file that does not exist is `fail` — an unbuilt mitigation is not a mitigation'
     - 'a node that names a `source` which does not exist is `fail`, so a diagram can never be drawn of a place the repository does not contain'
-    - 'an asset whose `source_of_truth` is neither an existing path nor a `SCREAMING_SNAKE` binding name is `fail`'
+    - 'an asset whose `source_of_truth` is neither an existing path nor the NAME of a runtime secret the Worker really binds is `fail`; a name nobody binds — an invented one or an audit-only one — is `fail` too, because it points a reviewer at a binding that is not there'
     - 'a `live` capability may not carry an `uncovered` threat'
     - 'a `planned` mitigation without the threat''s `follow_up` sentence is `fail` — unwritten hand-work is not tracked work'
     - 'a review item that is not a question (`?`) is `fail`, so the model always carries something a reviewer can ask out loud'
@@ -666,12 +666,12 @@ threat_model_coverage:
     - 'an unknown key on any manifest object is `fail`, so an asset cannot quietly grow a `value` field'
   secret_handling: >-
     The ledger names assets and their source. It records a binding NAME (for
-    example `HOME_API_KEY`) and a path, never a value: no credential, no
-    `.dev.vars` line and no production secret may appear in
-    `quality/threat-model.json`, in the report, or in the committed artefact.
-    The gate's own rejection fixture is the single waiver added to
-    `scripts/_secret-scan.mjs#ALLOWLIST`, and it is a fixture the gate needs
-    in order to prove it refuses.
+    example `MY_WEB_2026_CONSUMER_API_KEY`, a name the Worker really binds)
+    and a path, never a value: no credential, no `.dev.vars` line and no
+    production secret may appear in `quality/threat-model.json`, in the
+    report, or in the committed artefact. The gate's own rejection fixture
+    is the single waiver added to `scripts/_secret-scan.mjs#ALLOWLIST`, and
+    it is a fixture the gate needs in order to prove it refuses.
   known_limits:
     - 'the gate proves a claim points at a real artefact; it does not re-run a control, and it cannot decide whether a mitigation is sufficient — that stays with the control''s own script and with review'
     - 'a control file that exists but is disabled (a commented-out gate, a fixture-only test) is a review item, not something a text scan can decide'

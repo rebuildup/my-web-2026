@@ -10,6 +10,10 @@
 	"scripts": {
 		"fixture:check": "node scripts/fixture-gate.mjs"
 	},
+	"secrets": {
+		"runtime": ["FIXTURE_API_KEY"],
+		"auditOnly": []
+	},
 	"manifest": {
 		"version": 1,
 		"policy": "Fixture policy: this world declares the files above and the one command above, and the evaluator must accept every claim because each one points at something the fixture actually contains.",

@@ -1,6 +1,6 @@
 {
 	"version": 1,
-	"policy": "Every capability records its assets, its trust zones, the boundaries between them, the STRIDE threats on those boundaries and the repository artefacts that mitigate them. A claim is only accepted when it points at something real: an asset names a source (a path in this repository, or a binding NAME), a node names the file it claims to be, and every control and mitigation is a path that exists or a command a release actually runs. The ledger describes assets by name and never by value — no credential, no binding value and no production secret is recorded here or printed by the gate that reads this file.",
+	"policy": "Every capability records its assets, its trust zones, the boundaries between them, the STRIDE threats on those boundaries and the repository artefacts that mitigate them. A claim is only accepted when it points at something real: an asset names a source (a path in this repository, or the name of a runtime secret the Worker really binds), a node names a file that exists, and every control and mitigation is a path that exists or a command a release actually runs. The ledger describes assets by name and never by value — no credential, no binding value and no production secret is recorded here or printed by the gate that reads this file.",
 	"security_gate_prefixes": [
 		"csrf:",
 		"infisical:",
@@ -59,8 +59,14 @@
 		{
 			"command": "security:ssrf:report",
 			"ref": "scripts/capture-ssrf-url-adapter-report.mjs",
-			"capabilities": ["outbound-read"],
+			"capabilities": ["outbound-url-policy"],
 			"contract": "Runs the outbound URL policy over its destination matrix and exits non-zero when a measurement contradicts the outcome its row claims, which is the machine half of the egress policy."
+		},
+		{
+			"command": "architecture:check",
+			"ref": "scripts/check-architecture.mjs",
+			"capabilities": ["outbound-read"],
+			"contract": "Proves the outbound read obligation keeps its own dependency direction: `src/external-api/**` may not import `src/http/**`, so the reader never reaches the inbound boundary or the URL policy that belongs to it."
 		},
 		{
 			"command": "r2:media:audit",
@@ -94,8 +100,8 @@
 				{
 					"id": "consumer-api-key",
 					"classification": "confidential",
-					"description": "The consumer API key a self-consuming client presents on the boundary; only its hash is stored, and the plaintext never enters the repository.",
-					"source_of_truth": "HOME_API_KEY"
+					"description": "The consumer API key a self-consuming client presents on the boundary; it is bound as the runtime secret `MY_WEB_2026_CONSUMER_API_KEY`, only its hash is stored, and the plaintext never enters the repository.",
+					"source_of_truth": "MY_WEB_2026_CONSUMER_API_KEY"
 				},
 				{
 					"id": "counter-state",
@@ -327,8 +333,8 @@
 				{
 					"id": "session-cookie",
 					"classification": "confidential",
-					"description": "The Better Auth session cookie that stands for an authenticated identity on every Admin request.",
-					"source_of_truth": "BETTER_AUTH_SECRET"
+					"description": "The Better Auth session cookie that stands for an authenticated identity on every Admin request; the signing material is the runtime secret `BETTER_AUTH_SECRETS`, and the legacy single-form `BETTER_AUTH_SECRET` is only a fallback reading path in `src/cloudflare/auth/better-auth.ts` that is never bound.",
+					"source_of_truth": "BETTER_AUTH_SECRETS"
 				},
 				{
 					"id": "admin-capability",
@@ -928,70 +934,69 @@
 			]
 		},
 		{
-			"id": "outbound-read",
-			"title": "Outbound third-party read (external-api)",
-			"status": "deferred",
-			"owner": "the outbound read obligation `src/external-api/**` with the URL policy `src/http/outbound.ts`",
-			"authority": "ADR-0002 / `docs/domain/integrations.md` — an outbound read is not an `http/**` concern; capability-scoped first, and nothing is mounted on a route yet",
-			"summary": "A display component may read a third-party API, so the crossing is the URL policy and the single place an outbound request is issued; no route mounts it yet.",
+			"id": "outbound-url-policy",
+			"title": "Outbound URL policy (SSRF boundary for server-initiated fetches)",
+			"status": "planned",
+			"owner": "the external HTTP boundary obligation `src/http/**`, whose URL policy is `src/http/outbound.ts` and whose adapter is `src/http/outbound-fetch.ts`",
+			"authority": "AGENTS.md §3 — `http` owns the inbound external boundary and the URL policy for every URL the Worker fetches; the policy is the one place a destination may be classified",
+			"summary": "A destination that did not come from this repository's own code is attacker influenceable, so the policy decides whether a URL may be connected to at all — before any connection is opened; no caller routes through it yet.",
 			"documentation": "docs/security/outbound-fetch.md",
 			"assets": [
 				{
-					"id": "outbound-destination",
-					"classification": "internal",
-					"description": "The third-party endpoint a snapshot is read from, constrained by the outbound URL policy before a request is issued.",
+					"id": "caller-supplied-destination",
+					"classification": "confidential",
+					"description": "The URL a visitor or a stored record supplies for a server-initiated fetch; the policy decides whether it may be requested at all.",
 					"source_of_truth": "src/http/outbound.ts"
 				},
 				{
-					"id": "stale-snapshot",
-					"classification": "public",
-					"description": "The last successful snapshot a card renders while the reader is failing, including how old it may be before it stops being shown.",
-					"source_of_truth": "src/external-api/contract.ts"
+					"id": "egress-decision",
+					"classification": "internal",
+					"description": "The verdict the classifier returns for one URL — a stable reason code or an accepted destination — which the adapter turns into a request or a refusal.",
+					"source_of_truth": "src/http/outbound-fetch.ts"
 				}
 			],
 			"nodes": [
 				{
-					"id": "third-party",
-					"label": "third-party API",
+					"id": "stored-url",
+					"label": "stored or visitor URL",
 					"zone": "untrusted",
-					"assets": ["outbound-destination"]
+					"assets": ["caller-supplied-destination"]
 				},
 				{
 					"id": "url-policy",
 					"label": "outbound URL policy",
 					"zone": "boundary",
-					"assets": ["outbound-destination"],
+					"assets": ["caller-supplied-destination", "egress-decision"],
 					"source": "src/http/outbound.ts"
 				},
 				{
-					"id": "read-card",
-					"label": "external read card",
+					"id": "egress",
+					"label": "Worker egress",
 					"zone": "trusted",
-					"assets": ["stale-snapshot"],
-					"source": "src/external-api/ExternalReadCard.tsx"
+					"assets": ["egress-decision"],
+					"source": "src/http/outbound-fetch.ts"
 				}
 			],
 			"boundaries": [
 				{
-					"id": "fetch-crossing",
-					"from": "third-party",
+					"id": "classification-crossing",
+					"from": "stored-url",
 					"to": "url-policy",
-					"crosses": "The egress crossing: a caller-supplied or manifest-declared URL is resolved and connected only after the policy classifies it.",
+					"crosses": "The egress crossing: a URL that did not come from this repository's own code is classified before a connection is opened, and anything not positively recognised as an ordinary public web URL is refused.",
 					"controls": [
-						{ "kind": "test", "ref": "src/http/outbound.test.ts" },
-						{ "kind": "test", "ref": "src/http/outbound-fetch.test.ts" },
-						{ "kind": "code", "ref": "src/http/outbound-fetch.ts" }
+						{ "kind": "code", "ref": "src/http/outbound.ts" },
+						{ "kind": "test", "ref": "src/http/outbound.test.ts" }
 					]
 				},
 				{
-					"id": "snapshot-crossing",
+					"id": "hop-crossing",
 					"from": "url-policy",
-					"to": "read-card",
-					"crosses": "The presentation crossing: a bounded, stale-aware snapshot becomes a rendered card, and a failure degrades without destroying the last good value.",
+					"to": "egress",
+					"crosses": "The connection crossing: an accepted destination is fetched through the single adapter, and every redirect hop is classified again before it is followed.",
 					"controls": [
-						{ "kind": "test", "ref": "src/external-api/contract.test.ts" },
-						{ "kind": "code", "ref": "src/external-api/reader.ts" },
-						{ "kind": "doc", "ref": "docs/domain/integrations.md" }
+						{ "kind": "code", "ref": "src/http/outbound-fetch.ts" },
+						{ "kind": "test", "ref": "src/http/outbound-fetch.test.ts" },
+						{ "kind": "gate", "ref": "scripts/capture-ssrf-url-adapter-report.mjs" }
 					]
 				}
 			],
@@ -999,8 +1004,8 @@
 				{
 					"id": "internal-reach",
 					"stride": "information-disclosure",
-					"asset": "outbound-destination",
-					"scenario": "A URL that resolves to an internal address or a link-local metadata endpoint is fetched from the Worker, so a third-party read becomes an internal probe.",
+					"asset": "caller-supplied-destination",
+					"scenario": "A URL that resolves to an internal address or a link-local metadata endpoint is fetched from the Worker, so a server-initiated fetch becomes an internal probe.",
 					"mitigations": [
 						{
 							"ref": "src/http/outbound.ts",
@@ -1021,6 +1026,135 @@
 							"note": "The destination matrix fails the run when a measurement contradicts the outcome its row claims, so the refusals stay live."
 						}
 					]
+				},
+				{
+					"id": "redirect-escape",
+					"stride": "tampering",
+					"asset": "caller-supplied-destination",
+					"scenario": "An accepted destination answers with a redirect to an internal address, so the policy is bypassed on the second hop of the same request.",
+					"mitigations": [
+						{
+							"ref": "src/http/outbound-fetch.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The adapter follows redirects itself with a bounded hop budget and classifies every hop before it is followed."
+						},
+						{
+							"ref": "src/http/outbound-fetch.test.ts",
+							"kind": "test",
+							"state": "implemented",
+							"note": "The adapter test walks the redirect chain, including a hop that points back inside the network and is refused."
+						}
+					]
+				}
+			],
+			"review_items": [
+				"Is every server-initiated fetch in the repository routed through the single adapter, or has a second `fetch()` call appeared next to it?",
+				"Does any destination reach the network without passing the classifier first?",
+				"Does the policy still refuse the address classes it refused when the contract was written?"
+			]
+		},
+		{
+			"id": "outbound-read",
+			"title": "Outbound third-party read (external-api)",
+			"status": "deferred",
+			"owner": "the outbound read obligation `src/external-api/**`, whose single request seam is `src/external-api/timeout.ts`",
+			"authority": "AGENTS.md §3 and `docs/domain/integrations.md` — an outbound read is not an `http/**` concern and does not cross the URL policy that belongs to the inbound boundary; capability-scoped first, and nothing is mounted on a route yet",
+			"summary": "A display component may read a third-party API, so the crossing is the reader's own seam — a constant destination, one request site and a bounded attempt — and no route mounts it yet.",
+			"documentation": "docs/domain/integrations.md",
+			"assets": [
+				{
+					"id": "outbound-destination",
+					"classification": "internal",
+					"description": "The third-party endpoint a snapshot is read from; the adapter declares it as a constant, so no caller supplies a URL.",
+					"source_of_truth": "src/external-api/github.ts"
+				},
+				{
+					"id": "stale-snapshot",
+					"classification": "public",
+					"description": "The last successful snapshot a card renders while the reader is failing, including how old it may be before it stops being shown.",
+					"source_of_truth": "src/external-api/contract.ts"
+				}
+			],
+			"nodes": [
+				{
+					"id": "third-party",
+					"label": "third-party API",
+					"zone": "untrusted",
+					"assets": ["outbound-destination"]
+				},
+				{
+					"id": "read-seam",
+					"label": "outbound read seam",
+					"zone": "boundary",
+					"assets": ["outbound-destination"],
+					"source": "src/external-api/timeout.ts"
+				},
+				{
+					"id": "read-card",
+					"label": "external read card",
+					"zone": "trusted",
+					"assets": ["stale-snapshot"],
+					"source": "src/external-api/ExternalReadCard.tsx"
+				}
+			],
+			"boundaries": [
+				{
+					"id": "fetch-crossing",
+					"from": "third-party",
+					"to": "read-seam",
+					"crosses": "The egress crossing: the reader connects to the one destination its adapter declares, through the single seam that issues every outbound request.",
+					"controls": [
+						{ "kind": "code", "ref": "src/external-api/timeout.ts" },
+						{ "kind": "code", "ref": "src/external-api/github.ts" },
+						{ "kind": "test", "ref": "src/external-api/contract.test.ts" }
+					]
+				},
+				{
+					"id": "snapshot-crossing",
+					"from": "read-seam",
+					"to": "read-card",
+					"crosses": "The presentation crossing: a bounded, stale-aware snapshot becomes a rendered card, and a failure degrades without destroying the last good value.",
+					"controls": [
+						{ "kind": "test", "ref": "src/external-api/contract.test.ts" },
+						{ "kind": "code", "ref": "src/external-api/reader.ts" },
+						{ "kind": "doc", "ref": "docs/domain/integrations.md" }
+					]
+				}
+			],
+			"threats": [
+				{
+					"id": "internal-reach",
+					"stride": "information-disclosure",
+					"asset": "outbound-destination",
+					"scenario": "A destination that resolves to an internal address or a link-local metadata endpoint is fetched from the Worker, so a third-party read becomes an internal probe.",
+					"mitigations": [
+						{
+							"ref": "src/external-api/github.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "The destination is the constant the adapter declares, so there is no request target a caller could point at an internal address."
+						},
+						{
+							"ref": "src/external-api/timeout.ts",
+							"kind": "code",
+							"state": "implemented",
+							"note": "One place issues the request, and it is bounded by an attempt budget and a per-attempt timeout."
+						},
+						{
+							"ref": "scripts/check-architecture.mjs",
+							"kind": "gate",
+							"state": "implemented",
+							"note": "The architecture gate keeps `src/external-api/**` from importing `src/http/**`, so the reader cannot reach the inbound boundary or the URL policy that belongs to it."
+						},
+						{
+							"ref": "src/http/outbound.ts",
+							"kind": "code",
+							"state": "planned",
+							"note": "The shared outbound URL policy is not on this path today; routing the reader through it is the outstanding work before any route mounts the reader."
+						}
+					],
+					"follow_up": "Route the external-api reader through the shared outbound URL policy (`src/http/outbound.ts`) before any route mounts it, so a future destination change cannot bypass the egress policy."
 				},
 				{
 					"id": "unbounded-attempt",
@@ -1053,6 +1187,7 @@
 			"review_items": [
 				"Is any route able to reach the outbound reader today, and if not, does the UI still render as if a live snapshot exists?",
 				"Does a new outbound call go through the single fetch seam, or has a second one appeared next to it?",
+				"Before the reader is promoted, does its destination pass the shared outbound URL policy?",
 				"Does the stale snapshot carry an age the reader can see, rather than presenting an old value as current?"
 			]
 		},
@@ -1080,8 +1215,8 @@
 				{
 					"id": "deployment-credentials",
 					"classification": "confidential",
-					"description": "The consumer API key the release pipeline uses to reach Infisical, scoped for the release environment only.",
-					"source_of_truth": "MY_WEB_2026_CONSUMER_API_KEY"
+					"description": "The deploy-time Universal Auth credentials the release pipeline uses to reach Infisical (`INFISICAL_CLIENT_ID` / `INFISICAL_CLIENT_SECRET`); they live in the Cloudflare Workers Builds environment, never in Infisical and never in the Worker runtime.",
+					"source_of_truth": "docs/runbook/infisical-secrets.md"
 				}
 			],
 			"nodes": [

@@ -138,22 +138,23 @@ the Issue asks for (the external HTTP boundary — columns are the trust
 zones, boxes are nodes, arrows are declared boundaries labelled with the
 controls on them), that feature unit's threats in full (STRIDE, scenario,
 asset, mitigation and its state) with its review questions, a compact
-roster of the other seven feature units, the false-green probe, and the
+roster of the other eight feature units, the false-green probe, and the
 observation / repair table for each way the gate can fail.
 
 The rows are the shipped code's own verdicts: the diagram geometry, the
-threat statuses and the four probe verdicts are all produced by
+threat statuses and the five probe verdicts are all produced by
 `scripts/check-threat-model.mjs`, the same module
 `node --test scripts/check-threat-model.test.mjs` asserts on. Every
 claim is resolved against the working tree — an asset names a path that
-exists or a binding *name*, a mitigation names a file that exists — so a
+exists or the name of a runtime secret the Worker really binds, a
+mitigation names a file that exists — so a
 picture of an attack surface the repository does not contain cannot be
 produced. The run refuses to render at all while the ledger has an error,
 so the page can never show a green verdict over a failing tree.
 
 The committed manifest `quality/threat-model.json` stays the complete
 record: the page is the review view of it, not a copy. The per-threat
-scenarios of the seven roster capabilities live in the manifest, and the
+scenarios of the eight roster capabilities live in the manifest, and the
 roster carries their STRIDE category, asset and verdict.
 
 The Issue names `threat-model-diagram.png`; the artefact ships as WebP
@@ -164,8 +165,9 @@ the generator re-encodes the in-memory capture with `sharp` (width ≤
 Nothing secret is in the picture: the ledger records assets by name and
 source, the gate shape-scans every manifest string and never prints the
 value it refused, and the generator re-reads its own markup to confirm the
-probe credential did not reach the page. The renderer is a text scan —
-no Worker, no binding, no network call.
+probe credential did not reach the page. The ledger render is a text scan —
+no Worker, no binding, no network call; the capture afterwards drives the
+chromium the E2E suite already installs, locally and offline.
 
 Regenerate:
 

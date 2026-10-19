@@ -20,8 +20,9 @@
  * be prose-only:
  *
  *   - every asset declares a `source_of_truth` that is either a file
- *     which exists in the working tree or a `SCREAMING_SNAKE` binding /
- *     variable **name** — never a value;
+ *     which exists in the working tree or the **name** of a runtime
+ *     secret the Worker really binds — never a value, and never a name
+ *     nobody binds;
  *   - every node that claims to be a place in the system carries a
  *     `source` path that must exist on disk, so "the attack surface" can
  *     never be a diagram of nowhere;
@@ -47,7 +48,12 @@
  *      (threat → asset, node → asset, boundary → node, registry →
  *      capability) is declared. A dangling reference fails.
  *   5. Every asset declares a `source_of_truth` that exists on disk or
- *      is a `SCREAMING_SNAKE` name. Nothing else counts as a source.
+ *      is the NAME of a runtime secret the Worker really binds
+ *      (`scripts/_cloudflare-contract.mjs#REQUIRED_RUNTIME_SECRETS`,
+ *      mirrored in `wrangler*.jsonc#secrets.required`). A name that is
+ *      not bound — an invented one, or an audit-only one that is never
+ *      uploaded to the Worker — points a reviewer at a binding that does
+ *      not exist, so it fails instead of reading as a source.
  *   6. Every boundary crosses the boundary zone: at least one endpoint
  *      must be a `boundary` node, `from !== to`, and each control ref
  *      must exist. Every `untrusted` and every `trusted` node must take
@@ -110,6 +116,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { AUDIT_ONLY_SECRETS, REQUIRED_RUNTIME_SECRETS } from './_cloudflare-contract.mjs';
 import { parseGateProfile, resolveGatePlan } from './_quality-gate-plan.mjs';
 import { looksLikeCredentialValue } from './_secret-scan.mjs';
 
@@ -176,6 +183,26 @@ const PLACEHOLDER_REASONS = new Set(['tbd', 'todo', 'n/a', 'na', 'none', 'later'
 
 /** A `SCREAMING_SNAKE` identifier is a *name*; anything else is a value. */
 const ENV_NAME_RE = /^[A-Z][A-Z0-9_]*$/;
+
+/**
+ * The runtime secret NAMES a `source_of_truth` may use.
+ *
+ * These are names, never values: the module that declares them is the
+ * source-controlled half of the secret contract (ADR-0015 §9), and
+ * `check-cloudflare-contract.mjs` keeps it equal to the Wrangler
+ * `secrets.required` lists. A ledger that names a binding the Worker
+ * does not have sends an auditor looking for a binding that is not
+ * there, so the name has to be one the Worker really binds.
+ */
+export const DECLARED_RUNTIME_SECRET_NAMES = Object.freeze([...REQUIRED_RUNTIME_SECRETS]);
+
+/**
+ * Names that are retained in Infisical as an audit trail and are never
+ * bound to the Worker. They are not a source of truth for a live asset:
+ * the Worker never reads them, so an asset that points at one has no
+ * runtime source at all.
+ */
+export const AUDIT_ONLY_SECRET_NAMES = Object.freeze([...AUDIT_ONLY_SECRETS]);
 
 /** `NAME = value` / `NAME: value` for a secret-sounding NAME. */
 const SECRET_ASSIGNMENT_RE =
@@ -303,6 +330,8 @@ export function evaluateThreatModel({
 	scripts = {},
 	profileText = '',
 	fileExists = () => true,
+	declaredSecretNames = DECLARED_RUNTIME_SECRET_NAMES,
+	auditOnlySecretNames = AUDIT_ONLY_SECRET_NAMES,
 }) {
 	const errors = [];
 	const warnings = [];
@@ -442,16 +471,30 @@ export function evaluateThreatModel({
 					`${assetLabel}.description: say what the asset is and why it matters (a real sentence)`,
 				);
 			}
-			// Rule 5: the source is a file on disk or a binding NAME. The
-			// rejected value is never echoed: this is the one field where a
-			// value would be pasted, so the error names the rule instead.
+			// Rule 5: the source is a file on disk or the NAME of a runtime
+			// secret the Worker really binds. The rejected value is never
+			// echoed: this is the one field where a value would be pasted,
+			// so the error names the rule instead.
 			const source = asset.source_of_truth;
 			const isPath = typeof source === 'string' && fileExists(source);
 			const isName = typeof source === 'string' && ENV_NAME_RE.test(source);
 			if (!isPath && !isName) {
 				errors.push(
-					`${assetLabel}.source_of_truth: must be a path that exists on disk or a SCREAMING_SNAKE binding name. An asset with no source is a claim about a surface nobody can point at, and this ledger never records a value.`,
+					`${assetLabel}.source_of_truth: must be a path that exists on disk or the NAME of a runtime secret the Worker binds. An asset with no source is a claim about a surface nobody can point at, and this ledger never records a value.`,
 				);
+			} else if (isName && !isPath) {
+				// A name is a source only if the Worker really binds it: an
+				// invented name points a reviewer at a binding that does not
+				// exist, and an audit-only name is never bound at all.
+				if (auditOnlySecretNames.includes(source)) {
+					errors.push(
+						`${assetLabel}.source_of_truth: "${source}" is an audit-only name — it is kept in Infisical as a recovery trail and is never bound to the Worker. Name the runtime secret the Worker really binds, or point at the runbook path that documents it.`,
+					);
+				} else if (!declaredSecretNames.includes(source)) {
+					errors.push(
+						`${assetLabel}.source_of_truth: "${source}" is not a declared runtime secret name. A binding name is a source only if the Worker really binds it (scripts/_cloudflare-contract.mjs#REQUIRED_RUNTIME_SECRETS, mirrored in wrangler*.jsonc#secrets.required); an invented name points a reviewer at a binding that does not exist.`,
+					);
+				}
 			}
 			assets.set(asset.id, asset);
 		}
@@ -480,8 +523,9 @@ export function evaluateThreatModel({
 			if (!isRealText(node.label, 8)) {
 				errors.push(`${nodeLabel}.label: name the place this node is`);
 			}
-			// The anti-fabrication guard: a node that says it is a file
-			// must be that file.
+			// The anti-fabrication guard: a node may only claim a place the
+			// repository contains. What this proves is that the path
+			// EXISTS — not that the file is the thing the node says it is.
 			if (node.source !== undefined && (!isRealText(node.source, 8) || !fileExists(node.source))) {
 				errors.push(
 					`${nodeLabel}.source: "${node.source ?? ''}" does not exist on disk — a node may only claim a place the repository contains`,
@@ -882,6 +926,13 @@ export function evaluateFixture(fixture) {
 		manifest: fixture?.manifest,
 		scripts: fixture?.scripts ?? {},
 		fileExists: (path) => files.has(path),
+		// The fixture world declares the runtime secret names it binds, so
+		// the same rule that rejects an unbound name in the repository
+		// decides the fixture's own world.
+		declaredSecretNames: Array.isArray(fixture?.secrets?.runtime) ? fixture.secrets.runtime : [],
+		auditOnlySecretNames: Array.isArray(fixture?.secrets?.auditOnly)
+			? fixture.secrets.auditOnly
+			: [],
 	});
 }
 
@@ -919,7 +970,13 @@ export function collectProbes(root) {
 }
 
 /** The fixtures the report renders as the false-green probe, in order. */
-export const PROBE_FIXTURES = ['pass', 'missing-evidence', 'unowned-threat', 'secret-literal'];
+export const PROBE_FIXTURES = [
+	'pass',
+	'missing-evidence',
+	'unowned-threat',
+	'secret-literal',
+	'fabricated-binding',
+];
 
 function escapeHtml(value) {
 	return String(value)
@@ -1050,9 +1107,9 @@ export function renderDiagram(capability, { width = 1360 } = {}) {
 		const y = top + index * (nodeHeight + nodeGap);
 		const assets = (node.assets ?? []).join(', ');
 		return `<g><rect x="${x}" y="${y}" width="${nodeWidth}" height="${nodeHeight}" rx="6" class="node node-${escapeHtml(node.zone)}"/>
-      <text x="${x + 12}" y="${y + 22}" class="node-title">${escapeHtml(node.label).slice(0, 34)}</text>
+      <text x="${x + 12}" y="${y + 22}" class="node-title">${escapeHtml(node.label.slice(0, 34))}</text>
       <text x="${x + 12}" y="${y + 40}" class="node-id">${escapeHtml(node.id)}</text>
-      <text x="${x + 12}" y="${y + 58}" class="node-assets">assets: ${escapeHtml(assets).slice(0, 40) || '—'}</text>
+      <text x="${x + 12}" y="${y + 58}" class="node-assets">assets: ${escapeHtml(assets.slice(0, 40)) || '—'}</text>
       ${node.source ? `<text x="${x + 12}" y="${y + 74}" class="node-source">${escapeHtml(node.source)}</text>` : ''}</g>`;
 	});
 
@@ -1254,8 +1311,8 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
 <body>
   <h1>per-capability threat model ledger</h1>
   <p class="sub">
-    機能単位ごとの資産と trust boundary。主張はすべて repository に実在する file か binding の
-    <em>名前</em> 指す。secret 値・binding 値・本番 credential はこの ledger に現れない
+    機能単位ごとの資産と trust boundary。主張はすべて repository に実在する file か、
+    Worker が bind する runtime secret の<em>名前</em>を指す。secret 値・binding 値・本番 credential はこの ledger に現れない
     （<code>quality/threat-model.json</code>, schema v${escapeHtml(manifest?.version ?? '?')}）。
     ${escapeHtml(manifest?.policy ?? '')}
   </p>
@@ -1290,8 +1347,8 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
     <tbody>${rosterRows}</tbody>
   </table>
 
-  <h2>false-green probe — 4 fixture を同じ評価関数に通した結果</h2>
-  <p class="sub">「実在しない file を mitigation に書いた」「live capability に未対応 threat」「credential 形の値を書いた」fixture はすべて FAIL になる。error 文面に値そのものは出ない。</p>
+  <h2>false-green probe — ${probes.length} fixture を同じ評価関数に通した結果</h2>
+  <p class="sub">「実在しない file を mitigation に書いた」「live capability に未対応 threat」「credential 形の値を書いた」「Worker が bind しない binding 名を書いた」fixture はすべて FAIL になる。error 文面に値そのものは出ない。</p>
   ${probeBlocks}
 
   <h2>観測と修復手順</h2>
@@ -1300,7 +1357,8 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
     <tbody>
       <tr><td>verdict PASS / uncovered 0</td><td>全 feature unit の threat に実在する mitigation がある。図は manifest から描かれている。</td><td>—（更新時は同じ手順）</td></tr>
       <tr><td><code>does not exist on disk</code></td><td>mitigation / control が実在しない file を ref にしている（未実装の対策）。</td><td>その file を実装する。対策を書かないまま threat を消すのではなく、まず <code>implemented</code> を作る。</td></tr>
-      <tr><td><code>source_of_truth: must be a path …</code></td><td>資産の source が無い、または値されている。</td><td>実在する path か <code>SCREAMING_SNAKE</code> の binding <em>名前</em> に書き換える。値を台帳に書いてはならない。</td></tr>
+      <tr><td><code>source_of_truth: must be a path …</code></td><td>資産の source が無い、または値されている。</td><td>実在する path か、Worker が bind する runtime secret の <em>名前</em> に書き換える。値を台帳に書いてはならない。</td></tr>
+      <tr><td><code>is not a declared runtime secret name</code></td><td>資産の source が Worker が bind しない binding 名を指している（存在しない binding 名、または audit-only で Worker に bind されない名前）。</td><td>Worker が bind する名前（<code>REQUIRED_RUNTIME_SECRETS</code>）に書き換える。名前が持てないので runbook の path を source にする。</td></tr>
       <tr><td><code>credential-shaped string</code></td><td>台帳に credential 形の値が混入した。error には JSON pointer だけが出る。</td><td>その pointer の値を削除する。値の置換・ローテーションは release runbook の担当であり、この gate は値に触れない。ファイル全体の secret 診断は <code>pnpm run secret:scan</code> の担当。</td></tr>
       <tr><td><code>a live capability may not carry an uncovered threat</code></td><td>出荷済 capability に対策が無い threat がある。</td><td>対策を <code>implemented</code> にする。実装がまだなら capability を <code>planned</code> / <code>deferred</code> に降ろす（protected capability の降ろしは owner decision）。</td></tr>
       <tr><td><code>unaccounted security-family command</code>（warning）</td><td>release が実行する検査のうち、threat が引用していない gate がある。</td><td>その gate を registry に追加して引用するか、security-family ではないと明記する。</td></tr>
@@ -1313,7 +1371,8 @@ export function renderReport({ manifest, result, probes = [], sourceSha = 'unkno
 
   <footer>
     my-web-2026 · Issue #479 · regenerate with <code>pnpm run threat:model:report</code> ·
-    rendered from the working tree only (no browser, no network, no Worker, no binding, no secret) ·
+    rendered from the working tree only (the ledger render is a text scan: no network, no Worker, no binding, no secret;
+    the capture afterwards drives the local chromium the E2E suite already installs) ·
     committed as <code>docs/verification/security/threat-model-diagram.webp</code> ·
     contract: <code>docs/verification/security/threat-model.md</code>.
   </footer>

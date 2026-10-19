@@ -1390,10 +1390,11 @@ only the diff that introduced it.
   trust zones, boundaries, STRIDE threats and review questions against
   the repository, and **fails** on any claim that does not point at
   something real — an asset whose `source_of_truth` is neither a file
-  that exists nor a binding *name*, a node naming a `source` file that
-  does not exist, a control or mitigation pointing at a file nobody
-  shipped, a `live` capability carrying an uncovered threat, or a review
-  item that is not a question. The ledger records assets by name and
+  that exists nor the name of a runtime secret the Worker really binds
+  (an invented name, or an audit-only one that is never bound, fails
+  too), a node naming a `source` file that does not exist, a control or
+  mitigation pointing at a file nobody shipped, a `live` capability
+  carrying an uncovered threat, or a review item that is not a question. The ledger records assets by name and
   never by value: every string is shape-scanned with
   `scripts/_secret-scan.mjs#looksLikeCredentialValue`, and a credential
   shape fails the gate with a JSON pointer in the message and nothing

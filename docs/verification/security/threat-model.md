@@ -1,15 +1,16 @@
 # Per-capability threat model ledger (Issue #479)
 
 **判定基準**: 脅威モデルの主張は、すべて repository に実在するものを指していなければならない。
-資産は「実在する path か binding の名前」を source として持ち、node は 자신이 주장する file を名指しし、
-control と mitigation は「存在する file」または「release が実行する `pnpm run` command」でなければならない。
+資産は「実在する path か、Worker が bind する runtime secret の名前」を source として持ち、node は
+ 자신이主張する file を名指しし、control と mitigation は「存在する file」または
+「release が実行する `pnpm run` command」でなければならない。
 値（credential / binding 値 / 本番 secret）はこの台帳に現れない。
 
 - manifest: [`quality/threat-model.json`](../../../quality/threat-model.json)（schema v1）
 - gate: `pnpm run threat:model:check`（`validate:fast` に結線されるので `validate:release` にも載る）
 - report: `pnpm run threat:model:report` → `.tmp/threat-model-report.html`
 - screenshot: `pnpm run verify:threat-model-screenshot` → [`threat-model-diagram.webp`](threat-model-diagram.webp)
-- fixtures: `quality/fixtures/threat-model/{pass,missing-evidence,unowned-threat,secret-literal}.json`
+- fixtures: `quality/fixtures/threat-model/{pass,missing-evidence,unowned-threat,secret-literal,fabricated-binding}.json`
 - tests: `node --test scripts/check-threat-model.test.mjs`
 - profile: [`quality/profile.yaml`](../../../quality/profile.yaml) の `threat_model_coverage` block
 
@@ -23,7 +24,12 @@ platform を描き続ける、という drift が静かに起きる。
 Issue #479 は同時に「STRIDE を使っても前提のない攻撃面は架空で埋めるな」と規定している。
 そのため本台帳は prose を許さない:
 
-- 資産の `source_of_truth` は「存在する path」か「`SCREAMING_SNAKE` の binding 名」だけ
+- 資産の `source_of_truth` は「存在する path」か「Worker が bind する runtime secret の
+  `SCREAMING_SNAKE` 名」だけ。**Worker が bind しない名前は source ではない** —
+  存在しない binding 名も、Worker に bind されない audit-only 名も **error**。
+  判定の基準は `scripts/_cloudflare-contract.mjs#REQUIRED_RUNTIME_SECRETS`
+  （`wrangler*.jsonc#secrets.required` と同値、`check-cloudflare-contract.mjs` が
+  両者の一致を保証する）。その値の printing はない — エラーは rule を名指しする。
 - node の `source` は disk に存在する path だけ
 - control / mitigation の `ref` は disk に存在する path か、release が実行する command だけ
 
@@ -60,7 +66,10 @@ report は `manifest.diagram_capability`（Issue #479 の「独立した 1 機�
 
 1. mitigation / control が disk に無い file を ref にしていれば **error**（`missing-evidence` fixture）。
 2. node が実在しない file を `source` として主張すれば **error**。
-3. 資産の `source_of_truth` が「実在 path でも `SCREAMING_SNAKE` 名でもない」なら **error**。
+3. 資産の `source_of_truth` が「実在 path でも、Worker が bind する runtime secret の
+   名前でもない」なら **error**。さらに、Worker が bind しない binding 名
+   （存在しない名 / audit-only 名）も **error** — 監査者が追う binding が
+   存在しないことになるため。
    値の printing はない — エラーは rule を名指しする。
 4. `live` capability は `uncovered` な threat を持てない。持てば **error**。
 5. `planned` な mitigation には threat の `follow_up` 文が要る。無ければ **error**。
@@ -84,6 +93,7 @@ report は `manifest.diagram_capability`（Issue #479 の「独立した 1 機�
 | `missing-evidence.json` | FAIL | mitigation と control が「存在しない file」を ref にした |
 | `unowned-threat.json` | FAIL | `live` capability の threat が `planned` だけ、`follow_up` なし |
 | `secret-literal.json` | FAIL | 資産の source に credential 形の値を書いた。gate は拒否し、値は出力しない |
+| `fabricated-binding.json` | FAIL | 資産の source が Worker が bind しない binding 名（存在しない名 / audit-only 名）を指している |
 
 画像は evidence であって test の代用ではない。判定は
 `node --test scripts/check-threat-model.test.mjs` が同じ fixture で担保する。
@@ -96,8 +106,9 @@ pnpm run threat:model:report            # .tmp/threat-model-report.html
 pnpm run verify:threat-model-screenshot # docs/verification/security/threat-model-diagram.webp
 ```
 
-generator は Node のブラウザ・network・Worker・binding・secret を一切触らない
-（HTML は text scan のみ）。chromium は E2E suite が既にインストールしているものを使い、
+台帳の描画は text scan のみ（Node の text scan だけで HTML を書く。Worker・binding・
+network・secret には触れない）。**撮影**は E2E suite が既にインストールしている
+chromium をローカルで起動する（loopback 以外の通信はしない）。
 PNG 交所は disk に書かない（Buffer 内で `sharp` が WebP に再エンコードする）。
 target が `.webp` 以外なら write を拒否し、300 KB を超える artefact は error。
 
@@ -114,3 +125,12 @@ target が `.webp` 以外なら write を拒否し、300 KB を超える artefac
 - **対象 capability へのレビュー項目**（open）: `outbound-read` は `deferred` のまま
   route に mount されていない。mount するかどうかの判断は owner decision であり、
   この台帳は判断の代わりに「planned な work が `follow_up` として書かれている」ことだけを強制する。
+- **outbound read と URL policy は別の capability**（Issue #479 review で明確化した点）:
+  `outbound-url-policy`（`src/http/outbound.ts` / `src/http/outbound-fetch.ts`、
+  Issue #453）と `outbound-read`（`src/external-api/**`、Issue #499）は別の境界として
+  model する。`src/external-api/**` は `src/http/**` を import しない
+  （`scripts/check-architecture.mjs` がその方向を固定する）ので、reader は
+  URL policy を **通りない**。したがって reader 側の threat は「定数の destination +
+  1 箇所の request seam」という **今ある** 対策で mitigates され、
+  「reader を URL policy に通す」は `planned` な mitigation として
+  `follow_up` に書かれている。

@@ -4,6 +4,7 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+	DECLARED_RUNTIME_SECRET_NAMES,
 	DEFAULT_MANIFEST_PATH,
 	FIXTURE_DIR,
 	PROBE_FIXTURES,
@@ -54,7 +55,12 @@ const SCRIPTS = {
 /** The `pass` fixture's world, re-read so a test can mutate one field. */
 function passWorld() {
 	const fixture = loadFixture(REPO_ROOT, 'pass');
-	return { manifest: fixture.manifest, scripts: fixture.scripts, files: fixture.files };
+	return {
+		manifest: fixture.manifest,
+		scripts: fixture.scripts,
+		files: fixture.files,
+		secrets: fixture.secrets,
+	};
 }
 
 /**
@@ -104,6 +110,8 @@ function evaluate(world) {
 		manifest: world.manifest,
 		scripts: world.scripts ?? SCRIPTS,
 		fileExists: (path) => files.has(path),
+		declaredSecretNames: world.secrets?.runtime ?? [],
+		auditOnlySecretNames: world.secrets?.auditOnly ?? [],
 	});
 }
 
@@ -164,6 +172,7 @@ describe('the on-disk fixtures are the report probe', () => {
 			'missing-evidence',
 			'unowned-threat',
 			'secret-literal',
+			'fabricated-binding',
 		]);
 		assert.equal(FIXTURE_DIR, 'quality/fixtures/threat-model');
 	});
@@ -190,6 +199,45 @@ describe('a threat nobody shipped is not a mitigation', () => {
 		world.manifest.capabilities[0].assets[0].source_of_truth = 'the key in the vault';
 		const errors = evaluate(world).errors.join('\n');
 		assert.match(errors, /source_of_truth: must be a path that exists on disk/);
+	});
+});
+
+describe('a binding name is only a source if the Worker binds it', () => {
+	it('fails on a name the Worker never binds', () => {
+		const world = passWorld();
+		world.manifest.capabilities[0].assets[0].source_of_truth = 'FIXTURE_UNBOUND_KEY';
+		const errors = evaluate(world).errors.join('\n');
+		assert.match(errors, /is not a declared runtime secret name/);
+	});
+
+	it('fails on an audit-only name, which is never bound to the Worker', () => {
+		const world = passWorld();
+		world.manifest.capabilities[0].assets[0].source_of_truth = 'FIXTURE_RETIRED_SECRET';
+		world.secrets = { runtime: ['FIXTURE_API_KEY'], auditOnly: ['FIXTURE_RETIRED_SECRET'] };
+		const errors = evaluate(world).errors.join('\n');
+		assert.match(errors, /is an audit-only name/);
+	});
+
+	it('fails the on-disk fixture that carries the two names the shipped ledger used', () => {
+		const fixture = loadFixture(REPO_ROOT, 'fabricated-binding');
+		const result = evaluateFixture(fixture);
+		const errors = result.errors.join('\n');
+		assert.match(errors, /is not a declared runtime secret name/);
+		assert.match(errors, /is an audit-only name/);
+	});
+
+	it('names only bound secrets in the real ledger', () => {
+		const result = checkThreatModel({ root: REPO_ROOT });
+		for (const capability of result.capabilities) {
+			for (const asset of capability.assets) {
+				const source = asset.source_of_truth;
+				if (!/^[A-Z][A-Z0-9_]*$/.test(source)) continue;
+				assert.ok(
+					DECLARED_RUNTIME_SECRET_NAMES.includes(source),
+					`${capability.id}/${asset.id}: "${source}" is not a runtime secret the Worker binds`,
+				);
+			}
+		}
 	});
 });
 

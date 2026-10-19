@@ -40,7 +40,7 @@ import { dirname, extname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import {
-	RULE_CATALOGUE,
+	RULE_IDS,
 	effectiveFindings,
 	evaluateRoutes,
 	renderHtmlReport,
@@ -111,7 +111,9 @@ export function loadManifest(path) {
 
 	const errors = [];
 	const declared = Object.keys(manifest.rules ?? {}).sort();
-	const implemented = Object.keys(RULE_CATALOGUE).sort();
+	// `RULE_IDS` is the engine's own sorted projection of its catalogue,
+	// so the two directions of this comparison cannot drift by sorting.
+	const implemented = RULE_IDS;
 
 	for (const rule of declared) {
 		if (!implemented.includes(rule)) {

@@ -781,6 +781,11 @@ async function verifyRetryRecovery(page, { stallMs, expectedPath, baseUrl, chunk
 		await control.click({ timeout: 30_000 });
 		await page.waitForLoadState('domcontentloaded', { timeout: 60_000 }).catch(() => {});
 		outcome.navigated = (await readDocumentStamp(page)) > stamp;
+		await page
+			.locator(ROUTE_MARKERS[expectedPath].selector)
+			.first()
+			.waitFor({ state: 'visible', timeout: 30_000 })
+			.catch(() => {});
 		outcome.markerAfter = await page
 			.locator(ROUTE_MARKERS[expectedPath].selector)
 			.first()
@@ -794,12 +799,9 @@ async function verifyRetryRecovery(page, { stallMs, expectedPath, baseUrl, chunk
 
 /** Stamp the current document (see `verifyRetryRecovery`). */
 async function stampDocument(page) {
-	return page.evaluate(() => {
-		const key = '__slowNetworkWaitUiDocument';
-		const next = Number.parseInt(sessionStorage.getItem(key) || '0', 10) + 1;
-		sessionStorage.setItem(key, String(next));
-		return next;
-	});
+	return page.evaluate(() =>
+		Number.parseInt(sessionStorage.getItem('__slowNetworkWaitUiDocument') || '0', 10),
+	);
 }
 
 /** Read the document stamp without creating a new one. */
@@ -837,6 +839,26 @@ function installChunkDelay(page) {
 		},
 	};
 }
+
+/**
+ * Document-identity stamp, installed before any application code runs.
+ *
+ * A client-side transition keeps the same `document`, and sessionStorage
+ * survives it; a real document request re-runs this script, which
+ * increments a counter the harness reads afterwards. That is the only
+ * way to tell "the retry control delivered the page" from "the URL was
+ * already this one" — the router commits the destination location BEFORE
+ * it offers the waiting surface, so the URL cannot answer the question.
+ */
+export const DOCUMENT_STAMP_SOURCE = `(() => {
+  const KEY = '__slowNetworkWaitUiDocument';
+  try {
+    const stored = Number.parseInt(sessionStorage.getItem(KEY) || '0', 10);
+    sessionStorage.setItem(KEY, String(Number.isFinite(stored) ? stored + 1 : 1));
+  } catch (error) {
+    /* a blocked sessionStorage must not break the measurement */
+  }
+})();`;
 
 /** A gate the chunk route handler can be parked on. */
 function createGate() {
@@ -1164,6 +1186,7 @@ async function main() {
 
 		const pageErrors = [];
 		page.on('pageerror', (error) => pageErrors.push(String(error)));
+		await page.addInitScript(DOCUMENT_STAMP_SOURCE);
 
 		// One route handler, retargeted by the legs. Installing it also
 		// disables the HTTP cache for this page, which is what makes the

@@ -22,8 +22,10 @@
 
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
+import vm from 'node:vm';
 import {
 	COLD_LOAD_BUDGET_MS,
+	DOCUMENT_STAMP_SOURCE,
 	FEEDBACK_AFTER_MS,
 	ROUTE_MARKERS,
 	SAMPLE_INTERVAL_MS,
@@ -414,6 +416,50 @@ describe('parseArgs', () => {
 
 	it('rejects a --base-url that is not http(s)', () => {
 		assert.throws(() => parseArgs(['--base-url=file:///tmp']), /http\(s\) URL/);
+	});
+});
+
+describe('DOCUMENT_STAMP_SOURCE', () => {
+	/**
+	 * Run the init script against a fake `sessionStorage`, the way the
+	 * browser runs it: no imports, no closure over Node values, one
+	 * increment per DOCUMENT.
+	 */
+	function stamp(store) {
+		vm.runInNewContext(DOCUMENT_STAMP_SOURCE, {
+			sessionStorage: {
+				getItem: (key) => store[key] ?? null,
+				setItem: (key, value) => {
+					store[key] = value;
+				},
+			},
+		});
+		return store.__slowNetworkWaitUiDocument;
+	}
+
+	it('increments once per document load', () => {
+		const store = {};
+		assert.equal(stamp(store), '1');
+		assert.equal(stamp(store), '2');
+	});
+
+	it('is monotonic across a fresh document that inherits the value', () => {
+		const store = { __slowNetworkWaitUiDocument: '7' };
+		assert.equal(stamp(store), '8');
+		assert.equal(Number(store.__slowNetworkWaitUiDocument) > 7, true);
+	});
+
+	it('never throws when sessionStorage is blocked', () => {
+		vm.runInNewContext(DOCUMENT_STAMP_SOURCE, {
+			sessionStorage: {
+				getItem() {
+					throw new Error('blocked');
+				},
+				setItem() {
+					throw new Error('blocked');
+				},
+			},
+		});
 	});
 });
 

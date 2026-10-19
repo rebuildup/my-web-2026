@@ -9,6 +9,7 @@ import {
 	STATUS,
 	buildDashboard,
 	classifySignal,
+	describeEnvironment,
 	loadRoster,
 	renderDashboardHtml,
 	resolveSignals,
@@ -324,6 +325,32 @@ describe('renderDashboardHtml', () => {
 		assert.ok(row, 'the row must be rendered at all');
 		assert.ok(row.includes('NOT RUN'), 'a row with no run record must read NOT RUN');
 		assert.ok(!row.includes('>PASS<'));
+	});
+});
+
+describe('describeEnvironment', () => {
+	it('takes the source SHA and the capture time from the record root', () => {
+		const environment = describeEnvironment({
+			root: REPO_ROOT,
+			sha: 'head00000000',
+			runRecord: {
+				// The record root owns *when*; `environment` owns *where*.
+				source_sha: 'recorded0000',
+				captured_at: '2026-10-19T08:17:35.518Z',
+				environment: { runner: 'ci', node: 'v22.18.0', network: 'not used' },
+			},
+		});
+		assert.equal(environment.sourceSha, 'recorded0000');
+		assert.equal(environment.capturedAt, '2026-10-19T08:17:35.518Z');
+		assert.equal(environment.runner, 'ci');
+		assert.equal(environment.node, 'v22.18.0');
+	});
+
+	it('falls back to the current checkout when there is no record', () => {
+		const environment = describeEnvironment({ root: REPO_ROOT, sha: 'head00000000' });
+		assert.equal(environment.sourceSha, 'head00000000');
+		assert.equal(environment.capturedAt, null);
+		assert.equal(environment.network, 'unknown (run record なし)');
 	});
 });
 

@@ -339,9 +339,12 @@ export function describeEnvironment({ root = REPO_ROOT, runRecord = null, sha = 
 	const recorded = runRecord?.environment ?? null;
 	const cpus = os.cpus();
 	return {
-		sourceSha: recorded?.source_sha ?? sha ?? headSha(root),
+		// The SHA and the capture time belong to the record root, not to
+		// its `environment` block: they describe WHEN the verdicts were
+		// produced, while `environment` describes the machine.
+		sourceSha: runRecord?.source_sha ?? sha ?? headSha(root),
 		runner: recorded?.runner ?? (process.env.CI ? 'ci' : 'local'),
-		capturedAt: recorded?.captured_at ?? null,
+		capturedAt: runRecord?.captured_at ?? null,
 		node: recorded?.node ?? process.version,
 		platform: `${os.platform()} ${os.arch()} (${os.release()})`,
 		cpu: recorded?.cpu ?? {

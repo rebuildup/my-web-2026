@@ -46,10 +46,13 @@ gate が error になる。manifest の `standard.note` とレポートの
 | `gate` | `pnpm run <script>` が **1 本だけ**。`package.json#scripts` に登録済みで、宣言した surface のすべてから到達できること |
 
 `gate` の到達性は `validate:fast` / `validate:integration` / `validate:release` の
-推移的 `pnpm run` 閉包と、`.github/workflows/ci.yml` の `validate` job から計算する
+推移的 `pnpm run` 閉包と、`.github/workflows/ci.yml` の **`validate` job の
+`run:` 行だけ**（YAML のコメントや別 job は数えない）から計算する
 （Issue #508 の release gate ledger と同じ surface 定義）。
-`docs` だけの行も今日は `pass` になりうるが、manifest は各行を実行可能な test か
-gate と対にしており、unit test がその対を検証する。
+評価関数自体は `docs` だけの行を `pass` にもする（历史的な判断文書は
+documentation 要件に対する正直な証跡になりうるため）。そのため「pass 行には
+実行可能な証跡（`test` か `gate`）が少なくとも 1 件あること」を
+`scripts/check-asvs-coverage.test.mjs` の実 checkout テストが強制する。
 
 ## fixture（正常 / 不正常）
 
@@ -63,6 +66,11 @@ gate と対にしており、unit test がその対を検証する。
 同じ評価関数 (`evaluateAsvsCoverage`) が fixture と実 checkout の両方を駆動する。
 レポート下部の false-green probe はこの 4 fixture をそのまま描画するので、
 スクリーンショットとテストが食い違えない。
+
+未検証 / 対象外の各行の prose（`follow_up` / `reason`）は、画像内では先頭 110 文字
+に clip する。全文は manifest とこの doc にあり、その旨をレポート上にも記す。45 行の
+table に全文を載せると 300 KB の証跡予算に収まらず、optimizer が grayscale まで
+落として行が読めなくなるためで、ledger の情報そのものは削っていない。
 
 ## 実行手順（再現）
 
@@ -95,6 +103,8 @@ node --test scripts/check-asvs-coverage.test.mjs
 | V4.3.1（GraphQL） | 外部境界は Hono の REST route のみ | GraphQL を置いた Issue |
 | V4.4.1（WebSocket / realtime） | Worker に WebSocket endpoint が無い | realtime を置いた Issue |
 | V9.1.1（client-side session token） | session は D1 実装の Better Auth reference token、API key は server-side scope | client storage に token をおく方式を採った Issue |
+| V13.4.1（deploy artifact に .git / .svn が無いこと） | Workers の deploy は生成済み Build Output（bundle と `dist/client` の asset tree）だけを upload し、Worker には filesystem が無い。checkout をそのまま公開する surface が無い | Build Output に VCS metadata が入り得る経路（submodule や asset の copy）が追加されたら、同じ manifest に戻して artifact の検査を証跡にする |
+| V14.3.1（client storage の認証データを消去） | `src/**` は localStorage / sessionStorage / IndexedDB を読み書きしない。認証情報は HttpOnly cookie（`src/cloudflare/auth/session-cookie-contract.test.ts` が属性を固定。cookie cache の 5 分間も同様）と D1 の session row にあり、script から読めない | client storage に認証情報を書く方式を採った Issue。その時点で `not_applicable` を `applicable` に戻す |
 | V10.1.1（OIDC / social login） | social / OIDC provider を構成していない。OAuth callback 面は所有者 Issue が未決 | owner decision 後の別 Issue |
 | V17.1.1（TURN） | WebRTC / TURN / media signaling surface が無い | realtime 面の Issue |
 
@@ -106,14 +116,27 @@ node --test scripts/check-asvs-coverage.test.mjs
 | V6.3.3（MFA または同等 Combining） | MFA は未実装。admin 面の要否は owner decision |
 | V7.4.3（全セッション終了の選択肢） | パスワード変更後に他セッションを全て終了する repository 証跡が無い |
 | V8.2.2（data-specific access control） | admin matrix は function-level を証明するのみで、data-specific な IDOR/BOLA の証跡が無い |
+| V15.2.1（更新・修正の期限を破っていない component だけを持つ） | `pnpm run dep-audit:check` は CI 専用かつ `enforcement: audit` で、blocking finding を出して落ちない。lockfile に未処理の critical/high が残り、severity ごとの修正期限もどの文書にも書かれていない |
+| V16.1.1（logging inventory：層・イベント・format・保管先・利用・アクセス制御・保持期間） | `docs/security/log-redaction.md` は「何が書けるか」（redaction, #467）を書いているが、保管先・読み手・保持期間には触れない |
 
-この 4 件は「緑」と書かない。台帳は `not run (unverified)` として表示し、
-pass 件数に含めない。
+この 6 件は「緑」と書かない。台帳は `not run (unverified)` として表示し、
+pass 件数に含めない。V15.2.1 と V16.1.1 は「その要求に対応する repository 証跡が
+まだ無い」という意味で、既存の別要件の証跡（SBOM / pin、redaction）を借りれば
+pass になるが、それは要求を満たしていない。どちらを直すか（gate の escalation を
+owner が決めるか、inventory を誰がどこへ書くか）は owner decision で、
+manifest の `follow_up` に将来の手作業として残してある。
 
 ## 既知の制約（scanner limits）
 
 - manifest は **選択**した項目の一覧であり、ASVS 全 345 項目の写しではない。
-  章は V1〜V17 を横断し、章の並びを固定しない。
+  選択した章は V1 / V2 / V3 / V4 / V5 / V6 / V7 / V8 / V9 / V10 / V13 / V14 /
+  V15 / V16 / V17 であり、章の並びを固定しない。**V11（Cryptography）と
+  V12（Secure Communication）は 1 行も置いていない** — 引用も証跡も無い状態で
+  適用対象と宣言しないため。埋めるには ASVS 5.0.0 原文からの requirement text と
+  証跡（または reason）が要る。これは未決事項として PR 本文に残す。
+- `requirement` の文と `level` は ASVS 5.0.0 の当該 requirement と照合済み。
+  `chapter` / `section` は原文の章名・節名に requirement ID を付けた表記
+  （例: `"V1 Encoding and Sanitization"`）であり、逐語の写しではない。
 - 到達性は command chain 上の text の事実である。各検査が自分の verdict を何と言おうと、
   ここでは「その検査が release で走るか」しか見ていない。verdict の権限は各検査 script にある。
 - `pnpm run` の推移閉包を前提にしており、shell 変数で組み立てた script 名は追えない。
@@ -123,4 +146,12 @@ pass 件数に含めない。
   「registry である」こと（本 gate は適用範囲の可視化であり、適合の判定ではない）を
   manifest とレポートの両方に書いている。
 - `docs` のみの行を `pass` にするのは、历史的な判断文書が documentation 要件に対する
-  正直な証跡になりうるため。実行可能な証跡との対は manifest のレビューが担保する。
+  正直な証跡になりうるため。実行可能な証跡（`test` / `gate`）との対は、実 checkout
+  を評価する `scripts/check-asvs-coverage.test.mjs` の
+  "gives every pass row an executable evidence item" が担保する。
+- `pass` は「宣言した証跡が解決する」ことしか意味しない。証跡となる `test` が
+  その requirement を assert しているかは manifest の `control` / `note` とレビューに
+  委ねられる。この差を塞ぐため、本 PR では証跡が要求と無関係だった 7 行を、
+  正しい control / 証跡への付け替え（V4.1.1 / V13.3.2 / V15.2.2）か
+  `not_applicable`（V13.4.1 / V14.3.1）、`not run`（V15.2.1 / V16.1.1）への
+  降格のどちらかで正直にしている。

@@ -358,7 +358,7 @@
 			"level": "L1",
 			"requirement": "Verify that every HTTP response with a message body contains a Content-Type header field that matches the actual content of the response, including the charset parameter to specify safe character encoding (e.g., UTF-8, ISO-8859-1) according to IANA Media Types, such as \"text/\", \"/+xml\" and \"/xml\".",
 			"applicability": "applicable",
-			"control": "response Content-Type and charset at the boundary (src/http/errors.ts, security headers)",
+			"control": "every response that carries a body declares a media type that matches that body — SSR documents (text/html plus charset) and the external boundary including its 404 and 5xx bodies (application/json), built in src/http/errors.ts for the boundary and by the SSR document path for the pages",
 			"issues": [449, 457],
 			"evidence": [
 				{
@@ -369,7 +369,8 @@
 					"kind": "test",
 					"path": "src/http/errors.test.ts"
 				}
-			]
+			],
+			"note": "The integration suite reads content-type off the real Worker response (SELF.fetch) for the HTML document, the host 404, the JSON boundary success and the JSON boundary 404, and asserts the charset parameter; src/http/errors.test.ts asserts the media type of the 5xx body the boundary builds. Both suites read the header for an assertion, not only for the report."
 		},
 		{
 			"id": "V5.2.1",
@@ -582,8 +583,8 @@
 			"level": "L2",
 			"requirement": "Verify that a secrets management solution, such as a key vault, is used to securely create, store, control access to, and destroy backend secrets. These could include passwords, key material, integrations with databases and third-party systems, keys and seeds for time-based tokens, other internal secrets, and API keys. Secrets must not be included in application source code or included in build artifacts. For an L3 application, this must involve a hardware-backed solution such as an HSM.",
 			"applicability": "applicable",
-			"control": "runtime secret inventory and Infisical coverage (quality/profile.yaml#security_gates, scripts/check-infisical-coverage.mjs)",
-			"issues": [167],
+			"control": "runtime secret inventory and Infisical coverage (quality/profile.yaml#security_gates, scripts/check-infisical-coverage.mjs), plus source and bundle secret scans so no secret ships in the tree or in the build artifact",
+			"issues": [167, 475],
 			"evidence": [
 				{
 					"kind": "gate",
@@ -591,8 +592,26 @@
 					"surfaces": ["fast", "integration", "release"]
 				},
 				{
+					"kind": "gate",
+					"command": "pnpm run secret:scan",
+					"surfaces": ["fast", "integration", "release"]
+				},
+				{
+					"kind": "gate",
+					"command": "pnpm run secret:scan:bundle",
+					"surfaces": ["integration", "release"]
+				},
+				{
+					"kind": "test",
+					"path": "scripts/scan-secrets.test.mjs"
+				},
+				{
 					"kind": "doc",
 					"path": "docs/runbook/infisical-secrets.md"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/security/supply-chain-secret-scan.md"
 				}
 			]
 		},
@@ -603,23 +622,32 @@
 			"level": "L2",
 			"requirement": "Verify that access to secret assets adheres to the principle of least privilege.",
 			"applicability": "applicable",
-			"control": "source secret scan (scripts/scan-secrets.mjs)",
-			"issues": [475],
+			"control": "least privilege over secret assets: the consumer credential is scoped per resource/action with no wildcard (ADR-0009 section 5), and the Worker is bound to the required secret set only because the required and audit-only sets are asserted disjoint",
+			"issues": [167, 442],
 			"evidence": [
 				{
 					"kind": "gate",
-					"command": "pnpm run secret:scan",
+					"command": "pnpm run infisical:check:coverage",
 					"surfaces": ["fast", "integration", "release"]
 				},
 				{
 					"kind": "test",
-					"path": "scripts/scan-secrets.test.mjs"
+					"path": "test/integration/api-key-scope.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "src/http/api-keys/middleware.test.ts"
 				},
 				{
 					"kind": "doc",
-					"path": "docs/security/supply-chain-secret-scan.md"
+					"path": "docs/security/api-key-scope.md"
+				},
+				{
+					"kind": "doc",
+					"path": "docs/runbook/infisical-secrets.md"
 				}
-			]
+			],
+			"note": "This row is about WHO may read WHICH secret, not about whether a secret was committed to the tree (that is V13.3.1). scripts/check-infisical-coverage.mjs fails when the required and audit-only name sets stop being disjoint, which is what keeps the audit-only recovery name off the deployed Worker, and api-key-scope.test.ts asserts that a key holding one resource cannot reach the other."
 		},
 		{
 			"id": "V13.4.1",
@@ -627,23 +655,11 @@
 			"section": "V13.4 Unintended Information Leakage",
 			"level": "L1",
 			"requirement": "Verify that the application is deployed either without any source control metadata, including the .git or .svn folders, or in a way that these folders are inaccessible both externally and to the application itself.",
-			"applicability": "applicable",
-			"control": "error redaction at the HTTP boundary and public server functions",
-			"issues": [457],
-			"evidence": [
-				{
-					"kind": "test",
-					"path": "test/integration/error-redaction.test.ts"
-				},
-				{
-					"kind": "test",
-					"path": "src/http/errors.test.ts"
-				},
-				{
-					"kind": "test",
-					"path": "src/portfolio/public-errors.test.ts"
-				}
-			]
+			"applicability": "not_applicable",
+			"control": "the deployed artifact is the generated Cloudflare Build Output, never a repository checkout",
+			"issues": [247],
+			"evidence": [],
+			"reason": "A Cloudflare Workers deployment uploads the generated Build Output (the bundled Worker script plus the dist/client asset tree, whose completeness is asserted by scripts/verify-cf-build-output.mjs before every release deploy). No checkout is uploaded, the Worker has no filesystem it could read a .git or .svn directory from, and there is no origin server that could serve one, so source-control metadata is not a surface this release can leak. The error-redaction suites that used to be cited here are evidence for V16.5.1 only."
 		},
 		{
 			"id": "V14.3.1",
@@ -651,23 +667,11 @@
 			"section": "V14.3 Client-side Data Protection",
 			"level": "L1",
 			"requirement": "Verify that authenticated data is cleared from client storage, such as the browser DOM, after the client or session is terminated. The 'Clear-Site-Data' HTTP response header field may be able to help with this but the client-side should also be able to clear up if the server connection is not available when the session is terminated.",
-			"applicability": "applicable",
-			"control": "cache isolation for per-caller responses (src/http/middleware/cache-policy.ts)",
-			"issues": [460],
-			"evidence": [
-				{
-					"kind": "test",
-					"path": "test/integration/cache-isolation.test.ts"
-				},
-				{
-					"kind": "test",
-					"path": "src/http/middleware/cache-policy.test.ts"
-				},
-				{
-					"kind": "doc",
-					"path": "docs/security/cache-isolation.md"
-				}
-			]
+			"applicability": "not_applicable",
+			"control": "no authenticated data is written to client storage: the admin session is an HttpOnly cookie whose server-side row is deleted on sign-out",
+			"issues": [439],
+			"evidence": [],
+			"reason": "No module under src/ reads or writes localStorage, sessionStorage or IndexedDB, so there is no authenticated data in client storage for a client to clear. The session itself is an HttpOnly cookie (pinned by src/cloudflare/auth/session-cookie-contract.test.ts, whose forged fixtures must fail when HttpOnly is dropped) backed by a D1 row that sign-out deletes (test/integration/session-logout.test.ts); no Clear-Site-Data header is sent, and none is needed while no credential is readable from script."
 		},
 		{
 			"id": "V15.2.1",
@@ -676,19 +680,10 @@
 			"level": "L1",
 			"requirement": "Verify that the application only contains components which have not breached the documented update and remediation time frames.",
 			"applicability": "applicable",
-			"control": "obligation dependency direction enforced by scripts/check-architecture.mjs",
-			"issues": [],
-			"evidence": [
-				{
-					"kind": "gate",
-					"command": "pnpm run architecture:check",
-					"surfaces": ["fast", "integration", "release"]
-				},
-				{
-					"kind": "doc",
-					"path": "docs/architecture.md"
-				}
-			]
+			"control": "dependency advisory gate declaration (quality/dependency-advisory-gate.json, Issue #470) — recorded as unverified for this requirement, see follow_up",
+			"issues": [470],
+			"evidence": [],
+			"follow_up": "Write the update and remediation time frames (per severity) into docs/runbook/dependency-advisories.md, then flip enforcement from audit to block in quality/dependency-advisory-gate.json once the outstanding critical/high advisories are remediated or covered by an approved exception. pnpm run dep-audit:check cannot evidence this requirement as shipped: it reports blocking findings without failing while enforcement is audit, it is CI-only rather than a release gate, the lockfile still carries outstanding blocking advisories, and no remediation deadline is written down anywhere in the repository. Choosing between remediation, exceptions and the escalation itself is an owner decision (#470)."
 		},
 		{
 			"id": "V15.2.2",
@@ -697,24 +692,31 @@
 			"level": "L2",
 			"requirement": "Verify that the application has implemented defenses against loss of availability due to functionality which is time-consuming or resource-demanding, based on the documented security decisions and strategies for this.",
 			"applicability": "applicable",
-			"control": "SBOM inventory and pinned Actions supply chain",
-			"issues": [471, 472],
+			"control": "request and payload budgets that bound per-caller work: rateLimit* on the external boundary and login endpoints (src/http/middleware/rate-limit.ts) and the image upload size and format policy (src/http/reactions/images.ts)",
+			"issues": [443, 456, 458],
 			"evidence": [
 				{
-					"kind": "gate",
-					"command": "pnpm run sbom:check",
-					"surfaces": ["fast", "integration", "release"]
+					"kind": "test",
+					"path": "src/http/middleware/rate-limit.test.ts"
 				},
 				{
-					"kind": "gate",
-					"command": "pnpm run ci:pins:check",
-					"surfaces": ["fast", "integration", "release"]
+					"kind": "test",
+					"path": "test/integration/write-rate-limit.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/auth-login-hardening.test.ts"
+				},
+				{
+					"kind": "test",
+					"path": "test/integration/upload-guards.test.ts"
 				},
 				{
 					"kind": "doc",
-					"path": "docs/runbook/sbom.md"
+					"path": "docs/security/write-rate-limit.md"
 				}
-			]
+			],
+			"note": "The requirement is about defending availability from expensive or long-running functionality, so the evidence is the request budget and the upload cap. The SBOM inventory (sbom:check, #471) and the Actions pinning gate (ci:pins:check, #472) are component-provenance controls, not availability defences: they say nothing about resource exhaustion, so they are not claimed here and remain inventoried in quality/release-gate.json."
 		},
 		{
 			"id": "V16.1.1",
@@ -723,22 +725,10 @@
 			"level": "L2",
 			"requirement": "Verify that an inventory exists documenting the logging performed at each layer of the application's technology stack, what events are being logged, log formats, where that logging is stored, how it is used, how access to it is controlled, and for how long logs are kept.",
 			"applicability": "applicable",
-			"control": "log redaction contract (src/logging/redact.ts, src/logging/logger.ts)",
+			"control": "log redaction contract (src/logging/redact.ts, src/logging/logger.ts) — recorded as unverified for the inventory half of this requirement, see follow_up",
 			"issues": [467],
-			"evidence": [
-				{
-					"kind": "test",
-					"path": "test/integration/log-redaction.test.ts"
-				},
-				{
-					"kind": "test",
-					"path": "src/logging/redact.test.ts"
-				},
-				{
-					"kind": "doc",
-					"path": "docs/security/log-redaction.md"
-				}
-			]
+			"evidence": [],
+			"follow_up": "Write the logging inventory: per layer (external HTTP boundary, public server functions, Cloudflare auth, operator scripts), which events are logged, the log format, where each stream is stored, who may read it and for how long it is kept. docs/security/log-redaction.md documents what may be written into a record (#467) but says nothing about storage, access control or retention, so it cannot answer this requirement. Where records are stored, who can read them and how long they live are owner decisions; until the document exists this row stays not run rather than passing on a redaction contract."
 		},
 		{
 			"id": "V16.5.1",

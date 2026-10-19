@@ -42,13 +42,17 @@
  * - `gate`  — exactly one `pnpm run <script>`; the script must be
  *             registered in package.json and reachable from every
  *             surface it declares (`fast`, `integration`, `release`,
- *             `ci`).
+ *             `ci`). The `ci` surface is read from the `validate` job's
+ *             own `run:` lines in `.github/workflows/ci.yml` — a script
+ *             named only in a comment, or only in another job, is not
+ *             CI evidence.
  *
- * A row with only `doc` evidence would still resolve to `pass` today;
- * the manifest therefore pairs every row with an executable test or
- * gate. The pure evaluator does not enforce that pairing (a historical
- * decision document can be the only honest evidence for a documentation
- * requirement), but the review of this manifest does.
+ * A row with only `doc` evidence would still resolve to `pass` in the
+ * pure evaluator (a historical decision document can be the honest
+ * evidence for a documentation requirement), so the pairing is
+ * enforced where it can be: the real-checkout block of
+ * `scripts/check-asvs-coverage.test.mjs` fails if any `pass` row rests
+ * on documents alone.
  *
  * Exit codes: 0 = the ledger is internally consistent (including honest
  * `not_run` rows), 1 = a claim is contradicted, 2 = bad input
@@ -118,6 +122,30 @@ function referencedScriptNames(text) {
 	return [...String(text).matchAll(PNPM_RUN_PATTERN)].map((match) => match[1]);
 }
 
+/**
+ * The `run:` lines of one CI job, comments excluded.
+ *
+ * The whole workflow text used to be scanned, which counted a script
+ * named only inside a YAML comment (or only inside another job) as CI
+ * evidence. Only the job this repository actually gates on — `validate`
+ * — defines the `ci` surface, so only its lines are read.
+ */
+export function ciJobRunLines(workflowText, job = CI_JOB) {
+	const lines = String(workflowText).split('\n');
+	const start = lines.findIndex((line) => new RegExp(`^  ${job}:\\s*$`).test(line));
+	if (start === -1) return [];
+	const body = [];
+	for (const line of lines.slice(start + 1)) {
+		// The next job (or any other 2-space key) ends the block.
+		if (/^ {2}\S/.test(line)) break;
+		body.push(line);
+	}
+	return body
+		.map((line) => line.trim())
+		.filter((line) => !line.startsWith('#'))
+		.filter((line) => line.startsWith('run:') || line.startsWith('- run:'));
+}
+
 /** Transitive `pnpm run` closure of one script. */
 export function expandScriptNames(scripts, entry, seen = new Set()) {
 	if (typeof entry !== 'string' || entry.length === 0 || seen.has(entry)) return [];
@@ -138,7 +166,7 @@ export function collectSurfaces({ scripts = {}, workflowText = '' } = {}) {
 		surfaces[surface] = new Set(expandScriptNames(scripts, SURFACE_ENTRIES[surface]));
 	}
 	const ci = new Set();
-	for (const name of referencedScriptNames(workflowText)) {
+	for (const name of referencedScriptNames(ciJobRunLines(workflowText).join('\n'))) {
 		ci.add(name);
 		for (const expanded of expandScriptNames(scripts, name)) ci.add(expanded);
 	}
@@ -436,6 +464,22 @@ function reqSortValue(id) {
 		: Number.POSITIVE_INFINITY;
 }
 
+/**
+ * Clip the long prose of a gap row for the IMAGE only.
+ *
+ * `follow_up` / `reason` are written to be read in full (a manifest
+ * field a reviewer can quote), and rendering every character of all
+ * sixteen of them is what pushes this text-dense page past the 300 KB
+ * evidence budget — at which point the ladder drops to grayscale q32 and
+ * the rows stop being legible. The ledger, this document and the
+ * generator keep the full text; the image shows the opening of it and
+ * says so.
+ */
+function clip(value, max = 110) {
+	const text = String(value ?? '').trim();
+	return text.length <= max ? text : `${text.slice(0, max).trimEnd()}…`;
+}
+
 function renderEvidence(row) {
 	if (row.evidence_results.length === 0) return '<span class="muted">—</span>';
 	return row.evidence_results
@@ -452,7 +496,7 @@ function renderRow(row) {
 		<td class="id">${escapeHtml(row.id)}</td>
 		<td class="level">${escapeHtml(row.level)}</td>
 		<td class="req">${escapeHtml(row.requirement)}</td>
-		<td class="control">${escapeHtml(row.control)}${
+		<td class="control">${escapeHtml(clip(row.control, 150))}${
 			row.issues.length > 0
 				? `<br><span class="issues">${row.issues.map((issue) => `#${issue}`).join(' ')}</span>`
 				: ''
@@ -576,13 +620,16 @@ footer { margin-top: 28px; padding-top: 12px; border-top: 1px solid #cbd5e1; col
 </div>
 
 <h2>Unverified applicable requirements (not run)</h2>
+<p class="sub">Gap prose is clipped for this image; the full <code>follow_up</code> /
+<code>reason</code> text is in <code>quality/asvs-coverage.json</code> and
+<a href="https://github.com/rebuildup/my-web-2026/blob/release-0-7-0/docs/verification/security/asvs-coverage.md">docs/verification/security/asvs-coverage.md</a>.</p>
 ${
 	unverified.length === 0
 		? '<p class="muted">None. Every applicable row has evidence today.</p>'
 		: `<div class="note warn"><strong>${unverified.length} applicable requirement(s) have no repository evidence.</strong> They are shown as unverified and are not counted in the pass total.<ul>${unverified
 				.map(
 					(row) =>
-						`<li><strong>${escapeHtml(row.id)}</strong> — ${escapeHtml(row.follow_up ?? row.note ?? '')}</li>`,
+						`<li><strong>${escapeHtml(row.id)}</strong> — ${escapeHtml(clip(row.follow_up ?? row.note ?? ''))}</li>`,
 				)
 				.join('')}</ul></div>`
 }
@@ -590,7 +637,8 @@ ${
 <h2>Not applicable in this release</h2>
 <div class="note info"><ul>${na
 		.map(
-			(row) => `<li><strong>${escapeHtml(row.id)}</strong> — ${escapeHtml(row.reason ?? '')}</li>`,
+			(row) =>
+				`<li><strong>${escapeHtml(row.id)}</strong> — ${escapeHtml(clip(row.reason ?? ''))}</li>`,
 		)
 		.join('')}</ul></div>
 
@@ -648,7 +696,8 @@ function parseArg(argv, name) {
 }
 
 function main(argv) {
-	const root = resolve(argv.includes('--root') ? argv[argv.indexOf('--root') + 1] : REPO_ROOT);
+	const rootArg = parseArg(argv, '--root');
+	const root = resolve(rootArg && rootArg.length > 0 ? rootArg : REPO_ROOT);
 	const manifestPath = parseArg(argv, '--manifest') ?? DEFAULT_MANIFEST_PATH;
 	const reportPath = parseArg(argv, '--report');
 	const result = checkAsvsCoverage({ root, manifestPath });

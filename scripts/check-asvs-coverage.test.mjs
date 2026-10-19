@@ -4,11 +4,14 @@ import { dirname, join } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import {
+	CI_JOB,
 	DEFAULT_MANIFEST_PATH,
 	FIXTURE_DIR,
 	PROBE_FIXTURES,
 	STATUSES,
 	checkAsvsCoverage,
+	ciJobRunLines,
+	collectSurfaces,
 	evaluateAsvsCoverage,
 	evaluateFixture,
 	loadFixture,
@@ -106,6 +109,39 @@ describe('script and status vocabulary', () => {
 		assert.equal(statusLabel('not_run'), 'not run');
 		assert.equal(statusLabel('not_applicable'), 'N/A');
 		assert.notEqual(statusLabel('not_run'), 'pass');
+	});
+
+	it('reads the ci surface from the validate job only, and only from run lines', () => {
+		const workflowText = [
+			'jobs:',
+			'  validate:',
+			'    name: validate',
+			'      - name: gate',
+			'        # `pnpm run commented:check` is prose, not a step.',
+			'        run: pnpm run validate:fast',
+			'      - run: pnpm run dep-audit:check -- --report .tmp/x.html',
+			'  other:',
+			'    steps:',
+			'      - run: pnpm run other:check',
+			'',
+		].join('\n');
+		assert.equal(CI_JOB, 'validate');
+		const runLines = ciJobRunLines(workflowText);
+		assert.ok(runLines.some((line) => line.includes('dep-audit:check')));
+		assert.ok(!runLines.some((line) => line.includes('commented:check')));
+		assert.ok(!runLines.some((line) => line.includes('other:check')));
+
+		const scripts = {
+			'validate:fast': 'pnpm run fast:check',
+			'fast:check': 'node scripts/fast.mjs',
+			'dep-audit:check': 'node scripts/dep.mjs',
+			'commented:check': 'node scripts/commented.mjs',
+			'other:check': 'node scripts/other.mjs',
+		};
+		const surfaces = collectSurfaces({ scripts, workflowText });
+		assert.ok(surfaces.ci.has('dep-audit:check'));
+		assert.ok(!surfaces.ci.has('commented:check'), 'a comment is not a CI step');
+		assert.ok(!surfaces.ci.has('other:check'), 'another job is not the validate gate');
 	});
 });
 
@@ -225,6 +261,40 @@ describe('the real repository ledger', () => {
 		assert.ok(result.summary.not_run > 0, 'an applicable gap must be visible');
 		assert.ok(result.summary.not_applicable > 0, 'an out-of-scope surface must be visible');
 		for (const row of result.rows) assert.ok(STATUSES.includes(row.status), row.id);
+	});
+
+	it('publishes the counts the report and the PR body claim', () => {
+		// Pinned so a manifest edit that quietly moves a row between
+		// statuses cannot leave a green run behind a stale headline.
+		assert.deepEqual(result.summary, { pass: 29, fail: 0, not_run: 6, not_applicable: 10 });
+		assert.deepEqual(
+			result.rows.filter((row) => row.status === 'not_run').map((row) => row.id),
+			['V3.4.3', 'V6.3.3', 'V7.4.3', 'V8.2.2', 'V15.2.1', 'V16.1.1'],
+		);
+		assert.deepEqual(
+			result.rows.filter((row) => row.status === 'not_applicable').map((row) => row.id),
+			[
+				'V13.4.1',
+				'V14.3.1',
+				'V1.2.5',
+				'V1.5.1',
+				'V2.4.2',
+				'V4.3.1',
+				'V4.4.1',
+				'V9.1.1',
+				'V10.1.1',
+				'V17.1.1',
+			],
+		);
+	});
+
+	it('gives every pass row an executable evidence item, not documents alone', () => {
+		for (const row of result.rows.filter((candidate) => candidate.status === 'pass')) {
+			assert.ok(
+				row.evidence.some((entry) => entry.kind === 'test' || entry.kind === 'gate'),
+				`${row.id} passes on documents alone`,
+			);
+		}
 	});
 
 	it('does not claim ASVS certification', () => {

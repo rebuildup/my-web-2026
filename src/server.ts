@@ -41,6 +41,12 @@ import { toolRouteSecurityPolicy } from './tools/registry';
  * `/robots.txt` have no children, and neither prefix below them can
  * collide with a page route.
  */
+// Issue #468 adds `/.well-known` for RFC 9116 §3.1's security.txt. The
+// whole well-known namespace is boundary-owned: a `.well-known` document
+// is by definition a machine-readable file rather than a rendered page,
+// so it must never be answered by the SSR shell with a 200 HTML
+// document. The comment lives out here because the boundary contract in
+// `scripts/_index-boundary.mjs` reads this list textually.
 const EXTERNAL_BOUNDARY_PREFIXES = [
 	'/api/v1',
 	'/webhooks',
@@ -48,13 +54,6 @@ const EXTERNAL_BOUNDARY_PREFIXES = [
 	'/integrations',
 	'/sitemap.xml',
 	'/robots.txt',
-	// Issue #468: RFC 9116 §3.1 puts the vulnerability-reporting
-	// policy under `/.well-known/`, and a `.well-known` document is by
-	// definition a machine-readable file rather than a rendered page —
-	// the whole namespace belongs to the boundary, which is what makes
-	// a future `/.well-known/change-password` or
-	// `/.well-known/openid-configuration` a one-line addition instead
-	// of a change to the SSR contract.
 	'/.well-known',
 ] as const;
 

@@ -409,7 +409,7 @@ describe('evaluateIndexBoundary — robots.txt is not access control, but is not
 	it('fails when the external-boundary prefix list drifts from src/server.ts', () => {
 		const result = evaluate({
 			serverSource:
-				"const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations', '/robots.txt', '/sitemap.xml', '/telemetry'];",
+				"const EXTERNAL_BOUNDARY_PREFIXES = ['/api/v1', '/webhooks', '/oauth', '/integrations', '/robots.txt', '/sitemap.xml', '/.well-known', '/telemetry'];",
 		});
 		const drift = result.violations.filter(
 			(violation) => violation.code === 'boundary-prefix-drift',

@@ -63,7 +63,7 @@
 `ledger_alignment` が `quality/release-gate.json` の**全 id** について
 「どの signal として表示するか」または「表示しない理由」を宣言し、
 未宣言 id が出たら `quality:dashboard:check` が exit 1 になります（fixture テスト済み）。
-現状は 26 件を signal として表示、9 件を表示しない（理由つき）。
+現状は 27 件を signal として表示、9 件を表示しない（理由つき）。
 例：`release-version` は release branch 名から期待 version を導出するため ticket branch で
 構造的に FAIL する、`cf-typegen` は `.cloudflare/types/index.d.ts` を書き換える（dashboard は
 ツリーを mutate しない）、`production-smoke` は deploy 後手動 window の row である。

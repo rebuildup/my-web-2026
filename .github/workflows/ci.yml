@@ -67,6 +67,31 @@ jobs:
             echo "::error::PRs into main must have head_ref matching ^release-[0-9]+-[0-9]+-[0-9]+$ (got: $HEAD_REF)"
             exit 1
           fi
+      # Issue #506 — the public Japanese copy editorial approval gate.
+      # A change to the Japanese text a visitor reads is an editorial
+      # change, so the change set is extracted from this pull request's
+      # diff and matched against the owner approval records in
+      # quality/copy-editorial-approvals.json. The editing aid's output
+      # is evidence; only an owner decision approves.
+      #
+      # It is a PULL REQUEST gate, not a release gate: it judges a diff,
+      # and a diff only exists against a base branch. The base ref is
+      # fetched here because actions/checkout is a depth-1 clone and the
+      # base commit is not in it. `COPY_APPROVAL_BASE` is the gate's own
+      # variable; GITHUB_BASE_REF is the GitHub-provided fallback.
+      #
+      # A pull request that changes no public Japanese copy resolves to
+      # `not applicable` and passes. A pull request that changes it
+      # without a recorded owner decision resolves to `not run`
+      # (NEEDS REVIEW) and fails, which is the point of the gate.
+      - name: Copy editorial approval gate
+        if: github.event_name == 'pull_request'
+        env:
+          COPY_APPROVAL_BASE: ${{ github.base_ref }}
+        run: |
+          git fetch --no-tags --depth=1 origin \
+            "+refs/heads/${COPY_APPROVAL_BASE}:refs/remotes/origin/${COPY_APPROVAL_BASE}"
+          pnpm run copy:approval:check
       # Read-only validation: format / lint / typecheck / test / build /
       # dry-run / lint:ci (actionlint) / build-storybook.
       # `validate:integration` is the canonical entry point documented in

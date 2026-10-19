@@ -1,0 +1,17 @@
+{
+	"$comment": "Owner editorial approval ledger (Issue #506). One record per approved change set of public Japanese copy. The gate (scripts/check-copy-editorial-approval.mjs) matches a record to the change set by fingerprint, so an approval cannot be reused for different text. The editing aid's output is evidence, never approval: a record only counts when it carries the proposal, the comparison with the original text, AND the owner's decision.",
+	"version": 1,
+	"policy": "A record is written by the owner after reading the changed Japanese text against its original. The reviewer names the person who decided, the date names when, and `comparisons` names every changed segment the decision covers. The procedure is in docs/runbook/copy-editorial-approval.md.",
+	"record_shape": {
+		"id": "stable identifier of the record (e.g. `pr-512`)",
+		"pr": "the pull request number the record belongs to",
+		"base": "the base ref the change set was diffed against",
+		"reviewer": "who decided",
+		"reviewedAt": "YYYY-MM-DD, when the decision was taken",
+		"decision": "approved | rejected",
+		"fingerprint": "sha256:… — the change set fingerprint printed by `pnpm run copy:approval:check -- --print-fingerprint`",
+		"proposal": "what the editing aid proposed and how its suggestions were adjudicated (`ran`, `summary`, `disposition`)",
+		"comparisons": "one entry per changed segment (`path`, `before`, `after`, `verdict` = equivalent | intentional, `note`)"
+	},
+	"records": []
+}

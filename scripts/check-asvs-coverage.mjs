@@ -68,6 +68,11 @@ import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+	PROFILE_PATH,
+	collectSurfaces as collectRunnerAwareSurfaces,
+	parseProfileComponents,
+} from './check-release-gate-coverage.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -159,19 +164,18 @@ export function expandScriptNames(scripts, entry, seen = new Set()) {
 	return [...new Set(out)];
 }
 
-/** Collect the four surfaces the manifest can declare. */
-export function collectSurfaces({ scripts = {}, workflowText = '' } = {}) {
-	const surfaces = {};
-	for (const surface of ['fast', 'integration', 'release']) {
-		surfaces[surface] = new Set(expandScriptNames(scripts, SURFACE_ENTRIES[surface]));
-	}
-	const ci = new Set();
-	for (const name of referencedScriptNames(ciJobRunLines(workflowText).join('\n'))) {
-		ci.add(name);
-		for (const expanded of expandScriptNames(scripts, name)) ci.add(expanded);
-	}
-	surfaces.ci = ci;
-	return surfaces;
+/**
+ * Collect the four surfaces the manifest can declare.
+ *
+ * Since Issue #566 the `validate:*` entry points are one-line runner
+ * delegations, so a gate named by a profile component is reachable
+ * only when that fact is resolved from `quality/profile.yaml`. The
+ * release-gate check already owns that resolution (the same fact it
+ * needs for rule 6 / rule 10), so this gate reuses it instead of
+ * growing a second, subtly different closure.
+ */
+export function collectSurfaces({ scripts = {}, workflowText = '', profileComponents = {} } = {}) {
+	return collectRunnerAwareSurfaces({ scripts, workflowText, profileComponents });
 }
 
 /**
@@ -412,7 +416,11 @@ export function checkAsvsCoverage({ root = REPO_ROOT, manifestPath = DEFAULT_MAN
 	const workflowText = existsSync(resolve(root, WORKFLOW_PATH))
 		? readFileSync(resolve(root, WORKFLOW_PATH), 'utf8')
 		: '';
-	const surfaces = collectSurfaces({ scripts: pkg.scripts ?? {}, workflowText });
+	const profileText = existsSync(resolve(root, PROFILE_PATH))
+		? readFileSync(resolve(root, PROFILE_PATH), 'utf8')
+		: '';
+	const profileComponents = parseProfileComponents(profileText);
+	const surfaces = collectSurfaces({ scripts: pkg.scripts ?? {}, workflowText, profileComponents });
 	return {
 		manifest,
 		...evaluateAsvsCoverage({

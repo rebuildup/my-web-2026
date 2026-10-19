@@ -56,6 +56,21 @@ node scripts/perf-large-list.mjs                 # seed → measure → click Lo
 | ページエラー | 0 | 0 | 0 |
 | verdict | FAIL | **PASS** | — |
 
+> **Issue #411 による差分注記（2026-10-19 追記 / 計測値の書き換えではない）**
+>
+> 上表は #490 計測時点の記録のままで、**数値は 1 つも改変していない**。#411 が
+> 各 card に `StateMark`（子要素 0 の `<span>` 1 要素 = **card あたり +1 node**）を
+> 追加したため、per-card 上限だけを 20 → 22 に上げた（`scripts/perf-large-list.mjs`
+> と `src/portfolio/components/list-scale.test.tsx` の `PER_CARD_NODE_CEILING`）。
+>
+> - **per-card node 数の確定値は未計測**。記録済みの 18.26 に対する算術上の外挿は
+>   `18.26 → 19.26` であり、これは**外挿値であって実測値ではない**（表の値として扱わない）。
+> - ブラウザ実測の代わりとして `list-scale.test.tsx` の静的 markup での card 実測は
+>   20 node（pinned で 21）で、上限 22 に対し 1 node の余裕が残っている。
+> - 初期 100 card なら外挿で +100 node 相当。cost は card あたり一定なので、
+>   上限が検証している「card が 1 枚の card でなくなる」性質のまま変わらない。
+> - 再計測（確定値の取得）は #385 / #386 の perf 再計測の責務。
+
 ### before / after の差は 1 要素だけ
 
 - **修正要素**: `ProjectCard` の facet group（`src/portfolio/components/ProjectCard.tsx`）。

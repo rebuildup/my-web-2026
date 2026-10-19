@@ -108,7 +108,6 @@
 		"publication:write": "node scripts/check-publication-diff.mjs --write",
 		"publication:redaction:check": "node scripts/check-publication-redaction.mjs",
 		"publication:redaction:write": "node scripts/check-publication-redaction.mjs --write",
-		"publication:redaction:report": "node scripts/make-publication-redaction-report.mjs --html=.tmp/publication-redaction-review.html",
 		"publication:check": "node scripts/check-publication-diff.mjs",
 		"content:links:check": "node --experimental-strip-types scripts/check-content-links.mjs",
 		"content:links:report": "node --experimental-strip-types scripts/content-link-report.mjs",

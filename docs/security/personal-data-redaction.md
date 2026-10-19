@@ -71,13 +71,20 @@ corpus の各レコードは `publication` を持つ。
 ```
 
 - `decision` は `approved` / `review_required` / `rejected` の 3 値。
-  **未記載・未知の値は無判断**なので `review_required` として扱う
-  （`E004` で fail）。
+  **未記載の値は無判断**なので `review_required` として扱い、警告 `W001`
+  で報告する（誰かがまだ決めていない、という状態）。
+  **宣言されているのに未知の値**（`"published"` など）は壊れた decision
+  なので `E004` で fail する。
 - `approved` は `decided_by: "owner"` と空でない `basis` を要求する。
   `decided_by: "agent"` は `E002`、basis 無しは `E003`。
   これらは「根拠が無い承認」であり、**無いより悪い**。
 - `review_required` は実際の移行では普通の状態であり、警告 `W001`。
   ここが Issue の言う「review required が出电图ない」状態。
+- gate が検査するのは**表明の構造**であって、その真正性ではない。
+  `decided_by: "owner"` は追跡された JSON の中の文字列であり、
+  「owner が実際に決定した」ことの保証は owner の attestation 手順
+  （`docs/personal/owner.md`）と corpus diff のレビューが担う。
+  gate はその保証を証明するとは主張しない。
 
 ## public bundle の定義
 
@@ -91,10 +98,53 @@ corpus の各レコードは `publication` を持つ。
 
 さらに gate は公開 content root（宣言製）を逆向きにも走査する。
 
-- 保留レコードの内容が公開 file に現れたら `E001`
+- 保留レコードの内容（title / text / image の alt・caption・path、
+  および path の裸のファイル名）が公開 file に現れたら `E001`
 - 承認済み record がカバーしない候補が公開 file にあれば `E005`
+  （file **名**も同じ規則表で走査する。移行した写真が `public/` に
+  落ちたとき、个人撮影を前提としたファイル名 `D011` が発火する）
+
+走査対象は宣言製で、**走査しない面も理由つきで宣言する**
+（`scripts/check-publication-redaction.mjs#PUBLISHED_CONTENT_NOT_SCANNED`）。
+
+| 走査する root | 理由 |
+| --- | --- |
+| `copy/**` | platform copy の資源契約 |
+| `public/**` | visitor が取得できる静的アセット |
+| `src/about/**` | 本人の identity データ面 |
+| `src/contact/**` | 公開 contact channel の registry（`channels.json`）— 移行した連絡先が到達しうる唯一の位置 |
+| `src/portfolio/**` | 掲載される portfolio のデータ面 |
+
+| 走査しない面 | 理由 |
+| --- | --- |
+| `public/share/**` | 別 delivery obligation（既に別の判断のもと公開されている） |
+| `src/home/**` `src/editorial/**` `src/routes/**` `src/admin/**` `src/i18n/**` | component / route コード。文言はこの repository で著者され、その pull request でレビューされたもので、移行データではない |
+
+component の文言まで逆向き走査へ広げるには、placeholder な連絡先値
+（フォームの `user@example.com` のような personal address と形の
+同じ値）の扱いを宣言する必要がある。その方針は owner の決定事項で
+あり、この gate が勝手に作るものではない。
 
 これで両方向が閉じる。corpus を経由しない経路と、corpus を経由して公開面に持ち込む経路の両方を検出する。
+
+## fail-closed の規則 (E001–E008)
+
+| Code | 状態 | 意味 |
+| --- | --- | --- |
+| `E001` | error | 保留レコードの内容（title / text / image descriptor / ファイル名）が公開 file に現れた |
+| `E002` | error | `approved` なのに `decided_by` が owner でない |
+| `E003` | error | `approved` なのに `basis` が空 |
+| `E004` | error | **宣言された** decision 値が 3 値以外（未記載は error ではなく pending） |
+| `E005` | error | 公開 file（内容またはファイル名）に、owner 承認済み record がカバーしない候補がある |
+| `E006` | error | record id の重複 |
+| `E007` | error | corpus の schema が違う / record に string の `id` がない |
+| `E008` | error | 候補が 1 つも検出されない corpus — **record が 1 件も無い corpus も同じ failure**（検出器が一度も鳴らない corpus は「何もない」のではなく「private sample を失った」状態） |
+| `W001` | warn | `review_required` の record が owner 決定待ちである |
+| `W002` | warn | `rejected` の record が owner 判断で保留されている |
+
+`E008` が「record が 0 件」を含むのは、private sample を消した corpus が
+**警告もなく pass してよい**ことになるからである。検出器が一度も鳴らない
+ことは「何もない」ことの証明にならない。
 
 ## private data を repository に置かない
 
@@ -121,9 +171,29 @@ fixture であることを各行の `basis` に書いて、判断の根拠をレ
 - **masked 形状**（`〒###-####`、`###-####-####`、`・・・・`）
 
 だけである。生の候補値はプロセス外に出ない。
+すべての規則は同じ shape-only renderer（`maskValue`）でマスクする
+ので、`D011` のように数字以外の文字を含む一致でも
+（`自撮り` などの語）その語がレポートに出ない。
+保留レコードの title も review object ではマスクする
+（公開される text は owner 承認済みレコードの title だけ）。
 これは `src/logging/redact.ts` が log record に課しているものと同じ
 契約で、検証スクリーンショットを PR 本文に貼っただけで
 私密データが公開されないための工夫である。
+
+## レポートの鮮度 (stale) 判定
+
+check モードは追跡済みレポートを byte-compare する。digest は 2 つ:
+
+- **corpus digest** — corpus の全 byte。corpus を変えれば必ず失効する。
+- **published candidate digest** — *候補を 1 つでも含む*公開 file だけの
+  digest。候補を含まない文言の編集では失効しない。
+
+後者を絞ったのは、privacy verdict が変わらない copy の編集でも privacy
+gate が赤くなり、「write コマンドをもう一度走らせろ」とだけ言われる
+状況になり、レビュー担当がその指示に従うよう習慣づけられてしまう
+ためである。候補がファイルに増減すれば digest は変わるので、
+privacy に関係する変更は依然として失効する。
+（検出そのもの `E001` / `E005` は毎回やり直している。）
 
 ## Owner workflow
 
@@ -149,6 +219,15 @@ fixture であることを各行の `basis` に書いて、判断の根拠をレ
   配信する別 delivery surface で、既に別の判断のもと公開されている。
   移行データの公開判断をこの gate が代決すべきものではないため、
   除外理由をコードと `quality/profile.yaml` に明記している。
+- **component コードは対象外（宣言済み）。** `src/home` / `src/editorial` /
+  `src/routes` / `src/admin` / `src/i18n` の文言は移行データではない
+  ので逆向き走査しない。逆に走査へ広げる場合の placeholder 方針は
+  owner 決定事項。
+- **corpus が fixture のみである以上、E005 の実データ経路は無い。**
+  E005 を解除する唯一の方法は「同じ literal を持つ owner 承認済み
+  corpus record」を作ることだが、corpus に private data を置かない
+  invariant がそれを禁じている。現在このサイトは e-mail を公開して
+  いないので壊れたままではないが、この緊張は owner 決定事項として残る。
 - **1 Issue / 1 PR の境界:** 本ゲートは既存ページの構成を変えず、
   新しいページも公開しない。判断を要するものは result の `known_issues` に残す。
 

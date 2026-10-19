@@ -9,12 +9,18 @@
 | --- | --- |
 | Corpus | `docs/migration/personal-data-review/corpus.json` (schema `personal-data-review.v1`) |
 | Corpus digest (sha-256, 12) | `6a58c8f66e4a` |
-| Published content digest (sha-256, 12) | `3e8e99a88f81` |
+| Published candidate digest (sha-256, 12) | `e3b0c44298fc` |
+| Published files carrying a candidate | 0 |
 | Records | 5 |
 | Candidates found | 19 |
 | Published (owner-approved) | 3 |
 | Withheld | 2 (review_required 1 / rejected 1) |
 | Verdict | **review** |
+
+> the published digest covers only the published files that carry at
+> least one personal-data candidate. A copy edit that carries no
+> candidate does not invalidate this review; a corpus edit always
+> does (the corpus digest covers every byte of the corpus).
 
 ## 1. 公開する情報 (what this gate publishes)
 
@@ -52,7 +58,8 @@
 ## 4. 監査対象 (audit targets)
 
 - corpus: `docs/migration/personal-data-review/corpus.json`
-- 公開 content root: `copy/**`, `public/**`, `src/about/**`, `src/portfolio/**`
+- 公開 content root: `copy/**`, `public/**`, `src/about/**`, `src/contact/**`, `src/portfolio/**`
+- 走査しない公開面 (理由つきで宣言): `public/share/**` (別 delivery obligation) と `src/home/**` / `src/editorial/**` / `src/routes/**` / `src/admin/**` / `src/i18n/**` (component コード — 文言は移行データではない)
 - レポート: `docs/verification/privacy/publication-redaction-review.md`
 - 検証画像: `docs/verification/privacy/publication-redaction-review.webp`
 - 規則表: `scripts/personal-data-review.mjs#RULES` (コード D001-D011 は安定識別子)
@@ -91,10 +98,10 @@
 - `D010` `miro-offsite-photos` images[0].exif.GPSLatitude → `GPSLatitude`
 - `D010` `miro-offsite-photos` images[0].exif.GPSLongitude → `GPSLongitude`
 - `D011` `miro-offsite-photos` images[0].path offset 7 → `########-`
-- `D011` `miro-offsite-photos` images[0].path offset 16 → `自撮り`
-- `D011` `miro-offsite-photos` images[1].path offset 7 → `IMG_####.jpg`
+- `D011` `miro-offsite-photos` images[0].path offset 16 → `・・・`
+- `D011` `miro-offsite-photos` images[1].path offset 7 → `xxx_####.xxx`
 - `D007` `miro-offsite-photos` text offset 42 → `xxxxxxx xxxxxx`
-- `D011` `notion-personal-notes` images[0].path offset 7 → `IMG_####.jpg`
+- `D011` `notion-personal-notes` images[0].path offset 7 → `xxx_####.xxx`
 - `D001` `notion-personal-notes` text offset 112 → `########@####################`
 - `D002` `notion-personal-notes` text offset 77 → `###-####-####`
 - `D003` `notion-personal-notes` text offset 29 → `〒###-####`
@@ -116,6 +123,7 @@
 - `D006` / `D007` は敬称無しの氏名を検出しない。刷新を意図しない公開記録は owner 判断に委ねられる
 - corpus に無い移行元 (Miro の別 board、前述でない Notion ページ) はこの gate の対象外。取り込みが別途必要
 - `docs/migration/` は personal data 自体を置かないという invariant を保つため、実数据的ではなく synthetic fixture のみを収録する
+- corpus が fixture のみである以上、E005 (「承認済み record がカバーしない候補」を弾く) を実データに厳密に適用する経路は無い。公開に値する連絡先を real corpus で書くには同じ literal を corpus に置く必要があり、それが private data を置かない invariant と緊張する (owner 決定事項)
 
 ## 9. Owner workflow
 

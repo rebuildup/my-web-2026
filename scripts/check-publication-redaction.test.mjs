@@ -3,8 +3,12 @@ import { describe, it } from 'node:test';
 import {
 	CORPUS_RELATIVE_PATH,
 	PUBLISHED_CONTENT_EXCLUDE_PREFIXES,
+	PUBLISHED_CONTENT_NOT_SCANNED,
 	PUBLISHED_CONTENT_ROOTS,
 	REPORT_RELATIVE_PATH,
+	candidateBearingFiles,
+	digests,
+	rootDeclarationConflicts,
 } from './check-publication-redaction.mjs';
 import {
 	DECISIONS,
@@ -122,7 +126,17 @@ describe('detection — the private sample fires every personal-data class', () 
 	it('reports a masked value only, never the raw one', () => {
 		const candidates = findRecordCandidates(PRIVATE_RECORD);
 		for (const candidate of candidates) {
-			assert.ok(!candidate.matched, 'a reported candidate must not carry the raw match');
+			// The shape is the contract: a candidate carries the rule id,
+			// the field, the offset and the masked form — and nothing that
+			// could hold the raw match.
+			assert.deepEqual(Object.keys(candidate).sort(), [
+				'at',
+				'class',
+				'code',
+				'field',
+				'masked',
+				'title',
+			]);
 			assert.equal(typeof candidate.masked, 'string');
 			assert.equal(candidate.masked.includes('090-0000-0000'), false);
 			assert.equal(candidate.masked.includes('personal@fixture-note.test'), false);
@@ -131,6 +145,20 @@ describe('detection — the private sample fires every personal-data class', () 
 		}
 		const email = candidates.find((candidate) => candidate.code === 'D001');
 		assert.equal(email.masked, '########@#################');
+	});
+
+	it('masks the non-numeric part of a file-name candidate too', () => {
+		const d011 = findTextCandidates('assets/20260315-自撮り-集合写真.jpg').filter(
+			(candidate) => candidate.code === 'D011',
+		);
+		assert.ok(d011.length > 0, 'the personal-camera file name must be detected');
+		for (const candidate of d011) {
+			assert.equal(
+				candidate.masked.includes('自撮り'),
+				false,
+				'the mask must not carry the raw name',
+			);
+		}
 	});
 
 	it('masks every script class', () => {
@@ -267,6 +295,22 @@ describe('public bundle — a withheld record contributes nothing', () => {
 		assert.deepEqual(bundle.published, []);
 		assert.equal(bundle.withheld[0].candidateCount > 0, true);
 	});
+
+	it('masks a withheld record title and keeps the published one', () => {
+		const bundle = buildPublicBundle([CLEAN_RECORD, PRIVATE_RECORD]);
+		assert.equal(bundle.published[0].title, CLEAN_RECORD.title);
+		assert.equal(
+			bundle.withheld[0].title.includes('自分用メモ'),
+			false,
+			'a withheld title is not public text',
+		);
+		const review = reviewCorpus({
+			corpus: corpusOf(CLEAN_RECORD, PRIVATE_RECORD),
+			publishedFiles: [],
+		});
+		const withheld = review.reviewed.find((entry) => entry.id === 'fixture-private');
+		assert.equal(withheld.title.includes('自分用メモ'), false);
+	});
 });
 
 describe('gate findings', () => {
@@ -308,13 +352,32 @@ describe('gate findings', () => {
 		assert.equal(noBasis.verdict, 'fail');
 	});
 
-	it('E004 — an unrecognised decision value fails closed', () => {
+	it('E004 — a DECLARED but unrecognised decision value fails closed', () => {
 		const review = reviewOf(
 			corpusOf({ ...PRIVATE_RECORD, publication: { decision: 'published' } }),
 		);
 		const finding = review.findings.find((entry) => entry.code === 'E004');
 		assert.ok(finding);
 		assert.equal(finding.severity, 'error');
+		assert.deepEqual(
+			review.publicBundle.withheld.map((entry) => entry.decision),
+			['review_required'],
+		);
+	});
+
+	it('E004 — an ABSENT decision is the pending state, not an error', () => {
+		const review = reviewOf(corpusOf({ ...PRIVATE_RECORD, publication: undefined }));
+		assert.equal(
+			review.findings.some((entry) => entry.code === 'E004'),
+			false,
+			'a record nobody decided on yet is not a corrupted decision',
+		);
+		assert.equal(
+			review.findings.filter((entry) => entry.code === 'W001').length,
+			1,
+			'it is reported as review_required instead',
+		);
+		assert.equal(review.verdict, 'review');
 		assert.deepEqual(
 			review.publicBundle.withheld.map((entry) => entry.decision),
 			['review_required'],
@@ -351,6 +414,36 @@ describe('gate findings', () => {
 		);
 	});
 
+	it('E005 — a personal-camera file NAME in a published root is a finding', () => {
+		const review = reviewOf(
+			corpusOf(CLEAN_RECORD),
+			publishedFiles([['public/20260315-自撮り-集合写真.jpg', '']]),
+		);
+		const findings = review.findings.filter((entry) => entry.code === 'E005');
+		assert.ok(findings.length > 0, 'a migrated photo name in a published root must be detected');
+		assert.ok(findings[0].message.includes('file name'));
+		// The file name is public by construction — it is a path in the
+		// published tree — so the finding names the file it is about; the
+		// candidate itself is reported in its masked form.
+		assert.ok(findings[0].message.includes('public/20260315-自撮り-集合写真.jpg'));
+		assert.ok(
+			findings.some((entry) => entry.message.includes('・・')),
+			'the candidate is reported masked',
+		);
+	});
+
+	it('E001 — a withheld record own file name in a published root fails', () => {
+		const review = reviewOf(
+			corpusOf(PRIVATE_RECORD),
+			publishedFiles([['public/IMG_4821.jpg', '']]),
+		);
+		assert.ok(
+			review.findings.some((entry) => entry.code === 'E001'),
+			'a withheld record keeps its own file name when it is migrated',
+		);
+		assert.equal(review.verdict, 'fail');
+	});
+
 	it('E006 / E007 — a duplicated id and a malformed corpus fail', () => {
 		assert.ok(
 			reviewOf(corpusOf(CLEAN_RECORD, { ...CLEAN_RECORD, title: '別のメモ' })).findings.some(
@@ -372,6 +465,22 @@ describe('gate findings', () => {
 		const finding = review.findings.find((entry) => entry.code === 'E008');
 		assert.ok(finding);
 		assert.equal(review.verdict, 'fail');
+	});
+
+	it('E008 — a corpus with NO RECORD at all fails (an empty corpus is a lost private sample)', () => {
+		const empty = reviewOf(corpusOf());
+		const finding = empty.findings.find((entry) => entry.code === 'E008');
+		assert.ok(finding, 'an empty corpus must not pass');
+		assert.equal(finding.severity, 'error');
+		assert.equal(empty.verdict, 'fail');
+		assert.equal(empty.counts.records, 0);
+
+		const withoutRecordsKey = reviewOf({ schema: REVIEW_SCHEMA });
+		assert.ok(
+			withoutRecordsKey.findings.some((entry) => entry.code === 'E008'),
+			'a corpus without a records key is the same empty corpus',
+		);
+		assert.equal(withoutRecordsKey.verdict, 'fail');
 	});
 
 	it('verdictOf keeps pass / review / fail distinct', () => {
@@ -407,21 +516,66 @@ describe('load — the gate stays decidable at corpus scale', () => {
 	});
 
 	it('scales the published-content scan the same way', () => {
-		const files = publishedFiles(
-			Array.from({ length: 400 }, (_, index) => [
+		// 399 candidate-free files plus ONE that carries an uncovered
+		// candidate: the load case has to exercise the E005 path, or the
+		// "no finding at scale" claim is vacuously true.
+		const files = publishedFiles([
+			...Array.from({ length: 399 }, (_, index) => [
 				`src/portfolio/seed-${index}.ts`,
 				`export const TITLE_${index} = '${CLEAN_RECORD.text}';`,
 			]),
-		);
+			['src/portfolio/seed-399.ts', 'export const PHONE = "090-0000-0000";'],
+		]);
 		const review = reviewCorpus({
 			corpus: corpusOf(CLEAN_RECORD, PRIVATE_RECORD),
 			publishedFiles: files,
 		});
-		assert.equal(review.verdict, 'review');
-		assert.deepEqual(
-			review.findings.filter((entry) => entry.code === 'E005'),
-			[],
+		assert.equal(review.verdict, 'fail');
+		assert.equal(
+			review.findings.filter((entry) => entry.code === 'E005').length,
+			1,
+			'exactly the one uncovered candidate is reported',
 		);
+		assert.equal(
+			review.findings.filter((entry) => entry.code === 'E001').length,
+			0,
+			'the clean files carry no withheld record content',
+		);
+	});
+});
+
+describe('the published digest is scoped to the files that carry a candidate', () => {
+	const clean = publishedFiles([['copy/README.md', '# copy']]);
+	const candidate = publishedFiles([['copy/contact.md', '連絡先は 090-0000-0000']]);
+
+	it('does not change when a copy edit carries no candidate', () => {
+		const before = digests({ corpusRaw: 'corpus', publishedFiles: clean });
+		const after = digests({
+			corpusRaw: 'corpus',
+			publishedFiles: publishedFiles([['copy/README.md', '# copy\n\n一行だけ足した。']]),
+		});
+		assert.equal(before.publishedDigest, after.publishedDigest);
+		assert.equal(before.candidateFiles, 0);
+	});
+
+	it('changes when a candidate-bearing file changes', () => {
+		const before = digests({ corpusRaw: 'corpus', publishedFiles: candidate });
+		const after = digests({
+			corpusRaw: 'corpus',
+			publishedFiles: publishedFiles([['copy/contact.md', '連絡先は 090-0000-0000 (追記)']]),
+		});
+		assert.notEqual(before.publishedDigest, after.publishedDigest);
+	});
+
+	it('changes when a file gains its first candidate', () => {
+		const before = digests({ corpusRaw: 'corpus', publishedFiles: clean });
+		const after = digests({
+			corpusRaw: 'corpus',
+			publishedFiles: [...clean, ...candidate],
+		});
+		assert.notEqual(before.publishedDigest, after.publishedDigest);
+		assert.equal(after.candidateFiles, 1);
+		assert.equal(candidateBearingFiles(after ? [...clean, ...candidate] : []).length, 1);
 	});
 });
 
@@ -489,10 +643,32 @@ describe('report artefacts', () => {
 
 describe('repository wiring', () => {
 	it('declares the published-content roots and the deliberate exclusion', () => {
-		for (const root of ['copy', 'public', 'src/about', 'src/portfolio']) {
+		for (const root of ['copy', 'public', 'src/about', 'src/contact', 'src/portfolio']) {
 			assert.ok(PUBLISHED_CONTENT_ROOTS.includes(root), `${root} must be a scanned root`);
 		}
 		assert.deepEqual(PUBLISHED_CONTENT_EXCLUDE_PREFIXES, ['public/share/']);
+	});
+
+	it('declares every surface it does not scan, with a reason', () => {
+		const declared = PUBLISHED_CONTENT_NOT_SCANNED.map((entry) => entry.surface);
+		for (const surface of [
+			'public/share/',
+			'src/home/',
+			'src/editorial/',
+			'src/routes/',
+			'src/admin/',
+			'src/i18n/',
+		]) {
+			assert.ok(declared.includes(surface), `${surface} must be declared, not silently skipped`);
+		}
+		for (const entry of PUBLISHED_CONTENT_NOT_SCANNED) {
+			assert.ok(entry.reason.length > 20, `${entry.surface} must state why it is out of scope`);
+		}
+		assert.deepEqual(
+			rootDeclarationConflicts(),
+			[],
+			'no scanned root may sit inside a declared not-scanned surface',
+		);
 	});
 
 	it('points at the tracked corpus and report', () => {

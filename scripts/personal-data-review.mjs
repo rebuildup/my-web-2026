@@ -22,8 +22,17 @@
  *      real person's data.
  *   2. **decision** — owner-only. `decision: 'approved'` additionally
  *      requires `decided_by: 'owner'` and a non-empty `basis`, so an
- *      agent cannot approve its own proposal (the knowledge-model
- *      authority table: `publish / unpublish` is owner-only).
+ *      approval has to be attributed to the owner and to cite what it
+ *      relies on (the knowledge-model authority table: `publish /
+ *      unpublish` is owner-only).
+ *
+ *      What the gate enforces is the *shape* of that attribution, not
+ *      its authenticity: `decided_by: "owner"` is a string in a tracked
+ *      JSON file, so a script can check that the field is there and
+ *      that a basis was written, and nothing more. The guarantee that
+ *      only the owner really decided is the owner-attestation process
+ *      (`docs/personal/owner.md`) plus review of the corpus diff — not
+ *      something a gate can prove, and this module does not claim to.
  *
  * A record that carries candidates and has no owner decision stays
  * `review_required`, and a `review_required` / `rejected` record
@@ -43,7 +52,11 @@
  * process. Reports and CI output carry the rule id, the field, the
  * offset and a masked form (`maskValue`), so a report screenshot in
  * a pull request cannot republish the data it is about — the same
- * contract `src/logging/redact.ts` holds for log records.
+ * contract `src/logging/redact.ts` holds for log records. Every rule
+ * masks with the same shape-only renderer, so a rule can never leak
+ * the non-numeric part of what it matched. A *withheld* record's title
+ * is masked in the review object for the same reason: only an
+ * owner-approved record's title is public text.
  */
 
 /** Snapshot / corpus schema identifier. Bump on any breaking shape change. */
@@ -215,7 +228,11 @@ export const RULES = [
 		title: '個人撮影を前提としたファイル名 (自撮り / 自宅 / 連番カメラ名)',
 		class: 'image',
 		re: /(?:自撮り|自宅|私物)|(?:20\d{6}[-_])|(?:DSC[_-]?\d{4,})|(?:IMG[_-]\d{4,})(?:\.[A-Za-z0-9]{2,4})?/g,
-		mask: (value) => value.replace(/\d/g, '#'),
+		// The shape-only renderer, like every other rule: the matched
+		// file name may carry a personal name in its non-numeric part
+		// (`自撮り` and friends), so a digits-only mask would leak the
+		// very thing the report is about.
+		mask: (value) => maskValue(value),
 		precision:
 			'個人撮影を前提とした語 (`自撮り` / `自宅` / `私物`) とカメラ既定名のみ。`og/default-card.png` のような 发布用アセット名は一致しない。',
 	},
@@ -334,11 +351,12 @@ export function candidateOf(rule, field, match, index) {
 /**
  * Raw matches of every text rule over one string.
  *
- * INTERNAL to this module: the value is what a decision must be made
- * about, so it cannot leave — `findTextCandidates` masks it, and
- * `reviewCorpus` uses the raw form only to decide coverage. Nothing in
- * the rendered report, the CLI output or the API of this module
- * exposes it.
+ * The value is what a decision must be made about, so it cannot leave
+ * a rendered surface — `findTextCandidates` masks it, `reviewCorpus`
+ * uses the raw form only to decide coverage, and the gate uses it only
+ * to decide *which* published files carry a candidate (a count, never
+ * a value). Nothing in the rendered report, the CLI output or the API
+ * of this module exposes it.
  */
 export function rawTextMatches(text) {
 	const found = [];
@@ -475,7 +493,14 @@ export function buildPublicBundle(records) {
 				],
 			});
 		} else {
-			withheld.push({ ...entry, decision: resolveDecision(record).decision });
+			// A withheld record's title is not public text, so the
+			// withheld entry carries the masked form. The raw title stays
+			// in the corpus, which is the source of truth.
+			withheld.push({
+				...entry,
+				title: maskValue(entry.title),
+				decision: resolveDecision(record).decision,
+			});
 		}
 	}
 	return {
@@ -494,14 +519,19 @@ const finding = (code, severity, message) => ({ code, severity, message });
  *     (`E001`) — the acceptance condition of Issue #494;
  *   - an approval without the owner's authority (`E002`) or without a
  *     basis (`E003`) — a fabricated approval is worse than none;
- *   - an unrecognised decision value (`E004`);
+ *   - a decision value that is *declared* but is not one of the three
+ *     states (`E004`) — an unrecognised value is a corrupted decision,
+ *     not a decision. An *absent* decision is not an error: nobody has
+ *     decided on that record yet, so it stays `review_required` and is
+ *     reported as `W001`, exactly like a record that says so;
  *   - a personal-data candidate in published content that no approved
  *     record covers (`E005`) — the reverse direction, so pasting a
  *     number into a shipped file fails too;
  *   - a duplicate record id (`E006`) or a malformed corpus (`E007`);
- *   - a corpus that yields no candidate at all (`E008`) — a detector
- *     that never fires proves nothing, so a corpus that silently lost
- *     its private sample is a failure, not a clean run.
+ *   - a corpus that yields no candidate at all (`E008`) — including a
+ *     corpus that holds no record at all — a detector that never fires
+ *     proves nothing, so a corpus that silently lost its private
+ *     sample is a failure, not a clean run.
  *
  * Warnings are the `review required` signal itself: the records waiting
  * for the owner decision are named and counted (`W001`, `W002`).
@@ -552,12 +582,16 @@ export function reviewCorpus({ corpus, publishedFiles = [], corpusLabel = 'corpu
 		const candidates = findRecordCandidates(record);
 		candidateTotal += candidates.length;
 
-		if (!isKnownDecision(resolution.declared)) {
+		// An absent decision is a record nobody has decided on yet, so it
+		// is the pending state (`review_required`, reported as W001) and
+		// not an error. A *declared* value that is not one of the three
+		// states is a corrupted decision: that is E004.
+		if (resolution.declared !== null && !isKnownDecision(resolution.declared)) {
 			findings.push(
 				finding(
 					'E004',
 					'error',
-					`Record \`${record.id}\` declares decision ${resolution.declared === null ? '(none)' : `\`${resolution.declared}\``}; only ${DECISIONS.map((value) => `\`${value}\``).join(' / ')} are accepted, so the record is held back as review_required.`,
+					`Record \`${record.id}\` declares decision \`${resolution.declared}\`; only ${DECISIONS.map((value) => `\`${value}\``).join(' / ')} are accepted, so the record is held back as review_required.`,
 				),
 			);
 		}
@@ -583,7 +617,10 @@ export function reviewCorpus({ corpus, publishedFiles = [], corpusLabel = 'corpu
 		reviewed.push({
 			id: record.id,
 			source: record.source ?? null,
-			title: record.title ?? '',
+			// A withheld record's title is not public text, so it is
+			// masked in the review object. The raw title stays in the
+			// corpus, which is the source of truth.
+			title: isPublishable(record) ? (record.title ?? '') : maskValue(record.title ?? ''),
 			decision: resolution.decision,
 			decidedBy: resolution.decidedBy,
 			basis: resolution.basis,
@@ -612,13 +649,24 @@ export function reviewCorpus({ corpus, publishedFiles = [], corpusLabel = 'corpu
 		for (const image of Array.isArray(record?.images) ? record.images : []) {
 			for (const field of ['alt', 'caption', 'path']) {
 				const value = image?.[field];
-				if (typeof value === 'string' && value.trim().length >= 8) needles.add(value.trim());
+				if (typeof value !== 'string' || value.trim().length < 8) continue;
+				needles.add(value.trim());
+				// The bare file name is a needle too: a migrated photo
+				// dropped into a published root keeps its own name even
+				// when the directory part changed (`assets/x.jpg` ->
+				// `public/x.jpg`), and that is the leak this rule exists
+				// for.
+				const base = value.trim().split('/').pop();
+				if (base && base.length >= 8) needles.add(base);
 			}
 		}
 		for (const file of publishedFiles) {
-			if (!file || typeof file.text !== 'string') continue;
+			if (!file) continue;
+			const surfaces = [];
+			if (typeof file.text === 'string') surfaces.push(file.text);
+			if (typeof file.path === 'string') surfaces.push(file.path);
 			for (const needle of needles) {
-				if (file.text.includes(needle)) {
+				if (surfaces.some((surface) => surface.includes(needle))) {
 					findings.push(
 						finding(
 							'E001',
@@ -651,30 +699,44 @@ export function reviewCorpus({ corpus, publishedFiles = [], corpusLabel = 'corpu
 			return values;
 		});
 	const reported = new Set();
+	const reportUncovered = (file, surface, hit) => {
+		if (approvedTexts.some((value) => value.includes(hit.value))) return;
+		const key = `${file.path}:${surface}:${hit.rule.code}:${hit.value}`;
+		if (reported.has(key)) return;
+		reported.add(key);
+		const candidate = candidateOf(hit.rule, file.path, hit.value, hit.index);
+		const where = surface === 'file name' ? ' in its file name' : '';
+		findings.push(
+			finding(
+				'E005',
+				'error',
+				`Published file \`${file.path}\` carries a ${candidate.code} ${candidate.title} candidate${where} (\`${candidate.masked}\`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.`,
+			),
+		);
+	};
 	for (const file of publishedFiles) {
-		if (!file || typeof file.text !== 'string') continue;
-		for (const hit of rawTextMatches(file.text)) {
-			if (approvedTexts.some((value) => value.includes(hit.value))) continue;
-			const key = `${file.path}:${hit.rule.code}:${hit.value}`;
-			if (reported.has(key)) continue;
-			reported.add(key);
-			const candidate = candidateOf(hit.rule, file.path, hit.value, hit.index);
-			findings.push(
-				finding(
-					'E005',
-					'error',
-					`Published file \`${file.path}\` carries a ${candidate.code} ${candidate.title} candidate (\`${candidate.masked}\`) that no owner-approved record covers. Publishing it needs an explicit owner decision, not a code change.`,
-				),
-			);
+		if (!file) continue;
+		if (typeof file.text === 'string') {
+			for (const hit of rawTextMatches(file.text)) reportUncovered(file, 'content', hit);
+		}
+		// The file NAME is scanned with the same rule table: a migrated
+		// personal photo keeps its own name when it lands in a published
+		// root, and `D011` (a personal-camera file name) is exactly the
+		// rule that recognises it.
+		const name = typeof file.path === 'string' ? file.path.split('/').pop() : '';
+		if (name) {
+			for (const hit of rawTextMatches(name)) reportUncovered(file, 'file name', hit);
 		}
 	}
 
-	if (candidateTotal === 0 && records.length > 0) {
+	if (candidateTotal === 0) {
 		findings.push(
 			finding(
 				'E008',
 				'error',
-				`The detector found no candidate in ${records.length} corpus record(s). A detector that never fires proves nothing: the corpus lost its private sample.`,
+				records.length === 0
+					? 'The corpus holds no record at all. A detector that never fires proves nothing: an empty corpus is a corpus that lost its private sample, not a clean run.'
+					: `The detector found no candidate in ${records.length} corpus record(s). A detector that never fires proves nothing: the corpus lost its private sample.`,
 			),
 		);
 	}
@@ -771,7 +833,8 @@ export const PUBLICATION_DISCLOSURE = {
 	],
 	auditTargets: [
 		'corpus: `docs/migration/personal-data-review/corpus.json`',
-		'公開 content root: `copy/**`, `public/**`, `src/about/**`, `src/portfolio/**`',
+		'公開 content root: `copy/**`, `public/**`, `src/about/**`, `src/contact/**`, `src/portfolio/**`',
+		'走査しない公開面 (理由つきで宣言): `public/share/**` (別 delivery obligation) と `src/home/**` / `src/editorial/**` / `src/routes/**` / `src/admin/**` / `src/i18n/**` (component コード — 文言は移行データではない)',
 		'レポート: `docs/verification/privacy/publication-redaction-review.md`',
 		'検証画像: `docs/verification/privacy/publication-redaction-review.webp`',
 		'規則表: `scripts/personal-data-review.mjs#RULES` (コード D001-D011 は安定識別子)',
@@ -781,6 +844,7 @@ export const PUBLICATION_DISCLOSURE = {
 		'`D006` / `D007` は敬称無しの氏名を検出しない。刷新を意図しない公開記録は owner 判断に委ねられる',
 		'corpus に無い移行元 (Miro の別 board、前述でない Notion ページ) はこの gate の対象外。取り込みが別途必要',
 		'`docs/migration/` は personal data 自体を置かないという invariant を保つため、実数据的ではなく synthetic fixture のみを収録する',
+		'corpus が fixture のみである以上、E005 (「承認済み record がカバーしない候補」を弾く) を実データに厳密に適用する経路は無い。公開に値する連絡先を real corpus で書くには同じ literal を corpus に置く必要があり、それが private data を置かない invariant と緊張する (owner 決定事項)',
 	],
 };
 
@@ -791,7 +855,12 @@ export const PUBLICATION_DISCLOSURE = {
  * `--check` byte-compares it: an unreviewed corpus change leaves the
  * report stale and the gate red.
  */
-export function renderMarkdownReport({ review, corpusDigest = '', publishedDigest = '' }) {
+export function renderMarkdownReport({
+	review,
+	corpusDigest = '',
+	publishedDigest = '',
+	candidateFileCount = 0,
+}) {
 	const lines = [
 		'# Publication redaction review — 公開データの個人情報検出と掲載承認',
 		'',
@@ -804,12 +873,18 @@ export function renderMarkdownReport({ review, corpusDigest = '', publishedDiges
 		'| --- | --- |',
 		`| Corpus | \`${review.corpusLabel}\` (schema \`${review.schema}\`) |`,
 		`| Corpus digest (sha-256, 12) | \`${corpusDigest}\` |`,
-		`| Published content digest (sha-256, 12) | \`${publishedDigest}\` |`,
+		`| Published candidate digest (sha-256, 12) | \`${publishedDigest}\` |`,
+		`| Published files carrying a candidate | ${candidateFileCount} |`,
 		`| Records | ${review.counts.records} |`,
 		`| Candidates found | ${review.counts.candidates} |`,
 		`| Published (owner-approved) | ${review.counts.published} |`,
 		`| Withheld | ${review.counts.withheld} (review_required ${review.counts.reviewRequired} / rejected ${review.counts.rejected}) |`,
 		`| Verdict | **${review.verdict}** |`,
+		'',
+		'> the published digest covers only the published files that carry at',
+		'> least one personal-data candidate. A copy edit that carries no',
+		'> candidate does not invalidate this review; a corpus edit always',
+		'> does (the corpus digest covers every byte of the corpus).',
 		'',
 		'## 1. 公開する情報 (what this gate publishes)',
 		'',
@@ -911,7 +986,12 @@ export function renderMarkdownReport({ review, corpusDigest = '', publishedDiges
  * No stylesheet, no font, no network: the artefact has to render
  * identically offline.
  */
-export function renderHtmlReport({ review, corpusDigest = '', publishedDigest = '' }) {
+export function renderHtmlReport({
+	review,
+	corpusDigest = '',
+	publishedDigest = '',
+	candidateFileCount = 0,
+}) {
 	const code = (value) => `<code>${escapeHtml(value)}</code>`;
 	const dash = (value) => escapeHtml(value ?? '—');
 	const row = (cells) => `<tr>${cells.map((cell) => `<td>${cell}</td>`).join('')}</tr>`;
@@ -978,7 +1058,8 @@ export function renderHtmlReport({ review, corpusDigest = '', publishedDigest = 
 		),
 		metric('corpus', code(review.corpusLabel)),
 		metric('corpus digest (sha-256, 12)', code(corpusDigest)),
-		metric('published content digest (sha-256, 12)', code(publishedDigest)),
+		metric('published candidate digest (sha-256, 12)', code(publishedDigest)),
+		metric('published files carrying a candidate', String(candidateFileCount)),
 		metric('records', String(review.counts.records)),
 		metric('candidates found', String(review.counts.candidates)),
 		metric('published (owner-approved)', String(review.counts.published)),
@@ -1024,6 +1105,7 @@ export function renderHtmlReport({ review, corpusDigest = '', publishedDigest = 
 <table>
   ${summary}
 </table>
+<p class="muted">the published digest covers only the published files that carry at least one personal-data candidate; a copy edit that carries no candidate does not invalidate this review, a corpus edit always does.</p>
 
 <h2>1. 公開する情報 (public bundle)</h2>
 ${list(PUBLICATION_DISCLOSURE.publishes)}

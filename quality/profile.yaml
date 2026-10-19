@@ -461,36 +461,41 @@ personal_data_review:
   library: 'scripts/personal-data-review.mjs (pure, zero npm dependency)'
   command: 'pnpm run publication:redaction:check'
   write_command: 'pnpm run publication:redaction:write'
-  report_command: 'pnpm run publication:redaction:report'
-  screenshot_command: 'pnpm run verify:publication-redaction-screenshot'
+  report_command: 'pnpm run verify:publication-redaction-screenshot'
   tests: 'node --test scripts/check-publication-redaction.test.mjs'
   gate: fast
   gate_placement: >-
-    gates.fast, next to `pnpm run publication:check` and before
-    `pnpm run content:links:check`.
+    gates.fast, after `pnpm run content:links:check` and before
+    `pnpm run routes:quality:check` (the neighbouring steps are named
+    rather than an absolute index, so inserting another gate does not
+    invalidate this note).
   documentation: 'docs/security/personal-data-redaction.md'
   artefact: 'docs/verification/privacy/publication-redaction-review.{md,webp}'
   published_content_roots:
     - 'copy'
     - 'public'
     - 'src/about'
+    - 'src/contact'
     - 'src/portfolio'
   published_content_exclusions:
     - 'public/share/ - the `/share/<slug>/` static document surface is a separate delivery obligation with its own publication decision; this gate reviews migrated content, so it does not re-decide what is already published there.'
+    - 'src/home/, src/editorial/, src/routes/, src/admin/, src/i18n/ - component / route code whose copy is authored in this repository and reviewed in the pull request that added it, not migrated content. The scanned roots are the surfaces that carry migrated or declared identity data, the platform copy resources and the static assets a visitor can fetch. Extending the reverse scan to component copy needs a stated policy for placeholder contact values (a `user@example.com` form placeholder is shaped like a personal address), and that policy is an owner decision, not this gate''s to invent.'
   statuses:
     - 'pass - no error finding (a corpus with no pending record)'
     - 'review - warnings only: records still awaiting the owner decision (W001) or withheld by owner decision (W002)'
-    - 'fail - a withheld record reached published content (E001), an approval lacks owner authority or a basis (E002 / E003), a decision value is unknown (E004), published content carries an uncovered candidate (E005), the corpus is malformed or duplicated (E006 / E007), or the detector found nothing at all (E008)'
+    - 'fail - a withheld record reached published content (E001), an approval lacks owner authority or a basis (E002 / E003), a DECLARED decision value is unknown (E004), published content carries an uncovered candidate (E005), the corpus is malformed or duplicated (E006 / E007), or the detector found nothing at all (E008)'
   false_pass_guards:
-    - '`review_required` is the default for a missing or unknown decision value; the gate never infers an approval'
+    - '`review_required` is the default for a missing or unknown decision value; the gate never infers an approval. A missing decision is the pending state (W001); only a DECLARED unknown value is an error (E004)'
     - 'a record without candidates is still published only through an owner decision, so the clean path and the private path share one gate'
-    - 'E008: a corpus that yields zero candidates fails, because a detector that never fires proves nothing'
-    - 'check mode byte-compares `docs/verification/privacy/publication-redaction-review.md`, so the evidence cannot drift from the corpus'
+    - 'E008: a corpus that yields zero candidates fails, and so does a corpus with no record at all, because a detector that never fires proves nothing and an empty corpus is the same failure with the records gone'
+    - 'check mode byte-compares `docs/verification/privacy/publication-redaction-review.md`, so the evidence cannot drift from the corpus. The published side of the digest is scoped to the files that carry a candidate, so a copy edit that carries none does not redden the gate'
     - 'reports and CI output carry only rule id / field / offset / masked shape; a raw candidate value never leaves the gate'
+    - 'the published-content declaration is complete: every surface is either a scanned root or a declared exclusion with a reason, and the gate refuses to run when a scanned root sits inside a declared not-scanned surface'
   known_limits:
     - 'no OCR: image PIXELS are not inspected, so a face, a photographed document or a handwritten address stays an owner judgement'
     - 'D006 / D007 match courtesy-suffixed names only; an unsuffixed name in public copy is an owner decision, not a detection'
     - 'the corpus is synthetic; real Miro / legacy-site / Notion imports arrive through the same shape but are not committed here (docs/personal/knowledge-model.md: no private data in the public repository)'
+    - 'the corpus may hold synthetic fixtures only, so E005 has no sanctioned way to pass for a real published contact value: the only coverage is an owner-approved corpus record, and the corpus may not carry private data. The site publishes no e-mail today, so nothing is broken; the tension is an owner decision'
 
 # Issue #492 — the published route roster and its quality-gate
 # coverage are one reviewable artefact, and a cheap gate keeps the two

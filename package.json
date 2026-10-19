@@ -176,6 +176,8 @@
 		"r2:media:audit:local": "node scripts/check-r2-media-key-set.mjs --target=local",
 		"r2:media:audit:report": "node scripts/make-r2-media-key-set-report.mjs",
 		"r2:media:audit": "node scripts/check-r2-media-key-set.mjs --target=production",
+		"r2:restore:proof": "node scripts/r2-media-restore-proof.mjs",
+		"r2:restore:proof:report": "node scripts/r2-media-restore-proof.mjs --html=.tmp/r2-restore-proof.html",
 		"artifact:attestation:report": "node scripts/artifact-attestation-report.mjs",
 		"artifact:attestation:check": "node scripts/check-artifact-attestation.mjs",
 		"compat:stress:check": "node scripts/check-layout-stress.mjs",

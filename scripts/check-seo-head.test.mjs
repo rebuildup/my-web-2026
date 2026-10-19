@@ -1,8 +1,9 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { describe, it } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { decodeEntities, parseHeadTags } from './seo-head-contract.mjs';
+import { decodeEntities, parseHeadTags, parseInlineScriptSources } from './seo-head-contract.mjs';
 import {
 	CANONICAL_ORIGIN,
 	DESCRIPTION_MAX_LENGTH,
@@ -11,6 +12,7 @@ import {
 	buildInventory,
 	canonicalPathFor,
 	discoverRouteModules,
+	evaluateFlipScriptContract,
 	evaluateHeadInventory,
 	evaluateObservation,
 	expectedCanonicalFor,
@@ -21,6 +23,7 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const ROUTES_DIR = resolve(HERE, '../src/routes');
+const ROOT_ROUTE_FILE = resolve(HERE, '../src/routes/__root.tsx');
 
 /** A fully compliant public head. Each test perturbs exactly one field. */
 function goodPublicHead(path) {
@@ -554,6 +557,86 @@ describe('seo-head-contract: route discovery against the real src/routes', () =>
 		// The real tree: exactly one `/admin` entry, no duplicates.
 		const paths = inventory.map((entry) => entry.path);
 		assert.equal(new Set(paths).size, paths.length, `duplicate paths: ${paths.join(', ')}`);
+	});
+});
+
+describe('seo-head-contract: the inline webfont flip script (Issue #488)', () => {
+	/**
+	 * The script body `src/routes/__root.tsx` ships, read from the file
+	 * rather than duplicated here, so this case cannot pass against a
+	 * copy that drifted from the one the Worker renders.
+	 */
+	const shippedFlipScript = () => {
+		const source = readFileSync(ROOT_ROUTE_FILE, 'utf8');
+		const line = source
+			.split('\n')
+			.find((candidate) => candidate.includes('querySelector(') && candidate.includes('media='));
+		assert.ok(line, `no inline flip script found in ${ROOT_ROUTE_FILE}`);
+		return line
+			.trim()
+			.replace(/^children:\s*/, '')
+			.replace(/^'/, '')
+			.replace(/',$/, '')
+			.replace(/\\'/g, "'");
+	};
+
+	/** The pre-#488 body, verbatim: the leak this contract exists for. */
+	const LEAKY_SCRIPT =
+		'(function(){var f=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}l.addEventListener("load",function(){l.media="all"});return true};if(!f())document.addEventListener("DOMContentLoaded",f)})();';
+
+	it('reads the inline <head> scripts and decodes their bodies', () => {
+		assert.deepEqual(
+			parseInlineScriptSources(
+				'<head><script src="/app.js"></script><script>var a=&quot;b&quot;;</script></head>',
+			),
+			['var a="b";'],
+		);
+		// An external script is fetched once; only the inline body is
+		// re-executed per client-side navigation, so it is the only one
+		// the contract reads.
+		assert.deepEqual(parseInlineScriptSources('<head><script src="/app.js"></script></head>'), []);
+	});
+
+	it('accepts the script the root route ships today', () => {
+		const findings = evaluateFlipScriptContract([shippedFlipScript()], { path: '/' });
+		assert.deepEqual(
+			findings.map((finding) => finding.rule),
+			[],
+		);
+	});
+
+	it('rejects the pre-#488 body (the gate can actually fail)', () => {
+		const rules = evaluateFlipScriptContract([LEAKY_SCRIPT], { path: '/' }).map(
+			(finding) => finding.rule,
+		);
+		assert.ok(rules.includes('head.flip-script-unbounded-domcontentloaded'));
+		assert.ok(rules.includes('head.flip-script-domcontentloaded-not-once'));
+		assert.ok(rules.includes('head.flip-script-load-listener-not-once'));
+	});
+
+	it('rejects a body that dropped only the readyState guard', () => {
+		const unguarded = shippedFlipScript().replace('document.readyState==="loading"', '');
+		assert.notEqual(unguarded, shippedFlipScript());
+		const rules = evaluateFlipScriptContract([unguarded], { path: '/' }).map(
+			(finding) => finding.rule,
+		);
+		assert.deepEqual(rules, ['head.flip-script-unbounded-domcontentloaded']);
+	});
+
+	it('rejects a body whose rAF poll has no frame bound', () => {
+		const unbounded = shippedFlipScript().replace('||++n>60', '||n');
+		assert.notEqual(unbounded, shippedFlipScript());
+		const rules = evaluateFlipScriptContract([unbounded], { path: '/' }).map(
+			(finding) => finding.rule,
+		);
+		assert.ok(rules.includes('head.flip-script-unbounded-raf'), rules.join(', '));
+	});
+
+	it('reports a head that ships no flip script at all', () => {
+		const rules = evaluateFlipScriptContract(['var a = 1;'], { path: '/' }).map(
+			(finding) => finding.rule,
+		);
+		assert.deepEqual(rules, ['head.flip-script-missing']);
 	});
 });
 

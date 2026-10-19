@@ -11,6 +11,7 @@ rather than merged into one narrative.
 | Lazy media / iframe の遅延ロード契約 | #487 | `lazy-media-waterfall.webp` |
 | Client bundle map | #483 | `bundle-map.webp` (see `bundle-map.md`) |
 | Large-list pagination measurement | #490 | `large-list-pagination.webp` (see `large-list-pagination.md`) |
+| 反復操作時の listener / memory プロファイル | #488 | `interaction-memory-profile.webp` (see `interaction-memory-profile.md`) |
 
 ---
 

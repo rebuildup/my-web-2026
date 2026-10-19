@@ -1,5 +1,5 @@
-import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import { env } from 'cloudflare:workers';
+import { HeadContent, Outlet, Scripts, createRootRoute, useLocation } from '@tanstack/react-router';
 import type { ReactNode } from 'react';
 import {
 	GoogleAnalytics,
@@ -144,10 +144,43 @@ export const Route = createRootRoute({
 				// be order-independent with respect to the <link>: if the
 				// sheet is already parsed (`sheet` set) it flips immediately,
 				// otherwise it waits for `load`, and if this script runs
-				// before the <link> exists at all it retries once at
-				// `DOMContentLoaded`.
+				// before the <link> exists at all it retries — once at
+				// `DOMContentLoaded` while the document can still fire it,
+				// otherwise on a bounded `requestAnimationFrame` poll.
+				//
+				// Issue #488 — this script is the ONE element this ticket
+				// fixes. TanStack Router merges the root head into every
+				// route match, so a client-side navigation re-creates BOTH
+				// the `media="print"` <link> and this inline <script>; the
+				// browser re-executes the inline body each time. The
+				// previous revision ended with
+				//
+				//     if (!f()) document.addEventListener('DOMContentLoaded', f)
+				//
+				// so every route change that found no *pending* print link
+				// left one more listener on `document` — and after the
+				// first document load `DOMContentLoaded` can never fire
+				// again, so every one of them was permanently dead. The
+				// measurement in `docs/verification/perf/
+				// interaction-memory-profile.md` records it as +1 leaked
+				// `document` listener per route change, unbounded.
+				//
+				// The fix keeps the contract (flip whatever print-media
+				// stylesheet is currently in the document) and removes the
+				// unbounded part:
+				//
+				//   - the `DOMContentLoaded` fallback is registered ONLY
+				//     while `document.readyState === 'loading'`, i.e. only
+				//     while the event it waits for is still possible;
+				//   - after the document is interactive, a link that is not
+				//     in the DOM yet is resolved by a bounded rAF poll
+				//     (60 frames ≈ 1 s), which cannot accumulate because it
+				//     self-terminates and attaches no listener;
+				//   - the per-<link> `load` binding is `once` and guarded by
+				//     an expando, so re-running the script against the same
+				//     element cannot stack listeners.
 				children:
-					'(function(){var f=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}l.addEventListener("load",function(){l.media="all"});return true};if(!f())document.addEventListener("DOMContentLoaded",f)})();',
+					'(function(){var r=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}if(!l.__myWebFlip){l.__myWebFlip=1;l.addEventListener("load",function(){l.media="all"},{once:true})}return true};if(r())return;if(document.readyState==="loading"){document.addEventListener("DOMContentLoaded",r,{once:true});return}var n=0;var t=function(){if(r()||++n>60)return;requestAnimationFrame(t)};requestAnimationFrame(t)})();',
 			},
 		],
 	}),

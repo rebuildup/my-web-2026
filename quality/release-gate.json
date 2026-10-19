@@ -23,6 +23,7 @@
 		"wrangler-independence",
 		"cloudflare-binding-contract",
 		"cloudflare-build-contract",
+		"cloudflare-config-drift",
 		"infisical-secret-coverage",
 		"cf-typegen",
 		"playwright-e2e",
@@ -153,6 +154,15 @@
 			"required": true,
 			"surfaces": ["fast", "integration", "release"],
 			"documentation": "docs/architecture.md"
+		},
+		{
+			"id": "cloudflare-config-drift",
+			"contract": "The production Worker surface, the development surface, the Workers Builds build / deploy commands and the static-asset header surface still match the recorded production contract, so a single unintended configuration difference cannot ship inside a green release.",
+			"command": "pnpm run cf:config:drift:check",
+			"state": "implemented",
+			"required": true,
+			"surfaces": ["fast", "integration", "release"],
+			"documentation": "docs/runbook/cloudflare-config-drift.md"
 		},
 		{
 			"id": "cloudflare-build-contract",

@@ -71,6 +71,12 @@ change_risk_mapping:
  * by their existing npm-script aliases (41 steps). The whole list is
  * compared, so a dropped or reordered component fails instead of only
  * breaking one of five spot-checked orderings.
+ *
+ * Issue #477 adds one line here with its gate: `secrets:status:check`,
+ * declared in `quality/profile.yaml` right after
+ * `infisical:check:coverage`. The pin keeps its job (a dropped or moved
+ * component still fails); a new gate is still one line in the profile
+ * plus one line here.
  */
 const EXPECTED_FAST_PLAN = [
 	'pnpm run format:check',
@@ -89,6 +95,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run version:check',
 	'pnpm run typecheck',
 	'pnpm run infisical:check:coverage',
+	'pnpm run secrets:status:check',
 	'pnpm run sbom:check',
 	'pnpm run csrf:contract:check',
 	'pnpm run compat:check',

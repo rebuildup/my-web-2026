@@ -49,6 +49,17 @@ function hexOf(bytes: Uint8Array): string {
 	return createHash('sha256').update(bytes).digest('hex');
 }
 
+/**
+ * Assert-then-narrow for the stub's map lookups: an assertion alone
+ * does not narrow the type, and a non-null assertion is forbidden by
+ * the lint profile.
+ */
+function mustGet<T>(value: T | undefined): T {
+	expect(value).toBeDefined();
+	if (value === undefined) throw new Error('expected the object to exist in the bucket');
+	return value;
+}
+
 const ENTRY: MediaRestoreManifestEntry = {
 	key: 'portfolio/restore-fixture/cover.png',
 	sha256: hexOf(PNG_BYTES),
@@ -124,7 +135,7 @@ describe('restoreMediaObject — the deleted-then-restored path', () => {
 			'readback',
 		]);
 		expect(writeLog).toEqual([ENTRY.key]);
-		expect(hexOf(state.get(ENTRY.key)?.bytes)).toBe(ENTRY.sha256);
+		expect(hexOf(mustGet(state.get(ENTRY.key)).bytes)).toBe(ENTRY.sha256);
 		expect(state.get(ENTRY.key)?.contentType).toBe('image/png');
 		expect(restoreExitCodeFor(result)).toBe(0);
 	});
@@ -148,7 +159,7 @@ describe('restoreMediaObject — the deleted-then-restored path', () => {
 
 		expect(result.verdict).toBe(RESTORE_VERDICT.restored);
 		expect(state.get(ENTRY.key)?.contentType).toBe('image/png');
-		expect(hexOf(state.get(ENTRY.key)?.bytes)).toBe(ENTRY.sha256);
+		expect(hexOf(mustGet(state.get(ENTRY.key)).bytes)).toBe(ENTRY.sha256);
 	});
 });
 

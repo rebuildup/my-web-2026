@@ -1,8 +1,10 @@
-import { resolve } from 'node:path';
+import { mkdir, writeFile } from 'node:fs/promises';
+import { dirname, resolve } from 'node:path';
 import { cloudflare } from '@cloudflare/vite-plugin';
 import { tanstackStart } from '@tanstack/react-start/plugin/vite';
 import react from '@vitejs/plugin-react';
 import { type Plugin, defineConfig } from 'vite';
+import { buildClientBundleGraph } from './scripts/_client-bundle-graph.mjs';
 import { LOCAL_STATE_DIR } from './scripts/_cloudflare-identity.mjs';
 
 /**
@@ -47,6 +49,79 @@ const cloudflareWorkersClientStub: Plugin = {
 		return resolve(__dirname, 'src/cloudflare/workers-stub.ts');
 	},
 };
+
+/**
+ * Write a client-only bundle graph report for `scripts/check-bundle-budget.mjs`
+ * (Issue #482).
+ *
+ * Why not `build.manifest: true`
+ * -----------------------------
+ * The Cloudflare Vite Plugin materialises the deploy artifact into
+ * `.cloudflare/output/v0/workers/default/assets/`, so Vite's own
+ * `build.manifest` output would land INSIDE that directory and be uploaded
+ * to production as a static asset. Wrangler only ignores `.assetsignore`,
+ * `_headers` and `_redirects` by default — a `.vite/manifest.json` in the
+ * asset tree is a deploy-artifact change nobody asked for. Writing the
+ * graph from the plugin keeps `assets/` byte-for-byte what it is today and
+ * puts the artefact in `dist/client/` next to the Tool bundles.
+ *
+ * Why a graph and not a total
+ * ---------------------------
+ * A single "total bundle size" number cannot attribute bytes to a route, so
+ * it cannot tell a justified growth from an accidental `import` of a heavy
+ * library on one page. The static `imports` closure of each chunk is what
+ * the browser fetches for a route's first paint; recording it per chunk lets
+ * the budget gate compute `entry + route chunk + shared chunks` per route.
+ * Dynamic imports are recorded but never walked — lazy route chunks must not
+ * be charged to first paint.
+ *
+ * When it writes the graph
+ * ------------------------
+ * From `writeBundle`, in post order, and the sizes are read back from the
+ * emitted files. A `generateBundle` hook in ordinary user-plugin order sees
+ * chunks that Vite's `vite:build-import-analysis` has not rewritten yet, so
+ * its numbers are smaller than the files the browser downloads — and a budget
+ * gate that under-counts is worse than no gate at all. See
+ * `scripts/_client-bundle-graph.mjs` for the full argument.
+ */
+function clientBundleGraphPlugin(): Plugin {
+	return {
+		name: 'my-web-2026:client-bundle-graph',
+		apply: 'build',
+		// Post ordering matters here: an ordinary user plugin's `generateBundle`
+		// runs BEFORE Vite's `vite:build-import-analysis`, which rewrites
+		// `chunk.code` afterwards to inject the preload marker and the
+		// dependency map. Sizes taken there under-count every file that has
+		// dynamic imports to preload. See scripts/_client-bundle-graph.mjs.
+		enforce: 'post',
+		async writeBundle(options, bundle) {
+			// The Worker (SSR) bundle gets its own manifest from the
+			// Cloudflare plugin. Only the browser bundle is budgeted.
+			if (this.environment?.name !== 'client') return;
+
+			// `writeBundle` runs after Rollup flushed every file, so the byte
+			// counts are read back from the emitted files rather than from
+			// Rollup's in-memory copy.
+			const outDir =
+				typeof options.dir === 'string' ? options.dir : this.environment.config.build.outDir;
+			const reportPath = resolve(__dirname, 'dist/client/bundle-graph.json');
+
+			const { graph, measured_files, fallback_files } = await buildClientBundleGraph({
+				bundle,
+				outDir,
+				rootDir: __dirname,
+			});
+
+			await mkdir(dirname(reportPath), { recursive: true });
+			await writeFile(reportPath, `${JSON.stringify(graph, null, '\t')}\n`);
+			// Never fail the build on a reporting artefact; the budget gate
+			// reports a missing graph as its own explicit failure.
+			console.log(
+				`[bundle-graph] wrote ${reportPath} (${measured_files} emitted file(s) measured from disk, ${fallback_files.length} in-memory fallback(s))`,
+			);
+		},
+	};
+}
 
 /**
  * Add `Access-Control-Allow-Origin: *` to every response under
@@ -98,6 +173,7 @@ export default defineConfig({
 	plugins: [
 		cloudflareWorkersClientStub,
 		toolCorsPreviewPlugin(),
+		clientBundleGraphPlugin(),
 		// LOCAL_API_MODE=mock dev-server passthrough (Issue #186).
 		//
 		// `wrangler.jsonc#vars` is intentionally not extended with

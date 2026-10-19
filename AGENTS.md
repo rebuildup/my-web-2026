@@ -350,15 +350,16 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `typecheck` + `infisical:check:coverage` + `sbom:check` +
   `csrf:contract:check` + `compat:check` +
   `tools:provenance:check` + `publication:check` +
-  `routes:quality:check` + `i18n:policy:check` +
+  `routes:quality:check` (Issue #492) + `i18n:policy:check` +
   `ci:pins:check` (Issue #472, GitHub
   Actions pin / token audit) + `test`. The canonical list is
   `quality/profile.yaml#gates.fast.components`; add a step there,
   not only in the script.)
 - `pnpm run validate:integration` — ticket PR verification.
-  (`validate:fast` + `build` + default/production Wrangler dry-runs +
-  `lint:ci` (actionlint 1.7.12, downloaded by `scripts/lint-ci.mjs`) +
-  `build-storybook`)
+  (`validate:fast` + `build:production` + per-route bundle budget
+  (`bundle:budget:check`, Issue #482) + default/production Wrangler
+  dry-runs + `lint:ci` (actionlint 1.7.12, downloaded by
+  `scripts/lint-ci.mjs`) + `build-storybook`)
 - `pnpm run validate:release` — pre-`main` verification.
   (`validate:integration` + `cf-typegen:check`)
 

@@ -46,6 +46,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
+import { constants as osConstants } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -97,10 +98,17 @@ export function runPlan(plan, { cwd = repoRoot, stream = process.stdout } = {}) 
 			return 2;
 		}
 		if (result.status !== 0) {
+			// A child killed by a signal has `status: null`. The historical
+			// `&&` chain let the shell report `128 + signal` (e.g. 143 for
+			// SIGTERM), so preserve that meaning instead of collapsing every
+			// signal into 1.
+			const exitCode = result.status ?? 128 + (osConstants.signals[result.signal] ?? 0);
+			const reason =
+				result.status === null ? `signal ${result.signal}` : `exit code ${result.status}`;
 			process.stderr.write(
-				`\n${command} failed at step ${index + 1}/${plan.length} with exit code ${result.status}\n`,
+				`\n${command} failed at step ${index + 1}/${plan.length} with ${reason}\n`,
 			);
-			return result.status ?? 1;
+			return exitCode;
 		}
 	}
 	return 0;

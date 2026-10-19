@@ -13,7 +13,7 @@ import {
 	scriptNamesOf,
 	validateGateComponents,
 } from './_quality-gate-plan.mjs';
-import { buildPlan, main, successLine } from './run-quality-gates.mjs';
+import { buildPlan, main, runPlan, successLine } from './run-quality-gates.mjs';
 
 /**
  * Fixture coverage for the declared quality-gate plan (Issue #566).
@@ -65,12 +65,12 @@ change_risk_mapping:
 /**
  * The fast plan pinned as of Issue #566, one command per line.
  *
- * It is the historical `validate:fast` `&&` chain (40 steps) with the two
+ * It is the merge-base `validate:fast` `&&` chain (41 steps) with the two
  * explicit `node --test scripts/check-{release-assets,app-icons}.test.mjs`
  * steps folded into `pnpm run test`, and the two raw node calls replaced
- * by their existing npm-script aliases. The whole list is compared, so a
- * dropped or reordered component fails instead of only breaking one of
- * five spot-checked orderings.
+ * by their existing npm-script aliases (39 steps). The whole list is
+ * compared, so a dropped or reordered component fails instead of only
+ * breaking one of five spot-checked orderings.
  */
 const EXPECTED_FAST_PLAN = [
 	'pnpm run format:check',
@@ -93,7 +93,6 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run csrf:contract:check',
 	'pnpm run compat:check',
 	'pnpm run tools:provenance:check',
-	'pnpm run tools:artifact:check',
 	'pnpm run storybook:ownership:check',
 	'pnpm run copy:i18n:check',
 	'pnpm run publication:check',
@@ -112,7 +111,17 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run css:check',
 	'pnpm run app:icons:check',
 	'pnpm run release:gate:check',
+	'pnpm run tools:artifact:check',
 ];
+
+describe('runPlan', () => {
+	it('reports a signal-killed step as 128 + signal, like the old shell chain', () => {
+		const output = [];
+		const code = runPlan(['kill -TERM $$'], { stream: { write: (line) => output.push(line) } });
+		assert.equal(code, 143, 'SIGTERM is 15, so the shell chain exited 143');
+		assert.match(output.join(''), /\[1\/1\] kill -TERM \$\$/);
+	});
+});
 
 describe('parseGateProfile', () => {
 	it('reads the gates block, ignoring the rest of the document', () => {
@@ -308,8 +317,16 @@ describe('the repository plan', () => {
 	it('runs the historical validate:fast chain, gate for gate, in order', () => {
 		// The historical one-line chain is the order criterion 5 protects.
 		// Compare the WHOLE list: five relative orderings would not notice a
-		// dropped publication / release-asset / app-icons component.
+		// dropped publication / release-asset / app-icons component or a
+		// component moved away from its merge-base position.
 		assert.deepEqual(plan('fast'), EXPECTED_FAST_PLAN);
+		// Pin the tail explicitly: `tools:artifact:check` landed at the END of
+		// the merge-base chain (after `release:gate:check`), so the failure
+		// path stops after every other fast gate exactly as it used to.
+		assert.deepEqual(plan('fast').slice(-2), [
+			'pnpm run release:gate:check',
+			'pnpm run tools:artifact:check',
+		]);
 	});
 
 	it('lists the same plan the runner would execute', () => {

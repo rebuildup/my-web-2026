@@ -135,14 +135,6 @@ gates:
       # == build-artefact stamp, and that the fetch source is the declared
       # credential-free https repository with no branch-tip tracking.
       - 'pnpm run tools:provenance:check'
-      # Issue #466: Tool artefact license + dependency inventory. Offline,
-      # status-only: the manifest's `license` claim is checked against the
-      # license file in the pinned checkout, the dependency evidence against
-      # the reviewed record in quality/tool-artifact-inventory.json, and the
-      # collected artefact's outbound hosts against the reviewed set. A
-      # shipped Tool with unverified evidence is an error, and
-      # `scripts/build-tools.mjs` refuses to publish it.
-      - 'pnpm run tools:artifact:check'
       # Issue #509: a Storybook story is feature-local UI, so its runtime
       # import closure must stay inside the owning obligation — routes,
       # server.ts, http/, cloudflare/ and the cloudflare:workers virtual
@@ -247,6 +239,17 @@ gates:
       # chain really runs, so a required check that stopped running is
       # a release failure instead of a silent green.
       - 'pnpm run release:gate:check'
+      # Issue #466: Tool artefact license + dependency inventory. Offline,
+      # status-only: the manifest's `license` claim is checked against the
+      # license file in the pinned checkout, the dependency evidence against
+      # the reviewed record in quality/tool-artifact-inventory.json, and the
+      # collected artefact's outbound hosts against the reviewed set. A
+      # shipped Tool with unverified evidence is an error, and
+      # `scripts/build-tools.mjs` refuses to publish it. Kept in its
+      # merge-base position (the last `validate:fast` step, after
+      # `release:gate:check`) so Issue #566 does not change the failure
+      # path of the historical chain.
+      - 'pnpm run tools:artifact:check'
     cost_class: cheap
     trigger: local + every CI run
 
@@ -471,7 +474,7 @@ release_gate_coverage:
   screenshot_command: 'pnpm run verify:release-gate-screenshot'
   tests: 'node --test scripts/check-release-gate-coverage.test.mjs'
   gate: fast
-  gate_placement: 'validate:fast, last component (after `pnpm run app:icons:check`)'
+  gate_placement: 'validate:fast, after `pnpm run app:icons:check` and before the trailing `pnpm run tools:artifact:check`'
   documentation: 'docs/verification/security/release-gate-coverage.md'
   surfaces:
     - 'fast / integration / release — the `gates.<level>.components` plan executed by `scripts/run-quality-gates.mjs`, counted only when the entry point is exactly `node scripts/run-quality-gates.mjs <gate>` (run mode)'

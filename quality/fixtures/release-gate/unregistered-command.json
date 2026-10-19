@@ -1,0 +1,74 @@
+{
+	"note": "不正常 fixture: package.json から必須検査の command が消えた状態（台帳は残っている）。surface には到達できないので not run ではなく fail になること。",
+	"expect": {
+		"errors": 2,
+		"warnings": 1,
+		"summary": { "pass": 1, "fail": 1, "not_run": 0, "not_applicable": 1 }
+	},
+	"scripts": {
+		"validate:fast": "pnpm run lint:check && pnpm run csrf:contract:check",
+		"lint:check": "biome lint .",
+		"csrf:contract:check": "node scripts/check-csrf-contract.mjs",
+		"validate:integration": "pnpm run validate:fast && pnpm run secret:scan:bundle",
+		"secret:scan:bundle": "node scripts/scan-secrets.mjs --bundle",
+		"validate:release": "pnpm run validate:integration"
+	},
+	"surfaces": {
+		"fast": ["validate:fast", "lint:check", "csrf:contract:check"],
+		"integration": [
+			"validate:integration",
+			"validate:fast",
+			"lint:check",
+			"csrf:contract:check",
+			"secret:scan:bundle"
+		],
+		"release": [
+			"validate:release",
+			"validate:integration",
+			"validate:fast",
+			"lint:check",
+			"csrf:contract:check",
+			"secret:scan:bundle"
+		],
+		"ci": []
+	},
+	"files": ["scripts/scan-secrets.mjs", "scripts/check-csrf-contract.mjs"],
+	"profile_components": {
+		"fast": ["pnpm run lint:check", "pnpm run secret:scan"],
+		"integration": ["- fast", "pnpm run secret:scan:bundle"],
+		"release": ["pnpm run secret:scan:bundle"]
+	},
+	"manifest": {
+		"version": 1,
+		"protected_checks": ["secret-scan-source"],
+		"profile_equivalences": [],
+		"checks": [
+			{
+				"id": "secret-scan-source",
+				"contract": "No secret-shaped literal is committed to the tracked source tree.",
+				"command": "pnpm run secret:scan",
+				"state": "implemented",
+				"required": true,
+				"surfaces": ["fast", "integration", "release"],
+				"documentation": "docs/security/supply-chain-secret-scan.md"
+			},
+			{
+				"id": "csrf-contract",
+				"contract": "The dual CSRF contract still holds on both HTTP layers.",
+				"command": "pnpm run csrf:contract:check",
+				"state": "implemented",
+				"required": true,
+				"surfaces": ["fast", "integration", "release"],
+				"documentation": "docs/security.md"
+			},
+			{
+				"id": "dynamic-security-scanning",
+				"contract": "An authenticated dynamic scan of a running deployment would test the assembled Worker.",
+				"state": "not_applicable",
+				"required": false,
+				"reason": "No staging or preview origin exists for this repository, and this Issue introduces no new service, so there is no scan target to point a scanner at.",
+				"documentation": "docs/adr/ADR-0014-rebuildup-dev-canonical-production-domain.md"
+			}
+		]
+	}
+}

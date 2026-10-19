@@ -1,0 +1,94 @@
+{
+	"note": "正常 fixture: 必須検査がすべて release surface に到達し、任意検査 1 本だけが not run、1 本だけが N/A。エラー 0 件を期待する。",
+	"expect": {
+		"errors": 0,
+		"warnings": 0,
+		"summary": { "pass": 3, "fail": 0, "not_run": 1, "not_applicable": 1 }
+	},
+	"scripts": {
+		"validate:fast": "pnpm run lint:check && pnpm run secret:scan",
+		"lint:check": "biome lint .",
+		"secret:scan": "node scripts/scan-secrets.mjs",
+		"validate:integration": "pnpm run validate:fast && pnpm run secret:scan:bundle",
+		"secret:scan:bundle": "node scripts/scan-secrets.mjs --bundle",
+		"validate:release": "pnpm run validate:integration",
+		"dep-audit:check": "node scripts/check-dependency-advisories.mjs"
+	},
+	"surfaces": {
+		"fast": ["validate:fast", "lint:check", "secret:scan"],
+		"integration": [
+			"validate:integration",
+			"validate:fast",
+			"lint:check",
+			"secret:scan",
+			"secret:scan:bundle"
+		],
+		"release": [
+			"validate:release",
+			"validate:integration",
+			"validate:fast",
+			"lint:check",
+			"secret:scan",
+			"secret:scan:bundle"
+		],
+		"ci": ["dep-audit:check"]
+	},
+	"files": ["scripts/scan-secrets.mjs", "scripts/check-dependency-advisories.mjs"],
+	"profile_components": {
+		"fast": ["pnpm run lint:check", "pnpm run secret:scan"],
+		"integration": ["- fast", "pnpm run secret:scan:bundle"],
+		"release": ["pnpm run secret:scan:bundle"]
+	},
+	"manifest": {
+		"version": 1,
+		"protected_checks": ["secret-scan-source", "secret-scan-bundle", "dependency-advisory"],
+		"profile_equivalences": [],
+		"checks": [
+			{
+				"id": "secret-scan-source",
+				"contract": "No secret-shaped literal is committed to the tracked source tree.",
+				"command": "pnpm run secret:scan",
+				"state": "implemented",
+				"required": true,
+				"surfaces": ["fast", "integration", "release"],
+				"documentation": "docs/security/supply-chain-secret-scan.md"
+			},
+			{
+				"id": "secret-scan-bundle",
+				"contract": "The production build output carries no secret either.",
+				"command": "pnpm run secret:scan:bundle",
+				"state": "implemented",
+				"required": true,
+				"surfaces": ["integration", "release"],
+				"documentation": "docs/security/supply-chain-secret-scan.md"
+			},
+			{
+				"id": "dependency-advisory",
+				"contract": "npm advisories for the locked tree are reviewed before a release.",
+				"command": "pnpm run dep-audit:check",
+				"state": "implemented",
+				"required": true,
+				"surfaces": ["ci"],
+				"documentation": "docs/runbook/dependency-advisories.md"
+			},
+			{
+				"id": "lint-baseline",
+				"contract": "Biome lint over the working tree, reported as an inspection nobody schedules at release time.",
+				"command": "pnpm run lint:check",
+				"state": "implemented",
+				"required": false,
+				"surfaces": [],
+				"documentation": "docs/development.md",
+				"note": "kept off the release chain deliberately in this fixture so not run is exercised on a real command"
+			},
+			{
+				"id": "dynamic-security-scanning",
+				"contract": "An authenticated dynamic scan of a running deployment would test the assembled Worker.",
+				"state": "not_applicable",
+				"required": false,
+				"reason": "No staging or preview origin exists for this repository, and this Issue introduces no new service, so there is no scan target to point a scanner at.",
+				"documentation": "docs/adr/ADR-0014-rebuildup-dev-canonical-production-domain.md"
+			}
+		]
+	}
+}

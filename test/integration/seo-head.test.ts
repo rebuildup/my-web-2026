@@ -8,8 +8,10 @@ import {
 	NOT_FOUND_PROBES,
 	QUERY_STRING_PROBES,
 	buildInventory,
+	evaluateFlipScriptContract,
 	evaluateHeadInventory,
 	parseHeadTags,
+	parseInlineScriptSources,
 	routeIdsFromRouteTree,
 	summarizeHead,
 } from '../../scripts/seo-head-contract.mjs';
@@ -479,6 +481,65 @@ describe('public-route <head> metadata (Issue #418)', () => {
 			expect(entry.expectedCanonical, `${entry.routeId} has no expected canonical`).not.toBeNull();
 			expect(entry.expectedCanonical).toContain(CANONICAL_ORIGIN);
 		}
+	});
+});
+
+describe('root <head> inline flip script: no unbounded document listener (Issue #488)', () => {
+	// TanStack Router merges the root head into EVERY route match, so
+	// this inline script is re-created — and re-executed by the
+	// browser — on every client-side navigation. The pre-#488 revision
+	// ended with
+	//
+	//     if (!f()) document.addEventListener('DOMContentLoaded', f)
+	//
+	// which left one permanently dead `document` listener per route
+	// change (`DOMContentLoaded` cannot fire again after the first
+	// document load), i.e. +1 leaked listener per navigation,
+	// unbounded. `docs/verification/perf/interaction-memory-profile.md`
+	// records the measurement.
+	//
+	// That measurement is a browser run and is deliberately NOT wired
+	// into any `validate:*` chain, so the SHAPE of the fix is pinned
+	// here instead, on the document the Worker actually renders. This
+	// is the same split #487 used for lazy media: a deterministic
+	// contract in `validate:fast`, the browser measurement beside it.
+	//
+	// Two routes, because the failure is a MERGE behaviour: `/` (the
+	// root head alone) and a child route (`/about`), where the root
+	// script has to survive the merge with the route's own head tags.
+
+	const FLIP_PROBE_ROUTES = ['/', '/about'];
+
+	const rawDocuments = new Map<string, Promise<string>>();
+
+	async function documentHtml(path: string) {
+		const cached = rawDocuments.get(path);
+		if (cached) return cached;
+		const pending = SELF.fetch(`https://rebuildup.dev${path}`, { redirect: 'manual' }).then(
+			(response) => response.text(),
+		);
+		rawDocuments.set(path, pending);
+		return pending;
+	}
+
+	it('ships an inline flip script that satisfies the Issue #488 contract', async () => {
+		for (const path of FLIP_PROBE_ROUTES) {
+			const sources = parseInlineScriptSources(await documentHtml(path));
+			expect(sources.length, `${path} ships no inline <head> script`).toBeGreaterThan(0);
+			const findings = evaluateFlipScriptContract(sources, { path });
+			expect(
+				findings.map((finding) => `${finding.rule}: ${finding.message}`),
+				`${path} inline flip script contract`,
+			).toEqual([]);
+		}
+	});
+
+	it('rejects the pre-#488 body (the gate can actually fail)', () => {
+		// Verbatim from `src/routes/__root.tsx` before this ticket.
+		const leaky =
+			'(function(){var f=function(){var l=document.querySelector(\'link[rel="stylesheet"][media="print"]\');if(!l)return false;if(l.sheet){l.media="all";return true}l.addEventListener("load",function(){l.media="all"});return true};if(!f())document.addEventListener("DOMContentLoaded",f)})();';
+		const rules = evaluateFlipScriptContract([leaky], { path: '/' }).map((finding) => finding.rule);
+		expect(rules).toContain('head.flip-script-unbounded-domcontentloaded');
 	});
 });
 

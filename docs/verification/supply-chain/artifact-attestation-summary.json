@@ -1,0 +1,46 @@
+{
+	"normal": {
+		"status": "PASS",
+		"source_commit": "0123456789abcdef0123456789abcdef01234567",
+		"artifact_digest": "637b41e25babd595183603c1279d736f349d6f554fe8d93721a24a92e48d3ed1",
+		"artifact_files": 4,
+		"artifact_bytes": 262,
+		"lockfile_packages": 759,
+		"signature_status": "unsigned",
+		"deploy_id": null
+	},
+	"abnormal": [
+		{
+			"id": "tampered-artifact",
+			"expected_finding": "ARTIFACT_DIGEST_MISMATCH",
+			"status": "FAIL",
+			"findings": [
+				"ARTIFACT_DIGEST_MISMATCH"
+			]
+		},
+		{
+			"id": "wrong-source-commit",
+			"expected_finding": "SOURCE_COMMIT_MISMATCH",
+			"status": "FAIL",
+			"findings": [
+				"SOURCE_COMMIT_MISMATCH"
+			]
+		},
+		{
+			"id": "lockfile-drift",
+			"expected_finding": "LOCKFILE_DIGEST_MISMATCH",
+			"status": "FAIL",
+			"findings": [
+				"LOCKFILE_DIGEST_MISMATCH"
+			]
+		},
+		{
+			"id": "fabricated-signature",
+			"expected_finding": "SIGNATURE_INCONSISTENT",
+			"status": "FAIL",
+			"findings": [
+				"SIGNATURE_INCONSISTENT"
+			]
+		}
+	]
+}

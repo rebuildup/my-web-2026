@@ -3,7 +3,7 @@
 		"status": "PASS",
 		"workflows": 3,
 		"jobs": 3,
-		"pins": 21,
+		"pins": 22,
 		"local_actions": 0,
 		"findings": 0,
 		"waivers": 0

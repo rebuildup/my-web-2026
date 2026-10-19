@@ -108,6 +108,25 @@ path, D1, and the secrets/preflight are all cf-native.** Until then
 the build command stays `pnpm run build` and the deploy command keeps
 its current form.
 
+### Artifact attestation (Issue #476)
+
+`pnpm run artifact:attestation:check` hashes the production-mode Build
+Output and records the source commit, `package.json` dependency ranges,
+`pnpm-lock.yaml` digest and resolved package count in
+`release-assets/supply-chain/<version>/artifact-attestation.json`. It
+runs at the end of `validate:integration`; CI retains the document as
+`artifact-attestation-<sha>`. It does **not** change the deploy
+authority: Cloudflare Workers Builds still deploys, no credential is
+read by the attestation tool, and no Cloudflare API is called.
+
+When a Cloudflare build UUID / deploy id is actually available, pass it
+with `--build-uuid` / `--deploy-id`. The value is recorded verbatim and
+is not authenticated against the Cloudflare API. A build run inside the
+Cloudflare environment may pass `WORKERS_CI_COMMIT_SHA` as the expected
+source commit; wiring that into the Workers Builds command is an open
+decision, not part of this runbook step. See
+[`docs/security/supply-chain-artifact-attestation.md`](../security/supply-chain-artifact-attestation.md).
+
 ## Runtime secrets — source of truth
 
 Infisical `prod` environment is the **single source of truth** for

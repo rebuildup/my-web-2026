@@ -237,6 +237,29 @@ production domain to be wired (Issue #43 / ADR-0014):
 
    See [`docs/runbook/dependency-advisories.md`](runbook/dependency-advisories.md).
 
+9. The artifact attestation manifest (Issue #476) has been produced for
+   the release branch head. `pnpm run artifact:attestation:check` runs at
+   the end of `validate:integration`, hashes the exact
+   `.cloudflare/output/v0` Build Output, and records its source commit,
+   `package.json` version, declared dependency ranges, `pnpm-lock.yaml`
+   digest and resolved package count. CI retains it as the
+   `artifact-attestation-<sha>` workflow artifact (90 days).
+
+   - The manifest is an integrity record, not a signature: no signing
+     key exists, so `signature.status` is `unsigned` and every signature
+     field is `null`. A document claiming an unverifiable signature
+     fails closed.
+   - A Cloudflare deploy id is recorded only when an operator supplies
+     one (`--deploy-id`). It is not fetched with a production credential
+     and is not authenticated by this tool.
+   - Attaching the manifest to the GitHub Release is a release-owner
+     action under the same human gate as the release merge / tag /
+     Release publish (step 10-11).
+   - Verify a published manifest with
+     `pnpm run artifact:attestation:check -- --manifest=<path> --source-sha=<release commit>`.
+
+   See [`docs/security/supply-chain-artifact-attestation.md`](security/supply-chain-artifact-attestation.md).
+
 ## 0.1.0 Foundation backlog
 
 | Issue | Title                                                       | Depends on | Priority |

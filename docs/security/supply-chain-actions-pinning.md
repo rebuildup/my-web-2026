@@ -50,7 +50,7 @@ different questions, so both run.
 
 ## 2. The audit: before and after
 
-All three shipped workflows are pinned. The audit covers 21 `uses:`
+All three shipped workflows are pinned. The audit covers 22 `uses:`
 lines, 6 distinct actions, and 0 permissions findings (`compat.yml`
 arrived on the release trunk with floating tags and is pinned in the
 same reconciliation).
@@ -198,7 +198,7 @@ $ pnpm run ci:pins:check
 …
 findings: 0
 
-status: PASS (workflows 3, jobs 3, pins 21, waivers 0)
+status: PASS (workflows 3, jobs 3, pins 22, waivers 0)
 ```
 
 Two things must be true at once: `findings: 0`, and every job row

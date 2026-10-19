@@ -1,0 +1,209 @@
+# デプロイ artifact の attestation (#476)
+
+> 監査対象: release の source SHA と実際に build した deploy artifact の対応
+> 実装: `scripts/_artifact-attestation.mjs` / `scripts/check-artifact-attestation.mjs`
+> gate: `pnpm run artifact:attestation:check`（`validate:integration` の末尾）
+> 証跡: [`../verification/supply-chain/artifact-sha-attestation.webp`](../verification/supply-chain/artifact-sha-attestation.webp)
+
+## 1. 何を保証するか
+
+1 つの manifest が、deploy artifact の **byte**・**source commit**・
+**依存解決**を同じ時点の事実として記録する。画像ではなく、次の
+不変条件を gate が検査する。
+
+| 事実 | 記録 | 検査 |
+| --- | --- | --- |
+| artifact の byte | 全 file の sha-256 と canonical aggregate digest | 再計算した digest と一致するか |
+| artifact の形 | file 数 / 合計 byte 数 | 記録と一致するか。空 artifact は FAIL |
+| source | `git rev-parse HEAD` または `WORKERS_CI_COMMIT_SHA`、branch、tree 状態 | 期待 commit と一致するか。dirty tree は FAIL |
+| release version | `package.json#version` | 記録と一致するか |
+| 依存範囲 | `package.json` の dependencies / devDependencies / optionalDependencies | 記録と一致するか |
+| 依存解決 | `pnpm-lock.yaml` の sha-256 と解決 package 数 | 記録と一致するか |
+| toolchain | `package.json#packageManager` | 記録と一致するか |
+| Worker | canonical な `my-web-2026` | 記録と一致するか |
+| Cloudflare identity | build UUID / deploy id（取得できた場合のみ） | 型だけ検査。値の真正性は検証しない |
+| 署名 | **unsigned** であること | 存在しない署名を表示しない |
+
+manifest は timestamp を持たない。同じ artifact bytes・commit・依存入力
+からは常に同じ文書が生成されるので、「release の manifest と手元の
+artifact を比べる」が build の揺らぎの diff にならない。
+
+## 2. 何を保証しないか
+
+- **署名ではない。** この repository に signing key は無い。manifest は
+  `signature.status = "unsigned"`、`algorithm` / `key_id` / `value` は
+  すべて `null` と明記する。署名を名乗る文書は
+  `SIGNATURE_UNSUPPORTED` で FAIL する。
+- **deploy id の真正性は検証しない。** `--deploy-id` で渡された値を
+  そのまま記録するだけであり、Cloudflare API は呼ばない。値を取得
+  できないときは `null` のままにする（推測値を作らない）。
+- **production artifact を取得しない。** CI manifest は CI が build した
+  Build Output を記述する。GitHub Release への添付は human-gated な
+  release 操作であり、この tool は publish しない。
+- **secret を読まない。** Infisical / Worker secret / `.dev.vars` /
+  Cloudflare token のいずれにも触れない。入力は build output と
+  tracked file（`package.json` / `pnpm-lock.yaml`）だけである。
+
+## 3. manifest schema
+
+`my-web-2026/artifact-attestation/v1`。
+
+```json
+{
+  "schema": "my-web-2026/artifact-attestation/v1",
+  "project": { "name": "my-web-2026", "version": "<package.json#version>" },
+  "source": {
+    "repository": "https://github.com/rebuildup/my-web-2026",
+    "commit": "<40-char git sha>",
+    "branch": "<branch or null>",
+    "tree": "clean"
+  },
+  "dependencies": {
+    "package_manager": "pnpm@<version>",
+    "lockfile": {
+      "path": "pnpm-lock.yaml",
+      "sha256": "<lockfile digest>",
+      "packages": 0
+    },
+    "declared": {
+      "dependencies": {},
+      "devDependencies": {},
+      "optionalDependencies": {}
+    }
+  },
+  "subject": {
+    "kind": "cloudflare-build-output",
+    "root": ".cloudflare/output/v0",
+    "digest": { "algorithm": "sha-256", "value": "<aggregate digest>" },
+    "file_count": 0,
+    "total_bytes": 0,
+    "files": [{ "path": "...", "kind": "file", "bytes": 0, "sha256": "..." }]
+  },
+  "cloudflare": {
+    "provider": "cloudflare-workers-builds",
+    "worker": "my-web-2026",
+    "build_uuid": null,
+    "deploy_id": null
+  },
+  "signature": {
+    "status": "unsigned",
+    "algorithm": null,
+    "key_id": null,
+    "value": null
+  }
+}
+```
+
+`subject.files` は path 順に並び、aggregate digest は
+`kind \t path \t bytes \t sha256` の行を改行で連結した文字列の
+sha-256 である。symlink は target を記録し、artifact の外を follow
+しない。
+
+## 4. コマンド
+
+```bash
+# CI / release branch: Build Output から生成し、同じ artifact に対して検証する
+pnpm run artifact:attestation:check
+
+# 公開済み manifest を手元の artifact と照合する
+pnpm run artifact:attestation:check -- \
+  --manifest=release-assets/supply-chain/<version>/artifact-attestation.json
+
+# release tag の commit と照合する（tag は release owner の操作で作られる）
+node scripts/check-artifact-attestation.mjs \
+  --manifest=release-assets/supply-chain/<version>/artifact-attestation.json \
+  --source-sha="$(git rev-list -n 1 "v$(node -p "require('./package.json').version")")"
+
+# 検証画像を再生成する（documentation tool。validate:* では走らない）
+pnpm run artifact:attestation:report
+```
+
+| option | 意味 |
+| --- | --- |
+| `--artifact-dir=<dir>` | hash する artifact（既定 `.cloudflare/output/v0`） |
+| `--manifest=<path>` | 生成せず既存 manifest を検証する |
+| `--out=<path>` | 生成物の出力先（既定 `release-assets/supply-chain/<version>/artifact-attestation.json`） |
+| `--source-sha=<sha>` | 期待する source commit。未指定時は `WORKERS_CI_COMMIT_SHA`、次に `git rev-parse HEAD` |
+| `--branch=<name>` | manifest に記録する branch |
+| `--build-uuid=<id>` | 取得済みの Cloudflare Workers Builds UUID |
+| `--deploy-id=<id>` | 取得済みの Cloudflare deploy id。無い場合は指定しない |
+| `--allow-dirty` | dirty tree からの**ローカル観測専用**。CI では使わない |
+
+exit code: `0` = PASS、`1` = mismatch / finding、`2` = 入力不正。
+出力は status-only で、artifact の内容や secret 値は表示しない。
+
+## 5. 正常 / 異常の観測
+
+`pnpm run artifact:attestation:report` は同じ関数から次の 2 状態を
+描画する。画像は証跡の一部であり、証明ではない。挙動は
+`scripts/check-artifact-attestation.test.mjs` が assertion する。
+
+### 正常
+
+- fixture Build Output の digest、fixture source commit、lockfile digest、
+  project version が一致する。
+- `signature: unsigned (no signature claimed)`。
+- `deploy id: not provided (no id invented)`。
+
+### 異常
+
+| scenario | mutation | finding |
+| --- | --- | --- |
+| tampered artifact | `workers/default/bundle/worker.js` に 1 byte 追加 | `ARTIFACT_DIGEST_MISMATCH` |
+| wrong source | 期待 commit を別 SHA にする | `SOURCE_COMMIT_MISMATCH` |
+| lockfile drift | manifest 生成後に `pnpm-lock.yaml` を変更 | `LOCKFILE_DIGEST_MISMATCH` |
+| fabricated signature | `status: "unsigned"` のまま signature field を埋める | `SIGNATURE_INCONSISTENT` |
+
+## 6. 修復手順
+
+| finding | 意味 | 修復 |
+| --- | --- | --- |
+| `ARTIFACT_DIGEST_MISMATCH` / `ARTIFACT_SHAPE_MISMATCH` | 手元の byte が記録した build と違う | 記録された commit から rebuild する。drift した artifact を deploy / publish しない |
+| `ARTIFACT_EMPTY` | hash 対象が空 | Build Output を生成してから再実行する |
+| `SOURCE_COMMIT_MISMATCH` | release / workflow の commit と artifact の source が違う | release を止め、記録された commit を checkout して rebuild する |
+| `SOURCE_TREE_DIRTY` / `WORKTREE_DIRTY` | dirty tree は commit を記述しない | commit / stash して rebuild し、manifest を再生成する |
+| `LOCKFILE_DIGEST_MISMATCH` / `LOCKFILE_INVENTORY_MISMATCH` | 依存解決が記録と違う | lockfile を戻すか、再生成して差分を review する |
+| `DECLARED_DEPENDENCIES_MISMATCH` | `package.json` の範囲が記録と違う | release commit から再生成する |
+| `PACKAGE_MANAGER_MISMATCH` | toolchain が記録と違う | 同じ package manager で rebuild する |
+| `PROJECT_VERSION_MISMATCH` / `PROJECT_IDENTITY_MISMATCH` | 別 release の manifest | release commit で再生成する |
+| `WORKER_IDENTITY_MISMATCH` | 別 Worker の manifest | この repository で再生成する |
+| `SIGNATURE_UNSUPPORTED` / `SIGNATURE_INCONSISTENT` | この repo が検証できない署名を名乗っている | 署名 field を消して unsigned にする。本物の署名 authority を追加するまで署名を表示しない |
+| `SCHEMA_UNSUPPORTED` | 未知の schema | 現行 tool で再生成する |
+| `DIGEST_ALGORITHM_UNSUPPORTED` | sha-256 以外の digest | 現行 tool で再生成する |
+| `MANIFEST_FILES_INVALID` / `MANIFEST_FILE_DIGEST_MISMATCH` | per-file 記録が aggregate と一致しない（手編集を含む） | 手で編集せず再生成する |
+| `CLOUDFLARE_IDENTITY_INVALID` | id が空文字など | 実際に取得した id だけを記録し、無ければ `null` にする |
+| `MANIFEST_UNREADABLE` | JSON として読めない | 再生成する |
+
+## 7. CI / release integration
+
+- `validate:integration` の最後（最終 `build:cf:production` の後）に
+  `pnpm run artifact:attestation:check` を置く。CI の `validate` job は
+  この中で manifest を生成し、`.cloudflare/output/v0` に対して直ちに
+  検証する。
+- workflow は `artifact-attestation-<sha>` として 90 日保持する
+  （`.github/workflows/ci.yml`）。
+- release では GitHub Release への添付を release owner の判断で行う。
+  `AGENTS.md §6` の release PR merge human gate は変更しない。
+  `docs/release.md` の release gate を参照。
+- CI の pull_request run は `actions/checkout` の merge commit を
+  build するため、manifest の `source.commit` もその merge commit に
+  なる。release branch への push では release commit そのものになる。
+- secret SoT（Infisical）・Cloudflare Workers Builds の deploy 権限・
+  release 承認のいずれも変更しない。
+
+## 8. 既知の制約と未決事項
+
+1. **署名は無い。** signing key / attestation service の導入は owner
+   判断であり、この Issue では実装しない。導入するまで manifest は
+   `unsigned` を明示する。
+2. **deploy id の取得は呼び出し側の責任。** Workers Builds の deploy
+   id は deploy 後にしか確定しない。`--deploy-id` で渡された値は
+   status record であり、Cloudflare API で照合しない。`WORKERS_CI_BUILD_UUID`
+   が環境にある場合は build UUID として記録する。
+3. **Cloudflare build 環境での生成は未配線。** 現在の CI 生成は
+   GitHub Actions の Build Output を対象とする。Cloudflare Workers
+   Builds の build / deploy phase で同じ manifest を生成し、production
+   artifact の `WORKERS_CI_COMMIT_SHA` と直接照合するかは、deploy 経路の
+   変更を伴うため open decision とする。
+4. **GitHub Release への添付は自動化しない。** release PR merge / tag /
+   Release publish と同じ human gate の下に置く。

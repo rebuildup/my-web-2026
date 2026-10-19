@@ -1,4 +1,3 @@
-import { env } from 'cloudflare:workers';
 import { createServerFn } from '@tanstack/react-start';
 import { getRequestHeader, getRequestUrl, setResponseHeader } from '@tanstack/react-start/server';
 import { z } from 'zod';
@@ -36,6 +35,17 @@ const reactionsLogger = createAuditLogger('home.reactions');
  * `.handler()`); tests / scripts pass a literal so `getRequestUrl`
  * never runs outside the server runtime (where it throws `No
  * StartEvent found in AsyncLocalStorage`).
+ *
+ * `cloudflare:workers` follows the same rule for the same reason
+ * (Issue #509): a module-level `import { env } from
+ * 'cloudflare:workers'` is evaluated when the module is loaded, so it
+ * stays in the graph of every client that imports this file — and the
+ * Storybook preview has no start compiler plugin to strip the handler
+ * bodies that make the rest of this module server-only. Each handler
+ * therefore resolves the bindings it needs with `await import(…)`
+ * **inside** the `.handler()` body, which is the one position the
+ * plugin, and `scripts/check-storybook-ownership.mjs`, treat as
+ * Worker-only.
  */
 
 /**
@@ -459,6 +469,7 @@ function readRequestContext(): HomeReactionsRequestContext {
 export const getHomeReactions = createServerFn({ method: 'GET' })
 	.validator(GetInput)
 	.handler(async ({ data }): Promise<HomeReactionsData> => {
+		const { env } = await import('cloudflare:workers');
 		const envLike = env as unknown as HomeReactionsEnv;
 		return getHomeReactionsImpl(envLike, readRequestContext(), data.target, getRequestUrl().origin);
 	});
@@ -466,6 +477,7 @@ export const getHomeReactions = createServerFn({ method: 'GET' })
 export const addHomeReaction = createServerFn({ method: 'POST' })
 	.validator(PutInput)
 	.handler(async ({ data }): Promise<HomeReactionMutationResult> => {
+		const { env } = await import('cloudflare:workers');
 		const envLike = env as unknown as HomeReactionsEnv;
 		const ctx = readRequestContext();
 		// Resolve the visitor's actor id ONCE so the PUT body and
@@ -481,6 +493,7 @@ export const addHomeReaction = createServerFn({ method: 'POST' })
 export const removeHomeReaction = createServerFn({ method: 'POST' })
 	.validator(DeleteInput)
 	.handler(async ({ data }): Promise<HomeReactionMutationResult> => {
+		const { env } = await import('cloudflare:workers');
 		const envLike = env as unknown as HomeReactionsEnv;
 		const ctx = readRequestContext();
 		const { actorId, setCookieHeader } = resolveOrIssueActorId(ctx.cookie, ctx.proto === 'https');

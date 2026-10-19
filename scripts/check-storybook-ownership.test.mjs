@@ -241,17 +241,17 @@ export function ReactionsWidget({ rows }: { rows: readonly ReactionAggregate[] }
 		// `import { createServerFn as serverFn }` puts the handler chain
 		// under a local name. Reading only the imported name finds no
 		// handler range, the handler body counts as a client-reachable
-		// reference, and this legitimate seam is reported as a violation.
+		// position, and this legitimate seam is reported as a violation.
 		const root = await fixture({
 			'src/home/status/tiles.stories.tsx': `import { addReaction } from './load';
 
 export default { component: addReaction };
 `,
 			'src/home/status/load.ts': `import { createServerFn as serverFn } from '@tanstack/react-start';
-import { env } from 'cloudflare:workers';
-import { probeCloudflareHealth } from '../../cloudflare/health';
 
 export const addReaction = serverFn({ method: 'POST' }).handler(async () => {
+\tconst { env } = await import('cloudflare:workers');
+\tconst { probeCloudflareHealth } = await import('../../cloudflare/health');
 \tawait probeCloudflareHealth(env.DB);
 });
 `,
@@ -266,10 +266,12 @@ export const addReaction = serverFn({ method: 'POST' }).handler(async () => {
 		assert.equal(report.subjects[0].seams.length, 1);
 	});
 
-	it('reports a client-reachable export of an aliased seam through a regex literal', async () => {
-		// Two masking hazards in one declaration: the regex must be
-		// consumed whole (terminating slash and flags included), and the
-		// factory must be found under its local name.
+	it('reports a module-level edge of an aliased seam whose export reads it through a regex', async () => {
+		// The narrowing is positional, not reachability-based: a
+		// module-level edge runs when the module loads, so the regex
+		// literal (and everything else the export does with the
+		// binding) cannot hide it. The regex must also be masked as one
+		// literal so its `/` does not swallow the rest of the file.
 		const root = await fixture({
 			'src/home/status/tiles.stories.tsx': `import { isHome } from './load';
 
@@ -294,10 +296,11 @@ export const addReaction = serverFn({ method: 'POST' }).handler(async () => {
 		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
 	});
 
-	it('resolves a local `export { a as b }` alias to its declaration', async () => {
-		// The importer asks the seam for `title`; the declaration map is
-		// keyed by `routeTitle`. Without the alias the request matches no
-		// block, the route edge looks unreachable, and the story passes.
+	it('walks a module-level edge a local `export { a as b }` alias cannot hide', async () => {
+		// `const routeTitle = route.title; export { routeTitle as title }`
+		// names an export the story asks for. The rule does not read
+		// declarations at all: the import is evaluated when the module
+		// loads, so the alias changes nothing.
 		const root = await fixture({
 			'src/home/status/tiles.stories.tsx': `import { title } from './load';
 
@@ -366,10 +369,10 @@ export function StatusTiles() {
 }
 `,
 			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
-import { env } from 'cloudflare:workers';
-import { probeCloudflareHealth } from '../../cloudflare/health';
 
 export const addHomeReaction = createServerFn({ method: 'POST' }).handler(async () => {
+\tconst { env } = await import('cloudflare:workers');
+\tconst { probeCloudflareHealth } = await import('../../cloudflare/health');
 \tawait probeCloudflareHealth(env.DB);
 });
 `,
@@ -726,10 +729,10 @@ export function StatusTiles() {
 }
 `,
 			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
-import { env } from 'cloudflare:workers';
-import { probeCloudflareHealth } from '../../cloudflare/health';
 
 export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+\tconst { env } = await import('cloudflare:workers');
+\tconst { probeCloudflareHealth } = await import('../../cloudflare/health');
 \tawait probeCloudflareHealth(env.DB);
 });
 `,
@@ -743,6 +746,35 @@ export const addReaction = createServerFn({ method: 'POST' }).handler(async () =
 		assert.deepEqual(report.subjects[0].violations, []);
 		assert.equal(report.subjects[0].seams.length, 1);
 	});
+
+	it('fails when a module-level binding edge of a seam is not the one the story imports', async () => {
+		// The regression this rule exists for: `env` is bound at module
+		// level and read only inside the handler, while the story asks
+		// the seam for `ROUTE_TITLE` alone. An ES module evaluates its
+		// static imports when it loads, so the virtual module is in the
+		// preview graph either way and the story must fail.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { ROUTE_TITLE } from './load';
+
+export default { component: ROUTE_TITLE };
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+import { env } from 'cloudflare:workers';
+
+export const ROUTE_TITLE = 'home';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+\treturn env.DB;
+});
+`,
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		const report = readReport(result.jsonPath);
+		assert.equal(report.subjects[0].violations[0].boundary, 'cloudflare:workers');
+	});
+
 	it('keeps a dynamic import inside a handler body out of the walk', async () => {
 		// `import()` inside `.handler(…)` runs on the Worker only, so it
 		// is not a client edge even though a dynamic import has no
@@ -807,55 +839,31 @@ export const health = () => import('../../cloudflare/health');
 		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'cloudflare');
 	});
 
-	it('keeps an unreferenced dynamic import out of the client edge', async () => {
-		// A dynamic import binds no name, so the request cannot narrow it
-		// by binding. Its declaration can: `unused` is never reached from
-		// `ROUTE_TITLE`, so the preview never evaluates the call and the
-		// edge is not a client edge.
+	it('walks a dynamic import outside every handler body', async () => {
+		// `import()` inside `.handler(…)` runs on the Worker only, so it
+		// is not a client edge even though a dynamic import has no
+		// binding the request could narrow it by. Outside the handler
+		// body the rule is conservative: the call sits in a declaration
+		// the preview may never evaluate, but only `.handler(…)` is
+		// treated as Worker-only, so it stays a violation.
 		const root = await fixture({
-			'src/home/status/tiles.stories.tsx': `import { ROUTE_TITLE } from './load';
+			'src/home/status/tiles.stories.tsx': `import { StatusTiles } from './tiles';
 
-export default { component: ROUTE_TITLE };
+export default { component: StatusTiles };
+`,
+			'src/home/status/tiles.tsx': `import { addReaction } from './load';
+
+export function StatusTiles() {
+	return <button onClick={() => addReaction()} />;
+}
 `,
 			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
-
-export const ROUTE_TITLE = 'home';
 
 export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
 	return null;
 });
 
 const unused = () => import('../../routes/index');
-`,
-			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
-		});
-
-		const result = run(root);
-		assert.equal(result.status, 0);
-		const report = readReport(result.jsonPath);
-		assert.equal(report.verdict, 'pass');
-		assert.deepEqual(report.subjects[0].violations, []);
-		assert.equal(report.subjects[0].seams.length, 1);
-	});
-
-	it('walks a dynamic import whose declaration the preview reaches', async () => {
-		// The narrowing must not hide a real edge: naming the declaration
-		// in a reachable export's reference set puts the call back in the
-		// walk.
-		const root = await fixture({
-			'src/home/status/tiles.stories.tsx': `import { ROUTE_TITLE } from './load';
-
-export default { component: ROUTE_TITLE };
-`,
-			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
-
-const unused = () => import('../../routes/index');
-
-export const ROUTE_TITLE = String(unused);
-
-export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
-	return null;
-});
 `,
 			'src/routes/index.tsx': "export const route = { id: '/', title: 'home' };\n",
 		});
@@ -863,6 +871,39 @@ export const addReaction = createServerFn({ method: 'POST' }).handler(async () =
 		const result = run(root);
 		assert.equal(result.status, 1);
 		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'routes');
+	});
+
+	it('reads a dynamic import written with a space or a comment before the parenthesis', async () => {
+		// `import ('…')` and `import /* why */ ('…')` are the same call:
+		// the mask blanks the comment to spaces, so the gap between the
+		// keyword and the parenthesis has to be allowed for or the edge
+		// disappears and the story passes.
+		const root = await fixture({
+			'src/home/status/tiles.stories.tsx': `import { StatusTiles } from './tiles';
+
+export default { component: StatusTiles };
+`,
+			'src/home/status/tiles.tsx': `import { addReaction } from './load';
+
+export function StatusTiles() {
+	return <button onClick={() => addReaction()} />;
+}
+`,
+			'src/home/status/load.ts': `import { createServerFn } from '@tanstack/react-start';
+
+export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+	return null;
+});
+
+export const health = () =>
+\timport /* server only */ ('../../cloudflare/health');
+`,
+			'src/cloudflare/health.ts': 'export async function probeCloudflareHealth() {}\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'cloudflare');
 	});
 
 	it('fails when an export is filled by a top-level assignment', async () => {
@@ -896,11 +937,11 @@ export { title };
 		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
 	});
 
-	it('keeps an unreferenced assignment out of the walk', async () => {
-		// The assignment rule is the same rule the declaration rule
-		// already had: the export the preview imports decides what is
-		// walked, so an assignment to a name it never reaches stays out
-		// of the client edge.
+	it('walks a module-level edge whatever assignment the export the story imports uses', async () => {
+		// The assignment is never read: `title` is reassigned before it
+		// is exported, and the statement that touches `route` names a
+		// binding the story never reaches. The module-level import still
+		// runs at load time, so the story fails.
 		const root = await fixture({
 			'src/home/status/tiles.stories.tsx': `import { title } from './load';
 
@@ -923,16 +964,16 @@ export { title };
 		});
 
 		const result = run(root);
-		assert.equal(result.status, 0);
+		assert.equal(result.status, 1);
 		const report = readReport(result.jsonPath);
-		assert.equal(report.verdict, 'pass');
-		assert.deepEqual(report.subjects[0].violations, []);
-		assert.equal(report.subjects[0].seams.length, 1);
+		assert.equal(report.verdict, 'fail');
+		assert.equal(report.subjects[0].violations[0].boundary, 'routes');
 	});
 });
 
-describe('storybook ownership check — an alias never narrows a seam request', () => {
-	// The request passed into a seam must name the seam's export, not
+describe('storybook ownership check — an import shape never hides a seam module edge', () => {
+	// Nothing narrows a module-level edge, so an alias, a namespace, a
+	// default import or a re-export is only another hop in the chain.
 	// the importer's local binding. Requesting `title` from a module
 	// that exports `ROUTE_TITLE` finds no declaration and would walk
 	// nothing, hiding the very edge the seam rule exists to expose.
@@ -1077,11 +1118,11 @@ export const loadRoute = () => import(\`../../routes/index\`);
 		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'routes');
 	});
 
-	it('does not read an object property key as a binding reference', async () => {
-		// `meta` is the only export the story reads, and the Cloudflare
-		// import stays inside the handler. `{ health: 'ok' }` names a
-		// key, not the imported `probeHealth`, so the edge must not be
-		// dragged into the preview.
+	it('walks a module-level import even when an object key names it', async () => {
+		// `{ health: 'ok' }` names a key, not the imported `health`, and
+		// the walk never has to tell them apart any more: the import is
+		// evaluated when the module loads, so it is a violation whatever
+		// `meta` does with the name.
 		const root = await fixture({
 			'src/home/status/tiles.stories.tsx': `import { meta } from './load';
 
@@ -1100,17 +1141,14 @@ export const addReaction = createServerFn({ method: 'POST' }).handler(async () =
 		});
 
 		const result = run(root);
-		assert.equal(result.status, 0);
-		const report = readReport(result.jsonPath);
-		assert.equal(report.verdict, 'pass');
-		assert.deepEqual(report.subjects[0].violations, []);
-		assert.equal(report.subjects[0].seams.length, 1);
+		assert.equal(result.status, 1);
+		assert.equal(readReport(result.jsonPath).subjects[0].violations[0].boundary, 'cloudflare');
 	});
 
-	it('carries a named re-export into the seam request', async () => {
-		// A barrel that re-exports one name from a seam must not widen
-		// the request to every export of that seam, or the handler-only
-		// Cloudflare import would look client-reachable.
+	it('walks a named re-export of a seam module', async () => {
+		// A barrel that re-exports one name from a seam adds a hop, not
+		// a narrowing: the seam's module-level edge is reported through
+		// the whole chain.
 		const root = await fixture({
 			'src/home/status/tiles.stories.tsx': `import { title } from './index';
 
@@ -1122,7 +1160,7 @@ import { health } from '../../cloudflare/health';
 
 export const title = 'home';
 
-export const addReaction = createServerFn({ method: 'POST' }).handler(async () => {
+export const addReaction = createServerFn({ method: 'POST'}).handler(async () => {
 	return health.status();
 });
 `,
@@ -1130,11 +1168,13 @@ export const addReaction = createServerFn({ method: 'POST' }).handler(async () =
 		});
 
 		const result = run(root);
-		assert.equal(result.status, 0);
+		assert.equal(result.status, 1);
 		const report = readReport(result.jsonPath);
-		assert.equal(report.verdict, 'pass');
-		assert.deepEqual(report.subjects[0].violations, []);
-		assert.equal(report.subjects[0].seams.length, 1);
+		assert.equal(report.subjects[0].violations[0].boundary, 'cloudflare');
+		assert.match(
+			report.subjects[0].violations[0].via.join(' -> '),
+			/index\.ts -> \.\/load -> src\/home\/status\/load\.ts -> \.\.\/\.\.\/cloudflare\/health$/,
+		);
 	});
 
 	it('still walks every export behind `export *`', async () => {
@@ -1273,6 +1313,23 @@ export default config;
 			[['src/routes/index.stories.tsx', 'routes']],
 		);
 		assert.match(result.stdout, /rule targets, not subjects/);
+	});
+
+	it('names the excluded-boundary reason when no subject is left to walk', async () => {
+		// Every story under the globs sits inside a foreign boundary.
+		// "no story file matches .storybook/main.ts" is a different
+		// failure, so the message has to say which one it is.
+		const root = await fixture({
+			'src/routes/index.stories.tsx': 'export default {};\n',
+			'src/cloudflare/health.stories.tsx': 'export default {};\n',
+		});
+
+		const result = run(root);
+		assert.equal(result.status, 2);
+		assert.match(
+			result.stderr,
+			/every story matching \.storybook\/main\.ts lives inside a foreign boundary \(2 excluded\)/,
+		);
 	});
 });
 

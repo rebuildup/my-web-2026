@@ -462,31 +462,29 @@ walk. The same mask reads the `stories` globs, so a commented-out
 template literal without an interpolation stays readable as a
 placeholder, because `import(`../x`)` names a real specifier, and a `/`
 that follows a keyword (`return /['"]/.test(x)`) is read as a regular
-expression rather than a division. Inside a seam module (one that
-value-imports `createServerFn`)
-only the exports the preview imports, plus what those reference, are
-client-reachable; imports confined to a `.handler(…)` body run on the
-Worker and are not walked. A named import is resolved by the export name
-it imports, so an alias (`{ ROUTE_TITLE as title }`) cannot narrow the
-request, and a default / namespace import is walked conservatively.
-The seam edge itself is printed as `seam`, not hidden. The factory is
-found under whatever local name the module imports it as
-(`import { createServerFn as serverFn }`), a regular-expression
-literal is consumed whole including its terminating slash and flags,
-and a local `export { a as b }` is resolved to the declaration `a`
-before the reachability set is computed — otherwise an aliased seam
-could pass or fail for the wrong reason. A top-level assignment counts as
-part of the declaration it feeds — `let title; title = route.title;
-export { title }` drags `route` into `title`'s reference set — and a
-dynamic `import()` binds no name, so it is attributed to the top-level
-declaration that contains it: `const unused = () => import(…)` is not a
-client edge when the preview never reaches `unused`, while an
-`import()` outside every declaration runs at module load and is walked.
-A member left side (`config.title = route.title`) blocks its root
-binding, and a property key (`{ health: 'ok' }`) or a member name
-(`route.title`) is not read as a value reference, so neither invents a
-dependency. A barrel's named re-export (`export { safe } from './load'`)
-asks the target for that name; only `export *` widens the request.
+expression rather than a division. Inside a server-function seam (a
+module that value-imports `createServerFn`) the walk stops **inside a
+`.handler(…)` body and nowhere else**, because that body is what the
+start compiler plugin removes from the client build. Every other edge
+of the module — a module-level `import { env } from
+'cloudflare:workers'`, a side-effect import, an `export … from`
+re-export — is evaluated when the module loads, so it is walked
+whichever export the story asked for. Narrowing a module-level edge by
+the bindings a story imports is unsound: a module can bind `env` at
+module level, read it only inside the handler, and still be pulled
+into the preview by a story that imports nothing but its export types.
+So server-only bindings are resolved with `await import(…)` **inside**
+the handler body (`src/home/reactions/load.ts`,
+`src/admin/emoji-catalog/load.ts`), and a dynamic `import()` outside
+every handler body is walked even when no export reaches the
+declaration that holds it. The seam edge itself is printed as `seam`,
+not hidden. The factory is found under whatever local name the module
+imports it as (`import { createServerFn as serverFn }`), a
+regular-expression literal is consumed whole including its terminating
+slash and flags, a space or comment between `import` and `(` is
+allowed, and an import shape — an alias, a namespace import, a default
+import, a barrel re-export — is only another hop in the chain the
+report prints.
 
 ```bash
 pnpm run storybook:ownership:check
@@ -500,9 +498,17 @@ Exit codes: `0` every subject passed, `1` at least one foreign-boundary
 reach, `2` a subject could not be fully resolved or the subject set
 could not be read (`not run` — reported as NOT a pass, so an incomplete
 walk, a glob outside the repository and a non-literal `stories` entry
-can never be mistaken for green). The gate is wired into `validate:fast`,
-and `scripts/check-storybook-ownership.test.mjs` covers it with pass /
-fail / not-run / not-applicable fixtures.
+can never be mistaken for green). When the subject set is empty the
+message says whether no story matched the globs or every match was
+excluded as living inside a foreign boundary. The gate is wired into
+`validate:fast`, and `scripts/check-storybook-ownership.test.mjs` covers
+it with pass / fail / not-run / not-applicable fixtures.
+
+Known limitations are printed with the report. The one to remember
+when adding code: only the `~/` alias is resolved, so an alias-shaped
+specifier (`@/…`) reads as an external package and would hide a
+boundary behind it — add the alias to the checker when it is added to
+the bundler config.
 
 The `docs/verification/platform/storybook-ownership-check.webp`
 screenshot in #576 is a rendering of this gate's text report; re-create

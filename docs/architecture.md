@@ -443,28 +443,23 @@ glob が repository 外を解決する場合は「主語集合が読めない」
   取りこぼさないため）。`src/` 外の specifier が解決できない場合は `external` として
   表示する（生成物の codegen 未実行を CI の失敗にしないため）。
 - **server-function seam**: `createServerFn` を value import する module は、
-  preview が実際に import した export だけが client に到達する、という前提で
-  扱う。クライアント側から見える export（と、それを参照する同ファイル内の宣言）
-  だけを walk し、`.handler(…)` body 内の import は Worker 側でしか実行されない
-  ので walk しない。named import は alias ではなく **import 元の export 名**で
-  要求を解決し（barrel の named re-export `export { safe } from './load'` もその
-  export 名で要求し、`export *` だけが全 export として扱う）、default / namespace
-  import は任意の export に触れ得るため
-  handler 外の edge を保守的に walk する。factory は import 句のローカル名
-  （`import { createServerFn as serverFn }` なら `serverFn`）でも検出し、
-  ローカル `export { a as b }` は宣言名 `a` へ解決してから到達集合を計算する。
-  到達集合は宣言だけでなく **top-level assignment**（`let title; title =
-  route.title; export { title }`）が与えた値も含む。dynamic `import()` は
-  binding を持たないため要求では絞れず、呼び出しを含む top-level 宣言に
-  関連付ける（`const unused = () => import(…)` は preview がその宣言へ
-  到達しない限り client edge ではない。宣言の外にあれば module 読み込み時
-  に評価されるため walk する）。代入の左辺が member 参照
-  （`config.title = route.title`）でも、その根の binding を依存として追跡する。
-  値参照と区別するため、オブジェクトリテラルのキー（`{ health: 'ok' }`）と member
-  名（`route.title` の `title`）は参照集合に数えない（shorthand `{ health }` は実参照）。
+  `.handler(…)` body **の中だけ**が Worker 側とみなされ、walk はそこで止まる
+  （client build から body を落とすのは start compiler plugin だけだから）。
+  それ以外の edge は **module-level edge** で、module の読み込み時に評価される
+  ので、story がどの export を要求したかに関わらずすべて walk する。
+  `import { env } from 'cloudflare:workers'` が module-level にあるかぎり、
+  その module を import する preview は virtual module をロードすることになり、
+  export の到達性で絞り込んではならない（Issue #509 の review で判明した穴）。
+  したがって server 専用 binding は **handler body の中で**
+  `await import(…)` で解決する（`src/home/reactions/load.ts` /
+  `src/admin/emoji-catalog/load.ts` がその形）。factory は import 句の
+  ローカル名（`import { createServerFn as serverFn }` なら `serverFn`）でも検出
+  する。dynamic `import()` は binding を持たないため要求では絞れないので、
+  handler range の内側にあれば walk せず、外側にあれば walk する
+  （`const unused = () => import(…)` も handler 外なので walk する）。
   edge 自体は隠さず `seam` として報告する。
-  `src/home/reactions/widget.stories.tsx` のコメントと `.storybook/main.ts` の
-  `external: ['cloudflare:workers']` が既に宣言している前提を refinements している。
+  `src/home/reactions/widget.stories.tsx` のコメントが、preview では画面上の
+  mutation が inert であることを宣言している。
 
 **ソースの読み方** — import の照合は、コメント・文字列リテラル・テンプレート
 リテラルを伏せた上に対して行う。補間なしテンプレートは placeholder として残し、
@@ -472,6 +467,7 @@ glob が repository 外を解決する場合は「主語集合が読めない」
 リテラルとしてマスクする）。
 `.storybook/main.ts` の `stories` も同じマスクの上から読むため、コメントアウト
 された古い `stories` 配列が subject set になることはない。
+`import` と `(` の間の空白・コメント（マスク後は空白になる）も許す。
 ドキュメントとして import 例を表示する story
 が誤って違反になり、逆に import 形のコメントが server-function seam と読まれて
 本物の違反が隠れることを防ぐ。
@@ -480,6 +476,13 @@ glob が repository 外を解決する場合は「主語集合が読めない」
 （`src/` 内で解決できない specifier がある、主語集合が読めない）は「green ではない」
 として exit 2 にする。walk が不完全なまま pass を主張しないため。
 fixture による検証は `scripts/check-storybook-ownership.test.mjs`。
+
+**既知の制約（manual work）** — alias は `~/` のみ解決する。`vite.config.ts` が
+宣言している唯一の alias なので現状の誤検出はないが、新しい alias（`@/` 等）が
+入ると checker 側が unknown alias を leaf 扱いして黙る。 Checker 側の
+`known limitations` にも同じ内容を出す。主語集合が 0 になった場合は「glob に
+story が無い」のか「全 story が foreign boundary 配下で除外された」のかを
+stderr で区別する。
 
 **この checker が所有しないもの** — 「shared UI layer」の新設。違反を直す正しい
 方法は、render できる部分を owner obligation へ移し loader の結果を prop として

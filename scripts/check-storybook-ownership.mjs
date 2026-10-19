@@ -27,17 +27,19 @@
  *   - `cloudflare:workers`  the Workers virtual module (does not
  *     resolve in a browser preview at all)
  *
- * The walk stops inside the **server-function seam handler**: a
+ * The walk stops inside a **`.handler(…)` body**, and nowhere else. A
  * module that value-imports `createServerFn` /
- * `createServerFunction` from `@tanstack/react-start` only ships the
- * exports the preview actually imports, so only those exports' own
- * (non-handler) dependencies are client-reachable. Everything the
- * client imports from a seam module is walked; imports confined to a
- * `.handler(…)` body are not. A seam edge is reported as an
- * annotation, never hidden. `src/home/reactions/widget.stories.tsx`
- * already documents that the on-screen mutations are inert here, and
- * `.storybook/main.ts` already marks `cloudflare:workers` external for
- * exactly this reason.
+ * `createServerFunction` from `@tanstack/react-start` is a
+ * server-function seam, and the start compiler plugin is what removes
+ * those bodies from the client build. Every other edge of that module
+ * is evaluated when the module is loaded — a module-level
+ * `import { env } from 'cloudflare:workers'` included — so it is
+ * walked whichever export the story asked the module for; narrowing it
+ * by the bindings a story imports is unsound. A seam is reported as an
+ * annotation, never hidden, and a seam that reaches a foreign boundary
+ * outside its handler bodies fails like any other story.
+ * `src/home/reactions/widget.stories.tsx` documents that the on-screen
+ * mutations are inert in this preview.
  *
  * How the source is read
  * ----------------------
@@ -126,13 +128,11 @@ const FOREIGN_BOUNDARIES = [
 /** Static ES imports, with enough clause context to classify them. */
 const IMPORT_FROM = /(?:^|[\n;])\s*import\s+([\s\S]*?)\s*from\s*['"]([^'"]+)['"]/g;
 const IMPORT_SIDE_EFFECT = /(?:^|[\n;])\s*import\s*['"]([^'"]+)['"]/g;
-const IMPORT_DYNAMIC = /\bimport\(\s*(?:['"]([^'"]+)['"]|(\uE000\d+\uE000))\s*\)/g;
+// The mask blanks comments to spaces, so `import /* why */ ('…')` reads
+// as `import          ('…')`: the space (and any line break) between the
+// keyword and the parenthesis is allowed for.
+const IMPORT_DYNAMIC = /\bimport\s*\(\s*(?:['"]([^'"]+)['"]|(\uE000\d+\uE000))\s*\)/g;
 const EXPORT_FROM = /(?:^|[\n;])\s*export\s+(type\s+)?([\s\S]*?)\s*from\s*['"]([^'"]+)['"]/g;
-/** A local `export { … }` clause (its `from` form is filtered out). */
-const EXPORT_LOCAL_CLAUSE = /(?:^|[\n;])\s*export\s*\{([\s\S]*?)\}/g;
-
-/** A bare identifier, used to read a declaration's reference set. */
-const IDENTIFIER = /[A-Za-z_$][\w$]*/g;
 /**
  * Keywords after which a `/` opens a regular expression rather than a
  * division. Without them `return /['"]/.test(x)` reads as a division,
@@ -160,31 +160,6 @@ const MASK_SENTINEL = '\uE000';
 const MASKED_LITERAL = /^\uE000(\d+)\uE000$/;
 /** The `stories` array of a Storybook config, with its string literals. */
 const STRING_LITERAL = /(['"])((?:\\.|(?!\1)[^\\])*)\1/g;
-/**
- * A top-level declaration header, enough to find the start of the
- * statement. The bound name is read from the whole statement later,
- * because `const a = 1, title = route.title` and `const { title } =
- * route` bind names this header alone cannot enumerate.
- */
-const DECLARATION =
-	/^(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?(function\*?|class|interface|const|let|var|type|enum)\s+\*?(?:[A-Za-z_$][\w$]*|\{|\[)/;
-/** Declaration kinds whose body is the statement's closing brace. */
-const BODY_KINDS = new Set(['function', 'class', 'interface']);
-/** Declaration kinds that can introduce several comma-separated bindings. */
-const MULTI_BINDING_KINDS = new Set(['const', 'let', 'var']);
-/**
- * A top-level statement that rebinds an existing binding, such as
- * `title = route.title;` or `config.title = route.title;`.
- *
- * Blocking only the declaration would leave such an export (`let title;
- * … export { title }`) with a reference set that never mentions the
- * value it was given, so a preview importing it would walk nothing and
- * pass although `route` is really in its graph. The left side may be a
- * member expression; the root binding is the one blocked, because that
- * mutation is what drags `route` into the preview.
- */
-const ASSIGNMENT =
-	/^(?:export\s+)?([A-Za-z_$][\w$]*)\s*(?:\??\.[A-Za-z_$][\w$]*|\[[^\]]*\])*\s*(?:\*\*|>>>?|<<|\?\?|[+\-*/%&|^])?=(?!=)/;
 
 const maskNonCodeLength = (text) => text.replace(/[^\n]/g, ' ');
 
@@ -365,63 +340,7 @@ function literalText(token, literals) {
 	return literals[Number(match[1])] ?? token;
 }
 
-/**
- * The local names an import clause binds. `import { type A, b as c }`
- * binds only `c`; a default import binds its own name.
- */
-function clauseBindings(clause) {
-	const bindings = [];
-	for (const part of clause.split('{')[0].split(',')) {
-		const name = part.trim();
-		if (/^[A-Za-z_$][\w$]*$/.test(name)) bindings.push(name);
-	}
-	const named = clause.match(/\{([\s\S]*)\}/);
-	if (named) {
-		for (const part of named[1].split(',')) {
-			const entry = part.trim();
-			if (entry.length === 0) continue;
-			if (pieces(entry)[0].startsWith('type ')) continue;
-			const local = pieces(entry).at(-1);
-			if (local && /^[A-Za-z_$][\w$]*$/.test(local)) bindings.push(local);
-		}
-	}
-	const namespace = clause.match(/\*\s+as\s+([A-Za-z_$][\w$]*)/);
-	if (namespace) bindings.push(namespace[1]);
-	return [...new Set(bindings)];
-}
-
 const pieces = (entry) => entry.split(/\s+as\s+/).map((piece) => piece.trim());
-
-/**
- * The export names an import clause asks the target module for.
- *
- * `import { A as b }` asks the seam for `A`, not for the local name
- * `b`: the seam's declaration map is keyed by the names the module
- * exports, and requesting the local alias would find no declaration
- * and silently walk nothing. A default or namespace import can reach
- * any export, so it is flagged `all` and the target is walked
- * conservatively (every non-handler edge) instead of narrowing the
- * request to a local name that does not exist in the seam.
- */
-function clauseRequests(clause) {
-	const requests = [];
-	const namespace = /\*\s+as\s+[A-Za-z_$][\w$]*/.test(clause);
-	// `Foo, { … }` / `Foo, * as ns` / `Foo` binds the default export.
-	const defaultPart = clause.split('{')[0].split(',')[0].trim();
-	let all = namespace || /^[A-Za-z_$][\w$]*$/.test(defaultPart);
-	const named = clause.match(/\{([\s\S]*)\}/);
-	if (named) {
-		for (const part of named[1].split(',')) {
-			const entry = part.trim();
-			if (entry.length === 0) continue;
-			const imported = pieces(entry)[0];
-			if (imported === 'type' || imported.startsWith('type ')) continue;
-			if (imported === 'default') all = true;
-			else if (/^[A-Za-z_$][\w$]*$/.test(imported)) requests.push(imported);
-		}
-	}
-	return { requests: [...new Set(requests)], all };
-}
 
 /**
  * Whether an import clause ships runtime code at all.
@@ -499,9 +418,7 @@ function parseEdges(masked, literals) {
 			specifier: specifier(match[2]),
 			clause,
 			kind: isTypeOnlyClause(clause) ? 'import-type' : 'import',
-			bindings: clauseBindings(clause),
 			start: match.index ?? 0,
-			...clauseRequests(clause),
 		});
 	}
 	for (const match of masked.matchAll(IMPORT_SIDE_EFFECT)) {
@@ -509,9 +426,6 @@ function parseEdges(masked, literals) {
 			specifier: specifier(match[1]),
 			clause: '',
 			kind: 'import-side-effect',
-			bindings: [],
-			requests: [],
-			all: false,
 			start: match.index ?? 0,
 		});
 	}
@@ -520,9 +434,6 @@ function parseEdges(masked, literals) {
 			specifier: specifier(match[1] ?? match[2]),
 			clause: '',
 			kind: 'import-dynamic',
-			bindings: [],
-			requests: [],
-			all: false,
 			start: match.index ?? 0,
 		});
 	}
@@ -533,11 +444,6 @@ function parseEdges(masked, literals) {
 			specifier: specifier(match[3]),
 			clause,
 			kind: typeOnly ? 'export-type' : 'export-from',
-			// A named re-export (`export { safe } from './load'`) asks the
-			// target for exactly those exports, so a barrel does not widen
-			// a seam's request to all of its exports. Only `export *` (and
-			// `export * as ns`) can reach any of them.
-			...(typeOnly ? { bindings: [], requests: [], all: false } : clauseRequests(clause)),
 			start: match.index ?? 0,
 		});
 	}
@@ -548,8 +454,8 @@ const isTypeOnlyEdge = (edge) => edge.kind === 'import-type' || edge.kind === 'e
 
 /**
  * A server-function seam: a module that declares a TanStack Start
- * server function. Only the exports the preview imports reach the
- * browser, and their `.handler(…)` bodies only run on the Worker.
+ * server function. Its `.handler(…)` bodies only run on the Worker,
+ * so they — and only they — are outside the preview graph.
  */
 function isServerFnSeam(edges) {
 	return edges.some(
@@ -640,313 +546,6 @@ function findHandlerRanges(masked, factoryNames = ['createServerFn', 'createServ
 }
 
 /**
- * The declaration name behind each local `export { local as exported }`.
- *
- * A seam module is keyed by its *declarations*, while an importer asks
- * for the *exported* name: `const routeTitle = route.title; export {
- * routeTitle as title }` must resolve `title` to `routeTitle`, or the
- * request finds no block and the export looks client-reachable when it
- * is not (or the reverse). `export … from` is a re-export of another
- * module's declaration and is deliberately not mapped here.
- */
-function exportAliasMap(masked) {
-	const aliases = new Map();
-	for (const match of masked.matchAll(EXPORT_LOCAL_CLAUSE)) {
-		if (/^from\b/.test(masked.slice(match.index + match[0].length).trimStart())) continue;
-		for (const part of match[1].split(',')) {
-			const entry = part.trim();
-			if (entry.length === 0) continue;
-			const [local, exported] = pieces(entry);
-			if (!exported) continue;
-			if (!/^[A-Za-z_$][\w$]*$/.test(local)) continue;
-			aliases.set(exported, local);
-		}
-	}
-	return aliases;
-}
-
-/** Split `text` on a top-level delimiter, keeping each part's offset. */
-function splitTopLevelWithOffsets(text, delimiter) {
-	const parts = [];
-	let depth = 0;
-	let start = 0;
-	for (let i = 0; i < text.length; i++) {
-		const char = text[i];
-		if (char === '(' || char === '[' || char === '{') depth += 1;
-		else if (char === ')' || char === ']' || char === '}') depth = Math.max(0, depth - 1);
-		else if (char === delimiter && depth === 0) {
-			parts.push({ text: text.slice(start, i), offset: start });
-			start = i + 1;
-		}
-	}
-	parts.push({ text: text.slice(start), offset: start });
-	return parts;
-}
-
-/** Drop a top-level `= initializer` from a binding pattern. */
-function stripDefault(pattern) {
-	let depth = 0;
-	for (let i = 0; i < pattern.length; i++) {
-		const char = pattern[i];
-		if (char === '(' || char === '[' || char === '{') depth += 1;
-		else if (char === ')' || char === ']' || char === '}') depth = Math.max(0, depth - 1);
-		else if (char === '=' && depth === 0) return pattern.slice(0, i);
-	}
-	return pattern;
-}
-
-/** The closing index of the pattern that starts `text`, or -1. */
-function leadingPatternEnd(text) {
-	const open = text[0];
-	const close = open === '{' ? '}' : ']';
-	let depth = 0;
-	for (let i = 0; i < text.length; i++) {
-		if (text[i] === open) depth += 1;
-		else if (text[i] === close) {
-			depth -= 1;
-			if (depth === 0) return i;
-		}
-	}
-	return -1;
-}
-
-/**
- * Every name a binding pattern introduces.
- *
- * `const unused = 1, title = route.title` binds both declarators, and
- * `const { title, body: { x } } = route` binds `title` and `x`. Naming
- * only the first identifier would leave the export `title` without a
- * block, so a preview that imports it would walk nothing and pass even
- * though `route` is in its graph. A type annotation after the pattern
- * (`const { title }: Route = route`) is ignored.
- */
-function patternBindings(pattern) {
-	const text = stripDefault(pattern).trim();
-	if (!text.startsWith('{') && !text.startsWith('[')) {
-		const identifier = /^[A-Za-z_$][\w$]*/.exec(text);
-		return identifier ? [identifier[0]] : [];
-	}
-	const close = leadingPatternEnd(text);
-	if (close === -1) return [];
-	const entries = splitTopLevelWithOffsets(text.slice(1, close), ',');
-	if (text.startsWith('[')) {
-		return entries.flatMap(({ text: entry }) => {
-			const part = entry.trim();
-			if (part.length === 0) return [];
-			return patternBindings(part.startsWith('...') ? part.slice(3) : part);
-		});
-	}
-	return entries.flatMap(({ text: entry }) => {
-		const part = entry.trim();
-		if (part.length === 0) return [];
-		if (part.startsWith('...')) return patternBindings(part.slice(3));
-		const [head, ...rest] = splitTopLevelWithOffsets(part, ':');
-		if (rest.length > 0) {
-			return patternBindings(rest.map((piece) => piece.text).join(':'));
-		}
-		return patternBindings(head.text);
-	});
-}
-
-/**
- * The bindings a top-level declaration statement introduces.
- *
- * A `const`/`let`/`var` statement is scanned per comma-separated
- * declarator for its names, but every name shares the whole statement's
- * reference set: a preview that imports any of them evaluates the
- * statement, so over-approximating is the safe direction for a gate.
- */
-function declarationBindings(kind, statement) {
-	if (!MULTI_BINDING_KINDS.has(kind)) {
-		const name =
-			/^(?:export\s+(?:default\s+)?)?(?:declare\s+)?(?:async\s+)?(?:function\*?|class|interface|const|let|var|type|enum)\s+\*?([A-Za-z_$][\w$]*)/.exec(
-				statement,
-			);
-		return name ? [{ names: [name[1]], text: statement, offset: 0 }] : [];
-	}
-	const keyword = /\b(?:const|let|var)\b/.exec(statement);
-	if (!keyword) return [];
-	const bodyStart = keyword.index + keyword[0].length;
-	const names = splitTopLevelWithOffsets(statement.slice(bodyStart), ',').flatMap(({ text }) =>
-		patternBindings(text),
-	);
-	if (names.length === 0) return [];
-	return [{ names: [...new Set(names)], text: statement, offset: 0 }];
-}
-
-/** The bindings a top-level assignment rebinds (`title = route.title`). */
-function assignmentBindings(statement) {
-	const match = ASSIGNMENT.exec(statement);
-	return match ? [{ names: [match[1]], text: statement, offset: 0 }] : [];
-}
-
-/**
- * The identifiers a statement reads as values, with their positions.
- *
- * A property key (`{ health: 'ok' }`) and a member name (`route.title`)
- * are not references to a binding, and counting them as such invents a
- * dependency: `export const meta = { health: 'ok' }` next to an
- * imported `health` would drag that import into a preview that never
- * reads it, and fail a legitimate story. A shorthand property
- * (`{ health }`) really is a value read, so only the `key:` form and the
- * member position are dropped.
- *
- * The object-literal test is deliberately one-sided: `{` after `=`,
- * `(`, `,`, `:`, `[`, `?` or `return` opens an object literal, and
- * anything else (an arrow body, a block) keeps every identifier. A
- * missed key only over-approximates the reference set, which is the
- * safe direction for a gate; a key wrongly dropped would hide an edge.
- */
-function valueReferenceMatches(text) {
-	const matches = [];
-	const objectAt = [];
-	let depth = 0;
-	let lastSignificant = '';
-	let lastWord = '';
-	let i = 0;
-	while (i < text.length) {
-		const char = text[i];
-		if (/\s/.test(char)) {
-			i += 1;
-			continue;
-		}
-		if (char === '{') {
-			depth += 1;
-			const opensObject =
-				'=(,:[?'.includes(lastSignificant) || lastSignificant === '(' || lastWord === 'return';
-			objectAt.push(opensObject ? depth : -1);
-			lastSignificant = '{';
-			lastWord = '';
-			i += 1;
-			continue;
-		}
-		if (char === '}') {
-			objectAt.pop();
-			depth -= 1;
-			lastSignificant = '}';
-			lastWord = '';
-			i += 1;
-			continue;
-		}
-		if (/[A-Za-z_$]/.test(char)) {
-			const name = /^[A-Za-z_$][\w$]*/.exec(text.slice(i))[0];
-			const isMemberName = lastSignificant === '.';
-			const next = text.slice(i + name.length).trimStart()[0] ?? '';
-			const isKey = next === ':' && objectAt.at(-1) === depth;
-			if (!isMemberName && !isKey) matches.push({ name, index: i });
-			lastSignificant = name[name.length - 1];
-			lastWord = name;
-			i += name.length;
-			continue;
-		}
-		lastSignificant = char;
-		lastWord = '';
-		i += 1;
-	}
-	return matches;
-}
-
-/**
- * Map each top-level statement to the identifiers it references
- * outside every handler range — the "what this symbol drags into the
- * preview" set used for a seam module — and record the range each
- * statement occupies, so an edge with no binding of its own can still
- * be attributed to the declaration that contains it.
- */
-function topLevelBlocks(masked, handlerRanges) {
-	const blocks = new Map();
-	const ranges = [];
-	let depth = 0;
-	let start = -1;
-	let kind = null;
-	let i = 0;
-
-	const close = (end) => {
-		if (start === -1) return;
-		const statement = masked.slice(start, end);
-		const bindings =
-			kind === 'assign' ? assignmentBindings(statement) : declarationBindings(kind, statement);
-		const names = [...new Set(bindings.flatMap((binding) => binding.names))];
-		if (names.length > 0) ranges.push({ start, end, names });
-		for (const binding of bindings) {
-			const refs = new Set();
-			for (const match of valueReferenceMatches(binding.text)) {
-				const position = start + binding.offset + match.index;
-				if (handlerRanges.some((range) => position >= range.start && position < range.end)) {
-					continue;
-				}
-				refs.add(match.name);
-			}
-			for (const name of binding.names) {
-				const existing = blocks.get(name);
-				if (existing) for (const ref of refs) existing.refs.add(ref);
-				else blocks.set(name, { name, refs });
-			}
-		}
-		start = -1;
-		kind = null;
-	};
-
-	while (i < masked.length) {
-		const char = masked[i];
-		if (start === -1) {
-			if (char === ' ' || char === '\t' || char === '\r' || char === '\n' || char === ';') {
-				i += 1;
-				continue;
-			}
-			const statement = masked.slice(i, i + 400);
-			const match = DECLARATION.exec(statement);
-			if (match) {
-				start = i;
-				kind = match[1];
-			} else if (ASSIGNMENT.test(statement)) {
-				start = i;
-				kind = 'assign';
-			}
-		}
-		if (char === '(' || char === '[' || char === '{') {
-			depth += 1;
-		} else if (char === ')' || char === ']' || char === '}') {
-			depth -= 1;
-			if (depth === 0 && start !== -1 && BODY_KINDS.has(kind)) close(i + 1);
-		} else if (char === ';' && depth === 0) {
-			close(i + 1);
-		} else if (char === '\n' && depth === 0 && start !== -1) {
-			// Semicolon-less statements: the next top-level statement
-			// ends this one.
-			const rest = masked.slice(i + 1);
-			const offset = rest.length - rest.trimStart().length;
-			const next = rest.slice(offset, offset + 400);
-			if (DECLARATION.test(next) || ASSIGNMENT.test(next) || /^(?:export|import)\b/.test(next)) {
-				close(i + 1);
-			}
-		}
-		i += 1;
-	}
-	close(masked.length);
-	return { blocks, ranges };
-}
-
-/**
- * The names a seam module's client actually pulls in: the imported
- * export names, plus every local declaration they reference (a wrapper
- * that delegates to a same-file helper drags that helper in too).
- */
-function clientReachableNames(module_, requested) {
-	const reachable = new Set();
-	const queue = requested.map((name) => module_.exportAliases.get(name) ?? name);
-	while (queue.length > 0) {
-		const name = queue.shift();
-		if (reachable.has(name)) continue;
-		reachable.add(name);
-		const block = module_.blocks.get(name);
-		if (!block) continue;
-		for (const ref of block.refs) if (!reachable.has(ref)) queue.push(ref);
-	}
-	return reachable;
-}
-
-/**
  * A dynamic `import()` the Worker alone evaluates: the call sits inside
  * a `.handler(…)` body, which never runs in the preview. The edge is
  * still a real server-only dependency, so it must not turn a legitimate
@@ -961,40 +560,28 @@ function isHandlerConfinedEdge(edge, handlerRanges) {
 }
 
 /**
- * A dynamic `import()` that only a top-level declaration the preview
- * never reaches holds.
+ * The edges of a module that the preview graph contains.
  *
- * A dynamic import binds no name, so the request cannot narrow it the
- * way it narrows a static import. Its position still can: when the call
- * sits inside a declaration, the preview evaluates that declaration
- * only if it reaches the name it binds, so `const unused = () =>
- * import('…')` is not a client edge for a story that imports a
- * different export. An `import()` outside every declaration runs when
- * the module loads and stays one.
+ * The rule is POSITION, not reachability. A module-level edge —
+ * `import { env } from 'cloudflare:workers'`, a side-effect import, an
+ * `export … from` re-export, or a dynamic `import()` the module
+ * evaluates while loading — runs when the module is loaded, so it is
+ * in the preview graph whichever export the story asked that module
+ * for. Narrowing it by the bindings a story actually imports is
+ * unsound, and unsound in the direction this gate exists to prevent:
+ * `src/home/reactions/load.ts` binds `env` at module level while a
+ * story imports only the export types, and the preview still has to
+ * load the Workers virtual module.
+ *
+ * The one exception is positional too: a dynamic `import()` whose call
+ * site sits inside a `.handler(…)` body never runs in the preview,
+ * because the start compiler plugin is what removes that body from the
+ * client build. See `isHandlerConfinedEdge`.
  */
-function isUnreachedDeclarationEdge(module_, edge, reachable) {
-	if (edge.kind !== 'import-dynamic') return false;
-	const range = module_.declarationRanges.find(
-		(candidate) => edge.start >= candidate.start && edge.start < candidate.end,
-	);
-	if (!range) return false;
-	return !range.names.some((name) => reachable.has(name));
-}
-
-/** The edges of a seam module that a preview with `requested` reaches. */
-function clientReachableEdges(module_, requested) {
-	const runtime = module_.edges.filter(
+function clientReachableEdges(module_) {
+	return module_.edges.filter(
 		(edge) => !isTypeOnlyEdge(edge) && !isHandlerConfinedEdge(edge, module_.handlerRanges),
 	);
-	if (!module_.seam || requested === null || requested.length === 0) return runtime;
-	const reachable = clientReachableNames(module_, requested);
-	return runtime.filter((edge) => {
-		// A side-effect import or a re-export is module surface: it
-		// runs / ships whether or not an export is used.
-		if (edge.kind === 'import-side-effect' || edge.kind === 'export-from') return true;
-		if (edge.bindings.length > 0) return edge.bindings.some((name) => reachable.has(name));
-		return !isUnreachedDeclarationEdge(module_, edge, reachable);
-	});
 }
 
 /** Parse one module's source into the walk's view of it. */
@@ -1003,15 +590,7 @@ function analyzeModule(source) {
 	const edges = parseEdges(masked, literals);
 	const seam = isServerFnSeam(edges);
 	const handlerRanges = seam ? findHandlerRanges(masked, seamFactoryNames(edges)) : [];
-	const walk = seam ? topLevelBlocks(masked, handlerRanges) : { blocks: new Map(), ranges: [] };
-	return {
-		edges,
-		seam,
-		handlerRanges,
-		blocks: walk.blocks,
-		declarationRanges: walk.ranges,
-		exportAliases: exportAliasMap(masked),
-	};
+	return { edges, seam, handlerRanges };
 }
 
 /**
@@ -1149,9 +728,8 @@ function inspectStory(root, srcRoot, storyFile) {
 	const externalModules = new Set();
 	const modules = new Set();
 	const visited = new Set();
-	const seamRequests = new Set();
 	const cache = new Map();
-	const queue = [{ file: storyFile, path: [], requested: null }];
+	const queue = [{ file: storyFile, path: [] }];
 
 	const analyze = (file) => {
 		const cached = cache.get(file);
@@ -1162,20 +740,15 @@ function inspectStory(root, srcRoot, storyFile) {
 	};
 
 	while (queue.length > 0) {
-		const { file, path, requested } = queue.shift();
-		// A seam module is walked once per distinct set of requested
-		// exports, because a different import really does pull a
-		// different part of the module into the preview.
-		const key = requested === null ? file : `${file}\u0000${[...requested].sort().join(',')}`;
-		const seen = requested === null ? visited : seamRequests;
-		if (seen.has(key)) continue;
-		seen.add(key);
+		const { file, path } = queue.shift();
+		if (visited.has(file)) continue;
+		visited.add(file);
 		modules.add(file);
 
 		const fromRel = toPosix(relative(root, file));
 		const module_ = analyze(file);
 
-		for (const edge of clientReachableEdges(module_, requested)) {
+		for (const edge of clientReachableEdges(module_)) {
 			if (isTypeOnlyEdge(edge)) continue;
 			const label = `${fromRel} -> ${edge.specifier}`;
 
@@ -1208,11 +781,7 @@ function inspectStory(root, srcRoot, storyFile) {
 					externalModules.add(toPosix(relative(root, resolved)));
 					continue;
 				}
-				queue.push({
-					file: resolved,
-					path: [...path, label],
-					requested: edge.all ? null : edge.requests,
-				});
+				queue.push({ file: resolved, path: [...path, label] });
 				continue;
 			}
 
@@ -1236,14 +805,7 @@ function inspectStory(root, srcRoot, storyFile) {
 			if (targetModule.seam) {
 				seams.push({ edge: label, via: [...path, label] });
 			}
-			// The target is a seam: pass the *export* names the importer
-			// asks for (not the local aliases), and let a default /
-			// namespace import walk every export conservatively.
-			queue.push({
-				file: resolved,
-				path: [...path, label],
-				requested: edge.all ? null : edge.requests,
-			});
+			queue.push({ file: resolved, path: [...path, label] });
 		}
 	}
 
@@ -1381,7 +943,11 @@ function main(argv) {
 	}
 
 	if (subjects.length === 0) {
-		process.stderr.write('[storybook:ownership:check] no story file matches .storybook/main.ts\n');
+		process.stderr.write(
+			notApplicableSubjects.length > 0
+				? `[storybook:ownership:check] every story matching .storybook/main.ts lives inside a foreign boundary (${notApplicableSubjects.length} excluded), so there is no subject to walk.\nThe foreign boundaries are this rule's TARGETS, not its subjects; move the story next to the obligation that owns it.\n`
+				: '[storybook:ownership:check] no story file matches .storybook/main.ts\n',
+		);
 		return 2;
 	}
 
@@ -1407,7 +973,8 @@ function main(argv) {
 		})),
 		notApplicableSubjects,
 		knownLimitations: [
-			'server-function seam: inside a createServerFn(…).handler(…) body the walk stops, because that code only runs on the Worker. Everything the preview imports from a seam module — including its non-handler exports and their own dependencies — IS walked, so a boundary reached through a client-reachable export is still reported.',
+			"server-function seam: the walk stops inside a createServerFn(…).handler(…) body, because only the start compiler plugin removes it from the client build. Every module-level edge of the seam is walked — a module-level `import { env } from 'cloudflare:workers'` runs when the module loads, so a story that imports only the export types still has to load the virtual module and still fails. Server-only bindings must be resolved with `await import(…)` inside the handler body (see src/home/reactions/load.ts).",
+			'only the `~/` alias (the one `vite.config.ts` / `.storybook/main.ts` declare) is resolved. Any other alias-shaped specifier (`@/…`) reads as an external package and is a terminal leaf, so a boundary reached through a newly added alias would pass silently; add the alias here when one is added to the bundler config.',
 			'the walk reads ES import syntax, not JSX text: a story that renders an import example as literal JSX children (`<code>import … from …</code>`) instead of a string still needs a comment, not raw text.',
 			`${WORKER_VIRTUAL_MODULES.size} Workers virtual module (${[...WORKER_VIRTUAL_MODULES].join(', ')}) cannot resolve in a browser preview at all — this check treats any direct or transitive edge to it as a violation.`,
 			'a specifier that resolves outside src/ is a terminal leaf only when it is generated output (`styled-system/`) or an asset; a source file outside src/ is walked like any other module. When such a path does not exist it is printed as `external` instead of failing the walk, so a stale generated path is a documented manual check.',

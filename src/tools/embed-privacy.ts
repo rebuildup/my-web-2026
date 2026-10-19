@@ -105,7 +105,13 @@ export interface ToolPrivacyPurpose {
  * field here that could switch the gate off.
  */
 export interface ToolPrivacyDeclaration {
-	readonly third_party_origins: readonly string[] | undefined;
+	/**
+	 * The origins the framed document may contact. Empty is a written
+	 * declaration ("no third-party contact"); omission is not a default.
+	 * The runtime guard in `evaluateEmbedPrivacy` still refuses a missing
+	 * or non-array value even though the JSON is only cast to this type.
+	 */
+	readonly third_party_origins: readonly string[];
 	readonly purpose?: ToolPrivacyPurpose;
 	/** How the declaration was established (measured from what, when). */
 	readonly basis?: string;
@@ -131,6 +137,7 @@ export interface EmbedPrivacySubject {
 
 export type EmbedPrivacyViolationCode =
 	| 'privacy.declaration-missing'
+	| 'privacy.origins.missing'
 	| 'privacy.origin.invalid'
 	| 'privacy.origin.duplicate'
 	| 'privacy.origin.frame-origin-undeclared'
@@ -150,7 +157,12 @@ export interface EmbedPrivacyVerdict {
 	readonly consent: EmbedConsentMode;
 	/** Normalised, de-duplicated, sorted origins the frame may contact once mounted. */
 	readonly contacts_after_activation: readonly string[];
-	/** Always empty: before activation the host document names no third-party origin. */
+	/**
+	 * Always empty: the host document requests / references no third-party
+	 * origin before the visitor activates the consent notice. (The declared
+	 * list is a statement about the frame's future contacts, not a contact
+	 * the host itself makes.)
+	 */
 	readonly contacts_before_activation: readonly string[];
 	/** `true` when the frame document itself is served by a third party. */
 	readonly frame_is_third_party: boolean;
@@ -306,11 +318,25 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 		);
 	}
 
+	// Omission is not a default. A present declaration whose
+	// `third_party_origins` is absent, null or not an array is a refusal,
+	// not an empty contact list: `privacy: {}` used to derive
+	// `not_required` and mount the frame eagerly (Issue #498 review).
+	const origins = declaration?.third_party_origins;
+	const hasOriginList = Array.isArray(origins);
+	if (declaration && !hasOriginList) {
+		violations.push(
+			violation(
+				slug,
+				'privacy.origins.missing',
+				`${slug}: delivery.privacy.third_party_origins must be an array (and may be empty) once delivery.privacy is present`,
+			),
+		);
+	}
+
 	const contacts: string[] = [];
 	const seen = new Set<string>();
-	for (const entry of Array.isArray(declaration?.third_party_origins)
-		? (declaration?.third_party_origins ?? [])
-		: []) {
+	for (const entry of hasOriginList ? origins : []) {
 		const normalized = normalizeThirdPartyOrigin(entry);
 		if (normalized === null) {
 			violations.push(
@@ -381,7 +407,10 @@ export function evaluateEmbedPrivacy(subject: EmbedPrivacySubject): EmbedPrivacy
 	// require the visitor to activate the load. Only a same-origin
 	// frame that declares no contact may mount without asking.
 	const consent: EmbedConsentMode =
-		frame_is_third_party || subject.frame_origin === 'unresolved' || contacts.length > 0
+		frame_is_third_party ||
+		subject.frame_origin === 'unresolved' ||
+		contacts.length > 0 ||
+		(declaration !== undefined && !hasOriginList)
 			? CONSENT_MODE_CLICK_TO_LOAD
 			: CONSENT_MODE_NOT_REQUIRED;
 

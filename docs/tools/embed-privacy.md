@@ -69,9 +69,15 @@ it over every manifest entry with the **same function** the
 `/tools/<slug>` loader runs per request.
 
 An empty `third_party_origins` array is a **written declaration** that
-the Tool contacts nobody — not an omission. `host_disabled` and
-`not_integrable_yet` entries are not policed, because nobody frames
-them; a Tool that graduates must declare its contacts first.
+the Tool contacts nobody — not an omission. The inverse also holds: a
+`delivery.privacy` block whose `third_party_origins` is missing, `null`
+or not an array is a violation (`privacy.origins.missing`), not an
+empty list. Before that rule, `privacy: {}` derived
+`consent: not_required` and mounted the frame eagerly, so a manifest
+could switch the gate off by leaving the field out.
+`host_disabled` and `not_integrable_yet` entries are not policed,
+because nobody frames them; a Tool that graduates must declare its
+contacts first.
 
 ### 2. Consent is derived, never declared
 
@@ -79,7 +85,7 @@ There is deliberately **no** `consent_mode` field. The host computes
 it:
 
 ```text
-click_to_load  ⇔  the frame is cross-origin  OR  the frame src could not be resolved  OR  third_party_origins is non-empty
+click_to_load  ⇔  the frame is cross-origin  OR  the frame src could not be resolved  OR  third_party_origins is non-empty  OR  the declaration has no origin list
 not_required   ⇔  otherwise
 ```
 

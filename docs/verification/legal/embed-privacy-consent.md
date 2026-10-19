@@ -78,3 +78,12 @@ The contract these columns are measuring is described in
    none is registered as an `external_exception` Tool. If one is
    added, the same contract gates it, and the report is the surface
    that will show it.
+6. **The framed document is also directly reachable at its own
+   artifact URL** (`/tools/<slug>/<artifact_path>/...`, currently
+   `/tools/<slug>/app/**`). The consent gate protects the path a
+   visitor takes through the Tool page; it does not make the artefact
+   itself private, and a visitor who opens that URL directly mounts
+   the document without the notice. Closing that would mean serving
+   the artefact only through a gated route (or an authenticated
+   origin), which is a delivery-contract change, not a wording change
+   — recorded here as an open risk rather than claimed as solved.

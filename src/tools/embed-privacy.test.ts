@@ -143,6 +143,25 @@ describe('embed privacy — hostile fixtures are refused', () => {
 		expect(codes(okDelivery({ privacy: undefined }))).toContain('privacy.declaration-missing');
 	});
 
+	// Omission is not a default. Before this guard, `privacy: {}` produced
+	// an empty contact list, no violation and `consent: not_required`, so a
+	// manifest could silently mount a frame eagerly by leaving the list out.
+	it('a declaration without an origin list is refused and still asks for consent', () => {
+		for (const privacy of [{}, { third_party_origins: null }, { third_party_origins: 'https://a.example.invalid' }]) {
+			const verdict = evaluate(okDelivery({ privacy }));
+			expect(verdict.violations.map((violation) => violation.code)).toContain(
+				'privacy.origins.missing',
+			);
+			expect(verdict.consent).toBe(CONSENT_MODE_CLICK_TO_LOAD);
+		}
+	});
+
+	it('an explicit empty list is still the one way to declare no contact', () => {
+		const verdict = evaluate(okDelivery({ privacy: { third_party_origins: [] } }));
+		expect(verdict.violations).toEqual([]);
+		expect(verdict.consent).toBe(CONSENT_MODE_NOT_REQUIRED);
+	});
+
 	it('a non-https origin is refused', () => {
 		expect(
 			codes(okDelivery({ privacy: { third_party_origins: ['http://insecure.example.invalid'] } })),

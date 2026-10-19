@@ -84,11 +84,6 @@ const SECRET_PATTERNS = [
 	/^[\w.+-]+@[\w-]+\.[\w.]+$/,
 ];
 
-/** The adapters that decide a verdict, by code. */
-const VERDICT_BY_CODE = new Map(
-	Object.entries(SCOPE_REFUSAL_CODE).map(([key, code]) => [code, key]),
-);
-
 /** Verdict names, for the structural check on the ledger's expectations. */
 const VERDICTS = new Set([
 	'approved',
@@ -420,7 +415,6 @@ function checkConnections(manifest, root, errors) {
 			ageDays: review.ageDays,
 			verdict: review.verdict,
 			code: review.code,
-			refusal: VERDICT_BY_CODE.get(review.code) ?? review.code,
 			unapproved: review.unapproved,
 			missing: review.missing,
 			reauth: review.reauth,

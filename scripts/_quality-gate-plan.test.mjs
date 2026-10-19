@@ -114,6 +114,7 @@ const EXPECTED_FAST_PLAN = [
 	'pnpm run app:icons:check',
 	'pnpm run release:gate:check',
 	'pnpm run tools:artifact:check',
+	'pnpm run assets:license:check',
 ];
 
 describe('runPlan', () => {
@@ -325,9 +326,13 @@ describe('the repository plan', () => {
 		// Pin the tail explicitly: `tools:artifact:check` landed at the END of
 		// the merge-base chain (after `release:gate:check`), so the failure
 		// path stops after every other fast gate exactly as it used to.
-		assert.deepEqual(plan('fast').slice(-2), [
+		// Issue #497 appended `assets:license:check` AFTER that merge-base
+		// tail rather than before it, so every historical step keeps the
+		// position — and therefore the failure path — it already had.
+		assert.deepEqual(plan('fast').slice(-3), [
 			'pnpm run release:gate:check',
 			'pnpm run tools:artifact:check',
+			'pnpm run assets:license:check',
 		]);
 	});
 

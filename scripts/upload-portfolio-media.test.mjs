@@ -80,7 +80,7 @@ describe('contentTypeFromExt', () => {
 		assert.equal(contentTypeFromExt('bar.jpg'), 'image/jpeg');
 		assert.equal(contentTypeFromExt('bar.jpeg'), 'image/jpeg');
 		assert.equal(contentTypeFromExt('baz.gif'), 'image/gif');
-		assert.equal(contentTypeFromExt('qux.svg'), 'image/svg+xml');
+		assert.equal(contentTypeFromExt('qux.avif'), 'image/avif');
 	});
 
 	it('maps video extensions to video/* MIME types', () => {
@@ -88,9 +88,12 @@ describe('contentTypeFromExt', () => {
 		assert.equal(contentTypeFromExt('clip.webm'), 'video/webm');
 	});
 
-	it('falls back to application/octet-stream for unknown extensions', () => {
-		assert.equal(contentTypeFromExt('foo.xyz'), 'application/octet-stream');
-		assert.equal(contentTypeFromExt('noext'), 'application/octet-stream');
+	it('refuses types the public delivery route would refuse', () => {
+		// `src/http/media/router.ts` does not serve SVG (active content)
+		// or octet-stream, so the migration must not upload them.
+		assert.equal(contentTypeFromExt('qux.svg'), null);
+		assert.equal(contentTypeFromExt('foo.xyz'), null);
+		assert.equal(contentTypeFromExt('noext'), null);
 	});
 });
 

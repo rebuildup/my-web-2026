@@ -8,15 +8,15 @@
 | --- | --- |
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
-| External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
+| External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/media`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
 | Declared surfaces | 18 |
 | Publicly reachable surfaces | 11 |
 | Sitemap target URLs | 13 |
 | Publicly reachable URLs (surface + Static Assets) | 18 |
 | External hosts | 32 |
 | First-party hosts | 0 |
-| Approved transition | 18 finding(s) |
-| Verdict of the approved transition | **review** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -84,9 +84,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (1)
+### Added public URLs (0)
 
-- `/projects/dotfiles`
+- (none)
 
 ### Removed public URLs (0)
 
@@ -198,22 +198,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-launcher-agent
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#decisions-and-research
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#layout
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#principles
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0001.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0002.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0003.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0004.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0005.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md
-- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/pc-setup
-- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/projects/dotfiles
-- **WARN** `W004 public-url-added` Public URL added: /projects/dotfiles
+_No findings._
 

@@ -292,7 +292,8 @@ workflow changes; `pnpm run dep-audit:check -- --enforce` previews the
 exact verdict without editing the reviewed file.
 
 Choosing between the paths, and whether to leave the gate at `audit` at
-all while 18 blocking advisories (3 critical) are outstanding, is an
+all while 1 blocking advisory (`braces`, no patched release) is
+outstanding, is an
 **owner decision**, not a code one: this gate ships `exceptions: []`
 and writes no approval on the owner's behalf.
 

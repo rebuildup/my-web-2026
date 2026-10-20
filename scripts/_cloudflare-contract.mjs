@@ -99,15 +99,18 @@ export const PRODUCTION_CUSTOM_DOMAIN = 'rebuildup.dev';
 export const PRODUCTION_BETTER_AUTH_URL = `https://${PRODUCTION_CUSTOM_DOMAIN}`;
 
 /**
- * Public R2 custom domain for portfolio media (Issue #77 Decision 5).
+ * Public base URL for portfolio media.
  *
- * Media is served directly from R2 rather than through the Worker:
- * zero Worker request cost per image, full CDN cacheability, direct OGP
- * crawlers, natural srcset. The DNS record is attached at the bucket
- * level. Until that attachment is live, `composeMediaUrl` returns `null`
- * and the UI placeholder branch is exercised.
+ * Issue #77 Decision 5 originally pointed this at the R2 custom domain
+ * (`https://media.rebuildup.dev`), where the edge served every key that
+ * exists. Issue #634 moved delivery into the Worker: the URL now carries
+ * the `/media` path, so every composed URL passes the namespace and
+ * publication gates in `src/http/media/router.ts` before a byte is
+ * served. Pointing it back at the custom domain is the break-glass
+ * rollback; retiring that attachment is an operator step recorded in
+ * `docs/security/r2-media-visibility.md`.
  */
-export const PRODUCTION_MEDIA_PUBLIC_BASE_URL = 'https://media.rebuildup.dev';
+export const PRODUCTION_MEDIA_PUBLIC_BASE_URL = `https://${PRODUCTION_CUSTOM_DOMAIN}/media`;
 
 /** Cloudflare zone for the canonical production domain (verified 2026-09-20). */
 export const PRODUCTION_ZONE_ID = '7dde90c8a7be8a304300daa719a7de0a';

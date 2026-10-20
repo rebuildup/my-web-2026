@@ -94,12 +94,18 @@ export const ROBOTS_PATH = '/robots.txt';
  * machine-readable by definition — a crawler has no business indexing
  * any of it, so the namespace is declared once here rather than being
  * re-classified path by path if a future well-known document lands.
+ *
+ * `/media` joined it in Issue #634: it streams gated R2 objects, not
+ * documents. There is no HTML to index, and the path is deliberately
+ * unguessable-by-design (an unapproved key answers the same 404 as a
+ * missing one), so a sitemap entry would be wrong twice over.
  */
 export const EXTERNAL_BOUNDARY_PREFIXES = Object.freeze([
 	'/api/v1',
 	'/webhooks',
 	'/oauth',
 	'/integrations',
+	'/media',
 	ROBOTS_PATH,
 	SITEMAP_PATH,
 	'/.well-known',

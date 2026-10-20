@@ -136,6 +136,7 @@
 		"routes:quality:check": "node scripts/check-route-quality-coverage.mjs",
 		"routes:quality:report": "node scripts/check-route-quality-coverage.mjs --report=.tmp/route-quality-report.html",
 		"r2:visibility:report": "node scripts/make-r2-visibility-verification-report.mjs",
+		"r2:public-delivery:report": "node scripts/make-r2-public-delivery-gate-report.mjs",
 		"security:headers:report": "node scripts/security-header-report.mjs",
 		"security:headers:check": "node scripts/check-security-headers.mjs",
 		"security:disclosure:check": "node scripts/check-security-disclosure.mjs",

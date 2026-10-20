@@ -5,6 +5,7 @@ import { ApiKeyError } from './api-keys/middleware';
 import { authRouter } from './auth/router';
 import { corsMiddleware } from './cors/middleware';
 import { publicErrorResponse } from './errors';
+import { mediaRouter } from './media/router';
 import { sharedCacheIsolation } from './middleware/cache-policy';
 import { csrfGuard } from './middleware/csrf';
 import { requestIdMiddleware } from './middleware/request-id';
@@ -23,6 +24,10 @@ import { seoRouter } from './seo/router';
  *   - `/webhooks/*`     inbound webhooks from external services
  *   - `/oauth/*`        OAuth callback handlers
  *   - `/integrations/*` third-party integration adapters
+ *   - `/media/*`        gated R2 object delivery (Issue #634). A binary
+ *                       stream cannot be produced by the SSR document
+ *                       shell, and the namespace + publication gates
+ *                       must run before an object is served.
  *   - `/sitemap.xml`,   crawler-facing SEO documents. These are not
  *     `/robots.txt`     HTML and cannot be produced by the SSR
  *                        pipeline (TanStack Start 1.168 has no
@@ -117,6 +122,7 @@ externalBoundary.use('/api/v1/*', requestIdMiddleware);
 // cross-site write is rejected before authentication, rate limiting,
 // or D1 are touched.
 externalBoundary.use('/api/v1/*', csrfGuard);
+externalBoundary.route('/', mediaRouter);
 externalBoundary.route('/', authRouter);
 externalBoundary.route('/', seoRouter);
 externalBoundary.route('/', securityTxtRouter);

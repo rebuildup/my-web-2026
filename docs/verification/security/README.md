@@ -31,6 +31,7 @@ of trusting the image.
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
 | [`cloudflare-config-drift.webp`](cloudflare-config-drift.webp) | #480 | `pnpm run cf:config:drift:report` |
 | [`anomaly-monitor-fixture.webp`](anomaly-monitor-fixture.webp) | #481 | `pnpm run verify:anomaly-monitor-screenshot` |
+| [`r2-public-delivery-gate.webp`](r2-public-delivery-gate.webp) | #634 | `pnpm run r2:public-delivery:report` — see [`## r2-public-delivery-gate.webp`](#r2-public-delivery-gatewebp-issue-634) |
 
 ## `anomaly-monitor-fixture.webp` (Issue #481)
 
@@ -734,3 +735,29 @@ Procedure: [`docs/runbook/operator-mfa-verification.md`](../../runbook/operator-
 Issue asked for `operator-mfa-checklist.png`; like every artefact in this
 directory it is committed as WebP (Playwright writes the capture to memory and
 `sharp` re-encodes it, so no PNG intermediate is written).
+
+## `r2-public-delivery-gate.webp` (Issue #634)
+
+`GET /media/<key>` が公開承認済み key だけを配信することを、Worker entry
+からの実リクエスト（workerd pool の `SELF.fetch`）で示した report。
+
+判定と配線の 2 スイートを同時に走らせ、その JSON reporter 出力をそのまま
+描画する。
+
+```bash
+pnpm exec vitest run src/http/media/router.test.ts
+pnpm exec vitest run test/integration/media-delivery.test.ts
+pnpm run r2:public-delivery:report   # -> docs/verification/security/r2-public-delivery-gate.webp
+```
+
+fixture の bucket には拒否ケースごとに object を置いてあるため、404 は
+「object が無い」偶然ではない。draft project の object、連番の隣、
+private namespace、未宣言 namespace、行の無い reaction object、`text/html`
+の承認済み object — すべて実在し、すべて 404 になる。拒否は空 body +
+`no-store` の同一値で、403 も reason code も返さない。
+
+custom domain の edge 配信は本リポジトリのコードを通らないため対象外で、
+残課題として
+[`docs/security/r2-media-visibility.md`](../../security/r2-media-visibility.md#what-the-code-does-not-do)
+に記載している。詳細とロールバックは
+[`r2-public-delivery-gate.md`](r2-public-delivery-gate.md)。

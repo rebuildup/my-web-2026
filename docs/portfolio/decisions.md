@@ -188,6 +188,19 @@ pinned in `wrangler.production.jsonc#vars` so the Worker
 production deployment sees the canonical base URL without
 operator runtime action.
 
+> **Superseded for public delivery by Issue #634.** The custom-domain
+> edge serves every key that exists in the bucket, so an unpublished
+> object is retrievable by anyone who can guess or observe its key.
+> `GET /media/<key>` on the canonical origin now runs the namespace and
+> publication gates before a byte is served, and
+> `MEDIA_PUBLIC_BASE_URL` points at `https://rebuildup.dev/media`.
+> The custom domain remains attached only as the break-glass rollback
+> and its retirement is an operator step — see
+> [`docs/security/r2-media-visibility.md`](../security/r2-media-visibility.md)
+> and [`docs/verification/security/r2-public-delivery-gate.md`](../verification/security/r2-public-delivery-gate.md).
+> The comparison below is kept as the record of why Decision 5 was
+> accepted at the time.
+
 **Context.** #76 ships with `composeMediaUrl()` returning `null`.
 Issue #77 picks the actual public delivery mechanism. Three
 candidates were compared:

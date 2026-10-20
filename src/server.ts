@@ -6,6 +6,7 @@
 // See ADR-0002 for the boundary policy.
 import handler from '@tanstack/react-start/server-entry';
 import { settleSsrDocumentResponse } from './editorial/error-states/ssr-fallback';
+import { isAdminPath } from './http/admin-path';
 import { applyContentSecurityPolicyReportOnly } from './http/content-security-policy';
 import { externalBoundary } from './http/hono';
 import { classifySurface, createAnomalyMonitor } from './http/middleware/anomaly-monitor';
@@ -212,10 +213,14 @@ function applyHtmlCachePolicy(request: Request, response: Response): Response {
 	if (response.headers.has('cache-control')) return response;
 
 	const { pathname } = new URL(request.url);
-	// Exact-prefix-or-/ so `/administrator` cannot inherit the admin rule,
-	// mirroring how `matchesExternalBoundary` guards `/api/v10`.
-	const isAdmin = pathname === '/admin' || pathname.startsWith('/admin/');
-	if (isAdmin) return setCacheHeaders(response, 'no-store', true);
+	// The Admin decision is the router's (Issue #654): static segments
+	// are case-insensitive and the pathname is percent-decoded before
+	// matching, so `/ADMIN/KEYS` and `/%61dmin/keys` render an Admin
+	// document and must carry the Admin cache policy. `isAdminPath`
+	// keeps the exact-prefix-or-`/` shape, so `/administration` and
+	// `//admin` stay out — the same rule `matchesExternalBoundary`
+	// applies to `/api/v10`.
+	if (isAdminPath(pathname)) return setCacheHeaders(response, 'no-store', true);
 
 	// Server-function payloads (`/_serverFn/*`, Issue #460). These are
 	// per-caller by construction — the handlers read the session

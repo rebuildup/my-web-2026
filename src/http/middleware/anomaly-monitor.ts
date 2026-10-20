@@ -44,9 +44,10 @@
  * isolation). The Worker entry (`src/server.ts`) feeds it at the one
  * choke point every Worker-generated response passes, so the Admin
  * surface (served by the SSR pipeline) and the external API (served by
- * Hono) are observed by the same code and the same policy. No new
- * dependency edge is introduced: `http -> logging` already exists and
- * the module itself imports nothing at all.
+ * Hono) are observed by the same code and the same policy. The module
+ * imports one sibling, `../admin-path`, so its surface classification
+ * cannot drift from the cache policy's; both are owned by the same
+ * `http/` obligation, so this is not a new dependency edge.
  *
  * Why the observation is a value
  * ------------------------------
@@ -57,6 +58,11 @@
  * the outbound obligation. Today the only producer is the Worker
  * entry; the fixture proof drives the same module directly.
  */
+
+// `.ts` on purpose: `scripts/request-anomaly-monitor-fixture.mjs` imports
+// this module directly, and Node's ESM resolver does not add extensions
+// (see `tsconfig.json#allowImportingTsExtensions`).
+import { isAdminPath } from '../admin-path.ts';
 
 /** Surfaces whose request rates this repository watches. */
 export const ANOMALY_SURFACES = ['admin', 'external-api'] as const;
@@ -287,9 +293,16 @@ export function signalForStatus(status: number): AnomalySignal | null {
  * the external boundary: `/adminish` and `/api/v10` are neither the
  * Admin surface nor the external API, and counting them under a
  * watched surface would attribute somebody else's traffic to it.
+ *
+ * The Admin half delegates to `../admin-path` (Issue #654) so it uses
+ * the router's matching inputs — case-insensitive static segments and
+ * percent-decoding — rather than the raw pathname. `/ADMIN/KEYS`
+ * renders the Admin screen, so it must be counted as Admin traffic.
+ * The external-API prefixes stay case-sensitive because Hono's router
+ * and `matchesExternalBoundary` are.
  */
 export function classifySurface(pathname: string): AnomalySurface | null {
-	if (pathname === '/admin' || pathname.startsWith('/admin/')) return 'admin';
+	if (isAdminPath(pathname)) return 'admin';
 	if (pathname === '/api/v1' || pathname.startsWith('/api/v1/')) return 'external-api';
 	return null;
 }

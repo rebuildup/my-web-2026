@@ -83,4 +83,43 @@ describe('Worker HTML cache policy (Issue #291)', () => {
 		expect(cacheControl).toBe('no-cache');
 		expect(status).toBe(404);
 	});
+
+	/**
+	 * Router parity (Issue #654).
+	 *
+	 * TanStack Router matches static segments case-insensitively, so
+	 * `/ADMIN/KEYS` renders the same admin gate as `/admin/keys`. The
+	 * cache policy used to compare the raw pathname and fell through to
+	 * the generic HTML branch — a redirect with no `Cache-Control` at
+	 * all. These rows pin the classification to what the router
+	 * actually resolves.
+	 */
+	it.each<[string, number, string]>([
+		['/ADMIN', 307, 'to /admin/login'],
+		['/ADMIN/KEYS', 307, 'to /admin/login'],
+		['/adMin/KEYS', 307, 'to /admin/login'],
+		['/Admin/Login', 200, 'the sign-in form'],
+		['/%61dmin/keys', 307, 'percent-decoded to /admin/keys'],
+		['/%61DMIN/KEYS', 307, 'percent-decoded and case-folded'],
+	])('%s gets the admin no-store policy (%s)', async (path, expectedStatus) => {
+		const { status, cacheControl } = await fetchDocumentHeaders(path);
+		expect(status).toBe(expectedStatus);
+		expect(cacheControl).toBe('no-store');
+	});
+
+	it('keeps lookalike and reserved-separator paths out of the admin rule', async () => {
+		// `/administration` is the 404 surface; `//admin` is a 308
+		// canonicalisation to `/admin`, not an Admin document at that
+		// URL; `/admin%2Fkeys` keeps its encoded slash and the router
+		// answers 404. None may inherit `no-store`.
+		for (const path of ['/administration', '/ADMINISH', '/admin%2Fkeys', '/%2Fadmin']) {
+			const { cacheControl } = await fetchDocumentHeaders(path);
+			expect(cacheControl).toBe('no-cache');
+		}
+		// A response with no content-type is left alone by the generic
+		// branch; the point is that it is not the admin rule.
+		const doubled = await fetchDocumentHeaders('//admin');
+		expect(doubled.status).toBe(308);
+		expect(doubled.cacheControl).not.toBe('no-store');
+	});
 });

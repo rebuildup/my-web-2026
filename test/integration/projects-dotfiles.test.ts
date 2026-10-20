@@ -1,5 +1,5 @@
 import { SELF } from 'cloudflare:test';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 
 /**
  * `/projects/dotfiles` SSR contract (Issue #621).
@@ -14,39 +14,47 @@ const WORKER = 'https://example.com';
 const CANONICAL = 'https://rebuildup.dev/projects/dotfiles';
 
 describe('/projects/dotfiles (Issue #621)', () => {
-	it('answers 200 with the committed introduction', async () => {
-		const response = await SELF.fetch(`${WORKER}/projects/dotfiles`, { redirect: 'manual' });
-		expect(response.status).toBe(200);
-		expect(response.headers.get('content-type')).toContain('text/html');
+	// One SSR request shared by every assertion: the page is static, and
+	// three SELF.fetch calls made this file time out when the integration
+	// suite ran in parallel.
+	let page: { status: number; contentType: string | null; html: string };
 
-		const html = await response.text();
-		expect(html).toContain('<title>dotfiles — rebuildup.dev</title>');
-		expect(html).toContain(`<link rel="canonical" href="${CANONICAL}"/>`);
-		expect(html).toContain('dotfiles と pc-setup の境界');
-		expect(html).toContain('設計原則');
-		expect(html).toContain('リポジトリ構成');
-		expect(html).toContain('エージェントランチャー');
-		expect(html).toContain('エージェント設定の固定');
-		expect(html).toContain('設計判断と調査');
+	beforeAll(async () => {
+		const response = await SELF.fetch(`${WORKER}/projects/dotfiles`, { redirect: 'manual' });
+		page = {
+			status: response.status,
+			contentType: response.headers.get('content-type'),
+			html: await response.text(),
+		};
 	});
 
-	it('renders provenance for the pinned commit', async () => {
-		const response = await SELF.fetch(`${WORKER}/projects/dotfiles`, { redirect: 'manual' });
-		const html = await response.text();
-		expect(html).toContain('source commit');
-		expect(html).toContain('last verified');
-		expect(html).toContain('237af590cca2afe48ccd47ff3f81538d2297899c');
-		expect(html).toContain(
+	it('answers 200 with the committed introduction', () => {
+		expect(page.status).toBe(200);
+		expect(page.contentType).toContain('text/html');
+		expect(page.html).toContain('<title>dotfiles — rebuildup.dev</title>');
+		expect(page.html).toContain(`<link rel="canonical" href="${CANONICAL}"/>`);
+		expect(page.html).toContain('dotfiles と pc-setup の境界');
+		expect(page.html).toContain('設計原則');
+		expect(page.html).toContain('リポジトリ構成');
+		expect(page.html).toContain('エージェントランチャー');
+		expect(page.html).toContain('エージェント設定の固定');
+		expect(page.html).toContain('設計判断と調査');
+	});
+
+	it('renders provenance for the pinned commit', () => {
+		expect(page.html).toContain('README commit');
+		expect(page.html).toContain('README blob');
+		expect(page.html).toContain('last verified');
+		expect(page.html).toContain('237af590cca2afe48ccd47ff3f81538d2297899c');
+		expect(page.html).toContain(
 			'https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md',
 		);
 	});
 
-	it('never publishes the source README as executable markup', async () => {
-		const response = await SELF.fetch(`${WORKER}/projects/dotfiles`, { redirect: 'manual' });
-		const html = await response.text();
-		expect(html).not.toContain('<script>alert');
-		expect(html).not.toContain('javascript:');
-		expect(html).not.toContain('~/.gitconfig');
-		expect(html).not.toContain('## Layout');
+	it('never publishes the source README as executable markup', () => {
+		expect(page.html).not.toContain('<script>alert');
+		expect(page.html).not.toContain('javascript:');
+		expect(page.html).not.toContain('~/.gitconfig');
+		expect(page.html).not.toContain('## Layout');
 	});
 });

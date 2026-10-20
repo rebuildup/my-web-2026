@@ -20,7 +20,8 @@
 
 ## 2. Allowlist
 
-同期が読む URL は次の 3 つだけである（`scripts/_project-introduction.mjs#ALLOWLIST`）。
+同期が読む URL は次の 3 つだけである（[`scripts/_project-introduction.mjs`](../../scripts/_project-introduction.mjs)
+の `PROJECT_SOURCES` / `allowedRequestUrls` / `assertAllowedApiUrl`）。
 
 | 目的 | endpoint |
 | --- | --- |
@@ -51,13 +52,22 @@ section は snapshot に含めない（空の section を捏造しない）。al
 
 | field | 意味 |
 | --- | --- |
-| `source.commitSha` | README を読んだ既定ブランチの commit（40 hex） |
+| `source.commitSha` | 公開している README の内容が最後に変わった commit（40 hex） |
 | `source.committedAt` | その commit の日時 |
-| `source.readmeBlobSha` | `README.md` の blob SHA（40 hex） |
+| `source.readmeBlobSha` | その commit における `README.md` の blob SHA（40 hex） |
 | `source.readmeUrl` | `<canonicalUrl>/blob/<commitSha>/README.md` に固定 |
 | `verifiedAt` | 上流を最後に確認した時刻 |
 | `appliedAt` | snapshot を最後に書き換えた時刻 |
-| `contentDigest` | 抽出結果の SHA-256（`sha256:<64 hex>`） |
+| `contentDigest` | 抽出結果を commit 非依存に正規化した SHA-256（`sha256:<64 hex>`） |
+
+`source.commitSha` は「最後の同期時の既定ブランチ head」ではない。README の blob が
+変わらない間は前回の commit を据え置く。dependabot など README を触らない commit で
+provenance や `appliedAt` が動くことはない。
+
+`contentDigest` は抽出後の text と link target だけを対象にし、URL 中の commit SHA は
+`<readme-commit>` に正規化してから hash する。したがって、既定ブランチが進んだだけ、
+または公開対象外の README 部分だけが変わった場合は digest が変わらず、snapshot を
+書き換えない。公開対象の text または link target が変わったときだけ digest が変わる。
 
 `verifiedAt` は **heartbeat** でも進む。内容が同じでも 7 日ごとに再確認し、
 `verifiedAt` だけを更新する。内容が変わったときは `appliedAt` も更新する。
@@ -70,17 +80,25 @@ section は snapshot に含めない（空の section を捏造しない）。al
 | --- | --- | --- |
 | `current` | `verifiedAt` から 14 日以内 | 通常表示 |
 | `stale` | 14 日超 | 内容は出すが「最新ではない」と明示 |
-| `unavailable` | 上流が private / deleted / archived / ref 不一致 | 最後の内容を出し、「現在公開されていない」と明示 |
+| `unavailable` | 上流が deleted / private / archived / ref 不一致 / README shape 不一致 | 最後の内容を出し、reason ごとの文言で「最新ではない」と明示 |
 | `unknown` | snapshot が無い / 不正 / 日時を解釈できない | 内容を出さず、上流へのリンクだけ出す |
 
-同期の失敗は 2 種類に分ける。
+同期の失敗は 2 種類に分ける。この区別は公開コピーに直結する。
 
-- **transport failure**（timeout / 5xx / rate limit / malformed response）:
-  snapshot を書かない。既存 snapshot の `verifiedAt` が古くなり、やがて `stale` になる。
-  「取得できなかった」ことを「内容が変わった」と混同しない。
+- **transport failure**（timeout / network / 401 / 403 / 429 / 5xx / byte cap 超過 /
+  非 JSON body）: snapshot を書かない。既存 snapshot の `verifiedAt` が古くなり、
+  やがて `stale` になる。一時的な GitHub の rate limit や欠けた body を
+  「リポジトリが公開されなくなった」と公開しないための境界である。
 - **source state failure**（404 / private / archived / default branch 変更 / README shape 変更）:
   `availability: "unavailable"` と理由・観測時刻を記録する。**introduction は保持する**。
   ページは「最後に確認できた内容」として出し、`current` とは表示しない。
+
+`unavailable` の理由語彙は source state だけに限定する
+（`not-found` / `not-public` / `archived` / `ref-mismatch` / `readme-shape`）。
+ページ copy は `src/projects/unavailable-copy.ts` が所有し、
+「現在公開されていない」は `not-found` / `not-public` にだけ使う。
+`archived` / `ref-mismatch` / `readme-shape` はそれぞれ archive・既定ブランチ変更・
+README 構成変更として説明する。未知の理由は「状態を確認できなかった」に倒す。
 
 削除された repository を空の introduction として公開しない。読者に「内容が無い」と
 「取得できない」を区別させるため、`unavailable` は独立した状態である。
@@ -112,14 +130,18 @@ README は **HTML sink に渡さない**。抽出結果は `RichTextNode`（text
 
 `pnpm run projects:check` は次を検証する。
 
-1. schema version と必須 field
+1. schema version と必須 field、file name と `source.id` の一致
 2. `source.id/owner/repo` が `dotfiles/rebuildup/dotfiles`
 3. commit SHA / README blob SHA が 40 hex、README URL が commit に固定
 4. `contentDigest` が実際の introduction と一致
 5. すべての link が安全な scheme
-6. section id が allowlist 内、重複なし
-7. structure が repository root の entry のみ
-8. 公開 boundary の redaction
+6. section id が source ごとの plan（`principles` / `layout` / `agent-launcher` /
+   `agent-configuration` / `decisions-and-research`）内で、重複なし
+7. section の `sourceUrl` が `<readmeUrl>#<anchor>` に完全一致（`blob/main/` や
+   別 commit を拒否）
+8. `structure` が repository root の entry のみ（`/`、`..`、`.`、重複を拒否）
+9. 公開されるすべての text（title / heading / summary / points / structure /
+   related label）が `redactPublicationText` で変化しない
 
 freshness は **advisory**（警告）であり、gate の失敗条件ではない。14 日を超えた snapshot は
 `validate:fast` を赤にしない。古いことは表示状態であって、契約違反ではないため。
@@ -139,9 +161,11 @@ README 全文を stdout に流さない。
 
 ### snapshot を review する
 
-- `source.commitSha` が上流の既定ブランチ head と一致するか。
-- `contentDigest` が変わった理由が README の意味ある変更か（heartbeat だけなら digest は同じ）。
+- `source.commitSha` が「公開対象 README が最後に変わった commit」か（head と一致しなくてよい）。
+- `contentDigest` が変わった理由が公開対象 text / link の意味ある変更か
+  （heartbeat だけ、または head が進んだだけなら digest は同じ）。
 - `availability` が `unavailable` のとき、理由が transport ではなく source state か。
+  rate limit / 5xx / 非 JSON は snapshot を書かないため、ここには現れない。
 - introduction に machine-local path / operator endpoint / 生 HTML が現れていないか。
 
 ### 失敗したとき

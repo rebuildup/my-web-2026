@@ -10,6 +10,7 @@ import type {
 	ProjectIntroductionView,
 	ProjectSourceProvenance,
 } from './types';
+import { availabilityLabel, unavailableNotice } from './unavailable-copy';
 
 export interface DotfilesIntroductionPageProps {
 	readonly view: ProjectIntroductionView;
@@ -46,7 +47,7 @@ const SECTION_META: Readonly<
 const FRESHNESS_LABEL: Readonly<Record<FreshnessState, string>> = {
 	current: 'current — 最終確認から 14 日以内',
 	stale: 'stale — 最終確認から 14 日以上経過',
-	unavailable: 'unavailable — 上流が現在公開されていない',
+	unavailable: 'unavailable — 上流の現在の状態を反映していない',
 	unknown: 'unknown — 鮮度を判定できない',
 };
 
@@ -714,7 +715,7 @@ function FreshnessNotice({ view }: { readonly view: ProjectIntroductionView }) {
 							})}
 						>
 							{freshness === 'unavailable'
-								? '上流リポジトリが現在公開されていないため、最後に確認できた内容を表示しています。最新の内容ではありません。'
+								? unavailableNotice(view.reason)
 								: '最終確認から時間が経過しています。表示している内容は最新ではない可能性があります。'}
 						</p>
 					) : null}
@@ -793,7 +794,7 @@ function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView })
 							fontSize: 'sm',
 						})}
 					>
-						<dt className={css({ color: 'text.muted' })}>source commit</dt>
+						<dt className={css({ color: 'text.muted' })}>README commit</dt>
 						<dd className={css({ margin: '0', color: 'text.default' })}>
 							<a
 								href={commitUrl(snapshot.source)}
@@ -820,6 +821,16 @@ function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView })
 								{snapshot.source.readmePath} @ {snapshot.source.commitSha.slice(0, 7)}
 							</a>
 						</dd>
+						<dt className={css({ color: 'text.muted' })}>README blob</dt>
+						<dd
+							className={css({
+								margin: '0',
+								fontFamily: 'mono',
+								overflowWrap: 'anywhere',
+							})}
+						>
+							{snapshot.source.readmeBlobSha}
+						</dd>
 						<dt className={css({ color: 'text.muted' })}>commit date</dt>
 						<dd className={css({ margin: '0' })}>{formatDate(snapshot.source.committedAt)}</dd>
 						<dt className={css({ color: 'text.muted' })}>last verified</dt>
@@ -828,9 +839,7 @@ function ProvenanceSection({ view }: { readonly view: ProjectIntroductionView })
 						<dd className={css({ margin: '0' })}>{formatDate(snapshot.appliedAt)}</dd>
 						<dt className={css({ color: 'text.muted' })}>availability</dt>
 						<dd className={css({ margin: '0' })}>
-							{snapshot.availability === 'public'
-								? 'public'
-								: `unavailable (${view.reason ?? 'unknown'})`}
+							{snapshot.availability === 'public' ? 'public' : availabilityLabel(view.reason)}
 						</dd>
 					</dl>
 				) : (

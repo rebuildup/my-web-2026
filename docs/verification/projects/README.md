@@ -10,10 +10,10 @@ offline snapshot から表示する。このディレクトリの画像は、そ
 | 対象 | 基準 |
 | --- | --- |
 | snapshot の来歴 | `source.commitSha` / `source.readmeBlobSha` が 40 hex、README URL が commit に固定され、`contentDigest` が introduction と一致する（`pnpm run projects:check`） |
-| allowlist | 同期が読む URL は repository metadata / default-branch commit / `README.md` の 3 つだけ。submodule・Infisical 値・machine-local config は読まない（`scripts/_project-introduction.mjs#ALLOWLIST`） |
+| allowlist | 同期が読む URL は repository metadata / default-branch commit / `README.md` の 3 つだけ。submodule・Infisical 値・machine-local config は読まない（[`scripts/_project-introduction.mjs`](../../../scripts/_project-introduction.mjs) の `PROJECT_SOURCES` / `allowedRequestUrls`） |
 | 表示 | authored な boundary と README の 5 section（設計原則 / リポジトリ構成 / エージェントランチャー / エージェント設定の固定 / 設計判断と調査）が出る。README は text + link のみで、raw Markdown / HTML は出ない |
 | 状態 | `current` / `stale` / `unavailable` / `unknown` を区別し、stale / unavailable は「最新ではない」と明示する。snapshot が無い場合は内容を捏造しない |
-| provenance | page 上に source commit、README blob、最終確認時刻、適用時刻が出る |
+| provenance | page 上に README commit（公開 README が最後に変わった commit）、README blob、最終確認時刻、適用時刻が出る |
 | 公開境界 | `<script>` / `javascript:` / `.gitconfig` / 生の secret 名が配信 HTML に現れない |
 | レイアウト | 390 px 幅で横スクロールしない |
 

@@ -15,8 +15,13 @@
 /** Snapshot shape version accepted by this reader. */
 export const SUPPORTED_SNAPSHOT_SCHEMA_VERSION = 1;
 
-/** A snapshot older than this is displayed as "not current". */
-export const MAX_AGE_HOURS = 14 * 24;
+/**
+ * A snapshot older than this is displayed as "not current".
+ *
+ * `scripts/_project-introduction.test.mjs` asserts this literal matches
+ * the writer's constant, so the gate and the page cannot disagree.
+ */
+export const MAX_AGE_HOURS = 336;
 
 /**
  * One inline run of extracted text, optionally a link.

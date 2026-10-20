@@ -57,15 +57,23 @@ export const SNAPSHOT_SCHEMA_VERSION = 1;
 /** The only host the sync may read from. */
 export const ALLOWED_API_ORIGIN = 'https://api.github.com';
 
-/** Closed failure vocabulary written into an unavailable snapshot. */
+/**
+ * Closed failure vocabulary written into an unavailable snapshot.
+ *
+ * Every entry describes a SOURCE STATE that makes the document
+ * unusable: the repository is gone, private, archived, no longer on the
+ * tracked branch, or the README at the resolved commit cannot be parsed
+ * into the allowlisted shape. Transport problems (timeout, rate limit,
+ * 5xx, truncated or non-JSON body) are not in this list: they are
+ * `ProjectSourceTransportError`, so a transient GitHub failure can
+ * never publish "this repository is not public".
+ */
 export const UNAVAILABLE_REASONS = Object.freeze([
 	'not-found',
 	'not-public',
 	'archived',
 	'ref-mismatch',
-	'rate-limited',
-	'upstream-error',
-	'malformed-response',
+	'readme-shape',
 ]);
 
 /** Upper bounds that keep one response from becoming an unbounded input. */
@@ -239,51 +247,52 @@ async function requestJson(fetchImpl, url, { maxBytes, source, commitSha = null,
 			signal: controller.signal,
 		});
 	} catch (error) {
+		clearTimeout(timer);
 		throw new ProjectSourceTransportError(
 			`request failed: ${error?.name === 'AbortError' ? 'timeout' : 'network'}`,
 		);
+	}
+
+	try {
+		const status = response.status;
+		if (status === 404) {
+			throw new ProjectSourceUnavailable(
+				'not-found',
+				`upstream answered 404 at ${new Date(now).toISOString()}`,
+			);
+		}
+		if (status === 401 || status === 403 || status === 429) {
+			// GitHub returns 404 for a private repository to an anonymous
+			// client. A 401/403/429 reaching here is an authentication
+			// boundary, abuse detection or a rate limit — a TRANSPORT
+			// condition. Treating it as a source state would publish
+			// "this repository is no longer public" on a transient 403.
+			throw new ProjectSourceTransportError(`upstream answered ${status}`);
+		}
+		if (!response.ok) {
+			throw new ProjectSourceTransportError(`upstream answered ${status}`);
+		}
+
+		const declaredLength = Number(response.headers.get('content-length') ?? Number.NaN);
+		if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
+			throw new ProjectSourceTransportError('response exceeds byte cap');
+		}
+		let text;
+		try {
+			text = await response.text();
+		} catch {
+			throw new ProjectSourceTransportError('response body could not be read');
+		}
+		if (Buffer.byteLength(text, 'utf8') > maxBytes) {
+			throw new ProjectSourceTransportError('response exceeds byte cap');
+		}
+		try {
+			return JSON.parse(text);
+		} catch {
+			throw new ProjectSourceTransportError('response is not JSON');
+		}
 	} finally {
 		clearTimeout(timer);
-	}
-
-	const status = response.status;
-	if (status === 404) {
-		throw new ProjectSourceUnavailable(
-			'not-found',
-			`upstream answered 404 at ${new Date(now).toISOString()}`,
-		);
-	}
-	if (status === 401 || status === 403) {
-		// GitHub returns 404 for a private repository to an anonymous
-		// client; a 401/403 reaching here is an authentication boundary
-		// or a rate limit, never "the content is public now".
-		const remaining = response.headers.get('x-ratelimit-remaining');
-		if (status === 403 && remaining === '0') {
-			throw new ProjectSourceUnavailable('rate-limited', 'anonymous rate limit exhausted');
-		}
-		throw new ProjectSourceUnavailable('not-public', `upstream answered ${status}`);
-	}
-	if (!response.ok) {
-		throw new ProjectSourceTransportError(`upstream answered ${status}`);
-	}
-
-	const declaredLength = Number(response.headers.get('content-length') ?? Number.NaN);
-	if (Number.isFinite(declaredLength) && declaredLength > maxBytes) {
-		throw new ProjectSourceUnavailable('malformed-response', 'response exceeds byte cap');
-	}
-	let text;
-	try {
-		text = await response.text();
-	} catch {
-		throw new ProjectSourceTransportError('response body could not be read');
-	}
-	if (Buffer.byteLength(text, 'utf8') > maxBytes) {
-		throw new ProjectSourceUnavailable('malformed-response', 'response exceeds byte cap');
-	}
-	try {
-		return JSON.parse(text);
-	} catch {
-		throw new ProjectSourceUnavailable('malformed-response', 'response is not JSON');
 	}
 }
 
@@ -296,10 +305,7 @@ async function requestJson(fetchImpl, url, { maxBytes, source, commitSha = null,
  */
 export function validateRepositoryPayload(payload, source) {
 	if (!payload || typeof payload !== 'object') {
-		throw new ProjectSourceUnavailable(
-			'malformed-response',
-			'repository metadata is not an object',
-		);
+		throw new ProjectSourceTransportError('repository metadata is not an object');
 	}
 	const fullName = typeof payload.full_name === 'string' ? payload.full_name.toLowerCase() : '';
 	if (fullName !== `${source.owner}/${source.repo}`.toLowerCase()) {
@@ -318,7 +324,7 @@ export function validateRepositoryPayload(payload, source) {
 		throw new ProjectSourceUnavailable('ref-mismatch', 'default branch is not the tracked ref');
 	}
 	if (typeof payload.html_url !== 'string' || payload.html_url !== source.canonicalUrl) {
-		throw new ProjectSourceUnavailable('malformed-response', 'repository URL does not match');
+		throw new ProjectSourceTransportError('repository URL does not match');
 	}
 	return {
 		fullName: payload.full_name,
@@ -329,11 +335,11 @@ export function validateRepositoryPayload(payload, source) {
 /** Validate the commit read and return its pinned SHA. */
 export function validateCommitPayload(payload) {
 	if (!payload || typeof payload !== 'object' || !isCommitSha(payload.sha)) {
-		throw new ProjectSourceUnavailable('malformed-response', 'commit SHA is missing');
+		throw new ProjectSourceTransportError('commit SHA is missing');
 	}
 	const committedAt = payload?.commit?.committer?.date ?? payload?.commit?.author?.date;
 	if (!isIsoInstant(committedAt)) {
-		throw new ProjectSourceUnavailable('malformed-response', 'commit date is missing');
+		throw new ProjectSourceTransportError('commit date is missing');
 	}
 	return { commitSha: payload.sha, committedAt: new Date(committedAt).toISOString() };
 }
@@ -347,28 +353,33 @@ export function validateCommitPayload(payload) {
  */
 export function validateReadmePayload(payload, source) {
 	if (!payload || typeof payload !== 'object') {
-		throw new ProjectSourceUnavailable('malformed-response', 'README payload is not an object');
+		throw new ProjectSourceTransportError('README payload is not an object');
 	}
+	// Everything below is valid JSON that does not describe the README
+	// this contract expects AT THE RESOLVED COMMIT. That is a source
+	// state (`readme-shape`), not a transport failure: the fetch
+	// succeeded, and the page must say that the README changed shape
+	// rather than that the repository stopped being public.
 	if (payload.type !== 'file' || payload.path !== source.readmePath) {
-		throw new ProjectSourceUnavailable('malformed-response', 'README path or type is wrong');
+		throw new ProjectSourceUnavailable('readme-shape', 'README path or type is wrong');
 	}
 	if (payload.encoding !== 'base64' || typeof payload.content !== 'string') {
-		throw new ProjectSourceUnavailable('malformed-response', 'README encoding is not base64');
+		throw new ProjectSourceUnavailable('readme-shape', 'README encoding is not base64');
 	}
 	if (!isCommitSha(payload.sha)) {
-		throw new ProjectSourceUnavailable('malformed-response', 'README blob SHA is missing');
+		throw new ProjectSourceUnavailable('readme-shape', 'README blob SHA is missing');
 	}
 	let text;
 	try {
 		text = Buffer.from(payload.content.replace(/\s+/g, ''), 'base64').toString('utf8');
 	} catch {
-		throw new ProjectSourceUnavailable('malformed-response', 'README base64 could not be decoded');
+		throw new ProjectSourceUnavailable('readme-shape', 'README base64 could not be decoded');
 	}
 	if (text.length === 0) {
-		throw new ProjectSourceUnavailable('malformed-response', 'README is empty');
+		throw new ProjectSourceUnavailable('readme-shape', 'README is empty');
 	}
 	if (text.length > LIMITS.readmeCharacters) {
-		throw new ProjectSourceUnavailable('malformed-response', 'README exceeds character cap');
+		throw new ProjectSourceUnavailable('readme-shape', 'README exceeds character cap');
 	}
 	return { readmeText: text, readmeBlobSha: payload.sha };
 }
@@ -641,14 +652,16 @@ export function toRichText(markdown, { source, commitSha, limit = null } = {}) {
 	const value = String(markdown ?? '');
 	const nodes = [];
 	let cursor = 0;
-	const pushText = (text) => {
+	const pushText = (text, { code = false, spaceBefore = false } = {}) => {
 		const cleaned = cleanText(text);
-		if (cleaned) nodes.push({ text: cleaned });
+		if (cleaned) nodes.push(code ? { text: cleaned, code, spaceBefore } : { text: cleaned });
 	};
 
 	for (const match of value.matchAll(INLINE_TOKEN_PATTERN)) {
 		const index = match.index ?? 0;
-		if (index > cursor) pushText(value.slice(cursor, index));
+		const gap = index > cursor ? value.slice(cursor, index) : '';
+		if (gap) pushText(gap);
+		const spaceBefore = /\s$/.test(gap);
 		cursor = index + match[0].length;
 
 		if (match[1] !== undefined) {
@@ -664,7 +677,7 @@ export function toRichText(markdown, { source, commitSha, limit = null } = {}) {
 			continue;
 		}
 		const code = match[5] ?? match[6] ?? match[7] ?? match[8] ?? match[9];
-		if (code !== undefined) pushText(code);
+		if (code !== undefined) pushText(code, { code: true, spaceBefore });
 	}
 	if (cursor < value.length) pushText(value.slice(cursor));
 
@@ -675,7 +688,16 @@ export function toRichText(markdown, { source, commitSha, limit = null } = {}) {
 		if (!node.text) continue;
 		const previous = merged[merged.length - 1];
 		if (previous && !previous.href && !node.href) {
-			const glue = /^[,.;:!?)\]]/.test(node.text) || /[(\[{]$/.test(previous.text) ? '' : ' ';
+			// An inline-code token is a word, not punctuation. Keep the
+			// whitespace the source had before it, otherwise
+			// `plaintext \`.env\`` would publish as `plaintext.env`.
+			const glue = node.spaceBefore
+				? /[(\[{]$/.test(previous.text)
+					? ''
+					: ' '
+				: /^[,.;:!?)\]]/.test(node.text) || /[(\[{]$/.test(previous.text)
+					? ''
+					: ' ';
 			previous.text = `${previous.text}${glue}${node.text}`.replace(/\s+/g, ' ').trim();
 		} else {
 			merged.push({ ...node });
@@ -684,7 +706,13 @@ export function toRichText(markdown, { source, commitSha, limit = null } = {}) {
 	const redacted = [];
 	for (const node of merged) {
 		const text = node.href ? node.text : redactPublicationText(node.text);
-		if (text) redacted.push(text === node.text ? node : { ...node, text });
+		if (!text) continue;
+		// Emit only the fields in the published contract. `code` and
+		// `spaceBefore` are extraction-local hints.
+		const clean = { text };
+		if (node.href) clean.href = node.href;
+		if (node.image) clean.image = true;
+		redacted.push(clean);
 	}
 	return limit ? limitRichText(redacted, limit) : redacted;
 }
@@ -826,13 +854,27 @@ export function extractStructure(markdown) {
  * upstream document (and, for the setup section, would put hostnames
  * and machine-local paths on this site).
  */
-const DOTFILES_SECTION_PLAN = [
-	{ id: 'principles', match: /^Principles$/i, points: 6 },
-	{ id: 'layout', match: /^Layout$/i, structure: true },
-	{ id: 'agent-launcher', match: /^Agent launcher\b/i, summary: true },
-	{ id: 'agent-configuration', match: /^Agent configuration$/i, summary: true },
-	{ id: 'decisions-and-research', match: /^Decisions and research$/i, points: 8 },
-];
+const DOTFILES_SECTION_PLAN = Object.freeze([
+	Object.freeze({ id: 'principles', match: /^Principles$/i, points: 6 }),
+	Object.freeze({ id: 'layout', match: /^Layout$/i, structure: true }),
+	Object.freeze({ id: 'agent-launcher', match: /^Agent launcher\b/i, summary: true }),
+	Object.freeze({ id: 'agent-configuration', match: /^Agent configuration$/i, summary: true }),
+	Object.freeze({
+		id: 'decisions-and-research',
+		match: /^Decisions and research$/i,
+		points: 8,
+	}),
+]);
+
+/** The section allowlist for each source, used by the offline gate. */
+const SECTION_PLANS = Object.freeze({
+	dotfiles: DOTFILES_SECTION_PLAN,
+});
+
+/** The section plan for a source id, or an empty plan for an unknown one. */
+function sectionPlanFor(sourceId) {
+	return SECTION_PLANS[sourceId] ?? [];
+}
 
 /**
  * Extract the introduction from a README.
@@ -916,9 +958,12 @@ export function extractIntroduction(markdown, { source, commitSha }) {
 	}
 
 	return {
-		title,
+		title: redactPublicationText(title),
 		lead,
-		sections,
+		sections: sections.map((section) => ({
+			...section,
+			heading: redactPublicationText(section.heading),
+		})),
 		relatedRepositories: [...related.values()].slice(0, LIMITS.relatedRepositories),
 	};
 }
@@ -937,8 +982,33 @@ function canonicalIntroduction(introduction) {
 	});
 }
 
-/** SHA-256 over the source identity and the extracted introduction. */
-export function contentDigestOf(source, commitSha, readmeBlobSha, introduction) {
+function escapeRegExp(value) {
+	return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * SHA-256 over the extracted introduction, independent of the commit
+ * that happens to be the default-branch head today.
+ *
+ * Every URL the extraction pins is normalized to a commit placeholder
+ * before hashing. Moving the branch forward, or a commit that does not
+ * touch the published README sections, therefore produces the SAME
+ * digest and does not rewrite the snapshot. Only a change to the text
+ * or to the resolved target of a published link does.
+ */
+export function contentDigestOf(source, introduction) {
+	const normalized = canonicalIntroduction(introduction)
+		.replace(
+			new RegExp(`${escapeRegExp(source.canonicalUrl)}/blob/[0-9a-f]{40}/`, 'g'),
+			`${source.canonicalUrl}/blob/<readme-commit>/`,
+		)
+		.replace(
+			new RegExp(
+				`https://raw\\.githubusercontent\\.com/${escapeRegExp(source.owner)}/${escapeRegExp(source.repo)}/[0-9a-f]{40}/`,
+				'g',
+			),
+			`https://raw.githubusercontent.com/${source.owner}/${source.repo}/<readme-commit>/`,
+		);
 	const hash = createHash('sha256');
 	hash.update(
 		JSON.stringify({
@@ -947,13 +1017,33 @@ export function contentDigestOf(source, commitSha, readmeBlobSha, introduction) 
 				owner: source.owner,
 				repo: source.repo,
 				ref: source.ref,
-				commitSha,
-				readmeBlobSha,
 			},
-			introduction: JSON.parse(canonicalIntroduction(introduction)),
+			introduction: JSON.parse(normalized),
 		}),
 	);
 	return `sha256:${hash.digest('hex')}`;
+}
+
+/**
+ * Which commit the snapshot should name as its README provenance.
+ *
+ * `source.commitSha` answers "which revision of the published document
+ * is this?", not "what was the branch head at the last sync?". While
+ * the README blob is unchanged, the previous commit is kept, so a
+ * dependabot commit cannot move the provenance or rewrite the page.
+ */
+function resolveReadmeProvenance(previous, commitSha, committedAt, readmeBlobSha) {
+	if (
+		previous?.source?.readmeBlobSha === readmeBlobSha &&
+		isCommitSha(previous?.source?.commitSha) &&
+		isIsoInstant(previous?.source?.committedAt)
+	) {
+		return {
+			commitSha: previous.source.commitSha,
+			committedAt: previous.source.committedAt,
+		};
+	}
+	return { commitSha, committedAt };
 }
 
 /** Create the public snapshot for a successful fetch. */
@@ -966,8 +1056,12 @@ export function buildPublicSnapshot({
 	now,
 	previous,
 }) {
-	const introduction = extractIntroduction(readmeText, { source, commitSha });
-	const contentDigest = contentDigestOf(source, commitSha, readmeBlobSha, introduction);
+	const provenance = resolveReadmeProvenance(previous, commitSha, committedAt, readmeBlobSha);
+	const introduction = extractIntroduction(readmeText, {
+		source,
+		commitSha: provenance.commitSha,
+	});
+	const contentDigest = contentDigestOf(source, introduction);
 	const changed = !previous || previous.contentDigest !== contentDigest;
 	const verifiedAt = new Date(now).toISOString();
 	return {
@@ -977,12 +1071,12 @@ export function buildPublicSnapshot({
 			owner: source.owner,
 			repo: source.repo,
 			ref: source.ref,
-			commitSha,
-			committedAt,
+			commitSha: provenance.commitSha,
+			committedAt: provenance.committedAt,
 			readmePath: source.readmePath,
 			readmeBlobSha,
 			canonicalUrl: source.canonicalUrl,
-			readmeUrl: readmeUrlAt(source, commitSha),
+			readmeUrl: readmeUrlAt(source, provenance.commitSha),
 		},
 		availability: 'public',
 		unavailable: null,
@@ -1067,6 +1161,22 @@ export function serializeSnapshot(snapshot) {
 
 function isPlainObject(value) {
 	return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Reject text the publication boundary would have had to change. */
+function validatePublishedText(value, label, errors) {
+	if (typeof value !== 'string') return;
+	if (redactPublicationText(value) !== value) {
+		errors.push(`${label}: is outside the publication boundary`);
+	}
+}
+
+function validateRichTextBoundary(nodes, label, errors) {
+	if (!Array.isArray(nodes)) return;
+	for (const [index, node] of nodes.entries()) {
+		if (!isPlainObject(node)) continue;
+		validatePublishedText(node.text, `${label}[${index}].text`, errors);
+	}
 }
 
 function validateRichText(value, label, errors) {
@@ -1157,11 +1267,17 @@ export function validateSnapshot(snapshot) {
 	}
 	if (typeof introduction.title !== 'string' || introduction.title.length === 0) {
 		errors.push('introduction.title: is missing');
+	} else {
+		validatePublishedText(introduction.title, 'introduction.title', errors);
 	}
 	validateRichText(introduction.lead, 'introduction.lead', errors);
+	validateRichTextBoundary(introduction.lead, 'introduction.lead', errors);
 	if (!Array.isArray(introduction.sections) || introduction.sections.length === 0) {
 		errors.push('introduction.sections: is empty');
 	} else {
+		const plan = sectionPlanFor(source.id);
+		const allowedIds = new Set(plan.map((entry) => entry.id));
+		const seenIds = new Set();
 		for (const [index, section] of introduction.sections.entries()) {
 			const label = `introduction.sections[${index}]`;
 			if (!isPlainObject(section)) {
@@ -1173,18 +1289,52 @@ export function validateSnapshot(snapshot) {
 					errors.push(`${label}.${key}: is missing`);
 				}
 			}
-			if (section.sourceUrl && !section.sourceUrl.startsWith(`${source.canonicalUrl}/blob/`)) {
-				errors.push(`${label}.sourceUrl: not a pinned GitHub URL`);
+			if (typeof section.id === 'string') {
+				if (!allowedIds.has(section.id)) {
+					errors.push(`${label}.id: is not in the source section allowlist`);
+				}
+				if (seenIds.has(section.id)) {
+					errors.push(`${label}.id: is duplicated`);
+				}
+				seenIds.add(section.id);
 			}
-			if (section.summary !== null) validateRichText(section.summary, `${label}.summary`, errors);
+			if (typeof section.heading === 'string') {
+				validatePublishedText(section.heading, `${label}.heading`, errors);
+			}
+			if (section.sourceUrl && section.anchor) {
+				const expectedSectionUrl = `${readmeUrlAt(source, snapshot.source.commitSha)}#${section.anchor}`;
+				if (section.sourceUrl !== expectedSectionUrl) {
+					errors.push(`${label}.sourceUrl: is not pinned to the recorded commit`);
+				}
+			}
+			if (section.summary !== null) {
+				validateRichText(section.summary, `${label}.summary`, errors);
+				validateRichTextBoundary(section.summary, `${label}.summary`, errors);
+			}
 			if (!Array.isArray(section.points)) errors.push(`${label}.points: not an array`);
 			else
 				for (const [p, point] of section.points.entries()) {
 					validateRichText(point, `${label}.points[${p}]`, errors);
+					validateRichTextBoundary(point, `${label}.points[${p}]`, errors);
 				}
 			if (!Array.isArray(section.structure)) errors.push(`${label}.structure: not an array`);
-			else if (section.structure.some((entry) => typeof entry !== 'string')) {
-				errors.push(`${label}.structure: contains a non-string`);
+			else {
+				const seenStructure = new Set();
+				for (const [entryIndex, entry] of section.structure.entries()) {
+					const entryLabel = `${label}.structure[${entryIndex}]`;
+					if (typeof entry !== 'string') {
+						errors.push(`${entryLabel}: is not a string`);
+						continue;
+					}
+					if (!/^[A-Za-z0-9_.-]+$/.test(entry) || entry === '.' || entry === '..') {
+						errors.push(`${entryLabel}: is not a repository-root entry`);
+					}
+					if (seenStructure.has(entry)) {
+						errors.push(`${entryLabel}: is duplicated`);
+					}
+					seenStructure.add(entry);
+					validatePublishedText(entry, entryLabel, errors);
+				}
 			}
 		}
 	}
@@ -1203,16 +1353,13 @@ export function validateSnapshot(snapshot) {
 			}
 			if (typeof repo.label !== 'string' || repo.label.length === 0) {
 				errors.push(`${label}.label: is missing`);
+			} else {
+				validatePublishedText(repo.label, `${label}.label`, errors);
 			}
 		}
 	}
 
-	const expectedDigest = contentDigestOf(
-		source,
-		snapshot.source.commitSha,
-		snapshot.source.readmeBlobSha,
-		introduction,
-	);
+	const expectedDigest = contentDigestOf(source, introduction);
 	if (snapshot.contentDigest !== expectedDigest) {
 		errors.push('contentDigest: does not match the stored introduction');
 	}

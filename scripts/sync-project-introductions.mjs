@@ -18,14 +18,16 @@
  *      verification heartbeat is due.
  *
  * Failure semantics:
- *   - a transport failure (timeout / network / unexpected status) exits
- *     1 and writes NOTHING. The committed snapshot keeps its last
- *     `verifiedAt`, so the page ages into its explicit stale state.
+ *   - a transport failure (timeout / network / 401 / 403 / 429 / 5xx /
+ *     oversized or non-JSON body) exits 1 and writes NOTHING. The
+ *     committed snapshot keeps its last `verifiedAt`, so the page ages
+ *     into its explicit stale state. A transient GitHub outage is never
+ *     recorded as "this repository is no longer public".
  *   - a source-state failure (repository deleted, private, archived,
- *     default branch moved, anonymous rate limit, malformed payload)
+ *     default branch moved, README no longer in the expected shape)
  *     records `availability: "unavailable"` with the reason and
  *     preserves the last known introduction. The page renders it as
- *     "last known, not current".
+ *     "last known, not current" with reason-specific copy.
  *
  * The script never reads a credential, never sends an Authorization
  * header, and never prints README content. Output is status-only.
@@ -50,7 +52,7 @@ import {
 } from './_project-introduction.mjs';
 
 const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const SNAPSHOT_DIR = join(REPO_ROOT, 'src/projects/snapshots');
+export const SNAPSHOT_DIR = join(REPO_ROOT, 'src/projects/snapshots');
 
 const USAGE = `sync-project-introductions — fetch one allowlisted public README
 
@@ -87,13 +89,13 @@ export function parseArgs(argv) {
 	return { help: false, sourceId, dryRun };
 }
 
-export function snapshotPathFor(sourceId) {
-	return join(SNAPSHOT_DIR, `${sourceId}.json`);
+export function snapshotPathFor(sourceId, snapshotDir = SNAPSHOT_DIR) {
+	return join(snapshotDir, `${sourceId}.json`);
 }
 
 /** Read the committed snapshot, or `null` when this is the first run. */
-export function readPreviousSnapshot(sourceId) {
-	const path = snapshotPathFor(sourceId);
+export function readPreviousSnapshot(sourceId, snapshotDir = SNAPSHOT_DIR) {
+	const path = snapshotPathFor(sourceId, snapshotDir);
 	if (!existsSync(path)) return null;
 	let parsed;
 	try {
@@ -111,12 +113,99 @@ export function readPreviousSnapshot(sourceId) {
 }
 
 /** Status-only line. Never prints document text. */
-function report(status, fields) {
+function report(status, fields, stdout = process.stdout) {
 	const parts = [`${status} source=${fields.sourceId}`];
 	if (fields.commitSha) parts.push(`commit=${fields.commitSha.slice(0, 12)}`);
 	if (fields.reason) parts.push(`reason=${fields.reason}`);
 	if (fields.written !== undefined) parts.push(`written=${fields.written}`);
-	process.stdout.write(`${parts.join(' ')}\n`);
+	stdout.write(`${parts.join(' ')}\n`);
+}
+
+/**
+ * Run one sync. Exported so a test can point it at a temporary
+ * `snapshotDir` and prove that a transport failure leaves the committed
+ * snapshot byte-identical.
+ */
+export async function syncSource({
+	sourceId = DEFAULT_SOURCE_ID,
+	now = new Date(),
+	fetchImpl = globalThis.fetch,
+	snapshotDir = SNAPSHOT_DIR,
+	dryRun = false,
+	stdout = process.stdout,
+	stderr = process.stderr,
+} = {}) {
+	let previous;
+	try {
+		previous = readPreviousSnapshot(sourceId, snapshotDir);
+	} catch (error) {
+		stderr.write(`${error.message}\n`);
+		return 1;
+	}
+
+	let next;
+	try {
+		next = await fetchPublicSnapshot({
+			sourceId,
+			now,
+			fetchImpl,
+			previous,
+		});
+	} catch (error) {
+		if (error instanceof ProjectSourceUnavailable) {
+			if (!previous) {
+				stderr.write(
+					`${sourceId}: source is unavailable and no snapshot exists (${error.reason})\n`,
+				);
+				return 1;
+			}
+			next = buildUnavailableSnapshot(previous, error.reason, now);
+			const plan = planSnapshotWrite(previous, next, now);
+			if (!dryRun && plan.write) {
+				writeFileSync(snapshotPathFor(sourceId, snapshotDir), serializeSnapshot(next));
+			}
+			report(
+				'unavailable',
+				{
+					sourceId,
+					commitSha: previous.source.commitSha,
+					reason: error.reason,
+					written: !dryRun && plan.write,
+				},
+				stdout,
+			);
+			return 0;
+		}
+		if (error instanceof ProjectSourceTransportError) {
+			stderr.write(`${sourceId}: sync failed (${error.message})\n`);
+			return 1;
+		}
+		stderr.write(`${sourceId}: sync failed (unexpected error)\n`);
+		return 1;
+	}
+
+	const errors = validateSnapshot(next);
+	if (errors.length > 0) {
+		stderr.write(`${sourceId}: generated snapshot is invalid (${errors[0]})\n`);
+		return 1;
+	}
+
+	const plan = planSnapshotWrite(previous, next, now);
+	if (!dryRun && plan.write) {
+		mkdirSync(snapshotDir, { recursive: true });
+		writeFileSync(snapshotPathFor(sourceId, snapshotDir), serializeSnapshot(next));
+	}
+	report(
+		plan.write ? 'synced' : 'unchanged',
+		{
+			sourceId,
+			commitSha: next.source.commitSha,
+			reason: plan.reason,
+			written: !dryRun && plan.write,
+		},
+		stdout,
+	);
+	return 0;
 }
 
 async function main() {
@@ -131,70 +220,7 @@ async function main() {
 		process.stdout.write(USAGE);
 		return 0;
 	}
-
-	const now = new Date();
-	let previous;
-	try {
-		previous = readPreviousSnapshot(args.sourceId);
-	} catch (error) {
-		process.stderr.write(`${error.message}\n`);
-		return 1;
-	}
-
-	let next;
-	try {
-		next = await fetchPublicSnapshot({
-			sourceId: args.sourceId,
-			now,
-			previous,
-		});
-	} catch (error) {
-		if (error instanceof ProjectSourceUnavailable) {
-			if (!previous) {
-				process.stderr.write(
-					`${args.sourceId}: source is unavailable and no snapshot exists (${error.reason})\n`,
-				);
-				return 1;
-			}
-			next = buildUnavailableSnapshot(previous, error.reason, now);
-			const plan = planSnapshotWrite(previous, next, now);
-			if (!args.dryRun && plan.write) {
-				writeFileSync(snapshotPathFor(args.sourceId), serializeSnapshot(next));
-			}
-			report('unavailable', {
-				sourceId: args.sourceId,
-				commitSha: previous.source.commitSha,
-				reason: error.reason,
-				written: !args.dryRun && plan.write,
-			});
-			return 0;
-		}
-		if (error instanceof ProjectSourceTransportError) {
-			process.stderr.write(`${args.sourceId}: sync failed (${error.message})\n`);
-			return 1;
-		}
-		process.stderr.write(`${args.sourceId}: sync failed (unexpected error)\n`);
-		return 1;
-	}
-
-	const errors = validateSnapshot(next);
-	if (errors.length > 0) {
-		process.stderr.write(`${args.sourceId}: generated snapshot is invalid (${errors[0]})\n`);
-		return 1;
-	}
-
-	const plan = planSnapshotWrite(previous, next, now);
-	if (!args.dryRun && plan.write) {
-		mkdirSync(SNAPSHOT_DIR, { recursive: true });
-		writeFileSync(snapshotPathFor(args.sourceId), serializeSnapshot(next));
-	}
-	report(plan.write ? 'synced' : 'unchanged', {
-		sourceId: args.sourceId,
-		commitSha: next.source.commitSha,
-		reason: plan.reason,
-		written: !args.dryRun && plan.write,
-	});
-	return 0;
+	return syncSource({ sourceId: args.sourceId, dryRun: args.dryRun });
 }
 
 const invokedDirectly =

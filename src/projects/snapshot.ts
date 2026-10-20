@@ -1,7 +1,8 @@
+import rawSnapshot from './snapshots/dotfiles.json' with { type: 'json' };
 import {
-	MAX_AGE_HOURS,
 	type FreshnessState,
 	type IntroductionSection,
+	MAX_AGE_HOURS,
 	type ProjectIntroduction,
 	type ProjectIntroductionSnapshot,
 	type ProjectIntroductionView,
@@ -10,7 +11,6 @@ import {
 	type RichTextNode,
 	SUPPORTED_SNAPSHOT_SCHEMA_VERSION,
 } from './types';
-import rawSnapshot from './snapshots/dotfiles.json' with { type: 'json' };
 
 const COMMIT_SHA_PATTERN = /^[0-9a-f]{40}$/;
 const DIGEST_PATTERN = /^sha256:[0-9a-f]{64}$/;

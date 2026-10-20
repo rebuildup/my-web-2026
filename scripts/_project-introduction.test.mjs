@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { describe, it } from 'node:test';
 import {
 	HEARTBEAT_HOURS,
 	LIMITS,
+	MAX_AGE_HOURS,
 	PROJECT_SOURCES,
+	ProjectSourceTransportError,
 	ProjectSourceUnavailable,
+	SNAPSHOT_SCHEMA_VERSION,
 	ageHours,
 	assertAllowedApiUrl,
 	buildPublicSnapshot,
@@ -240,6 +244,14 @@ describe('extraction and sanitization', () => {
 		assert.match(serialized, /machine-local Git config file/);
 	});
 
+	it('keeps the source space before punctuation-leading inline code', () => {
+		const intro = extractIntroduction(
+			'# Example\n\nPersistent `plaintext` `.env` files stay out of Git.\n',
+			{ source: SOURCE, commitSha: SHA },
+		);
+		assert.match(richTextToPlainText(intro.lead), /plaintext \.env files/);
+	});
+
 	it('resolves relative links, anchors and images against the pinned commit', () => {
 		const href = resolveSourceHref('docs/adr/ADR-0001.md', { source: SOURCE, commitSha: SHA });
 		assert.equal(href, `${SOURCE.canonicalUrl}/blob/${SHA}/docs/adr/ADR-0001.md`);
@@ -317,6 +329,38 @@ describe('snapshot identity and no-op behaviour', () => {
 		);
 	});
 
+	it('keeps the same digest when only the upstream commit advances', () => {
+		const advanced = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+		const introduction = extractIntroduction(README, { source: SOURCE, commitSha: SHA });
+		assert.equal(
+			contentDigestOf(SOURCE, introduction),
+			contentDigestOf(SOURCE, extractIntroduction(README, { source: SOURCE, commitSha: advanced })),
+		);
+	});
+
+	it('does not rewrite when the default branch advanced but the README did not', () => {
+		const previous = snapshotAt(NOW);
+		const later = new Date(NOW.getTime() + 60 * 60 * 1000);
+		const advanced = 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+		const next = buildPublicSnapshot({
+			source: SOURCE,
+			commitSha: advanced,
+			committedAt: '2026-10-20T09:00:00.000Z',
+			readmeBlobSha: BLOB,
+			readmeText: README,
+			now: later,
+			previous,
+		});
+		assert.equal(next.contentDigest, previous.contentDigest);
+		assert.equal(next.source.commitSha, previous.source.commitSha);
+		assert.equal(next.source.committedAt, previous.source.committedAt);
+		assert.equal(next.source.readmeUrl, previous.source.readmeUrl);
+		assert.deepEqual(planSnapshotWrite(previous, next, later), {
+			write: false,
+			reason: 'unchanged',
+		});
+	});
+
 	it('does not rewrite an unchanged snapshot before the heartbeat', () => {
 		const previous = snapshotAt(NOW);
 		const next = snapshotAt(new Date(NOW.getTime() + 60 * 60 * 1000), README, previous);
@@ -391,6 +435,36 @@ describe('fetch orchestration', () => {
 		);
 	});
 
+	it('records an unparsable README as readme-shape, not a transport failure', async () => {
+		const { fetchImpl } = fakeFetch();
+		const wrapped = async (url, init) => {
+			const response = await fetchImpl(url, init);
+			if (!String(url).includes('/contents/README.md')) return response;
+			return new Response(JSON.stringify({ ...contentsPayload(README), type: 'dir' }), {
+				status: 200,
+			});
+		};
+		await assert.rejects(
+			() => fetchPublicSnapshot({ now: NOW, fetchImpl: wrapped }),
+			(error) => error instanceof ProjectSourceUnavailable && error.reason === 'readme-shape',
+		);
+	});
+
+	it('classifies rate limits and malformed bodies as transport failures', async () => {
+		const cases = [
+			() => new Response('{}', { status: 403, headers: { 'x-ratelimit-remaining': '0' } }),
+			() => new Response('{}', { status: 429 }),
+			() => new Response('{}', { status: 500 }),
+			() => new Response('not json', { status: 200 }),
+		];
+		for (const response of cases) {
+			await assert.rejects(
+				() => fetchPublicSnapshot({ now: NOW, fetchImpl: async () => response() }),
+				(error) => error instanceof ProjectSourceTransportError,
+			);
+		}
+	});
+
 	it('a changed fixture produces a changed page snapshot', async () => {
 		const before = await fetchPublicSnapshot({ now: NOW, fetchImpl: fakeFetch().fetchImpl });
 		const changedReadme = README.replace(
@@ -434,7 +508,7 @@ describe('snapshot validation', () => {
 	it('rejects an unsafe href even when the digest is recomputed', () => {
 		const snapshot = valid();
 		snapshot.introduction.lead.push({ text: 'x', href: 'javascript:alert(1)' });
-		snapshot.contentDigest = contentDigestOf(SOURCE, SHA, BLOB, snapshot.introduction);
+		snapshot.contentDigest = contentDigestOf(SOURCE, snapshot.introduction);
 		assert.match(validateSnapshot(snapshot).join('\n'), /scheme is not publishable/);
 	});
 
@@ -448,5 +522,64 @@ describe('snapshot validation', () => {
 		const snapshot = valid();
 		snapshot.source.readmeUrl = `${SOURCE.canonicalUrl}/blob/main/README.md`;
 		assert.match(validateSnapshot(snapshot).join('\n'), /pinned README URL/);
+	});
+
+	it('rejects a section id outside the source plan', () => {
+		const snapshot = valid();
+		snapshot.introduction.sections[0].id = 'setup';
+		snapshot.contentDigest = contentDigestOf(SOURCE, snapshot.introduction);
+		assert.match(validateSnapshot(snapshot).join('\n'), /section allowlist/);
+	});
+
+	it('rejects a duplicated section id', () => {
+		const snapshot = valid();
+		snapshot.introduction.sections.push({ ...snapshot.introduction.sections[0] });
+		snapshot.contentDigest = contentDigestOf(SOURCE, snapshot.introduction);
+		assert.match(validateSnapshot(snapshot).join('\n'), /is duplicated/);
+	});
+
+	it('rejects a section URL on main or another commit', () => {
+		for (const sourceUrl of [
+			`${SOURCE.canonicalUrl}/blob/main/README.md#principles`,
+			`${SOURCE.canonicalUrl}/blob/${'c'.repeat(40)}/README.md#principles`,
+		]) {
+			const snapshot = valid();
+			snapshot.introduction.sections[0].sourceUrl = sourceUrl;
+			snapshot.contentDigest = contentDigestOf(SOURCE, snapshot.introduction);
+			assert.match(validateSnapshot(snapshot).join('\n'), /pinned to the recorded commit/);
+		}
+	});
+
+	it('rejects structure entries that are not repository-root names', () => {
+		for (const entry of ['../escape', 'config/nested', '/etc', '.']) {
+			const snapshot = valid();
+			const layout = snapshot.introduction.sections.find((section) => section.id === 'layout');
+			layout.structure = [entry];
+			snapshot.contentDigest = contentDigestOf(SOURCE, snapshot.introduction);
+			assert.match(validateSnapshot(snapshot).join('\n'), /repository-root entry/);
+		}
+	});
+
+	it('rejects a hand-edited text run the publication boundary would redact', () => {
+		for (const text of [
+			'identity lives in ~/.gitconfig.local',
+			'the endpoint is https://secrets.example.invalid',
+		]) {
+			const snapshot = valid();
+			snapshot.introduction.lead.push({ text });
+			snapshot.contentDigest = contentDigestOf(SOURCE, snapshot.introduction);
+			assert.match(validateSnapshot(snapshot).join('\n'), /publication boundary/);
+		}
+	});
+});
+
+describe('reader/writer contract constants', () => {
+	it('the Worker reader declares the same schema version and freshness window', () => {
+		const reader = readFileSync(new URL('../src/projects/types.ts', import.meta.url), 'utf8');
+		assert.match(
+			reader,
+			new RegExp(`SUPPORTED_SNAPSHOT_SCHEMA_VERSION = ${SNAPSHOT_SCHEMA_VERSION};`),
+		);
+		assert.match(reader, new RegExp(`MAX_AGE_HOURS = ${MAX_AGE_HOURS};`));
 	});
 });

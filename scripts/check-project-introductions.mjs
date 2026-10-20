@@ -9,12 +9,16 @@
  *   - every `src/projects/snapshots/<id>.json` names an allowlisted
  *     source, and the file name matches that source id;
  *   - the provenance is internally consistent — the README URL is
- *     pinned to the recorded commit, and every section URL is a GitHub
- *     URL at that same commit;
+ *     pinned to the recorded commit, and every section URL is exactly
+ *     the README URL at that same commit plus its anchor;
+ *   - section ids come from the source-specific plan, without
+ *     duplicates, and `structure` holds repository-root entries only;
+ *   - every published text run already satisfies the publication
+ *     boundary, so a hand-edited snapshot cannot name an operator
+ *     endpoint or a machine-local config path;
  *   - the content digest still matches the stored introduction, so a
  *     hand-edited snapshot cannot be rendered as verified content;
- *   - links use a publishable scheme and the structure is the one the
- *     page schema expects.
+ *   - links use a publishable scheme.
  *
  * Freshness is reported, never gated. An old snapshot is an external
  * fact the repository may not be able to fix at build time; the page
@@ -66,6 +70,10 @@ export function checkSnapshots({ snapshots, now = new Date() }) {
 		}
 		if (!PROJECT_SOURCES[sourceId]) {
 			errors.push(`${fileName}: no allowlisted source named ${sourceId}`);
+			continue;
+		}
+		if (snapshot?.source?.id !== sourceId) {
+			errors.push(`${fileName}: snapshot source id does not match the file name`);
 			continue;
 		}
 		seen.add(sourceId);

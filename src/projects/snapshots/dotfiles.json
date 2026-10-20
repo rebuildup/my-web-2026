@@ -14,9 +14,9 @@
 	},
 	"availability": "public",
 	"unavailable": null,
-	"verifiedAt": "2026-10-20T01:24:03.629Z",
-	"appliedAt": "2026-10-20T01:24:03.629Z",
-	"contentDigest": "sha256:eea2f3aadda54b352de9969a56b7066b74dd60e0793e54ea89b642b253095c7f",
+	"verifiedAt": "2026-10-20T02:20:44.835Z",
+	"appliedAt": "2026-10-20T02:20:44.835Z",
+	"contentDigest": "sha256:a5ff0d1dc498c828f0f4c5d3aea0601bd63eba207b092ff5f750224e6ad5d007",
 	"introduction": {
 		"title": "dotfiles",
 		"lead": [
@@ -61,7 +61,7 @@
 					],
 					[
 						{
-							"text": "Prefer process-scoped infisical run injection over global exports or persistent plaintext.env files."
+							"text": "Prefer process-scoped infisical run injection over global exports or persistent plaintext .env files."
 						}
 					],
 					[

@@ -23,3 +23,52 @@ onlyBuiltDependencies:
   - '@infisical/cli'
 patchedDependencies:
   cf@1.0.0-beta.12: patches/cf@1.0.0-beta.12.patch
+# Issue #645: transitive dependency advisory remediation. Every entry
+# below is pinned to a version that clears the advisory and stays
+# inside the major the tree already resolves, so an override can never
+# smuggle a major upgrade past a dependent's declared range. It is the
+# lowest such version unless the tree already resolved a newer one in
+# the same major (browserslist), in which case that version is kept
+# rather than downgraded.
+# Reachability: all of these are build / test toolchain packages. None
+# of them is reachable from the Worker runtime bundle, and the
+# dependency-advisory gate classifies 15 of the 16 blocking findings as
+# `dev-dependency path only`. `source-map-js` is the one production-path
+# finding and is still build-time only (`vite > postcss > source-map-js`).
+overrides:
+  # GHSA-73wf-gq98-2v4g / GHSA-c83g-rgw3-j3cx (high), unpatched below
+  # 4.28.7; reached via @pandacss/dev > @pandacss/node > browserslist.
+  # The tree already resolves 4.28.9 elsewhere, so pin that: 4.28.7
+  # would clear the advisory but downgrade the newer copy.
+  browserslist: 4.28.9
+  # GHSA-r28c-9q8g-f849 (high) + GHSA-fxqj-rqcc-2cmp (moderate);
+  # 8.5.23 clears both, 8.5.31 also carries later same-major fixes.
+  # Dependents declare ^8.4 / ^8.4.32 / ^8.2.14 and @pandacss pins
+  # 8.5.14 exactly; every one of those is inside the 8.x major the
+  # override keeps.
+  postcss: 8.5.31
+  # GHSA-w4gp-fjgq-3q4g (high, >=20.8.9) and GHSA-6q6h-j7hj-3r64 /
+  # GHSA-37j7-fg3j-429f (critical). The direct devDependency is bumped
+  # in package.json; this keeps the better-auth > vitest > happy-dom
+  # transitive copy on the same line.
+  happy-dom: 20.8.9
+  # GHSA-wq5f-xc86-pv6w + the librsvg/libheif advisories (high);
+  # 0.35.5 is the last 0.35.x, so no major is crossed.
+  sharp: 0.35.5
+  # GHSA-rfgv-xxqx-mfg5 / GHSA-w293-vg96-wgc3 and the moderate/low
+  # undici set; 7.29.1 clears all of them. 8.x is NOT taken — that is a
+  # major bump behind miniflare.
+  undici: 7.29.1
+  # GHSA-68fv-2mgg-jv7q (high); 1.2.1 -> 1.2.2, patch only.
+  source-map-js: 1.2.2
+  # GHSA-rj75-hqrm-r3gf (moderate) + GHSA-w9m9-85wc-3x92 (low);
+  # 7.1.6 clears both, same 7.x major.
+  postcss-selector-parser: 7.1.6
+  # GHSA-hrr3-gc8f-f4qj (moderate); 3.1.8 stays in the 3.x that
+  # @pandacss/reporter > table > ajv already resolves. 4.x is a major.
+  fast-uri: 3.1.8
+  # GHSA-6j4f-fj2g-mc7p / GHSA-qhr7-859c-m2p7 (high) and the moderate
+  # quadratic-expansion pair. The tree resolves BOTH majors, so the
+  # override has to be scoped per major instead of replacing the name.
+  brace-expansion@>=2.0.0 <3.0.0: 2.1.7
+  brace-expansion@>=4.0.0 <6.0.0: 5.0.12

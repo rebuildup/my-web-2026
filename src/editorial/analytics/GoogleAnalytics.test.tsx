@@ -268,6 +268,10 @@ describe('GoogleAnalytics — SPA route-change page_view (Issue #286)', () => {
 
 		trackRoutePageView(state, '/admin/keys');
 		trackRoutePageView(state, '/admin/login?next=/');
+		// The router resolves static segments case-insensitively, so a
+		// case variant renders the admin screen; the tracker must stay
+		// inert for it too (Issue #495 review S1).
+		trackRoutePageView(state, '/ADMIN/KEYS');
 		expect(gtag).toHaveBeenCalledTimes(1);
 		for (const call of gtag.mock.calls) {
 			const params = call[2] as { page_path: string };

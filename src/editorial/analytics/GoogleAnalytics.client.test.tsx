@@ -89,8 +89,10 @@ describe('GoogleAnalyticsRouteTracker — effect wiring (Issue #286)', () => {
 		rerender(<GoogleAnalyticsRouteTracker measurementId="G-TEST000" locationKey="/about" />);
 		expect(gtag).toHaveBeenCalledTimes(1);
 
-		// /admin/* never tracked.
+		// /admin/* never tracked — including the case variants the
+		// case-insensitive router resolves to the same admin screen.
 		rerender(<GoogleAnalyticsRouteTracker measurementId="G-TEST000" locationKey="/admin/keys" />);
+		rerender(<GoogleAnalyticsRouteTracker measurementId="G-TEST000" locationKey="/ADMIN/KEYS" />);
 		expect(gtag).toHaveBeenCalledTimes(1);
 
 		// Back to a public page → tracked again, with an absolute

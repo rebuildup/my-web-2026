@@ -684,6 +684,12 @@
 			"role": "Portfolio surface and media composition"
 		},
 		{
+			"id": "projects",
+			"root": "src/projects",
+			"min_files": 1,
+			"role": "Project introduction surface: the committed snapshot reader, freshness states and the `/projects/dotfiles` page (Issue #621)"
+		},
+		{
 			"id": "admin",
 			"root": "src/admin",
 			"min_files": 1,

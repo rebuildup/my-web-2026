@@ -209,6 +209,12 @@ export const SITEMAP_EXCLUSIONS: readonly SitemapExclusion[] = [
 		reason:
 			'The Tool iframe shell declares `robots: noindex` in its own route head. A sitemap entry would contradict the page it points at.',
 	},
+	{
+		route: '/projects/dotfiles',
+		kind: 'route',
+		reason:
+			'Project introduction page discovered from the upstream GitHub repository. It is public and indexable, but it is intentionally not a nav destination and has no canonical inventory reason to advertise it ahead of the pages a visitor can reach from the nav.',
+	},
 ];
 
 /**

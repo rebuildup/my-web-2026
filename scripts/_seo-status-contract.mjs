@@ -181,6 +181,16 @@ export const HTTP_STATUS_EXPECTATIONS = Object.freeze([
 		why: 'A second public page with no robots meta: one sample is a coincidence, two is a pattern.',
 		openDecision: null,
 	},
+	{
+		id: 'public-projects-dotfiles',
+		route: '/projects/dotfiles',
+		request: 'GET /projects/dotfiles (anonymous)',
+		expect: { status: 200, robots: 'absent', surface: 'page' },
+		sitemap: 'excluded',
+		proves: [WORKERD_PROOF, BROWSER_PROOF],
+		why: 'Public project introduction rendered from a committed snapshot. A 200 with no robots meta is the contract; an unavailable upstream is represented INSIDE the document, never by turning the page into a 404/5xx or a noindex.',
+		openDecision: null,
+	},
 	// ── 200 but not indexable ─────────────────────────────────────────
 	{
 		id: 'tool-detail-noindex',

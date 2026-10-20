@@ -9,14 +9,14 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 17 |
-| Publicly reachable surfaces | 10 |
+| Declared surfaces | 18 |
+| Publicly reachable surfaces | 11 |
 | Sitemap target URLs | 13 |
-| Publicly reachable URLs (surface + Static Assets) | 17 |
+| Publicly reachable URLs (surface + Static Assets) | 18 |
 | External hosts | 32 |
 | First-party hosts | 0 |
-| Approved transition | 3 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | 18 finding(s) |
+| Verdict of the approved transition | **review** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -53,6 +53,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/portfolio/project-init`
 - `/portfolio/sciencearts-optim-internship-2026`
 - `/portfolio/tastile`
+- `/projects/dotfiles`
 - `/share/procon2026/`
 - `/tools`
 - `/tools/prototype`
@@ -77,22 +78,23 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/design-system` | `/design-system` | public | no | `src/routes/design-system.tsx` |
 | `/portfolio/` | `/portfolio` | public | yes | `src/routes/portfolio/index.tsx` |
 | `/portfolio/$slug` | — | public | yes | `src/routes/portfolio/$slug.tsx` |
+| `/projects/dotfiles` | `/projects/dotfiles` | public | no | `src/routes/projects.dotfiles.tsx` |
 | `/tools/` | `/tools` | public | yes | `src/routes/tools.index.tsx` |
 | `/tools/$slug` | — | public | yes | `src/routes/tools.$slug.tsx` |
 
 ## Approved transition against the previous snapshot
 
-### Added public URLs (0)
+### Added public URLs (1)
 
-- (none)
+- `/projects/dotfiles`
 
 ### Removed public URLs (0)
 
 - (none)
 
-### Added external hosts (1)
+### Added external hosts (0)
 
-- `script.google.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -139,10 +141,26 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
+| `https://github.com/rebuildup/dotfiles` | `github.com` | external | `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-launcher-agent` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#decisions-and-research` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#layout` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#principles` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0001.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0002.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0003.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0004.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0005.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
+| `https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md` | `github.com` | external | `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/my-web-2026` | `github.com` | external | `src/contact/channels.json`, `src/home/footer.tsx`, `src/home/hero.tsx`, `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/docs/security.md` | `github.com` | external | `src/http/security-txt/README.md`, `src/http/security-txt/policy.json` |
 | `https://github.com/rebuildup/my-web-2026/blob/main/src/editorial/colors.md` | `github.com` | external | `src/routes/design-system/DesignSystemPage.tsx` |
 | `https://github.com/rebuildup/my-web-2026/releases` | `github.com` | external | `src/portfolio/components/EmptyState.tsx` |
+| `https://github.com/rebuildup/pc-setup` | `github.com` | external | `src/projects/DotfilesIntroductionPage.tsx`, `src/projects/snapshots/dotfiles.json` |
 | `https://github.com/rebuildup/project-init` | `github.com` | external | `src/portfolio/seed.ts` |
 | `https://github.com/rebuildup/readmark.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-ae-expression.git` | `github.com` | external | `src/tools/manifest.json` |
@@ -180,7 +198,22 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host script.google.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://script.google.com
-- **WARN** `W002 external-url-added` External URL added: https://use.typekit.net/app
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-launcher-agent
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#decisions-and-research
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#layout
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#principles
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0001.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0002.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0003.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0004.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0005.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md
+- **WARN** `W002 external-url-added` External URL added: https://github.com/rebuildup/pc-setup
+- **WARN** `W002 external-url-added` External URL added: https://rebuildup.dev/projects/dotfiles
+- **WARN** `W004 public-url-added` Public URL added: /projects/dotfiles
 

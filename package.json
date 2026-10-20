@@ -118,6 +118,8 @@
 		"compat:check": "node scripts/check-browser-baseline.mjs",
 		"verify:browser-baseline-screenshot": "node scripts/make-browser-baseline-report.mjs",
 		"publication:write": "node scripts/check-publication-diff.mjs --write",
+		"projects:sync": "node scripts/sync-project-introductions.mjs --source dotfiles",
+		"projects:check": "node scripts/check-project-introductions.mjs",
 		"publication:redaction:check": "node scripts/check-publication-redaction.mjs",
 		"publication:redaction:write": "node scripts/check-publication-redaction.mjs --write",
 		"publication:check": "node scripts/check-publication-diff.mjs",

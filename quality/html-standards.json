@@ -26,6 +26,13 @@
 			"why": "the only form surface; label/for and button/input attributes live here."
 		},
 		{
+			"route_id": "/projects/dotfiles",
+			"path": "/projects/dotfiles",
+			"source": "src/routes/projects.dotfiles.tsx",
+			"mode": "render",
+			"why": "the first route that renders an upstream README excerpt; its heading tree, lists and inline links are the surface a snapshot-shape regression would break first."
+		},
+		{
 			"route_id": "/portfolio",
 			"path": "/portfolio",
 			"source": "src/routes/portfolio/index.tsx",

@@ -176,6 +176,16 @@ const ROUTE_INTENT = [
 		reason: 'Public contact channels.',
 	},
 	{
+		paths: ['/projects/dotfiles'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public project introduction generated from a committed README snapshot. It is not a nav ' +
+			'destination and is deliberately not advertised in the sitemap; crawlers discover it from ' +
+			'the GitHub repository and other external links, never from a generated inventory entry.',
+	},
+	{
 		paths: ['/design-system'],
 		zone: 'public',
 		crawl: 'allow',

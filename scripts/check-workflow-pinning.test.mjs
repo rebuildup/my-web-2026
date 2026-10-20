@@ -107,12 +107,13 @@ describe('repository workflows', () => {
 		});
 		assert.deepEqual(audit.findings, []);
 		assert.equal(audit.summary.status, 'PASS');
-		assert.equal(audit.summary.workflows, 4);
+		assert.equal(audit.summary.workflows, 5);
 		// ci.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x5)
 		// + compat.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
 		// + prod-smoke.yml (checkout, setup-node, pnpm, cache, upload-artifact)
 		// + viewport.yml (checkout, setup-node, pnpm, bun, cache, upload-artifact x2)
-		assert.equal(audit.summary.pins, 29);
+		// + projects-sync.yml (checkout, setup-node, pnpm)
+		assert.equal(audit.summary.pins, 32);
 		assert.deepEqual([...new Set(audit.pins.map((pin) => pin.repo))].sort(), [
 			'actions/cache',
 			'actions/checkout',
@@ -123,7 +124,7 @@ describe('repository workflows', () => {
 		]);
 	});
 
-	it('resolves every shipped job to contents=read', () => {
+	it('reports each shipped job’s effective permission scopes', () => {
 		const audit = auditWorkflows({
 			workflowsDir: join(ROOT, '.github', 'workflows'),
 			manifest: parseManifest(readFileSync(REAL_MANIFEST, 'utf8')),
@@ -137,6 +138,7 @@ describe('repository workflows', () => {
 		assert.deepEqual(effective.sort(), [
 			'compat:map:contents=read',
 			'prod-smoke:map:contents=read',
+			'sync:map:contents=write,pull-requests=write',
 			'validate:map:contents=read',
 			'viewport:map:contents=read',
 		]);
@@ -953,7 +955,7 @@ describe('cli', () => {
 		assert.equal(result.code, 0);
 		const parsed = JSON.parse(result.stdout);
 		assert.equal(parsed.summary.status, 'PASS');
-		assert.equal(parsed.summary.pins, 29);
+		assert.equal(parsed.summary.pins, 32);
 		// A Set serialises to `{}`, which would make the machine-readable
 		// output look like it referenced nothing.
 		assert.deepEqual(parsed.referenced, [

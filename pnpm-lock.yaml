@@ -103,7 +103,7 @@ settings:
   excludeLinksFromLockfile: false
 
 overrides:
-  browserslist: 4.28.7
+  browserslist: 4.28.9
   postcss: 8.5.31
   happy-dom: 20.8.9
   sharp: 0.35.5
@@ -2569,8 +2569,8 @@ packages:
   browser-assert@1.2.1:
     resolution: {integrity: sha512-nfulgvOR6S4gt9UKCeGJOuSGBPGiFT6oQ/2UBnvTY/5aQ1PnksW72fhZkM30DzoRRv2WpwZf1vHHEr3mtuXIWQ==}
 
-  browserslist@4.28.7:
-    resolution: {integrity: sha512-JxV13hNrFxqjOc8alRbq9dK1MM79NEXYpma2B2J4wAtpWS5zIEIKqWPGCl7N4o7Uc7B7itylh7SuDujATRyyTw==}
+  browserslist@4.28.9:
+    resolution: {integrity: sha512-EWazOblFYUvlGZcfGhPUPmYh3nikUxBVb+y9MJun5f3hBi812X+8MSQTujLBtgK3cf51fJWbWfOjyeO954d+Eg==}
     engines: {node: ^6 || ^7 || ^8 || ^9 || ^10 || ^11 || ^12 || >=13.7}
     hasBin: true
 
@@ -3886,7 +3886,7 @@ packages:
     resolution: {integrity: sha512-UQ+MSxlhRm1bzjhU+DcuXfjFO1FzNtqhK5+9Yvlp90ItDLk5vT932A0rFu619nf7RVS+Y/VeaUW1jaRDqZ8VJw==}
     hasBin: true
     peerDependencies:
-      browserslist: 4.28.7
+      browserslist: 4.28.9
 
   use-sync-external-store@1.7.0:
     resolution: {integrity: sha512-6L+EeigHMQhdaIPNIFUKwfWJSwWFQ8gJbJ2DLOs5sDIegTwR9fRxvnM3uciHKjIZhFz+KAv2emhWMRvDmMcY8A==}
@@ -4188,7 +4188,7 @@ snapshots:
     dependencies:
       '@babel/compat-data': 7.29.7
       '@babel/helper-validator-option': 7.29.7
-      browserslist: 4.28.7
+      browserslist: 4.28.9
       lru-cache: 5.1.1
       semver: 6.3.1
 
@@ -5153,7 +5153,7 @@ snapshots:
       '@pandacss/shared': 1.12.1
       '@pandacss/token-dictionary': 1.12.1
       '@pandacss/types': 1.12.1
-      browserslist: 4.28.7
+      browserslist: 4.28.9
       lodash.merge: 4.6.2
       outdent: 0.8.0
       postcss: 8.5.31
@@ -5226,7 +5226,7 @@ snapshots:
       '@pandacss/shared': 1.12.1
       '@pandacss/token-dictionary': 1.12.1
       '@pandacss/types': 1.12.1
-      browserslist: 4.28.7
+      browserslist: 4.28.9
       chokidar: 4.0.3
       fast-glob: 3.3.3
       fs-extra: 11.3.2
@@ -5268,7 +5268,7 @@ snapshots:
     dependencies:
       '@pandacss/logger': 1.12.1
       '@pandacss/types': 1.12.1
-      browserslist: 4.28.7
+      browserslist: 4.28.9
       lightningcss: 1.31.1
 
   '@pandacss/plugin-svelte@1.12.1':
@@ -6200,13 +6200,13 @@ snapshots:
 
   browser-assert@1.2.1: {}
 
-  browserslist@4.28.7:
+  browserslist@4.28.9:
     dependencies:
       baseline-browser-mapping: 2.11.21
       caniuse-lite: 1.0.30001810
       electron-to-chromium: 1.5.426
       node-releases: 2.0.55
-      update-browserslist-db: 1.3.2(browserslist@4.28.7)
+      update-browserslist-db: 1.3.2(browserslist@4.28.9)
 
   cac@6.7.14: {}
 
@@ -7503,9 +7503,9 @@ snapshots:
       rollup: 4.63.1
       vite: 7.3.6(@types/node@22.20.2)(jiti@2.7.0)(lightningcss@1.33.0)(yaml@2.9.1)
 
-  update-browserslist-db@1.3.2(browserslist@4.28.7):
+  update-browserslist-db@1.3.2(browserslist@4.28.9):
     dependencies:
-      browserslist: 4.28.7
+      browserslist: 4.28.9
       escalade: 3.2.0
       picocolors: 1.1.1
 

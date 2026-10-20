@@ -108,7 +108,8 @@ jobs:
       # Two independent failure contracts:
       #   - Blocking critical/high advisories are RECORDED while the
       #     declaration says `enforcement: audit`. The current lockfile
-      #     carries 18 of them; remediating or approving them is an owner
+      #     carries 1 of them (`braces`, no patched release); remediating
+      #     or approving it is an owner
       #     decision tracked in docs/runbook/dependency-advisories.md §6,
       #     and no exception is written here on the owner's behalf.
       #   - Unreadable advisory data FAILS CLOSED (exit 3) in either

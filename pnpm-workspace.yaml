@@ -24,9 +24,12 @@ onlyBuiltDependencies:
 patchedDependencies:
   cf@1.0.0-beta.12: patches/cf@1.0.0-beta.12.patch
 # Issue #645: transitive dependency advisory remediation. Every entry
-# below is pinned to the LOWEST version that clears the advisory and
-# stays inside the major the tree already resolves, so an override can
-# never smuggle a major upgrade past a dependent's declared range.
+# below is pinned to a version that clears the advisory and stays
+# inside the major the tree already resolves, so an override can never
+# smuggle a major upgrade past a dependent's declared range. It is the
+# lowest such version unless the tree already resolved a newer one in
+# the same major (browserslist), in which case that version is kept
+# rather than downgraded.
 # Reachability: all of these are build / test toolchain packages. None
 # of them is reachable from the Worker runtime bundle, and the
 # dependency-advisory gate classifies 15 of the 16 blocking findings as
@@ -35,10 +38,14 @@ patchedDependencies:
 overrides:
   # GHSA-73wf-gq98-2v4g / GHSA-c83g-rgw3-j3cx (high), unpatched below
   # 4.28.7; reached via @pandacss/dev > @pandacss/node > browserslist.
-  browserslist: 4.28.7
+  # The tree already resolves 4.28.9 elsewhere, so pin that: 4.28.7
+  # would clear the advisory but downgrade the newer copy.
+  browserslist: 4.28.9
   # GHSA-r28c-9q8g-f849 (high) + GHSA-fxqj-rqcc-2cmp (moderate);
   # 8.5.23 clears both, 8.5.31 also carries later same-major fixes.
-  # Dependents declare ^8.4 / ^8.4.32 / ^8.2.14, all satisfied.
+  # Dependents declare ^8.4 / ^8.4.32 / ^8.2.14 and @pandacss pins
+  # 8.5.14 exactly; every one of those is inside the 8.x major the
+  # override keeps.
   postcss: 8.5.31
   # GHSA-w4gp-fjgq-3q4g (high, >=20.8.9) and GHSA-6q6h-j7hj-3r64 /
   # GHSA-37j7-fg3j-429f (critical). The direct devDependency is bumped

@@ -142,6 +142,7 @@ export class D1BackupExportError extends Error {
 		| 'table_not_found'
 		| 'schema_read_failed'
 		| 'row_read_failed'
+		| 'unsupported_identifier'
 		| 'unsupported_value';
 
 	constructor(reason: D1BackupExportError['reason']) {
@@ -340,6 +341,10 @@ export async function exportD1Backup(
 
 	const tables: D1BackupTable[] = [];
 	for (const name of tableNames) {
+		// Restore interpolates the name through `quoteIdentifier`; a
+		// name outside the bare-identifier grammar cannot be represented
+		// safely there, so the export refuses instead of guessing.
+		if (!isBareIdentifier(name)) throw new D1BackupExportError('unsupported_identifier');
 		const schema = schemaRows.find((row) => row.type === 'table' && row.name === name);
 		if (!schema?.sql) throw new D1BackupExportError('schema_read_failed');
 
@@ -354,6 +359,12 @@ export async function exportD1Backup(
 			throw new D1BackupExportError('schema_read_failed');
 		}
 		if (columns.length === 0) throw new D1BackupExportError('schema_read_failed');
+		// `columns` is interpolated into the restore statement, so a
+		// name `quoteIdentifier` cannot represent safely is a refused
+		// export, not a quote-pasted identifier.
+		if (!columns.every(isBareIdentifier)) {
+			throw new D1BackupExportError('unsupported_identifier');
+		}
 
 		let rows: D1BackupRow[];
 		try {
@@ -630,9 +641,18 @@ export async function restoreD1Database(
 	for (const table of backup.tables) {
 		const columns = table.columns.map(quoteIdentifier).join(', ');
 		const placeholders = table.columns.map(() => '?').join(', ');
-		const sql = `INSERT INTO ${quoteIdentifier(table.name)} (${columns}) VALUES (${placeholders})`;
 		for (const row of table.rows) {
-			statements.push(db.prepare(sql).bind(...row.map(decodeValue)));
+			// Written inline so `scripts/check-d1-sql-binding.mjs` sees the
+			// three interpolations and holds them to the allowlist: the
+			// table and column names are bare identifiers (validated by
+			// `isBareIdentifier`), and every value is bound.
+			statements.push(
+				db
+					.prepare(
+						`INSERT INTO ${quoteIdentifier(table.name)} (${columns}) VALUES (${placeholders})`,
+					)
+					.bind(...row.map(decodeValue)),
+			);
 		}
 	}
 	try {

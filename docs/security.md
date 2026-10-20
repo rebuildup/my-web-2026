@@ -847,16 +847,20 @@ Exit 1 means one of two things: an interpolated statement, or an
 `SQL_STRUCTURE_ALLOWLIST` entry the scan never reached (dead
 configuration). Adding an entry is a reviewable decision: it must name
 the file, the interpolated identifier, and why the value cannot carry
-user input. The current entries all live in `src/portfolio/load.ts`
-and are **structure, never data**:
+user input. The current entries live in `src/portfolio/load.ts` and
+`src/cloudflare/d1-backup.ts` and are **structure, never data**:
 
-| Identifier | Shape |
-| --- | --- |
-| `cursorPredicate` | a fixed chain of `?` placeholders (or the empty string), chosen by whether a cursor decoded; every cursor component is still bound |
-| `linkPlaceholders` | a `?N` chain whose length is the id chunk size (Issue #491 batched link read); every project id is bound |
-| `mediaPlaceholders` | the same chain for the batched media read |
+| File | Identifier | Shape |
+| --- | --- | --- |
+| `src/portfolio/load.ts` | `cursorPredicate` | a fixed chain of `?` placeholders (or the empty string), chosen by whether a cursor decoded; every cursor component is still bound |
+| `src/portfolio/load.ts` | `linkPlaceholders` | a `?N` chain whose length is the id chunk size (Issue #491 batched link read); every project id is bound |
+| `src/portfolio/load.ts` | `mediaPlaceholders` | the same chain for the batched media read |
+| `src/cloudflare/d1-backup.ts` | `quoteIdentifier(name)` | the export's table name, read from `sqlite_master`; the export refuses a name outside the bare-identifier grammar (Issue #461) |
+| `src/cloudflare/d1-backup.ts` | `quoteIdentifier(table.name)` | a restore's table name, validated by `isBareIdentifier` in `parseD1Backup` before any statement is built (Issue #461) |
+| `src/cloudflare/d1-backup.ts` | `columns` | the restore's comma-separated column list; each name is a validated `quoteIdentifier` (Issue #461) |
+| `src/cloudflare/d1-backup.ts` | `placeholders` | one `?` per exported column; every row value is bound with `.bind(...)` (Issue #461) |
 
-They are **live** only because that file passes its statements to
+They are **live** only because those files pass their statements to
 `prepare()` inline. Write the statement inline; a `const sql = …` in
 front of it hides the interpolation from the gate, and the gate then
 fails on the unreachable entry rather than letting it rot.

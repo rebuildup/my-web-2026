@@ -43,9 +43,10 @@ export type R2Key = string;
 /**
  * Minimal env shape the portfolio obligation needs from the R2
  * delivery surface. `MEDIA_PUBLIC_BASE_URL` is intentionally
- * optional — the foundation ships without a public media route
- * configured, so the loaders and UI must keep working with a
- * `null` URL until the operator binds the custom domain.
+ * optional — a deployment without a public media route configured
+ * must keep working with a `null` URL. Production sets it to the
+ * Worker media route (`https://rebuildup.dev/media`, Issue #634);
+ * the R2 custom domain is no longer the delivery path.
  */
 export interface PortfolioMediaEnv {
 	MEDIA?: R2Bucket;

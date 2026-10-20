@@ -236,12 +236,12 @@ export function filterPublicMediaKeys(keys: Iterable<string>): string[] {
 /* ------------------------------------------------------------------ *
  * Delivery adapter
  *
- * The public R2 custom domain is configured in the Cloudflare
- * account, so this repository cannot exercise it. What it can do —
- * and what the acceptance criteria of Issue #459 ask for — is model
- * the same delivery surface behind an adapter and run it against a
- * local fixture, so the 200/404 boundary is a real, executable
- * assertion rather than a claim in a document.
+ * Since Issue #634 this adapter is the production delivery path:
+ * `src/http/media/router.ts` mounts it at `GET|HEAD /media/<key>`.
+ * The R2 custom domain is residual (it answers at the edge without
+ * running this code); detaching it is an operator step. The adapter
+ * also runs against a local fixture, so the 200/404 boundary is an
+ * executable assertion rather than a claim in a document.
  * ------------------------------------------------------------------ */
 
 /** The subset of `R2ObjectBody` the delivery path needs. */

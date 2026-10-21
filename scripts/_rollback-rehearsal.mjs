@@ -173,6 +173,13 @@ function cite(file, heading) {
  * Every `command` below is quoted from the canonical runbook or names a
  * real repository script; the test asserts the anchor exists in the
  * cited document. None is executed here.
+ *
+ * The two "which secret bindings are live?" steps name the repository's
+ * `--verify-only` surface, not a raw secret-listing CLI invocation. The
+ * observation is identical — the live binding NAMES, never a value —
+ * but the record must not point the operator around the repository
+ * adapters (`scripts/_worker-secrets.mjs`), and `pnpm run
+ * wrangler:independence:check` fails the branch otherwise.
  */
 export const REHEARSAL_PATHS = deepFreeze([
 	{
@@ -287,12 +294,12 @@ export const REHEARSAL_PATHS = deepFreeze([
 				authority: cite(RUNBOOK_PATH, '## Source-controlled contract vs live Worker state'),
 				action: {
 					kind: ACTION_KIND.operatorCommand,
-					command: 'pnpm exec wrangler secret list --format json -c wrangler.production.jsonc',
+					command: 'pnpm run rotate:better-auth-secret -- --verify-only',
 					mutates: MUTATION.none,
 					executedByRehearsal: false,
 				},
 				observation:
-					'The command returns binding NAMES only. Both the legacy and versioned bindings are present, and no secret value is printed.',
+					'The command reports the live Worker binding NAMES only: the legacy and the versioned binding are both present. It reads the Worker through the shared secret adapter and prints no secret value.',
 			},
 			{
 				id: 'rollback-versioned-binding',
@@ -389,12 +396,12 @@ export const REHEARSAL_PATHS = deepFreeze([
 				authority: cite(RUNBOOK_PATH, '## Source-controlled contract vs live Worker state'),
 				action: {
 					kind: ACTION_KIND.operatorCommand,
-					command: 'pnpm exec wrangler secret list --format json -c wrangler.production.jsonc',
+					command: 'pnpm run rotate:better-auth-secret -- --verify-only',
 					mutates: MUTATION.none,
 					executedByRehearsal: false,
 				},
 				observation:
-					'The binding NAMES show whether the legacy fallback is still bound. No secret value is printed.',
+					'The reported binding NAMES show whether the legacy fallback is still bound. No secret value is printed.',
 			},
 			{
 				id: 'do-not-delete-legacy',

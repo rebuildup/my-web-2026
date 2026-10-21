@@ -19,10 +19,11 @@
  * The rule TanStack Router applies
  * --------------------------------
  * `src/router.tsx` does not set `caseSensitive`, and the router default
- * is `false`: static segments are compared case-insensitively. Before
- * matching, the router also percent-decodes the request pathname
- * (`decodePath` calls `decodeURI` per segment), so `/%61dmin/keys`
- * reaches `/admin/keys` as well.
+ * is `false`: static segments are compared case-insensitively. The
+ * request pathname also arrives percent-decoded before matching — h3's
+ * `H3Event` constructor decodes it (`decodePathname`, which keeps
+ * `%25` by doubling it), and router-core's `decodePath` decodes it
+ * again per segment — so `/%61dmin/keys` reaches `/admin/keys` too.
  *
  * This module mirrors both steps:
  *
@@ -30,15 +31,19 @@
  *
  * `decodeURI` — not `decodeURIComponent` — is the matching primitive:
  * it leaves reserved separators (`%2F`, `%23`, `%3F`) encoded, which is
- * why `/admin%2Fkeys` is NOT the Admin surface. The router answers that
- * path 404, and classifying it as Admin would put an ordinary miss
+ * why `/admin%2Fkeys` is NOT the Admin surface. The route tree answers
+ * that path 404, and classifying it as Admin would put an ordinary miss
  * under the admin cache rule.
  *
- * A malformed escape makes `decodeURI` throw. The router answers those
- * requests 400 and the Worker entry must reach that answer rather than
- * crash on a classifier, so the fallback uses the raw pathname — which
- * cannot be an Admin path, because the escaped prefix it would need is
- * exactly what failed to decode.
+ * A malformed escape makes `decodeURI` throw. In the request path that
+ * 400 does NOT come from route matching: the `H3Event` constructor's
+ * `decodePathname` throws `URIError`, and
+ * `@tanstack/start-server-core` converts it to a 400 before the route
+ * tree is consulted (router-core's `decodePath` itself tolerates
+ * malformed input and preserves `%25` / `%5C`). The Worker entry must
+ * reach that 400 rather than crash on a classifier, so the fallback
+ * uses the raw pathname — which cannot be an Admin path, because the
+ * escaped prefix it would need is exactly what failed to decode.
  *
  * Exact-prefix-or-`/` is deliberate, for the same reason
  * `matchesExternalBoundary` guards `/api/v10`: `/administration`,

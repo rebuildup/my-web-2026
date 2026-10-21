@@ -59,10 +59,14 @@ describe('isAdminPath', () => {
 		['/admin%2Fkeys', false],
 		['/%2Fadmin', false],
 		['/%5Cadmin', false],
-		// Only one decoding pass: `%25` stays a literal percent sign, so
-		// this is not a second encoded `admin`.
+		// `decodeURI` turns `%25` into a literal `%` in ONE pass, so the
+		// classifier sees `/%61dmin/keys` — not Admin. The assertion pins
+		// that single-pass result; h3 and router-core additionally
+		// preserve `%25` themselves, so no layer decodes it twice.
 		['/%2561dmin/keys', false],
-		// Malformed escapes are rejected by the router with a 400; the
+		// Malformed escapes do not reach route matching: h3's
+		// `decodePathname` (in the H3Event constructor) throws
+		// `URIError`, which start-server-core turns into a 400. The
 		// classifier must not throw on the way to that answer.
 		['/%61dmin/%ZZ', false],
 		['/%E0%A4%A/admin', false],

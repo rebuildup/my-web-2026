@@ -107,6 +107,17 @@ describe('Worker HTML cache policy (Issue #291)', () => {
 		expect(cacheControl).toBe('no-store');
 	});
 
+	it('leaves a malformed escape to the runtime 400 without throwing', async () => {
+		// The 400 comes from the request event layer, not route matching:
+		// h3's `decodePathname` (H3Event constructor) throws `URIError`
+		// and start-server-core converts it to a 400. The classifier runs
+		// on the same pathname and must not turn that answer into a 500,
+		// nor claim the malformed path for the admin rule.
+		const { status, cacheControl } = await fetchDocumentHeaders('/%61dmin/%ZZ');
+		expect(status).toBe(400);
+		expect(cacheControl).not.toBe('no-store');
+	});
+
 	it('keeps lookalike and reserved-separator paths out of the admin rule', async () => {
 		// `/administration` is the 404 surface; `//admin` is a 308
 		// canonicalisation to `/admin`, not an Admin document at that

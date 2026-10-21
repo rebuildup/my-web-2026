@@ -360,12 +360,18 @@ const FRAME_ANCESTORS_NONE = "'none'";
 const FRAME_ANCESTORS_SELF = "'self'";
 
 /**
- * Path prefixes (no trailing slash) whose responses may never be
- * framed, by a third party or by us. Exact-prefix-or-`/` matching, so
- * a lookalike route (`/administrator`, `/api/v1/authentication`)
- * does not inherit the denial.
+ * Non-Admin path prefixes (no trailing slash) whose responses may never
+ * be framed, by a third party or by us. Exact-prefix-or-`/` matching, so
+ * a lookalike route (`/api/v1/authentication`) does not inherit the
+ * denial.
+ *
+ * The Admin prefix is deliberately NOT in this list: it is decided by
+ * `isAdminPath` below, the same router-parity classifier the cache
+ * policy and the anomaly monitor use (Issue #654). A raw prefix check
+ * here would let `/Admin/Login` keep `frame-ancestors 'self'` while the
+ * identical lower-case URL gets `'none'`.
  */
-const FRAME_ANCESTORS_DENY_PREFIXES = ['/admin', '/api/v1/auth'] as const;
+const FRAME_ANCESTORS_DENY_PREFIXES = ['/api/v1/auth'] as const;
 
 /**
  * Matches an already-present `frame-ancestors` directive in a CSP
@@ -379,9 +385,11 @@ const FRAME_ANCESTORS_DIRECTIVE = /(?:^|;)\s*frame-ancestors\b/i;
 function frameAncestorsFor(
 	pathname: string,
 ): typeof FRAME_ANCESTORS_NONE | typeof FRAME_ANCESTORS_SELF {
-	const denied = FRAME_ANCESTORS_DENY_PREFIXES.some(
-		(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
-	);
+	const denied =
+		isAdminPath(pathname) ||
+		FRAME_ANCESTORS_DENY_PREFIXES.some(
+			(prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+		);
 	return denied ? FRAME_ANCESTORS_NONE : FRAME_ANCESTORS_SELF;
 }
 

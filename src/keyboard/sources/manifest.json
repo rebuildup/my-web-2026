@@ -1,0 +1,64 @@
+{
+  "schemaVersion": 1,
+  "syncedAt": "2026-10-20T01:56:11.860Z",
+  "sources": [
+    {
+      "id": "mac-kanata",
+      "repository": "rebuildup/key-map-kanata",
+      "ref": "0c02df504029d84bdaa145a70b2ac9719f5e9956",
+      "path": "mac/kanata-us.kbd",
+      "role": "pc-setup-adopted",
+      "url": "https://raw.githubusercontent.com/rebuildup/key-map-kanata/0c02df504029d84bdaa145a70b2ac9719f5e9956/mac/kanata-us.kbd",
+      "sha256": "ccaa4f7f6f1f406218b4271a1d8e1725053ba3c848cfcd159651a6aa0a69024e",
+      "bytes": 9274,
+      "fetchedAt": "2026-10-20T00:00:00.000Z",
+      "platform": "macos",
+      "note": "pc-setup の install-kanata.sh が config_ref として固定する ref。key-map-kanata の main には mac/kanata-us.kbd が存在しない。"
+    },
+    {
+      "id": "win-kanata",
+      "repository": "rebuildup/key-map-kanata",
+      "ref": "b1ed567b824fdc595a1bd13f1aac0f71ec3a4554",
+      "path": "win/kay-map-win.kbd",
+      "role": "repository-latest",
+      "url": "https://raw.githubusercontent.com/rebuildup/key-map-kanata/b1ed567b824fdc595a1bd13f1aac0f71ec3a4554/win/kay-map-win.kbd",
+      "sha256": "dc9d5195e513cfe7dfe63573ea07bd44fdb786ba89e6bda93e9ed64aab5b93ba",
+      "bytes": 9231,
+      "fetchedAt": "2026-10-20T00:00:00.000Z",
+      "platform": "windows",
+      "note": "取得時点の key-map-kanata デフォルトブランチ head。"
+    },
+    {
+      "id": "onishi-json",
+      "repository": "rebuildup/pc-setup",
+      "ref": "2b0da431f92d2b32965fed22549d42fd9a7adef5",
+      "path": "platforms/macos/keyboard/onishi.json",
+      "role": "repository-latest",
+      "url": "https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json",
+      "sha256": "e3c199ce93d3f2cd181f56bc7d26ac2618326d81434bc52f8d6e6397b4e01a8e",
+      "bytes": 2479,
+      "fetchedAt": "2026-10-20T00:00:00.000Z",
+      "platform": "macos",
+      "note": "取得時点の pc-setup デフォルトブランチ head。"
+    },
+    {
+      "id": "pc-setup-install",
+      "repository": "rebuildup/pc-setup",
+      "ref": "2b0da431f92d2b32965fed22549d42fd9a7adef5",
+      "path": "platforms/macos/kanata/install-kanata.sh",
+      "role": "repository-latest",
+      "url": "https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/kanata/install-kanata.sh",
+      "sha256": "07cdd12c50c034b555e63b1d43dd199c7b7f8f1dfc146ff4fdd358ec71efb57a",
+      "bytes": 5126,
+      "fetchedAt": "2026-10-20T00:00:00.000Z",
+      "usedFor": "adoption-ref",
+      "note": "macOS の Kanata 設定が採用する config_ref を宣言する installer。バイト列は保存せず、ref と hash だけを記録する。"
+    }
+  ],
+  "adoption": {
+    "sourceId": "mac-kanata",
+    "declaredBySourceId": "pc-setup-install",
+    "declaredRef": "0c02df504029d84bdaa145a70b2ac9719f5e9956",
+    "note": "macOS の Kanata 設定は key-map-kanata の最新 head ではなく、pc-setup installer が pin する config_ref を採用する。installer が更新されるまで自動追随しない。"
+  }
+}

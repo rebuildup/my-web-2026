@@ -209,6 +209,12 @@ export const SITEMAP_EXCLUSIONS: readonly SitemapExclusion[] = [
 		reason:
 			'The Tool iframe shell declares `robots: noindex` in its own route head. A sitemap entry would contradict the page it points at.',
 	},
+	{
+		route: '/keyboard',
+		kind: 'route',
+		reason:
+			'Public keyboard reference, linked from /about. It is indexable (`index: crawl`) but intentionally omitted from the sitemap: it is not a destination of the public nav, and its content changes only when the committed source snapshot is synchronised.',
+	},
 ];
 
 /**

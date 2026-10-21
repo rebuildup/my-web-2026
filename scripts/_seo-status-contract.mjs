@@ -181,6 +181,16 @@ export const HTTP_STATUS_EXPECTATIONS = Object.freeze([
 		why: 'A second public page with no robots meta: one sample is a coincidence, two is a pattern.',
 		openDecision: null,
 	},
+	{
+		id: 'public-keyboard',
+		route: '/keyboard',
+		request: 'GET /keyboard (anonymous)',
+		expect: { status: 200, robots: 'absent', surface: 'page' },
+		sitemap: 'excluded',
+		proves: [WORKERD_PROOF],
+		why: 'Read-only public reference that is indexable but deliberately not in sitemap.xml; the row pins that the omission is not a robots / status accident.',
+		openDecision: null,
+	},
 	// ── 200 but not indexable ─────────────────────────────────────────
 	{
 		id: 'tool-detail-noindex',

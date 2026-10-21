@@ -702,6 +702,12 @@
 			"role": "About surface"
 		},
 		{
+			"id": "keyboard",
+			"root": "src/keyboard",
+			"min_files": 1,
+			"role": "Read-only keyboard layout reference (parsers, geometry and diagram)"
+		},
+		{
 			"id": "tools",
 			"root": "src/tools",
 			"min_files": 1,

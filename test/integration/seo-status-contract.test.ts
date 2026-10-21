@@ -122,6 +122,7 @@ describe('public documents answer 200 and stay indexable (#419)', () => {
 	it('public-portfolio-index', async () => expectCase('public-portfolio-index', '/portfolio'));
 	it('public-tools-index', async () => expectCase('public-tools-index', '/tools'));
 	it('public-design-system', async () => expectCase('public-design-system', '/design-system'));
+	it('public-keyboard', async () => expectCase('public-keyboard', '/keyboard'));
 });
 
 /**

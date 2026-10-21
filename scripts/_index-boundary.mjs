@@ -169,6 +169,15 @@ const ROUTE_INTENT = [
 		reason: 'Public profile page.',
 	},
 	{
+		paths: ['/keyboard'],
+		zone: 'public',
+		crawl: 'allow',
+		index: 'crawl',
+		reason:
+			'Public read-only keyboard reference. Indexable and linked from /about, but not a ' +
+			'public-nav destination and therefore not listed in the sitemap.',
+	},
+	{
 		paths: ['/contact'],
 		zone: 'public',
 		crawl: 'allow',

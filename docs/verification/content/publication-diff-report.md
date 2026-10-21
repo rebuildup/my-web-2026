@@ -9,14 +9,14 @@
 | Canonical origin | `https://rebuildup.dev` |
 | First-party domain | `rebuildup.dev` |
 | External HTTP boundary | `/.well-known`, `/api/v1`, `/integrations`, `/oauth`, `/robots.txt`, `/sitemap.xml`, `/webhooks` |
-| Declared surfaces | 17 |
-| Publicly reachable surfaces | 10 |
+| Declared surfaces | 18 |
+| Publicly reachable surfaces | 11 |
 | Sitemap target URLs | 13 |
-| Publicly reachable URLs (surface + Static Assets) | 17 |
-| External hosts | 32 |
+| Publicly reachable URLs (surface + Static Assets) | 18 |
+| External hosts | 33 |
 | First-party hosts | 0 |
-| Approved transition | 3 finding(s) |
-| Verdict of the approved transition | **fail** |
+| Approved transition | no delta (first record, or unchanged surface) |
+| Verdict of the approved transition | **pass** |
 
 ## Sitemap targets (what this release asks crawlers for)
 
@@ -46,6 +46,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 - `/admin/login`
 - `/contact`
 - `/design-system`
+- `/keyboard`
 - `/portfolio`
 - `/portfolio/aulymo`
 - `/portfolio/multi-slicer`
@@ -75,6 +76,7 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 | `/admin/login` | `/admin/login` | public | no | `src/routes/admin.login.tsx` |
 | `/contact` | `/contact` | public | yes | `src/routes/contact.tsx` |
 | `/design-system` | `/design-system` | public | no | `src/routes/design-system.tsx` |
+| `/keyboard` | `/keyboard` | public | no | `src/routes/keyboard.tsx` |
 | `/portfolio/` | `/portfolio` | public | yes | `src/routes/portfolio/index.tsx` |
 | `/portfolio/$slug` | — | public | yes | `src/routes/portfolio/$slug.tsx` |
 | `/tools/` | `/tools` | public | yes | `src/routes/tools.index.tsx` |
@@ -90,9 +92,9 @@ Assets serve out of `public/`. Shrinking this list is what `E001` fails on.
 
 - (none)
 
-### Added external hosts (1)
+### Added external hosts (0)
 
-- `script.google.com`
+- (none)
 
 ### Removed external hosts (0)
 
@@ -136,6 +138,7 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@100..900&family=Shippori+Antique+B1&family=Zen+Kaku+Gothic+New:wght@500;700;900&family=Zen+Maru+Gothic&display=swap` | `fonts.googleapis.com` | external | `external/prototype/index.html` |
 | `https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;600;700&family=Zen+Kaku+Gothic+New:wght@400;600;700&display=swap` | `fonts.googleapis.com` | external | `src/routes/__root.tsx` |
 | `https://fonts.gstatic.com` | `fonts.gstatic.com` | external | `external/prototype/index.html`, `src/http/content-security-policy.ts`, `src/routes/__root.tsx`, `src/tools/embed-consent-notice.stories.tsx`, `src/tools/manifest.json` |
+| `https://github.com` | `github.com` | external | `src/keyboard/components/KeyboardPage.tsx` |
 | `https://github.com/rebuildup` | `github.com` | external | `src/about/data.ts`, `src/contact/channels.json` |
 | `https://github.com/rebuildup/ProtoType.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/design-skills` | `github.com` | external | `src/portfolio/seed.ts` |
@@ -159,6 +162,11 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 | `https://github.com/rebuildup/tool-svg2tsx.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://github.com/rebuildup/tool-text-counter.git` | `github.com` | external | `src/tools/manifest.json` |
 | `https://host.invalid` | `host.invalid` | external | `src/tools/embed-policy.ts` |
+| `https://raw.githubusercontent.com` | `raw.githubusercontent.com` | external | `src/keyboard/load.ts` |
+| `https://raw.githubusercontent.com/rebuildup/key-map-kanata/0c02df504029d84bdaa145a70b2ac9719f5e9956/mac/kanata-us.kbd` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
+| `https://raw.githubusercontent.com/rebuildup/key-map-kanata/b1ed567b824fdc595a1bd13f1aac0f71ec3a4554/win/kay-map-win.kbd` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
+| `https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/kanata/install-kanata.sh` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
+| `https://raw.githubusercontent.com/rebuildup/pc-setup/2b0da431f92d2b32965fed22549d42fd9a7adef5/platforms/macos/keyboard/onishi.json` | `raw.githubusercontent.com` | external | `src/keyboard/sources/manifest.json` |
 | `https://redirect-guard.invalid` | `redirect-guard.invalid` | external | `src/http/security/redirect.ts` |
 | `https://samuido.booth.pm` | `samuido.booth.pm` | external | `src/about/data.ts` |
 | `https://schema.org` | `schema.org` | external / identifier | `src/editorial/nav/Breadcrumbs.tsx`, `src/editorial/structured-data/types.ts` |
@@ -180,7 +188,5 @@ other external row is a link a visitor can follow, i.e. an outbound dependency.
 
 ## Findings in the approved transition
 
-- **ERROR** `E004 external-host-added` New external host script.google.com appears in shipped source. A new host is a new outbound dependency and a new privacy surface; record it deliberately with `pnpm run publication:write`.
-- **WARN** `W002 external-url-added` External URL added: https://script.google.com
-- **WARN** `W002 external-url-added` External URL added: https://use.typekit.net/app
+_No findings._
 

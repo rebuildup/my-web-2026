@@ -155,8 +155,9 @@ const PRIVATE_EVENT = PRIVATE_OWNER_RECORD.events[0];
  * `/tools/text-counter` and `/tools/prototype` are two samples of the
  * same `$slug` loader (build-time Tool registry, not D1) because both
  * are public nav entries. `/design-system` has no loader and is in the
- * public nav. `/about` and `/portfolio` render here because the
- * portfolio schema is bootstrapped below.
+ * public nav. `/keyboard` reads the committed snapshot only. `/about`
+ * and `/portfolio` render here because the portfolio schema is
+ * bootstrapped below.
  *
  * Nothing is excluded: a public surface this list does not name is a
  * coverage hole, so adding a public route means adding its path here.
@@ -171,6 +172,7 @@ const PUBLIC_SSR_PATHS = [
 	'/tools/text-counter',
 	'/tools/prototype',
 	'/design-system',
+	'/keyboard',
 ] as const;
 
 /**

@@ -19,6 +19,13 @@
 			"why": "person identity surface with structured data and an experience list."
 		},
 		{
+			"route_id": "/keyboard",
+			"path": "/keyboard",
+			"source": "src/routes/keyboard.tsx",
+			"mode": "render",
+			"why": "read-only keyboard reference with tablists, a horizontally scrollable key diagram and a specification-style provenance table."
+		},
+		{
 			"route_id": "/contact",
 			"path": "/contact",
 			"source": "src/routes/contact.tsx",

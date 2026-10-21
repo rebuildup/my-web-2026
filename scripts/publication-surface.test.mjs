@@ -705,7 +705,7 @@ describe('publication-surface — load contract (Issue #505 DoD)', () => {
 		const elapsedMs = Number(process.hrtime.bigint() - started) / 1e6;
 		assert.equal(surface.sitemap.length, 5 + 4000 + 4000);
 		assert.equal(surface.externalHosts.length, 4000);
-		assert.equal(surface.publicUrls.length, surface.sitemap.length + 3);
+		assert.equal(surface.publicUrls.length, surface.sitemap.length + 4);
 		assert.ok(elapsedMs < 10000, `surface build took ${elapsedMs.toFixed(0)}ms`);
 	});
 });

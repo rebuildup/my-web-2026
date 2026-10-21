@@ -1,5 +1,5 @@
-import { useId } from 'react';
-import { css } from '../../styled-system/css';
+import { type ReactNode, useId } from 'react';
+import { css, cx } from '../../styled-system/css';
 import {
 	TABLE_CODE_CASES,
 	TABLE_CODE_COLUMNS,
@@ -141,6 +141,42 @@ const SCROLL_STYLE = {
 	minWidth: '0',
 	maxWidth: '100%',
 } as const;
+
+export interface ScrollRegionProps {
+	/** The region's accessible name. A named section is a landmark. */
+	readonly label: string;
+	readonly children: ReactNode;
+	/** Surface-owned chrome (border, radius, padding); never the scroll. */
+	readonly className?: string;
+}
+
+/**
+ * A named, keyboard-reachable horizontal scroll box.
+ *
+ * `DataTable` and `CodeBlock` own their own scroll boxes; this export
+ * is for the other wide surface that must confine its overflow (the
+ * key-position diagram at `/keyboard`). The reason the declaration
+ * lives here rather than at the call site is the same one
+ * `scripts/check-table-code-a11y.mjs` enforces: an `overflow-x: auto`
+ * box that is not focusable cannot be scrolled with a keyboard, and a
+ * box that is focusable but unnamed cannot be found by a screen
+ * reader. A named `<section>` is exposed as a `region` landmark.
+ */
+export function ScrollRegion({ label, children, className }: ScrollRegionProps) {
+	return (
+		<section
+			// A scrollable box that cannot be focused cannot be scrolled
+			// with a keyboard (SC 2.1.1). Focus here means "arrow keys
+			// now move this region, not the page".
+			// biome-ignore lint/a11y/noNoninteractiveTabindex: a scroll container must be focusable so arrow keys scroll it (WCAG 2.2 SC 2.1.1).
+			tabIndex={0}
+			aria-label={label}
+			className={cx(css(SCROLL_STYLE), className)}
+		>
+			{children}
+		</section>
+	);
+}
 
 const CAPTION_STYLE = {
 	captionSide: 'top',

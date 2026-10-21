@@ -102,16 +102,20 @@
 		"MY_WEB_2026_REACTIONS_TARGET": "home-page",
 		"MY_WEB_2026_COUNTER_KEY": "home-page",
 		"BETTER_AUTH_URL": "https://rebuildup.dev",
-		// Issue #77 Decision 5 — public R2 custom domain.
-		// Public portfolio media is served directly from R2 via the
-		// custom domain `media.rebuildup.dev`, NOT via the Worker
-		// (zero Worker request cost per image, full CDN cacheability,
-		// direct OGP crawlers, natural srcset). The DNS record is
-		// attached at the R2 bucket level — see
-		// `docs/portfolio/decisions.md` §5. Until the bucket-level
-		// attachment is live, `composeMediaUrl` keeps returning `null`
-		// and the UI's placeholder branch is exercised.
-		"MEDIA_PUBLIC_BASE_URL": "https://media.rebuildup.dev"
+		// Issue #634 — public media is delivered by the Worker, not by
+		// an R2 custom domain. `GET /media/<key>` runs the namespace
+		// and publication gates (`src/cloudflare/media-visibility.ts`,
+		// `src/http/media/router.ts`) before any byte is served, and
+		// only an approved key answers 200.
+		//
+		// The base URL carries the `/media` path because
+		// `composeMediaUrl` appends `/<r2_key>` verbatim. Pointing it
+		// back at the R2 custom domain (`https://media.rebuildup.dev`)
+		// is the rollback: the edge would again serve every key that
+		// exists, which is exactly the state Issue #634 removes.
+		// Retiring that custom-domain attachment is an operator step
+		// (docs/security/r2-media-visibility.md §Rollback and residual).
+		"MEDIA_PUBLIC_BASE_URL": "https://rebuildup.dev/media"
 	},
 	"secrets": {
 		// Source-controlled contract (ADR-0015 §9, Phase 3+ — Issue #89).

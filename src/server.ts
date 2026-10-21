@@ -22,6 +22,11 @@ import { toolRouteSecurityPolicy } from './tools/registry';
  *   /webhooks/*      inbound webhooks from external services
  *   /oauth/*         OAuth callback handlers
  *   /integrations/*  third-party integration adapters
+ *   /media/*         gated R2 object delivery (Issue #634). The object
+ *                    bytes and their cache headers cannot be produced by
+ *                    the TanStack Start document shell, and the
+ *                    namespace + publication gates must run on the
+ *                    request path before any byte is served.
  *   /sitemap.xml     crawler-facing sitemap (Issue #420)
  *   /robots.txt      crawler-facing crawler policy (Issue #420)
  *   /.well-known     RFC 9116 security.txt (Issue #468)
@@ -54,6 +59,7 @@ const EXTERNAL_BOUNDARY_PREFIXES = [
 	'/webhooks',
 	'/oauth',
 	'/integrations',
+	'/media',
 	'/sitemap.xml',
 	'/robots.txt',
 	'/.well-known',

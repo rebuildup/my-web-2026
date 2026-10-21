@@ -167,6 +167,16 @@ function escapeSql(value) {
 	return `'${String(value).replace(/'/g, "''")}'`;
 }
 
+/**
+ * Content type the delivery route serves for this extension, or `null`
+ * when it serves none.
+ *
+ * The public route (`src/http/media/router.ts`) refuses `image/svg+xml`
+ * — SVG is an active-content type, so serving it same-origin would be
+ * an XSS primitive — and refuses `application/octet-stream`. Returning
+ * `null` here keeps the migration from writing an R2 object and a
+ * `portfolio_media` row whose composed URL can only ever 404.
+ */
 function contentTypeFromExt(filename) {
 	const dot = filename.lastIndexOf('.');
 	const ext = dot === -1 ? '' : filename.slice(dot).toLowerCase();
@@ -180,14 +190,14 @@ function contentTypeFromExt(filename) {
 			return 'image/jpeg';
 		case '.gif':
 			return 'image/gif';
-		case '.svg':
-			return 'image/svg+xml';
+		case '.avif':
+			return 'image/avif';
 		case '.mp4':
 			return 'video/mp4';
 		case '.webm':
 			return 'video/webm';
 		default:
-			return 'application/octet-stream';
+			return null;
 	}
 }
 
@@ -265,6 +275,16 @@ function main() {
 				const filename = basename(localPath);
 				const r2Key = `portfolio/${slug}/${filename}`;
 				const contentType = contentTypeFromExt(filename);
+				if (contentType === null) {
+					// The delivery route would refuse this object, so
+					// uploading it would create a public row whose URL
+					// can only 404. Report it for the operator instead.
+					buckets.unknown.push({
+						...enriched,
+						reason: `content type not publicly deliverable: ${filename}`,
+					});
+					continue;
+				}
 				const stat = statSync(localPath);
 
 				// Issue #247: through the repository R2 driver. A local

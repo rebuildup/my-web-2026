@@ -660,7 +660,7 @@ mode, so it is not repeated there.
 | `https://fonts.googleapis.com` | `style-src` | Font stylesheet linked from `src/routes/__root.tsx` |
 | `https://fonts.gstatic.com` | `font-src` | The `@font-face` binaries that stylesheet references |
 | `https://*.google-analytics.com`, `https://*.analytics.google.com`, `https://*.googletagmanager.com` | `img-src`, `connect-src` | GA4 beacons; the runtime subdomain is chosen by Google, so the first-party source only pins the loader host |
-| `MEDIA_PUBLIC_BASE_URL` origin (when configured) | `img-src` | Portfolio media served from the R2 custom domain; the value is read from `env`, never hard-coded |
+| `MEDIA_PUBLIC_BASE_URL` origin (when configured) | `img-src` | Portfolio media served from the Worker media route (`/media/<key>`); the value is read from `env`, never hard-coded |
 
 The first observation run also reported `script-src` violations with
 `blockedURI: eval` from zod's client-side JIT compiler. The response was
@@ -1080,8 +1080,9 @@ deploy 前のベースライン取得には
 
 1. **サブドメインごとの HTTPS 到達性の監査**が本ドキュメントに
    記録されていること。zone には現在 `rebuildup.dev` 以外にも
-   `media.rebuildup.dev`（R2 custom domain。`wrangler.production.jsonc`
-   の `MEDIA_PUBLIC_BASE_URL`）が存在する。HTTPS 応答できない
+   `media.rebuildup.dev`（R2 custom domain。Issue #634 以降
+   `MEDIA_PUBLIC_BASE_URL` は `https://rebuildup.dev/media` を指すが、
+   この attachment は撤退作業まで残る）が存在する。HTTPS 応答できない
    サブドメインが 1 つでもあれば、そのホストは `max-age` の間だけ
    到達不能になる。
 2. **zone 設定側で HSTS を有効化**していること。zone の
@@ -1177,27 +1178,30 @@ binding API is reachable in the local workerd pool"**, not
 
 ## R2 object visibility (public keys vs private objects)
 
-Portfolio media is delivered by **a public R2 custom domain**
-(`https://media.rebuildup.dev/<key>`) — a Cloudflare account setting
-this repository cannot verify, recorded as Decision 5's release
-prerequisite. If that custom domain is attached, it bypasses the
-Worker: any key that exists in the `MEDIA` bucket can be fetched by
-anyone who can guess it, and no code of ours runs on that path.
-`src/cloudflare/media-visibility.ts` (Issue #459) therefore owns one
+Portfolio media is delivered by the **Worker** at
+`https://rebuildup.dev/media/<key>` (Issue #634). The R2 custom domain
+(`https://media.rebuildup.dev/<key>`) is a residual: as long as that
+attachment is live in the Cloudflare account, it bypasses the Worker and
+any key that exists in the `MEDIA` bucket can be fetched by anyone who
+can guess it. Retiring it is an operator step recorded in
+[`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md);
+pointing `MEDIA_PUBLIC_BASE_URL` back at it is the break-glass rollback.
+`src/cloudflare/media-visibility.ts` (Issue #459) owns one
 rule for the repository — a key is publicly servable only when it is
 well-formed and lives under an explicitly declared **public prefix**
 (`portfolio/`, `reactions/`); private and undeclared namespaces fail
 closed.
 
-The rule is **enforced in production code on the two key-handling
-paths that exist today**: `composeMediaUrl` (returns `null`) and
-`getImageStream` / `GET /api/v1/reaction-images/:id` (404). Refusals
-are 404, never 403, and carry no reason code, so the boundary is not
-an existence oracle. The module's delivery adapter
-(`createPublicMediaDelivery`) and listing walk (`listPublicMediaKeys`)
-model the same boundary for a Worker-side delivery path and for a
-listing surface; **neither has a production caller today**, and they
-are not evidence about the custom-domain path.
+The rule is **enforced in production code on every key-handling path**:
+`composeMediaUrl`, `getImageStream` / `GET /api/v1/reaction-images/:id`,
+and since Issue #634 the delivery adapter `createPublicMediaDelivery`
+reached through `GET|HEAD /media/<key>` (`src/http/media/router.ts`).
+That route additionally asks the owning obligation whether this
+particular object is published (a D1 row), serves only the media types
+the producers write, and answers every refusal with the same bodyless
+404 carrying `no-store` — no 403 and no reason code, so the boundary is
+not an existence oracle. The listing walk (`listPublicMediaKeys`) has no
+production caller and no listing route exists.
 
 Verified against the local workerd R2 fixture only — object enumeration
 and a `cover-<n>` sequential sweep over the published key layout — by
@@ -1208,9 +1212,11 @@ a read-only audit that classifies every key in the `MEDIA` bucket with
 the same `isPublicMediaKey` predicate the code gates use and fails the
 release gate on one key outside `PUBLIC_MEDIA_PREFIXES`
 (`pnpm run r2:media:audit`, operator-run because CI holds no Cloudflare
-credential; fail-closed and status-only). The residual — an
-**unpublished** object that lives inside `portfolio/` — is not closed,
-and Issue #459 still must not be closed on repository gates alone. Full
+credential; fail-closed and status-only). The residual is now the
+**custom-domain path only**: an unpublished object that lives inside
+`portfolio/` is refused by the Worker route, but the attached custom
+domain would still serve it. Issue #459 must not be closed on repository
+gates alone until that attachment is retired. Full
 scope and procedure:
 [`docs/security/r2-media-visibility.md`](security/r2-media-visibility.md)
 and [`docs/runbook/r2-media-key-set-audit.md`](runbook/r2-media-key-set-audit.md).

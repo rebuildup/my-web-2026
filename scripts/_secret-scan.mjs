@@ -341,6 +341,22 @@ export const ALLOWLIST = Object.freeze([
 			'a fixture or the detector is untested. The value is synthetic filler minted in ' +
 			'`selfTestFixtures()`.',
 	},
+	{
+		path: 'scripts/_rollback-rehearsal.test.mjs',
+		detector: 'private-key-block',
+		reason:
+			'The rollback rehearsal sensitive-value guard own detector fixture (Issue #503). The suite ' +
+			'asserts the guard REJECTS a PEM header, so the header has to be present; it is the RFC 7468 ' +
+			'label with no key body, no modulus and no issued value.',
+	},
+	{
+		path: 'scripts/_rollback-rehearsal.test.mjs',
+		detector: 'aws-access-key-id',
+		reason:
+			'The rollback rehearsal sensitive-value guard own detector fixture (Issue #503). The suite ' +
+			'asserts the guard REJECTS an AWS access key id shape, so the shape has to be present; it is ' +
+			'the AWS documentation example id and is issued by no account.',
+	},
 ]);
 
 /** Placeholder / documentation markers that disqualify a value. */

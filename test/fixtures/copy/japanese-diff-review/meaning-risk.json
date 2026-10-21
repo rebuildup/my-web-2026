@@ -1,0 +1,14 @@
+{
+	"$comment": "Issue #425 fixture. A permission qualifier (`のみ`) is dropped while the sentence still says `編集`: a boolean 'permission marker present' check would miss this, so the collector compares marker sets.",
+	"name": "meaning-risk",
+	"expect": "attention",
+	"note": "dropping `のみ` narrows the permission while keeping the `編集` category — permission-drift is surfaced.",
+	"diff": [
+		"diff --git a/src/about/access.ts b/src/about/access.ts",
+		"--- a/src/about/access.ts",
+		"+++ b/src/about/access.ts",
+		"@@ -20 +20 @@",
+		"-const access = '管理者のみが編集できます';",
+		"+const access = '管理者が編集できます';"
+	]
+}

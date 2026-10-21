@@ -1,0 +1,28 @@
+{
+	"$comment": "Issue #425 fixture. An added article Markdown file: prose lines are review targets, but a fenced code block, inline code and a link destination are not. The URL contains Japanese so a naive scanner would report it; the Markdown extractor must drop it.",
+	"name": "article-markdown",
+	"expect": "review",
+	"note": "article prose is collected while fenced code, inline code and a Japanese URL destination are excluded.",
+	"diff": [
+		"diff --git a/content/articles/hello.md b/content/articles/hello.md",
+		"new file mode 100644",
+		"--- /dev/null",
+		"+++ b/content/articles/hello.md",
+		"@@ -0,0 +1,9 @@",
+		"+# はじめに",
+		"+",
+		"+これは公開記事の本文です。",
+		"+",
+		"+```ts",
+		"+const message = 'これはコードです';",
+		"+```",
+		"+",
+		"+詳細は[こちら](https://example.com/秘密のページ)を参照してください。"
+	],
+	"sourceTexts": {
+		"content/articles/hello.md": {
+			"before": null,
+			"after": "# はじめに\n\nこれは公開記事の本文です。\n\n```ts\nconst message = 'これはコードです';\n```\n\n詳細は[こちら](https://example.com/秘密のページ)を参照してください。\n"
+		}
+	}
+}

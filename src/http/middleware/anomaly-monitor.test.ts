@@ -91,6 +91,24 @@ describe('classifySurface', () => {
 		expect(classifySurface('/api/v1/reactions')).toBe('external-api');
 	});
 
+	it('follows TanStack Router for the Admin surface (Issue #654)', () => {
+		// The router matches static segments case-insensitively and
+		// percent-decodes the pathname before matching, so these URLs
+		// render the Admin surface. Counting them as unclassified is
+		// what let `/ADMIN/KEYS` look like anonymous traffic while an
+		// operator saw an admin screen.
+		for (const pathname of [
+			'/ADMIN',
+			'/Admin/Login',
+			'/ADMIN/KEYS',
+			'/adMin/KEYS',
+			'/%61dmin/keys',
+			'/%61DMIN/KEYS',
+		]) {
+			expect(classifySurface(pathname)).toBe('admin');
+		}
+	});
+
 	it('does not claim a lookalike path', () => {
 		// The dispatch rule in src/server.ts is exact-prefix-or-`/`.
 		// A prefix-only match would file somebody else's traffic under a
@@ -98,6 +116,11 @@ describe('classifySurface', () => {
 		for (const pathname of [
 			'/adminish',
 			'/admin-tools',
+			'/administration',
+			'/ADMINISH',
+			'//admin',
+			'/admin%2Fkeys',
+			'/%2Fadmin',
 			'/api/v10',
 			'/api/v1evil',
 			'/',

@@ -29,6 +29,7 @@ of trusting the image.
 | [`threat-model-diagram.webp`](threat-model-diagram.webp) | #479 | `pnpm run verify:threat-model-screenshot` |
 | [`operator-mfa-checklist.webp`](operator-mfa-checklist.webp) | #469 | `pnpm run verify:operator-mfa-checklist-screenshot` |
 | [`r2-restore-proof.webp`](r2-restore-proof.webp) | #462 | `pnpm run r2:restore:proof:report` |
+| [`d1-backup-restore.webp`](d1-backup-restore.webp) | #461 | `pnpm run verify:d1-backup-restore-screenshot` |
 | [`cloudflare-config-drift.webp`](cloudflare-config-drift.webp) | #480 | `pnpm run cf:config:drift:report` |
 | [`anomaly-monitor-fixture.webp`](anomaly-monitor-fixture.webp) | #481 | `pnpm run verify:anomaly-monitor-screenshot` |
 | [`r2-public-delivery-gate.webp`](r2-public-delivery-gate.webp) | #634 | `pnpm run r2:public-delivery:report` — see [`## r2-public-delivery-gate.webp`](#r2-public-delivery-gatewebp-issue-634) |
@@ -98,6 +99,32 @@ Regenerate:
 pnpm run r2:restore:proof          # fixture proof（status-only）
 pnpm run r2:restore:proof:report   # -> .tmp/r2-restore-proof.html（この画像の生成元）
 ```
+
+## `d1-backup-restore.webp` (Issue #461)
+
+使い捨ての local workerd D1 binding (`env.DB`) に合成行を seed し、
+export → drop → import → read-back を実行した結果。2 テーブル / 6 行 /
+明示 index を対象に、復元後の schema（`sqlite_master.sql` をそのまま
+再作成）と行集合が元の export と完全に一致することを確認している。
+画像の後半は失敗時の挙動で、truncated JSON / rowCount 不一致 /
+digest 不一致は **import を組み立てる前に拒否**され、制約違反で失敗した
+batch は **全体が rollback** されてテーブルが 1 つも残らないことを示す。
+危険なのは「何もしないこと」ではなく「一部だけ書かれた DB が成功と
+報告されること」なので、この proof は verdict だけでなく実行後の
+DB 状態も判定する。
+
+本番 DB・remote D1・credential・deploy は一切使っていない。fixture の行は
+固定文字列・固定数値・3 byte の BLOB だけで、個人情報も実在の識別子も
+含まない。画像には database id・table 名（fixture 名を除く）・row 値・
+bucket/key 一覧を写していない。
+
+```bash
+pnpm run d1:backup:proof                    # local D1 に対する 7 ケース
+pnpm run verify:d1-backup-restore-screenshot # -> この画像（WebP）
+```
+手順と失敗時の code 一覧、実テスト DB での operator 手順は
+[`docs/runbook/d1-backup-restore.md`](../../runbook/d1-backup-restore.md)
+に正本がある。
 
 ## `asvs-coverage-matrix.webp` (Issue #507)
 

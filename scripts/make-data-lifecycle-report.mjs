@@ -197,7 +197,14 @@ export function renderReport({ summary, entries, refusals, deletionWindow, purge
     <td>${escapeHtml(entry.stores.ja)}</td>
     <td><b>${escapeHtml(entry.retention.kind)}</b><div>${escapeHtml(entry.retention.statement.ja)}</div></td>
     <td><b>${escapeHtml(entry.deletion.channel)}</b><div>${escapeHtml(entry.deletion.statement.ja)}</div></td>
-    <td><b>${escapeHtml(entry.transfer.target)}</b><div>${escapeHtml(entry.transfer.statement.ja)}</div></td>
+    <td><b>${escapeHtml(entry.transfer.target)}</b><div>${escapeHtml(entry.transfer.statement.ja)}</div>${(
+			entry.transfer.senders ?? []
+		)
+			.map(
+				(sender) =>
+					`<div><b>${escapeHtml(sender.label.ja)}</b><div>${escapeHtml(sender.statement.ja)}</div></div>`,
+			)
+			.join('')}</td>
     <td>${escapeHtml(entry.visibility.ja)}</td>
   </tr>`,
 		)

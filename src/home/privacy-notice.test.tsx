@@ -40,7 +40,11 @@ const PENDING_ENTRY: DataLifecycleEntry = {
 		channel: 'not-applicable',
 		statement: { ja: '保留中の削除', en: 'Pending deletion' },
 	},
-	transfer: { target: 'none', statement: { ja: '保留中の外部送信', en: 'Pending transfer' } },
+	transfer: {
+		target: 'none',
+		statement: { ja: '保留中の外部送信', en: 'Pending transfer' },
+		senders: [],
+	},
 	visibility: { ja: '保留中の公開範囲', en: 'Pending visibility' },
 	evidence: ['src/privacy/data-lifecycle.ts'],
 	publication: { status: 'pending', note: { ja: '保留中の備考', en: 'Pending note' } },
@@ -68,6 +72,23 @@ describe('PrivacyNotice', () => {
 		expect(html).toContain('31536000');
 		expect(html).toContain('60 minutes');
 		expect(html).toContain('Google Analytics 4');
+	});
+
+	it('shows who sends what, so the scope is visible to the reader', () => {
+		// Issue #662: the sender distinction has to reach the rendered
+		// notice, not only the registry source. The reader has to be
+		// able to tell this platform's code from GA4's own automatic
+		// collection — the split the consent banner relies on.
+		const html = renderNotice();
+		expect(html).toContain('送信者:');
+		expect(html).toContain('このプラットフォームのコード');
+		expect(html).toContain('GA4 自身の自動収集');
+		for (const entry of getPublishedDataLifecycle()) {
+			for (const sender of entry.transfer.senders) {
+				expect(html).toContain(sender.label.ja);
+				expect(html).toContain(sender.statement.ja);
+			}
+		}
 	});
 
 	it('makes no claim the registry refuses', () => {
@@ -101,8 +122,13 @@ describe('PrivacyNotice', () => {
 		expect(html).not.toContain('lang="ja"');
 		const englishTags = html.match(/<span lang="en">/g) ?? [];
 		// summary (1) + deletion-window statement (1) + per entry
-		// (label + 5 statements = 6).
-		expect(englishTags).toHaveLength(2 + getPublishedDataLifecycle().length * 6);
+		// (label + 5 statements = 6) + per sender (label + statement
+		// = 2, Issue #662).
+		const senderCount = getPublishedDataLifecycle().reduce(
+			(total, entry) => total + entry.transfer.senders.length,
+			0,
+		);
+		expect(englishTags).toHaveLength(2 + getPublishedDataLifecycle().length * 6 + senderCount * 2);
 	});
 
 	it('is a native disclosure: no script and no custom control', () => {

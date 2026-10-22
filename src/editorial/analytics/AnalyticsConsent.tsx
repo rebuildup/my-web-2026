@@ -50,6 +50,18 @@
  * override. The signal is a browser fact, not a legal conclusion, and
  * the copy deliberately stops there (see `docs/verification/privacy/
  * analytics-disabled.md`).
+ *
+ * Two senders, named as two (Issue #662)
+ * ---------------------------------------
+ * The copy says what reaches GA4 (path, referrer, browser / device
+ * information) and names the two routes it travels: the values this
+ * site’s own code sends explicitly (the measurement id and the path),
+ * and GA4’s own automatic collection. The published data lifecycle
+ * registry (`src/privacy/data-lifecycle.ts`) splits the same transfer
+ * the same way, so the two public surfaces cannot contradict each
+ * other: the banner names what arrives, the registry names who sends
+ * what. The banner’s factual claim about GA4’s automatic collection is
+ * not weakened by that split.
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -78,10 +90,10 @@ export const ANALYTICS_CONSENT_COPY = {
 	regionLabel: '解析の設定',
 	unsetHeadline: 'アクセス解析を有効にしますか',
 	unsetDescription:
-		'許可すると、Google の解析サービス（GA4）へ、閲覧したページのパス・参照元・ブラウザや端末の情報が送信されます。許可していないあいだは何も送信されません。拒否しても、このサイトの表示と操作は変わりません。',
+		'許可すると、Google の解析サービス（GA4）へ、閲覧したページのパス・参照元・ブラウザや端末の情報が送信されます。送信元は 2 つで、このプラットフォームのコードが明示的に送る測定 ID とパス情報、そして GA4 自身が参照元やブラウザや端末の情報を読み取って送る自動収集です。許可していないあいだは何も送信されません。拒否しても、このサイトの表示と操作は変わりません。',
 	grantedHeadline: 'アクセス解析が許可されています',
 	grantedDescription:
-		'許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。広告用途の保存は有効にしていません。',
+		'許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。送信元は 2 つで、このプラットフォームのコードが明示的に送る測定 ID とパス情報、そして GA4 自身が参照元やブラウザや端末の情報を読み取って送る自動収集です。広告用途の保存は有効にしていません。',
 	deniedHeadline: 'アクセス解析は拒否されています',
 	deniedDescription:
 		'このブラウザでは、以降の計測を停止します。このサイトの表示と操作はこれまでどおりです。',

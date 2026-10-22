@@ -60,6 +60,12 @@
 		"ogDescription": "現在 re-verified されている contact channel だけを掲載しています。Channel は用途 (採用 / 技術的な議論 / 配布) 別に明示しています。",
 		"ogUrl": "https://rebuildup.dev/contact"
 	},
+	"/projects/dotfiles": {
+		"ogType": "website",
+		"ogTitle": "dotfiles — rebuildup.dev",
+		"ogDescription": "開発マシンのユーザー設定、エージェント共通設定の固定、Infisical を介した実行時 secret 注入を担う rebuildup/dotfiles の公開紹介。OS とパッケージの provisioning を担う pc-setup との境界も説明します。",
+		"ogUrl": "https://rebuildup.dev/projects/dotfiles"
+	},
 	"/tools": {
 		"ogType": "website",
 		"ogTitle": "Tools — my-web-2026",

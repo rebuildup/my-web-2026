@@ -83,6 +83,12 @@ gates:
       # Issue #422: structured-data route coverage — every
       # visitor-facing route declares which schema.org types it emits.
       - 'pnpm run structured-data:check'
+      # Issue #621: the project-introduction snapshot. Offline and
+      # read-only: it re-validates the committed snapshot's shape,
+      # digest, pinned SHA, sanitized link set and publication boundary,
+      # and reports freshness as an advisory. A hand-edited snapshot
+      # that claims it is current cannot pass this gate.
+      - 'pnpm run projects:check'
       # Issue #421: the Open Graph / Twitter card contract. Cheap by
       # design (pure Node): it proves every route the router serves has
       # a declared card state, that the declared fallback card is a real

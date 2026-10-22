@@ -10,6 +10,8 @@
  * Issue #530. Updated only when the boundary contracts change.
  */
 
+import packageJson from '../../../package.json';
+
 export interface ApiEndpoint {
 	path: string;
 	method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE';
@@ -33,7 +35,11 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
 			status: 'ok',
 			service: 'my-web-2026',
 			layer: 'external-boundary',
-			version: '0.7.0',
+			// The release version has exactly one source
+			// (`package.json#version`, AGENTS.md §1). The health handler
+			// answers with it (`src/http/hono.ts`), so a second literal
+			// here would be a value that drifts on the next release.
+			version: packageJson.version,
 		},
 		purpose: 'Public health / version probe. Read-only. No auth required.',
 	},
@@ -151,4 +157,58 @@ export const publicApiCatalog: readonly ApiEndpoint[] = [
  * - Mock routes (`LOCAL_API_MODE=mock`) — not a production surface.
  * - Internal server functions (`/_serverFn/*`) — handled by TanStack Start.
  * - Management / secret / admin endpoints — out of scope by design.
+ *
+ * The exclusion is a DECLARATION, not a description: every entry below
+ * is a route the boundary really registers, and every one of them
+ * carries the reason it is outside the public contract. The drift test
+ * reads this list, so a route that the boundary serves and that nobody
+ * catalogued or excluded fails the gate — the list cannot silently
+ * absorb a public route.
  */
+export interface ApiScopeExclusion {
+	method: 'GET' | 'HEAD' | 'POST' | 'PUT' | 'DELETE';
+	path: string;
+	reason: string;
+}
+
+export const publicApiScopeExclusions: readonly ApiScopeExclusion[] = [
+	{
+		method: 'GET',
+		path: '/api/v1/db/ping',
+		reason:
+			'Operator binding probe. It answers with the D1 binding state and has no published schema or auth contract.',
+	},
+	{
+		method: 'GET',
+		path: '/api/v1/media/ping',
+		reason:
+			'Operator binding probe. It answers with the R2 binding state and has no published schema or auth contract.',
+	},
+	{
+		method: 'GET',
+		path: '/media/:key{.+}',
+		reason:
+			'Binary delivery gate for approved R2 objects. The response is a byte stream, not a JSON contract.',
+	},
+	{
+		method: 'HEAD',
+		path: '/media/:key{.+}',
+		reason:
+			'Binary delivery gate for approved R2 objects. The response is a byte stream, not a JSON contract.',
+	},
+	{
+		method: 'GET',
+		path: '/sitemap.xml',
+		reason: 'Crawler document (XML). It is not a request/response data contract.',
+	},
+	{
+		method: 'GET',
+		path: '/robots.txt',
+		reason: 'Crawler document (plain text). It is not a request/response data contract.',
+	},
+	{
+		method: 'GET',
+		path: '/.well-known/security.txt',
+		reason: 'RFC 9116 document (plain text). It is not a request/response data contract.',
+	},
+];

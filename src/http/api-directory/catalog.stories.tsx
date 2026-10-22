@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { css, cx } from '../../styled-system/css';
+import { css, cx } from '../../../styled-system/css';
 import { publicApiCatalog } from './catalog';
 
 /**
@@ -13,7 +13,12 @@ const meta = {
 	title: 'http/api-directory/PublicApiDirectory',
 	parameters: { layout: 'fullscreen' },
 	tags: ['autodocs'],
-} satisfies Meta<{ title: string; parameters: Record<string, unknown>; tags: string[]; component?: unknown }>;
+} satisfies Meta<{
+	title: string;
+	parameters: Record<string, unknown>;
+	tags: string[];
+	component?: unknown;
+}>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;

@@ -73,6 +73,7 @@
 		"security:redirect:report": "node scripts/redirect-validation-report.mjs",
 		"capture:analytics-consent": "node scripts/capture-analytics-consent.mjs",
 		"capture:error-states": "node scripts/capture-error-state-gallery.mjs",
+		"verify:status-incident-screenshot": "node scripts/capture-status-incident-context.mjs",
 		"capture:rollback-rehearsal": "node scripts/capture-rollback-rehearsal.mjs",
 		"storybook": "storybook dev -p 6006",
 		"test": "vitest run && node scripts/run-script-tests.mjs",

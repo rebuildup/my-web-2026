@@ -756,6 +756,16 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/my-web-2026/issues",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/status/incidents.ts",
+					"src/home/status/tiles.stories.tsx"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/my-web-2026/releases",
 				"host": "github.com",
 				"kind": "external",

@@ -47,6 +47,7 @@ const KINDS = [
 	'ok',
 	'degraded',
 	'unreachable',
+	'unobserved',
 	'design',
 	'code',
 	'writing',
@@ -54,7 +55,7 @@ const KINDS = [
 ] as const satisfies readonly StateMarkKind[];
 
 /** The two families a single surface is allowed to mix (never mixed on one surface). */
-const STATUS_KINDS = ['ok', 'degraded', 'unreachable'] as const;
+const STATUS_KINDS = ['ok', 'degraded', 'unreachable', 'unobserved'] as const;
 const CATEGORY_KINDS = ['design', 'code', 'writing', 'tool'] as const;
 
 function mark(kind: StateMarkKind, size?: 'sm' | 'md'): string {
@@ -95,7 +96,7 @@ describe('StateMark shape vocabulary (Issue #411)', () => {
 		expect(new Set(silhouettes).size).toBe(KINDS.length);
 	});
 
-	it('keeps the three health silhouettes mutually distinct', () => {
+	it('keeps the four health silhouettes mutually distinct', () => {
 		const silhouettes = STATUS_KINDS.map(silhouette);
 		expect(new Set(silhouettes).size).toBe(STATUS_KINDS.length);
 	});

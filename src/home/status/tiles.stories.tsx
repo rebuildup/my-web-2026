@@ -1,6 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/react';
 import { MonochromeProof } from '../../../.storybook/MonochromeProof';
+import { css } from '../../../styled-system/css';
+import { Container } from '../../editorial/primitives/Container';
 import type { SystemService, SystemServiceStatus } from './health';
+import type { KnownIncident } from './incidents';
 import { StatusTiles } from './tiles';
 
 /**
@@ -147,6 +150,115 @@ export const Monochrome: Story = {
 		<MonochromeProof caption="greyscale — status shapes: disc = reachable, triangle = degraded, cross = unreachable">
 			<StatusTiles {...args} />
 		</MonochromeProof>
+	),
+};
+
+/**
+ * Issue #502 — the incident-context gallery.
+ *
+ * This is the verification surface of the status section, and it is
+ * what `scripts/capture-status-incident-context.mjs` screenshots
+ * for `docs/verification/ops/status-incident-context.webp`. It is a
+ * REPORT of the section, not a page of the site: no route mounts it.
+ *
+ * Two panels, because the two things this ticket adds have to be
+ * seen TOGETHER to be checkable:
+ *
+ *   - panel 1 is the PUBLISHED state: a service with no reading at
+ *     all (no entry in the snapshot) and a committed incident list
+ *     that is empty, which is the honest starting point — the
+ *     section says "no incidents recorded" and links the public
+ *     issue tracker;
+ *   - panel 2 carries a SAMPLE incident record, labelled as a
+ *     verification sample and pointing at the canonical public
+ *     tracker. It exists to prove the record renders (title, date,
+ *     summary, link); it is NOT a published incident, and the
+ *     published list stays empty until a real incident is recorded
+ *     in `src/home/status/incidents.ts`.
+ *
+ * The two panels together also show the whole health vocabulary:
+ * reachable, degraded, not observed (panel 1) and unreachable
+ * (panel 2) — the four states are four different silhouettes.
+ */
+const galleryLabelClassName = css({
+	margin: '0',
+	paddingBlockStart: '8',
+	fontFamily: 'mono',
+	fontSize: 'xs',
+	letterSpacing: '0.06em',
+	textTransform: 'uppercase',
+	color: 'text.muted',
+});
+
+const galleryNoteClassName = css({
+	margin: '0',
+	marginBlockStart: '2',
+	maxWidth: '720px',
+	fontFamily: 'sans',
+	fontSize: 'sm',
+	lineHeight: '1.6',
+	color: 'text.muted',
+});
+
+/** A verification-only record. It is NOT a published incident. */
+const SAMPLE_INCIDENT: KnownIncident = {
+	id: 'verification-sample',
+	title: 'Sample incident record (verification only)',
+	occurredAt: '2026-09-17',
+	summary:
+		'A sample record rendered by the verification gallery to prove the record shape: title, date, summary and a public link.',
+	reference: 'https://github.com/rebuildup/my-web-2026/issues',
+};
+
+/** No entry for `r2`: the service was not observed at all. */
+const publishedSurfaceStatuses: readonly SystemServiceStatus[] = [
+	{ id: 'external-boundary', health: 'ok', detail: '/api/v1/* wired through src/http/hono.ts' },
+	{ id: 'd1', health: 'degraded', detail: 'empty result set' },
+];
+
+/** A failed read still reads as a failure, next to an absent one. */
+const failureSurfaceStatuses: readonly SystemServiceStatus[] = [
+	{ id: 'external-boundary', health: 'ok', detail: '/api/v1/* wired through src/http/hono.ts' },
+	{ id: 'd1', health: 'unreachable' },
+];
+
+export const IncidentContext: Story = {
+	args: {
+		services,
+		statuses: publishedSurfaceStatuses,
+		observedAt: '2026-09-17T15:02:16.985Z',
+		incidents: [],
+	},
+	render: (args) => (
+		<div data-testid="status-incident-context">
+			<Container>
+				<p className={galleryLabelClassName}>
+					published surface — nothing observed, nothing recorded
+				</p>
+				<p className={galleryNoteClassName}>
+					`r2` has no entry in the snapshot: it renders as「未観測 / not observed」, not as a
+					failure. The committed incident list is empty, so the section states that no incident is
+					recorded and links the public issue tracker.
+				</p>
+			</Container>
+			<StatusTiles {...args} headingId="status-heading-published" />
+			<Container>
+				<p className={galleryLabelClassName}>
+					verification sample — a record shape, not a published incident
+				</p>
+				<p className={galleryNoteClassName}>
+					A failed read still reads as「到達不能 / unreachable」next to an absent one, and a sample
+					record shows the published record shape. The sample is not in the published list and is
+					never rendered on the site.
+				</p>
+			</Container>
+			<StatusTiles
+				{...args}
+				headingId="status-heading-sample"
+				statuses={failureSurfaceStatuses}
+				incidents={[SAMPLE_INCIDENT]}
+			/>
+		</div>
 	),
 };
 

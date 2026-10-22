@@ -29,6 +29,7 @@ const LABELS: Readonly<Record<StateMarkKind, string>> = {
 	ok: 'reachable',
 	degraded: 'degraded',
 	unreachable: 'unreachable',
+	unobserved: 'not observed',
 	design: 'Design',
 	code: 'Develop',
 	tool: 'Video',

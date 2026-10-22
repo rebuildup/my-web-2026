@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 import type { SystemService, SystemServiceHealth, SystemServiceStatus } from './health';
-import { HEALTH_LABEL } from './health';
+import { HEALTH_LABEL, UNOBSERVED_DETAIL } from './health';
+import { INCIDENT_TRACKER_URL } from './incidents';
 import { StatusTiles } from './tiles';
 
 /**
@@ -29,6 +30,17 @@ import { StatusTiles } from './tiles';
  * pinned separately in `src/editorial/primitives/StateMark.test.tsx`;
  * the assertions below can only see which kind a badge asked for, not
  * what that kind draws.
+ *
+ * Issue #502 adds the distinction between a FAILED read and a
+ * MISSING one. A service with no entry in the snapshot used to fall
+ * back to `unreachable`, so a measurement gap and a failed probe
+ * rendered the same word and the same cross. The absence is now
+ * `unobserved`, with its own label, its own silhouette and a detail
+ * that states the absence instead of implying a fault. The last
+ * block of this file pins the known-incident list: an empty list
+ * renders "no incidents recorded", a record renders its link, and a
+ * record whose reference cannot be verified is withheld rather than
+ * rendered.
  */
 
 const OBSERVED_AT = '2026-01-05T09:00:00.000Z';
@@ -122,7 +134,12 @@ describe('StatusTiles', () => {
 	});
 
 	describe('health is never encoded by fill alone (Issue #411)', () => {
-		const allHealths: readonly SystemServiceHealth[] = ['ok', 'degraded', 'unreachable'];
+		const allHealths: readonly SystemServiceHealth[] = [
+			'ok',
+			'degraded',
+			'unreachable',
+			'unobserved',
+		];
 		const oneService: readonly SystemService[] = [
 			{ id: 'd1', label: 'Internal data', binding: 'D1', description: 'Internal data.' },
 		];
@@ -168,15 +185,98 @@ describe('StatusTiles', () => {
 			expect(html).toContain('<span aria-hidden="true" data-state-mark="degraded"');
 		});
 
-		it('falls back to the unreachable silhouette when a service has no read', () => {
+		it('separates a missing read from a failed read (Issue #502)', () => {
 			// The empty snapshot is a real state: a service whose probe
-			// returned nothing must not look healthy, and it must say so
-			// in the same two channels as every other state.
+			// returned nothing must not look healthy, and it must not
+			// look BROKEN either. Before Issue #502 this row fell back
+			// to `unreachable`, so a measurement gap was published as a
+			// fault.
 			const html = renderToStaticMarkup(
 				<StatusTiles services={services} statuses={[]} observedAt={OBSERVED_AT} />,
 			);
+			expect(html).toContain('data-state-mark="unobserved"');
+			expect(html).toContain(HEALTH_LABEL.unobserved);
+			// The failure state is NOT what an absent reading renders.
+			expect(html).not.toContain('data-state-mark="unreachable"');
+			expect(html).not.toContain(HEALTH_LABEL.unreachable);
+			// And the detail states the absence, not a fault.
+			expect(html).toContain(UNOBSERVED_DETAIL);
+		});
+
+		it('keeps a failed read on the failure state', () => {
+			// One service, one reading. The failed read renders as the
+			// failure state and NOT as the absence state.
+			const html = renderToStaticMarkup(
+				<StatusTiles
+					services={services.filter((service) => service.id === 'd1')}
+					statuses={[{ id: 'd1', health: 'unreachable' }]}
+					observedAt={OBSERVED_AT}
+				/>,
+			);
 			expect(html).toContain('data-state-mark="unreachable"');
 			expect(html).toContain(HEALTH_LABEL.unreachable);
+			expect(html).not.toContain('data-state-mark="unobserved"');
+			expect(html).not.toContain(UNOBSERVED_DETAIL);
+		});
+	});
+
+	describe('known incidents (Issue #502)', () => {
+		it('states that no incidents are recorded when the list is empty', () => {
+			const html = renderToStaticMarkup(
+				<StatusTiles services={services} statuses={statuses} observedAt={OBSERVED_AT} />,
+			);
+			expect(html).toContain('既知の障害');
+			expect(html).toContain('記録された障害はありません');
+			// The link target has to be a URL that really exists: the
+			// canonical public issue tracker of this repository.
+			expect(html).toContain(INCIDENT_TRACKER_URL);
+		});
+
+		it('renders a published record with its public reference', () => {
+			const html = renderToStaticMarkup(
+				<StatusTiles
+					services={services}
+					statuses={statuses}
+					observedAt={OBSERVED_AT}
+					incidents={[
+						{
+							id: 'sample',
+							title: 'Sample incident',
+							occurredAt: '2026-01-05',
+							summary: 'A sample record used by the verification surface.',
+							reference: 'https://github.com/rebuildup/my-web-2026/issues/1',
+						},
+					]}
+				/>,
+			);
+			expect(html).toContain('Sample incident');
+			expect(html).toContain('2026-01-05');
+			expect(html).toContain('https://github.com/rebuildup/my-web-2026/issues/1');
+		});
+
+		it('withholds a record whose reference cannot be verified', () => {
+			// Fail-closed: an unverified reference is not rendered, and
+			// the surface does not claim that there were no incidents.
+			const html = renderToStaticMarkup(
+				<StatusTiles
+					services={services}
+					statuses={statuses}
+					observedAt={OBSERVED_AT}
+					incidents={[
+						{
+							id: 'sample',
+							title: 'Unverified incident',
+							occurredAt: '2026-01-05',
+							summary: 'A record pointing at a URL that does not exist.',
+							reference: 'https://example.invalid/status',
+						},
+					]}
+				/>,
+			);
+			expect(html).not.toContain('Unverified incident');
+			expect(html).not.toContain('example.invalid');
+			expect(html).toContain('障害記録は公開できません');
+			expect(html).not.toContain('記録された障害はありません');
 		});
 	});
 });

@@ -41,7 +41,7 @@
 					"before": null,
 					"after": "キーボード配列 / Keyboard",
 					"verdict": "intentional",
-					"note": "About footer から /keyboard へ飛ぶリンクの表示名。日本語ページ名に英語名を併記する既存の記法で、同じリンクの遷移先 URL は https://rebuildup.dev/keyboard。ルートの head.title が「キーボード配列 — 大西配列と Kanata」で、nav label が「キーボード配列」なので、この 3 つの語は同じ surface を指す。"
+					"note": "About footer から /keyboard へ飛ぶリンクの表示名。日本語页面名に英語名を併記する既存の記法で、同じリンクの遷移先 URL は https://rebuildup.dev/keyboard。路由の head.title が「キーボード配列 — 大西配列と Kanata」で、nav label が「キーボード配列」なので、この 3 つの語は同じ surface を指す。"
 				},
 				{
 					"path": "src/editorial/nav/route-labels.ts",
@@ -699,6 +699,65 @@
 					"after": "未選択",
 					"verdict": "intentional",
 					"note": "未選択状態の表示値。unsetStatus に対応し、許可でも拒否でもない第 3 の状態を明示している。"
+				}
+			]
+		},
+		{
+			"id": "pr-663",
+			"pr": 663,
+			"base": "release-0-7-0",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-10-22",
+			"decision": "approved",
+			"fingerprint": "sha256:3b010f869e61e1f2a090a5189447ddb505491d2af6c0559d4ccfb2d678d265d3",
+			"proposal": {
+				"tool": "pi (openrouter/minimax/minimax-m3.1-flash:free) editorial pass",
+				"ran": true,
+				"summary": "編集補助として、変更された 6 セグメント (既知の障害ブロックの h3 見出し、空リスト時のメッセージ、保留時のメッセージ、記録リンクのラベル、公開 tracker リンクのラベル、status セクション説明の追記) の日本語原文、英日併記の対応、用語の一貫性、否定/許可の明確さ、見出しと節の対応を、それぞれの実装ファイル (src/home/status/incident-list.tsx、src/home/status/incidents.ts、src/home/status/health.ts、src/home/status/tiles.tsx、src/routes/index.tsx) と突き合わせて読み直した。提案は 3 件いずれも文言の精密さに関する観察 (「未観測」を日本語の引用符付き表示語として引用している点、「観測できなかった状態」のスコープが「観測結果が得られなかった場合」より広い点、「tracker」の英字借用) で、実装の挙動と矛盾する事実誤認は 0 件。",
+				"disposition": "3 件の提案はいずれも owner に提示する観察として扱い、このブランチでは文言を変更していない (採否の決定権は owner にある)。 (1) 「未観測」は訪問者向けの markup では日本語としては描画されない (badge の表示語は英語の \"not observed\") ため、引用符が literal なラベルを連想させる — ただし「no reading と unreachable を区別する」という主張自体は実装と一致しており、事実誤認ではない。(2) 「観測できなかった状態」は failed read (unreachable) も含みうる広い表現で、厳密には「観測結果が得られなかった状態」の方が実装 (status entry の不在 = unobserved) に合う — 同じく文言の精密さの問題で、主張が偽であるとは言えない。(3) 「公開 tracker を見る」の英字借用は既存の訪問者向け日本語 copy の表記傾向 (和語・カタカナ) と異なるが、可読性・意味・リンク先の実在性には影響しないため、提案のみ。いずれも文言の書き換えは行っていない。"
+			},
+			"comparisons": [
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "既知の障害 / Known incidents",
+					"verdict": "intentional",
+					"note": "既知の障害ブロック (IncidentList) の h3 見出し「既知の障害 / Known incidents」。src/home/status/incident-list.tsx:130 で新設された見出しで、直下に障害記録の一覧 (ul) が来る節の見出しであり、節の内容を正しく表す。同一ページの他見出し「プラットフォームの状態 / Platform health」「みんなの反応 / Reactions」と同じ「日本語 / 英語」の併記スタイルで、用語の揺れはない。訪問者が読む内容についての主張 (件数・記録の有無) を含まない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "記録された障害はありません。公開されている記録はここへ掲載されます。",
+					"verdict": "intentional",
+					"note": "空リスト時のメッセージ「記録された障害はありません。公開されている記録はここへ掲載されます。」。src/home/status/incident-list.tsx:135 で、incidents.length === 0 のときだけ描画される。実装の確認: 公開される記録は committed データ src/home/status/incidents.ts の KNOWN_INCIDENTS のみで、現在は空配列 (src/home/status/incidents.ts:158)、home route はそれをそのまま渡す (src/routes/index.tsx:42)。したがって「記録された障害はありません」は現在の実装と一致し、第 2 文の「公開されている記録はここへ掲載されます」も publishable な記録がこのブロックに出るという実装と一致する (記録の存在を予告するだけの文で、記録の数を主張していない)。保留時のメッセージ (次の note) とは条件・文言ともに別物として区別されている。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "障害記録は公開できません。参照先を確認できない記録は掲載されません。",
+					"verdict": "intentional",
+					"note": "保留時のメッセージ「障害記録は公開できません。参照先を確認できない記録は掲載されません。」。src/home/status/incident-list.tsx:141 で、incidents.length > 0 かつ publishable.length === 0 のときだけ描画される。実装の確認: selectPublishableIncidents は isValidIncidentRecord -> isPublishableIncidentReference を通し、参照先が https かつ github.com/rebuildup/my-web-2026/issues[/…] または rebuildup.dev の /admin 以外のパスでなければ保留される (src/home/status/incidents.ts)。文面はこのルールそのもの (参照先を確認できない記録は掲載されない) を述べており、「障害はなかった」という誤った主張はしていない (unit 2 と文言が異なる)。否定・許可の含意に曖昧さはない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "記録を開く / Open the record",
+					"verdict": "intentional",
+					"note": "記録ごとのリンクラベル「記録を開く / Open the record」。src/home/status/incident-list.tsx:158 で、publishable な各記録の reference へ向かう a 要素のラベル。href は検証済みの公開 URL (canonical repo の issue か、本サイトの公開ルート) であり、target=_blank / rel=\"noopener noreferrer\"。日本語と英語が同じ動作 (記録を開く) を指しており、参照先が実在する公開ページであることは isPublishableIncidentReference の fail-closed ルールが保証する。リンク先の内容についての主張を含まない。"
+				},
+				{
+					"path": "src/home/status/incident-list.tsx",
+					"before": null,
+					"after": "公開 tracker を見る / Open the public tracker",
+					"verdict": "intentional",
+					"note": "空リスト時の tracker リンクラベル「公開 tracker を見る / Open the public tracker」。src/home/status/incident-list.tsx:173 で、incidents.length === 0 のときだけ描画される。href は INCIDENT_TRACKER_URL = https://github.com/rebuildup/my-web-2026/issues (src/home/status/incidents.ts)。これは canonical 公開リポジトリ (git remote origin = https://github.com/rebuildup/my-web-2026、AGENTS.md §1 で公開リポジトリと宣言) の実際の公開 issue tracker であり、リンク先が実在し、公開してよいであることを確認した。編集上の観察: 日本語側が英字借用語 \"tracker\" を使っている点のみ (意味・正確性には影響しない)。"
+				},
+				{
+					"path": "src/home/status/tiles.tsx",
+					"before": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。",
+					"after": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。",
+					"verdict": "intentional",
+					"note": "status セクション (SectionHeading) の説明文「各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。」。before の 2 文は変更されておらず (等価)、追加された第 3 文が主張する区別は実装で実在する: src/home/status/tiles.tsx で snapshot entry の不在は health = 'unobserved' になり ('unreachable' への fallback ではない)、src/home/status/health.ts で SystemServiceHealth に 'unobserved' が独立した状態として追加され、HEALTH_LABEL は 'not observed'、UNOBSERVED_DETAIL は 'No reading was returned for this service.'、StateMark は 'unobserved' に専用のシルエット (壊れた輪) を持つ。したがって「no reading」と「unreachable (読みの失敗)」は別状態として別ラベル・別シルエット・別詳細で描画される。既存 2 文の主張は変更していない。owner 向けの観察 (事実誤認ではない): (a) 日本語の「未観測」は visitor markup に描画されない表示語であり (badge は英語 \"not observed\")、引用符が literal なラベルを連想させる。(b)「観測できなかった状態」は failed read (unreachable) も含みうる広い表現で、厳密には「観測結果が得られなかった状態」の方が実装に正確に対応する。"
 				}
 			]
 		},

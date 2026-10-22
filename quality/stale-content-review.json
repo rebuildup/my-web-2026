@@ -141,12 +141,12 @@
 		{
 			"id": "home-status-latest-reachability",
 			"path": "src/home/status/tiles.tsx",
-			"expression": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。",
+			"expression": "各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。",
 			"locale": "ja",
 			"dimension": "prose",
 			"reviewedAt": "2026-10-22",
 			"reviewedBy": "owner",
-			"note": "Description of the status section (src/home/status/tiles.tsx:93). The snapshot it describes is assembled by `getHomeSystemStatus` (src/home/status/load.ts:14) from the Cloudflare binding probes (src/cloudflare/health.ts) and the external-boundary probe (src/home/status/health.ts:37). The sentence describes the section, and the section always shows the most recent observation it has."
+			"note": "status セクション (SectionHeading) の説明文 (src/home/status/tiles.tsx:129)。各 binding と外部境界の最新到達性を createServerFn で観測したスナップショットとして示し、観測できなかった状態を「未観測」として到達障害と区別して表示することを述べる。実装が保証しているのは観測値が得られない state が unreachable とは別に存在すること (src/home/status/health.ts の health = 'unobserved'、src/home/status/tiles.tsx の 'unobserved' ラベル) で、この文はその区別を人に伝える表現になっている。"
 		},
 		{
 			"id": "portfolio-seed-evidence-current-sale",

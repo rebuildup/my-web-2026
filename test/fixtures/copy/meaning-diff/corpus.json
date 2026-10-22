@@ -1,0 +1,141 @@
+{
+	"schemaVersion": 1,
+	"$comment": "Issue #426 fixture. A corpus of example sentences whose rewriting changes — or does not change — the meaning the reader is given. Every case is a proposal pair: `before` is the sentence as written, `after` is the proposed rewrite. `before: null` means no original exists to compare against, which is the 'unverified draft' state the copy contract refuses to publish.",
+	"note": "The corpus is the regression set for the meaning-drift heuristic. It is not a list of strings the platform publishes: every sentence here is synthetic, and no case authorises the rewrite. The classifier's disposition vocabulary has no auto-apply member, so a case can never turn into an applied edit.",
+	"locales": [
+		"ja"
+	],
+	"cases": [
+		{
+			"id": "permission-widened",
+			"locale": "ja",
+			"before": "このレポートは未公開です。",
+			"after": "このレポートは公開です。",
+			"expect": {
+				"meaning": "drift",
+				"surface": "prose",
+				"disposition": "review-required",
+				"evidence": [
+					"permission-drift"
+				]
+			},
+			"note": "The example Issue #426 names first. `未公開` CONTAINS the substring `公開`, so a naive substring test reports the same marker set on both sides and the access-control widening is invisible. The compound marker `未公開` is what makes the two sides differ."
+		},
+		{
+			"id": "permission-narrowed",
+			"locale": "ja",
+			"before": "このレポートは公開です。",
+			"after": "このレポートは未公開です。",
+			"expect": {
+				"meaning": "drift",
+				"surface": "prose",
+				"disposition": "review-required",
+				"evidence": [
+					"permission-drift"
+				]
+			},
+			"note": "The reverse direction of the same widening: the rewrite narrows access control. The drift must be reported in both directions — a narrower sentence is not the safe default either, because the reader is no longer told what the platform actually publishes."
+		},
+		{
+			"id": "number-changed",
+			"locale": "ja",
+			"before": "公開されているレポートは5件です。",
+			"after": "公開されているレポートは50件です。",
+			"expect": {
+				"meaning": "drift",
+				"surface": "prose",
+				"disposition": "review-required",
+				"evidence": [
+					"number-drift"
+				]
+			},
+			"note": "The second example Issue #426 names. A digit that changes is a claim that changes: the number a reader is given is a fact about the platform, and a rewriting tool has no authority over it."
+		},
+		{
+			"id": "negation-inverted",
+			"locale": "ja",
+			"before": "この操作は可能です。",
+			"after": "この操作は不可能です。",
+			"expect": {
+				"meaning": "drift",
+				"surface": "prose",
+				"disposition": "review-required",
+				"evidence": [
+					"negation-drift"
+				]
+			},
+			"note": "The third example Issue #426 names. The rewrite inverts the sentence: `不可` is a negation marker and `可能` is not, so the negation marker set differs between the two sides."
+		},
+		{
+			"id": "permission-qualifier-dropped",
+			"locale": "ja",
+			"before": "管理者のみが編集できます。",
+			"after": "管理者が編集できます。",
+			"expect": {
+				"meaning": "drift",
+				"surface": "prose",
+				"disposition": "review-required",
+				"evidence": [
+					"permission-drift"
+				]
+			},
+			"note": "Dropping `のみ` widens who may act while the sentence still says `編集`. A boolean 'permission marker present' check would miss it; the marker SETS differ, so the drift is reported."
+		},
+		{
+			"id": "typography-only",
+			"locale": "ja",
+			"before": "設定は保存されました。",
+			"after": "設定は保存されました ",
+			"expect": {
+				"meaning": "preserved",
+				"surface": "typography",
+				"disposition": "meaning-preserved",
+				"evidence": [
+					"typography:stray-whitespace"
+				]
+			},
+			"note": "A mechanical typography difference: the trailing space violates a rule the script decides on its own. The meaning axis is clean, so this case is NOT a meaning review — but adopting it is still a copy decision, so the classifier still returns no auto-apply."
+		},
+		{
+			"id": "prose-only",
+			"locale": "ja",
+			"before": "お問い合わせはフォームからお願いします。",
+			"after": "お問い合わせはフォームからお送りください。",
+			"expect": {
+				"meaning": "preserved",
+				"surface": "prose",
+				"disposition": "review-required",
+				"evidence": []
+			},
+			"note": "Register and politeness: the difference is prose, not meaning and not typography. No marker changed, but a machine cannot say whether the rewrite reads better, so the case stays with a person. This is the class the #428 gate refuses to decide (`prose` is a human claim, not a machine verdict)."
+		},
+		{
+			"id": "no-original",
+			"locale": "ja",
+			"before": null,
+			"after": "このレポートは公開です。",
+			"expect": {
+				"meaning": "undetermined",
+				"surface": "none",
+				"disposition": "review-required",
+				"evidence": [
+					"no-original"
+				]
+			},
+			"note": "There is no original sentence to compare against, so preservation cannot be asserted — the state the copy contract calls an unverified draft. The classifier must not treat 'no drift found' as 'no drift possible'."
+		},
+		{
+			"id": "identical",
+			"locale": "ja",
+			"before": "このレポートは公開です。",
+			"after": "このレポートは公開です。",
+			"expect": {
+				"meaning": "preserved",
+				"surface": "none",
+				"disposition": "no-change",
+				"evidence": []
+			},
+			"note": "A proposal that changes nothing. The disposition says so explicitly, so an empty rewrite is not mistaken for an approved one."
+		}
+	]
+}

@@ -6,12 +6,25 @@ import { StateMark } from '../../editorial/primitives/StateMark';
 import type { HomeLocale } from '../format';
 import { createHomeFormat } from '../format';
 import type { SystemService, SystemServiceHealth, SystemServiceStatus } from './health';
-import { HEALTH_LABEL } from './health';
+import { HEALTH_LABEL, UNOBSERVED_DETAIL } from './health';
+import { IncidentList } from './incident-list';
+import type { KnownIncident } from './incidents';
 
 export interface StatusTilesProps {
 	services: readonly SystemService[];
 	statuses: readonly SystemServiceStatus[];
 	observedAt: string;
+	/**
+	 * The known-incident records to publish (Issue #502). Defaults to
+	 * an empty list, which renders the explicit "no incidents
+	 * recorded" state.
+	 */
+	incidents?: readonly KnownIncident[];
+	/**
+	 * Id of the section heading, so a page that renders the section
+	 * twice (the verification gallery does) keeps the ids unique.
+	 */
+	headingId?: string;
 	/**
 	 * Opt-in locale for the observed-at instant (Issue #430). Defaults
 	 * to `'en'`, which is what this section shipped before the
@@ -27,10 +40,11 @@ export interface StatusTilesProps {
 	timeZone?: string;
 }
 
-const HEALTH_TONE: Record<SystemServiceHealth, 'accent' | 'neutral' | 'neutral'> = {
+const HEALTH_TONE: Record<SystemServiceHealth, 'accent' | 'neutral'> = {
 	ok: 'accent',
 	degraded: 'neutral',
 	unreachable: 'neutral',
+	unobserved: 'neutral',
 };
 
 function statusFor(
@@ -69,28 +83,50 @@ function statusFor(
  * satisfies WCAG 2.2 SC 1.4.1 (Level A): the mark is `aria-hidden`
  * and never the accessible name, and it paints in the badge's own
  * foreground so it adds no contrast obligation (1.4.11) of its own.
+ *
+ * Issue #502 — "no reading" is now its own state. A service with no
+ * entry in the snapshot used to fall back to `unreachable`, so a
+ * measurement gap and a failed probe rendered the same word and the
+ * same cross: a visitor could not tell "we did not observe it" from
+ * "it is broken". The absence now renders as `unobserved` — its own
+ * label, its own silhouette (a broken ring) and a detail that states
+ * the absence instead of implying a fault.
+ *
+ * Issue #502 — the section also publishes the KNOWN INCIDENTS: the
+ * committed incident records (`src/home/status/incidents.ts`) and a
+ * link to a public record of each one. The list is a committed data
+ * file, never a runtime fetch of a third party, and this component
+ * performs NO external communication of its own.
+ *
+ * What is published here: the service labels, their binding names,
+ * the health word, the probe detail, the observed-at instant and the
+ * known-incident records. What is NOT published: any credential, any
+ * third-party personal data, any guessed fact about a person, and any
+ * incident record whose reference cannot be verified.
  */
 export function StatusTiles({
 	services,
 	statuses,
 	observedAt,
+	incidents = [],
+	headingId = 'status-heading',
 	locale,
 	timeZone,
 }: StatusTilesProps) {
 	const format = createHomeFormat({ locale, timeZone });
 	return (
 		<section
-			aria-labelledby="status-heading"
+			aria-labelledby={headingId}
 			className={css({
 				paddingBlock: { base: '16', lg: '24' },
 			})}
 		>
 			<Container>
 				<SectionHeading
-					id="status-heading"
+					id={headingId}
 					eyebrow="02 — System status"
 					title="プラットフォームの状態 / Platform health"
-					description="各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。"
+					description="各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。"
 					variant="spread"
 				>
 					<dl
@@ -104,7 +140,11 @@ export function StatusTiles({
 					>
 						{services.map((service) => {
 							const status = statusFor(service.id, statuses);
-							const health: SystemServiceHealth = status?.health ?? 'unreachable';
+							// Issue #502: no entry means "not observed",
+							// not "unreachable". The absence of a reading
+							// is its own fact and must not wear the
+							// failure state.
+							const health: SystemServiceHealth = status?.health ?? 'unobserved';
 							return (
 								<div
 									key={service.id}
@@ -163,6 +203,18 @@ export function StatusTiles({
 										})}
 									>
 										{status?.detail ?? service.description}
+										{health === 'unobserved' ? (
+											<span
+												className={css({
+													marginInlineStart: '2',
+													fontFamily: 'mono',
+													fontSize: 'sm',
+													letterSpacing: '0.02em',
+												})}
+											>
+												— {UNOBSERVED_DETAIL}
+											</span>
+										) : null}
 									</dd>
 									<div
 										className={css({
@@ -198,6 +250,7 @@ export function StatusTiles({
 					>
 						observed at {format.formatInstant(observedAt)}
 					</p>
+					<IncidentList incidents={incidents} headingId={`${headingId}-incidents`} />
 				</SectionHeading>
 			</Container>
 		</section>

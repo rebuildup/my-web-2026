@@ -17,10 +17,15 @@
 
 `StateMark`（`src/editorial/primitives/StateMark.tsx`）が形状語彙を持ち（1 要素の `<span>` + `clip-path`。
 inline `<svg>` は採用しない — 理由下記）、
-status 3 状態は **円 / 三角 / 交叉**、category 4 種は
+status 4 状態は **円 / 三角 / 交叉 / 破れた輪**、category 4 種は
 **菱形 / 正方形 / 横棒 / シェブロン** を使う。badge / card の既存テキストと
 併せることで **shape + text の 2 channel** になり、色は補強に降格した。
 マークは `aria-hidden` で、**accessible name はテキスト側の責務**のまま。
+
+> **Issue #502 の追記**: status 状態は 3 → 4 に増えた。4 種目の `unobserved`
+> （未観測 = 観測そのものが存在しない）は **破れた輪** で、 health 語彙の
+> 追加に合わせて `StateMark` に足した（`src/home/status/health.ts` が
+> 状態語彙の所有者）。測定値と bit map は下表に追記済み。
 
 ## 該当する WCAG 2.2 の項目
 
@@ -47,13 +52,13 @@ SC 1.4.11 の下限は 3 : 1。mark は自前の色を持たず `currentColor` �
 
 | 検査 | 手段 | 結果 |
 | --- | --- | --- |
-| 3 状態が別々の mark kind を要求する | `src/home/status/tiles.test.tsx`（SSR markup の `data-state-mark`） | pass |
+| 3 状態が別々の mark kind を要求する | `src/home/status/tiles.test.tsx`（SSR markup の `data-state-mark`） | pass（Issue #502 で 4 状態へ） |
 | 4 category が別々の mark kind を要求する | `src/portfolio/components/ProjectCard.test.tsx`（SSR markup の `data-state-mark`） | pass |
-| **7 形状のシルエット（解決結果）が相互に異なる** | `src/editorial/primitives/StateMark.test.tsx` — inline `clip-path` + Panda utility class（=`border-radius` の有無）を突き合わせて比較 | pass（7/7 ユニーク。`design` を `null` に落とす等の回帰で落ちる） |
-| mark が 1 要素・子要素 0 | 同上 | pass（7 kind すべて `<span …></span>`。per-card +1 node の根拠） |
+| **8 形状のシルエット（解決結果）が相互に異なる** | `src/editorial/primitives/StateMark.test.tsx` — inline `clip-path` + Panda utility class（=`border-radius` の有無）を突き合わせて比較 | pass（8/8 ユニーク。`design` を `null` に落とす等の回帰で落ちる） |
+| mark が 1 要素・子要素 0 | 同上 | pass（8 kind すべて `<span …></span>`。per-card +1 node の根拠） |
 | 全 kind が同じ継承色（`currentColor`）で、kind 固有の色クラスを持たない | 同上 | pass（kind ごとに増える class token は `ok` の radius Utility 1 個のみ） |
-| 実寸 8px で 7 形状が互いに混ざらない | `SHAPE_CLIP` の polygon を 8×8 SVG に変換してラスタライズ（libvips、alpha ≥ 128 で二値化）し、ペア間 RMS を比較（0 = 同一 / 255 = 完全反転） | pass（status 3 種の最小ペア 135.2、category 4 種の最小ペア 149.5。下段のビットマップ） |
-| shape が装飾のまま（AT に露出しない） | `tiles.test.tsx` / `ProjectCard.test.tsx` / Chromium `Accessibility.getFullAXTree` | pass（`image` / `graphics-symbol` ノード 0、static text に `reachable` / `degraded` / `unreachable` が出現） |
+| 実寸 8px で 8 形状が互いに混ざらない | `SHAPE_CLIP` の polygon を 8×8 SVG に変換してラスタライズ（libvips、alpha ≥ 128 で二値化）し、ペア間 RMS を比較（0 = 同一 / 255 = 完全反転） | pass（status 4 種の最小ペア 135.2、category 4 種の最小ペア 149.5。下段のビットマップ） |
+| shape が装飾のまま（AT に露出しない） | `tiles.test.tsx` / `ProjectCard.test.tsx` / Chromium `Accessibility.getFullAXTree` | pass（`image` / `graphics-symbol` ノード 0、static text に `reachable` / `degraded` / `unreachable` が出現。`not observed` は同じ 2 channel 構成 — `aria-hidden` + 語彙テキスト） |
 | facet 無しカードが category cue を捏造しない | `ProjectCard.test.tsx` | pass（mark 0、`data-category` 不在） |
 | greyscale 化で情報が消えない | **committed WebP 自体**を decode し、全ピクセルの `r / g / b` を測定（色相を 0 にした状態の機械検査） | pass（4 枚とも最大 channel delta **1**。差が 2 以上のピクセルは 0 個 = lossy WebP の丸めのみ。厳密な `r == g == b` ではない） |
 | lint / 境界 | `biome check` / `pnpm run architecture:check` | pass |
@@ -84,6 +89,16 @@ ok (disc)          degraded (triangle)   unreachable (cross)  design (diamond)
 .######.           .######.             ....###.             ...##...
 ..####..           ########             ...###..             ...##...
 
+unobserved (broken ring)
+...##...
+.#####..
+.####...
+####....
+#####...
+.#####..
+.#####..
+...##...
+
 code (square)      writing (bars)       tool (chevron)
 ########           ########             ........
 ########           ........             ...##...
@@ -101,7 +116,10 @@ code (square)      writing (bars)       tool (chevron)
 | --- | --- | --- |
 | status | `ok` / `degraded` | 168.7 |
 | status | `ok` / `unreachable` | 135.2 |
+| status | `ok` / `unobserved` | 142.5 |
 | status | `degraded` / `unreachable` | 156.2 |
+| status | `degraded` / `unobserved` | 149.5 |
+| status | `unreachable` / `unobserved` | 135.2 |
 | category | `design` / `code` | 174.6 |
 | category | `design` / `writing` | 168.7 |
 | category | `design` / `tool` | 149.5 |
@@ -137,16 +155,32 @@ greyscale は「すべての状態を 1 枚に写して色だけ外す」ため�
 | --- | --- | --- | --- |
 | `status-monochrome.webp` | Status 3 状態を 1 枚にまとめた greyscale | Storybook fixture 相当の静的 render / Chromium 1400×900 @2x / `colorScheme: light` | ✅ 3 状態が形状で判別可能 |
 | `status-monochrome-dark.webp` | 同上（dark appearance） | 同上 / `colorScheme: dark` | ✅ |
-| `status-states.webp` | 正常 / 失敗 / 空 snapshot / 縮小幅（360px） | 同上 / light | ✅ 空 snapshot も `unreachable` の形と語になる |
+| `status-states.webp` | 正常 / 失敗 / 空 snapshot / 縮小幅（360px） | 同上 / light | ✅ 4 状態（正常 / 縮小幅 / 失敗 / 空 snapshot）が形と語で判別可能。**空 snapshot は Issue #502 以降 `unobserved`（破れた輪）の形と語になる** |
 | `category-monochrome.webp` | 4 category の card を greyscale で | 同上 / light | ✅ 4 種が形状で判別可能 |
 | `category-monochrome-dark.webp` | 同上（dark） | 同上 / dark | ✅ |
 | `category-appearance.webp` | 同一 4 card の通常表示（色あり） | 同上 / light | 参考（色 Removed 前の対比用） |
+
+## Issue #502 の追記 — `unobserved`（未観測）state
+
+health 語彙に 4 種目が加わった（`src/home/status/health.ts`）。**観測に失敗した**
+（`unreachable`）ことと、**観測そのものが存在しない**（`unobserved`）ことは別の事実で、
+修正前はどちらも `unreachable` にフォールバックしていたため、色を消すと
+3 状態 = 3 個の同形ピルになっていた。追加した `unobserved` は
+**破れた輪**（`polygon(50% 50%, 85.4% 14.6%, …)`）で、上表の bit map と
+RMS のとおり `ok` / `degraded` / `unreachable` と最小 135.2 の離隔を保つ。
+
+| 項目 | 状態 |
+| --- | --- |
+| 形状の幾何学的非同一（8 kind すべて） | `src/editorial/primitives/StateMark.test.tsx`（commit 済み） |
+| 8px ラスタライズの RMS | **上表の値**。§既知の制約のとおり測定スクリプトは未 commit（2026-10-22 に一時スクリプトで再測定） |
+| 実描画の証拠 | `docs/verification/ops/status-incident-context.webp`（desktop 1440）/ `status-incident-context-mobile.webp`（mobile 390）。未観測の行と到達不能の行が同じフレーム内に並ぶ |
+| AT 実機（スクリーンリーダー）での読み上げ | **未実施**（#411 と同じ制約。AT 側は Chromium の accessibility tree で確認済み） |
 
 ## 再現手順
 
 fixture 自体は Storybook に置いてある（`pnpm run build-storybook` でコンパイルされる）。
 
-- `home/StatusTiles` → `Monochrome` / `MixedHealth` / `EmptyStatuses` / `NarrowViewport`
+- `home/StatusTiles` → `Monochrome` / `MixedHealth` / `EmptyStatuses` / `NarrowViewport` / `IncidentContext`（Issue #502 の未観測 state と既知障害ブロック）
 - `portfolio/ProjectCard` → `AllCategories` / `Monochrome` / `NoFacets`
 - `Editorial/StateMark` → `Vocabulary` / `SmallSize` / `DefaultSize`
 

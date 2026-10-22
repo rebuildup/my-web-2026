@@ -72,6 +72,7 @@
 		"seed:tools": "node scripts/seed-tools.mjs",
 		"security:redirect:report": "node scripts/redirect-validation-report.mjs",
 		"capture:error-states": "node scripts/capture-error-state-gallery.mjs",
+		"verify:status-incident-screenshot": "node scripts/capture-status-incident-context.mjs",
 		"storybook": "storybook dev -p 6006",
 		"test": "vitest run && node scripts/run-script-tests.mjs",
 		"test:client": "vitest --config vitest.client.config.ts run",

@@ -605,6 +605,16 @@
 				]
 			},
 			{
+				"url": "https://github.com/rebuildup/my-web-2026/issues",
+				"host": "github.com",
+				"kind": "external",
+				"identifier": false,
+				"files": [
+					"src/home/status/incidents.ts",
+					"src/home/status/tiles.stories.tsx"
+				]
+			},
+			{
 				"url": "https://github.com/rebuildup/my-web-2026/releases",
 				"host": "github.com",
 				"kind": "external",
@@ -1021,20 +1031,20 @@
 	"approvedTransition": {
 		"addedPublicUrls": [],
 		"removedPublicUrls": [],
-		"addedExternalUrls": [],
+		"addedExternalUrls": [
+			"https://github.com/rebuildup/my-web-2026/issues"
+		],
 		"removedExternalUrls": [],
 		"addedExternalHosts": [],
 		"removedExternalHosts": [],
-		"addedBoundaryPrefixes": [
-			"/media"
-		],
+		"addedBoundaryPrefixes": [],
 		"removedBoundaryPrefixes": [],
 		"classificationChanges": [],
 		"findings": [
 			{
-				"code": "W005 external-boundary-prefix-added",
+				"code": "W002 external-url-added",
 				"severity": "warn",
-				"message": "External HTTP boundary prefix added: /media"
+				"message": "External URL added: https://github.com/rebuildup/my-web-2026/issues"
 			}
 		]
 	}

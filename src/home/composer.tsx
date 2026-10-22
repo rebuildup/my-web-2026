@@ -11,6 +11,7 @@ import { Hero } from './hero';
 import type { HomeReactionsData } from './reactions/load';
 import { ReactionsWidget } from './reactions/widget';
 import type { SystemService, SystemServiceStatus } from './status/health';
+import type { KnownIncident } from './status/incidents';
 import { StatusTiles } from './status/tiles';
 
 export interface HomePageData {
@@ -18,6 +19,13 @@ export interface HomePageData {
 	services: readonly SystemService[];
 	statuses: readonly SystemServiceStatus[];
 	observedAt: string;
+	/**
+	 * The known-incident records the status section publishes
+	 * (Issue #502). Optional because the safe default is the empty
+	 * list: a surface that forgets the records publishes "no
+	 * incidents recorded" rather than a stale one.
+	 */
+	incidents?: readonly KnownIncident[];
 	reactions: HomeReactionsData;
 	counter: HomeCounterData;
 }
@@ -89,6 +97,7 @@ export function HomePage({ data, locale, timeZone }: HomePageProps) {
 					services={data.services}
 					statuses={data.statuses}
 					observedAt={data.observedAt}
+					incidents={data.incidents}
 					locale={locale}
 					timeZone={timeZone}
 				/>

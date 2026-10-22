@@ -43,11 +43,19 @@ import { css, cx } from '../../../styled-system/css';
  * with no children, which also keeps the per-card DOM cost at one
  * node (`list-scale.test.tsx`).
  *
- * Two families, and they are not mixed on one surface: the three
+ * Two families, and they are not mixed on one surface: the four
  * status kinds are compact solid silhouettes (disc / triangle /
- * cross) and the four category kinds are geometric (diamond /
- * square / stacked bars / chevron). A status row shows status; a
- * portfolio card shows category.
+ * cross / broken ring) and the four category kinds are geometric
+ * (diamond / square / stacked bars / chevron). A status row shows
+ * status; a portfolio card shows category.
+ *
+ * The fourth status kind, `unobserved`, is Issue #502's: the
+ * difference between "the read failed" and "there was no read" is
+ * exactly the kind of difference a status vocabulary has to be able
+ * to draw, because a visitor who cannot tell them apart will read a
+ * missing measurement as a fault. It is a ring with a gap — an
+ * unfinished observation — and it is never mixed with the category
+ * family, so it cannot collide with the portfolio kinds.
  *
  * What is pinned where
  * --------------------
@@ -63,6 +71,7 @@ export type StateMarkKind =
 	| 'ok'
 	| 'degraded'
 	| 'unreachable'
+	| 'unobserved'
 	| 'design'
 	| 'code'
 	| 'writing'
@@ -105,6 +114,14 @@ const SHAPE_CLIP: Readonly<Record<StateMarkKind, string | null>> = {
 	degraded: 'polygon(50% 0%, 100% 100%, 0% 100%)',
 	// Cross — "unreachable": two diagonal bands in one polygon.
 	unreachable: 'polygon(30% 0%, 70% 0%, 50% 25%, 100% 50%, 70% 100%, 30% 100%, 50% 75%, 0% 50%)',
+	// Broken ring — "not observed": a disc with a 90° wedge cut out
+	// of its right side. The wedge is what separates it from the
+	// solid `ok` disc: an unfinished circle reads as "the reading
+	// never arrived", which is the fact the status vocabulary has to
+	// be able to state (Issue #502). The cut opens toward the badge
+	// edge, so the mark still reads as a circle at 8px.
+	unobserved:
+		'polygon(50% 50%, 85.4% 14.6%, 50% 0%, 14.6% 14.6%, 0% 50%, 14.6% 85.4%, 50% 100%, 85.4% 85.4%)',
 	// Diamond — "design".
 	design: 'polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%)',
 	// Axis-aligned square — "code". No clip needed.

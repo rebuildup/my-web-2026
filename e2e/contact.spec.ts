@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { PAGE_CONTENT_SECTIONS } from '../scripts/prod-smoke-routes.mjs';
 
 /**
  * `/contact` route E2E (Issue #103).
@@ -39,7 +40,11 @@ test.describe('/contact page composition', () => {
 		await expect(h1).toHaveText('Contact');
 
 		// Two sections anchored by aria-labelledby.
-		const sections = page.locator('section[aria-labelledby]');
+		//
+		// Scoped to the page subtree (Issue #664): root-layout chrome
+		// such as the GA4 consent panel is a named `<section>` too, and
+		// is not a section of this page.
+		const sections = page.locator(PAGE_CONTENT_SECTIONS);
 		await expect(sections).toHaveCount(2);
 		await expect(sections.nth(0)).toHaveAttribute('aria-labelledby', 'contact-hero-title');
 		await expect(sections.nth(1)).toHaveAttribute('aria-labelledby', 'channels-heading');

@@ -9,6 +9,7 @@ import {
 	EXPECTED_SECTION_COUNTS,
 	LINKED_TOOL_DELIVERY_KINDS,
 	ONE_CLICK_ENTRIES,
+	PAGE_CONTENT_SECTIONS,
 	REPRESENTATIVE_API_ROUTES,
 	REPRESENTATIVE_PAGE_ROUTES,
 	REPRESENTATIVE_ROUTES,
@@ -325,7 +326,7 @@ describe('representative-route registry — drift guards against the repository'
 			return Number(match[1]);
 		};
 		assert.equal(
-			pinnedCount('e2e/smoke.spec.ts', 'section\\[aria-labelledby\\]'),
+			pinnedCount('e2e/smoke.spec.ts', 'page\\.locator\\(PAGE_CONTENT_SECTIONS\\)'),
 			EXPECTED_SECTION_COUNTS['/'].labelled,
 			'the home section count drifted between the local suite and the production contract',
 		);
@@ -334,6 +335,32 @@ describe('representative-route registry — drift guards against the repository'
 			EXPECTED_SECTION_COUNTS['/about'].narrative,
 			'the /about narrative section count drifted between the local suite and the production contract',
 		);
+	});
+
+	it('scopes the shared page-content selector to the page subtree', () => {
+		// Issue #664 — the root layout's chrome (the GA4 consent panel
+		// is a named `<section>`) lives outside `#app-root`, so a
+		// document-wide `section[aria-labelledby]` selector would count
+		// it as a section of every page. The shared constant is the one
+		// place that scope is decided, so the guard pins the scope here
+		// rather than trusting three call sites to agree.
+		assert.match(
+			PAGE_CONTENT_SECTIONS,
+			/^#app-root section\[aria-labelledby\]$/,
+			'the shared page-content selector must stay scoped to the page subtree',
+		);
+		for (const specPath of ['e2e/smoke.spec.ts', 'e2e/contact.spec.ts', 'e2e/prod-smoke.spec.ts']) {
+			const source = readFileSync(resolve(REPO_ROOT, specPath), 'utf8');
+			assert.ok(
+				source.includes('PAGE_CONTENT_SECTIONS'),
+				`${specPath} must count the page's own sections through the shared selector`,
+			);
+			assert.equal(
+				source.includes("locator('section[aria-labelledby]')"),
+				false,
+				`${specPath} still counts sections document-wide — root-layout chrome would be counted as a page section (Issue #664)`,
+			);
+		}
 	});
 
 	it('declares a section count for exactly the routes whose default state counts sections', () => {

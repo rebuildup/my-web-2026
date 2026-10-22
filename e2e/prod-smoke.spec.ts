@@ -9,6 +9,7 @@ import {
 	EXPECTED_SECTION_COUNTS,
 	LINKED_TOOL_DELIVERY_KINDS,
 	ONE_CLICK_ENTRIES,
+	PAGE_CONTENT_SECTIONS,
 	REPRESENTATIVE_API_ROUTES,
 	REPRESENTATIVE_PAGE_ROUTES,
 	REPRESENTATIVE_ROUTES,
@@ -407,8 +408,13 @@ async function computePageProbes(
 				// (`EXPECTED_SECTION_COUNTS`), the same fact
 				// `e2e/smoke.spec.ts` pins locally — not a literal that
 				// exists only in this adapter.
+				//
+				// The selector is scoped to the page subtree
+				// (`PAGE_CONTENT_SECTIONS`, Issue #664) so root-layout
+				// chrome — the GA4 consent panel is a named `<section>`
+				// — is not counted as a section of the page.
 				sixSections:
-					(await page.locator('section[aria-labelledby]').count()) ===
+					(await page.locator(PAGE_CONTENT_SECTIONS).count()) ===
 					EXPECTED_SECTION_COUNTS['/'].labelled,
 				// The disabled placeholder is the home surface's
 				// "consumer API key missing in production" failure mode.

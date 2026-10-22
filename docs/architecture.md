@@ -420,6 +420,7 @@ manifest 駆動の生成 precedent がある。ただし shared namespace につ
 | `copy/resources.json` | visitor-facing copy の capability ごとの公開 locale 宣言 | `pnpm run copy:i18n:check` |
 | `quality/copy-editorial-surfaces.json` | 公開日本語 copy を持つファイル（opt-in glob 宣言） | `pnpm run copy:approval:check`（CI の `validate` ジョブ） |
 | `quality/copy-editorial-approvals.json` | 公開日本語 copy の変更に対する owner の承認記録 | `pnpm run copy:approval:check`（CI の `validate` ジョブ） |
+| `quality/japanese-copy-review-surfaces.json` | 日本語レビュー対象の scope 宣言（記事 Markdown + #506 surface への参照） | `pnpm run copy:diff:report`（CI の `validate` ジョブ、report のみ） |
 
 `copy/` は src obligation ではない。copy の実体は各 obligation のコンポーネントが
 持ち、`copy/resources.json` は「どの文言を翻訳対象として登録し、どの locale に

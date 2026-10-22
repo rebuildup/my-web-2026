@@ -686,6 +686,39 @@ node --test scripts/check-copy-editorial-approval.test.mjs  # 4 状態の fixtur
 検証記録は
 [`docs/verification/copy/editorial-approval-gate.md`](../verification/copy/editorial-approval-gate.md)。
 
+## 日本語 copy のレビュー対象レポート (Issue #425)
+
+#506 が「誰が承認したか」を問うのに対し、#425 は「何が変わったか」を集める。
+記事 Markdown、About prose、公開 UI copy の変更された日本語を、原文と変更後を
+並べて review target として出し、数値・否定・権限のマーカーが変わった場合は
+`number-drift` / `negation-drift` / `permission-drift` として明示する。
+
+**このレポートは gate ではない。** `clear` / `review` / `attention` のいずれも
+exit 0 であり、未レビューの文章で CI を落とさない。承認は #506 の owner 記録だけが
+行い、本レポートは文章を書き換えず、draft を公開せず、承認台帳を読まない。
+組版は #428 (`copy:i18n:check`) の責務であり、本レポートは文章そのものを列挙する。
+
+```bash
+pnpm run copy:diff:report -- --base=release-0-7-0          # text
+pnpm run copy:diff:report -- --base=release-0-7-0 --format=json
+pnpm run copy:diff:report -- --base=release-0-7-0 --strict # attention を exit 1
+node --test scripts/collect-japanese-copy-review.test.mjs
+```
+
+対象は `quality/japanese-copy-review-surfaces.json` の opt-in 宣言である。
+公開 UI copy と About の glob は #506 の
+`quality/copy-editorial-surfaces.json` を `baseDeclaration` として参照し、
+記事 Markdown の glob だけを足す。抽出・diff の helper は
+`scripts/_copy-japanese-diff.mjs` に 1 つだけあり、#425 と #506 が共有する。
+
+CI では `validate` ジョブの `Japanese copy review targets` ステップ
+（`pull_request` イベントのみ）が JSON / text を
+`japanese-copy-review-report-<sha>` artifact として残す。`validate:fast` には
+入れない（差分を読むため）。運用手順は
+[`docs/runbook/japanese-copy-review.md`](../runbook/japanese-copy-review.md)、
+検証記録は
+[`docs/verification/copy/japanese-diff-report.md`](../verification/copy/japanese-diff-report.md)。
+
 ## Cross-engine compat matrix
 
 Issue #415 added a second Playwright configuration that runs the

@@ -41,7 +41,7 @@
 					"before": null,
 					"after": "キーボード配列 / Keyboard",
 					"verdict": "intentional",
-					"note": "About footer から /keyboard へ飛ぶリンクの表示名。日本語页面名に英語名を併記する既存の記法で、同じリンクの遷移先 URL は https://rebuildup.dev/keyboard。路由の head.title が「キーボード配列 — 大西配列と Kanata」で、nav label が「キーボード配列」なので、この 3 つの語は同じ surface を指す。"
+					"note": "About footer から /keyboard へ飛ぶリンクの表示名。日本語ページ名に英語名を併記する既存の記法で、同じリンクの遷移先 URL は https://rebuildup.dev/keyboard。ルートの head.title が「キーボード配列 — 大西配列と Kanata」で、nav label が「キーボード配列」なので、この 3 つの語は同じ surface を指す。"
 				},
 				{
 					"path": "src/editorial/nav/route-labels.ts",

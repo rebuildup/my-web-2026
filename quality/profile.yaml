@@ -1501,3 +1501,52 @@ stale_content_review:
   runbook: 'docs/runbook/stale-content-review.md'
   verification_artifact: 'docs/verification/content/stale-copy-review.webp'
   owner_issue: '#437'
+# Issue #425 - the Japanese copy review-target report. It is the
+# COLLECTION half of the same concern as #506: it lists the Japanese text
+# a pull request changed in article Markdown, About prose and public UI
+# copy, with the original beside it, and surfaces number / negation /
+# permission drift. It approves nothing, rewrites nothing, and reads no
+# approval ledger.
+#
+# It is INFORMATIONAL and intentionally NOT one of the three entry
+# points and not a `validate:fast` component. `clear`, `review` and
+# `attention` all exit 0: un-reviewed prose is the normal state of a copy
+# change. The blocking decision belongs to #506, which asks whether a
+# public copy change carries an owner approval record. Only the explicit
+# local `--strict` flag turns an `attention` finding into exit 1.
+japanese_copy_review:
+  surfaces: 'quality/japanese-copy-review-surfaces.json (article Markdown globs plus a baseDeclaration pointer to quality/copy-editorial-surfaces.json, so public UI copy and About prose have one definition)'
+  command: 'pnpm run copy:diff:report -- --base=<ref>'
+  formats: 'text (default), json, html'
+  screenshot_command: 'pnpm run verify:copy-diff-report-screenshot'
+  tests: 'node --test scripts/collect-japanese-copy-review.test.mjs'
+  fixtures: 'test/fixtures/copy/japanese-diff-review/{article-markdown,meaning-risk,modified-ui,no-change}.json plus a credential fixture generated at run time'
+  gate: none
+  gate_placement: >-
+    the `Japanese copy review targets` step of the CI `validate` job
+    (.github/workflows/ci.yml), after the #506 approval gate. It runs on
+    `pull_request` events only and uploads the JSON / text report as an
+    artifact. It never fails on a review target.
+  gate_placement_reason: >-
+    the report needs the pull request's own diff, so it cannot run in the
+    offline `validate:fast` set. The step is read-only: it diffs two refs
+    and reads two JSON files.
+  statuses:
+    - 'clear - no Japanese text changed in a declared review scope'
+    - 'review - review targets exist; the list is for a human and is not a failure'
+    - 'attention - a number / negation / permission marker changed, or a credential-shaped line was withheld'
+  informational: true
+  strict_mode: '--strict exits 1 on attention; CI does not pass it.'
+  shared_extraction: 'scripts/_copy-japanese-diff.mjs (extractSegments / parseDiff / pairEditSegments), imported by both #425 and #506 so the two reports cannot disagree about the changed text'
+  boundary:
+    - 'approval: Issue #506 owns the blocking owner-approval decision; #425 never reads the ledger.'
+    - 'typography: Issue #428 (copy:i18n:check) owns mechanical line-break / full-width / spacing rules; #425 never grades typography.'
+    - 'prose quality: register, honorifics and word order are human judgments; #425 only lists the text.'
+    - 'locale opt-in: copy/resources.json remains the authority; #425 changes no locale and applies to Japanese only.'
+  known_gap: >-
+    article prose that lives only in D1 or a Notion import is not in the
+    repository and cannot appear in a pull request diff; it is outside
+    the declaration rather than silently skipped.
+  documentation: 'docs/runbook/japanese-copy-review.md'
+  verification_artifact: 'docs/verification/copy/japanese-diff-report.webp'
+  owner_issue: '#425'

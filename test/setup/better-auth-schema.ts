@@ -1,4 +1,5 @@
-import { env } from 'cloudflare:test';
+import { expect } from 'vitest';
+import { AUTH_SCHEMA_ENV_VAR, needsAuthSchema } from '../../scripts/_vitest-setup-needs.mjs';
 
 /**
  * Vitest setup file — applies the Better Auth schema to the local D1
@@ -12,6 +13,21 @@ import { env } from 'cloudflare:test';
  * identity. If the D1 tables don't exist when the auth module is
  * first imported, the cached verdict is a `SchemaMismatchError` and
  * is rethrown on every subsequent `auth.api.*` call.
+ *
+ * Scope (Issue #618)
+ * ------------------
+ * Importing `cloudflare:test` connects this file to the Workers pool
+ * (~2.4s per test FILE). The setup used to do that unconditionally, so
+ * every pure unit test paid for a connection it never used. The DDL is
+ * only reachable through `env.DB`; a test file only obtains that when
+ * its import graph reaches `cloudflare:test` (bindings) or
+ * `cloudflare:workers` (the `env` accessor, which cannot be imported
+ * without a pool connection). `vitest.config.ts` scans that graph and
+ * exposes the set through `AUTH_SCHEMA_ENV_VAR`. Files outside the set
+ * run in the same workerd pool but never connect to it.
+ * `needsAuthSchema` fails safe (apply the schema) when the set is
+ * missing or malformed, so a configuration error cannot leave a DB
+ * test without its tables.
  *
  * The schema here mirrors `migrations/0001_better_auth.sql` plus the
  * project-owned tables that later migrations add
@@ -118,8 +134,11 @@ CREATE INDEX IF NOT EXISTS idx_admin_step_up_grant_user
   ON admin_step_up_grant(user_id, confirmed_at);
 `;
 
-for (const stmt of MIGRATION_SQL.split(';')
-	.map((s) => s.trim())
-	.filter(Boolean)) {
-	await env.DB.prepare(stmt).run();
+if (needsAuthSchema(expect.getState().testPath, process.env[AUTH_SCHEMA_ENV_VAR])) {
+	const { env } = await import('cloudflare:test');
+	for (const stmt of MIGRATION_SQL.split(';')
+		.map((s) => s.trim())
+		.filter(Boolean)) {
+		await env.DB.prepare(stmt).run();
+	}
 }

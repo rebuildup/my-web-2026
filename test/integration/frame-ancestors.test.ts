@@ -111,6 +111,17 @@ describe('CSP frame-ancestors — Admin denial (Issue #448)', () => {
 		expect(csp).toBe(NONE);
 	});
 
+	it('denies framing of a mixed-case Admin path (Issue #654)', async () => {
+		// TanStack Router matches static segments case-insensitively, so
+		// `/Admin/Login` is the same Admin document as `/admin/login`.
+		// Keeping a raw prefix check here would give the identical
+		// lower-case URL `'none'` and this one `'self'`.
+		const { status, csp, contentType } = await fetchHeaders('/Admin/Login');
+		expect(status).toBe(200);
+		expect(contentType).toContain('text/html');
+		expect(csp).toBe(NONE);
+	});
+
 	it('does not let a lookalike prefix inherit the Admin denial', async () => {
 		// Exact-prefix-or-`/`, mirroring the external-boundary matcher:
 		// `/administrator` is a public 404, not an Admin surface, and must

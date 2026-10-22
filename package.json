@@ -162,6 +162,8 @@
 		"copy:i18n:check": "node scripts/check-copy-i18n.mjs",
 		"copy:approval:check": "node scripts/check-copy-editorial-approval.mjs",
 		"verify:copy-editorial-approval-screenshot": "node scripts/make-copy-editorial-approval-report.mjs",
+		"copy:stale:check": "node scripts/check-stale-content-review.mjs",
+		"verify:stale-copy-review-screenshot": "node scripts/make-stale-content-review-report.mjs",
 		"e2e:viewport": "playwright test --config playwright.viewport.config.ts",
 		"verify:viewport-diff-grid": "node scripts/make-viewport-diff-grid-report.mjs",
 		"capture:a11y:form-errors": "node scripts/capture-a11y-form-errors.mjs",

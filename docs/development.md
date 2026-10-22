@@ -686,6 +686,37 @@ node --test scripts/check-copy-editorial-approval.test.mjs  # 4 状態の fixtur
 検証記録は
 [`docs/verification/copy/editorial-approval-gate.md`](../verification/copy/editorial-approval-gate.md)。
 
+## 公開 copy の review date (Issue #437)
+
+「今」を指す公開 copy（`現在` / `最新` / `今日` / `今` など）は時間とともに古びる。
+その文面ごとに **owner が最後に読んだ日** を記録し、window を越えたら
+**review pending** として列挙する gate。対象は 2 ファイル:
+**公開 copy の surface 宣言**（`quality/copy-editorial-surfaces.json` — #506 と
+同じ宣言を読むので「公開 copy」の定義は 1 つだけ）と、**owner の記録**
+（`quality/stale-content-review.json`）。
+
+```bash
+pnpm run copy:stale:check                          # gate
+node scripts/check-stale-content-review.mjs --format=html \
+  --out=.tmp/stale-content-review.html
+node --test scripts/check-stale-content-review.test.mjs  # 4 状態の fixture
+```
+
+判定は 4 状態: `current` / `stale`（review pending） / `unrecorded`
+（review pending。記録が無い、または文を書き換えて記録が失効した） /
+`not-scanned`（locale が opt-in されていない）。
+
+この gate は **差分ではなくリポジトリの状態** を見るので、`validate:fast` に
+入る（`quality/profile.yaml#gates.fast.components`）。**判断できないときは
+exit 2** で、pass にはしない。gate は `src/**` に書かない・文を消さない・
+置換文案を提案しない・採点しない。公開からの除去は owner の決定である。
+
+契約の本文は [`docs/domain/content-review.md`](../domain/content-review.md)、
+運用手順は
+[`docs/runbook/stale-content-review.md`](../runbook/stale-content-review.md)、
+検証記録は
+[`docs/verification/content/stale-copy-review.md`](../verification/content/stale-copy-review.md)。
+
 ## Cross-engine compat matrix
 
 Issue #415 added a second Playwright configuration that runs the

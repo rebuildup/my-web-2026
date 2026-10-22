@@ -58,3 +58,35 @@ render が inert でなかった場合だけ、script は非 0 で終了する�
 [`link-check-report.webp`](./link-check-report.webp) が error / warning の境界を
 fixture と実 repository の走査結果で示す。内部リンクの 404 は release fail、
 外部 timeout は warning であり、外部リンクは CI では dereference しない。
+
+## 公開 copy の review date (Issue #437)
+
+| Artefact | Issue | What it proves |
+| --- | --- | --- |
+| `stale-copy-review.webp` | #437 | the owner review-date gate for the time-sensitive public copy: the summary counts, the review queue, the per-expression classification, the records that no longer match a sentence, and what the gate does **not** do (see [`stale-copy-review.md`](stale-copy-review.md)) |
+
+`stale-copy-review.webp` は「**今**」を指す公開 copy の owner review date
+gate の **committed スクリーンショット**である。desktop 1440 と mobile 390 の
+2 viewport を 1 枚に合成し、gate の HTML レポートを Chromium で撮影した。
+ Issue は `.png` のパスを指定しているが、**リポジトリに残すのは WebP** である
+（`node scripts/make-stale-content-review-report.mjs` が出力した HTML を
+ Chromium で撮影し、同じ `sharp`（devDependency）で WebP に再エンコードする。
+ 中間 PNG は書かない）。
+
+**画像はテストの代用ではない。** 4 状態（`current` / `stale` / `unrecorded` /
+`not-scanned`）と不変条件（`src/**` に書かない・判定語を使わない・fail-closed）
+は `scripts/check-stale-content-review.test.mjs`（29 ケース）が保証する。
+
+### 再生成
+
+```bash
+# gate 自体
+pnpm run copy:stale:check
+
+# 検証画像を本のパスへ取り直す
+pnpm run verify:stale-copy-review-screenshot
+```
+
+契約の本文は [`docs/domain/content-review.md`](../../domain/content-review.md)、
+運用手順は [`docs/runbook/stale-content-review.md`](../../runbook/stale-content-review.md)、
+検証記録の詳細は [`stale-copy-review.md`](./stale-copy-review.md)。

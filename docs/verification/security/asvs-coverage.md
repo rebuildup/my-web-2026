@@ -116,7 +116,7 @@ node --test scripts/check-asvs-coverage.test.mjs
 | V6.3.3（MFA または同等 Combining） | MFA は未実装。admin 面の要否は owner decision |
 | V7.4.3（全セッション終了の選択肢） | パスワード変更後に他セッションを全て終了する repository 証跡が無い |
 | V8.2.2（data-specific access control） | admin matrix は function-level を証明するのみで、data-specific な IDOR/BOLA の証跡が無い |
-| V15.2.1（更新・修正の期限を破っていない component だけを持つ） | `pnpm run dep-audit:check` は CI 専用かつ `enforcement: audit` で、blocking finding を出して落ちない。lockfile に未処理の critical/high が残り、severity ごとの修正期限もどの文書にも書かれていない |
+| V15.2.1（更新・修正の期限を破っていない component だけを持つ） | `pnpm run dep-audit:check` は CI 専用だが、宣言は `enforcement: block`（#645）に昇格済みで、lockfile の critical/high はすべて解消済み。唯一の例外 `braces`（GHSA-vfj7-8cjw-p6xm、patched version 未公開）は根拠・期限（2027-01-31）・追跡 Issue（#669）付きで記録されている。残る不足は severity ごとの修正期限の明文化と release gate 上の実行点 |
 | V16.1.1（logging inventory：層・イベント・format・保管先・利用・アクセス制御・保持期間） | `docs/security/log-redaction.md` は「何が書けるか」（redaction, #467）を書いているが、保管先・読み手・保持期間には触れない |
 
 この 6 件は「緑」と書かない。台帳は `not run (unverified)` として表示し、

@@ -1,0 +1,16 @@
+{
+	"schemaVersion": 1,
+	"gate": "dependency-advisory",
+	"issue": "#470",
+	"enforcement": "audit",
+	"blockingSeverities": ["critical", "high"],
+	"reportedSeverities": ["moderate", "low", "info"],
+	"dataUnavailable": "fail",
+	"advisorySource": {
+		"command": "pnpm audit --json",
+		"lockfile": "pnpm-lock.yaml",
+		"note": "Fixture gate. The audit mode below is fixture data, kept so the recorded-but-not-blocking verdict stays covered after the committed declaration moved to `block`."
+	},
+	"note": "Fixture gate: non-blocking enforcement with no exception. Used to prove the recorded-but-not-blocking verdict and that it is never reported as clean.",
+	"exceptions": []
+}

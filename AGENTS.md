@@ -528,7 +528,12 @@ instead. The decision logic is in `scripts/check-dependency-advisories.mjs`,
 not in workflow YAML, and the same verdict is reproducible locally with
 `pnpm run dep-audit:check`; whether it should also join a local entry
 point is an open decision recorded in
-[`quality/profile.yaml`](quality/profile.yaml). Operator reference:
+[`quality/profile.yaml`](quality/profile.yaml). The declaration runs
+`enforcement: block` (Issue #645), so that CI step fails the build on
+any `critical` / `high` advisory that no approved exception covers; the
+one exception still on record (`braces`, no published patched version)
+is dated, grounded and tracked (Issue #669), and an expired record
+blocks again. Operator reference:
 [`docs/runbook/dependency-advisories.md`](docs/runbook/dependency-advisories.md).
 
 A second gate is deliberately **not** in the three entry points, and is

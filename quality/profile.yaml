@@ -1201,9 +1201,9 @@ security_gates:
     check_command: 'pnpm run dep-audit:check'
     report_command: 'pnpm run dep-audit:report'
     declaration: 'quality/dependency-advisory-gate.json'
-    enforcement: audit
+    enforcement: block
     blocking_severities: ['critical', 'high']
-    open_owner_decision: '`enforcement: audit` with 1 outstanding blocking advisory (`braces`, no patched release) is the shipped state. Remediation, narrowing blocking_severities and per-package exception approval are owner calls; no exception is written on the owner''s behalf. See docs/runbook/dependency-advisories.md section 6.'
+    open_owner_decision: 'The gate runs `enforcement: block` (Issue #645): every critical/high advisory is remediated, except `braces` (GHSA-vfj7-8cjw-p6xm), which has no published patched version and is covered by one dated, tracked exception record (tracking Issue #669, expires 2027-01-31) whose grounds are dev-only build-tooling reachability. Renewing that record, narrowing blocking_severities and any further per-package exception approval remain owner calls; no exception is written on the owner''s behalf. See docs/runbook/dependency-advisories.md section 6.'
     ci_step: 'Dependency advisory audit (every pull_request / push the workflow triggers, and the HTML report is uploaded as dependency-advisory-report-<sha>)'
     entry_points: 'CI only — the gate needs the npm registry advisory endpoint, so it is deliberately not part of the offline validate:fast / validate:integration / validate:release path. The decision lives in scripts/check-dependency-advisories.mjs (not in workflow YAML) and the same verdict is reproducible locally with `pnpm run dep-audit:check`.'
     exit_codes:

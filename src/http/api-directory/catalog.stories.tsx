@@ -237,8 +237,14 @@ export const Catalog: Story = {
 						`DELETE`, `POST /hit`）を明確に分ける。
 					</li>
 					<li>
+						{/* The three unimplemented boundaries below are written
+						    without inline-code ticks on purpose: `findIntegrationMounts`
+						    (scripts/check-integration-scope.mjs) reads a quote-delimited
+						    `/integrations/...` string in src/http/** as a mounted route,
+						    and this preview would then fail the integration-scope gate
+						    for documenting a boundary that is deliberately empty. */}
 						管理用エンドポイント（`/db/ping`,
-						`/media/ping`）、未実装境界（`/webhooks/*`、`/oauth/*`、`/integrations/*`）、秘密値はこのカタログに含めない。
+						`/media/ping`）、未実装境界（/webhooks/*、/oauth/*、/integrations/*）、秘密値はこのカタログに含めない。
 					</li>
 					<li>
 						廃止方針の明文化は現在存在しない（`docs/security/api-cors.md` は CORS

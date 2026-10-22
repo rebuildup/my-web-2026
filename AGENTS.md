@@ -75,6 +75,8 @@ Current dependency direction:
 routes -> home
 routes -> portfolio
 routes -> about (`/portfolio/[slug]` embeds the approved person identity as the CreativeWork author; the fact stays owned by `about`)
+routes -> projects (Issue #621 — `/projects/dotfiles` loader + page composition)
+projects -> editorial (Issue #621 — display primitives only)
 routes -> editorial (Issue #171 — GA4 mount in __root.tsx)
 home/reactions -> i18n (Issue #433)
 editorial -> i18n (Issue #432 — the fr / de / pt / ru heading-glyph
@@ -270,6 +272,19 @@ home -> privacy (Issue #496 — `src/home/privacy-notice.tsx` renders the
   Byte-level licence evidence for a Tool's own checkout belongs to
   Issue #466 (`src/tools/artifact-inventory.ts`), so the two owners
   never claim the same files.
+- `src/projects/**` (Issue #621) owns the public project-introduction
+  contract: the committed snapshot schema (`types.ts`), its reader-side
+  structural validation and freshness evaluation (`snapshot.ts`), and the
+  page that composes the excerpt (`DotfilesIntroductionPage.tsx`). The
+  snapshot is produced offline by `scripts/sync-project-introductions.mjs`
+  from an explicit three-endpoint public GitHub allowlist; the Worker never
+  calls GitHub for this page and reads no binding. The current surface is
+  `/projects/dotfiles`; the upstream README is the canonical detail and the
+  page always carries the pinned commit and its freshness state. See
+  `docs/domain/project-introductions.md`. The offline gate is
+  `pnpm run projects:check`; the scheduled refresh is
+  `.github/workflows/projects-sync.yml`, whose PR base is the repository
+  variable `PROJECTS_SYNC_BASE_REF` (the active release branch).
 - `src/routes/**` is the TanStack Start file-route contract; keep route files thin.
 - An external third-party read is not an `src/http/**` concern: `http/`
   owns the INBOUND external boundary (`/api/v1/*`, `/webhooks/*`),
@@ -422,7 +437,10 @@ Three deterministic entry points defined in `quality/profile.yaml`:
   `log:redaction:check` (Issue #467 — `src/**` may only reach
   `console` through `src/logging/logger.ts`, and operator scripts may
   not print a secret value) +
-  `structured-data:check` + `index:boundary:check` +
+  `structured-data:check` + `projects:check` (Issue #621 — the committed
+  project-introduction snapshot's shape, digest, pinned SHA, sanitized
+  link set and publication boundary; freshness is advisory only) +
+  `index:boundary:check` +
   `seo:status:check` (Issue #419 — every shipped route must own a
   status row (200 / 404 / 500 / redirect / noindex) whose proof file
   cites it, so an unreviewed request class cannot pass silently) +

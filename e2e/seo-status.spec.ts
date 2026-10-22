@@ -168,6 +168,15 @@ test.describe('seo status contract — browser rendering (#419)', () => {
 		expectServed('public-contact', 200, await page.content());
 	});
 
+	test('public-projects-dotfiles renders the committed introduction', async ({ page }) => {
+		const response = await page.goto('/projects/dotfiles');
+		expect(response?.status()).toBe(200);
+		const html = await page.content();
+		expectServed('public-projects-dotfiles', 200, html);
+		await expect(page.locator('h1')).toContainText('dotfiles');
+		await expect(page.getByRole('heading', { name: '設計原則' })).toBeVisible();
+	});
+
 	test('public-portfolio-index renders as a normal page', async ({ page }) => {
 		const response = await page.goto('/portfolio');
 		expect(response?.status()).toBe(200);

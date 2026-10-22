@@ -83,6 +83,12 @@ gates:
       # Issue #422: structured-data route coverage — every
       # visitor-facing route declares which schema.org types it emits.
       - 'pnpm run structured-data:check'
+      # Issue #621: the project-introduction snapshot. Offline and
+      # read-only: it re-validates the committed snapshot's shape,
+      # digest, pinned SHA, sanitized link set and publication boundary,
+      # and reports freshness as an advisory. A hand-edited snapshot
+      # that claims it is current cannot pass this gate.
+      - 'pnpm run projects:check'
       # Issue #421: the Open Graph / Twitter card contract. Cheap by
       # design (pure Node): it proves every route the router serves has
       # a declared card state, that the declared fallback card is a real
@@ -169,6 +175,19 @@ gates:
       # opt-in per feature, so an unopted locale is information, not a
       # failure.
       - 'pnpm run copy:i18n:check' # UI copy locale contract (Issue #428)
+      # Issue #437: the owner review-date gate for the time-sensitive
+      # public copy. A public sentence that points at *now* decays, so
+      # every such expression must carry a record saying when the owner
+      # last read it (quality/stale-content-review.json). The gate only
+      # reports: it never removes a sentence from the publication, never
+      # proposes a replacement wording and never declares an expression
+      # to be untrue. A text edit invalidates the record, so the edited
+      # sentence waits for a review again. Offline, read-only and
+      # credential-free, so it belongs in the fast chain; the shipped
+      # registry is complete, so the gate is green on day one and turns
+      # red only when a review is genuinely pending — which the owner
+      # clears by re-reading the expressions and recording new dates.
+      - 'pnpm run copy:stale:check' # owner review date for time-sensitive public copy (Issue #437)
       # Issue #505: the committed publication snapshot must match the
       # surface the repository actually ships; a publicly reachable URL
       # may not disappear without a recorded transition.
@@ -1438,6 +1457,56 @@ copy_editorial_approval:
   verification_artifact: 'docs/verification/copy/editorial-approval-gate.webp'
   owner_issue: '#506'
 
+# Issue #437 - the owner review-date gate for the time-sensitive public
+# copy. A public sentence that points at *now* decays: the set of
+# published works changes, the reachable channels change, the observed
+# status changes. The gate extracts the time-sensitive expressions of
+# the declared public copy surfaces and matches them against an owner
+# registry that records when the owner last read each of them.
+#
+# The gate is a repository-state gate (no diff, no network, no
+# credential), so it joins the fast chain. It is green on day one
+# because the shipped registry is complete; it turns red only when a
+# review is genuinely pending, and the owner clears that by re-reading
+# the expressions and recording new dates. That is the gate's purpose.
+#
+# What it deliberately does NOT do: it never removes a sentence from the
+# publication, never proposes a replacement wording, and never declares
+# an expression to be untrue. Unpublishing is an owner decision.
+stale_content_review:
+  registry: 'quality/stale-content-review.json (owner review dates, matched to the expression text)'
+  surfaces: 'quality/copy-editorial-surfaces.json (the same declaration the editorial approval gate reads)'
+  command: 'pnpm run copy:stale:check'
+  screenshot_command: 'pnpm run verify:stale-copy-review-screenshot'
+  tests: 'node --test scripts/check-stale-content-review.test.mjs'
+  fixtures: 'test/fixtures/content/stale-review/{registry,surfaces}.json + src/fixture/page.tsx'
+  freshness_window_days: 90
+  statuses:
+    - 'current - a record exists and its review date is inside the freshness window'
+    - 'stale - a record exists and its review date is outside the freshness window (review pending)'
+    - 'unrecorded - no record covers this expression (review pending); a text edit invalidates the record'
+    - 'not-scanned - the locale is not opted in, so no review date is required for it'
+  review_dimensions:
+    - 'prose - wording, meaning, numbers, negation, permission (the editor''s obligation; docs/domain/i18n.md section 5)'
+    - 'typography - glyph, spacing, line breaking (the font stack''s obligation; docs/domain/i18n.md section 5)'
+  binding: >-
+    a record is bound to the expression TEXT, so editing a sentence
+    invalidates its record and the edited sentence waits for a review
+    again. The registry never travels to another sentence.
+  scope_note: >-
+    the detector reads the words that point at now (今日 / 現在 / 最新 /
+    今 / 現時点 and their Latin counterparts) and nothing else. Precision
+    matters more than recall: a noisy detector would make the registry
+    unreviewable.
+  out_of_scope:
+    - 'prose quality and typography themselves: the gate records a human decision and never grades either.'
+    - 'a duration without a now-word (a 30-day window) - the detector looks for words that point at now, not for time spans.'
+    - 'a Latin raw JSX text - the shared extraction only sees Japanese, so a Latin expression is collected from a string literal.'
+    - 'removing a sentence from the publication - that is an owner decision this repository cannot make for the owner.'
+  documentation: 'docs/domain/content-review.md'
+  runbook: 'docs/runbook/stale-content-review.md'
+  verification_artifact: 'docs/verification/content/stale-copy-review.webp'
+  owner_issue: '#437'
 # Issue #425 - the Japanese copy review-target report. It is the
 # COLLECTION half of the same concern as #506: it lists the Japanese text
 # a pull request changed in article Markdown, About prose and public UI

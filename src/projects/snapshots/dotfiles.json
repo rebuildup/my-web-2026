@@ -1,0 +1,201 @@
+{
+	"schemaVersion": 1,
+	"source": {
+		"id": "dotfiles",
+		"owner": "rebuildup",
+		"repo": "dotfiles",
+		"ref": "main",
+		"commitSha": "237af590cca2afe48ccd47ff3f81538d2297899c",
+		"committedAt": "2026-10-19T14:24:36.000Z",
+		"readmePath": "README.md",
+		"readmeBlobSha": "61b16651099890ee38bb6c28b76471c689acde7c",
+		"canonicalUrl": "https://github.com/rebuildup/dotfiles",
+		"readmeUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md"
+	},
+	"availability": "public",
+	"unavailable": null,
+	"verifiedAt": "2026-10-20T02:20:44.835Z",
+	"appliedAt": "2026-10-20T02:20:44.835Z",
+	"contentDigest": "sha256:a5ff0d1dc498c828f0f4c5d3aea0601bd63eba207b092ff5f750224e6ad5d007",
+	"introduction": {
+		"title": "dotfiles",
+		"lead": [
+			{
+				"text": "Personal user-level configuration for my development machines. Machine/package provisioning belongs in"
+			},
+			{
+				"text": "rebuildup/pc-setup",
+				"href": "https://github.com/rebuildup/pc-setup"
+			},
+			{
+				"text": ". This repository owns the user configuration that is linked into $HOME, portable agent configuration composition, and Infisical runtime integration."
+			}
+		],
+		"sections": [
+			{
+				"id": "principles",
+				"heading": "Principles",
+				"anchor": "principles",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#principles",
+				"summary": null,
+				"points": [
+					[
+						{
+							"text": "Keep only configuration that I actually use or need to reproduce."
+						}
+					],
+					[
+						{
+							"text": "home/ mirrors $HOME; managed files are linked individually into the real home directory. An entry may be a regular file or a symlink into an agent submodule."
+						}
+					],
+					[
+						{
+							"text": "Linking is idempotent and non-destructive. script/link never overwrites unmanaged targets; script/bootstrap only adopts known legacy Git targets after preserving backups and migrating user-owned state."
+						}
+					],
+					[
+						{
+							"text": "Secret values are not Git state. The self-hosted Infisical instance at a private endpoint is the canonical secret source of truth."
+						}
+					],
+					[
+						{
+							"text": "Prefer process-scoped infisical run injection over global exports or persistent plaintext .env files."
+						}
+					],
+					[
+						{
+							"text": "Git identity is machine/user-local state in a machine-local Git config file; do not write it into the managed Git config file."
+						}
+					]
+				],
+				"structure": []
+			},
+			{
+				"id": "layout",
+				"heading": "Layout",
+				"anchor": "layout",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#layout",
+				"summary": null,
+				"points": [],
+				"structure": [".infisical.json", "config", "agents", "home", "script", "docs", "AGENTS.md"]
+			},
+			{
+				"id": "agent-launcher",
+				"heading": "Agent launcher (agent)",
+				"anchor": "agent-launcher-agent",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-launcher-agent",
+				"summary": [
+					{
+						"text": "The native claude command keeps the official Claude Code login and is never wrapped, aliased or overridden. Routes to other API providers (OpenRouter, DeepSeek, MiniMax, OpenCode Zen) are explicit and opt-in through the unified agent launcher: one declarative config (config/agents.toml), one thin Bun/TypeScript implementation (script/agent.ts, linked to ~/.local/bin/agent by script/link; PowerShell entry script/agent.ps1 on Windows) that reads the TOML with Bun.TOML.parse(), builds a filtered process-scoped environment through the existing Infisical wrapper (script/with-secrets, or…"
+					}
+				],
+				"points": [],
+				"structure": []
+			},
+			{
+				"id": "agent-configuration",
+				"heading": "Agent configuration",
+				"anchor": "agent-configuration",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#agent-configuration",
+				"summary": [
+					{
+						"text": "Global Claude Code, Codex, and OpenCode repositories are pinned as sibling submodules under agents/. A fresh clone does not need --recurse-submodules: script/bootstrap authenticates GitHub, stores the GitHub credential helper in a machine-local Git config file, links the stable global Git config, then initializes the exact commits recorded by the parent repository."
+					}
+				],
+				"points": [],
+				"structure": []
+			},
+			{
+				"id": "decisions-and-research",
+				"heading": "Decisions and research",
+				"anchor": "decisions-and-research",
+				"sourceUrl": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/README.md#decisions-and-research",
+				"summary": null,
+				"points": [
+					[
+						{
+							"text": "ADR-0001",
+							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0001.md"
+						},
+						{
+							"text": "— plain symlink home-mirror deployment"
+						}
+					],
+					[
+						{
+							"text": "ADR-0002",
+							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0002.md"
+						},
+						{
+							"text": "— minimal common-first configuration and pc-setup boundary"
+						}
+					],
+					[
+						{
+							"text": "ADR-0003",
+							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0003.md"
+						},
+						{
+							"text": "— superseded SOPS + age design"
+						}
+					],
+					[
+						{
+							"text": "ADR-0004",
+							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0004.md"
+						},
+						{
+							"text": "— Infisical secret source of truth"
+						}
+					],
+					[
+						{
+							"text": "ADR-0005",
+							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0005.md"
+						},
+						{
+							"text": "— sibling agent-config submodules and shared portable assets"
+						}
+					],
+					[
+						{
+							"text": "ADR-0006",
+							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0006.md"
+						},
+						{
+							"text": "— self-hosted Infisical control plane"
+						}
+					],
+					[
+						{
+							"text": "ADR-0007",
+							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0007.md"
+						},
+						{
+							"text": "— WSL Infisical file-vault / bounded runtime validation"
+						}
+					],
+					[
+						{
+							"text": "ADR-0008",
+							"href": "https://github.com/rebuildup/dotfiles/blob/237af590cca2afe48ccd47ff3f81538d2297899c/docs/adr/ADR-0008.md"
+						},
+						{
+							"text": "— provider-neutral Claude common configuration / isolated providers"
+						}
+					]
+				],
+				"structure": []
+			}
+		],
+		"relatedRepositories": [
+			{
+				"repo": "pc-setup",
+				"url": "https://github.com/rebuildup/pc-setup",
+				"label": "rebuildup/pc-setup"
+			}
+		]
+	}
+}

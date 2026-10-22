@@ -66,6 +66,13 @@ const forbiddenOwnerDependencies = new Map([
 	// open for a promoting capability is an owner decision recorded in
 	// `docs/verification/ops/api-timeout-fallback.md` §7.
 	['external-api', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
+	// `projects` (Issue #621) owns the public project-introduction contract:
+	// the committed snapshot shape, its reader-side validation, and the page
+	// that composes it. It is a peer obligation to `home` / `portfolio` /
+	// `about`, so it may not import those owners, the route layer, the
+	// Cloudflare runtime or the inbound HTTP boundary. It composes
+	// `editorial` primitives and reads only its own committed snapshot.
+	['projects', new Set(['home', 'routes', 'portfolio', 'about', 'cloudflare', 'http'])],
 	// `legal` (Issue #497) owns the publication-rights review contract for
 	// the assets this repository ships and references: which rights
 	// holder, which licence and which evidence back a shipped byte, and

@@ -760,6 +760,44 @@
 					"note": "status セクション (SectionHeading) の説明文「各 binding と外部境界の最新到達性。createServerFn で観測したスナップショット。観測できなかった状態は「未観測」として、到達障害と区別して表示します。」。before の 2 文は変更されておらず (等価)、追加された第 3 文が主張する区別は実装で実在する: src/home/status/tiles.tsx で snapshot entry の不在は health = 'unobserved' になり ('unreachable' への fallback ではない)、src/home/status/health.ts で SystemServiceHealth に 'unobserved' が独立した状態として追加され、HEALTH_LABEL は 'not observed'、UNOBSERVED_DETAIL は 'No reading was returned for this service.'、StateMark は 'unobserved' に専用のシルエット (壊れた輪) を持つ。したがって「no reading」と「unreachable (読みの失敗)」は別状態として別ラベル・別シルエット・別詳細で描画される。既存 2 文の主張は変更していない。owner 向けの観察 (事実誤認ではない): (a) 日本語の「未観測」は visitor markup に描画されない表示語であり (badge は英語 \"not observed\")、引用符が literal なラベルを連想させる。(b)「観測できなかった状態」は failed read (unreachable) も含みうる広い表現で、厳密には「観測結果が得られなかった状態」の方が実装に正確に対応する。"
 				}
 			]
+		},
+		{
+			"id": "pr-667",
+			"pr": 667,
+			"base": "release-0-7-0",
+			"reviewer": "rebuildup",
+			"reviewedAt": "2026-10-22",
+			"decision": "approved",
+			"fingerprint": "sha256:72d6a55bd3aac21e1c81a7a60db9ff203c4103581074327d1ee14b4817c388c6",
+			"proposal": {
+				"tool": "pi (openrouter/minimax/minimax-m3.1-flash:free) editorial pass",
+				"ran": true,
+				"summary": "Editorial pass reviewed all 3 changed Japanese segments on the analytics-consent and privacy-notice surfaces (2 modified GA4 descriptions, 1 added sender-list heading) for idiom, consistency with the source implementation, ambiguous negation and permission, and Japanese/English label pairing. Zero editorial suggestions worth changing; the wording matches the implementation (the two routes by which GA4 receives a value, and the registry-owned `transfer.senders` list).",
+				"disposition": "提案 0 件。編集補助の出力は「推奨すべき変更なし」という証拠としてそのまま残し、採否の判断は発生しなかった。owner 側の判断として 3 セグメントを原文と突き合わせて独立に確認した: (1) 2 つの GA4 説明文に追加した「送信元は 2 つで…」の 1 文が、このプラットフォームのコードが明示的に送る測定 ID とパス情報と、GA4 自身が読み取って送る自動収集を分けて名指ししていること、(2) その分割が台帳 (`src/privacy/data-lifecycle.ts` の `analytics-events` の `transfer.senders`) の記述と一致し、公開面どうしの矛盾が解消していること、(3) 許可の有無で送信元の分割が変わらず、許可したあいだにだけ送信されるという条件と広告用途の保存を無効とする主張が元の文面のまま残っていること、(4) 否定の意味（許可していないあいだは何も送信されない、拒否しても表示と操作は変わらない）が文中に残っていること、(5) 「送信者:」が registry の `senders` を 1 行ずつ描画する項目のラベルで、component 自身が送信者を判定せず、`senders` が空のエントリには描画されないこと。いずれも原文と同じ意味を保ち、意図的な追加なので verdict は intentional。"
+			},
+			"comparisons": [
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": "許可すると、Google の解析サービス（GA4）へ、閲覧したページのパス・参照元・ブラウザや端末の情報が送信されます。許可していないあいだは何も送信されません。拒否しても、このサイトの表示と操作は変わりません。",
+					"after": "許可すると、Google の解析サービス（GA4）へ、閲覧したページのパス・参照元・ブラウザや端末の情報が送信されます。送信元は 2 つで、このプラットフォームのコードが明示的に送る測定 ID とパス情報、そして GA4 自身が参照元やブラウザや端末の情報を読み取って送る自動収集です。許可していないあいだは何も送信されません。拒否しても、このサイトの表示と操作は変わりません。",
+					"verdict": "intentional",
+					"note": "未許可の説明文に「送信元は 2 つで…」の 1 文を追加した文言。何が GA4 に届くか（パス・参照元・ブラウザや端末の情報）は元のままで、足りないのはその送信元の内訳だった。プラットフォームのコードが明示的に送る測定 ID とパス情報と、GA4 自身が読み取って送る自動収集を分けて名指しすることで、台帳 (`src/privacy/data-lifecycle.ts` の `analytics-events` の `transfer.senders`) が同じ分割で述べる 内容と一致し、公開面どうしの矛盾が解消する。否定と許可の意味 (許可していないあいだは何も送信されない、拒否しても表示と操作は変わらない) は文中に残っており、変わらない。"
+				},
+				{
+					"path": "src/editorial/analytics/AnalyticsConsent.tsx",
+					"before": "許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。広告用途の保存は有効にしていません。",
+					"after": "許可したあいだは、閲覧したページのパス・参照元・ブラウザや端末の情報が Google の解析サービス（GA4）へ送信されます。送信元は 2 つで、このプラットフォームのコードが明示的に送る測定 ID とパス情報、そして GA4 自身が参照元やブラウザや端末の情報を読み取って送る自動収集です。広告用途の保存は有効にしていません。",
+					"verdict": "intentional",
+					"note": "同上、許可済みの説明文。未許可版と同じ 1 文を同じ位置と同じ文言で追加したもので、送信元の分割は許可の有無で変わらない。広告用途の保存を無効とする主張と、許可したあいだにだけ送信されるという条件は元の文面のまま残っており、変わらない。"
+				},
+				{
+					"path": "src/home/privacy-notice.tsx",
+					"before": null,
+					"after": "<strong>送信者:</strong>",
+					"verdict": "intentional",
+					"note": "各エントリの「外部送信」の直後に置く送信者一覧の見出し。台帳の `transfer.senders` を 1 行ずつ描画する項目のラベルで、実体 (各送信者の名前と送る値) は registry が所有する。component 自身は送信者を判定せず、`senders` が空のエントリにはこの項目を描画しない。fail-closed な公開の原則 (registry の published entry のみ描画) はこの追加でも変わらない。"
+				}
+			]
 		}
 	]
 }

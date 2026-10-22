@@ -23,14 +23,14 @@ real constants. A changed constant that is not republished here fails
 
 ## Entries
 
-| id | stores | retention | deletion channel | external transfer |
-| --- | --- | --- | --- | --- |
-| `actor-cookie` | random 32-hex id, browser cookie | 1 year (`Max-Age`) + server-side copy in `reactions.actor_id` | visitor action (toggle) | none |
-| `reaction-rows` | target / actor / principal / kind / value / created_at | none — no expiry column, no purge job | visitor action | none |
-| `access-counter` | aggregate counts + per-request dedup UUID | dedup expires after 60 min, purged only on the same id's next hit | operator action | none |
-| `analytics-events` | measurement id + `page_path` / `page_location` / `page_title`; the query string is stripped on SPA route-change page_views only | Google's property setting — not verifiable here | third party | Google Analytics 4 |
-| `admin-auth` | operator email / password hash / sessions (incl. the client IP address and the user-agent string) / invitations | 30-day session, invitation expiry | operator action | none |
-| `contact-surface` | nothing — the page has no form | not applicable | not applicable | none |
+| id | stores | retention | deletion channel | external transfer | senders |
+| --- | --- | --- | --- | --- | --- |
+| `actor-cookie` | random 32-hex id, browser cookie | 1 year (`Max-Age`) + server-side copy in `reactions.actor_id` | visitor action (toggle) | none | — |
+| `reaction-rows` | target / actor / principal / kind / value / created_at | none — no expiry column, no purge job | visitor action | none | — |
+| `access-counter` | aggregate counts + per-request dedup UUID | dedup expires after 60 min, purged only on the same id's next hit | operator action | none | — |
+| `analytics-events` | this platform’s code sends the measurement id + `page_path` / `page_location` / `page_title`; GA4 collects the referrer and the browser / device information itself | Google's property setting — not verifiable here | third party | Google Analytics 4 | `platform-code`, `third-party-automatic` |
+| `admin-auth` | operator email / password hash / sessions (incl. the client IP address and the user-agent string) / invitations | 30-day session, invitation expiry | operator action | none | — |
+| `contact-surface` | nothing — the page has no form | not applicable | not applicable | none | — |
 
 Each entry carries `evidence` pointers into `src/**`, `migrations/*.sql`
 and `wrangler.jsonc`, and `publication.status`:
@@ -42,6 +42,32 @@ and `wrangler.jsonc`, and `publication.status`:
 published. The same filter (`filterPublishedEntries`) runs inside
 `<PrivacyNotice />`, so the rule holds for whatever set the component
 is handed.
+
+## Scope by sender (Issue #662)
+
+A send claim is scoped by **who sends the value**, not by the data item.
+Two senders carry the same kind of item: this platform's own code sends
+the measurement id and the path, and GA4 collects the referrer and the
+browser / device information itself. One sentence covering both ("what
+is sent is the measurement id and the path information") reads as
+excluding the second — and contradicts the consent banner
+(`src/editorial/analytics/AnalyticsConsent.tsx`), which names it
+plainly.
+
+`transfer.senders` therefore carries one scope per sender, and
+`<PrivacyNotice />` renders each of them under the 「送信者:」 heading.
+`findSendScopeViolations()` fails closed:
+
+- an entry that claims an outward transfer and names no sender is an
+  error;
+- an entry whose target is `google-analytics-4` and that does not
+  separate `platform-code` from `third-party-automatic` is an error;
+- an entry that sends nothing outward and names a sender is an error;
+- a scope that carries no text in one of the two locales is an error.
+
+The module-level integrity check runs the same rule, so a registry that
+breaks it fails the Worker boot instead of shipping a notice whose
+scope contradicts the banner.
 
 ## Two sentences that are scoped, not absolute
 

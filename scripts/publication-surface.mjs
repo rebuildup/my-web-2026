@@ -87,6 +87,15 @@ export const SURFACE_DECLARATIONS = [
 			'Public contact surface; renders only channels that pass the fail-closed freshness gate.',
 	},
 	{
+		id: '/projects/dotfiles',
+		path: '/projects/dotfiles',
+		classification: 'public',
+		sitemap: false,
+		files: ['src/routes/projects.dotfiles.tsx'],
+		reason:
+			'Public project introduction; renders the committed public-README snapshot and states its own freshness. Deliberately not a nav destination, so it is not advertised through the sitemap inventory.',
+	},
+	{
 		id: '/portfolio/',
 		path: '/portfolio',
 		classification: 'public',

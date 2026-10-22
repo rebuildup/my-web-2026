@@ -127,9 +127,13 @@ function checkIdentity() {
 			`BETTER_AUTH_URL must pin the canonical production origin, got ${PRODUCTION_BETTER_AUTH_URL}`,
 		);
 	}
-	if (PRODUCTION_MEDIA_PUBLIC_BASE_URL !== 'https://media.rebuildup.dev') {
+	// Issue #634: media is delivered by the Worker (`GET /media/<key>`),
+	// so the composed URL must stay on the canonical origin. The R2
+	// custom domain served every key that existed; returning to it is
+	// the documented rollback, not the contract.
+	if (PRODUCTION_MEDIA_PUBLIC_BASE_URL !== `https://${PRODUCTION_CUSTOM_DOMAIN}/media`) {
 		fail(
-			`MEDIA_PUBLIC_BASE_URL must be the R2 public custom domain, got ${PRODUCTION_MEDIA_PUBLIC_BASE_URL}`,
+			`MEDIA_PUBLIC_BASE_URL must be the Worker media path on the canonical origin, got ${PRODUCTION_MEDIA_PUBLIC_BASE_URL}`,
 		);
 	}
 	for (const binding of Object.values(RATE_LIMIT_BINDING)) {

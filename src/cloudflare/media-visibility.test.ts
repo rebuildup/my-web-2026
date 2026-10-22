@@ -182,6 +182,22 @@ describe('createPublicMediaDelivery — gated fetch', () => {
 		expect(source.reads).toEqual([]);
 	});
 
+	it('refuses a private or unlisted namespace even when the owner approves', async () => {
+		// The namespace gate is independent of the approval check. A
+		// caller that wires `isApproved` to a too-permissive predicate
+		// must still not make `private/` or an undeclared prefix
+		// servable, so the approval check is not what this asserts —
+		// the bucket read count is.
+		const source = countingSource([PRIVATE_KEY, 'wip/aulymo/cover.webp']);
+		const delivery = createPublicMediaDelivery(source, { isApproved: () => true });
+		expect(await delivery.fetch(PRIVATE_KEY)).toEqual({ status: 404, key: PRIVATE_KEY });
+		expect(await delivery.fetch('wip/aulymo/cover.webp')).toEqual({
+			status: 404,
+			key: 'wip/aulymo/cover.webp',
+		});
+		expect(source.reads).toEqual([]);
+	});
+
 	it('answers a missing key and a private key identically', async () => {
 		// 404 with the same observable payload for both: no existence
 		// oracle, not even a reason code a caller could serialise by

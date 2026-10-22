@@ -26,7 +26,12 @@ choke point である。ここからしか観測できない surface が 2 つ�
 - path の判定は `matchesExternalBoundary` と同じ **exact-prefix-or-`/`**
   規則（`classifySurface`）。`/adminish` や `/api/v10` は監視対象に
   含まれない。prefix だけで一致させると、無関係なトラフィックを
-  監視対象の率に加算してしまう。
+  監視対象の率に加算してしまう。Admin 側は Issue #654 以降、
+  TanStack Router と同じ入力（percent-decode 後に `toLowerCase()`）で
+  正規化してから判定する。`/ADMIN/KEYS` と `/%61dmin/keys` は admin、
+  `/administration`・`//admin`・`/admin%2Fkeys` は admin ではない。
+  判定の実体は `src/http/admin-path.ts` の `isAdminPath` で、
+  `src/server.ts` の cache policy と同じ関数を使う。
 - 観測は dispatch の直後、**`settleSsrDocumentResponse` の後**に行う。
   SSR が落ちたが訪問者には読める fallback 文書を返した 500 を、
   訪問者に見えている 200 として数えてはならない。

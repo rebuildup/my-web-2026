@@ -363,6 +363,26 @@ export async function listImages(db: D1Database): Promise<readonly ReactionImage
 	return rows.results ?? [];
 }
 
+/**
+ * Is this particular `reactions/…` key approved for public delivery?
+ *
+ * Issue #634 adds a key-addressed delivery path (`/media/<key>`) next
+ * to the id-addressed one above. A reaction image is public by design
+ * — the row exists because an operator uploaded it to be shown — so
+ * for this namespace the row itself is the approval, exactly as the
+ * visibility contract states. The namespace gate still runs first in
+ * the delivery adapter, so a row naming a `private/…` key can never
+ * be served through either path.
+ */
+export async function isPublicReactionImageKey(db: D1Database, key: string): Promise<boolean> {
+	if (!key.startsWith('reactions/')) return false;
+	const row = await db
+		.prepare('SELECT 1 AS one FROM reaction_images WHERE r2_key = ?1 LIMIT 1')
+		.bind(key)
+		.first<{ one: number }>();
+	return row?.one === 1;
+}
+
 export async function getImageStream(
 	db: D1Database,
 	media: R2Bucket,

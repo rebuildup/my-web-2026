@@ -84,6 +84,12 @@ introduced for `/admin*` in Issue #291:
 - `/admin*` → `no-store`, decided by path alone (an anonymous
   `/admin` answers `307` with no content type, so a content-type
   guard would skip the one response most likely to be recorded).
+  Since Issue #654 "is Admin" is the router's question: the path is
+  percent-decoded and lower-cased before the exact `/admin` or
+  `/admin/…` test (`src/http/admin-path.ts#isAdminPath`), because
+  TanStack Router renders `/ADMIN/KEYS` and `/%61dmin/keys` as the
+  Admin screen. `/administration`, `//admin` and `/admin%2Fkeys` stay
+  outside the rule. The anomaly monitor calls the same function.
 - `/_serverFn/*` → `private, no-store`, also decided by path alone:
   server-function payloads are JSON, so they never enter the document
   branch, and they are per-caller by construction (the handlers read

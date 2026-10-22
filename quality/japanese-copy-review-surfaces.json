@@ -1,0 +1,13 @@
+{
+	"$comment": "Japanese copy review-target declaration (Issue #425). The collector (scripts/collect-japanese-copy-review.mjs) lists the Japanese text a pull request changed in three scopes: article Markdown, About prose and public UI copy. It APPROVES NOTHING and REWRITES NOTHING - it is a review-target list with the original diff. Public UI copy and About prose are read from `baseDeclaration` (the Issue #506 surface declaration), so there is exactly one definition of a public copy surface in the repository. `articleMarkdownGlobs` is the one addition: Markdown article bodies are not part of the #506 approval gate (that gate's declaration excludes **/*.md), but they are still text a visitor reads, so they are collected here. The list is opt-in: a file outside these globs is reported as out of scope, with the reason, rather than silently skipped.",
+	"version": 1,
+	"policy": "Article Markdown is the committed article prose: the Portfolio Markdown bodies in `src/portfolio/seed.ts` and, when article content is committed as files, `content/articles/**/*.md` and `content/blog/**/*.md`. Article prose that lives only in D1 or a Notion import is not observable in a pull-request diff and is therefore outside this declaration; that gap is recorded in docs/runbook/japanese-copy-review.md rather than guessed at. Extending the list is an owner copy decision.",
+	"baseDeclaration": "quality/copy-editorial-surfaces.json",
+	"articleMarkdownGlobs": [
+		"src/portfolio/seed.ts",
+		"content/articles/**/*.md",
+		"content/blog/**/*.md"
+	],
+	"articleMarkdownExcludeGlobs": ["**/*.test.*", "**/*.spec.*", "**/fixtures/**"],
+	"aboutGlobs": ["src/about/**"]
+}

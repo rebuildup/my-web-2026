@@ -92,6 +92,43 @@ jobs:
           git fetch --no-tags --depth=1 origin \
             "+refs/heads/${COPY_APPROVAL_BASE}:refs/remotes/origin/${COPY_APPROVAL_BASE}"
           pnpm run copy:approval:check
+      # Issue #425 — the Japanese copy review-target report. This is a
+      # REPORT, not a gate: it lists the Japanese text this pull request
+      # changed in article Markdown, About prose and public UI copy, with
+      # the original beside it, and surfaces number / negation /
+      # permission changes. Un-reviewed prose is the normal state of a
+      # copy change, so the command exits 0 for `clear`, `review` and
+      # `attention`; the blocking decision stays with Issue #506's
+      # approval gate above. The JSON and text reports are uploaded as
+      # artifacts so a reviewer can read them without a local checkout.
+      #
+      # Like the #506 step it judges a diff, so it is a pull request
+      # step, and the base ref is fetched because actions/checkout is a
+      # depth-1 clone.
+      - name: Japanese copy review targets
+        if: github.event_name == 'pull_request'
+        env:
+          COPY_REVIEW_BASE: ${{ github.base_ref }}
+        run: |
+          set -o pipefail
+          git fetch --no-tags --depth=1 origin \
+            "+refs/heads/${COPY_REVIEW_BASE}:refs/remotes/origin/${COPY_REVIEW_BASE}"
+          mkdir -p .tmp
+          pnpm run copy:diff:report -- \
+            --base="origin/${COPY_REVIEW_BASE}" --format=json \
+            --out=.tmp/japanese-copy-review-report.json
+          pnpm run copy:diff:report -- \
+            --base="origin/${COPY_REVIEW_BASE}" \
+            | tee .tmp/japanese-copy-review-report.txt
+      - name: Upload Japanese copy review report
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: japanese-copy-review-report-${{ github.sha }}
+          path: |
+            .tmp/japanese-copy-review-report.json
+            .tmp/japanese-copy-review-report.txt
+          retention-days: 30
       # Read-only validation: format / lint / typecheck / test / build /
       # dry-run / lint:ci (actionlint) / build-storybook.
       # `validate:integration` is the canonical entry point documented in

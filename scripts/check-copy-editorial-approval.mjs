@@ -110,14 +110,67 @@
  * REVIEW), 2 = bad input (no base ref, unreadable declaration).
  */
 
-import { execFileSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
-import { dirname, join, relative, resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
 
-const here = dirname(fileURLToPath(import.meta.url));
-export const REPO_ROOT = resolve(here, '..');
+import {
+	JAPANESE_PATTERN,
+	REPO_ROOT,
+	buildChangeSet,
+	classifyFile,
+	commitParents,
+	commitSha,
+	describeDiffBase,
+	extractSegments,
+	gitDiff,
+	globToRegExp,
+	hasJapanese,
+	isCommentLine,
+	matchesGlob,
+	mergeBaseOf,
+	pairEditSegments,
+	parseDiff,
+	readJson,
+	refExists,
+	resolveBaseRef,
+	resolveDiffBase,
+	stringLiterals,
+} from './_copy-japanese-diff.mjs';
+
+/**
+ * The Japanese-segment extraction and git change-set helpers are shared
+ * with the Issue #425 review-target collector
+ * (`scripts/collect-japanese-copy-review.mjs`). They live in
+ * `scripts/_copy-japanese-diff.mjs` so the approval gate and the
+ * collector cannot drift on what "the Japanese text this pull request
+ * changed" means. The names are re-exported here because this module is
+ * the approval gate's public surface, and its tests import them from
+ * here.
+ */
+export {
+	JAPANESE_PATTERN,
+	REPO_ROOT,
+	buildChangeSet,
+	classifyFile,
+	commitParents,
+	commitSha,
+	describeDiffBase,
+	extractSegments,
+	gitDiff,
+	globToRegExp,
+	hasJapanese,
+	isCommentLine,
+	matchesGlob,
+	mergeBaseOf,
+	pairEditSegments,
+	parseDiff,
+	readJson,
+	refExists,
+	resolveBaseRef,
+	resolveDiffBase,
+	stringLiterals,
+};
 
 /** Public copy surface declaration (which files hold visitor-facing copy). */
 export const SURFACES_PATH = 'quality/copy-editorial-surfaces.json';
@@ -141,279 +194,6 @@ export const DECISIONS = ['approved', 'rejected'];
 export const COMPARISON_VERDICTS = ['equivalent', 'intentional'];
 
 /**
- * CJK ideographs, kana, CJK punctuation and full-width forms — the same
- * character class `scripts/check-copy-i18n.mjs` uses, so "Japanese text"
- * means the same thing in both copy gates.
- */
-export const JAPANESE_PATTERN =
-	/[\u3000-\u303F\u3040-\u30FF\u3400-\u4DBF\u4E00-\u9FFF\uF900-\uFAFF\uFF01-\uFF60\uFFE0-\uFFE6]/u;
-
-/** Does this text contain Japanese characters? */
-export function hasJapanese(text) {
-	return typeof text === 'string' && JAPANESE_PATTERN.test(text);
-}
-
-/**
- * Glob matcher for the surface declaration.
- *
- * Only the two wildcards the declaration uses are supported: `*` (any
- * run of characters inside one path segment) and `**` (any run of
- * characters, including `/`). Everything else is literal, so a path
- * with a `$` (`src/routes/tools.$slug.tsx`) matches as itself.
- */
-export function globToRegExp(glob) {
-	let source = '';
-	for (let index = 0; index < glob.length; index += 1) {
-		const char = glob[index];
-		if (char === '*') {
-			if (glob[index + 1] === '*') {
-				source += '.*';
-				index += 1;
-				if (glob[index + 1] === '/') index += 1;
-			} else {
-				source += '[^/]*';
-			}
-			continue;
-		}
-		source += char.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-	}
-	return new RegExp(`^${source}$`);
-}
-
-/** Does `path` match `glob`? */
-export function matchesGlob(glob, path) {
-	return globToRegExp(glob).test(path);
-}
-
-/**
- * Classify one changed file against the surface declaration.
- *
- * The declaration is opt-in: a file is public copy only when it matches
- * a `publicCopyGlobs` entry and no `excludeGlobs` entry. The reason is
- * returned so the report can say *why* a file was out of scope — a
- * silent skip would be indistinguishable from a missed file.
- */
-export function classifyFile(path, surfaces) {
-	const include = surfaces?.publicCopyGlobs ?? [];
-	const exclude = surfaces?.excludeGlobs ?? [];
-	if (!include.some((glob) => matchesGlob(glob, path))) {
-		return { public: false, reason: 'not a declared public copy surface' };
-	}
-	const excludedBy = exclude.find((glob) => matchesGlob(glob, path));
-	if (excludedBy) {
-		return { public: false, reason: `excluded by "${excludedBy}"` };
-	}
-	return { public: true, reason: 'declared public copy surface' };
-}
-
-/**
- * String literals in one line, with the quotes removed.
- *
- * A visitor-facing sentence normally lives in a literal, so the literal
- * is the unit a reviewer compares. The scan is textual, not a parse:
- * an apostrophe inside a comment can open a "literal" that never ends.
- * Such a line contributes no usable segment (it has no Japanese
- * content of its own), so the failure mode is a missed segment rather
- * than a wrong one.
- */
-export function stringLiterals(line) {
-	const literals = [];
-	let index = 0;
-	while (index < line.length) {
-		const quote = line[index];
-		if (quote !== '"' && quote !== "'" && quote !== '`') {
-			index += 1;
-			continue;
-		}
-		let cursor = index + 1;
-		let content = '';
-		let closed = false;
-		while (cursor < line.length) {
-			const char = line[cursor];
-			if (char === '\\' && cursor + 1 < line.length) {
-				content += line[cursor + 1];
-				cursor += 2;
-				continue;
-			}
-			if (char === quote) {
-				closed = true;
-				break;
-			}
-			content += char;
-			cursor += 1;
-		}
-		if (!closed) {
-			index = cursor;
-			continue;
-		}
-		literals.push(content);
-		index = cursor + 1;
-	}
-	return literals;
-}
-
-/** A line that only carries a comment is not copy. */
-export function isCommentLine(line) {
-	const trimmed = line.trim();
-	return (
-		trimmed.startsWith('//') ||
-		trimmed.startsWith('/*') ||
-		trimmed.startsWith('*') ||
-		trimmed.startsWith('<!--')
-	);
-}
-
-/**
- * The Japanese text segments of one changed line.
- *
- * A literal that contains Japanese is a segment (the whole literal: the
- * sentence a reader sees, with its Latin words attached). A line with
- * Japanese but no literal — raw JSX text, a bare Japanese value — is a
- * segment as a whole. Comment-only lines contribute nothing: a
- * Japanese code comment is documentation, not something a visitor reads.
- */
-export function extractSegments(line) {
-	if (isCommentLine(line)) return [];
-	const segments = [];
-	for (const literal of stringLiterals(line)) {
-		if (hasJapanese(literal)) segments.push(literal.trim());
-	}
-	if (segments.length === 0 && hasJapanese(line)) {
-		const trimmed = line.trim();
-		if (trimmed.length > 0) segments.push(trimmed);
-	}
-	return segments;
-}
-
-/**
- * Parse a unified diff into files and their edits.
- *
- * `git diff --unified=0` is the input shape: no context lines, one
- * hunk per contiguous change. An edit is the removed and the added
- * lines of one hunk, in order, so a reviewer can see which text
- * replaced which text.
- */
-export function parseDiff(diffText) {
-	const files = [];
-	let current = null;
-	let hunk = null;
-
-	const closeHunk = () => {
-		if (current && hunk) {
-			current.edits.push({ removed: hunk.removed, added: hunk.added });
-		}
-		hunk = null;
-	};
-
-	for (const line of String(diffText ?? '').split('\n')) {
-		if (line.startsWith('diff --git ')) {
-			closeHunk();
-			current = { path: null, status: 'modified', edits: [] };
-			files.push(current);
-			continue;
-		}
-		if (!current) continue;
-		if (line.startsWith('new file mode ')) {
-			current.status = 'added';
-			continue;
-		}
-		if (line.startsWith('deleted file mode ')) {
-			current.status = 'deleted';
-			continue;
-		}
-		if (line.startsWith('rename from ')) {
-			current.status = 'renamed';
-			continue;
-		}
-		if (line.startsWith('rename to ')) {
-			current.path = line.slice('rename to '.length).trim();
-			continue;
-		}
-		// `--- ` / `+++ ` are file headers only outside a hunk. Inside a
-		// hunk they are content: a removed line whose text starts with
-		// `-- ` is printed as `--- …`, and taking it for a header would
-		// point the whole file at the wrong path and drop its Japanese
-		// change from the change set.
-		if (hunk === null && line.startsWith('--- ')) {
-			const value = line.slice(4).trim();
-			if (value !== '/dev/null') current.path = value.replace(/^a\//, '');
-			continue;
-		}
-		if (hunk === null && line.startsWith('+++ ')) {
-			const value = line.slice(4).trim();
-			if (value !== '/dev/null') current.path = value.replace(/^b\//, '');
-			continue;
-		}
-		if (line.startsWith('@@')) {
-			closeHunk();
-			hunk = { removed: [], added: [] };
-			continue;
-		}
-		if (!hunk) continue;
-		if (line.startsWith('+')) {
-			hunk.added.push(line.slice(1));
-			continue;
-		}
-		if (line.startsWith('-')) {
-			hunk.removed.push(line.slice(1));
-		}
-	}
-	closeHunk();
-
-	return files
-		.map((file) => ({
-			path: file.path,
-			status: file.status,
-			edits: file.edits,
-		}))
-		.filter((file) => typeof file.path === 'string' && file.path.length > 0);
-}
-
-/**
- * Build the change set: the Japanese text a pull request changed in a
- * public copy surface.
- *
- * A modified line pairs its removed and its added text positionally —
- * the first removed segment with the first added segment — which is
- * what a one-sentence rewrite looks like in a unified diff. Segments
- * without a partner are additions or removals of their own.
- */
-export function buildChangeSet(diffText, surfaces) {
-	const files = parseDiff(diffText);
-	const units = [];
-	const publicFiles = [];
-	const otherFiles = [];
-
-	for (const file of files) {
-		const classification = classifyFile(file.path, surfaces);
-		if (!classification.public) {
-			otherFiles.push({ path: file.path, status: file.status, reason: classification.reason });
-			continue;
-		}
-		publicFiles.push({ path: file.path, status: file.status });
-		for (const edit of file.edits) {
-			const pairs = Math.max(edit.removed.length, edit.added.length);
-			for (let index = 0; index < pairs; index += 1) {
-				const removedLine = edit.removed[index];
-				const addedLine = edit.added[index];
-				const beforeSegments = removedLine === undefined ? [] : extractSegments(removedLine);
-				const afterSegments = addedLine === undefined ? [] : extractSegments(addedLine);
-				const segmentCount = Math.max(beforeSegments.length, afterSegments.length);
-				for (let segment = 0; segment < segmentCount; segment += 1) {
-					const before = beforeSegments[segment] ?? null;
-					const after = afterSegments[segment] ?? null;
-					if (before !== null && after !== null && before === after) continue;
-					const kind = before === null ? 'added' : after === null ? 'removed' : 'modified';
-					units.push({ path: file.path, kind, before, after });
-				}
-			}
-		}
-	}
-
-	return { units, publicFiles, otherFiles };
-}
-
-/**
  * The fingerprint of a change set.
  *
  * It binds an approval to the **final text** of every changed segment,
@@ -429,19 +209,6 @@ export function fingerprintUnits(units) {
 		.sort();
 	const digest = createHash('sha256').update(lines.join('\n')).digest('hex');
 	return `sha256:${digest}`;
-}
-
-/** Read and parse a JSON file. Throws a caller-readable Error. */
-export function readJson(path, label) {
-	const absolute = resolve(REPO_ROOT, path);
-	if (!existsSync(absolute)) {
-		throw new Error(`${label} not found: ${relative(REPO_ROOT, absolute)}`);
-	}
-	try {
-		return JSON.parse(readFileSync(absolute, 'utf8'));
-	} catch (error) {
-		throw new Error(`${label} is not valid JSON (${path}): ${error.message}`);
-	}
 }
 
 function finding(code, severity, message) {
@@ -948,156 +715,6 @@ function parseArgs(argv) {
 		else throw new Error(`unknown option: ${arg}`);
 	}
 	return options;
-}
-
-/** The commit id a ref points at, or null when the ref is unknown. */
-export function commitSha(ref, { cwd = REPO_ROOT } = {}) {
-	try {
-		const sha = execFileSync('git', ['rev-parse', '--verify', '--quiet', `${ref}^{commit}`], {
-			cwd,
-			encoding: 'utf8',
-			stdio: ['ignore', 'pipe', 'ignore'],
-		}).trim();
-		return sha.length > 0 ? sha : null;
-	} catch {
-		return null;
-	}
-}
-
-/** Does this ref exist in the repository? */
-export function refExists(ref, options = {}) {
-	return commitSha(ref, options) !== null;
-}
-
-/**
- * The parents of a commit, read from the commit object itself.
- *
- * `git cat-file -p` prints the commit as it is stored, so the parents
- * stay readable in a shallow clone — where the revision walk cannot
- * reach them.
- */
-export function commitParents(ref, { cwd = REPO_ROOT } = {}) {
-	try {
-		const text = execFileSync('git', ['cat-file', '-p', `${ref}^{commit}`], {
-			cwd,
-			encoding: 'utf8',
-			stdio: ['ignore', 'pipe', 'ignore'],
-		});
-		return text
-			.split('\n')
-			.filter((line) => line.startsWith('parent '))
-			.map((line) => line.slice('parent '.length).trim());
-	} catch {
-		return [];
-	}
-}
-
-/** The merge base of two refs, or null when the history cannot say. */
-export function mergeBaseOf(base, head, { cwd = REPO_ROOT } = {}) {
-	try {
-		const sha = execFileSync('git', ['merge-base', base, head], {
-			cwd,
-			encoding: 'utf8',
-			stdio: ['ignore', 'pipe', 'ignore'],
-		}).trim();
-		return sha.length > 0 ? sha : null;
-	} catch {
-		return null;
-	}
-}
-
-/**
- * The commit the gate diffs against — the pull request's own change set.
- *
- * Two ways to reach it, and the gate uses the first one that works:
- *
- *   - `merge-base` — the commit the branch forked from. `git diff
- *     base...head` is the pull request's own change set, whatever the
- *     base branch published in the meantime. This is the local case
- *     (a clone that carries the history).
- *   - `merge-commit` — the first parent of a merge commit. A pull
- *     request checkout in CI is the merge commit GitHub builds
- *     (`refs/pull/<n>/merge`), and a depth-1 clone cannot compute a
- *     merge base. Only a commit with two or more parents qualifies: a
- *     single-parent head is not the merge GitHub builds, and diffing it
- *     against its parent would judge the last commit only — silently
- *     narrowing the review instead of asking for history.
- *
- * When neither can be established the change set is unknown, and the
- * gate says so instead of judging a diff it did not compute.
- */
-export function resolveDiffBase(base, head, { cwd = REPO_ROOT } = {}) {
-	const fork = mergeBaseOf(base, head, { cwd });
-	if (fork) {
-		return { ref: fork, mode: 'merge-base', base, head };
-	}
-	// Only a real merge commit (two or more parents) is the CI head.
-	// A single-parent head means the change set cannot be computed, and
-	// diffing it against its parent would judge the LAST commit only —
-	// silently narrowing the review instead of asking for history.
-	const parents = commitParents(head, { cwd });
-	if (parents.length >= 2) {
-		return { ref: parents[0], mode: 'merge-commit', base, head };
-	}
-	return null;
-}
-
-/** How the diff base was reached, in the words the report prints. */
-export function describeDiffBase(diffBase) {
-	if (!diffBase) return 'unknown';
-	if (diffBase.mode === 'merge-base') {
-		return `merge base of ${diffBase.base} and ${diffBase.head}`;
-	}
-	return `first parent of the merge commit ${diffBase.head}`;
-}
-
-/**
- * The diff between two refs, as `git diff --unified=0` prints it.
- *
- * The first argument is the **diff base** (see `resolveDiffBase`), not
- * the base branch: the gate judges the pull request's own change set.
- */
-export function gitDiff(base, head, { cwd = REPO_ROOT } = {}) {
-	return execFileSync(
-		'git',
-		['diff', '--no-color', '--no-ext-diff', '--unified=0', '--find-renames', base, head],
-		{ cwd, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
-	);
-}
-
-/**
- * The base ref the gate diffs against.
- *
- * `--base` wins, then `COPY_APPROVAL_BASE`, then `GITHUB_BASE_REF`
- * (read as `origin/<ref>`, which is how CI checks the base branch out).
- * There is no silent default: a gate that diffs against the wrong ref
- * would report a verdict about text nobody changed.
- */
-export function resolveBaseRef(explicit, env = process.env) {
-	const candidates = [];
-	if (explicit) candidates.push(explicit);
-	if (env.COPY_APPROVAL_BASE) candidates.push(env.COPY_APPROVAL_BASE);
-	if (env.GITHUB_BASE_REF) candidates.push(`origin/${env.GITHUB_BASE_REF}`);
-	for (const candidate of candidates) {
-		for (const variant of refVariants(candidate)) {
-			if (refExists(variant)) return variant;
-		}
-	}
-	return null;
-}
-
-/**
- * The refs a candidate base name may resolve to, in order.
- *
- * The name is taken as given first — `--base=HEAD` means HEAD, not
- * `origin/HEAD` — and a bare branch name falls back to its remote
- * tracking ref, which is how a fresh clone reaches the base branch. A
- * name that already carries a path (`origin/…`, `refs/heads/…`) is
- * taken as it is.
- */
-function refVariants(candidate) {
-	if (candidate.includes('/')) return [candidate];
-	return [candidate, `origin/${candidate}`];
 }
 
 export function main(argv, { env = process.env } = {}) {

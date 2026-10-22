@@ -178,3 +178,33 @@ pnpm run copy:approval:check -- --base=release-0-7-0   # gate（base 必須）
 この gate は差分を対象にするため `validate:fast` ではなく CI の `validate`
 ジョブで走る。運用手順は
 [`docs/runbook/copy-editorial-approval.md`](../docs/runbook/copy-editorial-approval.md)。
+
+## 日本語 copy のレビュー対象レポート (Issue #425)
+
+#506 が **誰が承認したか** を問うのに対し、#425 は **何が変わったか** を集める。
+記事 Markdown、About prose、公開 UI copy の変更された日本語を、原文と変更後を
+並べて review target として出す。数値・否定・権限のマーカーが変わった場合は
+`number-drift` / `negation-drift` / `permission-drift` として明示する。
+
+**このレポートは gate ではない。** `clear` / `review` / `attention` のいずれも
+exit 0 であり、未レビューの文章で CI を落とさない。承認の判断は #506 の
+owner 記録だけが行う。レポートは文章を書き換えず、draft を公開せず、承認台帳を
+読まない。組版は #428 (`copy:i18n:check`) の責務であり、本レポートは文章そのものを
+列挙する。
+
+| file | 責務 |
+| --- | --- |
+| `quality/japanese-copy-review-surfaces.json` | 記事 Markdown の glob と、#506 surface 宣言への参照 |
+| `scripts/collect-japanese-copy-review.mjs` | 差分から日本語 prose を抜き、原文と意味マーカーを比較する |
+| `scripts/_copy-japanese-diff.mjs` | #425 と #506 が共有する抽出・diff helper |
+
+```bash
+pnpm run copy:diff:report -- --base=release-0-7-0            # text
+pnpm run copy:diff:report -- --base=release-0-7-0 --format=json
+pnpm run copy:diff:report -- --base=release-0-7-0 --strict   # attention を exit 1
+```
+
+CI では `validate` ジョブの `Japanese copy review targets` ステップが
+`pull_request` イベントでのみ実行され、JSON / text を artifact として残す。
+運用手順は
+[`docs/runbook/japanese-copy-review.md`](../docs/runbook/japanese-copy-review.md)。

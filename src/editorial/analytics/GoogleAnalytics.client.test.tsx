@@ -7,6 +7,7 @@ import {
 	__resetCapturedMeasurementIdForTests,
 	captureMeasurementId,
 } from './GoogleAnalytics';
+import { __resetDocumentAnalyticsConsentForTests, setDocumentAnalyticsConsent } from './consent';
 
 /**
  * Effect-wiring integration test for the SPA route-change tracker
@@ -43,12 +44,17 @@ describe('GoogleAnalyticsRouteTracker — effect wiring (Issue #286)', () => {
 		// it must be cleared or the previous test's ID leaks into the
 		// "no ID captured" case.
 		__resetCapturedMeasurementIdForTests();
+		// Issue #495: the tracker stays inert until this document has
+		// resolved an affirmative decision. These cases are about the
+		// effect wiring, so they start from the granted state.
+		setDocumentAnalyticsConsent('granted');
 		resetAnalyticsGlobals();
 	});
 
 	afterEach(() => {
 		cleanup();
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
 		resetAnalyticsGlobals();
 	});
 
@@ -83,8 +89,10 @@ describe('GoogleAnalyticsRouteTracker — effect wiring (Issue #286)', () => {
 		rerender(<GoogleAnalyticsRouteTracker measurementId="G-TEST000" locationKey="/about" />);
 		expect(gtag).toHaveBeenCalledTimes(1);
 
-		// /admin/* never tracked.
+		// /admin/* never tracked — including the case variants the
+		// case-insensitive router resolves to the same admin screen.
 		rerender(<GoogleAnalyticsRouteTracker measurementId="G-TEST000" locationKey="/admin/keys" />);
+		rerender(<GoogleAnalyticsRouteTracker measurementId="G-TEST000" locationKey="/ADMIN/KEYS" />);
 		expect(gtag).toHaveBeenCalledTimes(1);
 
 		// Back to a public page → tracked again, with an absolute
@@ -117,6 +125,7 @@ describe('GoogleAnalytics — SSR-script ID seeding (Issue #286)', () => {
 
 	beforeEach(() => {
 		__resetCapturedMeasurementIdForTests();
+		setDocumentAnalyticsConsent('granted');
 		resetAnalyticsGlobals();
 		bootstrapScript = undefined;
 	});
@@ -125,6 +134,7 @@ describe('GoogleAnalytics — SSR-script ID seeding (Issue #286)', () => {
 		cleanup();
 		bootstrapScript?.remove();
 		__resetCapturedMeasurementIdForTests();
+		__resetDocumentAnalyticsConsentForTests();
 		resetAnalyticsGlobals();
 	});
 
@@ -138,9 +148,9 @@ describe('GoogleAnalytics — SSR-script ID seeding (Issue #286)', () => {
 	}
 
 	it('seeds the write-once capture from the SSR-rendered script when the loader prop is undefined', () => {
-		// The real client condition (Issue #286 diagnosis): the loader
-		// prop is always `undefined` client-side — only the SSR script
-		// in the document carries the ID.
+		// A client-side navigation re-runs the root loader in the
+		// browser, where the `cloudflare:workers` stub answers
+		// `undefined`; the document script is then the only carrier.
 		appendSsrBootstrap('G-DOCTEST');
 
 		expect(captureMeasurementId(undefined)).toBe('G-DOCTEST');

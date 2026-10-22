@@ -1,6 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/react';
-import { css, cx } from '../../../styled-system/css';
+import { css } from '../../../styled-system/css';
+import { DataTable } from '../../editorial/table-code';
 import { publicApiCatalog } from './catalog';
+import { ENDPOINT_COLUMNS } from './catalog.fixture';
 
 /**
  * Public API Directory — Issue #530.
@@ -22,66 +24,6 @@ const meta = {
 
 export default meta;
 type Story = StoryObj<typeof meta>;
-
-function EndpointRow({ entry }: { entry: (typeof publicApiCatalog)[number] }) {
-	return (
-		<tr
-			className={css({
-				borderBottom: '1px solid',
-				borderColor: 'border.subtle',
-			})}
-		>
-			<td
-				className={cx(
-					css({
-						paddingBlock: '3',
-						paddingInline: '4',
-						fontFamily: 'mono',
-						fontSize: 'xs',
-						whiteSpace: 'nowrap',
-					}),
-					entry.authentication === 'anonymous'
-						? css({ color: 'text.success' })
-						: css({ color: 'text.warning' }),
-				)}
-			>
-				{entry.method} {entry.path}
-			</td>
-			<td
-				className={css({
-					paddingBlock: '3',
-					paddingInline: '4',
-					fontFamily: 'sans',
-					fontSize: 'xs',
-				})}
-			>
-				{entry.authentication === 'anonymous' ? '匿名' : '認証'}
-				{entry.authForm && ` (${entry.authForm})`}
-			</td>
-			<td
-				className={css({
-					paddingBlock: '3',
-					paddingInline: '4',
-					fontFamily: 'sans',
-					fontSize: 'xs',
-					color: 'text.muted',
-				})}
-			>
-				{entry.rateLimitBinding ?? '—'}
-			</td>
-			<td
-				className={css({
-					paddingBlock: '3',
-					paddingInline: '4',
-					fontFamily: 'sans',
-					fontSize: 'xs',
-				})}
-			>
-				{entry.purpose}
-			</td>
-		</tr>
-	);
-}
 
 export const Catalog: Story = {
 	render: () => (
@@ -118,84 +60,21 @@ export const Catalog: Story = {
 			</header>
 
 			<section>
-				<table
-					className={css({
-						width: '100%',
-						borderCollapse: 'collapse',
-						fontFamily: 'sans',
-					})}
-				>
-					<thead>
-						<tr
-							className={css({
-								borderBottom: '2px solid',
-								borderColor: 'border.default',
-							})}
-						>
-							<th
-								className={css({
-									paddingBlock: '2',
-									paddingInline: '4',
-									textAlign: 'left',
-									fontSize: 'xs',
-									fontWeight: '600',
-									textTransform: 'uppercase',
-									letterSpacing: 'wide',
-									color: 'text.muted',
-								})}
-							>
-								Endpoint
-							</th>
-							<th
-								className={css({
-									paddingBlock: '2',
-									paddingInline: '4',
-									textAlign: 'left',
-									fontSize: 'xs',
-									fontWeight: '600',
-									textTransform: 'uppercase',
-									letterSpacing: 'wide',
-									color: 'text.muted',
-								})}
-							>
-								認証
-							</th>
-							<th
-								className={css({
-									paddingBlock: '2',
-									paddingInline: '4',
-									textAlign: 'left',
-									fontSize: 'xs',
-									fontWeight: '600',
-									textTransform: 'uppercase',
-									letterSpacing: 'wide',
-									color: 'text.muted',
-								})}
-							>
-								Rate limit
-							</th>
-							<th
-								className={css({
-									paddingBlock: '2',
-									paddingInline: '4',
-									textAlign: 'left',
-									fontSize: 'xs',
-									fontWeight: '600',
-									textTransform: 'uppercase',
-									letterSpacing: 'wide',
-									color: 'text.muted',
-								})}
-							>
-								責務 / 利用例
-							</th>
-						</tr>
-					</thead>
-					<tbody>
-						{publicApiCatalog.map((entry) => (
-							<EndpointRow key={`${entry.method} ${entry.path}`} entry={entry} />
-						))}
-					</tbody>
-				</table>
+				<DataTable
+					caption="公開 API 一覧"
+					columns={ENDPOINT_COLUMNS}
+					rows={publicApiCatalog.map((entry) => ({
+						key: `${entry.method} ${entry.path}`,
+						label: `${entry.method} ${entry.path}`,
+						cells: {
+							auth: `${entry.authentication === 'anonymous' ? '匿名' : '認証'}${
+								entry.authForm ? ` (${entry.authForm})` : ''
+							}`,
+							rateLimit: entry.rateLimitBinding ?? '—',
+							purpose: entry.purpose,
+						},
+					}))}
+				/>
 			</section>
 
 			<section

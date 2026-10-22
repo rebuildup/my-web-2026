@@ -8,9 +8,10 @@
  * production release sequence and the failure branches around it.
  * `docs/release.md` defines the release / patch-release workflow. This
  * module does not restate either document's ordering; it records a
- * **rehearsal** of the three failure classes those documents describe
- * (a failed build, a failed smoke, a post-deploy regression) and turns
- * the human procedure into a table the test suite can assert:
+ * **rehearsal** of the failure classes those documents describe
+ * (a failed build, a failed smoke, a post-delete re-check failure, a
+ * post-deploy regression) and turns the human procedure into a table
+ * the test suite can assert:
  *
  *   - what triggers the path,
  *   - who decides,
@@ -30,13 +31,26 @@
  *
  * Nothing is executed
  * -------------------
- * This module is pure. It does not import `node:child_process`, a
- * network client, or a Cloudflare binding, and every action says
+ * This module executes nothing. It does not import `node:child_process`,
+ * a network client, or a Cloudflare binding, and every action says
  * `executedByRehearsal: false`. The commands below are recorded text;
  * running one remains an operator action. `runRollbackRehearsal()`
  * therefore reports zero executed commands, zero external requests and
  * zero credentials read by construction (the test pins the import list
  * to keep it that way).
+ *
+ * Citations are resolved
+ * ----------------------
+ * A citation is a record of authority, so it is only worth something
+ * while the document it points at still says what the record claims.
+ * `validateRehearsal()` therefore resolves every citation against the
+ * real repository documents: the cited file must be one of
+ * `CITABLE_DOCUMENTS`, and the cited heading must exist in that file.
+ * A renamed heading, a deleted heading and a citation into a document
+ * this repository does not own are all errors, never a blank cell
+ * rendered as if the procedure were complete. Resolving a citation is
+ * a read-only file access: it runs no command, opens no socket and
+ * reads no credential.
  *
  * Duration and state
  * ------------------
@@ -46,6 +60,13 @@
  * drift without the procedure changing.
  */
 
+import { readFileSync } from 'node:fs';
+import { dirname, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/** The repository root, resolved from this module's own location. */
+const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
+
 /** The canonical runbook. Citations are checked against this file. */
 export const RUNBOOK_PATH = 'docs/runbook/cloudflare-workers-builds.md';
 
@@ -54,6 +75,16 @@ export const RELEASE_PATH = 'docs/release.md';
 
 /** The always-on delivery contract (release merge human gate). */
 export const AGENTS_PATH = 'AGENTS.md';
+
+/**
+ * The documents a citation may point at.
+ *
+ * The rehearsal may only claim authority from a document this
+ * repository owns and the Issue names. A citation into any other file
+ * is rejected, so the table cannot borrow authority from a document
+ * nobody reviews.
+ */
+export const CITABLE_DOCUMENTS = Object.freeze([RUNBOOK_PATH, RELEASE_PATH, AGENTS_PATH]);
 
 /**
  * Decision owners. A decision may be made by the repository owner or by
@@ -96,10 +127,11 @@ export const MUTATION = Object.freeze({
 
 const MUTATION_VALUES = new Set(Object.values(MUTATION));
 
-/** The three failure classes the Issue asks the rehearsal to walk. */
+/** The failure classes the Issue asks the rehearsal to walk. */
 export const FAILURE_CLASS = Object.freeze({
 	failedBuild: 'failed-build',
 	failedSmoke: 'failed-smoke',
+	postDeleteRecheck: 'post-delete-recheck',
 	postDeployRegression: 'post-deploy-regression',
 });
 
@@ -110,6 +142,7 @@ export const OUTCOME = Object.freeze({
 	noDeploy: 'no-deploy',
 	releaseBlocked: 'release-blocked',
 	operatorRestore: 'operator-restore',
+	lifecycleOpen: 'lifecycle-open',
 	canonicalPatchRelease: 'canonical-patch-release',
 });
 
@@ -133,6 +166,9 @@ export const ERROR_CODE = Object.freeze({
 	decisionOwnerMissing: 'decision_owner_missing',
 	decisionOwnerInvalid: 'decision_owner_invalid',
 	decisionAuthorityMissing: 'decision_authority_missing',
+	citationInvalid: 'citation_invalid',
+	citationDocumentUnknown: 'citation_document_unknown',
+	citationHeadingMissing: 'citation_heading_missing',
 	outcomeInvalid: 'outcome_invalid',
 	notReversibleMissing: 'not_reversible_missing',
 	stepsMissing: 'steps_missing',
@@ -363,7 +399,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 			observation:
 				'`pnpm run e2e:prod` exits non-zero, or the operator sign-in step fails after the deploy.',
 			description:
-				'Smoke #2 (automated) or Smoke #3 (operator manual sign-in) fails after Workers Builds deployed the release commit. The release window is not complete.',
+				'Smoke #2 (automated) or Smoke #3 (operator manual sign-in) fails after Workers Builds deployed the release commit. The release window is not complete and `--delete-legacy-only` has not run yet, so the legacy fallback binding is still bound.',
 			source: cite(
 				RUNBOOK_PATH,
 				'## Canonical production release sequence (ADR-0015 §9 + Issue #124)',
@@ -371,8 +407,8 @@ export const REHEARSAL_PATHS = deepFreeze([
 		},
 		decisionPoint: {
 			question:
-				'Has `--delete-legacy-only` already run, and does the failure involve the versioned runtime?',
-			rule: 'While the smoke is red, do not delete the legacy binding: it is the documented fallback. If the legacy binding was already deleted and Smoke #3 failed, restore it. The Phase B lifecycle stays open until a smoke passes.',
+				'Is the legacy fallback binding still bound, i.e. has `--delete-legacy-only` not run yet?',
+			rule: 'While the smoke is red, do not delete the legacy binding: it is the documented fallback. The legacy binding is still bound and the versioned runtime is already deployed, so `--restore-legacy-only` would roll nothing back — it would re-add a binding that is already there and hide the failing surface. Keep the Phase B lifecycle open and fix forward through the canonical patch-release path. The `--restore-legacy-only` recovery operation belongs to the post-delete re-check failure, not to this one.',
 			owner: OWNER.repositoryOwner,
 			authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
 		},
@@ -421,18 +457,18 @@ export const REHEARSAL_PATHS = deepFreeze([
 					'The legacy binding remains bound, the Phase B lifecycle stays open and the release window is not declared complete.',
 			},
 			{
-				id: 'restore-legacy-binding',
+				id: 'no-restore-legacy-before-delete',
 				owner: OWNER.repositoryOwner,
 				authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
 				action: {
-					kind: ACTION_KIND.operatorCommand,
-					command: 'node scripts/phase-3-plus-prod-flip.mjs --execute --restore-legacy-only',
-					mutates: MUTATION.workerBinding,
-					requiresHumanApproval: true,
+					kind: ACTION_KIND.stop,
+					summary:
+						'Do not run `--execute --restore-legacy-only` for this failure. The legacy binding is still bound and the versioned runtime is already deployed, so restoring it rolls nothing back and hides the failing surface. `--restore-legacy-only` is the documented operation for the post-delete re-check failure only.',
+					mutates: MUTATION.none,
 					executedByRehearsal: false,
 				},
 				observation:
-					'After a `--delete-legacy-only` that already ran, the legacy binding is restored from the Infisical audit / recovery copy and the versioned binding remains present.',
+					'No binding is mutated, the legacy fallback stays bound and the failing surface stays visible to the investigation.',
 			},
 			{
 				id: 'investigate-before-closing-lifecycle',
@@ -443,7 +479,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 					procedure: [
 						'Keep the Phase B lifecycle open until a smoke passes.',
 						'Record the failing surface and the deployed commit in the incident notes.',
-						'Decide with the repository owner whether the next action is a fix-forward release or a further recovery operation.',
+						'Fix forward through the canonical patch-release path: a binding operation does not roll the deployed versioned runtime back.',
 					],
 					mutates: MUTATION.none,
 					executedByRehearsal: false,
@@ -455,7 +491,91 @@ export const REHEARSAL_PATHS = deepFreeze([
 		notReversible: [
 			'The release commit is already deployed; rolling a secret binding back does not un-ship the Worker version or the `main` commit.',
 			'D1 migrations applied by the deploy command are already applied and are not reversed by a binding operation.',
-			'If `--delete-legacy-only` ran, restoring the binding depends on the Infisical audit / recovery copy; the deletion itself remains in the operation record.',
+			'The legacy binding stays bound as the fallback; the lifecycle is not closed by a binding operation, and the repair is a forward release rather than a rollback.',
+		],
+		outcome: OUTCOME.lifecycleOpen,
+	},
+	{
+		id: 'post-delete-recheck-failure',
+		title: 'Re-check fails after the legacy binding was deleted',
+		failureClass: FAILURE_CLASS.postDeleteRecheck,
+		trigger: {
+			observation:
+				'A re-check that runs after `--delete-legacy-only` reports a mismatch: the final drift check, or a smoke re-run after the deletion.',
+			description:
+				'`--delete-legacy-only` already ran, so the Worker no longer carries the legacy `BETTER_AUTH_SECRET` binding. The re-check that follows the deletion fails while the versioned runtime is deployed.',
+			source: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
+		},
+		decisionPoint: {
+			question: 'Has `--delete-legacy-only` already run, so the legacy fallback binding is gone?',
+			rule: 'This is the documented `--restore-legacy-only` failure class. The legacy binding is restored from the Infisical audit / recovery copy, the incident is investigated, and the #89 Phase B lifecycle stays open. Restoring the binding is not a code rollback: it does not un-ship the deployed version.',
+			owner: OWNER.repositoryOwner,
+			authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
+		},
+		steps: [
+			{
+				id: 'observe-post-delete-recheck',
+				owner: OWNER.releaseOperator,
+				authority: cite(
+					RUNBOOK_PATH,
+					'## Canonical production release sequence (ADR-0015 §9 + Issue #124)',
+				),
+				action: {
+					kind: ACTION_KIND.operatorCommand,
+					command:
+						'pnpm run infisical:check:cf -- --execute --environment=prod --worker-contract=final --require-live-worker',
+					mutates: MUTATION.none,
+					executedByRehearsal: false,
+				},
+				observation:
+					'The report names the drifted contract and the tier that failed. It reports binding names and contract tiers, never a secret value.',
+			},
+			{
+				id: 'confirm-legacy-binding-absent',
+				owner: OWNER.releaseOperator,
+				authority: cite(RUNBOOK_PATH, '## Source-controlled contract vs live Worker state'),
+				action: {
+					kind: ACTION_KIND.operatorCommand,
+					command: 'pnpm run rotate:better-auth-secret -- --verify-only',
+					mutates: MUTATION.none,
+					executedByRehearsal: false,
+				},
+				observation:
+					'The reported binding NAMES show that the legacy binding is absent and the versioned binding is present. No secret value is printed.',
+			},
+			{
+				id: 'restore-legacy-binding',
+				owner: OWNER.repositoryOwner,
+				authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
+				action: {
+					kind: ACTION_KIND.operatorCommand,
+					command: 'node scripts/phase-3-plus-prod-flip.mjs --execute --restore-legacy-only',
+					mutates: MUTATION.workerBinding,
+					requiresHumanApproval: true,
+					executedByRehearsal: false,
+				},
+				observation:
+					'The legacy `BETTER_AUTH_SECRET` binding is re-added to the Worker from the Infisical audit / recovery copy and the versioned binding remains present.',
+			},
+			{
+				id: 'keep-lifecycle-open',
+				owner: OWNER.repositoryOwner,
+				authority: cite(RUNBOOK_PATH, '## Recovery operations (Phase B driver)'),
+				action: {
+					kind: ACTION_KIND.stop,
+					summary:
+						'Do not close the #89 Phase B lifecycle and do not re-run `--delete-legacy-only` until the re-check failure is understood. The restored legacy binding is the fallback for the investigation, not a converged state.',
+					mutates: MUTATION.none,
+					executedByRehearsal: false,
+				},
+				observation:
+					'The lifecycle stays open, the legacy binding is bound again and the deletion remains visible in the operation record.',
+			},
+		],
+		notReversible: [
+			'The legacy binding deletion stays in the Phase B operation record; the restore is a new operation, not an erasure.',
+			'The restore depends on the Infisical audit / recovery copy existing; it is not a local undo of the bulk put.',
+			'The deployed version and the D1 migrations the deploy command applied are not reversed by a binding operation.',
 		],
 		outcome: OUTCOME.operatorRestore,
 	},
@@ -534,7 +654,7 @@ export const REHEARSAL_PATHS = deepFreeze([
 				action: {
 					kind: ACTION_KIND.stop,
 					summary:
-						'If, and only if, the regression matches the documented post-`delete-legacy-only` failure class, use `--execute --restore-legacy-only` as recorded in the post-deploy smoke path. That is a recovery operation, not a code rollback.',
+						'If, and only if, the regression matches the documented post-`delete-legacy-only` failure class, use `--execute --restore-legacy-only` as recorded in the post-delete re-check path. That is a recovery operation, not a code rollback.',
 					mutates: MUTATION.none,
 					executedByRehearsal: false,
 				},
@@ -556,8 +676,85 @@ function isNonEmptyString(value) {
 	return typeof value === 'string' && value.trim().length > 0;
 }
 
-function isCitation(value) {
-	return Boolean(value) && isNonEmptyString(value.file) && isNonEmptyString(value.heading);
+/**
+ * The ATX headings of a markdown document, as trimmed source lines.
+ *
+ * The heading text is kept exactly as the document writes it, so a
+ * citation can only match a heading that is really there.
+ */
+export function extractHeadings(markdown) {
+	const headings = new Set();
+	for (const line of String(markdown).split('\n')) {
+		if (/^ {0,3}#{1,6}\s+\S/.test(line)) headings.add(line.trim());
+	}
+	return headings;
+}
+
+/**
+ * The heading index of every citable document.
+ *
+ * A document that cannot be read contributes an empty heading set, so a
+ * citation into it fails closed instead of passing vacuously.
+ */
+export function loadCitationIndex(repoRoot = REPO_ROOT) {
+	const index = new Map();
+	for (const file of CITABLE_DOCUMENTS) {
+		let headings = new Set();
+		try {
+			headings = extractHeadings(readFileSync(resolve(repoRoot, file), 'utf8'));
+		} catch {
+			headings = new Set();
+		}
+		index.set(file, headings);
+	}
+	return index;
+}
+
+/**
+ * Resolve one citation against the repository documents.
+ *
+ * Returns `null` when the citation resolves, else the error code that
+ * says why it does not: the document is not one this repository owns,
+ * or the heading is not in it.
+ */
+export function citationErrorCode(citation, index) {
+	if (!citation || typeof citation !== 'object' || Array.isArray(citation)) {
+		return ERROR_CODE.citationInvalid;
+	}
+	if (!isNonEmptyString(citation.file) || !isNonEmptyString(citation.heading)) {
+		return ERROR_CODE.citationInvalid;
+	}
+	if (!CITABLE_DOCUMENTS.includes(citation.file)) {
+		return ERROR_CODE.citationDocumentUnknown;
+	}
+	const headings = index.get(citation.file);
+	if (!headings || !headings.has(citation.heading.trim())) {
+		return ERROR_CODE.citationHeadingMissing;
+	}
+	return null;
+}
+
+/**
+ * Whether a citation points at a heading that really exists.
+ *
+ * A citation into a document outside `CITABLE_DOCUMENTS`, or at a
+ * heading that was renamed or deleted, is not a citation.
+ */
+function isCitation(value, index) {
+	return citationErrorCode(value, index) === null;
+}
+
+/**
+ * The error a citation site reports, or `null` when it resolves.
+ *
+ * A structurally absent citation keeps the site-specific code; a
+ * citation that names a real document but a heading that is not there
+ * reports the resolution failure, because that is the defect.
+ */
+function citationFailure(citation, index, siteCode) {
+	if (isCitation(citation, index)) return null;
+	const code = citationErrorCode(citation, index);
+	return code === ERROR_CODE.citationInvalid ? siteCode : code;
 }
 
 function isOwner(value) {
@@ -598,8 +795,9 @@ function recordError(errors, { pathId = null, stepId = null, code, message }) {
  * a silent blank. The return value is always `{ ok, errors }`; callers
  * must check `ok` before presenting a PASS.
  */
-export function validateRehearsal(paths = REHEARSAL_PATHS) {
+export function validateRehearsal(paths = REHEARSAL_PATHS, options = {}) {
 	const errors = [];
+	const index = options.citationIndex ?? loadCitationIndex(options.repoRoot ?? REPO_ROOT);
 
 	if (!Array.isArray(paths) || paths.length === 0) {
 		recordError(errors, {
@@ -672,11 +870,16 @@ export function validateRehearsal(paths = REHEARSAL_PATHS) {
 					message: 'trigger has no observation',
 				});
 			}
-			if (!isCitation(path.trigger.source)) {
+			const sourceFailure = citationFailure(
+				path.trigger.source,
+				index,
+				ERROR_CODE.triggerSourceMissing,
+			);
+			if (sourceFailure !== null) {
 				recordError(errors, {
 					pathId,
-					code: ERROR_CODE.triggerSourceMissing,
-					message: 'trigger has no document citation',
+					code: sourceFailure,
+					message: 'trigger does not cite an existing heading in a citable document',
 				});
 			}
 		}
@@ -715,11 +918,16 @@ export function validateRehearsal(paths = REHEARSAL_PATHS) {
 					message: 'decision point owner is not an authorised human owner',
 				});
 			}
-			if (!isCitation(path.decisionPoint.authority)) {
+			const authorityFailure = citationFailure(
+				path.decisionPoint.authority,
+				index,
+				ERROR_CODE.decisionAuthorityMissing,
+			);
+			if (authorityFailure !== null) {
 				recordError(errors, {
 					pathId,
-					code: ERROR_CODE.decisionAuthorityMissing,
-					message: 'decision point has no authority citation',
+					code: authorityFailure,
+					message: 'decision point does not cite an existing heading in a citable document',
 				});
 			}
 		}
@@ -807,12 +1015,17 @@ export function validateRehearsal(paths = REHEARSAL_PATHS) {
 				});
 			}
 
-			if (!isCitation(step.authority)) {
+			const stepAuthorityFailure = citationFailure(
+				step.authority,
+				index,
+				ERROR_CODE.authorityMissing,
+			);
+			if (stepAuthorityFailure !== null) {
 				recordError(errors, {
 					pathId,
 					stepId,
-					code: ERROR_CODE.authorityMissing,
-					message: 'step has no authority citation',
+					code: stepAuthorityFailure,
+					message: 'step does not cite an existing heading in a citable document',
 				});
 			}
 
@@ -890,6 +1103,14 @@ export function validateRehearsal(paths = REHEARSAL_PATHS) {
 							stepId,
 							code: ERROR_CODE.humanGateNotOwner,
 							message: 'human gate step must require explicit human approval',
+						});
+					}
+					if (!isNonEmptyString(action.summary)) {
+						recordError(errors, {
+							pathId,
+							stepId,
+							code: ERROR_CODE.actionSummaryMissing,
+							message: 'human gate step has no summary',
 						});
 					}
 					break;

@@ -7,12 +7,19 @@ import { fileURLToPath } from 'node:url';
 
 import {
 	AGENTS_PATH,
+	ACTION_KIND,
+	ERROR_CODE,
+	FAILURE_CLASS,
+	OUTCOME,
 	REHEARSAL_PATHS,
 	RELEASE_PATH,
 	RUNBOOK_PATH,
 	assertNoSensitiveInText,
+	citationErrorCode,
+	extractHeadings,
 	findSensitiveInText,
 	formatRollbackRehearsal,
+	loadCitationIndex,
 	runRollbackRehearsal,
 	validateRehearsal,
 } from './_rollback-rehearsal.mjs';
@@ -66,13 +73,119 @@ describe('rollback rehearsal — the record validates', () => {
 	it('projects every failure class the runbook describes', () => {
 		const result = runRollbackRehearsal();
 		assert.equal(result.ok, true);
-		assert.equal(result.summary.pathCount, 4);
+		assert.equal(result.summary.pathCount, 5);
 		assert.ok(result.summary.stepCount > 0);
 		assert.deepEqual(result.summary.failureClasses.sort(), [
 			'failed-build',
 			'failed-smoke',
+			'post-delete-recheck',
 			'post-deploy-regression',
 		]);
+	});
+
+	it('keeps a post-deploy smoke failure on the fix-forward path, not on a restore', () => {
+		const path = REHEARSAL_PATHS.find((entry) => entry.id === 'failed-smoke-post-deploy');
+		assert.ok(path, 'the post-deploy smoke path exists');
+		assert.equal(path.outcome, OUTCOME.lifecycleOpen);
+		const commands = path.steps
+			.map((step) => step.action.command)
+			.filter((command) => typeof command === 'string');
+		assert.equal(
+			commands.some((command) => command.includes('--restore-legacy-only')),
+			false,
+			'an ordinary post-deploy smoke failure must not point the operator at --restore-legacy-only',
+		);
+	});
+
+	it('separates the post-delete re-check failure from the ordinary smoke failure', () => {
+		const recheck = REHEARSAL_PATHS.find((entry) => entry.id === 'post-delete-recheck-failure');
+		assert.ok(recheck, 'the post-delete re-check path exists');
+		assert.equal(recheck.outcome, OUTCOME.operatorRestore);
+		assert.notEqual(recheck.failureClass, FAILURE_CLASS.failedSmoke);
+		const commands = recheck.steps
+			.map((step) => step.action.command)
+			.filter((command) => typeof command === 'string');
+		assert.equal(
+			commands.some((command) => command.includes('--restore-legacy-only')),
+			true,
+			'the post-delete re-check path is where the documented restore operation belongs',
+		);
+	});
+});
+
+describe('rollback rehearsal — a citation must resolve', () => {
+	it('resolves every citation in the committed table against the real documents', () => {
+		const index = loadCitationIndex(REPO_ROOT);
+		for (const path of REHEARSAL_PATHS) {
+			const citations = [
+				path.trigger.source,
+				path.decisionPoint.authority,
+				...path.steps.map((step) => step.authority),
+			];
+			for (const citation of citations) {
+				assert.equal(
+					citationErrorCode(citation, index),
+					null,
+					`unresolved citation: ${JSON.stringify(citation)}`,
+				);
+			}
+		}
+	});
+
+	it('finds a heading that is really in the runbook', () => {
+		const index = loadCitationIndex(REPO_ROOT);
+		const headings = index.get(RUNBOOK_PATH);
+		assert.ok(headings instanceof Set);
+		assert.equal(headings.has('## Recovery operations (Phase B driver)'), true);
+	});
+
+	it('rejects a citation into a document this repository does not own', () => {
+		const paths = structuredClone(REHEARSAL_PATHS);
+		paths[0].trigger.source = { file: 'missing.md', heading: '## Anything' };
+		const validation = validateRehearsal(paths);
+		assert.equal(validation.ok, false);
+		assert.ok(
+			validation.errors.some((error) => error.code === ERROR_CODE.citationDocumentUnknown),
+			JSON.stringify(validation.errors),
+		);
+	});
+
+	it('rejects a citation to a heading that was renamed or deleted', () => {
+		const paths = structuredClone(REHEARSAL_PATHS);
+		paths[0].decisionPoint.authority = {
+			file: RUNBOOK_PATH,
+			heading: '## A heading that no longer exists',
+		};
+		const validation = validateRehearsal(paths);
+		assert.equal(validation.ok, false);
+		assert.ok(
+			validation.errors.some((error) => error.code === ERROR_CODE.citationHeadingMissing),
+			JSON.stringify(validation.errors),
+		);
+	});
+
+	it('reads the headings of a markdown document', () => {
+		const headings = extractHeadings('# Title\n\ntext\n\n## Second heading\n');
+		assert.equal(headings.has('# Title'), true);
+		assert.equal(headings.has('## Second heading'), true);
+		assert.equal(headings.size, 2);
+	});
+});
+
+describe('rollback rehearsal — a human gate must say what it gates', () => {
+	it('rejects a human gate step with no summary', () => {
+		const paths = structuredClone(REHEARSAL_PATHS);
+		const gate = paths
+			.flatMap((path) => path.steps)
+			.find((step) => step.action.kind === ACTION_KIND.humanGate);
+		assert.ok(gate, 'the table has a human gate step');
+		gate.action.summary = undefined;
+		const validation = validateRehearsal(paths);
+		assert.equal(validation.ok, false);
+		assert.ok(
+			validation.errors.some((error) => error.code === ERROR_CODE.actionSummaryMissing),
+			JSON.stringify(validation.errors),
+		);
 	});
 });
 
@@ -97,6 +210,15 @@ describe('rollback rehearsal — nothing is executed, read or requested', () => 
 		for (const relative of [RUNBOOK_PATH, RELEASE_PATH, AGENTS_PATH]) {
 			assert.equal(existsSync(join(REPO_ROOT, relative)), true, relative);
 		}
+	});
+
+	it('imports no process, network or Cloudflare surface', () => {
+		const source = readFileSync(join(REPO_ROOT, 'scripts/_rollback-rehearsal.mjs'), 'utf8');
+		assert.equal(
+			/from\s+['"]node:(child_process|https?|net|tls|dgram)['"]/.test(source),
+			false,
+			'the rehearsal must not be able to run a command or open a socket',
+		);
 	});
 
 	it('formats status-only lines that carry no fixture value', () => {
@@ -171,6 +293,17 @@ describe('rollback rehearsal — the capture artefact', () => {
 		const cards = html.split(`data-testid="${PATH_TEST_ID}"`).length - 1;
 		assert.equal(cards, result.summary.pathCount);
 		assert.equal(assertNoSensitiveInText(html).ok, true);
+	});
+
+	it('advertises a regeneration command that exists in package.json', () => {
+		const html = renderRollbackRehearsalHtml(runRollbackRehearsal());
+		const match = /Regenerate: <code>pnpm run ([^<]+)<\/code>/.exec(html);
+		assert.ok(match, 'the page states how to regenerate the artefact');
+		const pkg = JSON.parse(readFileSync(join(REPO_ROOT, 'package.json'), 'utf8'));
+		assert.ok(
+			typeof pkg.scripts[match[1]] === 'string',
+			`package.json has no "${match[1]}" script to regenerate the artefact with`,
+		);
 	});
 
 	it('serves the report page at the root instead of the directory', () => {

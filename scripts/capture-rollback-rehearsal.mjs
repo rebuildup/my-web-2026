@@ -273,21 +273,22 @@ export function renderRollbackRehearsalHtml(result) {
 				background: var(--paper);
 				color: var(--ink);
 				font-family: var(--sans);
-				line-height: 1.5;
+				font-size: 14px;
+				line-height: 1.35;
 				-webkit-font-smoothing: antialiased;
 			}
-			main { max-width: 1280px; margin: 0 auto; padding: 56px 48px 72px; }
+			main { max-width: 1280px; margin: 0 auto; padding: 32px 36px 40px; }
 			.eyebrow {
 				font-family: var(--mono);
-				font-size: 12px;
+				font-size: 11px;
 				letter-spacing: 0.14em;
 				text-transform: uppercase;
 				color: var(--muted);
 				margin-bottom: 12px;
 			}
-			h1 { font-size: 38px; line-height: 1.15; margin: 0 0 14px; letter-spacing: -0.02em; }
-			.lede { max-width: 900px; margin: 0; color: #45423c; font-size: 16px; }
-			.pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 22px; }
+			h1 { font-size: 26px; line-height: 1.15; margin: 0 0 10px; letter-spacing: -0.02em; }
+			.lede { max-width: 900px; margin: 0; color: #45423c; font-size: 13.5px; }
+			.pills { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
 			.pill {
 				display: inline-flex;
 				align-items: center;
@@ -297,7 +298,7 @@ export function renderRollbackRehearsalHtml(result) {
 				border-radius: 999px;
 				background: var(--card);
 				font-family: var(--mono);
-				font-size: 12px;
+				font-size: 11px;
 				color: var(--muted);
 			}
 			.pill.pass { background: var(--green); border-color: var(--green); color: #fff; font-weight: 700; letter-spacing: 0.08em; }
@@ -305,23 +306,23 @@ export function renderRollbackRehearsalHtml(result) {
 				display: grid;
 				grid-template-columns: repeat(4, minmax(0, 1fr));
 				gap: 12px;
-				margin: 30px 0 34px;
+				margin: 18px 0 20px;
 			}
-			.tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; }
+			.tile { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 11px 14px; }
 			.tile .tile-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--muted); }
-			.tile .tile-value { font-size: 30px; font-weight: 700; margin-top: 2px; letter-spacing: -0.03em; }
-			.paths { display: grid; gap: 20px; }
+			.tile .tile-value { font-size: 24px; font-weight: 700; margin-top: 2px; letter-spacing: -0.03em; }
+			.paths { display: grid; gap: 14px; }
 			.path {
 				background: var(--card);
 				border: 1px solid var(--line);
 				border-left: 4px solid var(--green);
 				border-radius: 12px;
-				padding: 22px 24px 20px;
+				padding: 13px 16px 12px;
 			}
-			.path-head { display: flex; align-items: flex-start; gap: 14px; }
+			.path-head { display: flex; align-items: flex-start; gap: 10px; }
 			.path-index { font-family: var(--mono); font-size: 13px; color: var(--muted); padding-top: 4px; }
 			.path-title { flex: 1; min-width: 0; }
-			.path-title h2 { margin: 0; font-size: 21px; line-height: 1.25; letter-spacing: -0.01em; }
+			.path-title h2 { margin: 0; font-size: 16.5px; line-height: 1.25; letter-spacing: -0.01em; }
 			.path-key { margin: 4px 0 0; font-size: 12px; color: var(--muted); }
 			.path-key code { font-family: var(--mono); }
 			.outcome {
@@ -336,19 +337,19 @@ export function renderRollbackRehearsalHtml(result) {
 				letter-spacing: 0.05em;
 				white-space: nowrap;
 			}
-			.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin: 18px 0 8px; }
-			.fact { border-top: 1px solid var(--line); padding-top: 10px; }
+			.facts { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 10px 0 3px; }
+			.fact { border-top: 1px solid var(--line); padding-top: 7px; }
 			.fact-label { font-family: var(--mono); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); }
-			.fact p { margin: 5px 0 0; font-size: 13.5px; }
+			.fact p { margin: 4px 0 0; font-size: 11.5px; }
 			.fact .owner { font-family: var(--mono); font-size: 12px; color: var(--green); }
-			.steps { list-style: none; margin: 14px 0 0; padding: 0; border-top: 1px solid var(--line); }
-			.step { padding: 14px 0 12px; border-bottom: 1px solid var(--line); }
+			.steps { list-style: none; margin: 8px 0 0; padding: 0; border-top: 1px solid var(--line); }
+			.step { padding: 8px 0 7px; border-bottom: 1px solid var(--line); }
 			.step:last-child { border-bottom: 0; }
-			.step-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 7px; }
+			.step-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-bottom: 4px; }
 			.step-id { font-family: var(--mono); font-size: 12px; font-weight: 700; }
 			.owner-chip, .mutation-chip, .recorded-chip {
 				font-family: var(--mono);
-				font-size: 10.5px;
+				font-size: 10px;
 				padding: 2px 7px;
 				border-radius: 4px;
 				border: 1px solid var(--line);
@@ -359,24 +360,24 @@ export function renderRollbackRehearsalHtml(result) {
 			.step-action code {
 				display: block;
 				font-family: var(--mono);
-				font-size: 12px;
-				line-height: 1.55;
+				font-size: 11px;
+				line-height: 1.45;
 				background: #f4f1e9;
 				border: 1px solid var(--line);
 				border-radius: 6px;
-				padding: 8px 10px;
+				padding: 6px 8px;
 				overflow-wrap: anywhere;
 			}
-			.procedure { margin: 4px 0 0; padding-left: 20px; font-size: 13px; }
-			.gate, .stop { margin: 2px 0 0; font-size: 13px; }
+			.procedure { margin: 3px 0 0; padding-left: 18px; font-size: 11px; }
+			.gate, .stop { margin: 2px 0 0; font-size: 11px; }
 			.stop { color: var(--red); }
-			.observation { margin: 8px 0 0; font-size: 13px; }
+			.observation { margin: 6px 0 0; font-size: 11px; }
 			.observation span { font-family: var(--mono); font-size: 10.5px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-right: 4px; }
-			.source { margin: 5px 0 0; font-family: var(--mono); font-size: 10.5px; color: #8a867d; }
-			.irreversible { margin-top: 14px; background: var(--red-soft); border: 1px solid #e7c8c3; border-radius: 8px; padding: 11px 14px; }
-			.irreversible h3 { margin: 0 0 4px; font-size: 11px; font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--red); }
-			.irreversible ul { margin: 0; padding-left: 18px; font-size: 12.5px; }
-			footer { margin-top: 28px; border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); font-size: 12px; }
+			.source { margin: 3px 0 0; font-family: var(--mono); font-size: 10px; color: #8a867d; }
+			.irreversible { margin-top: 8px; background: var(--red-soft); border: 1px solid #e7c8c3; border-radius: 8px; padding: 7px 10px; }
+			.irreversible h3 { margin: 0 0 3px; font-size: 11px; font-family: var(--mono); letter-spacing: 0.08em; text-transform: uppercase; color: var(--red); }
+			.irreversible ul { margin: 0; padding-left: 16px; font-size: 11px; }
+			footer { margin-top: 18px; border-top: 1px solid var(--line); padding-top: 12px; color: var(--muted); font-size: 11px; }
 			footer code { font-family: var(--mono); }
 			footer p { margin: 4px 0; }
 		</style>
@@ -388,7 +389,7 @@ export function renderRollbackRehearsalHtml(result) {
 				<h1>Rollback rehearsal — failed Cloudflare Workers Builds release</h1>
 				<p class="lede">
 					Table-driven rehearsal of the documented failure paths. Every step is an executable
-					assertion in <code>scripts/rollback-rehearsal.test.mjs</code>. Commands are recorded,
+					assertion in <code>scripts/_rollback-rehearsal.test.mjs</code>. Commands are recorded,
 					not executed; the rehearsal calls no Cloudflare API and reads no credential.
 				</p>
 				<div class="pills">
@@ -411,7 +412,7 @@ export function renderRollbackRehearsalHtml(result) {
 			<footer>
 				<p><code>${escapeHtml(RUNBOOK_PATH)}</code> is the canonical release sequence. This rehearsal adds no deploy path and does not reorder that sequence.</p>
 				<p>Release PR merge, release tag, GitHub Release publication and production deploy remain repository-owner-only (AGENTS.md §6).</p>
-				<p>Regenerate: <code>pnpm run verify:rollback-rehearsal-screenshot</code></p>
+				<p>Regenerate: <code>pnpm run capture:rollback-rehearsal</code></p>
 			</footer>
 		</main>
 	</body>
